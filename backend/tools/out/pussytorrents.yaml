@@ -1,0 +1,73 @@
+# pussytorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.time.filters（匿名函数）
+#   - search.category（text）
+#   - userInfo.seedingSize.filters（匿名函数）
+#   - userInfo.uploads.filters（匿名函数）
+#   - userInfo.downloaded.filters（匿名函数）
+#   - userInfo.joinTime.filters（匿名函数）
+#   - userInfo.id.filters（匿名函数）
+#   - userInfo.uploaded.filters（匿名函数）
+#   - userInfo.seeding.filters（匿名函数）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - PT
+description: PussyTorrents is a Semi-Private Torrent Tracker for 3X
+id: pussytorrents
+name: Pussytorrents
+no_login:
+    selector: div#loginContainer
+search_entry: /torrents/browse
+selectors:
+    fields:
+        category: {}
+        completed:
+            filters:
+                - name: parse_number
+            selector: td:nth-last-child(4)
+        detail:
+            attr: href
+            selector: a[href^="/torrent/"]
+        download:
+            attr: href
+            selector: a[href^="/download/"]
+        leechers:
+            selector: td:nth-last-child(2)
+        seeders:
+            selector: td:nth-last-child(3)
+        size:
+            selector: td:nth-last-child(5)
+        time:
+            selector: span.subnote
+        title:
+            selector: a[href^="/torrent/"]
+    rows:
+        selector: table#torrenttable > tbody > tr:has(a[href^="/download/"])
+tags:
+    - XXX
+timezone_offset: "+0000"
+urls:
+    - https://pussytorrents.org/
+user_info:
+    fields:
+        downloaded:
+            selector: '#profile button:has(.icon-arrow-down)'
+        id:
+            attr: href
+            selector: '#memberBar .span8 a[href*=''/profile/'']'
+        join_date:
+            selector: '#profileTable td:contains(''Join Date'') + td'
+        level:
+            selector: '#profileTable td:contains(''Class'') + td'
+        name:
+            selector: '#memberBar .span8 a[href*=''/profile/'']'
+        seeding:
+            selector: aaData
+        seeding_size:
+            selector: aaData
+        uploaded:
+            selector: '#profile button:has(.icon-arrow-up)'
+        uploads:
+            selector: iTotalRecords

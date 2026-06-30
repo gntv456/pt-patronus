@@ -1,0 +1,230 @@
+package filemanager
+
+import (
+	"context"
+	"encoding/xml"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"path"
+	"strings"
+	"time"
+)
+
+// WebDAV 后端（PROPFIND/PUT/GET/DELETE/MKCOL）。
+type WebDAV struct {
+	baseURL  string
+	basePath string
+	username string
+	password string
+	hc       *http.Client
+}
+
+// NewWebDAV 构造。basePath 把所有操作约束在该子目录下（防 ../ 越界）。
+func NewWebDAV(baseURL, username, password, basePath string) *WebDAV {
+	return &WebDAV{
+		baseURL:  strings.TrimRight(baseURL, "/"),
+		basePath: basePath,
+		username: username,
+		password: password,
+		hc:       &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+func (w *WebDAV) Type() string { return "webdav" }
+
+func (w *WebDAV) req(ctx context.Context, method, urlPath string, body io.Reader) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, w.baseURL+urlPath, body)
+	if err != nil {
+		return nil, err
+	}
+	if w.username != "" {
+		req.SetBasicAuth(w.username, w.password)
+	}
+	return w.hc.Do(req)
+}
+
+// List 用 PROPFIND Depth:1 列目录。
+func (w *WebDAV) List(ctx context.Context, p string) ([]Entry, error) {
+	p = ensureSlash(resolvePath(w.basePath, p))
+	propfindBody := `<?xml version="1.0" encoding="utf-8"?>
+<propfind xmlns="DAV:"><prop>
+<displayname/><getcontentlength/><resourcetype/><getlastmodified/>
+</prop></propfind>`
+	req, err := http.NewRequestWithContext(ctx, "PROPFIND", w.baseURL+p, strings.NewReader(propfindBody))
+	if err != nil {
+		return nil, err
+	}
+	if w.username != "" {
+		req.SetBasicAuth(w.username, w.password)
+	}
+	req.Header.Set("Depth", "1")
+	req.Header.Set("Content-Type", "application/xml")
+	resp, err := w.hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusMultiStatus {
+		return nil, fmt.Errorf("webdav PROPFIND: status %d", resp.StatusCode)
+	}
+	data, _ := io.ReadAll(resp.Body)
+	entries, err := parseMultiStatus(data, p)
+	if err != nil {
+		return nil, err
+	}
+	// 去掉第一项（目录自身）
+	out := entries
+	if len(out) > 0 && out[0].Path == normalizePath(p) {
+		out = out[1:]
+	}
+	return out, nil
+}
+
+// Upload 用 PUT 上传。
+func (w *WebDAV) Upload(ctx context.Context, p string, r io.Reader) error {
+	p = resolvePath(w.basePath, p)
+	resp, err := w.req(ctx, http.MethodPut, p, r)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("webdav PUT: status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// Download 用 GET 下载。
+func (w *WebDAV) Download(ctx context.Context, p string) (io.ReadCloser, error) {
+	p = resolvePath(w.basePath, p)
+	resp, err := w.req(ctx, http.MethodGet, p, nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode >= 300 {
+		resp.Body.Close()
+		return nil, fmt.Errorf("webdav GET: status %d", resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
+// Delete 删除。
+func (w *WebDAV) Delete(ctx context.Context, p string) error {
+	p = resolvePath(w.basePath, p)
+	resp, err := w.req(ctx, http.MethodDelete, p, nil)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 300 && resp.StatusCode != http.StatusNotFound {
+		return fmt.Errorf("webdav DELETE: status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// Mkdir 用 MKCOL 建目录。
+func (w *WebDAV) Mkdir(ctx context.Context, p string) error {
+	p = resolvePath(w.basePath, p)
+	resp, err := w.req(ctx, "MKCOL", ensureSlash(p), nil)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 300 && resp.StatusCode != http.StatusMethodNotAllowed {
+		return fmt.Errorf("webdav MKCOL: status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// ── multistatus XML 解析 ──
+
+type multistatus struct {
+	XMLName   xml.Name `xml:"multistatus"`
+	Responses []struct {
+		Href     string `xml:"DAV: href"`
+		Propstat []struct {
+			Prop struct {
+				Name         string `xml:"DAV: displayname"`
+				Size         int64  `xml:"DAV: getcontentlength"`
+				Resourcetype struct {
+					Collection struct{} `xml:"DAV: collection"`
+				} `xml:"DAV: resourcetype"`
+				Modified string `xml:"DAV: getlastmodified"`
+			} `xml:"DAV: prop"`
+		} `xml:"DAV: propstat"`
+	} `xml:"DAV: response"`
+}
+
+func parseMultiStatus(data []byte, base string) ([]Entry, error) {
+	var ms multistatus
+	if err := xml.Unmarshal(data, &ms); err != nil {
+		return nil, fmt.Errorf("parse multistatus: %w", err)
+	}
+	out := make([]Entry, 0, len(ms.Responses))
+	for _, r := range ms.Responses {
+		if len(r.Propstat) == 0 {
+			continue
+		}
+		prop := r.Propstat[0].Prop
+		name := prop.Name
+		if name == "" {
+			name = path.Base(strings.TrimRight(decode(r.Href), "/"))
+		}
+		e := Entry{
+			Name:    name,
+			Path:    normalizePath(decode(r.Href)),
+			IsDir:   prop.Resourcetype.Collection != struct{}{},
+			Size:    prop.Size,
+			ModTime: parseHTTPDate(prop.Modified),
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+func ensureSlash(p string) string {
+	if p == "" {
+		return "/"
+	}
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	if !strings.HasSuffix(p, "/") {
+		p += "/"
+	}
+	return p
+}
+
+func normalizePath(p string) string {
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	return strings.TrimRight(p, "/")
+}
+
+// decode 解码 URL 编码的 href（含中文），并去掉可能的 host 前缀只留路径。
+func decode(s string) string {
+	unescaped, err := url.PathUnescape(s)
+	if err != nil {
+		unescaped = s
+	}
+	if strings.Contains(unescaped, "://") {
+		if u := strings.Index(unescaped, "://"); u >= 0 {
+			rest := unescaped[u+3:]
+			if sl := strings.Index(rest, "/"); sl >= 0 {
+				return rest[sl:]
+			}
+		}
+	}
+	return unescaped
+}
+
+func parseHTTPDate(s string) time.Time {
+	t, err := http.ParseTime(s)
+	if err != nil {
+		return time.Time{}
+	}
+	return t
+}

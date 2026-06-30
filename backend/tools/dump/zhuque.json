@@ -1,0 +1,322 @@
+{
+  "version": 1,
+  "id": "zhuque",
+  "name": "朱雀",
+  "aka": [
+    "Zhuque"
+  ],
+  "description": "新架构的影视站点",
+  "tags": [
+    "影视",
+    "综合"
+  ],
+  "timezoneOffset": "+0800",
+  "type": "private",
+  "schema": "TNode",
+  "urls": [
+    "uggcf://muhdhr.va/"
+  ],
+  "collaborator": [
+    "hui-shao"
+  ],
+  "category": [
+    {
+      "name": "分类",
+      "key": "category",
+      "keyPath": "data",
+      "options": {
+        "__call": "Object.entries(categoryMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "媒介",
+      "key": "medium",
+      "keyPath": "data",
+      "options": {
+        "__call": "Object.entries(mediumMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "分辨率",
+      "key": "resolution",
+      "keyPath": "data",
+      "options": {
+        "__call": "Object.entries(resolutionMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "视频编码",
+      "key": "videoCoding",
+      "keyPath": "data",
+      "options": {
+        "__call": "Object.entries(videoCodingMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "标签",
+      "key": "tags",
+      "keyPath": "data",
+      "options": {
+        "__call": "Object.entries(tagsMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "brackets"
+      }
+    }
+  ],
+  "search": {
+    "keywordPath": "data.keyword",
+    "requestConfig": {
+      "url": "/api/torrent/advancedSearch",
+      "method": "POST",
+      "data": {
+        "page": 1,
+        "size": 100,
+        "type": "title"
+      },
+      "responseType": "json"
+    },
+    "selectors": {
+      "rows": {
+        "selector": "data.torrents"
+      },
+      "id": {
+        "selector": "id"
+      },
+      "title": {
+        "selector": "title"
+      },
+      "subTitle": {
+        "selector": "subtitle"
+      },
+      "url": {
+        "selector": "id",
+        "filters": [
+          {
+            "name": "prepend",
+            "args": [
+              "/torrent/info/"
+            ]
+          }
+        ]
+      },
+      "link": {
+        "selector": "id",
+        "filters": [
+          {
+            "name": "prepend",
+            "args": [
+              "/api/torrent/download/"
+            ]
+          }
+        ]
+      },
+      "time": {
+        "selector": "upload_time",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(v: number) => v * 1000"
+          }
+        ]
+      },
+      "size": {
+        "selector": "size"
+      },
+      "category": {
+        "selector": "category",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(v: number) => categoryMap[v] ?? String(v)"
+          }
+        ]
+      },
+      "seeders": {
+        "selector": "seeding"
+      },
+      "leechers": {
+        "selector": "leeching"
+      },
+      "completed": {
+        "selector": "complete"
+      },
+      "comments": {
+        "selector": "review"
+      },
+      "progress": {
+        "selector": "progress"
+      },
+      "ext_imdb": {
+        "selector": [
+          "imdb_id"
+        ],
+        "filters": [
+          {
+            "name": "extImdbId"
+          }
+        ]
+      }
+    }
+  },
+  "searchEntry": {
+    "area_all": {
+      "name": "全部",
+      "enabled": true
+    }
+  },
+  "userInfo": {
+    "pickLast": [
+      "id",
+      "joinTime"
+    ],
+    "process": [
+      {
+        "requestConfig": {
+          "url": "/api/plugins/ptppUserInfo",
+          "responseType": "json"
+        },
+        "selectors": {
+          "id": {
+            "selector": "data.id"
+          },
+          "name": {
+            "selector": "data.name"
+          },
+          "levelName": {
+            "selector": "data.levelName"
+          },
+          "joinTime": {
+            "selector": "data.joinTime",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(v: string | number) => Number(v) * 1000"
+              }
+            ]
+          },
+          "uploaded": {
+            "selector": "data.uploaded"
+          },
+          "downloaded": {
+            "selector": "data.downloaded"
+          },
+          "trueDownloaded": {
+            "selector": "data.trueDownloaded"
+          },
+          "bonus": {
+            "selector": "data.bonus"
+          },
+          "seedingBonus": {
+            "selector": "data.seedingPoints"
+          },
+          "bonusPerHour": {
+            "selector": "data.bonusPerHour"
+          },
+          "uploads": {
+            "selector": "data.uploadCount"
+          },
+          "seeding": {
+            "selector": "data.seeding"
+          },
+          "seedingSize": {
+            "selector": "data.seedingSize"
+          },
+          "messageCount": {
+            "selector": "data.messageCount"
+          },
+          "csrfToken": {
+            "selector": "data.csrfToken"
+          },
+          "lastAccessAt": {
+            "selector": "data.lastUpdateTime",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(v: string | number) => Number(v) * 1000"
+              }
+            ]
+          },
+          "invites": {
+            "selector": "data.invites"
+          }
+        }
+      }
+    ]
+  },
+  "levelRequirements": [
+    {
+      "id": 1,
+      "name": "筑基",
+      "privilege": "入站初始等级"
+    },
+    {
+      "id": 2,
+      "name": "结丹",
+      "interval": "P5W",
+      "downloaded": "10GB",
+      "ratio": 2,
+      "privilege": "无"
+    },
+    {
+      "id": 3,
+      "name": "元婴",
+      "interval": "P10W",
+      "downloaded": "25GB",
+      "ratio": 2,
+      "privilege": "无"
+    },
+    {
+      "id": 4,
+      "name": "出窍",
+      "interval": "P15W",
+      "downloaded": "50GB",
+      "ratio": 2,
+      "privilege": "无"
+    },
+    {
+      "id": 5,
+      "name": "炼虚",
+      "interval": "P20W",
+      "downloaded": "100GB",
+      "ratio": 2,
+      "privilege": "无"
+    },
+    {
+      "id": 6,
+      "name": "合体",
+      "interval": "P25W",
+      "downloaded": "200GB",
+      "ratio": 4,
+      "privilege": "无"
+    },
+    {
+      "id": 7,
+      "name": "大乘",
+      "interval": "P30W",
+      "downloaded": "300GB",
+      "ratio": 6,
+      "privilege": "无"
+    },
+    {
+      "id": 8,
+      "name": "真仙",
+      "interval": "P35W",
+      "downloaded": "400GB",
+      "ratio": 8,
+      "privilege": "无"
+    }
+  ]
+}

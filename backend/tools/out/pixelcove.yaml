@@ -1,0 +1,48 @@
+# pixelcove — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category.filters（匿名函数）
+
+aka:
+    - PxC
+description: PixelCove (Ultimate Gamer) is a Private Torrent Tracker for GAMES
+id: pixelcove
+level_requirements:
+    - id: 1
+      name: User
+    - id: 2
+      interval: P1W
+      name: Member
+      ratio: 0.75
+      uploaded: 50GB
+    - id: 3
+      interval: P12W
+      name: Power User
+      privilege: See the uploader of a torrent.
+      ratio: 1.25
+      uploaded: 150GB
+      uploads: 1
+    - id: 4
+      interval: P24W
+      name: Master
+      ratio: 0.75
+      uploaded: 500GB
+      uploads: 10
+    - id: 5
+      interval: P48W
+      name: Elite
+      ratio: 0.75
+      uploaded: 1TB
+      uploads: 25
+name: PixelCove
+schema: luminance
+selectors:
+    fields:
+        category:
+            attr: href
+            selector: td.cats_col > div[title] > a
+tags:
+    - 游戏
+timezone_offset: "+0000"
+urls:
+    - https://www.pixelcove.me/

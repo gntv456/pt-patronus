@@ -1,0 +1,51 @@
+# 0magnet — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category（text）
+#   - search.title（elementProcess）
+
+aka:
+    - ØMagnet
+    - 无极磁链
+description: ØMagnet 是一个专注于高清电影和电视剧的私人种子站点，提供高质量的影视资源下载服务。
+id: 0magnet
+legacy_urls:
+    - https://6mag.net/
+    - https://9mag.net/
+    - https://0mag.net/
+name: 0Magnet
+search_entry: /search
+search_param: q
+selectors:
+    fields:
+        category: {}
+        detail:
+            attr: href
+            selector: a
+        size:
+            filters:
+                - name: parse_size
+            selector: td.td-size
+        subtitle:
+            selector: p.sample
+        title:
+            selector: a
+    rows:
+        selector: table.file-list > tbody > tr:has(td)
+tags:
+    - 成人
+    - XXX
+urls:
+    - https://16mag.net/
+    - https://0magnet.com/
+    - https://8ci.li/
+    - https://7mag.net/
+    - https://13mag.net/
+    - https://getmag.net/
+    - https://xcili.net/
+    - https://1cili.com/
+    - https://cili.info/
+    - https://cili.uk/
+    - https://wuji.me/
+    - https://0cili.com/
+    - https://0cili.my/

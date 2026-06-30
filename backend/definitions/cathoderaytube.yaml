@@ -1,0 +1,58 @@
+# cathoderaytube — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category.filters（匿名函数）
+
+aka:
+    - CRT
+description: Cathode-Ray.Tube (CRT) is a Private Torrent Tracker for CLASSIC MOVIES / TV
+id: cathoderaytube
+level_requirements:
+    - id: 1
+      name: Nostalgic Newcomer
+      privilege: Torrent download limit set to 6 torrents per hour.
+    - id: 2
+      interval: P4W
+      name: Retro Rookie
+      privilege: Access to Top10 Stats. Can send CRT Invites. Can create Collages. Torrent download limit set to 12 torrents per hour.
+      ratio: 1
+      uploaded: 100GiB
+    - id: 3
+      interval: P8W
+      name: Classics Collector
+      privilege: Access to Tracker Discussion forum. Torrent download limit set to 24 torrents per hour.
+      ratio: 1.25
+      uploaded: 1TiB
+    - id: 4
+      interval: P16W
+      name: Analog Ace
+      privilege: Access to Invite forums. Torrent download limit set to 36 torrents per hour.
+      ratio: 1.5
+      uploaded: 5TiB
+      uploads: 5
+    - id: 5
+      interval: P32W
+      name: Monochrome Master
+      privilege: Can post in the "Looking For..." Invite forum. Torrent download limit set to 48 torrents per hour.
+      ratio: 2
+      uploaded: 15TiB
+      uploads: 15
+    - id: 6
+      interval: P64W
+      name: Vintage Virtuoso
+      privilege: Torrent download limit set to 60 torrents per hour.
+      ratio: 2.5
+      uploaded: 25TiB
+      uploads: 25
+name: Cathode-Ray.Tube
+schema: luminance
+selectors:
+    fields:
+        category:
+            attr: href
+            selector: td.cats_col > div[title] > a
+tags:
+    - 综合
+timezone_offset: "+0000"
+urls:
+    - https://www.cathode-ray.tube/

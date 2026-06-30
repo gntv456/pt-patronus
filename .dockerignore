@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# 后端构建/数据产物
+backend/bin
+backend/data
+backend/*.db*
+backend/**/*.exe
+data/
+
+# 前端依赖与产物（构建阶段重新生成）
+frontend/node_modules
+frontend/dist
+
+# Flutter（CI 单独构建，不打进镜像）
+mobile
+
+# 文档/报告
+*.md
+.github
+.claude
+
+# 本地环境
+.env
+*.local

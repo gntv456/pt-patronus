@@ -1,0 +1,103 @@
+# joyhd — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+categories:
+    - id: "401"
+      name: Movie
+    - id: "402"
+      name: TV Series
+    - id: "403"
+      name: Entertainment
+    - id: "405"
+      name: Anime
+    - id: "414"
+      name: Music
+    - id: "407"
+      name: Sport
+    - id: "404"
+      name: Documentaries
+    - id: "406"
+      name: MV
+    - id: "408"
+      name: Software
+    - id: "410"
+      name: Game
+    - id: "411"
+      name: e-Learn
+    - id: "409"
+      name: Other
+description: JoyHD成立於2013年，發佈藍光原碟，藍光DIY和原抓音樂。
+id: joyhd
+level_requirements:
+    - id: 1
+      name: User
+      privilege: 新用户的默认级别。
+    - downloaded: 50GB
+      id: 2
+      interval: P4W
+      name: 正兵/Power User
+      privilege: |-
+        map[__raw:BinaryExpression src:"可以直接发布种子；可以查看NFO文档；可以查看用户列表；" +
+                "可以查看其它用户的种子历史(如果用户隐私等级未设置为“强”)； 可以删除自己上传的字幕。"]
+      ratio: 1.2
+    - downloaded: 100GB
+      id: 3
+      interval: P8W
+      name: 军士/Elite User
+      privilege: 军士及以上用户封存账号后不会被删除; 可以发送邀请；可以请求续种。
+      ratio: 1.5
+    - downloaded: 200GB
+      id: 4
+      interval: P15W
+      name: 副军校/Crazy User
+      privilege: 可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 2.5
+    - downloaded: 400GB
+      id: 5
+      interval: P25W
+      name: 正军校/Insane User
+      privilege: 可以查看普通日志。得到一个邀请名额。
+      ratio: 3.5
+    - downloaded: 600GB
+      id: 6
+      interval: P25W
+      is_kept: true
+      name: 副参领/Veteran User
+      privilege: 可以查看其它用户的评论、帖子历史。副参领及以上用户会永远保留账号。得到二个邀请名额。
+      ratio: 4.5
+    - downloaded: 1000GB
+      id: 7
+      interval: P25W
+      is_kept: true
+      name: 正参领/Extreme User
+      privilege: 可以更新过期的外部信息；得到二个邀请名额。
+      ratio: 5.5
+    - downloaded: 2000GB
+      id: 8
+      interval: P30W
+      is_kept: true
+      name: 副都统/Ultimate User
+      privilege: 得到三个邀请名额。
+      ratio: 6
+    - downloaded: 5000GB
+      id: 9
+      interval: P50W
+      is_kept: true
+      name: 大将军/Nexus Master
+      privilege: 得到五个邀请名额。
+      ratio: 6
+name: JoyHD
+schema: nexusphp
+tags:
+    - 影视
+    - 综合
+urls:
+    - https://www.joyhd.net/
+user_info:
+    fields:
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - td.rowhead:contains('银元') + td

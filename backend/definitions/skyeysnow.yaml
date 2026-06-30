@@ -1,0 +1,77 @@
+# skyeysnow — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: discuz。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - 天雪
+description: 这是一个高清动漫的完全非盈利论坛，高清动漫是一个很小的圈子 论坛方向为DVD/BDRip和BDMV&BDMV用字幕相关。
+id: skyeysnow
+level_requirements:
+    - bonus: 1000
+      id: 1
+      name: Lv.1 白露
+      privilege: 自定义头衔；允许发短消息；允许加好友；允许设置回帖奖励；允许参与点评；
+    - bonus: 3000
+      id: 2
+      name: Lv.2 秋分
+    - bonus: 5000
+      id: 3
+      name: Lv.3 霜降
+    - bonus: 10000
+      id: 4
+      name: Lv.4 小雪
+    - bonus: 30000
+      id: 5
+      name: Lv.5 大雪
+    - bonus: 100000
+      id: 6
+      name: Lv.6 小寒
+    - bonus: 300000
+      id: 7
+      name: Lv.7 大寒
+    - bonus: 1000000
+      id: 8
+      name: Lv.8 立春
+name: SkyeySnow
+schema: discuz
+search_entry: /forum.php
+search_param: search
+selectors:
+    fields:
+        category:
+            selector: td:nth-child(1)
+        completed:
+            selector: td:nth-child(7)
+        detail:
+            attr: href
+            selector: a[href^="/forum.php?mod=viewthread"]
+        download:
+            attr: href
+            selector: a[href^="/download.php?id="]
+        leechers:
+            selector: td:nth-child(6)
+        seeders:
+            selector: td:nth-child(5)
+        size:
+            filters:
+                - name: parse_size
+            selector: td:nth-child(4)
+        time:
+            filters:
+                - args: |-
+                    [yyyy-MM-dd HH:mm:ss yyyy-MM-dd
+                    HH:mm:ss]
+                  name: parse_time
+            selector: td:nth-child(3)
+        title:
+            attr: title
+            selector: td.torrent_title > a[title]
+    rows:
+        selector: table.torrents > tbody > tr
+tags:
+    - 动漫
+timezone_offset: "+0800"
+urls:
+    - https://www.skyey2.com/
+    - https://skyeysnow.com/

@@ -1,0 +1,52 @@
+# PTPatronus — Docker Compose
+# 后端服务端。生产请用强 SECRET_KEY / ACTIVATION_SECRET（通过 .env 或环境变量注入）。
+
+services:
+  ptpatronus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ptpatronus:latest
+    container_name: ptpatronus
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      APP_ENV: release
+      HTTP_ADDR: ":8088"
+      # 安全：release 模式必填（>=32 字节随机串），否则容器启动即报错退出
+      SECRET_KEY: ${SECRET_KEY:-}
+      ACTIVATION_SECRET: ${ACTIVATION_SECRET:-}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      # 好学 APP 专属 VIP 准入
+      AUTH_SITE_ENABLED: ${AUTH_SITE_ENABLED:-false}
+      AUTH_SITE_URL: ${AUTH_SITE_URL:-https://hxpt.org}
+      AUTH_VIP_LEVEL: ${AUTH_VIP_LEVEL:-1}
+      # 数据库（默认 SQLite；切 PostgreSQL 设 DB_TYPE=postgres + DATABASE_URL）
+      DB_TYPE: ${DB_TYPE:-sqlite}
+      DATABASE_URL: ${DATABASE_URL:-}
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # 可选：PostgreSQL（默认不启用；需要时 docker compose --profile pg up）
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["pg"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ptpatronus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ptpatronus
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:

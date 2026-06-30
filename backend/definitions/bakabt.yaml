@@ -1,0 +1,60 @@
+# bakabt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.time（elementProcess）
+#   - search.category（text）
+#   - search.completed.filters[split]
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - BBT
+description: BakaBT is a Private site for the Anime Community
+id: bakabt
+level_requirements:
+    - id: 1
+      name: User
+    - downloaded: 25GB
+      id: 2
+      name: Power User
+      privilege: View peer lists & report torrents; Access to RSS; Can make up to 5 torrent offers simultaneously.
+      ratio: 0.5
+name: BakaBT
+search_entry: /browse.php
+search_param: q
+selectors:
+    fields:
+        category:
+            attr: title
+            selector: span.torrent_icon
+        completed:
+            filters:
+                - name: trim
+            selector: .peers
+        detail:
+            attr: href
+            selector: .peers a
+        leechers:
+            selector: .peers a:nth-child(2)
+        seeders:
+            selector: .peers a:nth-child(1)
+        size:
+            filters:
+                - name: parse_size
+            selector: .size
+        subtitle:
+            selector: span.tags
+        time:
+            selector: :self
+        title:
+            filters:
+                - name: trim
+            selectors:
+                - a.title
+                - a.alt_title
+    rows:
+        selector: .torrents tr.torrent, .torrents tr.torrent_alt
+tags:
+    - 动漫
+timezone_offset: "+0000"
+urls:
+    - https://bakabt.me/

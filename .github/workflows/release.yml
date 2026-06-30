@@ -1,0 +1,48 @@
+name: Release
+
+# 打 tag (v*) 时构建并发布监控 agent 二进制到 GitHub Release，
+# 供 install.sh 的 `releases/latest/download/ptpatronus-agent-linux-<arch>` 下载。
+# （Docker 镜像由 docker.yml 负责；这里只发 agent 独立二进制。）
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: # 手动触发仅验证构建，不发 release
+
+jobs:
+  agent:
+    name: Agent binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 创建 GitHub Release
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+      - run: go mod download
+
+      # 计算版本号写入 GITHUB_ENV，供下方两个 build 的 ldflags -X 注入 internal/version.Version。
+      - name: Compute version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then v="${GITHUB_REF_NAME#v}"; else v="dev"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+
+      # 纯 Go（CGO_ENABLED=0）交叉编译，产物名对齐 install.sh 的下载路径。
+      - name: Build agent linux/amd64
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w -X github.com/hxpt/ptpatronus/internal/version.Version=$VERSION" -o ../ptpatronus-agent-linux-amd64 ./cmd/ptpatronus-agent
+      - name: Build agent linux/arm64
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w -X github.com/hxpt/ptpatronus/internal/version.Version=$VERSION" -o ../ptpatronus-agent-linux-arm64 ./cmd/ptpatronus-agent
+
+      # 仅 tag 触发时发 Release（workflow_dispatch 只验证构建）。
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            ptpatronus-agent-linux-amd64
+            ptpatronus-agent-linux-arm64
+          generate_release_notes: true
+          fail_on_unmatched_files: true

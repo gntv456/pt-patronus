@@ -1,0 +1,144 @@
+# totheglory — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: tbsource。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.subTitle（elementProcess）
+#   - search.seeders.filters（匿名函数）
+#   - search.title（elementProcess）
+#   - search.leechers.filters（匿名函数）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - TTG
+    - 套套哥
+    - 听听歌
+description: ToTheGlory（TTG）是一个综合性PT站点，以高清电影、电视剧、音乐、动漫资源为主。
+id: totheglory
+level_requirements:
+    - id: 1
+      name: Byte
+      privilege: 入站最初始等级，接受新人考核制。
+    - downloaded: 60GB
+      id: 2
+      interval: P5W
+      name: KiloByte
+      privilege: 可申请种子候选
+      ratio: 1.1
+    - downloaded: 150GB
+      id: 3
+      interval: P8W
+      name: MegaByte
+      privilege: 无
+      ratio: 2
+    - downloaded: 250GB
+      id: 4
+      interval: P8W
+      name: GigaByte
+      privilege: 可挂起，可进入积分商城
+      ratio: 2
+    - downloaded: 500GB
+      id: 5
+      interval: P8W
+      name: TeraByte
+      privilege: 可用积分购买邀请，并可浏览全站（新加游戏分类页），可以访问邀请区
+      ratio: 2.5
+    - downloaded: 750GB
+      id: 6
+      interval: P16W
+      name: PetaByte
+      privilege: 可直接发布种子
+      ratio: 2.5
+    - downloaded: 1TB
+      id: 7
+      interval: P24W
+      name: ExaByte
+      privilege: 自行挂起账号后不会被清除
+      ratio: 3
+    - downloaded: 1.5TB
+      id: 8
+      interval: P24W
+      name: ZettaByte
+      privilege: 无
+      ratio: 3.5
+    - downloaded: 2.5TB
+      id: 9
+      interval: P24W
+      name: YottaByte
+      privilege: 可查看排行榜
+      ratio: 4
+    - downloaded: 3.5TB
+      id: 10
+      interval: P32W
+      is_kept: true
+      name: BrontoByte
+      privilege: 永远保留账号
+      ratio: 5
+    - downloaded: 5TB
+      id: 11
+      interval: P48W
+      is_kept: true
+      name: NonaByte
+      privilege: 无
+      ratio: 6
+      uploaded: 50TB
+    - downloaded: 10TB
+      id: 12
+      interval: P48W
+      is_kept: true
+      name: DoggaByte
+      privilege: 无
+      ratio: 6
+      uploaded: 100TB
+    - group_type: vip
+      id: 100
+      name: 资深组
+      privilege: 元老组，免考核且长期不活动不访问也将保留账号。
+    - group_type: vip
+      id: 101
+      name: VIP
+      privilege: 为TTG做出特殊重大贡献的用户或合作者等。只计算上传量，不计算下载量。
+name: ToTheGlory
+schema: tbsource
+search_entry: /browse.php
+search_param: search_field
+selectors:
+    fields:
+        category:
+            attr: alt
+            selector: td:nth-child(1) > a > img
+        completed:
+            selector: td:nth-child(8)
+        detail:
+            attr: href
+            selector: div.name_left > a
+        download:
+            attr: href
+            selector: a.dl_a
+        leechers:
+            selector: td:nth-child(9)
+        seeders:
+            selector: td:nth-child(9)
+        size:
+            selector: td:nth-child(7)
+        subtitle:
+            selectors:
+                - div.name_left > a > b > font
+                - div.name_left > a > b
+        time:
+            filters:
+                - args: '[yyyy-MM-ddHH:mm:ss]'
+                  name: parse_time
+            selector: td:nth-child(5)
+        title:
+            selectors:
+                - div.name_left > a > b > font
+                - div.name_left > a > b
+    rows:
+        selector: table#torrent_table > tbody > tr[id]
+tags:
+    - 影视
+    - 音乐
+    - 游戏
+    - 综合
+timezone_offset: "+0800"
+urls:
+    - https://totheglory.im/

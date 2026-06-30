@@ -1,0 +1,43 @@
+import { http } from './http'
+
+export interface Medal {
+  site_id: number
+  site_name: string
+  medal_id: string
+  name: string
+  description?: string
+  image_small: string
+  original_image_url?: string
+  sale_begin_time?: number
+  sale_end_time?: number
+  price: number
+  original_price?: number // 原价（溢价时 < price，前端划线展示）
+  validity?: string
+  bonus_rate?: string
+  purchase_status: string // OWNED/AVAILABLE/OUT_OF_STOCK/NOT_ON_SALE/DISCONTINUED/UNKNOWN
+  stock: number // -1=无限/未知
+  currency: string
+  group?: string
+  wear_status: boolean
+  is_owned: boolean
+  error?: string
+}
+
+export interface ActionResult {
+  success: boolean
+  message: string
+}
+
+export const medalWallApi = {
+  all: (refresh = false) =>
+    http
+      .get<{ medals: Medal[] }>(`/medalwall${refresh ? '?refresh=1' : ''}`)
+      // 后端失败站可能产出 error 卡片；nil 切片归一为 []
+      .then((r) => r.data.medals || []),
+  buy: (siteId: number, medalId: string) =>
+    http.post<ActionResult>('/medalwall/buy', { site_id: siteId, medal_id: medalId }).then((r) => r.data),
+  wear: (siteId: number, medalId: string) =>
+    http.post<ActionResult>('/medalwall/wear', { site_id: siteId, medal_id: medalId }).then((r) => r.data),
+  takeOff: (siteId: number, medalId: string) =>
+    http.post<ActionResult>('/medalwall/takeoff', { site_id: siteId, medal_id: medalId }).then((r) => r.data),
+}

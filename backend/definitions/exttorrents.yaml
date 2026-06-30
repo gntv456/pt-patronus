@@ -1,0 +1,42 @@
+# exttorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.time（elementProcess）
+#   - search.category.filters（匿名函数）
+
+description: EXT Torrents is a Public torrent site for MOVIES / TV / GENERAL
+id: exttorrents
+name: EXT Torrents
+search_entry: /browse/
+search_param: q
+selectors:
+    fields:
+        category:
+            attr: href
+            selectors:
+                - td:nth-child(1) div div a:nth-child(3)
+                - td:nth-child(1) div div a:nth-child(2)
+        detail:
+            attr: href
+            selector: td:nth-child(1) div a
+        leechers:
+            selector: span:contains('Leechs') + span
+        seeders:
+            selector: span:contains('Seeds') + span
+        size:
+            filters:
+                - name: parse_size
+            selector: span:contains('Size') + span
+        time:
+            selector: span:contains('Age') + span
+        title:
+            selector: td:nth-child(1) div a
+    rows:
+        selector: table.table-striped > tbody > tr
+tags:
+    - 综合
+timezone_offset: "+0800"
+urls:
+    - https://ext.to/
+    - https://search.extto.com/
+    - https://extranet.torrentbay.st/

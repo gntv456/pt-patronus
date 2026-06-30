@@ -1,0 +1,94 @@
+# 财神（cspt）站点定义。
+# 财神核心是 NexusPHP（Laravel 仅用于 API/插件层），种子列表用标准 NexusPHP 结构。
+# 选择器来自经好学源码校准的通用 NexusPHP 模板；如有个别差异用 /sites/inspect 微调。
+# 域名：cspt.top / cspt.cc（cspt.date 已弃用）。
+id: cspt
+name: 财神
+schema: nexusphp
+urls:
+  - https://cspt.top
+  - https://cspt.cc
+
+search_entry: torrents.php
+search_param: search
+selectors:
+  rows:
+    selector: "table.torrents tr"
+  fields:
+    title:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+    subtitle:
+      selector: ".torrent-subtitle"
+    detail:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+      attr: href
+    download:
+      selector: 'a[href^="download.php"]'
+      attr: href
+    completed:
+      selector: 'a[href^="viewsnatches.php"]'
+    seeders:
+      selector: 'a[href*="#seeders"]'
+    leechers:
+      selector: 'a[href*="#leechers"]'
+    size:
+      selector: "td:nth-last-child(5)"
+
+# 用户资料（按 D:\html 真实页面校准，Audiences「menu-base-info」皮肤）：
+#   <a href="userdetails.php?id=10014"><font class="color_uploaded" style="display:none">上传量:</font>44.069 TB</a>
+#   <svg><title>元宝</title></svg> <a href="mybonus.php?id=10014">5,401,685.6</a>
+#   <svg><title>当前做种</title></svg> <a href="userdetails.php?id=10014">5</a>
+# upload/download/ratio 的 color_* 虽 display:none，取父节点 <a> 文本仍含值 → 通用 color_* 锚点可用。
+# bonus/seeding/leeching 是 Audiences 专属的 SVG-title + <a> 结构，单独配。
+user_info:
+  path: usercp.php
+  fields:
+    uploaded:
+      selector: "font.color_uploaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:上传量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    downloaded:
+      selector: "font.color_downloaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:下载量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    ratio:
+      selector: "font.color_ratio"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:分享率)[：:]?\s*([-+]?\d+\.?\d*)'
+    bonus: # 元宝（Audiences 无 color_bonus，值在 mybonus.php 链接的 <a> 文本里）
+      selector: 'a[href*="mybonus.php"]'
+      filters:
+        - name: regexp
+          args: '([\d,]+\.?\d*)'
+    seeding: # SVG title=当前做种 的菜单项里的 <a>
+      selector: 'div.menu-base-info-items:has(title:contains("当前做种")) a'
+      filters:
+        - name: parse_number
+    leeching: # SVG title=正在下载 的菜单项里的 <a>
+      selector: 'div.menu-base-info-items:has(title:contains("正在下载")) a'
+      filters:
+        - name: parse_number
+  detail_path: userdetails.php
+  detail_fields:
+    level: # 财神用 main_rowhead（[class*="rowhead"] 子串匹配命中）
+      selector: 'td[class*="rowhead"]:contains("等级") + td img'
+      attr: title
+    join_date:
+      selector: 'td[class*="rowhead"]:contains("加入日期") + td'
+      filters:
+        - name: regexp
+          args: '(\d{4}-\d{2}-\d{2})'
+
+no_login:
+  url_pattern: ["login.php", "takelogin.php"]
+  # selector 检测登录表单，比纯文本"登录"精确：已登录 index.php 含"登录"字样（导航/统计）
+  # 会被旧 content=["登录"] 误判未登录 → 公告/抓取恒空。
+  selector: 'form[action*="takelogin"], form[action*="login.php"], input[name="password"]'
+  content: ["请先登录", "您必须先登录"]
+  http_status: [401, 403]

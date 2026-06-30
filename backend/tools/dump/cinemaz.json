@@ -1,0 +1,102 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 1,
+  "id": "cinemaz",
+  "name": "CinemaZ",
+  "description": "CinemaZ is a Private Torrent Tracker for FOREIGN NON-ENGLISH MOVIES / TV / GENERAL",
+  "tags": [
+    "电影",
+    "电视剧",
+    "外语"
+  ],
+  "timezoneOffset": "+0100",
+  "type": "private",
+  "schema": "AvistazNetwork",
+  "urls": [
+    "uggcf://pvarznm.gb/"
+  ],
+  "category": [
+    {
+      "name": "分类",
+      "key": "category",
+      "keyPath": "params",
+      "options": {
+        "__call": "Object.entries(categoryMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "分辨率",
+      "key": "res",
+      "keyPath": "params",
+      "options": {
+        "__call": "Object.entries(resolutionMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "剧集包",
+      "key": "tv_type",
+      "keyPath": "params",
+      "options": {
+        "__call": "Object.entries(tvTypeMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "促销",
+      "key": "discount",
+      "keyPath": "params",
+      "options": {
+        "__call": "Object.entries(avzNetDiscountMap).map(([value, name]) => ({ name, value: Number(value) }))"
+      },
+      "cross": {
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "特殊",
+      "key": "special",
+      "options": [
+        {
+          "name": "Adult Torrents",
+          "value": "adult"
+        },
+        {
+          "name": "Newbie Downloadable",
+          "value": "newbie"
+        },
+        {
+          "name": "Dying Torrents",
+          "value": "dying"
+        },
+        {
+          "name": "Dead Torrents",
+          "value": "dead"
+        },
+        {
+          "name": "Big Torrents (10GB+)",
+          "value": "big"
+        },
+        {
+          "name": "Huge Torrents (99GB+)",
+          "value": "huge"
+        }
+      ]
+    }
+  ],
+  "userInputSettingMeta": [
+    {
+      "__raw": "SpreadElement",
+      "src": "...SchemaMetadata.userInputSettingMeta!"
+    }
+  ]
+}

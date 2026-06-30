@@ -1,0 +1,205 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { messageApi, type MessageResult, type Message, type Mailbox } from '@/api/message'
+
+const mailbox = ref<Mailbox>('inbox')
+const results = ref<MessageResult[]>([])
+const loading = ref(false)
+const detail = ref<Message | null>(null)
+const detailContent = ref('')
+const detailLoading = ref(false)
+const replyText = ref('')
+const replyVisible = ref(false)
+
+// 站点筛选：'all' 全部，否则按 site_id 过滤（数据已全量在 results，纯前端筛选）
+const selectedSite = ref<number | 'all'>('all')
+const siteOptions = computed(() => [
+  { value: 'all', label: '全部站点' },
+  ...results.value.map((r) => ({ value: r.site_id, label: r.site_name })),
+])
+const filtered = computed(() =>
+  selectedSite.value === 'all'
+    ? results.value
+    : results.value.filter((r) => r.site_id === selectedSite.value),
+)
+
+const mailboxes: { key: Mailbox; label: string }[] = [
+  { key: 'inbox', label: '收件箱' },
+  { key: 'system', label: '系统' },
+  { key: 'sent', label: '发件箱' },
+  { key: 'cheater', label: '作弊者' },
+  { key: 'reports', label: '举报信箱' },
+  { key: 'staff', label: '管理组信箱' },
+]
+
+async function load() {
+  loading.value = true
+  try {
+    results.value = await messageApi.all(mailbox.value)
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '加载消息失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function switchMailbox(mb: Mailbox) {
+  mailbox.value = mb
+  load()
+}
+
+async function openDetail(msg: Message) {
+  detail.value = msg
+  detailContent.value = msg.content || ''
+  detailLoading.value = true
+  try {
+    if (msg.url) detailContent.value = await messageApi.content(msg.site_id, msg.url)
+    // 打开即标记已读
+    if (!msg.is_read && msg.admin_actions?.item_id) {
+      messageApi.markRead(msg.site_id, [msg.admin_actions.item_id]).then(() => load())
+    }
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '加载正文失败')
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+function startReply() {
+  replyText.value = ''
+  replyVisible.value = true
+}
+
+async function sendReply() {
+  if (!detail.value) return
+  try {
+    const r = await messageApi.reply(detail.value.site_id, detail.value.url, replyText.value)
+    if (r.success) {
+      ElMessage.success(r.message)
+      replyVisible.value = false
+    } else {
+      ElMessage.warning(r.message)
+    }
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '回复失败')
+  }
+}
+
+async function removeMsg() {
+  if (!detail.value) return
+  try {
+    await ElMessageBox.confirm('确定删除该消息？', '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  const msg = detail.value
+  try {
+    await messageApi.remove(msg.site_id, msg.admin_actions?.delete_url || msg.url)
+    ElMessage.success('已删除')
+    detail.value = null
+    load()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '删除失败')
+  }
+}
+
+onMounted(() => load())
+</script>
+
+<template>
+  <div class="page" v-loading="loading">
+    <div class="head">
+      <h2 class="title">消息</h2>
+      <div class="head-tools">
+        <el-select v-model="selectedSite" class="filter-select" placeholder="筛选站点" filterable>
+          <el-option
+            v-for="opt in siteOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
+        <el-button :loading="loading" @click="load">刷新</el-button>
+      </div>
+    </div>
+
+    <div class="tabs glass">
+      <button v-for="mb in mailboxes" :key="mb.key" class="tab" :class="{ on: mailbox === mb.key }" @click="switchMailbox(mb.key)">
+        {{ mb.label }}
+      </button>
+    </div>
+
+    <div class="groups">
+      <div v-for="r in filtered" :key="r.site_id" class="group glass">
+        <div class="group-head">
+          <span class="site-name">{{ r.site_name }}</span>
+          <span v-if="r.error" class="err-tag">{{ r.error }}</span>
+          <span v-else-if="!r.messages.length" class="text-muted">无消息</span>
+        </div>
+        <div class="msg-list">
+          <div v-for="m in r.messages" :key="m.id" class="msg" :class="{ unread: !m.is_read }" @click="openDetail(m)">
+            <span class="dot" v-if="!m.is_read"></span>
+            <div class="msg-main">
+              <div class="msg-title">{{ m.title }}<span v-if="m.subtitle" class="sub"> - {{ m.subtitle }}</span></div>
+              <div class="msg-meta">{{ m.sender }} · {{ m.date }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-if="!filtered.length && !loading" class="empty glass text-muted">
+      {{ selectedSite === 'all' ? '暂无消息' : '该站点暂无消息' }}
+    </div>
+
+    <el-drawer :model-value="!!detail" @update:model-value="(v: boolean) => { if (!v) detail = null }" :title="detail?.title || ''" size="45%">
+      <div v-if="detail" v-loading="detailLoading">
+        <div class="detail-meta">
+          <span>{{ detail.sender }}</span> · <span>{{ detail.date }}</span> · <span class="text-muted">{{ detail.site_name }}</span>
+        </div>
+        <div class="detail-body">{{ detailContent || '（无正文）' }}</div>
+        <div class="detail-actions">
+          <el-button @click="startReply">回复</el-button>
+          <el-button type="danger" @click="removeMsg">删除</el-button>
+        </div>
+      </div>
+    </el-drawer>
+
+    <el-dialog v-model="replyVisible" title="回复消息" width="500">
+      <el-input v-model="replyText" type="textarea" :rows="6" placeholder="输入回复内容…" />
+      <template #footer>
+        <el-button @click="replyVisible = false">取消</el-button>
+        <el-button type="primary" @click="sendReply">发送</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<style scoped>
+.page { display: flex; flex-direction: column; gap: 16px; }
+.head { display: flex; align-items: center; justify-content: space-between; }
+.head-tools { display: flex; align-items: center; gap: 10px; }
+.filter-select { width: 200px; }
+.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; }
+.tab { background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 6px 16px; cursor: pointer; font-size: 14px; color: var(--text-strong); }
+.tab.on { background: rgba(108,92,231,0.16); color: var(--pt-primary,#6c5ce7); font-weight: 600; }
+.groups { display: flex; flex-direction: column; gap: 12px; }
+.group { padding: 14px; }
+.group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.site-name { font-weight: 600; }
+.err-tag { font-size: 12px; color: var(--pt-danger,#f56c6c); }
+.msg-list { display: flex; flex-direction: column; gap: 2px; }
+.msg { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+.msg:hover { background: rgba(108,92,231,0.08); }
+.msg.unread { background: rgba(108,92,231,0.06); font-weight: 600; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pt-primary,#6c5ce7); flex: none; }
+.msg-main { flex: 1; min-width: 0; }
+.msg-title { font-size: 14px; }
+.msg-title .sub { font-weight: 400; color: var(--text-muted); font-size: 12px; }
+.msg-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.detail-meta { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+.detail-body { font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; min-height: 120px; }
+.detail-actions { margin-top: 20px; display: flex; gap: 10px; }
+.empty { padding: 40px; text-align: center; }
+</style>

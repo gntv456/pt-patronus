@@ -1,0 +1,190 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue'
+import type { ParamField } from '@/api/workflow'
+import { siteApi, type Site } from '@/api/site'
+import { downloaderApi, type Downloader } from '@/api/downloader'
+
+// NodeParamForm 按 ParamSchema 动态渲染节点配置表单。直接双向绑定 params 对象（引用透传）。
+const props = defineProps<{ schema: ParamField[]; params: Record<string, any> }>()
+
+const sites = ref<Site[]>([])
+const downloaders = ref<Downloader[]>([])
+
+// 出现 site_select/downloader_select 字段时才懒加载选项。
+watch(
+  () => props.schema,
+  (s) => {
+    if (s.some((f) => f.type === 'site_select') && !sites.value.length) {
+      siteApi.list().then((l) => (sites.value = l)).catch(() => {})
+    }
+    if (s.some((f) => f.type === 'downloader_select') && !downloaders.value.length) {
+      downloaderApi.list().then((l) => (downloaders.value = l)).catch(() => {})
+    }
+  },
+  { immediate: true },
+)
+
+// kv 字段新增一行（用 window.prompt，绕开模板内 prompt 严格校验）。
+function addKvRow(params: Record<string, any>, field: string) {
+  if (!params[field]) params[field] = {}
+  const k = window.prompt('键名')
+  if (k) params[field][k] = ''
+}
+
+const advOpen = ref(false)
+</script>
+
+<template>
+  <div class="param-form">
+    <template v-for="f in schema" :key="f.name">
+      <div class="field">
+        <label class="lab">
+          {{ f.label }}<span v-if="f.required" class="req">*</span>
+        </label>
+
+        <!-- 文本 -->
+        <el-input
+          v-if="f.type === 'text'"
+          v-model="props.params[f.name]"
+          size="small"
+          :placeholder="f.help || ''"
+        />
+
+        <!-- 数字 -->
+        <el-input-number
+          v-else-if="f.type === 'number'"
+          v-model="props.params[f.name]"
+          size="small"
+          controls-position="right"
+          style="width: 100%"
+        />
+
+        <!-- 选择 -->
+        <el-select v-else-if="f.type === 'select'" v-model="props.params[f.name]" size="small" style="width: 100%">
+          <el-option v-for="o in f.options || []" :key="String(o.value)" :label="o.label" :value="o.value" />
+        </el-select>
+
+        <!-- 多行 -->
+        <el-input
+          v-else-if="f.type === 'textarea'"
+          v-model="props.params[f.name]"
+          type="textarea"
+          size="small"
+          :rows="3"
+          :placeholder="f.help || ''"
+        />
+
+        <!-- 开关 -->
+        <el-switch v-else-if="f.type === 'switch'" v-model="props.params[f.name]" />
+
+        <!-- 键值对 -->
+        <div v-else-if="f.type === 'kv'" class="kv">
+          <div v-for="(row, idx) in Object.keys(props.params[f.name] || {})" :key="idx" class="kv-row">
+            <el-input v-model="props.params[f.name][row]" size="small" style="flex: 1" />
+            <el-button size="small" type="danger" plain @click="delete props.params[f.name][row]">✕</el-button>
+          </div>
+          <el-button size="small" @click="addKvRow(props.params, f.name)">+ 添加</el-button>
+        </div>
+
+        <!-- 站点选择 -->
+        <el-select
+          v-else-if="f.type === 'site_select'"
+          v-model="props.params[f.name]"
+          size="small"
+          filterable
+          style="width: 100%"
+        >
+          <el-option label="不关联（匿名 RSS）" :value="0" />
+          <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
+        </el-select>
+
+        <!-- 下载器选择 -->
+        <el-select
+          v-else-if="f.type === 'downloader_select'"
+          v-model="props.params[f.name]"
+          size="small"
+          filterable
+          style="width: 100%"
+        >
+          <el-option label="默认下载器" :value="0" />
+          <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
+        </el-select>
+
+        <div v-if="f.help && f.type !== 'textarea' && f.type !== 'text'" class="text-muted small">{{ f.help }}</div>
+      </div>
+    </template>
+
+    <!-- 高级：循环重试（所有节点通用，参考 MoviePilot loop/loop_interval） -->
+    <div class="advanced">
+      <div class="adv-head" @click="advOpen = !advOpen">
+        <span>{{ advOpen ? '▼' : '▶' }} 高级：循环重试</span>
+      </div>
+      <div v-if="advOpen" class="adv-body">
+        <div class="field row">
+          <el-switch v-model="props.params['loop']" />
+          <span class="small">启用（失败时重试直到成功）</span>
+        </div>
+        <div class="field">
+          <label>重试次数</label>
+          <el-input-number v-model="props.params['loop_times']" size="small" :min="1" :max="20" style="width: 100%" />
+        </div>
+        <div class="field">
+          <label>间隔(秒)</label>
+          <el-input-number v-model="props.params['loop_interval_sec']" size="small" :min="0" :max="60" style="width: 100%" />
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.param-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lab {
+  font-size: 13px;
+  font-weight: 600;
+}
+.req {
+  color: #e74c3c;
+  margin-left: 2px;
+}
+.small {
+  font-size: 12px;
+}
+.kv {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kv-row {
+  display: flex;
+  gap: 6px;
+}
+.advanced {
+  margin-top: 4px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.04);
+}
+.adv-head {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+  user-select: none;
+}
+.adv-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+</style>

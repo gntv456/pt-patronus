@@ -1,0 +1,105 @@
+# freefarm — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - FreeFarm
+    - Farmm
+categories:
+    - id: "401"
+      name: Movies|电影
+    - id: "402"
+      name: TV Series|电视剧
+    - id: "403"
+      name: Documentaries|纪录片
+    - id: "404"
+      name: TV Shows|综艺
+    - id: "405"
+      name: Animations|动漫
+    - id: "406"
+      name: Music Videos|音乐视频
+    - id: "407"
+      name: HD Music|无损音乐
+    - id: "408"
+      name: Sports|体育
+description: 自由农场
+id: freefarm
+level_requirements:
+    - name: User
+      privilege: 新用户的默认级别
+    - downloaded: 50GB
+      id: 1
+      interval: P4W
+      name: Power User
+      privilege: 可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种； 可以发送邀请； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。
+      ratio: 1.05
+      seeding_bonus: 40000
+    - downloaded: 120GB
+      id: 2
+      interval: P8W
+      name: Elite User
+      privilege: Elite User及以上用户封存账号后不会被删除。
+      ratio: 1.55
+      seeding_bonus: 80000
+    - downloaded: 300GB
+      id: 3
+      interval: P15W
+      name: Crazy User
+      privilege: 可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 2.05
+      seeding_bonus: 150000
+    - downloaded: 500GB
+      id: 4
+      interval: P25W
+      name: Insane User
+      privilege: 可以查看普通日志。
+      ratio: 2.55
+      seeding_bonus: 250000
+    - downloaded: 750GB
+      id: 5
+      interval: P40W
+      is_kept: true
+      name: Veteran User
+      privilege: 可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
+      ratio: 3.05
+      seeding_bonus: 400000
+    - downloaded: 1TB
+      id: 6
+      interval: P60W
+      is_kept: true
+      name: Extreme User
+      privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 4.55
+      seeding_bonus: 800000
+    - downloaded: 1.5TB
+      id: 7
+      interval: P80W
+      is_kept: true
+      name: Ultimate User
+      privilege: 无
+      ratio: 5.85
+      seeding_bonus: 2000000
+    - downloaded: 3TB
+      id: 8
+      interval: P100W
+      is_kept: true
+      name: Nexus Master
+      privilege: 得到十个邀请名额。
+      ratio: 6.45
+      seeding_bonus: 4000000
+name: 自由农场
+schema: nexusphp
+tags:
+    - 电视剧
+    - 韩剧
+    - 日剧
+timezone_offset: "+0800"
+urls:
+    - https://pt.0ff.cc/
+user_info:
+    fields:
+        bonus_per_hour:
+            filters:
+                - name: parse_number
+            selectors:
+                - td[rowspan="3"]

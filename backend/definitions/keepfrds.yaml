@@ -1,0 +1,5 @@
+id: keepfrds
+name: 朋友
+schema: nexusphp
+urls:
+  - https://pt.keepfrds.com

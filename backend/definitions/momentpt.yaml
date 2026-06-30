@@ -1,0 +1,113 @@
+# momentpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - 瞬间
+categories:
+    - id: "401"
+      name: 人像摄影
+    - id: "402"
+      name: 风景摄影
+    - id: "403"
+      name: 街拍摄影
+    - id: "404"
+      name: 微距摄影
+    - id: "405"
+      name: 建筑摄影
+    - id: "406"
+      name: 动物摄影
+    - id: "407"
+      name: 纪实摄影
+    - id: "408"
+      name: 艺术摄影
+    - id: "409"
+      name: 摄影教程
+    - id: "410"
+      name: 摄影器材
+    - id: "411"
+      name: 其他
+description: Moment 是摄影爱好者的净土。只有影像与心灵的对话，故本站禁止发布影视资源，望谅解
+id: momentpt
+level_requirements:
+    - name: User
+      name_aka:
+        - 取景者
+      privilege: 新用户的默认级别。注册7天内无数据零保将封禁账号。不零保的情况下，永久保留账号（违规除外）。
+    - downloaded: 8GB
+      id: 1
+      interval: P2W
+      name: Power User
+      name_aka:
+        - 快门手
+      privilege: Power User及以上用户可以发送邀请，可以发布摄影作品到候选区
+      ratio: 1.2
+    - downloaded: 20GB
+      id: 2
+      interval: P6W
+      name: Elite User
+      name_aka:
+        - 暗房师
+      privilege: Elite User及以上用户可以查看工具区。。
+      ratio: 1.6
+    - downloaded: 50GB
+      id: 3
+      interval: P12W
+      name: Crazy User
+      name_aka:
+        - 追光者
+      privilege: Crazy User以上用户可以直接发布摄影作品，无需候选
+      ratio: 2.05
+    - downloaded: 100GB
+      id: 4
+      interval: P20W
+      name: Insane User
+      name_aka:
+        - 显示师
+      privilege: 可以查看普通日志。
+      ratio: 2.55
+    - downloaded: 300GB
+      id: 5
+      interval: P40W
+      is_kept: true
+      name: Veteran User
+      name_aka:
+        - 镜界者
+      privilege: 得到1个邀请名额；可以查看其它用户的评论、帖子历史。
+      ratio: 3.05
+    - downloaded: 500GB
+      id: 6
+      interval: P60W
+      is_kept: true
+      name: Extreme User
+      name_aka:
+        - 光影师
+      privilege: 得到1个邀请名额；可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 3.55
+    - downloaded: 800GB
+      id: 7
+      interval: P80W
+      is_kept: true
+      name: Ultimate User
+      name_aka:
+        - 造影者
+      privilege: 得到1个邀请名额。
+      ratio: 4.05
+    - downloaded: 1TB
+      id: 8
+      interval: P100W
+      is_kept: true
+      name: Nexus Master
+      name_aka:
+        - 永恒之眼
+      privilege: 得到2个邀请名额。
+      ratio: 4.55
+name: MomentPT
+schema: nexusphp
+tags:
+    - 摄影
+    - 图片
+    - 艺术
+timezone_offset: "+0800"
+urls:
+    - https://www.momentpt.top/

@@ -1,0 +1,105 @@
+name: Flutter Release
+
+# 打 tag (v*) 时构建客户端产物：Android APK（签名）/ macOS / Windows。
+# iOS 需 Apple 签名、鸿蒙需华为 flutter 分支 + DevEco，均手动构建（见 README/各端发布步骤.md）。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.41.x', cache: true }
+      - run: flutter pub get
+      # release 签名：tag 触发时注入 keystore（需配 secrets；未配则 build.gradle.kts 回退 debug 签名）
+      - name: Inject release keystore
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PW: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_PW: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$KS_B64" | base64 -d > android/app/ptpatronus.jks
+          {
+            echo "storePassword=$STORE_PW"
+            echo "keyPassword=$KEY_PW"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=ptpatronus.jks"
+          } > android/key.properties
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ptpatronus-android
+          path: mobile/build/app/outputs/flutter-apk/*.apk
+
+  macos:
+    name: macOS
+    runs-on: macos-latest
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.41.x', cache: true }
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Zip .app
+        run: cd build/macos/Build/Products/Release && zip -r -y "$GITHUB_WORKSPACE/ptpatronus-macos.zip" "*.app"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ptpatronus-macos
+          path: ptpatronus-macos.zip
+
+  windows:
+    name: Windows
+    runs-on: windows-latest
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.41.x', cache: true }
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ptpatronus-windows
+          path: mobile/build/windows/x64/runner/Release/
+
+  # tag 触发时把各端产物挂到 GitHub Release，方便汇总后转到网盘/TG 群分发。
+  # 注意：Private 仓库的 Release 资产外部无法直链下载，本步是给仓库 owner 批量取产物用的。
+  publish-release:
+    name: Publish to Release
+    needs: [android, macos, windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: ptpatronus-android, path: android }
+      - uses: actions/download-artifact@v4
+        with: { name: ptpatronus-macos, path: macos }
+      - uses: actions/download-artifact@v4
+        with: { name: ptpatronus-windows, path: windows }
+      - name: Zip Windows build
+        run: cd windows && zip -r ../ptpatronus-windows-x64.zip . && cd ..
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            android/*.apk
+            macos/ptpatronus-macos.zip
+            ptpatronus-windows-x64.zip
+          fail_on_unmatched_files: true
+
+  # 鸿蒙(ohos)：需华为 flutter 分支 + DevEco Studio 环境，CI 无现成 runner，
+  # 请在配置好鸿蒙 SDK 的机器上手动：flutter build hap --debug（鸿蒙分支）。
+  # iOS：需 Apple 开发者签名 + 证书，CI 不构建；本地 flutter build ipa 后用
+  #      mobile/altsource/gen_altsource.py 生成 AltSource.json（AltStore 侧载源）。

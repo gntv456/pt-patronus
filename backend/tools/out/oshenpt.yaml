@@ -1,0 +1,117 @@
+# oshenpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - 奥申
+categories:
+    - id: "401"
+      name: Movies/电影
+    - id: "404"
+      name: Documentary/纪录片
+    - id: "405"
+      name: Anime/动漫
+    - id: "402"
+      name: TV Series/剧集
+    - id: "403"
+      name: TV Shows/综艺
+    - id: "406"
+      name: MusicVideo/音乐MV
+    - id: "407"
+      name: Sport/运体
+    - id: "409"
+      name: Misc/音乐
+    - id: "408"
+      name: HQ Audio/无损音乐
+    - id: "410"
+      name: Games/游戏
+description: 我为人人，人人为我，只为分享不为盈利
+id: oshenpt
+level_requirements:
+    - name: User
+      name_aka:
+        - 士兵
+    - downloaded: 50GB
+      id: 1
+      interval: P4W
+      name: Power User
+      name_aka:
+        - 班长
+      privilege: 得到一个邀请名额；可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种； 可以发送邀请； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。
+      ratio: 1.05
+      seeding_bonus: 40000
+    - downloaded: 120GB
+      id: 2
+      interval: P8W
+      name: Elite User
+      name_aka:
+        - 排长
+      privilege: Elite User及以上用户封存账号后不会被删除。
+      ratio: 1.55
+      seeding_bonus: 80000
+    - downloaded: 300GB
+      id: 3
+      interval: P15W
+      name: Crazy User
+      name_aka:
+        - 连长
+      privilege: 得到两个邀请名额；可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 2.05
+      seeding_bonus: 150000
+    - downloaded: 500GB
+      id: 4
+      interval: P25W
+      name: Insane User
+      name_aka:
+        - 营长
+      privilege: 可以查看普通日志。
+      ratio: 2.55
+      seeding_bonus: 250000
+    - downloaded: 750GB
+      id: 5
+      interval: P40W
+      is_kept: true
+      name: Veteran User
+      name_aka:
+        - 团长
+      privilege: 得到三个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
+      ratio: 3.05
+      seeding_bonus: 400000
+    - downloaded: 1024GB
+      id: 6
+      interval: P60W
+      is_kept: true
+      name: Extreme User
+      name_aka:
+        - 旅长
+      privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 3.55
+      seeding_bonus: 600000
+    - downloaded: 1536GB
+      id: 7
+      interval: P80W
+      is_kept: true
+      name: Ultimate User
+      name_aka:
+        - 师长
+      privilege: 得到五个邀请名额。
+      ratio: 4.05
+      seeding_bonus: 800000
+    - downloaded: 3072GB
+      id: 8
+      interval: P100W
+      is_kept: true
+      name: Nexus Master
+      name_aka:
+        - 军长
+      privilege: 得到十个邀请名额。
+      ratio: 4.55
+      seeding_bonus: 1000000
+name: OshenPT
+schema: nexusphp
+tags:
+    - 综合
+    - 音乐
+timezone_offset: "+0800"
+urls:
+    - https://www.oshen.win/

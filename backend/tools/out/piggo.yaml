@@ -1,0 +1,111 @@
+# piggo — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+categories:
+    - id: "912"
+      name: 有声-大众
+    - id: "408"
+      name: 音乐-大众
+    - id: "409"
+      name: 其他-大众
+    - id: "407"
+      name: 体育-大众
+    - id: "406"
+      name: MV-大众
+    - id: "403"
+      name: 综艺-大众
+    - id: "402"
+      name: 电视剧-大众
+    - id: "405"
+      name: 动漫-大众
+    - id: "404"
+      name: 纪录片-大众
+    - id: "401"
+      name: 电影-大众
+    - id: "907"
+      name: 纪录片-儿童
+    - id: "910"
+      name: 读书绘本-儿童
+    - id: "911"
+      name: 音乐-儿童
+    - id: "905"
+      name: 有声读物-儿童
+    - id: "909"
+      name: 儿童电影-儿童
+    - id: "908"
+      name: 儿童剧集-儿童
+description: 猪猪网
+id: piggo
+level_requirements:
+    - id: 1
+      name: 乳猪
+      privilege: 新用户的默认级别。无法直接发布种子，需添加候选后等待审核。
+    - id: 2
+      name: 烤乳猪
+      privilege: 限制功能，如发表、申请链接、上传字幕等。
+    - downloaded: 100GB
+      id: 3
+      interval: P4W
+      name: 猪仔
+      privilege: 可直接发布种子，可查看NFO文档、用户列表，请求续种，查看排行榜，查看他人种子历史（未设强隐私时），可删除自己上传的字幕。
+      ratio: 2
+      seeding_bonus: 40000
+    - downloaded: 300GB
+      id: 4
+      interval: P8W
+      name: 香猪
+      privilege: 香猪及以上封存账号后不会被删除。
+      ratio: 2.5
+      seeding_bonus: 80000
+    - downloaded: 500GB
+      id: 5
+      interval: P15W
+      name: 野猪
+      privilege: 得到一个永久邀请名额；可做种/下载/发布时选择匿名模式。
+      ratio: 3
+      seeding_bonus: 150000
+    - downloaded: 1TB
+      id: 6
+      interval: P25W
+      name: 猪王
+      privilege: 可以查看普通日志。
+      ratio: 3.5
+      seeding_bonus: 250000
+    - downloaded: 2TB
+      id: 7
+      interval: P40W
+      name: 猪妖
+      privilege: 得到两个永久邀请名额；可以查看其他用户评论、帖子历史。
+      ratio: 4
+      seeding_bonus: 400000
+    - downloaded: 3TB
+      id: 8
+      interval: P60W
+      name: 二师兄
+      privilege: 可以更新过期的外部信息，可以查看二师兄论坛。
+      ratio: 4.5
+      seeding_bonus: 600000
+    - downloaded: 4TB
+      id: 9
+      interval: P80W
+      name: 净坛使者
+      privilege: 得到三个邀请名额。
+      ratio: 5
+      seeding_bonus: 800000
+    - downloaded: 6TB
+      id: 10
+      interval: P100W
+      is_kept: true
+      name: 天蓬元帅
+      privilege: 得到五个邀请名额，天蓬元帅及以上账号永久保留。
+      ratio: 6
+      seeding_bonus: 1000000
+name: Piggo
+schema: nexusphp
+tags:
+    - 影视
+    - 综合
+    - 少儿
+urls:
+    - https://piggo.me/

@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "id": "1337x",
+  "name": "1337x",
+  "description": "1337X is a Public torrent site that offers verified torrent downloads",
+  "type": "public",
+  "urls": [
+    "https://1337x.to/",
+    "https://1337x.st/",
+    "https://x1337x.ws/",
+    "https://x1337x.eu/",
+    "https://x1337x.cc/"
+  ],
+  "legacyUrls": [
+    "https://1337x.is/",
+    "https://1337x.gd/",
+    "https://1337x.mrunblock.bond/",
+    "https://1337x.abcproxy.org/",
+    "https://1337x.so/",
+    "https://1337x.unblockit.download/",
+    "https://1337x.unblockninja.com/",
+    "https://1337x.ninjaproxy1.com/",
+    "https://1337x.proxyninja.org/",
+    "https://1337x.proxyninja.net/",
+    "https://1337x.torrentbay.st/",
+    "https://1337x.torrentsbay.org/",
+    "https://x1337x.se/"
+  ],
+  "category": [
+    {
+      "key": "category",
+      "name": "Category",
+      "options": [
+        {
+          "name": "TV",
+          "value": "TV"
+        },
+        {
+          "name": "Movies",
+          "value": "Movies"
+        },
+        {
+          "name": "Games",
+          "value": "Games"
+        },
+        {
+          "name": "Music",
+          "value": "Music"
+        },
+        {
+          "name": "Applications",
+          "value": "Apps"
+        },
+        {
+          "name": "Documentaries",
+          "value": "Documentaries"
+        },
+        {
+          "name": "Anime",
+          "value": "Anime"
+        },
+        {
+          "name": "Other",
+          "value": "Other"
+        },
+        {
+          "name": "XXX",
+          "value": "XXX"
+        }
+      ],
+      "cross": false
+    },
+    {
+      "name": "Sort",
+      "key": "sort",
+      "options": [
+        {
+          "name": "Time",
+          "value": "time"
+        },
+        {
+          "name": "Size",
+          "value": "size"
+        },
+        {
+          "name": "Seeders",
+          "value": "seeders"
+        },
+        {
+          "name": "leechers",
+          "value": "leechers"
+        }
+      ],
+      "cross": false
+    },
+    {
+      "name": "Order",
+      "key": "order",
+      "options": [
+        {
+          "name": "Ascending",
+          "value": "asc"
+        },
+        {
+          "name": "Descending",
+          "value": "desc"
+        }
+      ],
+      "cross": false
+    }
+  ],
+  "search": {
+    "keywordPath": "q",
+    "requestConfig": {
+      "url": "/search",
+      "params": {
+        "order": "desc"
+      }
+    },
+    "skipNonLatinCharacters": true,
+    "requestConfigTransformer": {
+      "__fn": true,
+      "src": "({ keywords, requestConfig }) => {\n      if (!keywords) {\n        requestConfig!.url = \"/trending\";\n      } else {\n        delete requestConfig!.params.q;\n\n        let searchPath = \"search\";\n\n        const category = requestConfig!.params?.category as string | undefined;\n\n        if (category) {\n          searchPath = \"category-\" + searchPath;\n          delete requestConfig!.params.category;\n        }\n\n        const sort = requestConfig!.params?.sort as string | undefined;\n        if (sort) {\n          searchPath = \"sort-\" + searchPath;\n          delete requestConfig!.params.sort;\n        }\n\n        const order = requestConfig!.params?.order as string | undefined;\n        if (order) {\n          delete requestConfig!.params.order;\n        }\n\n        requestConfig!.url = urlJoin(\n          searchPath,\n          keywords || \"\",\n          String(category || \"\"),\n          String(sort || \"\"),\n          String(sort ? order || \"desc\" : \"\"),\n          \"1/\",\n        );\n      }\n\n      return requestConfig!;\n    }"
+    },
+    "selectors": {
+      "rows": {
+        "selector": "table.table-list > tbody > tr"
+      },
+      "id": {
+        "selector": "td[class^=\"coll-1\"] a[href^=\"/torrent/\"]",
+        "attr": "href",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(q: string) => q.match(/\\/torrent\\/(\\d+)/)![1]"
+          }
+        ]
+      },
+      "title": {
+        "selector": "td[class^=\"coll-1\"] a[href^=\"/torrent/\"]"
+      },
+      "url": {
+        "selector": "td[class^=\"coll-1\"] a[href^=\"/torrent/\"]",
+        "attr": "href"
+      },
+      "time": {
+        "selector": "td[class^=\"coll-date\"]",
+        "filters": [
+          {
+            "name": "parseTime",
+            "args": [
+              "ha MMM. do",
+              "MMM. do ''yy",
+              "h:mma"
+            ]
+          }
+        ]
+      },
+      "size": {
+        "selector": "td[class^=\"coll-4\"]",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "seeders": {
+        "selector": "td[class^=\"coll-2\"]"
+      },
+      "leechers": {
+        "selector": "td[class^=\"coll-3\"]"
+      },
+      "comments": {
+        "selector": "td[class^=\"coll-1\"] span.comments",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(q: string) => parseInt(q) || 0"
+          }
+        ]
+      },
+      "category": {
+        "selector": "td[class^=\"coll-1\"] a[href^=\"/sub/\"]",
+        "attr": "href",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(q: string) => categoryMap[parseInt(q.match(/\\/sub\\/(\\d+)/)?.[1] ?? \"40\")]"
+          }
+        ]
+      }
+    }
+  },
+  "list": [
+    {
+      "urlPattern": [
+        "/trending",
+        "/trending-week",
+        "/search/",
+        "/category-search/",
+        "/sort-search/",
+        "/category-sort-search/",
+        "/top-100",
+        "/cat/"
+      ],
+      "mergeSearchSelectors": true,
+      "selectors": {
+        "keywords": {
+          "selector": "input[name=\"search\"]",
+          "attr": "value"
+        }
+      }
+    }
+  ],
+  "detail": {
+    "urlPattern": [
+      "/torrent/\\d+/.*"
+    ],
+    "selectors": {
+      "title": {
+        "selector": "div.box-info-heading h1"
+      },
+      "link": {
+        "selector": [
+          "a[href^='magnet:?xt=']",
+          "a[href^='http://itorrents.org/']"
+        ],
+        "attr": "href"
+      },
+      "size": {
+        "selector": "li:contains('Total size') > span",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      }
+    }
+  }
+}

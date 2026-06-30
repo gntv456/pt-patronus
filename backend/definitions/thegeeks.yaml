@@ -1,0 +1,37 @@
+# thegeeks — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: tcg。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category.filters（匿名函数）
+
+aka:
+    - TG
+description: The Geeks is a Private Torrent Tracker for Technology E-LEARNING
+id: thegeeks
+level_requirements:
+    - id: 1
+      name: User
+      privilege: Can leech up to 10 torrents at a time.
+    - id: 2
+      interval: P28D
+      name: Power User
+      privilege: Able to leech 50 torrents at a time. Has full request privileges.
+      ratio: 1.05
+      uploaded: 25GB
+    - id: 3
+      interval: P60D
+      name: Extreme User
+      privilege: Able to leech 100 torrents at a time.
+      ratio: 2.05
+      uploaded: 60GB
+name: TheGeeks
+schema: tcg
+selectors:
+    fields:
+        category:
+            attr: href
+            selector: a[href^='browse.php?cat=']
+tags:
+    - 学习
+timezone_offset: "+0000"
+urls:
+    - https://thegeeks.click/

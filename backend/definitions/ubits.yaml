@@ -1,0 +1,127 @@
+# ubits — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.subTitle（elementProcess）
+#   - userInfo.bonus（__call）
+
+aka:
+    - UB
+    - U堡
+categories:
+    - id: "401"
+      name: Movies(电影)
+    - id: "402"
+      name: TV Series(剧集)
+    - id: "403"
+      name: TV Shows(综艺)
+    - id: "404"
+      name: Docs(纪录)
+    - id: "405"
+      name: Animations(动画)
+    - id: "406"
+      name: Music(音乐)
+    - id: "407"
+      name: Sports(体育)
+    - id: "409"
+      name: MV(音乐视频)
+    - id: "408"
+      name: Others(其他)
+description: 原盘爱好者集散地
+id: ubits
+level_requirements:
+    - group_type: user
+      name: Peasant
+      privilege: 被降级的用户，他们有30天时间来提升分享率，否则他们会被踢。不能发表趣味盒内容；不能申请友情链接；不能上传字幕。
+    - group_type: user
+      id: 1
+      name: User
+      privilege: 新用户的默认级别。只能在每周六中午12点至每周日晚上11点59分发布种子。
+    - downloaded: map[__raw:BinaryExpression src:200 * GB]
+      group_type: user
+      id: 2
+      interval: P5W
+      name: Power User
+      privilege: 可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种； 可以发送邀请； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。
+      ratio: 2
+      seeding_bonus: 50000
+    - downloaded: map[__raw:BinaryExpression src:500 * GB]
+      group_type: user
+      id: 3
+      interval: P10W
+      name: Elite User
+      privilege: Elite User及以上用户封存账号后不会被删除。
+      ratio: 3
+      seeding_bonus: 100000
+    - downloaded: map[__raw:BinaryExpression src:800 * GB]
+      group_type: user
+      id: 4
+      interval: P15W
+      name: Crazy User
+      privilege: 得到1个邀请名额；可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 4
+      seeding_bonus: 200000
+    - downloaded: map[__raw:BinaryExpression src:1 * TB]
+      group_type: user
+      id: 5
+      interval: P20W
+      name: Insane User
+      privilege: 得到1个邀请名额；可以查看普通日志。
+      ratio: 5
+      seeding_bonus: 500000
+    - downloaded: map[__raw:BinaryExpression src:1.5 * TB]
+      group_type: user
+      id: 6
+      interval: P25W
+      is_kept: true
+      name: Veteran User
+      privilege: 得到1个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
+      ratio: 6
+      seeding_bonus: 750000
+    - downloaded: map[__raw:BinaryExpression src:2 * TB]
+      group_type: user
+      id: 7
+      interval: P30W
+      is_kept: true
+      name: Extreme User
+      privilege: 得到2个邀请名额；可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 7
+      seeding_bonus: 1500000
+    - downloaded: map[__raw:BinaryExpression src:3 * TB]
+      group_type: user
+      id: 8
+      interval: P40W
+      is_kept: true
+      name: Ultimate User
+      privilege: 得到3个邀请名额。
+      ratio: 8
+      seeding_bonus: 2000000
+    - downloaded: map[__raw:BinaryExpression src:4 * TB]
+      group_type: user
+      id: 9
+      interval: P60W
+      is_kept: true
+      name: Nexus Master
+      privilege: 得到4个邀请名额。
+      ratio: 10
+      seeding_bonus: 3000000
+    - group_type: vip
+      id: 10
+      name: 贵宾(VIP)
+      privilege: 和Nexus Master拥有相同权限并被认为是精英成员。免除自动降级。
+    - group_type: vip
+      id: 11
+      name: 养老族(Retiree)
+      privilege: 退休后的管理组成员。
+name: UBits
+schema: nexusphp
+selectors:
+    fields:
+        subtitle:
+            selectors:
+                - td.embedded
+tags:
+    - 影视
+urls:
+    - https://ubits.club/
+# user_info 全部继承 NexusPHP 默认（usercp color_* 锚点 + [使用] 取 U币）。
+# 原转换占位的 `bonus: {}` 空覆盖会经逐键合并挡掉默认 bonus → 已移除。

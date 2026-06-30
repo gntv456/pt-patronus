@@ -1,0 +1,184 @@
+# audiences — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.url.filters[prepend]
+#   - search.link（__ref）
+#   - search.size（text）
+#   - search.leechers（text）
+#   - search.seeders（text）
+#   - search.completed（text）
+
+aka:
+    - 观众
+    - 人人人
+categories:
+    - id: "401"
+      name: 电影 (Movie)
+    - id: "402"
+      name: 剧集 (TV Series)
+    - id: "403"
+      name: 综艺 (TV Show)
+    - id: "406"
+      name: 纪录片 (Documentary)
+    - id: "404"
+      name: 有声书 (Audiobook)
+    - id: "405"
+      name: 电子书 (E-Book)
+    - id: "408"
+      name: 音乐 (Music)
+    - id: "407"
+      name: 体育 (Sport)
+    - id: "410"
+      name: 游戏 (Game)
+    - id: "412"
+      name: 教学 (Study)
+    - id: "409"
+      name: 其它 (Other)
+description: 观众
+id: audiences
+level_requirements:
+    - name: User
+      name_aka:
+        - 小鬼当家
+      privilege: 新用户的默认级别；可以请求续种。
+    - downloaded: 120GB
+      id: 1
+      interval: P5W
+      name: Power User
+      name_aka:
+        - 年轻气盛
+      privilege: 可以查看NFO文档；可以查看用户列表； 可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕；发布10种通过候选后可直接发布种子。
+      ratio: 2
+      seeding_bonus: 100000
+    - downloaded: 240GB
+      id: 2
+      interval: P15W
+      name: Elite User
+      name_aka:
+        - 江湖儿女
+      privilege: 同年轻气盛(Power User)
+      ratio: 2.5
+      seeding_bonus: 200000
+    - downloaded: 400GB
+      id: 3
+      interval: P24W
+      name: Crazy User
+      name_aka:
+        - 街头霸王
+      privilege: 可以查看排行榜。
+      ratio: 3
+      seeding_bonus: 400000
+    - downloaded: 600GB
+      id: 4
+      interval: P40W
+      name: Insane User
+      name_aka:
+        - 步履不停
+      privilege: 同街头霸王(Crazy User)
+      ratio: 3.5
+      seeding_bonus: 640000
+    - downloaded: 1024GB
+      id: 5
+      interval: P60W
+      name: Veteran User
+      name_aka:
+        - 杰出公民
+      privilege: 可以查看其它用户的评论、帖子历史。
+      ratio: 4
+      seeding_bonus: 880000
+    - downloaded: 2048GB
+      id: 6
+      interval: P80W
+      is_kept: true
+      name: Extreme User
+      name_aka:
+        - 头号玩家
+      privilege: 可以更新过期的外部信息。头号玩家(Extreme User)及以上用户会永远保留账号。
+      ratio: 4.5
+      seeding_bonus: 1200000
+    - downloaded: 4096GB
+      id: 7
+      interval: P100W
+      is_kept: true
+      name: Ultimate User
+      name_aka:
+        - 一代宗师
+      privilege: 同头号玩家(Extreme User)
+      ratio: 5
+      seeding_bonus: 1500000
+    - downloaded: 8192GB
+      id: 8
+      interval: P112W
+      is_kept: true
+      name: Nexus Master
+      name_aka:
+        - 教父
+      privilege: 同一代宗师(Ultimate User)
+      ratio: 6
+      seeding_bonus: 1800000
+    - downloaded: 10240GB
+      id: 9
+      interval: P128W
+      is_kept: true
+      name: Rainbow
+      name_aka:
+        - 彩虹照耀
+      privilege: 保持等级期间会显示彩虹ID，做种积分要求逐年增加（具体数值以通知为准），彩虹照耀(Rainbow)用户未到更新后的要求会被降级
+      ratio: 8
+      seeding_bonus: 2400000
+name: Audiences
+schema: nexusphp
+selectors:
+    fields:
+        completed:
+            filters:
+                - name: parse_number
+            selectors:
+                - td:nth-of-type(8)
+        detail:
+            filters:
+                - args: id
+                  name: queryparam
+        download: {}
+        leechers:
+            filters:
+                - name: parse_number
+            selectors:
+                - td:nth-of-type(7)
+        seeders:
+            filters:
+                - name: parse_number
+            selectors:
+                - td:nth-of-type(6)
+        size:
+            filters:
+                - name: parse_size
+            selectors:
+                - td:nth-of-type(5)
+        subtitle:
+            selectors:
+                - td.embedded:first > span:last
+        time:
+            selectors:
+                - td:nth-of-type(4)
+    rows:
+        selectors:
+            - table.torrents-table > tbody > tr[data-torrent-id]
+tags:
+    - 综合
+    - 影视
+    - 音乐
+    - 电子书
+    - 有声书
+    - 体育
+    - 游戏
+timezone_offset: "+0800"
+urls:
+    - https://audiences.me/
+user_info:
+    fields:
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - td.rowhead:contains('爆米花') + td, td.rowhead:contains('Karma Points') + td

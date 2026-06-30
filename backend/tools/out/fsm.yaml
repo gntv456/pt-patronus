@@ -1,0 +1,16 @@
+# fsm — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: fsm。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - 飞天拉面神教
+dead: true
+description: FSM（飞天拉面神教）是一家专注于R18内容的PT站点，需要配置搜索入口才可搜索
+id: fsm
+name: FSM
+schema: fsm
+tags:
+    - 成人
+timezone_offset: "+0800"
+urls:
+    - https://fsm.name/

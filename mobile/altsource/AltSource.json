@@ -1,0 +1,11 @@
+{
+  "name": "PTPatronus",
+  "identifier": "com.hxpt.ptpatronus.source",
+  "sourceURL": "https://<把本文件放到公开URL后填这里>/AltSource.json",
+  "website": "https://<你的站点>",
+  "iconURL": "https://<图标URL>/icon.png",
+  "subtitle": "PT 守护神",
+  "tintColor": "6C5CE7",
+  "apps": [],
+  "news": []
+}

@@ -1,0 +1,130 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { announcementApi, type AnnouncementResult } from '@/api/announcement'
+
+const results = ref<AnnouncementResult[]>([])
+const loading = ref(false)
+const syncingId = ref<number | null>(null)
+// 每站是否展开完整正文（多条公告时折叠）
+const openSite = ref<Record<number, boolean>>({})
+const openItem = ref<Record<string, boolean>>({})
+
+// 站点筛选：'all' 全部，否则按 site_id 过滤（数据已全量在 results，纯前端筛选）
+const selectedSite = ref<number | 'all'>('all')
+const siteOptions = computed(() => [
+  { value: 'all', label: '全部站点' },
+  ...results.value.map((r) => ({ value: r.site_id, label: r.site_name })),
+])
+const filtered = computed(() =>
+  selectedSite.value === 'all'
+    ? results.value
+    : results.value.filter((r) => r.site_id === selectedSite.value),
+)
+
+async function load(refresh = false) {
+  loading.value = true
+  try {
+    results.value = await announcementApi.all(refresh)
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '加载公告失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function syncOne(r: AnnouncementResult) {
+  syncingId.value = r.site_id
+  try {
+    const one = await announcementApi.syncOne(r.site_id)
+    const idx = results.value.findIndex((x) => x.site_id === r.site_id)
+    if (idx >= 0) results.value[idx] = one
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '刷新失败')
+  } finally {
+    syncingId.value = null
+  }
+}
+
+onMounted(() => load())
+</script>
+
+<template>
+  <div class="page" v-loading="loading">
+    <div class="head">
+      <h2 class="title">公告</h2>
+      <div class="head-tools">
+        <el-select v-model="selectedSite" class="filter-select" placeholder="筛选站点" filterable>
+          <el-option
+            v-for="opt in siteOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
+        </el-select>
+        <el-button :loading="loading" @click="load(true)">刷新全部</el-button>
+      </div>
+    </div>
+
+    <div v-if="!filtered.length && !loading" class="empty glass text-muted">
+      {{ selectedSite === 'all' ? '暂无数据，请先在「站点」添加并登录站点' : '该站点暂无公告' }}
+    </div>
+
+    <div class="groups">
+      <div v-for="r in filtered" :key="r.site_id" class="site-group glass">
+        <div class="group-head">
+          <span class="site-name">{{ r.site_name }}</span>
+          <span v-if="r.items.length" class="count">{{ r.items.length }} 条</span>
+          <span v-else-if="r.error" class="err-tag">{{ r.error }}</span>
+          <span v-else class="text-muted">暂无公告</span>
+          <span class="spacer"></span>
+          <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">刷新</el-button>
+        </div>
+
+        <div v-if="r.items.length" class="items">
+          <div
+            v-for="(it, i) in r.items"
+            :key="i"
+            class="item"
+            :class="{ open: openItem[r.site_id + '-' + i] }"
+          >
+            <div class="item-head" @click="openItem[r.site_id + '-' + i] = !openItem[r.site_id + '-' + i]">
+              <span class="item-title">{{ it.title || '（无标题）' }}</span>
+              <span v-if="it.date" class="item-date">{{ it.date }}</span>
+              <span class="caret">{{ openItem[r.site_id + '-' + i] ? '收起' : '展开' }}</span>
+            </div>
+            <div v-if="openItem[r.site_id + '-' + i]" class="item-body">{{ it.content }}</div>
+          </div>
+        </div>
+        <div v-else-if="r.raw_text" class="raw">
+          <div class="raw-text">{{ r.raw_text.slice(0, 300) }}{{ r.raw_text.length > 300 ? '…' : '' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.page { display: flex; flex-direction: column; gap: 16px; }
+.head { display: flex; align-items: center; justify-content: space-between; }
+.head-tools { display: flex; align-items: center; gap: 10px; }
+.filter-select { width: 200px; }
+.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
+.groups { display: flex; flex-direction: column; gap: 14px; }
+.site-group { padding: 16px; }
+.group-head { display: flex; align-items: center; gap: 8px; }
+.site-name { font-weight: 600; font-size: 15px; }
+.count { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: rgba(108,92,231,0.16); color: var(--pt-primary, #6c5ce7); }
+.err-tag { font-size: 12px; color: var(--pt-danger, #f56c6c); }
+.spacer { flex: 1; }
+.items { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.item { border-left: 3px solid rgba(108,92,231,0.3); padding: 6px 12px; border-radius: 4px; background: rgba(108,92,231,0.04); }
+.item-head { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.item-title { font-weight: 600; font-size: 14px; flex: 1; }
+.item-date { font-size: 12px; color: var(--text-muted); }
+.caret { font-size: 12px; color: var(--pt-primary, #6c5ce7); }
+.item-body { margin-top: 8px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--text-strong); }
+.raw { margin-top: 10px; }
+.raw-text { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.empty { padding: 40px; text-align: center; }
+</style>

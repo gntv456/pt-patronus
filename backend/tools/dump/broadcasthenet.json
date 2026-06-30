@@ -1,0 +1,336 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 1,
+  "id": "broadcasthenet",
+  "name": "BroadcastTheNet",
+  "aka": [
+    "BTN"
+  ],
+  "description": "BroadcastTheNet is a private tracker for TV shows.",
+  "tags": [
+    "电视剧"
+  ],
+  "timezoneOffset": "+0000",
+  "collaborator": [
+    "Sunhelter"
+  ],
+  "type": "private",
+  "schema": "Gazelle",
+  "urls": [
+    "uggcf://oebnqpnfgur.arg/"
+  ],
+  "search": {
+    "__spread": [
+      "SchemaMetadata.search"
+    ],
+    "skipNonLatinCharacters": true,
+    "keywordPath": "params.artistname",
+    "requestConfig": {
+      "url": "/torrents.php",
+      "responseType": "document",
+      "params": {
+        "action": "advanced"
+      }
+    },
+    "advanceKeywordParams": {
+      "imdb": {
+        "enabled": true
+      }
+    },
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.search!.selectors"
+      ],
+      "url": {
+        "selector": "a[href*='torrents.php?id='][href*='torrentid=']",
+        "attr": "href"
+      },
+      "title": {
+        "selector": "span[style='float:none;']",
+        "attr": "title"
+      },
+      "category": {
+        "selector": "a[href*='filter_cat'] img",
+        "attr": "title"
+      },
+      "time": {
+        "selector": "div.nobr:contains('Added:')",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            // 从 \"Up: Anonymous - Added: 1 hour and 50 minutes ago\" 中提取时间部分\n            const match = query.match(/Added:\\s*(.+)/);\n            return match ? match[1].trim() : query.trim();\n          }"
+          },
+          {
+            "name": "parseTTL"
+          }
+        ]
+      },
+      "tags": [
+        {
+          "name": "H&R",
+          "selector": "*",
+          "color": "red"
+        }
+      ]
+    }
+  },
+  "userInfo": {
+    "__spread": [
+      "SchemaMetadata.userInfo!"
+    ],
+    "process": [
+      {
+        "requestConfig": {
+          "url": "/index.php",
+          "responseType": "document"
+        },
+        "fields": [
+          "id",
+          "name",
+          "messageCount"
+        ]
+      },
+      {
+        "requestConfig": {
+          "url": "/user.php",
+          "params": {},
+          "responseType": "document"
+        },
+        "assertion": {
+          "id": "params.id"
+        },
+        "fields": [
+          "uploaded",
+          "uploads",
+          "downloaded",
+          "ratio",
+          "levelName",
+          "bonus",
+          "bonusPerHour",
+          "joinTime",
+          "seeding",
+          "seedingSize",
+          "seedingTime",
+          "totalTraffic",
+          "snatches",
+          "hnrUnsatisfied"
+        ]
+      },
+      {
+        "requestConfig": {
+          "url": "/snatchlist.php",
+          "params": {
+            "type": "ajax",
+            "sort": "seedtimeleft",
+            "page": 1
+          },
+          "responseType": "document"
+        },
+        "assertion": {
+          "id": "params.id"
+        },
+        "fields": [
+          "hnrPreWarning"
+        ]
+      }
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.userInfo!.selectors"
+      ],
+      "uploaded": {
+        "selector": "ul.nobullet > li:contains('Upload:')",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "uploads": {
+        "selector": "ul.nobullet > li:contains('Uploaded:')",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "downloaded": {
+        "selector": "ul.nobullet > li:contains('Downloaded:')",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "levelName": {
+        "selector": "ul.nobullet > li:contains('User Class:')",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            return query.replace(\"User Class:\", \"\").trim();\n          }"
+          }
+        ]
+      },
+      "bonus": {
+        "selector": "ul.nobullet > li:contains('Bonus Points:') > a",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "bonusPerHour": {
+        "selector": "ul.nobullet > li:contains('Per Day:')",
+        "filters": [
+          {
+            "name": "parseNumber"
+          },
+          {
+            "name": "divide",
+            "args": [
+              24
+            ]
+          }
+        ]
+      },
+      "ratio": {
+        "__ref": "undefined"
+      },
+      "joinTime": {
+        "selector": "ul.nobullet > li:contains('Joined:') > span",
+        "filters": [
+          {
+            "name": "parseTTL"
+          }
+        ]
+      },
+      "seeding": {
+        "selector": "ul.nobullet > li:contains('Seeding:')",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "seedingSize": {
+        "selector": "ul.nobullet > li:contains('Seeding Size:')",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "totalTraffic": {
+        "selector": "ul.nobullet > li:contains('Total Traffic:')",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "snatches": {
+        "selector": "ul.nobullet:has( > li:contains('Snatched:'))",
+        "elementProcess": {
+          "__fn": true,
+          "src": "(element: HTMLElement) => {\n          // 查找所有包含 \"Snatched:\" 的元素\n          const snatchedElements = Array.from(element.querySelectorAll(\"li\")) as HTMLElement[];\n          let totalSnatches = 0;\n\n          snatchedElements.forEach((el) => {\n            const text = el.textContent || \"\";\n            if (text.includes(\"Snatched:\")) {\n              const match = text.match(/Snatched:\\s*(\\d+)/);\n              if (match) {\n                totalSnatches += parseInt(match[1]);\n              }\n            }\n          });\n\n          return totalSnatches;\n        }"
+        }
+      },
+      "hnrUnsatisfied": {
+        "selector": "ul.nobullet > li:contains('HnRs:') > a",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "hnrPreWarning": {
+        "selector": [
+          "table:has(tr.colhead_dark)"
+        ],
+        "elementProcess": {
+          "__fn": true,
+          "src": "(element: HTMLElement) => {\n          // 循环所有 id 以 \"snatch\" 开头的 tr 元素\n          const rows = Array.from(element.querySelectorAll(\"tr[id^='snatch']\")) as HTMLElement[];\n          let count = 0;\n\n          rows.forEach((row) => {\n            // 查找第5列的 td 元素\n            const fifthCell = row.querySelector(\"td:nth-child(5)\") as HTMLElement;\n            if (fifthCell && fifthCell.textContent && !fifthCell.textContent.includes(\"Complete\")) {\n              count++;\n            }\n          });\n\n          return count;\n        }"
+        }
+      },
+      "seedingTime": {
+        "selector": "ul.nobullet > li:contains('Total Time Seeded:')",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            // 从 \"Total Time Seeded: 21,238 Days\" 中提取天数并转换为秒数\n            const match = query.match(/Total Time Seeded:\\s*([\\d,]+)\\s*Days/i);\n            if (match) {\n              const days = parseInt(match[1].replace(/,/g, \"\"));\n              const seconds = days * 24 * 3600; // 转换为秒数\n              return seconds;\n            }\n            return 0;\n          }"
+          }
+        ]
+      }
+    }
+  },
+  "levelRequirements": [
+    {
+      "id": 1,
+      "name": "Member",
+      "totalTraffic": "100GB",
+      "bonus": 100000,
+      "snatches": 100,
+      "interval": "P2W",
+      "privilege": "Can access the XXX forum."
+    },
+    {
+      "id": 2,
+      "name": "Power User",
+      "totalTraffic": "250GB",
+      "bonus": 250000,
+      "snatches": 250,
+      "interval": "P1M",
+      "privilege": "Has access to the Power User forum, Official and Unofficial Invites forums, Top 10 filters, and can access notifications."
+    },
+    {
+      "id": 3,
+      "name": "Extreme User",
+      "totalTraffic": "500GB",
+      "bonus": 500000,
+      "snatches": 500,
+      "interval": "P3M",
+      "privilege": "Has access to the Extreme User forum."
+    },
+    {
+      "id": 4,
+      "name": "Elite",
+      "totalTraffic": "1TB",
+      "bonus": 850000,
+      "snatches": 1000,
+      "interval": "P6M",
+      "privilege": "Has access to the Elite forum and can set own Custom Title, and the ability to send invites purchased from the Lumens Store."
+    },
+    {
+      "id": 5,
+      "name": "Guru",
+      "totalTraffic": "2.5TB",
+      "bonus": 1500000,
+      "snatches": 1500,
+      "interval": "P9M",
+      "privilege": "Has access to the Guru forum."
+    },
+    {
+      "id": 6,
+      "name": "Master",
+      "totalTraffic": "7.5TB",
+      "bonus": 3000000,
+      "snatches": 3000,
+      "interval": "P1Y",
+      "privilege": "Has access to the Master forum."
+    },
+    {
+      "id": 7,
+      "name": "Overlord",
+      "totalTraffic": "100TB",
+      "bonus": 250000000,
+      "snatches": 3000,
+      "uploads": 500,
+      "interval": "P3Y",
+      "seedingTime": "P250000D",
+      "isKept": true,
+      "privilege": "Has access to the Overlord forum, Custom Title, Unlimited Invites, and immunity from Inactivity Pruning."
+    }
+  ]
+}

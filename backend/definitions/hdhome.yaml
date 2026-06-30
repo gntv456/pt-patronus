@@ -1,0 +1,5 @@
+id: hdhome
+name: 家园
+schema: nexusphp
+urls:
+  - https://hdhome.org

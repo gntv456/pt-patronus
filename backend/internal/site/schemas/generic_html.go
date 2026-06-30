@@ -1,0 +1,88 @@
+package schemas
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/site"
+)
+
+// GenericHTML 是通用选择器驱动适配器，兜底无专属适配器的 schema
+//（""、xbtit、tcg、tbsource、filelist、discuz、rartracker、fsm、cgbtsource、meantorrent、aidoruonline）。
+// schema 参数化——每个 schema 注册一个实例（RegisterAdapter 按 Schema() 去重）。
+// 选择器完全由 definition（YAML）驱动：HTML 走 site.ParseSearch，JSON 走 site.ParseJSONSearch。
+// schema ""（PT-depiler AbstractPrivateSite 系，含 nyaa/rutracker/hdbits/torrentleech 等）的
+// HTML/JSON 分发：def.Format 显式 > 响应体首字节嗅探。
+type GenericHTML struct {
+	BaseHTMLAdapter
+	schema string
+}
+
+// NewGenericHTML 构造绑定特定 schema 的通用适配器实例。
+func NewGenericHTML(hc *httpclient.Client, schema string) *GenericHTML {
+	return &GenericHTML{BaseHTMLAdapter: BaseHTMLAdapter{hc: hc}, schema: schema}
+}
+
+func (g *GenericHTML) Schema() string { return g.schema }
+func (g *GenericHTML) Name() string   { return "site.generic." + g.schema }
+func (g *GenericHTML) Priority() int  { return 200 } // 兜底，低于专属适配器(100)
+
+// Search 抓取并按 def.Format / 响应体嗅探分发 HTML 或 JSON 解析。
+// URL：路径占位符（torrentleech /query 形）→ BuildJSONSearchURL；否则 BuildSearchURL。
+func (g *GenericHTML) Search(ctx context.Context, def *site.SiteMetadata,
+	baseURL, cookie, keyword, category string, page int) ([]site.Torrent, error) {
+
+	def = site.EnsureDefaults(def)
+	var target string
+	if site.PathPlaceholderUsed(def.SearchEntry) {
+		target = site.BuildJSONSearchURL(baseURL, def, keyword, page)
+	} else {
+		target = site.BuildSearchURL(baseURL, def, keyword, category, page)
+	}
+	resp, err := g.hc.Get(ctx, target, cookie, true)
+	if err != nil {
+		return nil, err
+	}
+	if resp.IsCloudflare() {
+		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+	}
+	if resp.StatusCode == 401 || resp.StatusCode == 403 {
+		return nil, site.ErrNotLoggedIn
+	}
+	// 分发：Format 显式 json/html > 响应体首字节嗅探（{/[ → JSON，否则 HTML）。
+	if def.Format == "json" || (def.Format == "" && site.LooksLikeJSON(resp.Body)) {
+		return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+	}
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
+	if err != nil {
+		return nil, fmt.Errorf("parse html: %w", err)
+	}
+	if loggedOut(resp, doc, def.NoLogin) {
+		return nil, site.ErrNotLoggedIn
+	}
+	return site.ParseSearch(doc, def, baseURL), nil
+}
+
+// FetchUserInfo best-effort。schema "" 经 EnsureDefaults 注入了 NexusPHP usercp.php 默认
+//（非站点真实 user_info），直接返 stub；命名 schema（xbtit/tcg/...）走 default 分支不注入，
+// def.UserInfo.Path 反映 YAML——有则抓+解析（失败降级 stub 不报错），无则 stub。
+// 绝不因缺 user_info 阻塞 TestConnection。
+func (g *GenericHTML) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
+	baseURL, cookie string) (*site.UserInfo, error) {
+
+	def = site.EnsureDefaults(def)
+	if g.schema == "" || def.UserInfo.Path == "" || len(def.UserInfo.Fields) == 0 {
+		return &site.UserInfo{}, nil
+	}
+	doc, resp, err := g.fetchDoc(ctx, baseURL, def.UserInfo.Path, cookie)
+	if err != nil {
+		return &site.UserInfo{}, nil // best-effort 降级
+	}
+	if loggedOut(resp, doc, def.NoLogin) {
+		return nil, site.ErrNotLoggedIn
+	}
+	return site.ParseUserInfo(doc, def), nil
+}

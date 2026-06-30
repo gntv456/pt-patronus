@@ -1,0 +1,92 @@
+# 通用 NexusPHP 站点定义模板。
+# 选择器已按真实 NexusPHP 结构校准（依据好学 hxpt.org 源码 torrenttable()/tr_small()，
+# 该结构为 NexusPHP 框架通用，绝大多数国内 PT 站一致）。
+# 新增站点时复制本文件、改 id/name/urls 即可；个别站点结构有差异时再用 /sites/inspect 微调。
+id: nexusphp_template
+name: NexusPHP 模板
+schema: nexusphp
+urls:
+  - https://example.pt
+search_entry: torrents.php
+search_param: search
+extra_param:
+  search_area: "0"
+  search_mode: "0"
+# search_categories（可选）：按媒体类型精确过滤。命中时搜索 URL 追加 NexusPHP 多选参数
+# cat[]=<id>。各站 cat ID 不同，可用 /sites/inspect 在种子列表点分类链接查 torrents.php?cat=NNN。
+# 配了此表 → 服务端精准过滤；不配 → 不发 cat[]，仅靠 chain 层 FilterByCategory 兜底丢弃音乐。
+# search_categories:
+#   movie: ["401", "408"]
+#   tv:    ["402", "403"]
+#   music: ["406"]
+
+# 种子列表（torrenttable 标准）：
+#   标题链接 = details.php?id=X&hit=1（无 #）；种子/下载者/评论链接带 #seeders/#leechers/#startcomments
+#   大小列 = 右数第 5 个 td（操作/完成/下载者/种子/大小，普通用户右侧稳定）
+selectors:
+  rows:
+    selector: "table.torrents tr"   # 含表头行，表头无标题/下载链接会被自动跳过
+  fields:
+    title:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+    subtitle:
+      selector: ".torrent-subtitle"
+    detail:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+      attr: href
+    download:
+      selector: 'a[href^="download.php"]'
+      attr: href
+    completed:
+      selector: 'a[href^="viewsnatches.php"]'
+    seeders:
+      selector: 'a[href*="#seeders"]'
+    leechers:
+      selector: 'a[href*="#leechers"]'
+    size:
+      selector: "td:nth-last-child(5)"
+    # 分类单元格（首列）。文字皮肤取「电影/剧集/音乐…」供 chain 层 FilterByCategory 后置过滤；
+    # 纯图标皮肤取不到文本→该行为空→过滤自动失效（安全）。精确过滤请改用上方 search_categories。
+    category:
+      selector: "td:first-child"
+
+# 用户资料（NexusPHP 框架常量 font.color_* 锚点策略，实测覆盖 cute-top-profile /
+# Audiences menu-base-info / 经典 info_block 三种皮肤——命中 color_* 取父节点文本 + 正则抽值）。
+# 站点仅当积分/做种等的标签或结构与本默认不同时，才在站点 YAML 覆盖对应字段。
+# level/join_date 在 userdetails.php?id=<uid> 的 rowhead 表（detail_fields，适配器先发现 uid）。
+user_info:
+  path: usercp.php
+  fields:
+    uploaded:
+      selector: "font.color_uploaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:上传量|上傳量|Uploaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    downloaded:
+      selector: "font.color_downloaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:下载量|下載量|Downloaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    ratio:
+      selector: "font.color_ratio"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:分享率|比率|Ratio)[：:]?\s*([-+]?\d+\.?\d*)'
+  detail_path: userdetails.php
+  detail_fields:
+    level:
+      selector: 'td[class*="rowhead"]:contains("等级") + td img'
+      attr: title
+    join_date:
+      selector: 'td[class*="rowhead"]:contains("加入日期") + td'
+      filters:
+        - name: regexp
+          args: '(\d{4}-\d{2}-\d{2})'
+
+no_login:
+  url_pattern: ["login.php", "takelogin.php"]
+  content: ["登录", "请先登录"]
+  http_status: [401, 403]

@@ -1,0 +1,16 @@
+# cnscg — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+dead: true
+description: hdscg，cnscg圣城家园PT站点
+id: cnscg
+legacy_urls:
+    - https://www.hdscg.cc/
+name: 圣城家园PT
+schema: nexusphp
+tags:
+    - 影视
+    - 综合
+urls:
+    - https://www.cnscg.club/

@@ -1,0 +1,92 @@
+# htpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - 海棠曲艺园
+    - 海棠
+categories:
+    - id: "1"
+      name: 相声
+    - id: "4091"
+      name: 评书
+    - id: "4097"
+      name: 戏曲
+    - id: "4098"
+      name: 鼓/琴
+    - id: "4099"
+      name: 小曲
+    - id: "4101"
+      name: 小品
+    - id: "4104"
+      name: 二人转
+    - id: "4105"
+      name: 小剧种
+description: 主打曲艺、戏曲、相声、评书、小品、广播剧、有声小说等中国传统有声资源
+id: htpt
+level_requirements:
+    - name: User
+      privilege: 新用户的默认级别
+    - downloaded: 50GB
+      id: 1
+      interval: P4W
+      name: Power User
+      privilege: 得到一个邀请名额。
+      ratio: 1.05
+    - downloaded: 120GB
+      id: 2
+      interval: P8W
+      name: Elite User
+      privilege: 得到一个邀请名额，且Elite User及以上用户封存账号后不会被删除。
+      ratio: 1.55
+    - downloaded: 300GB
+      id: 3
+      interval: P15W
+      name: Crazy User
+      privilege: 得到一个邀请名额。
+      ratio: 2.05
+    - downloaded: 500GB
+      id: 4
+      interval: P25W
+      name: Insane User
+      privilege: 得到一个邀请名额。
+      ratio: 2.55
+    - downloaded: 750GB
+      id: 5
+      interval: P40W
+      is_kept: true
+      name: Veteran User
+      privilege: 得到一个邀请名额，且Veteran User及以上用户会永远保留账号。
+      ratio: 3.05
+    - downloaded: 1TB
+      id: 6
+      interval: P60W
+      is_kept: true
+      name: Extreme User
+      privilege: 得到一个邀请名额，可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 3.55
+    - downloaded: 1.5TB
+      id: 7
+      interval: P80W
+      is_kept: true
+      name: Ultimate User
+      privilege: 得到一个邀请名额。
+      ratio: 4.05
+    - downloaded: 3TB
+      id: 8
+      interval: P100W
+      is_kept: true
+      name: Nexus Master
+      privilege: 得到一个邀请名额。
+      ratio: 4.55
+name: 海棠PT
+schema: nexusphp
+tags:
+    - 曲艺
+    - 小品
+    - 有声小说
+timezone_offset: "+0800"
+urls:
+    - https://www.htpt.cc/
+    - https://htpt.cc/

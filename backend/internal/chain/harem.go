@@ -1,0 +1,258 @@
+package chain
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"sync"
+	"time"
+
+	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/site"
+)
+
+// 后宫抓取并发与缓存参数（对齐原版：Semaphore(5) + per-site Mutex + 30min 缓存）。
+const (
+	haremConcurrency = 5
+	haremCacheTTL    = 30 * time.Minute
+	haremTimeout     = 30 * time.Second
+)
+
+// HaremResult 是后宫聚合结果。
+type HaremResult struct {
+	Overview      site.HaremOverview     `json:"overview"`
+	Prescriptions []site.PrescriptionItem `json:"prescriptions"`
+}
+
+// HaremStatus 抓单站邀请库存（适配器需实现 site.HaremCapable）。
+func (c *SiteChain) HaremStatus(ctx context.Context, s *models.Site) (*site.InviteStatus, error) {
+	def := c.defFor(s)
+	if !def.Harem.Enabled {
+		return nil, nil
+	}
+	token := c.credential(s, def)
+	var out *site.InviteStatus
+	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
+		hc, ok := a.(site.HaremCapable)
+		if !ok {
+			return ErrNotSupported
+		}
+		st, e := hc.FetchInviteStatus(ctx, def, s.BaseURL, token)
+		if e != nil {
+			return e
+		}
+		out = st
+		return nil
+	})
+	return out, err
+}
+
+// HaremInvitees 抓单站被邀请人花名册。
+func (c *SiteChain) HaremInvitees(ctx context.Context, s *models.Site) ([]site.InviteeInfo, error) {
+	def := c.defFor(s)
+	if !def.Harem.Enabled {
+		return nil, nil
+	}
+	token := c.credential(s, def)
+	var out []site.InviteeInfo
+	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
+		hc, ok := a.(site.HaremCapable)
+		if !ok {
+			return ErrNotSupported
+		}
+		is, e := hc.FetchInvitees(ctx, def, s.BaseURL, token)
+		if e != nil {
+			return e
+		}
+		out = is
+		return nil
+	})
+	return out, err
+}
+
+// HaremAll 跨站并发聚合后宫（Semaphore(5) + per-site Mutex + 30min 缓存）。
+func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
+	sites, err := c.sites.ListActive()
+	if err != nil {
+		slog.Warn("harem list sites failed", "err", err)
+		return nil
+	}
+	items := make([]site.PrescriptionItem, len(sites))
+	sem := make(chan struct{}, haremConcurrency)
+	var wg sync.WaitGroup
+	for i, s := range sites {
+		wg.Add(1)
+		go func(i int, s models.Site) {
+			defer wg.Done()
+			// 缓存命中
+			if !force {
+				c.haremMu.Lock()
+				e, ok := c.haremCache[s.ID]
+				c.haremMu.Unlock()
+				if ok && time.Since(e.at) <= haremCacheTTL {
+					items[i] = buildPrescription(s.ID, s.Name, e.status, e.invitees, "")
+					return
+				}
+			}
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			siteCtx, cancel := context.WithTimeout(ctx, haremTimeout)
+			defer cancel()
+
+			status, e1 := c.HaremStatus(siteCtx, &s)
+			invitees, e2 := c.HaremInvitees(siteCtx, &s)
+			errMsg := ""
+			if errors.Is(e1, site.ErrNotLoggedIn) {
+				errMsg = "未登录或 cookie 失效"
+			} else if e1 != nil {
+				errMsg = e1.Error()
+			} else if e2 != nil {
+				errMsg = e2.Error()
+			}
+			if status == nil {
+				status = &site.InviteStatus{}
+			}
+			items[i] = buildPrescription(s.ID, s.Name, status, invitees, errMsg)
+			// 仅成功时缓存
+			if errMsg == "" {
+				c.haremMu.Lock()
+				c.haremCache[s.ID] = haremCacheEntry{status: status, invitees: invitees, at: time.Now()}
+				c.haremMu.Unlock()
+			}
+		}(i, s)
+	}
+	wg.Wait()
+
+	// 排序：剩余降序、站名升序；失败站点排末尾
+	sorted := make([]site.PrescriptionItem, 0, len(items))
+	for _, it := range items {
+		if it.SiteID != 0 {
+			sorted = append(sorted, it)
+		}
+	}
+	for i := 1; i < len(sorted); i++ { // 插入排序（站点数小）
+		for j := i; j > 0; j-- {
+			a, b := sorted[j-1], sorted[j]
+			aFail, bFail := a.Error != "", b.Error != ""
+			swap := false
+			switch {
+			case aFail && !bFail:
+				swap = true
+			case aFail == bFail:
+				if a.Remain != b.Remain {
+					swap = a.Remain < b.Remain
+				} else {
+					swap = a.SiteName > b.SiteName
+				}
+			}
+			if swap {
+				sorted[j-1], sorted[j] = sorted[j], sorted[j-1]
+			} else {
+				break
+			}
+		}
+	}
+	return &HaremResult{Overview: haremOverview(sorted), Prescriptions: sorted}
+}
+
+// buildPrescription 构造单站药单行。
+func buildPrescription(id uint, name string, st *site.InviteStatus, invitees []site.InviteeInfo, errMsg string) site.PrescriptionItem {
+	return BuildPrescription(id, name, st, invitees, errMsg)
+}
+
+// BuildPrescription 构造单站药单行（导出，供 handler 单站刷新用）。
+func BuildPrescription(id uint, name string, st *site.InviteStatus, invitees []site.InviteeInfo, errMsg string) site.PrescriptionItem {
+	if st == nil {
+		st = &site.InviteStatus{}
+	}
+	// invitees 归一化为非 nil 切片：PrescriptionItem.Invitees 无 omitempty，
+	// nil 会序列化成 JSON null，前端 row.invitees.length 取属性会崩（MTeam/NexusPHP
+	// 在 cookie 无 uid、解析失败等路径返回 nil）。统一成 [] 让前端拿到空数组。
+	if invitees == nil {
+		invitees = []site.InviteeInfo{}
+	}
+	dead := 0
+	for _, iv := range invitees {
+		if iv.IsDead() {
+			dead++
+		}
+	}
+	return site.PrescriptionItem{
+		SiteID: id, SiteName: name,
+		Remain:         st.TotalRemain(),
+		PermanentCount: st.PermanentCount,
+		TemporaryCount: st.TemporaryCount,
+		CanBuy:         st.TotalBuyable(),
+		CanInvite:      st.CanInvite,
+		HaremCount:     len(invitees),
+		DeadCount:      dead,
+		Invitees:       invitees,
+		Error:          errMsg,
+	}
+}
+
+// haremOverview 仅从成功站点汇总 7 格统计。
+func haremOverview(items []site.PrescriptionItem) site.HaremOverview {
+	var o site.HaremOverview
+	for _, it := range items {
+		if it.Error != "" {
+			continue
+		}
+		o.TotalSites++
+		o.TotalInvitees += it.HaremCount
+		o.TotalPermInvites += it.PermanentCount
+		o.TotalTempInvites += it.TemporaryCount
+		o.TotalBanned += it.DeadCount
+		for _, iv := range it.Invitees {
+			if iv.IsLowRatio() {
+				o.TotalLowRatio++
+			}
+			if iv.HasNoTrafficData() {
+				o.TotalNoData++
+			}
+		}
+	}
+	return o
+}
+
+// ExportPrescription 生成药单文本（CRLF，ASCII 标点，权限 ✓/✗）。
+func ExportPrescription(items []site.PrescriptionItem) (totalRemain, totalCanBuy, failed int, text string) {
+	var sb []byte
+	for _, it := range items {
+		if it.Error != "" {
+			failed++
+			sb = append(sb, []byte("站点["+it.SiteName+"]: 获取失败["+it.Error+"]\r\n")...)
+			continue
+		}
+		totalRemain += it.Remain
+		totalCanBuy += it.CanBuy
+		perm := "✗"
+		if it.CanInvite {
+			perm = "✓"
+		}
+		sb = append(sb, []byte("站点["+it.SiteName+"]: 剩余["+itoa(it.Remain)+"]个. 可购买["+itoa(it.CanBuy)+"]个. 权限["+perm+"]\r\n")...)
+	}
+	return totalRemain, totalCanBuy, failed, string(sb)
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	neg := n < 0
+	if neg {
+		n = -n
+	}
+	var b [20]byte
+	i := len(b)
+	for n > 0 {
+		i--
+		b[i] = byte('0' + n%10)
+		n /= 10
+	}
+	if neg {
+		i--
+		b[i] = '-'
+	}
+	return string(b[i:])
+}

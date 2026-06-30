@@ -1,0 +1,16 @@
+# pt99 — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+dead: true
+description: An Average PT
+id: pt99
+name: PT99
+schema: nexusphp
+tags:
+    - 综合
+    - 记录片
+    - 影视
+    - 综合
+urls:
+    - https://pt.j99.info/

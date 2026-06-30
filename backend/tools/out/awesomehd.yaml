@@ -1,0 +1,14 @@
+# awesomehd — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - AHD
+dead: true
+id: awesomehd
+name: Awesome-HD
+schema: gazelle
+tags:
+    - 影视
+urls:
+    - https://awesome-hd.me/

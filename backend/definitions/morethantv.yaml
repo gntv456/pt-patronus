@@ -1,0 +1,130 @@
+# morethantv — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category.filters（匿名函数）
+
+aka:
+    - MTV
+description: MoreThanTV is a Private Torrent Tracker for TV / MOVIES
+id: morethantv
+legacy_urls:
+    - https://www.morethan.tv/
+level_requirements:
+    - id: 1
+      name: Runner
+      privilege: Userclass for newly registered users
+    - id: 2
+      interval: P2W
+      name: Grip
+      privilege: Request Creation; Bookmarks; Poll Making; Notifications Access; Can play the slots
+      uploaded: 10GB
+    - id: 3
+      interval: P4W
+      name: Key Grip
+      privilege: Upload privileges; Subscription, Creation & Personal Collage Access; Top 10 Access; Advanced Search Access; Inactivity disabled after a few months
+      uploaded: 200GB
+    - id: 4
+      interval: P8W
+      name: Camera Operator
+      privilege: Advanced top 10 Access; Invite Forum Access; View Site Stats; Can Add Tags; Can Vote on Tags; Can set a torrent signature
+      uploaded: 500GB
+    - id: 5
+      interval: P12W
+      name: Boom Operator
+      privilege: Advanced Site Stats; Boom Operator Restricted forum; Can make/delete private upload templates; Can purchase invites from bonus shop
+      uploaded: 1000GB
+      uploads: 10
+    - id: 6
+      interval: P24W
+      name: Gaffer
+      privilege: Gaffer Restricted forum; Can send invites while site is past user limit
+      uploaded: 2000GB
+      uploads: 100
+    - id: 7
+      interval: P48W
+      is_kept: true
+      name: Engineer
+      privilege: Engineer Restricted forum; FREE Invites (Send a staff PM for us to credit your account); Immune from inactivity disablement
+      uploaded: 3000GB
+      uploads: 500
+    - group_type: vip
+      id: 100
+      name: Assistant Producer
+    - group_type: vip
+      id: 101
+      name: Donor
+    - group_type: vip
+      id: 102
+      name: Network Affiliate
+    - group_type: vip
+      id: 103
+      name: Former Staff
+    - group_type: vip
+      id: 104
+      name: Internal
+    - group_type: manager
+      id: 200
+      name: Production Supervisor
+    - group_type: manager
+      id: 201
+      name: Junior Developer
+    - group_type: manager
+      id: 202
+      name: Manager
+    - group_type: manager
+      id: 203
+      name: Executive Producer
+    - group_type: manager
+      id: 204
+      name: Senior Developer
+    - group_type: manager
+      id: 205
+      name: Director
+    - group_type: manager
+      id: 206
+      name: Showrunner
+    - group_type: manager
+      id: 210
+      name: First Line Support
+    - group_type: manager
+      id: 211
+      name: Tagger
+name: MoreThanTV
+schema: luminance
+search_entry: /api/torznab
+search_param: q
+selectors:
+    fields:
+        category:
+            attr: value
+            selector: '[name=''category'']:last'
+        completed:
+            attr: value
+            selector: '[name=''grabs'']'
+        detail:
+            selector: guid
+        download:
+            selector: link
+        leechers:
+            attr: value
+            selector: '[name=''leechers'']'
+        seeders:
+            attr: value
+            selector: '[name=''seeders'']'
+        size:
+            selector: size
+        time:
+            filters:
+                - args: '[EEE, d MMMM yyyy HH:mm:ss xxxx]'
+                  name: parse_time
+            selector: pubDate
+        title:
+            selector: title
+    rows:
+        selector: item
+tags:
+    - 电视剧
+    - 剧集
+    - 电影
+urls:
+    - https://www.morethantv.me/

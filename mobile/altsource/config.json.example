@@ -1,0 +1,12 @@
+{
+  "app_name": "PTPatronus",
+  "app_id": "com.hxpt.ptpatronus",
+  "source_id": "com.hxpt.ptpatronus.source",
+  "developer_name": "PTPatronus",
+  "subtitle": "PT 守护神",
+  "localized_description": "PT 站管理客户端（Android / iOS / macOS / Windows / 鸿蒙）。",
+  "category": "utilities",
+  "tint_colour": "6C5CE7",
+  "icon_url": "https://<你的图标公开URL>/icon.png",
+  "website": "https://<你的站点或仓库地址>"
+}

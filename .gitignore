@@ -1,0 +1,26 @@
+# 数据 / 构建产物
+backend/bin/
+backend/data/
+backend/data-test/
+backend/*.db*
+*.db
+dist/
+data/
+node_modules/
+frontend/dist/
+mobile/.dart_tool/
+mobile/build/
+*.log
+
+# 环境
+.env
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

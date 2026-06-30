@@ -1,0 +1,100 @@
+# zmpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - 织梦PT
+    - ZMPT
+categories:
+    - id: "409"
+      name: 其他 / Misc
+    - id: "422"
+      name: 纪录片 / documentary
+    - id: "417"
+      name: 动漫 / Anime
+    - id: "427"
+      name: 短剧 / Short Play
+    - id: "401"
+      name: 电影 / Movies
+    - id: "402"
+      name: 电视剧 / TV Series
+    - id: "403"
+      name: 综艺 / TV Shows
+    - id: "423"
+      name: 音乐 / Music
+    - id: "424"
+      name: 有声书 / Audiobook
+    - id: "425"
+      name: 软件 / Software
+description: 为爱启航，造就梦想！
+id: zmpt
+level_requirements:
+    - name: User
+      privilege: 新用户的默认级别
+    - downloaded: 50GB
+      id: 1
+      interval: P4W
+      name: 中级训练家(PU)
+      privilege: 可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。
+      ratio: 1.05
+      seeding_bonus: 30000
+    - downloaded: 120GB
+      id: 2
+      interval: P8W
+      name: 高级训练家(eu)
+      ratio: 1.55
+      seeding_bonus: 80000
+    - downloaded: 300GB
+      id: 3
+      interval: P16W
+      name: 精英训练家(CU)
+      privilege: 可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 2.05
+      seeding_bonus: 150000
+    - downloaded: 500GB
+      id: 4
+      interval: P28W
+      name: 道馆训练家(IU)
+      privilege: 可以查看普通日志。道馆训练家(IU)及以上用户封存账号后不会被删除;。
+      ratio: 2.55
+      seeding_bonus: 250000
+    - downloaded: 750GB
+      id: 5
+      interval: P40W
+      name: 专家训练家(VU)
+      privilege: 可以查看其它用户的评论、帖子历史。
+      ratio: 3.05
+      seeding_bonus: 400000
+    - downloaded: 1TB
+      id: 6
+      interval: P56W
+      name: 冠军训练家(EU)
+      privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 3.55
+      seeding_bonus: 600000
+    - downloaded: 1.5TB
+      id: 7
+      interval: P76W
+      name: 大师训练家(UU)
+      ratio: 4.05
+      seeding_bonus: 900000
+    - downloaded: 3TB
+      id: 8
+      interval: P100W
+      is_kept: true
+      name: 传说训练家(NM)
+      privilege: 传说训练家(NM)及以上用户会永远保留账号。
+      ratio: 4.55
+      seeding_bonus: 1500000
+name: 织梦
+schema: nexusphp
+timezone_offset: "+0800"
+urls:
+    - https://zmpt.cc/
+user_info:
+    fields:
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - td.rowhead:contains('电力值') + td

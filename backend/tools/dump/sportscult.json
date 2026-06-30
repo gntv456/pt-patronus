@@ -1,0 +1,342 @@
+{
+  "version": 1,
+  "id": "sportscult",
+  "name": "SportsCult",
+  "aka": [
+    "SC"
+  ],
+  "description": "SportsCult is a Private Torrent Tracker for SPORTS",
+  "tags": [
+    "运动"
+  ],
+  "timezoneOffset": "+0300",
+  "type": "private",
+  "schema": "XBTIT",
+  "urls": [
+    "uggcf://fcbegfphyg.bet/"
+  ],
+  "category": [
+    {
+      "name": "类别",
+      "key": "category",
+      "options": {
+        "__call": "buildCategoryOptionsFromDict(categoryMap)"
+      }
+    },
+    {
+      "name": "种子状态",
+      "key": "active",
+      "options": [
+        {
+          "name": "活种",
+          "value": 1
+        },
+        {
+          "name": "死种",
+          "value": 2
+        }
+      ]
+    },
+    {
+      "name": "促销状态",
+      "key": "gold",
+      "options": [
+        {
+          "name": "0%",
+          "value": 1
+        },
+        {
+          "name": "50%",
+          "value": 2
+        },
+        {
+          "name": "100%",
+          "value": 3
+        },
+        {
+          "name": "50% & 100%",
+          "value": 4
+        }
+      ]
+    }
+  ],
+  "search": {
+    "keywordPath": "params.search",
+    "requestConfig": {
+      "url": "/index.php",
+      "responseType": "document",
+      "params": {
+        "page": "torrents",
+        "active": 0,
+        "order": "created",
+        "by": "desc"
+      }
+    },
+    "advanceKeywordParams": {
+      "imdb": false
+    },
+    "selectors": {
+      "rows": {
+        "selector": "table.lista:last-of-type:not(:has(td.block:contains('Our Team Recommend'))) > tbody > tr:has(a[href^='index.php?page=torrents&category='])"
+      },
+      "title": {
+        "selector": "a[href^='index.php?page=torrent-details&id=']"
+      },
+      "url": {
+        "selector": "a[href^='index.php?page=torrent-details&id=']",
+        "attr": "href"
+      },
+      "link": {
+        "selector": "a[href^='download.php?id=']",
+        "attr": "href"
+      },
+      "size": {
+        "selector": "td:nth-child(4)",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "seeders": {
+        "selector": "td:nth-child(6)"
+      },
+      "leechers": {
+        "selector": "td:nth-child(7)"
+      },
+      "completed": {
+        "selector": "td:nth-child(8)",
+        "filters": [
+          {
+            "__ref": "statsFilter"
+          }
+        ]
+      },
+      "time": {
+        "selector": "td:nth-child(5)",
+        "filters": [
+          {
+            "name": "parseTime",
+            "args": [
+              "dd/MM/yyyy"
+            ]
+          }
+        ]
+      },
+      "category": {
+        "selector": "a[href^='index.php?page=torrents&category=']",
+        "attr": "href",
+        "filters": [
+          {
+            "name": "querystring",
+            "args": [
+              "category"
+            ]
+          },
+          {
+            "__fn": true,
+            "src": "(catId: string) => categoryMap[Number(catId)]"
+          }
+        ]
+      },
+      "tags": [
+        {
+          "name": "Free",
+          "selector": "img[src='gold/gold.gif']"
+        },
+        {
+          "name": "50%",
+          "selector": "img[src='gold/silver.gif']"
+        }
+      ]
+    }
+  },
+  "list": [
+    {
+      "urlPattern": [
+        "/index\\.php\\?page\\=torrents"
+      ]
+    }
+  ],
+  "detail": {
+    "urlPattern": [
+      "/index\\.php\\?page\\=torrent-details"
+    ],
+    "selectors": {
+      "title": {
+        "selector": "a[href^='download.php?id=']",
+        "filters": [
+          {
+            "name": "trim"
+          }
+        ]
+      },
+      "link": {
+        "selector": "a[href^='download.php?id=']",
+        "attr": "href"
+      }
+    }
+  },
+  "userInfo": {
+    "pickLast": [
+      "id",
+      "name",
+      "joinTime"
+    ],
+    "process": [
+      {
+        "requestConfig": {
+          "url": "/index.php",
+          "responseType": "document"
+        },
+        "selectors": {
+          "id": {
+            "selector": "a[href*='index.php?page=usercp']:first",
+            "attr": "href",
+            "filters": [
+              {
+                "name": "querystring",
+                "args": [
+                  "uid"
+                ]
+              }
+            ]
+          },
+          "messageCount": {
+            "selector": [
+              "a[href*='do=pm']"
+            ],
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/index.php",
+          "responseType": "document",
+          "params": {
+            "page": "usercp"
+          }
+        },
+        "assertion": {
+          "id": "params.uid"
+        },
+        "fields": [
+          "seeding"
+        ],
+        "selectors": {
+          "name": {
+            "selector": "td.header:contains('User') + td"
+          },
+          "uploaded": {
+            "selector": "td.header:contains('Uploaded:') + td",
+            "filters": [
+              {
+                "name": "parseSize"
+              }
+            ]
+          },
+          "downloaded": {
+            "selector": "td.header:contains('Downloaded:') + td",
+            "filters": [
+              {
+                "name": "parseSize"
+              }
+            ]
+          },
+          "ratio": {
+            "selector": "td.header:contains('Ratio:') + td",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "levelName": {
+            "selector": "td.header:contains('Rank:') + td"
+          },
+          "bonus": {
+            "selector": "td.green:contains('Bonus')",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "joinTime": {
+            "selector": "td.header:contains('Joined on') + td",
+            "filters": [
+              {
+                "name": "parseTime",
+                "args": [
+                  "dd/MM/yyyy HH:mm:ss"
+                ]
+              }
+            ]
+          },
+          "lastAccessAt": {
+            "selector": "td.header:contains('Last access') + td",
+            "filters": [
+              {
+                "name": "parseTime",
+                "args": [
+                  "dd/MM/yyyy HH:mm:ss"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/index.php",
+          "responseType": "document",
+          "params": {
+            "page": "modules",
+            "module": "seedbonus"
+          }
+        },
+        "selectors": {
+          "bonusPerHour": {
+            "selector": "#mcol div.b-content > h3",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "levelRequirements": [
+    {
+      "id": 1,
+      "name": "Sportsman"
+    },
+    {
+      "id": 2,
+      "name": "Athlete",
+      "uploaded": "50GB",
+      "ratio": 0.9,
+      "privilege": "Access to: Online Users, Tracker info, Live TV"
+    },
+    {
+      "id": 3,
+      "name": "ProAthlete",
+      "uploaded": "250GB",
+      "ratio": 1.8,
+      "privilege": "Access to: Online Users, Tracker info, Live TV, Requests, Top 10, and Users"
+    },
+    {
+      "id": 4,
+      "name": "VIP",
+      "groupType": "vip",
+      "privilege": "Fancy star, No ratio requirements (as long as you are vip) + Access to: Online Users, Tracker info, Live TV, Requests, Top 10, and Users"
+    }
+  ]
+}

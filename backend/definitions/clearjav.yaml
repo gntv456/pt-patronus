@@ -1,0 +1,73 @@
+# clearjav — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.subTitle.filters（匿名函数）
+
+id: clearjav
+level_requirements:
+    - id: 3
+      name: User
+      privilege: 基础用户权限
+    - id: 11
+      interval: P30D
+      name: PowerUser
+      ratio: 0.4
+      uploaded: 1TB
+    - id: 12
+      interval: P60D
+      name: SuperUser
+      ratio: 0.4
+      uploaded: 5TB
+    - id: 13
+      interval: P90D
+      name: ExtremeUser
+      ratio: 0.4
+      uploaded: 20TB
+    - id: 14
+      interval: P180D
+      name: InsaneUser
+      ratio: 0.4
+      uploaded: 50TB
+    - id: 17
+      interval: P30D
+      name: Seeder
+      ratio: 0.4
+name: ClearJAV
+schema: unit3d
+selectors:
+    fields:
+        category:
+            selector: div.torrent-search--list__resolution-and-type > span
+        completed:
+            selector: td.torrent-search--list__completed > a
+        detail:
+            attr: href
+            selector: div.torrent-title > a
+        download:
+            attr: href
+            selector: a[href*='/torrents/download/']
+        leechers:
+            selector: td.torrent-search--list__leechers > a
+        seeders:
+            selector: td.torrent-search--list__seeders > a
+        size:
+            filters:
+                - name: parse_size
+            selector: td.torrent-search--list__size > span
+        subtitle:
+            selector: div.meta-list
+        time:
+            attr: datetime
+            filters:
+                - name: parse_time
+            selector: td.torrent-search--list__age > time
+        title:
+            selector: div.torrent-title > a
+    rows:
+        selector: tr.torrent-search--list__row
+tags:
+    - 成人
+    - xxx
+timezone_offset: "+0200"
+urls:
+    - https://clearjav.com/

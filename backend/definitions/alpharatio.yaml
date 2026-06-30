@@ -1,0 +1,90 @@
+# alpharatio — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - AR
+description: AlphaRatio (AR) is a Private Torrent Tracker for 0DAY / GENERAL
+id: alpharatio
+level_requirements:
+    - id: 1
+      name: Mortal
+    - id: 2
+      interval: P4W
+      name: Philosopher
+      privilege: Mortal privileges plus can invite users, upload torrents, and submit requests.
+      seeding_bonus: 60000
+      uploaded: 80GB
+    - id: 3
+      interval: P8W
+      name: Gladiator
+      privilege: Philosopher privileges plus can use bookmarks and view top ten user/torrent stats.
+      seeding_bonus: 120000
+      uploaded: 260GB
+    - id: 4
+      interval: P12W
+      name: Giant
+      privilege: Gladiator privileges plus can create polls in the forum.
+      seeding_bonus: 360000
+      uploaded: 600GB
+    - id: 5
+      interval: P18W
+      name: Centaur
+      privilege: Giant privileges.
+      seeding_bonus: 720000
+      uploaded: 1.6TB
+    - id: 6
+      interval: P26W
+      name: Sphinx
+      privilege: Centaur privileges plus access to the Invite Forum.
+      seeding_bonus: 1440000
+      uploaded: 3.2TB
+    - id: 7
+      interval: P38W
+      name: Harpy
+      privilege: Sphinx privileges.
+      seeding_bonus: 1920000
+      uploaded: 6TB
+    - id: 8
+      interval: P60W
+      name: Satyr
+      privilege: Harpy privileges plus exemption from hit and runs and can see other users' active torrents.
+      seeding_bonus: 2400000
+      uploaded: 12TB
+    - id: 9
+      interval: P60W
+      name: Adonis
+      privilege: Harpy privileges plus exemption from hit and runs and can see other users' active torrents.
+      seeding_bonus: 2000000
+      uploaded: 12TB
+    - id: 10
+      interval: P90W
+      name: Cyclops
+      privilege: Satyr privileges.
+      seeding_bonus: 4800000
+      uploaded: 18TB
+    - id: 11
+      interval: P90W
+      name: Chimera
+      privilege: Satyr privileges.
+      seeding_bonus: 4000000
+      uploaded: 18TB
+    - group_type: vip
+      id: 12
+      name: Deity
+      privilege: Given by Staff at their discretion. Same as Satyr privileges plus can send invites even when invites are closed.
+    - group_type: vip
+      id: 13
+      interval: P120W
+      name: Spartan
+      privilege: Same as Deity privileges.
+      seeding_bonus: 6200000
+      uploaded: 10TB
+name: AlphaRatio
+schema: gazelle_jsonapi
+tags:
+    - 综合
+    - 0day
+timezone_offset: "+0000"
+urls:
+    - https://alpharatio.cc/

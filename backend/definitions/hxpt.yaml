@@ -1,0 +1,167 @@
+# 好学（hxpt.org）站点定义 —— 选择器全部按站点源码（F:\www.hxpt.org）校准。
+#
+# 校准依据：
+#   include/functions.php torrenttable() —— 种子列表行结构
+#   include/functions.php tr_small()     —— 用户资料行：<tr><td class="rowhead nowrap">标签</td><td class="rowfollow">值</td></tr>
+#   lang/chs/lang_userdetails.php        —— 中文行标签
+#   lang/chs/lang_functions.php          —— 列表表头/操作
+#
+# 关键：
+#   - 标题链接 = details.php?id=X&hit=1（无 #）；种子/下载者链接带 #seeders/#leechers，用 :not([href*="#"]) 区分
+#   - APP专属VIP 是数据库字段（app_only_vip），非等级行头衔 → VIP 准入走 /api/verifyAccess.php
+#     （HxptVIP.Verify，好学 APP 同款入口）；level 选择器仅供展示，vip_levels 仅 legacy 工具用
+#   - 大小列 = 右数第 5 个 td（操作/完成/下载者/种子/大小，普通用户右侧 5 列稳定）
+#
+# 可用 POST /api/v1/sites/inspect 在线验证任一选择器。
+id: hxpt
+name: 好学
+schema: nexusphp
+urls:
+  - https://www.hxpt.org
+
+search_entry: torrents.php
+search_param: search
+selectors:
+  # 含表头行（colhead），表头无标题/下载链接会被 ParseSearch 自动跳过
+  rows:
+    selector: "table.torrents tr"
+  fields:
+    title:
+      # 标题链接无 #；种子/下载者/评论链接带 #，用 :not 排除
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+    subtitle:
+      selector: ".torrent-subtitle"
+    detail:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+      attr: href
+    download:
+      selector: 'a[href^="download.php"]'
+      attr: href
+    completed:
+      selector: 'a[href^="viewsnatches.php"]'
+    seeders:
+      selector: 'a[href*="#seeders"]'
+    leechers:
+      selector: 'a[href*="#leechers"]'
+    size:
+      # 12 列布局右数第 6 列（在线 inspect 校准：td[6]=体积 106.48GB，右序 size/seeders/leechers/completed/空/空）
+      selector: "td:nth-last-child(6)"
+
+# 种子详情页（details.php）：标题在 <h1>（好学 cute-top-profile 皮肤，在线 inspect 校准）。
+# 其余字段（description=#kdescr / screenshots / poster / imdb_id / douban_id / download）
+# 由 EnsureDefaults 逐字段合并自 site.DefaultNexusPHPDetail，这里只覆盖差异项 title。
+detail:
+  enabled: true
+  fields:
+    title:
+      selector: "h1"
+
+# 用户资料 / VIP 判定
+# 选择器全部按 D:\html 真实页面校准（cute-top-profile 皮肤）：
+#   <span><font class="color_uploaded">上传量:</font> 104.564 TB</span>
+#   <span><font class="color_ratio">分享率:</font> 36.832</span>
+#   <span><font class="color_active">当前活动:</font> <img class="arrowup">27 <img class="arrowdown">0</span>
+#   <span><font class="color_bonus">火花 </font> [...]​: 79,888,500.6</span>
+# font.color_* 是 NexusPHP 框架常量 → 命中后取父节点文本 + 正则抽值（Parent: true）。
+# level/join_date 在 userdetails.php?id=<uid> 的 rowhead 表（detail_fields）。
+user_info:
+  path: usercp.php
+  fields:
+    uploaded:
+      selector: "font.color_uploaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:上传量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    downloaded:
+      selector: "font.color_downloaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:下载量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    ratio:
+      selector: "font.color_ratio"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:分享率)[：:]?\s*([-+]?\d+\.?\d*)'
+    bonus: # 火花（首个 color_bonus；站内还有「认领」也用 color_bonus，First() 取火花）
+      selector: "font.color_bonus"
+      parent: true
+      filters:
+        - name: regexp
+          args: '火花[^0-9]*([\d,]+\.?\d*)'
+    seeding: # 「当前活动: 27 0」第 1 个数 = 做种数
+      selector: "font.color_active"
+      parent: true
+      filters:
+        - name: regexp
+          args: '当前活动[：:]?\s*(\d+)\D+(\d+):::1'
+    leeching: # 第 2 个数 = 下载中数
+      selector: "font.color_active"
+      parent: true
+      filters:
+        - name: regexp
+          args: '当前活动[：:]?\s*(\d+)\D+(\d+):::2'
+  detail_path: userdetails.php
+  detail_fields:
+    level: # <td class="rowhead">等级</td><td><img title="维护开发员"></td>
+      selector: 'td[class*="rowhead"]:contains("等级") + td img'
+      attr: title
+    join_date: # <td>加入日期</td><td>2025-07-16 04:45:13 (...)</td>
+      selector: 'td[class*="rowhead"]:contains("加入日期") + td'
+      filters:
+        - name: regexp
+          args: '(\d{4}-\d{2}-\d{2})'
+  # legacy：仅 site.IsVIP 通用工具用；好学准入由 /api/verifyAccess.php 判定
+  vip_levels: ["APP专属VIP"]
+
+# 未登录：NexusPHP 跳转 login.php / takelogin.php
+no_login:
+  url_pattern: ["login.php", "takelogin.php"]
+  content: ["登录", "请先登录"]
+  http_status: [401]
+
+# H&R（Hit & Run）列表 —— 入口 getusertorrentlist.php?type=hr
+# 列结构见源码 lang/chs/lang_getusertorrentlistajax.php：
+#   标题/大小/种子数/下载数/上传/下载/分享率/做种时间/完成时间/客户端
+# 状态语义（app/Models/HitAndRun.php）：1=监控中 2=达标 3=未达标 4=豁免
+# enabled:true 后 automation 每 30 分钟抓取一次，未达标/临期(<HR_WARN_DEADLINE_HOURS)种子告警。
+# 选择器如与实际页不符，用 POST /api/v1/sites/inspect 在线校准后覆盖下方字段。
+hr:
+  enabled: true
+  rows:
+    selector: "table.torrents tr"
+  fields:
+    title:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+    detail:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+      attr: href
+    size:
+      selector: "td:nth-last-child(6)"
+    status:
+      selector: "td:contains('监控')"
+    deadline:
+      selector: "td:nth-last-child(2)"
+
+# 账号登录（逆向 takelogin.php）—— 后端两步交互式：先 GET 登录页取验证码/探测模式，
+# 用户识图后 POST takelogin.php。字段名/路径按源码 include/takelogin.php、public/login.php 校准。
+# 验证码走 DB(regimages) 校验、不绑 session；2FA 账号额外提交 two_step_code（TOTP）。
+# 注意：若站点开启挑战响应认证（security.use_challenge_response_authentication），
+# 登录表单无 password 字段名、改提交 response，届时账号登录自动降级、引导 cookie 登录。
+# extra_fields/验证码开关需对真好学抓包校准（计划 P2.5）。
+login:
+  enabled: true
+  page_path: login.php
+  action_path: takelogin.php
+  form:
+    username: username
+    password: password
+    image_hash: imagehash
+    imagestring: imagestring
+    two_step_code: two_step_code
+  captcha:
+    gen_path: image.php
+    hash_input_selector: 'input[name="imagehash"]'
+  extra_fields: {}

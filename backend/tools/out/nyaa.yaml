@@ -1,0 +1,63 @@
+# nyaa — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category.filters（匿名函数）
+
+id: nyaa
+name: Nyaa
+search_entry: /
+search_param: q
+selectors:
+    fields:
+        category:
+            attr: alt
+            selectors:
+                - img.category-icon
+        completed:
+            filters:
+                - name: parse_number
+            selectors:
+                - td:nth-child(8)
+        detail:
+            attr: href
+            selectors:
+                - a[href*='/view/']:not([href*='#'])
+        download:
+            attr: href
+            selectors:
+                - a[href*='/download/']
+        leechers:
+            filters:
+                - name: parse_number
+            selectors:
+                - td:nth-child(7)
+        seeders:
+            filters:
+                - name: parse_number
+            selectors:
+                - td:nth-child(6)
+        size:
+            filters:
+                - name: parse_size
+            selectors:
+                - td:nth-child(4)
+        subtitle:
+            attr: alt
+            selectors:
+                - img.category-icon
+        time:
+            attr: data-timestamp
+            filters:
+                - name: parse_number
+            selectors:
+                - td[data-timestamp]
+        title:
+            selectors:
+                - a[href*='/view/']:not([href*='#'])
+    rows:
+        selector: table.torrent-list > tbody > tr
+tags:
+    - 综合
+urls:
+    - https://nyaa.si/
+    - https://sukebei.nyaa.si/

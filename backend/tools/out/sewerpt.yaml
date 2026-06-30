@@ -1,0 +1,89 @@
+# sewerpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+description: 再小众的热爱，也值得被世界看见
+id: sewerpt
+level_requirements:
+    - name: User
+      privilege: '新用户的默认级别。只能在每周六中午12点至每周日晚上11点59分发布种子。 '
+    - downloaded: 50GB
+      id: 1
+      interval: P4W
+      name: 大工
+      name_aka:
+        - Power User
+      privilege: |-
+        map[__raw:BinaryExpression src:"得到一个邀请名额；可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种； " +
+                '可以发送邀请； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。']
+      ratio: 1.05
+    - downloaded: 120GB
+      id: 2
+      interval: P8W
+      name: 技工
+      name_aka:
+        - Elite User
+      privilege: Elite User及以上用户封存账号后不会被删除。
+      ratio: 1.55
+    - downloaded: 300GB
+      id: 3
+      interval: P15W
+      name: 安全员
+      name_aka:
+        - Crazy User
+      privilege: 得到两个邀请名额；可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 2.05
+    - downloaded: 500GB
+      id: 4
+      interval: P25W
+      name: 技术员
+      name_aka:
+        - Insane User
+      privilege: 可以查看普通日志。
+      ratio: 2.55
+    - downloaded: 750GB
+      id: 5
+      interval: P40W
+      is_kept: true
+      name: 工长
+      name_aka:
+        - Veteran User
+      privilege: 得到三个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
+      ratio: 3.05
+    - downloaded: 1TB
+      id: 6
+      interval: P60W
+      is_kept: true
+      name: 包工头
+      name_aka:
+        - Extreme User
+      privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 3.55
+    - downloaded: 1.5TB
+      id: 7
+      interval: P80W
+      is_kept: true
+      name: 工程师
+      name_aka:
+        - Ultimate User
+      privilege: 得到五个邀请名额。
+      ratio: 4.05
+    - downloaded: 3TB
+      id: 8
+      interval: P100W
+      is_kept: true
+      name: 老板
+      name_aka:
+        - Nexus Master
+      privilege: 得到十个邀请名额。
+      ratio: 4.55
+name: 下水道
+schema: nexusphp
+tags:
+    - 冷门
+    - 低分
+    - 粤语
+    - 影视
+timezone_offset: "+0800"
+urls:
+    - https://sewerpt.com/

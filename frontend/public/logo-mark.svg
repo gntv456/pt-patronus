@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="PTPatronus mark">
+  <!-- 透明背景版：仅守护者吉祥物（撑满放大），用于 header 叠加 / 启动页 / 彩色背景 -->
+  <defs>
+    <linearGradient id="m-glassBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".64"/><stop offset=".5" stop-color="#ffffff" stop-opacity=".26"/><stop offset="1" stop-color="#ffffff" stop-opacity=".08"/></linearGradient>
+    <linearGradient id="m-glassRefract" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9d8bff" stop-opacity=".42"/><stop offset="1" stop-color="#5bb6ff" stop-opacity=".38"/></linearGradient>
+    <radialGradient id="m-specTop" cx=".42" cy=".04" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".92"/><stop offset=".45" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <path id="m-shield" d="M180 290 L844 290 C884 380 896 488 868 580 C824 720 720 812 512 928 C304 812 200 720 156 580 C128 488 140 380 180 290 Z"/>
+    <clipPath id="m-shieldClip"><use href="#m-shield"/></clipPath>
+    <filter id="m-liquid" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.009 0.015" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter>
+    <filter id="m-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="18"/></filter>
+    <filter id="m-ptShadow" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="8"/><feOffset dy="9" result="o"/><feComponentTransfer><feFuncA type="linear" slope=".44"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="m-hatGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb24d"/><stop offset=".35" stop-color="#ff6fa5"/><stop offset=".7" stop-color="#c46bf0"/><stop offset="1" stop-color="#9d6cf6"/></linearGradient>
+    <radialGradient id="m-ballGrad" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#9af6ff"/><stop offset=".6" stop-color="#46d4f0"/><stop offset="1" stop-color="#2bb8d8"/></radialGradient>
+    <linearGradient id="m-ptGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c5ce7"/><stop offset="1" stop-color="#3a2db0"/></linearGradient>
+  </defs>
+
+  <use href="#m-shield" fill="#1a1340" opacity=".26" transform="translate(0 24)" filter="url(#m-soft)"/>
+  <g filter="url(#m-liquid)">
+    <use href="#m-shield" fill="url(#m-glassBody)"/>
+    <use href="#m-shield" fill="url(#m-glassRefract)"/>
+    <g clip-path="url(#m-shieldClip)"><rect x="150" y="270" width="720" height="400" fill="url(#m-specTop)"/></g>
+    <use href="#m-shield" fill="none" stroke="#ffffff" stroke-width="4.5" opacity=".82"/>
+    <use href="#m-shield" fill="none" stroke="#6c8cf5" stroke-width="2" opacity=".5"/>
+  </g>
+  <g clip-path="url(#m-shieldClip)">
+    <circle cx="408" cy="458" r="42" fill="#2a2342"/>
+    <circle cx="616" cy="458" r="42" fill="#2a2342"/>
+    <circle cx="396" cy="444" r="14" fill="#fff"/>
+    <circle cx="604" cy="444" r="14" fill="#fff"/>
+    <path d="M452 556 Q512 620 572 556" fill="none" stroke="#e85d7e" stroke-width="24" stroke-linecap="round"/>
+    <text x="514" y="798" text-anchor="middle" font-family="'SF Pro Display','Helvetica Neue','Segoe UI',Arial,sans-serif" font-size="188" font-weight="800" letter-spacing="-10" fill="url(#m-ptGrad)" filter="url(#m-ptShadow)">PT</text>
+  </g>
+  <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="#1a1340" opacity=".24" transform="translate(0 18)" filter="url(#m-soft)"/>
+  <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="url(#m-hatGrad)"/>
+  <ellipse cx="446" cy="232" rx="30" ry="86" fill="#ffffff" opacity=".24" transform="rotate(-22 446 232)"/>
+  <ellipse cx="512" cy="302" rx="196" ry="28" fill="#7d52c4"/>
+  <ellipse cx="512" cy="295" rx="184" ry="7" fill="#ffffff" opacity=".32"/>
+  <circle cx="512" cy="110" r="36" fill="url(#m-ballGrad)"/>
+  <circle cx="500" cy="97" r="13" fill="#ffffff" opacity=".85"/>
+</svg>

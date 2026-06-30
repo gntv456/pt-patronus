@@ -1,0 +1,126 @@
+# discfan — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - 碟粉
+categories:
+    - id: "401"
+      name: 电影 - 中国大陆
+    - id: "404"
+      name: 电影 - 中国香港特别行政区
+    - id: "405"
+      name: 电影 - 中国台湾省
+    - id: "402"
+      name: 电影 - 泰国
+    - id: "403"
+      name: 电影 - 日本
+    - id: "406"
+      name: 电影 - 韩国
+    - id: "410"
+      name: 电影 - 世界
+    - id: "411"
+      name: 剧集
+    - id: "414"
+      name: 音乐
+    - id: "413"
+      name: 纪录
+    - id: "416"
+      name: 综艺
+    - id: "417"
+      name: 体育
+    - id: "419"
+      name: 动漫
+description: 碟粉
+id: discfan
+legacy_urls:
+    - https://pt.gztown.net/
+level_requirements:
+    - id: 1
+      name: 凡人
+      name_aka:
+        - User
+      privilege: 新用户的默认级别，拥有下载权限。不能直接发布资源，但可添加候选区。可以上传字幕但不能删除自己上传的字幕。可在部分论坛板块发帖和留言。可以在求种区求种。可以更新外部信息如IMDb信息。
+    - downloaded: 50GB
+      id: 2
+      interval: P4W
+      name: 炼气
+      name_aka:
+        - Power User
+      privilege: 首次升级获得1个永久邀请名额。可以直接发布种子资源。可以删除自己上传的字幕。允许使用个性条。可以请求续种。可以查看和搜索用户列表。可以查看NFO文件。可以查看排行榜。可以查看他人种子历史（未设为强隐私时）。
+      ratio: 1.05
+      seeding_bonus: 40000
+    - downloaded: 120GB
+      id: 3
+      interval: P8W
+      name: 筑基
+      name_aka:
+        - Elite User
+      privilege: 首次升级获得2个永久邀请名额。允许在魔力值中心购买邀请。允许查看邀请。筑基(Elite User)及以上等级用户在封存账号后不会被删除帐号。
+      ratio: 1.55
+      seeding_bonus: 80000
+    - downloaded: 300GB
+      id: 4
+      interval: P15W
+      name: 结丹
+      name_aka:
+        - Crazy User
+      privilege: 首次升级获得3个永久邀请名额。可以查看特别区种子。
+      ratio: 2.05
+      seeding_bonus: 150000
+    - downloaded: 500GB
+      id: 5
+      interval: P25W
+      name: 元婴
+      name_aka:
+        - Insane User
+      privilege: 首次升级获得4个永久邀请名额。可以查看一般日志，不能查看机密日志。
+      ratio: 2.55
+      seeding_bonus: 250000
+    - downloaded: 750GB
+      id: 6
+      interval: P40W
+      is_kept: true
+      name: 化神
+      name_aka:
+        - Veteran User
+      privilege: 首次升级获得6个永久邀请名额。可以查看他人的评论和帖子历史记录。化神(Veteran User)及以上等级用户会永远保留帐号。
+      ratio: 3.05
+      seeding_bonus: 400000
+    - downloaded: 1024GB
+      id: 7
+      interval: P60W
+      is_kept: true
+      name: 炼虚
+      name_aka:
+        - Extreme User
+      privilege: 首次升级获得8个永久邀请名额。
+      ratio: 3.55
+      seeding_bonus: 600000
+    - downloaded: 1536GB
+      id: 8
+      interval: P80W
+      is_kept: true
+      name: 合体
+      name_aka:
+        - Ultimate User
+      privilege: 首次升级获得10个永久邀请名额。可以查看种子文件结构。
+      ratio: 4.05
+      seeding_bonus: 800000
+    - downloaded: 3072GB
+      id: 9
+      interval: P100W
+      is_kept: true
+      name: 大乘
+      name_aka:
+        - Nexus Master
+      privilege: 首次升级获得20个永久邀请名额。普通用户可以达到的最高级别。
+      ratio: 4.55
+      seeding_bonus: 1000000
+name: DiscFan
+schema: nexusphp
+tags:
+    - 影视
+    - 综合
+urls:
+    - https://discfan.net/

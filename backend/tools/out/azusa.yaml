@@ -1,0 +1,37 @@
+# azusa — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - Azusa
+categories:
+    - id: "404"
+      name: 游戏
+    - id: "402"
+      name: 漫画
+    - id: "403"
+      name: 轻小说
+    - id: "407"
+      name: CG
+    - id: "409"
+      name: 音乐
+description: '[主打二次元（非视频类）相关内容，包括漫画、轻小说、GalGame、同人、CG以及二次元音乐 2025.7.12应站点公告要求取消用户信息获取]'
+id: azusa
+name: 梓喵
+schema: nexusphp
+selectors:
+    fields:
+        completed:
+            selector: a[href*='viewsnatches']
+        leechers:
+            selector: a[href*='leechers']
+        seeders:
+            selector: a[href*='seeders']
+tags:
+    - 漫画
+    - 轻小说
+    - Galgame
+    - 画集
+timezone_offset: "+0800"
+urls:
+    - https://azusa.wiki/

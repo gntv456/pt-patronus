@@ -1,0 +1,10 @@
+# torrentseeds — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+dead: true
+id: torrentseeds
+name: TorrentSeeds
+schema: unit3d
+urls:
+    - https://www.torrentseeds.org/

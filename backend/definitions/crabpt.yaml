@@ -1,0 +1,109 @@
+# 蟹黄堡（crabpt.vip）站点定义 —— 按 D:\html 真实页面校准。
+# 经典 NexusPHP info_block 皮肤（用户栏 color_* 内联在一行），结构同好学 hxpt：
+#   <font class="color_uploaded">上传量:</font> 1.261 TB
+#   <font class="color_bonus">蟹币值 </font>[使用]: 1,621,449.1
+#   <font class="color_active">当前活动:</font> <img class="arrowup">12 <img class="arrowdown">0
+id: crabpt
+name: 蟹黄堡
+schema: nexusphp
+urls:
+  - https://crabpt.vip
+
+search_entry: torrents.php
+search_param: search
+selectors:
+  rows:
+    selector: "table.torrents tr"
+  fields:
+    title:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+    subtitle:
+      selector: ".torrent-subtitle"
+    detail:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+      attr: href
+    download:
+      selector: 'a[href^="download.php"]'
+      attr: href
+    completed:
+      selector: 'a[href^="viewsnatches.php"]'
+    seeders:
+      selector: 'a[href*="#seeders"]'
+    leechers:
+      selector: 'a[href*="#leechers"]'
+    size:
+      selector: "td:nth-last-child(5)"
+
+# 用户资料（info_block color_* 锚点，Parent 取所在块文本 + 正则抽值）
+user_info:
+  path: usercp.php
+  fields:
+    uploaded:
+      selector: "font.color_uploaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:上传量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    downloaded:
+      selector: "font.color_downloaded"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:下载量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+    ratio:
+      selector: "font.color_ratio"
+      parent: true
+      filters:
+        - name: regexp
+          args: '(?:分享率)[：:]?\s*([-+]?\d+\.?\d*)'
+    bonus: # 蟹币值（首个 color_bonus；站内 H&R/认领 也用 color_bonus，First() 取蟹币值）
+      selector: "font.color_bonus"
+      parent: true
+      filters:
+        - name: regexp
+          args: '蟹币值[^0-9]*([\d,]+\.?\d*)'
+    seeding:
+      selector: "font.color_active"
+      parent: true
+      filters:
+        - name: regexp
+          args: '当前活动[：:]?\s*(\d+)\D+(\d+):::1'
+    leeching:
+      selector: "font.color_active"
+      parent: true
+      filters:
+        - name: regexp
+          args: '当前活动[：:]?\s*(\d+)\D+(\d+):::2'
+  detail_path: userdetails.php
+  detail_fields:
+    level:
+      selector: 'td[class*="rowhead"]:contains("等级") + td img'
+      attr: title
+    join_date:
+      selector: 'td[class*="rowhead"]:contains("加入日期") + td'
+      filters:
+        - name: regexp
+          args: '(\d{4}-\d{2}-\d{2})'
+
+no_login:
+  url_pattern: ["login.php", "takelogin.php"]
+  content: ["登录", "请先登录"]
+  http_status: [401, 403]
+
+# H&R（用户栏显示 H&R: [0/0/15]，站点开启 H&R 考核）
+hr:
+  enabled: true
+  rows:
+    selector: "table.torrents tr"
+  fields:
+    title:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+    detail:
+      selector: 'a[href^="details.php"]:not([href*="#"])'
+      attr: href
+    size:
+      selector: "td:nth-last-child(5)"
+    status:
+      selector: "td:contains('监控')"
+    deadline:
+      selector: "td:nth-last-child(2)"

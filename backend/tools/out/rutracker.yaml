@@ -1,0 +1,47 @@
+# rutracker — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.time（data）
+#   - search.size（data）
+#   - search.seeders（data）
+
+aka:
+    - RUT
+description: RuTracker.org is a RUSSIAN Semi-Private site with a thriving file-sharing community
+id: rutracker
+legacy_urls:
+    - https://rutracker.nl/
+name: RuTracker.org
+search_entry: /forum/tracker.php
+selectors:
+    fields:
+        category:
+            selector: td.f-name-col > div.f-name > a
+        completed:
+            selector: td:nth-child(9)
+        detail:
+            attr: href
+            selector: td.t-title-col > div.t-title > a.tLink
+        download:
+            attr: href
+            selector: td.tor-size > a.tr-dl
+        leechers:
+            selector: td.leechmed:nth-child(8)
+        seeders:
+            selector: td:nth-child(7)
+        size:
+            selector: td.tor-size
+        time:
+            selector: td:nth-child(10)
+        title:
+            filters:
+                - name: trim
+            selector: td.t-title-col > div.t-title > a.tLink
+    rows:
+        selector: table#tor-tbl > tbody > tr
+tags:
+    - 综合
+timezone_offset: "+0000"
+urls:
+    - https://rutracker.org/
+    - https://rutracker.net/

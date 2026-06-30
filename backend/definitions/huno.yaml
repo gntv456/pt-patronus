@@ -1,0 +1,127 @@
+# huno — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.url.filters（匿名函数）
+#   - search.category.filters（匿名函数）
+#   - userInfo.id.filters（匿名函数）
+#   - userInfo.uploads.filters[split]
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+description: HAWKE-UNO IS A HAWKE-ONE SERVICE POWERED BY UNIT3D.
+id: huno
+legacy_urls:
+    - https://hawke.unoz/
+level_requirements:
+    - id: 1
+      name: Silent Sisters
+      privilege: Can download
+    - id: 2
+      name: Iron Fleet
+      privilege: Can upload; Can request
+    - id: 3
+      name: White Walkers
+      privilege: RSS; IRC Server; IRC Announce; Upload API; Can apply for hawke-one Discord access
+    - id: 4
+      name: Dothraki
+      privilege: Listed uploads; HnR immunity
+    - id: 5
+      name: Unsullied
+      privilege: Can invite; Can see peers; Trusted uploader; Worthy; hawke-one Discord invite; Unsullied on hawke-one Discord with added perks
+    - id: 6
+      name: Targaryen
+      privilege: Internal; Custom branding; Targaryen on hawke-one Discord with added perks
+name: HUNO
+schema: unit3d
+search_entry: /api/torrents/filter
+search_param: name
+selectors:
+    fields:
+        category:
+            selector: :self
+        completed:
+            selectors:
+                - times_completed
+                - attributes.times_completed
+                - completed
+                - attributes.completed
+        detail:
+            selector: :self
+        download:
+            selectors:
+                - download_link
+                - attributes.download_link
+        leechers:
+            selectors:
+                - leechers
+                - attributes.leechers
+        seeders:
+            selectors:
+                - seeders
+                - attributes.seeders
+        size:
+            selectors:
+                - size
+                - attributes.size
+        subtitle:
+            selector: :self
+        time:
+            selectors:
+                - created_at
+                - attributes.created_at
+                - bumped_at
+                - attributes.bumped_at
+        title:
+            selectors:
+                - name
+                - attributes.name
+    rows:
+        selectors:
+            - data.data
+            - data
+            - torrents.data
+            - torrents
+tags:
+    - 影视
+    - 综合
+timezone_offset: "+0000"
+urls:
+    - https://hawke.uno/
+user_info:
+    fields:
+        bonus:
+            selector: data.hunos
+        bonus_per_hour:
+            filters:
+                - name: parse_number
+            selectors:
+                - table.deep-space-similar-table > tfoot td.tw-font-bold[style*=color]
+        downloaded:
+            selector: data.downloaded
+        id:
+            selectors:
+                - span.deep-space-user-card__user-id
+        join_date:
+            filters:
+                - name: parse_time
+            selector: data.member_since
+        leeching:
+            selector: data.active_leeches
+        level:
+            selector: data.group
+        name:
+            selector: data.username
+        seeding:
+            selector: data.active_seeds
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - div.ds-user-stats span[title*='Seeding Size']
+        uploaded:
+            selector: data.uploaded
+        uploads:
+            filters:
+                - name: trim
+                - name: parse_number
+            selectors:
+                - div.ds-user-stats span[title*='Uploads']

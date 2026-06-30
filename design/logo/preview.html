@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PTPatronus · Logo · 守护者吉祥物 · iOS 26 液态玻璃</title>
+<style>
+  :root{
+    --pt-primary:#6c5ce7; --pt-primary-2:#4285f4; --pt-accent:#4ad4ef;
+    --glass-bg:rgba(255,255,255,.55); --glass-border:rgba(255,255,255,.65);
+    --glass-shadow:0 8px 32px rgba(31,38,135,.12);
+    --text:#1f2937; --muted:#6b7280;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+    color:var(--text);
+    background:linear-gradient(135deg,#e6f0ff 0%,#f0e6ff 100%);
+    background-attachment:fixed; min-height:100vh;
+    padding:48px 24px 80px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  .hero{position:relative;overflow:hidden;border-radius:28px;padding:56px 40px;
+    background:var(--glass-bg);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid var(--glass-border);box-shadow:var(--glass-shadow);
+    display:flex;align-items:center;gap:48px;flex-wrap:wrap;justify-content:center;text-align:center}
+  .hero::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 40%);mix-blend-mode:overlay;opacity:.6}
+  .hero-logo{width:280px;height:280px;flex:none;animation:float 6s ease-in-out infinite;
+    filter:drop-shadow(0 24px 40px rgba(108,92,231,.35))}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+  .hero h1{margin:0 0 6px;font-size:46px;font-weight:800;letter-spacing:-1px;
+    background:linear-gradient(135deg,#ff6fa5,#6c5ce7 55%,#4285f4);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{margin:0;color:var(--muted);font-size:16px}
+  .hero .tags{margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .tag{font-size:12px;padding:4px 12px;border-radius:999px;background:rgba(108,92,231,.12);color:var(--pt-primary)}
+
+  .sec{margin-top:40px}
+  .sec h2{font-size:20px;margin:0 0 4px;font-weight:700}
+  .sec .desc{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .card{background:var(--glass-bg);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+    border:1px solid var(--glass-border);border-radius:20px;box-shadow:var(--glass-shadow);padding:28px;position:relative}
+  .card::before{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.4),rgba(255,255,255,0) 36%);mix-blend-mode:overlay;opacity:.5}
+
+  .sizes{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap;justify-content:center}
+  .size{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .size span{font-size:11px;color:var(--muted)}
+  .s16{width:16px;height:16px}.s24{width:24px;height:24px}.s32{width:32px;height:32px}
+  .s48{width:48px;height:48px}.s64{width:64px;height:64px}.s96{width:96px;height:96px}
+  .s128{width:128px;height:128px}.s196{width:196px;height:196px}
+
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .mode{border-radius:16px;padding:36px;display:flex;align-items:center;justify-content:center;min-height:220px;position:relative}
+  .mode.light{background:linear-gradient(135deg,#e6f0ff,#f0e6ff)}
+  .mode.dark{background:linear-gradient(135deg,#16181f,#1d1b2e)}
+  .mode .lbl{position:absolute;top:12px;left:14px;font-size:11px;color:var(--muted)}
+  .mode.dark .lbl{color:#9ca3af}
+  .mode svg{width:170px;height:170px;filter:drop-shadow(0 14px 26px rgba(108,92,231,.32))}
+
+  .markrow{display:flex;gap:16px;flex-wrap:wrap;justify-content:center}
+  .markbg{width:150px;height:150px;border-radius:18px;display:flex;align-items:center;justify-content:center;position:relative}
+  .markbg svg{width:130px;height:130px}
+  .markbg .lbl{position:absolute;bottom:8px;font-size:10px;color:rgba(255,255,255,.7)}
+  .bg1{background:linear-gradient(135deg,#6c5ce7,#4285f4)}
+  .bg2{background:linear-gradient(135deg,#11998e,#38ef7d)}
+  .bg3{background:linear-gradient(135deg,#e100ff,#7f00ff)}
+  .bg4{background:#16181f}
+  .bg5{background:#fff}
+  .bg5 .lbl{color:#9ca3af}
+
+  .scenes{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .scene{border-radius:16px;padding:20px;min-height:160px;position:relative}
+  .scene .ttl{font-size:11px;color:var(--muted);margin-bottom:14px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+
+  .browser{background:#2b2b3a;border-radius:10px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .tabbar{display:flex;gap:4px;padding:8px 8px 0;background:#1f1f2b;align-items:center}
+  .tab{display:flex;align-items:center;gap:8px;background:#2b2b3a;color:#e5e7eb;font-size:12px;padding:8px 14px;border-radius:8px 8px 0 0}
+  .tab svg{width:16px;height:16px}
+  .tab .x{opacity:.4;margin-left:6px}
+  .browser .body{height:70px;background:linear-gradient(135deg,#e6f0ff,#f0e6ff)}
+
+  .sidebar{background:linear-gradient(180deg,#f5f3ff,#eef2ff);border-radius:12px;padding:16px;width:100%}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:#1f2937}
+  .brand svg{width:40px;height:40px}
+  .navi{margin-top:14px;display:flex;flex-direction:column;gap:6px}
+  .navi div{font-size:12px;color:var(--muted);padding:6px 8px;border-radius:8px}
+  .navi div.on{background:rgba(108,92,231,.12);color:var(--pt-primary);font-weight:600}
+
+  .desktop{display:flex;gap:18px;justify-content:center;align-items:flex-end;flex-wrap:wrap}
+  .app{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .app svg{width:64px;height:64px}
+  .app span{font-size:10px;color:#6b7280}
+  .app.me span{color:var(--pt-primary);font-weight:600}
+
+  .swatches{display:flex;gap:12px;flex-wrap:wrap}
+  .sw{flex:1;min-width:120px;border-radius:12px;padding:16px;color:#fff;font-size:12px}
+  .sw .hex{font-size:14px;font-weight:700;letter-spacing:.5px}
+  .sw .role{opacity:.88;margin-top:4px}
+  .files{font-size:13px;line-height:1.9;color:var(--text)}
+  .files code{background:rgba(108,92,231,.1);color:var(--pt-primary);padding:2px 8px;border-radius:6px;font-size:12px}
+  .note{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.7}
+  @media(max-width:680px){.modes,.scenes{grid-template-columns:1fr}.hero{padding:36px 20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ════════ Hero ════════ -->
+  <section class="hero">
+    <svg class="hero-logo" viewBox="0 0 1024 1024" role="img" aria-label="PTPatronus">
+      <defs>
+        <linearGradient id="g-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9ec7"/><stop offset=".26" stop-color="#c08cee"/><stop offset=".56" stop-color="#7b7ff0"/><stop offset=".8" stop-color="#5aa8f5"/><stop offset="1" stop-color="#4ad4ef"/></linearGradient>
+        <radialGradient id="g-sp1"><stop offset="0" stop-color="#ffd6ec" stop-opacity=".85"/><stop offset="1" stop-color="#ffd6ec" stop-opacity="0"/></radialGradient>
+        <radialGradient id="g-sp2"><stop offset="0" stop-color="#7af0ff" stop-opacity=".8"/><stop offset="1" stop-color="#7af0ff" stop-opacity="0"/></radialGradient>
+        <radialGradient id="g-sp3"><stop offset="0" stop-color="#d8c8ff" stop-opacity=".8"/><stop offset="1" stop-color="#d8c8ff" stop-opacity="0"/></radialGradient>
+        <clipPath id="g-sq"><rect width="1024" height="1024" rx="205"/></clipPath>
+        <linearGradient id="g-top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".16" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        <linearGradient id="g-gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".66"/><stop offset=".5" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient>
+        <linearGradient id="g-gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9d8bff" stop-opacity=".4"/><stop offset="1" stop-color="#5bb6ff" stop-opacity=".36"/></linearGradient>
+        <radialGradient id="g-spec" cx=".42" cy=".04" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".45" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+        <path id="g-sh" d="M180 290 L844 290 C884 380 896 488 868 580 C824 720 720 812 512 928 C304 812 200 720 156 580 C128 488 140 380 180 290 Z"/>
+        <clipPath id="g-shc"><use href="#g-sh"/></clipPath>
+        <filter id="g-liq" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.009 0.015" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter>
+        <filter id="g-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="16"/></filter>
+        <filter id="g-tx" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="7"/><feOffset dy="8" result="o"/><feComponentTransfer><feFuncA type="linear" slope=".4"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="g-hat" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb24d"/><stop offset=".35" stop-color="#ff6fa5"/><stop offset=".7" stop-color="#c46bf0"/><stop offset="1" stop-color="#9d6cf6"/></linearGradient>
+        <radialGradient id="g-ball" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#9af6ff"/><stop offset=".6" stop-color="#46d4f0"/><stop offset="1" stop-color="#2bb8d8"/></radialGradient>
+        <linearGradient id="g-pt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c5ce7"/><stop offset="1" stop-color="#3a2db0"/></linearGradient>
+      </defs>
+      <g clip-path="url(#g-sq)">
+        <rect width="1024" height="1024" fill="url(#g-bg)"/>
+        <ellipse cx="300" cy="300" rx="440" ry="380" fill="url(#g-sp1)"><animate attributeName="cx" values="300;380;300" dur="9s" repeatCount="indefinite"/><animate attributeName="cy" values="300;260;300" dur="11s" repeatCount="indefinite"/></ellipse>
+        <ellipse cx="740" cy="770" rx="440" ry="400" fill="url(#g-sp2)"><animate attributeName="cx" values="740;660;740" dur="10s" repeatCount="indefinite"/><animate attributeName="cy" values="770;810;770" dur="13s" repeatCount="indefinite"/></ellipse>
+        <ellipse cx="790" cy="250" rx="270" ry="250" fill="url(#g-sp3)"><animate attributeName="cx" values="790;720;790" dur="12s" repeatCount="indefinite"/></ellipse>
+        <rect width="1024" height="1024" fill="url(#g-top)"/>
+      </g>
+      <use href="#g-sh" fill="#3a2370" opacity=".26" transform="translate(0 22)" filter="url(#g-soft)"/>
+      <g filter="url(#g-liq)">
+        <use href="#g-sh" fill="url(#g-gb)"/><use href="#g-sh" fill="url(#g-gr)"/>
+        <g clip-path="url(#g-shc)"><rect x="150" y="270" width="720" height="400" fill="url(#g-spec)"/></g>
+        <use href="#g-sh" fill="none" stroke="#fff" stroke-width="4" opacity=".78"/>
+        <use href="#g-sh" fill="none" stroke="#a9c4ff" stroke-width="1.5" opacity=".4"/>
+      </g>
+      <g clip-path="url(#g-shc)">
+        <circle cx="408" cy="458" r="42" fill="#2a2342"/><circle cx="616" cy="458" r="42" fill="#2a2342"/>
+        <circle cx="396" cy="444" r="14" fill="#fff"/><circle cx="604" cy="444" r="14" fill="#fff"/>
+        <path d="M452 556 Q512 620 572 556" fill="none" stroke="#e85d7e" stroke-width="24" stroke-linecap="round"/>
+        <text x="514" y="798" text-anchor="middle" font-family="'SF Pro Display','Helvetica Neue','Segoe UI',Arial,sans-serif" font-size="188" font-weight="800" letter-spacing="-10" fill="url(#g-pt)" filter="url(#g-tx)">PT</text>
+      </g>
+      <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="#4a2370" opacity=".22" transform="translate(0 16)" filter="url(#g-soft)"/>
+      <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="url(#g-hat)"/>
+      <ellipse cx="446" cy="232" rx="30" ry="86" fill="#fff" opacity=".22" transform="rotate(-22 446 232)"/>
+      <ellipse cx="512" cy="302" rx="196" ry="28" fill="#7d52c4"/>
+      <ellipse cx="512" cy="295" rx="184" ry="7" fill="#fff" opacity=".3"/>
+      <circle cx="512" cy="110" r="36" fill="url(#g-ball)"/>
+      <circle cx="500" cy="97" r="13" fill="#fff" opacity=".85"/>
+    </svg>
+    <div>
+      <h1>PTPatronus</h1>
+      <p>守护者吉祥物 · 液态玻璃盾牌角色 · iOS 26 Liquid Glass</p>
+      <div class="tags">
+        <span class="tag">形象撑满画幅</span>
+        <span class="tag">彩色尖帽 + 笑脸 + PT</span>
+        <span class="tag">小尺寸清晰可辨</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 尺寸阵列 ════════ -->
+  <section class="sec">
+    <h2>尺寸适应性</h2>
+    <p class="desc">主体撑满容器（高 ~85%、宽 ~75%），细节等比放大；盾牌 + 帽子轮廓在小尺寸仍可辨识。</p>
+    <div class="card">
+      <div class="sizes">
+        <div class="size"><svg class="s16" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>16</span></div>
+        <div class="size"><svg class="s24" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>24</span></div>
+        <div class="size"><svg class="s32" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>32</span></div>
+        <div class="size"><svg class="s48" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>48</span></div>
+        <div class="size"><svg class="s64" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>64</span></div>
+        <div class="size"><svg class="s96" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>96</span></div>
+        <div class="size"><svg class="s128" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>128</span></div>
+        <div class="size"><svg class="s196" viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>196</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 明暗模式 ════════ -->
+  <section class="sec">
+    <h2>明暗模式</h2>
+    <p class="desc">多彩容器自带玻璃质感，在任意背景下都成立；透明 mark 适配深色界面。</p>
+    <div class="modes">
+      <div class="mode light"><span class="lbl">浅色 · 完整 logo</span><svg viewBox="0 0 1024 1024"><use href="#logo"/></svg></div>
+      <div class="mode dark"><span class="lbl">深色 · 透明 mark</span><svg viewBox="0 0 1024 1024"><use href="#mark"/></svg></div>
+    </div>
+  </section>
+
+  <!-- ════════ 透明 mark ════════ -->
+  <section class="sec">
+    <h2>透明标志 Mark</h2>
+    <p class="desc">去除容器的纯守护者角色，用于 header 叠加、启动页、彩色背景。</p>
+    <div class="card">
+      <div class="markrow">
+        <div class="markbg bg1"><svg viewBox="0 0 1024 1024"><use href="#mark"/></svg></div>
+        <div class="markbg bg2"><svg viewBox="0 0 1024 1024"><use href="#mark"/></svg></div>
+        <div class="markbg bg3"><svg viewBox="0 0 1024 1024"><use href="#mark"/></svg></div>
+        <div class="markbg bg4"><svg viewBox="0 0 1024 1024"><use href="#mark"/></svg></div>
+        <div class="markbg bg5"><svg viewBox="0 0 1024 1024"><use href="#mark"/></svg><span class="lbl">浅底</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 应用场景 ════════ -->
+  <section class="sec">
+    <h2>应用场景</h2>
+    <p class="desc">浏览器标签、侧边栏品牌区、桌面 App 图标。</p>
+    <div class="scenes">
+      <div class="card scene">
+        <div class="ttl">浏览器 Favicon / 标签</div>
+        <div class="browser">
+          <div class="tabbar"><div class="tab"><svg viewBox="0 0 1024 1024"><use href="#logo"/></svg> PTPatronus <span class="x">✕</span></div></div>
+          <div class="body"></div>
+        </div>
+      </div>
+      <div class="card scene">
+        <div class="ttl">侧边栏品牌区（对齐 MainLayout）</div>
+        <div class="sidebar">
+          <div class="brand"><svg viewBox="0 0 1024 1024"><use href="#mark"/></svg> PTPatronus</div>
+          <div class="navi"><div class="on">仪表盘</div><div>站点</div><div>搜索</div><div>下载器</div></div>
+        </div>
+      </div>
+      <div class="card scene" style="grid-column:1/-1">
+        <div class="ttl">桌面 App 图标</div>
+        <div class="desktop">
+          <div class="app"><svg viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>PTPatronus</span></div>
+          <div class="app me"><svg viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>PTPatronus</span></div>
+          <div class="app"><svg viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>PTPatronus</span></div>
+          <div class="app"><svg viewBox="0 0 1024 1024"><use href="#logo"/></svg><span>PTPatronus</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════════ 色彩 / 规范 ════════ -->
+  <section class="sec">
+    <h2>品牌色彩</h2>
+    <div class="card">
+      <div class="swatches">
+        <div class="sw" style="background:#ff9ec7"><div class="hex">#FF9EC7</div><div class="role">背景 · 暖粉</div></div>
+        <div class="sw" style="background:#6c5ce7"><div class="hex">#6C5CE7</div><div class="role">主色 · 守护紫</div></div>
+        <div class="sw" style="background:#4285f4"><div class="hex">#4285F4</div><div class="role">主色 2 · 信赖蓝</div></div>
+        <div class="sw" style="background:#4ad4ef"><div class="hex">#4AD4EF</div><div class="role">背景 · 折射青</div></div>
+        <div class="sw" style="background:linear-gradient(90deg,#ffb24d,#ff6fa5,#c46bf0,#9d6cf6)"><div class="hex">尖帽彩虹</div><div class="role">橙→粉→紫</div></div>
+      </div>
+      <div class="files" style="margin-top:22px">
+        <b>设计理念</b><br>
+        · <b>形象撑满画幅</b>＝盾牌占容器 ~75% 宽，角色（帽顶到盾底）占 ~85% 高，背景仅在四角少量露出，主体最大<br>
+        · <b>守护者吉祥物</b>＝盾牌是 Patronus 守护神，化身可爱角色（大眼 + 微笑），亲和又传递守护语义<br>
+        · <b>彩色尖帽</b>＝模板原图强识别点（橙→粉→紫彩虹 + 帽顶青球），等比放大<br>
+        · <b>液态玻璃</b>＝<code>feDisplacementMap</code> 让盾牌边缘液态流动，脸/PT 字在滤镜组外保持清晰<br>
+        · PT 字标（188px）深紫渐变，白玻璃盾面上高对比
+      </div>
+      <div class="note">
+        <b>文件清单</b><br>
+        · <code>frontend/public/logo.svg</code> — 主 logo（带多彩玻璃容器，1024²）<br>
+        · <code>frontend/public/logo-mark.svg</code> — 透明守护者角色（header 叠加 / 启动页 / 彩色背景）<br>
+        · <code>design/logo/preview.html</code> — 本预览页
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ════════ SVG sprite（静态版，供上方 <use> 复用）════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="logo" viewBox="0 0 1024 1024">
+      <defs>
+        <linearGradient id="s-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9ec7"/><stop offset=".26" stop-color="#c08cee"/><stop offset=".56" stop-color="#7b7ff0"/><stop offset=".8" stop-color="#5aa8f5"/><stop offset="1" stop-color="#4ad4ef"/></linearGradient>
+        <radialGradient id="s-sp1"><stop offset="0" stop-color="#ffd6ec" stop-opacity=".85"/><stop offset="1" stop-color="#ffd6ec" stop-opacity="0"/></radialGradient>
+        <radialGradient id="s-sp2"><stop offset="0" stop-color="#7af0ff" stop-opacity=".8"/><stop offset="1" stop-color="#7af0ff" stop-opacity="0"/></radialGradient>
+        <radialGradient id="s-sp3"><stop offset="0" stop-color="#d8c8ff" stop-opacity=".8"/><stop offset="1" stop-color="#d8c8ff" stop-opacity="0"/></radialGradient>
+        <clipPath id="s-sq"><rect width="1024" height="1024" rx="205"/></clipPath>
+        <linearGradient id="s-top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".16" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        <linearGradient id="s-gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".66"/><stop offset=".5" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient>
+        <linearGradient id="s-gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9d8bff" stop-opacity=".4"/><stop offset="1" stop-color="#5bb6ff" stop-opacity=".36"/></linearGradient>
+        <radialGradient id="s-spec" cx=".42" cy=".04" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".45" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+        <path id="s-sh" d="M180 290 L844 290 C884 380 896 488 868 580 C824 720 720 812 512 928 C304 812 200 720 156 580 C128 488 140 380 180 290 Z"/>
+        <clipPath id="s-shc"><use href="#s-sh"/></clipPath>
+        <filter id="s-liq" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.009 0.015" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter>
+        <filter id="s-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="16"/></filter>
+        <filter id="s-tx" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="7"/><feOffset dy="8" result="o"/><feComponentTransfer><feFuncA type="linear" slope=".4"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="s-hat" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb24d"/><stop offset=".35" stop-color="#ff6fa5"/><stop offset=".7" stop-color="#c46bf0"/><stop offset="1" stop-color="#9d6cf6"/></linearGradient>
+        <radialGradient id="s-ball" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#9af6ff"/><stop offset=".6" stop-color="#46d4f0"/><stop offset="1" stop-color="#2bb8d8"/></radialGradient>
+        <linearGradient id="s-pt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c5ce7"/><stop offset="1" stop-color="#3a2db0"/></linearGradient>
+      </defs>
+      <g clip-path="url(#s-sq)">
+        <rect width="1024" height="1024" fill="url(#s-bg)"/>
+        <ellipse cx="300" cy="300" rx="440" ry="380" fill="url(#s-sp1)"/>
+        <ellipse cx="740" cy="770" rx="440" ry="400" fill="url(#s-sp2)"/>
+        <ellipse cx="790" cy="250" rx="270" ry="250" fill="url(#s-sp3)"/>
+        <rect width="1024" height="1024" fill="url(#s-top)"/>
+      </g>
+      <use href="#s-sh" fill="#3a2370" opacity=".26" transform="translate(0 22)" filter="url(#s-soft)"/>
+      <g filter="url(#s-liq)">
+        <use href="#s-sh" fill="url(#s-gb)"/><use href="#s-sh" fill="url(#s-gr)"/>
+        <g clip-path="url(#s-shc)"><rect x="150" y="270" width="720" height="400" fill="url(#s-spec)"/></g>
+        <use href="#s-sh" fill="none" stroke="#fff" stroke-width="4" opacity=".78"/>
+        <use href="#s-sh" fill="none" stroke="#a9c4ff" stroke-width="1.5" opacity=".4"/>
+      </g>
+      <g clip-path="url(#s-shc)">
+        <circle cx="408" cy="458" r="42" fill="#2a2342"/><circle cx="616" cy="458" r="42" fill="#2a2342"/>
+        <circle cx="396" cy="444" r="14" fill="#fff"/><circle cx="604" cy="444" r="14" fill="#fff"/>
+        <path d="M452 556 Q512 620 572 556" fill="none" stroke="#e85d7e" stroke-width="24" stroke-linecap="round"/>
+        <text x="514" y="798" text-anchor="middle" font-family="'SF Pro Display','Helvetica Neue','Segoe UI',Arial,sans-serif" font-size="188" font-weight="800" letter-spacing="-10" fill="url(#s-pt)" filter="url(#s-tx)">PT</text>
+      </g>
+      <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="#4a2370" opacity=".22" transform="translate(0 16)" filter="url(#s-soft)"/>
+      <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="url(#s-hat)"/>
+      <ellipse cx="446" cy="232" rx="30" ry="86" fill="#fff" opacity=".22" transform="rotate(-22 446 232)"/>
+      <ellipse cx="512" cy="302" rx="196" ry="28" fill="#7d52c4"/>
+      <ellipse cx="512" cy="295" rx="184" ry="7" fill="#fff" opacity=".3"/>
+      <circle cx="512" cy="110" r="36" fill="url(#s-ball)"/>
+      <circle cx="500" cy="97" r="13" fill="#fff" opacity=".85"/>
+    </symbol>
+
+    <symbol id="mark" viewBox="0 0 1024 1024">
+      <defs>
+        <linearGradient id="m-gb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".64"/><stop offset=".5" stop-color="#fff" stop-opacity=".26"/><stop offset="1" stop-color="#fff" stop-opacity=".08"/></linearGradient>
+        <linearGradient id="m-gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9d8bff" stop-opacity=".42"/><stop offset="1" stop-color="#5bb6ff" stop-opacity=".38"/></linearGradient>
+        <radialGradient id="m-spec" cx=".42" cy=".04" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".92"/><stop offset=".45" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+        <path id="m-sh" d="M180 290 L844 290 C884 380 896 488 868 580 C824 720 720 812 512 928 C304 812 200 720 156 580 C128 488 140 380 180 290 Z"/>
+        <clipPath id="m-shc"><use href="#m-sh"/></clipPath>
+        <filter id="m-liq" x="-12%" y="-12%" width="124%" height="124%"><feTurbulence type="fractalNoise" baseFrequency="0.009 0.015" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter>
+        <filter id="m-soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="18"/></filter>
+        <filter id="m-tx" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="8"/><feOffset dy="9" result="o"/><feComponentTransfer><feFuncA type="linear" slope=".44"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <linearGradient id="m-hat" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb24d"/><stop offset=".35" stop-color="#ff6fa5"/><stop offset=".7" stop-color="#c46bf0"/><stop offset="1" stop-color="#9d6cf6"/></linearGradient>
+        <radialGradient id="m-ball" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#9af6ff"/><stop offset=".6" stop-color="#46d4f0"/><stop offset="1" stop-color="#2bb8d8"/></radialGradient>
+        <linearGradient id="m-pt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c5ce7"/><stop offset="1" stop-color="#3a2db0"/></linearGradient>
+      </defs>
+      <use href="#m-sh" fill="#1a1340" opacity=".26" transform="translate(0 24)" filter="url(#m-soft)"/>
+      <g filter="url(#m-liq)">
+        <use href="#m-sh" fill="url(#m-gb)"/><use href="#m-sh" fill="url(#m-gr)"/>
+        <g clip-path="url(#m-shc)"><rect x="150" y="270" width="720" height="400" fill="url(#m-spec)"/></g>
+        <use href="#m-sh" fill="none" stroke="#fff" stroke-width="4.5" opacity=".82"/>
+        <use href="#m-sh" fill="none" stroke="#6c8cf5" stroke-width="2" opacity=".5"/>
+      </g>
+      <g clip-path="url(#m-shc)">
+        <circle cx="408" cy="458" r="42" fill="#2a2342"/><circle cx="616" cy="458" r="42" fill="#2a2342"/>
+        <circle cx="396" cy="444" r="14" fill="#fff"/><circle cx="604" cy="444" r="14" fill="#fff"/>
+        <path d="M452 556 Q512 620 572 556" fill="none" stroke="#e85d7e" stroke-width="24" stroke-linecap="round"/>
+        <text x="514" y="798" text-anchor="middle" font-family="'SF Pro Display','Helvetica Neue','Segoe UI',Arial,sans-serif" font-size="188" font-weight="800" letter-spacing="-10" fill="url(#m-pt)" filter="url(#m-tx)">PT</text>
+      </g>
+      <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="#1a1340" opacity=".24" transform="translate(0 18)" filter="url(#m-soft)"/>
+      <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="url(#m-hat)"/>
+      <ellipse cx="446" cy="232" rx="30" ry="86" fill="#fff" opacity=".24" transform="rotate(-22 446 232)"/>
+      <ellipse cx="512" cy="302" rx="196" ry="28" fill="#7d52c4"/>
+      <ellipse cx="512" cy="295" rx="184" ry="7" fill="#fff" opacity=".32"/>
+      <circle cx="512" cy="110" r="36" fill="url(#m-ball)"/>
+      <circle cx="500" cy="97" r="13" fill="#fff" opacity=".85"/>
+    </symbol>
+  </defs>
+</svg>
+
+</body>
+</html>

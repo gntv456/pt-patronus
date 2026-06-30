@@ -1,0 +1,60 @@
+import { http } from './http'
+
+export type Mailbox = 'inbox' | 'sent' | 'system' | 'cheater' | 'reports' | 'staff'
+
+export interface AdminActions {
+  reply_url?: string
+  delete_url?: string
+  item_id?: string
+}
+
+export interface Message {
+  id: number
+  site_id: number
+  site_name: string
+  sender: string
+  title: string
+  date: string
+  url: string
+  is_read: boolean
+  content?: string
+  mailbox: Mailbox
+  subtitle?: string
+  admin_actions?: AdminActions
+}
+
+export interface MessageResult {
+  site_id: number
+  site_name: string
+  messages: Message[]
+  error?: string
+}
+
+export interface ReplyResult {
+  success: boolean
+  message: string
+}
+
+export interface BatchResult {
+  success: number
+  failed: number
+  errors?: string[]
+}
+
+export const messageApi = {
+  all: (mailbox: Mailbox = 'inbox') =>
+    http
+      .get<{ sites: MessageResult[] }>(`/messages?mailbox=${mailbox}`)
+      // 后端 nil 切片序列化为 JSON null（站点无消息/未配置时），归一为 [] 防模板 .length 崩溃
+      .then((r) => (r.data.sites || []).map((s) => ({ ...s, messages: s.messages || [] }))),
+  syncOne: (id: number, mailbox: Mailbox = 'inbox') =>
+    http.post<MessageResult>(`/messages/sync/${id}?mailbox=${mailbox}`).then((r) => ({ ...r.data, messages: r.data.messages || [] })),
+  content: (siteId: number, url: string) =>
+    http.get<{ content: string }>(`/messages/${siteId}/content?url=${encodeURIComponent(url)}`).then((r) => r.data.content),
+  reply: (siteId: number, url: string, content: string) =>
+    http.post<ReplyResult>(`/messages/${siteId}/reply`, { url, content }).then((r) => r.data),
+  remove: (siteId: number, url: string) =>
+    http.post<{ ok: boolean }>(`/messages/${siteId}/delete`, { url }).then((r) => r.data),
+  markRead: (siteId: number, ids: string[]) =>
+    http.post<BatchResult>(`/messages/${siteId}/markread`, { ids }).then((r) => r.data),
+}

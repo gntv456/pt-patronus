@@ -1,0 +1,15 @@
+# hddisk — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - HDD
+dead: true
+id: hddisk
+name: HDDisk
+schema: nexusphp
+tags:
+    - 影视
+    - 综合
+urls:
+    - https://hddisk.org/

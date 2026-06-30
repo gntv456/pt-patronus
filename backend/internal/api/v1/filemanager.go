@@ -1,0 +1,166 @@
+package v1
+
+import (
+	"io"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/chain"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/filemanager"
+)
+
+// FileStorageHandler 处理存储后端 CRUD 与文件操作。
+type FileStorageHandler struct {
+	op     *oper.FileStorageOper
+	fileCh *chain.FileManagerChain
+	mgr    *filemanager.Manager
+}
+
+// NewFileStorageHandler 构造。
+func NewFileStorageHandler(op *oper.FileStorageOper, fileCh *chain.FileManagerChain, mgr *filemanager.Manager) *FileStorageHandler {
+	return &FileStorageHandler{op: op, fileCh: fileCh, mgr: mgr}
+}
+
+// List 列出全部存储后端。
+func (h *FileStorageHandler) List(c *gin.Context) {
+	fs, err := h.op.List()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"storages": fs})
+}
+
+// Create 创建存储后端。
+func (h *FileStorageHandler) Create(c *gin.Context) {
+	var in oper.FileStorageInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	f, err := h.op.Create(in)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, f)
+}
+
+// Update 更新存储后端。
+func (h *FileStorageHandler) Update(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	var in oper.FileStorageInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	f, err := h.op.Update(id, in)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	h.mgr.Invalidate(id)
+	c.JSON(http.StatusOK, f)
+}
+
+// Delete 删除存储后端。
+func (h *FileStorageHandler) Delete(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	if err := h.op.Delete(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	h.mgr.Invalidate(id)
+	c.JSON(http.StatusOK, gin.H{"deleted": id})
+}
+
+// Files 列目录。
+func (h *FileStorageHandler) Files(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	path := c.Query("path")
+	if path == "" {
+		path = "/"
+	}
+	entries, err := h.fileCh.List(c.Request.Context(), id, path)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"entries": []any{}, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"entries": entries})
+}
+
+// Upload 上传文件（multipart file 字段）。
+func (h *FileStorageHandler) Upload(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	path := c.PostForm("path")
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	defer file.Close()
+	if err := h.fileCh.Upload(c.Request.Context(), id, path, file); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// Download 下载文件（流式）。
+func (h *FileStorageHandler) Download(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	path := c.Query("path")
+	rc, err := h.fileCh.Download(c.Request.Context(), id, path)
+	if err != nil {
+		// 下载出错返 500（而非 200+JSON）：客户端按字节流读 body，200 会把错误 JSON 当成文件内容。
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rc.Close()
+	c.Status(http.StatusOK)
+	_, _ = io.Copy(c.Writer, rc)
+}
+
+// Mkdir 建目录。
+func (h *FileStorageHandler) Mkdir(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	path := c.Query("path")
+	if err := h.fileCh.Mkdir(c.Request.Context(), id, path); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// DeleteFile 删除文件/目录（path 走 query，与 Mkdir 一致；soft-fail）。
+func (h *FileStorageHandler) DeleteFile(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	path := c.Query("path")
+	if err := h.fileCh.Delete(c.Request.Context(), id, path); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}

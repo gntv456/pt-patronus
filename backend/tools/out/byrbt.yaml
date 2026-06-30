@@ -1,0 +1,59 @@
+# byrbt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.subTitle（elementProcess/text）
+#   - search.url.filters[prepend]
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+categories:
+    - id: "408"
+      name: 电影
+    - id: "401"
+      name: 剧集
+    - id: "404"
+      name: 动漫
+    - id: "402"
+      name: 音乐
+    - id: "405"
+      name: 综艺
+    - id: "403"
+      name: 游戏
+    - id: "406"
+      name: 软件
+    - id: "407"
+      name: 资料
+    - id: "409"
+      name: 体育
+    - id: "410"
+      name: 纪录
+description: 著名教育网PT站点（仅支持ipv6访问与下载），有10大类资源，资源更新快，保种好。
+id: byrbt
+legacy_urls:
+    - https://bt.byr.cn/
+name: 北邮人-BYRBT
+schema: nexusphp
+selectors:
+    fields:
+        category:
+            selector: div.cat-icon-merge > span.cat-icon
+        detail:
+            attr: href
+            filters:
+                - args: id
+                  name: queryparam
+            selector: a[title][href*='details.php?id=']
+        download:
+            attr: href
+            selector: a[href*='download.php?id=']
+        subtitle:
+            selectors:
+                - a[href*='hit'][title]
+                - a[href*='hit']:has(b)
+    rows:
+        selector: table.torrents:last > tbody > tr:gt(0)
+tags:
+    - 教育网
+    - 影视
+    - 综合
+urls:
+    - https://byr.pt/

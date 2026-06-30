@@ -1,0 +1,63 @@
+# gtorg — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.time.filters（匿名函数）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+id: gtorg
+level_requirements:
+    - id: 1
+      name: Member
+      ratio: 0.4
+    - id: 2
+      name: Poweruser
+      privilege: 'Access to: Online Users, Tracker info'
+      ratio: 1.05
+      uploaded: 50GB
+    - id: 3
+      name: Extrauser
+      privilege: 'Access to: Online Users, Tracker info, Requests, Top 10 and Users'
+      ratio: 2
+      uploaded: 250GB
+name: Gay-Torrents.Org
+search_entry: /torrents_beta.php
+search_param: search
+selectors:
+    fields:
+        category:
+            selector: div.categoryNew a
+        completed:
+            filters:
+                - name: parse_number
+            selector: div.downloadTimes a
+        detail:
+            attr: href
+            selector: a.torrent_link
+        download:
+            attr: href
+            selector: a.downloadLink
+        leechers:
+            filters:
+                - name: parse_number
+            selector: div.downloadPeers a.red
+        seeders:
+            filters:
+                - name: parse_number
+            selector: div.downloadPeers a.green
+        size:
+            filters:
+                - name: parse_size
+            selector: div.size
+        time:
+            filters:
+                - args: '[HH:mm dd-MMM-yyyy]'
+                  name: parse_time
+            selector: div.date > div
+        title:
+            selector: a.torrent_link
+    rows:
+        selector: div.torrentsContainer > div.torrent
+tags:
+    - 成人
+urls:
+    - https://gay-torrents.org/

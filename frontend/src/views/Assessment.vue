@@ -1,0 +1,119 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { assessmentApi, type AssessmentCard } from '@/api/assessment'
+
+const cards = ref<AssessmentCard[]>([])
+const loading = ref(false)
+const filter = ref<string>('all')
+
+async function load(refresh = false) {
+  loading.value = true
+  try {
+    cards.value = await assessmentApi.all(refresh)
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '加载考核失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const filtered = computed(() => {
+  if (filter.value === 'all') return cards.value
+  return cards.value.filter((c) => c.status.toLowerCase() === filter.value)
+})
+
+const counts = computed(() => {
+  const c = { safe: 0, progress: 0, danger: 0, exempt: 0 }
+  for (const card of cards.value) {
+    const s = card.status.toLowerCase()
+    if (s in c) (c as any)[s]++
+  }
+  return c
+})
+
+// 考核时间格式化（epoch ms → 中文日期；0/缺省返回空）
+function fmtDate(ms?: number) {
+  if (!ms) return ''
+  return new Date(ms).toLocaleDateString('zh-CN')
+}
+
+const statusColor: Record<string, string> = {
+  SAFE: '#2ecc71', PROGRESS: '#3498db', DANGER: '#f56c6c', EXEMPT: '#95a5a6', UNKNOWN: '#95a5a6',
+}
+
+onMounted(() => load())
+</script>
+
+<template>
+  <div class="page" v-loading="loading">
+    <div class="head">
+      <h2 class="title">站点考核</h2>
+      <el-button :loading="loading" @click="load(true)">刷新</el-button>
+    </div>
+
+    <div class="filter-bar glass">
+      <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">全部 ({{ cards.length }})</button>
+      <button class="chip" :class="{ on: filter === 'safe' }" @click="filter = 'safe'" style="color:#2ecc71">安全 ({{ counts.safe }})</button>
+      <button class="chip" :class="{ on: filter === 'progress' }" @click="filter = 'progress'" style="color:#3498db">进行中 ({{ counts.progress }})</button>
+      <button class="chip" :class="{ on: filter === 'danger' }" @click="filter = 'danger'" style="color:#f56c6c">危险 ({{ counts.danger }})</button>
+    </div>
+
+    <div class="cards">
+      <div v-for="c in filtered" :key="c.site_id" class="assess-card glass" :style="{ borderLeftColor: statusColor[c.status] }">
+        <div class="card-top">
+          <span class="site-name">{{ c.site_name }}</span>
+          <span class="status-tag" :style="{ background: statusColor[c.status] + '22', color: statusColor[c.status] }">{{ c.status }}</span>
+          <span class="spacer"></span>
+          <span v-if="c.remaining_days >= 0" class="remain">剩 {{ c.remaining_days }} 天</span>
+          <span v-if="fmtDate(c.end_time)" class="remain">截止 {{ fmtDate(c.end_time) }}</span>
+        </div>
+        <div v-if="c.error" class="err">{{ c.error }}</div>
+        <template v-else>
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: c.progress_percent + '%', background: statusColor[c.status] }"></div>
+          </div>
+          <div class="progress-num">{{ c.progress_percent }}%</div>
+          <div v-if="c.assessment_type" class="task-name">{{ c.assessment_type }}</div>
+          <div v-if="c.description" class="note">{{ c.description }}</div>
+          <div v-if="c.metrics.length" class="metrics">
+            <div v-for="(m, i) in c.metrics" :key="i" class="metric">
+              <span class="m-label">{{ m.label }}</span>
+              <span class="m-val">{{ m.current }}/{{ m.required }} {{ m.unit }}</span>
+              <span class="m-met" :style="{ color: m.is_completed ? '#2ecc71' : '#f56c6c' }">{{ m.is_completed ? '✓' : '✗' }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+    <div v-if="!cards.length && !loading" class="empty glass text-muted">暂无考核数据</div>
+  </div>
+</template>
+
+<style scoped>
+.page { display: flex; flex-direction: column; gap: 16px; }
+.head { display: flex; align-items: center; justify-content: space-between; }
+.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
+.filter-bar { display: flex; gap: 8px; padding: 10px 14px; flex-wrap: wrap; }
+.chip { background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: 13px; color: var(--text-strong); }
+.chip.on { background: rgba(108,92,231,0.14); border-color: rgba(108,92,231,0.3); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.assess-card { padding: 14px; border-left: 3px solid #95a5a6; }
+.card-top { display: flex; align-items: center; gap: 8px; }
+.site-name { font-weight: 600; }
+.status-tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
+.spacer { flex: 1; }
+.remain { font-size: 12px; color: var(--text-muted); }
+.err { color: var(--pt-danger,#f56c6c); font-size: 13px; margin-top: 8px; }
+.progress-bar { margin-top: 10px; height: 8px; border-radius: 4px; background: rgba(0,0,0,0.08); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+.progress-num { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.task-name { font-size: 12px; color: var(--pt-primary,#6c5ce7); margin-top: 2px; }
+.note { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
+.metrics { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.metric { display: flex; gap: 8px; font-size: 12px; align-items: center; }
+.m-label { flex: 1; color: var(--text-strong); }
+.m-val { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.m-met { font-weight: 700; }
+.empty { padding: 40px; text-align: center; }
+</style>

@@ -1,0 +1,47 @@
+# audiobookbay — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.leechers（text）
+#   - search.time.filters（匿名函数）
+#   - search.title（__ref）
+#   - search.subTitle.filters（匿名函数）
+#   - search.seeders（text）
+#   - search.completed（text）
+#   - search.category（text）
+#   - search.size.filters（匿名函数）
+
+aka:
+    - ABB
+description: AudioBook Bay (ABB) is a Public Torrent Tracker for AUDIOBOOKS
+id: audiobookbay
+name: AudioBook Bay
+search_entry: /
+search_param: s
+selectors:
+    fields:
+        category: {}
+        completed: {}
+        detail:
+            attr: href
+            selector: div.postTitle h2 a
+        leechers: {}
+        seeders: {}
+        size:
+            selector: div.postContent
+        subtitle:
+            selector: div.postInfo
+        time:
+            selector: div.postContent
+        title: {}
+    rows:
+        selector: div.post:has(div[class='postTitle'])
+tags:
+    - 有声书
+timezone_offset: "+0100"
+urls:
+    - https://audiobookbay.lu/
+    - http://audiobookbay.is/
+    - http://audiobookbay.se/
+    - http://audiobookbay.fi/
+    - http://audiobookbay.ws/
+    - http://theaudiobookbay.se/

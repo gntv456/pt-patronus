@@ -1,0 +1,41 @@
+# btetree — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category（text）
+
+description: BT.etree is a Public Tracker dedicated to Bootleg FLAC MUSIC
+id: btetree
+name: BT.etree
+search_param: searchzzzz
+selectors:
+    fields:
+        category: {}
+        completed:
+            filters:
+                - name: parse_number
+            selector: td:nth-child(7)
+        detail:
+            attr: href
+            selector: td:nth-child(2) a.details_link
+        download:
+            attr: href
+            selector: td:nth-child(3) a
+        leechers:
+            selector: td:nth-child(9)
+        seeders:
+            selector: td:nth-child(8)
+        size:
+            filters:
+                - name: parse_size
+            selector: td:nth-child(6)
+        time:
+            selector: td:nth-child(5)
+        title:
+            selector: td:nth-child(2) a.details_link b
+    rows:
+        selector: table[bgcolor="#CCCCCC"] tbody tr:gt(0)
+tags:
+    - 音乐
+timezone_offset: "-0500"
+urls:
+    - https://bt.etree.org/

@@ -1,0 +1,200 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 1,
+  "id": "byrbt",
+  "name": "北邮人-BYRBT",
+  "description": "著名教育网PT站点（仅支持ipv6访问与下载），有10大类资源，资源更新快，保种好。",
+  "tags": [
+    "教育网",
+    "影视",
+    "综合"
+  ],
+  "collaborator": [
+    "Rhilip",
+    "yuanyiwei",
+    "hui-shao"
+  ],
+  "type": "private",
+  "schema": "NexusPHP",
+  "urls": [
+    "https://byr.pt/"
+  ],
+  "legacyUrls": [
+    "https://bt.byr.cn/"
+  ],
+  "category": [
+    {
+      "name": "类别",
+      "key": "cat",
+      "options": [
+        {
+          "value": 408,
+          "name": "电影"
+        },
+        {
+          "value": 401,
+          "name": "剧集"
+        },
+        {
+          "value": 404,
+          "name": "动漫"
+        },
+        {
+          "value": 402,
+          "name": "音乐"
+        },
+        {
+          "value": 405,
+          "name": "综艺"
+        },
+        {
+          "value": 403,
+          "name": "游戏"
+        },
+        {
+          "value": 406,
+          "name": "软件"
+        },
+        {
+          "value": 407,
+          "name": "资料"
+        },
+        {
+          "value": 409,
+          "name": "体育"
+        },
+        {
+          "value": 410,
+          "name": "纪录"
+        }
+      ],
+      "cross": {
+        "mode": "append"
+      }
+    },
+    {
+      "__ref": "CategoryIncldead"
+    },
+    {
+      "__ref": "CategorySpstate"
+    },
+    {
+      "__ref": "CategoryInclbookmarked"
+    }
+  ],
+  "search": {
+    "__spread": [
+      "SchemaMetadata.search"
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.search!.selectors"
+      ],
+      "rows": {
+        "selector": "table.torrents:last > tbody > tr:gt(0)"
+      },
+      "id": {
+        "selector": "a[title][href*='details.php?id=']",
+        "attr": "href",
+        "filters": [
+          {
+            "name": "querystring",
+            "args": [
+              "id"
+            ]
+          }
+        ]
+      },
+      "subTitle": {
+        "text": "",
+        "selector": [
+          "a[href*='hit'][title]",
+          "a[href*='hit']:has(b)"
+        ],
+        "elementProcess": {
+          "__call": "subTitleRemoveExtraElement([\"span\"], false)"
+        }
+      },
+      "url": {
+        "selector": "a[title][href*='details.php?id=']",
+        "attr": "href",
+        "filters": [
+          {
+            "name": "querystring",
+            "args": [
+              "id"
+            ]
+          },
+          {
+            "name": "prepend",
+            "args": [
+              "/details.php?id="
+            ]
+          }
+        ]
+      },
+      "link": {
+        "selector": "a[href*='download.php?id=']",
+        "attr": "href"
+      },
+      "category": {
+        "selector": "div.cat-icon-merge > span.cat-icon"
+      },
+      "status": {
+        "selector": [
+          "img[src=\"pic/finished.png\"]"
+        ],
+        "attr": "src",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            if (query === \"pic/finished.png\") {\n              return ETorrentStatus.completed;\n            }\n            return ETorrentStatus.unknown;\n          }"
+          }
+        ]
+      }
+    }
+  },
+  "userInfo": {
+    "__spread": [
+      "SchemaMetadata.userInfo!"
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.userInfo!.selectors!"
+      ],
+      "messageCount": {
+        "text": 0,
+        "selector": "#msg-bar a[href*='messages.php'] strong",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string | number) => {\n            const queryMatch = String(query || \"\").match(/(\\d+)/); // query 有时会直接传入 0\n            return queryMatch && queryMatch.length >= 2 ? parseInt(queryMatch[1]) : 0;\n          }"
+          }
+        ]
+      }
+    },
+    "process": [
+      {
+        "__raw": "SpreadElement",
+        "src": "...SchemaMetadata.userInfo!.process!.filter((item) => item.requestConfig.url !== \"/mybonus.php\")"
+      },
+      {
+        "requestConfig": {
+          "url": "/mybonus.php",
+          "params": {
+            "show": "seed"
+          },
+          "responseType": "document"
+        },
+        "fields": [
+          "bonusPerHour"
+        ]
+      }
+    ]
+  },
+  "levelRequirements": {
+    "__call": "(\n    [\n      {\n        id: 1,\n        name: \"User\",\n        privilege: \"新用户的默认级别：上传字幕；发布趣味盒；查看用户列表；查看NFO文档；\",\n      },\n      {\n        id: 2,\n        name: \"Power User\",\n        interval: \"P14D\",\n        uploaded: \"32GB\",\n        ratio: 1.05,\n        privilege: \"请求续种；查看排行榜；查看普通日志；删除自己上传的字幕；使用流量条；更新外部信息；新增求种\",\n      },\n      {\n        id: 3,\n        name: \"Elite User\",\n        interval: \"P56D\",\n        uploaded: \"512GB\",\n        ratio: 1.55,\n        privilege: \"查看其它用户的种子历史（如果用户隐私等级未设置为“强”）；直接发布种子\",\n      },\n      {\n        id: 4,\n        name: \"Crazy User\",\n        interval: \"P84D\",\n        uploaded: \"1024GB\",\n        ratio: 2.05,\n        privilege: \"购买邀请；发送邀请；在做种/下载/发布的时候选择匿名模式\",\n      },\n      {\n        id: 5,\n        name: \"Insane User\",\n        interval: \"P168D\",\n        uploaded: \"2048GB\",\n        ratio: 2.55,\n        privilege: \"申请发布徽章；更新外部信息；购买用户名特效\",\n      },\n      {\n        id: 6,\n        name: \"Veteran User\",\n        interval: \"P168D\",\n        uploaded: \"4096GB\",\n        ratio: 3.05,\n        privilege: \"查看其他用户的评论和帖子历史记录（如果用户隐私等级未设置为“强”）；查看种子结构\",\n      },\n      {\n        id: 7,\n        name: \"Extreme User\",\n        interval: \"P168D\",\n        uploaded: \"8192GB\",\n        ratio: 3.55,\n        privilege: \"可以购买用户名特效（动态）\",\n      },\n      {\n        id: 8,\n        name: \"Ultimate User\",\n        interval: \"P336D\",\n        uploaded: \"32768GB\",\n        ratio: 4.05,\n        privilege: \"更加高级\",\n      },\n      {\n        id: 9,\n        name: \"Nexus Master\",\n        interval: \"P48W\",\n        uploaded: \"131072GB\",\n        ratio: 4.55,\n        privilege: \"最高晋级用户等级：使用魔力值修改用户名（支持中文）；可以领取专属荣誉徽章\",\n      },\n      {\n        id: 100,\n        name: \"贵宾\",\n        groupType: \"vip\",\n        privilege: \"免除分享率考核\",\n      },\n      {\n        id: 200,\n        name: \"养老族\",\n        groupType: \"manager\",\n        privilege: \"免除上传速度监测\",\n      },\n      {\n        id: 201,\n        name: \"发布员\",\n        groupType: \"manager\",\n        privilege: \"查看匿名用户的真实身份；查看被禁止的种子；访问论坛工作组专区\",\n      },\n      {\n        id: 202,\n        name: \"总版主\",\n        groupType: \"manager\",\n        privilege:\n          \"管理种子，包括编辑/删除/设优惠/置顶；管理种子评论；管理论坛帖子；管理群聊区；\" +\n          \"管理趣味盒；管理字幕区；查看机密日志；查看管理组信箱\",\n      },\n      {\n        id: 203,\n        name: \"维护开发员\",\n        groupType: \"manager\",\n        privilege: \"查看网站运行状态；管理站点设定；管理网站代码\",\n      },\n      {\n        id: 204,\n        name: \"主管\",\n        groupType: \"manager\",\n        privilege: \"管理组成员的任免；发放特殊用户组和管理组的工资（魔力值）；管理站点任务系统；其他未被提及的权限\",\n      },\n    ] as ILevelRequirement[]\n  ).map((x) => {\n    // byrbt永久保号，所以所有 user 都是 kept 的\n    if (typeof x.groupType === \"undefined\" || x.groupType == \"user\") {\n      x.isKept = true;\n    }\n\n    return x;\n  })"
+  }
+}

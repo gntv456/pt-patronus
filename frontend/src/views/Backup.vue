@@ -1,0 +1,118 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { backupApi } from '@/api/backup'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const importing = ref(false)
+
+function doExport() {
+  // 带 token 直接下载
+  const token = auth.token
+  fetch(backupApi.exportUrl, { headers: { Authorization: `Bearer ${token}` } })
+    .then((r) => r.blob())
+    .then((b) => {
+      const url = URL.createObjectURL(b)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ptpatronus-backup.json'
+      a.click()
+      URL.revokeObjectURL(url)
+      ElMessage.success('已导出')
+    })
+    .catch(() => ElMessage.error('导出失败'))
+}
+
+function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
+  if (!file) return
+  importing.value = true
+  const reader = new FileReader()
+  reader.onload = async () => {
+    try {
+      const data = JSON.parse(String(reader.result))
+      const fn = kind === 'own' ? backupApi.importOwn : backupApi.importMoviePilot
+      const res = await fn(data)
+      ElMessage.success(`导入完成：站点 ${res.imported_sites ?? 0}${res.imported_downloaders != null ? ' / 下载器 ' + res.imported_downloaders : ''}`)
+    } catch (err) {
+      ElMessage.error('导入失败：' + (err as Error).message)
+    } finally {
+      importing.value = false
+    }
+  }
+  reader.readAsText(file)
+}
+
+// .ptd 是二进制 ZIP，直接以 FormData 上传（不走 readAsText/JSON.parse）。
+function onPTDFile(file: File | undefined) {
+  if (!file) return
+  importing.value = true
+  backupApi
+    .importPTD(file)
+    .then((res) => ElMessage.success(`导入完成：站点 ${res.imported_sites ?? 0}`))
+    .catch((err) => ElMessage.error('导入失败：' + (err as Error).message))
+    .finally(() => {
+      importing.value = false
+    })
+}
+</script>
+
+<template>
+  <div class="page">
+    <h2 class="title">备份</h2>
+
+    <div class="glass card">
+      <div class="brow">
+        <div>
+          <div class="btitle">导出配置</div>
+          <div class="bdesc text-muted">导出全部站点与下载器配置（含明文密钥，请妥善保管）为 JSON 文件。</div>
+        </div>
+        <el-button type="primary" @click="doExport">导出</el-button>
+      </div>
+    </div>
+
+    <div v-if="auth.isAdmin" class="glass card">
+      <div class="brow">
+        <div>
+          <div class="btitle">导入（PTPatronus 格式）</div>
+          <div class="bdesc text-muted">从 PTPatronus 备份 JSON 恢复站点与下载器。重复项自动跳过。</div>
+        </div>
+        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="(f) => onFile(f.raw, 'own')">
+          <el-button :loading="importing">选择文件</el-button>
+        </el-upload>
+      </div>
+    </div>
+
+    <div v-if="auth.isAdmin" class="glass card">
+      <div class="brow">
+        <div>
+          <div class="btitle">从 MoviePilot 导入站点</div>
+          <div class="bdesc text-muted">导入 MoviePilot 站点 JSON 数组，自动创建为 NexusPHP 站点。</div>
+        </div>
+        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="(f) => onFile(f.raw, 'moviepilot')">
+          <el-button :loading="importing">选择文件</el-button>
+        </el-upload>
+      </div>
+    </div>
+
+    <div v-if="auth.isAdmin" class="glass card">
+      <div class="brow">
+        <div>
+          <div class="btitle">从 PT-Depiler (.ptd) 导入站点</div>
+          <div class="bdesc text-muted">导入 PT-Depiler 浏览器扩展导出的 .ptd 备份，自动恢复站点 URL/Cookie/Passkey/账号。加密备份需先在 PT-Depiler 导出未加密版本。重复项自动跳过。</div>
+        </div>
+        <el-upload :show-file-list="false" :auto-upload="false" accept=".ptd" :on-change="(f) => onPTDFile(f.raw)">
+          <el-button :loading="importing">选择文件</el-button>
+        </el-upload>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.page { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
+.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
+.card { padding: 20px; }
+.brow { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.btitle { font-weight: 600; font-size: 15px; }
+.bdesc { margin-top: 4px; font-size: 13px; }
+</style>

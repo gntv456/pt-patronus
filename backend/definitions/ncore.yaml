@@ -1,0 +1,29 @@
+# ncore — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+id: ncore
+level_requirements:
+    - id: 1
+      name: Felhasználó
+    - id: 2
+      interval: P26W
+      name: Tag
+      uploaded: 250GB
+    - id: 3
+      interval: P52W
+      name: Elite
+      uploaded: 1TB
+    - id: 4
+      interval: P52W
+      name: Legend
+      uploaded: 1TB
+    - id: 5
+      name: VAGY
+      uploaded: 10TB
+name: nCore
+tags:
+    - 匈牙利
+urls:
+    - https://ncore.pro/

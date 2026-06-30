@@ -1,0 +1,75 @@
+# seedpool — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category（data）
+#   - search.category.filters（匿名函数）
+#   - userInfo.bonusPerHour（text）
+#   - userInfo.bonus（text）
+
+aka:
+    - SP
+id: seedpool
+level_requirements:
+    - id: 1
+      name: User
+      privilege: 无限下载槽
+      ratio: 1
+    - id: 2
+      interval: P1M
+      name: Pool
+      privilege: 无限下载槽 发起求种 免疫HR 发送邀请
+      ratio: 1
+    - id: 3
+      interval: P3M
+      name: PowerPool
+      privilege: 无限下载槽 发起求种 应求求种 免疫HR 发送邀请
+      ratio: 1.25
+    - id: 4
+      interval: P6M
+      name: SuperPool
+      privilege: 访问邀请区 无限下载槽 发起求种 应求求种 免疫HR 站免 发送邀请
+      ratio: 1.5
+    - id: 5
+      interval: P9M
+      name: UberPool
+      privilege: 访问邀请区 无限下载槽 发起求种 应求求种 免疫HR 站免 发送邀请
+      ratio: 3
+    - id: 6
+      interval: P12M
+      name: MegaPool
+      privilege: 上传种子 访问邀请区 双倍计算上传量 无限下载槽 发起求种 应求求种 免疫HR 站免 发送邀请
+      ratio: 3
+    - id: 7
+      interval: P12M
+      name: GodPool
+      privilege: 上传种子 访问邀请区 双倍计算上传量 无限下载槽 发起求种 应求求种 免疫HR 站免 发送邀请
+      ratio: 5
+    - group_type: vip
+      id: 8
+      name: ProPool
+      privilege: 双倍计算上传量 无限下载槽 发起求种 应求求种 免疫HR 站免 发送邀请
+name: seedpool
+schema: unit3d
+selectors:
+    fields:
+        category:
+            selector: :self
+tags:
+    - 综合
+timezone_offset: "+0000"
+urls:
+    - https://seedpool.org/
+user_info:
+    fields:
+        bonus: {}
+        bonus_per_hour: {}
+        seeding:
+            filters:
+                - name: parse_number
+            selectors:
+                - li.ratio-bar__uploaded a:has( > i.fa-arrow-up) + a
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - a[href*='/active?seeding=include']

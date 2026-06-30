@@ -1,0 +1,69 @@
+# sportscult — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: xbtit。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category.filters（匿名函数）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - SC
+description: SportsCult is a Private Torrent Tracker for SPORTS
+id: sportscult
+level_requirements:
+    - id: 1
+      name: Sportsman
+    - id: 2
+      name: Athlete
+      privilege: 'Access to: Online Users, Tracker info, Live TV'
+      ratio: 0.9
+      uploaded: 50GB
+    - id: 3
+      name: ProAthlete
+      privilege: 'Access to: Online Users, Tracker info, Live TV, Requests, Top 10, and Users'
+      ratio: 1.8
+      uploaded: 250GB
+    - group_type: vip
+      id: 4
+      name: VIP
+      privilege: 'Fancy star, No ratio requirements (as long as you are vip) + Access to: Online Users, Tracker info, Live TV, Requests, Top 10, and Users'
+name: SportsCult
+schema: xbtit
+search_entry: /index.php
+search_param: search
+selectors:
+    fields:
+        category:
+            attr: href
+            filters:
+                - args: category
+                  name: queryparam
+            selector: a[href^='index.php?page=torrents&category=']
+        completed:
+            selector: td:nth-child(8)
+        detail:
+            attr: href
+            selector: a[href^='index.php?page=torrent-details&id=']
+        download:
+            attr: href
+            selector: a[href^='download.php?id=']
+        leechers:
+            selector: td:nth-child(7)
+        seeders:
+            selector: td:nth-child(6)
+        size:
+            filters:
+                - name: parse_size
+            selector: td:nth-child(4)
+        time:
+            filters:
+                - args: '[dd/MM/yyyy]'
+                  name: parse_time
+            selector: td:nth-child(5)
+        title:
+            selector: a[href^='index.php?page=torrent-details&id=']
+    rows:
+        selector: table.lista:last-of-type:not(:has(td.block:contains('Our Team Recommend'))) > tbody > tr:has(a[href^='index.php?page=torrents&category='])
+tags:
+    - 运动
+timezone_offset: "+0300"
+urls:
+    - https://sportscult.org/

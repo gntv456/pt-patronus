@@ -1,0 +1,352 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 3,
+  "id": "jpopsuki",
+  "name": "JPopSuki",
+  "aka": [
+    "JPS",
+    "JPOP"
+  ],
+  "description": "JPopSuki是一个专注于日本音乐的音乐PT站点",
+  "tags": [
+    "音乐",
+    "日韩"
+  ],
+  "timezoneOffset": "+0000",
+  "collaborator": [
+    "ronggang",
+    "ted423",
+    "luckiestone",
+    "amorphobia"
+  ],
+  "type": "private",
+  "schema": "Gazelle",
+  "urls": [
+    "https://jpopsuki.eu/"
+  ],
+  "category": [
+    {
+      "name": "Category",
+      "key": "filter_cat",
+      "options": [
+        {
+          "value": 1,
+          "name": "Album"
+        },
+        {
+          "value": 2,
+          "name": "Single"
+        },
+        {
+          "value": 3,
+          "name": "PV"
+        },
+        {
+          "value": 4,
+          "name": "DVD"
+        },
+        {
+          "value": 5,
+          "name": "TV-Music"
+        },
+        {
+          "value": 6,
+          "name": "TV-Variety"
+        },
+        {
+          "value": 7,
+          "name": "TV-Drama"
+        },
+        {
+          "value": 8,
+          "name": "Fansubs"
+        },
+        {
+          "value": 9,
+          "name": "Pictures"
+        },
+        {
+          "value": 10,
+          "name": "Misc"
+        }
+      ],
+      "cross": {
+        "mode": "appendQuote"
+      }
+    }
+  ],
+  "search": {
+    "__spread": [
+      "SchemaMetadata.search!"
+    ],
+    "keywordPath": "params.torrentname",
+    "requestConfig": {
+      "url": "/ajax.php",
+      "params": {
+        "section": "torrents",
+        "action": "advanced",
+        "disablegrouping": 1
+      }
+    },
+    "advanceKeywordParams": {
+      "imdb": false
+    },
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.search!.selectors!"
+      ],
+      "title": {
+        "__spread": [
+          "SchemaMetadata.search!.selectors!.title!"
+        ],
+        "elementProcess": {
+          "__call": "GazelleUtils.genTitleElementProcess({\n          tdSelector: \"td:has(a[href*='torrents.php?id='][title])\",\n        })"
+        }
+      },
+      "comments": {
+        "text": 0,
+        "selector": "a[href*=\"#comments\"][title=\"View Comments\"]"
+      },
+      "category": {
+        "selector": "a[href*='filter_cat']"
+      },
+      "link": {
+        "selector": "a[href*='torrents.php?action=download'][title='Download']",
+        "attr": "href"
+      },
+      "tags": [
+        {
+          "selector": "strong:contains('Freeleech!')",
+          "name": "Free",
+          "color": "blue"
+        }
+      ]
+    }
+  },
+  "list": [
+    {
+      "__spread": [
+        "commonPagesList"
+      ]
+    },
+    {
+      "__spread": [
+        "detailPageList"
+      ],
+      "selectors": {
+        "__spread": [
+          "detailPageList.selectors"
+        ],
+        "keywords": {
+          "selector": "div > h2",
+          "elementProcess": {
+            "__fn": true,
+            "src": "(el: HTMLElement) => {\n            const clone = el.cloneNode(true) as HTMLElement;\n            clone.querySelectorAll(\"a[href*='artist.php']\").forEach((e) => e.remove());\n            const query = clone.innerText ?? clone.textContent;\n            const endBracket = query.indexOf(\"]\");\n            const dash = query.indexOf(\"-\", endBracket);\n            return query.slice(dash + 1).trim();\n          }"
+          }
+        },
+        "title": {
+          "selector": "div > h2",
+          "filters": [
+            {
+              "__fn": true,
+              "src": "(query: string) => query.slice(query.indexOf(\"]\") + 1)"
+            }
+          ]
+        },
+        "category": {
+          "selector": "div > h2",
+          "filters": [
+            {
+              "__fn": true,
+              "src": "(query: string) => query.match(/\\[([^\\]]+)\\]/)?.[1] || \"\""
+            }
+          ]
+        },
+        "time": {
+          "selector": "+tr span[title]",
+          "filters": [
+            {
+              "name": "parseTime"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "__spread": [
+        "top10PageList"
+      ],
+      "selectors": {
+        "__spread": [
+          "top10PageList.selectors"
+        ],
+        "rows": {
+          "__spread": [
+            "top10PageList.selectors!.rows"
+          ],
+          "selector": "table.border tr:gt(0)"
+        },
+        "size": {
+          "selector": ">td:eq(3)",
+          "filters": [
+            {
+              "name": "parseSize"
+            }
+          ]
+        },
+        "completed": {
+          "selector": ">td:eq(4)",
+          "filters": [
+            {
+              "name": "parseNumber"
+            }
+          ]
+        },
+        "seeders": {
+          "selector": ">td:eq(5)",
+          "filters": [
+            {
+              "name": "parseNumber"
+            }
+          ]
+        },
+        "leechers": {
+          "selector": ">td:eq(6)",
+          "filters": [
+            {
+              "name": "parseNumber"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "noLoginAssert": {
+    "matchSelectors": [
+      "a[href='login.php']"
+    ]
+  },
+  "userInfo": {
+    "__spread": [
+      "SchemaMetadata.userInfo!"
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.userInfo!.selectors!"
+      ],
+      "uploaded": {
+        "selector": {
+          "__call": "genUserInfoSelector(\"stats\", \"uploaded\")"
+        },
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "downloaded": {
+        "selector": {
+          "__call": "genUserInfoSelector(\"stats\", \"downloaded\")"
+        },
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "seeding": {
+        "selector": {
+          "__call": "genUserInfoSelector(\"community\", \"seeding\")"
+        },
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "levelName": {
+        "selector": {
+          "__call": "genUserInfoSelector(\"personal\", \"levelName\")"
+        },
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const queryMatch = query.match(/(Class:|階級:).+?(.+)/);\n            return queryMatch && queryMatch.length >= 3 ? queryMatch[2] : \"\";\n          }"
+          }
+        ]
+      },
+      "joinTime": {
+        "selector": {
+          "__call": "genUserInfoSelector(\"stats\", \"joinTime\").map((x) => `${x} > span`)"
+        },
+        "attr": "title",
+        "filters": [
+          {
+            "name": "parseTime",
+            "args": [
+              "MMM dd yyyy, HH:mm"
+            ]
+          }
+        ]
+      },
+      "lastAccessAt": {
+        "selector": {
+          "__call": "genUserInfoSelector(\"stats\", \"lastAccessAt\").map((x) => `${x} > span`)"
+        },
+        "attr": "title",
+        "filters": [
+          {
+            "name": "parseTime",
+            "args": [
+              "MMMM dd yyyy, HH:mm"
+            ]
+          }
+        ]
+      },
+      "uploads": {
+        "selector": {
+          "__call": "genUserInfoSelector(\"community\", \"uploaded\")"
+        },
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      }
+    }
+  },
+  "levelRequirements": [
+    {
+      "id": 1,
+      "name": "User",
+      "isKept": true,
+      "privilege": "Can download/upload."
+    },
+    {
+      "id": 2,
+      "name": "Member",
+      "interval": "P1W",
+      "uploaded": "10GB",
+      "ratio": 0.7,
+      "downloaded": "1KB",
+      "isKept": true,
+      "privilege": "Can use invites, notifications, set a forum signature, access the Top 10 and edit the Knowledge base."
+    },
+    {
+      "id": 3,
+      "name": "Power User",
+      "interval": "P2W",
+      "uploaded": "25GB",
+      "ratio": 1.05,
+      "downloaded": "1KB",
+      "uploads": 5,
+      "isKept": true,
+      "privilege": {
+        "__raw": "BinaryExpression",
+        "src": "\"advanced Top 10, can view torrent snatched list, edit torrent's description, \" +\n        \"original title and release date and access the advanced user search. \" +\n        \"Receives a new invite once "
+      }
+    }
+  ]
+}

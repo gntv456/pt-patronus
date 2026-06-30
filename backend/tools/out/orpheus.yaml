@@ -1,0 +1,84 @@
+# orpheus — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - OPS
+description: Orpheus is a music-focused private tracker, successor to RED
+id: orpheus
+level_requirements:
+    - id: 1
+      name: User
+      privilege: None. Standard class for all new members
+    - id: 2
+      interval: P1W
+      name: Member
+      privilege: Must remain active per the Account Inactivity policy
+      ratio: 0.7
+      uploaded: 10GB
+      uploads: 5
+    - id: 3
+      interval: P2W
+      is_kept: true
+      name: Power User
+      privilege: Immune to inactivity pruning;Torrent Notification system;Collage Creation (other than Personal) privileges;Access the Power User forums and IRC channels.
+      ratio: 1.05
+      uploaded: 25GB
+      uploads: 5
+    - id: 4
+      interval: P4W
+      is_kept: true
+      name: Elite
+      privilege: ame as lower classes, plus can access the Invitations and Elite forums and IRC channels. Can edit torrents. Able to rename their personal collages.
+      ratio: 1.05
+      uploaded: 100GB
+      uploads: 50
+    - id: 5
+      interval: P8W
+      is_kept: true
+      name: Torrent Master
+      privilege: Same as lower classes, plus can access TM forums and IRC channels. Can request their own custom title.
+      ratio: 1.05
+      uploaded: 500GB
+      uploads: 500
+    - id: 6
+      interval: P8W
+      is_kept: true
+      name: Power Torrent Master
+      name_aka:
+        - Power TM
+      privilege: Same as lower classes
+      ratio: 1.05
+      uploaded: 500GB
+    - id: 7
+      interval: P8W
+      is_kept: true
+      name: Elite Torrent Master
+      name_aka:
+        - Elite TM
+      privilege: Same as lower classes, plus can access ETM forums and IRC channels. Gets unlimited invites. Can edit Missing Lineage flag on torrents
+      ratio: 1.05
+      uploaded: 500GB
+    - id: 8
+      interval: P8W
+      is_kept: true
+      name: Ultimate Torrent Master
+      name_aka:
+        - Ultimate TM
+      privilege: Can view search past page 20
+      ratio: 1.05
+      uploaded: 2048GB
+name: Orpheus
+schema: gazelle_jsonapi
+tags:
+    - 音乐
+timezone_offset: "+0000"
+urls:
+    - https://orpheus.network/
+user_info:
+    fields:
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - table > tbody > tr > td:eq(1)

@@ -1,0 +1,76 @@
+# jpopsuki — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.title（elementProcess）
+#   - userInfo.levelName.filters（匿名函数）
+
+aka:
+    - JPS
+    - JPOP
+description: JPopSuki是一个专注于日本音乐的音乐PT站点
+id: jpopsuki
+level_requirements:
+    - id: 1
+      is_kept: true
+      name: User
+      privilege: Can download/upload.
+    - downloaded: 1KB
+      id: 2
+      interval: P1W
+      is_kept: true
+      name: Member
+      privilege: Can use invites, notifications, set a forum signature, access the Top 10 and edit the Knowledge base.
+      ratio: 0.7
+      uploaded: 10GB
+    - downloaded: 1KB
+      id: 3
+      interval: P2W
+      is_kept: true
+      name: Power User
+      privilege: |-
+        map[__raw:BinaryExpression src:"advanced Top 10, can view torrent snatched list, edit torrent's description, " +
+                "original title and release date and access the advanced user search. " +
+                "Receives a new invite once ]
+      ratio: 1.05
+      uploaded: 25GB
+      uploads: 5
+name: JPopSuki
+no_login:
+    selector: a[href='login.php']
+schema: gazelle
+search_entry: /ajax.php
+search_param: torrentname
+selectors:
+    fields:
+        category:
+            selector: a[href*='filter_cat']
+        download:
+            attr: href
+            selector: a[href*='torrents.php?action=download'][title='Download']
+        title: {}
+tags:
+    - 音乐
+    - 日韩
+timezone_offset: "+0000"
+urls:
+    - https://jpopsuki.eu/
+user_info:
+    fields:
+        downloaded:
+            filters:
+                - name: parse_size
+        join_date:
+            attr: title
+            filters:
+                - args: '[MMM dd yyyy, HH:mm]'
+                  name: parse_time
+        level: {}
+        seeding:
+            filters:
+                - name: parse_number
+        uploaded:
+            filters:
+                - name: parse_size
+        uploads:
+            filters:
+                - name: parse_number

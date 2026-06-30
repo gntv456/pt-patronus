@@ -1,0 +1,47 @@
+# shareisland — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+id: shareisland
+level_requirements:
+    - id: 1
+      name: User
+      privilege: 4下载槽
+      ratio: 0.4
+    - id: 2
+      interval: P1M
+      name: ShareUser
+      privilege: 8下载槽
+      uploaded: 1TiB
+    - id: 3
+      interval: P2M
+      name: SuperUser
+      privilege: 10下载槽
+      uploaded: 5TiB
+    - id: 4
+      interval: P3M
+      name: ExtremeUser
+      privilege: 自动通过候选 无限下载槽
+      uploaded: 20TiB
+    - id: 5
+      interval: P6M
+      name: InsaneUser
+      uploaded: 50TiB
+    - id: 6
+      interval: P12M
+      name: Veteran
+      uploaded: 100TiB
+    - id: 7
+      interval: P1M
+      name: ShareArchivist
+    - id: 8
+      interval: P3M
+      name: Seeder
+name: ShareIsland
+schema: unit3d
+tags:
+    - 影视
+    - 综合
+timezone_offset: "+0000"
+urls:
+    - https://shareisland.org/

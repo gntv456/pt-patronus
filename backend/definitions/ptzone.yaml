@@ -1,0 +1,97 @@
+# ptzone — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+categories:
+    - id: "401"
+      name: Movies(电影)
+    - id: "402"
+      name: TV Series(电视剧)
+    - id: "403"
+      name: TV Shows(综艺)
+    - id: "404"
+      name: Documentaries(纪录片)
+    - id: "405"
+      name: Animations(动漫)
+    - id: "406"
+      name: Music(音乐)
+    - id: "407"
+      name: Sports(体育)
+    - id: "408"
+      name: HQ Audio(音乐)
+    - id: "410"
+      name: Software(软件)
+    - id: "411"
+      name: Games(游戏)
+    - id: "409"
+      name: Others(其它)
+description: 分享地带！
+id: ptzone
+level_requirements:
+    - id: 1
+      name: User
+      privilege: 新用户的默认级别。
+    - downloaded: 50GB
+      id: 2
+      interval: P4W
+      name: Power User
+      privilege: 首次升级赠送邀请1枚；可以查看NFO文档；可以请求续种； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。
+      ratio: 1.05
+      seeding_bonus: 40000
+    - downloaded: 120GB
+      id: 3
+      interval: P8W
+      name: Elite User
+      privilege: 账号如果在封存后将永远保留
+      ratio: 1.55
+      seeding_bonus: 80000
+    - downloaded: 300GB
+      id: 4
+      interval: P15W
+      name: Crazy User
+      privilege: 首次升级赠送邀请2枚；可以查看NFO文档；可以查看用户列表；可以请求续种；可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 2.05
+      seeding_bonus: 150000
+    - downloaded: 500GB
+      id: 5
+      interval: P25W
+      name: Insane User
+      privilege: 可以查看普通日志。
+      ratio: 2.55
+      seeding_bonus: 250000
+    - downloaded: 750GB
+      id: 6
+      interval: P40W
+      name: Veteran User
+      privilege: 首次升级赠送邀请3枚；可以查看其它用户的评论、帖子历史。
+      ratio: 3.05
+      seeding_bonus: 400000
+    - downloaded: 1024GB
+      id: 7
+      interval: P60W
+      name: Extreme User
+      privilege: 首次升级赠送邀请5枚，。
+      ratio: 3.55
+      seeding_bonus: 600000
+    - downloaded: 1536GB
+      id: 8
+      interval: P80W
+      name: Ultimate User
+      privilege: 首次升级赠送邀请10枚，保留帐号；
+      ratio: 4.05
+      seeding_bonus: 800000
+    - downloaded: 3072GB
+      id: 9
+      interval: P100W
+      name: Nexus Master
+      privilege: 首次升级赠送邀请3枚，保留帐号；
+      ratio: 4.55
+      seeding_bonus: 1000000
+name: PTzone
+schema: nexusphp
+tags:
+    - 影视
+    - 综合
+timezone_offset: "+0800"
+urls:
+    - https://ptzone.xyz/

@@ -1,0 +1,824 @@
+{
+  "version": 1,
+  "id": "mteam",
+  "name": "M-Team - TP",
+  "aka": [
+    "MTeam",
+    "馒头"
+  ],
+  "description": "综合性网站，有分享率要求",
+  "tags": [
+    "影视",
+    "综合",
+    "成人"
+  ],
+  "timezoneOffset": "+0800",
+  "collaborator": [
+    "Rhilip"
+  ],
+  "type": "private",
+  "schema": "mTorrent",
+  "urls": [
+    "uggcf://xc.z-grnz.pp/",
+    "uggcf://mc.z-grnz.vb/",
+    "uggcf://bo.z-grnz.pp/"
+  ],
+  "legacyUrls": [
+    "https://h5.m-team.cc/",
+    "https://xp.m-team.io/",
+    "https://pt.m-team.cc/",
+    "https://tp.m-team.cc/",
+    "https://xp.m-team.cc/",
+    "https://ap.m-team.cc/",
+    "https://next.m-team.cc/"
+  ],
+  "category": [
+    {
+      "name": "分类入口",
+      "key": "mode",
+      "keyPath": "data",
+      "options": [
+        {
+          "name": "综合",
+          "value": "normal"
+        },
+        {
+          "name": "成人",
+          "value": "adult"
+        }
+      ]
+    },
+    {
+      "name": "類別（综合）",
+      "key": "categories_normal",
+      "keyPath": "data",
+      "notes": "请先设置分类入口为“综合”！请勿与 成人 区类别同时选择！",
+      "options": {
+        "__call": "siteCategory.filter((item) => item.type === \"normal\")"
+      },
+      "cross": {
+        "mode": "brackets",
+        "key": "categories"
+      }
+    },
+    {
+      "name": "類別（成人）",
+      "key": "categories_adult",
+      "keyPath": "data",
+      "notes": "请先设置分类入口为“成人”！请勿与 综合 区类别同时选择！",
+      "options": {
+        "__call": "siteCategory.filter((item) => item.type === \"adult\")"
+      },
+      "cross": {
+        "mode": "brackets",
+        "key": "categories"
+      }
+    },
+    {
+      "name": "視頻編碼",
+      "key": "videoCodecs",
+      "keyPath": "data",
+      "options": [
+        {
+          "name": "H.264(x264/AVC)",
+          "value": "1"
+        },
+        {
+          "name": "VC-1",
+          "value": "2"
+        },
+        {
+          "name": "Xvid",
+          "value": "3"
+        },
+        {
+          "name": "MPEG-2",
+          "value": "4"
+        },
+        {
+          "name": "H.265(x265/HEVC)",
+          "value": "16"
+        },
+        {
+          "name": "AV1",
+          "value": "19"
+        },
+        {
+          "name": "VP8/9",
+          "value": "21"
+        },
+        {
+          "name": "AVS",
+          "value": "22"
+        }
+      ],
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "音頻編碼",
+      "key": "audioCodecs",
+      "keyPath": "data",
+      "options": [
+        {
+          "name": "FLAC",
+          "value": "1"
+        },
+        {
+          "name": "APE",
+          "value": "2"
+        },
+        {
+          "name": "DTS",
+          "value": "3"
+        },
+        {
+          "name": "MP2/3",
+          "value": "4"
+        },
+        {
+          "name": "OGG",
+          "value": "5"
+        },
+        {
+          "name": "AAC",
+          "value": "6"
+        },
+        {
+          "name": "Other",
+          "value": "7"
+        },
+        {
+          "name": "AC3(DD)",
+          "value": "8"
+        },
+        {
+          "name": "TrueHD",
+          "value": "9"
+        },
+        {
+          "name": "TrueHD Atmos",
+          "value": "10"
+        },
+        {
+          "name": "DTS-HD MA",
+          "value": "11"
+        },
+        {
+          "name": "E-AC3(DDP)",
+          "value": "12"
+        },
+        {
+          "name": "E-AC3 Atoms(DDP Atoms)",
+          "value": "13"
+        },
+        {
+          "name": "LPCM/PCM",
+          "value": "14"
+        },
+        {
+          "name": "WAV",
+          "value": "15"
+        }
+      ],
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "解析度",
+      "key": "standards",
+      "keyPath": "data",
+      "options": [
+        {
+          "name": "1080p",
+          "value": "1"
+        },
+        {
+          "name": "1080i",
+          "value": "2"
+        },
+        {
+          "name": "720p",
+          "value": "3"
+        },
+        {
+          "name": "SD",
+          "value": "5"
+        },
+        {
+          "name": "4K",
+          "value": "6"
+        },
+        {
+          "name": "8K",
+          "value": "7"
+        }
+      ],
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "標記",
+      "key": "labelsNew",
+      "keyPath": "data",
+      "options": [
+        {
+          "name": "4k",
+          "value": "4k"
+        },
+        {
+          "name": "8k",
+          "value": "8k"
+        },
+        {
+          "name": "hdr",
+          "value": "hdr"
+        },
+        {
+          "name": "hdr10",
+          "value": "hdr10"
+        },
+        {
+          "name": "hdr10+",
+          "value": "hdr10+"
+        },
+        {
+          "name": "hlg",
+          "value": "hlg"
+        },
+        {
+          "name": "DoVi",
+          "value": "DoVi"
+        },
+        {
+          "name": "HDRVi",
+          "value": "HDRVi"
+        },
+        {
+          "name": "中字",
+          "value": "中字"
+        },
+        {
+          "name": "中配",
+          "value": "中配"
+        }
+      ],
+      "cross": {
+        "mode": "brackets"
+      }
+    },
+    {
+      "name": "促銷",
+      "key": "discount",
+      "keyPath": "data",
+      "options": [
+        {
+          "name": "普通",
+          "value": "NORMAL"
+        },
+        {
+          "name": "30%",
+          "value": "PERCENT_70"
+        },
+        {
+          "name": "50%",
+          "value": "PERCENT_50"
+        },
+        {
+          "name": "免費",
+          "value": "FREE"
+        }
+      ],
+      "cross": false
+    },
+    {
+      "name": "活/死种",
+      "key": "visible",
+      "keyPath": "data",
+      "options": [
+        {
+          "name": "僅活躍",
+          "value": 1
+        },
+        {
+          "name": "僅死種",
+          "value": 2
+        }
+      ]
+    }
+  ],
+  "officialGroupPattern": [
+    {
+      "__regex": "/-(.*mteam|mpad|tnp|BMDru|MWEB)/i"
+    }
+  ],
+  "search": {
+    "keywordPath": "data.keyword",
+    "requestConfig": {
+      "method": "POST",
+      "url": "/api/torrent/search",
+      "responseType": "json",
+      "data": {
+        "pageNumber": 1,
+        "pageSize": 100
+      }
+    },
+    "advanceKeywordParams": {
+      "imdb": {
+        "requestConfigTransformer": {
+          "__fn": true,
+          "src": "({ keywords, requestConfig: config }) => {\n          set(config!, \"data.mode\", \"normal\");\n          set(config!, \"data.keyword\", buildImdb(keywords!));\n          return config!;\n        }"
+        }
+      },
+      "douban": {
+        "requestConfigTransformer": {
+          "__fn": true,
+          "src": "({ keywords, requestConfig: config }) => {\n          set(config!, \"data.mode\", \"normal\");\n          set(config!, \"data.keyword\", buildDouban(keywords!));\n          return config!;\n        }"
+        }
+      }
+    },
+    "selectors": {
+      "rows": {
+        "selector": "data.data"
+      },
+      "id": {
+        "selector": "id"
+      },
+      "title": {
+        "selector": "name"
+      },
+      "subTitle": {
+        "selector": "smallDescr"
+      },
+      "url": {
+        "selector": "id",
+        "filters": [
+          {
+            "name": "prepend",
+            "args": [
+              "/detail/"
+            ]
+          }
+        ]
+      },
+      "time": {
+        "selector": "createdDate",
+        "filters": [
+          {
+            "name": "parseTime"
+          }
+        ]
+      },
+      "size": {
+        "selector": "size",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "author": {
+        "selector": "author",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string | null) => (typeof query === \"string\" ? `u:${query}` : \"Anonymous\")"
+          }
+        ]
+      },
+      "seeders": {
+        "selector": "status.seeders",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "leechers": {
+        "selector": "status.leechers",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "completed": {
+        "selector": "status.timesCompleted",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "comments": {
+        "selector": "status.comments",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "category": {
+        "selector": "category",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => siteCategory.find((c) => c.value == query)?.name ?? \"Unknown\""
+          }
+        ]
+      },
+      "ext_douban": {
+        "selector": "douban",
+        "filters": [
+          {
+            "name": "extDoubanId"
+          }
+        ]
+      },
+      "ext_imdb": {
+        "selector": "imdb",
+        "filters": [
+          {
+            "name": "extImdbId"
+          }
+        ]
+      }
+    }
+  },
+  "searchEntry": {
+    "area_normal": {
+      "name": "综合",
+      "requestConfig": {
+        "data": {
+          "mode": "normal"
+        }
+      }
+    },
+    "area_adult": {
+      "name": "成人",
+      "requestConfig": {
+        "data": {
+          "mode": "adult"
+        }
+      },
+      "enabled": false
+    }
+  },
+  "userInfo": {
+    "pickLast": [
+      "id",
+      "name",
+      "joinTime"
+    ],
+    "process": [
+      {
+        "requestConfig": {
+          "url": "/api/member/profile",
+          "method": "POST",
+          "responseType": "json"
+        },
+        "selectors": {
+          "id": {
+            "selector": "data.id",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "name": {
+            "selector": "data.username"
+          },
+          "joinTime": {
+            "selector": "data.createdDate",
+            "filters": [
+              {
+                "name": "parseTime"
+              }
+            ]
+          },
+          "uploaded": {
+            "selector": "data.memberCount.uploaded",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "downloaded": {
+            "selector": "data.memberCount.downloaded",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "levelName": {
+            "selector": "data.role",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(levelId: string) =>\n                levelRequirements.find((x) => levelId == (x.levelId ?? String(x.id)))?.name ?? levelId"
+              }
+            ]
+          },
+          "levelId": {
+            "selector": "data.role",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "bonus": {
+            "selector": "data.memberCount.bonus",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "lastAccessAt": {
+            "selector": "data.memberStatus.lastBrowse",
+            "filters": [
+              {
+                "name": "parseTime"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/api/tracker/myPeerStatistics",
+          "method": "POST",
+          "responseType": "json"
+        },
+        "selectors": {
+          "seeding": {
+            "selector": "data.seederCount",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "seedingSize": {
+            "selector": "data.seederSize",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "uploads": {
+            "selector": "data.uploadCount",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/api/tracker/mybonus",
+          "method": "POST",
+          "responseType": "json"
+        },
+        "selectors": {
+          "bonusPerHour": {
+            "selector": "data.formulaParams.finalBs",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/api/msg/notify/statistic",
+          "method": "POST",
+          "responseType": "json"
+        },
+        "selectors": {
+          "messageCount": {
+            "selector": "data.unMake",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "list": [
+    {
+      "urlPattern": [
+        {
+          "__regex": "/\\/\\/ob\\..+\\/browse/"
+        }
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "__spread": [
+          "commonListSelectors"
+        ],
+        "rows": {
+          "selector": "tbody.bg-\\[\\#bccad6\\] > tr"
+        },
+        "subTitle": {
+          "selector": "a[href*='/detail/'] + br + div > span"
+        },
+        "time": {
+          "selector": "td:nth-last-child(4) > span[title]",
+          "elementProcess": {
+            "__fn": true,
+            "src": "(el: HTMLInputElement) => {\n            return el.getAttribute(\"title\") || el.textContent;\n          }"
+          },
+          "filters": [
+            {
+              "name": "parseTime"
+            }
+          ]
+        },
+        "size": {
+          "selector": "td:nth-last-child(3)",
+          "filters": [
+            {
+              "name": "parseSize"
+            }
+          ]
+        },
+        "seeders": {
+          "selector": "span[aria-label=\"arrow-up\"] + span"
+        },
+        "leechers": {
+          "selector": "span[aria-label=\"arrow-down\"] + span"
+        },
+        "comments": {
+          "selector": "td:nth-last-child(5)"
+        },
+        "category": {
+          "selector": "img[src*='/static/cate'][alt]",
+          "attr": "alt"
+        },
+        "ext_douban": {
+          "selector": "a[href^='https://movie.douban.com/subject/']",
+          "filters": [
+            {
+              "name": "extDoubanId"
+            }
+          ]
+        },
+        "ext_imdb": {
+          "selector": "a[href^='https://www.imdb.com/title/']",
+          "filters": [
+            {
+              "name": "extImdbId"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "urlPattern": [
+        "/browse"
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "__spread": [
+          "commonListSelectors"
+        ],
+        "rows": {
+          "selector": "div.app-content__inner table.w-full > tbody > tr"
+        },
+        "title": {
+          "selector": "a[href*='/detail/'] strong"
+        },
+        "subTitle": {
+          "selector": "a[href*='/detail/'] + br + div > span:nth-last-child(1)"
+        },
+        "time": {
+          "selector": "td:nth-last-child(5) > span[title]",
+          "elementProcess": {
+            "__fn": true,
+            "src": "(el: HTMLInputElement) => {\n            return el.getAttribute(\"title\") || el.textContent;\n          }"
+          },
+          "filters": [
+            {
+              "name": "parseTime"
+            }
+          ]
+        },
+        "size": {
+          "selector": "td:nth-last-child(4)",
+          "filters": [
+            {
+              "name": "parseSize"
+            }
+          ]
+        },
+        "seeders": {
+          "selector": "td:nth-last-child(3) span.align-middle:nth-last-child(1)"
+        },
+        "leechers": {
+          "selector": "td:nth-last-child(2) span.align-middle:nth-last-child(1)"
+        },
+        "comments": {
+          "selector": "td:nth-last-child(6)"
+        },
+        "category": {
+          "selector": "a[href^='/browse?cat='] > span"
+        },
+        "ext_douban": {
+          "selector": "a[href^='/mdb/title'][href*='douban=']",
+          "filters": [
+            {
+              "name": "querystring",
+              "args": [
+                "douban"
+              ]
+            },
+            {
+              "name": "extDoubanId"
+            }
+          ]
+        },
+        "ext_imdb": {
+          "selector": "a[href^='/mdb/title'][href*='imdb=']",
+          "filters": [
+            {
+              "name": "querystring",
+              "args": [
+                "imdb"
+              ]
+            },
+            {
+              "name": "extImdbId"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "detail": {
+    "urlPattern": [
+      "/detail/",
+      "#/torrent/\\d+"
+    ],
+    "selectors": {
+      "id": {
+        "selector": ":self",
+        "elementProcess": {
+          "__fn": true,
+          "src": "(element: Document) => {\n          return extractTorrentIdFromUrl(element.URL) ?? element.URL;\n        }"
+        }
+      },
+      "title": {
+        "selector": [
+          "h2 > span.align-middle",
+          "title"
+        ],
+        "filters": [
+          {
+            "name": "replace",
+            "args": [
+              "M-Team - TP :: 種子詳情 \"",
+              ""
+            ]
+          },
+          {
+            "name": "replace",
+            "args": [
+              "\" - Powered by mTorrent",
+              ""
+            ]
+          }
+        ]
+      },
+      "link": {
+        "text": ""
+      }
+    }
+  },
+  "levelRequirements": {
+    "__ref": "levelRequirements"
+  },
+  "userInputSettingMeta": [
+    {
+      "name": "token",
+      "label": "Token",
+      "hint": "在控制台-实验室获取存取令牌并填入此处",
+      "required": true
+    }
+  ]
+}

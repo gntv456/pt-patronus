@@ -1,0 +1,13 @@
+# 复制为 mobile/android/key.properties 并填真实值（此文件不提交 git，见 .gitignore）。
+#
+# 1) 用 keytool 生成 keystore（一次性，妥善保管 jks，丢了只能换包名重装）：
+#      keytool -genkey -v -keystore mobile/android/app/ptpatronus.jks \
+#              -keyalg RSA -keysize 2048 -validity 36500 -alias ptpatronus
+# 2) 填下面四项；storeFile 相对 app/ 目录（即 mobile/android/app/）
+# 3) CI：在 GitHub Settings → Secrets 配 4 个：
+#      ANDROID_KEYSTORE_BASE64 = base64(jks 文件)   # base64 -w0 ptpatronus.jks
+#      ANDROID_STORE_PASSWORD / ANDROID_KEY_PASSWORD / ANDROID_KEY_ALIAS
+storePassword=你的store密码
+keyPassword=你的key密码
+keyAlias=ptpatronus
+storeFile=ptpatronus.jks

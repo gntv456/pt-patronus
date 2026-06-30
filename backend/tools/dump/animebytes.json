@@ -1,0 +1,627 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 1,
+  "id": "animebytes",
+  "name": "AnimeBytes",
+  "aka": [
+    "AB"
+  ],
+  "description": "AnimeBytes is a Private site. Powered by Tentacles",
+  "tags": [
+    "动漫",
+    "音乐",
+    "游戏"
+  ],
+  "timezoneOffset": "+0000",
+  "collaborator": [
+    "MewX",
+    "sabersalv"
+  ],
+  "type": "private",
+  "schema": "Gazelle",
+  "urls": [
+    "uggcf://navzrolgrf.gi/"
+  ],
+  "category": [
+    {
+      "name": "搜索入口",
+      "key": "search_type",
+      "options": [
+        {
+          "name": "动漫",
+          "value": "anime"
+        },
+        {
+          "name": "音乐",
+          "value": "music"
+        }
+      ],
+      "generateRequestConfig": {
+        "__fn": true,
+        "src": "(selectedOptions) => {\n        return { requestConfig: { params: { type: selectedOptions.toString() } } };\n      }"
+      }
+    },
+    {
+      "name": "Categories (Anime)",
+      "key": "categories_anime",
+      "notes": "请先设置分类入口为“动漫”！",
+      "options": [
+        {
+          "name": "TV Series",
+          "value": "tv_series"
+        },
+        {
+          "name": "TV Special",
+          "value": "tv_special"
+        },
+        {
+          "name": "OVA",
+          "value": "ova"
+        },
+        {
+          "name": "ONA",
+          "value": "ona"
+        },
+        {
+          "name": "DVD Special",
+          "value": "dvd_special"
+        },
+        {
+          "name": "BD Special",
+          "value": "bd_special"
+        },
+        {
+          "name": "Movie",
+          "value": "movie"
+        }
+      ],
+      "cross": {
+        "key": "anime",
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "Categories (Game)",
+      "key": "categories_game",
+      "notes": "请先设置分类入口为“动漫”！",
+      "options": [
+        {
+          "name": "Game",
+          "value": "game"
+        },
+        {
+          "name": "Game Visual Novel",
+          "value": "visual_novel"
+        }
+      ],
+      "cross": {
+        "key": "gamec",
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "Categories (Printed Media)",
+      "key": "categories_printed",
+      "notes": "请先设置分类入口为“动漫”！",
+      "options": [
+        {
+          "name": "Manga",
+          "value": "manga"
+        },
+        {
+          "name": "Oneshot",
+          "value": "oneshot"
+        },
+        {
+          "name": "Anthology",
+          "value": "anthology"
+        },
+        {
+          "name": "Manhwa",
+          "value": "manhwa"
+        },
+        {
+          "name": "Light Novel",
+          "value": "light_novel"
+        },
+        {
+          "name": "Artbook",
+          "value": "artbook"
+        }
+      ],
+      "cross": {
+        "key": "printedtype",
+        "mode": "appendQuote"
+      }
+    }
+  ],
+  "search": {
+    "__spread": [
+      "SchemaMetadata.search!"
+    ],
+    "requestConfig": {
+      "url": "/scrape.php",
+      "responseType": "json",
+      "params": {
+        "sort": "grouptime",
+        "way": "desc",
+        "type": "anime",
+        "limit": 50
+      }
+    },
+    "requestConfigTransformer": {
+      "__fn": true,
+      "src": "({ keywords, requestConfig }) => {\n      if (!keywords || keywords.trim().length == 0) {\n        requestConfig!.params!.limit = 15;\n      }\n      return requestConfig!;\n    }"
+    }
+  },
+  "searchEntry": {
+    "area_anime": {
+      "name": "动漫",
+      "requestConfig": {
+        "params": {
+          "type": "anime"
+        }
+      }
+    },
+    "area_music": {
+      "name": "音乐",
+      "enabled": false,
+      "requestConfig": {
+        "params": {
+          "type": "music"
+        }
+      }
+    }
+  },
+  "list": [
+    {
+      "urlPattern": [
+        {
+          "__regex": "/\\/torrents2?\\.php(?!.*(?:\\bid=|torrentid=))/"
+        }
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "__spread": [
+          "SchemaMetadata.search!.selectors!"
+        ],
+        "rows": {
+          "selector": "div.group_cont",
+          "filter": {
+            "__fn": true,
+            "src": "(boxes: HTMLElement[] | null): HTMLElement[] | null => {\n            if (Array.isArray(boxes) && boxes.length > 0) {\n              const rows: HTMLElement[] = [];\n              // 使用信息卡片作为信息行\n              for (const box of boxes) {\n                const groupCard = box.querySelector<HTMLElement>(\"div.group_main\");\n                if (!groupCard) continue;\n\n                const cat = box.querySelector(\"span.cat\");\n                if (cat) {\n                  groupCard.dataset.cat = cat.textContent;\n                }\n\n                const anidbUrl = box.querySelector(\"div.group_statbox a[href*='anidb.net/anime/']\");\n                if (anidbUrl) {\n                  groupCard.dataset.anidb = parse(anidbUrl.getAttribute(\"href\")!);\n                }\n\n                const torrentRows = Array.from(box.querySelectorAll<HTMLElement>(\"table.torrent_group > tbody > tr\"));\n                const torrentWithEpisode = processEditionEpisodes(torrentRows).map((torrent) => {\n                  torrent.className = \"group_torrent\";\n                  return torrent;\n                });\n                rows.push(groupCard, ...torrentWithEpisode);\n              }\n              return rows;\n            }\n            return boxes;\n          }"
+          }
+        },
+        "title": {
+          "selector": "span.group_title > strong"
+        },
+        "category": {
+          "selector": ":self",
+          "data": "cat"
+        },
+        "ext_anidb": {
+          "selector": ":self",
+          "data": "anidb"
+        },
+        "id": {
+          "selector": ":self",
+          "attr": "id",
+          "filters": [
+            {
+              "name": "parseNumber"
+            }
+          ]
+        },
+        "url": {
+          "selector": "td.torrent_properties > a[href^='torrents']",
+          "attr": "href"
+        },
+        "link": {
+          "selector": "span.download_link > a[href^='/torrent/']",
+          "attr": "href"
+        },
+        "subTitle": {
+          "__call": "genSubTitleSelector(\"a[href^='torrents']\")"
+        },
+        "time": {
+          "text": 0
+        },
+        "size": {
+          "selector": "td.torrent_size > span",
+          "filters": [
+            {
+              "name": "parseSize"
+            }
+          ]
+        },
+        "completed": {
+          "selector": "td.torrent_snatched > span"
+        },
+        "seeders": {
+          "selector": "td.torrent_seeders > span"
+        },
+        "leechers": {
+          "selector": "td.torrent_leechers > span"
+        },
+        "tags": [
+          {
+            "name": "Free",
+            "selector": "td.torrent_properties img[alt='Freeleech!']",
+            "color": "blue"
+          }
+        ]
+      }
+    },
+    {
+      "__spread": [
+        "detailPageList"
+      ],
+      "urlPattern": [
+        {
+          "__regex": "/\\/torrents2?\\.php\\?(?:.*&)?(\\bid|torrentid)=\\d+/"
+        }
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "__spread": [
+          "SchemaMetadata.search!.selectors!",
+          "commonListSelectors"
+        ],
+        "keywords": {
+          "selector": [
+            "div.thin > h2 > a[href^='/series.php']",
+            "div.thin > h2"
+          ]
+        },
+        "title": {
+          "selector": "div.thin > h2"
+        },
+        "rows": {
+          "__spread": [
+            "detailPageList.selectors!.rows!"
+          ],
+          "filter": {
+            "__fn": true,
+            "src": "(rows: HTMLElement[] | null): HTMLElement[] | null => {\n            const modfiedRows = detailPageList.selectors!.rows!.filter!(rows);\n            return withEpisodeFilter(modfiedRows);\n          }"
+          }
+        },
+        "subTitle": {
+          "__call": "genSubTitleSelector(\"a[href^='/torrents']\", (part: string) => part.replaceAll(\"»\", \"\").trim())"
+        },
+        "time": {
+          "selector": "+tr span[style][class][title]:first",
+          "filters": [
+            {
+              "name": "parseTime",
+              "args": [
+                "MMM dd yyyy, HH:mm 'UTC'"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "urlPattern": [
+        "/collage\\.php.*?[&?]id=\\d+",
+        "/company\\.php.*?[&?]id=\\d+",
+        "/seiyuu\\.php.*?[&?]id=\\d+",
+        "/characters\\.php.*?[&?]id=\\d+"
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "__spread": [
+          "SchemaMetadata.search!.selectors!",
+          "commonListSelectors"
+        ],
+        "title": {
+          "selector": "td > strong:has(a[title='View Torrent'])"
+        },
+        "category": {
+          "selector": "img[src^='/static/common/caticons/']",
+          "attr": "title"
+        },
+        "rows": {
+          "__spread": [
+            "SchemaMetadata.search!.selectors!.rows!"
+          ],
+          "filter": {
+            "__ref": "withEpisodeFilter"
+          }
+        },
+        "subTitle": {
+          "__ref": "commonSubTitleSelector"
+        }
+      }
+    },
+    {
+      "urlPattern": [
+        "/series\\.php.*?[&?]id=\\d+",
+        "/artist\\.php.*?[&?]id=\\d+"
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "__spread": [
+          "SchemaMetadata.search!.selectors!",
+          "commonListSelectors"
+        ],
+        "rows": {
+          "__spread": [
+            "SchemaMetadata.search!.selectors!.rows!"
+          ],
+          "filter": {
+            "__ref": "withEpisodeFilter"
+          }
+        },
+        "title": {
+          "selector": "td > h3"
+        },
+        "subTitle": {
+          "__ref": "commonSubTitleSelector"
+        }
+      }
+    },
+    {
+      "urlPattern": [
+        "/alltorrents\\.php"
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "__spread": [
+          "SchemaMetadata.search!.selectors!",
+          "commonListSelectors"
+        ],
+        "time": {
+          "text": 0
+        },
+        "category": {
+          "selector": "img[src^='/static/common/caticons/']",
+          "attr": "title"
+        },
+        "title": {
+          "selector": "td:has(a[href^='/torrent/'][title='Download torrent'])",
+          "elementProcess": {
+            "__fn": true,
+            "src": "(el: HTMLElement) => {\n            // 在 elementProcess 阶段处理，如在 filter 中处理会受预处理步骤影响\n            return (el.innerText || el.textContent).split(\"\\n\")[0]?.replaceAll(\"[DL]\", \"\");\n          }"
+          }
+        },
+        "subTitle": {
+          "__call": "genSubTitleSelector(\n          \"td:has(a[href^='/torrent/'][title='Download torrent'])\",\n          (part: string) => (part.includes(\"[DL]\") ? \"\" : part.trim()), // 删除标题行（带下载链接）\n        )"
+        }
+      }
+    }
+  ],
+  "userInfo": {
+    "pickLast": [
+      "id",
+      "name",
+      "joinTime"
+    ],
+    "process": [
+      {
+        "requestConfig": {
+          "url": "/",
+          "responseType": "document"
+        },
+        "selectors": {
+          "id": {
+            "selector": "#stats_menu > a:first",
+            "attr": "href",
+            "filters": [
+              {
+                "name": "querystring",
+                "args": [
+                  "userid"
+                ]
+              }
+            ]
+          },
+          "name": {
+            "selector": "a.username:first"
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/user.php",
+          "responseType": "document"
+        },
+        "assertion": {
+          "id": "params.id"
+        },
+        "selectors": {
+          "messageCount": {
+            "text": 0,
+            "selector": ".alertbar.notice span.new_count",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "uploads": {
+            "selector": "dt:contains('Torrents Uploaded:') + dd",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "uploaded": {
+            "selector": "dt:contains('Uploaded:') + dd > span",
+            "attr": "title",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "downloaded": {
+            "selector": "dt:contains('Downloaded:') + dd > span",
+            "attr": "title",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "ratio": {
+            "text": {
+              "__expr": "-1"
+            },
+            "selector": [
+              "dt:contains('Ratio:') + dd > span"
+            ],
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "seeding": {
+            "selector": "dt:contains('Seeding:') + dd",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "seedingSize": {
+            "selector": "dt:contains('Total seed size:') + dd > span",
+            "attr": "title",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "levelName": {
+            "selector": "dt:contains('Class:') + dd"
+          },
+          "bonus": {
+            "selector": "#yen_count > a",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "bonusPerHour": {
+            "selector": "dt:contains('Yen per day:') + dd",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(query: string) => query.replace(/,/g, \"\").match(/[\\d.]+/)"
+              },
+              {
+                "__fn": true,
+                "src": "(query: string[]) => (query ? parseFloat(query[0]) / 24 : 0)"
+              }
+            ]
+          },
+          "joinTime": {
+            "selector": "dt:contains('Joined:') + dd > span",
+            "attr": "title",
+            "filters": [
+              {
+                "name": "parseTime",
+                "args": [
+                  "MMM dd yyyy, HH:mm 'UTC'"
+                ]
+              }
+            ]
+          },
+          "lastAccessAt": {
+            "selector": "dt:contains('Last Seen') + dd >span",
+            "attr": "title",
+            "filters": [
+              {
+                "name": "parseTime",
+                "args": [
+                  "MMM dd yyyy, HH:mm 'UTC'"
+                ]
+              }
+            ]
+          },
+          "hnrUnsatisfied": {
+            "selector": "ul.stats li:contains('H&Rs:')",
+            "attr": "title",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(query: string) => {\n                const numbers = query.match(/\\d+/g);\n                return numbers && numbers.length >= 1 ? parseInt(numbers[0]) : 0;\n              }"
+              }
+            ]
+          },
+          "hnrPreWarning": {
+            "selector": "ul.stats li:contains('H&Rs:')",
+            "attr": "title",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(query: string) => {\n                const numbers = query.match(/\\d+/g);\n                return numbers && numbers.length >= 2 ? parseInt(numbers[1]) : 0;\n              }"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "levelRequirements": [
+    {
+      "id": 0,
+      "name": "Aka-chan",
+      "privilege": "新用户的默认级别"
+    },
+    {
+      "id": 1,
+      "name": "User",
+      "interval": "P1W",
+      "uploaded": "10.5GB",
+      "ratio": 0.5,
+      "privilege": "发送邀请"
+    },
+    {
+      "id": 2,
+      "name": "Power User",
+      "interval": "P2W",
+      "uploads": 10,
+      "uploaded": "25GB",
+      "ratio": 0.7,
+      "isKept": true,
+      "privilege": "访问邀请区，每月固定邀请名额，免于非活动修剪"
+    },
+    {
+      "id": 3,
+      "name": "Elite",
+      "interval": "P30D",
+      "uploads": 50,
+      "uploaded": "100GB",
+      "ratio": 0.8,
+      "isKept": true,
+      "privilege": ""
+    },
+    {
+      "id": 4,
+      "name": "Torrent Master",
+      "interval": "P90D",
+      "uploads": 100,
+      "uploaded": "500GB",
+      "ratio": 0.9,
+      "isKept": true,
+      "privilege": "超出用户限制也可以发送邀请"
+    },
+    {
+      "id": 5,
+      "name": "Legend",
+      "interval": "P180D",
+      "uploads": 500,
+      "uploaded": "1TB",
+      "ratio": 1,
+      "isKept": true,
+      "privilege": ""
+    }
+  ]
+}

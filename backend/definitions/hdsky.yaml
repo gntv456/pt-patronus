@@ -1,0 +1,5 @@
+id: hdsky
+name: 天空
+schema: nexusphp
+urls:
+  - https://hdsky.me

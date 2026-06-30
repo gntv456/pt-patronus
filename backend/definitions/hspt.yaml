@@ -1,0 +1,68 @@
+# hspt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+dead: true
+description: 近来可好？
+id: hspt
+level_requirements:
+    - downloaded: 10GB
+      id: 1
+      interval: P1W
+      name: "(回音者) \U0001D477\U0001D490\U0001D498\U0001D486\U0001D493 \U0001D47C\U0001D494\U0001D486\U0001D493"
+      privilege: 得到一个邀请名额
+      ratio: 1.1
+      seeding_bonus: 40000
+    - downloaded: 120GB
+      id: 2
+      interval: P1W
+      name: "(共鸣者) \U0001D479\U0001D486\U0001D494\U0001D490\U0001D48F\U0001D482\U0001D48F\U0001D484\U0001D486"
+      ratio: 1.55
+      seeding_bonus: 80000
+    - downloaded: 300GB
+      id: 3
+      interval: P4W
+      name: "(和谐者) \U0001D46F\U0001D482\U0001D493\U0001D48E\U0001D490\U0001D48F\U0001D49A"
+      privilege: 得到两个邀请名额
+      ratio: 2.05
+      seeding_bonus: 150000
+    - downloaded: 500GB
+      id: 4
+      interval: P25W
+      name: (回荡者) ʀᴇᴠᴇʀʙᴇʀᴀᴛɪᴏɴ
+      ratio: 2.55
+      seeding_bonus: 250000
+    - downloaded: 750GB
+      id: 5
+      interval: P40W
+      name: (雷鸣者) ᴛʜᴜɴᴅᴇʀ
+      privilege: 得到三个邀请名额
+      ratio: 3.05
+      seeding_bonus: 400000
+    - downloaded: 1024GB
+      id: 6
+      interval: P60W
+      name: (巅峰者) Ⱥᵽɇx
+      ratio: 3.55
+      seeding_bonus: 600000
+    - downloaded: 1536GB
+      id: 7
+      interval: P80W
+      name: (传承者) ʟᴇɢᴀᴄy
+      privilege: 得到五个邀请名额
+      ratio: 4.05
+      seeding_bonus: 800000
+    - downloaded: 3072GB
+      id: 8
+      interval: P100W
+      name: "(永恒者) \U0001D570\U0001D599\U0001D58A\U0001D597\U0001D593\U0001D58E\U0001D599\U0001D59E"
+      privilege: 得到十个邀请名额
+      ratio: 4.55
+      seeding_bonus: 1000000
+name: 回声PT
+schema: nexusphp
+tags:
+    - 综合
+    - 影视
+urls:
+    - https://hspt.club/

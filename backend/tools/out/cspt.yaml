@@ -1,0 +1,130 @@
+# cspt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - CSPT
+categories:
+    - id: "417"
+      name: 儿童
+    - id: "408"
+      name: HQ音乐
+    - id: "409"
+      name: 其他
+    - id: "407"
+      name: 体育
+    - id: "406"
+      name: MV
+    - id: "404"
+      name: 纪录片
+    - id: "403"
+      name: 综艺
+    - id: "402"
+      name: 电视剧
+    - id: "401"
+      name: 电影
+    - id: "405"
+      name: 动漫
+description: 财神到，八方来财！
+id: cspt
+level_requirements:
+    - name: User
+    - downloaded: 50GB
+      id: 1
+      interval: P4W
+      name: Power User
+      privilege: |-
+        map[__raw:BinaryExpression src:"可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种；可以发送邀请；" +
+                '可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")；可以删除自己上传的字幕。']
+      ratio: 1.05
+      seeding_bonus: 80000
+    - downloaded: 120GB
+      id: 2
+      interval: P8W
+      name: Elite User
+      privilege: Elite User及以上用户封存账号后不会被删除。
+      ratio: 1.55
+      seeding_bonus: 160000
+    - downloaded: 512GB
+      id: 3
+      interval: P15W
+      name: Crazy User
+      privilege: 可以在做种/下载/发布的时候选择匿名模式。
+      ratio: 2.05
+      seeding_bonus: 300000
+    - downloaded: 1TB
+      id: 4
+      interval: P25W
+      name: Insane User
+      privilege: 可以查看普通日志。
+      ratio: 2.55
+      seeding_bonus: 600000
+    - downloaded: 2TB
+      id: 5
+      interval: P40W
+      is_kept: true
+      name: Veteran User
+      privilege: 可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
+      ratio: 3.05
+      seeding_bonus: 1000000
+    - downloaded: 4TB
+      id: 6
+      interval: P60W
+      is_kept: true
+      name: Extreme User
+      privilege: 得到一个邀请名额；可以更新过期的外部信息；可以查看Extreme User论坛。
+      ratio: 3.55
+      seeding_bonus: 1500000
+    - downloaded: 8TB
+      id: 7
+      interval: P80W
+      is_kept: true
+      name: Ultimate User
+      privilege: 得到两个邀请名额。
+      ratio: 4.05
+      seeding_bonus: 2200000
+    - downloaded: 16TB
+      id: 8
+      interval: P100W
+      is_kept: true
+      name: Nexus Master
+      privilege: 得到三个邀请名额。
+      ratio: 4.55
+      seeding_bonus: 3000000
+name: 财神
+schema: nexusphp
+selectors:
+    fields:
+        completed:
+            selector: .torrent-info-text-finished
+        leechers:
+            selector: .torrent-info-text-leechers
+        seeders:
+            selector: .torrent-info-text-seeders
+        size:
+            filters:
+                - name: parse_size
+            selector: .torrent-info-text-size
+        subtitle:
+            selector: .torrent-info-text-small_name
+        time:
+            selector: .torrent-info-text-added
+    rows:
+        selector: div.torrent-table-sub-info
+tags:
+    - 中文
+    - 综合
+    - 影视
+    - 综合
+timezone_offset: "+0800"
+urls:
+    - https://cspt.top/
+    - https://cspt.cc/
+    - https://cspt.date/
+user_info:
+    fields:
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - td.rowhead:contains('金元宝') + td

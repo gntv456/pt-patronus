@@ -1,0 +1,128 @@
+# nebulance — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.size（data）
+#   - search.category（elementProcess）
+#   - search.title（data）
+#   - userInfo.ratio（text）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - NBL
+description: Nebulance is a Private site. At Nebulance we will change the way you think about TV.
+id: nebulance
+level_requirements:
+    - id: 1
+      name: Colonial
+    - bonus: 100000
+      id: 2
+      interval: P4W
+      name: Ensign
+      privilege: Access to recruitment forum
+      uploaded: 100GB
+    - bonus: 250000
+      id: 3
+      interval: P8W
+      name: Flattop
+      privilege: Can add tags
+      uploaded: 250GB
+    - bonus: 500000
+      id: 4
+      interval: P16W
+      name: Nugget
+      privilege: Can view uploaders; Can edit own torrents after edit timelock
+      uploaded: 500GB
+    - bonus: 850000
+      id: 5
+      interval: P32W
+      name: Raptor
+      uploaded: 1TB
+    - bonus: 2500000
+      id: 6
+      interval: P64W
+      name: Viper
+      privilege: Can download multiple torrents at once aka (DownThemAll)
+      uploaded: 2.5TB
+      uploads: 50
+    - bonus: 3000000
+      id: 7
+      interval: P100W
+      name: Orion
+      privilege: Can view ratio; Can view downloaded
+      uploaded: 8.5TB
+      uploads: 150
+    - bonus: 250000000
+      id: 8
+      interval: P150W
+      name: Valkyrie
+      privilege: Can view the site stats page; Can use advanced bbcode tags
+      uploaded: 100TB
+      uploads: 300
+name: Nebulance
+schema: gazelle
+search_entry: /torrents.php
+search_param: searchtext
+selectors:
+    fields:
+        category:
+            selector: div.tags
+        detail:
+            attr: href
+            selector: a[href*='torrents.php?id=']
+        download:
+            attr: href
+            selector: a[href*='torrents.php?action=download']
+        size:
+            selector: a[href*='torrents.php?id=']
+        subtitle:
+            selector: div.tags
+        title:
+            selector: a[href*='torrents.php?id=']
+tags:
+    - 电视剧
+timezone_offset: map[__tpl:`${nblTimezoneOffset}00`]
+urls:
+    - https://nebulance.io/
+user_info:
+    fields:
+        bonus:
+            filters:
+                - name: parse_number
+            selector: a[href='bonus.php']
+        bonus_per_hour:
+            filters:
+                - name: parse_number
+            selector: li:contains('Cubits per hour')
+        downloaded:
+            filters:
+                - name: parse_size
+            selector: 'li:contains(''Downloaded: '')'
+        id:
+            selector: response.id
+        join_date:
+            attr: title
+            filters:
+                - args: '[MMM d yyyy, HH:mm]'
+                  name: parse_time
+            selector: li:contains('Joined') > span.time
+        level:
+            selector: li:contains('Class:')
+        name:
+            selector: response.username
+        ratio: {}
+        seeding:
+            filters:
+                - name: parse_number
+            selector: li:contains('Seeding') > span
+        seeding_size:
+            filters:
+                - name: parse_size
+            selector: li:contains('Seeding Size')
+        uploaded:
+            filters:
+                - name: parse_size
+            selector: 'li:contains(''Uploaded: '')'
+        uploads:
+            filters:
+                - name: parse_number
+            selector: li:contains('Uploaded') > span:nth-child(2)

@@ -1,0 +1,113 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 1,
+  "id": "thegeeks",
+  "name": "TheGeeks",
+  "aka": [
+    "TG"
+  ],
+  "description": "The Geeks is a Private Torrent Tracker for Technology E-LEARNING",
+  "tags": [
+    "学习"
+  ],
+  "timezoneOffset": "+0000",
+  "type": "private",
+  "schema": "TCG",
+  "urls": [
+    "uggcf://gurtrrxf.pyvpx/"
+  ],
+  "category": [
+    {
+      "name": "类别",
+      "key": "category",
+      "options": {
+        "__call": "buildCategoryOptionsFromDict(categoryMap)"
+      },
+      "cross": {
+        "mode": "append",
+        "key": "c"
+      }
+    },
+    {
+      "name": "种子状态",
+      "key": "incldead",
+      "options": [
+        {
+          "name": "Active",
+          "value": 0
+        },
+        {
+          "name": "Dead",
+          "value": 3
+        },
+        {
+          "name": "Neutral Leech",
+          "value": 4
+        }
+      ]
+    },
+    {
+      "name": "搜索类型",
+      "key": "nonboolean",
+      "options": [
+        {
+          "name": "Exact",
+          "value": 0
+        },
+        {
+          "name": "Fuzzy",
+          "value": 1
+        },
+        {
+          "name": "Parsed",
+          "value": 3
+        }
+      ]
+    }
+  ],
+  "search": {
+    "__spread": [
+      "SchemaMetadata.search!"
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.search!.selectors"
+      ],
+      "category": {
+        "selector": "a[href^='browse.php?cat=']",
+        "attr": "href",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const catId = definedFilters.querystring(query, [\"cat\"]);\n            return categoryMap[Number(catId)];\n          }"
+          }
+        ]
+      }
+    }
+  },
+  "levelRequirements": [
+    {
+      "id": 1,
+      "name": "User",
+      "privilege": "Can leech up to 10 torrents at a time."
+    },
+    {
+      "id": 2,
+      "name": "Power User",
+      "interval": "P28D",
+      "uploaded": "25GB",
+      "ratio": 1.05,
+      "privilege": "Able to leech 50 torrents at a time. Has full request privileges."
+    },
+    {
+      "id": 3,
+      "name": "Extreme User",
+      "interval": "P60D",
+      "uploaded": "60GB",
+      "ratio": 2.05,
+      "privilege": "Able to leech 100 torrents at a time."
+    }
+  ]
+}

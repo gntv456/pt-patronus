@@ -1,0 +1,20 @@
+# 馒头（M-Team）站点定义 —— JSON API 适配器（schema: mteam）
+#
+# 与 NexusPHP 不同：MTeam 不走 HTML 抓取，而走 api.m-team.cc 的 JSON API + x-api-key 鉴权。
+# 因此无需 selectors/userinfo/no_login 段——所有数据由 mteam 适配器从 JSON 端点解析。
+#
+# 接入步骤：
+#   1. Web UI 添加站点 → 选「馒头」定义
+#   2. BaseURL 保持 https://api.m-team.cc
+#   3. apiKey：登录 M-Team → 控制台 → 实验室 → 存储令牌（x-api-key），粘贴到 api_key 字段
+#   4. 连接测试（POST /api/member/profile）验证令牌有效
+#
+# extra_param.mode 是「综合」兜底值；按媒体类型搜索时后端会自动覆盖：
+#   选电影→mode:movie、选剧集→mode:tvshow（music 无独立 mode，走综合靠 keyword 命中）。
+id: mteam
+name: 馒头
+schema: mteam
+urls:
+  - https://api.m-team.cc
+extra_param:
+  mode: normal

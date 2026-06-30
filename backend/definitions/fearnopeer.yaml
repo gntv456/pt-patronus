@@ -1,0 +1,68 @@
+# fearnopeer — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category（data）
+#   - search.category.filters（匿名函数）
+
+aka:
+    - FNP
+description: FearNoPear is a Private Torrent Tracker for MOVIES / TV / GENERAL
+id: fearnopeer
+level_requirements:
+    - id: 1
+      name: User
+      privilege: 新用户默认等级；下载队列10个，可以发布种子
+    - id: 2
+      interval: P1M
+      name: PowerUser
+      privilege: 下载队列20个，可以发布种子，可以寄出邀请
+      uploaded: 1TiB
+    - id: 3
+      interval: P2M
+      name: SuperUser
+      privilege: 下载队列30个，直接发布种子，可以寄出邀请
+      uploaded: 5TiB
+    - id: 4
+      interval: P3M
+      name: ExtremeUser
+      privilege: 下载队列40个，直接发布种子，可以寄出邀请
+      uploaded: 20TiB
+    - id: 5
+      interval: P6M
+      name: InsaneUser
+      privilege: 下载队列50个，直接发布种子，可以寄出邀请
+      uploaded: 50TiB
+    - id: 6
+      interval: P1M
+      name: Seeder
+      privilege: 下载队列60个，直接发布种子，可以寄出邀请，可以无视H&R
+    - id: 7
+      interval: P2M
+      name: Curator
+      privilege: 下载队列60个，直接发布种子，可以寄出邀请，可以无视H&R
+    - id: 8
+      interval: P12M
+      name: Veteran
+      privilege: 下载队列60个，直接发布种子，可以寄出邀请，可以无视H&R
+      uploaded: 100TiB
+    - id: 9
+      interval: P3M
+      name: Archivist
+      privilege: 下载队列60个，直接发布种子，可以寄出邀请，可以无视H&R，双倍上传
+name: FearNoPeer
+schema: unit3d
+selectors:
+    fields:
+        category:
+            selector: :self
+tags:
+    - 综合
+timezone_offset: "-0500"
+urls:
+    - https://fearnopeer.com/
+user_info:
+    fields:
+        join_date:
+            selector: span.profile-hero-2026__meta-item:contains('Registration date')
+        uploads:
+            selector: dl.profile-stats-list-2026:has(a[href*='/uploads'])

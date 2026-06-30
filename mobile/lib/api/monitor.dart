@@ -1,0 +1,345 @@
+import 'dart:convert';
+
+import '../core/api_client.dart';
+import '../core/config.dart';
+
+/// 监控设备（host/nas/camera）。对齐后端 MonitorTarget（snake_case；凭据不回传）。
+class MonitorTarget {
+  final int id;
+  final String name;
+  final String type; // host | nas | camera
+  final String host;
+  final int port;
+  final String vendor;
+  final String protocol;
+  final String rtspUrl;
+  final int intervalSec;
+  final int timeoutSec;
+  final bool enabled;
+  final String thresholds;
+  final bool hasPrivateKey; // 私钥已配置（明文不回传）
+  final bool? lastOnline;
+  final String lastError;
+  final String lastCheckedAt;
+
+  MonitorTarget({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.host,
+    required this.port,
+    required this.vendor,
+    required this.protocol,
+    required this.rtspUrl,
+    required this.intervalSec,
+    required this.timeoutSec,
+    required this.enabled,
+    required this.thresholds,
+    required this.hasPrivateKey,
+    required this.lastOnline,
+    required this.lastError,
+    required this.lastCheckedAt,
+  });
+
+  factory MonitorTarget.fromJson(Map<String, dynamic> j) => MonitorTarget(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        name: j['name'] as String? ?? '',
+        type: j['type'] as String? ?? '',
+        host: j['host'] as String? ?? '',
+        port: j['port'] as int? ?? 0,
+        vendor: j['vendor'] as String? ?? '',
+        protocol: j['protocol'] as String? ?? '',
+        rtspUrl: j['rtsp_url'] as String? ?? '',
+        intervalSec: j['interval_sec'] as int? ?? 60,
+        timeoutSec: j['timeout_sec'] as int? ?? 15,
+        enabled: j['enabled'] as bool? ?? true,
+        thresholds: j['thresholds'] as String? ?? '',
+        hasPrivateKey: j['has_private_key'] as bool? ?? false,
+        lastOnline: j['last_online'] as bool?,
+        lastError: j['last_error'] as String? ?? '',
+        lastCheckedAt: j['last_checked_at'] as String? ?? '',
+      );
+}
+
+/// 创建/更新入参（凭据为明文，编辑留空=不改）。
+class TargetInput {
+  final String name;
+  final String type;
+  final String host;
+  final int port;
+  final String vendor;
+  final String protocol;
+  final String rtspUrl;
+  final int intervalSec;
+  final int timeoutSec;
+  final String username;
+  final String password;
+  final String privateKey;
+  final String thresholds;
+  final bool enabled;
+  TargetInput({
+    required this.name,
+    required this.type,
+    this.host = '',
+    this.port = 0,
+    this.vendor = '',
+    this.protocol = '',
+    this.rtspUrl = '',
+    this.intervalSec = 60,
+    this.timeoutSec = 15,
+    this.username = '',
+    this.password = '',
+    this.privateKey = '',
+    this.thresholds = '',
+    this.enabled = true,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'type': type,
+        'host': host,
+        'port': port,
+        'vendor': vendor,
+        'protocol': protocol,
+        'rtsp_url': rtspUrl,
+        'interval_sec': intervalSec,
+        'timeout_sec': timeoutSec,
+        'username': username,
+        'password': password,
+        'private_key': privateKey,
+        'thresholds': thresholds,
+        'enabled': enabled,
+      };
+}
+
+class DiskMetric {
+  final String device;
+  final int total;
+  final int used;
+  final double usage;
+  DiskMetric({required this.device, required this.total, required this.used, required this.usage});
+  factory DiskMetric.fromJson(Map<String, dynamic> j) => DiskMetric(
+        device: j['device'] as String? ?? '',
+        total: (j['total'] as num?)?.toInt() ?? 0,
+        used: (j['used'] as num?)?.toInt() ?? 0,
+        usage: (j['usage'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+class TempMetric {
+  final String name;
+  final double temp;
+  TempMetric({required this.name, required this.temp});
+  factory TempMetric.fromJson(Map<String, dynamic> j) => TempMetric(
+        name: j['name'] as String? ?? '',
+        temp: (j['temp'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+class DeviceInfo {
+  final String manufacturer;
+  final String model;
+  final String firmware;
+  final String serial;
+  DeviceInfo({required this.manufacturer, required this.model, required this.firmware, required this.serial});
+  factory DeviceInfo.fromJson(Map<String, dynamic> j) => DeviceInfo(
+        manufacturer: j['manufacturer'] as String? ?? '',
+        model: j['model'] as String? ?? '',
+        firmware: j['firmware'] as String? ?? '',
+        serial: j['serial'] as String? ?? '',
+      );
+}
+
+/// 采集指标（host/nas 共用；camera 主要填 device_info）。
+class Metrics {
+  final bool online;
+  final double? cpuUsage;
+  final int? cpuCores;
+  final int? memTotal;
+  final int? memUsed;
+  final double? memUsage;
+  final List<DiskMetric> disks;
+  final double? netRxRate;
+  final double? netTxRate;
+  final double? load1;
+  final int? uptime;
+  final List<TempMetric> temps;
+  final DeviceInfo? deviceInfo;
+
+  Metrics({
+    required this.online,
+    this.cpuUsage,
+    this.cpuCores,
+    this.memTotal,
+    this.memUsed,
+    this.memUsage,
+    required this.disks,
+    this.netRxRate,
+    this.netTxRate,
+    this.load1,
+    this.uptime,
+    required this.temps,
+    this.deviceInfo,
+  });
+
+  factory Metrics.fromJson(Map<String, dynamic> j) => Metrics(
+        online: j['online'] as bool? ?? false,
+        cpuUsage: (j['cpu_usage'] as num?)?.toDouble(),
+        cpuCores: (j['cpu_cores'] as num?)?.toInt(),
+        memTotal: (j['mem_total'] as num?)?.toInt(),
+        memUsed: (j['mem_used'] as num?)?.toInt(),
+        memUsage: (j['mem_usage'] as num?)?.toDouble(),
+        disks: ((j['disks'] as List?) ?? const [])
+            .map((e) => DiskMetric.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        netRxRate: (j['net_rx_rate'] as num?)?.toDouble(),
+        netTxRate: (j['net_tx_rate'] as num?)?.toDouble(),
+        load1: (j['load1'] as num?)?.toDouble(),
+        uptime: (j['uptime'] as num?)?.toInt(),
+        temps: ((j['temps'] as List?) ?? const [])
+            .map((e) => TempMetric.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        deviceInfo: j['device_info'] is Map<String, dynamic>
+            ? DeviceInfo.fromJson(j['device_info'] as Map<String, dynamic>)
+            : null,
+      );
+}
+
+/// 历史快照（metrics 是 JSON 字符串，需二次解析）。
+class MetricSnapshot {
+  final String snapAt;
+  final bool online;
+  final Metrics? metrics;
+  MetricSnapshot({required this.snapAt, required this.online, required this.metrics});
+  factory MetricSnapshot.fromJson(Map<String, dynamic> j) {
+    Metrics? m;
+    final raw = j['metrics'];
+    if (raw is String && raw.isNotEmpty) {
+      try {
+        m = Metrics.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      } catch (_) {}
+    } else if (raw is Map<String, dynamic>) {
+      m = Metrics.fromJson(raw);
+    }
+    return MetricSnapshot(
+      snapAt: j['snap_at'] as String? ?? '',
+      online: j['online'] as bool? ?? false,
+      metrics: m,
+    );
+  }
+}
+
+class CollectResult {
+  final bool ok;
+  final Metrics? metrics;
+  final String? error;
+  CollectResult({required this.ok, this.metrics, this.error});
+  factory CollectResult.fromJson(Map<String, dynamic> j) => CollectResult(
+        ok: j['ok'] as bool? ?? false,
+        metrics: j['metrics'] is Map<String, dynamic>
+            ? Metrics.fromJson(j['metrics'] as Map<String, dynamic>)
+            : null,
+        error: j['error'] as String?,
+      );
+}
+
+class ProbeResult {
+  final bool ok;
+  final bool? online;
+  final String? error;
+  ProbeResult({required this.ok, this.online, this.error});
+  factory ProbeResult.fromJson(Map<String, dynamic> j) => ProbeResult(
+        ok: j['ok'] as bool? ?? false,
+        online: j['online'] as bool?,
+        error: j['error'] as String?,
+      );
+}
+
+class MonitorAlert {
+  final int id;
+  final int targetId;
+  final String level; // info | warning | danger
+  final String metric;
+  final String value;
+  final String message;
+  final bool read;
+  final String createdAt;
+  final String? resolvedAt; // 非空=已恢复
+  MonitorAlert({
+    required this.id,
+    required this.targetId,
+    required this.level,
+    required this.metric,
+    required this.value,
+    required this.message,
+    required this.read,
+    required this.createdAt,
+    required this.resolvedAt,
+  });
+  factory MonitorAlert.fromJson(Map<String, dynamic> j) => MonitorAlert(
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        targetId: (j['target_id'] as num?)?.toInt() ?? 0,
+        level: j['level'] as String? ?? 'info',
+        metric: j['metric'] as String? ?? '',
+        value: j['value'] as String? ?? '',
+        message: j['message'] as String? ?? '',
+        read: j['read'] as bool? ?? false,
+        createdAt: j['created_at'] as String? ?? '',
+        resolvedAt: j['resolved_at'] as String?,
+      );
+}
+
+/// 监控 API：设备 CRUD / 探活 / 采集 / 历史 / 告警。对齐后端 /monitors、/monitor/alerts。
+class MonitorApi {
+  final _api = ApiClient();
+
+  Future<List<MonitorTarget>> list() async {
+    final r = await _api.get('/monitors');
+    final arr = (r['targets'] as List?) ?? const [];
+    return arr.map((e) => MonitorTarget.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<MonitorTarget> create(TargetInput in_) async {
+    final r = await _api.post('/monitors', in_.toJson());
+    return MonitorTarget.fromJson(r);
+  }
+
+  Future<MonitorTarget> update(int id, TargetInput in_) async {
+    final r = await _api.put('/monitors/$id', in_.toJson());
+    return MonitorTarget.fromJson(r);
+  }
+
+  Future<void> remove(int id) async => _api.delete('/monitors/$id');
+
+  Future<ProbeResult> probe(int id) async {
+    final r = await _api.post('/monitors/$id/probe', {});
+    return ProbeResult.fromJson(r);
+  }
+
+  Future<CollectResult> collect(int id) async {
+    final r = await _api.post('/monitors/$id/collect', {});
+    return CollectResult.fromJson(r);
+  }
+
+  Future<List<MetricSnapshot>> metrics(int id, {int limit = 120}) async {
+    final r = await _api.get('/monitors/$id/metrics?limit=$limit');
+    final arr = (r['snapshots'] as List?) ?? const [];
+    return arr.map((e) => MetricSnapshot.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<MonitorAlert>> alerts({int? targetId, bool unread = false}) async {
+    final q = StringBuffer('/monitor/alerts?unread=${unread ? 'true' : 'false'}');
+    if (targetId != null) q.write('&target_id=$targetId');
+    final r = await _api.get(q.toString());
+    final arr = (r['alerts'] as List?) ?? const [];
+    return arr.map((e) => MonitorAlert.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> readAlert(int id) async => _api.post('/monitor/alerts/$id/read', {});
+
+  /// 摄像头 HLS 播放地址（标准协议，media_kit 可播；token 走 query，与 stream 同构）。
+  String streamURL(int id) {
+    final token = _api.token ?? '';
+    return '${Config.baseUrl}/api/v1/monitor/cameras/$id/hls/playlist.m3u8?token=${Uri.encodeComponent(token)}';
+  }
+}

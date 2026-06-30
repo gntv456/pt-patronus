@@ -1,0 +1,207 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'config.dart';
+
+/// 轻量 HTTP 客户端：调后端 /api/v1，自动注入 JWT；token 持久化（shared_preferences）。
+class ApiClient {
+  static final ApiClient _i = ApiClient._();
+  factory ApiClient() => _i;
+  ApiClient._();
+
+  static const _kToken = 'token';
+  static const _kUser = 'user';
+
+  /// 登录后写入；后续请求自动带 Authorization 头。
+  String? token;
+
+  /// 当前登录用户身份（username/is_admin/vip_level 等），随 token 一起持久化，重启后恢复。
+  Map<String, dynamic>? user;
+
+  /// 启动时从持久存储恢复 token + user 身份。
+  Future<void> loadToken() async {
+    final p = await SharedPreferences.getInstance();
+    token = p.getString(_kToken);
+    final us = p.getString(_kUser);
+    if (us != null && us.isNotEmpty) {
+      try {
+        user = jsonDecode(us) as Map<String, dynamic>;
+      } catch (_) {
+        user = null;
+      }
+    }
+  }
+
+  /// 持久化登录用户身份（null/空=清除，与 logout 对齐）。
+  Future<void> setUser(Map<String, dynamic>? u) async {
+    user = u;
+    final p = await SharedPreferences.getInstance();
+    if (u == null || u.isEmpty) {
+      await p.remove(_kUser);
+    } else {
+      await p.setString(_kUser, jsonEncode(u));
+    }
+  }
+
+  /// 登录成功写入 / 登出清除（持久化）。
+  Future<void> setToken(String? t) async {
+    token = t;
+    final p = await SharedPreferences.getInstance();
+    if (t == null || t.isEmpty) {
+      await p.remove(_kToken);
+    } else {
+      await p.setString(_kToken, t);
+    }
+  }
+
+  /// 登出：调后端 bump TokenVersion（使当前 token 失效）+ 清本地 token。
+  Future<void> logout() async {
+    final t = token;
+    if (t != null && t.isNotEmpty) {
+      try {
+        await post('/auth/logout', <String, dynamic>{});
+      } catch (_) {
+        /* token 已失效也无妨 */
+      }
+    }
+    await setToken(null);
+    await setUser(null);
+  }
+
+  Map<String, String> get _headers => {
+        'Content-Type': 'application/json',
+        if (token != null) 'Authorization': 'Bearer $token',
+      };
+
+  Uri _u(String path) => Uri.parse('${Config.baseUrl}/api/v1$path');
+
+  /// 仅含 Authorization 的请求头（供 Image.network 取反代图片用）。
+  Map<String, String> get authHeaders => {
+        if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
+      };
+
+  /// 豆瓣 doubanio.com 防盗链：浏览器 / Image.network 直连只回 1×1 占位图。
+  /// 豆瓣图改走后端 /media/image 反代（注入 movie.douban.com Referer 取真图）；
+  /// 其它公网 CDN 直连，返回 null。返回的 Uri 需配合 [authHeaders] 加载。
+  Uri? mediaImageUri(String posterUrl) {
+    if (posterUrl.isEmpty || !posterUrl.contains('doubanio.com')) return null;
+    return _u('/media/image?url=${Uri.encodeComponent(posterUrl)}');
+  }
+
+  Future<Map<String, dynamic>> get(String path) =>
+      _do(() => http.get(_u(path), headers: _headers));
+
+  Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) =>
+      _do(() => http.post(_u(path), headers: _headers, body: jsonEncode(body)));
+
+  Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) =>
+      _do(() => http.put(_u(path), headers: _headers, body: jsonEncode(body)));
+
+  Future<Map<String, dynamic>> delete(String path) =>
+      _do(() => http.delete(_u(path), headers: _headers));
+
+  /// 取二进制响应（如备份导出的文件流）：跳过 JSON 解析，返回原始字节。
+  /// HTTP 错误（>=400）解析后端 error 文案抛 ApiException；401 复刻 _json 清 token。
+  Future<Uint8List> getBytes(String path) async {
+    try {
+      final r = await http.get(_u(path), headers: _headers);
+      if (r.statusCode >= 400) {
+        if (r.statusCode == 401) {
+          token = null;
+          SharedPreferences.getInstance().then((p) => p.remove(_kToken));
+        }
+        var msg = '请求失败';
+        try {
+          final b = jsonDecode(r.body);
+          if (b is Map<String, dynamic>) {
+            msg = (b['error'] as String?) ?? (b['message'] as String?) ?? msg;
+          }
+        } catch (_) {}
+        throw ApiException(r.statusCode, msg);
+      }
+      return r.bodyBytes;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(0, '$e', userMessage: '网络连接失败，请检查网络或后端地址');
+    }
+  }
+
+  /// 发送任意 JSON body（支持数组，如 MoviePilot 站点数组）；响应按对象 Map 解包。
+  Future<Map<String, dynamic>> postJson(String path, Object body) =>
+      _do(() => http.post(_u(path), headers: _headers, body: jsonEncode(body)));
+
+  /// 统一请求包装：网络层错误（连接失败/超时/DNS）转为友好 ApiException；HTTP 错误由 _json 转。
+  Future<Map<String, dynamic>> _do(Future<http.Response> Function() fn) async {
+    try {
+      return _json(await fn());
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(0, '$e', userMessage: '网络连接失败，请检查网络或后端地址');
+    }
+  }
+
+  /// multipart 上传（.torrent 文件等）。不设 Content-Type——MultipartRequest 自动生成 boundary。
+  Future<Map<String, dynamic>> postMultipart(
+    String path, {
+    List<http.MultipartFile> files = const [],
+    Map<String, String> fields = const {},
+  }) async {
+    try {
+      final req = http.MultipartRequest('POST', _u(path));
+      if (token != null && token!.isNotEmpty) {
+        req.headers['Authorization'] = 'Bearer $token';
+      }
+      req.fields.addAll(fields);
+      for (final f in files) {
+        req.files.add(f);
+      }
+      final streamed = await req.send();
+      final resp = await http.Response.fromStream(streamed);
+      return _json(resp);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(0, '$e', userMessage: '网络连接失败，请检查网络或后端地址');
+    }
+  }
+
+  Map<String, dynamic> _json(http.Response r) {
+    final body = r.body.isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(r.body) as Map<String, dynamic>;
+    if (r.statusCode >= 400) {
+      // 401：token 失效/已登出 → 清持久 token（下次启动回登录页）
+      if (r.statusCode == 401) {
+        token = null;
+        SharedPreferences.getInstance().then((p) => p.remove(_kToken));
+      }
+      throw ApiException(
+          r.statusCode, (body['error'] as String?) ?? (body['message'] as String?) ?? '请求失败');
+    }
+    return body;
+  }
+}
+
+class ApiException implements Exception {
+  final int status;
+  final String message; // 原始后端消息（日志/调试用）
+  final String userMessage; // 给用户看的友好文案
+  ApiException(this.status, this.message, {String? userMessage})
+      : userMessage = userMessage ?? friendlyMessage(status, message);
+  @override
+  String toString() => userMessage;
+}
+
+/// 状态码/后端消息 → 给用户看的中文文案。后端已给可读消息时优先用，避免显示 ApiException(status)。
+String friendlyMessage(int status, String backendMsg) {
+  if (backendMsg.isNotEmpty && backendMsg != '请求失败') return backendMsg;
+  if (status == 401) return '登录已失效，请重新登录';
+  if (status == 403) return '没有权限执行此操作';
+  if (status == 404) return '请求的资源不存在';
+  if (status == 429) return '操作过于频繁，请稍后再试';
+  if (status >= 500) return '服务暂时不可用，请稍后重试';
+  return '请求失败，请稍后重试';
+}

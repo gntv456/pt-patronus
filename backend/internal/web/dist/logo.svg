@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="PTPatronus logo">
+  <defs>
+    <!-- ===== 多彩对角背景（模板 DNA，品牌化为粉紫蓝青）===== -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9ec7"/>
+      <stop offset="0.26" stop-color="#c08cee"/>
+      <stop offset="0.56" stop-color="#7b7ff0"/>
+      <stop offset="0.8" stop-color="#5aa8f5"/>
+      <stop offset="1" stop-color="#4ad4ef"/>
+    </linearGradient>
+    <radialGradient id="spPink"><stop offset="0" stop-color="#ffd6ec" stop-opacity=".85"/><stop offset="1" stop-color="#ffd6ec" stop-opacity="0"/></radialGradient>
+    <radialGradient id="spCyan"><stop offset="0" stop-color="#7af0ff" stop-opacity=".8"/><stop offset="1" stop-color="#7af0ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="spPurple"><stop offset="0" stop-color="#d8c8ff" stop-opacity=".8"/><stop offset="1" stop-color="#d8c8ff" stop-opacity="0"/></radialGradient>
+
+    <clipPath id="sq"><rect width="1024" height="1024" rx="205" ry="205"/></clipPath>
+    <linearGradient id="topRim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".16" stop-color="#fff" stop-opacity="0"/></linearGradient>
+
+    <!-- ===== 盾牌玻璃体 ===== -->
+    <linearGradient id="glassBody" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity=".66"/><stop offset=".5" stop-color="#ffffff" stop-opacity=".28"/><stop offset="1" stop-color="#ffffff" stop-opacity=".1"/></linearGradient>
+    <linearGradient id="glassRefract" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9d8bff" stop-opacity=".4"/><stop offset="1" stop-color="#5bb6ff" stop-opacity=".36"/></linearGradient>
+    <radialGradient id="specTop" cx=".42" cy=".04" r=".85"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".45" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+
+    <!-- 盾牌（撑满：主体宽 ~770，高 ~640）-->
+    <path id="shield" d="M180 290 L844 290 C884 380 896 488 868 580 C824 720 720 812 512 928 C304 812 200 720 156 580 C128 488 140 380 180 290 Z"/>
+    <clipPath id="shieldClip"><use href="#shield"/></clipPath>
+
+    <!-- 液态玻璃：分形噪声位移，盾牌边缘液态流动（内部纯色位移不可见 → 脸/字清晰）-->
+    <filter id="liquid" x="-12%" y="-12%" width="124%" height="124%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.009 0.015" numOctaves="2" seed="11" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="16"/></filter>
+    <filter id="ptShadow" x="-25%" y="-25%" width="150%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="7"/><feOffset dy="8" result="o"/><feComponentTransfer><feFuncA type="linear" slope=".4"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+
+    <!-- ===== 彩色尖帽（模板识别点：橙→粉→紫 + 帽顶球）===== -->
+    <linearGradient id="hatGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb24d"/><stop offset=".35" stop-color="#ff6fa5"/><stop offset=".7" stop-color="#c46bf0"/><stop offset="1" stop-color="#9d6cf6"/></linearGradient>
+    <radialGradient id="ballGrad" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#9af6ff"/><stop offset=".6" stop-color="#46d4f0"/><stop offset="1" stop-color="#2bb8d8"/></radialGradient>
+    <linearGradient id="ptGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6c5ce7"/><stop offset="1" stop-color="#3a2db0"/></linearGradient>
+  </defs>
+
+  <!-- ============ 容器：多彩背景 + 光斑 + 顶部 rim ============ -->
+  <g clip-path="url(#sq)">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <ellipse cx="300" cy="300" rx="440" ry="380" fill="url(#spPink)"/>
+    <ellipse cx="740" cy="770" rx="440" ry="400" fill="url(#spCyan)"/>
+    <ellipse cx="790" cy="250" rx="270" ry="250" fill="url(#spPurple)"/>
+    <rect width="1024" height="1024" fill="url(#topRim)"/>
+  </g>
+
+  <!-- ============ 盾牌投影 ============ -->
+  <use href="#shield" fill="#3a2370" opacity=".26" transform="translate(0 22)" filter="url(#soft)"/>
+
+  <!-- ============ 盾牌玻璃体（液态边缘）============ -->
+  <g filter="url(#liquid)">
+    <use href="#shield" fill="url(#glassBody)"/>
+    <use href="#shield" fill="url(#glassRefract)"/>
+    <g clip-path="url(#shieldClip)"><rect x="150" y="270" width="720" height="400" fill="url(#specTop)"/></g>
+    <use href="#shield" fill="none" stroke="#ffffff" stroke-width="4" opacity=".78"/>
+    <use href="#shield" fill="none" stroke="#a9c4ff" stroke-width="1.5" opacity=".4"/>
+  </g>
+
+  <!-- ============ 笑脸（clip 到盾内，清晰不变形；精简：大眼 + 微笑）============ -->
+  <g clip-path="url(#shieldClip)">
+    <circle cx="408" cy="458" r="42" fill="#2a2342"/>
+    <circle cx="616" cy="458" r="42" fill="#2a2342"/>
+    <circle cx="396" cy="444" r="14" fill="#fff"/>
+    <circle cx="604" cy="444" r="14" fill="#fff"/>
+    <path d="M452 556 Q512 620 572 556" fill="none" stroke="#e85d7e" stroke-width="24" stroke-linecap="round"/>
+  </g>
+
+  <!-- ============ PT 字标（盾牌下部，加大）============ -->
+  <g clip-path="url(#shieldClip)">
+    <text x="514" y="798" text-anchor="middle"
+          font-family="'SF Pro Display','Helvetica Neue','Segoe UI',Arial,sans-serif"
+          font-size="188" font-weight="800" letter-spacing="-10"
+          fill="url(#ptGrad)" filter="url(#ptShadow)">PT</text>
+  </g>
+
+  <!-- ============ 彩色尖帽（盾顶，最前层；放大）============ -->
+  <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z"
+        fill="#4a2370" opacity=".22" transform="translate(0 16)" filter="url(#soft)"/>
+  <path d="M318 300 Q350 220 452 162 Q512 118 572 162 Q674 220 706 300 Z" fill="url(#hatGrad)"/>
+  <ellipse cx="446" cy="232" rx="30" ry="86" fill="#ffffff" opacity=".22" transform="rotate(-22 446 232)"/>
+  <ellipse cx="512" cy="302" rx="196" ry="28" fill="#7d52c4"/>
+  <ellipse cx="512" cy="295" rx="184" ry="7" fill="#ffffff" opacity=".3"/>
+  <circle cx="512" cy="110" r="36" fill="url(#ballGrad)"/>
+  <circle cx="500" cy="97" r="13" fill="#ffffff" opacity=".85"/>
+</svg>

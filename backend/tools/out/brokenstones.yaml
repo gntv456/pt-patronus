@@ -1,0 +1,82 @@
+# brokenstones — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category（text）
+#   - search.category.filters（匿名函数）
+
+aka:
+    - BRKs
+description: Broken Stones is a Private site for MacOS and iOS APPS / GAMES
+id: brokenstones
+level_requirements:
+    - id: 1
+      name: User
+    - id: 2
+      interval: P1W
+      name: Member
+      privilege: Live searching/suggestions, Can edit collages, make requests
+      ratio: 0.7
+      uploaded: 10GB
+    - id: 3
+      interval: P4W
+      is_kept: true
+      name: Power User
+      privilege: Receives invites, create new collages, immune from inactivity disabling
+      ratio: 1.05
+      uploaded: 50GB
+      uploads: 1
+    - id: 4
+      interval: P4W
+      is_kept: true
+      name: Extreme User
+      privilege: Can upload freeware (set to Neutral Leech)
+      ratio: 1.05
+      uploaded: 75GB
+      uploads: 10
+    - id: 5
+      interval: P4W
+      is_kept: true
+      name: Elite
+      privilege: Top 10 filters & Can edit any torrent and any torrent group.
+      ratio: 1.05
+      uploaded: 100GB
+      uploads: 50
+    - group_type: vip
+      id: 6
+      name: VIP
+      privilege: Custom title & Unlimited Invites
+name: BrokenStones
+schema: gazelle_jsonapi
+search_entry: /torrents.php
+selectors:
+    fields:
+        category:
+            attr: class
+            selector: div[class^='tooltip cats_']
+        completed:
+            selector: td:nth-child(7)
+        download:
+            attr: href
+            selector: a[href*='torrents.php?action=download']:first
+        leechers:
+            selector: td:nth-child(9)
+        seeders:
+            selector: td:nth-child(8)
+        size:
+            filters:
+                - name: parse_size
+            selector: td:nth-child(5)
+        subtitle:
+            selector: div.torrent_info:first
+        time:
+            attr: title
+            filters:
+                - args: '[MMM d yyyy, HH:mm]'
+                  name: parse_time
+            selector: span.time[title]
+tags:
+    - 软件
+    - 游戏
+timezone_offset: "-0100"
+urls:
+    - https://brokenstones.is/

@@ -1,0 +1,443 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 1,
+  "id": "anthelion",
+  "name": "Anthelion",
+  "aka": [
+    "ANT"
+  ],
+  "description": "Anthelion (ANT) is a Private site for MOVIES",
+  "tags": [
+    "电影"
+  ],
+  "timezoneOffset": "+0000",
+  "type": "private",
+  "schema": "Gazelle",
+  "urls": [
+    "uggcf://naguryvba.zr/"
+  ],
+  "category": [
+    {
+      "name": "Category",
+      "key": "filter_cat",
+      "options": {
+        "__ref": "categoryOptions"
+      },
+      "cross": {
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "Container",
+      "key": "container",
+      "options": {
+        "__call": "buildCategoryOptionsFromList([\"AVI\", \"MPG\", \"MKV\", \"MP4\", \"VOB IFO\", \"ISO\", \"m2ts\", \"Other\"])"
+      }
+    },
+    {
+      "name": "Codec",
+      "key": "codec",
+      "options": {
+        "__call": "buildCategoryOptionsFromList([\"MPEG1\", \"MPEG2\", \"Xvid\", \"DivX\", \"H264\", \"H265\", \"VC-1\"])"
+      }
+    },
+    {
+      "name": "Source",
+      "key": "media",
+      "options": {
+        "__call": "buildCategoryOptionsFromList([\n        \"Blu-ray\",\n        \"DVD\",\n        \"WEB\",\n        \"LaserDisc\",\n        \"HD-DVD\",\n        \"HDTV\",\n        \"TV\",\n        \"VHS\",\n        \"Unknown\",\n      ])"
+      }
+    },
+    {
+      "name": "Resolution",
+      "key": "resolution",
+      "options": {
+        "__call": "buildCategoryOptionsFromList([\"SD\", \"720p\", \"1080i\", \"1080p\", \"2160p\"])"
+      }
+    },
+    {
+      "name": "Leech Status",
+      "key": "freetorrent",
+      "options": [
+        {
+          "value": "0",
+          "name": "Normal"
+        },
+        {
+          "value": "1",
+          "name": "Free"
+        },
+        {
+          "value": "2",
+          "name": "Neutral"
+        },
+        {
+          "value": "3",
+          "name": "Either"
+        }
+      ]
+    }
+  ],
+  "search": {
+    "__spread": [
+      "SchemaMetadata.search"
+    ],
+    "requestConfig": {
+      "url": "/torrents.php",
+      "responseType": "document",
+      "params": {
+        "group_results": 0,
+        "order_way": "desc",
+        "searchsubmit": 1
+      }
+    },
+    "advanceKeywordParams": {
+      "imdb": {
+        "enabled": true
+      },
+      "tmdb": {
+        "enabled": true
+      }
+    },
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.search!.selectors!"
+      ],
+      "title": {
+        "__spread": [
+          "SchemaMetadata.search!.selectors!.title!"
+        ],
+        "elementProcess": {
+          "__call": "GazelleUtils.genTitleElementProcess({ extractTagsFunc: extractTags })"
+        }
+      },
+      "subTitle": {
+        "selector": [
+          ".tags",
+          "> td:has(a[href*='torrents.php']) a:not(span a):last"
+        ],
+        "switchFilters": {
+          "\".tags\"": [],
+          "\"> td:has(a[href*='torrents.php']) a:not(span a):last\"": [
+            {
+              "__ref": "extractTags"
+            }
+          ]
+        }
+      },
+      "category": {
+        "text": "Other",
+        "selector": "div[class^='tooltip cats_']",
+        "attr": "class",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(cat: string) => {\n            const match = cat.match(/cats_(\\w+)/);\n            if (!match) return \"\";\n            return catClassMap[match[1]];\n          }"
+          }
+        ]
+      },
+      "tags": [
+        {
+          "name": "Free",
+          "selector": "strong:contains('Freeleech')"
+        },
+        {
+          "name": "Internal",
+          "selector": "strong:contains('Internal')"
+        }
+      ],
+      "progress": {
+        "selector": [
+          "div.torrent_info:first",
+          "a[data-toggle-target*='torrent']"
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => (query.includes(\"Seeding\") ? 100 : 0)"
+          }
+        ]
+      },
+      "status": {
+        "selector": [
+          "div.torrent_info:first",
+          "a[data-toggle-target*='torrent']"
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            if (query.includes(\"Seeding\")) {\n              return ETorrentStatus.seeding;\n            } else if (query.includes(\"Snatched\")) {\n              return ETorrentStatus.inactive;\n            }\n            return ETorrentStatus.unknown;\n          }"
+          }
+        ]
+      },
+      "ext_imdb": {
+        "selector": "a[href*='imdb.com/title/tt']",
+        "attr": "href",
+        "filters": [
+          {
+            "name": "extImdbId"
+          }
+        ]
+      }
+    }
+  },
+  "list": [
+    {
+      "__spread": [
+        "commonPagesList"
+      ],
+      "urlPattern": [
+        {
+          "__raw": "SpreadElement",
+          "src": "...commonPagesList.urlPattern!"
+        },
+        "/artist\\.php\\?tmdb=\\d+"
+      ],
+      "selectors": {
+        "time": {
+          "text": 0,
+          "selector": "span.time",
+          "filters": [
+            {
+              "name": "parseTTL"
+            },
+            {
+              "__fn": true,
+              "src": "(ts: number) => {\n              const offsetMinutes = new Date().getTimezoneOffset();\n              const offsetMs = offsetMinutes * 60 * 1000;\n              return ts + offsetMs;\n            }"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "__spread": [
+        "detailPageList"
+      ],
+      "selectors": {
+        "__ref": "detailPageSelectors"
+      }
+    }
+  ],
+  "userInfo": {
+    "pickLast": [
+      "id",
+      "name",
+      "joinTime"
+    ],
+    "process": [
+      {
+        "requestConfig": {
+          "url": "/store.php",
+          "responseType": "document"
+        },
+        "fields": [
+          "id",
+          "name",
+          "messageCount",
+          "bonusPerHour"
+        ]
+      },
+      {
+        "requestConfig": {
+          "url": "/user.php",
+          "responseType": "document"
+        },
+        "assertion": {
+          "id": "params.id"
+        },
+        "fields": [
+          "uploaded",
+          "uploads",
+          "downloaded",
+          "adoptions",
+          "ratio",
+          "joinTime",
+          "seedingSize",
+          "bonus",
+          "levelName"
+        ]
+      },
+      {
+        "requestConfig": {
+          "url": "/ajax.php",
+          "params": {
+            "action": "community_stats"
+          },
+          "responseType": "json"
+        },
+        "assertion": {
+          "id": "params.userid"
+        },
+        "fields": [
+          "seeding"
+        ]
+      }
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata!.userInfo!.selectors!"
+      ],
+      "bonusPerHour": {
+        "selector": "h3.float_right",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const match = query.replace(\",\", \"\").match(/making ([\\d]+) Orbs/);\n            return match && match.length > 1 ? parseFloat(match[1]) : 0;\n          }"
+          }
+        ]
+      },
+      "adoptions": {
+        "selector": "li:contains('Adopted: ') span"
+      },
+      "joinTime": {
+        "selector": "ul.stats li:contains('Joined:') span",
+        "attr": "title",
+        "filters": [
+          {
+            "name": "parseTime",
+            "args": [
+              "MMM d yyyy, HH:mm 'UTC'"
+            ]
+          }
+        ]
+      },
+      "seedingSize": {
+        "selector": "li:contains('Seeding Size: ') span",
+        "filters": [
+          {
+            "name": "parseSize"
+          }
+        ]
+      },
+      "bonus": {
+        "selector": "a[href*='store.php']",
+        "filters": [
+          {
+            "name": "replace",
+            "args": [
+              {
+                "__regex": "/,/g"
+              },
+              ""
+            ]
+          }
+        ]
+      },
+      "seeding": {
+        "selector": "response.seeding",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      }
+    }
+  },
+  "levelRequirements": [
+    {
+      "id": 1,
+      "name": "User",
+      "privilege": "Can download, upload, vote on requests, use advanced search, access top 10, and bookmark content."
+    },
+    {
+      "id": 2,
+      "name": "Member",
+      "interval": "P2W",
+      "uploaded": "0.5TiB",
+      "ratio": 0.8,
+      "bonus": 5000,
+      "privilege": "Create & manage collections; Send invites"
+    },
+    {
+      "id": 3,
+      "name": "Power User",
+      "interval": "P1M",
+      "uploaded": "1TiB",
+      "ratio": 1,
+      "alternative": [
+        {
+          "uploads": 5
+        },
+        {
+          "adoptions": 10
+        }
+      ],
+      "bonus": 25000,
+      "privilege": "Upload images; Access Top 10; Purchase Invites; Invite forums"
+    },
+    {
+      "id": 4,
+      "name": "Fanatic",
+      "interval": "P3M",
+      "uploaded": "1TiB",
+      "ratio": 1,
+      "uploads": 5,
+      "alternative": [
+        {
+          "uploads": 25
+        },
+        {
+          "adoptions": 50
+        }
+      ],
+      "bonus": 25000,
+      "privilege": "Can have 1 personal collage; Receives periodic invites (max 1)"
+    },
+    {
+      "id": 5,
+      "name": "Elite",
+      "interval": "P6M",
+      "uploaded": "5TiB",
+      "ratio": 2.5,
+      "uploads": 10,
+      "alternative": [
+        {
+          "uploads": 100
+        },
+        {
+          "adoptions": 200
+        }
+      ],
+      "bonus": 250000,
+      "privilege": "Can have a up to 2 personal collages; Can edit film descriptions/trailers; Receives periodic invites (max 2)"
+    },
+    {
+      "id": 6,
+      "name": "Guru",
+      "interval": "P1Y",
+      "uploaded": "5TiB",
+      "ratio": 3,
+      "uploads": 25,
+      "alternative": [
+        {
+          "uploads": 250
+        },
+        {
+          "adoptions": 500
+        }
+      ],
+      "bonus": 500000,
+      "privilege": "Immune from being put on ratio watch; Receives periodic invites (max 4)"
+    },
+    {
+      "id": 7,
+      "name": "Torrent Master",
+      "interval": "P2Y",
+      "uploaded": "10TiB",
+      "ratio": 3.5,
+      "uploads": 50,
+      "alternative": [
+        {
+          "uploads": 500
+        },
+        {
+          "adoptions": 1000
+        }
+      ],
+      "bonus": 1000000,
+      "privilege": "Can have a up to 3 personal collages; Can edit torrents"
+    }
+  ]
+}

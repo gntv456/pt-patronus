@@ -1,0 +1,49 @@
+# uhdbits — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - UHD
+dead: true
+id: uhdbits
+level_requirements:
+    - name: Peasant
+    - id: 1
+      interval: P1W
+      name: User
+      privilege: Access to Top 10; Can create and edit Wiki pages.
+      ratio: 0.7
+    - downloaded: 100GB
+      id: 2
+      interval: P4W
+      name: Power
+      privilege: Ability to make New Requests; Enable Users online and Users on IRC on front page; Access to full Staff page.
+      ratio: 1.5
+    - downloaded: 300GB
+      id: 3
+      interval: P8W
+      name: Extreme
+      privilege: Access to the Invite Forum.
+      ratio: 2
+    - downloaded: 900GB
+      id: 4
+      interval: P16W
+      name: Elite
+      ratio: 2.5
+    - downloaded: 2700GB
+      id: 5
+      interval: P32W
+      name: Guru
+      ratio: 3
+    - downloaded: 8100GB
+      id: 6
+      interval: P64W
+      name: Master
+      ratio: 3.5
+name: UHDBits
+schema: gazelle_jsonapi
+tags:
+    - 影视
+timezone_offset: "+0000"
+urls:
+    - https://uhdbits.org/

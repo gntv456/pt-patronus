@@ -1,0 +1,172 @@
+{
+  "__spread": [
+    "SchemaMetadata"
+  ],
+  "version": 1,
+  "id": "gazellegames",
+  "name": "GazelleGames",
+  "aka": [
+    "GGn"
+  ],
+  "description": "GazelleGames is a Private gaming tracker",
+  "tags": [
+    "游戏"
+  ],
+  "timezoneOffset": "+0000",
+  "type": "private",
+  "schema": "GazelleJSONAPI",
+  "urls": [
+    "uggcf://tnmryyrtnzrf.arg/"
+  ],
+  "category": [
+    {
+      "name": "使用组名搜索",
+      "key": "use_groupname",
+      "notes": "可以获得更精确的搜索结果",
+      "options": [
+        {
+          "name": "不使用",
+          "value": 0
+        },
+        {
+          "name": "使用",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "类别",
+      "key": "filter_cat",
+      "options": {
+        "__call": "buildCategoryOptionsFromDict(categoryMap)"
+      },
+      "cross": {
+        "mode": "appendQuote"
+      }
+    },
+    {
+      "name": "评级",
+      "key": "rating",
+      "options": {
+        "__call": "buildCategoryOptionsFromList([\"3+\", \"7+\", \"12+\", \"16+\", \"18+\", \"N/A\"])"
+      }
+    },
+    {
+      "name": "促销方案",
+      "key": "freetorrent",
+      "options": [
+        {
+          "name": "Free",
+          "value": 1
+        },
+        {
+          "name": "Neutral",
+          "value": 2
+        },
+        {
+          "name": "Either",
+          "value": 3
+        },
+        {
+          "name": "Normal",
+          "value": 4
+        }
+      ]
+    }
+  ],
+  "search": {
+    "keywordPath": "params.searchstr",
+    "requestConfig": {
+      "url": "/api.php",
+      "params": {
+        "request": "search",
+        "search_type": "torrents",
+        "order_by": "time",
+        "order_way": "desc"
+      }
+    },
+    "advanceKeywordParams": {
+      "imdb": false
+    },
+    "requestConfigTransformer": {
+      "__fn": true,
+      "src": "({ requestConfig }) => {\n      if (requestConfig?.params.searchstr) {\n        // remove . as not used in titles\n        requestConfig.params.searchstr = requestConfig.params.searchstr.replace(/\\./g, \" \");\n      }\n      return requestConfig!;\n    }"
+    }
+  },
+  "userInfo": {
+    "__spread": [
+      "SchemaMetadata.userInfo!"
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.userInfo!.selectors!"
+      ],
+      "bonus": {
+        "selector": "response.stats.gold"
+      },
+      "bonusPerHour": {
+        "selector": "response.community.hourlyGold"
+      },
+      "seedingSize": {
+        "selector": "response.community.seedSize"
+      },
+      "seedingBonus": {
+        "selector": "response.achievements.totalPoints"
+      }
+    }
+  },
+  "levelRequirements": [
+    {
+      "id": 1,
+      "name": "Amateur"
+    },
+    {
+      "id": 2,
+      "name": "Gamer",
+      "seedingBonus": 600,
+      "privilege": "Can send invites"
+    },
+    {
+      "id": 3,
+      "name": "Pro Gamer",
+      "seedingBonus": 1200,
+      "isKept": true,
+      "privilege": "Access to the Pro Gamers forum and Invites forum; Immunity from inactivity pruning"
+    },
+    {
+      "id": 4,
+      "name": "Elite Gamer",
+      "seedingBonus": 2100,
+      "isKept": true,
+      "privilege": "Edit any torrent; Immunity from Hit 'n' Runs"
+    },
+    {
+      "id": 5,
+      "name": "Legendary Gamer",
+      "seedingBonus": 3000,
+      "isKept": true,
+      "privilege": "Access to the Legendary Gamer Invites forum"
+    },
+    {
+      "id": 6,
+      "name": "Master Gamer",
+      "seedingBonus": 4200,
+      "isKept": true
+    },
+    {
+      "id": 7,
+      "name": "Gaming God",
+      "seedingBonus": 6000,
+      "isKept": true,
+      "privilege": "Can send unlimited Invites"
+    }
+  ],
+  "userInputSettingMeta": [
+    {
+      "name": "token",
+      "label": "Token",
+      "hint": "请在用户设置中生成 API key，指定权限 User 和 Torrents",
+      "required": true
+    }
+  ]
+}

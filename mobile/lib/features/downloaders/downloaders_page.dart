@@ -1,0 +1,1298 @@
+import 'dart:async';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:ptpatronus/api/downloader.dart';
+import 'package:ptpatronus/core/ws_client.dart';
+import 'package:ptpatronus/theme/glass.dart';
+
+class DownloadersPage extends StatefulWidget {
+  const DownloadersPage({super.key});
+  @override
+  State<DownloadersPage> createState() => _DownloadersPageState();
+}
+
+class _DownloadersPageState extends State<DownloadersPage> {
+  List<Downloader> _list = [];
+  bool _loading = false;
+  String? _error; // 加载失败时的友好文案；null=无错误
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      _list = await DownloaderApi().list();
+    } catch (e) {
+      // 保留已加载的旧数据；首次加载（_list 空）时展示错误态 + 重试，而非空白
+      if (_list.isEmpty) {
+        _error = e.toString();
+      } else {
+        _toast(e.toString());
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _open(Downloader d) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.85,
+        child: _TorrentSheet(downloader: d),
+      ),
+    );
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Widget _errorView() => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(_error ?? '加载失败',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 14)),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('重试'),
+              onPressed: _load,
+            ),
+          ],
+        ),
+      );
+
+  Widget _emptyView() => const Center(
+        child: Text('暂无下载器', style: TextStyle(color: Colors.grey)),
+      );
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassBackground(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(children: [
+                const Text('下载器', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Spacer(),
+                IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+              ]),
+            ),
+            if (_loading) const LinearProgressIndicator(minHeight: 2),
+            Expanded(
+              child: _list.isEmpty && !_loading
+                  ? (_error != null ? _errorView() : _emptyView())
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _list.length,
+                      itemBuilder: (_, i) {
+                        final d = _list[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: GlassCard(
+                            padding: const EdgeInsets.all(14),
+                            child: Row(children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      _typeBadge(d.type),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(d.name,
+                                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                            overflow: TextOverflow.ellipsis),
+                                      ),
+                                    ]),
+                                    const SizedBox(height: 4),
+                                    Text(d.url, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              FilledButton(onPressed: () => _open(d), child: const Text('任务')),
+                            ]),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _typeBadge(String t) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        gradient: const LinearGradient(colors: [PTColors.primary, PTColors.primary2]),
+      ),
+      child: Text(t.toUpperCase(),
+          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+    );
+  }
+}
+
+// 任务弹窗：订阅 WsClient 实时种子流，顶部速率面板 + 添加入口 + 每行操作菜单。
+class _TorrentSheet extends StatefulWidget {
+  final Downloader downloader;
+  const _TorrentSheet({required this.downloader});
+  @override
+  State<_TorrentSheet> createState() => _TorrentSheetState();
+}
+
+class _TorrentSheetState extends State<_TorrentSheet> {
+  final _ws = WsClient();
+  final _api = DownloaderApi();
+  List<Torrent> _torrents = [];
+  int? _dlRate;
+  int? _upRate;
+  String _error = '';
+  bool _connecting = true;
+  StreamSubscription? _sub;
+
+  int get _id => widget.downloader.id;
+  String get _type => widget.downloader.type;
+
+  @override
+  void initState() {
+    super.initState();
+    _ws.connect();
+    _sub = _ws.snapshots.listen((list) {
+      final match = list.where((s) => s.downloaderId == _id).toList();
+      if (match.isEmpty) return; // 本次广播不含此下载器，保留上次显示
+      final s = match.first;
+      if (!mounted) return;
+      setState(() {
+        _torrents = s.torrents;
+        _dlRate = s.dlRate;
+        _upRate = s.upRate;
+        _error = s.error;
+        _connecting = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel(); // 仅取消本页订阅，不断开共享的 WsClient
+    super.dispose();
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  String _cleanErr(Object e) => e.toString().replaceFirst('Exception: ', '');
+
+  Future<void> _act(Future<void> Function() fn, String ok) async {
+    try {
+      await fn();
+      _toast(ok);
+    } catch (e) {
+      _toast(_cleanErr(e));
+    }
+  }
+
+  int get _active => _torrents.where((t) => t.state.contains('download')).length;
+  int get _seeding =>
+      _torrents.where((t) => t.state.contains('upload') || t.state.contains('seed')).length;
+  int get _paused =>
+      _torrents.where((t) => t.state.contains('pause') || t.state.contains('stop')).length;
+
+  Future<bool?> _confirmDelete(String name) async {
+    bool delFiles = false;
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('删除任务'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('确认删除「$name」？'),
+              CheckboxListTile(
+                value: delFiles,
+                onChanged: (v) => setS(() => delFiles = v ?? false),
+                title: const Text('同时删除文件'),
+                controlAffinity: ListTileControlAffinity.leading,
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('取消')),
+            TextButton(onPressed: () => Navigator.pop(ctx, delFiles), child: const Text('删除')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _input(String title, String hint, {String initial = ''}) async {
+    final ctrl = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: ctrl,
+          decoration: InputDecoration(hintText: hint),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onMenu(String val, Torrent t) async {
+    switch (val) {
+      case 'detail':
+        _showDetail(t);
+      case 'pause':
+        _act(() => _api.pause(_id, [t.hash]), '已暂停');
+      case 'resume':
+        _act(() => _api.resume(_id, [t.hash]), '已恢复');
+      case 'recheck':
+        _act(() => _api.recheck(_id, [t.hash]), '已发起校验');
+      case 'reannounce':
+        _act(() => _api.reannounce(_id, [t.hash]), '已重新汇报');
+      case 'forceStart':
+        _act(() => _api.setForceStart(_id, [t.hash], !t.forceStart), '已切换强制开始');
+      case 'top':
+        _act(() => _api.setQueuePriority(_id, [t.hash], 'top'), '已置顶');
+      case 'up':
+        _act(() => _api.setQueuePriority(_id, [t.hash], 'up'), '已上移');
+      case 'down':
+        _act(() => _api.setQueuePriority(_id, [t.hash], 'down'), '已下移');
+      case 'bottom':
+        _act(() => _api.setQueuePriority(_id, [t.hash], 'bottom'), '已置底');
+      case 'seq':
+        _act(() => _api.toggleSequential(_id, [t.hash]), '已切换顺序下载');
+      case 'firstlast':
+        _act(() => _api.toggleFirstLast(_id, [t.hash]), '已切换首尾优先');
+      case 'copyMagnet':
+        _copy(t.magnet, '磁力链');
+      case 'copyHash':
+        _copy(t.hash, '哈希');
+      case 'remove':
+        final df = await _confirmDelete(t.name);
+        if (df != null) {
+          _act(() => _api.removeTorrents(_id, [t.hash], deleteFiles: df), '已删除');
+        }
+      case 'category':
+        await _editCategory(t);
+      case 'tags':
+        await _editTags(t);
+      case 'limits':
+        await _editLimits(t);
+      case 'shareLimits':
+        await _editShareLimits(t);
+      case 'files':
+        _showFiles(t);
+      case 'trackers':
+        _showTrackers(t);
+      case 'peers':
+        _showPeers(t);
+      case 'manageCats':
+        _showCategoryManager();
+    }
+  }
+
+  Future<void> _copy(String text, String label) async {
+    await Clipboard.setData(ClipboardData(text: text));
+    _toast('$label已复制');
+  }
+
+  Future<void> _editShareLimits(Torrent t) async {
+    String ratioMode = 'global';
+    String seedMode = 'global';
+    String ratioInput = '';
+    String seedInput = '';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('做种限制'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('分享比率', style: TextStyle(fontSize: 13)),
+                DropdownButton<String>(
+                  isExpanded: true,
+                  value: ratioMode,
+                  items: const [
+                    DropdownMenuItem(value: 'global', child: Text('全局默认')),
+                    DropdownMenuItem(value: 'unlimited', child: Text('无限')),
+                    DropdownMenuItem(value: 'custom', child: Text('自定义')),
+                  ],
+                  onChanged: (v) => setS(() => ratioMode = v!),
+                ),
+                if (ratioMode == 'custom')
+                  TextField(
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(hintText: '如 2.0'),
+                    onChanged: (v) => ratioInput = v,
+                  ),
+                const SizedBox(height: 12),
+                Text('做种时长${_type == 'tr' ? '（空闲）' : ''}', style: const TextStyle(fontSize: 13)),
+                DropdownButton<String>(
+                  isExpanded: true,
+                  value: seedMode,
+                  items: const [
+                    DropdownMenuItem(value: 'global', child: Text('全局默认')),
+                    DropdownMenuItem(value: 'unlimited', child: Text('无限')),
+                    DropdownMenuItem(value: 'custom', child: Text('自定义')),
+                  ],
+                  onChanged: (v) => setS(() => seedMode = v!),
+                ),
+                if (seedMode == 'custom')
+                  TextField(
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(hintText: '分钟'),
+                    onChanged: (v) => seedInput = v,
+                  ),
+                if (_type == 'tr')
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text('TR 做种时长为「空闲时长」语义', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    final ratio =
+        ratioMode == 'global' ? -1.0 : ratioMode == 'unlimited' ? -2.0 : (double.tryParse(ratioInput) ?? 0);
+    final seed = seedMode == 'global' ? -1 : seedMode == 'unlimited' ? -2 : (int.tryParse(seedInput) ?? 0);
+    _act(
+      () => _api.setShareLimits(_id, [t.hash], ShareLimits(ratioLimit: ratio, seedingTimeLimit: seed)),
+      '已设置',
+    );
+  }
+
+  void _showPeers(Torrent t) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.7,
+        child: _PeersSheet(id: _id, hash: t.hash),
+      ),
+    );
+  }
+
+  void _showDetail(Torrent t) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.9,
+        child: _DetailSheet(id: _id, type: _type, torrent: t),
+      ),
+    );
+  }
+
+  void _showCategoryManager() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.7,
+        child: _CategorySheet(id: _id),
+      ),
+    );
+  }
+
+  Future<void> _editCategory(Torrent t) async {
+    try {
+      final cats = await _api.categories(_id);
+      if (!mounted) return;
+      final sel = await showDialog<String>(
+        context: context,
+        builder: (ctx) => SimpleDialog(
+          title: const Text('设置分类'),
+          children: [
+            ...cats.map((c) => SimpleDialogOption(
+                  onPressed: () => Navigator.pop(ctx, c),
+                  child: Text(c),
+                )),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, ''),
+              child: const Text('（清除）', style: TextStyle(color: Colors.grey)),
+            ),
+          ],
+        ),
+      );
+      if (sel != null) _act(() => _api.setCategory(_id, [t.hash], sel), '已设置');
+    } catch (_) {
+      _toast('加载分类失败');
+    }
+  }
+
+  Future<void> _editTags(Torrent t) async {
+    final s = await _input('设置标签', '逗号分隔，覆盖现有', initial: t.tags.join(','));
+    if (s == null) return;
+    final tags = s.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    _act(() => _api.editTags(_id, [t.hash], tags, 'set'), '已设置');
+  }
+
+  Future<void> _editLimits(Torrent t) async {
+    final up = await _input('上传限速', 'KB/s，0=不限');
+    if (up == null) return;
+    final dl = await _input('下载限速', 'KB/s，0=不限');
+    if (dl == null) return;
+    final upB = (int.tryParse(up) ?? 0) * 1024;
+    final dlB = (int.tryParse(dl) ?? 0) * 1024;
+    _act(
+      () => _api.setLimits(_id, [t.hash], Limits(uploadLimit: upB, downloadLimit: dlB)),
+      '已设置',
+    );
+  }
+
+  void _showFiles(Torrent t) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.7,
+        child: _FilesSheet(id: _id, hash: t.hash, type: _type),
+      ),
+    );
+  }
+
+  void _showTrackers(Torrent t) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: 0.7,
+        child: _TrackersSheet(id: _id, hash: t.hash),
+      ),
+    );
+  }
+
+  void _add() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        child: _AddTorrentSheet(downloader: widget.downloader),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.downloader;
+    Widget body;
+    if (_connecting) {
+      body = const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 12),
+            Text('连接实时推送…', style: TextStyle(color: Colors.grey)),
+          ],
+        ),
+      );
+    } else if (_error.isNotEmpty) {
+      body = Center(child: Text('拉取失败：$_error', style: const TextStyle(color: Colors.redAccent)));
+    } else if (_torrents.isEmpty) {
+      body = const Center(child: Text('无任务', style: TextStyle(color: Colors.grey)));
+    } else {
+      body = ListView.separated(
+        itemCount: _torrents.length,
+        separatorBuilder: (_, _) => const Divider(height: 1, indent: 12, endIndent: 12),
+        itemBuilder: (_, i) => _row(_torrents[i]),
+      );
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Text('${d.name} · 任务',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            const Spacer(),
+            if (_type == 'qb')
+              IconButton(
+                icon: const Icon(Icons.category_outlined),
+                onPressed: _showCategoryManager,
+                tooltip: '分类管理',
+              ),
+            IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: _add, tooltip: '添加种子'),
+            const SizedBox(width: 4),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _ws.isConnected ? PTColors.success : Colors.grey,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ]),
+        ),
+        _statsRow(),
+        const Divider(height: 1),
+        Expanded(child: body),
+      ],
+    );
+  }
+
+  Widget _statsRow() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+      child: Row(
+        children: [
+          _stat('↓', _fmtSpeed(_dlRate), PTColors.primary2),
+          const SizedBox(width: 16),
+          _stat('↑', _fmtSpeed(_upRate), PTColors.success),
+          const Spacer(),
+          _count('下载', _active),
+          const SizedBox(width: 12),
+          _count('做种', _seeding),
+          const SizedBox(width: 12),
+          _count('暂停', _paused),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String arrow, String speed, Color color) {
+    return Row(
+      children: [
+        Text(arrow, style: TextStyle(color: color, fontSize: 14)),
+        const SizedBox(width: 4),
+        Text(speed, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
+      ],
+    );
+  }
+
+  Widget _count(String label, int n) {
+    return Text('$label $n', style: const TextStyle(color: Colors.grey, fontSize: 12));
+  }
+
+  Widget _row(Torrent t) {
+    return ListTile(
+      title: Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        '${(t.progress * 100).toStringAsFixed(0)}% · ${_stateLabel(t.state)} · ↓${_fmtSpeed(t.downRate)} ↑${_fmtSpeed(t.upRate)}'
+        '${t.tags.isNotEmpty ? ' · ${t.tags.join(",")}' : ''}',
+        style: const TextStyle(fontSize: 12),
+      ),
+      trailing: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        onSelected: (v) => _onMenu(v, t),
+        itemBuilder: (_) => [
+          const PopupMenuItem(value: 'detail', child: Text('详情…')),
+          const PopupMenuItem(value: 'pause', child: Text('暂停')),
+          const PopupMenuItem(value: 'resume', child: Text('恢复')),
+          const PopupMenuItem(value: 'recheck', child: Text('重新校验')),
+          const PopupMenuItem(value: 'reannounce', child: Text('重新汇报')),
+          if (_type == 'qb') ...[
+            const PopupMenuDivider(),
+            PopupMenuItem(
+                value: 'forceStart', child: Text(t.forceStart ? '取消强制开始' : '强制开始')),
+            const PopupMenuItem(value: 'top', child: Text('队列置顶')),
+            const PopupMenuItem(value: 'up', child: Text('队列上移')),
+            const PopupMenuItem(value: 'down', child: Text('队列下移')),
+            const PopupMenuItem(value: 'bottom', child: Text('队列置底')),
+            PopupMenuItem(value: 'seq', child: Text(t.sequential ? '取消顺序下载' : '顺序下载')),
+            PopupMenuItem(value: 'firstlast', child: Text(t.firstLastPiece ? '取消首尾优先' : '首尾优先')),
+          ],
+          const PopupMenuDivider(),
+          const PopupMenuItem(value: 'remove', child: Text('删除…')),
+          if (_type == 'qb') const PopupMenuItem(value: 'category', child: Text('设置分类…')),
+          const PopupMenuItem(value: 'tags', child: Text('设置标签…')),
+          const PopupMenuItem(value: 'limits', child: Text('限速…')),
+          const PopupMenuItem(value: 'shareLimits', child: Text('做种限制…')),
+          const PopupMenuItem(value: 'files', child: Text('文件优先级…')),
+          const PopupMenuItem(value: 'trackers', child: Text('Tracker…')),
+          const PopupMenuItem(value: 'peers', child: Text('Peers…')),
+          const PopupMenuDivider(),
+          const PopupMenuItem(value: 'copyMagnet', child: Text('复制磁力链')),
+          const PopupMenuItem(value: 'copyHash', child: Text('复制哈希')),
+        ],
+      ),
+    );
+  }
+
+  String _stateLabel(String s) {
+    const m = {
+      'downloading': '下载中', 'uploading': '做种', 'paused': '暂停', 'stopped': '停止',
+      'stalled': '等待', 'error': '错误', 'checking': '校验', 'queued': '排队',
+    };
+    for (final e in m.entries) {
+      if (s.contains(e.key)) return e.value;
+    }
+    return s;
+  }
+}
+
+// 添加种子：URL / 磁力 + .torrent 文件选择 + 高级（暂停）。
+class _AddTorrentSheet extends StatefulWidget {
+  final Downloader downloader;
+  const _AddTorrentSheet({required this.downloader});
+  @override
+  State<_AddTorrentSheet> createState() => _AddTorrentSheetState();
+}
+
+class _AddTorrentSheetState extends State<_AddTorrentSheet> {
+  final _api = DownloaderApi();
+  final _urlCtrl = TextEditingController();
+  bool _loading = false;
+  bool _paused = false;
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _addUrl() async {
+    if (_urlCtrl.text.isEmpty) return;
+    setState(() => _loading = true);
+    try {
+      await _api.addTorrent(widget.downloader.id, _urlCtrl.text, opts: {'paused': _paused});
+      _toast('已添加');
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _pickFile() async {
+    setState(() => _loading = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['torrent'],
+      );
+      if (result == null || result.files.isEmpty) return;
+      final f = result.files.first;
+      http.MultipartFile mf;
+      if (f.path != null) {
+        mf = await http.MultipartFile.fromPath('file', f.path!);
+      } else {
+        mf = http.MultipartFile.fromBytes('file', f.bytes ?? <int>[], filename: f.name);
+      }
+      await _api.uploadTorrent(widget.downloader.id, mf);
+      _toast('已上传');
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      // 鸿蒙等无原生实现时，file_picker 会抛 MissingPluginException，提示用链接
+      _toast('选文件不可用，请用链接添加');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('添加种子到「${widget.downloader.name}」',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _urlCtrl,
+            decoration: const InputDecoration(
+              hintText: 'magnet:?xt=... 或 .torrent 下载链接',
+              border: OutlineInputBorder(),
+            ),
+            minLines: 1,
+            maxLines: 3,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _loading ? null : _addUrl,
+                  icon: const Icon(Icons.link),
+                  label: const Text('添加链接'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _pickFile,
+                  icon: const Icon(Icons.upload_file),
+                  label: const Text('.torrent 文件'),
+                ),
+              ),
+            ],
+          ),
+          SwitchListTile(
+            value: _paused,
+            onChanged: _loading ? null : (v) => setState(() => _paused = v),
+            title: const Text('以暂停状态添加'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// 文件优先级管理。
+class _FilesSheet extends StatefulWidget {
+  final int id;
+  final String hash;
+  final String type;
+  const _FilesSheet({required this.id, required this.hash, required this.type});
+  @override
+  State<_FilesSheet> createState() => _FilesSheetState();
+}
+
+class _FilesSheetState extends State<_FilesSheet> {
+  final _api = DownloaderApi();
+  List<TorrentFile> _files = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final f = await _api.files(widget.id, widget.hash);
+      if (mounted) setState(() {_files = f; _loading = false;});
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  List<DropdownMenuItem<int>> _prioOpts() => widget.type == 'tr'
+      ? const [
+          DropdownMenuItem(value: -1, child: Text('低')),
+          DropdownMenuItem(value: 0, child: Text('正常')),
+          DropdownMenuItem(value: 1, child: Text('高')),
+        ]
+      : const [
+          DropdownMenuItem(value: 0, child: Text('不下载')),
+          DropdownMenuItem(value: 2, child: Text('正常')),
+          DropdownMenuItem(value: 1, child: Text('高')),
+          DropdownMenuItem(value: 7, child: Text('最高')),
+        ];
+
+  Future<void> _setPrio(TorrentFile f, int p) async {
+    try {
+      await _api.setFilePriority(widget.id, widget.hash, [f.index], p);
+      _toast('已更新');
+      _load();
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(14),
+          child: Text('文件优先级', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _files.isEmpty
+                  ? const Center(child: Text('无文件', style: TextStyle(color: Colors.grey)))
+                  : ListView.builder(
+                      itemCount: _files.length,
+                      itemBuilder: (_, i) {
+                        final f = _files[i];
+                        return ListTile(
+                          dense: true,
+                          title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          subtitle: Text('${_fmtBytes(f.size)} · ${(f.progress * 100).toStringAsFixed(0)}%',
+                              style: const TextStyle(fontSize: 12)),
+                          trailing: DropdownButton<int>(
+                            value: f.priority,
+                            items: _prioOpts(),
+                            onChanged: (p) => p != null ? _setPrio(f, p) : null,
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+}
+
+// Tracker 管理：列表 + 增/删。
+class _TrackersSheet extends StatefulWidget {
+  final int id;
+  final String hash;
+  const _TrackersSheet({required this.id, required this.hash});
+  @override
+  State<_TrackersSheet> createState() => _TrackersSheetState();
+}
+
+class _TrackersSheetState extends State<_TrackersSheet> {
+  final _api = DownloaderApi();
+  final _newCtrl = TextEditingController();
+  List<Tracker> _trackers = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final t = await _api.trackers(widget.id, widget.hash);
+      if (mounted) setState(() {_trackers = t; _loading = false;});
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _add() async {
+    if (_newCtrl.text.trim().isEmpty) return;
+    try {
+      await _api.addTrackers(widget.id, widget.hash, [_newCtrl.text.trim()]);
+      _newCtrl.clear();
+      _toast('已添加');
+      _load();
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _remove(String url) async {
+    try {
+      await _api.removeTrackers(widget.id, widget.hash, [url]);
+      _toast('已移除');
+      _load();
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(14),
+          child: Text('Tracker 管理', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'https://tracker.../announce',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(icon: const Icon(Icons.add), onPressed: _add),
+            ],
+          ),
+        ),
+        const Divider(height: 16),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _trackers.isEmpty
+                  ? const Center(child: Text('无 Tracker', style: TextStyle(color: Colors.grey)))
+                  : ListView.builder(
+                      itemCount: _trackers.length,
+                      itemBuilder: (_, i) {
+                        final t = _trackers[i];
+                        return ListTile(
+                          dense: true,
+                          title: Text(t.url, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () => _remove(t.url),
+                          ),
+                        );
+                      },
+                    ),
+        ),
+      ],
+    );
+  }
+}
+
+String _fmtBytes(int n) {
+  if (n <= 0) return '-';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  double v = n.toDouble();
+  int i = 0;
+  while (v >= 1024 && i < u.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return '${v.toStringAsFixed(1)} ${u[i]}';
+}
+
+String _fmtSpeed(int? n) {
+  if (n == null || n <= 0) return '0 B/s';
+  return '${_fmtBytes(n)}/s';
+}
+
+String _fmtIso(String iso) {
+  final dt = DateTime.tryParse(iso);
+  if (dt == null || dt.year < 1971) return '-';
+  String p(int v) => v.toString().padLeft(2, '0');
+  return '${dt.year}-${p(dt.month)}-${p(dt.day)} ${p(dt.hour)}:${p(dt.minute)}';
+}
+
+bool _isCompleted(String iso) => iso.isNotEmpty && !iso.startsWith('0001') && !iso.startsWith('1970');
+
+// 任务详情：概览信息 + qB 标志 + Peers/文件/Tracker 子入口。
+class _DetailSheet extends StatelessWidget {
+  final int id;
+  final String type;
+  final Torrent torrent;
+  const _DetailSheet({required this.id, required this.type, required this.torrent});
+
+  Widget _kv(String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+              width: 84,
+              child: Text(k, style: const TextStyle(color: Colors.grey, fontSize: 12))),
+          Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
+        ]),
+      );
+
+  Widget _flag(String label, bool on) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(6),
+          color: on
+              ? Colors.deepPurple.withValues(alpha: 0.18)
+              : Colors.grey.withValues(alpha: 0.15),
+        ),
+        child: Text(label,
+            style: TextStyle(fontSize: 11, color: on ? Colors.deepPurple : Colors.grey)),
+      );
+
+  void _openPeers(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+          heightFactor: 0.7, child: _PeersSheet(id: id, hash: torrent.hash)),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = torrent;
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.all(14),
+        child: Text(t.name,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis),
+      ),
+      const Divider(height: 1),
+      Expanded(
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          children: [
+            _kv('大小', _fmtBytes(t.size)),
+            _kv('已下载/上传', '${_fmtBytes(t.downloaded)} / ${_fmtBytes(t.uploaded)}'),
+            _kv('分享率', t.ratio.toStringAsFixed(2)),
+            _kv('进度', '${(t.progress * 100).toStringAsFixed(1)}%'),
+            if (type == 'qb')
+              _kv('可用性', t.availability > 0 ? t.availability.toStringAsFixed(2) : '-'),
+            _kv('做种/下载', '${t.numSeeds} / ${t.numLeechs}'),
+            if (type == 'qb') _kv('Swarm 做/下', '${t.numComplete} / ${t.numIncomplete}'),
+            if (type == 'qb') _kv('队列位置', '${t.priority}'),
+            if (t.addedAt.isNotEmpty) _kv('创建', _fmtIso(t.addedAt)),
+            if (_isCompleted(t.completedAt)) _kv('完成', _fmtIso(t.completedAt)),
+            if (type == 'qb') ...[
+              const SizedBox(height: 8),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                _flag('强制开始', t.forceStart),
+                _flag('顺序下载', t.sequential),
+                _flag('首尾优先', t.firstLastPiece),
+                _flag('自动管理', t.autoTmm),
+              ]),
+            ],
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.people_outline, size: 18),
+              label: const Text('Peers'),
+              onPressed: () => _openPeers(context),
+            ),
+          ],
+        ),
+      ),
+    ]);
+  }
+}
+
+// Peers 列表。
+class _PeersSheet extends StatefulWidget {
+  final int id;
+  final String hash;
+  const _PeersSheet({required this.id, required this.hash});
+  @override
+  State<_PeersSheet> createState() => _PeersSheetState();
+}
+
+class _PeersSheetState extends State<_PeersSheet> {
+  final _api = DownloaderApi();
+  List<Peer> _peers = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final p = await _api.peers(widget.id, widget.hash);
+      if (mounted) setState(() {_peers = p; _loading = false;});
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(children: [
+          const Text('Peers', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          const Spacer(),
+          Text('${_peers.length}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: _load),
+        ]),
+      ),
+      const Divider(height: 1),
+      Expanded(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _peers.isEmpty
+                ? const Center(child: Text('无连接的对等体', style: TextStyle(color: Colors.grey)))
+                : ListView.builder(
+                    itemCount: _peers.length,
+                    itemBuilder: (_, i) {
+                      final p = _peers[i];
+                      return ListTile(
+                        dense: true,
+                        title: Text(p.ip, style: const TextStyle(fontSize: 13)),
+                        subtitle: Text(
+                          '${p.client.isEmpty ? '-' : p.client} · ${(p.progress * 100).toStringAsFixed(0)}% · ↓${_fmtSpeed(p.dlRate)} ↑${_fmtSpeed(p.upRate)}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: Text(p.flags, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      );
+                    },
+                  ),
+      ),
+    ]);
+  }
+}
+
+// 分类管理（qB）：列表 + 新建（含保存路径）/删除。
+class _CategorySheet extends StatefulWidget {
+  final int id;
+  const _CategorySheet({required this.id});
+  @override
+  State<_CategorySheet> createState() => _CategorySheetState();
+}
+
+class _CategorySheetState extends State<_CategorySheet> {
+  final _api = DownloaderApi();
+  final _nameCtrl = TextEditingController();
+  final _pathCtrl = TextEditingController();
+  List<String> _cats = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final c = await _api.categories(widget.id);
+      if (mounted) setState(() {_cats = c; _loading = false;});
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  }
+
+  Future<void> _add() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    try {
+      await _api.createCategory(widget.id, name, _pathCtrl.text.trim());
+      _nameCtrl.clear();
+      _pathCtrl.clear();
+      _toast('已添加');
+      _load();
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Future<void> _del(String name) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除分类'),
+        content: Text('确认删除分类「$name」？该分类下任务将变为无分类。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.deleteCategories(widget.id, [name]);
+      _toast('已删除');
+      _load();
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      const Padding(
+        padding: EdgeInsets.all(14),
+        child: Text('分类管理', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(children: [
+          Expanded(
+            child: TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(
+                  hintText: '新分类名', isDense: true, border: OutlineInputBorder()),
+              onSubmitted: (_) => _add(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _pathCtrl,
+              decoration: const InputDecoration(
+                  hintText: '保存路径（可空）', isDense: true, border: OutlineInputBorder()),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton.filled(icon: const Icon(Icons.add), onPressed: _add),
+        ]),
+      ),
+      const Divider(height: 16),
+      Expanded(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _cats.isEmpty
+                ? const Center(child: Text('无分类', style: TextStyle(color: Colors.grey)))
+                : ListView.builder(
+                    itemCount: _cats.length,
+                    itemBuilder: (_, i) {
+                      final c = _cats[i];
+                      return ListTile(
+                        dense: true,
+                        title: Text(c, style: const TextStyle(fontSize: 13)),
+                        trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () => _del(c)),
+                      );
+                    },
+                  ),
+      ),
+    ]);
+  }
+}

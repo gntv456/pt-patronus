@@ -1,0 +1,65 @@
+# reelflix — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - RFX
+description: Keep it Reel
+id: reelflix
+level_requirements:
+    - name: Leech
+    - id: 1
+      name: User
+      privilege: 1下载槽
+      ratio: 0.8
+      uploaded: 50GiB
+    - id: 2
+      interval: P5D
+      name: Member
+      privilege: 5下载槽
+      ratio: 0.9
+      uploaded: 100GiB
+    - id: 3
+      interval: P2W
+      name: Pro
+      privilege: 上传种子 10下载槽 求种
+      ratio: 1
+      uploaded: 500GiB
+    - id: 4
+      interval: P1M
+      name: Expert
+      privilege: 上传种子 无限下载槽 求种 自动通过候选
+      ratio: 1.1
+      uploaded: 1TiB
+    - id: 5
+      interval: P3M
+      name: Elite
+      privilege: 上传种子 无限下载槽 发送邀请 自动通过候选 邀请论坛
+      ratio: 1.2
+      uploaded: 2.5TiB
+    - id: 6
+      interval: P6M
+      name: Distributor
+      privilege: 上传种子 无限下载槽 发送邀请 自动通过候选 邀请论坛 所有种子可退款
+      ratio: 1.25
+      uploaded: 5TiB
+    - id: 7
+      interval: P1Y
+      name: Curator
+      privilege: 上传种子 无限下载槽 发送邀请 自动通过候选 邀请论坛 全站25%免费
+      ratio: 1.5
+      uploaded: 10TiB
+    - id: 8
+      interval: P2Y
+      name: Archivist
+      privilege: 上传种子 无限下载槽 发送邀请 自动通过候选 邀请论坛 全站50%免费
+      ratio: 1.75
+      uploaded: 25TiB
+name: ReelFliX
+schema: unit3d
+tags:
+    - 电影
+timezone_offset: "+0000"
+urls:
+    - https://reelflix.cc/
+    - https://reelflix.xyz/

@@ -1,0 +1,95 @@
+# hdspace — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: xbtit。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.subTitle（elementProcess）
+#   - search.time（switchFilters）
+#   - search.category.filters（匿名函数）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - HD-S
+description: HD-Space (HDS) is a Private Torrent Tracker for HD MOVIES / TV
+id: hdspace
+level_requirements:
+    - id: 1
+      name: Members
+      privilege: Have access to Torrents, Seed Bonus, Upload, Helpdesk, Lottery pages.
+    - id: 2
+      name: HD Spacer
+      privilege: Have access to BlackJack, Expected, Catalog, Games pages.
+      ratio: 1.05
+      uploaded: 100GB
+    - id: 3
+      name: HD Astronaut
+      privilege: Have access to HD Spacer extras and Top 10, Members, Requests, Episode pages.
+      ratio: 2.25
+      uploaded: 500GB
+    - id: 4
+      name: HD Alien
+      privilege: Same access like HD Astronaut.
+      ratio: 4.25
+      uploaded: 2TB
+    - id: 5
+      name: HD Internal
+      privilege: Same access like HD Alien. Plus Golden Status for the uploaded torrents.
+    - group_type: vip
+      id: 6
+      name: VIP
+      name_aka:
+        - V.I.P.
+      privilege: Same access like HD Astronaut, immune to automatic demotion, automated HnR warnings and ratio watch.
+    - group_type: manager
+      id: 7
+      name: Uploader
+      privilege: Access to HD Spacer and HD Astronaut extras. May upload and download any torrents.
+      uploads: 20
+    - group_type: manager
+      id: 8
+      name: Elite Uploader
+      privilege: Same access like Uploader.
+      ratio: 7
+      uploaded: 20TB
+      uploads: 100
+name: HD-Space
+schema: xbtit
+search_entry: /index.php
+search_param: search
+selectors:
+    fields:
+        category:
+            attr: href
+            filters:
+                - args: category
+                  name: queryparam
+            selector: td a[href^='index.php?page=torrents&category=']
+        completed:
+            selector: td:nth-child(9)
+        detail:
+            attr: href
+            selector: td a[href^='index.php?page=torrent-details']
+        download:
+            attr: href
+            selector: a[href^='download.php?id=']
+        leechers:
+            selector: td:nth-child(9)
+        seeders:
+            selector: td:nth-child(8)
+        size:
+            filters:
+                - name: parse_size
+            selector: td:nth-child(6)
+        subtitle:
+            selector: td:nth-child(2) > span
+        time:
+            selectors:
+                - td:nth-child(5):contains('day')
+                - td:nth-child(5):not(:contains('day'))
+        title:
+            selector: td a[href^='index.php?page=torrent-details']
+    rows:
+        selector: table.lista[width='100%'] > tbody > style ~ tr
+tags:
+    - 影视
+timezone_offset: "+0000"
+urls:
+    - https://hd-space.org/

@@ -1,0 +1,132 @@
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { entertainmentApi, type GameStats, type PlayResult } from '@/api/entertainment'
+
+const props = defineProps<{ siteId: number }>()
+
+const stats = ref<GameStats | null>(null)
+const playing = ref(false)
+const reveal = ref<PlayResult | null>(null)
+
+async function refreshStats() {
+  stats.value = await entertainmentApi.stats(props.siteId, 'magic_scratch').catch(() => stats.value)
+}
+
+async function scratch() {
+  if (playing.value) return
+  playing.value = true
+  reveal.value = null
+  try {
+    const res = await entertainmentApi.play(props.siteId, 'magic_scratch')
+    reveal.value = res
+    if (res.success && (res.amount ?? 0) > 0) ElMessage.success(`获得 ${res.prize || ''} ${res.amount}`)
+    else if (res.success) ElMessage.info(res.message || '未中奖')
+    else ElMessage.warning(res.message || '刮奖失败')
+    await refreshStats()
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    ElMessage.error(msg || '请求失败')
+  } finally {
+    playing.value = false
+  }
+}
+
+function fmt(n: number) {
+  return Math.round(n).toLocaleString('zh-CN')
+}
+
+onMounted(refreshStats)
+</script>
+
+<template>
+  <div class="ms">
+    <div class="banner">
+      <span class="banner-title">魔力刮刮乐</span>
+      <span class="banner-sub">消耗 {{ fmt(stats?.cost_per_play ?? 5000) }} 火花购买并刮开一张</span>
+    </div>
+
+    <!-- 统计栏 -->
+    <div class="stat-bar">
+      <div class="stat-tile">
+        <div class="stat-val">{{ stats ? fmt(stats.balance) : '--' }}</div>
+        <div class="stat-lbl">火花余额</div>
+      </div>
+      <div class="stat-tile">
+        <div class="stat-val">{{ stats ? `${stats.today_spins}/${stats.max_daily || '∞'}` : '--' }}</div>
+        <div class="stat-lbl">今日次数</div>
+      </div>
+    </div>
+
+    <!-- 刮卡 -->
+    <div class="card-zone">
+      <div class="scratch-card" :class="{ revealed: reveal, win: reveal?.success && (reveal?.amount ?? 0) > 0 }">
+        <div v-if="!reveal" class="cover">
+          <span class="cover-text">刮奖区</span>
+          <span class="cover-hint">点击下方按钮刮开</span>
+        </div>
+        <div v-else class="prize-reveal">
+          <div class="reveal-icon">{{ reveal.amount && reveal.amount > 0 ? '✨' : '·' }}</div>
+          <div class="reveal-name">{{ reveal.prize || (reveal.success ? '未中奖' : '失败') }}</div>
+          <div v-if="reveal.amount && reveal.amount > 0" class="reveal-amount">+{{ fmt(reveal.amount) }} 火花</div>
+          <div v-if="reveal.message" class="reveal-msg">{{ reveal.message }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" :disabled="playing" @click="scratch">
+        {{ playing ? '刮卡中…' : '刮一张' }}
+      </button>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.ms { display: flex; flex-direction: column; gap: 16px; max-width: 480px; margin: 0 auto; }
+.banner {
+  text-align: center;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f7971e, #ff5858);
+}
+.banner-title { display: block; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: 3px; }
+.banner-sub { display: block; margin-top: 3px; font-size: 12px; color: rgba(255,255,255,0.85); }
+.stat-bar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.stat-tile {
+  padding: 12px 8px; border-radius: 12px; text-align: center;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(247,151,30,0.25);
+}
+.stat-val { font-size: 22px; font-weight: 800; color: #ffb74d; }
+.stat-lbl { margin-top: 2px; font-size: 11px; color: #9aa5b1; }
+.card-zone { display: flex; justify-content: center; padding: 8px 0; }
+.scratch-card {
+  width: 240px; height: 150px; border-radius: 14px; position: relative; overflow: hidden;
+  background: linear-gradient(135deg, #ffd180, #ff8a3d); border: 2px solid #ffb74d;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3); transition: all 0.3s ease;
+}
+.scratch-card.win { animation: pulse 0.6s ease; }
+@keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.04)} 100%{transform:scale(1)} }
+.cover {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+  background: repeating-linear-gradient(45deg, #c9a06a 0 8px, #e0c08a 8px 16px); color: #4a2f00;
+}
+.cover-text { font-size: 28px; font-weight: 800; letter-spacing: 6px; }
+.cover-hint { font-size: 11px; opacity: 0.7; }
+.prize-reveal {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; color: #4a2f00; padding: 8px; text-align: center;
+}
+.reveal-icon { font-size: 30px; }
+.reveal-name { font-size: 18px; font-weight: 800; }
+.reveal-amount { font-size: 14px; font-weight: 700; }
+.reveal-msg { margin-top: 4px; font-size: 11px; opacity: 0.8; }
+.actions { display: flex; justify-content: center; }
+.btn {
+  flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700;
+  cursor: pointer; color: #fff; background: linear-gradient(135deg, #f7971e, #ff5858);
+  transition: all 0.15s ease;
+}
+.btn:disabled { opacity: 0.5; cursor: progress; }
+.btn:hover:not(:disabled) { filter: brightness(1.08); }
+</style>

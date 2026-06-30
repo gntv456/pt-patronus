@@ -1,0 +1,52 @@
+import { http } from './http'
+
+// 辅种候选任务（对齐后端 models.CrossSeedTask）。
+export interface ReseedTask {
+  id: number
+  downloader_id: number
+  info_hash: string
+  source_site: string
+  source_name: string
+  candidate_site: string
+  candidate_url: string
+  save_path: string
+  status: 'pending' | 'added' | 'skipped' | 'failed'
+  match_score: number
+  created_at: string
+  resolved_at: string | null
+}
+
+export interface ReseedConfig {
+  iyuu_token_masked: string
+  configured: boolean
+}
+
+// 辅种设置（per-downloader，对齐后端 models.CrossSeedSetting）。
+export interface ReseedSetting {
+  downloader_id: number
+  save_path: string
+  pause_after_add: boolean
+  auto_reseed: boolean
+  auto_reseed_add: boolean
+}
+
+export const reseedApi = {
+  getConfig: () => http.get<ReseedConfig>('/keepseed/config').then((r) => r.data),
+  setConfig: (iyuuToken: string) =>
+    http.post('/keepseed/config', { iyuu_token: iyuuToken }).then((r) => r.data),
+  // 触发某下载器的 IYUU 精确辅种，返回新增 pending 候选。
+  reseed: (downloaderId: number) =>
+    http.post<{ tasks: ReseedTask[]; count: number }>('/keepseed/reseed', { downloader_id: downloaderId }).then((r) => r.data),
+  // 列候选任务（status 空则全部）。
+  tasks: (status = '') =>
+    http
+      .get<{ tasks: ReseedTask[] }>('/keepseed/tasks', { params: status ? { status } : {} })
+      .then((r) => r.data.tasks ?? []),
+  // 处理一个候选：add（添加辅种）/ skip。
+  resolve: (id: number, action: 'add' | 'skip') =>
+    http.post(`/keepseed/tasks/${id}/resolve`, { action }).then((r) => r.data),
+  // 取/存该下载器的辅种设置（自动辅种 / 自动添加 / 保存路径 / 添加后暂停）。
+  getSetting: (downloaderId: number) =>
+    http.get<ReseedSetting>('/keepseed/setting', { params: { downloader_id: downloaderId } }).then((r) => r.data),
+  setSetting: (s: ReseedSetting) => http.put('/keepseed/setting', s).then((r) => r.data),
+}

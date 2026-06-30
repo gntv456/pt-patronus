@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "id": "audiobookbay",
+  "name": "AudioBook Bay",
+  "aka": [
+    "ABB"
+  ],
+  "description": "AudioBook Bay (ABB) is a Public Torrent Tracker for AUDIOBOOKS",
+  "tags": [
+    "有声书"
+  ],
+  "timezoneOffset": "+0100",
+  "type": "public",
+  "urls": [
+    "https://audiobookbay.lu/",
+    "http://audiobookbay.is/",
+    "http://audiobookbay.se/",
+    "http://audiobookbay.fi/",
+    "http://audiobookbay.ws/",
+    "http://theaudiobookbay.se/"
+  ],
+  "category": [
+    {
+      "name": "Categories",
+      "key": "cat",
+      "options": {
+        "__ref": "categoryOptions"
+      },
+      "cross": {
+        "mode": "comma"
+      }
+    }
+  ],
+  "search": {
+    "keywordPath": "params.s",
+    "requestConfig": {
+      "url": "/",
+      "responseType": "document",
+      "params": {
+        "tt": 1
+      }
+    },
+    "advanceKeywordParams": {
+      "imdb": false
+    },
+    "requestConfigTransformer": {
+      "__fn": true,
+      "src": "({ requestConfig }) => {\n      return {\n        ...requestConfig,\n        params: {\n          ...requestConfig?.params,\n          s: (requestConfig?.params.s as string | undefined)?.replace(/[\\W]+/g, \" \").trim().toLowerCase(),\n        },\n      };\n    }"
+    },
+    "selectors": {
+      "rows": {
+        "selector": "div.post:has(div[class='postTitle'])"
+      },
+      "category": {
+        "text": "Audiobooks"
+      },
+      "title": {
+        "__ref": "titleSelector"
+      },
+      "url": {
+        "selector": "div.postTitle h2 a",
+        "attr": "href"
+      },
+      "size": {
+        "selector": "div.postContent",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const matchSize = query.match(/File Size: (.+?)s/);\n            return matchSize ? definedFilters.parseSize(matchSize[1]) : 0;\n          }"
+          }
+        ]
+      },
+      "time": {
+        "selector": "div.postContent",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const matchDateAdded = query.match(/Posted: (\\d{1,2} \\D{3} \\d{4})/);\n            return matchDateAdded ? definedFilters.parseTime(matchDateAdded[1]) : null;\n          }"
+          }
+        ]
+      },
+      "subTitle": {
+        "selector": "div.postInfo",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const matchGenres = query.match(/Category:\\s+(.+?)(?=\\s+(Language:|Keywords:))/s);\n            return matchGenres ? matchGenres[1].trim().split(\"\\xA0 \").join(\" / \") : \"\";\n          }"
+          }
+        ]
+      },
+      "seeders": {
+        "text": "N/A"
+      },
+      "leechers": {
+        "text": "N/A"
+      },
+      "completed": {
+        "text": "N/A"
+      }
+    }
+  },
+  "list": [
+    {
+      "excludeUrlPattern": [
+        "/abss/"
+      ]
+    }
+  ],
+  "detail": {
+    "urlPattern": [
+      "/abss/"
+    ],
+    "selectors": {
+      "title": {
+        "__ref": "titleSelector"
+      },
+      "link": {
+        "selector": ":self",
+        "elementProcess": {
+          "__fn": true,
+          "src": "(doc: Document) => {\n          const title = Sizzle(titleSelector.selector, doc)[0].textContent;\n          const hash = Sizzle(\"td:contains('Info Hash:') ~ td\", doc)[0].textContent;\n          const trackers = Sizzle(\"td:contains('Tracker:') ~ td\", doc).map((td) => td.textContent);\n          return infoHashToPublicMagnet(hash, title, trackers) || \"\";\n        }"
+        }
+      }
+    }
+  }
+}

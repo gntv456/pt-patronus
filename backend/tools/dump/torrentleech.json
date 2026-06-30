@@ -1,0 +1,426 @@
+{
+  "id": "torrentleech",
+  "version": 1,
+  "name": "TorrentLeech",
+  "aka": [
+    "TL"
+  ],
+  "description": "TorrentLeech (TL) is a Private Torrent Tracker for 0DAY / GENERAL. not here _ not scene",
+  "tags": [
+    "综合"
+  ],
+  "timezoneOffset": "+0000",
+  "type": "private",
+  "schema": "AbstractPrivateSite",
+  "urls": [
+    "https://www.torrentleech.org/",
+    "https://www.torrentleech.cc/",
+    "https://www.torrentleech.me/",
+    "https://www.tleechreload.org/",
+    "https://www.tlgetin.cc/"
+  ],
+  "category": [
+    {
+      "name": "Category",
+      "key": "category",
+      "options": {
+        "__ref": "categoryOptions"
+      },
+      "cross": {
+        "mode": "custom"
+      }
+    }
+  ],
+  "search": {
+    "requestConfig": {
+      "url": "/torrents/browse/list/query",
+      "responseType": "json"
+    },
+    "advanceKeywordParams": {
+      "imdb": {
+        "enabled": true
+      }
+    },
+    "requestConfigTransformer": {
+      "__fn": true,
+      "src": "({ keywords, searchEntry, requestConfig }) => {\n      const baseUrl = requestConfig!.url || \"\";\n      if (keywords) {\n        delete requestConfig!.params?.keywords; // 移除 AbstractBittorrentSite 自动添加的 keywords 参数\n\n        // remove dashes at the beginning of keywords as they exclude search strings (see Jackett/Jackett#3096)\n        keywords = keywords.replace(/(^|\\s)-/, \"\");\n        requestConfig!.url = urlJoin(baseUrl, `${keywords}`);\n      }\n\n      return requestConfig!;\n    }"
+    },
+    "selectors": {
+      "rows": {
+        "selector": "torrentList"
+      },
+      "id": {
+        "selector": "fid"
+      },
+      "title": {
+        "selector": "name"
+      },
+      "url": {
+        "selector": "fid",
+        "filters": [
+          {
+            "name": "prepend",
+            "args": [
+              "/torrent/"
+            ]
+          }
+        ]
+      },
+      "link": {
+        "selector": ":self",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(row: ITorrentLeechTorrent) => \"/download/\" + row.fid + \"/\" + row.filename"
+          }
+        ]
+      },
+      "time": {
+        "selector": "addedTimestamp",
+        "filters": [
+          {
+            "name": "parseTime"
+          }
+        ]
+      },
+      "size": {
+        "selector": "size"
+      },
+      "author": {
+        "selector": "uploader"
+      },
+      "seeders": {
+        "selector": "seeders"
+      },
+      "leechers": {
+        "selector": "leechers"
+      },
+      "completed": {
+        "selector": "numComments"
+      },
+      "category": {
+        "selector": "categoryID",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(categoryId: number) => categoryOptions.find((cat) => cat.value == categoryId)?.name ?? \"Unknown\""
+          }
+        ]
+      },
+      "ext_imdb": {
+        "selector": "imdbID"
+      },
+      "ext_tvmaze": {
+        "selector": "tvmazeID",
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            // Example: \"e1234567\" \"s12345\"\n            // 只保留能直接用于 social 模块的 season id\n            if (query.charAt(0) === \"e\") return null;\n            return query.slice(1);\n          }"
+          }
+        ]
+      }
+    }
+  },
+  "list": [
+    {
+      "urlPattern": [
+        "/torrents/browse"
+      ],
+      "mergeSearchSelectors": false,
+      "selectors": {
+        "rows": {
+          "selector": "table.torrents tr.torrent"
+        },
+        "id": {
+          "selector": ":self",
+          "data": "tid"
+        },
+        "category": {
+          "selector": "a.category[data-ccid]",
+          "data": "ccid"
+        },
+        "title": {
+          "selector": "div.name",
+          "elementProcess": {
+            "__fn": true,
+            "src": "(el) => {\n            el?.querySelectorAll(\"span\")?.forEach((span: HTMLSpanElement) => span?.remove()); // 移除 span 标签\n            return el?.textContent?.trim() ?? \"\";\n          }"
+          }
+        },
+        "url": {
+          "selector": "div.name a",
+          "attr": "href"
+        },
+        "link": {
+          "selector": "a.download",
+          "attr": "href"
+        },
+        "seeders": {
+          "selector": "td.td-seeders"
+        },
+        "leechers": {
+          "selector": "td.td-leechers"
+        },
+        "completed": {
+          "selector": "td.td-snatched"
+        },
+        "size": {
+          "selector": "td.td-size",
+          "filters": [
+            {
+              "name": "parseSize"
+            }
+          ]
+        },
+        "time": {
+          "selector": "td.td-uploaded-time",
+          "filters": [
+            {
+              "name": "parseTime",
+              "args": [
+                "yyyy-MM-ddHH:mm:ss"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "detail": {
+    "urlPattern": [
+      "/torrent/\\d+"
+    ],
+    "selectors": {
+      "id": {
+        "selector": "input[name=\"torrentID\"]",
+        "attr": "value"
+      },
+      "title": {
+        "selector": [
+          "#torrentnameid",
+          "#torrentName"
+        ]
+      },
+      "link": {
+        "selector": "#detailsDownloadButton",
+        "attr": "href"
+      }
+    }
+  },
+  "userInfo": {
+    "pickLast": [
+      "id",
+      "name"
+    ],
+    "process": [
+      {
+        "requestConfig": {
+          "url": "/",
+          "responseType": "document"
+        },
+        "selectors": {
+          "name": {
+            "selector": "span.centerTopBar span[onclick*='/profile/'][onclick*='view']"
+          },
+          "uploaded": {
+            "selector": "span.centerTopBar div[title^='Uploaded'] span",
+            "filters": [
+              {
+                "name": "parseSize"
+              }
+            ]
+          },
+          "downloaded": {
+            "selector": "span.centerTopBar div[title^='Downloaded'] span",
+            "filters": [
+              {
+                "name": "parseSize"
+              }
+            ]
+          },
+          "bonus": {
+            "selector": "span.centerTopBar span.total-TL-points",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          },
+          "messageCount": {
+            "text": "0",
+            "selector": "span.div-menu-item[onclick*='/notifications'] div.notificatinTooltip span.tooltip-title",
+            "filters": [
+              {
+                "name": "parseNumber"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/profile/$name$",
+          "responseType": "document"
+        },
+        "assertion": {
+          "name": "url"
+        },
+        "selectors": {
+          "id": {
+            "selector": "script:contains('userLogUserID')",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(text: string) => text.match(/var userLogUserID = '(\\d+)';/)?.[1] ?? \"\""
+              }
+            ]
+          },
+          "levelName": {
+            "selector": "div.profile-details div.label-user-class"
+          },
+          "joinTime": {
+            "selector": "table.profileViewTable td:contains('Registration date') + td",
+            "filters": [
+              {
+                "name": "parseTime",
+                "args": [
+                  "EEEE do MMMM yyyy"
+                ]
+              }
+            ]
+          },
+          "lastAccessAt": {
+            "selector": "table.profileViewTable td:contains('Last visit') + td",
+            "filters": [
+              {
+                "name": "split",
+                "args": [
+                  " (",
+                  0
+                ]
+              },
+              {
+                "name": "parseTime",
+                "args": [
+                  "EEEE do MMMM yyyy hh:mm:ss a"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "requestConfig": {
+          "url": "/user/account/uploadedtorrents",
+          "method": "POST",
+          "responseType": "json",
+          "data": {
+            "sEcho": "1",
+            "iColumns": "6",
+            "sColumns": "categoryID,name,size,completed,seeders,leechers",
+            "iDisplayStart": "0",
+            "iDisplayLength": "50",
+            "mDataProp_0": "0",
+            "sSearch_0": "",
+            "bRegex_0": "false",
+            "bSearchable_0": "true",
+            "bSortable_0": "false",
+            "mDataProp_1": "1",
+            "sSearch_1": "",
+            "bRegex_1": "false",
+            "bSearchable_1": "true",
+            "bSortable_1": "false",
+            "mDataProp_2": "2",
+            "sSearch_2": "",
+            "bRegex_2": "false",
+            "bSearchable_2": "true",
+            "bSortable_2": "true",
+            "mDataProp_3": "3",
+            "sSearch_3": "",
+            "bRegex_3": "false",
+            "bSearchable_3": "true",
+            "bSortable_3": "true",
+            "mDataProp_4": "4",
+            "sSearch_4": "",
+            "bRegex_4": "false",
+            "bSearchable_4": "true",
+            "bSortable_4": "true",
+            "mDataProp_5": "5",
+            "sSearch_5": "",
+            "bRegex_5": "false",
+            "bSearchable_5": "true",
+            "bSortable_5": "true",
+            "sSearch": "",
+            "bRegex": "false",
+            "iSortCol_0": "0",
+            "sSortDir_0": "asc",
+            "iSortingCols": "1",
+            "userID": "$id$"
+          },
+          "headers": {
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "\"Content-Type\"": "application/x-www-form-urlencoded; charset=UTF-8",
+            "\"X-Requested-With\"": "XMLHttpRequest"
+          }
+        },
+        "assertion": {
+          "id": "valid"
+        },
+        "selectors": {
+          "uploads": {
+            "selector": ":self",
+            "filters": [
+              {
+                "__fn": true,
+                "src": "(response: IUploadsResponse) => response.iTotalRecords || 0"
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "noLoginAssert": {
+    "matchSelectors": [
+      "div.login-container form[name='login-form']"
+    ]
+  },
+  "levelRequirements": [
+    {
+      "id": 0,
+      "name": "User",
+      "privilege": ""
+    },
+    {
+      "id": 1,
+      "name": "Power User",
+      "interval": "P2W",
+      "uploaded": "200GB",
+      "ratio": 1.1,
+      "privilege": "Increased Points: 3%, Minimum Seeding Time: 8 days"
+    },
+    {
+      "id": 2,
+      "name": "Super User",
+      "interval": "P12W",
+      "uploaded": "1TB",
+      "ratio": 2,
+      "privilege": "Increased Points: 5%, Minimum Seeding Time: 7 days"
+    },
+    {
+      "id": 3,
+      "name": "Extreme User",
+      "interval": "P24W",
+      "uploaded": "10TB",
+      "ratio": 5,
+      "privilege": "Increased Points: 6%, Minimum Seeding Time: 6 days"
+    },
+    {
+      "id": 4,
+      "name": "TL GOD",
+      "interval": "P52W",
+      "uploaded": "50TB",
+      "ratio": 8,
+      "privilege": "Increased Points: 8%, Minimum Seeding Time: 4 days"
+    }
+  ]
+}

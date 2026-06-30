@@ -1,0 +1,78 @@
+# cgpeers — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.category.filters（匿名函数）
+#   - search.link（__ref）
+#   - userInfo.id.filters[split]
+#   - userInfo.name（switchFilters）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - CGP
+description: CGPeers 是一个专注于计算机图形资源的私有站点
+id: cgpeers
+legacy_urls:
+    - https://www.cgpeers.com/
+level_requirements:
+    - id: 1
+      name: User
+    - id: 2
+      interval: P4W
+      name: Member
+      privilege: Access Top 10; Can (anonymously) upload torrents; Can make requests
+      ratio: 1
+      uploaded: 100GiB
+    - id: 3
+      interval: P20W
+      name: Power User
+      privilege: Can view advanced site stats.
+      ratio: 2
+      uploaded: 500GiB
+      uploads: 5
+    - id: 4
+      interval: P52W
+      name: Elite
+      privilege: Can download multiple torrents at once. Can delete tags. Can view torrent peerlists.
+      ratio: 4
+      uploaded: 2TiB
+      uploads: 50
+    - id: 5
+      interval: P260W
+      name: Legend
+      privilege: Can have a personal collage. Can create collages.
+      ratio: 4
+      uploaded: 100TiB
+      uploads: 100
+name: CGPeers
+schema: luminance
+search_entry: /torrent/browse
+selectors:
+    fields:
+        category:
+            attr: href
+            selector: td.cats_col > div[title] > a
+        detail:
+            attr: href
+            selector: span + a[href*='torrent/']
+        download: {}
+        title:
+            selector: span + a[href*='torrent/']
+tags:
+    - 设计
+    - 教育
+    - 软件
+    - 学习
+    - 素材
+timezone_offset: "+0000"
+urls:
+    - https://cgpeers.to/
+user_info:
+    fields:
+        id:
+            attr: href
+            selectors:
+                - div.user-dropdown-section a[href^='/user/']
+        name:
+            selectors:
+                - a#userDropdownTrigger
+                - span.user_name

@@ -1,0 +1,56 @@
+# desigaane — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+
+aka:
+    - DG
+description: DesiGaane is a private tracker focused on Indian music
+id: desigaane
+level_requirements:
+    - id: 1
+      name: User
+      privilege: None
+    - id: 2
+      interval: P1W
+      name: Member
+      privilege: Invites
+      ratio: 0.6
+      uploaded: 10B
+    - id: 3
+      interval: P2W
+      name: Power User
+      ratio: 0.65
+      uploaded: 25GB
+      uploads: 5
+    - id: 4
+      interval: P4W
+      name: Elite
+      ratio: 0.65
+      uploaded: 100GB
+      uploads: 50
+    - id: 5
+      interval: P8W
+      name: Torrent Master
+      ratio: 0.65
+      uploaded: 500GB
+      uploads: 500
+    - id: 6
+      interval: P8W
+      name: Power TM
+      ratio: 0.65
+      uploaded: 500GB
+      uploads: 500
+    - id: 7
+      interval: P8W
+      name: Elite TM
+      ratio: 0.65
+      uploaded: 500GB
+      uploads: 500
+name: DesiGaane
+schema: gazelle_jsonapi
+tags:
+    - 音楽
+    - 印度音乐
+timezone_offset: "+0000"
+urls:
+    - https://desigaane.rocks/

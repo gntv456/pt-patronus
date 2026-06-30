@@ -1,0 +1,5 @@
+id: pterclub
+name: 猫站
+schema: nexusphp
+urls:
+  - https://pterclub.net

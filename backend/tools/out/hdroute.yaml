@@ -1,0 +1,52 @@
+# hdroute — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.seeders（elementProcess）
+#   - search.time.filters（匿名函数）
+#   - search.subTitle（elementProcess）
+#   - search.link.filters（匿名函数）
+#   - search.leechers（elementProcess）
+#   - search.category（case/text）
+#   - search.title（elementProcess）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+description: HDRoute - 高清影视资源站点
+id: hdroute
+name: HDRoute
+search_entry: /browse.php
+search_param: s
+selectors:
+    fields:
+        category: {}
+        completed:
+            filters:
+                - name: parse_number
+        detail:
+            attr: href
+            selectors:
+                - a[href*='details.php?id=']
+                - div.buttonDownloadSection a[href*='details.php?id=']
+        download:
+            attr: onclick
+            selectors:
+                - .buttonDownloadSection .buttonDownload
+                - .buttonDownload
+        leechers: {}
+        seeders: {}
+        size:
+            filters:
+                - name: parse_size
+        subtitle: {}
+        time:
+            filters:
+                - args: '[yyyy-MM-dd HH:mm:ss yyyy-MM-dd''T''HH:mm:ss]'
+                  name: parse_time
+        title: {}
+    rows:
+        selector: dl[id^='dl_torrent_']
+tags:
+    - 影视
+    - 综合
+timezone_offset: "+0800"
+urls:
+    - http://hdroute.org/

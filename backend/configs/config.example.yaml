@@ -1,0 +1,62 @@
+# PTPatronus 后端配置示例
+# 复制为 .env 或用对应环境变量覆盖（部署优先用环境变量）。
+
+# ── 基础 ─────────────────────────────────────────────
+APP_NAME=PTPatronus
+APP_ENV=debug              # debug | release
+HTTP_ADDR=:8088
+DATA_DIR=./data            # SQLite 文件 & 资源目录
+
+# ── 安全（生产必改，release 模式留空将拒绝启动）────────
+SECRET_KEY=                # 生产必填 ≥32 字节随机串：openssl rand -base64 32（JWT 签名 + AES 派生种子）
+ACTIVATION_SECRET=         # 生产必填：openssl rand -base64 32（激活码 HMAC 密钥）
+
+# ── 网络 / 限流（生产应收敛）──────────────────────────
+CORS_ALLOWED_ORIGINS=      # 逗号分隔的具体前端域名，如 https://pt.example.com；空=开发全开（WS Origin 与此同源策略）
+TRUSTED_PROXIES=           # 反向代理 CIDR，如 172.16.0.0/12；空=不信任任何代理，ClientIP 取直连对端（防 XFF 伪造绕过限流）
+API_KEY=                   # 程序化访问密钥（X-API-Key 头，等同管理员）；为空禁用
+
+# ── 数据库 ───────────────────────────────────────────
+DB_TYPE=sqlite             # sqlite | postgres
+DATABASE_URL=              # postgres 时必填，例：postgres://user:pass@host:5432/ptpatronus?sslmode=disable
+
+# ── JWT ──────────────────────────────────────────────
+JWT_EXPIRE_MIN=1440
+
+# ── 好学 APP 专属 VIP 准入（AUTH_SITE 机制）──────────
+AUTH_SITE_ENABLED=false    # true 时未激活将限制访问
+AUTH_SITE_URL=https://www.hxpt.org
+AUTH_SITE_COOKIE=          # 好学 cookie（阶段 1 起抓取用户页判定 VIP 等级）
+AUTH_VIP_LEVEL=1
+
+# ── 自动化（7×24 保号）──────────────────────────────
+STATS_SYNC_CRON="*/30 * * * *"        # 统计同步：每 30 分钟抓用户资料写 SiteStat
+COOKIE_KEEPALIVE_CRON="0 */4 * * *"   # cookie 保活：每 4 小时认证 GET 刷新 session + 回写轮换 cookie
+REGISTRATION_CRON="0 */6 * * *"       # 注册开放检测：每 6 小时探测候选站 signup 页
+HR_WARN_DEADLINE_HOURS=24             # H&R 临期告警阈值：剩余考核时间 < 此值（小时）即告警
+KEEPSEED_CRON="0 3 * * *"             # IYUU 定时自动辅种：每天 3 点扫「启用自动辅种」的下载器刷新 pending 候选；该下载器再开「自动添加」则自动 add。无下载器启用即零动作
+
+# ── 媒体元数据 ────────────────────────────────────────
+TMDB_API_KEY=                        # TMDB（影视主源）；留空则仅豆瓣/MusicBrainz
+DOUBAN_API_KEY=                      # 豆瓣（国产影视主源）；留空用内置公开 apiKey，开箱即用
+DOUBAN_SECRET=                       # 留空=微信免签主策略+签名自动兜底；填 bf7dddc7c9cfe6f7 切换为「HMAC签名为主、微信兜底」（更稳，不依赖微信白名单）。两策略均带公开默认凭据，鉴权类失败自动互切
+BANGUMI_TOKEN=                       # Bangumi(bgm.tv，动漫/三次元)；可选 Bearer token 提升速率，留空走匿名配额
+XINGGUANGJI_BASE=                    # 星光集（短剧，dj.hxpt.org/寸光集）；留空用内置 https://dj.hxpt.org，可指向本地实例联调
+
+# ── 通知通道（首启 env 引导默认；运行时以 UI「设置→通知」为准，热改即时生效）──
+# 三通道均为外发推送；消息模板统一「标题+正文+查看详情链接」纯文本。
+# 微信 ClawBot 的 bot_token 需扫码登录获取，到 UI 扫码即可，不必在此填写。
+BARK_SERVER=                         # 留空用 https://api.day.app
+BARK_KEY=                            # Bark Device Key
+TELEGRAM_TOKEN=                      # Telegram Bot Token
+TELEGRAM_CHAT_ID=                    # 接收消息的 chat id
+TELEGRAM_API_URL=                    # 可选：国内反代 Bot API 域名，留空走官方
+QQ_APP_ID=                           # QQ 开放平台机器人 AppID
+QQ_APP_SECRET=                       # QQ 开放平台机器人 AppSecret
+QQ_OPENID=                           # 单聊接收者 openid（与群二选一）
+QQ_GROUP_OPENID=                     # 群聊接收者 group_openid（优先于单聊）
+WECHAT_CLAWBOT_TOKEN=                # 微信 iLink Bot token（通常留空，UI 扫码登录写入）
+WECHAT_CLAWBOT_ACCOUNT_ID=           # 微信账号 ID（扫码后自动填）
+WECHAT_CLAWBOT_TARGET=               # 接收通知的微信号 wxid（给自己发填自己的 wxid）
+WECHAT_CLAWBOT_BASE_URL=             # 留空走官方 https://ilinkai.weixin.qq.com
+WEBHOOK_URL=                         # 自定义 webhook 接收 URL

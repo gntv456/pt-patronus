@@ -1,0 +1,65 @@
+# mteam — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: mteam。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.url.filters[prepend]
+#   - search.category.filters（匿名函数）
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - MTeam
+    - 馒头
+description: 综合性网站，有分享率要求
+id: mteam
+legacy_urls:
+    - https://h5.m-team.cc/
+    - https://xp.m-team.io/
+    - https://pt.m-team.cc/
+    - https://tp.m-team.cc/
+    - https://xp.m-team.cc/
+    - https://ap.m-team.cc/
+    - https://next.m-team.cc/
+name: M-Team - TP
+schema: mteam
+search_entry: /api/torrent/search
+search_param: keyword
+selectors:
+    fields:
+        category:
+            selector: category
+        completed:
+            filters:
+                - name: parse_number
+            selector: status.timesCompleted
+        detail:
+            selector: id
+        leechers:
+            filters:
+                - name: parse_number
+            selector: status.leechers
+        seeders:
+            filters:
+                - name: parse_number
+            selector: status.seeders
+        size:
+            filters:
+                - name: parse_number
+            selector: size
+        subtitle:
+            selector: smallDescr
+        time:
+            filters:
+                - name: parse_time
+            selector: createdDate
+        title:
+            selector: name
+    rows:
+        selector: data.data
+tags:
+    - 影视
+    - 综合
+    - 成人
+timezone_offset: "+0800"
+urls:
+    - https://kp.m-team.cc/
+    - https://zp.m-team.io/
+    - https://ob.m-team.cc/

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_logo.dart';
 import '../home/home_shell.dart';
 import 'server_config_page.dart';
 import 'hxpt_web_login_page.dart';
@@ -168,7 +169,7 @@ class _LoginPageState extends State<LoginPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Row(children: [
-                      Text('🛡️', style: TextStyle(fontSize: 30)),
+                      PTLogo(size: 30),
                       SizedBox(width: 10),
                       Text('PTPatronus',
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),

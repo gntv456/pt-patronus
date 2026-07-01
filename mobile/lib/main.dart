@@ -14,6 +14,10 @@ void main() async {
   try {
     await loadGlassPrefs();
   } catch (_) {}
+  // 主题模式偏好（跟随系统 / 浅色 / 深色）
+  try {
+    await loadThemeModePrefs();
+  } catch (_) {}
   // media_kit（摄像头 RTSP→HLS 预览）；鸿蒙无原生实现时跳过，播放器运行时降级提示。
   try {
     MediaKit.ensureInitialized();
@@ -47,12 +51,16 @@ class _PTPatronusAppState extends State<PTPatronusApp> {
     } else {
       home = const LoginPage();
     }
-    return MaterialApp(
-      title: 'PTPatronus',
-      debugShowCheckedModeBanner: false,
-      theme: buildAppTheme(Brightness.light),
-      darkTheme: buildAppTheme(Brightness.dark),
-      home: home,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeModeNotifier,
+      builder: (context, mode, _) => MaterialApp(
+        title: 'PTPatronus',
+        debugShowCheckedModeBanner: false,
+        theme: buildAppTheme(Brightness.light),
+        darkTheme: buildAppTheme(Brightness.dark),
+        themeMode: mode,
+        home: home,
+      ),
     );
   }
 }

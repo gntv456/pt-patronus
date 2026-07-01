@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'device_form_sheet.dart';
@@ -179,6 +180,7 @@ class _MonitorPageState extends State<MonitorPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 12, 4),
               child: Row(children: [
+                const HomeMenuButton(),
                 const Text('设备监控', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.refresh), onPressed: _load),

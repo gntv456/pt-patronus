@@ -232,7 +232,7 @@ function relTime(iso: string): string {
   gap: 12px;
 }
 .nc-action--danger {
-  color: var(--pt-danger, #e74c3c);
+  color: var(--pt-danger);
 }
 .nc-list {
   overflow-y: auto;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/workflow.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'workflow_editor_page.dart';
@@ -121,6 +122,7 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('工作流'),
           backgroundColor: Colors.transparent,
           elevation: 0,

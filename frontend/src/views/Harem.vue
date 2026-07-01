@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { haremApi, type HaremResult, type PrescriptionItem } from '@/api/harem'
 import { copyText } from '@/utils/clipboard'
+import EmptyState from '@/components/EmptyState.vue'
 
 const data = ref<HaremResult | null>(null)
 const loading = ref(false)
@@ -95,7 +96,12 @@ onMounted(() => load())
           </template>
         </el-table-column>
       </el-table>
-      <div v-else-if="!loading" class="empty text-muted">暂无数据，请先添加并登录站点</div>
+      <EmptyState
+        v-else-if="!loading"
+        icon="💗"
+        title="暂无数据，请先添加并登录站点"
+        description="添加并启用 PT 站点后，这里会聚合展示各站后宫成员与可购买邀请名额"
+      />
     </div>
 
     <el-dialog v-model="exportVisible" title="药单" width="560">
@@ -138,7 +144,7 @@ onMounted(() => load())
 .tile .lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .card { padding: 18px; min-height: 200px; }
 .site-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; background: rgba(108,92,231,0.16); color: var(--pt-primary,#6c5ce7); font-size: 12px; }
-.err { color: var(--pt-danger,#f56c6c); font-size: 13px; }
+.err { color: var(--pt-danger); font-size: 13px; }
 .chip { padding: 1px 8px; border-radius: 999px; font-size: 11px; }
 .empty { padding: 40px; text-align: center; }
 :deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) { background-color: transparent !important; }

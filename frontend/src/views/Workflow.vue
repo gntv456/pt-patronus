@@ -5,6 +5,7 @@ import { workflowApi, type Workflow, type WorkflowStats } from '@/api/workflow'
 import { webhookApi, type Webhook } from '@/api/webhook'
 import { copyText } from '@/utils/clipboard'
 import { useAuthStore } from '@/stores/auth'
+import EmptyState from '@/components/EmptyState.vue'
 
 // Webhook 创建/编辑/删除/重置是 admin 专属（后端 RequireAdmin）；非 admin 隐藏入口。
 const auth = useAuthStore()
@@ -187,9 +188,14 @@ async function whSave() {
           </div>
         </div>
       </div>
-      <div v-else-if="!loading" class="empty text-muted">
-        暂无工作流。点「新建工作流」开始编排。
-      </div>
+      <EmptyState
+        v-else-if="!loading"
+        icon="🔀"
+        title="暂无工作流"
+        description="可视化节点编排：触发 → 搜索/RSS → 过滤 → 下载 → 通知，支持条件分支"
+      >
+        <el-button type="primary" @click="create">+ 新建工作流</el-button>
+      </EmptyState>
     </div>
 
     <!-- 节点耗时 + 最近失败 -->
@@ -270,7 +276,7 @@ async function whSave() {
 .hint { font-size: 13px; }
 .card { padding: 18px; min-height: 160px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-.wcard { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 12px; background: rgba(0,0,0,0.03); }
+.wcard { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 12px; background: var(--surface-muted); }
 .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .w-name { font-weight: 700; font-size: 16px; }
 .small { font-size: 12px; }
@@ -291,11 +297,11 @@ async function whSave() {
 .stat {
   padding: 12px;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--surface-muted);
   text-align: center;
 }
 .s-num { font-size: 22px; font-weight: 700; }
-.s-lab { font-size: 12px; color: #888; }
+.s-lab { font-size: 12px; color: var(--text-muted); }
 .stat.ok .s-num { color: #27ae60; }
 .stat.err .s-num { color: #c0392b; }
 .monitor {
@@ -311,7 +317,7 @@ async function whSave() {
 .rf-id { font-weight: 700; color: #c0392b; width: 40px; }
 .rf-res { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wh-tip { margin-bottom: 8px; line-height: 1.6; }
-.wh-tip code { background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px; }
+.wh-tip code { background: var(--surface-muted); padding: 1px 5px; border-radius: 4px; }
 .wh-row {
   padding: 10px;
   border: 1px solid rgba(0,0,0,0.08);

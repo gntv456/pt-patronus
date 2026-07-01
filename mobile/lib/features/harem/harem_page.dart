@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/harem.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -57,6 +58,7 @@ class _HaremPageState extends State<HaremPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('后宫'),
           backgroundColor: Colors.transparent,
           elevation: 0,

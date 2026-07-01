@@ -238,7 +238,7 @@ async function doExport(): Promise<void> {
 .bg-row { display: flex; align-items: center; gap: 8px; }
 .bg-preview { width: 56px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.12); }
 .sliders { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-.slider-row { display: grid; grid-template-columns: 40px 48px 1fr; align-items: center; gap: 8px; font-size: 12px; color: #9aa0b4; }
+.slider-row { display: grid; grid-template-columns: 40px 48px 1fr; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
 .slider-row b { color: #c7ccdb; font-weight: 600; }
 .fields-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 12px; }
 .site-row { display: flex; align-items: center; gap: 8px; }

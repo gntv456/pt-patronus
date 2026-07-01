@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { subscribeApi, type Subscription } from '@/api/subscribe'
 import MediaPoster from '@/components/MediaPoster.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 // 订阅列表：展示订阅状态，支持手动检查 / 暂停-恢复 / 改分辨率 / 删除。
 const list = ref<Subscription[]>([])
@@ -115,9 +116,16 @@ onMounted(load)
           </div>
         </div>
       </div>
-      <div v-else-if="!loading" class="empty text-muted">
-        暂无订阅。去 <router-link to="/search">搜索</router-link> → 切到「影视」→ 点结果进详情 → 订阅。
-      </div>
+      <EmptyState
+        v-else-if="!loading"
+        icon="🔖"
+        title="暂无订阅"
+        description="去「搜索」切到「影视」，点结果进详情页即可订阅；cron 会自动跨站搜索并推送"
+      >
+        <router-link to="/search">
+          <el-button type="primary">去搜索影视</el-button>
+        </router-link>
+      </EmptyState>
     </div>
   </div>
 </template>
@@ -129,8 +137,8 @@ onMounted(load)
 .hint { font-size: 13px; }
 .card { padding: 18px; min-height: 160px; }
 .subs { display: flex; flex-direction: column; gap: 14px; }
-.sub { display: flex; gap: 14px; padding: 14px; border-radius: 12px; background: rgba(0,0,0,0.03); }
-.poster { width: 72px; height: 104px; flex: none; border-radius: 8px; overflow: hidden; background: rgba(0,0,0,0.08); }
+.sub { display: flex; gap: 14px; padding: 14px; border-radius: 12px; background: var(--surface-muted); }
+.poster { width: 72px; height: 104px; flex: none; border-radius: 8px; overflow: hidden; background: var(--surface-muted); }
 .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .s-title { font-weight: 700; font-size: 16px; }

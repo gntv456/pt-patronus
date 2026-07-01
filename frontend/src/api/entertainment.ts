@@ -57,6 +57,33 @@ export interface BetRequest {
   extra?: Record<string, string>
 }
 
+// OurBits 赛事押注（菠菜）：一个押注选项（队名/赔率）。
+export interface BetOption {
+  id: string // 选项 id（下单 POST 用；非主题 id）
+  name: string
+  odds: number
+  stake?: number
+}
+// 一场竞猜主题（bet.php 列表行）。
+export interface BetEvent {
+  id: number
+  title: string
+  end_time: string
+  remain: string
+  bookmaker: string
+  bet_count: number
+  total_stake: number
+  my_stake: string
+  status: string // open / ended
+}
+// 某主题盘口（bet_odds.php?id=N）。
+export interface BetEventDetail {
+  event: BetEvent
+  options: BetOption[]
+  my_option?: string
+  note?: string
+}
+
 // 二十一点状态
 export interface BlackjackResult {
   player_cards: string[]
@@ -101,6 +128,128 @@ export interface GameRecord {
   amount: number
   cost: number
   created_at: string
+}
+
+// PandaPT 翻面夺宝
+export interface FlipTier {
+  id: string
+  name: string
+  reward: number
+  reward_type: string
+  count: number
+  color?: string
+}
+export interface FlipTile {
+  index: number
+  flipped: boolean
+  tier_id?: string
+  by_user?: string
+}
+export interface FlipState {
+  round_number: number
+  balance: number
+  cost_per_flip: number
+  total_tiles: number
+  flipped_count: number
+  tiers: FlipTier[]
+  tiles: FlipTile[]
+  history?: GameRecord[]
+}
+
+// 猜大小（好学 hxpt_bigsmall / 熊猫 panda_bigsmall）
+export interface BigSmallRound {
+  id: number
+  game_no: string
+  start_time?: string
+  end_time?: string
+  status: string // betting | sealed | finished
+  countdown: number
+  seal_countdown: number
+  player_count: number
+  total_bet: number
+}
+export interface BigSmallBetSpot { username: string; amount: number }
+export interface BigSmallMyBet {
+  game_no?: string
+  bet_type: string
+  amount: number
+  result?: string
+  net_result?: number
+}
+export interface BigSmallTrend {
+  big_count: number
+  small_count: number
+  house_count?: number
+  big_pct: number
+  small_pct: number
+}
+export interface BigSmallRankEntry { username: string; amount: number; count: number }
+export interface BigSmallRank { key: string; title: string; entries: BigSmallRankEntry[] }
+export interface BigSmallRecord {
+  game_no: string
+  start_time?: string
+  end_time?: string
+  player_count?: number
+  total_bet?: number
+  result: string
+  my_bet_type?: string
+  my_bet?: number
+  my_result?: number
+  bets?: string
+}
+export interface BigSmallTask {
+  id: number
+  title: string
+  desc?: string
+  reward?: string
+  progress_text?: string
+  progress: number
+  status: string // idle | doing | rewardable | done
+  monthly_count?: number
+  monthly_limit?: number
+}
+export interface BigSmallProp {
+  id: string
+  tag: string
+  name: string
+  desc?: string
+  image?: string
+  quantity: number
+  usable: boolean
+}
+export interface BigSmallChat { id: number; username: string; message: string; time?: string }
+export interface BigSmallRedpacket {
+  id: string
+  sender?: string
+  greeting?: string
+  total: number
+  count: number
+  claimed?: number
+  my_claim?: number
+}
+export interface BigSmallState {
+  balance: number
+  min_bet: number
+  max_bet?: number
+  currency?: string
+  payout?: string
+  has_house: boolean
+  round: BigSmallRound
+  my_bet?: BigSmallMyBet
+  last_result?: BigSmallMyBet
+  big_bets?: BigSmallBetSpot[]
+  small_bets?: BigSmallBetSpot[]
+  trend40: BigSmallTrend
+  trend10: BigSmallTrend
+  trend_text?: string
+  recent_results?: string[]
+  rankings?: BigSmallRank[]
+  my_records?: BigSmallRecord[]
+  all_records?: BigSmallRecord[]
+  tasks?: BigSmallTask[]
+  props?: BigSmallProp[]
+  chat?: BigSmallChat[]
+  redpackets?: BigSmallRedpacket[]
 }
 
 export interface SynthFragment {
@@ -250,6 +399,35 @@ export const entertainmentApi = {
   /** 下注/选号（猜大小/骰宝/双色球/翻面/Betting/红包） */
   bet: (siteId: number, game: string, req: BetRequest) =>
     http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bet`, req).then((r) => r.data),
+  /** 赛事押注：列竞猜主题 */
+  events: (siteId: number, game: string) =>
+    http.get<{ events: BetEvent[] }>(`/entertainment/${siteId}/games/${game}/events`).then((r) => r.data.events),
+  /** 赛事押注：某主题盘口（选项+赔率） */
+  eventDetail: (siteId: number, game: string, eventId: number) =>
+    http.get<BetEventDetail>(`/entertainment/${siteId}/games/${game}/events/${eventId}`).then((r) => r.data),
+  /** 翻面夺宝全景（PandaPT：当前轮次/余额/100 格状态/奖项/记录） */
+  flipState: (siteId: number, game: string) =>
+    http.get<FlipState>(`/entertainment/${siteId}/games/${game}/flip-state`).then((r) => r.data),
+  /** 猜大小全景快照（走势/排行/记录/当前局/任务/道具/聊天/红包） */
+  bigsmallState: (siteId: number, game: string) =>
+    http.get<BigSmallState>(`/entertainment/${siteId}/games/${game}/bigsmall-state`).then((r) => r.data),
+  /** 猜大小拉新聊天（since：好学 last_id；熊猫忽略） */
+  bigsmallChat: (siteId: number, game: string, since: number) =>
+    http
+      .get<{ chat: BigSmallChat[] }>(`/entertainment/${siteId}/games/${game}/bigsmall-chat`, { params: { since } })
+      .then((r) => r.data.chat),
+  /** 猜大小发聊天 */
+  bigsmallSendChat: (siteId: number, game: string, message: string) =>
+    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-chat`, { message }).then((r) => r.data),
+  /** 猜大小任务（claim/reward/refund） */
+  bigsmallTask: (siteId: number, game: string, action: string, taskId: number) =>
+    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-task`, { action, task_id: taskId }).then((r) => r.data),
+  /** 猜大小使用道具 */
+  bigsmallItem: (siteId: number, game: string, tag: string) =>
+    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-item`, { tag }).then((r) => r.data),
+  /** 猜大小红包（send/claim/info） */
+  bigsmallRedpacket: (siteId: number, game: string, action: string, extra: Record<string, string>) =>
+    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-redpacket`, { action, extra }).then((r) => r.data),
   /** 二十一点动作（new/hit/stand/double） */
   blackjack: (siteId: number, game: string, action: string) =>
     http.post<BlackjackResult>(`/entertainment/${siteId}/games/${game}/blackjack`, { action }).then((r) => r.data),

@@ -178,7 +178,7 @@ const advOpen = ref(false)
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  color: #888;
+  color: var(--text-muted);
   user-select: none;
 }
 .adv-body {

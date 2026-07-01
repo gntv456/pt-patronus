@@ -33,7 +33,7 @@ export interface ReseedSetting {
 export const reseedApi = {
   getConfig: () => http.get<ReseedConfig>('/keepseed/config').then((r) => r.data),
   setConfig: (iyuuToken: string) =>
-    http.post('/keepseed/config', { iyuu_token: iyuuToken }).then((r) => r.data),
+    http.put('/keepseed/config', { iyuu_token: iyuuToken }).then((r) => r.data),
   // 触发某下载器的 IYUU 精确辅种，返回新增 pending 候选。
   reseed: (downloaderId: number) =>
     http.post<{ tasks: ReseedTask[]; count: number }>('/keepseed/reseed', { downloader_id: downloaderId }).then((r) => r.data),

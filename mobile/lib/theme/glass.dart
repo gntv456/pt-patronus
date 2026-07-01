@@ -12,6 +12,41 @@ class PTColors {
   static const warn = Color(0xFFF39C12);
 }
 
+/// 间距阶梯（4 倍数网格）—— 与 glass.css --sp-* 对齐。
+/// 优先用这些常量，替代散落各页的裸 EdgeInsets 数值。
+class PTSp {
+  static const double s1 = 4;
+  static const double s2 = 8;
+  static const double s3 = 12;
+  static const double s4 = 16;
+  static const double s5 = 20;
+  static const double s6 = 24;
+  static const double s8 = 32;
+  static const double s10 = 40;
+}
+
+/// 字号阶梯 —— 与 glass.css --fs-* 对齐。
+class PTFs {
+  static const double xs = 11;
+  static const double sm = 12;
+  static const double body = 13;
+  static const double md = 14;
+  static const double lg = 15;
+  static const double xl = 18;
+  static const double title = 22;
+  static const double hero = 28;
+}
+
+/// 圆角阶梯 —— 与 glass.css --radius-* 对齐。
+class PTRadius {
+  static const double xs = 6;
+  static const double sm = 10;
+  static const double md = 14;
+  static const double lg = 20;
+  static const double xl = 28;
+  static const double pill = 999;
+}
+
 /// 应用主题（Material 3，seed 自品牌主色）。
 ThemeData buildAppTheme(Brightness brightness) {
   return ThemeData(
@@ -64,6 +99,36 @@ Future<void> setGlassReduced(bool v) async {
   glassReduced.value = v;
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool(_glassPrefsKey, v);
+}
+
+// —— 主题模式（三态：跟随系统 / 浅色 / 深色）——
+// 与 glassReduced 同范式：ValueNotifier 持久化到 SharedPreferences，main() 启动加载，
+// MaterialApp 用 ValueListenableBuilder 监听重建，账户页 SegmentedButton 切换。
+final themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
+
+const _themeModePrefsKey = 'theme_mode';
+
+ThemeMode _themeModeFromString(String? s) {
+  switch (s) {
+    case 'light':
+      return ThemeMode.light;
+    case 'dark':
+      return ThemeMode.dark;
+    default:
+      return ThemeMode.system;
+  }
+}
+
+Future<void> loadThemeModePrefs() async {
+  final prefs = await SharedPreferences.getInstance();
+  themeModeNotifier.value = _themeModeFromString(prefs.getString(_themeModePrefsKey));
+}
+
+Future<void> setThemeMode(ThemeMode m) async {
+  themeModeNotifier.value = m;
+  final prefs = await SharedPreferences.getInstance();
+  final s = m == ThemeMode.light ? 'light' : (m == ThemeMode.dark ? 'dark' : 'system');
+  await prefs.setString(_themeModePrefsKey, s);
 }
 
 // —— 以下纯函数与渲染解耦，便于单测 ——

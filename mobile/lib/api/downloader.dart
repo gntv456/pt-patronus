@@ -216,6 +216,32 @@ class DownloaderApi {
 
   Future<void> remove(int id) async => _api.delete('/downloaders/$id');
 
+  /// 编辑下载器（对齐 Web PUT /downloaders/:id）。password 留空 = 不修改。
+  Future<Downloader> update(
+    int id, {
+    required String name,
+    required String type,
+    required String url,
+    String username = '',
+    String password = '',
+    bool isDefault = false,
+  }) async {
+    final body = <String, dynamic>{
+      'name': name,
+      'type': type,
+      'url': url,
+      'username': username,
+      'is_default': isDefault,
+    };
+    if (password.isNotEmpty) body['password'] = password;
+    final r = await _api.put('/downloaders/$id', body);
+    return Downloader.fromJson(r);
+  }
+
+  /// 连接测试（对齐 Web POST /downloaders/:id/test），返回 {ok, error?}。
+  Future<Map<String, dynamic>> test(int id) async =>
+      _api.post('/downloaders/$id/test', <String, dynamic>{});
+
   Future<List<Torrent>> torrents(int id) async {
     final r = await _api.get('/downloaders/$id/torrents');
     final list = (r['torrents'] as List?) ?? const [];

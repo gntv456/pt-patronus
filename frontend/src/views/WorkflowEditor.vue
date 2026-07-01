@@ -484,7 +484,7 @@ function onImportFile(ev: Event) {
 .cat-name {
   font-size: 12px;
   font-weight: 700;
-  color: #888;
+  color: var(--text-muted);
   margin-bottom: 4px;
 }
 .cat-item {
@@ -534,7 +534,7 @@ function onImportFile(ev: Event) {
 }
 .divider {
   height: 1px;
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--surface-muted);
   margin: 12px 0;
 }
 .pad {
@@ -554,12 +554,12 @@ function onImportFile(ev: Event) {
   height: 24px;
   font-size: 12px;
   border-radius: var(--el-border-radius-base);
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--surface-muted);
   cursor: pointer;
   user-select: none;
 }
 .import-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: var(--surface-muted);
 }
 .tpl-list {
   display: flex;

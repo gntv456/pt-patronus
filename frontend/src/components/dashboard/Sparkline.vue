@@ -136,6 +136,6 @@ function fmtDay(d: string): string {
   pointer-events: none;
 }
 .tip.edge { transform: translateX(-90%); }
-.tip-day { color: #9aa0b4; }
+.tip-day { color: var(--text-muted); }
 .tip b { font-weight: 600; }
 </style>

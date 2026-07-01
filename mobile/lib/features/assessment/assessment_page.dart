@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/assessment.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -53,6 +54,7 @@ class _AssessmentPageState extends State<AssessmentPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('站点考核'),
           backgroundColor: Colors.transparent,
           elevation: 0,

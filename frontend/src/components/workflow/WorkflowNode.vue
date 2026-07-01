@@ -104,7 +104,7 @@ const outputs = computed<string[]>(() => {
 .meta {
   margin-top: 2px;
   font-size: 11px;
-  color: #888;
+  color: var(--text-muted);
 }
 .branches {
   display: flex;

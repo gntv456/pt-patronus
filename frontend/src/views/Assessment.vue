@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { assessmentApi, type AssessmentCard } from '@/api/assessment'
+import EmptyState from '@/components/EmptyState.vue'
 
 const cards = ref<AssessmentCard[]>([])
 const loading = ref(false)
@@ -86,7 +87,12 @@ onMounted(() => load())
         </template>
       </div>
     </div>
-    <div v-if="!cards.length && !loading" class="empty glass text-muted">暂无考核数据</div>
+    <EmptyState
+      v-if="!cards.length && !loading"
+      icon="📋"
+      title="暂无考核数据"
+      description="添加并登录 PT 站点后，这里会展示各站的考核进度、剩余天数与达标情况"
+    />
   </div>
 </template>
 
@@ -104,8 +110,8 @@ onMounted(() => load())
 .status-tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
 .spacer { flex: 1; }
 .remain { font-size: 12px; color: var(--text-muted); }
-.err { color: var(--pt-danger,#f56c6c); font-size: 13px; margin-top: 8px; }
-.progress-bar { margin-top: 10px; height: 8px; border-radius: 4px; background: rgba(0,0,0,0.08); overflow: hidden; }
+.err { color: var(--pt-danger); font-size: 13px; margin-top: 8px; }
+.progress-bar { margin-top: 10px; height: 8px; border-radius: 4px; background: var(--surface-muted); overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
 .progress-num { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 .task-name { font-size: 12px; color: var(--pt-primary,#6c5ce7); margin-top: 2px; }

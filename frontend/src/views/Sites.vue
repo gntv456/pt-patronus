@@ -4,6 +4,7 @@ import { siteApi, type Site, type SiteDef, type TestResult, type CheckinResult, 
 import { dashboardApi } from '@/api/dashboard'
 import { fmtTime } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth'
+import EmptyState from '@/components/EmptyState.vue'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
@@ -281,9 +282,14 @@ onMounted(load)
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="!sites.length && !loading" class="empty text-muted">
-        暂无站点，点击右上角「添加站点」开始
-      </div>
+      <EmptyState
+        v-if="!sites.length && !loading"
+        icon="🌐"
+        title="暂无站点"
+        description="添加你的第一个 PT 站点，开始跨站统计与签到"
+      >
+        <el-button type="primary" @click="openCreate">+ 添加站点</el-button>
+      </EmptyState>
     </div>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="480">

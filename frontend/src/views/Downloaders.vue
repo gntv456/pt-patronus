@@ -20,6 +20,8 @@ const dialogTitle = computed(() => (isEdit.value ? '编辑下载器' : '添加�
 // 种子抽屉
 const drawerDl = ref<Downloader | null>(null)
 const drawerVisible = ref(false)
+// 连接测试 loading（按下载器 id 标记，单卡测试时仅该卡按钮转圈）
+const testing = ref<number | null>(null)
 
 async function load() {
   loading.value = true
@@ -57,6 +59,10 @@ async function submit() {
     ElMessage.warning('名称与地址必填')
     return
   }
+  if (!/^https?:\/\/.+/i.test(form.value.url.trim())) {
+    ElMessage.warning('地址需以 http:// 或 https:// 开头（如 http://127.0.0.1:8080）')
+    return
+  }
   try {
     if (isEdit.value) {
       await downloaderApi.update(editingId.value!, form.value)
@@ -80,8 +86,15 @@ async function removeDownloader(dl: Downloader) {
 }
 
 async function test(dl: Downloader) {
-  const r = await downloaderApi.test(dl.id)
-  r.ok ? ElMessage.success(`${dl.name} 连接正常`) : ElMessage.warning(r.error || '连接失败')
+  testing.value = dl.id
+  try {
+    const r = await downloaderApi.test(dl.id)
+    r.ok ? ElMessage.success(`${dl.name} 连接正常`) : ElMessage.warning(r.error || '连接失败')
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '请求失败')
+  } finally {
+    testing.value = null
+  }
 }
 
 function openTorrents(dl: Downloader) {
@@ -121,7 +134,7 @@ onMounted(load)
         </div>
         <div class="url text-muted">{{ dl.url }}</div>
         <div class="actions">
-          <el-button size="small" @click="test(dl)">连接测试</el-button>
+          <el-button size="small" :loading="testing === dl.id" @click="test(dl)">连接测试</el-button>
           <el-button size="small" type="primary" @click="openTorrents(dl)">任务列表</el-button>
           <el-button size="small" @click="openEdit(dl)">编辑</el-button>
           <el-button v-if="auth.isAdmin" size="small" type="danger" plain @click="removeDownloader(dl)">删除</el-button>
@@ -230,7 +243,7 @@ onMounted(load)
   gap: 12px;
 }
 .err-text {
-  color: var(--pt-danger, #f56c6c);
+  color: var(--pt-danger);
   font-size: 14px;
 }
 </style>

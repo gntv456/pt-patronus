@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/api/reseed.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -197,6 +198,7 @@ class _ReseedPageState extends State<ReseedPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(children: [
+                  const HomeMenuButton(),
                   const Text('辅种', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
                   const Spacer(),
                   IconButton(

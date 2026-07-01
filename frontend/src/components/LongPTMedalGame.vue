@@ -226,5 +226,5 @@ onMounted(refresh)
 .node-cost { font-size: 10px; line-height: 1.3; min-height: 26px; }
 .owned-tag { font-size: 12px; color: #2ecc71; font-weight: 600; height: 24px; line-height: 24px; }
 .empty { padding: 40px; text-align: center; }
-.err { color: var(--pt-danger, #e74c3c); font-size: 13px; word-break: break-all; }
+.err { color: var(--pt-danger); font-size: 13px; word-break: break-all; }
 </style>

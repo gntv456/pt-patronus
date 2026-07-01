@@ -270,8 +270,21 @@ onMounted(load)
         <span class="text-muted">站点 {{ overview?.site_count ?? 0 }} · 下载器 {{ overview?.downloader_count ?? 0 }}</span>
       </div>
       <el-table :data="overview?.sites ?? []" style="width: 100%" empty-text="暂无数据，等待统计同步">
-        <el-table-column prop="site_name" label="站点" min-width="90" fixed="left" />
-        <el-table-column label="等级" min-width="90">
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <div class="site-expand">
+              <div class="exp-cell"><span class="exp-lbl">发布数</span><span class="exp-val">{{ row.uploads > 0 ? row.uploads : '-' }}</span></div>
+              <div class="exp-cell"><span class="exp-lbl">做种体积</span><span class="exp-val">{{ row.seeding_size > 0 ? fmtBytes(row.seeding_size) : '-' }}</span></div>
+              <div class="exp-cell"><span class="exp-lbl">下载中</span><span class="exp-val">{{ row.leeching }}</span></div>
+              <div class="exp-cell"><span class="exp-lbl">魔力</span><span class="exp-val">{{ row.bonus > 0 ? row.bonus.toFixed(0) : '-' }}</span></div>
+              <div class="exp-cell"><span class="exp-lbl">时魔/时</span><span class="exp-val">{{ row.bonus_per_hour > 0 ? row.bonus_per_hour.toFixed(1) : '-' }}</span></div>
+              <div class="exp-cell"><span class="exp-lbl">加入时间</span><span class="exp-val">{{ row.join_date || '-' }}</span></div>
+              <div class="exp-cell"><span class="exp-lbl">更新时间</span><span class="exp-val">{{ row.updated_at ? fmtTime(row.updated_at) : '-' }}</span></div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="site_name" label="站点" min-width="100" fixed="left" />
+        <el-table-column label="等级" min-width="80">
           <template #default="{ row }">
             <span class="level-tag">{{ row.level || '-' }}</span>
           </template>
@@ -287,26 +300,7 @@ onMounted(load)
             <span :class="row.ratio >= 1 ? 'trend-up' : 'trend-down'">{{ row.ratio > 0 ? row.ratio.toFixed(2) : '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="发布数" width="70">
-          <template #default="{ row }">{{ row.uploads > 0 ? row.uploads : '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="seeding" label="做种" width="60" />
-        <el-table-column label="做种体积" min-width="100">
-          <template #default="{ row }">{{ row.seeding_size > 0 ? fmtBytes(row.seeding_size) : '-' }}</template>
-        </el-table-column>
-        <el-table-column prop="leeching" label="下载中" width="70" />
-        <el-table-column label="魔力" min-width="90">
-          <template #default="{ row }">{{ row.bonus > 0 ? row.bonus.toFixed(0) : '-' }}</template>
-        </el-table-column>
-        <el-table-column label="时魔/时" width="90">
-          <template #default="{ row }">{{ row.bonus_per_hour > 0 ? row.bonus_per_hour.toFixed(1) : '-' }}</template>
-        </el-table-column>
-        <el-table-column label="加入时间" min-width="100">
-          <template #default="{ row }">{{ row.join_date || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="更新时间" min-width="135">
-          <template #default="{ row }">{{ row.updated_at ? fmtTime(row.updated_at) : '-' }}</template>
-        </el-table-column>
+        <el-table-column prop="seeding" label="做种" width="70" />
         <el-table-column label="操作" width="110" fixed="right">
           <template #default="{ row }">
             <div class="row-actions">
@@ -389,6 +383,16 @@ onMounted(load)
   color: #6ea8fe;
   white-space: nowrap;
 }
+/* 展开行：次要字段（发布数/做种体积/下载中/魔力/时魔/时间）紧凑网格 */
+.site-expand {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px 24px;
+  padding: 4px 16px 10px 50px;
+}
+.exp-cell { display: flex; flex-direction: column; gap: 2px; }
+.exp-lbl { font-size: var(--fs-xs); color: var(--text-muted); }
+.exp-val { font-size: var(--fs-md); font-weight: 600; }
 :deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) {
   background-color: transparent !important;
 }
@@ -413,7 +417,7 @@ onMounted(load)
 .alert-card { padding: 16px 18px; border-left: 3px solid #e74c3c; }
 .alert-head { display: flex; align-items: center; gap: 8px; }
 .alert-title { font-weight: 700; font-size: 15px; color: #e74c3c; }
-.alert-desc { margin: 8px 0 10px; font-size: 12.5px; color: #8b95a3; }
+.alert-desc { margin: 8px 0 10px; font-size: 12.5px; color: var(--text-muted); }
 .chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
 .danger-chip {
   padding: 2px 10px;
@@ -433,8 +437,8 @@ onMounted(load)
   font-weight: 600; font-size: 13.5px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46%;
 }
-.hr-meta { font-size: 12px; color: #8b95a3; white-space: nowrap; }
-.hr-more { margin: 6px 0 0; font-size: 12px; color: #8b95a3; }
+.hr-meta { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.hr-more { margin: 6px 0 0; font-size: 12px; color: var(--text-muted); }
 
 /* 日环比徽标（总上传/总下载卡） */
 .trend-badge {

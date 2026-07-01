@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -105,6 +106,30 @@ func numField(m map[string]any, key string) float64 {
 		return f
 	}
 	return 0
+}
+
+// formatFloat 把 float64 格式化为去掉多余 0 的字符串（strconv.FormatFloat 'f' -1 64 的简写）。
+func formatFloat(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
+}
+
+// numToStr 把任意数值/字符串类型的值转为干净字符串（longptNum 的逆操作；round_number/id 透传站点用）。
+func numToStr(v any) string {
+	switch n := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return n
+	case float64:
+		return formatFloat(n)
+	case int:
+		return strconv.Itoa(n)
+	case int64:
+		return strconv.FormatInt(n, 10)
+	case json.Number:
+		return n.String()
+	}
+	return fmt.Sprintf("%v", v)
 }
 
 // idField 取响应里的 id（scratch_id / id / scratchId 任一）。

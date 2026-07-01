@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { agentApi, type Agent } from '@/api/monitor'
+import { Folder, Document, Top } from '@element-plus/icons-vue'
 
 const list = ref<FileStorage[]>([])
 const loading = ref(false)
@@ -129,6 +130,15 @@ async function del(e: FileEntry) {
 
 async function handleUpload(opt: { file: File }) {
   if (!current.value) return
+  // 同名文件已存在则二次确认：多数 WebDAV/SMB 后端遇同名会静默覆盖，避免无提示丢文件
+  const dup = entries.value.find((e) => !e.is_dir && e.name === opt.file.name)
+  if (dup) {
+    try {
+      await ElMessageBox.confirm(`「${opt.file.name}」已存在，上传将覆盖原文件，是否继续？`, '覆盖确认', { type: 'warning' })
+    } catch {
+      return
+    }
+  }
   try {
     await fileApi.upload(current.value.id, path.value, opt.file)
     ElMessage.success('上传成功')
@@ -187,6 +197,8 @@ onMounted(async () => {
             <el-radio value="smb">SMB</el-radio>
             <el-radio value="agent">Agent</el-radio>
           </el-radio-group>
+          <div v-if="form.type === 'webdav'" class="hint">WebDAV：地址填完整 URL（如 http://host:5005），用户名密码按服务端配置填写。</div>
+          <div v-if="form.type === 'alist'" class="hint">Alist：地址填 Alist 服务地址（如 http://host:5244），用户名密码按 Alist 配置填写（默认可留空）。</div>
         </el-form-item>
         <template v-if="form.type === 'agent'">
           <el-form-item label="Agent">
@@ -212,18 +224,18 @@ onMounted(async () => {
 
     <el-drawer v-model="browseVisible" :title="current?.name" size="55%">
       <div class="pathbar">
-        <el-button size="small" @click="up">⬆ 上级</el-button>
+        <el-button size="small" @click="up"><el-icon><Top /></el-icon>&nbsp;上级</el-button>
         <span class="curpath">{{ path }}</span>
         <el-upload :show-file-list="false" :http-request="handleUpload">
           <el-button size="small" type="primary">上传</el-button>
         </el-upload>
         <el-button size="small" @click="refresh">刷新</el-button>
       </div>
-      <el-table v-loading="bloading" :data="entries" style="width: 100%">
+      <el-table v-loading="bloading" :data="entries" empty-text="该目录为空" style="width: 100%">
         <el-table-column label="名称" min-width="200">
           <template #default="{ row }">
-            <a v-if="row.is_dir" class="link" @click="enter(row as FileEntry)">📁 {{ row.name }}</a>
-            <span v-else>📄 {{ row.name }}</span>
+            <a v-if="row.is_dir" class="link" @click="enter(row as FileEntry)"><el-icon><Folder /></el-icon>&nbsp;{{ row.name }}</a>
+            <span v-else><el-icon><Document /></el-icon>&nbsp;{{ row.name }}</span>
           </template>
         </el-table-column>
         <el-table-column label="大小" width="90"><template #default="{ row }">{{ fmtBytes(row.size) }}</template></el-table-column>
@@ -251,7 +263,7 @@ onMounted(async () => {
 .hint { margin: -4px 0 8px; padding: 8px 12px; font-size: 12px; color: var(--pt-muted, #909399); background: var(--pt-bg-soft, rgba(255,255,255,0.04)); border-radius: 6px; line-height: 1.6; }
 .empty { padding: 40px; text-align: center; }
 .error-state { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.err-text { color: var(--pt-danger, #f56c6c); font-size: 14px; }
+.err-text { color: var(--pt-danger); font-size: 14px; }
 .pathbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
 .curpath { flex: 1; font-family: monospace; font-size: 13px; }
 .link { color: var(--pt-primary); cursor: pointer; }

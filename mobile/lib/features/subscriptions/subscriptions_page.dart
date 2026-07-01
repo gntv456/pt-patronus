@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/subscribe.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
@@ -143,6 +144,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('订阅'),
           backgroundColor: Colors.transparent,
           elevation: 0,

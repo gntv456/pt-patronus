@@ -13,7 +13,11 @@ import NovaHDScratchGame from '@/components/NovaHDScratchGame.vue'
 import NovaHDLuckyGame from '@/components/NovaHDLuckyGame.vue'
 import SpinnerGame from '@/components/SpinnerGame.vue'
 import BetGame from '@/components/BetGame.vue'
+import EventBet from '@/components/EventBet.vue'
 import BlackjackGame from '@/components/BlackjackGame.vue'
+import PandaFlipGame from '@/components/PandaFlipGame.vue'
+import BigSmallGame from '@/components/BigSmallGame.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 const sites = ref<Site[]>([])
 const currentSite = ref<number | undefined>()
@@ -70,8 +74,10 @@ const selectedGame = computed(() => games.value.find((g) => g.id === currentGame
 const richGame = computed(() => currentGame.value)
 // 通用抽奖组件覆盖的 game.id（批1：多站转盘/老虎机/抽奖；红包雨 hxpt_redpacket 用 Play 封装触发）
 const spinnerIds = ['cbg_wheel', 'cbg_slot', 'ub_wheel', 'luckydraw_wheel', 'march_wheel', 'tangpt_lottery', 'hxpt_redpacket']
-// 通用下注组件覆盖的 game.id（批2：猜大小/骰宝/双色球/翻面/Betting/红包）
-const betIds = ['hxpt_bigsmall', 'cbg_sicbo', 'crab_unionlotto', 'panda_flip', 'ourbits_bet', 'ubits_redpacket']
+// 通用下注组件覆盖的 game.id（批2：骰宝/双色球/Betting/红包；猜大小走专属 BigSmallGame；翻面走 PandaFlipGame）
+const betIds = ['cbg_sicbo', 'crab_unionlotto', 'ubits_redpacket']
+// 猜大小（批2.5：好学 hxpt_bigsmall + 熊猫 panda_bigsmall，富 UI：走势/排行/记录/倒计时/任务/聊天/红包）
+const bigsmallIds = ['hxpt_bigsmall', 'panda_bigsmall']
 // 二十一点状态机（批3）
 const blackjackIds = ['audiences_blackjack']
 
@@ -106,6 +112,9 @@ loadSites()
       <NovaHDScratchGame v-else-if="richGame === 'novahd_scratch' && currentSite" :site-id="currentSite" />
       <NovaHDLuckyGame v-else-if="richGame === 'novahd_lucky' && currentSite" :site-id="currentSite" />
       <SpinnerGame v-else-if="currentSite && spinnerIds.includes(richGame as string)" :site-id="currentSite" :game="currentGame as string" :name="selectedGame?.name || ''" />
+      <EventBet v-else-if="richGame === 'ourbits_bet' && currentSite" :site-id="currentSite" />
+      <PandaFlipGame v-else-if="richGame === 'panda_flip' && currentSite" :site-id="currentSite" />
+      <BigSmallGame v-else-if="currentSite && bigsmallIds.includes(richGame as string)" :site-id="currentSite" :game="currentGame as string" :name="selectedGame?.name || ''" />
       <BetGame v-else-if="currentSite && betIds.includes(richGame as string)" :site-id="currentSite" :game="currentGame as string" :name="selectedGame?.name || ''" />
       <BlackjackGame v-else-if="currentSite && blackjackIds.includes(richGame as string)" :site-id="currentSite" :game="currentGame as string" :name="selectedGame?.name || ''" />
 
@@ -121,9 +130,12 @@ loadSites()
         </div>
       </div>
 
-      <div v-else-if="!loading" class="empty glass text-muted">
-        {{ currentSite ? '该站点暂无游戏' : '请先选择站点' }}
-      </div>
+      <EmptyState
+        v-else-if="!loading"
+        icon="🎮"
+        :title="currentSite ? '该站点暂无游戏' : '请先选择站点'"
+        :description="currentSite ? '该站点尚未开放娱乐玩法，可切换其他站点试试' : '在右上角下拉选择一个 PT 站点，开始每日抽奖、刮刮乐等小游戏'"
+      />
     </div>
   </div>
 </template>

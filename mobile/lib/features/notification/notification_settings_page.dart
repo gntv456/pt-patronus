@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/notification.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -156,6 +157,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('通知设置'),
           backgroundColor: Colors.transparent,
           elevation: 0,

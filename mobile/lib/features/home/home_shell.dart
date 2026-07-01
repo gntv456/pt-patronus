@@ -3,17 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/notice.dart';
 import 'package:ptpatronus/core/update_checker.dart';
 import 'package:ptpatronus/core/ws_client.dart';
-import 'package:ptpatronus/features/account/account_page.dart';
 import 'package:ptpatronus/features/notice/notice_page.dart';
-import 'package:ptpatronus/features/dashboard/dashboard_page.dart';
-import 'package:ptpatronus/features/search/search_page.dart';
-import 'package:ptpatronus/features/sites/sites_page.dart';
-import 'package:ptpatronus/features/downloaders/downloaders_page.dart';
-import 'package:ptpatronus/features/entertainment/entertainment_page.dart';
-import 'package:ptpatronus/features/media/media_page.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'home_controller.dart';
+import 'home_drawer.dart';
+import 'home_nav_items.dart';
+import 'home_sidebar.dart';
 
-// 登录后的主壳：底部导航在 仪表盘/搜索/站点/下载器 间切换。
+/// 登录后的主壳：响应式导航容器（对齐 Docker 端 Web 布局）。
+///
+/// - 宽屏（≥ [kHomeWideBreakpoint]，桌面/大平板）：常驻左侧栏 + 内容区；侧栏可隐藏，
+///   隐藏后左缘出现「展开」按钮——主菜单可隐藏、可重新钉住。
+/// - 窄屏（手机）：仅内容区；任意页面顶栏 ☰ 或左缘拖拽侧滑出主菜单抽屉（重构前交互复刻）。
+///
+/// 主菜单目的地统一来自 [navItems]（与 Docker Web 侧栏顺序对齐），抽屉与侧栏共用。
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
   @override
@@ -21,7 +24,7 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  int _index = 0;
+  final HomeController _controller = HomeController();
   StreamSubscription<Notice>? _noticeSub;
 
   @override
@@ -36,72 +39,60 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void dispose() {
     _noticeSub?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
-  static const _pages = <Widget>[
-    DashboardPage(),
-    SearchPage(),
-    SitesPage(),
-    DownloadersPage(),
-    MediaPage(),
-    EntertainmentPage(),
-    AccountPage(),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: IndexedStack(index: _index, children: _pages),
-        floatingActionButton: ValueListenableBuilder<int>(
-          valueListenable: noticeUnread,
-          builder: (_, n, _) => FloatingActionButton(
-            mini: true,
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const NoticePage()),
-            ),
-            child: Badge(
-              isLabelVisible: n > 0,
-              label: Text(n > 99 ? '99+' : '$n',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-              child: const Icon(Icons.notifications),
-            ),
-          ),
-        ),
-        bottomNavigationBar: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.6)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.10),
-                blurRadius: 24,
-                offset: const Offset(0, 6),
+    return HomeShellScope(
+      controller: _controller,
+      child: GlassBackground(
+        child: ListenableBuilder(
+          listenable: _controller,
+          builder: (context, _) {
+            final wide = MediaQuery.widthOf(context) >= kHomeWideBreakpoint;
+            final page = navItems[_controller.index].builder(context);
+            // 窄屏使用最大宽度限制的内容卡片化体验（页面自带 Scaffold/AppBar）。
+            final Widget body;
+            if (wide) {
+              if (_controller.sidebarVisible) {
+                body = Row(
+                  children: [const HomeSidebar(), Expanded(child: page)],
+                );
+              } else {
+                body = Row(
+                  children: [const HomeSidebarReveal(), Expanded(child: page)],
+                );
+              }
+            } else {
+              body = page;
+            }
+            return Scaffold(
+              key: _controller.scaffoldKey,
+              backgroundColor: Colors.transparent,
+              drawer: const HomeDrawer(),
+              drawerEdgeDragWidth: 48,
+              body: body,
+              floatingActionButton: ValueListenableBuilder<int>(
+                valueListenable: noticeUnread,
+                builder: (_, n, _) => FloatingActionButton(
+                  mini: true,
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const NoticePage()),
+                  ),
+                  child: Badge(
+                    isLabelVisible: n > 0,
+                    label: Text(n > 99 ? '99+' : '$n',
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                    child: const Icon(Icons.notifications),
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: NavigationBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            selectedIndex: _index,
-            onDestinationSelected: (i) => setState(() => _index = i),
-            destinations: const [
-              NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: '仪表盘'),
-              NavigationDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search), label: '搜索'),
-              NavigationDestination(icon: Icon(Icons.language_outlined), selectedIcon: Icon(Icons.language), label: '站点'),
-              NavigationDestination(icon: Icon(Icons.download_outlined), selectedIcon: Icon(Icons.download), label: '下载器'),
-              NavigationDestination(icon: Icon(Icons.movie_outlined), selectedIcon: Icon(Icons.movie), label: '媒体'),
-              NavigationDestination(icon: Icon(Icons.sports_esports_outlined), selectedIcon: Icon(Icons.sports_esports), label: '娱乐'),
-              NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: '账户'),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

@@ -156,7 +156,7 @@ onMounted(load)
   border-radius: 10px;
 }
 .hint code {
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--surface-muted);
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 12px;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/message.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -105,6 +106,7 @@ class _MessagesPageState extends State<MessagesPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('消息'),
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -132,7 +134,14 @@ class _MessagesPageState extends State<MessagesPage> {
   }
 
   Widget _mailboxTabs() {
-    const tabs = [(Mailbox.inbox, '收件'), (Mailbox.system, '系统'), (Mailbox.sent, '已发'), (Mailbox.staff, 'Staff')];
+    const tabs = [
+      (Mailbox.inbox, '收件箱'),
+      (Mailbox.system, '系统'),
+      (Mailbox.sent, '发件箱'),
+      (Mailbox.cheater, '作弊者'),
+      (Mailbox.reports, '举报信箱'),
+      (Mailbox.staff, '管理组信箱'),
+    ];
     return SizedBox(
       height: 44,
       child: ListView(

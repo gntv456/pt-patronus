@@ -135,6 +135,30 @@ PT 工具核心价值 = 账号不被封。签到防过期、H&R 防警告、cook
 
 代码：`backend/internal/workflow/`（引擎 + 注册表 + 执行器 + 模板）、`backend/internal/workflow/nodes/`（节点实现）。新增节点示例见 `nodes/download_mgmt.go`（`dlMgmtNode` 共用骨架）与 `nodes/site_more.go`（`siteNode` 共用骨架）。
 
+## 客户端导航响应式改造（2026/07/01）
+
+移动端（Flutter，手机 + Windows 桌面共用 `mobile/lib`）主菜单重构，对齐 Docker 端 Web 布局，并复刻重构前（`F:\PT-admin\PTPatronus` Compose `ModalNavigationDrawer`）的侧滑抽屉交互。Docker 端 `frontend/` 未改。
+
+- **移除底部 7 项 NavigationBar**，改为统一的「☰ 主菜单」。
+- **响应式**（`kHomeWideBreakpoint = 1000`）：桌面 / 大平板横屏显示常驻左侧玻璃侧栏（对齐 Docker），侧栏可隐藏（右上 `‹`），隐藏后左缘出现 `›` 展开钮；手机 / 窄屏为「最窄 = 手机布局」，仅内容区，☰ 侧滑出抽屉。
+- **全量目的地**：抽屉 / 侧栏列出 24 个页面（顺序对齐 Docker Web `navItems`，Flutter 独有的「媒体 / 种子浏览」插入同邻处；末两项「通知设置 / 用户中心」固定底部），原埋在「账户页」里的 14 个二级页面全部提升为一级菜单项。
+- **账户页精简**为「用户中心」（登录态 / 版本 / 性能模式 / 登出）。
+- 新增 `mobile/lib/features/home/`：`home_controller.dart`（`HomeController` + `HomeShellScope`）、`home_nav_items.dart`（24 项目）、`home_nav_panel.dart`（玻璃面板 + 项 + 品牌头，尊重 `glassReduced`）、`home_drawer.dart`、`home_sidebar.dart`、`home_menu_button.dart`；重写 `home_shell.dart`（响应式 `Scaffold` + 抽屉 + 侧栏，保留通知 FAB）；24 个 nav 页顶栏均加 ☰。`dart analyze lib` 全绿。
+
+> 设计取舍：各页保留各自 AppBar / 标题行（未强删），故桌面侧栏旁仍有页面顶栏；若要更贴近 Docker「单顶栏」观感，可后续移除页 AppBar 并把 actions 迁入页面内工具条。
+
+## Flutter UI 对齐 Web（2026/07/01）
+
+移动端 / 桌面端的 UI、图标、Logo 看齐 Web 端（`frontend/`），消除「两端长得不一样」。`flutter analyze` 零 issue、`flutter test` 31 全绿。
+
+- **彩色导航图标**：新增 `mobile/lib/widgets/glass_icon.dart` + `glyphs.dart`（从 Web `GlassIcon.vue` 的 `GLYPHS` 字典 1:1 移植 24 个 Lucide 线条字形，`flutter_svg` 渲染）。「30% 圆角渐变色块 + 内白边 + 顶部高光 + 外阴影 + 居中白色字形」，逐项 `from/to` 配色与 Web `MainLayout.vue` 完全一致，替换单色 Material 图标。
+- **品牌吉祥物 Logo**：新增 `mobile/lib/widgets/pt_logo.dart`（`PTLogo` + `paintPTLogo()`），`CustomPainter` 忠实复刻 `frontend/public/logo-mark.svg`（玻璃盾牌 + 笑脸 + PT 渐变字标 + 彩色尖帽），替换原先的 🛡️ emoji 占位（侧栏品牌头 + 登录页）。不用 flutter_svg：SVG 用了 `feTurbulence` 等滤镜它不支持。
+- **导航分组**：`home_nav_items.dart` 由扁平 24 项重构为 4 组（概览 / 内容获取 / 站点活动 / 基础设施），顺序、配色、字形严格对齐 Web；`home_nav_panel.dart` 新增 `NavGroupedList` 渲染组标题（侧栏 + 抽屉共用）。
+- **搜索页折 Tab**：`search_page.dart` 加「种子 / 影视」分段切换（对齐 Web `Search.vue`）；「媒体」「种子浏览」从导航折叠进搜索页 Tab（影视复用 `MediaApi` + `MediaPoster` + `MediaDetailPage`），双端导航结构一致。
+- **消息分类补全**：`messages_page.dart` 补「作弊者 / 举报信箱」两类，标签与 Web 对齐（收件箱 / 系统 / 发件箱 / 作弊者 / 举报信箱 / 管理组信箱，共 6 类）。
+- **全平台启动器图标重生成**：原各平台图标是 Flutter 默认蓝 F。新增 `mobile/tool/render_icon.dart`（`flutter test` 跑 → 画 `paintPTLogo` → 1024² PNG）产出 `assets/icon_source.png`，`flutter_launcher_icons` 一次性覆盖 Android（mipmap-*）/ iOS / macOS / Windows（app_icon.ico）。
+- ⚠️ **桌面端需重建**：旧桌面包仍显示 "Nexus Bonus"（源码早是 PTPatronus，是旧包未重建）。`flutter build windows` / macos / android 后重装即恢复。
+
 ## 加固审计 changelog（阶段 4 之后，2026/06）
 
 跨三端的安全与健壮性加固，每轮独立 `go test` / `npm build` / `flutter test` 全绿，未破坏既有测试。
@@ -169,7 +193,7 @@ PT 工具核心价值 = 账号不被封。签到防过期、H&R 防警告、cook
 
 ### 待真机联调（已实现未校准，需真实环境）
 
-MTeam/unit3d/gazelle 的签到 / H&R；消息回复 CSRF 字段名逐站配置；savept.icu 抓取；考核 NexusPHP 跨行聚合；IYUU 真实匹配；真实摄像头 HLS；LongPT 娱乐（每日抽奖 / 幸运大转盘 / 六十四卦勋章）—— `/pt-api/v1/lucky|medals|nexus/*` 契约来自站点 SPA bundle 逆向，抽奖记录字段名 / getCountJoin 返回类型 / 六十四卦 getList 子勋章合成是否真销毁 待真实站点实测校准。NovaHD 三娱乐 + 好学农场（魔力农场 magic_fram.php 好学+NovaHD 通用 magic_farm / 刮刮乐 magic_scratch.php / 幸运抽奖 fortune-wheel-spin.php，契约来自站点源码备份）三端全绿待联调校准：农场 HTML 抠取正则（.points-display/warehouse-table/market-table）、刮刮乐与抽奖的 Stats·Prizes·History 待真实页面校准。
+MTeam/unit3d/gazelle 的签到 / H&R；消息回复 CSRF 字段名逐站配置；savept.icu 抓取；考核 NexusPHP 跨行聚合；IYUU 真实匹配；真实摄像头 HLS；LongPT 娱乐（每日抽奖 / 幸运大转盘 / 六十四卦勋章）—— `/pt-api/v1/lucky|medals|nexus/*` 契约来自站点 SPA bundle 逆向，抽奖记录字段名 / getCountJoin 返回类型 / 六十四卦 getList 子勋章合成是否真销毁 待真实站点实测校准。NovaHD 三娱乐 + 好学农场（魔力农场 magic_fram.php 好学+NovaHD 通用 magic_farm / 刮刮乐 magic_scratch.php / 幸运抽奖 fortune-wheel-spin.php，契约来自站点源码备份）三端全绿待联调校准：农场 HTML 抠取正则（.points-display/warehouse-table/market-table）、刮刮乐与抽奖的 Stats·Prizes·History 待真实页面校准。OurBits（我堡）菠菜赛事押注（bet.php 列表 / bet_odds.php 盘口 / bet_odds2.php 下单 bonus=&id=选项id 无 csrf，契约实时抓取 ourbits.club）三端全绿待校准：Bet 成功页提示文本结构（当前启发式判定）与 bet_coupon 有押注时的行结构。
 
 ## 测试驱动加固（2026/06/30）
 
@@ -209,3 +233,33 @@ MTeam/unit3d/gazelle 的签到 / H&R；消息回复 CSRF 字段名逐站配置�
 
 - ✅ **Flutter `_toast` mounted 守卫批量补齐**（26 文件 31 处，箭头形式→块形式 + `if (!mounted) return;`，`flutter analyze` 全绿）：异步操作期间导航离开不再触发 `ScaffoldMessenger.of(deactivated context)` 崩溃。
 - 仍遗留 P3：Flutter 登录丢弃 `res['user']`（移动端无用户名/admin 徽章，跨 ApiClient+AccountPage）；散点 `setState` 守卫（`await` 后的中间 `setState` 未必全覆盖）；`/system/info` 公开暴露精确版本号；CORS release 模式未收敛。
+
+## 客户端产品测试（2026/07/02）
+
+以产品经理视角对三端客户端做一轮严格测试（可构建性 / 运行冒烟 / API 契约对齐 / 核心页 UX / 三端一致性），发现 **1 P0 + 6 P1 + 9 P2**，已全修，三端回归全绿（后端 `go test ./internal/api/...` + `go build`、Web `vue-tsc --noEmit` + `vite build`、Flutter `analyze` No issues）。
+
+### P0 阻断主流程
+
+- **Web 辅种保存 IYUU token 失效**：`frontend/src/api/reseed.ts` 用 `POST /keepseed/config`，后端只注册 `PUT`，未匹配路由被 `NoRoute` 回退成内嵌 SPA `index.html`（200 HTML），axios 解析失败。改 `POST→PUT`（Flutter 端本就用 PUT，仅 Web 坏）。
+
+### P1
+
+- **后端 NoRoute 系统性陷阱**：`router.go` 原把所有未匹配路径回退 Web UI，导致 `/api/` 下任何错路径/错方法都返 200 HTML 而非 404 JSON，把错误掩盖成「Unexpected token '<'」（P0 长期未被发现即因此）。改为 `/api/` 前缀返 JSON 404，其余才走 SPA。
+- **Web typecheck 失败回归**：`BigSmallGame.vue` 对可选字段 `net_result` 未做空值守卫（`vue-tsc` 报 TS18048）。`?? ` 兜底修复。
+- **FileManager 上传同名静默覆盖**：补二次确认（删除本就有 confirm，上传反而没有，风险不对称）。
+- **Messages 外显后端英文 error**：加 `friendlyError` 映射为中文（cookie 失效 / 超时 / 页面变更等），原始文本保留在 `title`。
+- **Settings 通知通道「启用但凭证空」可保存**：加 `validateNotif` 保存前校验（错误原延迟到「发送测试」才暴露）。
+- **Flutter 运行日志页缺失**（Web Settings 日志 tab 在 Flutter 全无对应）：新建 `api/system_log.dart` + `features/system/logs_page.dart`（级别过滤 / 刷新 / 清空，仿 announcements）+ 导航 footer 注册。
+
+### P2
+
+- Downloaders 地址 `http(s)://` 格式校验；Login 2FA 6 位数字 + Cookie 含 `=` 校验；FileManager 空态文案 + WebDAV/Alist 类型说明。
+- **Flutter 深色主题手动开关**：原仅跟随系统，补三态选择（跟随 / 浅 / 深，`themeModeNotifier` + SharedPreferences 持久化 + 账户页 SegmentedButton）。
+- **Flutter 下载器 / 站点编辑契约对齐**：`downloader.dart` / `site.dart` 补 `update` / `test`（仅 api 层；下载器 / 站点页连增删 UI 都还缺，列为独立 backlog）。
+
+### 评估后保留（非缺陷，勿当新问题）
+
+- element-plus 单 chunk 799kB：`vite.config.ts` 已配 `manualChunks` + ElementPlusResolver 按需引入，是库固有体积，gzip 252k + 独立缓存对内部工具可接受。
+- 死路由保留：`POST /sites/inspect`（README 推荐的校准工具）、`POST /monitors/:id/accept-host-key`（SSH host-key 确认流程）等。
+- 通知通道标签 Bot Token / AppID 等不汉化（PT 圈约定俗成术语，汉化反增歧义）。
+- 复测确认：2026/06/30 遗留的「`/system/info` 公开暴露版本号」**已不再成立**——现未登录仅返 `{"name":"PTPatronus"}`，version 需登录（`system.go` 设计如此，安全考虑）。

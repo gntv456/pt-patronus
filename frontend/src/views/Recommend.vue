@@ -10,6 +10,7 @@ import {
 } from '@/api/recommend'
 import { discoverApi } from '@/api/discover'
 import { searchApi, type SiteSearchResult } from '@/api/search'
+import EmptyState from '@/components/EmptyState.vue'
 
 const router = useRouter()
 
@@ -202,9 +203,15 @@ onMounted(() => load())
         </div>
       </div>
     </div>
-    <div v-if="!items.length && !loading && !searchLoading" class="empty glass text-muted">
-      {{ searchMode ? '无搜索结果' : '暂无推荐，点击刷新或切换源/分类' }}
-    </div>
+    <EmptyState
+      v-if="!items.length && !loading && !searchLoading"
+      icon="🎬"
+      :title="searchMode ? '无搜索结果' : '暂无推荐，点击刷新或切换源/分类'"
+      :description="searchMode ? '换个关键词，或清空搜索框回到推荐信息流' : '点击右上角刷新重试，或在上方切换推荐源与分类'"
+    >
+      <el-button v-if="searchMode" @click="clearSearch">返回推荐</el-button>
+      <el-button v-else :loading="loading" @click="refresh">刷新</el-button>
+    </EmptyState>
 
     <!-- 分页：加载更多（仅信息流；搜索结果一次性返回） -->
     <div v-if="items.length && !searchMode" class="pager">
@@ -251,7 +258,7 @@ onMounted(() => load())
 .rec-card { display: flex; gap: 12px; padding: 12px; }
 .clickable { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
 .clickable:hover { transform: translateY(-2px); }
-.poster { width: 92px; height: 132px; border-radius: 8px; overflow: hidden; flex: none; background: rgba(0,0,0,0.06); }
+.poster { width: 92px; height: 132px; border-radius: 8px; overflow: hidden; flex: none; background: var(--surface-muted); }
 .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .t-title { font-weight: 600; font-size: 15px; }
 .t-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
@@ -266,7 +273,7 @@ onMounted(() => load())
 .find-site { padding: 8px 0; border-top: 1px solid rgba(0,0,0,0.06); }
 .find-site-name { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .site-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; background: rgba(108,92,231,0.16); color: var(--pt-primary,#6c5ce7); font-size: 12px; }
-.err { color: var(--pt-danger,#f56c6c); font-size: 12px; }
+.err { color: var(--pt-danger); font-size: 12px; }
 .find-torr { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
 .ft-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ft-meta { color: var(--text-muted); flex: none; }

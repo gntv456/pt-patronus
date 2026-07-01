@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/announcement.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -42,6 +43,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('公告'),
           backgroundColor: Colors.transparent,
           elevation: 0,

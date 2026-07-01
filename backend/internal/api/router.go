@@ -340,7 +340,7 @@ func Build(d *Deps) *gin.Engine {
 				bk.POST("/import-ptd", middleware.RequireAdmin(), bkH.ImportPTD)
 			}
 
-			entH := v1.NewEntertainmentHandler(d.Entertainment)
+			entH := v1.NewEntertainmentHandler(d.Entertainment, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins))
 			ent := guarded.Group("/entertainment")
 			{
 				ent.GET("/:id/games", entH.Games)
@@ -365,7 +365,19 @@ func Build(d *Deps) *gin.Engine {
 				ent.POST("/:id/games/:game/harvest-all", entH.HarvestAll)
 				ent.POST("/:id/games/:game/sell", entH.Sell)
 				ent.POST("/:id/games/:game/bet", entH.Bet)
+			ent.GET("/:id/games/:game/events", entH.Events)
+			ent.GET("/:id/games/:game/events/:eventID", entH.EventDetail)
 				ent.POST("/:id/games/:game/blackjack", entH.Blackjack)
+				ent.GET("/:id/games/:game/flip-state", entH.FlipState)
+				ent.GET("/:id/games/:game/bigsmall-state", entH.BigSmallState)
+				ent.GET("/:id/games/:game/bigsmall-chat", entH.BigSmallChat)
+				ent.POST("/:id/games/:game/bigsmall-task", entH.BigSmallTaskAction)
+				ent.POST("/:id/games/:game/bigsmall-item", entH.BigSmallUseItem)
+				ent.POST("/:id/games/:game/bigsmall-chat", entH.BigSmallSendChat)
+				ent.POST("/:id/games/:game/bigsmall-redpacket", entH.BigSmallRedpacket)
+				// 翻面夺宝 websocket 桥接：?ticket= 鉴权（浏览器 WS 不能发 header JWT），
+				// 注册在 api（非 guarded）绕过 header 鉴权，handler 内自验 ticket。
+				api.GET("/entertainment/:id/games/:game/flip-ws", entH.FlipWS)
 			}
 
 			dashH := v1.NewDashboardHandler(d.Dashboard)
@@ -507,6 +519,15 @@ func Build(d *Deps) *gin.Engine {
 	}
 
 	// 非匹配路径回退到内嵌的 Web UI（go:embed），由 vue-router 接管。
-	engine.NoRoute(gin.WrapH(web.Handler()))
+	// /api/ 前缀的未命中必须返回 JSON 404：否则前端会把 SPA 的 index.html 当 JSON 解析，
+	// 报 "Unexpected token '<'"，掩盖真正的端点拼写 / HTTP 方法错误（如把 PUT 误用为 POST）。
+	spa := web.Handler() // http.Handler：文件存在直出，否则回退 index.html
+	engine.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.JSON(404, gin.H{"error": "not found"})
+			return
+		}
+		spa.ServeHTTP(c.Writer, c.Request)
+	})
 	return engine
 }

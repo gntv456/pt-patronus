@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/rss.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/api/downloader.dart';
@@ -134,6 +135,7 @@ class _RssPageState extends State<RssPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('RSS 订阅'),
           backgroundColor: Colors.transparent,
           elevation: 0,

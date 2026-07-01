@@ -62,7 +62,15 @@ async function loadLogs() {
 }
 
 async function clearLogs() {
-  if (!window.confirm('确定清空运行日志缓冲？此后新日志仍会正常记录。')) return
+  try {
+    await ElMessageBox.confirm('确定清空运行日志缓冲？此后新日志仍会正常记录。', '清空日志', {
+      type: 'warning',
+      confirmButtonText: '清空',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return // 用户取消
+  }
   try {
     await logsApi.clear()
     logs.value = []
@@ -136,7 +144,37 @@ async function loadNotif() {
   }
 }
 
+// 保存前校验已启用通道的必填凭证，避免「启用但留空」错配延迟到测试时才暴露。
+// 后端已 configured 的密钥（notifCfg.xxx_configured）允许前端留空（占位脱敏）。
+function validateNotif(): string {
+  const n = notif.value
+  if (n.telegram.enabled) {
+    if (!n.telegram.token?.trim()) return 'Telegram 已启用，但 Bot Token 为空'
+    if (!n.telegram.chat_id?.trim()) return 'Telegram 已启用，但 Chat ID 为空'
+  }
+  if (n.wechat.enabled && !n.wechat.bot_token?.trim() && !notifCfg.value?.wechat.bot_token_configured) {
+    return '微信已启用，但未扫码登录（缺 Bot Token）'
+  }
+  if (n.qq.enabled) {
+    if (!n.qq.app_id?.trim()) return 'QQ 已启用，但 AppID 为空'
+    if (!n.qq.app_secret?.trim() && !notifCfg.value?.qq.app_secret_configured) return 'QQ 已启用，但 AppSecret 为空'
+    if (!n.qq.openid?.trim() && !n.qq.group_openid?.trim()) return 'QQ 已启用，但单聊/群 OpenID 至少填一个'
+  }
+  if (n.bark.enabled && !n.bark.key?.trim() && !notifCfg.value?.bark.key_configured) {
+    return 'Bark 已启用，但 Device Key 为空'
+  }
+  if (n.webhook.enabled && !n.webhook.url?.trim()) {
+    return 'Webhook 已启用，但 URL 为空'
+  }
+  return ''
+}
+
 async function saveNotif() {
+  const verr = validateNotif()
+  if (verr) {
+    ElMessage.warning(verr)
+    return
+  }
   notifSaving.value = true
   try {
     await notificationApi.setConfig(notif.value)
@@ -413,7 +451,7 @@ function secretPlaceholder(configured: boolean | undefined) {
 
 /* 在线更新对话框 */
 .update-ver { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
-.update-forced { color: var(--pt-danger, #f56c6c); font-weight: 600; }
+.update-forced { color: var(--pt-danger); font-weight: 600; }
 .update-name { font-weight: 600; margin-bottom: 6px; }
 .update-notes { white-space: pre-wrap; line-height: 1.6; font-size: 13px; margin-bottom: 12px; }
 .update-cmd-label { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
@@ -434,7 +472,7 @@ function secretPlaceholder(configured: boolean | undefined) {
 }
 .log-line { display: flex; gap: 8px; padding: 3px 6px; border-radius: 4px; align-items: baseline; }
 .log-line:hover { background: rgba(108, 92, 231, 0.06); }
-.log-line.error { color: var(--pt-danger, #f56c6c); }
+.log-line.error { color: var(--pt-danger); }
 .log-line.warn { color: var(--pt-warn, #f59e0b); }
 .log-line.debug { color: var(--text-muted); }
 .log-time { color: var(--text-muted); flex-shrink: 0; }
@@ -451,7 +489,7 @@ function secretPlaceholder(configured: boolean | undefined) {
 .test-results { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .test-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: rgba(108,92,231,0.08); }
 .test-tag.ok { color: var(--pt-success, #67c23a); }
-.test-tag.fail { color: var(--pt-danger, #f56c6c); }
+.test-tag.fail { color: var(--pt-danger); }
 .wx-hint { margin-bottom: 8px; }
 .wx-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .qr-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }

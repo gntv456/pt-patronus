@@ -1,11 +1,12 @@
 import '../core/api_client.dart';
 
 // 种子详情页（对齐 backend site.TorrentDetail）。字段 best-effort：站点未抽到的留空。
+// 由搜索页「种子」模式的详情抽屉消费（对齐 Web Search.vue 的 openTorrentDetail）。
 class TorrentDetail {
   final String title;
   final String subtitle;
   final String posterUrl;
-  final String description; // 原始 HTML
+  final String description; // 原始 HTML（展示前剥标签）
   final String mediainfo;
   final String detailUrl;
   final String downloadUrl;

@@ -7,6 +7,7 @@ import { mediaApi, type MediaInfo } from '@/api/media'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import { copyText } from '@/utils/clipboard'
 import MediaPoster from '@/components/MediaPoster.vue'
+import EmptyState from '@/components/EmptyState.vue'
 import DOMPurify from 'dompurify'
 
 const route = useRoute()
@@ -292,10 +293,13 @@ onMounted(() => {
           </el-table-column>
         </el-table>
 
-        <!-- 空态：区分「未搜」与「搜了无果」 -->
-        <div v-else-if="!loading" class="empty text-muted">
-          {{ searched ? '无结果，请先在「站点」添加并登录站点' : '输入关键词跨站搜索' }}
-        </div>
+        <!-- 空态：区分「未搜」与「搜了无果」，文案不再误导已登录站点的用户 -->
+        <EmptyState
+          v-else-if="!loading"
+          :icon="searched ? '🔍' : '🌱'"
+          :title="searched ? '没有找到相关种子' : '跨站搜索种子'"
+          :description="searched ? '试试更换关键词，或切换上方的分类筛选' : '输入关键词，聚合所有已登录站点的资源'"
+        />
       </div>
     </template>
 
@@ -323,7 +327,12 @@ onMounted(() => {
           </div>
         </div>
       </div>
-      <div v-if="!mediaResults.length && !loading" class="empty glass text-muted">输入关键字搜索影视元数据与海报</div>
+      <EmptyState
+        v-if="!mediaResults.length && !loading"
+        icon="🎬"
+        title="搜索影视"
+        description="输入关键字查找影视元数据、海报与评分"
+      />
     </template>
 
     <!-- 推送下载器对话框 -->
@@ -500,7 +509,7 @@ onMounted(() => {
   display: inline-block;
   padding: 1px 8px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--surface-muted);
   font-size: 11px;
   margin: 2px;
 }
@@ -520,7 +529,7 @@ onMounted(() => {
   gap: 12px;
 }
 .err-text {
-  color: var(--pt-danger, #f56c6c);
+  color: var(--pt-danger);
   font-size: 14px;
 }
 .fail-bar {
@@ -580,7 +589,7 @@ onMounted(() => {
 .mcard .poster {
   position: relative;
   aspect-ratio: 2/3;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--surface-muted);
 }
 .src {
   position: absolute;
@@ -648,7 +657,7 @@ onMounted(() => {
   border-radius: 10px;
   overflow: hidden;
   flex: none;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--surface-muted);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
 }
 .detail-head .meta {
@@ -731,7 +740,7 @@ onMounted(() => {
   aspect-ratio: 16/9;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--surface-muted);
   transition: transform 0.15s;
 }
 .shot:hover {
@@ -777,7 +786,7 @@ onMounted(() => {
   font-size: 12px;
   font-family: ui-monospace, monospace;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.03);
+  background: var(--surface-muted);
 }
 .file-row {
   padding: 5px 10px;

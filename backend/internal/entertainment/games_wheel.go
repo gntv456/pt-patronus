@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -133,6 +134,106 @@ func (LuckyDrawWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, 
 	return luckyDrawResult(m), nil
 }
 
+// Prizes 抠 luckywheel.php 页面内嵌的奖品 JSON（{"id","typeText","amountText"}）作为转盘扇区。
+// 供通用 SpinnerGame 画真转盘用；解析失败返回空（前端降级为装饰扇区）。
+func (LuckyDrawWheelGame) Prizes(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) ([]PrizeDef, error) {
+	page := joinPath(baseURL, "luckywheel.php")
+	resp, err := hc.GetWithHeaders(ctx, page, cr.Cookie, map[string]string{"Referer": page}, true)
+	if err != nil {
+		return nil, err
+	}
+	// 整体匹配每个奖品对象（扁平、无嵌套花括号），再从中抠 id/typeText/amountText，
+	// 避免页面里其它 "id": 干扰配对。
+	objRe := regexp.MustCompile(`\{[^{}]*"typeText":"([^"]*)"[^{}]*"amountText":"([^"]*)"[^{}]*\}`)
+	idRe := regexp.MustCompile(`"id":(\d+)`)
+	matches := objRe.FindAllSubmatch(resp.Body, -1)
+	out := make([]PrizeDef, 0, len(matches))
+	for i, m := range matches {
+		typeText := string(m[1])
+		amountText := strings.TrimSpace(string(m[2]))
+		name := strings.TrimSpace(typeText + " " + amountText)
+		pd := PrizeDef{ID: i + 1, Name: name, Type: typeText}
+		if idm := idRe.FindSubmatch(m[0]); idm != nil {
+			pd.ID = int(longptNum(string(idm[1])))
+		}
+		out = append(out, pd)
+	}
+	return out, nil
+}
+
+// luckyDrawWheelPage GET luckywheel.php（取余额/奖品共用）。
+func luckyDrawWheelPage(ctx context.Context, hc *httpclient.Client, baseURL, cookie string) ([]byte, error) {
+	page := joinPath(baseURL, "luckywheel.php")
+	resp, err := hc.GetWithHeaders(ctx, page, cookie, map[string]string{"Referer": page}, true)
+	if err != nil {
+		return nil, err
+	}
+	return resp.Body, nil
+}
+
+// Stats 余额：抠 luckywheel.php「当前用户拥有魔力：N」（与奖品金额的「魔力：N」区分，带「当前用户拥有」前缀唯一）。
+func (LuckyDrawWheelGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*StatsResult, error) {
+	body, err := luckyDrawWheelPage(ctx, hc, baseURL, cr.Cookie)
+	if err != nil {
+		return &StatsResult{}, nil
+	}
+	return &StatsResult{Balance: novaHDNum(firstGroup(body, `当前用户拥有魔力[：:]\s*([\d,.]+)`))}, nil
+}
+
+// History 抽奖记录：GET /plugin/lucky-draw/winning-records（layui data-table）→ {data:[{created_at,result}]}。
+// 字段防御：result/prize/prize_text + created_at/time/created_time。
+func (LuckyDrawWheelGame) History(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) ([]GameRecord, error) {
+	u := joinPath(baseURL, "plugin/lucky-draw/winning-records")
+	resp, err := hc.Do(ctx, http.MethodGet, u, nil, map[string]string{
+		"X-Requested-With": "XMLHttpRequest",
+		"Referer":          joinPath(baseURL, "luckywheel.php"),
+	}, cr.Cookie, true)
+	if err != nil {
+		return nil, err
+	}
+	logResp("luckydraw records", u, resp)
+	m, err := parseRaw(resp.Body)
+	if err != nil {
+		return []GameRecord{}, nil
+	}
+	items := recordItems(m)
+	out := make([]GameRecord, 0, len(items))
+	for _, it := range items {
+		name := firstNonEmpty(strField(it, "result"), strField(it, "prize"), strField(it, "prize_text"))
+		ts := firstNonEmpty(strField(it, "created_at"), strField(it, "time"), strField(it, "created_time"))
+		if name == "" && ts == "" {
+			continue
+		}
+		out = append(out, GameRecord{PrizeName: name, Amount: numField(it, "amount"), CreatedAt: ts})
+	}
+	return out, nil
+}
+
+// recordItems 从 layui/laravel data-table 响应里取记录数组（兼容 data:[...] 与 data:{data:[...]}）。
+func recordItems(m map[string]any) []map[string]any {
+	if arr, ok := m["data"].([]any); ok {
+		out := make([]map[string]any, 0, len(arr))
+		for _, e := range arr {
+			if em, ok := e.(map[string]any); ok {
+				out = append(out, em)
+			}
+		}
+		return out
+	}
+	if d, ok := m["data"].(map[string]any); ok {
+		if arr, ok := d["data"].([]any); ok {
+			out := make([]map[string]any, 0, len(arr))
+			for _, e := range arr {
+				if em, ok := e.(map[string]any); ok {
+					out = append(out, em)
+				}
+			}
+			return out
+		}
+	}
+	return nil
+}
+
 // ── March 幸运大转盘（duckboobee.org） ────────────────────
 // POST /lucky-wheel/spin → {success, results:[{...}], remaining_bonus, message}。
 type MarchWheelGame struct{}
@@ -178,6 +279,21 @@ func (MarchWheelGame) spin(ctx context.Context, hc *httpclient.Client, baseURL s
 
 func (MarchWheelGame) Play(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*PlayResult, error) {
 	return MarchWheelGame{}.spin(ctx, hc, baseURL, cr)
+}
+
+// PlayMulti 连抽：March spin 端点单次即返回 results 数组（站点自身聚合）；直接返回其结果。
+func (MarchWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, count int) (*PlayResult, error) {
+	return MarchWheelGame{}.spin(ctx, hc, baseURL, cr)
+}
+
+// Stats 余额：抠 luckywheel.php 的 #user-bonus-amount（"魔力1000"）。
+func (MarchWheelGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*StatsResult, error) {
+	page := joinPath(baseURL, "luckywheel.php")
+	resp, err := hc.GetWithHeaders(ctx, page, cr.Cookie, map[string]string{"Referer": page}, true)
+	if err != nil {
+		return &StatsResult{}, nil
+	}
+	return &StatsResult{Balance: novaHDNum(firstGroup(resp.Body, `id="user-bonus-amount"[^>]*>[^0-9-]*([\d,.]+)`))}, nil
 }
 
 // ── 不可躺 抽奖（www.tangpt.top） ─────────────────────────
@@ -230,4 +346,66 @@ func (TangptLotteryGame) Play(ctx context.Context, hc *httpclient.Client, baseUR
 
 func (TangptLotteryGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, count int) (*PlayResult, error) {
 	return TangptLotteryGame{}.draw(ctx, hc, baseURL, cr, count)
+}
+
+// Stats 余额：omnibot_lottery.php 是 SPA，余额多在 bootstrap JSON（user_bonus）或页面「魔力：N」。
+// 无离线样本，按多个模式兜底；都没命中返回 0（前端 hero 会在首次 draw 后用 last.balance 兜底）。
+func (TangptLotteryGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*StatsResult, error) {
+	page := joinPath(baseURL, "omnibot_lottery.php")
+	resp, err := hc.GetWithHeaders(ctx, page, cr.Cookie, map[string]string{"Referer": page}, true)
+	if err != nil {
+		return &StatsResult{}, nil
+	}
+	body := resp.Body
+	for _, p := range []string{`"user_bonus"[: ]+([\d.]+)`, `userBonus[ =:]+([\d.]+)`, `当前[^0-9-]{0,6}魔力[：: ]+([\d,.]+)`} {
+		if v := novaHDNum(firstGroup(body, p)); v > 0 {
+			return &StatsResult{Balance: v}, nil
+		}
+	}
+	return &StatsResult{}, nil
+}
+
+// History 抽奖记录：omnibot SPA，记录端点未在离线样本确认，按常见路径 best-effort 尝试
+// （/web/omnibot/lottery/records 或 /history），失败返空（前端记录区不显示，无副作用）。
+func (TangptLotteryGame) History(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) ([]GameRecord, error) {
+	for _, path := range []string{"web/omnibot/lottery/records", "web/omnibot/lottery/history"} {
+		u := joinPath(baseURL, path)
+		resp, err := hc.Do(ctx, http.MethodGet, u, nil, map[string]string{
+			"X-Requested-With": "XMLHttpRequest",
+			"Referer":          joinPath(baseURL, "omnibot_lottery.php"),
+		}, cr.Cookie, true)
+		if err != nil || resp.StatusCode != 200 {
+			continue
+		}
+		m, err := parseRaw(resp.Body)
+		if err != nil {
+			continue
+		}
+		items := recordItems(m)
+		if items == nil {
+			if arr, ok := m["results"].([]any); ok {
+				items = make([]map[string]any, 0, len(arr))
+				for _, e := range arr {
+					if em, ok := e.(map[string]any); ok {
+						items = append(items, em)
+					}
+				}
+			}
+		}
+		if len(items) == 0 {
+			continue
+		}
+		logResp("tangpt records", u, resp)
+		out := make([]GameRecord, 0, len(items))
+		for _, it := range items {
+			name := firstNonEmpty(strField(it, "name"), strField(it, "prize"), strField(it, "result"))
+			ts := firstNonEmpty(strField(it, "created_at"), strField(it, "time"), strField(it, "created_time"))
+			if name == "" && ts == "" {
+				continue
+			}
+			out = append(out, GameRecord{PrizeName: name, Amount: numField(it, "amount"), CreatedAt: ts})
+		}
+		return out, nil
+	}
+	return []GameRecord{}, nil
 }

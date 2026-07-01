@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { announcementApi, type AnnouncementResult } from '@/api/announcement'
+import EmptyState from '@/components/EmptyState.vue'
 
 const results = ref<AnnouncementResult[]>([])
 const loading = ref(false)
@@ -66,9 +67,12 @@ onMounted(() => load())
       </div>
     </div>
 
-    <div v-if="!filtered.length && !loading" class="empty glass text-muted">
-      {{ selectedSite === 'all' ? '暂无数据，请先在「站点」添加并登录站点' : '该站点暂无公告' }}
-    </div>
+    <EmptyState
+      v-if="!filtered.length && !loading"
+      icon="📢"
+      :title="selectedSite === 'all' ? '暂无数据，请先在「站点」添加并登录站点' : '该站点暂无公告'"
+      :description="selectedSite === 'all' ? '添加并启用 PT 站点后，这里会聚合展示各站公告' : '该站点当前没有公告，可尝试点击该站刷新'"
+    />
 
     <div class="groups">
       <div v-for="r in filtered" :key="r.site_id" class="site-group glass">
@@ -115,7 +119,7 @@ onMounted(() => load())
 .group-head { display: flex; align-items: center; gap: 8px; }
 .site-name { font-weight: 600; font-size: 15px; }
 .count { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: rgba(108,92,231,0.16); color: var(--pt-primary, #6c5ce7); }
-.err-tag { font-size: 12px; color: var(--pt-danger, #f56c6c); }
+.err-tag { font-size: 12px; color: var(--pt-danger); }
 .spacer { flex: 1; }
 .items { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
 .item { border-left: 3px solid rgba(108,92,231,0.3); padding: 6px 12px; border-radius: 4px; background: rgba(108,92,231,0.04); }

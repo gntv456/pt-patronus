@@ -229,6 +229,43 @@ type Bettable interface {
 	Bet(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, req BetRequest) (*PlayResult, error)
 }
 
+// BetEvent 一场竞猜主题（OurBits bet.php 列表行：主题/结束时间/庄家/下注总数/投注总额/我的下注/状态）。
+type BetEvent struct {
+	ID         int     `json:"id"`          // 主题 id（bet_odds.php?id=N）
+	Title      string  `json:"title"`       // 2026年美加墨世界杯冠军
+	EndTime    string  `json:"end_time"`    // 2026-07-12 00:00:00
+	Remain     string  `json:"remain"`      // 10天07:33:50
+	Bookmaker  string  `json:"bookmaker"`   // 庄家用户名
+	BetCount   int     `json:"bet_count"`   // 下注总人数
+	TotalStake float64 `json:"total_stake"` // 投注总额（魔力）
+	MyStake    string  `json:"my_stake"`    // 我的下注（"-"=未押 / 金额文本）
+	Status     string  `json:"status"`      // open（点击押注）/ ended（已结束）
+}
+
+// BetOption 一个押注选项（bet_odds.php?id=N 盘口：队名/人名 + 赔率）。
+type BetOption struct {
+	ID    string  `json:"id"`              // 选项标识（下单 POST 用）
+	Name  string  `json:"name"`            // 队名/人名
+	Odds  float64 `json:"odds"`            // 赔率
+	Stake float64 `json:"stake,omitempty"` // 该选项当前投注额
+}
+
+// BetEventDetail 某主题盘口（bet_odds.php?id=N：主题信息 + 选项赔率列表）。
+type BetEventDetail struct {
+	Event    BetEvent   `json:"event"`
+	Options  []BetOption `json:"options"`
+	MyOption string     `json:"my_option,omitempty"` // 已押选项
+	Note     string     `json:"note,omitempty"`      // 规则/赔付提示
+}
+
+// EventBettable 赛事押注能力（OurBits 菠菜）：列竞猜主题 + 某主题盘口。
+// 下单仍走 Bettable.Bet（Extra["event_id"]=主题id / Selection=选项id / Amount=魔力），
+// 历史仍走 Historable.History（bet_coupon.php 我的押注）。
+type EventBettable interface {
+	Events(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) ([]BetEvent, error)
+	EventDetail(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, eventID int) (*BetEventDetail, error)
+}
+
 // BlackjackResult 二十一点状态（玩家/庄家牌、点数、阶段、结果）。
 type BlackjackResult struct {
 	PlayerCards []string `json:"player_cards"`
@@ -244,6 +281,197 @@ type BlackjackResult struct {
 // Blackjackable 二十一点状态机（new/hit/stand/double）。
 type Blackjackable interface {
 	Blackjack(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, action string) (*BlackjackResult, error)
+}
+
+// FlipTier 翻面夺宝奖项档位（PandaPT getFlipTiers：特等/一等/…/五等）。
+type FlipTier struct {
+	ID         string  `json:"id"`                   // a/b/c/d/e/f 或站点 tierId
+	Name       string  `json:"name"`                 // 特等奖 …
+	Reward     float64 `json:"reward"`               // 50000（魔力）
+	RewardType string  `json:"reward_type"`          // coins/medal/vip/none
+	Count      int     `json:"count"`                // 该档卡牌张数（合计 100）
+	Color      string  `json:"color,omitempty"`      // 前端格子配色
+}
+
+// FlipTile 翻面夺宝单格（100 格之一）。
+type FlipTile struct {
+	Index   int    `json:"index"`             // 1..100
+	Flipped bool   `json:"flipped"`           // 是否已翻开
+	TierID  string `json:"tier_id,omitempty"` // 已翻开则填奖项 id
+	ByUser  string `json:"by_user,omitempty"` // 谁翻的（本局记录）
+}
+
+// FlipState 翻面夺宝全景（PandaPT ajax_flip.php gameState+getFlipTiers 聚合）。
+type FlipState struct {
+	RoundNumber  int          `json:"round_number"`
+	Balance      float64      `json:"balance"`
+	CostPerFlip  float64      `json:"cost_per_flip"`
+	TotalTiles   int          `json:"total_tiles"` // 100
+	FlippedCount int          `json:"flipped_count"`
+	Tiers        []FlipTier   `json:"tiers"`
+	Tiles        []FlipTile   `json:"tiles"`
+	History      []GameRecord `json:"history,omitempty"`
+}
+
+// Flipable 翻面夺宝能力（PandaPT flip.php：gameState+getFlipTiers 取全景，recordFlip 翻牌走 Bettable）。
+type Flipable interface {
+	FlipState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*FlipState, error)
+}
+
+// ── 猜大小（Big-or-Small）统一快照（好学 hxpt + 熊猫 pandapt 两站共用） ────
+// 两站 API 差异由各自适配器在 BigSmallState() 内抹平：好学 games/bigsmall/ajax.php 多个 GET 聚合；
+// 熊猫 /ajax.php reloadData 一次拿大头 + 任务/道具/红包/聊天轻取。时间靠客户端：本快照含权威
+// countdown/seal_countdown/status，前端按 fetchedAt 本地递减（见 BigSmallGame.vue 注释）。
+
+// BigSmallRound 当前一局信息。
+type BigSmallRound struct {
+	ID            int     `json:"id"`
+	GameNo        string  `json:"game_no"`
+	StartTime     string  `json:"start_time,omitempty"`
+	EndTime       string  `json:"end_time,omitempty"`
+	Status        string  `json:"status"`         // betting | sealed | finished
+	Countdown     int     `json:"countdown"`      // 到本轮结束剩余秒（权威）
+	SealCountdown int     `json:"seal_countdown"` // 到封盘剩余秒（≤0 禁止下注）
+	PlayerCount   int     `json:"player_count"`
+	TotalBet      float64 `json:"total_bet"`
+}
+
+// BigSmallBetSpot 当前局某方下注用户（押大/押小列表）。
+type BigSmallBetSpot struct {
+	Username string  `json:"username"`
+	Amount   float64 `json:"amount"`
+}
+
+// BigSmallMyBet 我的下注 / 上局结算（Result/NetResult 仅 last_result 有意义）。
+type BigSmallMyBet struct {
+	GameNo    string  `json:"game_no,omitempty"`
+	BetType   string  `json:"bet_type"`         // big | small
+	Amount    float64 `json:"amount"`
+	Result    string  `json:"result,omitempty"`    // 上局开奖 big|small|house
+	NetResult float64 `json:"net_result,omitempty"` // 上局输赢（正赢负输）
+}
+
+// BigSmallTrend 走势统计（40场 / 最近10场）。
+type BigSmallTrend struct {
+	BigCount   int `json:"big_count"`
+	SmallCount int `json:"small_count"`
+	HouseCount int `json:"house_count,omitempty"` // 通杀（好学有，熊猫无）
+	BigPct     int `json:"big_pct"`
+	SmallPct   int `json:"small_pct"`
+}
+
+// BigSmallRankEntry 排行榜单条。
+type BigSmallRankEntry struct {
+	Username string  `json:"username"`
+	Amount   float64 `json:"amount"` // 赢/输/净值（按榜单语义）
+	Count    int     `json:"count"`  // 赌王/慈善/参与次数
+}
+
+// BigSmallRank 一个榜单 tab（本月赌神/今日赌王/本月慈善/今日慈善…）。
+type BigSmallRank struct {
+	Key     string              `json:"key"` // monthly_king / daily_king / monthly_charity / daily_charity …
+	Title   string              `json:"title"`
+	Entries []BigSmallRankEntry `json:"entries"`
+}
+
+// BigSmallRecord 一局历史记录（我的/所有人）。
+type BigSmallRecord struct {
+	GameNo      string  `json:"game_no"`
+	StartTime   string  `json:"start_time,omitempty"`
+	EndTime     string  `json:"end_time,omitempty"`
+	PlayerCount int     `json:"player_count,omitempty"`
+	TotalBet    float64 `json:"total_bet,omitempty"`
+	Result      string  `json:"result"`            // big | small | house
+	MyBetType   string  `json:"my_bet_type,omitempty"`
+	MyBet       float64 `json:"my_bet,omitempty"`
+	MyResult    float64 `json:"my_result,omitempty"` // 我的输赢（正赢负输）
+	Bets        string  `json:"bets,omitempty"`      // 所有人记录：下注摘要 "大：1000"
+}
+
+// BigSmallTask 任务栏单项。
+type BigSmallTask struct {
+	ID           int    `json:"id"`
+	Title        string `json:"title"`
+	Desc         string `json:"desc,omitempty"`
+	Reward       string `json:"reward,omitempty"`
+	ProgressText string `json:"progress_text,omitempty"`
+	Progress     int    `json:"progress"`
+	Status       string `json:"status"` // idle | doing | rewardable | done
+	MonthlyCount int    `json:"monthly_count,omitempty"`
+	MonthlyLimit int    `json:"monthly_limit,omitempty"`
+}
+
+// BigSmallProp 道具单项（好学随注 prop_id；熊猫独立 useItem）。
+type BigSmallProp struct {
+	ID       string `json:"id"`
+	Tag      string `json:"tag"`    // code/unique_tag（下单或使用用）
+	Name     string `json:"name"`
+	Desc     string `json:"desc,omitempty"`
+	Image    string `json:"image,omitempty"`
+	Quantity int    `json:"quantity"`
+	Usable   bool   `json:"usable"` // 是否可随注/使用
+}
+
+// BigSmallChat 聊天一条。
+type BigSmallChat struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Message  string `json:"message"`
+	Time     string `json:"time,omitempty"`
+}
+
+// BigSmallRedpacket 红包（活跃列表/详情）。
+type BigSmallRedpacket struct {
+	ID       string  `json:"id"`
+	Sender   string  `json:"sender,omitempty"`
+	Greeting string  `json:"greeting,omitempty"`
+	Total    float64 `json:"total"`
+	Count    int     `json:"count"`
+	Claimed  int     `json:"claimed,omitempty"`
+	MyClaim  float64 `json:"my_claim,omitempty"`
+}
+
+// BigSmallState 猜大小全景快照（聚合当前局/走势/排行/记录/任务/道具/聊天/红包）。
+type BigSmallState struct {
+	Balance  float64 `json:"balance"`
+	MinBet   float64 `json:"min_bet"`
+	MaxBet   float64 `json:"max_bet,omitempty"`
+	Currency string  `json:"currency,omitempty"` // 火花 / 魔力值
+	Payout   string  `json:"payout,omitempty"`   // "1.7" / "1.95"
+	HasHouse bool    `json:"has_house"`          // 通杀（好学 true / 熊猫 false）
+
+	Round      BigSmallRound     `json:"round"`
+	MyBet      *BigSmallMyBet    `json:"my_bet,omitempty"`
+	LastResult *BigSmallMyBet    `json:"last_result,omitempty"`
+	BigBets    []BigSmallBetSpot `json:"big_bets,omitempty"`
+	SmallBets  []BigSmallBetSpot `json:"small_bets,omitempty"`
+
+	Trend40       BigSmallTrend `json:"trend40"`
+	Trend10       BigSmallTrend `json:"trend10"`
+	TrendText     string        `json:"trend_text,omitempty"`
+	RecentResults []string      `json:"recent_results,omitempty"` // 走势点阵：big|small|house
+
+	Rankings   []BigSmallRank     `json:"rankings,omitempty"`
+	MyRecords  []BigSmallRecord   `json:"my_records,omitempty"`
+	AllRecords []BigSmallRecord   `json:"all_records,omitempty"`
+
+	Tasks      []BigSmallTask      `json:"tasks,omitempty"`
+	Props      []BigSmallProp      `json:"props,omitempty"`
+	Chat       []BigSmallChat      `json:"chat,omitempty"`
+	Redpackets []BigSmallRedpacket `json:"redpackets,omitempty"`
+}
+
+// BigSmallable 猜大小能力（好学 hxpt_bigsmall + 熊猫 panda_bigsmall）。
+// BigSmallState 取全景快照（只读）；其余为社交/任务/道具/红包写操作。下注仍走 Bettable.Bet。
+type BigSmallable interface {
+	BigSmallState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*BigSmallState, error)
+	BigSmallChat(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, since int) ([]BigSmallChat, error)
+	BigSmallSendChat(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, message string) (*PlayResult, error)
+	// BigSmallTaskAction 任务操作：claim（领取/开始）/ reward（领奖）/ refund（好学亏返卡，taskID 忽略）。
+	BigSmallTaskAction(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, action string, taskID int) (*PlayResult, error)
+	BigSmallUseItem(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, tag string) (*PlayResult, error)
+	// BigSmallRedpacket 红包：action=send|claim|info，extra 传 amount/count/greeting/id 等。
+	BigSmallRedpacket(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, action string, extra map[string]string) (*PlayResult, error)
 }
 
 // Registry 按站点 host 注册游戏。

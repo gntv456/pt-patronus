@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:fl_chart/fl_chart.dart';
@@ -66,6 +67,22 @@ class _DashboardPageState extends State<DashboardPage> {
       _error = '$e';
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // 下拉刷新：轻量模式，不切全屏 loading（RefreshIndicator 自带指示器），
+  // 保留当前内容直到新数据返回，避免下拉动画被打断。
+  Future<void> _refresh() async {
+    try {
+      final results = await Future.wait([_api.overview(), _api.trend(7)]);
+      if (!mounted) return;
+      setState(() {
+        _overview = results[0] as DashboardOverview;
+        _trend = results[1] as List<DashboardTrendPoint>;
+        _error = null;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
     }
   }
 
@@ -306,6 +323,7 @@ class _DashboardPageState extends State<DashboardPage> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(children: [
+                  const HomeMenuButton(),
                   const Text('仪表盘',
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
                   const Spacer(),
@@ -347,66 +365,69 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       );
     }
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        if (_cookieAlerts.isNotEmpty) ...[
-          _cookieAlertCard(),
-          const SizedBox(height: 14),
-        ],
-        if (_hrAlerts.isNotEmpty) ...[
-          _hrAlertCard(),
-          const SizedBox(height: 14),
-        ],
-        GridView.count(
-          crossAxisCount: wide ? 4 : 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 14,
-          crossAxisSpacing: 14,
-          childAspectRatio: 1.1,
-          children: _metrics(),
-        ),
-        const SizedBox(height: 18),
-        SizedBox(
-          height: 224,
-          child: GlassCard(
-            padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('近 7 天 ${_metricDefs[_metricIdx].label} 趋势',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                const SizedBox(height: 8),
-                _metricChips(),
-                const SizedBox(height: 6),
-                Expanded(child: _trendChart(isDark)),
-              ],
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          if (_cookieAlerts.isNotEmpty) ...[
+            _cookieAlertCard(),
+            const SizedBox(height: 14),
+          ],
+          if (_hrAlerts.isNotEmpty) ...[
+            _hrAlertCard(),
+            const SizedBox(height: 14),
+          ],
+          GridView.count(
+            crossAxisCount: wide ? 4 : 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+            childAspectRatio: 1.1,
+            children: _metrics(),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 224,
+            child: GlassCard(
+              padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('近 7 天 ${_metricDefs[_metricIdx].label} 趋势',
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                  const SizedBox(height: 8),
+                  _metricChips(),
+                  const SizedBox(height: 6),
+                  Expanded(child: _trendChart(isDark)),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 18),
-        Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 4),
-          child: Text('站点明细（${_overview!.siteCount}）',
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        ),
-        if (_overview!.sites.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-                child: Text('暂无数据，等待统计同步',
-                    style: TextStyle(color: Colors.grey))),
-          )
-        else
-          ..._overview!.sites
-              .map((s) => Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _siteStatCard(s),
-                  ))
-              ,
-        const SizedBox(height: 8),
-      ],
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.only(left: 2, bottom: 4),
+            child: Text('站点明细（${_overview!.siteCount}）',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          ),
+          if (_overview!.sites.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                  child: Text('暂无数据，等待统计同步',
+                      style: TextStyle(color: Colors.grey))),
+            )
+          else
+            ..._overview!.sites
+                .map((s) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _siteStatCard(s),
+                    ))
+                ,
+          const SizedBox(height: 8),
+        ],
+      ),
     );
   }
 

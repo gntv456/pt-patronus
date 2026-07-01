@@ -120,6 +120,21 @@ class SiteApi {
     return Site.fromJson(r);
   }
 
+  /// 编辑站点（对齐 Web PUT /sites/:id）。apiKey 留空 = 不修改。
+  Future<Site> update(
+    int id, {
+    required String name,
+    required String baseUrl,
+    String? apiKey,
+    bool? isActive,
+  }) async {
+    final body = <String, dynamic>{'name': name, 'base_url': baseUrl};
+    if (isActive != null) body['is_active'] = isActive;
+    if (apiKey != null && apiKey.isNotEmpty) body['api_key'] = apiKey;
+    final r = await _api.put('/sites/$id', body);
+    return Site.fromJson(r);
+  }
+
   /// 连接测试：返回 {ok, level?, error?}。馒头走此端点验证 x-api-key。
   Future<Map<String, dynamic>> test(int id) async =>
       _api.post('/sites/$id/test', <String, dynamic>{});

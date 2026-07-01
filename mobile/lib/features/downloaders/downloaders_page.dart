@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:ptpatronus/api/downloader.dart';
@@ -96,6 +97,7 @@ class _DownloadersPageState extends State<DownloadersPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(children: [
+                const HomeMenuButton(),
                 const Text('下载器', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
@@ -105,7 +107,9 @@ class _DownloadersPageState extends State<DownloadersPage> {
             Expanded(
               child: _list.isEmpty && !_loading
                   ? (_error != null ? _errorView() : _emptyView())
-                  : ListView.builder(
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.builder(
                       padding: const EdgeInsets.all(12),
                       itemCount: _list.length,
                       itemBuilder: (_, i) {
@@ -138,6 +142,7 @@ class _DownloadersPageState extends State<DownloadersPage> {
                           ),
                         );
                       },
+                      ),
                     ),
             ),
           ],
@@ -343,17 +348,23 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     String seedMode = 'global';
     String ratioInput = '';
     String seedInput = '';
-    final ok = await showDialog<bool>(
+    final ok = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          title: const Text('做种限制'),
-          content: SizedBox(
-            width: double.maxFinite,
+        builder: (ctx, setS) => Padding(
+          // 键盘避让：sheet 底部按视图插入区抬高，输入框不被遮挡。
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text('做种限制',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
                 const Text('分享比率', style: TextStyle(fontSize: 13)),
                 DropdownButton<String>(
                   isExpanded: true,
@@ -394,13 +405,18 @@ class _TorrentSheetState extends State<_TorrentSheet> {
                     padding: EdgeInsets.only(top: 8),
                     child: Text('TR 做种时长为「空闲时长」语义', style: TextStyle(fontSize: 11, color: Colors.grey)),
                   ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+                    const SizedBox(width: 8),
+                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定')),
+                  ],
+                ),
               ],
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定')),
-          ],
         ),
       ),
     );

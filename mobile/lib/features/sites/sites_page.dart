@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import '../webview_login/webview_login_page.dart';
@@ -84,6 +85,7 @@ class _SitesPageState extends State<SitesPage> {
   }
 
   // 添加站点表单：选定义（据 schema 推断 platform）→ 馒头填 API Key、其余填地址。
+  // 用 BottomSheet 而非 AlertDialog：手机上更贴底、键盘弹起按 viewInsets 抬高不遮挡。
   Future<void> _showAddDialog(List<SiteDef> defs) async {
     final nameCtrl = TextEditingController();
     final urlCtrl = TextEditingController();
@@ -106,72 +108,88 @@ class _SitesPageState extends State<SitesPage> {
     nameCtrl.text = selected.name;
     urlCtrl.text = defaultUrl(selected);
 
-    final ok = await showDialog<bool>(
+    final ok = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
       builder: (dctx) => StatefulBuilder(
-        builder: (_, setSt) => AlertDialog(
-          title: const Text('添加站点'),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: '名称', hintText: '如：好学')),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<SiteDef>(
-                initialValue: selected,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: '定义'),
-                items: defs
-                    .map((d) => DropdownMenuItem(
-                          value: d,
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text('${d.name}（${d.schema}）'),
-                            if (d.dead) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.withValues(alpha: 0.2),
-                                  borderRadius: BorderRadius.circular(4),
+        builder: (_, setSt) => Padding(
+          // 键盘避让：sheet 底部按视图插入区抬高，输入框不被软键盘遮挡。
+          padding: EdgeInsets.only(bottom: MediaQuery.of(dctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('添加站点',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: '名称', hintText: '如：好学')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<SiteDef>(
+                  initialValue: selected,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: '定义'),
+                  items: defs
+                      .map((d) => DropdownMenuItem(
+                            value: d,
+                            child: Row(mainAxisSize: MainAxisSize.min, children: [
+                              Text('${d.name}（${d.schema}）'),
+                              if (d.dead) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text('已关站',
+                                      style: TextStyle(fontSize: 11, color: Colors.grey)),
                                 ),
-                                child: const Text('已关站',
-                                    style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              ),
-                            ],
-                          ]),
-                        ))
-                    .toList(),
-                onChanged: (d) {
-                  if (d == null) return;
-                  setSt(() {
-                    selected = d;
-                    if (isDefaultUrl(urlCtrl.text)) urlCtrl.text = defaultUrl(d);
-                    if (isDefaultName(nameCtrl.text)) nameCtrl.text = d.name;
-                  });
-                },
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: urlCtrl,
-                decoration: InputDecoration(labelText: '地址', hintText: defaultUrl(selected)),
-              ),
-              if (selected.schema == 'mteam') ...[
+                              ],
+                            ]),
+                          ))
+                      .toList(),
+                  onChanged: (d) {
+                    if (d == null) return;
+                    setSt(() {
+                      selected = d;
+                      if (isDefaultUrl(urlCtrl.text)) urlCtrl.text = defaultUrl(d);
+                      if (isDefaultName(nameCtrl.text)) nameCtrl.text = d.name;
+                    });
+                  },
+                ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: keyCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'API Key',
-                    hintText: 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）',
+                  controller: urlCtrl,
+                  decoration: InputDecoration(labelText: '地址', hintText: defaultUrl(selected)),
+                ),
+                if (selected.schema == 'mteam') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: keyCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'API Key',
+                      hintText: 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）',
+                    ),
                   ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('取消')),
+                    const SizedBox(width: 8),
+                    FilledButton(onPressed: () => Navigator.pop(dctx, true), child: const Text('添加')),
+                  ],
                 ),
               ],
-            ]),
+            ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('取消')),
-            FilledButton(onPressed: () => Navigator.pop(dctx, true), child: const Text('添加')),
-          ],
         ),
       ),
     );
@@ -372,6 +390,7 @@ class _SitesPageState extends State<SitesPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(children: [
+                const HomeMenuButton(),
                 const Text('站点', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 IconButton(
@@ -395,7 +414,9 @@ class _SitesPageState extends State<SitesPage> {
             Expanded(
               child: _sites.isEmpty && !_loading
                   ? (_error != null ? _errorView() : _emptyView())
-                  : ListView.builder(
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView.builder(
                       padding: const EdgeInsets.all(12),
                       itemCount: _sites.length,
                       itemBuilder: (_, i) {
@@ -444,6 +465,7 @@ class _SitesPageState extends State<SitesPage> {
                           ),
                         );
                       },
+                      ),
                     ),
             ),
           ],

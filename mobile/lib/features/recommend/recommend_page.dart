@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/recommend.dart';
 import 'package:ptpatronus/api/discover.dart';
 import 'package:ptpatronus/api/search.dart';
@@ -127,6 +128,7 @@ class _RecommendPageState extends State<RecommendPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('推荐'),
           backgroundColor: Colors.transparent,
           elevation: 0,

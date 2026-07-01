@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { rssApi, type RssSubscription, type RssItem, type RssInput } from '@/api/rss'
 import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
+import EmptyState from '@/components/EmptyState.vue'
 
 const list = ref<RssSubscription[]>([])
 const sites = ref<Site[]>([])
@@ -150,7 +151,14 @@ function fmtTime(t?: string) {
           </div>
         </div>
       </div>
-      <div v-else-if="!loading" class="empty text-muted">暂无 RSS 订阅。点「添加订阅」开始。</div>
+      <EmptyState
+        v-else-if="!loading"
+        icon="📡"
+        title="暂无 RSS 订阅"
+        description="订阅 RSS/Atom 源，按关键词/大小/分辨率过滤后自动下载"
+      >
+        <el-button type="primary" @click="openCreate">+ 添加订阅</el-button>
+      </EmptyState>
     </div>
 
     <!-- 表单 -->
@@ -225,7 +233,7 @@ function fmtTime(t?: string) {
 .hint { font-size: 13px; }
 .card { padding: 18px; min-height: 160px; }
 .subs { display: flex; flex-direction: column; gap: 12px; }
-.sub { padding: 14px; border-radius: 12px; background: rgba(0,0,0,0.03); }
+.sub { padding: 14px; border-radius: 12px; background: var(--surface-muted); }
 .info { display: flex; flex-direction: column; gap: 6px; }
 .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .s-title { font-weight: 700; font-size: 15px; }

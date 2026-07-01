@@ -98,6 +98,86 @@ func TestLuckyDrawPlay(t *testing.T) {
 	}
 }
 
+func TestLuckyDrawPrizes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		// 页面内嵌奖品 JSON（含一个无关 "id": 干扰项，验证整体对象匹配不串位）
+		_, _ = w.Write([]byte(`<html>var other = {"id":999,"foo":"bar"};
+		var prizes = [{"id":3,"name":null,"type":101,"typeText":"彩虹 ID","amountText":"7 Day(s)"},
+		{"id":8,"type":1001,"typeText":"魔力","amountText":"200 "}]</html>`))
+	}))
+	defer srv.Close()
+	prizes, err := LuckyDrawWheelGame{}.Prizes(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "c=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prizes) != 2 {
+		t.Fatalf("prizes = %+v", prizes)
+	}
+	if prizes[0].ID != 3 || prizes[0].Name != "彩虹 ID 7 Day(s)" {
+		t.Errorf("prizes[0] = %+v", prizes[0])
+	}
+	if prizes[1].ID != 8 || prizes[1].Name != "魔力 200" {
+		t.Errorf("prizes[1] = %+v", prizes[1])
+	}
+}
+
+func TestLuckyDrawStatsHistory(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "winning-records") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":0,"data":[{"created_at":"2026-07-01 10:00","result":"88 魔力","amount":88},{"created_at":"2026-07-01 09:00","result":"谢谢参与"}]}`))
+			return
+		}
+		// luckywheel.php
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><div>当前用户拥有魔力：615108.7</div><div>魔力：2000（每次）</div></html>`))
+	}))
+	defer srv.Close()
+	st, err := LuckyDrawWheelGame{}.Stats(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "c=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Balance != 615108.7 {
+		t.Errorf("luckydraw stats balance = %v, want 615108.7", st.Balance)
+	}
+	recs, err := LuckyDrawWheelGame{}.History(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "c=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(recs) != 2 || recs[0].PrizeName != "88 魔力" || recs[0].Amount != 88 || recs[0].CreatedAt != "2026-07-01 10:00" {
+		t.Errorf("luckydraw history = %+v", recs)
+	}
+}
+
+func TestMarchStatsMulti(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "spin") {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"success":true,"results":[{"name":"88 魔力","amount":88},{"name":"88 魔力"},{"name":"谢谢参与"}],"remaining_bonus":1500}`))
+			return
+		}
+		// luckywheel.php
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><span id="user-bonus-amount">魔力1500</span></html>`))
+	}))
+	defer srv.Close()
+	st, err := MarchWheelGame{}.Stats(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "c=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Balance != 1500 {
+		t.Errorf("march stats balance = %v, want 1500", st.Balance)
+	}
+	res, err := MarchWheelGame{}.PlayMulti(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "c=1"}, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Prizes) != 3 || res.Balance != 1500 {
+		t.Errorf("march multi = %+v", res)
+	}
+}
+
 func TestMarchWheelPlay(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

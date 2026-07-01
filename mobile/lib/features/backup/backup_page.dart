@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/backup.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -148,8 +149,9 @@ class _BackupPageState extends State<BackupPage> {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(children: const [
-                Text('备份', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+              child: Row(children: [
+                const HomeMenuButton(),
+                const Text('备份', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
               ]),
             ),
             if (_busy) const LinearProgressIndicator(minHeight: 2),

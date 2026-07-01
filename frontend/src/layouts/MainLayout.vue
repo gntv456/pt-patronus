@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWs } from '@/composables/useWs'
 import NotificationCenter from '@/components/NotificationCenter.vue'
+import { Menu, Moon, Setting, SwitchButton } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -11,31 +12,76 @@ const { connect, disconnect } = useWs()
 const collapsed = ref(false)
 
 // 进入鉴权外壳即连 WS（仪表盘 H&R/Cookie 告警实时推送），离开/登出时断开。
-onMounted(connect)
-onUnmounted(disconnect)
+// 窄屏（分屏 / 平板 / 缩窗）自动折叠侧栏，避免 220px 侧栏挤占内容。
+function syncCollapsed() {
+  if (window.innerWidth < 900 && !collapsed.value) collapsed.value = true
+}
+onMounted(() => {
+  connect()
+  syncCollapsed()
+  window.addEventListener('resize', syncCollapsed)
+})
+onUnmounted(() => {
+  disconnect()
+  window.removeEventListener('resize', syncCollapsed)
+})
 
-const navItems = [
-  { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
-  { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
-  { name: 'messages', label: '消息', icon: 'message', from: '#2193b0', to: '#6dd5ed' },
-  { name: 'assessment', label: '考核', icon: 'assessment', from: '#0f9b0f', to: '#43cea2' },
-  { name: 'freeleech', label: '站免', icon: 'freeleech', from: '#11998e', to: '#38ef7d' },
-  { name: 'sites', label: '站点', icon: 'sites', from: '#4285f4', to: '#22d3ee' },
-  { name: 'recommend', label: '推荐', icon: 'recommend', from: '#f7971e', to: '#ff6a00' },
-  { name: 'search', label: '搜索', icon: 'search', from: '#a18cd1', to: '#fbc2eb' },
-  { name: 'subscriptions', label: '订阅', icon: 'subscribe', from: '#e100ff', to: '#ff6a00' },
-  { name: 'rss', label: 'RSS', icon: 'rss', from: '#f7971e', to: '#ff6a00' },
-  { name: 'reseed', label: '辅种', icon: 'seeding', from: '#7f00ff', to: '#38ef7d' },
-  { name: 'downloaders', label: '下载器', icon: 'downloaders', from: '#11998e', to: '#38ef7d' },
-  { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
-  { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
-  { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
-  { name: 'harem', label: '后宫', icon: 'harem', from: '#e100ff', to: '#7f00ff' },
-  { name: 'medal-wall', label: '勋章墙', icon: 'medalwall', from: '#f39c12', to: '#e100ff' },
-  { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
-  { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12' },
-  { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50' },
+// 主导航按任务域分 4 组：扫读从「20 项线性查找」降到「4 组 × 4-6 项」。
+// 顺序经编排：高频概览在前，内容获取/站点活动居中，基础设施收尾。
+const navGroups = [
+  {
+    title: '概览',
+    items: [
+      { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
+      { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
+      { name: 'messages', label: '消息', icon: 'message', from: '#2193b0', to: '#6dd5ed' },
+    ],
+  },
+  {
+    title: '内容获取',
+    items: [
+      { name: 'sites', label: '站点', icon: 'sites', from: '#4285f4', to: '#22d3ee' },
+      { name: 'search', label: '搜索', icon: 'search', from: '#a18cd1', to: '#fbc2eb' },
+      { name: 'recommend', label: '推荐', icon: 'recommend', from: '#f7971e', to: '#ff6a00' },
+      { name: 'subscriptions', label: '订阅', icon: 'subscribe', from: '#e100ff', to: '#ff6a00' },
+      { name: 'rss', label: 'RSS', icon: 'rss', from: '#f7971e', to: '#ff6a00' },
+      { name: 'reseed', label: '辅种', icon: 'seeding', from: '#7f00ff', to: '#38ef7d' },
+    ],
+  },
+  {
+    title: '站点活动',
+    items: [
+      { name: 'assessment', label: '考核', icon: 'assessment', from: '#0f9b0f', to: '#43cea2' },
+      { name: 'freeleech', label: '站免', icon: 'freeleech', from: '#11998e', to: '#38ef7d' },
+      { name: 'harem', label: '后宫', icon: 'harem', from: '#e100ff', to: '#7f00ff' },
+      { name: 'medal-wall', label: '勋章墙', icon: 'medalwall', from: '#f39c12', to: '#e100ff' },
+      { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
+      { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12' },
+    ],
+  },
+  {
+    title: '基础设施',
+    items: [
+      { name: 'downloaders', label: '下载器', icon: 'downloaders', from: '#11998e', to: '#38ef7d' },
+      { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
+      { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
+      { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
+      { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50' },
+    ],
+  },
 ]
+
+// PT 圈黑话释义：侧栏 hover（title）显示，降低新用户理解门槛。
+const navDesc: Record<string, string> = {
+  reseed: '辅种 · 跨站辅助种子',
+  assessment: '考核 · 保级 / 升级条件',
+  freeleech: '站免 · 全站免费促销',
+  harem: '后宫 · 邀请管理',
+  'medal-wall': '勋章墙 · 勋章收集',
+  entertainment: '娱乐 · 站内小游戏',
+  savept: '监护室 · 站点健康监控',
+}
+
 function toggleTheme() {
   const dark = document.documentElement.classList.toggle('dark')
   localStorage.setItem('theme', dark ? 'dark' : 'light')
@@ -62,16 +108,19 @@ function onUserCommand(cmd: string) {
         <span v-if="!collapsed" class="brand-name">PTPatronus</span>
       </div>
       <nav class="nav">
-        <router-link
-          v-for="item in navItems"
-          :key="item.name"
-          :to="{ name: item.name }"
-          class="nav-item glass-hover"
-          :title="item.label"
-        >
-          <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
-          <span v-if="!collapsed" class="nav-label">{{ item.label }}</span>
-        </router-link>
+        <div v-for="group in navGroups" :key="group.title" class="nav-group">
+          <span v-if="!collapsed" class="nav-group-title">{{ group.title }}</span>
+          <router-link
+            v-for="item in group.items"
+            :key="item.name"
+            :to="{ name: item.name }"
+            class="nav-item glass-hover"
+            :title="navDesc[item.name] || item.label"
+          >
+            <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
+            <span v-if="!collapsed" class="nav-label">{{ item.label }}</span>
+          </router-link>
+        </div>
       </nav>
       <div class="sidebar-footer">
         <span v-if="!collapsed" class="vip-badge">好学 VIP</span>
@@ -81,7 +130,7 @@ function onUserCommand(cmd: string) {
     <div class="main">
       <!-- 顶部悬浮玻璃栏 -->
       <header class="topbar glass-bar">
-        <button class="icon-btn" @click="collapsed = !collapsed">☰</button>
+        <button class="icon-btn" @click="collapsed = !collapsed"><el-icon><Menu /></el-icon></button>
         <div class="spacer"></div>
         <NotificationCenter />
         <el-dropdown trigger="click" @command="onUserCommand">
@@ -91,9 +140,9 @@ function onUserCommand(cmd: string) {
           </div>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="theme">🌓 切换主题</el-dropdown-item>
-              <el-dropdown-item command="settings">⚙️ 设置</el-dropdown-item>
-              <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              <el-dropdown-item command="theme"><el-icon><Moon /></el-icon>&nbsp;切换主题</el-dropdown-item>
+              <el-dropdown-item command="settings"><el-icon><Setting /></el-icon>&nbsp;设置</el-dropdown-item>
+              <el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>&nbsp;退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -150,7 +199,7 @@ function onUserCommand(cmd: string) {
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   /* 占满 brand 与 footer 之间的剩余空间，并在内部滚动，
      避免导航项过多时溢出侧栏玻璃底图 */
   flex: 1;
@@ -160,6 +209,18 @@ function onUserCommand(cmd: string) {
   overflow-x: hidden;
   scrollbar-width: thin;
   padding-right: 2px;
+}
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-group-title {
+  padding: 6px 14px 2px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 .nav::-webkit-scrollbar {
   width: 4px;
@@ -253,5 +314,18 @@ function onUserCommand(cmd: string) {
 .content {
   flex: 1;
   overflow: auto;
+}
+/* 窄屏（分屏 / 平板 / 缩窗）：收紧外边距；侧栏已由 syncCollapsed 自动折叠 */
+@media (max-width: 720px) {
+  .layout {
+    padding: 8px;
+    gap: 8px;
+  }
+  .main {
+    gap: 8px;
+  }
+  .topbar {
+    padding: 8px 10px;
+  }
 }
 </style>

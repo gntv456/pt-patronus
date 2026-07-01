@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { freeleechApi, type FreeleechResult, type FreeleechStatus } from '@/api/freeleech'
+import EmptyState from '@/components/EmptyState.vue'
 
 const results = ref<FreeleechResult[]>([])
 const loading = ref(false)
@@ -124,12 +125,20 @@ onMounted(() => load())
       </div>
     </div>
 
-    <div v-if="!results.length && !loading" class="empty glass text-muted">
-      暂无数据，请先在「站点」添加并登录站点
-    </div>
-    <div v-else-if="!filteredResults.length" class="empty glass text-muted">
-      当前筛选下无站点，<a class="reset-link" @click="filter = 'all'">显示全部</a>
-    </div>
+    <EmptyState
+      v-if="!results.length && !loading"
+      icon="🎉"
+      title="暂无数据，请先在「站点」添加并登录站点"
+      description="添加并启用 PT 站点后，这里会自动汇总各站正在/即将开始的免费活动"
+    />
+    <EmptyState
+      v-else-if="!filteredResults.length"
+      icon="🔍"
+      title="当前筛选下无站点"
+      description="切换或取消上方的状态筛选，显示全部站点"
+    >
+      <el-button @click="filter = 'all'">显示全部</el-button>
+    </EmptyState>
 
     <div class="cards">
       <div v-for="r in filteredResults" :key="r.site_id" class="site-card glass">
@@ -191,7 +200,7 @@ onMounted(() => load())
 .site-name { font-weight: 600; }
 .spacer { flex: 1; }
 .chip { padding: 2px 10px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
-.err { color: var(--pt-danger, #f56c6c); font-size: 13px; margin-top: 8px; }
+.err { color: var(--pt-danger); font-size: 13px; margin-top: 8px; }
 .notices { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
 .notice { padding: 8px 10px; border-radius: var(--radius-sm, 8px); background: rgba(108,92,231,0.06); }
 .notice-title { font-weight: 600; font-size: 14px; }

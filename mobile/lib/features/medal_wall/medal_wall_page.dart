@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/medal_wall.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -86,6 +87,7 @@ class _MedalWallPageState extends State<MedalWallPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('勋章墙'),
           backgroundColor: Colors.transparent,
           elevation: 0,

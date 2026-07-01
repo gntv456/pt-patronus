@@ -233,6 +233,7 @@ func New(cfg *config.Config) (*App, error) {
 	entReg.Register("www.tangpt.top", entertainment.TangptLotteryGame{})
 	// 下注/选号（批2，Bettable）：猜大小/骰宝/双色球/翻面/赛事押注/红包
 	entReg.Register("hxpt.org", entertainment.HxptBigSmallGame{})
+	entReg.Register("pandapt.net", entertainment.PandaBigSmallGame{})
 	entReg.Register("cangbao.ge", entertainment.CbgSicboGame{})
 	entReg.Register("crabpt.vip", entertainment.CrabUnionLottoGame{})
 	entReg.Register("pandapt.net", entertainment.PandaFlipGame{})

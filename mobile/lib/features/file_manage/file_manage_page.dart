@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:ptpatronus/api/file_storage.dart';
@@ -333,6 +334,7 @@ class _FileManagePageState extends State<FileManagePage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('文件管理'),
           backgroundColor: Colors.transparent,
           elevation: 0,

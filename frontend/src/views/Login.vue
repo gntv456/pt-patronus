@@ -39,6 +39,10 @@ async function accountLogin() {
     err.value = '请填写好学账号和密码'
     return
   }
+  if (acc.value.twoStep && !/^\d{6}$/.test(acc.value.twoStep.trim())) {
+    err.value = '二级验证码应为 6 位数字'
+    return
+  }
   loading.value = true
   err.value = ''
   try {
@@ -65,14 +69,19 @@ async function accountLogin() {
 }
 
 async function cookieLogin() {
-  if (!cookieStr.value.trim()) {
+  const c = cookieStr.value.trim()
+  if (!c) {
     err.value = '请粘贴好学 cookie'
+    return
+  }
+  if (!c.includes('=')) {
+    err.value = 'cookie 格式有误：应含「键=值」字段，请从浏览器完整复制整段 cookie'
     return
   }
   loading.value = true
   err.value = ''
   try {
-    await auth.loginByCookie(cookieStr.value.trim())
+    await auth.loginByCookie(c)
     router.push({ name: 'dashboard' })
   } catch (e: unknown) {
     err.value = msg(e) || '登录失败'
@@ -206,7 +215,7 @@ function msg(e: unknown): string {
 .submit {
   width: 100%;
   margin-top: 4px;
-  background: linear-gradient(135deg, #6c5ce7, #4285f4);
+  background: var(--grad-primary);
   border: none;
   border-radius: var(--radius-md);
   height: 44px;

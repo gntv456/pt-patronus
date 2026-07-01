@@ -5,6 +5,10 @@
 /* ───────────────────────────────────────────────────────────
    PTPatronus 液态玻璃（Liquid Glass）设计系统
    借鉴参考仪表盘 + iOS 26 液态玻璃：通透、大圆角、柔和阴影、渐变背景
+
+   Token 阶梯（间距 / 字号 / 圆角）供全站复用，避免每页 scoped CSS 里
+   重新发明轮子。新增页面优先使用 var(--sp-*) / var(--fs-*) / var(--radius-*)
+   及 .pt-btn / .pt-chip / .pt-badge 原子组件类。
    ─────────────────────────────────────────────────────────── */
 
 :root {
@@ -14,6 +18,11 @@
   --pt-success: #2ecc71;
   --pt-danger: #e74c3c;
   --pt-warn: #f39c12;
+
+  /* 渐变（hero / 主操作按钮 / 品牌强调） */
+  --grad-primary: linear-gradient(135deg, #6c5ce7, #4285f4);
+  --grad-danger: linear-gradient(135deg, #f39c12, #e74c3c);
+  --grad-success: linear-gradient(135deg, #11998e, #38ef7d);
 
   /* 玻璃面（明色） */
   --glass-bg: rgba(255, 255, 255, 0.55);
@@ -25,11 +34,42 @@
   /* 文本 */
   --text-strong: #1f2937;
   --text-muted: #6b7280;
+  --text-disabled: #9ca3af;
 
-  /* 圆角 / 模糊 */
-  --radius-lg: 20px;
-  --radius-md: 14px;
+  /* 语义面 / 分割线 / hover 底（统一各页散落的「淡紫底」「灰分割线」） */
+  --surface-hover: rgba(108, 92, 231, 0.12);
+  --surface-muted: rgba(0, 0, 0, 0.04);
+  --divider: rgba(0, 0, 0, 0.08);
+
+  /* 圆角阶梯（保留 sm/md/lg，补 xs / xl / pill） */
+  --radius-xs: 6px;
   --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+
+  /* 间距阶梯（4 倍数网格） */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  /* 字号阶梯 */
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-body: 13px;
+  --fs-md: 14px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --fs-title: 22px;
+  --fs-hero: 28px;
+
+  /* 模糊 */
   --blur: 20px;
 }
 
@@ -41,6 +81,10 @@
   --glass-hover-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   --text-strong: #e5e7eb;
   --text-muted: #9ca3af;
+  --text-disabled: #6b7280;
+  --surface-hover: rgba(255, 255, 255, 0.10);
+  --surface-muted: rgba(255, 255, 255, 0.05);
+  --divider: rgba(255, 255, 255, 0.08);
 }
 
 html,
@@ -122,7 +166,7 @@ body {
 
 /* 指标卡数值 */
 .metric-value {
-  font-size: 28px;
+  font-size: var(--fs-hero);
   font-weight: 700;
   letter-spacing: -0.5px;
 }
@@ -136,3 +180,95 @@ body {
 :root.dark .el-select .el-input__wrapper {
   background: rgba(30, 32, 44, 0.6);
 }
+
+/* ───────────────────────────────────────────────────────────
+   原子组件类：统一全站按钮 / 胶囊标签 / 徽标
+   新页面优先用这些，消灭各模块 scoped CSS 里手写的 30+ 种按钮与胶囊。
+   ─────────────────────────────────────────────────────────── */
+
+/* 按钮：基础 + primary / ghost / danger / success 变体 */
+.pt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.pt-btn:active {
+  transform: translateY(1px);
+}
+.pt-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.pt-btn--primary {
+  background: var(--grad-primary);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(108, 92, 231, 0.3);
+}
+.pt-btn--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 18px rgba(108, 92, 231, 0.42);
+}
+.pt-btn--ghost {
+  background: var(--surface-hover);
+  color: var(--pt-primary);
+}
+.pt-btn--ghost:hover:not(:disabled) {
+  background: rgba(108, 92, 231, 0.2);
+}
+.pt-btn--danger {
+  background: var(--pt-danger);
+  color: #fff;
+}
+.pt-btn--danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.pt-btn--success {
+  background: var(--pt-success);
+  color: #fff;
+}
+
+/* 胶囊标签：统一 chip / tag 尺寸与圆角 */
+.pt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  background: var(--surface-hover);
+  color: var(--pt-primary);
+  white-space: nowrap;
+}
+/* 状态色变体：覆盖各页散落的 .chip.on/.off/.auto 等状态标签 */
+.pt-chip--success { background: rgba(46, 204, 113, 0.15); color: var(--pt-success); }
+.pt-chip--danger { background: rgba(231, 76, 60, 0.15); color: var(--pt-danger); }
+.pt-chip--warn { background: rgba(243, 156, 18, 0.15); color: var(--pt-warn); }
+.pt-chip--info { background: rgba(66, 133, 244, 0.15); color: var(--pt-primary-2); }
+.pt-chip--muted { background: var(--surface-muted); color: var(--text-muted); }
+
+/* 徽标：紧凑强色块，用于状态标记 */
+.pt-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  color: #fff;
+}
+.pt-badge--primary { background: var(--pt-primary); }
+.pt-badge--success { background: var(--pt-success); }
+.pt-badge--danger { background: var(--pt-danger); }
+.pt-badge--warn { background: var(--pt-warn); }

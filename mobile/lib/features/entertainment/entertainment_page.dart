@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -16,6 +17,9 @@ import 'novahd_lucky_view.dart';
 import 'spinner_game_view.dart';
 import 'bet_game_view.dart';
 import 'blackjack_game_view.dart';
+import 'panda_flip_view.dart';
+import 'bigsmall_view.dart';
+import 'event_bet_view.dart';
 
 // 娱乐页：选站点 → 选玩法 → 该玩法的富 UI（按 gameKey 分发）。
 class EntertainmentPage extends StatefulWidget {
@@ -87,6 +91,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(children: [
+                const HomeMenuButton(),
                 const Text('娱乐', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 _siteDropdown(),
@@ -120,7 +125,18 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
       final g = _games.firstWhere((x) => x.id == _gameId, orElse: () => Game(id: _gameId!, name: ''));
       return SpinnerGameView(siteId: _siteId!, game: _gameId!, name: g.name);
     }
-    const betIds = ['hxpt_bigsmall', 'cbg_sicbo', 'crab_unionlotto', 'panda_flip', 'ourbits_bet', 'ubits_redpacket'];
+    if (_gameId == 'panda_flip') {
+      return PandaFlipView(siteId: _siteId!);
+    }
+    // 猜大小（好学 hxpt_bigsmall + 熊猫 panda_bigsmall）走富 UI
+    if (_gameId == 'hxpt_bigsmall' || _gameId == 'panda_bigsmall') {
+      final g = _games.firstWhere((x) => x.id == _gameId, orElse: () => Game(id: _gameId!, name: '猜大小'));
+      return BigSmallView(siteId: _siteId!, game: _gameId!, name: g.name);
+    }
+    if (_gameId == 'ourbits_bet') {
+      return EventBetView(siteId: _siteId!);
+    }
+    const betIds = ['cbg_sicbo', 'crab_unionlotto', 'ubits_redpacket'];
     if (_gameId != null && betIds.contains(_gameId)) {
       final g = _games.firstWhere((x) => x.id == _gameId, orElse: () => Game(id: _gameId!, name: ''));
       return BetGameView(siteId: _siteId!, game: _gameId!, name: g.name);

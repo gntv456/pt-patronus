@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { medalWallApi, type Medal } from '@/api/medal-wall'
+import EmptyState from '@/components/EmptyState.vue'
 
 const medals = ref<Medal[]>([])
 const loading = ref(false)
@@ -135,10 +136,12 @@ onMounted(() => load())
         <div v-if="m.error" class="m-err">{{ m.error }}</div>
       </div>
     </div>
-    <div v-if="!medals.length && !loading" class="empty glass text-muted">
-      暂无勋章数据
-      <div class="empty-hint">NexusPHP 系站点默认自动抓取（无需手动开启）；馒头等平台无勋章页。<br />若你的站点有勋章却显示为空，可能是站点未登录，或该站勋章页结构待校准。</div>
-    </div>
+    <EmptyState
+      v-if="!medals.length && !loading"
+      icon="🎖️"
+      title="暂无勋章数据"
+      description="NexusPHP 系站点默认自动抓取（无需手动开启）；馒头等平台无勋章页。若你的站点有勋章却显示为空，可能是站点未登录，或该站勋章页结构待校准"
+    />
 
     <el-drawer v-model="drawer" :title="detail?.name || '勋章详情'" size="380px" direction="rtl">
       <template v-if="detail">
@@ -209,10 +212,10 @@ onMounted(() => load())
 .m-meta { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 12px; }
 .m-meta .price { color: var(--pt-warn,#f59e0b); font-weight: 600; }
 .price-orig { text-decoration: line-through; opacity: 0.5; font-weight: 400; }
-.price-premium { color: var(--pt-danger,#f56c6c); font-weight: 700; }
+.price-premium { color: var(--pt-danger); font-weight: 700; }
 .m-meta .bonus { color: var(--pt-success,#2ecc71); }
 .m-site { font-size: 11px; }
-.m-err { font-size: 11px; color: var(--pt-danger,#f56c6c); }
+.m-err { font-size: 11px; color: var(--pt-danger); }
 .empty { padding: 40px; text-align: center; }
 .empty-hint { margin-top: 8px; font-size: 12px; opacity: 0.7; line-height: 1.6; }
 .detail-img { width: 120px; height: 120px; margin: 0 auto 12px; border-radius: 50%; overflow: hidden; background: rgba(108,92,231,0.1); display: flex; align-items: center; justify-content: center; }

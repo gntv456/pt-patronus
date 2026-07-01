@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/freeleech.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -71,6 +72,7 @@ class _FreeleechPageState extends State<FreeleechPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
+          leading: const HomeMenuButton(),
           title: const Text('站免'),
           backgroundColor: Colors.transparent,
           elevation: 0,

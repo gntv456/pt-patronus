@@ -12,6 +12,20 @@ class ApiClient {
 
   static const _kToken = 'token';
   static const _kUser = 'user';
+  static const _kBaseUrl = 'base_url';
+
+  /// 运行时配的后端地址（SharedPreferences 持久化），优先于编译期 [Config.baseUrl]。
+  /// 分发场景：每个用户后端不同，APP 首次启动让用户填，存本地。
+  String? _runtimeBaseUrl;
+
+  /// 实际使用的后端地址：运行时配置 > 编译期 Config.baseUrl。
+  String get baseUrl => (_runtimeBaseUrl != null && _runtimeBaseUrl!.isNotEmpty)
+      ? _runtimeBaseUrl!
+      : Config.baseUrl;
+
+  /// 是否已配置过后端地址（首次启动判断：false → 引导到服务器配置页）。
+  bool get hasCustomBaseUrl =>
+      _runtimeBaseUrl != null && _runtimeBaseUrl!.isNotEmpty;
 
   /// 登录后写入；后续请求自动带 Authorization 头。
   String? token;
@@ -30,6 +44,24 @@ class ApiClient {
       } catch (_) {
         user = null;
       }
+    }
+  }
+
+  /// 启动时从持久存储恢复运行时后端地址。
+  Future<void> loadBaseUrl() async {
+    final p = await SharedPreferences.getInstance();
+    _runtimeBaseUrl = p.getString(_kBaseUrl);
+  }
+
+  /// 设置并持久化后端地址（空串/null = 恢复编译期默认 Config.baseUrl）。
+  Future<void> setBaseUrl(String? url) async {
+    final v = (url != null && url.isNotEmpty) ? url : null;
+    _runtimeBaseUrl = v;
+    final p = await SharedPreferences.getInstance();
+    if (v == null) {
+      await p.remove(_kBaseUrl);
+    } else {
+      await p.setString(_kBaseUrl, v);
     }
   }
 
@@ -74,7 +106,7 @@ class ApiClient {
         if (token != null) 'Authorization': 'Bearer $token',
       };
 
-  Uri _u(String path) => Uri.parse('${Config.baseUrl}/api/v1$path');
+  Uri _u(String path) => Uri.parse('$baseUrl/api/v1$path');
 
   /// 仅含 Authorization 的请求头（供 Image.network 取反代图片用）。
   Map<String, String> get authHeaders => {

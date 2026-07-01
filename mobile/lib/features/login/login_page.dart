@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import '../home/home_shell.dart';
+import 'server_config_page.dart';
 
 /// 登录页：双模 —— 好学账号（验证码两步 + 2FA）/ Cookie 登录。
 class LoginPage extends StatefulWidget {
@@ -191,6 +192,21 @@ class _LoginPageState extends State<LoginPage> {
                         child: Text(_err!,
                             style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
                       ),
+                    const SizedBox(height: 10),
+                    // 切换后端地址（分发场景：每个用户后端不同）
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ServerConfigPage()),
+                        ),
+                        icon: const Icon(Icons.dns_outlined, size: 16),
+                        label: Text(
+                          '后端：${ApiClient().baseUrl}',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

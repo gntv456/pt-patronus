@@ -6,7 +6,6 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../api/downloader.dart';
 import '../api/notice.dart';
 import '../core/api_client.dart';
-import '../core/config.dart';
 
 // 单下载器的实时种子快照（对齐后端 ws.TorrentSnapshot）。
 class TorrentSnapshot {
@@ -113,7 +112,7 @@ class WsClient {
       return;
     }
     if (ticket.isEmpty || _disposed) return;
-    final base = Config.baseUrl.replaceFirst(RegExp(r'^http'), 'ws');
+    final base = ApiClient().baseUrl.replaceFirst(RegExp(r'^http'), 'ws');
     final uri = Uri.parse('$base/api/v1/ws?ticket=${Uri.encodeQueryComponent(ticket)}');
     try {
       _ch = WebSocketChannel.connect(uri);

@@ -263,3 +263,11 @@ MTeam/unit3d/gazelle 的签到 / H&R；消息回复 CSRF 字段名逐站配置�
 - 死路由保留：`POST /sites/inspect`（README 推荐的校准工具）、`POST /monitors/:id/accept-host-key`（SSH host-key 确认流程）等。
 - 通知通道标签 Bot Token / AppID 等不汉化（PT 圈约定俗成术语，汉化反增歧义）。
 - 复测确认：2026/06/30 遗留的「`/system/info` 公开暴露版本号」**已不再成立**——现未登录仅返 `{"name":"PTPatronus"}`，version 需登录（`system.go` 设计如此，安全考虑）。
+
+## Flutter 编辑 UI 补齐（2026/07/02 续）
+
+补上「客户端产品测试」中列为 backlog 的 Flutter 下载器/站点编辑 UI（上轮只补了 api 层契约）。`flutter analyze` 全绿。
+
+- **下载器（downloaders_page.dart）**：标题栏「+」添加；列表项 PopupMenu（编辑 / 测试连接 / 删除）；`_DownloaderFormSheet` 表单（name/type/url/username/password/is_default，编辑态密码留空=不修改）。`Downloader` 模型补 `username` 字段（原 fromJson 漏解析）。
+- **站点（sites_page.dart）**：列表项 PopupMenu（编辑 / 删除）；`_showEditDialog`（name / base_url / api_key[仅馒头] / is_active，definition/platform 不可改）；`_deleteSite` 二次确认。
+- 站点编辑为窄范围：cookie/username/password 不进表单——Flutter 端 cookie 一贯走 WebView 登录，手填不现实；`SiteApi.update` 现有签名正好覆盖。

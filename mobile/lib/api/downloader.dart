@@ -7,12 +7,14 @@ class Downloader {
   final String name;
   final String type;
   final String url;
+  final String username;
   final bool isDefault;
   Downloader({
     required this.id,
     required this.name,
     required this.type,
     required this.url,
+    required this.username,
     required this.isDefault,
   });
   factory Downloader.fromJson(Map<String, dynamic> j) => Downloader(
@@ -20,6 +22,7 @@ class Downloader {
         name: j['name'] as String? ?? '',
         type: j['type'] as String? ?? '',
         url: j['url'] as String? ?? '',
+        username: j['username'] as String? ?? '',
         isDefault: j['is_default'] as bool? ?? false,
       );
 }

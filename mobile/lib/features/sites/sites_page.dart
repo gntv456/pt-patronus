@@ -229,6 +229,113 @@ class _SitesPageState extends State<SitesPage> {
     ));
   }
 
+  // 编辑站点（窄范围）：name / base_url / api_key(馒头,留空不修改) / is_active。
+  // cookie/username/password 不在此改——Flutter 端 cookie 走 WebView 登录，手填不现实。
+  // definition/platform 不可改（换类型应删除重建）。
+  Future<void> _showEditDialog(Site s) async {
+    final nameCtrl = TextEditingController(text: s.name);
+    final urlCtrl = TextEditingController(text: s.baseUrl);
+    final keyCtrl = TextEditingController();
+    final isMteam = s.platform == 'mteam';
+    bool active = s.isActive;
+
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (dctx) => StatefulBuilder(
+        builder: (_, setSt) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(dctx).viewInsets.bottom),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('编辑站点', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: '名称')),
+                const SizedBox(height: 12),
+                TextField(controller: urlCtrl, decoration: const InputDecoration(labelText: '地址')),
+                if (isMteam) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: keyCtrl,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'API Key', hintText: '留空不修改'),
+                  ),
+                ],
+                SwitchListTile(
+                  value: active,
+                  onChanged: (v) => setSt(() => active = v),
+                  title: const Text('启用'),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(onPressed: () => Navigator.pop(dctx, false), child: const Text('取消')),
+                    const SizedBox(width: 8),
+                    FilledButton(onPressed: () => Navigator.pop(dctx, true), child: const Text('保存')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (ok != true) return;
+    final name = nameCtrl.text.trim();
+    final url = urlCtrl.text.trim();
+    if (name.isEmpty || url.isEmpty) {
+      _toast('名称与地址必填');
+      return;
+    }
+    try {
+      await SiteApi().update(
+        s.id,
+        name: name,
+        baseUrl: url,
+        apiKey: (isMteam && keyCtrl.text.trim().isNotEmpty) ? keyCtrl.text.trim() : null,
+        isActive: active,
+      );
+      _toast('已更新');
+      await _load();
+    } catch (e) {
+      _toast('失败：$e');
+    }
+  }
+
+  Future<void> _deleteSite(Site s) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除站点'),
+        content: Text('确认删除站点「${s.name}」？相关配置将被移除。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await SiteApi().remove(s.id);
+      _toast('已删除');
+      await _load();
+    } catch (e) {
+      _toast('失败：$e');
+    }
+  }
+
   // 馒头走 x-api-key，无 cookie 登录概念；列表按钮改为连接测试以验证令牌。
   Future<void> _testConnection(Site s) async {
     try {
@@ -460,6 +567,18 @@ class _SitesPageState extends State<SitesPage> {
                                     label: const Text('登录'),
                                     onPressed: () => _login(s),
                                   ),
+                                PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert),
+                                  tooltip: '更多',
+                                  onSelected: (v) {
+                                    if (v == 'edit') _showEditDialog(s);
+                                    if (v == 'delete') _deleteSite(s);
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(value: 'edit', child: Text('编辑')),
+                                    PopupMenuItem(value: 'delete', child: Text('删除')),
+                                  ],
+                                ),
                               ],
                             ),
                           ),

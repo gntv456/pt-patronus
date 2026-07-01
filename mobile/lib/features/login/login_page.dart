@@ -6,6 +6,7 @@ import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import '../home/home_shell.dart';
 import 'server_config_page.dart';
+import 'hxpt_web_login_page.dart';
 
 /// 登录页：双模 —— 好学账号（验证码两步 + 2FA）/ Cookie 登录。
 class LoginPage extends StatefulWidget {
@@ -285,6 +286,22 @@ class _LoginPageState extends State<LoginPage> {
       const Text(
           '最稳路径，覆盖开了二级验证 / 挑战响应的好学账号',
           style: TextStyle(fontSize: 12, color: Colors.grey)),
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () async {
+            // APP 内浏览器登录好学 → 自动取 cookie 回填，免手动 F12（手机端友好）
+            final cookie = await Navigator.of(context).push<String>(
+              MaterialPageRoute(builder: (_) => const HxptWebLoginPage()),
+            );
+            if (cookie != null && cookie.isNotEmpty && mounted) {
+              setState(() => _cookie.text = cookie);
+            }
+          },
+          icon: const Icon(Icons.open_in_browser, size: 18),
+          label: const Text('用浏览器登录好学（自动取 cookie）'),
+        ),
+      ),
       const SizedBox(height: 14),
       FilledButton(
         onPressed: _loading ? null : _cookieLogin,

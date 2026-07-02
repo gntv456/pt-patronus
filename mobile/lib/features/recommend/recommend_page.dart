@@ -3,7 +3,9 @@ import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/recommend.dart';
 import 'package:ptpatronus/api/discover.dart';
 import 'package:ptpatronus/api/search.dart';
+import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
 import 'package:ptpatronus/widgets/find_on_sites_sheet.dart';
 import '../media/media_detail_page.dart';
@@ -31,6 +33,11 @@ class _RecommendPageState extends State<RecommendPage> {
   String? _error;
   String _source = '';
   String _category = 'movie';
+  // 信息流分页（搜索态不分页，与 Web Recommend loadMore 一致）。
+  int _page = 1;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  static const _pageSize = 20;
 
   static const _sources = [
     ('', '全部'),
@@ -66,13 +73,35 @@ class _RecommendPageState extends State<RecommendPage> {
       _loading = true;
       _error = null;
       _searchMode = false; // 回到信息流
+      _page = 1;
+      _hasMore = true;
     });
     try {
-      _items = await _api.feed(source: _source, category: _category, refresh: refresh);
+      _items = await _api.feed(source: _source, category: _category, page: 1, refresh: refresh);
+      if (_items.length < _pageSize) _hasMore = false;
     } catch (e) {
       _error = e.toString();
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // 加载更多：追加下一页；返回不足一页视为到底。
+  Future<void> _loadMore() async {
+    if (_searchMode || _loadingMore || !_hasMore) return;
+    setState(() => _loadingMore = true);
+    try {
+      final next = await _api.feed(source: _source, category: _category, page: _page + 1);
+      if (!mounted) return;
+      setState(() {
+        _items = [..._items, ...next];
+        _page += 1;
+        if (next.length < _pageSize) _hasMore = false;
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
     }
   }
 
@@ -180,29 +209,62 @@ class _RecommendPageState extends State<RecommendPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return ListView(children: [
-        const SizedBox(height: 120),
-        Center(child: Text(_error!, style: const TextStyle(color: Colors.redAccent))),
-      ]);
+      return PTEmptyState(text: _error!, onRetry: _refresh);
     }
     final list = _current;
     if (list.isEmpty) {
-      return ListView(
-        children: [
-          const SizedBox(height: 120),
-          Center(
-            child: Text(
-              _searchMode ? '无搜索结果' : '暂无推荐，下拉刷新或切换源/分类',
-              style: const TextStyle(color: Colors.grey),
-            ),
-          ),
-        ],
+      return RefreshIndicator(
+        onRefresh: _refresh,
+        child: PTEmptyState(icon: Icons.recommend_outlined, text: _searchMode ? '无搜索结果' : '暂无推荐', description: _searchMode ? null : '下拉刷新或切换源/分类'),
       );
     }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-      itemCount: list.length,
-      itemBuilder: (_, i) => _mediaCard(list[i]),
+    // 多列网格 + 懒加载：SliverList 按行（每行 cols 个 Expanded 卡片）懒构建，
+    // 避免 Wrap 把累积多页内容一次性 eager 渲染（100+ 卡片 + Image.network 卡顿/内存膨胀——审计 P1）。
+    // 卡片高度随内容变（overview 有无），故不用固定宽高比的 SliverGrid（会裁剪），改按行 Row 自适应高度。
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final cols = ptAutoColumns(c.maxWidth, 300, minColumns: 1);
+          final rowCount = (list.length / cols).ceil();
+          return CustomScrollView(
+            slivers: [
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (ctx, rowIdx) {
+                    final start = rowIdx * cols;
+                    final end = start + cols > list.length ? list.length : start + cols;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          for (int i = start; i < end; i++)
+                            Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: _mediaCard(list[i]))),
+                          for (int i = end - start; i < cols; i++)
+                            const Expanded(child: SizedBox()), // 末行不足补空占位，保持等宽
+                        ],
+                      ),
+                    );
+                  },
+                  childCount: rowCount,
+                ),
+              ),
+              if (!_searchMode)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: _loadingMore
+                        ? const Center(child: Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))))
+                        : _hasMore
+                            ? Center(child: FilledButton.tonal(onPressed: _loadMore, child: const Text('加载更多')))
+                            : const Center(child: Padding(padding: EdgeInsets.all(8), child: Text('没有更多了', style: TextStyle(color: Colors.grey, fontSize: 12)))),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 

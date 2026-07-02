@@ -26,6 +26,12 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   final HomeController _controller = HomeController();
   StreamSubscription<Notice>? _noticeSub;
+  // 各 tab 的页面 GlobalKey：窄↔宽屏切换时 page 树位置变（body ↔ Row 内 Expanded），
+  // 挂 key 让 Element 复用、State 保活（否则 bigsmall 下注中等状态因重建丢失——审计 P2）。
+  // key 按 index 区分，切 tab 才换 key→重建；同 tab 宽窄切换 key 不变→保活。
+  final Map<int, GlobalKey> _pageKeys = {};
+  GlobalKey _pageKey(int i) =>
+      _pageKeys.putIfAbsent(i, () => GlobalKey(debugLabel: 'home-page-$i'));
 
   @override
   void initState() {
@@ -64,7 +70,10 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           listenable: _controller,
           builder: (context, _) {
             final wide = MediaQuery.widthOf(context) >= kHomeWideBreakpoint;
-            final page = navItems[_controller.index].builder(context);
+            final page = KeyedSubtree(
+              key: _pageKey(_controller.index),
+              child: navItems[_controller.index].builder(context),
+            );
             // 窄屏使用最大宽度限制的内容卡片化体验（页面自带 Scaffold/AppBar）。
             final Widget body;
             if (wide) {

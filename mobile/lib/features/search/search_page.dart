@@ -6,18 +6,22 @@ import 'package:ptpatronus/api/media.dart';
 import 'package:ptpatronus/api/search.dart';
 import 'package:ptpatronus/api/seedbrowse.dart';
 import 'package:ptpatronus/api/downloader.dart';
+import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
 import '../media/media_detail_page.dart';
 import '../media/media_settings_page.dart';
 
 // 统一搜索页（对齐 Web frontend/src/views/Search.vue）：[种子 | 影视] 分段切换，共享关键词。
-//  - 种子：跨启用站点聚合搜索 + 推送下载器（原独立 Search）。
-//  - 影视：TMDB/豆瓣/Bangumi 元数据 + 海报卡片（原独立 Media，已从导航折叠进此 Tab）。
+//  - 种子：跨启用站点聚合搜索。宽屏=统一可排序表格（站点/标题/大小/做种/吸血/Free/操作），
+//    窄屏=带站点名的卡片列表；含失败站点折叠栏。推送下载器 + 详情浮层。
+//  - 影视：TMDB/豆瓣/Bangumi 元数据 + 海报网格（PTAutoGrid 流式重排）。
 enum SearchMode { torrent, media }
 
+enum _Sort { none, seeders, leechers }
+
 class SearchPage extends StatefulWidget {
-  // 跨页跳转预填关键词（如影视详情页「搜索资源」），非空时进入即自动搜。
   final String? initialKeyword;
   const SearchPage({super.key, this.initialKeyword});
   @override
@@ -29,19 +33,19 @@ class _SearchPageState extends State<SearchPage> {
   late final _ctrl = TextEditingController(text: widget.initialKeyword ?? '');
   final _yearCtrl = TextEditingController();
 
-  // 种子结果
   List<SiteSearchResult> _results = [];
-  // 影视结果
   List<MediaInfo> _mediaResults = [];
-
   bool _loading = false;
   bool _searched = false;
-  String _category = ''; // ''综合 / movie / tv / music
+  String? _error; // 搜索失败文案（非空时列表区显示可重试错误态——审计 P1）
+  String _category = '';
+
+  _Sort _sort = _Sort.none;
+  bool _showFails = false;
 
   @override
   void initState() {
     super.initState();
-    // 预填关键词 → 首帧后自动搜索（详情页「搜索资源」回跳）。
     if ((widget.initialKeyword ?? '').isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _search());
     }
@@ -50,7 +54,10 @@ class _SearchPageState extends State<SearchPage> {
   Future<void> _search() async {
     final kw = _ctrl.text.trim();
     if (kw.isEmpty) return;
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       if (_mode == SearchMode.torrent) {
         _results = await SearchApi().search(kw, category: _category);
@@ -59,8 +66,12 @@ class _SearchPageState extends State<SearchPage> {
         _mediaResults = await MediaApi().search(kw, year);
       }
       _searched = true;
-    } catch (_) {
-      _toast(_mode == SearchMode.torrent ? '搜索失败' : '影视搜索失败（请先在「媒体源设置」配置 TMDB/豆瓣）');
+    } catch (e) {
+      // 失败也置 _searched + _error：让列表区显示可重试错误态，而非停在初始引导（审计 P1）
+      _error = _mode == SearchMode.torrent
+          ? '搜索失败：$e'
+          : '影视搜索失败（请先在「媒体源设置」配置 TMDB/豆瓣）';
+      setState(() => _searched = true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -73,6 +84,7 @@ class _SearchPageState extends State<SearchPage> {
       _results = [];
       _mediaResults = [];
       _searched = false;
+      _error = null;
     });
   }
 
@@ -81,7 +93,27 @@ class _SearchPageState extends State<SearchPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
-  // 下载流程：downloadUrl 空 → 提示；否则弹下载器选择 → 推送。
+  // 展平所有站点的种子为统一行（带站点名），按当前排序键排序。
+  List<_TR> get _rows {
+    final r = <_TR>[];
+    for (final s in _results) {
+      for (final t in s.torrents) {
+        r.add(_TR(t, s.siteId, s.siteName));
+      }
+    }
+    switch (_sort) {
+      case _Sort.seeders:
+        r.sort((a, b) => b.t.seeders.compareTo(a.t.seeders));
+      case _Sort.leechers:
+        r.sort((a, b) => b.t.leechers.compareTo(a.t.leechers));
+      case _Sort.none:
+        break;
+    }
+    return r;
+  }
+
+  List<SiteSearchResult> get _failed => _results.where((s) => s.error.isNotEmpty).toList();
+
   Future<void> _download(SearchTorrent t) async {
     if (t.downloadUrl.isEmpty) {
       _toast('该站点暂不支持直接下载（如馒头，需后续 genDlToken）');
@@ -99,25 +131,27 @@ class _SearchPageState extends State<SearchPage> {
       return;
     }
     if (!mounted) return;
-    final picked = await showModalBottomSheet<Downloader>(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 4),
-              child: Text('选择下载器', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            ),
-            ...ds.map((d) => ListTile(
-                  leading: const Icon(Icons.download),
-                  title: Text(d.name),
-                  subtitle: Text(d.url, style: const TextStyle(fontSize: 12)),
-                  onTap: () => Navigator.pop(context, d),
-                )),
-          ],
-        ),
+    final picked = await showAdaptiveSheet<Downloader>(
+      context,
+      title: '选择下载器',
+      wideWidth: 480,
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text('${t.title}${t.size.isNotEmpty ? " · ${t.size}" : ""}',
+                maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ),
+          ...ds.map((d) => ListTile(
+                leading: const Icon(Icons.download),
+                title: Text(d.name),
+                subtitle: Text(d.url, style: const TextStyle(fontSize: 12)),
+                onTap: () => Navigator.pop(ctx, d),
+              )),
+        ],
       ),
     );
     if (picked == null) return;
@@ -143,7 +177,6 @@ class _SearchPageState extends State<SearchPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 顶栏：☰ + 种子/影视 分段 + （影视模式）媒体源设置
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
               child: Row(children: [
@@ -170,7 +203,6 @@ class _SearchPageState extends State<SearchPage> {
                 ],
               ]),
             ),
-            // 搜索栏
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Row(children: [
@@ -215,10 +247,7 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _loading ? null : _search,
-                  child: const Text('搜索'),
-                ),
+                FilledButton(onPressed: _loading ? null : _search, child: const Text('搜索')),
               ]),
             ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),
@@ -231,114 +260,179 @@ class _SearchPageState extends State<SearchPage> {
 
   // —— 种子结果区 ——
   Widget get _torrentArea {
-    // 展平为「段头 + 种子」混排列表（种子带所属站点，供详情抽屉取 detail）
-    final items = <_Item>[];
-    for (final s in _results) {
-      items.add(_Item.header(s));
-      for (final t in s.torrents) {
-        items.add(_Item.torrent(t, s.siteId, s.siteName));
+    final rows = _rows;
+    final failed = _failed;
+    if (rows.isEmpty && failed.isEmpty) {
+      if (_error != null) {
+        return PTEmptyState(icon: Icons.error_outline, text: _error!, onRetry: _search);
       }
+      return _searched
+          ? PTEmptyState(icon: Icons.search_off, text: '无结果', description: '请先在「站点」添加并登录站点')
+          : PTEmptyState(icon: Icons.search, text: '输入关键词跨站搜索');
     }
-    if (items.isEmpty) return _emptyTorrent;
-    return RefreshIndicator(
-      onRefresh: _search,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-        itemCount: items.length,
-        itemBuilder: (_, i) {
-          final it = items[i];
-          if (it.isHeader) return _sectionHeader(it.site!);
-          return _torrentRow(it.torrent!, it.siteId, it.siteName);
-        },
-      ),
-    );
-  }
-
-  Widget get _emptyTorrent {
-    final msg = _searched ? '无结果，请先在「站点」添加并登录站点' : '输入关键词跨站搜索';
-    return Center(child: Text(msg, style: const TextStyle(color: Colors.grey)));
-  }
-
-  Widget _sectionHeader(SiteSearchResult s) {
-    final hasErr = s.error.isNotEmpty;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 14, 4, 6),
-      child: Row(children: [
-        Text(s.siteName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-        const SizedBox(width: 8),
-        if (hasErr)
-          Expanded(child: Text(s.error, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.redAccent, fontSize: 12)))
-        else
-          Text('${s.torrents.length} 条', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-      ]),
-    );
-  }
-
-  Widget _torrentRow(SearchTorrent t, int siteId, String siteName) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GlassCard(
-        // 点卡片 → 打开详情抽屉（对齐 Web Search.vue「详情」；主操作先看再下）
-        onTap: () => _openDetail(t, siteId, siteName),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (failed.isNotEmpty) _failBar(failed),
+        if (isWideScreen(context) && rows.isNotEmpty) _sortControl(),
+        Expanded(
+          child: PTAdaptiveTable<_TR>(
+            items: rows,
+            columns: [
+              PTColumn<_TR>(label: '站点', flex: 1, cell: (_, tr) => Text(tr.site, style: const TextStyle(fontSize: 12))),
+              PTColumn<_TR>(
+                label: '标题',
+                flex: 4,
+                cell: (_, tr) => InkWell(
+                  onTap: () => _openDetail(tr),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(tr.t.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      if (tr.t.subtitle.isNotEmpty)
+                        Text(tr.t.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+              PTColumn<_TR>(label: '大小', flex: 1, numeric: true, cell: (_, tr) => Text(tr.t.size, style: const TextStyle(fontSize: 12))),
+              PTColumn<_TR>(label: '做种', flex: 1, numeric: true, cell: (_, tr) => Text('${tr.t.seeders}', style: TextStyle(fontSize: 12, color: tr.t.seeders > 0 ? PTColors.success : Colors.grey))),
+              PTColumn<_TR>(label: '吸血', flex: 1, numeric: true, cell: (_, tr) => Text('${tr.t.leechers}', style: TextStyle(fontSize: 12, color: tr.t.leechers > 0 ? PTColors.warn : Colors.grey))),
+              PTColumn<_TR>(
+                label: 'Free',
+                flex: 1,
+                cell: (_, tr) => tr.t.free
+                    ? Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2), decoration: BoxDecoration(color: PTColors.success.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(6)), child: Text('FREE', style: TextStyle(color: PTColors.success, fontSize: 11, fontWeight: FontWeight.w700)))
+                    : const Text('—', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ),
+              PTColumn<_TR>(label: '操作', flex: 1, cell: (_, tr) => IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(tr.t.downloadUrl.isEmpty ? Icons.download_outlined : Icons.download, color: PTColors.primary, size: 20),
+                tooltip: '推送下载',
+                onPressed: () => _download(tr.t),
+              )),
+            ],
+            narrowCard: (_, tr) => GlassCard(
+              onTap: () => _openDetail(tr),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(t.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                  if (t.subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(t.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  ],
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      if (t.size.isNotEmpty) _chip(t.size, Colors.blueGrey),
-                      if (t.seeders > 0) _chip('↑${t.seeders}', Colors.green),
-                      if (t.leechers > 0) _chip('↓${t.leechers}', Colors.orange),
-                      if (t.free) _chip('FREE', PTColors.success),
-                    ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(tr.t.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                        if (tr.t.subtitle.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(tr.t.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        ],
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            _chip(tr.site, PTColors.primary),
+                            if (tr.t.size.isNotEmpty) _chip(tr.t.size, Colors.blueGrey),
+                            if (tr.t.seeders > 0) _chip('↑${tr.t.seeders}', Colors.green),
+                            if (tr.t.leechers > 0) _chip('↓${tr.t.leechers}', Colors.orange),
+                            if (tr.t.free) _chip('FREE', PTColors.success),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(tr.t.downloadUrl.isEmpty ? Icons.download_outlined : Icons.download, color: PTColors.primary),
+                    tooltip: '推送下载',
+                    onPressed: () => _download(tr.t),
                   ),
                 ],
               ),
             ),
-            // 快速推送下载（详情抽屉里也有下载按钮）
-            IconButton(
-              icon: Icon(
-                t.downloadUrl.isEmpty ? Icons.download_outlined : Icons.download,
-                color: PTColors.primary,
-              ),
-              tooltip: '推送下载',
-              onPressed: () => _download(t),
-            ),
-          ],
+            emptyText: '无结果',
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _failBar(List<SiteSearchResult> failed) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: GlassCard(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          InkWell(
+            onTap: () => setState(() => _showFails = !_showFails),
+            child: Row(children: [
+              Icon(Icons.warning_amber_rounded, color: PTColors.warn, size: 18),
+              const SizedBox(width: 6),
+              Text('${failed.length} 个站点搜索失败', style: TextStyle(color: PTColors.warn, fontWeight: FontWeight.w600, fontSize: 13)),
+              const Spacer(),
+              Icon(_showFails ? Icons.expand_less : Icons.expand_more, color: Colors.grey),
+            ]),
+          ),
+          if (_showFails)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Column(
+                children: failed
+                    .map((s) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text('${s.siteName}：', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                            Expanded(child: Text(s.error, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
+                          ]),
+                        ))
+                    .toList(),
+              ),
+            ),
+        ]),
       ),
     );
   }
 
-  // 打开种子详情抽屉（对齐 Web Search.vue openTorrentDetail）：抓 detail_url 解析简介/截图/MediaInfo/文件。
-  void _openDetail(SearchTorrent t, int siteId, String siteName) {
-    if (t.detailUrl.isEmpty) {
+  Widget _sortControl() {
+    Widget chip(_Sort k, String label) {
+      final on = _sort == k;
+      return Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: FilterChip(
+          label: Text(label),
+          selected: on,
+          onSelected: (_) => setState(() => _sort = on ? _Sort.none : k),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+      child: Row(children: [
+        const Text('排序', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(width: 8),
+        chip(_Sort.seeders, '做种↓'),
+        chip(_Sort.leechers, '吸血↓'),
+      ]),
+    );
+  }
+
+  void _openDetail(_TR tr) {
+    if (tr.t.detailUrl.isEmpty) {
       _toast('该种子无详情页');
       return;
     }
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _TorrentDetailSheet(
-        siteId: siteId,
-        siteName: siteName,
-        detailUrl: t.detailUrl,
-        torrent: t,
-        onDownload: () => _download(t),
+    showAdaptiveSheet(
+      context,
+      title: tr.t.title,
+      wideWidth: 820,
+      builder: (_) => _TorrentDetailContent(
+        siteId: tr.siteId,
+        siteName: tr.site,
+        detailUrl: tr.t.detailUrl,
+        torrent: tr.t,
+        onDownload: () => _download(tr.t),
       ),
     );
   }
@@ -346,10 +440,7 @@ class _SearchPageState extends State<SearchPage> {
   Widget _chip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
       child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
@@ -357,20 +448,15 @@ class _SearchPageState extends State<SearchPage> {
   // —— 影视结果区 ——
   Widget get _mediaArea {
     if (_mediaResults.isEmpty) {
-      return Center(
-        child: Text(_searched ? '无结果' : '输入关键字搜索影视元数据与海报',
-            style: const TextStyle(color: Colors.grey)),
+      return PTEmptyState(
+        icon: Icons.movie_outlined,
+        text: _searched ? '无结果' : '输入关键字搜索影视元数据与海报',
       );
     }
-    final wide = MediaQuery.of(context).size.width > 600;
-    return GridView.builder(
+    return PTAutoGrid(
+      minItemWidth: 170,
+      childAspectRatio: 0.54,
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: wide ? 3 : 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.54,
-      ),
       itemCount: _mediaResults.length,
       itemBuilder: (_, i) => _mediaCard(_mediaResults[i]),
     );
@@ -400,8 +486,7 @@ class _SearchPageState extends State<SearchPage> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-                        child: Text(_src(m.source),
-                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                        child: Text(_src(m.source), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ],
@@ -413,10 +498,7 @@ class _SearchPageState extends State<SearchPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(m.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                     const SizedBox(height: 4),
                     Row(children: [
                       _typeBadge(m.type),
@@ -426,8 +508,7 @@ class _SearchPageState extends State<SearchPage> {
                       ],
                       if (m.rating > 0) ...[
                         const SizedBox(width: 5),
-                        Text('⭐${m.rating.toStringAsFixed(1)}',
-                            style: const TextStyle(color: Colors.orange, fontSize: 11)),
+                        Text('⭐${m.rating.toStringAsFixed(1)}', style: const TextStyle(color: Colors.orange, fontSize: 11)),
                       ],
                     ]),
                   ],
@@ -444,46 +525,32 @@ class _SearchPageState extends State<SearchPage> {
     final label = const {'movie': '电影', 'tv': '剧集', 'music': '音乐'}[t] ?? t;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        gradient: const LinearGradient(colors: [PTColors.primary, PTColors.primary2]),
-      ),
-      child: Text(label,
-          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(5), gradient: const LinearGradient(colors: [PTColors.primary, PTColors.primary2])),
+      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 
-  String _src(String s) =>
-      const {'tmdb': 'TMDB', 'douban': '豆瓣', 'musicbrainz': 'MB'}[s] ?? s.toUpperCase();
+  String _src(String s) => const {'tmdb': 'TMDB', 'douban': '豆瓣', 'musicbrainz': 'MB'}[s] ?? s.toUpperCase();
 }
 
-// 列表项：站点段头或种子行（展平分组，便于单 ListView 渲染）。
-class _Item {
-  final SiteSearchResult? site;
-  final SearchTorrent? torrent;
-  final int siteId; // 种子项所属站点（详情抽屉取 detail 用）
-  final String siteName;
-  final bool isHeader;
-  _Item.header(this.site)
-      : torrent = null,
-        siteId = 0,
-        siteName = '',
-        isHeader = true;
-  _Item.torrent(this.torrent, this.siteId, this.siteName)
-      : site = null,
-        isHeader = false;
+/// 统一种子行（带站点名），供宽屏表格 / 窄屏卡片共用。
+class _TR {
+  final SearchTorrent t;
+  final int siteId;
+  final String site;
+  _TR(this.t, this.siteId, this.site);
 }
 
-/// 种子详情抽屉（对齐 Web Search.vue 的 el-drawer）：抓取 detail_url 解析后展示
-/// 海报/规格/截图/简介/MediaInfo/文件列表 + 下载/复制链接。简介是站点原始 HTML，展示前剥标签为纯文本。
-class _TorrentDetailSheet extends StatefulWidget {
+/// 种子详情浮层内容（对齐 Web Search.vue 的 el-drawer，宽屏对话框 / 窄屏底栏由 showAdaptiveSheet 套壳）。
+/// 抓取 detail_url 解析海报/规格/截图/简介/MediaInfo/文件列表 + 下载/复制链接。内容为纵向 Column，由外层滚动。
+class _TorrentDetailContent extends StatefulWidget {
   final int siteId;
   final String siteName;
   final String detailUrl;
-  final SearchTorrent torrent; // fetch 完成前先展示已知字段
+  final SearchTorrent torrent;
   final VoidCallback onDownload;
 
-  const _TorrentDetailSheet({
+  const _TorrentDetailContent({
     required this.siteId,
     required this.siteName,
     required this.detailUrl,
@@ -492,10 +559,10 @@ class _TorrentDetailSheet extends StatefulWidget {
   });
 
   @override
-  State<_TorrentDetailSheet> createState() => _TorrentDetailSheetState();
+  State<_TorrentDetailContent> createState() => _TorrentDetailContentState();
 }
 
-class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
+class _TorrentDetailContentState extends State<_TorrentDetailContent> {
   TorrentDetail? _detail;
   bool _loading = true;
   String? _err;
@@ -525,72 +592,22 @@ class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF1C1B29) : Colors.white;
-    final sub = isDark ? Colors.white70 : Colors.black54;
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.90,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(color: sub.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 8, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(widget.siteName, style: TextStyle(color: sub, fontSize: 12)),
-                      Text(_detail?.title ?? widget.torrent.title,
-                          maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  tooltip: '关闭',
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Expanded(child: _body),
-        ],
-      ),
-    );
-  }
-
-  Widget get _body {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+    }
     if (_err != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(_err!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
-        ),
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(_err!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
       );
     }
     final d = _detail;
-    if (d == null) return const Center(child: Text('无详情'));
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+    if (d == null) return const Padding(padding: EdgeInsets.all(24), child: Text('无详情'));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(widget.siteName, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 8),
         _header(d),
         if (d.screenshots.isNotEmpty) ...[_section('截图（${d.screenshots.length}）'), _screens(d.screenshots)],
         if (d.description.trim().isNotEmpty) ...[
@@ -599,6 +616,7 @@ class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
         ],
         if (d.mediainfo.isNotEmpty) ...[_section('MediaInfo'), _mediainfo(d.mediainfo)],
         if (d.fileList.isNotEmpty) ...[_section('文件列表（${d.fileList.length}）'), _fileList(d.fileList)],
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -611,11 +629,7 @@ class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
         if (d.posterUrl.isNotEmpty) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 96,
-              height: 138,
-              child: MediaPoster(url: d.posterUrl, kind: 'movie'),
-            ),
+            child: SizedBox(width: 96, height: 138, child: MediaPoster(url: d.posterUrl, kind: 'movie')),
           ),
           const SizedBox(width: 14),
         ],
@@ -624,10 +638,7 @@ class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (d.subtitle.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text(d.subtitle, style: TextStyle(color: Colors.grey, fontSize: 12)),
-                ),
+                Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(d.subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12))),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -641,21 +652,11 @@ class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
                 ],
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  FilledButton.icon(
-                    onPressed: dlUrl.isEmpty ? null : widget.onDownload,
-                    icon: const Icon(Icons.download, size: 18),
-                    label: const Text('下载'),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: dlUrl.isEmpty ? null : _copyLink,
-                    icon: const Icon(Icons.copy, size: 16),
-                    label: const Text('复制链接'),
-                  ),
-                ],
-              ),
+              Row(children: [
+                FilledButton.icon(onPressed: dlUrl.isEmpty ? null : widget.onDownload, icon: const Icon(Icons.download, size: 18), label: const Text('下载')),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(onPressed: dlUrl.isEmpty ? null : _copyLink, icon: const Icon(Icons.copy, size: 16), label: const Text('复制链接')),
+              ]),
             ],
           ),
         ),
@@ -668,12 +669,7 @@ class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: urls.length,
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 160,
-        mainAxisSpacing: 8,
-        crossAxisSpacing: 8,
-        childAspectRatio: 16 / 9,
-      ),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 160, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 16 / 9),
       itemBuilder: (_, i) => ClipRRect(
         borderRadius: BorderRadius.circular(6),
         child: Image.network(urls[i], fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: Colors.black12)),
@@ -685,27 +681,20 @@ class _TorrentDetailSheetState extends State<_TorrentDetailSheet> {
         width: double.infinity,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(color: const Color(0xEE000000), borderRadius: BorderRadius.circular(8)),
-        child: SelectableText(text,
-            style: const TextStyle(color: Color(0xFFD4D4D4), fontSize: 12, height: 1.5, fontFamily: 'monospace')),
+        child: SelectableText(text, style: const TextStyle(color: Color(0xFFD4D4D4), fontSize: 12, height: 1.5, fontFamily: 'monospace')),
       );
 
   Widget _fileList(List<String> files) => Container(
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(8),
-        ),
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(8)),
         child: Column(
           children: [
             for (int i = 0; i < files.length; i++)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('📄 ', style: TextStyle(fontSize: 12)),
-                    Expanded(child: SelectableText(files[i], style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-                  ],
-                ),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('📄 ', style: TextStyle(fontSize: 12)),
+                  Expanded(child: SelectableText(files[i], style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
+                ]),
               ),
           ],
         ),

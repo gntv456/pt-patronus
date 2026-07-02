@@ -96,10 +96,14 @@ class _BigSmallViewState extends State<BigSmallView> {
     super.dispose();
   }
 
+  int _loadSeq = 0; // _load 单飞序号：丢弃过期响应，防并发竞态让旧数据覆盖新数据（误判封盘→误下注）
+
   Future<void> _load({bool silent = false}) async {
+    final seq = ++_loadSeq;
     if (!silent) setState(() => _loading = true);
     try {
       final s = await _api.bigsmallState(widget.siteId, widget.game);
+      if (seq != _loadSeq) return; // 已有更新请求在飞，丢弃本次过期响应
       _state = s;
       _fetchedAt = DateTime.now();
       if (_amount < s.minBet) _amount = s.minBet;
@@ -108,9 +112,9 @@ class _BigSmallViewState extends State<BigSmallView> {
         _lastChatId = s.chat.fold<int>(0, (m, c) => c.id > m ? c.id : m);
       }
     } catch (e) {
-      if (!silent) _toast('加载失败：$e');
+      if (seq == _loadSeq && !silent) _toast('加载失败：$e');
     }
-    if (mounted) setState(() {});
+    if (seq == _loadSeq && mounted) setState(() {});
   }
 
   Future<void> _refreshChat() async {

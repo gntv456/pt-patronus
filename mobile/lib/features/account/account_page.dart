@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/version.dart';
 import 'package:ptpatronus/core/update_checker.dart';
@@ -32,13 +33,33 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   Future<void> _logout() async {
+    // 二次确认（审计 P1）：避免误点立即登出、断会话
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('登出'),
+        content: const Text('将断开当前会话与实时推送，确认登出？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('登出')),
+        ],
+      ),
+    );
+    if (ok != true) return;
     setState(() => _busy = true);
     // 先断 WS：停掉用旧 token 的重连循环（disconnect 保留单例，重登后可恢复）。
     WsClient().disconnect();
+    // 清 WebView cookie/缓存：防登出后仍能从 WebView 取回上游好学/站点会话（审计 P1）
+    try {
+      await CookieManager.instance().deleteAllCookies();
+      await WebStorageManager.instance().deleteAllData();
+    } catch (_) {}
     await ApiClient().logout();
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
+    // 清栈跳登录：pushReplacement 会留 HomeShell 在栈底、Back 键回到已登出骨架，改 pushAndRemoveUntil（审计 P1）
+    Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
+      (_) => false,
     );
   }
 
@@ -59,7 +80,7 @@ class _AccountPageState extends State<AccountPage> {
             child: GlassCard(
               padding: const EdgeInsets.all(24),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
+                constraints: const BoxConstraints(maxWidth: 520),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,

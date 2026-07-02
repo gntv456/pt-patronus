@@ -9,10 +9,14 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:ptpatronus/api/dashboard.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:share_plus/share_plus.dart';
 
-// 仪表盘：跨站统计汇总（顶部 4 卡）+ 近 7 天趋势（柱状图，可切换 上传/下载/做种/做种体积/魔力/分享率）。
-// 数据来自 GET /dashboard（overview）与 GET /dashboard/trend?days=7（趋势）。
+// 仪表盘：跨站统计汇总（指标卡墙，含 sparkline）+ 站点明细（宽屏表格 / 窄屏卡片）。
+// 对齐 Web Dashboard.vue：5 张指标卡（上传/下载/做种/做种体积/魔力）+ 近 14 天 sparkline +
+// 站点表格（站点/等级/上传/下载/分享率/做种/操作）+ 单站历史数据 + 单站/全站刷新。
+// 数据来自 GET /dashboard、GET /dashboard/trend?days=14、POST /dashboard/sync[/:id]、GET /dashboard/history/:id。
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
   @override
@@ -25,9 +29,10 @@ class _DashboardPageState extends State<DashboardPage> {
   final _shareKey = GlobalKey(); // 仪表盘分享图 RepaintBoundary（toImage 截图）
   DashboardOverview? _overview;
   List<DashboardTrendPoint> _trend = [];
-  int _metricIdx = 0; // 趋势图当前指标（_metricDefs 下标）
   List<HRAlert> _hrAlerts = [];
   List<String> _cookieAlerts = [];
+  final Set<int> _refreshing = {}; // 单站刷新中的 site_id 集合
+  bool _syncing = false; // 全站同步中（刷新统计按钮 loading）
   bool _loading = true;
   String? _error;
   StreamSubscription? _hrSub;
@@ -58,8 +63,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      // 并行拉 overview 与趋势，减少等待。
-      final results = await Future.wait([_api.overview(), _api.trend(7)]);
+      final results = await Future.wait([_api.overview(), _api.trend(14)]);
       _overview = results[0] as DashboardOverview;
       _trend = results[1] as List<DashboardTrendPoint>;
       _error = null;
@@ -70,11 +74,9 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // 下拉刷新：轻量模式，不切全屏 loading（RefreshIndicator 自带指示器），
-  // 保留当前内容直到新数据返回，避免下拉动画被打断。
   Future<void> _refresh() async {
     try {
-      final results = await Future.wait([_api.overview(), _api.trend(7)]);
+      final results = await Future.wait([_api.overview(), _api.trend(14)]);
       if (!mounted) return;
       setState(() {
         _overview = results[0] as DashboardOverview;
@@ -86,7 +88,62 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // 环比百分比：最后一天 vs 前一天；数据不足或分母为 0 返回 null。
+  // 全站同步：立即抓取所有启用站点统计（回填新加入站点的 0 数据），刷新成功替换总览。
+  Future<void> _syncAll() async {
+    setState(() => _syncing = true);
+    try {
+      final ov = await _api.sync();
+      if (!mounted) return;
+      setState(() => _overview = ov);
+      _toast('统计已同步');
+    } catch (_) {
+      if (mounted) _toast('同步失败，请稍后重试');
+    } finally {
+      if (mounted) setState(() => _syncing = false);
+    }
+  }
+
+  // 单站刷新：仅重新抓取该站点，刷新成功后用返回的总览替换。
+  Future<void> _syncOne(SiteStatItem s) async {
+    setState(() => _refreshing.add(s.siteId));
+    try {
+      final ov = await _api.syncOne(s.siteId);
+      if (!mounted) return;
+      setState(() => _overview = ov);
+      _toast('${s.siteName} 已刷新');
+    } catch (_) {
+      if (mounted) _toast('${s.siteName} 刷新失败');
+    } finally {
+      if (mounted) setState(() => _refreshing.remove(s.siteId));
+    }
+  }
+
+  void _toast(String msg) {
+    final m = ScaffoldMessenger.maybeOf(context);
+    m?.showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+  }
+
+  // 用户历史数据：打开弹窗/底栏加载该站点 90 天快照（自适应浮层）。
+  Future<void> _viewHistory(SiteStatItem s) async {
+    List<SiteHistoryPoint> history = [];
+    bool loading = true;
+    try {
+      history = await _api.history(s.siteId, days: 90);
+    } catch (_) {
+      history = const [];
+    } finally {
+      loading = false;
+    }
+    if (!mounted) return;
+    await showAdaptiveSheet(
+      context,
+      title: '${s.siteName} · 历史数据',
+      wideWidth: 820,
+      builder: (_) => _HistoryBody(points: history, loading: loading, fmtBytes: _fmtBytes, fmtTime: _fmtTimeFull),
+    );
+  }
+
+  // 环比百分比：最后一天 vs 前一天；数据不足或分母为 0 返回 null（仅上传/下载卡用）。
   double? _pct(double Function(DashboardTrendPoint) pick) {
     if (_trend.length < 2) return null;
     final last = pick(_trend.last);
@@ -95,11 +152,8 @@ class _DashboardPageState extends State<DashboardPage> {
     return (last - prev) / prev * 100;
   }
 
-  // 绝对增量：最后一天 - 前一天。
-  double _delta(double Function(DashboardTrendPoint) pick) {
-    if (_trend.length < 2) return 0;
-    return pick(_trend.last) - pick(_trend[_trend.length - 2]);
-  }
+  List<double> _series(double Function(DashboardTrendPoint) pick) =>
+      _trend.map((p) => pick(p).toDouble()).toList();
 
   String _nowStamp() {
     final d = DateTime.now();
@@ -107,7 +161,6 @@ class _DashboardPageState extends State<DashboardPage> {
     return '${d.year}-${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}';
   }
 
-  // 导出仪表盘分享图：弹预览底栏（RepaintBoundary 包裹分享卡）→ 点「分享」toImage→share_plus。
   void _exportImage() {
     showModalBottomSheet(
       context: context,
@@ -157,7 +210,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  // 分享卡：深色品牌渐变 + 标题 + 4 指标 + 7 天趋势柱 + 页脚（toImage 截图）。
   Widget _shareCard() {
     final o = _overview!;
     final upPct = _pct((p) => p.uploaded.toDouble());
@@ -198,7 +250,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text('近 7 天上传趋势',
+          const Text('近 14 天上传趋势',
               style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           _shareTrend(),
@@ -210,8 +262,11 @@ class _DashboardPageState extends State<DashboardPage> {
             ...o.sites.take(8).map((s) => Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Row(children: [
-                    Text(s.siteName,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Flexible(
+                      child: Text(s.siteName,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(_identity(s),
@@ -238,7 +293,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // 站点身份串：用户名 / ID / 邮箱（空值跳过，best-effort，抓不到的字段不显示）。
   String _identity(SiteStatItem s) {
     final parts = <String>[];
     if (s.username.isNotEmpty) parts.add(s.username);
@@ -261,8 +315,7 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(width: 6),
           Text(label, style: const TextStyle(color: Color(0xFF9AA0B4), fontSize: 12)),
           const Spacer(),
-          if (trend.isNotEmpty)
-            Text(trend, style: const TextStyle(color: Colors.white54, fontSize: 11)),
+          if (trend.isNotEmpty) Text(trend, style: const TextStyle(color: Colors.white54, fontSize: 11)),
         ]),
         const SizedBox(height: 6),
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
@@ -312,8 +365,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final wide = MediaQuery.of(context).size.width > 720;
     return Scaffold(
       body: GlassBackground(
         child: SafeArea(
@@ -324,22 +375,15 @@ class _DashboardPageState extends State<DashboardPage> {
               children: [
                 Row(children: [
                   const HomeMenuButton(),
-                  const Text('仪表盘',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+                  const Text('仪表盘', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
                   const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.image_outlined),
-                    onPressed: (_loading || _overview == null) ? null : _exportImage,
-                    tooltip: '导出图片',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    onPressed: _loading ? null : _load,
-                    tooltip: '刷新',
-                  ),
+                  PTPageHeaderActions(actions: [
+                    PTHeaderAction(icon: Icons.image_outlined, label: '导出图片', onPressed: (_loading || _overview == null) ? null : _exportImage),
+                    PTHeaderAction(icon: Icons.sync, label: '刷新统计', onPressed: _syncing ? null : _syncAll),
+                  ]),
                 ]),
                 const SizedBox(height: 16),
-                Expanded(child: _body(isDark, wide)),
+                Expanded(child: _body(context)),
               ],
             ),
           ),
@@ -348,21 +392,16 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _body(bool isDark, bool wide) {
+  Widget _body(BuildContext context) {
     if (_loading && _overview == null) {
       return const Center(child: CircularProgressIndicator());
     }
     if (_overview == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error == null ? '暂无数据' : '加载失败：$_error',
-                style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 12),
-            FilledButton(onPressed: _load, child: const Text('重试')),
-          ],
-        ),
+      return PTEmptyState(
+        icon: Icons.error_outline,
+        text: _error == null ? '暂无数据' : '加载失败',
+        description: _error,
+        onRetry: _load,
       );
     }
     return RefreshIndicator(
@@ -370,159 +409,203 @@ class _DashboardPageState extends State<DashboardPage> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          if (_cookieAlerts.isNotEmpty) ...[
-            _cookieAlertCard(),
-            const SizedBox(height: 14),
-          ],
-          if (_hrAlerts.isNotEmpty) ...[
-            _hrAlertCard(),
-            const SizedBox(height: 14),
-          ],
-          GridView.count(
-            crossAxisCount: wide ? 4 : 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 14,
-            crossAxisSpacing: 14,
-            childAspectRatio: 1.1,
-            children: _metrics(),
-          ),
+          if (_cookieAlerts.isNotEmpty) ...[_alertCard(AlertKind.cookie), const SizedBox(height: 14)],
+          if (_hrAlerts.isNotEmpty) ...[_alertCard(AlertKind.hr), const SizedBox(height: 14)],
+          _metricGrid(context),
           const SizedBox(height: 18),
-          SizedBox(
-            height: 224,
-            child: GlassCard(
-              padding: const EdgeInsets.fromLTRB(16, 16, 24, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('近 7 天 ${_metricDefs[_metricIdx].label} 趋势',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                  const SizedBox(height: 8),
-                  _metricChips(),
-                  const SizedBox(height: 6),
-                  Expanded(child: _trendChart(isDark)),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Padding(
-            padding: const EdgeInsets.only(left: 2, bottom: 4),
-            child: Text('站点明细（${_overview!.siteCount}）',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-          ),
-          if (_overview!.sites.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                  child: Text('暂无数据，等待统计同步',
-                      style: TextStyle(color: Colors.grey))),
-            )
-          else
-            ..._overview!.sites
-                .map((s) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _siteStatCard(s),
-                    ))
-                ,
+          _sitesSection(context),
           const SizedBox(height: 8),
         ],
       ),
     );
   }
 
-  List<Widget> _metrics() {
+  // 5 张指标卡（上传/下载/做种/做种体积/魔力），对齐 Web metric-grid（auto-fit minmax 210）。
+  // 每卡内嵌近 14 天 sparkline；上传/下载额外显日环比徽标。
+  Widget _metricGrid(BuildContext context) {
     final o = _overview!;
     final upPct = _pct((p) => p.uploaded.toDouble());
     final dlPct = _pct((p) => p.downloaded.toDouble());
-    final sdDelta = _delta((p) => p.seeding.toDouble()).toInt();
-    final bnDelta = _delta((p) => p.bonus);
+    String fmtPct(double? p) => p == null ? '' : '${p >= 0 ? '+' : ''}${p.toStringAsFixed(1)}%';
 
-    String fmtPct(double? p) {
-      if (p == null) return '—';
-      return '${p >= 0 ? '+' : ''}${p.toStringAsFixed(1)}%';
-    }
-
-    String fmtDelta(double d) {
-      if (d == 0) return '—';
-      return '${d > 0 ? '+' : ''}${d.toStringAsFixed(d.abs() < 10 ? 1 : 0)}';
-    }
-
-    return [
-      _card('⬆️', _fmtBytes(o.uploaded), '总上传', fmtPct(upPct), (upPct ?? 0) >= 0),
-      _card('⬇️', _fmtBytes(o.downloaded), '总下载', fmtPct(dlPct), (dlPct ?? 0) >= 0),
-      _card('🌱', '${o.seeding}', '做种数', fmtDelta(sdDelta.toDouble()), sdDelta >= 0),
-      _card('✨', o.bonus.toStringAsFixed(1), '魔力值', fmtDelta(bnDelta), bnDelta >= 0),
+    final cards = <Widget>[
+      _metricCard(
+        icon: const GlassIcon(glyph: 'upload', from: Color(0xFF2ECC71), to: Color(0xFF1ABC9C), size: 38),
+        value: _fmtBytes(o.uploaded),
+        label: '总上传',
+        trend: fmtPct(upPct),
+        trendUp: (upPct ?? 0) >= 0,
+        spark: _series((p) => p.uploaded.toDouble()),
+        sparkColor: PTColors.primary,
+      ),
+      _metricCard(
+        icon: const GlassIcon(glyph: 'download', from: Color(0xFF4285F4), to: Color(0xFF22D3EE), size: 38),
+        value: _fmtBytes(o.downloaded),
+        label: '总下载',
+        trend: fmtPct(dlPct),
+        trendUp: (dlPct ?? 0) >= 0,
+        spark: _series((p) => p.downloaded.toDouble()),
+        sparkColor: PTColors.primary2,
+      ),
+      _metricCard(
+        icon: const GlassIcon(glyph: 'seeding', from: Color(0xFF38EF7D), to: Color(0xFF11998E), size: 38),
+        value: '${o.seeding}',
+        label: '总做种',
+        spark: _series((p) => p.seeding.toDouble()),
+        sparkColor: PTColors.success,
+      ),
+      _metricCard(
+        icon: const GlassIcon(glyph: 'backup', from: Color(0xFF43CEA2), to: Color(0xFF185A9D), size: 38),
+        value: _fmtBytes(o.seedingSize),
+        label: '总做种体积',
+        spark: _series((p) => p.seedingSize.toDouble()),
+        sparkColor: const Color(0xFF43CEA2),
+      ),
+      _metricCard(
+        icon: const GlassIcon(glyph: 'bonus', from: Color(0xFFF7971E), to: Color(0xFFFFD200), size: 38),
+        value: o.bonus.toStringAsFixed(0),
+        label: '总魔力',
+        spark: _series((p) => p.bonus),
+        sparkColor: PTColors.warn,
+      ),
     ];
+
+    return PTAutoGrid(
+      minItemWidth: 200,
+      spacing: 14,
+      runSpacing: 14,
+      childAspectRatio: 0.86,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: cards.length,
+      itemBuilder: (_, i) => cards[i],
+    );
   }
 
-  Widget _card(String icon, String value, String label, String trend, bool up) {
+  Widget _metricCard({
+    required Widget icon,
+    required String value,
+    required String label,
+    String? trend,
+    bool trendUp = true,
+    required List<double> spark,
+    required Color sparkColor,
+  }) {
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
-              Text(trend,
-                  style: TextStyle(
-                    color: up ? PTColors.success : PTColors.danger,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  )),
+              icon,
+              if (trend != null && trend.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: (trendUp ? PTColors.success : PTColors.danger).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(trend,
+                      style: TextStyle(
+                        color: trendUp ? PTColors.success : PTColors.danger,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      )),
+                ),
             ],
           ),
+          const Spacer(),
           Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 2),
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          const SizedBox(height: 8),
+          SizedBox(height: 34, child: _Sparkline(values: spark, color: sparkColor)),
         ],
       ),
     );
   }
 
-  // 趋势可选指标：label + 取值函数 + 是否字节量纲（轴标签格式化用）。
-  // fl_chart 单 Y 轴，故移动端为「单指标切换」而非 Web 的多系列叠加；6 指标全可选。
-  List<({String label, double Function(DashboardTrendPoint) pick, bool bytes})>
-      get _metricDefs => [
-            (label: '上传', pick: (p) => p.uploaded.toDouble(), bytes: true),
-            (label: '下载', pick: (p) => p.downloaded.toDouble(), bytes: true),
-            (label: '做种体积', pick: (p) => p.seedingSize.toDouble(), bytes: true),
-            (label: '做种', pick: (p) => p.seeding.toDouble(), bytes: false),
-            (label: '魔力', pick: (p) => p.bonus, bytes: false),
-            (label: '分享率', pick: (p) => p.ratio, bytes: false),
-          ];
+  // 站点明细：宽屏表格（对齐 Web el-table），窄屏卡片。操作列含「历史数据」「刷新数据」。
+  Widget _sitesSection(BuildContext context) {
+    final sites = _overview!.sites;
+    final columns = <PTColumn<SiteStatItem>>[
+      PTColumn(label: '站点', flex: 2, cell: (_, s) => Text(s.siteName, style: const TextStyle(fontWeight: FontWeight.w600))),
+      PTColumn(label: '等级', flex: 1, cell: (_, s) => _levelTag(s.level)),
+      PTColumn(label: '上传', flex: 1, numeric: true, cell: (_, s) => Text(_fmtBytes(s.uploaded))),
+      PTColumn(label: '下载', flex: 1, numeric: true, cell: (_, s) => Text(_fmtBytes(s.downloaded))),
+      PTColumn(
+        label: '分享率',
+        flex: 1,
+        numeric: true,
+        cell: (ctx, s) => Text(
+          s.ratio > 0 ? s.ratio.toStringAsFixed(2) : '-',
+          style: TextStyle(
+            color: s.ratio <= 0
+                ? (Theme.of(ctx).brightness == Brightness.dark ? Colors.white38 : Colors.black38)
+                : (s.ratio >= 1 ? PTColors.success : PTColors.danger),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      PTColumn(label: '做种', flex: 1, numeric: true, cell: (_, s) => Text('${s.seeding}')),
+      PTColumn(label: '操作', flex: 1, cell: (ctx, s) => _rowActions(ctx, s)),
+    ];
 
-  Widget _metricChips() {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      children: List.generate(_metricDefs.length, (i) {
-        return ChoiceChip(
-          label: Text(_metricDefs[i].label, style: const TextStyle(fontSize: 11)),
-          selected: _metricIdx == i,
-          visualDensity: VisualDensity.compact,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          onSelected: (_) => setState(() => _metricIdx = i),
-        );
-      }),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          child: Text('站点明细（${_overview!.siteCount}）',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+        ),
+        PTAdaptiveTable<SiteStatItem>(
+          items: sites,
+          columns: columns,
+          emptyText: '暂无数据，等待统计同步',
+          narrowCard: (c, s) => _siteStatCard(c, s),
+        ),
+      ],
     );
   }
 
-  Widget _trendChart(bool isDark) {
-    if (_trend.isEmpty) {
-      return const Center(child: Text('暂无趋势数据', style: TextStyle(color: Colors.grey)));
-    }
-    final pick = _metricDefs[_metricIdx].pick;
-    final data = _trend.map(pick).toList();
-    final labels = _trend.map((p) => p.day.length >= 10 ? p.day.substring(5) : p.day).toList();
-    return _TrendChart(data: data, labels: labels, isDark: isDark);
+  Widget _rowActions(BuildContext context, SiteStatItem s) {
+    final refreshing = _refreshing.contains(s.siteId);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      IconButton(
+        tooltip: '用户历史数据',
+        visualDensity: VisualDensity.compact,
+        iconSize: 18,
+        onPressed: () => _viewHistory(s),
+        icon: const Icon(Icons.history, color: PTColors.primary2),
+      ),
+      IconButton(
+        tooltip: refreshing ? '刷新中…' : '刷新数据',
+        visualDensity: VisualDensity.compact,
+        iconSize: 18,
+        onPressed: refreshing ? null : () => _syncOne(s),
+        icon: refreshing
+            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+            : const Icon(Icons.refresh, color: PTColors.success),
+      ),
+    ]);
+  }
+
+  Widget _levelTag(String level) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: const Color(0x286EA8FE), borderRadius: BorderRadius.circular(10)),
+      child: Text(level.isNotEmpty ? level : '-', style: const TextStyle(color: Color(0xFF6EA8FE), fontSize: 11)),
+    );
   }
 
   // 字节 → 人类可读（1024 进制，对齐后端 humanBytes）。
   String _fmtBytes(int b) {
     const unit = 1024.0;
+    if (b <= 0) return '0 B';
     if (b < unit) return '$b B';
     double n = b / unit;
     int exp = 0;
@@ -534,7 +617,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return '${n.toStringAsFixed(1)} ${units[exp]}';
   }
 
-  // RFC3339 →「MM-dd HH:mm」（对齐后端 updated_at 时间）。
+  // RFC3339 →「MM-dd HH:mm」（对齐 Web 站点明细更新时间）。
   String _fmtDate(String s) {
     if (s.isEmpty) return '-';
     final d = DateTime.tryParse(s);
@@ -543,7 +626,15 @@ class _DashboardPageState extends State<DashboardPage> {
     return '${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}';
   }
 
-  // 单格统计：灰标签 + 值（承载新同步的字段）。
+  // RFC3339 →「YYYY-MM-DD HH:mm」（历史快照时间，对齐 Web fmtTime）。
+  String _fmtTimeFull(String s) {
+    if (s.isEmpty) return '-';
+    final d = DateTime.tryParse(s);
+    if (d == null) return s;
+    String p(int n) => n.toString().padLeft(2, '0');
+    return '${d.year}-${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}';
+  }
+
   Widget _statCell(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,8 +646,8 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // 每站统计卡：站点名 + 等级 + 分享率 + 三行统计网格 + 加入/更新时间。
-  Widget _siteStatCard(SiteStatItem s) {
+  // 窄屏站点卡：站点名 + 等级 + 分享率 + 三行统计 + 加入/更新 + 操作（历史/刷新）。
+  Widget _siteStatCard(BuildContext context, SiteStatItem s) {
     Widget cell(String label, String value) => Expanded(child: _statCell(label, value));
     Widget row(List<Widget> cs) => Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -567,36 +658,20 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(s.siteName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              const SizedBox(width: 8),
-              if (s.level.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0x286EA8FE),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(s.level, style: const TextStyle(color: Color(0xFF6EA8FE), fontSize: 11)),
-                ),
-              const Spacer(),
-              Text(
-                '分享率 ${s.ratio > 0 ? s.ratio.toStringAsFixed(2) : '-'}',
+          Row(children: [
+            Text(s.siteName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(width: 8),
+            if (s.level.isNotEmpty) _levelTag(s.level),
+            const Spacer(),
+            Text('分享率 ${s.ratio > 0 ? s.ratio.toStringAsFixed(2) : '-'}',
                 style: TextStyle(
                   color: s.ratio >= 1 ? PTColors.success : PTColors.danger,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          row([
-            cell('上传', _fmtBytes(s.uploaded)),
-            cell('下载', _fmtBytes(s.downloaded)),
-            cell('做种', '${s.seeding}'),
+                )),
           ]),
+          const SizedBox(height: 10),
+          row([cell('上传', _fmtBytes(s.uploaded)), cell('下载', _fmtBytes(s.downloaded)), cell('做种', '${s.seeding}')]),
           row([
             cell('做种体积', s.seedingSize > 0 ? _fmtBytes(s.seedingSize) : '-'),
             cell('发布', s.uploads > 0 ? '${s.uploads}' : '-'),
@@ -607,166 +682,172 @@ class _DashboardPageState extends State<DashboardPage> {
             cell('时魔/h', s.bonusPerHour > 0 ? s.bonusPerHour.toStringAsFixed(1) : '-'),
             const Expanded(child: SizedBox()),
           ]),
-          Row(
+          Row(children: [
+            Text('加入 ${s.joinDate.isNotEmpty ? s.joinDate : '-'} · 更新 ${_fmtDate(s.updatedAt)}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+            const Spacer(),
+            _rowActions(context, s),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  // 告警卡：Cookie 失效 / H&R 危险（最高优先级，红色左边框，对齐 Web .alert-danger）。
+  Widget _alertCard(AlertKind kind) {
+    final isCookie = kind == AlertKind.cookie;
+    final list = isCookie ? _cookieAlerts : <String>[];
+    return GlassCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+      tint: PTColors.danger,
+      child: DecoratedBox(
+        decoration: BoxDecoration(border: Border(left: BorderSide(color: PTColors.danger, width: 3))),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('加入 ${s.joinDate.isNotEmpty ? s.joinDate : '-'}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 11)),
-              const Spacer(),
-              Text('更新 ${_fmtDate(s.updatedAt)}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 11)),
+              Row(children: [
+                Icon(isCookie ? Icons.error_outline : Icons.warning_amber_rounded, color: PTColors.danger, size: 20),
+                const SizedBox(width: 6),
+                Text(isCookie ? 'Cookie 失效：${list.length} 个站点' : 'H&R 告警：${_hrAlerts.length} 条需关注',
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: PTColors.danger)),
+              ]),
+              const SizedBox(height: 6),
+              if (isCookie) ...[
+                const Text('以下站点 cookie 已失效，签到/统计/H&R 自动化已停摆，请尽快重新登录：',
+                    style: TextStyle(color: Colors.grey, fontSize: 12)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: list
+                      .map((s) => Chip(
+                            label: Text(s),
+                            labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+                            backgroundColor: PTColors.danger,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                          ))
+                      .toList(),
+                ),
+              ] else ...[
+                ..._hrAlerts.take(5).map((a) => Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Container(margin: const EdgeInsets.only(top: 6), width: 6, height: 6, decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(a.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text('${a.site} · ${a.status}${a.deadline.isNotEmpty ? ' · 剩 ${a.deadline}' : ''}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                        ])),
+                      ]),
+                    )),
+                if (_hrAlerts.length > 5)
+                  Padding(padding: const EdgeInsets.only(top: 6), child: Text('…及其它 ${_hrAlerts.length - 5} 条', style: const TextStyle(color: Colors.grey, fontSize: 11))),
+              ],
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  // Cookie 失效告警卡：最高优先级（danger），自动化已停摆，列失效站点。
-  Widget _cookieAlertCard() {
-    return GlassCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 20),
-            const SizedBox(width: 6),
-            Text('Cookie 失效：${_cookieAlerts.length} 个站点',
-                style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.red)),
-          ]),
-          const SizedBox(height: 6),
-          const Text('以下站点 cookie 已失效，签到/统计/H&R 自动化已停摆，请尽快重新登录：',
-              style: TextStyle(color: Colors.grey, fontSize: 12)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: _cookieAlerts
-                .map((s) => Chip(
-                      label: Text(s),
-                      labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-                      backgroundColor: Colors.red,
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                    ))
-                .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // H&R 告警卡：危险种子列表（站点/标题/状态/剩余），最多展示 5 条。
-  Widget _hrAlertCard() {
-    return GlassCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
-            const SizedBox(width: 6),
-            Text('H&R 告警：${_hrAlerts.length} 条需关注',
-                style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.redAccent)),
-          ]),
-          const SizedBox(height: 8),
-          ..._hrAlerts.take(5).map((a) => Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(top: 6),
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(a.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                          Text('${a.site} · ${a.status}${a.deadline.isNotEmpty ? ' · 剩 ${a.deadline}' : ''}',
-                              style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-          if (_hrAlerts.length > 5)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Text('…及其它 ${_hrAlerts.length - 5} 条',
-                  style: const TextStyle(color: Colors.grey, fontSize: 11)),
-            ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// 上传趋势柱状图：data 为每日上传量，labels 为日期（MM-DD）。
-class _TrendChart extends StatelessWidget {
-  final List<double> data;
-  final List<String> labels;
-  final bool isDark;
-  const _TrendChart({required this.data, required this.labels, required this.isDark});
+enum AlertKind { cookie, hr }
+
+// 指标卡内嵌迷你折线（近 14 天，无坐标轴），对齐 Web components/dashboard/Sparkline.vue。
+class _Sparkline extends StatelessWidget {
+  final List<double> values;
+  final Color color;
+  const _Sparkline({required this.values, required this.color});
 
   @override
   Widget build(BuildContext context) {
-    final gridColor = isDark ? Colors.white24 : Colors.black12;
-    final peak = data.fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY = peak <= 0 ? 100.0 : peak * 1.2;
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxY,
-        barTouchData: BarTouchData(enabled: false),
-        titlesData: FlTitlesData(
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 28,
-              getTitlesWidget: (v, _) {
-                final i = v.toInt();
-                if (i < 0 || i >= labels.length) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(labels[i], style: const TextStyle(fontSize: 10)),
-                );
-              },
-            ),
-          ),
-        ),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          getDrawingHorizontalLine: (v) => FlLine(color: gridColor, strokeWidth: 1),
-        ),
+    if (values.length < 2) return const SizedBox.shrink();
+    final minV = values.reduce((a, b) => a < b ? a : b);
+    final maxV = values.reduce((a, b) => a > b ? a : b);
+    final span = (maxV - minV) == 0 ? 1.0 : (maxV - minV).toDouble();
+    return LineChart(
+      LineChartData(
+        minX: 0,
+        maxX: (values.length - 1).toDouble(),
+        minY: 0,
+        maxY: 1,
+        lineTouchData: const LineTouchData(enabled: false),
+        titlesData: const FlTitlesData(show: false),
+        gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
-        barGroups: List.generate(data.length, (i) {
-          return BarChartGroupData(
-            x: i,
-            barRods: [
-              BarChartRodData(
-                toY: data[i],
-                width: 16,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                gradient: const LinearGradient(
-                  colors: [PTColors.primary, PTColors.primary2],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
+        lineBarsData: [
+          LineChartBarData(
+            isCurved: true,
+            curveSmoothness: 0.3,
+            preventCurveOverShooting: true,
+            barWidth: 2,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              color: color.withValues(alpha: 0.16),
+            ),
+            gradient: LinearGradient(colors: [color.withValues(alpha: 0.7), color]),
+            spots: [
+              for (int i = 0; i < values.length; i++)
+                FlSpot(i.toDouble(), (values[i] - minV) / span),
             ],
-          );
-        }),
+          ),
+        ],
+        extraLinesData: const ExtraLinesData(),
+      ),
+    );
+  }
+}
+
+// 历史数据浮层内容：宽屏表格 / 窄屏卡片（自适应，对齐 Web 用户历史数据弹窗的 el-table）。
+class _HistoryBody extends StatelessWidget {
+  final List<SiteHistoryPoint> points;
+  final bool loading;
+  final String Function(int) fmtBytes;
+  final String Function(String) fmtTime;
+  const _HistoryBody({required this.points, required this.loading, required this.fmtBytes, required this.fmtTime});
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Padding(padding: EdgeInsets.symmetric(vertical: 40), child: Center(child: CircularProgressIndicator()));
+    }
+    if (points.isEmpty) {
+      return const PTEmptyState(text: '暂无历史快照');
+    }
+    final columns = <PTColumn<SiteHistoryPoint>>[
+      PTColumn(label: '时间', flex: 2, cell: (_, p) => Text(fmtTime(p.snapAt), style: const TextStyle(fontSize: 12))),
+      PTColumn(label: '等级', flex: 1, cell: (_, p) => Text(p.level.isNotEmpty ? p.level : '-', style: const TextStyle(fontSize: 12))),
+      PTColumn(label: '上传', flex: 1, numeric: true, cell: (_, p) => Text(fmtBytes(p.uploaded), style: const TextStyle(fontSize: 12))),
+      PTColumn(label: '下载', flex: 1, numeric: true, cell: (_, p) => Text(fmtBytes(p.downloaded), style: const TextStyle(fontSize: 12))),
+      PTColumn(label: '分享率', flex: 1, numeric: true, cell: (_, p) => Text(p.ratio > 0 ? p.ratio.toStringAsFixed(2) : '-', style: const TextStyle(fontSize: 12))),
+      PTColumn(label: '做种', flex: 1, numeric: true, cell: (_, p) => Text('${p.seeding}', style: const TextStyle(fontSize: 12))),
+      PTColumn(label: '发布', flex: 1, numeric: true, cell: (_, p) => Text(p.uploads > 0 ? '${p.uploads}' : '-', style: const TextStyle(fontSize: 12))),
+      PTColumn(label: '魔力', flex: 1, numeric: true, cell: (_, p) => Text(p.bonus > 0 ? p.bonus.toStringAsFixed(0) : '-', style: const TextStyle(fontSize: 12))),
+    ];
+    return SizedBox(
+      width: double.infinity,
+      child: PTAdaptiveTable<SiteHistoryPoint>(
+        items: points,
+        columns: columns,
+        emptyText: '暂无历史快照',
+        narrowCard: (_, p) => GlassCard(
+          padding: const EdgeInsets.all(12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(fmtTime(p.snapAt), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 12, runSpacing: 4, children: [
+              Text('等级 ${p.level.isNotEmpty ? p.level : '-'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('上传 ${fmtBytes(p.uploaded)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('下载 ${fmtBytes(p.downloaded)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('分享率 ${p.ratio > 0 ? p.ratio.toStringAsFixed(2) : '-'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('做种 ${p.seeding}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('魔力 ${p.bonus > 0 ? p.bonus.toStringAsFixed(0) : '-'}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            ]),
+          ]),
+        ),
       ),
     );
   }

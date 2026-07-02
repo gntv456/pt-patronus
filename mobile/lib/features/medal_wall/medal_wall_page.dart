@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/medal_wall.dart';
+import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 class MedalWallPage extends StatefulWidget {
   const MedalWallPage({super.key});
@@ -100,32 +102,32 @@ class _MedalWallPageState extends State<MedalWallPage> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? _Empty(text: _error!, onRetry: _load)
+                  ? PTEmptyState(text: _error!, onRetry: _load)
                   : ListView(
                       padding: const EdgeInsets.all(12),
                       children: [
                         _filterBar(),
                         const SizedBox(height: 8),
                         if (_filtered.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.all(40),
-                            child: Center(
-                              child: Text(
-                                '暂无勋章数据\nNexusPHP 站自动抓取；馒头无勋章页。\n若有勋章却为空，可能未登录或布局待校准',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey, height: 1.6),
-                              ),
-                            ),
+                          PTEmptyState(
+                            icon: Icons.military_tech_outlined,
+                            text: '暂无勋章数据',
+                            description: 'NexusPHP 站自动抓取；馒头无勋章页。若有勋章却为空，可能未登录或布局待校准',
                           )
                         else
-                          GridView.count(
-                            crossAxisCount: 3,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 0.82,
-                            children: _filtered.map(_gridCard).toList(),
+                          LayoutBuilder(
+                            builder: (context, c) {
+                              final cols = ptAutoColumns(c.maxWidth, 150, minColumns: 3);
+                              return GridView.count(
+                                crossAxisCount: cols,
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: 0.82,
+                                children: _filtered.map(_gridCard).toList(),
+                              );
+                            },
                           ),
                       ],
                     ),
@@ -264,84 +266,63 @@ class _MedalWallPageState extends State<MedalWallPage> {
     );
   }
 
+  String _fmtUnix(int? t) {
+    if (t == null || t == 0) return '';
+    final d = DateTime.fromMillisecondsSinceEpoch(t * 1000);
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
   void _openDetail(Medal m) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: CircleAvatar(
-                  radius: 48,
-                  backgroundColor: const Color(0xFF6C5CE7).withValues(alpha: 0.1),
-                  backgroundImage: (m.originalImageUrl.isNotEmpty || m.imageSmall.isNotEmpty)
-                      ? NetworkImage(m.originalImageUrl.isNotEmpty ? m.originalImageUrl : m.imageSmall)
-                      : null,
-                  onBackgroundImageError: m.imageSmall.isNotEmpty ? (_, _) {} : null,
-                  child: (m.originalImageUrl.isEmpty && m.imageSmall.isEmpty)
-                      ? Text(m.name.isNotEmpty ? m.name.substring(0, 1) : '?',
-                          style: const TextStyle(color: Color(0xFF6C5CE7), fontSize: 32, fontWeight: FontWeight.bold))
-                      : null,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Center(child: Text(m.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
-              Center(
-                child: Text(
-                  _statusLabel(m.purchaseStatus) + (m.wearStatus ? ' · 佩戴中' : ''),
-                  style: TextStyle(color: _statusColor(m.purchaseStatus), fontWeight: FontWeight.w600),
-                ),
-              ),
-              if (m.description.isNotEmpty)
-                Padding(padding: const EdgeInsets.only(top: 10), child: Text(m.description, style: const TextStyle(color: Colors.grey, height: 1.4))),
-              const SizedBox(height: 12),
-              if (m.price > 0)
-                _row(
-                  '价格',
-                  m.originalPrice > 0 && m.originalPrice < m.price
-                      ? '${m.originalPrice} → ${m.price} ${m.currency}（溢价）'
-                      : '${m.price} ${m.currency}',
-                ),
-              if (m.bonusRate.isNotEmpty) _row('加成', m.bonusRate),
-              if (m.validity.isNotEmpty) _row('有效期', m.validity),
-              if (m.stock >= 0) _row('库存', m.stock == 0 ? '缺货' : '${m.stock}'),  // 注意
-              if (m.group.isNotEmpty) _row('分组', m.group),
-              _row('来源站', m.siteName),
-              const SizedBox(height: 16),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                if (!m.isOwned && m.isAvailable)
-                  FilledButton.icon(
-                    onPressed: () => _doAction('buy', m),
-                    icon: const Icon(Icons.shopping_cart_outlined),
-                    label: const Text('购买'),
-                  ),
-                if (m.isOwned && !m.wearStatus)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: FilledButton.icon(
-                      onPressed: () => _doAction('wear', m),
-                      icon: const Icon(Icons.star_border),
-                      label: const Text('佩戴'),
-                    ),
-                  ),
-                if (m.wearStatus)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: FilledButton.icon(
-                      onPressed: () => _doAction('takeoff', m),
-                      icon: const Icon(Icons.star),
-                      label: const Text('摘下'),
-                    ),
-                  ),
-              ]),
-            ],
+    showAdaptiveSheet(
+      context,
+      title: m.name,
+      wideWidth: 480,
+      builder: (_) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: CircleAvatar(
+              radius: 48,
+              backgroundColor: PTColors.primary.withValues(alpha: 0.1),
+              backgroundImage: (m.originalImageUrl.isNotEmpty || m.imageSmall.isNotEmpty)
+                  ? NetworkImage(m.originalImageUrl.isNotEmpty ? m.originalImageUrl : m.imageSmall)
+                  : null,
+              onBackgroundImageError: m.imageSmall.isNotEmpty ? (_, _) {} : null,
+              child: (m.originalImageUrl.isEmpty && m.imageSmall.isEmpty)
+                  ? Text(m.name.isNotEmpty ? m.name.substring(0, 1) : '?', style: const TextStyle(color: PTColors.primary, fontSize: 32, fontWeight: FontWeight.bold))
+                  : null,
+            ),
           ),
-        ),
+          const SizedBox(height: 10),
+          Center(child: Text(m.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+          Center(
+            child: Text(
+              _statusLabel(m.purchaseStatus) + (m.wearStatus ? ' · 佩戴中' : ''),
+              style: TextStyle(color: _statusColor(m.purchaseStatus), fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (m.description.isNotEmpty)
+            Padding(padding: const EdgeInsets.only(top: 10), child: Text(m.description, style: const TextStyle(color: Colors.grey, height: 1.4))),
+          const SizedBox(height: 12),
+          if (m.price > 0)
+            _row('价格', m.originalPrice > 0 && m.originalPrice < m.price ? '${m.originalPrice} → ${m.price} ${m.currency}（溢价）' : '${m.price} ${m.currency}'),
+          if (m.bonusRate.isNotEmpty) _row('加成', m.bonusRate),
+          if (m.validity.isNotEmpty) _row('有效期', m.validity),
+          if (_fmtUnix(m.saleBeginTime).isNotEmpty) _row('开售', _fmtUnix(m.saleBeginTime)),
+          if (_fmtUnix(m.saleEndTime).isNotEmpty) _row('截止', _fmtUnix(m.saleEndTime)),
+          if (m.stock >= 0) _row('库存', m.stock == 0 ? '缺货' : '${m.stock}'),
+          if (m.group.isNotEmpty) _row('分组', m.group),
+          _row('来源站', m.siteName),
+          const SizedBox(height: 16),
+          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            if (!m.isOwned && m.isAvailable)
+              FilledButton.icon(onPressed: () => _doAction('buy', m), icon: const Icon(Icons.shopping_cart_outlined), label: const Text('购买')),
+            if (m.isOwned && !m.wearStatus)
+              Padding(padding: const EdgeInsets.only(left: 8), child: FilledButton.icon(onPressed: () => _doAction('wear', m), icon: const Icon(Icons.star_border), label: const Text('佩戴'))),
+            if (m.wearStatus)
+              Padding(padding: const EdgeInsets.only(left: 8), child: FilledButton.icon(onPressed: () => _doAction('takeoff', m), icon: const Icon(Icons.star), label: const Text('摘下'))),
+          ]),
+        ],
       ),
     );
   }
@@ -355,6 +336,21 @@ class _MedalWallPageState extends State<MedalWallPage> {
       );
 
   Future<void> _doAction(String action, Medal m) async {
+    // 购买扣魔力不可逆 → 二次确认；佩戴/摘下可逆不确认。
+    if (action == 'buy') {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('购买勋章'),
+          content: Text('将消耗 ${m.price} ${m.currency} 购买「${m.name}」，确认？'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('购买')),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
     try {
       ActionResult r;
       if (action == 'buy') {
@@ -373,19 +369,5 @@ class _MedalWallPageState extends State<MedalWallPage> {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _Empty({required this.text, this.onRetry});
-  @override
-  Widget build(BuildContext context) {
-    return ListView(children: [
-      const SizedBox(height: 120),
-      Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)))),
-      if (onRetry != null) Center(child: ElevatedButton(onPressed: onRetry, child: const Text('重试'))),
-    ]);
   }
 }

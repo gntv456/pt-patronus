@@ -6,12 +6,17 @@
     <application
         android:label="ptpatronus"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="true">
+        <!-- usesCleartextTraffic：自托管局域网工具常走 http://（含本地 10.0.2.2 调试、LAN IP、RTSP/HLS），
+             Android 9+ 默认禁明文，需显式放行，否则模拟器连本机 http 后端会被系统拦截。 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
+            android:enableOnBackInvokedCallback="true"
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"

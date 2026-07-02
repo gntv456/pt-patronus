@@ -4,5 +4,8 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<!-- 出站网络：访问后端（app-sandbox 要求显式声明；缺失则所有请求被系统静默拒绝，App 形同离线） -->
+	<key>com.apple.security.network.client</key>
+	<true/>
 </dict>
 </plist>

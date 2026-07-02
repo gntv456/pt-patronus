@@ -16,8 +16,15 @@ class HxptWebLoginPage extends StatefulWidget {
 }
 
 class _HxptWebLoginPageState extends State<HxptWebLoginPage> {
+  InAppWebViewController? _ctrl;
   bool _busy = false;
   double _progress = 0;
+
+  // 仅放行好学域内跳转，拦截 302/meta-refresh/window.location 跳到外部钓鱼页（审计 P1）
+  Future<NavigationActionPolicy> _shouldOverride(InAppWebViewController c, NavigationAction nav) async {
+    final host = nav.request.url?.host ?? '';
+    return host.endsWith('hxpt.org') ? NavigationActionPolicy.ALLOW : NavigationActionPolicy.CANCEL;
+  }
 
   Future<void> _done() async {
     setState(() => _busy = true);
@@ -46,35 +53,50 @@ class _HxptWebLoginPageState extends State<HxptWebLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('登录好学'),
-        actions: [
-          TextButton(
-            onPressed: _busy ? null : _done,
-            child: const Text('完成，取 cookie',
-                style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          InAppWebView(
-            initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              useShouldOverrideUrlLoading: true,
+    return PopScope(
+      // 返回键：WebView 内 goBack；无历史才退出页面（避免按返回直接丢登录流程——审计 P1）
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (_ctrl != null && await _ctrl!.canGoBack()) {
+          await _ctrl!.goBack();
+        } else {
+          if (!context.mounted) return;
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('登录好学'),
+          actions: [
+            TextButton(
+              onPressed: _busy ? null : _done,
+              child: const Text('完成，取 cookie',
+                  style: TextStyle(color: Colors.white)),
             ),
-            onProgressChanged: (_, p) => setState(() => _progress = p / 100),
-          ),
-          if (_progress > 0 && _progress < 1)
-            LinearProgressIndicator(value: _progress, minHeight: 3),
-          if (_busy)
-            Container(
-              color: Colors.black38,
-              child: const Center(child: CircularProgressIndicator()),
+          ],
+        ),
+        body: Stack(
+          children: [
+            InAppWebView(
+              initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                useShouldOverrideUrlLoading: true,
+              ),
+              onWebViewCreated: (c) => _ctrl = c,
+              shouldOverrideUrlLoading: _shouldOverride,
+              onProgressChanged: (_, p) => setState(() => _progress = p / 100),
             ),
-        ],
+            if (_progress > 0 && _progress < 1)
+              LinearProgressIndicator(value: _progress, minHeight: 3),
+            if (_busy)
+              Container(
+                color: Colors.black38,
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        ),
       ),
     );
   }

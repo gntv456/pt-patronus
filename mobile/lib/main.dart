@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:ptpatronus/core/api_client.dart';
+import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'features/home/home_shell.dart';
 import 'features/login/login_page.dart';
@@ -10,6 +11,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiClient().loadToken();
   await ApiClient().loadBaseUrl();
+  // 401 全局清洗回调：断 WS（停旧 token 重连循环）+ 重算 home（token 已清 → 回登录页）。
+  // 通过静态回调注入，避免 core(api_client) → features/ws 反向 import 循环。
+  ApiClient.onSessionExpired = () {
+    try {
+      WsClient().disconnect();
+    } catch (_) {}
+    PTPatronusApp.reload();
+  };
   // 玻璃降级用户偏好（性能模式）；覆盖 Web 默认。try-catch 防 SharedPreferences 平台异常致白屏（与 MediaKit 同）。
   try {
     await loadGlassPrefs();
@@ -22,8 +31,13 @@ void main() async {
   try {
     MediaKit.ensureInitialized();
   } catch (_) {}
-  runApp(const PTPatronusApp());
+  runApp(PTPatronusApp(key: appRootKey));
 }
+
+/// App 根 GlobalKey：跨页面触发 home 重算，不依赖 findAncestorStateOfType(context)
+/// （release AOT + MaterialApp 内嵌 Navigator 下，从 home 页 context 向上查 AppState 偶尔取不到，
+///  保存后端地址后 reload 成 no-op → 卡在服务器配置页进不去）。
+final appRootKey = GlobalKey<_PTPatronusAppState>(debugLabel: 'PTPatronusApp');
 
 class PTPatronusApp extends StatefulWidget {
   const PTPatronusApp({super.key});
@@ -31,8 +45,10 @@ class PTPatronusApp extends StatefulWidget {
   State<PTPatronusApp> createState() => _PTPatronusAppState();
 
   /// 触发 home 重算（后端地址配置变化、登录态变化后调用）。
-  static void reload(BuildContext context) {
-    context.findAncestorStateOfType<_PTPatronusAppState>()?.reload();
+  static void reload([BuildContext? _]) {
+    final s = appRootKey.currentState;
+    debugPrint('[reload] currentState=${s != null}');
+    s?.reload();
   }
 }
 

@@ -54,8 +54,10 @@ Future<void> checkAndPromptUpdate(BuildContext context, {bool silent = false}) a
 
 bool _canInAppOta(UpdateCheckResult r) {
   if (!supportsInAppOta()) return false;
-  // 仅当 downloadUrl 明确是 APK 直链时才走应用内 OTA；网盘页面/提取码链接走外链兜底
-  return r.downloadUrl.toLowerCase().endsWith('.apk');
+  // APK 直链 + 提供 sha256（完整性校验不可省）+ https 源，三者俱全才应用内 OTA；
+  // 否则走外链兜底（缺 sha256 则无法防篡改，不应静默下载安装）。
+  final url = r.downloadUrl.toLowerCase();
+  return url.endsWith('.apk') && url.startsWith('https://') && r.sha256.isNotEmpty;
 }
 
 /// 应用内 OTA：下载进度 + sha256 校验 + 系统安装（pt_mate 式，补 sha256）。
@@ -100,8 +102,11 @@ void _showExternalDialog(BuildContext context, UpdateCheckResult r) {
                     style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
               ),
             const SizedBox(height: 8),
-            const Text('当前平台不支持应用内安装，请在浏览器下载安装包后手动安装。',
-                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(
+              defaultTargetPlatform == TargetPlatform.iOS
+                  ? 'iOS 暂不支持应用内安装，请通过 TestFlight 或官方分发渠道获取更新。'
+                  : '当前平台不支持应用内安装，请在浏览器下载安装包后手动安装。',
+              style: const TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
       ),
@@ -137,12 +142,22 @@ class _OtaUpdateDialogState extends State<_OtaUpdateDialog> {
   final CancelToken _cancelToken = CancelToken();
   String _stage = '正在下载更新包...';
   double _progress = 0; // 0..1；传 null 给 LinearProgressIndicator 表示未知大小
-  bool _busy = true;
+  bool _busy = false;
+  bool _started = false; // 用户显式点「立即下载」才开始（不进对话框即自动下载有违用户知情）
   String? _error;
 
   @override
   void initState() {
     super.initState();
+  }
+
+  void _start() {
+    if (_busy) return;
+    setState(() {
+      _started = true;
+      _busy = true;
+      _error = null;
+    });
     _run();
   }
 
@@ -208,12 +223,21 @@ class _OtaUpdateDialogState extends State<_OtaUpdateDialog> {
     return AlertDialog(
       title: Text('更新到 v${widget.result.latestVersion}'),
       content: SizedBox(
-        width: 280,
+        width: 300,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_error != null)
+            if (widget.result.releaseNotes.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(widget.result.releaseNotes,
+                    style: const TextStyle(fontSize: 13, height: 1.5)),
+              ),
+            if (!_started)
+              const Text('点击「立即下载」开始下载，完成后将自动校验完整性并打开安装界面。',
+                  style: TextStyle(fontSize: 12, color: Colors.grey))
+            else if (_error != null)
               Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13))
             else ...[
               Text(_stage, style: const TextStyle(fontSize: 13)),
@@ -230,7 +254,13 @@ class _OtaUpdateDialogState extends State<_OtaUpdateDialog> {
         ),
       ),
       actions: [
-        if (_error != null) ...[
+        if (!_started) ...[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(widget.result.isForced ? '稍后' : '以后再说'),
+          ),
+          FilledButton(onPressed: _start, child: const Text('立即下载')),
+        ] else if (_error != null) ...[
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('关闭'),

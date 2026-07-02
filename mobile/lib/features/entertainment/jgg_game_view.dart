@@ -93,11 +93,13 @@ class _JggGameViewState extends State<JggGameView> {
         final total = 3 * 8 + target;
         var delay = 70;
         for (var i = 0; i <= total; i++) {
+          if (!mounted) break; // 页面销毁中断动画循环（审计 P2）
           _highlight = i % 8;
-          if (mounted) setState(() {});
+          setState(() {});
           await Future.delayed(Duration(milliseconds: delay));
           delay = (delay + 8).clamp(70, 280);
         }
+        if (!mounted) return; // 销毁则跳过结算与循环末尾的无用刷新请求
         _result = res;
         _toast(res.prize.isNotEmpty && res.prize != '谢谢参与' ? '🎉 获得 ${res.prize}' : (res.message.isNotEmpty ? res.message : '谢谢参与'));
       } else {
@@ -125,10 +127,12 @@ class _JggGameViewState extends State<JggGameView> {
     try {
       var delay = 55;
       for (var i = 0; i < 18; i++) {
+        if (!mounted) break;
         _highlight = i % 8;
-        if (mounted) setState(() {});
+        setState(() {});
         await Future.delayed(Duration(milliseconds: delay));
       }
+      if (!mounted) return;
       _highlight = -1;
       final res = await _api.playMulti(widget.siteId, 'jgg', count);
       if (res.success) {

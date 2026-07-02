@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/workflow.dart';
+import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'node_config_sheet.dart';
 
@@ -196,11 +197,15 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
     };
   }
 
+  bool _saving = false; // 保存防重复点击（双击并发 create 会建重复工作流——审计 P1）
+
   Future<void> _save() async {
+    if (_saving) return;
     if (_nameCtl.text.trim().isEmpty) {
       _toast('请填写名称');
       return;
     }
+    setState(() => _saving = true);
     try {
       if (widget.workflowId > 0) {
         await _api.update(widget.workflowId, _body());
@@ -213,6 +218,8 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
       _toast('已保存');
     } catch (e) {
       _toast('$e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -269,6 +276,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final wide = isWideScreen(context);
     return GlassBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -279,102 +287,212 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
           actions: [
             IconButton(onPressed: _openTemplates, icon: const Icon(Icons.dynamic_form)),
             IconButton(onPressed: _run, icon: const Icon(Icons.play_arrow)),
-            IconButton(onPressed: _save, icon: const Icon(Icons.save)),
+            IconButton(onPressed: _saving ? null : _save, icon: const Icon(Icons.save)),
           ],
         ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
-            : Column(
-                children: [
-                  // 元信息条
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                    child: GlassCard(
-                      padding: const EdgeInsets.all(10),
-                      child: Column(children: [
-                        TextField(
-                          controller: _nameCtl,
-                          decoration: const InputDecoration(
-                              isDense: true, labelText: '名称', border: OutlineInputBorder()),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(children: [
-                          const Text('触发：'),
-                          DropdownButton<String>(
-                            value: _triggerType,
-                            items: const [
-                              DropdownMenuItem(value: 'manual', child: Text('手动')),
-                              DropdownMenuItem(value: 'timer', child: Text('定时')),
-                              DropdownMenuItem(value: 'event', child: Text('事件')),
-                            ],
-                            onChanged: (v) => setState(() => _triggerType = v ?? 'manual'),
-                          ),
-                          const SizedBox(width: 8),
-                          if (_triggerType == 'timer')
-                            Expanded(
-                              child: TextField(
-                                  controller: _timerCtl,
-                                  decoration: const InputDecoration(
-                                      isDense: true, hintText: '*/30 * * * *')),
-                            ),
-                          if (_triggerType == 'event')
-                            Expanded(
-                              child: TextField(
-                                  controller: _eventTypeCtl,
-                                  decoration: const InputDecoration(
-                                      isDense: true, hintText: '事件类型')),
-                            ),
-                          Switch(value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
-                          const Text('启用', style: TextStyle(fontSize: 12)),
-                        ]),
-                      ]),
-                    ),
-                  ),
-                  // 连接态提示
-                  if (_connectFrom != null)
-                    Container(
-                      width: double.infinity,
-                      color: PTColors.primary.withValues(alpha: 0.15),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      child: const Text('点选目标节点完成连线，或点源节点取消',
-                          style: TextStyle(fontSize: 12)),
-                    ),
-                  // 画布
-                  Expanded(
-                    child: InteractiveViewer(
-                      transformationController: _trans,
-                      minScale: 0.3,
-                      maxScale: 2.5,
-                      boundaryMargin: const EdgeInsets.all(500),
-                      constrained: false,
-                      child: SizedBox(
-                        width: _canvas.width,
-                        height: _canvas.height,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            CustomPaint(
-                              size: _canvas,
-                              painter: _EdgePainter(
-                                edges: _edges,
-                                nodes: {for (final n in _nodes) n.id: n},
-                                nodeSize: const Size(_nodeW, _nodeH),
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            for (final n in _nodes) _nodeWidget(n),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+            : wide
+                ? _wideBody()
+                : _narrowBody(),
+        // 窄屏保留 FAB 唤出节点库；宽屏节点库常驻左侧，不再需要。
+        floatingActionButton: (wide || _loading)
+            ? null
+            : FloatingActionButton(
+                heroTag: 'wf-add',
+                onPressed: _openPalette,
+                child: const Icon(Icons.add),
               ),
-        floatingActionButton: FloatingActionButton(
-          heroTag: 'wf-add',
-          onPressed: _openPalette,
-          child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  // 窄屏：元信息卡 + 连接提示 + 画布（节点库/节点配置走 FAB 与节点 ⚙ 的 sheet）。
+  Widget _narrowBody() => Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            child: _metaCard(),
+          ),
+          if (_connectFrom != null) _connectBanner(),
+          Expanded(child: _canvasWidget()),
+        ],
+      );
+
+  // 宽屏三栏（对齐 Web WorkflowEditor.vue）：左节点库 | 中画布 | 右配置面板。
+  Widget _wideBody() => Row(
+        children: [
+          _palettePanel(),
+          const VerticalDivider(width: 1),
+          Expanded(
+            child: Column(
+              children: [
+                if (_connectFrom != null) _connectBanner(),
+                Expanded(child: _canvasWidget()),
+              ],
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          _configPanel(),
+        ],
+      );
+
+  // 工作流元信息字段（名称/触发/定时/事件/启用）——窄屏包 GlassCard，宽屏嵌右面板。
+  Widget _metaFields() => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _nameCtl,
+            decoration: const InputDecoration(
+                isDense: true, labelText: '名称', border: OutlineInputBorder()),
+          ),
+          const SizedBox(height: 8),
+          Row(children: [
+            const Text('触发：'),
+            DropdownButton<String>(
+              value: _triggerType,
+              items: const [
+                DropdownMenuItem(value: 'manual', child: Text('手动')),
+                DropdownMenuItem(value: 'timer', child: Text('定时')),
+                DropdownMenuItem(value: 'event', child: Text('事件')),
+              ],
+              onChanged: (v) => setState(() => _triggerType = v ?? 'manual'),
+            ),
+            const SizedBox(width: 8),
+            if (_triggerType == 'timer')
+              Expanded(
+                child: TextField(
+                  controller: _timerCtl,
+                  decoration: const InputDecoration(
+                      isDense: true, hintText: '*/30 * * * *'),
+                ),
+              ),
+            if (_triggerType == 'event')
+              Expanded(
+                child: TextField(
+                  controller: _eventTypeCtl,
+                  decoration: const InputDecoration(
+                      isDense: true, hintText: '事件类型'),
+                ),
+              ),
+            Switch(value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
+            const Text('启用', style: TextStyle(fontSize: 12)),
+          ]),
+        ],
+      );
+
+  Widget _metaCard() => GlassCard(padding: const EdgeInsets.all(10), child: _metaFields());
+
+  Widget _connectBanner() => Container(
+        width: double.infinity,
+        color: PTColors.primary.withValues(alpha: 0.15),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: const Text('点选目标节点完成连线，或点源节点取消',
+            style: TextStyle(fontSize: 12)),
+      );
+
+  Widget _canvasWidget() => InteractiveViewer(
+        transformationController: _trans,
+        minScale: 0.3,
+        maxScale: 2.5,
+        boundaryMargin: const EdgeInsets.all(500),
+        constrained: false,
+        child: SizedBox(
+          width: _canvas.width,
+          height: _canvas.height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CustomPaint(
+                size: _canvas,
+                painter: _EdgePainter(
+                  edges: _edges,
+                  nodes: {for (final n in _nodes) n.id: n},
+                  nodeSize: const Size(_nodeW, _nodeH),
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              for (final n in _nodes) _nodeWidget(n),
+            ],
+          ),
         ),
+      );
+
+  // 左栏：节点库（按分类分组的 ActionChip，点击即添加到画布）。
+  Widget _palettePanel() {
+    final cats = <String, List<NodeInfo>>{};
+    for (final a in _infos.values) {
+      (cats[a.category] ??= []).add(a);
+    }
+    return SizedBox(
+      width: 210,
+      child: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          const Text('节点库', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          for (final entry in cats.entries) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Text(entry.key,
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.grey)),
+            ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: entry.value
+                  .map((a) => ActionChip(
+                        label: Text(a.name),
+                        onPressed: () => _addNode(a.type),
+                      ))
+                  .toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // 右栏：工作流元信息 + 选中节点的参数表单（内联 NodeParamForm，实时写回驱动画布重绘）。
+  Widget _configPanel() {
+    final sel = _selectedId == null
+        ? null
+        : _nodes.where((n) => n.id == _selectedId).firstOrNull;
+    final info = sel == null ? null : _infos[sel.type];
+    return SizedBox(
+      width: 320,
+      child: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          _metaFields(),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 10),
+          if (sel != null && info != null) ...[
+            Row(children: [
+              const Text('节点配置', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _deleteNode(sel),
+                child: const Icon(Icons.delete_outline, size: 18, color: PTColors.danger),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            // key 按节点 id：切换选中时强制重建表单，控制器读取新节点初值。
+            NodeParamForm(
+              key: ValueKey(sel.id),
+              node: sel,
+              info: info,
+              onChanged: () => setState(() {}),
+            ),
+          ] else
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                  child: Text('点选画布节点查看/编辑参数',
+                      style: TextStyle(color: Colors.grey, fontSize: 12))),
+            ),
+        ],
       ),
     );
   }

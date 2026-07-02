@@ -19,6 +19,11 @@ Future<String> downloadApk({
   required void Function(int received, int total) onProgress,
   CancelToken? cancelToken,
 }) async {
+  // 仅允许 https 源：防中间人替换 APK（与 sha256 校验互为双保险）。
+  final parsed = Uri.tryParse(url);
+  if (parsed == null || parsed.scheme != 'https') {
+    throw ArgumentError('仅允许 https 下载源');
+  }
   final dir = await getTemporaryDirectory();
   _cleanOldApks(dir);
   final savePath = '${dir.path}/ptpatronus-update.apk';

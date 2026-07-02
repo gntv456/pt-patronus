@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/rss.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
+/// RSS 订阅页：对齐 Web Rss.vue。订阅卡片列表 + 检查/条目/编辑/删除；
+/// 表单走自适应浮层（宽屏对话框 / 窄屏底栏），含体积范围(min_size/max_size，修编辑丢数据)。
 class RssPage extends StatefulWidget {
   const RssPage({super.key});
   @override
@@ -80,53 +84,78 @@ class _RssPageState extends State<RssPage> {
   }
 
   Future<void> _openForm([RssSubscription? r]) async {
-    final res = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => _RssFormPage(
-            editing: r,
-            sites: _sites,
-            downloaders: _downloaders,
-          )),
+    final saved = await showAdaptiveSheet<bool>(
+      context,
+      title: r == null ? '添加订阅' : '编辑订阅',
+      wideWidth: 560,
+      builder: (ctx) => _RssForm(
+        editing: r,
+        sites: _sites,
+        downloaders: _downloaders,
+        onSaved: () => Navigator.pop(ctx, true),
+      ),
     );
-    if (res == true) _load();
+    if (saved == true) _load();
   }
 
   Future<void> _openItems(RssSubscription r) async {
-    final items = await _api.items(r.id);
+    List<RssItem> items;
+    try {
+      items = await _api.items(r.id);
+    } catch (e) {
+      _toast('$e');
+      return;
+    }
     if (!mounted) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.6,
-        builder: (context, controller) => ListView(
-          controller: controller,
-          padding: const EdgeInsets.all(12),
-          children: [
-            Text('条目：${r.name}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
-            ...items.map((it) => ListTile(
-                  dense: true,
-                  title: Text(it.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-                  subtitle: Text('${_fmtSize(it.size)} · ${it.downloaded ? "已下载" : "未下载"}'),
-                  trailing: it.link.isNotEmpty
-                      ? const Icon(Icons.open_in_new, size: 16, color: Colors.grey)
-                      : null,
-                )),
-          ],
-        ),
-      ),
+    await showAdaptiveSheet(
+      context,
+      title: '条目：${r.name}',
+      wideWidth: 720,
+      builder: (_) => items.isEmpty
+          ? const PTEmptyState(text: '暂无条目')
+          : PTAdaptiveTable<RssItem>(
+              items: items,
+              columns: [
+                PTColumn(label: '标题', flex: 4, cell: (c, it) => it.link.isNotEmpty
+                    ? InkWell(onTap: () => _launchUrl(it.link), child: Text(it.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: PTColors.primary2, decoration: TextDecoration.underline)))
+                    : Text(it.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
+                PTColumn(label: '大小', flex: 1, numeric: true, cell: (_, it) => Text(_fmtSize(it.size), style: const TextStyle(fontSize: 12))),
+                PTColumn(label: '已下载', flex: 1, cell: (_, it) => Text(it.downloaded ? '是' : '否', style: TextStyle(fontSize: 12, color: it.downloaded ? PTColors.success : Colors.grey))),
+                PTColumn(label: '发现时间', flex: 2, cell: (_, it) => Text(_fmtTime(it.createdAt), style: const TextStyle(fontSize: 12, color: Colors.grey))),
+              ],
+              emptyText: '暂无条目',
+              narrowCard: (_, it) => GlassCard(
+                padding: const EdgeInsets.all(12),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  if (it.link.isNotEmpty)
+                    InkWell(onTap: () => _launchUrl(it.link), child: Text(it.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: PTColors.primary2)))
+                  else
+                    Text(it.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Text('${_fmtSize(it.size)} · ${it.downloaded ? "已下载" : "未下载"} · ${_fmtTime(it.createdAt)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ]),
+              ),
+            ),
     );
+  }
+
+  void _launchUrl(String url) {
+    // 移动端无内嵌浏览器跳转需求时仅复制/忽略；保持与 Web 新标签打开一致的最小实现。
+    _toast(url);
   }
 
   String _fmtTime(String? t) =>
       t == null ? '—' : t.substring(0, t.length > 16 ? 16 : t.length).replaceAll('T', ' ');
   String _fmtSize(int b) {
     if (b <= 0) return '—';
-    if (b >= 1 << 30) return '${(b / (1 << 30)).toStringAsFixed(2)} GB';
-    if (b >= 1 << 20) return '${(b / (1 << 20)).toStringAsFixed(1)} MB';
-    return '$b B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    double n = b.toDouble();
+    int u = 0;
+    while (n >= 1024 && u < units.length - 1) {
+      n /= 1024;
+      u++;
+    }
+    return u <= 1 ? '${n.toStringAsFixed(0)} ${units[u]}' : '${n.toStringAsFixed(2)} ${units[u]}';
   }
 
   @override
@@ -139,12 +168,24 @@ class _RssPageState extends State<RssPage> {
           title: const Text('RSS 订阅'),
           backgroundColor: Colors.transparent,
           elevation: 0,
-          actions: [IconButton(onPressed: () => _openForm(), icon: const Icon(Icons.add))],
+          actions: [
+            IconButton(onPressed: _load, icon: const Icon(Icons.refresh), tooltip: '刷新'),
+            IconButton(onPressed: () => _openForm(), icon: const Icon(Icons.add), tooltip: '添加订阅'),
+          ],
         ),
         body: _loading && _list.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : _list.isEmpty
-                ? const Center(child: Text('暂无 RSS 订阅', style: TextStyle(color: Colors.grey)))
+                ? RefreshIndicator(
+                    onRefresh: _load,
+                    child: PTEmptyState(
+                      icon: Icons.rss_feed,
+                      text: '暂无 RSS 订阅',
+                      description: '订阅 RSS/Atom 源，按关键词/大小/分辨率过滤后自动下载',
+                      actionLabel: '添加订阅',
+                      onAction: () => _openForm(),
+                    ),
+                  )
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView.builder(
@@ -158,45 +199,29 @@ class _RssPageState extends State<RssPage> {
                             padding: const EdgeInsets.all(14),
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Row(children: [
-                                Expanded(
-                                  child: Text(r.name,
-                                      style: const TextStyle(
-                                          fontSize: 16, fontWeight: FontWeight.w700)),
-                                ),
-                                _chip(r.enabled ? '启用' : '停用',
-                                    r.enabled ? PTColors.success : Colors.grey),
+                                Expanded(child: Text(r.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700))),
+                                _chip(r.enabled ? '启用' : '停用', r.enabled ? PTColors.success : Colors.grey),
                                 if (r.autoDownload) _chip('自动下载', PTColors.warn),
                                 if (r.resolution.isNotEmpty) _chip(r.resolution, PTColors.primary2),
                               ]),
                               const SizedBox(height: 4),
-                              Text(r.url,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text(r.url, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                               Text(
-                                  '间隔 ${r.intervalMin} 分钟 · 上次 ${_fmtTime(r.lastCheckedAt)}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                '间隔 ${r.intervalMin} 分钟 · 上次 ${_fmtTime(r.lastCheckedAt)}${r.titleInclude.isNotEmpty ? ' · 包含: ${r.titleInclude}' : ''}',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
                               const SizedBox(height: 8),
                               Wrap(spacing: 8, children: [
                                 FilledButton.icon(
                                   onPressed: _checking == r.id ? null : () => _check(r),
                                   icon: _checking == r.id
-                                      ? const SizedBox(
-                                          width: 14,
-                                          height: 14,
-                                          child: CircularProgressIndicator(strokeWidth: 2))
+                                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                                       : const Icon(Icons.refresh, size: 16),
                                   label: const Text('检查'),
                                 ),
-                                OutlinedButton(
-                                    onPressed: () => _openItems(r), child: const Text('条目')),
-                                OutlinedButton(
-                                    onPressed: () => _openForm(r), child: const Text('编辑')),
-                                TextButton(
-                                  onPressed: () => _delete(r),
-                                  child: const Text('删除',
-                                      style: TextStyle(color: PTColors.danger)),
-                                ),
+                                OutlinedButton(onPressed: () => _openItems(r), child: const Text('条目')),
+                                OutlinedButton(onPressed: () => _openForm(r), child: const Text('编辑')),
+                                TextButton(onPressed: () => _delete(r), child: const Text('删除', style: TextStyle(color: PTColors.danger))),
                               ]),
                             ]),
                           ),
@@ -216,17 +241,18 @@ class _RssPageState extends State<RssPage> {
       );
 }
 
-/// 新增/编辑订阅表单页。
-class _RssFormPage extends StatefulWidget {
+/// 新增/编辑订阅表单（自适应浮层内容）。含体积范围 min_size/max_size（修编辑丢数据 bug）。
+class _RssForm extends StatefulWidget {
   final RssSubscription? editing;
   final List<Site> sites;
   final List<Downloader> downloaders;
-  const _RssFormPage({this.editing, required this.sites, required this.downloaders});
+  final VoidCallback onSaved;
+  const _RssForm({this.editing, required this.sites, required this.downloaders, required this.onSaved});
   @override
-  State<_RssFormPage> createState() => _RssFormPageState();
+  State<_RssForm> createState() => _RssFormState();
 }
 
-class _RssFormPageState extends State<_RssFormPage> {
+class _RssFormState extends State<_RssForm> {
   final _api = RssApi();
   final _formKey = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.editing?.name ?? '');
@@ -236,9 +262,11 @@ class _RssFormPageState extends State<_RssFormPage> {
   late final _tags = TextEditingController(text: widget.editing?.tags ?? '');
   late final _path = TextEditingController(text: widget.editing?.savePath ?? '');
   late final _category = TextEditingController(text: widget.editing?.category ?? 'rss');
+  late final _minSize = TextEditingController(text: '${widget.editing?.minSize ?? 0}');
+  late final _maxSize = TextEditingController(text: '${widget.editing?.maxSize ?? 0}');
+  late final _interval = TextEditingController(text: '${widget.editing?.intervalMin ?? 30}');
   int _siteId = 0;
   int _downloaderId = 0;
-  int _interval = 30;
   String _resolution = '';
   bool _enabled = true;
   bool _autoDownload = false;
@@ -251,7 +279,6 @@ class _RssFormPageState extends State<_RssFormPage> {
     if (e != null) {
       _siteId = e.siteId;
       _downloaderId = e.downloaderId;
-      _interval = e.intervalMin;
       _resolution = e.resolution;
       _enabled = e.enabled;
       _autoDownload = e.autoDownload;
@@ -266,10 +293,12 @@ class _RssFormPageState extends State<_RssFormPage> {
       'url': _url.text.trim(),
       'site_id': _siteId,
       'enabled': _enabled,
-      'interval_min': _interval,
+      'interval_min': int.tryParse(_interval.text.trim()) ?? 30,
       'title_include': _include.text.trim(),
       'title_exclude': _exclude.text.trim(),
       'resolution': _resolution,
+      'min_size': int.tryParse(_minSize.text.trim()) ?? 0,
+      'max_size': int.tryParse(_maxSize.text.trim()) ?? 0,
       'auto_download': _autoDownload,
       'downloader_id': _downloaderId,
       'save_path': _path.text.trim(),
@@ -282,11 +311,9 @@ class _RssFormPageState extends State<_RssFormPage> {
       } else {
         await _api.create(body);
       }
-      if (mounted) Navigator.pop(context, true);
+      widget.onSaved();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -294,147 +321,88 @@ class _RssFormPageState extends State<_RssFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: Text(widget.editing == null ? '添加订阅' : '编辑订阅'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(14),
-            children: [
-              TextFormField(
-                controller: _name,
-                decoration: const InputDecoration(labelText: '名称', border: OutlineInputBorder()),
-                validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _url,
-                decoration:
-                    const InputDecoration(labelText: 'URL', border: OutlineInputBorder()),
-                validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null,
-              ),
-              const SizedBox(height: 10),
-              Row(children: [
-                const Text('关联站点：'),
-                Expanded(
-                  child: DropdownButton<int>(
-                    isExpanded: true,
-                    value: _siteId,
-                    items: [
-                      const DropdownMenuItem(value: 0, child: Text('不关联（匿名 RSS）')),
-                      ...widget.sites.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))),
-                    ],
-                    onChanged: (v) => setState(() => _siteId = v ?? 0),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 10),
-              Row(children: [
-                const Text('间隔(分钟)'),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Slider(
-                    value: _interval.toDouble(),
-                    min: 5,
-                    max: 240,
-                    divisions: 47,
-                    label: '$_interval',
-                    onChanged: (v) => setState(() => _interval = v.round()),
-                  ),
-                ),
-                Text('$_interval'),
-              ]),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _include,
-                decoration: const InputDecoration(
-                    labelText: '标题包含（| 分隔）', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _exclude,
-                decoration: const InputDecoration(
-                    labelText: '标题排除（| 分隔）', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: 10),
-              Row(children: [
-                const Text('分辨率：'),
-                Expanded(
-                  child: DropdownButton<String>(
-                    isExpanded: true,
-                    value: _resolution,
-                    items: const [
-                      DropdownMenuItem(value: '', child: Text('不限')),
-                      DropdownMenuItem(value: '1080p', child: Text('1080p')),
-                      DropdownMenuItem(value: '2160p', child: Text('2160p')),
-                    ],
-                    onChanged: (v) => setState(() => _resolution = v ?? ''),
-                  ),
-                ),
-              ]),
-              const SizedBox(height: 6),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('启用'),
-                value: _enabled,
-                onChanged: (v) => setState(() => _enabled = v),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('自动下载'),
-                value: _autoDownload,
-                onChanged: (v) => setState(() => _autoDownload = v),
-              ),
-              if (_autoDownload) ...[
-                Row(children: [
-                  const Text('下载器：'),
-                  Expanded(
-                    child: DropdownButton<int>(
-                      isExpanded: true,
-                      value: _downloaderId,
-                      items: [
-                        const DropdownMenuItem(value: 0, child: Text('默认下载器')),
-                        ...widget.downloaders
-                            .map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))),
-                      ],
-                      onChanged: (v) => setState(() => _downloaderId = v ?? 0),
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _category,
-                  decoration: const InputDecoration(labelText: '分类', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _path,
-                  decoration:
-                      const InputDecoration(labelText: '保存路径', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _tags,
-                  decoration: const InputDecoration(labelText: '标签（逗号分隔）', border: OutlineInputBorder()),
-                ),
-              ],
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('保存'),
-              ),
+    return Form(
+      key: _formKey,
+      child: SingleChildScrollView(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          TextFormField(controller: _name, decoration: const InputDecoration(labelText: '名称'),
+              validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null),
+          const SizedBox(height: 10),
+          TextFormField(controller: _url, decoration: const InputDecoration(labelText: 'URL', hintText: 'https://site.com/rss.xml'),
+              validator: (v) => (v == null || v.trim().isEmpty) ? '必填' : null),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<int>(
+            initialValue: _siteId,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: '关联站点'),
+            items: [
+              const DropdownMenuItem(value: 0, child: Text('不关联（匿名 RSS）')),
+              ...widget.sites.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))),
             ],
+            onChanged: (v) => setState(() => _siteId = v ?? 0),
           ),
-        ),
+          const SizedBox(height: 10),
+          TextFormField(
+            controller: _interval,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: '间隔（分钟，最小 5）'),
+            validator: (v) {
+              final n = int.tryParse(v ?? '');
+              if (n == null || n < 5) return '最小 5 分钟';
+              return null;
+            },
+          ),
+          const SizedBox(height: 10),
+          TextFormField(controller: _include, decoration: const InputDecoration(labelText: '标题包含（| 分隔）')),
+          const SizedBox(height: 10),
+          TextFormField(controller: _exclude, decoration: const InputDecoration(labelText: '标题排除（| 分隔）')),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            initialValue: _resolution,
+            isExpanded: true,
+            decoration: const InputDecoration(labelText: '分辨率'),
+            items: const [
+              DropdownMenuItem(value: '', child: Text('不限')),
+              DropdownMenuItem(value: '1080p', child: Text('1080p')),
+              DropdownMenuItem(value: '2160p', child: Text('2160p')),
+            ],
+            onChanged: (v) => setState(() => _resolution = v ?? ''),
+          ),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(child: TextFormField(controller: _minSize, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], decoration: const InputDecoration(labelText: '最小体积'))),
+            const Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('~')),
+            Expanded(child: TextFormField(controller: _maxSize, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], decoration: const InputDecoration(labelText: '最大体积'))),
+          ]),
+          const Padding(padding: EdgeInsets.only(top: 2, bottom: 8), child: Text('字节（0=不限）', style: TextStyle(fontSize: 11, color: Colors.grey))),
+          SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('启用'), value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
+          SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('自动下载'), value: _autoDownload, onChanged: (v) => setState(() => _autoDownload = v)),
+          if (_autoDownload) ...[
+            DropdownButtonFormField<int>(
+              initialValue: _downloaderId,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: '下载器'),
+              items: [
+                const DropdownMenuItem(value: 0, child: Text('默认下载器')),
+                ...widget.downloaders.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))),
+              ],
+              onChanged: (v) => setState(() => _downloaderId = v ?? 0),
+            ),
+            const SizedBox(height: 10),
+            TextFormField(controller: _path, decoration: const InputDecoration(labelText: '保存路径')),
+            const SizedBox(height: 10),
+            TextFormField(controller: _category, decoration: const InputDecoration(labelText: '分类')),
+            const SizedBox(height: 10),
+            TextFormField(controller: _tags, decoration: const InputDecoration(labelText: '标签（逗号分隔）')),
+          ],
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('保存'),
+          ),
+        ]),
       ),
     );
   }

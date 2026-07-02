@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/config.dart';
+import 'package:ptpatronus/core/log.dart';
 import 'package:ptpatronus/main.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
@@ -34,10 +35,34 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
 
   String _trim(String s) => s.trim().replaceAll(RegExp(r'/+$'), '');
 
+  /// 校验后端地址：必须有 scheme+host；http 仅允许私网（公网 http 凭据可被嗅探）。
+  /// 返回 null=合法，否则返回错误提示。
+  String? _validateUrl(String url) {
+    final u = Uri.tryParse(url);
+    if (u == null || u.host.isEmpty || (u.scheme != 'http' && u.scheme != 'https')) {
+      return '请填合法地址（以 http:// 或 https:// 开头）';
+    }
+    final h = u.host;
+    final isPrivate = h == 'localhost' || h == '127.0.0.1' || h == '0.0.0.0' ||
+        h == '10.0.2.2' || // Android 模拟器→宿主机
+        h.startsWith('10.') ||
+        h.startsWith('192.168.') ||
+        RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(h);
+    if (u.scheme == 'http' && !isPrivate) {
+      return '公网地址请用 https://，否则登录凭据在共享网络下可被窃听';
+    }
+    return null;
+  }
+
   Future<void> _test() async {
     final url = _trim(_url.text);
     if (url.isEmpty) {
       setState(() => _msg = '请填后端地址');
+      return;
+    }
+    final verr = _validateUrl(url);
+    if (verr != null) {
+      setState(() => _msg = '✗ $verr');
       return;
     }
     setState(() {
@@ -66,14 +91,27 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
 
   Future<void> _save() async {
     final url = _trim(_url.text);
+    ptLog('[save] enter, url="$url"');
     if (url.isEmpty) {
       setState(() => _msg = '请填后端地址');
       return;
     }
-    await ApiClient().setBaseUrl(url);
-    if (!mounted) return;
-    // 保存后重算 app home：已配 + 未登录 → LoginPage
-    PTPatronusApp.reload(context);
+    final verr = _validateUrl(url);
+    if (verr != null) {
+      setState(() => _msg = '✗ $verr');
+      return;
+    }
+    try {
+      await ApiClient().setBaseUrl(url);
+      ptLog('[save] setBaseUrl OK -> baseUrl=${ApiClient().baseUrl} hasCustom=${ApiClient().hasCustomBaseUrl}');
+      if (!mounted) return;
+      // 保存后重算 app home：已配 + 未登录 → LoginPage（reload 走 appRootKey，稳）。
+      PTPatronusApp.reload(context);
+    } catch (e, st) {
+      ptLog('[save] EXCEPTION: $e\n$st');
+      // release 下异步回调异常会被静默吞掉 → 显式提示，避免「点了没反应」。
+      if (mounted) setState(() => _msg = '✗ 保存失败：$e');
+    }
   }
 
   @override

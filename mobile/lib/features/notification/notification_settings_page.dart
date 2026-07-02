@@ -38,6 +38,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
 
   @override
   void dispose() {
+    _wxTimer?.cancel(); // 扫码轮询显式停（回调虽有 !mounted 兜底，dispose cancel 更干净——审计 P2）
     for (final c in [_barkServer, _barkKey, _tgToken, _tgChat, _tgApi, _qqAppId, _qqSecret, _qqOpenid, _qqGroup, _wxToken, _wxAccount, _wxTarget, _wxBase, _whUrl]) {
       c.dispose();
     }

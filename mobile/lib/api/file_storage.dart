@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/api_client.dart';
@@ -90,6 +91,16 @@ class FileStorageApi {
   Future<Uint8List> download(int id, String path) =>
       _api.getBytes('/storages/$id/download?path=${Uri.encodeComponent(path)}');
 
+  /// 流式下载到本地文件（大文件避免全量入内存 OOM；支持进度/取消）。
+  Future<void> downloadToFile(int id, String path, String savePath,
+          {void Function(int, int)? onProgress, CancelToken? cancelToken}) =>
+      _api.downloadToFile(
+        '/storages/$id/download?path=${Uri.encodeComponent(path)}',
+        savePath,
+        onProgress: onProgress,
+        cancelToken: cancelToken,
+      );
+
   /// 建目录（path 走 query，body 空）。
   Future<void> mkdir(int id, String path) async {
     final r = await _api.post('/storages/$id/mkdir?path=${Uri.encodeComponent(path)}', {});
@@ -102,9 +113,53 @@ class FileStorageApi {
     _checkOk(r);
   }
 
+  /// 创建存储后端（对齐后端 POST /storages）。
+  Future<FileStorage> create(FileStorageInput in_) async {
+    final r = await _api.postJson('/storages', in_.toJson());
+    return FileStorage.fromJson(r);
+  }
+
+  /// 更新存储后端（密码留空=保留，对齐后端 PUT /storages/:id）。
+  Future<FileStorage> update(int id, FileStorageInput in_) async {
+    final r = await _api.put('/storages/$id', in_.toJson());
+    return FileStorage.fromJson(r);
+  }
+
+  /// 删除存储后端（DELETE /storages/:id）。
+  Future<void> delete(int id) async => _api.delete('/storages/$id');
+
   void _checkOk(Map<String, dynamic> r) {
     if (r['ok'] != true) {
       throw Exception((r['error'] as String?) ?? '操作失败');
     }
   }
+}
+
+/// 创建/更新存储入参（对齐后端 oper.FileStorageInput）。密码留空=不修改/不设密码。
+class FileStorageInput {
+  final String name;
+  final String type; // webdav | alist | smb | agent
+  final String url;
+  final String username;
+  final String password;
+  final String basePath;
+  final int agentId; // type=agent 时关联 Agent；其他类型为 0
+  FileStorageInput({
+    required this.name,
+    required this.type,
+    this.url = '',
+    this.username = '',
+    this.password = '',
+    this.basePath = '/',
+    this.agentId = 0,
+  });
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'type': type,
+        'url': url,
+        'username': username,
+        'password': password,
+        'base_path': basePath,
+        'agent_id': agentId,
+      };
 }

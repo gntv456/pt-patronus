@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/message.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -15,6 +16,11 @@ class _MessagesPageState extends State<MessagesPage> {
   List<MessageResult> _results = [];
   bool _loading = true;
   String? _error;
+  int? _siteFilter;
+
+  List<MessageResult> get _filteredResults => _siteFilter == null
+      ? _results
+      : _results.where((r) => r.siteId == _siteFilter).toList();
 
   @override
   void initState() {
@@ -46,16 +52,36 @@ class _MessagesPageState extends State<MessagesPage> {
     try {
       if (msg.url.isNotEmpty) content = await _api.content(msg.siteId, msg.url);
       if (!msg.isRead && msg.adminActions?.itemId.isNotEmpty == true) {
-        _api.markRead(msg.siteId, [msg.adminActions!.itemId]).then((_) => _load());
+        _api.markRead(msg.siteId, [msg.adminActions!.itemId]).then((_) {
+          if (mounted) _load(); // 守卫：避免 dispose 后 setState（审计 P1）
+        });
       }
     } catch (e) {
-      content = '加载失败：$e';
+      content = '加载失败：${_friendlyError('$e')}';
     }
     if (!mounted) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _DetailSheet(msg: msg, content: content, onReply: () => _reply(msg), onDelete: () => _delete(msg)),
+    await showAdaptiveSheet(
+      context,
+      title: msg.title,
+      wideWidth: 720,
+      builder: (_) => _detailContent(msg, content),
+    );
+  }
+
+  Widget _detailContent(Message msg, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('${msg.sender} · ${msg.date} · ${msg.siteName}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        const SizedBox(height: 12),
+        SelectableText(content.isNotEmpty ? content : '（无正文）', style: const TextStyle(fontSize: 14, height: 1.6)),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(child: OutlinedButton.icon(onPressed: () => _reply(msg), icon: const Icon(Icons.reply), label: const Text('回复'))),
+          const SizedBox(width: 10),
+          Expanded(child: OutlinedButton.icon(onPressed: () => _delete(msg), icon: Icon(Icons.delete_outline, color: PTColors.danger), label: Text('删除', style: TextStyle(color: PTColors.danger)))),
+        ]),
+      ],
     );
   }
 
@@ -67,7 +93,7 @@ class _MessagesPageState extends State<MessagesPage> {
       final r = await _api.reply(msg.siteId, msg.url, text);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r['message'] as String? ?? '已发送')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError('$e'))));
     }
   }
 
@@ -84,7 +110,7 @@ class _MessagesPageState extends State<MessagesPage> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError('$e'))));
     }
   }
 
@@ -115,16 +141,17 @@ class _MessagesPageState extends State<MessagesPage> {
         body: Column(
           children: [
             _mailboxTabs(),
+            if (_results.isNotEmpty) _siteFilterBar(),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _load,
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
-                        ? ListView(children: [const SizedBox(height: 120), Center(child: Text(_error!, style: const TextStyle(color: Colors.grey)))])
+                        ? PTEmptyState(text: _error!, onRetry: _load)
                         : _results.isEmpty
-                            ? ListView(children: const [SizedBox(height: 120), Center(child: Text('暂无消息', style: TextStyle(color: Colors.grey)))])
-                            : ListView(padding: const EdgeInsets.all(12), children: _results.map(_group).toList()),
+                            ? PTEmptyState(icon: Icons.mail_outline, text: '暂无消息')
+                            : ListView(padding: const EdgeInsets.all(12), children: _filteredResults.map(_group).toList()),
               ),
             ),
           ],
@@ -154,13 +181,29 @@ class _MessagesPageState extends State<MessagesPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: _mailbox == t.$1 ? const Color(0xFF6C5CE7).withValues(alpha: 0.16) : Colors.transparent,
+                      color: _mailbox == t.$1 ? PTColors.primary.withValues(alpha: 0.16) : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(t.$2, style: TextStyle(color: _mailbox == t.$1 ? const Color(0xFF6C5CE7) : null, fontWeight: _mailbox == t.$1 ? FontWeight.w600 : null)),
+                    child: Text(t.$2, style: TextStyle(color: _mailbox == t.$1 ? PTColors.primary : null, fontWeight: _mailbox == t.$1 ? FontWeight.w600 : null)),
                   ),
                 ))
             .toList(),
+      ),
+    );
+  }
+
+  Widget _siteFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: DropdownButton<int?>(
+        value: _siteFilter,
+        isExpanded: true,
+        underline: const SizedBox(),
+        items: [
+          const DropdownMenuItem<int?>(value: null, child: Text('全部站点')),
+          ..._results.map((r) => DropdownMenuItem<int?>(value: r.siteId, child: Text(r.siteName))),
+        ],
+        onChanged: (v) => setState(() => _siteFilter = v),
       ),
     );
   }
@@ -174,13 +217,15 @@ class _MessagesPageState extends State<MessagesPage> {
           Row(children: [
             Text(r.siteName, style: const TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(width: 8),
-            if (r.error.isNotEmpty) Text(r.error, style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 12))
-            else if (r.messages.isEmpty) const Text('无消息', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            if (r.error.isNotEmpty)
+              Expanded(child: Text(_friendlyError(r.error), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: PTColors.danger, fontSize: 12)))
+            else if (r.messages.isEmpty)
+              const Text('无消息', style: TextStyle(color: Colors.grey, fontSize: 12)),
           ]),
           ...r.messages.map((m) => ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                leading: m.isRead ? null : const CircleAvatar(radius: 4, backgroundColor: Color(0xFF6C5CE7)),
+                leading: m.isRead ? null : CircleAvatar(radius: 4, backgroundColor: PTColors.primary),
                 title: Text(m.title, style: TextStyle(fontWeight: m.isRead ? FontWeight.w400 : FontWeight.w600)),
                 subtitle: Text('${m.sender} · ${m.date}', style: const TextStyle(fontSize: 12)),
                 onTap: () => _openDetail(m),
@@ -191,47 +236,15 @@ class _MessagesPageState extends State<MessagesPage> {
   }
 }
 
-class _DetailSheet extends StatelessWidget {
-  final Message msg;
-  final String content;
-  final VoidCallback onReply;
-  final VoidCallback onDelete;
-  const _DetailSheet({required this.msg, required this.content, required this.onReply, required this.onDelete});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.75,
-      child: Column(
-        children: [
-          AppBar(
-            title: Text(msg.title, overflow: TextOverflow.ellipsis),
-            automaticallyImplyLeading: false,
-            actions: [IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))],
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('${msg.sender} · ${msg.date} · ${msg.siteName}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                  const SizedBox(height: 12),
-                  Text(content.isNotEmpty ? content : '（无正文）', style: const TextStyle(fontSize: 14, height: 1.6)),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(children: [
-              Expanded(child: OutlinedButton.icon(onPressed: onReply, icon: const Icon(Icons.reply), label: const Text('回复'))),
-              const SizedBox(width: 10),
-              Expanded(child: OutlinedButton.icon(onPressed: onDelete, icon: const Icon(Icons.delete_outline, color: Color(0xFFF56C6C)), label: const Text('删除', style: TextStyle(color: Color(0xFFF56C6C))))),
-            ]),
-          ),
-        ],
-      ),
-    );
+/// 站点原始错误 → 中文友好提示（对齐 Web Messages.vue 的 friendlyError）。原文不可读时降级返回原串。
+String _friendlyError(String e) {
+  final l = e.toLowerCase();
+  if (l.contains('context deadline exceeded') || l.contains('timeout') || l.contains('deadline')) {
+    return '站点超时（可能未登录或 Cookie 失效）';
   }
+  if (l.contains('no such host') || l.contains('dns')) return '无法解析站点域名';
+  if (l.contains('403') || l.contains('forbidden')) return '站点拒绝访问（可能未登录）';
+  if (l.contains('cookie')) return 'Cookie 失效，请重新登录站点';
+  if (l.contains('eof') || l.contains('connection reset') || l.contains('connection refused')) return '站点连接异常';
+  return e;
 }

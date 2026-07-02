@@ -8,5 +8,8 @@
 	<true/>
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<!-- 出站网络：访问后端 REST API / WebSocket / 摄像头 HLS（app-sandbox 要求显式声明，缺失则请求被静默拒绝） -->
+	<key>com.apple.security.network.client</key>
+	<true/>
 </dict>
 </plist>

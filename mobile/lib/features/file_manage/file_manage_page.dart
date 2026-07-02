@@ -1,14 +1,19 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:ptpatronus/api/file_storage.dart';
+import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
-/// 文件管理页：选存储后端 → 浏览目录 → 下载 / 上传 / 新建文件夹。对齐 Web FileManager.vue。
-/// 不做删除（后端无路由，Web 也没做）、不做存储 CRUD（请在 Web 端配置）。
+/// 文件管理页：存储后端 CRUD（WebDAV/Alist/SMB/Agent）→ 浏览目录 → 下载/上传/建目录/删除。
+/// 对齐 Web FileManager.vue。
 class FileManagePage extends StatefulWidget {
   const FileManagePage({super.key});
   @override
@@ -66,6 +71,61 @@ class _FileManagePageState extends State<FileManagePage> {
     _loadEntries();
   }
 
+  FileStorage? get _current =>
+      _storages.where((x) => x.id == _storageId).firstOrNull;
+
+  // —— 存储后端 CRUD（对齐 Web FileManager.vue 的「添加存储」+ 类型含 Agent）——
+  Future<void> _addStorage() async {
+    final ok = await showAdaptiveSheet(
+      context,
+      title: '添加存储',
+      wideWidth: 480,
+      builder: (_) => const _StorageFormSheet(),
+    );
+    if (ok == true) _loadStorages();
+  }
+
+  Future<void> _editStorage() async {
+    final s = _current;
+    if (s == null) return;
+    final ok = await showAdaptiveSheet(
+      context,
+      title: '编辑存储',
+      wideWidth: 480,
+      builder: (_) => _StorageFormSheet(editing: s),
+    );
+    if (ok == true) _loadStorages();
+  }
+
+  Future<void> _deleteStorage() async {
+    final s = _current;
+    if (s == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('删除存储'),
+        content: Text('删除存储后端「${s.name}」？仅移除配置，不影响远端文件。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.delete(s.id);
+      _toast('已删除');
+      _storageId = null;
+      await _loadStorages();
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
   Future<void> _loadEntries() async {
     final id = _storageId;
     if (id == null) return;
@@ -110,19 +170,66 @@ class _FileManagePageState extends State<FileManagePage> {
   Future<void> _download(FileEntry e) async {
     final id = _storageId;
     if (id == null) return;
-    setState(() => _busy = true);
+    final cancel = CancelToken();
+    final progress = ValueNotifier<double>(-1); // -1=未知大小，否则 0..1
+    final dir = await getTemporaryDirectory();
+    final savePath = '${dir.path}/${e.name}';
+    if (!mounted) return;
+    // 流式下载写盘 + 进度/取消对话框（避免大文件全量入内存 OOM——审计 P1）
+    unawaited(showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: const Text('下载中'),
+        content: ValueListenableBuilder<double>(
+          valueListenable: progress,
+          builder: (_, p, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+              const SizedBox(height: 12),
+              LinearProgressIndicator(value: p < 0 ? null : p),
+              if (p >= 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('${(p * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (!cancel.isCancelled) cancel.cancel('user');
+            },
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    ));
     try {
-      final bytes = await _api.download(id, e.path);
-      await Share.shareXFiles([
-        XFile.fromData(bytes, mimeType: 'application/octet-stream', name: e.name),
-      ]);
+      await _api.downloadToFile(
+        id,
+        e.path,
+        savePath,
+        onProgress: (r, t) => progress.value = t > 0 ? r / t : -1,
+        cancelToken: cancel,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(); // 关进度框
+      await Share.shareXFiles([XFile(savePath)]);
       _toast('已下载，请在分享面板选择保存位置');
+    } on DioException catch (err) {
+      if (mounted) Navigator.of(context).pop();
+      if (mounted && !CancelToken.isCancel(err)) _toast('下载失败：${err.message}');
     } on MissingPluginException {
+      if (mounted) Navigator.of(context).pop();
       _toast('当前平台不支持分享/保存，请用 Web 端下载');
-    } catch (e) {
-      _toast(e.toString().replaceFirst('Exception: ', ''));
+    } catch (err) {
+      if (mounted) Navigator.of(context).pop();
+      _toast(err.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      progress.dispose();
     }
   }
 
@@ -131,7 +238,7 @@ class _FileManagePageState extends State<FileManagePage> {
     if (id == null) return;
     setState(() => _busy = true);
     try {
-      final result = await FilePicker.platform.pickFiles(withData: true);
+      final result = await FilePicker.platform.pickFiles(withData: false); // 不读入内存：用 fromPath 流式上传
       if (result == null || result.files.isEmpty) return;
       final f = result.files.first;
       http.MultipartFile mf;
@@ -339,6 +446,24 @@ class _FileManagePageState extends State<FileManagePage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.storage),
+              tooltip: '存储管理',
+              onSelected: (v) {
+                if (v == 'add') {
+                  _addStorage();
+                } else if (v == 'edit') {
+                  _editStorage();
+                } else if (v == 'delete') {
+                  _deleteStorage();
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'add', child: Text('添加存储')),
+                if (_current != null) const PopupMenuItem(value: 'edit', child: Text('编辑当前存储')),
+                if (_current != null) const PopupMenuItem(value: 'delete', child: Text('删除当前存储')),
+              ],
+            ),
             IconButton(
               icon: const Icon(Icons.create_new_folder),
               onPressed: hasStorage && !_busy ? _mkdir : null,
@@ -404,4 +529,179 @@ String _fmtBytes(int n) {
     i++;
   }
   return i == 0 ? '${s.toInt()} B' : '${s.toStringAsFixed(1)} ${units[i]}';
+}
+
+/// 存储后端新建/编辑表单：name/type(webdav/alist/smb/agent)/agent选择器/url/user/pass/base_path。
+/// 编辑态密码留空=不修改。type=agent 时用 Agent 选择器替代地址凭据（对齐 Web FileManager.vue）。
+class _StorageFormSheet extends StatefulWidget {
+  final FileStorage? editing; // null=新建
+  const _StorageFormSheet({this.editing});
+  @override
+  State<_StorageFormSheet> createState() => _StorageFormSheetState();
+}
+
+class _StorageFormSheetState extends State<_StorageFormSheet> {
+  final _api = FileStorageApi();
+  final _agentApi = AgentApi();
+  final _name = TextEditingController();
+  final _url = TextEditingController();
+  final _username = TextEditingController();
+  final _password = TextEditingController();
+  final _basePath = TextEditingController(text: '/');
+  String _type = 'webdav';
+  List<Agent> _agents = const [];
+  int _agentId = 0;
+  bool _saving = false;
+  bool _loadingAgents = true;
+
+  bool get _isEdit => widget.editing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.editing;
+    if (e != null) {
+      _name.text = e.name;
+      _type = e.type.isEmpty ? 'webdav' : e.type;
+      _url.text = e.url;
+      _username.text = e.username;
+      _basePath.text = e.basePath.isEmpty ? '/' : e.basePath;
+      _agentId = e.agentId;
+    }
+    _agentApi.list().then((l) {
+      if (mounted) setState(() { _agents = l; _loadingAgents = false; });
+    }).catchError((_) {
+      if (mounted) setState(() => _loadingAgents = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _url.dispose();
+    _username.dispose();
+    _password.dispose();
+    _basePath.dispose();
+    super.dispose();
+  }
+
+  void _toast(String s) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
+  }
+
+  Future<void> _submit() async {
+    final name = _name.text.trim();
+    if (name.isEmpty) {
+      _toast('请填写名称');
+      return;
+    }
+    if (_type == 'agent') {
+      if (_agentId == 0) {
+        _toast('请选择 Agent');
+        return;
+      }
+    } else if (_url.text.trim().isEmpty) {
+      _toast('请填写地址');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final in_ = FileStorageInput(
+        name: name,
+        type: _type,
+        url: _url.text.trim(),
+        username: _username.text.trim(),
+        password: _password.text,
+        basePath: _basePath.text.trim().isEmpty ? '/' : _basePath.text.trim(),
+        agentId: _agentId,
+      );
+      if (_isEdit) {
+        await _api.update(widget.editing!.id, in_);
+        _toast('已更新');
+      } else {
+        await _api.create(in_);
+        _toast('已添加');
+      }
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(controller: _name, decoration: const InputDecoration(labelText: '名称')),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          initialValue: _type,
+          decoration: const InputDecoration(labelText: '类型'),
+          items: const [
+            DropdownMenuItem(value: 'webdav', child: Text('WebDAV')),
+            DropdownMenuItem(value: 'alist', child: Text('Alist')),
+            DropdownMenuItem(value: 'smb', child: Text('SMB')),
+            DropdownMenuItem(value: 'agent', child: Text('Agent')),
+          ],
+          onChanged: (v) => setState(() => _type = v ?? 'webdav'),
+        ),
+        if (_type == 'agent') ...[
+          const SizedBox(height: 12),
+          // agents 异步加载：加载完再建下拉，initialValue 才能正确预选编辑态的 agent。
+          _loadingAgents
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                )
+              : DropdownButtonFormField<int>(
+                  initialValue: (_agentId == 0 || _agents.any((a) => a.id == _agentId)) ? _agentId : 0,
+                  decoration: const InputDecoration(labelText: 'Agent'),
+                  items: [
+                    const DropdownMenuItem(value: 0, child: Text('选择 Agent')),
+                    ..._agents.map((a) => DropdownMenuItem(
+                          value: a.id,
+                          child: Text('${a.name}${a.online ? '' : '（离线）'}'),
+                        )),
+                  ],
+                  onChanged: (v) => setState(() => _agentId = v ?? 0),
+                ),
+          const SizedBox(height: 8),
+          const Text('选择已部署 ptpatronus-agent 的设备（飞牛/绿联等），根路径填 agent 机器上的绝对路径。设备离线或版本过低（需 0.2.0+）时文件操作不可用。',
+              style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5)),
+        ] else ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: _url,
+            decoration: const InputDecoration(labelText: '地址', hintText: 'http://host:port'),
+            keyboardType: TextInputType.url,
+          ),
+          const SizedBox(height: 12),
+          TextField(controller: _username, decoration: const InputDecoration(labelText: '用户名')),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            decoration: InputDecoration(labelText: '密码', hintText: _isEdit ? '留空不修改' : null),
+          ),
+        ],
+        const SizedBox(height: 12),
+        TextField(controller: _basePath, decoration: const InputDecoration(labelText: '根路径')),
+        const SizedBox(height: 20),
+        FilledButton(
+          onPressed: _saving ? null : _submit,
+          child: _saving
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Text(_isEdit ? '保存' : '添加'),
+        ),
+      ],
+    );
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/announcement.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 /// 公告页：按站点分组展示公告条目，每条可展开正文。
 class AnnouncementsPage extends StatefulWidget {
@@ -16,6 +17,12 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
   bool _loading = true;
   String? _error;
   final _open = <String, bool>{};
+  int? _siteFilter;
+  int? _syncing; // 单站同步中
+
+  // 按 _siteFilter 过滤（数据已全量在 _results，对齐 Web Announcements.vue 的 filtered computed）。
+  List<AnnouncementResult> get _filteredResults =>
+      _siteFilter == null ? _results : _results.where((r) => r.siteId == _siteFilter).toList();
 
   @override
   void initState() {
@@ -37,6 +44,25 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     }
   }
 
+  // 单站同步（对齐 Web group-head 的「刷新」按钮）：拉取该站最新公告并就地替换。
+  Future<void> _syncOne(AnnouncementResult r) async {
+    setState(() => _syncing = r.siteId);
+    try {
+      final one = await _api.syncOne(r.siteId);
+      if (!mounted) return;
+      final i = _results.indexWhere((x) => x.siteId == r.siteId);
+      setState(() {
+        if (i >= 0) _results[i] = one;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('同步失败')));
+      }
+    } finally {
+      if (mounted) setState(() => _syncing = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassBackground(
@@ -51,20 +77,46 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
             IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : () => _load(refresh: true)),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: () => _load(refresh: true),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-                  ? _Empty(text: _error!, onRetry: _load)
-                  : _results.isEmpty
-                      ? const _Empty(text: '暂无数据，请先添加并登录站点')
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _results.length,
-                          itemBuilder: (_, i) => _group(_results[i]),
-                        ),
+        body: Column(
+          children: [
+            if (_results.isNotEmpty) _siteFilterBar(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () => _load(refresh: true),
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? PTEmptyState(text: _error!, onRetry: _load)
+                        : _results.isEmpty
+                            ? PTEmptyState(icon: Icons.campaign_outlined, text: '暂无数据', description: '请先添加并登录站点')
+                            : _filteredResults.isEmpty
+                                ? PTEmptyState(text: _siteFilter == null ? '暂无数据' : '该站点暂无公告')
+                                : ListView.builder(
+                                    padding: const EdgeInsets.all(12),
+                                    itemCount: _filteredResults.length,
+                                    itemBuilder: (_, i) => _group(_filteredResults[i]),
+                                  ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  // 站点筛选下拉：选项由已拉取的 _results 派生（一站一项），对齐 Web 的 el-select siteOptions。
+  Widget _siteFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: DropdownButton<int?>(
+        value: _siteFilter,
+        isExpanded: true,
+        underline: const SizedBox(),
+        items: [
+          const DropdownMenuItem<int?>(value: null, child: Text('全部站点')),
+          ..._results.map((r) => DropdownMenuItem<int?>(value: r.siteId, child: Text(r.siteName))),
+        ],
+        onChanged: (v) => setState(() => _siteFilter = v),
       ),
     );
   }
@@ -77,18 +129,31 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
-            Text(r.siteName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            Flexible(
+              child: Text(r.siteName, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            ),
             const SizedBox(width: 8),
             if (hasItems)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFF6C5CE7).withValues(alpha: 0.16), borderRadius: BorderRadius.circular(999)),
-                child: Text('${r.items.length} 条', style: const TextStyle(color: Color(0xFF6C5CE7), fontSize: 12)),
+                decoration: BoxDecoration(color: PTColors.primary.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(999)),
+                child: Text('${r.items.length} 条', style: const TextStyle(color: PTColors.primary, fontSize: 12)),
               )
             else if (r.error.isNotEmpty)
-              Text(r.error, style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 12))
+              Expanded(child: Text(r.error, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: PTColors.danger, fontSize: 12)))
             else
               const Text('暂无公告', style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const Spacer(),
+            if (_syncing == r.siteId)
+              const Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
+            else
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 18),
+                tooltip: '同步该站',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => _syncOne(r),
+              ),
           ]),
           if (hasItems)
             ...r.items.asMap().entries.map((e) {
@@ -112,25 +177,9 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
               ]);
             })
           else if (r.rawText.isNotEmpty)
-            Padding(padding: const EdgeInsets.only(top: 8), child: Text(r.rawText.length > 200 ? '${r.rawText.substring(0, 200)}…' : r.rawText, style: const TextStyle(color: Colors.grey, fontSize: 13))),
+            Padding(padding: const EdgeInsets.only(top: 8), child: Text(r.rawText.length > 300 ? '${r.rawText.substring(0, 300)}…' : r.rawText, style: const TextStyle(color: Colors.grey, fontSize: 13))),
         ],
       ),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _Empty({required this.text, this.onRetry});
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 120),
-        Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)))),
-        if (onRetry != null) Center(child: ElevatedButton(onPressed: onRetry, child: const Text('重试'))),
-      ],
     );
   }
 }

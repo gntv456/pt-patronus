@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/harem.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
+/// 容错字节格式化（B/KB/MB/GB/TB/PB）；<=0 返回 '—'（替代原硬编码 G，大上传者不再显示 5120G——审计 P2）。
+String _fmtBytes(int b) {
+  if (b <= 0) return '—';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  double n = b.toDouble();
+  int i = 0;
+  while (n >= 1024 && i < u.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return '${n.toStringAsFixed(i <= 1 ? 0 : 2)} ${u[i]}';
+}
+
+/// 后宫页（对齐 Web Harem.vue）：概览指标条 + 处方列表。
+/// 处方宽屏=表格 / 窄屏=卡片；花名册与导出走自适应浮层（宽屏对话框 / 窄屏底栏），
+/// 花名册含上传+下载两列；导出支持复制。对齐 Web 的 el-table + el-dialog/el-drawer。
 class HaremPage extends StatefulWidget {
   const HaremPage({super.key});
   @override
@@ -36,19 +54,37 @@ class _HaremPageState extends State<HaremPage> {
   }
 
   Future<void> _export() async {
+    String text;
     try {
-      final text = await _api.exportText();
-      if (!mounted) return;
-      showModalBottomSheet(
-        context: context,
-        builder: (_) => Padding(
-          padding: const EdgeInsets.all(16),
-          child: SingleChildScrollView(child: Text(text, style: const TextStyle(fontFamily: 'monospace', fontSize: 13))),
-        ),
-      );
+      text = await _api.exportText();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      return;
     }
+    if (!mounted) return;
+    await showAdaptiveSheet(
+      context,
+      title: '导出文本',
+      wideWidth: 640,
+      builder: (_) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: text));
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已复制')));
+              },
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('复制'),
+            ),
+          ),
+          SelectableText(text, style: const TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.5)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -63,57 +99,78 @@ class _HaremPageState extends State<HaremPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(onPressed: _export, icon: const Icon(Icons.receipt_long)),
+            IconButton(onPressed: _export, icon: const Icon(Icons.receipt_long), tooltip: '导出'),
             IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : () => _load(refresh: true)),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: () => _load(refresh: true),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-                  ? _Empty(text: _error!, onRetry: _load)
-                  : _data == null
-                      ? const _Empty(text: '无数据')
-                      : ListView(
-                          padding: const EdgeInsets.all(12),
-                          children: [
-                            if (ov != null) _overview(ov),
-                            const SizedBox(height: 8),
-                            ..._data!.prescriptions.map((p) => _prescription(p)),
-                          ],
-                        ),
-        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? PTEmptyState(text: _error!, onRetry: _load)
+                : _data == null
+                    ? PTEmptyState(text: '无数据')
+                    : Column(
+                        children: [
+                          if (ov != null) Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), child: _overview(ov)),
+                          Expanded(
+                            child: RefreshIndicator(
+                              onRefresh: () => _load(refresh: true),
+                              child: PTAdaptiveTable<PrescriptionItem>(
+                                items: _data!.prescriptions,
+                                columns: [
+                                  PTColumn<PrescriptionItem>(label: '站点', flex: 2, cell: (_, p) => Text(p.siteName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                                  PTColumn<PrescriptionItem>(label: '现药', flex: 1, numeric: true, cell: (_, p) => Text('${p.remain}', style: const TextStyle(fontSize: 12))),
+                                  PTColumn<PrescriptionItem>(label: '可买', flex: 1, numeric: true, cell: (_, p) => Text('${p.canBuy}', style: const TextStyle(fontSize: 12))),
+                                  PTColumn<PrescriptionItem>(label: '权限', flex: 1, cell: (_, p) => Text(p.canInvite ? '✓' : '✗', style: TextStyle(color: p.canInvite ? PTColors.success : PTColors.danger, fontSize: 13))),
+                                  PTColumn<PrescriptionItem>(label: '后宫', flex: 1, numeric: true, cell: (_, p) => Text('${p.haremCount}${p.deadCount > 0 ? " (${p.deadCount})" : ""}', style: const TextStyle(fontSize: 12))),
+                                  PTColumn<PrescriptionItem>(
+                                    label: '操作',
+                                    flex: 2,
+                                    cell: (_, p) => p.invitees.isEmpty
+                                        ? const Text('—', style: TextStyle(color: Colors.grey, fontSize: 12))
+                                        : TextButton(
+                                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                            onPressed: () => _showInvitees(p),
+                                            child: Text('花名册 (${p.invitees.length})', style: const TextStyle(fontSize: 12)),
+                                          ),
+                                  ),
+                                ],
+                                narrowCard: (_, p) => _prescription(p),
+                                emptyText: '暂无处方',
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
       ),
     );
   }
 
   Widget _overview(HaremOverview ov) {
-    final items = [
+    final items = <(String, String)>[
       ('${ov.totalSites}', '站点'),
       ('${ov.totalInvitees}', '成员'),
       ('${ov.totalPermInvites}', '永邀'),
       ('${ov.totalTempInvites}', '临邀'),
       ('${ov.totalLowRatio}', '低分享率'),
       ('${ov.totalBanned}', '已禁用'),
+      ('${ov.totalNoData}', '无数据'),
     ];
-    return SizedBox(
-      height: 60,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: items
-            .map((e) => Container(
-                  width: 76,
-                  margin: const EdgeInsets.only(right: 6),
-                  decoration: BoxDecoration(color: const Color(0xFF6C5CE7).withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
-                  alignment: Alignment.center,
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Text(e.$1, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                    Text(e.$2, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  ]),
-                ))
-            .toList(),
-      ),
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items
+          .map((e) => Container(
+                width: 84,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(color: PTColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+                alignment: Alignment.center,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text(e.$1, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                  Text(e.$2, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                ]),
+              ))
+          .toList(),
     );
   }
 
@@ -129,59 +186,52 @@ class _HaremPageState extends State<HaremPage> {
             const SizedBox(width: 10),
             Text('可买 ${p.canBuy}', style: const TextStyle(fontSize: 13)),
             const SizedBox(width: 10),
-            Text(p.canInvite ? '权限 ✓' : '权限 ✗', style: TextStyle(color: p.canInvite ? const Color(0xFF2ECC71) : const Color(0xFFF56C6C), fontSize: 13)),
+            Text(p.canInvite ? '权限 ✓' : '权限 ✗', style: TextStyle(color: p.canInvite ? PTColors.success : PTColors.danger, fontSize: 13)),
           ]),
           const SizedBox(height: 6),
           if (p.error.isNotEmpty)
-            Text(p.error, style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 13))
+            Text(p.error, style: const TextStyle(color: PTColors.danger, fontSize: 13))
           else
             Text('后宫 ${p.haremCount} 人${p.deadCount > 0 ? "（禁用 ${p.deadCount}）" : ""}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
           if (p.invitees.isNotEmpty)
-            TextButton(
-              onPressed: () => _showInvitees(p),
-              child: const Text('查看花名册'),
-            ),
+            Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: () => _showInvitees(p), child: Text('查看花名册 (${p.invitees.length})'))),
         ],
       ),
     );
   }
 
   void _showInvitees(PrescriptionItem p) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.7,
-        child: Column(
-          children: [
-            AppBar(title: Text('${p.siteName} 后宫成员'), automaticallyImplyLeading: false, actions: [IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))]),
-            Expanded(child: ListView(children: p.invitees.map(_inviteeRow).toList())),
-          ],
-        ),
+    showAdaptiveSheet(
+      context,
+      title: '${p.siteName} 后宫成员',
+      wideWidth: 760,
+      builder: (_) => PTAdaptiveTable<InviteeInfo>(
+        items: p.invitees,
+        columns: [
+          PTColumn<InviteeInfo>(label: '用户', flex: 2, cell: (_, iv) {
+            final dead = iv.status == 'disabled';
+            return Text(iv.username, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: dead ? PTColors.danger : null));
+          }),
+          PTColumn<InviteeInfo>(label: '状态', flex: 1, cell: (_, iv) => Text(iv.status, style: TextStyle(fontSize: 12, color: iv.status == 'disabled' ? PTColors.danger : Colors.grey))),
+          PTColumn<InviteeInfo>(label: '上传', flex: 1, numeric: true, cell: (_, iv) => Text(_fmtBytes(iv.uploaded), style: const TextStyle(fontSize: 12))),
+          PTColumn<InviteeInfo>(label: '下载', flex: 1, numeric: true, cell: (_, iv) => Text(_fmtBytes(iv.downloaded), style: const TextStyle(fontSize: 12))),
+          PTColumn<InviteeInfo>(label: '分享率', flex: 1, cell: (_, iv) => Text(iv.ratio, style: const TextStyle(fontSize: 12))),
+        ],
+        narrowCard: (_, iv) {
+          final dead = iv.status == 'disabled';
+          return GlassCard(
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(iv.username, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: dead ? PTColors.danger : null)),
+              const SizedBox(height: 4),
+              Text('状态 ${iv.status} · 分享率 ${iv.ratio}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              const SizedBox(height: 2),
+              Text('↑ ${_fmtBytes(iv.uploaded)}   ↓ ${_fmtBytes(iv.downloaded)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            ]),
+          );
+        },
+        emptyText: '暂无成员',
       ),
     );
-  }
-
-  Widget _inviteeRow(InviteeInfo iv) {
-    final dead = iv.status == 'disabled';
-    return ListTile(
-      title: Text(iv.username, style: TextStyle(color: dead ? const Color(0xFFF56C6C) : null)),
-      subtitle: Text('状态 ${iv.status} · 分享率 ${iv.ratio}'),
-      trailing: Text(iv.uploaded > 0 ? '${(iv.uploaded / 1073741824).toStringAsFixed(1)}G' : '—', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _Empty({required this.text, this.onRetry});
-  @override
-  Widget build(BuildContext context) {
-    return ListView(children: [
-      const SizedBox(height: 120),
-      Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)))),
-      if (onRetry != null) Center(child: ElevatedButton(onPressed: onRetry, child: const Text('重试'))),
-    ]);
   }
 }

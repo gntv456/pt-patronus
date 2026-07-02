@@ -23,13 +23,14 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   final HomeController _controller = HomeController();
   StreamSubscription<Notice>? _noticeSub;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // 监听前后台：后台断 WS 省电省流量
     refreshNoticeUnread();
     _noticeSub = WsClient().notices.listen((_) => refreshNoticeUnread());
     // 启动后台检查更新（silent：仅在有新版时弹对话框，不打扰已是最新版本的用户）
@@ -38,9 +39,20 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _noticeSub?.cancel();
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 后台断 WS（停指数退避重连循环）；回前台重连。各页轮询 timer 由页面自管（审计 P1-6）
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      WsClient().disconnect();
+    } else if (state == AppLifecycleState.resumed) {
+      WsClient().connect();
+    }
   }
 
   @override

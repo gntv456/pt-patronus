@@ -7,6 +7,13 @@
 	<!-- 访问后端/局域网摄像头（HLS 流、RTSP 源常在 LAN）需声明本地网络用途。 -->
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>PTPatronus 需访问本地网络以连接后端与监控摄像头。</string>
+	<!-- ATS 例外：后端常自托管于局域网 http://（含 RTSP/HLS 源）；iOS 9+ 默认禁明文，需放行，
+	     否则真机首次 API 调用即被 -1022 App Transport Security 拦截（模拟器 debug 默认放宽，故开发期不易发现）。 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

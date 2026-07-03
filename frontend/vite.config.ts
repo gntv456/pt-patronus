@@ -41,6 +41,7 @@ export default defineConfig({
         // 避免单一 index chunk 过大，且各 vendor 独立缓存——app 代码变更不会 invalidate 稳定的 vendor chunk。
         manualChunks(id) {
           if (id.includes('node_modules')) {
+            if (id.includes('@element-plus/icons-vue')) return 'element-icons';
             if (id.includes('element-plus')) return 'element-plus';
             if (id.includes('vue') || id.includes('pinia')) return 'vue';
             return 'vendor';
@@ -48,5 +49,7 @@ export default defineConfig({
         },
       },
     },
+    // Element Plus 是内部工具的稳定 UI 基座，独立缓存后可接受略大于默认阈值的 vendor chunk。
+    chunkSizeWarningLimit: 850,
   },
 })

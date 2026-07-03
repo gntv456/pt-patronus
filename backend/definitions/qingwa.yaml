@@ -19,3 +19,7 @@ urls:
     - https://www.qingwapt.org/
     - https://www.qingwa.pro/
     - https://qingwapt.com/
+medal:
+    # medal.php 无参数只返回默认一类(18 个)，type=-1 才是全部(171)。EnsureDefaults 见 ShopPath 非空即跳过，须显式 enabled。
+    enabled: true
+    shop_path: medal.php?type=-1

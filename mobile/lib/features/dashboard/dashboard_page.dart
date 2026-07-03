@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/features/home/home_controller.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
+import 'package:ptpatronus/features/home/home_nav_items.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:ptpatronus/api/dashboard.dart';
+import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
@@ -355,7 +358,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(label, style: const TextStyle(color: Color(0xFF9AA0B4), fontSize: 10)),
+              Text(label, style: const TextStyle(color: Color(0xFF9AA0B4), fontSize: 11)),
             ]),
           );
         }),
@@ -369,20 +372,20 @@ class _DashboardPageState extends State<DashboardPage> {
       body: GlassBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isWideScreen(context) ? 20 : 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(children: [
                   const HomeMenuButton(),
-                  const Text('仪表盘', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+                  const Text('仪表盘', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                   const Spacer(),
                   PTPageHeaderActions(actions: [
                     PTHeaderAction(icon: Icons.image_outlined, label: '导出图片', onPressed: (_loading || _overview == null) ? null : _exportImage),
                     PTHeaderAction(icon: Icons.sync, label: '刷新统计', onPressed: _syncing ? null : _syncAll),
                   ]),
                 ]),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Expanded(child: _body(context)),
               ],
             ),
@@ -404,15 +407,18 @@ class _DashboardPageState extends State<DashboardPage> {
         onRetry: _load,
       );
     }
+    final o = _overview!;
+    final fresh = o.siteCount == 0 && o.downloaderCount == 0;
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          if (fresh) ...[_onboardingCard(context), const SizedBox(height: 14)],
           if (_cookieAlerts.isNotEmpty) ...[_alertCard(AlertKind.cookie), const SizedBox(height: 14)],
           if (_hrAlerts.isNotEmpty) ...[_alertCard(AlertKind.hr), const SizedBox(height: 14)],
           _metricGrid(context),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           _sitesSection(context),
           const SizedBox(height: 8),
         ],
@@ -420,17 +426,76 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // 首登向导：无站点且无下载器时置顶，3 步引导（加站点→配下载器→同步），每步直达对应页。
+  Widget _onboardingCard(BuildContext context) {
+    final c = HomeShellScope.of(context);
+    int indexOf(String glyph) => navItems.indexWhere((n) => n.glyph == glyph);
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.rocket_launch, color: PTColors.primary, size: 20),
+          const SizedBox(width: 8),
+          const Text('欢迎使用 PTPatronus', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        ]),
+        const SizedBox(height: 4),
+        const Text('跟着 3 步，开启账号保号自动化：', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        const SizedBox(height: 10),
+        _onboardStep('1', '添加 PT 站点', '粘贴 cookie 或 WebView 登录', Icons.add_link, () => c.select(indexOf('sites'))),
+        _onboardStep('2', '配置下载器', 'qBittorrent / Transmission', Icons.download_outlined, () => c.select(indexOf('downloaders'))),
+        _onboardStep('3', '同步统计', '一键拉取，签到 / 辅种自动运行', Icons.sync, _refresh),
+      ]),
+    );
+  }
+
+  Widget _onboardStep(String no, String title, String desc, IconData icon, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(children: [
+            Container(
+              width: 26,
+              height: 26,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: PTColors.primary.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(8)),
+              child: Text(no, style: const TextStyle(color: PTColors.primary, fontWeight: FontWeight.w700)),
+            ),
+            const SizedBox(width: 10),
+            Icon(icon, size: 18, color: Colors.grey),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(desc, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              ]),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+          ]),
+        ),
+      ),
+    );
+  }
+
   // 5 张指标卡（上传/下载/做种/做种体积/魔力），对齐 Web metric-grid（auto-fit minmax 210）。
   // 每卡内嵌近 14 天 sparkline；上传/下载额外显日环比徽标。
+  // 窄屏 2 列紧凑（minItemWidth 150）/ 宽屏对齐 Web（210）自然撑高——弃固定 aspect-ratio
+  // （曾与 minItemWidth:200 合用致窄屏单列每卡高 ~370px、Spacer 撑出大块留白）。
   Widget _metricGrid(BuildContext context) {
     final o = _overview!;
+    final wide = isWideScreen(context);
+    final iconSize = wide ? 38.0 : 32.0;
     final upPct = _pct((p) => p.uploaded.toDouble());
     final dlPct = _pct((p) => p.downloaded.toDouble());
     String fmtPct(double? p) => p == null ? '' : '${p >= 0 ? '+' : ''}${p.toStringAsFixed(1)}%';
 
     final cards = <Widget>[
       _metricCard(
-        icon: const GlassIcon(glyph: 'upload', from: Color(0xFF2ECC71), to: Color(0xFF1ABC9C), size: 38),
+        wide: wide,
+        icon: GlassIcon(glyph: 'upload', from: const Color(0xFF2ECC71), to: const Color(0xFF1ABC9C), size: iconSize),
         value: _fmtBytes(o.uploaded),
         label: '总上传',
         trend: fmtPct(upPct),
@@ -439,7 +504,8 @@ class _DashboardPageState extends State<DashboardPage> {
         sparkColor: PTColors.primary,
       ),
       _metricCard(
-        icon: const GlassIcon(glyph: 'download', from: Color(0xFF4285F4), to: Color(0xFF22D3EE), size: 38),
+        wide: wide,
+        icon: GlassIcon(glyph: 'download', from: const Color(0xFF4285F4), to: const Color(0xFF22D3EE), size: iconSize),
         value: _fmtBytes(o.downloaded),
         label: '总下载',
         trend: fmtPct(dlPct),
@@ -448,21 +514,24 @@ class _DashboardPageState extends State<DashboardPage> {
         sparkColor: PTColors.primary2,
       ),
       _metricCard(
-        icon: const GlassIcon(glyph: 'seeding', from: Color(0xFF38EF7D), to: Color(0xFF11998E), size: 38),
+        wide: wide,
+        icon: GlassIcon(glyph: 'seeding', from: const Color(0xFF38EF7D), to: const Color(0xFF11998E), size: iconSize),
         value: '${o.seeding}',
         label: '总做种',
         spark: _series((p) => p.seeding.toDouble()),
         sparkColor: PTColors.success,
       ),
       _metricCard(
-        icon: const GlassIcon(glyph: 'backup', from: Color(0xFF43CEA2), to: Color(0xFF185A9D), size: 38),
+        wide: wide,
+        icon: GlassIcon(glyph: 'backup', from: const Color(0xFF43CEA2), to: const Color(0xFF185A9D), size: iconSize),
         value: _fmtBytes(o.seedingSize),
         label: '总做种体积',
         spark: _series((p) => p.seedingSize.toDouble()),
         sparkColor: const Color(0xFF43CEA2),
       ),
       _metricCard(
-        icon: const GlassIcon(glyph: 'bonus', from: Color(0xFFF7971E), to: Color(0xFFFFD200), size: 38),
+        wide: wide,
+        icon: GlassIcon(glyph: 'bonus', from: const Color(0xFFF7971E), to: const Color(0xFFFFD200), size: iconSize),
         value: o.bonus.toStringAsFixed(0),
         label: '总魔力',
         spark: _series((p) => p.bonus),
@@ -470,19 +539,20 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     ];
 
-    return PTAutoGrid(
-      minItemWidth: 200,
-      spacing: 14,
-      runSpacing: 14,
-      childAspectRatio: 0.86,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: cards.length,
-      itemBuilder: (_, i) => cards[i],
-    );
+    // 纯 Wrap 非滚动（嵌在外层 ListView 安全），列数随宽度自适应，高度由内容自然决定。
+    return LayoutBuilder(builder: (context, c) {
+      final cols = ptAutoColumns(c.maxWidth, wide ? 210 : 150);
+      final itemW = cols <= 1 ? c.maxWidth : (c.maxWidth - 12 * (cols - 1)) / cols;
+      return Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        children: cards.map((card) => SizedBox(width: itemW, child: card)).toList(),
+      );
+    });
   }
 
   Widget _metricCard({
+    required bool wide,
     required Widget icon,
     required String value,
     required String label,
@@ -492,9 +562,10 @@ class _DashboardPageState extends State<DashboardPage> {
     required Color sparkColor,
   }) {
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -517,12 +588,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
             ],
           ),
-          const Spacer(),
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Text(value, style: TextStyle(fontSize: wide ? 24 : 20, fontWeight: FontWeight.w700)),
           const SizedBox(height: 2),
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
           const SizedBox(height: 8),
-          SizedBox(height: 34, child: _Sparkline(values: spark, color: sparkColor)),
+          SizedBox(height: 30, child: _Sparkline(values: spark, color: sparkColor)),
         ],
       ),
     );
@@ -567,6 +638,7 @@ class _DashboardPageState extends State<DashboardPage> {
           columns: columns,
           emptyText: '暂无数据，等待统计同步',
           narrowCard: (c, s) => _siteStatCard(c, s),
+          embedded: true, // 嵌在外层 ListView：窄屏卡片列表 shrinkWrap，避免塌缩空白
         ),
       ],
     );

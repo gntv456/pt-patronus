@@ -75,6 +75,19 @@ function openDetail(m: Medal) {
 // 写操作成功后后端已 evict+重抓该站内存缓存，前端 load()（不带 refresh）即命中最新缓存。
 async function doAction(action: 'buy' | 'wear' | 'takeOff') {
   if (!detail.value) return
+  // 购买消耗站内货币，需二次确认
+  if (action === 'buy') {
+    const d = detail.value
+    try {
+      await ElMessageBox.confirm(`确认消耗 ${d.price} ${d.currency} 购买「${d.name}」？`, '购买勋章', {
+        type: 'warning',
+        confirmButtonText: '购买',
+        cancelButtonText: '取消',
+      })
+    } catch {
+      return // 用户取消
+    }
+  }
   acting.value = true
   try {
     const res = await medalWallApi[action](detail.value.site_id, detail.value.medal_id)

@@ -35,11 +35,19 @@ export const fileApi = {
   remove: (id: number) => http.delete(`/storages/${id}`).then((r) => r.data),
   files: (id: number, path = '/') =>
     http.get<{ entries: FileEntry[] }>(`/storages/${id}/files`, { params: { path } }).then((r) => r.data.entries),
-  upload: (id: number, path: string, file: File) => {
+  upload: (id: number, path: string, file: File, onProgress?: (percent: number) => void) => {
     const form = new FormData()
     form.append('path', path)
     form.append('file', file)
-    return http.post(`/storages/${id}/upload`, form).then((r) => r.data)
+    return http
+      .post(`/storages/${id}/upload`, form, {
+        onUploadProgress: (ev) => {
+          if (onProgress && ev.total) {
+            onProgress(Math.round((ev.loaded / ev.total) * 100))
+          }
+        },
+      })
+      .then((r) => r.data)
   },
   downloadUrl: (id: number, path: string) => `/api/v1/storages/${id}/download?path=${encodeURIComponent(path)}`,
   mkdir: (id: number, path: string) =>

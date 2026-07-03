@@ -187,8 +187,8 @@ async function submitDialog() {
     } else if (r) {
       ElMessage.warning(r.error || '失败')
     }
-  } catch {
-    ElMessage.error('请求失败')
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '请求失败')
   } finally {
     dlgLoading.value = false
   }

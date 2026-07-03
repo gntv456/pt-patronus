@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { agentApi, type Agent } from '@/api/monitor'
 import { Folder, Document, Top } from '@element-plus/icons-vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 const list = ref<FileStorage[]>([])
 const loading = ref(false)
@@ -128,6 +129,9 @@ async function del(e: FileEntry) {
   }
 }
 
+// 上传进度（0-100，-1 表示未在上传）
+const uploadProgress = ref(-1)
+
 async function handleUpload(opt: { file: File }) {
   if (!current.value) return
   // 同名文件已存在则二次确认：多数 WebDAV/SMB 后端遇同名会静默覆盖，避免无提示丢文件
@@ -139,12 +143,17 @@ async function handleUpload(opt: { file: File }) {
       return
     }
   }
+  uploadProgress.value = 0
   try {
-    await fileApi.upload(current.value.id, path.value, opt.file)
+    await fileApi.upload(current.value.id, path.value, opt.file, (p) => {
+      uploadProgress.value = p
+    })
     ElMessage.success('上传成功')
     await refresh()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '上传失败')
+  } finally {
+    uploadProgress.value = -1
   }
 }
 
@@ -183,7 +192,15 @@ onMounted(async () => {
             {{ fs.type === 'agent' ? (agentName(fs.agent_id) ? 'Agent: ' + agentName(fs.agent_id) : 'Agent #' + fs.agent_id) : fs.url }}{{ fs.base_path }}
           </div>
         </div>
-        <div v-if="!list.length && !loading" class="empty glass">暂无存储后端</div>
+        <div v-if="!list.length && !loading" class="empty glass">
+          <EmptyState
+            icon="📁"
+            title="还没有文件存储"
+            description="先接入 WebDAV、Alist、SMB 或 Agent，之后可以直接在这里浏览、上传和下载 NAS 文件。"
+          >
+            <el-button type="primary" @click="openCreate">添加存储</el-button>
+          </EmptyState>
+        </div>
       </template>
     </div>
 
@@ -227,10 +244,17 @@ onMounted(async () => {
         <el-button size="small" @click="up"><el-icon><Top /></el-icon>&nbsp;上级</el-button>
         <span class="curpath">{{ path }}</span>
         <el-upload :show-file-list="false" :http-request="handleUpload">
-          <el-button size="small" type="primary">上传</el-button>
+          <el-button size="small" type="primary" :disabled="uploadProgress >= 0">上传</el-button>
         </el-upload>
         <el-button size="small" @click="refresh">刷新</el-button>
       </div>
+      <el-progress
+        v-if="uploadProgress >= 0"
+        :percentage="uploadProgress"
+        :stroke-width="6"
+        :show-text="true"
+        style="margin-bottom: 12px"
+      />
       <el-table v-loading="bloading" :data="entries" empty-text="该目录为空" style="width: 100%">
         <el-table-column label="名称" min-width="200">
           <template #default="{ row }">

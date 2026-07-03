@@ -17,7 +17,7 @@ class SitesPage extends StatefulWidget {
 class _SitesPageState extends State<SitesPage> {
   List<Site> _sites = [];
   List<SiteDef> _defs = []; // 添加表单下拉项缓存
-  bool _loading = false;
+  bool _loading = true; // 首访即显示加载态，避免短暂空白像页面坏了
   String? _error;
   int? _checkining; // 正在签到的站点 id
   int? _testing; // 正在连接测试的站点 id
@@ -410,15 +410,18 @@ class _SitesPageState extends State<SitesPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
               child: Row(children: [
                 const HomeMenuButton(),
-                const Text('站点', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('站点', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _load),
-                IconButton(icon: const Icon(Icons.add), tooltip: '添加站点', onPressed: () => _showForm()),
+                PTIconAction(icon: Icons.refresh, tooltip: '刷新', onPressed: _load),
+                PTIconAction(icon: Icons.add, tooltip: '添加站点', onPressed: () => _showForm()),
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert),
+                  iconSize: 18,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                   tooltip: '更多',
                   onSelected: (v) {
                     if (v == 'records') {

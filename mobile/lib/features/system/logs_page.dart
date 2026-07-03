@@ -95,9 +95,12 @@ class _LogsPageState extends State<LogsPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _loading ? null : _load),
+            PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : _load),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
               tooltip: '更多',
               onSelected: (v) {
                 if (v == 'copy') {

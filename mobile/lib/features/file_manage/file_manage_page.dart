@@ -453,13 +453,16 @@ class _FileManagePageState extends State<FileManagePage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
+            PTIconAction(
+              icon: Icons.refresh,
               tooltip: '刷新',
               onPressed: hasStorage ? _loadEntries : null,
             ),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
               tooltip: '更多',
               onSelected: (v) {
                 if (v == 'mkdir') {

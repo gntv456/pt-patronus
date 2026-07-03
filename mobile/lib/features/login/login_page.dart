@@ -43,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       setState(() {
         _captcha = c;
-        if (c['challenge_mode'] == true) _tab = 1; // 挑战响应模式 → 引导 cookie
+        // 不再强制切 cookie：后端已实现挑战响应登录（见 nexusphp_crypto.go），账号登录可直接试，失败再切 cookie。
       });
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -70,13 +70,6 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _err = '请填写好学账号和密码');
       return;
     }
-    if (_captcha?['challenge_mode'] == true) {
-      setState(() {
-        _tab = 1;
-        _err = '好学已开启挑战响应认证，请改用 Cookie 登录';
-      });
-      return;
-    }
     setState(() {
       _loading = true;
       _err = null;
@@ -86,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
       final res = await ApiClient().post('/auth/hxpt/login', {
         'username': _user.text,
         'password': _pass.text,
-        // 显式回传 challenge_mode（与 Web 端一致）：当前端判 false 才发，但保留字段避免后端默认值漂移。
+        // 显式回传 challenge_mode（与 Web 端一致）：驱动后端挑战响应分支（nexusphp_crypto 算 response 提交）。
         'challenge_mode': _captcha?['challenge_mode'] ?? false,
         if (_twoStep.text.isNotEmpty) 'two_step_code': _twoStep.text,
         if (needCap) 'imagehash': _captcha?['imagehash'] ?? '',
@@ -96,21 +89,30 @@ class _LoginPageState extends State<LoginPage> {
       await _onLoginOk(res);
     } on ApiException catch (e) {
       if (mounted) setState(() => _err = e.message);
-      if (e.status == 401) {
+      if (e.status == 409) {
+        // 后端判定挑战响应模式账号登录不可用（兜底分支，正常跑不到）→ 引导切 Cookie
+        if (mounted) setState(() => _tab = 1);
+      } else if (e.status == 401) {
         // 凭据/验证码错 → 刷新验证码
         _imgStr.clear();
         await _fetchCaptcha();
       }
     } catch (_) {
-      if (mounted) setState(() => _err = '网络错误，请确认后端地址（Config.baseUrl）');
+      if (mounted) setState(() => _err = '网络错误，请确认后端地址是否正确、后端服务是否已启动');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _cookieLogin() async {
-    if (_cookie.text.trim().isEmpty) {
+    final ck = _cookie.text.trim();
+    if (ck.isEmpty) {
       setState(() => _err = '请粘贴好学 cookie');
+      return;
+    }
+    // 格式预校验：cookie 至少含一个「键=值」字段，避免提交明显非法串再等服务端拒（对齐 Web）。
+    if (!ck.contains('=')) {
+      setState(() => _err = 'cookie 格式有误：应含键=值字段（如 c_secure_uid=...; c_secure_pass=...）');
       return;
     }
     setState(() {
@@ -119,13 +121,13 @@ class _LoginPageState extends State<LoginPage> {
     });
     try {
       final res = await ApiClient().post('/auth/hxpt/cookie-login', {
-        'cookie': _cookie.text.trim(),
+        'cookie': ck,
       });
       await _onLoginOk(res);
     } on ApiException catch (e) {
       if (mounted) setState(() => _err = e.message);
     } catch (_) {
-      if (mounted) setState(() => _err = '网络错误，请确认后端地址（Config.baseUrl）');
+      if (mounted) setState(() => _err = '网络错误，请确认后端地址是否正确、后端服务是否已启动');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -268,7 +270,7 @@ class _LoginPageState extends State<LoginPage> {
         const Padding(
           padding: EdgeInsets.only(top: 8),
           child: Text(
-              '好学已开启挑战响应认证，账号登录不可用，请切到 Cookie 登录',
+              '好学已开启挑战响应认证，后端会自动处理，直接登录即可；如登录失败可改用 Cookie 登录',
               style: TextStyle(fontSize: 12, color: Colors.grey)),
         ),
     ];

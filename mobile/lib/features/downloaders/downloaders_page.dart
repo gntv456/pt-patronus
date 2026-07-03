@@ -6,8 +6,10 @@ import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:ptpatronus/api/downloader.dart';
+import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 class DownloadersPage extends StatefulWidget {
   const DownloadersPage({super.key});
@@ -17,7 +19,7 @@ class DownloadersPage extends StatefulWidget {
 
 class _DownloadersPageState extends State<DownloadersPage> {
   List<Downloader> _list = [];
-  bool _loading = false;
+  bool _loading = true; // 首访即显示加载态，避免短暂空白像页面坏了
   String? _error; // 加载失败时的友好文案；null=无错误
 
   Future<void> _load() async {
@@ -54,14 +56,11 @@ class _DownloadersPageState extends State<DownloadersPage> {
   Future<void> _addDownloader() => _editDownloader(null);
 
   Future<void> _editDownloader(Downloader? d) async {
-    final changed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: _DownloaderFormSheet(downloader: d),
-      ),
+    // 宽屏=居中对话框（对齐 Web el-dialog 460），窄屏=底栏；浮层容器自带标题/键盘避让。
+    final changed = await showAdaptiveSheet<bool>(
+      context,
+      title: d == null ? '添加下载器' : '编辑下载器',
+      builder: (_) => _DownloaderFormSheet(downloader: d),
     );
     if (changed == true) _load();
   }
@@ -102,17 +101,6 @@ class _DownloadersPageState extends State<DownloadersPage> {
     }
   }
 
-  void _onDownloaderMenu(String v, Downloader d) {
-    switch (v) {
-      case 'edit':
-        _editDownloader(d);
-      case 'test':
-        _testDownloader(d);
-      case 'delete':
-        _deleteDownloader(d);
-    }
-  }
-
   void _toast(String m) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
@@ -140,8 +128,9 @@ class _DownloadersPageState extends State<DownloadersPage> {
         ),
       );
 
-  Widget _emptyView() => const Center(
-        child: Text('暂无下载器', style: TextStyle(color: Colors.grey)),
+  Widget _emptyView() => PTEmptyState(
+        icon: Icons.download_outlined,
+        text: '暂无下载器',
       );
 
   @override
@@ -158,64 +147,26 @@ class _DownloadersPageState extends State<DownloadersPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
               child: Row(children: [
                 const HomeMenuButton(),
-                const Text('下载器', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('下载器', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-                IconButton(icon: const Icon(Icons.add), onPressed: _addDownloader, tooltip: '添加下载器'),
+                PTIconAction(icon: Icons.refresh, onPressed: _load, tooltip: '刷新'),
+                PTIconAction(icon: Icons.add, onPressed: _addDownloader, tooltip: '添加下载器'),
               ]),
             ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),
             Expanded(
-              child: _list.isEmpty && !_loading
+              child: (_list.isEmpty && !_loading)
                   ? (_error != null ? _errorView() : _emptyView())
                   : RefreshIndicator(
                       onRefresh: _load,
-                      child: ListView.builder(
-                      padding: const EdgeInsets.all(12),
-                      itemCount: _list.length,
-                      itemBuilder: (_, i) {
-                        final d = _list[i];
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: GlassCard(
-                            padding: const EdgeInsets.all(14),
-                            child: Row(children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(children: [
-                                      _typeBadge(d.type),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(d.name,
-                                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                                            overflow: TextOverflow.ellipsis),
-                                      ),
-                                    ]),
-                                    const SizedBox(height: 4),
-                                    Text(d.url, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                                  ],
-                                ),
-                              ),
-                              FilledButton(onPressed: () => _open(d), child: const Text('任务')),
-                              PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert),
-                                tooltip: '更多',
-                                onSelected: (v) => _onDownloaderMenu(v, d),
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(value: 'edit', child: Text('编辑')),
-                                  PopupMenuItem(value: 'test', child: Text('测试连接')),
-                                  PopupMenuItem(value: 'delete', child: Text('删除')),
-                                ],
-                              ),
-                            ]),
-                          ),
-                        );
-                      },
+                      child: PTMasonry<Downloader>(
+                        items: _list,
+                        minItemWidth: 280,
+                        padding: const EdgeInsets.all(12),
+                        itemBuilder: (_, d) => _downloaderCard(d),
                       ),
                     ),
             ),
@@ -225,17 +176,99 @@ class _DownloadersPageState extends State<DownloadersPage> {
     );
   }
 
-  Widget _typeBadge(String t) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        gradient: const LinearGradient(colors: [PTColors.primary, PTColors.primary2]),
+  // 下载器卡片：对齐 Web Downloaders.vue —— 渐变图标 + 名称/类型 + 地址 + 2×2 操作按钮网格。
+  // 删除按钮仅 admin 可见（后端 RequireAdmin 守卫，UI 与 Web auth.isAdmin 对齐）。
+  Widget _downloaderCard(Downloader d) {
+    return GlassCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            _dlBadge(d.type),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(d.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                      overflow: TextOverflow.ellipsis),
+                  Text(_typeLabel(d.type),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          Text(d.url,
+              style: const TextStyle(color: Colors.grey, fontSize: 12), softWrap: true),
+          const SizedBox(height: 14),
+          _actionRow([
+            OutlinedButton(
+              onPressed: () => _testDownloader(d),
+              child: const Text('连接测试'),
+            ),
+            FilledButton(
+              onPressed: () => _open(d),
+              child: const Text('任务列表'),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          _actionRow([
+            OutlinedButton(
+              onPressed: () => _editDownloader(d),
+              child: const Text('编辑'),
+            ),
+            if (ApiClient().isAdmin)
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  side: const BorderSide(color: Colors.redAccent),
+                ),
+                onPressed: () => _deleteDownloader(d),
+                child: const Text('删除'),
+              ),
+          ]),
+        ],
       ),
-      child: Text(t.toUpperCase(),
-          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
+
+  // 两列等宽按钮行（对齐 Web .actions 的 grid-template-columns: repeat(2, 1fr)）。
+  Widget _actionRow(List<Widget> buttons) {
+    return Row(
+      children: [
+        for (int i = 0; i < buttons.length; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: buttons[i]),
+        ],
+      ],
+    );
+  }
+
+  // 类型图标徽章：渐变色取自 Web GlassIcon（qb=紫蓝 / tr=灰青）。
+  Widget _dlBadge(String t) {
+    final isTr = t == 'tr';
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isTr
+              ? const [Color(0xFF536976), Color(0xFF29323C)]
+              : const [Color(0xFF6C5CE7), Color(0xFF4285F4)],
+        ),
+      ),
+      child: Icon(isTr ? Icons.sync_rounded : Icons.download_rounded,
+          color: Colors.white, size: 20),
+    );
+  }
+
+  String _typeLabel(String t) => t == 'tr' ? 'Transmission' : 'qBittorrent';
 }
 
 // 下载器添加/编辑表单（BottomSheet）：name/type/url/username/password/is_default。
@@ -326,59 +359,54 @@ class _DownloaderFormSheetState extends State<_DownloaderFormSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(_isEdit ? '编辑下载器' : '添加下载器',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 16),
-          TextField(controller: _name, decoration: const InputDecoration(labelText: '名称')),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _type,
-            decoration: const InputDecoration(labelText: '类型'),
-            items: const [
-              DropdownMenuItem(value: 'qb', child: Text('qBittorrent')),
-              DropdownMenuItem(value: 'tr', child: Text('Transmission')),
-            ],
-            onChanged: (v) => setState(() => _type = v ?? 'qb'),
+    // 标题与键盘避让由 showAdaptiveSheet 浮层容器统一处理（宽屏对话框 / 窄屏底栏）。
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(controller: _name, decoration: const InputDecoration(labelText: '名称')),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          initialValue: _type,
+          decoration: const InputDecoration(labelText: '类型'),
+          items: const [
+            DropdownMenuItem(value: 'qb', child: Text('qBittorrent')),
+            DropdownMenuItem(value: 'tr', child: Text('Transmission')),
+          ],
+          onChanged: (v) => setState(() => _type = v ?? 'qb'),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _url,
+          decoration: const InputDecoration(labelText: '地址', hintText: 'http://127.0.0.1:8080'),
+          keyboardType: TextInputType.url,
+        ),
+        const SizedBox(height: 12),
+        TextField(controller: _username, decoration: const InputDecoration(labelText: '用户名')),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _password,
+          obscureText: true,
+          decoration: InputDecoration(labelText: '密码', hintText: _isEdit ? '留空不修改' : null),
+        ),
+        if (_isEdit)
+          SwitchListTile(
+            value: _isDefault,
+            onChanged: (v) => setState(() => _isDefault = v),
+            title: const Text('设为默认下载器'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _url,
-            decoration: const InputDecoration(labelText: '地址', hintText: 'http://127.0.0.1:8080'),
-            keyboardType: TextInputType.url,
-          ),
-          const SizedBox(height: 12),
-          TextField(controller: _username, decoration: const InputDecoration(labelText: '用户名')),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _password,
-            obscureText: true,
-            decoration: InputDecoration(labelText: '密码', hintText: _isEdit ? '留空不修改' : null),
-          ),
-          if (_isEdit)
-            SwitchListTile(
-              value: _isDefault,
-              onChanged: (v) => setState(() => _isDefault = v),
-              title: const Text('设为默认下载器'),
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-            ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(onPressed: _saving ? null : () => Navigator.pop(context, false), child: const Text('取消')),
-              const SizedBox(width: 8),
-              FilledButton(onPressed: _saving ? null : _submit, child: Text(_isEdit ? '保存' : '添加')),
-            ],
-          ),
-        ],
-      ),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(onPressed: _saving ? null : () => Navigator.pop(context, false), child: const Text('取消')),
+            const SizedBox(width: 8),
+            FilledButton(onPressed: _saving ? null : _submit, child: Text(_isEdit ? '保存' : '添加')),
+          ],
+        ),
+      ],
     );
   }
 }
@@ -1398,7 +1426,7 @@ class _PeersSheetState extends State<_PeersSheet> {
                           '${p.client.isEmpty ? '-' : p.client} · ${(p.progress * 100).toStringAsFixed(0)}% · ↓${_fmtSpeed(p.dlRate)} ↑${_fmtSpeed(p.upRate)}',
                           style: const TextStyle(fontSize: 11),
                         ),
-                        trailing: Text(p.flags, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        trailing: Text(p.flags, style: const TextStyle(fontSize: 11, color: Colors.grey)),
                       );
                     },
                   ),

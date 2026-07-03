@@ -172,7 +172,7 @@ class _CardSynthViewState extends State<CardSynthView> {
         const SizedBox(height: 6),
         ClipRRect(borderRadius: BorderRadius.circular(3), child: LinearProgressIndicator(value: pct / 100, minHeight: 6, backgroundColor: Colors.white24, valueColor: const AlwaysStoppedAnimation(Color(0xFFFF69B4)))),
         const SizedBox(height: 3),
-        Text('${t.got}/${t.need} · $pct%', style: const TextStyle(color: Colors.white70, fontSize: 10)),
+        Text('${t.got}/${t.need} · $pct%', style: const TextStyle(color: Colors.white70, fontSize: 11)),
         if (t.pity.isNotEmpty) ...[const SizedBox(height: 2), Text('保底 ${t.pity}', style: const TextStyle(color: Colors.white60, fontSize: 9))],
       ]),
     );
@@ -258,7 +258,7 @@ class _CardSynthViewState extends State<CardSynthView> {
                     padding: const EdgeInsets.only(top: 3),
                     child: Row(children: [
                       Expanded(child: Text(r.prizeName.isNotEmpty ? r.prizeName : '—', style: const TextStyle(color: Color(0xFFFF69B4), fontSize: 11, fontWeight: FontWeight.w600))),
-                      if (r.cost > 0) Text('-${_fmt(r.cost.round())}', style: const TextStyle(color: Color(0xFFE67E22), fontSize: 10)),
+                      if (r.cost > 0) Text('-${_fmt(r.cost.round())}', style: const TextStyle(color: Color(0xFFE67E22), fontSize: 11)),
                       const SizedBox(width: 6),
                       Text(r.createdAt, style: const TextStyle(color: Colors.grey, fontSize: 9)),
                     ]),

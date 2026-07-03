@@ -59,8 +59,8 @@
   --sp-8: 32px;
   --sp-10: 40px;
 
-  /* 字号阶梯 */
-  --fs-xs: 11px;
+  /* 字号阶梯（xs 由 11 提到 12：最小可读字号兜底，与 glass.dart PTFs.xs 对齐） */
+  --fs-xs: 12px;
   --fs-sm: 12px;
   --fs-body: 13px;
   --fs-md: 14px;
@@ -105,6 +105,39 @@ body {
 
 :root.dark body {
   background: linear-gradient(135deg, #16181f 0%, #1d1b2e 100%);
+}
+
+/* ───────────────────────────────────────────────────────────
+   全局滚动条：细 / 透明轨道 / 悬停才显形
+   替代各浏览器粗壮且常驻的默认滚动条，统一玻璃风格；不交互时不占视觉。
+   WebKit（Chrome/Edge/Safari）走 ::-webkit-scrollbar 系列；
+   Firefox 走 scrollbar-width / scrollbar-color。
+   ─────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: rgba(108, 92, 231, 0.4) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+/* 悬停滚动容器才显形；进一步悬停到滑块上再加深 */
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(108, 92, 231, 0.35);
+}
+*:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 92, 231, 0.55);
 }
 
 /* ── 玻璃卡片：半透明 + 背景模糊 + 大圆角 + 内高光边 ── */

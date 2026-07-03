@@ -18,7 +18,8 @@ class SaveptPage extends StatefulWidget {
   State<SaveptPage> createState() => _SaveptPageState();
 }
 
-class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateMixin {
+class _SaveptPageState extends State<SaveptPage>
+    with SingleTickerProviderStateMixin {
   final _api = SaveptApi();
   final _searchCtrl = TextEditingController();
   final ScrollController _scroll = ScrollController();
@@ -40,7 +41,10 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _load();
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
     _scroll.addListener(() {
       final show = _scroll.hasClients && _scroll.offset > 240;
       if (show != _showBackToTop) setState(() => _showBackToTop = show);
@@ -63,12 +67,16 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
     try {
       _data = await _api.get(refresh: refresh);
       if (refresh && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据已刷新')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('数据已刷新')));
       }
     } catch (e) {
       _error = e.toString();
       if (refresh && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('刷新失败：$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('刷新失败：$e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -87,8 +95,11 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
     });
   }
 
-  void _scrollToTop() =>
-      _scroll.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+  void _scrollToTop() => _scroll.animateTo(
+    0,
+    duration: const Duration(milliseconds: 300),
+    curve: Curves.easeOut,
+  );
 
   // ── 派生数据 ──
   List<String> get _yearOptions {
@@ -97,45 +108,49 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
       if (c.year.isNotEmpty && c.year != '未知') years.add(c.year);
     }
     final list = ['全部', ...years.toList()..sort()];
-    if ((_data?.cards ?? const []).any((c) => c.year.isEmpty || c.year == '未知') && !list.contains('未知')) {
+    if ((_data?.cards ?? const []).any(
+          (c) => c.year.isEmpty || c.year == '未知',
+        ) &&
+        !list.contains('未知')) {
       list.add('未知');
     }
     return list;
   }
 
   // 公告站点名高亮用：已知站点名集合，长名优先匹配（避免短名误命中）。
-  List<String> get _siteNames => (_data?.cards ?? const <SaveptSiteCard>[])
-      .map((c) => c.name.trim())
-      .where((s) => s.isNotEmpty)
-      .toSet()
-      .toList()
-    ..sort((a, b) => b.length.compareTo(a.length));
+  List<String> get _siteNames =>
+      (_data?.cards ?? const <SaveptSiteCard>[])
+          .map((c) => c.name.trim())
+          .where((s) => s.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort((a, b) => b.length.compareTo(a.length));
 
   String _siteTypeLabel(String t) => switch (t) {
-        'internal' => '内站',
-        'external' => '外站',
-        _ => '未知',
-      };
+    'internal' => '内站',
+    'external' => '外站',
+    _ => '未知',
+  };
 
   String _statusLabel(SiteHealthStatus s) => switch (s) {
-        SiteHealthStatus.healthy => '健康',
-        SiteHealthStatus.critical => '病危',
-        SiteHealthStatus.closed => '死亡',
-        SiteHealthStatus.unknown => '未知',
-      };
+    SiteHealthStatus.healthy => '健康',
+    SiteHealthStatus.critical => '病危',
+    SiteHealthStatus.closed => '死亡',
+    SiteHealthStatus.unknown => '未知',
+  };
 
   String _matchLabel(MatchType m) => switch (m) {
-        MatchType.urlExact || MatchType.domainExact => '已拥有',
-        MatchType.nameExact || MatchType.nameFuzzy => '可添加',
-        MatchType.none => '未收录',
-      };
+    MatchType.urlExact || MatchType.domainExact => '已拥有',
+    MatchType.nameExact || MatchType.nameFuzzy => '可添加',
+    MatchType.none => '未收录',
+  };
 
   Color _healthColor(SiteHealthStatus s) => switch (s) {
-        SiteHealthStatus.healthy => const Color(0xFF22C55E),
-        SiteHealthStatus.critical => const Color(0xFFEF4444),
-        SiteHealthStatus.closed => const Color(0xFF94A3B8),
-        SiteHealthStatus.unknown => const Color(0xFF94A3B8),
-      };
+    SiteHealthStatus.healthy => const Color(0xFF22C55E),
+    SiteHealthStatus.critical => const Color(0xFFEF4444),
+    SiteHealthStatus.closed => const Color(0xFF94A3B8),
+    SiteHealthStatus.unknown => const Color(0xFF94A3B8),
+  };
 
   bool _isTodayAnniv(String text) => text.contains('今天') || text.contains('0天');
 
@@ -172,7 +187,13 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
 
   bool _matches(SaveptSiteCard c) {
     if (_keyword.isNotEmpty) {
-      final kw = [c.name, c.search, c.year, c.statusText, _siteTypeLabel(c.siteType)].join(' ').toLowerCase();
+      final kw = [
+        c.name,
+        c.search,
+        c.year,
+        c.statusText,
+        _siteTypeLabel(c.siteType),
+      ].join(' ').toLowerCase();
       if (!kw.contains(_keyword.toLowerCase())) return false;
     }
     if (_year != '全部' && c.year != _year) return false;
@@ -186,11 +207,15 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
     }
     if (_status != '全部' && _statusLabel(c.status) != _status) return false;
     if (_type != '全部' && _siteTypeLabel(c.siteType) != _type) return false;
-    if (_annivOnly && (c.anniversaryText.isEmpty || c.status == SiteHealthStatus.closed)) return false;
+    if (_annivOnly &&
+        (c.anniversaryText.isEmpty || c.status == SiteHealthStatus.closed)) {
+      return false;
+    }
     return true;
   }
 
-  List<SaveptSiteCard> get _filtered => (_data?.cards ?? const []).where(_matches).toList();
+  List<SaveptSiteCard> get _filtered =>
+      (_data?.cards ?? const []).where(_matches).toList();
 
   // 按年份分组
   Map<String, List<SaveptSiteCard>> get _grouped {
@@ -210,17 +235,16 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           leading: const HomeMenuButton(),
-          toolbarHeight: 62,
+          toolbarHeight: 40,
           title: _headerTitle(),
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            TextButton.icon(
+            PTIconAction(
+              icon: Icons.refresh,
+              tooltip: '刷新数据',
+              loading: _loading,
               onPressed: _loading ? null : () => _load(refresh: true),
-              icon: _loading
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.refresh),
-              label: const Text('刷新数据'),
             ),
           ],
         ),
@@ -236,38 +260,47 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? _Empty(text: _error!, onRetry: _load)
-                  : _data == null
-                      ? const _Empty(text: '无数据')
-                      : ListView(
-                          controller: _scroll,
-                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+              ? _Empty(text: _error!, onRetry: _load)
+              : _data == null
+              ? const _Empty(text: '无数据')
+              : ListView(
+                  controller: _scroll,
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+                  children: [
+                    if (_data!.stale && _data!.notice.isNotEmpty)
+                      _banner(_data!.notice, const Color(0xFFF39C12)),
+                    if (s != null) ...[_vitals(s), const SizedBox(height: 10)],
+                    _searchField(),
+                    const SizedBox(height: 8),
+                    _filterChips(),
+                    _filterMeta(),
+                    const SizedBox(height: 12),
+                    _noticesGrid(),
+                    const SizedBox(height: 12),
+                    ..._groupedEntries(),
+                    if (_filtered.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 48),
+                        child: Column(
                           children: [
-                            if (_data!.stale && _data!.notice.isNotEmpty)
-                              _banner(_data!.notice, const Color(0xFFF39C12)),
-                            if (s != null) ...[
-                              _vitals(s),
-                              const SizedBox(height: 10),
-                            ],
-                            _searchField(),
-                            const SizedBox(height: 8),
-                            _filterChips(),
-                            _filterMeta(),
-                            const SizedBox(height: 12),
-                            _noticesGrid(),
-                            const SizedBox(height: 12),
-                            ..._groupedEntries(),
-                            if (_filtered.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 48),
-                                child: Column(children: [
-                                  const Center(child: Text('没有匹配的站点', style: TextStyle(color: Colors.grey))),
-                                  const SizedBox(height: 12),
-                                  Center(child: TextButton(onPressed: _clearFilters, child: const Text('清除筛选'))),
-                                ]),
+                            const Center(
+                              child: Text(
+                                '没有匹配的站点',
+                                style: TextStyle(color: Colors.grey),
                               ),
+                            ),
+                            const SizedBox(height: 12),
+                            Center(
+                              child: TextButton(
+                                onPressed: _clearFilters,
+                                child: const Text('清除筛选'),
+                              ),
+                            ),
                           ],
                         ),
+                      ),
+                  ],
+                ),
         ),
       ),
     );
@@ -275,17 +308,37 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
 
   // 品牌头部：心跳脉冲图标 + 标题 + 副标题（对齐 Web Savept.vue 的 spt-pulse 头部）。
   Widget _headerTitle() {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      ScaleTransition(
-        scale: Tween(begin: 0.82, end: 1.18).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
-        child: const Icon(Icons.favorite, color: Color(0xFFEF4444), size: 20),
-      ),
-      const SizedBox(width: 8),
-      Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-        const Text('PT监护室', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        Text('站点运行状态实时监护', style: TextStyle(fontSize: 10, color: Colors.grey.shade600, height: 1.1)),
-      ]),
-    ]);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ScaleTransition(
+          scale: Tween(
+            begin: 0.82,
+            end: 1.18,
+          ).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
+          child: const Icon(Icons.favorite, color: Color(0xFFEF4444), size: 18),
+        ),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'PT监护室',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            Text(
+              '站点运行状态实时监护',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade600,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   // 筛选元信息：显示 X / Y 个站点 + 抓取时间（对齐 Web 的 spt-filters__meta）。
@@ -317,68 +370,133 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
         return b.key.compareTo(a.key);
       });
     return entries
-        .map((e) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: GlassCard(
-                padding: EdgeInsets.zero,
-                child: ExpansionTile(
-                  shape: const Border(),
-                  collapsedBackgroundColor: Colors.transparent,
-                  backgroundColor: Colors.transparent,
-                  title: Row(children: [
+        .map(
+          (e) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: GlassCard(
+              padding: EdgeInsets.zero,
+              child: ExpansionTile(
+                shape: const Border(),
+                collapsedBackgroundColor: Colors.transparent,
+                backgroundColor: Colors.transparent,
+                title: Row(
+                  children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                      decoration: BoxDecoration(color: PTColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(999)),
-                      child: Text(e.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: PTColors.primary)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: PTColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        e.key,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: PTColors.primary,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text('${e.key == '未知' ? '' : '年'}建站 · ${e.value.length} 个',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  ]),
-                  initiallyExpanded: true,
-                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  children: [_siteGrid(e.value)],
+                    Text(
+                      '${e.key == '未知' ? '' : '年'}建站 · ${e.value.length} 个',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
                 ),
+                initiallyExpanded: true,
+                childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                children: [_siteGrid(e.value)],
               ),
-            ))
+            ),
+          ),
+        )
         .toList();
   }
 
   // 站点卡片响应式网格：宽屏 4 列→900 3 列→600 2 列→窄屏 1 列（对齐 Web .spt-grid 断点）。
   // 用 LayoutBuilder+Wrap（非滚动）而非 GridView，避免在主 ListView 内嵌套纵向滚动报错。
   Widget _siteGrid(List<SaveptSiteCard> items) {
-    return LayoutBuilder(builder: (ctx, c) {
-      final cols = ptAutoColumns(c.maxWidth, 240, minColumns: 1).clamp(1, 4);
-      const gap = 8.0;
-      final w = cols <= 1 ? c.maxWidth : (c.maxWidth - gap * (cols - 1)) / cols;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: items
-            .map((card) => SizedBox(
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        final cols = ptAutoColumns(c.maxWidth, 240, minColumns: 1).clamp(1, 4);
+        const gap = 8.0;
+        final w = cols <= 1
+            ? c.maxWidth
+            : (c.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: items
+              .map(
+                (card) => SizedBox(
                   width: w,
-                  child: _SiteCard(card, _siteTypeLabel, _statusLabel, _matchLabel, _healthColor, _isTodayAnniv, _annivDisplay),
-                ))
-            .toList(),
-      );
-    });
+                  child: _SiteCard(
+                    card,
+                    _siteTypeLabel,
+                    _statusLabel,
+                    _matchLabel,
+                    _healthColor,
+                    _isTodayAnniv,
+                    _annivDisplay,
+                  ),
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
   }
 
   Widget _vitals(SaveptSummary s) {
     final items = <PTStat>[
       PTStat(value: '${s.total}', label: '监护中', color: PTColors.primary),
-      PTStat(value: '${s.healthy}', label: '健康', color: const Color(0xFF22C55E)),
-      PTStat(value: '${s.mpOwned}', label: '已拥有', color: const Color(0xFF16A34A)),
-      PTStat(value: '${s.critical}', label: '病危', color: const Color(0xFFEF4444)),
-      PTStat(value: '${s.closed}', label: '已关站', color: const Color(0xFF94A3B8)),
-      PTStat(value: '${s.todayAnniv}', label: '站庆', color: const Color(0xFFF59E0B)),
-      PTStat(value: '${s.internal}', label: '内站', color: const Color(0xFF3B82F6)),
-      PTStat(value: '${s.external}', label: '外站', color: const Color(0xFF8B5CF6)),
+      PTStat(
+        value: '${s.healthy}',
+        label: '健康',
+        color: const Color(0xFF22C55E),
+      ),
+      PTStat(
+        value: '${s.mpOwned}',
+        label: '已拥有',
+        color: const Color(0xFF16A34A),
+      ),
+      PTStat(
+        value: '${s.critical}',
+        label: '病危',
+        color: const Color(0xFFEF4444),
+      ),
+      PTStat(
+        value: '${s.closed}',
+        label: '已关站',
+        color: const Color(0xFF94A3B8),
+      ),
+      PTStat(
+        value: '${s.todayAnniv}',
+        label: '站庆',
+        color: const Color(0xFFF59E0B),
+      ),
+      PTStat(
+        value: '${s.internal}',
+        label: '内站',
+        color: const Color(0xFF3B82F6),
+      ),
+      PTStat(
+        value: '${s.external}',
+        label: '外站',
+        color: const Color(0xFF8B5CF6),
+      ),
     ];
     // 单行指标条：宽屏 Row 均匀分布 + 竖分隔（监护仪风格）/ 窄屏横向滚动，永不折行。
     return GlassCard(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      child: PTStatStrip(items: items, dividers: isWideScreen(context), height: 44),
+      child: PTStatStrip(
+        items: items,
+        dividers: isWideScreen(context),
+        height: 44,
+      ),
     );
   }
 
@@ -412,11 +530,11 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
   // 取代原 chip 行 + 双 dropdown 的多行筛选区（4 行 → 1 行小药丸）。
   Widget _filterChips() {
     String mpLabel(String v) => switch (v) {
-          'owned' => '已拥有',
-          'available' => '可添加',
-          'unsupported' => '未收录',
-          _ => '全部',
-        };
+      'owned' => '已拥有',
+      'available' => '可添加',
+      'unsupported' => '未收录',
+      _ => '全部',
+    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
       child: Wrap(
@@ -470,7 +588,9 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
               title: '建站年份',
               selected: _year,
               onSelected: (v) => setState(() => _year = v),
-              options: _yearOptions.map((y) => PTFilterOption(value: y, label: y)).toList(),
+              options: _yearOptions
+                  .map((y) => PTFilterOption(value: y, label: y))
+                  .toList(),
             ),
           ),
           PTFilterPill(
@@ -486,7 +606,10 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
                 const PTFilterOption(value: '全部', label: '全部'),
                 PTFilterOption(value: 'owned', label: mpLabel('owned')),
                 PTFilterOption(value: 'available', label: mpLabel('available')),
-                PTFilterOption(value: 'unsupported', label: mpLabel('unsupported')),
+                PTFilterOption(
+                  value: 'unsupported',
+                  label: mpLabel('unsupported'),
+                ),
               ],
             ),
           ),
@@ -499,16 +622,20 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
   Widget _noticesGrid() {
     final sections = _noticeSections.where((n) => n.items.isNotEmpty).toList();
     if (sections.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(builder: (ctx, c) {
-      final cols = isWideScreen(context) && c.maxWidth >= 560 ? 2 : 1;
-      const gap = 8.0;
-      final w = cols <= 1 ? c.maxWidth : (c.maxWidth - gap) / 2;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: sections.map((n) => SizedBox(width: w, child: _noticeCard(n))).toList(),
-      );
-    });
+    return LayoutBuilder(
+      builder: (ctx, c) {
+        final cols = isWideScreen(context) && c.maxWidth >= 560 ? 2 : 1;
+        const gap = 8.0;
+        final w = cols <= 1 ? c.maxWidth : (c.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: sections
+              .map((n) => SizedBox(width: w, child: _noticeCard(n)))
+              .toList(),
+        );
+      },
+    );
   }
 
   Widget _noticeCard(_NoticeSection n) {
@@ -519,29 +646,51 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
       _ => const Color(0xFF94A3B8),
     };
     return GlassCard(
-        padding: const EdgeInsets.all(12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(n.title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            n.title,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
           const SizedBox(height: 6),
-          ...n.items.map((t) => Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: _noticeRichText(t),
-              )),
-        ]),
+          ...n.items.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _noticeRichText(t),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   // 公告正文：按站点名切片，命中站点名着色成 inline tag（移植自 Web utils/savept.ts 的 tokenizeNoticeText）。
   Widget _noticeRichText(String text) {
     final tokens = _tokenizeNoticeText(text, _siteNames);
-    if (tokens.isEmpty) return Text(text, style: const TextStyle(fontSize: 12, height: 1.5));
+    if (tokens.isEmpty) {
+      return Text(text, style: const TextStyle(fontSize: 12, height: 1.5));
+    }
     return Text.rich(
       TextSpan(
         style: const TextStyle(fontSize: 12, height: 1.5),
         children: tokens
-            .map((t) => t.isSite
-                ? TextSpan(text: t.text, style: const TextStyle(color: Color(0xFF6C5CE7), fontWeight: FontWeight.w600))
-                : TextSpan(text: t.text))
+            .map(
+              (t) => t.isSite
+                  ? TextSpan(
+                      text: t.text,
+                      style: const TextStyle(
+                        color: Color(0xFF6C5CE7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  : TextSpan(text: t.text),
+            )
             .toList(),
       ),
     );
@@ -551,8 +700,20 @@ class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateM
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12), border: Border.all(color: color.withValues(alpha: 0.3))),
-      child: Row(children: [Icon(Icons.warning_amber_rounded, color: color, size: 18), const SizedBox(width: 8), Expanded(child: Text(text, style: TextStyle(fontSize: 12, color: color)))]),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(text, style: TextStyle(fontSize: 12, color: color)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -573,7 +734,15 @@ class _SiteCard extends StatefulWidget {
   final Color Function(SiteHealthStatus) healthColor;
   final bool Function(String) isTodayAnniv;
   final String Function(String) annivDisplay;
-  const _SiteCard(this.card, this.siteTypeLabel, this.statusLabel, this.matchLabel, this.healthColor, this.isTodayAnniv, this.annivDisplay);
+  const _SiteCard(
+    this.card,
+    this.siteTypeLabel,
+    this.statusLabel,
+    this.matchLabel,
+    this.healthColor,
+    this.isTodayAnniv,
+    this.annivDisplay,
+  );
 
   @override
   State<_SiteCard> createState() => _SiteCardState();
@@ -604,7 +773,11 @@ class _SiteCardState extends State<_SiteCard> {
     try {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('打开站点失败：$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('打开站点失败：$e')));
+      }
     }
   }
 
@@ -617,8 +790,13 @@ class _SiteCardState extends State<_SiteCard> {
       MatchType.nameExact || MatchType.nameFuzzy => const Color(0xFF2563EB),
       MatchType.none => const Color(0xFF64748B),
     };
-    final iconWidget = Image.network(c.icon!, width: 34, height: 34, fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const SizedBox(width: 34, height: 34));
+    final iconWidget = Image.network(
+      c.icon!,
+      width: 34,
+      height: 34,
+      fit: BoxFit.contain,
+      errorBuilder: (_, _, _) => const SizedBox(width: 34, height: 34),
+    );
     return Container(
       margin: EdgeInsets.zero,
       child: Stack(
@@ -627,71 +805,160 @@ class _SiteCardState extends State<_SiteCard> {
             onTap: c.url.isNotEmpty ? () => _launchUrl(c.url) : null,
             tint: color, // 健康状态淡色底（对齐 Web 卡片 healthy/critical/closed 着色）
             padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              // 标签行
-              Wrap(spacing: 6, runSpacing: 4, children: [
-                _tag(widget.siteTypeLabel(c.siteType), Colors.grey),
-                if (c.durationText.isNotEmpty) _tag(c.durationText, PTColors.primary),
-                if (c.anniversaryText.isNotEmpty)
-                  _tag(widget.annivDisplay(c.anniversaryText), const Color(0xFFF59E0B)),
-                if (c.faultDuration.isNotEmpty) _tag('⏱ 抢救 ${c.faultDuration}', const Color(0xFFEF4444)),
-              ]),
-              const SizedBox(height: 8),
-              Row(children: [
-                if (c.icon != null && c.icon!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 10),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      // 死亡站图标灰度（对齐 Web closed 卡 filter: grayscale(1)）
-                      child: c.status == SiteHealthStatus.closed
-                          ? ColorFiltered(
-                              colorFilter: const ColorFilter.matrix(<double>[
-                                0.2126, 0.7152, 0.0722, 0, 0,
-                                0.2126, 0.7152, 0.0722, 0, 0,
-                                0.2126, 0.7152, 0.0722, 0, 0,
-                                0, 0, 0, 1, 0,
-                              ]),
-                              child: iconWidget,
-                            )
-                          : iconWidget,
-                    ),
-                  ),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    CircleAvatar(radius: 4, backgroundColor: color),
-                    const SizedBox(width: 6),
-                    Expanded(child: Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
-                    Icon(_statusIcon(c.status), color: color, size: 16),
-                  ]),
-                  const SizedBox(height: 4),
-                  Text('开站 ${c.openTime.isNotEmpty ? c.openTime : '未知'}${c.closeTime.isNotEmpty && c.closeTime != '未知' ? ' · 关站 ${c.closeTime}' : ''}',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  if (c.localSiteName.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(c.localSiteName, style: const TextStyle(fontSize: 11, color: PTColors.primary), overflow: TextOverflow.ellipsis),
-                    ),
-                ])),
-              ]),
-              const SizedBox(height: 8),
-              Row(children: [
-                // MP 状态徽章带前缀图标（已拥有=check / 可添加=plus / 未收录=help）
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: matchColor.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(999)),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(_mpIcon(c.matchType), size: 12, color: matchColor),
-                    const SizedBox(width: 3),
-                    Text(widget.matchLabel(c.matchType), style: TextStyle(color: matchColor, fontSize: 11)),
-                  ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 标签行
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _tag(widget.siteTypeLabel(c.siteType), Colors.grey),
+                    if (c.durationText.isNotEmpty)
+                      _tag(c.durationText, PTColors.primary),
+                    if (c.anniversaryText.isNotEmpty)
+                      _tag(
+                        widget.annivDisplay(c.anniversaryText),
+                        const Color(0xFFF59E0B),
+                      ),
+                    if (c.faultDuration.isNotEmpty)
+                      _tag('⏱ 抢救 ${c.faultDuration}', const Color(0xFFEF4444)),
+                  ],
                 ),
-                if (c.domain.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(c.domain, style: const TextStyle(color: Colors.grey, fontSize: 11), overflow: TextOverflow.ellipsis)),
-                ],
-              ]),
-            ]),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    if (c.icon != null && c.icon!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          // 死亡站图标灰度（对齐 Web closed 卡 filter: grayscale(1)）
+                          child: c.status == SiteHealthStatus.closed
+                              ? ColorFiltered(
+                                  colorFilter:
+                                      const ColorFilter.matrix(<double>[
+                                        0.2126,
+                                        0.7152,
+                                        0.0722,
+                                        0,
+                                        0,
+                                        0.2126,
+                                        0.7152,
+                                        0.0722,
+                                        0,
+                                        0,
+                                        0.2126,
+                                        0.7152,
+                                        0.0722,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        1,
+                                        0,
+                                      ]),
+                                  child: iconWidget,
+                                )
+                              : iconWidget,
+                        ),
+                      ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(radius: 4, backgroundColor: color),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  c.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Icon(
+                                _statusIcon(c.status),
+                                color: color,
+                                size: 16,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '开站 ${c.openTime.isNotEmpty ? c.openTime : '未知'}${c.closeTime.isNotEmpty && c.closeTime != '未知' ? ' · 关站 ${c.closeTime}' : ''}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          if (c.localSiteName.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Text(
+                                c.localSiteName,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: PTColors.primary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // MP 状态徽章带前缀图标（已拥有=check / 可添加=plus / 未收录=help）
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: matchColor.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _mpIcon(c.matchType),
+                            size: 12,
+                            color: matchColor,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            widget.matchLabel(c.matchType),
+                            style: TextStyle(color: matchColor, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (c.domain.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          c.domain,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
           if (_isToday)
             Positioned(
@@ -702,7 +969,13 @@ class _SiteCardState extends State<_SiteCard> {
                 confettiController: _confetti,
                 blastDirectionality: BlastDirectionality.explosive,
                 shouldLoop: true,
-                colors: const [Color(0xFFF59E0B), Color(0xFFFACC15), Color(0xFFFB7185), Color(0xFF22C55E), Color(0xFF38BDF8)],
+                colors: const [
+                  Color(0xFFF59E0B),
+                  Color(0xFFFACC15),
+                  Color(0xFFFB7185),
+                  Color(0xFF22C55E),
+                  Color(0xFF38BDF8),
+                ],
                 maxBlastForce: 6,
                 minBlastForce: 3,
                 emissionFrequency: 0.4,
@@ -719,23 +992,33 @@ class _SiteCardState extends State<_SiteCard> {
   Widget _tag(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
   IconData _statusIcon(SiteHealthStatus s) => switch (s) {
-        SiteHealthStatus.healthy => Icons.favorite,
-        SiteHealthStatus.critical => Icons.error_outline,
-        SiteHealthStatus.closed => Icons.sentiment_very_dissatisfied,
-        SiteHealthStatus.unknown => Icons.help_outline,
-      };
+    SiteHealthStatus.healthy => Icons.favorite,
+    SiteHealthStatus.critical => Icons.error_outline,
+    SiteHealthStatus.closed => Icons.sentiment_very_dissatisfied,
+    SiteHealthStatus.unknown => Icons.help_outline,
+  };
 
   IconData _mpIcon(MatchType m) => switch (m) {
-        MatchType.urlExact || MatchType.domainExact => Icons.check_circle_outline,
-        MatchType.nameExact || MatchType.nameFuzzy => Icons.add_circle_outline,
-        MatchType.none => Icons.help_outline,
-      };
+    MatchType.urlExact || MatchType.domainExact => Icons.check_circle_outline,
+    MatchType.nameExact || MatchType.nameFuzzy => Icons.add_circle_outline,
+    MatchType.none => Icons.help_outline,
+  };
 }
 
 class _Empty extends StatelessWidget {
@@ -747,8 +1030,20 @@ class _Empty extends StatelessWidget {
     return ListView(
       children: [
         const SizedBox(height: 120),
-        Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)))),
-        if (onRetry != null) Center(child: ElevatedButton(onPressed: onRetry, child: const Text('重试'))),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ),
+        ),
+        if (onRetry != null)
+          Center(
+            child: ElevatedButton(onPressed: onRetry, child: const Text('重试')),
+          ),
       ],
     );
   }
@@ -774,10 +1069,14 @@ void _appendNoticeText(List<_NoticeToken> tokens, String text) {
   tokens.add(_NoticeToken.text(text));
 }
 
-String _escapeRegExp(String s) => s.replaceAll(RegExp(r'[.*+?^${}()|[\]\\]'), r'\$0');
+String _escapeRegExp(String s) =>
+    s.replaceAll(RegExp(r'[.*+?^${}()|[\]\\]'), r'\$0');
 
 // 检测一段公告里是否以站点名开头（含可能的「前缀：」）。
-({String prefix, String siteName, String suffix})? _detectNoticeSiteName(String segmentText, List<String> siteNames) {
+({String prefix, String siteName, String suffix})? _detectNoticeSiteName(
+  String segmentText,
+  List<String> siteNames,
+) {
   final raw = segmentText;
   final trimmed = raw.trim();
   if (trimmed.isEmpty) return null;
@@ -790,7 +1089,11 @@ String _escapeRegExp(String s) => s.replaceAll(RegExp(r'[.*+?^${}()|[\]\\]'), r'
 
   for (final name in siteNames) {
     if (RegExp('^${_escapeRegExp(name)}(?=\\s|\$)').hasMatch(trimmedBody)) {
-      return (prefix: '$prefix$leadingWs', siteName: name, suffix: trimmedBody.substring(name.length));
+      return (
+        prefix: '$prefix$leadingWs',
+        siteName: name,
+        suffix: trimmedBody.substring(name.length),
+      );
     }
   }
   // 启发式：站点名通常在「已抢救/已/还有/抢救/于」等动词前。
@@ -798,13 +1101,21 @@ String _escapeRegExp(String s) => s.replaceAll(RegExp(r'[.*+?^${}()|[\]\\]'), r'
   if (heur != null && heur.group(1) != null) {
     final name = heur.group(1)!.trim();
     if (name.isNotEmpty) {
-      return (prefix: '$prefix$leadingWs', siteName: name, suffix: trimmedBody.substring(heur.group(1)!.length));
+      return (
+        prefix: '$prefix$leadingWs',
+        siteName: name,
+        suffix: trimmedBody.substring(heur.group(1)!.length),
+      );
     }
   }
   return null;
 }
 
-void _tokenizeNoticeSegment(String seg, List<String> siteNames, List<_NoticeToken> tokens) {
+void _tokenizeNoticeSegment(
+  String seg,
+  List<String> siteNames,
+  List<_NoticeToken> tokens,
+) {
   if (seg.isEmpty) return;
   final detected = _detectNoticeSiteName(seg, siteNames);
   if (detected == null) {

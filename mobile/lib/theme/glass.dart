@@ -27,7 +27,9 @@ class PTSp {
 
 /// 字号阶梯 —— 与 glass.css --fs-* 对齐。
 class PTFs {
-  static const double xs = 11;
+  // xs 由 11 提到 12：11pt 在手机上低于可读阈值（WCAG），走 token 的最小字号统一兜底到 12。
+  // 装饰性纯图形可用裸值更小，但可读文字最低 12。与 glass.css --fs-xs 同步。
+  static const double xs = 12;
   static const double sm = 12;
   static const double body = 13;
   static const double md = 14;
@@ -49,11 +51,30 @@ class PTRadius {
 
 /// 应用主题（Material 3，seed 自品牌主色）。
 ThemeData buildAppTheme(Brightness brightness) {
+  final isDark = brightness == Brightness.dark;
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
     colorSchemeSeed: PTColors.primary,
     scaffoldBackgroundColor: Colors.transparent,
+    // AppBar 回退到可用红线：toolbarHeight 44（Material/Apple HIG 最小触摸高度）+ 图标 20 + 标题 17。
+    // 此前压到 30 导致触摸目标 30×30 低于 44 红线（紧凑度治理过头 → 误触/难点中）。
+    // 44 仍比默认 56 紧凑，但保证按钮命中区。注意：toolbarHeight<48 时 actions 里的裸
+    // IconButton(默认 48) 仍会溢出，故 actions 统一用 PTIconAction(44×44 触摸区)。
+    // 页面级 toolbarHeight 仍可按需覆盖。
+    appBarTheme: AppBarTheme(
+      toolbarHeight: 44,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: Colors.transparent,
+      iconTheme: const IconThemeData(size: 20),
+      actionsIconTheme: const IconThemeData(size: 20),
+      titleTextStyle: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w700,
+        color: isDark ? Colors.white : Colors.black87,
+      ),
+    ),
   );
 }
 
@@ -121,20 +142,25 @@ ThemeMode _themeModeFromString(String? s) {
 
 Future<void> loadThemeModePrefs() async {
   final prefs = await SharedPreferences.getInstance();
-  themeModeNotifier.value = _themeModeFromString(prefs.getString(_themeModePrefsKey));
+  themeModeNotifier.value = _themeModeFromString(
+    prefs.getString(_themeModePrefsKey),
+  );
 }
 
 Future<void> setThemeMode(ThemeMode m) async {
   themeModeNotifier.value = m;
   final prefs = await SharedPreferences.getInstance();
-  final s = m == ThemeMode.light ? 'light' : (m == ThemeMode.dark ? 'dark' : 'system');
+  final s = m == ThemeMode.light
+      ? 'light'
+      : (m == ThemeMode.dark ? 'dark' : 'system');
   await prefs.setString(_themeModePrefsKey, s);
 }
 
 // —— 以下纯函数与渲染解耦，便于单测 ——
 
 /// 降级时强制 sigma=0（触发跳过 BackdropFilter）。
-double effectiveGlassSigma(double requested, bool reduced) => reduced ? 0.0 : requested;
+double effectiveGlassSigma(double requested, bool reduced) =>
+    reduced ? 0.0 : requested;
 
 /// 卡片底色不透明度。降级(无模糊)时抬高，保证文字可读：亮 0.55→0.80 / 暗 0.06→0.14。
 double glassCardAlpha(bool isDark, bool reduced) =>
@@ -151,6 +177,7 @@ class GlassCard extends StatelessWidget {
   final double blurSigma;
   final double radius;
   final VoidCallback? onTap;
+  final Color? tint; // 可选淡色底（如监护室按健康状态着色）：与 cardColor 做 alphaBlend，0.12 不透明。
 
   const GlassCard({
     super.key,
@@ -159,6 +186,7 @@ class GlassCard extends StatelessWidget {
     this.blurSigma = 18,
     this.radius = 20,
     this.onTap,
+    this.tint,
   });
 
   @override
@@ -169,8 +197,18 @@ class GlassCard extends StatelessWidget {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         final reduced = glassReduced.value;
         final sigma = effectiveGlassSigma(blurSigma, reduced);
-        final cardColor = Colors.white.withValues(alpha: glassCardAlpha(isDark, reduced));
-        final borderColor = Colors.white.withValues(alpha: isDark ? 0.08 : 0.65);
+        var cardColor = Colors.white.withValues(
+          alpha: glassCardAlpha(isDark, reduced),
+        );
+        if (tint != null) {
+          cardColor = Color.alphaBlend(
+            tint!.withValues(alpha: 0.12),
+            cardColor,
+          );
+        }
+        final borderColor = Colors.white.withValues(
+          alpha: isDark ? 0.08 : 0.65,
+        );
 
         final inner = Container(
           decoration: BoxDecoration(
@@ -201,7 +239,11 @@ class GlassCard extends StatelessWidget {
         );
 
         if (onTap == null) return content;
-        return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(radius), child: content);
+        return InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(radius),
+          child: content,
+        );
       },
     );
   }

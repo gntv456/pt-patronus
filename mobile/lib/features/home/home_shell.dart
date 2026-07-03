@@ -30,6 +30,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   // 挂 key 让 Element 复用、State 保活（否则 bigsmall 下注中等状态因重建丢失——审计 P2）。
   // key 按 index 区分，切 tab 才换 key→重建；同 tab 宽窄切换 key 不变→保活。
   final Map<int, GlobalKey> _pageKeys = {};
+  // 已访问过的 tab index 集合：配合 IndexedStack 实现「访问后常驻保活 + 未访问懒加载」。
+  final Set<int> _visited = {};
   GlobalKey _pageKey(int i) =>
       _pageKeys.putIfAbsent(i, () => GlobalKey(debugLabel: 'home-page-$i'));
 
@@ -70,24 +72,34 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           listenable: _controller,
           builder: (context, _) {
             final wide = MediaQuery.widthOf(context) >= kHomeWideBreakpoint;
-            final page = KeyedSubtree(
-              key: _pageKey(_controller.index),
-              child: navItems[_controller.index].builder(context),
+            // IndexedStack 保活已访问的 tab：切 tab 不重建页面，滚动位置 / 表单 / 下注中途状态都保留
+            // （修此前 KeyedSubtree「切 tab 必重建丢状态」问题）。懒加载：仅已访问的 index 才真正构建，
+            // 未访问给空占位，避免 25 页全量初始化（各自 onInit 拉数据 / 起 timer）的负担。
+            _visited.add(_controller.index);
+            final pages = IndexedStack(
+              index: _controller.index,
+              children: List.generate(navItems.length, (i) {
+                if (!_visited.contains(i)) return const SizedBox.shrink();
+                return KeyedSubtree(
+                  key: _pageKey(i),
+                  child: navItems[i].builder(context),
+                );
+              }),
             );
             // 窄屏使用最大宽度限制的内容卡片化体验（页面自带 Scaffold/AppBar）。
             final Widget body;
             if (wide) {
               if (_controller.sidebarVisible) {
                 body = Row(
-                  children: [const HomeSidebar(), Expanded(child: page)],
+                  children: [const HomeSidebar(), Expanded(child: pages)],
                 );
               } else {
                 body = Row(
-                  children: [const HomeSidebarReveal(), Expanded(child: page)],
+                  children: [const HomeSidebarReveal(), Expanded(child: pages)],
                 );
               }
             } else {
-              body = page;
+              body = pages;
             }
             return Scaffold(
               key: _controller.scaffoldKey,
@@ -107,7 +119,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                   child: Badge(
                     isLabelVisible: n > 0,
                     label: Text(n > 99 ? '99+' : '$n',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                     child: const Icon(Icons.notifications),
                   ),
                 ),

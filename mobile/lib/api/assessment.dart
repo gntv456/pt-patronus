@@ -1,5 +1,13 @@
 import '../core/api_client.dart';
 
+// JSON 字符串字段容错：后端个别字段（如 end_time）可能返回 int（0 / epoch）而非字符串，
+// `as String?` 会抛 "type 'int' is not a subtype of type 'String?' in type cast"（且 `?? ''`
+// 救不了——cast 在前）。统一 toString 兜底，与审计「JSON 解析健壮性」同模式。
+String _s(dynamic v) => v == null ? '' : v.toString();
+String? _sOpt(dynamic v) => v?.toString();
+double _n(dynamic v) => v is num ? v.toDouble() : (double.tryParse('$v') ?? 0);
+int _i(dynamic v) => v is num ? v.toInt() : (int.tryParse('$v') ?? 0);
+
 class AssessmentMetric {
   final String label;
   final double required;
@@ -14,11 +22,11 @@ class AssessmentMetric {
     required this.isCompleted,
   });
   factory AssessmentMetric.fromJson(Map<String, dynamic> j) => AssessmentMetric(
-        label: j['label'] as String? ?? '',
-        required: (j['required'] as num?)?.toDouble() ?? 0,
-        current: (j['current'] as num?)?.toDouble() ?? 0,
-        unit: j['unit'] as String? ?? '',
-        isCompleted: j['is_completed'] as bool? ?? false,
+        label: _s(j['label']),
+        required: _n(j['required']),
+        current: _n(j['current']),
+        unit: _s(j['unit']),
+        isCompleted: j['is_completed'] is bool ? j['is_completed'] as bool : false,
       );
 }
 
@@ -32,6 +40,7 @@ class AssessmentCard {
   final String assessmentType;
   final String description;
   final String error;
+  final String? endTime;
   AssessmentCard({
     required this.siteId,
     required this.siteName,
@@ -42,20 +51,25 @@ class AssessmentCard {
     required this.assessmentType,
     required this.description,
     required this.error,
+    this.endTime,
   });
-  factory AssessmentCard.fromJson(Map<String, dynamic> j) => AssessmentCard(
-        siteId: (j['site_id'] as num?)?.toInt() ?? 0,
-        siteName: j['site_name'] as String? ?? '',
-        status: j['status'] as String? ?? 'UNKNOWN',
-        progressPercent: (j['progress_percent'] as num?)?.toDouble() ?? 0,
-        remainingDays: (j['remaining_days'] as num?)?.toInt() ?? -1,
-        metrics: ((j['metrics'] as List?) ?? const [])
-            .map((e) => AssessmentMetric.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        assessmentType: j['assessment_type'] as String? ?? '',
-        description: j['description'] as String? ?? '',
-        error: j['error'] as String? ?? '',
-      );
+  factory AssessmentCard.fromJson(Map<String, dynamic> j) {
+    final status = _s(j['status']);
+    return AssessmentCard(
+      siteId: _i(j['site_id']),
+      siteName: _s(j['site_name']),
+      status: status.isEmpty ? 'UNKNOWN' : status,
+      progressPercent: _n(j['progress_percent']),
+      remainingDays: _i(j['remaining_days']),
+      metrics: ((j['metrics'] as List?) ?? const [])
+          .map((e) => AssessmentMetric.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      assessmentType: _s(j['assessment_type']),
+      description: _s(j['description']),
+      error: _s(j['error']),
+      endTime: _sOpt(j['end_time']),
+    );
+  }
 }
 
 class AssessmentApi {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/notification.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 // 通知通道设置（对标 Web Settings→通知）：Telegram / 微信 ClawBot / QQ / Bark / Webhook。
 // DB+UI 热更新，保存即时 rebuild；微信 ClawBot 走扫码登录。secret 留空=不修改。
@@ -163,7 +164,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : _load),
+            PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : _load),
           ],
         ),
         body: SafeArea(

@@ -286,7 +286,7 @@ onMounted(load)
         v-if="!sites.length && !loading"
         icon="🌐"
         title="暂无站点"
-        description="添加你的第一个 PT 站点，开始跨站统计与签到"
+        description="添加第一个 PT 站点并粘贴 Cookie/API Key，随后即可做跨站统计、签到、H&R 告警和内容搜索。"
       >
         <el-button type="primary" @click="openCreate">+ 添加站点</el-button>
       </EmptyState>

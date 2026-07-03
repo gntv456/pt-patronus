@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/notice.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 
 /// 通知中心列表页：初始拉取 + WS 实时追加；单条已读/删除 + 全部已读。
@@ -15,6 +16,7 @@ class _NoticePageState extends State<NoticePage> {
   final _api = NoticeApi();
   List<Notice> _items = [];
   bool _loading = true;
+  String _error = ''; // 加载失败文案：非空时空态显示错误 + 重试（替代静默吞错的「暂无通知」）
   StreamSubscription<Notice>? _sub;
 
   @override
@@ -25,10 +27,12 @@ class _NoticePageState extends State<NoticePage> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = ''; });
     try {
       _items = await _api.list();
-    } catch (_) {}
+    } catch (_) {
+      _error = '通知加载失败';
+    }
     if (mounted) setState(() => _loading = false);
     refreshNoticeUnread();
   }
@@ -138,9 +142,12 @@ class _NoticePageState extends State<NoticePage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _loading ? null : _load),
+            PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : _load),
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
+              iconSize: 20,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               tooltip: '更多',
               onSelected: (v) {
                 if (v == 'readall') {
@@ -161,9 +168,13 @@ class _NoticePageState extends State<NoticePage> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _items.isEmpty
-                  ? ListView(children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('暂无通知', style: TextStyle(color: Colors.grey))),
+                  ? ListView(children: [
+                      const SizedBox(height: 120),
+                      Center(child: Text(_error.isNotEmpty ? _error : '暂无通知', style: const TextStyle(color: Colors.grey))),
+                      if (_error.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Center(child: TextButton.icon(onPressed: _load, icon: const Icon(Icons.refresh, size: 18), label: const Text('重试'))),
+                      ],
                     ])
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
@@ -198,7 +209,7 @@ class _NoticePageState extends State<NoticePage> {
                                       margin: const EdgeInsets.only(right: 6),
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                       decoration: BoxDecoration(color: c.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(999)),
-                                      child: Text(noticeSourceLabel[n.source]!, style: TextStyle(fontSize: 10, color: c, fontWeight: FontWeight.w600)),
+                                      child: Text(noticeSourceLabel[n.source]!, style: TextStyle(fontSize: 11, color: c, fontWeight: FontWeight.w600)),
                                     ),
                                   Expanded(child: Text(n.title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
                                   Text(_relTime(n.createdAt), style: const TextStyle(fontSize: 11, color: Colors.grey)),

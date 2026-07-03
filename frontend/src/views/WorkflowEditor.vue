@@ -219,13 +219,22 @@ const history = ref<WorkflowRun[]>([])
 const showHistory = ref(false)
 async function openHistory() {
   if (!wfId.value) return
-  history.value = await workflowApi.runs(wfId.value, 20)
-  showHistory.value = true
+  try {
+    history.value = await workflowApi.runs(wfId.value, 20)
+    showHistory.value = true
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '历史加载失败')
+  }
 }
 async function viewRun(rid: number) {
-  runResult.value = await workflowApi.runDetail(rid)
-  showResult.value = true
-  showHistory.value = false
+  try {
+    runResult.value = await workflowApi.runDetail(rid)
+    showResult.value = true
+    showHistory.value = false
+  } catch (e: unknown) {
+    // 失败时不打开 showResult，避免显示旧 runResult
+    ElMessage.error((e as Error).message || '运行详情加载失败')
+  }
 }
 
 // 删除选中节点
@@ -239,8 +248,12 @@ function deleteSelected() {
 const templates = ref<WorkflowTemplate[]>([])
 const showTemplates = ref(false)
 async function openTemplates() {
-  if (!templates.value.length) templates.value = await workflowApi.templates()
-  showTemplates.value = true
+  try {
+    if (!templates.value.length) templates.value = await workflowApi.templates()
+    showTemplates.value = true
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '模板加载失败')
+  }
 }
 function applyTemplate(t: WorkflowTemplate) {
   name.value = t.name

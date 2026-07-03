@@ -41,7 +41,10 @@ const showFailed = ref(false)
 
 async function search() {
   const kw = keyword.value.trim()
-  if (!kw) return
+  if (!kw) {
+    ElMessage.warning('请输入关键词')
+    return
+  }
   loading.value = true
   error.value = ''
   try {
@@ -78,6 +81,8 @@ async function startPush(row: SearchRow) {
   pushVisible.value = true
   pushLoading.value = true
   selectedDl.value = null
+  pushedDlName.value = ''
+  pushedDlId.value = null
   try {
     downloaders.value = await downloaderApi.list()
     if (!downloaders.value.length) {
@@ -101,7 +106,9 @@ async function confirmPush() {
     const r = await downloaderApi.add(selectedDl.value, pushRow.value.download_url)
     if (r.ok) {
       ElMessage.success(`已推送到 ${dl?.name ?? '下载器'}`)
-      pushVisible.value = false
+      // 不立即关弹窗，切换为成功态供用户选择「查看任务」或「关闭」
+      pushedDlName.value = dl?.name ?? '下载器'
+      pushedDlId.value = selectedDl.value
     } else {
       ElMessage.warning(r.error || '推送失败')
     }
@@ -110,6 +117,26 @@ async function confirmPush() {
   } finally {
     pushLoading.value = false
   }
+}
+
+// 推送成功态：显示成功提示 + 「查看任务 / 关闭」
+const pushedDlName = ref('')
+const pushedDlId = ref<number | null>(null)
+
+function gotoDownloaderTasks() {
+  const id = pushedDlId.value
+  closePush()
+  if (id != null) {
+    router.push({ name: 'downloaders', query: { dl: String(id) } })
+  } else {
+    router.push({ name: 'downloaders' })
+  }
+}
+
+function closePush() {
+  pushVisible.value = false
+  pushedDlName.value = ''
+  pushedDlId.value = null
 }
 
 // —— 种子详情抽屉：抓取并解析单条种子详情页（简介/截图/MediaInfo/文件列表）——
@@ -336,7 +363,14 @@ onMounted(() => {
     </template>
 
     <!-- 推送下载器对话框 -->
-    <el-dialog v-model="pushVisible" title="推送到下载器" width="420">
+    <el-dialog v-model="pushVisible" title="推送到下载器" width="420" @close="closePush">
+      <!-- 成功态 -->
+      <div v-if="pushedDlName" class="push-success">
+        <div class="push-ok">已推送到 {{ pushedDlName }} ✓</div>
+        <div class="text-muted small">可前往下载器查看任务进度。</div>
+      </div>
+      <!-- 选择态 -->
+      <template v-else>
       <div v-if="pushRow" class="push-target">
         <div class="t-title">{{ pushRow.title }}</div>
         <div class="text-muted">{{ pushRow.site_name }} · {{ pushRow.size }}</div>
@@ -355,8 +389,14 @@ onMounted(() => {
         />
       </el-select>
       <div v-else-if="!pushLoading" class="empty text-muted">请先在「下载器」添加一个</div>
+      </template>
       <template #footer>
-        <el-button @click="pushVisible = false">取消</el-button>
+        <template v-if="pushedDlName">
+          <el-button type="primary" @click="gotoDownloaderTasks">查看任务</el-button>
+          <el-button @click="closePush">关闭</el-button>
+        </template>
+        <template v-else>
+        <el-button @click="closePush">取消</el-button>
         <el-button
           type="primary"
           :loading="pushLoading"
@@ -365,6 +405,7 @@ onMounted(() => {
         >
           推送
         </el-button>
+        </template>
       </template>
     </el-dialog>
 
@@ -569,6 +610,16 @@ onMounted(() => {
 }
 .push-target {
   margin-bottom: 16px;
+}
+.push-success {
+  text-align: center;
+  padding: 16px 0;
+}
+.push-ok {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pt-success, #2ecc71);
+  margin-bottom: 6px;
 }
 /* 影视卡片网格 */
 .grid {

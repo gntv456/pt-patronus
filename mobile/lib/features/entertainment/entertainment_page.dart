@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 import 'jgg_game_view.dart';
 import 'cspt_scratch_view.dart';
@@ -89,10 +91,10 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
               child: Row(children: [
                 const HomeMenuButton(),
-                const Text('娱乐', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('娱乐', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 _siteDropdown(),
               ]),
@@ -103,20 +105,32 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
                 child: _gameDropdown(),
               ),
             if (_loadingGames) const LinearProgressIndicator(minHeight: 2),
-            Expanded(child: _body()),
+            Expanded(child: _bodyWrapped()),
           ],
         ),
       ),
     );
   }
 
+  // 宽屏把游戏面板居中并限宽，避免 ListView 全宽在桌面端被拉成超宽长条（控件稀疏拉伸）。
+  // 窄屏原样全宽。一处包裹惠及全部 16 个 game view。
+  Widget _bodyWrapped() {
+    final body = _body();
+    if (!isWideScreen(context)) return body;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: body,
+      ),
+    );
+  }
+
   Widget _body() {
     if (_games.isEmpty) {
-      return Center(
-        child: Text(
-          _siteId == null ? '请先在「站点」添加站点' : (_loadingGames ? '加载中…' : '该站点暂无游戏'),
-          style: const TextStyle(color: Colors.grey),
-        ),
+      return PTEmptyState(
+        icon: Icons.sports_esports_outlined,
+        text: _siteId == null ? '请先在「站点」添加站点' : '该站点暂无游戏',
+        description: _loadingGames ? '加载中…' : '不同站点开放不同玩法，切换站点试试',
       );
     }
     if (_siteId == null) return const SizedBox.shrink();

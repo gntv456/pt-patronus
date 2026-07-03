@@ -19,7 +19,7 @@ class MonitorPage extends StatefulWidget {
 }
 
 class _MonitorPageState extends State<MonitorPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final _api = MonitorApi();
   List<MonitorTarget> _targets = [];
   // 每设备最新指标快照（卡片内联 CPU/内存/磁盘 用）。无批量端点，按 target 取 metrics?limit=1（同 Web loadAll）。
@@ -34,12 +34,30 @@ class _MonitorPageState extends State<MonitorPage>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); // 前后台：后台停轮询省电 + 避免 token 过期触发 401 弹回登录
     _load();
-    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    // 30s 轮询（原 15s 偏频）；后台暂停、回前台立即刷新 + 重启。
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => _load());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load();
+      _startTimer();
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      _timer?.cancel();
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     _tab.dispose();
     super.dispose();
@@ -231,7 +249,7 @@ class _MonitorPageState extends State<MonitorPage>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 10)),
+        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
         const SizedBox(width: 4),
         SizedBox(
           width: 44,
@@ -247,7 +265,7 @@ class _MonitorPageState extends State<MonitorPage>
         ),
         const SizedBox(width: 4),
         Text('${p.toStringAsFixed(0)}%',
-            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -268,7 +286,7 @@ class _MonitorPageState extends State<MonitorPage>
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text('$count',
-                    style: const TextStyle(fontSize: 10, color: PTColors.primary, fontWeight: FontWeight.w600)),
+                    style: const TextStyle(fontSize: 11, color: PTColors.primary, fontWeight: FontWeight.w600)),
               ),
             ],
           ],
@@ -298,16 +316,19 @@ class _MonitorPageState extends State<MonitorPage>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
               child: Row(children: [
                 const HomeMenuButton(),
-                const Text('设备监控', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text('设备监控', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _load),
-                IconButton(icon: const Icon(Icons.add), tooltip: '添加设备', onPressed: _add),
+                PTIconAction(icon: Icons.refresh, tooltip: '刷新', onPressed: _load),
+                PTIconAction(icon: Icons.add, tooltip: '添加设备', onPressed: _add),
                 if (ApiClient().isAdmin)
                   PopupMenuButton<String>(
                     icon: const Icon(Icons.more_vert),
+                    iconSize: 18,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
                     tooltip: '更多',
                     onSelected: (v) {
                       if (v == 'agents') _openAgents();

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/backup.dart';
+import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -148,10 +149,10 @@ class _BackupPageState extends State<BackupPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
               child: Row(children: [
                 const HomeMenuButton(),
-                const Text('备份', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('备份', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               ]),
             ),
             if (_busy) const LinearProgressIndicator(minHeight: 2),
@@ -166,27 +167,29 @@ class _BackupPageState extends State<BackupPage> {
                     buttonLabel: '导出',
                     onTap: _export,
                   ),
-                  _actionCard(
-                    icon: Icons.upload_file,
-                    title: '导入（PTPatronus 格式）',
-                    desc: '从 PTPatronus 备份 JSON 恢复站点与下载器。重复项自动跳过。',
-                    buttonLabel: '选择文件',
-                    onTap: () => _import(false),
-                  ),
-                  _actionCard(
-                    icon: Icons.movie_outlined,
-                    title: '从 MoviePilot 导入站点',
-                    desc: '导入 MoviePilot 站点 JSON 数组，自动创建为 NexusPHP 站点。',
-                    buttonLabel: '选择文件',
-                    onTap: () => _import(true),
-                  ),
-                  _actionCard(
-                    icon: Icons.extension_outlined,
-                    title: '从 PT-Depiler (.ptd) 导入站点',
-                    desc: '导入 PT-Depiler 浏览器扩展导出的 .ptd 备份，自动恢复站点 URL/Cookie/Passkey/账号。加密备份需先导出未加密版本。',
-                    buttonLabel: '选择文件',
-                    onTap: _importPTD,
-                  ),
+                  if (ApiClient().isAdmin) ...[
+                    _actionCard(
+                      icon: Icons.upload_file,
+                      title: '导入（PTPatronus 格式）',
+                      desc: '从 PTPatronus 备份 JSON 恢复站点与下载器。重复项自动跳过。',
+                      buttonLabel: '选择文件',
+                      onTap: () => _import(false),
+                    ),
+                    _actionCard(
+                      icon: Icons.movie_outlined,
+                      title: '从 MoviePilot 导入站点',
+                      desc: '导入 MoviePilot 站点 JSON 数组，自动创建为 NexusPHP 站点。',
+                      buttonLabel: '选择文件',
+                      onTap: () => _import(true),
+                    ),
+                    _actionCard(
+                      icon: Icons.extension_outlined,
+                      title: '从 PT-Depiler (.ptd) 导入站点',
+                      desc: '导入 PT-Depiler 浏览器扩展导出的 .ptd 备份，自动恢复站点 URL/Cookie/Passkey/账号。加密备份需先导出未加密版本。',
+                      buttonLabel: '选择文件',
+                      onTap: _importPTD,
+                    ),
+                  ],
                 ],
               ),
             ),

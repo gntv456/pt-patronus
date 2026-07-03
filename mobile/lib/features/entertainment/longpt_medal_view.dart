@@ -249,7 +249,7 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
             width: double.infinity,
             height: 24,
             child: FilledButton(
-              style: FilledButton.styleFrom(padding: EdgeInsets.zero, textStyle: const TextStyle(fontSize: 10), backgroundColor: ok ? null : Colors.grey),
+              style: FilledButton.styleFrom(padding: EdgeInsets.zero, textStyle: const TextStyle(fontSize: 11), backgroundColor: ok ? null : Colors.grey),
               onPressed: (_composing.isNotEmpty || !ok) ? null : () => _confirmAndCompose(n),
               child: _composing == n.medalId
                   ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))

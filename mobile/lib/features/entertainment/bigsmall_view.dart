@@ -360,7 +360,7 @@ class _BigSmallViewState extends State<BigSmallView> {
             const SizedBox(height: 8),
             Wrap(spacing: 4, runSpacing: 4, children: [
               for (final r in s!.recentResults.take(40))
-                Container(width: 20, height: 20, alignment: Alignment.center, decoration: BoxDecoration(color: _dotColor(r), shape: BoxShape.circle), child: Text(_label(r), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold))),
+                Container(width: 20, height: 20, alignment: Alignment.center, decoration: BoxDecoration(color: _dotColor(r), shape: BoxShape.circle), child: Text(_label(r), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold))),
             ]),
           ],
           if (s?.trendText.isNotEmpty == true) ...[const SizedBox(height: 6), Center(child: Text(s!.trendText, style: const TextStyle(fontSize: 12, color: PTColors.primary)))],
@@ -371,10 +371,10 @@ class _BigSmallViewState extends State<BigSmallView> {
         Text(cap, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         const SizedBox(height: 3),
         Row(children: [
-          Expanded(flex: t?.bigPct ?? 1, child: Container(height: 16, color: const Color(0xFFEF4444), alignment: Alignment.center, child: Text('大 ${t?.bigCount ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 10)))),
-          Expanded(flex: t?.smallPct ?? 1, child: Container(height: 16, color: const Color(0xFF3B82F6), alignment: Alignment.center, child: Text('小 ${t?.smallCount ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 10)))),
+          Expanded(flex: t?.bigPct ?? 1, child: Container(height: 16, color: const Color(0xFFEF4444), alignment: Alignment.center, child: Text('大 ${t?.bigCount ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 11)))),
+          Expanded(flex: t?.smallPct ?? 1, child: Container(height: 16, color: const Color(0xFF3B82F6), alignment: Alignment.center, child: Text('小 ${t?.smallCount ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 11)))),
         ]),
-        if (showHouse && (t?.houseCount ?? 0) > 0) Text('通杀 ${t!.houseCount}', style: const TextStyle(fontSize: 10, color: Color(0xFF22C55E))),
+        if (showHouse && (t?.houseCount ?? 0) > 0) Text('通杀 ${t!.houseCount}', style: const TextStyle(fontSize: 11, color: Color(0xFF22C55E))),
       ]);
 
   Widget _betPanel(BigSmallState? s) => GlassCard(
@@ -423,7 +423,7 @@ class _BigSmallViewState extends State<BigSmallView> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(cap, style: TextStyle(fontWeight: FontWeight.bold, color: c, fontSize: 12)),
           if (list.isEmpty) const Text('暂无', style: TextStyle(fontSize: 11, color: Colors.grey))
-          else for (final b in list.take(6)) Text('${b.username} ${_fmt(b.amount)}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+          else for (final b in list.take(6)) Text('${b.username} ${_fmt(b.amount)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
         ]),
       );
 
@@ -452,11 +452,11 @@ class _BigSmallViewState extends State<BigSmallView> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(children: [
-        Container(width: 18, height: 18, alignment: Alignment.center, decoration: BoxDecoration(color: medal, shape: BoxShape.circle), child: Text('$no', style: const TextStyle(fontSize: 10, color: Colors.white))),
+        Container(width: 18, height: 18, alignment: Alignment.center, decoration: BoxDecoration(color: medal, shape: BoxShape.circle), child: Text('$no', style: const TextStyle(fontSize: 11, color: Colors.white))),
         const SizedBox(width: 6),
         Expanded(child: Text(e.username, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
         Text(_fmt(e.amount.abs()), style: const TextStyle(color: PTColors.success, fontWeight: FontWeight.w600, fontSize: 12)),
-        if (e.count > 0) Text(' ${e.count}次', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+        if (e.count > 0) Text(' ${e.count}次', style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ]),
     );
   }
@@ -477,7 +477,7 @@ class _BigSmallViewState extends State<BigSmallView> {
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(t.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                if (t.progressText.isNotEmpty) Text(t.progressText, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                if (t.progressText.isNotEmpty) Text(t.progressText, style: const TextStyle(fontSize: 11, color: Colors.grey)),
               ])),
               if (t.status == 'rewardable')
                 _mini('领奖', PTColors.success, () => _doTask(t, 'reward'))
@@ -547,7 +547,7 @@ class _BigSmallViewState extends State<BigSmallView> {
                 const Spacer(),
                 if (_recMy) Text('${_label(r.myBetType)} ${_fmt(r.myBet)} ', style: const TextStyle(fontSize: 11, color: Colors.grey)),
                 if (_recMy) Text('${r.myResult >= 0 ? '+' : ''}${_fmt(r.myResult)}', style: TextStyle(fontSize: 11, color: r.myResult >= 0 ? PTColors.success : PTColors.danger, fontWeight: FontWeight.bold)),
-                if (!_recMy && r.bets.isNotEmpty) Flexible(child: Text(r.bets, style: const TextStyle(fontSize: 10, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                if (!_recMy && r.bets.isNotEmpty) Flexible(child: Text(r.bets, style: const TextStyle(fontSize: 11, color: Colors.grey), overflow: TextOverflow.ellipsis)),
               ]),
             ),
       ]),

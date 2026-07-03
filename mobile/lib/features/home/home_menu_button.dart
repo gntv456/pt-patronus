@@ -14,6 +14,9 @@ class HomeMenuButton extends StatelessWidget {
     return IconButton(
       tooltip: tooltip ?? '主菜单',
       icon: const Icon(Icons.menu),
+      iconSize: 20,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
       onPressed: () => HomeShellScope.of(context).openDrawer(),
     );
   }

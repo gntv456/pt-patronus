@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
+import 'package:ptpatronus/features/home/home_controller.dart';
+import 'package:ptpatronus/features/home/home_nav_items.dart';
 import 'package:ptpatronus/api/subscribe.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
 
 // 订阅列表（对标 Web Subscriptions）：展示订阅状态，支持手动检查 / 暂停-恢复 /
@@ -138,6 +141,12 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       ? '—'
       : t.replaceAll('T', ' ').replaceAll(RegExp(r'\.\d+Z?$'), '');
 
+  // 空状态 CTA：切到主菜单的「搜索」Tab（经 HomeShell 控制器按 label 定位索引，避免硬编码）。
+  void _goSearch() {
+    final idx = navItems.indexWhere((n) => n.label == '搜索');
+    if (idx >= 0) HomeShellScope.of(context).select(idx);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassBackground(
@@ -167,22 +176,16 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_error != null) {
-      return ListView(children: [
-        const SizedBox(height: 120),
-        Center(child: Text(_error!, style: const TextStyle(color: Colors.redAccent))),
-      ]);
+      return PTEmptyState(text: _error!, onRetry: _load);
     }
     if (_subs.isEmpty) {
-      return ListView(children: [
-        const SizedBox(height: 120),
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('暂无订阅。去推荐/媒体搜到影视 → 进详情页 → 订阅',
-                textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-          ),
-        ),
-      ]);
+      return PTEmptyState(
+        icon: Icons.subscriptions_outlined,
+        text: '暂无订阅',
+        description: '去搜索/推荐找到影视 → 进详情页 → 订阅',
+        actionLabel: '去搜索影视',
+        onAction: _goSearch,
+      );
     }
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),

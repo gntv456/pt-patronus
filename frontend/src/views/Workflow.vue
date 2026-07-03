@@ -111,8 +111,12 @@ async function whDelete(w: Webhook) {
   } catch {
     return
   }
-  await webhookApi.remove(w.id)
-  webhooks.value = await webhookApi.list()
+  try {
+    await webhookApi.remove(w.id)
+    webhooks.value = await webhookApi.list()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '操作失败')
+  }
 }
 async function whRotate(w: Webhook) {
   try {
@@ -120,9 +124,13 @@ async function whRotate(w: Webhook) {
   } catch {
     return
   }
-  await webhookApi.rotate(w.id)
-  webhooks.value = await webhookApi.list()
-  ElMessage.success('已重生成，请复制新 URL')
+  try {
+    await webhookApi.rotate(w.id)
+    webhooks.value = await webhookApi.list()
+    ElMessage.success('已重生成，请复制新 URL')
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '操作失败')
+  }
 }
 
 // webhook 新建表单
@@ -137,10 +145,14 @@ async function whSave() {
     ElMessage.warning('名称必填')
     return
   }
-  await webhookApi.create(whForm.value)
-  showWhForm.value = false
-  webhooks.value = await webhookApi.list()
-  ElMessage.success('已创建')
+  try {
+    await webhookApi.create(whForm.value)
+    showWhForm.value = false
+    webhooks.value = await webhookApi.list()
+    ElMessage.success('已创建')
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '操作失败')
+  }
 }
 </script>
 

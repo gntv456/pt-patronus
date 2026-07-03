@@ -45,6 +45,10 @@ const filtered = computed(() => targets.value.filter((t) => t.type === activeTab
 const unreadCount = computed(() => alerts.value.filter((a) => !a.read).length)
 let timer: number | undefined
 
+// 区分首屏与后台轮询：首屏失败显示 error 态 + 重试；后台轮询失败仍静默。
+const error = ref('')
+const firstLoad = ref(true)
+
 async function loadAll() {
   try {
     const [ts, al] = await Promise.all([
@@ -61,8 +65,14 @@ async function loadAll() {
         latestMap.value[t.id] = snaps.length ? parseMetrics(snaps[0]) : null
       }),
     )
-  } catch {
-    /* 静默，轮询重试 */
+    error.value = ''
+  } catch (e) {
+    if (firstLoad.value) {
+      error.value = (e as Error).message || '加载失败'
+    }
+    /* 后台轮询失败静默，下一轮自动重试 */
+  } finally {
+    firstLoad.value = false
   }
 }
 
@@ -124,6 +134,11 @@ function onPreview(t: MonitorTarget) {
   previewTarget.value = t
   previewVisible.value = true
 }
+async function retry() {
+  // 重试视为首屏，失败仍显示 error 态
+  firstLoad.value = true
+  await loadAll()
+}
 async function onReadAlert(a: MonitorAlert) {
   await monitorApi.readAlert(a.id)
   await loadAll()
@@ -161,7 +176,12 @@ const tabs = [
       </div>
     </header>
 
-    <el-tabs v-model="activeTab" class="np-tabs">
+    <div v-if="error" class="empty glass error-state">
+      <div class="err-text">⚠ {{ error }}</div>
+      <el-button size="small" @click="retry">重试</el-button>
+    </div>
+
+    <el-tabs v-if="!error" v-model="activeTab" class="np-tabs">
       <el-tab-pane v-for="tab in tabs" :key="tab.name" :name="tab.name">
         <template #label>
           <span class="tab-label">
@@ -313,6 +333,18 @@ const tabs = [
 .empty-state p {
   color: var(--text-muted);
   margin: 4px 0;
+}
+.error-state {
+  padding: 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.err-text {
+  color: var(--pt-danger, #e74c3c);
+  font-size: 14px;
 }
 .help h4 {
   margin: 14px 0 6px;

@@ -76,7 +76,7 @@ async function loadSetting() {
   try {
     setting.value = await reseedApi.getSetting(selectedDl.value)
   } catch {
-    /* 保留默认值 */
+    ElMessage.warning('辅种设置加载失败，显示为默认值')
   }
 }
 

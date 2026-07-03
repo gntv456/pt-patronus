@@ -169,8 +169,8 @@ class _RssPageState extends State<RssPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(onPressed: _load, icon: const Icon(Icons.refresh), tooltip: '刷新'),
-            IconButton(onPressed: () => _openForm(), icon: const Icon(Icons.add), tooltip: '添加订阅'),
+            PTIconAction(onPressed: _load, icon: Icons.refresh, tooltip: '刷新'),
+            PTIconAction(onPressed: () => _openForm(), icon: Icons.add, tooltip: '添加订阅'),
           ],
         ),
         body: _loading && _list.isEmpty

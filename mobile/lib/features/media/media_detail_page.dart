@@ -95,7 +95,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
       const {'movie': '电影', 'tv': '剧集', 'music': '音乐'}[t] ?? t;
 
   String _sourceBadge(String s) =>
-      const {'tmdb': 'TMDB', 'douban': '豆瓣', 'bangumi': 'Bangumi', 'musicbrainz': 'MB'}[s] ??
+      const {'tmdb': 'TMDB', 'douban': '豆瓣', 'bangumi': 'Bangumi', 'musicbrainz': 'MB', 'xingguangji': '星光集'}[s] ??
       s.toUpperCase();
 
   // 豆瓣 doubanio 防盗链图走后端反代（带 JWT），其它 CDN 直连。
@@ -406,8 +406,8 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 130,
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 childAspectRatio: 0.52,

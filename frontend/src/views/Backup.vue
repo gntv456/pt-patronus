@@ -2,12 +2,25 @@
 import { ref } from 'vue'
 import { backupApi } from '@/api/backup'
 import { useAuthStore } from '@/stores/auth'
+import type { UploadFile } from 'element-plus'
 
 const auth = useAuthStore()
 const importing = ref(false)
+const exporting = ref(false)
 
-function doExport() {
+async function doExport() {
+  // 导出含明文 Cookie / API Key / 密码，需二次确认
+  try {
+    await ElMessageBox.confirm('将导出含明文 Cookie / API Key / 密码的配置，请妥善保管。', '确认导出', {
+      type: 'warning',
+      confirmButtonText: '导出',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return // 用户取消
+  }
   // 带 token 直接下载
+  exporting.value = true
   const token = auth.token
   fetch(backupApi.exportUrl, { headers: { Authorization: `Bearer ${token}` } })
     .then((r) => r.blob())
@@ -21,6 +34,9 @@ function doExport() {
       ElMessage.success('已导出')
     })
     .catch(() => ElMessage.error('导出失败'))
+    .finally(() => {
+      exporting.value = false
+    })
 }
 
 function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
@@ -54,6 +70,18 @@ function onPTDFile(file: File | undefined) {
       importing.value = false
     })
 }
+
+function onOwnUpload(f: UploadFile) {
+  onFile(f.raw, 'own')
+}
+
+function onMoviePilotUpload(f: UploadFile) {
+  onFile(f.raw, 'moviepilot')
+}
+
+function onPTDUpload(f: UploadFile) {
+  onPTDFile(f.raw)
+}
 </script>
 
 <template>
@@ -66,7 +94,7 @@ function onPTDFile(file: File | undefined) {
           <div class="btitle">导出配置</div>
           <div class="bdesc text-muted">导出全部站点与下载器配置（含明文密钥，请妥善保管）为 JSON 文件。</div>
         </div>
-        <el-button type="primary" @click="doExport">导出</el-button>
+        <el-button type="primary" :loading="exporting" :disabled="exporting" @click="doExport">导出</el-button>
       </div>
     </div>
 
@@ -76,7 +104,7 @@ function onPTDFile(file: File | undefined) {
           <div class="btitle">导入（PTPatronus 格式）</div>
           <div class="bdesc text-muted">从 PTPatronus 备份 JSON 恢复站点与下载器。重复项自动跳过。</div>
         </div>
-        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="(f) => onFile(f.raw, 'own')">
+        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="onOwnUpload">
           <el-button :loading="importing">选择文件</el-button>
         </el-upload>
       </div>
@@ -88,7 +116,7 @@ function onPTDFile(file: File | undefined) {
           <div class="btitle">从 MoviePilot 导入站点</div>
           <div class="bdesc text-muted">导入 MoviePilot 站点 JSON 数组，自动创建为 NexusPHP 站点。</div>
         </div>
-        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="(f) => onFile(f.raw, 'moviepilot')">
+        <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="onMoviePilotUpload">
           <el-button :loading="importing">选择文件</el-button>
         </el-upload>
       </div>
@@ -100,7 +128,7 @@ function onPTDFile(file: File | undefined) {
           <div class="btitle">从 PT-Depiler (.ptd) 导入站点</div>
           <div class="bdesc text-muted">导入 PT-Depiler 浏览器扩展导出的 .ptd 备份，自动恢复站点 URL/Cookie/Passkey/账号。加密备份需先在 PT-Depiler 导出未加密版本。重复项自动跳过。</div>
         </div>
-        <el-upload :show-file-list="false" :auto-upload="false" accept=".ptd" :on-change="(f) => onPTDFile(f.raw)">
+        <el-upload :show-file-list="false" :auto-upload="false" accept=".ptd" :on-change="onPTDUpload">
           <el-button :loading="importing">选择文件</el-button>
         </el-upload>
       </div>

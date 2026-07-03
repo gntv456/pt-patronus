@@ -37,6 +37,9 @@ class NavItem {
   /// true → 固定渲染在抽屉/侧栏底部分组（通知设置、用户中心），不随主列表滚动。
   final bool footer;
 
+  /// 副标题释义（可选）：移动端无 hover，PT 黑话项用小字释义降低新手理解门槛（对齐 Web navDesc tooltip）。
+  final String? desc;
+
   const NavItem({
     required this.label,
     required this.glyph,
@@ -44,6 +47,7 @@ class NavItem {
     required this.to,
     required this.builder,
     this.footer = false,
+    this.desc,
   });
 }
 
@@ -67,20 +71,20 @@ final List<({String title, List<NavItem> items})> navGroups = [
       NavItem(label: '站点', glyph: 'sites', from: const Color(0xFF4285F4), to: const Color(0xFF22D3EE), builder: (_) => const SitesPage()),
       NavItem(label: '搜索', glyph: 'search', from: const Color(0xFFA18CD1), to: const Color(0xFFFBC2EB), builder: (_) => const SearchPage()),
       NavItem(label: '推荐', glyph: 'recommend', from: const Color(0xFFF7971E), to: const Color(0xFFFF6A00), builder: (_) => const RecommendPage()),
-      NavItem(label: '订阅', glyph: 'subscribe', from: const Color(0xFFE100FF), to: const Color(0xFFFF6A00), builder: (_) => const SubscriptionsPage()),
-      NavItem(label: 'RSS', glyph: 'rss', from: const Color(0xFFF7971E), to: const Color(0xFFFF6A00), builder: (_) => const RssPage()),
-      NavItem(label: '辅种', glyph: 'seeding', from: const Color(0xFF7F00FF), to: const Color(0xFF38EF7D), builder: (_) => const ReseedPage()),
+      NavItem(label: '订阅', glyph: 'subscribe', from: const Color(0xFFE100FF), to: const Color(0xFFFF6A00), builder: (_) => const SubscriptionsPage(), desc: '追剧自动推送'),
+      NavItem(label: 'RSS', glyph: 'rss', from: const Color(0xFFF7971E), to: const Color(0xFFFF6A00), builder: (_) => const RssPage(), desc: '资源源订阅'),
+      NavItem(label: '辅种', glyph: 'seeding', from: const Color(0xFF7F00FF), to: const Color(0xFF38EF7D), builder: (_) => const ReseedPage(), desc: '跨站辅助种子'),
     ],
   ),
   (
     title: '站点活动',
     items: [
-      NavItem(label: '考核', glyph: 'assessment', from: const Color(0xFF0F9B0F), to: const Color(0xFF43CEA2), builder: (_) => const AssessmentPage()),
-      NavItem(label: '站免', glyph: 'freeleech', from: const Color(0xFF11998E), to: const Color(0xFF38EF7D), builder: (_) => const FreeleechPage()),
-      NavItem(label: '后宫', glyph: 'harem', from: const Color(0xFFE100FF), to: const Color(0xFF7F00FF), builder: (_) => const HaremPage()),
-      NavItem(label: '勋章墙', glyph: 'medalwall', from: const Color(0xFFF39C12), to: const Color(0xFFE100FF), builder: (_) => const MedalWallPage()),
-      NavItem(label: '娱乐', glyph: 'entertainment', from: const Color(0xFF7F00FF), to: const Color(0xFFE100FF), builder: (_) => const EntertainmentPage()),
-      NavItem(label: '监护室', glyph: 'savept', from: const Color(0xFFE74C3C), to: const Color(0xFFF39C12), builder: (_) => const SaveptPage()),
+      NavItem(label: '考核', glyph: 'assessment', from: const Color(0xFF0F9B0F), to: const Color(0xFF43CEA2), builder: (_) => const AssessmentPage(), desc: '保级 / 升级条件'),
+      NavItem(label: '站免', glyph: 'freeleech', from: const Color(0xFF11998E), to: const Color(0xFF38EF7D), builder: (_) => const FreeleechPage(), desc: '全站免费促销'),
+      NavItem(label: '后宫', glyph: 'harem', from: const Color(0xFFE100FF), to: const Color(0xFF7F00FF), builder: (_) => const HaremPage(), desc: '邀请管理'),
+      NavItem(label: '勋章墙', glyph: 'medalwall', from: const Color(0xFFF39C12), to: const Color(0xFFE100FF), builder: (_) => const MedalWallPage(), desc: '勋章收集'),
+      NavItem(label: '娱乐', glyph: 'entertainment', from: const Color(0xFF7F00FF), to: const Color(0xFFE100FF), builder: (_) => const EntertainmentPage(), desc: '站内小游戏'),
+      NavItem(label: '监护室', glyph: 'savept', from: const Color(0xFFE74C3C), to: const Color(0xFFF39C12), builder: (_) => const SaveptPage(), desc: '站点健康监控'),
     ],
   ),
   (

@@ -43,6 +43,14 @@ const statusColor: Record<string, string> = {
   SAFE: '#2ecc71', PROGRESS: '#3498db', DANGER: '#f56c6c', EXEMPT: '#95a5a6', UNKNOWN: '#95a5a6',
 }
 
+// 状态英文 → 中文映射（筛选项已是中文，状态标签保持一致）
+const statusLabel: Record<string, string> = {
+  SAFE: '安全', PROGRESS: '进行中', DANGER: '危险', EXEMPT: '免考', UNKNOWN: '未知',
+}
+function statusText(s: string): string {
+  return statusLabel[s] || s
+}
+
 onMounted(() => load())
 </script>
 
@@ -64,7 +72,7 @@ onMounted(() => load())
       <div v-for="c in filtered" :key="c.site_id" class="assess-card glass" :style="{ borderLeftColor: statusColor[c.status] }">
         <div class="card-top">
           <span class="site-name">{{ c.site_name }}</span>
-          <span class="status-tag" :style="{ background: statusColor[c.status] + '22', color: statusColor[c.status] }">{{ c.status }}</span>
+          <span class="status-tag" :style="{ background: statusColor[c.status] + '22', color: statusColor[c.status] }">{{ statusText(c.status) }}</span>
           <span class="spacer"></span>
           <span v-if="c.remaining_days >= 0" class="remain">剩 {{ c.remaining_days }} 天</span>
           <span v-if="fmtDate(c.end_time)" class="remain">截止 {{ fmtDate(c.end_time) }}</span>

@@ -1,19 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWs } from '@/composables/useWs'
 import NotificationCenter from '@/components/NotificationCenter.vue'
+import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
 import { Menu, Moon, Setting, SwitchButton } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const auth = useAuthStore()
 const { connect, disconnect } = useWs()
 const collapsed = ref(false)
+const isMobile = ref(false)
+const mobileNavOpen = ref(false)
+const sidebarCollapsed = computed(() => collapsed.value && !isMobile.value)
 
 // 进入鉴权外壳即连 WS（仪表盘 H&R/Cookie 告警实时推送），离开/登出时断开。
 // 窄屏（分屏 / 平板 / 缩窗）自动折叠侧栏，避免 220px 侧栏挤占内容。
 function syncCollapsed() {
+  isMobile.value = window.innerWidth <= 720
+  if (isMobile.value) {
+    mobileNavOpen.value = false
+    return
+  }
   if (window.innerWidth < 900 && !collapsed.value) collapsed.value = true
 }
 onMounted(() => {
@@ -97,40 +106,51 @@ function onUserCommand(cmd: string) {
   else if (cmd === 'settings') router.push({ name: 'settings' })
   else if (cmd === 'logout') logout()
 }
+
+function toggleNav() {
+  if (isMobile.value) mobileNavOpen.value = !mobileNavOpen.value
+  else collapsed.value = !collapsed.value
+}
+
+function closeMobileNav() {
+  if (isMobile.value) mobileNavOpen.value = false
+}
 </script>
 
 <template>
   <div class="layout">
     <!-- 左侧固定玻璃导航 -->
-    <aside class="sidebar glass" :class="{ collapsed }">
+    <div v-if="mobileNavOpen" class="mobile-nav-backdrop" @click="closeMobileNav"></div>
+    <aside class="sidebar glass" :class="{ collapsed: sidebarCollapsed, 'mobile-open': mobileNavOpen }">
       <div class="brand">
         <img src="/logo-mark.svg" alt="PTPatronus" class="logo" />
-        <span v-if="!collapsed" class="brand-name">PTPatronus</span>
+        <span v-if="!sidebarCollapsed" class="brand-name">PTPatronus</span>
       </div>
       <nav class="nav">
         <div v-for="group in navGroups" :key="group.title" class="nav-group">
-          <span v-if="!collapsed" class="nav-group-title">{{ group.title }}</span>
+          <span v-if="!sidebarCollapsed" class="nav-group-title">{{ group.title }}</span>
           <router-link
             v-for="item in group.items"
             :key="item.name"
             :to="{ name: item.name }"
             class="nav-item glass-hover"
             :title="navDesc[item.name] || item.label"
+            @click="closeMobileNav"
           >
             <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
-            <span v-if="!collapsed" class="nav-label">{{ item.label }}</span>
+            <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
           </router-link>
         </div>
       </nav>
       <div class="sidebar-footer">
-        <span v-if="!collapsed" class="vip-badge">好学 VIP</span>
+        <span v-if="!sidebarCollapsed" class="vip-badge">好学 VIP</span>
       </div>
     </aside>
 
     <div class="main">
       <!-- 顶部悬浮玻璃栏 -->
       <header class="topbar glass-bar">
-        <button class="icon-btn" @click="collapsed = !collapsed"><el-icon><Menu /></el-icon></button>
+        <button class="icon-btn" @click="toggleNav"><el-icon><Menu /></el-icon></button>
         <div class="spacer"></div>
         <NotificationCenter />
         <el-dropdown trigger="click" @command="onUserCommand">
@@ -147,6 +167,8 @@ function onUserCommand(cmd: string) {
           </template>
         </el-dropdown>
       </header>
+
+      <GlobalNoticeBar />
 
       <main class="content">
         <router-view />
@@ -168,7 +190,9 @@ function onUserCommand(cmd: string) {
   display: flex;
   flex-direction: column;
   padding: 18px 14px;
-  transition: width 0.25s ease;
+  transition:
+    width 0.25s ease,
+    transform 0.25s ease;
 }
 .sidebar.collapsed {
   width: 72px;
@@ -205,9 +229,8 @@ function onUserCommand(cmd: string) {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  /* 隐藏横向滚动条，纵向用细滚动条 */
+  /* 隐藏横向滚动条；纵向滚动条样式由 glass.css 全局统一（细 / 悬停才显形） */
   overflow-x: hidden;
-  scrollbar-width: thin;
   padding-right: 2px;
 }
 .nav-group {
@@ -221,13 +244,6 @@ function onUserCommand(cmd: string) {
   font-weight: 600;
   color: var(--text-muted);
   opacity: 0.6;
-}
-.nav::-webkit-scrollbar {
-  width: 4px;
-}
-.nav::-webkit-scrollbar-thumb {
-  background: rgba(108, 92, 231, 0.35);
-  border-radius: 999px;
 }
 .nav-item {
   display: flex;
@@ -315,17 +331,46 @@ function onUserCommand(cmd: string) {
   flex: 1;
   overflow: auto;
 }
+.mobile-nav-backdrop {
+  display: none;
+}
 /* 窄屏（分屏 / 平板 / 缩窗）：收紧外边距；侧栏已由 syncCollapsed 自动折叠 */
 @media (max-width: 720px) {
   .layout {
+    display: block;
     padding: 8px;
-    gap: 8px;
+    height: 100dvh;
+  }
+  .sidebar {
+    position: fixed;
+    inset: 8px auto 8px 8px;
+    z-index: 210;
+    width: min(260px, calc(100vw - 32px));
+    box-sizing: border-box;
+    transform: translateX(calc(-100% - 16px));
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  .mobile-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(15, 23, 42, 0.32);
+    backdrop-filter: blur(4px);
   }
   .main {
+    height: calc(100dvh - 16px);
+    width: 100%;
     gap: 8px;
   }
   .topbar {
     padding: 8px 10px;
+  }
+  .content {
+    min-width: 0;
   }
 }
 </style>

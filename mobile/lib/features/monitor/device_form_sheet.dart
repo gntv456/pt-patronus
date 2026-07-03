@@ -39,6 +39,8 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
   bool _enabled = true;
   bool _hasPrivateKey = false;
   bool _saving = false;
+  bool _dirty = false; // 表单是否有未保存改动：返回键 / 下滑关闭时拦截确认（避免丢 SSH 私钥/地址等）
+  void _markDirty() => _dirty = true;
 
   @override
   void initState() {
@@ -56,6 +58,9 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
     _rtsp.text = t?.rtspUrl ?? '';
     _interval.text = '${t?.intervalSec ?? 60}';
     _timeout.text = '${t?.timeoutSec ?? 15}';
+    for (final c in [_name, _host, _port, _username, _password, _privateKey, _rtsp, _interval, _timeout]) {
+      c.addListener(_markDirty);
+    }
   }
 
   String _defaultProtocol(String type) => switch (type) {
@@ -140,7 +145,10 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
   Widget build(BuildContext context) {
     final isEdit = widget.target != null;
     final showHost = !(_type == 'host' && _protocol == 'local');
-    return Padding(
+    return PopScope(
+      canPop: !_dirty,
+      onPopInvokedWithResult: _confirmExit,
+      child: Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -254,6 +262,25 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
           ),
         ],
       ),
+      ),
     );
+  }
+
+  Future<void> _confirmExit(bool didPop, Object? result) async {
+    if (didPop) return;
+    final navigator = Navigator.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('放弃修改？'),
+        content: const Text('当前表单有未保存的改动，确定离开吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('继续编辑')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('放弃')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    navigator.pop();
   }
 }

@@ -92,8 +92,8 @@ async function submit() {
         emit('added')
       }
     }
-  } catch {
-    ElMessage.error('请求失败')
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '请求失败')
   } finally {
     loading.value = false
   }

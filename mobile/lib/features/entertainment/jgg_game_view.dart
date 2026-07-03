@@ -268,7 +268,7 @@ class _JggGameViewState extends State<JggGameView> {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Text(prize.icon, style: TextStyle(fontSize: 24, color: lit && win ? null : Colors.white)),
         const SizedBox(height: 2),
-        Text(prize.name, textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: lit ? FontWeight.bold : FontWeight.normal, color: Colors.white), maxLines: 2),
+        Text(prize.name, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: lit ? FontWeight.bold : FontWeight.normal, color: Colors.white), maxLines: 2),
       ]),
     );
   }
@@ -353,7 +353,7 @@ class _JggGameViewState extends State<JggGameView> {
                 Expanded(child: Text(r.prizeName, style: TextStyle(fontSize: 12, color: r.prizeName == '谢谢参与' ? Colors.grey : null))),
                 Text('-${r.cost.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
-                Text(r.createdAt, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
               ]),
             ),
         ]),

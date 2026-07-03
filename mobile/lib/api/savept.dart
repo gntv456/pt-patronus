@@ -23,6 +23,7 @@ class SaveptSiteCard {
   final String closeTime;
   final MatchType matchType;
   final String localSiteName;
+  final String search; // 后端提供的搜索关键词串（Web buildSiteKeywords 并入），Flutter 此前漏解析
 
   SaveptSiteCard({
     required this.name,
@@ -41,6 +42,7 @@ class SaveptSiteCard {
     required this.closeTime,
     required this.matchType,
     required this.localSiteName,
+    required this.search,
   });
 
   factory SaveptSiteCard.fromJson(Map<String, dynamic> j) {
@@ -92,6 +94,7 @@ class SaveptSiteCard {
       closeTime: j['close_time'] as String? ?? '',
       matchType: mt,
       localSiteName: j['local_site_name'] as String? ?? '',
+      search: j['search'] as String? ?? '',
     );
   }
 }

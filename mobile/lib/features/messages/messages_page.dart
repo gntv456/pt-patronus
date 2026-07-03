@@ -136,7 +136,7 @@ class _MessagesPageState extends State<MessagesPage> {
           title: const Text('消息'),
           backgroundColor: Colors.transparent,
           elevation: 0,
-          actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : _load)],
+          actions: [PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : _load)],
         ),
         body: Column(
           children: [

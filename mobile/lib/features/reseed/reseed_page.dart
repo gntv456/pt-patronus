@@ -121,7 +121,10 @@ class _ReseedPageState extends State<ReseedPage> {
 
   Future<void> _toggleAuto({bool? autoReseed, bool? autoReseedAdd}) async {
     if (_selectedDl == null || _setting == null) return;
-    final next = _setting!.copyWith(autoReseed: autoReseed, autoReseedAdd: autoReseedAdd);
+    final next = _setting!.copyWith(
+      autoReseed: autoReseed,
+      autoReseedAdd: autoReseedAdd,
+    );
     setState(() => _setting = next);
     try {
       await _api.saveSetting(next);
@@ -149,7 +152,10 @@ class _ReseedPageState extends State<ReseedPage> {
 
   Future<void> _togglePause(bool v) async {
     if (_selectedDl == null || _setting == null) return;
-    final next = _setting!.copyWith(pauseAfterAdd: v, savePath: _savePathCtrl.text.trim());
+    final next = _setting!.copyWith(
+      pauseAfterAdd: v,
+      savePath: _savePathCtrl.text.trim(),
+    );
     setState(() => _setting = next);
     try {
       await _api.saveSetting(next);
@@ -204,8 +210,14 @@ class _ReseedPageState extends State<ReseedPage> {
           title: const Text('添加辅种'),
           content: const Text('将向下载器添加该辅种任务，确认？'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('添加')),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('添加'),
+            ),
           ],
         ),
       );
@@ -231,7 +243,10 @@ class _ReseedPageState extends State<ReseedPage> {
 
   void _openIyuu() async {
     const url = 'https://iyuu.cn';
-    if (!await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    )) {
       _toast(url);
     }
   }
@@ -242,19 +257,19 @@ class _ReseedPageState extends State<ReseedPage> {
   }
 
   Color _statusColor(String s) => switch (s) {
-        'added' => PTColors.success,
-        'failed' => PTColors.danger,
-        'pending' => PTColors.warn,
-        _ => Colors.grey,
-      };
+    'added' => PTColors.success,
+    'failed' => PTColors.danger,
+    'pending' => PTColors.warn,
+    _ => Colors.grey,
+  };
 
   String _statusLabel(String s) => switch (s) {
-        'added' => '已添加',
-        'failed' => '失败',
-        'pending' => '待处理',
-        'skipped' => '已跳过',
-        _ => s,
-      };
+    'added' => '已添加',
+    'failed' => '失败',
+    'pending' => '待处理',
+    'skipped' => '已跳过',
+    _ => s,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -262,32 +277,85 @@ class _ReseedPageState extends State<ReseedPage> {
       body: GlassBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(children: [
-                  const HomeMenuButton(),
-                  const Text('辅种', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: (_configured ? PTColors.success : PTColors.warn).withValues(alpha: 0.16),
-                      borderRadius: BorderRadius.circular(999),
+                Row(
+                  children: [
+                    const HomeMenuButton(),
+                    const Text(
+                      '辅种',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Container(width: 6, height: 6, decoration: BoxDecoration(color: _configured ? PTColors.success : PTColors.warn, shape: BoxShape.circle)),
-                      const SizedBox(width: 5),
-                      Text(_configured ? 'IYUU 已配置' : 'IYUU 未配置', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _configured ? PTColors.success : PTColors.warn)),
-                    ]),
-                  ),
-                  const Spacer(),
-                  TextButton.icon(onPressed: _openIyuu, icon: const Icon(Icons.open_in_new, size: 16), label: const Text('iyuu.cn', style: TextStyle(fontSize: 12))),
-                  IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : _loadTasks, tooltip: '刷新'),
-                ]),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: (_configured ? PTColors.success : PTColors.warn)
+                            .withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: _configured
+                                  ? PTColors.success
+                                  : PTColors.warn,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _configured ? 'IYUU 已配置' : 'IYUU 未配置',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _configured
+                                  ? PTColors.success
+                                  : PTColors.warn,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: _openIyuu,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(30, 30),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        iconSize: 14,
+                      ),
+                      icon: const Icon(Icons.open_in_new, size: 14),
+                      label: const Text(
+                        'iyuu.cn',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    PTIconAction(
+                      icon: Icons.refresh,
+                      onPressed: _loading ? null : _loadTasks,
+                      tooltip: '刷新',
+                      loading: _loading,
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
-                Expanded(child: isWideScreen(context) ? _wideBody() : _narrowBody()),
+                Expanded(
+                  child: isWideScreen(context) ? _wideBody() : _narrowBody(),
+                ),
               ],
             ),
           ),
@@ -316,11 +384,14 @@ class _ReseedPageState extends State<ReseedPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _configCard()),
-          const SizedBox(width: 14),
-          Expanded(child: _reseedCard()),
-        ]),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _configCard()),
+            const SizedBox(width: 14),
+            Expanded(child: _reseedCard()),
+          ],
+        ),
         const SizedBox(height: 14),
         _filterChips(),
         const SizedBox(height: 8),
@@ -335,36 +406,111 @@ class _ReseedPageState extends State<ReseedPage> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_tasks.isEmpty) {
-      return PTEmptyState(icon: Icons.eco_outlined, text: '暂无候选', description: '点「开始辅种」扫描跨站可辅助种子');
+      return PTEmptyState(
+        icon: Icons.eco_outlined,
+        text: '暂无候选',
+        description: '点「开始辅种」扫描跨站可辅助种子',
+      );
     }
     return PTAdaptiveTable<ReseedTask>(
       items: _tasks,
       columns: [
-        PTColumn<ReseedTask>(label: '源种子', flex: 3, cell: (_, t) => Text(t.sourceName.isEmpty ? t.infoHash : t.sourceName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13))),
-        PTColumn<ReseedTask>(label: '候选站点', flex: 2, cell: (_, t) => Text(t.candidateSite, style: const TextStyle(fontSize: 13))),
+        PTColumn<ReseedTask>(
+          label: '源种子',
+          flex: 3,
+          cell: (_, t) => Text(
+            t.sourceName.isEmpty ? t.infoHash : t.sourceName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13),
+          ),
+        ),
+        PTColumn<ReseedTask>(
+          label: '候选站点',
+          flex: 2,
+          cell: (_, t) =>
+              Text(t.candidateSite, style: const TextStyle(fontSize: 13)),
+        ),
         PTColumn<ReseedTask>(
           label: '下载链接',
           flex: 2,
           cell: (_, t) => t.candidateUrl.isEmpty
-              ? const Text('—', style: TextStyle(color: Colors.grey, fontSize: 12))
-              : InkWell(onTap: () => _copyLink(t.candidateUrl), child: const Text('复制链接', style: TextStyle(fontSize: 12, color: PTColors.primary2, decoration: TextDecoration.underline))),
+              ? const Text(
+                  '—',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                )
+              : InkWell(
+                  onTap: () => _copyLink(t.candidateUrl),
+                  child: const Text(
+                    '复制链接',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: PTColors.primary2,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
         ),
-        PTColumn<ReseedTask>(label: '保存路径', flex: 2, cell: (_, t) => Text(t.savePath.isEmpty ? '-' : t.savePath, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: Colors.grey))),
-        PTColumn<ReseedTask>(label: '状态', flex: 1, cell: (_, t) => Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2), decoration: BoxDecoration(color: _statusColor(t.status).withValues(alpha: 0.16), borderRadius: BorderRadius.circular(999)), child: Text(_statusLabel(t.status), style: TextStyle(color: _statusColor(t.status), fontSize: 11, fontWeight: FontWeight.w600)))),
+        PTColumn<ReseedTask>(
+          label: '保存路径',
+          flex: 2,
+          cell: (_, t) => Text(
+            t.savePath.isEmpty ? '-' : t.savePath,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ),
+        PTColumn<ReseedTask>(
+          label: '状态',
+          flex: 1,
+          cell: (_, t) => Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: _statusColor(t.status).withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              _statusLabel(t.status),
+              style: TextStyle(
+                color: _statusColor(t.status),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
         PTColumn<ReseedTask>(
           label: '操作',
           flex: 2,
           cell: (_, t) => t.status == 'pending'
-              ? Row(mainAxisSize: MainAxisSize.min, children: [
-                  FilledButton.tonal(onPressed: _resolving.contains(t.id) ? null : () => _resolve(t, 'add'), child: const Text('添加', style: TextStyle(fontSize: 12))),
-                  const SizedBox(width: 6),
-                  TextButton(onPressed: _resolving.contains(t.id) ? null : () => _resolve(t, 'skip'), child: const Text('跳过', style: TextStyle(fontSize: 12))),
-                ])
-              : const Text('—', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FilledButton.tonal(
+                      onPressed: _resolving.contains(t.id)
+                          ? null
+                          : () => _resolve(t, 'add'),
+                      child: const Text('添加', style: TextStyle(fontSize: 12)),
+                    ),
+                    const SizedBox(width: 6),
+                    TextButton(
+                      onPressed: _resolving.contains(t.id)
+                          ? null
+                          : () => _resolve(t, 'skip'),
+                      child: const Text('跳过', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                )
+              : const Text(
+                  '—',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
         ),
       ],
       narrowCard: (_, t) => _taskCard(t),
       emptyText: '暂无候选',
+      embedded: true, // 窄屏嵌在 _narrowBody ListView：shrinkWrap 避免塌缩（宽屏分支不受影响）
     );
   }
 
@@ -374,7 +520,10 @@ class _ReseedPageState extends State<ReseedPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('IYUU 配置', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const Text(
+            'IYUU 配置',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _tokenCtrl,
@@ -402,28 +551,44 @@ class _ReseedPageState extends State<ReseedPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('开始辅种', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const Text(
+            '开始辅种',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
           const SizedBox(height: 8),
-          Row(children: [
-            Expanded(
-              child: DropdownButton<int>(
-                value: _selectedDl,
-                isExpanded: true,
-                hint: const Text('选择下载器'),
-                items: _downloaders.map((d) => DropdownMenuItem(value: d.id, child: Text(d.name))).toList(),
-                onChanged: (v) {
-                  setState(() => _selectedDl = v);
-                  if (v != null) _loadSetting();
-                },
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButton<int>(
+                  value: _selectedDl,
+                  isExpanded: true,
+                  hint: const Text('选择下载器'),
+                  items: _downloaders
+                      .map(
+                        (d) =>
+                            DropdownMenuItem(value: d.id, child: Text(d.name)),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    setState(() => _selectedDl = v);
+                    if (v != null) _loadSetting();
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            FilledButton.icon(
-              onPressed: _reseeding ? null : _startReseed,
-              icon: _reseeding ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.eco_outlined, size: 18),
-              label: const Text('开始辅种'),
-            ),
-          ]),
+              const SizedBox(width: 10),
+              FilledButton.icon(
+                onPressed: _reseeding ? null : _startReseed,
+                icon: _reseeding
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.eco_outlined, size: 18),
+                label: const Text('开始辅种'),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           _buildAutoRow(),
         ],
@@ -441,25 +606,73 @@ class _ReseedPageState extends State<ReseedPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Divider(height: 24),
-        Row(children: [
-          const Expanded(child: Text('定时自动辅种', style: TextStyle(fontSize: 13))),
-          Switch(value: autoReseed, onChanged: _loadingSetting ? null : (v) => _toggleAuto(autoReseed: v)),
-        ]),
-        Row(children: [
-          const Expanded(child: Text('自动添加新候选', style: TextStyle(fontSize: 13, color: Colors.grey))),
-          Switch(value: autoReseedAdd, onChanged: autoReseed ? ((v) => _toggleAuto(autoReseedAdd: v)) : null),
-        ]),
-        Row(children: [
-          const Expanded(child: Text('添加后暂停', style: TextStyle(fontSize: 13, color: Colors.grey))),
-          Switch(value: pauseAfterAdd, onChanged: _loadingSetting ? null : _togglePause),
-        ]),
+        Row(
+          children: [
+            const Expanded(
+              child: Text('定时自动辅种', style: TextStyle(fontSize: 13)),
+            ),
+            Switch(
+              value: autoReseed,
+              onChanged: _loadingSetting
+                  ? null
+                  : (v) => _toggleAuto(autoReseed: v),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '自动添加新候选',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ),
+            Switch(
+              value: autoReseedAdd,
+              onChanged: autoReseed
+                  ? ((v) => _toggleAuto(autoReseedAdd: v))
+                  : null,
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '添加后暂停',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ),
+            Switch(
+              value: pauseAfterAdd,
+              onChanged: _loadingSetting ? null : _togglePause,
+            ),
+          ],
+        ),
         const SizedBox(height: 6),
-        Row(children: [
-          Expanded(child: TextField(controller: _savePathCtrl, decoration: const InputDecoration(hintText: '保存路径（留空=下载器默认）', border: OutlineInputBorder(), isDense: true))),
-          const SizedBox(width: 8),
-          FilledButton.tonal(onPressed: _savePathAndPause, child: const Text('保存路径')),
-        ]),
-        const Text('每天 3 点扫描（KEEPSEED_CRON 可改）', style: TextStyle(color: Colors.grey, fontSize: 11)),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _savePathCtrl,
+                decoration: const InputDecoration(
+                  hintText: '保存路径（留空=下载器默认）',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonal(
+              onPressed: _savePathAndPause,
+              child: const Text('保存路径'),
+            ),
+          ],
+        ),
+        const Text(
+          '每天 3 点扫描（KEEPSEED_CRON 可改）',
+          style: TextStyle(color: Colors.grey, fontSize: 11),
+        ),
       ],
     );
   }
@@ -502,22 +715,78 @@ class _ReseedPageState extends State<ReseedPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Expanded(child: Text(t.sourceName.isEmpty ? t.infoHash : t.sourceName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
-            const SizedBox(width: 8),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2), decoration: BoxDecoration(color: _statusColor(t.status).withValues(alpha: 0.16), borderRadius: BorderRadius.circular(999)), child: Text(_statusLabel(t.status), style: TextStyle(color: _statusColor(t.status), fontSize: 11, fontWeight: FontWeight.w600))),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  t.sourceName.isEmpty ? t.infoHash : t.sourceName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _statusColor(t.status).withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  _statusLabel(t.status),
+                  style: TextStyle(
+                    color: _statusColor(t.status),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
-          Text('候选站点：${t.candidateSite}  ·  保存：${t.savePath.isEmpty ? '-' : t.savePath}', style: const TextStyle(color: Colors.grey, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            '候选站点：${t.candidateSite}  ·  保存：${t.savePath.isEmpty ? '-' : t.savePath}',
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           if (t.candidateUrl.isNotEmpty)
-            Padding(padding: const EdgeInsets.only(top: 4), child: GestureDetector(onTap: () => _copyLink(t.candidateUrl), child: const Text('复制下载链接', style: TextStyle(fontSize: 12, color: PTColors.primary2, decoration: TextDecoration.underline)))),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: GestureDetector(
+                onTap: () => _copyLink(t.candidateUrl),
+                child: const Text(
+                  '复制下载链接',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: PTColors.primary2,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
           if (t.status == 'pending') ...[
             const SizedBox(height: 8),
-            Row(children: [
-              FilledButton.tonal(onPressed: _resolving.contains(t.id) ? null : () => _resolve(t, 'add'), child: const Text('添加辅种', style: TextStyle(fontSize: 13))),
-              const SizedBox(width: 8),
-              TextButton(onPressed: _resolving.contains(t.id) ? null : () => _resolve(t, 'skip'), child: const Text('跳过', style: TextStyle(fontSize: 13))),
-            ]),
+            Row(
+              children: [
+                FilledButton.tonal(
+                  onPressed: _resolving.contains(t.id)
+                      ? null
+                      : () => _resolve(t, 'add'),
+                  child: const Text('添加辅种', style: TextStyle(fontSize: 13)),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: _resolving.contains(t.id)
+                      ? null
+                      : () => _resolve(t, 'skip'),
+                  child: const Text('跳过', style: TextStyle(fontSize: 13)),
+                ),
+              ],
+            ),
           ],
         ],
       ),

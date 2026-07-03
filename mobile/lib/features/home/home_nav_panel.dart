@@ -115,6 +115,9 @@ class NavTile extends StatelessWidget {
                 color: sel ? PTColors.primary : null,
               ),
             ),
+            subtitle: item.desc == null
+                ? null
+                : Text(item.desc!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
             selected: sel,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             onTap: () => c.select(index),

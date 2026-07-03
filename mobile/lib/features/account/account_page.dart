@@ -63,6 +63,43 @@ class _AccountPageState extends State<AccountPage> {
     );
   }
 
+  void _showHelp(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('使用帮助'),
+        content: const SingleChildScrollView(
+          child: Text(
+            'PTPatronus（PT 守护神）核心价值：账号保号防封。\n\n'
+            '快速上手三步：\n'
+            '1. 站点 → 添加 PT 站点（粘贴 cookie 或 WebView 登录）\n'
+            '2. 下载器 → 添加 qBittorrent / Transmission\n'
+            '3. 仪表盘 → 一键同步统计；签到 / 辅种 / H&R 告警自动运行\n\n'
+            '常用术语：\n'
+            '· 辅种：跨站辅助种子\n'
+            '· 监护室：站点健康监控\n'
+            '· 后宫：邀请管理\n'
+            '· 站免：全站免费促销\n'
+            '· H&R：未达标种子告警',
+            style: TextStyle(height: 1.5),
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了'))],
+      ),
+    );
+  }
+
+  void _showFeedback(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('问题反馈'),
+        content: const Text('如遇问题或建议，可通过以下方式反馈：\n\n· GitHub Issues（推荐）\n· 项目交流群\n\n（反馈渠道链接待部署时配置）'),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('好的'))],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassBackground(
@@ -111,6 +148,20 @@ class _AccountPageState extends State<AccountPage> {
                         behavior: HitTestBehavior.opaque,
                         onTap: () => checkAndPromptUpdate(context),
                         child: const Text('检查更新',
+                            style: TextStyle(color: Colors.blue, fontSize: 12)),
+                      ),
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _showHelp(context),
+                        child: const Text('使用帮助',
+                            style: TextStyle(color: Colors.blue, fontSize: 12)),
+                      ),
+                      const SizedBox(width: 16),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _showFeedback(context),
+                        child: const Text('问题反馈',
                             style: TextStyle(color: Colors.blue, fontSize: 12)),
                       ),
                     ]),

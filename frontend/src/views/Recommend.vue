@@ -91,7 +91,10 @@ async function findOnSites(m: MediaInfo) {
 // 关键词跨源搜索（原「探索」页）：搜索态接管列表，沿用当前选中的源筛选。
 async function doSearch() {
   const kw = keyword.value.trim()
-  if (!kw) return
+  if (!kw) {
+    ElMessage.warning('请输入关键词')
+    return
+  }
   searchLoading.value = true
   searchMode.value = true
   try {

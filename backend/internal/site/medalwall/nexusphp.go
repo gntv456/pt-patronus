@@ -97,7 +97,7 @@ func fetchShopPaged(ctx context.Context, hc HTTPDoer, baseURL, cookie, path, par
 	seenFp := map[string]bool{}
 	firstPageCount := 0
 	for page := 1; page <= shopMaxPages; page++ {
-		u := fmt.Sprintf("%s?%s=%d", shop, param, page)
+		u := appendParam(shop, fmt.Sprintf("%s=%d", param, page))
 		resp, err := hc.Get(ctx, u, cookie, true)
 		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 || len(resp.Body) < 200 {
 			// 首页失败才记日志（翻页越界 break 不刷屏），便于排查「勋章墙为何空」
@@ -178,7 +178,7 @@ func (NexusPHPAdapter) Buy(ctx context.Context, hc HTTPDoer, def Def, baseURL, c
 	// 端点 2-4：medal.php?action=buy&id= / &medalid= / &medal_id=
 	// body 同时带 action/id（Audiences medal_center.php 走 form hidden，后端读 $_POST 而非 query）。
 	for _, key := range []string{"id", "medalid", "medal_id"} {
-		u := fmt.Sprintf("%s?action=buy&%s=%s", shop, key, medalID)
+		u := appendParam(shop, fmt.Sprintf("action=buy&%s=%s", key, medalID))
 		body := fmt.Sprintf("buy=1&action=buy&%s=%s", key, medalID)
 		if r, err := hc.Do(ctx, "POST", u, []byte(body), hdrs, cookie, true); err == nil && r != nil {
 			if ok, msg := parseActionOK(r.Body); ok {
@@ -201,7 +201,7 @@ func (NexusPHPAdapter) TakeOff(ctx context.Context, hc HTTPDoer, def Def, baseUR
 
 // nexusFormAction 佩戴/摘下通用：2xx 视为成功。
 func nexusFormAction(ctx context.Context, hc HTTPDoer, shop, cookie, medalID, action, bodyKey string) (ActionResult, error) {
-	u := fmt.Sprintf("%s?action=%s&id=%s", shop, action, medalID)
+	u := appendParam(shop, fmt.Sprintf("action=%s&id=%s", action, medalID))
 	r, err := hc.Do(ctx, "POST", u, []byte(bodyKey+"=1"), ajaxHeaders(shop), cookie, true)
 	if err != nil {
 		return ActionResult{Success: false, Message: "请求失败：" + err.Error()}, nil
@@ -257,8 +257,8 @@ func parseShopCards(doc *goquery.Document, baseURL string) []Item {
 		// 名称：优先 data-name（干净），否则 .medal-title 等（克隆后移除 owned-badge 防污染）
 		name := strings.TrimSpace(src.AttrOr("data-name", ""))
 		if name == "" {
-			nameSel := s.Find(".medal-title, .medal-name, .medal-item__name, .card-title, .item-name, .name, h3, h4, .title").First().Clone()
-			nameSel.Find(".owned-badge, .badge").Remove()
+			nameSel := s.Find(".medal-title, .medal-name, .medal-item__name, .card-title, .item-name, .name, h2, h3, h4, .title").First().Clone()
+			nameSel.Find(".owned-badge, .badge, span[title]").Remove()
 			name = strings.TrimSpace(nameSel.Text())
 		}
 		if id == "" && name == "" {
@@ -334,7 +334,7 @@ func parseCardStatus(s *goquery.Selection) Status {
 			status = StatusOutOfStock
 		case strings.Contains(combined, "仅授予"):
 			status = StatusGrantOnly
-		case strings.Contains(combined, "不可") || strings.Contains(combined, "未开售"):
+		case strings.Contains(combined, "不可") || strings.Contains(combined, "未开售") || strings.Contains(combined, "未到"):
 			status = StatusNotOnSale
 		case strings.Contains(combined, "已过") || strings.Contains(combined, "过期") || strings.Contains(combined, "结束"):
 			status = StatusDiscontinued
@@ -361,13 +361,21 @@ func hasClassToken(cls string, tokens ...string) bool {
 //   - 好学 <span>label:</span><strong>VALUE</strong>（strong=value，无冒号）
 //   - 财神 .stat-item 文本>.stat-value / LongPT .detail-label+.detail-value / Audiences .meta-k+.meta-v
 //   - UBits <strong>LABEL：</strong>value（strong=label 含冒号，value=剩余裸文本，与好学相反）
+//   - 青蛙 table.medal-details <tr><td>LABEL</td><td>VALUE</td></tr>（it.Is("tr") 取第二列）
 func detailItem(s *goquery.Selection, label string) string {
 	var val string
-	s.Find(".medal-detail-item, .detail-item, .stat-item, .medal-item__meta li, .medal-info > div:has(strong)").Each(func(_ int, it *goquery.Selection) {
+	s.Find(".medal-detail-item, .detail-item, .stat-item, .medal-item__meta li, .medal-info > div:has(strong), .medal-details tbody tr").Each(func(_ int, it *goquery.Selection) {
 		if val != "" {
 			return
 		}
 		if !strings.Contains(it.Text(), label) {
+			return
+		}
+		// tr 布局（青蛙 medal-details：<tr><td>label</td><td>value</td></tr>）→ 取第二列
+		if it.Is("tr") {
+			if tds := it.Find("td"); tds.Length() >= 2 {
+				val = strings.TrimSpace(tds.Last().Text())
+			}
 			return
 		}
 		// value 元素优先（财神 .stat-value / LongPT .detail-value / Audiences .medal-item__meta-v / 通用 .value/b）
@@ -389,10 +397,10 @@ func detailItem(s *goquery.Selection, label string) string {
 }
 
 // detectCurrency 从卡片 meta label 推断货币单位：含「爆米花」→爆米花（Audiences）、「U币」→U币（UBits）、
-// 「魔力」→魔力（LongPT），「金币/Karma」同理；无货币词默认魔力（好学/财神）。
+// 「魔力」→魔力（LongPT/好学/财神），「蝌蚪」→蝌蚪（青蛙，魔力别称），「金币/Karma」同理；无货币词默认魔力。
 func detectCurrency(s *goquery.Selection) string {
 	cur := ""
-	s.Find(".medal-item__meta-k, .medal-detail-item span, .stat-item, .detail-label, .detail-item, .medal-info strong").Each(func(_ int, el *goquery.Selection) {
+	s.Find(".medal-item__meta-k, .medal-detail-item span, .stat-item, .detail-label, .detail-item, .medal-info strong, .medal-info td").Each(func(_ int, el *goquery.Selection) {
 		if cur != "" {
 			return
 		}
@@ -401,6 +409,8 @@ func detectCurrency(s *goquery.Selection) string {
 			cur = "爆米花"
 		case strings.Contains(t, "U币"):
 			cur = "U币"
+		case strings.Contains(t, "蝌蚪"):
+			cur = "蝌蚪"
 		case strings.Contains(t, "魔力"):
 			cur = "魔力"
 		case strings.Contains(t, "金币"):
@@ -548,7 +558,7 @@ func parseBuyCell(td *goquery.Selection) Status {
 		return StatusDiscontinued
 	case strings.Contains(val, "仅授予"):
 		return StatusGrantOnly
-	case strings.Contains(val, "不可") || strings.Contains(val, "未开售"):
+	case strings.Contains(val, "不可") || strings.Contains(val, "未开售") || strings.Contains(val, "未到"):
 		return StatusNotOnSale
 	case strings.Contains(val, "购买"):
 		if disabled {
@@ -636,6 +646,16 @@ func joinBase(base, path string) string {
 		base = base[:len(base)-1]
 	}
 	return base + "/" + path
+}
+
+// appendParam 给 rawURL 追加一个查询参数（如 "page=2"），按是否已含 '?' 选分隔符，
+// 支持站点商店路径自带 query（青蛙 medal.php?type=-1 → medal.php?type=-1&page=2）。
+func appendParam(rawURL, kv string) string {
+	sep := "?"
+	if strings.Contains(rawURL, "?") {
+		sep = "&"
+	}
+	return rawURL + sep + kv
 }
 
 func resolveImg(sel *goquery.Selection, baseURL string) string {
@@ -739,11 +759,13 @@ func resolveMedalID(cur string, s *goquery.Selection) string {
 }
 
 // applySaleWindow 按开售/库存修正状态（未开售/缺货）。
+// 仅对未明确判定的 AVAILABLE/UNKNOWN 修正；站点按钮已判定的（OWNED/GRANT_ONLY/NOT_ON_SALE/
+// DISCONTINUED/SYNTHESIS/OUT_OF_STOCK）原样保留，避免被 Stock==0 误覆盖（如青蛙「仅授予」库存 0）。
 // 不判 sale-end 过期为「已下架」：好学等站过期勋章可溢价购买（data-buy-price），并非真下架；
-// 真正下架（如蟹黄堡「已过可购买时间」）由 parseBuyCell 按按钮文本判定，不在此覆盖。
+// 真正下架（如蟹黄堡/青蛙「已过可购买时间」）由 parseBuyCell/parseCardStatus 按按钮文本判定，不在此覆盖。
 func applySaleWindow(it *Item) {
-	if it.PurchaseStatus == StatusOwned || it.PurchaseStatus == StatusDiscontinued {
-		return // 已拥有/已下架（站点按钮判定）不改
+	if it.PurchaseStatus != StatusAvailable && it.PurchaseStatus != StatusUnknown {
+		return
 	}
 	now := time.Now().UnixMilli()
 	if it.SaleBeginTime != nil && *it.SaleBeginTime > now {

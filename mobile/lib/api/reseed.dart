@@ -69,10 +69,10 @@ class ReseedSetting {
         'auto_reseed_add': autoReseedAdd,
       };
 
-  ReseedSetting copyWith({bool? autoReseed, bool? autoReseedAdd}) => ReseedSetting(
+  ReseedSetting copyWith({bool? autoReseed, bool? autoReseedAdd, String? savePath, bool? pauseAfterAdd}) => ReseedSetting(
         downloaderId: downloaderId,
-        savePath: savePath,
-        pauseAfterAdd: pauseAfterAdd,
+        savePath: savePath ?? this.savePath,
+        pauseAfterAdd: pauseAfterAdd ?? this.pauseAfterAdd,
         autoReseed: autoReseed ?? this.autoReseed,
         autoReseedAdd: autoReseedAdd ?? this.autoReseedAdd,
       );

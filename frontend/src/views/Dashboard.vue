@@ -7,11 +7,14 @@ import { useAuthStore } from '@/stores/auth'
 import type { DashboardShareData } from '@/utils/dashboardImage'
 import Sparkline from '@/components/dashboard/Sparkline.vue'
 import DashboardExportDialog from '@/components/dashboard/DashboardExportDialog.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 const overview = ref<DashboardOverview | null>(null)
 const trend = ref<DashboardTrendPoint[]>([])
 // sparkline 数据源：近 14 天跨站聚合趋势（指标卡内嵌迷你折线 + 日环比 + 导出图片共用）。
 const loading = ref(false)
+// 首屏加载（无 overview）：用骨架屏占位指标卡，替代整页 spinner，避免布局抖动。
+const initialLoading = computed(() => loading.value && !overview.value)
 const syncing = ref(false)
 const exportVisible = ref(false)
 const allSites = ref<Site[]>([]) // 站点列表(含 base_url)，导出时按 id join favicon 用
@@ -180,7 +183,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="dashboard" v-loading="loading">
+  <div class="dashboard">
     <div class="page-head">
       <h2 class="page-title">仪表盘</h2>
       <div class="head-actions">
@@ -223,8 +226,16 @@ onMounted(load)
       <p v-if="hrAlerts.length > 5" class="hr-more">…及其它 {{ hrAlerts.length - 5 }} 条</p>
     </div>
 
-    <!-- 指标卡片墙 -->
-    <div class="metric-grid">
+    <!-- 指标卡片墙：首屏加载用骨架占位，避免 spinner 抖动 -->
+    <div v-if="initialLoading" class="metric-grid">
+      <div v-for="i in 5" :key="i" class="metric-card glass">
+        <div class="metric-top"><el-skeleton-item variant="circle" style="width: 40px; height: 40px" /></div>
+        <el-skeleton-item variant="h1" style="width: 60%; margin-top: 10px" />
+        <el-skeleton-item variant="text" style="width: 40%; margin-top: 8px" />
+        <el-skeleton-item variant="rect" style="width: 100%; height: 36px; margin-top: 10px" />
+      </div>
+    </div>
+    <div v-else class="metric-grid">
       <div class="metric-card glass glass-hover">
         <div class="metric-top">
           <GlassIcon name="upload" from="#2ecc71" to="#1abc9c" :size="40" />
@@ -261,6 +272,17 @@ onMounted(load)
         <div class="metric-label text-muted">总魔力</div>
         <Sparkline :values="spark.bonus" color="#f7971e" unit="count" :days="spark.days" />
       </div>
+    </div>
+
+    <div v-if="!loading && overview && !overview.sites.length" class="setup-card glass">
+      <EmptyState
+        icon="🧭"
+        title="还没有可展示的站点数据"
+        description="先添加 PT 站点并配置下载器，再刷新统计。之后这里会汇总上传、下载、魔力、做种和 H&R 风险。"
+      >
+        <router-link to="/sites"><el-button type="primary">添加站点</el-button></router-link>
+        <router-link to="/downloaders"><el-button>添加下载器</el-button></router-link>
+      </EmptyState>
     </div>
 
     <!-- 站点明细 -->
@@ -368,6 +390,8 @@ onMounted(load)
 .btn-ico { margin-right: 4px; vertical-align: middle; }
 .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
 .metric-card { padding: 20px; }
+.setup-card { padding: 6px; }
+.setup-card a { text-decoration: none; }
 .metric-top { display: flex; align-items: center; justify-content: space-between; }
 .metric-icon { font-size: 20px; }
 .metric-value { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }

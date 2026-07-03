@@ -99,8 +99,8 @@ class _HaremPageState extends State<HaremPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(onPressed: _export, icon: const Icon(Icons.receipt_long), tooltip: '导出'),
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : () => _load(refresh: true)),
+            PTIconAction(onPressed: _export, icon: Icons.receipt_long, tooltip: '导出'),
+            PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : () => _load(refresh: true)),
           ],
         ),
         body: _loading

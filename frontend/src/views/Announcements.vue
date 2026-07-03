@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { announcementApi, type AnnouncementResult } from '@/api/announcement'
+import { friendlySiteError } from '@/utils/siteError'
 import EmptyState from '@/components/EmptyState.vue'
 
 const results = ref<AnnouncementResult[]>([])
@@ -79,7 +80,7 @@ onMounted(() => load())
         <div class="group-head">
           <span class="site-name">{{ r.site_name }}</span>
           <span v-if="r.items.length" class="count">{{ r.items.length }} 条</span>
-          <span v-else-if="r.error" class="err-tag">{{ r.error }}</span>
+          <span v-else-if="r.error" class="err-tag" :title="r.error">{{ friendlySiteError(r.error) }}</span>
           <span v-else class="text-muted">暂无公告</span>
           <span class="spacer"></span>
           <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">刷新</el-button>

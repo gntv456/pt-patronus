@@ -142,6 +142,10 @@ class PTAdaptiveTable<T> extends StatelessWidget {
   final VoidCallback? onRowTap;
   final double? minTableWidth;
   final String emptyText;
+  /// 内嵌于外层滚动视图时置 true：窄屏 `ListView.builder` 改 `shrinkWrap` + 禁用滚动 +
+  /// 零 padding，作为区段由外层 ListView 统一滚动。避免同向 ListView 嵌套导致的无界高度塌缩
+  /// （dashboard 站点明细曾因此空白）。作滚动根时（sites/harem）保持默认 false。
+  final bool embedded;
 
   const PTAdaptiveTable({
     super.key,
@@ -151,6 +155,7 @@ class PTAdaptiveTable<T> extends StatelessWidget {
     this.onRowTap,
     this.minTableWidth,
     this.emptyText = '暂无数据',
+    this.embedded = false,
   });
 
   @override
@@ -159,7 +164,9 @@ class PTAdaptiveTable<T> extends StatelessWidget {
       return items.isEmpty
           ? PTEmptyState(text: emptyText)
           : ListView.builder(
-              padding: const EdgeInsets.all(12),
+              shrinkWrap: embedded,
+              physics: embedded ? const NeverScrollableScrollPhysics() : null,
+              padding: embedded ? EdgeInsets.zero : const EdgeInsets.all(12),
               itemCount: items.length,
               itemBuilder: (ctx, i) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -450,6 +457,9 @@ class PTPageHeaderActions extends StatelessWidget {
                   tooltip: a.label,
                   onPressed: a.onPressed,
                   icon: Icon(a.icon),
+                  iconSize: 20,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                 ))
           .toList(),
     );
@@ -461,6 +471,40 @@ class PTHeaderAction {
   final String label;
   final VoidCallback? onPressed;
   const PTHeaderAction({required this.icon, required this.label, this.onPressed});
+}
+
+/// 顶栏图标按钮：44×44 触摸区（Material/Apple HIG 最小红线）+ 20px 图标，替代散落的裸 `IconButton`。
+/// 用于各导航页 header 的 actions（刷新 / 添加 / 导出 / 更多等）。`loading` 时显示小 spinner
+/// （替代各页手写的 `CircularProgressIndicator(strokeWidth:2)` 刷新态），loading 态也占 44×44 防跳动。
+/// 与全局 appBarTheme.toolbarHeight(44) 对齐——44×44 正好填满 44 高工具栏的 actions 区。
+class PTIconAction extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final String? tooltip;
+  final bool loading;
+  const PTIconAction({super.key, required this.icon, this.onPressed, this.tooltip, this.loading = false});
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      // loading 态也占满 44×44，与图标态等高，避免切换时工具栏跳动。
+      return const SizedBox(
+        width: 44,
+        height: 44,
+        child: Center(
+          child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+        ),
+      );
+    }
+    return IconButton(
+      icon: Icon(icon),
+      iconSize: 20,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+      tooltip: tooltip,
+      onPressed: onPressed,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -649,7 +693,8 @@ class PTFilterPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        constraints: const BoxConstraints(minHeight: 36),
         decoration: BoxDecoration(
           color: active ? c.withValues(alpha: 0.14) : Colors.transparent,
           border: Border.all(color: active ? c.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.35)),
@@ -658,10 +703,10 @@ class PTFilterPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[Icon(icon, size: 13, color: dim), const SizedBox(width: 3)],
-            if (label != null) ...[Text(label!, style: TextStyle(fontSize: 11, color: dim)), const SizedBox(width: 3)],
-            Text(value, style: TextStyle(fontSize: 12, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? c : Colors.black87)),
-            Icon(Icons.arrow_drop_down, size: 16, color: dim),
+            if (icon != null) ...[Icon(icon, size: 15, color: dim), const SizedBox(width: 4)],
+            if (label != null) ...[Text(label!, style: TextStyle(fontSize: 12, color: dim)), const SizedBox(width: 4)],
+            Text(value, style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? c : Colors.black87)),
+            Icon(Icons.arrow_drop_down, size: 18, color: dim),
           ],
         ),
       ),

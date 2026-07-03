@@ -58,6 +58,15 @@ async function setResolution(s: Subscription) {
 
 async function remove(s: Subscription) {
   try {
+    await ElMessageBox.confirm('确定删除该订阅？删除后不再推送。', '删除订阅', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return // 用户取消
+  }
+  try {
     await subscribeApi.remove(s.id)
     await load()
     ElMessage.success('已删除')

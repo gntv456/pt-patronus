@@ -24,6 +24,8 @@ D:\PTPatronus\
 - Node 18+ + npm（已用 Node 24 / npm 11）
 - Flutter 3.41+（鸿蒙需华为 flutter 分支，见 `mobile/harmonyos/README.md`）
 
+Windows 终端中文乱码、端口占用、移动端后端地址等启动问题见 [启动与编码排障](README/启动与编码排障.md)。
+
 ## 运行
 
 ### 后端（默认 :8088，SQLite）
@@ -271,3 +273,18 @@ MTeam/unit3d/gazelle 的签到 / H&R；消息回复 CSRF 字段名逐站配置�
 - **下载器（downloaders_page.dart）**：标题栏「+」添加；列表项 PopupMenu（编辑 / 测试连接 / 删除）；`_DownloaderFormSheet` 表单（name/type/url/username/password/is_default，编辑态密码留空=不修改）。`Downloader` 模型补 `username` 字段（原 fromJson 漏解析）。
 - **站点（sites_page.dart）**：列表项 PopupMenu（编辑 / 删除）；`_showEditDialog`（name / base_url / api_key[仅馒头] / is_active，definition/platform 不可改）；`_deleteSite` 二次确认。
 - 站点编辑为窄范围：cookie/username/password 不进表单——Flutter 端 cookie 一贯走 WebView 登录，手填不现实；`SiteApi.update` 现有签名正好覆盖。
+
+## Flutter UI 看齐 Web 收尾（2026/07/02）
+
+承接「Flutter UI 对齐 Web」剩余 6 项重改造，**全部 25 页对齐完成**（自适应 + 内容全对齐）。全量 `flutter analyze` 零 issue。
+
+- **下载器 Downloaders**：纵向 ListView → `PTMasonry` 卡片网格（280px，宽屏多列 / 窄屏单列）；PopupMenu 改 Web 式显式按钮（连接测试 / 任务列表 / 编辑 / **删除**），删除按 `ApiClient().isAdmin` 守卫（对齐后端 `RequireAdmin`）；增删表单走 `showAdaptiveSheet`（宽屏居中对话框 / 窄屏底栏）。
+- **监护室 Savept**：站点卡片由 ExpansionTile 内单列 → `LayoutBuilder + Wrap` 响应式网格（**4→3→2→1 断点**，`clamp(1,4)`）；生命体征宽屏改 **ICU 横排带竖分隔线**（窄屏自动换行）；公告区宽屏 2 列。用非滚动 `Wrap` 避免主 ListView 内嵌纵向滚动报错。
+- **工作流 Workflow**：补 **webhook admin CRUD UI**——AppBar admin 入口 → 列表（复制接收 URL / 重生成 token / 删除）+ 新建表单（name / 目标工作流 / 可选 HMAC secret）；**编辑器宽屏三栏** `Row(节点库 210 | 画布 | 配置 320)`，复用已抽出的 `NodeParamForm`（`key` 按 nodeId 切换选中强制重建），窄屏保持原 FAB + sheet。
+- **文件管理 FileManager**：补**存储后端增删改**——`FileStorageApi` 新增 `create/update/delete` + `FileStorageInput`（后端早有 `POST/PUT/DELETE /storages`）；AppBar「存储管理」菜单（添加 / 编辑当前 / 删除当前）+ `_StorageFormSheet`（类型含 **Agent** + agent 选择器 / 地址凭据 / 根路径，编辑态密码留空=不改）。
+- **设备监控 NAS/Monitor**：3 段 ListView → **TabBar**（服务器 / NAS / 摄像头 + 计数 badge）+ TabBarView；卡片**内联 CPU / 内存 / 磁盘迷你进度条**（按 target 取 `metrics?limit=1`，无批量端点、同 Web `loadAll`，单飞 `if(_loading) return` 防 15s 轮询堆积）；**Agent 管理器**（admin sheet：列表 / 新建 / 重置 secret[明文仅一次可复制] / 删除级联）；`Timer.periodic(15s)` 自动轮询。
+- **娱乐小游戏**：入口 `_body()` 宽屏套居中 `maxWidth=760` 面板，一处惠及全部 16 个 game view（避免全宽 ListView 在桌面被拉成超宽长条）。
+
+配套 API 层：`api/monitor.dart` 新增 `Agent` 模型 + `AgentApi`（list / create 返 `plain_secret` / remove / rotate，对齐后端 `/monitors/agents`，FileManager 与 NAS 共用）。**发现工作流 `WebhookApi` 客户端早已齐全，仅缺 UI**——先查 API 层省去一半工作。
+
+> 验证范围：静态 `flutter analyze` 全绿。真机 / 桌面宽屏 + 手机窄屏视觉 A/B 与端到端联调（webhook admin、agent 管理器、存储 CRUD、NAS 内联指标）未在本轮做——后端路由 / 契约均已确认存在，建议下轮真机联调校准。

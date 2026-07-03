@@ -226,7 +226,7 @@ class _CsptScratchViewState extends State<CsptScratchView> {
           child: Column(children: [
             Text(o.giftCount > 0 ? '买${o.buyCount}送${o.giftCount}' : '${o.buyCount}张', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFFFD76A), fontSize: 12)),
             const SizedBox(height: 2),
-            Text(_fmt(o.buyCount * o.unitPrice), style: const TextStyle(fontSize: 10, color: Colors.grey)),
+            Text(_fmt(o.buyCount * o.unitPrice), style: const TextStyle(fontSize: 11, color: Colors.grey)),
           ]),
         ),
       );

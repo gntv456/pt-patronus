@@ -31,7 +31,7 @@ class SearchPage extends StatefulWidget {
 class _SearchPageState extends State<SearchPage> {
   SearchMode _mode = SearchMode.torrent;
   late final _ctrl = TextEditingController(text: widget.initialKeyword ?? '');
-  final _yearCtrl = TextEditingController();
+  String _year = ''; // 影视搜索年份（'' = 全部），由 pill 选择而非输入框，统一只剩一个输入框
 
   List<SiteSearchResult> _results = [];
   List<MediaInfo> _mediaResults = [];
@@ -62,7 +62,7 @@ class _SearchPageState extends State<SearchPage> {
       if (_mode == SearchMode.torrent) {
         _results = await SearchApi().search(kw, category: _category);
       } else {
-        final year = int.tryParse(_yearCtrl.text.trim()) ?? 0;
+        final year = int.tryParse(_year) ?? 0;
         _mediaResults = await MediaApi().search(kw, year);
       }
       _searched = true;
@@ -112,7 +112,8 @@ class _SearchPageState extends State<SearchPage> {
     return r;
   }
 
-  List<SiteSearchResult> get _failed => _results.where((s) => s.error.isNotEmpty).toList();
+  List<SiteSearchResult> get _failed =>
+      _results.where((s) => s.error.isNotEmpty).toList();
 
   Future<void> _download(SearchTorrent t) async {
     if (t.downloadUrl.isEmpty) {
@@ -141,16 +142,21 @@ class _SearchPageState extends State<SearchPage> {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: Text('${t.title}${t.size.isNotEmpty ? " · ${t.size}" : ""}',
-                maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            child: Text(
+              '${t.title}${t.size.isNotEmpty ? " · ${t.size}" : ""}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ),
-          ...ds.map((d) => ListTile(
-                leading: const Icon(Icons.download),
-                title: Text(d.name),
-                subtitle: Text(d.url, style: const TextStyle(fontSize: 12)),
-                onTap: () => Navigator.pop(ctx, d),
-              )),
+          ...ds.map(
+            (d) => ListTile(
+              leading: const Icon(Icons.download),
+              title: Text(d.name),
+              subtitle: Text(d.url, style: const TextStyle(fontSize: 12)),
+              onTap: () => Navigator.pop(ctx, d),
+            ),
+          ),
         ],
       ),
     );
@@ -166,8 +172,17 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void dispose() {
     _ctrl.dispose();
-    _yearCtrl.dispose();
     super.dispose();
+  }
+
+  // 影视年份候选：当年倒推到 1980 + 全部（pill 候选列表，避免再来一个输入框）。
+  List<PTFilterOption<String>> get _yearOptions {
+    final now = DateTime.now().year;
+    return [
+      const PTFilterOption(value: '', label: '全部'),
+      for (var y = now; y >= 1980; y--)
+        PTFilterOption(value: '$y', label: '$y'),
+    ];
   }
 
   @override
@@ -178,85 +193,112 @@ class _SearchPageState extends State<SearchPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
-              child: Row(children: [
-                const HomeMenuButton(),
-                const Spacer(),
-                SegmentedButton<SearchMode>(
-                  segments: const [
-                    ButtonSegment(value: SearchMode.torrent, label: Text('种子')),
-                    ButtonSegment(value: SearchMode.media, label: Text('影视')),
-                  ],
-                  selected: {_mode},
-                  onSelectionChanged: (s) => _switchMode(s.first),
-                ),
-                if (_mode == SearchMode.media) ...[
-                  const SizedBox(width: 4),
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined),
-                    tooltip: '媒体源设置',
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const MediaSettingsPage()),
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              child: Row(
+                children: [
+                  const HomeMenuButton(),
+                  const Spacer(),
+                  SegmentedButton<SearchMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: SearchMode.torrent,
+                        label: Text('种子'),
+                      ),
+                      ButtonSegment(value: SearchMode.media, label: Text('影视')),
+                    ],
+                    selected: {_mode},
+                    onSelectionChanged: (s) => _switchMode(s.first),
+                  ),
+                  if (_mode == SearchMode.media) ...[
+                    const SizedBox(width: 4),
+                    PTIconAction(
+                      icon: Icons.settings_outlined,
+                      tooltip: '媒体源设置',
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const MediaSettingsPage(),
+                        ),
+                      ),
                     ),
+                  ],
+                  // 搜索按钮从正文输入行移到顶栏 actions：正文只剩唯一的关键词输入框。
+                  PTIconAction(
+                    icon: Icons.search,
+                    tooltip: '搜索',
+                    loading: _loading,
+                    onPressed: _loading ? null : _search,
                   ),
                 ],
-              ]),
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-              child: Row(children: [
-                Expanded(
-                  child: TextField(
-                    controller: _ctrl,
-                    textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => _search(),
-                    decoration: InputDecoration(
-                      hintText: _mode == SearchMode.torrent ? '搜索种子…' : '搜索影视（电影 / 剧集）',
-                      prefixIcon: const Icon(Icons.search),
-                      isDense: true,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (_mode == SearchMode.torrent)
-                  PTFilterPill(
-                    label: '分类',
-                    value: const {'': '全部', 'movie': '电影', 'tv': '剧集', 'music': '音乐'}[_category] ?? '全部',
-                    active: _category.isNotEmpty,
-                    onTap: () => showFilterSheet<String>(
-                      context,
-                      title: '筛选分类',
-                      selected: _category,
-                      onSelected: (v) => setState(() => _category = v),
-                      options: const [
-                        PTFilterOption(value: '', label: '全部'),
-                        PTFilterOption(value: 'movie', label: '电影'),
-                        PTFilterOption(value: 'tv', label: '剧集'),
-                        PTFilterOption(value: 'music', label: '音乐'),
-                      ],
-                    ),
-                  )
-                else
-                  SizedBox(
-                    width: 76,
+              child: Row(
+                children: [
+                  Expanded(
                     child: TextField(
-                      controller: _yearCtrl,
-                      keyboardType: TextInputType.number,
+                      controller: _ctrl,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _search(),
                       decoration: InputDecoration(
-                        hintText: '年份',
+                        hintText: _mode == SearchMode.torrent
+                            ? '搜索种子…'
+                            : '搜索影视（电影 / 剧集）',
+                        prefixIcon: const Icon(Icons.search),
                         isDense: true,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),
-                const SizedBox(width: 8),
-                FilledButton(onPressed: _loading ? null : _search, child: const Text('搜索')),
-              ]),
+                  const SizedBox(width: 8),
+                  if (_mode == SearchMode.torrent)
+                    PTFilterPill(
+                      label: '分类',
+                      value:
+                          const {
+                            '': '全部',
+                            'movie': '电影',
+                            'tv': '剧集',
+                            'music': '音乐',
+                          }[_category] ??
+                          '全部',
+                      active: _category.isNotEmpty,
+                      onTap: () => showFilterSheet<String>(
+                        context,
+                        title: '筛选分类',
+                        selected: _category,
+                        onSelected: (v) => setState(() => _category = v),
+                        options: const [
+                          PTFilterOption(value: '', label: '全部'),
+                          PTFilterOption(value: 'movie', label: '电影'),
+                          PTFilterOption(value: 'tv', label: '剧集'),
+                          PTFilterOption(value: 'music', label: '音乐'),
+                        ],
+                      ),
+                    )
+                  else
+                    PTFilterPill(
+                      label: '年份',
+                      value: _year.isEmpty ? '全部' : _year,
+                      active: _year.isNotEmpty,
+                      onTap: () => showFilterSheet<String>(
+                        context,
+                        title: '筛选年份',
+                        selected: _year,
+                        onSelected: (v) => setState(() => _year = v),
+                        options: _yearOptions,
+                      ),
+                    ),
+                ],
+              ),
             ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),
-            Expanded(child: _mode == SearchMode.torrent ? _torrentArea : _mediaArea),
+            Expanded(
+              child: _mode == SearchMode.torrent ? _torrentArea : _mediaArea,
+            ),
           ],
         ),
       ),
@@ -269,10 +311,18 @@ class _SearchPageState extends State<SearchPage> {
     final failed = _failed;
     if (rows.isEmpty && failed.isEmpty) {
       if (_error != null) {
-        return PTEmptyState(icon: Icons.error_outline, text: _error!, onRetry: _search);
+        return PTEmptyState(
+          icon: Icons.error_outline,
+          text: _error!,
+          onRetry: _search,
+        );
       }
       return _searched
-          ? PTEmptyState(icon: Icons.search_off, text: '无结果', description: '请先在「站点」添加并登录站点')
+          ? PTEmptyState(
+              icon: Icons.search_off,
+              text: '无结果',
+              description: '请先在「站点」添加并登录站点',
+            )
           : PTEmptyState(icon: Icons.search, text: '输入关键词跨站搜索');
     }
     return Column(
@@ -284,7 +334,12 @@ class _SearchPageState extends State<SearchPage> {
           child: PTAdaptiveTable<_TR>(
             items: rows,
             columns: [
-              PTColumn<_TR>(label: '站点', flex: 1, cell: (_, tr) => Text(tr.site, style: const TextStyle(fontSize: 12))),
+              PTColumn<_TR>(
+                label: '站点',
+                flex: 1,
+                cell: (_, tr) =>
+                    Text(tr.site, style: const TextStyle(fontSize: 12)),
+              ),
               PTColumn<_TR>(
                 label: '标题',
                 flex: 4,
@@ -294,29 +349,103 @@ class _SearchPageState extends State<SearchPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(tr.t.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(
+                        tr.t.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                       if (tr.t.subtitle.isNotEmpty)
-                        Text(tr.t.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                        Text(
+                          tr.t.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
-              PTColumn<_TR>(label: '大小', flex: 1, numeric: true, cell: (_, tr) => Text(tr.t.size, style: const TextStyle(fontSize: 12))),
-              PTColumn<_TR>(label: '做种', flex: 1, numeric: true, cell: (_, tr) => Text('${tr.t.seeders}', style: TextStyle(fontSize: 12, color: tr.t.seeders > 0 ? PTColors.success : Colors.grey))),
-              PTColumn<_TR>(label: '吸血', flex: 1, numeric: true, cell: (_, tr) => Text('${tr.t.leechers}', style: TextStyle(fontSize: 12, color: tr.t.leechers > 0 ? PTColors.warn : Colors.grey))),
+              PTColumn<_TR>(
+                label: '大小',
+                flex: 1,
+                numeric: true,
+                cell: (_, tr) =>
+                    Text(tr.t.size, style: const TextStyle(fontSize: 12)),
+              ),
+              PTColumn<_TR>(
+                label: '做种',
+                flex: 1,
+                numeric: true,
+                cell: (_, tr) => Text(
+                  '${tr.t.seeders}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: tr.t.seeders > 0 ? PTColors.success : Colors.grey,
+                  ),
+                ),
+              ),
+              PTColumn<_TR>(
+                label: '吸血',
+                flex: 1,
+                numeric: true,
+                cell: (_, tr) => Text(
+                  '${tr.t.leechers}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: tr.t.leechers > 0 ? PTColors.warn : Colors.grey,
+                  ),
+                ),
+              ),
               PTColumn<_TR>(
                 label: 'Free',
                 flex: 1,
                 cell: (_, tr) => tr.t.free
-                    ? Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2), decoration: BoxDecoration(color: PTColors.success.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(6)), child: Text('FREE', style: TextStyle(color: PTColors.success, fontSize: 11, fontWeight: FontWeight.w700)))
-                    : const Text('—', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    ? Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: PTColors.success.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'FREE',
+                          style: TextStyle(
+                            color: PTColors.success,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      )
+                    : const Text(
+                        '—',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
               ),
-              PTColumn<_TR>(label: '操作', flex: 1, cell: (_, tr) => IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: Icon(tr.t.downloadUrl.isEmpty ? Icons.download_outlined : Icons.download, color: PTColors.primary, size: 20),
-                tooltip: '推送下载',
-                onPressed: () => _download(tr.t),
-              )),
+              PTColumn<_TR>(
+                label: '操作',
+                flex: 1,
+                cell: (_, tr) => IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(
+                    tr.t.downloadUrl.isEmpty
+                        ? Icons.download_outlined
+                        : Icons.download,
+                    color: PTColors.primary,
+                    size: 20,
+                  ),
+                  tooltip: '推送下载',
+                  onPressed: () => _download(tr.t),
+                ),
+              ),
             ],
             narrowCard: (_, tr) => GlassCard(
               onTap: () => _openDetail(tr),
@@ -327,10 +456,26 @@ class _SearchPageState extends State<SearchPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(tr.t.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                        Text(
+                          tr.t.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                        ),
                         if (tr.t.subtitle.isNotEmpty) ...[
                           const SizedBox(height: 2),
-                          Text(tr.t.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          Text(
+                            tr.t.subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                         const SizedBox(height: 6),
                         Wrap(
@@ -339,9 +484,12 @@ class _SearchPageState extends State<SearchPage> {
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             _chip(tr.site, PTColors.primary),
-                            if (tr.t.size.isNotEmpty) _chip(tr.t.size, Colors.blueGrey),
-                            if (tr.t.seeders > 0) _chip('↑${tr.t.seeders}', Colors.green),
-                            if (tr.t.leechers > 0) _chip('↓${tr.t.leechers}', Colors.orange),
+                            if (tr.t.size.isNotEmpty)
+                              _chip(tr.t.size, Colors.blueGrey),
+                            if (tr.t.seeders > 0)
+                              _chip('↑${tr.t.seeders}', Colors.green),
+                            if (tr.t.leechers > 0)
+                              _chip('↓${tr.t.leechers}', Colors.orange),
                             if (tr.t.free) _chip('FREE', PTColors.success),
                           ],
                         ),
@@ -349,7 +497,12 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(tr.t.downloadUrl.isEmpty ? Icons.download_outlined : Icons.download, color: PTColors.primary),
+                    icon: Icon(
+                      tr.t.downloadUrl.isEmpty
+                          ? Icons.download_outlined
+                          : Icons.download,
+                      color: PTColors.primary,
+                    ),
                     tooltip: '推送下载',
                     onPressed: () => _download(tr.t),
                   ),
@@ -368,43 +521,81 @@ class _SearchPageState extends State<SearchPage> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       child: GlassCard(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          InkWell(
-            onTap: () => setState(() => _showFails = !_showFails),
-            child: Row(children: [
-              Icon(Icons.warning_amber_rounded, color: PTColors.warn, size: 18),
-              const SizedBox(width: 6),
-              Text('${failed.length} 个站点搜索失败', style: TextStyle(color: PTColors.warn, fontWeight: FontWeight.w600, fontSize: 13)),
-              const Spacer(),
-              Icon(_showFails ? Icons.expand_less : Icons.expand_more, color: Colors.grey),
-            ]),
-          ),
-          if (_showFails)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Column(
-                children: failed
-                    .map((s) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 3),
-                          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text('${s.siteName}：', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                            Expanded(child: Text(s.error, style: const TextStyle(color: Colors.redAccent, fontSize: 12))),
-                          ]),
-                        ))
-                    .toList(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: () => setState(() => _showFails = !_showFails),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: PTColors.warn,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${failed.length} 个站点搜索失败',
+                    style: TextStyle(
+                      color: PTColors.warn,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _showFails ? Icons.expand_less : Icons.expand_more,
+                    color: Colors.grey,
+                  ),
+                ],
               ),
             ),
-        ]),
+            if (_showFails)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Column(
+                  children: failed
+                      .map(
+                        (s) => Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${s.siteName}：',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              Expanded(
+                                child: Text(
+                                  s.error,
+                                  style: const TextStyle(
+                                    color: Colors.redAccent,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _sortControl() {
     String labelOf(_Sort k) => switch (k) {
-          _Sort.none => '默认',
-          _Sort.seeders => '做种↓',
-          _Sort.leechers => '吸血↓',
-        };
+      _Sort.none => '默认',
+      _Sort.seeders => '做种↓',
+      _Sort.leechers => '吸血↓',
+    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
       child: Align(
@@ -451,8 +642,18 @@ class _SearchPageState extends State<SearchPage> {
   Widget _chip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -477,7 +678,9 @@ class _SearchPageState extends State<SearchPage> {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => MediaDetailPage(source: m.source, id: m.sourceId)),
+        MaterialPageRoute(
+          builder: (_) => MediaDetailPage(source: m.source, id: m.sourceId),
+        ),
       ),
       child: GlassCard(
         padding: EdgeInsets.zero,
@@ -495,9 +698,22 @@ class _SearchPageState extends State<SearchPage> {
                       top: 6,
                       right: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(6)),
-                        child: Text(_src(m.source), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _src(m.source),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -509,19 +725,41 @@ class _SearchPageState extends State<SearchPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(m.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text(
+                      m.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Row(children: [
-                      _typeBadge(m.type),
-                      if (m.year > 0) ...[
-                        const SizedBox(width: 5),
-                        Text('${m.year}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    Row(
+                      children: [
+                        _typeBadge(m.type),
+                        if (m.year > 0) ...[
+                          const SizedBox(width: 5),
+                          Text(
+                            '${m.year}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                        if (m.rating > 0) ...[
+                          const SizedBox(width: 5),
+                          Text(
+                            '⭐${m.rating.toStringAsFixed(1)}',
+                            style: const TextStyle(
+                              color: Colors.orange,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ],
-                      if (m.rating > 0) ...[
-                        const SizedBox(width: 5),
-                        Text('⭐${m.rating.toStringAsFixed(1)}', style: const TextStyle(color: Colors.orange, fontSize: 11)),
-                      ],
-                    ]),
+                    ),
                   ],
                 ),
               ),
@@ -536,12 +774,26 @@ class _SearchPageState extends State<SearchPage> {
     final label = const {'movie': '电影', 'tv': '剧集', 'music': '音乐'}[t] ?? t;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(5), gradient: const LinearGradient(colors: [PTColors.primary, PTColors.primary2])),
-      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5),
+        gradient: const LinearGradient(
+          colors: [PTColors.primary, PTColors.primary2],
+        ),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
-  String _src(String s) => const {'tmdb': 'TMDB', 'douban': '豆瓣', 'musicbrainz': 'MB'}[s] ?? s.toUpperCase();
+  String _src(String s) =>
+      const {'tmdb': 'TMDB', 'douban': '豆瓣', 'musicbrainz': 'MB'}[s] ??
+      s.toUpperCase();
 }
 
 /// 统一种子行（带站点名），供宽屏表格 / 窄屏卡片共用。
@@ -598,49 +850,80 @@ class _TorrentDetailContentState extends State<_TorrentDetailContent> {
     final url = _detail?.downloadUrl ?? widget.torrent.downloadUrl;
     if (url.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: url));
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已复制下载链接')));
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已复制下载链接')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()));
+      return const Padding(
+        padding: EdgeInsets.all(40),
+        child: Center(child: CircularProgressIndicator()),
+      );
     }
     if (_err != null) {
       return Padding(
         padding: const EdgeInsets.all(24),
-        child: Text(_err!, style: const TextStyle(color: Colors.redAccent), textAlign: TextAlign.center),
+        child: Text(
+          _err!,
+          style: const TextStyle(color: Colors.redAccent),
+          textAlign: TextAlign.center,
+        ),
       );
     }
     final d = _detail;
-    if (d == null) return const Padding(padding: EdgeInsets.all(24), child: Text('无详情'));
+    if (d == null) {
+      return const Padding(padding: EdgeInsets.all(24), child: Text('无详情'));
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(widget.siteName, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(
+          widget.siteName,
+          style: const TextStyle(color: Colors.grey, fontSize: 12),
+        ),
         const SizedBox(height: 8),
         _header(d),
-        if (d.screenshots.isNotEmpty) ...[_section('截图（${d.screenshots.length}）'), _screens(d.screenshots)],
+        if (d.screenshots.isNotEmpty) ...[
+          _section('截图（${d.screenshots.length}）'),
+          _screens(d.screenshots),
+        ],
         if (d.description.trim().isNotEmpty) ...[
           _section('简介'),
           HtmlWidget(d.description, textStyle: const TextStyle(height: 1.6)),
         ],
-        if (d.mediainfo.isNotEmpty) ...[_section('MediaInfo'), _mediainfo(d.mediainfo)],
-        if (d.fileList.isNotEmpty) ...[_section('文件列表（${d.fileList.length}）'), _fileList(d.fileList)],
+        if (d.mediainfo.isNotEmpty) ...[
+          _section('MediaInfo'),
+          _mediainfo(d.mediainfo),
+        ],
+        if (d.fileList.isNotEmpty) ...[
+          _section('文件列表（${d.fileList.length}）'),
+          _fileList(d.fileList),
+        ],
         const SizedBox(height: 24),
       ],
     );
   }
 
   Widget _header(TorrentDetail d) {
-    final dlUrl = d.downloadUrl.isEmpty ? widget.torrent.downloadUrl : d.downloadUrl;
+    final dlUrl = d.downloadUrl.isEmpty
+        ? widget.torrent.downloadUrl
+        : d.downloadUrl;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (d.posterUrl.isNotEmpty) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: SizedBox(width: 96, height: 138, child: MediaPoster(url: d.posterUrl, kind: 'movie')),
+            child: SizedBox(
+              width: 96,
+              height: 138,
+              child: MediaPoster(url: d.posterUrl, kind: 'movie'),
+            ),
           ),
           const SizedBox(width: 14),
         ],
@@ -649,25 +932,45 @@ class _TorrentDetailContentState extends State<_TorrentDetailContent> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (d.subtitle.isNotEmpty)
-                Padding(padding: const EdgeInsets.only(bottom: 6), child: Text(d.subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12))),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    d.subtitle,
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  if (d.category.isNotEmpty) _spec(d.category, PTColors.primary),
-                  if (d.resolution.isNotEmpty) _spec(d.resolution, const Color(0xFF4285F4)),
-                  if (d.codec.isNotEmpty) _spec(d.codec, const Color(0xFF9C27B0)),
-                  if (d.source.isNotEmpty) _spec(d.source, const Color(0xFF009688)),
+                  if (d.category.isNotEmpty)
+                    _spec(d.category, PTColors.primary),
+                  if (d.resolution.isNotEmpty)
+                    _spec(d.resolution, const Color(0xFF4285F4)),
+                  if (d.codec.isNotEmpty)
+                    _spec(d.codec, const Color(0xFF9C27B0)),
+                  if (d.source.isNotEmpty)
+                    _spec(d.source, const Color(0xFF009688)),
                   if (d.size.isNotEmpty) _spec(d.size, Colors.blueGrey),
                   if (d.seeders > 0) _spec('↑ ${d.seeders}', PTColors.success),
                 ],
               ),
               const SizedBox(height: 10),
-              Row(children: [
-                FilledButton.icon(onPressed: dlUrl.isEmpty ? null : widget.onDownload, icon: const Icon(Icons.download, size: 18), label: const Text('下载')),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(onPressed: dlUrl.isEmpty ? null : _copyLink, icon: const Icon(Icons.copy, size: 16), label: const Text('复制链接')),
-              ]),
+              Row(
+                children: [
+                  FilledButton.icon(
+                    onPressed: dlUrl.isEmpty ? null : widget.onDownload,
+                    icon: const Icon(Icons.download, size: 18),
+                    label: const Text('下载'),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    onPressed: dlUrl.isEmpty ? null : _copyLink,
+                    icon: const Icon(Icons.copy, size: 16),
+                    label: const Text('复制链接'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -680,45 +983,88 @@ class _TorrentDetailContentState extends State<_TorrentDetailContent> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: urls.length,
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 160, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 16 / 9),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 160,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 16 / 9,
+      ),
       itemBuilder: (_, i) => ClipRRect(
         borderRadius: BorderRadius.circular(6),
-        child: Image.network(urls[i], fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(color: Colors.black12)),
+        child: Image.network(
+          urls[i],
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => Container(color: Colors.black12),
+        ),
       ),
     );
   }
 
   Widget _mediainfo(String text) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: const Color(0xEE000000), borderRadius: BorderRadius.circular(8)),
-        child: SelectableText(text, style: const TextStyle(color: Color(0xFFD4D4D4), fontSize: 12, height: 1.5, fontFamily: 'monospace')),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: const Color(0xEE000000),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: SelectableText(
+      text,
+      style: const TextStyle(
+        color: Color(0xFFD4D4D4),
+        fontSize: 12,
+        height: 1.5,
+        fontFamily: 'monospace',
+      ),
+    ),
+  );
 
   Widget _fileList(List<String> files) => Container(
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(8)),
-        child: Column(
-          children: [
-            for (int i = 0; i < files.length; i++)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('📄 ', style: TextStyle(fontSize: 12)),
-                  Expanded(child: SelectableText(files[i], style: const TextStyle(fontSize: 12, fontFamily: 'monospace'))),
-                ]),
-              ),
-          ],
-        ),
-      );
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.04),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Column(
+      children: [
+        for (int i = 0; i < files.length; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('📄 ', style: TextStyle(fontSize: 12)),
+                Expanded(
+                  child: SelectableText(
+                    files[i],
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 
   Widget _section(String title) => Padding(
-        padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
-        child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-      );
+    padding: const EdgeInsets.fromLTRB(0, 18, 0, 8),
+    child: Text(
+      title,
+      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+    ),
+  );
 
   Widget _spec(String label, Color c) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: c.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(6)),
-        child: Text(label, style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: c.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(6),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.w600),
+    ),
+  );
 }

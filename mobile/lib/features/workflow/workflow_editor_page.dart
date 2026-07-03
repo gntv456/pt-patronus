@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/workflow.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 import 'node_config_sheet.dart';
 
 /// 工作流编辑器（自绘节点画布）：InteractiveViewer 缩放平移 + Stack/Positioned 可拖拽节点 +
@@ -72,7 +73,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
     } catch (e) {
       _toast('$e');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() { _loading = false; _dirty = false; });
     }
   }
 
@@ -109,6 +110,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
     // 简单错开放置
     final n = _nodes.length;
     setState(() {
+      _dirty = true;
       _nodes.add(GraphNode(
         id: '$type-${DateTime.now().millisecondsSinceEpoch}',
         type: type,
@@ -124,6 +126,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
       // 完成连线
       if (n.id != _connectFrom!.id) {
         setState(() {
+          _dirty = true;
           _edges.add(GraphEdge(
             id: 'e-${DateTime.now().millisecondsSinceEpoch}',
             source: _connectFrom!.id,
@@ -173,11 +176,12 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
     final info = _infos[n.type];
     if (info == null) return;
     final saved = await showNodeConfigSheet(context, n, info);
-    if (saved && mounted) setState(() {});
+    if (saved && mounted) setState(() => _dirty = true);
   }
 
   void _deleteNode(GraphNode n) {
     setState(() {
+      _dirty = true;
       _nodes.removeWhere((e) => e.id == n.id);
       _edges.removeWhere((e) => e.source == n.id || e.target == n.id);
       if (_selectedId == n.id) _selectedId = null;
@@ -198,6 +202,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
   }
 
   bool _saving = false; // 保存防重复点击（双击并发 create 会建重复工作流——审计 P1）
+  bool _dirty = false; // 画布有未保存改动：返回键拦截确认（避免丢节点编排）
 
   Future<void> _save() async {
     if (_saving) return;
@@ -216,6 +221,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
         return;
       }
       _toast('已保存');
+      _dirty = false;
     } catch (e) {
       _toast('$e');
     } finally {
@@ -278,16 +284,19 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
   Widget build(BuildContext context) {
     final wide = isWideScreen(context);
     return GlassBackground(
-      child: Scaffold(
+      child: PopScope(
+        canPop: !_dirty,
+        onPopInvokedWithResult: _confirmExit,
+        child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           title: Text(widget.workflowId > 0 ? '编辑工作流' : '新建工作流'),
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(onPressed: _openTemplates, icon: const Icon(Icons.dynamic_form)),
-            IconButton(onPressed: _run, icon: const Icon(Icons.play_arrow)),
-            IconButton(onPressed: _saving ? null : _save, icon: const Icon(Icons.save)),
+            PTIconAction(icon: Icons.dynamic_form, tooltip: '从模板导入', onPressed: _openTemplates),
+            PTIconAction(icon: Icons.play_arrow, tooltip: '运行', onPressed: _run),
+            PTIconAction(icon: Icons.save, tooltip: '保存', onPressed: _saving ? null : _save, loading: _saving),
           ],
         ),
         body: _loading
@@ -304,7 +313,26 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
                 child: const Icon(Icons.add),
               ),
       ),
+      ),
     );
+  }
+
+  Future<void> _confirmExit(bool didPop, Object? result) async {
+    if (didPop) return;
+    final navigator = Navigator.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('放弃改动？'),
+        content: const Text('工作流有未保存的改动，确定离开吗？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('继续编辑')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('放弃')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    navigator.pop();
   }
 
   // 窄屏：元信息卡 + 连接提示 + 画布（节点库/节点配置走 FAB 与节点 ⚙ 的 sheet）。
@@ -543,7 +571,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
               ]),
               const SizedBox(height: 2),
               Text(info?.category ?? '',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
               const SizedBox(height: 4),
               Row(children: [
                 Icon(Icons.south, size: 12, color: Colors.grey[600]),
@@ -554,7 +582,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                    child: const Text('连线', style: TextStyle(fontSize: 10)),
+                    child: const Text('连线', style: TextStyle(fontSize: 11)),
                   ),
                 ),
                 const Spacer(),

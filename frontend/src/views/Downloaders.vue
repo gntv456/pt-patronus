@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import TorrentDrawer from '@/components/downloader/TorrentDrawer.vue'
 import { useAuthStore } from '@/stores/auth'
+import EmptyState from '@/components/EmptyState.vue'
 
 // 非 admin 可读可用，但删除下载器是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
@@ -129,6 +130,7 @@ onMounted(load)
           />
           <div class="dname-wrap">
             <span class="dname">{{ dl.name }}</span>
+            <span v-if="dl.is_default" class="default-chip">默认</span>
             <span class="dtype-tag text-muted">{{ dl.type === 'tr' ? 'Transmission' : 'qBittorrent' }}</span>
           </div>
         </div>
@@ -140,7 +142,15 @@ onMounted(load)
           <el-button v-if="auth.isAdmin" size="small" type="danger" plain @click="removeDownloader(dl)">删除</el-button>
         </div>
       </div>
-      <div v-if="!list.length && !loading" class="empty glass">暂无下载器</div>
+      <div v-if="!list.length && !loading" class="empty glass">
+        <EmptyState
+          icon="⬇"
+          title="还没有下载器"
+          description="添加 qBittorrent 或 Transmission 后，就能在搜索结果里一键推送种子，并查看实时任务状态。"
+        >
+          <el-button type="primary" @click="openCreate">添加下载器</el-button>
+        </EmptyState>
+      </div>
       </template>
     </div>
 
@@ -214,6 +224,16 @@ onMounted(load)
 .dname {
   font-size: 16px;
   font-weight: 600;
+}
+.default-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #f39c12, #e74c3c);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 2px;
 }
 .dtype-tag {
   font-size: 12px;

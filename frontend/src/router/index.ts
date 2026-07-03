@@ -132,6 +132,8 @@ const router = createRouter({
         },
       ],
     },
+    // 404 兜底：未匹配的路径统一回到仪表盘
+    { path: '/:pathMatch(.*)*', redirect: { name: 'dashboard' } },
   ],
 })
 

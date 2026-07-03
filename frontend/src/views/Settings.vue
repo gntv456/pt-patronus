@@ -237,6 +237,29 @@ onBeforeUnmount(stopWxPoll)
 function secretPlaceholder(configured: boolean | undefined) {
   return configured ? '已配置（不修改请留空）' : '请输入'
 }
+
+// —— 帮助 / 反馈 / 更新日志 ——
+const helpVisible = ref(false)
+
+// 项目主页 / 反馈地址（TODO: 替换为真实仓库地址）
+const ISSUES_URL = 'https://github.com/your-org/PTPatronus/issues'
+const README_URL = 'https://github.com/your-org/PTPatronus#readme'
+
+function openIssues() {
+  window.open(ISSUES_URL, '_blank', 'noopener')
+}
+
+// 更新日志：优先展示已检查到的 releaseNotes，否则触发一次检查；都没有则跳 README。
+async function openChangelog() {
+  if (!updateInfo.value?.releaseNotes) {
+    await checkUpdate()
+  }
+  if (updateInfo.value?.releaseNotes) {
+    updateDlgVisible.value = true
+  } else {
+    window.open(README_URL, '_blank', 'noopener')
+  }
+}
 </script>
 
 <template>
@@ -264,6 +287,31 @@ function secretPlaceholder(configured: boolean | undefined) {
               <el-tag size="small" type="info" effect="plain">v{{ version }}</el-tag>
               <el-button size="small" :loading="updateChecking" @click="checkUpdate">检查更新</el-button>
             </div>
+          </div>
+        </div>
+
+        <!-- 帮助 / 反馈 / 更新日志 -->
+        <div class="card glass help-card">
+          <div class="help-row" @click="helpVisible = true">
+            <div class="row-label">
+              <span class="row-title">使用帮助</span>
+              <span class="text-muted row-hint">新手引导 · PT 黑话释义</span>
+            </div>
+            <span class="help-arrow">›</span>
+          </div>
+          <div class="help-row" @click="openIssues">
+            <div class="row-label">
+              <span class="row-title">问题反馈</span>
+              <span class="text-muted row-hint">提 Issue / 建议与缺陷</span>
+            </div>
+            <span class="help-arrow">›</span>
+          </div>
+          <div class="help-row" @click="openChangelog">
+            <div class="row-label">
+              <span class="row-title">更新日志</span>
+              <span class="text-muted row-hint">查看版本变更记录</span>
+            </div>
+            <span class="help-arrow">›</span>
           </div>
         </div>
       </el-tab-pane>
@@ -435,6 +483,32 @@ function secretPlaceholder(configured: boolean | undefined) {
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 使用帮助 -->
+    <el-dialog v-model="helpVisible" title="使用帮助" width="560px">
+      <div class="help-body">
+        <h4>核心价值</h4>
+        <p>PTPatronus 是 PT 站点保号防封利器。推荐上手路径：</p>
+        <ol>
+          <li>在「站点」添加并登录你的 PT 站点（填 Cookie / 账号）</li>
+          <li>在「下载器」添加 qBittorrent / Transmission</li>
+          <li>开启「辅种」「考核」「签到」等自动化，让工具替你保级</li>
+        </ol>
+
+        <h4>PT 黑话释义</h4>
+        <ul class="jargon">
+          <li><b>辅种</b>：跨站辅助种子 —— 同一资源在不同站点间自动补种，提升分享率</li>
+          <li><b>监护室</b>：站点健康监控 —— 实时跟踪 Cookie / H&R / 在线状态</li>
+          <li><b>后宫</b>：邀请管理 —— 跟踪站内邀请与被邀请人</li>
+          <li><b>站免</b>：全站免费促销 —— 聚合各站限时 Free 资源</li>
+          <li><b>考核</b>：保级 / 升级条件 —— 跟踪站点对用户的硬性指标要求</li>
+          <li><b>H&R</b>：Hit and Run —— 站点强制的做种时长 / 比例要求，未达标会扣分</li>
+        </ul>
+      </div>
+      <template #footer>
+        <el-button @click="helpVisible = false">知道了</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -448,6 +522,26 @@ function secretPlaceholder(configured: boolean | undefined) {
 .row-title { font-weight: 600; }
 .row-hint { font-size: 12px; }
 .about-actions { display: flex; align-items: center; gap: 8px; }
+
+/* 帮助 / 反馈 / 更新日志 */
+.help-card { padding: 4px 18px; }
+.help-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  cursor: pointer;
+  border-bottom: 1px solid var(--glass-border, rgba(0, 0, 0, 0.06));
+}
+.help-row:last-child { border-bottom: none; }
+.help-row:hover { background: rgba(108, 92, 231, 0.05); }
+.help-arrow { color: var(--text-muted); font-size: 18px; }
+.help-body { line-height: 1.7; font-size: 13px; }
+.help-body h4 { margin: 14px 0 6px; font-size: 14px; }
+.help-body h4:first-child { margin-top: 0; }
+.help-body p, .help-body ol, .help-body ul { margin: 4px 0; }
+.help-body ol, .help-body ul { padding-left: 22px; }
+.help-body .jargon li { margin: 4px 0; }
 
 /* 在线更新对话框 */
 .update-ver { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }

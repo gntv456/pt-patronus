@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { messageApi, type MessageResult, type Message, type Mailbox } from '@/api/message'
+import { friendlySiteError } from '@/utils/siteError'
 import EmptyState from '@/components/EmptyState.vue'
 
 const mailbox = ref<Mailbox>('inbox')
@@ -34,20 +35,10 @@ const mailboxes: { key: Mailbox; label: string }[] = [
   { key: 'staff', label: '管理组信箱' },
 ]
 
-// 把后端原始英文错误映射为用户可理解的中文，避免 "context deadline exceeded" 等技术黑话直接外显。
+// 站点错误友好化：统一用 @/utils/siteError（Messages / Announcements 共用）。
 // 原始文本仍保留在 title 属性供高级用户悬停查看。
 function friendlyError(err?: string): string {
-  if (!err) return ''
-  const e = err.toLowerCase()
-  if (e.includes('cookie') || e.includes('unauthorized') || e.includes('401') || e.includes('login') || e.includes('auth'))
-    return '站点登录已失效，请在「站点」页重新配置 Cookie'
-  if (e.includes('deadline') || e.includes('timeout') || e.includes('timed out'))
-    return '站点响应超时，请稍后重试'
-  if (e.includes('404') || e.includes('not found') || e.includes('no such'))
-    return '站点页面结构变更，待校准'
-  if (e.includes('502') || e.includes('503') || e.includes('504') || e.includes('unavailable') || e.includes('server error'))
-    return '站点暂时不可用'
-  return '该站点获取失败'
+  return friendlySiteError(err)
 }
 
 async function load() {

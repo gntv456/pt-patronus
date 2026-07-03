@@ -138,7 +138,7 @@ class _NovaHDLuckyViewState extends State<NovaHDLuckyView> {
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text(_emoji(p.name), style: const TextStyle(fontSize: 22)),
                     const SizedBox(height: 2),
-                    Text(p.name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+                    Text(p.name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
                   ]),
                 );
               },

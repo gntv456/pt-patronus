@@ -533,3 +533,125 @@ func TestParseShopCardsLongPT(t *testing.T) {
 		t.Errorf("id200: name=%q price=%v bonus=%q status=%s want 端午节/88888/1%%/AVAILABLE", it.Name, it.Price, it.BonusRate, it.PurchaseStatus)
 	}
 }
+
+// TestAppendParam 查询参数拼接：站点商店路径自带 query 时用 & 而非 ?（青蛙 medal.php?type=-1）。
+func TestAppendParam(t *testing.T) {
+	cases := []struct{ url, kv, want string }{
+		{"https://x/medal.php", "page=1", "https://x/medal.php?page=1"},
+		{"https://x/medal.php?type=-1", "page=2", "https://x/medal.php?type=-1&page=2"},
+		{"https://x/medal.php?type=-1", "action=buy&id=5", "https://x/medal.php?type=-1&action=buy&id=5"},
+	}
+	for _, c := range cases {
+		if got := appendParam(c.url, c.kv); got != c.want {
+			t.Errorf("appendParam(%q,%q)=%q want %q", c.url, c.kv, got, c.want)
+		}
+	}
+}
+
+// TestVerifyQingwa... 临时测试已删（见 commit）。
+
+// div.medal-item + .medal-info>h2 名称（含 <span title>未拥有</span> 状态徽章，须剥离）+ table.medal-details
+// 的 <tr><td>LABEL</td><td>VALUE</td></tr>（蝌蚪加成/加成有效期/价格/库存/赠送手续费）+ input.gift-btn[data-id]。
+// 三处青蛙独有点：① 字段在 medal-details 表格 tr（detailItem 走 it.Is("tr") 取第二列）；② 名称裸 h2 须剥 span[title]；
+// ③ 货币「蝌蚪」（青蛙对魔力的别称）。快照 18 勋章全「已过可购买时间」→ DISCONTINUED。
+func TestParseShopCardsQingwa(t *testing.T) {
+	html := `<html><body><div class="medal-list">
+<div class="medal-item">
+  <div class=""><img src="./files/1368a29146947de6.webp" alt="海贼王（MONKEY·D·LUFFY-NIKA）" class="preview grayscale" width="200px"></div>
+  <div class="medal-info">
+    <h2 style="display:flex">海贼王（MONKEY·D·LUFFY-NIKA） <span title="拥有时间：未拥有" style="background:#9ebecc">未拥有</span></h2>
+    <p style="min-height:60px">海贼王系列勋章</p>
+    <p>2025/08/10 00:00~2025/12/31 23:59</p>
+    <table class="medal-details"><tbody>
+      <tr><td>蝌蚪加成</td><td>6%</td></tr>
+      <tr><td>加成有效期</td><td>365</td></tr>
+      <tr><td>价格</td><td>600,000</td></tr>
+      <tr><td>库存</td><td>无限</td></tr>
+      <tr><td>赠送手续费</td><td>10%</td></tr>
+    </tbody></table>
+    <div class="medal-buttons"><div class="action-container gift-action"><div class="input-group">
+      <input type="number" class="uid" disabled placeholder="UID(不填写为自己购买)">
+      <input type="button" class=" gift-btn" data-id="210" title="购买率: 10%" value="已过可购买时间" disabled>
+    </div></div></div>
+  </div>
+</div>
+<div class="medal-item">
+  <div><img src="./files/x.webp" alt="海贼王（CHOPPER-CHRISTMAS）" class="preview grayscale"></div>
+  <div class="medal-info">
+    <h2>海贼王（CHOPPER-CHRISTMAS） <span title="拥有时间：未拥有">未拥有</span></h2>
+    <table class="medal-details"><tbody>
+      <tr><td>蝌蚪加成</td><td>0%</td></tr>
+      <tr><td>加成有效期</td><td>永久有效</td></tr>
+      <tr><td>价格</td><td>1,000</td></tr>
+      <tr><td>库存</td><td>无限</td></tr>
+    </tbody></table>
+    <div class="medal-buttons"><div class="input-group">
+      <input type="button" class="gift-btn" data-id="218" value="已过可购买时间" disabled>
+    </div></div>
+  </div>
+</div>
+<div class="medal-item">
+  <div><img src="./files/a.webp" alt="种审组专属徽章" class="preview grayscale"></div>
+  <div class="medal-info">
+    <h2>种审组专属徽章 <span title="拥有时间：未拥有">未拥有</span></h2>
+    <table class="medal-details"><tbody>
+      <tr><td>蝌蚪加成</td><td>5%</td></tr>
+      <tr><td>加成有效期</td><td>永久有效</td></tr>
+      <tr><td>价格</td><td>0</td></tr>
+      <tr><td>库存</td><td>0</td></tr>
+    </tbody></table>
+    <div class="medal-buttons"><div class="input-group">
+      <input type="button" class="gift-btn" data-id="300" value="仅授予" disabled>
+    </div></div>
+  </div>
+</div>
+<div class="medal-item">
+  <div><img src="./files/b.webp" alt="2026国庆节徽章" class="preview grayscale"></div>
+  <div class="medal-info">
+    <h2>2026国庆节徽章 <span title="拥有时间：未拥有">未拥有</span></h2>
+    <table class="medal-details"><tbody>
+      <tr><td>蝌蚪加成</td><td>3%</td></tr>
+      <tr><td>加成有效期</td><td>365</td></tr>
+      <tr><td>价格</td><td>100,000</td></tr>
+      <tr><td>库存</td><td>无限</td></tr>
+    </tbody></table>
+    <div class="medal-buttons"><div class="input-group">
+      <input type="button" class="gift-btn" data-id="301" value="未到可购买时间" disabled>
+    </div></div>
+  </div>
+</div>
+</div><p>勋章 加成 购买 库存 价格 有效期</p></body></html>`
+	items := parseShopHTML(html, "https://www.qingwapt.com")
+	if len(items) != 4 {
+		t.Fatalf("items: got %d want 4", len(items))
+	}
+	byID := map[string]Item{}
+	for _, it := range items {
+		byID[it.MedalID] = it
+	}
+	if it := byID["210"]; it.Name != "海贼王（MONKEY·D·LUFFY-NIKA）" || it.Price != 600000 || it.BonusRate != "6%" ||
+		it.Validity != "365" || it.Stock != -1 || it.PurchaseStatus != StatusDiscontinued || it.Currency != "蝌蚪" {
+		t.Errorf("id210: name=%q price=%v bonus=%q validity=%q stock=%d status=%s currency=%q\nwant 海贼王(MONKEY·D·LUFFY-NIKA)/600000/6%%/365/-1/DISCONTINUED/蝌蚪",
+			it.Name, it.Price, it.BonusRate, it.Validity, it.Stock, it.PurchaseStatus, it.Currency)
+	}
+	// 名称不得混入状态徽章「未拥有」
+	if strings.Contains(byID["210"].Name, "未拥有") {
+		t.Errorf("id210 name leaked status span: %q (须剥离 span[title])", byID["210"].Name)
+	}
+	if it := byID["218"]; it.Name != "海贼王（CHOPPER-CHRISTMAS）" || it.Price != 1000 || it.BonusRate != "0%" ||
+		it.Validity != "永久有效" || it.Stock != -1 || it.PurchaseStatus != StatusDiscontinued || it.Currency != "蝌蚪" {
+		t.Errorf("id218: name=%q price=%v bonus=%q validity=%q stock=%d status=%s currency=%q want 海贼王(CHOPPER-CHRISTMAS)/1000/0%%/永久有效/-1/DISCONTINUED/蝌蚪",
+			it.Name, it.Price, it.BonusRate, it.Validity, it.Stock, it.PurchaseStatus, it.Currency)
+	}
+	// 仅授予 + 库存 0：状态须为 GRANT_ONLY，不得被 applySaleWindow 误覆盖为 OUT_OF_STOCK
+	if it := byID["300"]; it.Name != "种审组专属徽章" || it.Price != 0 || it.Stock != 0 ||
+		it.PurchaseStatus != StatusGrantOnly || it.Currency != "蝌蚪" {
+		t.Errorf("id300 (仅授予/库存0): name=%q price=%v stock=%d status=%s currency=%q want 种审组专属徽章/0/0/GRANT_ONLY/蝌蚪 (不得误判 OUT_OF_STOCK)",
+			it.Name, it.Price, it.Stock, it.PurchaseStatus, it.Currency)
+	}
+	// 未到可购买时间 → NOT_ON_SALE（青蛙真实 16 个此态，原 parseCardStatus 无「未到」映射会误判 AVAILABLE）
+	if it := byID["301"]; it.Name != "2026国庆节徽章" || it.Price != 100000 || it.PurchaseStatus != StatusNotOnSale || it.Currency != "蝌蚪" {
+		t.Errorf("id301 (未到可购买时间): name=%q price=%v status=%s currency=%q want 2026国庆节徽章/100000/NOT_ON_SALE/蝌蚪",
+			it.Name, it.Price, it.PurchaseStatus, it.Currency)
+	}
+}

@@ -2,10 +2,12 @@
 // NotificationCenter — 全局通知中心铃铛（topbar 内）。
 // 初始拉取 noticeApi.list() + WS 实时推送 useWs.notices 合并；未读角标；下拉列表（已读/删除/全部已读）。
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useWs } from '@/composables/useWs'
 import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
 
+const router = useRouter()
 const { notices: wsNotices } = useWs()
 const notices = ref<Notice[]>([])
 const open = ref(false)
@@ -32,11 +34,28 @@ function meta(s: NoticeSource) {
 
 const unread = computed(() => notices.value.filter((n) => !n.read).length)
 
+// 通知来源 → 路由名映射，点击通知体跳转到对应页面。
+const sourceRoute: Record<NoticeSource, string> = {
+  new_mail: 'messages',
+  assess_pass: 'assessment',
+  assess_fail: 'assessment',
+  dl_done: 'downloaders',
+  reseed_done: 'reseed',
+  site_anniv: 'sites',
+  site_offline: 'nas-server',
+  host_offline: 'nas-server',
+  nas_offline: 'nas-server',
+  freeleech: 'freeleech',
+  announce: 'announcements',
+  backup_done: 'backup',
+  backup_import: 'backup',
+}
+
 async function load() {
   try {
     notices.value = await noticeApi.list()
   } catch {
-    /* 静默 */
+    ElMessage.warning('通知加载失败')
   }
 }
 onMounted(() => {
@@ -83,12 +102,30 @@ async function removeOne(n: Notice) {
   }
 }
 async function clearAll() {
-  if (!window.confirm('确定清空全部通知？此操作不可恢复。')) return
+  try {
+    await ElMessageBox.confirm('确定清空全部通知？此操作不可恢复。', '清空通知', {
+      type: 'warning',
+      confirmButtonText: '清空',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return // 用户取消
+  }
   try {
     await noticeApi.clear()
     notices.value = []
   } catch {
-    /* 静默 */
+    ElMessage.warning('清空失败')
+  }
+}
+
+// 点击通知体：标已读 + 按 source 跳转对应页面
+async function onBodyClick(n: Notice) {
+  if (!n.read) readOne(n)
+  const routeName = sourceRoute[n.source]
+  if (routeName) {
+    open.value = false
+    router.push({ name: routeName })
   }
 }
 
@@ -135,7 +172,7 @@ function relTime(iso: string): string {
             <span class="nc-ic" :style="{ color: meta(n.source).color, background: meta(n.source).color + '1f' }">
               <SptIcon :name="meta(n.source).icon" :size="16" />
             </span>
-            <div class="nc-body" @click="!n.read && readOne(n)">
+            <div class="nc-body" @click="onBodyClick(n)">
               <div class="nc-row">
                 <span class="nc-name">{{ n.title }}</span>
                 <span class="nc-time">{{ relTime(n.created_at) }}</span>

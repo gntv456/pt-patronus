@@ -94,7 +94,7 @@ class _MedalWallPageState extends State<MedalWallPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : () => _load(refresh: true)),
+            PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : () => _load(refresh: true)),
           ],
         ),
         body: RefreshIndicator(
@@ -246,7 +246,7 @@ class _MedalWallPageState extends State<MedalWallPage> {
               ),
             if (m.bonusRate.isNotEmpty)
               Text(m.bonusRate, style: const TextStyle(color: Color(0xFF2ECC71), fontSize: 11)),
-            if (m.error.isNotEmpty) Text(m.error, style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 10)),
+            if (m.error.isNotEmpty) Text(m.error, style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 11)),
           ],
         ),
       ),

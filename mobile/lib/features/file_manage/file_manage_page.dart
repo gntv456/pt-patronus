@@ -347,26 +347,33 @@ class _FileManagePageState extends State<FileManagePage> {
 
   Widget _pathBar() {
     final segs = _path.split('/').where((s) => s.isNotEmpty).toList();
+    // 单行横向滚动面包屑，深路径永不折行（取代旧 Wrap 折多行吃竖向空间）。
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_upward, size: 18),
-            visualDensity: VisualDensity.compact,
-            onPressed: segs.isEmpty ? null : () => _cd(_parentOf(_path)),
-          ),
-          ActionChip(label: const Text('根'), onPressed: () => _cd('/')),
-          ...segs.asMap().entries.map(
-                (e) => ActionChip(
-                  label: Text(e.value),
-                  onPressed: () => _cd('/${segs.sublist(0, e.key + 1).join('/')}'),
+      child: SizedBox(
+        height: 38,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              InkWell(
+                onTap: segs.isEmpty ? null : () => _cd(_parentOf(_path)),
+                borderRadius: BorderRadius.circular(8),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  child: Icon(Icons.arrow_upward, size: 18),
                 ),
               ),
-        ],
+              ActionChip(label: const Text('根'), onPressed: () => _cd('/')),
+              ...segs.asMap().entries.map(
+                    (e) => ActionChip(
+                      label: Text(e.value),
+                      onPressed: () => _cd('/${segs.sublist(0, e.key + 1).join('/')}'),
+                    ),
+                  ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -446,11 +453,18 @@ class _FileManagePageState extends State<FileManagePage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: '刷新',
+              onPressed: hasStorage ? _loadEntries : null,
+            ),
             PopupMenuButton<String>(
-              icon: const Icon(Icons.storage),
-              tooltip: '存储管理',
+              icon: const Icon(Icons.more_vert),
+              tooltip: '更多',
               onSelected: (v) {
-                if (v == 'add') {
+                if (v == 'mkdir') {
+                  if (hasStorage && !_busy) _mkdir();
+                } else if (v == 'add') {
                   _addStorage();
                 } else if (v == 'edit') {
                   _editStorage();
@@ -459,18 +473,12 @@ class _FileManagePageState extends State<FileManagePage> {
                 }
               },
               itemBuilder: (_) => [
+                const PopupMenuItem(value: 'mkdir', child: Text('新建文件夹')),
+                const PopupMenuDivider(),
                 const PopupMenuItem(value: 'add', child: Text('添加存储')),
                 if (_current != null) const PopupMenuItem(value: 'edit', child: Text('编辑当前存储')),
                 if (_current != null) const PopupMenuItem(value: 'delete', child: Text('删除当前存储')),
               ],
-            ),
-            IconButton(
-              icon: const Icon(Icons.create_new_folder),
-              onPressed: hasStorage && !_busy ? _mkdir : null,
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: hasStorage ? _loadEntries : null,
             ),
           ],
         ),

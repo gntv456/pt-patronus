@@ -170,23 +170,7 @@ class _RecommendPageState extends State<RecommendPage> {
         ),
         body: Column(
           children: [
-            _chipRow(_sources, _source, (v) => setState(() {
-                  // 星光集↔短剧互斥：星光集只产短剧、短剧只在星光集，联动校正避免空态。
-                  _source = v;
-                  if (v == 'xingguangji') {
-                    _category = 'duanju';
-                  } else if (_category == 'duanju') {
-                    _category = 'movie';
-                  }
-                })),
-            _chipRow(_categories, _category, (v) => setState(() {
-                  _category = v;
-                  if (v == 'duanju') {
-                    _source = '';
-                  } else if (_source == 'xingguangji') {
-                    _source = '';
-                  }
-                })),
+            _filterPills(),
             _searchRow(),
             const SizedBox(height: 4),
             Expanded(
@@ -268,32 +252,58 @@ class _RecommendPageState extends State<RecommendPage> {
     );
   }
 
-  Widget _chipRow(List<(String, String)> opts, String current, ValueChanged<String> onTap) {
-    return SizedBox(
-      height: 38,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: opts
-            .map((e) => Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () {
-                      onTap(e.$1);
-                      _load(); // 选筛选 → 回信息流
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: current == e.$1 ? const Color(0xFF6C5CE7).withValues(alpha: 0.18) : Colors.transparent,
-                        border: Border.all(color: current == e.$1 ? const Color(0xFF6C5CE7) : Colors.transparent),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(e.$2, style: const TextStyle(fontSize: 13)),
-                    ),
-                  ),
-                ))
-            .toList(),
+  // 源 + 分类两 pill（各弹候选列表，保留星光集↔短剧联动）；搜索框常驻在下一行。
+  Widget _filterPills() {
+    String sourceLabel(String key) => _sources.firstWhere((e) => e.$1 == key, orElse: () => ('', key)).$2;
+    String categoryLabel(String key) => _categories.firstWhere((e) => e.$1 == key, orElse: () => ('', key)).$2;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          PTFilterPill(
+            label: '源',
+            value: sourceLabel(_source),
+            active: _source.isNotEmpty,
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: '筛选来源',
+              selected: _source,
+              onSelected: (v) => setState(() {
+                // 星光集↔短剧互斥：星光集只产短剧、短剧只在星光集，联动校正避免空态。
+                _source = v;
+                if (v == 'xingguangji') {
+                  _category = 'duanju';
+                } else if (_category == 'duanju') {
+                  _category = 'movie';
+                }
+                _load(); // 选筛选 → 回信息流
+              }),
+              options: _sources.map((e) => PTFilterOption(value: e.$1, label: e.$2)).toList(),
+            ),
+          ),
+          PTFilterPill(
+            label: '分类',
+            value: categoryLabel(_category),
+            active: _category != _categories.first.$1,
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: '筛选分类',
+              selected: _category,
+              onSelected: (v) => setState(() {
+                _category = v;
+                if (v == 'duanju') {
+                  _source = '';
+                } else if (_source == 'xingguangji') {
+                  _source = '';
+                }
+                _load(); // 选筛选 → 回信息流
+              }),
+              options: _categories.map((e) => PTFilterOption(value: e.$1, label: e.$2)).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -301,7 +311,7 @@ class _RecommendPageState extends State<RecommendPage> {
   // 搜索框行：回车或点「搜索」触发跨源搜索；与 Web 推荐页一致并入此处。
   Widget _searchRow() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
       child: Row(children: [
         Expanded(
           child: TextField(

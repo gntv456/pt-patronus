@@ -178,7 +178,7 @@ class _SearchPageState extends State<SearchPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 2),
               child: Row(children: [
                 const HomeMenuButton(),
                 const Spacer(),
@@ -204,7 +204,7 @@ class _SearchPageState extends State<SearchPage> {
               ]),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
               child: Row(children: [
                 Expanded(
                   child: TextField(
@@ -221,17 +221,22 @@ class _SearchPageState extends State<SearchPage> {
                 ),
                 const SizedBox(width: 8),
                 if (_mode == SearchMode.torrent)
-                  DropdownButton<String>(
-                    value: _category,
-                    underline: const SizedBox(),
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                    items: const [
-                      DropdownMenuItem(value: '', child: Text('全部')),
-                      DropdownMenuItem(value: 'movie', child: Text('电影')),
-                      DropdownMenuItem(value: 'tv', child: Text('剧集')),
-                      DropdownMenuItem(value: 'music', child: Text('音乐')),
-                    ],
-                    onChanged: (v) => setState(() => _category = v ?? ''),
+                  PTFilterPill(
+                    label: '分类',
+                    value: const {'': '全部', 'movie': '电影', 'tv': '剧集', 'music': '音乐'}[_category] ?? '全部',
+                    active: _category.isNotEmpty,
+                    onTap: () => showFilterSheet<String>(
+                      context,
+                      title: '筛选分类',
+                      selected: _category,
+                      onSelected: (v) => setState(() => _category = v),
+                      options: const [
+                        PTFilterOption(value: '', label: '全部'),
+                        PTFilterOption(value: 'movie', label: '电影'),
+                        PTFilterOption(value: 'tv', label: '剧集'),
+                        PTFilterOption(value: 'music', label: '音乐'),
+                      ],
+                    ),
                   )
                 else
                   SizedBox(
@@ -395,26 +400,32 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Widget _sortControl() {
-    Widget chip(_Sort k, String label) {
-      final on = _sort == k;
-      return Padding(
-        padding: const EdgeInsets.only(right: 6),
-        child: FilterChip(
-          label: Text(label),
-          selected: on,
-          onSelected: (_) => setState(() => _sort = on ? _Sort.none : k),
-        ),
-      );
-    }
-
+    String labelOf(_Sort k) => switch (k) {
+          _Sort.none => '默认',
+          _Sort.seeders => '做种↓',
+          _Sort.leechers => '吸血↓',
+        };
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-      child: Row(children: [
-        const Text('排序', style: TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(width: 8),
-        chip(_Sort.seeders, '做种↓'),
-        chip(_Sort.leechers, '吸血↓'),
-      ]),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PTFilterPill(
+          label: '排序',
+          value: labelOf(_sort),
+          active: _sort != _Sort.none,
+          onTap: () => showFilterSheet<_Sort>(
+            context,
+            title: '排序方式',
+            selected: _sort,
+            onSelected: (v) => setState(() => _sort = v),
+            options: const [
+              PTFilterOption(value: _Sort.none, label: '默认'),
+              PTFilterOption(value: _Sort.seeders, label: '做种↓'),
+              PTFilterOption(value: _Sort.leechers, label: '吸血↓'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

@@ -138,17 +138,22 @@ class _NoticePageState extends State<NoticePage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.done_all),
-              tooltip: '全部已读',
-              onPressed: _items.any((n) => !n.read) ? _readAll : null,
+            IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _loading ? null : _load),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: '更多',
+              onSelected: (v) {
+                if (v == 'readall') {
+                  _readAll();
+                } else if (v == 'clear') {
+                  _clearAll();
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'readall', child: Row(children: [Icon(Icons.done_all, size: 18), SizedBox(width: 8), Text('全部已读')])),
+                const PopupMenuItem(value: 'clear', child: Row(children: [Icon(Icons.delete_sweep_outlined, size: 18), SizedBox(width: 8), Text('清空通知')])),
+              ],
             ),
-            IconButton(
-              icon: const Icon(Icons.delete_sweep_outlined),
-              tooltip: '清空通知',
-              onPressed: _items.isNotEmpty ? _clearAll : null,
-            ),
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : _load),
           ],
         ),
         body: RefreshIndicator(

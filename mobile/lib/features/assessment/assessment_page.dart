@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/assessment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 class AssessmentPage extends StatefulWidget {
   const AssessmentPage({super.key});
@@ -62,51 +63,63 @@ class _AssessmentPageState extends State<AssessmentPage> {
             IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : () => _load(refresh: true)),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: () => _load(refresh: true),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-                  ? _Empty(text: _error!, onRetry: _load)
-                  : ListView(
-                      padding: const EdgeInsets.all(12),
-                      children: [
-                        _filterBar(),
-                        const SizedBox(height: 8),
-                        ..._filtered.map(_card),
-                      ],
-                    ),
+        body: Column(
+          children: [
+            Padding(padding: const EdgeInsets.fromLTRB(12, 8, 12, 0), child: _filterBar()),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? PTEmptyState(text: _error!, onRetry: _load)
+                      : _filtered.isEmpty
+                          ? PTEmptyState(text: '该筛选下无站点')
+                          : RefreshIndicator(
+                              onRefresh: () => _load(refresh: true),
+                              child: PTMasonry<AssessmentCard>(
+                                items: _filtered,
+                                minItemWidth: 320,
+                                itemBuilder: (_, c) => _card(c),
+                              ),
+                            ),
+            ),
+          ],
         ),
       ),
     );
   }
 
   Widget _filterBar() {
-    final chips = [
-      ('all', '全部 (${_cards.length})', const Color(0xFF6C5CE7)),
-      ('safe', '安全 (${_count('safe')})', const Color(0xFF2ECC71)),
-      ('progress', '进行 (${_count('progress')})', const Color(0xFF3498DB)),
-      ('danger', '危险 (${_count('danger')})', const Color(0xFFF56C6C)),
-    ];
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: chips
-            .map((c) => GestureDetector(
-                  onTap: () => setState(() => _filter = c.$1),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: _filter == c.$1 ? c.$3.withValues(alpha: 0.16) : Colors.transparent,
-                      border: Border.all(color: _filter == c.$1 ? c.$3.withValues(alpha: 0.4) : Colors.transparent),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(c.$2, style: TextStyle(color: _filter == c.$1 ? c.$3 : null, fontSize: 13)),
-                  ),
-                ))
-            .toList(),
+    final cur = _filter;
+    String labelOf(String k) => switch (k) {
+          'all' => '全部',
+          'safe' => '安全',
+          'progress' => '进行',
+          'danger' => '危险',
+          'exempt' => '免考',
+          _ => k,
+        };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PTFilterPill(
+          label: '状态',
+          value: labelOf(cur),
+          active: cur != 'all',
+          onTap: () => showFilterSheet<String>(
+            context,
+            title: '筛选状态',
+            selected: cur,
+            onSelected: (v) => setState(() => _filter = v),
+            options: [
+              PTFilterOption(value: 'all', label: '全部', count: _cards.length),
+              PTFilterOption(value: 'safe', label: '安全', count: _count('safe')),
+              PTFilterOption(value: 'progress', label: '进行', count: _count('progress')),
+              PTFilterOption(value: 'danger', label: '危险', count: _count('danger')),
+              PTFilterOption(value: 'exempt', label: '免考', count: _count('exempt')),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -114,7 +127,7 @@ class _AssessmentPageState extends State<AssessmentPage> {
   Widget _card(AssessmentCard c) {
     final color = _statusColor(c.status);
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(border: Border(left: BorderSide(color: color, width: 3))),
       child: GlassCard(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -140,6 +153,10 @@ class _AssessmentPageState extends State<AssessmentPage> {
               Row(children: [
                 Text('${c.progressPercent.toStringAsFixed(0)}%', style: const TextStyle(color: Colors.grey, fontSize: 12)),
                 const Spacer(),
+                if (c.endTime != null) ...[
+                  Text('截止 ${_fmtDate(c.endTime)}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  const SizedBox(width: 8),
+                ],
                 if (c.remainingDays >= 0) Text('剩 ${c.remainingDays} 天', style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ]),
               if (c.assessmentType.isNotEmpty)
@@ -169,18 +186,10 @@ class _AssessmentPageState extends State<AssessmentPage> {
       ),
     );
   }
-}
 
-class _Empty extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _Empty({required this.text, this.onRetry});
-  @override
-  Widget build(BuildContext context) {
-    return ListView(children: [
-      const SizedBox(height: 120),
-      Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)))),
-      if (onRetry != null) Center(child: ElevatedButton(onPressed: onRetry, child: const Text('重试'))),
-    ]);
+  String _fmtDate(String? t) {
+    if (t == null || t.isEmpty) return '—';
+    final s = t.replaceAll('T', ' ');
+    return s.length > 10 ? s.substring(0, 10) : s;
   }
 }

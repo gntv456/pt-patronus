@@ -1,28 +1,48 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 import 'device_form_sheet.dart';
 import 'monitor_detail_page.dart';
 
-/// 设备监控页：按 服务器/NAS/摄像头 分段列表 + 未读告警条 + 增删改 + 探活/采集入口。
+/// 设备监控页：服务器/NAS/摄像头 三标签 + 未读告警条 + 卡片内联指标（CPU/内存/磁盘）
+/// + Agent 管理器（admin）+ 15s 轮询。对齐 Web NasServer.vue。
 class MonitorPage extends StatefulWidget {
   const MonitorPage({super.key});
   @override
   State<MonitorPage> createState() => _MonitorPageState();
 }
 
-class _MonitorPageState extends State<MonitorPage> {
+class _MonitorPageState extends State<MonitorPage>
+    with SingleTickerProviderStateMixin {
   final _api = MonitorApi();
   List<MonitorTarget> _targets = [];
+  // 每设备最新指标快照（卡片内联 CPU/内存/磁盘 用）。无批量端点，按 target 取 metrics?limit=1（同 Web loadAll）。
+  final Map<int, Metrics?> _latest = {};
   List<MonitorAlert> _unread = [];
   bool _loading = false;
   String? _error;
+
+  late final TabController _tab = TabController(length: 3, vsync: this);
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _tab.dispose();
+    super.dispose();
   }
 
   void _toast(String m) {
@@ -30,7 +50,9 @@ class _MonitorPageState extends State<MonitorPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
+  // 单飞：15s 轮询与手动刷新互不叠加（慢请求期间跳过新轮询，避免堆积）。
   Future<void> _load() async {
+    if (_loading) return;
     setState(() {
       _loading = true;
       _error = null;
@@ -39,6 +61,19 @@ class _MonitorPageState extends State<MonitorPage> {
       final results = await Future.wait([_api.list(), _api.alerts(unread: true)]);
       _targets = results[0] as List<MonitorTarget>;
       _unread = results[1] as List<MonitorAlert>;
+      // 并发取每个非摄像头设备的最新快照（best-effort，任一失败不阻断整体加载）。
+      final mFutures = _targets
+          .where((t) => t.type != 'camera')
+          .map((t) async {
+            try {
+              final snaps = await _api.metrics(t.id, limit: 1);
+              _latest[t.id] = snaps.isEmpty ? null : snaps.last.metrics;
+            } catch (_) {
+              _latest[t.id] = null;
+            }
+          })
+          .toList();
+      await Future.wait(mFutures);
     } catch (e) {
       if (_targets.isEmpty) {
         _error = e.toString().replaceFirst('Exception: ', '');
@@ -60,6 +95,17 @@ class _MonitorPageState extends State<MonitorPage> {
       MaterialPageRoute(builder: (_) => MonitorDetailPage(target: t)),
     );
     _load(); // 返回后刷新（可能已读告警/采集/删除）
+  }
+
+  Future<void> _openAgents() async {
+    await showAdaptiveSheet(
+      context,
+      title: 'Agent 管理',
+      wideWidth: 640,
+      builder: (_) => const _AgentManagerSheet(),
+    );
+    // agent 也是 host|agent 的 MonitorTarget，关闭后刷新列表。
+    if (mounted) _load();
   }
 
   Widget _errorView() => Center(
@@ -99,99 +145,184 @@ class _MonitorPageState extends State<MonitorPage> {
     );
   }
 
+  int _count(String type) => _targets.where((t) => t.type == type).length;
+
   Widget _row(MonitorTarget t) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: GlassCard(
           padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
           onTap: () => _open(t),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _typeBadge(t.type),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(t.name,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Text(
-                      t.host.isEmpty ? '(本机)' : t.host,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (t.lastError.isNotEmpty)
-                      Text(t.lastError,
-                          style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+              Row(
+                children: [
+                  _typeBadge(t.type),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t.name,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text(
+                          t.host.isEmpty ? '(本机)' : t.host,
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
                           maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                  ],
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (t.lastError.isNotEmpty)
+                          Text(t.lastError,
+                              style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    t.lastOnline == true
+                        ? Icons.circle
+                        : t.lastOnline == false
+                            ? Icons.circle_outlined
+                            : Icons.help_outline,
+                    size: 14,
+                    color: t.lastOnline == true
+                        ? PTColors.success
+                        : t.lastOnline == false
+                            ? PTColors.danger
+                            : Colors.grey,
+                  ),
+                ],
+              ),
+              // 内联指标条（CPU/内存/磁盘）——对齐 Web DeviceCard 的 MetricBar。摄像头不显示。
+              if (t.type != 'camera')
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _metricBars(_latest[t.id]),
                 ),
-              ),
-              Icon(
-                t.lastOnline == true
-                    ? Icons.circle
-                    : t.lastOnline == false
-                        ? Icons.circle_outlined
-                        : Icons.help_outline,
-                size: 14,
-                color: t.lastOnline == true
-                    ? PTColors.success
-                    : t.lastOnline == false
-                        ? PTColors.danger
-                        : Colors.grey,
-              ),
             ],
           ),
         ),
       );
 
-  Widget _section(String title, IconData icon, String type) {
-    final items = _targets.where((t) => t.type == type).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  // 内联指标：离线显「离线」；在线显 CPU/内存/磁盘 三条迷你进度条。
+  Widget _metricBars(Metrics? m) {
+    if (m == null) return const SizedBox.shrink();
+    if (!m.online) {
+      return const Text('离线', style: TextStyle(color: Colors.grey, fontSize: 11));
+    }
+    final cpu = m.cpuUsage ?? 0;
+    final mem = m.memUsage ?? 0;
+    final disk = m.disks.fold<double>(0, (a, d) => d.usage > a ? d.usage : a);
+    return Wrap(
+      spacing: 14,
+      runSpacing: 4,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [_gauge('CPU', cpu), _gauge('内存', mem), _gauge('磁盘', disk)],
+    );
+  }
+
+  Widget _gauge(String label, double pct) {
+    final p = pct.clamp(0, 100).toDouble();
+    final color = p > 90 ? PTColors.danger : (p > 70 ? PTColors.warn : PTColors.success);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
-          child: Row(children: [
-            Icon(icon, size: 18, color: Colors.grey),
-            const SizedBox(width: 6),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-            const SizedBox(width: 6),
-            Text('${items.length}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          ]),
+        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 10)),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 44,
+          height: 4,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: p / 100,
+              backgroundColor: Colors.grey.withValues(alpha: 0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(color),
+            ),
+          ),
         ),
-        ...items.map(_row),
+        const SizedBox(width: 4),
+        Text('${p.toStringAsFixed(0)}%',
+            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
       ],
+    );
+  }
+
+  Widget _tabItem(IconData icon, String label, int count) => Tab(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15),
+            const SizedBox(width: 4),
+            Text(label),
+            if (count > 0) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: PTColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text('$count',
+                    style: const TextStyle(fontSize: 10, color: PTColors.primary, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ],
+        ),
+      );
+
+  Widget _listFor(String type, String emptyText) {
+    if (_loading && _targets.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final items = _targets.where((t) => t.type == type).toList();
+    if (items.isEmpty) {
+      return Center(child: Text(emptyText, style: const TextStyle(color: Colors.grey)));
+    }
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+      children: items.map(_row).toList(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final fullError = _targets.isEmpty && _error != null && !_loading;
     return GlassBackground(
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 4),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
               child: Row(children: [
                 const HomeMenuButton(),
-                const Text('设备监控', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('设备监控', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
                 const Spacer(),
-                IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-                IconButton(icon: const Icon(Icons.add), onPressed: _add),
+                IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _load),
+                IconButton(icon: const Icon(Icons.add), tooltip: '添加设备', onPressed: _add),
+                if (ApiClient().isAdmin)
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    tooltip: '更多',
+                    onSelected: (v) {
+                      if (v == 'agents') _openAgents();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'agents', child: Row(children: [Icon(Icons.cloud_sync_outlined, size: 18), SizedBox(width: 8), Text('Agent 管理')])),
+                    ],
+                  ),
               ]),
             ),
             if (_unread.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
                 child: GlassCard(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   onTap: () => _showAlerts(),
                   child: Row(children: [
                     const Icon(Icons.warning_amber_rounded, color: PTColors.danger, size: 20),
@@ -204,18 +335,27 @@ class _MonitorPageState extends State<MonitorPage> {
                   ]),
                 ),
               ),
+            if (!fullError)
+              TabBar(
+                controller: _tab,
+                isScrollable: false,
+                tabAlignment: TabAlignment.fill,
+                tabs: [
+                  _tabItem(Icons.dns, '服务器', _count('host')),
+                  _tabItem(Icons.storage, 'NAS', _count('nas')),
+                  _tabItem(Icons.videocam_outlined, '摄像头', _count('camera')),
+                ],
+              ),
             if (_loading) const LinearProgressIndicator(minHeight: 2),
             Expanded(
-              child: _targets.isEmpty && !_loading
-                  ? (_error != null
-                      ? _errorView()
-                      : const Center(child: Text('暂无设备，点右上角 + 添加', style: TextStyle(color: Colors.grey))))
-                  : ListView(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
+              child: fullError
+                  ? _errorView()
+                  : TabBarView(
+                      controller: _tab,
                       children: [
-                        _section('服务器', Icons.dns, 'host'),
-                        _section('NAS', Icons.storage, 'nas'),
-                        _section('摄像头', Icons.videocam_outlined, 'camera'),
+                        _listFor('host', '暂无服务器，点右上角 + 添加'),
+                        _listFor('nas', '暂无 NAS 设备'),
+                        _listFor('camera', '暂无摄像头'),
                       ],
                     ),
             ),
@@ -267,6 +407,246 @@ class _MonitorPageState extends State<MonitorPage> {
             child: const Text('全部已读'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Agent 管理器（admin）：列表 + 创建/重置 secret（明文仅一次）/删除。对齐 Web AgentManager.vue ──
+class _AgentManagerSheet extends StatefulWidget {
+  const _AgentManagerSheet();
+  @override
+  State<_AgentManagerSheet> createState() => _AgentManagerSheetState();
+}
+
+class _AgentManagerSheetState extends State<_AgentManagerSheet> {
+  final _api = AgentApi();
+  List<Agent> _agents = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _toast(String s) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
+  }
+
+  Future<void> _load() async {
+    try {
+      _agents = await _api.list();
+    } catch (e) {
+      _toast('$e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _create() async {
+    final name = await _promptName();
+    if (name == null || name.isEmpty) return;
+    try {
+      final res = await _api.create(name);
+      _toast('已创建');
+      await _showSecret(res.plainSecret);
+      _load();
+    } catch (e) {
+      _toast('$e');
+    }
+  }
+
+  Future<void> _rotate(Agent a) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('重置 Secret'),
+        content: const Text('重置后旧 secret 立即失效，agent 需用新 secret 重连。确认？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('重置')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final secret = await _api.rotate(a.id);
+      await _showSecret(secret);
+      _load();
+    } catch (e) {
+      _toast('$e');
+    }
+  }
+
+  Future<void> _delete(Agent a) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('删除 Agent'),
+        content: Text('删除 Agent「${a.name}」？将级联删除关联的监控目标（含快照/告警）。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await _api.remove(a.id);
+      _toast('已删除');
+      _load();
+    } catch (e) {
+      _toast('$e');
+    }
+  }
+
+  Future<String?> _promptName() async {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('新建 Agent'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Agent 名称（如 飞牛NAS）'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, ctrl.text.trim()), child: const Text('创建')),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showSecret(String secret) async {
+    if (secret.isEmpty) return;
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Agent Secret（仅显示一次）'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('请立即复制保存，用于 agent 上报鉴权。关闭后无法再查看（可重置）。',
+                style: TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 10),
+            Container(
+              width: double.maxFinite,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(secret,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: secret));
+              if (!mounted) return;
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(const SnackBar(content: Text('Secret 已复制')));
+            },
+            child: const Text('复制'),
+          ),
+          FilledButton(onPressed: () => Navigator.pop(context), child: const Text('关闭')),
+        ],
+      ),
+    );
+  }
+
+  String _fmt(String iso) {
+    final d = DateTime.tryParse(iso);
+    if (d == null) return iso;
+    String p(int n) => n.toString().padLeft(2, '0');
+    return '${d.month}-${d.day} ${p(d.hour)}:${p(d.minute)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(children: [
+          Text('${_agents.length} 个 Agent', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          const Spacer(),
+          OutlinedButton.icon(
+            onPressed: _create,
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('新建'),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        if (_loading)
+          const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: CircularProgressIndicator()))
+        else if (_agents.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: Text('暂无 Agent，点「新建」创建', style: TextStyle(color: Colors.grey))),
+          )
+        else
+          ..._agents.map(_card),
+      ],
+    );
+  }
+
+  Widget _card(Agent a) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassCard(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.circle, size: 10, color: a.online ? PTColors.success : Colors.grey),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(a.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            if (a.version.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Text('v${a.version}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+              ),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 18),
+              onSelected: (v) {
+                if (v == 'rotate') {
+                  _rotate(a);
+                } else if (v == 'delete') {
+                  _delete(a);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'rotate', child: Text('重置 Secret')),
+                PopupMenuItem(value: 'delete', child: Text('删除')),
+              ],
+            ),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+            '${a.hostname.isEmpty ? '—' : a.hostname}${a.ip.isNotEmpty ? ' · ${a.ip}' : ''}',
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            a.online ? '在线 · 上报 ${_fmt(a.lastSeenAt)}' : '离线 · 上次 ${a.lastSeenAt.isEmpty ? '—' : _fmt(a.lastSeenAt)}',
+            style: TextStyle(color: a.online ? PTColors.success : Colors.grey, fontSize: 11),
+          ),
+        ]),
       ),
     );
   }

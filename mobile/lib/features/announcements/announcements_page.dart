@@ -104,19 +104,35 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     );
   }
 
-  // 站点筛选下拉：选项由已拉取的 _results 派生（一站一项），对齐 Web 的 el-select siteOptions。
+  // 站点筛选药丸：点按弹候选列表（选项由已拉取的 _results 派生，一站一项）。
+  String _siteNameOf(int? id) {
+    if (id == null) return '全部站点';
+    for (final r in _results) {
+      if (r.siteId == id) return r.siteName;
+    }
+    return '全部站点';
+  }
+
   Widget _siteFilterBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-      child: DropdownButton<int?>(
-        value: _siteFilter,
-        isExpanded: true,
-        underline: const SizedBox(),
-        items: [
-          const DropdownMenuItem<int?>(value: null, child: Text('全部站点')),
-          ..._results.map((r) => DropdownMenuItem<int?>(value: r.siteId, child: Text(r.siteName))),
-        ],
-        onChanged: (v) => setState(() => _siteFilter = v),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PTFilterPill(
+          label: '站点',
+          value: _siteNameOf(_siteFilter),
+          active: _siteFilter != null,
+          onTap: () => showFilterSheet<int?>(
+            context,
+            title: '筛选站点',
+            selected: _siteFilter,
+            onSelected: (v) => setState(() => _siteFilter = v),
+            options: [
+              const PTFilterOption(value: null, label: '全部站点'),
+              ..._results.map((r) => PTFilterOption(value: r.siteId, label: r.siteName)),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -465,25 +465,34 @@ class _ReseedPageState extends State<ReseedPage> {
   }
 
   Widget _filterChips() {
-    const items = [
-      ('pending', '待处理'),
-      ('added', '已添加'),
-      ('skipped', '已跳过'),
-      ('failed', '失败'),
-      ('', '全部'),
-    ];
-    return Wrap(
-      spacing: 6,
-      children: items
-          .map((e) => ChoiceChip(
-                label: Text(e.$2),
-                selected: _status == e.$1,
-                onSelected: (_) {
-                  setState(() => _status = e.$1);
-                  _loadTasks();
-                },
-              ))
-          .toList(),
+    final cur = _status;
+    String labelOf(String s) => s.isEmpty ? '全部' : _statusLabel(s);
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 4),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PTFilterPill(
+          label: '状态',
+          value: labelOf(cur),
+          active: cur.isNotEmpty,
+          onTap: () => showFilterSheet<String>(
+            context,
+            title: '筛选状态',
+            selected: cur,
+            onSelected: (v) {
+              setState(() => _status = v);
+              _loadTasks();
+            },
+            options: const [
+              PTFilterOption(value: '', label: '全部'),
+              PTFilterOption(value: 'pending', label: '待处理'),
+              PTFilterOption(value: 'added', label: '已添加'),
+              PTFilterOption(value: 'skipped', label: '已跳过'),
+              PTFilterOption(value: 'failed', label: '失败'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

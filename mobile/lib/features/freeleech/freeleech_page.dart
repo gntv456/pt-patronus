@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/freeleech.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// 站免页：汇总各站全站免费/促销状态。下拉刷新；单站可独立刷新。
+/// 站免页（对齐 Web Freeleech.vue）：汇总各站全站免费/促销状态。
+/// 宽屏/窄屏均用 PTMasonry 多列可变高卡片；多公告站点默认折叠+展开全部；
+/// 每条公告可点「前往 →」打开外链。下拉刷新；单站可独立刷新。
 class FreeleechPage extends StatefulWidget {
   const FreeleechPage({super.key});
   @override
@@ -16,6 +20,8 @@ class _FreeleechPageState extends State<FreeleechPage> {
   bool _loading = true;
   String? _error;
   int? _syncingId;
+  FreeleechStatus? _filter;
+  final Set<int> _expanded = {}; // 多公告站点展开态
 
   @override
   void initState() {
@@ -52,6 +58,14 @@ class _FreeleechPageState extends State<FreeleechPage> {
     }
   }
 
+  Future<void> _openLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(url)));
+    }
+  }
+
   Color _statusColor(FreeleechStatus s) => switch (s) {
         FreeleechStatus.active => const Color(0xFF2ECC71),
         FreeleechStatus.upcoming => const Color(0xFF3498DB),
@@ -66,6 +80,22 @@ class _FreeleechPageState extends State<FreeleechPage> {
         FreeleechStatus.none => '暂无站免',
       };
 
+  FreeleechStatus _siteStatus(FreeleechResult r) {
+    if (r.error.isNotEmpty ||
+        (r.notices.isNotEmpty && r.notices.first.status == FreeleechStatus.failed)) {
+      return FreeleechStatus.failed;
+    }
+    final top = r.notices.isNotEmpty ? r.notices.first.status : null;
+    if (top == FreeleechStatus.active) return FreeleechStatus.active;
+    if (top == FreeleechStatus.upcoming) return FreeleechStatus.upcoming;
+    return FreeleechStatus.none;
+  }
+
+  int _count(FreeleechStatus s) => _results.where((r) => _siteStatus(r) == s).length;
+
+  List<FreeleechResult> get _filtered =>
+      _filter == null ? _results : _results.where((r) => _siteStatus(r) == _filter).toList();
+
   @override
   Widget build(BuildContext context) {
     return GlassBackground(
@@ -77,25 +107,66 @@ class _FreeleechPageState extends State<FreeleechPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loading ? null : () => _load(refresh: true),
-            ),
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : () => _load(refresh: true)),
           ],
         ),
-        body: RefreshIndicator(
-          onRefresh: () => _load(refresh: true),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-                  ? _Empty(text: _error!, onRetry: _load)
-                  : _results.isEmpty
-                      ? const _Empty(text: '暂无数据，请先添加并登录站点')
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(12),
-                          itemCount: _results.length,
-                          itemBuilder: (_, i) => _siteCard(_results[i]),
-                        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? PTEmptyState(text: _error!, onRetry: _load)
+                : _results.isEmpty
+                    ? PTEmptyState(icon: Icons.discount_outlined, text: '暂无数据', description: '请先添加并登录站点')
+                    : Column(
+                        children: [
+                          _filterBar(),
+                          Expanded(
+                            child: RefreshIndicator(
+                              onRefresh: () => _load(refresh: true),
+                              child: _filtered.isEmpty
+                                  ? PTEmptyState(
+                                      icon: Icons.filter_alt_off_outlined,
+                                      text: '没有「${_statusLabel(_filter!)}」的站点',
+                                      actionLabel: '显示全部',
+                                      onAction: () => setState(() => _filter = null),
+                                    )
+                                  : PTMasonry<FreeleechResult>(
+                                      items: _filtered,
+                                      minItemWidth: 340,
+                                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                                      itemBuilder: (_, r) => _siteCard(r),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+      ),
+    );
+  }
+
+  Widget _filterBar() {
+    final cur = _filter;
+    String label(FreeleechStatus? s) => s == null ? '全部' : _statusLabel(s);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: PTFilterPill(
+          label: '状态',
+          value: label(cur),
+          active: cur != null,
+          onTap: () => showFilterSheet<FreeleechStatus?>(
+            context,
+            title: '筛选状态',
+            selected: cur,
+            onSelected: (v) => setState(() => _filter = v),
+            options: [
+              PTFilterOption(value: null, label: '全部', count: _results.length),
+              PTFilterOption(value: FreeleechStatus.active, label: '正在站免', count: _count(FreeleechStatus.active)),
+              PTFilterOption(value: FreeleechStatus.upcoming, label: '即将站免', count: _count(FreeleechStatus.upcoming)),
+              PTFilterOption(value: FreeleechStatus.none, label: '暂无', count: _count(FreeleechStatus.none)),
+              PTFilterOption(value: FreeleechStatus.failed, label: '失败', count: _count(FreeleechStatus.failed)),
+            ],
+          ),
         ),
       ),
     );
@@ -104,6 +175,9 @@ class _FreeleechPageState extends State<FreeleechPage> {
   Widget _siteCard(FreeleechResult r) {
     final top = r.notices.isNotEmpty ? r.notices.first : null;
     final color = top != null ? _statusColor(top.status) : const Color(0xFF95A5A6);
+    final expanded = _expanded.contains(r.siteId);
+    final showAll = expanded || r.notices.length <= 1;
+    final visible = showAll ? r.notices : r.notices.take(1).toList();
     return GlassCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -122,43 +196,48 @@ class _FreeleechPageState extends State<FreeleechPage> {
             if (_syncingId == r.siteId)
               const Padding(padding: EdgeInsets.all(8), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
             else
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 18),
-                onPressed: () => _syncOne(r),
-                visualDensity: VisualDensity.compact,
-              ),
+              IconButton(icon: const Icon(Icons.refresh, size: 18), onPressed: () => _syncOne(r), visualDensity: VisualDensity.compact),
           ]),
           if (r.error.isNotEmpty)
             Padding(padding: const EdgeInsets.only(top: 6), child: Text(r.error, style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 13)))
           else if (r.notices.isEmpty)
             const Padding(padding: EdgeInsets.only(top: 6), child: Text('该站点未开启站免检测', style: TextStyle(color: Colors.grey, fontSize: 13)))
-          else
-            ...r.notices.map((n) => Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(n.title.isNotEmpty ? n.title : _statusLabel(n.status), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    if (n.content.isNotEmpty || n.error.isNotEmpty)
-                      Padding(padding: const EdgeInsets.only(top: 2), child: Text(n.content.isNotEmpty ? n.content : n.error, style: const TextStyle(fontSize: 13))),
-                  ]),
-                )),
+          else ...[
+            ...visible.map((n) => _notice(n)),
+            if (r.notices.length > 1)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 4), minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                  onPressed: () => setState(() {
+                    if (expanded) {
+                      _expanded.remove(r.siteId);
+                    } else {
+                      _expanded.add(r.siteId);
+                    }
+                  }),
+                  child: Text(expanded ? '收起' : '展开全部 (${r.notices.length})', style: const TextStyle(fontSize: 12)),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
-}
 
-class _Empty extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _Empty({required this.text, this.onRetry});
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 120),
-        Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)))),
-        if (onRetry != null) Center(child: ElevatedButton(onPressed: onRetry, child: const Text('重试'))),
-      ],
+  Widget _notice(SiteFreeleech n) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(n.title.isNotEmpty ? n.title : _statusLabel(n.status), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        if (n.content.isNotEmpty || n.error.isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 2), child: Text(n.content.isNotEmpty ? n.content : n.error, style: const TextStyle(fontSize: 13))),
+        if (n.link.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: GestureDetector(onTap: () => _openLink(n.link), child: Text('前往 →', style: TextStyle(fontSize: 12, color: PTColors.primary2, decoration: TextDecoration.underline, decorationColor: PTColors.primary2))),
+          ),
+      ]),
     );
   }
 }

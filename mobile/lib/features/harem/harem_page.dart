@@ -147,30 +147,17 @@ class _HaremPageState extends State<HaremPage> {
   }
 
   Widget _overview(HaremOverview ov) {
-    final items = <(String, String)>[
-      ('${ov.totalSites}', '站点'),
-      ('${ov.totalInvitees}', '成员'),
-      ('${ov.totalPermInvites}', '永邀'),
-      ('${ov.totalTempInvites}', '临邀'),
-      ('${ov.totalLowRatio}', '低分享率'),
-      ('${ov.totalBanned}', '已禁用'),
-      ('${ov.totalNoData}', '无数据'),
-    ];
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: items
-          .map((e) => Container(
-                width: 84,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(color: PTColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
-                alignment: Alignment.center,
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Text(e.$1, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                  Text(e.$2, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                ]),
-              ))
-          .toList(),
+    // 单行横向滚动指标条，取代 7 个 width:84 双行瓦片的折行 Wrap。
+    return PTStatStrip(
+      items: [
+        PTStat(value: '${ov.totalSites}', label: '站点'),
+        PTStat(value: '${ov.totalInvitees}', label: '成员'),
+        PTStat(value: '${ov.totalPermInvites}', label: '永邀'),
+        PTStat(value: '${ov.totalTempInvites}', label: '临邀'),
+        PTStat(value: '${ov.totalLowRatio}', label: '低分享率'),
+        PTStat(value: '${ov.totalBanned}', label: '已禁用'),
+        PTStat(value: '${ov.totalNoData}', label: '无数据'),
+      ],
     );
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/system_log.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
 
 /// 运行日志页（对齐 Web Settings 日志 tab）：展示后端环形缓冲日志，
 /// 支持级别过滤、刷新与清空。后端 API：GET/DELETE /system/logs。
@@ -17,15 +19,6 @@ class _LogsPageState extends State<LogsPage> {
   bool _loading = true;
   String? _error;
   String _level = ''; // ''=全部
-
-  // 级别过滤项（值, 标签）。
-  static const _levels = [
-    ('', '全部'),
-    ('error', 'ERROR'),
-    ('warn', 'WARN'),
-    ('info', 'INFO'),
-    ('debug', 'DEBUG'),
-  ];
 
   @override
   void initState() {
@@ -70,6 +63,15 @@ class _LogsPageState extends State<LogsPage> {
     }
   }
 
+  Future<void> _copyAll() async {
+    if (_entries.isEmpty) return;
+    final text = _entries.map((e) => '${e.time.toIso8601String()} [${e.level}] ${e.message}').join('\n');
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已复制 ${_entries.length} 条日志')));
+    }
+  }
+
   Color _levelColor(String lv) => switch (lv) {
         'ERROR' => const Color(0xFFF56C6C),
         'WARN' => const Color(0xFFE6A23C),
@@ -89,36 +91,56 @@ class _LogsPageState extends State<LogsPage> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           leading: const HomeMenuButton(),
-          title: const Text('运行日志'),
+          title: Text('运行日志${_entries.isNotEmpty ? "（${_entries.length} 条）" : ""}'),
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : _load),
-            IconButton(icon: const Icon(Icons.delete_sweep), onPressed: _loading ? null : _clear),
+            IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _loading ? null : _load),
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: '更多',
+              onSelected: (v) {
+                if (v == 'copy') {
+                  _copyAll();
+                } else if (v == 'clear') {
+                  _clear();
+                }
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Icons.copy, size: 18), SizedBox(width: 8), Text('复制全部')])),
+                const PopupMenuItem(value: 'clear', child: Row(children: [Icon(Icons.delete_sweep, size: 18), SizedBox(width: 8), Text('清空日志')])),
+              ],
+            ),
           ],
         ),
         body: Column(
           children: [
-            // 级别过滤条
-            SizedBox(
-              height: 46,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                children: _levels.map((e) {
-                  final on = _level == e.$1;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8, top: 8),
-                    child: ChoiceChip(
-                      label: Text(e.$2),
-                      selected: on,
-                      onSelected: (_) {
-                        setState(() => _level = e.$1);
-                        _load();
-                      },
-                    ),
-                  );
-                }).toList(),
+            // 级别过滤药丸（取代横滚 ChoiceChip 行）
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: PTFilterPill(
+                  label: '级别',
+                  value: _level.isEmpty ? '全部' : _level.toUpperCase(),
+                  active: _level.isNotEmpty,
+                  onTap: () => showFilterSheet<String>(
+                    context,
+                    title: '筛选级别',
+                    selected: _level,
+                    onSelected: (v) {
+                      setState(() => _level = v);
+                      _load();
+                    },
+                    options: const [
+                      PTFilterOption(value: '', label: '全部'),
+                      PTFilterOption(value: 'error', label: 'ERROR'),
+                      PTFilterOption(value: 'warn', label: 'WARN'),
+                      PTFilterOption(value: 'info', label: 'INFO'),
+                      PTFilterOption(value: 'debug', label: 'DEBUG'),
+                    ],
+                  ),
+                ),
               ),
             ),
             Expanded(
@@ -127,9 +149,9 @@ class _LogsPageState extends State<LogsPage> {
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
                     : _error != null
-                        ? _Empty(text: _error!, onRetry: _load)
+                        ? PTEmptyState(text: _error!, onRetry: _load)
                         : _entries.isEmpty
-                            ? const _Empty(text: '暂无日志')
+                            ? PTEmptyState(icon: Icons.article_outlined, text: '暂无日志')
                             : ListView.builder(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 itemCount: _entries.length,
@@ -178,22 +200,6 @@ class _LogsPageState extends State<LogsPage> {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _Empty extends StatelessWidget {
-  final String text;
-  final VoidCallback? onRetry;
-  const _Empty({required this.text, this.onRetry});
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: [
-        const SizedBox(height: 120),
-        Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)))),
-        if (onRetry != null) Center(child: ElevatedButton(onPressed: onRetry, child: const Text('重试'))),
-      ],
     );
   }
 }

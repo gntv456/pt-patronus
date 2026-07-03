@@ -140,8 +140,7 @@ class _MessagesPageState extends State<MessagesPage> {
         ),
         body: Column(
           children: [
-            _mailboxTabs(),
-            if (_results.isNotEmpty) _siteFilterBar(),
+            _filterRow(),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _load,
@@ -160,7 +159,7 @@ class _MessagesPageState extends State<MessagesPage> {
     );
   }
 
-  Widget _mailboxTabs() {
+  Widget _filterRow() {
     const tabs = [
       (Mailbox.inbox, '收件箱'),
       (Mailbox.system, '系统'),
@@ -169,42 +168,43 @@ class _MessagesPageState extends State<MessagesPage> {
       (Mailbox.reports, '举报信箱'),
       (Mailbox.staff, '管理组信箱'),
     ];
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        children: tabs
-            .map((t) => GestureDetector(
-                  onTap: () => _switchMailbox(t.$1),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: _mailbox == t.$1 ? PTColors.primary.withValues(alpha: 0.16) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(t.$2, style: TextStyle(color: _mailbox == t.$1 ? PTColors.primary : null, fontWeight: _mailbox == t.$1 ? FontWeight.w600 : null)),
-                  ),
-                ))
-            .toList(),
-      ),
+    // 邮箱 tab 是主导航 → 保留 PTChipBar 横滚；站点筛选 → 小 pill 弹候选。
+    final mailBar = PTChipBar<Mailbox>(
+      selected: _mailbox,
+      onSelected: _switchMailbox,
+      padding: EdgeInsets.zero,
+      items: tabs.map((t) => PTChipItem<Mailbox>(value: t.$1, label: t.$2)).toList(),
     );
-  }
-
-  Widget _siteFilterBar() {
+    String siteNameOf(int? id) {
+      if (id == null) return '全部站点';
+      for (final r in _results) {
+        if (r.siteId == id) return r.siteName;
+      }
+      return '全部站点';
+    }
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-      child: DropdownButton<int?>(
-        value: _siteFilter,
-        isExpanded: true,
-        underline: const SizedBox(),
-        items: [
-          const DropdownMenuItem<int?>(value: null, child: Text('全部站点')),
-          ..._results.map((r) => DropdownMenuItem<int?>(value: r.siteId, child: Text(r.siteName))),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(children: [
+        Expanded(child: mailBar),
+        if (_results.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          PTFilterPill(
+            label: '站点',
+            value: siteNameOf(_siteFilter),
+            active: _siteFilter != null,
+            onTap: () => showFilterSheet<int?>(
+              context,
+              title: '筛选站点',
+              selected: _siteFilter,
+              onSelected: (v) => setState(() => _siteFilter = v),
+              options: [
+                const PTFilterOption(value: null, label: '全部站点'),
+                ..._results.map((r) => PTFilterOption(value: r.siteId, label: r.siteName)),
+              ],
+            ),
+          ),
         ],
-        onChanged: (v) => setState(() => _siteFilter = v),
-      ),
+      ]),
     );
   }
 

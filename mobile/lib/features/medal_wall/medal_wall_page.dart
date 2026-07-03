@@ -137,67 +137,54 @@ class _MedalWallPageState extends State<MedalWallPage> {
   }
 
   Widget _filterBar() {
-    final chips = [
-      ('all', '全部 (${_siteFiltered.length})', const Color(0xFF6C5CE7)),
-      ('owned', '已拥有 ($_ownedCount)', const Color(0xFF2ECC71)),
-      ('available', '可购买 ($_availableCount)', const Color(0xFF3498DB)),
-      ('out_of_stock', '缺货 ($_oosCount)', const Color(0xFFF56C6C)),
-      ('wearing', '佩戴中 ($_wearingCount)', const Color(0xFFF39C12)),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 站点筛选（横向 chips）
-        SizedBox(
-          height: 34,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _siteChip('all', '全部站点'),
-              ..._sites.map((s) => _siteChip(s.value, s.value)),
-            ],
+    String statusLabel(String k) => switch (k) {
+          'all' => '全部',
+          'owned' => '已拥有',
+          'available' => '可购买',
+          'out_of_stock' => '缺货',
+          'wearing' => '佩戴中',
+          _ => k,
+        };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          PTFilterPill(
+            label: '站点',
+            value: _siteFilter == 'all' ? '全部站点' : _siteFilter,
+            active: _siteFilter != 'all',
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: '筛选站点',
+              selected: _siteFilter,
+              onSelected: (v) => setState(() => _siteFilter = v),
+              options: [
+                const PTFilterOption(value: 'all', label: '全部站点'),
+                ..._sites.map((s) => PTFilterOption(value: s.value, label: s.value)),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        // 状态筛选
-        SizedBox(
-          height: 40,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: chips
-                .map((c) => GestureDetector(
-                      onTap: () => setState(() => _filter = c.$1),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _filter == c.$1 ? c.$3.withValues(alpha: 0.16) : Colors.transparent,
-                          border: Border.all(color: _filter == c.$1 ? c.$3.withValues(alpha: 0.4) : Colors.transparent),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(c.$2, style: TextStyle(color: _filter == c.$1 ? c.$3 : null, fontSize: 13)),
-                      ),
-                    ))
-                .toList(),
+          PTFilterPill(
+            label: '状态',
+            value: statusLabel(_filter),
+            active: _filter != 'all',
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: '筛选状态',
+              selected: _filter,
+              onSelected: (v) => setState(() => _filter = v),
+              options: [
+                PTFilterOption(value: 'all', label: '全部 (${_siteFiltered.length})'),
+                PTFilterOption(value: 'owned', label: '已拥有 ($_ownedCount)'),
+                PTFilterOption(value: 'available', label: '可购买 ($_availableCount)'),
+                PTFilterOption(value: 'out_of_stock', label: '缺货 ($_oosCount)'),
+                PTFilterOption(value: 'wearing', label: '佩戴中 ($_wearingCount)'),
+              ],
+            ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _siteChip(String value, String label) {
-    const c = Color(0xFF6C5CE7);
-    return GestureDetector(
-      onTap: () => setState(() => _siteFilter = value),
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: _siteFilter == value ? c.withValues(alpha: 0.16) : Colors.transparent,
-          border: Border.all(color: _siteFilter == value ? c.withValues(alpha: 0.4) : Colors.transparent),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(label, style: TextStyle(color: _siteFilter == value ? c : null, fontSize: 12)),
+        ],
       ),
     );
   }

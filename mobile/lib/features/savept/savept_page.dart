@@ -1,24 +1,32 @@
 import 'dart:math' as math;
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/savept.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// PT监护室页：聚合 savept.icu 站点健康数据（ICU 仪表盘风格）。
-/// 迁移自 MoviePilot savept 插件 Page.vue，针对小屏适配：紧凑生命体征 + 筛选 +
-/// 结构化公告（病危/恢复/站庆/讣告）+ 年份分组折叠 + 丰富卡片 + 今天站庆彩带。
+/// 迁移自 MoviePilot savept 插件 Page.vue，对齐 Web Savept.vue：品牌头部脉冲 +
+/// 紧凑生命体征 + 筛选 + 结构化公告（站点名高亮）+ 年份分组折叠 + 状态色卡 +
+/// 今天站庆彩带 + 回到顶部。
 class SaveptPage extends StatefulWidget {
   const SaveptPage({super.key});
   @override
   State<SaveptPage> createState() => _SaveptPageState();
 }
 
-class _SaveptPageState extends State<SaveptPage> {
+class _SaveptPageState extends State<SaveptPage> with SingleTickerProviderStateMixin {
   final _api = SaveptApi();
+  final _searchCtrl = TextEditingController();
+  final ScrollController _scroll = ScrollController();
+  late final AnimationController _pulse;
   SaveptResult? _data;
   bool _loading = true;
   String? _error;
+  bool _showBackToTop = false;
 
   // 筛选
   String _keyword = '';
@@ -32,6 +40,19 @@ class _SaveptPageState extends State<SaveptPage> {
   void initState() {
     super.initState();
     _load();
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat(reverse: true);
+    _scroll.addListener(() {
+      final show = _scroll.hasClients && _scroll.offset > 240;
+      if (show != _showBackToTop) setState(() => _showBackToTop = show);
+    });
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    _searchCtrl.dispose();
+    _scroll.dispose();
+    super.dispose();
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -41,12 +62,33 @@ class _SaveptPageState extends State<SaveptPage> {
     });
     try {
       _data = await _api.get(refresh: refresh);
+      if (refresh && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('数据已刷新')));
+      }
     } catch (e) {
       _error = e.toString();
+      if (refresh && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('刷新失败：$e')));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  void _clearFilters() {
+    _searchCtrl.clear();
+    setState(() {
+      _keyword = '';
+      _year = '全部';
+      _mpStatus = '全部';
+      _status = '全部';
+      _type = '全部';
+      _annivOnly = false;
+    });
+  }
+
+  void _scrollToTop() =>
+      _scroll.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
 
   // ── 派生数据 ──
   List<String> get _yearOptions {
@@ -60,6 +102,14 @@ class _SaveptPageState extends State<SaveptPage> {
     }
     return list;
   }
+
+  // 公告站点名高亮用：已知站点名集合，长名优先匹配（避免短名误命中）。
+  List<String> get _siteNames => (_data?.cards ?? const <SaveptSiteCard>[])
+      .map((c) => c.name.trim())
+      .where((s) => s.isNotEmpty)
+      .toSet()
+      .toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
 
   String _siteTypeLabel(String t) => switch (t) {
         'internal' => '内站',
@@ -122,7 +172,7 @@ class _SaveptPageState extends State<SaveptPage> {
 
   bool _matches(SaveptSiteCard c) {
     if (_keyword.isNotEmpty) {
-      final kw = [c.name, c.year, c.statusText, _siteTypeLabel(c.siteType)].join(' ').toLowerCase();
+      final kw = [c.name, c.search, c.year, c.statusText, _siteTypeLabel(c.siteType)].join(' ').toLowerCase();
       if (!kw.contains(_keyword.toLowerCase())) return false;
     }
     if (_year != '全部' && c.year != _year) return false;
@@ -160,18 +210,27 @@ class _SaveptPageState extends State<SaveptPage> {
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           leading: const HomeMenuButton(),
-          title: const Text('PT监护室'),
+          toolbarHeight: 62,
+          title: _headerTitle(),
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            IconButton(
-              icon: _loading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.refresh),
+            TextButton.icon(
               onPressed: _loading ? null : () => _load(refresh: true),
+              icon: _loading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.refresh),
+              label: const Text('刷新数据'),
             ),
           ],
         ),
+        floatingActionButton: _showBackToTop
+            ? FloatingActionButton(
+                mini: true,
+                onPressed: _scrollToTop,
+                child: const Icon(Icons.arrow_upward),
+              )
+            : null,
         body: RefreshIndicator(
           onRefresh: () => _load(refresh: true),
           child: _loading
@@ -181,6 +240,7 @@ class _SaveptPageState extends State<SaveptPage> {
                   : _data == null
                       ? const _Empty(text: '无数据')
                       : ListView(
+                          controller: _scroll,
                           padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
                           children: [
                             if (_data!.stale && _data!.notice.isNotEmpty)
@@ -192,20 +252,61 @@ class _SaveptPageState extends State<SaveptPage> {
                             _searchField(),
                             const SizedBox(height: 8),
                             _filterChips(),
+                            _filterMeta(),
                             const SizedBox(height: 12),
-                            ..._noticeSections.where((n) => n.items.isNotEmpty).map(_noticeCard),
+                            _noticesGrid(),
                             const SizedBox(height: 12),
                             ..._groupedEntries(),
                             if (_filtered.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 48),
-                                child: Center(child: Text('没有匹配的站点', style: TextStyle(color: Colors.grey))),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 48),
+                                child: Column(children: [
+                                  const Center(child: Text('没有匹配的站点', style: TextStyle(color: Colors.grey))),
+                                  const SizedBox(height: 12),
+                                  Center(child: TextButton(onPressed: _clearFilters, child: const Text('清除筛选'))),
+                                ]),
                               ),
                           ],
                         ),
         ),
       ),
     );
+  }
+
+  // 品牌头部：心跳脉冲图标 + 标题 + 副标题（对齐 Web Savept.vue 的 spt-pulse 头部）。
+  Widget _headerTitle() {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      ScaleTransition(
+        scale: Tween(begin: 0.82, end: 1.18).animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut)),
+        child: const Icon(Icons.favorite, color: Color(0xFFEF4444), size: 20),
+      ),
+      const SizedBox(width: 8),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        const Text('PT监护室', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        Text('站点运行状态实时监护', style: TextStyle(fontSize: 10, color: Colors.grey.shade600, height: 1.1)),
+      ]),
+    ]);
+  }
+
+  // 筛选元信息：显示 X / Y 个站点 + 抓取时间（对齐 Web 的 spt-filters__meta）。
+  Widget _filterMeta() {
+    final d = _data;
+    if (d == null) return const SizedBox.shrink();
+    final fetched = _fmtFetched(d.fetchedAt);
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        '显示 ${_filtered.length} / ${d.cards.length} 个站点${fetched.isNotEmpty ? ' · $fetched 更新' : ''}',
+        style: const TextStyle(fontSize: 11, color: Colors.grey),
+      ),
+    );
+  }
+
+  String _fmtFetched(String s) {
+    final d = DateTime.tryParse(s);
+    if (d == null) return '';
+    String p(int n) => n.toString().padLeft(2, '0');
+    return '${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}';
   }
 
   List<Widget> _groupedEntries() {
@@ -236,40 +337,48 @@ class _SaveptPageState extends State<SaveptPage> {
                   ]),
                   initiallyExpanded: true,
                   childrenPadding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  children: e.value.map((c) => _SiteCard(c, _siteTypeLabel, _statusLabel, _matchLabel, _healthColor, _isTodayAnniv, _annivDisplay)).toList(),
+                  children: [_siteGrid(e.value)],
                 ),
               ),
             ))
         .toList();
   }
 
-  Widget _vitals(SaveptSummary s) {
-    final items = <(int, String, Color)>[
-      (s.total, '监护中', PTColors.primary),
-      (s.healthy, '健康', const Color(0xFF22C55E)),
-      (s.mpOwned, '已拥有', const Color(0xFF16A34A)),
-      (s.critical, '病危', const Color(0xFFEF4444)),
-      (s.closed, '已关站', const Color(0xFF94A3B8)),
-      (s.todayAnniv, '站庆', const Color(0xFFF59E0B)),
-      (s.internal, '内站', const Color(0xFF3B82F6)),
-      (s.external, '外站', const Color(0xFF8B5CF6)),
-    ];
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-      child: Wrap(
-        alignment: WrapAlignment.spaceAround,
-        runSpacing: 12,
+  // 站点卡片响应式网格：宽屏 4 列→900 3 列→600 2 列→窄屏 1 列（对齐 Web .spt-grid 断点）。
+  // 用 LayoutBuilder+Wrap（非滚动）而非 GridView，避免在主 ListView 内嵌套纵向滚动报错。
+  Widget _siteGrid(List<SaveptSiteCard> items) {
+    return LayoutBuilder(builder: (ctx, c) {
+      final cols = ptAutoColumns(c.maxWidth, 240, minColumns: 1).clamp(1, 4);
+      const gap = 8.0;
+      final w = cols <= 1 ? c.maxWidth : (c.maxWidth - gap * (cols - 1)) / cols;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
         children: items
-            .map((it) => SizedBox(
-                  width: 68,
-                  child: Column(children: [
-                    Text('${it.$1}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: it.$3)),
-                    const SizedBox(height: 2),
-                    Text(it.$2, style: const TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
-                  ]),
+            .map((card) => SizedBox(
+                  width: w,
+                  child: _SiteCard(card, _siteTypeLabel, _statusLabel, _matchLabel, _healthColor, _isTodayAnniv, _annivDisplay),
                 ))
             .toList(),
-      ),
+      );
+    });
+  }
+
+  Widget _vitals(SaveptSummary s) {
+    final items = <PTStat>[
+      PTStat(value: '${s.total}', label: '监护中', color: PTColors.primary),
+      PTStat(value: '${s.healthy}', label: '健康', color: const Color(0xFF22C55E)),
+      PTStat(value: '${s.mpOwned}', label: '已拥有', color: const Color(0xFF16A34A)),
+      PTStat(value: '${s.critical}', label: '病危', color: const Color(0xFFEF4444)),
+      PTStat(value: '${s.closed}', label: '已关站', color: const Color(0xFF94A3B8)),
+      PTStat(value: '${s.todayAnniv}', label: '站庆', color: const Color(0xFFF59E0B)),
+      PTStat(value: '${s.internal}', label: '内站', color: const Color(0xFF3B82F6)),
+      PTStat(value: '${s.external}', label: '外站', color: const Color(0xFF8B5CF6)),
+    ];
+    // 单行指标条：宽屏 Row 均匀分布 + 竖分隔（监护仪风格）/ 窄屏横向滚动，永不折行。
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      child: PTStatStrip(items: items, dividers: isWideScreen(context), height: 44),
     );
   }
 
@@ -277,87 +386,129 @@ class _SaveptPageState extends State<SaveptPage> {
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: TextField(
-        decoration: const InputDecoration(
-          icon: Icon(Icons.search, color: Colors.grey),
+        controller: _searchCtrl,
+        decoration: InputDecoration(
+          icon: const Icon(Icons.search, color: Colors.grey),
           hintText: '搜索站点名称...',
           border: InputBorder.none,
           isDense: true,
-          contentPadding: EdgeInsets.symmetric(vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          suffixIcon: _keyword.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    setState(() => _keyword = '');
+                  },
+                )
+              : null,
         ),
         onChanged: (v) => setState(() => _keyword = v),
       ),
     );
   }
 
+  // 筛选 pill 行：状态/类型/年份/MP 各弹候选列表，近期站庆为开关 pill。
+  // 取代原 chip 行 + 双 dropdown 的多行筛选区（4 行 → 1 行小药丸）。
   Widget _filterChips() {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // 状态
-      Wrap(spacing: 6, runSpacing: 4, children: [
-        _chip('全部', _status == '全部', () => setState(() => _status = '全部')),
-        _chip('健康', _status == '健康', () => setState(() => _status = '健康'), const Color(0xFF22C55E)),
-        _chip('病危', _status == '病危', () => setState(() => _status = '病危'), const Color(0xFFEF4444)),
-        _chip('死亡', _status == '死亡', () => setState(() => _status = '死亡'), const Color(0xFF94A3B8)),
-        _chip('内站', _type == '内站', () => setState(() => _type = _type == '内站' ? '全部' : '内站')),
-        _chip('外站', _type == '外站', () => setState(() => _type = _type == '外站' ? '全部' : '外站')),
-        _chip('近期站庆', _annivOnly, () => setState(() => _annivOnly = !_annivOnly), const Color(0xFFF59E0B)),
-      ]),
-      const SizedBox(height: 6),
-      // 年份 + MP 下拉
-      Row(children: [
-        Expanded(child: _dropdown('年份', _year, _yearOptions, (v) => setState(() => _year = v))),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _dropdown(
-            'MP状态',
-            _mpStatus,
-            const ['全部', 'owned', 'available', 'unsupported'],
-            (v) => setState(() => _mpStatus = v),
-            labelOf: (v) => switch (v) {
-              'owned' => '已拥有',
-              'available' => '可添加',
-              'unsupported' => '未收录',
-              _ => '全部',
-            },
+    String mpLabel(String v) => switch (v) {
+          'owned' => '已拥有',
+          'available' => '可添加',
+          'unsupported' => '未收录',
+          _ => '全部',
+        };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          PTFilterPill(
+            label: '状态',
+            value: _status,
+            active: _status != '全部',
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: '健康状态',
+              selected: _status,
+              onSelected: (v) => setState(() => _status = v),
+              options: const [
+                PTFilterOption(value: '全部', label: '全部'),
+                PTFilterOption(value: '健康', label: '健康'),
+                PTFilterOption(value: '病危', label: '病危'),
+                PTFilterOption(value: '死亡', label: '死亡'),
+              ],
+            ),
           ),
-        ),
-      ]),
-    ]);
-  }
-
-  Widget _chip(String label, bool active, VoidCallback onTap, [Color? color]) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: active ? (color ?? PTColors.primary).withValues(alpha: 0.14) : Colors.transparent,
-          border: Border.all(color: active ? (color ?? PTColors.primary).withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3)),
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: active ? (color ?? PTColors.primary) : Colors.grey)),
+          PTFilterPill(
+            label: '类型',
+            value: _type,
+            active: _type != '全部',
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: '站点类型',
+              selected: _type,
+              onSelected: (v) => setState(() => _type = v),
+              options: const [
+                PTFilterOption(value: '全部', label: '全部'),
+                PTFilterOption(value: '内站', label: '内站'),
+                PTFilterOption(value: '外站', label: '外站'),
+              ],
+            ),
+          ),
+          PTFilterPill(
+            value: '近期站庆',
+            active: _annivOnly,
+            onTap: () => setState(() => _annivOnly = !_annivOnly),
+          ),
+          PTFilterPill(
+            label: '年份',
+            value: _year,
+            active: _year != '全部',
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: '建站年份',
+              selected: _year,
+              onSelected: (v) => setState(() => _year = v),
+              options: _yearOptions.map((y) => PTFilterOption(value: y, label: y)).toList(),
+            ),
+          ),
+          PTFilterPill(
+            label: 'MP',
+            value: mpLabel(_mpStatus),
+            active: _mpStatus != '全部',
+            onTap: () => showFilterSheet<String>(
+              context,
+              title: 'MP 状态',
+              selected: _mpStatus,
+              onSelected: (v) => setState(() => _mpStatus = v),
+              options: [
+                const PTFilterOption(value: '全部', label: '全部'),
+                PTFilterOption(value: 'owned', label: mpLabel('owned')),
+                PTFilterOption(value: 'available', label: mpLabel('available')),
+                PTFilterOption(value: 'unsupported', label: mpLabel('unsupported')),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _dropdown(String hint, String value, List<String> options, ValueChanged<String> onChanged, {String Function(String)? labelOf}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          isExpanded: true,
-          value: value,
-          style: const TextStyle(fontSize: 13, color: Colors.black87),
-          items: options
-              .map((o) => DropdownMenuItem(value: o, child: Text(labelOf?.call(o) ?? (o == '全部' ? '$hint：全部' : o))))
-              .toList(),
-          onChanged: (v) => v == null ? null : onChanged(v),
-        ),
-      ),
-    );
+  // 公告区：宽屏 2 列、窄屏 1 列（对齐 Web .spt-notices repeat(2,1fr)→768px 1fr）。
+  Widget _noticesGrid() {
+    final sections = _noticeSections.where((n) => n.items.isNotEmpty).toList();
+    if (sections.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(builder: (ctx, c) {
+      final cols = isWideScreen(context) && c.maxWidth >= 560 ? 2 : 1;
+      const gap = 8.0;
+      final w = cols <= 1 ? c.maxWidth : (c.maxWidth - gap) / 2;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: sections.map((n) => SizedBox(width: w, child: _noticeCard(n))).toList(),
+      );
+    });
   }
 
   Widget _noticeCard(_NoticeSection n) {
@@ -367,18 +518,31 @@ class _SaveptPageState extends State<SaveptPage> {
       'info' => const Color(0xFFF59E0B),
       _ => const Color(0xFF94A3B8),
     };
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: GlassCard(
+    return GlassCard(
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(n.title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
           const SizedBox(height: 6),
           ...n.items.map((t) => Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(t, style: const TextStyle(fontSize: 12, height: 1.5)),
+                child: _noticeRichText(t),
               )),
         ]),
+    );
+  }
+
+  // 公告正文：按站点名切片，命中站点名着色成 inline tag（移植自 Web utils/savept.ts 的 tokenizeNoticeText）。
+  Widget _noticeRichText(String text) {
+    final tokens = _tokenizeNoticeText(text, _siteNames);
+    if (tokens.isEmpty) return Text(text, style: const TextStyle(fontSize: 12, height: 1.5));
+    return Text.rich(
+      TextSpan(
+        style: const TextStyle(fontSize: 12, height: 1.5),
+        children: tokens
+            .map((t) => t.isSite
+                ? TextSpan(text: t.text, style: const TextStyle(color: Color(0xFF6C5CE7), fontWeight: FontWeight.w600))
+                : TextSpan(text: t.text))
+            .toList(),
       ),
     );
   }
@@ -400,7 +564,7 @@ class _NoticeSection {
   _NoticeSection(this.key, this.title, this.items);
 }
 
-/// 单站点卡片：今天站庆时叠加 confetti 彩带。
+/// 单站点卡片：今天站庆时叠加 confetti 彩带；死亡站灰度图标 + 状态色卡底。
 class _SiteCard extends StatefulWidget {
   final SaveptSiteCard card;
   final String Function(String) siteTypeLabel;
@@ -436,6 +600,14 @@ class _SiteCardState extends State<_SiteCard> {
     super.dispose();
   }
 
+  Future<void> _launchUrl(String url) async {
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('打开站点失败：$e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.card;
@@ -445,12 +617,15 @@ class _SiteCardState extends State<_SiteCard> {
       MatchType.nameExact || MatchType.nameFuzzy => const Color(0xFF2563EB),
       MatchType.none => const Color(0xFF64748B),
     };
+    final iconWidget = Image.network(c.icon!, width: 34, height: 34, fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => const SizedBox(width: 34, height: 34));
     return Container(
-      margin: const EdgeInsets.only(top: 6),
+      margin: EdgeInsets.zero,
       child: Stack(
         children: [
           GlassCard(
-            onTap: c.url.isNotEmpty ? () {} : null,
+            onTap: c.url.isNotEmpty ? () => _launchUrl(c.url) : null,
+            tint: color, // 健康状态淡色底（对齐 Web 卡片 healthy/critical/closed 着色）
             padding: const EdgeInsets.all(12),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               // 标签行
@@ -468,7 +643,18 @@ class _SiteCardState extends State<_SiteCard> {
                     padding: const EdgeInsets.only(right: 10),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(c.icon!, width: 34, height: 34, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox(width: 34, height: 34)),
+                      // 死亡站图标灰度（对齐 Web closed 卡 filter: grayscale(1)）
+                      child: c.status == SiteHealthStatus.closed
+                          ? ColorFiltered(
+                              colorFilter: const ColorFilter.matrix(<double>[
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0.2126, 0.7152, 0.0722, 0, 0,
+                                0, 0, 0, 1, 0,
+                              ]),
+                              child: iconWidget,
+                            )
+                          : iconWidget,
                     ),
                   ),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -490,10 +676,15 @@ class _SiteCardState extends State<_SiteCard> {
               ]),
               const SizedBox(height: 8),
               Row(children: [
+                // MP 状态徽章带前缀图标（已拥有=check / 可添加=plus / 未收录=help）
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(color: matchColor.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(999)),
-                  child: Text(widget.matchLabel(c.matchType), style: TextStyle(color: matchColor, fontSize: 11)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(_mpIcon(c.matchType), size: 12, color: matchColor),
+                    const SizedBox(width: 3),
+                    Text(widget.matchLabel(c.matchType), style: TextStyle(color: matchColor, fontSize: 11)),
+                  ]),
                 ),
                 if (c.domain.isNotEmpty) ...[
                   const SizedBox(width: 8),
@@ -539,6 +730,12 @@ class _SiteCardState extends State<_SiteCard> {
         SiteHealthStatus.closed => Icons.sentiment_very_dissatisfied,
         SiteHealthStatus.unknown => Icons.help_outline,
       };
+
+  IconData _mpIcon(MatchType m) => switch (m) {
+        MatchType.urlExact || MatchType.domainExact => Icons.check_circle_outline,
+        MatchType.nameExact || MatchType.nameFuzzy => Icons.add_circle_outline,
+        MatchType.none => Icons.help_outline,
+      };
 }
 
 class _Empty extends StatelessWidget {
@@ -555,4 +752,79 @@ class _Empty extends StatelessWidget {
       ],
     );
   }
+}
+
+// ── 公告正文站点名高亮分词（移植自 Web frontend/src/utils/savept.ts 的 tokenizeNoticeText）──
+// 按 `|` 切段，段内用「已知站点名集合正则前缀匹配」+「已抢救/已/还有/抢救/于 动词前缀启发式」
+// 找出站点名，便于在 RichText 里把站点名段着色成 inline tag。
+
+class _NoticeToken {
+  final bool isSite;
+  String text;
+  _NoticeToken.text(this.text) : isSite = false;
+  _NoticeToken.site(String name) : isSite = true, text = name;
+}
+
+void _appendNoticeText(List<_NoticeToken> tokens, String text) {
+  if (text.isEmpty) return;
+  if (tokens.isNotEmpty && !tokens.last.isSite) {
+    tokens.last.text += text;
+    return;
+  }
+  tokens.add(_NoticeToken.text(text));
+}
+
+String _escapeRegExp(String s) => s.replaceAll(RegExp(r'[.*+?^${}()|[\]\\]'), r'\$0');
+
+// 检测一段公告里是否以站点名开头（含可能的「前缀：」）。
+({String prefix, String siteName, String suffix})? _detectNoticeSiteName(String segmentText, List<String> siteNames) {
+  final raw = segmentText;
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+
+  final colonMatch = RegExp(r'^(.*?[：:]\s*)(.+)$').firstMatch(raw);
+  final prefix = colonMatch != null ? colonMatch.group(1)! : '';
+  final body = colonMatch != null ? colonMatch.group(2)! : raw;
+  final trimmedBody = body.trimLeft();
+  final leadingWs = body.substring(0, body.length - trimmedBody.length);
+
+  for (final name in siteNames) {
+    if (RegExp('^${_escapeRegExp(name)}(?=\\s|\$)').hasMatch(trimmedBody)) {
+      return (prefix: '$prefix$leadingWs', siteName: name, suffix: trimmedBody.substring(name.length));
+    }
+  }
+  // 启发式：站点名通常在「已抢救/已/还有/抢救/于」等动词前。
+  final heur = RegExp(r'^(.+?)(?=\s(?:已抢救|已|还有|抢救|于))').firstMatch(trimmedBody);
+  if (heur != null && heur.group(1) != null) {
+    final name = heur.group(1)!.trim();
+    if (name.isNotEmpty) {
+      return (prefix: '$prefix$leadingWs', siteName: name, suffix: trimmedBody.substring(heur.group(1)!.length));
+    }
+  }
+  return null;
+}
+
+void _tokenizeNoticeSegment(String seg, List<String> siteNames, List<_NoticeToken> tokens) {
+  if (seg.isEmpty) return;
+  final detected = _detectNoticeSiteName(seg, siteNames);
+  if (detected == null) {
+    _appendNoticeText(tokens, seg);
+    return;
+  }
+  _appendNoticeText(tokens, detected.prefix);
+  tokens.add(_NoticeToken.site(detected.siteName));
+  _appendNoticeText(tokens, detected.suffix);
+}
+
+// 把一条公告正文按 `|` 切段、段内探站点名，产出 token 序列（text/site 交替）。
+List<_NoticeToken> _tokenizeNoticeText(String text, List<String> siteNames) {
+  final content = text.trim();
+  if (content.isEmpty) return const [];
+  final tokens = <_NoticeToken>[];
+  final parts = content.split('|');
+  for (var i = 0; i < parts.length; i++) {
+    if (i > 0) _appendNoticeText(tokens, ' | ');
+    _tokenizeNoticeSegment(parts[i], siteNames, tokens);
+  }
+  return tokens;
 }

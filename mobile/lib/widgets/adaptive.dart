@@ -462,3 +462,264 @@ class PTHeaderAction {
   final VoidCallback? onPressed;
   const PTHeaderAction({required this.icon, required this.label, this.onPressed});
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// 紧凑头部原子：单行横向滚动 chip 条 / 指标条。
+// 替代各页散落的 `SizedBox(h:38/40)+ListView+GestureDetector+Container` chip 模板，
+// 以及监护室 vitals / 后宫概览那种「大数值+小标签」放进 Wrap 折行的双行瓦片。
+// 共同点：永不换行（横向滚动），把窄屏首屏被「标题 + 筛选」吃掉的竖向空间压回来。
+// ─────────────────────────────────────────────────────────────────────────
+
+/// [PTChipBar] 的一项。
+class PTChipItem<T> {
+  final T value;
+  final String label;
+  final Color? color; // 选中态着色（底 alpha.18 + 边 alpha.4）；空则用 PTColors.primary
+  const PTChipItem({required this.value, required this.label, this.color});
+}
+
+/// 单行横向滚动筛选条（单选）。收敛各页重复手写的 chip 模板。
+///
+/// 高度默认 34（比旧散落实现的 38/40 更紧），pill 样式（radius 999），
+/// 选中项用 [PTChipItem.color] 着色。横向滚动永不换行——窄屏省竖向空间。
+/// 用于站免 / 考核 / 推荐(源·分类) / 勋章墙(状态) / 消息(邮箱 tab) 等筛选条。
+class PTChipBar<T> extends StatelessWidget {
+  final List<PTChipItem<T>> items;
+  final T selected;
+  final ValueChanged<T> onSelected;
+  final double height;
+  final EdgeInsets padding;
+
+  const PTChipBar({
+    super.key,
+    required this.items,
+    required this.selected,
+    required this.onSelected,
+    this.height = 34,
+    this.padding = const EdgeInsets.symmetric(horizontal: 12),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: padding,
+        children: items.map((it) {
+          final on = it.value == selected;
+          final c = it.color ?? PTColors.primary;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () => onSelected(it.value),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: on ? c.withValues(alpha: 0.18) : Colors.transparent,
+                  border: Border.all(
+                    color: on ? c.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3),
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  it.label,
+                  style: TextStyle(
+                    fontSize: PTFs.body,
+                    fontWeight: on ? FontWeight.w600 : FontWeight.w500,
+                    color: on ? c : Colors.grey,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+/// [PTStatStrip] 的一项（纯展示指标，不可点）。
+class PTStat {
+  final String value;
+  final String label;
+  final Color? color;
+  const PTStat({required this.value, required this.label, this.color});
+}
+
+/// 单行指标条（纯展示）。替代监护室 vitals / 后宫概览的折行双行瓦片。
+///
+/// 每格 `value(bold,color) + label(grey,xs)` 紧凑排列：
+/// - 宽屏（≥1000）：[Row] 均匀分布 + 可选竖分隔线（监护仪风格），填满宽度不滚动；
+/// - 窄屏：横向滚动，永不折行（取代旧 Wrap 折 2-4 行）。
+class PTStatStrip extends StatelessWidget {
+  final List<PTStat> items;
+  final double height;
+  final bool dividers; // 宽屏时格间加竖分隔线（监护仪 spt-vital__divider 风格）
+  final EdgeInsets padding;
+
+  const PTStatStrip({
+    super.key,
+    required this.items,
+    this.height = 40,
+    this.dividers = false,
+    this.padding = const EdgeInsets.symmetric(horizontal: 4),
+  });
+
+  Widget _cell(PTStat s) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(s.value, style: TextStyle(fontSize: PTFs.lg, fontWeight: FontWeight.w700, color: s.color)),
+          const SizedBox(height: 2),
+          Text(s.label, style: const TextStyle(fontSize: PTFs.xs, color: Colors.grey), textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = <Widget>[];
+    for (var i = 0; i < items.length; i++) {
+      if (i > 0 && dividers) {
+        cells.add(Container(
+          width: 1,
+          height: height * 0.6,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.25),
+        ));
+      }
+      cells.add(_cell(items[i]));
+    }
+    // 宽屏：Row 均匀分布（填满宽度）+ 可选竖分隔；窄屏：横向滚动不折行。
+    if (isWideScreen(context)) {
+      return SizedBox(
+        height: height,
+        child: Padding(
+          padding: padding,
+          child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: cells),
+        ),
+      );
+    }
+    return SizedBox(
+      height: height,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: padding,
+        children: cells,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// 筛选弹窗化原子：很小的「药丸」触发器 + 候选列表弹窗。
+// 把常驻筛选 chip 行收进弹窗——顶部只留很小的 PTFilterPill，点按弹 showFilterSheet
+// 候选列表。比 PTChipBar 更省竖向空间（一行小药丸），符合移动端「筛选藏进弹窗」。
+// ─────────────────────────────────────────────────────────────────────────
+
+/// 很小的筛选触发器药丸。两种用法：
+/// - 选择型：[onTap] 由调用方打开 `showFilterSheet`，显示 `label value ▾`。
+/// - 开关型：[onTap] 直接切换（二元），[active] 控制高亮（如「近期站庆」）。
+class PTFilterPill extends StatelessWidget {
+  final String value; // 当前值文本（如 "正在站免"）
+  final String? label; // 维度名前缀（如 "状态"），可空
+  final VoidCallback onTap;
+  final bool active; // 非默认值时 true → 主色高亮
+  final IconData? icon;
+
+  const PTFilterPill({
+    super.key,
+    required this.value,
+    required this.onTap,
+    this.label,
+    this.active = false,
+    this.icon,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = PTColors.primary;
+    final dim = active ? c : Colors.grey.shade600;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? c.withValues(alpha: 0.14) : Colors.transparent,
+          border: Border.all(color: active ? c.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.35)),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[Icon(icon, size: 13, color: dim), const SizedBox(width: 3)],
+            if (label != null) ...[Text(label!, style: TextStyle(fontSize: 11, color: dim)), const SizedBox(width: 3)],
+            Text(value, style: TextStyle(fontSize: 12, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? c : Colors.black87)),
+            Icon(Icons.arrow_drop_down, size: 16, color: dim),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// [showFilterSheet] 的一个候选项。
+class PTFilterOption<T> {
+  final T value;
+  final String label;
+  final int? count; // 非空时右侧显示计数（如某状态条数）
+  const PTFilterOption({required this.value, required this.label, this.count});
+}
+
+/// 单选候选列表弹窗：复用 [showAdaptiveSheet]（窄屏底栏 / 宽屏对话框）。
+/// 一列 ListTile，选中项打勾，点按即选即关。
+/// 用回调式（而非返回值）：[onSelected] 仅在用户点选某项时触发——即便该项 value 为 null
+/// （如「全部」）也会回调；点外部关闭则不回调。从而把「选了『全部』(null)」与「取消」
+/// 彻底区分开，避免 null 双义。选项多（站点/年份动态）时由外层 SingleChildScrollView 滚动。
+void showFilterSheet<T>(
+  BuildContext context, {
+  required String title,
+  required List<PTFilterOption<T>> options,
+  required T selected,
+  required ValueChanged<T> onSelected,
+  double wideWidth = 420,
+}) {
+  showAdaptiveSheet(
+    context,
+    title: title,
+    wideWidth: wideWidth,
+    builder: (ctx) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final o in options)
+          ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+            title: Text(o.label, style: const TextStyle(fontSize: 14)),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (o.count != null)
+                  Text('${o.count}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                if (o.value == selected) ...[
+                  if (o.count != null) const SizedBox(width: 8),
+                  const Icon(Icons.check, color: PTColors.primary, size: 20),
+                ],
+              ],
+            ),
+            onTap: () {
+              Navigator.pop(ctx);
+              onSelected(o.value);
+            },
+          ),
+      ],
+    ),
+  );
+}

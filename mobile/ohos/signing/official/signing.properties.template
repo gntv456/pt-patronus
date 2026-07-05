@@ -1,0 +1,11 @@
+# Copy to signing.properties and fill with official DevEco/Huawei signing material.
+# The profile must match bundleName com.hxpt.ptpatronus.
+storeFile=D:\\PTPatronus\\mobile\\ohos\\signing\\official\\official.p12
+storePassword=
+keyAlias=
+keyPassword=
+certpath=D:\\PTPatronus\\mobile\\ohos\\signing\\official\\official.cer
+profile=D:\\PTPatronus\\mobile\\ohos\\signing\\official\\official.p7b
+signAlg=SHA256withECDSA
+# Optional override when the SDK is installed somewhere else.
+hapSignTool=D:\\SDK\\harmonyos-sdk\\5.1.0\\openharmony\\toolchains\\lib\\hap-sign-tool.jar

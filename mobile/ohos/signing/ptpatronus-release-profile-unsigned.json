@@ -1,0 +1,27 @@
+{
+  "version-name": "0.80.06",
+  "version-code": 10,
+  "app-distribution-type": "os_integration",
+  "uuid": "9d8a060d-4b0c-4f20-bf48-8a3d2a9b1001",
+  "validity": {
+    "not-before": 1767225600,
+    "not-after": 1924992000
+  },
+  "type": "release",
+  "bundle-info": {
+    "developer-id": "OpenHarmony",
+    "distribution-certificate": "-----BEGIN CERTIFICATE-----\nMIIB9zCCAZugAwIBAgIEK1hGhjAMBggqhkjOPQQDAgUAMGgxCzAJBgNVBAYTAkNO\nMRQwEgYDVQQKEwtPcGVuSGFybW9ueTEZMBcGA1UECxMQT3Blbkhhcm1vbnkgVGVh\nbTEoMCYGA1UEAxMfT3Blbkhhcm1vbnkgQXBwbGljYXRpb24gUmVsZWFzZTAeFw0y\nMTAyMDIxMjE5MTBaFw00OTEyMzExMjE5MTBaMGgxCzAJBgNVBAYTAkNOMRQwEgYD\nVQQKEwtPcGVuSGFybW9ueTEZMBcGA1UECxMQT3Blbkhhcm1vbnkgVGVhbTEoMCYG\nA1UEAxMfT3Blbkhhcm1vbnkgQXBwbGljYXRpb24gUmVsZWFzZTBZMBMGByqGSM49\nAgEGCCqGSM49AwEHA0IABNtg4JBClbl92Rgc3jm/RfcAdrHXaM8F0QOiwVEhnV5e\nbE5jNIYnAx+weFRT3QTyUjRNdhmc2aAzWyi+5t5CoBOjMTAvMA4GA1UdDwEB/wQE\nAwIHgDAdBgNVHQ4EFgQU+3Gu6GVxEFCwl3Bxmou72g1RWBowDAYIKoZIzj0EAwIF\nAANIADBFAiB43g1DrhD95TPpbkeaVPZLVJg0GbrJIVoBXM08eevBPAIhALeHrnW5\nXZp7sykrmn5utdV8Op1nY91R2f26+YVLn4oD\n-----END CERTIFICATE-----\n",
+    "bundle-name": "com.hxpt.ptpatronus",
+    "apl": "normal",
+    "app-feature": "hos_normal_app"
+  },
+  "acls": {
+    "allowed-acls": [
+      ""
+    ]
+  },
+  "permissions": {
+    "restricted-permissions": []
+  },
+  "issuer": "pki_internal"
+}

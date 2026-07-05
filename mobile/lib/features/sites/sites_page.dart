@@ -61,7 +61,7 @@ class _SitesPageState extends State<SitesPage> {
 
   String _defaultUrl(SiteDef d) {
     if (d.urls.isNotEmpty) return d.urls.first;
-    return d.schema == 'mteam' ? 'https://api.m-team.cc' : 'https://hxpt.org';
+    return d.schema == 'mteam' ? 'https://api.m-team.cc' : 'https://www.hxpt.org';
   }
 
   void _login(Site s) {
@@ -355,7 +355,7 @@ class _SitesPageState extends State<SitesPage> {
     }
 
     final knownNames = defs.map((d) => d.name).toSet();
-    final knownUrls = <String>{'https://api.m-team.cc', 'https://hxpt.org'};
+    final knownUrls = <String>{'https://api.m-team.cc', 'https://www.hxpt.org'};
     for (final d in defs) {
       knownUrls.add(_defaultUrl(d));
     }

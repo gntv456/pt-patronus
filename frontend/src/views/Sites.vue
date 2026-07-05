@@ -41,7 +41,7 @@ const isMTeam = computed(() => currentDef.value?.schema === 'mteam')
 // 取定义默认地址：首个真实 URL（馒头 urls[0] 即 api.m-team.cc），无则回退占位。
 function defUrl(d?: SiteDef) {
   if (d?.urls?.length) return d.urls[0]
-  return d?.schema === 'mteam' ? 'https://api.m-team.cc' : 'https://hxpt.org'
+  return d?.schema === 'mteam' ? 'https://api.m-team.cc' : 'https://www.hxpt.org'
 }
 // 占位优先取当前定义真实地址。
 const baseUrlPlaceholder = computed(() => defUrl(currentDef.value))

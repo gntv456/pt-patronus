@@ -1,7 +1,7 @@
 // Command live_smoke 用真实 cookie 对站点跑端到端 Search + UserInfo，验证适配器+选择器对真实页面的解析。
 //
 // 两种模式：
-//  1. 单站：SITE_COOKIE + SITE_ID(默认 hxpt) + SITE_BASE(默认 https://hxpt.org) + SITE_KW(默认 test)
+//  1. 单站：SITE_COOKIE + SITE_ID(默认 hxpt) + SITE_BASE(默认 https://www.hxpt.org) + SITE_KW(默认 test)
 //  2. 批量：SITES_FILE 指向一个 JSON 数组文件（本地放 cookie，不入库），一次跑多站并汇总。
 //
 // SITES_FILE 格式（每项 id 必填，base 默认按 id 取定义首个 url，kw 默认 test）：
@@ -70,7 +70,7 @@ func main() {
 func runSingle(ctx context.Context) {
 	sp := siteSpec{
 		ID:     envOr("SITE_ID", "hxpt"),
-		Base:   envOr("SITE_BASE", "https://hxpt.org"),
+		Base:   envOr("SITE_BASE", "https://www.hxpt.org"),
 		Cookie: os.Getenv("SITE_COOKIE"),
 		KW:     envOr("SITE_KW", "test"),
 	}

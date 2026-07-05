@@ -119,6 +119,9 @@ const GLYPHS: Record<string, string> = {
   // 工作流：节点图（三节点 + 连线）
   workflow:
     '<circle cx="5" cy="6" r="2.4"/><circle cx="19" cy="6" r="2.4"/><circle cx="12" cy="18" r="2.4"/><path d="M7 6h10"/><path d="M6.5 7.8L11 16"/><path d="M17.5 7.8L13 16"/>',
+  // 插件：拼图块
+  plugin:
+    '<path d="M8 3h4a2 2 0 0 1 2 2v2h2a2 2 0 1 1 0 4h-2v3h2a2 2 0 0 1 2 2v3H5v-3a2 2 0 0 1 2-2h2v-3H7a2 2 0 1 1 0-4h2V5a2 2 0 0 1-1-2z"/>',
   // RSS：广播信号弧
   rss:
     '<path d="M5 19a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/><path d="M4 11a7 7 0 0 1 7 7"/><path d="M4 5a13 13 0 0 1 13 13"/>',

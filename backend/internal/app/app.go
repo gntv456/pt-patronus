@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -29,6 +30,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/monitor"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
+	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/site"
@@ -173,6 +175,12 @@ func New(cfg *config.Config) (*App, error) {
 	noticeOp := oper.NewNoticeOper(database)
 	noticeSvc := notice.NewService(noticeOp, wsHub.Broadcast, notifMgr)
 	wsBC.SetNotice(noticeSvc) // 下载器种子完成 diff → 通知中心
+
+	pluginMgr := plugins.NewManager(database, bus, noticeSvc)
+	if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
+		slog.Warn("load external plugins failed", "err", err)
+	}
+	pluginMgr.Start(context.Background())
 
 	// 在线更新：拉官方版本清单(UPDATE_MANIFEST_URL)与当前版本比较，供 Web/客户端检查；
 	// 管理员可写自托管清单(data/update-manifest.json)覆盖官方源。
@@ -530,6 +538,7 @@ func New(cfg *config.Config) (*App, error) {
 		Medal:      medalCh,
 		Notice:     noticeSvc,
 		Update:     updateSvc,
+		Plugins:    pluginMgr,
 	})
 
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: engine}

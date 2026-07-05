@@ -19,6 +19,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/monitor"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
+	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/update"
@@ -76,6 +77,7 @@ type Deps struct {
 	Medal         *chain.MedalChain
 	Notice        *notice.Service
 	Update        *update.Service
+	Plugins       *plugins.Manager
 }
 
 // splitOrigins 把逗号分隔的 CORS 配置拆为来源切片（空切片表示开发全开）。
@@ -432,6 +434,23 @@ func Build(d *Deps) *gin.Engine {
 			{
 				wfRuns.GET("", wfH.ListRuns)
 				wfRuns.GET("/:rid", wfH.RunDetail)
+			}
+
+			pluginH := v1.NewPluginHandler(d.Plugins)
+			plugins := guarded.Group("/plugins")
+			{
+				plugins.GET("", pluginH.List)
+				plugins.GET("/logs", pluginH.Logs)
+				plugins.POST("/events", middleware.RequireAdmin(), pluginH.PublishEvent)
+				plugins.GET("/market", middleware.RequireAdmin(), pluginH.Market)
+				plugins.POST("/market/install", middleware.RequireAdmin(), pluginH.Install)
+				plugins.GET("/:id", pluginH.Get)
+				plugins.PUT("/:id/config", middleware.RequireAdmin(), pluginH.SaveConfig)
+				plugins.POST("/:id/enable", middleware.RequireAdmin(), pluginH.Enable)
+				plugins.POST("/:id/disable", middleware.RequireAdmin(), pluginH.Disable)
+				plugins.POST("/:id/action", middleware.RequireAdmin(), pluginH.Action)
+				plugins.POST("/:id/reload", middleware.RequireAdmin(), pluginH.Reload)
+				plugins.DELETE("/:id", middleware.RequireAdmin(), pluginH.Uninstall)
 			}
 
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

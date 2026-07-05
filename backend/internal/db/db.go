@@ -43,6 +43,7 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 	if err := db.AutoMigrate(
 		&models.User{}, &models.Site{}, &models.SiteStat{},
 		&models.Downloader{}, &models.ActivationCode{}, &models.SystemConfig{},
+		&models.PluginState{}, &models.PluginLog{},
 		&models.PosterCache{}, &models.CrossSeedSetting{}, &models.CrossSeedTask{},
 		&models.FileStorage{}, &models.RegistrationWatch{},
 		&models.MonitorTarget{}, &models.MetricSnapshot{}, &models.MonitorAlert{},

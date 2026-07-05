@@ -30,8 +30,8 @@ type Site struct {
 	CookieEnc     string    `gorm:"type:text" json:"-"` // AES-GCM 加密
 	APIKeyEnc     string    `gorm:"type:text" json:"-"` // MTeam 等 API key（加密）
 	PasskeyEnc    string    `gorm:"type:text" json:"-"`
-	Username      string    `gorm:"size:64" json:"username"`       // 站点账号（财神等 API 登录用）
-	PasswordEnc   string    `gorm:"type:text" json:"-"`            // 站点密码（AES-GCM 加密）
+	Username      string    `gorm:"size:64" json:"username"` // 站点账号（财神等 API 登录用）
+	PasswordEnc   string    `gorm:"type:text" json:"-"`      // 站点密码（AES-GCM 加密）
 	IsActive      bool      `gorm:"default:true" json:"is_active"`
 	LimitInterval int       `gorm:"default:0" json:"limit_interval"` // 抓取限流（秒）
 	Priority      int       `gorm:"default:0" json:"priority"`
@@ -43,20 +43,20 @@ type Site struct {
 type SiteStat struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	SiteID       uint      `gorm:"index;not null" json:"site_id"`
-	Level        string    `gorm:"size:64" json:"level"`           // 用户等级（展示用）
-	UserName     string    `gorm:"size:64" json:"username"`         // 站点用户名（导出海报身份行，best-effort）
-	UserID       string    `gorm:"size:32" json:"user_id"`         // 站点用户 ID
-	Email        string    `gorm:"size:128" json:"email"`          // 账号邮箱（best-effort，部分隐藏原样保留）
+	Level        string    `gorm:"size:64" json:"level"`    // 用户等级（展示用）
+	UserName     string    `gorm:"size:64" json:"username"` // 站点用户名（导出海报身份行，best-effort）
+	UserID       string    `gorm:"size:32" json:"user_id"`  // 站点用户 ID
+	Email        string    `gorm:"size:128" json:"email"`   // 账号邮箱（best-effort，部分隐藏原样保留）
 	Uploaded     int64     `gorm:"default:0" json:"uploaded"`
 	Downloaded   int64     `gorm:"default:0" json:"downloaded"`
 	Ratio        float64   `gorm:"default:0" json:"ratio"`
 	Seeding      int       `gorm:"default:0" json:"seeding"`
 	Leeching     int       `gorm:"default:0" json:"leeching"`
-	SeedingSize  int64     `gorm:"default:0" json:"seeding_size"`  // 做种总体积（字节）
-	Uploads      int       `gorm:"default:0" json:"uploads"`      // 发布数（用户上传的种子数）
-	Bonus        float64   `gorm:"default:0" json:"bonus"`        // 魔力/火花/蟹币/元宝（站点别名）
+	SeedingSize  int64     `gorm:"default:0" json:"seeding_size"`   // 做种总体积（字节）
+	Uploads      int       `gorm:"default:0" json:"uploads"`        // 发布数（用户上传的种子数）
+	Bonus        float64   `gorm:"default:0" json:"bonus"`          // 魔力/火花/蟹币/元宝（站点别名）
 	BonusPerHour float64   `gorm:"default:0" json:"bonus_per_hour"` // 每小时积分产出
-	JoinDate     string    `gorm:"size:32" json:"join_date"`      // 加入日期（原始文本）
+	JoinDate     string    `gorm:"size:32" json:"join_date"`        // 加入日期（原始文本）
 	SnapAt       time.Time `json:"snap_at"`
 	CreatedAt    time.Time `json:"created_at"`
 }
@@ -93,6 +93,29 @@ type SystemConfig struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// PluginState stores runtime state and user config for a registered plugin.
+type PluginState struct {
+	ID          string     `gorm:"primaryKey;size:96" json:"id"`
+	Enabled     bool       `gorm:"default:false;index" json:"enabled"`
+	Installed   bool       `gorm:"default:true;index" json:"installed"`
+	ConfigJSON  string     `gorm:"type:text;column:config_json" json:"-"`
+	LastError   string     `gorm:"type:text" json:"last_error,omitempty"`
+	LastEventAt *time.Time `json:"last_event_at,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+}
+
+// PluginLog records plugin events, actions, and operational messages.
+type PluginLog struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	PluginID  string    `gorm:"size:96;index;not null" json:"plugin_id"`
+	Level     string    `gorm:"size:16;index" json:"level"`
+	Event     string    `gorm:"size:96;index" json:"event"`
+	Message   string    `gorm:"type:text" json:"message"`
+	DataJSON  string    `gorm:"type:text;column:data_json" json:"-"`
+	CreatedAt time.Time `gorm:"index" json:"created_at"`
+}
+
 // PosterCache — 海报/元数据缓存（避免重复打 TMDB/豆瓣/MusicBrainz）。
 type PosterCache struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
@@ -127,14 +150,14 @@ type CrossSeedSetting struct {
 // CrossSeedTask — 辅种候选记录。
 type CrossSeedTask struct {
 	ID            uint       `gorm:"primaryKey" json:"id"`
-	DownloaderID  uint       `gorm:"index" json:"downloader_id"`         // 源种子所在下载器
-	SiteID        uint       `gorm:"index" json:"site_id"`               // 候选命中的本地站（MTeam genDlToken 现取 baseURL+api_key 用）
+	DownloaderID  uint       `gorm:"index" json:"downloader_id"` // 源种子所在下载器
+	SiteID        uint       `gorm:"index" json:"site_id"`       // 候选命中的本地站（MTeam genDlToken 现取 baseURL+api_key 用）
 	InfoHash      string     `gorm:"index;size:40;uniqueIndex:uk_cross_seed,priority:1" json:"info_hash"`
 	SourceSite    string     `gorm:"size:64" json:"source_site"`
 	SourceName    string     `gorm:"size:255" json:"source_name"`
 	CandidateSite string     `gorm:"size:64;uniqueIndex:uk_cross_seed,priority:2" json:"candidate_site"`
 	CandidateURL  string     `gorm:"size:512" json:"candidate_url"`
-	SavePath      string     `gorm:"size:255" json:"save_path"`          // 辅种目标保存路径（默认复用源种子路径）
+	SavePath      string     `gorm:"size:255" json:"save_path"`             // 辅种目标保存路径（默认复用源种子路径）
 	Status        string     `gorm:"size:16;default:pending" json:"status"` // pending | added | skipped | failed
 	MatchScore    int        `json:"match_score"`
 	CreatedAt     time.Time  `json:"created_at"`
@@ -175,22 +198,22 @@ type RegistrationWatch struct {
 type MonitorTarget struct {
 	ID            uint       `gorm:"primaryKey" json:"id"`
 	Name          string     `gorm:"size:64;not null" json:"name"`
-	Type          string     `gorm:"size:16;index;not null" json:"type"`    // host | nas | camera
-	Host          string     `gorm:"size:255" json:"host"`                  // 地址/IP；host 本机留空
+	Type          string     `gorm:"size:16;index;not null" json:"type"` // host | nas | camera
+	Host          string     `gorm:"size:255" json:"host"`               // 地址/IP；host 本机留空
 	Port          int        `json:"port"`
-	Vendor        string     `gorm:"size:32" json:"vendor"`                 // nas: synology|truenas|snmp；camera: onvif|rtsp
-	Protocol      string     `gorm:"size:16" json:"protocol"`               // local|ssh|api|snmp|onvif|rtsp
-	UsernameEnc   string     `gorm:"type:text" json:"-"`                    // AES-GCM 加密
-	PasswordEnc   string     `gorm:"type:text" json:"-"`                    // AES-GCM 加密
-	PrivateKeyEnc string     `gorm:"type:text" json:"-"`                    // AES-GCM 加密的 SSH 私钥 PEM（可选）
-	Username      string     `gorm:"-" json:"username,omitempty"`           // 回显用（解密自 UsernameEnc）；写时忽略
-	HasPrivateKey bool       `gorm:"-" json:"has_private_key,omitempty"`    // 回显用（PrivateKeyEnc 非空）；明文私钥绝不回传
-	RTSPURL       string     `gorm:"size:512" json:"rtsp_url"`              // camera 拉流地址（预览用，ONVIF 可回填）
-	IntervalSec   int        `gorm:"default:60" json:"interval_sec"`        // 采集间隔（秒）
-	TimeoutSec    int        `gorm:"default:15" json:"timeout_sec"`         // 单次采集超时
+	Vendor        string     `gorm:"size:32" json:"vendor"`              // nas: synology|truenas|snmp；camera: onvif|rtsp
+	Protocol      string     `gorm:"size:16" json:"protocol"`            // local|ssh|api|snmp|onvif|rtsp
+	UsernameEnc   string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
+	PasswordEnc   string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
+	PrivateKeyEnc string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密的 SSH 私钥 PEM（可选）
+	Username      string     `gorm:"-" json:"username,omitempty"`        // 回显用（解密自 UsernameEnc）；写时忽略
+	HasPrivateKey bool       `gorm:"-" json:"has_private_key,omitempty"` // 回显用（PrivateKeyEnc 非空）；明文私钥绝不回传
+	RTSPURL       string     `gorm:"size:512" json:"rtsp_url"`           // camera 拉流地址（预览用，ONVIF 可回填）
+	IntervalSec   int        `gorm:"default:60" json:"interval_sec"`     // 采集间隔（秒）
+	TimeoutSec    int        `gorm:"default:15" json:"timeout_sec"`      // 单次采集超时
 	Enabled       bool       `gorm:"default:true" json:"enabled"`
-	Thresholds    string     `gorm:"type:text" json:"thresholds"`           // 阈值规则 JSON（见 monitor.Thresholds）
-	LastOnline    *bool      `json:"last_online"`                           // 上次探活结果（nil=从未探活）
+	Thresholds    string     `gorm:"type:text" json:"thresholds"` // 阈值规则 JSON（见 monitor.Thresholds）
+	LastOnline    *bool      `json:"last_online"`                 // 上次探活结果（nil=从未探活）
 	LastError     string     `gorm:"type:text" json:"last_error"`
 	LastCheckedAt *time.Time `json:"last_checked_at"`
 	CreatedAt     time.Time  `json:"created_at"`
@@ -251,15 +274,15 @@ type CheckinRecord struct {
 // 单 admin 应用，无 user_id。Status: subscribed(订阅中) | completed(电影已下，不再查) | paused(暂停)。
 type Subscription struct {
 	ID            uint       `gorm:"primaryKey" json:"id"`
-	Source        string     `gorm:"size:16" json:"source"`        // tmdb | douban | bangumi
+	Source        string     `gorm:"size:16" json:"source"`          // tmdb | douban | bangumi
 	SourceID      string     `gorm:"size:64;index" json:"source_id"` // movie:123
 	Title         string     `gorm:"size:255;not null" json:"title"`
 	Year          int        `json:"year"`
-	Type          string     `gorm:"size:16" json:"type"`          // movie | tv
-	Category      string     `gorm:"size:16" json:"category"`      // 传给 SearchSites 的 category（movie/tv）
+	Type          string     `gorm:"size:16" json:"type"`     // movie | tv
+	Category      string     `gorm:"size:16" json:"category"` // 传给 SearchSites 的 category（movie/tv）
 	PosterURL     string     `gorm:"size:512" json:"poster_url"`
-	Resolution    string     `gorm:"size:32" json:"resolution"`    // 可选：1080p/2160p，空=不过滤
-	DownloaderID  uint       `gorm:"index" json:"downloader_id"`   // 0=默认下载器
+	Resolution    string     `gorm:"size:32" json:"resolution"`  // 可选：1080p/2160p，空=不过滤
+	DownloaderID  uint       `gorm:"index" json:"downloader_id"` // 0=默认下载器
 	SavePath      string     `gorm:"size:255" json:"save_path"`
 	Status        string     `gorm:"size:16;default:subscribed;index" json:"status"`
 	LastCheckedAt *time.Time `json:"last_checked_at"`
@@ -283,9 +306,9 @@ type SSHHostKey struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Host        string    `gorm:"size:255;index:idx_ssh_host,priority:1;not null" json:"host"`
 	Port        int       `gorm:"index:idx_ssh_host,priority:2;default:22" json:"port"`
-	KeyType     string    `gorm:"size:32" json:"key_type"`      // ssh-ed25519 / ssh-rsa / ecdsa-...
-	Fingerprint string    `gorm:"size:128" json:"fingerprint"`  // sha256:...（便于展示/排查）
-	Key         []byte    `json:"-"`                            // marshaled host key（比对用），公钥不敏感
+	KeyType     string    `gorm:"size:32" json:"key_type"`     // ssh-ed25519 / ssh-rsa / ecdsa-...
+	Fingerprint string    `gorm:"size:128" json:"fingerprint"` // sha256:...（便于展示/排查）
+	Key         []byte    `json:"-"`                           // marshaled host key（比对用），公钥不敏感
 	AcceptedAt  time.Time `json:"accepted_at"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -296,8 +319,8 @@ type SSHHostKey struct {
 type Agent struct {
 	ID         uint       `gorm:"primaryKey" json:"id"`
 	Name       string     `gorm:"size:64;not null" json:"name"`
-	SecretHash string     `gorm:"size:128;not null" json:"-"`           // bcrypt(明文 secret)
-	SecretHint string     `gorm:"size:16" json:"secret_hint"`           // 明文前 8 位（运维辨认，不泄露）
+	SecretHash string     `gorm:"size:128;not null" json:"-"` // bcrypt(明文 secret)
+	SecretHint string     `gorm:"size:16" json:"secret_hint"` // 明文前 8 位（运维辨认，不泄露）
 	Enabled    bool       `gorm:"default:true" json:"enabled"`
 	TargetID   uint       `gorm:"uniqueIndex;not null" json:"target_id"` // 1:1 关联 MonitorTarget
 	Online     bool       `gorm:"default:false" json:"online"`           // WS 是否在线
@@ -317,7 +340,7 @@ type AssessmentTask struct {
 	Description string    `gorm:"type:text" json:"description"`
 	StartTime   int64     `json:"start_time"` // epoch ms（0=未知）
 	EndTime     int64     `json:"end_time"`
-	Status      string    `gorm:"size:16;default:ACTIVE" json:"status"` // ACTIVE/COMPLETED/FAILED/EXEMPT/UNKNOWN
+	Status      string    `gorm:"size:16;default:ACTIVE" json:"status"`   // ACTIVE/COMPLETED/FAILED/EXEMPT/UNKNOWN
 	MetricsJSON string    `gorm:"type:text;column:metrics_json" json:"-"` // []TaskMetric 序列化
 	RawJSON     string    `gorm:"type:text" json:"-"`
 	FetchedAt   time.Time `gorm:"index" json:"fetched_at"`
@@ -338,9 +361,9 @@ type Medal struct {
 	SaleBeginTime    *int64    `json:"sale_begin_time"` // epoch ms（nil=未知，0 值过滤为 nil）
 	SaleEndTime      *int64    `json:"sale_end_time"`
 	Price            float64   `json:"price"`
-	OriginalPrice    float64   `json:"original_price"` // 原价（溢价时 < Price，前端划线展示）
-	Validity         string    `gorm:"size:32" json:"validity"`   // "30天"/"永久"
-	BonusRate        string    `gorm:"size:32" json:"bonus_rate"` // "+20%"
+	OriginalPrice    float64   `json:"original_price"`                                 // 原价（溢价时 < Price，前端划线展示）
+	Validity         string    `gorm:"size:32" json:"validity"`                        // "30天"/"永久"
+	BonusRate        string    `gorm:"size:32" json:"bonus_rate"`                      // "+20%"
 	PurchaseStatus   string    `gorm:"size:16;default:UNKNOWN" json:"purchase_status"` // OWNED/AVAILABLE/OUT_OF_STOCK/NOT_ON_SALE/DISCONTINUED/UNKNOWN
 	GiftStatus       string    `gorm:"size:32" json:"gift_status"`
 	Stock            int       `gorm:"default:-1" json:"stock"` // -1=无限/未知
@@ -361,7 +384,7 @@ type Workflow struct {
 	Name            string     `gorm:"size:128;not null" json:"name"`
 	Description     string     `gorm:"type:text" json:"description"`
 	TriggerType     string     `gorm:"size:16;default:manual;index" json:"trigger_type"` // timer|event|manual
-	Timer           string     `gorm:"size:64" json:"timer"`                              // cron 表达式（trigger_type=timer）
+	Timer           string     `gorm:"size:64" json:"timer"`                             // cron 表达式（trigger_type=timer）
 	EventType       string     `gorm:"size:64" json:"event_type"`                        // 监听事件类型（trigger_type=event）
 	EventConditions string     `gorm:"type:text" json:"event_conditions"`                // 事件触发条件 JSON（[]workflow.EventCondition）
 	Enabled         bool       `gorm:"default:false;index" json:"enabled"`
@@ -385,8 +408,8 @@ type WorkflowRun struct {
 	FinishedAt     *time.Time `json:"finished_at"`
 	DurationMS     int64      `json:"duration_ms"`
 	NodeExecutions string     `gorm:"type:text" json:"node_executions"` // []LogEntry JSON
-	Result         string     `gorm:"type:text" json:"result"`           // 最终摘要/错误
-	CreatedAt      time.Time  `gorm:"index" json:"created_at"`           // 清理任务按此索引删旧
+	Result         string     `gorm:"type:text" json:"result"`          // 最终摘要/错误
+	CreatedAt      time.Time  `gorm:"index" json:"created_at"`          // 清理任务按此索引删旧
 }
 
 // RssSubscription — RSS 订阅源。可选关联 SiteID（PT 站 cookie 鉴权 RSS）。
@@ -431,16 +454,16 @@ type RssItem struct {
 // Token 为 URL 内的密钥（随机），即鉴权凭据；可选 Secret 做 HMAC 签名校验（X-Signature 头）。
 // TargetWorkflowID 非空时直接触发该工作流（payload 注入 Variables）；同时广播 "webhook" 事件供 event 型工作流监听。
 type Webhook struct {
-	ID              uint       `gorm:"primaryKey" json:"id"`
-	Name            string     `gorm:"size:128;not null" json:"name"`
-	Token           string     `gorm:"size:64;uniqueIndex;not null" json:"token"` // URL 密钥（随机 32 hex）
-	TargetWorkflowID uint      `gorm:"index" json:"target_workflow_id"`           // 0=不直接触发工作流
-	SecretEnc       string     `gorm:"type:text" json:"-"`                        // AES-GCM 加密的 HMAC 校验密钥（可选）
-	HasSecret       bool       `gorm:"-" json:"has_secret,omitempty"`             // 回显用（是否设了签名密钥）
-	Enabled         bool       `gorm:"default:true" json:"enabled"`
-	TriggerCount    int        `gorm:"default:0" json:"trigger_count"`
-	LastTriggeredAt *time.Time `json:"last_triggered_at"`
-	LastPayload     string     `gorm:"type:text" json:"-"` // 最近一次请求体（截断，调试用）
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	ID               uint       `gorm:"primaryKey" json:"id"`
+	Name             string     `gorm:"size:128;not null" json:"name"`
+	Token            string     `gorm:"size:64;uniqueIndex;not null" json:"token"` // URL 密钥（随机 32 hex）
+	TargetWorkflowID uint       `gorm:"index" json:"target_workflow_id"`           // 0=不直接触发工作流
+	SecretEnc        string     `gorm:"type:text" json:"-"`                        // AES-GCM 加密的 HMAC 校验密钥（可选）
+	HasSecret        bool       `gorm:"-" json:"has_secret,omitempty"`             // 回显用（是否设了签名密钥）
+	Enabled          bool       `gorm:"default:true" json:"enabled"`
+	TriggerCount     int        `gorm:"default:0" json:"trigger_count"`
+	LastTriggeredAt  *time.Time `json:"last_triggered_at"`
+	LastPayload      string     `gorm:"type:text" json:"-"` // 最近一次请求体（截断，调试用）
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }

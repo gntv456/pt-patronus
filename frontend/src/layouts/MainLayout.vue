@@ -75,6 +75,7 @@ const navGroups = [
       { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
       { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
       { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
+      { name: 'plugins', label: '插件', icon: 'plugin', from: '#0ea5e9', to: '#22c55e' },
       { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50' },
     ],
   },
@@ -89,6 +90,7 @@ const navDesc: Record<string, string> = {
   'medal-wall': '勋章墙 · 勋章收集',
   entertainment: '娱乐 · 站内小游戏',
   savept: '监护室 · 站点健康监控',
+  plugins: '插件 · 事件扩展 / 动作执行',
 }
 
 function toggleTheme() {

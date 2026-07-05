@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "name": "PTPatronus 示例插件市场",
+  "plugins": [
+    {
+      "id": "external-http-demo",
+      "name": "外部 HTTP 示例插件",
+      "version": "1.0.0",
+      "author": "PTPatronus",
+      "description": "演示 external-http 插件协议：健康检查、事件接收和动作执行。",
+      "runtime": "external-http",
+      "archive": "archives/external-http-demo.zip",
+      "sha256": "",
+      "permissions": ["event:read", "log:write"],
+      "events": [
+        { "type": "plugin.test", "description": "插件测试事件" }
+      ],
+      "actions": [
+        { "name": "ping", "label": "Ping", "description": "返回插件收到的输入。" }
+      ]
+    }
+  ]
+}

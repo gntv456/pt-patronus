@@ -2,13 +2,21 @@ package config
 
 import "testing"
 
-// release 模式下缺密钥必须拒绝启动（防公开默认 key 导致免认证接管）。
-func TestLoadReleaseRejectsMissingSecrets(t *testing.T) {
+// release 模式下未显式设密钥 → 自动生成 + 持久化,Load 成功（零配置安全启动）。
+func TestLoadReleaseAutoGeneratesSecrets(t *testing.T) {
 	t.Setenv("APP_ENV", "release")
 	t.Setenv("SECRET_KEY", "")
 	t.Setenv("ACTIVATION_SECRET", "")
-	if _, err := Load(); err == nil {
-		t.Fatal("expected Load to fail in release mode without SECRET_KEY/ACTIVATION_SECRET")
+	t.Setenv("DATA_DIR", t.TempDir()) // 隔离,避免污染 ./data
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected Load to auto-generate secrets, got %v", err)
+	}
+	if cfg.SecretKey == "" || cfg.ActivationSecret == "" {
+		t.Fatal("expected non-empty auto-generated secrets")
+	}
+	if cfg.SecretKey == cfg.ActivationSecret {
+		t.Error("SECRET_KEY and ACTIVATION_SECRET should be independently generated (differ)")
 	}
 }
 

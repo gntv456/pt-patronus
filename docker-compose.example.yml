@@ -18,12 +18,13 @@ services:
     environment:
       APP_ENV: release
       HTTP_ADDR: ":8088"
-      # ===== 必填（release 模式留空 → 容器启动即退出）=====
-      # ≥32 字节随机串：JWT 签名 + AES 加密站点 cookie / 下载器密码的密钥来源。
-      # 生成：openssl rand -base64 32
-      # 用 ${VAR:?...} 语法：.env 没设时 compose up 会直接报错提示，比留空更友好。
-      SECRET_KEY: ${SECRET_KEY:?在 .env 设为 openssl rand -base64 32 的输出}
-      ACTIVATION_SECRET: ${ACTIVATION_SECRET:?在 .env 设为 openssl rand -base64 32 的输出}
+      # ===== 密钥（可选——不设则后端自动生成强随机密钥并持久化到
+      #       ./data/secret_key 与 ./data/activation_secret,零配置安全启动,每个部署密钥不同）=====
+      # 普通用户：这两行保持注释/不设即可,后端首次启动自动生成,无需任何配置。
+      # 高级用户/生产：想自己控制密钥,取消注释填入(≥32 字节随机串,
+      #                生成：openssl rand -base64 32),或用 .env 注入。
+      # SECRET_KEY: 你的随机串1
+      # ACTIVATION_SECRET: 你的随机串2
       # ===== 可选（按需取消注释）=====
       # CORS_ALLOWED_ORIGINS: https://your.domain   # 前端域名（同时约束 WS Origin，防 CSWSH）
       # TRUSTED_PROXIES: 172.16.0.0/12              # 反代时填其 CIDR，否则 ClientIP 取直连对端

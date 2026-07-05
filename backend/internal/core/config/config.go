@@ -3,9 +3,13 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -152,16 +156,18 @@ func Load() (*Config, error) {
 		GlobalRatePerSec:   getenvInt("GLOBAL_RATE_PER_SEC", 20),
 		UpdateManifestURL:  getenv("UPDATE_MANIFEST_URL", ""),
 	}
-	if err := cfg.validateSecrets(); err != nil {
+	if err := cfg.ensureSecrets(); err != nil {
 		return nil, err
 	}
 	return cfg, nil
 }
 
-// validateSecrets 强制 release 模式下密钥非空且非公开默认值（否则任何人都能用源码里
-// 的默认 key 离线伪造管理员 JWT，并解密库里全部密文 = 免认证完全接管）；debug 模式
-// 回退到开发默认并显著告警。
-func (cfg *Config) validateSecrets() error {
+// ensureSecrets 保证 release 模式下密钥非空且非源码公开默认值。
+// 未显式设环境变量时,自动生成强随机密钥并持久化到 DataDir(secret_key / activation_secret
+// 文件,0600),实现"零配置安全启动"——每个部署密钥都不同(防公开默认 key 裸奔),普通用户
+// 无需手填 compose 即可安全运行;显式设值永远优先(高级用户/生产可接管)。debug 模式回退
+// 开发默认并显著告警。
+func (cfg *Config) ensureSecrets() error {
 	if !cfg.IsRelease() {
 		if cfg.SecretKey == "" {
 			slog.Warn("SECRET_KEY empty in debug mode, using insecure dev default — never use in production")
@@ -169,16 +175,59 @@ func (cfg *Config) validateSecrets() error {
 		}
 		return nil
 	}
-	switch {
-	case cfg.SecretKey == "", cfg.SecretKey == "dev-insecure-secret-change-me":
-		return errors.New("SECRET_KEY must be set in release mode (generate: openssl rand -base64 32)")
-	case len(cfg.SecretKey) < 32:
+	// 源码里出现过的公开默认值必须拒绝（等于公开 = 免认证接管）。
+	if cfg.SecretKey == "dev-insecure-secret-change-me" {
+		return errors.New("SECRET_KEY must not be the public dev default in release mode")
+	}
+	if cfg.ActivationSecret == "activation-insecure-secret" {
+		return errors.New("ACTIVATION_SECRET must not be the public dev default in release mode")
+	}
+	// 未显式设 → 自动生成 + 持久化到 DataDir（挂载持久化，重启不丢、用户不被踢）。
+	if cfg.SecretKey == "" {
+		k, err := cfg.loadOrGenerateSecret("secret_key", "SECRET_KEY")
+		if err != nil {
+			return err
+		}
+		cfg.SecretKey = k
+	}
+	if cfg.ActivationSecret == "" {
+		k, err := cfg.loadOrGenerateSecret("activation_secret", "ACTIVATION_SECRET")
+		if err != nil {
+			return err
+		}
+		cfg.ActivationSecret = k
+	}
+	if len(cfg.SecretKey) < 32 {
 		slog.Warn("SECRET_KEY shorter than 32 bytes in release mode; rotate to a strong random key")
 	}
-	if cfg.ActivationSecret == "" || cfg.ActivationSecret == "activation-insecure-secret" {
-		return errors.New("ACTIVATION_SECRET must be set in release mode")
-	}
 	return nil
+}
+
+// loadOrGenerateSecret 从 DataDir/<filename> 读密钥；不存在则生成 32 字节随机 base64 写入（0600）。
+// 每个部署首次启动自动生成不同随机密钥，持久化供后续复用（重启不变、JWT 不失效）。
+func (cfg *Config) loadOrGenerateSecret(filename, envVar string) (string, error) {
+	path := filepath.Join(cfg.DataDir, filename)
+	if b, err := os.ReadFile(path); err == nil {
+		if s := strings.TrimSpace(string(b)); s != "" {
+			return s, nil // 复用已持久化的密钥
+		}
+	} else if !os.IsNotExist(err) {
+		return "", fmt.Errorf("read %s: %w", path, err)
+	}
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("generate secret: %w", err)
+	}
+	s := base64.StdEncoding.EncodeToString(raw)
+	if err := os.MkdirAll(cfg.DataDir, 0o755); err != nil {
+		return "", fmt.Errorf("mkdir %s: %w", cfg.DataDir, err)
+	}
+	if err := os.WriteFile(path, []byte(s), 0o600); err != nil {
+		return "", fmt.Errorf("write %s: %w (检查 DataDir 是否可写/已挂载)", path, err)
+	}
+	slog.Info("auto-generated secret (未显式设环境变量,已自动生成并持久化)",
+		"file", path, "hint", "如需接管:设 "+envVar+" 环境变量并删除该文件")
+	return s, nil
 }
 
 // IsRelease reports whether the app runs in release mode.

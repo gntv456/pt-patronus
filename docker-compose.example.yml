@@ -1,62 +1,30 @@
-# PTPatronus 终端用户部署 —— 拉取官方镜像，无需源码。
-# 用法：
-#   1. 装 Docker + Docker Compose（docker -v && docker compose version 能出来即可）
-#   2. 同目录建 .env 填 SECRET_KEY / ACTIVATION_SECRET（见下方注释）
-#   3. docker compose up -d
-#   4. 浏览器访问 http://服务器IP:8088
-# 升级：docker compose pull && docker compose up -d  （数据在 ./data/ 不丢）
+# PTPatronus 终端用户部署 —— 复制保存为 docker-compose.yml，docker compose up -d 即用。
+# 首次启动后端自动生成密钥（落 ./data/），零配置。升级：docker compose pull && docker compose up -d。
 
 services:
   ptpatronus:
-    # 官方镜像（ghcr.io/gntv456/pt-patronus，public 免登录拉取）。
-    # :latest 始终最新；要锁定版本改成 :0.80.03 等。
-    image: ghcr.io/gntv456/pt-patronus:latest
+    image: ghcr.io/gntv456/pt-patronus:latest   # latest=最新；或锁定版本 :0.80.04
     container_name: ptpatronus
     restart: unless-stopped
     ports:
-      - "8088:8088"
+      - "8088:8088"            # 主机端口:容器端口（改左边的 8088 换访问端口）
     environment:
+      # APP_ENV 必填：触发 release 模式 + 密钥自动生成 + 生产安全限制。
+      # AUTH_SITE_URL：好学 VIP 验证站点（后端默认 www.hxpt.org，这里显式 hxpt.org 覆盖）。
+      # 其余（数据库 SQLite、cron、限流…）全用后端默认，不用写。
       APP_ENV: release
-      HTTP_ADDR: ":8088"
-      # ===== 密钥（可选——不设则后端自动生成强随机密钥并持久化到
-      #       ./data/secret_key 与 ./data/activation_secret,零配置安全启动,每个部署密钥不同）=====
-      # 普通用户：这两行保持注释/不设即可,后端首次启动自动生成,无需任何配置。
-      # 高级用户/生产：想自己控制密钥,取消注释填入(≥32 字节随机串,
-      #                生成：openssl rand -base64 32),或用 .env 注入。
-      # SECRET_KEY: 你的随机串1
-      # ACTIVATION_SECRET: 你的随机串2
-      # ===== 可选（按需取消注释）=====
-      # CORS_ALLOWED_ORIGINS: https://your.domain   # 前端域名（同时约束 WS Origin，防 CSWSH）
-      # TRUSTED_PROXIES: 172.16.0.0/12              # 反代时填其 CIDR，否则 ClientIP 取直连对端
-      # 好学 VIP 准入
       AUTH_SITE_URL: https://hxpt.org
-      # 数据库：默认 SQLite（数据落 ./data/）；切 PostgreSQL 见下方 postgres 服务 + 改 DB_TYPE
-      DB_TYPE: sqlite
+      # 高级（按需取消注释）：
+      # CORS_ALLOWED_ORIGINS: https://你的域名   # 反代/公网时收敛 CORS
+      # TRUSTED_PROXIES: 172.16.0.0/12          # 反代后填其 CIDR
+      # SECRET_KEY: openssl rand -base64 32 的输出        # 自控密钥；否则后端自动生成 + 持久化
+      # ACTIVATION_SECRET: openssl rand -base64 32 的输出
     volumes:
-      - ./data:/app/data       # 数据持久化（SQLite 库 + 运行配置）
+      - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s
       timeout: 3s
       retries: 3
 
-  # ===== 可选：PostgreSQL（默认不启用）=====
-  # 用法：docker compose --profile pg up -d
-  # 然后把上面 ptpatronus 服务的环境变量改为：
-  #   DB_TYPE: postgres
-  #   DATABASE_URL: postgres://ptpatronus:${POSTGRES_PASSWORD}@postgres:5432/ptpatronus?sslmode=disable
-  postgres:
-    image: postgres:16-alpine
-    profiles: ["pg"]
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ptpatronus
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?启用 pg profile 时在 .env 设 POSTGRES_PASSWORD}
-      POSTGRES_DB: ptpatronus
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-
-volumes:
-  pgdata:
+# 想用 PostgreSQL 代替 SQLite？见 README/05-部署指南.md，或仓库 docker-compose.yml（开发版含 pg profile）。

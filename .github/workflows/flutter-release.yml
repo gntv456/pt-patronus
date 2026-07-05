@@ -83,20 +83,27 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 安装包命名规范：ptpatronus-<版本>-<平台>.<扩展>，下载后一眼识别版本/平台。
+      # agent 二进制（release.yml）保持固定名——install.sh 依赖 releases/latest/download 固定路径自动拉取。
+      - name: Compute version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@v4
         with: { name: ptpatronus-android, path: android }
       - uses: actions/download-artifact@v4
         with: { name: ptpatronus-macos, path: macos }
       - uses: actions/download-artifact@v4
         with: { name: ptpatronus-windows, path: windows }
-      - name: Zip Windows build
-        run: cd windows && zip -r ../ptpatronus-windows-x64.zip . && cd ..
+      - name: Rename artifacts with version + platform
+        run: |
+          mv android/*.apk "ptpatronus-${VERSION}-android.apk"
+          mv macos/ptpatronus-macos.zip "ptpatronus-${VERSION}-macos.zip"
+          cd windows && zip -r "../ptpatronus-${VERSION}-windows-x64.zip" . && cd ..
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            android/*.apk
-            macos/ptpatronus-macos.zip
-            ptpatronus-windows-x64.zip
+            ptpatronus-${{ env.VERSION }}-android.apk
+            ptpatronus-${{ env.VERSION }}-macos.zip
+            ptpatronus-${{ env.VERSION }}-windows-x64.zip
           fail_on_unmatched_files: true
 
   # 鸿蒙(ohos)：需华为 flutter 分支 + DevEco Studio 环境，CI 无现成 runner，

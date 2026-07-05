@@ -39,7 +39,7 @@ const isIndeterminate = computed(
   () => props.modelValue.length > 0 && props.modelValue.length < count.value,
 )
 
-function toggleAll(v: boolean) {
+function toggleAll(v: boolean | string | number) {
   emit('update:modelValue', v ? props.sites.map((s) => s.id) : [])
 }
 function onGroupChange(v: (string | number | boolean)[]) {

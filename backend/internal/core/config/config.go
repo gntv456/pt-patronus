@@ -34,7 +34,7 @@ type Config struct {
 
 	// 好学 APP 专属 VIP 准入（AUTH_SITE 机制）
 	AuthSiteEnabled bool
-	AuthSiteURL     string // e.g. https://hxpt.org
+	AuthSiteURL     string // e.g. https://www.hxpt.org
 	AuthSiteCookie  string // bootstrap cookie for VIP verification (movable to DB later)
 	AuthVIPLevel    int    // minimum VIP level required
 	VIPGraceDays    int    // VIP 宽限天数（好学不可达时缓存 VIP 的有效期），默认 3

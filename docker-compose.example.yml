@@ -10,10 +10,8 @@ services:
       - "8088:8088"            # 主机端口:容器端口（改左边的 8088 换访问端口）
     environment:
       # APP_ENV 必填：触发 release 模式 + 密钥自动生成 + 生产安全限制。
-      # AUTH_SITE_URL：好学 VIP 验证站点（后端默认 www.hxpt.org，这里显式 hxpt.org 覆盖）。
-      # 其余（数据库 SQLite、cron、限流…）全用后端默认，不用写。
+      # 其余（好学站 www.hxpt.org、数据库 SQLite、cron、限流…）全用后端默认，不用写。
       APP_ENV: release
-      AUTH_SITE_URL: https://hxpt.org
       # 高级（按需取消注释）：
       # CORS_ALLOWED_ORIGINS: https://你的域名   # 反代/公网时收敛 CORS
       # TRUSTED_PROXIES: 172.16.0.0/12          # 反代后填其 CIDR

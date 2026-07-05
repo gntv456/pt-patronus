@@ -21,7 +21,7 @@ services:
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
       # 好学 APP 专属 VIP 准入
       AUTH_SITE_ENABLED: ${AUTH_SITE_ENABLED:-false}
-      AUTH_SITE_URL: ${AUTH_SITE_URL:-https://hxpt.org}
+      AUTH_SITE_URL: ${AUTH_SITE_URL:-https://www.hxpt.org}
       AUTH_VIP_LEVEL: ${AUTH_VIP_LEVEL:-1}
       # 数据库（默认 SQLite；切 PostgreSQL 设 DB_TYPE=postgres + DATABASE_URL）
       DB_TYPE: ${DB_TYPE:-sqlite}

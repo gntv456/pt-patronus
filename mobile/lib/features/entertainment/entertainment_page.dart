@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/responsive.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 import 'jgg_game_view.dart';
 import 'cspt_scratch_view.dart';
@@ -85,31 +86,50 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
-              child: Row(children: [
-                const HomeMenuButton(),
-                const Text('娱乐', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                const Spacer(),
-                _siteDropdown(),
-              ]),
+    return PTPageScaffold(
+      title: '娱乐',
+      siteFilter: _sites.isEmpty
+          ? null
+          : PTSiteFilterConfig(
+              single: true, // 娱乐页按站点切换加载游戏，单选业务
+              selected: _siteId == null ? const <int>[] : [_siteId!],
+              onChanged: (v) {
+                final id = v.isEmpty ? null : v.first;
+                if (id != _siteId) {
+                  setState(() => _siteId = id);
+                  _loadGames();
+                }
+              },
+              options: _sites
+                  .map(
+                    (s) => PTFilterOption<Object?>(value: s.id, label: s.name),
+                  )
+                  .toList(),
             ),
-            if (_games.length > 1)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: _gameDropdown(),
-              ),
-            if (_loadingGames) const LinearProgressIndicator(minHeight: 2),
-            Expanded(child: _bodyWrapped()),
-          ],
-        ),
+      filterDimensions: _games.length > 1 ? _gameDimension() : const [],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_loadingGames) const LinearProgressIndicator(minHeight: 2),
+          Expanded(child: _bodyWrapped()),
+        ],
       ),
     );
+  }
+
+  // 玩法维度（收进通用筛选按钮；仅当该站点 >1 种玩法时出现）。首个玩法为默认（不计徽标）。
+  List<PTFilterDimension> _gameDimension() {
+    return [
+      PTFilterDimension.choice(
+        label: '玩法',
+        selected: _gameId,
+        isDefault: _gameId == (_games.isNotEmpty ? _games.first.id : null),
+        onChanged: (v) => setState(() => _gameId = v as String?),
+        options: _games
+            .map((g) => PTFilterOption<Object?>(value: g.id, label: g.name))
+            .toList(),
+      ),
+    ];
   }
 
   // 宽屏把游戏面板居中并限宽，避免 ListView 全宽在桌面端被拉成超宽长条（控件稀疏拉伸）。
@@ -134,9 +154,20 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
       );
     }
     if (_siteId == null) return const SizedBox.shrink();
-    const spinnerIds = ['cbg_wheel', 'cbg_slot', 'ub_wheel', 'luckydraw_wheel', 'march_wheel', 'tangpt_lottery', 'hxpt_redpacket'];
+    const spinnerIds = [
+      'cbg_wheel',
+      'cbg_slot',
+      'ub_wheel',
+      'luckydraw_wheel',
+      'march_wheel',
+      'tangpt_lottery',
+      'hxpt_redpacket',
+    ];
     if (_gameId != null && spinnerIds.contains(_gameId)) {
-      final g = _games.firstWhere((x) => x.id == _gameId, orElse: () => Game(id: _gameId!, name: ''));
+      final g = _games.firstWhere(
+        (x) => x.id == _gameId,
+        orElse: () => Game(id: _gameId!, name: ''),
+      );
       return SpinnerGameView(siteId: _siteId!, game: _gameId!, name: g.name);
     }
     if (_gameId == 'panda_flip') {
@@ -144,7 +175,10 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
     }
     // 猜大小（好学 hxpt_bigsmall + 熊猫 panda_bigsmall）走富 UI
     if (_gameId == 'hxpt_bigsmall' || _gameId == 'panda_bigsmall') {
-      final g = _games.firstWhere((x) => x.id == _gameId, orElse: () => Game(id: _gameId!, name: '猜大小'));
+      final g = _games.firstWhere(
+        (x) => x.id == _gameId,
+        orElse: () => Game(id: _gameId!, name: '猜大小'),
+      );
       return BigSmallView(siteId: _siteId!, game: _gameId!, name: g.name);
     }
     if (_gameId == 'ourbits_bet') {
@@ -152,12 +186,18 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
     }
     const betIds = ['cbg_sicbo', 'crab_unionlotto', 'ubits_redpacket'];
     if (_gameId != null && betIds.contains(_gameId)) {
-      final g = _games.firstWhere((x) => x.id == _gameId, orElse: () => Game(id: _gameId!, name: ''));
+      final g = _games.firstWhere(
+        (x) => x.id == _gameId,
+        orElse: () => Game(id: _gameId!, name: ''),
+      );
       return BetGameView(siteId: _siteId!, game: _gameId!, name: g.name);
     }
     const blackjackIds = ['audiences_blackjack'];
     if (_gameId != null && blackjackIds.contains(_gameId)) {
-      final g = _games.firstWhere((x) => x.id == _gameId, orElse: () => Game(id: _gameId!, name: ''));
+      final g = _games.firstWhere(
+        (x) => x.id == _gameId,
+        orElse: () => Game(id: _gameId!, name: ''),
+      );
       return BlackjackGameView(siteId: _siteId!, game: _gameId!, name: g.name);
     }
     switch (_gameId) {
@@ -195,31 +235,6 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
     );
   }
 
-  Widget _siteDropdown() {
-    if (_sites.isEmpty) return const Text('无站点', style: TextStyle(color: Colors.grey, fontSize: 13));
-    return DropdownButton<int>(
-      value: _siteId,
-      underline: const SizedBox(),
-      items: _sites.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))).toList(),
-      onChanged: (id) {
-        if (id != null && id != _siteId) {
-          setState(() => _siteId = id);
-          _loadGames();
-        }
-      },
-    );
-  }
-
-  Widget _gameDropdown() => DropdownButton<String>(
-        value: _gameId,
-        isExpanded: true,
-        underline: const SizedBox(),
-        items: _games.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
-        onChanged: (id) {
-          if (id != null) setState(() => _gameId = id);
-        },
-      );
-
   Widget _gameCard(Game g) {
     final r = _results[g.id];
     final busy = _playing[g.id] ?? false;
@@ -230,17 +245,35 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              const Icon(Icons.casino_outlined, color: PTColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Expanded(child: Text(g.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16))),
-              FilledButton(
-                onPressed: busy ? null : () => _play(g),
-                child: busy
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('玩一次'),
-              ),
-            ]),
+            Row(
+              children: [
+                const Icon(
+                  Icons.casino_outlined,
+                  color: PTColors.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    g.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                FilledButton(
+                  onPressed: busy ? null : () => _play(g),
+                  child: busy
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('玩一次'),
+                ),
+              ],
+            ),
             if (r != null) ...[const SizedBox(height: 10), _resultView(r)],
           ],
         ),
@@ -255,9 +288,11 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
       final res = await _entApi.play(_siteId!, g.id);
       if (!mounted) return;
       setState(() => _results[g.id] = res);
-      _toast(res.success
-          ? (res.prize.isNotEmpty ? '${g.name}：${res.prize}' : '${g.name} 完成')
-          : (res.message.isNotEmpty ? res.message : '失败'));
+      _toast(
+        res.success
+            ? (res.prize.isNotEmpty ? '${g.name}：${res.prize}' : '${g.name} 完成')
+            : (res.message.isNotEmpty ? res.message : '失败'),
+      );
     } catch (e) {
       _toast('请求失败：$e');
     } finally {
@@ -270,7 +305,9 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: win ? PTColors.success.withValues(alpha: 0.12) : Colors.redAccent.withValues(alpha: 0.10),
+        color: win
+            ? PTColors.success.withValues(alpha: 0.12)
+            : Colors.redAccent.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -281,13 +318,41 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(win ? '✓ 成功' : '✗ 失败',
-                  style: TextStyle(fontWeight: FontWeight.w700, color: win ? PTColors.success : Colors.redAccent, fontSize: 13)),
-              if (r.prize.isNotEmpty) Text(r.prize, style: const TextStyle(color: PTColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
-              if (r.amount > 0) Text('×${r.amount.toStringAsFixed(r.amount % 1 == 0 ? 0 : 1)}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w600, fontSize: 13)),
+              Text(
+                win ? '✓ 成功' : '✗ 失败',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: win ? PTColors.success : Colors.redAccent,
+                  fontSize: 13,
+                ),
+              ),
+              if (r.prize.isNotEmpty)
+                Text(
+                  r.prize,
+                  style: const TextStyle(
+                    color: PTColors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              if (r.amount > 0)
+                Text(
+                  '×${r.amount.toStringAsFixed(r.amount % 1 == 0 ? 0 : 1)}',
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
             ],
           ),
-          if (r.message.isNotEmpty) ...[const SizedBox(height: 4), Text(r.message, style: const TextStyle(color: Colors.grey, fontSize: 12))],
+          if (r.message.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              r.message,
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
         ],
       ),
     );

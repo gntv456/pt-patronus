@@ -3,6 +3,7 @@ package v1
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/chain"
@@ -201,11 +202,12 @@ func (h *SiteHandler) Search(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"torrents": ts})
 }
 
-// SearchAll 跨启用站点聚合搜索。
+// SearchAll 跨启用站点聚合搜索。?site_ids=1,2,3 仅搜索指定启用站点子集（空=全部启用）。
 func (h *SiteHandler) SearchAll(c *gin.Context) {
 	keyword := c.Query("keyword")
 	category := c.Query("category") // movie/tv/music（空=综合）
-	results := h.siteCh.SearchSites(c.Request.Context(), keyword, category)
+	siteIDs := parseUintSlice(c.Query("site_ids"))
+	results := h.siteCh.SearchSites(c.Request.Context(), keyword, category, siteIDs)
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
 
@@ -263,7 +265,8 @@ func (h *SiteHandler) Definitions(c *gin.Context) {
 	for _, d := range defs {
 		// urls：站点真实地址列表（取首个作「添加站点」默认 base_url）。
 		// dead：死站标记。UI 选站模板据此标注（死站不参与活跃抓取，仅保留信息可展示/可选）。
-		out = append(out, gin.H{"id": d.ID, "name": d.Name, "schema": d.Schema, "dead": d.Dead, "urls": d.URLs})
+		// aka/description/tags：含中文名别名与描述，供 UI 搜索（很多站 name 是英文，靠 aka 中文名才能检索到）。
+		out = append(out, gin.H{"id": d.ID, "name": d.Name, "schema": d.Schema, "dead": d.Dead, "urls": d.URLs, "aka": d.AKA, "description": d.Description, "tags": d.Tags})
 	}
 	c.JSON(http.StatusOK, gin.H{"definitions": out})
 }
@@ -286,4 +289,27 @@ func atoiDefault(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+// parseUintSlice 解析逗号分隔的 uint 列表（如 "1,2,3"），忽略空串/非法项；空输入返回 nil。
+func parseUintSlice(s string) []uint {
+	if s == "" {
+		return nil
+	}
+	out := make([]uint, 0, 4)
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		n, err := strconv.ParseUint(part, 10, 64)
+		if err != nil {
+			continue
+		}
+		out = append(out, uint(n))
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

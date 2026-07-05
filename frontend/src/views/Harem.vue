@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { haremApi, type HaremResult, type PrescriptionItem } from '@/api/harem'
 import { copyText } from '@/utils/clipboard'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const data = ref<HaremResult | null>(null)
 const loading = ref(false)
@@ -38,6 +39,18 @@ async function copyExport() {
 
 const overview = computed(() => data.value?.overview)
 
+// 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选 prescriptions）。
+const selectedSiteIds = ref<number[]>([])
+const sites = computed(() => {
+  const m = new Map<number, string>()
+  for (const p of data.value?.prescriptions ?? []) if (!m.has(p.site_id)) m.set(p.site_id, p.site_name)
+  return [...m].map(([id, name]) => ({ id, name }))
+})
+const filteredPrescriptions = computed(() => {
+  const list = data.value?.prescriptions ?? []
+  return selectedSiteIds.value.length ? list.filter((p) => selectedSiteIds.value.includes(p.site_id)) : list
+})
+
 onMounted(() => load())
 </script>
 
@@ -45,7 +58,8 @@ onMounted(() => load())
   <div class="page" v-loading="loading">
     <div class="head">
       <h2 class="title">后宫</h2>
-      <div>
+      <div class="head-tools">
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择后宫站点" />
         <el-button @click="doExport">导出药单</el-button>
         <el-button :loading="loading" @click="load(true)">刷新</el-button>
       </div>
@@ -62,7 +76,7 @@ onMounted(() => load())
     </div>
 
     <div class="card glass">
-      <el-table v-if="data?.prescriptions?.length" :data="data.prescriptions" style="width:100%" :row-style="{ background: 'transparent' }">
+      <el-table v-if="filteredPrescriptions.length" :data="filteredPrescriptions" style="width:100%" :row-style="{ background: 'transparent' }">
         <el-table-column label="站点" width="120">
           <template #default="{ row }"><span class="site-tag">{{ row.site_name }}</span></template>
         </el-table-column>

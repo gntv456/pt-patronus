@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { medalWallApi, type Medal } from '@/api/medal-wall'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const medals = ref<Medal[]>([])
 const loading = ref(false)
@@ -22,16 +23,18 @@ async function load(refresh = false) {
   }
 }
 
-const siteFilter = ref<string>('all') // 'all' 或 site_name
+// 站点筛选：空=全部，非空=仅选中站点（多选，按 site_id，纯前端筛选）。
+const selectedSiteIds = ref<number[]>([])
 const sites = computed(() => {
   const map = new Map<number, string>()
   for (const m of medals.value) if (!map.has(m.site_id)) map.set(m.site_id, m.site_name)
   return Array.from(map, ([id, name]) => ({ id, name }))
 })
-const siteFiltered = computed(() => {
-  if (siteFilter.value === 'all') return medals.value
-  return medals.value.filter((m) => m.site_name === siteFilter.value)
-})
+const siteFiltered = computed(() =>
+  selectedSiteIds.value.length
+    ? medals.value.filter((m) => selectedSiteIds.value.includes(m.site_id))
+    : medals.value,
+)
 
 const filtered = computed(() => {
   const list = siteFiltered.value
@@ -116,10 +119,7 @@ onMounted(() => load())
     </div>
 
     <div class="filter-bar glass">
-      <el-select v-model="siteFilter" size="small" style="width: 140px; flex-shrink: 0">
-        <el-option label="全部站点" value="all" />
-        <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.name" />
-      </el-select>
+      <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择勋章站点" />
       <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">全部 ({{ counts.total }})</button>
       <button class="chip" :class="{ on: filter === 'owned' }" @click="filter = 'owned'" style="color:#2ecc71">已拥有 ({{ counts.owned }})</button>
       <button class="chip" :class="{ on: filter === 'available' }" @click="filter = 'available'" style="color:#3498db">可购买 ({{ counts.available }})</button>

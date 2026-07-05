@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/harem.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 容错字节格式化（B/KB/MB/GB/TB/PB）；<=0 返回 '—'（替代原硬编码 G，大上传者不再显示 5120G——审计 P2）。
 String _fmtBytes(int b) {
@@ -32,6 +33,25 @@ class _HaremPageState extends State<HaremPage> {
   HaremResult? _data;
   bool _loading = true;
   String? _error;
+  List<int> _selectedSiteIds = []; // 站点多选筛选，空=全部
+
+  // 按 selectedSiteIds 过滤处方（数据已全量在 _data，纯前端筛选）。
+  List<PrescriptionItem> get _filteredPrescriptions {
+    final list = _data?.prescriptions ?? const <PrescriptionItem>[];
+    if (_selectedSiteIds.isEmpty) return list;
+    return list.where((p) => _selectedSiteIds.contains(p.siteId)).toList();
+  }
+
+  // 站点筛选候选项（从处方去重 siteId/siteName）。
+  List<PTFilterOption<Object?>> get _siteOptions {
+    final seen = <int, String>{};
+    for (final p in _data?.prescriptions ?? const <PrescriptionItem>[]) {
+      seen.putIfAbsent(p.siteId, () => p.siteName);
+    }
+    return seen.entries
+        .map((e) => PTFilterOption<Object?>(value: e.key, label: e.value))
+        .toList();
+  }
 
   @override
   void initState() {
@@ -58,7 +78,11 @@ class _HaremPageState extends State<HaremPage> {
     try {
       text = await _api.exportText();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+      }
       return;
     }
     if (!mounted) return;
@@ -75,13 +99,22 @@ class _HaremPageState extends State<HaremPage> {
               onPressed: () async {
                 await Clipboard.setData(ClipboardData(text: text));
                 if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已复制')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('已复制')));
               },
               icon: const Icon(Icons.copy, size: 16),
               label: const Text('复制'),
             ),
           ),
-          SelectableText(text, style: const TextStyle(fontFamily: 'monospace', fontSize: 13, height: 1.5)),
+          SelectableText(
+            text,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 13,
+              height: 1.5,
+            ),
+          ),
         ],
       ),
     );
@@ -90,59 +123,127 @@ class _HaremPageState extends State<HaremPage> {
   @override
   Widget build(BuildContext context) {
     final ov = _data?.overview;
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          title: const Text('后宫'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            PTIconAction(onPressed: _export, icon: Icons.receipt_long, tooltip: '导出'),
-            PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : () => _load(refresh: true)),
-          ],
+    return PTPageScaffold(
+      title: '后宫',
+      actions: [
+        PTBarAction(onPressed: _export, icon: Icons.receipt_long, label: '导出'),
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新',
+          loading: _loading,
+          onPressed: _loading ? null : () => _load(refresh: true),
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? PTEmptyState(text: _error!, onRetry: _load)
-                : _data == null
-                    ? PTEmptyState(text: '无数据')
-                    : Column(
-                        children: [
-                          if (ov != null) Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 4), child: _overview(ov)),
-                          Expanded(
-                            child: RefreshIndicator(
-                              onRefresh: () => _load(refresh: true),
-                              child: PTAdaptiveTable<PrescriptionItem>(
-                                items: _data!.prescriptions,
-                                columns: [
-                                  PTColumn<PrescriptionItem>(label: '站点', flex: 2, cell: (_, p) => Text(p.siteName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-                                  PTColumn<PrescriptionItem>(label: '现药', flex: 1, numeric: true, cell: (_, p) => Text('${p.remain}', style: const TextStyle(fontSize: 12))),
-                                  PTColumn<PrescriptionItem>(label: '可买', flex: 1, numeric: true, cell: (_, p) => Text('${p.canBuy}', style: const TextStyle(fontSize: 12))),
-                                  PTColumn<PrescriptionItem>(label: '权限', flex: 1, cell: (_, p) => Text(p.canInvite ? '✓' : '✗', style: TextStyle(color: p.canInvite ? PTColors.success : PTColors.danger, fontSize: 13))),
-                                  PTColumn<PrescriptionItem>(label: '后宫', flex: 1, numeric: true, cell: (_, p) => Text('${p.haremCount}${p.deadCount > 0 ? " (${p.deadCount})" : ""}', style: const TextStyle(fontSize: 12))),
-                                  PTColumn<PrescriptionItem>(
-                                    label: '操作',
-                                    flex: 2,
-                                    cell: (_, p) => p.invitees.isEmpty
-                                        ? const Text('—', style: TextStyle(color: Colors.grey, fontSize: 12))
-                                        : TextButton(
-                                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                            onPressed: () => _showInvitees(p),
-                                            child: Text('花名册 (${p.invitees.length})', style: const TextStyle(fontSize: 12)),
-                                          ),
-                                  ),
-                                ],
-                                narrowCard: (_, p) => _prescription(p),
-                                emptyText: '暂无处方',
-                              ),
+      ],
+      siteFilter: (_data?.prescriptions ?? []).isEmpty
+          ? null
+          : PTSiteFilterConfig(
+              selected: _selectedSiteIds,
+              onChanged: (v) => setState(() => _selectedSiteIds = v),
+              options: _siteOptions,
+            ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? PTEmptyState(text: _error!, onRetry: _load)
+          : _data == null
+          ? PTEmptyState(text: '无数据')
+          : Column(
+              children: [
+                if (ov != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: _overview(ov),
+                  ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () => _load(refresh: true),
+                    child: PTAdaptiveTable<PrescriptionItem>(
+                      items: _filteredPrescriptions,
+                      columns: [
+                        PTColumn<PrescriptionItem>(
+                          label: '站点',
+                          flex: 2,
+                          cell: (_, p) => Text(
+                            p.siteName,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
-                        ],
-                      ),
-      ),
+                        ),
+                        PTColumn<PrescriptionItem>(
+                          label: '现药',
+                          flex: 1,
+                          numeric: true,
+                          cell: (_, p) => Text(
+                            '${p.remain}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        PTColumn<PrescriptionItem>(
+                          label: '可买',
+                          flex: 1,
+                          numeric: true,
+                          cell: (_, p) => Text(
+                            '${p.canBuy}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        PTColumn<PrescriptionItem>(
+                          label: '权限',
+                          flex: 1,
+                          cell: (_, p) => Text(
+                            p.canInvite ? '✓' : '✗',
+                            style: TextStyle(
+                              color: p.canInvite
+                                  ? PTColors.success
+                                  : PTColors.danger,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        PTColumn<PrescriptionItem>(
+                          label: '后宫',
+                          flex: 1,
+                          numeric: true,
+                          cell: (_, p) => Text(
+                            '${p.haremCount}${p.deadCount > 0 ? " (${p.deadCount})" : ""}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                        PTColumn<PrescriptionItem>(
+                          label: '操作',
+                          flex: 2,
+                          cell: (_, p) => p.invitees.isEmpty
+                              ? const Text(
+                                  '—',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : TextButton(
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 28),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  onPressed: () => _showInvitees(p),
+                                  child: Text(
+                                    '花名册 (${p.invitees.length})',
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ),
+                        ),
+                      ],
+                      narrowCard: (_, p) => _prescription(p),
+                      emptyText: '暂无处方',
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
@@ -167,21 +268,49 @@ class _HaremPageState extends State<HaremPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Expanded(child: Text(p.siteName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15))),
-            Text('现药 ${p.remain}', style: const TextStyle(fontSize: 13)),
-            const SizedBox(width: 10),
-            Text('可买 ${p.canBuy}', style: const TextStyle(fontSize: 13)),
-            const SizedBox(width: 10),
-            Text(p.canInvite ? '权限 ✓' : '权限 ✗', style: TextStyle(color: p.canInvite ? PTColors.success : PTColors.danger, fontSize: 13)),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  p.siteName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              Text('现药 ${p.remain}', style: const TextStyle(fontSize: 13)),
+              const SizedBox(width: 10),
+              Text('可买 ${p.canBuy}', style: const TextStyle(fontSize: 13)),
+              const SizedBox(width: 10),
+              Text(
+                p.canInvite ? '权限 ✓' : '权限 ✗',
+                style: TextStyle(
+                  color: p.canInvite ? PTColors.success : PTColors.danger,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
           if (p.error.isNotEmpty)
-            Text(p.error, style: const TextStyle(color: PTColors.danger, fontSize: 13))
+            Text(
+              p.error,
+              style: const TextStyle(color: PTColors.danger, fontSize: 13),
+            )
           else
-            Text('后宫 ${p.haremCount} 人${p.deadCount > 0 ? "（禁用 ${p.deadCount}）" : ""}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            Text(
+              '后宫 ${p.haremCount} 人${p.deadCount > 0 ? "（禁用 ${p.deadCount}）" : ""}',
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
           if (p.invitees.isNotEmpty)
-            Align(alignment: Alignment.centerLeft, child: TextButton(onPressed: () => _showInvitees(p), child: Text('查看花名册 (${p.invitees.length})'))),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () => _showInvitees(p),
+                child: Text('查看花名册 (${p.invitees.length})'),
+              ),
+            ),
         ],
       ),
     );
@@ -195,29 +324,88 @@ class _HaremPageState extends State<HaremPage> {
       builder: (_) => PTAdaptiveTable<InviteeInfo>(
         items: p.invitees,
         columns: [
-          PTColumn<InviteeInfo>(label: '用户', flex: 2, cell: (_, iv) {
-            final dead = iv.status == 'disabled';
-            return Text(iv.username, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: dead ? PTColors.danger : null));
-          }),
-          PTColumn<InviteeInfo>(label: '状态', flex: 1, cell: (_, iv) => Text(iv.status, style: TextStyle(fontSize: 12, color: iv.status == 'disabled' ? PTColors.danger : Colors.grey))),
-          PTColumn<InviteeInfo>(label: '上传', flex: 1, numeric: true, cell: (_, iv) => Text(_fmtBytes(iv.uploaded), style: const TextStyle(fontSize: 12))),
-          PTColumn<InviteeInfo>(label: '下载', flex: 1, numeric: true, cell: (_, iv) => Text(_fmtBytes(iv.downloaded), style: const TextStyle(fontSize: 12))),
-          PTColumn<InviteeInfo>(label: '分享率', flex: 1, cell: (_, iv) => Text(iv.ratio, style: const TextStyle(fontSize: 12))),
+          PTColumn<InviteeInfo>(
+            label: '用户',
+            flex: 2,
+            cell: (_, iv) {
+              final dead = iv.status == 'disabled';
+              return Text(
+                iv.username,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                  color: dead ? PTColors.danger : null,
+                ),
+              );
+            },
+          ),
+          PTColumn<InviteeInfo>(
+            label: '状态',
+            flex: 1,
+            cell: (_, iv) => Text(
+              iv.status,
+              style: TextStyle(
+                fontSize: 12,
+                color: iv.status == 'disabled' ? PTColors.danger : Colors.grey,
+              ),
+            ),
+          ),
+          PTColumn<InviteeInfo>(
+            label: '上传',
+            flex: 1,
+            numeric: true,
+            cell: (_, iv) => Text(
+              _fmtBytes(iv.uploaded),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          PTColumn<InviteeInfo>(
+            label: '下载',
+            flex: 1,
+            numeric: true,
+            cell: (_, iv) => Text(
+              _fmtBytes(iv.downloaded),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          PTColumn<InviteeInfo>(
+            label: '分享率',
+            flex: 1,
+            cell: (_, iv) =>
+                Text(iv.ratio, style: const TextStyle(fontSize: 12)),
+          ),
         ],
         narrowCard: (_, iv) {
           final dead = iv.status == 'disabled';
           return GlassCard(
             padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(iv.username, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: dead ? PTColors.danger : null)),
-              const SizedBox(height: 4),
-              Text('状态 ${iv.status} · 分享率 ${iv.ratio}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 2),
-              Text('↑ ${_fmtBytes(iv.uploaded)}   ↓ ${_fmtBytes(iv.downloaded)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  iv.username,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                    color: dead ? PTColors.danger : null,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '状态 ${iv.status} · 分享率 ${iv.ratio}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '↑ ${_fmtBytes(iv.uploaded)}   ↓ ${_fmtBytes(iv.downloaded)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
           );
         },
         emptyText: '暂无成员',
+        embedded: true,
       ),
     );
   }

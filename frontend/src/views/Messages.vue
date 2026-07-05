@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { messageApi, type MessageResult, type Message, type Mailbox } from '@/api/message'
 import { friendlySiteError } from '@/utils/siteError'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const mailbox = ref<Mailbox>('inbox')
 const results = ref<MessageResult[]>([])
@@ -14,16 +15,17 @@ const detailLoading = ref(false)
 const replyText = ref('')
 const replyVisible = ref(false)
 
-// 站点筛选：'all' 全部，否则按 site_id 过滤（数据已全量在 results，纯前端筛选）
-const selectedSite = ref<number | 'all'>('all')
-const siteOptions = computed(() => [
-  { value: 'all', label: '全部站点' },
-  ...results.value.map((r) => ({ value: r.site_id, label: r.site_name })),
-])
+// 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。UI 用 SiteFilterDialog 组件。
+const selectedSiteIds = ref<number[]>([])
+const sites = computed(() => {
+  const m = new Map<number, string>()
+  for (const r of results.value) if (!m.has(r.site_id)) m.set(r.site_id, r.site_name)
+  return [...m].map(([id, name]) => ({ id, name }))
+})
 const filtered = computed(() =>
-  selectedSite.value === 'all'
-    ? results.value
-    : results.value.filter((r) => r.site_id === selectedSite.value),
+  selectedSiteIds.value.length
+    ? results.value.filter((r) => selectedSiteIds.value.includes(r.site_id))
+    : results.value,
 )
 
 const mailboxes: { key: Mailbox; label: string }[] = [
@@ -120,14 +122,7 @@ onMounted(() => load())
     <div class="head">
       <h2 class="title">消息</h2>
       <div class="head-tools">
-        <el-select v-model="selectedSite" class="filter-select" placeholder="筛选站点" filterable>
-          <el-option
-            v-for="opt in siteOptions"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择消息站点" />
         <el-button :loading="loading" @click="load">刷新</el-button>
       </div>
     </div>
@@ -159,8 +154,8 @@ onMounted(() => load())
     <EmptyState
       v-if="!filtered.length && !loading"
       icon="✉️"
-      :title="selectedSite === 'all' ? '暂无消息' : '该站点暂无消息'"
-      :description="selectedSite === 'all' ? '各站收件箱为空，或站点尚未登录' : '该站点当前信箱无消息'"
+      :title="selectedSiteIds.length === 0 ? '暂无消息' : '该站点暂无消息'"
+      :description="selectedSiteIds.length === 0 ? '各站收件箱为空，或站点尚未登录' : '该站点当前信箱无消息'"
     />
 
     <el-drawer :model-value="!!detail" @update:model-value="(v: boolean) => { if (!v) detail = null }" :title="detail?.title || ''" size="45%">
@@ -190,7 +185,6 @@ onMounted(() => load())
 .page { display: flex; flex-direction: column; gap: 16px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
 .head-tools { display: flex; align-items: center; gap: 10px; }
-.filter-select { width: 200px; }
 .title { margin: 4px 0; font-size: 22px; font-weight: 700; }
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; }
 .tab { background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 6px 16px; cursor: pointer; font-size: 14px; color: var(--text-strong); }

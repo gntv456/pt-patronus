@@ -81,7 +81,7 @@ func NewKeepSeedChain(b Base, siteCh *SiteChain, iyuuC *iyuu.Client, dl dlProvid
 
 // FindCandidates 跨站搜索同名种子，按名称相似度+大小接近度评分，返回高分候选（名称模糊匹配）。
 func (c *KeepSeedChain) FindCandidates(ctx context.Context, name string, size int64) []keepseed.Candidate {
-	results := c.siteCh.SearchSites(ctx, name, "") // 辅种按名称+大小匹配，不限媒体类型
+	results := c.siteCh.SearchSites(ctx, name, "", nil) // 辅种按名称+大小匹配，不限媒体类型
 	var out []keepseed.Candidate
 	for _, r := range results {
 		for _, t := range r.Torrents {

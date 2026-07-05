@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/message.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 class MessagesPage extends StatefulWidget {
   const MessagesPage({super.key});
@@ -16,11 +17,11 @@ class _MessagesPageState extends State<MessagesPage> {
   List<MessageResult> _results = [];
   bool _loading = true;
   String? _error;
-  int? _siteFilter;
+  List<int> _selectedSiteIds = []; // 站点多选筛选，空=全部
 
-  List<MessageResult> get _filteredResults => _siteFilter == null
+  List<MessageResult> get _filteredResults => _selectedSiteIds.isEmpty
       ? _results
-      : _results.where((r) => r.siteId == _siteFilter).toList();
+      : _results.where((r) => _selectedSiteIds.contains(r.siteId)).toList();
 
   @override
   void initState() {
@@ -72,15 +73,35 @@ class _MessagesPageState extends State<MessagesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('${msg.sender} · ${msg.date} · ${msg.siteName}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        Text(
+          '${msg.sender} · ${msg.date} · ${msg.siteName}',
+          style: const TextStyle(color: Colors.grey, fontSize: 13),
+        ),
         const SizedBox(height: 12),
-        SelectableText(content.isNotEmpty ? content : '（无正文）', style: const TextStyle(fontSize: 14, height: 1.6)),
+        SelectableText(
+          content.isNotEmpty ? content : '（无正文）',
+          style: const TextStyle(fontSize: 14, height: 1.6),
+        ),
         const SizedBox(height: 16),
-        Row(children: [
-          Expanded(child: OutlinedButton.icon(onPressed: () => _reply(msg), icon: const Icon(Icons.reply), label: const Text('回复'))),
-          const SizedBox(width: 10),
-          Expanded(child: OutlinedButton.icon(onPressed: () => _delete(msg), icon: Icon(Icons.delete_outline, color: PTColors.danger), label: Text('删除', style: TextStyle(color: PTColors.danger)))),
-        ]),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _reply(msg),
+                icon: const Icon(Icons.reply),
+                label: const Text('回复'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _delete(msg),
+                icon: Icon(Icons.delete_outline, color: PTColors.danger),
+                label: Text('删除', style: TextStyle(color: PTColors.danger)),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -91,26 +112,60 @@ class _MessagesPageState extends State<MessagesPage> {
     if (text == null || text.isEmpty) return;
     try {
       final r = await _api.reply(msg.siteId, msg.url, text);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r['message'] as String? ?? '已发送')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(r['message'] as String? ?? '已发送')),
+        );
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError('$e'))));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_friendlyError('$e'))));
+      }
     }
   }
 
   Future<void> _delete(Message msg) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(title: const Text('删除消息'), content: const Text('确定删除该消息？'), actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')), TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除'))]),
+      builder: (_) => AlertDialog(
+        title: const Text('删除消息'),
+        content: const Text('确定删除该消息？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
     );
     if (ok != true) return;
     if (!mounted) return;
     Navigator.pop(context);
     try {
-      await _api.remove(msg.siteId, msg.adminActions?.deleteUrl.isNotEmpty == true ? msg.adminActions!.deleteUrl : msg.url);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已删除')));
+      await _api.remove(
+        msg.siteId,
+        msg.adminActions?.deleteUrl.isNotEmpty == true
+            ? msg.adminActions!.deleteUrl
+            : msg.url,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('已删除')));
+      }
       _load();
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError('$e'))));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_friendlyError('$e'))));
+      }
     }
   }
 
@@ -120,47 +175,65 @@ class _MessagesPageState extends State<MessagesPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: Text(title),
-        content: TextField(controller: ctrl, maxLines: 6, decoration: const InputDecoration(border: OutlineInputBorder())),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')), TextButton(onPressed: () => Navigator.pop(context, ctrl.text), child: const Text('发送'))],
+        content: TextField(
+          controller: ctrl,
+          maxLines: 6,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ctrl.text),
+            child: const Text('发送'),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          title: const Text('消息'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : _load)],
+    return PTPageScaffold(
+      title: '消息',
+      actions: [
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新',
+          loading: _loading,
+          onPressed: _loading ? null : _load,
         ),
-        body: Column(
-          children: [
-            _filterRow(),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _load,
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                        ? PTEmptyState(text: _error!, onRetry: _load)
-                        : _results.isEmpty
-                            ? PTEmptyState(icon: Icons.mail_outline, text: '暂无消息')
-                            : ListView(padding: const EdgeInsets.all(12), children: _filteredResults.map(_group).toList()),
+      ],
+      filterDimensions: _filterDimensions(),
+      siteFilter: PTSiteFilterConfig(
+        selected: _selectedSiteIds,
+        onChanged: (v) => setState(() => _selectedSiteIds = v),
+        options: _results
+            .map((r) => PTFilterOption<Object?>(value: r.siteId, label: r.siteName))
+            .toList(),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? PTEmptyState(text: _error!, onRetry: _load)
+            : _results.isEmpty
+            ? PTEmptyState(icon: Icons.mail_outline, text: '暂无消息')
+            : ListView(
+                padding: const EdgeInsets.all(12),
+                children: _filteredResults.map(_group).toList(),
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _filterRow() {
-    const tabs = [
+  // 邮箱维度（原 PTChipBar 主导航 tab，标 structural 不计入激活徽标），收进通用筛选按钮。
+  // 站点筛选单独成按钮（siteFilter）。邮箱切换触发 _load 重新拉该邮箱数据。
+  List<PTFilterDimension> _filterDimensions() {
+    const mailboxes = [
       (Mailbox.inbox, '收件箱'),
       (Mailbox.system, '系统'),
       (Mailbox.sent, '发件箱'),
@@ -168,44 +241,19 @@ class _MessagesPageState extends State<MessagesPage> {
       (Mailbox.reports, '举报信箱'),
       (Mailbox.staff, '管理组信箱'),
     ];
-    // 邮箱 tab 是主导航 → 保留 PTChipBar 横滚；站点筛选 → 小 pill 弹候选。
-    final mailBar = PTChipBar<Mailbox>(
-      selected: _mailbox,
-      onSelected: _switchMailbox,
-      padding: EdgeInsets.zero,
-      items: tabs.map((t) => PTChipItem<Mailbox>(value: t.$1, label: t.$2)).toList(),
-    );
-    String siteNameOf(int? id) {
-      if (id == null) return '全部站点';
-      for (final r in _results) {
-        if (r.siteId == id) return r.siteName;
-      }
-      return '全部站点';
-    }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(children: [
-        Expanded(child: mailBar),
-        if (_results.isNotEmpty) ...[
-          const SizedBox(width: 8),
-          PTFilterPill(
-            label: '站点',
-            value: siteNameOf(_siteFilter),
-            active: _siteFilter != null,
-            onTap: () => showFilterSheet<int?>(
-              context,
-              title: '筛选站点',
-              selected: _siteFilter,
-              onSelected: (v) => setState(() => _siteFilter = v),
-              options: [
-                const PTFilterOption(value: null, label: '全部站点'),
-                ..._results.map((r) => PTFilterOption(value: r.siteId, label: r.siteName)),
-              ],
-            ),
-          ),
+    return [
+      PTFilterDimension.choice(
+        label: '邮箱',
+        selected: _mailbox,
+        isDefault: false,
+        isStructural: true,
+        onChanged: (v) => _switchMailbox(v as Mailbox),
+        options: [
+          for (final m in mailboxes)
+            PTFilterOption<Object?>(value: m.$1, label: m.$2),
         ],
-      ]),
-    );
+      ),
+    ];
   }
 
   Widget _group(MessageResult r) {
@@ -214,22 +262,52 @@ class _MessagesPageState extends State<MessagesPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            Text(r.siteName, style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(width: 8),
-            if (r.error.isNotEmpty)
-              Expanded(child: Text(_friendlyError(r.error), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: PTColors.danger, fontSize: 12)))
-            else if (r.messages.isEmpty)
-              const Text('无消息', style: TextStyle(color: Colors.grey, fontSize: 12)),
-          ]),
-          ...r.messages.map((m) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: m.isRead ? null : CircleAvatar(radius: 4, backgroundColor: PTColors.primary),
-                title: Text(m.title, style: TextStyle(fontWeight: m.isRead ? FontWeight.w400 : FontWeight.w600)),
-                subtitle: Text('${m.sender} · ${m.date}', style: const TextStyle(fontSize: 12)),
-                onTap: () => _openDetail(m),
-              )),
+          Row(
+            children: [
+              Text(
+                r.siteName,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 8),
+              if (r.error.isNotEmpty)
+                Expanded(
+                  child: Text(
+                    _friendlyError(r.error),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: PTColors.danger,
+                      fontSize: 12,
+                    ),
+                  ),
+                )
+              else if (r.messages.isEmpty)
+                const Text(
+                  '无消息',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+            ],
+          ),
+          ...r.messages.map(
+            (m) => ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: m.isRead
+                  ? null
+                  : CircleAvatar(radius: 4, backgroundColor: PTColors.primary),
+              title: Text(
+                m.title,
+                style: TextStyle(
+                  fontWeight: m.isRead ? FontWeight.w400 : FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                '${m.sender} · ${m.date}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              onTap: () => _openDetail(m),
+            ),
+          ),
         ],
       ),
     );
@@ -239,12 +317,18 @@ class _MessagesPageState extends State<MessagesPage> {
 /// 站点原始错误 → 中文友好提示（对齐 Web Messages.vue 的 friendlyError）。原文不可读时降级返回原串。
 String _friendlyError(String e) {
   final l = e.toLowerCase();
-  if (l.contains('context deadline exceeded') || l.contains('timeout') || l.contains('deadline')) {
+  if (l.contains('context deadline exceeded') ||
+      l.contains('timeout') ||
+      l.contains('deadline')) {
     return '站点超时（可能未登录或 Cookie 失效）';
   }
   if (l.contains('no such host') || l.contains('dns')) return '无法解析站点域名';
   if (l.contains('403') || l.contains('forbidden')) return '站点拒绝访问（可能未登录）';
   if (l.contains('cookie')) return 'Cookie 失效，请重新登录站点';
-  if (l.contains('eof') || l.contains('connection reset') || l.contains('connection refused')) return '站点连接异常';
+  if (l.contains('eof') ||
+      l.contains('connection reset') ||
+      l.contains('connection refused')) {
+    return '站点连接异常';
+  }
   return e;
 }

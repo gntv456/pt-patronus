@@ -75,6 +75,11 @@ ThemeData buildAppTheme(Brightness brightness) {
         color: isDark ? Colors.white : Colors.black87,
       ),
     ),
+    snackBarTheme: const SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      insetPadding: EdgeInsets.fromLTRB(16, 0, 16, 88),
+      showCloseIcon: true,
+    ),
   );
 }
 

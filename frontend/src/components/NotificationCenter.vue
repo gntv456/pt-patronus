@@ -33,6 +33,12 @@ function meta(s: NoticeSource) {
 }
 
 const unread = computed(() => notices.value.filter((n) => !n.read).length)
+const urgentSources = new Set<NoticeSource>(['assess_fail', 'host_offline', 'nas_offline', 'site_offline'])
+const urgentUnread = computed(() => notices.value.filter((n) => !n.read && urgentSources.has(n.source)).length)
+const badgeText = computed(() => {
+  const n = urgentUnread.value || unread.value
+  return n > 99 ? '99+' : String(n)
+})
 
 // 通知来源 → 路由名映射，点击通知体跳转到对应页面。
 const sourceRoute: Record<NoticeSource, string> = {
@@ -144,18 +150,18 @@ function relTime(iso: string): string {
   <div ref="boxRef" class="nc">
     <button
       class="nc-bell"
-      :class="{ 'nc-bell--has': unread > 0 }"
-      title="通知中心"
+      :class="{ 'nc-bell--has': unread > 0, 'nc-bell--urgent': urgentUnread > 0 }"
+      :title="urgentUnread ? `${urgentUnread} 条高风险通知` : unread ? `${unread} 条未读通知` : '通知中心'"
       @click.stop="open = !open"
     >
       <SptIcon name="bell" :size="20" />
-      <span v-if="unread > 0" class="nc-badge">{{ unread > 99 ? '99+' : unread }}</span>
+      <span v-if="unread > 0" class="nc-badge">{{ badgeText }}</span>
     </button>
 
     <Transition name="nc-slide">
       <div v-if="open" class="nc-panel glass">
         <div class="nc-head">
-          <span class="nc-title">通知中心</span>
+          <span class="nc-title">通知中心 <small v-if="unread">未读 {{ unread }}<template v-if="urgentUnread"> · 高风险 {{ urgentUnread }}</template></small></span>
           <div class="nc-actions">
             <button v-if="unread > 0" class="nc-action" @click="readAll">全部已读</button>
             <button v-if="notices.length" class="nc-action nc-action--danger" @click="clearAll">清空</button>
@@ -210,7 +216,10 @@ function relTime(iso: string): string {
   background: rgba(108, 92, 231, 0.12);
 }
 .nc-bell--has {
-  color: var(--pt-warn, #f39c12);
+  color: var(--text-strong);
+}
+.nc-bell--urgent {
+  color: var(--pt-danger);
 }
 .nc-badge {
   position: absolute;
@@ -220,7 +229,7 @@ function relTime(iso: string): string {
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #e74c3c;
+  background: var(--text-muted);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -229,6 +238,9 @@ function relTime(iso: string): string {
   justify-content: center;
   line-height: 1;
   box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.72));
+}
+.nc-bell--urgent .nc-badge {
+  background: #e74c3c;
 }
 .nc-panel {
   position: absolute;
@@ -252,6 +264,11 @@ function relTime(iso: string): string {
 .nc-title {
   font-weight: 700;
   font-size: 14px;
+}
+.nc-title small {
+  margin-left: 6px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 .nc-action {
   background: none;

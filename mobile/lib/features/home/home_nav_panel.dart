@@ -26,7 +26,9 @@ class NavPanel extends StatelessWidget {
                 ? Colors.white.withValues(alpha: reduced ? 0.14 : 0.08)
                 : Colors.white.withValues(alpha: reduced ? 0.82 : 0.64),
             borderRadius: r,
-            border: Border.all(color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.6)),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: isDark ? 0.08 : 0.6),
+            ),
           ),
           child: child,
         );
@@ -48,31 +50,43 @@ class NavPanel extends StatelessWidget {
 /// [HomeController.select]。组标题样式对齐 Web `.nav-group-title`（小号 muted 文本）。
 class NavGroupedList extends StatelessWidget {
   final EdgeInsets padding;
-  const NavGroupedList({super.key, this.padding = const EdgeInsets.symmetric(vertical: 8)});
+  const NavGroupedList({
+    super.key,
+    this.padding = const EdgeInsets.symmetric(vertical: 8),
+  });
 
   @override
   Widget build(BuildContext context) {
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final children = <Widget>[];
-    var idx = 0;
     for (final g in navGroups) {
-      children.add(Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
-        child: Text(
-          g.title,
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: muted.withValues(alpha: 0.6)),
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
+          child: Text(
+            g.title,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: muted.withValues(alpha: 0.6),
+            ),
+          ),
         ),
-      ));
-      for (final _ in g.items) {
-        children.add(NavTile(index: idx++));
+      );
+      for (final item in g.items) {
+        children.add(NavTile(index: navItems.indexOf(item)));
       }
     }
-    children.add(const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Divider(height: 1),
-    ));
-    for (final _ in navFooter) {
-      children.add(NavTile(index: idx++));
+    if (navFooter.isNotEmpty) {
+      children.add(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Divider(height: 1),
+        ),
+      );
+      for (final item in navFooter) {
+        children.add(NavTile(index: navItems.indexOf(item)));
+      }
     }
     children.add(const SizedBox(height: 12));
     return ListView(padding: padding, children: children);
@@ -117,9 +131,14 @@ class NavTile extends StatelessWidget {
             ),
             subtitle: item.desc == null
                 ? null
-                : Text(item.desc!, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                : Text(
+                    item.desc!,
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
             selected: sel,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             onTap: () => c.select(index),
           ),
         );
@@ -141,7 +160,10 @@ class NavBrandHeader extends StatelessWidget {
         children: [
           const PTLogo(size: 34),
           const SizedBox(width: 10),
-          const Text('PTPatronus', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const Text(
+            'PTPatronus',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
           const Spacer(),
           ?trailing,
         ],

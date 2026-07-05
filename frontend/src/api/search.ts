@@ -29,11 +29,14 @@ export interface SiteSearchResult {
 export const searchApi = {
   // 跨启用站点聚合搜索：POST /search?keyword=...（空 body）。
   // category=movie/tv/music（空=综合）：MTeam 映射 mode、NexusPHP 发 cat[]+后置过滤音乐。
+  // siteIds 非空时仅搜索指定启用站点子集（搜索页「站点筛选」用；空=全部启用）。
   // 返回每站一组；单站失败在 error 字段里，不致命。
-  all: (keyword: string, category = '') =>
-    http
-      .post<{ results: SiteSearchResult[] }>('/search', null, {
-        params: category ? { keyword, category } : { keyword },
-      })
-      .then((r) => r.data.results),
+  all: (keyword: string, category = '', siteIds: number[] = []) => {
+    const params: Record<string, string> = { keyword }
+    if (category) params.category = category
+    if (siteIds.length) params.site_ids = siteIds.join(',')
+    return http
+      .post<{ results: SiteSearchResult[] }>('/search', null, { params })
+      .then((r) => r.data.results)
+  },
 }

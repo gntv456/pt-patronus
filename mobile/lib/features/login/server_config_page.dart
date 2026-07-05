@@ -20,30 +20,47 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
   bool _busy = false;
   String? _msg;
   bool _ok = false;
+  String? _testedUrl;
 
   @override
   void initState() {
     super.initState();
     _url.text = ApiClient().baseUrl;
+    _url.addListener(_onUrlChanged);
   }
 
   @override
   void dispose() {
+    _url.removeListener(_onUrlChanged);
     _url.dispose();
     super.dispose();
   }
 
   String _trim(String s) => s.trim().replaceAll(RegExp(r'/+$'), '');
 
+  void _onUrlChanged() {
+    final changedAfterTest = _ok && _testedUrl != _trim(_url.text);
+    if (!changedAfterTest) return;
+    setState(() {
+      _ok = false;
+      _msg = '地址已修改，请重新测试连接';
+    });
+  }
+
   /// 校验后端地址：必须有 scheme+host；http 仅允许私网（公网 http 凭据可被嗅探）。
   /// 返回 null=合法，否则返回错误提示。
   String? _validateUrl(String url) {
     final u = Uri.tryParse(url);
-    if (u == null || u.host.isEmpty || (u.scheme != 'http' && u.scheme != 'https')) {
+    if (u == null ||
+        u.host.isEmpty ||
+        (u.scheme != 'http' && u.scheme != 'https')) {
       return '请填合法地址（以 http:// 或 https:// 开头）';
     }
     final h = u.host;
-    final isPrivate = h == 'localhost' || h == '127.0.0.1' || h == '0.0.0.0' ||
+    final isPrivate =
+        h == 'localhost' ||
+        h == '127.0.0.1' ||
+        h == '0.0.0.0' ||
         h == '10.0.2.2' || // Android 模拟器→宿主机
         h.startsWith('10.') ||
         h.startsWith('192.168.') ||
@@ -78,6 +95,7 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
         setState(() {
           _msg = '✓ 连接成功';
           _ok = true;
+          _testedUrl = url;
         });
       } else {
         setState(() => _msg = '✗ 后端返回 HTTP ${r.statusCode}');
@@ -101,9 +119,15 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
       setState(() => _msg = '✗ $verr');
       return;
     }
+    if (!_ok || _testedUrl != url) {
+      setState(() => _msg = '请先测试连接成功，再保存进入');
+      return;
+    }
     try {
       await ApiClient().setBaseUrl(url);
-      ptLog('[save] setBaseUrl OK -> baseUrl=${ApiClient().baseUrl} hasCustom=${ApiClient().hasCustomBaseUrl}');
+      ptLog(
+        '[save] setBaseUrl OK -> baseUrl=${ApiClient().baseUrl} hasCustom=${ApiClient().hasCustomBaseUrl}',
+      );
       if (!mounted) return;
       // 保存后重算 app home：已配 + 未登录 → LoginPage（reload 走 appRootKey，稳）。
       PTPatronusApp.reload(context);
@@ -116,32 +140,54 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.widthOf(context) < 390;
+    final pagePadding = compact ? 16.0 : 24.0;
+    final cardPadding = compact ? 18.0 : 24.0;
     return Scaffold(
       body: GlassBackground(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(pagePadding),
             child: GlassCard(
-              padding: const EdgeInsets.all(28),
+              padding: EdgeInsets.all(cardPadding),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 360),
+                constraints: const BoxConstraints(maxWidth: 380),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Row(children: [
-                      Text('🛡️', style: TextStyle(fontSize: 30)),
-                      SizedBox(width: 10),
-                      Text('PTPatronus',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                    ]),
+                    const Row(
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 30,
+                          color: PTColors.primary,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'PTPatronus',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 4),
-                    const Text('配置后端服务器地址', style: TextStyle(color: Colors.grey)),
+                    const Text(
+                      '配置后端服务器地址',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                     const SizedBox(height: 8),
                     const Text(
-                        '填入你部署的 docker 服务端地址（如 http://192.168.1.10:8088 或 https://你的域名），'
-                        '客户端通过它连接后端。',
-                        style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.5)),
+                      '填入你部署的 docker 服务端地址（如 http://192.168.1.10:8088 或 https://你的域名），'
+                      '客户端通过它连接后端。',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
+                    ),
                     const SizedBox(height: 20),
                     TextField(
                       controller: _url,
@@ -154,23 +200,51 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
                       autocorrect: false,
                     ),
                     const SizedBox(height: 12),
-                    Row(children: [
-                      TextButton(
-                          onPressed: _busy ? null : _test, child: const Text('测试连接')),
-                      const Spacer(),
-                      FilledButton(
-                          onPressed: _busy ? null : _save, child: const Text('保存并进入')),
-                    ]),
+                    if (compact)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          OutlinedButton(
+                            onPressed: _busy ? null : _test,
+                            child: const Text('测试连接'),
+                          ),
+                          const SizedBox(height: 8),
+                          FilledButton(
+                            onPressed: _busy ? null : _save,
+                            child: const Text('保存并进入'),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          TextButton(
+                            onPressed: _busy ? null : _test,
+                            child: const Text('测试连接'),
+                          ),
+                          const Spacer(),
+                          FilledButton(
+                            onPressed: _busy ? null : _save,
+                            child: const Text('保存并进入'),
+                          ),
+                        ],
+                      ),
                     if (_msg != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
-                        child: Text(_msg!,
-                            style: TextStyle(
-                                color: _ok ? Colors.green : Colors.red, fontSize: 13)),
+                        child: Text(
+                          _msg!,
+                          style: TextStyle(
+                            color: _ok ? Colors.green : Colors.red,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     const SizedBox(height: 16),
-                    Text('编译期默认：${Config.baseUrl}',
-                        style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    Text(
+                      '编译期默认：${Config.baseUrl}',
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
                   ],
                 ),
               ),

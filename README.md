@@ -26,6 +26,12 @@ D:\PTPatronus\
 
 Windows 终端中文乱码、端口占用、移动端后端地址等启动问题见 [启动与编码排障](README/启动与编码排障.md)。
 
+> Windows PowerShell 若出现中文乱码，先执行：
+> ```powershell
+> $OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+> ```
+> 或使用 Windows Terminal / VS Code 终端并设为 UTF-8。
+
 ## 运行
 
 ### 后端（默认 :8088，SQLite）
@@ -36,6 +42,7 @@ go run ./cmd/ptpatronus
 # 或 make dev
 ```
 环境变量见 `backend/configs/config.example.yaml`（SECRET_KEY / ACTIVATION_SECRET 生产必填）。
+评审或公开演示实例可显式设置 `DEMO_MODE=true` 显示“浏览演示环境”入口；默认关闭，生产不建议开启。
 
 冒烟（另开终端）：
 ```bash

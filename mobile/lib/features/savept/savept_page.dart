@@ -2,10 +2,11 @@ import 'dart:math' as math;
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/responsive.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/savept.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// PT监护室页：聚合 savept.icu 站点健康数据（ICU 仪表盘风格）。
@@ -230,78 +231,73 @@ class _SaveptPageState extends State<SaveptPage>
   @override
   Widget build(BuildContext context) {
     final s = _data?.summary;
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          toolbarHeight: 40,
-          title: _headerTitle(),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            PTIconAction(
-              icon: Icons.refresh,
-              tooltip: '刷新数据',
-              loading: _loading,
-              onPressed: _loading ? null : () => _load(refresh: true),
-            ),
-          ],
+    return PTPageScaffold(
+      title: _headerTitle(),
+      actions: [
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新数据',
+          loading: _loading,
+          onPressed: _loading ? null : () => _load(refresh: true),
         ),
-        floatingActionButton: _showBackToTop
-            ? FloatingActionButton(
-                mini: true,
-                onPressed: _scrollToTop,
-                child: const Icon(Icons.arrow_upward),
-              )
-            : null,
-        body: RefreshIndicator(
-          onRefresh: () => _load(refresh: true),
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? _Empty(text: _error!, onRetry: _load)
-              : _data == null
-              ? const _Empty(text: '无数据')
-              : ListView(
-                  controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-                  children: [
-                    if (_data!.stale && _data!.notice.isNotEmpty)
-                      _banner(_data!.notice, const Color(0xFFF39C12)),
-                    if (s != null) ...[_vitals(s), const SizedBox(height: 10)],
-                    _searchField(),
-                    const SizedBox(height: 8),
-                    _filterChips(),
-                    _filterMeta(),
-                    const SizedBox(height: 12),
-                    _noticesGrid(),
-                    const SizedBox(height: 12),
-                    ..._groupedEntries(),
-                    if (_filtered.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 48),
-                        child: Column(
-                          children: [
-                            const Center(
-                              child: Text(
-                                '没有匹配的站点',
-                                style: TextStyle(color: Colors.grey),
-                              ),
+      ],
+      search: PTSearchConfig(
+        controller: _searchCtrl,
+        onChanged: (v) => setState(() => _keyword = v),
+        hintText: '搜索站点名称...',
+      ),
+      filterDimensions: _filterDimensions(),
+      filterOnClearAll: _clearFilters,
+      floatingActionButton: _showBackToTop
+          ? FloatingActionButton(
+              mini: true,
+              onPressed: _scrollToTop,
+              child: const Icon(Icons.arrow_upward),
+            )
+          : null,
+      body: RefreshIndicator(
+        onRefresh: () => _load(refresh: true),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? _Empty(text: _error!, onRetry: _load)
+            : _data == null
+            ? const _Empty(text: '无数据')
+            : ListView(
+                controller: _scroll,
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
+                children: [
+                  if (_data!.stale && _data!.notice.isNotEmpty)
+                    _banner(_data!.notice, const Color(0xFFF39C12)),
+                  if (s != null) ...[_vitals(s), const SizedBox(height: 10)],
+                  _filterMeta(),
+                  const SizedBox(height: 12),
+                  _noticesGrid(),
+                  const SizedBox(height: 12),
+                  ..._groupedEntries(),
+                  if (_filtered.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      child: Column(
+                        children: [
+                          const Center(
+                            child: Text(
+                              '没有匹配的站点',
+                              style: TextStyle(color: Colors.grey),
                             ),
-                            const SizedBox(height: 12),
-                            Center(
-                              child: TextButton(
-                                onPressed: _clearFilters,
-                                child: const Text('清除筛选'),
-                              ),
+                          ),
+                          const SizedBox(height: 12),
+                          Center(
+                            child: TextButton(
+                              onPressed: _clearFilters,
+                              child: const Text('清除筛选'),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                  ],
-                ),
-        ),
+                    ),
+                ],
+              ),
       ),
     );
   }
@@ -421,7 +417,9 @@ class _SaveptPageState extends State<SaveptPage>
   Widget _siteGrid(List<SaveptSiteCard> items) {
     return LayoutBuilder(
       builder: (ctx, c) {
-        final cols = ptAutoColumns(c.maxWidth, 240, minColumns: 1).clamp(1, 4);
+        // 单卡最小宽 340、最多 3 列：卡片更宽，顶部标签行（类型·存活·站庆·抢救）一行排得下，
+        // 不再被窄卡挤成多行。窄屏仍 1 列全宽。
+        final cols = ptAutoColumns(c.maxWidth, 340, minColumns: 1).clamp(1, 3);
         const gap = 8.0;
         final w = cols <= 1
             ? c.maxWidth
@@ -450,43 +448,83 @@ class _SaveptPageState extends State<SaveptPage>
     );
   }
 
+  // 体征点按 = 快捷筛选：点某项设对应维度，重点同一项或点「监护中」清空。
+  void _toggleStatus(String v) =>
+      setState(() => _status = (_status == v) ? '全部' : v);
+  void _toggleType(String v) => setState(() => _type = (_type == v) ? '全部' : v);
+  void _toggleMp(String v) =>
+      setState(() => _mpStatus = (_mpStatus == v) ? '全部' : v);
+
   Widget _vitals(SaveptSummary s) {
+    // 「监护中」高亮 ⇔ 当前无任何筛选（年份/关键词不计，因其另有入口）。
+    final noFilter =
+        _status == '全部' &&
+        _type == '全部' &&
+        _mpStatus == '全部' &&
+        _year == '全部' &&
+        !_annivOnly;
     final items = <PTStat>[
-      PTStat(value: '${s.total}', label: '监护中', color: PTColors.primary),
+      PTStat(
+        value: '${s.total}',
+        label: '监护中',
+        color: PTColors.primary,
+        selected: noFilter,
+        onTap: () => setState(() {
+          _status = '全部';
+          _type = '全部';
+          _mpStatus = '全部';
+          _year = '全部';
+          _annivOnly = false;
+        }),
+      ),
       PTStat(
         value: '${s.healthy}',
         label: '健康',
         color: const Color(0xFF22C55E),
+        selected: _status == '健康',
+        onTap: () => _toggleStatus('健康'),
       ),
       PTStat(
         value: '${s.mpOwned}',
         label: '已拥有',
         color: const Color(0xFF16A34A),
+        selected: _mpStatus == 'owned',
+        onTap: () => _toggleMp('owned'),
       ),
       PTStat(
         value: '${s.critical}',
         label: '病危',
         color: const Color(0xFFEF4444),
+        selected: _status == '病危',
+        onTap: () => _toggleStatus('病危'),
       ),
       PTStat(
         value: '${s.closed}',
         label: '已关站',
         color: const Color(0xFF94A3B8),
+        selected: _status == '死亡',
+        onTap: () => _toggleStatus('死亡'),
       ),
       PTStat(
         value: '${s.todayAnniv}',
         label: '站庆',
         color: const Color(0xFFF59E0B),
+        selected: _annivOnly,
+        onTap: () => setState(() => _annivOnly = !_annivOnly),
       ),
       PTStat(
         value: '${s.internal}',
         label: '内站',
         color: const Color(0xFF3B82F6),
+        selected: _type == '内站',
+        onTap: () => _toggleType('内站'),
       ),
       PTStat(
         value: '${s.external}',
         label: '外站',
         color: const Color(0xFF8B5CF6),
+        selected: _type == '外站',
+        onTap: () => _toggleType('外站'),
       ),
     ];
     // 单行指标条：宽屏 Row 均匀分布 + 竖分隔（监护仪风格）/ 窄屏横向滚动，永不折行。
@@ -500,122 +538,72 @@ class _SaveptPageState extends State<SaveptPage>
     );
   }
 
-  Widget _searchField() {
-    return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: TextField(
-        controller: _searchCtrl,
-        decoration: InputDecoration(
-          icon: const Icon(Icons.search, color: Colors.grey),
-          hintText: '搜索站点名称...',
-          border: InputBorder.none,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
-          suffixIcon: _keyword.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear, size: 18),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    setState(() => _keyword = '');
-                  },
-                )
-              : null,
-        ),
-        onChanged: (v) => setState(() => _keyword = v),
-      ),
-    );
-  }
-
-  // 筛选 pill 行：状态/类型/年份/MP 各弹候选列表，近期站庆为开关 pill。
-  // 取代原 chip 行 + 双 dropdown 的多行筛选区（4 行 → 1 行小药丸）。
-  Widget _filterChips() {
+  // 5 维筛选（收进顶栏筛选按钮 → showMultiFilterSheet）：状态/类型/年份/MP 单选 +
+  // 近期站庆开关。每次构建传新 List（廉价值对象）；isDefault 驱动顶栏激活徽标。
+  List<PTFilterDimension> _filterDimensions() {
     String mpLabel(String v) => switch (v) {
       'owned' => '已拥有',
       'available' => '可添加',
       'unsupported' => '未收录',
       _ => '全部',
     };
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        children: [
-          PTFilterPill(
-            label: '状态',
-            value: _status,
-            active: _status != '全部',
-            onTap: () => showFilterSheet<String>(
-              context,
-              title: '健康状态',
-              selected: _status,
-              onSelected: (v) => setState(() => _status = v),
-              options: const [
-                PTFilterOption(value: '全部', label: '全部'),
-                PTFilterOption(value: '健康', label: '健康'),
-                PTFilterOption(value: '病危', label: '病危'),
-                PTFilterOption(value: '死亡', label: '死亡'),
-              ],
-            ),
+    return [
+      PTFilterDimension.choice(
+        label: '健康状态',
+        selected: _status,
+        isDefault: _status == '全部',
+        onChanged: (v) => setState(() => _status = (v as String?) ?? '全部'),
+        options: const [
+          PTFilterOption<Object?>(value: '全部', label: '全部'),
+          PTFilterOption<Object?>(value: '健康', label: '健康'),
+          PTFilterOption<Object?>(value: '病危', label: '病危'),
+          PTFilterOption<Object?>(value: '死亡', label: '死亡'),
+        ],
+      ),
+      PTFilterDimension.choice(
+        label: '站点类型',
+        selected: _type,
+        isDefault: _type == '全部',
+        onChanged: (v) => setState(() => _type = (v as String?) ?? '全部'),
+        options: const [
+          PTFilterOption<Object?>(value: '全部', label: '全部'),
+          PTFilterOption<Object?>(value: '内站', label: '内站'),
+          PTFilterOption<Object?>(value: '外站', label: '外站'),
+        ],
+      ),
+      PTFilterDimension.toggle(
+        label: '仅看近期站庆',
+        value: _annivOnly,
+        onChanged: (v) => setState(() => _annivOnly = v),
+      ),
+      PTFilterDimension.choice(
+        label: '建站年份',
+        selected: _year,
+        isDefault: _year == '全部',
+        onChanged: (v) => setState(() => _year = (v as String?) ?? '全部'),
+        options: _yearOptions
+            .map((y) => PTFilterOption<Object?>(value: y, label: y))
+            .toList(),
+      ),
+      PTFilterDimension.choice(
+        label: 'MP 状态',
+        selected: _mpStatus,
+        isDefault: _mpStatus == '全部',
+        onChanged: (v) => setState(() => _mpStatus = (v as String?) ?? '全部'),
+        options: [
+          const PTFilterOption<Object?>(value: '全部', label: '全部'),
+          PTFilterOption<Object?>(value: 'owned', label: mpLabel('owned')),
+          PTFilterOption<Object?>(
+            value: 'available',
+            label: mpLabel('available'),
           ),
-          PTFilterPill(
-            label: '类型',
-            value: _type,
-            active: _type != '全部',
-            onTap: () => showFilterSheet<String>(
-              context,
-              title: '站点类型',
-              selected: _type,
-              onSelected: (v) => setState(() => _type = v),
-              options: const [
-                PTFilterOption(value: '全部', label: '全部'),
-                PTFilterOption(value: '内站', label: '内站'),
-                PTFilterOption(value: '外站', label: '外站'),
-              ],
-            ),
-          ),
-          PTFilterPill(
-            value: '近期站庆',
-            active: _annivOnly,
-            onTap: () => setState(() => _annivOnly = !_annivOnly),
-          ),
-          PTFilterPill(
-            label: '年份',
-            value: _year,
-            active: _year != '全部',
-            onTap: () => showFilterSheet<String>(
-              context,
-              title: '建站年份',
-              selected: _year,
-              onSelected: (v) => setState(() => _year = v),
-              options: _yearOptions
-                  .map((y) => PTFilterOption(value: y, label: y))
-                  .toList(),
-            ),
-          ),
-          PTFilterPill(
-            label: 'MP',
-            value: mpLabel(_mpStatus),
-            active: _mpStatus != '全部',
-            onTap: () => showFilterSheet<String>(
-              context,
-              title: 'MP 状态',
-              selected: _mpStatus,
-              onSelected: (v) => setState(() => _mpStatus = v),
-              options: [
-                const PTFilterOption(value: '全部', label: '全部'),
-                PTFilterOption(value: 'owned', label: mpLabel('owned')),
-                PTFilterOption(value: 'available', label: mpLabel('available')),
-                PTFilterOption(
-                  value: 'unsupported',
-                  label: mpLabel('unsupported'),
-                ),
-              ],
-            ),
+          PTFilterOption<Object?>(
+            value: 'unsupported',
+            label: mpLabel('unsupported'),
           ),
         ],
       ),
-    );
+    ];
   }
 
   // 公告区：宽屏 2 列、窄屏 1 列（对齐 Web .spt-notices repeat(2,1fr)→768px 1fr）。
@@ -808,24 +796,29 @@ class _SiteCardState extends State<_SiteCard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 标签行
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    _tag(widget.siteTypeLabel(c.siteType), Colors.grey),
-                    if (c.durationText.isNotEmpty)
-                      _tag(c.durationText, PTColors.primary),
-                    if (c.anniversaryText.isNotEmpty)
-                      _tag(
-                        widget.annivDisplay(c.anniversaryText),
-                        const Color(0xFFF59E0B),
-                      ),
-                    if (c.faultDuration.isNotEmpty)
-                      _tag('⏱ 抢救 ${c.faultDuration}', const Color(0xFFEF4444)),
-                  ],
-                ),
-                const SizedBox(height: 8),
+                // 标签行：纯彩色文字 + 「·」分隔（无底色框，最省地方；一行排不下才自然换行）。
+                Builder(builder: (_) {
+                  final spans = <TextSpan>[];
+                  void add(String text, Color color) {
+                    if (spans.isNotEmpty) spans.add(const TextSpan(text: ' · '));
+                    spans.add(TextSpan(
+                      text: text,
+                      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
+                    ));
+                  }
+                  add(widget.siteTypeLabel(c.siteType), Colors.grey);
+                  if (c.durationText.isNotEmpty) add(c.durationText, PTColors.primary);
+                  if (c.anniversaryText.isNotEmpty) {
+                    add(widget.annivDisplay(c.anniversaryText), const Color(0xFFF59E0B));
+                  }
+                  if (c.faultDuration.isNotEmpty) {
+                    add('⏱ 抢救 ${c.faultDuration}', const Color(0xFFEF4444));
+                  }
+                  return Text.rich(
+                    TextSpan(children: spans, style: const TextStyle(fontSize: 11, height: 1.3)),
+                  );
+                }),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     if (c.icon != null && c.icon!.isNotEmpty)
@@ -985,24 +978,6 @@ class _SiteCardState extends State<_SiteCard> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _tag(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 11,
-          color: color,
-          fontWeight: FontWeight.w500,
-        ),
       ),
     );
   }

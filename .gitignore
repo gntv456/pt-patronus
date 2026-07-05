@@ -25,3 +25,6 @@ mobile/build/
 # OS
 .DS_Store
 Thumbs.db
+
+# 调试产物
+mobile/_dbg_*

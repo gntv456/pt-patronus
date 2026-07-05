@@ -135,7 +135,7 @@ function closeMobileNav() {
             :to="{ name: item.name }"
             class="nav-item glass-hover"
             :title="navDesc[item.name] || item.label"
-            @click="closeMobileNav"
+            @click="closeMobileNav()"
           >
             <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
             <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
@@ -150,7 +150,7 @@ function closeMobileNav() {
     <div class="main">
       <!-- 顶部悬浮玻璃栏 -->
       <header class="topbar glass-bar">
-        <button class="icon-btn" @click="toggleNav"><el-icon><Menu /></el-icon></button>
+        <button class="icon-btn" :title="isMobile ? '打开导航' : '折叠导航'" aria-label="打开导航" @click="toggleNav"><el-icon><Menu /></el-icon></button>
         <div class="spacer"></div>
         <NotificationCenter />
         <el-dropdown trigger="click" @command="onUserCommand">
@@ -368,6 +368,16 @@ function closeMobileNav() {
   }
   .topbar {
     padding: 8px 10px;
+    min-height: 36px;
+  }
+  .user-trigger {
+    padding: 5px 6px;
+  }
+  .user-name {
+    max-width: 56px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .content {
     min-width: 0;

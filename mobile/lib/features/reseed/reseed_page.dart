@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/api/reseed.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// 辅种页（IYUU 精确匹配，对齐 Web Reseed.vue）：配置 token → 选下载器开始辅种 →
@@ -273,98 +274,77 @@ class _ReseedPageState extends State<ReseedPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GlassBackground(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const HomeMenuButton(),
-                    const Text(
-                      '辅种',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: (_configured ? PTColors.success : PTColors.warn)
-                            .withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: _configured
-                                  ? PTColors.success
-                                  : PTColors.warn,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            _configured ? 'IYUU 已配置' : 'IYUU 未配置',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: _configured
-                                  ? PTColors.success
-                                  : PTColors.warn,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: _openIyuu,
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(30, 30),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        iconSize: 14,
-                      ),
-                      icon: const Icon(Icons.open_in_new, size: 14),
-                      label: const Text(
-                        'iyuu.cn',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                    PTIconAction(
-                      icon: Icons.refresh,
-                      onPressed: _loading ? null : _loadTasks,
-                      tooltip: '刷新',
-                      loading: _loading,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: isWideScreen(context) ? _wideBody() : _narrowBody(),
-                ),
-              ],
-            ),
+    return PTPageScaffold(
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '辅种',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
+          const SizedBox(width: 8),
+          _iyuuBadge(),
+        ],
+      ),
+      actions: [
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新',
+          loading: _loading,
+          onPressed: _loading ? null : _loadTasks,
         ),
+        PTBarAction(
+          icon: Icons.open_in_new,
+          label: 'iyuu.cn',
+          onPressed: _openIyuu,
+          overflow: true,
+        ),
+      ],
+      filterDimensions: _filterDimensions(),
+      filterOnClearAll: () {
+        setState(() => _status = '');
+        _loadTasks();
+      },
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
+        child: isWideScreen(context) ? _wideBody() : _narrowBody(),
       ),
     );
   }
 
-  // 窄屏：纵向卡片列表（配置 + 辅种 + 筛选 + 任务卡片）。
+  // IYUU 配置状态徽标（原 header 内联，现并入标题区）。
+  Widget _iyuuBadge() {
+    final on = _configured;
+    final c = on ? PTColors.success : PTColors.warn;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            on ? 'IYUU 已配置' : 'IYUU 未配置',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: c,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 窄屏：纵向卡片列表（配置 + 辅种 + 任务卡片）。
   Widget _narrowBody() {
     return ListView(
       children: [
@@ -372,14 +352,12 @@ class _ReseedPageState extends State<ReseedPage> {
         const SizedBox(height: 14),
         _reseedCard(),
         const SizedBox(height: 14),
-        _filterChips(),
-        const SizedBox(height: 8),
         _tasksArea(narrow: true),
       ],
     );
   }
 
-  // 宽屏：配置/辅种两栏并排 + 筛选 + 任务表格。
+  // 宽屏：配置/辅种两栏并排 + 任务表格。
   Widget _wideBody() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -393,8 +371,6 @@ class _ReseedPageState extends State<ReseedPage> {
           ],
         ),
         const SizedBox(height: 14),
-        _filterChips(),
-        const SizedBox(height: 8),
         Expanded(child: _tasksArea(narrow: false)),
       ],
     );
@@ -677,36 +653,26 @@ class _ReseedPageState extends State<ReseedPage> {
     );
   }
 
-  Widget _filterChips() {
-    final cur = _status;
-    String labelOf(String s) => s.isEmpty ? '全部' : _statusLabel(s);
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, bottom: 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: PTFilterPill(
-          label: '状态',
-          value: labelOf(cur),
-          active: cur.isNotEmpty,
-          onTap: () => showFilterSheet<String>(
-            context,
-            title: '筛选状态',
-            selected: cur,
-            onSelected: (v) {
-              setState(() => _status = v);
-              _loadTasks();
-            },
-            options: const [
-              PTFilterOption(value: '', label: '全部'),
-              PTFilterOption(value: 'pending', label: '待处理'),
-              PTFilterOption(value: 'added', label: '已添加'),
-              PTFilterOption(value: 'skipped', label: '已跳过'),
-              PTFilterOption(value: 'failed', label: '失败'),
-            ],
-          ),
-        ),
+  // 状态筛选维度（收进顶栏筛选按钮）：选状态 → 重新拉该状态任务。
+  List<PTFilterDimension> _filterDimensions() {
+    return [
+      PTFilterDimension.choice(
+        label: '状态',
+        selected: _status,
+        isDefault: _status.isEmpty,
+        onChanged: (v) {
+          setState(() => _status = (v as String?) ?? '');
+          _loadTasks();
+        },
+        options: const [
+          PTFilterOption<Object?>(value: '', label: '全部'),
+          PTFilterOption<Object?>(value: 'pending', label: '待处理'),
+          PTFilterOption<Object?>(value: 'added', label: '已添加'),
+          PTFilterOption<Object?>(value: 'skipped', label: '已跳过'),
+          PTFilterOption<Object?>(value: 'failed', label: '失败'),
+        ],
       ),
-    );
+    ];
   }
 
   Widget _taskCard(ReseedTask t) {

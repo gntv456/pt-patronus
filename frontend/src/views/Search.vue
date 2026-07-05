@@ -4,11 +4,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { searchApi, type SiteSearchResult, type SiteTorrent } from '@/api/search'
 import { seedbrowseApi, type TorrentDetail } from '@/api/seedbrowse'
 import { mediaApi, type MediaInfo } from '@/api/media'
+import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import { copyText } from '@/utils/clipboard'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DOMPurify from 'dompurify'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -29,6 +31,7 @@ type SearchRow = SiteTorrent & { site_id: number; site_name: string }
 const keyword = ref('')
 const category = ref<'' | 'movie' | 'tv' | 'music'>('')
 const results = ref<SiteSearchResult[]>([])
+const sites = ref<Site[]>([])
 const loading = ref(false)
 const error = ref('')
 const searched = ref(false)
@@ -37,6 +40,12 @@ const rows = computed<SearchRow[]>(() =>
   results.value.flatMap((r) => r.torrents.map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name }))),
 )
 const failedSites = computed(() => results.value.filter((r) => r.error))
+const activeSites = computed(() => sites.value.filter((s) => s.is_active))
+// 站点筛选：空=搜全部启用站；非空=仅搜选中站点。UI/逻辑内聚在 SiteFilterDialog 组件。
+const selectedSiteIds = ref<number[]>([])
+const scopeSiteCount = computed(() =>
+  selectedSiteIds.value.length ? selectedSiteIds.value.length : activeSites.value.length,
+)
 const showFailed = ref(false)
 
 async function search() {
@@ -49,7 +58,7 @@ async function search() {
   error.value = ''
   try {
     if (mode.value === 'torrent') {
-      results.value = await searchApi.all(kw, category.value)
+      results.value = await searchApi.all(kw, category.value, selectedSiteIds.value)
     } else {
       mediaResults.value = await mediaApi.search(kw, year.value || 0)
     }
@@ -197,6 +206,7 @@ function openMediaDetail(m: MediaInfo) {
 
 // 接受跨页跳转带来的 keyword / mode（如详情页「搜索资源」按钮回跳）。
 onMounted(() => {
+  siteApi.list().then((l) => { sites.value = l }).catch(() => {})
   const q = route.query.keyword
   if (typeof q === 'string' && q) {
     keyword.value = q
@@ -223,15 +233,21 @@ onMounted(() => {
     </div>
 
     <div class="search-bar glass">
-      <el-input
-        v-model="keyword"
-        :placeholder="mode === 'torrent'
-          ? '输入电影/剧集名或关键词，跨启用站点搜索…'
-          : '搜索影视（电影 / 剧集标题）'"
-        clearable
-        size="large"
-        @keyup.enter="search"
-      />
+      <div class="search-main">
+        <el-input
+          v-model="keyword"
+          :placeholder="mode === 'torrent'
+            ? '输入电影/剧集名或关键词，跨启用站点搜索…'
+            : '搜索影视（电影 / 剧集标题）'"
+          clearable
+          size="large"
+          @keyup.enter="search"
+        />
+        <div v-if="mode === 'torrent'" class="scope-line">
+          <span>将搜索 {{ scopeSiteCount }} 个站点</span>
+          <SiteFilterDialog v-model="selectedSiteIds" :sites="activeSites" title="选择搜索站点" />
+        </div>
+      </div>
       <el-input-number
         v-if="mode === 'media'"
         v-model="year"
@@ -514,8 +530,24 @@ onMounted(() => {
   padding: 14px;
   align-items: center;
 }
-.search-bar :deep(.el-input) {
+.search-main {
   flex: 1;
+  min-width: 0;
+}
+.scope-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.scope-line a {
+  color: var(--pt-primary);
+  text-decoration: none;
+}
+.scope-line a:hover {
+  text-decoration: underline;
 }
 .card {
   padding: 18px;
@@ -862,5 +894,19 @@ onMounted(() => {
 }
 :deep(.el-table) {
   --el-table-border-color: rgba(0, 0, 0, 0.06);
+}
+@media (max-width: 720px) {
+  .head,
+  .search-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .head-right {
+    justify-content: space-between;
+  }
+  .search-bar :deep(.el-select),
+  .search-bar :deep(.el-button) {
+    width: 100%;
+  }
 }
 </style>

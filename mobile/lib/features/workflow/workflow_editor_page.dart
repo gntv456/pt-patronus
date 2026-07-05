@@ -73,7 +73,12 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
     } catch (e) {
       _toast('$e');
     } finally {
-      if (mounted) setState(() { _loading = false; _dirty = false; });
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _dirty = false;
+        });
+      }
     }
   }
 
@@ -111,13 +116,18 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
     final n = _nodes.length;
     setState(() {
       _dirty = true;
-      _nodes.add(GraphNode(
-        id: '$type-${DateTime.now().millisecondsSinceEpoch}',
-        type: type,
-        name: info.name,
-        params: Map<String, dynamic>.from(info.defaultParams),
-        position: Position(x: 120 + (n % 5) * 200.0, y: 100 + (n ~/ 5) * 140.0),
-      ));
+      _nodes.add(
+        GraphNode(
+          id: '$type-${DateTime.now().millisecondsSinceEpoch}',
+          type: type,
+          name: info.name,
+          params: Map<String, dynamic>.from(info.defaultParams),
+          position: Position(
+            x: 120 + (n % 5) * 200.0,
+            y: 100 + (n ~/ 5) * 140.0,
+          ),
+        ),
+      );
     });
   }
 
@@ -127,12 +137,14 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
       if (n.id != _connectFrom!.id) {
         setState(() {
           _dirty = true;
-          _edges.add(GraphEdge(
-            id: 'e-${DateTime.now().millisecondsSinceEpoch}',
-            source: _connectFrom!.id,
-            target: n.id,
-            sourcePort: _connectPort,
-          ));
+          _edges.add(
+            GraphEdge(
+              id: 'e-${DateTime.now().millisecondsSinceEpoch}',
+              source: _connectFrom!.id,
+              target: n.id,
+              sourcePort: _connectPort,
+            ),
+          );
         });
       }
       setState(() {
@@ -165,8 +177,14 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
       builder: (_) => SimpleDialog(
         title: const Text('选择分支'),
         children: [
-          SimpleDialogOption(onPressed: () => Navigator.pop(context, 'true'), child: const Text('真（条件成立）')),
-          SimpleDialogOption(onPressed: () => Navigator.pop(context, 'false'), child: const Text('假（不成立）')),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'true'),
+            child: const Text('真（条件成立）'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, 'false'),
+            child: const Text('假（不成立）'),
+          ),
         ],
       ),
     );
@@ -203,6 +221,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
 
   bool _saving = false; // 保存防重复点击（双击并发 create 会建重复工作流——审计 P1）
   bool _dirty = false; // 画布有未保存改动：返回键拦截确认（避免丢节点编排）
+  bool _narrowFitApplied = false;
 
   Future<void> _save() async {
     if (_saving) return;
@@ -248,31 +267,41 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
               children: [
                 Text(run.result, style: const TextStyle(fontSize: 13)),
                 const Divider(),
-                ...run.nodeExecutions.map((l) => ListTile(
-                      dense: true,
-                      leading: Icon(
-                        l.status == 'success'
-                            ? Icons.check_circle
-                            : l.status == 'failed'
-                                ? Icons.cancel
-                                : Icons.skip_next,
-                        color: l.status == 'success'
-                            ? PTColors.success
-                            : l.status == 'failed'
-                                ? PTColors.danger
-                                : Colors.grey,
-                        size: 20,
-                      ),
-                      title: Text(l.nodeName, style: const TextStyle(fontSize: 13)),
-                      subtitle: Text(
-                        '${l.durationMs}ms${l.message.isEmpty ? '' : ' · ${l.message}'}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    )),
+                ...run.nodeExecutions.map(
+                  (l) => ListTile(
+                    dense: true,
+                    leading: Icon(
+                      l.status == 'success'
+                          ? Icons.check_circle
+                          : l.status == 'failed'
+                          ? Icons.cancel
+                          : Icons.skip_next,
+                      color: l.status == 'success'
+                          ? PTColors.success
+                          : l.status == 'failed'
+                          ? PTColors.danger
+                          : Colors.grey,
+                      size: 20,
+                    ),
+                    title: Text(
+                      l.nodeName,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    subtitle: Text(
+                      '${l.durationMs}ms${l.message.isEmpty ? '' : ' · ${l.message}'}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('关闭'))],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('关闭'),
+            ),
+          ],
         ),
       );
     } catch (e) {
@@ -283,36 +312,49 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
   @override
   Widget build(BuildContext context) {
     final wide = isWideScreen(context);
+    if (!_loading && !wide && !_narrowFitApplied) {
+      _narrowFitApplied = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _trans.value = Matrix4.diagonal3Values(0.68, 0.68, 1);
+      });
+    }
     return GlassBackground(
       child: PopScope(
         canPop: !_dirty,
         onPopInvokedWithResult: _confirmExit,
         child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: Text(widget.workflowId > 0 ? '编辑工作流' : '新建工作流'),
           backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            PTIconAction(icon: Icons.dynamic_form, tooltip: '从模板导入', onPressed: _openTemplates),
-            PTIconAction(icon: Icons.play_arrow, tooltip: '运行', onPressed: _run),
-            PTIconAction(icon: Icons.save, tooltip: '保存', onPressed: _saving ? null : _save, loading: _saving),
-          ],
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : wide
-                ? _wideBody()
-                : _narrowBody(),
-        // 窄屏保留 FAB 唤出节点库；宽屏节点库常驻左侧，不再需要。
-        floatingActionButton: (wide || _loading)
-            ? null
-            : FloatingActionButton(
-                heroTag: 'wf-add',
-                onPressed: _openPalette,
-                child: const Icon(Icons.add),
+          appBar: AppBar(
+            title: Text(widget.workflowId > 0 ? '编辑工作流' : '新建工作流'),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            actions: [
+              PTIconAction(
+                icon: Icons.dynamic_form,
+                tooltip: '从模板导入',
+                onPressed: _openTemplates,
               ),
-      ),
+              PTIconAction(
+                icon: Icons.play_arrow,
+                tooltip: '运行',
+                onPressed: _run,
+              ),
+              PTIconAction(
+                icon: Icons.save,
+                tooltip: '保存',
+                onPressed: _saving ? null : _save,
+                loading: _saving,
+              ),
+            ],
+          ),
+          body: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : wide
+              ? _wideBody()
+              : _narrowBody(),
+          bottomNavigationBar: (!wide && !_loading) ? _narrowActionBar() : null,
+        ),
       ),
     );
   }
@@ -326,8 +368,14 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
         title: const Text('放弃改动？'),
         content: const Text('工作流有未保存的改动，确定离开吗？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('继续编辑')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('放弃')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('继续编辑'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('放弃'),
+          ),
         ],
       ),
     );
@@ -337,114 +385,171 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
 
   // 窄屏：元信息卡 + 连接提示 + 画布（节点库/节点配置走 FAB 与节点 ⚙ 的 sheet）。
   Widget _narrowBody() => Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-            child: _metaCard(),
-          ),
-          if (_connectFrom != null) _connectBanner(),
-          Expanded(child: _canvasWidget()),
-        ],
-      );
+    children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+        child: _metaCard(),
+      ),
+      if (_connectFrom != null) _connectBanner(),
+      Expanded(child: _canvasWidget()),
+    ],
+  );
 
   // 宽屏三栏（对齐 Web WorkflowEditor.vue）：左节点库 | 中画布 | 右配置面板。
   Widget _wideBody() => Row(
-        children: [
-          _palettePanel(),
-          const VerticalDivider(width: 1),
-          Expanded(
-            child: Column(
-              children: [
-                if (_connectFrom != null) _connectBanner(),
-                Expanded(child: _canvasWidget()),
-              ],
-            ),
-          ),
-          const VerticalDivider(width: 1),
-          _configPanel(),
-        ],
-      );
+    children: [
+      _palettePanel(),
+      const VerticalDivider(width: 1),
+      Expanded(
+        child: Column(
+          children: [
+            if (_connectFrom != null) _connectBanner(),
+            Expanded(child: _canvasWidget()),
+          ],
+        ),
+      ),
+      const VerticalDivider(width: 1),
+      _configPanel(),
+    ],
+  );
 
   // 工作流元信息字段（名称/触发/定时/事件/启用）——窄屏包 GlassCard，宽屏嵌右面板。
   Widget _metaFields() => Column(
-        mainAxisSize: MainAxisSize.min,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      TextField(
+        controller: _nameCtl,
+        decoration: const InputDecoration(
+          isDense: true,
+          labelText: '名称',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 8),
+      Row(
         children: [
-          TextField(
-            controller: _nameCtl,
-            decoration: const InputDecoration(
-                isDense: true, labelText: '名称', border: OutlineInputBorder()),
+          const Text('触发：'),
+          DropdownButton<String>(
+            value: _triggerType,
+            items: const [
+              DropdownMenuItem(value: 'manual', child: Text('手动')),
+              DropdownMenuItem(value: 'timer', child: Text('定时')),
+              DropdownMenuItem(value: 'event', child: Text('事件')),
+            ],
+            onChanged: (v) => setState(() => _triggerType = v ?? 'manual'),
           ),
-          const SizedBox(height: 8),
-          Row(children: [
-            const Text('触发：'),
-            DropdownButton<String>(
-              value: _triggerType,
-              items: const [
-                DropdownMenuItem(value: 'manual', child: Text('手动')),
-                DropdownMenuItem(value: 'timer', child: Text('定时')),
-                DropdownMenuItem(value: 'event', child: Text('事件')),
-              ],
-              onChanged: (v) => setState(() => _triggerType = v ?? 'manual'),
+          const SizedBox(width: 8),
+          if (_triggerType == 'timer')
+            Expanded(
+              child: TextField(
+                controller: _timerCtl,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  hintText: '*/30 * * * *',
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
-            if (_triggerType == 'timer')
-              Expanded(
-                child: TextField(
-                  controller: _timerCtl,
-                  decoration: const InputDecoration(
-                      isDense: true, hintText: '*/30 * * * *'),
+          if (_triggerType == 'event')
+            Expanded(
+              child: TextField(
+                controller: _eventTypeCtl,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  hintText: '事件类型',
                 ),
               ),
-            if (_triggerType == 'event')
-              Expanded(
-                child: TextField(
-                  controller: _eventTypeCtl,
-                  decoration: const InputDecoration(
-                      isDense: true, hintText: '事件类型'),
-                ),
-              ),
-            Switch(value: _enabled, onChanged: (v) => setState(() => _enabled = v)),
-            const Text('启用', style: TextStyle(fontSize: 12)),
-          ]),
+            ),
+          Switch(
+            value: _enabled,
+            onChanged: (v) => setState(() => _enabled = v),
+          ),
+          const Text('启用', style: TextStyle(fontSize: 12)),
         ],
-      );
+      ),
+    ],
+  );
 
-  Widget _metaCard() => GlassCard(padding: const EdgeInsets.all(10), child: _metaFields());
+  Widget _metaCard() =>
+      GlassCard(padding: const EdgeInsets.all(10), child: _metaFields());
 
   Widget _connectBanner() => Container(
-        width: double.infinity,
-        color: PTColors.primary.withValues(alpha: 0.15),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        child: const Text('点选目标节点完成连线，或点源节点取消',
-            style: TextStyle(fontSize: 12)),
-      );
+    width: double.infinity,
+    color: PTColors.primary.withValues(alpha: 0.15),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    child: const Text('点选目标节点完成连线，或点源节点取消', style: TextStyle(fontSize: 12)),
+  );
 
-  Widget _canvasWidget() => InteractiveViewer(
-        transformationController: _trans,
-        minScale: 0.3,
-        maxScale: 2.5,
-        boundaryMargin: const EdgeInsets.all(500),
-        constrained: false,
-        child: SizedBox(
-          width: _canvas.width,
-          height: _canvas.height,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CustomPaint(
-                size: _canvas,
-                painter: _EdgePainter(
-                  edges: _edges,
-                  nodes: {for (final n in _nodes) n.id: n},
-                  nodeSize: const Size(_nodeW, _nodeH),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              for (final n in _nodes) _nodeWidget(n),
-            ],
+  Widget _narrowActionBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E2024) : Colors.white,
+          border: Border(
+            top: BorderSide(color: Colors.grey.withValues(alpha: 0.18)),
           ),
         ),
-      );
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _openPalette,
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('添加节点'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filledTonal(
+              tooltip: '运行',
+              onPressed: _run,
+              icon: const Icon(Icons.play_arrow),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: _saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined, size: 18),
+              label: const Text('保存'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _canvasWidget() => InteractiveViewer(
+    transformationController: _trans,
+    minScale: 0.3,
+    maxScale: 2.5,
+    boundaryMargin: const EdgeInsets.all(500),
+    constrained: false,
+    child: SizedBox(
+      width: _canvas.width,
+      height: _canvas.height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          CustomPaint(
+            size: _canvas,
+            painter: _EdgePainter(
+              edges: _edges,
+              nodes: {for (final n in _nodes) n.id: n},
+              nodeSize: const Size(_nodeW, _nodeH),
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          for (final n in _nodes) _nodeWidget(n),
+        ],
+      ),
+    ),
+  );
 
   // 左栏：节点库（按分类分组的 ActionChip，点击即添加到画布）。
   Widget _palettePanel() {
@@ -457,22 +562,32 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          const Text('节点库', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          const Text(
+            '节点库',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 8),
           for (final entry in cats.entries) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(entry.key,
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.grey)),
+              child: Text(
+                entry.key,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey,
+                ),
+              ),
             ),
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: entry.value
-                  .map((a) => ActionChip(
-                        label: Text(a.name),
-                        onPressed: () => _addNode(a.type),
-                      ))
+                  .map(
+                    (a) => ActionChip(
+                      label: Text(a.name),
+                      onPressed: () => _addNode(a.type),
+                    ),
+                  )
                   .toList(),
             ),
           ],
@@ -497,14 +612,23 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
           const Divider(height: 1),
           const SizedBox(height: 10),
           if (sel != null && info != null) ...[
-            Row(children: [
-              const Text('节点配置', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => _deleteNode(sel),
-                child: const Icon(Icons.delete_outline, size: 18, color: PTColors.danger),
-              ),
-            ]),
+            Row(
+              children: [
+                const Text(
+                  '节点配置',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _deleteNode(sel),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    size: 18,
+                    color: PTColors.danger,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
             // key 按节点 id：切换选中时强制重建表单，控制器读取新节点初值。
             NodeParamForm(
@@ -517,8 +641,11 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
-                  child: Text('点选画布节点查看/编辑参数',
-                      style: TextStyle(color: Colors.grey, fontSize: 12))),
+                child: Text(
+                  '点选画布节点查看/编辑参数',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
             ),
         ],
       ),
@@ -551,51 +678,84 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: connecting ? PTColors.danger : (selected ? color : color.withValues(alpha: 0.5)),
-                width: selected || connecting ? 2.5 : 1.5),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 3))],
+              color: connecting
+                  ? PTColors.danger
+                  : (selected ? color : color.withValues(alpha: 0.5)),
+              width: selected || connecting ? 2.5 : 1.5,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 6,
+                offset: Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(children: [
-                Icon(Icons.circle, size: 10, color: color),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(n.name,
+              Row(
+                children: [
+                  Icon(Icons.circle, size: 10, color: color),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      n.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                ),
-              ]),
-              const SizedBox(height: 2),
-              Text(info?.category ?? '',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              const SizedBox(height: 4),
-              Row(children: [
-                Icon(Icons.south, size: 12, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                GestureDetector(
-                  onTap: () => _startConnect(n),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(6)),
-                    child: const Text('连线', style: TextStyle(fontSize: 11)),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => _configNode(n),
-                  child: const Icon(Icons.settings, size: 15, color: Colors.grey),
-                ),
-                const SizedBox(width: 6),
-                GestureDetector(
-                  onTap: () => _deleteNode(n),
-                  child: const Icon(Icons.delete_outline, size: 15, color: PTColors.danger),
-                ),
-              ]),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                info?.category ?? '',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.south, size: 12, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: () => _startConnect(n),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Text('连线', style: TextStyle(fontSize: 11)),
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => _configNode(n),
+                    child: const Icon(
+                      Icons.settings,
+                      size: 15,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => _deleteNode(n),
+                    child: const Icon(
+                      Icons.delete_outline,
+                      size: 15,
+                      color: PTColors.danger,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -612,16 +772,25 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
         builder: (_) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text('从模板创建', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const Text(
+              '从模板创建',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 12),
-            ...tpls.map((t) => Card(
-                  child: ListTile(
-                    title: Text(t.name),
-                    subtitle: Text(t.description, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.pop(context, t),
+            ...tpls.map(
+              (t) => Card(
+                child: ListTile(
+                  title: Text(t.name),
+                  subtitle: Text(
+                    t.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                )),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.pop(context, t),
+                ),
+              ),
+            ),
           ],
         ),
       );
@@ -661,22 +830,32 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
           controller: controller,
           padding: const EdgeInsets.all(16),
           children: [
-            const Text('添加节点', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            const Text(
+              '添加节点',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 12),
             for (final entry in cats.entries) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Text(entry.key,
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.grey)),
+                child: Text(
+                  entry.key,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey,
+                  ),
+                ),
               ),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: entry.value
-                    .map((a) => ActionChip(
-                          label: Text(a.name),
-                          onPressed: () => Navigator.pop(context, a.type),
-                        ))
+                    .map(
+                      (a) => ActionChip(
+                        label: Text(a.name),
+                        onPressed: () => Navigator.pop(context, a.type),
+                      ),
+                    )
                     .toList(),
               ),
             ],
@@ -694,7 +873,12 @@ class _EdgePainter extends CustomPainter {
   final Map<String, GraphNode> nodes;
   final Size nodeSize;
   final Color color;
-  _EdgePainter({required this.edges, required this.nodes, required this.nodeSize, required this.color});
+  _EdgePainter({
+    required this.edges,
+    required this.nodes,
+    required this.nodeSize,
+    required this.color,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -706,7 +890,10 @@ class _EdgePainter extends CustomPainter {
       final s = nodes[e.source];
       final t = nodes[e.target];
       if (s == null || t == null) continue;
-      final start = Offset(s.position.x + nodeSize.width / 2, s.position.y + nodeSize.height);
+      final start = Offset(
+        s.position.x + nodeSize.width / 2,
+        s.position.y + nodeSize.height,
+      );
       final end = Offset(t.position.x + nodeSize.width / 2, t.position.y);
       final mid = (start.dy + end.dy) / 2;
       final path = Path()

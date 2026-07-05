@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { assessmentApi, type AssessmentCard } from '@/api/assessment'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const cards = ref<AssessmentCard[]>([])
 const loading = ref(false)
@@ -19,9 +20,18 @@ async function load(refresh = false) {
   }
 }
 
+// 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。
+const selectedSiteIds = ref<number[]>([])
+const sites = computed(() => {
+  const m = new Map<number, string>()
+  for (const c of cards.value) if (!m.has(c.site_id)) m.set(c.site_id, c.site_name)
+  return [...m].map(([id, name]) => ({ id, name }))
+})
 const filtered = computed(() => {
-  if (filter.value === 'all') return cards.value
-  return cards.value.filter((c) => c.status.toLowerCase() === filter.value)
+  let list = cards.value
+  if (filter.value !== 'all') list = list.filter((c) => c.status.toLowerCase() === filter.value)
+  if (selectedSiteIds.value.length) list = list.filter((c) => selectedSiteIds.value.includes(c.site_id))
+  return list
 })
 
 const counts = computed(() => {
@@ -58,7 +68,10 @@ onMounted(() => load())
   <div class="page" v-loading="loading">
     <div class="head">
       <h2 class="title">站点考核</h2>
-      <el-button :loading="loading" @click="load(true)">刷新</el-button>
+      <div class="head-tools">
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择考核站点" />
+        <el-button :loading="loading" @click="load(true)">刷新</el-button>
+      </div>
     </div>
 
     <div class="filter-bar glass">
@@ -107,6 +120,7 @@ onMounted(() => load())
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 16px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
+.head-tools { display: flex; align-items: center; gap: 10px; }
 .title { margin: 4px 0; font-size: 22px; font-weight: 700; }
 .filter-bar { display: flex; gap: 8px; padding: 10px 14px; flex-wrap: wrap; }
 .chip { background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: 13px; color: var(--text-strong); }

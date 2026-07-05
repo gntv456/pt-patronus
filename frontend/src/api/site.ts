@@ -6,6 +6,9 @@ export interface SiteDef {
   schema: string
   dead: boolean
   urls?: string[] // 站点真实地址（首个作添加站点默认 base_url）
+  aka?: string[] // 中文名别名（很多站 name 是英文，靠 aka 才能按中文名检索）
+  description?: string
+  tags?: string[]
 }
 
 export interface Site {

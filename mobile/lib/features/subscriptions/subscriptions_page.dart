@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/features/home/home_controller.dart';
 import 'package:ptpatronus/features/home/home_nav_items.dart';
 import 'package:ptpatronus/api/subscribe.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 // 订阅列表（对标 Web Subscriptions）：展示订阅状态，支持手动检查 / 暂停-恢复 /
 // 改分辨率 / 删除。订阅的创建在影视详情页「订阅」按钮（同源同 id 幂等）。
@@ -55,9 +55,11 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       final ok = r['ok'] == true;
       final pushed = (r['pushed'] as num?)?.toInt() ?? 0;
       final err = r['error'] as String?;
-      _toast(ok
-          ? (pushed > 0 ? '命中并推送 $pushed 条' : '本轮暂无新资源')
-          : (err?.isNotEmpty == true ? err! : '检查失败'));
+      _toast(
+        ok
+            ? (pushed > 0 ? '命中并推送 $pushed 条' : '本轮暂无新资源')
+            : (err?.isNotEmpty == true ? err! : '检查失败'),
+      );
       await _load();
     } catch (e) {
       _toast('$e');
@@ -89,10 +91,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
           decoration: const InputDecoration(hintText: '如 1080p / 2160p，留空=不限'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
           TextButton(
-              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-              child: const Text('确定')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            child: const Text('确定'),
+          ),
         ],
       ),
     );
@@ -113,8 +119,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         title: const Text('删除订阅'),
         content: Text('确认删除「${s.title}」的订阅？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除'),
+          ),
         ],
       ),
     );
@@ -132,10 +144,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       const {'subscribed': '订阅中', 'completed': '已完成', 'paused': '已暂停'}[s] ?? s;
 
   Color _statusColor(String s) => switch (s) {
-        'subscribed' => PTColors.success,
-        'completed' => PTColors.primary,
-        _ => PTColors.warn,
-      };
+    'subscribed' => PTColors.success,
+    'completed' => PTColors.primary,
+    _ => PTColors.warn,
+  };
 
   String _fmtTime(String? t) => (t == null || t.isEmpty)
       ? '—'
@@ -149,24 +161,18 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          title: const Text('订阅'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            IconButton(icon: const Icon(Icons.refresh), onPressed: _loading ? null : _load),
-          ],
+    return PTPageScaffold(
+      title: '订阅',
+      actions: [
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新',
+          loading: _loading,
+          onPressed: _loading ? null : _load,
         ),
-        body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: _load,
-            child: _buildBody(),
-          ),
-        ),
+      ],
+      body: SafeArea(
+        child: RefreshIndicator(onRefresh: _load, child: _buildBody()),
       ),
     );
   }
@@ -206,7 +212,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
             height: 104,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: MediaPoster(url: s.posterUrl, kind: s.type == 'music' ? 'music' : 'movie'),
+              child: MediaPoster(
+                url: s.posterUrl,
+                kind: s.type == 'music' ? 'music' : 'movie',
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -217,16 +226,26 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(s.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                      child: Text(
+                        s.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
                     if (s.year > 0)
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
-                        child: Text('(${s.year})',
-                            style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        child: Text(
+                          '(${s.year})',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -236,7 +255,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   runSpacing: 4,
                   children: [
                     _chip(_statusText(s.status), _statusColor(s.status)),
-                    if (s.resolution.isNotEmpty) _chip(s.resolution, PTColors.primary2),
+                    if (s.resolution.isNotEmpty)
+                      _chip(s.resolution, PTColors.primary2),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -250,12 +270,15 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                   runSpacing: 8,
                   children: [
                     FilledButton.tonalIcon(
-                      onPressed: _checking.contains(s.id) ? null : () => _check(s),
+                      onPressed: _checking.contains(s.id)
+                          ? null
+                          : () => _check(s),
                       icon: _checking.contains(s.id)
                           ? const SizedBox(
                               width: 14,
                               height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2))
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.refresh, size: 16),
                       label: const Text('立即检查', style: TextStyle(fontSize: 12)),
                     ),
@@ -273,8 +296,10 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         s.status == 'paused' ? Icons.play_arrow : Icons.pause,
                         size: 16,
                       ),
-                      label: Text(s.status == 'paused' ? '恢复' : '暂停',
-                          style: const TextStyle(fontSize: 12)),
+                      label: Text(
+                        s.status == 'paused' ? '恢复' : '暂停',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: () => _remove(s),
@@ -301,9 +326,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
         color: color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

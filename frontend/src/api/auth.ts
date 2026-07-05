@@ -5,6 +5,7 @@ export interface AuthStatus {
   authenticated: boolean
   auth_site_on: boolean
   vip_verified: boolean
+  demo_mode?: boolean
   user?: HxptUser | null // authed 时附当前 user（刷新后恢复顶栏用户名 / VIP 状态）
 }
 
@@ -60,6 +61,8 @@ export const authApi = {
   // 好学 Cookie 登录（最稳，覆盖 2FA / 挑战响应账号）
   hxptCookieLogin: (cookie: string) =>
     http.post<LoginResult>('/auth/hxpt/cookie-login', { cookie }).then((r) => r.data),
+
+  demoLogin: () => http.post<LoginResult>('/auth/demo-login').then((r) => r.data),
 
   // 登出（bump TokenVersion，使当前 token 失效）
   logout: () => http.post('/auth/logout'),

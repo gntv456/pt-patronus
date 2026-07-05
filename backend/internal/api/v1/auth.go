@@ -44,13 +44,14 @@ type AuthHandler struct {
 	crypto   *security.Crypto        // 加密 HxptCookieEnc
 	tvCache  *auth.TokenVersionCache // 登出 invalidate
 	tickets  *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
+	demoMode bool                    // 显式开启演示登录（默认关闭）
 }
 
 // NewAuthHandler 构造。
 func NewAuthHandler(db *gorm.DB, jwt *security.JWT, act *auth.Activation,
 	hxptAuth auth.HxptAuthenticator, crypto *security.Crypto, tvCache *auth.TokenVersionCache,
-	tickets *auth.TicketStore) *AuthHandler {
-	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets}
+	tickets *auth.TicketStore, demoMode bool) *AuthHandler {
+	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets, demoMode: demoMode}
 }
 
 // WsTicket 签发一次性 WS/RTSP ticket（guarded 内：header JWT 已校验，含 TokenVersion 失效校验）。
@@ -93,13 +94,13 @@ func (h *AuthHandler) HxptCaptcha(c *gin.Context) {
 }
 
 type hxptLoginReq struct {
-	Username     string            `json:"username"`
-	Password     string            `json:"password"`
-	ImageHash    string            `json:"imagehash"`
-	ImageString  string            `json:"imagestring"`
-	TwoStepCode  string            `json:"two_step_code"`
-	ExtraForm    map[string]string `json:"extra_form"`
-	ChallengeMode bool             `json:"challenge_mode"` // 由 captcha 步探得，回传以驱动挑战响应分支
+	Username      string            `json:"username"`
+	Password      string            `json:"password"`
+	ImageHash     string            `json:"imagehash"`
+	ImageString   string            `json:"imagestring"`
+	TwoStepCode   string            `json:"two_step_code"`
+	ExtraForm     map[string]string `json:"extra_form"`
+	ChallengeMode bool              `json:"challenge_mode"` // 由 captcha 步探得，回传以驱动挑战响应分支
 }
 
 // HxptLogin 账号登录 Step B：POST takelogin.php + VIP 校验。
@@ -183,6 +184,48 @@ func (h *AuthHandler) HxptCookieLogin(c *gin.Context) {
 		uid = status.Username // 资料页未解析出 ID 时回退用户名
 	}
 	h.issueForHxpt(c, uid, status.Username, req.Cookie)
+}
+
+// DemoLogin 为评审/演示实例提供低门槛入口。默认关闭，必须显式设置 DEMO_MODE=true。
+// 演示用户是普通 VIP 用户而非管理员，避免误触高破坏操作；生产实例不应开启。
+func (h *AuthHandler) DemoLogin(c *gin.Context) {
+	if !h.demoMode {
+		c.JSON(http.StatusNotFound, gin.H{"error": "演示登录未启用"})
+		return
+	}
+	now := time.Now()
+	var u models.User
+	err := h.db.Where("hxpt_uid = ?", "demo").First(&u).Error
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		u = models.User{
+			Username: "demo", HxptUID: "demo", HxptUsername: "演示用户",
+			VipLevel: 1, VipVerifiedAt: &now, IsAdmin: false,
+		}
+		if err := h.db.Create(&u).Error; err != nil {
+			dbFail(c, "demo_user_create", err)
+			return
+		}
+	case err != nil:
+		dbFail(c, "demo_user_lookup", err)
+		return
+	default:
+		u.VipLevel = 1
+		u.VipVerifiedAt = &now
+		u.HxptUsername = "演示用户"
+		u.IsAdmin = false
+		if err := h.db.Save(&u).Error; err != nil {
+			dbFail(c, "demo_user_save", err)
+			return
+		}
+	}
+	token, err := h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, now)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token failed"})
+		return
+	}
+	audit(c, "demo_login", "ok")
+	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
 }
 
 // issueForHxpt 按 HxptUID upsert User 并签发带 TokenVersion + VIP 快照的 JWT。
@@ -320,6 +363,7 @@ func (h *AuthHandler) Status(c *gin.Context) {
 		"authenticated": authed,
 		"auth_site_on":  h.hxptAuth != nil,
 		"vip_verified":  verified,
+		"demo_mode":     h.demoMode,
 	}
 	if user != nil {
 		resp["user"] = user

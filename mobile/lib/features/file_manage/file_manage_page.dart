@@ -1,6 +1,5 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +10,7 @@ import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 文件管理页：存储后端 CRUD（WebDAV/Alist/SMB/Agent）→ 浏览目录 → 下载/上传/建目录/删除。
 /// 对齐 Web FileManager.vue。
@@ -82,7 +82,9 @@ class _FileManagePageState extends State<FileManagePage> {
       wideWidth: 480,
       builder: (_) => const _StorageFormSheet(),
     );
-    if (ok == true) _loadStorages();
+    if (ok == true) {
+      _loadStorages();
+    }
   }
 
   Future<void> _editStorage() async {
@@ -106,7 +108,10 @@ class _FileManagePageState extends State<FileManagePage> {
         title: const Text('删除存储'),
         content: Text('删除存储后端「${s.name}」？仅移除配置，不影响远端文件。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -176,37 +181,47 @@ class _FileManagePageState extends State<FileManagePage> {
     final savePath = '${dir.path}/${e.name}';
     if (!mounted) return;
     // 流式下载写盘 + 进度/取消对话框（避免大文件全量入内存 OOM——审计 P1）
-    unawaited(showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text('下载中'),
-        content: ValueListenableBuilder<double>(
-          valueListenable: progress,
-          builder: (_, p, _) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(e.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-              const SizedBox(height: 12),
-              LinearProgressIndicator(value: p < 0 ? null : p),
-              if (p >= 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text('${(p * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+    unawaited(
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          title: const Text('下载中'),
+          content: ValueListenableBuilder<double>(
+            valueListenable: progress,
+            builder: (_, p, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  e.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
                 ),
-            ],
+                const SizedBox(height: 12),
+                LinearProgressIndicator(value: p < 0 ? null : p),
+                if (p >= 0)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      '${(p * 100).toStringAsFixed(0)}%',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                if (!cancel.isCancelled) cancel.cancel('user');
+              },
+              child: const Text('取消'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (!cancel.isCancelled) cancel.cancel('user');
-            },
-            child: const Text('取消'),
-          ),
-        ],
       ),
-    ));
+    );
     try {
       await _api.downloadToFile(
         id,
@@ -238,14 +253,20 @@ class _FileManagePageState extends State<FileManagePage> {
     if (id == null) return;
     setState(() => _busy = true);
     try {
-      final result = await FilePicker.platform.pickFiles(withData: false); // 不读入内存：用 fromPath 流式上传
+      final result = await FilePicker.platform.pickFiles(
+        withData: false,
+      ); // 不读入内存：用 fromPath 流式上传
       if (result == null || result.files.isEmpty) return;
       final f = result.files.first;
       http.MultipartFile mf;
       if (f.path != null) {
         mf = await http.MultipartFile.fromPath('file', f.path!);
       } else {
-        mf = http.MultipartFile.fromBytes('file', f.bytes ?? <int>[], filename: f.name);
+        mf = http.MultipartFile.fromBytes(
+          'file',
+          f.bytes ?? <int>[],
+          filename: f.name,
+        );
       }
       await _api.upload(id, _path, mf);
       _toast('已上传');
@@ -289,10 +310,14 @@ class _FileManagePageState extends State<FileManagePage> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
           TextButton(
-              onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-              child: const Text('确定')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+            child: const Text('确定'),
+          ),
         ],
       ),
     );
@@ -307,8 +332,14 @@ class _FileManagePageState extends State<FileManagePage> {
         title: const Text('删除'),
         content: Text('确认删除「${e.name}」？${e.isDir ? '（目录及其内容）' : ''}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除'),
+          ),
         ],
       ),
     );
@@ -327,17 +358,22 @@ class _FileManagePageState extends State<FileManagePage> {
 
   Widget _storageDropdown() {
     if (_storages.isEmpty) {
-      return const Text('无存储后端', style: TextStyle(color: Colors.grey, fontSize: 13));
+      return const Text(
+        '无存储后端',
+        style: TextStyle(color: Colors.grey, fontSize: 13),
+      );
     }
     return DropdownButton<int>(
       value: _storageId,
       underline: const SizedBox(),
       hint: const Text('选择存储'),
       items: _storages
-          .map((s) => DropdownMenuItem(
-                value: s.id,
-                child: Text('${s.name}（${s.type}）'),
-              ))
+          .map(
+            (s) => DropdownMenuItem(
+              value: s.id,
+              child: Text('${s.name}（${s.type}）'),
+            ),
+          )
           .toList(),
       onChanged: (id) {
         if (id != null && id != _storageId) _selectStorage(id);
@@ -366,11 +402,12 @@ class _FileManagePageState extends State<FileManagePage> {
               ),
               ActionChip(label: const Text('根'), onPressed: () => _cd('/')),
               ...segs.asMap().entries.map(
-                    (e) => ActionChip(
-                      label: Text(e.value),
-                      onPressed: () => _cd('/${segs.sublist(0, e.key + 1).join('/')}'),
-                    ),
-                  ),
+                (e) => ActionChip(
+                  label: Text(e.value),
+                  onPressed: () =>
+                      _cd('/${segs.sublist(0, e.key + 1).join('/')}'),
+                ),
+              ),
             ],
           ),
         ),
@@ -379,151 +416,165 @@ class _FileManagePageState extends State<FileManagePage> {
   }
 
   Widget _entryRow(FileEntry e) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: GlassCard(
-          padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
-          onTap: e.isDir ? () => _cd(e.path) : null,
-          child: Row(
-            children: [
-              Icon(
-                e.isDir ? Icons.folder : Icons.insert_drive_file,
-                size: 24,
-                color: e.isDir ? PTColors.primary2 : Colors.grey,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(e.name,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Text(e.isDir ? '文件夹' : _fmtBytes(e.size),
-                        style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  ],
-                ),
-              ),
-              if (!e.isDir)
-                IconButton(
-                  icon: const Icon(Icons.download, size: 20),
-                  onPressed: _busy ? null : () => _download(e),
-                ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20),
-                onPressed: _busy ? null : () => _delete(e),
-              ),
-            ],
+    padding: const EdgeInsets.only(bottom: 10),
+    child: GlassCard(
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      onTap: e.isDir ? () => _cd(e.path) : null,
+      child: Row(
+        children: [
+          Icon(
+            e.isDir ? Icons.folder : Icons.insert_drive_file,
+            size: 24,
+            color: e.isDir ? PTColors.primary2 : Colors.grey,
           ),
-        ),
-      );
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  e.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  e.isDir ? '文件夹' : _fmtBytes(e.size),
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (!e.isDir)
+            IconButton(
+              icon: const Icon(Icons.download, size: 20),
+              onPressed: _busy ? null : () => _download(e),
+            ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, size: 20),
+            onPressed: _busy ? null : () => _delete(e),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _errorView() => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(_error ?? '加载失败',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 14)),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('重试'),
-              onPressed: _loadEntries,
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            _error ?? '加载失败',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+          ),
         ),
-      );
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          icon: const Icon(Icons.refresh, size: 18),
+          label: const Text('重试'),
+          onPressed: _loadEntries,
+        ),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final hasStorage = _storageId != null;
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          title: const Text('文件管理'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            PTIconAction(
-              icon: Icons.refresh,
-              tooltip: '刷新',
-              onPressed: hasStorage ? _loadEntries : null,
-            ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              iconSize: 18,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-              tooltip: '更多',
-              onSelected: (v) {
-                if (v == 'mkdir') {
-                  if (hasStorage && !_busy) _mkdir();
-                } else if (v == 'add') {
-                  _addStorage();
-                } else if (v == 'edit') {
-                  _editStorage();
-                } else if (v == 'delete') {
-                  _deleteStorage();
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'mkdir', child: Text('新建文件夹')),
-                const PopupMenuDivider(),
-                const PopupMenuItem(value: 'add', child: Text('添加存储')),
-                if (_current != null) const PopupMenuItem(value: 'edit', child: Text('编辑当前存储')),
-                if (_current != null) const PopupMenuItem(value: 'delete', child: Text('删除当前存储')),
-              ],
-            ),
-          ],
+    return PTPageScaffold(
+      title: '文件管理',
+      actions: [
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新',
+          onPressed: hasStorage ? _loadEntries : null,
         ),
-        floatingActionButton: !hasStorage
-            ? null
-            : FloatingActionButton(
-                onPressed: _busy ? null : _upload,
-                child: const Icon(Icons.upload_file),
-              ),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Row(children: [
+        PTBarAction(
+          icon: Icons.create_new_folder,
+          label: '新建文件夹',
+          onPressed: (hasStorage && !_busy) ? _mkdir : null,
+          overflow: true,
+        ),
+        PTBarAction(
+          icon: Icons.add,
+          label: '添加存储',
+          onPressed: _addStorage,
+          overflow: true,
+        ),
+        PTBarAction(
+          icon: Icons.edit,
+          label: '编辑当前存储',
+          onPressed: _current != null ? _editStorage : null,
+          overflow: true,
+        ),
+        PTBarAction(
+          icon: Icons.delete,
+          label: '删除当前存储',
+          onPressed: _current != null ? _deleteStorage : null,
+          overflow: true,
+        ),
+      ],
+      floatingActionButton: !hasStorage
+          ? null
+          : FloatingActionButton(
+              onPressed: _busy ? null : _upload,
+              child: const Icon(Icons.upload_file),
+            ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Row(
+              children: [
                 _storageDropdown(),
                 const Spacer(),
-                if (_busy) const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
-              ]),
+                if (_busy)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
             ),
-            if (hasStorage) _pathBar(),
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
-            Expanded(
-              child: _storages.isEmpty && !_loading
-                  ? const Center(
-                      child: Text('请在 Web 端添加存储后端（WebDAV / Alist / SMB / Agent）',
-                          style: TextStyle(color: Colors.grey)))
-                  : !hasStorage
-                      ? const SizedBox.shrink()
-                      : (_error != null && _entries.isEmpty
-                          ? _errorView()
-                          : _entries.isEmpty && !_loading
-                              ? const Center(
-                                  child: Text('空目录', style: TextStyle(color: Colors.grey)))
-                              : ListView.builder(
-                                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
-                                  itemCount: _entries.length,
-                                  itemBuilder: (_, i) => _entryRow(_entries[i]),
-                                )),
-            ),
-          ],
-        ),
+          ),
+          if (hasStorage) _pathBar(),
+          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _storages.isEmpty && !_loading
+                ? const Center(
+                    child: Text(
+                      '暂无存储后端，请点右上角更多添加 WebDAV / Alist / SMB / Agent',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : !hasStorage
+                ? const SizedBox.shrink()
+                : (_error != null && _entries.isEmpty
+                      ? _errorView()
+                      : _entries.isEmpty && !_loading
+                      ? const Center(
+                          child: Text(
+                            '空目录',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
+                          itemCount: _entries.length,
+                          itemBuilder: (_, i) => _entryRow(_entries[i]),
+                        )),
+          ),
+        ],
       ),
     );
   }
@@ -579,11 +630,19 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
       _basePath.text = e.basePath.isEmpty ? '/' : e.basePath;
       _agentId = e.agentId;
     }
-    _agentApi.list().then((l) {
-      if (mounted) setState(() { _agents = l; _loadingAgents = false; });
-    }).catchError((_) {
-      if (mounted) setState(() => _loadingAgents = false);
-    });
+    _agentApi
+        .list()
+        .then((l) {
+          if (mounted) {
+            setState(() {
+              _agents = l;
+              _loadingAgents = false;
+            });
+          }
+        })
+        .catchError((_) {
+          if (mounted) setState(() => _loadingAgents = false);
+        });
   }
 
   @override
@@ -648,7 +707,10 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(controller: _name, decoration: const InputDecoration(labelText: '名称')),
+        TextField(
+          controller: _name,
+          decoration: const InputDecoration(labelText: '名称'),
+        ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: _type,
@@ -669,47 +731,77 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
                 )
               : DropdownButtonFormField<int>(
-                  initialValue: (_agentId == 0 || _agents.any((a) => a.id == _agentId)) ? _agentId : 0,
+                  initialValue:
+                      (_agentId == 0 || _agents.any((a) => a.id == _agentId))
+                      ? _agentId
+                      : 0,
                   decoration: const InputDecoration(labelText: 'Agent'),
                   items: [
                     const DropdownMenuItem(value: 0, child: Text('选择 Agent')),
-                    ..._agents.map((a) => DropdownMenuItem(
-                          value: a.id,
-                          child: Text('${a.name}${a.online ? '' : '（离线）'}'),
-                        )),
+                    ..._agents.map(
+                      (a) => DropdownMenuItem(
+                        value: a.id,
+                        child: Text('${a.name}${a.online ? '' : '（离线）'}'),
+                      ),
+                    ),
                   ],
                   onChanged: (v) => setState(() => _agentId = v ?? 0),
                 ),
           const SizedBox(height: 8),
-          const Text('选择已部署 ptpatronus-agent 的设备（飞牛/绿联等），根路径填 agent 机器上的绝对路径。设备离线或版本过低（需 0.2.0+）时文件操作不可用。',
-              style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5)),
+          const Text(
+            '选择已部署 ptpatronus-agent 的设备（飞牛/绿联等），根路径填 agent 机器上的绝对路径。设备离线或版本过低（需 0.2.0+）时文件操作不可用。',
+            style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
+          ),
         ] else ...[
           const SizedBox(height: 12),
           TextField(
             controller: _url,
-            decoration: const InputDecoration(labelText: '地址', hintText: 'http://host:port'),
+            decoration: const InputDecoration(
+              labelText: '地址',
+              hintText: 'http://host:port',
+            ),
             keyboardType: TextInputType.url,
           ),
           const SizedBox(height: 12),
-          TextField(controller: _username, decoration: const InputDecoration(labelText: '用户名')),
+          TextField(
+            controller: _username,
+            decoration: const InputDecoration(labelText: '用户名'),
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _password,
             obscureText: true,
-            decoration: InputDecoration(labelText: '密码', hintText: _isEdit ? '留空不修改' : null),
+            decoration: InputDecoration(
+              labelText: '密码',
+              hintText: _isEdit ? '留空不修改' : null,
+            ),
           ),
         ],
         const SizedBox(height: 12),
-        TextField(controller: _basePath, decoration: const InputDecoration(labelText: '根路径')),
+        TextField(
+          controller: _basePath,
+          decoration: const InputDecoration(labelText: '根路径'),
+        ),
         const SizedBox(height: 20),
         FilledButton(
           onPressed: _saving ? null : _submit,
           child: _saving
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : Text(_isEdit ? '保存' : '添加'),
         ),
       ],

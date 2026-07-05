@@ -80,7 +80,7 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 		}
 	}
 
-	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category)
+	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, nil)
 	pushed := 0
 	for _, sr := range results {
 		if sr.Error != "" {

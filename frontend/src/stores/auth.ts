@@ -45,6 +45,13 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(user))
     },
+    async loginDemo() {
+      const { token, user } = await authApi.demoLogin()
+      this.token = token
+      this.user = user
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+    },
     // 登出：先清本地（UI 立即响应），再通知后端 bump TokenVersion
     async logout() {
       this.token = ''

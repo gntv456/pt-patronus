@@ -136,7 +136,7 @@ func (n *SearchTorrentsNode) Execute(ctx context.Context, params map[string]any,
 	if kw == "" {
 		return fmt.Errorf("搜索关键字为空")
 	}
-	results := n.siteCh.SearchSites(ctx, kw, workflow.ParamString(params, "category"))
+	results := n.siteCh.SearchSites(ctx, kw, workflow.ParamString(params, "category"), nil)
 	total := 0
 	for _, sr := range results {
 		if sr.Error != "" {

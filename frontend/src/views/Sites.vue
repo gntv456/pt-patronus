@@ -308,10 +308,13 @@ onMounted(load)
             <el-option
               v-for="d in sortedDefs"
               :key="d.id"
-              :label="`${d.name}（${d.schema || '通用'}）${d.dead ? ' · 已关站' : ''}`"
+              :label="`${d.name}（${d.schema || '通用'}）${d.aka?.length ? ' · ' + d.aka.join(' / ') : ''}${d.dead ? ' · 已关站' : ''}`"
               :value="d.id"
             >
               <span>{{ d.name }}（{{ d.schema || '通用' }}）</span>
+              <el-tag v-if="d.aka?.length" size="small" type="primary" effect="plain" style="margin-left: 8px">
+                {{ d.aka.join(' / ') }}
+              </el-tag>
               <el-tag v-if="d.dead" size="small" type="info" effect="plain" style="margin-left: 8px">
                 已关站
               </el-tag>

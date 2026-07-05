@@ -56,11 +56,39 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // 后台断 WS（停指数退避重连循环）；回前台重连。各页轮询 timer 由页面自管（审计 P1-6）
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
       WsClient().disconnect();
     } else if (state == AppLifecycleState.resumed) {
       WsClient().connect();
     }
+  }
+
+  void _openNotices() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => NoticePage(onOpenSource: _openNoticeSource),
+      ),
+    );
+  }
+
+  void _openNoticeSource(String source) {
+    final label = switch (source) {
+      'new_mail' => '消息',
+      'announce' => '公告',
+      'assess_pass' || 'assess_fail' => '考核',
+      'site_anniv' || 'freeleech' => '站免',
+      'reseed_done' => '辅种',
+      'dl_done' => '下载器',
+      'host_offline' || 'nas_offline' => 'NAS',
+      'site_offline' => '监护室',
+      'backup_done' || 'backup_import' => '备份',
+      _ => '',
+    };
+    if (label.isEmpty) return;
+    final idx = navItems.indexWhere((item) => item.label == label);
+    if (idx >= 0) _controller.select(idx);
   }
 
   @override
@@ -91,11 +119,17 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             if (wide) {
               if (_controller.sidebarVisible) {
                 body = Row(
-                  children: [const HomeSidebar(), Expanded(child: pages)],
+                  children: [
+                    const HomeSidebar(),
+                    Expanded(child: pages),
+                  ],
                 );
               } else {
                 body = Row(
-                  children: [const HomeSidebarReveal(), Expanded(child: pages)],
+                  children: [
+                    const HomeSidebarReveal(),
+                    Expanded(child: pages),
+                  ],
                 );
               }
             } else {
@@ -111,19 +145,26 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 valueListenable: noticeUnread,
                 builder: (_, n, _) => FloatingActionButton(
                   mini: true,
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                  onPressed: () => Navigator.push(
+                  tooltip: '通知中心',
+                  backgroundColor: Theme.of(
                     context,
-                    MaterialPageRoute(builder: (_) => const NoticePage()),
-                  ),
+                  ).colorScheme.primaryContainer,
+                  onPressed: _openNotices,
                   child: Badge(
                     isLabelVisible: n > 0,
-                    label: Text(n > 99 ? '99+' : '$n',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                    label: Text(
+                      n > 99 ? '99+' : '$n',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     child: const Icon(Icons.notifications),
                   ),
                 ),
               ),
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.startFloat,
             );
           },
         ),

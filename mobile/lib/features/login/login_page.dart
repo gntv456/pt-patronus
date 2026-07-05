@@ -19,6 +19,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   int _tab = 0; // 0=账号 1=cookie
   bool _loading = false;
+  bool _demoMode = false;
   String? _err;
 
   // 账号登录
@@ -26,7 +27,8 @@ class _LoginPageState extends State<LoginPage> {
   final _pass = TextEditingController();
   final _twoStep = TextEditingController();
   final _imgStr = TextEditingController();
-  Map<String, dynamic>? _captcha; // {imagehash, image, need_captcha, challenge_mode, extra_form}
+  Map<String, dynamic>?
+  _captcha; // {imagehash, image, need_captcha, challenge_mode, extra_form}
 
   // Cookie 登录
   final _cookie = TextEditingController();
@@ -34,24 +36,44 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _fetchCaptcha();
+    // 首屏先保持安静：验证码依赖后端/上游站点，失败不应在用户选择登录方式前制造错误感。
+    Future.microtask(() => _fetchCaptcha(silent: true));
+    Future.microtask(_fetchAuthStatus);
   }
 
-  Future<void> _fetchCaptcha() async {
+  Future<void> _fetchAuthStatus() async {
     try {
-      final c = await ApiClient().post('/auth/hxpt/captcha', <String, dynamic>{});
+      final s = await ApiClient().get('/auth/status');
       if (!mounted) return;
+      setState(() => _demoMode = s['demo_mode'] == true);
+    } catch (_) {}
+  }
+
+  Future<bool> _fetchCaptcha({bool silent = false}) async {
+    try {
+      final c = await ApiClient().post(
+        '/auth/hxpt/captcha',
+        <String, dynamic>{},
+      );
+      if (!mounted) return false;
       setState(() {
         _captcha = c;
+        if (!silent) _err = null;
         // 不再强制切 cookie：后端已实现挑战响应登录（见 nexusphp_crypto.go），账号登录可直接试，失败再切 cookie。
       });
+      return true;
     } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _err = '取验证码失败：${e.message}（可改用 Cookie 登录）');
+      if (!mounted) return false;
+      if (!silent) {
+        setState(() => _err = '取验证码失败：${e.message}（可改用 Cookie 登录）');
+      }
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _err = '取验证码失败，可改用 Cookie 登录');
+      if (!mounted) return false;
+      if (!silent) {
+        setState(() => _err = '取验证码失败，可改用 Cookie 登录');
+      }
     }
+    return false;
   }
 
   Uint8List? get _captchaBytes {
@@ -70,6 +92,10 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _err = '请填写好学账号和密码');
       return;
     }
+    if (_captcha == null) {
+      final ok = await _fetchCaptcha();
+      if (!ok) return;
+    }
     setState(() {
       _loading = true;
       _err = null;
@@ -84,7 +110,8 @@ class _LoginPageState extends State<LoginPage> {
         if (_twoStep.text.isNotEmpty) 'two_step_code': _twoStep.text,
         if (needCap) 'imagehash': _captcha?['imagehash'] ?? '',
         if (needCap) 'imagestring': _imgStr.text,
-        if (_captcha?['extra_form'] != null) 'extra_form': _captcha!['extra_form'],
+        if (_captcha?['extra_form'] != null)
+          'extra_form': _captcha!['extra_form'],
       });
       await _onLoginOk(res);
     } on ApiException catch (e) {
@@ -95,7 +122,7 @@ class _LoginPageState extends State<LoginPage> {
       } else if (e.status == 401) {
         // 凭据/验证码错 → 刷新验证码
         _imgStr.clear();
-        await _fetchCaptcha();
+        await _fetchCaptcha(silent: true);
       }
     } catch (_) {
       if (mounted) setState(() => _err = '网络错误，请确认后端地址是否正确、后端服务是否已启动');
@@ -112,7 +139,10 @@ class _LoginPageState extends State<LoginPage> {
     }
     // 格式预校验：cookie 至少含一个「键=值」字段，避免提交明显非法串再等服务端拒（对齐 Web）。
     if (!ck.contains('=')) {
-      setState(() => _err = 'cookie 格式有误：应含键=值字段（如 c_secure_uid=...; c_secure_pass=...）');
+      setState(
+        () =>
+            _err = 'cookie 格式有误：应含键=值字段（如 c_secure_uid=...; c_secure_pass=...）',
+      );
       return;
     }
     setState(() {
@@ -133,6 +163,26 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _demoLogin() async {
+    setState(() {
+      _loading = true;
+      _err = null;
+    });
+    try {
+      final res = await ApiClient().post(
+        '/auth/demo-login',
+        <String, dynamic>{},
+      );
+      await _onLoginOk(res);
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _err = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _err = '演示登录未启用或后端不可达');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   Future<void> _onLoginOk(Map<String, dynamic> res) async {
     await ApiClient().setToken(res['token'] as String?);
     final u = res['user'];
@@ -140,9 +190,9 @@ class _LoginPageState extends State<LoginPage> {
       await ApiClient().setUser(u); // 持久化身份（用户名/admin 徽章），重启后恢复
     }
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeShell()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeShell()));
   }
 
   @override
@@ -170,15 +220,24 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Row(children: [
-                      PTLogo(size: 30),
-                      SizedBox(width: 10),
-                      Text('PTPatronus',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                    ]),
+                    const Row(
+                      children: [
+                        PTLogo(size: 30),
+                        SizedBox(width: 10),
+                        Text(
+                          'PTPatronus',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 4),
-                    const Text('PT 守护神 · 好学 APP 专属',
-                        style: TextStyle(color: Colors.grey)),
+                    const Text(
+                      'PT 守护神 · 好学 APP 专属',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                     const SizedBox(height: 20),
                     SegmentedButton<int>(
                       segments: const [
@@ -186,27 +245,48 @@ class _LoginPageState extends State<LoginPage> {
                         ButtonSegment(value: 1, label: Text('Cookie 登录')),
                       ],
                       selected: {_tab},
-                      onSelectionChanged: (s) => setState(() => _tab = s.first),
+                      onSelectionChanged: (s) => setState(() {
+                        _tab = s.first;
+                        _err = null;
+                      }),
                     ),
                     const SizedBox(height: 16),
                     if (_tab == 0) ..._accountFields() else ..._cookieFields(),
+                    if (_demoMode) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: _loading ? null : _demoLogin,
+                        icon: const Icon(Icons.visibility_outlined, size: 18),
+                        label: const Text('浏览演示环境'),
+                      ),
+                    ],
                     if (_err != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 10),
-                        child: Text(_err!,
-                            style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                        child: Text(
+                          _err!,
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     const SizedBox(height: 10),
                     // 切换后端地址（分发场景：每个用户后端不同）
                     Center(
                       child: TextButton.icon(
                         onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const ServerConfigPage()),
+                          MaterialPageRoute(
+                            builder: (_) => const ServerConfigPage(),
+                          ),
                         ),
                         icon: const Icon(Icons.dns_outlined, size: 16),
                         label: Text(
                           '后端：${ApiClient().baseUrl}',
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -225,8 +305,9 @@ class _LoginPageState extends State<LoginPage> {
     final needCap = _captcha?['need_captcha'] == true;
     return [
       TextField(
-          controller: _user,
-          decoration: const InputDecoration(labelText: '好学用户名')),
+        controller: _user,
+        decoration: const InputDecoration(labelText: '好学用户名'),
+      ),
       const SizedBox(height: 12),
       TextField(
         controller: _pass,
@@ -236,42 +317,49 @@ class _LoginPageState extends State<LoginPage> {
       const SizedBox(height: 12),
       TextField(
         controller: _twoStep,
-        decoration: const InputDecoration(
-            labelText: '二级验证码（开了 2FA 才填，6 位）'),
+        decoration: const InputDecoration(labelText: '二级验证码（开了 2FA 才填，6 位）'),
       ),
       if (needCap) ...[
         const SizedBox(height: 12),
-        Row(children: [
-          if (_captchaBytes != null)
-            GestureDetector(
-              onTap: _fetchCaptcha,
-              child: Image.memory(_captchaBytes!,
-                  height: 40, gaplessPlayback: true),
+        Row(
+          children: [
+            if (_captchaBytes != null)
+              GestureDetector(
+                onTap: () => _fetchCaptcha(),
+                child: Image.memory(
+                  _captchaBytes!,
+                  height: 40,
+                  gaplessPlayback: true,
+                ),
+              ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _imgStr,
+                decoration: const InputDecoration(labelText: '验证码'),
+              ),
             ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _imgStr,
-              decoration: const InputDecoration(labelText: '验证码'),
-            ),
-          ),
-        ]),
+          ],
+        ),
       ],
       const SizedBox(height: 22),
       FilledButton(
         onPressed: _loading ? null : _accountLogin,
         child: _loading
             ? const SizedBox(
-                width: 18, height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2))
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             : const Text('登录'),
       ),
       if (_captcha?['challenge_mode'] == true)
         const Padding(
           padding: EdgeInsets.only(top: 8),
           child: Text(
-              '好学已开启挑战响应认证，后端会自动处理，直接登录即可；如登录失败可改用 Cookie 登录',
-              style: TextStyle(fontSize: 12, color: Colors.grey)),
+            '好学已开启挑战响应认证，后端会自动处理，直接登录即可；如登录失败可改用 Cookie 登录',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
         ),
     ];
   }
@@ -282,13 +370,15 @@ class _LoginPageState extends State<LoginPage> {
         controller: _cookie,
         maxLines: 5,
         decoration: const InputDecoration(
-            labelText: '好学 cookie',
-            hintText: '浏览器登录好学后复制 cookie（c_secure_uid=...; c_secure_pass=...）'),
+          labelText: '好学 cookie',
+          hintText: '浏览器登录好学后复制 cookie（c_secure_uid=...; c_secure_pass=...）',
+        ),
       ),
       const SizedBox(height: 8),
       const Text(
-          '最稳路径，覆盖开了二级验证 / 挑战响应的好学账号',
-          style: TextStyle(fontSize: 12, color: Colors.grey)),
+        '最稳路径，覆盖开了二级验证 / 挑战响应的好学账号',
+        style: TextStyle(fontSize: 12, color: Colors.grey),
+      ),
       Align(
         alignment: Alignment.centerLeft,
         child: TextButton.icon(
@@ -310,8 +400,10 @@ class _LoginPageState extends State<LoginPage> {
         onPressed: _loading ? null : _cookieLogin,
         child: _loading
             ? const SizedBox(
-                width: 18, height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2))
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             : const Text('登录'),
       ),
     ];

@@ -32,12 +32,18 @@ class SiteDef {
   final String schema; // nexusphp / mteam / ...
   final bool dead; // 已关站：仅展示标注，不参与活跃抓取
   final List<String> urls; // 站点真实地址（首个作添加站点默认地址）
+  final List<String> aka; // 中文名别名（很多站 name 是英文，靠 aka 才能按中文名检索）
+  final String description;
+  final List<String> tags;
   const SiteDef({
     required this.id,
     required this.name,
     required this.schema,
     this.dead = false,
     this.urls = const [],
+    this.aka = const [],
+    this.description = '',
+    this.tags = const [],
   });
   factory SiteDef.fromJson(Map<String, dynamic> j) => SiteDef(
         id: j['id'] as String? ?? '',
@@ -45,6 +51,9 @@ class SiteDef {
         schema: j['schema'] as String? ?? '',
         dead: (j['dead'] as bool?) ?? false,
         urls: (j['urls'] as List?)?.map((e) => e as String).toList() ?? const [],
+        aka: (j['aka'] as List?)?.map((e) => e as String).toList() ?? const [],
+        description: j['description'] as String? ?? '',
+        tags: (j['tags'] as List?)?.map((e) => e as String).toList() ?? const [],
       );
 }
 

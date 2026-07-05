@@ -68,12 +68,20 @@ class SiteSearchResult {
 class SearchApi {
   final _api = ApiClient();
 
-  // search 跨站聚合搜索：POST /search?keyword=...[&category=...]。单站失败不影响其它（error 在结果里）。
-  // category=movie/tv/music（空=综合）：MTeam 映射 mode、NexusPHP 发 cat[]+后置过滤音乐。
-  Future<List<SiteSearchResult>> search(String keyword, {String category = ''}) async {
+  // search 跨站聚合搜索：POST /search?keyword=...[&category=...][&site_ids=...]。
+  // 单站失败不影响其它（error 在结果里）。category=movie/tv/music（空=综合）：
+  // MTeam 映射 mode、NexusPHP 发 cat[]+后置过滤音乐。siteIds 非空时仅搜指定启用站点。
+  Future<List<SiteSearchResult>> search(
+    String keyword, {
+    String category = '',
+    List<int> siteIds = const [],
+  }) async {
     var qs = 'keyword=${Uri.encodeQueryComponent(keyword)}';
     if (category.isNotEmpty) {
       qs += '&category=${Uri.encodeQueryComponent(category)}';
+    }
+    if (siteIds.isNotEmpty) {
+      qs += '&site_ids=${siteIds.join(',')}';
     }
     final r = await _api.post('/search?$qs', {});
     final list = (r['results'] as List?) ?? const [];

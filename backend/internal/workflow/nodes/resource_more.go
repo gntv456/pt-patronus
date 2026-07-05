@@ -46,7 +46,7 @@ func (n *SearchAllSitesNode) Execute(ctx context.Context, params map[string]any,
 		return fmt.Errorf("关键词为空")
 	}
 	category := workflow.ParamString(params, "category")
-	results := n.siteCh.SearchSites(ctx, kw, category)
+	results := n.siteCh.SearchSites(ctx, kw, category, nil)
 	total := 0
 	for _, r := range results {
 		for i := range r.Torrents {

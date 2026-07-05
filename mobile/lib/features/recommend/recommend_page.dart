@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/recommend.dart';
 import 'package:ptpatronus/api/search.dart';
 import 'package:ptpatronus/core/responsive.dart';
@@ -7,6 +6,8 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
 import 'package:ptpatronus/widgets/find_on_sites_sheet.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import '../media/media_detail_page.dart';
 
 // 推荐页：多源热门信息流（豆瓣热映/TMDB trending/Bangumi 热门/星光集短剧）。
@@ -128,33 +129,23 @@ class _RecommendPageState extends State<RecommendPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          title: const Text('推荐'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            PTIconAction(
-              icon: Icons.refresh,
-              tooltip: '刷新',
-              loading: _loading,
-              onPressed: _loading ? null : _refresh,
-            ),
-          ],
+    return PTPageScaffold(
+      title: '推荐',
+      actions: [
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新',
+          loading: _loading,
+          onPressed: _loading ? null : _refresh,
         ),
-        body: Column(
-          children: [
-            _filterPills(),
-            const SizedBox(height: 4),
-            Expanded(
-              child: RefreshIndicator(onRefresh: _refresh, child: _buildList()),
-            ),
-          ],
-        ),
-      ),
+      ],
+      filterDimensions: _filterDimensions(),
+      filterOnClearAll: () => setState(() {
+        _source = '';
+        _category = 'movie';
+        _load();
+      }),
+      body: RefreshIndicator(onRefresh: _refresh, child: _buildList()),
     );
   }
 
@@ -256,66 +247,45 @@ class _RecommendPageState extends State<RecommendPage> {
     );
   }
 
-  // 源 + 分类两 pill（各弹候选列表，保留星光集↔短剧联动）。
-  Widget _filterPills() {
-    String sourceLabel(String key) =>
-        _sources.firstWhere((e) => e.$1 == key, orElse: () => ('', key)).$2;
-    String categoryLabel(String key) =>
-        _categories.firstWhere((e) => e.$1 == key, orElse: () => ('', key)).$2;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        children: [
-          PTFilterPill(
-            label: '源',
-            value: sourceLabel(_source),
-            active: _source.isNotEmpty,
-            onTap: () => showFilterSheet<String>(
-              context,
-              title: '筛选来源',
-              selected: _source,
-              onSelected: (v) => setState(() {
-                // 星光集↔短剧互斥：星光集只产短剧、短剧只在星光集，联动校正避免空态。
-                _source = v;
-                if (v == 'xingguangji') {
-                  _category = 'duanju';
-                } else if (_category == 'duanju') {
-                  _category = 'movie';
-                }
-                _load(); // 选筛选 → 回信息流
-              }),
-              options: _sources
-                  .map((e) => PTFilterOption(value: e.$1, label: e.$2))
-                  .toList(),
-            ),
-          ),
-          PTFilterPill(
-            label: '分类',
-            value: categoryLabel(_category),
-            active: _category != _categories.first.$1,
-            onTap: () => showFilterSheet<String>(
-              context,
-              title: '筛选分类',
-              selected: _category,
-              onSelected: (v) => setState(() {
-                _category = v;
-                if (v == 'duanju') {
-                  _source = '';
-                } else if (_source == 'xingguangji') {
-                  _source = '';
-                }
-                _load(); // 选筛选 → 回信息流
-              }),
-              options: _categories
-                  .map((e) => PTFilterOption(value: e.$1, label: e.$2))
-                  .toList(),
-            ),
-          ),
-        ],
+  // 源 + 分类两维度（收进顶栏筛选按钮）。保留星光集↔短剧互斥联动（星光集只产短剧、
+  // 短剧只在星光集）——在各自 onChanged 里校正另一维，选完 _load() 回信息流。
+  List<PTFilterDimension> _filterDimensions() {
+    return [
+      PTFilterDimension.choice(
+        label: '来源',
+        selected: _source,
+        isDefault: _source.isEmpty,
+        onChanged: (v) => setState(() {
+          _source = (v as String?) ?? '';
+          if (_source == 'xingguangji') {
+            _category = 'duanju';
+          } else if (_category == 'duanju') {
+            _category = 'movie';
+          }
+          _load();
+        }),
+        options: _sources
+            .map((e) => PTFilterOption<Object?>(value: e.$1, label: e.$2))
+            .toList(),
       ),
-    );
+      PTFilterDimension.choice(
+        label: '分类',
+        selected: _category,
+        isDefault: _category == _categories.first.$1,
+        onChanged: (v) => setState(() {
+          _category = (v as String?) ?? 'movie';
+          if (_category == 'duanju') {
+            _source = '';
+          } else if (_source == 'xingguangji') {
+            _source = '';
+          }
+          _load();
+        }),
+        options: _categories
+            .map((e) => PTFilterOption<Object?>(value: e.$1, label: e.$2))
+            .toList(),
+      ),
+    ];
   }
 
   Widget _mediaCard(MediaInfo m) {

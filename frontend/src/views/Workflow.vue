@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { workflowApi, type Workflow, type WorkflowStats } from '@/api/workflow'
+import { workflowApi, type Workflow, type WorkflowStats, type WorkflowTemplate } from '@/api/workflow'
 import { webhookApi, type Webhook } from '@/api/webhook'
 import { copyText } from '@/utils/clipboard'
 import { useAuthStore } from '@/stores/auth'
@@ -15,13 +15,20 @@ const list = ref<Workflow[]>([])
 const loading = ref(false)
 const running = ref<number | null>(null)
 const stats = ref<WorkflowStats | null>(null)
+const templates = ref<WorkflowTemplate[]>([])
+const creatingTemplate = ref('')
 
 async function load() {
   loading.value = true
   try {
-    const [l, s] = await Promise.all([workflowApi.list(), workflowApi.stats().catch(() => null)])
+    const [l, s, t] = await Promise.all([
+      workflowApi.list(),
+      workflowApi.stats().catch(() => null),
+      workflowApi.templates().catch(() => []),
+    ])
     list.value = l
     stats.value = s
+    templates.value = t
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '加载失败')
   } finally {
@@ -35,6 +42,27 @@ function edit(w: Workflow) {
 }
 function create() {
   router.push({ name: 'workflow-editor' })
+}
+
+async function createFromTemplate(t: WorkflowTemplate) {
+  creatingTemplate.value = t.key
+  try {
+    const wf = await workflowApi.create({
+      name: t.name,
+      description: t.description,
+      trigger_type: t.trigger_type,
+      timer: t.timer,
+      enabled: false,
+      nodes: t.nodes,
+      edges: t.edges,
+    })
+    ElMessage.success('已从模板创建，可继续编辑参数')
+    router.push({ name: 'workflow-editor', query: { id: wf.id } })
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '创建失败')
+  } finally {
+    creatingTemplate.value = ''
+  }
 }
 
 async function run(w: Workflow) {
@@ -206,7 +234,17 @@ async function whSave() {
         title="暂无工作流"
         description="可视化节点编排：触发 → 搜索/RSS → 过滤 → 下载 → 通知，支持条件分支"
       >
-        <el-button type="primary" @click="create">+ 新建工作流</el-button>
+        <div class="template-actions">
+          <el-button type="primary" @click="create">+ 空白工作流</el-button>
+          <el-button
+            v-for="t in templates.slice(0, 3)"
+            :key="t.key"
+            :loading="creatingTemplate === t.key"
+            @click="createFromTemplate(t)"
+          >
+            {{ t.name }}
+          </el-button>
+        </div>
       </EmptyState>
     </div>
 
@@ -301,6 +339,12 @@ async function whSave() {
 .chip.trig { background: rgba(108,92,231,0.18); color: #6c5ce7; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
 .empty { padding: 40px; text-align: center; }
+.template-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .stats {
   display: grid;
   grid-template-columns: repeat(6, 1fr);

@@ -109,6 +109,19 @@ async function cookieLogin() {
   }
 }
 
+async function demoLogin() {
+  loading.value = true
+  err.value = ''
+  try {
+    await auth.loginDemo()
+    router.push({ name: 'dashboard' })
+  } catch (e: unknown) {
+    err.value = msg(e) || '演示登录未启用'
+  } finally {
+    loading.value = false
+  }
+}
+
 function msg(e: unknown): string {
   const r = (e as { response?: { data?: { message?: string; error?: string } } })?.response?.data
   return r?.message || r?.error || ''
@@ -187,6 +200,9 @@ function msg(e: unknown): string {
       </form>
 
       <p v-if="err" class="err">{{ err }}</p>
+      <button v-if="authStatus?.demo_mode" class="demo-btn" type="button" :disabled="loading" @click="demoLogin">
+        浏览演示环境
+      </button>
       <div class="deploy-hint">
         Web 端跟随后端同源访问 API。若移动端首次连接，请在客户端填写你的 Docker/后端地址，例如
         <code>http://192.168.1.10:8088</code>。
@@ -207,6 +223,7 @@ function msg(e: unknown): string {
   width: 100%;
   max-width: 400px;
   padding: 36px 32px;
+  box-sizing: border-box;
 }
 .brand {
   display: flex;
@@ -340,5 +357,33 @@ function msg(e: unknown): string {
 }
 .deploy-hint code {
   color: var(--text-strong);
+}
+.demo-btn {
+  width: 100%;
+  margin-top: 12px;
+  height: 38px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--pt-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+.demo-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+@media (max-width: 520px) {
+  .login-wrap {
+    align-items: flex-start;
+    padding: 12px;
+  }
+  .login-card {
+    margin-top: 36px;
+    padding: 28px 22px;
+  }
+  .brand h1 {
+    font-size: 22px;
+  }
 }
 </style>

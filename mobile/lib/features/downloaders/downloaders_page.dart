@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:ptpatronus/api/downloader.dart';
@@ -10,6 +9,7 @@ import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 class DownloadersPage extends StatefulWidget {
   const DownloadersPage({super.key});
@@ -45,8 +45,10 @@ class _DownloadersPageState extends State<DownloadersPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
       builder: (_) => FractionallySizedBox(
-        heightFactor: 0.85,
+        heightFactor: 0.92,
         child: _TorrentSheet(downloader: d),
       ),
     );
@@ -82,7 +84,10 @@ class _DownloadersPageState extends State<DownloadersPage> {
         title: const Text('删除下载器'),
         content: Text('确认删除下载器「${d.name}」？仅移除配置，不影响已下载文件。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
@@ -107,31 +112,31 @@ class _DownloadersPageState extends State<DownloadersPage> {
   }
 
   Widget _errorView() => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(_error ?? '加载失败',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 14)),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.tonalIcon(
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('重试'),
-              onPressed: _load,
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Text(
+            _error ?? '加载失败',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+          ),
         ),
-      );
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          icon: const Icon(Icons.refresh, size: 18),
+          label: const Text('重试'),
+          onPressed: _load,
+        ),
+      ],
+    ),
+  );
 
-  Widget _emptyView() => PTEmptyState(
-        icon: Icons.download_outlined,
-        text: '暂无下载器',
-      );
+  Widget _emptyView() =>
+      PTEmptyState(icon: Icons.download_outlined, text: '暂无下载器');
 
   @override
   void initState() {
@@ -141,37 +146,30 @@ class _DownloadersPageState extends State<DownloadersPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 4, 14, 2),
-              child: Row(children: [
-                const HomeMenuButton(),
-                const Text('下载器', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                const Spacer(),
-                PTIconAction(icon: Icons.refresh, onPressed: _load, tooltip: '刷新'),
-                PTIconAction(icon: Icons.add, onPressed: _addDownloader, tooltip: '添加下载器'),
-              ]),
-            ),
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
-            Expanded(
-              child: (_list.isEmpty && !_loading)
-                  ? (_error != null ? _errorView() : _emptyView())
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: PTMasonry<Downloader>(
-                        items: _list,
-                        minItemWidth: 280,
-                        padding: const EdgeInsets.all(12),
-                        itemBuilder: (_, d) => _downloaderCard(d),
-                      ),
+    return PTPageScaffold(
+      title: '下载器',
+      actions: [
+        PTBarAction(icon: Icons.refresh, label: '刷新', onPressed: _load),
+        PTBarAction(icon: Icons.add, label: '添加下载器', onPressed: _addDownloader),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: (_list.isEmpty && !_loading)
+                ? (_error != null ? _errorView() : _emptyView())
+                : RefreshIndicator(
+                    onRefresh: _load,
+                    child: PTMasonry<Downloader>(
+                      items: _list,
+                      minItemWidth: 280,
+                      padding: const EdgeInsets.all(12),
+                      itemBuilder: (_, d) => _downloaderCard(d),
                     ),
-            ),
-          ],
-        ),
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -184,35 +182,44 @@ class _DownloadersPageState extends State<DownloadersPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(children: [
-            _dlBadge(d.type),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(d.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                      overflow: TextOverflow.ellipsis),
-                  Text(_typeLabel(d.type),
-                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
+          Row(
+            children: [
+              _dlBadge(d.type),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      d.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _typeLabel(d.type),
+                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
           const SizedBox(height: 12),
-          Text(d.url,
-              style: const TextStyle(color: Colors.grey, fontSize: 12), softWrap: true),
+          Text(
+            d.url,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            softWrap: true,
+          ),
           const SizedBox(height: 14),
           _actionRow([
             OutlinedButton(
               onPressed: () => _testDownloader(d),
               child: const Text('连接测试'),
             ),
-            FilledButton(
-              onPressed: () => _open(d),
-              child: const Text('任务列表'),
-            ),
+            FilledButton(onPressed: () => _open(d), child: const Text('任务列表')),
           ]),
           const SizedBox(height: 8),
           _actionRow([
@@ -263,8 +270,11 @@ class _DownloadersPageState extends State<DownloadersPage> {
               : const [Color(0xFF6C5CE7), Color(0xFF4285F4)],
         ),
       ),
-      child: Icon(isTr ? Icons.sync_rounded : Icons.download_rounded,
-          color: Colors.white, size: 20),
+      child: Icon(
+        isTr ? Icons.sync_rounded : Icons.download_rounded,
+        color: Colors.white,
+        size: 20,
+      ),
     );
   }
 
@@ -364,7 +374,10 @@ class _DownloaderFormSheetState extends State<_DownloaderFormSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(controller: _name, decoration: const InputDecoration(labelText: '名称')),
+        TextField(
+          controller: _name,
+          decoration: const InputDecoration(labelText: '名称'),
+        ),
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: _type,
@@ -378,16 +391,25 @@ class _DownloaderFormSheetState extends State<_DownloaderFormSheet> {
         const SizedBox(height: 12),
         TextField(
           controller: _url,
-          decoration: const InputDecoration(labelText: '地址', hintText: 'http://127.0.0.1:8080'),
+          decoration: const InputDecoration(
+            labelText: '地址',
+            hintText: 'http://127.0.0.1:8080',
+          ),
           keyboardType: TextInputType.url,
         ),
         const SizedBox(height: 12),
-        TextField(controller: _username, decoration: const InputDecoration(labelText: '用户名')),
+        TextField(
+          controller: _username,
+          decoration: const InputDecoration(labelText: '用户名'),
+        ),
         const SizedBox(height: 12),
         TextField(
           controller: _password,
           obscureText: true,
-          decoration: InputDecoration(labelText: '密码', hintText: _isEdit ? '留空不修改' : null),
+          decoration: InputDecoration(
+            labelText: '密码',
+            hintText: _isEdit ? '留空不修改' : null,
+          ),
         ),
         if (_isEdit)
           SwitchListTile(
@@ -401,9 +423,15 @@ class _DownloaderFormSheetState extends State<_DownloaderFormSheet> {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            TextButton(onPressed: _saving ? null : () => Navigator.pop(context, false), child: const Text('取消')),
+            TextButton(
+              onPressed: _saving ? null : () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
             const SizedBox(width: 8),
-            FilledButton(onPressed: _saving ? null : _submit, child: Text(_isEdit ? '保存' : '添加')),
+            FilledButton(
+              onPressed: _saving ? null : _submit,
+              child: Text(_isEdit ? '保存' : '添加'),
+            ),
           ],
         ),
       ],
@@ -473,11 +501,14 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     }
   }
 
-  int get _active => _torrents.where((t) => t.state.contains('download')).length;
-  int get _seeding =>
-      _torrents.where((t) => t.state.contains('upload') || t.state.contains('seed')).length;
-  int get _paused =>
-      _torrents.where((t) => t.state.contains('pause') || t.state.contains('stop')).length;
+  int get _active =>
+      _torrents.where((t) => t.state.contains('download')).length;
+  int get _seeding => _torrents
+      .where((t) => t.state.contains('upload') || t.state.contains('seed'))
+      .length;
+  int get _paused => _torrents
+      .where((t) => t.state.contains('pause') || t.state.contains('stop'))
+      .length;
 
   Future<bool?> _confirmDelete(String name) async {
     bool delFiles = false;
@@ -501,15 +532,25 @@ class _TorrentSheetState extends State<_TorrentSheet> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, null), child: const Text('取消')),
-            TextButton(onPressed: () => Navigator.pop(ctx, delFiles), child: const Text('删除')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, delFiles),
+              child: const Text('删除'),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Future<String?> _input(String title, String hint, {String initial = ''}) async {
+  Future<String?> _input(
+    String title,
+    String hint, {
+    String initial = '',
+  }) async {
     final ctrl = TextEditingController(text: initial);
     return showDialog<String>(
       context: context,
@@ -521,7 +562,10 @@ class _TorrentSheetState extends State<_TorrentSheet> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
             child: const Text('确定'),
@@ -564,7 +608,10 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       case 'remove':
         final df = await _confirmDelete(t.name);
         if (df != null) {
-          _act(() => _api.removeTorrents(_id, [t.hash], deleteFiles: df), '已删除');
+          _act(
+            () => _api.removeTorrents(_id, [t.hash], deleteFiles: df),
+            '已删除',
+          );
         }
       case 'category':
         await _editCategory(t);
@@ -602,15 +649,19 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => Padding(
           // 键盘避让：sheet 底部按视图插入区抬高，输入框不被遮挡。
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('做种限制',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Text(
+                  '做种限制',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 16),
                 const Text('分享比率', style: TextStyle(fontSize: 13)),
                 DropdownButton<String>(
@@ -625,12 +676,17 @@ class _TorrentSheetState extends State<_TorrentSheet> {
                 ),
                 if (ratioMode == 'custom')
                   TextField(
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(hintText: '如 2.0'),
                     onChanged: (v) => ratioInput = v,
                   ),
                 const SizedBox(height: 12),
-                Text('做种时长${_type == 'tr' ? '（空闲）' : ''}', style: const TextStyle(fontSize: 13)),
+                Text(
+                  '做种时长${_type == 'tr' ? '（空闲）' : ''}',
+                  style: const TextStyle(fontSize: 13),
+                ),
                 DropdownButton<String>(
                   isExpanded: true,
                   value: seedMode,
@@ -650,15 +706,24 @@ class _TorrentSheetState extends State<_TorrentSheet> {
                 if (_type == 'tr')
                   const Padding(
                     padding: EdgeInsets.only(top: 8),
-                    child: Text('TR 做种时长为「空闲时长」语义', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    child: Text(
+                      'TR 做种时长为「空闲时长」语义',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
                   ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('取消'),
+                    ),
                     const SizedBox(width: 8),
-                    FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('确定')),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('确定'),
+                    ),
                   ],
                 ),
               ],
@@ -668,11 +733,20 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       ),
     );
     if (ok != true) return;
-    final ratio =
-        ratioMode == 'global' ? -1.0 : ratioMode == 'unlimited' ? -2.0 : (double.tryParse(ratioInput) ?? 0);
-    final seed = seedMode == 'global' ? -1 : seedMode == 'unlimited' ? -2 : (int.tryParse(seedInput) ?? 0);
+    final ratio = ratioMode == 'global'
+        ? -1.0
+        : ratioMode == 'unlimited'
+        ? -2.0
+        : (double.tryParse(ratioInput) ?? 0);
+    final seed = seedMode == 'global'
+        ? -1
+        : seedMode == 'unlimited'
+        ? -2
+        : (int.tryParse(seedInput) ?? 0);
     _act(
-      () => _api.setShareLimits(_id, [t.hash], ShareLimits(ratioLimit: ratio, seedingTimeLimit: seed)),
+      () => _api.setShareLimits(_id, [
+        t.hash,
+      ], ShareLimits(ratioLimit: ratio, seedingTimeLimit: seed)),
       '已设置',
     );
   }
@@ -681,8 +755,10 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
       builder: (_) => FractionallySizedBox(
-        heightFactor: 0.7,
+        heightFactor: 0.82,
         child: _PeersSheet(id: _id, hash: t.hash),
       ),
     );
@@ -692,6 +768,8 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
       builder: (_) => FractionallySizedBox(
         heightFactor: 0.9,
         child: _DetailSheet(id: _id, type: _type, torrent: t),
@@ -703,8 +781,10 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
       builder: (_) => FractionallySizedBox(
-        heightFactor: 0.7,
+        heightFactor: 0.82,
         child: _CategorySheet(id: _id),
       ),
     );
@@ -719,10 +799,12 @@ class _TorrentSheetState extends State<_TorrentSheet> {
         builder: (ctx) => SimpleDialog(
           title: const Text('设置分类'),
           children: [
-            ...cats.map((c) => SimpleDialogOption(
-                  onPressed: () => Navigator.pop(ctx, c),
-                  child: Text(c),
-                )),
+            ...cats.map(
+              (c) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, c),
+                child: Text(c),
+              ),
+            ),
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, ''),
               child: const Text('（清除）', style: TextStyle(color: Colors.grey)),
@@ -739,7 +821,11 @@ class _TorrentSheetState extends State<_TorrentSheet> {
   Future<void> _editTags(Torrent t) async {
     final s = await _input('设置标签', '逗号分隔，覆盖现有', initial: t.tags.join(','));
     if (s == null) return;
-    final tags = s.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final tags = s
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     _act(() => _api.editTags(_id, [t.hash], tags, 'set'), '已设置');
   }
 
@@ -751,7 +837,9 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     final upB = (int.tryParse(up) ?? 0) * 1024;
     final dlB = (int.tryParse(dl) ?? 0) * 1024;
     _act(
-      () => _api.setLimits(_id, [t.hash], Limits(uploadLimit: upB, downloadLimit: dlB)),
+      () => _api.setLimits(_id, [
+        t.hash,
+      ], Limits(uploadLimit: upB, downloadLimit: dlB)),
       '已设置',
     );
   }
@@ -783,7 +871,9 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       context: context,
       isScrollControlled: true,
       builder: (_) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: _AddTorrentSheet(downloader: widget.downloader),
       ),
     );
@@ -805,13 +895,21 @@ class _TorrentSheetState extends State<_TorrentSheet> {
         ),
       );
     } else if (_error.isNotEmpty) {
-      body = Center(child: Text('拉取失败：$_error', style: const TextStyle(color: Colors.redAccent)));
+      body = Center(
+        child: Text(
+          '拉取失败：$_error',
+          style: const TextStyle(color: Colors.redAccent),
+        ),
+      );
     } else if (_torrents.isEmpty) {
-      body = const Center(child: Text('无任务', style: TextStyle(color: Colors.grey)));
+      body = const Center(
+        child: Text('无任务', style: TextStyle(color: Colors.grey)),
+      );
     } else {
       body = ListView.separated(
         itemCount: _torrents.length,
-        separatorBuilder: (_, _) => const Divider(height: 1, indent: 12, endIndent: 12),
+        separatorBuilder: (_, _) =>
+            const Divider(height: 1, indent: 12, endIndent: 12),
         itemBuilder: (_, i) => _row(_torrents[i]),
       );
     }
@@ -819,27 +917,38 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       children: [
         Padding(
           padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            Text('${d.name} · 任务',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const Spacer(),
-            if (_type == 'qb')
+          child: Row(
+            children: [
+              Text(
+                '${d.name} · 任务',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              if (_type == 'qb')
+                IconButton(
+                  icon: const Icon(Icons.category_outlined),
+                  onPressed: _showCategoryManager,
+                  tooltip: '分类管理',
+                ),
               IconButton(
-                icon: const Icon(Icons.category_outlined),
-                onPressed: _showCategoryManager,
-                tooltip: '分类管理',
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: _add,
+                tooltip: '添加种子',
               ),
-            IconButton(icon: const Icon(Icons.add_circle_outline), onPressed: _add, tooltip: '添加种子'),
-            const SizedBox(width: 4),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: _ws.isConnected ? PTColors.success : Colors.grey,
-                shape: BoxShape.circle,
+              const SizedBox(width: 4),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _ws.isConnected ? PTColors.success : Colors.grey,
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
         ),
         _statsRow(),
         const Divider(height: 1),
@@ -872,13 +981,23 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       children: [
         Text(arrow, style: TextStyle(color: color, fontSize: 14)),
         const SizedBox(width: 4),
-        Text(speed, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
+        Text(
+          speed,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
       ],
     );
   }
 
   Widget _count(String label, int n) {
-    return Text('$label $n', style: const TextStyle(color: Colors.grey, fontSize: 12));
+    return Text(
+      '$label $n',
+      style: const TextStyle(color: Colors.grey, fontSize: 12),
+    );
   }
 
   Widget _row(Torrent t) {
@@ -901,17 +1020,26 @@ class _TorrentSheetState extends State<_TorrentSheet> {
           if (_type == 'qb') ...[
             const PopupMenuDivider(),
             PopupMenuItem(
-                value: 'forceStart', child: Text(t.forceStart ? '取消强制开始' : '强制开始')),
+              value: 'forceStart',
+              child: Text(t.forceStart ? '取消强制开始' : '强制开始'),
+            ),
             const PopupMenuItem(value: 'top', child: Text('队列置顶')),
             const PopupMenuItem(value: 'up', child: Text('队列上移')),
             const PopupMenuItem(value: 'down', child: Text('队列下移')),
             const PopupMenuItem(value: 'bottom', child: Text('队列置底')),
-            PopupMenuItem(value: 'seq', child: Text(t.sequential ? '取消顺序下载' : '顺序下载')),
-            PopupMenuItem(value: 'firstlast', child: Text(t.firstLastPiece ? '取消首尾优先' : '首尾优先')),
+            PopupMenuItem(
+              value: 'seq',
+              child: Text(t.sequential ? '取消顺序下载' : '顺序下载'),
+            ),
+            PopupMenuItem(
+              value: 'firstlast',
+              child: Text(t.firstLastPiece ? '取消首尾优先' : '首尾优先'),
+            ),
           ],
           const PopupMenuDivider(),
           const PopupMenuItem(value: 'remove', child: Text('删除…')),
-          if (_type == 'qb') const PopupMenuItem(value: 'category', child: Text('设置分类…')),
+          if (_type == 'qb')
+            const PopupMenuItem(value: 'category', child: Text('设置分类…')),
           const PopupMenuItem(value: 'tags', child: Text('设置标签…')),
           const PopupMenuItem(value: 'limits', child: Text('限速…')),
           const PopupMenuItem(value: 'shareLimits', child: Text('做种限制…')),
@@ -928,8 +1056,14 @@ class _TorrentSheetState extends State<_TorrentSheet> {
 
   String _stateLabel(String s) {
     const m = {
-      'downloading': '下载中', 'uploading': '做种', 'paused': '暂停', 'stopped': '停止',
-      'stalled': '等待', 'error': '错误', 'checking': '校验', 'queued': '排队',
+      'downloading': '下载中',
+      'uploading': '做种',
+      'paused': '暂停',
+      'stopped': '停止',
+      'stalled': '等待',
+      'error': '错误',
+      'checking': '校验',
+      'queued': '排队',
     };
     for (final e in m.entries) {
       if (s.contains(e.key)) return e.value;
@@ -961,7 +1095,11 @@ class _AddTorrentSheetState extends State<_AddTorrentSheet> {
     if (_urlCtrl.text.isEmpty) return;
     setState(() => _loading = true);
     try {
-      await _api.addTorrent(widget.downloader.id, _urlCtrl.text, opts: {'paused': _paused});
+      await _api.addTorrent(
+        widget.downloader.id,
+        _urlCtrl.text,
+        opts: {'paused': _paused},
+      );
       _toast('已添加');
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -984,7 +1122,11 @@ class _AddTorrentSheetState extends State<_AddTorrentSheet> {
       if (f.path != null) {
         mf = await http.MultipartFile.fromPath('file', f.path!);
       } else {
-        mf = http.MultipartFile.fromBytes('file', f.bytes ?? <int>[], filename: f.name);
+        mf = http.MultipartFile.fromBytes(
+          'file',
+          f.bytes ?? <int>[],
+          filename: f.name,
+        );
       }
       await _api.uploadTorrent(widget.downloader.id, mf);
       _toast('已上传');
@@ -1005,8 +1147,10 @@ class _AddTorrentSheetState extends State<_AddTorrentSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('添加种子到「${widget.downloader.name}」',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(
+            '添加种子到「${widget.downloader.name}」',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 14),
           TextField(
             controller: _urlCtrl,
@@ -1074,7 +1218,12 @@ class _FilesSheetState extends State<_FilesSheet> {
   Future<void> _load() async {
     try {
       final f = await _api.files(widget.id, widget.hash);
-      if (mounted) setState(() {_files = f; _loading = false;});
+      if (mounted) {
+        setState(() {
+          _files = f;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -1114,31 +1263,42 @@ class _FilesSheetState extends State<_FilesSheet> {
       children: [
         const Padding(
           padding: EdgeInsets.all(14),
-          child: Text('文件优先级', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          child: Text(
+            '文件优先级',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ),
         const Divider(height: 1),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _files.isEmpty
-                  ? const Center(child: Text('无文件', style: TextStyle(color: Colors.grey)))
-                  : ListView.builder(
-                      itemCount: _files.length,
-                      itemBuilder: (_, i) {
-                        final f = _files[i];
-                        return ListTile(
-                          dense: true,
-                          title: Text(f.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          subtitle: Text('${_fmtBytes(f.size)} · ${(f.progress * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(fontSize: 12)),
-                          trailing: DropdownButton<int>(
-                            value: f.priority,
-                            items: _prioOpts(),
-                            onChanged: (p) => p != null ? _setPrio(f, p) : null,
-                          ),
-                        );
-                      },
-                    ),
+              ? const Center(
+                  child: Text('无文件', style: TextStyle(color: Colors.grey)),
+                )
+              : ListView.builder(
+                  itemCount: _files.length,
+                  itemBuilder: (_, i) {
+                    final f = _files[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        f.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        '${_fmtBytes(f.size)} · ${(f.progress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: DropdownButton<int>(
+                        value: f.priority,
+                        items: _prioOpts(),
+                        onChanged: (p) => p != null ? _setPrio(f, p) : null,
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -1169,7 +1329,12 @@ class _TrackersSheetState extends State<_TrackersSheet> {
   Future<void> _load() async {
     try {
       final t = await _api.trackers(widget.id, widget.hash);
-      if (mounted) setState(() {_trackers = t; _loading = false;});
+      if (mounted) {
+        setState(() {
+          _trackers = t;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -1208,7 +1373,10 @@ class _TrackersSheetState extends State<_TrackersSheet> {
       children: [
         const Padding(
           padding: EdgeInsets.all(14),
-          child: Text('Tracker 管理', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          child: Text(
+            'Tracker 管理',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -1234,21 +1402,31 @@ class _TrackersSheetState extends State<_TrackersSheet> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _trackers.isEmpty
-                  ? const Center(child: Text('无 Tracker', style: TextStyle(color: Colors.grey)))
-                  : ListView.builder(
-                      itemCount: _trackers.length,
-                      itemBuilder: (_, i) {
-                        final t = _trackers[i];
-                        return ListTile(
-                          dense: true,
-                          title: Text(t.url, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            onPressed: () => _remove(t.url),
-                          ),
-                        );
-                      },
-                    ),
+              ? const Center(
+                  child: Text(
+                    '无 Tracker',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: _trackers.length,
+                  itemBuilder: (_, i) {
+                    final t = _trackers[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        t.url,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        onPressed: () => _remove(t.url),
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -1279,92 +1457,127 @@ String _fmtIso(String iso) {
   return '${dt.year}-${p(dt.month)}-${p(dt.day)} ${p(dt.hour)}:${p(dt.minute)}';
 }
 
-bool _isCompleted(String iso) => iso.isNotEmpty && !iso.startsWith('0001') && !iso.startsWith('1970');
+bool _isCompleted(String iso) =>
+    iso.isNotEmpty && !iso.startsWith('0001') && !iso.startsWith('1970');
 
 // 任务详情：概览信息 + qB 标志 + Peers/文件/Tracker 子入口。
 class _DetailSheet extends StatelessWidget {
   final int id;
   final String type;
   final Torrent torrent;
-  const _DetailSheet({required this.id, required this.type, required this.torrent});
+  const _DetailSheet({
+    required this.id,
+    required this.type,
+    required this.torrent,
+  });
 
   Widget _kv(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-              width: 84,
-              child: Text(k, style: const TextStyle(color: Colors.grey, fontSize: 12))),
-          Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
-        ]),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 84,
+          child: Text(
+            k,
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ),
+        Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
+      ],
+    ),
+  );
 
   Widget _flag(String label, bool on) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          color: on
-              ? Colors.deepPurple.withValues(alpha: 0.18)
-              : Colors.grey.withValues(alpha: 0.15),
-        ),
-        child: Text(label,
-            style: TextStyle(fontSize: 11, color: on ? Colors.deepPurple : Colors.grey)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(6),
+      color: on
+          ? Colors.deepPurple.withValues(alpha: 0.18)
+          : Colors.grey.withValues(alpha: 0.15),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        fontSize: 11,
+        color: on ? Colors.deepPurple : Colors.grey,
+      ),
+    ),
+  );
 
   void _openPeers(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (_) => FractionallySizedBox(
-          heightFactor: 0.7, child: _PeersSheet(id: id, hash: torrent.hash)),
+        heightFactor: 0.7,
+        child: _PeersSheet(id: id, hash: torrent.hash),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final t = torrent;
-    return Column(children: [
-      Padding(
-        padding: const EdgeInsets.all(14),
-        child: Text(t.name,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Text(
+            t.name,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             maxLines: 2,
-            overflow: TextOverflow.ellipsis),
-      ),
-      const Divider(height: 1),
-      Expanded(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          children: [
-            _kv('大小', _fmtBytes(t.size)),
-            _kv('已下载/上传', '${_fmtBytes(t.downloaded)} / ${_fmtBytes(t.uploaded)}'),
-            _kv('分享率', t.ratio.toStringAsFixed(2)),
-            _kv('进度', '${(t.progress * 100).toStringAsFixed(1)}%'),
-            if (type == 'qb')
-              _kv('可用性', t.availability > 0 ? t.availability.toStringAsFixed(2) : '-'),
-            _kv('做种/下载', '${t.numSeeds} / ${t.numLeechs}'),
-            if (type == 'qb') _kv('Swarm 做/下', '${t.numComplete} / ${t.numIncomplete}'),
-            if (type == 'qb') _kv('队列位置', '${t.priority}'),
-            if (t.addedAt.isNotEmpty) _kv('创建', _fmtIso(t.addedAt)),
-            if (_isCompleted(t.completedAt)) _kv('完成', _fmtIso(t.completedAt)),
-            if (type == 'qb') ...[
-              const SizedBox(height: 8),
-              Wrap(spacing: 6, runSpacing: 6, children: [
-                _flag('强制开始', t.forceStart),
-                _flag('顺序下载', t.sequential),
-                _flag('首尾优先', t.firstLastPiece),
-                _flag('自动管理', t.autoTmm),
-              ]),
-            ],
-            const SizedBox(height: 16),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.people_outline, size: 18),
-              label: const Text('Peers'),
-              onPressed: () => _openPeers(context),
-            ),
-          ],
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
-      ),
-    ]);
+        const Divider(height: 1),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            children: [
+              _kv('大小', _fmtBytes(t.size)),
+              _kv(
+                '已下载/上传',
+                '${_fmtBytes(t.downloaded)} / ${_fmtBytes(t.uploaded)}',
+              ),
+              _kv('分享率', t.ratio.toStringAsFixed(2)),
+              _kv('进度', '${(t.progress * 100).toStringAsFixed(1)}%'),
+              if (type == 'qb')
+                _kv(
+                  '可用性',
+                  t.availability > 0 ? t.availability.toStringAsFixed(2) : '-',
+                ),
+              _kv('做种/下载', '${t.numSeeds} / ${t.numLeechs}'),
+              if (type == 'qb')
+                _kv('Swarm 做/下', '${t.numComplete} / ${t.numIncomplete}'),
+              if (type == 'qb') _kv('队列位置', '${t.priority}'),
+              if (t.addedAt.isNotEmpty) _kv('创建', _fmtIso(t.addedAt)),
+              if (_isCompleted(t.completedAt))
+                _kv('完成', _fmtIso(t.completedAt)),
+              if (type == 'qb') ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _flag('强制开始', t.forceStart),
+                    _flag('顺序下载', t.sequential),
+                    _flag('首尾优先', t.firstLastPiece),
+                    _flag('自动管理', t.autoTmm),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.people_outline, size: 18),
+                label: const Text('Peers'),
+                onPressed: () => _openPeers(context),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -1391,7 +1604,12 @@ class _PeersSheetState extends State<_PeersSheet> {
   Future<void> _load() async {
     try {
       final p = await _api.peers(widget.id, widget.hash);
-      if (mounted) setState(() {_peers = p; _loading = false;});
+      if (mounted) {
+        setState(() {
+          _peers = p;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -1399,39 +1617,60 @@ class _PeersSheetState extends State<_PeersSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(children: [
-          const Text('Peers', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          const Spacer(),
-          Text('${_peers.length}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          IconButton(icon: const Icon(Icons.refresh, size: 20), onPressed: _load),
-        ]),
-      ),
-      const Divider(height: 1),
-      Expanded(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _peers.isEmpty
-                ? const Center(child: Text('无连接的对等体', style: TextStyle(color: Colors.grey)))
-                : ListView.builder(
-                    itemCount: _peers.length,
-                    itemBuilder: (_, i) {
-                      final p = _peers[i];
-                      return ListTile(
-                        dense: true,
-                        title: Text(p.ip, style: const TextStyle(fontSize: 13)),
-                        subtitle: Text(
-                          '${p.client.isEmpty ? '-' : p.client} · ${(p.progress * 100).toStringAsFixed(0)}% · ↓${_fmtSpeed(p.dlRate)} ↑${_fmtSpeed(p.upRate)}',
-                          style: const TextStyle(fontSize: 11),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const Text(
+                'Peers',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const Spacer(),
+              Text(
+                '${_peers.length}',
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                onPressed: _load,
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _peers.isEmpty
+              ? const Center(
+                  child: Text('无连接的对等体', style: TextStyle(color: Colors.grey)),
+                )
+              : ListView.builder(
+                  itemCount: _peers.length,
+                  itemBuilder: (_, i) {
+                    final p = _peers[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(p.ip, style: const TextStyle(fontSize: 13)),
+                      subtitle: Text(
+                        '${p.client.isEmpty ? '-' : p.client} · ${(p.progress * 100).toStringAsFixed(0)}% · ↓${_fmtSpeed(p.dlRate)} ↑${_fmtSpeed(p.upRate)}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: Text(
+                        p.flags,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
                         ),
-                        trailing: Text(p.flags, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                      );
-                    },
-                  ),
-      ),
-    ]);
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
   }
 }
 
@@ -1459,7 +1698,12 @@ class _CategorySheetState extends State<_CategorySheet> {
   Future<void> _load() async {
     try {
       final c = await _api.categories(widget.id);
-      if (mounted) setState(() {_cats = c; _loading = false;});
+      if (mounted) {
+        setState(() {
+          _cats = c;
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -1491,8 +1735,14 @@ class _CategorySheetState extends State<_CategorySheet> {
         title: const Text('删除分类'),
         content: Text('确认删除分类「$name」？该分类下任务将变为无分类。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('删除')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
         ],
       ),
     );
@@ -1508,54 +1758,70 @@ class _CategorySheetState extends State<_CategorySheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(children: [
-      const Padding(
-        padding: EdgeInsets.all(14),
-        child: Text('分类管理', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(children: [
-          Expanded(
-            child: TextField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                  hintText: '新分类名', isDense: true, border: OutlineInputBorder()),
-              onSubmitted: (_) => _add(),
-            ),
+    return Column(
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(14),
+          child: Text(
+            '分类管理',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _pathCtrl,
-              decoration: const InputDecoration(
-                  hintText: '保存路径（可空）', isDense: true, border: OutlineInputBorder()),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton.filled(icon: const Icon(Icons.add), onPressed: _add),
-        ]),
-      ),
-      const Divider(height: 16),
-      Expanded(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _cats.isEmpty
-                ? const Center(child: Text('无分类', style: TextStyle(color: Colors.grey)))
-                : ListView.builder(
-                    itemCount: _cats.length,
-                    itemBuilder: (_, i) {
-                      final c = _cats[i];
-                      return ListTile(
-                        dense: true,
-                        title: Text(c, style: const TextStyle(fontSize: 13)),
-                        trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            onPressed: () => _del(c)),
-                      );
-                    },
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    hintText: '新分类名',
+                    isDense: true,
+                    border: OutlineInputBorder(),
                   ),
-      ),
-    ]);
+                  onSubmitted: (_) => _add(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _pathCtrl,
+                  decoration: const InputDecoration(
+                    hintText: '保存路径（可空）',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(icon: const Icon(Icons.add), onPressed: _add),
+            ],
+          ),
+        ),
+        const Divider(height: 16),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _cats.isEmpty
+              ? const Center(
+                  child: Text('无分类', style: TextStyle(color: Colors.grey)),
+                )
+              : ListView.builder(
+                  itemCount: _cats.length,
+                  itemBuilder: (_, i) {
+                    final c = _cats[i];
+                    return ListTile(
+                      dense: true,
+                      title: Text(c, style: const TextStyle(fontSize: 13)),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20),
+                        onPressed: () => _del(c),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
   }
 }

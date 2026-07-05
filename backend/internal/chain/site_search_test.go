@@ -40,7 +40,7 @@ func TestSiteChainSearchSitesConcurrent(t *testing.T) {
 	ch := NewSiteChain(NewBase(mm, event.New()), siteOp, site.NewRegistry())
 
 	start := time.Now()
-	results := ch.SearchSites(context.Background(), "kw", "")
+	results := ch.SearchSites(context.Background(), "kw", "", nil)
 	elapsed := time.Since(start)
 
 	// 5 站 × 100ms，并发应远小于串行 500ms；阈值留 4× 余量防 CI 抖动。
@@ -84,7 +84,7 @@ func TestSiteChainSearchSitesTimeout(t *testing.T) {
 	defer cancel()
 
 	start := time.Now()
-	results := ch.SearchSites(ctx, "kw", "")
+	results := ch.SearchSites(ctx, "kw", "", nil)
 	elapsed := time.Since(start)
 
 	if elapsed >= 1*time.Second {

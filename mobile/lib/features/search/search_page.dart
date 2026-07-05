@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/media.dart';
 import 'package:ptpatronus/api/search.dart';
+import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/api/seedbrowse.dart';
 import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import '../media/media_detail_page.dart';
 import '../media/media_settings_page.dart';
 
@@ -35,6 +37,8 @@ class _SearchPageState extends State<SearchPage> {
 
   List<SiteSearchResult> _results = [];
   List<MediaInfo> _mediaResults = [];
+  List<Site> _sites = []; // 启用站点（种子搜索站点筛选用）
+  List<int> _selectedSiteIds = []; // 种子搜索站点筛选，空=全部启用站
   bool _loading = false;
   bool _searched = false;
   String? _error; // 搜索失败文案（非空时列表区显示可重试错误态——审计 P1）
@@ -46,9 +50,17 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
+    _loadSites();
     if ((widget.initialKeyword ?? '').isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _search());
     }
+  }
+
+  Future<void> _loadSites() async {
+    try {
+      final list = await SiteApi().list();
+      if (mounted) setState(() => _sites = list.where((s) => s.isActive).toList());
+    } catch (_) {}
   }
 
   Future<void> _search() async {
@@ -60,7 +72,7 @@ class _SearchPageState extends State<SearchPage> {
     });
     try {
       if (_mode == SearchMode.torrent) {
-        _results = await SearchApi().search(kw, category: _category);
+        _results = await SearchApi().search(kw, category: _category, siteIds: _selectedSiteIds);
       } else {
         final year = int.tryParse(_year) ?? 0;
         _mediaResults = await MediaApi().search(kw, year);
@@ -187,122 +199,98 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-              child: Row(
-                children: [
-                  const HomeMenuButton(),
-                  const Spacer(),
-                  SegmentedButton<SearchMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: SearchMode.torrent,
-                        label: Text('种子'),
-                      ),
-                      ButtonSegment(value: SearchMode.media, label: Text('影视')),
-                    ],
-                    selected: {_mode},
-                    onSelectionChanged: (s) => _switchMode(s.first),
-                  ),
-                  if (_mode == SearchMode.media) ...[
-                    const SizedBox(width: 4),
-                    PTIconAction(
-                      icon: Icons.settings_outlined,
-                      tooltip: '媒体源设置',
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const MediaSettingsPage(),
-                        ),
-                      ),
-                    ),
-                  ],
-                  // 搜索按钮从正文输入行移到顶栏 actions：正文只剩唯一的关键词输入框。
-                  PTIconAction(
-                    icon: Icons.search,
-                    tooltip: '搜索',
-                    loading: _loading,
-                    onPressed: _loading ? null : _search,
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _ctrl,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _search(),
-                      decoration: InputDecoration(
-                        hintText: _mode == SearchMode.torrent
-                            ? '搜索种子…'
-                            : '搜索影视（电影 / 剧集）',
-                        prefixIcon: const Icon(Icons.search),
-                        isDense: true,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (_mode == SearchMode.torrent)
-                    PTFilterPill(
-                      label: '分类',
-                      value:
-                          const {
-                            '': '全部',
-                            'movie': '电影',
-                            'tv': '剧集',
-                            'music': '音乐',
-                          }[_category] ??
-                          '全部',
-                      active: _category.isNotEmpty,
-                      onTap: () => showFilterSheet<String>(
-                        context,
-                        title: '筛选分类',
-                        selected: _category,
-                        onSelected: (v) => setState(() => _category = v),
-                        options: const [
-                          PTFilterOption(value: '', label: '全部'),
-                          PTFilterOption(value: 'movie', label: '电影'),
-                          PTFilterOption(value: 'tv', label: '剧集'),
-                          PTFilterOption(value: 'music', label: '音乐'),
-                        ],
-                      ),
-                    )
-                  else
-                    PTFilterPill(
-                      label: '年份',
-                      value: _year.isEmpty ? '全部' : _year,
-                      active: _year.isNotEmpty,
-                      onTap: () => showFilterSheet<String>(
-                        context,
-                        title: '筛选年份',
-                        selected: _year,
-                        onSelected: (v) => setState(() => _year = v),
-                        options: _yearOptions,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (_loading) const LinearProgressIndicator(minHeight: 2),
-            Expanded(
-              child: _mode == SearchMode.torrent ? _torrentArea : _mediaArea,
-            ),
+    return PTPageScaffold(
+      title: '',
+      trailing: [
+        SegmentedButton<SearchMode>(
+          segments: const [
+            ButtonSegment(value: SearchMode.torrent, label: Text('种子')),
+            ButtonSegment(value: SearchMode.media, label: Text('影视')),
           ],
+          selected: {_mode},
+          onSelectionChanged: (s) => _switchMode(s.first),
         ),
+      ],
+      actions: [
+        if (_mode == SearchMode.media)
+          PTBarAction(
+            icon: Icons.settings_outlined,
+            label: '媒体源设置',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MediaSettingsPage()),
+            ),
+          ),
+      ],
+      filterDimensions: _filterDimensions(),
+      siteFilter: _mode == SearchMode.torrent && _sites.isNotEmpty
+          ? PTSiteFilterConfig(
+              selected: _selectedSiteIds,
+              onChanged: (v) {
+                setState(() => _selectedSiteIds = v);
+                if (_searched) _search(); // 改筛选后自动重搜
+              },
+              options: _sites
+                  .map((s) => PTFilterOption<Object?>(value: s.id, label: s.name))
+                  .toList(),
+            )
+          : null,
+      filterOnClearAll: () => setState(() {
+        if (_mode == SearchMode.torrent) {
+          _category = '';
+          _selectedSiteIds = [];
+          if (_searched) _search();
+        } else {
+          _year = '';
+        }
+      }),
+      // 顶栏可展开搜索（唯一搜索入口）：窄屏点搜索图标在标题位展开输入框，宽屏 inline。
+      // 正文不再放搜索框（避免与顶栏重复）。
+      search: PTSearchConfig(
+        controller: _ctrl,
+        onSubmitted: (_) => _search(),
+        onChanged: (_) {},
+        hintText: _mode == SearchMode.torrent ? '搜索种子…' : '搜索影视（电影 / 剧集）',
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: _mode == SearchMode.torrent ? _torrentArea : _mediaArea,
+          ),
+        ],
       ),
     );
+  }
+
+  // 分类（种子模式）/ 年份（影视模式）筛选维度，收进顶栏筛选按钮。随当前模式切换。
+  List<PTFilterDimension> _filterDimensions() {
+    if (_mode == SearchMode.torrent) {
+      return [
+        PTFilterDimension.choice(
+          label: '分类',
+          selected: _category,
+          isDefault: _category.isEmpty,
+          onChanged: (v) => setState(() => _category = (v as String?) ?? ''),
+          options: const [
+            PTFilterOption<Object?>(value: '', label: '全部'),
+            PTFilterOption<Object?>(value: 'movie', label: '电影'),
+            PTFilterOption<Object?>(value: 'tv', label: '剧集'),
+            PTFilterOption<Object?>(value: 'music', label: '音乐'),
+          ],
+        ),
+      ];
+    }
+    return [
+      PTFilterDimension.choice(
+        label: '年份',
+        selected: _year,
+        isDefault: _year.isEmpty,
+        onChanged: (v) => setState(() => _year = (v as String?) ?? ''),
+        options: _yearOptions,
+      ),
+    ];
   }
 
   // —— 种子结果区 ——
@@ -328,6 +316,7 @@ class _SearchPageState extends State<SearchPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _scopeBar(rows.length, _results.length, failed.length),
         if (failed.isNotEmpty) _failBar(failed),
         if (isWideScreen(context) && rows.isNotEmpty) _sortControl(),
         Expanded(
@@ -653,6 +642,28 @@ class _SearchPageState extends State<SearchPage> {
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
+      ),
+    );
+  }
+
+  Widget _scopeBar(int rows, int sites, int failed) {
+    if (!_searched || sites == 0) return const SizedBox.shrink();
+    final okSites = sites - failed;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+      child: Row(
+        children: [
+          Icon(Icons.travel_explore, size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '已搜索 $sites 个站点，$okSites 个成功，命中 $rows 条',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

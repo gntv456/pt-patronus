@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { announcementApi, type AnnouncementResult } from '@/api/announcement'
 import { friendlySiteError } from '@/utils/siteError'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const results = ref<AnnouncementResult[]>([])
 const loading = ref(false)
@@ -12,16 +13,17 @@ const syncingId = ref<number | null>(null)
 const openSite = ref<Record<number, boolean>>({})
 const openItem = ref<Record<string, boolean>>({})
 
-// 站点筛选：'all' 全部，否则按 site_id 过滤（数据已全量在 results，纯前端筛选）
-const selectedSite = ref<number | 'all'>('all')
-const siteOptions = computed(() => [
-  { value: 'all', label: '全部站点' },
-  ...results.value.map((r) => ({ value: r.site_id, label: r.site_name })),
-])
+// 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。UI 用 SiteFilterDialog 组件。
+const selectedSiteIds = ref<number[]>([])
+const sites = computed(() => {
+  const m = new Map<number, string>()
+  for (const r of results.value) if (!m.has(r.site_id)) m.set(r.site_id, r.site_name)
+  return [...m].map(([id, name]) => ({ id, name }))
+})
 const filtered = computed(() =>
-  selectedSite.value === 'all'
-    ? results.value
-    : results.value.filter((r) => r.site_id === selectedSite.value),
+  selectedSiteIds.value.length
+    ? results.value.filter((r) => selectedSiteIds.value.includes(r.site_id))
+    : results.value,
 )
 
 async function load(refresh = false) {
@@ -56,14 +58,7 @@ onMounted(() => load())
     <div class="head">
       <h2 class="title">公告</h2>
       <div class="head-tools">
-        <el-select v-model="selectedSite" class="filter-select" placeholder="筛选站点" filterable>
-          <el-option
-            v-for="opt in siteOptions"
-            :key="opt.value"
-            :label="opt.label"
-            :value="opt.value"
-          />
-        </el-select>
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择公告站点" />
         <el-button :loading="loading" @click="load(true)">刷新全部</el-button>
       </div>
     </div>
@@ -71,8 +66,8 @@ onMounted(() => load())
     <EmptyState
       v-if="!filtered.length && !loading"
       icon="📢"
-      :title="selectedSite === 'all' ? '暂无数据，请先在「站点」添加并登录站点' : '该站点暂无公告'"
-      :description="selectedSite === 'all' ? '添加并启用 PT 站点后，这里会聚合展示各站公告' : '该站点当前没有公告，可尝试点击该站刷新'"
+      :title="selectedSiteIds.length === 0 ? '暂无数据，请先在「站点」添加并登录站点' : '该站点暂无公告'"
+      :description="selectedSiteIds.length === 0 ? '添加并启用 PT 站点后，这里会聚合展示各站公告' : '该站点当前没有公告，可尝试点击该站刷新'"
     />
 
     <div class="groups">
@@ -113,7 +108,6 @@ onMounted(() => load())
 .page { display: flex; flex-direction: column; gap: 16px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
 .head-tools { display: flex; align-items: center; gap: 10px; }
-.filter-select { width: 200px; }
 .title { margin: 4px 0; font-size: 22px; font-weight: 700; }
 .groups { display: flex; flex-direction: column; gap: 14px; }
 .site-group { padding: 16px; }

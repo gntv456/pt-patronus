@@ -241,9 +241,8 @@ function secretPlaceholder(configured: boolean | undefined) {
 // —— 帮助 / 反馈 / 更新日志 ——
 const helpVisible = ref(false)
 
-// 项目主页 / 反馈地址（TODO: 替换为真实仓库地址）
-const ISSUES_URL = 'https://github.com/your-org/PTPatronus/issues'
-const README_URL = 'https://github.com/your-org/PTPatronus#readme'
+const ISSUES_URL = 'https://github.com/hxpt/ptpatronus/issues'
+const README_URL = 'https://github.com/hxpt/ptpatronus#readme'
 
 function openIssues() {
   window.open(ISSUES_URL, '_blank', 'noopener')

@@ -179,10 +179,25 @@ const searchTimeout = 15 * time.Second
 // SearchSites 跨所有启用站点并发聚合搜索（每站独立超时；容错：单站失败不影响其它）。
 // 各 goroutine 写入预分配 results 的不同下标，无需加锁；并发安全依据见各适配器实现
 // （独立 HTTP + 本地解析）与 oper.Cookie/APIKey 的只读解密。
-func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string) []SiteResult {
+func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string, siteIDs []uint) []SiteResult {
 	sites, err := c.sites.ListActive()
 	if err != nil {
 		return nil
+	}
+	// siteIDs 非空时仅搜索指定的启用站点子集（前端「站点筛选」用；空=全部启用站点）。
+	// 复用 sites[:0] 底层数组原地过滤：range 在循环开始即固定遍历范围，append 覆盖前置元素不影响迭代。
+	if len(siteIDs) > 0 {
+		want := make(map[uint]struct{}, len(siteIDs))
+		for _, id := range siteIDs {
+			want[id] = struct{}{}
+		}
+		filtered := sites[:0]
+		for _, s := range sites {
+			if _, ok := want[s.ID]; ok {
+				filtered = append(filtered, s)
+			}
+		}
+		sites = filtered
 	}
 	results := make([]SiteResult, len(sites))
 	sem := make(chan struct{}, searchConcurrency)

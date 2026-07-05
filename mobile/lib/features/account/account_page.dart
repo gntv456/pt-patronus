@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/version.dart';
 import 'package:ptpatronus/core/update_checker.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../login/login_page.dart';
 
 /// 用户中心：登录态、版本/检查更新、性能模式（玻璃降级）、登出。
@@ -26,10 +28,15 @@ class _AccountPageState extends State<AccountPage> {
   void initState() {
     super.initState();
     // 版本号以后端为单一真源：运行时拉取，失败用本地兜底常量。
-    ApiClient().get('/system/info').then((m) {
-      final v = m['version'] as String?;
-      if (v != null && v.isNotEmpty && mounted) setState(() => _version = v);
-    }).catchError((_) {});
+    ApiClient()
+        .get('/system/info')
+        .then((m) {
+          final v = m['version'] as String?;
+          if (v != null && v.isNotEmpty && mounted) {
+            setState(() => _version = v);
+          }
+        })
+        .catchError((_) {});
   }
 
   Future<void> _logout() async {
@@ -40,8 +47,14 @@ class _AccountPageState extends State<AccountPage> {
         title: const Text('登出'),
         content: const Text('将断开当前会话与实时推送，确认登出？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('登出')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('登出'),
+          ),
         ],
       ),
     );
@@ -84,9 +97,40 @@ class _AccountPageState extends State<AccountPage> {
             style: TextStyle(height: 1.5),
           ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('知道了'))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('知道了'),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> _openIssues() async {
+    final uri = Uri.parse('https://github.com/gntv456/pt-patronus/issues');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('无法打开浏览器')));
+    }
+  }
+
+  Future<void> _copyDiagnostics() async {
+    final u = ApiClient().user;
+    final text = [
+      'PTPatronus mobile',
+      'version: $_version',
+      'backend: ${ApiClient().baseUrl}',
+      'user: ${u?['username'] ?? u?['hxpt_username'] ?? '-'}',
+      'admin: ${u?['is_admin'] == true}',
+    ].join('\n');
+    await Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('诊断信息已复制')));
   }
 
   void _showFeedback(BuildContext context) {
@@ -94,44 +138,57 @@ class _AccountPageState extends State<AccountPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('问题反馈'),
-        content: const Text('如遇问题或建议，可通过以下方式反馈：\n\n· GitHub Issues（推荐）\n· 项目交流群\n\n（反馈渠道链接待部署时配置）'),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('好的'))],
+        content: const Text('如遇问题或建议，可以打开 GitHub Issues 提交，也可以先复制诊断信息附在反馈里。'),
+        actions: [
+          TextButton(onPressed: _copyDiagnostics, child: const Text('复制诊断信息')),
+          FilledButton.icon(
+            onPressed: _openIssues,
+            icon: const Icon(Icons.open_in_new, size: 18),
+            label: const Text('打开 Issues'),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          title: const Text('用户中心'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-        ),
-        body: Center(
-          child: SingleChildScrollView(
+    return PTPageScaffold(
+      title: '用户中心',
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: GlassCard(
             padding: const EdgeInsets.all(24),
-            child: GlassCard(
-              padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Row(children: [
-                      Text('🛡️', style: TextStyle(fontSize: 28)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.shield_outlined,
+                        size: 28,
+                        color: PTColors.primary,
+                      ),
                       SizedBox(width: 10),
-                      Text('PTPatronus',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
-                    ]),
-                    const SizedBox(height: 8),
-                    Builder(builder: (_) {
+                      Text(
+                        'PTPatronus',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Builder(
+                    builder: (_) {
                       final u = ApiClient().user;
-                      final name = (u?['username'] as String?)?.isNotEmpty == true
+                      final name =
+                          (u?['username'] as String?)?.isNotEmpty == true
                           ? (u!['username'] as String)
                           : ((u?['hxpt_username'] as String?) ?? '好学用户');
                       final isAdmin = u?['is_admin'] == true;
@@ -139,76 +196,111 @@ class _AccountPageState extends State<AccountPage> {
                         isAdmin ? '管理员 · $name' : '已登录 · $name',
                         style: const TextStyle(color: Colors.grey),
                       );
-                    }),
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text('版本 $_version',
-                          style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                    },
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '版本 $_version',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
                       const SizedBox(width: 8),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => checkAndPromptUpdate(context),
-                        child: const Text('检查更新',
-                            style: TextStyle(color: Colors.blue, fontSize: 12)),
+                        child: const Text(
+                          '检查更新',
+                          style: TextStyle(color: Colors.blue, fontSize: 12),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => _showHelp(context),
-                        child: const Text('使用帮助',
-                            style: TextStyle(color: Colors.blue, fontSize: 12)),
+                        child: const Text(
+                          '使用帮助',
+                          style: TextStyle(color: Colors.blue, fontSize: 12),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => _showFeedback(context),
-                        child: const Text('问题反馈',
-                            style: TextStyle(color: Colors.blue, fontSize: 12)),
+                        child: const Text(
+                          '问题反馈',
+                          style: TextStyle(color: Colors.blue, fontSize: 12),
+                        ),
                       ),
-                    ]),
-                    const SizedBox(height: 22),
-                    ListenableBuilder(
-                      listenable: glassReduced,
-                      builder: (context, _) => SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('性能模式', style: TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: const Text('关闭玻璃模糊，更省电/更流畅', style: TextStyle(fontSize: 12)),
-                        value: glassReduced.value,
-                        onChanged: (v) => setGlassReduced(v),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  ListenableBuilder(
+                    listenable: glassReduced,
+                    builder: (context, _) => SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        '性能模式',
+                        style: TextStyle(fontWeight: FontWeight.w600),
                       ),
+                      subtitle: const Text(
+                        '关闭玻璃模糊，更省电/更流畅',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      value: glassReduced.value,
+                      onChanged: (v) => setGlassReduced(v),
                     ),
-                    const SizedBox(height: 12),
-                    ListenableBuilder(
-                      listenable: themeModeNotifier,
-                      builder: (context, _) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text('主题模式', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(height: 12),
+                  ListenableBuilder(
+                    listenable: themeModeNotifier,
+                    builder: (context, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            '主题模式',
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                            child: SegmentedButton<ThemeMode>(
-                              segments: const [
-                                ButtonSegment(value: ThemeMode.system, label: Text('跟随系统')),
-                                ButtonSegment(value: ThemeMode.light, label: Text('浅色')),
-                                ButtonSegment(value: ThemeMode.dark, label: Text('深色')),
-                              ],
-                              selected: {themeModeNotifier.value},
-                              onSelectionChanged: (s) => setThemeMode(s.first),
-                            ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 4,
                           ),
-                        ],
-                      ),
+                          child: SegmentedButton<ThemeMode>(
+                            segments: const [
+                              ButtonSegment(
+                                value: ThemeMode.system,
+                                label: Text('跟随系统'),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.light,
+                                label: Text('浅色'),
+                              ),
+                              ButtonSegment(
+                                value: ThemeMode.dark,
+                                label: Text('深色'),
+                              ),
+                            ],
+                            selected: {themeModeNotifier.value},
+                            onSelectionChanged: (s) => setThemeMode(s.first),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _logout,
-                      icon: const Icon(Icons.logout),
-                      label: const Text('登出'),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _logout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('登出'),
+                  ),
+                ],
               ),
             ),
           ),

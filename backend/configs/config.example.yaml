@@ -28,6 +28,7 @@ AUTH_SITE_ENABLED=false    # true 时未激活将限制访问
 AUTH_SITE_URL=https://www.hxpt.org
 AUTH_SITE_COOKIE=          # 好学 cookie（阶段 1 起抓取用户页判定 VIP 等级）
 AUTH_VIP_LEVEL=1
+DEMO_MODE=false            # true 时登录页显示“浏览演示环境”（默认关闭；仅用于本地评审/公开演示，生产不建议开启）
 
 # ── 自动化（7×24 保号）──────────────────────────────
 STATS_SYNC_CRON="*/30 * * * *"        # 统计同步：每 30 分钟抓用户资料写 SiteStat

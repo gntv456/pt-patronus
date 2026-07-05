@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/api/system_log.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 运行日志页（对齐 Web Settings 日志 tab）：展示后端环形缓冲日志，
 /// 支持级别过滤、刷新与清空。后端 API：GET/DELETE /system/logs。
@@ -47,8 +48,14 @@ class _LogsPageState extends State<LogsPage> {
         title: const Text('清空日志'),
         content: const Text('确认清空后端环形缓冲中的全部日志？此操作不可撤销。'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('清空')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('清空'),
+          ),
         ],
       ),
     );
@@ -58,26 +65,32 @@ class _LogsPageState extends State<LogsPage> {
       if (mounted) setState(() => _entries = []);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('清空失败：$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('清空失败：$e')));
       }
     }
   }
 
   Future<void> _copyAll() async {
     if (_entries.isEmpty) return;
-    final text = _entries.map((e) => '${e.time.toIso8601String()} [${e.level}] ${e.message}').join('\n');
+    final text = _entries
+        .map((e) => '${e.time.toIso8601String()} [${e.level}] ${e.message}')
+        .join('\n');
     await Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已复制 ${_entries.length} 条日志')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已复制 ${_entries.length} 条日志')));
     }
   }
 
   Color _levelColor(String lv) => switch (lv) {
-        'ERROR' => const Color(0xFFF56C6C),
-        'WARN' => const Color(0xFFE6A23C),
-        'DEBUG' => Colors.grey,
-        _ => const Color(0xFF6C5CE7),
-      };
+    'ERROR' => const Color(0xFFF56C6C),
+    'WARN' => const Color(0xFFE6A23C),
+    'DEBUG' => Colors.grey,
+    _ => const Color(0xFF6C5CE7),
+  };
 
   String _fmtTime(DateTime t) {
     String two(int n) => n.toString().padLeft(2, '0');
@@ -86,84 +99,62 @@ class _LogsPageState extends State<LogsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return GlassBackground(
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          leading: const HomeMenuButton(),
-          title: Text('运行日志${_entries.isNotEmpty ? "（${_entries.length} 条）" : ""}'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            PTIconAction(icon: Icons.refresh, tooltip: '刷新', loading: _loading, onPressed: _loading ? null : _load),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              iconSize: 18,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-              tooltip: '更多',
-              onSelected: (v) {
-                if (v == 'copy') {
-                  _copyAll();
-                } else if (v == 'clear') {
-                  _clear();
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(value: 'copy', child: Row(children: [Icon(Icons.copy, size: 18), SizedBox(width: 8), Text('复制全部')])),
-                const PopupMenuItem(value: 'clear', child: Row(children: [Icon(Icons.delete_sweep, size: 18), SizedBox(width: 8), Text('清空日志')])),
-              ],
-            ),
+    return PTPageScaffold(
+      title: '运行日志${_entries.isNotEmpty ? "（${_entries.length} 条）" : ""}',
+      actions: [
+        PTBarAction(
+          icon: Icons.refresh,
+          label: '刷新',
+          loading: _loading,
+          onPressed: _loading ? null : _load,
+        ),
+        PTBarAction(
+          icon: Icons.copy,
+          label: '复制全部',
+          onPressed: _copyAll,
+          overflow: true,
+        ),
+        PTBarAction(
+          icon: Icons.delete_sweep,
+          label: '清空日志',
+          onPressed: _clear,
+          overflow: true,
+        ),
+      ],
+      filterDimensions: [
+        PTFilterDimension.choice(
+          label: '级别',
+          selected: _level,
+          isDefault: _level.isEmpty,
+          onChanged: (v) {
+            setState(() => _level = (v as String?) ?? '');
+            _load();
+          },
+          options: const [
+            PTFilterOption<Object?>(value: '', label: '全部'),
+            PTFilterOption<Object?>(value: 'error', label: 'ERROR'),
+            PTFilterOption<Object?>(value: 'warn', label: 'WARN'),
+            PTFilterOption<Object?>(value: 'info', label: 'INFO'),
+            PTFilterOption<Object?>(value: 'debug', label: 'DEBUG'),
           ],
         ),
-        body: Column(
-          children: [
-            // 级别过滤药丸（取代横滚 ChoiceChip 行）
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: PTFilterPill(
-                  label: '级别',
-                  value: _level.isEmpty ? '全部' : _level.toUpperCase(),
-                  active: _level.isNotEmpty,
-                  onTap: () => showFilterSheet<String>(
-                    context,
-                    title: '筛选级别',
-                    selected: _level,
-                    onSelected: (v) {
-                      setState(() => _level = v);
-                      _load();
-                    },
-                    options: const [
-                      PTFilterOption(value: '', label: '全部'),
-                      PTFilterOption(value: 'error', label: 'ERROR'),
-                      PTFilterOption(value: 'warn', label: 'WARN'),
-                      PTFilterOption(value: 'info', label: 'INFO'),
-                      PTFilterOption(value: 'debug', label: 'DEBUG'),
-                    ],
-                  ),
+      ],
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+            ? PTEmptyState(text: _error!, onRetry: _load)
+            : _entries.isEmpty
+            ? PTEmptyState(icon: Icons.article_outlined, text: '暂无日志')
+            : ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
                 ),
+                itemCount: _entries.length,
+                itemBuilder: (_, i) => _row(_entries[i]),
               ),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _load,
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _error != null
-                        ? PTEmptyState(text: _error!, onRetry: _load)
-                        : _entries.isEmpty
-                            ? PTEmptyState(icon: Icons.article_outlined, text: '暂无日志')
-                            : ListView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                itemCount: _entries.length,
-                                itemBuilder: (_, i) => _row(_entries[i]),
-                              ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -179,15 +170,33 @@ class _LogsPageState extends State<LogsPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_fmtTime(e.time), style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              Text(
+                _fmtTime(e.time),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+              ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(color: lc.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(4)),
-                child: Text(e.level, style: TextStyle(color: lc, fontSize: 11, fontWeight: FontWeight.w700)),
+                decoration: BoxDecoration(
+                  color: lc.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  e.level,
+                  style: TextStyle(
+                    color: lc,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
-              Expanded(child: Text(e.message, style: const TextStyle(fontSize: 13, height: 1.4))),
+              Expanded(
+                child: Text(
+                  e.message,
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
             ],
           ),
           if (hasAttrs)
@@ -197,7 +206,15 @@ class _LogsPageState extends State<LogsPage> {
                 spacing: 8,
                 runSpacing: 2,
                 children: e.attrs
-                    .map((a) => Text('${a.key}=${a.value}', style: const TextStyle(color: Colors.grey, fontSize: 11)))
+                    .map(
+                      (a) => Text(
+                        '${a.key}=${a.value}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 11,
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),

@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { freeleechApi, type FreeleechResult, type FreeleechStatus } from '@/api/freeleech'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const results = ref<FreeleechResult[]>([])
 const loading = ref(false)
@@ -45,9 +46,19 @@ const summary = computed(() => {
 
 // 顶层筛选：点 chip 按状态过滤站点卡片；再点同一个 = 取消（回 all）。
 const filter = ref<FilterKey>('all')
-const filteredResults = computed(() =>
-  filter.value === 'all' ? results.value : results.value.filter((r) => siteStatus(r) === filter.value),
-)
+// 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。UI 用 SiteFilterDialog 组件。
+const selectedSiteIds = ref<number[]>([])
+const sites = computed(() => {
+  const m = new Map<number, string>()
+  for (const r of results.value) if (!m.has(r.site_id)) m.set(r.site_id, r.site_name)
+  return [...m].map(([id, name]) => ({ id, name }))
+})
+const filteredResults = computed(() => {
+  let list = results.value
+  if (filter.value !== 'all') list = list.filter((r) => siteStatus(r) === filter.value)
+  if (selectedSiteIds.value.length) list = list.filter((r) => selectedSiteIds.value.includes(r.site_id))
+  return list
+})
 function toggleFilter(key: FilterKey) {
   filter.value = filter.value === key ? 'all' : key
 }
@@ -107,7 +118,10 @@ onMounted(() => load())
   <div class="page" v-loading="loading">
     <div class="head">
       <h2 class="title">站免</h2>
-      <el-button :icon="undefined" :loading="loading" @click="load(true)">刷新全部</el-button>
+      <div class="head-tools">
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择站免站点" />
+        <el-button :loading="loading" @click="load(true)">刷新全部</el-button>
+      </div>
     </div>
 
     <!-- 汇总筛选条（点 tile 按状态过滤；再点取消）-->
@@ -182,6 +196,7 @@ onMounted(() => load())
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 16px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
+.head-tools { display: flex; align-items: center; gap: 10px; }
 .title { margin: 4px 0; font-size: 22px; font-weight: 700; }
 .summary { display: flex; gap: 8px; padding: 14px; flex-wrap: wrap; }
 .tile {

@@ -99,15 +99,24 @@ class PTMasonry<T> extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, c) {
         final usable = c.maxWidth - pad.horizontal;
-        final cols = ptAutoColumns(usable, minItemWidth, minColumns: minColumns);
-        final itemW = cols <= 1 ? usable : (usable - spacing * (cols - 1)) / cols;
+        final cols = ptAutoColumns(
+          usable,
+          minItemWidth,
+          minColumns: minColumns,
+        );
+        final itemW = cols <= 1
+            ? usable
+            : (usable - spacing * (cols - 1)) / cols;
         return SingleChildScrollView(
           padding: pad,
           child: Wrap(
             spacing: spacing,
             runSpacing: spacing,
             children: items
-                .map((it) => SizedBox(width: itemW, child: itemBuilder(context, it)))
+                .map(
+                  (it) =>
+                      SizedBox(width: itemW, child: itemBuilder(context, it)),
+                )
                 .toList(),
           ),
         );
@@ -142,6 +151,7 @@ class PTAdaptiveTable<T> extends StatelessWidget {
   final VoidCallback? onRowTap;
   final double? minTableWidth;
   final String emptyText;
+
   /// 内嵌于外层滚动视图时置 true：窄屏 `ListView.builder` 改 `shrinkWrap` + 禁用滚动 +
   /// 零 padding，作为区段由外层 ListView 统一滚动。避免同向 ListView 嵌套导致的无界高度塌缩
   /// （dashboard 站点明细曾因此空白）。作滚动根时（sites/harem）保持默认 false。
@@ -175,7 +185,12 @@ class PTAdaptiveTable<T> extends StatelessWidget {
             );
     }
     if (items.isEmpty) return PTEmptyState(text: emptyText);
-    return _WideTable(items: items, columns: columns, minTableWidth: minTableWidth, onRowTap: onRowTap);
+    return _WideTable(
+      items: items,
+      columns: columns,
+      minTableWidth: minTableWidth,
+      onRowTap: onRowTap,
+    );
   }
 }
 
@@ -184,52 +199,75 @@ class _WideTable<T> extends StatelessWidget {
   final List<PTColumn<T>> columns;
   final double? minTableWidth;
   final VoidCallback? onRowTap;
-  const _WideTable({required this.items, required this.columns, this.minTableWidth, this.onRowTap});
+  const _WideTable({
+    required this.items,
+    required this.columns,
+    this.minTableWidth,
+    this.onRowTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final headerColor = const Color(0xFF6C5CE7).withValues(alpha: 0.10);
-    final dividerColor = isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08);
+    final dividerColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
 
     Widget headerRow = Row(
       children: columns
-          .map((c) => Expanded(
-                flex: c.flex,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  child: Text(
-                    c.label,
-                    style: TextStyle(
-                      fontSize: PTFs.sm,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF6C5CE7),
-                    ),
-                    textAlign: c.numeric ? TextAlign.right : TextAlign.left,
-                  ),
+          .map(
+            (c) => Expanded(
+              flex: c.flex,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
                 ),
-              ))
+                child: Text(
+                  c.label,
+                  style: TextStyle(
+                    fontSize: PTFs.sm,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF6C5CE7),
+                  ),
+                  textAlign: c.numeric ? TextAlign.right : TextAlign.left,
+                ),
+              ),
+            ),
+          )
           .toList(),
     );
 
     Widget row(T item, bool zebra) {
       final cells = Row(
         children: columns
-            .map((c) => Expanded(
-                  flex: c.flex,
-                  child: Align(
-                    alignment: c.numeric ? Alignment.centerRight : Alignment.centerLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      child: c.cell(context, item),
+            .map(
+              (c) => Expanded(
+                flex: c.flex,
+                child: Align(
+                  alignment: c.numeric
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
                     ),
+                    child: c.cell(context, item),
                   ),
-                ))
+                ),
+              ),
+            )
             .toList(),
       );
       Widget content = DecoratedBox(
         decoration: BoxDecoration(
-          color: zebra ? (isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02)) : null,
+          color: zebra
+              ? (isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.black.withValues(alpha: 0.02))
+              : null,
           border: Border(bottom: BorderSide(color: dividerColor, width: 0.6)),
         ),
         child: cells,
@@ -242,7 +280,10 @@ class _WideTable<T> extends StatelessWidget {
 
     final table = Column(
       children: [
-        DecoratedBox(decoration: BoxDecoration(color: headerColor), child: headerRow),
+        DecoratedBox(
+          decoration: BoxDecoration(color: headerColor),
+          child: headerRow,
+        ),
         ...items.asMap().entries.map((e) => row(e.value, e.key.isOdd)),
       ],
     );
@@ -250,7 +291,13 @@ class _WideTable<T> extends StatelessWidget {
     Widget panel = GlassCard(
       padding: EdgeInsets.zero,
       child: minTableWidth != null
-          ? SingleChildScrollView(scrollDirection: Axis.horizontal, child: ConstrainedBox(constraints: BoxConstraints(minWidth: minTableWidth!), child: table))
+          ? SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: minTableWidth!),
+                child: table,
+              ),
+            )
           : table,
     );
 
@@ -300,16 +347,41 @@ class PTEmptyState extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 56, color: (isDark ? Colors.white : Colors.black54).withValues(alpha: 0.35)),
+                Icon(
+                  icon,
+                  size: 56,
+                  color: (isDark ? Colors.white : Colors.black54).withValues(
+                    alpha: 0.35,
+                  ),
+                ),
                 const SizedBox(height: 14),
-                Text(main, textAlign: TextAlign.center, style: TextStyle(fontSize: PTFs.lg, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.black54)),
+                Text(
+                  main,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: PTFs.lg,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
                 if (description != null && description!.isNotEmpty) ...[
                   const SizedBox(height: 6),
-                  Text(description!, textAlign: TextAlign.center, style: TextStyle(fontSize: PTFs.body, color: isDark ? Colors.white38 : Colors.black38)),
+                  Text(
+                    description!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: PTFs.body,
+                      color: isDark ? Colors.white38 : Colors.black38,
+                    ),
+                  ),
                 ],
                 if (actionLabel != null && onAction != null) ...[
                   const SizedBox(height: 18),
-                  FilledButton.icon(onPressed: onAction, icon: Icon(actionIcon), label: Text(actionLabel!)),
+                  FilledButton.icon(
+                    onPressed: onAction,
+                    icon: Icon(actionIcon),
+                    label: Text(actionLabel!),
+                  ),
                 ] else if (onRetry != null) ...[
                   const SizedBox(height: 18),
                   OutlinedButton(onPressed: onRetry, child: const Text('重试')),
@@ -362,7 +434,12 @@ class _PTWideDialog extends StatelessWidget {
   final double maxWidth;
   final bool dismissible;
   final Widget child;
-  const _PTWideDialog({this.title, required this.maxWidth, required this.dismissible, required this.child});
+  const _PTWideDialog({
+    this.title,
+    required this.maxWidth,
+    required this.dismissible,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -377,14 +454,24 @@ class _PTWideDialog extends StatelessWidget {
             if (title != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: Row(children: [
-                  Expanded(child: Text(title!, style: TextStyle(fontSize: PTFs.xl, fontWeight: FontWeight.w700))),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                ]),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title!,
+                        style: TextStyle(
+                          fontSize: PTFs.xl,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ],
+                ),
               ),
             Flexible(child: SingleChildScrollView(child: child)),
           ],
@@ -392,10 +479,7 @@ class _PTWideDialog extends StatelessWidget {
       ),
     );
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: panel,
-      ),
+      child: Padding(padding: const EdgeInsets.all(24), child: panel),
     );
   }
 }
@@ -414,7 +498,12 @@ class _PTBottomSheet extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          8,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -422,7 +511,13 @@ class _PTBottomSheet extends StatelessWidget {
             if (title != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8, top: 4),
-                child: Text(title!, style: TextStyle(fontSize: PTFs.xl, fontWeight: FontWeight.w700)),
+                child: Text(
+                  title!,
+                  style: TextStyle(
+                    fontSize: PTFs.xl,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             Flexible(child: SingleChildScrollView(child: child)),
           ],
@@ -434,6 +529,10 @@ class _PTBottomSheet extends StatelessWidget {
 
 /// 顶栏页面标题行 + 操作区：宽屏带标签按钮（对齐 Web .head），窄屏图标按钮。
 /// 让各页头部在桌面端不再是「纯图标」，与 Web 的「导出图片 / 刷新统计」文本按钮一致。
+///
+/// 已废弃：全站 23 个导航页统一改用 [PTPageScaffold] + [PTBarAction]
+/// （widgets/pt_page_scaffold.dart）。保留过渡期兼容，后续删除。
+@Deprecated('已由 PTBarAction + PTPageScaffold 取代')
 class PTPageHeaderActions extends StatelessWidget {
   final List<PTHeaderAction> actions;
   const PTPageHeaderActions({super.key, required this.actions});
@@ -444,33 +543,43 @@ class PTPageHeaderActions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: actions
-          .map((a) => wide
-              ? Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: FilledButton.tonalIcon(
+          .map(
+            (a) => wide
+                ? Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: FilledButton.tonalIcon(
+                      onPressed: a.onPressed,
+                      icon: Icon(a.icon, size: 18),
+                      label: Text(a.label),
+                    ),
+                  )
+                : IconButton(
+                    tooltip: a.label,
                     onPressed: a.onPressed,
-                    icon: Icon(a.icon, size: 18),
-                    label: Text(a.label),
+                    icon: Icon(a.icon),
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 44,
+                      minHeight: 44,
+                    ),
                   ),
-                )
-              : IconButton(
-                  tooltip: a.label,
-                  onPressed: a.onPressed,
-                  icon: Icon(a.icon),
-                  iconSize: 20,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-                ))
+          )
           .toList(),
     );
   }
 }
 
+@Deprecated('已由 PTBarAction 取代')
 class PTHeaderAction {
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
-  const PTHeaderAction({required this.icon, required this.label, this.onPressed});
+  const PTHeaderAction({
+    required this.icon,
+    required this.label,
+    this.onPressed,
+  });
 }
 
 /// 顶栏图标按钮：44×44 触摸区（Material/Apple HIG 最小红线）+ 20px 图标，替代散落的裸 `IconButton`。
@@ -482,7 +591,13 @@ class PTIconAction extends StatelessWidget {
   final VoidCallback? onPressed;
   final String? tooltip;
   final bool loading;
-  const PTIconAction({super.key, required this.icon, this.onPressed, this.tooltip, this.loading = false});
+  const PTIconAction({
+    super.key,
+    required this.icon,
+    this.onPressed,
+    this.tooltip,
+    this.loading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -492,7 +607,11 @@ class PTIconAction extends StatelessWidget {
         width: 44,
         height: 44,
         child: Center(
-          child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
         ),
       );
     }
@@ -558,12 +677,17 @@ class PTChipBar<T> extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onSelected(it.value),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: on ? c.withValues(alpha: 0.18) : Colors.transparent,
                   border: Border.all(
-                    color: on ? c.withValues(alpha: 0.4) : Colors.grey.withValues(alpha: 0.3),
+                    color: on
+                        ? c.withValues(alpha: 0.4)
+                        : Colors.grey.withValues(alpha: 0.3),
                   ),
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -584,19 +708,28 @@ class PTChipBar<T> extends StatelessWidget {
   }
 }
 
-/// [PTStatStrip] 的一项（纯展示指标，不可点）。
+/// [PTStatStrip] 的一项。可选 [onTap]：点击触发筛选；[selected]：高亮表示当前激活。
 class PTStat {
   final String value;
   final String label;
   final Color? color;
-  const PTStat({required this.value, required this.label, this.color});
+  final VoidCallback? onTap;
+  final bool selected;
+  const PTStat({
+    required this.value,
+    required this.label,
+    this.color,
+    this.onTap,
+    this.selected = false,
+  });
 }
 
-/// 单行指标条（纯展示）。替代监护室 vitals / 后宫概览的折行双行瓦片。
+/// 单行指标条（纯展示，或每格可点筛选）。替代监护室 vitals / 后宫概览的折行双行瓦片。
 ///
 /// 每格 `value(bold,color) + label(grey,xs)` 紧凑排列：
 /// - 宽屏（≥1000）：[Row] 均匀分布 + 可选竖分隔线（监护仪风格），填满宽度不滚动；
 /// - 窄屏：横向滚动，永不折行（取代旧 Wrap 折 2-4 行）。
+/// - 某项 [PTStat.onTap] 非空时该格可点（InkWell）；[PTStat.selected] 时主色高亮底。
 class PTStatStrip extends StatelessWidget {
   final List<PTStat> items;
   final double height;
@@ -612,18 +745,48 @@ class PTStatStrip extends StatelessWidget {
   });
 
   Widget _cell(PTStat s) {
-    return Padding(
+    final valueColor = s.selected ? PTColors.primary : s.color;
+    final labelColor = s.selected ? PTColors.primary : Colors.grey;
+    Widget cell = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(s.value, style: TextStyle(fontSize: PTFs.lg, fontWeight: FontWeight.w700, color: s.color)),
+          Text(
+            s.value,
+            style: TextStyle(
+              fontSize: PTFs.lg,
+              fontWeight: FontWeight.w700,
+              color: valueColor,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(s.label, style: const TextStyle(fontSize: PTFs.xs, color: Colors.grey), textAlign: TextAlign.center),
+          Text(
+            s.label,
+            style: TextStyle(fontSize: PTFs.xs, color: labelColor),
+            textAlign: TextAlign.center,
+          ),
         ],
       ),
     );
+    if (s.selected) {
+      cell = Container(
+        decoration: BoxDecoration(
+          color: PTColors.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: cell,
+      );
+    }
+    if (s.onTap != null) {
+      return InkWell(
+        onTap: s.onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: cell,
+      );
+    }
+    return cell;
   }
 
   @override
@@ -631,12 +794,14 @@ class PTStatStrip extends StatelessWidget {
     final cells = <Widget>[];
     for (var i = 0; i < items.length; i++) {
       if (i > 0 && dividers) {
-        cells.add(Container(
-          width: 1,
-          height: height * 0.6,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          color: Theme.of(context).dividerColor.withValues(alpha: 0.25),
-        ));
+        cells.add(
+          Container(
+            width: 1,
+            height: height * 0.6,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.25),
+          ),
+        );
       }
       cells.add(_cell(items[i]));
     }
@@ -646,7 +811,10 @@ class PTStatStrip extends StatelessWidget {
         height: height,
         child: Padding(
           padding: padding,
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: cells),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: cells,
+          ),
         ),
       );
     }
@@ -697,15 +865,32 @@ class PTFilterPill extends StatelessWidget {
         constraints: const BoxConstraints(minHeight: 36),
         decoration: BoxDecoration(
           color: active ? c.withValues(alpha: 0.14) : Colors.transparent,
-          border: Border.all(color: active ? c.withValues(alpha: 0.5) : Colors.grey.withValues(alpha: 0.35)),
+          border: Border.all(
+            color: active
+                ? c.withValues(alpha: 0.5)
+                : Colors.grey.withValues(alpha: 0.35),
+          ),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (icon != null) ...[Icon(icon, size: 15, color: dim), const SizedBox(width: 4)],
-            if (label != null) ...[Text(label!, style: TextStyle(fontSize: 12, color: dim)), const SizedBox(width: 4)],
-            Text(value, style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? c : Colors.black87)),
+            if (icon != null) ...[
+              Icon(icon, size: 15, color: dim),
+              const SizedBox(width: 4),
+            ],
+            if (label != null) ...[
+              Text(label!, style: TextStyle(fontSize: 12, color: dim)),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: active ? c : Colors.black87,
+              ),
+            ),
             Icon(Icons.arrow_drop_down, size: 18, color: dim),
           ],
         ),
@@ -752,7 +937,10 @@ void showFilterSheet<T>(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (o.count != null)
-                  Text('${o.count}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(
+                    '${o.count}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 if (o.value == selected) ...[
                   if (o.count != null) const SizedBox(width: 8),
                   const Icon(Icons.check, color: PTColors.primary, size: 20),

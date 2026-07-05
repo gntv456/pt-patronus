@@ -17,8 +17,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/filemanager"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/monitor"
-	"github.com/hxpt/ptpatronus/internal/notification"
 	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/notification"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/update"
@@ -124,7 +124,7 @@ func Build(d *Deps) *gin.Engine {
 	}
 	engine.Use(middleware.NewRateLimiter(float64(globalRPS), globalRPS).Middleware())
 
-	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets)
+	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode)
 	sysH := v1.NewSystemHandler(d.Update)
 
 	api := engine.Group("/api/v1")
@@ -142,6 +142,7 @@ func Build(d *Deps) *gin.Engine {
 			authRoutes.POST("/hxpt/captcha", authH.HxptCaptcha)
 			authRoutes.POST("/hxpt/login", authH.HxptLogin)
 			authRoutes.POST("/hxpt/cookie-login", authH.HxptCookieLogin)
+			authRoutes.POST("/demo-login", authH.DemoLogin)
 			authRoutes.POST("/activate", authH.Activate)
 			authRoutes.GET("/status", authH.Status)
 			authRoutes.POST("/verify-vip", authH.VerifyVIP)
@@ -313,8 +314,8 @@ func Build(d *Deps) *gin.Engine {
 				ks.POST("/reseed", ksH.Reseed)
 				ks.GET("/tasks", ksH.Tasks)
 				ks.POST("/tasks/:id/resolve", ksH.Resolve)
-			ks.GET("/setting", ksH.GetSetting)
-			ks.PUT("/setting", ksH.SetSetting)
+				ks.GET("/setting", ksH.GetSetting)
+				ks.PUT("/setting", ksH.SetSetting)
 			}
 
 			fsH := v1.NewFileStorageHandler(d.FileOp, d.FileCh, d.FileMgr)
@@ -365,8 +366,8 @@ func Build(d *Deps) *gin.Engine {
 				ent.POST("/:id/games/:game/harvest-all", entH.HarvestAll)
 				ent.POST("/:id/games/:game/sell", entH.Sell)
 				ent.POST("/:id/games/:game/bet", entH.Bet)
-			ent.GET("/:id/games/:game/events", entH.Events)
-			ent.GET("/:id/games/:game/events/:eventID", entH.EventDetail)
+				ent.GET("/:id/games/:game/events", entH.Events)
+				ent.GET("/:id/games/:game/events/:eventID", entH.EventDetail)
 				ent.POST("/:id/games/:game/blackjack", entH.Blackjack)
 				ent.GET("/:id/games/:game/flip-state", entH.FlipState)
 				ent.GET("/:id/games/:game/bigsmall-state", entH.BigSmallState)
@@ -387,9 +388,9 @@ func Build(d *Deps) *gin.Engine {
 			guarded.GET("/dashboard/history/:id", dashH.History)
 			guarded.GET("/dashboard/trend", dashH.Trend)
 
-		// 运行日志（环形缓冲；级别筛选，排查用）
-		guarded.GET("/system/logs", sysH.Logs)
-		guarded.DELETE("/system/logs", sysH.ClearLogs)
+			// 运行日志（环形缓冲；级别筛选，排查用）
+			guarded.GET("/system/logs", sysH.Logs)
+			guarded.DELETE("/system/logs", sysH.ClearLogs)
 			regH := v1.NewRegistrationHandler(d.RegOp, d.RegCh)
 			regs := guarded.Group("/registrations")
 			{

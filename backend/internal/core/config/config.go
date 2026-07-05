@@ -34,6 +34,7 @@ type Config struct {
 	AuthSiteCookie  string // bootstrap cookie for VIP verification (movable to DB later)
 	AuthVIPLevel    int    // minimum VIP level required
 	VIPGraceDays    int    // VIP 宽限天数（好学不可达时缓存 VIP 的有效期），默认 3
+	DemoMode        bool   // 显式开启演示登录（默认关闭，仅用于本地评审/公开演示）
 
 	// 通知通道（首启 env 引导默认；运行时以 SystemConfig「设置→通知」为准，UI 热改）
 	BarkServer string
@@ -47,11 +48,11 @@ type Config struct {
 	QQOpenID      string
 	QQGroupOpenID string
 	// 微信 ClawBot（iLink Bot，逆向协议；bot_token/account_id 需扫码登录获取）
-	WXClawBotToken    string
+	WXClawBotToken     string
 	WXClawBotAccountID string
 	WXClawBotTarget    string // 接收通知的微信号 wxid
 	WXClawBotBaseURL   string // 穙→官方 ilinkai.weixin.qq.com
-	WebhookURL string
+	WebhookURL         string
 
 	// 自动化
 	StatsSyncCron           string // 统计同步 cron，默认每 30 分钟
@@ -72,11 +73,11 @@ type Config struct {
 	RssCheckCron     string // RSS 订阅全局扫描 cron，默认每 5 分钟（按各订阅 interval_min 决定是否实际抓取）
 
 	// 媒体元数据源
-	TMDBAPIKey    string
-	TMDBAPIDomain string // TMDB API 域名(TMDB_API_DOMAIN)，默认 api.tmdb.org（官方 api.themoviedb.org 国内常被墙，短域名可达）
-	DoubanSecret  string // Frodo HMAC 签名密钥(DOUBAN_SECRET)；空则用公开默认。非空→签名为主、微信免签兜底
-	DoubanAppKey  string
-	BangumiToken  string // bgm.tv 可选 Bearer token（提升速率限制；空走匿名配额）
+	TMDBAPIKey      string
+	TMDBAPIDomain   string // TMDB API 域名(TMDB_API_DOMAIN)，默认 api.tmdb.org（官方 api.themoviedb.org 国内常被墙，短域名可达）
+	DoubanSecret    string // Frodo HMAC 签名密钥(DOUBAN_SECRET)；空则用公开默认。非空→签名为主、微信免签兜底
+	DoubanAppKey    string
+	BangumiToken    string // bgm.tv 可选 Bearer token（提升速率限制；空走匿名配额）
 	XingguangjiBase string // 星光集（短剧）站点根，默认 https://dj.hxpt.org；可指向本地实例联调
 
 	// 安全 / 限流
@@ -107,6 +108,7 @@ func Load() (*Config, error) {
 		AuthSiteCookie:          getenv("AUTH_SITE_COOKIE", ""),
 		AuthVIPLevel:            getenvInt("AUTH_VIP_LEVEL", 1),
 		VIPGraceDays:            getenvInt("VIP_GRACE_DAYS", 3),
+		DemoMode:                getenvBool("DEMO_MODE", false),
 		BarkServer:              getenv("BARK_SERVER", ""),
 		BarkKey:                 getenv("BARK_KEY", ""),
 		TGToken:                 getenv("TELEGRAM_TOKEN", ""),

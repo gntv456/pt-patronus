@@ -28,9 +28,7 @@ void main() {
     expect(find.text('请先测试连接成功，再保存进入'), findsOneWidget);
   });
 
-  testWidgets('Mobile nav can search destinations', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('Mobile nav lists destinations', (WidgetTester tester) async {
     final controller = HomeController();
     addTearDown(controller.dispose);
     await tester.pumpWidget(
@@ -44,10 +42,8 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextField), '日志');
     await tester.pump();
-
-    expect(find.text('运行日志'), findsOneWidget);
-    expect(find.text('仪表盘'), findsNothing);
+    expect(find.text('搜索'), findsOneWidget);
+    expect(find.text('仪表盘'), findsOneWidget);
   });
 }

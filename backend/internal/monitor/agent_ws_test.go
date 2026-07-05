@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,9 +19,11 @@ import (
 )
 
 // fakeAgentAuth 模拟 AgentAuthenticator：fail=true 时鉴权失败；记录最后 TouchSeen 的 online。
+// mu 保护 touchedOnline——readLoop goroutine 写、测试 goroutine 读，-race 必须同步。
 type fakeAgentAuth struct {
 	agent         *models.Agent
 	fail          bool
+	mu            sync.Mutex
 	touchedOnline *bool
 }
 
@@ -31,17 +34,30 @@ func (f *fakeAgentAuth) Authenticate(agentID uint, secret string) (*models.Agent
 	return f.agent, nil
 }
 func (f *fakeAgentAuth) TouchSeen(agentID uint, online bool, version, hostname, ip string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	o := online
 	f.touchedOnline = &o
 	return nil
 }
 
+// touched 在锁保护下读取最后 TouchSeen 写入的 online 值（跨 goroutine 安全）。
+func (f *fakeAgentAuth) touched() *bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.touchedOnline
+}
+
 // TestAgentWS_Report 验证：合法 secret 握手成功 + report 消息触发 ingest（Metrics.Online 强制 true）。
 func TestAgentWS_Report(t *testing.T) {
 	auth := &fakeAgentAuth{agent: &models.Agent{ID: 1, TargetID: 10, Enabled: true}}
+	// got/gotTarget 被 readLoop goroutine（ingest 回调）写、测试 goroutine 读，mu 同步过 -race。
+	var mu sync.Mutex
 	var got Metrics
 	var gotTarget uint
 	hub := NewAgentWSHub(auth, func(ctx context.Context, tid uint, m Metrics) error {
+		mu.Lock()
+		defer mu.Unlock()
 		got = m
 		gotTarget = tid
 		return nil
@@ -66,21 +82,32 @@ func TestAgentWS_Report(t *testing.T) {
 		t.Fatalf("write report: %v", err)
 	}
 
-	// 异步 ingest，轮询等待
+	// 异步 ingest（readLoop goroutine），轮询等待。所有 got/gotTarget 访问都在 mu 下。
 	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) && got.CPUUsage == 0 {
+	for time.Now().Before(deadline) {
+		mu.Lock()
+		cpu := got.CPUUsage
+		mu.Unlock()
+		if cpu != 0 {
+			break
+		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	if got.CPUUsage != 55.5 {
-		t.Errorf("ingested CPUUsage = %v, want 55.5", got.CPUUsage)
+	mu.Lock()
+	cpuUsage := got.CPUUsage
+	online := got.Online
+	target := gotTarget
+	mu.Unlock()
+	if cpuUsage != 55.5 {
+		t.Errorf("ingested CPUUsage = %v, want 55.5", cpuUsage)
 	}
-	if !got.Online {
+	if !online {
 		t.Error("ingested Metrics.Online should be forced true")
 	}
-	if gotTarget != 10 {
-		t.Errorf("ingest targetID = %d, want 10", gotTarget)
+	if target != 10 {
+		t.Errorf("ingest targetID = %d, want 10", target)
 	}
-	if auth.touchedOnline == nil || !*auth.touchedOnline {
+	if tol := auth.touched(); tol == nil || !*tol {
 		t.Error("TouchSeen should be called with online=true on report")
 	}
 }

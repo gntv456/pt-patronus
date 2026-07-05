@@ -1024,16 +1024,20 @@ class _DashboardPageState extends State<DashboardPage> {
         children: [
           Row(
             children: [
-              Text(
-                s.siteName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
+              Expanded(
+                child: Text(
+                  s.siteName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               if (s.level.isNotEmpty) _levelTag(s.level),
-              const Spacer(),
+              const SizedBox(width: 8),
               Text(
                 '分享率 ${s.ratio > 0 ? s.ratio.toStringAsFixed(2) : '-'}',
                 style: TextStyle(
@@ -1065,11 +1069,15 @@ class _DashboardPageState extends State<DashboardPage> {
           ]),
           Row(
             children: [
-              Text(
-                '加入 ${s.joinDate.isNotEmpty ? s.joinDate : '-'} · 更新 ${_fmtDate(s.updatedAt)}',
-                style: const TextStyle(color: Colors.grey, fontSize: 11),
+              Expanded(
+                child: Text(
+                  '加入 ${s.joinDate.isNotEmpty ? s.joinDate : '-'} · 更新 ${_fmtDate(s.updatedAt)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               _rowActions(context, s),
             ],
           ),

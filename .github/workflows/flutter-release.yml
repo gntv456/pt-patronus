@@ -52,7 +52,14 @@ jobs:
       - run: flutter pub get
       - run: flutter build macos --release
       - name: Zip .app
-        run: cd build/macos/Build/Products/Release && zip -r -y "$GITHUB_WORKSPACE/ptpatronus-macos.zip" "*.app"
+        run: |
+          # 诊断：曾出现 build exit 0 但 zip 找不到 *.app——先 ls 目录暴露 build 实际产物。
+          cd build/macos/Build/Products/Release || { echo "Release dir missing"; ls -R build/macos/Build/Products 2>/dev/null; exit 1; }
+          echo "=== Release dir contents ==="
+          ls -la
+          app=$(find . -name "*.app" -maxdepth 2 | head -1)
+          if [ -z "$app" ]; then echo "No .app found — build 未产出,查 Run flutter build macos 步骤日志"; exit 1; fi
+          zip -r -y "$GITHUB_WORKSPACE/ptpatronus-macos.zip" "$app"
       - uses: actions/upload-artifact@v4
         with:
           name: ptpatronus-macos
@@ -67,7 +74,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '3.41.x', cache: true }
       - run: flutter pub get
+      # flutter_inappwebview_windows 用了 <experimental/coroutine>，新版 MSVC(VS18) 的 STL1011 弃用转 error。
+      # 经 CL 环境变量全局定义抑制宏（作用于所有 .vcxproj，含插件子项目）。
       - run: flutter build windows --release
+        env:
+          CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
       - uses: actions/upload-artifact@v4
         with:
           name: ptpatronus-windows

@@ -6,6 +6,7 @@ services:
     image: ghcr.io/gntv456/pt-patronus:latest   # latest=最新；或锁定版本 :0.80.04
     container_name: ptpatronus
     restart: unless-stopped
+    pull_policy: always      # docker compose up -d 时自动拉最新镜像（像 MoviePilot 那样更新即拉新；注意是 up 不是 restart）
     ports:
       - "8088:8088"            # 主机端口:容器端口（改左边的 8088 换访问端口）
     environment:

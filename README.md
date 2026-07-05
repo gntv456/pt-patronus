@@ -295,3 +295,22 @@ MTeam/unit3d/gazelle 的签到 / H&R；消息回复 CSRF 字段名逐站配置�
 配套 API 层：`api/monitor.dart` 新增 `Agent` 模型 + `AgentApi`（list / create 返 `plain_secret` / remove / rotate，对齐后端 `/monitors/agents`，FileManager 与 NAS 共用）。**发现工作流 `WebhookApi` 客户端早已齐全，仅缺 UI**——先查 API 层省去一半工作。
 
 > 验证范围：静态 `flutter analyze` 全绿。真机 / 桌面宽屏 + 手机窄屏视觉 A/B 与端到端联调（webhook admin、agent 管理器、存储 CRUD、NAS 内联指标）未在本轮做——后端路由 / 契约均已确认存在，建议下轮真机联调校准。
+
+## 修复合集（2026/07/05）
+
+### 后端
+
+- **白板根因——限流误伤静态资源**：全局限流中间件对 `/assets/*.js/*.css` 也计数，浏览器刷新 SPA 并发拉 ~30 个 chunk 瞬间打爆 `GLOBAL_RATE_PER_SEC` 默认 burst=20，后续 chunk 全 429 → Vue 拿不到 JS 崩成整页白屏（「第一次进去正常、再进去/刷新就白板」的根因）。修复：[ratelimit.go](backend/internal/api/middleware/ratelimit.go) `Middleware` 跳过非 `/api/` 路径——限流本就为防 API 暴力破解，静态资源 go:embed 直出、无害。登录限流路径均为 `/api/v1/auth/*`，行为不变。
+- **做种数与做种体积同源**：NexusPHP 适配器里做种数（基础页 `color_active`）与做种体积（`getusertorrentlistajax?type=seeding` ajax 翻页）走两条独立路径，且汇总 div「N\|SIZE」只取体积、丢弃数 → 「做种数=0、体积=62.2TB」的自相矛盾。修复：[nexusphp.go](backend/internal/site/schemas/nexusphp.go) `fetchSeeding` 同时返回 `(count, size)`，基础页 `Seeding==0` 时用 ajax 的 count 补齐，数与体积同源。
+
+### Web（Vue3）
+
+- **全局错误边界**：新增 [errorOverlay.ts](frontend/src/utils/errorOverlay.ts) + [main.ts](frontend/src/main.ts) 三路捕获（`app.config.errorHandler` + `window error` + `unhandledrejection`）。Vue 渲染崩溃不再整页白屏，弹可见错误卡片（错误名 + 堆栈 + 刷新/回首页），反馈者能直接截图定位。
+- **懒加载 chunk 失败兜底**：[router/index.ts](frontend/src/router/index.ts) `router.onError` 检测 chunk 加载失败（429 / 网络抖动 / 部署后旧 hash）自动刷新一次，不再卡白屏。
+- **useWs 登出再登录不重连**：[useWs.ts](frontend/src/composables/useWs.ts) 模块级 `stopped` 单例 `disconnect()` 置 true 后永不重置，`connect()` 入口 `if (ws || stopped) return` 直接跳过 → 通知 / H&R / Cookie 告警不再实时推送。修复：`connect()` 入口重置 `stopped=false`（新会话）+ `await wsTicket` 期间若已 disconnect 则放弃。
+
+### 核查（非缺陷）
+
+- **仪表盘上传/下载是否接反**：全链路核查（后端 NexusPHP 正则锚点 / JSON 字段 / 通用赋值 / JSON tag + 移动端 fromJson / UI 渲染 + Web 端）字段映射全部正确，**无接反**。
+
+> 部署：本次为后端二进制 + 前端打包改动，需重新构建镜像/二进制并重启；部署后触发一次「刷新统计」让做种数补齐写入。

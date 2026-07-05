@@ -109,11 +109,15 @@ func (n *NexusPHP) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		}
 	}
 
-	// 4. 做种体积（getusertorrentlistajax?type=seeding 翻页累加）——best-effort，失败留 0
-	//    做种「数」优先用基础页 color_active 的值（已校准），ajax 仅补体积。
+	// 4. 做种体积 + 做种数补齐（getusertorrentlistajax?type=seeding）——best-effort，失败留 0
+	//    做种「数」优先用基础页 color_active（已校准）；基础页抓不到（=0）时用 ajax 汇总的数补，
+	//    保证「做种数」与「做种体积」同源，不出现「数=0、体积=N TB」的自相矛盾。
 	if uid != "" && u.SeedingSize == 0 {
-		if size := fetchSeedingSize(ctx, n.hc, baseURL, uid, cookie); size > 0 {
-			u.SeedingSize = size
+		if c, sz := fetchSeeding(ctx, n.hc, baseURL, uid, cookie); sz > 0 {
+			u.SeedingSize = sz
+			if u.Seeding == 0 {
+				u.Seeding = c
+			}
 		}
 	}
 	// 5. 发布数（getusertorrentlistajax?type=uploaded 的「N条记录」/行数）——best-effort
@@ -177,24 +181,28 @@ func fetchBonusPerHour(ctx context.Context, hc *httpclient.Client, baseURL, cook
 	return 0
 }
 
-// fetchSeedingSize 抓 getusertorrentlistajax?type=seeding 取做种总体积。
-// NexusPHP 响应在 table 前有一个汇总 div「N | SIZE」（体积即做种总大小）——优先解析它；
-// 缺失才回退翻页逐 <td> 累加体积。做种「数」不在此取（用基础页已校准的 color_active）。best-effort。
-func fetchSeedingSize(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie string) int64 {
+// fetchSeeding 抓 getusertorrentlistajax?type=seeding，返回 (做种数, 做种体积)。
+// NexusPHP 响应 table 前的汇总 div「N | SIZE」同时给出做种数与体积——优先解析它；
+// 缺失才回退翻页逐 <td> 累加体积（并按「含体积 token 的行」估算做种数）。返回的「数」用于
+// 补齐基础页抓不到做种数（=0）的站点，保证「做种数」与「做种体积」同源，
+// 不再出现「做种数=0、体积=N TB」的自相矛盾。best-effort，失败返回 (0, 0)。
+func fetchSeeding(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie string) (count int, size int64) {
 	u := joinURL(baseURL, fmt.Sprintf("getusertorrentlistajax.php?userid=%s&type=seeding", uid))
 	resp, err := hc.Get(ctx, u, cookie, true)
 	if err != nil || resp.IsCloudflare() {
-		return 0
+		return 0, 0
 	}
 	body := string(resp.Body)
-	// 1. 汇总 div「N | SIZE」直接给出做种总体积
+	// 1. 汇总 div「N | SIZE」：N=做种数，SIZE=做种体积（站点官方值，最准）
 	if m := seedingSummaryRe.FindStringSubmatch(body); len(m) == 3 {
 		if sz := site.ParseBytes(m[2]); sz > 0 {
-			return sz
+			if n, e := strconv.Atoi(strings.ReplaceAll(m[1], ",", "")); e == nil {
+				count = n
+			}
+			return count, sz
 		}
 	}
-	// 2. 回退：翻页逐 <td> 体积累加（无汇总 div 的站点）
-	var total int64
+	// 2. 回退：翻页逐 <td> 累加体积，并按「含体积 token 的行」数估算做种数（无汇总 div 的站点）
 	for page := 1; page <= maxSeedingPages; page++ {
 		pu := joinURL(baseURL, fmt.Sprintf("getusertorrentlistajax.php?userid=%s&type=seeding&page=%d", uid, page))
 		var pageBody []byte
@@ -217,20 +225,25 @@ func fetchSeedingSize(ctx context.Context, hc *httpclient.Client, baseURL, uid, 
 		}
 		got := 0
 		rows.Each(func(_ int, row *goquery.Selection) {
+			rowHasSize := false
 			row.Find("td").Each(func(_ int, td *goquery.Selection) {
 				tok := sizeTokenRe.FindString(strings.TrimSpace(td.Text()))
 				if tok == "" {
 					return
 				}
-				total += site.ParseBytes(tok)
-				got++
+				size += site.ParseBytes(tok)
+				rowHasSize = true
 			})
+			if rowHasSize {
+				got++ // 含体积的行算 1 个做种种子
+			}
 		})
 		if got == 0 {
 			break
 		}
+		count += got
 	}
-	return total
+	return count, size
 }
 
 // fetchUploadsCount 抓 getusertorrentlistajax?type=uploaded 取「发布数」。

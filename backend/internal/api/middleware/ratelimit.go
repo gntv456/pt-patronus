@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -73,9 +74,18 @@ func (l *RateLimiter) Allow(key string) bool {
 	return l.limiter(key).Allow()
 }
 
-// Middleware 返回按 ClientIP 限流的 Gin 中间件。
+// Middleware 返回按 ClientIP 限流的 Gin 中间件。仅作用于 /api/ 路径：
+// 静态资源（前端 SPA 的 /assets/*.js、*.css、logo 等）走 go:embed 直出，浏览器
+// 并发加载 ~30 个 chunk 是正常行为且近乎零成本，不应计入令牌桶——否则刷新时
+// 并发 chunk 瞬间打爆 burst，后续 chunk 返 429 → Vue 拿不到 JS 崩成整页白板
+// （「第一次进去正常、再进去/刷新就白板」即此症状）。登录端点路径均为
+// /api/v1/auth/*，同样受此前缀判断覆盖，限流行为不变。
 func (l *RateLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if !strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			c.Next()
+			return
+		}
 		if !l.Allow(c.ClientIP()) {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
 			return

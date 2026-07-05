@@ -78,7 +78,10 @@ function onClose() {
 
 /** 连接（幂等：已连则跳过）。先用 header JWT 换一次性 ticket，再用 ?ticket= 连（JWT 不落 URL）。 */
 async function connect() {
-  if (ws || stopped) return
+  // 主动调用 connect 视为开启新会话：清除上一次 disconnect 残留的 stopped=true，
+  // 否则登出再登录后 stopped 永远为 true，WS 再也不连（通知 / H&R / Cookie 告警停推）。
+  stopped = false
+  if (ws) return // 已连，幂等
   let ticket: string
   try {
     ticket = (await authApi.wsTicket()).ticket
@@ -86,6 +89,8 @@ async function connect() {
     scheduleReconnect()
     return
   }
+  // await 期间若已 disconnect（stopped 被置 true），放弃本次连接，避免登出后又连上。
+  if (stopped) return
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   const url = `${proto}://${location.host}/api/v1/ws?ticket=${encodeURIComponent(ticket)}`
   try {

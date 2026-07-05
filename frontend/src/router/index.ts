@@ -36,6 +36,11 @@ const router = createRouter({
           component: () => import('@/views/Workflow.vue'),
         },
         {
+          path: 'plugins',
+          name: 'plugins',
+          component: () => import('@/views/Plugins.vue'),
+        },
+        {
           path: 'workflow-editor',
           name: 'workflow-editor',
           component: () => import('@/views/WorkflowEditor.vue'),
@@ -144,6 +149,22 @@ router.beforeEach(async (to) => {
   // 否则顶栏会回退到 fallback 用户名、VIP 徽标也会失真。
   if (auth.authenticated && !auth.user) {
     await auth.restoreUser()
+  }
+})
+
+// 懒加载 chunk 加载失败兜底（限流 429 / 部署后旧 hash / 网络抖动）：路由组件
+// import() 失败时 Vue Router 抛 ChunkLoadError，页面会停在白屏。检测到后自动
+// 刷新一次（令牌桶/缓存窗口通常已过，刷新即恢复）；仅刷一次避免死循环。
+let reloadedForChunkError = false
+router.onError((error) => {
+  if (
+    !reloadedForChunkError &&
+    /Loading chunk|Failed to fetch dynamically imported module|Loading CSS chunk|Importing a module script failed/i.test(
+      error.message,
+    )
+  ) {
+    reloadedForChunkError = true
+    location.reload()
   }
 })
 

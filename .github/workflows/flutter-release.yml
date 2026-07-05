@@ -35,7 +35,9 @@ jobs:
             echo "keyAlias=$KEY_ALIAS"
             echo "storeFile=ptpatronus.jks"
           } > android/key.properties
-      - run: flutter build apk --release
+      # --split-per-abi：按 CPU 架构拆分,避免 fat-APK 把 3 份原生库(media_kit libmpv / webview)塞一个包。
+      # 产 3 个 APK,publish 只发 arm64-v8a(95% 手机)+ armeabi-v7a(老设备),x86_64 模拟器丢弃。
+      - run: flutter build apk --release --split-per-abi
       - uses: actions/upload-artifact@v4
         with:
           name: ptpatronus-android
@@ -134,14 +136,18 @@ jobs:
         continue-on-error: true        # ios job 可能失败,无 artifact 时跳过
       - name: Rename artifacts with version + platform
         run: |
-          mv android/*.apk "ptpatronus-${VERSION}-android.apk"
+          # Android split-per-abi：发 arm64-v8a(95% 手机)+ armeabi-v7a(老设备),x86_64 模拟器丢弃
+          mv android/*-arm64-v8a-release.apk "ptpatronus-${VERSION}-android-arm64.apk"
+          mv android/*-armeabi-v7a-release.apk "ptpatronus-${VERSION}-android-armv7a.apk"
+          rm -f android/*-x86_64-release.apk
           mv macos/ptpatronus-macos.zip "ptpatronus-${VERSION}-macos.zip"
           cd windows && zip -r "../ptpatronus-${VERSION}-windows-x64.zip" . && cd ..
           if [ -f ios/*.ipa ]; then mv ios/*.ipa "ptpatronus-${VERSION}-ios-unsigned.ipa"; else echo "ios 缺失,跳过"; fi
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            ptpatronus-${{ env.VERSION }}-android.apk
+            ptpatronus-${{ env.VERSION }}-android-arm64.apk
+            ptpatronus-${{ env.VERSION }}-android-armv7a.apk
             ptpatronus-${{ env.VERSION }}-macos.zip
             ptpatronus-${{ env.VERSION }}-windows-x64.zip
             ptpatronus-${{ env.VERSION }}-ios-unsigned.ipa

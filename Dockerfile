@@ -29,15 +29,17 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 # ---- 运行时 ----
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata wget && \
+RUN apk add --no-cache ca-certificates tzdata wget su-exec && \
     addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=backend /out/ptpatronus /app/ptpatronus
 COPY backend/definitions /app/definitions
-RUN mkdir -p /app/data && chown -R app:app /app
-USER app
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && mkdir -p /app/data && chown -R app:app /app
+# 不设 USER app：entrypoint 以 root 跑（chown 挂载卷 /app/data 给 app），再 su-exec 切 app 跑主程序。
+# 这样宿主卷（compose 自动建，默认属主 root）也能被 app 写（密钥自动生成/SQLite），无需用户手动 chmod。
 ENV APP_ENV=release HTTP_ADDR=:8088 DATA_DIR=/app/data DEFINITIONS_DIR=/app/definitions
 EXPOSE 8088
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
     CMD wget -qO- http://127.0.0.1:8088/api/v1/system/health || exit 1
-ENTRYPOINT ["/app/ptpatronus"]
+ENTRYPOINT ["/app/entrypoint.sh"]

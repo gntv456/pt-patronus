@@ -1,0 +1,3 @@
+# 强制 shell 脚本 LF 换行：Windows git autocrlf 会把 .sh 转 CRLF，
+# alpine 容器内 shebang `#!/bin/sh\r` 执行会失败（\r 当字面）→ 容器起不来。
+*.sh text eol=lf

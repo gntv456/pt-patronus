@@ -1,0 +1,31 @@
+# PTPatronus 终端用户部署 —— 复制保存为 docker-compose.yml，docker compose up -d 即用。
+# 首次启动后端自动生成密钥（落 ./data/），零配置。升级：docker compose pull && docker compose up -d。
+
+services:
+  ptpatronus:
+    image: ghcr.io/gntv456/pt-patronus:latest   # latest=最新；或锁定版本 :0.80.04
+    container_name: ptpatronus
+    restart: unless-stopped
+    pull_policy: always      # docker compose up -d 时自动拉最新镜像（像 MoviePilot 那样更新即拉新；注意是 up 不是 restart）
+    ports:
+      - "8088:8088"            # 主机端口:容器端口（改左边的 8088 换访问端口）
+    environment:
+      # APP_ENV 必填：触发 release 模式 + 密钥自动生成 + 生产安全限制。
+      # 其余（好学站 www.hxpt.org、数据库 SQLite、cron、限流…）全用后端默认，不用写。
+      APP_ENV: release
+      # 高级（按需取消注释）：
+      # CORS_ALLOWED_ORIGINS: https://你的域名   # 反代/公网时收敛 CORS
+      # TRUSTED_PROXIES: 172.16.0.0/12          # 反代后填其 CIDR
+      # SECRET_KEY: openssl rand -base64 32 的输出        # 自控密钥；否则后端自动生成 + 持久化
+      # ACTIVATION_SECRET: openssl rand -base64 32 的输出
+      # UPDATE_MANIFEST_URL: https://gist.githubusercontent.com/你/.../raw/update-manifest.json
+      #     ↑ 在线更新清单（gist raw）；配了客户端「检查更新」才有效，不配则关闭在线更新检查
+    volumes:
+      - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+# 想用 PostgreSQL 代替 SQLite？见 README/05-部署指南.md，或仓库 docker-compose.yml（开发版含 pg profile）。

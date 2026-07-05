@@ -1,0 +1,189 @@
+# 部署指南
+
+## 终端用户:拉镜像部署（推荐）
+
+无需源码,拉官方镜像即用(镜像 `ghcr.io/gntv456/pt-patronus`,public 免登录拉取)。**v0.80.06 起零配置**——密钥自动生成、卷权限自动修复,直接 `up -d` 就跑。
+
+1. 装 Docker + Docker Compose。
+2. 部署目录放一份 [docker-compose.example.yml](../docker-compose.example.yml)(核心 12 行,无需改)。
+3. `docker compose up -d` → 访问 `http://服务器IP:8088`(首个好学 VIP 用户即管理员)。
+
+> 密钥(`SECRET_KEY`/`ACTIVATION_SECRET`)无需手动配——后端首次启动自动生成强随机串并持久化到 `./data/`(0600)。想自控再在 compose 注释行取消填入。
+
+**升级**:`docker compose up -d`(compose 里 `pull_policy: always` 自动拉新镜像 + 重建,像 MoviePilot)。数据在 `./data/` 不丢,密钥/登录态保留。
+
+**切 PostgreSQL**:`docker compose --profile pg up -d`,并把 `ptpatronus` 服务的 `DB_TYPE` 改 `postgres`、加 `DATABASE_URL`(见 example 注释)。
+
+## NAS 部署
+
+群晖/威联通/飞牛都是 Docker Compose,compose 文件**通用**,**唯一区别是 volume 挂载路径**(各 NAS 文件系统根不同)。核心 compose 一样,只改 `volumes` 那行:
+
+| NAS | volumes 路径(挂载 data) | 容器管理入口 |
+|---|---|---|
+| 群晖 Synology | `/volume1/docker/ptpatronus/data:/app/data` | Container Manager → 项目 |
+| 威联通 QNAP | `/share/Container/ptpatronus/data:/app/data` | Container Station → 应用程序 |
+| 飞牛 fnos | `./data:/app/data`(项目目录下) | Docker → Compose |
+
+> `volume1`(群晖)可能是 `volume2/3...`(看你的存储卷);`share`(威联通)是共享目录根。data 子目录容器自动建。v0.80.06 entrypoint 会自动 `chown` 挂载卷给容器 `app` 用户,**不用手动改权限**。
+
+### 群晖 Synology
+
+1. 套件中心装 **Container Manager**(DSM 7.2+,老版本叫 Docker)。
+2. File Station 在 `/volume1/docker/` 建文件夹 `ptpatronus`。
+3. Container Manager → **项目** → 新增 → 项目名 `ptpatronus` → 位置选 `/volume1/docker/ptpatronus` → 来源「使用 Docker Compose」→ 粘贴 [example.yml](../docker-compose.example.yml)(volumes 改群晖那行)→ 创建。
+4. 等镜像拉完 → `http://群晖IP:8088`。
+
+### 威联通 QNAP
+
+1. App Center 装 **Container Station**。
+2. File Station 在 `/share/Container/` 建文件夹 `ptpatronus`。
+3. Container Station → **应用程序** → 创建 → 切 **YAML 编辑** → 粘贴 example.yml(volumes 改威联通那行)→ 部署。
+4. `http://威联通IP:8088`。
+
+### 飞牛 fnos
+
+1. 飞牛 Docker → Compose → 新建 → 粘贴 example.yml(默认 `./data` 即可)→ 启动。
+2. `http://飞牛IP:8088`。
+
+### 通用注意
+
+- **端口冲突**:8088 被占就改 `ports` 左边(`"18088:8088"`),访问 `IP:18088`。
+- **更新**:群晖「启动/重建」项目、威联通「重新部署」、飞牛 `docker compose up -d`——配合 `pull_policy: always` 自动拉新镜像。
+- **ghcr 镜像必须 public**(仓库 owner 在 GitHub Package settings 设过),否则 NAS 匿名拉不动(`unauthorized`)。
+- **在线更新**:compose 加 `UPDATE_MANIFEST_URL=<你的 gist raw>`,APP 才能检查更新(见 [发布与在线更新.md](发布与在线更新.md))。
+
+## 开发者:本地构建部署
+
+```bash
+cd D:/PTPatronus
+docker compose up -d --build
+# 首次会 npm build 前端 → go:embed 内嵌 → 构建 alpine 运行时
+# 完成后访问 http://localhost:8088 即 Web UI + API
+```
+
+单镜像 = API + Web UI（go:embed 内嵌前端 dist）。
+
+## 环境变量（生产必配）
+
+> v0.80.06 起,`SECRET_KEY` / `ACTIVATION_SECRET` **未设时自动生成强随机串并持久化**到 `DataDir`(零配置安全启动)。仍可显式设环境变量接管(高级用户/生产可控);源码公开默认值仍拒绝(防伪造 token / 解密 cookie)。
+
+```bash
+# 安全（release 模式必填，留空/默认值 → 拒绝启动）
+SECRET_KEY=$(openssl rand -base64 32)        # ≥32 字节随机串：JWT 签名 + AES 密钥派生
+ACTIVATION_SECRET=$(openssl rand -base64 32) # 激活码 HMAC
+API_KEY=<程序化访问密钥>                       # X-API-Key 头（为空禁用）
+
+# CORS 收敛（同时约束 WebSocket Origin，防 CSWSH）
+CORS_ALLOWED_ORIGINS=https://your.domain
+
+# 反向代理（部署在 nginx/Cloudflare 后时填其 CIDR；留空=不信任任何代理，
+#          ClientIP 取直连 TCP 对端，防伪造 X-Forwarded-For 绕过限流）
+TRUSTED_PROXIES=172.16.0.0/12
+
+# 限流（仅作用于 /api/ 端点；静态资源 /assets/*.js 等浏览器并发加载、不受限，
+#      避免刷新 SPA 时 ~30 个 chunk 瞬间打爆 burst 被 429 误伤 → Vue 拿不到 JS 白屏）
+LOGIN_RATE_PER_MIN=10
+GLOBAL_RATE_PER_SEC=20
+
+# 数据库（默认 SQLite；切 PostgreSQL）
+DB_TYPE=postgres
+DATABASE_URL=postgres://user:pass@host:5432/ptpatronus?sslmode=disable
+
+# 好学 VIP 准入（按用户强制：登录验 VIP 落库 + 定期重验 + 宽限期）
+AUTH_SITE_URL=https://www.hxpt.org
+VIP_GRACE_DAYS=3                  # VIP 宽限天数（好学不可达时缓存 VIP 的有效期，默认 3）
+HXPT_EMERGENCY_ADMIN=             # 应急：好学 POST 链路坏掉时，设为某用户名可临时放行（仅应急，平时留空）
+# 注：AUTH_SITE_ENABLED 不再控制门禁（VIP 改为按用户强制），保留兼容
+
+# 媒体
+TMDB_API_KEY=<tmdb key>
+
+# 通知（首启 env 引导默认；运行时以 UI「设置→通知」为准，UI 改动即时生效无需重启。
+#       微信 ClawBot 的 bot_token 需扫码登录获取，不能在此静态填写，到 UI 扫码即可）
+BARK_SERVER=https://api.day.app
+BARK_KEY=<device key>
+TELEGRAM_TOKEN=<bot token>
+TELEGRAM_CHAT_ID=<chat id>
+TELEGRAM_API_URL=                  # 可选：国内反代域名，留空走官方
+# QQ 开放平台机器人（OAuth2：appId/appSecret 换 token，主动消息推 openid/group_openid）
+QQ_APP_ID=
+QQ_APP_SECRET=
+QQ_OPENID=                         # 单聊接收者（与群二选一）
+QQ_GROUP_OPENID=                   # 群聊接收者（优先于单聊）
+# 微信 ClawBot（iLink Bot，逆向协议）
+WECHAT_CLAWBOT_TOKEN=              # 通常留空，到 UI 扫码登录自动写入
+WECHAT_CLAWBOT_ACCOUNT_ID=
+WECHAT_CLAWBOT_TARGET=             # 接收通知的微信号 wxid（给自己发填自己的 wxid）
+WECHAT_CLAWBOT_BASE_URL=           # 留空走官方 ilinkai.weixin.qq.com
+WEBHOOK_URL=https://your.webhook/url
+```
+
+> **三通道均为外发推送**（站内事件→Telegram/QQ/微信/Bark/Webhook），消息模板统一为「标题 + 正文 + 查看详情链接」纯文本（简单易懂）。微信走 UI 扫码登录绑定；QQ Markdown 优先、未开通模板权限自动回退纯文本。通道凭据存 `SystemConfig` 表（`notify.settings`），`设置→通知` 可随时增删改并测试，热更新无需重启。
+
+完整列表见 `backend/configs/config.example.yaml`。
+
+## 本地开发
+
+### 后端
+
+```bash
+cd backend
+DEFINITIONS_DIR=./definitions go run ./cmd/ptpatronus
+# 或 make dev-backend
+```
+
+### 前端（vite dev，代理 /api → :8088）
+
+```bash
+cd frontend
+npm install && npm run dev
+# 访问 http://localhost:5173
+```
+
+### Flutter
+
+```bash
+cd mobile
+flutter pub get
+flutter run -d windows    # 或 android / macos / chrome
+# 真机/模拟器注意 API_BASE_URL（dart-define）
+```
+
+### 验证内嵌前端（不开 vite）
+
+```bash
+make embed-preview   # 前端构建→拷入 backend/internal/web/dist
+cd backend && go run ./cmd/ptpatronus  # 访问 :8088 即 Web UI
+```
+
+## 可选：PostgreSQL
+
+```bash
+docker compose --profile pg up -d
+# 设置 DB_TYPE=postgres + DATABASE_URL
+```
+
+## CI/发布
+
+- 打 tag `v*` → GitHub Actions 自动：
+  - docker.yml：多架构镜像（amd64/arm64）→ GHCR
+  - flutter-release.yml：Android APK + Windows 产物
+- ci.yml：push/PR 跑后端 vet/test/build + 前端 build + Flutter analyze/test
+
+## 快速上手流程
+
+1. `docker compose up -d --build`
+2. 访问 `http://localhost:8088` → 好学账号/Cookie 登录（首个好学 VIP 用户即管理员）
+3. 站点页 → 添加好学站点（输入 cookie / 或 Flutter WebView 登录上传）
+4. 连接测试 → 确认 cookie 有效
+5. 下载器页 → 添加 qBittorrent
+6. 仪表盘 → 等待 stats-sync 自动抓取后显示真实数据
+7. 娱乐页 → 选站点 → 玩九宫格/刮刮乐
+
+## 应急恢复（好学登录不可用时）
+
+好学 POST 登录链路坏掉（改版/风控/宕机）导致无法登录时，三道兜底：
+
+1. **API-Key 旁路**：设 `API_KEY`，用 `X-API-Key` 头直访业务接口（跳过 VIP 门禁）。
+2. **在线应急**：设 `HXPT_EMERGENCY_ADMIN=<用户名>`，该用户名走好学账号登录时跳过好学验证直接放行（仅应急、可审计，恢复后务必清空）。
+3. **离线应急（CLI）**：在服务器执行 `ptpatronus reset-admin` → 创建 `HxptUID=cli:admin` 管理员（含本地 VIP 标记）并打印临时 JWT，用作 Web 端登录。

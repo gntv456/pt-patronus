@@ -6,4 +6,4 @@
 ///
 /// 唯一需要与后端保持一致的是发布构建元数据 `pubspec.yaml` 的 `version:`（影响
 /// Android versionCode / iOS build），那属于发布流程，与日常开发显示版本解耦。
-const String appVersion = '0.80.04';
+const String appVersion = '0.80.05';

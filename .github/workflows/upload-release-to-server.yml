@@ -1,0 +1,47 @@
+name: Upload Release to Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload, for example v0.81.01
+        required: true
+        default: v0.81.01
+
+jobs:
+  upload:
+    name: Upload existing GitHub Release assets to ptang
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST || '152.53.91.46' }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'root' }}
+      DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/root/ptpatronus-releases' }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Release assets inside GitHub runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p release-assets
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release-assets
+          ls -lh release-assets
+
+      - name: Write checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS-github-release.txt
+
+      - name: Upload to ptang
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          version="${TAG#v}"
+          shopt -s nullglob
+          files=(release-assets/*)
+          bash .github/scripts/upload-release-assets.sh "$version" "${files[@]}"

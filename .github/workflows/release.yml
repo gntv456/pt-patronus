@@ -37,6 +37,11 @@ jobs:
       - name: Build agent linux/arm64
         run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -ldflags="-s -w -X github.com/hxpt/ptpatronus/internal/version.Version=$VERSION" -o ../ptpatronus-agent-linux-arm64 ./cmd/ptpatronus-agent
 
+      - name: Write agent checksums
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: .
+        run: sha256sum ptpatronus-agent-linux-amd64 ptpatronus-agent-linux-arm64 > SHA256SUMS-agent.txt
+
       # 仅 tag 触发时发 Release（workflow_dispatch 只验证构建）。
       - uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
@@ -44,5 +49,21 @@ jobs:
           files: |
             ptpatronus-agent-linux-amd64
             ptpatronus-agent-linux-arm64
+            SHA256SUMS-agent.txt
           generate_release_notes: true
           fail_on_unmatched_files: true
+
+      - name: Upload agent to ptang
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: .
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST || '152.53.91.46' }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'root' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/root/ptpatronus-releases' }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          bash .github/scripts/upload-release-assets.sh "$VERSION" \
+            ptpatronus-agent-linux-amd64 \
+            ptpatronus-agent-linux-arm64 \
+            SHA256SUMS-agent.txt

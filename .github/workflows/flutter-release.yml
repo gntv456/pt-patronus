@@ -120,6 +120,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       # 安装包命名规范：ptpatronus-<版本>-<平台>.<扩展>，下载后一眼识别版本/平台。
       # agent 二进制（release.yml）保持固定名——install.sh 依赖 releases/latest/download 固定路径自动拉取。
       - name: Compute version
@@ -143,6 +144,16 @@ jobs:
           mv macos/ptpatronus-macos.zip "ptpatronus-${VERSION}-macos.zip"
           cd windows && zip -r "../ptpatronus-${VERSION}-windows-x64.zip" . && cd ..
           if [ -f ios/*.ipa ]; then mv ios/*.ipa "ptpatronus-${VERSION}-ios-unsigned.ipa"; else echo "ios 缺失,跳过"; fi
+      - name: Write checksums
+        run: |
+          shopt -s nullglob
+          files=(
+            ptpatronus-${VERSION}-android-*.apk
+            ptpatronus-${VERSION}-macos.zip
+            ptpatronus-${VERSION}-windows-x64.zip
+            ptpatronus-${VERSION}-ios-unsigned.ipa
+          )
+          sha256sum "${files[@]}" > SHA256SUMS-clients.txt
       - uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -151,7 +162,25 @@ jobs:
             ptpatronus-${{ env.VERSION }}-macos.zip
             ptpatronus-${{ env.VERSION }}-windows-x64.zip
             ptpatronus-${{ env.VERSION }}-ios-unsigned.ipa
+            SHA256SUMS-clients.txt
           fail_on_unmatched_files: false   # ios 可能缺失（best-effort）
+      - name: Upload clients to ptang
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST || '152.53.91.46' }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'root' }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/root/ptpatronus-releases' }}
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          shopt -s nullglob
+          files=(
+            ptpatronus-${VERSION}-android-*.apk
+            ptpatronus-${VERSION}-macos.zip
+            ptpatronus-${VERSION}-windows-x64.zip
+            ptpatronus-${VERSION}-ios-unsigned.ipa
+            SHA256SUMS-clients.txt
+          )
+          bash .github/scripts/upload-release-assets.sh "$VERSION" "${files[@]}"
 
   # 鸿蒙(ohos)：需华为 flutter 分支 + DevEco Studio 环境，CI 无现成 runner，
   # 请在配置好鸿蒙 SDK 的机器上手动：flutter build hap --release（鸿蒙分支）。

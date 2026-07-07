@@ -1,9 +1,5 @@
 # zrpt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.levelName.filters（匿名函数）
-#   - userInfo.bonus.filters（匿名函数）
-
 aka:
     - 探索自然美
     - 专注纪录片
@@ -90,7 +86,6 @@ name: ZRPT
 schema: nexusphp
 selectors:
     fields:
-        subtitle: {}
         title:
             selectors:
                 - a[href*='details.php?id='][title]
@@ -104,6 +99,8 @@ urls:
 user_info:
     fields:
         bonus:
+            filters:
+                - name: parse_number
             selectors:
                 - td.rowhead:contains('魔力值') + td
                 - td.rowhead:contains('积分') + td
@@ -113,5 +110,16 @@ user_info:
                 - td:contains('积分:')
         level:
             attr: title
+            filters:
+                - args: ^(?:.*\))?\s*(.+)$
+                  name: regexp
+            selectors:
+                - td.rowhead:contains('等级') + td > img
+    detail_fields:
+        level:
+            attr: title
+            filters:
+                - args: ^(?:.*\))?\s*(.+)$
+                  name: regexp
             selectors:
                 - td.rowhead:contains('等级') + td > img

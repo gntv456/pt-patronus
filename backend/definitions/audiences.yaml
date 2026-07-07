@@ -1,12 +1,5 @@
-# audiences — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# audiences - custom skin user fields migrated from PT-depiler/PT-manager; live smoke still recommended.
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
-#   - search.link（__ref）
-#   - search.size（text）
-#   - search.leechers（text）
-#   - search.seeders（text）
-#   - search.completed（text）
 
 aka:
     - 观众
@@ -136,10 +129,24 @@ selectors:
             selectors:
                 - td:nth-of-type(8)
         detail:
+            attr: href
             filters:
                 - args: id
                   name: queryparam
-        download: {}
+                - args: /details.php?id=
+                  name: prepend
+            selectors:
+                - a.torrent-row-action-link--download[href*='download.php?id=']
+                - a[href*='download.php?id=']:has(i.fa-download)
+                - a[href*='download.php?id='][title*='下载']
+                - a[href*='download.php?id='][title*='Download']
+        download:
+            attr: href
+            selectors:
+                - a.torrent-row-action-link--download[href*='download.php?id=']
+                - a[href*='download.php?id=']:has(i.fa-download)
+                - a[href*='download.php?id='][title*='下载']
+                - a[href*='download.php?id='][title*='Download']
         leechers:
             filters:
                 - name: parse_number
@@ -176,12 +183,67 @@ timezone_offset: "+0800"
 urls:
     - https://audiences.me/
 # Audiences 自定义皮肤：无 NexusPHP font.color_* 锚点（仅 theme.css 定义了类名，HTML 不用），
-# 用户条统计全在用户详情页的 ud-stat 卡片（<div class="ud-stat__body"><div class="ud-stat__value">V</div>
-# <div class="ud-stat__label">L</div></div>）。故 base 页 usercp.php 只用于发现 uid+用户名，
+# 首页用户条用于发现 uid+用户名，用户详情页的 ud-stat 卡片提供完整统计
+# （<div class="ud-stat__body"><div class="ud-stat__value">V</div>
+# <div class="ud-stat__label">L</div></div>）。故 base 页 index.php 只用于发现 uid+用户名，
 # 上传/下载/分享率/爆米花/等级/加入时间均从 userdetails.php 的 ud-stat + hero meta 抽取
 # （detail_fields 校准自 gntv 真页：2.778 TB / 508.31 GB / 5.595 / 564831.6 / Crazy User / 2024-12-05）。
 # 逐键合并：此处覆盖的键胜出，其余（name/email 默认 rowhead）best-effort 留空（name 由 usercp 链接兜底）。
 user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - ".site-userbar__name a[href*='userdetails.php'][href*='id=']:first"
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - ".site-userbar__name a[href*='userdetails.php'][href*='id=']:first"
+                - ".ud-hero__name a[href*='userdetails.php']:first"
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        uploaded:
+            selectors:
+                - ".site-userbar__compact-metric--uploaded"
+                - "font.color_uploaded, span.color_uploaded"
+            filters:
+                - name: parse_size
+        downloaded:
+            selectors:
+                - ".site-userbar__compact-metric--downloaded"
+                - "font.color_downloaded, span.color_downloaded"
+            filters:
+                - name: parse_size
+        ratio:
+            selectors:
+                - ".site-userbar__compact-metric--ratio"
+            filters:
+                - name: parse_number
+        bonus:
+            selectors:
+                - ".site-userbar__compact-metric--bonus"
+                - "td.rowhead:contains('爆米花') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+            filters:
+                - name: parse_number
+        seeding:
+            selectors:
+                - ".site-userbar__compact-metric-inline-link--seeding"
+            filters:
+                - name: parse_number
+        leeching:
+            selectors:
+                - ".site-userbar__compact-metric-inline-link--leeching"
+            filters:
+                - name: parse_number
     detail_fields:
         uploaded:
             selectors:
@@ -222,6 +284,22 @@ user_info:
             filters:
                 - name: regexp
                   args: '活跃[^0-9]*(\d+)'
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: regexp
+                        args: '(?i)(?:你当前每小时能获取|你當前每小時能獲取|You are currently getting|currently\s+getting)[^0-9]{0,60}([\d.,]+\.?\d*)'
+                      - name: parse_number
+                  selectors:
+                      - ".mybonus-side__rate"
+                      - "div:contains('你当前每小时能获取')"
+                      - "td:contains('你当前每小时能获取')"
+                      - "div:contains('你當前每小時能獲取')"
+                      - "td:contains('你當前每小時能獲取')"
+                      - "div:contains('currently getting')"
+                      - "td:contains('currently getting')"
 # 勋章墙：商店页是 medal_center.php（非默认 medal.php）；货币=爆米花（解析器按 meta-k 自动推断）。
 # enabled 必须显式 true——EnsureDefaults 仅在 ShopPath 为空时才默认开启，自定义路径须手动开启。
 medal:

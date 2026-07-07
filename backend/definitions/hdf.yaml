@@ -1,0 +1,164 @@
+# hdf — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle。已由本项目运行时 schema adapter 支持。
+aka:
+    - HD-F
+    - HDF
+description: HD-Forever (HD-F) is a FRENCH Private Torrent Tracker for HD MOVIES
+id: hdf
+level_requirements:
+    - id: 1
+      name: Novice
+      privilege: Can download, vote on applications, use advanced search, and access the top 10.
+    - id: 2
+      interval: P1W
+      name: Member
+      privilege: Can upload, send requests, create bookmarks, edit wiki pages, download multiple torrents at once, and reset own password/authkey.
+      uploaded: 55GB
+    - id: 3
+      name: Elite
+      privilege: Can access torrents notification system, create collections and a personal collection, create polls in forums, view snatch torrent lists, add own torrents to recommendations, display tag aliases, change password, and add artists to any group.
+      ratio: 1
+      uploaded: 1TiB
+name: HD-Forever
+schema: gazelle
+search_entry: /torrents.php
+selectors:
+    fields:
+        category:
+            attr: class
+            filters:
+                - args: cats_filmd=Film d'animation:::cats_film=Film:::cats_spectacle=Spectacle:::cats_concert=Concert:::cats_séried=Série d'animation:::cats_série=Série:::cats_documentaire=Documentaire
+                  name: contains_map
+            selector: td.cats_col div[class*='cats_']
+        completed:
+            filters:
+                - name: parse_number
+            selector: td.number_column:nth-last-child(3)
+        detail:
+            attr: href
+            selectors:
+                - a[href*='torrentid=']
+                - a[href*='torrents.php?id=']
+        leechers:
+            filters:
+                - name: parse_number
+            selector: td.number_column:nth-last-child(1)
+        seeders:
+            filters:
+                - name: parse_number
+            selector: td.number_column:nth-last-child(2)
+        size:
+            filters:
+                - name: parse_size
+            selector: td.number_column.nobr
+        subtitle:
+            filters:
+                - name: collapse_space
+            selector: .torrent_info
+        time:
+            attr: title
+            filters:
+                - args: '[dd-MM-yyyy, HH:mm:ss]'
+                  name: parse_time
+            selector: td.nobr span.time[title]
+        title:
+            selectors:
+                - a[href*='torrentid=']
+                - a[href*='torrents.php?id=']
+    rows:
+        selector: table#torrent_table tr.torrent, table#torrent_table tr.group_torrent
+tags:
+    - 法国
+timezone_offset: "+0100"
+urls:
+    - https://hdf.world/
+user_info:
+    fields:
+        id:
+            attr: href
+            filters:
+                - args: id
+                  name: queryparam
+            selectors:
+                - h2 a[href*='user.php?id=']
+                - a.username[href*='user.php?id=']
+                - a.username + strong a[href*='user.php']
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - '#bonus_points_number_link span'
+        bonus_per_hour:
+            filters:
+                - name: parse_number
+            selector: "div:contains('Statistiques') + ul.stats > li:contains('Points par heure')"
+        downloaded:
+            attr: title
+            filters:
+                - name: parse_size
+            selector: "div:contains('Statistiques') + ul.stats > li.tooltip:contains('Téléchargé :')"
+        join_date:
+            attr: title
+            filters:
+                - args: '[dd-MM-yyyy, HH:mm:ss]'
+                  name: parse_time
+            selector: "div:contains('Statistiques') + ul.stats > li:contains('Inscription :') span.time.tooltip"
+        level:
+            filters:
+                - args: "Rang :\\s*(.+)"
+                  name: regexp
+            selector: "div:contains('Infos personnelles') + ul.stats > li:contains('Rang :')"
+        name:
+            selectors:
+                - div.user-name-class span[class^='class_']
+                - h2 a[href*='user.php?id='] span
+                - a.username + strong a[href*='user.php'] span
+        ratio:
+            attr: title
+            filters:
+                - name: parse_number
+            selector: "div:contains('Statistiques') + ul.stats > li:contains('Ratio :'):not(:contains('Ratio requis')) span.tooltip"
+        seeding:
+            filters:
+                - name: parse_number
+            selectors:
+                - response.seeding
+                - response.community.seeding
+        seeding_size:
+            filters:
+                - args: '^[\s\S]*?:\s*(.+)'
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - '#comm_seedsize span.tooltip'
+        uploaded:
+            attr: title
+            filters:
+                - name: parse_size
+            selector: "div:contains('Statistiques') + ul.stats > li.tooltip:contains('Uploadé :')"
+        uploads:
+            filters:
+                - name: parse_number
+            selectors:
+                - '#comm_upload'
+    pages:
+        - path: /user.php
+          params:
+            id: "{id}"
+          use_fields:
+            - name
+            - uploaded
+            - downloaded
+            - ratio
+            - bonus
+            - bonus_per_hour
+            - level
+            - join_date
+            - uploads
+            - seeding_size
+        - path: /ajax.php
+          format: json
+          params:
+            action: community_stats
+          use_fields:
+            - seeding

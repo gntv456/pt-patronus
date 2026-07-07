@@ -303,3 +303,22 @@ func TestResolveMTeamGenDlToken(t *testing.T) {
 		t.Errorf("status = %q, want added", got.Status)
 	}
 }
+
+func TestMatchSiteByHostNormalizesPTHomeDomain(t *testing.T) {
+	sites := []models.Site{
+		{ID: 1, Name: "other", BaseURL: "https://other.example"},
+		{ID: 2, Name: "PTHome", BaseURL: "https://www.pthome.net:443/login.php"},
+	}
+
+	got := matchSiteByHost(sites, "pthome.net")
+	if got == nil {
+		t.Fatal("PTHome candidate did not match")
+	}
+	if got.ID != 2 {
+		t.Fatalf("matched site ID = %d, want 2", got.ID)
+	}
+
+	if host := hostOf("https://www.pthome.net:443/"); host != "pthome.net" {
+		t.Fatalf("hostOf pthome = %q, want pthome.net", host)
+	}
+}

@@ -1,34 +1,32 @@
 # superbits — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: rartracker。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.process（多步抓取流程，需适配器实现）
+# schema: rartracker。Rartracker 默认和定义级 mock 已覆盖 JSON 搜索、用户信息与做种体积；真实站点仍建议 live smoke。
 
 description: Sveriges största bittorrent tracker.
 id: superbits
 level_requirements:
-    - name: map[__raw:ElementAccessExpression src:levelIdMap[0]]
+    - name: Medlem
       privilege: 新用户的默认等级。
     - id: 1
       interval: P14D
-      name: map[__raw:ElementAccessExpression src:levelIdMap[1]]
+      name: Fullvärdig medlem
       privilege: 可以创建和上传 requests，使用积分系统及站点其他功能。
       ratio: 1.05
       uploaded: 50GiB
     - id: 2
       interval: P15W
-      name: map[__raw:ElementAccessExpression src:levelIdMap[2]]
+      name: Trogen medlem
       privilege: 访问所有排行榜，使用邀请系统。IP 日志被清除且关闭 IP 记录。可在 P2P 和 Arkiv 上传种子。
       ratio: 1.1
       uploaded: 300GiB
     - id: 3
       interval: P30W
-      name: map[__raw:ElementAccessExpression src:levelIdMap[3]]
+      name: Veteran
       privilege: 可以查看 Veteran 论坛。
       ratio: 1.1
       uploaded: 1.2TiB
     - id: 4
       interval: P3Y
-      name: map[__raw:ElementAccessExpression src:levelIdMap[4]]
+      name: Legend
       privilege: 访问大部分功能。
       ratio: 2.1
       uploaded: 30TiB
@@ -45,3 +43,65 @@ tags:
 timezone_offset: "+0100"
 urls:
     - https://superbits.org/
+user_info:
+    fields:
+        id:
+            selector: user.id
+        name:
+            selector: user.username
+        uploaded:
+            filters:
+                - name: parse_size
+            selector: user.uploaded
+        downloaded:
+            filters:
+                - name: parse_size
+            selector: user.downloaded
+        level_id:
+            selector: user.class
+        bonus:
+            selectors:
+                - user.bonuspoang
+                - bonuspoang
+        seeding:
+            selectors:
+                - peersSeeder
+                - user.myseeds
+        seeding_size:
+            filters:
+                - args: " GB"
+                  name: append
+                - name: parse_size
+            selector: user.currentGbSeed
+        join_date:
+            filters:
+                - name: parse_time
+            selector: added
+        level:
+            filters:
+                - args: 0=Medlem:::1=Fullvärdig medlem:::2=Trogen medlem:::3=Veteran:::4=Legend
+                  name: map
+            selectors:
+                - user.class
+                - class
+    pages:
+        - path: /api/v1/status
+          format: json
+          use_fields:
+            - id
+            - name
+            - uploaded
+            - downloaded
+            - bonus
+            - seeding
+            - seeding_size
+            - level
+            - level_id
+        - path: /api/v1/users/{id}
+          format: json
+          use_fields:
+            - join_date
+            - uploaded
+            - downloaded
+            - bonus
+            - seeding

@@ -115,7 +115,8 @@
           "seedingTime",
           "totalTraffic",
           "snatches",
-          "hnrUnsatisfied"
+          "hnrUnsatisfied",
+          "lastAccessAt"
         ]
       },
       {
@@ -203,6 +204,18 @@
         "filters": [
           {
             "name": "parseTTL"
+          }
+        ]
+      },
+      "lastAccessAt": {
+        "selector": "ul.nobullet > li:contains('Last Seen:') > span",
+        "attr": "title",
+        "filters": [
+          {
+            "name": "parseTime",
+            "args": [
+              "MMM d yyyy, HH:mm"
+            ]
           }
         ]
       },

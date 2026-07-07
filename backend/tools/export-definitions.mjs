@@ -16,8 +16,8 @@ import * as ts from "typescript";
 import { readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, basename, extname } from "node:path";
 
-const DEFS_DIR = "F:/PT-depiler-master/src/packages/site/definitions";
-const OUT_DIR = "D:/PTPatronus/backend/tools/dump";
+const DEFS_DIR = process.env.PT_DEPILER_DEFS_DIR || "D:/PT-depiler-master/src/packages/site/definitions";
+const OUT_DIR = process.env.PT_DEFS_DUMP_DIR || "D:/PTPatronus/backend/tools/dump";
 mkdirSync(OUT_DIR, { recursive: true });
 
 // nodeToValue 把 AST 节点转为可 JSON 序列化的值。

@@ -1,6 +1,4 @@
-# acgrip — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# acgrip — 搜索 selector 已按 PT-depiler/Jackett 结构迁移，并由 GenericHTML mock 覆盖；真实站点仍建议 live smoke。
 
 description: 与动漫花园类似的日漫资源站点
 id: acgrip

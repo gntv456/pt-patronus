@@ -1,0 +1,126 @@
+# hdf — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: gazelle。已由本项目运行时 schema adapter 支持。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.title（elementProcess）
+#   - search.category.filters（匿名函数）
+#   - search.subTitle.filters（匿名函数）
+#   - userInfo.seedingSize.filters（匿名函数）
+#   - userInfo.levelName.filters[split]
+#   - userInfo.process（多步抓取流程，需适配器实现）
+
+aka:
+    - HD-F
+    - HDF
+description: HD-Forever (HD-F) is a FRENCH Private Torrent Tracker for HD MOVIES
+id: hdf
+level_requirements:
+    - id: 1
+      name: Novice
+      privilege: Can download, vote on applications, use advanced search, and access the top 10.
+    - id: 2
+      interval: P1W
+      name: Member
+      privilege: Can upload, send requests, create bookmarks, edit wiki pages, download multiple torrents at once, and reset own password/authkey.
+      uploaded: 55GB
+    - id: 3
+      name: Elite
+      privilege: Can access torrents notification system, create collections and a personal collection, create polls in forums, view snatch torrent lists, add own torrents to recommendations, display tag aliases, change password, and add artists to any group.
+      ratio: 1
+      uploaded: 1TiB
+name: HD-Forever
+schema: gazelle
+search_entry: /torrents.php
+selectors:
+    fields:
+        category:
+            attr: class
+            selector: td.cats_col div[class*='cats_']
+        completed:
+            filters:
+                - name: parse_number
+            selector: td.number_column:nth-last-child(3)
+        detail:
+            attr: href
+            selectors:
+                - a[href*='torrentid=']
+                - a[href*='torrents.php?id=']
+        leechers:
+            filters:
+                - name: parse_number
+            selector: td.number_column:nth-last-child(1)
+        seeders:
+            filters:
+                - name: parse_number
+            selector: td.number_column:nth-last-child(2)
+        size:
+            filters:
+                - name: parse_size
+            selector: td.number_column.nobr
+        subtitle:
+            selector: .torrent_info
+        time:
+            attr: title
+            filters:
+                - args: '[dd-MM-yyyy, HH:mm:ss]'
+                  name: parse_time
+            selector: td.nobr span.time[title]
+        title:
+            selector: :self
+    rows:
+        selector: table#torrent_table tr.torrent, table#torrent_table tr.group_torrent
+tags:
+    - 法国
+timezone_offset: "+0100"
+urls:
+    - https://hdf.world/
+user_info:
+    fields:
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - '#bonus_points_number_link span'
+        bonus_per_hour:
+            filters:
+                - name: parse_number
+        downloaded:
+            attr: title
+            filters:
+                - name: parse_size
+        join_date:
+            attr: title
+            filters:
+                - args: '[dd-MM-yyyy, HH:mm:ss]'
+                  name: parse_time
+        level:
+            filters:
+                - name: trim
+        name:
+            selectors:
+                - div.user-name-class span[class^='class_']
+                - h2 a[href*='user.php?id='] span
+                - a.username + strong a[href*='user.php'] span
+        ratio:
+            attr: title
+            filters:
+                - name: parse_number
+        seeding:
+            filters:
+                - name: parse_number
+            selectors:
+                - response.seeding
+                - response.community.seeding
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - '#comm_seedsize span.tooltip'
+        uploaded:
+            attr: title
+            filters:
+                - name: parse_size
+        uploads:
+            filters:
+                - name: parse_number
+            selectors:
+                - '#comm_upload'

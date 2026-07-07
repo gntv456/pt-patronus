@@ -1,9 +1,5 @@
 # monikadesign — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters[split]
-#   - search.time（data）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 aka:
     - MDU
     - 莫妮卡
@@ -51,6 +47,9 @@ schema: unit3d
 selectors:
     fields:
         category:
+            filters:
+                - args: "\t:::0"
+                  name: split
             selectors:
                 - td.torrent-listings-format
         completed:
@@ -65,6 +64,7 @@ selectors:
             selectors:
                 - span.torrent-listings-subhead
         time:
+            attr: data-original-title
             filters:
                 - name: parse_time
             selectors:
@@ -76,18 +76,150 @@ urls:
     - https://monikadesign.uk/
 user_info:
     fields:
+        id:
+            attr: href
+            filters:
+                - args: receiver_id
+                  name: queryparam
+            selectors:
+                - a[href*="mail/create?receiver_id="]
+        name:
+            attr: href
+            filters:
+                - args: /users/([^/?#]+)
+                  name: regexp
+                - name: url_decode
+            selectors:
+                - a.top-nav__username--highresolution[href*="/users/"]
+                - a.top-nav__username[href*="/users/"]
+                - a.top-nav__dropdown--nontouch[href*="/users/"]
+                - a[href*="/users/"][href$="/settings"]
+        uploaded:
+            filters:
+                - args: (?i)(?:虚拟上传量|Uploaded|Upload)[^0-9]*([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - table.user-info tr:contains("虚拟上传量")
+                - table.user-info tr:contains("Uploaded")
+        true_uploaded:
+            attr: html
+            filters:
+                - args: (?i)(?:真实上传量|Real Uploaded|Actual Uploaded)[\s\S]{0,160}?([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - table.user-info tr:contains("真实上传量")
+                - table.user-info tr:contains("Real Uploaded")
+                - table.user-info tr:contains("Actual Uploaded")
+        downloaded:
+            filters:
+                - args: (?i)(?:虚拟下载量|Downloaded|Download)[^0-9]*([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - table.user-info tr:contains("虚拟下载量")
+                - table.user-info tr:contains("Downloaded")
+        true_downloaded:
+            attr: html
+            filters:
+                - args: (?i)(?:真实下载量|Real Downloaded|Actual Downloaded)[\s\S]{0,180}?([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - table.user-info tr:contains("真实下载量")
+                - table.user-info tr:contains("Real Downloaded")
+                - table.user-info tr:contains("Actual Downloaded")
+        ratio:
+            filters:
+                - args: (?i)(?:分享率|Ratio)[^0-9∞Inf]*([\d.]+|∞|Inf|Infinity)
+                  name: regexp
+            selectors:
+                - table.user-info tr:contains("分享率")
+                - table.user-info tr:contains("Ratio")
+        true_ratio:
+            attr: html
+            filters:
+                - args: (?i)(?:真实分享率|Real Ratio|Actual Ratio)[^0-9∞Inf]*([\d.]+|∞|Inf|Infinity)
+                  name: regexp
+            selectors:
+                - table.user-info tr:contains("真实分享率")
+                - table.user-info tr:contains("Real Ratio")
+                - table.user-info tr:contains("Actual Ratio")
         bonus:
             filters:
                 - name: parse_number
             selectors:
                 - li.ratio-bar__points a:has(i.fa-coins)
+                - table.user-info tr:contains("魔力")
         bonus_per_hour:
             filters:
+                - args: (?i)(?:每小时获得魔力数量|per\s*hour|hourly|/h|时魔)[^0-9]{0,40}([\d.]+)
+                  name: regexp
                 - name: parse_number
             selectors:
+                - dl.key-value:contains("每小时获得魔力数量")
+                - dl.key-value:contains("per hour")
                 - aside .panelV2 dd:nth-child(6)
+        level:
+            filters:
+                - args: (?i)(?:组别|User Class|Class|等级)[：:]?\s*([A-Za-z][A-Za-z0-9 ]*)
+                  name: regexp
+            selectors:
+                - .col-lg-10:contains("组别")
+                - .col-lg-10:contains("Class")
+        join_date:
+            filters:
+                - args: 注册日期\s+(.+?)\s+总发布
+                  name: regexp
+                - name: parse_time
+            selectors:
+                - .block:contains("注册日期")
+        last_access_at:
+            filters:
+                - args: 上次登录时间\s+(.+?)(?:\s+可以上传|\s+邀请\s+\d+|\s+重要资讯|$)
+                  name: regexp
+                - name: trim
+            selectors:
+                - table.user-info:contains("上次登录时间")
+        seeding:
+            filters:
+                - args: (?:总做种数量|Seeding)[^0-9]*(\d+)
+                  name: regexp
+                - name: parse_number
+            selectors:
+                - span.badge-user:contains("总做种数量")
+                - table.user-info tr:contains("总做种数量")
+        seeding_size:
+            filters:
+                - args: (?i)(?:做种体积|做种大小|Seeding Size|Seedsize)[^0-9]*([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - table.user-info tr:contains("做种体积")
+                - table.user-info tr:contains("Seeding Size")
         uploads:
             filters:
+                - args: (?:总发布|Uploads?)[^0-9]*(\d+)
+                  name: regexp
                 - name: parse_number
             selectors:
+                - span.badge-user:contains("总发布")
                 - div.container div.block div.text-center a[href*="/uploads"]
+        avatar:
+            attr: src
+            filters:
+                - name: clean_avatar
+            selectors:
+                - img.avatar
+                - img[src*='avatar']
+                - img.user-image
+                - .header img.img-circle
+        claim_count:
+            text: "0"
+        max_claim:
+            text: "0"
+    pages:
+        - path: /users/{name}/bonus/transactions/create
+          use_fields:
+            - bonus_per_hour

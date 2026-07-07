@@ -1,11 +1,5 @@
 # hdspace — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: xbtit。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.subTitle（elementProcess）
-#   - search.time（switchFilters）
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: xbtit。已接入通用/专用适配器，待真实站点校准。
 aka:
     - HD-S
 description: HD-Space (HDS) is a Private Torrent Tracker for HD MOVIES / TV
@@ -61,6 +55,8 @@ selectors:
             filters:
                 - args: category
                   name: queryparam
+                - args: 15=Movie / Blu-ray:::40=Movie / Remux:::18=Movie / 720p:::19=Movie / 1080p:::46=Movie / 2160p:::21=TV Show / 720p HDTV:::22=TV Show / 1080p HDTV:::45=TV Show / 2160p HDTV:::24=Documentary / 720p:::25=Documentary / 1080p:::47=Documentary / 2160p:::27=Animation / 720p:::28=Animation / 1080p:::48=Animation / 2160p:::30=Music / HQ Audio:::31=Music / Videos:::33=XXX / 720p:::34=XXX / 1080p:::49=XXX / 2160p:::36=Trailers:::37=Software:::38=Others
+                  name: map
             selector: td a[href^='index.php?page=torrents&category=']
         completed:
             selector: td:nth-child(9)
@@ -79,8 +75,11 @@ selectors:
                 - name: parse_size
             selector: td:nth-child(6)
         subtitle:
+            remove: a
             selector: td:nth-child(2) > span
         time:
+            filters:
+                - name: parse_time
             selectors:
                 - td:nth-child(5):contains('day')
                 - td:nth-child(5):not(:contains('day'))
@@ -93,3 +92,68 @@ tags:
 timezone_offset: "+0000"
 urls:
     - https://hd-space.org/
+user_info:
+    pages:
+        - path: /index.php
+          fields:
+            id:
+                selector: "a[href*='index.php?page=usercp']:first"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: uid
+            name:
+                selector: "td[align='center'][style='text-align:center;']:contains('Welcome back')>span"
+            uploaded:
+                selector: "td.green:contains('UP')"
+                filters:
+                    - name: parse_size
+            downloaded:
+                selector: "td.red:contains('DL')"
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "td.yellow:contains('Ratio')"
+                filters:
+                    - name: parse_number
+            level:
+                selector: "td[align='center'][style='text-align:center;']:contains('Rank')"
+                filters:
+                    - name: replace
+                      args: "Rank: :::"
+            bonus:
+                selector: "td.green:contains('Bonus')"
+                filters:
+                    - name: replace
+                      args: "Bonus: :::"
+                    - name: parse_number
+            seeding:
+                selector: "img[src='images/actseed.png'] ~ font[color='green']"
+                filters:
+                    - name: parse_number
+        - path: /index.php
+          params:
+            page: usercp
+            uid: "{id}"
+          fields:
+            join_date:
+                selectors:
+                    - "td.header:contains('Joined on') + td:not(:contains('day'))"
+                    - "td.header:contains('Joined on') + td:contains('day')"
+                filters:
+                    - name: parse_time
+            last_access_at:
+                selectors:
+                    - "td.header:contains('Last access') + td:not(:contains('day'))"
+                    - "td.header:contains('Last access') + td:contains('day')"
+                filters:
+                    - name: parse_time
+        - path: /index.php
+          params:
+            page: modules
+            module: seedbonus
+          fields:
+            bonus_per_hour:
+                selector: "td[valign='top'] > h3"
+                filters:
+                    - name: parse_number

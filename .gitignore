@@ -5,6 +5,8 @@ backend/data-test/
 backend/*.db*
 *.db
 dist/
+!backend/internal/web/dist/
+!backend/internal/web/dist/**
 data/
 node_modules/
 frontend/dist/

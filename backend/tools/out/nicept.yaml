@@ -24,69 +24,7 @@ categories:
 description: 老师
 id: nicept
 level_requirements:
-    - id: 1
-      name: User
-      privilege: 新用户的默认级别。只能在每周六中午12点至每周日晚上11点59分发布种子。
-    - downloaded: 50GB
-      id: 2
-      interval: P4W
-      name: Power User
-      privilege: 可以直接发布种子；可以查看NFO文件；可以查看用户列表；可以请求续种；可以发送邀请；可以查看排行榜；可以查看其他用户的种子历史（如用户隐私等级未设置为“强”）；可以删除自己上传的字幕。
-      ratio: 1.05
-      seeding_bonus: 40000
-    - downloaded: 120GB
-      id: 3
-      interval: P8W
-      name: Elite User
-      privilege: Elite User及以上用户封存账号后不会被删除。
-      ratio: 1.55
-      seeding_bonus: 80000
-    - downloaded: 300GB
-      id: 4
-      interval: P15W
-      name: Crazy User
-      privilege: 获得两个邀请名额；可以在做种/下载/发布时选择匿名模式。
-      ratio: 2.05
-      seeding_bonus: 150000
-    - downloaded: 500GB
-      id: 5
-      interval: P25W
-      name: Insane User
-      privilege: 可以查看普通日志。
-      ratio: 2.55
-      seeding_bonus: 250000
-    - downloaded: 750GB
-      id: 6
-      interval: P40W
-      is_kept: true
-      name: Veteran User
-      privilege: 获得三个邀请名额；可以查看其他用户的评论、帖子历史。Veteran User及以上用户账号永久保留。
-      ratio: 3.05
-      seeding_bonus: 400000
-    - downloaded: 1TB
-      id: 7
-      interval: P60W
-      is_kept: true
-      name: Extreme User
-      privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
-      ratio: 3.55
-      seeding_bonus: 600000
-    - downloaded: 1.5TB
-      id: 8
-      interval: P80W
-      is_kept: true
-      name: Ultimate User
-      privilege: 获得五个邀请名额。
-      ratio: 4.05
-      seeding_bonus: 800000
-    - downloaded: 3TB
-      id: 9
-      interval: P100W
-      is_kept: true
-      name: Nexus Master
-      privilege: 获得十个邀请名额。
-      ratio: 4.55
-      seeding_bonus: 1000000
+    - {}
 name: NicePT
 schema: nexusphp
 tags:

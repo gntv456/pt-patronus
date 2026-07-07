@@ -1,6 +1,4 @@
-# joyhd — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# joyhd - retained for display/history; PT-depiler marks this site as dead.
 
 categories:
     - id: "401"
@@ -29,6 +27,7 @@ categories:
       name: Other
 description: JoyHD成立於2013年，發佈藍光原碟，藍光DIY和原抓音樂。
 id: joyhd
+dead: true
 level_requirements:
     - id: 1
       name: User
@@ -37,9 +36,7 @@ level_requirements:
       id: 2
       interval: P4W
       name: 正兵/Power User
-      privilege: |-
-        map[__raw:BinaryExpression src:"可以直接发布种子；可以查看NFO文档；可以查看用户列表；" +
-                "可以查看其它用户的种子历史(如果用户隐私等级未设置为“强”)； 可以删除自己上传的字幕。"]
+      privilege: 可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以查看其它用户的种子历史(如果用户隐私等级未设置为“强”)； 可以删除自己上传的字幕。
       ratio: 1.2
     - downloaded: 100GB
       id: 3

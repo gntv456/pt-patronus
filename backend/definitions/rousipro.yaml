@@ -1,8 +1,6 @@
 # rousipro — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: rousi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
-#   - userInfo.process（多步抓取流程，需适配器实现）
+# schema: rousi。Rousi Pro API 由 backend/internal/site/schemas/rousi.go 适配。
+# 搜索/用户资料 API 已按 PT-depiler + MoviePilot 契约实现；真站 live_smoke 仍建议定期跑。
 
 aka:
     - Rousi

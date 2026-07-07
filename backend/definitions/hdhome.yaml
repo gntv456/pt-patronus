@@ -1,5 +1,160 @@
+# hdhome - user fields migrated from PT-manager/PT-depiler; live smoke still recommended.
 id: hdhome
-name: 家园
+name: HDHome
+aka:
+    - 家园
+description: HDHome 家园
 schema: nexusphp
+tags:
+    - 影视
+    - 综合
+timezone_offset: "+0800"
 urls:
-  - https://hdhome.org
+    - https://hdhome.org
+user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        seeding:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:当前活动|当前做种|Torrents seeding|Active)[^0-9]{0,60}(\d+)'
+            selectors:
+                - "#info_block"
+                - "font.color_active, span.color_active"
+        bonus:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:魔力值|魔力|Karma Points)[\s\S]{0,120}?([\d.,]+)'
+                - name: parse_number
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('魔力') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td > img"
+                - "td.rowhead:contains('等級') + td > img"
+                - "td.rowhead:contains('Class') + td > img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join'):contains('date') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('魔力') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+        seeding:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:当前活动|当前做种|Torrents seeding|Active)[^0-9]{0,60}(\d+)'
+            selectors:
+                - "td.rowhead:contains('当前做种') + td"
+                - "td.rowhead:contains('Current Seeding') + td"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  attr: html
+                  filters:
+                      - name: hdhome_bonus_per_hour
+                  selectors:
+                      - "td.text"
+                      - "td:has(h1)"

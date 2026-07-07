@@ -1,9 +1,5 @@
 # redacted — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.bonus（text）
-#   - userInfo.bonusPerHour（text）
-
+# schema: gazelle_jsonapi。API 用户字段 + community_stats 做种体积已翻译为可执行流程；真实站点仍建议 live smoke。
 aka:
     - RED
     - 红
@@ -63,10 +59,20 @@ urls:
     - https://redacted.sh/
 user_info:
     fields:
-        bonus: {}
-        bonus_per_hour: {}
+        bonus:
+            text: N/A
+        bonus_per_hour:
+            text: N/A
         seeding_size:
             filters:
                 - name: parse_size
             selectors:
                 - response.seedingsize
+    pages:
+        - path: /ajax.php
+          params:
+              action: community_stats
+              userid: "{id}"
+          format: json
+          use_fields:
+              - seeding_size

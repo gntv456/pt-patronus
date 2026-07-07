@@ -1,12 +1,5 @@
 # animetosho — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.seeders（text）
-#   - search.seeders.filters（匿名函数）
-#   - search.leechers（text）
-#   - search.leechers.filters（匿名函数）
-#   - search.time.filters（匿名函数）
-#   - search.category（text）
 
 aka:
     - AT
@@ -18,7 +11,8 @@ search_entry: /search
 search_param: q
 selectors:
     fields:
-        category: {}
+        category:
+            text: Anime
         detail:
             attr: href
             selector: div.link a
@@ -29,17 +23,22 @@ selectors:
                 - div.links > a[href^="magnet:?xt="]
         leechers:
             attr: title
+            filters:
+                - args: "Leechers: (\\d+)"
+                  name: regexp
             selector: span[title*="Leechers"]
         seeders:
             attr: title
+            filters:
+                - args: "Seeders: (\\d+)"
+                  name: regexp
             selector: span[title*="Seeders"]
         size:
             selector: div.size
         time:
             attr: title
             filters:
-                - args: '[dd/MM/yyyy HH:mm]'
-                  name: parse_time
+                - name: parse_time
             selector: div.date
         title:
             selector: div.link a

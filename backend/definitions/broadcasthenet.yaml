@@ -1,12 +1,5 @@
 # broadcasthenet — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time.filters（匿名函数）
-#   - userInfo.ratio（__ref）
-#   - userInfo.levelName.filters（匿名函数）
-#   - userInfo.bonusPerHour.filters[divide]
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: gazelle。已接入通用/专用适配器，待真实站点校准。
 aka:
     - BTN
 description: BroadcastTheNet is a private tracker for TV shows.
@@ -64,6 +57,8 @@ selectors:
             selector: a[href*='torrents.php?id='][href*='torrentid=']
         time:
             filters:
+                - args: "Added:\\s*(.+)"
+                  name: regexp
                 - name: parse_time
             selector: div.nobr:contains('Added:')
         title:
@@ -76,6 +71,14 @@ urls:
     - https://broadcasthe.net/
 user_info:
     fields:
+        id:
+            attr: href
+            filters:
+                - args: id
+                  name: queryparam
+            selector: a.username[href*="user.php"]
+        name:
+            selector: a.username[href*="user.php"]
         bonus:
             filters:
                 - name: parse_number
@@ -83,6 +86,8 @@ user_info:
         bonus_per_hour:
             filters:
                 - name: parse_number
+                - args: "24"
+                  name: divide
             selector: ul.nobullet > li:contains('Per Day:')
         downloaded:
             filters:
@@ -92,9 +97,18 @@ user_info:
             filters:
                 - name: parse_time
             selector: ul.nobullet > li:contains('Joined:') > span
+        last_access_at:
+            attr: title
+            filters:
+                - name: parse_time
+            selector: ul.nobullet > li:contains('Last Seen:') > span
         level:
+            filters:
+                - args: "User Class:\\s*(.+)"
+                  name: regexp
             selector: ul.nobullet > li:contains('User Class:')
-        ratio: {}
+        ratio:
+            text: N/A
         seeding:
             filters:
                 - name: parse_number
@@ -103,6 +117,23 @@ user_info:
             filters:
                 - name: parse_size
             selector: ul.nobullet > li:contains('Seeding Size:')
+        seeding_time:
+            filters:
+                - args: 'Total Time Seeded:\s*([\d,]+)\s*Days'
+                  name: regexp
+                - args: "86400"
+                  name: multiply
+            selector: ul.nobullet > li:contains('Total Time Seeded:')
+        snatches:
+            attr: text_all
+            filters:
+                - args: 'Snatched:\s*(\d[\d,]*)'
+                  name: sum_matches
+            selector: "ul.nobullet > li:contains('Snatched:')"
+        total_traffic:
+            filters:
+                - name: parse_size
+            selector: ul.nobullet > li:contains('Total Traffic:')
         uploaded:
             filters:
                 - name: parse_size
@@ -111,3 +142,25 @@ user_info:
             filters:
                 - name: parse_number
             selector: ul.nobullet > li:contains('Uploaded:')
+    pages:
+        - path: /index.php
+          use_fields:
+            - id
+            - name
+        - path: /user.php
+          params:
+            id: "{id}"
+          use_fields:
+            - uploaded
+            - uploads
+            - downloaded
+            - level
+            - bonus
+            - bonus_per_hour
+            - join_date
+            - last_access_at
+            - seeding
+            - seeding_size
+            - seeding_time
+            - snatches
+            - total_traffic

@@ -1,12 +1,5 @@
 # huno — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters（匿名函数）
-#   - search.category.filters（匿名函数）
-#   - userInfo.id.filters（匿名函数）
-#   - userInfo.uploads.filters[split]
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 description: HAWKE-UNO IS A HAWKE-ONE SERVICE POWERED BY UNIT3D.
 id: huno
 legacy_urls:
@@ -37,7 +30,10 @@ search_param: name
 selectors:
     fields:
         category:
-            selector: :self
+            text: All
+            selectors:
+                - category.name
+                - attributes.category.name
         completed:
             selectors:
                 - times_completed
@@ -45,7 +41,12 @@ selectors:
                 - completed
                 - attributes.completed
         detail:
-            selector: :self
+            filters:
+                - args: /torrents/
+                  name: prepend
+            selectors:
+                - id
+                - attributes.id
         download:
             selectors:
                 - download_link
@@ -96,6 +97,8 @@ user_info:
             selectors:
                 - table.deep-space-similar-table > tfoot td.tw-font-bold[style*=color]
         downloaded:
+            filters:
+                - name: parse_size
             selector: data.downloaded
         id:
             selectors:
@@ -118,6 +121,8 @@ user_info:
             selectors:
                 - div.ds-user-stats span[title*='Seeding Size']
         uploaded:
+            filters:
+                - name: parse_size
             selector: data.uploaded
         uploads:
             filters:

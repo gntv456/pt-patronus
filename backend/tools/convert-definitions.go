@@ -27,7 +27,7 @@ const (
 
 func main() {
 	if err := os.MkdirAll(OUT_DIR, 0o755); err != nil {
-	fatal(err)
+		fatal(err)
 	}
 	entries, err := os.ReadDir(DUMP_DIR)
 	if err != nil {
@@ -153,6 +153,8 @@ func buildHeader(id string, doc map[string]any, todos []string) string {
 	fmt.Fprintf(&b, "# schema: %s。", schema)
 	if schema == "nexusphp" || schema == "" {
 		b.WriteString("selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。\n")
+	} else if supportedSchema(schema) {
+		b.WriteString("已由本项目运行时 schema adapter 支持。\n")
 	} else {
 		b.WriteString("⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。\n")
 	}
@@ -171,6 +173,18 @@ func buildHeader(id string, doc map[string]any, todos []string) string {
 	}
 	b.WriteString("\n")
 	return b.String()
+}
+
+func supportedSchema(schema string) bool {
+	switch schema {
+	case "aidoruonline", "avistaz", "cgbtsource", "discuz", "f3nix", "filelist",
+		"fsm", "gazelle", "gazelle_jsonapi", "luminance", "meantorrent", "mteam",
+		"rartracker", "rousi", "tbdev", "tbsource", "tcg", "tnode", "unit3d",
+		"xbtit", "yemapt":
+		return true
+	default:
+		return false
+	}
 }
 
 // ---- 字段翻译 ----
@@ -219,10 +233,16 @@ func fieldKeyMap() map[string]string {
 // translateUserInfo 翻译 userInfo.selectors → 本项目 user_info{path,fields,detail_path,detail_fields}。
 func translateUserInfo(doc map[string]any, todos *[]string) map[string]any {
 	ui, _ := doc["userInfo"].(map[string]any)
+	out := map[string]any{}
+	if api := str(doc["userTorrentListApi"]); api != "" {
+		out["user_torrent_list_api"] = api
+	}
 	if ui == nil {
+		if len(out) > 0 {
+			return out
+		}
 		return nil
 	}
-	out := map[string]any{}
 	if sels, ok := ui["selectors"].(map[string]any); ok {
 		fields := map[string]any{}
 		for ptKey, ev := range userInfoKeyMap() {
@@ -354,16 +374,17 @@ func translateFilters(v any, path string, todos *[]string) []map[string]any {
 
 func filterNameMap() map[string]string {
 	return map[string]string{
-		"querystring": "queryparam",
-		"parseNumber": "parse_number",
-		"parseSize":   "parse_size",
-		"parseTime":   "parse_time",
-		"parseTTL":    "parse_time",
-		"parseDuration": "parse_time",
+		"querystring":    "queryparam",
+		"parseNumber":    "parse_number",
+		"parseSize":      "parse_size",
+		"parseTime":      "parse_time",
+		"parseTTL":       "parse_time",
+		"parseDuration":  "parse_time",
 		"parseFuzzyTime": "parse_time",
-		"toLower": "lower", "toUpper": "upper",
+		"divide":         "divide",
+		"toLower":        "lower", "toUpper": "upper",
 		"replace": "replace", "trim": "trim",
-		"regexp":  "regexp", "regex": "regexp",
+		"regexp": "regexp", "regex": "regexp",
 	}
 }
 

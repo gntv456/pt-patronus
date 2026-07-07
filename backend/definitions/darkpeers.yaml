@@ -1,0 +1,83 @@
+# darkpeers — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。已由本项目运行时 schema adapter 支持。
+aka:
+    - DP
+id: darkpeers
+level_requirements:
+    - name: Leech
+      privilege: 0下载槽
+    - id: 1
+      name: User
+      privilege: 10下载槽 上传种子
+      ratio: 0.8
+    - id: 2
+      interval: P1M
+      name: PowerUser
+      privilege: 15下载槽 上传种子 发送邀请
+      ratio: 0.8
+      uploaded: 1TiB
+    - id: 3
+      interval: P1M
+      name: Seeder
+      privilege: 15下载槽 上传种子 发送邀请
+      ratio: 0.8
+    - id: 4
+      interval: P2M
+      name: SuperUser
+      privilege: 20下载槽 上传种子 发送邀请
+      ratio: 0.8
+      uploaded: 5TiB
+      uploads: 5
+    - id: 5
+      interval: P2M
+      name: Collector
+      privilege: 20下载槽 上传种子 发送邀请
+      ratio: 0.8
+    - id: 6
+      interval: P4M
+      name: ExtremeUser
+      privilege: 40下载槽 上传种子 发送邀请 免审核发布 访问邀请区
+      ratio: 0.8
+      uploaded: 20TiB
+      uploads: 15
+    - id: 7
+      interval: P4M
+      name: Hoarder
+      privilege: 40下载槽 上传种子 发送邀请 免审核发布 访问邀请区
+      ratio: 0.8
+    - id: 8
+      interval: P8M
+      name: InsaneUser
+      privilege: 50下载槽 上传种子 发送邀请 免疫自动 HnR 警告 免审核发布 访问邀请区
+      ratio: 0.8
+      uploaded: 60TiB
+      uploads: 50
+    - id: 9
+      interval: P1Y
+      name: Veteran
+      privilege: 无限下载槽 上传种子 发送邀请 全站免费 免疫自动 HnR 警告 免审核发布 访问邀请区
+      ratio: 1
+      uploaded: 120TiB
+      uploads: 100
+    - id: 10
+      interval: P2Y
+      name: Legend
+      privilege: 无限下载槽 上传种子 发送邀请 全站免费 2x上传 免疫自动 HnR 警告 免审核发布 访问邀请区
+      ratio: 1.2
+      uploaded: 200TiB
+      uploads: 300
+name: darkpeers
+schema: unit3d
+selectors:
+    fields:
+        category:
+            data: categoryId
+            filters:
+                - args: 1=Movies:::2=TV:::3=Music:::4=Games:::5=Software:::6=XXX:::7=Assorted:::8=Books:::9=Anime
+                  name: map
+            selector: :self
+tags:
+    - 综合
+timezone_offset: "+0000"
+urls:
+    - https://darkpeers.org/

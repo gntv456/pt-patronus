@@ -1,6 +1,5 @@
 # alpharatio — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: gazelle_jsonapi。标准 Gazelle JSON API 用户字段已由通用适配器和定义回归覆盖；真实站点仍建议 live smoke。
 
 aka:
     - AR

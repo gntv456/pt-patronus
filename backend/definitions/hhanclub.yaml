@@ -1,10 +1,5 @@
 # hhanclub — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
-#   - search.link（__ref）
-#   - userInfo.joinTime.filters（匿名函数）
-#   - userInfo.levelName.filters（匿名函数）
 
 aka:
     - HHanClub
@@ -95,10 +90,18 @@ selectors:
         completed:
             selector: .torrent-info-text-finished
         detail:
+            attr: href
             filters:
                 - args: id
                   name: queryparam
-        download: {}
+                - args: /details.php?id=
+                  name: prepend
+            selectors:
+                - a[href*="download.php?id="]
+        download:
+            attr: href
+            selectors:
+                - a[href*="download.php?id="]
         leechers:
             selector: .torrent-info-text-leechers
         seeders:
@@ -124,30 +127,100 @@ timezone_offset: "+0800"
 urls:
     - https://hhanclub.net/
 user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
     fields:
-        bonus:
+        id:
+            attr: href
             filters:
-                - name: parse_number
+                - name: queryparam
+                  args: id
             selectors:
-                - span:contains('憨豆') + div
-        bonus_per_hour:
-            filters:
-                - name: parse_number
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
             selectors:
-                - .grid .row-span-4
-        downloaded:
-            filters:
-                - name: parse_size
-            selectors:
-                - span:contains('下载量') + span
-        join_date:
-            selectors:
-                - span:contains('加入日期') + span
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
         level:
             attr: class
-            selector: a[href*='userdetails.php'][class*='_Name']
+            filters:
+                - name: regexp
+                  args: (.*)_Name
+            selectors:
+                - "a[href*='userdetails.php'][class*='_Name']"
+    detail_fields:
         uploaded:
             filters:
                 - name: parse_size
             selectors:
-                - span:contains('上传量') + span
+                - "span:contains('上传量') + span"
+                - "span:contains('上傳量') + span"
+                - "span:contains('Uploaded') + span"
+        downloaded:
+            filters:
+                - name: parse_size
+            selectors:
+                - "span:contains('下载量') + span"
+                - "span:contains('下載量') + span"
+                - "span:contains('Downloaded') + span"
+        ratio:
+            filters:
+                - name: parse_number
+            selectors:
+                - "span:contains('分享率') + span"
+                - "span:contains('Ratio') + span"
+        level:
+            attr: class
+            filters:
+                - name: regexp
+                  args: (.*)_Name
+            selectors:
+                - "a[href*='userdetails.php'][class*='_Name']"
+        join_date:
+            filters:
+                - name: regexp
+                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
+            selectors:
+                - "span:contains('加入日期') + span"
+                - "span:contains('Join') + span"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "span:contains('憨豆') + div"
+                - "span:contains('憨豆') + span"
+        seeding:
+            filters:
+                - name: parse_number
+            selectors:
+                - "a[href*='userdetails.php'][href*='action=2'] div"
+                - "span:contains('当前做种') + span"
+                - "span:contains('當前做種') + span"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: parse_number
+                  selectors:
+                      - ".grid .row-span-4"
+                      - "div:contains('你当前每小时能获取')"
+                      - "div:contains('You are currently getting')"
+              seeding_bonus_per_hour:
+                  filters:
+                      - name: parse_number
+                  selectors:
+                      - "div:contains('你当前每小时能获取'):last"
+                      - "div:contains('You are currently getting'):last"
+                      - "div:contains('你當前每小時能獲取'):last"
+        - path: rescuesettleinfo.php
+          fields:
+              rescue_seeding_bonus_per_hour:
+                  attr: html
+                  filters:
+                      - name: hhanclub_rescue_bonus_per_hour
+                  selectors:
+                      - ":self"

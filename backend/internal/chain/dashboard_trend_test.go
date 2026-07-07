@@ -7,6 +7,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/site"
 	"gorm.io/gorm"
 )
 
@@ -38,7 +39,8 @@ func TestDashboardTrend(t *testing.T) {
 	// 若直接 SUM 原始行，site1 当日会算成 300（错），正确聚合应取 MAX=200。
 	day := func(offset int) time.Time {
 		// 固定到当日 12:00，避免跨日边界与「今日」重叠。
-		return time.Now().AddDate(0, 0, offset)
+		now := time.Now().AddDate(0, 0, offset)
+		return time.Date(now.Year(), now.Month(), now.Day(), 12, 0, 0, 0, now.Location())
 	}
 	// 注：snap_at 精度到秒即可，按 (site,day) 组合插入。
 	rows := []models.SiteStat{
@@ -97,5 +99,41 @@ func TestDashboardTrend(t *testing.T) {
 	wantRatio2 := float64(700) / float64(160)
 	if p2.Ratio < wantRatio2-1e-6 || p2.Ratio > wantRatio2+1e-6 {
 		t.Errorf("day-1 ratio: want %v, got %v", wantRatio2, p2.Ratio)
+	}
+}
+
+func TestDashboardRecordStatIncludesRescueSeedingBonusPerHour(t *testing.T) {
+	db := newTrendDB(t)
+	chain := &DashboardChain{db: db}
+
+	chain.recordStat(&models.Site{ID: 7, Name: "憨憨"}, &site.UserInfo{
+		ID:                        "802",
+		Name:                      "hhan-user",
+		RescueSeedingBonusPerHour: 10,
+		SeedingBonusPerHour:       7.5,
+		UniqueGroups:              6,
+		PerfectFLAC:               5,
+		Invited:                   4,
+	})
+
+	var stat models.SiteStat
+	if err := db.First(&stat, "site_id = ?", 7).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stat.RescueSeedingBonusPerHour != 10 {
+		t.Fatalf("rescue_seeding_bonus_per_hour = %g, want 10", stat.RescueSeedingBonusPerHour)
+	}
+	if stat.UniqueGroups != 6 || stat.PerfectFLAC != 5 || stat.Invited != 4 {
+		t.Fatalf("community extras = unique_groups %d perfect_flac %d invited %d", stat.UniqueGroups, stat.PerfectFLAC, stat.Invited)
+	}
+	history, err := chain.History(context.Background(), 7, 30)
+	if err != nil {
+		t.Fatalf("History: %v", err)
+	}
+	if len(history) != 1 || history[0].RescueSeedingBonusPerHour != 10 {
+		t.Fatalf("history rescue_seeding_bonus_per_hour = %+v, want one value 10", history)
+	}
+	if history[0].UniqueGroups != 6 || history[0].PerfectFLAC != 5 || history[0].Invited != 4 {
+		t.Fatalf("history community extras = %+v, want 6/5/4", history[0])
 	}
 }

@@ -1,8 +1,8 @@
 # redacted — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# schema: gazelle_jsonapi。已由本项目运行时 schema adapter 支持。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.bonus（text）
 #   - userInfo.bonusPerHour（text）
+#   - userInfo.bonus（text）
 
 aka:
     - RED

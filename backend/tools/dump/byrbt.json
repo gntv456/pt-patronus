@@ -144,13 +144,14 @@
       },
       "status": {
         "selector": [
-          "img[src=\"pic/finished.png\"]"
+          "img[src=\"pic/finished.png\"]",
+          "img[src=\"pic/seeding.png\"]"
         ],
         "attr": "src",
         "filters": [
           {
             "__fn": true,
-            "src": "(query: string) => {\n            if (query === \"pic/finished.png\") {\n              return ETorrentStatus.completed;\n            }\n            return ETorrentStatus.unknown;\n          }"
+            "src": "(query: string) => {\n            if (query === \"pic/finished.png\") {\n              return ETorrentStatus.completed;\n            } else if (query === \"pic/seeding.png\") {\n              return ETorrentStatus.seeding;\n            }\n            return ETorrentStatus.unknown;\n          }"
           }
         ]
       }

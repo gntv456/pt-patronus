@@ -210,7 +210,7 @@
           "SchemaMetadata.userInfo!.selectors!.id"
         ],
         "selector": {
-          "__call": "userInfoTrans.id.map((x) => `span[title='${x}'] + span`)"
+          "__call": "profileCardValue(userInfoTrans.id)"
         }
       },
       "seedingSize": {
@@ -218,7 +218,7 @@
           "SchemaMetadata.userInfo!.selectors!.seedingSize"
         ],
         "selector": {
-          "__call": "userInfoTrans.seedingSize.map((x) => `span[title='${x}'] + span`)"
+          "__call": "profileCardValue(userInfoTrans.seedingSize)"
         }
       },
       "joinTime": {
@@ -226,7 +226,7 @@
           "SchemaMetadata.userInfo!.selectors!.joinTime"
         ],
         "selector": {
-          "__call": "userInfoTrans.joinTime.map((x) => `span[title='${x}'] + span`)"
+          "__call": "userInfoTrans.joinTime.map((x) => `span[title='${x}'] span`)"
         }
       },
       "averageSeedingTime": {
@@ -234,12 +234,12 @@
           "SchemaMetadata.userInfo!.selectors!.averageSeedingTime"
         ],
         "selector": {
-          "__call": "userInfoTrans.averageSeedingTime.map((x) => `span[title='${x}'] + span`)"
+          "__call": "profileCardValue(userInfoTrans.averageSeedingTime)"
         }
       },
       "lastAccessAt": {
         "selector": {
-          "__call": "userInfoTrans.lastAccessAt.map((x) => `span[title='${x}'] + span`)"
+          "__call": "profileCardValue(userInfoTrans.lastAccessAt)"
         },
         "filters": [
           {
@@ -262,7 +262,12 @@
         ]
       },
       "uploads": {
-        "selector": ".user-profile-card__meta-item  a[href*='/uploads']"
+        "selector": "a[href*='/uploads']:has(i.fa-file-arrow-up)",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
       }
     }
   },

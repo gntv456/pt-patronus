@@ -40,7 +40,7 @@ level_requirements:
       name: Power User
       name_aka:
         - 快门手
-      privilege: Power User及以上用户可以发送邀请，可以发布摄影作品到候选区
+      privilege: Power User及以上用户可以发送邀请，可以发布摄影作品到候选区。
       ratio: 1.2
     - downloaded: 20GB
       id: 2
@@ -48,7 +48,7 @@ level_requirements:
       name: Elite User
       name_aka:
         - 暗房师
-      privilege: Elite User及以上用户可以查看工具区。。
+      privilege: Elite User及以上用户可以查看工具区。
       ratio: 1.6
     - downloaded: 50GB
       id: 3
@@ -56,7 +56,7 @@ level_requirements:
       name: Crazy User
       name_aka:
         - 追光者
-      privilege: Crazy User以上用户可以直接发布摄影作品，无需候选
+      privilege: Crazy User以上用户可以直接发布摄影作品，无需候选。
       ratio: 2.05
     - downloaded: 100GB
       id: 4

@@ -1,7 +1,5 @@
 # btetree — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category（text）
 
 description: BT.etree is a Public Tracker dedicated to Bootleg FLAC MUSIC
 id: btetree
@@ -9,7 +7,8 @@ name: BT.etree
 search_param: searchzzzz
 selectors:
     fields:
-        category: {}
+        category:
+            text: Music
         completed:
             filters:
                 - name: parse_number
@@ -29,7 +28,10 @@ selectors:
                 - name: parse_size
             selector: td:nth-child(6)
         time:
-            selector: td:nth-child(5)
+            attr: html
+            filters:
+                - name: btetree_time
+            selector: :self
         title:
             selector: td:nth-child(2) a.details_link b
     rows:

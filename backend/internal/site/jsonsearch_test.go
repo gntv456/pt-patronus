@@ -44,8 +44,44 @@ func TestParseJSONSearchHDBits(t *testing.T) {
 		t.Errorf("解析错误: %+v", ts[0])
 	}
 	// 大数字不被科学计数法破坏（UseNumber）：size 1000 → "1000"
-	if ts[0].Size != "1000" {
-		t.Errorf("size=%q 应为 1000（无科学计数法）", ts[0].Size)
+	if ts[0].Size != "1000 B" {
+		t.Errorf("size=%q 应为 1000 B", ts[0].Size)
+	}
+}
+
+func TestParseJSONSearchFormatsNumericSizeBytes(t *testing.T) {
+	body := []byte(`{"data":[{"title":"T","size":1024}]}`)
+	def := &SiteMetadata{Selectors: SiteSelectors{
+		Rows: ElementQuery{Selector: "data"},
+		Fields: map[string]ElementQuery{
+			"title": {Selector: "title"},
+			"size":  {Selector: "size"},
+		},
+	}}
+	ts := ParseJSONSearch(body, def, "https://json.test")
+	if len(ts) != 1 {
+		t.Fatalf("len=%d", len(ts))
+	}
+	if ts[0].Size != "1.00 KiB" {
+		t.Fatalf("size = %q, want 1.00 KiB", ts[0].Size)
+	}
+}
+
+func TestParseJSONSearchHumanReadableSizePreserved(t *testing.T) {
+	body := []byte(`{"data":[{"title":"T","size":"1.50 GiB"}]}`)
+	def := &SiteMetadata{Selectors: SiteSelectors{
+		Rows: ElementQuery{Selector: "data"},
+		Fields: map[string]ElementQuery{
+			"title": {Selector: "title"},
+			"size":  {Selector: "size"},
+		},
+	}}
+	ts := ParseJSONSearch(body, def, "https://json.test")
+	if len(ts) != 1 {
+		t.Fatalf("len=%d", len(ts))
+	}
+	if ts[0].Size != "1.50 GiB" {
+		t.Fatalf("size = %q, want 1.50 GiB", ts[0].Size)
 	}
 }
 
@@ -65,13 +101,43 @@ func TestParseJSONSearchNested(t *testing.T) {
 	}
 }
 
+func TestParseJSONSearchRowsSelectorsFallback(t *testing.T) {
+	body := []byte(`{"data":{"data":[{"id":1,"title":"Fallback","seeding":4}]}}`)
+	def := &SiteMetadata{Selectors: SiteSelectors{
+		Rows: ElementQuery{Selectors: []string{"missing.rows", "data.data"}},
+		Fields: map[string]ElementQuery{
+			"title":   {Selector: "title"},
+			"seeders": {Selector: "seeding"},
+		},
+	}}
+	ts := ParseJSONSearch(body, def, "https://huno.test")
+	if len(ts) != 1 || ts[0].Title != "Fallback" || ts[0].Seeders != 4 {
+		t.Fatalf("rows selectors fallback failed: %+v", ts)
+	}
+}
+
+func TestParseJSONSearchRootArrayRowsSelf(t *testing.T) {
+	body := []byte(`[{"id":123,"name":"Root Array","size":2147483648,"seeders":8,"leechers":1,"timesCompleted":22,"category":"Movie"}]`)
+	def := &SiteMetadata{Selectors: DefaultRartrackerSelectors()}
+	ts := ParseJSONSearch(body, def, "https://superbits.example")
+	if len(ts) != 1 {
+		t.Fatalf("len=%d", len(ts))
+	}
+	if ts[0].Title != "Root Array" || ts[0].Seeders != 8 || ts[0].Completed != 22 {
+		t.Fatalf("torrent = %+v", ts[0])
+	}
+	if ts[0].DetailURL != "https://superbits.example/torrent/123" {
+		t.Fatalf("detail = %q", ts[0].DetailURL)
+	}
+}
+
 func TestParseJSONSearchSelectorsFallback(t *testing.T) {
 	// 复数 selectors 回退（beyondhd 形：download 用 selectors 列表 + replace）
 	body := []byte(`{"data":[{"id":1,"name":"T","download_url":"/dl/1.torrent"}]}`)
 	def := &SiteMetadata{Selectors: SiteSelectors{
 		Rows: ElementQuery{Selector: "data"},
 		Fields: map[string]ElementQuery{
-			"title": {Selector: "name"},
+			"title":    {Selector: "name"},
 			"download": {Selectors: []string{"download_link", "download_url"}},
 		},
 	}}
@@ -98,6 +164,14 @@ func TestBuildJSONSearchURLQueryParam(t *testing.T) {
 	}
 }
 
+func TestBuildJSONSearchURLPreservesEntryQuery(t *testing.T) {
+	def := &SiteMetadata{SearchEntry: "/api/v1/torrents?limit=100", SearchParam: "searchText"}
+	u := BuildJSONSearchURL("https://superbits.example", def, "kw", 2)
+	if u != "https://superbits.example/api/v1/torrents?limit=100&page=2&searchText=kw" {
+		t.Errorf("query-param with existing query wrong: got %q", u)
+	}
+}
+
 func TestLooksLikeJSON(t *testing.T) {
 	cases := map[string]bool{
 		`  {"a":1}`: true,
@@ -109,5 +183,62 @@ func TestLooksLikeJSON(t *testing.T) {
 		if got := LooksLikeJSON([]byte(body)); got != want {
 			t.Errorf("LooksLikeJSON(%q)=%v want %v", body, got, want)
 		}
+	}
+}
+
+func TestParseJSONUserInfoFieldsExtendedTraffic(t *testing.T) {
+	body := []byte(`{"data":{"trueUploaded":2199023255552,"trueDownloaded":549755813888,"trueRatio":4,"seedingPoints":12345.5,"seedingPointsPerHour":77.25,"claims":"认领 4/9","lastUpdateTime":1783404000000}}`)
+	fields := map[string]ElementQuery{
+		"true_uploaded":          {Selector: "data.trueUploaded"},
+		"true_downloaded":        {Selector: "data.trueDownloaded"},
+		"true_ratio":             {Selector: "data.trueRatio"},
+		"seeding_bonus":          {Selector: "data.seedingPoints"},
+		"seeding_bonus_per_hour": {Selector: "data.seedingPointsPerHour"},
+		"claim_count":            {Selector: "data.claims", Filters: []Filter{{Name: "claim_count"}}},
+		"max_claim":              {Selector: "data.claims", Filters: []Filter{{Name: "claim_max"}}},
+		"last_access_at":         {Selector: "data.lastUpdateTime", Filters: []Filter{{Name: "unix_millis"}}},
+	}
+
+	u := &UserInfo{}
+	ParseJSONUserInfoFields(body, fields, u)
+
+	if want := int64(2 * (1 << 40)); u.TrueUploaded != want {
+		t.Fatalf("true_uploaded = %d, want %d", u.TrueUploaded, want)
+	}
+	if want := int64(512 * (1 << 30)); u.TrueDownloaded != want {
+		t.Fatalf("true_downloaded = %d, want %d", u.TrueDownloaded, want)
+	}
+	if u.TrueRatio != 4 || u.SeedingBonus != 12345.5 || u.SeedingBonusPerHour != 77.25 {
+		t.Fatalf("extended stats = ratio %g seed_bonus %g seed_bonus_hour %g", u.TrueRatio, u.SeedingBonus, u.SeedingBonusPerHour)
+	}
+	if u.ClaimCount != 4 || u.MaxClaim != 9 {
+		t.Fatalf("claims = %d/%d, want 4/9", u.ClaimCount, u.MaxClaim)
+	}
+	if u.LastAccessAt != "2026-07-07" {
+		t.Fatalf("last_access_at = %q, want 2026-07-07", u.LastAccessAt)
+	}
+}
+
+func TestParseJSONUserInfoFieldsProfileFields(t *testing.T) {
+	body := []byte(`{"data":{"levelId":7,"numericUserId":42,"avatar":"https://img.example/avatar.png","personalAvatar":"https://img.example/personal.png","donor":true}}`)
+	fields := map[string]ElementQuery{
+		"level_id":        {Selector: "data.levelId"},
+		"numeric_user_id": {Selector: "data.numericUserId"},
+		"avatar":          {Selector: "data.avatar", Filters: []Filter{{Name: "clean_avatar"}}},
+		"personal_avatar": {Selector: "data.personalAvatar", Filters: []Filter{{Name: "clean_avatar"}}},
+		"is_donor":        {Selector: "data.donor", Filters: []Filter{{Name: "bool"}}},
+	}
+
+	u := &UserInfo{}
+	ParseJSONUserInfoFields(body, fields, u)
+
+	if u.LevelID != 7 || u.NumericUserID != 42 {
+		t.Fatalf("ids = level_id %d numeric_user_id %d", u.LevelID, u.NumericUserID)
+	}
+	if u.Avatar != "https://img.example/avatar.png" || u.PersonalAvatar != "https://img.example/personal.png" {
+		t.Fatalf("avatars = %q / %q", u.Avatar, u.PersonalAvatar)
+	}
+	if !u.IsDonor {
+		t.Fatal("is_donor should be true")
 	}
 }

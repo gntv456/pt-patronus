@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -55,8 +57,25 @@ func jsonStringify(v any) string {
 	case float64:
 		return strconv.FormatFloat(x, 'f', -1, 64)
 	default:
+		if b, err := json.Marshal(x); err == nil {
+			return string(b)
+		}
 		return fmt.Sprint(x)
 	}
+}
+
+var jsonSearchSizeUnitRe = regexp.MustCompile(`(?i)(?:^|[\d\s.,])(?:bytes?|b|[kmgtpe]i?b?)\b`)
+
+func normalizeJSONSearchSize(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" || jsonSearchSizeUnitRe.MatchString(s) {
+		return s
+	}
+	n, err := strconv.ParseFloat(strings.ReplaceAll(s, ",", ""), 64)
+	if err != nil || n <= 0 || math.IsNaN(n) || math.IsInf(n, 0) {
+		return s
+	}
+	return FormatBytes(int64(n))
 }
 
 // LooksLikeJSON 报告 body 首个非空白字节是否为 { 或 [（GenericHTML 据此嗅探 HTML/JSON）。
@@ -100,8 +119,23 @@ func BuildJSONSearchURL(baseURL string, def *SiteMetadata, keyword string, page 
 			entry = strings.ReplaceAll(entry, "{keyword}", url.PathEscape(kw))
 		}
 	}
-	u := strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(entry, "/")
-	q := url.Values{}
+	u := searchURLBase(baseURL, entry)
+	parsed, err := url.Parse(u)
+	if err != nil {
+		q := url.Values{}
+		if !placeholder {
+			param := def.SearchParam
+			if param == "" {
+				param = "search"
+			}
+			q.Set(param, keyword)
+		}
+		if encoded := q.Encode(); encoded != "" {
+			u += "?" + encoded
+		}
+		return u
+	}
+	q := parsed.Query()
 	if !placeholder {
 		param := def.SearchParam
 		if param == "" {
@@ -115,10 +149,8 @@ func BuildJSONSearchURL(baseURL string, def *SiteMetadata, keyword string, page 
 	for k, v := range def.ExtraParam {
 		q.Set(k, v)
 	}
-	if encoded := q.Encode(); encoded != "" {
-		u += "?" + encoded
-	}
-	return u
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
 }
 
 // ParseJSONSearch 纯函数：按 def 选择器从 JSON 响应解析种子列表。
@@ -136,8 +168,23 @@ func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) []Torrent {
 	if err := dec.Decode(&root); err != nil {
 		return nil
 	}
-	rowsNode := jsonNavigate(root, def.Selectors.Rows.Selector)
-	rows, _ := rowsNode.([]any)
+	rowSelectors := def.Selectors.Rows.Selectors
+	if len(rowSelectors) == 0 && def.Selectors.Rows.Selector != "" {
+		rowSelectors = []string{def.Selectors.Rows.Selector}
+	}
+	var rows []any
+	for _, rowSelector := range rowSelectors {
+		var rowsNode any
+		if rowSelector == ":self" {
+			rowsNode = root
+		} else {
+			rowsNode = jsonNavigate(root, rowSelector)
+		}
+		rows, _ = rowsNode.([]any)
+		if len(rows) > 0 {
+			break
+		}
+	}
 	if rows == nil {
 		return nil
 	}
@@ -150,6 +197,11 @@ func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) []Torrent {
 		}
 		// get 按字段选择器抽值：selectors 复数回退优先，其次 selector 单数；首个非空胜出。
 		get := func(f ElementQuery) string {
+			if f.Data != "" {
+				if v := jsonNavigate(row, f.Data); v != nil {
+					return ApplyFilters(jsonStringify(v), f.Filters)
+				}
+			}
 			sels := f.Selectors
 			if len(sels) == 0 && f.Selector != "" {
 				sels = []string{f.Selector}
@@ -165,13 +217,16 @@ func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) []Torrent {
 					return ApplyFilters(str, f.Filters)
 				}
 			}
+			if f.Text != "" {
+				return ApplyFilters(f.Text, f.Filters)
+			}
 			return ""
 		}
 		f := def.Selectors.Fields
 		t := Torrent{
 			Title:     get(f["title"]),
 			SubTitle:  get(f["subtitle"]),
-			Size:      get(f["size"]),
+			Size:      normalizeJSONSearchSize(get(f["size"])),
 			Time:      get(f["time"]),
 			Category:  get(f["category"]),
 			Seeders:   ToInt(get(f["seeders"])),
@@ -190,4 +245,125 @@ func ParseJSONSearch(body []byte, def *SiteMetadata, baseURL string) []Torrent {
 		out = append(out, t)
 	}
 	return out
+}
+
+func ParseJSONUserInfoFields(body []byte, fields map[string]ElementQuery, u *UserInfo) {
+	if u == nil || len(fields) == 0 {
+		return
+	}
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.UseNumber()
+	var root any
+	if err := dec.Decode(&root); err != nil {
+		return
+	}
+	for key, q := range fields {
+		raw := jsonExtract(root, q)
+		if raw == "" {
+			continue
+		}
+		switch key {
+		case "id":
+			u.ID = raw
+		case "name":
+			u.Name = raw
+		case "email":
+			u.Email = raw
+		case "level":
+			u.Level = raw
+		case "level_id":
+			u.LevelID = ToInt(raw)
+		case "numeric_user_id":
+			u.NumericUserID = ToInt(raw)
+		case "avatar":
+			u.Avatar = raw
+		case "personal_avatar":
+			u.PersonalAvatar = raw
+		case "is_donor":
+			u.IsDonor = ToBool(raw)
+		case "join_date":
+			u.JoinDate = raw
+		case "last_access_at":
+			u.LastAccessAt = raw
+		case "uploaded":
+			u.Uploaded = ParseBytes(raw)
+		case "downloaded":
+			u.Downloaded = ParseBytes(raw)
+		case "ratio":
+			u.Ratio = ToFloat64(raw)
+		case "true_uploaded":
+			u.TrueUploaded = ParseBytes(raw)
+		case "true_downloaded":
+			u.TrueDownloaded = ParseBytes(raw)
+		case "true_ratio":
+			u.TrueRatio = ToFloat64(raw)
+		case "seeding":
+			u.Seeding = ToInt(raw)
+		case "leeching":
+			u.Leeching = ToInt(raw)
+		case "seeding_size":
+			u.SeedingSize = ParseBytes(raw)
+		case "uploads":
+			u.Uploads = ToInt(raw)
+		case "uploads_add":
+			u.Uploads += ToInt(raw)
+		case "adoptions":
+			u.Adoptions = ToInt(raw)
+		case "posts":
+			u.Posts = ToInt(raw)
+		case "snatches":
+			u.Snatches = ToInt(raw)
+		case "total_traffic":
+			u.TotalTraffic = ParseBytes(raw)
+		case "unique_groups":
+			u.UniqueGroups = ToInt(raw)
+		case "perfect_flac":
+			u.PerfectFLAC = ToInt(raw)
+		case "invited":
+			u.Invited = ToInt(raw)
+		case "bonus":
+			u.Bonus = ToFloat64(raw)
+		case "bonus_per_hour":
+			u.BonusPerHour = ToFloat64(raw)
+		case "seeding_bonus":
+			u.SeedingBonus = ToFloat64(raw)
+		case "seeding_bonus_per_hour":
+			u.SeedingBonusPerHour = ToFloat64(raw)
+		case "rescue_seeding_bonus_per_hour":
+			u.RescueSeedingBonusPerHour = ToFloat64(raw)
+		case "seeding_time":
+			u.SeedingTime = int64(ToFloat64(raw))
+		case "claim_count":
+			u.ClaimCount = ToInt(raw)
+		case "max_claim":
+			u.MaxClaim = ToInt(raw)
+		}
+	}
+}
+
+func jsonExtract(root any, q ElementQuery) string {
+	if q.Data != "" {
+		if v := jsonNavigate(root, q.Data); v != nil {
+			return ApplyFilters(jsonStringify(v), q.Filters)
+		}
+	}
+	sels := q.Selectors
+	if len(sels) == 0 && q.Selector != "" {
+		sels = []string{q.Selector}
+	}
+	for _, sel := range sels {
+		var str string
+		if sel == ":self" {
+			str = jsonStringify(root)
+		} else if v := jsonNavigate(root, sel); v != nil {
+			str = jsonStringify(v)
+		}
+		if str != "" {
+			return ApplyFilters(str, q.Filters)
+		}
+	}
+	if q.Text != "" {
+		return ApplyFilters(q.Text, q.Filters)
+	}
+	return ""
 }

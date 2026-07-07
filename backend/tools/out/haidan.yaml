@@ -1,10 +1,10 @@
 # haidan — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.title（elementProcess）
-#   - search.time.filters[parseValidTimeString]
-#   - search.url.filters[prepend]
 #   - search.link（__ref）
+#   - search.time.filters[parseValidTimeString]
+#   - search.title（elementProcess）
+#   - search.url.filters[prepend]
 #   - userInfo.levelName.filters（匿名函数）
 
 aka:

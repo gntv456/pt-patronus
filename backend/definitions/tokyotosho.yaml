@@ -1,13 +1,5 @@
 # tokyotosho — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.size.filters（匿名函数）
-#   - search.seeders.filters（匿名函数）
-#   - search.subTitle.filters（匿名函数）
-#   - search.leechers.filters（匿名函数）
-#   - search.completed.filters（匿名函数）
-#   - search.time.filters（匿名函数）
-#   - search.category.filters（匿名函数）
 
 aka:
     - 東京 図書館
@@ -25,8 +17,13 @@ selectors:
             filters:
                 - args: cat
                   name: queryparam
+                - args: 0=All:::1=Anime:::10=Non-English:::2=Music:::3=Manga:::4=Hentai:::5=Other:::7=Raws:::8=Drama:::9=Music Video:::11=Batch:::12=Hentai (Anime):::13=Hentai (Manga):::14=Hentai (Games):::15=JAV
+                  name: map
             selector: a[href*='cat=']
         completed:
+            filters:
+                - args: "C: (\\d+)"
+                  name: regexp
             selector: td.stats
         detail:
             attr: href
@@ -35,21 +32,33 @@ selectors:
             attr: href
             selector: td.desc-top a[type="application/x-bittorrent"]
         leechers:
+            filters:
+                - args: "L: (\\d+)"
+                  name: regexp
             selector: td.stats
         seeders:
+            filters:
+                - args: "S: (\\d+)"
+                  name: regexp
             selector: td.stats
         size:
             filters:
+                - args: "Size: ([^|]+) ?"
+                  name: regexp
                 - name: parse_size
             selector: td.desc-bot
         subtitle:
+            filters:
+                - args: "Comment: ([^|]+) ?"
+                  name: regexp
             selector: td.desc-bot
         time:
             filters:
-                - args: '[UTC +0000]'
+                - args: "Date: ([^|]+) ?"
+                  name: regexp
+                - args: UTC:::+0000
                   name: replace
-                - args: '[yyyy-MM-dd HH:mm XXX]'
-                  name: parse_time
+                - name: parse_time
             selector: td.desc-bot
         title:
             selector: td.desc-top a[type="application/x-bittorrent"]

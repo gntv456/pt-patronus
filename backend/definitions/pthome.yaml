@@ -1,5 +1,260 @@
+# pthome - core fields migrated from PT-depiler/PT-manager; live smoke still recommended.
+aka:
+    - PTHome
+    - PT之家
+    - 铂金家
+    - PTH
+categories:
+    - id: "401"
+      name: Movies 电影
+    - id: "402"
+      name: TV Series 电视剧
+    - id: "404"
+      name: Documentaries 纪录片
+    - id: "405"
+      name: Animations 动漫
+    - id: "403"
+      name: TV Shows 综艺
+    - id: "406"
+      name: Music Videos
+    - id: "407"
+      name: Sports 体育
+    - id: "408"
+      name: HQ Audio 音乐
+    - id: "410"
+      name: Games 游戏
+    - id: "411"
+      name: Study 学习
+    - id: "409"
+      name: Others 其他
+description: 分享至美 高清之家
 id: pthome
+level_requirements:
+    - id: 1
+      name: User
+      privilege: 新用户的默认级别。
+    - id: 2
+      name: Power User
+      interval: P4W
+      downloaded: 200GB
+      ratio: 1
+      seeding_bonus: 20000
+    - id: 3
+      name: Elite User
+      interval: P8W
+      downloaded: 350GB
+      ratio: 1.1
+      seeding_bonus: 50000
+    - id: 4
+      name: Crazy User
+      interval: P15W
+      downloaded: 500GB
+      ratio: 1.2
+      seeding_bonus: 200000
+    - id: 5
+      name: Insane User
+      interval: P25W
+      downloaded: 1TB
+      ratio: 1.3
+      seeding_bonus: 400000
+    - id: 6
+      name: Veteran User
+      interval: P40W
+      downloaded: 2TB
+      ratio: 1.5
+      seeding_bonus: 600000
+      is_kept: true
+    - id: 7
+      name: Extreme User
+      interval: P60W
+      downloaded: 3TB
+      ratio: 1.5
+      seeding_bonus: 800000
+      is_kept: true
+    - id: 8
+      name: Ultimate User
+      interval: P80W
+      downloaded: 4TB
+      ratio: 1.7
+      seeding_bonus: 1000000
+      is_kept: true
+    - id: 9
+      name: Nexus Master
+      interval: P100W
+      downloaded: 6TB
+      ratio: 1.8
+      seeding_bonus: 1200000
+      is_kept: true
 name: 铂金家
 schema: nexusphp
+search_categories:
+    movie:
+        - "401"
+        - "404"
+        - "405"
+    tv:
+        - "402"
+        - "403"
+    music:
+        - "406"
+        - "408"
+selectors:
+    fields:
+        subtitle:
+            selectors:
+                - a[href^='details.php?id='][title]:has(b) span
+                - a[href*='details.php?id='][href*='hit'] span
+                - a[href*='hit'][title] span
+                - a[href*='hit']:has(b) span
+tags:
+    - 影视
+    - 综合
+timezone_offset: "+0800"
 urls:
-  - https://pthome.net
+    - https://pthome.net
+legacy_urls:
+    - https://www.pthome.net
+user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        uploaded:
+            filters:
+                - name: regexp
+                  args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: (?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        seeding:
+            filters:
+                - name: regexp
+                  args: (?i)(?:当前活动|当前做种|Torrents seeding|Active)[^0-9]{0,60}(\d+)
+            selectors:
+                - "#info_block"
+                - "font.color_active, span.color_active"
+        bonus:
+            filters:
+                - name: regexp
+                  args: (?i)(?:魔力值|Karma Points)[\s\S]{0,120}?([\d.,]+)
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+                - "td.rowfollow:contains('魔力值')"
+                - "#info_block"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: regexp
+                  args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: (?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td > img"
+                - "td.rowhead:contains('等級') + td > img"
+                - "td.rowhead:contains('Class') + td > img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: (\d{4}[-/]\d{1,2}[-/]\d{1,2})
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join'):contains('date') + td"
+        bonus:
+            filters:
+                - name: regexp
+                  args: (?i)(?:魔力值|Karma Points)[\s\S]{0,120}?([\d.,]+)
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+                - "td.rowfollow:contains('魔力值')"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: regexp
+                        args: (?i)(?:能获取|能獲取|currently\s+getting)[^0-9]{0,60}([\d.,]+\.?\d*)
+                      - name: parse_number
+                  selectors:
+                      - "div:contains('每小时能获取')"
+                      - "td:contains('每小时能获取')"
+                      - "div:contains('每小時能獲取')"
+                      - "td:contains('每小時能獲取')"
+                      - "div:contains('currently getting')"
+                      - "td:contains('currently getting')"

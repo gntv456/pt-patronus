@@ -1,5 +1,207 @@
+# hdarea - core fields migrated from PT-depiler/PT-manager; live smoke still recommended.
+aka:
+    - HDArea
+    - 好大
+    - 高清视界
+categories:
+    - id: "300"
+      name: Movie UHD-4K
+    - id: "401"
+      name: Movies Blu-ray
+    - id: "415"
+      name: Movies REMUX
+    - id: "416"
+      name: Movies 3D
+    - id: "410"
+      name: Movies 1080p
+    - id: "411"
+      name: Movies 720p
+    - id: "414"
+      name: Movies DVD
+    - id: "412"
+      name: Movies WEB-DL
+    - id: "413"
+      name: Movies HDTV
+    - id: "417"
+      name: Movies iPad
 id: hdarea
-name: 好大
+legacy_urls:
+    - https://www.hdarea.co/
+level_requirements:
+    - id: 0
+      name: User
+      privilege: 新用户的默认级别
+    - id: 1
+      name: Power User
+      interval: P4W
+      downloaded: 50GB
+      ratio: 1.05
+    - id: 2
+      name: Elite User
+      interval: P8W
+      downloaded: 120GB
+      ratio: 3
+    - id: 3
+      name: Crazy User
+      interval: P10W
+      downloaded: 300GB
+      ratio: 3.5
+    - id: 4
+      name: Insane User
+      interval: P12W
+      downloaded: 750GB
+      ratio: 4
+    - id: 5
+      name: Veteran User
+      interval: P20W
+      downloaded: 1024GB
+      ratio: 4.5
+      is_kept: true
+    - id: 6
+      name: Extreme User
+      interval: P25W
+      downloaded: 2TB
+      ratio: 5
+      is_kept: true
+    - id: 7
+      name: Ultimate User
+      interval: P30W
+      downloaded: 5TB
+      ratio: 5.5
+      is_kept: true
+    - id: 8
+      name: Nexus Master
+      interval: P40W
+      downloaded: 10TB
+      ratio: 6
+      is_kept: true
+name: HDArea
 schema: nexusphp
+search_categories:
+    movie:
+        - "300"
+        - "401"
+        - "415"
+        - "416"
+        - "410"
+        - "411"
+        - "414"
+        - "412"
+        - "413"
+        - "417"
+selectors:
+    rows:
+        selector: table.torrents > tbody > tr:has(table.torrentname)
+    fields:
+        subtitle:
+            selectors:
+                - td > div:nth-child(2)
+                - table.torrentname td > div:nth-child(2)
+tags:
+    - 影视
+    - 综合
+timezone_offset: "+0800"
 urls:
-  - https://hdarea.club
+    - https://hdarea.club
+user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        bonus:
+            filters:
+                - name: regexp
+                  args: (?i)(?:魔力值|Karma Points)[\s\S]{0,120}?([\d.,]+)
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowfollow:contains('魔力值')"
+                - "#info_block"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: regexp
+                  args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        ratio:
+            filters:
+                - name: regexp
+                  args: (?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowfollow:contains('分享率')"
+                - "#info_block"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td > img"
+                - "td.rowhead:contains('等級') + td > img"
+                - "td.rowhead:contains('Class') + td > img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: (\d{4}[-/]\d{1,2}[-/]\d{1,2})
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join'):contains('date') + td"
+        bonus:
+            filters:
+                - name: regexp
+                  args: (?i)(?:魔力值|Karma Points)[\s\S]{0,120}?([\d.,]+)
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowfollow:contains('魔力值')"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: regexp
+                        args: (?i)(?:最终每小时获取|最终每小時獲取|每小时获得的合计魔力值|你当前每小时能获取|currently\s+getting)[\s\S]{0,240}?([\d.,]+)
+                      - name: parse_number
+                  selectors:
+                      - ":self"
+              seeding_size:
+                  filters:
+                      - name: regexp
+                        args: (?i)(?:做种总积|做種總積|Seeding\s+Size|Seedsize)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+                      - name: parse_size
+                  selectors:
+                      - ":self"

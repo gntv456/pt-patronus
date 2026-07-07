@@ -1,11 +1,5 @@
 # torrentleech — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
-#   - search.link.filters（匿名函数）
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - TL
 description: TorrentLeech (TL) is a Private Torrent Tracker for 0DAY / GENERAL. not here _ not scene
@@ -43,12 +37,21 @@ search_entry: /torrents/browse/list/query
 selectors:
     fields:
         category:
+            filters:
+                - args: "8=Movies :: Cam:::9=Movies :: TS/TC:::11=Movies :: DVDRip/DVDScreener:::37=Movies :: WEBRip:::43=Movies :: HDRip:::14=Movies :: BlurayRip:::12=Movies :: DVD-R:::13=Movies :: Bluray:::47=Movies :: 4K:::15=Movies :: Boxsets:::29=Movies :: Documentaries:::26=TV :: Episodes:::32=TV :: Episodes HD:::27=TV :: Boxsets:::17=Games :: PC:::42=Games :: Mac:::18=Games :: XBOX:::19=Games :: XBOX360:::40=Games :: XBOXONE:::20=Games :: PS2:::21=Games :: PS3:::39=Games :: PS4:::22=Games :: PSP:::28=Games :: Wii:::30=Games :: Nintendo DS:::48=Games :: Nintendo Switch:::23=Apps :: PC-ISO:::24=Apps :: Mac:::25=Apps :: Mobile:::33=Apps :: 0-day:::38=Education:::34=Animation :: Anime:::35=Animation :: Cartoons:::45=Books :: EBooks:::46=Books :: Comics:::31=Music :: Audio:::16=Music :: Music videos:::36=Foreign :: Movies:::44=Foreign :: TV Series"
+                  name: map
             selector: categoryID
         completed:
             selector: numComments
         detail:
+            filters:
+                - args: /torrent/
+                  name: prepend
             selector: fid
         download:
+            filters:
+                - args: /download/{fid}/{filename}
+                  name: json_format
             selector: :self
         leechers:
             selector: leechers

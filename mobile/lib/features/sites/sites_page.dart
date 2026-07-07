@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/utils/site_def_search.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import '../webview_login/webview_login_page.dart';
@@ -39,7 +40,7 @@ class _SitesPageState extends State<SitesPage> {
     try {
       final results = await Future.wait([
         SiteApi().list(),
-        _defs.isEmpty ? SiteApi().definitions() : Future.value(_defs),
+        SiteApi().definitions(),
       ]);
       _sites = results[0] as List<Site>;
       _defs = results[1] as List<SiteDef>;
@@ -60,8 +61,22 @@ class _SitesPageState extends State<SitesPage> {
   }
 
   String _defaultUrl(SiteDef d) {
-    if (d.urls.isNotEmpty) return d.urls.first;
-    return d.schema == 'mteam' ? 'https://api.m-team.cc' : 'https://www.hxpt.org';
+    final urls = _defUrls(d);
+    if (urls.isNotEmpty) return urls.first;
+    return d.schema == 'mteam'
+        ? 'https://api.m-team.cc'
+        : 'https://www.hxpt.org';
+  }
+
+  List<String> _defUrls(SiteDef d) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final raw in d.urls) {
+      final u = raw.trim();
+      if (u.isEmpty || !seen.add(u)) continue;
+      out.add(u);
+    }
+    return out;
   }
 
   void _login(Site s) {
@@ -318,13 +333,16 @@ class _SitesPageState extends State<SitesPage> {
   Future<void> _showForm({Site? editing}) async {
     final isEdit = editing != null;
     List<SiteDef> defs = _defs;
-    if (!isEdit && defs.isEmpty) {
+    if (!isEdit || defs.isEmpty) {
       try {
         defs = await SiteApi().definitions();
         _defs = defs;
       } catch (e) {
-        _toast('加载站点定义失败：$e');
-        return;
+        if (defs.isEmpty) {
+          _toast('加载站点定义失败：$e');
+          return;
+        }
+        _toast('站点定义刷新失败，使用当前缓存：$e');
       }
     }
     if (defs.isEmpty) {
@@ -357,7 +375,7 @@ class _SitesPageState extends State<SitesPage> {
     final knownNames = defs.map((d) => d.name).toSet();
     final knownUrls = <String>{'https://api.m-team.cc', 'https://www.hxpt.org'};
     for (final d in defs) {
-      knownUrls.add(_defaultUrl(d));
+      knownUrls.addAll(_defUrls(d));
     }
 
     if (!mounted) return;
@@ -368,6 +386,12 @@ class _SitesPageState extends State<SitesPage> {
       builder: (dctx) => StatefulBuilder(
         builder: (fctx, setSt) {
           final isMteam = selected.schema == 'mteam';
+          final isApiKeySite = isMteam || selected.schema == 'yemapt';
+          final apiKeyHint = isEdit
+              ? '留空不修改'
+              : (isMteam
+                    ? 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）'
+                    : 'YemaPT API Auth Key（个人面板 → 详情 → 安全设定）');
           return Padding(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(fctx).viewInsets.bottom,
@@ -409,6 +433,28 @@ class _SitesPageState extends State<SitesPage> {
                       child: Text('${selected.name}（${selected.schema}）'),
                     ),
                   const SizedBox(height: 12),
+                  if (_defUrls(selected).length > 1) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: _defUrls(selected).contains(urlCtrl.text)
+                          ? urlCtrl.text
+                          : null,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: '域名'),
+                      items: _defUrls(selected)
+                          .map(
+                            (u) => DropdownMenuItem<String>(
+                              value: u,
+                              child: Text(u, overflow: TextOverflow.ellipsis),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) {
+                        if (v == null) return;
+                        setSt(() => urlCtrl.text = v);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     controller: urlCtrl,
                     decoration: InputDecoration(
@@ -416,16 +462,14 @@ class _SitesPageState extends State<SitesPage> {
                       hintText: _defaultUrl(selected),
                     ),
                   ),
-                  if (isMteam) ...[
+                  if (isApiKeySite) ...[
                     const SizedBox(height: 12),
                     TextField(
                       controller: keyCtrl,
                       obscureText: true,
                       decoration: InputDecoration(
                         labelText: 'API Key',
-                        hintText: isEdit
-                            ? '留空不修改'
-                            : 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）',
+                        hintText: apiKeyHint,
                       ),
                     ),
                   ] else ...[
@@ -496,8 +540,9 @@ class _SitesPageState extends State<SitesPage> {
       return;
     }
     final isMteam = selected.schema == 'mteam';
-    if (!isEdit && isMteam && keyCtrl.text.trim().isEmpty) {
-      _toast('馒头需填写 API Key');
+    final isApiKeySite = isMteam || selected.schema == 'yemapt';
+    if (!isEdit && isApiKeySite && keyCtrl.text.trim().isEmpty) {
+      _toast('${selected.name}需填写 API Key');
       return;
     }
     try {
@@ -506,16 +551,16 @@ class _SitesPageState extends State<SitesPage> {
           editing.id,
           name: name,
           baseUrl: url,
-          apiKey: isMteam && keyCtrl.text.trim().isNotEmpty
+          apiKey: isApiKeySite && keyCtrl.text.trim().isNotEmpty
               ? keyCtrl.text.trim()
               : null,
-          cookie: !isMteam && cookieCtrl.text.trim().isNotEmpty
+          cookie: !isApiKeySite && cookieCtrl.text.trim().isNotEmpty
               ? cookieCtrl.text.trim()
               : null,
-          username: !isMteam && userCtrl.text.trim().isNotEmpty
+          username: !isApiKeySite && userCtrl.text.trim().isNotEmpty
               ? userCtrl.text.trim()
               : null,
-          password: !isMteam && passCtrl.text.trim().isNotEmpty
+          password: !isApiKeySite && passCtrl.text.trim().isNotEmpty
               ? passCtrl.text.trim()
               : null,
           isActive: active,
@@ -527,19 +572,19 @@ class _SitesPageState extends State<SitesPage> {
           platform: selected.schema,
           definition: selected.id,
           baseUrl: url,
-          apiKey: isMteam ? keyCtrl.text.trim() : null,
-          cookie: !isMteam && cookieCtrl.text.trim().isNotEmpty
+          apiKey: isApiKeySite ? keyCtrl.text.trim() : null,
+          cookie: !isApiKeySite && cookieCtrl.text.trim().isNotEmpty
               ? cookieCtrl.text.trim()
               : null,
-          username: !isMteam && userCtrl.text.trim().isNotEmpty
+          username: !isApiKeySite && userCtrl.text.trim().isNotEmpty
               ? userCtrl.text.trim()
               : null,
-          password: !isMteam && passCtrl.text.trim().isNotEmpty
+          password: !isApiKeySite && passCtrl.text.trim().isNotEmpty
               ? passCtrl.text.trim()
               : null,
           isActive: active,
         );
-        _toast(isMteam ? '已添加馒头，API Key 已保存' : '已添加，请点「登录」获取 cookie');
+        _toast(isApiKeySite ? '已添加，API Key 已保存' : '已添加，请点「登录」获取 cookie');
       }
       await _load();
     } catch (e) {
@@ -709,7 +754,7 @@ class _SitesPageState extends State<SitesPage> {
 
   Widget _rowActions(BuildContext context, Site s) {
     final isNexus = s.platform == 'nexusphp';
-    final isMteam = s.platform == 'mteam';
+    final isApiKeySite = s.platform == 'mteam' || s.platform == 'yemapt';
     return Wrap(
       spacing: 4,
       runSpacing: 4,
@@ -722,7 +767,7 @@ class _SitesPageState extends State<SitesPage> {
             loading: _checkining == s.id,
             onPressed: _checkining == s.id ? null : () => _checkin(s),
           ),
-        if (isMteam)
+        if (isApiKeySite)
           _actBtn(
             icon: Icons.bolt_outlined,
             label: '测试',
@@ -836,16 +881,13 @@ class _DefPickerBodyState extends State<_DefPickerBody> {
 
   @override
   Widget build(BuildContext context) {
-    final q = _ctrl.text.trim().toLowerCase();
+    final q = _ctrl.text.trim();
     final matches = q.isEmpty
-        ? const <SiteDef>[]
-        : widget.defs
-              .where((d) =>
-                  '${d.name} ${d.schema} ${d.urls.join(' ')} ${d.aka.join(' ')} ${d.description} ${d.tags.join(' ')}'
-                      .toLowerCase()
-                      .contains(q))
-              .take(50)
-              .toList();
+        ? filterSiteDefsBySearch(widget.defs, '', limit: null)
+        : filterSiteDefsBySearch(widget.defs, q, limit: 80);
+    final listHeight = (MediaQuery.of(context).size.height * 0.55)
+        .clamp(220.0, 460.0)
+        .toDouble();
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -857,7 +899,7 @@ class _DefPickerBodyState extends State<_DefPickerBody> {
             autofocus: true,
             textInputAction: TextInputAction.search,
             decoration: const InputDecoration(
-              hintText: '输入名称搜索…',
+              hintText: '输入名称 / 域名搜索…',
               prefixIcon: Icon(Icons.search, size: 18),
               isDense: true,
               border: OutlineInputBorder(),
@@ -865,46 +907,52 @@ class _DefPickerBodyState extends State<_DefPickerBody> {
             onChanged: (_) => setState(() {}),
           ),
         ),
-        if (q.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: Text(
-                '共 ${widget.defs.length} 个定义，输入名称搜索',
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            ),
-          )
-        else if (matches.isEmpty)
+        if (matches.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: Text('无匹配', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              child: Text(
+                '无匹配',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
             ),
           )
         else
-          ListView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.zero,
-            children: [
-              for (final d in matches)
-                ListTile(
+          SizedBox(
+            height: listHeight,
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: matches.length,
+              itemBuilder: (_, i) {
+                final d = matches[i];
+                return ListTile(
                   title: Text('${d.name}（${d.schema}）'),
-                  subtitle: (d.aka.isNotEmpty || d.dead)
+                  subtitle: (_candidateSubtitle(d).isNotEmpty)
                       ? Text(
-                          [...d.aka, if (d.dead) '已关站'].join(' · '),
-                          style: TextStyle(fontSize: 11, color: d.dead ? Colors.grey : Colors.black54),
+                          _candidateSubtitle(d),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: d.dead ? Colors.grey : Colors.black54,
+                          ),
                         )
                       : null,
                   trailing: d.id == widget.selected.id
-                      ? const Icon(Icons.check_circle, color: PTColors.primary, size: 20)
+                      ? const Icon(
+                          Icons.check_circle,
+                          color: PTColors.primary,
+                          size: 20,
+                        )
                       : null,
                   onTap: () => Navigator.of(context).pop(d),
-                ),
-            ],
+                );
+              },
+            ),
           ),
       ],
     );
+  }
+
+  String _candidateSubtitle(SiteDef d) {
+    return [...d.urls, ...d.aka, if (d.dead) '已关站'].join(' · ');
   }
 }

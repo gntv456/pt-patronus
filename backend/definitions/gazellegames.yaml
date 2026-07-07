@@ -1,6 +1,5 @@
-# gazellegames — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# gazellegames - PT-depiler API behavior covered by mock tests; live smoke still recommended.
+# schema: gazelle_jsonapi; uses X-API-Key with /api.php quick_user/search/user.
 
 aka:
     - GGn
@@ -53,4 +52,6 @@ user_info:
         bonus_per_hour:
             selector: response.community.hourlyGold
         seeding_size:
+            filters:
+                - name: parse_size
             selector: response.community.seedSize

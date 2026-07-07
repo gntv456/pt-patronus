@@ -14,7 +14,8 @@
 //
 // cookie 仅经环境变量/本地文件传入，不落命令行历史/日志/记忆。
 // 运行：cd backend && SITE_COOKIE='...' go run ./tools/live_smoke
-//       cd backend && SITES_FILE=./my-sites.json go run ./tools/live_smoke
+//
+//	cd backend && SITES_FILE=./my-sites.json go run ./tools/live_smoke
 package main
 
 import (
@@ -41,19 +42,24 @@ type siteSpec struct {
 
 // siteResult 是单站校准结果（错误记入字段，不中断批量）。
 type siteResult struct {
-	Spec        siteSpec
-	Schema      string
-	SearchErr   string
-	Torrents    int
-	Sample      string
-	UserInfoErr string
-	Name        string
-	Level       string
-	Uploaded    int64
-	Downloaded  int64
-	Ratio       float64
-	Seeding     int
-	Bonus       float64
+	Spec         siteSpec
+	Schema       string
+	SearchErr    string
+	Torrents     int
+	Sample       string
+	UserInfoErr  string
+	Name         string
+	Level        string
+	Uploaded     int64
+	Downloaded   int64
+	Ratio        float64
+	Seeding      int
+	Leeching     int
+	SeedingSize  int64
+	Uploads      int
+	Bonus        float64
+	BonusPerHour float64
+	JoinDate     string
 }
 
 func main() {
@@ -162,8 +168,8 @@ func runOne(ctx context.Context, hc *httpclient.Client, reg *site.Registry, sp s
 	} else if ui != nil {
 		res.Name, res.Level = ui.Name, ui.Level
 		res.Uploaded, res.Downloaded, res.Ratio = ui.Uploaded, ui.Downloaded, ui.Ratio
-		res.Seeding = ui.Seeding
-		res.Bonus = ui.Bonus
+		res.Seeding, res.Leeching, res.SeedingSize, res.Uploads = ui.Seeding, ui.Leeching, ui.SeedingSize, ui.Uploads
+		res.Bonus, res.BonusPerHour, res.JoinDate = ui.Bonus, ui.BonusPerHour, ui.JoinDate
 	}
 	return res
 }
@@ -196,8 +202,9 @@ func summaryString(results []siteResult) string {
 		}
 		details := ""
 		if r.UserInfoErr == "" {
-			details = fmt.Sprintf("name=%s lvl=%s up=%s ratio=%.1f seed=%d bonus=%.0f",
-				truncate(r.Name, 12), truncate(r.Level, 12), humanBytes(r.Uploaded), r.Ratio, r.Seeding, r.Bonus)
+			details = fmt.Sprintf("name=%s lvl=%s up=%s down=%s ratio=%.3f seed=%d leech=%d seedSize=%s uploads=%d bonus=%.0f bph=%.2f join=%s",
+				truncate(r.Name, 12), truncate(r.Level, 12), humanBytes(r.Uploaded), humanBytes(r.Downloaded),
+				r.Ratio, r.Seeding, r.Leeching, humanBytes(r.SeedingSize), r.Uploads, r.Bonus, r.BonusPerHour, r.JoinDate)
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\t%s\n", r.Spec.ID, r.Schema, search, r.Torrents, userinfo, details)
 		if r.Sample != "" {
@@ -263,6 +270,8 @@ func pickAdapter(hc *httpclient.Client, schema string) site.Adapter {
 		return schemas.NewGazelleJSONAPI(hc)
 	case "avistaz":
 		return schemas.NewAvistaz(hc)
+	case "rousi":
+		return schemas.NewRousi(hc)
 	default:
 		return schemas.NewGenericHTML(hc, schema)
 	}

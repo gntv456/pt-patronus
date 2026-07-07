@@ -1,12 +1,5 @@
 # nebulance — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.size（data）
-#   - search.category（elementProcess）
-#   - search.title（data）
-#   - userInfo.ratio（text）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: gazelle。已接入通用/专用适配器，待真实站点校准。
 aka:
     - NBL
 description: Nebulance is a Private site. At Nebulance we will change the way you think about TV.
@@ -65,6 +58,10 @@ search_param: searchtext
 selectors:
     fields:
         category:
+            attr: html
+            filters:
+                - args: taglist=season=Season:::taglist=episode=Episode
+                  name: contains_map
             selector: div.tags
         detail:
             attr: href
@@ -73,14 +70,16 @@ selectors:
             attr: href
             selector: a[href*='torrents.php?action=download']
         size:
+            data: filesize
             selector: a[href*='torrents.php?id=']
         subtitle:
             selector: div.tags
         title:
+            data: src
             selector: a[href*='torrents.php?id=']
 tags:
     - 电视剧
-timezone_offset: map[__tpl:`${nblTimezoneOffset}00`]
+timezone_offset: "-1100"
 urls:
     - https://nebulance.io/
 user_info:
@@ -105,11 +104,21 @@ user_info:
                 - args: '[MMM d yyyy, HH:mm]'
                   name: parse_time
             selector: li:contains('Joined') > span.time
+        last_access_at:
+            attr: title
+            filters:
+                - args: '[MMM d yyyy, HH:mm]'
+                  name: parse_time
+            selector: li:contains('Last Seen') > span.time
         level:
+            filters:
+                - args: 'Class:\s*(.+)'
+                  name: regexp
             selector: li:contains('Class:')
         name:
             selector: response.username
-        ratio: {}
+        ratio:
+            text: N/A
         seeding:
             filters:
                 - name: parse_number
@@ -118,6 +127,10 @@ user_info:
             filters:
                 - name: parse_size
             selector: li:contains('Seeding Size')
+        snatches:
+            filters:
+                - name: parse_number
+            selector: li:contains('Snatched') > span:nth-child(2)
         uploaded:
             filters:
                 - name: parse_size
@@ -126,3 +139,26 @@ user_info:
             filters:
                 - name: parse_number
             selector: li:contains('Uploaded') > span:nth-child(2)
+    pages:
+        - path: /ajax.php
+          format: json
+          params:
+            action: index
+          use_fields:
+            - id
+            - name
+        - path: /user.php
+          params:
+            id: "{id}"
+          use_fields:
+            - join_date
+            - last_access_at
+            - level
+            - downloaded
+            - uploaded
+            - uploads
+            - bonus
+            - bonus_per_hour
+            - seeding
+            - seeding_size
+            - snatches

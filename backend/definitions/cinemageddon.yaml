@@ -1,10 +1,5 @@
 # cinemageddon — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time.filters[append]
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 description: Cinemageddon is a Private Torrent Tracker for B-movies
 id: cinemageddon
 level_requirements:
@@ -30,6 +25,8 @@ selectors:
             filters:
                 - args: cat
                   name: queryparam
+                - args: 1=Action:::2=Horror:::3=Martial Arts:::4=Comedy:::5=Other:::6=Hidden Gems:::7=Sci-Fi:::8=Gore:::9=Exploitation:::11=OST:::12=XXX:::13=Thriller:::14=Adventure:::15=Documentary:::16=Western:::17=Family:::18=Drama:::19=Ebooks:::20=Softcore:::21=Tinfoil Hat:::22=Trailers
+                  name: map
             selector: a[href*="browse.php?cat="]
         completed:
             selector: td:nth-child(6)
@@ -49,8 +46,9 @@ selectors:
             selector: td:nth-child(5)
         time:
             filters:
-                - args: '[yyyy-MM-ddHH:mm:ss XXX]'
-                  name: parse_time
+                - args: " -07:00"
+                  name: append
+                - name: parse_time
             selector: td:nth-child(4)
         title:
             selector: a[href*="details.php?id="]
@@ -61,3 +59,47 @@ tags:
 timezone_offset: "-0700"
 urls:
     - https://cinemageddon.net/
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                selector: ".statusbar a[href*='/userdetails.php?id=']"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: id
+            name:
+                selector: ".statusbar a[href*='/userdetails.php?id=']"
+        - path: /userdetails.php
+          params:
+            id: "{id}"
+          fields:
+            uploaded:
+                selector: "td.clx > .frames td.rowhead:contains('Uploaded') + td:first"
+                filters:
+                    - name: parse_size
+            downloaded:
+                selector: "td.clx > .frames td.rowhead:contains('Downloaded') + td:first"
+                filters:
+                    - name: parse_size
+            level:
+                selector: "td.clx > .frames td.rowhead:contains('Class') + td:first"
+            bonus:
+                selector: "a[href='/credits.php']"
+                filters:
+                    - name: parse_number
+            join_date:
+                selector: "td.clx > .frames td.rowhead:contains('Join') + td:first"
+                filters:
+                    - name: split
+                      args: " (:::0"
+                    - name: parse_time
+            seeding:
+                selector: "div#ka2 table:first tr:not(:first-child)"
+                attr: count
+            seeding_size:
+                selector: "div#ka2 table:first tr:not(:first-child) td:nth-child(3)"
+                attr: text_all
+                filters:
+                    - name: sum_size

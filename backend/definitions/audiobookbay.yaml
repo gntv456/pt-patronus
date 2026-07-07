@@ -1,38 +1,48 @@
-# audiobookbay — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.leechers（text）
-#   - search.time.filters（匿名函数）
-#   - search.title（__ref）
-#   - search.subTitle.filters（匿名函数）
-#   - search.seeders（text）
-#   - search.completed（text）
-#   - search.category（text）
-#   - search.size.filters（匿名函数）
+# audiobookbay — 搜索 selector 与 tt=1 参数已按 PT-depiler/Jackett 结构迁移，并由 GenericHTML mock 覆盖；详情页 magnet 仍建议 live smoke。
 
 aka:
     - ABB
 description: AudioBook Bay (ABB) is a Public Torrent Tracker for AUDIOBOOKS
 id: audiobookbay
+extra_param:
+    tt: "1"
 name: AudioBook Bay
 search_entry: /
 search_param: s
 selectors:
     fields:
-        category: {}
-        completed: {}
+        category:
+            text: Audiobook
+        completed:
+            text: "0"
         detail:
             attr: href
             selector: div.postTitle h2 a
-        leechers: {}
-        seeders: {}
+        leechers:
+            text: "0"
+        seeders:
+            text: "0"
         size:
+            filters:
+                - args: "File Size: (.+?)s"
+                  name: regexp
+                - name: parse_size
             selector: div.postContent
         subtitle:
+            filters:
+                - args: "(?s)Category:\\s+(.+?)(?=\\s+(Language:|Keywords:))"
+                  name: regexp
+                - args: "\u00a0 ::: / "
+                  name: replace
             selector: div.postInfo
         time:
+            filters:
+                - args: "Posted: (\\d{1,2} \\D{3} \\d{4})"
+                  name: regexp
+                - name: parse_time
             selector: div.postContent
-        title: {}
+        title:
+            selector: div.postTitle
     rows:
         selector: div.post:has(div[class='postTitle'])
 tags:

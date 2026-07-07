@@ -1,7 +1,25 @@
-# cdfile — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# cdfile - categories migrated from PT-depiler; dead site retained for display/history.
+# schema: nexusphp; common selectors are filled by defaults.
 
+categories:
+    - id: "401"
+      name: Movies/电影
+    - id: "406"
+      name: Music Videos/MV
+    - id: "402"
+      name: TV Series/电视剧
+    - id: "408"
+      name: Music/音轨
+    - id: "405"
+      name: Animations/动漫
+    - id: "403"
+      name: TV Shows/综艺
+    - id: "407"
+      name: Sports/体育
+    - id: "404"
+      name: Documentaries/纪录片
+    - id: "409"
+      name: Others/其他
 dead: true
 description: 专注于Blu-Ray、DVD、CD等高品质光盘镜像资源，致力于打造光盘档案室
 id: cdfile
@@ -69,5 +87,16 @@ level_requirements:
       seeding_bonus: 1000000
 name: CD File
 schema: nexusphp
+search_categories:
+    movie:
+        - "401"
+        - "404"
+        - "405"
+    tv:
+        - "402"
+        - "403"
+    music:
+        - "406"
+        - "408"
 urls:
     - https://pt.cdfile.org/

@@ -1,8 +1,5 @@
 # cathoderaytube — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-
+# schema: luminance。已接入通用/专用适配器，待真实站点校准。
 aka:
     - CRT
 description: Cathode-Ray.Tube (CRT) is a Private Torrent Tracker for CLASSIC MOVIES / TV
@@ -50,6 +47,11 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: "filter_cat\\[(\\d+)\\]"
+                  name: regexp
+                - args: 13=Games:::4=Misc:::1=Movies:::2=TV
+                  name: map
             selector: td.cats_col > div[title] > a
 tags:
     - 综合

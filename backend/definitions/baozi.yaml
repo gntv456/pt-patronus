@@ -1,7 +1,9 @@
-# baozi — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# baozi - core user fields migrated from PT-depiler/PT-manager; live smoke still recommended.
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
 
+aka:
+    - BaoZi
+    - 包子PT
 categories:
     - id: "401"
       name: 电影
@@ -118,18 +120,128 @@ timezone_offset: "+0800"
 urls:
     - https://p.t-baozi.cc/
 user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
     fields:
-        bonus:
-            filters:
-                - name: parse_number
-            selectors:
-                - td.rowhead:contains('魔力值') + td
-                - td.rowhead:contains('Karma'):contains('Points') + td
         id:
             attr: href
             filters:
                 - args: id
                   name: queryparam
-            selector: '#welcome_text > span.nowrap > a[href*=''userdetails.php'']'
+            selectors:
+                - "#welcome_text > span.nowrap > a[href*='userdetails.php']"
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
         name:
-            selector: '#welcome_text > span.nowrap > a[href*=''userdetails.php'']'
+            selectors:
+                - "#welcome_text > span.nowrap > a[href*='userdetails.php']"
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳輸') + td"
+                - "#menu_lists_text div:contains('上传量')"
+                - "#menu_lists_text div:contains('上傳量')"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳輸') + td"
+                - "#menu_lists_text div:contains('下载量')"
+                - "#menu_lists_text div:contains('下載量')"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "#menu_lists_text div:contains('分享率')"
+                - "#menu_lists_text div:contains('Ratio')"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳輸') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('Karma'):contains('Points') + td"
+                - "#menu_lists_text div:contains('魔力值')"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳輸') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳輸') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳輸') + td"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td img"
+                - "td.rowhead:contains('等級') + td img"
+                - "td.rowhead:contains('Class') + td img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('Karma'):contains('Points') + td"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: parse_number
+                  selectors:
+                      - "h1:contains('每小时获得的合计魔力值') + div table tr:contains('基本奖励') td:last-child"
+                      - "h1:contains('每小時獲得的合計魔力值') + div table tr:contains('基本獎勵') td:last-child"
+                      - "table tr:contains('基本奖励') td:last-child"
+                      - "table tr:contains('基本獎勵') td:last-child"

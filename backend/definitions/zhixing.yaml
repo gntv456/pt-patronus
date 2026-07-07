@@ -1,9 +1,5 @@
 # zhixing — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: cgbtsource。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: cgbtsource。已接入通用/专用适配器，待真实站点校准。
 description: 北京交通大学知行PT
 id: zhixing
 level_requirements:
@@ -44,6 +40,9 @@ selectors:
     fields:
         category:
             attr: src
+            filters:
+                - args: "([^/]+)\\.png"
+                  name: regexp
             selector: td.icon-td > img
         completed:
             selector: td:nth-child(10)

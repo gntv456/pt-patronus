@@ -1,7 +1,4 @@
 {
-  "__spread": [
-    "SchemaMetadata"
-  ],
   "version": 1,
   "id": "joyhd",
   "name": "JoyHD",
@@ -18,91 +15,7 @@
   "urls": [
     "https://www.joyhd.net/"
   ],
-  "category": [
-    {
-      "name": "类别",
-      "key": "cat",
-      "options": [
-        {
-          "name": "Movie",
-          "value": 401
-        },
-        {
-          "name": "TV Series",
-          "value": 402
-        },
-        {
-          "name": "Entertainment",
-          "value": 403
-        },
-        {
-          "name": "Anime",
-          "value": 405
-        },
-        {
-          "name": "Music",
-          "value": 414
-        },
-        {
-          "name": "Sport",
-          "value": 407
-        },
-        {
-          "name": "Documentaries",
-          "value": 404
-        },
-        {
-          "name": "MV",
-          "value": 406
-        },
-        {
-          "name": "Software",
-          "value": 408
-        },
-        {
-          "name": "Game",
-          "value": 410
-        },
-        {
-          "name": "e-Learn",
-          "value": 411
-        },
-        {
-          "name": "Other",
-          "value": 409
-        }
-      ],
-      "cross": {
-        "mode": "append"
-      }
-    },
-    {
-      "__ref": "CategorySpstate"
-    },
-    {
-      "__ref": "CategoryInclbookmarked"
-    }
-  ],
-  "userInfo": {
-    "__spread": [
-      "SchemaMetadata.userInfo!"
-    ],
-    "selectors": {
-      "__spread": [
-        "SchemaMetadata.userInfo!.selectors!"
-      ],
-      "bonus": {
-        "selector": [
-          "td.rowhead:contains('银元') + td"
-        ],
-        "filters": [
-          {
-            "name": "parseNumber"
-          }
-        ]
-      }
-    }
-  },
+  "isDead": true,
   "levelRequirements": [
     {
       "id": 1,

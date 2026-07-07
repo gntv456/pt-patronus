@@ -1,15 +1,5 @@
 # hdroute — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.seeders（elementProcess）
-#   - search.time.filters（匿名函数）
-#   - search.subTitle（elementProcess）
-#   - search.link.filters（匿名函数）
-#   - search.leechers（elementProcess）
-#   - search.category（case/text）
-#   - search.title（elementProcess）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 description: HDRoute - 高清影视资源站点
 id: hdroute
 name: HDRoute
@@ -17,7 +7,16 @@ search_entry: /browse.php
 search_param: s
 selectors:
     fields:
-        category: {}
+        category:
+            attr: class
+            filters:
+                - args: sprite_r4k2k=4K/2K:::sprite_mbluray=Blu-ray原盘:::sprite_r1080p=1080P:::sprite_mremux=Remux
+                  name: contains_map
+            selectors:
+                - dd .torrent_category figure
+                - dt .torrent_category figure
+                - .torrent_category figure
+                - figure.torrent_category
         completed:
             filters:
                 - name: parse_number
@@ -28,20 +27,55 @@ selectors:
                 - div.buttonDownloadSection a[href*='details.php?id=']
         download:
             attr: onclick
+            filters:
+                - args: "location\\.href=['\"](download\\.php\\?id=\\d+)"
+                  name: regexp
             selectors:
                 - .buttonDownloadSection .buttonDownload
                 - .buttonDownload
-        leechers: {}
-        seeders: {}
+        leechers:
+            filters:
+                - name: parse_number
+            selectors:
+                - dd .torrent-content-right .torrent_count.strong:nth-of-type(2) span
+                - dt .torrent-content-right .torrent_count.strong:nth-of-type(2) span
+                - .torrent-content-right .torrent_count.strong:nth-of-type(2) span
+        seeders:
+            filters:
+                - name: parse_number
+            selectors:
+                - dd .torrent-content-right .torrent_count.strong:nth-of-type(1) span
+                - dt .torrent-content-right .torrent_count.strong:nth-of-type(1) span
+                - .torrent-content-right .torrent_count.strong:nth-of-type(1) span
         size:
             filters:
                 - name: parse_size
-        subtitle: {}
+            selectors:
+                - dd .torrent_size
+                - dt .torrent_size
+                - .torrent_size
+        subtitle:
+            remove: span, small, i, em
+            selectors:
+                - dd .title_eng
+                - dt .title_eng
+                - .title_eng
         time:
             filters:
-                - args: '[yyyy-MM-dd HH:mm:ss yyyy-MM-dd''T''HH:mm:ss]'
-                  name: parse_time
-        title: {}
+                - name: parse_time
+            selectors:
+                - dd .torrent_added
+                - dt .torrent_added
+                - .torrent_added
+        title:
+            remove: span, small, i, em
+            selectors:
+                - dd .title_chs
+                - dt .title_chs
+                - .title_chs
+                - dt a[href*='details.php?id=']
+                - dd a[href*='details.php?id=']
+                - a[href*='details.php?id=']
     rows:
         selector: dl[id^='dl_torrent_']
 tags:
@@ -50,3 +84,58 @@ tags:
 timezone_offset: "+0800"
 urls:
     - http://hdroute.org/
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                attr: href
+                filters:
+                    - args: id
+                      name: queryparam
+                selector: ".headerRightInfo span a[href*='userdetail.php']"
+            name:
+                selector: ".headerRightInfo span a[href*='userdetail.php']"
+            uploaded:
+                filters:
+                    - name: parse_size
+                selector: ".headerRightInfo span:contains('上传量') .header-user-data"
+            downloaded:
+                filters:
+                    - name: parse_size
+                selector: ".headerRightInfo span:contains('下载量') .header-user-data"
+            ratio:
+                filters:
+                    - name: parse_number
+                selector: ".headerRightInfo span:contains('分享率') .header-user-data"
+            level:
+                filters:
+                    - name: regexp
+                      args: '\(([^)]+)\)'
+                selector: ".headerRightInfo span:contains('('):not(:contains('上传量')):not(:contains('下载量')):not(:contains('分享率'))"
+            seeding:
+                filters:
+                    - name: parse_number
+                selector: ".header-user-data a[href*='list_seeding.php']"
+            seeding_size:
+                filters:
+                    - name: parse_size
+                selector: ".header-user-data a[href*='list_seeding.php'] + .peering-size"
+        - path: /userdetail.php
+          params:
+            id: "{id}"
+          fields:
+            join_date:
+                filters:
+                    - name: parse_time
+                selector: ".userdetail-list-title:contains('注册日期') + .userdetail-list-content"
+        - path: /list_uploaded.php
+          params:
+            id: "{id}"
+          fields:
+            uploads:
+                filters:
+                    - name: regexp
+                      args: '(\d+)\s*$'
+                    - name: parse_number
+                selector: "#pager-top a:last-of-type b"

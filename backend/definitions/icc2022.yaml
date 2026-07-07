@@ -1,7 +1,25 @@
-# icc2022 — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# icc2022 - categories migrated from PT-depiler; dead site retained for display/history.
+# schema: nexusphp; common selectors are filled by defaults.
 
+categories:
+    - id: "408"
+      name: 音轨
+    - id: "409"
+      name: 其它
+    - id: "407"
+      name: 体育
+    - id: "406"
+      name: MV
+    - id: "403"
+      name: 综艺
+    - id: "402"
+      name: 电视剧
+    - id: "405"
+      name: 动漫
+    - id: "404"
+      name: 纪录片
+    - id: "401"
+      name: 电影
 dead: true
 description: 冰淇淋
 id: icc2022
@@ -69,6 +87,17 @@ level_requirements:
       seeding_bonus: 1000000
 name: ICC
 schema: nexusphp
+search_categories:
+    movie:
+        - "401"
+        - "404"
+        - "405"
+    tv:
+        - "402"
+        - "403"
+    music:
+        - "406"
+        - "408"
 tags:
     - 影视
     - 综合

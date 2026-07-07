@@ -2,31 +2,7 @@
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 翻译自 PT-depiler，待真实页面校准。
 
-categories:
-    - id: "401"
-      name: Movie
-    - id: "402"
-      name: TV Series
-    - id: "403"
-      name: Entertainment
-    - id: "405"
-      name: Anime
-    - id: "414"
-      name: Music
-    - id: "407"
-      name: Sport
-    - id: "404"
-      name: Documentaries
-    - id: "406"
-      name: MV
-    - id: "408"
-      name: Software
-    - id: "410"
-      name: Game
-    - id: "411"
-      name: e-Learn
-    - id: "409"
-      name: Other
+dead: true
 description: JoyHD成立於2013年，發佈藍光原碟，藍光DIY和原抓音樂。
 id: joyhd
 level_requirements:
@@ -94,10 +70,3 @@ tags:
     - 综合
 urls:
     - https://www.joyhd.net/
-user_info:
-    fields:
-        bonus:
-            filters:
-                - name: parse_number
-            selectors:
-                - td.rowhead:contains('银元') + td

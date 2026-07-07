@@ -35,12 +35,12 @@ func DefaultNexusPHPUserInfo() UserInfoDef {
 			"uploaded": {
 				Selector: "font.color_uploaded, span.color_uploaded",
 				Parent:   true,
-				Filters:  []Filter{{Name: "regexp", Args: `(?:上传量|上傳量|Uploaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)`}},
+				Filters:  []Filter{{Name: "regexp", Args: `(?:上传量|上傳量|Uploaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)`}, {Name: "parse_size"}},
 			},
 			"downloaded": {
 				Selector: "font.color_downloaded, span.color_downloaded",
 				Parent:   true,
-				Filters:  []Filter{{Name: "regexp", Args: `(?:下载量|下載量|Downloaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)`}},
+				Filters:  []Filter{{Name: "regexp", Args: `(?:下载量|下載量|Downloaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)`}, {Name: "parse_size"}},
 			},
 			"ratio": {
 				Selector: "font.color_ratio, span.color_ratio",
@@ -56,12 +56,53 @@ func DefaultNexusPHPUserInfo() UserInfoDef {
 				Parent:   true,
 				Filters:  []Filter{{Name: "regexp", Args: `\[使用\][：:]?\s*([\d.,]+)`}},
 			},
+			"bonus_per_hour": {
+				Selectors: []string{
+					`div:contains("你当前每小时能获取")`,
+					`div:contains("你當前每小時能獲取")`,
+					`div:contains("You are currently getting")`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:能获取|能獲取|currently\s+getting)[^0-9-+]{0,24}([-+]?[\d,]+\.?\d*)`}, {Name: "parse_number"}},
+			},
 			// 做种数：用户条「<font class=color_active>当前活动:</font> ↑N ↓M」——首个数字即做种数。
 			// （做种体积 seeding_size 由适配器 ajax 列表另取；此处只取「数」。）
 			"seeding": {
 				Selector: "font.color_active, span.color_active",
 				Parent:   true,
 				Filters:  []Filter{{Name: "regexp", Args: `(?:当前活动|当前做种|Active)[：:]?\s*(\d+)`}},
+			},
+			"seeding_size": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("当前做种") + td`,
+					`td[class*="rowhead"]:contains("目前做種") + td`,
+					`td[class*="rowhead"]:contains("Current Seeding") + td`,
+					`td[class*="rowhead"]:contains("做种大小") + td`,
+					`td[class*="rowhead"]:contains("做種大小") + td`,
+					`td[class*="rowhead"]:contains("Seeding Size") + td`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes))`}, {Name: "parse_size"}},
+			},
+			"claim_count": {
+				Selectors: []string{
+					`#info_block a[href*="claim.php"]:contains("/")`,
+					`a[href*="claim.php"]:contains("/")`,
+					`td[class*="rowhead"]:contains("认领") + td`,
+					`td[class*="rowhead"]:contains("認領") + td`,
+					`td[class*="rowhead"]:contains("Claim") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "claim_count"}},
+			},
+			"max_claim": {
+				Selectors: []string{
+					`#info_block a[href*="claim.php"]:contains("/")`,
+					`a[href*="claim.php"]:contains("/")`,
+					`td[class*="rowhead"]:contains("认领") + td`,
+					`td[class*="rowhead"]:contains("認領") + td`,
+					`td[class*="rowhead"]:contains("Claim") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "claim_max"}},
 			},
 		},
 		DetailPath: "userdetails.php",
@@ -86,9 +127,122 @@ func DefaultNexusPHPUserInfo() UserInfoDef {
 				Selector: `td[class*="rowhead"]:contains("等级") + td img`,
 				Attr:     "title",
 			},
+			"level_id": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("等级") + td img`,
+					`td[class*="rowhead"]:contains("等級") + td img`,
+					`td[class*="rowhead"]:contains("Class") + td img`,
+				},
+				Attr:    "src",
+				Filters: []Filter{{Name: "regexp", Args: `/class/(\d+)\.gif`}, {Name: "add", Args: "-1"}},
+			},
+			"avatar": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("头像") + td img`,
+					`td[class*="rowhead"]:contains("頭像") + td img`,
+					`td[class*="rowhead"]:contains("Avatar") + td img`,
+					`img[name="avatarimg"]`,
+					`img.avatar`,
+					`img[src*="avatar"]`,
+					`img[src*="avatars"]`,
+				},
+				Attr:    "src",
+				Filters: []Filter{{Name: "clean_avatar"}},
+			},
+			"is_donor": {
+				Selectors: []string{
+					`h1 img[alt="Donor"]`,
+					`img[src*="flag"][alt="Donor"]`,
+				},
+				Attr:    "alt",
+				Filters: []Filter{{Name: "bool"}},
+			},
 			"join_date": {
 				Selector: `td[class*="rowhead"]:contains("加入日期") + td`,
 				Filters:  []Filter{{Name: "regexp", Args: `(\d{4}-\d{2}-\d{2})`}},
+			},
+			"last_access_at": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("最近动向") + td`,
+					`td[class*="rowhead"]:contains("最近動向") + td`,
+					`td[class*="rowhead"]:contains("Last Action") + td`,
+					`td[class*="rowhead"]:contains("Last Access") + td`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `^([^(]+)`}, {Name: "trim"}},
+			},
+			"true_uploaded": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("传输") + td`,
+					`td[class*="rowhead"]:contains("傳送") + td`,
+					`td[class*="rowhead"]:contains("Transfers") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:实际上传量|真实上传量|實際上傳量|真實上傳量|Real\s+Uploaded|Actual\s+Uploaded)[\s\S]{0,120}?([\d.,]+\s*[KMGTPE]?i?B)`}, {Name: "parse_size"}},
+			},
+			"true_downloaded": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("传输") + td`,
+					`td[class*="rowhead"]:contains("傳送") + td`,
+					`td[class*="rowhead"]:contains("Transfers") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:实际下载量|真实下载量|實際下載量|真實下載量|Real\s+Downloaded|Actual\s+Downloaded)[\s\S]{0,120}?([\d.,]+\s*[KMGTPE]?i?B)`}, {Name: "parse_size"}},
+			},
+			"true_ratio": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("传输") + td`,
+					`td[class*="rowhead"]:contains("傳送") + td`,
+					`td[class*="rowhead"]:contains("Transfers") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:实际分享率|真实分享率|實際分享率|真實分享率|Real\s+Ratio|Actual\s+Ratio)[^0-9+-]{0,120}([-+]?\d+\.?\d*)`}},
+			},
+			"seeding_bonus": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("做种积分") + td`,
+					`td[class*="rowhead"]:contains("做種積分") + td`,
+					`td[class*="rowhead"]:contains("保种积分") + td`,
+					`td[class*="rowhead"]:contains("保種積分") + td`,
+					`td[class*="rowhead"]:contains("Seeding Bonus") + td`,
+					`td[class*="rowhead"]:contains("Seed Bonus") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:做种积分|做種積分|保种积分|保種積分|Seeding\s+Bonus|Seed\s+Bonus)[^0-9+-]{0,120}([-+]?[\d,]+\.?\d*)`}, {Name: "parse_number"}},
+			},
+			"claim_count": {
+				Selectors: []string{
+					`#info_block a[href*="claim.php"]:contains("/")`,
+					`a[href*="claim.php"]:contains("/")`,
+					`td[class*="rowhead"]:contains("认领") + td`,
+					`td[class*="rowhead"]:contains("認領") + td`,
+					`td[class*="rowhead"]:contains("Claim") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "claim_count"}},
+			},
+			"max_claim": {
+				Selectors: []string{
+					`#info_block a[href*="claim.php"]:contains("/")`,
+					`a[href*="claim.php"]:contains("/")`,
+					`td[class*="rowhead"]:contains("认领") + td`,
+					`td[class*="rowhead"]:contains("認領") + td`,
+					`td[class*="rowhead"]:contains("Claim") + td`,
+					`#info_block`,
+				},
+				Filters: []Filter{{Name: "claim_max"}},
+			},
+		},
+		Pages: []UserInfoPageDef{
+			{
+				Path:   "usercp.php",
+				Params: map[string]string{"action": "personal"},
+				Fields: map[string]ElementQuery{
+					"personal_avatar": {
+						Selectors: []string{`input[name="avatar"]`, `input[name='avatar']`},
+						Attr:      "value",
+						Filters:   []Filter{{Name: "clean_avatar"}},
+					},
+				},
 			},
 		},
 	}
@@ -130,8 +284,14 @@ func EnsureDefaults(def *SiteMetadata) *SiteMetadata {
 		ensureGazelleDefaults(&cp)
 	case "luminance":
 		ensureLuminanceDefaults(&cp)
+	case "tcg":
+		ensureTCGDefaults(&cp)
+	case "smallhorse":
+		ensureSmallHorseDefaults(&cp)
 	case "mteam":
 		ensureMTeamDefaults(&cp)
+	case "rartracker":
+		ensureRartrackerDefaults(&cp)
 	default:
 		// 非 nexusphp：仅通用项，保留站点 YAML 自定义，不注入 NexusPHP 默认。
 	}
@@ -175,12 +335,8 @@ func ensureUnit3DDefaults(cp *SiteMetadata) {
 	}
 	// 用户资料：Fields/DetailFields 空才填默认；Path/DetailPath 留空（适配器硬编码三步）。
 	dflUI := DefaultUnit3DUserInfo()
-	if len(cp.UserInfo.Fields) == 0 {
-		cp.UserInfo.Fields = dflUI.Fields
-	}
-	if len(cp.UserInfo.DetailFields) == 0 {
-		cp.UserInfo.DetailFields = dflUI.DetailFields
-	}
+	cp.UserInfo.Fields = mergeDefaultFields(cp.UserInfo.Fields, dflUI.Fields)
+	cp.UserInfo.DetailFields = mergeDefaultFields(cp.UserInfo.DetailFields, dflUI.DetailFields)
 	// 未登录判定：任一字段已配则尊重站点，否则填默认。
 	if len(cp.NoLogin.URLPattern) == 0 && len(cp.NoLogin.HttpStatus) == 0 &&
 		cp.NoLogin.Selector == "" && len(cp.NoLogin.Content) == 0 {
@@ -236,8 +392,8 @@ func DefaultUnit3DUserInfo() UserInfoDef {
 				Attr:      "href",
 				Filters:   []Filter{{Name: "regexp", Args: `users/([^/?#]+)`}},
 			},
-			"uploaded":   {Selectors: []string{"li.ratio-bar__uploaded a:has(i.fa-arrow-up)", "span:has(i.fa-arrow-up)"}},
-			"downloaded": {Selectors: []string{"li.ratio-bar__downloaded a:has(i.fa-arrow-down)", "span:has(i.fa-arrow-down)"}},
+			"uploaded":   {Selectors: []string{"li.ratio-bar__uploaded a:has(i.fa-arrow-up)", "span:has(i.fa-arrow-up)"}, Filters: []Filter{{Name: "parse_size"}}},
+			"downloaded": {Selectors: []string{"li.ratio-bar__downloaded a:has(i.fa-arrow-down)", "span:has(i.fa-arrow-down)"}, Filters: []Filter{{Name: "parse_size"}}},
 			"ratio": {Selectors: []string{
 				`dt:contains("Ratio") + dd`, `dt:contains("分享率") + dd`, `dt:contains("比率") + dd`,
 				"li.ratio-bar__ratio a:has(i.fa-sync-alt)", "span:has(i.fa-sync-alt)",
@@ -245,7 +401,13 @@ func DefaultUnit3DUserInfo() UserInfoDef {
 			"bonus":    {Selectors: []string{"li.ratio-bar__points a:has(i.fa-coins)", "span:has(i.fa-coins)"}},
 			"seeding":  {Selectors: []string{"li.ratio-bar__seeding a:has(i.fa-upload)", "span:has(i.fa-upload)"}},
 			"leeching": {Selectors: []string{"li.ratio-bar__leeching a:has(i.fa-download)", "span:has(i.fa-download)"}},
-			"level":    {Selectors: []string{"div.content span.badge-user", "a.user-tag__link"}, Attr: "title"},
+			"seeding_size": {Selectors: []string{
+				`dt:contains("Seeding Size") + dd`, `dt:contains("Seeding size") + dd`,
+				`dt:contains("做种体积") + dd`, `dt:contains("做種體積") + dd`,
+				`td:contains("Seeding Size") + td`, `td:contains("Seeding size") + td`,
+				`td:contains("做种体积") + td`, `td:contains("做種體積") + td`,
+			}, Filters: []Filter{{Name: "parse_size"}}},
+			"level": {Selectors: []string{"div.content span.badge-user", "a.user-tag__link"}, Attr: "title"},
 			"join_date": {
 				Selectors: []string{"time.profile__registration"},
 				Attr:      "datetime",
@@ -290,12 +452,8 @@ func ensureGazelleDefaults(cp *SiteMetadata) {
 		cp.Selectors.Fields = DefaultGazelleSelectors().Fields
 	}
 	dfl := DefaultGazelleUserInfo()
-	if len(cp.UserInfo.Fields) == 0 {
-		cp.UserInfo.Fields = dfl.Fields
-	}
-	if len(cp.UserInfo.DetailFields) == 0 {
-		cp.UserInfo.DetailFields = dfl.DetailFields
-	}
+	cp.UserInfo.Fields = mergeDefaultFields(cp.UserInfo.Fields, dfl.Fields)
+	cp.UserInfo.DetailFields = mergeDefaultFields(cp.UserInfo.DetailFields, dfl.DetailFields)
 	if len(cp.NoLogin.URLPattern) == 0 && len(cp.NoLogin.HttpStatus) == 0 &&
 		cp.NoLogin.Selector == "" && len(cp.NoLogin.Content) == 0 {
 		cp.NoLogin = DefaultGazelleNoLogin()
@@ -330,6 +488,13 @@ func DefaultGazelleUserInfo() UserInfoDef {
 			"ratio":      {Selectors: []string{`div:contains("Stats") + ul.stats > li:contains("Ratio:")`, `div:contains("Statistics") + ul.stats > li:contains("Ratio:")`}},
 			"bonus":      {Selectors: []string{`div:contains("Stats") + ul.stats > li:contains("Bonus Points:")`, `div:contains("Statistics") + ul.stats > li:contains("Bonus Points:")`}},
 			"level":      {Selectors: []string{`div:contains("Personal") + ul.stats > li:contains("Class:")`}, Filters: []Filter{{Name: "regexp", Args: `Class:\s*(.+):::1`}}},
+			"uploads":    {Selectors: []string{`div:contains("Community") + ul.stats > li:contains("Uploaded")`, `div:contains("Community") + ul.stats > li:contains("Uploaded:")`}, Filters: []Filter{{Name: "parse_number"}}},
+			"seeding":    {Selectors: []string{`div:contains("Community") + ul.stats > li:contains("Seeding:")`}, Filters: []Filter{{Name: "regexp", Args: `(?i)Seeding[^0-9]*(\d+)`}, {Name: "parse_number"}}},
+			"seeding_size": {Selectors: []string{
+				`div:contains("Community") + ul.stats > li:contains("Total seed size")`,
+				`div:contains("Community") + ul.stats > li:contains("Seeding size")`,
+				`div:contains("Community") + ul.stats > li:contains("Seeding Size")`,
+			}, Filters: []Filter{{Name: "regexp", Args: `(?i)(?:Total seed size|Seeding size)[^0-9]*([\d.,]+\s*[KMGTPE]i?B)`}, {Name: "parse_size"}}},
 		},
 		DetailFields: map[string]ElementQuery{
 			"join_date": {Selectors: []string{`div:contains("Stats") + ul.stats > li:contains("Joined:") > span`}, Attr: "title", Filters: []Filter{{Name: "parse_time"}}},
@@ -366,12 +531,8 @@ func ensureLuminanceDefaults(cp *SiteMetadata) {
 		cp.Selectors.Fields = DefaultLuminanceSelectors().Fields
 	}
 	dfl := DefaultLuminanceUserInfo()
-	if len(cp.UserInfo.Fields) == 0 {
-		cp.UserInfo.Fields = dfl.Fields
-	}
-	if len(cp.UserInfo.DetailFields) == 0 {
-		cp.UserInfo.DetailFields = dfl.DetailFields
-	}
+	cp.UserInfo.Fields = mergeDefaultFields(cp.UserInfo.Fields, dfl.Fields)
+	cp.UserInfo.DetailFields = mergeDefaultFields(cp.UserInfo.DetailFields, dfl.DetailFields)
 	if len(cp.NoLogin.URLPattern) == 0 && len(cp.NoLogin.HttpStatus) == 0 &&
 		cp.NoLogin.Selector == "" && len(cp.NoLogin.Content) == 0 {
 		cp.NoLogin = DefaultLuminanceNoLogin()
@@ -406,9 +567,27 @@ func DefaultLuminanceUserInfo() UserInfoDef {
 			"level":      {Selectors: []string{`span.rank`, `ul.stats > li:contains("Class:")`}},
 			"bonus":      {Selectors: []string{`div#bonusdiv > h4`, `h4:contains("Credits:")`}},
 			"seeding":    {Selector: `ul.stats > li:contains("Seeding:")`},
+			"leeching":   {Selector: `ul.stats > li:contains("Leeching:")`},
+			"seeding_size": {
+				Selector: `ul.stats > li:contains("Seeding Size:")`,
+				Filters:  []Filter{{Name: "parse_size"}},
+			},
+			"uploads": {
+				Selector: `ul.stats > li[title]:contains("Uploaded:")`,
+				Filters:  []Filter{{Name: "split", Args: "[:::0"}, {Name: "parse_number"}},
+			},
+			"posts": {Selector: `ul.stats > li:contains("Forum Posts:")`, Filters: []Filter{{Name: "parse_number"}}},
+			"bonus_per_hour": {
+				Selector: `div#bonuslog`,
+				Filters: []Filter{
+					{Name: "regexp", Args: `(?i)\|\s*[+-]?([\d.,]+)\s*credits\s*\|`},
+					{Name: "divide", Args: "24"},
+				},
+			},
 		},
 		DetailFields: map[string]ElementQuery{
-			"join_date": {Selector: `ul.stats > li:contains("Joined:") > span.time`, Attr: "title", Filters: []Filter{{Name: "parse_time"}}},
+			"join_date":      {Selector: `ul.stats > li:contains("Joined:") > span.time`, Attr: "title", Filters: []Filter{{Name: "parse_time"}}},
+			"last_access_at": {Selector: `ul.stats > li:contains("Last Seen:") > span`, Attr: "title", Filters: []Filter{{Name: "parse_time"}}},
 		},
 	}
 }
@@ -421,14 +600,203 @@ func DefaultLuminanceNoLogin() NoLoginDef {
 	}
 }
 
+// -- TCG family --
+
+func ensureTCGDefaults(cp *SiteMetadata) {
+	if cp.SearchEntry == "" || cp.SearchEntry == "torrents.php" {
+		cp.SearchEntry = "browse.php"
+	}
+	if cp.SearchParam == "" {
+		cp.SearchParam = "search"
+	}
+	if cp.ExtraParam == nil {
+		cp.ExtraParam = map[string]string{}
+	}
+	for k, v := range map[string]string{"incldead": "1", "titleonly": "1", "nonboolean": "0"} {
+		if _, ok := cp.ExtraParam[k]; !ok {
+			cp.ExtraParam[k] = v
+		}
+	}
+	dflSel := DefaultTCGSelectors()
+	if cp.Selectors.Rows.Selector == "" && len(cp.Selectors.Rows.Selectors) == 0 {
+		cp.Selectors.Rows = dflSel.Rows
+	}
+	cp.Selectors.Fields = mergeDefaultFields(cp.Selectors.Fields, dflSel.Fields)
+	dflUI := DefaultTCGUserInfo()
+	cp.UserInfo.Pages = mergeDefaultUserInfoPages(cp.UserInfo.Pages, dflUI.Pages)
+	if len(cp.NoLogin.URLPattern) == 0 && len(cp.NoLogin.HttpStatus) == 0 &&
+		cp.NoLogin.Selector == "" && len(cp.NoLogin.Content) == 0 {
+		cp.NoLogin = DefaultTCGNoLogin()
+	}
+}
+
+func DefaultTCGSelectors() SiteSelectors {
+	return SiteSelectors{
+		Rows: ElementQuery{Selector: "table[border='0'] > tbody > tr.ttable:has(a[href^='browse.php?cat=']):not(:has(font[color='blue'])):not(:contains('*TCG*'))"},
+		Fields: map[string]ElementQuery{
+			"title":     {Selector: `a[href^="details.php?id="]`, Attr: "title"},
+			"detail":    {Selector: `a[href^="details.php?id="]`, Attr: "href"},
+			"download":  {Selector: `a[href^="download.php/"]`, Attr: "href"},
+			"time":      {Selector: "td:nth-child(6)", Filters: []Filter{{Name: "parse_time"}}},
+			"size":      {Selector: "td:nth-child(7)", Filters: []Filter{{Name: "parse_size"}}},
+			"completed": {Selector: "td:nth-child(8)", Filters: []Filter{{Name: "replace", Args: "Never:::0"}, {Name: "parse_number"}}},
+			"seeders":   {Selector: "td:nth-child(9)", Filters: []Filter{{Name: "parse_number"}}},
+			"leechers":  {Selector: "td:nth-child(10)", Filters: []Filter{{Name: "parse_number"}}},
+			"comments":  {Selector: "td:nth-child(5)", Filters: []Filter{{Name: "parse_number"}}},
+			"subtitle":  {Selector: "span > em"},
+		},
+	}
+}
+
+func DefaultTCGUserInfo() UserInfoDef {
+	return UserInfoDef{
+		Pages: []UserInfoPageDef{
+			{
+				Path: "main.php",
+				Fields: map[string]ElementQuery{
+					"id":   {Selector: `a[href*="userdetails.php?id="]:first`, Attr: "href", Filters: []Filter{{Name: "queryparam", Args: "id"}}},
+					"name": {Selector: `a[href*="userdetails.php?id="]:first`},
+				},
+			},
+			{
+				Path:   "userdetails.php",
+				Params: map[string]string{"id": "{id}"},
+				Fields: map[string]ElementQuery{
+					"join_date":      {Selector: `.embedded td:contains("Join date") + td:first`, Filters: []Filter{{Name: "split", Args: "(:::0"}, {Name: "trim"}, {Name: "parse_time"}}},
+					"last_access_at": {Selector: `.embedded td:contains("Last seen") + td:first`, Filters: []Filter{{Name: "split", Args: "(:::0"}, {Name: "trim"}, {Name: "parse_time"}}},
+					"uploaded":       {Selector: `td.rowhead:contains("Uploaded") + td`, Filters: []Filter{{Name: "split", Args: "(:::0"}, {Name: "trim"}, {Name: "parse_size"}}},
+					"downloaded":     {Selector: `td.rowhead:contains("Downloaded") + td`, Filters: []Filter{{Name: "split", Args: "(:::0"}, {Name: "trim"}, {Name: "parse_size"}}},
+					"ratio":          {Selectors: []string{`td.statuslink span:contains("Ratio:") + span`, `td.rowhead:contains("Ratio") + td`}, Filters: []Filter{{Name: "replace", Args: "---:::-1"}, {Name: "parse_number"}}},
+					"seeding":        {Selector: `img[title="seeders"] + span:first`, Filters: []Filter{{Name: "parse_number"}}},
+					"level":          {Selector: `td.rowhead:contains("Class") + td`},
+					"seeding_size": {
+						Selector: `div#kd1 > table.details > tbody tr td:not(.colbrowsehead):nth-child(4)`,
+						Attr:     "text_all",
+						Filters:  []Filter{{Name: "sum_size"}},
+					},
+				},
+			},
+		},
+	}
+}
+
+func DefaultTCGNoLogin() NoLoginDef {
+	return NoLoginDef{
+		HttpStatus: []int{401, 403},
+		URLPattern: []string{"login.php", "takelogin.php"},
+		Selector:   `form[action*="takelogin"], form[action*="login.php"], input[name="password"]`,
+	}
+}
+
+// -- SmallHorse (Luminance-like lightweight tracker framework) --
+
+// ensureSmallHorseDefaults fills defaults for MoviePilot's SmallHorse parser
+// shape: index user.php?id discovery, user.php stats blocks, and
+// torrents.php?type=seeding&userid=N table#torrent_table seeding totals.
+func ensureSmallHorseDefaults(cp *SiteMetadata) {
+	if cp.Selectors.Rows.Selector == "" && len(cp.Selectors.Rows.Selectors) == 0 {
+		cp.Selectors = DefaultSmallHorseSelectors()
+	} else if len(cp.Selectors.Fields) == 0 {
+		cp.Selectors.Fields = DefaultSmallHorseSelectors().Fields
+	}
+	dfl := DefaultSmallHorseUserInfo()
+	cp.UserInfo.Pages = mergeDefaultUserInfoPages(cp.UserInfo.Pages, dfl.Pages)
+	if len(cp.NoLogin.URLPattern) == 0 && len(cp.NoLogin.HttpStatus) == 0 &&
+		cp.NoLogin.Selector == "" && len(cp.NoLogin.Content) == 0 {
+		cp.NoLogin = DefaultSmallHorseNoLogin()
+	}
+}
+
+// DefaultSmallHorseSelectors returns best-effort search selectors for the
+// single table used by SmallHorse-style sites. User data is covered below by
+// UserInfo.Pages because the framework requires uid discovery before stats.
+func DefaultSmallHorseSelectors() SiteSelectors {
+	return SiteSelectors{
+		Rows: ElementQuery{Selector: "table#torrent_table tr"},
+		Fields: map[string]ElementQuery{
+			"title":    {Selectors: []string{`a[href*="torrents.php?id="]`, `a[href*="details.php?id="]`}},
+			"detail":   {Selectors: []string{`a[href*="torrents.php?id="]`, `a[href*="details.php?id="]`}, Attr: "href"},
+			"download": {Selectors: []string{`a[href*="torrents.php?action=download"]`, `a[href*="download.php"]`}, Attr: "href"},
+			"size":     {Selector: "td:nth-child(6)"},
+			"seeders":  {Selector: "td:nth-child(8)"},
+			"leechers": {Selector: "td:nth-child(9)"},
+		},
+	}
+}
+
+// DefaultSmallHorseUserInfo mirrors MoviePilot app/modules/indexer/parser/
+// small_horse.py with executable CSS selectors and filters.
+func DefaultSmallHorseUserInfo() UserInfoDef {
+	stats := "ul.stats.nobullet:eq(1)"
+	return UserInfoDef{
+		Pages: []UserInfoPageDef{
+			{
+				Path: "/",
+				Fields: map[string]ElementQuery{
+					"id":   {Selector: `a[href*="user.php?id="]:first`, Attr: "href", Filters: []Filter{{Name: "queryparam", Args: "id"}}},
+					"name": {Selector: `a[href*="user.php?id="]:first`},
+				},
+			},
+			{
+				Path: "user.php?id={id}",
+				Fields: map[string]ElementQuery{
+					"name":      {Selector: `a[href*="user.php?id="]:first`},
+					"join_date": {Selector: stats + " > li:eq(0) span", Filters: []Filter{{Name: "parse_time"}}},
+					"uploaded": {
+						Selector: stats + " > li:eq(2)",
+						Filters:  []Filter{{Name: "regexp", Args: `(?i)(?:Uploaded|上传|上傳)?[^0-9]*([\d.,]+\s*[KMGTPE]i?B)`}, {Name: "parse_size"}},
+					},
+					"downloaded": {
+						Selector: stats + " > li:eq(3)",
+						Filters:  []Filter{{Name: "regexp", Args: `(?i)(?:Downloaded|下载|下載)?[^0-9]*([\d.,]+\s*[KMGTPE]i?B)`}, {Name: "parse_size"}},
+					},
+					"ratio": {
+						Selectors: []string{stats + " > li:eq(4) span", stats + " > li:eq(4)", stats + " > li:eq(5)"},
+						Filters:   []Filter{{Name: "regexp", Args: `(?i)(?:Ratio|分享率|比率)?[^0-9∞]*([∞\d.]+)`}, {Name: "replace", Args: "∞:::9999"}},
+					},
+					"bonus": {
+						Selector: stats + " > li:eq(5)",
+						Filters:  []Filter{{Name: "regexp", Args: `(?i)(?:Bonus|Credits|魔力|积分|積分)?[^0-9]*([\d.,]+(?:\.\d+)?)`}, {Name: "parse_number"}},
+					},
+					"level": {
+						Selector: "ul.stats.nobullet:eq(3) > li:eq(0)",
+						Filters:  []Filter{{Name: "regexp", Args: `(?i)(?:Class|Level|等级|等級)\s*:\s*(.+):::1`}, {Name: "trim"}},
+					},
+					"leeching": {
+						Selector: "ul.stats.nobullet:eq(4) > li:eq(6)",
+						Filters:  []Filter{{Name: "regexp", Args: `(?i)(?:Leeching|下载中|下載中)?[^0-9]*(\d+)`}, {Name: "parse_number"}},
+					},
+				},
+			},
+			{
+				Path: "torrents.php?type=seeding&userid={id}",
+				Fields: map[string]ElementQuery{
+					"seeding":      {Selector: "table#torrent_table tr:not(:first-child) td:nth-child(6)", Attr: "count"},
+					"seeding_size": {Selector: "table#torrent_table tr:not(:first-child) td:nth-child(6)", Attr: "text_all", Filters: []Filter{{Name: "sum_size"}}},
+				},
+			},
+		},
+	}
+}
+
+func DefaultSmallHorseNoLogin() NoLoginDef {
+	return NoLoginDef{
+		HttpStatus: []int{401, 403},
+		URLPattern: []string{"login.php", "login"},
+		Selector:   `form[action*="login"], input[name="password"]`,
+	}
+}
+
 // ensureNexusPHPDefaults 填 NexusPHP 专属默认：选择器（selectors/user_info/no_login/detail）
 // 与 capability 页面路径（freeleech/announcement/harem/messages）。各段独立判断，仅填空段——
 // 站点 YAML 可只覆盖需要定制的部分（如 bonus/seeding 站点专属选择器）。原 EnsureDefaults
 // 的 NexusPHP 逻辑原样保留，确保现有 20 站行为零回归。
 func ensureNexusPHPDefaults(cp *SiteMetadata) {
-	if cp.Selectors.Rows.Selector == "" {
-		cp.Selectors = DefaultNexusPHPSelectors()
+	dflSelectors := DefaultNexusPHPSelectors()
+	if cp.Selectors.Rows.Selector == "" && len(cp.Selectors.Rows.Selectors) == 0 {
+		cp.Selectors.Rows = dflSelectors.Rows
 	}
+	cp.Selectors.Fields = mergeDefaultFields(cp.Selectors.Fields, dflSelectors.Fields)
 	dfl := DefaultNexusPHPUserInfo()
 	if cp.UserInfo.Path == "" {
 		cp.UserInfo.Path = dfl.Path
@@ -443,6 +811,9 @@ func ensureNexusPHPDefaults(cp *SiteMetadata) {
 	// 全部键的站点零影响（其键已存在，不被覆盖）。mergeDefaultFields 新建 map，不污染共享原 def。
 	cp.UserInfo.Fields = mergeDefaultFields(cp.UserInfo.Fields, dfl.Fields)
 	cp.UserInfo.DetailFields = mergeDefaultFields(cp.UserInfo.DetailFields, dfl.DetailFields)
+	if cp.Schema == "nexusphp" {
+		cp.UserInfo.Pages = mergeDefaultUserInfoPages(cp.UserInfo.Pages, dfl.Pages)
+	}
 	if len(cp.NoLogin.URLPattern) == 0 && len(cp.NoLogin.Content) == 0 {
 		cp.NoLogin = DefaultNoLogin()
 	}
@@ -515,6 +886,53 @@ func ensureMTeamDefaults(cp *SiteMetadata) {
 	cp.Announcement.Enabled, cp.Announcement.Path = applyInfoDefaults(cp.Announcement.Enabled, cp.Announcement.Path, FreeleechDef{Enabled: true})
 }
 
+func ensureRartrackerDefaults(cp *SiteMetadata) {
+	if cp.SearchEntry == "" || cp.SearchEntry == "torrents.php" {
+		cp.SearchEntry = "/api/v1/torrents"
+	}
+	if cp.SearchParam == "" || cp.SearchParam == "search" {
+		cp.SearchParam = "searchText"
+	}
+	if cp.Format == "" {
+		cp.Format = "json"
+	}
+	if cp.ExtraParam == nil {
+		cp.ExtraParam = map[string]string{}
+	}
+	for k, v := range map[string]string{
+		"limit":          "100",
+		"index":          "0",
+		"section":        "all",
+		"extendedSearch": "false",
+		"watchview":      "false",
+	} {
+		if _, ok := cp.ExtraParam[k]; !ok {
+			cp.ExtraParam[k] = v
+		}
+	}
+	dfl := DefaultRartrackerSelectors()
+	if cp.Selectors.Rows.Selector == "" && len(cp.Selectors.Rows.Selectors) == 0 {
+		cp.Selectors.Rows = dfl.Rows
+	}
+	cp.Selectors.Fields = mergeDefaultFields(cp.Selectors.Fields, dfl.Fields)
+}
+
+func DefaultRartrackerSelectors() SiteSelectors {
+	return SiteSelectors{
+		Rows: ElementQuery{Selector: ":self"},
+		Fields: map[string]ElementQuery{
+			"title":     {Selector: "name"},
+			"detail":    {Selector: "id", Filters: []Filter{{Name: "prepend", Args: "/torrent/"}}},
+			"size":      {Selector: "size"},
+			"time":      {Selector: "added"},
+			"seeders":   {Selector: "seeders"},
+			"leechers":  {Selector: "leechers"},
+			"completed": {Selector: "timesCompleted"},
+			"category":  {Selector: "category"},
+		},
+	}
+}
+
 // applyInfoDefaults 合并 Freeleech/Announcement 默认值：站点未显式配置（Enabled=false 且 Path 空）
 // 时整体取默认（开启 + 默认路径）；否则仅补空 Path。站点 YAML 可用 enabled:false 关闭。
 func applyInfoDefaults(curEnabled bool, curPath string, def FreeleechDef) (bool, string) {
@@ -542,6 +960,41 @@ func mergeDefaultFields(site, def map[string]ElementQuery) map[string]ElementQue
 	for k, v := range def {
 		if _, ok := out[k]; !ok {
 			out[k] = v
+		}
+	}
+	return out
+}
+
+func mergeDefaultUserInfoPages(sitePages, defaultPages []UserInfoPageDef) []UserInfoPageDef {
+	if len(defaultPages) == 0 {
+		return sitePages
+	}
+	covered := map[string]bool{}
+	for _, page := range sitePages {
+		for key := range page.Fields {
+			covered[key] = true
+		}
+		for _, key := range page.UseFields {
+			covered[key] = true
+		}
+	}
+	out := append([]UserInfoPageDef{}, sitePages...)
+	for _, page := range defaultPages {
+		needed := false
+		for key := range page.Fields {
+			if !covered[key] {
+				needed = true
+				covered[key] = true
+			}
+		}
+		for _, key := range page.UseFields {
+			if !covered[key] {
+				needed = true
+				covered[key] = true
+			}
+		}
+		if needed {
+			out = append(out, page)
 		}
 	}
 	return out

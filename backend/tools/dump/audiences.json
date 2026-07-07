@@ -488,13 +488,194 @@
       "__spread": [
         "SchemaMetadata.userInfo!.selectors!"
       ],
-      "bonus": {
+      "messageCount": {
+        "text": 0,
         "selector": [
-          "td.rowhead:contains('爆米花') + td, td.rowhead:contains('Karma Points') + td"
+          ".site-userbar__compact-tool--has-unread .site-userbar__compact-tool-badge--unread",
+          "td[style*='background: red'] a[href*='messages.php']"
         ],
         "filters": [
           {
             "name": "parseNumber"
+          }
+        ]
+      },
+      "uploaded": {
+        "text": 0,
+        "selector": [
+          ".site-userbar__compact-metric--uploaded",
+          {
+            "__raw": "SpreadElement",
+            "src": "...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.uploaded!.selector!)"
+          }
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            query = query.replace(/,/g, \"\");\n            const queryMatch = query.match(/(上[传傳]量|Uploaded).+?([\\d.]+ ?[ZEPTGMK]?i?B)/);\n            return parseSizeString(queryMatch?.[2] ?? query);\n          }"
+          }
+        ]
+      },
+      "downloaded": {
+        "text": 0,
+        "selector": [
+          ".site-userbar__compact-metric--downloaded",
+          {
+            "__raw": "SpreadElement",
+            "src": "...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.downloaded!.selector!)"
+          }
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            query = query.replace(/,/g, \"\");\n            const queryMatch = query.match(/(下[载載]量|Downloaded).+?([\\d.]+ ?[ZEPTGMK]?i?B)/);\n            return parseSizeString(queryMatch?.[2] ?? query);\n          }"
+          }
+        ]
+      },
+      "ratio": {
+        "text": 0,
+        "selector": [
+          ".site-userbar__compact-metric--ratio"
+        ],
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "levelName": {
+        "selector": [
+          "div.ud-hero span.ud-class > b"
+        ],
+        "attr": "class",
+        "filters": [
+          {
+            "name": "replace",
+            "args": [
+              "_Name",
+              ""
+            ]
+          }
+        ]
+      },
+      "bonus": {
+        "selector": [
+          ".site-userbar__compact-metric--bonus",
+          "td.rowhead:contains('爆米花') + td",
+          "td.rowhead:contains('Karma Points') + td"
+        ],
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "bonusPerHour": {
+        "selector": [
+          ".mybonus-side__rate",
+          {
+            "__raw": "SpreadElement",
+            "src": "...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.bonusPerHour!.selector!)"
+          }
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const queryMatch = query.match(\n              /(?:你当前每小时能获取|你當前每小時能獲取|You are currently getting)\\s*([\\d.,]+)/,\n            );\n            return tryToNumber(queryMatch?.[1] ?? query);\n          }"
+          }
+        ]
+      },
+      "seedingBonus": {
+        "selector": [
+          ".site-userbar__compact-metric--seeding-bonus",
+          {
+            "__raw": "SpreadElement",
+            "src": "...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.seedingBonus!.selector!)"
+          }
+        ],
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "joinTime": {
+        "selector": [
+          {
+            "__raw": "SpreadElement",
+            "src": "...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.joinTime!.selector!)"
+          },
+          "td:contains('加入日期：')",
+          "div:contains('加入日期：')"
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const queryMatch = query.match(/加入日期[：:]\\s*([^(]+?)(?:\\s*\\(|最近[动動]向|$)/);\n            query = queryMatch?.[1] ?? query.split(\" (\")[0];\n            return parseValidTimeString(query);\n          }"
+          }
+        ]
+      },
+      "lastAccessAt": {
+        "selector": [
+          {
+            "__raw": "SpreadElement",
+            "src": "...([] as string[]).concat(SchemaMetadata.userInfo!.selectors!.lastAccessAt!.selector!)"
+          },
+          "td:contains('最近动向：')",
+          "td:contains('最近動向：')",
+          "div:contains('最近动向：')",
+          "div:contains('最近動向：')"
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string) => {\n            const queryMatch = query.match(/最近[动動]向[：:]\\s*([^(]+?)(?:\\s*\\(|$)/);\n            query = queryMatch?.[1] ?? query.split(\"(\")[0];\n            return parseValidTimeString(query);\n          }"
+          }
+        ]
+      },
+      "seeding": {
+        "selector": [
+          ".site-userbar__compact-metric-inline-link--seeding"
+        ],
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "leeching": {
+        "selector": [
+          ".site-userbar__compact-metric-inline-link--leeching"
+        ],
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
+      },
+      "hnrPreWarning": {
+        "text": 0,
+        "selector": [
+          ".site-userbar__compact-metric--hr",
+          "#info_block a[href*='myhr.php']:last"
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string | number) => {\n            const queryMatch = String(query || \"\").match(/\\d+/);\n            return queryMatch && queryMatch.length >= 1 ? parseInt(queryMatch[0]) : 0;\n          }"
+          }
+        ]
+      },
+      "hnrUnsatisfied": {
+        "text": 0,
+        "selector": [
+          ".site-userbar__compact-metric--hr",
+          "#info_block a[href*='myhr.php']:last"
+        ],
+        "filters": [
+          {
+            "__fn": true,
+            "src": "(query: string | number) => {\n            const queryMatch = String(query || \"\").match(/\\d+\\s*\\/\\s*(\\d+)/);\n            return queryMatch && queryMatch.length >= 2 ? parseInt(queryMatch[1]) : 0;\n          }"
           }
         ]
       }

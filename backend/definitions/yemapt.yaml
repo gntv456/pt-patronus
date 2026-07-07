@@ -1,13 +1,76 @@
 # yemapt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: yemapt。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.completed（text）
-#   - search.url.filters[prepend]
-#   - search.link.filters[prepend]
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: yemapt。已接入通用/专用适配器，待真实站点校准。
 description: YemaPT 是一个由全新技术架构构建而来的综合类资源PT站点。有分享率和登录要求，可访问 wiki.yemapt.org 查看。
 id: yemapt
+level_requirements:
+    - id: 0
+      name: 乱民
+      privilege: 无
+      ratio: 0.3
+    - id: 1
+      name: 小卒
+      privilege: 注册后默认等级，待系统更新后会自动升级到level2
+      ratio: 0.5
+    - id: 2
+      name: 教谕
+      privilege: 可查看站点统计
+      ratio: 0.6
+    - downloaded: 100GB
+      id: 3
+      name: 登仕郎
+      privilege: 新注册用户系统定时更新后的默认等级；可查看种子TOP10排行
+      ratio: 1
+    - downloaded: 200GB
+      id: 4
+      interval: P4W
+      name: 修职郎
+      privilege: 可查看种子TOP250信息；可查看用户TOP10信息
+      ratio: 2
+    - downloaded: 400GB
+      id: 5
+      interval: P8W
+      name: 文林郎
+      privilege: 可查看用户TOP250信息，可匿名发帖
+      ratio: 3
+    - downloaded: 500GB
+      id: 6
+      interval: P12W
+      name: 忠武校尉
+      privilege: 可设定免候选发布种子
+      ratio: 4
+    - downloaded: 800GB
+      id: 7
+      interval: P16W
+      name: 承信将军
+      privilege: 发帖可禁止评论
+      ratio: 5
+    - downloaded: 1TB
+      id: 8
+      interval: P20W
+      name: 武毅将军
+      privilege: 无
+      ratio: 6
+    - downloaded: 2TB
+      id: 9
+      interval: P24W
+      is_kept: true
+      name: 武节将军
+      privilege: 此等级及以上用户，账号将永久保留
+      ratio: 7
+    - downloaded: 2.5TB
+      id: 10
+      interval: P28W
+      is_kept: true
+      name: 显威将军
+      privilege: 无
+      ratio: 8
+    - downloaded: 3TB
+      id: 11
+      interval: P32W
+      is_kept: true
+      name: 宣武将军
+      privilege: 无
+      ratio: 9
 name: YemaPT
 schema: yemapt
 search_entry: /api/torrent/fetchOpenTorrentList
@@ -16,10 +79,20 @@ selectors:
     fields:
         category:
             selector: categoryName
-        completed: {}
+        completed:
+            filters:
+                - args: "0"
+                  name: const
+            selector: id
         detail:
+            filters:
+                - args: /#/torrent/detail/
+                  name: prepend
             selector: id
         download:
+            filters:
+                - args: /api/torrent/download?id=
+                  name: prepend
             selector: id
         leechers:
             selector: leechNum
@@ -43,3 +116,63 @@ tags:
 timezone_offset: "+0800"
 urls:
     - https://www.yemapt.org/
+user_info:
+    pages:
+        - path: /api/consumer/fetchSelfDetail
+          format: json
+          fields:
+            id:
+                selector: data.id
+            name:
+                selector: data.name
+            level:
+                filters:
+                    - args: 0=乱民:::1=小卒:::2=教谕:::3=登仕郎:::4=修职郎:::5=文林郎:::6=忠武校尉:::7=承信将军:::8=武毅将军:::9=武节将军:::10=显威将军:::11=宣武将军
+                      name: map
+                selector: data.level
+            level_id:
+                selector: data.level
+            join_date:
+                filters:
+                    - name: parse_time
+                selector: data.registerTime
+            uploaded:
+                filters:
+                    - name: parse_size
+                selector: data.promotionUploadSize
+            downloaded:
+                filters:
+                    - name: parse_size
+                selector: data.promotionDownloadSize
+            true_uploaded:
+                selector: data.uploadSize
+            true_downloaded:
+                selector: data.downloadSize
+            bonus:
+                selector: data.bonus
+        - path: /api/torrent/fetchSelfTorrentCount
+          format: json
+          method: POST
+          body: '{}'
+          fields:
+            uploads:
+                selector: data
+        - path: /api/userTorrent/fetchSeedTorrentInfo
+          format: json
+          method: POST
+          body: '{"pageNum":1,"pageSize":1}'
+          fields:
+            seeding:
+                selector: data.num
+            seeding_size:
+                filters:
+                    - name: parse_size
+                selector: data.fileSize
+        - path: /api/consumer/fetchUserPointAcc
+          format: json
+          fields:
+            bonus_per_hour:
+                filters:
+                    - args: '"?hour(?:Base|Owner)?Point"?\s*:\s*([\d.]+)'
+                      name: sum_matches
+                selector: data

@@ -1,7 +1,4 @@
 {
-  "__spread": [
-    "SchemaMetadata"
-  ],
   "version": 1,
   "id": "torrenthub",
   "name": "TorrentHub",
@@ -17,6 +14,7 @@
   "urls": [
     "https://torrenthub.club/"
   ],
+  "isDead": true,
   "levelRequirements": [
     {
       "id": 0,

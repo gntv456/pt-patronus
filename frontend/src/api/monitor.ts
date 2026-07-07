@@ -127,6 +127,8 @@ export const monitorApi = {
     http
       .post<{ ok: boolean; metrics?: Metrics; error?: string }>(`/monitors/${id}/collect`)
       .then((r) => r.data),
+  power: (id: number, action: 'reboot') =>
+    http.post<{ ok: boolean; error?: string }>(`/monitors/${id}/power`, { action }).then((r) => r.data),
   metrics: (id: number, since?: string, limit?: number) =>
     http
       .get<{ snapshots: MetricSnapshot[] }>(`/monitors/${id}/metrics`, { params: { since, limit } })

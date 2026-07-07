@@ -1,27 +1,30 @@
 # milkie — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
-#   - search.time.filters[split]
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - ME
     - 奶昔
 description: Milkie.cc (ME) is Private Torrent Tracker for 0DAY / GENERAL
 id: milkie
+format: json
 name: Milkie
+extra_param:
+    ps: "50"
 search_entry: /api/v1/torrents
 search_param: query
 selectors:
     fields:
         category:
+            filters:
+                - args: 1=Movies:::2=TV:::3=Music:::4=Games:::5=Ebook:::6=Apps:::7=Adult
+                  name: map
             selector: category
         completed:
             selector: downloaded
         detail:
             selector: id
+            filters:
+                - name: prepend
+                  args: /browse/
         leechers:
             selector: leechers
         seeders:
@@ -30,6 +33,9 @@ selectors:
             selector: size
         time:
             selector: createdAt
+            filters:
+                - name: split
+                  args: "+:::0"
         title:
             selector: releaseName
     rows:
@@ -37,5 +43,26 @@ selectors:
 tags:
     - 综合
 timezone_offset: "+0200"
+user_info:
+    pages:
+        - path: /api/v1/auth
+          format: json
+          fields:
+            name:
+                selector: user.displayName
+            level:
+                text: Early bird
+            uploaded:
+                filters:
+                    - name: parse_size
+                selector: user.uploaded
+            downloaded:
+                filters:
+                    - name: parse_size
+                selector: user.downloaded
+            join_date:
+                selector: user.createdAt
+                filters:
+                    - name: parse_time
 urls:
     - https://milkie.cc/

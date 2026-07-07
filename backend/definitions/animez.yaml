@@ -1,0 +1,100 @@
+# animez — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: avistaz。已由本项目运行时 schema adapter 支持。
+aka:
+    - AnimeTorrents
+description: AnimeZ (ex-AnimeTorrents) is a Private Torrent Tracker for ANIME / MANGA
+id: animez
+level_requirements:
+    - id: 1
+      name: Leech
+      privilege: Can only download torrents older than 7 days. Cannot upload. Any Hit & Runs disable downloading until cleared.
+    - id: 2
+      name: Newbie
+      privilege: Newly registered users. Can only download torrents older than 7 days. Cannot use RSS or upload torrents.
+    - id: 3
+      name: Member
+      privilege: Registered users in good standing with 5 GB+ upload and a ratio of 1.0 or above.
+      ratio: 1
+      uploaded: 5GB
+    - id: 4
+      name: Power User
+      privilege: Experienced members with strong upload history and consistently good ratio.
+    - group_type: vip
+      id: 100
+      name: VIP
+      privilege: Distinguished member, donator, or retired staff.
+    - group_type: manager
+      id: 200
+      name: Uploader
+      privilege: Promoted by staff for quality and quantity of uploads. Access to the upload API and tag creation.
+    - group_type: manager
+      id: 201
+      name: Editor
+      privilege: Promoted by staff. Can create and edit anime database entries.
+    - group_type: manager
+      id: 202
+      name: Staff
+      privilege: Site assistant with access to the admin panel and moderation tools.
+    - group_type: manager
+      id: 203
+      name: Moderator
+      privilege: Moderates the site and its users.
+    - group_type: manager
+      id: 204
+      name: Administrator
+      privilege: Administers and moderates the site.
+    - group_type: manager
+      id: 205
+      name: Super Admin
+      privilege: Site owner.
+name: AnimeZ
+schema: avistaz
+selectors:
+    fields:
+        category:
+            selector: format
+        title:
+            selector: release_title
+tags:
+    - 动漫
+    - 漫画
+timezone_offset: "+0100"
+urls:
+    - https://animez.to/
+user_info:
+    fields:
+        bonus:
+            filters:
+                - name: parse_number
+            selector: :self
+        downloaded:
+            filters:
+                - name: parse_size
+            selector: :self
+        join_date:
+            filters:
+                - args: '[MMMM dd, yyyy]'
+                  name: parse_time
+            selector: :self
+        leeching:
+            filters:
+                - name: parse_number
+            selector: :self
+        level:
+            selector: :self
+        name:
+            selector: :self
+        ratio:
+            selector: :self
+        seeding:
+            filters:
+                - name: parse_number
+            selector: :self
+        uploaded:
+            filters:
+                - name: parse_size
+            selector: :self
+        uploads:
+            filters:
+                - name: parse_number
+            selector: :self

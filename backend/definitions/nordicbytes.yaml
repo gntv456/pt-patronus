@@ -1,0 +1,133 @@
+# nordicbytes — 自动生成自 PT-depiler（tools/convert-definitions.go）。
+# schema: unit3d。已由本项目运行时 schema adapter 支持。
+aka:
+    - NBy
+    - DanishBytes
+description: NordicBytes is a Private Torrent Tracker for NORDIC content
+id: nordicbytes
+level_requirements:
+    - id: 1
+      name: Noob
+      privilege: 受限用户，无法访问论坛、聊天和评论。
+    - id: 2
+      name: Beginner
+      privilege: 发送邀请
+      uploaded: 50GiB
+    - id: 3
+      interval: P30D
+      name: Explorer
+      privilege: 发送邀请
+      uploaded: 500GiB
+    - id: 4
+      interval: P60D
+      name: Contributor
+      privilege: 发送邀请
+      uploaded: 1TiB
+    - id: 5
+      interval: P90D
+      name: Pirate
+      privilege: 发送邀请
+      uploaded: 5TiB
+    - id: 6
+      interval: P180D
+      name: Veteran
+      privilege: 发送邀请
+      uploaded: 10TiB
+    - id: 7
+      interval: P365D
+      name: Guru
+      privilege: 发送邀请
+      uploaded: 50TiB
+    - id: 8
+      interval: P730D
+      name: Legend
+      privilege: 发送邀请
+      uploaded: 100TiB
+    - group_type: user
+      id: 9
+      interval: P90D
+      name: Archivist
+      privilege: 发送邀请 免疫HR 全局免费
+name: NordicBytes
+schema: unit3d
+search_entry: /torrents
+selectors:
+    fields:
+        detail:
+            attr: href
+            selector: div.torrent--info a[href*='/torrents/']
+        download:
+            attr: href
+            selector: a[href*='/torrents/download/']
+        leechers:
+            selector: ul.__torrent-stats a:has(i.fa-arrow-down) div.badge-group-content
+        seeders:
+            selector: ul.__torrent-stats a:has(i.fa-arrow-up) div.badge-group-content
+        size:
+            selector: ul.__torrent-stats li:has(i.fa-hdd) div.badge-group-content
+        time:
+            attr: datetime
+            filters:
+                - name: parse_time
+            selector: div.torrent--info time
+        title:
+            selector: div.torrent--info a[href*='/torrents/'] h2
+    rows:
+        selector: div.__torrents-item
+tags:
+    - 北欧
+urls:
+    - https://nordicbytes.org/
+user_info:
+    pages:
+        - path: /
+          fields:
+            name:
+                selector: "nav.__navbar-subnav a[href*='/u/'] strong"
+            uploaded:
+                selector: "ul.__navbar-stats a:has(i.fa-arrow-up) span"
+                filters:
+                    - name: regexp
+                      args: '([\d.,]+\s*[A-Za-z]+)'
+                    - name: parse_size
+            downloaded:
+                selector: "ul.__navbar-stats a:has(i.fa-arrow-down) span"
+                filters:
+                    - name: regexp
+                      args: '([\d.,]+\s*[A-Za-z]+)'
+                    - name: parse_size
+            ratio:
+                selector: "ul.__navbar-stats a:has(i.fa-percent) span"
+                filters:
+                    - name: parse_number
+            seeding:
+                selector: "ul.__navbar-stats a:has(i.fa-arrow-up) span"
+                filters:
+                    - name: regexp
+                      args: '\((\d+)\)'
+            leeching:
+                selector: "ul.__navbar-stats a:has(i.fa-arrow-down) span"
+                filters:
+                    - name: regexp
+                      args: '\((\d+)\)'
+        - path: /u/{name}
+          fields:
+            level:
+                selector: ".__profile-badges span.badge:has(i.fa-user)"
+            join_date:
+                selector: ".__profile-badges time[datetime]"
+                attr: datetime
+                filters:
+                    - name: parse_time
+            bonus:
+                selector: ".__profile-badges span.__bon"
+                filters:
+                    - name: parse_number
+            seeding_size:
+                selector: "ul.__profile-stats li[data-template='user-seedsize'] strong"
+                filters:
+                    - name: parse_size
+            uploads:
+                selector: "ul.__profile-stats li[data-template='user-upload'] span"
+                filters:
+                    - name: parse_number

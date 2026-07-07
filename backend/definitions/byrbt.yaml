@@ -1,10 +1,5 @@
 # byrbt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.subTitle（elementProcess/text）
-#   - search.url.filters[prepend]
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 categories:
     - id: "408"
       name: 电影
@@ -41,6 +36,8 @@ selectors:
             filters:
                 - args: id
                   name: queryparam
+                - args: /details.php?id=
+                  name: prepend
             selector: a[title][href*='details.php?id=']
         download:
             attr: href
@@ -57,3 +54,10 @@ tags:
     - 综合
 urls:
     - https://byr.pt/
+user_info:
+    pages:
+        - path: /mybonus.php
+          params:
+            show: seed
+          use_fields:
+            - bonus_per_hour

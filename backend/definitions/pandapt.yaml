@@ -1,6 +1,5 @@
 # pandapt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
 
 aka:
     - 熊猫高清
@@ -94,3 +93,156 @@ schema: nexusphp
 timezone_offset: "+0800"
 urls:
     - https://pandapt.net/
+user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - ".medium"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - ".medium"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "#info_block"
+                - ".medium"
+                - "td.rowhead:contains('传输') + td"
+        seeding:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:当前活动|当前做种|Torrents seeding|Current activity)[^0-9]{0,120}(\d+)'
+            selectors:
+                - "#info_block"
+                - ".medium"
+        bonus:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:魔力值|魔力|Karma Points)[\s\S]{0,120}?([\d.,]+)'
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+                - "td.rowfollow:contains('魔力')"
+                - "#info_block"
+                - ".medium"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td > img"
+                - "td.rowhead:contains('等級') + td > img"
+                - "td.rowhead:contains('Class') + td > img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join'):contains('date') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+                - "td.rowfollow:contains('魔力')"
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('当前做种') + td"
+                - "td.rowhead:contains('目前做種') + td"
+                - "td.rowhead:contains('Current Seeding') + td"
+                - "td.rowhead:contains('Seeding Size') + td"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: regexp
+                        args: '(?i)(?:能获取|能獲取|currently\s+getting)[^0-9]{0,60}([\d.,]+\.?\d*)'
+                      - name: parse_number
+                  selectors:
+                      - "td.text:contains('你当前每小时能获取')"
+                      - "div:contains('你当前每小时能获取')"
+                      - "td:contains('你当前每小时能获取')"
+                      - "td.text:contains('你當前每小時能獲取')"
+                      - "div:contains('你當前每小時能獲取')"
+                      - "td:contains('你當前每小時能獲取')"
+                      - "div:contains('currently getting')"
+                      - "td:contains('currently getting')"
+                      - "td[rowspan]"

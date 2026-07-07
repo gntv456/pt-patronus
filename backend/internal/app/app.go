@@ -3,6 +3,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	bundledDefinitions "github.com/hxpt/ptpatronus/definitions"
 	"github.com/hxpt/ptpatronus/internal/api"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
 	"github.com/hxpt/ptpatronus/internal/auth"
@@ -71,14 +73,11 @@ func New(cfg *config.Config) (*App, error) {
 
 	registry := site.NewRegistry()
 	defsDir := os.Getenv("DEFINITIONS_DIR")
+	defsDirExplicit := defsDir != ""
 	if defsDir == "" {
-		defsDir = "./definitions"
+		defsDir = defaultDefinitionsDir()
 	}
-	if err := registry.LoadDefinitions(defsDir); err != nil {
-		slog.Warn("load site definitions failed", "dir", defsDir, "err", err)
-	} else {
-		slog.Info("loaded site definitions", "dir", defsDir, "count", len(registry.Definitions()))
-	}
+	loadSiteDefinitions(registry, defsDir, defsDirExplicit)
 	nexus := schemas.NewNexusPHP(hc)
 	registry.RegisterAdapter(nexus)
 	mteam := schemas.NewMTeam(hc)
@@ -93,7 +92,7 @@ func New(cfg *config.Config) (*App, error) {
 	registry.RegisterAdapter(gazelleJSONAPI)
 	// Generic HTML（兜底，多 schema 实例）：解锁 "" + 命名 HTML schema 的选择器驱动站。
 	genericHTMLs := make([]*schemas.GenericHTML, 0, 12)
-	for _, sc := range []string{"", "xbtit", "tcg", "tbsource", "filelist", "discuz", "rartracker", "fsm", "cgbtsource", "meantorrent", "aidoruonline"} {
+	for _, sc := range []string{"", "xbtit", "tcg", "tbsource", "filelist", "discuz", "rartracker", "cgbtsource", "meantorrent", "aidoruonline", "smallhorse"} {
 		g := schemas.NewGenericHTML(hc, sc)
 		registry.RegisterAdapter(g)
 		genericHTMLs = append(genericHTMLs, g)
@@ -101,9 +100,12 @@ func New(cfg *config.Config) (*App, error) {
 	// Avistaz 网络（JWT token API，4 站）
 	avistaz := schemas.NewAvistaz(hc)
 	registry.RegisterAdapter(avistaz)
+	// Rousi Pro（Bearer passkey API）
+	rousi := schemas.NewRousi(hc)
+	registry.RegisterAdapter(rousi)
 	// Generic JSON（命名 JSON schema）
-	genericJSONs := make([]*schemas.GenericJSON, 0, 4)
-	for _, sc := range []string{"tnode", "yemapt", "f3nix", "tbdev"} {
+	genericJSONs := make([]*schemas.GenericJSON, 0, 5)
+	for _, sc := range []string{"tnode", "yemapt", "f3nix", "tbdev", "fsm"} {
 		gj := schemas.NewGenericJSON(hc, sc)
 		registry.RegisterAdapter(gj)
 		genericJSONs = append(genericJSONs, gj)
@@ -120,6 +122,7 @@ func New(cfg *config.Config) (*App, error) {
 		mm.Register(g)
 	}
 	mm.Register(avistaz)
+	mm.Register(rousi)
 	for _, gj := range genericJSONs {
 		mm.Register(gj)
 	}
@@ -547,6 +550,36 @@ func New(cfg *config.Config) (*App, error) {
 
 // Run starts the HTTP server (blocking).
 func (a *App) Run() error { return a.http.ListenAndServe() }
+
+func defaultDefinitionsDir() string {
+	for _, dir := range []string{"./definitions", "./backend/definitions"} {
+		if st, err := os.Stat(dir); err == nil && st.IsDir() {
+			return dir
+		}
+	}
+	return "./definitions"
+}
+
+func loadSiteDefinitions(registry *site.Registry, defsDir string, externalExplicit bool) {
+	if err := registry.LoadDefinitionsFS(bundledDefinitions.FS, "."); err != nil {
+		slog.Warn("load bundled site definitions failed", "err", err)
+	} else {
+		slog.Info("loaded bundled site definitions", "count", len(registry.Definitions()))
+	}
+
+	if strings.TrimSpace(defsDir) == "" {
+		return
+	}
+	if err := registry.LoadDefinitions(defsDir); err != nil {
+		if !externalExplicit && errors.Is(err, os.ErrNotExist) {
+			slog.Info("external site definitions directory not found; using bundled definitions", "dir", defsDir, "count", len(registry.Definitions()))
+			return
+		}
+		slog.Warn("load external site definitions failed; using bundled definitions", "dir", defsDir, "err", err)
+		return
+	}
+	slog.Info("loaded external site definitions", "dir", defsDir, "total", len(registry.Definitions()))
+}
 
 // Shutdown gracefully stops scheduler + monitor loop + HTTP server.
 func (a *App) Shutdown(ctx context.Context) error {

@@ -1,5 +1,168 @@
 id: cyanbug
 name: 大青虫
+aka:
+  - CyanBug
+  - 大青虫
+description: 大青虫们在此聚集
+tags:
+  - 综合
+  - 影视
+timezone_offset: "+0800"
 schema: nexusphp
 urls:
   - https://cyanbug.net
+user_info:
+  path: index.php
+  user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+  fields:
+    id:
+      attr: href
+      filters:
+        - name: queryparam
+          args: id
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    name:
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    uploaded:
+      parent: true
+      selectors:
+        - "font.color_uploaded, span.color_uploaded"
+        - "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+    downloaded:
+      parent: true
+      selectors:
+        - "font.color_downloaded, span.color_downloaded"
+        - "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+    ratio:
+      parent: true
+      selectors:
+        - "font.color_ratio, span.color_ratio"
+        - "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:分享率|Ratio)[\s\S]{0,80}?(\d+\.?\d*|无限|無限|Inf\.?|Infinity|∞)
+        - name: replace
+          args: 无限:::9999
+        - name: replace
+          args: 無限:::9999
+        - name: replace
+          args: Infinity:::9999
+        - name: replace
+          args: Inf.:::9999
+        - name: replace
+          args: ∞:::9999
+    bonus:
+      parent: true
+      selectors:
+        - "font.color_bonus, span.color_bonus"
+        - "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:魔力值|Karma\s*Points)[\s\S]{0,100}?[:：]?\s*([\d.,]+\.?\d*)
+        - name: parse_number
+    seeding:
+      selector: "#info_block"
+      attr: html
+      filters:
+        - name: regexp
+          args: (?i)(?:当前做种|目前做種|Torrents seeding|Active)[\s\S]{0,180}?(\d+)
+        - name: parse_number
+  detail_fields:
+    uploaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('傳輸') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    downloaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('傳輸') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    ratio:
+      filters:
+        - name: regexp
+          args: (?i)(?:分享率|Ratio)[\s\S]{0,80}?(\d+\.?\d*|无限|無限|Inf\.?|Infinity|∞)
+        - name: replace
+          args: 无限:::9999
+        - name: replace
+          args: 無限:::9999
+        - name: replace
+          args: Infinity:::9999
+        - name: replace
+          args: Inf.:::9999
+        - name: replace
+          args: ∞:::9999
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('傳輸') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    level:
+      attr: title
+      selectors:
+        - "td.rowhead:contains('等级') + td > img"
+        - "td.rowhead:contains('等級') + td > img"
+        - "td.rowhead:contains('Class') + td > img"
+    bonus:
+      filters:
+        - name: regexp
+          args: (?i)(?:魔力值|Karma\s*Points)?\s*[:：]?\s*([\d.,]+\.?\d*)
+        - name: parse_number
+      selectors:
+        - "td.rowhead:contains('魔力值') + td"
+        - "td.rowhead:contains('Karma'):contains('Points') + td"
+        - "#info_block"
+    join_date:
+      filters:
+        - name: regexp
+          args: (\d{4}-\d{2}-\d{2})
+      selectors:
+        - "td.rowhead:contains('加入日期') + td"
+        - "td.rowhead:contains('Join'):contains('date') + td"
+    seeding_size:
+      filters:
+        - name: regexp
+          args: (?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))(?:\s*$|[^\d]*$)
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('当前做种') + td"
+        - "td.rowhead:contains('目前做種') + td"
+        - "td.rowhead:contains('Current Seeding') + td"
+  pages:
+    - path: mybonus.php
+      fields:
+        bonus_per_hour:
+          filters:
+            - name: parse_number
+          selectors:
+            - "td[rowspan]"
+            - "div:contains('你当前每小时能获取')"
+            - "div:contains('你當前每小時能獲取')"
+            - "div:contains('currently getting')"

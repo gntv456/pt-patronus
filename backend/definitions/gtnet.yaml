@@ -1,10 +1,4 @@
-# gtnet — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-#   - search.time.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# gtnet — POST 搜索 token 流程与 user_info.pages 已按 PT-depiler 结构迁移，并由 GenericHTML mock 覆盖；真实站点仍建议 live smoke。
 id: gtnet
 level_requirements:
     - id: 1
@@ -16,6 +10,12 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: type
+                  name: queryparam
+                - name: url_decode
+                - args: "/::: > "
+                  name: replace
             selector: li.TorrentList1 a[href*='torrentslist.php']
         detail:
             attr: href
@@ -37,8 +37,8 @@ selectors:
             selector: li.TorrentList3
         time:
             filters:
-                - args: '[HH:mm dd-MMM-yyyy]'
-                  name: parse_time
+                - name: trim
+                - name: parse_time
             selector: li.TorrentList8
         title:
             selector: li.TorrentList2 a[href*='torrentdetails.php']
@@ -49,3 +49,45 @@ tags:
 timezone_offset: "+0800"
 urls:
     - https://www.gay-torrents.net/
+user_info:
+    pages:
+        - path: /member.php
+          fields:
+            id:
+                selector: "ul.isuser li.welcomelink a[href*='member.php?']"
+                attr: href
+                filters:
+                    - name: regexp
+                      args: 'member\.php\?(\d+)'
+            name:
+                selector: "ul.isuser li.welcomelink a[href*='member.php?']"
+        - path: /member.php?{id}-{name}
+          fields:
+            uploaded:
+                selector: "dl.stats:has(dt:contains('Uploaded')) dd"
+                filters:
+                    - name: parse_size
+            downloaded:
+                selector: "dl.stats:has(dt:contains('Downloaded')) dd"
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "dl.stats:has(dt:contains('Ratio')) dd"
+                filters:
+                    - args: "??:::0"
+                      name: replace
+                    - args: "∞:::-1"
+                      name: replace
+                    - args: "Inf:::-1"
+                      name: replace
+                    - name: parse_number
+            bonus:
+                selector: "dl.stats:has(dt:contains('Juices')) dd"
+                filters:
+                    - name: parse_number
+            level:
+                selector: "#userinfo span.usertitle"
+            join_date:
+                selector: "dl.stats:has(dt:contains('Join Date')) dd"
+                filters:
+                    - name: parse_time

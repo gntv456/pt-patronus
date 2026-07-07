@@ -1,6 +1,4 @@
-# ehentai — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# ehentai — 搜索 selector 已按 PT-depiler 结构迁移，并由 GenericHTML mock 覆盖；torrent 弹窗下载仍建议 live smoke。
 
 aka:
     - EH

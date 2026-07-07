@@ -1,12 +1,5 @@
 # retroflix — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.subTitle（elementProcess）
-#   - search.url.filters[prepend]
-#   - search.time（elementProcess/text）
-#   - userInfo.joinTime.filters[split]
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - RF
 description: RetroFlix is a Private site for Classic Movies / TV / General Releases
@@ -49,9 +42,13 @@ selectors:
         completed:
             selector: div.row > div:nth-child(4)
         detail:
+            attr: href
+            selector: a[href^='/browse/t/']
             filters:
                 - args: id
                   name: queryparam
+                - args: /browse/t/
+                  name: prepend
         leechers:
             selector: div.row > div:nth-child(6)
         seeders:
@@ -61,8 +58,14 @@ selectors:
                 - name: parse_size
             selector: div.row > div:nth-child(3)
         subtitle:
+            attr: html
+            filters:
+                - name: retroflix_subtitle
             selector: div[data-content]:has(a[href^='/browse/t/'])
         time:
+            attr: title
+            filters:
+                - name: parse_time
             selector: div.row > div:nth-child(2)
         title:
             selector: a[href^='/browse/t/']
@@ -76,8 +79,92 @@ urls:
     - https://retroflix.net/
     - https://retroflix.club/
 user_info:
+    path: /
     fields:
+        id:
+            attr: href
+            filters:
+                - args: id
+                  name: queryparam
+            selectors:
+                - a[href*='userdetails.php?id=']
+        name:
+            selectors:
+                - a[href*='userdetails.php?id=']
+        bonus_per_hour:
+            filters:
+                - args: (?i)(?:currently\s+getting|per\s+hour)[^0-9]{0,40}([\d.,]+)
+                  name: regexp
+                - name: parse_number
+            selectors:
+                - "div:contains('currently getting')"
+                - "td:contains('currently getting')"
+                - "div:contains('per hour')"
+                - "td:contains('per hour')"
+    detail_fields:
+        name:
+            selectors:
+                - "td.rowhead:contains('Username') + td"
+                - "td.rowhead:contains('User name') + td"
+        uploaded:
+            filters:
+                - args: (?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes))
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('Uploaded') + td"
+        downloaded:
+            filters:
+                - args: (?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes))
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('Downloaded') + td"
+        ratio:
+            filters:
+                - args: (?i)(\d+\.?\d*|Inf\.?|Infinity)
+                  name: regexp
+                - args: Infinity:::9999
+                  name: replace
+                - args: Inf.:::9999
+                  name: replace
+            selectors:
+                - "td.rowhead:contains('Share ratio') + td"
+                - "td.rowhead:contains('Ratio') + td"
+        level:
+            selectors:
+                - "td.rowhead:contains('Class') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('Bonus') + td"
+                - "td.rowhead:contains('Points') + td"
         join_date:
             filters:
-                - args: '[dd-MM-yyyy HH:mm:ss]'
-                  name: parse_time
+                - args: "(:::0"
+                  name: split
+                - name: parse_time
+            selectors:
+                - "td.rowhead:contains('Join date') + td"
+                - "td.rowhead:contains('Joined') + td"
+        seeding:
+            filters:
+                - args: (\d+)
+                  name: regexp
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('Currently seeding') + td"
+                - "td.rowhead:contains('Seeding') + td"
+        seeding_size:
+            filters:
+                - args: (?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes))
+                  name: regexp
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('Currently seeding') + td"
+                - "td.rowhead:contains('Seeding size') + td"
+    pages:
+        - path: mybonus.php
+          use_fields:
+              - bonus_per_hour

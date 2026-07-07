@@ -1,13 +1,5 @@
 # u2 — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.leechers（elementProcess）
-#   - userInfo.seeding.filters（匿名函数）
-#   - userInfo.bonus.filters（匿名函数）
-#   - userInfo.seedingSize.filters（匿名函数）
-#   - userInfo.bonusPerHour.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - 幼儿园
 categories:
@@ -112,10 +104,7 @@ level_requirements:
     - group_type: manager
       id: 202
       name: FFF团
-      privilege: |-
-        map[__raw:BinaryExpression src:"帮助通过和拒绝候选的热心用户。如果他们的操作存在问题，请联系管理组; 属于管理组成员，可查看受理咨询、建议、投诉等; " +
-                "管理论坛主题和帖子; 屏蔽种子评论; 编辑/屏蔽种子; 设置/清除种子置顶; 设置种子人工优惠; 查看机密日志; 管理字幕区;" +
-                "查看匿名用户身份; 编辑/屏蔽/决定候选; 查看邀请记录."]
+      privilege: 帮助通过和拒绝候选的热心用户。如果他们的操作存在问题，请联系管理组; 属于管理组成员，可查看受理咨询、建议、投诉等; 管理论坛主题和帖子; 屏蔽种子评论; 编辑/屏蔽种子; 设置/清除种子置顶; 设置种子人工优惠; 查看机密日志; 管理字幕区;查看匿名用户身份; 编辑/屏蔽/决定候选; 查看邀请记录.
     - group_type: manager
       id: 203
       name: 执事
@@ -136,7 +125,14 @@ name: U2
 schema: nexusphp
 selectors:
     fields:
-        leechers: {}
+        leechers:
+            filters:
+                - args: '^(\d+)'
+                  name: regexp
+                - name: parse_number
+            selectors:
+                - td[class*='leechhlc_']
+                - a[href*='#leechers']
         subtitle:
             selectors:
                 - span.tooltip
@@ -149,21 +145,39 @@ tags:
 urls:
     - https://u2.dmhy.org/
 user_info:
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
     fields:
         bonus:
             attr: title
+            filters:
+                - name: parse_number
             selectors:
                 - td.rowhead:contains('UCoin') + td > span
         bonus_per_hour:
+            filters:
+                - args: 'UCoin\s*([\d.,]+)'
+                  name: regexp
+                - args: "24"
+                  name: divide
             selectors:
                 - table.main td.text
         seeding:
             filters:
+                - args: '<b>\s*(\d+)\s*</b>'
+                  name: regexp
                 - name: parse_number
             selectors:
                 - :self
         seeding_size:
             filters:
+                - args: '(?i)(?:大小|Size)[^0-9]*([\d.,]+\s*[KMGTPE]?i?B)'
+                  name: regexp
                 - name: parse_size
             selectors:
                 - :self
+    pages:
+        - path: /mprecent.php
+          params:
+            user: "{id}"
+          use_fields:
+            - bonus_per_hour

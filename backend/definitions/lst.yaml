@@ -1,6 +1,5 @@
 # lst — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: unit3d。通用适配器和定义级 mock 已覆盖自定义搜索、用户信息、时魔与做种体积；真实站点仍建议 live smoke。
 
 description: Something cool
 id: lst
@@ -95,12 +94,33 @@ user_info:
         bonus_per_hour:
             filters:
                 - name: parse_number
+            selectors:
+                - "span.sidebar-stat__label:contains('Points per hour') + span"
+                - "span.sidebar-stat__label:contains('每小时点数') + span"
+                - "span.sidebar-stat__label:contains('每小時魔力') + span"
         id:
             selector: span.profile-hero__account-item > i.fa-hashtag ~ span.profile-hero__account-value
-        join_date: {}
+        join_date:
+            filters:
+                - name: regexp
+                  args: (\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}:\d{2})?)
+                - name: parse_time
+            selectors:
+                - "span.profile-hero__meta-item:contains('Registration date')"
+                - "span.profile-hero__meta-item:contains('注册日期')"
+                - "span.profile-hero__meta-item:contains('註冊日期')"
         seeding_size:
             filters:
                 - name: parse_size
+            selectors:
+                - "div.profile-mini-stat__label:contains('Seeding Size') + div"
+                - "div.profile-mini-stat__label:contains('Seeding size') + div"
+                - "div.profile-mini-stat__label:contains('做种体积') + div"
+                - "div.profile-mini-stat__label:contains('做種體積') + div"
         uploads:
             filters:
                 - name: parse_number
+            selectors:
+                - "div.profile-mini-stat__label:contains('Total uploads') + div"
+                - "div.profile-mini-stat__label:contains('总发布') + div"
+                - "div.profile-mini-stat__label:contains('總發佈') + div"

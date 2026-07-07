@@ -1,9 +1,5 @@
 # asiancinema — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category（data）
-#   - search.category.filters（匿名函数）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 aka:
     - ACM
 description: 综合
@@ -70,6 +66,10 @@ schema: unit3d
 selectors:
     fields:
         category:
+            data: categoryId
+            filters:
+                - args: 1=Movies:::2=TV:::3=Music
+                  name: map
             selector: :self
 tags:
     - 综合

@@ -1,7 +1,14 @@
-# hdclone — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
-
+# hdclone - user fields migrated from PT-manager/PT-depiler; live smoke still recommended.
+id: hdclone
+name: HDClone
+aka:
+    - HDClone
+description: HDClone
+schema: nexusphp
+urls:
+    - https://pt.hdclone.top/
+legacy_urls:
+    - https://pt.hdclone.org/
 categories:
     - id: "407"
       name: Sports/赛事
@@ -25,72 +32,232 @@ categories:
       name: Tutorial/教程
     - id: "411"
       name: Others/其他
-id: hdclone
-legacy_urls:
-    - https://pt.hdclone.org/
+search_categories:
+    movie:
+        - "401"
+        - "404"
+        - "405"
+    tv:
+        - "402"
+        - "403"
+    music:
+        - "409"
+        - "408"
+        - "406"
 level_requirements:
-    - name: User
-    - bonus: 40000
-      downloaded: 50GB
-      id: 1
-      interval: P4W
+    - id: 0
+      name: User
+    - id: 1
       name: Power User
-      privilege: 得到一个邀请名额；可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种； 可以发送邀请； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。
+      interval: P4W
+      downloaded: 50GB
       ratio: 1.05
-    - bonus: 80000
-      downloaded: 120GB
-      id: 2
-      interval: P8W
+      bonus: 40000
+      uploads: 10
+      privilege: 得到一个邀请名额；可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种；可以发送邀请；可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")；可以删除自己上传的字幕。
+    - id: 2
       name: Elite User
-      privilege: Elite User及以上用户封存账号后不会被删除。
+      interval: P8W
+      downloaded: 120GB
       ratio: 1.55
-    - bonus: 150000
-      downloaded: 300GB
-      id: 3
-      interval: P15W
+      bonus: 80000
+      uploads: 20
+      privilege: Elite User及以上用户封存账号后不会被删除。
+    - id: 3
       name: Crazy User
-      privilege: 得到两个邀请名额；可以在做种/下载/发布的时候选择匿名模式。
+      interval: P15W
+      downloaded: 300GB
       ratio: 2.05
-    - bonus: 250000
-      downloaded: 500GB
-      id: 4
-      interval: P25W
+      bonus: 150000
+      uploads: 30
+      privilege: 得到两个邀请名额；可以在做种/下载/发布的时候选择匿名模式。
+    - id: 4
       name: Insane User
-      privilege: 可以查看普通日志。
+      interval: P25W
+      downloaded: 500GB
       ratio: 2.55
-    - bonus: 400000
-      downloaded: 750GB
-      id: 5
-      interval: P40W
-      is_kept: true
+      bonus: 250000
+      uploads: 40
+      privilege: 可以查看普通日志。
+    - id: 5
       name: Veteran User
-      privilege: 得到三个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
+      interval: P40W
+      downloaded: 750GB
       ratio: 3.05
-    - bonus: 600000
-      downloaded: 1TB
-      id: 6
-      interval: P60W
+      bonus: 400000
+      uploads: 50
       is_kept: true
+      privilege: 得到三个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
+    - id: 6
       name: Extreme User
-      privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
+      interval: P60W
+      downloaded: 1TB
       ratio: 3.55
-    - bonus: 800000
-      downloaded: 1.5TB
-      id: 7
-      interval: P80W
+      bonus: 600000
+      uploads: 60
       is_kept: true
+      privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
+    - id: 7
       name: Ultimate User
-      privilege: 得到五个邀请名额。
+      interval: P80W
+      downloaded: 1.5TB
       ratio: 4.05
-    - bonus: 1000000
-      downloaded: 3TB
-      id: 8
-      interval: P100W
+      bonus: 800000
+      uploads: 70
       is_kept: true
+      privilege: 得到五个邀请名额。
+    - id: 8
       name: Nexus Master
-      privilege: 得到十个邀请名额。
+      interval: P100W
+      downloaded: 3TB
       ratio: 4.55
-name: HDClone
-schema: nexusphp
-urls:
-    - https://pt.hdclone.top/
+      bonus: 1000000
+      uploads: 80
+      is_kept: true
+      privilege: 得到十个邀请名额。
+user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)(?:</?[^>]+>|[:：]|\s|&nbsp;){0,120}([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)(?:</?[^>]+>|[:：]|\s|&nbsp;){0,120}([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)(?:</?[^>]+>|[:：]|\s|&nbsp;){0,160}([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        seeding:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:当前活动|当前做种|Torrents seeding)[^0-9]{0,80}(\d+)'
+            selectors:
+                - "#info_block"
+        bonus:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:魔力值|Karma Points)[\s\S]{0,180}?([\d.,]+)'
+                - name: parse_number
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowfollow:contains('魔力值')"
+                - "td.rowhead:contains('Karma Points') + td"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)(?:</?[^>]+>|[:：]|\s|&nbsp;){0,120}([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)(?:</?[^>]+>|[:：]|\s|&nbsp;){0,120}([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)(?:</?[^>]+>|[:：]|\s|&nbsp;){0,160}([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td > img"
+                - "td.rowhead:contains('等級') + td > img"
+                - "td.rowhead:contains('Class') + td > img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join'):contains('date') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+                - "td.rowfollow:contains('魔力值')"
+        seeding:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:当前活动|当前做种|Torrents seeding)[^0-9]{0,80}(\d+)'
+            selectors:
+                - "#info_block"
+                - "td.rowhead:contains('当前做种') + td"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: regexp
+                        args: '(?i)(?:能获取|可獲得|currently\s+getting)[^0-9]{0,80}([\d.,]+\.?\d*)'
+                      - name: parse_number
+                  selectors:
+                      - "div:contains('你当前每小时能获取')"
+                      - "div:contains('目前每小時可獲得')"
+                      - "div:contains('currently getting')"
+                      - "#outer"

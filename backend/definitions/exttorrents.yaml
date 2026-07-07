@@ -1,9 +1,5 @@
 # exttorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time（elementProcess）
-#   - search.category.filters（匿名函数）
-
 description: EXT Torrents is a Public torrent site for MOVIES / TV / GENERAL
 id: exttorrents
 name: EXT Torrents
@@ -13,6 +9,9 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: "/anime/=Anime:::/anime/english-translated/=Anime English Translated:::/anime/music-video/=Anime Music Video:::/anime/subs/=Anime Subs:::/anime/raw/=Anime Raw:::/anime/audio-lossless/=Anime Audio Lossless:::/anime/audio-lossy/=Anime Audio Lossy:::/anime/live-action-english/=Anime Live Action English:::/anime/live-action-non-english/=Anime Live Action Non-English:::/anime/live-action-raw/=Anime Live Action Raw:::/anime/pictures/=Anime Pictures:::/applications/=Apps:::/applications/android/=Apps Android:::/applications/ios/=Apps iOS:::/applications/linux/=Apps Linux:::/applications/mac/=Apps Mac:::/applications/other-applications/=Apps Other:::/applications/windows/=Apps Windows:::/books/=Books:::/books/ebooks/=Books Ebooks:::/books/comics/=Books Comics:::/books/magazines/=Books Magazines:::/books/audio-books/=Books Audiobooks:::/books/manga-english/=Books Manga English:::/books/manga-raw/=Books Manga Raw:::/games/=Games:::/games/pc-games/=Games PC:::/games/xbox360/=Games Xbox360:::/games/ps4/=Games PS4:::/games/ps3/=Games PS3:::/games/wii/=Games Wii:::/games/psp/=Games PSP:::/games/nds/=Games NDS:::/games/switch/=Games Switch:::/games/mac/=Games Mac:::/games/other-games/=Games Other:::/movies/=Movies:::/movies/3d-movies/=Movies 3D:::/movies/dubbed-movies/=Movies Dubbed:::/movies/mp4/=Movies MP4:::/movies/highres-movies/=Movies Highres:::/movies/ultrahd/=Movies UltraHD:::/movies/bollywood/=Movies Bollywood:::/movies/documentary/=Movies Documentary:::/movies/dvd/=Movies DVD:::/movies/music-videos/=Movies Music videos:::/movies/movie-clips/=Movies Movie clips:::/movies/other-movies/=Movies Other Movies:::/music/=Music:::/music/mp3/=Music MP3:::/music/aac/=Music AAC:::/music/radio-shows/=Music Radio Shows:::/music/lossless/=Music Lossless:::/music/other-music/=Music Other:::/other/=Other:::/tv/=TV:::/tv/episodes-sd/=TV Episodes SD:::/tv/episodes-hd/=TV Episodes HD:::/tv/episodes-4k-uhd/=TV Episodes 4K UHD:::/tv/season-packs/=TV Season Packs:::/tv/big-season-packs/=TV Big Season Packs:::/tv/sports/=TV Sports:::/xxx/=XXX:::/xxx/games/=XXX Games:::/xxx/hentai/=XXX Hentai:::/xxx/magazines/=XXX Magazines:::/xxx/pictures/=XXX Pictures:::/xxx/video/=XXX Video"
+                  name: map
             selectors:
                 - td:nth-child(1) div div a:nth-child(3)
                 - td:nth-child(1) div div a:nth-child(2)
@@ -28,6 +27,8 @@ selectors:
                 - name: parse_size
             selector: span:contains('Size') + span
         time:
+            filters:
+                - name: parse_time
             selector: span:contains('Age') + span
         title:
             selector: td:nth-child(1) div a

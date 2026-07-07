@@ -1,9 +1,7 @@
 # gtru — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time（elementProcess）
-#   - search.seeders（elementProcess）
-#   - search.leechers（elementProcess）
+#   - search.time.filters（匿名函数）
 #   - userInfo.process（多步抓取流程，需适配器实现）
 
 categories:
@@ -111,40 +109,43 @@ level_requirements:
       ratio: 1.05
       uploaded: 40GB
 name: GayTorrent.ru
-search_entry: /browse.php
+search_entry: /search.php
 search_param: search
 selectors:
     fields:
         category:
-            attr: alt
-            selector: img.browsemaincatpic
+            attr: title
+            selector: span.dc-grid-main-cat
         completed:
             filters:
                 - name: parse_number
-            selector: div.tsnatch
+            selector: span.dc-grid-card-snat
         detail:
             attr: href
-            selector: div.browsedesc > a[href*='details.php']
-        download:
-            attr: href
-            selector: a.index[href*='download.php/']
+            selector: a.dc-grid-card-title
         leechers:
-            selector: td:has(div.tsnatch) + td
+            filters:
+                - name: parse_number
+            selector: span.dc-grid-card-leechers
         seeders:
-            selector: td:has(div.tsnatch) + td
+            filters:
+                - name: parse_number
+            selector: span.dc-grid-card-seeders
         size:
             filters:
                 - name: parse_size
-            selector: div.tsize
+            selector: span.dc-grid-card-size
         time:
+            attr: title
             filters:
                 - args: '[yyyy-MM-dd HH:mm:ss]'
                   name: parse_time
-            selector: div.tadded
+            selector: span.dc-grid-card-age
         title:
-            selector: div.browsedesc > a[href*='details.php'] b
+            attr: title
+            selector: a.dc-grid-card-title
     rows:
-        selector: table.browse_result tr:has(div.browsedesc)
+        selector: div.dc-search-grid article.dc-grid-card
 tags:
     - 成人
 timezone_offset: "+0800"

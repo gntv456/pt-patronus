@@ -2,8 +2,9 @@ package site
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -33,7 +34,19 @@ func (r *Registry) RegisterAdapter(a Adapter) {
 
 // LoadDefinitions 从目录加载所有 *.yaml / *.yml 站点定义。
 func (r *Registry) LoadDefinitions(dir string) error {
-	entries, err := os.ReadDir(dir)
+	return r.loadDefinitionsFS(os.DirFS(dir), ".")
+}
+
+// LoadDefinitionsFS 从文件系统加载所有 *.yaml / *.yml 站点定义。
+func (r *Registry) LoadDefinitionsFS(fsys fs.FS, dir string) error {
+	if dir == "" {
+		dir = "."
+	}
+	return r.loadDefinitionsFS(fsys, dir)
+}
+
+func (r *Registry) loadDefinitionsFS(fsys fs.FS, dir string) error {
+	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return fmt.Errorf("read definitions dir: %w", err)
 	}
@@ -45,13 +58,17 @@ func (r *Registry) LoadDefinitions(dir string) error {
 		if !strings.HasSuffix(name, ".yaml") && !strings.HasSuffix(name, ".yml") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(dir, name))
+		file := name
+		if dir != "." {
+			file = path.Join(dir, name)
+		}
+		data, err := fs.ReadFile(fsys, file)
 		if err != nil {
 			return err
 		}
 		var def SiteMetadata
 		if err := yaml.Unmarshal(data, &def); err != nil {
-			return fmt.Errorf("parse %s: %w", name, err)
+			return fmt.Errorf("parse %s: %w", file, err)
 		}
 		if def.ID == "" {
 			continue

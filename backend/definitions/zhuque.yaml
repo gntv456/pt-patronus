@@ -1,12 +1,5 @@
 # zhuque — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: tnode。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-#   - search.url.filters[prepend]
-#   - search.time.filters（匿名函数）
-#   - search.link.filters[prepend]
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: tnode。已接入通用/专用适配器，待真实站点校准。
 aka:
     - Zhuque
 description: 新架构的影视站点
@@ -64,12 +57,21 @@ search_param: keyword
 selectors:
     fields:
         category:
+            filters:
+                - args: 501=电影:::502=剧集:::503=动画:::504=节目:::599=其它
+                  name: map
             selector: category
         completed:
             selector: complete
         detail:
+            filters:
+                - args: /torrent/info/
+                  name: prepend
             selector: id
         download:
+            filters:
+                - args: /api/torrent/download/
+                  name: prepend
             selector: id
         leechers:
             selector: leeching
@@ -80,6 +82,8 @@ selectors:
         subtitle:
             selector: subtitle
         time:
+            filters:
+                - name: unix_seconds
             selector: upload_time
         title:
             selector: title
@@ -91,3 +95,48 @@ tags:
 timezone_offset: "+0800"
 urls:
     - https://zhuque.in/
+user_info:
+    pages:
+        - path: /api/plugins/ptppUserInfo
+          format: json
+          fields:
+            id:
+                selector: data.id
+            name:
+                selector: data.name
+            level:
+                selector: data.levelName
+            uploaded:
+                filters:
+                    - name: parse_size
+                selector: data.uploaded
+            downloaded:
+                filters:
+                    - name: parse_size
+                selector: data.downloaded
+            true_downloaded:
+                selector: data.trueDownloaded
+            ratio:
+                selector: data.ratio
+            bonus:
+                selector: data.bonus
+            seeding_bonus:
+                selector: data.seedingPoints
+            bonus_per_hour:
+                selector: data.bonusPerHour
+            join_date:
+                filters:
+                    - name: unix_millis
+                selector: data.joinTime
+            last_access_at:
+                filters:
+                    - name: unix_millis
+                selector: data.lastUpdateTime
+            seeding:
+                selector: data.seeding
+            seeding_size:
+                filters:
+                    - name: parse_size
+                selector: data.seedingSize
+            uploads:
+                selector: data.uploadCount

@@ -1,8 +1,5 @@
 # thegeeks — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: tcg。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-
+# schema: tcg。已接入通用/专用适配器，待真实站点校准。
 aka:
     - TG
 description: The Geeks is a Private Torrent Tracker for Technology E-LEARNING
@@ -29,6 +26,11 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: cat
+                  name: queryparam
+                - args: "212=AudioBook : Fiction:::213=AudioBook : Non-Fiction:::71=Docu : Antiques / Collecting:::82=Docu : Architecture/Building:::72=Docu : Astronomy / Space:::85=Docu : Childrens Ed:::38=Docu : Crime/ Investigation:::59=Docu : Earth / Environment:::18=Docu : Engineering:::4=Docu : Fine/Visual Arts:::39=Docu : FlyOnWall Docus:::216=Docu : FlyOnWall Medical:::84=Docu : FrontLine:::36=Docu : Gardening/Agriculture:::58=Docu : History - Biographies:::55=Docu : History - Civilization:::31=Docu : History - Misc:::56=Docu : History - War/Politics:::35=Docu : Home / Property:::78=Docu : Horizon:::69=Docu : Misc:::75=Docu : Nature:::54=Docu : News/World Reports:::83=Docu : Nova:::27=Docu : Paleontology:::67=Docu : Pets/Animal Keeping:::53=Docu : Social Experiment:::32=Docu : Travel / Culture:::80=Docu : Travelogues:::34=Docu : Vehicles/Transport:::207=Business : Economics:::211=Business : Investing:::208=Business : Marketing:::209=Business : Startup/Dev:::28=Business :Misc:::214=Comp: Artificial Intelligence:::40=Comp: Certification Courses:::44=Comp: Digital Audio/Video:::48=Comp: Games Dev/Guides:::3=Comp: Graphics :::42=Comp: Lang/DBs:::49=Comp: Network/Hardware:::43=Comp: Operating Systems:::46=Comp: Security/Encryption:::52=Comp: Software Training:::41=Comp: Theory/Ref/Mags:::47=Comp: Web Development:::68=Crafts/Jewelry:::21=DIY / Workshop:::25=Exam Prep / Education:::9=Food/Cooking/Nutrition:::37=Game Shows / Quiz Shows:::2=Games: Cards/Tabletop/etc:::23=Hobbies: Misc:::1=Languages / Linguistics:::20=Law & Justice:::30=Literature:::16=Magic & Illusion:::206=Native American Studies:::201=Occultism: Academic / Referenc:::210=Occultism: Bashar:::202=Occultism: Mythology Folklore:::203=Paranormal:::204=Parapsychology:::11=Political Studies:::61=Science: Biology:::77=Science: Chemistry:::12=Science: Math/Statistics:::10=Science: Medicine/Health :::29=Science: Philosophy:::76=Science: Physics:::14=Science: Psych/Sociolgy:::215=Sexuality/Seductn/Body Img:::22=Sports/Exercise/Outdoors:::24=Stock Media:::33=Style & Fashion:::73=Docu : Survivalism:::60=Docu : The Arts: Acting/ Filmmaking:::217=Docu : The Arts: Dance/Singing/Voice:::26=Docu : The Arts: Music History/Theory:::15=Docu : The Arts: Music Learn/Courses:::45=Docu : The Arts: Photography"
+                  name: map
             selector: a[href^='browse.php?cat=']
 tags:
     - 学习

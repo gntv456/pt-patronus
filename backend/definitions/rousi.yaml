@@ -1,6 +1,6 @@
 # rousi — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# legacy Rousi is superseded by rousipro; retained only for display/history.
 
 aka:
     - 肉丝
@@ -42,6 +42,7 @@ categories:
     - id: "409"
       name: Other(其它，确认上边无分类)
 description: 你也喜欢 Rousi 对吧？
+dead: true
 id: rousi
 level_requirements:
     - id: 1

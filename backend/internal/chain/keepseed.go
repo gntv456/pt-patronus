@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -319,7 +320,7 @@ func (c *KeepSeedChain) ListTasks(status string) ([]models.CrossSeedTask, error)
 }
 
 // loadSetting 取该下载器的辅种设置（save_path 覆盖 / 添加后暂停）；无记录返默认值
-//（PauseAfterAdd=true，与 Setting/模型 default 一致——避免无 setting 行时「不暂停」添加）。
+// （PauseAfterAdd=true，与 Setting/模型 default 一致——避免无 setting 行时「不暂停」添加）。
 func (c *KeepSeedChain) loadSetting(downloaderID uint) models.CrossSeedSetting {
 	s, _ := c.Setting(downloaderID)
 	return s
@@ -393,20 +394,41 @@ func matchSiteByHost(sites []models.Site, iyuuHost string) *models.Site {
 	// 回退：子域差异（如 IYUU 下载域 vs 本地配置域）后缀包含。
 	for i := range sites {
 		h := hostOf(sites[i].BaseURL)
-		if h != "" && (strings.HasSuffix(h, want) || strings.HasSuffix(want, h)) {
+		if h != "" && sameOrSubdomain(h, want) {
 			return &sites[i]
 		}
 	}
 	return nil
 }
 
-// hostOf 从（可能含 scheme 的）URL 取小写 host。
+func sameOrSubdomain(a, b string) bool {
+	return a == b || strings.HasSuffix(a, "."+b) || strings.HasSuffix(b, "."+a)
+}
+
+// hostOf 从（可能含 scheme 的）URL 取小写 host，规整端口和常见 www 前缀。
 func hostOf(rawURL string) string {
 	s := strings.TrimSpace(rawURL)
+	if s == "" {
+		return ""
+	}
+	if !strings.Contains(s, "://") {
+		s = "https://" + s
+	}
+	if u, err := url.Parse(s); err == nil {
+		return normalizeHost(u.Hostname())
+	}
 	s = strings.TrimPrefix(s, "https://")
 	s = strings.TrimPrefix(s, "http://")
 	if i := strings.IndexAny(s, "/?#"); i >= 0 {
 		s = s[:i]
 	}
-	return strings.ToLower(s)
+	if i := strings.LastIndex(s, ":"); i >= 0 && !strings.Contains(s[i+1:], "]") {
+		s = s[:i]
+	}
+	return normalizeHost(s)
+}
+
+func normalizeHost(host string) string {
+	host = strings.ToLower(strings.Trim(strings.TrimSpace(host), "."))
+	return strings.TrimPrefix(host, "www.")
 }

@@ -1,7 +1,5 @@
 # anirena — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url（text）
 
 description: AniRena is a Public torrent tracker for the latest anime and Japanese related torrents
 id: anirena
@@ -17,7 +15,8 @@ selectors:
             selector: td.torrents_small_type_data1 img
         completed:
             selector: td.torrents_small_downloads_data1
-        detail: {}
+        detail:
+            text: https://www.anirena.com/
         download:
             attr: href
             selector: div.torrents_small_info_data2b a[title!="Report a torrent"]

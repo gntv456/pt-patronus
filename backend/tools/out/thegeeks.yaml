@@ -1,5 +1,5 @@
 # thegeeks — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: tcg。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# schema: tcg。已由本项目运行时 schema adapter 支持。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
 #   - search.category.filters（匿名函数）
 

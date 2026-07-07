@@ -1,11 +1,12 @@
 import '../core/api_client.dart';
 
 // 容错数值转换：后端字段可能缺省/偶发为字符串，统一走 helper，避免单字段类型异常致整页 fromJson 抛错（审计 P1）。
-int _i(dynamic v) => v == null ? 0 : (v is num ? v.toInt() : (int.tryParse('$v') ?? 0));
-double _n(dynamic v) => v == null ? 0 : (v is num ? v.toDouble() : (double.tryParse('$v') ?? 0));
+int _i(dynamic v) =>
+    v == null ? 0 : (v is num ? v.toInt() : (int.tryParse('$v') ?? 0));
+double _n(dynamic v) =>
+    v == null ? 0 : (v is num ? v.toDouble() : (double.tryParse('$v') ?? 0));
 
-// 对齐后端 chain.SiteStatItem：每站点最新统计。新字段（level/leeching/seeding_size/
-// uploads/bonus_per_hour/join_date/updated_at）此前 fromJson 容错丢弃，现补齐以便展示。
+// 对齐后端 chain.SiteStatItem：每站点最新统计。
 class SiteStatItem {
   final int siteId;
   final String siteName;
@@ -16,13 +17,25 @@ class SiteStatItem {
   final int uploaded;
   final int downloaded;
   final double ratio;
+  final int trueUploaded;
+  final int trueDownloaded;
+  final double trueRatio;
   final int seeding;
   final int leeching;
   final int seedingSize;
   final int uploads;
+  final int uniqueGroups;
+  final int perfectFlac;
+  final int invited;
   final double bonus;
   final double bonusPerHour;
+  final double seedingBonus;
+  final double seedingBonusPerHour;
+  final double rescueSeedingBonusPerHour;
+  final int claimCount;
+  final int maxClaim;
   final String joinDate;
+  final String lastAccessAt;
   final String updatedAt;
 
   SiteStatItem({
@@ -35,46 +48,81 @@ class SiteStatItem {
     required this.uploaded,
     required this.downloaded,
     required this.ratio,
+    required this.trueUploaded,
+    required this.trueDownloaded,
+    required this.trueRatio,
     required this.seeding,
     required this.leeching,
     required this.seedingSize,
     required this.uploads,
+    required this.uniqueGroups,
+    required this.perfectFlac,
+    required this.invited,
     required this.bonus,
     required this.bonusPerHour,
+    required this.seedingBonus,
+    required this.seedingBonusPerHour,
+    required this.rescueSeedingBonusPerHour,
+    required this.claimCount,
+    required this.maxClaim,
     required this.joinDate,
+    required this.lastAccessAt,
     required this.updatedAt,
   });
 
   factory SiteStatItem.fromJson(Map<String, dynamic> j) => SiteStatItem(
-        siteId: _i(j['site_id']),
-        siteName: j['site_name'] as String? ?? '',
-        username: j['username'] as String? ?? '',
-        userId: j['user_id'] as String? ?? '',
-        email: j['email'] as String? ?? '',
-        level: j['level'] as String? ?? '',
-        uploaded: _i(j['uploaded']),
-        downloaded: _i(j['downloaded']),
-        ratio: _n(j['ratio']),
-        seeding: _i(j['seeding']),
-        leeching: _i(j['leeching']),
-        seedingSize: _i(j['seeding_size']),
-        uploads: _i(j['uploads']),
-        bonus: _n(j['bonus']),
-        bonusPerHour: _n(j['bonus_per_hour']),
-        joinDate: j['join_date'] as String? ?? '',
-        updatedAt: j['updated_at'] as String? ?? '',
-      );
+    siteId: _i(j['site_id']),
+    siteName: j['site_name'] as String? ?? '',
+    username: j['username'] as String? ?? '',
+    userId: j['user_id'] as String? ?? '',
+    email: j['email'] as String? ?? '',
+    level: j['level'] as String? ?? '',
+    uploaded: _i(j['uploaded']),
+    downloaded: _i(j['downloaded']),
+    ratio: _n(j['ratio']),
+    trueUploaded: _i(j['true_uploaded']),
+    trueDownloaded: _i(j['true_downloaded']),
+    trueRatio: _n(j['true_ratio']),
+    seeding: _i(j['seeding']),
+    leeching: _i(j['leeching']),
+    seedingSize: _i(j['seeding_size']),
+    uploads: _i(j['uploads']),
+    uniqueGroups: _i(j['unique_groups']),
+    perfectFlac: _i(j['perfect_flac']),
+    invited: _i(j['invited']),
+    bonus: _n(j['bonus']),
+    bonusPerHour: _n(j['bonus_per_hour']),
+    seedingBonus: _n(j['seeding_bonus']),
+    seedingBonusPerHour: _n(j['seeding_bonus_per_hour']),
+    rescueSeedingBonusPerHour: _n(j['rescue_seeding_bonus_per_hour']),
+    claimCount: _i(j['claim_count']),
+    maxClaim: _i(j['max_claim']),
+    joinDate: j['join_date'] as String? ?? '',
+    lastAccessAt: j['last_access_at'] as String? ?? '',
+    updatedAt: j['updated_at'] as String? ?? '',
+  );
 }
 
 // DashboardOverview 是仪表盘顶部 4 张卡片的数据源（跨站汇总 + 计数）。
 class DashboardOverview {
   final int uploaded;
   final int downloaded;
+  final int trueUploaded;
+  final int trueDownloaded;
+  final double trueRatio;
   final int seeding;
   final int leeching;
   final int seedingSize;
+  final int uniqueGroups;
+  final int perfectFlac;
+  final int invited;
   final double bonus;
   final double bonusPerHour;
+  final double seedingBonus;
+  final double seedingBonusPerHour;
+  final double rescueSeedingBonusPerHour;
+  final int claimCount;
+  final int maxClaim;
   final List<SiteStatItem> sites;
   final int siteCount;
   final int downloaderCount;
@@ -82,11 +130,22 @@ class DashboardOverview {
   DashboardOverview({
     required this.uploaded,
     required this.downloaded,
+    required this.trueUploaded,
+    required this.trueDownloaded,
+    required this.trueRatio,
     required this.seeding,
     required this.leeching,
     required this.seedingSize,
+    required this.uniqueGroups,
+    required this.perfectFlac,
+    required this.invited,
     required this.bonus,
     required this.bonusPerHour,
+    required this.seedingBonus,
+    required this.seedingBonusPerHour,
+    required this.rescueSeedingBonusPerHour,
+    required this.claimCount,
+    required this.maxClaim,
     required this.sites,
     required this.siteCount,
     required this.downloaderCount,
@@ -97,11 +156,22 @@ class DashboardOverview {
     return DashboardOverview(
       uploaded: _i(totals['uploaded']),
       downloaded: _i(totals['downloaded']),
+      trueUploaded: _i(totals['true_uploaded']),
+      trueDownloaded: _i(totals['true_downloaded']),
+      trueRatio: _n(totals['true_ratio']),
       seeding: _i(totals['seeding']),
       leeching: _i(totals['leeching']),
       seedingSize: _i(totals['seeding_size']),
+      uniqueGroups: _i(totals['unique_groups']),
+      perfectFlac: _i(totals['perfect_flac']),
+      invited: _i(totals['invited']),
       bonus: _n(totals['bonus']),
       bonusPerHour: _n(totals['bonus_per_hour']),
+      seedingBonus: _n(totals['seeding_bonus']),
+      seedingBonusPerHour: _n(totals['seeding_bonus_per_hour']),
+      rescueSeedingBonusPerHour: _n(totals['rescue_seeding_bonus_per_hour']),
+      claimCount: _i(totals['claim_count']),
+      maxClaim: _i(totals['max_claim']),
       sites: ((j['sites'] as List?) ?? const [])
           .map((e) => SiteStatItem.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -131,7 +201,8 @@ class DashboardTrendPoint {
     required this.ratio,
   });
 
-  factory DashboardTrendPoint.fromJson(Map<String, dynamic> j) => DashboardTrendPoint(
+  factory DashboardTrendPoint.fromJson(Map<String, dynamic> j) =>
+      DashboardTrendPoint(
         day: j['day'] as String? ?? '',
         uploaded: _i(j['uploaded']),
         downloaded: _i(j['downloaded']),
@@ -150,12 +221,24 @@ class SiteHistoryPoint {
   final int uploaded;
   final int downloaded;
   final double ratio;
+  final int trueUploaded;
+  final int trueDownloaded;
+  final double trueRatio;
   final int seeding;
   final int leeching;
   final int seedingSize;
   final int uploads;
+  final int uniqueGroups;
+  final int perfectFlac;
+  final int invited;
   final double bonus;
   final double bonusPerHour;
+  final double seedingBonus;
+  final double seedingBonusPerHour;
+  final double rescueSeedingBonusPerHour;
+  final int claimCount;
+  final int maxClaim;
+  final String lastAccessAt;
 
   SiteHistoryPoint({
     required this.snapAt,
@@ -163,27 +246,51 @@ class SiteHistoryPoint {
     required this.uploaded,
     required this.downloaded,
     required this.ratio,
+    required this.trueUploaded,
+    required this.trueDownloaded,
+    required this.trueRatio,
     required this.seeding,
     required this.leeching,
     required this.seedingSize,
     required this.uploads,
+    required this.uniqueGroups,
+    required this.perfectFlac,
+    required this.invited,
     required this.bonus,
     required this.bonusPerHour,
+    required this.seedingBonus,
+    required this.seedingBonusPerHour,
+    required this.rescueSeedingBonusPerHour,
+    required this.claimCount,
+    required this.maxClaim,
+    required this.lastAccessAt,
   });
 
   factory SiteHistoryPoint.fromJson(Map<String, dynamic> j) => SiteHistoryPoint(
-        snapAt: j['snap_at'] as String? ?? '',
-        level: j['level'] as String? ?? '',
-        uploaded: _i(j['uploaded']),
-        downloaded: _i(j['downloaded']),
-        ratio: _n(j['ratio']),
-        seeding: _i(j['seeding']),
-        leeching: _i(j['leeching']),
-        seedingSize: _i(j['seeding_size']),
-        uploads: _i(j['uploads']),
-        bonus: _n(j['bonus']),
-        bonusPerHour: _n(j['bonus_per_hour']),
-      );
+    snapAt: j['snap_at'] as String? ?? '',
+    level: j['level'] as String? ?? '',
+    uploaded: _i(j['uploaded']),
+    downloaded: _i(j['downloaded']),
+    ratio: _n(j['ratio']),
+    trueUploaded: _i(j['true_uploaded']),
+    trueDownloaded: _i(j['true_downloaded']),
+    trueRatio: _n(j['true_ratio']),
+    seeding: _i(j['seeding']),
+    leeching: _i(j['leeching']),
+    seedingSize: _i(j['seeding_size']),
+    uploads: _i(j['uploads']),
+    uniqueGroups: _i(j['unique_groups']),
+    perfectFlac: _i(j['perfect_flac']),
+    invited: _i(j['invited']),
+    bonus: _n(j['bonus']),
+    bonusPerHour: _n(j['bonus_per_hour']),
+    seedingBonus: _n(j['seeding_bonus']),
+    seedingBonusPerHour: _n(j['seeding_bonus_per_hour']),
+    rescueSeedingBonusPerHour: _n(j['rescue_seeding_bonus_per_hour']),
+    claimCount: _i(j['claim_count']),
+    maxClaim: _i(j['max_claim']),
+    lastAccessAt: j['last_access_at'] as String? ?? '',
+  );
 }
 
 class DashboardApi {
@@ -210,7 +317,9 @@ class DashboardApi {
   // 单站点历史统计快照：GET /dashboard/history/:id?days=N（后端回裸数组，走 getList）。
   Future<List<SiteHistoryPoint>> history(int siteId, {int days = 90}) async {
     final list = await _api.getList('/dashboard/history/$siteId?days=$days');
-    return list.map((e) => SiteHistoryPoint.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => SiteHistoryPoint.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // trend 拉按天聚合趋势：GET /dashboard/trend?days=N。

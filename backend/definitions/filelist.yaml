@@ -1,12 +1,5 @@
 # filelist — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: filelist。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.link（__ref）
-#   - search.time.filters（匿名函数）
-#   - search.completed.filters（匿名函数）
-#   - search.subTitle（text）
-#   - search.url.filters[prepend]
-#   - userInfo.process（多步抓取流程，需适配器实现）
+# schema: filelist。GenericHTML 定义级 mock 已覆盖搜索、双页用户信息、做种体积与时魔；真实站点仍建议 live smoke。
 
 aka:
     - FL
@@ -109,10 +102,18 @@ selectors:
         completed:
             selector: div:nth-child(8)
         detail:
+            attr: href
             filters:
                 - args: id
                   name: queryparam
-        download: {}
+                - args: /details.php?id=
+                  name: prepend
+            selectors:
+                - a[href*="download.php?id="]
+        download:
+            attr: href
+            selectors:
+                - a[href*="download.php?id="]
         leechers:
             selector: div:nth-child(10)
         seeders:
@@ -121,12 +122,19 @@ selectors:
             filters:
                 - name: parse_size
             selector: div:nth-child(7)
-        subtitle: {}
+        subtitle:
+            filters:
+                - args: ""
+                  name: const
+            selector: :self
         time:
+            filters:
+                - name: dmy_hms
             selector: div:nth-child(6)
         title:
             attr: title
             selectors:
+                - a[href*='details.php'][title]
                 - a[href*='details.php']:has(b)
     rows:
         selector: .torrentrow
@@ -136,3 +144,70 @@ tags:
 timezone_offset: "+0000"
 urls:
     - https://filelist.io/
+user_info:
+    pages:
+        - path: /index.php
+          fields:
+            id:
+                attr: href
+                filters:
+                    - args: id
+                      name: queryparam
+                selectors:
+                    - .statusbar a[href*='userdetails.php']:has(>span)
+                    - .statusbar a[href*='userdetails.php']
+            name:
+                selectors:
+                    - .statusbar a[href*='userdetails.php'] span
+            uploaded:
+                filters:
+                    - name: parse_size
+                selectors:
+                    - span:has(img[src*='uploaded'])
+            downloaded:
+                filters:
+                    - name: parse_size
+                selectors:
+                    - span:has(img[src*='downloaded'])
+            bonus:
+                filters:
+                    - name: parse_number
+                selectors:
+                    - .statusbar a[href*='shop.php']
+        - path: /userdetails.php
+          params:
+            id: "{id}"
+          fields:
+            level:
+                selectors:
+                    - "td:contains('Class') + td"
+            join_date:
+                filters:
+                    - name: parse_time
+                selectors:
+                    - "td:contains('Join'):contains('date') + td"
+            last_access_at:
+                filters:
+                    - name: split
+                      args: " (:::0"
+                    - name: parse_time
+                selectors:
+                    - "td:contains('Last'):contains('seen') + td"
+            seeding:
+                filters:
+                    - args: Seeding\s+(\d+)\s+torrents
+                      name: regexp
+                selectors:
+                    - "td:contains('Seed'):contains('bonus') + td > div:first"
+            seeding_size:
+                filters:
+                    - args: total seed size of ([\d.\s,ZEPTGMKiB]+)\.
+                      name: regexp
+                    - name: parse_size
+                selectors:
+                    - "td:contains('Seed'):contains('bonus') + td > div:first"
+            bonus_per_hour:
+                filters:
+                    - name: parse_number
+                selectors:
+                    - "td:contains('Seed'):contains('bonus') + td > div:nth-child(3)"

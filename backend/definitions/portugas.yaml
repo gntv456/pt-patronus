@@ -1,9 +1,5 @@
 # portugas — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category（data）
-#   - search.category.filters（匿名函数）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 description: Portugas is a UNIT3D Private Torrent Tracker for Portuguese content.
 id: portugas
 level_requirements:
@@ -40,6 +36,10 @@ schema: unit3d
 selectors:
     fields:
         category:
+            data: categoryId
+            filters:
+                - args: 1=Filmes:::2=TV:::3=Músicas:::4=Jogos:::5=Appz:::7=XXX:::9=E-Books:::10=Animação Filmes:::11=Animação TV
+                  name: map
             selector: :self
 tags:
     - 葡萄牙
@@ -48,4 +48,17 @@ urls:
     - https://portugas.org/
 user_info:
     fields:
-        seeding_size: {}
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - "dt:contains('Tamanho das Sementes') + dd"
+                - "td:contains('Tamanho das Sementes') + td"
+                - "dt:contains('Seeding Size') + dd"
+                - "dt:contains('Seeding size') + dd"
+                - "dt:contains('做种体积') + dd"
+                - "dt:contains('做種體積') + dd"
+                - "td:contains('Seeding Size') + td"
+                - "td:contains('Seeding size') + td"
+                - "td:contains('做种体积') + td"
+                - "td:contains('做種體積') + td"

@@ -1,6 +1,4 @@
-# fsm — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: fsm。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# fsm — schema: fsm。死站保留；JSON API 搜索、用户信息与做种体积已按 PT-depiler 注释实现迁移，并由 GenericJSON mock 覆盖。
 
 aka:
     - 飞天拉面神教
@@ -9,8 +7,72 @@ description: FSM（飞天拉面神教）是一家专注于R18内容的PT站点�
 id: fsm
 name: FSM
 schema: fsm
+format: json
+search_entry: /Torrents/listTorrents
+search_param: keyword
+selectors:
+    rows:
+        selector: data.list
+    fields:
+        title:
+            selector: title
+        subtitle:
+            selector: tags
+        detail:
+            selector: tid
+            filters:
+                - name: prepend
+                  args: /Torrents/details?tid=
+        size:
+            selector: fileRawSize
+        time:
+            selector: createdTs
+            filters:
+                - name: unix_seconds
+        seeders:
+            selector: peers.upload
+        leechers:
+            selector: peers.download
+        completed:
+            selector: finish
+        category:
+            selector: type.name
 tags:
     - 成人
 timezone_offset: "+0800"
 urls:
     - https://fsm.name/
+user_info:
+    pages:
+        - path: /Users/infos
+          format: json
+          fields:
+            id:
+                selector: data.uid
+            name:
+                selector: data.username
+        - path: /Users/profile
+          format: json
+          params:
+            uid: "{id}"
+          fields:
+            join_date:
+                selector: data.createdTs
+                filters:
+                    - name: unix_seconds
+            uploaded:
+                selector: data.upload
+            downloaded:
+                selector: data.download
+            level:
+                selector: data.userRank.name
+            level_id:
+                selector: data.userRank.id
+            bonus:
+                selector: data.point
+            seeding:
+                selector: data.nowActiveUpload
+            seeding_size:
+                selector: data.nowActiveUploadSize
+            uploads:
+                selector: data.torrent

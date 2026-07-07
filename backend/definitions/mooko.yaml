@@ -1,6 +1,5 @@
 # mooko — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: gazelle。死站保留；通用 Gazelle mock 已覆盖用户信息、做种数与做种体积。
 
 dead: true
 description: MooKo is a CHINESE Private Torrent Tracker for MOVIES / TV / GENERAL
@@ -12,3 +11,30 @@ tags:
 timezone_offset: "+0800"
 urls:
     - https://mooko.org/
+user_info:
+    fields:
+        bonus_per_hour:
+            selector: response.userstats.bonusPointsPerHour
+        last_access_at:
+            data: value
+            filters:
+                - name: parse_time
+            selector: '#last-access-date-value'
+        true_downloaded:
+            attr: data-tooltip
+            filters:
+                - name: last_size
+            selector: '#downloaded-value span[data-tooltip]'
+    pages:
+        - path: /ajax.php
+          format: json
+          params:
+              action: index
+          use_fields:
+              - bonus_per_hour
+        - path: /user.php
+          params:
+              id: "{id}"
+          use_fields:
+              - last_access_at
+              - true_downloaded

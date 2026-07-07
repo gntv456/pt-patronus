@@ -2,7 +2,7 @@
   "__spread": [
     "SchemaMetadata"
   ],
-  "version": 1,
+  "version": 2,
   "id": "ilolicon",
   "name": "ilolicon",
   "aka": [
@@ -614,7 +614,8 @@
           "seeding",
           "seedingSize",
           "hnrUnsatisfied",
-          "hnrPreWarning"
+          "hnrPreWarning",
+          "lastAccessAt"
         ]
       },
       {

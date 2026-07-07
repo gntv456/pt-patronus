@@ -69,11 +69,17 @@ func (g *Gazelle) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	if uid != "" {
 		if udoc, _, e := g.fetchDoc(ctx, baseURL, "user.php?id="+uid, cookie); e == nil {
 			if p := site.ParseUserInfo(udoc, def); p != nil {
+				site.ParseUserDetail(udoc, def, p)
 				*out = *p
 				if out.ID == "" {
 					out.ID = uid
 				}
 			}
+		}
+	}
+	if len(def.UserInfo.Pages) > 0 {
+		if err := fetchUserInfoPages(ctx, &g.BaseHTMLAdapter, def, baseURL, cookie, out); err != nil {
+			return nil, err
 		}
 	}
 	return out, nil

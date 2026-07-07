@@ -75,6 +75,21 @@ func (c SSHCollector) Collect(ctx context.Context, t *models.MonitorTarget, cred
 	return parseRemoteProc(out), nil
 }
 
+// Power executes a fixed, whitelisted power action over SSH.
+func (c SSHCollector) Power(ctx context.Context, t *models.MonitorTarget, creds Credentials, action string) error {
+	action = strings.ToLower(strings.TrimSpace(action))
+	if action != PowerActionReboot {
+		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
+	}
+	ex, err := c.dial(t, creds, sshTimeout(t))
+	if err != nil {
+		return err
+	}
+	defer ex.Close()
+	_, err = ex.Run(ctx, "sudo -n reboot")
+	return err
+}
+
 func sshTimeout(t *models.MonitorTarget) time.Duration {
 	sec := t.TimeoutSec
 	if sec < 5 {

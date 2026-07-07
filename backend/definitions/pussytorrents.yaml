@@ -1,16 +1,5 @@
 # pussytorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time.filters（匿名函数）
-#   - search.category（text）
-#   - userInfo.seedingSize.filters（匿名函数）
-#   - userInfo.uploads.filters（匿名函数）
-#   - userInfo.downloaded.filters（匿名函数）
-#   - userInfo.joinTime.filters（匿名函数）
-#   - userInfo.id.filters（匿名函数）
-#   - userInfo.uploaded.filters（匿名函数）
-#   - userInfo.seeding.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
 
 aka:
     - PT
@@ -22,7 +11,11 @@ no_login:
 search_entry: /torrents/browse
 selectors:
     fields:
-        category: {}
+        category:
+            filters:
+                - args: XXX
+                  name: const
+            selector: :self
         completed:
             filters:
                 - name: parse_number
@@ -40,6 +33,10 @@ selectors:
         size:
             selector: td:nth-last-child(5)
         time:
+            filters:
+                - args: "Added on :::"
+                  name: replace
+                - name: parse_time
             selector: span.subnote
         title:
             selector: a[href^="/torrent/"]
@@ -53,21 +50,33 @@ urls:
 user_info:
     fields:
         downloaded:
+            filters:
+                - name: parse_size
             selector: '#profile button:has(.icon-arrow-down)'
         id:
             attr: href
+            filters:
+                - args: /profile/([^/?#]+)
+                  name: regexp
             selector: '#memberBar .span8 a[href*=''/profile/'']'
         join_date:
+            filters:
+                - name: parse_time
             selector: '#profileTable td:contains(''Join Date'') + td'
         level:
             selector: '#profileTable td:contains(''Class'') + td'
         name:
             selector: '#memberBar .span8 a[href*=''/profile/'']'
+        numeric_user_id:
+            attr: data-userid
+            selector: 'a[href="#snatchlist"][data-ajax="/user/account/snatchlist"]'
         seeding:
             selector: aaData
         seeding_size:
             selector: aaData
         uploaded:
+            filters:
+                - name: parse_size
             selector: '#profile button:has(.icon-arrow-up)'
         uploads:
             selector: iTotalRecords

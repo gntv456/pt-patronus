@@ -1,6 +1,6 @@
 # filept — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# dead site retained; reference projects expose no executable user_info/search selectors beyond retained metadata.
 
 dead: true
 description: The Ultimate File Sharing Experience

@@ -36,6 +36,7 @@ selectors:
 
 # 用户资料（info_block color_* 锚点，Parent 取所在块文本 + 正则抽值）
 user_info:
+  user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
   path: usercp.php
   fields:
     uploaded:
@@ -44,12 +45,14 @@ user_info:
       filters:
         - name: regexp
           args: '(?:上传量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     downloaded:
       selector: "font.color_downloaded"
       parent: true
       filters:
         - name: regexp
           args: '(?:下载量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     ratio:
       selector: "font.color_ratio"
       parent: true

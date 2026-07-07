@@ -3,10 +3,16 @@ package site
 import (
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
 )
+
+func isEmptyElementQuery(q ElementQuery) bool {
+	return q.Selector == "" && len(q.Selectors) == 0 && q.Text == "" && q.Data == "" &&
+		q.Ancestor == "" && q.Find == "" && q.Attr == "" && q.Remove == "" && len(q.Filters) == 0
+}
 
 // TestNoNexusPHPPollution：非 nexusphp schema 的空 def 经 EnsureDefaults 后，不应被注入
 // NexusPHP 选择器默认（table.torrents / font.color_*）与 capability 默认（Freeleech/Harem/
@@ -132,6 +138,65 @@ func TestLuminanceDefaults(t *testing.T) {
 	}
 }
 
+func TestTCGDefaults(t *testing.T) {
+	def := EnsureDefaults(&SiteMetadata{
+		ID:     "tcg-demo",
+		Schema: "tcg",
+		Selectors: SiteSelectors{Fields: map[string]ElementQuery{
+			"category": {Selector: `a[href^="browse.php?cat="]`},
+		}},
+	})
+	if def.SearchEntry != "browse.php" || def.SearchParam != "search" {
+		t.Fatalf("search defaults = entry %q param %q", def.SearchEntry, def.SearchParam)
+	}
+	for _, key := range []string{"incldead", "titleonly", "nonboolean"} {
+		if def.ExtraParam[key] == "" {
+			t.Fatalf("ExtraParam[%s] missing", key)
+		}
+	}
+	if def.Selectors.Rows.Selector == "" {
+		t.Fatalf("Rows selector should be populated")
+	}
+	for _, field := range []string{"title", "detail", "download", "size", "seeders", "leechers", "category"} {
+		if isEmptyElementQuery(def.Selectors.Fields[field]) {
+			t.Fatalf("field %s should be present", field)
+		}
+	}
+	if !userInfoPagesCoverField(def.UserInfo.Pages, "id") || !userInfoPagesCoverField(def.UserInfo.Pages, "seeding_size") {
+		t.Fatalf("TCG user info pages should cover id and seeding_size")
+	}
+	if def.Freeleech.Enabled || def.Harem.Enabled || def.Messages.Enabled || def.Detail.Enabled {
+		t.Errorf("TCG defaults should not enable NexusPHP capabilities")
+	}
+}
+
+func TestSmallHorseDefaults(t *testing.T) {
+	def := EnsureDefaults(&SiteMetadata{ID: "sh", Schema: "smallhorse"})
+	if def.Selectors.Rows.Selector != "table#torrent_table tr" {
+		t.Errorf("Rows 应为 table#torrent_table tr, got %q", def.Selectors.Rows.Selector)
+	}
+	for _, field := range []string{"title", "detail", "download", "size", "seeders", "leechers"} {
+		if isEmptyElementQuery(def.Selectors.Fields[field]) {
+			t.Fatalf("field %s should be present", field)
+		}
+	}
+	if len(def.UserInfo.Pages) != 3 {
+		t.Fatalf("UserInfo.Pages = %d, want 3", len(def.UserInfo.Pages))
+	}
+	if !userInfoPagesCoverField(def.UserInfo.Pages, "id") {
+		t.Fatalf("UserInfo.Pages should discover id")
+	}
+	if !userInfoPagesCoverField(def.UserInfo.Pages, "seeding_size") {
+		t.Fatalf("UserInfo.Pages should cover seeding_size")
+	}
+	if def.UserInfo.Pages[2].Path != "torrents.php?type=seeding&userid={id}" {
+		t.Fatalf("seeding page path = %q", def.UserInfo.Pages[2].Path)
+	}
+	if def.Freeleech.Enabled || def.Harem.Enabled || def.Messages.Enabled || def.Detail.Enabled {
+		t.Errorf("不应启用 NexusPHP capability")
+	}
+}
+
 // TestNexusPHPDefaultsPreserved：空 schema 与显式 nexusphp schema 仍走 NexusPHP 分支，
 // 填入选择器与 capability 默认（向后兼容现有 20 站与既有测试）。
 func TestNexusPHPDefaultsPreserved(t *testing.T) {
@@ -143,14 +208,73 @@ func TestNexusPHPDefaultsPreserved(t *testing.T) {
 		if _, ok := def.UserInfo.Fields["uploaded"]; !ok {
 			t.Errorf("schema=%q: UserInfo.Fields 应含 NexusPHP uploaded 默认", schema)
 		}
+		if _, ok := def.UserInfo.Fields["bonus_per_hour"]; !ok {
+			t.Errorf("schema=%q: UserInfo.Fields 应含 NexusPHP bonus_per_hour 默认，供自定义 mybonus/bonus 页面复用", schema)
+		}
+		if _, ok := def.UserInfo.Fields["seeding_size"]; !ok {
+			t.Errorf("schema=%q: UserInfo.Fields 应含 NexusPHP seeding_size 默认，供 userdetails/pages 复用", schema)
+		}
+		for _, field := range []string{"level_id", "avatar", "is_donor"} {
+			if _, ok := def.UserInfo.DetailFields[field]; !ok {
+				t.Errorf("schema=%q: UserInfo.DetailFields 应含 NexusPHP %s 默认", schema, field)
+			}
+		}
+		if schema == "nexusphp" && !userInfoPagesCoverField(def.UserInfo.Pages, "personal_avatar") {
+			t.Errorf("schema=%q: UserInfo.Pages 应含 personal_avatar 默认页", schema)
+		}
+		if schema == "" && userInfoPagesCoverField(def.UserInfo.Pages, "personal_avatar") {
+			t.Errorf("schema=%q: UserInfo.Pages 不应为 generic 空 schema 追加 personal_avatar 默认页", schema)
+		}
 		if !def.Freeleech.Enabled || !def.Harem.Enabled || !def.Messages.Enabled || !def.Detail.Enabled {
 			t.Errorf("schema=%q: capability 默认应开启 (Freeleech/Harem/Messages/Detail)", schema)
 		}
 	}
 }
 
+func userInfoPagesCoverField(pages []UserInfoPageDef, field string) bool {
+	for _, page := range pages {
+		if _, ok := page.Fields[field]; ok {
+			return true
+		}
+		for _, key := range page.UseFields {
+			if key == field {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestNexusPHPSearchFieldsMergeDefaults(t *testing.T) {
+	def := EnsureDefaults(&SiteMetadata{
+		ID:     "partial",
+		Schema: "nexusphp",
+		Selectors: SiteSelectors{
+			Rows: ElementQuery{Selector: "table.custom > tbody > tr"},
+			Fields: map[string]ElementQuery{
+				"category": {Selector: "td.cat"},
+				"detail":   {Selector: "a.custom-detail", Attr: "href"},
+			},
+		},
+	})
+	if def.Selectors.Rows.Selector != "table.custom > tbody > tr" {
+		t.Fatalf("custom rows should be preserved, got %q", def.Selectors.Rows.Selector)
+	}
+	if def.Selectors.Fields["category"].Selector != "td.cat" {
+		t.Fatalf("custom category should be preserved, got %+v", def.Selectors.Fields["category"])
+	}
+	if def.Selectors.Fields["detail"].Selector != "a.custom-detail" {
+		t.Fatalf("custom detail should be preserved, got %+v", def.Selectors.Fields["detail"])
+	}
+	for _, field := range []string{"title", "download", "size", "seeders", "leechers", "completed"} {
+		if isEmptyElementQuery(def.Selectors.Fields[field]) {
+			t.Fatalf("field %s should inherit NexusPHP default", field)
+		}
+	}
+}
+
 // TestMTeamDefaults：mteam schema 经 EnsureDefaults 后应默认放行 Freeleech/Announcement
-//（适配器已实现 FetchFreeleech/FetchAnnouncement），但不注入 NexusPHP 选择器，也不开
+// （适配器已实现 FetchFreeleech/FetchAnnouncement），但不注入 NexusPHP 选择器，也不开
 // 其余 NexusPHP capability（Harem/Messages/Detail 馒头适配器未实现）。
 // 回归：修复前 mteam 落入 default 分支，Enabled 恒 false → 前端误显「未开启站免检测」。
 func TestMTeamDefaults(t *testing.T) {
@@ -174,6 +298,30 @@ func TestMTeamDefaults(t *testing.T) {
 	}
 }
 
+func TestRartrackerDefaults(t *testing.T) {
+	def := EnsureDefaults(&SiteMetadata{
+		ID:     "superbits",
+		Schema: "rartracker",
+		Selectors: SiteSelectors{Fields: map[string]ElementQuery{
+			"completed": {Selector: "timesCompleted"},
+		}},
+	})
+	if def.SearchEntry != "/api/v1/torrents" || def.SearchParam != "searchText" || def.Format != "json" {
+		t.Fatalf("search defaults = entry %q param %q format %q", def.SearchEntry, def.SearchParam, def.Format)
+	}
+	if def.ExtraParam["limit"] != "100" || def.ExtraParam["section"] != "all" {
+		t.Fatalf("extra params = %#v", def.ExtraParam)
+	}
+	if def.Selectors.Rows.Selector != ":self" {
+		t.Fatalf("rows = %q, want :self", def.Selectors.Rows.Selector)
+	}
+	for _, field := range []string{"title", "detail", "size", "seeders", "leechers", "completed", "category"} {
+		if isEmptyElementQuery(def.Selectors.Fields[field]) {
+			t.Fatalf("field %s should be present", field)
+		}
+	}
+}
+
 // TestEnsureDefaultsIdempotent：同一 def 经 EnsureDefaults 两次，结果 reflect.DeepEqual。
 // 覆盖空 schema、nexusphp、非 nexusphp 自定义选择器三种情形。
 func TestEnsureDefaultsIdempotent(t *testing.T) {
@@ -187,6 +335,9 @@ func TestEnsureDefaultsIdempotent(t *testing.T) {
 		{ID: "e", Schema: "gazelle"},
 		{ID: "f", Schema: "luminance"},
 		{ID: "g", Schema: "mteam"},
+		{ID: "h", Schema: "rartracker"},
+		{ID: "i", Schema: "smallhorse"},
+		{ID: "j", Schema: "tcg"},
 	}
 	for _, c := range cases {
 		once := EnsureDefaults(c)
@@ -211,6 +362,48 @@ func TestSiteMetadataDeadField(t *testing.T) {
 	d := EnsureDefaults(&def)
 	if d.Dead != true {
 		t.Errorf("EnsureDefaults 不应清掉 Dead 标记")
+	}
+}
+
+func TestDefinitionUserInfoPageUseFieldsResolvable(t *testing.T) {
+	dir := "../../definitions"
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Skipf("definitions 不在测试相对路径下，跳过：%v", err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
+			continue
+		}
+		data, err := os.ReadFile(dir + "/" + entry.Name())
+		if err != nil {
+			t.Fatalf("read %s: %v", entry.Name(), err)
+		}
+		var def SiteMetadata
+		if err := yaml.Unmarshal(data, &def); err != nil {
+			t.Fatalf("parse %s: %v", entry.Name(), err)
+		}
+		if def.ID == "" {
+			continue
+		}
+		d := EnsureDefaults(&def)
+		defined := map[string]bool{}
+		for key := range d.UserInfo.Fields {
+			defined[key] = true
+		}
+		for key := range d.UserInfo.DetailFields {
+			defined[key] = true
+		}
+		for i, page := range d.UserInfo.Pages {
+			for _, key := range page.UseFields {
+				if _, ok := page.Fields[key]; ok {
+					continue
+				}
+				if !defined[key] {
+					t.Errorf("%s user_info.pages[%d].use_fields references missing %q", def.ID, i, key)
+				}
+			}
+		}
 	}
 }
 

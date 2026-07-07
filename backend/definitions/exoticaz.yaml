@@ -1,6 +1,5 @@
 # exoticaz — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: avistaz。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: avistaz。JWT 搜索 API 已适配；用户资料按站规 passParse，仅保留用户名；真实站点仍建议 live smoke。
 
 aka:
     - Exo

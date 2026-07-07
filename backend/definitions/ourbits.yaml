@@ -1,5 +1,194 @@
 id: ourbits
 name: 我堡
+aka:
+  - OurBits
+  - OB
+description: 综合性站点，有分享率要求。
+tags:
+  - 影视
+  - 动漫
+  - 纪录片
+  - 综艺
 schema: nexusphp
 urls:
   - https://ourbits.club
+  - https://www.ourbits.club
+  - https://pt.ourhelp.club
+categories:
+  - id: "401"
+    name: Movies
+  - id: "402"
+    name: Movies-3D
+  - id: "419"
+    name: Concert
+  - id: "412"
+    name: TV-Episode
+  - id: "405"
+    name: TV-Pack
+  - id: "413"
+    name: TV-Show
+  - id: "410"
+    name: Documentary
+  - id: "411"
+    name: Animation
+  - id: "415"
+    name: Sports
+  - id: "414"
+    name: Music-Video
+  - id: "416"
+    name: Music
+search_categories:
+  movie:
+    - "401"
+    - "402"
+    - "410"
+    - "411"
+  tv:
+    - "405"
+    - "412"
+    - "413"
+  music:
+    - "414"
+    - "416"
+    - "419"
+selectors:
+  fields:
+    subtitle:
+      selectors:
+        - a[href*='hit'][title]
+        - a[href*='hit']:has(b)
+    imdb_id:
+      selector: label.imdb_rate
+      data: imdbid
+      filters:
+        - name: regexp
+          args: tt\d+
+    douban_id:
+      selector: label.douban_rate
+      data: doubanid
+user_info:
+  path: index.php
+  user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+  fields:
+    id:
+      attr: href
+      filters:
+        - name: queryparam
+          args: id
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    name:
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    uploaded:
+      parent: true
+      selectors:
+        - "font.color_uploaded, span.color_uploaded"
+        - "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+    downloaded:
+      parent: true
+      selectors:
+        - "font.color_downloaded, span.color_downloaded"
+        - "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+    ratio:
+      parent: true
+      selectors:
+        - "font.color_ratio, span.color_ratio"
+        - "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:分享率|Ratio)\s*[:：]?\s*(\d+\.?\d*|Inf\.?|Infinity|∞)
+        - name: replace
+          args: Infinity:::9999
+        - name: replace
+          args: Inf.:::9999
+        - name: replace
+          args: ∞:::9999
+  detail_fields:
+    uploaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    downloaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    ratio:
+      filters:
+        - name: regexp
+          args: (?i)(?:分享率|Ratio)\s*[:：]?\s*(\d+\.?\d*|Inf\.?|Infinity|∞)
+        - name: replace
+          args: Infinity:::9999
+        - name: replace
+          args: Inf.:::9999
+        - name: replace
+          args: ∞:::9999
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    level:
+      attr: title
+      selectors:
+        - "td.rowhead:contains('等级') + td > img"
+        - "td.rowhead:contains('等級') + td > img"
+        - "td.rowhead:contains('Class') + td > img"
+    bonus:
+      filters:
+        - name: regexp
+          args: (?i)(?:魔力值|魔力|Karma\s*Points)?\s*[:：]?\s*([\d.,]+\.?\d*)
+        - name: parse_number
+      selectors:
+        - "td.rowhead:contains('魔力值') + td"
+        - "td.rowhead:contains('魔力') + td"
+        - "td.rowhead:contains('Karma'):contains('Points') + td"
+    join_date:
+      filters:
+        - name: regexp
+          args: (\d{4}-\d{2}-\d{2})
+      selectors:
+        - "td.rowhead:contains('加入日期') + td"
+        - "td.rowhead:contains('Join'):contains('date') + td"
+    seeding_size:
+      filters:
+        - name: regexp
+          args: (?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))(?:\s*$|[^\d]*$)
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('当前做种') + td"
+        - "td.rowhead:contains('目前做種') + td"
+        - "td.rowhead:contains('Current Seeding') + td"
+  pages:
+    - path: mybonus.php
+      fields:
+        bonus_per_hour:
+          selector: ":self"
+          filters:
+            - name: regexp
+              args: (?i)(?:你当前每小时能获取|你當前每小時能獲取|currently\s+getting)[^0-9-+]{0,24}[-+]?[\d,]+\.?\d*:::0
+            - name: parse_number

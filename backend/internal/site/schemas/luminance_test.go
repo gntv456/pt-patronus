@@ -73,7 +73,12 @@ func TestLuminanceUserInfo(t *testing.T) {
 			  <li>Uploaded: 2.0 TB</li>
 			  <li>Ratio: <span>3.5</span></li>
 			  <li>Class: VIP</li>
+			  <li>Seeding: 4</li>
+			  <li>Leeching: 2</li>
+			  <li>Seeding Size: 1.5 TiB</li>
+			  <li title="Uploaded torrents">Uploaded: 12 [torrents]</li>
 			</ul>
+			<div id="bonuslog">2024-01-02 | +240 credits | 24 hrs<br/>old | +120 credits | 24 hrs</div>
 			</body></html>`))
 		default:
 			http.NotFound(w, r)
@@ -97,6 +102,67 @@ func TestLuminanceUserInfo(t *testing.T) {
 	}
 	if ui.Uploaded <= 0 {
 		t.Errorf("Uploaded = %d, want >0", ui.Uploaded)
+	}
+	if ui.Seeding != 4 || ui.Leeching != 2 || ui.SeedingSize != 1536*(1<<30) || ui.Uploads != 12 {
+		t.Errorf("seed stats = seeding %d leeching %d size %d uploads %d", ui.Seeding, ui.Leeching, ui.SeedingSize, ui.Uploads)
+	}
+	if ui.BonusPerHour != 10 {
+		t.Errorf("BonusPerHour = %v, want 10", ui.BonusPerHour)
+	}
+}
+
+func TestLuminancePornbayDefinitionUserInfo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		switch r.URL.Path {
+		case "/":
+			_, _ = w.Write([]byte(`<html><body><a class="username" href="user.php?id=7">alice</a></body></html>`))
+		case "/user.php":
+			if r.URL.Query().Get("id") != "7" {
+				t.Fatalf("id = %q, want 7", r.URL.Query().Get("id"))
+			}
+			_, _ = w.Write([]byte(`<html><body>
+<a class="username" href="user.php?id=7">alice</a>
+<ul class="stats">
+  <li>Uploaded: 2.00 TiB</li>
+  <li>Downloaded: 512.00 GiB</li>
+  <li>Ratio: <span>4.0</span></li>
+  <li>Class: Elite</li>
+  <li>Joined: <span class="time" title="2024-01-02 03:04:05">joined</span></li>
+  <li>Seeding: 7</li>
+  <li>Leeching: 1</li>
+  <li>Seeding Size: 3.00 TiB</li>
+  <li title="Uploaded torrents">Uploaded: 42 [torrents]</li>
+</ul>
+<div id="bonuslog">2024-01-02 | +240 credits | 24 hrs</div>
+</body></html>`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	reg := site.NewRegistry()
+	if err := reg.LoadDefinitions("../../../definitions"); err != nil {
+		t.Fatalf("load definitions: %v", err)
+	}
+	def, ok := reg.Definition("pornbay")
+	if !ok {
+		t.Fatal("pornbay definition missing")
+	}
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	u, err := NewLuminance(hc).FetchUserInfo(context.Background(), def, srv.URL, "cookie")
+	if err != nil {
+		t.Fatalf("FetchUserInfo: %v", err)
+	}
+	if u.ID != "7" || u.Name != "alice" || u.Level != "Class: Elite" || u.JoinDate != "2024-01-02" {
+		t.Fatalf("identity = id %q name %q level %q join %q", u.ID, u.Name, u.Level, u.JoinDate)
+	}
+	if u.Uploaded != 2*(1<<40) || u.Downloaded != 512*(1<<30) || u.Ratio != 4 {
+		t.Fatalf("traffic = uploaded %d downloaded %d ratio %g", u.Uploaded, u.Downloaded, u.Ratio)
+	}
+	if u.Seeding != 7 || u.Leeching != 1 || u.SeedingSize != 3*(1<<40) || u.Uploads != 42 || u.BonusPerHour != 10 {
+		t.Fatalf("stats = seeding %d leeching %d size %d uploads %d bph %g", u.Seeding, u.Leeching, u.SeedingSize, u.Uploads, u.BonusPerHour)
 	}
 }
 

@@ -1,6 +1,5 @@
 # greatposterwall — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: gazelle_jsonapi。标准 Gazelle JSON API 用户字段已由通用适配器和定义回归覆盖；真实站点仍建议 live smoke。
 
 aka:
     - 海豹
@@ -68,3 +67,92 @@ tags:
 timezone_offset: "+0800"
 urls:
     - https://greatposterwall.com/
+user_info:
+    fields:
+        id:
+            selector: id
+        name:
+            selector: username
+        uploaded:
+            selector: userstats.uploaded
+        downloaded:
+            selector: userstats.downloaded
+        ratio:
+            filters:
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: infinity:::9999
+                - name: replace
+                  args: Inf:::9999
+                - name: replace
+                  args: inf:::9999
+                - name: replace
+                  args: ∞:::9999
+                - name: replace
+                  args: -1:::9999
+            selector: userstats.ratio
+        level:
+            selector: userstats.class
+        bonus:
+            selector: userstats.bonusPoints
+        bonus_per_hour:
+            selector: userstats.bonusPointsPerHour
+        seeding_bonus_per_hour:
+            selector: userstats.seedingBonusPointsPerHour
+        seeding:
+            selector: userstats.seedingCount
+        leeching:
+            selector: userstats.leechingCount
+        seeding_size:
+            selector: userstats.seedingSize
+        join_date:
+            selector: userstats.joinedDate
+        last_access_at:
+            selector: userstats.lastAccess
+        claim_count:
+            text: "0"
+        max_claim:
+            text: "0"
+    pages:
+        - path: /ajax.php
+          params:
+              action: user
+              id: "{id}"
+          format: json
+          fields:
+              avatar:
+                  selector: response.avatar
+                  filters:
+                      - name: clean_avatar
+              is_donor:
+                  selector: response.personal.donor
+                  filters:
+                      - name: bool
+              uploads:
+                  selector: response.community.uploaded
+              unique_groups:
+                  selector: response.community.groups
+              perfect_flac:
+                  selector: response.community.perfectFlacs
+              invited:
+                  selector: response.community.invited
+              join_date:
+                  selector: response.stats.joinedDate
+              last_access_at:
+                  selector: response.stats.lastAccess
+        - path: /user.php
+          params:
+              id: "{id}"
+          format: html
+          fields:
+              avatar:
+                  attr: src
+                  filters:
+                      - name: clean_avatar
+                  selector: .HeaderProfile-avatar
+              true_downloaded:
+                  attr: data-tooltip
+                  filters:
+                      - name: last_size
+                  selector: '#downloaded-value span[data-tooltip]:not([data-tooltip=""])'

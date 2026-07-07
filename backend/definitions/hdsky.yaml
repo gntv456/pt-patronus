@@ -1,5 +1,232 @@
+# hdsky - user fields migrated from PT-manager/PT-depiler; live smoke still recommended.
 id: hdsky
-name: 天空
+name: HDSky
+aka:
+    - HDS
+    - 天空
+description: 高清发烧友后花园 PT
 schema: nexusphp
+tags:
+    - 影视
+    - 纪录片
+    - 综合
 urls:
-  - https://hdsky.me
+    - https://hdsky.me
+categories:
+    - id: "401"
+      name: Movies/电影
+    - id: "404"
+      name: Documentaries/纪录片
+    - id: "410"
+      name: iPad/iPad影视
+    - id: "405"
+      name: Animations/动漫
+    - id: "402"
+      name: TV Series/剧集(分集)
+    - id: "411"
+      name: TV Series/剧集(合集)
+    - id: "403"
+      name: TV Shows/综艺
+    - id: "406"
+      name: Music Videos/音乐MV
+    - id: "407"
+      name: Sports/体育
+    - id: "408"
+      name: HQ Audio/无损音乐
+    - id: "409"
+      name: Misc/其他
+    - id: "412"
+      name: TV Series/海外剧集(分集)
+    - id: "413"
+      name: TV Series/海外剧集(合集)
+    - id: "414"
+      name: TV Shows/海外综艺(分集)
+    - id: "415"
+      name: TV Shows/海外综艺(合集)
+    - id: "416"
+      name: Shortplay/短剧
+search_categories:
+    movie:
+        - "401"
+        - "404"
+        - "410"
+        - "405"
+    tv:
+        - "402"
+        - "411"
+        - "403"
+        - "412"
+        - "413"
+        - "414"
+        - "415"
+        - "416"
+    music:
+        - "406"
+        - "408"
+level_requirements:
+    - id: 1
+      name: User
+      privilege: 新用户的默认级别。
+    - id: 2
+      name: Power User
+      interval: P5W
+      downloaded: 200GB
+      ratio: 2
+      bonus: 600000
+      privilege: NFO文档；请求续种；查看其它用户的种子历史；删除自己上传的字幕。
+    - id: 3
+      name: Elite User
+      interval: P10W
+      downloaded: 500GB
+      ratio: 2.5
+      bonus: 800000
+      privilege: 查看邀请区。
+    - id: 4
+      name: Crazy User
+      interval: P15W
+      downloaded: 1TB
+      ratio: 3
+      bonus: 1000000
+      privilege: 在做种、下载、发布时选择匿名模式。
+    - id: 5
+      name: Insane User
+      interval: P20W
+      downloaded: 2TB
+      ratio: 3.5
+      bonus: 1500000
+      privilege: 查看普通日志。
+    - id: 6
+      name: Veteran User
+      interval: P25W
+      downloaded: 4TB
+      ratio: 4
+      bonus: 2000000
+      privilege: 封存账号后不会被删除；查看其它用户评论和帖子历史。
+    - id: 7
+      name: Extreme User
+      interval: P30W
+      downloaded: 6TB
+      ratio: 4.5
+      bonus: 2500000
+      privilege: 更新过期外部信息；查看 Extreme User 论坛。
+    - id: 8
+      name: Ultimate User
+      interval: P45W
+      downloaded: 8TB
+      ratio: 5
+      bonus: 3500000
+      is_kept: true
+      privilege: 永久保留账号。
+    - id: 9
+      name: Nexus Master
+      interval: P65W
+      downloaded: 10TB
+      ratio: 5.5
+      bonus: 5000000
+      is_kept: true
+      privilege: 直接发布种子；查看排行榜；开放邀请期发送邀请。
+user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,100}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td > img"
+                - "td.rowhead:contains('等級') + td > img"
+                - "td.rowhead:contains('Class') + td > img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join'):contains('date') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力值') + td"
+                - "td.rowhead:contains('魔力') + td"
+                - "td.rowhead:contains('Karma'):contains('Points') + td"
+        seeding:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:当前做种|總做種|总做种|Torrents seeding|Total Seeding)[^0-9]{0,60}(\d+)'
+            selectors:
+                - "td.rowhead:contains('当前做种') + td"
+                - "td.rowhead:contains('當前做種') + td"
+                - "td.rowhead:contains('Current Seeding') + td"
+                - "body"
+        seeding_size:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:做种体积|做種體積|做种大小|做種大小|Seeding Size|Total Size)[^0-9]{0,80}([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('当前做种') + td"
+                - "td.rowhead:contains('當前做種') + td"
+                - "td.rowhead:contains('Current Seeding') + td"
+                - "body"
+    pages:
+        - path: mybonus.php
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: hdsky_bonus_per_hour
+                  selectors:
+                      - "div:contains('你当前每小时能获取')"
+                      - "td:contains('你当前每小时能获取')"
+                      - "body"

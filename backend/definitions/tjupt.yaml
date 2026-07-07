@@ -1,8 +1,5 @@
 # tjupt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - 北洋园
 categories:
@@ -30,9 +27,7 @@ categories:
       name: 移动视频
     - id: "410"
       name: 其他
-description: |-
-    map[__raw:BinaryExpression src:"TJUPT是天津市首个、全国前列的校园Private Tracker，建立于2010年，" +
-        "由天津大学信网协会和天外天共同开发的，旨在为大家建立一个更好的资源共享环境，提高资源水准。"]
+description: TJUPT是天津市首个、全国前列的校园Private Tracker，建立于2010年，由天津大学信网协会和天外天共同开发的，旨在为大家建立一个更好的资源共享环境，提高资源水准。
 id: tjupt
 level_requirements:
     - id: 1
@@ -137,15 +132,11 @@ level_requirements:
     - group_type: manager
       id: 202
       name: 六扇门
-      privilege: |-
-        map[__raw:BinaryExpression src:"查看管理组信箱、举报信箱；编辑种子信息，删除种子，设置置顶和种子优惠，管理候选和字幕区；" +
-                "编辑、删除论坛帖子/种子评论；查看用户基础信息；拥有无限量邀请权限；每周魔力值奖励"]
+      privilege: 查看管理组信箱、举报信箱；编辑种子信息，删除种子，设置置顶和种子优惠，管理候选和字幕区；编辑、删除论坛帖子/种子评论；查看用户基础信息；拥有无限量邀请权限；每周魔力值奖励
     - group_type: manager
       id: 203
       name: 中枢六部
-      privilege: |-
-        map[__raw:BinaryExpression src:"管理用户账号信息；发送全员消息、设置全局优惠、设置IP地址封禁及其它敏感操作；" +
-                "修改站点友链、论坛板块、种子板块、规则、常见问题、公告等站点信息；发放魔力值、批量邀请用户"]
+      privilege: 管理用户账号信息；发送全员消息、设置全局优惠、设置IP地址封禁及其它敏感操作；修改站点友链、论坛板块、种子板块、规则、常见问题、公告等站点信息；发放魔力值、批量邀请用户
     - group_type: manager
       id: 204
       name: 锦衣卫
@@ -167,9 +158,164 @@ urls:
     - https://tjupt.org/
     - https://www.tjupt.org/
 user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
     fields:
+        id:
+            attr: href
+            filters:
+                - name: queryparam
+                  args: id
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
+        name:
+            selectors:
+                - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+                - "a[href*='userdetails.php'][class*='Name']:first"
+                - "a[href*='userdetails.php']:first"
         uploaded:
             filters:
                 - name: parse_size
             selectors:
-                - td.rowhead:contains('上传量') + td
+                - "td.rowhead:contains('上传量') + td"
+                - "td.rowhead:contains('上傳量') + td"
+                - "td.rowhead:contains('Uploaded') + td"
+                - "#info_block"
+                - ".medium"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "#info_block"
+                - ".medium"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "#info_block"
+                - ".medium"
+                - "td.rowhead:contains('传输') + td"
+        seeding:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:当前活动|当前做种|Torrents seeding|Current activity)[^0-9]{0,120}(\d+)'
+            selectors:
+                - "#info_block"
+                - ".medium"
+        bonus:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:魔力值|魔力|Karma Points)[\s\S]{0,120}?([\d.,]+)'
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+                - "td.rowfollow:contains('魔力')"
+                - "#info_block"
+                - ".medium"
+    detail_fields:
+        uploaded:
+            filters:
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('上传量') + td"
+                - "td.rowhead:contains('上傳量') + td"
+                - "td.rowhead:contains('Uploaded') + td"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        downloaded:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))'
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('下载量') + td"
+                - "td.rowhead:contains('下載量') + td"
+                - "td.rowhead:contains('Downloaded') + td"
+                - "td.rowhead:contains('传输') + td"
+                - "td.rowhead:contains('傳送') + td"
+                - "td.rowhead:contains('Transfers') + td"
+        ratio:
+            filters:
+                - name: regexp
+                  args: '(?i)(?:分享率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)'
+                - name: replace
+                  args: 无限:::9999
+                - name: replace
+                  args: 無限:::9999
+                - name: replace
+                  args: Infinity:::9999
+                - name: replace
+                  args: Inf.:::9999
+            selectors:
+                - "td.rowhead:contains('分享率') + td"
+                - "td.rowhead:contains('Ratio') + td"
+                - "td.rowhead:contains('传输') + td"
+        level:
+            attr: title
+            selectors:
+                - "td.rowhead:contains('等级') + td > img"
+                - "td.rowhead:contains('等級') + td > img"
+                - "td.rowhead:contains('Class') + td > img"
+        join_date:
+            filters:
+                - name: regexp
+                  args: '(\d{4}[-/]\d{1,2}[-/]\d{1,2})'
+            selectors:
+                - "td.rowhead:contains('加入日期') + td"
+                - "td.rowhead:contains('Join'):contains('date') + td"
+        bonus:
+            filters:
+                - name: parse_number
+            selectors:
+                - "td.rowhead:contains('魔力') + td"
+                - "td.rowhead:contains('Karma Points') + td"
+                - "td.rowfollow:contains('魔力')"
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - "td.rowhead:contains('当前做种') + td"
+                - "td.rowhead:contains('目前做種') + td"
+                - "td.rowhead:contains('Current Seeding') + td"
+                - "td.rowhead:contains('Seeding Size') + td"
+    pages:
+        - path: bonus.php
+          params:
+            show: description
+          fields:
+              bonus_per_hour:
+                  filters:
+                      - name: regexp
+                        args: '(?i)(?:能获取|能獲取|currently\s+getting)[^0-9]{0,60}([\d.,]+\.?\d*)'
+                      - name: parse_number
+                  selectors:
+                      - "td.text:contains('你当前每小时能获取')"
+                      - "div:contains('你当前每小时能获取')"
+                      - "td:contains('你当前每小时能获取')"
+                      - "td.text:contains('你當前每小時能獲取')"
+                      - "div:contains('你當前每小時能獲取')"
+                      - "td:contains('你當前每小時能獲取')"
+                      - "div:contains('currently getting')"
+                      - "td:contains('currently getting')"
+                      - "td[rowspan]"

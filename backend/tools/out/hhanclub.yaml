@@ -1,8 +1,8 @@
 # hhanclub — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
 #   - search.link（__ref）
+#   - search.url.filters[prepend]
 #   - userInfo.joinTime.filters（匿名函数）
 #   - userInfo.levelName.filters（匿名函数）
 

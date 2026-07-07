@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -6,15 +7,167 @@ import 'package:ptpatronus/features/home/home_controller.dart';
 import 'package:ptpatronus/features/home/home_nav_items.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart' show MissingPluginException;
-import 'package:fl_chart/fl_chart.dart';
 import 'package:ptpatronus/api/dashboard.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
-import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+const _totalDashboardConfigKey = 'total_dashboard_config_v1';
+
+class TotalDashboardConfig {
+  final bool showTotalSites;
+  final bool showUploadCount;
+  final bool showUpload;
+  final bool showDownload;
+  final bool showSeedingCount;
+  final bool showSeedingVolume;
+  final bool showBonus;
+  final bool showBonusPerHour;
+  final bool showRatio;
+  final bool showRankPanel;
+  final bool showSiteList;
+  final bool showSiteName;
+  final bool showUsername;
+  final bool blurSensitiveInfo;
+  final bool blurUserInfo;
+  final bool compactMode;
+  final int siteDataLimit;
+  final List<int> selectedSiteIds;
+
+  const TotalDashboardConfig({
+    this.showTotalSites = true,
+    this.showUploadCount = true,
+    this.showUpload = true,
+    this.showDownload = true,
+    this.showSeedingCount = true,
+    this.showSeedingVolume = true,
+    this.showBonus = true,
+    this.showBonusPerHour = true,
+    this.showRatio = true,
+    this.showRankPanel = true,
+    this.showSiteList = true,
+    this.showSiteName = true,
+    this.showUsername = true,
+    this.blurSensitiveInfo = false,
+    this.blurUserInfo = false,
+    this.compactMode = true,
+    this.siteDataLimit = 0,
+    this.selectedSiteIds = const [],
+  });
+
+  static const defaults = TotalDashboardConfig();
+
+  bool isSiteSelected(int siteId) =>
+      selectedSiteIds.isEmpty || selectedSiteIds.contains(siteId);
+
+  TotalDashboardConfig copyWith({
+    bool? showTotalSites,
+    bool? showUploadCount,
+    bool? showUpload,
+    bool? showDownload,
+    bool? showSeedingCount,
+    bool? showSeedingVolume,
+    bool? showBonus,
+    bool? showBonusPerHour,
+    bool? showRatio,
+    bool? showRankPanel,
+    bool? showSiteList,
+    bool? showSiteName,
+    bool? showUsername,
+    bool? blurSensitiveInfo,
+    bool? blurUserInfo,
+    bool? compactMode,
+    int? siteDataLimit,
+    List<int>? selectedSiteIds,
+  }) {
+    return TotalDashboardConfig(
+      showTotalSites: showTotalSites ?? this.showTotalSites,
+      showUploadCount: showUploadCount ?? this.showUploadCount,
+      showUpload: showUpload ?? this.showUpload,
+      showDownload: showDownload ?? this.showDownload,
+      showSeedingCount: showSeedingCount ?? this.showSeedingCount,
+      showSeedingVolume: showSeedingVolume ?? this.showSeedingVolume,
+      showBonus: showBonus ?? this.showBonus,
+      showBonusPerHour: showBonusPerHour ?? this.showBonusPerHour,
+      showRatio: showRatio ?? this.showRatio,
+      showRankPanel: showRankPanel ?? this.showRankPanel,
+      showSiteList: showSiteList ?? this.showSiteList,
+      showSiteName: showSiteName ?? this.showSiteName,
+      showUsername: showUsername ?? this.showUsername,
+      blurSensitiveInfo: blurSensitiveInfo ?? this.blurSensitiveInfo,
+      blurUserInfo: blurUserInfo ?? this.blurUserInfo,
+      compactMode: compactMode ?? this.compactMode,
+      siteDataLimit: siteDataLimit ?? this.siteDataLimit,
+      selectedSiteIds: selectedSiteIds ?? this.selectedSiteIds,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'show_total_sites': showTotalSites,
+    'show_upload_count': showUploadCount,
+    'show_upload': showUpload,
+    'show_download': showDownload,
+    'show_seeding_count': showSeedingCount,
+    'show_seeding_volume': showSeedingVolume,
+    'show_bonus': showBonus,
+    'show_bonus_per_hour': showBonusPerHour,
+    'show_ratio': showRatio,
+    'show_rank_panel': showRankPanel,
+    'show_site_list': showSiteList,
+    'show_site_name': showSiteName,
+    'show_username': showUsername,
+    'blur_sensitive_info': blurSensitiveInfo,
+    'blur_user_info': blurUserInfo,
+    'compact_mode': compactMode,
+    'site_data_limit': siteDataLimit,
+    'selected_site_ids': selectedSiteIds,
+  };
+
+  factory TotalDashboardConfig.fromJson(Map<String, dynamic> json) {
+    bool b(String key, bool fallback) =>
+        json[key] is bool ? json[key] as bool : fallback;
+    int i(String key, int fallback) =>
+        json[key] is num ? (json[key] as num).toInt() : fallback;
+    final ids = ((json['selected_site_ids'] as List?) ?? const [])
+        .map((e) => e is num ? e.toInt() : int.tryParse('$e'))
+        .whereType<int>()
+        .toList();
+    return TotalDashboardConfig(
+      showTotalSites: b('show_total_sites', true),
+      showUploadCount: b('show_upload_count', true),
+      showUpload: b('show_upload', true),
+      showDownload: b('show_download', true),
+      showSeedingCount: b('show_seeding_count', true),
+      showSeedingVolume: b('show_seeding_volume', true),
+      showBonus: b('show_bonus', true),
+      showBonusPerHour: b('show_bonus_per_hour', true),
+      showRatio: b('show_ratio', true),
+      showRankPanel: b('show_rank_panel', true),
+      showSiteList: b('show_site_list', true),
+      showSiteName: b('show_site_name', true),
+      showUsername: b('show_username', true),
+      blurSensitiveInfo: b('blur_sensitive_info', false),
+      blurUserInfo: b('blur_user_info', false),
+      compactMode: b('compact_mode', true),
+      siteDataLimit: i('site_data_limit', 0),
+      selectedSiteIds: ids,
+    );
+  }
+}
+
+extension _ChunkedList<T> on List<T> {
+  List<List<T>> chunked(int size) {
+    final out = <List<T>>[];
+    for (var i = 0; i < length; i += size) {
+      out.add(sublist(i, (i + size > length) ? length : i + size));
+    }
+    return out;
+  }
+}
 
 // 仪表盘：跨站统计汇总（指标卡墙，含 sparkline）+ 站点明细（宽屏表格 / 窄屏卡片）。
 // 对齐 Web Dashboard.vue：5 张指标卡（上传/下载/做种/做种体积/魔力）+ 近 14 天 sparkline +
@@ -31,9 +184,9 @@ class _DashboardPageState extends State<DashboardPage> {
   final _ws = WsClient();
   final _shareKey = GlobalKey(); // 仪表盘分享图 RepaintBoundary（toImage 截图）
   DashboardOverview? _overview;
-  List<DashboardTrendPoint> _trend = [];
   List<HRAlert> _hrAlerts = [];
   List<String> _cookieAlerts = [];
+  TotalDashboardConfig _config = TotalDashboardConfig.defaults;
   final Set<int> _refreshing = {}; // 单站刷新中的 site_id 集合
   bool _syncing = false; // 全站同步中（刷新统计按钮 loading）
   bool _loading = true;
@@ -44,6 +197,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    _loadConfig();
     _load();
     _ws.connect();
     _hrSub = _ws.hrAlerts.listen((list) {
@@ -56,6 +210,29 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  Future<void> _loadConfig() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_totalDashboardConfigKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final next = TotalDashboardConfig.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+      if (mounted) setState(() => _config = next);
+    } catch (_) {
+      // Keep defaults if the saved payload is from an incompatible build.
+    }
+  }
+
+  Future<void> _saveConfig(TotalDashboardConfig config) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _totalDashboardConfigKey,
+      jsonEncode(config.toJson()),
+    );
+    if (mounted) setState(() => _config = config);
+  }
+
   @override
   void dispose() {
     _hrSub?.cancel();
@@ -66,9 +243,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final results = await Future.wait([_api.overview(), _api.trend(14)]);
-      _overview = results[0] as DashboardOverview;
-      _trend = results[1] as List<DashboardTrendPoint>;
+      _overview = await _api.overview();
       _error = null;
     } catch (e) {
       _error = '$e';
@@ -79,11 +254,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _refresh() async {
     try {
-      final results = await Future.wait([_api.overview(), _api.trend(14)]);
+      final overview = await _api.overview();
       if (!mounted) return;
       setState(() {
-        _overview = results[0] as DashboardOverview;
-        _trend = results[1] as List<DashboardTrendPoint>;
+        _overview = overview;
         _error = null;
       });
     } catch (e) {
@@ -153,17 +327,67 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // 环比百分比：最后一天 vs 前一天；数据不足或分母为 0 返回 null（仅上传/下载卡用）。
-  double? _pct(double Function(DashboardTrendPoint) pick) {
-    if (_trend.length < 2) return null;
-    final last = pick(_trend.last);
-    final prev = pick(_trend[_trend.length - 2]);
-    if (prev == 0) return null;
-    return (last - prev) / prev * 100;
+  List<SiteStatItem> _visibleSites() {
+    final all = _overview?.sites ?? const <SiteStatItem>[];
+    final filtered = all
+        .where((s) => _config.isSiteSelected(s.siteId))
+        .toList();
+    if (_config.siteDataLimit > 0 && filtered.length > _config.siteDataLimit) {
+      return filtered.take(_config.siteDataLimit).toList();
+    }
+    return filtered;
   }
 
-  List<double> _series(double Function(DashboardTrendPoint) pick) =>
-      _trend.map((p) => pick(p).toDouble()).toList();
+  int _sumInt(List<SiteStatItem> sites, int Function(SiteStatItem) pick) =>
+      sites.fold<int>(0, (sum, s) => sum + pick(s));
+
+  double _sumDouble(
+    List<SiteStatItem> sites,
+    double Function(SiteStatItem) pick,
+  ) => sites.fold<double>(0, (sum, s) => sum + pick(s));
+
+  double _avgRatio(List<SiteStatItem> sites) {
+    final ratios = sites.where((s) => s.ratio > 0).map((s) => s.ratio).toList();
+    if (ratios.isEmpty) return 0;
+    return ratios.reduce((a, b) => a + b) / ratios.length;
+  }
+
+  SiteStatItem? _topSiteBy(num Function(SiteStatItem) pick) {
+    final sites = _visibleSites().where((s) => pick(s) > 0).toList();
+    if (sites.isEmpty) return null;
+    sites.sort((a, b) => pick(b).compareTo(pick(a)));
+    return sites.first;
+  }
+
+  String _displaySiteName(SiteStatItem s) {
+    if (!_config.showSiteName) return '';
+    if (_config.blurSensitiveInfo) return '***';
+    return s.siteName.isNotEmpty ? s.siteName : '-';
+  }
+
+  String _displayUserIdentity(SiteStatItem s) {
+    if (!_config.showUsername) return '';
+    if (_config.blurUserInfo) return '*** <***> UID ***';
+    final parts = <String>[
+      if (s.username.isNotEmpty) s.username,
+      if (s.level.isNotEmpty) '<${s.level}>',
+      if (s.userId.isNotEmpty) 'UID ${s.userId}',
+    ];
+    return parts.isEmpty ? '-' : parts.join(' ');
+  }
+
+  void _openSettings() {
+    final sites = _overview?.sites ?? const <SiteStatItem>[];
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _TotalDashboardSettingsSheet(
+        initial: _config,
+        sites: sites,
+        onSave: _saveConfig,
+      ),
+    );
+  }
 
   String _nowStamp() {
     final d = DateTime.now();
@@ -175,27 +399,43 @@ class _DashboardPageState extends State<DashboardPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '仪表盘分享图预览',
-              style: TextStyle(fontWeight: FontWeight.w600),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(sheetContext).height * 0.86,
+            child: Column(
+              children: [
+                const Text(
+                  '导出总仪表盘图片',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: RepaintBoundary(
+                          key: _shareKey,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: _shareCard(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: _share,
+                  icon: const Icon(Icons.share),
+                  label: const Text('分享 / 保存图片'),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            RepaintBoundary(
-              key: _shareKey,
-              child: Material(color: Colors.transparent, child: _shareCard()),
-            ),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              onPressed: _share,
-              icon: const Icon(Icons.share),
-              label: const Text('分享 / 保存图片'),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -222,7 +462,9 @@ class _DashboardPageState extends State<DashboardPage> {
           name: 'ptpatronus-dashboard.png',
         ),
       ]);
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        Navigator.pop(context);
+      }
     } on MissingPluginException {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -239,147 +481,195 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _shareCard() {
-    final o = _overview!;
-    final upPct = _pct((p) => p.uploaded.toDouble());
-    final dlPct = _pct((p) => p.downloaded.toDouble());
-    String fmtPct(double? p) =>
-        p == null ? '' : '${p >= 0 ? '+' : ''}${p.toStringAsFixed(1)}%';
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A1A2E), Color(0xFF0F0F1E)],
+    final sites = _visibleSites();
+    final totalUploaded = _sumInt(sites, (s) => s.uploaded);
+    final totalDownloaded = _sumInt(sites, (s) => s.downloaded);
+    final totalSeeding = _sumInt(sites, (s) => s.seeding);
+    final totalSeedingSize = _sumInt(sites, (s) => s.seedingSize);
+    final totalUploads = _sumInt(sites, (s) => s.uploads);
+    final totalBonus = _sumDouble(sites, (s) => s.bonus);
+    final totalBonusPerHour = _sumDouble(sites, (s) => s.bonusPerHour);
+    final ratio = totalDownloaded > 0 ? totalUploaded / totalDownloaded : 0.0;
+    final displayUser = _shareDisplayUser(sites);
+    final shownSites = _config.showSiteList
+        ? sites.take(8).toList()
+        : <SiteStatItem>[];
+    final summaryMetrics = <_ShareMetric>[
+      if (_config.showTotalSites)
+        _ShareMetric('总站点数', '${sites.length}', const Color(0xFF45C4F0)),
+      if (_config.showUploadCount)
+        _ShareMetric('总发布数', '$totalUploads', const Color(0xFFFFC857)),
+      if (_config.showUpload)
+        _ShareMetric('总上传量', _fmtBytes(totalUploaded), const Color(0xFF62D48E)),
+      if (_config.showDownload)
+        _ShareMetric(
+          '总下载量',
+          _fmtBytes(totalDownloaded),
+          const Color(0xFFFF6B6B),
         ),
-      ),
-      padding: const EdgeInsets.all(20),
+      if (_config.showSeedingCount)
+        _ShareMetric('总做种数', '$totalSeeding', const Color(0xFF45C4F0)),
+      if (_config.showSeedingVolume)
+        _ShareMetric(
+          '总做种量',
+          _fmtBytes(totalSeedingSize),
+          const Color(0xFF62D48E),
+        ),
+      if (_config.showBonus)
+        _ShareMetric('总积分值', _fmtCompact(totalBonus), const Color(0xFFFFC857)),
+      if (_config.showBonusPerHour)
+        _ShareMetric(
+          '每小时积分',
+          _fmtCompact(totalBonusPerHour),
+          const Color(0xFFFF9F43),
+        ),
+      if (_config.showRatio)
+        _ShareMetric('总分享率', _fmtRatio(ratio), const Color(0xFF45C4F0)),
+    ];
+
+    return Container(
+      width: 360,
+      decoration: const BoxDecoration(color: Color(0xFF121212)),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'PTPatronus · 仪表盘',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '${_nowStamp()} · ${o.siteCount} 站点 · ${o.downloaderCount} 下载器',
-            style: const TextStyle(color: Color(0xFF9AA0B4), fontSize: 12),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 2.6,
+          Row(
             children: [
-              _shareTile(
-                '总上传',
-                _fmtBytes(o.uploaded),
-                fmtPct(upPct),
-                const Color(0xFF2ECC71),
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF45C4F0),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  _shareUserInitial(displayUser),
+                  style: const TextStyle(
+                    color: Color(0xFF121212),
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
-              _shareTile(
-                '总下载',
-                _fmtBytes(o.downloaded),
-                fmtPct(dlPct),
-                const Color(0xFF4285F4),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayUser,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFF8FAFC),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'PT Patronus 总仪表盘',
+                      style: TextStyle(color: Color(0xFFB6C2CF), fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-              _shareTile('做种数', '${o.seeding}', '', const Color(0xFF38EF7D)),
-              _shareTile(
-                '魔力值',
-                o.bonus.toStringAsFixed(1),
-                '',
-                const Color(0xFFF7971E),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _nowStamp(),
+                    style: const TextStyle(
+                      color: Color(0xFFB6C2CF),
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    '详细数据导出',
+                    style: TextStyle(color: Color(0xFF7F8B98), fontSize: 9),
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            '近 14 天上传趋势',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _shareTrend(),
-          if (o.sites.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            const Text(
-              '站点身份',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...o.sites
-                .take(8)
-                .map(
-                  (s) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            s.siteName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _identity(s),
-                            style: const TextStyle(
-                              color: Color(0xFF9AA0B4),
-                              fontSize: 11,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+          const Divider(height: 1, color: Color(0x33FFFFFF)),
+          const SizedBox(height: 16),
+          _sharePanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '站点数据统计',
+                  style: TextStyle(
+                    color: Color(0xFFF8FAFC),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-            if (o.sites.length > 8)
+                const SizedBox(height: 4),
+                const Text(
+                  '聚合当前总仪表盘筛选范围内的最新数据',
+                  style: TextStyle(color: Color(0xFFB6C2CF), fontSize: 10),
+                ),
+                const SizedBox(height: 14),
+                _shareMetricGrid(summaryMetrics, columns: 3),
+              ],
+            ),
+          ),
+          if (_config.showRankPanel && sites.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _shareRankPanel(),
+          ],
+          if (shownSites.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              '分站点用户档案',
+              style: TextStyle(
+                color: Color(0xFFF8FAFC),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 3),
+            const Text(
+              '用户名、UID、等级等来自 user_profiles 最新真实快照',
+              style: TextStyle(color: Color(0xFF7F8B98), fontSize: 10),
+            ),
+            const SizedBox(height: 10),
+            for (var i = 0; i < shownSites.length; i++) ...[
+              _shareSiteCard(shownSites[i], i),
+              if (i != shownSites.length - 1) const SizedBox(height: 8),
+            ],
+            if (sites.length > shownSites.length)
               Padding(
-                padding: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  '…及其它 ${o.sites.length - 8} 站',
+                  '及其它 ${sites.length - shownSites.length} 站',
                   style: const TextStyle(
-                    color: Color(0xFF6B7088),
-                    fontSize: 11,
+                    color: Color(0xFF7F8B98),
+                    fontSize: 10,
                   ),
                 ),
               ),
           ],
-          const SizedBox(height: 14),
-          const Row(
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0x33FFFFFF)),
+          const SizedBox(height: 10),
+          Row(
             children: [
-              Text(
-                'PTPatronus',
-                style: TextStyle(color: Color(0xFF6B7088), fontSize: 11),
+              const Text(
+                'Generated by PT Patronus',
+                style: TextStyle(color: Color(0xFFB6C2CF), fontSize: 10),
               ),
-              Spacer(),
+              const Spacer(),
               Text(
-                '客户端导出',
-                style: TextStyle(color: Color(0xFF6B7088), fontSize: 11),
+                '${sites.length} sites · ${_nowStamp()}',
+                style: const TextStyle(color: Color(0xFF7F8B98), fontSize: 9),
               ),
             ],
           ),
@@ -388,55 +678,67 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  String _identity(SiteStatItem s) {
-    final parts = <String>[];
-    if (s.username.isNotEmpty) parts.add(s.username);
-    if (s.userId.isNotEmpty) parts.add('ID ${s.userId}');
-    if (s.email.isNotEmpty) parts.add(s.email);
-    return parts.join('   ·   ');
-  }
-
-  Widget _shareTile(String label, String value, String trend, Color color) {
+  Widget _sharePanel({required Widget child, Color? color}) {
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0x14FFFFFF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0x1AFFFFFF)),
+        color: color ?? const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(8),
       ),
+      child: child,
+    );
+  }
+
+  Widget _shareMetricGrid(List<_ShareMetric> metrics, {required int columns}) {
+    if (metrics.isEmpty) {
+      return const Text(
+        '暂无可导出字段',
+        style: TextStyle(color: Color(0xFF7F8B98), fontSize: 11),
+      );
+    }
+    final rows = metrics.chunked(columns);
+    return Column(
+      children: [
+        for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: rowIndex == rows.length - 1 ? 0 : 10,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final metric in rows[rowIndex])
+                  Expanded(child: _shareMetric(metric)),
+                for (var i = rows[rowIndex].length; i < columns; i++)
+                  const Expanded(child: SizedBox()),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _shareMetric(_ShareMetric metric) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(color: Color(0xFF9AA0B4), fontSize: 12),
-              ),
-              const Spacer(),
-              if (trend.isNotEmpty)
-                Text(
-                  trend,
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
           Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
+            metric.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF7F8B98), fontSize: 9),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            metric.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: metric.color,
+              fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -445,69 +747,354 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // 手动柱状图（不依赖 fl_chart，分享卡内可靠渲染）。
-  Widget _shareTrend() {
-    if (_trend.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: Text('暂无趋势数据', style: TextStyle(color: Colors.grey)),
+  Widget _shareRankPanel() {
+    final ranks = <_ShareRank?>[
+      if (_config.showUpload)
+        _shareRank(
+          '上传',
+          const Color(0xFF62D48E),
+          (s) => s.uploaded,
+          (s) => _fmtBytes(s.uploaded),
         ),
-      );
-    }
-    final data = _trend.map((p) => p.uploaded.toDouble()).toList();
-    final peak = data.fold<double>(0, (a, b) => a > b ? a : b);
-    final maxY = peak <= 0 ? 100.0 : peak * 1.2;
-    return SizedBox(
-      height: 110,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(_trend.length, (i) {
-          final ratio = maxY > 0 ? data[i] / maxY : 0.0;
-          final double h = data[i] > 0 ? (ratio * 90).clamp(3.0, 90.0) : 0.0;
-          final label = _trend[i].day.length >= 10
-              ? _trend[i].day.substring(5)
-              : _trend[i].day;
-          return Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  height: h,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [PTColors.primary, PTColors.primary2],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(4),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Color(0xFF9AA0B4),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
+      if (_config.showDownload)
+        _shareRank(
+          '下载',
+          const Color(0xFFFF6B6B),
+          (s) => s.downloaded,
+          (s) => _fmtBytes(s.downloaded),
+        ),
+      if (_config.showUploadCount)
+        _shareRank(
+          '发布',
+          const Color(0xFFFFC857),
+          (s) => s.uploads,
+          (s) => '${s.uploads}',
+        ),
+      if (_config.showSeedingCount)
+        _shareRank(
+          '做种',
+          const Color(0xFF45C4F0),
+          (s) => s.seeding,
+          (s) => '${s.seeding}',
+        ),
+      if (_config.showRatio)
+        _shareRank(
+          '分享率',
+          const Color(0xFF45C4F0),
+          (s) => s.ratio,
+          (s) => _fmtRatio(s.ratio),
+        ),
+      if (_config.showBonus)
+        _shareRank(
+          '积分',
+          const Color(0xFFB98CFF),
+          (s) => s.bonus,
+          (s) => _fmtCompact(s.bonus),
+        ),
+      if (_config.showBonusPerHour)
+        _shareRank(
+          '每小时积分',
+          const Color(0xFFFF9F43),
+          (s) => s.bonusPerHour,
+          (s) => _fmtCompact(s.bonusPerHour),
+        ),
+    ].whereType<_ShareRank>().take(6).toList();
+    if (ranks.isEmpty) return const SizedBox.shrink();
+    return _sharePanel(
+      color: const Color(0xFF263238),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '冠军排行',
+            style: TextStyle(
+              color: Color(0xFFF8FAFC),
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
             ),
-          );
-        }),
+          ),
+          const SizedBox(height: 12),
+          _shareRankGrid(ranks),
+        ],
       ),
     );
   }
 
+  Widget _shareRankGrid(List<_ShareRank> ranks) {
+    final rows = ranks.chunked(3);
+    return Column(
+      children: [
+        for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: rowIndex == rows.length - 1 ? 0 : 12,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final rank in rows[rowIndex])
+                  Expanded(child: _shareRankCell(rank)),
+                for (var i = rows[rowIndex].length; i < 3; i++)
+                  const Expanded(child: SizedBox()),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  _ShareRank? _shareRank(
+    String label,
+    Color color,
+    num Function(SiteStatItem) score,
+    String Function(SiteStatItem) value,
+  ) {
+    final site = _topSiteBy(score);
+    if (site == null) return null;
+    return _ShareRank(label, value(site), _shareDisplaySiteName(site), color);
+  }
+
+  Widget _shareRankCell(_ShareRank rank) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: rank.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  rank.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Color(0xFF7F8B98), fontSize: 9),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            rank.value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: rank.color,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            rank.siteName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFFB6C2CF), fontSize: 9),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shareSiteCard(SiteStatItem s, int index) {
+    final colors = [
+      const Color(0xFF45C4F0),
+      const Color(0xFF62D48E),
+      const Color(0xFFFFC857),
+      const Color(0xFFB98CFF),
+      const Color(0xFFFF9F43),
+      const Color(0xFFFF6B6B),
+    ];
+    final metrics = <_ShareMetric>[
+      if (_config.showUsername)
+        _ShareMetric(
+          '用户名',
+          _config.blurUserInfo
+              ? '***'
+              : (s.username.isEmpty ? '--' : s.username),
+          const Color(0xFFF8FAFC),
+        ),
+      if (_config.showUsername)
+        _ShareMetric(
+          'UID',
+          _config.blurUserInfo ? '***' : (s.userId.isEmpty ? '--' : s.userId),
+          const Color(0xFFF8FAFC),
+        ),
+      if (_config.showUsername)
+        _ShareMetric(
+          '等级',
+          _config.blurUserInfo ? '***' : (s.level.isEmpty ? '--' : s.level),
+          const Color(0xFFF8FAFC),
+        ),
+      if (_config.showUploadCount)
+        _ShareMetric(
+          '发布',
+          s.uploads > 0 ? '${s.uploads}' : '--',
+          const Color(0xFFFFC857),
+        ),
+      if (_config.showSeedingCount)
+        _ShareMetric('做种', '${s.seeding}', const Color(0xFF45C4F0)),
+      if (_config.showUpload)
+        _ShareMetric('上传', _fmtBytes(s.uploaded), const Color(0xFF62D48E)),
+      if (_config.showDownload)
+        _ShareMetric('下载', _fmtBytes(s.downloaded), const Color(0xFFFF6B6B)),
+      if (_config.showRatio)
+        _ShareMetric('分享率', _fmtRatio(s.ratio), const Color(0xFF45C4F0)),
+      if (_config.showSeedingVolume)
+        _ShareMetric(
+          '做种量',
+          s.seedingSize > 0 ? _fmtBytes(s.seedingSize) : '--',
+          const Color(0xFF62D48E),
+        ),
+      if (_config.showBonus)
+        _ShareMetric(
+          '积分',
+          s.bonus > 0 ? _fmtCompact(s.bonus) : '--',
+          const Color(0xFFFFC857),
+        ),
+      if (_config.showBonusPerHour)
+        _ShareMetric(
+          '每小时积分',
+          s.bonusPerHour > 0 ? _fmtCompact(s.bonusPerHour) : '--',
+          const Color(0xFFFF9F43),
+        ),
+    ];
+    return _sharePanel(
+      color: index.isEven ? const Color(0xFF1E293B) : const Color(0xFF263238),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors[index % colors.length],
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    color: Color(0xFF121212),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _shareDisplaySiteName(s),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFF8FAFC),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _config.showUsername
+                          ? _shareDisplayIdentity(s)
+                          : '用户信息已隐藏',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFB6C2CF),
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _shareMetricGrid(metrics, columns: 4),
+        ],
+      ),
+    );
+  }
+
+  String _shareDisplayUser(List<SiteStatItem> sites) {
+    if (_config.blurUserInfo) return '***';
+    if (!_config.showUsername) return 'PT 用户';
+    final counts = <String, int>{};
+    for (final site in sites) {
+      final username = site.username.trim();
+      if (username.isNotEmpty) {
+        counts[username] = (counts[username] ?? 0) + 1;
+      }
+    }
+    if (counts.isEmpty) return 'PT 用户';
+    final entries = counts.entries.toList()
+      ..sort((a, b) {
+        final byCount = b.value.compareTo(a.value);
+        return byCount != 0 ? byCount : a.key.compareTo(b.key);
+      });
+    return entries.first.key;
+  }
+
+  String _shareUserInitial(String displayUser) {
+    if (displayUser.isEmpty || displayUser == '***') return 'P';
+    return displayUser.substring(0, 1).toUpperCase();
+  }
+
+  String _shareDisplaySiteName(SiteStatItem site) {
+    if (!_config.showSiteName) return '站点信息已隐藏';
+    if (_config.blurSensitiveInfo) return '***';
+    return site.siteName.isEmpty ? '--' : site.siteName;
+  }
+
+  String _shareDisplayIdentity(SiteStatItem site) {
+    if (_config.blurUserInfo) return '*** <***> UID ***';
+    final parts = <String>[
+      if (site.username.isNotEmpty) site.username,
+      if (site.userId.isNotEmpty) 'UID ${site.userId}',
+      if (site.level.isNotEmpty) '<${site.level}>',
+      if (site.email.isNotEmpty) _shareDisplayEmail(site.email),
+    ];
+    return parts.isEmpty ? '--' : parts.join('  ');
+  }
+
+  String _shareDisplayEmail(String email) {
+    if (_config.blurUserInfo) return '***';
+    final at = email.indexOf('@');
+    if (at <= 0) return email;
+    final local = email.substring(0, at);
+    final domain = email.substring(at + 1);
+    final suffix = domain.contains('.') ? domain.split('.').last : '';
+    return '${local.substring(0, 1)}***@${suffix.isEmpty ? '***' : '***.$suffix'}';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final wide = isWideScreen(context);
     return PTPageScaffold(
       title: '仪表盘',
+      toolbarHeight: wide ? 44 : 40,
       actions: [
+        PTBarAction(
+          icon: Icons.tune,
+          label: '总仪表盘设置',
+          overflow: true,
+          onPressed: (_loading || _overview == null) ? null : _openSettings,
+        ),
         PTBarAction(
           icon: Icons.image_outlined,
           label: '导出图片',
@@ -521,7 +1108,12 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ],
       body: Padding(
-        padding: EdgeInsets.all(isWideScreen(context) ? 20 : 14),
+        padding: EdgeInsets.fromLTRB(
+          wide ? 20 : 10,
+          wide ? 20 : 8,
+          wide ? 20 : 10,
+          wide ? 20 : 12,
+        ),
         child: _body(context),
       ),
     );
@@ -546,19 +1138,22 @@ class _DashboardPageState extends State<DashboardPage> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
-          if (fresh) ...[_onboardingCard(context), const SizedBox(height: 14)],
+          if (fresh) ...[
+            _onboardingCard(context),
+            SizedBox(height: isWideScreen(context) ? 14 : 10),
+          ],
           if (_cookieAlerts.isNotEmpty) ...[
             _alertCard(AlertKind.cookie),
-            const SizedBox(height: 14),
+            SizedBox(height: isWideScreen(context) ? 14 : 10),
           ],
           if (_hrAlerts.isNotEmpty) ...[
             _alertCard(AlertKind.hr),
-            const SizedBox(height: 14),
+            SizedBox(height: isWideScreen(context) ? 14 : 10),
           ],
           _metricGrid(context),
-          const SizedBox(height: 14),
+          SizedBox(height: isWideScreen(context) ? 14 : 10),
           _sitesSection(context),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
         ],
       ),
     );
@@ -676,170 +1271,235 @@ class _DashboardPageState extends State<DashboardPage> {
   // 窄屏 2 列紧凑（minItemWidth 150）/ 宽屏对齐 Web（210）自然撑高——弃固定 aspect-ratio
   // （曾与 minItemWidth:200 合用致窄屏单列每卡高 ~370px、Spacer 撑出大块留白）。
   Widget _metricGrid(BuildContext context) {
-    final o = _overview!;
-    final wide = isWideScreen(context);
-    final iconSize = wide ? 38.0 : 32.0;
-    final upPct = _pct((p) => p.uploaded.toDouble());
-    final dlPct = _pct((p) => p.downloaded.toDouble());
-    String fmtPct(double? p) =>
-        p == null ? '' : '${p >= 0 ? '+' : ''}${p.toStringAsFixed(1)}%';
-
-    final cards = <Widget>[
-      _metricCard(
-        wide: wide,
-        icon: GlassIcon(
-          glyph: 'upload',
-          from: const Color(0xFF2ECC71),
-          to: const Color(0xFF1ABC9C),
-          size: iconSize,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            left: 2,
+            bottom: isWideScreen(context) ? 8 : 6,
+          ),
+          child: Text(
+            '站点数据统计',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: isWideScreen(context) ? 15 : 14,
+            ),
+          ),
         ),
-        value: _fmtBytes(o.uploaded),
-        label: '总上传',
-        trend: fmtPct(upPct),
-        trendUp: (upPct ?? 0) >= 0,
-        spark: _series((p) => p.uploaded.toDouble()),
-        sparkColor: PTColors.primary,
-      ),
-      _metricCard(
-        wide: wide,
-        icon: GlassIcon(
-          glyph: 'download',
-          from: const Color(0xFF4285F4),
-          to: const Color(0xFF22D3EE),
-          size: iconSize,
-        ),
-        value: _fmtBytes(o.downloaded),
-        label: '总下载',
-        trend: fmtPct(dlPct),
-        trendUp: (dlPct ?? 0) >= 0,
-        spark: _series((p) => p.downloaded.toDouble()),
-        sparkColor: PTColors.primary2,
-      ),
-      _metricCard(
-        wide: wide,
-        icon: GlassIcon(
-          glyph: 'seeding',
-          from: const Color(0xFF38EF7D),
-          to: const Color(0xFF11998E),
-          size: iconSize,
-        ),
-        value: '${o.seeding}',
-        label: '总做种',
-        spark: _series((p) => p.seeding.toDouble()),
-        sparkColor: PTColors.success,
-      ),
-      _metricCard(
-        wide: wide,
-        icon: GlassIcon(
-          glyph: 'backup',
-          from: const Color(0xFF43CEA2),
-          to: const Color(0xFF185A9D),
-          size: iconSize,
-        ),
-        value: _fmtBytes(o.seedingSize),
-        label: '总做种体积',
-        spark: _series((p) => p.seedingSize.toDouble()),
-        sparkColor: const Color(0xFF43CEA2),
-      ),
-      _metricCard(
-        wide: wide,
-        icon: GlassIcon(
-          glyph: 'bonus',
-          from: const Color(0xFFF7971E),
-          to: const Color(0xFFFFD200),
-          size: iconSize,
-        ),
-        value: o.bonus.toStringAsFixed(0),
-        label: '总魔力',
-        spark: _series((p) => p.bonus),
-        sparkColor: PTColors.warn,
-      ),
-    ];
-
-    // 纯 Wrap 非滚动（嵌在外层 ListView 安全），列数随宽度自适应，高度由内容自然决定。
-    return LayoutBuilder(
-      builder: (context, c) {
-        final cols = ptAutoColumns(c.maxWidth, wide ? 210 : 150);
-        final itemW = cols <= 1
-            ? c.maxWidth
-            : (c.maxWidth - 12 * (cols - 1)) / cols;
-        return Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: cards
-              .map((card) => SizedBox(width: itemW, child: card))
-              .toList(),
-        );
-      },
+        _totalStatsOverviewCard(context),
+      ],
     );
   }
 
-  Widget _metricCard({
-    required bool wide,
-    required Widget icon,
-    required String value,
-    required String label,
-    String? trend,
-    bool trendUp = true,
-    required List<double> spark,
-    required Color sparkColor,
-  }) {
+  Widget _totalStatsOverviewCard(BuildContext context) {
+    final sites = _visibleSites();
+    final compact = _config.compactMode || !isWideScreen(context);
+    final gap = compact ? 4.0 : 8.0;
+    final totalUploaded = _sumInt(sites, (s) => s.uploaded);
+    final totalDownloaded = _sumInt(sites, (s) => s.downloaded);
+    final totalSeeding = _sumInt(sites, (s) => s.seeding);
+    final totalSeedingSize = _sumInt(sites, (s) => s.seedingSize);
+    final totalUploads = _sumInt(sites, (s) => s.uploads);
+    final totalBonus = _sumDouble(sites, (s) => s.bonus);
+    final totalBonusPerHour = _sumDouble(sites, (s) => s.bonusPerHour);
+    final ratio = _avgRatio(sites);
+
     return GlassCard(
-      padding: const EdgeInsets.all(14),
-      child: Column(
+      padding: EdgeInsets.all(compact ? 12 : 16),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              icon,
-              if (trend != null && trend.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 7,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (trendUp ? PTColors.success : PTColors.danger)
-                        .withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    trend,
-                    style: TextStyle(
-                      color: trendUp ? PTColors.success : PTColors.danger,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: wide ? 24 : 20,
-              fontWeight: FontWeight.w700,
+          Expanded(
+            child: Column(
+              children:
+                  [
+                      if (_config.showTotalSites)
+                        _statLabelValue('总站点数', '${sites.length}'),
+                      if (_config.showUploadCount)
+                        _statLabelValue('总发布数', '$totalUploads'),
+                      if (_config.showUpload)
+                        _statLabelValue('总上传量', _fmtBytes(totalUploaded)),
+                      if (_config.showDownload)
+                        _statLabelValue('总下载量', _fmtBytes(totalDownloaded)),
+                      if (_config.showSeedingCount)
+                        _statLabelValue('总做种数', '$totalSeeding'),
+                      if (_config.showSeedingVolume)
+                        _statLabelValue('总做种量', _fmtBytes(totalSeedingSize)),
+                      if (_config.showBonus)
+                        _statLabelValue('总积分值', _fmtCompact(totalBonus)),
+                      if (_config.showBonusPerHour)
+                        _statLabelValue('小时积分', _fmtCompact(totalBonusPerHour)),
+                      if (_config.showRatio)
+                        _statLabelValue('总分享率', _fmtRatio(ratio)),
+                    ].expand((w) => [w, SizedBox(height: gap)]).toList()
+                    ..removeLast(),
             ),
           ),
-          const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 30,
-            child: _Sparkline(values: spark, color: sparkColor),
-          ),
+          if (_config.showRankPanel) ...[
+            Container(
+              width: 1,
+              height: compact ? 150 : 190,
+              margin: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.35),
+            ),
+            Expanded(child: _rankPanel(compact)),
+          ],
         ],
       ),
     );
   }
 
+  Widget _statLabelValue(String label, String value) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$label：',
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _rankPanel(bool compact) {
+    final rows = <Widget?>[
+      if (_config.showUpload)
+        _rankRow(
+          '上传',
+          Icons.upload,
+          _topSiteBy((s) => s.uploaded),
+          (s) => _fmtBytes(s.uploaded),
+          compact,
+        ),
+      if (_config.showDownload)
+        _rankRow(
+          '下载',
+          Icons.download,
+          _topSiteBy((s) => s.downloaded),
+          (s) => _fmtBytes(s.downloaded),
+          compact,
+        ),
+      if (_config.showUploadCount)
+        _rankRow(
+          '发布',
+          Icons.publish,
+          _topSiteBy((s) => s.uploads),
+          (s) => '${s.uploads}',
+          compact,
+        ),
+      if (_config.showSeedingCount)
+        _rankRow(
+          '做种',
+          Icons.park,
+          _topSiteBy((s) => s.seeding),
+          (s) => '${s.seeding}',
+          compact,
+        ),
+      if (_config.showRatio)
+        _rankRow(
+          '分享率',
+          Icons.equalizer,
+          _topSiteBy((s) => s.ratio),
+          (s) => _fmtRatio(s.ratio),
+          compact,
+        ),
+      if (_config.showBonus)
+        _rankRow(
+          '积分',
+          Icons.star,
+          _topSiteBy((s) => s.bonus),
+          (s) => _fmtCompact(s.bonus),
+          compact,
+        ),
+      if (_config.showBonusPerHour)
+        _rankRow(
+          '小时积分',
+          Icons.bolt,
+          _topSiteBy((s) => s.bonusPerHour),
+          (s) => _fmtCompact(s.bonusPerHour),
+          compact,
+        ),
+    ].whereType<Widget>().toList();
+    if (rows.isEmpty) {
+      return const Text(
+        '暂无排行',
+        style: TextStyle(color: Colors.grey, fontSize: 12),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children:
+          rows.expand((w) => [w, SizedBox(height: compact ? 4 : 7)]).toList()
+            ..removeLast(),
+    );
+  }
+
+  Widget? _rankRow(
+    String label,
+    IconData icon,
+    SiteStatItem? site,
+    String Function(SiteStatItem) value,
+    bool compact,
+  ) {
+    if (site == null) return null;
+    return Row(
+      children: [
+        Icon(icon, size: compact ? 13 : 15, color: PTColors.primary),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: compact ? 42 : 52,
+          child: Text(
+            label,
+            style: TextStyle(color: Colors.grey, fontSize: compact ? 11 : 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value(site),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: compact ? 11 : 12,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (_config.showSiteName) ...[
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              _displaySiteName(site),
+              style: TextStyle(color: Colors.grey, fontSize: compact ? 10 : 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   // 站点明细：宽屏表格（对齐 Web el-table），窄屏卡片。操作列含「历史数据」「刷新数据」。
   Widget _sitesSection(BuildContext context) {
-    final sites = _overview!.sites;
+    if (!_config.showSiteList) return const SizedBox.shrink();
+    final sites = _visibleSites();
     final columns = <PTColumn<SiteStatItem>>[
       PTColumn(
         label: '站点',
@@ -891,10 +1551,16 @@ class _DashboardPageState extends State<DashboardPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 8),
+          padding: EdgeInsets.only(
+            left: 2,
+            bottom: isWideScreen(context) ? 8 : 6,
+          ),
           child: Text(
-            '站点明细（${_overview!.siteCount}）',
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            '站点明细（${sites.length}）',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: isWideScreen(context) ? 15 : 14,
+            ),
           ),
         ),
         PTAdaptiveTable<SiteStatItem>(
@@ -915,6 +1581,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _rowActions(BuildContext context, SiteStatItem s) {
     final refreshing = _refreshing.contains(s.siteId);
+    final wide = isWideScreen(context);
     // 显式 40×40 命中区 + 零 padding：裸 IconButton 默认 48×48（visualDensity:compact 并不可靠地压到 40），
     // 两枚并排放进表格操作列(flex:1)会溢出→黄黑斜纹。40 在桌面表格（鼠标场景）够用且两枚=80px<列宽。
     return Row(
@@ -923,18 +1590,24 @@ class _DashboardPageState extends State<DashboardPage> {
         IconButton(
           tooltip: '用户历史数据',
           visualDensity: VisualDensity.compact,
-          iconSize: 18,
+          iconSize: wide ? 18 : 17,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          constraints: BoxConstraints(
+            minWidth: wide ? 40 : 34,
+            minHeight: wide ? 40 : 34,
+          ),
           onPressed: () => _viewHistory(s),
           icon: const Icon(Icons.history, color: PTColors.primary2),
         ),
         IconButton(
           tooltip: refreshing ? '刷新中…' : '刷新数据',
           visualDensity: VisualDensity.compact,
-          iconSize: 18,
+          iconSize: wide ? 18 : 17,
           padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          constraints: BoxConstraints(
+            minWidth: wide ? 40 : 34,
+            minHeight: wide ? 40 : 34,
+          ),
           onPressed: refreshing ? null : () => _syncOne(s),
           icon: refreshing
               ? const SizedBox(
@@ -977,20 +1650,45 @@ class _DashboardPageState extends State<DashboardPage> {
     return '${n.toStringAsFixed(1)} ${units[exp]}';
   }
 
+  String _fmtCompact(double value) {
+    if (value <= 0) return '-';
+    if (value >= 1000000000) {
+      return '${(value / 1000000000).toStringAsFixed(2)} G';
+    }
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(2)} M';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(2)} K';
+    return value.toStringAsFixed(value >= 100 ? 0 : 1);
+  }
+
+  String _fmtRatio(double ratio) {
+    if (ratio <= 0) return '-';
+    if (ratio >= 10000) return '∞';
+    if (ratio >= 100) return ratio.toStringAsFixed(0);
+    return ratio.toStringAsFixed(2);
+  }
+
   // RFC3339 →「MM-dd HH:mm」（对齐 Web 站点明细更新时间）。
   String _fmtDate(String s) {
-    if (s.isEmpty) return '-';
+    if (s.isEmpty) {
+      return '-';
+    }
     final d = DateTime.tryParse(s);
-    if (d == null) return s;
+    if (d == null) {
+      return s;
+    }
     String p(int n) => n.toString().padLeft(2, '0');
     return '${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}';
   }
 
   // RFC3339 →「YYYY-MM-DD HH:mm」（历史快照时间，对齐 Web fmtTime）。
   String _fmtTimeFull(String s) {
-    if (s.isEmpty) return '-';
+    if (s.isEmpty) {
+      return '-';
+    }
     final d = DateTime.tryParse(s);
-    if (d == null) return s;
+    if (d == null) {
+      return s;
+    }
     String p(int n) => n.toString().padLeft(2, '0');
     return '${d.year}-${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}';
   }
@@ -1013,12 +1711,37 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _siteStatCard(BuildContext context, SiteStatItem s) {
     Widget cell(String label, String value) =>
         Expanded(child: _statCell(label, value));
-    Widget row(List<Widget> cs) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: cs),
+    final metrics = <MapEntry<String, String>>[
+      if (_config.showUpload) MapEntry('上传', _fmtBytes(s.uploaded)),
+      if (_config.showDownload) MapEntry('下载', _fmtBytes(s.downloaded)),
+      if (_config.showSeedingCount) MapEntry('做种', '${s.seeding}'),
+      if (_config.showSeedingVolume)
+        MapEntry('做种体积', s.seedingSize > 0 ? _fmtBytes(s.seedingSize) : '-'),
+      if (_config.showUploadCount)
+        MapEntry('发布', s.uploads > 0 ? '${s.uploads}' : '-'),
+      MapEntry('下载中', '${s.leeching}'),
+      if (_config.showBonus)
+        MapEntry('魔力', s.bonus > 0 ? _fmtCompact(s.bonus) : '-'),
+      if (_config.showBonusPerHour)
+        MapEntry(
+          '时魔/h',
+          s.bonusPerHour > 0 ? _fmtCompact(s.bonusPerHour) : '-',
+        ),
+      if (_config.showRatio) MapEntry('分享率', _fmtRatio(s.ratio)),
+    ];
+    Widget row(List<MapEntry<String, String>> items) => Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final item in items) cell(item.key, item.value),
+          for (var i = items.length; i < 3; i++)
+            const Expanded(child: SizedBox()),
+        ],
+      ),
     );
     return GlassCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1026,47 +1749,41 @@ class _DashboardPageState extends State<DashboardPage> {
             children: [
               Expanded(
                 child: Text(
-                  s.siteName,
+                  _displaySiteName(s).isEmpty ? '站点信息已隐藏' : _displaySiteName(s),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 15,
+                    fontSize: 14,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              if (s.level.isNotEmpty) _levelTag(s.level),
-              const SizedBox(width: 8),
-              Text(
-                '分享率 ${s.ratio > 0 ? s.ratio.toStringAsFixed(2) : '-'}',
-                style: TextStyle(
-                  color: s.ratio >= 1 ? PTColors.success : PTColors.danger,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 6),
+              if (_config.showUsername && s.level.isNotEmpty)
+                _levelTag(_config.blurUserInfo ? '***' : s.level),
+              const SizedBox(width: 6),
+              if (_config.showRatio)
+                Text(
+                  '分享率 ${_fmtRatio(s.ratio)}',
+                  style: TextStyle(
+                    color: s.ratio >= 1 ? PTColors.success : PTColors.danger,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: 10),
-          row([
-            cell('上传', _fmtBytes(s.uploaded)),
-            cell('下载', _fmtBytes(s.downloaded)),
-            cell('做种', '${s.seeding}'),
-          ]),
-          row([
-            cell('做种体积', s.seedingSize > 0 ? _fmtBytes(s.seedingSize) : '-'),
-            cell('发布', s.uploads > 0 ? '${s.uploads}' : '-'),
-            cell('下载中', '${s.leeching}'),
-          ]),
-          row([
-            cell('魔力', s.bonus > 0 ? s.bonus.toStringAsFixed(0) : '-'),
-            cell(
-              '时魔/h',
-              s.bonusPerHour > 0 ? s.bonusPerHour.toStringAsFixed(1) : '-',
+          if (_config.showUsername) ...[
+            const SizedBox(height: 3),
+            Text(
+              _displayUserIdentity(s),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: PTColors.primary, fontSize: 11),
             ),
-            const Expanded(child: SizedBox()),
-          ]),
+          ],
+          const SizedBox(height: 8),
+          for (final chunk in metrics.take(9).toList().chunked(3)) row(chunk),
           Row(
             children: [
               Expanded(
@@ -1211,55 +1928,393 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-enum AlertKind { cookie, hr }
+class _TotalDashboardSettingsSheet extends StatefulWidget {
+  final TotalDashboardConfig initial;
+  final List<SiteStatItem> sites;
+  final Future<void> Function(TotalDashboardConfig) onSave;
 
-// 指标卡内嵌迷你折线（近 14 天，无坐标轴），对齐 Web components/dashboard/Sparkline.vue。
-class _Sparkline extends StatelessWidget {
-  final List<double> values;
-  final Color color;
-  const _Sparkline({required this.values, required this.color});
+  const _TotalDashboardSettingsSheet({
+    required this.initial,
+    required this.sites,
+    required this.onSave,
+  });
+
+  @override
+  State<_TotalDashboardSettingsSheet> createState() =>
+      _TotalDashboardSettingsSheetState();
+}
+
+class _TotalDashboardSettingsSheetState
+    extends State<_TotalDashboardSettingsSheet> {
+  late TotalDashboardConfig _config = widget.initial;
 
   @override
   Widget build(BuildContext context) {
-    if (values.length < 2) return const SizedBox.shrink();
-    final minV = values.reduce((a, b) => a < b ? a : b);
-    final maxV = values.reduce((a, b) => a > b ? a : b);
-    final span = (maxV - minV) == 0 ? 1.0 : (maxV - minV).toDouble();
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: (values.length - 1).toDouble(),
-        minY: 0,
-        maxY: 1,
-        lineTouchData: const LineTouchData(enabled: false),
-        titlesData: const FlTitlesData(show: false),
-        gridData: const FlGridData(show: false),
-        borderData: FlBorderData(show: false),
-        lineBarsData: [
-          LineChartBarData(
-            isCurved: true,
-            curveSmoothness: 0.3,
-            preventCurveOverShooting: true,
-            barWidth: 2,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              color: color.withValues(alpha: 0.16),
-            ),
-            gradient: LinearGradient(
-              colors: [color.withValues(alpha: 0.7), color],
-            ),
-            spots: [
-              for (int i = 0; i < values.length; i++)
-                FlSpot(i.toDouble(), (values[i] - minV) / span),
+    final maxSites = widget.sites.isEmpty ? 1 : widget.sites.length;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          10,
+          16,
+          16 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.86,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.tune, color: PTColors.primary, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      '总仪表盘设置',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: '关闭',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: ListView(
+                  children: [
+                    _section('显示内容'),
+                    _switch(
+                      '总站点数',
+                      _config.showTotalSites,
+                      (v) => _set(_config.copyWith(showTotalSites: v)),
+                    ),
+                    _switch(
+                      '发布数',
+                      _config.showUploadCount,
+                      (v) => _set(_config.copyWith(showUploadCount: v)),
+                    ),
+                    _switch(
+                      '上传量',
+                      _config.showUpload,
+                      (v) => _set(_config.copyWith(showUpload: v)),
+                    ),
+                    _switch(
+                      '下载量',
+                      _config.showDownload,
+                      (v) => _set(_config.copyWith(showDownload: v)),
+                    ),
+                    _switch(
+                      '做种数',
+                      _config.showSeedingCount,
+                      (v) => _set(_config.copyWith(showSeedingCount: v)),
+                    ),
+                    _switch(
+                      '做种体积',
+                      _config.showSeedingVolume,
+                      (v) => _set(_config.copyWith(showSeedingVolume: v)),
+                    ),
+                    _switch(
+                      '积分值/魔力值',
+                      _config.showBonus,
+                      (v) => _set(_config.copyWith(showBonus: v)),
+                    ),
+                    _switch(
+                      '每小时积分',
+                      _config.showBonusPerHour,
+                      (v) => _set(_config.copyWith(showBonusPerHour: v)),
+                    ),
+                    _switch(
+                      '分享率',
+                      _config.showRatio,
+                      (v) => _set(_config.copyWith(showRatio: v)),
+                    ),
+                    _section('排行榜'),
+                    _switch(
+                      '显示冠军排行',
+                      _config.showRankPanel,
+                      (v) => _set(_config.copyWith(showRankPanel: v)),
+                    ),
+                    _section('站点列表'),
+                    _switch(
+                      '显示站点详情列表',
+                      _config.showSiteList,
+                      (v) => _set(_config.copyWith(showSiteList: v)),
+                    ),
+                    _countSlider(maxSites),
+                    _switch(
+                      '显示站点名称',
+                      _config.showSiteName,
+                      (v) => _set(_config.copyWith(showSiteName: v)),
+                    ),
+                    _switch(
+                      '显示用户名',
+                      _config.showUsername,
+                      (v) => _set(_config.copyWith(showUsername: v)),
+                    ),
+                    _switch(
+                      '模糊站点信息（站名/Logo）',
+                      _config.blurSensitiveInfo,
+                      (v) => _set(_config.copyWith(blurSensitiveInfo: v)),
+                    ),
+                    _switch(
+                      '模糊用户信息（用户名/UID/等级）',
+                      _config.blurUserInfo,
+                      (v) => _set(_config.copyWith(blurUserInfo: v)),
+                    ),
+                    _section('样式'),
+                    _switch(
+                      '紧凑模式',
+                      _config.compactMode,
+                      (v) => _set(_config.copyWith(compactMode: v)),
+                    ),
+                    if (widget.sites.isNotEmpty) ...[
+                      _section('显示站点'),
+                      _sitePickerSummary(),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => _set(TotalDashboardConfig.defaults),
+                    child: const Text('恢复默认'),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('取消'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: () async {
+                      final navigator = Navigator.of(context);
+                      await widget.onSave(_config);
+                      if (mounted) navigator.pop();
+                    },
+                    child: const Text('确定'),
+                  ),
+                ],
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  void _set(TotalDashboardConfig config) {
+    setState(() => _config = config);
+  }
+
+  Widget _section(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 10, 4, 2),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: PTColors.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _switch(String label, bool value, ValueChanged<bool> onChanged) {
+    return SwitchListTile(
+      value: value,
+      onChanged: onChanged,
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      dense: true,
+      visualDensity: VisualDensity.compact,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+    );
+  }
+
+  Widget _countSlider(int maxSites) {
+    final value = _config.siteDataLimit.clamp(0, maxSites).toInt();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text('各站点数据数量', style: TextStyle(fontSize: 14)),
+              ),
+              Text(
+                value == 0 ? '全部' : '$value',
+                style: const TextStyle(
+                  color: PTColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: value.toDouble(),
+            min: 0,
+            max: maxSites.toDouble(),
+            divisions: maxSites,
+            onChanged: _config.showSiteList
+                ? (v) => _set(_config.copyWith(siteDataLimit: v.round()))
+                : null,
+          ),
         ],
-        extraLinesData: const ExtraLinesData(),
+      ),
+    );
+  }
+
+  Widget _sitePickerSummary() {
+    final selected = _config.selectedSiteIds;
+    final label = selected.contains(-1)
+        ? '全不选'
+        : selected.isEmpty
+        ? '全部站点'
+        : '已选择 ${selected.length} 个站点';
+    return ListTile(
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+      title: const Text('显示站点', style: TextStyle(fontSize: 14)),
+      subtitle: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: _openSitePicker,
+    );
+  }
+
+  void _openSitePicker() {
+    final selected = _config.selectedSiteIds.toSet();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: SizedBox(
+                height: MediaQuery.sizeOf(context).height * 0.72,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            '选择显示站点',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            selected.clear();
+                            setSheetState(() {});
+                          },
+                          child: const Text('全选'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            selected
+                              ..clear()
+                              ..add(-1);
+                            setSheetState(() {});
+                          },
+                          child: const Text('全不选'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: widget.sites.length,
+                        itemBuilder: (_, i) {
+                          final site = widget.sites[i];
+                          final none = selected.contains(-1);
+                          final checked =
+                              !none &&
+                              (selected.isEmpty ||
+                                  selected.contains(site.siteId));
+                          return CheckboxListTile(
+                            dense: true,
+                            visualDensity: VisualDensity.compact,
+                            contentPadding: EdgeInsets.zero,
+                            value: checked,
+                            title: Text(
+                              site.siteName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onChanged: (v) {
+                              if (selected.contains(-1)) selected.clear();
+                              if (selected.isEmpty) {
+                                selected.addAll(
+                                  widget.sites.map((s) => s.siteId),
+                                );
+                              }
+                              if (v == true) {
+                                selected.add(site.siteId);
+                              } else {
+                                selected.remove(site.siteId);
+                              }
+                              setSheetState(() {});
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    FilledButton(
+                      onPressed: () {
+                        final ids = selected.contains(-1)
+                            ? <int>[-1]
+                            : selected.length == widget.sites.length
+                            ? <int>[]
+                            : (selected.toList()..sort());
+                        _set(_config.copyWith(selectedSiteIds: ids));
+                        Navigator.pop(context);
+                      },
+                      child: const Text('确定'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 }
+
+class _ShareMetric {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _ShareMetric(this.label, this.value, this.color);
+}
+
+class _ShareRank {
+  final String label;
+  final String value;
+  final String siteName;
+  final Color color;
+
+  const _ShareRank(this.label, this.value, this.siteName, this.color);
+}
+
+enum AlertKind { cookie, hr }
 
 // 历史数据浮层内容：宽屏表格 / 窄屏卡片（自适应，对齐 Web 用户历史数据弹窗的 el-table）。
 class _HistoryBody extends StatelessWidget {

@@ -1,8 +1,5 @@
 # nyaa — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-
 id: nyaa
 name: Nyaa
 search_entry: /
@@ -11,6 +8,10 @@ selectors:
     fields:
         category:
             attr: alt
+            filters:
+                - args: "-:::0"
+                  name: split
+                - name: trim
             selectors:
                 - img.category-icon
         completed:

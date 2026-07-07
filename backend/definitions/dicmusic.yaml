@@ -1,6 +1,5 @@
 # dicmusic — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: gazelle_jsonapi。API 用户字段 + bonus 页魔力/时魔/做种体积已翻译为可执行流程；真实站点仍建议 live smoke。
 
 aka:
     - DIC
@@ -159,6 +158,16 @@ user_info:
                 - table#bprates_overview > tbody > tr > td:eq(1)
         seeding_size:
             filters:
+                - args: ([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
                 - name: parse_size
             selectors:
                 - table#bprates_overview > tbody > tr > td:eq(1)
+    pages:
+        - path: /bonus.php
+          params:
+              action: bprates
+          use_fields:
+              - bonus
+              - bonus_per_hour
+              - seeding_size

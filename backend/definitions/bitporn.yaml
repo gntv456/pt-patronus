@@ -1,8 +1,5 @@
 # bitporn — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.subTitle（elementProcess）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 id: bitporn
 level_requirements:
     - id: 1
@@ -51,6 +48,9 @@ schema: unit3d
 selectors:
     fields:
         subtitle:
+            filters:
+                - args: " | "
+                  name: collapse_join
             selectors:
                 - div.torrent-keywords-container
 tags:

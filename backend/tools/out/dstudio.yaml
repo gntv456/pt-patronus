@@ -26,58 +26,66 @@ id: dstudio
 level_requirements:
     - id: 1
       name: Peasant
-      privilege: "\t被降级的用户，他们有30天时间来提升分享率，否则他们会被踢。不能发表趣味盒内容；不能申请友情链接；不能上传字幕。"
+      privilege: 被降级的用户，他们有30天时间来提升分享率，否则他们会被踢。不能发表趣味盒内容；不能申请友情链接；不能上传字幕。
     - id: 2
       name: User
       privilege: 新用户的默认级别。只能在每周六中午12点至每周日晚上11点59分发布种子。
     - downloaded: 50GB
       id: 3
-      interval: P4W
+      interval: P5W
       name: Power User
       privilege: 得到一个邀请名额；可以直接发布种子；可以查看NFO文档；可以查看用户列表；可以请求续种； 可以发送邀请； 可以查看排行榜；可以查看其它用户的种子历史(如果用户隐私等级未设置为"强")； 可以删除自己上传的字幕。
       ratio: 1.05
+      seeding_bonus: 25000
     - downloaded: 120GB
       id: 4
       interval: P8W
       name: Elite User
       privilege: Elite User及以上用户封存账号后不会被删除。
       ratio: 1.55
+      seeding_bonus: 60000
     - downloaded: 300GB
       id: 5
       interval: P15W
       name: Crazy User
       privilege: 得到两个邀请名额；可以在做种/下载/发布的时候选择匿名模式。
       ratio: 2.05
+      seeding_bonus: 120000
     - downloaded: 500GB
       id: 6
       interval: P25W
       name: Insane User
       privilege: 可以查看普通日志。
       ratio: 2.55
+      seeding_bonus: 200000
     - downloaded: 750GB
       id: 7
       interval: P40W
       name: Veteran User
       privilege: 得到三个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。
       ratio: 3.05
-    - downloaded: 1024GB
+      seeding_bonus: 350000
+    - downloaded: 1TB
       id: 8
       interval: P60W
       name: Extreme User
       privilege: 可以更新过期的外部信息；可以查看Extreme User论坛。
       ratio: 3.55
-    - downloaded: 1536GB
+      seeding_bonus: 500000
+    - downloaded: 1.5TB
       id: 9
       interval: P80W
       name: Ultimate User
       privilege: 得到五个邀请名额。
       ratio: 4.05
-    - downloaded: 3072GB
+      seeding_bonus: 700000
+    - downloaded: 3TB
       id: 10
       interval: P100W
       name: Nexus Master
       privilege: 得到十个邀请名额。
       ratio: 4.55
+      seeding_bonus: 1000000
     - group_type: vip
       id: 100
       name: 贵宾(VIP)

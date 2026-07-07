@@ -1,8 +1,5 @@
 # morethantv — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-
+# schema: luminance。已接入通用/专用适配器，待真实站点校准。
 aka:
     - MTV
 description: MoreThanTV is a Private Torrent Tracker for TV / MOVIES
@@ -97,6 +94,9 @@ selectors:
     fields:
         category:
             attr: value
+            filters:
+                - args: 2000=Movies/All:::2040=Movies/HD:::2045=Movies/UHD:::2050=Movies/BluRay:::2060=Movies/3D:::2030=Movies/SD:::2010=Movies/Foreign:::2020=Movies/Other:::5000=TV/All:::5020=TV/Foreign:::5030=TV/SD:::5040=TV/HD:::5045=TV/UHD:::5050=TV/Other:::5060=TV/Sport:::5070=TV/Anime:::5080=TV/Documentary
+                  name: map
             selector: '[name=''category'']:last'
         completed:
             attr: value

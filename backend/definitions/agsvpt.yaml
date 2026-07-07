@@ -1,5 +1,133 @@
 id: agsvpt
 name: 末日
+aka:
+  - AGSVPT
+  - 末日种子库
+description: Arctic Global Seed Vault
+tags:
+  - 综合
+  - 短剧
+  - 影视
+timezone_offset: "+0800"
 schema: nexusphp
 urls:
   - https://pt.agsvpt.cn
+  - https://www.agsvpt.com
+  - https://new.agsvpt.cn
+selectors:
+  fields:
+    subtitle:
+      selector: div.torrent_title_desc
+user_info:
+  path: index.php
+  user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+  fields:
+    id:
+      attr: href
+      filters:
+        - name: queryparam
+          args: id
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    name:
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    uploaded:
+      selector: "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+    downloaded:
+      selector: "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+    ratio:
+      selector: "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:分享率|Ratio)\s*[:：]?\s*(\d+\.?\d*|Inf\.?|Infinity|∞)
+        - name: replace
+          args: Infinity:::9999
+        - name: replace
+          args: Inf.:::9999
+        - name: replace
+          args: ∞:::9999
+    bonus:
+      selector: "#info_block"
+      filters:
+        - name: regexp
+          args: (?i)(?:冰晶|魔力值|Karma\s*Points)[\s\S]{0,100}?[:：]?\s*([\d.,]+\.?\d*)
+        - name: parse_number
+  detail_fields:
+    uploaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    downloaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "#info_block"
+    ratio:
+      filters:
+        - name: regexp
+          args: (?i)(?:分享率|Ratio)\s*[:：]?\s*(\d+\.?\d*|Inf\.?|Infinity|∞)
+        - name: replace
+          args: Infinity:::9999
+        - name: replace
+          args: Inf.:::9999
+        - name: replace
+          args: ∞:::9999
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "#info_block"
+    level:
+      attr: title
+      selectors:
+        - "td.rowhead:contains('等级') + td > img"
+        - "td.rowhead:contains('等級') + td > img"
+        - "td.rowhead:contains('Class') + td > img"
+    bonus:
+      filters:
+        - name: regexp
+          args: (?i)(?:冰晶|魔力值|Karma\s*Points)?\s*[:：]?\s*([\d.,]+\.?\d*)
+        - name: parse_number
+      selectors:
+        - "td.rowhead:contains('冰晶') + td"
+        - "td.rowhead:contains('魔力值') + td"
+        - "td.rowhead:contains('Karma Points') + td"
+        - "#info_block"
+    join_date:
+      filters:
+        - name: regexp
+          args: (\d{4}-\d{2}-\d{2})
+      selectors:
+        - "td.rowhead:contains('加入日期') + td"
+        - "td.rowhead:contains('Join'):contains('date') + td"
+  pages:
+    - path: mybonus.php
+      fields:
+        bonus_per_hour:
+          selectors:
+            - "h1:contains('每小时获得的合计冰晶') + div"
+            - "h1:contains('每小時獲得的合計冰晶') + div"
+          filters:
+            - name: parse_number

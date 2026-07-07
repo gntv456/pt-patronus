@@ -1,5 +1,184 @@
 id: keepfrds
 name: 朋友
+aka:
+  - FRDS
+  - PT@KEEPFRDS
+description: KEEP FRIENDS 专注于小而美的分享，Let us keep friends forever!
+tags:
+  - 影视
+  - 综合
 schema: nexusphp
 urls:
   - https://pt.keepfrds.com
+categories:
+  - id: "401"
+    name: 电影
+  - id: "404"
+    name: 纪录片/传记
+  - id: "405"
+    name: 动画
+  - id: "402"
+    name: 剧集
+  - id: "403"
+    name: 综艺
+  - id: "421"
+    name: 舞台
+  - id: "420"
+    name: 演唱会/音乐剧
+  - id: "406"
+    name: 音乐短片(MV)
+  - id: "424"
+    name: 偶像
+  - id: "408"
+    name: 音乐
+  - id: "407"
+    name: 体育
+  - id: "415"
+    name: 有声读物
+  - id: "414"
+    name: 电子书
+  - id: "423"
+    name: 游戏
+  - id: "422"
+    name: 软件
+  - id: "419"
+    name: 苹果
+  - id: "409"
+    name: 其他
+  - id: "425"
+    name: 鲨鱼
+  - id: "300"
+    name: 回收站
+search_categories:
+  movie:
+    - "401"
+    - "404"
+    - "405"
+  tv:
+    - "402"
+    - "403"
+    - "421"
+  music:
+    - "406"
+    - "408"
+    - "420"
+selectors:
+  fields:
+    subtitle:
+      selectors:
+        - a[href*='hit'][title]
+        - a[href*='hit']:has(b)
+detail:
+  fields:
+    download:
+      selector: input#download_link
+      attr: value
+user_info:
+  path: index.php
+  user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+  fields:
+    id:
+      attr: href
+      filters:
+        - name: queryparam
+          args: id
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    name:
+      selectors:
+        - "#info_block a[href*='userdetails.php'][href*='id=']:first"
+        - "a[href*='userdetails.php'][class*='Name']:first"
+        - "a[href*='userdetails.php']:first"
+    level:
+      selector: ":self"
+      filters:
+        - name: regexp
+          args: 欢迎回来[\s\S]{0,160}?\(\s*([^)]+?)\s*\)
+  detail_fields:
+    uploaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "td.rowfollow:contains('分享率')"
+    downloaded:
+      filters:
+        - name: regexp
+          args: (?i)(?:下载量|下載量|Downloaded)[\s\S]{0,120}?([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "td.rowfollow:contains('分享率')"
+    ratio:
+      filters:
+        - name: regexp
+          args: (?i)(?:分享率|Ratio)\s*[:：]?\s*(\d+\.?\d*|Inf\.?|Infinity|∞)
+        - name: replace
+          args: Infinity:::9999
+        - name: replace
+          args: Inf.:::9999
+        - name: replace
+          args: ∞:::9999
+      selectors:
+        - "td.rowhead:contains('传输') + td"
+        - "td.rowhead:contains('傳送') + td"
+        - "td.rowhead:contains('Transfers') + td"
+        - "td.rowfollow:contains('分享率')"
+    level:
+      attr: title
+      selectors:
+        - "td.rowhead:contains('等级') + td img"
+        - "td.rowhead:contains('等級') + td img"
+        - "td.rowhead:contains('Class') + td img"
+        - ":self"
+      filters:
+        - name: regexp
+          args: 欢迎回来[\s\S]{0,160}?\(\s*([^)]+?)\s*\)
+    bonus:
+      filters:
+        - name: regexp
+          args: (?i)(?:魔力值|Karma\s*Points)?\s*[:：]?\s*([\d.,]+\.?\d*)
+        - name: parse_number
+      selectors:
+        - "td.rowhead:contains('魔力') + td"
+        - "td.rowhead:contains('Karma'):contains('Points') + td"
+    bonus_per_hour:
+      filters:
+        - name: regexp
+          args: (?i)(?:每小时能获取|每小時能獲取|currently\s+getting)[^0-9-+]{0,24}[-+]?[\d,]+\.?\d*|[-+]?[\d,]+\.?\d*\s*(?:魔力|karma)?\s*/h:::0
+        - name: parse_number
+      selectors:
+        - "td.rowhead:contains('魔力') + td"
+        - "td.rowhead:contains('Karma'):contains('Points') + td"
+        - "#info_block"
+        - ":self"
+    join_date:
+      filters:
+        - name: regexp
+          args: (\d{4}-\d{2}-\d{2})
+      selectors:
+        - "td.rowhead:contains('加入日期') + td"
+        - "td.rowhead:contains('Join'):contains('date') + td"
+    seeding:
+      filters:
+        - name: parse_number
+      selectors:
+        - "a[href='/torrents.php?option-torrents=3']"
+        - "a[href*='option-torrents=3']"
+    seeding_size:
+      filters:
+        - name: regexp
+          args: (?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes|B))(?:\s*$|[^\d]*$)
+        - name: parse_size
+      selectors:
+        - "td.rowhead:contains('当前做种') + td"
+        - "td.rowhead:contains('目前做種') + td"
+        - "td.rowhead:contains('Current Seeding') + td"

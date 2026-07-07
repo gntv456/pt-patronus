@@ -1,6 +1,5 @@
-# xauat6 — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# xauat6 - categories migrated from PT-depiler; dead site retained for display/history.
+# schema: nexusphp; common selectors are filled by defaults.
 
 categories:
     - id: "401"
@@ -34,6 +33,17 @@ description: 以热播电影，热播剧集，热播综艺为主，纪录，动�
 id: xauat6
 name: 溪涧草堂PT
 schema: nexusphp
+search_categories:
+    movie:
+        - "401"
+        - "403"
+        - "408"
+    tv:
+        - "402"
+        - "405"
+    music:
+        - "406"
+        - "407"
 tags:
     - 教育网
     - 影视

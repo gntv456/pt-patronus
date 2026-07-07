@@ -76,6 +76,7 @@ level_requirements:
     - downloaded: 1536GB
       id: 8
       interval: P80W
+      is_kept: true
       name: Ultimate User
       privilege: 首次升级赠送邀请10枚，保留帐号；
       ratio: 4.05
@@ -83,6 +84,7 @@ level_requirements:
     - downloaded: 3072GB
       id: 9
       interval: P100W
+      is_kept: true
       name: Nexus Master
       privilege: 首次升级赠送邀请3枚，保留帐号；
       ratio: 4.55

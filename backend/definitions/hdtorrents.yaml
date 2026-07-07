@@ -1,9 +1,5 @@
 # hdtorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: xbtit。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: xbtit。已接入通用/专用适配器，待真实站点校准。
 aka:
     - HDT
 description: HD-Torrents is a private tracker for HD content.
@@ -34,6 +30,11 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: category
+                  name: queryparam
+                - args: 70=Movie/UHD/Blu-Ray:::1=Movie/Blu-Ray:::71=Movie/UHD/Remux:::2=Movie/Remux:::5=Movie/1080p/i:::3=Movie/720p:::64=Movie/2160p:::63=Movie/Audio Track:::72=TV Show/UHD/Blu-ray:::59=TV Show/Blu-ray:::73=TV Show/UHD/Remux:::60=TV Show/Remux:::30=TV Show/1080p/i:::38=TV Show/720p:::65=TV Show/2160p:::44=Music/Album:::61=Music/Blu-Ray:::62=Music/Remux:::57=Music/1080p/i:::45=Music/720p:::66=Music/2160p:::58=XXX/Blu-ray:::78=XXX/Remux:::74=XXX/UHD/Blu-ray:::48=XXX/1080p/i:::47=XXX/720p:::67=XXX/2160p
+                  name: map
             selector: a[href^='torrents.php?category=']
         completed:
             selector: td:nth-last-child(1)
@@ -69,3 +70,57 @@ urls:
     - https://hd-torrents.net/
     - https://hd-torrents.me/
     - https://hdts.ru/
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                selector: "a[href*='usercp.php?uid=']:first"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: uid
+            seeding:
+                selector: "td.nav[title='Active-Torrents'] > a[href*='#actives'] > span"
+        - path: /usercp.php
+          params:
+            uid: "{id}"
+          fields:
+            name:
+                selector: "tr#CurrentDetailsHideShowTR td.header:contains('User') + td"
+            uploaded:
+                selector: "td.header:contains('Uploaded') + td"
+                filters:
+                    - name: parse_size
+            downloaded:
+                selector: "td.header:contains('Downloaded') + td"
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "td.header:contains('Ratio') + td"
+                filters:
+                    - name: parse_number
+            level:
+                selector: "td.header:contains('Rank') + td"
+            bonus:
+                selector: "td.header:contains('Seed Bonus Points') + td"
+                filters:
+                    - name: parse_number
+            join_date:
+                selector: "td.header:contains('Joined on') + td"
+                filters:
+                    - name: parse_time
+            last_access_at:
+                selector: "td.header:contains('Last access') + td"
+                filters:
+                    - name: parse_time
+            seeding_size:
+                selector: "td.header:contains('Total Size of torrents') + td"
+                filters:
+                    - name: parse_size
+        - path: /seedbonus.php
+          fields:
+            bonus_per_hour:
+                selector: "#BonusPointsHideShowTR .blockcontent center:eq(0) h1 font[color='blue']:eq(2)"
+                filters:
+                    - name: parse_number

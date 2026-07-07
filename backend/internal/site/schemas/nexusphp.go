@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -99,7 +100,17 @@ func (n *NexusPHP) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		}
 		if ddoc, _, e := n.fetchDoc(ctx, baseURL, detailPath+"?id="+uid, cookie); e == nil {
 			site.ParseUserDetail(ddoc, def, u)
+			fillSeedingFromDetail(ddoc, u)
 		}
+	}
+	if len(def.UserInfo.Pages) > 0 {
+		if err := fetchUserInfoPages(ctx, &n.BaseHTMLAdapter, def, baseURL, cookie, u); err != nil {
+			return nil, err
+		}
+	}
+	effectiveUID := uid
+	if effectiveUID == "" {
+		effectiveUID = u.ID
 	}
 
 	// 3. 每小时积分（mybonus.php）——仅当配置/基础页未给出时用标准正则 best-effort
@@ -112,18 +123,26 @@ func (n *NexusPHP) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	// 4. 做种体积 + 做种数补齐（getusertorrentlistajax?type=seeding）——best-effort，失败留 0
 	//    做种「数」优先用基础页 color_active（已校准）；基础页抓不到（=0）时用 ajax 汇总的数补，
 	//    保证「做种数」与「做种体积」同源，不出现「数=0、体积=N TB」的自相矛盾。
-	if uid != "" && u.SeedingSize == 0 {
-		if c, sz := fetchSeeding(ctx, n.hc, baseURL, uid, cookie); sz > 0 {
-			u.SeedingSize = sz
-			if u.Seeding == 0 {
+	if effectiveUID != "" && (u.SeedingSize == 0 || u.Seeding == 0) {
+		if c, sz := fetchSeeding(ctx, n.hc, baseURL, effectiveUID, cookie, def.UserInfo.UserTorrentListAPI); c > 0 || sz > 0 {
+			if u.SeedingSize == 0 && sz > 0 {
+				u.SeedingSize = sz
+			}
+			if u.Seeding == 0 && c > 0 {
 				u.Seeding = c
 			}
 		}
 	}
 	// 5. 发布数（getusertorrentlistajax?type=uploaded 的「N条记录」/行数）——best-effort
-	if uid != "" && u.Uploads == 0 {
-		if n := fetchUploadsCount(ctx, n.hc, baseURL, uid, cookie); n > 0 {
+	if effectiveUID != "" && u.Uploads == 0 {
+		if n := fetchUploadsCount(ctx, n.hc, baseURL, effectiveUID, cookie, def.UserInfo.UserTorrentListAPI); n > 0 {
 			u.Uploads = n
+		}
+	}
+	if u.ClaimCount == 0 && u.MaxClaim == 0 {
+		if count, max := fetchClaimCounts(ctx, n.hc, baseURL, cookie); count > 0 || max > 0 {
+			u.ClaimCount = count
+			u.MaxClaim = max
 		}
 	}
 	return u, nil
@@ -133,6 +152,9 @@ func (n *NexusPHP) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 const maxSeedingPages = 10
 
 var (
+	detailSeedingCountRe = regexp.MustCompile("(?i)(?:\u603b?\u505a[\u79cd\u7a2e](?:\u6570|\u6578)?|total\\s+seeding(?:\\s+count)?|seeding\\s+count)[^0-9]{0,20}(\\d[\\d,]*)")
+	detailSeedingSizeRe  = regexp.MustCompile("(?i)(?:\u505a[\u79cd\u7a2e](?:\u4f53\u79ef|\u9ad4\u7a4d|\u5bb9\u91cf|\u5927\u5c0f)|seeding\\s+(?:size|volume)|total\\s+size)[^0-9]{0,20}([\\d,.]+\\s*[KMGTPE]i?B|[\\d,.]+\\s*Bytes)")
+
 	// bphValueRe 在「每小时积分」元素文本里，锚定「能获取 / currently getting」之后的数字。
 	// 避免该 div 同时含魔力总量等其它数字时取错。
 	bphValueRe = regexp.MustCompile(`(?:能获取|能獲取|currently\s+getting)[^0-9-+]{0,12}([-+]?[\d,]+\.?\d*)`)
@@ -142,8 +164,12 @@ var (
 	seedingSummaryRe = regexp.MustCompile(`(\d[\d.,]*)\s*\|\s*([\d.]+\s*[KMGTPE]i?B)`)
 	// sizeTokenRe 匹配单个体积串（带单位），用于回退时从做种列表每行抽出体积。
 	sizeTokenRe = regexp.MustCompile(`(?i)([\d.]+\s*[KMGTPE]i?B|[\d.]+\s*Bytes)`)
+	// ajaxDataCountRe 匹配 HDArea 等 ajax 列表响应中的 data-count 总数。
+	ajaxDataCountRe = regexp.MustCompile(`(?i)data-count=["']?(\d+)["']?`)
 	// uploadsCountRe 匹配 getusertorrentlistajax?type=uploaded 响应里的「<b>N</b>条记录」总数。
 	uploadsCountRe = regexp.MustCompile(`(?i)<b[^>]*>\s*(\d+)\s*</b>\s*(条记录|條記錄|records|record)`)
+	// boldRecordsSizeRe 匹配 SpringSunday 等 ajax 响应里的「<b>N</b>条记录 ... <b>SIZE</b>」汇总。
+	boldRecordsSizeRe = regexp.MustCompile(`(?is)<b[^>]*>\s*(\d[\d,]*)\s*</b>\s*(?:条记录|條記錄|records|record).*?<b[^>]*>\s*([\d.,]+\s*[KMGTPE]i?B)\s*</b>`)
 )
 
 // fetchBonusPerHour 抓 mybonus.php 取「每小时积分」。
@@ -181,35 +207,96 @@ func fetchBonusPerHour(ctx context.Context, hc *httpclient.Client, baseURL, cook
 	return 0
 }
 
+func fetchClaimCounts(ctx context.Context, hc *httpclient.Client, baseURL, cookie string) (int, int) {
+	resp, err := hc.Get(ctx, joinURL(baseURL, "claim.php"), cookie, true)
+	if err != nil || resp.StatusCode == 401 || resp.StatusCode == 403 {
+		return 0, 0
+	}
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
+	if err != nil {
+		return 0, 0
+	}
+	for _, sel := range []string{
+		`a[href*="claim.php"]:contains("/")`,
+		`td:contains("认领")`,
+		`td:contains("認領")`,
+		`td:contains("Claim")`,
+		`body`,
+	} {
+		if count, max, ok := site.ParseClaimPair(doc.Find(sel).First().Text()); ok {
+			return count, max
+		}
+	}
+	return 0, 0
+}
+
 // fetchSeeding 抓 getusertorrentlistajax?type=seeding，返回 (做种数, 做种体积)。
 // NexusPHP 响应 table 前的汇总 div「N | SIZE」同时给出做种数与体积——优先解析它；
 // 缺失才回退翻页逐 <td> 累加体积（并按「含体积 token 的行」估算做种数）。返回的「数」用于
 // 补齐基础页抓不到做种数（=0）的站点，保证「做种数」与「做种体积」同源，
 // 不再出现「做种数=0、体积=N TB」的自相矛盾。best-effort，失败返回 (0, 0)。
-func fetchSeeding(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie string) (count int, size int64) {
-	u := joinURL(baseURL, fmt.Sprintf("getusertorrentlistajax.php?userid=%s&type=seeding", uid))
-	resp, err := hc.Get(ctx, u, cookie, true)
+func fetchSeeding(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie, listAPI string) (count int, size int64) {
+	for _, tpl := range userTorrentListTemplates(listAPI) {
+		c, sz := fetchSeedingFromTemplate(ctx, hc, baseURL, uid, cookie, tpl)
+		if sz > 0 {
+			return c, sz
+		}
+		if count == 0 && c > 0 {
+			count = c
+		}
+	}
+	return count, 0
+}
+
+func fetchSeedingFromTemplate(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie, tpl string) (count int, size int64) {
+	u := userTorrentListURL(baseURL, tpl, uid, "seeding", 0)
+	resp, err := hc.GetWithHeaders(ctx, u, cookie, userTorrentListHeaders(baseURL, uid, tpl), true)
 	if err != nil || resp.IsCloudflare() {
 		return 0, 0
 	}
 	body := string(resp.Body)
+	reportedCount := 0
+	if m := ajaxDataCountRe.FindStringSubmatch(body); len(m) > 1 {
+		reportedCount = site.ToInt(m[1])
+	}
+	if reportedCount == 0 {
+		if m := uploadsCountRe.FindStringSubmatch(body); len(m) > 1 {
+			reportedCount = site.ToInt(m[1])
+		}
+	}
+	if m := boldRecordsSizeRe.FindStringSubmatch(body); len(m) == 3 {
+		if sz := site.ParseBytes(m[2]); sz > 0 {
+			return site.ToInt(m[1]), sz
+		}
+	}
 	// 1. 汇总 div「N | SIZE」：N=做种数，SIZE=做种体积（站点官方值，最准）
 	if m := seedingSummaryRe.FindStringSubmatch(body); len(m) == 3 {
 		if sz := site.ParseBytes(m[2]); sz > 0 {
 			if n, e := strconv.Atoi(strings.ReplaceAll(m[1], ",", "")); e == nil {
 				count = n
 			}
+			if count == 0 && reportedCount > 0 {
+				count = reportedCount
+			}
 			return count, sz
+		}
+	}
+	if doc, err := goquery.NewDocumentFromReader(strings.NewReader(body)); err == nil {
+		if c, sz := parsePTTimeSeedingSummary(doc); c > 0 && sz > 0 {
+			return c, sz
+		}
+		if c, sz := parseTorrentListTotalSummary(doc.Selection); c > 0 && sz > 0 {
+			return c, sz
 		}
 	}
 	// 2. 回退：翻页逐 <td> 累加体积，并按「含体积 token 的行」数估算做种数（无汇总 div 的站点）
 	for page := 1; page <= maxSeedingPages; page++ {
-		pu := joinURL(baseURL, fmt.Sprintf("getusertorrentlistajax.php?userid=%s&type=seeding&page=%d", uid, page))
+		pu := userTorrentListURL(baseURL, tpl, uid, "seeding", page)
 		var pageBody []byte
 		if page == 1 {
 			pageBody = resp.Body
 		} else {
-			r, e := hc.Get(ctx, pu, cookie, true)
+			r, e := hc.GetWithHeaders(ctx, pu, cookie, userTorrentListHeaders(baseURL, uid, tpl), true)
 			if e != nil || r.IsCloudflare() {
 				break
 			}
@@ -218,6 +305,11 @@ func fetchSeeding(ctx context.Context, hc *httpclient.Client, baseURL, uid, cook
 		doc, err := goquery.NewDocumentFromReader(bytes.NewReader(pageBody))
 		if err != nil {
 			break
+		}
+		if parsedCount, parsedSize := parseTorrentListSize(doc); parsedCount > 0 && parsedSize > 0 {
+			count += parsedCount
+			size += parsedSize
+			continue
 		}
 		rows := doc.Find("table tr")
 		if rows.Length() == 0 {
@@ -243,18 +335,299 @@ func fetchSeeding(ctx context.Context, hc *httpclient.Client, baseURL, uid, cook
 		}
 		count += got
 	}
+	if count == 0 && reportedCount > 0 {
+		count = reportedCount
+	}
 	return count, size
+}
+
+func parsePTTimeSeedingSummary(doc *goquery.Document) (count int, size int64) {
+	if doc == nil {
+		return 0, 0
+	}
+	outer := doc.Find("#outer")
+	if outer.Length() == 0 {
+		return 0, 0
+	}
+	if n := site.ToInt(outer.Find("span").Eq(2).Find("b").First().Text()); n > 0 {
+		count = n
+	}
+	sizeText := outer.Find("span").Eq(3).Text()
+	if tok := sizeTokenRe.FindString(sizeText); tok != "" {
+		size = site.ParseBytes(tok)
+	}
+	return count, size
+}
+
+func fillSeedingFromDetail(doc *goquery.Document, u *site.UserInfo) {
+	if doc == nil || u == nil || (u.Seeding > 0 && u.SeedingSize > 0) {
+		return
+	}
+	if count, size := parseSeedingSummaryText(doc.Text()); count > 0 || size > 0 {
+		if u.Seeding == 0 {
+			u.Seeding = count
+		}
+		if u.SeedingSize == 0 {
+			u.SeedingSize = size
+		}
+	}
+	if u.Seeding > 0 && u.SeedingSize > 0 {
+		return
+	}
+	doc.Find("tr").EachWithBreak(func(_ int, row *goquery.Selection) bool {
+		cells := row.ChildrenFiltered("td")
+		if cells.Length() < 2 {
+			return true
+		}
+		if !looksLikeCurrentSeedingLabel(cells.First().Text()) {
+			return true
+		}
+		count, size := parseTorrentListSizeIn(cells.Eq(1))
+		if count == 0 || size == 0 {
+			return true
+		}
+		if u.Seeding == 0 {
+			u.Seeding = count
+		}
+		if u.SeedingSize == 0 {
+			u.SeedingSize = size
+		}
+		return false
+	})
+}
+
+func parseSeedingSummaryText(text string) (count int, size int64) {
+	text = strings.Join(strings.Fields(text), " ")
+	if m := detailSeedingCountRe.FindStringSubmatch(text); len(m) > 1 {
+		count = site.ToInt(m[1])
+	}
+	if m := detailSeedingSizeRe.FindStringSubmatch(text); len(m) > 1 {
+		size = site.ParseBytes(m[1])
+	}
+	return count, size
+}
+
+func parseTorrentListSize(doc *goquery.Document) (count int, size int64) {
+	if doc == nil {
+		return 0, 0
+	}
+	return parseTorrentListSizeIn(doc.Selection)
+}
+
+func parseTorrentListSizeIn(root *goquery.Selection) (count int, size int64) {
+	if root == nil {
+		return 0, 0
+	}
+	if c, sz := parseTorrentListTotalSummary(root); c > 0 && sz > 0 {
+		return c, sz
+	}
+	bestCount, bestSize := 0, int64(0)
+	root.Find("table").EachWithBreak(func(_ int, table *goquery.Selection) bool {
+		c, sz := parseTorrentTableSize(table)
+		if c == 0 || sz == 0 {
+			return true
+		}
+		bestCount, bestSize = c, sz
+		return !isLikelyTorrentTable(table)
+	})
+	return bestCount, bestSize
+}
+
+func parseTorrentListTotalSummary(root *goquery.Selection) (count int, size int64) {
+	if root == nil {
+		return 0, 0
+	}
+	root.Find("table").EachWithBreak(func(_ int, table *goquery.Selection) bool {
+		count, size = parseTorrentTableTotalRow(table)
+		return count == 0 || size == 0
+	})
+	return count, size
+}
+
+func parseTorrentTableTotalRow(table *goquery.Selection) (count int, size int64) {
+	if table == nil {
+		return 0, 0
+	}
+	table.Find("tr").EachWithBreak(func(_ int, row *goquery.Selection) bool {
+		text := strings.ToLower(strings.TrimSpace(row.Text()))
+		if !strings.Contains(text, "total") &&
+			!strings.Contains(text, "\u603b\u8ba1") &&
+			!strings.Contains(text, "\u7e3d\u8a08") &&
+			!strings.Contains(text, "\u5408\u8ba1") &&
+			!strings.Contains(text, "\u5408\u8a08") {
+			return true
+		}
+		cells := row.ChildrenFiltered("td")
+		if cells.Length() < 3 {
+			return true
+		}
+		n := site.ToInt(cells.Eq(1).Text())
+		sz := parseSizeFromCell(cells.Eq(2))
+		if n == 0 || sz == 0 {
+			return true
+		}
+		count, size = n, sz
+		return false
+	})
+	return count, size
+}
+
+func parseTorrentTableSize(table *goquery.Selection) (count int, size int64) {
+	sizeCol := detectSizeColumn(table)
+	if sizeCol < 0 {
+		return 0, 0
+	}
+	table.Find("tr").Each(func(_ int, row *goquery.Selection) {
+		cells := row.ChildrenFiltered("td")
+		if cells.Length() == 0 || row.Find("th").Length() > 0 {
+			return
+		}
+		if row.Find(`a[href*="details.php"]`).Length() == 0 && !rowHasTorrentLikeSize(cells) {
+			return
+		}
+		if cells.Length() <= sizeCol {
+			return
+		}
+		if sz := parseSizeFromCell(cells.Eq(sizeCol)); sz > 0 {
+			count++
+			size += sz
+		}
+	})
+	return count, size
+}
+
+func detectSizeColumn(table *goquery.Selection) int {
+	headerCol := -1
+	table.Find("tr").EachWithBreak(func(_ int, row *goquery.Selection) bool {
+		if row.Find("th").Length() == 0 {
+			return true
+		}
+		row.ChildrenFiltered("th,td").EachWithBreak(func(i int, cell *goquery.Selection) bool {
+			if looksLikeSizeHeader(cell) {
+				headerCol = i
+				return false
+			}
+			return true
+		})
+		return headerCol < 0
+	})
+	if headerCol >= 0 {
+		return headerCol
+	}
+	scores := map[int]int{}
+	table.Find("tr").Each(func(_ int, row *goquery.Selection) {
+		row.ChildrenFiltered("td").Each(func(i int, cell *goquery.Selection) {
+			if parseSizeFromCell(cell) > 0 {
+				scores[i]++
+			}
+		})
+	})
+	bestCol, bestScore := -1, 0
+	for col, score := range scores {
+		if score > bestScore || (score == bestScore && col > bestCol) {
+			bestCol, bestScore = col, score
+		}
+	}
+	return bestCol
+}
+
+func looksLikeSizeHeader(cell *goquery.Selection) bool {
+	text := strings.ToLower(strings.TrimSpace(cell.Text()))
+	cell.Find("img").Each(func(_ int, img *goquery.Selection) {
+		for _, attr := range []string{"alt", "title", "class", "src"} {
+			if v, ok := img.Attr(attr); ok {
+				text += " " + strings.ToLower(v)
+			}
+		}
+	})
+	for _, needle := range []string{
+		"size",
+		"\u5927\u5c0f",
+		"\u5c3a\u5bf8",
+		"\u5bb9\u91cf",
+		"\u9ad4\u7a4d",
+		"\u4f53\u79ef",
+	} {
+		if strings.Contains(text, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func parseSizeFromCell(cell *goquery.Selection) int64 {
+	if cell == nil {
+		return 0
+	}
+	tok := sizeTokenRe.FindString(strings.TrimSpace(cell.Text()))
+	if tok == "" {
+		return 0
+	}
+	return site.ParseBytes(tok)
+}
+
+func rowHasTorrentLikeSize(cells *goquery.Selection) bool {
+	found := false
+	cells.EachWithBreak(func(_ int, cell *goquery.Selection) bool {
+		found = parseSizeFromCell(cell) > 0
+		return !found
+	})
+	return found
+}
+
+func isLikelyTorrentTable(table *goquery.Selection) bool {
+	if table == nil {
+		return false
+	}
+	if cls, ok := table.Attr("class"); ok && strings.Contains(strings.ToLower(cls), "torrent") {
+		return true
+	}
+	return table.Find(`a[href*="details.php"]`).Length() > 0
+}
+
+func looksLikeCurrentSeedingLabel(text string) bool {
+	text = strings.ToLower(strings.TrimSpace(text))
+	for _, needle := range []string{
+		"current seeding",
+		"current upload",
+		"seeding torrent",
+		"\u5f53\u524d\u505a\u79cd",
+		"\u7576\u524d\u505a\u7a2e",
+		"\u5f53\u524d\u4e0a\u4f20",
+		"\u7576\u524d\u4e0a\u50b3",
+		"\u6b63\u5728\u505a\u79cd",
+		"\u6b63\u5728\u505a\u7a2e",
+	} {
+		if strings.Contains(text, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 // fetchUploadsCount 抓 getusertorrentlistajax?type=uploaded 取「发布数」。
 // 优先「<b>N</b>条记录」头部总数；缺失用汇总 div「N | SIZE」的 N；再缺失数种子详情行。best-effort。
-func fetchUploadsCount(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie string) int {
-	u := joinURL(baseURL, fmt.Sprintf("getusertorrentlistajax.php?userid=%s&type=uploaded", uid))
-	resp, err := hc.Get(ctx, u, cookie, true)
+func fetchUploadsCount(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie, listAPI string) int {
+	for _, tpl := range userTorrentListTemplates(listAPI) {
+		if n := fetchUploadsCountFromTemplate(ctx, hc, baseURL, uid, cookie, tpl); n > 0 {
+			return n
+		}
+	}
+	return 0
+}
+
+func fetchUploadsCountFromTemplate(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie, tpl string) int {
+	u := userTorrentListURL(baseURL, tpl, uid, "uploaded", 0)
+	resp, err := hc.GetWithHeaders(ctx, u, cookie, userTorrentListHeaders(baseURL, uid, tpl), true)
 	if err != nil || resp.IsCloudflare() {
 		return 0
 	}
 	body := string(resp.Body)
+	if m := ajaxDataCountRe.FindStringSubmatch(body); len(m) > 1 {
+		if n := site.ToInt(m[1]); n > 0 {
+			return n
+		}
+	}
 	if m := uploadsCountRe.FindStringSubmatch(body); len(m) > 1 {
 		if n, err := strconv.Atoi(m[1]); err == nil {
 			return n
@@ -272,6 +645,69 @@ func fetchUploadsCount(ctx context.Context, hc *httpclient.Client, baseURL, uid,
 		return 0
 	}
 	return doc.Find(`table tr:has(a[href*="details.php"])`).Length()
+}
+
+func userTorrentListTemplates(listAPI string) []string {
+	out := []string{}
+	add := func(tpl string) {
+		tpl = strings.TrimSpace(tpl)
+		if tpl == "" {
+			return
+		}
+		for _, old := range out {
+			if old == tpl {
+				return
+			}
+		}
+		out = append(out, tpl)
+	}
+	add(listAPI)
+	add("getusertorrentlistajax.php?userid={id}&type={type}")
+	add("getusertorrentlist.php?userid={id}&type={type}")
+	return out
+}
+
+func userTorrentListHeaders(baseURL, uid, tpl string) map[string]string {
+	if uid == "" {
+		return nil
+	}
+	param := "id"
+	if strings.Contains(strings.ToLower(tpl), "useruuid") || strings.Contains(strings.ToLower(tpl), "uuid=") {
+		param = "uuid"
+	}
+	return map[string]string{
+		"Referer": joinURL(baseURL, "userdetails.php?"+param+"="+url.QueryEscape(uid)),
+	}
+}
+
+func userTorrentListURL(baseURL, tpl, uid, typ string, page int) string {
+	path := strings.ReplaceAll(tpl, "{id}", url.QueryEscape(uid))
+	path = strings.ReplaceAll(path, "{uid}", url.QueryEscape(uid))
+	path = strings.ReplaceAll(path, "{type}", url.QueryEscape(typ))
+	if strings.Contains(path, "{page}") {
+		if page <= 0 {
+			page = 1
+		}
+		path = strings.ReplaceAll(path, "{page}", strconv.Itoa(page))
+	} else if page > 1 {
+		path = addQueryParam(path, "page", strconv.Itoa(page))
+	}
+	return joinURL(baseURL, path)
+}
+
+func addQueryParam(path, key, value string) string {
+	u, err := url.Parse(path)
+	if err != nil {
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		return path + sep + url.QueryEscape(key) + "=" + url.QueryEscape(value)
+	}
+	q := u.Query()
+	q.Set(key, value)
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 // TestConnection 用用户页探测连接与登录态，返回用户等级。

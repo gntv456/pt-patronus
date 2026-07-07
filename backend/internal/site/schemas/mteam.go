@@ -101,11 +101,17 @@ func (m *MTeam) FetchUserInfo(ctx context.Context, def *site.SiteMetadata, baseU
 		return nil, err
 	}
 	var prof struct {
-		ID          any    `json:"id"`          // 用户 UID（数字）
-		Username    string `json:"username"`
-		Email       string `json:"email"`       // 账号邮箱（best-effort，可能为空）
-		Role        any    `json:"role"`        // 用户组 levelId（NexusPHP class：1=User … 10=VIP … 16=Staff），数字或字符串
-		CreatedDate string `json:"createdDate"` // 加入时间，如 "2023-01-02 03:04:05"
+		ID           any    `json:"id"` // 用户 UID（数字）
+		Username     string `json:"username"`
+		Email        string `json:"email"`       // 账号邮箱（best-effort，可能为空）
+		AvatarURL    string `json:"avatarUrl"`   // 头像 URL（best-effort，可能为空或默认头像）
+		Role         any    `json:"role"`        // 用户组 levelId（NexusPHP class：1=User … 10=VIP … 16=Staff），数字或字符串
+		CreatedDate  string `json:"createdDate"` // 加入时间，如 "2023-01-02 03:04:05"
+		MemberStatus struct {
+			CreatedDate string `json:"createdDate"`
+			LastBrowse  string `json:"lastBrowse"`
+			Donor       any    `json:"donor"`
+		} `json:"memberStatus"`
 		MemberCount struct {
 			Uploaded   any `json:"uploaded"`
 			Downloaded any `json:"downloaded"`
@@ -122,12 +128,21 @@ func (m *MTeam) FetchUserInfo(ctx context.Context, def *site.SiteMetadata, baseU
 	if id := toInt64(prof.ID); id > 0 {
 		idStr = strconv.FormatInt(id, 10)
 	}
+	joinDate := prof.CreatedDate
+	if joinDate == "" {
+		joinDate = prof.MemberStatus.CreatedDate
+	}
+	levelID := int(toInt64(prof.Role))
 	return &site.UserInfo{
 		ID:           idStr,
 		Name:         prof.Username,
 		Email:        prof.Email,
+		Avatar:       site.ApplyFilters(prof.AvatarURL, []site.Filter{{Name: "clean_avatar"}}),
+		IsDonor:      toBool(prof.MemberStatus.Donor),
 		Level:        mtLevelName(prof.Role),
-		JoinDate:     prof.CreatedDate,
+		LevelID:      levelID,
+		JoinDate:     joinDate,
+		LastAccessAt: prof.MemberStatus.LastBrowse,
 		Uploaded:     toInt64(prof.MemberCount.Uploaded),
 		Downloaded:   toInt64(prof.MemberCount.Downloaded),
 		Bonus:        toFloat64(prof.MemberCount.Bonus),
@@ -408,7 +423,7 @@ func isMTAuthError(code, msg string) bool {
 var mtRoles = map[int64]string{
 	1: "User", 2: "Power User", 3: "Elite User", 4: "Crazy User",
 	5: "Insane User", 6: "Veteran User", 7: "Extreme User", 8: "Ultimate User",
-	9: "Nexus Master", 10: "VIP", 11: "Retiree", 12: "Uploader",
+	9: "mTorrent Master", 10: "VIP", 11: "Retiree", 12: "Uploader",
 	13: "Moderator", 14: "Administrator", 15: "Sysop", 16: "Staff",
 }
 
@@ -468,6 +483,25 @@ func toFloat64(v any) float64 {
 		return f
 	}
 	return 0
+}
+
+func toBool(v any) bool {
+	switch x := v.(type) {
+	case bool:
+		return x
+	case string:
+		return site.ToBool(x)
+	case float64:
+		return x != 0
+	case int:
+		return x != 0
+	case int64:
+		return x != 0
+	case json.Number:
+		i, _ := x.Int64()
+		return i != 0
+	}
+	return false
 }
 
 func getString(m map[string]any, key string) string {

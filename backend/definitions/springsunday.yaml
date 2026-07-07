@@ -1,8 +1,5 @@
 # springsunday — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.bonus.filters（匿名函数）
-
 aka:
     - CMCT
     - SSD
@@ -78,8 +75,11 @@ tags:
 urls:
     - https://springsunday.net/
 user_info:
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
     fields:
         bonus:
+            filters:
+                - name: parse_number
             selectors:
                 - td.rowhead:contains('积分') + td
         bonus_per_hour:
@@ -87,3 +87,13 @@ user_info:
                 - name: parse_number
             selectors:
                 - tbody tr.nowrap td:last
+        seeding_bonus_per_hour:
+            filters:
+                - name: parse_number
+            selectors:
+                - "tbody tr.nowrap:first > td:nth-child(9)"
+    pages:
+        - path: mybonus.php
+          use_fields:
+              - bonus_per_hour
+              - seeding_bonus_per_hour

@@ -13,6 +13,10 @@ void main() {
         'seeding_size': 2199023255552,
         'bonus': 1234.5,
         'bonus_per_hour': 56.7,
+        'rescue_seeding_bonus_per_hour': 3.25,
+        'unique_groups': 6,
+        'perfect_flac': 5,
+        'invited': 4,
       },
       'sites': [
         {
@@ -28,6 +32,10 @@ void main() {
           'uploads': 5,
           'bonus': 9.0,
           'bonus_per_hour': 123.4,
+          'rescue_seeding_bonus_per_hour': 10.0,
+          'unique_groups': 6,
+          'perfect_flac': 5,
+          'invited': 4,
           'join_date': '2024-01-15',
           'updated_at': '2026-06-26T15:28:00+08:00',
         },
@@ -43,6 +51,10 @@ void main() {
     expect(o.seedingSize, 2199023255552);
     expect(o.bonus, 1234.5);
     expect(o.bonusPerHour, 56.7);
+    expect(o.rescueSeedingBonusPerHour, 3.25);
+    expect(o.uniqueGroups, 6);
+    expect(o.perfectFlac, 5);
+    expect(o.invited, 4);
     expect(o.sites.length, 2);
     // 站点明细新字段（此前 fromJson 容错丢弃，现已同步）。
     final hx = o.sites[0];
@@ -53,6 +65,10 @@ void main() {
     expect(hx.seedingSize, 1073741824);
     expect(hx.uploads, 5);
     expect(hx.bonusPerHour, 123.4);
+    expect(hx.rescueSeedingBonusPerHour, 10.0);
+    expect(hx.uniqueGroups, 6);
+    expect(hx.perfectFlac, 5);
+    expect(hx.invited, 4);
     expect(hx.joinDate, '2024-01-15');
     expect(hx.updatedAt, '2026-06-26T15:28:00+08:00');
     // 缺字段的站点：新字段回落默认值，不报错。
@@ -61,6 +77,10 @@ void main() {
     expect(mt.seedingSize, 0);
     expect(mt.uploads, 0);
     expect(mt.bonusPerHour, 0);
+    expect(mt.rescueSeedingBonusPerHour, 0);
+    expect(mt.uniqueGroups, 0);
+    expect(mt.perfectFlac, 0);
+    expect(mt.invited, 0);
     expect(mt.joinDate, '');
     expect(o.siteCount, 2);
     expect(o.downloaderCount, 1);
@@ -72,6 +92,10 @@ void main() {
     expect(o.seeding, 0);
     expect(o.seedingSize, 0);
     expect(o.bonusPerHour, 0);
+    expect(o.rescueSeedingBonusPerHour, 0);
+    expect(o.uniqueGroups, 0);
+    expect(o.perfectFlac, 0);
+    expect(o.invited, 0);
     expect(o.sites, isEmpty);
     expect(o.siteCount, 0);
   });

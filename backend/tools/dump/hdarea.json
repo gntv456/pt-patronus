@@ -322,6 +322,19 @@
       "rows": {
         "selector": "table.torrents > tbody > tr:has(table.torrentname)"
       },
+      "subTitle": {
+        "text": "",
+        "selector": [
+          "a[href^='details.php?id='][title]:has(b)",
+          "a[href*='details.php?id='][href*='hit']",
+          "a[href*='hit'][title]",
+          "a[href*='hit']:has(b)"
+        ],
+        "elementProcess": {
+          "__fn": true,
+          "src": "(element: HTMLElement) => {\n          const titleDiv = element.closest(\"td > div\");\n          const subtitleEl = titleDiv?.nextElementSibling;\n          if (subtitleEl instanceof HTMLElement && subtitleEl.tagName === \"DIV\") {\n            return subtitleEl.textContent?.trim() ?? \"\";\n          }\n          return \"\";\n        }"
+        }
+      },
       "tags": [
         {
           "__raw": "SpreadElement",
@@ -355,6 +368,19 @@
           "src": "(element: HTMLElement) => {\n          const textNode = element?.childNodes[0];\n          return textNode?.textContent?.trim() ?? \"\";\n        }"
         }
       }
+    }
+  },
+  "userInfo": {
+    "__spread": [
+      "SchemaMetadata.userInfo!"
+    ],
+    "selectors": {
+      "__spread": [
+        "SchemaMetadata.userInfo!.selectors!"
+      ]
+    },
+    "process": {
+      "__call": "SchemaMetadata.userInfo!.process!.map((item) =>\n      item.requestConfig?.url === \"/mybonus.php\" ? { ...item, fields: [...(item.fields ?? []), \"seedingSize\"] } : item,\n    )"
     }
   },
   "levelRequirements": [

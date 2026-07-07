@@ -1,10 +1,5 @@
 # speedapp — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters[split]
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 description: SpeedApp is a ROMANIAN Private Torrent Tracker for MOVIES / TV / GENERAL
 id: speedapp
 legacy_urls:
@@ -78,6 +73,11 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: =:::1
+                  name: split
+                - args: "15=XXX Movies:::47=XXX DVD:::48=XXX HD:::49=XXX Images:::50=XXX Packs:::51=XXX SD:::38=Movie Packs:::10=Movies: SD:::35=Movies: SD Ro:::8=Movies: HD:::29=Movies: HD Ro:::7=Movies: DVD:::2=Movies: DVD Ro:::17=Movies: BluRay:::24=Movies: BluRay Ro:::59=Movies: Ro:::57=Movies: 4K (2160p) Ro:::61=Movies: 4K (2160p):::41=TV Packs:::66=TV Packs Ro:::45=TV Episodes:::46=TV Episodes Ro:::43=TV Episodes HD:::44=TV Episodes HD Ro:::60=TV Ro:::11=Games: PC-ISO:::52=Games: Console:::1=Applications:::14=Applications: Linux:::37=Applications: Mac:::19=Applications: Mobile:::62=TV Cartoons:::3=TV Anime / Hentai:::6=E-books:::5=Music:::64=Music Video:::18=Images:::22=TV Sports:::58=TV Sports Ro:::9=TV Documentary:::63=TV Documentary Ro:::65=Tutorial:::67=Miscellaneous"
+                  name: map
             selector: a[href*='?categories']
         completed:
             filters:
@@ -104,10 +104,6 @@ selectors:
         time:
             attr: title
             filters:
-                - args: '[map[__regex:/日/g]  ]'
-                  name: replace
-                - args: '[map[__regex:/[年月]/g] -]'
-                  name: replace
                 - name: parse_time
             selector: div:nth-child(2)
         title:
@@ -120,3 +116,70 @@ tags:
 timezone_offset: "+0300"
 urls:
     - https://speedapp.io/
+user_info:
+    pages:
+        - path: /profile
+          fields:
+            name:
+                selector: "#kt_quick_user_toggle > span.text-dark-50"
+            uploaded:
+                selectors:
+                    - "dt:contains('Uploaded') + dd"
+                    - "dt:contains('已上传') + dd"
+                filters:
+                    - name: parse_size
+            downloaded:
+                selectors:
+                    - "dt:contains('Downloaded') + dd"
+                    - "dt:contains('已下载') + dd"
+                filters:
+                    - name: parse_size
+            ratio:
+                selectors:
+                    - "dt:contains('Ratio') + dd"
+                    - "dt:contains('分享率') + dd"
+                    - "dt:contains('比率') + dd"
+                filters:
+                    - name: parse_number
+            level:
+                selector: "div.card-body.pt-4 >div.align-items-center div.text-muted"
+                filters:
+                    - name: trim
+            join_date:
+                selectors:
+                    - "dt:contains('Signup date') + dd"
+                    - "dt:contains('注册日期') + dd"
+                filters:
+                    - name: parse_time
+            last_access_at:
+                selectors:
+                    - "dt:contains('Last access') + dd"
+                    - "dt:contains('涓婃璁块棶') + dd"
+                filters:
+                    - name: parse_time
+            seeding_size:
+                selectors:
+                    - "dt:contains('Bonus points') + dd > b:nth-of-type(2)"
+                    - "dt:contains('奖励积分') + dd > b:nth-of-type(2)"
+                filters:
+                    - name: parse_size
+            bonus_per_hour:
+                selectors:
+                    - "dt:contains('Bonus points') + dd > b:eq(0)"
+                    - "dt:contains('奖励积分') + dd > b:eq(0)"
+                filters:
+                    - name: parse_number
+        - path: /profile/menu-stats
+          fields:
+            bonus:
+                selectors:
+                    - "a[href='/shop'][title='Bonus points']"
+                    - "a[href='/shop'][title='奖励积分']"
+                filters:
+                    - name: parse_number
+            seeding:
+                selectors:
+                    - "a[href='/snatch/seeding'][title='Currently seeding torrents']"
+                    - "a[href='/snatch/seeding'][title='目前正在播种种子']"
+                filters:
+                    - name: parse_number

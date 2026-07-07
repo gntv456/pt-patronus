@@ -1,6 +1,5 @@
 # sanpro — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: gazelle。死站保留；通用 Gazelle mock 已覆盖用户信息、做种数与做种体积。
 
 dead: true
 description: 欢迎来到伞

@@ -1,13 +1,13 @@
 # hdroute — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.seeders（elementProcess）
-#   - search.time.filters（匿名函数）
-#   - search.subTitle（elementProcess）
-#   - search.link.filters（匿名函数）
-#   - search.leechers（elementProcess）
-#   - search.category（case/text）
 #   - search.title（elementProcess）
+#   - search.subTitle（elementProcess）
+#   - search.seeders（elementProcess）
+#   - search.leechers（elementProcess）
+#   - search.link.filters（匿名函数）
+#   - search.time.filters（匿名函数）
+#   - search.category（case/text）
 #   - userInfo.process（多步抓取流程，需适配器实现）
 
 description: HDRoute - 高清影视资源站点

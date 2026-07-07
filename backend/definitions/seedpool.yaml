@@ -1,11 +1,5 @@
 # seedpool — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category（data）
-#   - search.category.filters（匿名函数）
-#   - userInfo.bonusPerHour（text）
-#   - userInfo.bonus（text）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 aka:
     - SP
 id: seedpool
@@ -53,6 +47,10 @@ schema: unit3d
 selectors:
     fields:
         category:
+            data: categoryId
+            filters:
+                - args: 2=TV Show:::1=Movie:::6=Anime:::8=Sports:::5=Music:::9=Audiobook:::7=E-Book:::12=Hobby:::16=Software:::3=Game:::21=Music Production:::11=Other
+                  name: map
             selector: :self
 tags:
     - 综合
@@ -61,8 +59,10 @@ urls:
     - https://seedpool.org/
 user_info:
     fields:
-        bonus: {}
-        bonus_per_hour: {}
+        bonus:
+            text: N/A
+        bonus_per_hour:
+            text: N/A
         seeding:
             filters:
                 - name: parse_number
@@ -70,6 +70,10 @@ user_info:
                 - li.ratio-bar__uploaded a:has(i.fa-arrow-up) + a
         seeding_size:
             filters:
+                - args: '(?i)([\d.,]+\s*(?:[KMGTPE]i?B|Bytes))'
+                  name: regexp
                 - name: parse_size
             selectors:
                 - a[href*='/active?seeding=include']
+                - "td:contains('Seedpool') + td"
+                - "dt:contains('Seedpool') + dd"

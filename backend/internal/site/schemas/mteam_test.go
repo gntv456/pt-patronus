@@ -118,7 +118,8 @@ func TestMTeamFetchUserInfo(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/api/member/profile":
-			_, _ = w.Write([]byte(`{"code":"0","data":{"username":"tester","role":"3","createdDate":"2023-01-02 03:04:05",
+			_, _ = w.Write([]byte(`{"code":"0","data":{"id":"123","username":"tester","email":"tester@example.com","avatarUrl":"https://img.example/avatar.png","role":"3","createdDate":"2023-01-02 03:04:05",
+				"memberStatus":{"lastBrowse":"2026-07-07 10:20:30","donor":true},
 				"memberCount":{"uploaded":"10737418240","downloaded":"1073741824","bonus":"1234.5","shareRate":"1.5"}}}`))
 		case "/api/tracker/mybonus":
 			_, _ = w.Write([]byte(`{"code":"0","data":{"formulaParams":{"finalBs":"12.5"}}}`))
@@ -136,20 +137,54 @@ func TestMTeamFetchUserInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ui.Name != "tester" || ui.Level != "Elite User" {
+	if ui.ID != "123" || ui.Name != "tester" || ui.Email != "tester@example.com" || ui.Level != "Elite User" || ui.LevelID != 3 {
 		t.Errorf("profile: %+v", ui)
+	}
+	if ui.Avatar != "https://img.example/avatar.png" || !ui.IsDonor {
+		t.Errorf("profile extras: avatar=%q isDonor=%v", ui.Avatar, ui.IsDonor)
 	}
 	if ui.JoinDate != "2023-01-02 03:04:05" {
 		t.Errorf("joinDate = %q", ui.JoinDate)
 	}
-	if ui.Uploaded != 10737418240 || ui.Ratio != 1.5 || ui.Bonus != 1234.5 {
-		t.Errorf("numeric fields: uploaded=%d ratio=%g bonus=%g", ui.Uploaded, ui.Ratio, ui.Bonus)
+	if ui.LastAccessAt != "2026-07-07 10:20:30" {
+		t.Errorf("lastAccessAt = %q", ui.LastAccessAt)
+	}
+	if ui.Uploaded != 10737418240 || ui.Downloaded != 1073741824 || ui.Ratio != 1.5 || ui.Bonus != 1234.5 {
+		t.Errorf("numeric fields: uploaded=%d downloaded=%d ratio=%g bonus=%g", ui.Uploaded, ui.Downloaded, ui.Ratio, ui.Bonus)
 	}
 	if ui.BonusPerHour != 12.5 {
 		t.Errorf("bonusPerHour = %g, want 12.5", ui.BonusPerHour)
 	}
 	if ui.Seeding != 7 || ui.Leeching != 2 || ui.SeedingSize != 16106127360 || ui.Uploads != 3 {
 		t.Errorf("peer stats: seeding=%d leeching=%d size=%d uploads=%d", ui.Seeding, ui.Leeching, ui.SeedingSize, ui.Uploads)
+	}
+}
+
+func TestMTeamFetchUserInfoMemberStatusJoinDateAndRole9(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/member/profile":
+			_, _ = w.Write([]byte(`{"code":"0","data":{"username":"master","role":"9",
+				"memberStatus":{"createdDate":"2024-05-06 07:08:09"},"memberCount":{}}}`))
+		case "/api/tracker/mybonus", "/api/tracker/myPeerStatistics":
+			_, _ = w.Write([]byte(`{"code":"0","data":{}}`))
+		default:
+			t.Errorf("unexpected path = %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	ui, err := NewMTeam(hc).FetchUserInfo(context.Background(), &site.SiteMetadata{}, srv.URL, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ui.Level != "mTorrent Master" {
+		t.Fatalf("level = %q, want mTorrent Master", ui.Level)
+	}
+	if ui.JoinDate != "2024-05-06 07:08:09" {
+		t.Fatalf("joinDate = %q", ui.JoinDate)
 	}
 }
 

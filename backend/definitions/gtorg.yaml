@@ -1,9 +1,4 @@
-# gtorg — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# gtorg — 搜索 selector 与 user_info.pages 已按 PT-depiler 结构迁移，并由 GenericHTML mock 覆盖；真实站点仍建议 live smoke。
 id: gtorg
 level_requirements:
     - id: 1
@@ -50,8 +45,10 @@ selectors:
             selector: div.size
         time:
             filters:
-                - args: '[HH:mm dd-MMM-yyyy]'
-                  name: parse_time
+                - args: "(?i)^\\s*(?:on\\s+)?(.+)$"
+                  name: regexp
+                - name: trim
+                - name: parse_time
             selector: div.date > div
         title:
             selector: a.torrent_link
@@ -61,3 +58,47 @@ tags:
     - 成人
 urls:
     - https://gay-torrents.org/
+user_info:
+    pages:
+        - path: /index.php
+          fields:
+            id:
+                selector: "a[href*='usercp.php']:first"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: uid
+            bonus:
+                selector: "a[href*='seedbonus']:first"
+                filters:
+                    - name: parse_number
+            seeding:
+                selector: "span[title='Seed']"
+                filters:
+                    - name: parse_number
+        - path: /usercp.php
+          params:
+            uid: "{id}"
+          fields:
+            name:
+                selector: "td:contains('User') + td"
+            level:
+                selector: "td:contains('Rank') + td"
+            downloaded:
+                selector: "td:contains('Downloaded') + td"
+                filters:
+                    - name: parse_size
+            uploaded:
+                selector: "td:contains('Uploaded') + td"
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "td:contains('Ratio') + td"
+                filters:
+                    - name: parse_number
+            join_date:
+                selector: "td:contains('Joined on') + td"
+                filters:
+                    - name: split
+                      args: " :::0"
+                    - name: parse_time

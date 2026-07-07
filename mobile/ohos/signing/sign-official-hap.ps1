@@ -25,7 +25,8 @@ function Read-PropertiesFile {
     param([string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path)) {
-        throw "Missing signing properties: $Path"
+        $importScript = Join-Path $SigningDir 'import-official-signing.ps1'
+        throw "Missing signing properties: $Path. Import official DevEco/Huawei signing material first: powershell -ExecutionPolicy Bypass -File `"$importScript`" -SourceDir <export-dir>"
     }
 
     $props = @{}

@@ -1,8 +1,5 @@
 # starspace — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.size.filters[append]
-#   - userInfo.process（多步抓取流程，需适配器实现）
+# schema: 。专属适配器覆盖 user_info 多页流程、做种体积和发布数；真实站点仍建议 live smoke。
 
 aka:
     - StarSpace

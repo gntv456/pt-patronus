@@ -1,8 +1,5 @@
 # pixelcove — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-
+# schema: luminance。已接入通用/专用适配器，待真实站点校准。
 aka:
     - PxC
 description: PixelCove (Ultimate Gamer) is a Private Torrent Tracker for GAMES
@@ -40,6 +37,11 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: "filter_cat\\[(\\d+)\\]"
+                  name: regexp
+                - args: 10=Windows:::11=Macintosh:::47=Linux:::56=VR:::14=Xbox:::61=Xbox 360:::62=Xbox One:::43=Playstation:::63=Playstation 2:::64=Playstation 3:::67=Playstation 4:::12=PSN:::57=Gamecube:::44=Wii:::46=Wii U:::76=Switch:::15=DS:::68=3DS:::69=PSP:::70=PSVita:::65=iOS:::49=Android:::66=Windows Mobile:::53=Books/Mags:::60=Comics:::17=Guides:::58=Gaming Videos:::52=OST:::55=Time for a Break:::81=Videos:::59=Mods:::54=Updates/Fixes:::71=Applications/Tools:::48=Retro:::72=Board Games:::75=Paper Crafting:::77=Arcade
+                  name: map
             selector: td.cats_col > div[title] > a
 tags:
     - 游戏

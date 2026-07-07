@@ -1,9 +1,5 @@
 # latteam — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category（data）
-#   - search.category.filters（匿名函数）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 description: LAT-Team is a UNIT3D Private Torrent Tracker for Latin content.
 id: latteam
 level_requirements:
@@ -58,6 +54,10 @@ schema: unit3d
 selectors:
     fields:
         category:
+            data: categoryId
+            filters:
+                - args: "1=Peliculas:::2=TV Series:::5=Anime:::20=Asiáticas & Turcas:::8=Telenovelas:::3=Musica:::9=Conciertos:::16=Eventos Deportivos:::22=Playlist_Collection:::12=XXX:::18=E-Books:::11=Audiolibros:::4=Juegos:::24=Cursos:::29=Revistas & Periódicos:::30=Comics & Manga"
+                  name: map
             selector: :self
 tags:
     - 西班牙语
@@ -66,4 +66,17 @@ urls:
     - https://lat-team.com/
 user_info:
     fields:
-        seeding_size: {}
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - "dt:contains('Tamaño total compartiendo') + dd"
+                - "td:contains('Tamaño total compartiendo') + td"
+                - "dt:contains('Seeding Size') + dd"
+                - "dt:contains('Seeding size') + dd"
+                - "dt:contains('做种体积') + dd"
+                - "dt:contains('做種體積') + dd"
+                - "td:contains('Seeding Size') + td"
+                - "td:contains('Seeding size') + td"
+                - "td:contains('做种体积') + td"
+                - "td:contains('做種體積') + td"

@@ -1,6 +1,7 @@
 # hdarea — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.subTitle（elementProcess/text）
 
 aka:
     - 高清视界
@@ -87,6 +88,13 @@ level_requirements:
 name: HDArea
 schema: nexusphp
 selectors:
+    fields:
+        subtitle:
+            selectors:
+                - a[href^='details.php?id='][title]:has(b)
+                - a[href*='details.php?id='][href*='hit']
+                - a[href*='hit'][title]
+                - a[href*='hit']:has(b)
     rows:
         selector: table.torrents > tbody > tr:has(table.torrentname)
 tags:

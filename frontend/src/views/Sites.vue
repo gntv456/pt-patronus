@@ -5,6 +5,7 @@ import { dashboardApi } from '@/api/dashboard'
 import { fmtTime } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
+import { siteDefSearchQueries, siteDefSearchText, sortSiteDefsBySearchRelevance } from '@/utils/siteDefSearch'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
@@ -35,26 +36,53 @@ const form = ref({
   is_active: true,
 })
 
-// 当前选中的站点定义（据其 schema 决定表单形态：馒头走 x-api-key，无需 cookie/账密）
+// 当前选中的站点定义（据其 schema 决定表单形态：API 型站点无需 cookie/账密）
 const currentDef = computed(() => defs.value.find((d) => d.id === form.value.definition))
-const isMTeam = computed(() => currentDef.value?.schema === 'mteam')
+const needsApiKey = computed(() => currentDef.value?.schema === 'mteam' || currentDef.value?.schema === 'yemapt')
+const apiKeyPlaceholder = computed(() => {
+  if (isEdit.value) return '留空则不修改'
+  if (currentDef.value?.schema === 'mteam') return 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）'
+  if (currentDef.value?.schema === 'yemapt') return 'YemaPT API Auth Key（个人面板 → 详情 → 安全设定）'
+  return 'API Key'
+})
 // 取定义默认地址：首个真实 URL（馒头 urls[0] 即 api.m-team.cc），无则回退占位。
 function defUrl(d?: SiteDef) {
-  if (d?.urls?.length) return d.urls[0]
+  const urls = defUrls(d)
+  if (urls.length) return urls[0]
   return d?.schema === 'mteam' ? 'https://api.m-team.cc' : 'https://www.hxpt.org'
 }
-// 占位优先取当前定义真实地址。
+function defUrls(d?: SiteDef) {
+  return Array.from(new Set((d?.urls || []).map((u) => u.trim()).filter(Boolean)))
+}
 const baseUrlPlaceholder = computed(() => defUrl(currentDef.value))
+const baseUrlOptions = computed(() => defUrls(currentDef.value))
+// 占位优先取当前定义真实地址。
 
 // 选站下拉排序：可用站在前、死站在后（死站保留可选，仅标注「已关站」）。
 const sortedDefs = computed(() =>
   [...defs.value].sort((a, b) => (a.dead === b.dead ? 0 : a.dead ? 1 : -1)),
 )
+const definitionQuery = ref('')
+const filteredDefs = computed(() => {
+  const raw = definitionQuery.value.trim()
+  const q = raw.toLowerCase()
+  if (!q) return sortedDefs.value
+  const queries = siteDefSearchQueries(q)
+  const matches = sortedDefs.value.filter((d) => {
+    const text = siteDefSearchText(d)
+    return queries.some((term) => text.includes(term))
+  })
+  return sortSiteDefsBySearchRelevance(matches, raw)
+})
+
+function filterDefinitionOptions(query: string) {
+  definitionQuery.value = query
+}
 
 // 已知默认值集合：切定义时若名称/地址仍等于任一定义默认值（或为空）则跟随当前定义更新，
 // 用户手填的自定义值不覆盖；编辑态既有非默认值同样保留。
 const knownNames = computed(() => defs.value.map((d) => d.name))
-const knownUrls = computed(() => defs.value.map((d) => defUrl(d)))
+const knownUrls = computed(() => defs.value.flatMap((d) => defUrls(d)))
 
 // 切换定义时：名称/地址跟随当前定义（仅在仍是默认值或为空时），馒头无需特判。
 function onDefChange() {
@@ -78,14 +106,25 @@ async function load() {
   }
 }
 
-function openCreate() {
+async function openCreate() {
+  try {
+    defs.value = await siteApi.definitions()
+  } catch {
+    if (!defs.value.length) {
+      ElMessage.error('加载站点定义失败')
+      return
+    }
+    ElMessage.warning('站点定义刷新失败，使用当前缓存')
+  }
   editingId.value = null
+  definitionQuery.value = ''
   form.value = { name: '', definition: '', base_url: '', cookie: '', api_key: '', username: '', password: '', is_active: true }
   dialogVisible.value = true
 }
 
 function openEdit(s: Site) {
   editingId.value = s.id
+  definitionQuery.value = ''
   form.value = {
     name: s.name,
     definition: s.definition,
@@ -104,9 +143,9 @@ async function submit() {
     ElMessage.warning('名称与地址必填')
     return
   }
-  // 馒头走 x-api-key 鉴权：新建必填 API Key，否则后续连接测试/搜索全部 401
-  if (isMTeam.value && !isEdit.value && !form.value.api_key.trim()) {
-    ElMessage.warning('馒头需填写 API Key（M-Team 控制台 → 实验室 → 存储令牌）')
+  // API 型站点鉴权：新建必填 API Key，否则后续连接测试/搜索全部 401
+  if (needsApiKey.value && !isEdit.value && !form.value.api_key.trim()) {
+    ElMessage.warning(`${currentDef.value?.name || '该站点'}需填写 API Key`)
     return
   }
   // 根据定义自动推断 platform
@@ -300,18 +339,20 @@ onMounted(load)
         <el-form-item label="定义">
           <el-select
             v-model="form.definition"
-            placeholder="选择站点定义"
+            placeholder="搜索名称 / 域名 / 别名"
             style="width: 100%"
             filterable
+            :filter-method="filterDefinitionOptions"
             @change="onDefChange"
           >
             <el-option
-              v-for="d in sortedDefs"
+              v-for="d in filteredDefs"
               :key="d.id"
               :label="`${d.name}（${d.schema || '通用'}）${d.aka?.length ? ' · ' + d.aka.join(' / ') : ''}${d.dead ? ' · 已关站' : ''}`"
               :value="d.id"
             >
               <span>{{ d.name }}（{{ d.schema || '通用' }}）</span>
+              <span v-if="defUrls(d).length" class="def-url">{{ defUrls(d).join(' / ') }}</span>
               <el-tag v-if="d.aka?.length" size="small" type="primary" effect="plain" style="margin-left: 8px">
                 {{ d.aka.join(' / ') }}
               </el-tag>
@@ -322,18 +363,29 @@ onMounted(load)
           </el-select>
         </el-form-item>
         <el-form-item label="地址">
-          <el-input v-model="form.base_url" :placeholder="baseUrlPlaceholder" />
+          <el-select
+            v-if="baseUrlOptions.length > 1"
+            v-model="form.base_url"
+            filterable
+            allow-create
+            default-first-option
+            :placeholder="baseUrlPlaceholder"
+            style="width: 100%"
+          >
+            <el-option v-for="u in baseUrlOptions" :key="u" :label="u" :value="u" />
+          </el-select>
+          <el-input v-else v-model="form.base_url" :placeholder="baseUrlPlaceholder" />
         </el-form-item>
-        <!-- 馒头走 api.m-team.cc 的 JSON API + x-api-key，无 cookie/账密概念 -->
-        <el-form-item v-if="isMTeam" label="API Key">
+        <!-- API 型站点（M-Team/YemaPT 等）走 token 鉴权，无 cookie/账密概念 -->
+        <el-form-item v-if="needsApiKey" label="API Key">
           <el-input
             v-model="form.api_key"
             type="password"
             show-password
-            :placeholder="isEdit ? '留空则不修改' : 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）'"
+            :placeholder="apiKeyPlaceholder"
           />
         </el-form-item>
-        <el-form-item v-if="!isMTeam" label="Cookie">
+        <el-form-item v-if="!needsApiKey" label="Cookie">
           <el-input
             v-model="form.cookie"
             type="textarea"
@@ -341,10 +393,10 @@ onMounted(load)
             :placeholder="isEdit ? '留空则不修改' : '粘贴站点 cookie（k=v; k2=v2），加密存储'"
           />
         </el-form-item>
-        <el-form-item v-if="!isMTeam" label="账号">
+        <el-form-item v-if="!needsApiKey" label="账号">
           <el-input v-model="form.username" placeholder="站点用户名（财神刮刮乐 API 登录用）" />
         </el-form-item>
-        <el-form-item v-if="!isMTeam" label="密码">
+        <el-form-item v-if="!needsApiKey" label="密码">
           <el-input
             v-model="form.password"
             type="password"
@@ -428,6 +480,11 @@ onMounted(load)
 .empty {
   padding: 40px;
   text-align: center;
+}
+.def-url {
+  margin-left: 8px;
+  color: var(--pt-text-muted);
+  font-size: 12px;
 }
 :deep(.el-table),
 :deep(.el-table tr),

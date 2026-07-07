@@ -1,12 +1,5 @@
 # haidan — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.title（elementProcess）
-#   - search.time.filters[parseValidTimeString]
-#   - search.url.filters[prepend]
-#   - search.link（__ref）
-#   - userInfo.levelName.filters（匿名函数）
-
 aka:
     - 海胆之家
     - HaiDan
@@ -102,10 +95,18 @@ selectors:
         completed:
             selector: .snatched_col
         detail:
+            attr: href
             filters:
                 - args: id
                   name: queryparam
-        download: {}
+                - args: /details.php?id=
+                  name: prepend
+            selectors:
+                - a[href*="download.php?id="]
+        download:
+            attr: href
+            selectors:
+                - a[href*="download.php?id="]
         leechers:
             selector: .leecher_col
         seeders:
@@ -119,9 +120,13 @@ selectors:
                 - .torrent_name_col a[href*='details.php']
         time:
             attr: title
+            filters:
+                - name: parse_time
             selectors:
                 - .time_col span[title]
         title:
+            ancestor: .group_content
+            find: .name_col > .name > .video_name
             selector: :self
     rows:
         selector: .torrent_item
@@ -134,8 +139,20 @@ timezone_offset: "+0800"
 urls:
     - https://www.haidan.cc/
 user_info:
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
     fields:
         level:
             attr: title
+            filters:
+                - args: ^(?:.*\))?\s*(.+)$
+                  name: regexp
+            selectors:
+                - td.rowhead:contains('等级') + td > img
+    detail_fields:
+        level:
+            attr: title
+            filters:
+                - args: ^(?:.*\))?\s*(.+)$
+                  name: regexp
             selectors:
                 - td.rowhead:contains('等级') + td > img

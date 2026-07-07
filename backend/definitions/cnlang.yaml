@@ -1,6 +1,6 @@
 # cnlang — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: discuz。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: discuz。已接入通用/专用适配器，待真实站点校准。
+# dead site retained; reference projects expose no executable user_info/search selectors beyond retained metadata.
 
 dead: true
 description: 国语视界音轨组，特效字幕组官方首发论坛，国语音轨和特效字幕的分享基地，蓝光DIY和4K电影爱好者的乐园。

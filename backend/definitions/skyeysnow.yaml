@@ -1,7 +1,5 @@
 # skyeysnow — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: discuz。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.process（多步抓取流程，需适配器实现）
+# schema: discuz。user_info.pages + 做种/发布补全已由专属适配器覆盖；真实站点仍建议 live smoke。
 
 aka:
     - 天雪
@@ -72,6 +70,72 @@ selectors:
 tags:
     - 动漫
 timezone_offset: "+0800"
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                attr: href
+                filters:
+                    - args: uid
+                      name: queryparam
+                selector: .vwmy a
+            name:
+                selector: .vwmy a
+        - path: /home.php
+          params:
+            mod: space
+            uid: "{id}"
+          fields:
+            uploaded:
+                filters:
+                    - args: '(?i)(?:上传量|上传|uploaded)[^0-9]*([\d.,]+\s*[KMGTPE]?i?B)'
+                      name: regexp
+                    - name: parse_size
+                selector: '#psts li:contains("上传"), #psts li:contains("Uploaded")'
+            downloaded:
+                filters:
+                    - args: '(?i)(?:下载量|下载|downloaded)[^0-9]*([\d.,]+\s*[KMGTPE]?i?B)'
+                      name: regexp
+                    - name: parse_size
+                selector: '#psts li:contains("下载"), #psts li:contains("Downloaded")'
+            true_uploaded:
+                filters:
+                    - args: '(?i)实际上传[^0-9]*([\d.,]+\s*[KMGTPE]?i?B)'
+                      name: regexp
+                    - name: parse_size
+                selector: '#psts li:contains("实际上传")'
+            true_downloaded:
+                filters:
+                    - args: '(?i)实际下载[^/]*\/\s*([\d.,]+\s*[KMGTPE]?i?B)'
+                      name: regexp
+                    - name: parse_size
+                selector: '#psts li:contains("实际下载")'
+            ratio:
+                filters:
+                    - args: '(?i)(?:分享率|ratio)[^0-9]*([\d.]+)'
+                      name: regexp
+                selector: ul.bbda
+            bonus:
+                filters:
+                    - name: parse_number
+                selector: '#ratio'
+            level:
+                filters:
+                    - args: '用户组\s*(.+)'
+                      name: regexp
+                selector: a[href='home.php?mod=spacecp&ac=usergroup']
+            join_date:
+                filters:
+                    - args: '(\d{4}-\d{2}-\d{2})'
+                      name: regexp
+                selector: '#pbbs > li'
+            last_access_at:
+                filters:
+                    - args: '最后访问\s*(.+)'
+                      name: regexp
+                    - name: parse_time
+                selector: "#pbbs > li:contains('最后访问')"
 urls:
     - https://www.skyey2.com/
     - https://skyeysnow.com/

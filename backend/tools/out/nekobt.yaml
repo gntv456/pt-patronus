@@ -1,8 +1,8 @@
 # nekobt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
 #   - search.category（text）
+#   - search.url.filters[prepend]
 
 description: nekoBT is a Public Torrent Tracker for ANIME
 id: nekobt

@@ -2,7 +2,9 @@ package monitor
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 )
@@ -141,5 +143,41 @@ func TestHostCollectSmoke(t *testing.T) {
 	}
 	if m.MemTotal == 0 {
 		t.Error("mem total should be > 0")
+	}
+}
+
+type fakeSSHExec struct {
+	cmd string
+}
+
+func (f *fakeSSHExec) Run(_ context.Context, cmd string) (string, error) {
+	f.cmd = cmd
+	return "", nil
+}
+
+func (f *fakeSSHExec) Close() error { return nil }
+
+func TestSSHCollectorPowerRebootUsesFixedCommand(t *testing.T) {
+	ex := &fakeSSHExec{}
+	c := SSHCollector{dial: func(*models.MonitorTarget, Credentials, time.Duration) (sshExecutor, error) {
+		return ex, nil
+	}}
+	err := c.Power(context.Background(), mkTarget("host", "127.0.0.1", "", "ssh"), Credentials{Username: "root"}, PowerActionReboot)
+	if err != nil {
+		t.Fatalf("power reboot: %v", err)
+	}
+	if ex.cmd != "sudo -n reboot" {
+		t.Fatalf("command = %q", ex.cmd)
+	}
+}
+
+func TestSSHCollectorPowerRejectsUnknownAction(t *testing.T) {
+	c := SSHCollector{dial: func(*models.MonitorTarget, Credentials, time.Duration) (sshExecutor, error) {
+		t.Fatal("dial should not be called for unsupported action")
+		return nil, nil
+	}}
+	err := c.Power(context.Background(), mkTarget("host", "127.0.0.1", "", "ssh"), Credentials{}, "shutdown")
+	if err == nil || !strings.Contains(err.Error(), ErrUnsupportedPowerAction.Error()) {
+		t.Fatalf("err = %v, want unsupported power action", err)
 	}
 }

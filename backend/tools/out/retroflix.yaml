@@ -1,9 +1,9 @@
 # retroflix — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
+#   - search.time（elementProcess/text）
 #   - search.subTitle（elementProcess）
 #   - search.url.filters[prepend]
-#   - search.time（elementProcess/text）
 #   - userInfo.joinTime.filters[split]
 #   - userInfo.process（多步抓取流程，需适配器实现）
 

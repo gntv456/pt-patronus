@@ -1,6 +1,6 @@
 {
   "id": "gtru",
-  "version": 1,
+  "version": 2,
   "name": "GayTorrent.ru",
   "tags": [
     "成人"
@@ -12,14 +12,6 @@
   ],
   "legacyUrls": [
     "https://www.gaytorrent.ru/"
-  ],
-  "userInputSettingMeta": [
-    {
-      "name": "passkey",
-      "label": "Passkey",
-      "hint": "用于搜索结果下载种子，可在 userdetails 页面的 Announce Url 中找到",
-      "required": false
-    }
   ],
   "category": [
     {
@@ -285,7 +277,7 @@
   ],
   "search": {
     "requestConfig": {
-      "url": "/browse.php",
+      "url": "/search.php",
       "params": {
         "incldead": 1,
         "search": ""
@@ -294,36 +286,34 @@
     "keywordPath": "params.search",
     "selectors": {
       "rows": {
-        "selector": "table.browse_result tr:has(div.browsedesc)"
+        "selector": "div.dc-search-grid article.dc-grid-card"
       },
       "id": {
-        "selector": "div.browsedesc > a[href*='details.php']",
+        "selector": "a.dc-grid-card-title",
         "attr": "href",
         "filters": [
           {
             "__fn": true,
-            "src": "(q: string) => q.match(/id=([a-f0-9]+)/)?.[1] ?? q"
+            "src": "(q: string) => q.match(/id=([\\w-]+)/)?.[1] ?? q"
           }
         ]
       },
       "title": {
-        "selector": "div.browsedesc > a[href*='details.php'] b"
+        "selector": "a.dc-grid-card-title",
+        "attr": "title"
       },
       "url": {
-        "selector": "div.browsedesc > a[href*='details.php']",
-        "attr": "href"
-      },
-      "link": {
-        "selector": "a.index[href*='download.php/']",
+        "selector": "a.dc-grid-card-title",
         "attr": "href"
       },
       "time": {
-        "selector": "div.tadded",
-        "elementProcess": {
-          "__fn": true,
-          "src": "(element: HTMLElement) => {\n          const parts: string[] = [];\n          element.childNodes.forEach((node) => {\n            if (node.nodeType === 3) {\n              const text = node.textContent?.trim();\n              if (text) parts.push(text);\n            }\n          });\n          return parts.length >= 2 ? `${parts[0]} ${parts[1]}` : parts[0] || \"\";\n        }"
-        },
+        "selector": "span.dc-grid-card-age",
+        "attr": "title",
         "filters": [
+          {
+            "__fn": true,
+            "src": "(q: string) => q.replace(/^[^:]*:\\s*/, \"\").trim()"
+          },
           {
             "name": "parseTime",
             "args": [
@@ -333,7 +323,7 @@
         ]
       },
       "size": {
-        "selector": "div.tsize",
+        "selector": "span.dc-grid-card-size",
         "filters": [
           {
             "name": "parseSize"
@@ -341,7 +331,7 @@
         ]
       },
       "completed": {
-        "selector": "div.tsnatch",
+        "selector": "span.dc-grid-card-snat",
         "filters": [
           {
             "name": "parseNumber"
@@ -349,25 +339,27 @@
         ]
       },
       "seeders": {
-        "selector": "td:has(div.tsnatch) + td",
-        "elementProcess": {
-          "__fn": true,
-          "src": "(element: HTMLElement) => {\n          const text = element.textContent || \"\";\n          const match = text.match(/(\\d+)\\s*\\/\\s*\\d+/);\n          return match ? parseInt(match[1]) : 0;\n        }"
-        }
+        "selector": "span.dc-grid-card-seeders",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
       },
       "leechers": {
-        "selector": "td:has(div.tsnatch) + td",
-        "elementProcess": {
-          "__fn": true,
-          "src": "(element: HTMLElement) => {\n          const text = element.textContent || \"\";\n          const match = text.match(/\\d+\\s*\\/\\s*(\\d+)/);\n          return match ? parseInt(match[1]) : 0;\n        }"
-        }
+        "selector": "span.dc-grid-card-leechers",
+        "filters": [
+          {
+            "name": "parseNumber"
+          }
+        ]
       },
       "category": {
-        "selector": "img.browsemaincatpic",
-        "attr": "alt"
+        "selector": "span.dc-grid-main-cat",
+        "attr": "title"
       },
       "comments": {
-        "selector": "div.tcomments",
+        "selector": "span.dc-grid-card-comments",
         "filters": [
           {
             "name": "parseNumber"
@@ -392,7 +384,7 @@
   ],
   "detail": {
     "urlPattern": [
-      "/details\\.php\\?id=[a-f0-9]+"
+      "/details\\.php\\?id=[\\w-]+"
     ],
     "selectors": {
       "link": {
@@ -402,29 +394,14 @@
     }
   },
   "userInfo": {
-    "pickLast": [
-      "id"
-    ],
     "process": [
       {
         "requestConfig": {
-          "url": "/"
+          "url": "/userdetails.php"
         },
         "selectors": {
-          "id": {
-            "selector": "ul.navbar-right a[href*='userdetails.php?id=']",
-            "attr": "href",
-            "filters": [
-              {
-                "name": "querystring",
-                "args": [
-                  "id"
-                ]
-              }
-            ]
-          },
           "seeding": {
-            "selector": "span#activeseed",
+            "selector": "#activeseed",
             "filters": [
               {
                 "name": "parseNumber"
@@ -432,28 +409,22 @@
             ]
           },
           "bonus": {
-            "selector": "span#bonus",
+            "selector": ".ud-stat-row:contains('Total Seed Bonus') .ud-stat-value",
             "filters": [
               {
                 "name": "parseNumber"
               }
             ]
-          }
-        }
-      },
-      {
-        "requestConfig": {
-          "url": "/userdetails.php"
-        },
-        "assertion": {
-          "id": "params.id"
-        },
-        "selectors": {
+          },
           "name": {
-            "selector": "div[align='center'] font[color='white'][size='+1'] b"
+            "selector": ".ud-profile-name",
+            "elementProcess": {
+              "__fn": true,
+              "src": "(element: HTMLElement) => (element.textContent || \"\").replace(/\\s+/g, \" \").trim()"
+            }
           },
           "uploaded": {
-            "selector": "td:contains('Uploaded') + td",
+            "selector": ".ud-stat-row:contains('Uploaded') .ud-stat-value",
             "filters": [
               {
                 "__fn": true,
@@ -465,7 +436,7 @@
             ]
           },
           "downloaded": {
-            "selector": "td:contains('Downloaded') + td",
+            "selector": ".ud-stat-row:contains('Downloaded') .ud-stat-value",
             "filters": [
               {
                 "__fn": true,
@@ -477,7 +448,7 @@
             ]
           },
           "ratio": {
-            "selector": "td:contains('Share ratio') + td td:first",
+            "selector": ".ud-stat-row:contains('Share ratio') .ud-stat-value",
             "filters": [
               {
                 "name": "parseNumber"
@@ -485,7 +456,7 @@
             ]
           },
           "levelName": {
-            "selector": "td:contains('Class') + td img",
+            "selector": ".ud-profile-meta img[src*='/classes/']",
             "attr": "src",
             "filters": [
               {
@@ -495,7 +466,7 @@
             ]
           },
           "joinTime": {
-            "selector": "td:contains('Join date') + td",
+            "selector": ".ud-profile-meta span:has(i.fa-calendar-o)",
             "filters": [
               {
                 "__fn": true,
@@ -510,7 +481,7 @@
             ]
           },
           "lastAccessAt": {
-            "selector": "td:contains('Last seen') + td",
+            "selector": ".ud-profile-meta span:has(i.fa-clock-o)",
             "filters": [
               {
                 "__fn": true,
@@ -525,17 +496,17 @@
             ]
           },
           "uploads": {
-            "selector": "div#UploadedTorrents table.table",
+            "selector": "#uploaded table.dc-torrent-table",
             "elementProcess": {
               "__fn": true,
-              "src": "(element: HTMLElement) => {\n              const rows = element.querySelectorAll(\"tr:has(td)\");\n              return rows.length;\n            }"
+              "src": "(element: HTMLElement) => {\n              return element.querySelectorAll(\"tbody tr\").length;\n            }"
             }
           },
           "seedingSize": {
-            "selector": "div#SeedingTorrents table.table",
+            "selector": "#seeding table.dc-torrent-table",
             "elementProcess": {
               "__fn": true,
-              "src": "(element: HTMLElement) => {\n              let total = 0;\n              const rows = element.querySelectorAll(\"tr:has(td)\");\n              rows.forEach((row) => {\n                const sizeTd = row.querySelectorAll(\"td\")[2];\n                if (sizeTd) {\n                  const text = (sizeTd.textContent || \"\").replace(/\\s+/g, \" \").trim();\n                  total += parseSizeString(text);\n                }\n              });\n              return total;\n            }"
+              "src": "(element: HTMLElement) => {\n              let total = 0;\n              const rows = element.querySelectorAll(\"tbody tr\");\n              rows.forEach((row) => {\n                const sizeTd = row.querySelectorAll(\"td\")[2];\n                if (sizeTd) {\n                  const text = (sizeTd.textContent || \"\")\n                    .replace(/\\s+/g, \" \")\n                    .replace(/([\\d.]+)\\s*([KMGTP]?i?B)/i, \"$1 $2\")\n                    .trim();\n                  total += parseSizeString(text);\n                }\n              });\n              return total;\n            }"
             }
           }
         }

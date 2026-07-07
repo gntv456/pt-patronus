@@ -86,6 +86,108 @@ func TestAvistazUserInfoStub(t *testing.T) {
 	}
 }
 
+func TestAvistazDefinitionsSearchAndUserInfo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/jackett/auth":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"token":"JWT1","expiry":3600}`))
+		case "/api/v1/jackett/torrents":
+			if r.Header.Get("Authorization") != "Bearer JWT1" {
+				t.Errorf("Authorization=%q", r.Header.Get("Authorization"))
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"data":[{"id":1,"file_name":"Network Movie","file_size":16106127360,
+				"url":"/torrent/1","download":"/download/1","category":{"1":"Movie"},
+				"created_at":"2024-01-01","seed":5,"leech":2,"completed":40}]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	reg := site.NewRegistry()
+	if err := reg.LoadDefinitions("../../../definitions"); err != nil {
+		t.Fatalf("load definitions: %v", err)
+	}
+	cred := `{"username":"alice","password":"p","pid":"PID"}`
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	for _, id := range []string{"avistaz", "cinemaz", "exoticaz", "privatehd"} {
+		t.Run(id, func(t *testing.T) {
+			def, ok := reg.Definition(id)
+			if !ok {
+				t.Fatalf("%s definition missing", id)
+			}
+			a := NewAvistaz(hc)
+			ts, err := a.Search(context.Background(), def, srv.URL, cred, "kw", "", 1)
+			if err != nil {
+				t.Fatalf("Search: %v", err)
+			}
+			if len(ts) != 1 || ts[0].Title != "Network Movie" || ts[0].Seeders != 5 || ts[0].DownloadURL != srv.URL+"/download/1" {
+				t.Fatalf("torrents = %+v", ts)
+			}
+			ui, err := a.FetchUserInfo(context.Background(), def, srv.URL, cred)
+			if err != nil {
+				t.Fatalf("FetchUserInfo: %v", err)
+			}
+			if ui.Name != "alice" || ui.Uploaded != 0 || ui.SeedingSize != 0 {
+				t.Fatalf("user info = %+v", ui)
+			}
+		})
+	}
+}
+
+func TestAnimeZFetchUserInfoWithCookie(t *testing.T) {
+	var profileHit, activeHit bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Cookie"), "sid=ok") {
+			t.Errorf("Cookie=%q", r.Header.Get("Cookie"))
+		}
+		switch r.URL.Path {
+		case "/profile/alice":
+			profileHit = true
+			_, _ = w.Write([]byte(`<html><head><title>Alice - AnimeZ</title></head><body>
+<main><div><div><div><div><div><div><div>
+<div>Alice</div><div><span class="badge badge-sm">Power User</span></div>
+</div></div></div></div></div></div></div></main>
+<div class="datagrid-item"><div class="datagrid-title">Uploaded</div><div class="datagrid-content">1.5 TiB</div></div>
+<div class="datagrid-item"><div class="datagrid-title">Downloaded</div><div class="datagrid-content">512 GiB</div></div>
+<div class="datagrid-item"><div class="datagrid-title">Ratio</div><div class="datagrid-content">3.0</div></div>
+<div class="datagrid-item"><div class="datagrid-title">Bonus Points</div><div class="datagrid-content">12,345</div></div>
+<div class="datagrid-item"><div class="datagrid-title">Uploads</div><div class="datagrid-content">42</div></div>
+<div class="datagrid-item"><div class="datagrid-title">Seeding</div><div class="datagrid-content">2</div></div>
+<div class="datagrid-item"><div class="datagrid-title">Leeching</div><div class="datagrid-content">1</div></div>
+<div class="datagrid-item"><div class="datagrid-title">Member Since</div><div class="datagrid-content">January 02, 2024</div></div>
+</body></html>`))
+		case "/profile/alice/active":
+			activeHit = true
+			_, _ = w.Write([]byte(`<table>
+<tr><td>Seeding</td><td><span class="text-yellow">10 GiB</span></td></tr>
+<tr><td>Leeching</td><td><span class="text-yellow">99 GiB</span></td></tr>
+</table>`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	ui, err := NewAvistaz(hc).FetchUserInfo(context.Background(),
+		&site.SiteMetadata{ID: "animez", Schema: "avistaz"}, srv.URL,
+		`{"username":"alice","password":"p","pid":"PID","cookie":"sid=ok"}`)
+	if err != nil {
+		t.Fatalf("FetchUserInfo: %v", err)
+	}
+	if !profileHit || !activeHit {
+		t.Fatalf("profileHit=%v activeHit=%v", profileHit, activeHit)
+	}
+	if ui.Name != "Alice" || ui.Level != "Power User" || ui.Uploaded == 0 || ui.Downloaded == 0 ||
+		ui.Ratio != 3 || ui.Bonus != 12345 || ui.Uploads != 42 || ui.Seeding != 2 ||
+		ui.Leeching != 1 || ui.JoinDate != "2024-01-02" || ui.SeedingSize != 10*1024*1024*1024 {
+		t.Fatalf("ui = %+v", ui)
+	}
+}
+
 // TestAvistazEmpty：torrents 400 → 空结果不报错。
 func TestAvistazEmpty(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

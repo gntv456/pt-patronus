@@ -13,35 +13,58 @@ import (
 
 // SiteStatItem 是某站点的最新统计。
 type SiteStatItem struct {
-	SiteID       uint      `json:"site_id"`
-	SiteName     string    `json:"site_name"`
-	UserName     string    `json:"username"` // 站点用户名（导出海报身份行，best-effort）
-	UserID       string    `json:"user_id"`   // 站点用户 ID
-	Email        string    `json:"email"`     // 账号邮箱（best-effort）
-	Level        string    `json:"level"`
-	Uploaded     int64     `json:"uploaded"`
-	Downloaded   int64     `json:"downloaded"`
-	Ratio        float64   `json:"ratio"`
-	Seeding      int       `json:"seeding"`
-	Leeching     int       `json:"leeching"`
-	SeedingSize  int64     `json:"seeding_size"`
-	Uploads      int       `json:"uploads"`
-	Bonus        float64   `json:"bonus"`
-	BonusPerHour float64   `json:"bonus_per_hour"`
-	JoinDate     string    `json:"join_date"`
-	UpdatedAt    time.Time `json:"updated_at"` // 该统计的抓取时间（SiteStat.SnapAt）
+	SiteID                    uint      `json:"site_id"`
+	SiteName                  string    `json:"site_name"`
+	UserName                  string    `json:"username"` // 站点用户名（导出海报身份行，best-effort）
+	UserID                    string    `json:"user_id"`  // 站点用户 ID
+	Email                     string    `json:"email"`    // 账号邮箱（best-effort）
+	Level                     string    `json:"level"`
+	Uploaded                  int64     `json:"uploaded"`
+	Downloaded                int64     `json:"downloaded"`
+	Ratio                     float64   `json:"ratio"`
+	TrueUploaded              int64     `json:"true_uploaded"`
+	TrueDownloaded            int64     `json:"true_downloaded"`
+	TrueRatio                 float64   `json:"true_ratio"`
+	Seeding                   int       `json:"seeding"`
+	Leeching                  int       `json:"leeching"`
+	SeedingSize               int64     `json:"seeding_size"`
+	Uploads                   int       `json:"uploads"`
+	UniqueGroups              int       `json:"unique_groups"`
+	PerfectFLAC               int       `json:"perfect_flac"`
+	Invited                   int       `json:"invited"`
+	Bonus                     float64   `json:"bonus"`
+	BonusPerHour              float64   `json:"bonus_per_hour"`
+	SeedingBonus              float64   `json:"seeding_bonus"`
+	SeedingBonusPerHour       float64   `json:"seeding_bonus_per_hour"`
+	RescueSeedingBonusPerHour float64   `json:"rescue_seeding_bonus_per_hour"`
+	ClaimCount                int       `json:"claim_count"`
+	MaxClaim                  int       `json:"max_claim"`
+	JoinDate                  string    `json:"join_date"`
+	LastAccessAt              string    `json:"last_access_at"`
+	UpdatedAt                 time.Time `json:"updated_at"` // 该统计的抓取时间（SiteStat.SnapAt）
 }
 
 // DashboardOverview 是仪表盘聚合数据。
 type DashboardOverview struct {
 	Totals struct {
-		Uploaded     int64   `json:"uploaded"`
-		Downloaded   int64   `json:"downloaded"`
-		Seeding      int     `json:"seeding"`
-		Leeching     int     `json:"leeching"`
-		SeedingSize  int64   `json:"seeding_size"`
-		Bonus        float64 `json:"bonus"`
-		BonusPerHour float64 `json:"bonus_per_hour"`
+		Uploaded                  int64   `json:"uploaded"`
+		Downloaded                int64   `json:"downloaded"`
+		TrueUploaded              int64   `json:"true_uploaded"`
+		TrueDownloaded            int64   `json:"true_downloaded"`
+		TrueRatio                 float64 `json:"true_ratio"`
+		Seeding                   int     `json:"seeding"`
+		Leeching                  int     `json:"leeching"`
+		SeedingSize               int64   `json:"seeding_size"`
+		UniqueGroups              int     `json:"unique_groups"`
+		PerfectFLAC               int     `json:"perfect_flac"`
+		Invited                   int     `json:"invited"`
+		Bonus                     float64 `json:"bonus"`
+		BonusPerHour              float64 `json:"bonus_per_hour"`
+		SeedingBonus              float64 `json:"seeding_bonus"`
+		SeedingBonusPerHour       float64 `json:"seeding_bonus_per_hour"`
+		RescueSeedingBonusPerHour float64 `json:"rescue_seeding_bonus_per_hour"`
+		ClaimCount                int     `json:"claim_count"`
+		MaxClaim                  int     `json:"max_claim"`
 	} `json:"totals"`
 	Sites           []SiteStatItem `json:"sites"`
 	SiteCount       int            `json:"site_count"`
@@ -114,23 +137,48 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 			item.Uploaded = stat.Uploaded
 			item.Downloaded = stat.Downloaded
 			item.Ratio = stat.Ratio
+			item.TrueUploaded = stat.TrueUploaded
+			item.TrueDownloaded = stat.TrueDownloaded
+			item.TrueRatio = stat.TrueRatio
 			item.Seeding = stat.Seeding
 			item.Leeching = stat.Leeching
 			item.SeedingSize = stat.SeedingSize
 			item.Uploads = stat.Uploads
+			item.UniqueGroups = stat.UniqueGroups
+			item.PerfectFLAC = stat.PerfectFLAC
+			item.Invited = stat.Invited
 			item.Bonus = stat.Bonus
 			item.BonusPerHour = stat.BonusPerHour
+			item.SeedingBonus = stat.SeedingBonus
+			item.SeedingBonusPerHour = stat.SeedingBonusPerHour
+			item.RescueSeedingBonusPerHour = stat.RescueSeedingBonusPerHour
+			item.ClaimCount = stat.ClaimCount
+			item.MaxClaim = stat.MaxClaim
 			item.JoinDate = stat.JoinDate
+			item.LastAccessAt = stat.LastAccessAt
 			item.UpdatedAt = stat.SnapAt
 		}
 		out.Sites = append(out.Sites, item)
 		out.Totals.Uploaded += item.Uploaded
 		out.Totals.Downloaded += item.Downloaded
+		out.Totals.TrueUploaded += item.TrueUploaded
+		out.Totals.TrueDownloaded += item.TrueDownloaded
 		out.Totals.Seeding += item.Seeding
 		out.Totals.Leeching += item.Leeching
 		out.Totals.SeedingSize += item.SeedingSize
+		out.Totals.UniqueGroups += item.UniqueGroups
+		out.Totals.PerfectFLAC += item.PerfectFLAC
+		out.Totals.Invited += item.Invited
 		out.Totals.Bonus += item.Bonus
 		out.Totals.BonusPerHour += item.BonusPerHour
+		out.Totals.SeedingBonus += item.SeedingBonus
+		out.Totals.SeedingBonusPerHour += item.SeedingBonusPerHour
+		out.Totals.RescueSeedingBonusPerHour += item.RescueSeedingBonusPerHour
+		out.Totals.ClaimCount += item.ClaimCount
+		out.Totals.MaxClaim += item.MaxClaim
+	}
+	if out.Totals.TrueDownloaded > 0 {
+		out.Totals.TrueRatio = float64(out.Totals.TrueUploaded) / float64(out.Totals.TrueDownloaded)
 	}
 	out.SiteCount = len(sites)
 	return out, nil
@@ -141,22 +189,34 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 // （automation 依赖 chain，故 chain 不能反向依赖 automation）。
 func (c *DashboardChain) recordStat(st *models.Site, ui *site.UserInfo) {
 	stat := &models.SiteStat{
-		SiteID:       st.ID,
-		Level:        ui.Level,
-		UserName:     ui.Name,
-		UserID:       ui.ID,
-		Email:        ui.Email,
-		Uploaded:     ui.Uploaded,
-		Downloaded:   ui.Downloaded,
-		Ratio:        ui.Ratio,
-		Seeding:      ui.Seeding,
-		Leeching:     ui.Leeching,
-		SeedingSize:  ui.SeedingSize,
-		Uploads:      ui.Uploads,
-		Bonus:        ui.Bonus,
-		BonusPerHour: ui.BonusPerHour,
-		JoinDate:     ui.JoinDate,
-		SnapAt:       time.Now(),
+		SiteID:                    st.ID,
+		Level:                     ui.Level,
+		UserName:                  ui.Name,
+		UserID:                    ui.ID,
+		Email:                     ui.Email,
+		Uploaded:                  ui.Uploaded,
+		Downloaded:                ui.Downloaded,
+		Ratio:                     ui.Ratio,
+		TrueUploaded:              ui.TrueUploaded,
+		TrueDownloaded:            ui.TrueDownloaded,
+		TrueRatio:                 ui.TrueRatio,
+		Seeding:                   ui.Seeding,
+		Leeching:                  ui.Leeching,
+		SeedingSize:               ui.SeedingSize,
+		Uploads:                   ui.Uploads,
+		UniqueGroups:              ui.UniqueGroups,
+		PerfectFLAC:               ui.PerfectFLAC,
+		Invited:                   ui.Invited,
+		Bonus:                     ui.Bonus,
+		BonusPerHour:              ui.BonusPerHour,
+		SeedingBonus:              ui.SeedingBonus,
+		SeedingBonusPerHour:       ui.SeedingBonusPerHour,
+		RescueSeedingBonusPerHour: ui.RescueSeedingBonusPerHour,
+		ClaimCount:                ui.ClaimCount,
+		MaxClaim:                  ui.MaxClaim,
+		JoinDate:                  ui.JoinDate,
+		LastAccessAt:              ui.LastAccessAt,
+		SnapAt:                    time.Now(),
 	}
 	if err := c.db.Create(stat).Error; err != nil {
 		slog.Warn("dashboard record stat failed", "site", st.Name, "err", err)
@@ -200,17 +260,29 @@ func (c *DashboardChain) SyncOne(ctx context.Context, siteID uint) (*DashboardOv
 
 // SiteHistoryPoint 是某站点一次历史统计快照（站点明细「用户历史数据」用）。
 type SiteHistoryPoint struct {
-	SnapAt       time.Time `json:"snap_at"`
-	Level        string    `json:"level"`
-	Uploaded     int64     `json:"uploaded"`
-	Downloaded   int64     `json:"downloaded"`
-	Ratio        float64   `json:"ratio"`
-	Seeding      int       `json:"seeding"`
-	Leeching     int       `json:"leeching"`
-	SeedingSize  int64     `json:"seeding_size"`
-	Uploads      int       `json:"uploads"`
-	Bonus        float64   `json:"bonus"`
-	BonusPerHour float64   `json:"bonus_per_hour"`
+	SnapAt                    time.Time `json:"snap_at"`
+	Level                     string    `json:"level"`
+	Uploaded                  int64     `json:"uploaded"`
+	Downloaded                int64     `json:"downloaded"`
+	Ratio                     float64   `json:"ratio"`
+	TrueUploaded              int64     `json:"true_uploaded"`
+	TrueDownloaded            int64     `json:"true_downloaded"`
+	TrueRatio                 float64   `json:"true_ratio"`
+	Seeding                   int       `json:"seeding"`
+	Leeching                  int       `json:"leeching"`
+	SeedingSize               int64     `json:"seeding_size"`
+	Uploads                   int       `json:"uploads"`
+	UniqueGroups              int       `json:"unique_groups"`
+	PerfectFLAC               int       `json:"perfect_flac"`
+	Invited                   int       `json:"invited"`
+	Bonus                     float64   `json:"bonus"`
+	BonusPerHour              float64   `json:"bonus_per_hour"`
+	SeedingBonus              float64   `json:"seeding_bonus"`
+	SeedingBonusPerHour       float64   `json:"seeding_bonus_per_hour"`
+	RescueSeedingBonusPerHour float64   `json:"rescue_seeding_bonus_per_hour"`
+	ClaimCount                int       `json:"claim_count"`
+	MaxClaim                  int       `json:"max_claim"`
+	LastAccessAt              string    `json:"last_access_at"`
 }
 
 // History 返回某站点最近 days 天的统计快照（按时间倒序，最多 500 条）。
@@ -231,8 +303,12 @@ func (c *DashboardChain) History(ctx context.Context, siteID uint, days int) ([]
 		out = append(out, SiteHistoryPoint{
 			SnapAt: s.SnapAt, Level: s.Level,
 			Uploaded: s.Uploaded, Downloaded: s.Downloaded, Ratio: s.Ratio,
+			TrueUploaded: s.TrueUploaded, TrueDownloaded: s.TrueDownloaded, TrueRatio: s.TrueRatio,
 			Seeding: s.Seeding, Leeching: s.Leeching, SeedingSize: s.SeedingSize,
-			Uploads: s.Uploads, Bonus: s.Bonus, BonusPerHour: s.BonusPerHour,
+			Uploads: s.Uploads, UniqueGroups: s.UniqueGroups, PerfectFLAC: s.PerfectFLAC, Invited: s.Invited, Bonus: s.Bonus, BonusPerHour: s.BonusPerHour,
+			SeedingBonus: s.SeedingBonus, SeedingBonusPerHour: s.SeedingBonusPerHour, RescueSeedingBonusPerHour: s.RescueSeedingBonusPerHour,
+			ClaimCount: s.ClaimCount, MaxClaim: s.MaxClaim,
+			LastAccessAt: s.LastAccessAt,
 		})
 	}
 	return out, nil

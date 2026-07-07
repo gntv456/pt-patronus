@@ -149,6 +149,113 @@ func TestCrabptUserInfo(t *testing.T) {
 	}
 }
 
+func TestBTSchoolCurrentSeedingSize(t *testing.T) {
+	def, ok := mustRegistry(t).Definition("btschool")
+	if !ok {
+		t.Fatal("btschool definition missing")
+	}
+	doc := docFrom(t, `<table>
+		<tr><td class="rowhead">当前做种</td><td>3 torrents / 1.50 TiB</td></tr>
+	</table>`)
+	u := ParseUserInfo(doc, def)
+	if u.Seeding != 3 {
+		t.Fatalf("seeding = %d, want 3", u.Seeding)
+	}
+	if want := int64(1536 * (1 << 30)); u.SeedingSize != want {
+		t.Fatalf("seeding_size = %d, want %d", u.SeedingSize, want)
+	}
+}
+
+func TestUnit3DDefinitionSeedingSizeFilters(t *testing.T) {
+	tests := []struct {
+		siteID string
+		html   string
+	}{
+		{
+			siteID: "aither",
+			html: `<section>
+				<span class="user-profile-card__meta-item-title">Seeding Size</span>
+				<span class="user-profile-card__meta-item-value">1.50 TiB</span>
+			</section>`,
+		},
+		{
+			siteID: "capybarabr",
+			html:   `<dl><dt>Tamanho em seeding</dt><dd>1.50 TiB</dd></dl>`,
+		},
+		{
+			siteID: "latteam",
+			html:   `<dl><dt>Tamaño total compartiendo</dt><dd>1.50 TiB</dd></dl>`,
+		},
+		{
+			siteID: "portugas",
+			html:   `<dl><dt>Tamanho das Sementes</dt><dd>1.50 TiB</dd></dl>`,
+		},
+	}
+	reg := mustRegistry(t)
+	for _, tt := range tests {
+		t.Run(tt.siteID, func(t *testing.T) {
+			def, ok := reg.Definition(tt.siteID)
+			if !ok {
+				t.Fatalf("%s definition missing", tt.siteID)
+			}
+			u := ParseUserInfo(docFrom(t, tt.html), def)
+			if want := int64(1536 * (1 << 30)); u.SeedingSize != want {
+				t.Fatalf("seeding_size = %d, want %d", u.SeedingSize, want)
+			}
+		})
+	}
+}
+
+func TestJSONDefinitionSeedingSizeFilters(t *testing.T) {
+	reg := mustRegistry(t)
+	tests := []struct {
+		name   string
+		siteID string
+		fields map[string]ElementQuery
+		body   string
+		want   int64
+	}{
+		{
+			name:   "gazellegames",
+			siteID: "gazellegames",
+			body:   `{"response":{"community":{"seedSize":"1.25 TiB"}}}`,
+			want:   int64(1280 * (1 << 30)),
+		},
+		{
+			name:   "yemapt",
+			siteID: "yemapt",
+			body:   `{"data":{"fileSize":"2.50 TiB"}}`,
+			want:   int64(2560 * (1 << 30)),
+		},
+		{
+			name:   "zhuque",
+			siteID: "zhuque",
+			body:   `{"data":{"seedingSize":3221225472}}`,
+			want:   int64(3 * (1 << 30)),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			def, ok := reg.Definition(tt.siteID)
+			if !ok {
+				t.Fatalf("%s definition missing", tt.siteID)
+			}
+			fields := def.UserInfo.Fields
+			if tt.siteID == "yemapt" {
+				fields = def.UserInfo.Pages[2].Fields
+			}
+			if tt.siteID == "zhuque" {
+				fields = def.UserInfo.Pages[0].Fields
+			}
+			u := &UserInfo{}
+			ParseJSONUserInfoFields([]byte(tt.body), fields, u)
+			if u.SeedingSize != tt.want {
+				t.Fatalf("seeding_size = %d, want %d", u.SeedingSize, tt.want)
+			}
+		})
+	}
+}
+
 // TestEngineSelectorsFallback Selectors 回退列表：坏选择器跳过、首个非空命中。
 func TestEngineSelectorsFallback(t *testing.T) {
 	doc := loadFixture(t, "testdata/hxpt_usercp.html")

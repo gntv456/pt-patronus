@@ -1,8 +1,5 @@
 # thevault — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: tcg。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-
+# schema: tcg。已接入通用/专用适配器，待真实站点校准。
 aka:
     - TV
 description: TheVault (TVBZ) is a Private Torrent Tracker for BUSINESS / MARKETING E-LEARNING
@@ -29,6 +26,11 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: cat
+                  name: queryparam
+                - args: "200=ABCs / Basics:::202=Artificial Intelligence:::107=Author: Dan Kennedy:::110=Author: Dan Pena:::117=Author: Eben Pagan:::92=Author: Jay Abraham:::96=Author: John Reese:::63=Author: Robert Kiyosaki:::106=Autobiographies / Biographies:::118=Ayn Rand / Objectivism:::112=Consulting:::94=Copywriting:::103=Corporate Design / Branding:::84=Customer Service:::65=Economics / Finance:::113=Entertainment Business:::73=Hypnosis / NLP:::67=Investing / Trading / Stocks:::75=Magazines:::70=Management / Leadership:::85=Mindset / Achievement:::80=Misc: Audio:::90=Misc: Other:::83=Misc: Software:::81=Misc: Video:::82=Misc: Written / E-Books:::62=Money Management / Taxes:::93=Negotiation / Contracts:::97=Net: Affiliate Schemes:::105=Net: Blogging:::76=Net: E-Commerce:::100=Net: eBay / Online Auctions:::115=Net: Email Marketing:::95=Net: Marketing:::101=Net: Misc:::98=Net: Pay-Per-Click Advertising:::108=Net: Search Engine Optimizing:::99=Net: Traffic Generation:::102=Net: Web Site/Blog Templates:::114=Network Marketing (MLM):::111=Offshore / Tax Avoidance:::116=Private Label Rights (PLR):::68=Real Estate / Property Develop:::104=Recruitment / Interviewing:::71=Sales / Marketing:::72=Small Business / Entrepreneurs:::109=Sports / Gambling:::91=TTC Lectures"
+                  name: map
             selector: a[href^='browse.php?cat=']
 tags:
     - 学习

@@ -12,8 +12,12 @@ import (
 type ElementQuery struct {
 	Selector  string   `yaml:"selector"`  // 相对上下文的 CSS 选择器（单选）
 	Selectors []string `yaml:"selectors"` // 回退选择器列表：按序逐个尝试，取首个非空结果。优先于 Selector
+	Text      string   `yaml:"text"`      // 固定文本值；对应 PT-depiler text
+	Ancestor  string   `yaml:"ancestor"`  // 命中节点后向上找到最近祖先，再读取/继续 find
+	Find      string   `yaml:"find"`      // 命中节点/祖先内继续查找子节点
 	Parent    bool     `yaml:"parent"`    // 命中节点后先爬到父节点再取文本/属性。为 font.color_* 锚点设计——值是 label 的兄弟文本节点，取父节点文本才能拿到「上传量: 104.564 TB」整串
 	Attr      string   `yaml:"attr"`      // 空/"text" 取文本；"html" 取 HTML；否则取属性（href/src/...）
+	Data      string   `yaml:"data"`      // PT-depiler data 字段；HTML 读取 data-*，JSON 读取同名路径
 	Remove    string   `yaml:"remove"`    // 提取前移除的子选择器（如广告/图标）
 	Filters   []Filter `yaml:"filters"`   // 后处理链
 }
@@ -86,20 +90,42 @@ type HRTorrent struct {
 
 // UserInfo 是站点用户资料。Level 用于好学 VIP 判定。
 type UserInfo struct {
-	ID           string  `json:"id"`
-	Name         string  `json:"name"`
-	Email        string  `json:"email,omitempty"` // 资料页邮箱（best-effort：部分站不展示或部分隐藏 a***@b.com，原样保留）
-	Level        string  `json:"level"`
-	Uploaded     int64   `json:"uploaded"`
-	Downloaded   int64   `json:"downloaded"`
-	Ratio        float64 `json:"ratio"`
-	Seeding      int     `json:"seeding"`
-	Leeching     int     `json:"leeching"`
-	SeedingSize  int64   `json:"seeding_size"`
-	Uploads      int     `json:"uploads"` // 发布数（用户上传的种子数）
-	Bonus        float64 `json:"bonus"`
-	BonusPerHour float64 `json:"bonus_per_hour"`
-	JoinDate     string  `json:"join_date,omitempty"`
+	ID                        string  `json:"id"`
+	Name                      string  `json:"name"`
+	Email                     string  `json:"email,omitempty"` // 资料页邮箱（best-effort：部分站不展示或部分隐藏 a***@b.com，原样保留）
+	Level                     string  `json:"level"`
+	LevelID                   int     `json:"level_id,omitempty"`
+	NumericUserID             int     `json:"numeric_user_id,omitempty"`
+	Avatar                    string  `json:"avatar,omitempty"`
+	PersonalAvatar            string  `json:"personal_avatar,omitempty"`
+	IsDonor                   bool    `json:"is_donor,omitempty"`
+	Uploaded                  int64   `json:"uploaded"`
+	Downloaded                int64   `json:"downloaded"`
+	Ratio                     float64 `json:"ratio"`
+	TrueUploaded              int64   `json:"true_uploaded,omitempty"`
+	TrueDownloaded            int64   `json:"true_downloaded,omitempty"`
+	TrueRatio                 float64 `json:"true_ratio,omitempty"`
+	Seeding                   int     `json:"seeding"`
+	Leeching                  int     `json:"leeching"`
+	SeedingSize               int64   `json:"seeding_size"`
+	Uploads                   int     `json:"uploads"` // 发布数（用户上传的种子数）
+	Adoptions                 int     `json:"adoptions,omitempty"`
+	Posts                     int     `json:"posts,omitempty"`
+	Snatches                  int     `json:"snatches,omitempty"`
+	TotalTraffic              int64   `json:"total_traffic,omitempty"`
+	UniqueGroups              int     `json:"unique_groups,omitempty"`
+	PerfectFLAC               int     `json:"perfect_flac,omitempty"`
+	Invited                   int     `json:"invited,omitempty"`
+	Bonus                     float64 `json:"bonus"`
+	BonusPerHour              float64 `json:"bonus_per_hour"`
+	SeedingBonus              float64 `json:"seeding_bonus,omitempty"`
+	SeedingBonusPerHour       float64 `json:"seeding_bonus_per_hour,omitempty"`
+	RescueSeedingBonusPerHour float64 `json:"rescue_seeding_bonus_per_hour,omitempty"`
+	SeedingTime               int64   `json:"seeding_time,omitempty"`
+	ClaimCount                int     `json:"claim_count,omitempty"`
+	MaxClaim                  int     `json:"max_claim,omitempty"`
+	JoinDate                  string  `json:"join_date,omitempty"`
+	LastAccessAt              string  `json:"last_access_at,omitempty"`
 }
 
 // SiteMetadata 是一个站点的定义（definitions/*.yaml 反序列化目标）。
@@ -445,11 +471,24 @@ type SiteSelectors struct {
 //
 // 适配器 FetchUserInfo 会先抓基础页，再用发现到的 uid 抓富资料页合并；任一页失败 best-effort 不致命。
 type UserInfoDef struct {
-	Path         string                  `yaml:"path"`          // 基础统计页，默认 usercp.php
-	Fields       map[string]ElementQuery `yaml:"fields"`        // 基础页字段。约定键: name/level/uploaded/downloaded/ratio/seeding/leeching/seeding_size/bonus/bonus_per_hour/join_date
-	DetailPath   string                  `yaml:"detail_path"`   // 富资料页（需 uid），默认 userdetails.php
-	DetailFields map[string]ElementQuery `yaml:"detail_fields"` // 富资料页字段。约定键同 Fields（常用 level/join_date）
-	VIPLevels    []string                `yaml:"vip_levels"`    // 视为 VIP 的等级名（好学 VIP 判定）
+	Path               string                  `yaml:"path"`                  // 基础统计页，默认 usercp.php
+	Fields             map[string]ElementQuery `yaml:"fields"`                // 基础页字段。约定键: name/level/level_id/numeric_user_id/avatar/personal_avatar/is_donor/uploaded/downloaded/ratio/true_uploaded/true_downloaded/true_ratio/seeding/leeching/seeding_size/uploads/uploads_add/adoptions/posts/snatches/total_traffic/unique_groups/perfect_flac/invited/bonus/bonus_per_hour/seeding_bonus/seeding_bonus_per_hour/rescue_seeding_bonus_per_hour/seeding_time/claim_count/max_claim/join_date/last_access_at
+	DetailPath         string                  `yaml:"detail_path"`           // 富资料页（需 uid），默认 userdetails.php
+	DetailFields       map[string]ElementQuery `yaml:"detail_fields"`         // 富资料页字段。约定键同 Fields（常用 level/join_date）
+	Pages              []UserInfoPageDef       `yaml:"pages"`                 // 多步用户信息流程，按顺序抓取并合并字段
+	UserTorrentListAPI string                  `yaml:"user_torrent_list_api"` // optional template with {id}, {type}, {page}
+	VIPLevels          []string                `yaml:"vip_levels"`            // 视为 VIP 的等级名（好学 VIP 判定）
+}
+
+type UserInfoPageDef struct {
+	Path      string                  `yaml:"path"`       // 相对路径；支持 {id}/{name}/$id$/$name$ 占位
+	Params    map[string]string       `yaml:"params"`     // 查询参数，同样支持占位
+	Headers   map[string]string       `yaml:"headers"`    // 额外请求头；常用于 AJAX 端点的 X-Requested-With
+	Method    string                  `yaml:"method"`     // GET/POST；空为 GET
+	Body      string                  `yaml:"body"`       // POST 请求体；常用于 JSON API 的 "{}"
+	UseFields []string                `yaml:"use_fields"` // 复用 user_info.fields/detail_fields 中的字段名
+	Fields    map[string]ElementQuery `yaml:"fields"`     // 本页专属字段
+	Format    string                  `yaml:"format"`     // html/json/auto；空值按响应体自动判断
 }
 
 // NoLoginDef 描述「未登录」判定（多策略 OR）。

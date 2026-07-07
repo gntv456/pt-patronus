@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 0.80.06+10
+version: 0.81.01+11
 
 environment:
   sdk: ^3.11.5
@@ -82,6 +82,13 @@ dev_dependencies:
   # 启动器图标生成：从 assets/icon_source.png（1024² PTPatronus 吉祥物，由
   # tool/render_icon.dart 渲染产出）一次性生成 Android/iOS/macOS/Windows 全平台图标。
   flutter_launcher_icons: ^0.14.3
+
+# 依赖覆盖：chewie 1.13.x 在 adaptive_controls.dart 硬编码 `case TargetPlatform.ohos:`，
+# 该枚举成员仅 OpenHarmony fork 的 flutter 才有，官方 stable flutter 编译期报 "Member not found: 'ohos'"。
+# 锁回 1.12.1（最后一个不含 ohos 引用的版本；fwfh_chewie 约束 ^1.3.0、chewie 1.12.x 要求 flutter ≥3.29 均满足）。
+# 鸿蒙构建走 OpenHarmony fork flutter，此 override 不影响（1.12.1 同样可在其上编译）。
+dependency_overrides:
+  chewie: 1.12.1
 
 # 启动器图标配置：dart run flutter_launcher_icons 读取此段。
 # image_path 指向 1024² 源 PNG（dev 产物，非打包资产）；remove_alpha_ios 因 iOS 图标禁透明。

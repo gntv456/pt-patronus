@@ -10,13 +10,25 @@ export interface SiteStatItem {
   uploaded: number
   downloaded: number
   ratio: number
+  true_uploaded: number
+  true_downloaded: number
+  true_ratio: number
   seeding: number
   leeching: number
   seeding_size: number
   uploads: number
+  unique_groups: number
+  perfect_flac: number
+  invited: number
   bonus: number
   bonus_per_hour: number
+  seeding_bonus: number
+  seeding_bonus_per_hour: number
+  rescue_seeding_bonus_per_hour: number
+  claim_count: number
+  max_claim: number
   join_date: string
+  last_access_at: string
   updated_at: string
 }
 
@@ -26,12 +38,24 @@ export interface SiteHistoryPoint {
   uploaded: number
   downloaded: number
   ratio: number
+  true_uploaded: number
+  true_downloaded: number
+  true_ratio: number
   seeding: number
   leeching: number
   seeding_size: number
   uploads: number
+  unique_groups: number
+  perfect_flac: number
+  invited: number
   bonus: number
   bonus_per_hour: number
+  seeding_bonus: number
+  seeding_bonus_per_hour: number
+  rescue_seeding_bonus_per_hour: number
+  claim_count: number
+  max_claim: number
+  last_access_at: string
 }
 
 // 某一天的跨站聚合趋势点（对齐后端 TrendPoint / mobile DashboardTrendPoint）。
@@ -49,11 +73,22 @@ export interface DashboardOverview {
   totals: {
     uploaded: number
     downloaded: number
+    true_uploaded: number
+    true_downloaded: number
+    true_ratio: number
     seeding: number
     leeching: number
     seeding_size: number
+    unique_groups: number
+    perfect_flac: number
+    invited: number
     bonus: number
     bonus_per_hour: number
+    seeding_bonus: number
+    seeding_bonus_per_hour: number
+    rescue_seeding_bonus_per_hour: number
+    claim_count: number
+    max_claim: number
   }
   sites: SiteStatItem[]
   site_count: number

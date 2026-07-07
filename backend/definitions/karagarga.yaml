@@ -1,10 +1,5 @@
 # karagarga — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-#   - search.subTitle（elementProcess）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - KG
 description: KaraGarga is a private tracker for non-mainstream movies, music and literature.
@@ -24,6 +19,9 @@ selectors:
     fields:
         category:
             attr: title
+            filters:
+                - args: "^([^:]+)"
+                  name: regexp
             selector: a[href^="browse.php?genre="] img
         completed:
             filters:
@@ -48,6 +46,9 @@ selectors:
                 - name: parse_size
             selector: td:nth-child(11)
         subtitle:
+            attr: html
+            filters:
+                - name: karagarga_subtitle
             selector: :self
         time:
             selector: td:nth-child(9)
@@ -62,3 +63,57 @@ tags:
 timezone_offset: "+0000"
 urls:
     - https://karagarga.in/
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                selector: "a[title='click to see your details page']:last"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: id
+            name:
+                selector: "a[title='click to see your details page']:last"
+        - path: /userdetails.php
+          params:
+            id: "{id}"
+          fields:
+            uploaded:
+                selector: "td.rowhead:contains('Uploaded') + td"
+                filters:
+                    - name: parse_size
+            uploads:
+                selector: "td.rowhead:contains('Uploaded') + td"
+                filters:
+                    - name: regexp
+                      args: '\((\d+)\s*(?:uploads?|torrents?)?\)'
+                    - name: parse_number
+            downloaded:
+                selector: "td.rowhead:contains('Downloaded') + td"
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "td.rowhead:contains('Share ratio') + td > table > tbody > tr > td:nth-child(1) > font"
+                filters:
+                    - name: parse_number
+            level:
+                selector: "td.rowhead:contains('Class') + td"
+            join_date:
+                selector: "td.rowhead:contains('Join'):contains('date') + td"
+                filters:
+                    - name: split
+                      args: " (:::0"
+                    - name: parse_time
+        - path: /current.php
+          params:
+            id: "{id}"
+          fields:
+            seeding:
+                selector: "table#browse tr:has(a[href^='details.php?id='])"
+                attr: count
+            seeding_size:
+                selector: "table#browse tr:has(a[href^='details.php?id=']) td:nth-child(11)"
+                attr: text_all
+                filters:
+                    - name: sum_size

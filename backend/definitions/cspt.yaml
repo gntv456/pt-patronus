@@ -41,6 +41,7 @@ selectors:
 # upload/download/ratio 的 color_* 虽 display:none，取父节点 <a> 文本仍含值 → 通用 color_* 锚点可用。
 # bonus/seeding/leeching 是 Audiences 专属的 SVG-title + <a> 结构，单独配。
 user_info:
+  user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
   path: usercp.php
   fields:
     uploaded:
@@ -49,12 +50,14 @@ user_info:
       filters:
         - name: regexp
           args: '(?:上传量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     downloaded:
       selector: "font.color_downloaded"
       parent: true
       filters:
         - name: regexp
           args: '(?:下载量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     ratio:
       selector: "font.color_ratio"
       parent: true

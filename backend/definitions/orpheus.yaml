@@ -1,6 +1,5 @@
 # orpheus — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: gazelle_jsonapi。API 用户字段 + bonus 页做种体积已翻译为可执行流程；真实站点仍建议 live smoke。
 
 aka:
     - OPS
@@ -82,3 +81,9 @@ user_info:
                 - name: parse_size
             selectors:
                 - table > tbody > tr > td:eq(1)
+    pages:
+        - path: /bonus.php
+          params:
+              action: bprates
+          use_fields:
+              - seeding_size

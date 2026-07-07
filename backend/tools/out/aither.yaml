@@ -1,5 +1,5 @@
 # aither — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# schema: unit3d。已由本项目运行时 schema adapter 支持。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
 #   - search.category（data）
 #   - search.category.filters（匿名函数）
@@ -72,4 +72,6 @@ user_info:
             selector: li.ratio-bar__ratio a:has( > i.fa-sync-alt)
         seeding_size: {}
         uploads:
-            selector: .user-profile-card__meta-item  a[href*='/uploads']
+            filters:
+                - name: parse_number
+            selector: a[href*='/uploads']:has(i.fa-file-arrow-up)

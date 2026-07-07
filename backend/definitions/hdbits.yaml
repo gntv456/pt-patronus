@@ -1,12 +1,5 @@
 # hdbits — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.title.filters（匿名函数）
-#   - search.url.filters[prepend]
-#   - search.time.filters（匿名函数）
-#   - search.category.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - HDB
 description: HDBits is a Private site for the HighDefinition Bittorrent Community
@@ -36,11 +29,17 @@ search_param: search
 selectors:
     fields:
         category:
+            filters:
+                - args: 1=Movies:::2=TV:::3=Documentaries:::4=Music:::5=Sport:::6=Audio Track:::7=XXX:::8=Misc/Demo
+                  name: map
             selector: type_category
         completed:
             selector: times_completed
         detail:
             selector: id
+            filters:
+                - name: prepend
+                  args: /details.php?id=
         leechers:
             selector: leechers
         seeders:
@@ -49,7 +48,11 @@ selectors:
             selector: size
         time:
             selector: utadded
+            filters:
+                - name: unix_seconds
         title:
+            filters:
+                - name: hdbits_title
             selector: :self
     rows:
         selector: data
@@ -59,3 +62,75 @@ tags:
 timezone_offset: "+0000"
 urls:
     - https://hdbits.org/
+user_info:
+    pages:
+        - path: /index.php
+          fields:
+            id:
+                selector: "a[href*='userdetails.php']:first"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: id
+            name:
+                selector: "a[href*='userdetails.php']:first"
+        - path: /userdetails.php
+          params:
+            id: "{id}"
+          fields:
+            uploaded:
+                selector: "td.rowhead:contains('Uploaded') + td"
+                filters:
+                    - name: split
+                      args: "(:::0"
+                    - name: parse_size
+            downloaded:
+                selector: "td.rowhead:contains('Downloaded') + td"
+                filters:
+                    - name: split
+                      args: "(:::0"
+                    - name: parse_size
+            ratio:
+                selector: "td.rowhead:contains('Share ratio') + td"
+                filters:
+                    - name: parse_number
+            level:
+                selector: "td.rowhead:contains('Class') + td"
+            bonus:
+                selector: "td.rowhead:contains('Bonus') + td"
+                filters:
+                    - name: parse_number
+            join_date:
+                selector: "td.rowhead:contains('JOIN'):contains('date') + td"
+                filters:
+                    - name: split
+                      args: " (:::0"
+                    - name: parse_time
+            last_access_at:
+                selector: "td.rowhead:contains('seen') + td"
+                filters:
+                    - name: regexp
+                      args: '^([^(]+)'
+                    - name: parse_time
+            seeding:
+                selector: "td.heading:contains('Currently'):contains('seeding') + td"
+                filters:
+                    - name: replace
+                      args: "-:::"
+                    - name: parse_number
+            seeding_size:
+                selector: "td.rowhead:contains('Seeding size') + td"
+                filters:
+                    - name: split
+                      args: "(:::0"
+                    - name: parse_size
+            uploads:
+                selector: "td.heading:contains('Uploaded'):contains('torrents') + td"
+                filters:
+                    - name: replace
+                      args: "-:::"
+                    - name: parse_number
+            bonus_per_hour:
+                selector: "td.heading:contains('Bonus per hour') + td"
+                filters:
+                    - name: parse_number

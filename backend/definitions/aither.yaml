@@ -1,9 +1,5 @@
 # aither — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category（data）
-#   - search.category.filters（匿名函数）
-
+# schema: unit3d。已接入通用/专用适配器，待真实站点校准。
 aka:
     - ATH
 id: aither
@@ -56,6 +52,10 @@ schema: unit3d
 selectors:
     fields:
         category:
+            data: categoryId
+            filters:
+                - args: 1=Movie:::9=Sport:::2=TV
+                  name: map
             selector: :self
 tags:
     - 影视
@@ -64,12 +64,30 @@ urls:
     - https://aither.cc/
 user_info:
     fields:
-        id: {}
-        join_date: {}
+        id:
+            selectors:
+                - "span.user-profile-card__meta-item-title:contains('User ID') + span.user-profile-card__meta-item-value"
+                - "span.user-profile-card__meta-item-title:contains('用户 ID') + span.user-profile-card__meta-item-value"
+                - "span.user-profile-card__meta-item-title:contains('用ID') + span.user-profile-card__meta-item-value"
+                - "span.user-profile-card__meta-item-title:contains('用户ID') + span.user-profile-card__meta-item-value"
+        join_date:
+            filters:
+                - name: parse_time
+            selectors:
+                - "span[title='Registration date'] span"
+                - "span[title='注册日期'] span"
+                - "span[title='註冊日期'] span"
         ratio:
             filters:
                 - name: parse_number
             selector: li.ratio-bar__ratio a:has(i.fa-sync-alt)
-        seeding_size: {}
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - "span.user-profile-card__meta-item-title:contains('Seeding Size') + span.user-profile-card__meta-item-value"
+                - "span.user-profile-card__meta-item-title:contains('Seeding size') + span.user-profile-card__meta-item-value"
+                - "span.user-profile-card__meta-item-title:contains('做种体积') + span.user-profile-card__meta-item-value"
+                - "span.user-profile-card__meta-item-title:contains('做種體積') + span.user-profile-card__meta-item-value"
         uploads:
             selector: .user-profile-card__meta-item  a[href*='/uploads']

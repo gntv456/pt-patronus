@@ -1,8 +1,5 @@
 # kufirc — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-
+# schema: luminance。已接入通用/专用适配器，待真实站点校准。
 aka:
     - kf
 description: XXX Animal
@@ -46,6 +43,8 @@ selectors:
     fields:
         category:
             attr: title
+            filters:
+                - name: title_case
             selectors:
                 - td.cats_col > div
 tags:

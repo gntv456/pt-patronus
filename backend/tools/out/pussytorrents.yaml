@@ -1,15 +1,15 @@
 # pussytorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time.filters（匿名函数）
 #   - search.category（text）
+#   - search.time.filters（匿名函数）
+#   - userInfo.seeding.filters（匿名函数）
 #   - userInfo.seedingSize.filters（匿名函数）
-#   - userInfo.uploads.filters（匿名函数）
-#   - userInfo.downloaded.filters（匿名函数）
 #   - userInfo.joinTime.filters（匿名函数）
 #   - userInfo.id.filters（匿名函数）
 #   - userInfo.uploaded.filters（匿名函数）
-#   - userInfo.seeding.filters（匿名函数）
+#   - userInfo.downloaded.filters（匿名函数）
+#   - userInfo.uploads.filters（匿名函数）
 #   - userInfo.process（多步抓取流程，需适配器实现）
 
 aka:

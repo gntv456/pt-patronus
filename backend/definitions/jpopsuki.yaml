@@ -1,9 +1,5 @@
 # jpopsuki — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.title（elementProcess）
-#   - userInfo.levelName.filters（匿名函数）
-
+# schema: gazelle。已接入通用/专用适配器，待真实站点校准。
 aka:
     - JPS
     - JPOP
@@ -27,10 +23,7 @@ level_requirements:
       interval: P2W
       is_kept: true
       name: Power User
-      privilege: |-
-        map[__raw:BinaryExpression src:"advanced Top 10, can view torrent snatched list, edit torrent's description, " +
-                "original title and release date and access the advanced user search. " +
-                "Receives a new invite once ]
+      privilege: advanced Top 10, can view torrent snatched list, edit torrent's description, original title and release date and access the advanced user search. Receives a new invite once per month (up to a maximum of 10 available invites).
       ratio: 1.05
       uploaded: 25GB
       uploads: 5
@@ -47,7 +40,11 @@ selectors:
         download:
             attr: href
             selector: a[href*='torrents.php?action=download'][title='Download']
-        title: {}
+        title:
+            attr: title
+            selectors:
+                - td:has(a[href*='torrents.php?id='][title]) a[href*='torrents.php?id='][title]
+                - a[href*='torrents.php?id='][title]
 tags:
     - 音乐
     - 日韩
@@ -56,21 +53,126 @@ urls:
     - https://jpopsuki.eu/
 user_info:
     fields:
+        bonus:
+            filters:
+                - args: (?i)(?:Bonus Points|ボーナスポイント|ボーナス)[^0-9]*([\d.,]+)
+                  name: regexp
+                - name: parse_number
+            selectors:
+                - div:contains('Stats') + ul.stats > li:contains('Bonus Points')
+                - div:contains('統計情報') + ul.stats > li:contains('ボーナス')
+                - div:contains('あなたは') strong
+        bonus_per_hour:
+            filters:
+                - args: (?i)(?:Bonus Points per Hour/Day|You currently earn)[^0-9]*([\d.]+)
+                  name: regexp
+                - name: parse_number
+            selectors:
+                - li:contains('Bonus Points per Hour')
+                - .box:contains('You currently earn')
         downloaded:
             filters:
+                - args: (?i)(?:Downloaded|受信量)[^0-9]*([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
                 - name: parse_size
+            selectors:
+                - div:contains('Stats') + ul.stats > li:contains('Downloaded:')
+                - div:contains('統計情報') + ul.stats > li:contains('受信量')
         join_date:
             attr: title
             filters:
-                - args: '[MMM dd yyyy, HH:mm]'
-                  name: parse_time
-        level: {}
+                - name: parse_time
+            selectors:
+                - div:contains('Stats') + ul.stats > li:contains('Joined:') > span
+        last_access_at:
+            attr: title
+            selectors:
+                - div:contains('Stats') + ul.stats > li:contains('Last Seen') > span
+                - div:contains('Stats') + ul.stats > li:contains('Last seen') > span
+                - div:contains('統計情報') + ul.stats > li:contains('最後にアクセスした時') > span
+        level:
+            filters:
+                - args: ^(?:Class:|階級:)\s*(.+)$
+                  name: regexp
+            selectors:
+                - div:contains('Personal') + ul.stats > li:contains('Class:')
+                - div:contains('個人情報') + ul.stats > li:contains('階級:')
+        ratio:
+            filters:
+                - args: (?i)(?:Ratio|負担率)[^0-9∞Inf]*([\d.]+|∞|Inf|Infinity)
+                  name: regexp
+            selectors:
+                - div:contains('Stats') + ul.stats > li:contains('Ratio:')
+                - div:contains('統計情報') + ul.stats > li:contains('負担率')
         seeding:
             filters:
+                - args: (?i)(?:Seeding|シード中)[^0-9]*(\d+)
+                  name: regexp
                 - name: parse_number
+            selectors:
+                - div:contains('Community') + ul.stats > li:contains('Seeding:')
+                - div:contains('コミュニティ') + ul.stats > li:contains('シード中')
         uploaded:
             filters:
+                - args: (?i)(?:Uploaded|送信量|アップロード数)[^0-9]*([\d.,]+\s*[KMGTPE]i?B)
+                  name: regexp
                 - name: parse_size
+            selectors:
+                - div:contains('Stats') + ul.stats > li:contains('Uploaded:')
+                - div:contains('統計情報') + ul.stats > li:contains('送信量')
+                - div:contains('統計情報') + ul.stats > li:contains('アップロード数')
         uploads:
             filters:
+                - args: (?i)(?:Uploaded|アップロード数)[^0-9]*(\d+)
+                  name: regexp
                 - name: parse_number
+            selectors:
+                - div:contains('Community') + ul.stats > li:contains('Uploaded:')
+                - div:contains('コミュニティ') + ul.stats > li:contains('アップロード数')
+    pages:
+        - path: /bonus.php
+          use_fields:
+            - bonus
+            - bonus_per_hour
+        - path: /ajax.php
+          params:
+            section: torrents
+            userid: "{id}"
+            page: "1"
+            type: seeding
+          headers:
+            X-Requested-With: XMLHttpRequest
+          fields:
+            seeding:
+              attr: count
+              selector: tr.torrent
+            seeding_size:
+              attr: text_all
+              filters:
+                - args: ([\d.,]+\s*[KMGTPE]i?B)
+                  name: sum_size
+              selector: :self
+        - path: /ajax.php
+          params:
+            section: torrents
+            userid: "{id}"
+            page: "1"
+            type: uploaded
+          headers:
+            X-Requested-With: XMLHttpRequest
+          fields:
+            uploads:
+              attr: count
+              selector: tr.torrent
+        - path: /user.php
+          params:
+            action: edit
+            userid: "{id}"
+          fields:
+            personal_avatar:
+              attr: value
+              filters:
+                - name: clean_avatar
+              selectors:
+                - input[name='avatar']
+                - input#avatar

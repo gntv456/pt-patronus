@@ -1,8 +1,5 @@
 # ncore — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 id: ncore
 level_requirements:
     - id: 1
@@ -25,5 +22,32 @@ level_requirements:
 name: nCore
 tags:
     - 匈牙利
+user_info:
+    pages:
+        - path: /profile.php
+          fields:
+            id:
+                selector: input[data-uid]
+                attr: data-uid
+            name:
+                selector: "#profil_nev > span"
+            level:
+                selector: "#profil_rang > nobr"
+                filters:
+                    - name: replace
+                      args: "():::"
+            join_date:
+                selector: "div.userbox_tartalom_mini:nth-child(2) > div:nth-child(2) span"
+                attr: title
+                filters:
+                    - name: parse_time
+            uploaded:
+                selector: "div.userbox_tartalom_mini:nth-child(2) > div:nth-child(8) span"
+                filters:
+                    - name: parse_size
+            bonus:
+                selector: "div.userbox_tartalom_mini:nth-child(2) > div:nth-child(10)"
+                filters:
+                    - name: parse_number
 urls:
     - https://ncore.pro/

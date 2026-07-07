@@ -1,6 +1,5 @@
-# redleaves — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# redleaves - user_info override migrated from PT-depiler and covered by mock tests; dead site retained.
+# schema: nexusphp; defaults fill common NexusPHP fields.
 
 aka:
     - RedLeaves
@@ -74,3 +73,10 @@ tags:
     - 游戏
 urls:
     - https://leaves.red/
+user_info:
+    path: index.php
+    user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
+    fields:
+        name:
+            selectors:
+                - "a[href*='userdetails.php'][class*='Name']:first > b"

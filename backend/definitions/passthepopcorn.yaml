@@ -1,13 +1,5 @@
 # passthepopcorn — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.seedingSize.filters（匿名函数）
-#   - userInfo.joinTime（elementProcess）
-#   - userInfo.seeding.filters（匿名函数）
-#   - userInfo.bonus.filters（匿名函数）
-#   - userInfo.uploads.filters（匿名函数）
-#   - userInfo.bonusPerHour.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
+# schema: gazelle。定义级 mock 已覆盖 PTP panels 用户信息、时魔、做种数与做种体积；真实站点仍建议 live smoke。
 
 aka:
     - PTP
@@ -82,32 +74,83 @@ urls:
 user_info:
     fields:
         bonus:
+            filters:
+                - args: Points.+?([\d.,]+)
+                  name: regexp
             selector: div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Points:')
         bonus_per_hour:
+            filters:
+                - args: Points per hour.+?([\d.,]+)
+                  name: regexp
             selector: div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Points per hour:')
         downloaded:
+            filters:
+                - name: parse_size
             selector: div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Downloaded:')
         id:
+            attr: href
+            filters:
+                - args: id
+                  name: queryparam
             selectors:
                 - a[href*='user.php?id=']
         join_date:
+            attr: title
+            filters:
+                - name: parse_time
             selectors:
                 - div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Joined:') > span
         level:
+            filters:
+                - args: 'Class:\s*(.+)'
+                  name: regexp
             selector: div.panel__heading:contains('Personal') + div.panel__body > ul.list > li:contains('Class:')
         name:
             selectors:
                 - a[href*='user.php?id=']
         ratio:
+            filters:
+                - name: parse_number
             selector: div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Ratio:')
         seeding:
+            filters:
+                - args: Seeding.+?([\d.,]+)
+                  name: regexp
             selectors:
                 - div.panel__heading:contains('Community') + div.panel__body > ul.list > li:contains('Seeding:')
         seeding_size:
+            filters:
+                - args: Seeding size.+?([\d.,]+\s*[ZEPTGMK]?i?B)
+                  name: regexp
+                - name: parse_size
             selectors:
                 - div.panel__heading:contains('Community') + div.panel__body > ul.list > li:contains('Seeding size:')
         uploaded:
+            filters:
+                - name: parse_size
             selector: div.panel__heading:contains('Stats') + div.panel__body > ul.list > li:contains('Uploaded:')
         uploads:
+            filters:
+                - args: Uploaded:.+?([\d,]+)
+                  name: regexp
             selectors:
                 - div.panel__heading:contains('Community') + div.panel__body > ul.list > li:contains('Uploaded:')
+    pages:
+        - path: /index.php
+          use_fields:
+            - id
+            - name
+        - path: /user.php
+          params:
+            id: "{id}"
+          use_fields:
+            - uploaded
+            - downloaded
+            - ratio
+            - level
+            - bonus
+            - bonus_per_hour
+            - join_date
+            - seeding
+            - seeding_size
+            - uploads

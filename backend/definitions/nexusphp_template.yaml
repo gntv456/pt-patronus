@@ -63,12 +63,14 @@ user_info:
       filters:
         - name: regexp
           args: '(?:上传量|上傳量|Uploaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     downloaded:
       selector: "font.color_downloaded"
       parent: true
       filters:
         - name: regexp
           args: '(?:下载量|下載量|Downloaded)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     ratio:
       selector: "font.color_ratio"
       parent: true

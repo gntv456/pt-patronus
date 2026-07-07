@@ -29,10 +29,10 @@ type SiteResult struct {
 // SiteChain 编排站点相关业务：搜索、连接测试、用户信息。
 type SiteChain struct {
 	Base
-	sites    *oper.SiteOper
-	registry *site.Registry
-	records  *oper.CheckinRecordOper // 签到历史落库（可选；未注入则不落库，测试用）
-	checkinGuard *spendGuard // 签到 in-flight 去重（防双击/重放/cron 重叠重复签到）
+	sites        *oper.SiteOper
+	registry     *site.Registry
+	records      *oper.CheckinRecordOper // 签到历史落库（可选；未注入则不落库，测试用）
+	checkinGuard *spendGuard             // 签到 in-flight 去重（防双击/重放/cron 重叠重复签到）
 
 	// 站免/公告 per-site 缓存（站点是全局共享配置，故缓存按 siteID 而非 uid 分桶）。
 	flMu     sync.Mutex
@@ -71,14 +71,14 @@ type (
 // NewSiteChain 构造 SiteChain。
 func NewSiteChain(b Base, sites *oper.SiteOper, registry *site.Registry) *SiteChain {
 	return &SiteChain{
-		Base:     b,
-		sites:    sites,
-		registry: registry,
+		Base:         b,
+		sites:        sites,
+		registry:     registry,
 		checkinGuard: newSpendGuard(),
-		flCache:    make(map[uint]flCacheEntry),
-		annCache:   make(map[uint]annCacheEntry),
-		haremCache: make(map[uint]haremCacheEntry),
-		detailCache: make(map[string]detailCacheEntry),
+		flCache:      make(map[uint]flCacheEntry),
+		annCache:     make(map[uint]annCacheEntry),
+		haremCache:   make(map[uint]haremCacheEntry),
+		detailCache:  make(map[string]detailCacheEntry),
 	}
 }
 
@@ -106,14 +106,65 @@ func (c *SiteChain) credential(s *models.Site, def *site.SiteMetadata) string {
 				return k
 			}
 			return ""
+		case "yemapt":
+			if k, err := c.sites.APIKey(s); err == nil && k != "" {
+				return k
+			}
+			cookie, _ := c.sites.Cookie(s)
+			return cookie
+		case "gazelle_jsonapi":
+			if def.ID == "gazellegames" {
+				if k, err := c.sites.APIKey(s); err == nil && k != "" {
+					return k
+				}
+			}
+			cookie, _ := c.sites.Cookie(s)
+			return cookie
+		case "f3nix":
+			apiKey, _ := c.sites.APIKey(s)
+			rssKey := c.sites.DecryptedPasskey(s)
+			cookie, _ := c.sites.Cookie(s)
+			if apiKey == "" && rssKey == "" {
+				return cookie
+			}
+			b, _ := json.Marshal(map[string]string{
+				"api_key": apiKey,
+				"rsskey":  rssKey,
+				"cookie":  cookie,
+			})
+			return string(b)
+		case "fsm":
+			token, _ := c.sites.APIKey(s)
+			passkey := c.sites.DecryptedPasskey(s)
+			cookie, _ := c.sites.Cookie(s)
+			if token == "" && passkey == "" {
+				return cookie
+			}
+			b, _ := json.Marshal(map[string]string{
+				"token":   token,
+				"passkey": passkey,
+				"cookie":  cookie,
+			})
+			return string(b)
+		case "rousi":
+			if pk := c.sites.DecryptedPasskey(s); pk != "" {
+				return pk
+			}
+			if k, err := c.sites.APIKey(s); err == nil && k != "" {
+				return k
+			}
+			cookie, _ := c.sites.Cookie(s)
+			return cookie
 		case "avistaz":
-			// 三字段打包：Site.Username + Password() + DecryptedPasskey()（pid）。
+			// Avistaz 搜索用 username/password/pid；AnimeZ 用户资料可 best-effort 复用 cookie 抓网页 profile。
 			pwd, _ := c.sites.Password(s)
 			pid := c.sites.DecryptedPasskey(s)
+			cookie, _ := c.sites.Cookie(s)
 			b, _ := json.Marshal(map[string]string{
 				"username": s.Username,
 				"password": pwd,
 				"pid":      pid,
+				"cookie":   cookie,
 			})
 			return string(b)
 		}

@@ -1,12 +1,5 @@
 # totheglory — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: tbsource。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.subTitle（elementProcess）
-#   - search.seeders.filters（匿名函数）
-#   - search.title（elementProcess）
-#   - search.leechers.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: tbsource。已接入通用/专用适配器，待真实站点校准。
 aka:
     - TTG
     - 套套哥
@@ -114,12 +107,24 @@ selectors:
             attr: href
             selector: a.dl_a
         leechers:
+            filters:
+                - args: "/:::1"
+                  name: split
+                - name: parse_number
             selector: td:nth-child(9)
         seeders:
+            filters:
+                - args: "/:::0"
+                  name: split
+                - name: parse_number
             selector: td:nth-child(9)
         size:
             selector: td:nth-child(7)
         subtitle:
+            attr: html
+            filters:
+                - args: "1"
+                  name: html_line
             selectors:
                 - div.name_left > a > b > font
                 - div.name_left > a > b
@@ -129,6 +134,10 @@ selectors:
                   name: parse_time
             selector: td:nth-child(5)
         title:
+            attr: html
+            filters:
+                - args: "0"
+                  name: html_line
             selectors:
                 - div.name_left > a > b > font
                 - div.name_left > a > b
@@ -142,3 +151,90 @@ tags:
 timezone_offset: "+0800"
 urls:
     - https://totheglory.im/
+user_info:
+    pages:
+        - path: /index.php
+          fields:
+            id:
+                selector: "a[href*='userdetails.php']:first"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: id
+            name:
+                selector: "a[href*='userdetails.php']:first"
+        - path: /userdetails.php
+          params:
+            id: "{id}"
+          fields:
+            uploaded:
+                selectors:
+                    - "td.rowhead:contains('上传量') + td"
+                    - "td.rowhead:contains('上傳量') + td"
+                filters:
+                    - name: parse_size
+            downloaded:
+                selectors:
+                    - "td.rowhead:contains('下载量') + td"
+                    - "td.rowhead:contains('下載量') + td"
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "td.rowhead:contains('分享率') + td"
+                filters:
+                    - name: parse_number
+            level:
+                selectors:
+                    - "td.rowhead:contains('等级') + td"
+                    - "td.rowhead:contains('等級') + td"
+            avatar:
+                attr: src
+                filters:
+                    - name: clean_avatar
+                selectors:
+                    - "td.rowhead:contains('头像') + td img"
+                    - "td.rowhead:contains('頭像') + td img"
+                    - img.avatar
+                    - "img[src*='avatar']"
+                    - "img[src*='avatars']"
+            is_donor:
+                attr: alt
+                filters:
+                    - name: bool
+                selector: "img[alt='Donor']"
+            bonus:
+                selectors:
+                    - "td.rowhead:contains('积分') + td"
+                    - "td.rowhead:contains('積分') + td"
+                filters:
+                    - name: parse_number
+            join_date:
+                selectors:
+                    - "td.rowhead:contains('注册日期') + td"
+                    - "td.rowhead:contains('註冊日期') + td"
+                filters:
+                    - name: parse_time
+            last_access_at:
+                selectors:
+                    - "td.rowhead:contains('上次访问') + td"
+                    - "td.rowhead:contains('上次訪問') + td"
+                    - "td.rowhead:contains('Last seen') + td"
+            seeding:
+                selector: "div#ka2 tr:not(:first-child)"
+                attr: count
+            seeding_size:
+                selector: "div#ka2 tr:not(:first-child) td:nth-child(4)"
+                attr: text_all
+                filters:
+                    - name: sum_size
+            uploads:
+                selector: "div#ka1 tr:not(:first-child)"
+                attr: count
+        - path: /mybonus.php
+          fields:
+            bonus_per_hour:
+                selector: "td.rowhead:contains('总计') + td"
+                filters:
+                    - name: split
+                      args: " :::0"
+                    - name: parse_number

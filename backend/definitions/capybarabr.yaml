@@ -1,6 +1,5 @@
 # capybarabr — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: unit3d。通用适配器和定义级 mock 已覆盖搜索、用户信息与葡语做种体积；真实站点仍建议 live smoke。
 
 id: capybarabr
 level_requirements:
@@ -68,4 +67,17 @@ urls:
     - https://capybarabr.com/
 user_info:
     fields:
-        seeding_size: {}
+        seeding_size:
+            filters:
+                - name: parse_size
+            selectors:
+                - "dt:contains('Tamanho em seeding') + dd"
+                - "td:contains('Tamanho em seeding') + td"
+                - "dt:contains('Seeding Size') + dd"
+                - "dt:contains('Seeding size') + dd"
+                - "dt:contains('做种体积') + dd"
+                - "dt:contains('做種體積') + dd"
+                - "td:contains('Seeding Size') + td"
+                - "td:contains('Seeding size') + td"
+                - "td:contains('做种体积') + td"
+                - "td:contains('做種體積') + td"

@@ -1,14 +1,9 @@
-# beyondhd — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: f3nix。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.uploads.filters（匿名函数）
-#   - userInfo.joinTime.filters（匿名函数）
+# beyondhd — schema: f3nix。API POST 搜索、下载 fallback、用户信息与做种体积已由 GenericJSON mock 覆盖；真实站点仍建议 live smoke。
 
 aka:
     - BHD
 description: |-
-    map[__raw:BinaryExpression src:"Beyond Your Imagination, BeyondHD is a community-built Movie/TV database." +
-        "Every piece of data has been added by our amazing community since 2012."]
+    Beyond Your Imagination, BeyondHD is a community-built Movie/TV database.Every piece of data has been added by our amazing community since 2012.
 id: beyondhd
 level_requirements:
     - id: 1
@@ -109,7 +104,7 @@ selectors:
             selector: url
         download:
             filters:
-                - args: '[torrents download]'
+                - args: "/torrents/:::/download/"
                   name: replace
             selectors:
                 - download_url
@@ -157,6 +152,8 @@ user_info:
                 - meta[name='secret-id']
         join_date:
             filters:
+                - args: 'Member Since:\s*(\d{4}-\d{2}-\d{2})'
+                  name: regexp
                 - args: '[yyyy-MM-dd]'
                   name: parse_time
             selectors:
@@ -193,5 +190,30 @@ user_info:
             selectors:
                 - ul#beta-stats li a:has(i.fas.fa-arrow-up)
         uploads:
+            filters:
+                - name: parse_number
             selectors:
                 - .button-right .bhd-block:nth-child(1) .class-highlight
+    pages:
+        - path: /
+          format: html
+          use_fields:
+            - id
+            - name
+            - uploaded
+            - downloaded
+            - ratio
+            - bonus
+            - seeding
+        - path: /users/{name}.{id}
+          format: html
+          use_fields:
+            - level
+            - uploads
+            - leeching
+            - join_date
+            - seeding_size
+        - path: /bp
+          format: html
+          use_fields:
+            - bonus_per_hour

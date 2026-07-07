@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -43,15 +44,21 @@ func (u *Unit3D) Search(ctx context.Context, def *site.SiteMetadata,
 	if err != nil {
 		return nil, err
 	}
+	if resp.StatusCode == 401 || resp.StatusCode == 403 {
+		return nil, site.ErrNotLoggedIn
+	}
+	if resp.IsCloudflare() {
+		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+	}
+	if site.LooksLikeJSON(resp.Body) {
+		return site.ParseJSONSearch(resp.Body, def, baseURL), nil
+	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {
 		return nil, fmt.Errorf("parse html: %w", err)
 	}
 	if loggedOut(resp, doc, def.NoLogin) {
 		return nil, site.ErrNotLoggedIn
-	}
-	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
 	}
 	return site.ParseUnit3DSearch(doc, def, baseURL), nil
 }
@@ -65,6 +72,7 @@ func (u *Unit3D) Search(ctx context.Context, def *site.SiteMetadata,
 func (u *Unit3D) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string) (*site.UserInfo, error) {
 
+	skipDefaultEarnings := hasStaticUserInfoTextField(def, "bonus_per_hour")
 	def = site.EnsureDefaults(def)
 
 	// 1. 首页：登录探针 + 发现用户名
@@ -76,29 +84,46 @@ func (u *Unit3D) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 		return nil, site.ErrNotLoggedIn
 	}
 	name := site.ParseUnit3DUsername(doc, def)
-	if name == "" {
+	if name == "" && len(def.UserInfo.Pages) == 0 {
 		// root 已过 loggedOut，却没找到用户名 → 站点主题差异，非登录失败。
 		return nil, fmt.Errorf("unit3d: username not found on index page")
 	}
 	out := &site.UserInfo{Name: name}
 
 	// 2. 资料页 /users/{name}：ratio-bar + dt/dd 统计（best-effort，失败保留 step1 的 name）
-	if udoc, _, e := u.fetchDoc(ctx, baseURL, "users/"+name, cookie); e == nil {
-		if p := site.ParseUserInfo(udoc, def); p != nil {
-			*out = *p
-			if out.Name == "" {
-				out.Name = name
+	if name != "" {
+		if udoc, _, e := u.fetchDoc(ctx, baseURL, "users/"+name, cookie); e == nil {
+			if p := site.ParseUserInfo(udoc, def); p != nil {
+				*out = *p
+				if out.Name == "" {
+					out.Name = name
+				}
 			}
 		}
 	}
 
 	// 3. 每小时积分 /users/{name}/earnings（best-effort，>0 才覆写）
-	if edoc, _, e := u.fetchDoc(ctx, baseURL, "users/"+name+"/earnings", cookie); e == nil {
-		if bph := site.ParseUnit3DBonusPerHour(edoc, def); bph > 0 {
-			out.BonusPerHour = bph
+	if name != "" && !skipDefaultEarnings {
+		if edoc, _, e := u.fetchDoc(ctx, baseURL, "users/"+name+"/earnings", cookie); e == nil {
+			if bph := site.ParseUnit3DBonusPerHour(edoc, def); out.BonusPerHour == 0 && bph > 0 {
+				out.BonusPerHour = bph
+			}
+		}
+	}
+	if len(def.UserInfo.Pages) > 0 {
+		if err := fetchUserInfoPages(ctx, &u.BaseHTMLAdapter, def, baseURL, cookie, out); err != nil {
+			return nil, err
 		}
 	}
 	return out, nil
+}
+
+func hasStaticUserInfoTextField(def *site.SiteMetadata, key string) bool {
+	if def == nil {
+		return false
+	}
+	q, ok := def.UserInfo.Fields[key]
+	return ok && strings.TrimSpace(q.Text) != "" && q.Selector == "" && len(q.Selectors) == 0 && q.Data == ""
 }
 
 // TestConnection 用三步用户流程探测连接与登录态，返回用户等级。

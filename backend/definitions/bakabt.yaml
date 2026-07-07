@@ -1,11 +1,5 @@
 # bakabt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time（elementProcess）
-#   - search.category（text）
-#   - search.completed.filters[split]
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - BBT
 description: BakaBT is a Private site for the Anime Community
@@ -28,6 +22,8 @@ selectors:
             selector: span.torrent_icon
         completed:
             filters:
+                - args: "/:::0"
+                  name: split
                 - name: trim
             selector: .peers
         detail:
@@ -44,7 +40,12 @@ selectors:
         subtitle:
             selector: span.tags
         time:
-            selector: :self
+            attr: data-timestamp
+            filters:
+                - name: unix_seconds
+            selectors:
+                - :self
+                - .added span.datetime
         title:
             filters:
                 - name: trim
@@ -58,3 +59,71 @@ tags:
 timezone_offset: "+0000"
 urls:
     - https://bakabt.me/
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                selector: a.username
+                attr: href
+                filters:
+                    - name: split
+                      args: "/:::2"
+        - path: /bonus.php
+          fields:
+            bonus_per_hour:
+                selector: b.success
+                filters:
+                    - name: parse_number
+        - path: /user/{id}/
+          fields:
+            name:
+                selector: a.username
+            level:
+                selector: h2 > span
+                filters:
+                    - name: regexp
+                      args: '^\((.+?) - (.+?)\)$:::2'
+            join_date:
+                selector: "td:contains('Join date') + td > span.datetime"
+                attr: data-timestamp
+                filters:
+                    - name: unix_seconds
+            last_access_at:
+                selector: "td:contains('Last seen') + td > span.datetime"
+                attr: data-timestamp
+                filters:
+                    - name: unix_seconds
+            uploaded:
+                selector: "td:contains('Uploaded') + td"
+                filters:
+                    - name: split
+                      args: "-:::0"
+                    - name: parse_size
+            downloaded:
+                selector: "td:contains('Downloaded') + td"
+                filters:
+                    - name: split
+                      args: "-:::0"
+                    - name: parse_size
+            ratio:
+                selector: "td:contains('Share ratio') + td > span"
+                filters:
+                    - name: parse_number
+            bonus:
+                selector: "td:contains('Bonus Points') + td"
+                filters:
+                    - name: parse_number
+            uploads:
+                selector: "li#uploaded_tab > a"
+                filters:
+                    - name: parse_number
+            seeding:
+                selector: "li#active_tab > a"
+                filters:
+                    - name: parse_number
+            seeding_size:
+                selector: "div#tab_content > div#active table.torrents > tbody tr td.size"
+                attr: text_all
+                filters:
+                    - name: sum_size

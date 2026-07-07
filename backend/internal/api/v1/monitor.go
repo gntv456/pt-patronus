@@ -111,6 +111,28 @@ func (h *MonitorHandler) Collect(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "metrics": m})
 }
 
+type powerRequest struct {
+	Action string `json:"action"`
+}
+
+// Power triggers a fixed power action for a monitor target.
+func (h *MonitorHandler) Power(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	var in powerRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.svc.PowerNow(c.Request.Context(), id, in.Action); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // Metrics 取历史快照（?since=RFC3339&limit=）。
 func (h *MonitorHandler) Metrics(c *gin.Context) {
 	id, ok := parseID(c)

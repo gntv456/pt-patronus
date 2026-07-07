@@ -1,10 +1,5 @@
 # iptorrents — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.time.filters（匿名函数）
-#   - search.subTitle.filters（匿名函数）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
 aka:
     - IPT
 description: 'IPTorrents - #1 Private Tracker'
@@ -31,9 +26,16 @@ selectors:
     fields:
         category:
             attr: alt
+            selectors:
+                - td:eq(0) img
+                - td:first-child img
         completed:
             filters:
                 - name: parse_number
+            selectors:
+                - td:nth-last-child(3)
+                - td:contains('snatched')
+                - td.completed
         detail:
             attr: href
             selector: td.al > a
@@ -43,21 +45,113 @@ selectors:
         leechers:
             filters:
                 - name: parse_number
+            selectors:
+                - td:nth-last-child(1)
+                - td:contains('leechers')
+                - td.leechers
         seeders:
             filters:
                 - name: parse_number
+            selectors:
+                - td:nth-last-child(2)
+                - td:contains('seeders')
+                - td.seeders
         size:
             filters:
                 - name: parse_size
+            selectors:
+                - "> td:nth-child(6)"
+                - "td:contains('MB')"
+                - "td:contains('GB')"
+                - "td:contains('TB')"
         subtitle:
+            filters:
+                - args: "^(.+?)\\s+\\|\\s+"
+                  name: regexp
             selector: div.sub
         time:
+            filters:
+                - args: "(?:\\| )?([\\d.]+ .+? ago)"
+                  name: regexp
+                - name: parse_time
             selector: div.sub
         title:
             selector: td.al > a
-    rows: {}
+    rows:
+        selector: "table#torrents > tbody > tr:has(td.al)"
 tags:
     - 综合
 timezone_offset: "+0000"
 urls:
     - https://iptorrents.com/
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                selectors:
+                    - "a[href*='/u/']:first"
+                    - "a[href*='userdetails.php']:first"
+                attr: href
+                filters:
+                    - name: regexp
+                      args: '(?:/u/|[?&]id=)([^/?&#]+)'
+        - path: /user.php
+          params:
+            u: "{id}"
+          fields:
+            name:
+                selector: "h1.up-username"
+            uploaded:
+                selector: "div[style*='up-stat-up'] ~ div.up-stat-sub"
+                filters:
+                    - name: parse_size
+            downloaded:
+                selector: "div[style*='up-stat-down'] ~ div.up-stat-sub"
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "div.up-stat-value:has(svg.up-ratio-icon) > span"
+                filters:
+                    - name: parse_number
+            level:
+                selector: "span.up-class-badge"
+            bonus:
+                selector: "a[href='/mybonus.php']"
+                filters:
+                    - name: parse_number
+            join_date:
+                selector: "span.up-field-label:contains('Join Date') + span span.elapsedDate"
+                attr: title
+                filters:
+                    - name: parse_time
+            last_access_at:
+                selector: "span.up-field-label:contains('Last Seen') + span span.elapsedDate"
+                attr: title
+                filters:
+                    - name: parse_time
+            seeding:
+                selector: "span.up-field-label:contains('Seeding') + span a[href^='/peers']"
+                filters:
+                    - name: parse_number
+            uploads:
+                selector: "span a[href^='/t?u=']"
+                filters:
+                    - name: parse_number
+            is_donor:
+                selector: "h1.up-username > img[alt='Donor']"
+                attr: alt
+                filters:
+                    - name: bool
+        - path: /peers
+          params:
+            u: "{id}"
+          fields:
+            seeding_size:
+                selectors:
+                    - "table#torrents > tbody > tr:has(td.al) > td:nth-child(6)"
+                    - "table > tbody > tr:has(a[href^='/t/']) > td:nth-child(6)"
+                    - "tr:has(a[href^='/t/']) td:contains('MiB'), tr:has(a[href^='/t/']) td:contains('GiB'), tr:has(a[href^='/t/']) td:contains('TiB')"
+                attr: text_all
+                filters:
+                    - name: sum_size

@@ -485,6 +485,7 @@ func Build(d *Deps) *gin.Engine {
 				mons.DELETE("/:id", middleware.RequireAdmin(), monH.Delete)
 				mons.POST("/:id/probe", middleware.RequireAdmin(), monH.Probe)
 				mons.POST("/:id/collect", middleware.RequireAdmin(), monH.Collect)
+				mons.POST("/:id/power", middleware.RequireAdmin(), monH.Power)
 				mons.GET("/:id/metrics", monH.Metrics)
 				mons.POST("/:id/accept-host-key", middleware.RequireAdmin(), monH.AcceptHostKey)
 			}

@@ -1,8 +1,8 @@
 # mteam — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: mteam。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
+# schema: mteam。已由本项目运行时 schema adapter 支持。
 # calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.url.filters[prepend]
 #   - search.category.filters（匿名函数）
+#   - search.url.filters[prepend]
 #   - userInfo.process（多步抓取流程，需适配器实现）
 
 aka:

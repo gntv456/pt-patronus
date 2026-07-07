@@ -1,6 +1,5 @@
 # telly — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: unit3d。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 翻译自 PT-depiler，待真实页面校准。
+# schema: unit3d。死站保留；通用适配器和定义级 mock 已覆盖默认搜索、用户信息与做种体积。
 
 dead: true
 description: 印度影视综合站点

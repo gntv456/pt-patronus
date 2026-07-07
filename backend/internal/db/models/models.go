@@ -41,24 +41,36 @@ type Site struct {
 
 // SiteStat — 站点统计快照。
 type SiteStat struct {
-	ID           uint      `gorm:"primaryKey" json:"id"`
-	SiteID       uint      `gorm:"index;not null" json:"site_id"`
-	Level        string    `gorm:"size:64" json:"level"`    // 用户等级（展示用）
-	UserName     string    `gorm:"size:64" json:"username"` // 站点用户名（导出海报身份行，best-effort）
-	UserID       string    `gorm:"size:32" json:"user_id"`  // 站点用户 ID
-	Email        string    `gorm:"size:128" json:"email"`   // 账号邮箱（best-effort，部分隐藏原样保留）
-	Uploaded     int64     `gorm:"default:0" json:"uploaded"`
-	Downloaded   int64     `gorm:"default:0" json:"downloaded"`
-	Ratio        float64   `gorm:"default:0" json:"ratio"`
-	Seeding      int       `gorm:"default:0" json:"seeding"`
-	Leeching     int       `gorm:"default:0" json:"leeching"`
-	SeedingSize  int64     `gorm:"default:0" json:"seeding_size"`   // 做种总体积（字节）
-	Uploads      int       `gorm:"default:0" json:"uploads"`        // 发布数（用户上传的种子数）
-	Bonus        float64   `gorm:"default:0" json:"bonus"`          // 魔力/火花/蟹币/元宝（站点别名）
-	BonusPerHour float64   `gorm:"default:0" json:"bonus_per_hour"` // 每小时积分产出
-	JoinDate     string    `gorm:"size:32" json:"join_date"`        // 加入日期（原始文本）
-	SnapAt       time.Time `json:"snap_at"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID                        uint      `gorm:"primaryKey" json:"id"`
+	SiteID                    uint      `gorm:"index;not null" json:"site_id"`
+	Level                     string    `gorm:"size:64" json:"level"`    // 用户等级（展示用）
+	UserName                  string    `gorm:"size:64" json:"username"` // 站点用户名（导出海报身份行，best-effort）
+	UserID                    string    `gorm:"size:32" json:"user_id"`  // 站点用户 ID
+	Email                     string    `gorm:"size:128" json:"email"`   // 账号邮箱（best-effort，部分隐藏原样保留）
+	Uploaded                  int64     `gorm:"default:0" json:"uploaded"`
+	Downloaded                int64     `gorm:"default:0" json:"downloaded"`
+	Ratio                     float64   `gorm:"default:0" json:"ratio"`
+	TrueUploaded              int64     `gorm:"default:0" json:"true_uploaded"`
+	TrueDownloaded            int64     `gorm:"default:0" json:"true_downloaded"`
+	TrueRatio                 float64   `gorm:"default:0" json:"true_ratio"`
+	Seeding                   int       `gorm:"default:0" json:"seeding"`
+	Leeching                  int       `gorm:"default:0" json:"leeching"`
+	SeedingSize               int64     `gorm:"default:0" json:"seeding_size"`   // 做种总体积（字节）
+	Uploads                   int       `gorm:"default:0" json:"uploads"`        // 发布数（用户上传的种子数）
+	UniqueGroups              int       `gorm:"default:0" json:"unique_groups"`  // 唯一作品组数（Gazelle community.groups 等）
+	PerfectFLAC               int       `gorm:"default:0" json:"perfect_flac"`   // Perfect FLAC 数
+	Invited                   int       `gorm:"default:0" json:"invited"`        // 已邀请用户数
+	Bonus                     float64   `gorm:"default:0" json:"bonus"`          // 魔力/火花/蟹币/元宝（站点别名）
+	BonusPerHour              float64   `gorm:"default:0" json:"bonus_per_hour"` // 每小时积分产出
+	SeedingBonus              float64   `gorm:"default:0" json:"seeding_bonus"`  // 做种/保种积分（与普通积分分开）
+	SeedingBonusPerHour       float64   `gorm:"default:0" json:"seeding_bonus_per_hour"`
+	RescueSeedingBonusPerHour float64   `gorm:"default:0" json:"rescue_seeding_bonus_per_hour"`
+	ClaimCount                int       `gorm:"default:0" json:"claim_count"`  // 当前认领数
+	MaxClaim                  int       `gorm:"default:0" json:"max_claim"`    // 可认领上限
+	JoinDate                  string    `gorm:"size:32" json:"join_date"`      // 加入日期（原始文本）
+	LastAccessAt              string    `gorm:"size:64" json:"last_access_at"` // 最近动向/访问时间（原始文本）
+	SnapAt                    time.Time `json:"snap_at"`
+	CreatedAt                 time.Time `json:"created_at"`
 }
 
 // Downloader — 下载器连接配置。

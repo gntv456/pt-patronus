@@ -1,13 +1,5 @@
 # aidoruonline — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: aidoruonline。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-#   - search.time.filters（匿名函数）
-#   - userInfo.ratio.filters（匿名函数）
-#   - userInfo.bonus（text）
-#   - userInfo.seedingSize（elementProcess）
-#   - userInfo.id.filters（匿名函数）
-
+# schema: aidoruonline。已接入通用/专用适配器，待真实站点校准。
 id: aidoruonline
 level_requirements:
     - id: 1
@@ -36,6 +28,9 @@ search_param: searchstr
 selectors:
     fields:
         category:
+            filters:
+                - args: "^[^:]+:\\s*(.+)"
+                  name: regexp
             selectors:
                 - a.category-link
         completed:
@@ -67,6 +62,8 @@ selectors:
             selectors:
                 - td.ttable_size
         time:
+            filters:
+                - name: parse_time
             selectors:
                 - td.ttable_timestamp
         title:
@@ -80,7 +77,8 @@ urls:
     - https://aidoru-online.me/
 user_info:
     fields:
-        bonus: {}
+        bonus:
+            text: "0"
         downloaded:
             filters:
                 - name: parse_size
@@ -88,6 +86,9 @@ user_info:
                 - td.prof-lbl:contains('Downloaded:') + td
         id:
             attr: href
+            filters:
+                - name: queryparam
+                  args: uid
             selectors:
                 - a[href*='member.php?action=profile']
         join_date:

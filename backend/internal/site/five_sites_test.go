@@ -200,6 +200,19 @@ func TestAudiencesUserCPUIDDiscovery(t *testing.T) {
 	}
 }
 
+func TestNexusPHPUUIDUserDetailsDiscovery(t *testing.T) {
+	html := `<html><body>
+<span class="nowrap"><a href="https://mua.xloli.cc/userdetails.php?uuid=abc-123" class="PowerUser_Name"><b>loli-user</b></a></span>
+</body></html>`
+	uid, name := ExtractUIDAndName(mustDoc(t, html))
+	if uid != "abc-123" {
+		t.Errorf("uid = %q, want abc-123", uid)
+	}
+	if name != "loli-user" {
+		t.Errorf("name = %q, want loli-user", name)
+	}
+}
+
 // TestRatioNoGarbageOnInfinite 锁定正则失配返空修复：分享率显示「无限」（下载量为 0）时，
 // ratio 正则不匹配 → 返空 → 0，而非旧逻辑保留整段父文本被 ToFloat64 误抓成魔力值。
 func TestRatioNoGarbageOnInfinite(t *testing.T) {

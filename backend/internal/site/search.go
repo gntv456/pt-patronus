@@ -37,8 +37,14 @@ func BuildSearchURL(baseURL string, def *SiteMetadata, keyword, category string,
 	if param == "" {
 		param = "search"
 	}
-	u := strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(entry, "/")
-	q := url.Values{}
+	u := searchURLBase(baseURL, entry)
+	parsed, err := url.Parse(u)
+	if err != nil {
+		q := url.Values{}
+		q.Set(param, keyword)
+		return u + "?" + q.Encode()
+	}
+	q := parsed.Query()
 	q.Set(param, keyword)
 	if page > 1 {
 		q.Set("page", strconv.Itoa(page))
@@ -48,11 +54,17 @@ func BuildSearchURL(baseURL string, def *SiteMetadata, keyword, category string,
 	}
 	if category != "" && len(def.SearchCategories[category]) > 0 {
 		q.Del("cat")
+		q.Del("cat[]")
 		for _, c := range def.SearchCategories[category] {
 			q.Add("cat[]", c)
 		}
 	}
-	return u + "?" + q.Encode()
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
+}
+
+func searchURLBase(baseURL, entry string) string {
+	return strings.TrimRight(baseURL, "/") + "/" + strings.TrimLeft(entry, "/")
 }
 
 // musicCatRe 命中「音乐」分类指示词。仅作用于种子行的 Category 文本（非标题），
@@ -82,7 +94,7 @@ func ParseSearch(doc *goquery.Document, def *SiteMetadata, baseURL string) []Tor
 		return nil
 	}
 	base, _ := url.Parse(baseURL)
-	rows := doc.Find(def.Selectors.Rows.Selector)
+	rows := findRows(doc.Selection, def.Selectors.Rows)
 	out := []Torrent{}
 	rows.Each(func(_ int, row *goquery.Selection) {
 		f := def.Selectors.Fields
@@ -108,6 +120,20 @@ func ParseSearch(doc *goquery.Document, def *SiteMetadata, baseURL string) []Tor
 		out = append(out, t)
 	})
 	return out
+}
+
+func findRows(ctx *goquery.Selection, q ElementQuery) *goquery.Selection {
+	sels := q.Selectors
+	if len(sels) == 0 && q.Selector != "" {
+		sels = []string{q.Selector}
+	}
+	for _, sel := range sels {
+		rows := findCompat(ctx, sel)
+		if rows.Length() > 0 {
+			return rows
+		}
+	}
+	return &goquery.Selection{}
 }
 
 // unit3dTorrentIDRe 匹配 UNIT3D 种子详情/下载链接里的 /torrents/<digits>，
@@ -140,7 +166,8 @@ func BuildUnit3DSearchURL(baseURL string, def *SiteMetadata, keyword string, pag
 
 // ParseUnit3DSearch 纯函数：按 def 选择器从 UNIT3D 种子列表页解析（可单测）。
 // 与 ParseSearch 的差异：① rows 走 Selectors 回退列表（UNIT3D 新旧布局，取首个命中），
-//   ParseSearch 只读单数 Selector；② 行过滤用 /torrents/\d+ 守卫，丢弃表头/sticky/广告等非种子行。
+//
+//	ParseSearch 只读单数 Selector；② 行过滤用 /torrents/\d+ 守卫，丢弃表头/sticky/广告等非种子行。
 func ParseUnit3DSearch(doc *goquery.Document, def *SiteMetadata, baseURL string) []Torrent {
 	if doc == nil || def == nil {
 		return nil
@@ -446,6 +473,11 @@ func ParseGazelleUserID(doc *goquery.Document, def *SiteMetadata) string {
 	if doc == nil || def == nil {
 		return ""
 	}
+	if v, ok := def.UserInfo.Fields["id"]; ok {
+		if id := Extract(doc.Selection, v); id != "" {
+			return id
+		}
+	}
 	q := ElementQuery{Selector: `a.username[href*="user.php"]`, Attr: "href"}
 	if v, ok := def.UserInfo.Fields["name"]; ok {
 		q = v
@@ -484,7 +516,11 @@ func ParseUserDetail(doc *goquery.Document, def *SiteMetadata, u *UserInfo) {
 }
 
 // ParseUserInfoFields 把 fields（约定键）从 doc 抽出填入 u。
-// 约定键：id/name/email/level/join_date/uploaded/downloaded/ratio/seeding/leeching/seeding_size/bonus/bonus_per_hour。
+// 约定键：id/name/email/level/level_id/numeric_user_id/avatar/personal_avatar/is_donor/
+// join_date/last_access_at/uploaded/downloaded/ratio/true_uploaded/
+// true_downloaded/true_ratio/seeding/leeching/seeding_size/bonus/bonus_per_hour/
+// seeding_bonus/seeding_bonus_per_hour/rescue_seeding_bonus_per_hour/seeding_time/
+// uploads_add/adoptions/posts/snatches/total_traffic/claim_count/max_claim。
 // 仅当某键在本页抽到非空值才写入——便于多页合并（base 页先填统计、detail 页补等级/加入时间，
 // 缺字段的页不会把已得值清零）。
 func ParseUserInfoFields(doc *goquery.Document, fields map[string]ElementQuery, u *UserInfo) {
@@ -506,14 +542,32 @@ func ParseUserInfoFields(doc *goquery.Document, fields map[string]ElementQuery, 
 			u.Email = raw
 		case "level":
 			u.Level = raw
+		case "level_id":
+			u.LevelID = ToInt(raw)
+		case "numeric_user_id":
+			u.NumericUserID = ToInt(raw)
+		case "avatar":
+			u.Avatar = raw
+		case "personal_avatar":
+			u.PersonalAvatar = raw
+		case "is_donor":
+			u.IsDonor = ToBool(raw)
 		case "join_date":
 			u.JoinDate = raw
+		case "last_access_at":
+			u.LastAccessAt = raw
 		case "uploaded":
 			u.Uploaded = ParseBytes(raw)
 		case "downloaded":
 			u.Downloaded = ParseBytes(raw)
 		case "ratio":
 			u.Ratio = ToFloat64(raw)
+		case "true_uploaded":
+			u.TrueUploaded = ParseBytes(raw)
+		case "true_downloaded":
+			u.TrueDownloaded = ParseBytes(raw)
+		case "true_ratio":
+			u.TrueRatio = ToFloat64(raw)
 		case "seeding":
 			u.Seeding = ToInt(raw)
 		case "leeching":
@@ -522,25 +576,54 @@ func ParseUserInfoFields(doc *goquery.Document, fields map[string]ElementQuery, 
 			u.SeedingSize = ParseBytes(raw)
 		case "uploads":
 			u.Uploads = ToInt(raw)
+		case "uploads_add":
+			u.Uploads += ToInt(raw)
+		case "adoptions":
+			u.Adoptions = ToInt(raw)
+		case "posts":
+			u.Posts = ToInt(raw)
+		case "snatches":
+			u.Snatches = ToInt(raw)
+		case "total_traffic":
+			u.TotalTraffic = ParseBytes(raw)
+		case "unique_groups":
+			u.UniqueGroups = ToInt(raw)
+		case "perfect_flac":
+			u.PerfectFLAC = ToInt(raw)
+		case "invited":
+			u.Invited = ToInt(raw)
 		case "bonus":
 			u.Bonus = ToFloat64(raw)
 		case "bonus_per_hour":
 			u.BonusPerHour = ToFloat64(raw)
+		case "seeding_bonus":
+			u.SeedingBonus = ToFloat64(raw)
+		case "seeding_bonus_per_hour":
+			u.SeedingBonusPerHour = ToFloat64(raw)
+		case "rescue_seeding_bonus_per_hour":
+			u.RescueSeedingBonusPerHour = ToFloat64(raw)
+		case "seeding_time":
+			u.SeedingTime = int64(ToFloat64(raw))
+		case "claim_count":
+			u.ClaimCount = ToInt(raw)
+		case "max_claim":
+			u.MaxClaim = ToInt(raw)
 		}
 	}
 }
 
-// ExtractUID 从文档里发现当前用户 ID：取首个 userdetails.php?id=<uid> 链接的 id 参数。
-// NexusPHP 站点用户栏/控制面板普遍有指向自己 userdetails 的链接。失败返回空串。
+// ExtractUID 从文档里发现当前用户 ID：取首个 userdetails.php?id=<uid>、
+// userdetails.php?uuid=<uid> 或 NexusRabbit/Hares 的 user.php?id=<uid> 链接参数。
+// NexusPHP 站点用户栏/控制面板普遍有指向自己详情页的链接。失败返回空串。
 func ExtractUID(doc *goquery.Document) string {
 	if doc == nil {
 		return ""
 	}
 	var uid string
-	doc.Find(`a[href*="userdetails.php?id="]`).EachWithBreak(func(_ int, s *goquery.Selection) bool {
+	doc.Find(`a[href*="userdetails.php?id="], a[href*="userdetails.php?uuid="], a[href*="user.php?id="]`).EachWithBreak(func(_ int, s *goquery.Selection) bool {
 		href, _ := s.Attr("href")
-		if m := uidRe.FindStringSubmatch(href); len(m) > 1 {
-			uid = m[1]
+		if found := extractUserDetailsUID(href); found != "" {
+			uid = found
 			return false
 		}
 		return true
@@ -548,19 +631,19 @@ func ExtractUID(doc *goquery.Document) string {
 	return uid
 }
 
-// ExtractUIDAndName 同时发现当前用户 ID 和用户名：遍历 userdetails.php?id=<uid> 链接，
-// id 取首个 href 参数；name 取首个「像用户名」的链接文本——**跳过统计值链接**（如财神
+// ExtractUIDAndName 同时发现当前用户 ID 和用户名：遍历 userdetails.php?id=<uid> /
+// userdetails.php?uuid=<uid> / user.php?id=<uid> 链接，ID 取首个 href 参数；name 取首个「像用户名」的链接文本——**跳过统计值链接**（如财神
 // Audiences 皮肤的「上传量/下载量/分享率/做种」等链接，文本是 44.069 TB / 5 而非用户名）。
 // best-effort：找不到纯用户名链接则 name 留空（宁缺毋滥，不取错值）。
 func ExtractUIDAndName(doc *goquery.Document) (uid, name string) {
 	if doc == nil {
 		return "", ""
 	}
-	doc.Find(`a[href*="userdetails.php?id="]`).EachWithBreak(func(_ int, s *goquery.Selection) bool {
+	doc.Find(`a[href*="userdetails.php?id="], a[href*="userdetails.php?uuid="], a[href*="user.php?id="]`).EachWithBreak(func(_ int, s *goquery.Selection) bool {
 		href, _ := s.Attr("href")
-		if m := uidRe.FindStringSubmatch(href); len(m) > 1 {
+		if found := extractUserDetailsUID(href); found != "" {
 			if uid == "" {
-				uid = m[1]
+				uid = found
 			}
 			if name == "" {
 				if txt := strings.TrimSpace(s.Text()); looksLikeUsername(txt) {
@@ -585,7 +668,17 @@ func looksLikeUsername(s string) bool {
 	return !statishRe.MatchString(s)
 }
 
-var uidRe = regexp.MustCompile(`[?&]id=(\d+)`)
+var uidRe = regexp.MustCompile(`[?&](?:id|uuid)=([^&#]+)`)
+
+func extractUserDetailsUID(href string) string {
+	if m := uidRe.FindStringSubmatch(href); len(m) > 1 {
+		if v, err := url.QueryUnescape(m[1]); err == nil {
+			return strings.TrimSpace(v)
+		}
+		return strings.TrimSpace(m[1])
+	}
+	return ""
+}
 
 // IsVIP 报告用户等级是否落在 def.UserInfo.VIPLevels 中（好学 VIP 判定用）。
 func IsVIP(u *UserInfo, def *SiteMetadata) bool {

@@ -1,12 +1,5 @@
 # cgpeers — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: luminance。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category.filters（匿名函数）
-#   - search.link（__ref）
-#   - userInfo.id.filters[split]
-#   - userInfo.name（switchFilters）
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: luminance。已接入通用/专用适配器，待真实站点校准。
 aka:
     - CGP
 description: CGPeers 是一个专注于计算机图形资源的私有站点
@@ -50,11 +43,18 @@ selectors:
     fields:
         category:
             attr: href
+            filters:
+                - args: "filter_cat\\[(\\d+)\\]"
+                  name: regexp
+                - args: 17=3D Printing:::1=Applications:::8=Audio:::7=Game Development:::5=Materials:::6=Miscellaneous:::4=Models:::2=Plugins:::3=Tutorials:::9=Web Development
+                  name: map
             selector: td.cats_col > div[title] > a
         detail:
             attr: href
             selector: span + a[href*='torrent/']
-        download: {}
+        download:
+            attr: href
+            selector: a[href*='torrent/download/']
         title:
             selector: span + a[href*='torrent/']
 tags:
@@ -70,9 +70,43 @@ user_info:
     fields:
         id:
             attr: href
+            filters:
+                - args: "/:::2"
+                  name: split
             selectors:
                 - div.user-dropdown-section a[href^='/user/']
         name:
+            filters:
+                - args: "\n:::0"
+                  name: split
             selectors:
                 - a#userDropdownTrigger
                 - span.user_name
+        uploads:
+            filters:
+                - args: '\[(\d[\d,]*)\s+(?:uploaded|uploads|torrents?)\]'
+                  name: regexp
+                - name: parse_number
+            selectors:
+                - "ul.stats > li:contains('Uploaded:')"
+    pages:
+        - path: /
+          use_fields:
+            - id
+            - name
+        - path: /user/{id}
+          use_fields:
+            - name
+            - uploaded
+            - downloaded
+            - ratio
+            - level
+            - bonus
+            - seeding
+            - leeching
+            - uploads
+            - join_date
+            - last_access_at
+            - posts
+            - bonus_per_hour
+            - seeding_size

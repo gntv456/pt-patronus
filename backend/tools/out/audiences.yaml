@@ -4,9 +4,16 @@
 #   - search.url.filters[prepend]
 #   - search.link（__ref）
 #   - search.size（text）
-#   - search.leechers（text）
-#   - search.seeders（text）
 #   - search.completed（text）
+#   - search.seeders（text）
+#   - search.leechers（text）
+#   - userInfo.bonusPerHour.filters（匿名函数）
+#   - userInfo.uploaded（text）
+#   - userInfo.uploaded.filters（匿名函数）
+#   - userInfo.joinTime.filters（匿名函数）
+#   - userInfo.downloaded（text）
+#   - userInfo.downloaded.filters（匿名函数）
+#   - userInfo.ratio（text）
 
 aka:
     - 观众
@@ -181,4 +188,41 @@ user_info:
             filters:
                 - name: parse_number
             selectors:
-                - td.rowhead:contains('爆米花') + td, td.rowhead:contains('Karma Points') + td
+                - .site-userbar__compact-metric--bonus
+                - td.rowhead:contains('爆米花') + td
+                - td.rowhead:contains('Karma Points') + td
+        bonus_per_hour:
+            selectors:
+                - .mybonus-side__rate
+        downloaded:
+            selectors:
+                - .site-userbar__compact-metric--downloaded
+        join_date:
+            selectors:
+                - td:contains('加入日期：')
+                - div:contains('加入日期：')
+        leeching:
+            filters:
+                - name: parse_number
+            selectors:
+                - .site-userbar__compact-metric-inline-link--leeching
+        level:
+            attr: class
+            filters:
+                - args: '[_Name ]'
+                  name: replace
+            selectors:
+                - div.ud-hero span.ud-class > b
+        ratio:
+            filters:
+                - name: parse_number
+            selectors:
+                - .site-userbar__compact-metric--ratio
+        seeding:
+            filters:
+                - name: parse_number
+            selectors:
+                - .site-userbar__compact-metric-inline-link--seeding
+        uploaded:
+            selectors:
+                - .site-userbar__compact-metric--uploaded

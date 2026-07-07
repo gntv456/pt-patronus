@@ -1,9 +1,5 @@
 # brokenstones — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle_jsonapi。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - search.category（text）
-#   - search.category.filters（匿名函数）
-
+# schema: gazelle_jsonapi。已接入通用/专用适配器，待真实站点校准。
 aka:
     - BRKs
 description: Broken Stones is a Private site for MacOS and iOS APPS / GAMES
@@ -52,6 +48,9 @@ selectors:
     fields:
         category:
             attr: class
+            filters:
+                - args: cats_macosapps=MacOS Apps:::cats_macosgames=MacOS Games:::cats_iosapps=iOS Apps:::cats_iosgames=iOS Games:::cats_graphics=Graphics:::cats_audio=Audio:::cats_tutorials=Tutorials:::cats_other=Other
+                  name: contains_map
             selector: div[class^='tooltip cats_']
         completed:
             selector: td:nth-child(7)

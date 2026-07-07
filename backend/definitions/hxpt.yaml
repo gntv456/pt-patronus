@@ -65,6 +65,7 @@ detail:
 # font.color_* 是 NexusPHP 框架常量 → 命中后取父节点文本 + 正则抽值（Parent: true）。
 # level/join_date 在 userdetails.php?id=<uid> 的 rowhead 表（detail_fields）。
 user_info:
+  user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"
   path: usercp.php
   fields:
     uploaded:
@@ -73,12 +74,14 @@ user_info:
       filters:
         - name: regexp
           args: '(?:上传量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     downloaded:
       selector: "font.color_downloaded"
       parent: true
       filters:
         - name: regexp
           args: '(?:下载量)[：:]?\s*([\d.,]+\s*[KMGTPE]?i?B)'
+        - name: parse_size
     ratio:
       selector: "font.color_ratio"
       parent: true
@@ -164,4 +167,3 @@ login:
   captcha:
     gen_path: image.php
     hash_input_selector: 'input[name="imagehash"]'
-  extra_fields: {}

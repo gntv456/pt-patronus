@@ -1,8 +1,5 @@
 # animebytes — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: gazelle。⚠ 本项目暂无该 schema 适配器，待 M3+ 实现。
-# calibration: pending — 以下字段含 elementProcess/case/匿名函数，需人工翻译：
-#   - userInfo.process（多步抓取流程，需适配器实现）
-
+# schema: gazelle。user_info.pages 已翻译为可执行选择器并有 mock 回归覆盖；真实站点仍建议 live smoke。
 aka:
     - AB
 description: AnimeBytes is a Private site. Powered by Tentacles
@@ -56,3 +53,68 @@ tags:
 timezone_offset: "+0000"
 urls:
     - https://animebytes.tv/
+user_info:
+    pages:
+        - path: /
+          fields:
+            id:
+                selector: "#stats_menu > a:first"
+                attr: href
+                filters:
+                    - name: queryparam
+                      args: userid
+            name:
+                selector: "a.username:first"
+        - path: /user.php
+          params:
+            id: "{id}"
+          fields:
+            uploads:
+                selector: "dt:contains('Torrents Uploaded:') + dd"
+                filters:
+                    - name: parse_number
+            uploaded:
+                selector: "dt:contains('Uploaded:') + dd > span"
+                attr: title
+                filters:
+                    - name: parse_size
+            downloaded:
+                selector: "dt:contains('Downloaded:') + dd > span"
+                attr: title
+                filters:
+                    - name: parse_size
+            ratio:
+                selector: "dt:contains('Ratio:') + dd > span"
+                filters:
+                    - name: parse_number
+            seeding:
+                selector: "dt:contains('Seeding:') + dd"
+                filters:
+                    - name: parse_number
+            seeding_size:
+                selector: "dt:contains('Total seed size:') + dd > span"
+                attr: title
+                filters:
+                    - name: parse_size
+            level:
+                selector: "dt:contains('Class:') + dd"
+            bonus:
+                selector: "#yen_count > a"
+                filters:
+                    - name: parse_number
+            bonus_per_hour:
+                selector: "dt:contains('Yen per day:') + dd"
+                filters:
+                    - name: parse_number
+                    - name: divide
+                      args: "24"
+            join_date:
+                selector: "dt:contains('Joined:') + dd > span"
+                attr: title
+                filters:
+                    - name: parse_time
+            last_access_at:
+                selector: "dt:contains('Last Seen') + dd > span"
+                attr: title
+                filters:
+                    - name: parse_time

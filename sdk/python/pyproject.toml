@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ptpatronus-plugin-sdk"
+version = "0.1.0"
+description = "Python SDK + pluginctl CLI for PTPatronus external-http plugins (closed host, open dev kit)."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "PTPatronus" }]
+keywords = ["ptpatronus", "plugin", "sdk", "external-http"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+]
+
+[project.scripts]
+# Installs the `pluginctl.py` dev tool as a console command.
+ptp-pluginctl = "ptpatronus_plugin_sdk.pluginctl:main"
+
+[project.urls]
+Homepage = "https://ptang.top"
+Documentation = "https://ptang.top/devkit/devguide"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ptpatronus_plugin_sdk = ["plugin-manifest.schema.json"]

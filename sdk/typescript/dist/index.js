@@ -69,6 +69,10 @@ export class PTPHostClient {
     siteCookie(id) {
         return this.request('GET', `/sites/${id}/cookie`).then((r) => r.cookie);
     }
+    /** Search the host media chain (TMDB/豆瓣/寸光集). Requires the `media:search` permission. */
+    mediaSearch(keyword, year = 0) {
+        return this.request('POST', '/media/search', { keyword, year }).then((r) => r.results ?? []);
+    }
     async request(method, path, body) {
         const response = await this.fetchImpl(`${this.context.base_url}${path}`, {
             method,
@@ -161,6 +165,10 @@ export class PTPPluginViewClient {
     }
     sites() {
         return this.request('sites.list').then((r) => r.sites ?? []);
+    }
+    /** Invoke a declared plugin action from the view (e.g. a dashboard fetching live data). */
+    action(name, input) {
+        return this.request('action.invoke', { action: name, input: input ?? {} });
     }
     request(method, params) {
         const id = String(++this.sequence);

@@ -163,6 +163,11 @@ export class PTPHostClient {
     return this.request<{ cookie: string }>('GET', `/sites/${id}/cookie`).then((r) => r.cookie)
   }
 
+  /** Search the host media chain (TMDB/豆瓣/寸光集). Requires the `media:search` permission. */
+  mediaSearch(keyword: string, year = 0): Promise<Record<string, unknown>[]> {
+    return this.request<{ results: Record<string, unknown>[] }>('POST', '/media/search', { keyword, year }).then((r) => r.results ?? [])
+  }
+
   private async request<T = Record<string, unknown>>(method: string, path: string, body?: unknown): Promise<T> {
     const response = await this.fetchImpl(`${this.context.base_url}${path}`, {
       method,
@@ -271,6 +276,11 @@ export class PTPPluginViewClient {
 
   sites(): Promise<SiteRef[]> {
     return this.request<{ sites: SiteRef[] }>('sites.list').then((r) => r.sites ?? [])
+  }
+
+  /** Invoke a declared plugin action from the view (e.g. a dashboard fetching live data). */
+  action(name: string, input?: Record<string, unknown>): Promise<unknown> {
+    return this.request('action.invoke', { action: name, input: input ?? {} })
   }
 
   request<T = Record<string, unknown>>(method: string, params?: Record<string, unknown>): Promise<T> {

@@ -36,15 +36,7 @@ Supported Host API capabilities:
 - `kv:read`, `kv:write`, `kv:delete`
 - `site:read`, `site:cookie`
 - `config:read`, `config:write`
-
-The `/capabilities` response also includes `host_capabilities`, for example:
-
-- `host.runtime.external-http.command`
-- `host.runtime.external-http.base-url`
-- `host.event.subscription`
-- `host.schedule.cron`
-- `host.ui.view`
-- `host.ui.bridge`
+- `media:search` — `host.mediaSearch(keyword, year)` reuses the host TMDB/豆瓣/寸光集 metadata chain
 
 Use `host:*` or `*` only for trusted internal plugins.
 
@@ -74,6 +66,12 @@ Available plugin-view bridge helpers:
 - `publish()`
 - `kvGet()`, `kvSet()`, `kvDelete()`
 - `sites()`
+- `action(name, input?)` — invoke a declared plugin action (e.g. a dashboard fetching live data)
 - `request(method, params)`
 
 Call `dispose()` if your plugin view creates a long-lived client and later tears it down.
+
+---
+
+Full developer guide (scaffold/validate/test/package/publish, manifest schema, async-worker pattern,
+market flow): **[DEVGUIDE.md](../DEVGUIDE.md)** — the public, host-source-free reference.

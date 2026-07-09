@@ -87,6 +87,8 @@ export declare class PTPHostClient {
     kvDelete(key: string): Promise<void>;
     sites(): Promise<SiteRef[]>;
     siteCookie(id: number): Promise<string>;
+    /** Search the host media chain (TMDB/豆瓣/寸光集). Requires the `media:search` permission. */
+    mediaSearch(keyword: string, year?: number): Promise<Record<string, unknown>[]>;
     private request;
 }
 export declare class PTPPluginViewClient {
@@ -113,6 +115,8 @@ export declare class PTPPluginViewClient {
     kvSet(key: string, value: unknown): Promise<void>;
     kvDelete(key: string): Promise<void>;
     sites(): Promise<SiteRef[]>;
+    /** Invoke a declared plugin action from the view (e.g. a dashboard fetching live data). */
+    action(name: string, input?: Record<string, unknown>): Promise<unknown>;
     request<T = Record<string, unknown>>(method: string, params?: Record<string, unknown>): Promise<T>;
     private readonly handleMessage;
 }

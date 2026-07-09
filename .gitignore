@@ -33,5 +33,9 @@ Thumbs.db
 # 调试产物
 mobile/_dbg_*
 
+# Python 字节码缓存
+__pycache__/
+*.py[cod]
+
 # Claude 本地设置（个人授权，不进 git）
 .claude/

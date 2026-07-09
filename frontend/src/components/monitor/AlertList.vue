@@ -3,7 +3,7 @@ import type { MonitorAlert } from '@/api/monitor'
 
 // AlertList — 告警列表（按级别着色，未读可标记）。
 defineProps<{ alerts: MonitorAlert[] }>()
-const emit = defineEmits<{ read: [MonitorAlert] }>()
+const emit = defineEmits<{ read: [MonitorAlert]; ack: [MonitorAlert]; silence: [MonitorAlert] }>()
 
 const levelColor: Record<string, string> = {
   danger: '#e74c3c',
@@ -22,9 +22,17 @@ const levelColor: Record<string, string> = {
         <div class="al-meta">
           {{ a.metric }} · {{ a.value }} · {{ new Date(a.created_at).toLocaleString() }}
           <span v-if="a.resolved_at" class="resolved-tag">已恢复</span>
+          <span v-if="a.acknowledged_at" class="ack-tag">已确认 {{ a.acknowledged_by || '' }}</span>
+          <span v-if="a.silenced_until && new Date(a.silenced_until).getTime() > Date.now()" class="silence-tag">
+            静默至 {{ new Date(a.silenced_until).toLocaleTimeString('zh-CN', { hour12: false }) }}
+          </span>
         </div>
       </div>
-      <el-button v-if="!a.read" size="small" text @click="emit('read', a)">已读</el-button>
+      <div class="alert-actions">
+        <el-button v-if="!a.read" size="small" text @click="emit('read', a)">已读</el-button>
+        <el-button v-if="!a.acknowledged_at" size="small" text type="primary" @click="emit('ack', a)">确认</el-button>
+        <el-button v-if="!a.resolved_at" size="small" text type="warning" @click="emit('silence', a)">静默</el-button>
+      </div>
     </div>
   </div>
 </template>
@@ -80,5 +88,29 @@ const levelColor: Record<string, string> = {
 .resolved-tag {
   color: var(--pt-success);
   margin-left: 4px;
+}
+.ack-tag {
+  color: var(--pt-primary-2);
+  margin-left: 4px;
+}
+.silence-tag {
+  color: #f7971e;
+  margin-left: 4px;
+}
+.alert-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  align-items: center;
+}
+@media (max-width: 520px) {
+  .alert-item {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr);
+  }
+  .alert-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
 }
 </style>

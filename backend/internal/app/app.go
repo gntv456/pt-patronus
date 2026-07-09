@@ -51,6 +51,7 @@ type App struct {
 	cfg       *config.Config
 	db        *gorm.DB
 	sched     *scheduler.Scheduler
+	pluginMgr *plugins.Manager
 	http      *http.Server
 	monCancel context.CancelFunc // 停监控采集 goroutine
 }
@@ -179,9 +180,12 @@ func New(cfg *config.Config) (*App, error) {
 	noticeSvc := notice.NewService(noticeOp, wsHub.Broadcast, notifMgr)
 	wsBC.SetNotice(noticeSvc) // 下载器种子完成 diff → 通知中心
 
-	pluginMgr := plugins.NewManager(database, bus, noticeSvc)
+	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
 	if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
 		slog.Warn("load external plugins failed", "err", err)
+	}
+	if cfg.PluginDevWatch {
+		pluginMgr.EnableDevWatcher(time.Duration(cfg.PluginDevWatchIntervalMS) * time.Millisecond)
 	}
 	pluginMgr.Start(context.Background())
 
@@ -202,6 +206,8 @@ func New(cfg *config.Config) (*App, error) {
 	})
 	posterCache := oper.NewPosterCacheOper(database)
 	mediaCh := chain.NewMediaChain(base, mediaProvider, posterCache)
+	// 把 MediaChain 暴露给插件的 Host API（/media/search），刮削类插件复用宿主元数据源。
+	pluginMgr.SetMediaSearcher(mediaSearchAdapter{mediaCh})
 	// 推荐信息流：复用同一份 provider（豆瓣热映 / TMDB trending / Bangumi 热门）
 	recommendCh := chain.NewRecommendChain(base, mediaProvider)
 
@@ -384,6 +390,30 @@ func New(cfg *config.Config) (*App, error) {
 	wfReg.Register(nodes.NewStopFlowNode())
 	wfReg.Register(nodes.NewRandomPickNode())
 	wfReg.Register(nodes.NewFormatSizeNode())
+
+	// monitor 设备监控（服务器 host / NAS / 摄像头 camera）。先构造服务，供工作流运维节点复用 SSH 执行能力。
+	monOp := oper.NewMonitorOper(database, crypto)
+	sshKeyOp := oper.NewSSHHostKeyOper(database) // SSH host key TOFU 存储（满足 monitor.HostKeyStore）
+	monReg := monitor.NewRegistry()
+	localCollector := monitor.NewHostCollector()
+	monReg.Register("host", "local", localCollector)
+	monReg.Register("host", "ssh", monitor.NewSSHCollector(sshKeyOp))
+	monReg.Register("nas", "local", localCollector)
+	monReg.Register("nas", "api", monitor.NewNASCollector(hc))
+	monReg.Register("nas", "snmp", monitor.NewNASCollector(hc))
+	monReg.Register("camera", "onvif", monitor.NewCameraCollector())
+	monReg.Register("camera", "rtsp", monitor.NewCameraCollector())
+	monReg.Register("http", "http", monitor.NewHTTPCollector())
+	monReg.Register("tcp", "tcp", monitor.NewTCPCollector())
+	monReg.Register("process", "ssh", monitor.NewSSHProcessCollector(sshKeyOp))
+	monReg.Register("script", "ssh", monitor.NewSSHScriptCollector(sshKeyOp))
+	// 告警通知适配到现有 NotificationChain（bark/tg/webhook 多通道扇出）。
+	monNotifier := monitor.Notifier(func(ctx context.Context, title, body, level string) {
+		notifCh.Notify(ctx, notification.Message{Title: title, Body: body, Level: level})
+	})
+	monSvc := monitor.NewService(monOp, monReg, monNotifier, 10*time.Second, noticeSvc)
+	wfReg.Register(nodes.NewSSHCommandNode(monSvc))
+
 	wfCh := chain.NewWorkflowChain(base, wfOp, wfRunOp, wfReg, sched, base.Bus, noticeSvc)
 	// 进站 Webhook：外部 POST /api/v1/webhooks/in/:token → 触发目标工作流 + 广播 "webhook" 事件 + 通知。
 	webhookOp := oper.NewWebhookOper(database, crypto)
@@ -409,21 +439,7 @@ func New(cfg *config.Config) (*App, error) {
 		}
 	})
 
-	// monitor 设备监控（服务器 host / NAS / 摄像头 camera）+ RTSP→WS 转发。
-	monOp := oper.NewMonitorOper(database, crypto)
-	sshKeyOp := oper.NewSSHHostKeyOper(database) // SSH host key TOFU 存储（满足 monitor.HostKeyStore）
-	monReg := monitor.NewRegistry()
-	monReg.Register("host", "local", monitor.NewHostCollector())
-	monReg.Register("host", "ssh", monitor.NewSSHCollector(sshKeyOp))
-	monReg.Register("nas", "api", monitor.NewNASCollector(hc))
-	monReg.Register("nas", "snmp", monitor.NewNASCollector(hc))
-	monReg.Register("camera", "onvif", monitor.NewCameraCollector())
-	monReg.Register("camera", "rtsp", monitor.NewCameraCollector())
-	// 告警通知适配到现有 NotificationChain（bark/tg/webhook 多通道扇出）。
-	monNotifier := monitor.Notifier(func(ctx context.Context, title, body, level string) {
-		notifCh.Notify(ctx, notification.Message{Title: title, Body: body, Level: level})
-	})
-	monSvc := monitor.NewService(monOp, monReg, monNotifier, 10*time.Second, noticeSvc)
+	// monitor 运行时：RTSP→WS 转发、Agent 推送、后台采集与清理任务。
 	var monitorOrigins []string
 	for _, o := range strings.Split(cfg.CORSAllowedOrigins, ",") {
 		if o = strings.TrimSpace(o); o != "" {
@@ -545,7 +561,7 @@ func New(cfg *config.Config) (*App, error) {
 	})
 
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: engine}
-	return &App{cfg: cfg, db: database, sched: sched, http: srv, monCancel: monCancel}, nil
+	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel}, nil
 }
 
 // Run starts the HTTP server (blocking).
@@ -588,6 +604,9 @@ func (a *App) Shutdown(ctx context.Context) error {
 	}
 	if a.sched != nil {
 		a.sched.Stop()
+	}
+	if a.pluginMgr != nil {
+		a.pluginMgr.Stop()
 	}
 	return a.http.Shutdown(ctx)
 }

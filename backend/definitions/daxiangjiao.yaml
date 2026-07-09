@@ -1,0 +1,16 @@
+# 大香蕉 - NexusPHP 站点。
+# selectors/user_info 未列出，由 EnsureDefaults 自填 NexusPHP 校准默认
+# （上传/下载/魔力/做种/分享率 走通用 NexusPHP 选择器与正则）。
+# 首次接入后建议用真实页面样本核验用户数据抓取，若个别字段取不到再补 user_info.selectors。
+
+id: daxiangjiao
+name: 大香蕉
+aka:
+    - 大香蕉PT
+description: 大香蕉 PT
+schema: nexusphp
+timezone_offset: "+0800"
+tags:
+    - 综合
+urls:
+    - https://pt.daxiangjiao.org/

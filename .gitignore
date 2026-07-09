@@ -7,6 +7,8 @@ backend/*.db*
 dist/
 !backend/internal/web/dist/
 !backend/internal/web/dist/**
+!sdk/typescript/dist/
+!sdk/typescript/dist/**
 data/
 node_modules/
 frontend/dist/

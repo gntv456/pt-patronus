@@ -30,6 +30,26 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
 
   bool get _isCamera => widget.target.type == 'camera';
 
+  String get _resolvedProtocol {
+    final t = widget.target;
+    if (t.protocol.isNotEmpty) return t.protocol;
+    if (t.type == 'nas') return t.host.isEmpty ? 'local' : 'api';
+    if (t.type == 'camera') return 'onvif';
+    return t.host.isEmpty ? 'local' : 'ssh';
+  }
+
+  bool get _canPower {
+    final t = widget.target;
+    if (t.type == 'camera') return false;
+    if (t.type == 'host') {
+      return _resolvedProtocol == 'local' || _resolvedProtocol == 'ssh';
+    }
+    if (t.type == 'nas') {
+      return _resolvedProtocol == 'local' || _resolvedProtocol == 'api';
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +86,49 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
+
+  String _tempName(String raw) {
+    final name = raw.trim();
+    final key = name.toLowerCase();
+    if (key.isEmpty) return '温度传感器';
+    if (key == 'acpitz') return 'ACPI 温区';
+    if (key == 'nvme_composite') return 'NVMe 综合温度';
+    final nvmeSensor = RegExp(r'^nvme_sensor_(\d+)$').firstMatch(key);
+    if (nvmeSensor != null) return 'NVMe 传感器 ${nvmeSensor.group(1)}';
+    final nvme = RegExp(r'^nvme(?:_temp)?_?(\d+)$').firstMatch(key);
+    if (nvme != null) return 'NVMe 温度 ${nvme.group(1)}';
+    final pkg = RegExp(r'^coretemp_package_id_(\d+)$').firstMatch(key);
+    if (pkg != null) {
+      final id = pkg.group(1);
+      return id == '0' ? 'CPU 封装' : 'CPU 封装 $id';
+    }
+    final core = RegExp(r'^coretemp_core_(\d+)$').firstMatch(key);
+    if (core != null) return 'CPU 核心 ${core.group(1)}';
+    if (key == 'k10temp_tctl') return 'AMD CPU 控制温度';
+    if (key == 'k10temp_tccd1') return 'AMD CCD1 温度';
+    if (key.startsWith('k10temp_tccd')) {
+      return 'AMD CCD${key.replaceFirst('k10temp_tccd', '')} 温度';
+    }
+    return name.replaceAll('_', ' ');
+  }
+
+  String _protocolName(String raw) => switch (raw) {
+    'local' => '本机',
+    'ssh' => 'SSH 远程',
+    'agent' => 'Agent 上报',
+    'api' => '厂商 API',
+    'snmp' => '通用 SNMP',
+    'onvif' => 'ONVIF',
+    'rtsp' => 'RTSP 直连',
+    _ => raw,
+  };
+
+  String _vendorName(String raw) => switch (raw) {
+    'synology' => '群晖',
+    'truenas' || 'freenas' => 'TrueNAS',
+    'snmp' => 'SNMP',
+    _ => raw,
+  };
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -114,8 +177,14 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
         title: const Text('删除设备'),
         content: Text('确认删除「${widget.target.name}」？'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('删除')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('删除'),
+          ),
         ],
       ),
     );
@@ -128,18 +197,62 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
     }
   }
 
-  Widget _card(String label, String value, {Color? color}) => GlassCard(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(value,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
-          ],
+  Future<void> _power(String action) async {
+    final isShutdown = action == 'shutdown';
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(isShutdown ? '确认关机' : '确认重启'),
+        content: Text(
+          '确认${isShutdown ? '关闭' : '重启'}「${widget.target.name}」？'
+          '${isShutdown ? '关机后可能需要手动开机。' : '设备会短暂离线。'}',
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: isShutdown
+                ? FilledButton.styleFrom(backgroundColor: Colors.redAccent)
+                : null,
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(isShutdown ? '关机' : '重启'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final r = await _api.power(widget.target.id, action);
+      if (r.ok) {
+        _toast(isShutdown ? '关机命令已发送' : '重启命令已发送');
+      } else {
+        _toast(r.error ?? '电源操作失败');
+      }
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    }
+  }
+
+  Widget _card(String label, String value, {Color? color}) => GlassCard(
+    padding: const EdgeInsets.all(14),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _cameraPreview() {
     if (_playerErr != null) {
@@ -149,7 +262,11 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
           children: [
             const Icon(Icons.videocam_off, size: 36, color: Colors.grey),
             const SizedBox(height: 8),
-            Text(_playerErr!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+            Text(
+              _playerErr!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               icon: const Icon(Icons.open_in_browser),
@@ -169,13 +286,21 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
         aspectRatio: 16 / 9,
         child: ColoredBox(
           color: Colors.black54,
-          child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)),
+          child: Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white70,
+            ),
+          ),
         ),
       );
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: AspectRatio(aspectRatio: 16 / 9, child: Video(controller: _controller!)),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Video(controller: _controller!),
+      ),
     );
   }
 
@@ -185,40 +310,59 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
     return '${u.scheme}://${u.host}/';
   }
 
-  Widget _trend(String label, List<double> data, {Color color = PTColors.primary}) {
+  Widget _trend(
+    String label,
+    List<double> data, {
+    Color color = PTColors.primary,
+  }) {
     if (data.length < 2) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text('$label 趋势：数据不足', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        child: Text(
+          '$label 趋势：数据不足',
+          style: const TextStyle(color: Colors.grey, fontSize: 13),
+        ),
       );
     }
-    final maxY = data.fold<double>(1, (a, b) => a > b ? a : b).clamp(1, 100) * 1.2;
+    final maxY =
+        data.fold<double>(1, (a, b) => a > b ? a : b).clamp(1, 100) * 1.2;
     return Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
           const SizedBox(height: 6),
           SizedBox(
             height: 90,
-            child: LineChart(LineChartData(
-              gridData: FlGridData(show: true, drawVerticalLine: false),
-              borderData: FlBorderData(show: false),
-              titlesData: const FlTitlesData(show: false),
-              minY: 0,
-              maxY: maxY,
-              lineBarsData: [
-                LineChartBarData(
-                  isCurved: true,
-                  spots: [for (var i = 0; i < data.length; i++) FlSpot(i.toDouble(), data[i])],
-                  color: color,
-                  barWidth: 2,
-                  dotData: const FlDotData(show: false),
-                  belowBarData: BarAreaData(show: true, color: color.withValues(alpha: 0.12)),
-                ),
-              ],
-            )),
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(show: true, drawVerticalLine: false),
+                borderData: FlBorderData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                minY: 0,
+                maxY: maxY,
+                lineBarsData: [
+                  LineChartBarData(
+                    isCurved: true,
+                    spots: [
+                      for (var i = 0; i < data.length; i++)
+                        FlSpot(i.toDouble(), data[i]),
+                    ],
+                    color: color,
+                    barWidth: 2,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: color.withValues(alpha: 0.12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -226,14 +370,20 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
   }
 
   Widget _info(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          children: [
-            SizedBox(width: 80, child: Text(k, style: const TextStyle(color: Colors.grey, fontSize: 13))),
-            Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      children: [
+        SizedBox(
+          width: 80,
+          child: Text(
+            k,
+            style: const TextStyle(color: Colors.grey, fontSize: 13),
+          ),
         ),
-      );
+        Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -247,20 +397,54 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
         elevation: 0,
         actions: [
           IconButton(
-              icon: _probing
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.network_check),
-              onPressed: _probing ? null : _probe,
-              tooltip: '探活'),
+            icon: _probing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.network_check),
+            onPressed: _probing ? null : _probe,
+            tooltip: '探活',
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'edit') _edit();
               if (v == 'delete') _delete();
+              if (v == 'reboot') _power('reboot');
+              if (v == 'shutdown') _power('shutdown');
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('编辑')),
-              PopupMenuItem(value: 'delete', child: Text('删除')),
+            itemBuilder: (_) => [
+              if (_canPower)
+                const PopupMenuItem(
+                  value: 'reboot',
+                  child: Row(
+                    children: [
+                      Icon(Icons.restart_alt, size: 18),
+                      SizedBox(width: 10),
+                      Text('重启'),
+                    ],
+                  ),
+                ),
+              if (_canPower)
+                const PopupMenuItem(
+                  value: 'shutdown',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.power_settings_new,
+                        size: 18,
+                        color: Colors.redAccent,
+                      ),
+                      SizedBox(width: 10),
+                      Text('关机'),
+                    ],
+                  ),
+                ),
+              if (_canPower) const PopupMenuDivider(),
+              const PopupMenuItem(value: 'edit', child: Text('编辑')),
+              const PopupMenuItem(value: 'delete', child: Text('删除')),
             ],
           ),
         ],
@@ -270,22 +454,41 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             children: [
-              Row(children: [
-                Icon(t.lastOnline == true ? Icons.check_circle : Icons.error_outline,
+              Row(
+                children: [
+                  Icon(
+                    t.lastOnline == true
+                        ? Icons.check_circle
+                        : Icons.error_outline,
                     size: 18,
-                    color: t.lastOnline == true ? PTColors.success : PTColors.danger),
-                const SizedBox(width: 6),
-                Text(t.lastOnline == true ? '在线' : (t.lastOnline == false ? '离线' : '未知'),
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(width: 12),
-                Text('${t.protocol}${t.vendor.isNotEmpty ? ' · ${t.vendor}' : ''}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 13)),
-              ]),
+                    color: t.lastOnline == true
+                        ? PTColors.success
+                        : PTColors.danger,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    t.lastOnline == true
+                        ? '在线'
+                        : (t.lastOnline == false ? '离线' : '未知'),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_protocolName(_resolvedProtocol)}${t.vendor.isNotEmpty ? ' · ${_vendorName(t.vendor)}' : ''}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                ],
+              ),
               if (t.lastError.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(t.lastError,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                  child: Text(
+                    t.lastError,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               const SizedBox(height: 12),
               if (_isCamera) ...[
@@ -297,8 +500,13 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('设备信息',
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const Text(
+                          '设备信息',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         _info('厂商', m!.deviceInfo!.manufacturer),
                         _info('型号', m.deviceInfo!.model),
@@ -321,8 +529,22 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
                   children: [
                     _card('CPU', _pct(m.cpuUsage)),
                     _card('内存', _pct(m.memUsage)),
-                    _card('最满磁盘', _pct(m.disks.isEmpty ? null : m.disks.map((d) => d.usage).reduce((a, b) => a > b ? a : b))),
-                    _card('最高温度', m.temps.isEmpty ? '-' : '${m.temps.map((t) => t.temp).reduce((a, b) => a > b ? a : b).toStringAsFixed(0)}°C'),
+                    _card(
+                      '最满磁盘',
+                      _pct(
+                        m.disks.isEmpty
+                            ? null
+                            : m.disks
+                                  .map((d) => d.usage)
+                                  .reduce((a, b) => a > b ? a : b),
+                      ),
+                    ),
+                    _card(
+                      '最高温度',
+                      m.temps.isEmpty
+                          ? '-'
+                          : '${m.temps.map((t) => t.temp).reduce((a, b) => a > b ? a : b).toStringAsFixed(0)}°C',
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -331,35 +553,65 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _trend('CPU %', [for (final s in _history) s.metrics?.cpuUsage ?? 0]),
-                      _trend('内存 %', [for (final s in _history) s.metrics?.memUsage ?? 0], color: PTColors.primary2),
+                      _trend('CPU %', [
+                        for (final s in _history) s.metrics?.cpuUsage ?? 0,
+                      ]),
+                      _trend('内存 %', [
+                        for (final s in _history) s.metrics?.memUsage ?? 0,
+                      ], color: PTColors.primary2),
                       const Divider(),
                       _info('网络 ↓', _fmtRate(m.netRxRate)),
                       _info('网络 ↑', _fmtRate(m.netTxRate)),
-                      if (m.load1 != null) _info('负载', m.load1!.toStringAsFixed(2)),
-                      if (m.uptime != null) _info('运行时长', _fmtUptime(m.uptime!)),
+                      if (m.load1 != null)
+                        _info('负载', m.load1!.toStringAsFixed(2)),
+                      if (m.uptime != null)
+                        _info('运行时长', _fmtUptime(m.uptime!)),
                       if (m.disks.isNotEmpty) ...[
                         const SizedBox(height: 6),
-                        const Text('磁盘', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const Text(
+                          '磁盘',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
                         for (final d in m.disks)
-                          _info(d.device, '${_fmtBytes(d.used)} / ${_fmtBytes(d.total)} (${(d.usage).toStringAsFixed(0)}%)'),
+                          _info(
+                            d.device,
+                            '${_fmtBytes(d.used)} / ${_fmtBytes(d.total)} (${(d.usage).toStringAsFixed(0)}%)',
+                          ),
                       ],
                       if (m.temps.isNotEmpty) ...[
                         const SizedBox(height: 6),
-                        const Text('温度', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                        for (final tp in m.temps) _info(tp.name, '${tp.temp.toStringAsFixed(1)}°C'),
+                        const Text(
+                          '温度',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                        for (final tp in m.temps)
+                          _info(
+                            _tempName(tp.name),
+                            '${tp.temp.toStringAsFixed(1)}°C',
+                          ),
                       ],
                     ],
                   ),
                 ),
               ] else if (_loading)
-                const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
+                )
               else
                 GlassCard(
                   padding: const EdgeInsets.all(16),
                   child: Center(
-                    child: Text(t.lastError.isNotEmpty ? t.lastError : '点击右上角刷新采集数据',
-                        style: const TextStyle(color: Colors.grey)),
+                    child: Text(
+                      t.lastError.isNotEmpty ? t.lastError : '点击右上角刷新采集数据',
+                      style: const TextStyle(color: Colors.grey),
+                    ),
                   ),
                 ),
               if (_alerts.isNotEmpty) ...[
@@ -369,22 +621,35 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('告警', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      const Text(
+                        '告警',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                       const SizedBox(height: 6),
                       for (final a in _alerts.take(10))
                         ListTile(
                           dense: true,
                           contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.circle,
-                              size: 10,
-                              color: a.level == 'danger'
-                                  ? PTColors.danger
-                                  : a.level == 'warning'
-                                      ? PTColors.warn
-                                      : PTColors.primary2),
-                          title: Text(a.message, style: const TextStyle(fontSize: 13)),
-                          subtitle: Text('${a.metric} · ${a.value}${a.resolvedAt != null ? ' · 已恢复' : ''}',
-                              style: const TextStyle(fontSize: 11)),
+                          leading: Icon(
+                            Icons.circle,
+                            size: 10,
+                            color: a.level == 'danger'
+                                ? PTColors.danger
+                                : a.level == 'warning'
+                                ? PTColors.warn
+                                : PTColors.primary2,
+                          ),
+                          title: Text(
+                            a.message,
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          subtitle: Text(
+                            '${a.metric} · ${a.value}${a.resolvedAt != null ? ' · 已恢复' : ''}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           trailing: a.read
                               ? null
                               : TextButton(
@@ -394,7 +659,12 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
                                       await _api.readAlert(a.id);
                                       _load();
                                     } catch (e) {
-                                      _toast(e.toString().replaceFirst('Exception: ', ''));
+                                      _toast(
+                                        e.toString().replaceFirst(
+                                          'Exception: ',
+                                          '',
+                                        ),
+                                      );
                                     }
                                   },
                                 ),
@@ -411,7 +681,8 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
   }
 }
 
-String _pct(num? v) => v == null ? '-' : '${v.toStringAsFixed(v < 10 ? 1 : 0)}%';
+String _pct(num? v) =>
+    v == null ? '-' : '${v.toStringAsFixed(v < 10 ? 1 : 0)}%';
 
 String _fmtBytes(int n) {
   if (n <= 0) return '0 B';

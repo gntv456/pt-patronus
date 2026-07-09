@@ -343,6 +343,34 @@ func Build(d *Deps) *gin.Engine {
 				bk.POST("/import-ptd", middleware.RequireAdmin(), bkH.ImportPTD)
 			}
 
+			credH := v1.NewCredentialHandler(oper.NewCredentialOper(d.DB, d.Crypto))
+			creds := guarded.Group("/ops/credentials")
+			creds.Use(middleware.RequireAdmin())
+			{
+				creds.GET("", credH.List)
+				creds.POST("", credH.Create)
+				creds.PUT("/:id", credH.Update)
+				creds.DELETE("/:id", credH.Delete)
+			}
+			cfgH := v1.NewOpsConfigHandler(oper.NewOpsConfigOper(d.DB))
+			opsCfg := guarded.Group("/ops/configs")
+			opsCfg.Use(middleware.RequireAdmin())
+			{
+				opsCfg.GET("", cfgH.List)
+				opsCfg.POST("", cfgH.Create)
+				opsCfg.PUT("/:id", cfgH.Update)
+				opsCfg.DELETE("/:id", cfgH.Delete)
+				opsCfg.GET("/:id/history", cfgH.History)
+			}
+			cmdRunH := v1.NewCommandRunHandler(d.MonOp, oper.NewCommandRunOper(d.DB), d.MonSvc)
+			cmdRuns := guarded.Group("/ops/command-runs")
+			cmdRuns.Use(middleware.RequireAdmin())
+			{
+				cmdRuns.GET("", cmdRunH.List)
+				cmdRuns.POST("", cmdRunH.Create)
+				cmdRuns.GET("/:id", cmdRunH.Get)
+			}
+
 			entH := v1.NewEntertainmentHandler(d.Entertainment, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins))
 			ent := guarded.Group("/entertainment")
 			{
@@ -436,7 +464,8 @@ func Build(d *Deps) *gin.Engine {
 				wfRuns.GET("/:rid", wfH.RunDetail)
 			}
 
-			pluginH := v1.NewPluginHandler(d.Plugins)
+			pluginH := v1.NewPluginHandler(d.Plugins, d.Tickets)
+			api.GET("/plugins/:id/assets/*path", pluginH.Asset)
 			plugins := guarded.Group("/plugins")
 			{
 				plugins.GET("", pluginH.List)
@@ -444,6 +473,10 @@ func Build(d *Deps) *gin.Engine {
 				plugins.POST("/events", middleware.RequireAdmin(), pluginH.PublishEvent)
 				plugins.GET("/market", middleware.RequireAdmin(), pluginH.Market)
 				plugins.POST("/market/install", middleware.RequireAdmin(), pluginH.Install)
+				plugins.POST("/:id/assets/ticket", middleware.RequireAdmin(), pluginH.AssetTicket)
+				plugins.GET("/:id/releases", pluginH.Releases)
+				plugins.POST("/:id/bridge", middleware.RequireAdmin(), pluginH.Bridge)
+				plugins.POST("/:id/rollback", middleware.RequireAdmin(), pluginH.Rollback)
 				plugins.GET("/:id", pluginH.Get)
 				plugins.PUT("/:id/config", middleware.RequireAdmin(), pluginH.SaveConfig)
 				plugins.POST("/:id/enable", middleware.RequireAdmin(), pluginH.Enable)
@@ -485,6 +518,7 @@ func Build(d *Deps) *gin.Engine {
 				mons.DELETE("/:id", middleware.RequireAdmin(), monH.Delete)
 				mons.POST("/:id/probe", middleware.RequireAdmin(), monH.Probe)
 				mons.POST("/:id/collect", middleware.RequireAdmin(), monH.Collect)
+				mons.POST("/:id/exec", middleware.RequireAdmin(), monH.Exec)
 				mons.POST("/:id/power", middleware.RequireAdmin(), monH.Power)
 				mons.GET("/:id/metrics", monH.Metrics)
 				mons.POST("/:id/accept-host-key", middleware.RequireAdmin(), monH.AcceptHostKey)
@@ -493,6 +527,8 @@ func Build(d *Deps) *gin.Engine {
 			{
 				alerts.GET("", monH.ListAlerts)
 				alerts.POST("/:id/read", monH.ReadAlert)
+				alerts.POST("/:id/ack", middleware.RequireAdmin(), monH.AckAlert)
+				alerts.POST("/:id/silence", middleware.RequireAdmin(), monH.SilenceAlert)
 			}
 
 			// Agent 管理（push 架构）：创建 agent 返回明文 secret、列表、删除、重置 secret。
@@ -528,6 +564,8 @@ func Build(d *Deps) *gin.Engine {
 		// RTSP 视频流（?token=<jwt> 鉴权；浏览器不能直播 RTSP，由 RTSPProxy 转 WS）。
 		streamH := v1.NewMonitorStreamHandler(d.RTSPProxy)
 		api.GET("/monitor/cameras/:id/stream", streamH.Stream)
+		terminalH := v1.NewMonitorTerminalHandler(d.MonSvc, d.Tickets, d.DB, splitOrigins(d.Cfg.CORSAllowedOrigins))
+		api.GET("/monitors/:id/terminal", terminalH.Handle)
 		// Agent 上报长连接（?agent_id=&secret= 鉴权；生产强制 wss://，secret 走 query 非 TLS 会被嗅探）。
 		api.GET("/monitor/agents/ws", d.AgentHub.HandleWS)
 		// Agent 一键安装脚本（公开，curl | bash；secret 由 env 传入不入 URL）。

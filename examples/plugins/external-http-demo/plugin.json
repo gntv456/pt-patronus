@@ -1,30 +1,64 @@
 {
   "id": "external-http-demo",
-  "name": "外部 HTTP 示例插件",
+  "name": "External HTTP Demo",
   "version": "1.0.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
   "author": "PTPatronus",
-  "description": "演示 external-http 插件协议：健康检查、事件接收和动作执行。",
+  "description": "Demonstrates the external-http protocol, Host API callbacks, KV storage, events and actions.",
+  "license": "MIT",
+  "keywords": ["demo", "external-http", "host-api"],
   "runtime": "external-http",
   "entry": {
     "command": "python",
     "args": ["plugin.py"],
     "health": "/health"
   },
-  "permissions": ["event:read", "log:write"],
+  "permissions": [
+    "event:read",
+    "event:publish",
+    "log:write",
+    "kv:read",
+    "kv:write",
+    "config:read"
+  ],
   "events": [
-    { "type": "plugin.test", "description": "插件测试事件" }
+    { "type": "plugin.test", "description": "Test event sent from the plugin admin page." }
   ],
   "actions": [
     {
       "name": "ping",
       "label": "Ping",
-      "description": "返回插件收到的输入。",
+      "description": "Returns the input and increments a host KV counter.",
       "input_schema": [
-        { "key": "message", "label": "消息", "type": "text", "default": "hello" }
+        { "key": "message", "label": "Message", "type": "text", "default": "hello" }
       ]
     }
   ],
   "config_schema": [
-    { "key": "prefix", "label": "返回前缀", "type": "text", "default": "pong" }
-  ]
+    { "key": "prefix", "label": "Response prefix", "type": "text", "default": "pong" }
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "id": "external-http-demo.ping",
+        "label": "Ping demo plugin",
+        "action": "ping"
+      }
+    ],
+    "menus": [
+      {
+        "location": "plugins/actions",
+        "command": "external-http-demo.ping"
+      }
+    ],
+    "views": [
+      {
+        "id": "dashboard",
+        "title": "External Demo",
+        "location": "plugins",
+        "path": "index.html"
+      }
+    ]
+  }
 }

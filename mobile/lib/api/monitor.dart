@@ -42,23 +42,23 @@ class MonitorTarget {
   });
 
   factory MonitorTarget.fromJson(Map<String, dynamic> j) => MonitorTarget(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        name: j['name'] as String? ?? '',
-        type: j['type'] as String? ?? '',
-        host: j['host'] as String? ?? '',
-        port: j['port'] as int? ?? 0,
-        vendor: j['vendor'] as String? ?? '',
-        protocol: j['protocol'] as String? ?? '',
-        rtspUrl: j['rtsp_url'] as String? ?? '',
-        intervalSec: j['interval_sec'] as int? ?? 60,
-        timeoutSec: j['timeout_sec'] as int? ?? 15,
-        enabled: j['enabled'] as bool? ?? true,
-        thresholds: j['thresholds'] as String? ?? '',
-        hasPrivateKey: j['has_private_key'] as bool? ?? false,
-        lastOnline: j['last_online'] as bool?,
-        lastError: j['last_error'] as String? ?? '',
-        lastCheckedAt: j['last_checked_at'] as String? ?? '',
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    name: j['name'] as String? ?? '',
+    type: j['type'] as String? ?? '',
+    host: j['host'] as String? ?? '',
+    port: j['port'] as int? ?? 0,
+    vendor: j['vendor'] as String? ?? '',
+    protocol: j['protocol'] as String? ?? '',
+    rtspUrl: j['rtsp_url'] as String? ?? '',
+    intervalSec: j['interval_sec'] as int? ?? 60,
+    timeoutSec: j['timeout_sec'] as int? ?? 15,
+    enabled: j['enabled'] as bool? ?? true,
+    thresholds: j['thresholds'] as String? ?? '',
+    hasPrivateKey: j['has_private_key'] as bool? ?? false,
+    lastOnline: j['last_online'] as bool?,
+    lastError: j['last_error'] as String? ?? '',
+    lastCheckedAt: j['last_checked_at'] as String? ?? '',
+  );
 }
 
 /// 创建/更新入参（凭据为明文，编辑留空=不改）。
@@ -95,21 +95,21 @@ class TargetInput {
   });
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'type': type,
-        'host': host,
-        'port': port,
-        'vendor': vendor,
-        'protocol': protocol,
-        'rtsp_url': rtspUrl,
-        'interval_sec': intervalSec,
-        'timeout_sec': timeoutSec,
-        'username': username,
-        'password': password,
-        'private_key': privateKey,
-        'thresholds': thresholds,
-        'enabled': enabled,
-      };
+    'name': name,
+    'type': type,
+    'host': host,
+    'port': port,
+    'vendor': vendor,
+    'protocol': protocol,
+    'rtsp_url': rtspUrl,
+    'interval_sec': intervalSec,
+    'timeout_sec': timeoutSec,
+    'username': username,
+    'password': password,
+    'private_key': privateKey,
+    'thresholds': thresholds,
+    'enabled': enabled,
+  };
 }
 
 class DiskMetric {
@@ -117,13 +117,18 @@ class DiskMetric {
   final int total;
   final int used;
   final double usage;
-  DiskMetric({required this.device, required this.total, required this.used, required this.usage});
+  DiskMetric({
+    required this.device,
+    required this.total,
+    required this.used,
+    required this.usage,
+  });
   factory DiskMetric.fromJson(Map<String, dynamic> j) => DiskMetric(
-        device: j['device'] as String? ?? '',
-        total: (j['total'] as num?)?.toInt() ?? 0,
-        used: (j['used'] as num?)?.toInt() ?? 0,
-        usage: (j['usage'] as num?)?.toDouble() ?? 0,
-      );
+    device: j['device'] as String? ?? '',
+    total: (j['total'] as num?)?.toInt() ?? 0,
+    used: (j['used'] as num?)?.toInt() ?? 0,
+    usage: (j['usage'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class TempMetric {
@@ -131,9 +136,9 @@ class TempMetric {
   final double temp;
   TempMetric({required this.name, required this.temp});
   factory TempMetric.fromJson(Map<String, dynamic> j) => TempMetric(
-        name: j['name'] as String? ?? '',
-        temp: (j['temp'] as num?)?.toDouble() ?? 0,
-      );
+    name: j['name'] as String? ?? '',
+    temp: (j['temp'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class DeviceInfo {
@@ -141,13 +146,18 @@ class DeviceInfo {
   final String model;
   final String firmware;
   final String serial;
-  DeviceInfo({required this.manufacturer, required this.model, required this.firmware, required this.serial});
+  DeviceInfo({
+    required this.manufacturer,
+    required this.model,
+    required this.firmware,
+    required this.serial,
+  });
   factory DeviceInfo.fromJson(Map<String, dynamic> j) => DeviceInfo(
-        manufacturer: j['manufacturer'] as String? ?? '',
-        model: j['model'] as String? ?? '',
-        firmware: j['firmware'] as String? ?? '',
-        serial: j['serial'] as String? ?? '',
-      );
+    manufacturer: j['manufacturer'] as String? ?? '',
+    model: j['model'] as String? ?? '',
+    firmware: j['firmware'] as String? ?? '',
+    serial: j['serial'] as String? ?? '',
+  );
 }
 
 /// 采集指标（host/nas 共用；camera 主要填 device_info）。
@@ -183,26 +193,26 @@ class Metrics {
   });
 
   factory Metrics.fromJson(Map<String, dynamic> j) => Metrics(
-        online: j['online'] as bool? ?? false,
-        cpuUsage: (j['cpu_usage'] as num?)?.toDouble(),
-        cpuCores: (j['cpu_cores'] as num?)?.toInt(),
-        memTotal: (j['mem_total'] as num?)?.toInt(),
-        memUsed: (j['mem_used'] as num?)?.toInt(),
-        memUsage: (j['mem_usage'] as num?)?.toDouble(),
-        disks: ((j['disks'] as List?) ?? const [])
-            .map((e) => DiskMetric.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        netRxRate: (j['net_rx_rate'] as num?)?.toDouble(),
-        netTxRate: (j['net_tx_rate'] as num?)?.toDouble(),
-        load1: (j['load1'] as num?)?.toDouble(),
-        uptime: (j['uptime'] as num?)?.toInt(),
-        temps: ((j['temps'] as List?) ?? const [])
-            .map((e) => TempMetric.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        deviceInfo: j['device_info'] is Map<String, dynamic>
-            ? DeviceInfo.fromJson(j['device_info'] as Map<String, dynamic>)
-            : null,
-      );
+    online: j['online'] as bool? ?? false,
+    cpuUsage: (j['cpu_usage'] as num?)?.toDouble(),
+    cpuCores: (j['cpu_cores'] as num?)?.toInt(),
+    memTotal: (j['mem_total'] as num?)?.toInt(),
+    memUsed: (j['mem_used'] as num?)?.toInt(),
+    memUsage: (j['mem_usage'] as num?)?.toDouble(),
+    disks: ((j['disks'] as List?) ?? const [])
+        .map((e) => DiskMetric.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    netRxRate: (j['net_rx_rate'] as num?)?.toDouble(),
+    netTxRate: (j['net_tx_rate'] as num?)?.toDouble(),
+    load1: (j['load1'] as num?)?.toDouble(),
+    uptime: (j['uptime'] as num?)?.toInt(),
+    temps: ((j['temps'] as List?) ?? const [])
+        .map((e) => TempMetric.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    deviceInfo: j['device_info'] is Map<String, dynamic>
+        ? DeviceInfo.fromJson(j['device_info'] as Map<String, dynamic>)
+        : null,
+  );
 }
 
 /// 历史快照（metrics 是 JSON 字符串，需二次解析）。
@@ -210,7 +220,11 @@ class MetricSnapshot {
   final String snapAt;
   final bool online;
   final Metrics? metrics;
-  MetricSnapshot({required this.snapAt, required this.online, required this.metrics});
+  MetricSnapshot({
+    required this.snapAt,
+    required this.online,
+    required this.metrics,
+  });
   factory MetricSnapshot.fromJson(Map<String, dynamic> j) {
     Metrics? m;
     final raw = j['metrics'];
@@ -235,12 +249,12 @@ class CollectResult {
   final String? error;
   CollectResult({required this.ok, this.metrics, this.error});
   factory CollectResult.fromJson(Map<String, dynamic> j) => CollectResult(
-        ok: j['ok'] as bool? ?? false,
-        metrics: j['metrics'] is Map<String, dynamic>
-            ? Metrics.fromJson(j['metrics'] as Map<String, dynamic>)
-            : null,
-        error: j['error'] as String?,
-      );
+    ok: j['ok'] as bool? ?? false,
+    metrics: j['metrics'] is Map<String, dynamic>
+        ? Metrics.fromJson(j['metrics'] as Map<String, dynamic>)
+        : null,
+    error: j['error'] as String?,
+  );
 }
 
 class ProbeResult {
@@ -249,10 +263,18 @@ class ProbeResult {
   final String? error;
   ProbeResult({required this.ok, this.online, this.error});
   factory ProbeResult.fromJson(Map<String, dynamic> j) => ProbeResult(
-        ok: j['ok'] as bool? ?? false,
-        online: j['online'] as bool?,
-        error: j['error'] as String?,
-      );
+    ok: j['ok'] as bool? ?? false,
+    online: j['online'] as bool?,
+    error: j['error'] as String?,
+  );
+}
+
+class PowerResult {
+  final bool ok;
+  final String? error;
+  PowerResult({required this.ok, this.error});
+  factory PowerResult.fromJson(Map<String, dynamic> j) =>
+      PowerResult(ok: j['ok'] as bool? ?? false, error: j['error'] as String?);
 }
 
 class MonitorAlert {
@@ -277,16 +299,16 @@ class MonitorAlert {
     required this.resolvedAt,
   });
   factory MonitorAlert.fromJson(Map<String, dynamic> j) => MonitorAlert(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        targetId: (j['target_id'] as num?)?.toInt() ?? 0,
-        level: j['level'] as String? ?? 'info',
-        metric: j['metric'] as String? ?? '',
-        value: j['value'] as String? ?? '',
-        message: j['message'] as String? ?? '',
-        read: j['read'] as bool? ?? false,
-        createdAt: j['created_at'] as String? ?? '',
-        resolvedAt: j['resolved_at'] as String?,
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    targetId: (j['target_id'] as num?)?.toInt() ?? 0,
+    level: j['level'] as String? ?? 'info',
+    metric: j['metric'] as String? ?? '',
+    value: j['value'] as String? ?? '',
+    message: j['message'] as String? ?? '',
+    read: j['read'] as bool? ?? false,
+    createdAt: j['created_at'] as String? ?? '',
+    resolvedAt: j['resolved_at'] as String?,
+  );
 }
 
 /// 监控 API：设备 CRUD / 探活 / 采集 / 历史 / 告警。对齐后端 /monitors、/monitor/alerts。
@@ -296,7 +318,9 @@ class MonitorApi {
   Future<List<MonitorTarget>> list() async {
     final r = await _api.get('/monitors');
     final arr = (r['targets'] as List?) ?? const [];
-    return arr.map((e) => MonitorTarget.fromJson(e as Map<String, dynamic>)).toList();
+    return arr
+        .map((e) => MonitorTarget.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<MonitorTarget> create(TargetInput in_) async {
@@ -321,21 +345,36 @@ class MonitorApi {
     return CollectResult.fromJson(r);
   }
 
+  Future<PowerResult> power(int id, String action) async {
+    final r = await _api.post('/monitors/$id/power', {'action': action});
+    return PowerResult.fromJson(r);
+  }
+
   Future<List<MetricSnapshot>> metrics(int id, {int limit = 120}) async {
     final r = await _api.get('/monitors/$id/metrics?limit=$limit');
     final arr = (r['snapshots'] as List?) ?? const [];
-    return arr.map((e) => MetricSnapshot.fromJson(e as Map<String, dynamic>)).toList();
+    return arr
+        .map((e) => MetricSnapshot.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  Future<List<MonitorAlert>> alerts({int? targetId, bool unread = false}) async {
-    final q = StringBuffer('/monitor/alerts?unread=${unread ? 'true' : 'false'}');
+  Future<List<MonitorAlert>> alerts({
+    int? targetId,
+    bool unread = false,
+  }) async {
+    final q = StringBuffer(
+      '/monitor/alerts?unread=${unread ? 'true' : 'false'}',
+    );
     if (targetId != null) q.write('&target_id=$targetId');
     final r = await _api.get(q.toString());
     final arr = (r['alerts'] as List?) ?? const [];
-    return arr.map((e) => MonitorAlert.fromJson(e as Map<String, dynamic>)).toList();
+    return arr
+        .map((e) => MonitorAlert.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  Future<void> readAlert(int id) async => _api.post('/monitor/alerts/$id/read', {});
+  Future<void> readAlert(int id) async =>
+      _api.post('/monitor/alerts/$id/read', {});
 
   /// 摄像头 HLS 播放地址（标准协议，media_kit 可播；token 走 query，与 stream 同构）。
   String streamURL(int id) {
@@ -370,17 +409,17 @@ class Agent {
     required this.lastSeenAt,
   });
   factory Agent.fromJson(Map<String, dynamic> j) => Agent(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        name: j['name'] as String? ?? '',
-        secretHint: j['secret_hint'] as String? ?? '',
-        enabled: j['enabled'] as bool? ?? true,
-        targetId: (j['target_id'] as num?)?.toInt() ?? 0,
-        online: j['online'] as bool? ?? false,
-        version: j['version'] as String? ?? '',
-        hostname: j['hostname'] as String? ?? '',
-        ip: j['ip'] as String? ?? '',
-        lastSeenAt: j['last_seen_at'] as String? ?? '',
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    name: j['name'] as String? ?? '',
+    secretHint: j['secret_hint'] as String? ?? '',
+    enabled: j['enabled'] as bool? ?? true,
+    targetId: (j['target_id'] as num?)?.toInt() ?? 0,
+    online: j['online'] as bool? ?? false,
+    version: j['version'] as String? ?? '',
+    hostname: j['hostname'] as String? ?? '',
+    ip: j['ip'] as String? ?? '',
+    lastSeenAt: j['last_seen_at'] as String? ?? '',
+  );
 }
 
 /// Agent 管理端 CRUD（对齐后端 /monitors/agents；create/delete/rotate 需 admin）。
@@ -398,7 +437,9 @@ class AgentApi {
   Future<({Agent agent, String plainSecret})> create(String name) async {
     final r = await _api.post('/monitors/agents', {'name': name});
     return (
-      agent: Agent.fromJson((r['agent'] as Map?)?.cast<String, dynamic>() ?? const {}),
+      agent: Agent.fromJson(
+        (r['agent'] as Map?)?.cast<String, dynamic>() ?? const {},
+      ),
       plainSecret: (r['plain_secret'] as String?) ?? '',
     );
   }

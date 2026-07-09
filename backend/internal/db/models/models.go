@@ -128,6 +128,31 @@ type PluginLog struct {
 	CreatedAt time.Time `gorm:"index" json:"created_at"`
 }
 
+// PluginKV stores per-plugin key-value state (失败消息队列、调度锚点等)。
+// 撬动多插件的持久化需求——插件 Runtime 通过 KVGet/KVSet/KVDelete 读写自己的运行时状态，
+// 不必把运行时数据塞进用户可见的 ConfigJSON。
+type PluginKV struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	PluginID  string    `gorm:"size:96;uniqueIndex:idx_plugin_kv,priority:1;not null" json:"plugin_id"`
+	Key       string    `gorm:"size:128;uniqueIndex:idx_plugin_kv,priority:2;not null" json:"key"`
+	ValueJSON string    `gorm:"type:text" json:"-"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// PluginRelease stores install, upgrade, and rollback history for external plugins.
+type PluginRelease struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	PluginID    string    `gorm:"size:96;index;not null" json:"plugin_id"`
+	Version     string    `gorm:"size:64;index;not null" json:"version"`
+	Action      string    `gorm:"size:16;index;not null" json:"action"`
+	Source      string    `gorm:"size:512" json:"source,omitempty"`
+	Archive     string    `gorm:"size:512" json:"archive,omitempty"`
+	SHA256      string    `gorm:"size:128" json:"sha256,omitempty"`
+	SnapshotDir string    `gorm:"size:512;not null" json:"snapshot_dir"`
+	Active      bool      `gorm:"default:false;index" json:"active"`
+	CreatedAt   time.Time `gorm:"index" json:"created_at"`
+}
+
 // PosterCache — 海报/元数据缓存（避免重复打 TMDB/豆瓣/MusicBrainz）。
 type PosterCache struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
@@ -190,6 +215,50 @@ type FileStorage struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
+// OpsCredential — 运维凭据中心。密码/私钥加密存储；明文只在创建/更新入参中出现，不回传。
+type OpsCredential struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	Name          string    `gorm:"size:64;not null" json:"name"`
+	Type          string    `gorm:"size:16;index;not null" json:"type"` // ssh | nas | generic
+	UsernameEnc   string    `gorm:"type:text" json:"-"`
+	PasswordEnc   string    `gorm:"type:text" json:"-"`
+	PrivateKeyEnc string    `gorm:"type:text" json:"-"`
+	Username      string    `gorm:"-" json:"username,omitempty"`
+	HasPassword   bool      `gorm:"-" json:"has_password"`
+	HasPrivateKey bool      `gorm:"-" json:"has_private_key"`
+	Tags          string    `gorm:"size:255" json:"tags"`
+	Note          string    `gorm:"type:text" json:"note"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+// OpsConfig — 运维配置中心。用于保存可审计的 KV / 文本 / JSON 配置。
+type OpsConfig struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Key       string    `gorm:"size:128;uniqueIndex;not null" json:"key"`
+	Name      string    `gorm:"size:64;not null" json:"name"`
+	Env       string    `gorm:"size:32;index" json:"env"`
+	Format    string    `gorm:"size:16;index;not null" json:"format"` // kv | text | json
+	Value     string    `gorm:"type:text" json:"value"`
+	Tags      string    `gorm:"size:255" json:"tags"`
+	Note      string    `gorm:"type:text" json:"note"`
+	Version   int       `gorm:"default:1" json:"version"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// OpsConfigHistory — 运维配置变更历史。每次创建/更新保留一份快照。
+type OpsConfigHistory struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	ConfigID  uint      `gorm:"index;not null" json:"config_id"`
+	Key       string    `gorm:"size:128;index" json:"key"`
+	Version   int       `json:"version"`
+	Format    string    `gorm:"size:16" json:"format"`
+	Value     string    `gorm:"type:text" json:"value"`
+	Note      string    `gorm:"type:text" json:"note"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // RegistrationWatch — 注册开放检测的监控目标（用户尚无账号、蹲守开放抢注的站点）。
 type RegistrationWatch struct {
 	ID            uint       `gorm:"primaryKey" json:"id"`
@@ -208,28 +277,30 @@ type RegistrationWatch struct {
 // MonitorTarget — 设备监控目标（服务器 host / NAS / 摄像头 camera）。
 // Protocol 决定采集器分发：host=local(本机 gopsutil)/ssh(远程)；nas=api(厂商)/snmp；camera=onvif/rtsp。
 type MonitorTarget struct {
-	ID            uint       `gorm:"primaryKey" json:"id"`
-	Name          string     `gorm:"size:64;not null" json:"name"`
-	Type          string     `gorm:"size:16;index;not null" json:"type"` // host | nas | camera
-	Host          string     `gorm:"size:255" json:"host"`               // 地址/IP；host 本机留空
-	Port          int        `json:"port"`
-	Vendor        string     `gorm:"size:32" json:"vendor"`              // nas: synology|truenas|snmp；camera: onvif|rtsp
-	Protocol      string     `gorm:"size:16" json:"protocol"`            // local|ssh|api|snmp|onvif|rtsp
-	UsernameEnc   string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
-	PasswordEnc   string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
-	PrivateKeyEnc string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密的 SSH 私钥 PEM（可选）
-	Username      string     `gorm:"-" json:"username,omitempty"`        // 回显用（解密自 UsernameEnc）；写时忽略
-	HasPrivateKey bool       `gorm:"-" json:"has_private_key,omitempty"` // 回显用（PrivateKeyEnc 非空）；明文私钥绝不回传
-	RTSPURL       string     `gorm:"size:512" json:"rtsp_url"`           // camera 拉流地址（预览用，ONVIF 可回填）
-	IntervalSec   int        `gorm:"default:60" json:"interval_sec"`     // 采集间隔（秒）
-	TimeoutSec    int        `gorm:"default:15" json:"timeout_sec"`      // 单次采集超时
-	Enabled       bool       `gorm:"default:true" json:"enabled"`
-	Thresholds    string     `gorm:"type:text" json:"thresholds"` // 阈值规则 JSON（见 monitor.Thresholds）
-	LastOnline    *bool      `json:"last_online"`                 // 上次探活结果（nil=从未探活）
-	LastError     string     `gorm:"type:text" json:"last_error"`
-	LastCheckedAt *time.Time `json:"last_checked_at"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID             uint       `gorm:"primaryKey" json:"id"`
+	Name           string     `gorm:"size:64;not null" json:"name"`
+	Type           string     `gorm:"size:16;index;not null" json:"type"` // host | nas | camera
+	Host           string     `gorm:"size:255" json:"host"`               // 地址/IP；host 本机留空
+	Port           int        `json:"port"`
+	Vendor         string     `gorm:"size:32" json:"vendor"`              // nas: synology|truenas|snmp；camera: onvif|rtsp
+	Protocol       string     `gorm:"size:16" json:"protocol"`            // local|ssh|api|snmp|onvif|rtsp
+	CredentialID   uint       `gorm:"index" json:"credential_id"`         // 0=使用本设备内嵌凭据；非 0=引用 OpsCredential
+	UsernameEnc    string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
+	PasswordEnc    string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
+	PrivateKeyEnc  string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密的 SSH 私钥 PEM（可选）
+	Username       string     `gorm:"-" json:"username,omitempty"`        // 回显用（解密自 UsernameEnc）；写时忽略
+	CredentialName string     `gorm:"-" json:"credential_name,omitempty"` // 回显用（引用凭据名）
+	HasPrivateKey  bool       `gorm:"-" json:"has_private_key,omitempty"` // 回显用（PrivateKeyEnc 非空）；明文私钥绝不回传
+	RTSPURL        string     `gorm:"size:512" json:"rtsp_url"`           // camera 拉流地址（预览用，ONVIF 可回填）
+	IntervalSec    int        `gorm:"default:60" json:"interval_sec"`     // 采集间隔（秒）
+	TimeoutSec     int        `gorm:"default:15" json:"timeout_sec"`      // 单次采集超时
+	Enabled        bool       `gorm:"default:true" json:"enabled"`
+	Thresholds     string     `gorm:"type:text" json:"thresholds"` // 阈值规则 JSON（见 monitor.Thresholds）
+	LastOnline     *bool      `json:"last_online"`                 // 上次探活结果（nil=从未探活）
+	LastError      string     `gorm:"type:text" json:"last_error"`
+	LastCheckedAt  *time.Time `json:"last_checked_at"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // MetricSnapshot — 单次采集的指标快照（时序）。Metrics 为 monitor.Metrics 序列化 JSON。
@@ -244,15 +315,57 @@ type MetricSnapshot struct {
 
 // MonitorAlert — 阈值触发或离线产生的告警记录（状态机：ResolvedAt 非空表示已恢复）。
 type MonitorAlert struct {
+	ID             uint       `gorm:"primaryKey" json:"id"`
+	TargetID       uint       `gorm:"index;not null" json:"target_id"`
+	Level          string     `gorm:"size:16;index" json:"level"` // info | warning | danger
+	Metric         string     `gorm:"size:64" json:"metric"`      // cpu_usage | disk_usage | offline ...
+	Value          string     `gorm:"size:64" json:"value"`
+	Message        string     `gorm:"type:text" json:"message"`
+	Read           bool       `gorm:"default:false;index" json:"read"`
+	AcknowledgedAt *time.Time `json:"acknowledged_at"`
+	AcknowledgedBy string     `gorm:"size:64" json:"acknowledged_by"`
+	SilencedUntil  *time.Time `json:"silenced_until"`
+	CreatedAt      time.Time  `gorm:"index" json:"created_at"`
+	ResolvedAt     *time.Time `json:"resolved_at"`
+}
+
+// OpsCommandRun records one audited batch/deploy command execution.
+type OpsCommandRun struct {
+	ID           uint                  `gorm:"primaryKey" json:"id"`
+	Command      string                `gorm:"type:text" json:"command"`
+	TimeoutSec   int                   `json:"timeout_sec"`
+	Source       string                `gorm:"size:32;index" json:"source"` // batch | deploy | manual
+	Note         string                `gorm:"type:text" json:"note"`
+	Status       string                `gorm:"size:16;index" json:"status"` // running | success | partial | failed
+	RiskLevel    string                `gorm:"size:16;index" json:"risk_level"`
+	RiskReason   string                `gorm:"size:255" json:"risk_reason"`
+	CreatedBy    string                `gorm:"size:64" json:"created_by"`
+	TotalCount   int                   `json:"total_count"`
+	SuccessCount int                   `json:"success_count"`
+	FailureCount int                   `json:"failure_count"`
+	StartedAt    time.Time             `json:"started_at"`
+	FinishedAt   *time.Time            `json:"finished_at"`
+	DurationMS   int64                 `json:"duration_ms"`
+	Targets      []OpsCommandRunTarget `gorm:"foreignKey:RunID" json:"targets,omitempty"`
+	CreatedAt    time.Time             `gorm:"index" json:"created_at"`
+	UpdatedAt    time.Time             `json:"updated_at"`
+}
+
+// OpsCommandRunTarget records one target result in an OpsCommandRun.
+type OpsCommandRunTarget struct {
 	ID         uint       `gorm:"primaryKey" json:"id"`
-	TargetID   uint       `gorm:"index;not null" json:"target_id"`
-	Level      string     `gorm:"size:16;index" json:"level"` // info | warning | danger
-	Metric     string     `gorm:"size:64" json:"metric"`      // cpu_usage | disk_usage | offline ...
-	Value      string     `gorm:"size:64" json:"value"`
-	Message    string     `gorm:"type:text" json:"message"`
-	Read       bool       `gorm:"default:false;index" json:"read"`
+	RunID      uint       `gorm:"index;not null" json:"run_id"`
+	TargetID   uint       `gorm:"index" json:"target_id"`
+	TargetName string     `gorm:"size:64" json:"target_name"`
+	Status     string     `gorm:"size:16;index" json:"status"` // running | success | error
+	Stdout     string     `gorm:"type:text" json:"stdout"`
+	Stderr     string     `gorm:"type:text" json:"stderr"`
+	Error      string     `gorm:"type:text" json:"error"`
+	DurationMS int64      `json:"duration_ms"`
+	StartedAt  time.Time  `json:"started_at"`
+	FinishedAt *time.Time `json:"finished_at"`
 	CreatedAt  time.Time  `gorm:"index" json:"created_at"`
-	ResolvedAt *time.Time `json:"resolved_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 // Notice — 全局通知中心收件箱。聚合各类业务事件（站庆/邮件/考核/公告/掉线/辅种/下载/备份/站免）。

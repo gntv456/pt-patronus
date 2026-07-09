@@ -126,7 +126,7 @@ func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdg
 
 		// 每节点循环（参考 MoviePilot loop/loop_interval）：loop=true 时按 loop_times 重试，成功即停。
 		runOnce := func() error {
-			octx, ocancel := context.WithTimeout(ctx, nodeTimeout)
+			octx, ocancel := context.WithTimeout(ctx, nodeExecutionTimeout(gnode.Params))
 			err := node.Execute(octx, gnode.Params, ecx)
 			ocancel()
 			return err
@@ -205,6 +205,20 @@ func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdg
 
 // nowRFC3339 当前时间 RFC3339（节点日志时间戳）。
 func nowRFC3339() string { return time.Now().Format(time.RFC3339) }
+
+func nodeExecutionTimeout(params map[string]any) time.Duration {
+	sec := ParamInt(params, "timeout_sec")
+	if sec <= 0 {
+		return nodeTimeout
+	}
+	if sec < 5 {
+		sec = 5
+	}
+	if sec > 600 {
+		sec = 600
+	}
+	return time.Duration(sec) * time.Second
+}
 
 // Validate 保存/运行前校验图结构：非空、至少一个根节点、无环（Kahn 全图检测）、
 // 节点类型存在于 Registry、边端点存在、必填参数齐全。

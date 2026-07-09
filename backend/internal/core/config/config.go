@@ -16,10 +16,12 @@ import (
 
 // Config holds all process-level configuration.
 type Config struct {
-	AppName  string
-	Env      string // debug | release
-	HTTPAddr string
-	DataDir  string
+	AppName                  string
+	Env                      string // debug | release
+	HTTPAddr                 string
+	DataDir                  string
+	PluginDevWatch           bool
+	PluginDevWatchIntervalMS int
 
 	// Security
 	SecretKey        string // JWT signing + AES key derivation seed
@@ -156,6 +158,8 @@ func Load() (*Config, error) {
 		GlobalRatePerSec:   getenvInt("GLOBAL_RATE_PER_SEC", 20),
 		UpdateManifestURL:  getenv("UPDATE_MANIFEST_URL", ""),
 	}
+	cfg.PluginDevWatch = getenvBool("PLUGIN_DEV_WATCH", cfg.Env == "debug")
+	cfg.PluginDevWatchIntervalMS = getenvInt("PLUGIN_DEV_WATCH_INTERVAL_MS", 1000)
 	if err := cfg.ensureSecrets(); err != nil {
 		return nil, err
 	}

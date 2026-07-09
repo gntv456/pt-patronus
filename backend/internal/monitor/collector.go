@@ -54,7 +54,16 @@ func ResolveProtocol(t *models.MonitorTarget) string {
 		return t.Protocol
 	}
 	switch t.Type {
+	case "http":
+		return "http"
+	case "tcp":
+		return "tcp"
+	case "process", "script":
+		return "ssh"
 	case "nas":
+		if t.Host == "" {
+			return "local"
+		}
 		return "api"
 	case "camera":
 		return "onvif"

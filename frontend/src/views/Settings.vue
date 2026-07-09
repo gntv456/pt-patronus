@@ -120,6 +120,9 @@ function emptyNotifForm(): NotifyConfigInput {
     qq: { enabled: false, app_id: '', app_secret: '', openid: '', group_openid: '' },
     wechat: { enabled: false, bot_token: '', account_id: '', target: '', base_url: '' },
     webhook: { enabled: false, url: '' },
+    dingtalk: { enabled: false, url: '' },
+    feishu: { enabled: false, url: '' },
+    email: { enabled: false, host: '', port: 25, username: '', password: '', from: '', to: '' },
   }
 }
 
@@ -135,6 +138,17 @@ async function loadNotif() {
       qq: { enabled: c.qq.enabled, app_id: c.qq.app_id, app_secret: '', openid: c.qq.openid, group_openid: c.qq.group_openid },
       wechat: { enabled: c.wechat.enabled, bot_token: '', account_id: c.wechat.account_id, target: c.wechat.target, base_url: c.wechat.base_url },
       webhook: { enabled: c.webhook.enabled, url: c.webhook.url },
+      dingtalk: { enabled: c.dingtalk.enabled, url: c.dingtalk.url },
+      feishu: { enabled: c.feishu.enabled, url: c.feishu.url },
+      email: {
+        enabled: c.email.enabled,
+        host: c.email.host,
+        port: c.email.port || 25,
+        username: c.email.username,
+        password: '',
+        from: c.email.from,
+        to: c.email.to,
+      },
     }
     testResults.value = []
   } catch (e: unknown) {
@@ -165,6 +179,18 @@ function validateNotif(): string {
   }
   if (n.webhook.enabled && !n.webhook.url?.trim()) {
     return 'Webhook 已启用，但 URL 为空'
+  }
+  if (n.dingtalk.enabled && !n.dingtalk.url?.trim()) {
+    return '钉钉已启用，但机器人 Webhook 为空'
+  }
+  if (n.feishu.enabled && !n.feishu.url?.trim()) {
+    return '飞书已启用，但机器人 Webhook 为空'
+  }
+  if (n.email.enabled) {
+    if (!n.email.host?.trim()) return '邮件已启用，但 SMTP 主机为空'
+    if (!n.email.from?.trim()) return '邮件已启用，但发件人为空'
+    if (!n.email.to?.trim()) return '邮件已启用，但收件人为空'
+    if (!n.email.password?.trim() && !notifCfg.value?.email.password_configured) return '邮件已启用，但 SMTP 密码为空'
   }
   return ''
 }
@@ -425,6 +451,52 @@ async function openChangelog() {
             </el-input>
           </div>
 
+          <!-- DingTalk -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">钉钉机器人</div>
+              <el-switch v-model="notif.dingtalk.enabled" />
+            </div>
+            <el-input v-model="notif.dingtalk.url" placeholder="钉钉群机器人 Webhook">
+              <template #prepend>Webhook</template>
+            </el-input>
+          </div>
+
+          <!-- Feishu -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">飞书机器人</div>
+              <el-switch v-model="notif.feishu.enabled" />
+            </div>
+            <el-input v-model="notif.feishu.url" placeholder="飞书群机器人 Webhook">
+              <template #prepend>Webhook</template>
+            </el-input>
+          </div>
+
+          <!-- Email -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">邮件 SMTP</div>
+              <el-switch v-model="notif.email.enabled" />
+            </div>
+            <el-input v-model="notif.email.host" placeholder="smtp.example.com">
+              <template #prepend>SMTP 主机</template>
+            </el-input>
+            <el-input-number v-model="notif.email.port" :min="1" :max="65535" controls-position="right" class="mt8 full-number" />
+            <el-input v-model="notif.email.username" placeholder="SMTP 用户名" class="mt8">
+              <template #prepend>用户名</template>
+            </el-input>
+            <el-input v-model="notif.email.password" show-password :placeholder="secretPlaceholder(notifCfg?.email.password_configured)" class="mt8">
+              <template #prepend>密码</template>
+            </el-input>
+            <el-input v-model="notif.email.from" placeholder="PTPatronus <notice@example.com>" class="mt8">
+              <template #prepend>发件人</template>
+            </el-input>
+            <el-input v-model="notif.email.to" placeholder="a@example.com,b@example.com" class="mt8">
+              <template #prepend>收件人</template>
+            </el-input>
+          </div>
+
           <div class="notif-save">
             <el-button type="primary" :loading="notifSaving" @click="saveNotif">保存</el-button>
             <span class="text-muted row-hint">保存后即时生效，无需重启</span>
@@ -578,6 +650,7 @@ async function openChangelog() {
 .notif-wrap { display: flex; flex-direction: column; }
 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mt8 { margin-top: 8px; }
+.full-number { width: 100%; }
 .notif-save { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
 .test-results { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .test-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: rgba(108,92,231,0.08); }

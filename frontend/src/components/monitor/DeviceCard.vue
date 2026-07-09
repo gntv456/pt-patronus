@@ -17,11 +17,28 @@ const emit = defineEmits<{
   probe: [MonitorTarget]
   remove: [MonitorTarget]
   preview: [MonitorTarget]
+  terminal: [MonitorTarget]
 }>()
 
-const icon = computed(() => (props.target.type === 'camera' ? 'camera' : props.target.type === 'nas' ? 'nas' : 'server'))
+const serviceTypes = ['http', 'tcp', 'process', 'script']
+const isServiceMonitor = computed(() => serviceTypes.includes(props.target.type))
+const icon = computed(() => {
+  if (props.target.type === 'camera') return 'camera'
+  if (props.target.type === 'nas') return 'nas'
+  if (props.target.type === 'http') return 'sites'
+  if (props.target.type === 'tcp') return 'settings'
+  if (props.target.type === 'process') return 'workflow'
+  if (props.target.type === 'script') return 'history'
+  return 'server'
+})
 const color = computed<[string, string]>(() =>
-  props.target.type === 'camera' ? ['#ff5f6d', '#ffc371'] : props.target.type === 'nas' ? ['#f7971e', '#ffd200'] : ['#0f2027', '#2c5364'],
+  props.target.type === 'camera' ? ['#ff5f6d', '#ffc371']
+    : props.target.type === 'nas' ? ['#f7971e', '#ffd200']
+      : props.target.type === 'http' ? ['#00b894', '#0984e3']
+        : props.target.type === 'tcp' ? ['#34495e', '#16a085']
+          : props.target.type === 'process' ? ['#8e44ad', '#3498db']
+            : props.target.type === 'script' ? ['#d35400', '#f1c40f']
+              : ['#0f2027', '#2c5364'],
 )
 const status = computed(() => {
   if (props.target.last_online === null) return { cls: 'unknown', text: '未检测' }
@@ -35,6 +52,61 @@ const diskMax = computed(() => {
 const lastCheck = computed(() =>
   props.target.last_checked_at ? new Date(props.target.last_checked_at).toLocaleTimeString() : '-',
 )
+const vendorLabel = computed(() => {
+  switch (props.target.vendor) {
+    case 'synology':
+      return '群晖'
+    case 'truenas':
+    case 'freenas':
+      return 'TrueNAS'
+    case 'snmp':
+      return 'SNMP'
+    default:
+      return props.target.vendor
+  }
+})
+const canTerminal = computed(() => props.target.type === 'host' && (props.target.protocol === 'ssh' || (!props.target.protocol && !!props.target.host)))
+const extra = computed<Record<string, unknown>>(() => props.metrics?.extra || {})
+
+function extraText(key: string, fallback = '-'): string {
+  const value = extra.value[key]
+  if (value === undefined || value === null || value === '') return fallback
+  return String(value)
+}
+
+function extraMs(key = 'response_ms'): string {
+  const raw = Number(extra.value[key] || 0)
+  return raw > 0 ? `${raw}ms` : '-'
+}
+
+const serviceRows = computed(() => {
+  if (props.target.type === 'http') {
+    return [
+      { label: '状态码', value: extraText('status_code') },
+      { label: '响应', value: extraMs() },
+      { label: '方法', value: extraText('method', 'GET') },
+    ]
+  }
+  if (props.target.type === 'tcp') {
+    return [
+      { label: '地址', value: `${extraText('host', props.target.host)}:${extraText('port', String(props.target.port || '-'))}` },
+      { label: '响应', value: extraMs() },
+    ]
+  }
+  if (props.target.type === 'process') {
+    return [
+      { label: '进程', value: extraText('process_name') },
+      { label: '数量', value: extraText('count', '0') },
+    ]
+  }
+  if (props.target.type === 'script') {
+    return [
+      { label: '耗时', value: extraMs('duration_ms') },
+      { label: '输出', value: extraText('stdout', '无输出').slice(0, 36) },
+    ]
+  }
+  return []
+})
 </script>
 
 <template>
@@ -44,14 +116,17 @@ const lastCheck = computed(() =>
       <div class="dc-title">
         <div class="dc-name">{{ target.name }}</div>
         <div class="dc-sub">
-          {{ target.host || '本机' }}<span v-if="target.vendor"> · {{ target.vendor }}</span>
+          {{ target.host || '本机' }}<span v-if="vendorLabel"> · {{ vendorLabel }}</span>
         </div>
       </div>
       <span class="dc-status" :class="status.cls"><i class="dot"></i>{{ status.text }}</span>
     </div>
 
     <div class="dc-body">
-      <template v-if="target.type !== 'camera' && metrics">
+      <template v-if="isServiceMonitor && metrics">
+        <div v-for="row in serviceRows" :key="row.label" class="dc-info"><span>{{ row.label }}</span>{{ row.value }}</div>
+      </template>
+      <template v-else-if="target.type !== 'camera' && metrics">
         <MetricBar label="CPU" :value="metrics.cpu_usage" />
         <MetricBar
           label="内存"
@@ -79,6 +154,7 @@ const lastCheck = computed(() =>
       <span class="dc-time">{{ lastCheck }}</span>
       <div class="dc-actions">
         <el-button size="small" text @click="emit('probe', target)">探活</el-button>
+        <el-button v-if="canTerminal" size="small" text @click="emit('terminal', target)">终端</el-button>
         <el-button v-if="target.type === 'camera'" size="small" text @click="emit('preview', target)">预览</el-button>
         <el-button size="small" text @click="emit('detail', target)">详情</el-button>
         <el-button size="small" text @click="emit('edit', target)">编辑</el-button>

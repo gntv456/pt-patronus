@@ -17,6 +17,12 @@ export interface NotifyConfig {
     bot_token: string; bot_token_configured: boolean
   }
   webhook: { enabled: boolean; url: string }
+  dingtalk: { enabled: boolean; url: string }
+  feishu: { enabled: boolean; url: string }
+  email: {
+    enabled: boolean; host: string; port: number; username: string
+    password: string; password_configured: boolean; from: string; to: string
+  }
 }
 
 // 提交体：整份配置；秘密字段空串=保留旧值（后端 merge）。
@@ -26,6 +32,12 @@ export interface NotifyConfigInput {
   qq: { enabled: boolean; app_id: string; app_secret: string; openid: string; group_openid: string }
   wechat: { enabled: boolean; bot_token: string; account_id: string; target: string; base_url: string }
   webhook: { enabled: boolean; url: string }
+  dingtalk: { enabled: boolean; url: string }
+  feishu: { enabled: boolean; url: string }
+  email: {
+    enabled: boolean; host: string; port: number; username: string
+    password: string; from: string; to: string
+  }
 }
 
 // 微信扫码状态（GET /notification/wechat/qrcode/status 返回）。

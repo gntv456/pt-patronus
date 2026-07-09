@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -54,4 +55,29 @@ func tnGet(ctx context.Context, hc *httpclient.Client, u string, hdr map[string]
 		return nil, err
 	}
 	return json.RawMessage(resp.Body), nil
+}
+
+func powerTrueNAS(ctx context.Context, hc *httpclient.Client, t *models.MonitorTarget, creds Credentials, action string) error {
+	base := normalizeBase(t.Host)
+	if base == "" {
+		return fmt.Errorf("nas host is required")
+	}
+	endpoint := ""
+	switch action {
+	case PowerActionReboot:
+		endpoint = "reboot"
+	case PowerActionShutdown:
+		endpoint = "shutdown"
+	default:
+		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
+	}
+	hdr := map[string]string{"Authorization": "Token " + creds.Password}
+	resp, err := hc.Do(ctx, http.MethodPost, base+"/api/v2.0/system/"+endpoint, nil, hdr, "", false)
+	if err != nil {
+		return fmt.Errorf("truenas %s: %w", endpoint, err)
+	}
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("truenas %s failed (status %d)", endpoint, resp.StatusCode)
+	}
+	return nil
 }

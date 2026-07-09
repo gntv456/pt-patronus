@@ -2,6 +2,9 @@ package monitor
 
 import (
 	"context"
+	"errors"
+	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -109,10 +112,16 @@ func TestParseThresholds(t *testing.T) {
 
 func TestRegistryAndResolve(t *testing.T) {
 	r := NewRegistry()
-	r.Register("host", "local", NewHostCollector())
+	localCollector := NewHostCollector()
+	r.Register("host", "local", localCollector)
+	r.Register("nas", "local", localCollector)
 	c, ok := r.CollectorFor("host", "local")
 	if !ok || c == nil {
 		t.Fatal("host/local collector not found")
+	}
+	c, ok = r.CollectorFor("nas", "local")
+	if !ok || c == nil {
+		t.Fatal("nas/local collector not found")
 	}
 	if _, ok := r.CollectorFor("host", "xxx"); ok {
 		t.Error("unknown protocol should miss")
@@ -129,6 +138,10 @@ func TestRegistryAndResolve(t *testing.T) {
 	nas := mkTarget("nas", "nas", "", "")
 	if ResolveProtocol(nas) != "api" {
 		t.Errorf("nas resolve = %s", ResolveProtocol(nas))
+	}
+	localNAS := mkTarget("nas", "", "", "")
+	if ResolveProtocol(localNAS) != "local" {
+		t.Errorf("local nas resolve = %s", ResolveProtocol(localNAS))
 	}
 }
 
@@ -157,6 +170,25 @@ func (f *fakeSSHExec) Run(_ context.Context, cmd string) (string, error) {
 
 func (f *fakeSSHExec) Close() error { return nil }
 
+type fakeSSHOutputExec struct {
+	cmd    string
+	stdout string
+	stderr string
+	err    error
+}
+
+func (f *fakeSSHOutputExec) Run(_ context.Context, cmd string) (string, error) {
+	f.cmd = cmd
+	return f.stdout, f.err
+}
+
+func (f *fakeSSHOutputExec) RunOutput(_ context.Context, cmd string) (string, string, error) {
+	f.cmd = cmd
+	return f.stdout, f.stderr, f.err
+}
+
+func (f *fakeSSHOutputExec) Close() error { return nil }
+
 func TestSSHCollectorPowerRebootUsesFixedCommand(t *testing.T) {
 	ex := &fakeSSHExec{}
 	c := SSHCollector{dial: func(*models.MonitorTarget, Credentials, time.Duration) (sshExecutor, error) {
@@ -171,13 +203,66 @@ func TestSSHCollectorPowerRebootUsesFixedCommand(t *testing.T) {
 	}
 }
 
+func TestSSHCollectorPowerShutdownUsesFixedCommand(t *testing.T) {
+	ex := &fakeSSHExec{}
+	c := SSHCollector{dial: func(*models.MonitorTarget, Credentials, time.Duration) (sshExecutor, error) {
+		return ex, nil
+	}}
+	err := c.Power(context.Background(), mkTarget("host", "127.0.0.1", "", "ssh"), Credentials{Username: "root"}, PowerActionShutdown)
+	if err != nil {
+		t.Fatalf("power shutdown: %v", err)
+	}
+	if ex.cmd != "sudo -n shutdown -h now" {
+		t.Fatalf("command = %q", ex.cmd)
+	}
+}
+
 func TestSSHCollectorPowerRejectsUnknownAction(t *testing.T) {
 	c := SSHCollector{dial: func(*models.MonitorTarget, Credentials, time.Duration) (sshExecutor, error) {
 		t.Fatal("dial should not be called for unsupported action")
 		return nil, nil
 	}}
-	err := c.Power(context.Background(), mkTarget("host", "127.0.0.1", "", "ssh"), Credentials{}, "shutdown")
+	err := c.Power(context.Background(), mkTarget("host", "127.0.0.1", "", "ssh"), Credentials{}, "hibernate")
 	if err == nil || !strings.Contains(err.Error(), ErrUnsupportedPowerAction.Error()) {
 		t.Fatalf("err = %v, want unsupported power action", err)
+	}
+}
+
+func TestSSHCollectorRunCommandCapturesOutput(t *testing.T) {
+	ex := &fakeSSHOutputExec{stdout: "ok\n", stderr: "warn\n", err: errors.New("exit status 1")}
+	c := SSHCollector{dial: func(*models.MonitorTarget, Credentials, time.Duration) (sshExecutor, error) {
+		return ex, nil
+	}}
+	out, err := c.RunCommand(context.Background(), mkTarget("host", "127.0.0.1", "", "ssh"), Credentials{Username: "root"}, "whoami")
+	if err == nil || err.Error() != "exit status 1" {
+		t.Fatalf("err = %v, want exit status 1", err)
+	}
+	if ex.cmd != "whoami" {
+		t.Fatalf("command = %q", ex.cmd)
+	}
+	if out.Stdout != "ok\n" || out.Stderr != "warn\n" {
+		t.Fatalf("output = %#v", out)
+	}
+}
+
+func TestLocalPowerCommandUsesFixedCommand(t *testing.T) {
+	name, args, err := localPowerCommand(PowerActionShutdown)
+	if err != nil {
+		t.Fatalf("local shutdown command: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		if name != "shutdown.exe" || strings.Join(args, " ") != "/s /t 0" {
+			t.Fatalf("local windows shutdown = %s %v", name, args)
+		}
+		return
+	}
+	if os.Geteuid() == 0 {
+		if name != "shutdown" || strings.Join(args, " ") != "-h now" {
+			t.Fatalf("local root shutdown = %s %v", name, args)
+		}
+		return
+	}
+	if name != "sudo" || strings.Join(args, " ") != "-n shutdown -h now" {
+		t.Fatalf("local shutdown = %s %v", name, args)
 	}
 }

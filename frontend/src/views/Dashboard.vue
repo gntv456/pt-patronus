@@ -9,6 +9,14 @@ import Sparkline from '@/components/dashboard/Sparkline.vue'
 import DashboardExportDialog from '@/components/dashboard/DashboardExportDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
+type SyncLog = {
+  id: number
+  time: string
+  site: string
+  status: 'info' | 'running' | 'success' | 'error'
+  message: string
+}
+
 const overview = ref<DashboardOverview | null>(null)
 const trend = ref<DashboardTrendPoint[]>([])
 // sparkline 数据源：近 14 天跨站聚合趋势（指标卡内嵌迷你折线 + 日环比 + 导出图片共用）。
@@ -16,6 +24,12 @@ const loading = ref(false)
 // 首屏加载（无 overview）：用骨架屏占位指标卡，替代整页 spinner，避免布局抖动。
 const initialLoading = computed(() => loading.value && !overview.value)
 const syncing = ref(false)
+const syncTotal = ref(0)
+const syncDone = ref(0)
+const syncSuccess = ref(0)
+const syncCurrent = ref('')
+const syncErrors = ref<{ site: string; error: string }[]>([])
+const syncLogs = ref<SyncLog[]>([])
 const exportVisible = ref(false)
 const allSites = ref<Site[]>([]) // 站点列表(含 base_url)，导出时按 id join favicon 用
 // 单站刷新中的 site_id 集合（操作列「刷新数据」按钮 loading）
@@ -51,6 +65,7 @@ function pctOf(pick: (p: DashboardTrendPoint) => number): number | null {
 }
 const upPct = computed(() => pctOf((p) => p.uploaded))
 const dlPct = computed(() => pctOf((p) => p.downloaded))
+const syncPercent = computed(() => (syncTotal.value ? Math.round((syncDone.value / syncTotal.value) * 100) : 0))
 
 // 指标卡 sparkline 数据：各字段近 14 天序列 + 共享日期轴（hover tooltip 用）。
 const spark = computed(() => ({
@@ -66,16 +81,83 @@ function fmtPct(p: number | null): string {
   return `${p >= 0 ? '+' : ''}${p.toFixed(1)}%`
 }
 
-// 立即抓取所有启用站点统计：解决「加入站点后数据全为 0」——不必等后端 30 分钟定时同步。
+function errorText(e: unknown): string {
+  return (e as Error)?.message || '未知错误'
+}
+
+let syncLogSeq = 0
+function addSyncLog(status: SyncLog['status'], site: string, message: string) {
+  syncLogs.value.unshift({
+    id: ++syncLogSeq,
+    time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+    site,
+    status,
+    message,
+  })
+}
+
+// 逐站抓取启用站点统计：显示进度与失败站点，避免整批长请求超时后只看到笼统失败。
 async function syncStats() {
+  if (syncing.value) return
   syncing.value = true
+  syncTotal.value = 0
+  syncDone.value = 0
+  syncSuccess.value = 0
+  syncCurrent.value = '读取站点列表'
+  syncErrors.value = []
+  syncLogs.value = []
+  addSyncLog('info', '刷新统计', '正在读取启用站点列表')
   try {
-    overview.value = await dashboardApi.sync()
-    ElMessage.success('统计已同步')
-  } catch {
-    ElMessage.warning('同步失败，请稍后重试')
+    const sites = await siteApi.list()
+    allSites.value = sites
+    const activeSites = sites.filter((s) => s.is_active)
+    syncTotal.value = activeSites.length
+    if (!activeSites.length) {
+      addSyncLog('error', '刷新统计', '没有启用的站点可同步')
+      ElMessage.warning('没有启用的站点可同步')
+      return
+    }
+    addSyncLog('info', '刷新统计', `共 ${activeSites.length} 个启用站点，开始逐站同步`)
+
+    for (const site of activeSites) {
+      syncCurrent.value = site.name
+      const started = performance.now()
+      addSyncLog('running', site.name, '开始同步')
+      try {
+        const ov = await dashboardApi.syncOne(site.id)
+        overview.value = ov
+        syncSuccess.value += 1
+        const cost = Math.max(0.1, (performance.now() - started) / 1000).toFixed(1)
+        const item = ov.sites.find((s) => s.site_id === site.id)
+        const stat = item
+          ? `上传 ${fmtBytes(item.uploaded)}，下载 ${fmtBytes(item.downloaded)}，做种 ${item.seeding}，分享率 ${item.ratio > 0 ? item.ratio.toFixed(2) : '-'}`
+          : '已写入最新统计'
+        addSyncLog('success', site.name, `同步成功，用时 ${cost}s，${stat}`)
+      } catch (e: unknown) {
+        const msg = errorText(e)
+        syncErrors.value.push({ site: site.name, error: msg })
+        addSyncLog('error', site.name, `同步失败：${msg}`)
+      } finally {
+        syncDone.value += 1
+      }
+    }
+
+    trend.value = await dashboardApi.trend(14).catch(() => trend.value)
+    if (syncErrors.value.length) {
+      const msg = `同步完成：成功 ${syncSuccess.value} 个，失败 ${syncErrors.value.length} 个`
+      addSyncLog(syncSuccess.value ? 'info' : 'error', '刷新统计', msg)
+      if (syncSuccess.value) ElMessage.warning(msg)
+      else ElMessage.error(`${msg}，请查看下方失败原因`)
+    } else {
+      addSyncLog('success', '刷新统计', `全部同步成功：${syncSuccess.value} 个站点`)
+      ElMessage.success(`统计已同步：${syncSuccess.value} 个站点`)
+    }
+  } catch (e: unknown) {
+    addSyncLog('error', '刷新统计', `同步失败：${errorText(e)}`)
+    ElMessage.error(`同步失败：${errorText(e)}`)
   } finally {
     syncing.value = false
+    syncCurrent.value = ''
   }
 }
 
@@ -135,8 +217,8 @@ async function syncOne(row: SiteStatItem) {
   try {
     overview.value = await dashboardApi.syncOne(row.site_id)
     ElMessage.success(`${row.site_name} 已刷新`)
-  } catch {
-    ElMessage.warning(`${row.site_name} 刷新失败`)
+  } catch (e: unknown) {
+    ElMessage.warning(`${row.site_name} 刷新失败：${errorText(e)}`)
   } finally {
     refreshing.delete(row.site_id)
   }
@@ -193,9 +275,45 @@ onMounted(load)
         </el-button>
         <el-button :loading="syncing" @click="syncStats">
           <GlassIcon name="seeding" from="#11998e" to="#38ef7d" :size="16" class="btn-ico" />
-          <span>刷新统计</span>
+          <span>{{ syncing ? (syncTotal ? `刷新中 ${syncDone}/${syncTotal}` : '准备刷新') : '刷新统计' }}</span>
         </el-button>
       </div>
+    </div>
+
+    <div v-if="syncing || syncErrors.length" class="sync-card glass" :class="{ 'has-error': syncErrors.length && !syncing }">
+      <div class="sync-head">
+        <div class="sync-title">
+          <GlassIcon name="refresh" from="#11998e" to="#38ef7d" :size="22" />
+          <div>
+            <strong v-if="syncing">正在刷新统计 {{ syncDone }}/{{ syncTotal || '—' }}</strong>
+            <strong v-else>刷新完成：成功 {{ syncSuccess }} 个，失败 {{ syncErrors.length }} 个</strong>
+            <p v-if="syncing">{{ syncCurrent ? `当前：${syncCurrent}` : '正在准备同步任务' }}</p>
+            <p v-else>失败原因已列出，可单独刷新对应站点或检查 Cookie / 站点适配。</p>
+          </div>
+        </div>
+        <span class="sync-percent">{{ syncPercent }}%</span>
+      </div>
+      <el-progress
+        :percentage="syncPercent"
+        :status="syncErrors.length && !syncing ? 'exception' : undefined"
+        :stroke-width="8"
+      />
+      <div v-if="syncLogs.length" class="sync-log-box">
+        <div class="sync-log-title">同步日志</div>
+        <ul class="sync-logs">
+          <li v-for="log in syncLogs" :key="log.id" :class="`log-${log.status}`">
+            <span class="log-time">{{ log.time }}</span>
+            <b>{{ log.site }}</b>
+            <span>{{ log.message }}</span>
+          </li>
+        </ul>
+      </div>
+      <ul v-if="syncErrors.length" class="sync-errors">
+        <li v-for="err in syncErrors" :key="err.site">
+          <b>{{ err.site }}</b>
+          <span>{{ err.error }}</span>
+        </li>
+      </ul>
     </div>
 
     <!-- Cookie 失效告警卡（最高优先级：签到/统计/H&R 自动化已停摆） -->
@@ -437,6 +555,130 @@ onMounted(load)
 .row-act:hover { background: rgba(108, 92, 231, 0.14); }
 .row-act:disabled { opacity: 0.5; cursor: progress; }
 
+.sync-card {
+  padding: 14px 16px;
+  border-left: 3px solid #11998e;
+}
+.sync-card.has-error {
+  border-left-color: #e74c3c;
+}
+.sync-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.sync-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+.sync-title strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+.sync-title p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.sync-percent {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.sync-log-box {
+  margin-top: 12px;
+}
+.sync-log-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.sync-logs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+  gap: 5px;
+}
+.sync-logs li {
+  display: grid;
+  grid-template-columns: 72px minmax(92px, 150px) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  font-size: 12.5px;
+}
+.sync-logs .log-time {
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.sync-logs b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sync-logs span:last-child {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.sync-logs .log-running {
+  background: rgba(66, 133, 244, 0.1);
+}
+.sync-logs .log-running b {
+  color: #4285f4;
+}
+.sync-logs .log-success {
+  background: rgba(17, 153, 142, 0.1);
+}
+.sync-logs .log-success b {
+  color: #11998e;
+}
+.sync-logs .log-error {
+  background: rgba(231, 76, 60, 0.1);
+}
+.sync-logs .log-error b {
+  color: #e74c3c;
+}
+.sync-errors {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.sync-errors li {
+  display: grid;
+  grid-template-columns: minmax(90px, 160px) minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(231, 76, 60, 0.08);
+  font-size: 12.5px;
+}
+.sync-errors b {
+  color: #e74c3c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sync-errors span {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
 /* 告警卡：Cookie 失效 / H&R 危险（最高优先级，红色左边框） */
 .alert-card { padding: 16px 18px; border-left: 3px solid #e74c3c; }
 .alert-head { display: flex; align-items: center; gap: 8px; }
@@ -473,4 +715,19 @@ onMounted(load)
 }
 .trend-badge.trend-up { color: #2ecc71; background: rgba(46, 204, 113, 0.14); }
 .trend-badge.trend-down { color: #ff6b6b; background: rgba(255, 107, 107, 0.14); }
+
+@media (max-width: 640px) {
+  .sync-head {
+    flex-direction: column;
+  }
+  .sync-errors li {
+    grid-template-columns: 1fr;
+  }
+  .sync-logs li {
+    grid-template-columns: 68px 1fr;
+  }
+  .sync-logs li span:last-child {
+    grid-column: 1 / -1;
+  }
+}
 </style>

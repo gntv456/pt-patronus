@@ -47,6 +47,41 @@ func collectSynology(ctx context.Context, hc *httpclient.Client, t *models.Monit
 	return parseSynology(utilRaw, storageRaw), nil
 }
 
+func powerSynology(ctx context.Context, hc *httpclient.Client, t *models.MonitorTarget, creds Credentials, action string) error {
+	base := normalizeBase(t.Host)
+	if base == "" {
+		return fmt.Errorf("nas host is required")
+	}
+	method := ""
+	switch action {
+	case PowerActionReboot:
+		method = "reboot"
+	case PowerActionShutdown:
+		method = "shutdown"
+	default:
+		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
+	}
+	sid, err := synoCall(ctx, hc, base, "SYNO.API.Auth", "Login", 3, url.Values{
+		"account": {creds.Username}, "passwd": {creds.Password}, "session": {"Core"}, "format": {"sid"},
+	})
+	if err != nil {
+		return fmt.Errorf("synology login: %w", err)
+	}
+	var login struct {
+		Sid string `json:"sid"`
+	}
+	_ = json.Unmarshal(sid, &login)
+	defer func() {
+		_, _ = synoCall(ctx, hc, base, "SYNO.API.Auth", "Logout", 3, url.Values{"_sid": {login.Sid}, "session": {"Core"}})
+	}()
+	if _, err := synoCall(ctx, hc, base, "SYNO.Core.System", method, 1, url.Values{"_sid": {login.Sid}}); err != nil {
+		if _, err2 := synoCall(ctx, hc, base, "SYNO.Core.System", method, 2, url.Values{"_sid": {login.Sid}}); err2 != nil {
+			return fmt.Errorf("synology %s: %w", method, err)
+		}
+	}
+	return nil
+}
+
 // synoCall 调用一个群晖 API 并返回 data 载荷（success=false 视为失败）。
 func synoCall(ctx context.Context, hc *httpclient.Client, base, api, method string, version int, q url.Values) (json.RawMessage, error) {
 	q.Set("api", api)

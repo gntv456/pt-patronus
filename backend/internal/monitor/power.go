@@ -10,7 +10,10 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 )
 
-const PowerActionReboot = "reboot"
+const (
+	PowerActionReboot   = "reboot"
+	PowerActionShutdown = "shutdown"
+)
 
 var ErrUnsupportedPowerAction = errors.New("unsupported power action")
 
@@ -25,7 +28,7 @@ func (s *Service) PowerNow(ctx context.Context, id uint, action string) error {
 	if action == "" {
 		return fmt.Errorf("%w: empty", ErrUnsupportedPowerAction)
 	}
-	if action != PowerActionReboot {
+	if !isSupportedPowerAction(action) {
 		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
 	}
 
@@ -53,4 +56,8 @@ func (s *Service) PowerNow(ctx context.Context, id uint, action string) error {
 	runCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	return pc.Power(runCtx, t, creds, action)
+}
+
+func isSupportedPowerAction(action string) bool {
+	return action == PowerActionReboot || action == PowerActionShutdown
 }

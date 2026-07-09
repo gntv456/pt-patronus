@@ -73,6 +73,7 @@ declare module 'vue' {
     NovaHDLuckyGame: typeof import('./src/components/NovaHDLuckyGame.vue')['default']
     NovaHDScratchGame: typeof import('./src/components/NovaHDScratchGame.vue')['default']
     PandaFlipGame: typeof import('./src/components/PandaFlipGame.vue')['default']
+    PluginSchemaField: typeof import('./src/components/PluginSchemaField.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     RtspPlayer: typeof import('./src/components/monitor/RtspPlayer.vue')['default']

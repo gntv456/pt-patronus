@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -15,11 +16,14 @@ import (
 // 导致的通知轰炸。告警记录照常写入（审计完整），仅通知节流。
 const notifyCooldown = 5 * time.Minute
 
+// alertEscalateAfter 持续未恢复超过该时间后，按 notifyCooldown 重复提醒。
+const alertEscalateAfter = 5 * time.Minute
+
 // Alerter 阈值评估 + 状态转换去重（复刻 RegistrationChain.CheckAllAndUpdate：
 // 仅「未触发→触发」时新建告警并通知，「触发→恢复」时静默 Resolve）。
 type Alerter struct {
-	store Store
-	notif Notifier
+	store  Store
+	notif  Notifier
 	notice *notice.Service // 站内通知中心（离线类告警发站内通知；nil 跳过）
 
 	notifyMu   sync.Mutex
@@ -52,7 +56,7 @@ type alertRule struct {
 }
 
 // allMetrics 全部可告警指标，用于检测恢复（未触发则 Resolve 已有 open 告警）。
-var allMetrics = []string{"offline", "cpu_usage", "mem_usage", "disk_usage", "temp"}
+var allMetrics = []string{"offline", "cpu_usage", "mem_usage", "disk_usage", "temp", "http_status", "response_ms", "tcp_port", "process", "script"}
 
 // Evaluate 评估一次采集结果。
 func (a *Alerter) Evaluate(ctx context.Context, t *models.MonitorTarget, m Metrics, collectErr error) {
@@ -60,8 +64,9 @@ func (a *Alerter) Evaluate(ctx context.Context, t *models.MonitorTarget, m Metri
 	for metric, r := range triggered {
 		open, _ := a.store.LastOpenAlert(t.ID, metric)
 		if open == nil {
+			now := time.Now()
 			if e := a.store.CreateAlert(&models.MonitorAlert{
-				TargetID: t.ID, Level: r.Level, Metric: r.Metric, Value: r.Value, Message: r.Message,
+				TargetID: t.ID, Level: r.Level, Metric: r.Metric, Value: r.Value, Message: r.Message, CreatedAt: now,
 			}); e != nil {
 				// 告警落库失败 = 监控失明（既无审计记录，下次采集又因 LastOpenAlert 查不到而重复通知）。
 				slog.Error("monitor alert create failed", "target", t.Name, "metric", metric, "err", e)
@@ -83,6 +88,10 @@ func (a *Alerter) Evaluate(ctx context.Context, t *models.MonitorTarget, m Metri
 					Level:  "danger",
 				}, true)
 			}
+		} else if alertSilenced(open) {
+			continue
+		} else if !open.CreatedAt.IsZero() && time.Since(open.CreatedAt) >= alertEscalateAfter && a.notif != nil && a.shouldNotify(t.ID) {
+			a.notif(ctx, "设备告警持续："+t.Name, r.Message, "danger")
 		}
 	}
 	// 未触发的指标：若存在 open 告警则静默恢复。先查有无 open 再 Update，
@@ -100,11 +109,19 @@ func (a *Alerter) Evaluate(ctx context.Context, t *models.MonitorTarget, m Metri
 	}
 }
 
+func alertSilenced(a *models.MonitorAlert) bool {
+	return a != nil && a.SilencedUntil != nil && a.SilencedUntil.After(time.Now())
+}
+
 // detect 按阈值检测触发的指标。
 func (a *Alerter) detect(t *models.MonitorTarget, m Metrics, collectErr error) map[string]alertRule {
 	out := map[string]alertRule{}
 	th := ParseThresholds(t.Thresholds)
 	if collectErr != nil || !m.Online {
+		if r, ok := serviceFailureRule(t, m, collectErr); ok {
+			out[r.Metric] = r
+			return out
+		}
 		if th.Offline != nil && *th.Offline {
 			out["offline"] = alertRule{Metric: "offline", Level: "danger", Value: "offline", Message: t.Name + " 离线/采集失败"}
 		}
@@ -140,7 +157,64 @@ func (a *Alerter) detect(t *models.MonitorTarget, m Metrics, collectErr error) m
 			}
 		}
 	}
+	if th.ResponseMS > 0 {
+		if ms, ok := extraFloat(m.Extra, "response_ms"); ok && ms > th.ResponseMS {
+			out["response_ms"] = alertRule{
+				Metric:  "response_ms",
+				Level:   levelOf(ms, th.ResponseMS),
+				Value:   fmt.Sprintf("%.0fms", ms),
+				Message: fmt.Sprintf("%s 响应耗时 %.0fms（阈值 %.0fms）", t.Name, ms, th.ResponseMS),
+			}
+		}
+	}
 	return out
+}
+
+func serviceFailureRule(t *models.MonitorTarget, m Metrics, collectErr error) (alertRule, bool) {
+	errText := "采集失败"
+	if collectErr != nil {
+		errText = collectErr.Error()
+	}
+	switch t.Type {
+	case "http":
+		status, _ := extraInt(m.Extra, "status_code")
+		value := "failed"
+		if status > 0 {
+			value = strconv.Itoa(status)
+		}
+		return alertRule{
+			Metric:  "http_status",
+			Level:   "danger",
+			Value:   value,
+			Message: fmt.Sprintf("%s HTTP 监控异常：%s", t.Name, errText),
+		}, true
+	case "tcp":
+		host, _ := extraString(m.Extra, "host")
+		port, _ := extraInt(m.Extra, "port")
+		return alertRule{
+			Metric:  "tcp_port",
+			Level:   "danger",
+			Value:   fmt.Sprintf("%s:%d", host, port),
+			Message: fmt.Sprintf("%s TCP 端口不可达：%s", t.Name, errText),
+		}, true
+	case "process":
+		name, _ := extraString(m.Extra, "process_name")
+		count, _ := extraInt(m.Extra, "count")
+		return alertRule{
+			Metric:  "process",
+			Level:   "danger",
+			Value:   strconv.Itoa(count),
+			Message: fmt.Sprintf("%s 进程异常：%s %s", t.Name, name, errText),
+		}, true
+	case "script":
+		return alertRule{
+			Metric:  "script",
+			Level:   "danger",
+			Value:   "failed",
+			Message: fmt.Sprintf("%s 脚本监控失败：%s", t.Name, errText),
+		}, true
+	}
+	return alertRule{}, false
 }
 
 // rule 构造百分比类指标的告警规则。
@@ -159,4 +233,47 @@ func levelOf(cur, th float64) string {
 		return "danger"
 	}
 	return "warning"
+}
+
+func extraFloat(extra map[string]any, key string) (float64, bool) {
+	if extra == nil {
+		return 0, false
+	}
+	switch v := extra[key].(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	case string:
+		f, err := strconv.ParseFloat(v, 64)
+		return f, err == nil
+	default:
+		return 0, false
+	}
+}
+
+func extraInt(extra map[string]any, key string) (int, bool) {
+	f, ok := extraFloat(extra, key)
+	return int(f), ok
+}
+
+func extraString(extra map[string]any, key string) (string, bool) {
+	if extra == nil {
+		return "", false
+	}
+	switch v := extra[key].(type) {
+	case string:
+		return v, true
+	default:
+		if v != nil {
+			return fmt.Sprintf("%v", v), true
+		}
+		return "", false
+	}
 }

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>External Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #172033;
+        background: #f7fafc;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+      main {
+        display: grid;
+        gap: 16px;
+        max-width: 760px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .panel {
+        border: 1px solid #d8e0ea;
+        border-radius: 8px;
+        background: #fff;
+        padding: 18px;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+      }
+      .metric {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .value {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: #0f766e;
+      }
+      button {
+        width: fit-content;
+        border: 0;
+        border-radius: 6px;
+        background: #0f766e;
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        padding: 10px 14px;
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>External HTTP Demo</h1>
+      <section class="panel">
+        <div class="metric">
+          <span>Bridge counter</span>
+          <span id="count" class="value">-</span>
+        </div>
+      </section>
+      <button id="increment" type="button">Increment through host bridge</button>
+      <section class="panel">
+        <span id="status">Waiting for bridge...</span>
+      </section>
+    </main>
+    <script>
+      async function refresh() {
+        const status = document.getElementById('status');
+        const count = document.getElementById('count');
+        try {
+          const current = await window.PTPatronus.kv.get('ui-count');
+          count.textContent = String(current.value || 0);
+          status.textContent = 'Bridge ready';
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      }
+
+      document.getElementById('increment').addEventListener('click', async () => {
+        const status = document.getElementById('status');
+        try {
+          const current = await window.PTPatronus.kv.get('ui-count');
+          const next = Number(current.value || 0) + 1;
+          await window.PTPatronus.kv.set('ui-count', next);
+          await window.PTPatronus.log('info', 'ui.increment', 'counter updated', { count: next });
+          await window.PTPatronus.publish('plugin.demo.ui', { count: next });
+          await refresh();
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      refresh();
+    </script>
+  </body>
+</html>

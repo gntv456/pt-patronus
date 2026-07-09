@@ -89,3 +89,89 @@ func (o *PluginOper) UpsertState(st *models.PluginState) error {
 		DoUpdates: clause.AssignmentColumns([]string{"installed", "config_json", "updated_at"}),
 	}).Create(st).Error
 }
+
+func (o *PluginOper) CreateRelease(rel *models.PluginRelease) error {
+	if rel.CreatedAt.IsZero() {
+		rel.CreatedAt = time.Now()
+	}
+	if rel.Active {
+		if err := o.db.Model(&models.PluginRelease{}).Where("plugin_id = ?", rel.PluginID).Update("active", false).Error; err != nil {
+			return err
+		}
+	}
+	return o.db.Create(rel).Error
+}
+
+func (o *PluginOper) ListReleases(pluginID string, limit int) ([]models.PluginRelease, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	var releases []models.PluginRelease
+	err := o.db.Where("plugin_id = ?", pluginID).Order("created_at DESC").Limit(limit).Find(&releases).Error
+	return releases, err
+}
+
+func (o *PluginOper) GetRelease(id uint) (*models.PluginRelease, error) {
+	var rel models.PluginRelease
+	if err := o.db.First(&rel, id).Error; err != nil {
+		return nil, err
+	}
+	return &rel, nil
+}
+
+func (o *PluginOper) SetActiveRelease(pluginID string, releaseID uint) error {
+	return o.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.PluginRelease{}).Where("plugin_id = ?", pluginID).Update("active", false).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.PluginRelease{}).Where("id = ? AND plugin_id = ?", releaseID, pluginID).Update("active", true).Error
+	})
+}
+
+func (o *PluginOper) ActiveRelease(pluginID string) (*models.PluginRelease, error) {
+	var rel models.PluginRelease
+	if err := o.db.Where("plugin_id = ? AND active = ?", pluginID, true).Order("created_at DESC").First(&rel).Error; err != nil {
+		return nil, err
+	}
+	return &rel, nil
+}
+
+// PluginKVOper persists per-plugin key-value runtime state.
+type PluginKVOper struct {
+	db *gorm.DB
+}
+
+func NewPluginKVOper(db *gorm.DB) *PluginKVOper {
+	return &PluginKVOper{db: db}
+}
+
+// KVGet reads a key into out (JSON-decoded). Returns gorm.ErrRecordNotFound if absent.
+func (o *PluginKVOper) KVGet(pluginID, key string, out any) error {
+	var kv models.PluginKV
+	err := o.db.Where("plugin_id = ? AND key = ?", pluginID, key).First(&kv).Error
+	if err != nil {
+		return err
+	}
+	if out == nil || kv.ValueJSON == "" {
+		return nil
+	}
+	return json.Unmarshal([]byte(kv.ValueJSON), out)
+}
+
+// KVSet upserts a key with JSON-encoded val.
+func (o *PluginKVOper) KVSet(pluginID, key string, val any) error {
+	raw, err := json.Marshal(val)
+	if err != nil {
+		return err
+	}
+	kv := models.PluginKV{PluginID: pluginID, Key: key, ValueJSON: string(raw), UpdatedAt: time.Now()}
+	return o.db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "plugin_id"}, {Name: "key"}},
+		DoUpdates: clause.AssignmentColumns([]string{"value_json", "updated_at"}),
+	}).Create(&kv).Error
+}
+
+// KVDelete removes a key. Idempotent.
+func (o *PluginKVOper) KVDelete(pluginID, key string) error {
+	return o.db.Where("plugin_id = ? AND key = ?", pluginID, key).Delete(&models.PluginKV{}).Error
+}

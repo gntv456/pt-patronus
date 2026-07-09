@@ -21,6 +21,14 @@ type Thresholds struct {
 	DiskUsage float64 `json:"disk_usage,omitempty"` // 默认 90
 	Temp      float64 `json:"temp,omitempty"`       // 默认 75
 	Offline   *bool   `json:"offline,omitempty"`    // 默认 true（离线即告警）
+
+	HTTPMethod      string  `json:"http_method,omitempty"`       // GET|HEAD
+	HTTPExpectedMin int     `json:"http_expected_min,omitempty"` // 默认 200
+	HTTPExpectedMax int     `json:"http_expected_max,omitempty"` // 默认 399
+	ResponseMS      float64 `json:"response_ms,omitempty"`       // HTTP/TCP/脚本响应耗时阈值（ms）
+	ProcessName     string  `json:"process_name,omitempty"`
+	ProcessMinCount int     `json:"process_min_count,omitempty"` // 默认 1
+	ScriptCommand   string  `json:"script_command,omitempty"`
 }
 
 // DefaultThresholds 返回内置默认阈值。
@@ -55,6 +63,15 @@ func ParseThresholds(raw string) Thresholds {
 	if out.Offline == nil {
 		o := true
 		out.Offline = &o
+	}
+	if out.HTTPExpectedMin == 0 {
+		out.HTTPExpectedMin = 200
+	}
+	if out.HTTPExpectedMax == 0 {
+		out.HTTPExpectedMax = 399
+	}
+	if out.ProcessMinCount == 0 {
+		out.ProcessMinCount = 1
 	}
 	return out
 }

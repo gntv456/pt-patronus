@@ -8,14 +8,16 @@ import (
 )
 
 const (
-	ticketTTL        = 30 * time.Second // ticket 有效期：握手短时
-	ticketSweepEvery = 60 * time.Second // 惰性清扫过期项的间隔
+	ticketTTL        = 30 * time.Second
+	ticketSweepEvery = 60 * time.Second
 )
 
-// TicketStore 是 WS/RTSP 的一次性短时 ticket 存储（单实例，与 TokenVersionCache 同约束；多副本需上 Redis）。
+// TicketStore stores short-lived auth tickets.
 //
-// 流程：客户端先用 header-JWT 调 /auth/ws-ticket（guarded 内签发，含 TokenVersion 校验）换 ticket，
-// 再用 ?ticket= 连 WS/RTSP——JWT 不再落 URL。ticket 单次消费（Consume 删除）、ticketTTL 过期。
+// Single-use tickets are used for websocket and terminal handshakes where the
+// token should be consumed exactly once. Scoped tickets are reusable for a
+// short time and are suitable for related asset fetches that need multiple
+// requests within one session.
 type TicketStore struct {
 	mu        sync.Mutex
 	tickets   map[string]ticket
@@ -24,31 +26,44 @@ type TicketStore struct {
 }
 
 type ticket struct {
-	uid uint
-	exp time.Time
+	uid       uint
+	exp       time.Time
+	scope     string
+	singleUse bool
 }
 
-// NewTicketStore 构造（默认 ticketTTL）。
 func NewTicketStore() *TicketStore {
 	return &TicketStore{tickets: map[string]ticket{}, ttl: ticketTTL, lastSweep: time.Now()}
 }
 
-// Issue 为 uid 签发一个一次性 ticket。
+// Issue creates a signed single-use ticket for the given user id.
 func (s *TicketStore) Issue(uid uint) (string, time.Time, error) {
+	return s.issue(uid, "", s.ttl, true)
+}
+
+// IssueScoped creates a reusable short-lived ticket for the given scope.
+func (s *TicketStore) IssueScoped(uid uint, scope string, ttl time.Duration) (string, time.Time, error) {
+	if ttl <= 0 {
+		ttl = s.ttl
+	}
+	return s.issue(uid, scope, ttl, false)
+}
+
+func (s *TicketStore) issue(uid uint, scope string, ttl time.Duration, singleUse bool) (string, time.Time, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		return "", time.Time{}, err
 	}
 	tk := base64.RawURLEncoding.EncodeToString(b)
-	exp := time.Now().Add(s.ttl)
+	exp := time.Now().Add(ttl)
 	s.mu.Lock()
-	s.tickets[tk] = ticket{uid: uid, exp: exp}
+	s.tickets[tk] = ticket{uid: uid, exp: exp, scope: scope, singleUse: singleUse}
 	s.sweepLocked()
 	s.mu.Unlock()
 	return tk, exp, nil
 }
 
-// Consume 校验并消费（删除）一个 ticket；返回 uid 与是否有效。单次有效。
+// Consume validates and consumes a single-use ticket.
 func (s *TicketStore) Consume(tk string) (uint, bool) {
 	if tk == "" {
 		return 0, false
@@ -67,7 +82,32 @@ func (s *TicketStore) Consume(tk string) (uint, bool) {
 	return e.uid, true
 }
 
-// sweepLocked 惰性清扫过期项（调用方持锁）。在 Issue/Consume 时顺带触发，无需独立定时器。
+// Validate checks a reusable ticket without consuming it. If scope is
+// provided it must match the ticket scope exactly.
+func (s *TicketStore) Validate(tk, scope string) (uint, bool) {
+	if tk == "" {
+		return 0, false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e, ok := s.tickets[tk]
+	if !ok {
+		return 0, false
+	}
+	s.sweepLocked()
+	if time.Now().After(e.exp) {
+		delete(s.tickets, tk)
+		return 0, false
+	}
+	if scope != "" && e.scope != scope {
+		return 0, false
+	}
+	if e.singleUse {
+		return 0, false
+	}
+	return e.uid, true
+}
+
 func (s *TicketStore) sweepLocked() {
 	if time.Since(s.lastSweep) < ticketSweepEvery {
 		return

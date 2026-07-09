@@ -21,6 +21,14 @@ type sshExecutor interface {
 	Close() error
 }
 
+type sshOutputExecutor interface {
+	RunOutput(ctx context.Context, cmd string) (stdout string, stderr string, err error)
+}
+
+type sshTerminalExecutor interface {
+	Shell(ctx context.Context, input io.Reader, output io.Writer, cols, rows int) error
+}
+
 // HostKeyStore 抽象 SSH host key 的持久化（TOFU），由 oper 层注入实现，避免 monitor→oper 反向依赖。
 type HostKeyStore interface {
 	// Lookup 返回 host:port 已记录的 host key（marshaled wire format）；ok=false 表示未记录。
@@ -78,7 +86,8 @@ func (c SSHCollector) Collect(ctx context.Context, t *models.MonitorTarget, cred
 // Power executes a fixed, whitelisted power action over SSH.
 func (c SSHCollector) Power(ctx context.Context, t *models.MonitorTarget, creds Credentials, action string) error {
 	action = strings.ToLower(strings.TrimSpace(action))
-	if action != PowerActionReboot {
+	cmd, err := sshPowerCommand(action)
+	if err != nil {
 		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
 	}
 	ex, err := c.dial(t, creds, sshTimeout(t))
@@ -86,8 +95,19 @@ func (c SSHCollector) Power(ctx context.Context, t *models.MonitorTarget, creds 
 		return err
 	}
 	defer ex.Close()
-	_, err = ex.Run(ctx, "sudo -n reboot")
+	_, err = ex.Run(ctx, cmd)
 	return err
+}
+
+func sshPowerCommand(action string) (string, error) {
+	switch action {
+	case PowerActionReboot:
+		return "sudo -n reboot", nil
+	case PowerActionShutdown:
+		return "sudo -n shutdown -h now", nil
+	default:
+		return "", ErrUnsupportedPowerAction
+	}
 }
 
 func sshTimeout(t *models.MonitorTarget) time.Duration {
@@ -186,22 +206,65 @@ func makeHostKeyCallback(store HostKeyStore, host string, port int) ssh.HostKeyC
 type sshExec struct{ client *ssh.Client }
 
 func (e *sshExec) Run(ctx context.Context, cmd string) (string, error) {
+	out, _, err := e.RunOutput(ctx, cmd)
+	return out, err
+}
+
+func (e *sshExec) RunOutput(ctx context.Context, cmd string) (string, string, error) {
 	sess, err := e.client.NewSession()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer sess.Close()
-	var b bytes.Buffer
-	sess.Stdout = &b
-	sess.Stderr = io.Discard
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	sess.Stdout = &stdout
+	sess.Stderr = &stderr
 	done := make(chan error, 1)
 	go func() { done <- sess.Run(cmd) }()
 	select {
 	case err := <-done:
-		return b.String(), err
+		return stdout.String(), stderr.String(), err
 	case <-ctx.Done():
 		_ = sess.Signal(ssh.SIGKILL)
-		return "", ctx.Err()
+		return stdout.String(), stderr.String(), ctx.Err()
+	}
+}
+
+func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, cols, rows int) error {
+	sess, err := e.client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer sess.Close()
+	if cols <= 0 {
+		cols = 120
+	}
+	if rows <= 0 {
+		rows = 32
+	}
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+	if err := sess.RequestPty("xterm-256color", rows, cols, modes); err != nil {
+		return err
+	}
+	sess.Stdin = input
+	sess.Stdout = output
+	sess.Stderr = output
+	if err := sess.Shell(); err != nil {
+		return err
+	}
+	done := make(chan error, 1)
+	go func() { done <- sess.Wait() }()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		_ = sess.Close()
+		return ctx.Err()
 	}
 }
 

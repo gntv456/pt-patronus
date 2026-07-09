@@ -115,6 +115,11 @@ type powerRequest struct {
 	Action string `json:"action"`
 }
 
+type execRequest struct {
+	Command    string `json:"command"`
+	TimeoutSec int    `json:"timeout_sec"`
+}
+
 // Power triggers a fixed power action for a monitor target.
 func (h *MonitorHandler) Power(c *gin.Context) {
 	id, ok := parseID(c)
@@ -131,6 +136,25 @@ func (h *MonitorHandler) Power(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// Exec runs one SSH command on a single monitor target and returns stdout/stderr.
+func (h *MonitorHandler) Exec(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	var in execRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	result, err := h.svc.RunCommandNow(c.Request.Context(), id, in.Command, in.TimeoutSec)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": result.Success, "result": result})
 }
 
 // Metrics 取历史快照（?since=RFC3339&limit=）。

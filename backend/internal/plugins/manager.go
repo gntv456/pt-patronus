@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +18,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"gorm.io/gorm"
 )
 
@@ -30,24 +33,71 @@ type Manager struct {
 	plugins       map[string]Plugin
 	subscribed    map[string]map[string]bool
 	op            *oper.PluginOper
+	kv            *oper.PluginKVOper
+	sites         *oper.SiteOper
 	bus           *event.Bus
 	notice        *notice.Service
 	pluginRoot    string
 	defaultMarket string
 	started       bool
+	sched         cronScheduler
+	schedJobs     map[string][]string
+	schedMu       sync.Mutex
+	watchMu       sync.Mutex
+	watchCancel   context.CancelFunc
+	watchWG       sync.WaitGroup
+	mediaSearcher MediaSearcher // 由 app.go 注入（MediaChain 适配器），nil 时 /media/search 返回空
 }
 
-func NewManager(db *gorm.DB, bus *event.Bus, noticeSvc *notice.Service) *Manager {
+type Asset struct {
+	Data        []byte
+	ContentType string
+}
+
+// cronScheduler abstracts the scheduler methods used by the plugin manager.
+type cronScheduler interface {
+	AddFunc(name, spec string, fn func()) error
+	Remove(name string)
+	Start()
+	Stop() context.Context
+}
+
+func NewManager(db *gorm.DB, bus *event.Bus, noticeSvc *notice.Service, sites *oper.SiteOper, kv *oper.PluginKVOper) *Manager {
 	m := &Manager{
 		plugins:    make(map[string]Plugin),
 		subscribed: make(map[string]map[string]bool),
 		op:         oper.NewPluginOper(db),
+		kv:         kv,
+		sites:      sites,
 		bus:        bus,
 		notice:     noticeSvc,
+		schedJobs:  make(map[string][]string),
 	}
 	_ = m.Register(NewEventAuditPlugin())
 	_ = m.Register(NewNoticeForwarderPlugin())
+	_ = m.Register(NewHTTPProbePlugin())
+	_ = m.Register(NewJSONToolboxPlugin())
+	_ = m.Register(NewTextToolboxPlugin())
+	_ = m.Register(NewWebhookTransformerPlugin())
+	_ = m.Register(NewKeywordAlertPlugin())
+	_ = m.Register(NewCronHelperPlugin())
+	_ = m.Register(NewCloudflareSubscribePlugin())
+	_ = m.Register(NewGroupChatZonePlugin())
+	_ = m.Register(NewTwoFAHelperPlugin())
+	_ = m.Register(NewXiaomiRouterPlugin())
+	_ = m.Register(NewAutoSpeedPlugin())
 	return m
+}
+
+// SetMediaSearcher 注入媒体检索适配器（app.go 用 MediaChain 包装），供 Host API /media/search 使用。
+func (m *Manager) SetMediaSearcher(s MediaSearcher) { m.mediaSearcher = s }
+
+// MediaSearch 供 externalHostServer 的 /media/search 端点调用；未注入时返回空。
+func (m *Manager) MediaSearch(ctx context.Context, keyword string, year int) ([]MediaHit, error) {
+	if m.mediaSearcher == nil {
+		return []MediaHit{}, nil
+	}
+	return m.mediaSearcher.Search(ctx, keyword, year)
 }
 
 func (m *Manager) LoadExternal(root string) error {
@@ -84,10 +134,14 @@ func (m *Manager) LoadExternalDir(dir string) (*View, error) {
 	if err := json.Unmarshal(raw, &manifest); err != nil {
 		return nil, fmt.Errorf("load plugin manifest %s: %w", manifestPath, err)
 	}
+	normalizeManifest(&manifest)
+	if err := validateExternalManifest(manifest); err != nil {
+		return nil, fmt.Errorf("validate plugin manifest %s: %w", manifestPath, err)
+	}
 	if manifest.Runtime != RuntimeExternalHTTP {
 		return nil, fmt.Errorf("unsupported plugin runtime %s", manifest.Runtime)
 	}
-	if err := m.register(NewExternalHTTPPlugin(manifest, dir), true); err != nil {
+	if err := m.register(NewExternalHTTPPlugin(manifest, dir, m), true); err != nil {
 		return nil, err
 	}
 	return m.Get(manifest.ID)
@@ -143,6 +197,7 @@ func (m *Manager) register(p Plugin, replace bool) error {
 	m.mu.Unlock()
 	if started {
 		m.subscribePlugin(p)
+		m.refreshSchedules(manifest.ID)
 	}
 	return nil
 }
@@ -166,7 +221,33 @@ func (m *Manager) Start(ctx context.Context) {
 	for _, p := range plugins {
 		m.subscribePlugin(p)
 	}
+	// initialize plugin cron scheduler
+	m.schedMu.Lock()
+	m.sched = scheduler.New()
+	m.sched.Start()
+	m.schedMu.Unlock()
+	for _, p := range plugins {
+		m.refreshSchedules(p.Manifest().ID)
+	}
 	slog.Info("plugin manager started", "plugins", len(plugins))
+}
+
+// Stop shuts down plugin background services.
+func (m *Manager) Stop() {
+	m.stopDevWatcher()
+	m.schedMu.Lock()
+	sched := m.sched
+	m.sched = nil
+	m.schedMu.Unlock()
+	if sched != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		select {
+		case <-sched.Stop().Done():
+		case <-ctx.Done():
+		}
+	}
+	slog.Info("plugin manager stopped")
 }
 
 func (m *Manager) subscribePlugin(p Plugin) {
@@ -213,6 +294,13 @@ func (m *Manager) Uninstall(id string) error {
 	if root == "" {
 		return errors.New("plugin root is not configured")
 	}
+	if dependents := m.requiredDependents(id, false); len(dependents) > 0 {
+		names := make([]string, 0, len(dependents))
+		for _, dependent := range dependents {
+			names = append(names, dependent.ID)
+		}
+		return fmt.Errorf("plugin %s is required by installed plugins %s", id, strings.Join(names, ", "))
+	}
 	m.mu.Lock()
 	p, ok := m.plugins[id]
 	if ok && p.Manifest().Builtin {
@@ -224,6 +312,7 @@ func (m *Manager) Uninstall(id string) error {
 		delete(m.plugins, id)
 	}
 	m.mu.Unlock()
+	m.removeSchedules(id)
 	dir := filepath.Join(root, id)
 	if !isSubpath(root, dir) {
 		return errors.New("invalid plugin path")
@@ -276,14 +365,41 @@ func (m *Manager) SetEnabled(id string, enabled bool) error {
 	if err != nil {
 		return err
 	}
+	manifest := p.Manifest()
+	normalizeManifest(&manifest)
+	if enabled {
+		if _, ok, reason := m.evaluateDependencies(manifest.Dependencies, true); !ok {
+			if strings.TrimSpace(reason) == "" {
+				reason = "plugin dependencies are not satisfied"
+			}
+			return errors.New(reason)
+		}
+	} else {
+		if dependents := m.requiredDependents(id, true); len(dependents) > 0 {
+			names := make([]string, 0, len(dependents))
+			for _, dependent := range dependents {
+				names = append(names, dependent.ID)
+			}
+			return fmt.Errorf("plugin %s is required by enabled plugins %s", id, strings.Join(names, ", "))
+		}
+	}
 	if _, err := m.op.EnsureState(id, p.DefaultConfig()); err != nil {
 		return err
 	}
 	if err := m.op.SetEnabled(id, enabled); err != nil {
 		return err
 	}
+	if !enabled {
+		stopPlugin(p)
+	}
 	m.log(id, logInfo, "lifecycle", fmt.Sprintf("plugin enabled=%v", enabled), nil)
+	m.refreshSchedules(id)
 	return nil
+}
+
+func (m *Manager) pluginEnabled(id string) bool {
+	st, err := m.op.GetState(id)
+	return err == nil && st.Enabled
 }
 
 func (m *Manager) SaveConfig(id string, cfg map[string]any) (*View, error) {
@@ -306,6 +422,7 @@ func (m *Manager) SaveConfig(id string, cfg map[string]any) (*View, error) {
 		return nil, err
 	}
 	m.log(id, logInfo, "config", "plugin config saved", nil)
+	m.refreshSchedules(id)
 	return m.Get(id)
 }
 
@@ -353,6 +470,205 @@ func (m *Manager) Logs(pluginID string, limit int) ([]LogView, error) {
 	return out, nil
 }
 
+func (m *Manager) ReadAsset(id, name string) (*Asset, error) {
+	p, err := m.plugin(id)
+	if err != nil {
+		return nil, err
+	}
+	if p.Manifest().Builtin {
+		return nil, errors.New("built-in plugin does not expose web assets")
+	}
+	root := m.PluginRoot()
+	if root == "" {
+		return nil, errors.New("plugin root is not configured")
+	}
+	name = strings.TrimPrefix(filepath.ToSlash(strings.TrimSpace(name)), "/")
+	if name == "" {
+		name = "index.html"
+	}
+	if strings.HasPrefix(name, "web/") {
+		name = strings.TrimPrefix(name, "web/")
+	}
+	assetRoot := filepath.Join(root, id, "web")
+	target := filepath.Join(assetRoot, filepath.FromSlash(name))
+	if !isSubpath(assetRoot, target) {
+		return nil, errors.New("invalid plugin asset path")
+	}
+	st, err := os.Stat(target)
+	if err != nil {
+		return nil, err
+	}
+	if st.IsDir() {
+		target = filepath.Join(target, "index.html")
+		if !isSubpath(assetRoot, target) {
+			return nil, errors.New("invalid plugin asset path")
+		}
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		return nil, err
+	}
+	contentType := mime.TypeByExtension(filepath.Ext(target))
+	if contentType == "" {
+		contentType = http.DetectContentType(data)
+	}
+	return &Asset{Data: data, ContentType: contentType}, nil
+}
+
+func (m *Manager) Bridge(ctx context.Context, id, method string, params map[string]any) (map[string]any, error) {
+	if params == nil {
+		params = map[string]any{}
+	}
+	p, err := m.plugin(id)
+	if err != nil {
+		return nil, err
+	}
+	st, cfg, err := m.stateAndConfig(p)
+	if err != nil {
+		return nil, err
+	}
+	if !st.Enabled {
+		return nil, errors.New("plugin is disabled")
+	}
+	manifest := p.Manifest()
+	rt := m.runtime(id, cfg)
+	require := func(permission string) error {
+		if hasPluginPermission(manifest.Permissions, permission) {
+			return nil
+		}
+		return fmt.Errorf("permission %s is required", permission)
+	}
+	switch strings.TrimSpace(method) {
+	case "capabilities":
+		return map[string]any{
+			"api_version":       CurrentPluginAPIVersion,
+			"plugin_id":         id,
+			"permissions":       manifest.Permissions,
+			"host_capabilities": supportedHostCapabilities(),
+			"methods": []string{
+				"capabilities",
+				"config.get",
+				"log.write",
+				"kv.get",
+				"kv.set",
+				"kv.delete",
+				"event.publish",
+				"notice.send",
+				"sites.list",
+				"action.invoke",
+			},
+		}, nil
+	case "config.get":
+		if err := require("config:read"); err != nil {
+			return nil, err
+		}
+		return map[string]any{"config": rt.Config()}, nil
+	case "log.write":
+		if err := require("log:write"); err != nil {
+			return nil, err
+		}
+		level := bridgeString(params, "level", logInfo)
+		eventName := bridgeString(params, "event", "ui.bridge")
+		message := bridgeString(params, "message", "")
+		rt.Log(level, eventName, message, bridgeMap(params, "data"))
+		return map[string]any{"ok": true}, nil
+	case "kv.get":
+		if err := require("kv:read"); err != nil {
+			return nil, err
+		}
+		key := bridgeString(params, "key", "")
+		if key == "" {
+			return nil, errors.New("key is required")
+		}
+		var value any
+		err := rt.KVGet(key, &value)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return map[string]any{"found": false}, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"found": true, "value": value}, nil
+	case "kv.set":
+		if err := require("kv:write"); err != nil {
+			return nil, err
+		}
+		key := bridgeString(params, "key", "")
+		if key == "" {
+			return nil, errors.New("key is required")
+		}
+		if err := rt.KVSet(key, params["value"]); err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true}, nil
+	case "kv.delete":
+		if err := require("kv:delete"); err != nil {
+			return nil, err
+		}
+		key := bridgeString(params, "key", "")
+		if key == "" {
+			return nil, errors.New("key is required")
+		}
+		if err := rt.KVDelete(key); err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true}, nil
+	case "event.publish":
+		if err := require("event:publish"); err != nil {
+			return nil, err
+		}
+		eventType := bridgeString(params, "type", "")
+		if eventType == "" {
+			return nil, errors.New("type is required")
+		}
+		rt.Publish(ctx, eventType, bridgeMap(params, "data"))
+		return map[string]any{"published": true, "type": eventType}, nil
+	case "notice.send":
+		if err := require("notice:write"); err != nil {
+			return nil, err
+		}
+		if err := rt.Notice(ctx, NoticeInput{
+			Title: bridgeString(params, "title", ""),
+			Body:  bridgeString(params, "body", ""),
+			Level: bridgeString(params, "level", logInfo),
+		}); err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true}, nil
+	case "sites.list":
+		if err := require("site:read"); err != nil {
+			return nil, err
+		}
+		return map[string]any{"sites": rt.SiteList()}, nil
+	case "action.invoke":
+		// 让插件视图（iframe dashboard）能调用插件声明的 action 拿实时数据，
+		// 例如 CloudDrive2 助手面板调 info 取指标。action 在插件进程内执行，无需宿主权限门。
+		action := bridgeString(params, "action", "")
+		if action == "" {
+			return nil, errors.New("action is required")
+		}
+		input, _ := params["input"].(map[string]any)
+		return m.ExecuteAction(ctx, id, action, input)
+	default:
+		return nil, fmt.Errorf("unsupported bridge method %q", method)
+	}
+}
+
+func bridgeString(params map[string]any, key, fallback string) string {
+	value := strings.TrimSpace(fmt.Sprint(params[key]))
+	if value == "" || value == "<nil>" {
+		return fallback
+	}
+	return value
+}
+
+func bridgeMap(params map[string]any, key string) map[string]any {
+	if v, ok := params[key].(map[string]any); ok {
+		return v
+	}
+	return nil
+}
+
 func (m *Manager) plugin(id string) (Plugin, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -369,16 +685,81 @@ func (m *Manager) viewOf(p Plugin) (View, error) {
 		return View{}, err
 	}
 	manifest := p.Manifest()
+	normalizeManifest(&manifest)
+	availableOptional, missingOptional := evaluateOptionalHostCapabilities(manifest.OptionalHostCapabilities, supportedHostCapabilities())
+	dependenciesStatus, canEnable, canEnableReason := m.evaluateDependencies(manifest.Dependencies, true)
+	var runtimeStatus *RuntimeStatus
+	if rs, ok := p.(interface{ RuntimeStatus() RuntimeStatus }); ok {
+		status := rs.RuntimeStatus()
+		runtimeStatus = &status
+	} else if manifest.Builtin {
+		runtimeStatus = &RuntimeStatus{State: RuntimeBuiltin, Managed: true}
+	}
 	return View{
-		Manifest:    manifest,
-		Enabled:     st.Enabled,
-		Installed:   st.Installed,
-		Config:      cfg,
-		LastError:   st.LastError,
-		LastEventAt: st.LastEventAt,
-		CreatedAt:   st.CreatedAt,
-		UpdatedAt:   st.UpdatedAt,
+		Manifest:                          manifest,
+		AvailableOptionalHostCapabilities: availableOptional,
+		MissingOptionalHostCapabilities:   missingOptional,
+		DependenciesStatus:                dependenciesStatus,
+		CanEnable:                         canEnable,
+		CanEnableReason:                   canEnableReason,
+		Enabled:                           st.Enabled,
+		Installed:                         st.Installed,
+		Config:                            cfg,
+		RuntimeStatus:                     runtimeStatus,
+		LastError:                         st.LastError,
+		LastEventAt:                       st.LastEventAt,
+		CreatedAt:                         st.CreatedAt,
+		UpdatedAt:                         st.UpdatedAt,
 	}, nil
+}
+
+func normalizeManifest(manifest *Manifest) {
+	if manifest.APIVersion == "" {
+		manifest.APIVersion = CurrentPluginAPIVersion
+	}
+	manifest.HostCapabilities = effectiveManifestHostCapabilities(*manifest)
+	manifest.OptionalHostCapabilities = normalizeOptionalHostCapabilities(manifest.OptionalHostCapabilities)
+	manifest.Dependencies = normalizeDependencies(manifest.Dependencies)
+	if manifest.Permissions == nil {
+		manifest.Permissions = []string{}
+	}
+	if manifest.Events == nil {
+		manifest.Events = []EventSpec{}
+	}
+	if manifest.Actions == nil {
+		manifest.Actions = []ActionSpec{}
+	}
+	if manifest.ConfigSchema == nil {
+		manifest.ConfigSchema = []ConfigField{}
+	}
+	if manifest.Schedule == nil {
+		manifest.Schedule = []ScheduleSpec{}
+	}
+	for i := range manifest.Actions {
+		if manifest.Actions[i].InputSchema == nil {
+			manifest.Actions[i].InputSchema = []ConfigField{}
+		}
+	}
+	if manifest.Keywords == nil {
+		manifest.Keywords = []string{}
+	}
+	if manifest.OptionalHostCapabilities == nil {
+		manifest.OptionalHostCapabilities = []string{}
+	}
+	if manifest.Dependencies == nil {
+		manifest.Dependencies = []PluginDependency{}
+	}
+	if manifest.Contributes != nil {
+		if manifest.Contributes.Commands == nil {
+			manifest.Contributes.Commands = []CommandContribution{}
+		}
+		if manifest.Contributes.Views == nil {
+			manifest.Contributes.Views = []ViewContribution{}
+		}
+		if manifest.Contributes.Menus == nil {
+			manifest.Contributes.Menus = []MenuContribution{}
+		}
+	}
 }
 
 func (m *Manager) stateAndConfig(p Plugin) (*models.PluginState, map[string]any, error) {
@@ -435,6 +816,106 @@ func stopPlugin(p Plugin) {
 	if s, ok := p.(interface{ Stop() error }); ok {
 		_ = s.Stop()
 	}
+}
+
+// refreshSchedules 闁插秴缂撻弻鎰絻娴犲墎娈戦崗銊╁劥鐎规碍妞傛禒璇插閵嗗倸绠撶粵澶涚窗閸忓牏些闂勩倛顕氶幓鎺嶆瀹稿弶婀?job閿?// 閸愬秵瀵滆ぐ鎾冲 manifest + 闁板秶鐤?+ 閸氼垳鏁ら悩鑸碘偓渚€鍣搁弬鎵鐠佽埇鈧静nable/SaveConfig/Register/Start 閸у洩鐨熷銈冣偓?//
+// refreshSchedules rebuilds all cron jobs for a plugin.
+func (m *Manager) refreshSchedules(id string) {
+	m.schedMu.Lock()
+	sched := m.sched
+	// 閸忓牊绔婚弮?job
+	for _, name := range m.schedJobs[id] {
+		if sched != nil {
+			sched.Remove(name)
+		}
+	}
+	m.schedJobs[id] = nil
+	if sched == nil {
+		m.schedMu.Unlock()
+		return
+	}
+	p, err := m.plugin(id)
+	if err != nil {
+		m.schedMu.Unlock()
+		return
+	}
+	manifest := p.Manifest()
+	if len(manifest.Schedule) == 0 {
+		m.schedMu.Unlock()
+		return
+	}
+	m.schedMu.Unlock()
+
+	// Read state/config outside the scheduler lock.
+	st, cfg, err := m.stateAndConfig(p)
+	if err != nil || !st.Enabled {
+		return
+	}
+	for _, s := range manifest.Schedule {
+		cron := effectiveCron(s, cfg)
+		if strings.TrimSpace(cron) == "" {
+			continue // 缁?cron = 鐠囥儲娼崑婊呮暏
+		}
+		name := "plugin:" + id + ":" + s.ID
+		action, input := s.Action, s.Input
+		if err := sched.AddFunc(name, cron, func() {
+			if _, err := m.ExecuteAction(context.Background(), id, action, input); err != nil {
+				slog.Error("scheduled plugin action failed", "plugin", id, "action", action, "err", err)
+			}
+		}); err != nil {
+			slog.Error("register plugin schedule", "plugin", id, "schedule", s.ID, "cron", cron, "err", err)
+			continue
+		}
+		m.schedMu.Lock()
+		m.schedJobs[id] = append(m.schedJobs[id], name)
+		m.schedMu.Unlock()
+	}
+}
+
+// saveRuntimeConfig updates one runtime-owned config key and refreshes schedules.
+func (m *Manager) saveRuntimeConfig(pluginID, key string, val any) error {
+	p, err := m.plugin(pluginID)
+	if err != nil {
+		return err
+	}
+	st, cfg, err := m.stateAndConfig(p)
+	if err != nil {
+		return err
+	}
+	cfg[key] = val
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	st.ConfigJSON = string(raw)
+	if err := m.op.SaveState(st); err != nil {
+		return err
+	}
+	m.refreshSchedules(pluginID)
+	return nil
+}
+
+// removeSchedules removes all cron jobs for a plugin without rebuilding them.
+func (m *Manager) removeSchedules(id string) {
+	m.schedMu.Lock()
+	sched := m.sched
+	names := m.schedJobs[id]
+	m.schedJobs[id] = nil
+	m.schedMu.Unlock()
+	if sched == nil {
+		return
+	}
+	for _, name := range names {
+		sched.Remove(name)
+	}
+}
+
+// effectiveCron resolves the active cron expression for a schedule.
+func effectiveCron(s ScheduleSpec, cfg map[string]any) string {
+	if s.CronConfigKey != "" {
+		return strings.TrimSpace(pluginString(cfg[s.CronConfigKey]))
+	}
+	return strings.TrimSpace(s.Cron)
 }
 
 func (m *Manager) runtime(id string, cfg map[string]any) Runtime {

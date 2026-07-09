@@ -33,24 +33,28 @@ func (o *MonitorOper) WithTx(tx *gorm.DB) *MonitorOper {
 
 // TargetInput 创建/更新监控目标入参（凭据明文，由 Oper 加密）。
 type TargetInput struct {
-	Name        string `json:"name"`
-	Type        string `json:"type"` // host | nas | camera
-	Host        string `json:"host"`
-	Port        int    `json:"port"`
-	Vendor      string `json:"vendor"`
-	Protocol    string `json:"protocol"`
-	RTSPURL     string `json:"rtsp_url"`
-	IntervalSec int    `json:"interval_sec"`
-	TimeoutSec  int    `json:"timeout_sec"`
-	Username    string `json:"username"`
-	Password    string `json:"password"`
-	PrivateKey  string `json:"private_key"` // SSH 私钥 PEM（明文，Oper 加密；空=不改/不设）
-	Thresholds  string `json:"thresholds"`
-	Enabled     bool   `json:"enabled"`
+	Name         string `json:"name"`
+	Type         string `json:"type"` // host | nas | camera
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	Vendor       string `json:"vendor"`
+	Protocol     string `json:"protocol"`
+	CredentialID uint   `json:"credential_id"`
+	RTSPURL      string `json:"rtsp_url"`
+	IntervalSec  int    `json:"interval_sec"`
+	TimeoutSec   int    `json:"timeout_sec"`
+	Username     string `json:"username"`
+	Password     string `json:"password"`
+	PrivateKey   string `json:"private_key"` // SSH 私钥 PEM（明文，Oper 加密；空=不改/不设）
+	Thresholds   string `json:"thresholds"`
+	Enabled      bool   `json:"enabled"`
 }
 
 // Create 创建监控目标。
 func (o *MonitorOper) Create(in TargetInput) (*models.MonitorTarget, error) {
+	if err := validateTargetInput(in); err != nil {
+		return nil, err
+	}
 	if in.RTSPURL != "" {
 		if err := validateRTSPScheme(in.RTSPURL); err != nil {
 			return nil, err
@@ -58,9 +62,12 @@ func (o *MonitorOper) Create(in TargetInput) (*models.MonitorTarget, error) {
 	}
 	t := &models.MonitorTarget{
 		Name: in.Name, Type: in.Type, Host: in.Host, Port: in.Port,
-		Vendor: in.Vendor, Protocol: in.Protocol, RTSPURL: in.RTSPURL,
+		Vendor: in.Vendor, Protocol: in.Protocol, CredentialID: in.CredentialID, RTSPURL: in.RTSPURL,
 		IntervalSec: normInterval(in.IntervalSec), TimeoutSec: normTimeout(in.TimeoutSec),
 		Enabled: in.Enabled, Thresholds: in.Thresholds,
+	}
+	if err := o.ensureCredentialExists(in.CredentialID); err != nil {
+		return nil, err
 	}
 	if err := o.setCreds(t, in.Username, in.Password, in.PrivateKey); err != nil {
 		return nil, err
@@ -84,16 +91,22 @@ func (o *MonitorOper) Update(id uint, in TargetInput) (*models.MonitorTarget, er
 	if err != nil {
 		return nil, err
 	}
+	if err := validateTargetInput(in); err != nil {
+		return nil, err
+	}
 	if in.RTSPURL != "" {
 		if err := validateRTSPScheme(in.RTSPURL); err != nil {
 			return nil, err
 		}
 	}
 	t.Name, t.Type, t.Host, t.Port = in.Name, in.Type, in.Host, in.Port
-	t.Vendor, t.Protocol, t.RTSPURL = in.Vendor, in.Protocol, in.RTSPURL
+	t.Vendor, t.Protocol, t.CredentialID, t.RTSPURL = in.Vendor, in.Protocol, in.CredentialID, in.RTSPURL
 	t.IntervalSec = normInterval(in.IntervalSec)
 	t.TimeoutSec = normTimeout(in.TimeoutSec)
 	t.Enabled, t.Thresholds = in.Enabled, in.Thresholds
+	if err := o.ensureCredentialExists(in.CredentialID); err != nil {
+		return nil, err
+	}
 	// 凭据加密失败必须中止（对齐 Create 的 setCreds）：否则保留旧密文、API 误报成功，
 	// 用户改密码后监控仍用旧凭证反复鉴权失败。
 	if in.Username != "" {
@@ -190,6 +203,34 @@ func (o *MonitorOper) Delete(id uint) error {
 // Credentials 解密返回凭据（无凭据时字段为空，不报错）。
 func (o *MonitorOper) Credentials(t *models.MonitorTarget) (monitor.Credentials, error) {
 	creds := monitor.Credentials{}
+	if t.CredentialID > 0 {
+		var c models.OpsCredential
+		if err := o.db.First(&c, t.CredentialID).Error; err != nil {
+			return creds, err
+		}
+		if c.UsernameEnc != "" {
+			if u, err := o.c.Decrypt(c.UsernameEnc); err == nil {
+				creds.Username = u
+			} else {
+				return creds, err
+			}
+		}
+		if c.PasswordEnc != "" {
+			if p, err := o.c.Decrypt(c.PasswordEnc); err == nil {
+				creds.Password = p
+			} else {
+				return creds, err
+			}
+		}
+		if c.PrivateKeyEnc != "" {
+			if k, err := o.c.Decrypt(c.PrivateKeyEnc); err == nil {
+				creds.PrivateKey = k
+			} else {
+				return creds, err
+			}
+		}
+		return creds, nil
+	}
 	if t.UsernameEnc != "" {
 		if u, err := o.c.Decrypt(t.UsernameEnc); err == nil {
 			creds.Username = u
@@ -217,12 +258,39 @@ func (o *MonitorOper) Credentials(t *models.MonitorTarget) (monitor.Credentials,
 // fillUsername 解密回填 transient Username 与 HasPrivateKey（仅供 JSON 回显，编辑表单用）；
 // 明文密码/私钥不回传，编辑时留空保留。
 func (o *MonitorOper) fillUsername(t *models.MonitorTarget) {
+	if t.CredentialID > 0 {
+		var c models.OpsCredential
+		if err := o.db.First(&c, t.CredentialID).Error; err == nil {
+			t.CredentialName = c.Name
+			if c.UsernameEnc != "" {
+				if u, err := o.c.Decrypt(c.UsernameEnc); err == nil {
+					t.Username = u
+				}
+			}
+			t.HasPrivateKey = c.PrivateKeyEnc != ""
+			return
+		}
+	}
 	if t.UsernameEnc != "" {
 		if u, err := o.c.Decrypt(t.UsernameEnc); err == nil {
 			t.Username = u
 		}
 	}
 	t.HasPrivateKey = t.PrivateKeyEnc != ""
+}
+
+func (o *MonitorOper) ensureCredentialExists(id uint) error {
+	if id == 0 {
+		return nil
+	}
+	var n int64
+	if err := o.db.Model(&models.OpsCredential{}).Where("id = ?", id).Count(&n).Error; err != nil {
+		return err
+	}
+	if n == 0 {
+		return fmt.Errorf("凭据不存在")
+	}
+	return nil
 }
 
 // RecordSnapshot 写快照并更新 target 状态；对比上次快照算网络速率（service 委托）。
@@ -320,6 +388,27 @@ func (o *MonitorOper) MarkAlertRead(id uint) error {
 	return o.db.Model(&models.MonitorAlert{}).Where("id = ?", id).Update("read", true).Error
 }
 
+// AckAlert marks an alert as acknowledged and read.
+func (o *MonitorOper) AckAlert(id uint, by string) error {
+	now := time.Now()
+	return o.db.Model(&models.MonitorAlert{}).Where("id = ?", id).Updates(map[string]any{
+		"read":            true,
+		"acknowledged_at": now,
+		"acknowledged_by": by,
+	}).Error
+}
+
+// SilenceAlert suppresses repeated notifications for an open alert until the given time.
+func (o *MonitorOper) SilenceAlert(id uint, until time.Time, by string) error {
+	now := time.Now()
+	return o.db.Model(&models.MonitorAlert{}).Where("id = ?", id).Updates(map[string]any{
+		"read":            true,
+		"acknowledged_at": now,
+		"acknowledged_by": by,
+		"silenced_until":  until,
+	}).Error
+}
+
 // CreateAlert 新建告警记录。
 func (o *MonitorOper) CreateAlert(a *models.MonitorAlert) error {
 	return o.db.Create(a).Error
@@ -378,6 +467,44 @@ func validateRTSPScheme(raw string) error {
 	}
 	if u.Host == "" {
 		return fmt.Errorf("rtsp url must have a host")
+	}
+	return nil
+}
+
+func validateTargetInput(in TargetInput) error {
+	switch in.Type {
+	case "http":
+		u, err := url.Parse(strings.TrimSpace(in.Host))
+		if err != nil || u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+			return fmt.Errorf("HTTP 监控地址必须是 http/https 完整 URL")
+		}
+	case "tcp":
+		if strings.TrimSpace(in.Host) == "" {
+			return fmt.Errorf("TCP 监控地址不能为空")
+		}
+		if in.Port <= 0 || in.Port > 65535 {
+			return fmt.Errorf("TCP 端口必须在 1-65535 之间")
+		}
+	case "process":
+		if strings.TrimSpace(in.Host) == "" {
+			return fmt.Errorf("进程监控需要填写 SSH 主机地址")
+		}
+		if in.Protocol != "" && in.Protocol != "ssh" {
+			return fmt.Errorf("进程监控仅支持 SSH 协议")
+		}
+		if strings.TrimSpace(monitor.ParseThresholds(in.Thresholds).ProcessName) == "" {
+			return fmt.Errorf("进程监控需要填写进程名称")
+		}
+	case "script":
+		if strings.TrimSpace(in.Host) == "" {
+			return fmt.Errorf("脚本监控需要填写 SSH 主机地址")
+		}
+		if in.Protocol != "" && in.Protocol != "ssh" {
+			return fmt.Errorf("脚本监控仅支持 SSH 协议")
+		}
+		if strings.TrimSpace(monitor.ParseThresholds(in.Thresholds).ScriptCommand) == "" {
+			return fmt.Errorf("脚本监控需要填写命令")
+		}
 	}
 	return nil
 }

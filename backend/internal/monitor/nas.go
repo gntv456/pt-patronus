@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -31,6 +32,21 @@ func (c NASCollector) Probe(ctx context.Context, t *models.MonitorTarget, creds 
 
 func (c NASCollector) Collect(ctx context.Context, t *models.MonitorTarget, creds Credentials) (Metrics, error) {
 	return c.collect(ctx, t, creds)
+}
+
+func (c NASCollector) Power(ctx context.Context, t *models.MonitorTarget, creds Credentials, action string) error {
+	action = strings.ToLower(strings.TrimSpace(action))
+	if !isSupportedPowerAction(action) {
+		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
+	}
+	switch strings.ToLower(t.Vendor) {
+	case "truenas", "freenas":
+		return powerTrueNAS(ctx, c.hc, t, creds, action)
+	case "snmp":
+		return fmt.Errorf("%w for nas/snmp", ErrUnsupportedPowerAction)
+	default:
+		return powerSynology(ctx, c.hc, t, creds, action)
+	}
 }
 
 func (c NASCollector) collect(ctx context.Context, t *models.MonitorTarget, creds Credentials) (Metrics, error) {

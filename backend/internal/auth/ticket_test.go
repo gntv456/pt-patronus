@@ -40,3 +40,25 @@ func TestTicketExpiry(t *testing.T) {
 		t.Fatal("expired ticket should fail")
 	}
 }
+
+func TestScopedTicketValidate(t *testing.T) {
+	s := NewTicketStore()
+	tk, exp, err := s.IssueScoped(9, "plugin-assets:demo", 50*time.Millisecond)
+	if err != nil {
+		t.Fatalf("issue scoped: %v", err)
+	}
+	if exp.IsZero() {
+		t.Fatal("exp should be set")
+	}
+	uid, ok := s.Validate(tk, "plugin-assets:demo")
+	if !ok || uid != 9 {
+		t.Fatalf("validate should succeed: uid=%d ok=%v", uid, ok)
+	}
+	if _, ok := s.Validate(tk, "plugin-assets:other"); ok {
+		t.Fatal("scope mismatch should fail")
+	}
+	time.Sleep(60 * time.Millisecond)
+	if _, ok := s.Validate(tk, "plugin-assets:demo"); ok {
+		t.Fatal("expired scoped ticket should fail")
+	}
+}

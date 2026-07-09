@@ -44,6 +44,23 @@ type NotificationSettings struct {
 		Enabled bool   `json:"enabled"`
 		URL     string `json:"url"`
 	} `json:"webhook"`
+	DingTalk struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+	} `json:"dingtalk"`
+	Feishu struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+	} `json:"feishu"`
+	Email struct {
+		Enabled  bool   `json:"enabled"`
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+		From     string `json:"from"`
+		To       string `json:"to"`
+	} `json:"email"`
 }
 
 // NotificationSettingsProvider 按 SystemConfig（回退环境变量默认 defaults）构建通知通道，
@@ -143,6 +160,15 @@ func (p *NotificationSettingsProvider) rebuildLocked(s NotificationSettings) {
 	if s.Webhook.Enabled && s.Webhook.URL != "" {
 		chs = append(chs, notification.NewWebhook(s.Webhook.URL))
 	}
+	if s.DingTalk.Enabled && s.DingTalk.URL != "" {
+		chs = append(chs, notification.NewDingTalk(s.DingTalk.URL))
+	}
+	if s.Feishu.Enabled && s.Feishu.URL != "" {
+		chs = append(chs, notification.NewFeishu(s.Feishu.URL))
+	}
+	if s.Email.Enabled && s.Email.Host != "" && s.Email.From != "" && s.Email.To != "" {
+		chs = append(chs, notification.NewEmail(s.Email.Host, s.Email.Port, s.Email.Username, s.Email.Password, s.Email.From, s.Email.To))
+	}
 	p.mgr.Replace(chs)
 }
 
@@ -182,5 +208,18 @@ func mergeNotifySettings(cur, in NotificationSettings) NotificationSettings {
 	// Webhook：URL 非秘密但允许清空（取 incoming，含空→禁用/清空）
 	out.Webhook.Enabled = in.Webhook.Enabled
 	out.Webhook.URL = in.Webhook.URL
+	out.DingTalk.Enabled = in.DingTalk.Enabled
+	out.DingTalk.URL = in.DingTalk.URL
+	out.Feishu.Enabled = in.Feishu.Enabled
+	out.Feishu.URL = in.Feishu.URL
+	out.Email.Enabled = in.Email.Enabled
+	out.Email.Host = in.Email.Host
+	out.Email.Port = in.Email.Port
+	out.Email.Username = in.Email.Username
+	out.Email.From = in.Email.From
+	out.Email.To = in.Email.To
+	if in.Email.Password != "" {
+		out.Email.Password = in.Email.Password
+	}
 	return out
 }

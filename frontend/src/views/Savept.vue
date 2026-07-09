@@ -242,8 +242,10 @@ function handleDocumentClick(e: MouseEvent) {
 }
 
 // ── 站庆彩带（canvas-confetti 动态加载 + 纯 CSS spark 双重） ──
-type ConfettiFn = (opts: Record<string, unknown>) => unknown
+type ConfettiFn = ((opts: Record<string, unknown>) => unknown) & { reset?: () => void }
 type ConfettiFactory = (canvas: HTMLCanvasElement, opts: Record<string, unknown>) => ConfettiFn
+type ConfettiMain = ConfettiFn & { create?: ConfettiFactory }
+type ConfettiModule = ({ default?: ConfettiMain; create?: ConfettiFactory } & Partial<ConfettiMain>)
 
 const celebrationCanvasRefs = new Map<string, HTMLCanvasElement>()
 const celebrationInstances = new Map<string, ConfettiFn>()
@@ -279,10 +281,12 @@ async function ensureFactory(): Promise<ConfettiFactory | null> {
   if (!confettiLoader) {
     confettiLoader = import('canvas-confetti')
       .then((m) => {
-        const mod = m as unknown as { default?: ConfettiFactory } & ConfettiFactory
-        const fn = (mod.default || mod) as ConfettiFactory
-        confettiFactory = fn
-        return fn
+        const mod = m as unknown as ConfettiModule
+        const main = (mod.default || mod) as ConfettiMain
+        const create = main.create || mod.create
+        if (!create) throw new Error('canvas-confetti create() 不可用')
+        confettiFactory = create
+        return create
       })
       .catch((e) => {
         console.error('[savept] 加载 canvas-confetti 失败', e)
@@ -327,6 +331,7 @@ function stopLoop(key: string) {
 }
 function destroyInstance(key: string) {
   stopLoop(key)
+  celebrationInstances.get(key)?.reset?.()
   celebrationInstances.delete(key)
 }
 function queueLoop(key: string) {

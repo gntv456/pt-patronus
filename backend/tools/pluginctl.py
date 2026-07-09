@@ -690,6 +690,8 @@ def build_market_entry(
         "actions",
         "config_schema",
         "contributes",
+        "resource_access",
+        "requirements",
     ):
         value = manifest.get(key)
         if value in (None, "", [], {}):

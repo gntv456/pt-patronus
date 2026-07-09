@@ -2,6 +2,11 @@ package monitor
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
+	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/sysinfo"
@@ -25,4 +30,42 @@ func (HostCollector) Probe(_ context.Context, _ *models.MonitorTarget, _ Credent
 // Metrics 是 sysinfo.Metrics 的类型别名，零转换。
 func (HostCollector) Collect(_ context.Context, _ *models.MonitorTarget, _ Credentials) (Metrics, error) {
 	return sysinfo.CollectSystemMetrics(), nil
+}
+
+// Power 对 PTPatronus 所在机器执行固定电源动作；仅支持重启/关机白名单。
+func (HostCollector) Power(ctx context.Context, _ *models.MonitorTarget, _ Credentials, action string) error {
+	action = strings.ToLower(strings.TrimSpace(action))
+	name, args, err := localPowerCommand(action)
+	if err != nil {
+		return fmt.Errorf("%w: %s", ErrUnsupportedPowerAction, action)
+	}
+	return exec.CommandContext(ctx, name, args...).Run()
+}
+
+func localPowerCommand(action string) (string, []string, error) {
+	switch runtime.GOOS {
+	case "windows":
+		switch action {
+		case PowerActionReboot:
+			return "shutdown.exe", []string{"/r", "/t", "0"}, nil
+		case PowerActionShutdown:
+			return "shutdown.exe", []string{"/s", "/t", "0"}, nil
+		}
+	default:
+		if os.Geteuid() == 0 {
+			switch action {
+			case PowerActionReboot:
+				return "reboot", nil, nil
+			case PowerActionShutdown:
+				return "shutdown", []string{"-h", "now"}, nil
+			}
+		}
+		switch action {
+		case PowerActionReboot:
+			return "sudo", []string{"-n", "reboot"}, nil
+		case PowerActionShutdown:
+			return "sudo", []string{"-n", "shutdown", "-h", "now"}, nil
+		}
+	}
+	return "", nil, ErrUnsupportedPowerAction
 }

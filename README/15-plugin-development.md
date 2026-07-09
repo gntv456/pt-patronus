@@ -269,6 +269,7 @@ Permissions:
 - `kv:delete`
 - `site:read`
 - `site:cookie`
+- `media:search` — call the host media chain (`POST /media/search {keyword, year}` → `{results:[{source,source_id,title,year,type,overview,poster_url,backdrop_url,rating,genres}]}`). Scrapers reuse the host's TMDB/豆瓣/寸光集 sources instead of shipping their own TMDB key.
 
 Wildcards are supported for trusted plugins:
 
@@ -294,6 +295,65 @@ Common host capability names:
 - `host.api.site.cookie`
 - `host.ui.view`
 - `host.ui.bridge`
+
+## Manifest declarations & runtime patterns
+
+### Resource-access declarations (`resource_access`)
+External-http plugins run as **unrestricted host subprocesses** (same OS user, full filesystem + subprocess + outbound network) — there is no OS-level sandbox. To keep administrators informed, declare the resources a plugin touches in `resource_access`; these are shown on the install-confirmation page (declared, not enforced):
+
+```json
+{
+  "resource_access": {
+    "fs_paths": ["/data/media"],
+    "exec_binaries": ["ffmpeg", "ffprobe"],
+    "net_hosts": ["ptang.top", "api.themoviedb.org"]
+  }
+}
+```
+
+### Python dependencies (`requirements`)
+A plugin can declare pip requirements; on install the host runs `pip install --target {plugin_dir}/.deps` and prepends `.deps` to `PYTHONPATH` when launching the plugin. Best-effort: if `pip` is absent or install fails, install still succeeds (the plugin may run on stdlib alone).
+
+```json
+{ "requirements": ["clouddrive", "Pillow>=10"] }
+```
+
+### Long-running work must be async
+The host caps each `/action` call at ~30s. Batch jobs (scanning a whole library, scraping many items) **must** return immediately and run the work on a background thread, reporting progress via KV/log and completion via notice. Expose a `status` action for polling. Pattern:
+
+```python
+import threading
+_worker_lock = threading.Lock()
+_worker_thread = None
+_worker_status = {"running": False, "done": False}
+
+def _worker(cfg):
+    try:
+        result = do_the_work(cfg, _worker_status)  # updates _worker_status as it goes
+        _worker_status.update({"running": False, "done": True})
+        notice("done", str(result))
+    except Exception as e:
+        _worker_status.update({"running": False, "done": True, "error": str(e)})
+
+def start_scan(cfg):
+    global _worker_thread
+    with _worker_lock:
+        if _worker_thread and _worker_thread.is_alive():
+            return {"started": False, "already_running": True}
+        _worker_thread = threading.Thread(target=_worker, args=(cfg,), daemon=True)
+        _worker_thread.start()
+        return {"started": True}
+```
+
+For external HTTP, `urllib.request.urlopen(timeout=)` only guards each recv — guard the **total** time with a thread + `join(deadline)` so a throttled/slow-drip response can't wedge the worker.
+
+### Plugin-view → action bridge
+Plugin views (iframes) can call a declared action and render its output via the injected bridge — enables dashboards that pull live data from the plugin:
+
+```js
+const res = await window.PTPatronus.action('info', { name: 'instance1' })
+// res.output is whatever the action returns
+```
 
 ## TypeScript SDK
 

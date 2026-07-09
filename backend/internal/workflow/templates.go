@@ -71,6 +71,16 @@ func Templates() []Template {
 			Edges: []GraphEdge{},
 		},
 		{
+			Key: "scheduled_ssh_command", Name: "定时 SSH 命令", Category: "运维",
+			Description: "定时在指定 SSH 主机上执行巡检、清理、备份等命令，输出可继续通知或分支判断",
+			TriggerType: "timer", Timer: "0 3 * * *",
+			Nodes: []GraphNode{
+				{ID: "n1", Type: "ssh_command", Name: "执行命令", Params: map[string]any{"target_id": float64(0), "command": "uptime && df -h", "timeout_sec": float64(30), "output_var": "ssh_output"}, Position: Position{X: 80, Y: 40}},
+				{ID: "n2", Type: "send_message", Name: "发送结果", Params: map[string]any{"title": "SSH 巡检结果", "body": "{{var.ssh_output}}", "level": "info"}, Position: Position{X: 80, Y: 180}},
+			},
+			Edges: []GraphEdge{{ID: "e1", Source: "n1", Target: "n2"}},
+		},
+		{
 			Key: "site_stats_notify", Name: "站点数据播报", Category: "站点",
 			Description: "读取站点统计数据 → 发送通知播报",
 			TriggerType: "timer", Timer: "0 9 * * *",

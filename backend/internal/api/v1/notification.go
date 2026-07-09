@@ -82,12 +82,33 @@ type notifyWebhookConfig struct {
 	Enabled bool   `json:"enabled"`
 	URL     string `json:"url"`
 }
+type notifyDingTalkConfig struct {
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+}
+type notifyFeishuConfig struct {
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+}
+type notifyEmailConfig struct {
+	Enabled            bool   `json:"enabled"`
+	Host               string `json:"host"`
+	Port               int    `json:"port"`
+	Username           string `json:"username"`
+	Password           string `json:"password"` // 脱敏
+	PasswordConfigured bool   `json:"password_configured"`
+	From               string `json:"from"`
+	To                 string `json:"to"`
+}
 type notifyConfigResp struct {
 	Bark     notifyBarkConfig     `json:"bark"`
 	Telegram notifyTGConfig       `json:"telegram"`
 	QQ       notifyQQConfig       `json:"qq"`
 	WeChat   notifyWXConfig       `json:"wechat"`
 	Webhook  notifyWebhookConfig  `json:"webhook"`
+	DingTalk notifyDingTalkConfig `json:"dingtalk"`
+	Feishu   notifyFeishuConfig   `json:"feishu"`
+	Email    notifyEmailConfig    `json:"email"`
 }
 
 // GetConfig 返回当前通知通道配置（secret 脱敏 + configured 标记）。供「设置→通知」回显。
@@ -110,7 +131,14 @@ func (h *NotificationHandler) GetConfig(c *gin.Context) {
 			Enabled: s.WeChat.Enabled, AccountID: s.WeChat.AccountID, Target: s.WeChat.Target, BaseURL: s.WeChat.BaseURL,
 			BotToken: maskSecret(s.WeChat.BotToken), BotTokenConfigured: s.WeChat.BotToken != "",
 		},
-		Webhook: notifyWebhookConfig{Enabled: s.Webhook.Enabled, URL: s.Webhook.URL},
+		Webhook:  notifyWebhookConfig{Enabled: s.Webhook.Enabled, URL: s.Webhook.URL},
+		DingTalk: notifyDingTalkConfig{Enabled: s.DingTalk.Enabled, URL: s.DingTalk.URL},
+		Feishu:   notifyFeishuConfig{Enabled: s.Feishu.Enabled, URL: s.Feishu.URL},
+		Email: notifyEmailConfig{
+			Enabled: s.Email.Enabled, Host: s.Email.Host, Port: s.Email.Port, Username: s.Email.Username,
+			Password: maskSecret(s.Email.Password), PasswordConfigured: s.Email.Password != "",
+			From: s.Email.From, To: s.Email.To,
+		},
 	})
 }
 
@@ -144,6 +172,23 @@ type notifyConfigReq struct {
 		Enabled bool   `json:"enabled"`
 		URL     string `json:"url"`
 	} `json:"webhook"`
+	DingTalk struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+	} `json:"dingtalk"`
+	Feishu struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+	} `json:"feishu"`
+	Email struct {
+		Enabled  bool   `json:"enabled"`
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+		From     string `json:"from"`
+		To       string `json:"to"`
+	} `json:"email"`
 }
 
 // SetConfig 保存通知通道配置并即时 rebuild（无需重启）。秘密字段空串=保留旧值。
@@ -159,6 +204,9 @@ func (h *NotificationHandler) SetConfig(c *gin.Context) {
 	in.QQ.Enabled, in.QQ.AppID, in.QQ.AppSecret, in.QQ.OpenID, in.QQ.GroupOpenID = req.QQ.Enabled, req.QQ.AppID, req.QQ.AppSecret, req.QQ.OpenID, req.QQ.GroupOpenID
 	in.WeChat.Enabled, in.WeChat.BotToken, in.WeChat.AccountID, in.WeChat.Target, in.WeChat.BaseURL = req.WeChat.Enabled, req.WeChat.BotToken, req.WeChat.AccountID, req.WeChat.Target, req.WeChat.BaseURL
 	in.Webhook.Enabled, in.Webhook.URL = req.Webhook.Enabled, req.Webhook.URL
+	in.DingTalk.Enabled, in.DingTalk.URL = req.DingTalk.Enabled, req.DingTalk.URL
+	in.Feishu.Enabled, in.Feishu.URL = req.Feishu.Enabled, req.Feishu.URL
+	in.Email.Enabled, in.Email.Host, in.Email.Port, in.Email.Username, in.Email.Password, in.Email.From, in.Email.To = req.Email.Enabled, req.Email.Host, req.Email.Port, req.Email.Username, req.Email.Password, req.Email.From, req.Email.To
 	if err := h.provider.ApplySettings(in); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

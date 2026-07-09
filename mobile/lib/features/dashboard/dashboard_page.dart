@@ -1,13 +1,20 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show File, Platform;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/features/home/home_controller.dart';
 import 'package:ptpatronus/features/home/home_nav_items.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart' show MissingPluginException;
+import 'package:path_provider/path_provider.dart';
 import 'package:ptpatronus/api/dashboard.dart';
+import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -181,9 +188,11 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final _api = DashboardApi();
+  final _siteApi = SiteApi();
   final _ws = WsClient();
   final _shareKey = GlobalKey(); // 仪表盘分享图 RepaintBoundary（toImage 截图）
   DashboardOverview? _overview;
+  Map<int, String> _siteBaseUrls = {};
   List<HRAlert> _hrAlerts = [];
   List<String> _cookieAlerts = [];
   TotalDashboardConfig _config = TotalDashboardConfig.defaults;
@@ -395,7 +404,54 @@ class _DashboardPageState extends State<DashboardPage> {
     return '${d.year}-${p(d.month)}-${p(d.day)} ${p(d.hour)}:${p(d.minute)}';
   }
 
-  void _exportImage() {
+  String? _siteFaviconUrl(SiteStatItem site) {
+    if (_config.blurSensitiveInfo) return null;
+    final baseUrl = _siteBaseUrls[site.siteId]?.trim();
+    if (baseUrl == null || baseUrl.isEmpty) return null;
+    final uri = Uri.tryParse(baseUrl);
+    if (uri == null ||
+        uri.host.isEmpty ||
+        (uri.scheme != 'http' && uri.scheme != 'https')) {
+      return null;
+    }
+    return '${uri.origin}/favicon.ico';
+  }
+
+  Future<void> _ensureSiteBaseUrls() async {
+    if (_siteBaseUrls.isNotEmpty) return;
+    final sites = await _siteApi.list();
+    if (!mounted) return;
+    setState(() {
+      _siteBaseUrls = {
+        for (final site in sites)
+          if (site.baseUrl.trim().isNotEmpty) site.id: site.baseUrl.trim(),
+      };
+    });
+  }
+
+  Future<void> _prepareShareFavicons() async {
+    try {
+      await _ensureSiteBaseUrls();
+    } catch (_) {
+      return;
+    }
+    if (!mounted || _config.blurSensitiveInfo) return;
+    final urls = _visibleSites()
+        .take(8)
+        .map(_siteFaviconUrl)
+        .whereType<String>()
+        .toSet();
+    await Future.wait([
+      for (final url in urls)
+        precacheImage(NetworkImage(url), context)
+            .timeout(const Duration(seconds: 3), onTimeout: () {})
+            .catchError((_) {}),
+    ]);
+  }
+
+  Future<void> _exportImage() async {
+    await _prepareShareFavicons();
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -428,10 +484,24 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: _share,
-                  icon: const Icon(Icons.share),
-                  label: const Text('分享 / 保存图片'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _saveImage,
+                        icon: const Icon(Icons.save_alt),
+                        label: const Text('保存图片'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _shareImage,
+                        icon: const Icon(Icons.share),
+                        label: const Text('分享图片'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -441,25 +511,87 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Future<void> _share() async {
+  String _dashboardImageFileName() {
+    final d = DateTime.now();
+    String p(int n) => n.toString().padLeft(2, '0');
+    return 'ptpatronus-dashboard-${d.year}${p(d.month)}${p(d.day)}-${p(d.hour)}${p(d.minute)}${p(d.second)}.png';
+  }
+
+  Future<Uint8List?> _captureDashboardPng() async {
     final ctx = _shareKey.currentContext;
     final boundary = ctx?.findRenderObject() is RenderRepaintBoundary
         ? ctx!.findRenderObject() as RenderRepaintBoundary
         : null;
-    if (boundary == null) return;
+    if (boundary == null) return null;
+    final img = await boundary.toImage(pixelRatio: 3.0);
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    img.dispose();
+    if (byteData == null) return null;
+    return byteData.buffer.asUint8List(
+      byteData.offsetInBytes,
+      byteData.lengthInBytes,
+    );
+  }
+
+  bool _filePickerSaveWritesBytes() {
+    return defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
+  }
+
+  Future<String> _writeImageToDocuments(Uint8List png, String fileName) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}${Platform.pathSeparator}$fileName');
+    await file.writeAsBytes(png, flush: true);
+    return file.path;
+  }
+
+  Future<void> _saveImage() async {
+    String? savedPath;
     try {
-      final img = await boundary.toImage(pixelRatio: 3.0);
-      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) return;
-      final png = byteData.buffer.asUint8List(
-        byteData.offsetInBytes,
-        byteData.lengthInBytes,
-      );
+      final png = await _captureDashboardPng();
+      if (png == null) return;
+      final fileName = _dashboardImageFileName();
+
+      try {
+        final path = await FilePicker.platform.saveFile(
+          dialogTitle: '保存总仪表盘图片',
+          fileName: fileName,
+          type: FileType.custom,
+          allowedExtensions: const ['png'],
+          bytes: png,
+        );
+        if (path == null) return;
+        savedPath = path;
+        if (!_filePickerSaveWritesBytes()) {
+          await File(path).writeAsBytes(png, flush: true);
+        }
+      } on MissingPluginException {
+        savedPath = await _writeImageToDocuments(png, fileName);
+      } on UnimplementedError {
+        savedPath = await _writeImageToDocuments(png, fileName);
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context);
+      _toast('图片已保存：$savedPath');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    }
+  }
+
+  Future<void> _shareImage() async {
+    try {
+      final png = await _captureDashboardPng();
+      if (png == null) return;
       await Share.shareXFiles([
         XFile.fromData(
           png,
           mimeType: 'image/png',
-          name: 'ptpatronus-dashboard.png',
+          name: _dashboardImageFileName(),
         ),
       ]);
       if (mounted) {
@@ -467,9 +599,9 @@ class _DashboardPageState extends State<DashboardPage> {
       }
     } on MissingPluginException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('当前平台不支持分享/保存，请用 Web 端导出')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('当前平台不支持分享，请使用保存图片')));
       }
     } catch (e) {
       if (mounted) {
@@ -904,15 +1036,67 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _shareSiteCard(SiteStatItem s, int index) {
-    final colors = [
-      const Color(0xFF45C4F0),
-      const Color(0xFF62D48E),
-      const Color(0xFFFFC857),
-      const Color(0xFFB98CFF),
-      const Color(0xFFFF9F43),
-      const Color(0xFFFF6B6B),
+  Color _shareSiteAccent(int index) {
+    const colors = [
+      Color(0xFF45C4F0),
+      Color(0xFF62D48E),
+      Color(0xFFFFC857),
+      Color(0xFFB98CFF),
+      Color(0xFFFF9F43),
+      Color(0xFFFF6B6B),
     ];
+    return colors[index % colors.length];
+  }
+
+  Widget _shareSiteIconFallback(SiteStatItem s, int index) {
+    final name = _shareDisplaySiteName(s).trim();
+    final label = name.isEmpty || name == '--' || name == '***'
+        ? '${index + 1}'
+        : name.substring(0, 1).toUpperCase();
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: _shareSiteAccent(index),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFF121212),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Widget _shareSiteIcon(SiteStatItem s, int index) {
+    final fallback = _shareSiteIconFallback(s, index);
+    final url = _siteFaviconUrl(s);
+    if (url == null) return fallback;
+    return Container(
+      width: 28,
+      height: 28,
+      clipBehavior: Clip.antiAlias,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        shape: BoxShape.circle,
+      ),
+      child: Image.network(
+        url,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        gaplessPlayback: true,
+        loadingBuilder: (context, child, progress) =>
+            progress == null ? child : fallback,
+        errorBuilder: (context, error, stackTrace) => fallback,
+      ),
+    );
+  }
+
+  Widget _shareSiteCard(SiteStatItem s, int index) {
     final metrics = <_ShareMetric>[
       if (_config.showUsername)
         _ShareMetric(
@@ -975,23 +1159,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 24,
-                height: 24,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: colors[index % colors.length],
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  '${index + 1}',
-                  style: const TextStyle(
-                    color: Color(0xFF121212),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
+              _shareSiteIcon(s, index),
               const SizedBox(width: 9),
               Expanded(
                 child: Column(

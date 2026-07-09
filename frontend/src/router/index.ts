@@ -41,6 +41,11 @@ const router = createRouter({
           component: () => import('@/views/Plugins.vue'),
         },
         {
+          path: 'plugins/view/:pluginId/:viewId',
+          name: 'plugin-view',
+          component: () => import('@/views/PluginView.vue'),
+        },
+        {
           path: 'workflow-editor',
           name: 'workflow-editor',
           component: () => import('@/views/WorkflowEditor.vue'),

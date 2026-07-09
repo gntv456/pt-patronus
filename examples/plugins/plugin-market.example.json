@@ -1,23 +1,82 @@
 {
   "version": 1,
-  "name": "PTPatronus 示例插件市场",
+  "name": "PTPatronus Example Plugin Market",
+  "api_version": "1",
+  "app_version": "0.81.01",
+  "host_capabilities": [
+    "host.runtime.external-http.command",
+    "host.runtime.external-http.base-url",
+    "host.event.subscription",
+    "host.schedule.cron",
+    "host.api.config.read",
+    "host.api.config.write",
+    "host.api.log.write",
+    "host.api.notice.write",
+    "host.api.event.publish",
+    "host.api.kv.read",
+    "host.api.kv.write",
+    "host.api.kv.delete",
+    "host.api.site.read",
+    "host.api.site.cookie",
+    "host.ui.view",
+    "host.ui.bridge"
+  ],
   "plugins": [
     {
       "id": "external-http-demo",
-      "name": "外部 HTTP 示例插件",
+      "name": "External HTTP Demo",
       "version": "1.0.0",
+      "api_version": "1",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.event.subscription",
+        "host.api.config.read",
+        "host.api.log.write",
+        "host.api.event.publish",
+        "host.api.kv.read",
+        "host.api.kv.write",
+        "host.ui.view",
+        "host.ui.bridge"
+      ],
       "author": "PTPatronus",
-      "description": "演示 external-http 插件协议：健康检查、事件接收和动作执行。",
+      "publisher": {
+        "id": "ptpatronus",
+        "name": "PTPatronus Team",
+        "website": "https://example.invalid/ptpatronus",
+        "verified": true
+      },
+      "published_at": "2026-07-09T00:00:00Z",
+      "changelog": [
+        "Add plugin-host UI bridge for sandboxed views.",
+        "Persist UI counter through the host KV store.",
+        "Expose plugin dashboard as a contributed view."
+      ],
+      "description": "Demonstrates the external-http protocol, Host API callbacks, KV storage, events and actions.",
+      "license": "MIT",
+      "keywords": ["demo", "external-http", "host-api"],
       "runtime": "external-http",
       "archive": "archives/external-http-demo.zip",
       "sha256": "",
-      "permissions": ["event:read", "log:write"],
+      "permissions": [
+        "event:read",
+        "event:publish",
+        "log:write",
+        "kv:read",
+        "kv:write",
+        "config:read"
+      ],
       "events": [
-        { "type": "plugin.test", "description": "插件测试事件" }
+        { "type": "plugin.test", "description": "Test event sent from the plugin admin page." }
       ],
       "actions": [
-        { "name": "ping", "label": "Ping", "description": "返回插件收到的输入。" }
-      ]
+        { "name": "ping", "label": "Ping", "description": "Returns the input and increments a host KV counter." }
+      ],
+      "contributes": {
+        "views": [
+          { "id": "dashboard", "title": "External Demo", "location": "plugins", "path": "index.html" }
+        ]
+      }
     }
   ]
 }

@@ -1,0 +1,6 @@
+# Market signing private key — never commit
+*.private.key
+keys/*.private.key
+
+# Python
+__pycache__/

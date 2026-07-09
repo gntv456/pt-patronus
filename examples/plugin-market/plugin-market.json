@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "name": "PTPatronus Plugin Market",
+  "api_version": "1",
+  "app_version": "0.81.01",
+  "host_capabilities": [
+    "host.runtime.external-http.command",
+    "host.runtime.external-http.base-url",
+    "host.event.subscription",
+    "host.schedule.cron",
+    "host.api.config.read",
+    "host.api.config.write",
+    "host.api.log.write",
+    "host.api.notice.write",
+    "host.api.event.publish",
+    "host.api.kv.read",
+    "host.api.kv.write",
+    "host.api.kv.delete",
+    "host.api.site.read",
+    "host.api.site.cookie",
+    "host.ui.view",
+    "host.ui.bridge"
+  ],
+  "plugins": [
+    {
+      "id": "external-http-demo",
+      "name": "External HTTP Demo",
+      "version": "1.0.0",
+      "api_version": "1",
+      "runtime": "external-http",
+      "archive": "https://github.com/pt-patronus/ptpatronus-plugin-market/releases/download/external-http-demo-v1.0.0/external-http-demo-1.0.0.zip",
+      "sha256": "0f43ab3d65465ccf4f461d32b016588959cb68352db02bd66b2f39bd94c99c3e",
+      "app_version": ">=0.1.0",
+      "host_capabilities": [
+        "host.runtime.external-http.command",
+        "host.event.subscription",
+        "host.ui.view",
+        "host.ui.bridge",
+        "host.api.event.publish",
+        "host.api.log.write",
+        "host.api.kv.read",
+        "host.api.kv.write",
+        "host.api.config.read"
+      ],
+      "author": "PTPatronus",
+      "description": "Demonstrates the external-http protocol, Host API callbacks, KV storage, events and actions.",
+      "license": "MIT",
+      "keywords": [
+        "demo",
+        "external-http",
+        "host-api"
+      ],
+      "permissions": [
+        "event:read",
+        "event:publish",
+        "log:write",
+        "kv:read",
+        "kv:write",
+        "config:read"
+      ],
+      "events": [
+        {
+          "type": "plugin.test",
+          "description": "Test event sent from the plugin admin page."
+        }
+      ],
+      "actions": [
+        {
+          "name": "ping",
+          "label": "Ping",
+          "description": "Returns the input and increments a host KV counter.",
+          "input_schema": [
+            {
+              "key": "message",
+              "label": "Message",
+              "type": "text",
+              "default": "hello"
+            }
+          ]
+        }
+      ],
+      "config_schema": [
+        {
+          "key": "prefix",
+          "label": "Response prefix",
+          "type": "text",
+          "default": "pong"
+        }
+      ],
+      "contributes": {
+        "commands": [
+          {
+            "id": "external-http-demo.ping",
+            "label": "Ping demo plugin",
+            "action": "ping"
+          }
+        ],
+        "menus": [
+          {
+            "location": "plugins/actions",
+            "command": "external-http-demo.ping"
+          }
+        ],
+        "views": [
+          {
+            "id": "dashboard",
+            "title": "External Demo",
+            "location": "plugins",
+            "path": "index.html"
+          }
+        ]
+      }
+    }
+  ]
+}

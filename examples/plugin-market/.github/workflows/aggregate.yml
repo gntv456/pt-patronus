@@ -1,0 +1,48 @@
+name: Aggregate Plugin Market
+
+# Reference workflow for an official market repo. Regenerates plugin-market.json
+# whenever a plugin submits new metadata under packages/. In a standalone market
+# repo, `market init` vendors pluginctl.py into tools/ptpatronus/ and the command
+# below uses that path; this sample references the canonical tool location instead.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'keys/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Aggregate market index
+        run: |
+          python tools/ptpatronus/pluginctl.py market aggregate \
+            --packages-dir packages \
+            --out plugin-market.json \
+            --name "PTPatronus Plugin Market" \
+            --public-key keys/plugin-market.public.key \
+            --release-base https://github.com/pt-patronus/ptpatronus-plugin-market/releases/download
+
+      - name: Commit regenerated index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- plugin-market.json; then
+            echo "plugin-market.json is up to date"
+          else
+            git add plugin-market.json
+            git commit -m "chore: regenerate plugin-market.json"
+            git push
+          fi

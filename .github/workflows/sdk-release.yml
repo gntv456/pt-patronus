@@ -1,0 +1,49 @@
+name: Release Plugin Dev Kit
+
+# Publish the public PDK (sdk/python -> PyPI, sdk/typescript -> npm) when an `sdk-v*` tag is pushed.
+# Maintainer one-time setup: add repository secrets TWINE_API_KEY (PyPI) and NPM_TOKEN (npm).
+# Until both secrets exist, the build steps still run; only the upload/publish steps fail.
+#
+# Tag convention (independent of app release tags `v*`):
+#   git tag sdk-v0.1.0 && git push origin sdk-v0.1.0
+# Bump the version in sdk/python/pyproject.toml AND sdk/typescript/package.json before tagging.
+
+on:
+  push:
+    tags:
+      - 'sdk-v*'
+  workflow_dispatch:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install build tools
+        run: pip install -U build twine
+      - name: Sync canonical pluginctl + schema into the package
+        run: sdk/python/sync.sh --check && sdk/python/sync.sh
+      - name: Build sdist + wheel
+        run: cd sdk/python && python -m build
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TWINE_API_KEY }}
+        run: twine upload sdk/python/dist/*
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', registry-url: 'https://registry.npmjs.org' }
+      - name: Build + publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd sdk/typescript
+          npm install
+          npm run build
+          npm publish --access public   # scoped package needs --access public on first publish

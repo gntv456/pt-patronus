@@ -1,0 +1,25 @@
+{
+  "id": "ptp-sdk-demo",
+  "name": "SDK Demo",
+  "version": "0.1.0",
+  "api_version": "1",
+  "app_version": ">=0.1.0",
+  "author": "PTPatronus",
+  "description": "Minimal plugin showing the Python SDK (ptpatronus-plugin-sdk). Uses PTPHostClient for log + KV. The import is optional — degrades to stdlib if the SDK isn't installed.",
+  "license": "MIT",
+  "keywords": ["demo", "sdk"],
+  "runtime": "external-http",
+  "entry": { "command": "python", "args": ["plugin.py"], "health": "/health" },
+  "permissions": ["log:write", "kv:read", "kv:write"],
+  "actions": [
+    { "name": "ping", "label": "Ping", "description": "Log + increment an SDK-backed KV counter; returns the count." }
+  ],
+  "config_schema": [
+    { "key": "prefix", "label": "Prefix", "type": "text", "default": "pong" }
+  ],
+  "requirements": ["ptpatronus-plugin-sdk"],
+  "contributes": {
+    "commands": [{ "id": "ptp-sdk-demo.ping", "label": "SDK Demo: Ping", "action": "ping" }],
+    "menus": [{ "location": "plugins/actions", "command": "ptp-sdk-demo.ping" }]
+  }
+}

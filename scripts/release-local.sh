@@ -57,8 +57,12 @@ echo "=== [5/6] windows zip ==="
 powershell.exe -NoProfile -Command "Compress-Archive -Path 'mobile\\build\\windows\\x64\\runner\\Release\\*' -DestinationPath '$OUT\\ptpatronus-$VERSION-windows-x64.zip' -Force"
 
 # 6. 校验和
-echo "=== [6/6] checksums ==="
+echo "=== [6/7] checksums ==="
 (cd "$OUT" && sha256sum * > SHA256SUMS.txt)
+
+# 7. OTA manifest 同步（latestVersion + docker image + sha256；url 需手动填网盘直链再上传）
+echo "=== [7/7] sync OTA manifest ==="
+node scripts/update-manifest.mjs "$VERSION" "$OUT"
 
 echo
 echo "✓ 完成。产物在 $OUT/ :"

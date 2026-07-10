@@ -175,35 +175,78 @@ func (m *Manager) SetCfgOp(cfgOp *oper.SystemConfigOper) {
 	m.cfgOp = cfgOp
 }
 
-// pluginMarketSourceKey 是 SystemConfig 中存储插件市场源地址的 key。
-const pluginMarketSourceKey = "plugin.market_source"
+// pluginMarketSourcesKey 是 SystemConfig 中存储插件市场源列表的 key（JSON []string）。
+// pluginMarketSourceKey 为旧版单源 key，仅在迁移读取时回退使用。
+const (
+	pluginMarketSourcesKey = "plugin.market_sources"
+	pluginMarketSourceKey  = "plugin.market_source"
+)
 
-// GetMarketSource 返回 UI 持久化的插件市场源地址（GitHub 仓库地址或任意 URL）；
-// 未设置或未注入 cfgOp 返回 ""。
-func (m *Manager) GetMarketSource() string {
+// normalizeSources 对市场源列表做 trim、去空、按串去重（保持首次出现顺序）。
+func normalizeSources(sources []string) []string {
+	seen := make(map[string]struct{}, len(sources))
+	out := make([]string, 0, len(sources))
+	for _, s := range sources {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return out
+}
+
+// GetMarketSources 返回 UI 持久化的插件市场源列表（GitHub 仓库地址或任意 URL）；
+// 未设置或未注入 cfgOp 返回 nil。新 key 为空时回退读旧版单源 key（一次性迁移语义）。
+func (m *Manager) GetMarketSources() []string {
 	m.mu.RLock()
 	cfgOp := m.cfgOp
 	m.mu.RUnlock()
 	if cfgOp == nil {
-		return ""
+		return nil
 	}
-	v, err := cfgOp.Get(pluginMarketSourceKey)
-	if err != nil {
-		slog.Warn("get plugin market source", "err", err)
-		return ""
+	var sources []string
+	if raw, err := cfgOp.Get(pluginMarketSourcesKey); err == nil && strings.TrimSpace(raw) != "" {
+		if err := json.Unmarshal([]byte(raw), &sources); err != nil {
+			slog.Warn("parse plugin market sources", "err", err, "raw", raw)
+			sources = nil
+		}
 	}
-	return v
+	if len(sources) == 0 {
+		// 迁移：新版列表为空时回退读旧版单源 key。
+		if old, err := cfgOp.Get(pluginMarketSourceKey); err == nil && strings.TrimSpace(old) != "" {
+			sources = []string{old}
+		}
+	}
+	return normalizeSources(sources)
 }
 
-// SetMarketSource 持久化插件市场源地址（trim 后写入；空串即清除，回退本地 plugin-market.json）。
-func (m *Manager) SetMarketSource(addr string) error {
+// SetMarketSources 持久化插件市场源列表（normalize 后写入；空列表即清除，回退本地 plugin-market.json）。
+// 同时清空旧版单源 key 完成迁移。
+func (m *Manager) SetMarketSources(sources []string) error {
 	m.mu.RLock()
 	cfgOp := m.cfgOp
 	m.mu.RUnlock()
 	if cfgOp == nil {
 		return errors.New("system config is not available")
 	}
-	return cfgOp.Set(pluginMarketSourceKey, strings.TrimSpace(addr))
+	normalized := normalizeSources(sources)
+	raw, err := json.Marshal(normalized)
+	if err != nil {
+		return err
+	}
+	if err := cfgOp.Set(pluginMarketSourcesKey, string(raw)); err != nil {
+		return err
+	}
+	// 清除旧版单源 key，避免迁移回退读到残留旧值。
+	if err := cfgOp.Set(pluginMarketSourceKey, ""); err != nil {
+		slog.Warn("clear legacy plugin market source key", "err", err)
+	}
+	return nil
 }
 
 func (m *Manager) Register(p Plugin) error {

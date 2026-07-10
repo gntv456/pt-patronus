@@ -75,27 +75,27 @@ func (h *PluginHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"plugins": ps})
 }
 
-// MarketSource 返回 UI 持久化的插件市场源地址（GitHub 仓库地址或任意 URL）。
-func (h *PluginHandler) MarketSource(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"source": h.manager.GetMarketSource()})
+// MarketSources 返回 UI 持久化的插件市场源列表（GitHub 仓库地址或任意 URL）。
+func (h *PluginHandler) MarketSources(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources()})
 }
 
-type pluginMarketSourceReq struct {
-	Source string `json:"source"`
+type pluginMarketSourcesReq struct {
+	Sources []string `json:"sources"`
 }
 
-// SetMarketSource 持久化插件市场源地址。
-func (h *PluginHandler) SetMarketSource(c *gin.Context) {
-	var req pluginMarketSourceReq
+// SetMarketSources 持久化插件市场源列表。
+func (h *PluginHandler) SetMarketSources(c *gin.Context) {
+	var req pluginMarketSourcesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.manager.SetMarketSource(req.Source); err != nil {
+	if err := h.manager.SetMarketSources(req.Sources); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"source": h.manager.GetMarketSource()})
+	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources()})
 }
 
 func (h *PluginHandler) Get(c *gin.Context) {
@@ -277,7 +277,17 @@ func (h *PluginHandler) PublishEvent(c *gin.Context) {
 }
 
 func (h *PluginHandler) Market(c *gin.Context) {
-	idx, err := h.manager.FetchMarket(c.Request.Context(), c.Query("source"))
+	var (
+		idx *plugins.MarketIndex
+		err error
+	)
+	if q := c.Query("source"); q != "" {
+		// 单源覆盖（向后兼容）
+		idx, err = h.manager.FetchMarket(c.Request.Context(), q)
+	} else {
+		// 聚合全部已配置源
+		idx, err = h.manager.FetchMarketMulti(c.Request.Context(), nil)
+	}
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

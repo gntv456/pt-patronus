@@ -2,7 +2,7 @@
 import { computed, h, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Bell, Delete, Document, Download, Refresh, Setting, SwitchButton, Tickets, VideoPlay } from '@element-plus/icons-vue'
+import { Bell, Delete, Document, Download, Plus, Refresh, Setting, SwitchButton, Tickets, VideoPlay } from '@element-plus/icons-vue'
 import {
   pluginApi,
   type PluginActionSpec,
@@ -28,7 +28,9 @@ const logsLoading = ref(false)
 const filter = ref<'all' | 'enabled' | 'available'>('all')
 const logPlugin = ref('')
 const activeTab = ref('installed')
-const marketSource = ref('')
+const marketSources = ref<string[]>([])
+const marketSourceVisible = ref(false)
+const marketSourceDraft = ref<string[]>([])
 const market = ref<PluginMarketIndex | null>(null)
 const marketLoading = ref(false)
 const installing = ref('')
@@ -135,7 +137,8 @@ onMounted(load)
 async function loadMarket() {
   marketLoading.value = true
   try {
-    market.value = normalizeMarket(await pluginApi.market(marketSource.value))
+    // 不传 source → 后端聚合全部已配置市场源
+    market.value = normalizeMarket(await pluginApi.market())
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '加载插件市场失败')
   } finally {
@@ -143,48 +146,59 @@ async function loadMarket() {
   }
 }
 
-// 预读持久化的插件市场源（UI 设置），切到「插件市场」tab 即可直接刷新/自动加载。
+// 预读持久化的插件市场源列表（UI 设置），用于弹窗回填与计数显示。
 onMounted(async () => {
   try {
-    const { source } = await pluginApi.getMarketSource()
-    if (source) marketSource.value = source
+    marketSources.value = await pluginApi.getMarketSources()
   } catch {
-    // 忽略：未配置时 marketSource 保持空，回退本地 data/plugin-market.json
+    // 忽略：未配置时为空列表，刷新走本地 data/plugin-market.json
   }
 })
 
-// 切到「插件市场」tab 且已有持久化源时，自动加载（首次进入）。
+// 首次切到「插件市场」tab 即自动加载（空配置时后端回退本地 plugin-market.json）。
 watch(activeTab, (tab) => {
-  if (tab === 'market' && !market.value && marketSource.value) loadMarket()
+  if (tab === 'market' && !market.value) loadMarket()
 })
 
-// 设置插件市场源（GitHub 仓库地址或任意 plugin-market.json URL），持久化到后端。
-async function openMarketSource() {
-  let value = marketSource.value
+// 打开市场源管理弹窗：用当前持久化列表拷贝成草稿，增删后统一保存。
+function openMarketSource() {
+  marketSourceDraft.value = marketSources.value.map((s) => s)
+  marketSourceVisible.value = true
+}
+
+function addMarketSourceRow() {
+  marketSourceDraft.value.push('')
+}
+
+function removeMarketSourceRow(index: number) {
+  marketSourceDraft.value.splice(index, 1)
+}
+
+// 保存草稿：trim/去空/去重 → 持久化 → 关闭弹窗 → 重新拉取市场。
+async function saveMarketSources() {
+  const normalized = marketSourceDraft.value
+    .map((s) => (s || '').trim())
+    .filter((s, i, arr) => s !== '' && arr.indexOf(s) === i)
   try {
-    const res = await ElMessageBox.prompt(
-      'GitHub 仓库地址（如 https://github.com/user/repo，可用 /tree/分支/目录 指定）或任意 plugin-market.json URL；留空清除（回退本地 data/plugin-market.json）',
-      '设置插件市场源',
-      {
-        inputValue: value,
-        inputPlaceholder: 'https://github.com/owner/repo',
-        confirmButtonText: '保存',
-        cancelButtonText: '取消',
-        inputValidator: () => true,
-      },
-    )
-    value = (res.value || '').trim()
-  } catch {
-    return // 用户取消
-  }
-  try {
-    const { source } = await pluginApi.setMarketSource(value)
-    marketSource.value = source
+    marketSources.value = await pluginApi.setMarketSources(normalized)
+    marketSourceVisible.value = false
     market.value = null
-    ElMessage.success(source ? '市场源已保存' : '市场源已清除')
-    if (source) await loadMarket()
+    ElMessage.success(normalized.length ? `已保存 ${normalized.length} 个市场源` : '市场源已清空')
+    await loadMarket()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '保存市场源失败')
+  }
+}
+
+// 把归一化后的源 URL 收敛成简短展示名：raw.githubusercontent.com/o/r/... → o/r，否则取 host。
+function shortSource(source?: string): string {
+  if (!source) return ''
+  const m = source.match(/raw\.githubusercontent\.com\/([^/]+\/[^/]+)/i)
+  if (m) return m[1]
+  try {
+    return new URL(source).host
+  } catch {
+    return source
   }
 }
 
@@ -668,7 +682,7 @@ async function installMarketPlugin(id: string) {
   installing.value = id
   try {
     const rootPermissions = permissionAccepts?.find((step) => step.id === id)?.accepted_permissions || []
-    const res = await pluginApi.install(marketSource.value, id, rootPermissions, permissionAccepts || [])
+    const res = await pluginApi.install(item?.source || '', id, rootPermissions, permissionAccepts || [])
     const changedCount = (res.items || item?.install_plan || []).filter((step) => step.action !== 'reuse').length
     ElMessage.success(
       res.restart_needed
@@ -899,6 +913,10 @@ function jsonText(v?: Record<string, any>) {
         </el-radio-group>
         <el-button :icon="Bell" @click="publishTestEvent">测试事件</el-button>
         <el-button :icon="Document" @click="openLogs">插件日志</el-button>
+        <template v-if="activeTab === 'market'">
+          <el-button :icon="Setting" @click="openMarketSource">设置仓库</el-button>
+          <el-button :icon="Refresh" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
+        </template>
         <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
       </div>
     </div>
@@ -982,6 +1000,27 @@ function jsonText(v?: Record<string, any>) {
         </div>
       </div>
     </div>
+
+    <el-dialog v-model="marketSourceVisible" title="市场源管理" width="560px">
+      <div class="market-source-tip">
+        支持 GitHub 仓库地址（如 https://github.com/user/repo，可用 /tree/分支/目录 指定）或任意 plugin-market.json URL。列表顺序即优先级：刷新市场时按此处顺序聚合，相同插件 ID 先列者优先。
+      </div>
+      <div class="market-source-list">
+        <div v-for="(_, i) in marketSourceDraft" :key="i" class="market-source-row">
+          <el-input
+            v-model="marketSourceDraft[i]"
+            clearable
+            :placeholder="i === 0 ? 'https://github.com/owner/repo' : 'https://github.com/owner/repo'"
+          />
+          <el-button :icon="Delete" circle plain @click="removeMarketSourceRow(i)" />
+        </div>
+      </div>
+      <el-button :icon="Plus" plain class="market-source-add" @click="addMarketSourceRow">添加源</el-button>
+      <template #footer>
+        <el-button @click="marketSourceVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveMarketSources">保存</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="logsVisible" title="插件日志" width="900px">
       <div class="logs-head">
@@ -1149,23 +1188,16 @@ function jsonText(v?: Record<string, any>) {
     </el-dialog>
 
     <div v-if="activeTab === 'market'" class="market glass">
-      <div class="market-tools">
-        <el-input
-          v-model="marketSource"
-          clearable
-          placeholder="市场索引地址；留空读取 data/plugin-market.json"
-        />
-        <el-button :icon="Refresh" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
-        <el-button :icon="Setting" @click="openMarketSource">设置仓库</el-button>
-      </div>
       <div v-if="market" class="market-host">
         当前宿主：App {{ market.app_version || '-' }} / API {{ market.api_version || '-' }} / 能力 {{ (market.host_capabilities || []).length }}
+        <span v-if="marketSources.length" class="market-source-count">· 已配置 {{ marketSources.length }} 个市场源</span>
       </div>
       <el-table v-loading="marketLoading" :data="market?.plugins || []" empty-text="暂无市场数据">
         <el-table-column label="插件" min-width="220">
           <template #default="{ row }">
             <div class="market-name">{{ row.name }}</div>
             <div class="meta">{{ row.id }} · v{{ row.version }} · {{ row.runtime }}</div>
+            <div v-if="shortSource(row.source)" class="meta">来源：{{ shortSource(row.source) }}</div>
           </template>
         </el-table-column>
         <el-table-column label="发布者 / 信任" min-width="220">
@@ -1473,11 +1505,29 @@ function jsonText(v?: Record<string, any>) {
   color: var(--text-muted);
   font-size: var(--fs-sm);
 }
-.market-tools {
-  display: grid;
-  grid-template-columns: minmax(260px, 1fr) auto;
+.market-source-count {
+  margin-left: 6px;
+  opacity: 0.85;
+}
+.market-source-tip {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+.market-source-list {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-bottom: 12px;
+}
+.market-source-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.market-source-add {
+  width: 100%;
 }
 .market-name {
   font-weight: 700;
@@ -1588,9 +1638,6 @@ function jsonText(v?: Record<string, any>) {
   .logs-head {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .market-tools {
-    grid-template-columns: 1fr;
   }
 }
 </style>

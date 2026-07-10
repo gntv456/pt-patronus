@@ -161,6 +161,8 @@ export interface PluginMarketItem {
   id: string
   name: string
   version: string
+  /** 该插件所属市场源（归一化后 URL），安装时回传定位其 archive */
+  source?: string
   api_version?: string
   app_version?: string
   host_capabilities?: string[]
@@ -262,9 +264,10 @@ export const pluginApi = {
     http.post('/plugins/events', { type, data }).then((r) => r.data),
   market: (source = '') =>
     http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
-  getMarketSource: () => http.get<{ source: string }>('/plugins/market-source').then((r) => r.data),
-  setMarketSource: (source: string) =>
-    http.put<{ source: string }>('/plugins/market-source', { source }).then((r) => r.data),
+  getMarketSources: () =>
+    http.get<{ sources: string[] }>('/plugins/market-sources').then((r) => r.data.sources ?? []),
+  setMarketSources: (sources: string[]) =>
+    http.put<{ sources: string[] }>('/plugins/market-sources', { sources }).then((r) => r.data.sources ?? []),
   install: (
     source: string,
     id: string,

@@ -306,6 +306,7 @@ type MarketPlugin struct {
 	ID                                string             `json:"id"`
 	Name                              string             `json:"name"`
 	Version                           string             `json:"version"`
+	Source                            string             `json:"source,omitempty"`
 	APIVersion                        string             `json:"api_version,omitempty"`
 	AppVersion                        string             `json:"app_version,omitempty"`
 	HostCapabilities                  []string           `json:"host_capabilities,omitempty"`

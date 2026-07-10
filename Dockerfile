@@ -8,6 +8,9 @@
 FROM --platform=linux/amd64 node:20-alpine AS frontend
 WORKDIR /fe
 COPY frontend/package.json frontend/package-lock.json* ./
+# postinstall 会跑 scripts/patch-deps.mjs（给 element-plus 打 ElTable mounted 补丁），
+# 必须在 npm install 之前就位（此时 frontend/ 整体尚未 COPY）。
+COPY frontend/scripts/patch-deps.mjs ./scripts/patch-deps.mjs
 RUN npm install --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build

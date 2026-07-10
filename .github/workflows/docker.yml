@@ -1,9 +1,7 @@
 name: Docker
 
-# 打 tag (v*) 或手动触发时构建并推送多架构镜像（API + 内嵌 Web UI 单镜像）。
+# 镜像改为本地 docker build（scripts/release-local.sh），CI 不再构建。保留备用（workflow_dispatch）。
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
 
 jobs:

@@ -24,10 +24,7 @@ import (
 const maxPluginArchiveSize = 50 << 20
 
 func (m *Manager) FetchMarket(ctx context.Context, source string) (*MarketIndex, error) {
-	source = strings.TrimSpace(source)
-	if source == "" {
-		source = m.DefaultMarketSource()
-	}
+	source = m.resolveMarketSource(source)
 	raw, err := readSource(ctx, source, maxPluginArchiveSize)
 	if err != nil {
 		return nil, err
@@ -112,10 +109,7 @@ func (m *Manager) InstallFromMarketWithOptions(ctx context.Context, source, id s
 	if strings.TrimSpace(id) == "" {
 		return nil, errors.New("plugin id is required")
 	}
-	source = strings.TrimSpace(source)
-	if source == "" {
-		source = m.DefaultMarketSource()
-	}
+	source = m.resolveMarketSource(source)
 	idx, err := m.FetchMarket(ctx, source)
 	if err != nil {
 		return nil, err
@@ -405,6 +399,85 @@ func (m *Manager) installedVersion(id string) string {
 		return ""
 	}
 	return manifest.Version
+}
+
+// normalizeMarketSource 把市场源地址归一化为可直接请求的 URL/路径。
+// GitHub 仓库页（含 owner/repo 简写）→ raw.githubusercontent.com 上的 plugin-market.json：
+//   https://github.com/o/r                  → https://raw.githubusercontent.com/o/r/main/plugin-market.json
+//   https://github.com/o/r/tree/dev/market  → https://raw.githubusercontent.com/o/r/dev/market/plugin-market.json
+//   o/r / github.com/o/r（无 scheme）        → 同上补 https
+// 已是 raw.githubusercontent.com / file / 其它 http(s) 源 → 原样返回。
+// resolveArchiveSource 会把 index 内相对 archive 基于此 URL 解析，自动指向仓库内 zip。
+func normalizeMarketSource(source string) string {
+	source = strings.TrimSpace(source)
+	if source == "" {
+		return ""
+	}
+	s := source
+	if !strings.Contains(s, "://") {
+		switch {
+		case strings.HasPrefix(strings.ToLower(s), "github.com/"):
+			s = "https://" + s
+		case looksLikeOwnerRepo(s):
+			s = "https://github.com/" + s // owner/repo 简写
+		default:
+			return source // file 路径或其它非 URL → 原样
+		}
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return source
+	}
+	switch strings.ToLower(u.Hostname()) {
+	case "raw.githubusercontent.com":
+		return source // 已是 raw
+	case "github.com", "www.github.com":
+		// 落到下面转换
+	default:
+		return source // 其它 http(s) 源 → 原样
+	}
+	path := strings.Trim(u.Path, "/")
+	if path == "" {
+		return source
+	}
+	const defaultRef, indexFile = "main", "plugin-market.json"
+	if i := strings.Index(path, "/tree/"); i >= 0 {
+		repoPart := path[:i]
+		sub := strings.Trim(path[i+len("/tree/"):], "/") // ref/path...
+		if sub == "" {
+			return source
+		}
+		return "https://raw.githubusercontent.com/" + repoPart + "/" + sub + "/" + indexFile
+	}
+	return "https://raw.githubusercontent.com/" + path + "/" + defaultRef + "/" + indexFile
+}
+
+// looksLikeOwnerRepo 判断 owner/repo 简写（无 scheme、非绝对/相对路径）。
+func looksLikeOwnerRepo(s string) bool {
+	if strings.Contains(s, "://") || strings.HasPrefix(s, "/") || strings.HasPrefix(s, ".") {
+		return false
+	}
+	parts := strings.Split(s, "/")
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		return false
+	}
+	// 排除形如「目录/文件.json」的本地相对路径：repo 名一般不含点。
+	return !strings.Contains(parts[1], ".")
+}
+
+// resolveMarketSource 解析最终市场源 URL：source 非空时直接归一化；为空时优先取 UI 持久化的
+// 市场源（SystemConfig），再回退本地 plugin-market.json。FetchMarket / InstallFromMarket 共用，
+// 保证浏览与安装走同一源（archive 相对路径基于此 URL 解析）。
+func (m *Manager) resolveMarketSource(source string) string {
+	source = strings.TrimSpace(source)
+	if source == "" {
+		if persisted := m.GetMarketSource(); persisted != "" {
+			source = persisted
+		} else {
+			source = m.DefaultMarketSource()
+		}
+	}
+	return normalizeMarketSource(source)
 }
 
 func readSource(ctx context.Context, source string, maxBytes int64) ([]byte, error) {

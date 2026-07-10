@@ -472,6 +472,8 @@ func Build(d *Deps) *gin.Engine {
 				plugins.GET("/logs", pluginH.Logs)
 				plugins.POST("/events", middleware.RequireAdmin(), pluginH.PublishEvent)
 				plugins.GET("/market", middleware.RequireAdmin(), pluginH.Market)
+				plugins.GET("/market-source", middleware.RequireAdmin(), pluginH.MarketSource)
+				plugins.PUT("/market-source", middleware.RequireAdmin(), pluginH.SetMarketSource)
 				plugins.POST("/market/install", middleware.RequireAdmin(), pluginH.Install)
 				plugins.POST("/:id/assets/ticket", middleware.RequireAdmin(), pluginH.AssetTicket)
 				plugins.GET("/:id/releases", pluginH.Releases)

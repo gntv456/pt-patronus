@@ -181,6 +181,7 @@ func New(cfg *config.Config) (*App, error) {
 	wsBC.SetNotice(noticeSvc) // 下载器种子完成 diff → 通知中心
 
 	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
+	pluginMgr.SetCfgOp(cfgOp) // 插件市场源等 UI 持久化配置（SystemConfig）
 	if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
 		slog.Warn("load external plugins failed", "err", err)
 	}

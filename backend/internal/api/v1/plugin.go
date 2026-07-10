@@ -75,6 +75,29 @@ func (h *PluginHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"plugins": ps})
 }
 
+// MarketSource 返回 UI 持久化的插件市场源地址（GitHub 仓库地址或任意 URL）。
+func (h *PluginHandler) MarketSource(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"source": h.manager.GetMarketSource()})
+}
+
+type pluginMarketSourceReq struct {
+	Source string `json:"source"`
+}
+
+// SetMarketSource 持久化插件市场源地址。
+func (h *PluginHandler) SetMarketSource(c *gin.Context) {
+	var req pluginMarketSourceReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.manager.SetMarketSource(req.Source); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"source": h.manager.GetMarketSource()})
+}
+
 func (h *PluginHandler) Get(c *gin.Context) {
 	p, err := h.manager.Get(c.Param("id"))
 	if err != nil {

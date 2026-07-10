@@ -262,6 +262,9 @@ export const pluginApi = {
     http.post('/plugins/events', { type, data }).then((r) => r.data),
   market: (source = '') =>
     http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
+  getMarketSource: () => http.get<{ source: string }>('/plugins/market-source').then((r) => r.data),
+  setMarketSource: (source: string) =>
+    http.put<{ source: string }>('/plugins/market-source', { source }).then((r) => r.data),
   install: (
     source: string,
     id: string,

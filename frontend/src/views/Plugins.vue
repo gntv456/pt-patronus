@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Bell, Delete, Document, Download, Refresh, Setting, SwitchButton, Tickets, VideoPlay } from '@element-plus/icons-vue'
@@ -140,6 +140,51 @@ async function loadMarket() {
     ElMessage.error((e as Error).message || '加载插件市场失败')
   } finally {
     marketLoading.value = false
+  }
+}
+
+// 预读持久化的插件市场源（UI 设置），切到「插件市场」tab 即可直接刷新/自动加载。
+onMounted(async () => {
+  try {
+    const { source } = await pluginApi.getMarketSource()
+    if (source) marketSource.value = source
+  } catch {
+    // 忽略：未配置时 marketSource 保持空，回退本地 data/plugin-market.json
+  }
+})
+
+// 切到「插件市场」tab 且已有持久化源时，自动加载（首次进入）。
+watch(activeTab, (tab) => {
+  if (tab === 'market' && !market.value && marketSource.value) loadMarket()
+})
+
+// 设置插件市场源（GitHub 仓库地址或任意 plugin-market.json URL），持久化到后端。
+async function openMarketSource() {
+  let value = marketSource.value
+  try {
+    const res = await ElMessageBox.prompt(
+      'GitHub 仓库地址（如 https://github.com/user/repo，可用 /tree/分支/目录 指定）或任意 plugin-market.json URL；留空清除（回退本地 data/plugin-market.json）',
+      '设置插件市场源',
+      {
+        inputValue: value,
+        inputPlaceholder: 'https://github.com/owner/repo',
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+        inputValidator: () => true,
+      },
+    )
+    value = (res.value || '').trim()
+  } catch {
+    return // 用户取消
+  }
+  try {
+    const { source } = await pluginApi.setMarketSource(value)
+    marketSource.value = source
+    market.value = null
+    ElMessage.success(source ? '市场源已保存' : '市场源已清除')
+    if (source) await loadMarket()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '保存市场源失败')
   }
 }
 
@@ -1111,6 +1156,7 @@ function jsonText(v?: Record<string, any>) {
           placeholder="市场索引地址；留空读取 data/plugin-market.json"
         />
         <el-button :icon="Refresh" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
+        <el-button :icon="Setting" @click="openMarketSource">设置仓库</el-button>
       </div>
       <div v-if="market" class="market-host">
         当前宿主：App {{ market.app_version || '-' }} / API {{ market.api_version || '-' }} / 能力 {{ (market.host_capabilities || []).length }}

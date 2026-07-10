@@ -39,6 +39,7 @@ type Manager struct {
 	notice        *notice.Service
 	pluginRoot    string
 	defaultMarket string
+	cfgOp         *oper.SystemConfigOper // UI 设置的市场源等运行时配置（SystemConfig）；nil 时 FetchMarket 回退本地 plugin-market.json
 	started       bool
 	sched         cronScheduler
 	schedJobs     map[string][]string
@@ -165,6 +166,44 @@ func (m *Manager) DefaultMarketSource() string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.defaultMarket
+}
+
+// SetCfgOp 注入系统配置读写器（市场源等 UI 持久化配置）。应在 Start 前调用。
+func (m *Manager) SetCfgOp(cfgOp *oper.SystemConfigOper) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.cfgOp = cfgOp
+}
+
+// pluginMarketSourceKey 是 SystemConfig 中存储插件市场源地址的 key。
+const pluginMarketSourceKey = "plugin.market_source"
+
+// GetMarketSource 返回 UI 持久化的插件市场源地址（GitHub 仓库地址或任意 URL）；
+// 未设置或未注入 cfgOp 返回 ""。
+func (m *Manager) GetMarketSource() string {
+	m.mu.RLock()
+	cfgOp := m.cfgOp
+	m.mu.RUnlock()
+	if cfgOp == nil {
+		return ""
+	}
+	v, err := cfgOp.Get(pluginMarketSourceKey)
+	if err != nil {
+		slog.Warn("get plugin market source", "err", err)
+		return ""
+	}
+	return v
+}
+
+// SetMarketSource 持久化插件市场源地址（trim 后写入；空串即清除，回退本地 plugin-market.json）。
+func (m *Manager) SetMarketSource(addr string) error {
+	m.mu.RLock()
+	cfgOp := m.cfgOp
+	m.mu.RUnlock()
+	if cfgOp == nil {
+		return errors.New("system config is not available")
+	}
+	return cfgOp.Set(pluginMarketSourceKey, strings.TrimSpace(addr))
 }
 
 func (m *Manager) Register(p Plugin) error {

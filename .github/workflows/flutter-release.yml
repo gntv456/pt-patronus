@@ -2,9 +2,9 @@ name: Flutter Release
 
 # 打 tag (v*) 时构建客户端产物：Android APK（签名）/ macOS / Windows / iOS（未签名 ipa,用户 AltStore/TrollStore 自签）。
 # 鸿蒙需华为 flutter 分支 + DevEco，CI 无 runner，手动构建（见 README/各端发布步骤.md）。
+# 客户端（Android/iOS/macOS/Windows）改为本地打包，CI 不再构建。
+# 此 workflow 保留备用（workflow_dispatch 手动验证），打 tag (v*) 不触发。
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
 
 jobs:

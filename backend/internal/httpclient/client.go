@@ -199,6 +199,53 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 	return nil, lastErr
 }
 
+// PostWithCookie 发 POST，cookie 以显式 Cookie 头发送，完全不经过 cookie jar。
+//
+// 专用于凭据校验（如好学 /api/verifyAccess.php）：必须只携带调用方本次提交的 cookie，
+// 禁止复用共享 jar 中其他请求残留的 cookie。否则同一个共享 Client 上，先发生的真实
+// 登录会把有效 cookie 种进 jar，之后任何人提交无效/空 cookie 的校验请求仍会带着残留
+// 凭证打到目标站并通过 —— 构成认证绕过（越权登录为上一个被验证的用户）。
+//
+// 为此这里用 Jar=nil 的临时 http.Client（复用本 Client 的 transport 以保留 SSRF 拨号
+// 守卫与连接池），并把 cookie 写入请求头；不带重试、不读写 jar。凭据校验目标始终是
+// 公网站点，故默认启用 SSRF 守卫（AllowPrivate 的 client 例外，用于测试）。
+func (c *Client) PostWithCookie(ctx context.Context, rawURL, cookieStr string) (*Response, error) {
+	if !c.allowPrivate {
+		if err := AssertPublicURL(rawURL); err != nil {
+			return nil, fmt.Errorf("ssrf: %w", err)
+		}
+		ctx = context.WithValue(ctx, ssrfCtxKey{}, true)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", c.ua)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+	if cookieStr != "" {
+		req.Header.Set("Cookie", cookieStr) // 显式头，绝不读 jar
+	}
+	// Jar=nil：复用 transport（SSRF 拨号守卫 + 连接池），但不自动注入/持久化 cookie。
+	noJar := &http.Client{Timeout: c.hc.Timeout, Transport: c.hc.Transport}
+	resp, err := noJar.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	return &Response{
+		StatusCode: resp.StatusCode,
+		Header:     resp.Header,
+		Body:       decodeBody(data, resp.Header.Get("Content-Type")),
+		FinalURL:   resp.Request.URL.String(),
+	}, nil
+}
+
 // Get 是 Do 的便捷封装。
 func (c *Client) Get(ctx context.Context, rawURL, cookieStr string, ssrf bool) (*Response, error) {
 	return c.Do(ctx, http.MethodGet, rawURL, nil, nil, cookieStr, ssrf)

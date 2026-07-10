@@ -78,8 +78,9 @@ func (h *HxptVIP) Verify(ctx context.Context, cookie string) *VIPStatus {
 	cookie = ensureVerifyCookie(cookie)
 	synthUID := parseCookieMap(cookie)["c_secure_uid"]
 	u := joinPath(h.resolveBaseURL(), "/api/verifyAccess.php")
-	resp, err := h.hc.Do(ctx, http.MethodPost, u, nil,
-		map[string]string{"Content-Type": "application/json"}, cookie, true)
+	// PostWithCookie 用 Jar=nil 的临时 client + 显式 Cookie 头校验，杜绝共享 jar 残留
+	// cookie 被复用——否则提交无效 cookie 仍可能带上历史真实凭证通过校验（认证绕过）。
+	resp, err := h.hc.PostWithCookie(ctx, u, cookie)
 	if err != nil {
 		slog.Warn("hxpt verifyAccess debug", "marker", "vip-verify-v2",
 			"stage", "request_failed", "err", err.Error(),

@@ -167,6 +167,37 @@ func TestUIDFromSecurePass_TolerantArtifact(t *testing.T) {
 	}
 }
 
+// TestHxptVIPVerify_NoJarReuse 回归：共享 client 的 cookie jar 中残留的真实凭证不得被
+// Verify 复用。先在同一 client 上用有效 cookie 请求一次（种入 jar，模拟先前的真实登录/抓取），
+// 再用无效 cookie "x" 校验——必须返回未通过，证明 verifyAccess 只携带本次提交的 cookie。
+// 修复前 Verify 走共享 jar，seedCookies 对无 '=' 的 "x" 不更新 jar，请求沿用残留的
+// c_secure_pass 通过校验 → Verified=true（越权登录为残留用户）。
+func TestHxptVIPVerify_NoJarReuse(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if ck, _ := r.Cookie("c_secure_pass"); ck == nil || ck.Value == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"success":false,"reason":"NO_COOKIE","message":"未检测到有效登录凭证"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"success":true,"payload":{"uid":8,"username":"gntv","isVip":true}}`))
+	}))
+	defer srv.Close()
+	hc := newVIPTestClient(t)
+	// 先在同一共享 client 上用有效 cookie 请求，把 c_secure_pass 种入 jar（模拟历史残留）。
+	if _, err := hc.Do(context.Background(), http.MethodPost, srv.URL+"/api/verifyAccess.php",
+		nil, map[string]string{"Content-Type": "application/json"},
+		"c_secure_uid=8; c_secure_pass=realtoken", false); err != nil {
+		t.Fatalf("seed jar: %v", err)
+	}
+	h := NewHxptVIP(nil, "hxpt", srv.URL, 0, hc)
+
+	st := h.Verify(context.Background(), "x")
+	if st.Verified {
+		t.Fatalf("invalid cookie must NOT verify via jar reuse: verified=true id=%q user=%q (认证绕过)", st.ID, st.Username)
+	}
+}
+
 // TestVerifyAccess_ReceivesSynthesizedUID 端到端：浏览器 cookie（仅 c_secure_pass）
 // 经 Verify 后，verifyAccess 收到补入的 c_secure_uid 并返回 VIP。
 func TestVerifyAccess_ReceivesSynthesizedUID(t *testing.T) {

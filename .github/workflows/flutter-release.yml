@@ -10,6 +10,7 @@ on:
 jobs:
   android:
     name: Android APK
+    if: false   # 临时关闭（省 Actions 额度，只保留 iOS）
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: mobile } }
     steps:
@@ -45,6 +46,7 @@ jobs:
 
   macos:
     name: macOS
+    if: false   # 临时关闭（macOS runner 10× 计费）
     runs-on: macos-latest
     defaults: { run: { working-directory: mobile } }
     steps:
@@ -69,6 +71,7 @@ jobs:
 
   windows:
     name: Windows
+    if: false   # 临时关闭（Windows runner 2× 计费）
     runs-on: windows-latest
     defaults: { run: { working-directory: mobile } }
     steps:

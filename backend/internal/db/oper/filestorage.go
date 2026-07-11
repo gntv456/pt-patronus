@@ -23,7 +23,7 @@ func NewFileStorageOper(db *gorm.DB, c *security.Crypto) *FileStorageOper {
 // FileStorageInput 创建/更新入参。
 type FileStorageInput struct {
 	Name     string `json:"name"`
-	Type     string `json:"type"` // webdav | alist | smb | agent
+	Type     string `json:"type"` // webdav | alist | smb | agent | local
 	URL      string `json:"url"`
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -107,7 +107,7 @@ func (o *FileStorageOper) Password(f *models.FileStorage) (string, error) {
 	return o.c.Decrypt(f.PasswordEnc)
 }
 
-// validateTypeFields 按存储类型校验必填字段：agent 必须关联 agent_id；webdav/alist/smb 必须填地址。
+// validateTypeFields 按存储类型校验必填字段：agent 必须关联 agent_id；webdav/alist/smb 必须填地址；local 必须填本机根目录。
 func validateTypeFields(in FileStorageInput) error {
 	switch in.Type {
 	case "agent":
@@ -117,6 +117,10 @@ func validateTypeFields(in FileStorageInput) error {
 	case "webdav", "alist", "smb":
 		if strings.TrimSpace(in.URL) == "" {
 			return fmt.Errorf("%s 存储必须填写地址", in.Type)
+		}
+	case "local":
+		if strings.TrimSpace(in.BasePath) == "" {
+			return fmt.Errorf("本机存储必须填写根目录")
 		}
 	default:
 		return fmt.Errorf("未知存储类型: %s", in.Type)

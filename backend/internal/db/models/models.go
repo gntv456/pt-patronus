@@ -205,7 +205,7 @@ type CrossSeedTask struct {
 type FileStorage struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Name        string    `gorm:"size:64;not null" json:"name"`
-	Type        string    `gorm:"size:16;not null" json:"type"` // webdav | alist | smb | agent
+	Type        string    `gorm:"size:16;not null" json:"type"` // webdav | alist | smb | agent | local
 	URL         string    `gorm:"size:255" json:"url"`
 	Username    string    `gorm:"size:64" json:"username"`
 	PasswordEnc string    `gorm:"type:text" json:"-"`
@@ -296,6 +296,7 @@ type MonitorTarget struct {
 	TimeoutSec     int        `gorm:"default:15" json:"timeout_sec"`      // 单次采集超时
 	Enabled        bool       `gorm:"default:true" json:"enabled"`
 	Thresholds     string     `gorm:"type:text" json:"thresholds"` // 阈值规则 JSON（见 monitor.Thresholds）
+	DiskPaths      string     `gorm:"type:text" json:"disk_paths"` // host+local：宿主 bind mount 目录（换行/逗号分隔，MoviePilot 式磁盘监控）
 	LastOnline     *bool      `json:"last_online"`                 // 上次探活结果（nil=从未探活）
 	LastError      string     `gorm:"type:text" json:"last_error"`
 	LastCheckedAt  *time.Time `json:"last_checked_at"`

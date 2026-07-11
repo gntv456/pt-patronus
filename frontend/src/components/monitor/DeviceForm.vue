@@ -12,7 +12,7 @@ function blank(): TargetInput {
   return {
     name: '', type: 'host', protocol: 'local', enabled: true,
     interval_sec: 60, timeout_sec: 15, vendor: '', host: '', port: 0,
-    credential_id: 0, username: '', password: '', private_key: '', rtsp_url: '', thresholds: '',
+    credential_id: 0, username: '', password: '', private_key: '', rtsp_url: '', thresholds: '', disk_paths: '',
   }
 }
 const form = ref<TargetInput>(blank())
@@ -118,6 +118,7 @@ watch(visible, (v) => {
       rtsp_url: props.target.rtsp_url, interval_sec: props.target.interval_sec,
       timeout_sec: props.target.timeout_sec, enabled: props.target.enabled,
       thresholds: props.target.thresholds, credential_id: props.target.credential_id || 0,
+      disk_paths: props.target.disk_paths || '',
       username: props.target.username || '', password: '', private_key: '',
     }
     loadOpsConfig(props.target.thresholds)
@@ -266,6 +267,14 @@ function submit() {
           </el-select>
         </el-form-item>
       </template>
+
+      <el-form-item v-if="isLocal && form.type === 'host'" label="宿主磁盘路径">
+        <el-input v-model="form.disk_paths" type="textarea" :rows="2"
+          placeholder="每行一个容器内路径，如 /mnt/nas&#10;需先在 docker-compose 挂载该目录（-v /mnt:/mnt:ro）" />
+        <div style="font-size: 12px; color: var(--el-text-color-secondary); line-height: 1.5; margin-top: 4px">
+          Docker 部署时容器看不到宿主磁盘：把宿主目录挂进容器（compose 加 <code>-v /mnt:/mnt:ro</code>）再在此填对应路径，采集穿透 bind mount 读真实空间。
+        </div>
+      </el-form-item>
 
       <el-form-item v-if="showHost" :label="hostLabel">
         <el-input v-model="form.host" :placeholder="hostPlaceholder" />

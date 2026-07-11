@@ -3,7 +3,7 @@ import { http } from './http'
 export interface FileStorage {
   id: number
   name: string
-  type: string // webdav | alist | smb | agent
+  type: string // webdav | alist | smb | agent | local
   url: string
   username: string
   base_path: string

@@ -8,6 +8,7 @@
 package sysinfo
 
 import (
+	"strings"
 	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -75,7 +76,9 @@ type DeviceInfo struct {
 // CollectSystemMetrics 采集本机 CPU/内存/磁盘/网络/负载/温度/进程/运行时长。
 // 单点失败不中断其余指标；返回的 Metrics.Online 恒为 true。
 // 速率(NetRxRate/NetTxRate)不在此算——由服务端对比上次快照算（agent 只报累计字节）。
-func CollectSystemMetrics() Metrics {
+// extraPaths：host 采集器可传宿主 bind mount 进容器的目录（MoviePilot 式），statvfs 穿透到宿主 FS；
+// agent 上报走无参调用（extraPaths=nil），行为不变。
+func CollectSystemMetrics(extraPaths ...string) Metrics {
 	m := Metrics{Online: true}
 	// CPU：短间隔采样阻塞 ~200ms（Percent 内部两次 Times 差值，避免手算）。
 	if percents, err := cpu.Percent(200*time.Millisecond, false); err == nil && len(percents) > 0 {
@@ -90,19 +93,9 @@ func CollectSystemMetrics() Metrics {
 	if sm, err := mem.SwapMemory(); err == nil {
 		m.SwapTotal, m.SwapUsed = sm.Total, sm.Used
 	}
-	// 磁盘：遍历物理挂载点，过滤伪文件系统（保留 overlay——Docker 容器根分区）。
-	if parts, err := disk.Partitions(false); err == nil {
-		for _, p := range parts {
-			if isPseudoFS(p.Fstype) {
-				continue
-			}
-			if u, err := disk.Usage(p.Mountpoint); err == nil {
-				m.Disks = append(m.Disks, DiskMetric{
-					Device: p.Mountpoint, Total: u.Total, Used: u.Used, Usage: u.UsedPercent, Type: "partition",
-				})
-			}
-		}
-	}
+	// 磁盘：collectDisks 拿全部挂载点（pseudoFS 黑名单过滤）+ extraPaths（宿主 bind mount 目录），
+	// st_dev 去重防同设备重复统计。
+	m.Disks = collectDisks(extraPaths)
 	// 网络：累计字节（速率由服务端对比上次快照算）。
 	if io, err := gnet.IOCounters(false); err == nil && len(io) > 0 {
 		m.NetRxBytes = io[0].BytesRecv
@@ -145,3 +138,48 @@ var pseudoFS = map[string]bool{
 }
 
 func isPseudoFS(fstype string) bool { return pseudoFS[fstype] }
+
+// collectDisks 采集磁盘用量：先遍历所有挂载点（pseudoFS 黑名单过滤），再对 extraPaths 逐个 statvfs。
+// 用 st_dev 去重——同一物理设备上的多个挂载点/bind/子目录只统计一次（防 /mnt/nas/movies 与
+// /mnt/nas/tv 同池重复计入，对齐 MoviePilot space_usage 的 st_dev 去重）。devOf 在非 Linux 返 0 即跳过去重。
+func collectDisks(extraPaths []string) []DiskMetric {
+	var out []DiskMetric
+	seen := map[uint64]bool{}
+	if parts, err := disk.Partitions(true); err == nil {
+		for _, p := range parts {
+			if isPseudoFS(p.Fstype) {
+				continue
+			}
+			u, err := disk.Usage(p.Mountpoint)
+			if err != nil {
+				continue
+			}
+			if dev := devOf(p.Mountpoint); dev != 0 {
+				if seen[dev] {
+					continue
+				}
+				seen[dev] = true
+			}
+			out = append(out, DiskMetric{Device: p.Mountpoint, Total: u.Total, Used: u.Used, Usage: u.UsedPercent, Type: "partition"})
+		}
+	}
+	// 额外路径：宿主目录经 docker bind mount 进容器，statvfs 穿透到宿主 FS（MoviePilot 式）。
+	for _, raw := range extraPaths {
+		p := strings.TrimSpace(raw)
+		if p == "" {
+			continue
+		}
+		u, err := disk.Usage(p)
+		if err != nil {
+			continue
+		}
+		if dev := devOf(p); dev != 0 {
+			if seen[dev] {
+				continue
+			}
+			seen[dev] = true
+		}
+		out = append(out, DiskMetric{Device: p, Total: u.Total, Used: u.Used, Usage: u.UsedPercent, Type: "partition"})
+	}
+	return out
+}

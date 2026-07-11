@@ -10,7 +10,7 @@ import (
 )
 
 // 本文件新增「文件」分类节点：列文件、删除文件、新建目录。
-// 封装 FileManagerChain（WebDAV/Alist/SMB/Agent 统一文件管理）。storage_id 为文件存储后端 ID
+// 封装 FileManagerChain（本机/WebDAV/Alist/SMB/Agent 统一文件管理）。storage_id 为文件存储后端 ID
 // （设置→文件管理），用 number 控件避免新增前端选择器类型；path 支持 {{var.x}} 模板。
 
 // listFilesNode 列出目录条目，写入文本载荷。

@@ -47,6 +47,7 @@ type TargetInput struct {
 	Password     string `json:"password"`
 	PrivateKey   string `json:"private_key"` // SSH 私钥 PEM（明文，Oper 加密；空=不改/不设）
 	Thresholds   string `json:"thresholds"`
+	DiskPaths    string `json:"disk_paths"` // host+local：宿主 bind mount 目录（换行/逗号分隔）
 	Enabled      bool   `json:"enabled"`
 }
 
@@ -64,7 +65,7 @@ func (o *MonitorOper) Create(in TargetInput) (*models.MonitorTarget, error) {
 		Name: in.Name, Type: in.Type, Host: in.Host, Port: in.Port,
 		Vendor: in.Vendor, Protocol: in.Protocol, CredentialID: in.CredentialID, RTSPURL: in.RTSPURL,
 		IntervalSec: normInterval(in.IntervalSec), TimeoutSec: normTimeout(in.TimeoutSec),
-		Enabled: in.Enabled, Thresholds: in.Thresholds,
+		Enabled: in.Enabled, Thresholds: in.Thresholds, DiskPaths: in.DiskPaths,
 	}
 	if err := o.ensureCredentialExists(in.CredentialID); err != nil {
 		return nil, err
@@ -103,7 +104,7 @@ func (o *MonitorOper) Update(id uint, in TargetInput) (*models.MonitorTarget, er
 	t.Vendor, t.Protocol, t.CredentialID, t.RTSPURL = in.Vendor, in.Protocol, in.CredentialID, in.RTSPURL
 	t.IntervalSec = normInterval(in.IntervalSec)
 	t.TimeoutSec = normTimeout(in.TimeoutSec)
-	t.Enabled, t.Thresholds = in.Enabled, in.Thresholds
+	t.Enabled, t.Thresholds, t.DiskPaths = in.Enabled, in.Thresholds, in.DiskPaths
 	if err := o.ensureCredentialExists(in.CredentialID); err != nil {
 		return nil, err
 	}

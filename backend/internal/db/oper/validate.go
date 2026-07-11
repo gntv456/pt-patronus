@@ -23,12 +23,12 @@ func validateURLScheme(raw string) error {
 	return nil
 }
 
-// validateForType 按存储类型分派 URL 校验：webdav/alist 走 http(s)；smb 走 smb://；agent 无 URL（靠 agent_id 关联）。
+// validateForType 按存储类型分派 URL 校验：webdav/alist 走 http(s)；smb 走 smb://；agent/local 无 URL（agent 靠 agent_id 关联，local 靠本机根目录）。
 func validateForType(typ, raw string) error {
 	switch typ {
 	case "smb":
 		return validateSMBURL(raw)
-	case "agent":
+	case "agent", "local":
 		return nil
 	default: // webdav | alist
 		return validateURLScheme(raw)

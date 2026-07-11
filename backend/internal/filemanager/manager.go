@@ -76,6 +76,9 @@ func (m *Manager) buildBackend(f *models.FileStorage, password string) (StorageB
 			return nil, fmt.Errorf("agent 文件管理后端未就绪")
 		}
 		return NewAgentBackend(m.agentHub, f.AgentID, f.BasePath), nil
+	case "local":
+		// local 无需 URL/密码，根路径即本机物理目录；NewLocal 会校验目录存在
+		return NewLocal(f.BasePath)
 	default:
 		return nil, fmt.Errorf("unknown storage type: %s", f.Type)
 	}

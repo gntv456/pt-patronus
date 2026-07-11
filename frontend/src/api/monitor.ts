@@ -17,6 +17,7 @@ export interface MonitorTarget {
   timeout_sec: number
   enabled: boolean
   thresholds: string
+  disk_paths?: string
   last_online: boolean | null
   last_error: string
   last_checked_at: string | null
@@ -39,6 +40,7 @@ export interface TargetInput {
   password?: string
   private_key?: string
   thresholds?: string
+  disk_paths?: string
   enabled?: boolean
 }
 

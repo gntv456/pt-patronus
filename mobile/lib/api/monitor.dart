@@ -17,6 +17,7 @@ class MonitorTarget {
   final int timeoutSec;
   final bool enabled;
   final String thresholds;
+  final String diskPaths;
   final bool hasPrivateKey; // 私钥已配置（明文不回传）
   final bool? lastOnline;
   final String lastError;
@@ -35,6 +36,7 @@ class MonitorTarget {
     required this.timeoutSec,
     required this.enabled,
     required this.thresholds,
+    required this.diskPaths,
     required this.hasPrivateKey,
     required this.lastOnline,
     required this.lastError,
@@ -54,6 +56,7 @@ class MonitorTarget {
     timeoutSec: j['timeout_sec'] as int? ?? 15,
     enabled: j['enabled'] as bool? ?? true,
     thresholds: j['thresholds'] as String? ?? '',
+    diskPaths: j['disk_paths'] as String? ?? '',
     hasPrivateKey: j['has_private_key'] as bool? ?? false,
     lastOnline: j['last_online'] as bool?,
     lastError: j['last_error'] as String? ?? '',
@@ -76,6 +79,7 @@ class TargetInput {
   final String password;
   final String privateKey;
   final String thresholds;
+  final String diskPaths;
   final bool enabled;
   TargetInput({
     required this.name,
@@ -91,6 +95,7 @@ class TargetInput {
     this.password = '',
     this.privateKey = '',
     this.thresholds = '',
+    this.diskPaths = '',
     this.enabled = true,
   });
 
@@ -108,6 +113,7 @@ class TargetInput {
     'password': password,
     'private_key': privateKey,
     'thresholds': thresholds,
+    'disk_paths': diskPaths,
     'enabled': enabled,
   };
 }

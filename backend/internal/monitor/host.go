@@ -28,8 +28,8 @@ func (HostCollector) Probe(_ context.Context, _ *models.MonitorTarget, _ Credent
 
 // Collect 采集本机 CPU/内存/磁盘/网络/负载/温度/进程/运行时长（sysinfo.CollectSystemMetrics）。
 // Metrics 是 sysinfo.Metrics 的类型别名，零转换。
-func (HostCollector) Collect(_ context.Context, _ *models.MonitorTarget, _ Credentials) (Metrics, error) {
-	return sysinfo.CollectSystemMetrics(), nil
+func (HostCollector) Collect(_ context.Context, t *models.MonitorTarget, _ Credentials) (Metrics, error) {
+	return sysinfo.CollectSystemMetrics(parseDiskPaths(t.DiskPaths)...), nil
 }
 
 // Power 对 PTPatronus 所在机器执行固定电源动作；仅支持重启/关机白名单。
@@ -68,4 +68,18 @@ func localPowerCommand(action string) (string, []string, error) {
 		}
 	}
 	return "", nil, ErrUnsupportedPowerAction
+}
+
+// parseDiskPaths 把 target.DiskPaths（换行或逗号分隔）拆成路径切片，trim + 去空。
+// 供 host 采集器把宿主 bind mount 目录传给 sysinfo.CollectSystemMetrics（MoviePilot 式磁盘监控）。
+func parseDiskPaths(s string) []string {
+	var out []string
+	for _, line := range strings.Split(s, "\n") {
+		for _, p := range strings.Split(line, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+	}
+	return out
 }

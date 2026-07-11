@@ -12,7 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
-/// 文件管理页：存储后端 CRUD（WebDAV/Alist/SMB/Agent）→ 浏览目录 → 下载/上传/建目录/删除。
+/// 文件管理页：存储后端 CRUD（本机/WebDAV/Alist/SMB/Agent）→ 浏览目录 → 下载/上传/建目录/删除。
 /// 对齐 Web FileManager.vue。
 class FileManagePage extends StatefulWidget {
   const FileManagePage({super.key});
@@ -61,10 +61,12 @@ class _FileManagePageState extends State<FileManagePage> {
 
   void _selectStorage(int id) {
     final s = _storages.where((x) => x.id == id).toList();
-    final base = s.isNotEmpty ? s.first.basePath : '';
+    final fs = s.isNotEmpty ? s.first : null;
     setState(() {
       _storageId = id;
-      _path = base.isEmpty ? '/' : base;
+      // local 的 basePath 是服务端物理根（如 D:\Media），不能当虚拟路径；虚拟根始终从 / 开始
+      final base = fs?.basePath ?? '';
+      _path = (fs != null && fs.type == 'local') ? '/' : (base.isEmpty ? '/' : base);
       _entries = const [];
       _error = null;
     });
@@ -553,7 +555,7 @@ class _FileManagePageState extends State<FileManagePage> {
             child: _storages.isEmpty && !_loading
                 ? const Center(
                     child: Text(
-                      '暂无存储后端，请点右上角更多添加 WebDAV / Alist / SMB / Agent',
+                      '暂无存储后端，请点右上角更多添加 本机 / WebDAV / Alist / SMB / Agent',
                       style: TextStyle(color: Colors.grey),
                     ),
                   )
@@ -593,8 +595,8 @@ String _fmtBytes(int n) {
   return i == 0 ? '${s.toInt()} B' : '${s.toStringAsFixed(1)} ${units[i]}';
 }
 
-/// 存储后端新建/编辑表单：name/type(webdav/alist/smb/agent)/agent选择器/url/user/pass/base_path。
-/// 编辑态密码留空=不修改。type=agent 时用 Agent 选择器替代地址凭据（对齐 Web FileManager.vue）。
+/// 存储后端新建/编辑表单：name/type(webdav/alist/smb/agent/local)/agent选择器/url/user/pass/base_path。
+/// 编辑态密码留空=不修改。type=agent 用 Agent 选择器替代地址凭据；type=local 仅需根路径（本机物理目录）（对齐 Web FileManager.vue）。
 class _StorageFormSheet extends StatefulWidget {
   final FileStorage? editing; // null=新建
   const _StorageFormSheet({this.editing});
@@ -671,7 +673,7 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
         _toast('请选择 Agent');
         return;
       }
-    } else if (_url.text.trim().isEmpty) {
+    } else if (_type != 'local' && _url.text.trim().isEmpty) {
       _toast('请填写地址');
       return;
     }
@@ -716,6 +718,7 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
           initialValue: _type,
           decoration: const InputDecoration(labelText: '类型'),
           items: const [
+            DropdownMenuItem(value: 'local', child: Text('本机')),
             DropdownMenuItem(value: 'webdav', child: Text('WebDAV')),
             DropdownMenuItem(value: 'alist', child: Text('Alist')),
             DropdownMenuItem(value: 'smb', child: Text('SMB')),
@@ -758,6 +761,12 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
           const SizedBox(height: 8),
           const Text(
             '选择已部署 ptpatronus-agent 的设备（飞牛/绿联等），根路径填 agent 机器上的绝对路径。设备离线或版本过低（需 0.2.0+）时文件操作不可用。',
+            style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
+          ),
+        ] else if (_type == 'local') ...[
+          const SizedBox(height: 12),
+          const Text(
+            '直接读写 PTPatronus 服务所在机器的本地目录，无需开网络服务。根路径填本机绝对路径（如 Windows D:\\Media 或 Linux /mnt/nas）。后端进程拥有该目录完整权限，请仅配置可信目录。',
             style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
           ),
         ] else ...[

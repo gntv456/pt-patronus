@@ -32,6 +32,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
   final _rtsp = TextEditingController();
   final _interval = TextEditingController();
   final _timeout = TextEditingController();
+  final _diskPaths = TextEditingController();
 
   late String _type;
   String _protocol = '';
@@ -62,6 +63,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
     _rtsp.text = t?.rtspUrl ?? '';
     _interval.text = '${t?.intervalSec ?? 60}';
     _timeout.text = '${t?.timeoutSec ?? 15}';
+    _diskPaths.text = t?.diskPaths ?? '';
     for (final c in [
       _name,
       _host,
@@ -72,6 +74,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
       _rtsp,
       _interval,
       _timeout,
+      _diskPaths,
     ]) {
       c.addListener(_markDirty);
     }
@@ -132,6 +135,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
       _rtsp,
       _interval,
       _timeout,
+      _diskPaths,
     ]) {
       c.dispose();
     }
@@ -164,6 +168,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
             ? _privateKey.text.trim()
             : '',
         enabled: _enabled,
+        diskPaths: _diskPaths.text.trim(),
       );
       if (widget.target == null) {
         await _api.create(input);
@@ -285,6 +290,25 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
                 ),
               ],
             ),
+            if (_type == 'host' && _protocol == 'local')
+              Row(
+                children: [
+                  const SizedBox(
+                    width: 72,
+                    child: Text('磁盘路径', style: TextStyle(fontSize: 14)),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: _diskPaths,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        hintText: '每行一个容器内路径，如 /mnt/nas',
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             if (_type == 'nas' && _protocol == 'api')
               Row(
                 children: [

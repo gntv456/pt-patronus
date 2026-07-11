@@ -62,9 +62,11 @@ async function submitCreate() {
       ElMessage.warning('请选择 Agent')
       return
     }
-  } else if (!form.value.url) {
-    ElMessage.warning('请填写地址')
-    return
+  } else if (['webdav', 'alist', 'smb'].includes(form.value.type)) {
+    if (!form.value.url) {
+      ElMessage.warning('请填写地址')
+      return
+    }
   }
   try {
     await fileApi.create(form.value)
@@ -78,7 +80,8 @@ async function submitCreate() {
 
 async function browse(fs: FileStorage) {
   current.value = fs
-  path.value = fs.base_path || '/'
+  // local 的 base_path 是服务端物理根（如 D:\Media），不能直接当虚拟路径；虚拟根始终从 / 开始
+  path.value = fs.type === 'local' ? '/' : (fs.base_path || '/')
   browseVisible.value = true
   await refresh()
 }
@@ -189,14 +192,14 @@ onMounted(async () => {
         <div v-for="fs in list" :key="fs.id" class="glass glass-hover card" @click="browse(fs)">
           <div class="row1"><span class="dtype">{{ fs.type }}</span><span class="dname">{{ fs.name }}</span></div>
           <div class="url text-muted">
-            {{ fs.type === 'agent' ? (agentName(fs.agent_id) ? 'Agent: ' + agentName(fs.agent_id) : 'Agent #' + fs.agent_id) : fs.url }}{{ fs.base_path }}
+            {{ fs.type === 'agent' ? (agentName(fs.agent_id) ? 'Agent: ' + agentName(fs.agent_id) : 'Agent #' + fs.agent_id) : fs.type === 'local' ? '本机' : fs.url }}{{ fs.base_path }}
           </div>
         </div>
         <div v-if="!list.length && !loading" class="empty glass">
           <EmptyState
             icon="📁"
             title="还没有文件存储"
-            description="先接入 WebDAV、Alist、SMB 或 Agent，之后可以直接在这里浏览、上传和下载 NAS 文件。"
+            description="先接入本机、WebDAV、Alist、SMB 或 Agent，之后可以直接在这里浏览、上传和下载 NAS 文件。"
           >
             <el-button type="primary" @click="openCreate">添加存储</el-button>
           </EmptyState>
@@ -209,11 +212,13 @@ onMounted(async () => {
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="类型">
           <el-radio-group v-model="form.type">
+            <el-radio value="local">本机</el-radio>
             <el-radio value="webdav">WebDAV</el-radio>
             <el-radio value="alist">Alist</el-radio>
             <el-radio value="smb">SMB</el-radio>
             <el-radio value="agent">Agent</el-radio>
           </el-radio-group>
+          <div v-if="form.type === 'local'" class="hint">本机：直接读写 PTPatronus 服务所在机器的本地目录，无需开网络服务。根路径填本机绝对路径（如 Windows <code>D:\Media</code> 或 Linux <code>/mnt/nas</code>）。⚠️ 后端进程拥有该目录的完整权限，请仅配置可信目录。</div>
           <div v-if="form.type === 'webdav'" class="hint">WebDAV：地址填完整 URL（如 http://host:5005），用户名密码按服务端配置填写。</div>
           <div v-if="form.type === 'alist'" class="hint">Alist：地址填 Alist 服务地址（如 http://host:5244），用户名密码按 Alist 配置填写（默认可留空）。</div>
         </el-form-item>
@@ -225,7 +230,7 @@ onMounted(async () => {
           </el-form-item>
           <div class="hint">Agent：选择已部署 ptpatronus-agent 的设备（飞牛/绿联等），根路径填 agent 机器上的绝对路径（如 /mnt/nas）。设备离线或 agent 版本过低（需 0.2.0+）时文件操作不可用。</div>
         </template>
-        <template v-else>
+        <template v-else-if="form.type !== 'local'">
           <el-form-item label="地址"><el-input v-model="form.url" /></el-form-item>
           <el-form-item label="用户名"><el-input v-model="form.username" /></el-form-item>
           <el-form-item label="密码"><el-input v-model="form.password" type="password" show-password /></el-form-item>

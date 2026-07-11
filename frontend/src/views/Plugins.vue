@@ -65,6 +65,16 @@ const filteredPlugins = computed(() => {
 const enabledCount = computed(() => plugins.value.filter((p) => p.enabled).length)
 const actionHasSchema = computed(() => schemaFields(actionSpec.value?.input_schema).length > 0)
 
+// 市场分类筛选：category 是市场展示元数据（不进签名），按它分组/过滤市场表格。
+const marketCategory = ref('')
+const marketCategories = computed(() =>
+  Array.from(new Set((market.value?.plugins || []).map((p) => p.category).filter((c): c is string => !!c))),
+)
+const filteredMarketPlugins = computed(() => {
+  const all = market.value?.plugins || []
+  return marketCategory.value ? all.filter((p) => p.category === marketCategory.value) : all
+})
+
 async function load() {
   loading.value = true
   try {
@@ -1192,12 +1202,22 @@ function jsonText(v?: Record<string, any>) {
         当前宿主：App {{ market.app_version || '-' }} / API {{ market.api_version || '-' }} / 能力 {{ (market.host_capabilities || []).length }}
         <span v-if="marketSources.length" class="market-source-count">· 已配置 {{ marketSources.length }} 个市场源</span>
       </div>
-      <el-table v-loading="marketLoading" :data="market?.plugins || []" empty-text="暂无市场数据">
+      <el-radio-group v-if="marketCategories.length" v-model="marketCategory" size="small" style="margin: 8px 0 12px;">
+        <el-radio-button label="">全部 {{ (market?.plugins || []).length }}</el-radio-button>
+        <el-radio-button v-for="c in marketCategories" :key="c" :label="c">{{ c }}</el-radio-button>
+      </el-radio-group>
+      <el-table v-loading="marketLoading" :data="filteredMarketPlugins" empty-text="暂无市场数据">
         <el-table-column label="插件" min-width="220">
           <template #default="{ row }">
             <div class="market-name">{{ row.name }}</div>
             <div class="meta">{{ row.id }} · v{{ row.version }} · {{ row.runtime }}</div>
             <div v-if="shortSource(row.source)" class="meta">来源：{{ shortSource(row.source) }}</div>
+          </template>
+        </el-table-column>
+        <el-table-column label="分类" width="100">
+          <template #default="{ row }">
+            <el-tag v-if="row.category" size="small" effect="plain">{{ row.category }}</el-tag>
+            <span v-else class="meta">-</span>
           </template>
         </el-table-column>
         <el-table-column label="发布者 / 信任" min-width="220">

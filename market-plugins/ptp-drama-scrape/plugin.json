@@ -5,9 +5,10 @@
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",
-  "description": "监控/扫描短剧目录，按目录名到寸光集（https://ptang.top/）检索元数据与封面，写入 Kodi 兼容的 tvshow.nfo 和 poster.jpg；可选把视频整理到目标目录。默认刮削源：寸光集。",
+  "description": "【短剧专用·寸光集源】监控/扫描短剧目录，按目录名到寸光集（ptang.top）检索元数据与封面，写入 Kodi 兼容的 tvshow.nfo 和 poster.jpg；可选把视频整理到目标目录。",
   "license": "MIT",
-  "keywords": ["media", "drama", "scrape", "nfo", "cunguangji"],
+  "keywords": ["media", "drama", "scrape", "nfo", "cunguangji", "duanju", "playlet"],
+  "category": "短剧",
   "runtime": "external-http",
   "entry": {
     "command": "python",

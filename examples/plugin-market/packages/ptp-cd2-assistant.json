@@ -25,6 +25,7 @@
     "cd2",
     "monitor"
   ],
+  "category": "\u7f51\u76d8",
   "permissions": [
     "log:write",
     "notice:write",

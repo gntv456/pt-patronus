@@ -23,6 +23,7 @@
     "ffmpeg",
     "thumbnail"
   ],
+  "category": "\u5de5\u5177",
   "permissions": [
     "log:write",
     "notice:write",

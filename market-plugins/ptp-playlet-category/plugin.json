@@ -8,6 +8,7 @@
   "description": "定时扫描源目录，用 ffprobe 探测每个子目录里若干集视频时长；若均小于阈值（默认 8 分钟）则判定为短剧，把整个子目录移动到「短剧」分类目录下。需要宿主机已安装 ffprobe。",
   "license": "MIT",
   "keywords": ["media", "drama", "category", "ffprobe"],
+  "category": "短剧",
   "runtime": "external-http",
   "entry": {
     "command": "python",

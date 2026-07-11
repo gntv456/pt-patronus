@@ -5,9 +5,10 @@
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",
-  "description": "定时扫描媒体库目录，调用宿主媒体元数据 API（复用 PTPatronus 的 TMDB/豆瓣等源）补齐 Kodi 兼容的 movie.nfo/tvshow.nfo 与海报。无需自备 TMDB Key。",
+  "description": "【通用·电影/电视剧】定时扫描媒体库目录，调用宿主媒体元数据 API（复用 TMDB/豆瓣等源）补齐 Kodi 兼容的 movie.nfo/tvshow.nfo 与海报。无需自备 TMDB Key，插件自身不出站。",
   "license": "MIT",
-  "keywords": ["media", "library", "scrape", "nfo"],
+  "keywords": ["media", "library", "scrape", "nfo", "movie", "tmdb", "douban"],
+  "category": "媒体库",
   "runtime": "external-http",
   "entry": {
     "command": "python",

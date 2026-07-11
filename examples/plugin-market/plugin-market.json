@@ -50,6 +50,7 @@
         "cd2",
         "monitor"
       ],
+      "category": "\u7f51\u76d8",
       "permissions": [
         "log:write",
         "notice:write",
@@ -167,15 +168,18 @@
         "host.api.kv.write"
       ],
       "author": "PTPatronus Community",
-      "description": "\u76d1\u63a7/\u626b\u63cf\u77ed\u5267\u76ee\u5f55\uff0c\u6309\u76ee\u5f55\u540d\u5230\u5bf8\u5149\u96c6\uff08https://ptang.top/\uff09\u68c0\u7d22\u5143\u6570\u636e\u4e0e\u5c01\u9762\uff0c\u5199\u5165 Kodi \u517c\u5bb9\u7684 tvshow.nfo \u548c poster.jpg\uff1b\u53ef\u9009\u628a\u89c6\u9891\u6574\u7406\u5230\u76ee\u6807\u76ee\u5f55\u3002\u9ed8\u8ba4\u522e\u524a\u6e90\uff1a\u5bf8\u5149\u96c6\u3002",
+      "description": "\u3010\u77ed\u5267\u4e13\u7528\u00b7\u5bf8\u5149\u96c6\u6e90\u3011\u76d1\u63a7/\u626b\u63cf\u77ed\u5267\u76ee\u5f55\uff0c\u6309\u76ee\u5f55\u540d\u5230\u5bf8\u5149\u96c6\uff08ptang.top\uff09\u68c0\u7d22\u5143\u6570\u636e\u4e0e\u5c01\u9762\uff0c\u5199\u5165 Kodi \u517c\u5bb9\u7684 tvshow.nfo \u548c poster.jpg\uff1b\u53ef\u9009\u628a\u89c6\u9891\u6574\u7406\u5230\u76ee\u6807\u76ee\u5f55\u3002",
       "license": "MIT",
       "keywords": [
         "media",
         "drama",
         "scrape",
         "nfo",
-        "cunguangji"
+        "cunguangji",
+        "duanju",
+        "playlet"
       ],
+      "category": "\u77ed\u5267",
       "permissions": [
         "log:write",
         "notice:write",
@@ -330,6 +334,7 @@
         "ffmpeg",
         "thumbnail"
       ],
+      "category": "\u5de5\u5177",
       "permissions": [
         "log:write",
         "notice:write",
@@ -439,14 +444,18 @@
         "host.api.kv.write"
       ],
       "author": "PTPatronus Community",
-      "description": "\u5b9a\u65f6\u626b\u63cf\u5a92\u4f53\u5e93\u76ee\u5f55\uff0c\u8c03\u7528\u5bbf\u4e3b\u5a92\u4f53\u5143\u6570\u636e API\uff08\u590d\u7528 PTPatronus \u7684 TMDB/\u8c46\u74e3\u7b49\u6e90\uff09\u8865\u9f50 Kodi \u517c\u5bb9\u7684 movie.nfo/tvshow.nfo \u4e0e\u6d77\u62a5\u3002\u65e0\u9700\u81ea\u5907 TMDB Key\u3002",
+      "description": "\u3010\u901a\u7528\u00b7\u7535\u5f71/\u7535\u89c6\u5267\u3011\u5b9a\u65f6\u626b\u63cf\u5a92\u4f53\u5e93\u76ee\u5f55\uff0c\u8c03\u7528\u5bbf\u4e3b\u5a92\u4f53\u5143\u6570\u636e API\uff08\u590d\u7528 TMDB/\u8c46\u74e3\u7b49\u6e90\uff09\u8865\u9f50 Kodi \u517c\u5bb9\u7684 movie.nfo/tvshow.nfo \u4e0e\u6d77\u62a5\u3002\u65e0\u9700\u81ea\u5907 TMDB Key\uff0c\u63d2\u4ef6\u81ea\u8eab\u4e0d\u51fa\u7ad9\u3002",
       "license": "MIT",
       "keywords": [
         "media",
         "library",
         "scrape",
-        "nfo"
+        "nfo",
+        "movie",
+        "tmdb",
+        "douban"
       ],
+      "category": "\u5a92\u4f53\u5e93",
       "permissions": [
         "log:write",
         "notice:write",
@@ -572,6 +581,7 @@
         "category",
         "ffprobe"
       ],
+      "category": "\u77ed\u5267",
       "permissions": [
         "log:write",
         "notice:write",

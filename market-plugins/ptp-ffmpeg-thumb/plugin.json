@@ -8,6 +8,7 @@
   "description": "定时扫描媒体库，为每个缺少缩略图的视频用 FFmpeg 截取一帧作为 <文件名>-thumb.jpg。需要宿主机已安装 ffmpeg。",
   "license": "MIT",
   "keywords": ["media", "ffmpeg", "thumbnail"],
+  "category": "工具",
   "runtime": "external-http",
   "entry": {
     "command": "python",

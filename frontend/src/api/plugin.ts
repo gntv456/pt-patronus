@@ -174,6 +174,8 @@ export interface PluginMarketItem {
   repository?: string
   license?: string
   keywords?: string[]
+  /** 市场展示用分类（如「媒体库」「短剧」「网盘」「工具」），供前端分组/筛选，不进运行时签名 */
+  category?: string
   publisher?: {
     id?: string
     name: string

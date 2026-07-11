@@ -685,6 +685,7 @@ def build_market_entry(
         "repository",
         "license",
         "keywords",
+        "category",
         "permissions",
         "events",
         "actions",

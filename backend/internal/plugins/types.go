@@ -318,6 +318,9 @@ type MarketPlugin struct {
 	Repository                        string             `json:"repository,omitempty"`
 	License                           string             `json:"license,omitempty"`
 	Keywords                          []string           `json:"keywords,omitempty"`
+	// Category 是市场展示用的分类标签（如「媒体库」「短剧」「网盘」「工具」），仅供前端分组/筛选，
+	// 不进运行时 Manifest、不参与签名校验（签名只盖 archive 字节）。
+	Category                          string             `json:"category,omitempty"`
 	Publisher                         *MarketPublisher   `json:"publisher,omitempty"`
 	PublishedAt                       string             `json:"published_at,omitempty"`
 	Changelog                         []string           `json:"changelog,omitempty"`

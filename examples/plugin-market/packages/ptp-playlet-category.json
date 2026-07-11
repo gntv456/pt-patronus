@@ -24,6 +24,7 @@
     "category",
     "ffprobe"
   ],
+  "category": "\u77ed\u5267",
   "permissions": [
     "log:write",
     "notice:write",

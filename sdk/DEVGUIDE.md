@@ -104,6 +104,9 @@ Validate against the schema: `ptp-pluginctl validate .`. The full JSON schema is
 - `requirements` `["clouddrive", "Pillow>=10"]` — pip lines; the host `pip install`s them into the
   plugin's `.deps` and puts it on `PYTHONPATH` at launch (best-effort).
 - `contributes.views` — ship a `web/index.html` dashboard rendered in a sandboxed iframe.
+- `category` (e.g. `"媒体库"`, `"短剧"`, `"工具"`) — a display-only tag used to group/filter plugins in
+  the market table. It lives in **market metadata only**, never in the signed archive bytes, so adding
+  or changing it does **not** require re-signing. Optional; plugins without it show `-` in the 分类 column.
 
 ## The request the host sends you
 

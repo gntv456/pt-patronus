@@ -22,6 +22,9 @@ services:
       #     ↑ 在线更新清单（gist raw）；配了客户端「检查更新」才有效，不配则关闭在线更新检查
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
+      # 宿主磁盘监控（MoviePilot 式）：取消注释把宿主目录挂进容器，
+      # 再到「本机」监控 target 的「宿主磁盘路径」填对应容器内路径（如 /mnt/nas）
+      # - /mnt:/mnt:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s

@@ -29,15 +29,20 @@ rm -rf backend/internal/web/dist
 cp -r frontend/dist backend/internal/web/dist
 
 # 2. docker build + push ghcr（本地 docker，不占 GitHub Actions 额度）
-echo "=== [2/6] docker build ==="
-docker build --build-arg VERSION="$VERSION" -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
-read -rp "Push $IMAGE:$VERSION & :latest to ghcr? [y/N] " PUSH
-if [[ "$PUSH" =~ ^[Yy]$ ]]; then
-  docker push "$IMAGE:$VERSION"
-  docker push "$IMAGE:latest"
-  echo "  pushed. docker pull $IMAGE:$VERSION"
+echo "=== [2/7] docker build ==="
+if ! docker info >/dev/null 2>&1; then
+  echo "  ⚠ docker daemon 不可用（Docker Desktop 未启动/未装），跳过 docker build/push。"
+  echo "    Docker Desktop 启动 + docker login ghcr 后，手动补："
+  echo "    docker build --build-arg VERSION=$VERSION -t $IMAGE:$VERSION -t $IMAGE:latest . && docker push $IMAGE:$VERSION && docker push $IMAGE:latest"
 else
-  echo "  skipped push (镜像已本地构建: $IMAGE:$VERSION)"
+  docker build --build-arg VERSION="$VERSION" -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
+  read -rp "Push $IMAGE:$VERSION & :latest to ghcr? [y/N] " PUSH
+  if [[ "$PUSH" =~ ^[Yy]$ ]]; then
+    docker push "$IMAGE:$VERSION"; docker push "$IMAGE:latest"
+    echo "  pushed. docker pull $IMAGE:$VERSION"
+  else
+    echo "  skipped push (镜像已本地构建: $IMAGE:$VERSION)"
+  fi
 fi
 
 # 3. 监控 Agent —— 纯 Go 交叉编译 linux amd64/arm64

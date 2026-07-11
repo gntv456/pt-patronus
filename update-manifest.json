@@ -1,17 +1,17 @@
 {
-  "latestVersion": "0.70.01",
+  "latestVersion": "0.85.02",
   "minVersion": "0.60.00",
   "releaseName": "PT守护神 首个发布版本",
   "releaseNotes": "Go + Vue3 + Flutter 全平台客户端，含闭源发布体系与在线更新。\n\n发布前请把各 targets.url 替换为真实网盘直链，并填 sha256（下载后校验防篡改）。",
   "isForced": false,
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:0.70.01",
+      "image": "ghcr.io/gntv456/pt-patronus:0.85.02",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {
       "url": "https://<填网盘直链>/pt-patronus-0.70.01.apk",
-      "sha256": ""
+      "sha256": "139c32ef1d0cf2f2712b515093b303190d98681927f7a2d3f524ebe5c8bbb0a0"
     },
     "ios": {
       "url": "https://<AltSource.json 公开URL>"
@@ -22,15 +22,15 @@
     },
     "windows": {
       "url": "https://<填网盘直链>/pt-patronus-windows-x64-0.70.01.zip",
-      "sha256": ""
+      "sha256": "0060f76f1c09f2a3896bbfcee15288f7eacd90150300a7f59b7ad2f9c93a04b0"
     },
     "agent-linux-amd64": {
       "url": "https://<填网盘直链>/ptpatronus-agent-linux-amd64",
-      "sha256": ""
+      "sha256": "e684ac4a4906389acc888cf0b8d7ff8c2ce79631f1126f44a3597665da5fc8c5"
     },
     "agent-linux-arm64": {
       "url": "https://<填网盘直链>/ptpatronus-agent-linux-arm64",
-      "sha256": ""
+      "sha256": "8bdd05c888d65291ca78d257ffd25d70ef5ee7e6a77ebb2f4027412a0293e386"
     }
   }
 }

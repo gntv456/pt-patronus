@@ -232,7 +232,12 @@ func (h *AuthHandler) DemoLogin(c *gin.Context) {
 // 仅在 VIP 校验通过后调用：VipLevel=1，VipVerifiedAt=now，cookie 加密落库（供定期重验）。
 func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie string) {
 	now := time.Now()
-	cookieEnc, _ := h.crypto.Encrypt(cookie)
+	cookieEnc, encErr := h.crypto.Encrypt(cookie)
+	if encErr != nil {
+		// 加密失败不能落空串：否则定期 VIP 重验解密空串失败 → 用户静默掉 VIP 身份并写入脏数据。
+		dbFail(c, "hxpt_cookie_encrypt", encErr)
+		return
+	}
 	var u models.User
 	err := h.db.Where("hxpt_uid = ?", hxptUID).First(&u).Error
 	switch {

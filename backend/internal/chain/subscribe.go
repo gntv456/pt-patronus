@@ -75,7 +75,9 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 		dlID = c.defaultDownloaderID()
 		if dlID == 0 {
 			c.noticeOnce(ctx, sub, "订阅检查："+sub.Title, "未配置默认下载器，已跳过自动下载", "warning")
-			_ = c.op.MarkChecked(sub.ID)
+			if err := c.op.MarkChecked(sub.ID); err != nil {
+				slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
+			}
 			return 0, fmt.Errorf("no default downloader")
 		}
 	}
@@ -94,7 +96,13 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 				continue
 			}
 			key := torrentKey(t.DownloadURL)
-			if hit, _ := c.op.HitExists(sub.ID, key); hit {
+			hit, hitErr := c.op.HitExists(sub.ID, key)
+			if hitErr != nil {
+				// 去重判断失败：宁可漏推不可重复下载，跳过该种子（下次重试）。
+				slog.Warn("subscribe HitExists failed, skip torrent to avoid duplicate", "sub", sub.ID, "err", hitErr)
+				continue
+			}
+			if hit {
 				continue // 已推送过，去重
 			}
 			opts := downloader.AddOptions{
@@ -109,19 +117,26 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 				slog.Warn("subscribe push failed", "title", sub.Title, "site", sr.SiteName, "err", err)
 				continue
 			}
-			_ = c.op.AddHit(&models.SubscriptionHit{
+			if err := c.op.AddHit(&models.SubscriptionHit{
 				SubscriptionID: sub.ID, TorrentKey: key, Title: t.Title, SiteName: sr.SiteName,
-			})
+			}); err != nil {
+				// 已推送无法撤回；hit 未记录将致下次重复推送，依赖 (sub_id,key) 唯一索引兜底去重。
+				slog.Warn("subscribe AddHit failed, may re-push next cycle", "sub", sub.ID, "key", key, "err", err)
+			}
 			c.noticeOnce(ctx, sub, "订阅命中："+sub.Title,
 				fmt.Sprintf("已从 %s 推送：%s", sr.SiteName, t.Title), "success")
 			pushed++
 		}
 	}
 
-	_ = c.op.MarkChecked(sub.ID)
+	if err := c.op.MarkChecked(sub.ID); err != nil {
+		slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
+	}
 	// 电影：推送过即视为完成（不再周期查）；剧集：持续追新集，保持 subscribed。
 	if sub.Type == "movie" && pushed > 0 {
-		_ = c.op.SetStatus(sub.ID, "completed")
+		if err := c.op.SetStatus(sub.ID, "completed"); err != nil {
+			slog.Warn("subscribe SetStatus completed failed", "sub", sub.ID, "err", err)
+		}
 	}
 	return pushed, nil
 }

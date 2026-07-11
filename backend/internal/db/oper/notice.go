@@ -29,6 +29,9 @@ func (o *NoticeOper) List(unreadOnly bool, limit int) ([]models.Notice, error) {
 	if limit <= 0 {
 		limit = 200
 	}
+	if limit > 1000 { // 上限封顶，防 ?limit=999999999 全表灌内存（P1 DoS）
+		limit = 1000
+	}
 	q := o.db.Order("created_at desc").Limit(limit)
 	if unreadOnly {
 		q = q.Where("read = ?", false)

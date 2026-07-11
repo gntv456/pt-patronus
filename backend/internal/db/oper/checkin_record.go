@@ -27,6 +27,12 @@ func (o *CheckinRecordOper) List(siteID uint, limit, offset int) ([]models.Check
 	if limit <= 0 {
 		limit = 100
 	}
+	if limit > 1000 { // 上限封顶防 DoS
+		limit = 1000
+	}
+	if offset < 0 { // 负 offset 传 GORM 触发 MySQL 500，钳到 0
+		offset = 0
+	}
 	q := o.db.Order("created_at desc").Limit(limit).Offset(offset)
 	if siteID > 0 {
 		q = q.Where("site_id = ?", siteID)

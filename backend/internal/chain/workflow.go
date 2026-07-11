@@ -33,8 +33,8 @@ type WorkflowChain struct {
 	bus    *event.Bus
 	notice *notice.Service
 
-	mu             sync.Mutex           // 重入守卫 + 事件订阅登记
-	eventSubscribed map[uint]bool       // 已注册事件监听的工作流 id（bus 无 Unsubscribe，登记去重）
+	mu              sync.Mutex    // 重入守卫 + 事件订阅登记
+	eventSubscribed map[uint]bool // 已注册事件监听的工作流 id（bus 无 Unsubscribe，登记去重）
 }
 
 // NewWorkflowChain 构造。
@@ -54,14 +54,14 @@ func (c *WorkflowChain) Templates() []workflow.Template { return workflow.Templa
 
 // WorkflowStats 运行统计看板聚合（跨工作流）。
 type WorkflowStats struct {
-	Total          int                `json:"total"`
-	Enabled        int                `json:"enabled"`
-	RunsTotal      int                `json:"runs_total"`
-	RunsSuccess    int                `json:"runs_success"`
-	RunsFailed     int                `json:"runs_failed"`
-	AvgDurationMS  int64              `json:"avg_duration_ms"`
+	Total          int                  `json:"total"`
+	Enabled        int                  `json:"enabled"`
+	RunsTotal      int                  `json:"runs_total"`
+	RunsSuccess    int                  `json:"runs_success"`
+	RunsFailed     int                  `json:"runs_failed"`
+	AvgDurationMS  int64                `json:"avg_duration_ms"`
 	RecentFailures []models.WorkflowRun `json:"recent_failures"`
-	NodeTiming     []NodeTiming        `json:"node_timing"`
+	NodeTiming     []NodeTiming         `json:"node_timing"`
 }
 
 // NodeTiming 节点耗时排行（按 node_type 聚合）。
@@ -173,7 +173,12 @@ func (c *WorkflowChain) Update(wf *models.Workflow) error {
 	if err := c.validateGraph(wf); err != nil {
 		return err
 	}
-	old, _ := c.op.Get(wf.ID)
+	old, err := c.op.Get(wf.ID)
+	if err != nil {
+		// DB 读失败不能吞：old=nil 会跳过 UnregisterTriggers → 旧定时器/webhook 残留与新触发器并存→重复触发。中止让调用方重试。
+		slog.Warn("workflow get old failed, abort update to avoid trigger leak", "id", wf.ID, "err", err)
+		return err
+	}
 	if old != nil {
 		c.UnregisterTriggers(old)
 	}
@@ -190,7 +195,13 @@ func (c *WorkflowChain) Update(wf *models.Workflow) error {
 
 // Delete 删除（注销触发器 → 删库）。
 func (c *WorkflowChain) Delete(id uint) error {
-	if old, _ := c.op.Get(id); old != nil {
+	old, err := c.op.Get(id)
+	if err != nil {
+		// 同 Update：DB 读失败须中止，避免 ghost 触发器指向已删工作流（下次触发 nil 指针/panic）。
+		slog.Warn("workflow get old failed, abort delete to avoid trigger leak", "id", id, "err", err)
+		return err
+	}
+	if old != nil {
 		c.UnregisterTriggers(old)
 	}
 	return c.op.Delete(id)

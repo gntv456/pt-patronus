@@ -153,6 +153,9 @@ func (h *RssHandler) ListItems(c *gin.Context) {
 	if limit <= 0 {
 		limit = 100
 	}
+	if limit > 500 { // 上限封顶防 DoS
+		limit = 500
+	}
 	its, err := h.ch.ListItems(id, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

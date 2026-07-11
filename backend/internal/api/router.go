@@ -118,6 +118,7 @@ func Build(d *Deps) *gin.Engine {
 	engine.Use(middleware.AccessLog())
 	engine.Use(middleware.CORS(splitOrigins(d.Cfg.CORSAllowedOrigins)...))
 	engine.Use(middleware.SecurityHeaders())
+	engine.Use(middleware.MaxBody(64 << 20)) // 全局 body 上限兜底，防超大 JSON 灌内存 DoS（公开端点亦覆盖）
 	engine.Use(middleware.JWTAuth(d.JWT, d.Cfg.APIKey, d.TVCache))
 	// 全局限流（每 IP 每秒）
 	globalRPS := d.Cfg.GlobalRatePerSec
@@ -286,7 +287,7 @@ func Build(d *Deps) *gin.Engine {
 			notif := guarded.Group("/notification")
 			{
 				notif.GET("/channels", notifH.Channels)
-				notif.POST("/test", notifH.Test)
+				notif.POST("/test", middleware.RequireAdmin(), notifH.Test)
 				notif.GET("/config", notifH.GetConfig)
 				notif.PUT("/config", middleware.RequireAdmin(), notifH.SetConfig)
 				notif.POST("/wechat/qrcode", middleware.RequireAdmin(), notifH.WeChatQRCode)
@@ -304,7 +305,7 @@ func Build(d *Deps) *gin.Engine {
 				md.GET("/image", mediaH.Image)
 				md.POST("/nfo", mediaH.NFO)
 				md.GET("/config", mediaH.GetConfig)
-				md.PUT("/config", mediaH.SetConfig)
+				md.PUT("/config", middleware.RequireAdmin(), mediaH.SetConfig)
 			}
 
 			ksH := v1.NewKeepSeedHandler(d.KeepSeed)
@@ -420,8 +421,8 @@ func Build(d *Deps) *gin.Engine {
 			guarded.GET("/dashboard/trend", dashH.Trend)
 
 			// 运行日志（环形缓冲；级别筛选，排查用）
-			guarded.GET("/system/logs", sysH.Logs)
-			guarded.DELETE("/system/logs", sysH.ClearLogs)
+			guarded.GET("/system/logs", middleware.RequireAdmin(), sysH.Logs)
+			guarded.DELETE("/system/logs", middleware.RequireAdmin(), sysH.ClearLogs)
 			regH := v1.NewRegistrationHandler(d.RegOp, d.RegCh)
 			regs := guarded.Group("/registrations")
 			{

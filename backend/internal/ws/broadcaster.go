@@ -89,7 +89,13 @@ type Broadcaster struct {
 }
 
 // SetNotice 注入通知中心（app.go 在 noticeSvc 构造后调用）。
-func (b *Broadcaster) SetNotice(ns *notice.Service) { b.notice = ns }
+// 经 stateMu 同步：detectDone 在 Run goroutine 内读 b.notice，setter 在主 goroutine 写，
+// 复用现有锁建立 happens-before，避免未同步指针读写的数据竞争（race detector 会标记）。
+func (b *Broadcaster) SetNotice(ns *notice.Service) {
+	b.stateMu.Lock()
+	b.notice = ns
+	b.stateMu.Unlock()
+}
 
 // NewBroadcaster 构造广播器。interval<=0 时默认 2s。
 func NewBroadcaster(hub *Hub, dlOp *oper.DownloaderOper, mgr *manager.Manager, interval time.Duration) *Broadcaster {
@@ -134,11 +140,12 @@ func (b *Broadcaster) broadcast(ctx context.Context) {
 
 // detectDone 检测种子「下载完成」转换 → 通知中心。冷启动首轮只填充状态不通知。
 func (b *Broadcaster) detectDone(ctx context.Context, snap []TorrentSnapshot) {
+	b.stateMu.Lock()
+	defer b.stateMu.Unlock()
+	// notice 读写均经 stateMu：与 SetNotice 建立 happens-before，消除数据竞争（race detector 会标记原写法）。
 	if b.notice == nil {
 		return
 	}
-	b.stateMu.Lock()
-	defer b.stateMu.Unlock()
 	if b.dlState == nil {
 		b.dlState = map[string]bool{}
 	}

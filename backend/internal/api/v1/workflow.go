@@ -247,6 +247,9 @@ func (h *WorkflowHandler) ListRuns(c *gin.Context) {
 	if limit <= 0 {
 		limit = 20
 	}
+	if limit > 500 { // 上限封顶防 DoS
+		limit = 500
+	}
 	runs, err := h.ch.ListRuns(uint(wfID), limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

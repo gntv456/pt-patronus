@@ -16,6 +16,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"golang.org/x/net/publicsuffix"
+	"golang.org/x/sync/singleflight"
 )
 
 // SiteResult 是单站搜索结果（含可能的错误，用于聚合容错）。
@@ -45,6 +46,7 @@ type SiteChain struct {
 	// 种子详情 per-(site|url) 缓存（详情页较重，短缓存减重复抓取）。
 	detailMu    sync.Mutex
 	detailCache map[string]detailCacheEntry
+	detailSF    singleflight.Group // 同 key 详情并发抓取合并（防击穿）
 }
 
 // flCacheEntry / annCacheEntry 是 per-site 缓存条目。
@@ -465,18 +467,34 @@ const detailCacheTTL = 10 * time.Minute
 // TorrentDetail 抓取并解析单条种子详情页（capability dispatch + 短缓存）。
 // 先做 sameHost 守卫：detailURL 必须落在站点 baseURL 的同注册域下，防止用 A 站 cookie
 // 探测 B 站（socket 层 ssrf=true 已拦私网 IP，此为授权层）。
+// 缓存 miss 时走 singleflight 合并同 key 并发抓取（详情页较重，防击穿）。
 func (c *SiteChain) TorrentDetail(ctx context.Context, s *models.Site, detailURL string) (*site.TorrentDetail, error) {
 	if !sameHost(s.BaseURL, detailURL) {
 		return nil, errors.New("detail url host does not match site base url")
 	}
 	key := fmt.Sprintf("%d|%s", s.ID, detailURL)
+	// 快速路径：命中缓存直接返回（不经 singleflight）。
 	c.detailMu.Lock()
 	if e, ok := c.detailCache[key]; ok && time.Since(e.at) <= detailCacheTTL {
 		c.detailMu.Unlock()
 		return e.detail, nil
 	}
 	c.detailMu.Unlock()
+	// miss → singleflight 合并同 key 并发抓取。
+	return sfDo(&c.detailSF, key, func() (*site.TorrentDetail, error) {
+		// double-check：leader 完成后紧随的 caller 重跑 fn，缓存可能已满。
+		c.detailMu.Lock()
+		if e, ok := c.detailCache[key]; ok && time.Since(e.at) <= detailCacheTTL {
+			c.detailMu.Unlock()
+			return e.detail, nil
+		}
+		c.detailMu.Unlock()
+		return c.fetchTorrentDetail(ctx, s, detailURL, key)
+	})
+}
 
+// fetchTorrentDetail 调度适配器抓取并解析详情页，成功时写短缓存并清理过期条目。
+func (c *SiteChain) fetchTorrentDetail(ctx context.Context, s *models.Site, detailURL, key string) (*site.TorrentDetail, error) {
 	def := c.defFor(s)
 	token := c.credential(s, def)
 	var out *site.TorrentDetail

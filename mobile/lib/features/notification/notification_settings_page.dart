@@ -140,6 +140,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       'base_url': _wxBase.text.trim(),
     },
     'webhook': {'enabled': _whEnabled, 'url': _whUrl.text.trim()},
+    // 回发 Flutter 暂无独立 UI 的 3 通道当前值，避免后端 mergeNotifySettings 用 incoming 零值覆写清空（P0-1）。
+    if (_config != null) 'dingtalk': _config!.dingtalk.toJson(),
+    if (_config != null) 'feishu': _config!.feishu.toJson(),
+    if (_config != null) 'email': _config!.email.toJson(),
   };
 
   Future<void> _save() async {

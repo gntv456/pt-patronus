@@ -78,18 +78,67 @@ class NotifyWebhookConfig {
       );
 }
 
+class NotifyDingTalkConfig {
+  final bool enabled;
+  final String url;
+  const NotifyDingTalkConfig({this.enabled = false, this.url = ''});
+  factory NotifyDingTalkConfig.fromJson(Map<String, dynamic> j) => NotifyDingTalkConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        url: j['url'] as String? ?? '',
+      );
+  // 回发当前值（后端 mergeNotifySettings 用 incoming 覆写非秘密字段；空 url=禁用，与 GET 一致）。
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'url': url};
+}
+
+class NotifyFeishuConfig {
+  final bool enabled;
+  final String url;
+  const NotifyFeishuConfig({this.enabled = false, this.url = ''});
+  factory NotifyFeishuConfig.fromJson(Map<String, dynamic> j) => NotifyFeishuConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        url: j['url'] as String? ?? '',
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'url': url};
+}
+
+class NotifyEmailConfig {
+  final bool enabled;
+  final String host;
+  final int port;
+  final String username;
+  final String from;
+  final String to;
+  const NotifyEmailConfig({this.enabled = false, this.host = '', this.port = 0, this.username = '', this.from = '', this.to = ''});
+  factory NotifyEmailConfig.fromJson(Map<String, dynamic> j) => NotifyEmailConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        host: j['host'] as String? ?? '',
+        port: (j['port'] as num?)?.toInt() ?? 0,
+        username: j['username'] as String? ?? '',
+        from: j['from'] as String? ?? '',
+        to: j['to'] as String? ?? '',
+      );
+  // 不含 password：缺失=后端保留旧密码（空串同理）；其余非秘密字段原样回发避免被零值覆写。
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'host': host, 'port': port, 'username': username, 'from': from, 'to': to};
+}
+
 class NotifyConfig {
   final NotifyBarkConfig bark;
   final NotifyTelegramConfig telegram;
   final NotifyQQConfig qq;
   final NotifyWeChatConfig wechat;
   final NotifyWebhookConfig webhook;
+  final NotifyDingTalkConfig dingtalk;
+  final NotifyFeishuConfig feishu;
+  final NotifyEmailConfig email;
   const NotifyConfig({
     this.bark = const NotifyBarkConfig(),
     this.telegram = const NotifyTelegramConfig(),
     this.qq = const NotifyQQConfig(),
     this.wechat = const NotifyWeChatConfig(),
     this.webhook = const NotifyWebhookConfig(),
+    this.dingtalk = const NotifyDingTalkConfig(),
+    this.feishu = const NotifyFeishuConfig(),
+    this.email = const NotifyEmailConfig(),
   });
   factory NotifyConfig.fromJson(Map<String, dynamic> j) => NotifyConfig(
         bark: NotifyBarkConfig.fromJson((j['bark'] as Map<String, dynamic>?) ?? const {}),
@@ -97,6 +146,9 @@ class NotifyConfig {
         qq: NotifyQQConfig.fromJson((j['qq'] as Map<String, dynamic>?) ?? const {}),
         wechat: NotifyWeChatConfig.fromJson((j['wechat'] as Map<String, dynamic>?) ?? const {}),
         webhook: NotifyWebhookConfig.fromJson((j['webhook'] as Map<String, dynamic>?) ?? const {}),
+        dingtalk: NotifyDingTalkConfig.fromJson((j['dingtalk'] as Map<String, dynamic>?) ?? const {}),
+        feishu: NotifyFeishuConfig.fromJson((j['feishu'] as Map<String, dynamic>?) ?? const {}),
+        email: NotifyEmailConfig.fromJson((j['email'] as Map<String, dynamic>?) ?? const {}),
       );
 }
 

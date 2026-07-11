@@ -12,6 +12,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/media"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // mediaCacheTTL 搜索/元数据缓存有效期。影视元数据相对稳定，但过期重查可避免
@@ -30,6 +32,7 @@ type MediaChain struct {
 	Base
 	provider *MediaSourceProvider
 	cache    *oper.PosterCacheOper
+	sf       singleflight.Group
 }
 
 // NewMediaChain 构造；provider 提供按优先级顺序的源（影视主源在前）。
@@ -82,15 +85,40 @@ func (c *MediaChain) Detail(ctx context.Context, source, id string) (*media.Medi
 // 源失败用 Warn 记录（含 context 超时），便于排查。
 func (c *MediaChain) Search(ctx context.Context, keyword string, year int, filter string) ([]media.MediaInfo, error) {
 	key := oper.CacheKeyFrom(keyword, year, filter)
-	if c.cache != nil {
-		if hit, err := c.cache.Get(key); err == nil && hit.RawJSON != "" && time.Since(hit.UpdatedAt) < mediaCacheTTL {
-			var cached []media.MediaInfo
-			if json.Unmarshal([]byte(hit.RawJSON), &cached) == nil {
-				return cached, nil
-			}
-		}
+	// 快速路径：命中 DB 缓存直接返回（不经 singleflight）。
+	if cached, ok := c.cachedSearch(key); ok {
+		return cached, nil
 	}
+	// miss → singleflight 合并同 key 并发跨源搜索（防击穿）。
+	return sfDo(&c.sf, key, func() ([]media.MediaInfo, error) {
+		// double-check DB：leader 完成后紧随的 caller 重跑 fn，DB 可能已写。
+		if cached, ok := c.cachedSearch(key); ok {
+			return cached, nil
+		}
+		return c.searchSources(ctx, keyword, year, filter, key), nil
+	})
+}
 
+// cachedSearch 命中未过期的 DB 缓存时返回 (结果, true)。cache 为 nil 或未命中返回 false。
+// 快速路径与 singleflight fn 内的 double-check 共用。
+func (c *MediaChain) cachedSearch(key string) ([]media.MediaInfo, bool) {
+	if c.cache == nil {
+		return nil, false
+	}
+	hit, err := c.cache.Get(key)
+	if err != nil || hit.RawJSON == "" || time.Since(hit.UpdatedAt) >= mediaCacheTTL {
+		return nil, false
+	}
+	var cached []media.MediaInfo
+	if json.Unmarshal([]byte(hit.RawJSON), &cached) != nil {
+		return nil, false
+	}
+	return cached, true
+}
+
+// searchSources 并发跨源搜索（总预算 mediaSearchBudget）、按源优先级合并 + 类型过滤，
+// 有结果时写 DB 缓存。
+func (c *MediaChain) searchSources(ctx context.Context, keyword string, year int, filter, key string) []media.MediaInfo {
 	ctx, cancel := context.WithTimeout(ctx, mediaSearchBudget)
 	defer cancel()
 
@@ -139,7 +167,7 @@ func (c *MediaChain) Search(ctx context.Context, keyword string, year int, filte
 		raw, _ := json.Marshal(all)
 		_ = c.cache.Put(&models.PosterCache{CacheKey: key, RawJSON: string(raw)})
 	}
-	return all, nil
+	return all
 }
 
 // MatchPoster 返回第一个带海报的结果海报 URL（用于下载器任务海报匹配）。

@@ -24,11 +24,13 @@ func ptpRoot(t *testing.T) string {
 	return ""
 }
 
-// TestRealMarketFetchAndInstall verifies the Wave-1 plugins that live under
-// market-plugins/ and are aggregated into examples/plugin-market/ are accepted
-// by the real host pipeline: FetchMarket parses + computes compatibility/trust,
-// and InstallFromMarket verifies the signature, unzips, validates the manifest
-// and registers the plugin — the full install path minus process start.
+// TestRealMarketFetchAndInstall verifies the plugins that live under market-plugins/
+// and are aggregated into examples/plugin-market/ are accepted by the real host
+// pipeline: FetchMarket parses + computes compatibility/trust, and InstallFromMarket
+// verifies the signature, unzips, validates the manifest and registers the plugin.
+//
+// ptp-drama-scrape / ptp-playlet-category 已移植为 Go builtin（见 drama_scrape.go /
+// playlet_category.go），从市场移除；这里断言它们随 NewManager 内置注册，且不再出现在市场。
 func TestRealMarketFetchAndInstall(t *testing.T) {
 	root := ptpRoot(t)
 	marketPath := filepath.Join(root, "examples", "plugin-market", "plugin-market.json")
@@ -40,6 +42,13 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 	m := NewManager(db, event.New(), nil, nil, nil)
 	m.SetPluginRoot(filepath.Join(t.TempDir(), "plugins"))
 
+	// builtin 移植验证：drama-scrape / playlet-category 已内置注册（不再走市场安装）。
+	for _, id := range []string{"ptp-drama-scrape", "ptp-playlet-category"} {
+		if p, err := m.plugin(id); err != nil || p == nil {
+			t.Errorf("builtin %s not registered after NewManager: %v", id, err)
+		}
+	}
+
 	market, err := m.FetchMarket(context.Background(), marketPath)
 	if err != nil {
 		t.Fatalf("FetchMarket: %v", err)
@@ -48,13 +57,16 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 		t.Fatalf("expected signed market (public_key present)")
 	}
 	want := map[string]bool{
-		"ptp-ffmpeg-thumb":     false,
-		"ptp-playlet-category": false,
-		"ptp-drama-scrape":     false,
-		"ptp-library-scrape":   false, // uses media:search (P3)
-		"ptp-cd2-assistant":    false, // declares requirements (P2) + a view (P4 dashboard)
+		"ptp-ffmpeg-thumb":   false,
+		"ptp-library-scrape": false, // uses media:search (P3)
+		"ptp-cd2-assistant":  false, // declares requirements (P2) + a view (P4 dashboard)
 	}
 	for _, p := range market.Plugins {
+		// 已移植为 builtin 的两个不应再出现在市场。
+		if p.ID == "ptp-drama-scrape" || p.ID == "ptp-playlet-category" {
+			t.Errorf("%s should no longer be in market (moved to builtin)", p.ID)
+			continue
+		}
 		if _, ok := want[p.ID]; !ok {
 			continue
 		}
@@ -82,27 +94,10 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 		}
 	}
 
-	// Install ptp-drama-scrape (headline plugin) end-to-end from the real signed market.
-	manifestPath := filepath.Join(root, "market-plugins", "ptp-drama-scrape", "plugin.json")
-	raw, err := os.ReadFile(manifestPath)
-	if err != nil {
-		t.Fatalf("read manifest: %v", err)
-	}
-	var mf Manifest
-	if err := json.Unmarshal(raw, &mf); err != nil {
-		t.Fatalf("unmarshal manifest: %v", err)
-	}
-	_, err = m.InstallFromMarketWithOptions(context.Background(), marketPath, "ptp-drama-scrape",
-		MarketInstallOptions{AcceptedPermissions: mf.Permissions})
-	if err != nil {
-		t.Fatalf("InstallFromMarket: %v", err)
-	}
-	if _, err := m.Get("ptp-drama-scrape"); err != nil {
-		t.Fatalf("plugin not registered after install: %v", err)
-	}
-
 	// Install ptp-library-scrape: its media:search permission (P3) must be accepted,
 	// and the host-side manifest validation must accept the new resource_access field (P1).
+	// ptp-cd2-assistant 触发 pip install clouddrive（best-effort）；pip 失败不阻断安装，
+	// 只要注册成功即可。
 	for _, pid := range []string{"ptp-library-scrape", "ptp-cd2-assistant"} {
 		mp := filepath.Join(root, "market-plugins", pid, "plugin.json")
 		rb, _ := os.ReadFile(mp)
@@ -112,8 +107,6 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 		}
 		if _, err := m.InstallFromMarketWithOptions(context.Background(), marketPath, pid,
 			MarketInstallOptions{AcceptedPermissions: pm.Permissions}); err != nil {
-			// ptp-cd2-assistant 触发 pip install clouddrive（best-effort）；pip 失败不阻断安装，
-			// 因此这里只要求注册成功。任何安装错误都视为失败。
 			t.Fatalf("install %s: %v", pid, err)
 		}
 		if _, err := m.Get(pid); err != nil {

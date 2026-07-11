@@ -87,6 +87,8 @@ func NewManager(db *gorm.DB, bus *event.Bus, noticeSvc *notice.Service, sites *o
 	_ = m.Register(NewTwoFAHelperPlugin())
 	_ = m.Register(NewXiaomiRouterPlugin())
 	_ = m.Register(NewAutoSpeedPlugin())
+	_ = m.Register(NewDramaScrapePlugin())
+	_ = m.Register(NewPlayletCategoryPlugin())
 	return m
 }
 

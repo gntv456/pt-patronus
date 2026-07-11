@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"archive/zip"
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
@@ -74,4 +76,43 @@ func trustTestPublicKey(t *testing.T, db *gorm.DB, m *Manager, pub ed25519.Publi
 		t.Fatalf("set trusted keys: %v", err)
 	}
 	m.SetCfgOp(cfgOp)
+}
+
+// TestUnzipSafeRejectsBomb 验证 zip 炸弹防护：单条目解压超 32MB 上限必须被拒（P1 zip 炸弹修复）。
+// 全零数据高度可压缩：33MB 源压缩后极小，但解压超 32MB → LimitReader 截断 → n>上限 → 拒。
+func TestUnzipSafeRejectsBomb(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.Create("big.bin")
+	if err != nil {
+		t.Fatalf("create zip entry: %v", err)
+	}
+	zero := make([]byte, 1<<20) // 1MB
+	for i := 0; i < 33; i++ {   // 33MB > 32MB 单条目上限
+		if _, err := w.Write(zero); err != nil {
+			t.Fatalf("write: %v", err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+	dst := t.TempDir()
+	if err := unzipSafe(buf.Bytes(), dst); err == nil {
+		t.Fatal("zip entry exceeding per-file limit (33MB) must be rejected")
+	}
+}
+
+// TestUnzipSafeAcceptsNormal 验证正常 zip（小条目）照常通过，防护不影响合法插件。
+func TestUnzipSafeAcceptsNormal(t *testing.T) {
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create("plugin.py")
+	_, _ = w.Write([]byte("print('ok')\n"))
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close zip: %v", err)
+	}
+	dst := t.TempDir()
+	if err := unzipSafe(buf.Bytes(), dst); err != nil {
+		t.Fatalf("normal zip should pass: %v", err)
+	}
 }

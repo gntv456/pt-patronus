@@ -675,11 +675,19 @@ func resolveArchiveSource(indexSource, archive string) (string, error) {
 	return filepath.Join(filepath.Dir(indexSource), archive), nil
 }
 
+// 插件 zip 解压上限（防 zip 炸弹，仿 backup/ptd.go）。单条目略宽于 PTD（插件含 .py/.so 资源）。
+const (
+	maxPluginEntrySize int64 = 32 << 20 // 单文件解压上限 32MB
+	maxPluginTotalSize int64 = 96 << 20 // 全包累计上限 96MB
+)
+
 func unzipSafe(raw []byte, dst string) error {
 	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
 	if err != nil {
 		return err
 	}
+	// zip 炸弹防护：单条目 + 累计总量双上限。
+	var total int64
 	for _, f := range zr.File {
 		target := filepath.Join(dst, filepath.Clean(f.Name))
 		if !isSubpath(dst, target) {
@@ -690,6 +698,10 @@ func unzipSafe(raw []byte, dst string) error {
 				return err
 			}
 			continue
+		}
+		// 预检声明大小（UncompressedSize64 可被伪造，下面 LimitReader 双保险）。
+		if int64(f.UncompressedSize64) > maxPluginEntrySize {
+			return fmt.Errorf("plugin entry %q too large after decompress (%d bytes, max %d)", f.Name, f.UncompressedSize64, maxPluginEntrySize)
 		}
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
@@ -703,14 +715,21 @@ func unzipSafe(raw []byte, dst string) error {
 			rc.Close()
 			return err
 		}
-		_, copyErr := io.Copy(out, rc)
+		n, copyErr := io.Copy(out, io.LimitReader(rc, maxPluginEntrySize+1))
 		closeErr := out.Close()
 		rc.Close()
 		if copyErr != nil {
 			return copyErr
 		}
+		if n > maxPluginEntrySize {
+			return fmt.Errorf("plugin entry %q exceeds per-file decompress limit", f.Name)
+		}
 		if closeErr != nil {
 			return closeErr
+		}
+		total += n
+		if total > maxPluginTotalSize {
+			return fmt.Errorf("plugin archive exceeds total decompress limit (%d bytes)", maxPluginTotalSize)
 		}
 	}
 	return nil

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strconv"
 	"sync"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // 考核缓存参数（对齐原版：内存 30min、DB 6h）。
@@ -84,6 +87,7 @@ type AssessmentChain struct {
 	notice *notice.Service
 	mu     sync.Mutex
 	cache  map[uint]assessCacheEntry
+	sf     singleflight.Group // 同 siteID 考核并发抓取合并（防击穿）
 }
 
 // NewAssessmentChain 构造。ns 为站内通知中心（考核完成/失败发通知；nil 跳过）。
@@ -91,7 +95,7 @@ func NewAssessmentChain(siteCh *SiteChain, reg *assessment.Registry, op *oper.As
 	return &AssessmentChain{siteCh: siteCh, reg: reg, op: op, hc: assessHTTP{c: hc}, notice: ns, cache: map[uint]assessCacheEntry{}}
 }
 
-// AssessAll 跨站并发聚合考核（按 progress 降序）。
+// AssessAll 跨站并发聚合考核（按 progress 降序）。单站 miss 走 singleflight 合并同 siteID 并发回源。
 func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) []AssessmentCard {
 	sites, err := c.siteCh.sites.ListActive()
 	if err != nil {
@@ -105,9 +109,7 @@ func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) []Assessmen
 		wg.Add(1)
 		go func(i int, s models.Site) {
 			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			cards[i] = c.assessSite(ctx, &s, force)
+			cards[i] = c.assessSite(ctx, sem, &s, force)
 		}(i, s)
 	}
 	wg.Wait()
@@ -127,41 +129,61 @@ func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) []Assessmen
 	return out
 }
 
-// AssessOne 单站考核（强制网络刷新）。
+// AssessOne 单站考核（强制网络刷新；单站不限并发，sem=nil）。
 func (c *AssessmentChain) AssessOne(ctx context.Context, s *models.Site) AssessmentCard {
-	return c.assessSite(ctx, s, true).normalized()
+	return c.assessSite(ctx, nil, s, true).normalized()
 }
 
-// assessSite 单站 3 级缓存：内存→DB→网络。
-func (c *AssessmentChain) assessSite(ctx context.Context, s *models.Site, force bool) AssessmentCard {
+// assessSite 单站 3 级缓存：内存→DB→网络。sem 为聚合级并发闸（nil 表示不限，单站用）。
+// force=true 绕过缓存与 singleflight 直接网络回源；否则 miss 时 singleflight 合并同 siteID
+// 并发回源（防击穿，sem 仅 leader 占用）。3 级缓存包整个回源——避免 waiter 各自 BatchUpsert + 发通知。
+func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *models.Site, force bool) AssessmentCard {
 	def := c.siteCh.defFor(s)
 	adapter := c.reg.Get(def.Schema)
 	if !adapter.Supported() {
 		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "EXEMPT",
 			ProgressPercent: 100, AssessmentType: "该平台无考核"}
 	}
-
-	// 1. 内存缓存
-	if !force {
-		c.mu.Lock()
-		e, ok := c.cache[s.ID]
-		c.mu.Unlock()
-		if ok && time.Since(e.at) <= assessMemTTL {
-			return convertTaskToCard(s.ID, s.Name, primaryTask(e.tasks), "")
-		}
+	if force {
+		return c.fetchAssessSite(ctx, sem, s, def, adapter)
 	}
-	// 2. DB 缓存（6h）
-	if !force {
+	// 快速路径：内存命中直接返回（不经 singleflight）。
+	c.mu.Lock()
+	e, ok := c.cache[s.ID]
+	c.mu.Unlock()
+	if ok && time.Since(e.at) <= assessMemTTL {
+		return convertTaskToCard(s.ID, s.Name, primaryTask(e.tasks), "")
+	}
+	// miss → singleflight 合并同 siteID 并发回源。
+	card, _ := sfDo(&c.sf, strconv.Itoa(int(s.ID)), func() (AssessmentCard, error) {
+		// double-check 内存：leader 完成后紧随的 caller 重跑 fn，缓存可能已满。
+		c.mu.Lock()
+		ce, ok := c.cache[s.ID]
+		c.mu.Unlock()
+		if ok && time.Since(ce.at) <= assessMemTTL {
+			return convertTaskToCard(s.ID, s.Name, primaryTask(ce.tasks), ""), nil
+		}
+		// double-check DB（6h）：另一调用可能在 leader 期间刚写 DB。
 		if latest, err := c.op.LatestFetchedAt(s.ID); err == nil && !latest.IsZero() && time.Since(latest) <= assessDBTTL {
 			dbTasks, _ := c.op.FindBySite(s.ID)
 			tasks := dbTasksToAssess(dbTasks)
 			c.mu.Lock()
 			c.cache[s.ID] = assessCacheEntry{tasks: tasks, at: time.Now()}
 			c.mu.Unlock()
-			return convertTaskToCard(s.ID, s.Name, primaryTask(tasks), "")
+			return convertTaskToCard(s.ID, s.Name, primaryTask(tasks), ""), nil
 		}
+		return c.fetchAssessSite(ctx, sem, s, def, adapter), nil
+	})
+	return card
+}
+
+// fetchAssessSite 网络抓取考核 + BatchUpsert + 状态转换通知 + 内存缓存。
+// sem 非空时占一个槽（聚合级并发闸；nil 表示不限，单站 AssessOne 用）。
+func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter assessment.Adapter) AssessmentCard {
+	if sem != nil {
+		sem <- struct{}{}
+		defer func() { <-sem }()
 	}
-	// 3. 网络
 	siteCtx, cancel := context.WithTimeout(ctx, assessTimeout)
 	defer cancel()
 	token := c.siteCh.credential(s, def)

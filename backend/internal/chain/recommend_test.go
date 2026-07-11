@@ -2,7 +2,10 @@ package chain
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/event"
 	"github.com/hxpt/ptpatronus/internal/core/module"
@@ -113,5 +116,82 @@ func TestRecommendFeedsCategoryFilter(t *testing.T) {
 	}
 	if xg.calls != 1 {
 		t.Errorf("movie: xingguangji should be skipped (still called once for duanju above), calls=%d", xg.calls)
+	}
+}
+
+// blockingSrc 实现 MediaSource + TrendingCapable；Trending 阻塞在 proceed 上、用 atomic 计数，
+// 用于验证 singleflight 合并同 key 并发回源（回源只发生一次）。跟随 entertainment_test.go 的 atomic 风格。
+type blockingSrc struct {
+	name    string
+	items   []media.MediaInfo
+	calls   int32
+	proceed chan struct{}
+}
+
+func (b *blockingSrc) Name() string { return b.name }
+func (b *blockingSrc) Search(context.Context, string, int) ([]media.MediaInfo, error) {
+	return nil, nil
+}
+func (b *blockingSrc) Detail(context.Context, string) (*media.MediaInfo, error) { return nil, nil }
+func (b *blockingSrc) Trending(context.Context, string, int) ([]media.MediaInfo, error) {
+	atomic.AddInt32(&b.calls, 1)
+	<-b.proceed
+	return b.items, nil
+}
+
+// TestRecommendFeedsConcurrentDedup 验证 singleflight：N 个 goroutine 同时请求同一 key，
+// Trending 只被调用一次（其余共享 leader 结果）。若无 singleflight，calls 会涨到接近 N。
+func TestRecommendFeedsConcurrentDedup(t *testing.T) {
+	b := NewBase(module.New(), event.New())
+	src := &blockingSrc{
+		name:    "s1",
+		items:   []media.MediaInfo{{Source: "s1", Title: "A"}},
+		proceed: make(chan struct{}),
+	}
+	rc := NewRecommendChain(b, &MediaSourceProvider{sources: []media.MediaSource{src}})
+
+	const n = 50
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	results := make([][]media.MediaInfo, n)
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			<-start
+			results[i] = rc.RecommendFeeds(context.Background(), "", "movie", 1, false)
+		}(i)
+	}
+	close(start)
+
+	// 等 leader 进入 Trending（calls==1 且稳定），证明并发被合并到一次回源。
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if atomic.LoadInt32(&src.calls) >= 1 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	// 让一让让 waiter 们有机会「溜过去」直接调 Trending（若无 singleflight）。
+	time.Sleep(50 * time.Millisecond)
+	if got := atomic.LoadInt32(&src.calls); got != 1 {
+		t.Fatalf("expected exactly 1 in-flight Trending call (singleflight coalesce), got %d", got)
+	}
+	close(src.proceed)
+	wg.Wait()
+
+	if got := atomic.LoadInt32(&src.calls); got != 1 {
+		t.Errorf("after completion: expected 1 Trending call, got %d", got)
+	}
+	for i, r := range results {
+		if len(r) != 1 || r[0].Title != "A" {
+			t.Errorf("result[%d] = %+v, want one item A", i, r)
+		}
+	}
+
+	// 缓存已写：再次调用应命中缓存，不触发回源。
+	rc.RecommendFeeds(context.Background(), "", "movie", 1, false)
+	if got := atomic.LoadInt32(&src.calls); got != 1 {
+		t.Errorf("cached call should not re-fetch, calls=%d", got)
 	}
 }

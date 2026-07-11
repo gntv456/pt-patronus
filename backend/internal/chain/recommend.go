@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/media"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // 推荐信息流（热门/趋势）：并发扇出 + 内存缓存。
@@ -32,6 +34,7 @@ type RecommendChain struct {
 	provider *MediaSourceProvider
 	mu       sync.Mutex
 	cache    map[string]recommendCacheEntry
+	sf       singleflight.Group
 }
 
 // NewRecommendChain 构造；provider 与 MediaChain 共用同一份（按优先级顺序）。
@@ -40,22 +43,41 @@ func NewRecommendChain(b Base, provider *MediaSourceProvider) *RecommendChain {
 }
 
 // RecommendFeeds 取热门/趋势信息流。source 非空只取指定源（如 "douban"），
-// 否则扇出所有实现 TrendingCapable 的源并合并。force=true 绕过内存缓存。
+// 否则扇出所有实现 TrendingCapable 的源并合并。force=true 绕过内存缓存与 singleflight。
 // 各源并发（semaphore 4）、独立超时、容错（单源失败不影响其它）。
+// 非 force 时 miss 走 singleflight 合并同 key 并发回源（防击穿）。
 func (c *RecommendChain) RecommendFeeds(ctx context.Context, source, category string, page int, force bool) []media.MediaInfo {
 	if page < 1 {
 		page = 1
 	}
 	key := source + "|" + category + "|" + strconv.Itoa(page)
 	if !force {
+		// 快速路径：命中内存缓存直接返回（不经 singleflight）。
 		c.mu.Lock()
 		if e, ok := c.cache[key]; ok && time.Since(e.at) <= recommendMemTTL {
 			c.mu.Unlock()
 			return e.items
 		}
 		c.mu.Unlock()
+		// miss → singleflight 合并同 key 并发回源。
+		all, _ := sfDo(&c.sf, key, func() ([]media.MediaInfo, error) {
+			// double-check：leader 完成后紧随的 caller 会重跑 fn，此时缓存可能已满。
+			c.mu.Lock()
+			if e, ok := c.cache[key]; ok && time.Since(e.at) <= recommendMemTTL {
+				c.mu.Unlock()
+				return e.items, nil
+			}
+			c.mu.Unlock()
+			return c.fetchRecommend(ctx, source, category, page, key), nil
+		})
+		return all
 	}
+	// force=true 绕过缓存与 singleflight，强制回源并刷新缓存。
+	return c.fetchRecommend(ctx, source, category, page, key)
+}
 
+// fetchRecommend 扇出所有 TrendingCapable 源并合并结果；有结果时写入内存缓存。
+func (c *RecommendChain) fetchRecommend(ctx context.Context, source, category string, page int, key string) []media.MediaInfo {
 	sem := make(chan struct{}, recommendConcurrency)
 	var wg sync.WaitGroup
 	var mu sync.Mutex

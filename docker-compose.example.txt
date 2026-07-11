@@ -18,8 +18,9 @@ services:
       # TRUSTED_PROXIES: 172.16.0.0/12          # 反代后填其 CIDR
       # SECRET_KEY: openssl rand -base64 32 的输出        # 自控密钥；否则后端自动生成 + 持久化
       # ACTIVATION_SECRET: openssl rand -base64 32 的输出
-      # UPDATE_MANIFEST_URL: https://gist.githubusercontent.com/你/.../raw/update-manifest.json
-      #     ↑ 在线更新清单（gist raw）；配了客户端「检查更新」才有效，不配则关闭在线更新检查
+      # 在线更新：后端读这份 manifest 检查新版本（Web UI「设置→关于→检查更新」+ 客户端 OTA）。
+      # 官方托管在公开仓 raw，默认即用；想关掉检查就注释掉这行。
+      UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/gntv456/ptpatronus-plugin-market/main/update-manifest.json
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
     healthcheck:

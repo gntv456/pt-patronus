@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/site/medalwall"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // 勋章墙缓存参数（对齐旧版：内存 24h、DB 48h）。
@@ -85,7 +88,8 @@ type MedalChain struct {
 	notice *notice.Service
 	mu     sync.Mutex
 	cache  map[uint]medalCacheEntry
-	guard  *spendGuard // 买/佩戴 in-flight 去重（防双击重复扣站点魔力）
+	sf     singleflight.Group // 同 siteID 勋章墙并发抓取合并（防击穿）
+	guard  *spendGuard        // 买/佩戴 in-flight 去重（防双击重复扣站点魔力）
 }
 
 // NewMedalChain 构造。ns 为站内通知中心（价格提醒 P6 用；nil 跳过）。
@@ -111,14 +115,12 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 		wg.Add(1)
 		go func(i int, s models.Site) {
 			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
 			def := c.siteCh.defFor(&s)
 			slog.Debug("medal site check", "site", s.Name, "enabled", def.Medal.Enabled, "schema", def.Schema, "shop", def.Medal.ShopPath)
 			if !def.Medal.Enabled {
 				return // 该站未开启勋章墙抓取
 			}
-			items, errMsg := c.medalSite(ctx, &s, force)
+			items, errMsg := c.medalSite(ctx, sem, &s, force)
 			slog.Debug("medal site result", "site", s.Name, "items", len(items), "err", errMsg)
 			results[i] = siteRes{items: items, err: errMsg}
 		}(i, s)
@@ -140,9 +142,9 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 	return out
 }
 
-// MedalOne 单站强制网络刷新（写操作后调用）。
+// MedalOne 单站强制网络刷新（写操作后调用；单站不限并发，sem=nil）。
 func (c *MedalChain) MedalOne(ctx context.Context, s *models.Site) []MedalCard {
-	items, _ := c.medalSite(ctx, s, true)
+	items, _ := c.medalSite(ctx, nil, s, true)
 	out := make([]MedalCard, 0, len(items))
 	for _, it := range items {
 		out = append(out, itemToCard(s.ID, s.Name, it))
@@ -150,34 +152,62 @@ func (c *MedalChain) MedalOne(ctx context.Context, s *models.Site) []MedalCard {
 	return out
 }
 
-// medalSite 单站 3 级缓存：内存→DB→网络。返回（合并后勋章, 错误消息）。
-func (c *MedalChain) medalSite(ctx context.Context, s *models.Site, force bool) ([]medalwall.Item, string) {
+// medalSFResult 是勋章墙单次回源的 singleflight 结果（合并后勋章 + 展示用 errMsg）。
+type medalSFResult struct {
+	items  []medalwall.Item
+	errMsg string
+}
+
+// medalSite 单站 3 级缓存：内存→DB→网络。返回（合并后勋章, 错误消息）。sem 为聚合级并发闸
+// （nil 表示不限，单站用）。force=true 绕过缓存与 singleflight 直接网络回源；否则 miss 时
+// singleflight 合并同 siteID 并发回源（防击穿，sem 仅 leader 占用）。包整个回源——避免 waiter
+// 各自 BatchUpsert + 重复发通知（dispatchMedalChanges）。
+func (c *MedalChain) medalSite(ctx context.Context, sem chan struct{}, s *models.Site, force bool) ([]medalwall.Item, string) {
 	def := c.siteCh.defFor(s)
 	adapter := c.reg.Get(def.Schema)
 	if !adapter.Supported() {
 		return nil, "" // 该平台不支持勋章墙（如 MTeam 占位），静默
 	}
-
-	// 1. 内存缓存
-	if !force {
-		c.mu.Lock()
-		e, ok := c.cache[s.ID]
-		c.mu.Unlock()
-		if ok && time.Since(e.at) <= medalMemTTL {
-			return e.items, ""
-		}
+	if force {
+		return c.fetchMedalSite(ctx, sem, s, def, adapter)
 	}
-	// 2. DB 缓存（48h）
-	if !force {
+	// 快速路径：内存命中直接返回（不经 singleflight）。
+	c.mu.Lock()
+	e, ok := c.cache[s.ID]
+	c.mu.Unlock()
+	if ok && time.Since(e.at) <= medalMemTTL {
+		return e.items, ""
+	}
+	// miss → singleflight 合并同 siteID 并发回源。
+	res, _ := sfDo(&c.sf, strconv.Itoa(int(s.ID)), func() (medalSFResult, error) {
+		// double-check 内存：leader 完成后紧随的 caller 重跑 fn，缓存可能已满。
+		c.mu.Lock()
+		ce, ok := c.cache[s.ID]
+		c.mu.Unlock()
+		if ok && time.Since(ce.at) <= medalMemTTL {
+			return medalSFResult{items: ce.items}, nil
+		}
+		// double-check DB（48h）：另一调用可能在 leader 期间刚写 DB。
 		if latest, err := c.op.LatestFetchedAt(s.ID); err == nil && !latest.IsZero() && time.Since(latest) <= medalDBTTL {
 			items := medalsToItems(mustFindBySite(c.op, s.ID))
 			c.mu.Lock()
 			c.cache[s.ID] = medalCacheEntry{items: items, at: time.Now()}
 			c.mu.Unlock()
-			return items, ""
+			return medalSFResult{items: items}, nil
 		}
+		items, errMsg := c.fetchMedalSite(ctx, sem, s, def, adapter)
+		return medalSFResult{items: items, errMsg: errMsg}, nil
+	})
+	return res.items, res.errMsg
+}
+
+// fetchMedalSite 网络抓取勋章墙（FetchShop + discoverUID + FetchOwned）→ 合并 → BatchUpsert →
+// 价格变动通知 → 内存缓存。sem 非空时占一个槽（聚合级并发闸；nil 表示不限，单站用）。
+func (c *MedalChain) fetchMedalSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter medalwall.Adapter) ([]medalwall.Item, string) {
+	if sem != nil {
+		sem <- struct{}{}
+		defer func() { <-sem }()
 	}
-	// 3. 网络
 	siteCtx, cancel := context.WithTimeout(ctx, medalTimeout)
 	defer cancel()
 	cookie := c.siteCh.credential(s, def)
@@ -541,7 +571,7 @@ func (c *MedalChain) Buy(ctx context.Context, s *models.Site, medalID string) (m
 	}
 	if res.Success {
 		c.evict(s.ID)
-		_, _ = c.medalSite(ctx, s, true) // 重抓确认
+		_, _ = c.medalSite(ctx, nil, s, true) // 重抓确认
 	}
 	return res, nil
 }
@@ -576,7 +606,7 @@ func (c *MedalChain) formAction(ctx context.Context, s *models.Site, medalID, ac
 	}
 	if res.Success {
 		c.evict(s.ID)
-		_, _ = c.medalSite(ctx, s, true)
+		_, _ = c.medalSite(ctx, nil, s, true)
 	}
 	return res, nil
 }

@@ -577,9 +577,17 @@ func (h *EntertainmentHandler) FlipWS(c *gin.Context) {
 			}
 		}
 	}()
-	for ev := range events {
-		if err := conn.WriteJSON(ev); err != nil {
-			break
+	for {
+		select {
+		case ev, ok := <-events:
+			if !ok {
+				return // 上游关闭 events
+			}
+			if err := conn.WriteJSON(ev); err != nil {
+				return // 客户端写失败
+			}
+		case <-ctx.Done():
+			return // 客户端断开/请求取消（避免半开连接 events 停滞时永久阻塞 goroutine）
 		}
 	}
 }

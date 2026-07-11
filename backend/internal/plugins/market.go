@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -39,6 +40,12 @@ func (m *Manager) fetchRawMarket(ctx context.Context, source string) (*MarketInd
 	source = m.resolveMarketSource(source)
 	raw, err := readSource(ctx, source, maxPluginArchiveSize)
 	if err != nil {
+		// 本地默认市场源（data/plugin-market.json）不存在 = 用户未配置市场源：
+		// 返回空市场让前端引导点「设置仓库」配置 GitHub 源，而非把"no such file"当错误抛给用户。
+		// （http/远程源失败仍按错误返回——只有本地文件缺失才视为"未配置"。）
+		if errors.Is(err, fs.ErrNotExist) {
+			return &MarketIndex{Plugins: []MarketPlugin{}}, nil
+		}
 		return nil, err
 	}
 	var idx MarketIndex

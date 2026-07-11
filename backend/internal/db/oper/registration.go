@@ -19,11 +19,11 @@ func NewRegistrationOper(db *gorm.DB) *RegistrationOper {
 
 // RegistrationInput 是创建/更新监控目标的入参。
 type RegistrationInput struct {
-	Name       string `json:"name"`
-	URL        string `json:"url"`
-	SignupPath string `json:"signup_path"`
-	OpenText   string `json:"open_text"`
-	ClosedText string `json:"closed_text"`
+	Name       string `json:"name" binding:"max=64"`
+	URL        string `json:"url" binding:"max=255"`
+	SignupPath string `json:"signup_path" binding:"max=128"`
+	OpenText   string `json:"open_text" binding:"max=255"`
+	ClosedText string `json:"closed_text" binding:"max=2000"`
 	IsActive   bool   `json:"is_active"`
 }
 

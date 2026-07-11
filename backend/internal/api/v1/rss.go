@@ -18,21 +18,21 @@ func NewRssHandler(ch *chain.RssChain) *RssHandler { return &RssHandler{ch: ch} 
 
 // rssReq 创建/编辑订阅的请求体。
 type rssReq struct {
-	Name         string `json:"name"`
-	URL          string `json:"url"`
+	Name         string `json:"name" binding:"max=128"`
+	URL          string `json:"url" binding:"max=512"`
 	SiteID       uint   `json:"site_id"`
 	Enabled      bool   `json:"enabled"`
 	IntervalMin  int    `json:"interval_min"`
-	TitleInclude string `json:"title_include"`
-	TitleExclude string `json:"title_exclude"`
+	TitleInclude string `json:"title_include" binding:"max=2000"`
+	TitleExclude string `json:"title_exclude" binding:"max=2000"`
 	MinSize      int64  `json:"min_size"`
 	MaxSize      int64  `json:"max_size"`
-	Resolution   string `json:"resolution"`
+	Resolution   string `json:"resolution" binding:"max=32"`
 	AutoDownload bool   `json:"auto_download"`
 	DownloaderID uint   `json:"downloader_id"`
-	SavePath     string `json:"save_path"`
-	Category     string `json:"category"`
-	Tags         string `json:"tags"`
+	SavePath     string `json:"save_path" binding:"max=255"`
+	Category     string `json:"category" binding:"max=64"`
+	Tags         string `json:"tags" binding:"max=500"`
 }
 
 func applyRssReq(r *models.RssSubscription, in rssReq) {

@@ -22,12 +22,12 @@ func NewFileStorageOper(db *gorm.DB, c *security.Crypto) *FileStorageOper {
 
 // FileStorageInput 创建/更新入参。
 type FileStorageInput struct {
-	Name     string `json:"name"`
-	Type     string `json:"type"` // webdav | alist | smb | agent | local
-	URL      string `json:"url"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	BasePath string `json:"base_path"`
+	Name     string `json:"name" binding:"max=64"`
+	Type     string `json:"type" binding:"max=16"` // webdav | alist | smb | agent | local
+	URL      string `json:"url" binding:"max=255"`
+	Username string `json:"username" binding:"max=64"`
+	Password string `json:"password" binding:"max=512"`
+	BasePath string `json:"base_path" binding:"max=255"`
 	AgentID  uint   `json:"agent_id"` // type=agent 时关联 Agent；其他类型忽略
 }
 

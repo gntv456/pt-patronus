@@ -35,7 +35,7 @@ func (o *SiteOper) DecryptedPasskey(s *models.Site) string {
 type SiteInput struct {
 	Name          string `json:"name" binding:"required,min=1,max=64"`
 	Platform      string `json:"platform" binding:"required,min=1,max=32"`
-	Definition    string `json:"definition"`
+	Definition    string `json:"definition" binding:"max=64"`
 	BaseURL       string `json:"base_url" binding:"required,min=1,max=512"`
 	Cookie        string `json:"cookie" binding:"max=65536"`
 	APIKey        string `json:"api_key" binding:"max=256"`

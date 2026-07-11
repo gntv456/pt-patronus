@@ -35,7 +35,7 @@ func (h *AgentHandler) List(c *gin.Context) {
 // 两次写包在事务里——Agent 创建失败则 target 自动回滚，杜绝孤儿监控目标。
 func (h *AgentHandler) Create(c *gin.Context) {
 	var in struct {
-		Name string `json:"name"`
+		Name string `json:"name" binding:"max=64"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil || in.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})

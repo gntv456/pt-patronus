@@ -20,17 +20,17 @@ func NewSubscribeHandler(subCh *chain.SubscribeChain) *SubscribeHandler {
 
 // subReq 创建/编辑订阅的请求体。
 type subReq struct {
-	Source       string `json:"source"`
-	SourceID     string `json:"source_id"`
-	Title        string `json:"title"`
+	Source       string `json:"source" binding:"max=16"`
+	SourceID     string `json:"source_id" binding:"max=64"`
+	Title        string `json:"title" binding:"max=255"`
 	Year         int    `json:"year"`
-	Type         string `json:"type"`
-	Category     string `json:"category"`
-	PosterURL    string `json:"poster_url"`
-	Resolution   string `json:"resolution"`
+	Type         string `json:"type" binding:"max=16"`
+	Category     string `json:"category" binding:"max=16"`
+	PosterURL    string `json:"poster_url" binding:"max=512"`
+	Resolution   string `json:"resolution" binding:"max=32"`
 	DownloaderID uint   `json:"downloader_id"`
-	SavePath     string `json:"save_path"`
-	Status       string `json:"status"`
+	SavePath     string `json:"save_path" binding:"max=255"`
+	Status       string `json:"status" binding:"max=16"`
 }
 
 // List 列出全部订阅。

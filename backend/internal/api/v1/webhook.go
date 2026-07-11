@@ -35,9 +35,9 @@ func NewWebhookHandler(op *oper.WebhookOper, wfCh *chain.WorkflowChain, bus *eve
 
 // webhookReq 管理端创建/编辑请求体。Secret 为明文（由 oper 加密入库；空=不设/保留）。
 type webhookReq struct {
-	Name             string `json:"name"`
+	Name             string `json:"name" binding:"max=128"`
 	TargetWorkflowID uint   `json:"target_workflow_id"`
-	Secret           string `json:"secret"`
+	Secret           string `json:"secret" binding:"max=256"`
 	Enabled          bool   `json:"enabled"`
 }
 

@@ -18,13 +18,13 @@ func NewOpsConfigOper(db *gorm.DB) *OpsConfigOper {
 }
 
 type OpsConfigInput struct {
-	Key    string `json:"key"`
-	Name   string `json:"name"`
-	Env    string `json:"env"`
-	Format string `json:"format"`
-	Value  string `json:"value"`
-	Tags   string `json:"tags"`
-	Note   string `json:"note"`
+	Key    string `json:"key" binding:"max=128"`
+	Name   string `json:"name" binding:"max=64"`
+	Env    string `json:"env" binding:"max=32"`
+	Format string `json:"format" binding:"max=16"`
+	Value  string `json:"value" binding:"max=10000"`
+	Tags   string `json:"tags" binding:"max=255"`
+	Note   string `json:"note" binding:"max=2000"`
 }
 
 func (o *OpsConfigOper) List() ([]models.OpsConfig, error) {

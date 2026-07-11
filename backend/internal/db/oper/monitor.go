@@ -33,21 +33,21 @@ func (o *MonitorOper) WithTx(tx *gorm.DB) *MonitorOper {
 
 // TargetInput 创建/更新监控目标入参（凭据明文，由 Oper 加密）。
 type TargetInput struct {
-	Name         string `json:"name"`
-	Type         string `json:"type"` // host | nas | camera
-	Host         string `json:"host"`
+	Name         string `json:"name" binding:"max=64"`
+	Type         string `json:"type" binding:"max=16"` // host | nas | camera
+	Host         string `json:"host" binding:"max=255"`
 	Port         int    `json:"port"`
-	Vendor       string `json:"vendor"`
-	Protocol     string `json:"protocol"`
+	Vendor       string `json:"vendor" binding:"max=32"`
+	Protocol     string `json:"protocol" binding:"max=16"`
 	CredentialID uint   `json:"credential_id"`
-	RTSPURL      string `json:"rtsp_url"`
+	RTSPURL      string `json:"rtsp_url" binding:"max=512"`
 	IntervalSec  int    `json:"interval_sec"`
 	TimeoutSec   int    `json:"timeout_sec"`
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	PrivateKey   string `json:"private_key"` // SSH 私钥 PEM（明文，Oper 加密；空=不改/不设）
-	Thresholds   string `json:"thresholds"`
-	DiskPaths    string `json:"disk_paths"` // host+local：宿主 bind mount 目录（换行/逗号分隔）
+	Username     string `json:"username" binding:"max=256"`
+	Password     string `json:"password" binding:"max=512"`
+	PrivateKey   string `json:"private_key" binding:"max=8192"` // SSH 私钥 PEM（明文，Oper 加密；空=不改/不设）
+	Thresholds   string `json:"thresholds" binding:"max=5000"`
+	DiskPaths    string `json:"disk_paths" binding:"max=2000"` // host+local：宿主 bind mount 目录（换行/逗号分隔）
 	Enabled      bool   `json:"enabled"`
 }
 

@@ -20,13 +20,13 @@ func NewCredentialOper(db *gorm.DB, c *security.Crypto) *CredentialOper {
 }
 
 type CredentialInput struct {
-	Name       string `json:"name"`
-	Type       string `json:"type"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	PrivateKey string `json:"private_key"`
-	Tags       string `json:"tags"`
-	Note       string `json:"note"`
+	Name       string `json:"name" binding:"max=64"`
+	Type       string `json:"type" binding:"max=16"`
+	Username   string `json:"username" binding:"max=256"`
+	Password   string `json:"password" binding:"max=512"`
+	PrivateKey string `json:"private_key" binding:"max=8192"`
+	Tags       string `json:"tags" binding:"max=255"`
+	Note       string `json:"note" binding:"max=2000"`
 }
 
 func (o *CredentialOper) List() ([]models.OpsCredential, error) {

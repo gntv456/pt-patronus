@@ -19,11 +19,11 @@ func NewDownloaderOper(db *gorm.DB, c *security.Crypto) *DownloaderOper {
 
 // DownloaderInput 创建/更新下载器入参（密码明文，由 Oper 加密）。
 type DownloaderInput struct {
-	Name      string `json:"name"`
-	Type      string `json:"type"` // qb | tr
-	URL       string `json:"url"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
+	Name      string `json:"name" binding:"max=64"`
+	Type      string `json:"type" binding:"max=16"` // qb | tr
+	URL       string `json:"url" binding:"max=255"`
+	Username  string `json:"username" binding:"max=64"`
+	Password  string `json:"password" binding:"max=512"`
 	IsDefault bool   `json:"is_default"`
 }
 

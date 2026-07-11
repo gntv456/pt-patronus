@@ -21,11 +21,11 @@ func NewWorkflowHandler(ch *chain.WorkflowChain) *WorkflowHandler {
 
 // wfReq 创建/编辑工作流的请求体。Nodes/Edges/EventConditions 为前端数组，存库时序列化为 text。
 type wfReq struct {
-	Name            string          `json:"name"`
-	Description     string          `json:"description"`
-	TriggerType     string          `json:"trigger_type"`
-	Timer           string          `json:"timer"`
-	EventType       string          `json:"event_type"`
+	Name            string          `json:"name" binding:"max=128"`
+	Description     string          `json:"description" binding:"max=2000"`
+	TriggerType     string          `json:"trigger_type" binding:"max=16"`
+	Timer           string          `json:"timer" binding:"max=64"`
+	EventType       string          `json:"event_type" binding:"max=64"`
 	EventConditions json.RawMessage `json:"event_conditions"`
 	Enabled         bool            `json:"enabled"`
 	Nodes           json.RawMessage `json:"nodes"`

@@ -39,6 +39,8 @@ func (e *Email) Send(ctx context.Context, msg Message) error {
 	}
 	addr := net.JoinHostPort(e.host, strconv.Itoa(e.port))
 	title, body, link := splitContent(msg)
+	// 防邮件头注入：title(Subject) 含 CRLF 可注入额外头（如 Bcc 外泄），清洗为空格。
+	title = strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ").Replace(title)
 	content := body
 	if link != "" {
 		content += "\n\n" + link

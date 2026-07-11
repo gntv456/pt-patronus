@@ -30,7 +30,7 @@ type MessageResult struct {
 func (c *SiteChain) Messages(ctx context.Context, s *models.Site, mailbox site.MailboxType) ([]site.Message, error) {
 	def := c.defFor(s)
 	if !def.Messages.Enabled {
-		return nil, nil
+		return []site.Message{}, nil
 	}
 	token := c.credential(s, def)
 	var out []site.Message
@@ -60,6 +60,9 @@ func (c *SiteChain) Messages(ctx context.Context, s *models.Site, mailbox site.M
 		if out[i].ID == 0 {
 			out[i].ID = site.SynthesizeMsgID(s.ID, mailbox, i)
 		}
+	}
+	if out == nil {
+		out = []site.Message{}
 	}
 	return out, err
 }

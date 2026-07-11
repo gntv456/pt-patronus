@@ -26,7 +26,7 @@ func (h *HaremHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
 	res := h.ch.HaremAll(c.Request.Context(), force)
 	if res == nil {
-		c.JSON(http.StatusOK, &chain.HaremResult{})
+		c.JSON(http.StatusOK, &chain.HaremResult{Prescriptions: []site.PrescriptionItem{}})
 		return
 	}
 	c.JSON(http.StatusOK, res)

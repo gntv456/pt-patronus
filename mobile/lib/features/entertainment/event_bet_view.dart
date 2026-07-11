@@ -38,6 +38,8 @@ class _EventBetViewState extends State<EventBetView> {
       ]);
       _events = results[0] as List<BetEvent>;
       _balance = (results[1] as GameStats).balance;
+    } catch (_) {
+      _events = <BetEvent>[];
     } finally {
       if (mounted) setState(() => _loading = false);
     }

@@ -361,7 +361,7 @@ class _JggGameViewState extends State<JggGameView> {
 
   Color _color(String hex) {
     final h = hex.replaceAll('#', '');
-    return Color(int.parse('FF$h', radix: 16));
+    return Color(int.tryParse('FF$h', radix: 16) ?? 0xFF6366F1);
   }
 
   Widget _resultView(PlayResult r) => Container(

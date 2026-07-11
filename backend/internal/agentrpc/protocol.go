@@ -23,7 +23,7 @@ type Command struct {
 type Response struct {
 	OK      bool      `json:"ok"`
 	Err     string    `json:"err,omitempty"`
-	Entries []Entry   `json:"entries,omitempty"` // op=list
+	Entries []Entry   `json:"entries"` // op=list
 	ModTime time.Time `json:"mod_time,omitempty"`
 }
 

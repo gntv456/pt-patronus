@@ -238,7 +238,7 @@ export function parseMetrics(s: MetricSnapshot): Metrics | null {
 }
 
 export const monitorApi = {
-  list: () => http.get<{ targets: MonitorTarget[] }>('/monitors').then((r) => r.data.targets),
+  list: () => http.get<{ targets: MonitorTarget[] }>('/monitors').then((r) => r.data.targets ?? []),
   create: (input: TargetInput) => http.post<MonitorTarget>('/monitors', input).then((r) => r.data),
   update: (id: number, input: TargetInput) =>
     http.put<MonitorTarget>(`/monitors/${id}`, input).then((r) => r.data),
@@ -265,11 +265,11 @@ export const monitorApi = {
   metrics: (id: number, since?: string, limit?: number) =>
     http
       .get<{ snapshots: MetricSnapshot[] }>(`/monitors/${id}/metrics`, { params: { since, limit } })
-      .then((r) => r.data.snapshots),
+      .then((r) => r.data.snapshots ?? []),
   alerts: (targetId?: number, unread = false) =>
     http
       .get<{ alerts: MonitorAlert[] }>('/monitor/alerts', { params: { target_id: targetId, unread } })
-      .then((r) => r.data.alerts),
+      .then((r) => r.data.alerts ?? []),
   readAlert: (id: number) => http.post(`/monitor/alerts/${id}/read`).then((r) => r.data),
   ackAlert: (id: number) => http.post(`/monitor/alerts/${id}/ack`).then((r) => r.data),
   silenceAlert: (id: number, minutes = 30) =>
@@ -285,7 +285,7 @@ export const commandRunApi = {
   list: (limit = 20, source?: string) =>
     http
       .get<{ runs: CommandRun[] }>('/ops/command-runs', { params: { limit, source } })
-      .then((r) => r.data.runs),
+      .then((r) => r.data.runs ?? []),
   get: (id: number) => http.get<CommandRun>(`/ops/command-runs/${id}`).then((r) => r.data),
   create: (input: CommandRunInput) =>
     http
@@ -296,7 +296,7 @@ export const commandRunApi = {
 }
 
 export const credentialApi = {
-  list: () => http.get<{ credentials: OpsCredential[] }>('/ops/credentials').then((r) => r.data.credentials),
+  list: () => http.get<{ credentials: OpsCredential[] }>('/ops/credentials').then((r) => r.data.credentials ?? []),
   create: (input: OpsCredentialInput) => http.post<OpsCredential>('/ops/credentials', input).then((r) => r.data),
   update: (id: number, input: OpsCredentialInput) =>
     http.put<OpsCredential>(`/ops/credentials/${id}`, input).then((r) => r.data),
@@ -304,13 +304,13 @@ export const credentialApi = {
 }
 
 export const opsConfigApi = {
-  list: () => http.get<{ configs: OpsConfig[] }>('/ops/configs').then((r) => r.data.configs),
+  list: () => http.get<{ configs: OpsConfig[] }>('/ops/configs').then((r) => r.data.configs ?? []),
   create: (input: OpsConfigInput) => http.post<OpsConfig>('/ops/configs', input).then((r) => r.data),
   update: (id: number, input: OpsConfigInput) =>
     http.put<OpsConfig>(`/ops/configs/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/ops/configs/${id}`).then((r) => r.data),
   history: (id: number) =>
-    http.get<{ history: OpsConfigHistory[] }>(`/ops/configs/${id}/history`).then((r) => r.data.history),
+    http.get<{ history: OpsConfigHistory[] }>(`/ops/configs/${id}/history`).then((r) => r.data.history ?? []),
 }
 
 // Agent — push 架构的被监控 agent（per-agent secret 鉴权，1:1 关联 MonitorTarget；明文 secret 不回传）。
@@ -329,7 +329,7 @@ export interface Agent {
 }
 
 export const agentApi = {
-  list: () => http.get<{ agents: Agent[] }>('/monitors/agents').then((r) => r.data.agents),
+  list: () => http.get<{ agents: Agent[] }>('/monitors/agents').then((r) => r.data.agents ?? []),
   create: (name: string) =>
     http.post<{ agent: Agent; plain_secret: string }>('/monitors/agents', { name }).then((r) => r.data),
   remove: (id: number) => http.delete(`/monitors/agents/${id}`).then((r) => r.data),

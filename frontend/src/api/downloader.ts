@@ -107,13 +107,13 @@ export interface AddOptions {
 }
 
 export const downloaderApi = {
-  list: () => http.get<{ downloaders: Downloader[] }>('/downloaders').then((r) => r.data.downloaders),
+  list: () => http.get<{ downloaders: Downloader[] }>('/downloaders').then((r) => r.data.downloaders ?? []),
   create: (input: DownloaderInput) => http.post<Downloader>('/downloaders', input).then((r) => r.data),
   update: (id: number, input: DownloaderInput) => http.put(`/downloaders/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/downloaders/${id}`).then((r) => r.data),
   test: (id: number) => http.post<DownloaderResult>(`/downloaders/${id}/test`).then((r) => r.data),
   torrents: (id: number) =>
-    http.get<{ torrents: Torrent[] }>(`/downloaders/${id}/torrents`).then((r) => r.data.torrents),
+    http.get<{ torrents: Torrent[] }>(`/downloaders/${id}/torrents`).then((r) => r.data.torrents ?? []),
   add: (id: number, url: string, opts: AddOptions = {}) =>
     http.post<DownloaderResult>(`/downloaders/${id}/torrents`, { url, ...opts }).then((r) => r.data),
   /** 上传 .torrent 文件（FormData；axios 自动设 multipart boundary，勿手动设 Content-Type） */

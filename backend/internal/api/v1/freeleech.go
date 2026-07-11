@@ -89,5 +89,5 @@ func (h *AnnouncementHandler) SyncOne(c *gin.Context) {
 		r.Items = ann.Items
 		r.FetchedAt = ann.FetchedAt
 	}
-	c.JSON(http.StatusOK, r)
+	c.JSON(http.StatusOK, r.Normalize())
 }

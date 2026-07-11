@@ -126,9 +126,9 @@ function hitSummary() {
   let sites = 0
   let total = 0
   for (const s of findResults.value) {
-    if (!s.error && s.torrents.length) {
+    if (!s.error && s.torrents?.length) {
       sites++
-      total += s.torrents.length
+      total += (s.torrents?.length ?? 0)
     }
   }
   return { sites, total }
@@ -232,10 +232,10 @@ onMounted(() => load())
           <div class="find-site-name">
             <span class="site-tag">{{ s.site_name }}</span>
             <span v-if="s.error" class="err">{{ s.error }}</span>
-            <span v-else-if="!s.torrents.length" class="text-muted">未命中</span>
-            <span v-else class="text-muted">{{ s.torrents.length }} 条</span>
+            <span v-else-if="!s.torrents?.length" class="text-muted">未命中</span>
+            <span v-else class="text-muted">{{ s.torrents?.length ?? 0 }} 条</span>
           </div>
-          <div v-for="(t, j) in s.torrents.slice(0, 5)" :key="j" class="find-torr">
+          <div v-for="(t, j) in (s.torrents ?? []).slice(0, 5)" :key="j" class="find-torr">
             <span class="ft-title">{{ t.title }}</span>
             <span class="ft-meta">{{ t.size }} · {{ t.seeders }} 种</span>
           </div>

@@ -31,7 +31,7 @@ export interface SubInput {
 
 export const subscribeApi = {
   list: () =>
-    http.get<{ subscriptions: Subscription[] }>('/subscriptions').then((r) => r.data.subscriptions),
+    http.get<{ subscriptions: Subscription[] }>('/subscriptions').then((r) => r.data.subscriptions ?? []),
   create: (data: SubInput) => http.post<Subscription>('/subscriptions', data).then((r) => r.data),
   update: (id: number, patch: Partial<Pick<Subscription, 'resolution' | 'status' | 'downloader_id' | 'save_path'>>) =>
     http.put<Subscription>(`/subscriptions/${id}`, patch).then((r) => r.data),

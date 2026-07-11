@@ -18,7 +18,7 @@ const last = ref<PlayResult | null>(null)
 
 // 选项按赔率升序（热门在前，更直观）。
 const sortedOptions = computed(() =>
-  detail.value ? [...detail.value.options].sort((a, b) => a.odds - b.odds) : [],
+  detail.value ? [...(detail.value.options || [])].sort((a, b) => a.odds - b.odds) : [],
 )
 
 async function refresh() {

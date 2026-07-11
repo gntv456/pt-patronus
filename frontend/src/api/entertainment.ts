@@ -314,7 +314,7 @@ export interface FarmState {
 export const entertainmentApi = {
   /** 某站点可玩的游戏 */
   games: (siteId: number) =>
-    http.get<{ games: Game[] }>(`/entertainment/${siteId}/games`).then((r) => r.data.games),
+    http.get<{ games: Game[] }>(`/entertainment/${siteId}/games`).then((r) => r.data.games ?? []),
   /** 玩一次 */
   play: (siteId: number, game: string) =>
     http.post<PlayResult>(`/entertainment/${siteId}/play`, { game }).then((r) => r.data),
@@ -330,7 +330,7 @@ export const entertainmentApi = {
   buyOptions: (siteId: number, game: string) =>
     http
       .get<{ options: BuyOption[] }>(`/entertainment/${siteId}/games/${game}/buy-options`)
-      .then((r) => r.data.options),
+      .then((r) => r.data.options ?? []),
   /** 购卡 */
   buy: (siteId: number, game: string, optionType: number) =>
     http
@@ -340,17 +340,17 @@ export const entertainmentApi = {
   prizes: (siteId: number, game: string) =>
     http
       .get<{ prizes: PrizeDef[] }>(`/entertainment/${siteId}/games/${game}/prizes`)
-      .then((r) => r.data.prizes),
+      .then((r) => r.data.prizes ?? []),
   /** 抽奖记录 */
   history: (siteId: number, game: string) =>
     http
       .get<{ records: GameRecord[] }>(`/entertainment/${siteId}/games/${game}/history`)
-      .then((r) => r.data.records),
+      .then((r) => r.data.records ?? []),
   /** 卡牌合成目标列表（含碎片库存） */
   syntheses: (siteId: number, game: string) =>
     http
       .get<{ targets: SynthesisTarget[] }>(`/entertainment/${siteId}/games/${game}/syntheses`)
-      .then((r) => r.data.targets),
+      .then((r) => r.data.targets ?? []),
   /** 抽碎片（1/10/100/其它） */
   draw: (siteId: number, game: string, synthesisId: number, count: number) =>
     http
@@ -368,7 +368,7 @@ export const entertainmentApi = {
       .then((r) => r.data),
   /** 勋章金字塔（六十四卦） */
   medalTree: (siteId: number, game: string) =>
-    http.get<{ nodes: MedalNode[] }>(`/entertainment/${siteId}/games/${game}/medal-tree`).then((r) => r.data.nodes),
+    http.get<{ nodes: MedalNode[] }>(`/entertainment/${siteId}/games/${game}/medal-tree`).then((r) => r.data.nodes ?? []),
   /** 阳爻/阴爻碎片余额 */
   medalShards: (siteId: number, game: string) =>
     http.get<{ shards: MedalShard }>(`/entertainment/${siteId}/games/${game}/medal-shards`).then((r) => r.data.shards),
@@ -401,7 +401,7 @@ export const entertainmentApi = {
     http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bet`, req).then((r) => r.data),
   /** 赛事押注：列竞猜主题 */
   events: (siteId: number, game: string) =>
-    http.get<{ events: BetEvent[] }>(`/entertainment/${siteId}/games/${game}/events`).then((r) => r.data.events),
+    http.get<{ events: BetEvent[] }>(`/entertainment/${siteId}/games/${game}/events`).then((r) => r.data.events ?? []),
   /** 赛事押注：某主题盘口（选项+赔率） */
   eventDetail: (siteId: number, game: string, eventId: number) =>
     http.get<BetEventDetail>(`/entertainment/${siteId}/games/${game}/events/${eventId}`).then((r) => r.data),
@@ -415,7 +415,7 @@ export const entertainmentApi = {
   bigsmallChat: (siteId: number, game: string, since: number) =>
     http
       .get<{ chat: BigSmallChat[] }>(`/entertainment/${siteId}/games/${game}/bigsmall-chat`, { params: { since } })
-      .then((r) => r.data.chat),
+      .then((r) => r.data.chat ?? []),
   /** 猜大小发聊天 */
   bigsmallSendChat: (siteId: number, game: string, message: string) =>
     http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-chat`, { message }).then((r) => r.data),

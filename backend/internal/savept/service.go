@@ -55,6 +55,12 @@ func (s *Service) Fetch(ctx context.Context, force bool) (*Result, error) {
 			slog.Warn("savept fetch failed, serving stale cache", "err", err)
 		} else {
 			cards, alerts := parseSavept(string(body))
+			if cards == nil {
+				cards = []SaveptSiteCard{}
+			}
+			if alerts == nil {
+				alerts = []SaveptAlert{}
+			}
 			base = &Result{
 				Cards:     cards,
 				Alerts:    alerts,

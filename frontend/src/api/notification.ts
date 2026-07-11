@@ -49,7 +49,7 @@ export interface WechatQRStatus {
 }
 
 export const notificationApi = {
-  channels: () => http.get<{ channels: string[] }>('/notification/channels').then((r) => r.data.channels),
+  channels: () => http.get<{ channels: string[] }>('/notification/channels').then((r) => r.data.channels ?? []),
   test: (title: string, body = '') =>
     http
       .post<{ channels: string[]; results: NotifySendResult[] }>('/notification/test', { title, body })

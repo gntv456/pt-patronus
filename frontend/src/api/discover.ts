@@ -8,5 +8,5 @@ export const discoverApi = {
       .get<{ results: MediaInfo[] }>('/media/discover', {
         params: { keyword, year, source },
       })
-      .then((r) => r.data.results),
+      .then((r) => r.data.results ?? []),
 }

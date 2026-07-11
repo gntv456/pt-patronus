@@ -29,7 +29,7 @@ class _BlackjackGameViewState extends State<BlackjackGameView> {
     try {
       _state = await _api.blackjack(widget.siteId, widget.game, action);
       if (!mounted) return;
-      if (_state!.message.isNotEmpty) {
+      if (_state?.message.isNotEmpty == true) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_state!.message)));
       }
     } catch (e) {

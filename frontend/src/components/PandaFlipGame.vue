@@ -101,6 +101,7 @@ async function connectFlipWs() {
 // 收到他人翻格事件：标记该格已翻 + 记入本局记录（已存在则跳过，去重）
 function applyTileFlip(index: number, tierId: string, tierName: string, player: string) {
   if (!state.value) return
+  if (!state.value.tiles) state.value.tiles = []
   if (state.value.tiles.some((t) => t.index === index)) return
   state.value.tiles.push({ index, flipped: true, tier_id: tierId, by_user: player })
   state.value.flipped_count = (state.value.flipped_count ?? 0) + 1

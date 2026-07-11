@@ -34,7 +34,7 @@ type wfReq struct {
 
 // workflowResponse 把 text 列还原为数组返回前端（节点/连线/条件/执行日志）。
 func workflowResponse(wf *models.Workflow) gin.H {
-	var nodes, edges, conds any
+	nodes, edges, conds := []any{}, []any{}, []any{}
 	if wf.Nodes != "" {
 		_ = json.Unmarshal([]byte(wf.Nodes), &nodes)
 	}
@@ -54,7 +54,7 @@ func workflowResponse(wf *models.Workflow) gin.H {
 }
 
 func runResponse(r *models.WorkflowRun) gin.H {
-	var execs any
+	execs := []any{}
 	if r.NodeExecutions != "" {
 		_ = json.Unmarshal([]byte(r.NodeExecutions), &execs)
 	}

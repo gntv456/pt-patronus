@@ -39,6 +39,9 @@ func (h *NotificationHandler) Test(c *gin.Context) {
 	results := h.notif.Notify(c.Request.Context(), notification.Message{
 		Title: req.Title, Body: req.Body, Level: req.Level,
 	})
+	if results == nil {
+		results = []notification.SendResult{}
+	}
 	c.JSON(http.StatusOK, gin.H{"channels": h.mgr.Channels(), "results": results})
 }
 

@@ -28,7 +28,7 @@ export interface MediaInfo {
 
 export const mediaApi = {
   search: (keyword: string, year = 0) =>
-    http.get<{ results: MediaInfo[] }>(`/media/search`, { params: { keyword, year } }).then((r) => r.data.results),
+    http.get<{ results: MediaInfo[] }>(`/media/search`, { params: { keyword, year } }).then((r) => r.data.results ?? []),
   detail: (source: string, id: string) =>
     http.get<{ result: MediaInfo }>(`/media/detail`, { params: { source, id } }).then((r) => r.data.result),
   poster: (keyword: string, year = 0) =>

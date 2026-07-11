@@ -46,6 +46,15 @@ type AnnouncementResult struct {
 	Error     string                  `json:"error,omitempty"`
 }
 
+// Normalize 保证 Items 非 nil：单站 SyncOne 在公告禁用/抓取失败时 ann 为 nil，
+// r.Items 保持零值 nil → 序列化 "items":null 致前端 .length 崩，兜底为 []。
+func (r AnnouncementResult) Normalize() AnnouncementResult {
+	if r.Items == nil {
+		r.Items = []site.AnnouncementItem{}
+	}
+	return r
+}
+
 // Freeleech 抓取单站全站免费/促销（适配器需实现 site.FreeleechCapable）。
 func (c *SiteChain) Freeleech(ctx context.Context, s *models.Site) ([]site.SiteFreeleech, error) {
 	def := c.defFor(s)
@@ -96,6 +105,9 @@ func (c *SiteChain) Announcements(ctx context.Context, s *models.Site) (*site.Si
 	if out != nil {
 		out.SiteID = s.ID
 		out.SiteName = s.Name
+		if out.Items == nil {
+			out.Items = []site.AnnouncementItem{}
+		}
 	}
 	return out, err
 }

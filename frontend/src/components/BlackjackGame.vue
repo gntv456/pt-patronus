@@ -59,14 +59,14 @@ onMounted(() => act('new'))
         <div class="who">庄家</div>
         <div class="cards">
           <span v-for="(c, i) in state.dealer_cards" :key="'d' + i" class="card">{{ c }}</span>
-          <span v-if="!state.dealer_cards.length" class="text-muted">—</span>
+          <span v-if="!state.dealer_cards?.length" class="text-muted">—</span>
         </div>
       </div>
       <div class="player">
         <div class="who">玩家</div>
         <div class="cards">
           <span v-for="(c, i) in state.player_cards" :key="'p' + i" class="card">{{ c }}</span>
-          <span v-if="!state.player_cards.length" class="text-muted">—</span>
+          <span v-if="!state.player_cards?.length" class="text-muted">—</span>
         </div>
       </div>
       <div v-if="resultText" class="result-tag" :class="state.result">{{ resultText }}</div>

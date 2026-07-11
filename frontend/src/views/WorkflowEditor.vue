@@ -75,8 +75,8 @@ async function load() {
       timer.value = wf.timer || '*/30 * * * *'
       eventType.value = wf.event_type
       enabled.value = wf.enabled
-      setNodes(wf.nodes.map(toVFNode))
-      setEdges(wf.edges.map(toVFEdge))
+      setNodes((wf.nodes ?? []).map(toVFNode))
+      setEdges((wf.edges ?? []).map(toVFEdge))
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '加载工作流失败')
     }
@@ -261,8 +261,8 @@ function applyTemplate(t: WorkflowTemplate) {
   triggerType.value = (t.trigger_type as any) || 'manual'
   timer.value = t.timer || '*/30 * * * *'
   enabled.value = false
-  setNodes(t.nodes.map(toVFNode))
-  setEdges(t.edges.map(toVFEdge))
+  setNodes((t.nodes ?? []).map(toVFNode))
+  setEdges((t.edges ?? []).map(toVFEdge))
   showTemplates.value = false
   ElMessage.success('已载入模板，编辑后保存')
 }

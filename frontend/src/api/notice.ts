@@ -22,7 +22,7 @@ export const noticeApi = {
   list: (unread = false) =>
     http
       .get<{ notices: Notice[] }>(`/notices${unread ? '?unread=true' : ''}`)
-      .then((r) => r.data.notices),
+      .then((r) => r.data.notices ?? []),
   read: (id: number) => http.post(`/notices/${id}/read`).then((r) => r.data),
   readAll: () => http.post('/notices/read-all').then((r) => r.data),
   clear: () => http.post('/notices/clear').then((r) => r.data),

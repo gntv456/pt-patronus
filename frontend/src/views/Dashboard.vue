@@ -188,7 +188,7 @@ const exportData = computed<DashboardShareData | null>(() => {
       seeding_size: overview.value.totals.seeding_size,
       bonus: overview.value.totals.bonus,
     },
-    sites: overview.value.sites.map((s) => ({
+    sites: (overview.value.sites ?? []).map((s) => ({
       site_id: s.site_id,
       site_name: s.site_name,
       username: s.username,
@@ -392,7 +392,7 @@ onMounted(load)
       </div>
     </div>
 
-    <div v-if="!loading && overview && !overview.sites.length" class="setup-card glass">
+    <div v-if="!loading && overview && !(overview.sites?.length)" class="setup-card glass">
       <EmptyState
         icon="🧭"
         title="还没有可展示的站点数据"

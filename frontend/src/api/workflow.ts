@@ -161,7 +161,7 @@ export const workflowApi = {
   reset: (id: number) => http.post(`/workflows/${id}/reset`).then((r) => r.data),
   runs: (workflowId: number, limit = 20) =>
     http.get<{ runs: WorkflowRun[] }>('/workflow-runs', { params: { workflow_id: workflowId, limit } }).then(
-      (r) => r.data.runs,
+      (r) => r.data.runs ?? [],
     ),
   runDetail: (rid: number) => http.get<WorkflowRun>(`/workflow-runs/${rid}`).then((r) => r.data),
 }

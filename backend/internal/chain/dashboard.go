@@ -112,7 +112,9 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 		return nil, err
 	}
 
-	out := &DashboardOverview{}
+	// Sites 预分配空切片：无站点时 nil slice 会被 json.Marshal 序列化成 "sites":null，
+	// 前端裸访问 overview.sites.length 会抛 "Cannot read properties of null"。
+	out := &DashboardOverview{Sites: make([]SiteStatItem, 0, len(sites))}
 	out.DownloaderCount = len(dls)
 
 	// 单 SQL 取每站最新统计（MAX(id) GROUP BY site_id），避免 N+1（原每站一次 First +

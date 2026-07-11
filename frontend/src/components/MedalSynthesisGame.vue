@@ -174,7 +174,7 @@ onMounted(loadAll)
                 <span class="cur">{{ f.current }}</span>/<span class="req">{{ f.required }}</span>
               </div>
             </div>
-            <div v-if="!selected.fragments.length" class="text-muted frag-empty">无碎片数据</div>
+            <div v-if="!(selected?.fragments?.length)" class="text-muted frag-empty">无碎片数据</div>
           </div>
 
           <!-- 操作按钮 -->

@@ -67,25 +67,25 @@ export interface CheckinRecord {
 }
 
 export const siteApi = {
-  list: () => http.get<{ sites: Site[] }>('/sites').then((r) => r.data.sites),
+  list: () => http.get<{ sites: Site[] }>('/sites').then((r) => r.data.sites ?? []),
   definitions: () =>
-    http.get<{ definitions: SiteDef[] }>('/sites/definitions').then((r) => r.data.definitions),
+    http.get<{ definitions: SiteDef[] }>('/sites/definitions').then((r) => r.data.definitions ?? []),
   create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
   update: (id: number, input: SiteInput) => http.put<Site>(`/sites/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/sites/${id}`).then((r) => r.data),
   test: (id: number) => http.post<TestResult>(`/sites/${id}/test`).then((r) => r.data),
   checkin: (id: number) => http.post<CheckinResult>(`/sites/${id}/checkin`).then((r) => r.data),
   checkinAll: () =>
-    http.post<{ results: CheckinResult[] }>('/sites/checkin').then((r) => r.data.results),
+    http.post<{ results: CheckinResult[] }>('/sites/checkin').then((r) => r.data.results ?? []),
   records: (siteId?: number, limit = 100, offset = 0) => {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
     if (siteId) params.set('site_id', String(siteId))
     return http
       .get<{ records: CheckinRecord[] }>(`/sites/checkin/records?${params.toString()}`)
-      .then((r) => r.data.records)
+      .then((r) => r.data.records ?? [])
   },
   search: (id: number, keyword: string) =>
     http.post<{ torrents: unknown[] }>(`/sites/${id}/search?keyword=${encodeURIComponent(keyword)}`).then(
-      (r) => r.data.torrents,
+      (r) => r.data.torrents ?? [],
     ),
 }

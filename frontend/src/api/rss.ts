@@ -56,12 +56,12 @@ export interface RssItem {
 }
 
 export const rssApi = {
-  list: () => http.get<{ subscriptions: RssSubscription[] }>('/rss').then((r) => r.data.subscriptions),
+  list: () => http.get<{ subscriptions: RssSubscription[] }>('/rss').then((r) => r.data.subscriptions ?? []),
   create: (data: RssInput) => http.post<RssSubscription>('/rss', data).then((r) => r.data),
   update: (id: number, data: RssInput) => http.put<RssSubscription>(`/rss/${id}`, data).then((r) => r.data),
   remove: (id: number) => http.delete(`/rss/${id}`).then((r) => r.data),
   check: (id: number) =>
     http.post<{ ok: boolean; new_count: number; error?: string }>(`/rss/${id}/check`).then((r) => r.data),
   items: (id: number, limit = 100) =>
-    http.get<{ items: RssItem[] }>(`/rss/${id}/items`, { params: { limit } }).then((r) => r.data.items),
+    http.get<{ items: RssItem[] }>(`/rss/${id}/items`, { params: { limit } }).then((r) => r.data.items ?? []),
 }

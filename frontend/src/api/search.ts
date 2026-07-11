@@ -37,6 +37,6 @@ export const searchApi = {
     if (siteIds.length) params.site_ids = siteIds.join(',')
     return http
       .post<{ results: SiteSearchResult[] }>('/search', null, { params })
-      .then((r) => r.data.results)
+      .then((r) => r.data.results ?? [])
   },
 }

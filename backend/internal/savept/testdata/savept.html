@@ -6,21 +6,44 @@
 
 <div class="year-group"><h2>2020 年</h2> (5 个站点)</div>
 
-<a class="card-link" href="https://example.pt" data-name="示例站" data-year="2020" data-status="healthy" data-type="internal" data-search="https://example.pt/torrents.php" data-anniversary="yes" data-opentime="2020-03-15" data-closetime="">
-  <span class="status-strip" title="正常运行">正常运行</span>
-  <span class="card-title">示例站</span>
-  <span class="anniversary-badge">今天站庆</span>
-  <span class="duration-badge">运营 5 年</span>
-  <img src="https://example.pt/favicon.ico">
+<!-- 健康：status-strip 文本为空，状态在 title（真实结构） -->
+<a class="card-link" href="https://example.pt" data-year="2020" data-status="online" data-type="internal" data-search="https://example.pt/torrents.php" data-anniversary="yes">
+	<div class="card" data-opentime="2020-03-15" data-closetime="未知">
+		<div class="status-strip bg-on" title="运行中">
+		</div>
+		<span class="anniversary-badge">今天站庆</span>
+		<span class="duration-badge">运营 5 年</span>
+		<img src="https://example.pt/favicon.ico">
+		<div class="card-title">示例站</div>
+	</div>
 </a>
 
-<a class="card-link" href="https://critical.pt" data-name="病危站" data-year="2018" data-status="critical" data-type="internal" data-anniversary="no" data-opentime="2018-06-01" data-closetime="">
-  <span class="status-strip" title="抢救中">抢救中</span>
-  <span class="anniversary-badge">建站 7 周年</span>
+<!-- 病危(抢救中)：卡片 status-strip 是「运行中」(健康)，但出现在病危通知 → 回填 critical -->
+<a class="card-link" href="https://critical.pt" data-year="2018" data-status="online" data-type="internal" data-anniversary="no">
+	<div class="card" data-opentime="2018-06-01" data-closetime="未知">
+		<div class="status-strip bg-on" title="运行中">
+		</div>
+		<div class="anniversary-badge">建站 7 周年</div>
+		<div class="card-title">病危站</div>
+	</div>
 </a>
 
-<a class="card-link" href="https://closed.pt" data-name="关站示例" data-year="2019" data-status="closed" data-type="external" data-anniversary="no" data-opentime="2019-01-01" data-closetime="2024-12-31">
-  <span class="status-strip" title="已关站">已关站</span>
+<!-- 病危(故障)：status-strip title=故障中 → critical（title 路径）；不在抢救回填中 -->
+<a class="card-link" href="https://critical2.pt" data-year="2019" data-status="down" data-type="internal" data-anniversary="no">
+	<div class="card" data-opentime="2019-01-01" data-closetime="未知">
+		<div class="status-strip bg-down" title="故障中">
+		</div>
+		<div class="card-title">临界站</div>
+	</div>
+</a>
+
+<!-- 已关站：status-strip title=已关站 → closed -->
+<a class="card-link" href="https://closed.pt" data-year="0000" data-status="offline" data-type="external" data-anniversary="no">
+	<div class="card" data-opentime="2019-01-01" data-closetime="2024-12-31">
+		<div class="status-strip bg-closed" title="已关站">
+		</div>
+		<div class="card-title">关站示例</div>
+	</div>
 </a>
 
 <div class="footer">联系方式：如有数据疑问、站点遗漏欢迎联系监护员，E-Mail / Telegram。死亡讣告区块下方不应出现此段。</div>

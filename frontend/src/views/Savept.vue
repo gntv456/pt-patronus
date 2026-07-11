@@ -96,8 +96,13 @@ function mpMeta(card: SaveptSiteCard) {
 }
 function formatFetchedAt(s: string) {
   if (!s) return ''
-  // Go time.Time → "2026-06-28T12:34:56..." 取前 16 位并替换 T
-  return s.length >= 16 ? s.slice(0, 16).replace('T', ' ') : s
+  // 后端 time.Now() 按服务器时区序列化（容器多为 UTC，带 Z/+00:00 偏移）。
+  // 不能直接截断字符串——那样会丢掉偏移、显示成 UTC 壁钟时间（比北京晚 8h）。
+  // 用 Date 解析成绝对时刻，再按浏览器本地时区（中国用户即 UTC+8）格式化。
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 const filteredSites = computed(() =>
@@ -193,7 +198,13 @@ async function refresh() {
     data.value = await saveptApi.get(true)
     fetchedAt.value = formatFetchedAt(data.value.fetched_at)
     warning.value = data.value.stale ? data.value.notice || '' : ''
-    pushMessage('数据已刷新', 'success')
+    // 源站被拦截时后端降级返回旧缓存（fetched_at 不变），须诚实提示，否则用户看到
+    // 「数据已刷新」但刷新时间没变化会困惑。
+    if (data.value.stale) {
+      pushMessage('刷新失败：源站可能被拦截，仍显示缓存数据', 'error')
+    } else {
+      pushMessage('数据已刷新', 'success')
+    }
   } catch (e: unknown) {
     pushMessage((e as Error).message || '刷新失败', 'error')
   } finally {

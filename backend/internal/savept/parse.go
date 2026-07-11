@@ -18,8 +18,15 @@ func parseSavept(html string) ([]SaveptSiteCard, []SaveptAlert) {
 	// 抢救时长（来自病危公告）回填到匹配卡片
 	for _, fd := range extractFaultDurations(alerts) {
 		for i := range cards {
-			if nameFuzzyMatch(cards[i].Name, fd.name) && cards[i].FaultDuration == "" {
-				cards[i].FaultDuration = fd.duration
+			if nameFuzzyMatch(cards[i].Name, fd.name) {
+				if cards[i].FaultDuration == "" {
+					cards[i].FaultDuration = fd.duration
+				}
+				// 病危通知里的站点即便 status-strip 显示「运行中」也属病危（正在抢救），
+				// 覆盖为 critical，使「病危」筛选能命中这些站点；不覆盖已关站。
+				if cards[i].Status != HealthClosed {
+					cards[i].Status = HealthCritical
+				}
 			}
 		}
 	}
@@ -47,11 +54,16 @@ func extractCards(html string) []SaveptSiteCard {
 	var out []SaveptSiteCard
 	for _, block := range cardBlockRe.FindAllString(html, -1) {
 		rawStatus := attr(block, "data-status")
+		// 真实 savept.icu 的 status-strip 文本为空，生命周期状态（运行中/已关站/故障中）
+		// 写在 title 属性里；优先取文本，为空时回退 title。
 		statusText := stripTags(extractInner(block, "status-strip"))
+		if strings.TrimSpace(statusText) == "" {
+			statusText = extractStatusStripTitle(block)
+		}
 		c := SaveptSiteCard{
 			Name:            strings.TrimSpace(decodeEntities(attr(block, "data-name"))),
 			URL:             attr(block, "href"),
-			Year:            orUnknown(attr(block, "data-year")),
+			Year:            normalizeYear(attr(block, "data-year")),
 			Status:          normalizeStatus(rawStatus, statusText),
 			StatusText:      statusText,
 			SiteType:        normalizeType(attr(block, "data-type")),
@@ -85,6 +97,17 @@ func extractInner(block, cls string) string {
 		return m[1]
 	}
 	return ""
+}
+
+// extractStatusStripTitle 取 status-strip 元素的 title 属性。真实 savept.icu 的
+// status-strip 标签内文本为空，站点生命周期状态（运行中/已关站/故障中）写在 title 里。
+func extractStatusStripTitle(block string) string {
+	re := regexp.MustCompile(`(?is)<[^>]*class="[^"]*status-strip[^"]*"[^>]*>`)
+	tag := re.FindString(block)
+	if tag == "" {
+		return ""
+	}
+	return attr(tag, "title")
 }
 
 func extractImg(block string) string {
@@ -182,7 +205,7 @@ func normalizeStatus(raw, text string) SiteHealthStatus {
 	switch {
 	case containsAny(s, "运行", "健康", "正常", "healthy", "online"):
 		return HealthHealthy
-	case containsAny(s, "病危", "抢救", "濒临", "critical", "danger"):
+	case containsAny(s, "病危", "抢救", "濒临", "故障", "critical", "danger"):
 		return HealthCritical
 	case containsAny(s, "已关站", "关站", "死亡", "关闭", "closed", "dead"):
 		return HealthClosed
@@ -218,8 +241,10 @@ func nameFuzzyMatch(a, b string) bool {
 	return strings.Contains(a, b) || strings.Contains(b, a)
 }
 
-func orUnknown(s string) string {
-	if strings.TrimSpace(s) == "" {
+// normalizeYear 归一建站年份：空或 "0000"（savept.icu 用 0000 标记未知年份）→ "未知"。
+func normalizeYear(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" || s == "0000" {
 		return "未知"
 	}
 	return s

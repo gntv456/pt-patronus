@@ -23,8 +23,8 @@ func TestParseSavept(t *testing.T) {
 	html := mustReadFixture(t, "testdata/savept.html")
 	cards, alerts := parseSavept(html)
 
-	if len(cards) != 3 {
-		t.Fatalf("cards: got %d want 3", len(cards))
+	if len(cards) != 4 {
+		t.Fatalf("cards: got %d want 4", len(cards))
 	}
 	byName := map[string]SaveptSiteCard{}
 	for _, c := range cards {
@@ -46,8 +46,9 @@ func TestParseSavept(t *testing.T) {
 	if ex.OpenTime != "2020-03-15" {
 		t.Errorf("示例站 open_time: got %q want 2020-03-15", ex.OpenTime)
 	}
-	if ex.CloseTime != "" {
-		t.Errorf("示例站 close_time: got %q want empty", ex.CloseTime)
+	// 非关站站点 close_time 为空或「未知」（真实页面 data-closetime="未知"）
+	if ex.CloseTime != "" && ex.CloseTime != "未知" {
+		t.Errorf("示例站 close_time: got %q want empty/未知", ex.CloseTime)
 	}
 	if ex.AnniversaryFlag != "yes" {
 		t.Errorf("示例站 anniversary_flag: got %q want yes", ex.AnniversaryFlag)
@@ -55,14 +56,23 @@ func TestParseSavept(t *testing.T) {
 	if ex.AnniversaryText != "今天站庆" {
 		t.Errorf("示例站 anniversary_text: got %q want 今天站庆", ex.AnniversaryText)
 	}
+	// 病危站：卡片 status-strip 是「运行中」(健康)，但出现在病危通知 → 回填为 critical
 	if byName["病危站"].Status != HealthCritical {
 		t.Errorf("病危站 status: got %q want critical", byName["病危站"].Status)
+	}
+	// 临界站：status-strip title=故障中 → critical（title 路径，不经抢救回填）
+	if byName["临界站"].Status != HealthCritical {
+		t.Errorf("临界站 status: got %q want critical (via title 故障)", byName["临界站"].Status)
 	}
 	if byName["关站示例"].Status != HealthClosed {
 		t.Errorf("关站示例 status: got %q want closed", byName["关站示例"].Status)
 	}
 	if got := byName["关站示例"].CloseTime; got != "2024-12-31" {
 		t.Errorf("关站示例 close_time: got %q want 2024-12-31", got)
+	}
+	// data-year=0000 → 未知
+	if got := byName["关站示例"].Year; got != "未知" {
+		t.Errorf("关站示例 year: got %q want 未知 (from 0000)", got)
 	}
 	// 抢救时长回填：病危公告「病危站 已抢救 2 天」→ "2天"
 	if got := byName["病危站"].FaultDuration; got != "2天" {

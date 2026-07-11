@@ -1,0 +1,1 @@
+import{h as n}from"./index-VfkxbJgU.js";const h={all:(r,s="",a=[])=>{const t={keyword:r};return s&&(t.category=s),a.length&&(t.site_ids=a.join(",")),n.post("/search",null,{params:t}).then(e=>e.data.results)}};export{h as s};

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
@@ -70,7 +71,15 @@ func (c *SiteChain) HaremInvitees(ctx context.Context, s *models.Site) ([]site.I
 	return out, err
 }
 
+// haremSFResult 是后宫单次回源（邀请库存 + 被邀请人）的 singleflight 结果。
+type haremSFResult struct {
+	status   *site.InviteStatus
+	invitees []site.InviteeInfo
+	errMsg   string
+}
+
 // HaremAll 跨站并发聚合后宫（Semaphore(5) + per-site Mutex + 30min 缓存）。
+// 非 force 时单站 miss 走 singleflight 合并同 siteID 并发抓取（防击穿，sem 仅 leader 占用）。
 func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 	sites, err := c.sites.ListActive()
 	if err != nil {
@@ -84,7 +93,7 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 		wg.Add(1)
 		go func(i int, s models.Site) {
 			defer wg.Done()
-			// 缓存命中
+			// 快速路径：缓存命中
 			if !force {
 				c.haremMu.Lock()
 				e, ok := c.haremCache[s.ID]
@@ -94,31 +103,27 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 					return
 				}
 			}
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			siteCtx, cancel := context.WithTimeout(ctx, haremTimeout)
-			defer cancel()
-
-			status, e1 := c.HaremStatus(siteCtx, &s)
-			invitees, e2 := c.HaremInvitees(siteCtx, &s)
-			errMsg := ""
-			if errors.Is(e1, site.ErrNotLoggedIn) {
-				errMsg = "未登录或 cookie 失效"
-			} else if e1 != nil {
-				errMsg = e1.Error()
-			} else if e2 != nil {
-				errMsg = e2.Error()
+			// miss：force 直接回源；否则 singleflight 合并同 siteID 并发回源。
+			var res haremSFResult
+			if force {
+				res = c.fetchHaremOnce(ctx, sem, &s)
+			} else {
+				res, _ = sfDo(&c.haremSF, strconv.Itoa(int(s.ID)), func() (haremSFResult, error) {
+					// double-check：leader 完成后紧随的 caller 重跑 fn，缓存可能已满。
+					c.haremMu.Lock()
+					ce, ok := c.haremCache[s.ID]
+					c.haremMu.Unlock()
+					if ok && time.Since(ce.at) <= haremCacheTTL {
+						return haremSFResult{status: ce.status, invitees: ce.invitees}, nil
+					}
+					return c.fetchHaremOnce(ctx, sem, &s), nil
+				})
 			}
+			status := res.status
 			if status == nil {
 				status = &site.InviteStatus{}
 			}
-			items[i] = buildPrescription(s.ID, s.Name, status, invitees, errMsg)
-			// 仅成功时缓存
-			if errMsg == "" {
-				c.haremMu.Lock()
-				c.haremCache[s.ID] = haremCacheEntry{status: status, invitees: invitees, at: time.Now()}
-				c.haremMu.Unlock()
-			}
+			items[i] = buildPrescription(s.ID, s.Name, status, res.invitees, res.errMsg)
 		}(i, s)
 	}
 	wg.Wait()
@@ -153,6 +158,30 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 		}
 	}
 	return &HaremResult{Overview: haremOverview(sorted), Prescriptions: sorted}
+}
+
+// fetchHaremOnce 抓单站邀请库存 + 被邀请人（占一个 sem 槽、独立超时），成功时写缓存。
+func (c *SiteChain) fetchHaremOnce(ctx context.Context, sem chan struct{}, s *models.Site) haremSFResult {
+	sem <- struct{}{}
+	defer func() { <-sem }()
+	siteCtx, cancel := context.WithTimeout(ctx, haremTimeout)
+	defer cancel()
+	status, e1 := c.HaremStatus(siteCtx, s)
+	invitees, e2 := c.HaremInvitees(siteCtx, s)
+	errMsg := ""
+	if errors.Is(e1, site.ErrNotLoggedIn) {
+		errMsg = "未登录或 cookie 失效"
+	} else if e1 != nil {
+		errMsg = e1.Error()
+	} else if e2 != nil {
+		errMsg = e2.Error()
+	}
+	if errMsg == "" {
+		c.haremMu.Lock()
+		c.haremCache[s.ID] = haremCacheEntry{status: status, invitees: invitees, at: time.Now()}
+		c.haremMu.Unlock()
+	}
+	return haremSFResult{status: status, invitees: invitees, errMsg: errMsg}
 }
 
 // buildPrescription 构造单站药单行。

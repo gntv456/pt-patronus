@@ -38,11 +38,14 @@ type SiteChain struct {
 	// 站免/公告 per-site 缓存（站点是全局共享配置，故缓存按 siteID 而非 uid 分桶）。
 	flMu     sync.Mutex
 	flCache  map[uint]flCacheEntry
+	flSF     singleflight.Group // 同 siteID 站免并发抓取合并（防击穿）
 	annMu    sync.Mutex
 	annCache map[uint]annCacheEntry
+	annSF    singleflight.Group // 同 siteID 公告并发抓取合并（防击穿）
 	// 后宫 per-site 缓存（邀请库存 + 被邀请人）。
 	haremMu    sync.Mutex
 	haremCache map[uint]haremCacheEntry
+	haremSF    singleflight.Group // 同 siteID 后宫并发抓取合并（防击穿）
 	// 种子详情 per-(site|url) 缓存（详情页较重，短缓存减重复抓取）。
 	detailMu    sync.Mutex
 	detailCache map[string]detailCacheEntry

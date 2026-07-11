@@ -62,3 +62,14 @@ func (c *FileManagerChain) Mkdir(ctx context.Context, id uint, path string) erro
 	}
 	return b.Mkdir(ctx, path)
 }
+
+// Test 探测存储连通性：列配置根成功即视为连通。
+// 复用 List，零接口改动；各后端构造时已注入 BasePath，path="/" 即探测配置根。
+func (c *FileManagerChain) Test(ctx context.Context, id uint) error {
+	b, err := c.mgr.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	_, err = b.List(ctx, "/")
+	return err
+}

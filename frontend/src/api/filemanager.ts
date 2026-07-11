@@ -33,6 +33,7 @@ export const fileApi = {
   create: (input: FileStorageInput) => http.post<FileStorage>('/storages', input).then((r) => r.data),
   update: (id: number, input: FileStorageInput) => http.put(`/storages/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/storages/${id}`).then((r) => r.data),
+  test: (id: number) => http.post<{ ok: boolean; error?: string }>(`/storages/${id}/test`).then((r) => r.data),
   files: (id: number, path = '/') =>
     http.get<{ entries: FileEntry[] }>(`/storages/${id}/files`, { params: { path } }).then((r) => r.data.entries),
   upload: (id: number, path: string, file: File, onProgress?: (percent: number) => void) => {

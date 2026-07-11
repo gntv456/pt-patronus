@@ -327,6 +327,7 @@ func Build(d *Deps) *gin.Engine {
 				storages.POST("", fsH.Create)
 				storages.PUT("/:id", fsH.Update)
 				storages.DELETE("/:id", fsH.Delete)
+				storages.POST("/:id/test", fsH.Test)
 				storages.GET("/:id/files", fsH.Files)
 				storages.POST("/:id/upload", fsH.Upload)
 				storages.GET("/:id/download", fsH.Download)

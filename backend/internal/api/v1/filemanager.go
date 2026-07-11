@@ -151,6 +151,19 @@ func (h *FileStorageHandler) Mkdir(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
+// Test 探测存储连通性（200 包错，对齐下载器 Test 范式）。
+func (h *FileStorageHandler) Test(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	if err := h.fileCh.Test(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 // DeleteFile 删除文件/目录（path 走 query，与 Mkdir 一致；soft-fail）。
 func (h *FileStorageHandler) DeleteFile(c *gin.Context) {
 	id, ok := parseID(c)

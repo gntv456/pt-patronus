@@ -128,6 +128,12 @@ class FileStorageApi {
   /// 删除存储后端（DELETE /storages/:id）。
   Future<void> delete(int id) async => _api.delete('/storages/$id');
 
+  /// 测试存储连通性（POST /storages/:id/test；后端 200 包错 {ok,error}，不抛异常）。
+  Future<({bool ok, String error})> test(int id) async {
+    final r = await _api.post('/storages/$id/test', {});
+    return (ok: r['ok'] == true, error: (r['error'] as String?) ?? '');
+  }
+
   void _checkOk(Map<String, dynamic> r) {
     if (r['ok'] != true) {
       throw Exception((r['error'] as String?) ?? '操作失败');

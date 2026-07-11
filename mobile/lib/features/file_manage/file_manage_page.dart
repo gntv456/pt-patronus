@@ -14,6 +14,9 @@ import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 文件管理页：存储后端 CRUD（本机/WebDAV/Alist/SMB/Agent）→ 浏览目录 → 下载/上传/建目录/删除。
 /// 对齐 Web FileManager.vue。
+/// 存储连通性探测状态（瞬时，仅用于 UI 展示）。
+enum _Conn { checking, ok, fail }
+
 class FileManagePage extends StatefulWidget {
   const FileManagePage({super.key});
   @override
@@ -25,6 +28,9 @@ class _FileManagePageState extends State<FileManagePage> {
   List<FileStorage> _storages = [];
   int? _storageId;
   String _path = '/';
+  // 连通性探测状态（瞬时，不持久化）：id → 状态 + 错误
+  final Map<int, _Conn> _status = {};
+  final Map<int, String> _statusError = {};
   List<FileEntry> _entries = const [];
   bool _loading = false;
   bool _busy = false; // 下载/上传/建目录进行中
@@ -48,6 +54,7 @@ class _FileManagePageState extends State<FileManagePage> {
     });
     try {
       _storages = await _api.list();
+      unawaited(_probeAll());
       if (_storages.isNotEmpty) {
         _selectStorage(_storages.first.id);
         return;
@@ -131,6 +138,63 @@ class _FileManagePageState extends State<FileManagePage> {
     } catch (e) {
       _toast(e.toString().replaceFirst('Exception: ', ''));
     }
+  }
+
+  // —— 连通性探测 ——
+  // 加载后自动并发探测所有存储（静默，仅更新下拉项状态点）。
+  Future<void> _probeAll() async {
+    if (!mounted) return;
+    setState(() {
+      for (final s in _storages) {
+        _status[s.id] = _Conn.checking;
+      }
+    });
+    await Future.wait(_storages.map((s) => _probe(s.id)));
+  }
+
+  Future<void> _probe(int id) async {
+    try {
+      final r = await _api.test(id);
+      if (!mounted) return;
+      setState(() {
+        _status[id] = r.ok ? _Conn.ok : _Conn.fail;
+        _statusError[id] = r.error;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _status[id] = _Conn.fail;
+        _statusError[id] = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  // 手动测试当前存储（即时 toast 反馈 + 更新状态点）。
+  Future<void> _testCurrent() async {
+    final s = _current;
+    if (s == null) return;
+    setState(() => _status[s.id] = _Conn.checking);
+    try {
+      final r = await _api.test(s.id);
+      if (!mounted) return;
+      setState(() {
+        _status[s.id] = r.ok ? _Conn.ok : _Conn.fail;
+        _statusError[s.id] = r.error;
+      });
+      _toast(r.ok ? '「${s.name}」连接正常' : '「${s.name}」连接失败：${r.error}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _status[s.id] = _Conn.fail);
+      _toast('「${s.name}」连接失败：${e.toString().replaceFirst('Exception: ', '')}');
+    }
+  }
+
+  String _statusDot(int id) {
+    final st = _status[id];
+    if (st == _Conn.ok) return '🟢 ';
+    if (st == _Conn.fail) return '🔴 ';
+    if (st == _Conn.checking) return '⚪ ';
+    return '';
   }
 
   Future<void> _loadEntries() async {
@@ -373,7 +437,7 @@ class _FileManagePageState extends State<FileManagePage> {
           .map(
             (s) => DropdownMenuItem(
               value: s.id,
-              child: Text('${s.name}（${s.type}）'),
+              child: Text('${_statusDot(s.id)}${s.name}（${s.type}）'),
             ),
           )
           .toList(),
@@ -510,6 +574,12 @@ class _FileManagePageState extends State<FileManagePage> {
           icon: Icons.add,
           label: '添加存储',
           onPressed: _addStorage,
+          overflow: true,
+        ),
+        PTBarAction(
+          icon: Icons.network_check,
+          label: '测试连接',
+          onPressed: _current != null ? _testCurrent : null,
           overflow: true,
         ),
         PTBarAction(

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { safeUrl } from '@/utils/safeUrl'
 import { rssApi, type RssSubscription, type RssItem, type RssInput } from '@/api/rss'
 import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
@@ -214,7 +215,7 @@ function fmtTime(t?: string) {
       <el-table :data="items" size="small">
         <el-table-column label="标题" min-width="240">
           <template #default="{ row }">
-            <a v-if="row.link" :href="row.link" target="_blank" class="lnk">{{ row.title }}</a>
+            <a v-if="row.link" :href="safeUrl(row.link)" target="_blank" class="lnk">{{ row.title }}</a>
             <span v-else>{{ row.title }}</span>
           </template>
         </el-table-column>

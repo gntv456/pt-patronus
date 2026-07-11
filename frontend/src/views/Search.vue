@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { safeUrl } from '@/utils/safeUrl'
 import { useRoute, useRouter } from 'vue-router'
 import { searchApi, type SiteSearchResult, type SiteTorrent } from '@/api/search'
 import { seedbrowseApi, type TorrentDetail } from '@/api/seedbrowse'
@@ -463,7 +464,7 @@ onMounted(() => {
               <a
                 v-for="(s, i) in detail.screenshots"
                 :key="i"
-                :href="s"
+                :href="safeUrl(s)"
                 target="_blank"
                 rel="noopener"
                 class="shot"

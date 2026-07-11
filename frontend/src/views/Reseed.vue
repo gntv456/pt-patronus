@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { safeUrl } from '@/utils/safeUrl'
 import { reseedApi, type ReseedTask, type ReseedSetting } from '@/api/reseed'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 
@@ -246,7 +247,7 @@ onMounted(async () => {
           <el-table-column prop="candidate_site" label="候选站点" width="110" />
           <el-table-column label="候选链接" min-width="160" show-overflow-tooltip>
             <template #default="{ row }">
-              <a :href="row.candidate_url" target="_blank" rel="noopener" class="dl-link">下载链接</a>
+              <a :href="safeUrl(row.candidate_url)" target="_blank" rel="noopener" class="dl-link">下载链接</a>
             </template>
           </el-table-column>
           <el-table-column label="保存路径" min-width="160" show-overflow-tooltip>

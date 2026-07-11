@@ -4,6 +4,7 @@
 // 结构化公告区 + 年份分组 + 丰富站点卡片 + 站庆彩带（canvas-confetti 动态加载）。
 // 适配 PTPatronus：数据来自 Go savept 服务（match_type 派生 mp 状态）、SptIcon 图标、--spt-* CSS 变量。
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { safeUrl } from '@/utils/safeUrl'
 import { saveptApi, type SaveptResult, type SaveptSiteCard } from '@/api/savept'
 import {
   buildNoticeSections,
@@ -638,7 +639,7 @@ onBeforeUnmount(() => {
         <a
           v-for="card in group.items"
           :key="`${group.year}-${card.name}`"
-          :href="card.url"
+          :href="safeUrl(card.url)"
           target="_blank"
           rel="noreferrer noopener"
           class="spt-card"

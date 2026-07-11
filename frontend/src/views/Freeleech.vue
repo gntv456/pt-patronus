@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { safeUrl } from '@/utils/safeUrl'
 import { ElMessage } from 'element-plus'
 import { freeleechApi, type FreeleechResult, type FreeleechStatus } from '@/api/freeleech'
 import EmptyState from '@/components/EmptyState.vue'
@@ -178,7 +179,7 @@ onMounted(() => load())
           >
             <div class="notice-title">{{ n.title }}</div>
             <div class="notice-content">{{ n.content || (n.error ?? '—') }}</div>
-            <a v-if="n.link" :href="n.link" target="_blank" rel="noopener" class="notice-link">前往 →</a>
+            <a v-if="n.link" :href="safeUrl(n.link)" target="_blank" rel="noopener" class="notice-link">前往 →</a>
           </div>
           <button
             v-if="r.notices.length > 1"

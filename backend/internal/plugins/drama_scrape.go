@@ -401,7 +401,7 @@ func (p *dramaScrapePlugin) Manifest() Manifest {
 			{Key: "exclude_keywords", Label: "排除关键字", Type: "textarea", Group: "扫描", Help: "目录名含任一关键字则跳过，每行一个。"},
 			{Key: "media_ext", Label: "视频扩展名", Type: "text", Group: "扫描", Default: defaultVideoExts},
 			{Key: "cunguangji_base", Label: "寸光集地址", Type: "text", Group: "刮削源", Default: "https://ptang.top"},
-			{Key: "cunguangji_key", Label: "寸光集 API Key", Type: "password", Group: "刮削源", Default: "pt_23f6ef1c_BTrRhoX5OwYiqdS4MgzAuHLGK5NIo5uv", Help: "默认寸光集公开 API Key；如失效请在寸光集获取新 Key。"},
+			{Key: "cunguangji_key", Label: "寸光集 API Key", Type: "password", Group: "刮削源", Required: true, Help: "在寸光集（ptang.top）获取你自己的 API Key 后填入；插件不预置任何 Key。"},
 			{Key: "cron", Label: "定时表达式", Type: "text", Group: "调度", Default: "", Help: "留空则不自动扫描，可手动触发。示例：*/30 * * * *。"},
 		},
 		Schedule: []ScheduleSpec{
@@ -427,7 +427,7 @@ func (p *dramaScrapePlugin) DefaultConfig() map[string]any {
 		"exclude_keywords": "",
 		"media_ext":        defaultVideoExts,
 		"cunguangji_base":  "https://ptang.top",
-		"cunguangji_key":   "pt_23f6ef1c_BTrRhoX5OwYiqdS4MgzAuHLGK5NIo5uv",
+		"cunguangji_key":   "",
 		"cron":             "",
 	}
 }

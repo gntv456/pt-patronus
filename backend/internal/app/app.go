@@ -66,8 +66,9 @@ func New(cfg *config.Config) (*App, error) {
 	j := security.NewJWT(cfg.SecretKey, cfg.JWTExpireMin)
 	act := auth.NewActivation(database, cfg.ActivationSecret)
 
-	// 站点抓取客户端
-	hc, err := httpclient.New(httpclient.Options{FollowRedirect: true})
+	// 站点抓取客户端：开重试以容忍 Cloudflare/网络偶发的 connection reset by peer
+	// （实测标准 TLS 能正常连通 CF 站点，reset 多为瞬态，重试即可恢复）。
+	hc, err := httpclient.New(httpclient.Options{FollowRedirect: true, MaxRetries: 2})
 	if err != nil {
 		return nil, err
 	}

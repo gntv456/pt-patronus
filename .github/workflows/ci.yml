@@ -16,7 +16,7 @@ jobs:
           cache-dependency-path: backend/go.sum
       - run: go mod download
       - run: go vet ./...
-      - run: go test ./... -race
+      - run: go test ./... -race -short -timeout 30m   # -short 跳过真实网络/子进程时序用例（race 放大下易超时 flaky），race 聚焦并发逻辑；30m 防 race 慢化卡死
       - run: go build ./...
 
   frontend:

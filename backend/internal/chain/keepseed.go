@@ -322,7 +322,12 @@ func (c *KeepSeedChain) ListTasks(status string) ([]models.CrossSeedTask, error)
 // loadSetting 取该下载器的辅种设置（save_path 覆盖 / 添加后暂停）；无记录返默认值
 // （PauseAfterAdd=true，与 Setting/模型 default 一致——避免无 setting 行时「不暂停」添加）。
 func (c *KeepSeedChain) loadSetting(downloaderID uint) models.CrossSeedSetting {
-	s, _ := c.Setting(downloaderID)
+	s, err := c.Setting(downloaderID)
+	if err != nil {
+		// DB 瞬态错误：返默认值（PauseAfterAdd=true）而非零值（false），避免种子加下载器不暂停违反文档默认。
+		slog.Warn("keepseed loadSetting failed, using default", "downloader", downloaderID, "err", err)
+		return models.CrossSeedSetting{DownloaderID: downloaderID, PauseAfterAdd: true}
+	}
 	return s
 }
 

@@ -20,9 +20,9 @@ import (
 
 // 考核缓存参数（对齐原版：内存 30min、DB 6h）。
 const (
-	assessMemTTL     = 30 * time.Minute
-	assessDBTTL      = 6 * time.Hour
-	assessTimeout    = 30 * time.Second
+	assessMemTTL      = 30 * time.Minute
+	assessDBTTL       = 6 * time.Hour
+	assessTimeout     = 30 * time.Second
 	assessConcurrency = 5
 )
 
@@ -53,17 +53,17 @@ type assessCacheEntry struct {
 
 // AssessmentCard 考核 UI 卡片（API 返回）。
 type AssessmentCard struct {
-	SiteID          uint                  `json:"site_id"`
-	SiteName        string                `json:"site_name"`
-	Status          string                `json:"status"` // SAFE/PROGRESS/DANGER/EXEMPT/UNKNOWN
-	ProgressPercent float64               `json:"progress_percent"`
-	RemainingDays   int                   `json:"remaining_days"`
-	StartTime       int64                 `json:"start_time"` // epoch ms（0=未知）
-	EndTime         int64                 `json:"end_time"`   // epoch ms（0=未知）；考核截止时间
-	Metrics         []assessment.Metric   `json:"metrics"`
-	AssessmentType  string                `json:"assessment_type"`
-	Description     string                `json:"description,omitempty"` // 考核说明（馒头"考核期間不享受所有魔力加成"等）
-	Error           string                `json:"error,omitempty"`
+	SiteID          uint                `json:"site_id"`
+	SiteName        string              `json:"site_name"`
+	Status          string              `json:"status"` // SAFE/PROGRESS/DANGER/EXEMPT/UNKNOWN
+	ProgressPercent float64             `json:"progress_percent"`
+	RemainingDays   int                 `json:"remaining_days"`
+	StartTime       int64               `json:"start_time"` // epoch ms（0=未知）
+	EndTime         int64               `json:"end_time"`   // epoch ms（0=未知）；考核截止时间
+	Metrics         []assessment.Metric `json:"metrics"`
+	AssessmentType  string              `json:"assessment_type"`
+	Description     string              `json:"description,omitempty"` // 考核说明（馒头"考核期間不享受所有魔力加成"等）
+	Error           string              `json:"error,omitempty"`
 }
 
 // normalized 保证 Metrics 非 nil：nil 切片 JSON 序列化为 null，前端 .length 会崩
@@ -180,7 +180,9 @@ func (c *AssessmentChain) assessSite(ctx context.Context, s *models.Site, force 
 		for _, ot := range oldTasks {
 			oldStatus[ot.TaskName] = ot.Status
 		}
-		_ = c.op.BatchUpsert(s.ID, assessToDB(tasks), time.Now())
+		if err := c.op.BatchUpsert(s.ID, assessToDB(tasks), time.Now()); err != nil {
+			slog.Warn("assessment BatchUpsert failed, results not persisted", "site", s.ID, "err", err)
+		}
 		// 状态转换检测 → 通知（首次该任务无旧记录则跳过，避免初始化刷屏）
 		if c.notice != nil {
 			for i := range tasks {

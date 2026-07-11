@@ -54,26 +54,26 @@ type medalCacheEntry struct {
 
 // MedalCard 勋章墙 UI 卡片（API 返回）。
 type MedalCard struct {
-	SiteID          uint   `json:"site_id"`
-	SiteName        string `json:"site_name"`
-	MedalID         string `json:"medal_id"`
-	Name            string `json:"name"`
-	Description     string `json:"description,omitempty"`
-	ImageSmall      string `json:"image_small"`
-	OriginalImageURL string `json:"original_image_url,omitempty"`
-	SaleBeginTime   *int64 `json:"sale_begin_time"` // epoch ms（nil=未知）
-	SaleEndTime     *int64 `json:"sale_end_time"`
-	Price           float64 `json:"price"`
-	OriginalPrice   float64 `json:"original_price"`        // 原价（溢价时<Price，前端划线展示）
-	Validity        string  `json:"validity,omitempty"`   // "30天"/"永久"
-	BonusRate       string  `json:"bonus_rate,omitempty"` // "+20%"
-	PurchaseStatus  string  `json:"purchase_status"` // OWNED/AVAILABLE/OUT_OF_STOCK/NOT_ON_SALE/DISCONTINUED/UNKNOWN
-	Stock           int     `json:"stock"`           // -1=无限/未知
-	Currency        string  `json:"currency"`
-	Group           string  `json:"group,omitempty"`
-	WearStatus      bool    `json:"wear_status"`
-	IsOwned         bool    `json:"is_owned"`
-	Error           string  `json:"error,omitempty"`
+	SiteID           uint    `json:"site_id"`
+	SiteName         string  `json:"site_name"`
+	MedalID          string  `json:"medal_id"`
+	Name             string  `json:"name"`
+	Description      string  `json:"description,omitempty"`
+	ImageSmall       string  `json:"image_small"`
+	OriginalImageURL string  `json:"original_image_url,omitempty"`
+	SaleBeginTime    *int64  `json:"sale_begin_time"` // epoch ms（nil=未知）
+	SaleEndTime      *int64  `json:"sale_end_time"`
+	Price            float64 `json:"price"`
+	OriginalPrice    float64 `json:"original_price"`       // 原价（溢价时<Price，前端划线展示）
+	Validity         string  `json:"validity,omitempty"`   // "30天"/"永久"
+	BonusRate        string  `json:"bonus_rate,omitempty"` // "+20%"
+	PurchaseStatus   string  `json:"purchase_status"`      // OWNED/AVAILABLE/OUT_OF_STOCK/NOT_ON_SALE/DISCONTINUED/UNKNOWN
+	Stock            int     `json:"stock"`                // -1=无限/未知
+	Currency         string  `json:"currency"`
+	Group            string  `json:"group,omitempty"`
+	WearStatus       bool    `json:"wear_status"`
+	IsOwned          bool    `json:"is_owned"`
+	Error            string  `json:"error,omitempty"`
 }
 
 // MedalChain 编排站点勋章墙（3 级缓存 内存→DB→网络 + per-platform 适配 + 商店/已拥有合并）。
@@ -204,7 +204,9 @@ func (c *MedalChain) medalSite(ctx context.Context, s *models.Site, force bool) 
 	// 读旧（BatchUpsert 是删后插，旧数据会被清，必须先读）→ diff → 通知
 	oldItems := medalsToItems(mustFindBySite(c.op, s.ID))
 	if len(merged) > 0 {
-		_ = c.op.BatchUpsert(s.ID, itemsToMedals(merged), time.Now())
+		if err := c.op.BatchUpsert(s.ID, itemsToMedals(merged), time.Now()); err != nil {
+			slog.Warn("medal BatchUpsert failed, results not persisted", "site", s.ID, "err", err)
+		}
 	}
 	// 首次无旧记录跳过（防初始化刷屏）
 	if c.notice != nil && len(oldItems) > 0 {
@@ -364,7 +366,7 @@ func mergeMedals(shop []medalwall.Item, owned []medalwall.Owned) []medalwall.Ite
 			continue
 		}
 		shop = append(shop, medalwall.Item{
-			MedalID:           "owned:" + medalNormName(o.Name), // 商店无售的拥有勋章无真实 id，用 name 派生避 UNIQUE(site_id,medal_id) 冲突
+			MedalID:          "owned:" + medalNormName(o.Name), // 商店无售的拥有勋章无真实 id，用 name 派生避 UNIQUE(site_id,medal_id) 冲突
 			Name:             o.Name,
 			ImageSmall:       o.Image,
 			OriginalImageURL: o.Image,

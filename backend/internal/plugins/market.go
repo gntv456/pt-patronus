@@ -188,6 +188,7 @@ func trustLevel(publicKey string, item MarketPlugin) string {
 type MarketInstallOptions struct {
 	AcceptedPermissions         []string
 	AcceptedPermissionsByPlugin map[string][]string
+	AllowUnsigned               bool // 显式允许本次安装未签名插件（覆盖全局 plugin.allow_unsigned）
 }
 
 func (m *Manager) InstallFromMarket(ctx context.Context, source, id string, acceptedPermissions ...[]string) (*InstallResult, error) {
@@ -266,7 +267,7 @@ func (m *Manager) InstallFromMarketWithOptions(ctx context.Context, source, id s
 		if planItem == nil {
 			return nil, fmt.Errorf("plugin %s not found in market install plan", step.ID)
 		}
-		stepResult, err := m.installMarketItem(ctx, source, idx, planItem)
+		stepResult, err := m.installMarketItem(ctx, source, idx, planItem, options)
 		if err != nil {
 			return nil, err
 		}
@@ -311,7 +312,7 @@ func acceptedPermissionsFor(id, targetID string, options MarketInstallOptions) (
 	return nil, false
 }
 
-func (m *Manager) installMarketItem(ctx context.Context, source string, idx *MarketIndex, item *MarketPlugin) (*InstallResult, error) {
+func (m *Manager) installMarketItem(ctx context.Context, source string, idx *MarketIndex, item *MarketPlugin, options MarketInstallOptions) (*InstallResult, error) {
 	if item.Runtime != RuntimeExternalHTTP {
 		return nil, fmt.Errorf("unsupported market plugin runtime %s", item.Runtime)
 	}
@@ -330,8 +331,14 @@ func (m *Manager) installMarketItem(ctx context.Context, source string, idx *Mar
 			return nil, fmt.Errorf("sha256 mismatch: got %s", got)
 		}
 	}
-	if err := verifySignature(idx.PublicKey, item.Signature, raw); err != nil {
-		return nil, err
+	// 签名验证（P1 安全修复）：用受信公钥集（内置官方 + 用户配置），不再用市场索引自带的 idx.PublicKey
+	// ——那是被验证数据本身，攻击者篡改市场源可同时换公钥+签名绕过。未签名需显式 opt-in。
+	if err := verifySignatureTrusted(m.TrustedPublicKeys(), item.Signature, raw); err != nil {
+		if errors.Is(err, ErrUnsigned) && (options.AllowUnsigned || m.AllowUnsigned()) {
+			slog.Warn("installing unsigned plugin (allow_unsigned opt-in)", "id", item.ID, "source", source)
+		} else {
+			return nil, fmt.Errorf("plugin signature verification failed: %w", err)
+		}
 	}
 	root := m.PluginRoot()
 	if root == "" {
@@ -454,6 +461,37 @@ func verifySignature(publicKey, signature string, payload []byte) error {
 		return errors.New("plugin archive signature verification failed")
 	}
 	return nil
+}
+
+// ErrUnsigned 表示插件归档无签名（由 verifySignatureTrusted 返回，调用方据 AllowUnsigned 决定是否放行）。
+var ErrUnsigned = errors.New("plugin archive is not signed")
+
+// verifySignatureTrusted 用受信公钥集验证插件归档签名：任一受信公钥验过即通过。
+// 与 verifySignature（单公钥）的区别：公钥不再取自市场索引（被验证数据本身，可篡改），
+// 而是来自内置官方锚 + 用户配置（Manager.TrustedPublicKeys）——独立信任源。
+func verifySignatureTrusted(trustedKeys []string, signature string, payload []byte) error {
+	signature = strings.TrimSpace(signature)
+	if signature == "" {
+		return ErrUnsigned
+	}
+	sig, err := base64.StdEncoding.DecodeString(signature)
+	if err != nil {
+		return fmt.Errorf("decode plugin signature: %w", err)
+	}
+	for _, keyB64 := range trustedKeys {
+		keyB64 = strings.TrimSpace(keyB64)
+		if keyB64 == "" {
+			continue
+		}
+		pub, err := base64.StdEncoding.DecodeString(keyB64)
+		if err != nil || len(pub) != ed25519.PublicKeySize {
+			continue
+		}
+		if ed25519.Verify(ed25519.PublicKey(pub), payload, sig) {
+			return nil
+		}
+	}
+	return errors.New("plugin signature is not from a trusted publisher")
 }
 
 func (m *Manager) hasPlugin(id string) bool {

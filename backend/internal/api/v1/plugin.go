@@ -98,6 +98,30 @@ func (h *PluginHandler) SetMarketSources(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources()})
 }
 
+// TrustConfig 返回插件签名信任配置（官方只读公钥 + 用户受信公钥 + allow_unsigned）。
+func (h *PluginHandler) TrustConfig(c *gin.Context) {
+	c.JSON(http.StatusOK, h.manager.GetTrustConfig())
+}
+
+type pluginTrustConfigReq struct {
+	TrustedPublicKeys []string `json:"trusted_public_keys"`
+	AllowUnsigned     bool     `json:"allow_unsigned"`
+}
+
+// SetTrustConfig 持久化插件签名信任配置（受信公钥 + 是否允许未签名）。官方公钥只读不可改。
+func (h *PluginHandler) SetTrustConfig(c *gin.Context) {
+	var req pluginTrustConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.manager.SetTrustConfig(req.TrustedPublicKeys, req.AllowUnsigned); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, h.manager.GetTrustConfig())
+}
+
 func (h *PluginHandler) Get(c *gin.Context) {
 	p, err := h.manager.Get(c.Param("id"))
 	if err != nil {

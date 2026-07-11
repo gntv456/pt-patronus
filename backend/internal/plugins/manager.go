@@ -28,6 +28,78 @@ const (
 	logError   = "error"
 )
 
+// 插件签名信任模型（P1 安全修复）：
+// 旧实现用市场索引 idx.PublicKey 验证同源的 idx 签名——攻击者篡改市场源可同时换公钥+签名绕过。
+// 新模型：信任锚独立于被验证数据——内置官方公钥（默认）+ 用户配置 plugin.trusted_public_keys，
+// 未签名插件需 plugin.allow_unsigned=true 显式放行。详见 market.go verifySignatureTrusted。
+
+// OfficialMarketPublicKey 是 PTPatronus 官方插件市场的 Ed25519 公钥（base64），内置作默认信任锚。
+// 取自官方市场仓 examples/plugin-market/plugin-market.json，官方签名插件自动受信。
+const OfficialMarketPublicKey = "cbK2okPdJoXOUPlW3vL1KEKWM6Owm4rO6Mw3+kICRfs="
+
+const (
+	cfgKeyTrustedPublicKeys = "plugin.trusted_public_keys" // JSON []string(base64)：用户追加的受信公钥
+	cfgKeyAllowUnsigned     = "plugin.allow_unsigned"      // "true"/"false"，默认 false（严格）
+)
+
+// TrustedPublicKeys 返回受信公钥集：内置官方公钥 + 用户配置（plugin.trusted_public_keys）。
+func (m *Manager) TrustedPublicKeys() []string {
+	keys := []string{OfficialMarketPublicKey}
+	if m.cfgOp != nil {
+		if raw, err := m.cfgOp.Get(cfgKeyTrustedPublicKeys); err == nil && strings.TrimSpace(raw) != "" {
+			var extra []string
+			if json.Unmarshal([]byte(raw), &extra) == nil {
+				keys = append(keys, extra...)
+			}
+		}
+	}
+	return keys
+}
+
+// AllowUnsigned 是否允许安装未签名插件（默认 false=严格）。生产建议保持 false。
+func (m *Manager) AllowUnsigned() bool {
+	if m.cfgOp != nil {
+		if raw, err := m.cfgOp.Get(cfgKeyAllowUnsigned); err == nil {
+			return strings.EqualFold(strings.TrimSpace(raw), "true")
+		}
+	}
+	return false
+}
+
+// TrustConfig 是插件签名信任模型的用户可配置部分（GET/PUT /plugins/trust-config）。
+type TrustConfig struct {
+	OfficialKey       string   `json:"official_key"`        // 内置官方公钥（只读，始终受信）
+	TrustedPublicKeys []string `json:"trusted_public_keys"` // 用户追加的受信公钥（base64）
+	AllowUnsigned     bool     `json:"allow_unsigned"`      // 是否允许未签名插件安装
+}
+
+// GetTrustConfig 返回信任配置（官方只读 + 用户公钥 + allow_unsigned）。
+func (m *Manager) GetTrustConfig() TrustConfig {
+	cfg := TrustConfig{OfficialKey: OfficialMarketPublicKey, AllowUnsigned: m.AllowUnsigned(), TrustedPublicKeys: []string{}}
+	if m.cfgOp != nil {
+		if raw, err := m.cfgOp.Get(cfgKeyTrustedPublicKeys); err == nil && strings.TrimSpace(raw) != "" {
+			_ = json.Unmarshal([]byte(raw), &cfg.TrustedPublicKeys)
+		}
+	}
+	return cfg
+}
+
+// SetTrustConfig 持久化用户受信公钥 + allow_unsigned（官方公钥不可改）。
+func (m *Manager) SetTrustConfig(trustedKeys []string, allowUnsigned bool) error {
+	if m.cfgOp == nil {
+		return errors.New("config store unavailable")
+	}
+	keysJSON, _ := json.Marshal(trustedKeys)
+	if err := m.cfgOp.Set(cfgKeyTrustedPublicKeys, string(keysJSON)); err != nil {
+		return err
+	}
+	val := "false"
+	if allowUnsigned {
+		val = "true"
+	}
+	return m.cfgOp.Set(cfgKeyAllowUnsigned, val)
+}
+
 type Manager struct {
 	mu            sync.RWMutex
 	plugins       map[string]Plugin

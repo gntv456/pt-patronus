@@ -476,6 +476,8 @@ func Build(d *Deps) *gin.Engine {
 				plugins.GET("/market", middleware.RequireAdmin(), pluginH.Market)
 				plugins.GET("/market-sources", middleware.RequireAdmin(), pluginH.MarketSources)
 				plugins.PUT("/market-sources", middleware.RequireAdmin(), pluginH.SetMarketSources)
+				plugins.GET("/trust-config", middleware.RequireAdmin(), pluginH.TrustConfig)
+				plugins.PUT("/trust-config", middleware.RequireAdmin(), pluginH.SetTrustConfig)
 				plugins.POST("/market/install", middleware.RequireAdmin(), pluginH.Install)
 				plugins.POST("/:id/assets/ticket", middleware.RequireAdmin(), pluginH.AssetTicket)
 				plugins.GET("/:id/releases", pluginH.Releases)

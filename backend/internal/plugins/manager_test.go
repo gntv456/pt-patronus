@@ -40,7 +40,7 @@ func newPluginTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("db handle: %v", err)
 	}
 	sqlDB.SetMaxOpenConns(1)
-	if err := db.AutoMigrate(&models.PluginState{}, &models.PluginLog{}, &models.PluginKV{}, &models.PluginRelease{}); err != nil {
+	if err := db.AutoMigrate(&models.PluginState{}, &models.PluginLog{}, &models.PluginKV{}, &models.PluginRelease{}, &models.SystemConfig{}); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 	return db
@@ -732,6 +732,7 @@ func TestInstallFromMarket(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
 	m.SetPluginRoot(pluginRoot)
+	trustTestPublicKey(t, db, m, pub) // 测试自签插件：把测试公钥注入受信集（反映生产信任模型）
 	res, err := m.InstallFromMarket(context.Background(), indexPath, "market-demo", manifest.Permissions)
 	if err != nil {
 		t.Fatalf("install: %v", err)
@@ -1027,6 +1028,7 @@ func TestInstallFromMarketResolvesDependencyChain(t *testing.T) {
 		AcceptedPermissionsByPlugin: map[string][]string{
 			dependencyManifest.ID: dependencyManifest.Permissions,
 		},
+		AllowUnsigned: true, // 该测试市场源插件未签名，显式 opt-in（测试聚焦依赖链解析，非签名）
 	})
 	if err != nil {
 		t.Fatalf("install with dependency chain: %v", err)

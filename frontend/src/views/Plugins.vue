@@ -56,6 +56,14 @@ const auditReleases = ref<PluginRelease[]>([])
 const auditLoading = ref(false)
 const rollbacking = ref<number | null>(null)
 
+// 插件签名信任配置（官方公钥只读 + 用户受信公钥 + 是否允许未签名）
+const trustVisible = ref(false)
+const trustLoading = ref(false)
+const trustSaving = ref(false)
+const trustOfficialKey = ref('')
+const trustKeysText = ref('')
+const trustAllowUnsigned = ref(false)
+
 const filteredPlugins = computed(() => {
   if (filter.value === 'enabled') return plugins.value.filter((p) => p.enabled)
   if (filter.value === 'available') return plugins.value.filter((p) => !p.enabled)
@@ -902,6 +910,35 @@ function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'
 }
 
+async function openTrust() {
+  trustVisible.value = true
+  trustLoading.value = true
+  try {
+    const cfg = await pluginApi.getTrustConfig()
+    trustOfficialKey.value = cfg.official_key || ''
+    trustKeysText.value = (cfg.trusted_public_keys || []).join('\n')
+    trustAllowUnsigned.value = !!cfg.allow_unsigned
+  } catch (e: any) {
+    ElMessage.error(e?.message || '加载信任配置失败')
+  } finally {
+    trustLoading.value = false
+  }
+}
+
+async function saveTrust() {
+  trustSaving.value = true
+  try {
+    const keys = trustKeysText.value.split('\n').map((k) => k.trim()).filter(Boolean)
+    await pluginApi.setTrustConfig(keys, trustAllowUnsigned.value)
+    ElMessage.success('信任配置已保存')
+    trustVisible.value = false
+  } catch (e: any) {
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    trustSaving.value = false
+  }
+}
+
 function jsonText(v?: Record<string, any>) {
   if (!v || !Object.keys(v).length) return ''
   return JSON.stringify(v)
@@ -923,6 +960,7 @@ function jsonText(v?: Record<string, any>) {
         </el-radio-group>
         <el-button :icon="Bell" @click="publishTestEvent">测试事件</el-button>
         <el-button :icon="Document" @click="openLogs">插件日志</el-button>
+        <el-button :icon="Setting" @click="openTrust">信任配置</el-button>
         <template v-if="activeTab === 'market'">
           <el-button :icon="Setting" @click="openMarketSource">设置仓库</el-button>
           <el-button :icon="Refresh" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
@@ -1029,6 +1067,30 @@ function jsonText(v?: Record<string, any>) {
       <template #footer>
         <el-button @click="marketSourceVisible = false">取消</el-button>
         <el-button type="primary" @click="saveMarketSources">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="trustVisible" title="插件签名信任配置" width="560px">
+      <div v-loading="trustLoading">
+        <div style="margin-bottom: 14px;">
+          <div class="text-muted" style="font-size: 13px; margin-bottom: 4px;">官方公钥（只读，始终受信）</div>
+          <el-input :model-value="trustOfficialKey" readonly type="textarea" :rows="2" />
+        </div>
+        <div style="margin-bottom: 14px;">
+          <div class="text-muted" style="font-size: 13px; margin-bottom: 4px;">追加受信公钥（每行一个 base64 ed25519）</div>
+          <el-input v-model="trustKeysText" type="textarea" :rows="4" placeholder="留空则仅信任官方公钥" />
+        </div>
+        <div style="margin-bottom: 8px;">
+          <el-switch v-model="trustAllowUnsigned" />
+          <span style="margin-left: 8px;">允许安装未签名插件（不推荐）</span>
+        </div>
+        <div class="text-muted" style="font-size: 12px; margin-top: 8px;">
+          市场插件安装时按此处公钥校验签名；未签名插件仅在开启上方开关后允许安装。
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="trustVisible = false">取消</el-button>
+        <el-button type="primary" :loading="trustSaving" @click="saveTrust">保存</el-button>
       </template>
     </el-dialog>
 

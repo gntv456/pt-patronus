@@ -647,3 +647,20 @@ type BrushFlowSeed struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
+
+// ContractRule — 保种契约规则。为站点设分享率/做种数/上传量下限，automation cron 定时检查
+// SiteChain.UserInfo，低于任一下限则告警通知（防分享率过低被封；与 H&R 告警同属保号自动化）。
+// 每站一条（site_id 唯一），Upsert 按 site_id 合并。
+type ContractRule struct {
+	ID            uint       `gorm:"primaryKey" json:"id"`
+	SiteID        uint       `gorm:"uniqueIndex;not null" json:"site_id"`
+	Enabled       bool       `gorm:"default:true" json:"enabled"`
+	MinRatio      float64    `json:"min_ratio"`     // 分享率下限，0=不检
+	MinSeeding    int        `json:"min_seeding"`   // 做种数下限，0=不检
+	MinUploadGB   int        `json:"min_upload_gb"` // 上传量下限(GiB)，0=不检
+	LastCheckedAt *time.Time `json:"last_checked_at"`
+	LastStatus    string     `gorm:"size:16" json:"last_status"` // ok | breach | error
+	LastDetail    string     `gorm:"type:text" json:"last_detail"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+}

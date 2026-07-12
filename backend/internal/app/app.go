@@ -305,6 +305,10 @@ func New(cfg *config.Config) (*App, error) {
 	brushOp := oper.NewBrushFlowOper(database)
 	brushCh := chain.NewBrushFlowChain(base, siteOp, siteCh, dlCh, brushOp, noticeSvc)
 
+	// 保种契约：为站点设分享率/做种数/上传量下限，cron 定时检查 UserInfo 低于阈值则告警
+	contractOp := oper.NewContractOper(database)
+	contractCh := chain.NewContractChain(base, siteCh, siteOp, contractOp, noticeSvc)
+
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
@@ -329,6 +333,12 @@ func New(cfg *config.Config) (*App, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		brushCh.RunAllSweep(ctx)
+	})
+	// 保种契约检查：每日 9 点（低于分享率/做种/上传下限则告警，当天去重）
+	_ = sched.AddFunc("contract-check", "0 9 * * *", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		contractCh.CheckAll(ctx)
 	})
 	auto.Start()
 
@@ -566,6 +576,7 @@ func New(cfg *config.Config) (*App, error) {
 		Workflow:  wfCh,
 		Rss:       rssCh,
 		BrushFlow: brushCh,
+		Contract:  contractCh,
 		Webhook:   webhookH,
 		MonOp:     monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,

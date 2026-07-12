@@ -102,6 +102,9 @@ const Map<String, String> kGlyphs = {
   // 刷流：闪电（快速刷上传/分享率）
   'brushflow':
       '<path d="M13 2L3 14h7l-1 8 10-12h-7z"/>',
+  // 保种契约：文件勾选（契约/达标）
+  'contract':
+      '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14l2 2 4-4"/>',
 };
 
 /// 取字形的完整内联 SVG（外层包裹 24×24 + 白色描边 + 圆角端点），供 flutter_svg 渲染。

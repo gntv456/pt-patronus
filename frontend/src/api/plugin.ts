@@ -290,6 +290,20 @@ export const pluginApi = {
     http.post<PluginInfo>(`/plugins/${id}/rollback`, { release_id: releaseId }).then((r) => r.data),
   reload: (id: string) => http.post<PluginInfo>(`/plugins/${id}/reload`).then((r) => r.data),
   uninstall: (id: string) => http.delete(`/plugins/${id}`).then((r) => r.data),
+  // 插件签名信任配置（管理端）：官方公钥只读 + 用户受信公钥 + 是否允许未签名插件。
+  getTrustConfig: () =>
+    http
+      .get<{ official_key: string; trusted_public_keys: string[]; allow_unsigned: boolean }>(
+        '/plugins/trust-config',
+      )
+      .then((r) => r.data),
+  setTrustConfig: (trustedPublicKeys: string[], allowUnsigned: boolean) =>
+    http
+      .put<{ official_key: string; trusted_public_keys: string[]; allow_unsigned: boolean }>(
+        '/plugins/trust-config',
+        { trusted_public_keys: trustedPublicKeys, allow_unsigned: allowUnsigned },
+      )
+      .then((r) => r.data),
   asset: (id: string, path = 'index.html') =>
     http
       .get<string>(`/plugins/${id}/assets/${path.replace(/^\/+/, '')}`, {

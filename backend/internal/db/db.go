@@ -54,6 +54,7 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		&models.Workflow{}, &models.WorkflowRun{}, &models.RssSubscription{}, &models.RssItem{},
 		&models.Webhook{},
 		&models.BrushFlowTask{}, &models.BrushFlowSeed{},
+		&models.ContractRule{},
 	); err != nil {
 		return nil, fmt.Errorf("automigrate: %w", err)
 	}

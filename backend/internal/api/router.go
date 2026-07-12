@@ -66,6 +66,7 @@ type Deps struct {
 	Workflow      *chain.WorkflowChain
 	Rss           *chain.RssChain
 	BrushFlow     *chain.BrushFlowChain
+	Contract      *chain.ContractChain
 	Webhook       *v1.WebhookHandler
 	MonOp         *oper.MonitorOper
 	MonSvc        *monitor.Service
@@ -506,6 +507,16 @@ func Build(d *Deps) *gin.Engine {
 				bf.POST("/:id/select", bfH.Select)
 				bf.POST("/:id/sweep", bfH.Sweep)
 				bf.GET("/:id/seeds", bfH.Seeds)
+			}
+
+			// 保种契约：规则 CRUD + 现场检查
+			ctH := v1.NewContractHandler(d.Contract)
+			ct := guarded.Group("/contract")
+			{
+				ct.GET("/rules", ctH.List)
+				ct.POST("/rules", ctH.Upsert)
+				ct.DELETE("/rules/:id", middleware.RequireAdmin(), ctH.Delete)
+				ct.POST("/rules/:id/check", ctH.Check)
 			}
 
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

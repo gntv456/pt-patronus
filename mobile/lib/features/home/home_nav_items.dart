@@ -18,6 +18,7 @@ import '../reseed/reseed_page.dart';
 import '../rss/rss_page.dart';
 import '../savept/savept_page.dart';
 import '../brushflow/brushflow_page.dart';
+import '../contract/contract_page.dart';
 import '../search/search_page.dart';
 import '../sites/sites_page.dart';
 import '../subscriptions/subscriptions_page.dart';
@@ -87,6 +88,7 @@ final List<({String title, List<NavItem> items})> navGroups = [
       NavItem(label: '娱乐', glyph: 'entertainment', from: const Color(0xFF7F00FF), to: const Color(0xFFE100FF), builder: (_) => const EntertainmentPage(), desc: '站内小游戏'),
       NavItem(label: '监护室', glyph: 'savept', from: const Color(0xFFE74C3C), to: const Color(0xFFF39C12), builder: (_) => const SaveptPage(), desc: '站点健康监控'),
       NavItem(label: '刷流', glyph: 'brushflow', from: const Color(0xFFF7971E), to: const Color(0xFFFF6A00), builder: (_) => const BrushFlowPage(), desc: '自动刷量'),
+      NavItem(label: '保种契约', glyph: 'contract', from: const Color(0xFF6C5CE7), to: const Color(0xFF4285F4), builder: (_) => const ContractPage(), desc: '分享率/做种下限告警'),
     ],
   ),
   (

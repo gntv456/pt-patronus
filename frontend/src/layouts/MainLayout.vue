@@ -67,6 +67,7 @@ const navGroups = [
       { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
       { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12' },
       { name: 'brushflow', label: '刷流', icon: 'brushflow', from: '#f7971e', to: '#ff6a00' },
+      { name: 'contract', label: '保种契约', icon: 'contract', from: '#6c5ce7', to: '#4285f4' },
     ],
   },
   {
@@ -92,6 +93,7 @@ const navDesc: Record<string, string> = {
   entertainment: '娱乐 · 站内小游戏',
   savept: '监护室 · 站点健康监控',
   brushflow: '刷流 · 自动选种做种刷量',
+  contract: '保种契约 · 分享率/做种/上传下限告警',
   plugins: '插件 · 事件扩展 / 动作执行',
 }
 

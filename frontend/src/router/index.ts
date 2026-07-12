@@ -106,6 +106,11 @@ const router = createRouter({
           component: () => import('@/views/BrushFlow.vue'),
         },
         {
+          path: 'contract',
+          name: 'contract',
+          component: () => import('@/views/Contract.vue'),
+        },
+        {
           path: 'harem',
           name: 'harem',
           component: () => import('@/views/Harem.vue'),

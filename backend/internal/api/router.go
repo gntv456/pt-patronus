@@ -69,6 +69,7 @@ type Deps struct {
 	Contract      *chain.ContractChain
 	MediaServer   *chain.MediaServerChain
 	Cloud         *chain.CloudChain
+	Subtitle      *chain.SubtitleChain
 	Webhook       *v1.WebhookHandler
 	MonOp         *oper.MonitorOper
 	MonSvc        *monitor.Service
@@ -567,6 +568,16 @@ func Build(d *Deps) *gin.Engine {
 				}
 				cl.POST("/generate-all", cloudH.GenerateAll)
 				cl.POST("/sync-subscriptions", cloudH.SyncSubscriptions)
+			}
+
+			// 字幕：跨源搜索 + 下载 + 源配置（ASSRT/OpenSubtitles token、SubHD/Zimuku cookie、繁简）
+			subtH := v1.NewSubtitleHandler(d.Subtitle)
+			subt := guarded.Group("/subtitle")
+			{
+				subt.GET("/search", subtH.Search)
+				subt.POST("/download", subtH.Download)
+				subt.GET("/config", subtH.GetConfig)
+				subt.PUT("/config", middleware.RequireAdmin(), subtH.SetConfig)
 			}
 
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

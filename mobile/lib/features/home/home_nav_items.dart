@@ -21,6 +21,7 @@ import '../brushflow/brushflow_page.dart';
 import '../contract/contract_page.dart';
 import '../media_server/media_server_page.dart';
 import '../cloud/cloud_page.dart';
+import '../subtitle/subtitle_page.dart';
 import '../search/search_page.dart';
 import '../sites/sites_page.dart';
 import '../subscriptions/subscriptions_page.dart';
@@ -99,6 +100,7 @@ final List<({String title, List<NavItem> items})> navGroups = [
       NavItem(label: '下载器', glyph: 'downloaders', from: const Color(0xFF11998E), to: const Color(0xFF38EF7D), builder: (_) => const DownloadersPage()),
       NavItem(label: '媒体服务器', glyph: 'mediaserver', from: const Color(0xFF52B788), to: const Color(0xFF2D6A4F), builder: (_) => const MediaServerPage(), desc: 'Emby/Jellyfin/Plex'),
       NavItem(label: '云盘·STRM', glyph: 'cloud', from: const Color(0xFF4CC9F0), to: const Color(0xFF4361EE), builder: (_) => const CloudPage(), desc: '115/夸克/123 浏览+STRM'),
+      NavItem(label: '字幕', glyph: 'subtitle', from: const Color(0xFF4361EE), to: const Color(0xFF7209B7), builder: (_) => const SubtitlePage(), desc: '跨源字幕搜索下载'),
       NavItem(label: '文件', glyph: 'files', from: const Color(0xFFF7971E), to: const Color(0xFFFFD200), builder: (_) => const FileManagePage()),
       NavItem(label: 'NAS', glyph: 'server', from: const Color(0xFF0F2027), to: const Color(0xFF2C5364), builder: (_) => const MonitorPage()),
       NavItem(label: '工作流', glyph: 'workflow', from: const Color(0xFF6C5CE7), to: const Color(0xFF00B894), builder: (_) => const WorkflowListPage()),

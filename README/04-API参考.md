@@ -151,6 +151,18 @@ Base URL: `/api/v1`
 
 STRM 文件 = 单行文本指向真实播放路径（默认 `{mount}{cloudpath}`，如 `/CloudDrive2/115/电影/X.mkv`），媒体服务器读取后直链播放云盘资源。生成幂等（本地已存在且内容相同跳过）。`cloud-strm` cron 默认每 6 小时跑 `generate-all` + `sync-subscriptions`。
 
+## 字幕（ASSRT/OpenSubtitles/SubHD/字幕库）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/subtitle/search?q=&language=` | 跨源聚合搜索（`language` 空=任意 chs/cht/eng）；返回 `{results:[{source,source_id,title,language,lang_code,...}]}`，单源失败不阻断 |
+| POST | `/subtitle/download` | 下载字幕（body 为搜索结果项）；解 zip + GBK→UTF-8 + 可选繁简，附件返回字节 |
+| GET | `/subtitle/config` | 源配置（secret 脱敏 + `_configured`） |
+| PUT | `/subtitle/config` | 更新源配置（ASSRT token / OpenSubtitles key / SubHD·字幕库 cookie / target_lang；空 secret=保留，管理员） |
+
+下载统一管线：解 zip → 编码转 UTF-8 → 按 `target_lang`（chs/cht）繁简转换（仅文本字幕 srt/ass/ssa/vtt，双语/英文不转）。源凭据存 SystemConfig（`subtitle.*` 键），env `ASSRT_TOKEN`/`OPENSUBTITLES_KEY` 提供默认。AI 字幕（faster-whisper 转录）走 `ptp-ai-subtitle` 市场插件，不在本 API。
+
+
 
 
 | 方法 | 路径 | 说明 |

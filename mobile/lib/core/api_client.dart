@@ -215,6 +215,29 @@ class ApiClient {
     }
   }
 
+  /// POST 取二进制响应（如字幕下载：POST body 指定字幕，返回文件字节）。跳过 JSON 解析。
+  Future<Uint8List> postBytes(String path, Map<String, dynamic> body) async {
+    try {
+      final r = await http.post(_u(path), headers: _headers, body: jsonEncode(body));
+      if (r.statusCode >= 400) {
+        if (r.statusCode == 401) _handle401();
+        var msg = '请求失败';
+        try {
+          final b = jsonDecode(r.body);
+          if (b is Map<String, dynamic>) {
+            msg = (b['error'] as String?) ?? (b['message'] as String?) ?? msg;
+          }
+        } catch (_) {}
+        throw ApiException(r.statusCode, msg);
+      }
+      return r.bodyBytes;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException(0, '$e', userMessage: '网络连接失败，请检查网络或后端地址');
+    }
+  }
+
   /// 流式下载到文件（大文件避免一次性入内存；支持进度/取消）。用 dio，复用 JWT header。
   /// HTTP 错误（>=400）解析后端 error 文案抛 ApiException；401 走全局清洗。
   Future<void> downloadToFile(

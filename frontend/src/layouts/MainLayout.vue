@@ -76,6 +76,7 @@ const navGroups = [
       { name: 'downloaders', label: '下载器', icon: 'downloaders', from: '#11998e', to: '#38ef7d' },
       { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver', from: '#52b788', to: '#2d6a4f' },
       { name: 'cloud', label: '云盘·STRM', icon: 'cloud', from: '#4cc9f0', to: '#4361ee' },
+      { name: 'subtitle', label: '字幕', icon: 'subtitle', from: '#4361ee', to: '#7209b7' },
       { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
       { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
       { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
@@ -98,6 +99,7 @@ const navDesc: Record<string, string> = {
   contract: '保种契约 · 分享率/做种/上传下限告警',
   mediaserver: '媒体服务器 · Emby/Jellyfin/Plex 库扫描与封面',
   cloud: '云盘·STRM · 115/夸克/123 浏览 + STRM 生成 + 订阅追更',
+  subtitle: '字幕 · ASSRT/OpenSubtitles/SubHD/字幕库 聚合搜索下载',
   plugins: '插件 · 事件扩展 / 动作执行',
 }
 

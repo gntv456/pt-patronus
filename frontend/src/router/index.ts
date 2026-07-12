@@ -121,6 +121,11 @@ const router = createRouter({
           component: () => import('@/views/Cloud.vue'),
         },
         {
+          path: 'subtitle',
+          name: 'subtitle',
+          component: () => import('@/views/Subtitle.vue'),
+        },
+        {
           path: 'harem',
           name: 'harem',
           component: () => import('@/views/Harem.vue'),

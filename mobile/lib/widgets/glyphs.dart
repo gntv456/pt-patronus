@@ -111,6 +111,9 @@ const Map<String, String> kGlyphs = {
   // 云盘·STRM：云朵（网盘资源 → STRM 直链）
   'cloud':
       '<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6 19z"/>',
+  // 字幕：对话气泡（字幕/对白）
+  'subtitle':
+      '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
 };
 
 /// 取字形的完整内联 SVG（外层包裹 24×24 + 白色描边 + 圆角端点），供 flutter_svg 渲染。

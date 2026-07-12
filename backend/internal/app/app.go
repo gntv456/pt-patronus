@@ -328,6 +328,17 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	// 字幕搜索/下载：多源（ASSRT/OpenSubtitles API + SubHD/Zimuku 抓取）聚合 + 解 zip + 繁简。
+	// 源凭据走 SystemConfig（回退 env ASSRT_TOKEN/OPENSUBTITLES_KEY），UI 改动即时 rebuild。
+	subtitleProvider, err := chain.NewSubtitleSourceProvider(cfgOp, chain.SubtitleSettings{
+		AssrtToken:       cfg.AssrtToken,
+		OpenSubtitlesKey: cfg.OpenSubtitlesKey,
+	})
+	if err != nil {
+		return nil, err
+	}
+	subtitleCh := chain.NewSubtitleChain(base, subtitleProvider)
+
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
@@ -605,6 +616,7 @@ func New(cfg *config.Config) (*App, error) {
 		Contract:  contractCh,
 		MediaServer: mediaServerCh,
 		Cloud:       cloudCh,
+		Subtitle:    subtitleCh,
 		Webhook:   webhookH,
 		MonOp:     monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,

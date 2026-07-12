@@ -1,0 +1,140 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { http } from './http'
+
+// http.ts 是前端契约层：注入 JWT、错误文案中文化、401/403-VIP 清 token 回登录。
+// 用自定义 adapter 注入伪响应（成功/失败），验证拦截器行为，避免真实网络。
+
+// 替换 location 以捕获 401/403 重定向，规避 jsdom 真实导航副作用。
+function stubLocation(pathname: string) {
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { href: 'http://localhost' + pathname, pathname },
+  })
+}
+
+function setAdapter(impl: (config: any) => any) {
+  // axios 适配器：返回 resolved 响应或 rejected 错误对象。
+  http.defaults.adapter = ((config: any) => Promise.resolve(impl(config))) as any
+}
+
+function rejectWith(err: any) {
+  http.defaults.adapter = (() => Promise.reject(err)) as any
+}
+
+function axiosErr(opts: { status?: number; data?: any; code?: string; message?: string }) {
+  const e: any = new Error(opts.message || 'err')
+  if (opts.code) e.code = opts.code
+  if (opts.status !== undefined) {
+    e.response = { status: opts.status, data: opts.data ?? {} }
+  }
+  return e
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  stubLocation('/dashboard')
+})
+
+describe('请求拦截器：JWT 注入', () => {
+  it('localStorage 有 token 时注入 Authorization: Bearer', async () => {
+    localStorage.setItem('token', 'abc123')
+    let captured: any
+    setAdapter((config) => {
+      captured = config
+      return { data: {}, status: 200, statusText: 'OK', headers: {}, config }
+    })
+    await http.get('/ping')
+    expect(captured.headers.Authorization).toBe('Bearer abc123')
+  })
+
+  it('无 token 不注入 Authorization', async () => {
+    let captured: any
+    setAdapter((config) => {
+      captured = config
+      return { data: {}, status: 200, statusText: 'OK', headers: {}, config }
+    })
+    await http.get('/ping')
+    expect(captured.headers.Authorization).toBeUndefined()
+  })
+})
+
+describe('响应拦截器：错误文案中文化', () => {
+  it('ECONNABORTED/timeout → 请求超时', async () => {
+    rejectWith(axiosErr({ code: 'ECONNABORTED', message: 'timeout of 15000ms exceeded' }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '请求超时，请稍后重试' })
+  })
+
+  it('message 含 timeout → 请求超时', async () => {
+    rejectWith(axiosErr({ message: 'Request Timeout' }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '请求超时，请稍后重试' })
+  })
+
+  it('无 response（网络断开） → 网络连接失败', async () => {
+    rejectWith(axiosErr({ message: 'Network Error' }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '网络连接失败，请检查网络' })
+  })
+
+  it('429 → 操作过于频繁', async () => {
+    rejectWith(axiosErr({ status: 429 }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '操作过于频繁，请稍后再试' })
+  })
+
+  it('404 → 资源不存在', async () => {
+    rejectWith(axiosErr({ status: 404 }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '请求的资源不存在' })
+  })
+
+  it('5xx → 服务暂时不可用', async () => {
+    rejectWith(axiosErr({ status: 503 }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '服务暂时不可用，请稍后重试' })
+  })
+
+  it('4xx（非 401/404） → 请求参数有误', async () => {
+    rejectWith(axiosErr({ status: 400 }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '请求参数有误，请检查后重试' })
+  })
+
+  it('后端 data.error 优先透传', async () => {
+    rejectWith(axiosErr({ status: 400, data: { error: '自定义后端错误' } }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '自定义后端错误' })
+  })
+
+  it('后端 data.message 次优先透传', async () => {
+    rejectWith(axiosErr({ status: 500, data: { message: '服务器内部消息' } }))
+    await expect(http.get('/x')).rejects.toMatchObject({ message: '服务器内部消息' })
+  })
+})
+
+describe('鉴权失效：清 token + 回登录', () => {
+  it('401 清 token 并跳 /login', async () => {
+    localStorage.setItem('token', 'stale')
+    rejectWith(axiosErr({ status: 401 }))
+    await expect(http.get('/x')).rejects.toBeDefined()
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(window.location.href).toContain('/login')
+  })
+
+  it('403 VIP 失效（vip_expired）清 token', async () => {
+    localStorage.setItem('token', 'stale')
+    rejectWith(axiosErr({ status: 403, data: { code: 'vip_expired' } }))
+    await expect(http.get('/x')).rejects.toBeDefined()
+    expect(localStorage.getItem('token')).toBeNull()
+  })
+
+  it('403 非 VIP 类（如 forbidden）不清 token', async () => {
+    localStorage.setItem('token', 'keep')
+    rejectWith(axiosErr({ status: 403, data: { code: 'forbidden' } }))
+    await expect(http.get('/x')).rejects.toBeDefined()
+    expect(localStorage.getItem('token')).toBe('keep')
+  })
+
+  it('已在 /login 页时 401 不重复跳转', async () => {
+    stubLocation('/login')
+    localStorage.setItem('token', 'stale')
+    rejectWith(axiosErr({ status: 401 }))
+    await expect(http.get('/x')).rejects.toBeDefined()
+    // token 仍被清，但 href 不变（不再赋值）
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(window.location.pathname).toBe('/login')
+  })
+})

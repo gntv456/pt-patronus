@@ -22,8 +22,8 @@ func NewKeepSeedHandler(ks *chain.KeepSeedChain) *KeepSeedHandler {
 }
 
 type findReq struct {
-	Name string `json:"name" binding:"required"`
-	Size int64  `json:"size"` // 字节；为 0 仅按名称评分
+	Name string `json:"name" binding:"required,max=512"`
+	Size int64  `json:"size" binding:"min=0,max=1099511627776"` // 字节；为 0 仅按名称评分（上限 1TB）
 }
 
 // Find 按名称/大小跨站查找辅种候选。
@@ -80,7 +80,7 @@ func (h *KeepSeedHandler) GetConfig(c *gin.Context) {
 }
 
 type configReq struct {
-	IYUUToken string `json:"iyuu_token"`
+	IYUUToken string `json:"iyuu_token" binding:"max=256"`
 }
 
 // SetConfig 保存辅种配置（IYUU token 明文写，DB 存储）。
@@ -98,7 +98,7 @@ func (h *KeepSeedHandler) SetConfig(c *gin.Context) {
 }
 
 type reseedReq struct {
-	DownloaderID uint `json:"downloader_id" binding:"required"`
+	DownloaderID uint `json:"downloader_id" binding:"required,min=1"`
 }
 
 // Reseed 触发某下载器的 IYUU 精确辅种，返回新增 pending 候选。
@@ -127,7 +127,7 @@ func (h *KeepSeedHandler) Tasks(c *gin.Context) {
 }
 
 type resolveReq struct {
-	Action string `json:"action" binding:"required"` // add | skip
+	Action string `json:"action" binding:"required,max=16"` // add | skip
 }
 
 // Resolve 处理一个候选任务：添加辅种 / 跳过。
@@ -165,8 +165,8 @@ func (h *KeepSeedHandler) GetSetting(c *gin.Context) {
 }
 
 type settingReq struct {
-	DownloaderID  uint   `json:"downloader_id" binding:"required"`
-	SavePath      string `json:"save_path"`
+	DownloaderID  uint   `json:"downloader_id" binding:"required,min=1"`
+	SavePath      string `json:"save_path" binding:"max=512"`
 	PauseAfterAdd bool   `json:"pause_after_add"`
 	AutoReseed    bool   `json:"auto_reseed"`
 	AutoReseedAdd bool   `json:"auto_reseed_add"`

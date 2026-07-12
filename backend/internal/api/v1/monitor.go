@@ -112,11 +112,11 @@ func (h *MonitorHandler) Collect(c *gin.Context) {
 }
 
 type powerRequest struct {
-	Action string `json:"action"`
+	Action string `json:"action" binding:"max=16"`
 }
 
 type execRequest struct {
-	Command    string `json:"command"`
+	Command    string `json:"command" binding:"max=2000"`
 	TimeoutSec int    `json:"timeout_sec"`
 }
 

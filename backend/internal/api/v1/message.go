@@ -93,8 +93,8 @@ func (h *MessageHandler) Reply(c *gin.Context) {
 		return
 	}
 	var body struct {
-		URL     string `json:"url"`
-		Content string `json:"content"`
+		URL     string `json:"url" binding:"max=512"`
+		Content string `json:"content" binding:"max=65536"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数有误"})
@@ -121,7 +121,7 @@ func (h *MessageHandler) Delete(c *gin.Context) {
 		return
 	}
 	var body struct {
-		URL string `json:"url"`
+		URL string `json:"url" binding:"max=512"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数有误"})
@@ -147,7 +147,7 @@ func (h *MessageHandler) MarkRead(c *gin.Context) {
 		return
 	}
 	var body struct {
-		IDs []string `json:"ids"`
+		IDs []string `json:"ids" binding:"dive,max=128"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "参数有误"})

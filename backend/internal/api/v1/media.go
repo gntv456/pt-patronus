@@ -139,12 +139,13 @@ func (h *MediaHandler) GetConfig(c *gin.Context) {
 }
 
 // mediaConfigReq 媒体源配置（PUT）。各字段空串=不修改（便于只改部分项而不必重输全部 secret）。
+// max= 防止超长串入下游 HTTP/存储（secret/token/host 均有合理上限）。
 type mediaConfigReq struct {
-	TMDBAPIKey    string `json:"tmdb_api_key"`
-	TMDBAPIDomain string `json:"tmdb_api_domain"`
-	DoubanSecret  string `json:"douban_secret"`
-	DoubanAppKey  string `json:"douban_app_key"`
-	BangumiToken  string `json:"bangumi_token"`
+	TMDBAPIKey    string `json:"tmdb_api_key" binding:"max=128"`
+	TMDBAPIDomain string `json:"tmdb_api_domain" binding:"max=255"`
+	DoubanSecret  string `json:"douban_secret" binding:"max=128"`
+	DoubanAppKey  string `json:"douban_app_key" binding:"max=64"`
+	BangumiToken  string `json:"bangumi_token" binding:"max=128"`
 }
 
 // SetConfig 保存媒体源配置并即时 rebuild 源（无需重启）。空字段不修改。

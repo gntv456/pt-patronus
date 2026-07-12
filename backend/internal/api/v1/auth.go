@@ -94,11 +94,11 @@ func (h *AuthHandler) HxptCaptcha(c *gin.Context) {
 }
 
 type hxptLoginReq struct {
-	Username      string            `json:"username"`
-	Password      string            `json:"password"`
-	ImageHash     string            `json:"imagehash"`
-	ImageString   string            `json:"imagestring"`
-	TwoStepCode   string            `json:"two_step_code"`
+	Username      string            `json:"username" binding:"max=64"`
+	Password      string            `json:"password" binding:"max=128"`
+	ImageHash     string            `json:"imagehash" binding:"max=64"`
+	ImageString   string            `json:"imagestring" binding:"max=32"`
+	TwoStepCode   string            `json:"two_step_code" binding:"max=64"`
 	ExtraForm     map[string]string `json:"extra_form"`
 	ChallengeMode bool              `json:"challenge_mode"` // 由 captcha 步探得，回传以驱动挑战响应分支
 }
@@ -155,7 +155,7 @@ func (h *AuthHandler) HxptLogin(c *gin.Context) {
 // ===== 好学 Cookie 登录（2FA / 挑战响应账号的兜底） =====
 
 type hxptCookieLoginReq struct {
-	Cookie string `json:"cookie"`
+	Cookie string `json:"cookie" binding:"max=8192"`
 }
 
 // HxptCookieLogin 直接用好学 cookie 校验 VIP 并登录（最稳路径，覆盖 2FA/挑战响应账号）。
@@ -320,8 +320,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 type activateReq struct {
-	Code     string `json:"code" binding:"required"`
-	DeviceID string `json:"device_id"`
+	Code     string `json:"code" binding:"required,max=128"`
+	DeviceID string `json:"device_id" binding:"max=64"`
 }
 
 // Activate（legacy）消费好学 APP 专属 VIP 激活码。不再作实例级准入 gate，保留兼容。
@@ -377,7 +377,7 @@ func (h *AuthHandler) Status(c *gin.Context) {
 }
 
 type verifyVIPReq struct {
-	Cookie string `json:"cookie"`
+	Cookie string `json:"cookie" binding:"max=8192"`
 }
 
 // VerifyVIP 用好学 cookie 校验 APP 专属 VIP 身份（复用 HxptAuthenticator.Verify）。

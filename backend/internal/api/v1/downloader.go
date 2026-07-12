@@ -109,10 +109,10 @@ func (h *DownloaderHandler) Torrents(c *gin.Context) {
 }
 
 type addReq struct {
-	URL           string   `json:"url" binding:"required"`
-	Category      string   `json:"category"`
-	Tags          []string `json:"tags"`
-	SavePath      string   `json:"save_path"`
+	URL           string   `json:"url" binding:"required,max=2048"` // magnet 链较长，给宽上界
+	Category      string   `json:"category" binding:"max=128"`
+	Tags          []string `json:"tags" binding:"dive,max=128"`
+	SavePath      string   `json:"save_path" binding:"max=512"`
 	Paused        bool     `json:"paused"`
 	UploadLimit   int64    `json:"upload_limit"`   // bytes/s, 0 不限
 	DownloadLimit int64    `json:"download_limit"` // bytes/s, 0 不限
@@ -141,7 +141,7 @@ func (h *DownloaderHandler) Add(c *gin.Context) {
 }
 
 type hashesReq struct {
-	Hashes      []string `json:"hashes"`
+	Hashes      []string `json:"hashes" binding:"dive,max=64"` // 单元素上限防巨型 hash 串 DoS（infohash 40 hex）
 	DeleteFiles bool     `json:"delete_files"`
 }
 

@@ -28,8 +28,8 @@ func NewSiteHandler(o *oper.SiteOper, sc *chain.SiteChain, reg *site.Registry, h
 }
 
 type inspectReq struct {
-	URL     string                       `json:"url" binding:"required"`
-	Cookie  string                       `json:"cookie"`
+	URL     string                       `json:"url" binding:"required,max=512"`
+	Cookie  string                       `json:"cookie" binding:"max=65536"`
 	Fields  map[string]site.ElementQuery `json:"fields"`
 	NoLogin site.NoLoginDef              `json:"no_login"`
 }
@@ -239,7 +239,7 @@ func (h *SiteHandler) TorrentDetail(c *gin.Context) {
 }
 
 type cookieReq struct {
-	Cookie string `json:"cookie" binding:"required"`
+	Cookie string `json:"cookie" binding:"required,max=65536"`
 }
 
 // UpdateCookie 上传站点 cookie（WebView 登录后由客户端调用）。

@@ -31,8 +31,8 @@ func (h *MedalHandler) All(c *gin.Context) {
 
 // medalActionBody 写操作请求体。
 type medalActionBody struct {
-	SiteID  uint   `json:"site_id"`
-	MedalID string `json:"medal_id"`
+	SiteID  uint   `json:"site_id" binding:"min=1"`
+	MedalID string `json:"medal_id" binding:"max=64"`
 }
 
 // Buy 购买勋章。

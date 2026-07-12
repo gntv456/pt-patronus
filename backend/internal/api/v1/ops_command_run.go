@@ -27,11 +27,11 @@ func NewCommandRunHandler(targets *oper.MonitorOper, runs *oper.CommandRunOper, 
 }
 
 type commandRunRequest struct {
-	TargetIDs   []uint `json:"target_ids"`
-	Command     string `json:"command"`
-	TimeoutSec  int    `json:"timeout_sec"`
-	Source      string `json:"source"`
-	Note        string `json:"note"`
+	TargetIDs   []uint `json:"target_ids" binding:"max=200"` // DoS 硬上限；业务上限 50 由 Create 内 len 检查 + 友好错误处理
+	Command     string `json:"command" binding:"max=2000"`
+	TimeoutSec  int    `json:"timeout_sec" binding:"min=0,max=3600"`
+	Source      string `json:"source" binding:"max=32"`
+	Note        string `json:"note" binding:"max=512"`
 	ConfirmRisk bool   `json:"confirm_risk"`
 }
 

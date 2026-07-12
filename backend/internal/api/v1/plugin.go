@@ -28,38 +28,38 @@ type pluginConfigReq struct {
 }
 
 type pluginActionReq struct {
-	Action string         `json:"action"`
+	Action string         `json:"action" binding:"max=64"`
 	Input  map[string]any `json:"input"`
 }
 
 type pluginEventReq struct {
-	Type string         `json:"type"`
+	Type string         `json:"type" binding:"max=64"`
 	Data map[string]any `json:"data"`
 }
 
 type pluginBridgeReq struct {
-	Method string         `json:"method"`
+	Method string         `json:"method" binding:"max=16"`
 	Params map[string]any `json:"params"`
 }
 
 type pluginInstallReq struct {
-	Source                      string                          `json:"source"`
-	ID                          string                          `json:"id"`
-	AcceptedPermissions         []string                        `json:"accepted_permissions"`
-	AcceptedPermissionsByPlugin []pluginInstallPermissionAccept `json:"accepted_permissions_by_plugin"`
+	Source                      string                          `json:"source" binding:"max=256"`
+	ID                          string                          `json:"id" binding:"max=128"`
+	AcceptedPermissions         []string                        `json:"accepted_permissions" binding:"dive,max=64"`
+	AcceptedPermissionsByPlugin []pluginInstallPermissionAccept `json:"accepted_permissions_by_plugin" binding:"dive"`
 }
 
 type pluginInstallPermissionAccept struct {
-	ID                  string   `json:"id"`
-	AcceptedPermissions []string `json:"accepted_permissions"`
+	ID                  string   `json:"id" binding:"max=128"`
+	AcceptedPermissions []string `json:"accepted_permissions" binding:"dive,max=64"`
 }
 
 type pluginPermissionReq struct {
-	AcceptedPermissions []string `json:"accepted_permissions"`
+	AcceptedPermissions []string `json:"accepted_permissions" binding:"dive,max=64"`
 }
 
 type pluginRollbackReq struct {
-	ReleaseID uint `json:"release_id"`
+	ReleaseID uint `json:"release_id" binding:"min=1"`
 }
 
 func pluginAssetScope(id string) string {
@@ -81,7 +81,7 @@ func (h *PluginHandler) MarketSources(c *gin.Context) {
 }
 
 type pluginMarketSourcesReq struct {
-	Sources []string `json:"sources"`
+	Sources []string `json:"sources" binding:"dive,max=256"`
 }
 
 // SetMarketSources 持久化插件市场源列表。
@@ -104,7 +104,7 @@ func (h *PluginHandler) TrustConfig(c *gin.Context) {
 }
 
 type pluginTrustConfigReq struct {
-	TrustedPublicKeys []string `json:"trusted_public_keys"`
+	TrustedPublicKeys []string `json:"trusted_public_keys" binding:"dive,max=2048"` // ed25519 base64 公钥约 68 字符，给宽上界
 	AllowUnsigned     bool     `json:"allow_unsigned"`
 }
 

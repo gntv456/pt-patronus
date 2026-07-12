@@ -73,7 +73,7 @@ func (h *EntertainmentHandler) Games(c *gin.Context) {
 }
 
 type playReq struct {
-	Game string `json:"game" binding:"required"`
+	Game string `json:"game" binding:"required,max=64"`
 }
 
 // Play 玩一次游戏。
@@ -124,7 +124,7 @@ func (h *EntertainmentHandler) BuyOptions(c *gin.Context) {
 }
 
 type buyReq struct {
-	OptionType int `json:"option_type"`
+	OptionType int `json:"option_type" binding:"min=0,max=100"`
 }
 
 // Buy 购卡。
@@ -147,7 +147,7 @@ func (h *EntertainmentHandler) Buy(c *gin.Context) {
 }
 
 type playMultiReq struct {
-	Count int `json:"count"`
+	Count int `json:"count" binding:"min=1,max=100"`
 }
 
 // PlayMulti 连抽（仅部分游戏支持，如 LongPT 大转盘 size=N）。
@@ -212,8 +212,8 @@ func (h *EntertainmentHandler) Syntheses(c *gin.Context) {
 }
 
 type drawReq struct {
-	SynthesisID int `json:"synthesis_id"`
-	Count       int `json:"count"`
+	SynthesisID int `json:"synthesis_id" binding:"min=1,max=100000"`
+	Count       int `json:"count" binding:"min=1,max=100"`
 }
 
 // Draw 抽碎片（1/10/100/其它）。
@@ -236,7 +236,7 @@ func (h *EntertainmentHandler) Draw(c *gin.Context) {
 }
 
 type synthReq struct {
-	SynthesisID int `json:"synthesis_id"`
+	SynthesisID int `json:"synthesis_id" binding:"min=1,max=100000"`
 }
 
 // Synthesize 合成。
@@ -287,7 +287,7 @@ func (h *EntertainmentHandler) MedalShards(c *gin.Context) {
 }
 
 type composeReq struct {
-	MedalID string `json:"medal_id" binding:"required"`
+	MedalID string `json:"medal_id" binding:"required,max=64"`
 }
 
 // ComposeMedal 碎片合成（太极/两仪/四象）。
@@ -329,7 +329,7 @@ func (h *EntertainmentHandler) ComposeBigMedal(c *gin.Context) {
 }
 
 type convertReq struct {
-	YiYang int `json:"yi_yang"`
+	YiYang int `json:"yi_yang" binding:"min=-100000,max=100000"`
 }
 
 // ConvertShard 阴阳转换（yi_yang>0 阴→阳，<0 阳→阴）。
@@ -366,8 +366,8 @@ func (h *EntertainmentHandler) Farm(c *gin.Context) {
 }
 
 type farmItemReq struct {
-	Section string `json:"section"` // crop | animal
-	ItemID  int    `json:"item_id"`
+	Section string `json:"section" binding:"max=16"` // crop | animal
+	ItemID  int    `json:"item_id" binding:"min=1,max=100000"`
 }
 
 // Plant 种植/养殖。
@@ -423,7 +423,7 @@ func (h *EntertainmentHandler) HarvestAll(c *gin.Context) {
 }
 
 type sellReq struct {
-	Key string `json:"key"`
+	Key string `json:"key" binding:"max=64"`
 }
 
 // Sell 出售仓库物品。
@@ -446,9 +446,9 @@ func (h *EntertainmentHandler) Sell(c *gin.Context) {
 }
 
 type betReq struct {
-	Selection string            `json:"selection"`
+	Selection string            `json:"selection" binding:"max=64"`
 	Amount    float64           `json:"amount"`
-	Extra     map[string]string `json:"extra"`
+	Extra     map[string]string `json:"extra" binding:"dive,max=512"`
 }
 
 // Bet 下注/选号（猜大小/骰宝/双色球/翻面/Betting/红包）。
@@ -506,7 +506,7 @@ func (h *EntertainmentHandler) EventDetail(c *gin.Context) {
 }
 
 type blackjackReq struct {
-	Action string `json:"action"`
+	Action string `json:"action" binding:"max=16"`
 }
 
 // Blackjack 二十一点动作（new/hit/stand/double）。
@@ -622,7 +622,7 @@ func (h *EntertainmentHandler) BigSmallChat(c *gin.Context) {
 }
 
 type bsSendChatReq struct {
-	Message string `json:"message"`
+	Message string `json:"message" binding:"max=2000"`
 }
 
 // BigSmallSendChat 发聊天。
@@ -645,8 +645,8 @@ func (h *EntertainmentHandler) BigSmallSendChat(c *gin.Context) {
 }
 
 type bsTaskReq struct {
-	Action string `json:"action"` // claim | reward | refund
-	TaskID int    `json:"task_id"`
+	Action string `json:"action" binding:"max=16"` // claim | reward | refund
+	TaskID int    `json:"task_id" binding:"min=1,max=100000"`
 }
 
 // BigSmallTaskAction 任务领取/领奖/亏返卡。
@@ -669,7 +669,7 @@ func (h *EntertainmentHandler) BigSmallTaskAction(c *gin.Context) {
 }
 
 type bsItemReq struct {
-	Tag string `json:"tag"`
+	Tag string `json:"tag" binding:"max=64"`
 }
 
 // BigSmallUseItem 使用道具（熊猫 useItem；好学亏返卡 refund）。
@@ -692,8 +692,8 @@ func (h *EntertainmentHandler) BigSmallUseItem(c *gin.Context) {
 }
 
 type bsRedpacketReq struct {
-	Action string            `json:"action"` // send | claim | info
-	Extra  map[string]string `json:"extra"`
+	Action string            `json:"action" binding:"max=16"` // send | claim | info
+	Extra  map[string]string `json:"extra" binding:"dive,max=512"`
 }
 
 // BigSmallRedpacket 红包发送/领取/详情。

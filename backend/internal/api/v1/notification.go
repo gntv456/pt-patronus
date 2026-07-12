@@ -21,9 +21,9 @@ func NewNotificationHandler(notif *chain.NotificationChain, mgr *notification.Ma
 }
 
 type notifyReq struct {
-	Title string `json:"title" binding:"required"`
-	Body  string `json:"body"`
-	Level string `json:"level"`
+	Title string `json:"title" binding:"required,max=255"`
+	Body  string `json:"body" binding:"max=2000"`
+	Level string `json:"level" binding:"max=16"`
 }
 
 // Test 发送一条测试通知到所有通道。
@@ -148,49 +148,49 @@ func (h *NotificationHandler) GetConfig(c *gin.Context) {
 type notifyConfigReq struct {
 	Bark struct {
 		Enabled bool   `json:"enabled"`
-		Server  string `json:"server"`
-		Key     string `json:"key"`
+		Server  string `json:"server" binding:"max=512"`
+		Key     string `json:"key" binding:"max=256"`
 	} `json:"bark"`
 	Telegram struct {
 		Enabled bool   `json:"enabled"`
-		Token   string `json:"token"`
-		ChatID  string `json:"chat_id"`
-		APIURL  string `json:"api_url"`
+		Token   string `json:"token" binding:"max=256"`
+		ChatID  string `json:"chat_id" binding:"max=64"`
+		APIURL  string `json:"api_url" binding:"max=512"`
 	} `json:"telegram"`
 	QQ struct {
 		Enabled     bool   `json:"enabled"`
-		AppID       string `json:"app_id"`
-		AppSecret   string `json:"app_secret"`
-		OpenID      string `json:"openid"`
-		GroupOpenID string `json:"group_openid"`
+		AppID       string `json:"app_id" binding:"max=32"`
+		AppSecret   string `json:"app_secret" binding:"max=128"`
+		OpenID      string `json:"openid" binding:"max=128"`
+		GroupOpenID string `json:"group_openid" binding:"max=128"`
 	} `json:"qq"`
 	WeChat struct {
 		Enabled   bool   `json:"enabled"`
-		BotToken  string `json:"bot_token"`
-		AccountID string `json:"account_id"`
-		Target    string `json:"target"`
-		BaseURL   string `json:"base_url"`
+		BotToken  string `json:"bot_token" binding:"max=256"`
+		AccountID string `json:"account_id" binding:"max=64"`
+		Target    string `json:"target" binding:"max=128"`
+		BaseURL   string `json:"base_url" binding:"max=512"`
 	} `json:"wechat"`
 	Webhook struct {
 		Enabled bool   `json:"enabled"`
-		URL     string `json:"url"`
+		URL     string `json:"url" binding:"max=512"`
 	} `json:"webhook"`
 	DingTalk struct {
 		Enabled bool   `json:"enabled"`
-		URL     string `json:"url"`
+		URL     string `json:"url" binding:"max=512"`
 	} `json:"dingtalk"`
 	Feishu struct {
 		Enabled bool   `json:"enabled"`
-		URL     string `json:"url"`
+		URL     string `json:"url" binding:"max=512"`
 	} `json:"feishu"`
 	Email struct {
 		Enabled  bool   `json:"enabled"`
-		Host     string `json:"host"`
-		Port     int    `json:"port"`
-		Username string `json:"username"`
-		Password string `json:"password"`
-		From     string `json:"from"`
-		To       string `json:"to"`
+		Host     string `json:"host" binding:"max=255"`
+		Port     int    `json:"port" binding:"min=1,max=65535"`
+		Username string `json:"username" binding:"max=128"`
+		Password string `json:"password" binding:"max=256"`
+		From     string `json:"from" binding:"max=128"`
+		To       string `json:"to" binding:"max=512"`
 	} `json:"email"`
 }
 

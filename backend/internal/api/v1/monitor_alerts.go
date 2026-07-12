@@ -48,8 +48,8 @@ func (h *MonitorHandler) AckAlert(c *gin.Context) {
 }
 
 type silenceAlertRequest struct {
-	Minutes int    `json:"minutes"`
-	Until   string `json:"until"`
+	Minutes int    `json:"minutes" binding:"min=1,max=10080"`
+	Until   string `json:"until" binding:"max=64"`
 }
 
 // SilenceAlert suppresses repeated notifications for an alert for a bounded time.

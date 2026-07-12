@@ -134,8 +134,8 @@ func (h *DownloaderHandler) Tags(c *gin.Context) {
 }
 
 type categoryReq struct {
-	Hashes   []string `json:"hashes"`
-	Category string   `json:"category"`
+	Hashes   []string `json:"hashes" binding:"dive,max=64"`
+	Category string   `json:"category" binding:"max=128"`
 }
 
 // SetCategoryOp 设置分类。
@@ -153,9 +153,9 @@ func (h *DownloaderHandler) SetCategoryOp(c *gin.Context) {
 }
 
 type tagsReq struct {
-	Hashes []string `json:"hashes"`
-	Tags   []string `json:"tags"`
-	Mode   string   `json:"mode"` // set | add | remove
+	Hashes []string `json:"hashes" binding:"dive,max=64"`
+	Tags   []string `json:"tags" binding:"dive,max=128"`
+	Mode   string   `json:"mode" binding:"max=16"` // set | add | remove
 }
 
 // TagsOp 标签操作（按 mode 分发）。
@@ -213,8 +213,8 @@ func (h *DownloaderHandler) Reannounce(c *gin.Context) {
 }
 
 type locationReq struct {
-	Hashes   []string `json:"hashes"`
-	Location string   `json:"location"`
+	Hashes   []string `json:"hashes" binding:"dive,max=64"`
+	Location string   `json:"location" binding:"max=512"`
 }
 
 // SetLocation 移动保存路径。
@@ -234,7 +234,7 @@ func (h *DownloaderHandler) SetLocation(c *gin.Context) {
 // —— 限速 ——
 
 type limitsReq struct {
-	Hashes        []string `json:"hashes"`
+	Hashes        []string `json:"hashes" binding:"dive,max=64"`
 	UploadLimit   int64    `json:"upload_limit"`
 	DownloadLimit int64    `json:"download_limit"`
 }
@@ -312,7 +312,7 @@ func (h *DownloaderHandler) Files(c *gin.Context) {
 }
 
 type filePrioReq struct {
-	Hash     string `json:"hash"`
+	Hash     string `json:"hash" binding:"max=64"`
 	Indices  []int  `json:"indices"`
 	Priority int    `json:"priority"`
 }
@@ -353,8 +353,8 @@ func (h *DownloaderHandler) Trackers(c *gin.Context) {
 }
 
 type trackersReq struct {
-	Hash string   `json:"hash"`
-	URLs []string `json:"urls"`
+	Hash string   `json:"hash" binding:"max=64"`
+	URLs []string `json:"urls" binding:"dive,max=512"`
 }
 
 // AddTrackers 追加 tracker。
@@ -388,7 +388,7 @@ func (h *DownloaderHandler) RemoveTrackers(c *gin.Context) {
 // —— 做种限制 ——
 
 type shareLimitsReq struct {
-	Hashes           []string `json:"hashes"`
+	Hashes           []string `json:"hashes" binding:"dive,max=64"`
 	RatioLimit       float64  `json:"ratio_limit"`        // -2=无限 -1=全局默认 >=0=值
 	SeedingTimeLimit int      `json:"seeding_time_limit"` // 分钟，同上语义
 }
@@ -413,8 +413,8 @@ func (h *DownloaderHandler) SetShareLimits(c *gin.Context) {
 // —— 队列优先级 ——
 
 type queueReq struct {
-	Hashes []string `json:"hashes"`
-	Action string   `json:"action"` // top|up|down|bottom
+	Hashes []string `json:"hashes" binding:"dive,max=64"`
+	Action string   `json:"action" binding:"max=16"` // top|up|down|bottom
 }
 
 // SetQueuePriority 调整队列优先级。
@@ -434,7 +434,7 @@ func (h *DownloaderHandler) SetQueuePriority(c *gin.Context) {
 // —— 强制开始 ——
 
 type forceStartReq struct {
-	Hashes []string `json:"hashes"`
+	Hashes []string `json:"hashes" binding:"dive,max=64"`
 	Enable bool     `json:"enable"`
 }
 
@@ -506,8 +506,8 @@ func (h *DownloaderHandler) Peers(c *gin.Context) {
 // —— 分类增删 ——
 
 type categoryEditReq struct {
-	Name     string `json:"name"`
-	SavePath string `json:"save_path"`
+	Name     string `json:"name" binding:"max=128"`
+	SavePath string `json:"save_path" binding:"max=512"`
 }
 
 // CreateCategory 新建分类。
@@ -539,7 +539,7 @@ func (h *DownloaderHandler) EditCategory(c *gin.Context) {
 }
 
 type deleteCategoriesReq struct {
-	Names []string `json:"names"`
+	Names []string `json:"names" binding:"dive,max=128"`
 }
 
 // DeleteCategories 删除分类。

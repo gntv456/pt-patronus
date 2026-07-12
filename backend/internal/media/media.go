@@ -21,31 +21,32 @@ const (
 
 // CreditPerson 是演职人员（演员/导演等）。
 type CreditPerson struct {
-	Name   string `json:"name"`
-	Role   string `json:"role,omitempty"`   // 角色名 / 职务
-	Avatar string `json:"avatar,omitempty"` // 头像 URL
+	Name   string `json:"name" binding:"max=128"`
+	Role   string `json:"role,omitempty" binding:"max=128"`   // 角色名 / 职务
+	Avatar string `json:"avatar,omitempty" binding:"max=512"` // 头像 URL
 }
 
 // MediaInfo 是统一的元数据。Search 返回基础字段；Detail 额外填充演职/推荐等富字段。
+// 注：binding max 仅供 NFO 端点（nfoReq.ShouldBindJSON）防超长输入；不影响 Marshal/Unmarshal。
 type MediaInfo struct {
-	Source        string    `json:"source"` // tmdb | douban | musicbrainz
-	SourceID      string    `json:"source_id"`
-	Title         string    `json:"title"`
-	OriginalTitle string    `json:"original_title,omitempty"`
+	Source        string    `json:"source" binding:"max=32"` // tmdb | douban | musicbrainz
+	SourceID      string    `json:"source_id" binding:"max=64"`
+	Title         string    `json:"title" binding:"max=512"`
+	OriginalTitle string    `json:"original_title,omitempty" binding:"max=512"`
 	Year          int       `json:"year"`
-	Type          MediaType `json:"type"`
-	Overview      string    `json:"overview,omitempty"`
-	PosterURL     string    `json:"poster_url"`
-	BackdropURL   string    `json:"backdrop_url,omitempty"`
-	ReleaseDate   string    `json:"release_date,omitempty"`
+	Type          MediaType `json:"type" binding:"max=16"`
+	Overview      string    `json:"overview,omitempty" binding:"max=10000"`
+	PosterURL     string    `json:"poster_url" binding:"max=512"`
+	BackdropURL   string    `json:"backdrop_url,omitempty" binding:"max=512"`
+	ReleaseDate   string    `json:"release_date,omitempty" binding:"max=32"`
 	Rating        float64   `json:"rating,omitempty"`
-	Genres        []string  `json:"genres,omitempty"`
+	Genres        []string  `json:"genres,omitempty" binding:"dive,max=64"`
 
 	// 富字段（Detail 填充，Search 不填）：
 	Runtime         int            `json:"runtime,omitempty"` // 分钟
-	Countries       []string       `json:"countries,omitempty"`
-	Directors       []string       `json:"directors,omitempty"`
-	Cast            []CreditPerson `json:"cast,omitempty"`
+	Countries       []string       `json:"countries,omitempty" binding:"dive,max=64"`
+	Directors       []string       `json:"directors,omitempty" binding:"dive,max=64"`
+	Cast            []CreditPerson `json:"cast,omitempty" binding:"dive"`
 	Recommendations []MediaInfo    `json:"recommendations,omitempty"`
 }
 

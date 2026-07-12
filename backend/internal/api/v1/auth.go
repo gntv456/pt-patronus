@@ -99,7 +99,7 @@ type hxptLoginReq struct {
 	ImageHash     string            `json:"imagehash" binding:"max=64"`
 	ImageString   string            `json:"imagestring" binding:"max=32"`
 	TwoStepCode   string            `json:"two_step_code" binding:"max=64"`
-	ExtraForm     map[string]string `json:"extra_form"`
+	ExtraForm     map[string]string `json:"extra_form" binding:"dive,max=512"`
 	ChallengeMode bool              `json:"challenge_mode"` // 由 captcha 步探得，回传以驱动挑战响应分支
 }
 

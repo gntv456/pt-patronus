@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/hxpt/ptpatronus/internal/media"
+	"github.com/hxpt/ptpatronus/internal/update"
 )
 
 // newBindValidator 镜像 gin 的 binding 校验器：tag 名 = "binding"。
@@ -297,5 +299,26 @@ func TestMaxHardenedBoundsRound2(t *testing.T) {
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: 3600}, false)
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: 3601}, true)
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: -1}, true)                    // min=0
+	})
+
+	t.Run("hxptLoginReq.ExtraForm dive bounded (公开登录端点)", func(t *testing.T) {
+		mustBind(t, v, hxptLoginReq{Username: "u", Password: "p", ExtraForm: map[string]string{"a": "b"}}, false)
+		mustBind(t, v, hxptLoginReq{Username: "u", Password: "p", ExtraForm: map[string]string{"k": strings.Repeat("v", 513)}}, true)
+	})
+
+	t.Run("update.Manifest bounded (SetManifest admin)", func(t *testing.T) {
+		mustBind(t, v, update.Manifest{LatestVersion: "1.0", Targets: map[string]update.Target{"docker": {}}}, false)
+		mustBind(t, v, update.Manifest{LatestVersion: strings.Repeat("v", 33)}, true)
+		mustBind(t, v, update.Manifest{ReleaseNotes: strings.Repeat("n", 10001)}, true)
+		mustBind(t, v, update.Manifest{Targets: map[string]update.Target{"x": {URL: strings.Repeat("u", 513)}}}, true) // dive 进 Target.URL
+	})
+
+	t.Run("media.MediaInfo bounded (nfoReq, 非 admin 可达)", func(t *testing.T) {
+		mustBind(t, v, media.MediaInfo{Source: "tmdb", SourceID: "1", Title: "t"}, false)
+		mustBind(t, v, media.MediaInfo{Title: strings.Repeat("t", 513)}, true)
+		mustBind(t, v, media.MediaInfo{Overview: strings.Repeat("o", 10001)}, true)
+		mustBind(t, v, media.MediaInfo{PosterURL: strings.Repeat("u", 513)}, true)
+		mustBind(t, v, media.MediaInfo{Genres: []string{strings.Repeat("g", 65)}}, true)                    // dive,max=64
+		mustBind(t, v, media.MediaInfo{Cast: []media.CreditPerson{{Name: strings.Repeat("n", 129)}}}, true) // dive into Cast[].Name
 	})
 }

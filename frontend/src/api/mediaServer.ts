@@ -11,6 +11,8 @@ export interface MediaServer {
   is_default: boolean
   refresh_on_download: boolean
   notify_on_play: boolean
+  direct_link_enabled: boolean
+  direct_link_base: string
   created_at: string
   updated_at: string
 }
@@ -25,6 +27,52 @@ export interface TestResult {
   ok: boolean
   error?: string
   info?: string
+}
+
+// 观影报告（PlaybackReport）
+export interface PlayItem {
+  item_id: string
+  name: string
+  type: string
+  year: number
+  user_id: string
+  user_name: string
+  last_played: string
+  play_count: number
+  duration: number
+}
+export interface PlaybackUser {
+  id: string
+  name: string
+  play_count: number
+}
+export interface PlaybackReport {
+  server: string
+  generated_at: string
+  days: number
+  users: PlaybackUser[]
+  recent_plays: PlayItem[]
+  top_items: PlayItem[]
+  total_plays: number
+}
+
+// 重复媒体检测
+export interface DetailedItem {
+  item_id: string
+  name: string
+  type: string
+  year: number
+  tmdb_id: string
+  imdb_id: string
+  path: string
+}
+export interface DuplicateGroup {
+  key: string
+  title: string
+  year: number
+  type: string
+  count: number
+  items: DetailedItem[]
 }
 
 export const mediaServerApi = {
@@ -56,4 +104,16 @@ export const mediaServerApi = {
         responseType: 'blob',
       })
       .then((r) => r.data),
+  // 观影报告（近 N 天播放统计）
+  playbackReport: (id: number, days = 30) =>
+    http
+      .get<PlaybackReport>(`/mediaserver/${id}/playback-report`, { params: { days } })
+      .then((r) => r.data),
+  // 重复媒体检测（某库）
+  duplicates: (id: number, libraryId: string) =>
+    http
+      .get<{ groups: DuplicateGroup[] }>(`/mediaserver/${id}/duplicates`, {
+        params: { library_id: libraryId },
+      })
+      .then((r) => r.data.groups ?? []),
 }

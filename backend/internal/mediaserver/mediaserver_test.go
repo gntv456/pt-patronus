@@ -193,7 +193,108 @@ func TestResizeImage(t *testing.T) {
 	}
 }
 
-// TestGenerateCoverSkipBadImage 单张海报拉取失败（404）被跳过，整体仍成功。
+// TestEmbyAdvanced 跑通观影报告/重复检测所需端点：Users / PlayedItems / LibraryItems。
+func TestEmbyAdvanced(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Users":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`[{"Id":"u1","Name":"Alice"},{"Id":"u2","Name":"Bob"}]`))
+		case "/Users/u1/Items":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Items":[{"Id":"i1","Name":"Movie A","Type":"Movie","ProductionYear":2021,"UserData":{"PlayCount":3,"LastPlayedDate":"2024-01-02T03:04:05Z","RuntimeTicks":66000000000}}]}`))
+		case "/Items":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"Items":[
+				{"Id":"a","Name":"Dune","Type":"Movie","ProductionYear":2021,"ProviderIds":{"Tmdb":"438631"}},
+				{"Id":"b","Name":"Dune (2021)","Type":"Movie","ProductionYear":2021,"ProviderIds":{"Tmdb":"438631"}},
+				{"Id":"c","Name":"Oldboy","Type":"Movie","ProductionYear":2003,"ProviderIds":{"Imdb":"tt007"}}
+			]}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	cli, err := NewClient(Server{Type: "emby", URL: srv.URL, Token: "T"}, newTestClient(t))
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+	ctx := context.Background()
+
+	users, err := cli.Users(ctx)
+	if err != nil {
+		t.Fatalf("Users: %v", err)
+	}
+	if len(users) != 2 || users[0].ID != "u1" || users[0].Name != "Alice" {
+		t.Fatalf("users = %+v", users)
+	}
+
+	plays, err := cli.PlayedItems(ctx, "u1", 10)
+	if err != nil {
+		t.Fatalf("PlayedItems: %v", err)
+	}
+	if len(plays) != 1 || plays[0].Name != "Movie A" || plays[0].PlayCount != 3 || plays[0].Duration != 6600 {
+		t.Fatalf("plays = %+v", plays)
+	}
+
+	items, err := cli.LibraryItems(ctx, "lib")
+	if err != nil {
+		t.Fatalf("LibraryItems: %v", err)
+	}
+	if len(items) != 3 || items[0].TMDBID != "438631" || items[2].IMDbID != "tt007" {
+		t.Fatalf("items = %+v", items)
+	}
+}
+
+// TestDetectDuplicates 按 TMDB ID（优先）/IMDb ID/归一化标题+年份归并，仅返回 Count>=2 的组。
+func TestDetectDuplicates(t *testing.T) {
+	items := []DetailedItem{
+		{ItemID: "1", Name: "Dune", Year: 2021, TMDBID: "438631"},
+		{ItemID: "2", Name: "Dune (2021)", Year: 2021, TMDBID: "438631"},
+		{ItemID: "3", Name: "Oldboy", Year: 2003, IMDbID: "tt007"},
+		{ItemID: "4", Name: "Oldboy", Year: 2013, IMDbID: "tt007"}, // 同 IMDb 但不同年份（翻拍）→ 仍判重
+		{ItemID: "5", Name: "Inception.2010", Year: 2010},
+		{ItemID: "6", Name: "Inception (2010)", Year: 2010}, // 无 Provider ID，按归一化标题+年份归并
+		{ItemID: "7", Name: "Solo", Year: 2018}, // 无重复
+	}
+	groups := DetectDuplicates(items)
+	if len(groups) != 3 {
+		t.Fatalf("expected 3 duplicate groups, got %d: %+v", len(groups), groups)
+	}
+	// 第一组应是重复数最多的（TMDB/IMDb 组各 2，标题组 2；按标题稳定排序）。
+	want := map[string]int{}
+	for _, g := range groups {
+		want[g.Title] = g.Count
+	}
+	if want["Dune"] != 2 || want["Oldboy"] != 2 || want["Inception.2010"] != 2 {
+		t.Fatalf("group counts unexpected: %+v", want)
+	}
+}
+
+// TestDetectDuplicatesEmpty 空输入返回空切片（非 nil）。
+func TestDetectDuplicatesEmpty(t *testing.T) {
+	got := DetectDuplicates(nil)
+	if len(got) != 0 {
+		t.Fatalf("expected empty, got %+v", got)
+	}
+}
+
+// TestNormalizeTitle 验证归一化：去尾部年份块 + 折叠分隔符。
+func TestNormalizeTitle(t *testing.T) {
+	cases := map[string]string{
+		"Inception.2010":          "inception",
+		"Inception (2010)":        "inception",
+		"  Movie_Name-2023 ":      "movie name",
+		"AlreadyClean":            "alreadyclean",
+	}
+	for in, want := range cases {
+		if got := normalizeTitle(in); got != want {
+			t.Errorf("normalizeTitle(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestGenerateCoverSkipBadImage(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

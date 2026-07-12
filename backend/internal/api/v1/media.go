@@ -120,6 +120,8 @@ type mediaConfigResp struct {
 	DoubanAppKeyConfigured bool   `json:"douban_app_key_configured"`
 	BangumiToken           string `json:"bangumi_token"`
 	BangumiTokenConfigured bool   `json:"bangumi_token_configured"`
+	OMDbAPIKey             string `json:"omdb_api_key"`
+	OMDbAPIKeyConfigured   bool   `json:"omdb_api_key_configured"`
 }
 
 // GetConfig 返回当前媒体源配置（secret 脱敏）。供「媒体源设置」页回显。
@@ -135,6 +137,8 @@ func (h *MediaHandler) GetConfig(c *gin.Context) {
 		DoubanAppKeyConfigured: s.DoubanAppKey != "",
 		BangumiToken:           maskSecret(s.BangumiToken),
 		BangumiTokenConfigured: s.BangumiToken != "",
+		OMDbAPIKey:             maskSecret(s.OMDbAPIKey),
+		OMDbAPIKeyConfigured:   s.OMDbAPIKey != "",
 	})
 }
 
@@ -146,6 +150,7 @@ type mediaConfigReq struct {
 	DoubanSecret  string `json:"douban_secret" binding:"max=128"`
 	DoubanAppKey  string `json:"douban_app_key" binding:"max=64"`
 	BangumiToken  string `json:"bangumi_token" binding:"max=128"`
+	OMDbAPIKey    string `json:"omdb_api_key" binding:"max=128"`
 }
 
 // SetConfig 保存媒体源配置并即时 rebuild 源（无需重启）。空字段不修改。
@@ -161,6 +166,7 @@ func (h *MediaHandler) SetConfig(c *gin.Context) {
 		DoubanSecret:  strings.TrimSpace(req.DoubanSecret),
 		DoubanAppKey:  strings.TrimSpace(req.DoubanAppKey),
 		BangumiToken:  strings.TrimSpace(req.BangumiToken),
+		OMDbAPIKey:    strings.TrimSpace(req.OMDbAPIKey),
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -193,6 +199,42 @@ func (h *MediaHandler) NFO(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"nfo": h.mediaCh.NFO(&req.Info)})
+}
+
+// GetQuality 返回多评分订阅质量配置（GET /media/quality）。
+func (h *MediaHandler) GetQuality(c *gin.Context) {
+	c.JSON(http.StatusOK, h.mediaCh.LoadQuality())
+}
+
+// SetQuality 保存质量配置（PUT /media/quality）。整体覆盖；清空评分缓存即时生效。
+func (h *MediaHandler) SetQuality(c *gin.Context) {
+	var q chain.MediaQualityConfig
+	if err := c.ShouldBindJSON(&q); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.mediaCh.SaveQuality(q); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// Rating 多源评分聚合预览（GET /media/rating?title=&year=&type=）。
+// 供「媒体质量」页即时预览某作品的跨源综合评分 + 闸门判定。
+func (h *MediaHandler) Rating(c *gin.Context) {
+	title := strings.TrimSpace(c.Query("title"))
+	if title == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "title required"})
+		return
+	}
+	year := atoiDefault(c.Query("year"), 0)
+	summary, err := h.mediaCh.AggregatedRating(c.Request.Context(), title, year, c.Query("type"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, summary)
 }
 
 // mediaImageHosts 允许反代的媒体图片 CDN：host 后缀 → 注入的 Referer。

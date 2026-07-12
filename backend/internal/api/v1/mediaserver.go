@@ -222,3 +222,54 @@ func (h *MediaServerHandler) Webhook(c *gin.Context) {
 	h.svc.ReceiveWebhook(c.Request.Context(), id, payload)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
+
+// PlaybackReport 观影报告（GET /mediaserver/:id/playback-report?days=30）。
+func (h *MediaServerHandler) PlaybackReport(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	days := atoiDefault(c.Query("days"), 30)
+	rep, err := h.svc.PlaybackReport(c.Request.Context(), id, days)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, rep)
+}
+
+// Duplicates 重复媒体检测（GET /mediaserver/:id/duplicates?library_id=）。
+func (h *MediaServerHandler) Duplicates(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	libID := c.Query("library_id")
+	if libID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "library_id 必填"})
+		return
+	}
+	groups, err := h.svc.DetectDuplicates(c.Request.Context(), id, libID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"groups": groups})
+}
+
+// Direct 302 直链改写（公开：GET /mediaserver/:id/direct/*path）。
+// 读取服务器配置，开启直链则 302 到 {DirectLinkBase}/{path}；未开启返 404。
+// 不泄露 Token——仅做静态 URL 改写，让播放器直连高带宽 CDN（对标 Emby 302 反代直链）。
+func (h *MediaServerHandler) Direct(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	target, _, err := h.svc.DirectLink(c.Request.Context(), id, c.Param("path"))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.Redirect(http.StatusFound, target)
+}

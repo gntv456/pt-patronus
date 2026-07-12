@@ -231,6 +231,7 @@ type doubanSearchItem struct {
 		Year         string `json:"year"`
 		Rating       struct {
 			Value float64 `json:"value"`
+			Count int     `json:"count"`
 		} `json:"rating"`
 	} `json:"target"`
 }
@@ -283,7 +284,7 @@ func doubanItemToMedia(it doubanSearchItem) (MediaInfo, bool) {
 	mi := MediaInfo{
 		Source: "douban", SourceID: string(mt) + ":" + t.ID,
 		Title: t.Title, Type: mt, PosterURL: doubanPosterURL(t.CoverURL),
-		Overview: t.CardSubtitle, Rating: t.Rating.Value, ReleaseDate: t.Year,
+		Overview: t.CardSubtitle, Rating: t.Rating.Value, VoteCount: t.Rating.Count, ReleaseDate: t.Year,
 	}
 	mi.Year = yearFromDate(t.Year)
 	return mi, true
@@ -325,7 +326,7 @@ func (d *Douban) Trending(ctx context.Context, category string, page int) ([]Med
 		mi := MediaInfo{
 			Source: "douban", SourceID: string(mt) + ":" + it.ID,
 			Title: it.Title, OriginalTitle: it.OriginalTitle, Type: mt,
-			Overview: it.CardSubtitle, Rating: it.Rating.Value,
+			Overview: it.CardSubtitle, Rating: it.Rating.Value, VoteCount: it.Rating.Count,
 			ReleaseDate: it.Year, PosterURL: doubanPosterURL(it.Cover.URL),
 		}
 		mi.Year = yearFromDate(it.Year)
@@ -350,6 +351,7 @@ type doubanCollectionItem struct {
 	Year          string `json:"year"`
 	Rating        struct {
 		Value float64 `json:"value"`
+		Count int     `json:"count"`
 	} `json:"rating"`
 	Cover struct {
 		URL string `json:"url"`
@@ -369,6 +371,7 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 		Summary       string `json:"summary"`
 		Rating        struct {
 			Value float64 `json:"value"`
+			Count int     `json:"count"`
 		} `json:"rating"`
 		Images struct {
 			Large string `json:"large"`
@@ -401,7 +404,7 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	mi := &MediaInfo{
 		Source: "douban", SourceID: id, Title: raw.Title,
 		OriginalTitle: raw.OriginalTitle, Type: mt, Overview: raw.Summary,
-		Rating: raw.Rating.Value, PosterURL: doubanPosterURL(raw.Images.Large),
+		Rating: raw.Rating.Value, VoteCount: raw.Rating.Count, PosterURL: doubanPosterURL(raw.Images.Large),
 		ReleaseDate: date, Year: yearFromDate(date), Genres: raw.Genres,
 		Countries: raw.Countries, Runtime: parseMinutes(raw.Durations),
 	}

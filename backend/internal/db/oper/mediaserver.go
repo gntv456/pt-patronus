@@ -29,6 +29,8 @@ type MediaServerInput struct {
 	IsDefault         bool   `json:"is_default"`
 	RefreshOnDownload bool   `json:"refresh_on_download"`
 	NotifyOnPlay      bool   `json:"notify_on_play"`
+	DirectLinkEnabled bool   `json:"direct_link_enabled"`
+	DirectLinkBase    string `json:"direct_link_base" binding:"max=255"`
 }
 
 // validMediaServerType 收紧服务端类型白名单（inspectReq 复查 + binding max 不够）。
@@ -50,6 +52,7 @@ func (o *MediaServerOper) Create(in MediaServerInput) (*models.MediaServer, erro
 	m := &models.MediaServer{
 		Name: in.Name, Type: in.Type, URL: in.URL, Username: in.Username,
 		IsDefault: in.IsDefault, RefreshOnDownload: in.RefreshOnDownload, NotifyOnPlay: in.NotifyOnPlay,
+		DirectLinkEnabled: in.DirectLinkEnabled, DirectLinkBase: in.DirectLinkBase,
 	}
 	if in.Token != "" {
 		enc, err := o.c.Encrypt(in.Token)
@@ -78,6 +81,7 @@ func (o *MediaServerOper) Update(id uint, in MediaServerInput) (*models.MediaSer
 	}
 	m.Name, m.Type, m.URL, m.Username = in.Name, in.Type, in.URL, in.Username
 	m.IsDefault, m.RefreshOnDownload, m.NotifyOnPlay = in.IsDefault, in.RefreshOnDownload, in.NotifyOnPlay
+	m.DirectLinkEnabled, m.DirectLinkBase = in.DirectLinkEnabled, in.DirectLinkBase
 	if in.Token != "" {
 		enc, err := o.c.Encrypt(in.Token)
 		if err != nil {

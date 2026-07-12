@@ -43,7 +43,7 @@ func TestMediaChainSearchConcurrentBudget(t *testing.T) {
 		items: []media.MediaInfo{{Source: "fast", Title: "A", Type: media.TypeMovie}}}
 	slow := &mediaFake{name: "slow", delay: 5 * time.Second, types: []media.MediaType{media.TypeMovie},
 		items: []media.MediaInfo{{Source: "slow", Title: "B", Type: media.TypeMovie}}}
-	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{fast, slow}}, nil) // nil cache
+	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{fast, slow}}, nil, nil) // nil cache, nil cfg
 
 	// 父 ctx 给 300ms 短预算；Search 内部再套 8s → 有效 deadline = 300ms。
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
@@ -67,7 +67,7 @@ func TestMediaChainSearchConcurrentBudget(t *testing.T) {
 func TestMediaChainSearchSkipsMusicForVideo(t *testing.T) {
 	mb := &mediaFake{name: "mb", types: []media.MediaType{media.TypeMusic},
 		items: []media.MediaInfo{{Source: "mb", Title: "song", Type: media.TypeMusic}}}
-	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{mb}}, nil)
+	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{mb}}, nil, nil)
 
 	res, err := c.Search(context.Background(), "kw", 0, "video")
 	if err != nil {
@@ -122,7 +122,7 @@ func TestMediaSearchConcurrentDedup(t *testing.T) {
 		types:   []media.MediaType{media.TypeMovie},
 		proceed: make(chan struct{}),
 	}
-	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{src}}, cache)
+	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{src}}, cache, nil)
 
 	const n = 50
 	start := make(chan struct{})
@@ -198,7 +198,7 @@ func TestMediaSearchDoubleCheckOnDB(t *testing.T) {
 		types:   []media.MediaType{media.TypeMovie},
 		proceed: make(chan struct{}),
 	}
-	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{src}}, cache)
+	c := NewMediaChain(Base{}, &MediaSourceProvider{sources: []media.MediaSource{src}}, cache, nil)
 
 	res, err := c.Search(context.Background(), "kw", 0, "video")
 	if err != nil {

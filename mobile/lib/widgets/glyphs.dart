@@ -114,6 +114,9 @@ const Map<String, String> kGlyphs = {
   // 字幕：对话气泡（字幕/对白）
   'subtitle':
       '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  // 媒体质量：星形评分（多源评分聚合 / 低分保护）—— 与 Web GlassIcon.vue 1:1
+  'mediaquality':
+      '<path d="M12 2l2.9 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17.3 5.8 20.6l1.6-6.7L2.2 8.9l6.9-.6z"/>',
 };
 
 /// 取字形的完整内联 SVG（外层包裹 24×24 + 白色描边 + 圆角端点），供 flutter_svg 渲染。

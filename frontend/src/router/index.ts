@@ -126,6 +126,11 @@ const router = createRouter({
           component: () => import('@/views/Subtitle.vue'),
         },
         {
+          path: 'mediaquality',
+          name: 'mediaquality',
+          component: () => import('@/views/MediaQuality.vue'),
+        },
+        {
           path: 'harem',
           name: 'harem',
           component: () => import('@/views/Harem.vue'),

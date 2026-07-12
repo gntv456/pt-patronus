@@ -86,6 +86,7 @@ type Config struct {
 	DoubanAppKey    string
 	BangumiToken    string // bgm.tv 可选 Bearer token（提升速率限制；空走匿名配额）
 	XingguangjiBase string // 星光集（短剧）站点根，默认 https://dj.hxpt.org；可指向本地实例联调
+	OMDbAPIKey      string // OMDb( IMDb 评分源 ) API Key(OMDB_API_KEY)；空则跳过 IMDb 聚合
 
 	// 字幕源（env 提供 SystemConfig 默认；UI 改动运行时覆盖）
 	AssrtToken         string // assrt.net API token
@@ -157,6 +158,7 @@ func Load() (*Config, error) {
 		DoubanAppKey:       getenv("DOUBAN_API_KEY", ""),
 		BangumiToken:       getenv("BANGUMI_TOKEN", ""),
 		XingguangjiBase:    getenv("XINGGUANGJI_BASE", "https://dj.hxpt.org"),
+		OMDbAPIKey:         getenv("OMDB_API_KEY", ""),
 		AssrtToken:         getenv("ASSRT_TOKEN", ""),
 		OpenSubtitlesKey:   getenv("OPENSUBTITLES_KEY", ""),
 		CORSAllowedOrigins: getenv("CORS_ALLOWED_ORIGINS", ""),

@@ -28,16 +28,21 @@ const mediaSearchBudget = 8 * time.Second
 
 // MediaChain 编排媒体元数据匹配：跨源搜索（并发，按优先级合并）→ 类型过滤 → 去重 → 缓存。
 // 源来自 MediaSourceProvider（SystemConfig 可热更新），故 UI 改凭据即时生效。
+// 另持多评分聚合（AggregatedRating）+ 订阅质量配置（MediaQualityConfig，存 SystemConfig `media.quality`）。
 type MediaChain struct {
 	Base
 	provider *MediaSourceProvider
 	cache    *oper.PosterCacheOper
+	cfg      *oper.SystemConfigOper
 	sf       singleflight.Group
+
+	ratingCacheMu sync.RWMutex
+	ratingCache   map[string]ratingCacheEntry // 聚合评分内存缓存（key=normalized title+year+type）
 }
 
-// NewMediaChain 构造；provider 提供按优先级顺序的源（影视主源在前）。
-func NewMediaChain(b Base, provider *MediaSourceProvider, cache *oper.PosterCacheOper) *MediaChain {
-	return &MediaChain{Base: b, provider: provider, cache: cache}
+// NewMediaChain 构造；provider 提供按优先级顺序的源（影视主源在前）。cfg 用于读写质量配置。
+func NewMediaChain(b Base, provider *MediaSourceProvider, cache *oper.PosterCacheOper, cfg *oper.SystemConfigOper) *MediaChain {
+	return &MediaChain{Base: b, provider: provider, cache: cache, cfg: cfg}
 }
 
 // MediaConfig 返回当前生效的媒体源设置（原始值；调用方负责脱敏展示）。

@@ -13,6 +13,7 @@ export interface Subscription {
   resolution: string // 可选：1080p/2160p，空=不过滤
   downloader_id: number // 0=默认下载器
   save_path: string
+  enable_rating_guard: boolean // 多评分低分保护：与全局 MediaQualityConfig.Enabled 取并集
   status: string // subscribed | completed | paused
   last_checked_at?: string
   created_at: string
@@ -33,7 +34,7 @@ export const subscribeApi = {
   list: () =>
     http.get<{ subscriptions: Subscription[] }>('/subscriptions').then((r) => r.data.subscriptions ?? []),
   create: (data: SubInput) => http.post<Subscription>('/subscriptions', data).then((r) => r.data),
-  update: (id: number, patch: Partial<Pick<Subscription, 'resolution' | 'status' | 'downloader_id' | 'save_path'>>) =>
+  update: (id: number, patch: Partial<Pick<Subscription, 'resolution' | 'status' | 'downloader_id' | 'save_path' | 'enable_rating_guard'>>) =>
     http.put<Subscription>(`/subscriptions/${id}`, patch).then((r) => r.data),
   remove: (id: number) => http.delete(`/subscriptions/${id}`).then((r) => r.data),
   check: (id: number) =>

@@ -17,17 +17,22 @@ import (
 
 // SubscribeChain 编排媒体订阅：跨站搜种子 → 分辨率过滤 → 去重 → 推送下载器 + 通知。
 // 对标 MoviePilot 订阅。cron (SUBSCRIBE_CRON) 周期调 CheckAll；详情页订阅调 Create（建后即查一次）。
+//
+// 多评分低分保护：mediaCh.AggregatedRating 跨源聚合评分 + vote_count/上映天数闸门。
+// 全局 MediaQualityConfig.Enabled 或订阅 EnableRatingGuard 任一为真即对该订阅启用闸门；
+// 评分查询失败 fail-open（不阻断下载）。
 type SubscribeChain struct {
-	siteCh *SiteChain
-	dlCh   *DownloadChain
-	dlOp   *oper.DownloaderOper
-	op     *oper.SubscriptionOper
-	notice *notice.Service
+	siteCh  *SiteChain
+	dlCh    *DownloadChain
+	dlOp    *oper.DownloaderOper
+	op      *oper.SubscriptionOper
+	notice  *notice.Service
+	mediaCh *MediaChain // 可空（测试/未装配时跳过评分闸门）
 }
 
-// NewSubscribeChain 构造。
-func NewSubscribeChain(siteCh *SiteChain, dlCh *DownloadChain, dlOp *oper.DownloaderOper, op *oper.SubscriptionOper, ns *notice.Service) *SubscribeChain {
-	return &SubscribeChain{siteCh: siteCh, dlCh: dlCh, dlOp: dlOp, op: op, notice: ns}
+// NewSubscribeChain 构造。mediaCh 为多评分闸门用，可传 nil（评分保护置灰）。
+func NewSubscribeChain(siteCh *SiteChain, dlCh *DownloadChain, dlOp *oper.DownloaderOper, op *oper.SubscriptionOper, ns *notice.Service, mediaCh *MediaChain) *SubscribeChain {
+	return &SubscribeChain{siteCh: siteCh, dlCh: dlCh, dlOp: dlOp, op: op, notice: ns, mediaCh: mediaCh}
 }
 
 // List 全部订阅（handler 用）。
@@ -83,6 +88,18 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 	}
 
 	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, nil)
+
+	// 多评分低分保护：闸门开启则命中种子前先查聚合评分；未通过则本轮整体跳过 + 通知。
+	// 评分查询失败 fail-open（不阻断下载——外网评分服务故障不应让订阅停摆）。
+	if held, reason := c.ratingGate(ctx, sub); held {
+		c.noticeOnce(ctx, sub, "订阅评分保护："+sub.Title,
+			fmt.Sprintf("未通过质量闸门：%s（本轮跳过）", reason), "warning")
+		if err := c.op.MarkChecked(sub.ID); err != nil {
+			slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
+		}
+		return 0, nil
+	}
+
 	pushed := 0
 	for _, sr := range results {
 		if sr.Error != "" {
@@ -213,4 +230,28 @@ func matchResolution(title, want string) bool {
 func torrentKey(url string) string {
 	sum := sha1.Sum([]byte(url))
 	return hex.EncodeToString(sum[:])[:16]
+}
+
+// ratingGate 多评分低分保护判定：返回 (是否拦截本轮推送, 拦截原因)。
+//   - 未装配 mediaCh / 闸门未启用 → (false, "") 放行。
+//   - 聚合查询失败 → (false, "") fail-open 放行（外网评分故障不应阻断下载）。
+//   - 查到但 summary.Passed==false → (true, reason) 拦截。
+//
+// 启用条件：全局 MediaQualityConfig.Enabled 或本订阅 EnableRatingGuard 任一为真。
+func (c *SubscribeChain) ratingGate(ctx context.Context, sub *models.Subscription) (bool, string) {
+	if c.mediaCh == nil {
+		return false, ""
+	}
+	cfg := c.mediaCh.LoadQuality()
+	if !cfg.Enabled && !sub.EnableRatingGuard {
+		return false, ""
+	}
+	summary, err := c.mediaCh.AggregatedRating(ctx, sub.Title, sub.Year, sub.Type)
+	if err != nil || summary == nil {
+		return false, "" // fail-open
+	}
+	if summary.Passed {
+		return false, ""
+	}
+	return true, summary.Reason
 }

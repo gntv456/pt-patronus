@@ -69,7 +69,7 @@ func newTestDepsWith(t *testing.T, fa auth.HxptAuthenticator) *Deps {
 	notifCh := chain.NewNotificationChain(base, notifMgr)
 
 	// 媒体：空源列表，避免集成测试触发外部网络
-	mediaCh := chain.NewMediaChain(base, nil, oper.NewPosterCacheOper(db))
+	mediaCh := chain.NewMediaChain(base, nil, oper.NewPosterCacheOper(db), nil)
 
 	fileOp := oper.NewFileStorageOper(db, crypto)
 	fileMgr := filemanager.NewManager(fileOp)

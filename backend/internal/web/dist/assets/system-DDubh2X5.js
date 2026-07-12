@@ -1,1 +1,0 @@
-import{h as e}from"./index-BvhKUUf4.js";const o="0.87.00",c={info:()=>e.get("/system/info").then(t=>t.data),checkUpdate:(t="docker")=>e.get("/system/update/check",{params:{platform:t}}).then(s=>s.data)};export{o as A,c as s};

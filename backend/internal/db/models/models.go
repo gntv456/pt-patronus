@@ -410,6 +410,9 @@ type Subscription struct {
 	Resolution    string     `gorm:"size:32" json:"resolution"`  // 可选：1080p/2160p，空=不过滤
 	DownloaderID  uint       `gorm:"index" json:"downloader_id"` // 0=默认下载器
 	SavePath      string     `gorm:"size:255" json:"save_path"`
+	// 多评分闸门：开启后命中种子前先查聚合评分，低于全局阈值（媒体质量配置）则跳过推送 + 通知。
+	// 与全局 MediaQualityConfig.Enabled 取并集（任一为真即启用该订阅的评分闸门）。
+	EnableRatingGuard bool `gorm:"default:false" json:"enable_rating_guard"`
 	Status        string     `gorm:"size:16;default:subscribed;index" json:"status"`
 	LastCheckedAt *time.Time `json:"last_checked_at"`
 	CreatedAt     time.Time  `json:"created_at"`
@@ -679,6 +682,10 @@ type MediaServer struct {
 	// 事件开关
 	RefreshOnDownload bool `gorm:"default:true" json:"refresh_on_download"` // 种子下载完成→触发该服务器媒体库刷新
 	NotifyOnPlay      bool `gorm:"default:false" json:"notify_on_play"`     // 收到播放 webhook→通知中心
+	// 直链 302 反代：开启后 /mediaserver/:id/direct/*path 把 Emby 文件路径改写到 DirectLinkBase，
+	// 让播放器直连高带宽 CDN（如网盘直链）而非经 Emby 服务器中转，省本机带宽。base 为空则视为关闭。
+	DirectLinkEnabled bool   `gorm:"default:false" json:"direct_link_enabled"`
+	DirectLinkBase    string `gorm:"size:255" json:"direct_link_base"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }

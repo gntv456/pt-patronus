@@ -96,12 +96,31 @@ Base URL: `/api/v1`
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/media/search?keyword=&year=&type=` | 跨源搜索（TMDB/豆瓣/Bangumi/MusicBrainz）。`type` 默认 `video`（仅电影+剧集，排除音乐）；可传 `""`全部/`movie`/`tv`/`music` |
+| GET | `/media/search?keyword=&year=&type=` | 跨源搜索（TMDB/豆瓣/IMDb(OMDb)/Bangumi/MusicBrainz）。`type` 默认 `video`（仅电影+剧集，排除音乐）；可传 `""`全部/`movie`/`tv`/`music` |
 | GET | `/media/poster?keyword=&year=` | 首个海报 URL |
 | GET | `/media/image?url=` | 海报反代（白名单 CDN，解决豆瓣防盗链） |
 | POST | `/media/nfo` | 生成 NFO XML |
+| GET | `/media/config` | 源配置（secret 脱敏 + `_configured`；含 OMDb） |
+| PUT | `/media/config` | 更新源配置（TMDB/豆瓣/Bangumi/OMDb；空=保留，管理员） |
+| GET | `/media/quality` | 多评分订阅质量闸门配置（enabled/min_score/min_votes/min_release_days/sources） |
+| PUT | `/media/quality` | 保存质量配置（管理员；清空评分缓存即时生效） |
+| GET | `/media/rating?title=&year=&type=` | 多源评分聚合预览：豆瓣/TMDB/IMDb/Bangumi 加权综合评分 + 投票数 + 上映天数 + 闸门判定（`{aggregated,votes,sources:[{source,score,votes}],passed,reason}`） |
 
 > **海报反代**：豆瓣 `doubanio.com` 防盗链，浏览器 `<img>` 直连只回 1×1 占位图。前端对豆瓣图改走 `/media/image?url=`（后端注入 `movie.douban.com` Referer 取真图），且豆瓣 cover_url 会被规整成 `m_ratio_poster`（2:3 竖版）。仅放行 `*.doubanio.com`、`image.tmdb.org`，5MB 上限。**反代客户端用 uTLS 伪装 Chrome 指纹**（`media_fetch.go`）——豆瓣图片 CDN 按 JA3 封 Go 标准 `net/http`（返反爬 JS 页），须 utls 才能取真图。
+
+> **多评分低分保护**（批次5）：`MediaChain.AggregatedRating` 跨源按标题+年份取每源投票数最高的匹配，加权综合（按投票数加权）；闸门三道关——评分 < `min_score` / 投票数 < `min_votes`（样本无统计意义）/ 上映天数 < `min_release_days`（评分未稳定）任一不达标即拦截。订阅 `Check()` 命中种子前查闸门，未通过则本轮跳过推送 + 通知；评分查询失败 **fail-open**（不阻断下载）。全局 `MediaQualityConfig.Enabled` 与单订阅 `enable_rating_guard` 取并集启用。IMDb 走 OMDb（`OMDB_API_KEY`，空则跳过）。聚合结果内存缓存 6h（订阅 cron 高频查不击穿外网）。
+
+## 媒体服务器进阶（批次5）
+
+媒体服务器（Emby/JF/Plex）基础 CRUD/库操作见「下载器」同范式，批次5 新增：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/mediaserver/:id/playback-report?days=30` | 观影报告：枚举用户→各取最近播放→聚合用户/热门条目/最近播放/总播放数。Emby 走 `/Users/{id}/Items?Filters=IsPlayed`；Plex 历史需 Plex Pass（`/status/sessions` 近似，标 TODO 联调） |
+| GET | `/mediaserver/:id/duplicates?library_id=` | 重复媒体检测：枚举库条目，按 TMDB/IMDb ID（优先）或归一化标题+年份归并，返回 `Count>=2` 的组 |
+| GET | `/mediaserver/:id/direct/*path` | **302 直链反代（公开）**：开启后把 Emby 文件路径 `{DirectLinkBase}/{path}` 改写到高带宽 CDN，让播放器直连省本机带宽；不泄露 Token（仅静态改写），未开启返 404 |
+
+> **直链反代**对标 MoviePilot Emby 302 直链：播放器无法带 JWT，故端点公开；安全靠「目标 host 来自管理员配置（非请求入参），仅静态拼 `base/path`」，且仅做 302 不注入凭据。服务器配置加 `direct_link_enabled` / `direct_link_base` 两字段。
 
 ## 娱乐游戏
 

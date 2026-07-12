@@ -16,6 +16,7 @@ type MediaSettings struct {
 	DoubanAppKey   string
 	BangumiToken   string
 	XingguangjiBase string // 星光集（短剧）站点根，默认 https://dj.hxpt.org
+	OMDbAPIKey     string // OMDb（IMDb 评分源）API Key，空则跳过 IMDb
 }
 
 // SystemConfig 键（KV 存储）。与 IYUUTokenKey 同范式：键名归该特性所有。
@@ -26,6 +27,7 @@ const (
 	cfgKeyDoubanAppKey   = "media.douban_app_key"
 	cfgKeyBangumiToken   = "media.bangumi_token"
 	cfgKeyXingguangjiBase = "media.xingguangji_base"
+	cfgKeyOMDbAPIKey     = "media.omdb_api_key"
 )
 
 // MediaSourceProvider 按 SystemConfig（回退环境变量默认）构建并缓存媒体源；
@@ -72,6 +74,7 @@ func (p *MediaSourceProvider) LoadSettings() MediaSettings {
 		DoubanAppKey:    get(cfgKeyDoubanAppKey, p.defaults.DoubanAppKey),
 		BangumiToken:    get(cfgKeyBangumiToken, p.defaults.BangumiToken),
 		XingguangjiBase: get(cfgKeyXingguangjiBase, p.defaults.XingguangjiBase),
+		OMDbAPIKey:      get(cfgKeyOMDbAPIKey, p.defaults.OMDbAPIKey),
 	}
 }
 
@@ -79,12 +82,13 @@ func (p *MediaSourceProvider) LoadSettings() MediaSettings {
 // 然后 rebuild 源切片使改动即时生效。
 func (p *MediaSourceProvider) ApplySettings(in MediaSettings) error {
 	updates := map[string]string{
-		cfgKeyTMDBAPIKey:     in.TMDBAPIKey,
-		cfgKeyTMDBAPIDomain:  in.TMDBAPIDomain,
-		cfgKeyDoubanSecret:   in.DoubanSecret,
-		cfgKeyDoubanAppKey:   in.DoubanAppKey,
-		cfgKeyBangumiToken:   in.BangumiToken,
+		cfgKeyTMDBAPIKey:      in.TMDBAPIKey,
+		cfgKeyTMDBAPIDomain:   in.TMDBAPIDomain,
+		cfgKeyDoubanSecret:    in.DoubanSecret,
+		cfgKeyDoubanAppKey:    in.DoubanAppKey,
+		cfgKeyBangumiToken:    in.BangumiToken,
 		cfgKeyXingguangjiBase: in.XingguangjiBase,
+		cfgKeyOMDbAPIKey:      in.OMDbAPIKey,
 	}
 	for k, v := range updates {
 		if v == "" {
@@ -105,6 +109,7 @@ func (p *MediaSourceProvider) rebuild() {
 		media.NewTMDB(s.TMDBAPIKey, s.TMDBAPIDomain),
 		media.NewDouban(s.DoubanSecret, s.DoubanAppKey),
 		media.NewBangumi(s.BangumiToken),
+		media.NewOMDb(s.OMDbAPIKey),
 		media.NewXingguangji(s.XingguangjiBase),
 		media.NewMusicBrainz(),
 	}

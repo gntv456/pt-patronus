@@ -311,6 +311,9 @@ func Build(d *Deps) *gin.Engine {
 				md.POST("/nfo", mediaH.NFO)
 				md.GET("/config", mediaH.GetConfig)
 				md.PUT("/config", middleware.RequireAdmin(), mediaH.SetConfig)
+				md.GET("/quality", mediaH.GetQuality)
+				md.PUT("/quality", middleware.RequireAdmin(), mediaH.SetQuality)
+				md.GET("/rating", mediaH.Rating)
 			}
 
 			ksH := v1.NewKeepSeedHandler(d.KeepSeed)
@@ -536,6 +539,8 @@ func Build(d *Deps) *gin.Engine {
 				ms.POST("/:id/refresh", msH.Refresh)
 				ms.POST("/:id/notify", msH.Notify)
 				ms.GET("/:id/cover", msH.Cover)
+				ms.GET("/:id/playback-report", msH.PlaybackReport)
+				ms.GET("/:id/duplicates", msH.Duplicates)
 			}
 
 			// 网盘 + STRM（115/夸克/123）：网盘 CRUD/探活/配额/浏览 + STRM 规则 + 生成 + 订阅追更
@@ -671,6 +676,9 @@ func Build(d *Deps) *gin.Engine {
 		api.POST("/webhooks/in/:token", d.Webhook.Receive)
 		// 媒体服务器播放回调公开接收（服务器无法带 JWT；按 :id 路由，仅 NotifyOnPlay 开启时通知）。
 		api.POST("/mediaserver/:id/webhook", v1.NewMediaServerHandler(d.MediaServer).Webhook)
+		// Emby 302 直链反代（公开：播放器不能带 JWT）。读取服务器 DirectLinkBase 配置静态改写，
+		// 不泄露 Token；未开启直链的服务器返 404。
+		api.GET("/mediaserver/:id/direct/*path", v1.NewMediaServerHandler(d.MediaServer).Direct)
 	}
 
 	// 非匹配路径回退到内嵌的 Web UI（go:embed），由 vue-router 接管。

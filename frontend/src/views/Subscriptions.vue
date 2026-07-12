@@ -56,6 +56,16 @@ async function setResolution(s: Subscription) {
   }
 }
 
+async function setRatingGuard(s: Subscription, val: boolean) {
+  try {
+    await subscribeApi.update(s.id, { enable_rating_guard: val })
+    ElMessage.success(val ? '已开启评分保护' : '已关闭评分保护')
+  } catch (e: unknown) {
+    s.enable_rating_guard = !val // 回滚
+    ElMessage.error((e as Error).message || '更新失败')
+  }
+}
+
 async function remove(s: Subscription) {
   try {
     await ElMessageBox.confirm('确定删除该订阅？删除后不再推送。', '删除订阅', {
@@ -116,6 +126,15 @@ onMounted(load)
                 @change="setResolution(s)"
               />
               <span class="small text-muted">（如 1080p / 2160p，留空=不限）</span>
+            </div>
+            <div class="res-row">
+              <span class="small">评分保护：</span>
+              <el-switch
+                :model-value="s.enable_rating_guard"
+                size="small"
+                @update:model-value="(v: any) => setRatingGuard(s, !!v)"
+              />
+              <span class="small text-muted">（开启后低分命中跳过推送；阈值见「媒体质量」页）</span>
             </div>
             <div class="actions">
               <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">立即检查</el-button>

@@ -89,6 +89,7 @@ type bgmSubject struct {
 	NSFW    bool   `json:"nsfw"`
 	Rating  struct {
 		Score float64 `json:"score"`
+		Total int     `json:"total"` // 投票人数（统计意义）
 	} `json:"rating"`
 	Images struct {
 		Large string `json:"large"`
@@ -112,6 +113,7 @@ func bgmSubjectToMedia(it bgmSubject) MediaInfo {
 		ReleaseDate: it.Date,
 		PosterURL:   bangumiImage(it.Images.Large),
 		Rating:      it.Rating.Score,
+		VoteCount:   it.Rating.Total,
 		Year:        yearFromDate(it.Date),
 	}
 }

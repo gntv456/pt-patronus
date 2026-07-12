@@ -40,6 +40,7 @@ type MediaInfo struct {
 	BackdropURL   string    `json:"backdrop_url,omitempty" binding:"max=512"`
 	ReleaseDate   string    `json:"release_date,omitempty" binding:"max=32"`
 	Rating        float64   `json:"rating,omitempty"`
+	VoteCount     int       `json:"vote_count,omitempty"` // 评分人数（统计意义；0=未知/未提供）
 	Genres        []string  `json:"genres,omitempty" binding:"dive,max=64"`
 
 	// 富字段（Detail 填充，Search 不填）：

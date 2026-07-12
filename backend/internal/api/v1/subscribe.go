@@ -20,17 +20,19 @@ func NewSubscribeHandler(subCh *chain.SubscribeChain) *SubscribeHandler {
 
 // subReq 创建/编辑订阅的请求体。
 type subReq struct {
-	Source       string `json:"source" binding:"max=16"`
-	SourceID     string `json:"source_id" binding:"max=64"`
-	Title        string `json:"title" binding:"max=255"`
-	Year         int    `json:"year"`
-	Type         string `json:"type" binding:"max=16"`
-	Category     string `json:"category" binding:"max=16"`
-	PosterURL    string `json:"poster_url" binding:"max=512"`
-	Resolution   string `json:"resolution" binding:"max=32"`
-	DownloaderID uint   `json:"downloader_id"`
-	SavePath     string `json:"save_path" binding:"max=255"`
-	Status       string `json:"status" binding:"max=16"`
+	Source            string `json:"source" binding:"max=16"`
+	SourceID          string `json:"source_id" binding:"max=64"`
+	Title             string `json:"title" binding:"max=255"`
+	Year              int    `json:"year"`
+	Type              string `json:"type" binding:"max=16"`
+	Category          string `json:"category" binding:"max=16"`
+	PosterURL         string `json:"poster_url" binding:"max=512"`
+	Resolution        string `json:"resolution" binding:"max=32"`
+	DownloaderID      uint   `json:"downloader_id"`
+	SavePath          string `json:"save_path" binding:"max=255"`
+	Status            string `json:"status" binding:"max=16"`
+	// EnableRatingGuard 用指针以区分「未提供」与「显式 false」：Create nil→默认关；Update nil→不改。
+	EnableRatingGuard *bool `json:"enable_rating_guard"`
 }
 
 // List 列出全部订阅。
@@ -60,6 +62,9 @@ func (h *SubscribeHandler) Create(c *gin.Context) {
 		Resolution: in.Resolution, DownloaderID: in.DownloaderID, SavePath: in.SavePath,
 		Status: in.Status,
 	}
+	if in.EnableRatingGuard != nil {
+		s.EnableRatingGuard = *in.EnableRatingGuard
+	}
 	out, err := h.subCh.Create(c.Request.Context(), s)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -83,6 +88,9 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 	if err := c.ShouldBindJSON(&in); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if in.EnableRatingGuard != nil {
+		s.EnableRatingGuard = *in.EnableRatingGuard
 	}
 	if in.Resolution != "" || in.Status != "" || in.DownloaderID != 0 || in.SavePath != "" {
 		// 仅更新提供的字段（空=不改）

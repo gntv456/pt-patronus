@@ -180,6 +180,24 @@ class _MediaServerPageState extends State<MediaServerPage> {
     );
   }
 
+  /// 观影报告 sheet
+  Future<void> _openReport(MediaServer s) async {
+    await showAdaptiveSheet(
+      context,
+      title: '观影报告 · ${s.name}',
+      builder: (_) => _PlaybackReportBody(serverId: s.id, api: _api),
+    );
+  }
+
+  /// 重复检测 sheet
+  Future<void> _openDup(MediaServer s) async {
+    await showAdaptiveSheet(
+      context,
+      title: '重复检测 · ${s.name}',
+      builder: (_) => _DuplicatesBody(serverId: s.id, api: _api),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PTPageScaffold(
@@ -303,6 +321,16 @@ class _MediaServerPageState extends State<MediaServerPage> {
                 icon: const Icon(Icons.video_library_outlined, size: 16),
                 label: const Text('媒体库'),
                 onPressed: () => _openLibs(s),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.bar_chart, size: 16),
+                label: const Text('观影报告'),
+                onPressed: () => _openReport(s),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy_all_outlined, size: 16),
+                label: const Text('查重'),
+                onPressed: () => _openDup(s),
               ),
               TextButton.icon(
                 icon: const Icon(Icons.edit_outlined, size: 16),
@@ -478,11 +506,14 @@ class _MediaServerFormState extends State<_MediaServerForm> {
   late final _urlCtrl = TextEditingController(text: widget.initial?.url ?? '');
   late final _tokenCtrl = TextEditingController(); // 编辑时不回显秘密
   late final _userCtrl = TextEditingController(text: widget.initial?.username ?? '');
+  late final _directLinkBaseCtrl =
+      TextEditingController(text: widget.initial?.directLinkBase ?? '');
   // late 字段惰性求值，可在初始化式引用 widget.initial（同 brushflow 表单范式）。
   late String _type = widget.initial?.type ?? 'emby';
   late bool _isDefault = widget.initial?.isDefault ?? false;
   late bool _refreshOnDownload = widget.initial?.refreshOnDownload ?? true;
   late bool _notifyOnPlay = widget.initial?.notifyOnPlay ?? false;
+  late bool _directLinkEnabled = widget.initial?.directLinkEnabled ?? false;
   bool _saving = false;
 
   @override
@@ -491,6 +522,7 @@ class _MediaServerFormState extends State<_MediaServerForm> {
     _urlCtrl.dispose();
     _tokenCtrl.dispose();
     _userCtrl.dispose();
+    _directLinkBaseCtrl.dispose();
     super.dispose();
   }
 
@@ -519,6 +551,8 @@ class _MediaServerFormState extends State<_MediaServerForm> {
       'is_default': _isDefault,
       'refresh_on_download': _refreshOnDownload,
       'notify_on_play': _notifyOnPlay,
+      'direct_link_enabled': _directLinkEnabled,
+      'direct_link_base': _directLinkBaseCtrl.text.trim(),
       if (_tokenCtrl.text.trim().isNotEmpty) 'token': _tokenCtrl.text.trim(),
     };
     final ok = await widget.onSubmit(body);
@@ -567,6 +601,16 @@ class _MediaServerFormState extends State<_MediaServerForm> {
         _switchRow('设为默认', _isDefault, (v) => setState(() => _isDefault = v)),
         _switchRow('下载完成刷新', _refreshOnDownload, (v) => setState(() => _refreshOnDownload = v)),
         _switchRow('播放通知', _notifyOnPlay, (v) => setState(() => _notifyOnPlay = v)),
+        _switchRow('启用直链反代', _directLinkEnabled, (v) => setState(() => _directLinkEnabled = v)),
+        if (_directLinkEnabled)
+          _field('直链基址', TextField(
+            controller: _directLinkBaseCtrl,
+            decoration: const InputDecoration(
+              isDense: true,
+              hintText: 'https://cdn.example.com/library',
+              border: OutlineInputBorder(),
+            ),
+          )),
         const SizedBox(height: 8),
         FilledButton(
           onPressed: _saving ? null : _submit,
@@ -602,5 +646,195 @@ class _MediaServerFormState extends State<_MediaServerForm> {
         ],
       ),
     );
+  }
+}
+
+/// 观影报告 sheet 主体：加载 + 展示用户/热门/最近播放。
+class _PlaybackReportBody extends StatefulWidget {
+  final int serverId;
+  final MediaServerApi api;
+  const _PlaybackReportBody({required this.serverId, required this.api});
+  @override
+  State<_PlaybackReportBody> createState() => _PlaybackReportBodyState();
+}
+
+class _PlaybackReportBodyState extends State<_PlaybackReportBody> {
+  static const _days = 30;
+  PlaybackReport? _report;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      _report = await widget.api.playbackReport(widget.serverId, days: _days);
+    } catch (e) {
+      _error = '$e';
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _fmtDur(int sec) {
+    if (sec <= 0) return '-';
+    if (sec < 3600) return '${(sec / 60).round()} 分钟';
+    return '${(sec / 3600).toStringAsFixed(1)} 小时';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return PTEmptyState(text: '加载失败：$_error', onRetry: _load);
+    }
+    final r = _report;
+    if (r == null) return const PTEmptyState(text: '无数据');
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(padding: const EdgeInsets.all(12), children: [
+        Text('近 $_days 天 · 共 ${r.totalPlays} 次播放',
+            style: const TextStyle(fontSize: 13, color: Colors.grey)),
+        const SizedBox(height: 8),
+        const Text('用户', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 4),
+        if (r.users.isEmpty)
+          const Text('无用户数据', style: TextStyle(fontSize: 12, color: Colors.grey))
+        else
+          Wrap(
+            spacing: 6,
+            children: r.users
+                .map((u) => Chip(
+                      label: Text('${u.name} · ${u.playCount} 次', style: const TextStyle(fontSize: 12)),
+                    ))
+                .toList(),
+          ),
+        const SizedBox(height: 12),
+        const Text('热门条目', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        ...r.topItems.map((p) => ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(p.name, style: const TextStyle(fontSize: 13)),
+              trailing: Text('${p.playCount} 次 · ${_fmtDur(p.duration)}',
+                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            )),
+        const SizedBox(height: 8),
+        const Text('最近播放', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+        ...r.recentPlays.map((p) => ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              title: Text(p.name, style: const TextStyle(fontSize: 13)),
+              subtitle: Text(
+                p.lastPlayed.isEmpty
+                    ? p.userName
+                    : '${p.userName} · ${DateTime.tryParse(p.lastPlayed)?.toLocal() ?? p.lastPlayed}',
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              trailing: Text('${p.playCount} 次', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            )),
+      ]),
+    );
+  }
+}
+
+/// 重复检测 sheet 主体：选库 → 检测 → 展示重复组。
+class _DuplicatesBody extends StatefulWidget {
+  final int serverId;
+  final MediaServerApi api;
+  const _DuplicatesBody({required this.serverId, required this.api});
+  @override
+  State<_DuplicatesBody> createState() => _DuplicatesBodyState();
+}
+
+class _DuplicatesBodyState extends State<_DuplicatesBody> {
+  List<MediaLibrary> _libs = const [];
+  String? _libId;
+  List<DuplicateGroup> _groups = const [];
+  bool _loading = true;
+  bool _checking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLibs();
+  }
+
+  Future<void> _loadLibs() async {
+    try {
+      _libs = await widget.api.libraries(widget.serverId);
+      _libId = _libs.isNotEmpty ? _libs.first.id : null;
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _run() async {
+    if (_libId == null) return;
+    setState(() => _checking = true);
+    try {
+      _groups = await widget.api.duplicates(widget.serverId, _libId!);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('查重失败：$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Row(children: [
+        Expanded(
+          child: DropdownButton<String>(
+            value: _libId,
+            isExpanded: true,
+            hint: const Text('选择媒体库'),
+            items: _libs
+                .map((l) => DropdownMenuItem(value: l.id, child: Text(l.name)))
+                .toList(),
+            onChanged: (v) => setState(() => _libId = v),
+          ),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(onPressed: _checking ? null : _run, child: const Text('检测')),
+      ]),
+      const SizedBox(height: 8),
+      Flexible(
+        child: _checking
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(shrinkWrap: true, children: [
+                Text('共 ${_groups.length} 组疑似重复',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                ..._groups.map((g) => Card(
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Expanded(
+                              child: Text('${g.title}${g.year > 0 ? ' (${g.year})' : ''}',
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            ),
+                            Text('${g.count} 份',
+                                style: const TextStyle(fontSize: 12, color: Colors.orange)),
+                          ]),
+                          ...g.items.map((n) => Text('· $n',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey))),
+                        ]),
+                      ),
+                    )),
+              ]),
+      ),
+    ]);
   }
 }

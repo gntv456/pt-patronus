@@ -39,6 +39,38 @@ type Item struct {
 	ImageURL string `json:"image_url"`
 }
 
+// User 媒体服务器用户（观影报告用）。PlayCount 由各端点尽力填充（Emby 聚合自 UserData，
+// Plex 取自 history/sessions，无则 0）。
+type User struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	PlayCount int    `json:"play_count"`
+}
+
+// PlayItem 一条播放记录（观影报告）。LastPlayed 为 ISO 时间串；Duration 单位秒（未知=0）。
+type PlayItem struct {
+	ItemID     string `json:"item_id"`
+	Name       string `json:"name"`
+	Type       string `json:"type"`      // movie | series | episode
+	Year       int    `json:"year"`
+	UserID     string `json:"user_id"`
+	UserName   string `json:"user_name"`
+	LastPlayed string `json:"last_played"`
+	PlayCount  int    `json:"play_count"`
+	Duration   int    `json:"duration"`
+}
+
+// DetailedItem 库内条目（重复检测用，带年份与 Provider ID）。TMDBID/IMDbID 为空则按标题+年份归组。
+type DetailedItem struct {
+	ItemID  string `json:"item_id"`
+	Name    string `json:"name"`
+	Type    string `json:"type"` // movie | series
+	Year    int    `json:"year"`
+	TMDBID  string `json:"tmdb_id"`
+	IMDbID  string `json:"imdb_id"`
+	Path    string `json:"path"`
+}
+
 // Client 统一三家媒体服务器的操作子集。
 type Client interface {
 	// Test 连接 + 鉴权探活（拉服务信息）。
@@ -55,6 +87,12 @@ type Client interface {
 	RecentItems(ctx context.Context, libraryID string, limit int) ([]Item, error)
 	// FetchImage 拉取并解码条目封面为 image.Image。
 	FetchImage(ctx context.Context, item Item) (image.Image, error)
+	// Users 列出服务器用户（观影报告用）。
+	Users(ctx context.Context) ([]User, error)
+	// PlayedItems 取某用户最近播放的 N 条（观影报告）。limit<=0 用默认。
+	PlayedItems(ctx context.Context, userID string, limit int) ([]PlayItem, error)
+	// LibraryItems 枚举某库全部条目（重复检测用；带年份与 Provider ID）。
+	LibraryItems(ctx context.Context, libraryID string) ([]DetailedItem, error)
 }
 
 // NewClient 按 Server.Type 构建对应客户端。type 不在白名单内返回错误。

@@ -205,9 +205,10 @@ func New(cfg *config.Config) (*App, error) {
 		DoubanAppKey:    cfg.DoubanAppKey,
 		BangumiToken:    cfg.BangumiToken,
 		XingguangjiBase: cfg.XingguangjiBase,
+		OMDbAPIKey:      cfg.OMDbAPIKey,
 	})
 	posterCache := oper.NewPosterCacheOper(database)
-	mediaCh := chain.NewMediaChain(base, mediaProvider, posterCache)
+	mediaCh := chain.NewMediaChain(base, mediaProvider, posterCache, cfgOp)
 	// 把 MediaChain 暴露给插件的 Host API（/media/search），刮削类插件复用宿主元数据源。
 	pluginMgr.SetMediaSearcher(mediaSearchAdapter{mediaCh})
 	// 推荐信息流：复用同一份 provider（豆瓣热映 / TMDB trending / Bangumi 热门）
@@ -288,8 +289,9 @@ func New(cfg *config.Config) (*App, error) {
 	regCh := chain.NewRegistrationChain(base, hc, regOp)
 
 	// 媒体订阅：cron 跨站搜种子→推送默认下载器+通知。复用 siteCh(搜)、dlCh/dlOp(下载)、noticeSvc(通知)。
+	// mediaCh 注入多评分低分保护闸门（订阅 EnableRatingGuard 或全局 MediaQualityConfig.Enabled）。
 	subOp := oper.NewSubscriptionOper(database)
-	subCh := chain.NewSubscribeChain(siteCh, dlCh, dlOp, subOp, noticeSvc)
+	subCh := chain.NewSubscribeChain(siteCh, dlCh, dlOp, subOp, noticeSvc, mediaCh)
 
 	hxpt := auth.NewHxptVIP(registry, "hxpt", cfg.AuthSiteURL, cfg.AuthVIPLevel, hc)
 

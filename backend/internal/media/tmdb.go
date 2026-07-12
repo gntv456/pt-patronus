@@ -81,6 +81,7 @@ type tmdbMultiResult struct {
 		Release    string  `json:"release_date"`
 		FirstAir   string  `json:"first_air_date"`
 		Vote       float64 `json:"vote_average"`
+		VoteCount  int64   `json:"vote_count"`
 	} `json:"results"`
 }
 
@@ -108,7 +109,7 @@ func (t *TMDB) Search(ctx context.Context, keyword string, year int) ([]MediaInf
 		mi := MediaInfo{
 			Source: "tmdb", SourceID: string(mt) + ":" + strconv.FormatInt(it.ID, 10),
 			Title: title, Type: mt, Overview: it.Overview,
-			ReleaseDate: date, Rating: it.Vote,
+			ReleaseDate: date, Rating: it.Vote, VoteCount: int(it.VoteCount),
 		}
 		mi.Year = yearFromDate(date)
 		mi.PosterURL = tmdbImage(it.PosterPath)
@@ -138,6 +139,7 @@ func (t *TMDB) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 		FirstAir      string  `json:"first_air_date"`
 		Runtime       int     `json:"runtime"`
 		Vote          float64 `json:"vote_average"`
+		VoteCount     int64   `json:"vote_count"`
 		Genres        []struct {
 			Name string `json:"name"`
 		} `json:"genres"`
@@ -183,7 +185,7 @@ func (t *TMDB) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	}
 	mi := &MediaInfo{
 		Source: "tmdb", SourceID: id, Title: title, Type: mt,
-		Overview: raw.Overview, ReleaseDate: date, Rating: raw.Vote,
+		Overview: raw.Overview, ReleaseDate: date, Rating: raw.Vote, VoteCount: int(raw.VoteCount),
 		PosterURL: tmdbImage(raw.PosterPath), BackdropURL: tmdbImage(raw.BackdropPath),
 		Year: yearFromDate(date), Runtime: raw.Runtime,
 	}
@@ -283,7 +285,7 @@ func (t *TMDB) Trending(ctx context.Context, category string, page int) ([]Media
 		out = append(out, MediaInfo{
 			Source: "tmdb", SourceID: string(mt) + ":" + strconv.FormatInt(it.ID, 10),
 			Title: title, Type: mt, Overview: it.Overview,
-			ReleaseDate: date, Rating: it.Vote,
+			ReleaseDate: date, Rating: it.Vote, VoteCount: int(it.VoteCount),
 			PosterURL: tmdbImage(it.PosterPath), Year: yearFromDate(date),
 		})
 	}

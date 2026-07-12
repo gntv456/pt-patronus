@@ -5,6 +5,8 @@ import {
   type MediaServer,
   type MediaServerType,
   type MediaLibrary,
+  type PlaybackReport,
+  type DuplicateGroup,
 } from '@/api/mediaServer'
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -40,6 +42,8 @@ function defaultForm() {
     is_default: false,
     refresh_on_download: true,
     notify_on_play: false,
+    direct_link_enabled: false,
+    direct_link_base: '',
   }
 }
 
@@ -170,6 +174,75 @@ onBeforeUnmount(() => {
   if (coverURL.value) URL.revokeObjectURL(coverURL.value)
 })
 
+// ---- 观影报告 ----
+const showReport = ref(false)
+const report = ref<PlaybackReport | null>(null)
+const reportLoading = ref(false)
+const reportDays = ref(30)
+
+async function openReport(s: MediaServer) {
+  libsServer.value = s
+  report.value = null
+  showReport.value = true
+  reportLoading.value = true
+  try {
+    report.value = await mediaServerApi.playbackReport(s.id, reportDays.value)
+  } catch (e: any) {
+    ElMessage.error(e?.message || '观影报告拉取失败')
+  } finally {
+    reportLoading.value = false
+  }
+}
+
+async function reloadReport() {
+  if (!libsServer.value) return
+  reportLoading.value = true
+  try {
+    report.value = await mediaServerApi.playbackReport(libsServer.value.id, reportDays.value)
+  } catch (e: any) {
+    ElMessage.error(e?.message || '观影报告拉取失败')
+  } finally {
+    reportLoading.value = false
+  }
+}
+
+function fmtDuration(sec: number): string {
+  if (!sec || sec <= 0) return '-'
+  if (sec < 3600) return `${Math.round(sec / 60)} 分钟`
+  return `${(sec / 3600).toFixed(1)} 小时`
+}
+
+// ---- 重复检测 ----
+const showDup = ref(false)
+const dupGroups = ref<DuplicateGroup[]>([])
+const dupLoading = ref(false)
+const dupLib = ref<string>('')
+
+async function openDup(s: MediaServer) {
+  libsServer.value = s
+  dupGroups.value = []
+  dupLib.value = ''
+  showDup.value = true
+  try {
+    libs.value = await mediaServerApi.libraries(s.id)
+    if (libs.value.length) dupLib.value = libs.value[0].id
+  } catch (e: any) {
+    ElMessage.error(e?.message || '拉取库失败')
+  }
+}
+
+async function runDup() {
+  if (!libsServer.value || !dupLib.value) return
+  dupLoading.value = true
+  try {
+    dupGroups.value = await mediaServerApi.duplicates(libsServer.value.id, dupLib.value)
+  } catch (e: any) {
+    ElMessage.error(e?.message || '查重失败')
+  } finally {
+    dupLoading.value = false
+  }
+}
+
 const TYPE_LABEL: Record<MediaServerType, string> = {
   emby: 'Emby',
   jellyfin: 'Jellyfin',
@@ -224,6 +297,8 @@ onMounted(load)
         <div class="actions">
           <el-button size="small" :loading="testing === s.id" @click="test(s)">连接测试</el-button>
           <el-button size="small" @click="openLibs(s)">媒体库</el-button>
+          <el-button size="small" @click="openReport(s)">观影报告</el-button>
+          <el-button size="small" @click="openDup(s)">查重</el-button>
           <el-button size="small" @click="openEdit(s)">编辑</el-button>
           <el-button size="small" type="danger" plain @click="remove(s)">删除</el-button>
         </div>
@@ -272,6 +347,15 @@ onMounted(load)
           <el-switch v-model="form.notify_on_play" />
           <span class="hint">收到 webhook 播放事件通知</span>
         </el-form-item>
+        <el-divider content-position="left">302 直链反代</el-divider>
+        <el-form-item label="启用直链">
+          <el-switch v-model="form.direct_link_enabled" />
+          <span class="hint">把 Emby 文件路径改写到 CDN 直链</span>
+        </el-form-item>
+        <el-form-item label="直链基址">
+          <el-input v-model="form.direct_link_base" placeholder="https://cdn.example.com/library" />
+          <span class="hint">/mediaserver/:id/direct/&lt;path&gt; → {基址}/{path} 302</span>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showForm = false">取消</el-button>
@@ -307,6 +391,87 @@ onMounted(load)
         <img v-if="coverURL" :src="coverURL" alt="封面拼图" />
       </div>
     </el-dialog>
+
+    <!-- 观影报告 -->
+    <el-dialog
+      v-model="showReport"
+      :title="`观影报告 · ${libsServer?.name ?? ''}`"
+      width="820px"
+      top="6vh"
+    >
+      <div class="libs-bar">
+        <div>
+          近
+          <el-input-number v-model="reportDays" :min="1" :max="365" size="small" controls-position="right" style="width: 90px" />
+          天 · 共 {{ report?.total_plays ?? 0 }} 次播放
+        </div>
+        <el-button size="small" :loading="reportLoading" @click="reloadReport">刷新</el-button>
+      </div>
+      <div v-loading="reportLoading">
+        <div v-if="report" class="report-block">
+          <div class="sub-title">用户 ({{ report.users.length }})</div>
+          <div class="user-chips">
+            <el-tag v-for="u in report.users" :key="u.id" size="small">
+              {{ u.name }} · {{ u.play_count }} 次
+            </el-tag>
+            <span v-if="!report.users.length" class="hint">无用户数据</span>
+          </div>
+        </div>
+        <div v-if="report" class="report-block">
+          <div class="sub-title">热门条目</div>
+          <el-table :data="report.top_items" size="small" empty-text="暂无数据">
+            <el-table-column prop="name" label="标题" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="play_count" label="播放次数" width="100" />
+            <el-table-column label="时长" width="100">
+              <template #default="{ row }">{{ fmtDuration(row.duration) }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <div v-if="report" class="report-block">
+          <div class="sub-title">最近播放</div>
+          <el-table :data="report.recent_plays" size="small" empty-text="暂无数据">
+            <el-table-column prop="name" label="标题" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="user_name" label="用户" width="100" />
+            <el-table-column prop="play_count" label="次数" width="70" />
+            <el-table-column label="最近播放" width="170">
+              <template #default="{ row }">{{ row.last_played ? new Date(row.last_played).toLocaleString() : '-' }}</template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </el-dialog>
+
+    <!-- 重复检测 -->
+    <el-dialog
+      v-model="showDup"
+      :title="`重复检测 · ${libsServer?.name ?? ''}`"
+      width="820px"
+      top="6vh"
+    >
+      <div class="libs-bar">
+        <el-select v-model="dupLib" placeholder="选择媒体库" size="small" style="width: 220px">
+          <el-option v-for="l in libs" :key="l.id" :label="l.name" :value="l.id" />
+        </el-select>
+        <el-button size="small" type="primary" :loading="dupLoading" @click="runDup">检测</el-button>
+      </div>
+      <div v-loading="dupLoading">
+        <div class="hint" style="margin-bottom: 8px">
+          按 TMDB/IMDb ID（优先）或归一化标题+年份归并；共 {{ dupGroups.length }} 组疑似重复。
+        </div>
+        <el-table :data="dupGroups" size="small" empty-text="无重复（或未检测）">
+          <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="year" label="年份" width="80" />
+          <el-table-column prop="count" label="份数" width="70" />
+          <el-table-column label="条目" min-width="220">
+            <template #default="{ row }">
+              <div v-for="(it, i) in row.items" :key="i" class="dup-item">
+                {{ it.name }}<span v-if="it.path" class="muted"> · {{ it.path }}</span>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -328,4 +493,9 @@ onMounted(load)
 .libs-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .cover-preview { margin-top: 14px; text-align: center; }
 .cover-preview img { max-width: 100%; border-radius: 8px; }
+.report-block { margin-bottom: 16px; }
+.sub-title { font-size: var(--fs-sm); font-weight: 700; margin-bottom: 6px; }
+.user-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dup-item { font-size: var(--fs-xs); line-height: 1.6; word-break: break-all; }
+.muted { color: var(--text-muted); }
 </style>

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"strconv"
+	"strings"
 )
 
 // plexClient 对接 Plex Media Server。鉴权用 X-Plex-Token 头（或 query ?X-Plex-Token=），
@@ -107,6 +109,119 @@ func (c *plexClient) RecentItems(ctx context.Context, libraryID string, limit in
 // FetchImage 拉海报（带 X-Plex-Token 头），解码。
 func (c *plexClient) FetchImage(ctx context.Context, item Item) (image.Image, error) {
 	return decodeImage(ctx, c.hc, item.ImageURL, c.headers())
+}
+
+// Users: GET /accounts → {MediaContainer:{Account:[{id,name]}]}。Plex 账户即用户。
+// 完整播放历史需 Plex Pass（/history 端点），此处仅返回账户列表，PlayCount 留 0。
+func (c *plexClient) Users(ctx context.Context) ([]User, error) {
+	var res struct {
+		MediaContainer struct {
+			Account []struct {
+				ID   int    `json:"id"`
+				Name string `json:"name"`
+			} `json:"Account"`
+		} `json:"MediaContainer"`
+	}
+	if err := jsonGet(ctx, c.hc, c.apiRoot+"/accounts", c.headers(), &res); err != nil {
+		return nil, err
+	}
+	out := make([]User, 0, len(res.MediaContainer.Account))
+	for _, a := range res.MediaContainer.Account {
+		if a.Name == "" {
+			continue
+		}
+		out = append(out, User{ID: plexAccountKey(a.ID), Name: a.Name})
+	}
+	return out, nil
+}
+
+// PlayedItems: GET /status/sessions → 当前活跃播放（Plex 无公开历史端点，需 Plex Pass）。
+// 返回当前在线会话作为「最近播放」的近似；完整历史留 TODO 联调（Plex Pass /history）。
+func (c *plexClient) PlayedItems(ctx context.Context, userID string, limit int) ([]PlayItem, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	var res struct {
+		MediaContainer struct {
+			Video []struct {
+				GrandparentTitle string `json:"grandparentTitle"`
+				Title            string `json:"title"`
+				Year             int    `json:"year"`
+				ViewOffset       int64  `json:"viewOffset"` // ms
+				Duration         int64  `json:"duration"`   // ms
+			} `json:"Video"`
+		} `json:"MediaContainer"`
+	}
+	if err := jsonGet(ctx, c.hc, c.apiRoot+"/status/sessions", c.headers(), &res); err != nil {
+		return nil, err
+	}
+	out := make([]PlayItem, 0, len(res.MediaContainer.Video))
+	for _, v := range res.MediaContainer.Video {
+		name := v.GrandparentTitle
+		if name == "" {
+			name = v.Title
+		}
+		out = append(out, PlayItem{
+			Name: name, Type: "episode", Year: v.Year, UserID: userID,
+			Duration: int(v.Duration / 1000), PlayCount: 1,
+		})
+	}
+	return out, nil
+}
+
+// LibraryItems: GET /library/sections/<id>/all → 解析 Metadata 的 Guid（tmdb/imdb）、year、title。
+// Plex Guid 形如 "tmdb:123"、"imdb:tt1234567"，逐项提取。
+func (c *plexClient) LibraryItems(ctx context.Context, libraryID string) ([]DetailedItem, error) {
+	u := fmt.Sprintf("%s/library/sections/%s/all", c.apiRoot, esc(libraryID))
+	var res struct {
+		MediaContainer struct {
+			Metadata []struct {
+				RatingKey string `json:"ratingKey"`
+				Title     string `json:"title"`
+				Type      string `json:"type"`
+				Year      int    `json:"year"`
+				Guids     []struct {
+					ID string `json:"id"`
+				} `json:"Guid"`
+			} `json:"Metadata"`
+		} `json:"MediaContainer"`
+	}
+	if err := jsonGet(ctx, c.hc, u, c.headers(), &res); err != nil {
+		return nil, err
+	}
+	out := make([]DetailedItem, 0, len(res.MediaContainer.Metadata))
+	for _, m := range res.MediaContainer.Metadata {
+		di := DetailedItem{
+			ItemID: m.RatingKey, Name: m.Title,
+			Type: plexItemType(m.Type), Year: m.Year,
+		}
+		for _, g := range m.Guids {
+			switch {
+			case strings.HasPrefix(g.ID, "tmdb:"):
+				di.TMDBID = strings.TrimPrefix(g.ID, "tmdb:")
+			case strings.HasPrefix(g.ID, "imdb:"):
+				di.IMDbID = strings.TrimPrefix(g.ID, "imdb:")
+			}
+		}
+		out = append(out, di)
+	}
+	return out, nil
+}
+
+// plexAccountKey 把数字账户 id 转字符串（统一 ID 类型为 string）。
+func plexAccountKey(id int) string { return strconv.Itoa(id) }
+
+// plexItemType 把 Plex metadata type（movie/show/episode）归一。
+func plexItemType(t string) string {
+	switch t {
+	case "movie":
+		return "movie"
+	case "show":
+		return "series"
+	case "episode":
+		return "episode"
+	}
+	return t
 }
 
 // plexSectionID 从 Plex Key（"/library/sections/2"）取末段作统一库 id。

@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hxpt/ptpatronus/internal/media"
+	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/update"
 )
 
@@ -320,5 +321,13 @@ func TestMaxHardenedBoundsRound2(t *testing.T) {
 		mustBind(t, v, media.MediaInfo{PosterURL: strings.Repeat("u", 513)}, true)
 		mustBind(t, v, media.MediaInfo{Genres: []string{strings.Repeat("g", 65)}}, true)                    // dive,max=64
 		mustBind(t, v, media.MediaInfo{Cast: []media.CreditPerson{{Name: strings.Repeat("n", 129)}}}, true) // dive into Cast[].Name
+	})
+
+	t.Run("inspectReq.Fields/NoLogin bounded (非 admin 校准端点)", func(t *testing.T) {
+		mustBind(t, v, inspectReq{URL: "http://x"}, false)
+		mustBind(t, v, inspectReq{URL: "http://x", Fields: map[string]site.ElementQuery{"k": {Selector: strings.Repeat("s", 513)}}}, true)
+		mustBind(t, v, inspectReq{URL: "http://x", Fields: map[string]site.ElementQuery{"k": {Filters: []site.Filter{{Args: strings.Repeat("a", 513)}}}}}, true)
+		mustBind(t, v, inspectReq{URL: "http://x", NoLogin: site.NoLoginDef{Selector: strings.Repeat("s", 513)}}, true)
+		mustBind(t, v, inspectReq{URL: "http://x", NoLogin: site.NoLoginDef{URLPattern: []string{strings.Repeat("u", 257)}}}, true)
 	})
 }

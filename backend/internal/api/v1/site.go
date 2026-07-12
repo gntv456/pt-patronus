@@ -30,7 +30,7 @@ func NewSiteHandler(o *oper.SiteOper, sc *chain.SiteChain, reg *site.Registry, h
 type inspectReq struct {
 	URL     string                       `json:"url" binding:"required,max=512"`
 	Cookie  string                       `json:"cookie" binding:"max=65536"`
-	Fields  map[string]site.ElementQuery `json:"fields"`
+	Fields  map[string]site.ElementQuery `json:"fields" binding:"dive"`
 	NoLogin site.NoLoginDef              `json:"no_login"`
 }
 

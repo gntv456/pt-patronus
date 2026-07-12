@@ -10,16 +10,16 @@ import (
 
 // ElementQuery 是配置驱动的字段提取规则（抄 PT-depiler IElementQuery 的实用子集）。
 type ElementQuery struct {
-	Selector  string   `yaml:"selector"`  // 相对上下文的 CSS 选择器（单选）
-	Selectors []string `yaml:"selectors"` // 回退选择器列表：按序逐个尝试，取首个非空结果。优先于 Selector
-	Text      string   `yaml:"text"`      // 固定文本值；对应 PT-depiler text
-	Ancestor  string   `yaml:"ancestor"`  // 命中节点后向上找到最近祖先，再读取/继续 find
-	Find      string   `yaml:"find"`      // 命中节点/祖先内继续查找子节点
-	Parent    bool     `yaml:"parent"`    // 命中节点后先爬到父节点再取文本/属性。为 font.color_* 锚点设计——值是 label 的兄弟文本节点，取父节点文本才能拿到「上传量: 104.564 TB」整串
-	Attr      string   `yaml:"attr"`      // 空/"text" 取文本；"html" 取 HTML；否则取属性（href/src/...）
-	Data      string   `yaml:"data"`      // PT-depiler data 字段；HTML 读取 data-*，JSON 读取同名路径
-	Remove    string   `yaml:"remove"`    // 提取前移除的子选择器（如广告/图标）
-	Filters   []Filter `yaml:"filters"`   // 后处理链
+	Selector  string   `yaml:"selector" binding:"max=512"`       // 相对上下文的 CSS 选择器（单选）
+	Selectors []string `yaml:"selectors" binding:"dive,max=512"` // 回退选择器列表：按序逐个尝试，取首个非空结果。优先于 Selector
+	Text      string   `yaml:"text" binding:"max=2000"`          // 固定文本值；对应 PT-depiler text
+	Ancestor  string   `yaml:"ancestor" binding:"max=512"`       // 命中节点后向上找到最近祖先，再读取/继续 find
+	Find      string   `yaml:"find" binding:"max=512"`           // 命中节点/祖先内继续查找子节点
+	Parent    bool     `yaml:"parent"`                           // 命中节点后先爬到父节点再取文本/属性。为 font.color_* 锚点设计——值是 label 的兄弟文本节点，取父节点文本才能拿到「上传量: 104.564 TB」整串
+	Attr      string   `yaml:"attr" binding:"max=64"`            // 空/"text" 取文本；"html" 取 HTML；否则取属性（href/src/...）
+	Data      string   `yaml:"data" binding:"max=128"`           // PT-depiler data 字段；HTML 读取 data-*，JSON 读取同名路径
+	Remove    string   `yaml:"remove" binding:"max=512"`         // 提取前移除的子选择器（如广告/图标）
+	Filters   []Filter `yaml:"filters" binding:"dive"`           // 后处理链
 }
 
 // Filter 后处理。Name ∈ {regexp, replace, trim, lower, upper, parse_number}。
@@ -28,8 +28,8 @@ type ElementQuery struct {
 //   - replace:  Args 形如 "old:::new"
 //   - parse_number: 抽取首个数字（去千分位逗号）
 type Filter struct {
-	Name string `yaml:"name"`
-	Args string `yaml:"args"`
+	Name string `yaml:"name" binding:"max=32"`
+	Args string `yaml:"args" binding:"max=512"`
 }
 
 // TorrentDetail 是单条种子的详情页（简介/截图/MediaInfo/外链 ID/技术规格）。
@@ -493,10 +493,10 @@ type UserInfoPageDef struct {
 
 // NoLoginDef 描述「未登录」判定（多策略 OR）。
 type NoLoginDef struct {
-	HttpStatus []int    `yaml:"http_status"` // 这些状态码视为未登录（如 401/403）
-	URLPattern []string `yaml:"url_pattern"` // 跳转到含这些片段的 URL 视为未登录（login.php/takelogin）
-	Selector   string   `yaml:"selector"`    // 页面存在该选择器视为未登录（登录表单）
-	Content    []string `yaml:"content"`     // 页面含这些文本视为未登录（"登录"/"login"）
+	HttpStatus []int    `yaml:"http_status"`                        // 这些状态码视为未登录（如 401/403）
+	URLPattern []string `yaml:"url_pattern" binding:"dive,max=256"` // 跳转到含这些片段的 URL 视为未登录（login.php/takelogin）
+	Selector   string   `yaml:"selector" binding:"max=512"`         // 页面存在该选择器视为未登录（登录表单）
+	Content    []string `yaml:"content" binding:"dive,max=256"`     // 页面含这些文本视为未登录（"登录"/"login"）
 }
 
 // CategoryDef 描述一个站点分类。

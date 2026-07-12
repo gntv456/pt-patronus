@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -59,7 +61,10 @@ func (h *MonitorHandler) SilenceAlert(c *gin.Context) {
 		return
 	}
 	var in silenceAlertRequest
-	_ = c.ShouldBindJSON(&in)
+	if err := c.ShouldBindJSON(&in); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	until := time.Time{}
 	if strings.TrimSpace(in.Until) != "" {
 		t, err := time.Parse(time.RFC3339, strings.TrimSpace(in.Until))

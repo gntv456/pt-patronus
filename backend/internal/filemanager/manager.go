@@ -69,6 +69,9 @@ func (m *Manager) buildBackend(f *models.FileStorage, password string) (StorageB
 		return NewWebDAV(f.URL, f.Username, password, f.BasePath), nil
 	case "alist":
 		return NewAlist(f.URL, f.Username, password, f.BasePath), nil
+	case "115", "quark", "123":
+		// 网盘后端（只读浏览）：cookie/token 存于 password，浏览根存于 basePath。
+		return NewCloudBackend(f.Type, password, f.BasePath)
 	case "smb":
 		return NewSMB(f.URL, f.Username, password, f.BasePath), nil
 	case "agent":

@@ -116,6 +116,11 @@ const router = createRouter({
           component: () => import('@/views/MediaServer.vue'),
         },
         {
+          path: 'cloud',
+          name: 'cloud',
+          component: () => import('@/views/Cloud.vue'),
+        },
+        {
           path: 'harem',
           name: 'harem',
           component: () => import('@/views/Harem.vue'),

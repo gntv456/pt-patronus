@@ -320,6 +320,14 @@ func New(cfg *config.Config) (*App, error) {
 		mediaServerCh.OnDownloadCompleted(ctx, name)
 	})
 
+	// 网盘 + STRM（115/夸克/123）：CRUD + 浏览/配额 + STRM 生成 + 订阅追更（复用 subCh 匹配订阅）。
+	cloudDriveOp := oper.NewCloudDriveOper(database, crypto)
+	strmRuleOp := oper.NewStrmRuleOper(database)
+	cloudCh, err := chain.NewCloudChain(base, cloudDriveOp, strmRuleOp, subCh, noticeSvc)
+	if err != nil {
+		return nil, err
+	}
+
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
@@ -568,6 +576,13 @@ func New(cfg *config.Config) (*App, error) {
 		defer cancel()
 		subCh.CheckAll(ctx)
 	})
+	// 网盘 STRM：定时生成 STRM + 订阅追更匹配（默认每 6 小时；单规则失败不阻断）。
+	sched.AddFunc("cloud-strm", cfg.CloudStrmCron, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+		defer cancel()
+		cloudCh.GenerateAll(ctx)
+		cloudCh.SyncSubscriptions(ctx)
+	})
 
 	engine := api.Build(&api.Deps{
 		Cfg: cfg, DB: database, JWT: j, Act: act,
@@ -589,6 +604,7 @@ func New(cfg *config.Config) (*App, error) {
 		BrushFlow: brushCh,
 		Contract:  contractCh,
 		MediaServer: mediaServerCh,
+		Cloud:       cloudCh,
 		Webhook:   webhookH,
 		MonOp:     monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,

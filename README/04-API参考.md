@@ -130,8 +130,28 @@ Base URL: `/api/v1`
 - `webdav` / `alist`：远程网盘协议，需填 `url`/`username`/`password`/`base_path`。
 - `smb`：SMB2/3 共享（纯 Go `cloudsoda/go-smb2`，无 CGO），`url`=`smb://主机[:端口]`（默认 445），`base_path`=`/共享名/子目录`（如 `/Media/Movies`）。仅支持 SMB2/3，不支持 SMB1 老 NAS。
 - `agent`：通过已部署的 ptpatronus-agent（**0.2.0+**）操作 NAS 本机文件，**无需开 WebDAV/SMB 服务**（push 架构，绕开 SSH/SNMP/SMB 服务依赖，适配飞牛/绿联等不开 SNMP 的国产 NAS）。填 `agent_id`（关联监控 Agent）+ `base_path`（agent 机器上的绝对路径根，深度防御经 `ALLOWED_ROOTS` 白名单二次钳制）。设备离线或 agent 版本过低时文件操作返回错误（提示升级 agent）。
+- `115` / `quark` / `123`：网盘只读后端（**仅支持浏览**，写操作返 `ErrReadOnly`）。`password` 存 cookie（115/夸克）或 accessToken（123），`base_path` 为浏览根。云盘原生 client 同 STRM 共用（见下「云盘·STRM」）。
 
-## 辅种
+## 云盘·STRM（115/夸克/123）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET/POST | `/cloud/drives` | 网盘 CRUD（`type`=115/quark/123，`token`=cookie/accessToken 明文入参加密落库） |
+| PUT/DELETE | `/cloud/drives/:id` | 更新（token 空串=保留）/删除（级联清规则+记录，管理员） |
+| POST | `/cloud/drives/:id/test` | 探活（列根目录返回条目数） |
+| GET | `/cloud/drives/:id/quota` | 容量 `{used,total}`（best-effort，解析失败返零值） |
+| GET | `/cloud/drives/:id/list?path=` | 列目录（UI 文件夹选择器；内部 `resolvePath` 从根 id 逐级解析） |
+| GET/POST | `/cloud/rules` | STRM 规则 CRUD（网盘源目录→本地输出目录+模板） |
+| PUT/DELETE | `/cloud/rules/:id` | 更新/删除（管理员） |
+| POST | `/cloud/rules/:id/generate` | 触发单规则扫描生成 `.strm`，返 `{generated,skipped,errors}` |
+| POST | `/cloud/generate-all` | 触发全部启用规则生成 |
+| POST | `/cloud/sync-subscriptions` | 订阅追更：已生成 STRM 按文件名匹配订阅→链接+通知 |
+| GET | `/cloud/records?drive_id=` | STRM 记录列表（去重+展示，`subscription_id`>0=追更来源） |
+| DELETE | `/cloud/records/:id` | 删记录（管理员） |
+
+STRM 文件 = 单行文本指向真实播放路径（默认 `{mount}{cloudpath}`，如 `/CloudDrive2/115/电影/X.mkv`），媒体服务器读取后直链播放云盘资源。生成幂等（本地已存在且内容相同跳过）。`cloud-strm` cron 默认每 6 小时跑 `generate-all` + `sync-subscriptions`。
+
+
 
 | 方法 | 路径 | 说明 |
 |---|---|---|

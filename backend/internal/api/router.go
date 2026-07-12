@@ -68,6 +68,7 @@ type Deps struct {
 	BrushFlow     *chain.BrushFlowChain
 	Contract      *chain.ContractChain
 	MediaServer   *chain.MediaServerChain
+	Cloud         *chain.CloudChain
 	Webhook       *v1.WebhookHandler
 	MonOp         *oper.MonitorOper
 	MonSvc        *monitor.Service
@@ -534,6 +535,38 @@ func Build(d *Deps) *gin.Engine {
 				ms.POST("/:id/refresh", msH.Refresh)
 				ms.POST("/:id/notify", msH.Notify)
 				ms.GET("/:id/cover", msH.Cover)
+			}
+
+			// 网盘 + STRM（115/夸克/123）：网盘 CRUD/探活/配额/浏览 + STRM 规则 + 生成 + 订阅追更
+			// 子分组 /drives /rules /records 避免 :id 与同级静态段冲突。
+			cloudH := v1.NewCloudHandler(d.Cloud)
+			cl := guarded.Group("/cloud")
+			{
+				dr := cl.Group("/drives")
+				{
+					dr.GET("", cloudH.List)
+					dr.POST("", cloudH.Create)
+					dr.PUT("/:id", cloudH.Update)
+					dr.DELETE("/:id", middleware.RequireAdmin(), cloudH.Delete)
+					dr.POST("/:id/test", cloudH.Test)
+					dr.GET("/:id/quota", cloudH.Quota)
+					dr.GET("/:id/list", cloudH.Browse)
+				}
+				rl := cl.Group("/rules")
+				{
+					rl.GET("", cloudH.ListRules)
+					rl.POST("", cloudH.CreateRule)
+					rl.PUT("/:id", cloudH.UpdateRule)
+					rl.DELETE("/:id", middleware.RequireAdmin(), cloudH.DeleteRule)
+					rl.POST("/:id/generate", cloudH.GenerateRule)
+				}
+				rc := cl.Group("/records")
+				{
+					rc.GET("", cloudH.ListRecords)
+					rc.DELETE("/:id", middleware.RequireAdmin(), cloudH.DeleteRecord)
+				}
+				cl.POST("/generate-all", cloudH.GenerateAll)
+				cl.POST("/sync-subscriptions", cloudH.SyncSubscriptions)
 			}
 
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

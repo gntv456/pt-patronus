@@ -122,6 +122,8 @@ func validateTypeFields(in FileStorageInput) error {
 		if strings.TrimSpace(in.BasePath) == "" {
 			return fmt.Errorf("本机存储必须填写根目录")
 		}
+	case "115", "quark", "123":
+		// 网盘后端（只读浏览）：凭据存 password，浏览根存 basePath；均可在创建后补填/测试。
 	default:
 		return fmt.Errorf("未知存储类型: %s", in.Type)
 	}

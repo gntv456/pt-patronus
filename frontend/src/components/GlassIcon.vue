@@ -137,6 +137,9 @@ const GLYPHS: Record<string, string> = {
   // 媒体服务器：显示器播放（库扫描/刷新/封面）
   mediaserver:
     '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M10.5 8.5l3 1.8-3 1.8z"/>',
+  // 云盘·STRM：云朵（网盘资源 → STRM 直链）
+  cloud:
+    '<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6 19z"/>',
 }
 
 const dim = computed(() => (typeof props.size === 'number' ? `${props.size}px` : props.size))

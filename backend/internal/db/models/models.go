@@ -682,3 +682,45 @@ type MediaServer struct {
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
+
+// CloudDrive — 网盘实例（115 / 夸克 / 123云盘）。多实例 CRUD（同 MediaServer 范式）：
+// 凭据（cookie(115/夸克) 或 accessToken(123)）加密存 TokenEnc；RootPath 为浏览/STRM 扫描起点。
+// CloudChain 按需构建 client 调网盘 API（列目录/配额/探活）；STRM 规则与订阅追更复用此实例。
+type CloudDrive struct {
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	Name      string `gorm:"size:64;not null" json:"name"`
+	Type      string `gorm:"size:16;not null" json:"type"` // 115 | quark | 123
+	TokenEnc  string `gorm:"type:text" json:"-"`           // 加密的 cookie(115/夸克) 或 accessToken(123)
+	RootPath  string `gorm:"size:255" json:"root_path"`     // 云盘根目录（浏览/扫描起点；"/"=网盘根）
+	IsDefault bool   `gorm:"default:false" json:"is_default"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// StrmRule — STRM 生成规则：从某网盘的 CloudPath 扫描媒体文件，按模板生成本地 .strm。
+// 一条规则 = 一个 CloudDrive + 云盘源目录 + 本地输出目录 + 路径模板。GenerateAll 遍历 enabled 规则。
+type StrmRule struct {
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	Name      string `gorm:"size:64;not null" json:"name"`
+	DriveID   uint   `gorm:"index;not null" json:"drive_id"`
+	CloudPath string `gorm:"size:255;not null" json:"cloud_path"` // 云盘源目录（扫描起点）
+	OutputDir string `gorm:"size:255;not null" json:"output_dir"` // 本地输出目录（.strm 落地根）
+	MountRoot string `gorm:"size:255" json:"mount_root"`           // 挂载根（模板 {mount} 替换，如 /CloudDrive2/115）
+	Template  string `gorm:"size:255" json:"template"`             // 路径模板，默认 {mount}{cloudpath}
+	Recursive bool   `gorm:"default:true" json:"recursive"`        // 递归扫描子目录
+	KeepExt   bool   `gorm:"default:true" json:"keep_ext"`         // .strm 文件名保留源扩展名（a.mkv→a.mkv.strm）否则 a.strm
+	Enabled   bool   `gorm:"default:true" json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// StrmRecord — 已生成的 STRM 记录（去重 + 展示 + 订阅追更 linkage）。同 DriveID+CloudPath 唯一。
+type StrmRecord struct {
+	ID             uint   `gorm:"primaryKey" json:"id"`
+	DriveID        uint   `gorm:"index;uniqueIndex:uk_strm_rec,priority:1" json:"drive_id"`
+	CloudPath      string `gorm:"size:512;uniqueIndex:uk_strm_rec,priority:2" json:"cloud_path"`
+	StrmPath       string `gorm:"size:512" json:"strm_path"`
+	Size           int64  `json:"size"`
+	SubscriptionID uint   `gorm:"index" json:"subscription_id"` // 0=规则生成；>0=订阅追更生成
+	CreatedAt      time.Time `json:"created_at"`
+}

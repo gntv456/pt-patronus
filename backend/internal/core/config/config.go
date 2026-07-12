@@ -76,6 +76,7 @@ type Config struct {
 	KeepSeedCron     string // IYUU 定时自动辅种(仅扫启用 AutoReseed 的下载器) cron，默认每天 3 点
 	MessagesCron     string // 站点私信新邮件轮询 cron（通知中心「新邮件」来源），默认每 30 分钟
 	SubscribeCron    string // 媒体订阅自动搜索+下载 cron，默认每 30 分钟
+	CloudStrmCron    string // 云盘 STRM 生成 + 订阅追更 cron，默认每 6 小时
 	RssCheckCron     string // RSS 订阅全局扫描 cron，默认每 5 分钟（按各订阅 interval_min 决定是否实际抓取）
 
 	// 媒体元数据源
@@ -142,6 +143,7 @@ func Load() (*Config, error) {
 		KeepSeedCron:            getenv("KEEPSEED_CRON", "0 3 * * *"),
 		MessagesCron:            getenv("MESSAGES_CRON", "*/30 * * * *"),
 		SubscribeCron:           getenv("SUBSCRIBE_CRON", "*/30 * * * *"),
+		CloudStrmCron:           getenv("CLOUD_STRM_CRON", "0 */6 * * *"),
 		RssCheckCron:            getenv("RSS_CHECK_CRON", "*/5 * * * *"),
 		// TMDB 默认带 MoviePilot 同款公开 key（TMDB API key 本就客户端可见、可公开），
 		// 让影视搜索开箱即用；仍可用 TMDB_API_KEY 覆盖。

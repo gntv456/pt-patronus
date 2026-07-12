@@ -30,6 +30,25 @@ export interface ReseedSetting {
   auto_reseed_add: boolean
 }
 
+// 未辅种检查结果（对齐后端 chain.MissingSummary）。
+export interface MissingSample {
+  hash: string
+  name: string
+}
+export interface MissingSeed {
+  site_id: number
+  site_name: string
+  count: number // -1 = 该站未映射到 IYUU 目录，无法判定
+  samples: MissingSample[]
+}
+export interface MissingSummary {
+  downloader_id: number
+  total: number
+  checked: number
+  targets: number
+  missing: MissingSeed[]
+}
+
 export const reseedApi = {
   getConfig: () => http.get<ReseedConfig>('/keepseed/config').then((r) => r.data),
   setConfig: (iyuuToken: string) =>
@@ -49,4 +68,12 @@ export const reseedApi = {
   getSetting: (downloaderId: number) =>
     http.get<ReseedSetting>('/keepseed/setting', { params: { downloader_id: downloaderId } }).then((r) => r.data),
   setSetting: (s: ReseedSetting) => http.put('/keepseed/setting', s).then((r) => r.data),
+  // 未辅种检查：对某下载器做种，检查目标站是否已辅种（IYUU hash 跨站匹配）。
+  missing: (downloaderId: number, targetSiteIds: number[]) =>
+    http
+      .post<MissingSummary>('/keepseed/missing', {
+        downloader_id: downloaderId,
+        target_site_ids: targetSiteIds,
+      })
+      .then((r) => r.data),
 }

@@ -78,6 +78,71 @@ class ReseedSetting {
       );
 }
 
+// MissingSample — 未辅种样本（一个未辅种的种子：infohash + 名称）。
+class MissingSample {
+  final String hash;
+  final String name;
+
+  MissingSample({required this.hash, required this.name});
+
+  factory MissingSample.fromJson(Map<String, dynamic> j) => MissingSample(
+        hash: j['hash'] as String? ?? '',
+        name: j['name'] as String? ?? '',
+      );
+}
+
+// MissingSeed — 单站未辅种汇总。count=-1 表示该站未映射到 IYUU 目录无法判定。
+class MissingSeed {
+  final int siteId;
+  final String siteName;
+  final int count;
+  final List<MissingSample> samples;
+
+  MissingSeed({
+    required this.siteId,
+    required this.siteName,
+    required this.count,
+    required this.samples,
+  });
+
+  factory MissingSeed.fromJson(Map<String, dynamic> j) => MissingSeed(
+        siteId: (j['site_id'] as num?)?.toInt() ?? 0,
+        siteName: j['site_name'] as String? ?? '',
+        count: (j['count'] as num?)?.toInt() ?? 0,
+        samples: ((j['samples'] as List?) ?? const [])
+            .map((e) => MissingSample.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+// MissingSummary — POST /keepseed/missing 响应：
+// 源做种总数 / 已提交校验数 / 已映射目标站数 / 各目标站缺失明细。
+class MissingSummary {
+  final int downloaderId;
+  final int total;
+  final int checked;
+  final int targets;
+  final List<MissingSeed> missing;
+
+  MissingSummary({
+    required this.downloaderId,
+    required this.total,
+    required this.checked,
+    required this.targets,
+    required this.missing,
+  });
+
+  factory MissingSummary.fromJson(Map<String, dynamic> j) => MissingSummary(
+        downloaderId: (j['downloader_id'] as num?)?.toInt() ?? 0,
+        total: (j['total'] as num?)?.toInt() ?? 0,
+        checked: (j['checked'] as num?)?.toInt() ?? 0,
+        targets: (j['targets'] as num?)?.toInt() ?? 0,
+        missing: ((j['missing'] as List?) ?? const [])
+            .map((e) => MissingSeed.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
 class ReseedApi {
   final _api = ApiClient();
 
@@ -115,4 +180,13 @@ class ReseedApi {
 
   // PUT /keepseed/setting
   Future<void> saveSetting(ReseedSetting s) => _api.put('/keepseed/setting', s.toJson());
+
+  // POST /keepseed/missing {downloader_id, target_site_ids} → 各目标站未辅种明细。
+  Future<MissingSummary> missing(int downloaderId, List<int> targetSiteIds) async {
+    final r = await _api.post('/keepseed/missing', {
+      'downloader_id': downloaderId,
+      'target_site_ids': targetSiteIds,
+    });
+    return MissingSummary.fromJson(r);
+  }
 }

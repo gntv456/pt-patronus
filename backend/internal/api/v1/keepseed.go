@@ -116,6 +116,26 @@ func (h *KeepSeedHandler) Reseed(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"tasks": created, "count": len(created)})
 }
 
+type missingReq struct {
+	DownloaderID  uint   `json:"downloader_id" binding:"required,min=1"`
+	TargetSiteIDs []uint `json:"target_site_ids"`
+}
+
+// Missing 未辅种检查：对某下载器的做种，检查目标站点是否已辅种（IYUU hash 跨站匹配），返回未辅种清单。
+func (h *KeepSeedHandler) Missing(c *gin.Context) {
+	var req missingReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	summary, err := h.ks.FindMissing(c.Request.Context(), req.DownloaderID, req.TargetSiteIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, summary)
+}
+
 // Tasks 列出辅种候选任务（?status=pending|added|skipped|failed）。
 func (h *KeepSeedHandler) Tasks(c *gin.Context) {
 	tasks, err := h.ks.ListTasks(c.Query("status"))

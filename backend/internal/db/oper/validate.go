@@ -1,24 +1,29 @@
 package oper
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 )
+
+// ErrInvalidInput 标记客户端输入校验错误（URL scheme 非法、缺 host 等），handler 据此返 400
+// 而非 500（区分"用户输入错"与"服务器内部故障"）。
+var ErrInvalidInput = errors.New("invalid input")
 
 // validateURLScheme 仅允许 http/https，拒绝 file://、gopher://、ftp://、javascript: 等
 // 可被用于 SSRF 或协议滥用的 scheme。用于用户可控的出站目标 URL（网盘 / 下载器）。
 func validateURLScheme(raw string) error {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {
-		return fmt.Errorf("invalid url: %w", err)
+		return fmt.Errorf("invalid url: %w: %w", err, ErrInvalidInput)
 	}
 	s := strings.ToLower(u.Scheme)
 	if s != "http" && s != "https" {
-		return fmt.Errorf("url scheme must be http or https, got %q", u.Scheme)
+		return fmt.Errorf("url scheme must be http or https, got %q: %w", u.Scheme, ErrInvalidInput)
 	}
 	if u.Host == "" {
-		return fmt.Errorf("url must have a host")
+		return fmt.Errorf("url must have a host: %w", ErrInvalidInput)
 	}
 	return nil
 }
@@ -39,13 +44,13 @@ func validateForType(typ, raw string) error {
 func validateSMBURL(raw string) error {
 	u, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil {
-		return fmt.Errorf("invalid smb url: %w", err)
+		return fmt.Errorf("invalid smb url: %w: %w", err, ErrInvalidInput)
 	}
 	if strings.ToLower(u.Scheme) != "smb" {
-		return fmt.Errorf("smb url scheme must be smb, got %q", u.Scheme)
+		return fmt.Errorf("smb url scheme must be smb, got %q: %w", u.Scheme, ErrInvalidInput)
 	}
 	if u.Host == "" {
-		return fmt.Errorf("smb url must have a host")
+		return fmt.Errorf("smb url must have a host: %w", ErrInvalidInput)
 	}
 	return nil
 }

@@ -46,9 +46,9 @@ func (m *Manager) Channels() []string {
 
 // SendResult 是单通道发送结果。
 type SendResult struct {
-	Channel string
-	Ok      bool
-	Error   string
+	Channel string `json:"channel"`
+	Ok      bool   `json:"ok"`
+	Error   string `json:"error"`
 }
 
 // Notify 向所有通道并发发送，返回每个通道的结果。

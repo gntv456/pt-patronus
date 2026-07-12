@@ -550,6 +550,7 @@ class _SitesPageState extends State<SitesPage> {
         await SiteApi().update(
           editing.id,
           name: name,
+          platform: editing.platform,
           baseUrl: url,
           apiKey: isApiKeySite && keyCtrl.text.trim().isNotEmpty
               ? keyCtrl.text.trim()

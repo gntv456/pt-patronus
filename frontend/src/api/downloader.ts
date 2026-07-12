@@ -123,7 +123,7 @@ export const downloaderApi = {
   resume: (id: number, hashes: string[]) => http.post(`/downloaders/${id}/resume`, { hashes }).then((r) => r.data),
   removeTorrents: (id: number, hashes: string[], deleteFiles = false) =>
     http.post(`/downloaders/${id}/remove`, { hashes, delete_files: deleteFiles }).then((r) => r.data),
-  stats: (id: number) => http.get<Stats>(`/downloaders/${id}/stats`).then((r) => r.data),
+  stats: (id: number) => http.get<Stats & DownloaderResult>(`/downloaders/${id}/stats`).then((r) => r.data),
 
   // —— 分类 / 标签 ——
   categories: (id: number) =>
@@ -170,7 +170,8 @@ export const downloaderApi = {
     http
       .post<DownloaderResult>(`/downloaders/${id}/torrents/limits`, { hashes, ...limits })
       .then((r) => r.data),
-  getSpeedLimits: (id: number) => http.get<Limits>(`/downloaders/${id}/speed-limits`).then((r) => r.data),
+  getSpeedLimits: (id: number) =>
+    http.get<Limits & DownloaderResult>(`/downloaders/${id}/speed-limits`).then((r) => r.data),
   setSpeedLimits: (id: number, limits: Limits) =>
     http.post<DownloaderResult>(`/downloaders/${id}/speed-limits`, limits).then((r) => r.data),
 

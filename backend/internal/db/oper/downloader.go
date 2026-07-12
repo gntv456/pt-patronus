@@ -42,7 +42,16 @@ func (o *DownloaderOper) Create(in DownloaderInput) (*models.Downloader, error) 
 		}
 		d.PasswordEnc = enc
 	}
-	if err := o.db.Create(d).Error; err != nil {
+	// 默认下载器唯一：设新默认时事务内清掉旧的，避免多个 is_default=true 共存。
+	if err := o.db.Transaction(func(tx *gorm.DB) error {
+		if in.IsDefault {
+			if e := tx.Model(&models.Downloader{}).Where("is_default = ?", true).
+				Update("is_default", false).Error; e != nil {
+				return e
+			}
+		}
+		return tx.Create(d).Error
+	}); err != nil {
 		return nil, err
 	}
 	return d, nil
@@ -67,7 +76,16 @@ func (o *DownloaderOper) Update(id uint, in DownloaderInput) (*models.Downloader
 		}
 		d.PasswordEnc = enc
 	}
-	if err := o.db.Save(d).Error; err != nil {
+	// 默认下载器唯一：设为默认时事务内清掉其他默认（WHERE id<>自身），Save 后自身为 true。
+	if err := o.db.Transaction(func(tx *gorm.DB) error {
+		if in.IsDefault {
+			if e := tx.Model(&models.Downloader{}).Where("is_default = ? AND id <> ?", true, id).
+				Update("is_default", false).Error; e != nil {
+				return e
+			}
+		}
+		return tx.Save(d).Error
+	}); err != nil {
 		return nil, err
 	}
 	return d, nil

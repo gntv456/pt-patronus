@@ -6,7 +6,8 @@ export const APP_VERSION: string = typeof __APP_VERSION__ !== 'undefined' ? __AP
 
 export interface SystemInfo {
   name: string
-  version: string
+  // 后端未认证时不返 version（防指纹），故可选；调用方均以 ?. 守卫。
+  version?: string
 }
 
 export interface UpdateCheckResult {

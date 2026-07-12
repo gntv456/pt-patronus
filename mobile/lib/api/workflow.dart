@@ -374,6 +374,8 @@ class WorkflowApi {
 
   Future<void> disable(int id) => _api.post('/workflows/$id/disable', {});
 
+  Future<void> reset(int id) => _api.post('/workflows/$id/reset', {});
+
   Future<List<WorkflowRun>> runs(int workflowId, {int limit = 20}) async {
     final r = await _api.get('/workflow-runs?workflow_id=$workflowId&limit=$limit');
     final list = (r['runs'] as List?) ?? const [];

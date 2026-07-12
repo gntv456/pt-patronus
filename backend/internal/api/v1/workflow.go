@@ -82,7 +82,18 @@ func (h *WorkflowHandler) Stats(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, st)
+	// RecentFailures 走 runResponse：把 NodeExecutions(text) 反序列化为数组，
+	// 与 Run/ListRuns/RunDetail 保持一致——否则前端拿到 JSON 字符串，迭代 .map 必崩。
+	failures := make([]gin.H, 0, len(st.RecentFailures))
+	for i := range st.RecentFailures {
+		failures = append(failures, runResponse(&st.RecentFailures[i]))
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"total": st.Total, "enabled": st.Enabled, "runs_total": st.RunsTotal,
+		"runs_success": st.RunsSuccess, "runs_failed": st.RunsFailed,
+		"avg_duration_ms": st.AvgDurationMS, "node_timing": st.NodeTiming,
+		"recent_failures": failures,
+	})
 }
 
 // List 全部工作流。

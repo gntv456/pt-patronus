@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { safeUrl } from '@/utils/safeUrl'
-import { reseedApi, type ReseedTask, type ReseedSetting } from '@/api/reseed'
+import { reseedApi, type ReseedTask, type ReseedSetting, type MissingSummary, type MissingSample } from '@/api/reseed'
 import { downloaderApi, type Downloader } from '@/api/downloader'
+import { siteApi, type Site } from '@/api/site'
 
 const config = ref<{ masked: string; configured: boolean }>({ masked: '', configured: false })
 const tokenInput = ref('')
@@ -116,6 +117,49 @@ async function startReseed() {
   }
 }
 
+// 未辅种检查：选目标站 → IYUU hash 跨站匹配 → 列出每站未辅种清单
+const showMissing = ref(false)
+const missingTargets = ref<number[]>([])
+const missingResult = ref<MissingSummary | null>(null)
+const checking = ref(false)
+const sites = ref<Site[]>([])
+
+async function openMissing() {
+  if (selectedDl.value === null) {
+    ElMessage.warning('请选择下载器')
+    return
+  }
+  if (!config.value.configured) {
+    ElMessage.warning('请先保存 IYUU token')
+    return
+  }
+  if (!sites.value.length) {
+    try {
+      sites.value = await siteApi.list()
+    } catch {
+      /* ignore */
+    }
+  }
+  missingResult.value = null
+  showMissing.value = true
+}
+
+async function checkMissing() {
+  if (selectedDl.value === null) return
+  if (!missingTargets.value.length) {
+    ElMessage.warning('请选择目标站点')
+    return
+  }
+  checking.value = true
+  try {
+    missingResult.value = await reseedApi.missing(selectedDl.value, missingTargets.value)
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '检查失败')
+  } finally {
+    checking.value = false
+  }
+}
+
 async function resolve(row: ReseedTask, action: 'add' | 'skip') {
   resolving.value.add(row.id)
   try {
@@ -164,6 +208,10 @@ onMounted(async () => {
       <el-button type="primary" :loading="reseeding" @click="startReseed">
         <GlassIcon name="seeding" from="#11998e" to="#38ef7d" :size="16" class="btn-ico" />
         <span>开始辅种</span>
+      </el-button>
+      <el-button @click="openMissing">
+        <GlassIcon name="history" from="#6c5ce7" to="#4285f4" :size="16" class="btn-ico" />
+        <span>未辅种检查</span>
       </el-button>
 
       <div class="spacer"></div>
@@ -274,6 +322,44 @@ onMounted(async () => {
         </el-table>
       </div>
     </div>
+
+    <!-- 未辅种检查：选目标站 → IYUU hash 跨站匹配 → 每站未辅种清单 -->
+    <el-dialog v-model="showMissing" title="未辅种检查" width="640px" top="8vh">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px">
+        <el-select
+          v-model="missingTargets"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          filterable
+          placeholder="选择目标站点（检查这些站是否已辅种）"
+          style="flex: 1"
+        >
+          <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
+        </el-select>
+        <el-button type="primary" :loading="checking" @click="checkMissing">检查</el-button>
+      </div>
+      <div v-if="missingResult">
+        <p class="text-muted" style="margin: 0 0 8px">
+          源做种 {{ missingResult.total }} · 提交 IYUU {{ missingResult.checked }} · 目标站 {{ missingResult.targets }} 个已映射
+        </p>
+        <el-table :data="missingResult.missing" size="small" empty-text="所选目标站均已辅种 ✅">
+          <el-table-column prop="site_name" label="目标站" width="160" />
+          <el-table-column label="未辅种数" width="100">
+            <template #default="{ row }">
+              <span v-if="row.count < 0" class="text-muted">无法判定</span>
+              <el-tag v-else-if="row.count > 0" type="warning" size="small">{{ row.count }}</el-tag>
+              <el-tag v-else type="success" size="small">已全覆盖</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="示例（最多 3 个）" show-overflow-tooltip>
+            <template #default="{ row }">
+              <span class="text-muted">{{ (row.samples || []).map((x: MissingSample) => x.name).slice(0, 3).join(' / ') }}</span>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-dialog>
   </div>
 </template>
 

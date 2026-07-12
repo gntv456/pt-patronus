@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"errors"
 	"io"
 	"net/http"
 
@@ -41,7 +42,11 @@ func (h *FileStorageHandler) Create(c *gin.Context) {
 	}
 	f, err := h.op.Create(in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, oper.ErrInvalidInput) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, f)
@@ -60,7 +65,11 @@ func (h *FileStorageHandler) Update(c *gin.Context) {
 	}
 	f, err := h.op.Update(id, in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, oper.ErrInvalidInput) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 	h.mgr.Invalidate(id)

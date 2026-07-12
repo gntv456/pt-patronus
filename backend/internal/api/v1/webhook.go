@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -101,7 +102,7 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 			bg, cancel := context.WithTimeout(reqCtx, 10*time.Minute) // 派生自请求 ctx：客户端断开即取消，避免孤儿工作流执行
 			defer cancel()
 			if _, err := h.wfCh.Run(bg, target, "webhook", payload); err != nil {
-				fmt.Printf("webhook trigger workflow %d failed: %v (webhook=%s)\n", target, err, wname)
+				slog.Warn("webhook trigger workflow failed", "workflow_id", target, "err", err, "webhook", wname)
 			}
 		}()
 	}

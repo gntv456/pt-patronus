@@ -136,10 +136,12 @@ class SiteApi {
     return Site.fromJson(r);
   }
 
-  /// 编辑站点（对齐 Web PUT /sites/:id）。apiKey/cookie/password 留空 = 不修改。
+  /// 编辑站点（对齐 Web PUT /sites/:id）。platform 必传（后端 required）；
+  /// apiKey/cookie/password 留空 = 不修改。
   Future<Site> update(
     int id, {
     required String name,
+    required String platform,
     required String baseUrl,
     String? apiKey,
     String? cookie,
@@ -147,7 +149,7 @@ class SiteApi {
     String? password,
     bool? isActive,
   }) async {
-    final body = <String, dynamic>{'name': name, 'base_url': baseUrl};
+    final body = <String, dynamic>{'name': name, 'platform': platform, 'base_url': baseUrl};
     if (isActive != null) body['is_active'] = isActive;
     if (apiKey != null && apiKey.isNotEmpty) body['api_key'] = apiKey;
     if (cookie != null && cookie.isNotEmpty) body['cookie'] = cookie;

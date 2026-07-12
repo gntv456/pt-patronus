@@ -316,6 +316,7 @@ func Build(d *Deps) *gin.Engine {
 				ks.GET("/config", ksH.GetConfig)
 				ks.PUT("/config", ksH.SetConfig)
 				ks.POST("/reseed", ksH.Reseed)
+			ks.POST("/missing", ksH.Missing)
 				ks.GET("/tasks", ksH.Tasks)
 				ks.POST("/tasks/:id/resolve", ksH.Resolve)
 				ks.GET("/setting", ksH.GetSetting)

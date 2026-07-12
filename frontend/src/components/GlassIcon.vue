@@ -128,6 +128,9 @@ const GLYPHS: Record<string, string> = {
   // 勋章墙：奖牌（圆牌 + 星 + 缎带）
   medalwall:
     '<circle cx="12" cy="9" r="6"/><path d="M9 14l-2 7 5-3 5 3-2-7"/><path d="M12 5.5l1 2 2.2.3-1.6 1.5.4 2.2L12 14l-2-1-2 1 .4-2.2L6.8 7.8 9 7.5z"/>',
+  // 刷流：闪电（快速刷上传/分享率）
+  brushflow:
+    '<path d="M13 2L3 14h7l-1 8 10-12h-7z"/>',
 }
 
 const dim = computed(() => (typeof props.size === 'number' ? `${props.size}px` : props.size))

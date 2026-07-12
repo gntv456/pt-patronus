@@ -66,6 +66,7 @@ const navGroups = [
       { name: 'medal-wall', label: '勋章墙', icon: 'medalwall', from: '#f39c12', to: '#e100ff' },
       { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
       { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12' },
+      { name: 'brushflow', label: '刷流', icon: 'brushflow', from: '#f7971e', to: '#ff6a00' },
     ],
   },
   {
@@ -90,6 +91,7 @@ const navDesc: Record<string, string> = {
   'medal-wall': '勋章墙 · 勋章收集',
   entertainment: '娱乐 · 站内小游戏',
   savept: '监护室 · 站点健康监控',
+  brushflow: '刷流 · 自动选种做种刷量',
   plugins: '插件 · 事件扩展 / 动作执行',
 }
 

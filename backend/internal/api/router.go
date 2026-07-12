@@ -65,6 +65,7 @@ type Deps struct {
 	Subscribe     *chain.SubscribeChain
 	Workflow      *chain.WorkflowChain
 	Rss           *chain.RssChain
+	BrushFlow     *chain.BrushFlowChain
 	Webhook       *v1.WebhookHandler
 	MonOp         *oper.MonitorOper
 	MonSvc        *monitor.Service
@@ -490,6 +491,20 @@ func Build(d *Deps) *gin.Engine {
 				plugins.POST("/:id/action", middleware.RequireAdmin(), pluginH.Action)
 				plugins.POST("/:id/reload", middleware.RequireAdmin(), pluginH.Reload)
 				plugins.DELETE("/:id", middleware.RequireAdmin(), pluginH.Uninstall)
+			}
+
+			// 刷流引擎：任务 CRUD + 手动选种/扫删 + 种子加入历史
+			bfH := v1.NewBrushFlowHandler(d.BrushFlow)
+			bf := guarded.Group("/brushflow")
+			{
+				bf.GET("", bfH.List)
+				bf.POST("", bfH.Create)
+				bf.GET("/:id", bfH.Get)
+				bf.PUT("/:id", bfH.Update)
+				bf.DELETE("/:id", middleware.RequireAdmin(), bfH.Delete)
+				bf.POST("/:id/select", bfH.Select)
+				bf.POST("/:id/sweep", bfH.Sweep)
+				bf.GET("/:id/seeds", bfH.Seeds)
 			}
 
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

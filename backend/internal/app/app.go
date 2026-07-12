@@ -301,6 +301,10 @@ func New(cfg *config.Config) (*App, error) {
 	// TokenVersion 缓存（登出失效；当前按单实例设计）
 	tvCache := auth.NewTokenVersionCache(database, 60*time.Second)
 
+	// 刷流引擎：按规则选种→加入下载器→监控做种→达删除规则自动删种（tag 识别；cron 驱动选种+扫删）
+	brushOp := oper.NewBrushFlowOper(database)
+	brushCh := chain.NewBrushFlowChain(base, siteOp, siteCh, dlCh, brushOp, noticeSvc)
+
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
@@ -315,6 +319,17 @@ func New(cfg *config.Config) (*App, error) {
 		KeepSeedCron:            cfg.KeepSeedCron,
 		MessagesCron:            cfg.MessagesCron,
 	}, context.Background(), wsHub, hxptLogin, crypto, noticeSvc, cfgOp)
+	// 刷流 cron：选种每 10 分钟、扫删每 5 分钟（单任务失败不阻断；scheduler 自带 SkipIfStillRunning 防重叠）
+	_ = sched.AddFunc("brushflow-select", "*/10 * * * *", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		brushCh.RunAllSelect(ctx)
+	})
+	_ = sched.AddFunc("brushflow-sweep", "*/5 * * * *", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		brushCh.RunAllSweep(ctx)
+	})
 	auto.Start()
 
 	// RSS 订阅 + 工作流引擎（依赖 siteCh/dlCh/subCh/keepSeedCh/noticeSvc/siteOp/dlOp/hc/database，均已构造）。
@@ -550,6 +565,7 @@ func New(cfg *config.Config) (*App, error) {
 		Subscribe: subCh,
 		Workflow:  wfCh,
 		Rss:       rssCh,
+		BrushFlow: brushCh,
 		Webhook:   webhookH,
 		MonOp:     monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,

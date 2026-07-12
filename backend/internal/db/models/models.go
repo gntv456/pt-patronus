@@ -593,3 +593,57 @@ type Webhook struct {
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
+
+// BrushFlowTask — 刷流任务。按规则在指定站点选种加入下载器，监控做种达到删除规则
+// （分享率/保种时长/上传量目标，满足任一）后自动删种，循环刷上传量与分享率。
+// 识别：加入的种子打 tag "brushflow:<task_id>"，扫删/限流都基于该 tag 在下载器侧统计，
+// 不依赖跨系统 infohash 匹配（站点种子 ID ≠ 下载器 infohash，无法直接对应）。
+type BrushFlowTask struct {
+	ID       uint   `gorm:"primaryKey" json:"id"`
+	Name     string `gorm:"size:128;not null" json:"name"`
+	SiteID   uint   `gorm:"index;not null" json:"site_id"`
+	DownloaderID uint `gorm:"index;not null" json:"downloader_id"`
+	Enabled  bool   `gorm:"default:true" json:"enabled"`
+	// 选种规则
+	Keyword     string `gorm:"size:128" json:"keyword"`      // 搜种关键字，空=综合
+	Category    string `gorm:"size:32" json:"category"`      // 传给 Search 的分类(movie/tv/music/"")
+	MinSizeMB   int64  `json:"min_size_mb"`                   // 种子大小下限(MB)，0=不限
+	MaxSizeMB   int64  `json:"max_size_mb"`                   // 种子大小上限(MB)，0=不限
+	MinSeeders  int    `json:"min_seeders"`                   // 做种人数下限
+	MaxSeeders  int    `json:"max_seeders"`                   // 做种人数上限，0=不限
+	FreeOnly    bool   `gorm:"default:false" json:"free_only"` // 仅免费种
+	Paused      bool   `gorm:"default:false" json:"paused"`    // 加入时暂停(手动放行)
+	// 删除规则（满足任一即删；全 0 = 永不自动删）
+	DeleteRatio     float64 `json:"delete_ratio"`     // 分享率达此值删，0=不限
+	DeleteSeedHours float64 `json:"delete_seed_hours"` // 做种时长达此值删，0=不限
+	DeleteUploadMB  int64   `json:"delete_upload_mb"`  // 累计上传达此值删，0=不限
+	DeleteFiles     bool    `gorm:"default:false" json:"delete_files"` // 删种时是否删文件
+	// 并发与分类
+	MaxSeeds  int    `gorm:"default:10" json:"max_seeds"` // 该任务最大同时做种数
+	SavePath  string `gorm:"size:255" json:"save_path"`
+	CategoryDL string `gorm:"size:64" json:"category_dl"` // 下载器内分类
+	// 统计（cron 累加）
+	TotalAdded   int64      `gorm:"default:0" json:"total_added"`
+	TotalDeleted int64      `gorm:"default:0" json:"total_deleted"`
+	TotalUpload  int64      `gorm:"default:0" json:"total_upload"` // 累计上传字节（删种时计入）
+	LastSelectAt *time.Time `json:"last_select_at"`
+	LastSweepAt  *time.Time `json:"last_sweep_at"`
+	LastError    string     `gorm:"type:text" json:"last_error"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+}
+
+// BrushFlowSeed — 刷流种子加入历史。用于去重（同任务不重复加同一站点种子）与展示，
+// 不维护删除状态（删种判定基于下载器 tag，统计累加在 task 上）。
+type BrushFlowSeed struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	TaskID       uint      `gorm:"index;not null" json:"task_id"`
+	DownloaderID uint      `gorm:"index" json:"downloader_id"`
+	SourceKey    string    `gorm:"size:255;index" json:"source_key"` // 站点种子标识(DownloadURL 优先，否则 ID)，去重用
+	Title        string    `gorm:"size:512" json:"title"`
+	Size         int64     `json:"size"` // bytes
+	SiteID       uint      `json:"site_id"`
+	AddedAt      time.Time `json:"added_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}

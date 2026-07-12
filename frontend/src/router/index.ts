@@ -101,6 +101,11 @@ const router = createRouter({
           component: () => import('@/views/Savept.vue'),
         },
         {
+          path: 'brushflow',
+          name: 'brushflow',
+          component: () => import('@/views/BrushFlow.vue'),
+        },
+        {
           path: 'harem',
           name: 'harem',
           component: () => import('@/views/Harem.vue'),

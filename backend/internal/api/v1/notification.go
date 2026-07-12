@@ -103,6 +103,70 @@ type notifyEmailConfig struct {
 	From               string `json:"from"`
 	To                 string `json:"to"`
 }
+// 批次6 补全渠道配置（GET 回显；秘密脱敏 + *_configured）。
+type notifyPushPlusConfig struct {
+	Enabled        bool   `json:"enabled"`
+	Token          string `json:"token"` // 脱敏
+	TokenConfigured bool  `json:"token_configured"`
+}
+type notifyPushDeerConfig struct {
+	Enabled          bool   `json:"enabled"`
+	Server           string `json:"server"`
+	Pushkey          string `json:"pushkey"` // 脱敏
+	PushkeyConfigured bool  `json:"pushkey_configured"`
+}
+type notifyNtfyConfig struct {
+	Enabled        bool   `json:"enabled"`
+	Server         string `json:"server"`
+	Topic          string `json:"topic"`
+	Token          string `json:"token"` // 脱敏
+	TokenConfigured bool  `json:"token_configured"`
+}
+type notifyGotifyConfig struct {
+	Enabled        bool   `json:"enabled"`
+	Server         string `json:"server"`
+	Token          string `json:"token"` // 脱敏
+	TokenConfigured bool  `json:"token_configured"`
+}
+type notifyAppriseConfig struct {
+	Enabled        bool   `json:"enabled"`
+	Server         string `json:"server"`
+	Apikey         string `json:"apikey"` // 脱敏
+	ApikeyConfigured bool `json:"apikey_configured"`
+}
+type notifyWorkWechatConfig struct {
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+}
+type notifyWxPusherConfig struct {
+	Enabled          bool   `json:"enabled"`
+	UID              string `json:"uid"`
+	TopicID          string `json:"topic_id"`
+	AppToken         string `json:"app_token"` // 脱敏
+	AppTokenConfigured bool `json:"app_token_configured"`
+}
+type notifyLarkConfig struct {
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+}
+type notifyDiscordConfig struct {
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+}
+type notifyMQTTConfig struct {
+	Enabled          bool   `json:"enabled"`
+	Broker           string `json:"broker"`
+	Topic            string `json:"topic"`
+	Username         string `json:"username"`
+	Password         string `json:"password"` // 脱敏
+	PasswordConfigured bool `json:"password_configured"`
+	ClientID         string `json:"client_id"`
+}
+type notifyServerChanConfig struct {
+	Enabled        bool   `json:"enabled"`
+	Key            string `json:"key"` // 脱敏
+	KeyConfigured  bool   `json:"key_configured"`
+}
 type notifyConfigResp struct {
 	Bark     notifyBarkConfig     `json:"bark"`
 	Telegram notifyTGConfig       `json:"telegram"`
@@ -112,6 +176,17 @@ type notifyConfigResp struct {
 	DingTalk notifyDingTalkConfig `json:"dingtalk"`
 	Feishu   notifyFeishuConfig   `json:"feishu"`
 	Email    notifyEmailConfig    `json:"email"`
+	PushPlus    notifyPushPlusConfig    `json:"pushplus"`
+	PushDeer    notifyPushDeerConfig    `json:"pushdeer"`
+	Ntfy        notifyNtfyConfig        `json:"ntfy"`
+	Gotify      notifyGotifyConfig      `json:"gotify"`
+	Apprise     notifyAppriseConfig     `json:"apprise"`
+	WorkWechat  notifyWorkWechatConfig  `json:"workwechat"`
+	WxPusher    notifyWxPusherConfig    `json:"wxpusher"`
+	Lark        notifyLarkConfig        `json:"lark"`
+	Discord     notifyDiscordConfig     `json:"discord"`
+	MQTT        notifyMQTTConfig        `json:"mqtt"`
+	ServerChan  notifyServerChanConfig  `json:"serverchan"`
 }
 
 // GetConfig 返回当前通知通道配置（secret 脱敏 + configured 标记）。供「设置→通知」回显。
@@ -141,6 +216,40 @@ func (h *NotificationHandler) GetConfig(c *gin.Context) {
 			Enabled: s.Email.Enabled, Host: s.Email.Host, Port: s.Email.Port, Username: s.Email.Username,
 			Password: maskSecret(s.Email.Password), PasswordConfigured: s.Email.Password != "",
 			From: s.Email.From, To: s.Email.To,
+		},
+		PushPlus: notifyPushPlusConfig{
+			Enabled: s.PushPlus.Enabled, Token: maskSecret(s.PushPlus.Token), TokenConfigured: s.PushPlus.Token != "",
+		},
+		PushDeer: notifyPushDeerConfig{
+			Enabled: s.PushDeer.Enabled, Server: s.PushDeer.Server,
+			Pushkey: maskSecret(s.PushDeer.Pushkey), PushkeyConfigured: s.PushDeer.Pushkey != "",
+		},
+		Ntfy: notifyNtfyConfig{
+			Enabled: s.Ntfy.Enabled, Server: s.Ntfy.Server, Topic: s.Ntfy.Topic,
+			Token: maskSecret(s.Ntfy.Token), TokenConfigured: s.Ntfy.Token != "",
+		},
+		Gotify: notifyGotifyConfig{
+			Enabled: s.Gotify.Enabled, Server: s.Gotify.Server,
+			Token: maskSecret(s.Gotify.Token), TokenConfigured: s.Gotify.Token != "",
+		},
+		Apprise: notifyAppriseConfig{
+			Enabled: s.Apprise.Enabled, Server: s.Apprise.Server,
+			Apikey: maskSecret(s.Apprise.Apikey), ApikeyConfigured: s.Apprise.Apikey != "",
+		},
+		WorkWechat: notifyWorkWechatConfig{Enabled: s.WorkWechat.Enabled, URL: s.WorkWechat.URL},
+		WxPusher: notifyWxPusherConfig{
+			Enabled: s.WxPusher.Enabled, UID: s.WxPusher.UID, TopicID: s.WxPusher.TopicID,
+			AppToken: maskSecret(s.WxPusher.AppToken), AppTokenConfigured: s.WxPusher.AppToken != "",
+		},
+		Lark:    notifyLarkConfig{Enabled: s.Lark.Enabled, URL: s.Lark.URL},
+		Discord: notifyDiscordConfig{Enabled: s.Discord.Enabled, URL: s.Discord.URL},
+		MQTT: notifyMQTTConfig{
+			Enabled: s.MQTT.Enabled, Broker: s.MQTT.Broker, Topic: s.MQTT.Topic, Username: s.MQTT.Username,
+			Password: maskSecret(s.MQTT.Password), PasswordConfigured: s.MQTT.Password != "",
+			ClientID: s.MQTT.ClientID,
+		},
+		ServerChan: notifyServerChanConfig{
+			Enabled: s.ServerChan.Enabled, Key: maskSecret(s.ServerChan.Key), KeyConfigured: s.ServerChan.Key != "",
 		},
 	})
 }
@@ -192,6 +301,61 @@ type notifyConfigReq struct {
 		From     string `json:"from" binding:"max=128"`
 		To       string `json:"to" binding:"max=512"`
 	} `json:"email"`
+	PushPlus struct {
+		Enabled bool   `json:"enabled"`
+		Token   string `json:"token" binding:"max=256"`
+	} `json:"pushplus"`
+	PushDeer struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server" binding:"max=512"`
+		Pushkey string `json:"pushkey" binding:"max=256"`
+	} `json:"pushdeer"`
+	Ntfy struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server" binding:"max=512"`
+		Topic   string `json:"topic" binding:"max=256"`
+		Token   string `json:"token" binding:"max=256"`
+	} `json:"ntfy"`
+	Gotify struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server" binding:"max=512"`
+		Token   string `json:"token" binding:"max=256"`
+	} `json:"gotify"`
+	Apprise struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server" binding:"max=512"`
+		Apikey  string `json:"apikey" binding:"max=256"`
+	} `json:"apprise"`
+	WorkWechat struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url" binding:"max=1024"`
+	} `json:"workwechat"`
+	WxPusher struct {
+		Enabled  bool   `json:"enabled"`
+		AppToken string `json:"app_token" binding:"max=256"`
+		UID      string `json:"uid" binding:"max=128"`
+		TopicID  string `json:"topic_id" binding:"max=128"`
+	} `json:"wxpusher"`
+	Lark struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url" binding:"max=1024"`
+	} `json:"lark"`
+	Discord struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url" binding:"max=1024"`
+	} `json:"discord"`
+	MQTT struct {
+		Enabled   bool   `json:"enabled"`
+		Broker    string `json:"broker" binding:"max=512"`
+		Topic     string `json:"topic" binding:"max=256"`
+		Username  string `json:"username" binding:"max=128"`
+		Password  string `json:"password" binding:"max=256"`
+		ClientID  string `json:"client_id" binding:"max=128"`
+	} `json:"mqtt"`
+	ServerChan struct {
+		Enabled bool   `json:"enabled"`
+		Key     string `json:"key" binding:"max=256"`
+	} `json:"serverchan"`
 }
 
 // SetConfig 保存通知通道配置并即时 rebuild（无需重启）。秘密字段空串=保留旧值。
@@ -210,6 +374,17 @@ func (h *NotificationHandler) SetConfig(c *gin.Context) {
 	in.DingTalk.Enabled, in.DingTalk.URL = req.DingTalk.Enabled, req.DingTalk.URL
 	in.Feishu.Enabled, in.Feishu.URL = req.Feishu.Enabled, req.Feishu.URL
 	in.Email.Enabled, in.Email.Host, in.Email.Port, in.Email.Username, in.Email.Password, in.Email.From, in.Email.To = req.Email.Enabled, req.Email.Host, req.Email.Port, req.Email.Username, req.Email.Password, req.Email.From, req.Email.To
+	in.PushPlus.Enabled, in.PushPlus.Token = req.PushPlus.Enabled, req.PushPlus.Token
+	in.PushDeer.Enabled, in.PushDeer.Server, in.PushDeer.Pushkey = req.PushDeer.Enabled, req.PushDeer.Server, req.PushDeer.Pushkey
+	in.Ntfy.Enabled, in.Ntfy.Server, in.Ntfy.Topic, in.Ntfy.Token = req.Ntfy.Enabled, req.Ntfy.Server, req.Ntfy.Topic, req.Ntfy.Token
+	in.Gotify.Enabled, in.Gotify.Server, in.Gotify.Token = req.Gotify.Enabled, req.Gotify.Server, req.Gotify.Token
+	in.Apprise.Enabled, in.Apprise.Server, in.Apprise.Apikey = req.Apprise.Enabled, req.Apprise.Server, req.Apprise.Apikey
+	in.WorkWechat.Enabled, in.WorkWechat.URL = req.WorkWechat.Enabled, req.WorkWechat.URL
+	in.WxPusher.Enabled, in.WxPusher.AppToken, in.WxPusher.UID, in.WxPusher.TopicID = req.WxPusher.Enabled, req.WxPusher.AppToken, req.WxPusher.UID, req.WxPusher.TopicID
+	in.Lark.Enabled, in.Lark.URL = req.Lark.Enabled, req.Lark.URL
+	in.Discord.Enabled, in.Discord.URL = req.Discord.Enabled, req.Discord.URL
+	in.MQTT.Enabled, in.MQTT.Broker, in.MQTT.Topic, in.MQTT.Username, in.MQTT.Password, in.MQTT.ClientID = req.MQTT.Enabled, req.MQTT.Broker, req.MQTT.Topic, req.MQTT.Username, req.MQTT.Password, req.MQTT.ClientID
+	in.ServerChan.Enabled, in.ServerChan.Key = req.ServerChan.Enabled, req.ServerChan.Key
 	if err := h.provider.ApplySettings(in); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -140,10 +140,22 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       'base_url': _wxBase.text.trim(),
     },
     'webhook': {'enabled': _whEnabled, 'url': _whUrl.text.trim()},
-    // 回发 Flutter 暂无独立 UI 的 3 通道当前值，避免后端 mergeNotifySettings 用 incoming 零值覆写清空（P0-1）。
+    // 回发 Flutter 暂无独立 UI 的通道当前值，避免后端 mergeNotifySettings 用 incoming 零值覆写清空（P0-1）。
     if (_config != null) 'dingtalk': _config!.dingtalk.toJson(),
     if (_config != null) 'feishu': _config!.feishu.toJson(),
     if (_config != null) 'email': _config!.email.toJson(),
+    // 批次6 补全渠道（11 个，同上：Flutter 经 Web 配置，保存时原样回发保留）。
+    if (_config != null) 'pushplus': _config!.pushplus.toJson(),
+    if (_config != null) 'pushdeer': _config!.pushdeer.toJson(),
+    if (_config != null) 'ntfy': _config!.ntfy.toJson(),
+    if (_config != null) 'gotify': _config!.gotify.toJson(),
+    if (_config != null) 'apprise': _config!.apprise.toJson(),
+    if (_config != null) 'workwechat': _config!.workwechat.toJson(),
+    if (_config != null) 'wxpusher': _config!.wxpusher.toJson(),
+    if (_config != null) 'lark': _config!.lark.toJson(),
+    if (_config != null) 'discord': _config!.discord.toJson(),
+    if (_config != null) 'mqtt': _config!.mqtt.toJson(),
+    if (_config != null) 'serverchan': _config!.serverchan.toJson(),
   };
 
   Future<void> _save() async {

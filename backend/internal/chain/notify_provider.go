@@ -61,6 +61,62 @@ type NotificationSettings struct {
 		From     string `json:"from"`
 		To       string `json:"to"`
 	} `json:"email"`
+	// —— 批次6 补全渠道（11 个，与既有 8 个并列；秘密字段空串=保留旧值）——
+	PushPlus struct {
+		Enabled bool   `json:"enabled"`
+		Token   string `json:"token"` // 秘密
+	} `json:"pushplus"`
+	PushDeer struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server"`
+		Pushkey string `json:"pushkey"` // 秘密
+	} `json:"pushdeer"`
+	Ntfy struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server"`
+		Topic   string `json:"topic"`
+		Token   string `json:"token"` // 秘密（私有/受保护 topic）
+	} `json:"ntfy"`
+	Gotify struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server"`
+		Token   string `json:"token"` // 秘密
+	} `json:"gotify"`
+	Apprise struct {
+		Enabled bool   `json:"enabled"`
+		Server  string `json:"server"`
+		Apikey  string `json:"apikey"` // 秘密
+	} `json:"apprise"`
+	WorkWechat struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"` // webhook url（含 key；按既有 DingTalk/Feishu 惯例不脱敏）
+	} `json:"workwechat"`
+	WxPusher struct {
+		Enabled bool   `json:"enabled"`
+		AppToken string `json:"app_token"` // 秘密
+		UID      string `json:"uid"`
+		TopicID  string `json:"topic_id"`
+	} `json:"wxpusher"`
+	Lark struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+	} `json:"lark"`
+	Discord struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+	} `json:"discord"`
+	MQTT struct {
+		Enabled   bool   `json:"enabled"`
+		Broker    string `json:"broker"`
+		Topic     string `json:"topic"`
+		Username  string `json:"username"`
+		Password  string `json:"password"` // 秘密
+		ClientID  string `json:"client_id"`
+	} `json:"mqtt"`
+	ServerChan struct {
+		Enabled bool   `json:"enabled"`
+		Key     string `json:"key"` // 秘密（SendKey）
+	} `json:"serverchan"`
 }
 
 // NotificationSettingsProvider 按 SystemConfig（回退环境变量默认 defaults）构建通知通道，
@@ -169,6 +225,40 @@ func (p *NotificationSettingsProvider) rebuildLocked(s NotificationSettings) {
 	if s.Email.Enabled && s.Email.Host != "" && s.Email.From != "" && s.Email.To != "" {
 		chs = append(chs, notification.NewEmail(s.Email.Host, s.Email.Port, s.Email.Username, s.Email.Password, s.Email.From, s.Email.To))
 	}
+	// 批次6 补全渠道：按 enabled + 必填非空构建。
+	if s.PushPlus.Enabled && s.PushPlus.Token != "" {
+		chs = append(chs, notification.NewPushPlus("", s.PushPlus.Token))
+	}
+	if s.PushDeer.Enabled && s.PushDeer.Pushkey != "" {
+		chs = append(chs, notification.NewPushDeer(s.PushDeer.Server, s.PushDeer.Pushkey))
+	}
+	if s.Ntfy.Enabled && s.Ntfy.Topic != "" {
+		chs = append(chs, notification.NewNtfy(s.Ntfy.Server, s.Ntfy.Topic, s.Ntfy.Token))
+	}
+	if s.Gotify.Enabled && s.Gotify.Server != "" && s.Gotify.Token != "" {
+		chs = append(chs, notification.NewGotify(s.Gotify.Server, s.Gotify.Token))
+	}
+	if s.Apprise.Enabled && s.Apprise.Apikey != "" {
+		chs = append(chs, notification.NewApprise(s.Apprise.Server, s.Apprise.Apikey))
+	}
+	if s.WorkWechat.Enabled && s.WorkWechat.URL != "" {
+		chs = append(chs, notification.NewWorkWechat(s.WorkWechat.URL))
+	}
+	if s.WxPusher.Enabled && s.WxPusher.AppToken != "" && (s.WxPusher.UID != "" || s.WxPusher.TopicID != "") {
+		chs = append(chs, notification.NewWxPusher("", s.WxPusher.AppToken, s.WxPusher.UID, s.WxPusher.TopicID))
+	}
+	if s.Lark.Enabled && s.Lark.URL != "" {
+		chs = append(chs, notification.NewLark(s.Lark.URL))
+	}
+	if s.Discord.Enabled && s.Discord.URL != "" {
+		chs = append(chs, notification.NewDiscord(s.Discord.URL))
+	}
+	if s.MQTT.Enabled && s.MQTT.Broker != "" && s.MQTT.Topic != "" {
+		chs = append(chs, notification.NewMQTT(s.MQTT.Broker, s.MQTT.Topic, s.MQTT.Username, s.MQTT.Password, s.MQTT.ClientID))
+	}
+	if s.ServerChan.Enabled && s.ServerChan.Key != "" {
+		chs = append(chs, notification.NewServerChan("", s.ServerChan.Key))
+	}
 	p.mgr.Replace(chs)
 }
 
@@ -220,6 +310,66 @@ func mergeNotifySettings(cur, in NotificationSettings) NotificationSettings {
 	out.Email.To = in.Email.To
 	if in.Email.Password != "" {
 		out.Email.Password = in.Email.Password
+	}
+	// PushPlus：Token 秘密
+	out.PushPlus.Enabled = in.PushPlus.Enabled
+	if in.PushPlus.Token != "" {
+		out.PushPlus.Token = in.PushPlus.Token
+	}
+	// PushDeer：Pushkey 秘密，Server 非敏感
+	out.PushDeer.Enabled = in.PushDeer.Enabled
+	out.PushDeer.Server = in.PushDeer.Server
+	if in.PushDeer.Pushkey != "" {
+		out.PushDeer.Pushkey = in.PushDeer.Pushkey
+	}
+	// Ntfy：Token 秘密，Server/Topic 非敏感
+	out.Ntfy.Enabled = in.Ntfy.Enabled
+	out.Ntfy.Server = in.Ntfy.Server
+	out.Ntfy.Topic = in.Ntfy.Topic
+	if in.Ntfy.Token != "" {
+		out.Ntfy.Token = in.Ntfy.Token
+	}
+	// Gotify：Token 秘密，Server 非敏感
+	out.Gotify.Enabled = in.Gotify.Enabled
+	out.Gotify.Server = in.Gotify.Server
+	if in.Gotify.Token != "" {
+		out.Gotify.Token = in.Gotify.Token
+	}
+	// Apprise：Apikey 秘密，Server 非敏感
+	out.Apprise.Enabled = in.Apprise.Enabled
+	out.Apprise.Server = in.Apprise.Server
+	if in.Apprise.Apikey != "" {
+		out.Apprise.Apikey = in.Apprise.Apikey
+	}
+	// WorkWechat：URL 非秘密（同 DingTalk/Feishu 惯例，取 incoming 含空=清空/禁用）
+	out.WorkWechat.Enabled = in.WorkWechat.Enabled
+	out.WorkWechat.URL = in.WorkWechat.URL
+	// WxPusher：AppToken 秘密，UID/TopicID 非敏感
+	out.WxPusher.Enabled = in.WxPusher.Enabled
+	out.WxPusher.UID = in.WxPusher.UID
+	out.WxPusher.TopicID = in.WxPusher.TopicID
+	if in.WxPusher.AppToken != "" {
+		out.WxPusher.AppToken = in.WxPusher.AppToken
+	}
+	// Lark：URL 非秘密
+	out.Lark.Enabled = in.Lark.Enabled
+	out.Lark.URL = in.Lark.URL
+	// Discord：URL 非秘密
+	out.Discord.Enabled = in.Discord.Enabled
+	out.Discord.URL = in.Discord.URL
+	// MQTT：Password 秘密，其余非敏感
+	out.MQTT.Enabled = in.MQTT.Enabled
+	out.MQTT.Broker = in.MQTT.Broker
+	out.MQTT.Topic = in.MQTT.Topic
+	out.MQTT.Username = in.MQTT.Username
+	out.MQTT.ClientID = in.MQTT.ClientID
+	if in.MQTT.Password != "" {
+		out.MQTT.Password = in.MQTT.Password
+	}
+	// ServerChan：Key 秘密
+	out.ServerChan.Enabled = in.ServerChan.Enabled
+	if in.ServerChan.Key != "" {
+		out.ServerChan.Key = in.ServerChan.Key
 	}
 	return out
 }

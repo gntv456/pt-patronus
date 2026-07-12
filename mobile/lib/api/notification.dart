@@ -121,6 +121,152 @@ class NotifyEmailConfig {
   Map<String, dynamic> toJson() => {'enabled': enabled, 'host': host, 'port': port, 'username': username, 'from': from, 'to': to};
 }
 
+// —— 批次6 补全渠道（11 个）。Flutter 暂无独立配置 UI（同 DingTalk/Feishu/Email 经 Web 配置）；
+// 此处仅承载体（fromJson 解析 GET 回显 + toJson 回发以保留，secret 字段不发回由后端保留旧值）。
+class NotifyPushPlusConfig {
+  final bool enabled;
+  final bool tokenConfigured;
+  const NotifyPushPlusConfig({this.enabled = false, this.tokenConfigured = false});
+  factory NotifyPushPlusConfig.fromJson(Map<String, dynamic> j) => NotifyPushPlusConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        tokenConfigured: j['token_configured'] as bool? ?? false,
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled};
+}
+
+class NotifyPushDeerConfig {
+  final bool enabled;
+  final String server;
+  final bool pushkeyConfigured;
+  const NotifyPushDeerConfig({this.enabled = false, this.server = '', this.pushkeyConfigured = false});
+  factory NotifyPushDeerConfig.fromJson(Map<String, dynamic> j) => NotifyPushDeerConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        server: j['server'] as String? ?? '',
+        pushkeyConfigured: j['pushkey_configured'] as bool? ?? false,
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'server': server};
+}
+
+class NotifyNtfyConfig {
+  final bool enabled;
+  final String server;
+  final String topic;
+  final bool tokenConfigured;
+  const NotifyNtfyConfig({this.enabled = false, this.server = '', this.topic = '', this.tokenConfigured = false});
+  factory NotifyNtfyConfig.fromJson(Map<String, dynamic> j) => NotifyNtfyConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        server: j['server'] as String? ?? '',
+        topic: j['topic'] as String? ?? '',
+        tokenConfigured: j['token_configured'] as bool? ?? false,
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'server': server, 'topic': topic};
+}
+
+class NotifyGotifyConfig {
+  final bool enabled;
+  final String server;
+  final bool tokenConfigured;
+  const NotifyGotifyConfig({this.enabled = false, this.server = '', this.tokenConfigured = false});
+  factory NotifyGotifyConfig.fromJson(Map<String, dynamic> j) => NotifyGotifyConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        server: j['server'] as String? ?? '',
+        tokenConfigured: j['token_configured'] as bool? ?? false,
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'server': server};
+}
+
+class NotifyAppriseConfig {
+  final bool enabled;
+  final String server;
+  final bool apikeyConfigured;
+  const NotifyAppriseConfig({this.enabled = false, this.server = '', this.apikeyConfigured = false});
+  factory NotifyAppriseConfig.fromJson(Map<String, dynamic> j) => NotifyAppriseConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        server: j['server'] as String? ?? '',
+        apikeyConfigured: j['apikey_configured'] as bool? ?? false,
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'server': server};
+}
+
+class NotifyWorkWechatConfig {
+  final bool enabled;
+  final String url;
+  const NotifyWorkWechatConfig({this.enabled = false, this.url = ''});
+  factory NotifyWorkWechatConfig.fromJson(Map<String, dynamic> j) => NotifyWorkWechatConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        url: j['url'] as String? ?? '',
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'url': url};
+}
+
+class NotifyWxPusherConfig {
+  final bool enabled;
+  final String uid;
+  final String topicId;
+  final bool appTokenConfigured;
+  const NotifyWxPusherConfig({this.enabled = false, this.uid = '', this.topicId = '', this.appTokenConfigured = false});
+  factory NotifyWxPusherConfig.fromJson(Map<String, dynamic> j) => NotifyWxPusherConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        uid: j['uid'] as String? ?? '',
+        topicId: j['topic_id'] as String? ?? '',
+        appTokenConfigured: j['app_token_configured'] as bool? ?? false,
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'uid': uid, 'topic_id': topicId};
+}
+
+class NotifyLarkConfig {
+  final bool enabled;
+  final String url;
+  const NotifyLarkConfig({this.enabled = false, this.url = ''});
+  factory NotifyLarkConfig.fromJson(Map<String, dynamic> j) => NotifyLarkConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        url: j['url'] as String? ?? '',
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'url': url};
+}
+
+class NotifyDiscordConfig {
+  final bool enabled;
+  final String url;
+  const NotifyDiscordConfig({this.enabled = false, this.url = ''});
+  factory NotifyDiscordConfig.fromJson(Map<String, dynamic> j) => NotifyDiscordConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        url: j['url'] as String? ?? '',
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'url': url};
+}
+
+class NotifyMQTTConfig {
+  final bool enabled;
+  final String broker;
+  final String topic;
+  final String username;
+  final bool passwordConfigured;
+  final String clientId;
+  const NotifyMQTTConfig({this.enabled = false, this.broker = '', this.topic = '', this.username = '', this.passwordConfigured = false, this.clientId = ''});
+  factory NotifyMQTTConfig.fromJson(Map<String, dynamic> j) => NotifyMQTTConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        broker: j['broker'] as String? ?? '',
+        topic: j['topic'] as String? ?? '',
+        username: j['username'] as String? ?? '',
+        passwordConfigured: j['password_configured'] as bool? ?? false,
+        clientId: j['client_id'] as String? ?? '',
+      );
+  // password 秘密不发回；其余非秘密字段原样回发避免被零值覆写。
+  Map<String, dynamic> toJson() => {'enabled': enabled, 'broker': broker, 'topic': topic, 'username': username, 'client_id': clientId};
+}
+
+class NotifyServerChanConfig {
+  final bool enabled;
+  final bool keyConfigured;
+  const NotifyServerChanConfig({this.enabled = false, this.keyConfigured = false});
+  factory NotifyServerChanConfig.fromJson(Map<String, dynamic> j) => NotifyServerChanConfig(
+        enabled: j['enabled'] as bool? ?? false,
+        keyConfigured: j['key_configured'] as bool? ?? false,
+      );
+  Map<String, dynamic> toJson() => {'enabled': enabled};
+}
+
 class NotifyConfig {
   final NotifyBarkConfig bark;
   final NotifyTelegramConfig telegram;
@@ -130,6 +276,17 @@ class NotifyConfig {
   final NotifyDingTalkConfig dingtalk;
   final NotifyFeishuConfig feishu;
   final NotifyEmailConfig email;
+  final NotifyPushPlusConfig pushplus;
+  final NotifyPushDeerConfig pushdeer;
+  final NotifyNtfyConfig ntfy;
+  final NotifyGotifyConfig gotify;
+  final NotifyAppriseConfig apprise;
+  final NotifyWorkWechatConfig workwechat;
+  final NotifyWxPusherConfig wxpusher;
+  final NotifyLarkConfig lark;
+  final NotifyDiscordConfig discord;
+  final NotifyMQTTConfig mqtt;
+  final NotifyServerChanConfig serverchan;
   const NotifyConfig({
     this.bark = const NotifyBarkConfig(),
     this.telegram = const NotifyTelegramConfig(),
@@ -139,6 +296,17 @@ class NotifyConfig {
     this.dingtalk = const NotifyDingTalkConfig(),
     this.feishu = const NotifyFeishuConfig(),
     this.email = const NotifyEmailConfig(),
+    this.pushplus = const NotifyPushPlusConfig(),
+    this.pushdeer = const NotifyPushDeerConfig(),
+    this.ntfy = const NotifyNtfyConfig(),
+    this.gotify = const NotifyGotifyConfig(),
+    this.apprise = const NotifyAppriseConfig(),
+    this.workwechat = const NotifyWorkWechatConfig(),
+    this.wxpusher = const NotifyWxPusherConfig(),
+    this.lark = const NotifyLarkConfig(),
+    this.discord = const NotifyDiscordConfig(),
+    this.mqtt = const NotifyMQTTConfig(),
+    this.serverchan = const NotifyServerChanConfig(),
   });
   factory NotifyConfig.fromJson(Map<String, dynamic> j) => NotifyConfig(
         bark: NotifyBarkConfig.fromJson((j['bark'] as Map<String, dynamic>?) ?? const {}),
@@ -149,6 +317,17 @@ class NotifyConfig {
         dingtalk: NotifyDingTalkConfig.fromJson((j['dingtalk'] as Map<String, dynamic>?) ?? const {}),
         feishu: NotifyFeishuConfig.fromJson((j['feishu'] as Map<String, dynamic>?) ?? const {}),
         email: NotifyEmailConfig.fromJson((j['email'] as Map<String, dynamic>?) ?? const {}),
+        pushplus: NotifyPushPlusConfig.fromJson((j['pushplus'] as Map<String, dynamic>?) ?? const {}),
+        pushdeer: NotifyPushDeerConfig.fromJson((j['pushdeer'] as Map<String, dynamic>?) ?? const {}),
+        ntfy: NotifyNtfyConfig.fromJson((j['ntfy'] as Map<String, dynamic>?) ?? const {}),
+        gotify: NotifyGotifyConfig.fromJson((j['gotify'] as Map<String, dynamic>?) ?? const {}),
+        apprise: NotifyAppriseConfig.fromJson((j['apprise'] as Map<String, dynamic>?) ?? const {}),
+        workwechat: NotifyWorkWechatConfig.fromJson((j['workwechat'] as Map<String, dynamic>?) ?? const {}),
+        wxpusher: NotifyWxPusherConfig.fromJson((j['wxpusher'] as Map<String, dynamic>?) ?? const {}),
+        lark: NotifyLarkConfig.fromJson((j['lark'] as Map<String, dynamic>?) ?? const {}),
+        discord: NotifyDiscordConfig.fromJson((j['discord'] as Map<String, dynamic>?) ?? const {}),
+        mqtt: NotifyMQTTConfig.fromJson((j['mqtt'] as Map<String, dynamic>?) ?? const {}),
+        serverchan: NotifyServerChanConfig.fromJson((j['serverchan'] as Map<String, dynamic>?) ?? const {}),
       );
 }
 

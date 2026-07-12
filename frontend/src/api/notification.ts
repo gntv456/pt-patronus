@@ -23,6 +23,18 @@ export interface NotifyConfig {
     enabled: boolean; host: string; port: number; username: string
     password: string; password_configured: boolean; from: string; to: string
   }
+  // 批次6 补全渠道（11 个）。
+  pushplus: { enabled: boolean; token: string; token_configured: boolean }
+  pushdeer: { enabled: boolean; server: string; pushkey: string; pushkey_configured: boolean }
+  ntfy: { enabled: boolean; server: string; topic: string; token: string; token_configured: boolean }
+  gotify: { enabled: boolean; server: string; token: string; token_configured: boolean }
+  apprise: { enabled: boolean; server: string; apikey: string; apikey_configured: boolean }
+  workwechat: { enabled: boolean; url: string }
+  wxpusher: { enabled: boolean; uid: string; topic_id: string; app_token: string; app_token_configured: boolean }
+  lark: { enabled: boolean; url: string }
+  discord: { enabled: boolean; url: string }
+  mqtt: { enabled: boolean; broker: string; topic: string; username: string; password: string; password_configured: boolean; client_id: string }
+  serverchan: { enabled: boolean; key: string; key_configured: boolean }
 }
 
 // 提交体：整份配置；秘密字段空串=保留旧值（后端 merge）。
@@ -38,6 +50,17 @@ export interface NotifyConfigInput {
     enabled: boolean; host: string; port: number; username: string
     password: string; from: string; to: string
   }
+  pushplus: { enabled: boolean; token: string }
+  pushdeer: { enabled: boolean; server: string; pushkey: string }
+  ntfy: { enabled: boolean; server: string; topic: string; token: string }
+  gotify: { enabled: boolean; server: string; token: string }
+  apprise: { enabled: boolean; server: string; apikey: string }
+  workwechat: { enabled: boolean; url: string }
+  wxpusher: { enabled: boolean; app_token: string; uid: string; topic_id: string }
+  lark: { enabled: boolean; url: string }
+  discord: { enabled: boolean; url: string }
+  mqtt: { enabled: boolean; broker: string; topic: string; username: string; password: string; client_id: string }
+  serverchan: { enabled: boolean; key: string }
 }
 
 // 微信扫码状态（GET /notification/wechat/qrcode/status 返回）。

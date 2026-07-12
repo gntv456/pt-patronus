@@ -167,3 +167,120 @@ func TestMergeNotifySettings(t *testing.T) {
 		t.Errorf("wx token: %q", out.WeChat.BotToken)
 	}
 }
+
+// TestMergeNewChannels：批次6 渠道秘密保留（incoming 空→保留旧），非秘密取新值。
+func TestMergeNewChannels(t *testing.T) {
+	var cur NotificationSettings
+	cur.PushPlus.Token = "old-pp"
+	cur.PushDeer.Pushkey = "old-pd"
+	cur.Ntfy.Token = "old-ntfy"
+	cur.Gotify.Token = "old-gotify"
+	cur.Apprise.Apikey = "old-appr"
+	cur.WxPusher.AppToken = "old-wxp"
+	cur.MQTT.Password = "old-mqtt"
+	cur.ServerChan.Key = "old-sc"
+
+	var in NotificationSettings
+	// 全部 enabled + 秘密留空（应保留旧）+ 部分非秘密更新。
+	in.PushPlus.Enabled = true
+	in.PushDeer.Enabled = true
+	in.PushDeer.Server = "https://pd.new"
+	in.Ntfy.Enabled = true
+	in.Ntfy.Topic = "newtopic"
+	in.Gotify.Enabled = true
+	in.Gotify.Server = "https://gotify.new"
+	in.Apprise.Enabled = true
+	in.WxPusher.Enabled = true
+	in.WxPusher.UID = "uid-new"
+	in.MQTT.Enabled = true
+	in.MQTT.Broker = "broker.new:1883"
+	in.ServerChan.Enabled = true
+	in.WorkWechat.Enabled = true
+	in.WorkWechat.URL = "https://qyapi/new"
+	in.Lark.Enabled = true
+	in.Lark.URL = "https://lark/new"
+	in.Discord.Enabled = true
+	in.Discord.URL = "https://discord/new"
+
+	out := mergeNotifySettings(cur, in)
+	// 秘密保留
+	if out.PushPlus.Token != "old-pp" {
+		t.Errorf("pushplus token: %q", out.PushPlus.Token)
+	}
+	if out.PushDeer.Pushkey != "old-pd" {
+		t.Errorf("pushdeer pushkey: %q", out.PushDeer.Pushkey)
+	}
+	if out.Ntfy.Token != "old-ntfy" {
+		t.Errorf("ntfy token: %q", out.Ntfy.Token)
+	}
+	if out.Gotify.Token != "old-gotify" {
+		t.Errorf("gotify token: %q", out.Gotify.Token)
+	}
+	if out.Apprise.Apikey != "old-appr" {
+		t.Errorf("apprise apikey: %q", out.Apprise.Apikey)
+	}
+	if out.WxPusher.AppToken != "old-wxp" {
+		t.Errorf("wxpusher appToken: %q", out.WxPusher.AppToken)
+	}
+	if out.MQTT.Password != "old-mqtt" {
+		t.Errorf("mqtt password: %q", out.MQTT.Password)
+	}
+	if out.ServerChan.Key != "old-sc" {
+		t.Errorf("serverchan key: %q", out.ServerChan.Key)
+	}
+	// 非秘密覆盖
+	if out.PushDeer.Server != "https://pd.new" {
+		t.Errorf("pushdeer server: %q", out.PushDeer.Server)
+	}
+	if out.Ntfy.Topic != "newtopic" {
+		t.Errorf("ntfy topic: %q", out.Ntfy.Topic)
+	}
+	if out.WorkWechat.URL != "https://qyapi/new" {
+		t.Errorf("workwechat url: %q", out.WorkWechat.URL)
+	}
+}
+
+// TestNotifyProviderApplyEnablesNewChannels：填齐凭据 → pushplus/serverchan/mqtt/discord 注册。
+func TestNotifyProviderApplyEnablesNewChannels(t *testing.T) {
+	cfgOp := newNotifyProviderDB(t)
+	mgr := notification.NewManager()
+	p := NewNotificationSettingsProvider(cfgOp, NotificationSettings{}, mgr)
+
+	var in NotificationSettings
+	in.PushPlus.Enabled = true
+	in.PushPlus.Token = "pp"
+	in.ServerChan.Enabled = true
+	in.ServerChan.Key = "sc"
+	in.Discord.Enabled = true
+	in.Discord.URL = "https://discord/webhook"
+	in.MQTT.Enabled = true
+	in.MQTT.Broker = "broker:1883"
+	in.MQTT.Topic = "t"
+	if err := p.ApplySettings(in); err != nil {
+		t.Fatal(err)
+	}
+	chs := mgr.Channels()
+	want := map[string]bool{"pushplus": false, "serverchan": false, "discord": false, "mqtt": false}
+	for _, n := range chs {
+		if _, ok := want[n]; ok {
+			want[n] = true
+		}
+	}
+	for k, got := range want {
+		if !got {
+			t.Errorf("channel %q not registered; got %v", k, chs)
+		}
+	}
+
+	// 再禁用 PushPlus（Token 留空→保留，但 Enabled=false）→ 不应再注册。
+	in2 := in
+	in2.PushPlus.Enabled = false
+	if err := p.ApplySettings(in2); err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range mgr.Channels() {
+		if n == "pushplus" {
+			t.Errorf("pushplus should be removed after disable: %v", mgr.Channels())
+		}
+	}
+}

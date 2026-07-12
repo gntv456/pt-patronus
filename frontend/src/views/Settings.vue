@@ -123,6 +123,17 @@ function emptyNotifForm(): NotifyConfigInput {
     dingtalk: { enabled: false, url: '' },
     feishu: { enabled: false, url: '' },
     email: { enabled: false, host: '', port: 25, username: '', password: '', from: '', to: '' },
+    pushplus: { enabled: false, token: '' },
+    pushdeer: { enabled: false, server: '', pushkey: '' },
+    ntfy: { enabled: false, server: '', topic: '', token: '' },
+    gotify: { enabled: false, server: '', token: '' },
+    apprise: { enabled: false, server: '', apikey: '' },
+    workwechat: { enabled: false, url: '' },
+    wxpusher: { enabled: false, app_token: '', uid: '', topic_id: '' },
+    lark: { enabled: false, url: '' },
+    discord: { enabled: false, url: '' },
+    mqtt: { enabled: false, broker: '', topic: '', username: '', password: '', client_id: '' },
+    serverchan: { enabled: false, key: '' },
   }
 }
 
@@ -149,6 +160,17 @@ async function loadNotif() {
         from: c.email.from,
         to: c.email.to,
       },
+      pushplus: { enabled: c.pushplus.enabled, token: '' },
+      pushdeer: { enabled: c.pushdeer.enabled, server: c.pushdeer.server, pushkey: '' },
+      ntfy: { enabled: c.ntfy.enabled, server: c.ntfy.server, topic: c.ntfy.topic, token: '' },
+      gotify: { enabled: c.gotify.enabled, server: c.gotify.server, token: '' },
+      apprise: { enabled: c.apprise.enabled, server: c.apprise.server, apikey: '' },
+      workwechat: { enabled: c.workwechat.enabled, url: c.workwechat.url },
+      wxpusher: { enabled: c.wxpusher.enabled, app_token: '', uid: c.wxpusher.uid, topic_id: c.wxpusher.topic_id },
+      lark: { enabled: c.lark.enabled, url: c.lark.url },
+      discord: { enabled: c.discord.enabled, url: c.discord.url },
+      mqtt: { enabled: c.mqtt.enabled, broker: c.mqtt.broker, topic: c.mqtt.topic, username: c.mqtt.username, password: '', client_id: c.mqtt.client_id },
+      serverchan: { enabled: c.serverchan.enabled, key: '' },
     }
     testResults.value = []
   } catch (e: unknown) {
@@ -192,6 +214,29 @@ function validateNotif(): string {
     if (!n.email.to?.trim()) return '邮件已启用，但收件人为空'
     if (!n.email.password?.trim() && !notifCfg.value?.email.password_configured) return '邮件已启用，但 SMTP 密码为空'
   }
+  if (n.pushplus.enabled && !n.pushplus.token?.trim() && !notifCfg.value?.pushplus.token_configured) return 'PushPlus 已启用，但 Token 为空'
+  if (n.pushdeer.enabled) {
+    if (!n.pushdeer.pushkey?.trim() && !notifCfg.value?.pushdeer.pushkey_configured) return 'PushDeer 已启用，但 PushKey 为空'
+  }
+  if (n.ntfy.enabled && !n.ntfy.topic?.trim()) return 'ntfy 已启用，但 Topic 为空'
+  if (n.gotify.enabled) {
+    if (!n.gotify.server?.trim()) return 'Gotify 已启用，但 Server 为空'
+    if (!n.gotify.token?.trim() && !notifCfg.value?.gotify.token_configured) return 'Gotify 已启用，但 Token 为空'
+  }
+  if (n.apprise.enabled && !n.apprise.apikey?.trim() && !notifCfg.value?.apprise.apikey_configured) return 'Apprise 已启用，但 API Key 为空'
+  if (n.workwechat.enabled && !n.workwechat.url?.trim()) return '企业微信已启用，但机器人 Webhook 为空'
+  if (n.wxpusher.enabled) {
+    if (!n.wxpusher.app_token?.trim() && !notifCfg.value?.wxpusher.app_token_configured) return 'WxPusher 已启用，但 APP Token 为空'
+    if (!n.wxpusher.uid?.trim() && !n.wxpusher.topic_id?.trim()) return 'WxPusher 已启用，但 UID 与 Topic ID 至少填一个'
+  }
+  if (n.lark.enabled && !n.lark.url?.trim()) return 'Lark 已启用，但机器人 Webhook 为空'
+  if (n.discord.enabled && !n.discord.url?.trim()) return 'Discord 已启用，但 Webhook 为空'
+  if (n.mqtt.enabled) {
+    if (!n.mqtt.broker?.trim()) return 'MQTT 已启用，但 Broker 为空'
+    if (!n.mqtt.topic?.trim()) return 'MQTT 已启用，但 Topic 为空'
+    if (!n.mqtt.password?.trim() && !notifCfg.value?.mqtt.password_configured && n.mqtt.username?.trim()) return 'MQTT 已启用，但 Password 为空'
+  }
+  if (n.serverchan.enabled && !n.serverchan.key?.trim() && !notifCfg.value?.serverchan.key_configured) return 'Server酱 已启用，但 SendKey 为空'
   return ''
 }
 
@@ -494,6 +539,164 @@ async function openChangelog() {
             </el-input>
             <el-input v-model="notif.email.to" placeholder="a@example.com,b@example.com" class="mt8">
               <template #prepend>收件人</template>
+            </el-input>
+          </div>
+
+          <!-- PushPlus -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">PushPlus</div>
+              <el-switch v-model="notif.pushplus.enabled" />
+            </div>
+            <div class="text-muted row-hint">pushplus.plus，转发到微信/邮件等子渠道。</div>
+            <el-input v-model="notif.pushplus.token" show-password :placeholder="secretPlaceholder(notifCfg?.pushplus.token_configured)" class="mt8">
+              <template #prepend>Token</template>
+            </el-input>
+          </div>
+
+          <!-- PushDeer -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">PushDeer</div>
+              <el-switch v-model="notif.pushdeer.enabled" />
+            </div>
+            <el-input v-model="notif.pushdeer.server" placeholder="服务器（留空用官方 https://api2.pushdeer.com）">
+              <template #prepend>服务器</template>
+            </el-input>
+            <el-input v-model="notif.pushdeer.pushkey" show-password :placeholder="secretPlaceholder(notifCfg?.pushdeer.pushkey_configured)" class="mt8">
+              <template #prepend>PushKey</template>
+            </el-input>
+          </div>
+
+          <!-- ntfy -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">ntfy</div>
+              <el-switch v-model="notif.ntfy.enabled" />
+            </div>
+            <el-input v-model="notif.ntfy.server" placeholder="服务器（留空用官方 https://ntfy.sh）">
+              <template #prepend>服务器</template>
+            </el-input>
+            <el-input v-model="notif.ntfy.topic" placeholder="订阅 Topic（如 ptpatronus-xxx）" class="mt8">
+              <template #prepend>Topic</template>
+            </el-input>
+            <el-input v-model="notif.ntfy.token" show-password :placeholder="secretPlaceholder(notifCfg?.ntfy.token_configured)" class="mt8">
+              <template #prepend>Token（可选）</template>
+            </el-input>
+          </div>
+
+          <!-- Gotify -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">Gotify</div>
+              <el-switch v-model="notif.gotify.enabled" />
+            </div>
+            <el-input v-model="notif.gotify.server" placeholder="https://gotify.example.com">
+              <template #prepend>服务器</template>
+            </el-input>
+            <el-input v-model="notif.gotify.token" show-password :placeholder="secretPlaceholder(notifCfg?.gotify.token_configured)" class="mt8">
+              <template #prepend>App Token</template>
+            </el-input>
+          </div>
+
+          <!-- Apprise -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">Apprise</div>
+              <el-switch v-model="notif.apprise.enabled" />
+            </div>
+            <div class="text-muted row-hint">Apprise API 服务，按 apikey 绑定一组通知 URL 统一转发。</div>
+            <el-input v-model="notif.apprise.server" placeholder="http://localhost:8000" class="mt8">
+              <template #prepend>服务器</template>
+            </el-input>
+            <el-input v-model="notif.apprise.apikey" show-password :placeholder="secretPlaceholder(notifCfg?.apprise.apikey_configured)" class="mt8">
+              <template #prepend>API Key</template>
+            </el-input>
+          </div>
+
+          <!-- 企业微信 -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">企业微信群机器人</div>
+              <el-switch v-model="notif.workwechat.enabled" />
+            </div>
+            <el-input v-model="notif.workwechat.url" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx">
+              <template #prepend>Webhook</template>
+            </el-input>
+          </div>
+
+          <!-- WxPusher -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">WxPusher</div>
+              <el-switch v-model="notif.wxpusher.enabled" />
+            </div>
+            <el-input v-model="notif.wxpusher.app_token" show-password :placeholder="secretPlaceholder(notifCfg?.wxpusher.app_token_configured)">
+              <template #prepend>APP Token</template>
+            </el-input>
+            <el-input v-model="notif.wxpusher.uid" placeholder="接收者 UID（与 Topic ID 至少填一个）" class="mt8">
+              <template #prepend>UID</template>
+            </el-input>
+            <el-input v-model="notif.wxpusher.topic_id" placeholder="主题 ID（可选）" class="mt8">
+              <template #prepend>Topic ID</template>
+            </el-input>
+          </div>
+
+          <!-- Lark -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">Lark（国际版飞书）</div>
+              <el-switch v-model="notif.lark.enabled" />
+            </div>
+            <el-input v-model="notif.lark.url" placeholder="https://open.larksuite.com/open-apis/bot/v2/hook/xxx">
+              <template #prepend>Webhook</template>
+            </el-input>
+          </div>
+
+          <!-- Discord -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">Discord</div>
+              <el-switch v-model="notif.discord.enabled" />
+            </div>
+            <el-input v-model="notif.discord.url" placeholder="https://discord.com/api/webhooks/{id}/{token}">
+              <template #prepend>Webhook</template>
+            </el-input>
+          </div>
+
+          <!-- MQTT -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">MQTT</div>
+              <el-switch v-model="notif.mqtt.enabled" />
+            </div>
+            <div class="text-muted row-hint">向 broker 发布一条 QoS0 消息。支持 mqtt:// mqtts:// 或 host:port。</div>
+            <el-input v-model="notif.mqtt.broker" placeholder="broker.example.com:1883" class="mt8">
+              <template #prepend>Broker</template>
+            </el-input>
+            <el-input v-model="notif.mqtt.topic" placeholder="ptpatronus/notify" class="mt8">
+              <template #prepend>Topic</template>
+            </el-input>
+            <el-input v-model="notif.mqtt.username" placeholder="用户名（匿名 broker 留空）" class="mt8">
+              <template #prepend>用户名</template>
+            </el-input>
+            <el-input v-model="notif.mqtt.password" show-password :placeholder="secretPlaceholder(notifCfg?.mqtt.password_configured)" class="mt8">
+              <template #prepend>密码</template>
+            </el-input>
+            <el-input v-model="notif.mqtt.client_id" placeholder="Client ID（留空自动）" class="mt8">
+              <template #prepend>Client ID</template>
+            </el-input>
+          </div>
+
+          <!-- Server酱 -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">Server酱</div>
+              <el-switch v-model="notif.serverchan.enabled" />
+            </div>
+            <div class="text-muted row-hint">Server酱 Turbo（sct.ftqq.com）。</div>
+            <el-input v-model="notif.serverchan.key" show-password :placeholder="secretPlaceholder(notifCfg?.serverchan.key_configured)" class="mt8">
+              <template #prepend>SendKey</template>
             </el-input>
           </div>
 

@@ -134,6 +134,9 @@ const GLYPHS: Record<string, string> = {
   // 保种契约：文件勾选（契约/达标）
   contract:
     '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 14l2 2 4-4"/>',
+  // 媒体服务器：显示器播放（库扫描/刷新/封面）
+  mediaserver:
+    '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/><path d="M10.5 8.5l3 1.8-3 1.8z"/>',
 }
 
 const dim = computed(() => (typeof props.size === 'number' ? `${props.size}px` : props.size))

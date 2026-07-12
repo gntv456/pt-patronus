@@ -67,6 +67,7 @@ type Deps struct {
 	Rss           *chain.RssChain
 	BrushFlow     *chain.BrushFlowChain
 	Contract      *chain.ContractChain
+	MediaServer   *chain.MediaServerChain
 	Webhook       *v1.WebhookHandler
 	MonOp         *oper.MonitorOper
 	MonSvc        *monitor.Service
@@ -519,6 +520,22 @@ func Build(d *Deps) *gin.Engine {
 				ct.POST("/rules/:id/check", ctH.Check)
 			}
 
+			// 媒体服务器（Emby/JF/Plex）：CRUD + 测试 + 库扫描/刷新 + 封面 + 通知
+			msH := v1.NewMediaServerHandler(d.MediaServer)
+			ms := guarded.Group("/mediaserver")
+			{
+				ms.GET("", msH.List)
+				ms.POST("", msH.Create)
+				ms.PUT("/:id", msH.Update)
+				ms.DELETE("/:id", middleware.RequireAdmin(), msH.Delete)
+				ms.POST("/:id/test", msH.Test)
+				ms.GET("/:id/libraries", msH.Libraries)
+				ms.POST("/:id/scan", msH.Scan)
+				ms.POST("/:id/refresh", msH.Refresh)
+				ms.POST("/:id/notify", msH.Notify)
+				ms.GET("/:id/cover", msH.Cover)
+			}
+
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。
 			rssH := v1.NewRssHandler(d.Rss)
 			rss := guarded.Group("/rss")
@@ -608,6 +625,8 @@ func Build(d *Deps) *gin.Engine {
 		api.GET("/monitor/cameras/:id/hls/segment/:seq", streamH.Segment)
 		// 进站 Webhook 公开接收（token 即鉴权；静态 /in 前缀避开管理端 :id 参数名冲突）。
 		api.POST("/webhooks/in/:token", d.Webhook.Receive)
+		// 媒体服务器播放回调公开接收（服务器无法带 JWT；按 :id 路由，仅 NotifyOnPlay 开启时通知）。
+		api.POST("/mediaserver/:id/webhook", v1.NewMediaServerHandler(d.MediaServer).Webhook)
 	}
 
 	// 非匹配路径回退到内嵌的 Web UI（go:embed），由 vue-router 接管。

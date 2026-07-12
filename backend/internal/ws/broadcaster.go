@@ -83,10 +83,15 @@ type Broadcaster struct {
 	mgr      *manager.Manager
 	interval time.Duration
 	notice   *notice.Service     // 下载完成通知中心（nil 跳过）；通过 SetNotice 注入（避开构造顺序）
+	doneHook DoneHook            // 下载完成副作用钩子（媒体库刷新等；nil 跳过），通过 SetDownloadDoneHook 注入
 	stateMu  sync.Mutex
 	dlState  map[string]bool // key=dlID:hash → 是否已完成（下载完成 diff）
 	primed   bool            // 冷启动首轮只填充状态不通知，避免把所有已完成种子当新通知
 }
+
+// DoneHook 下载完成副作用钩子：媒体服务器刷新等 best-effort 副作用（不应阻塞广播循环）。
+// dlID=下载器 id，name/hash=种子标题/infohash。
+type DoneHook func(ctx context.Context, dlID uint, name, hash string)
 
 // SetNotice 注入通知中心（app.go 在 noticeSvc 构造后调用）。
 // 经 stateMu 同步：detectDone 在 Run goroutine 内读 b.notice，setter 在主 goroutine 写，
@@ -94,6 +99,14 @@ type Broadcaster struct {
 func (b *Broadcaster) SetNotice(ns *notice.Service) {
 	b.stateMu.Lock()
 	b.notice = ns
+	b.stateMu.Unlock()
+}
+
+// SetDownloadDoneHook 注入下载完成副作用钩子（app.go 在媒体服务器 chain 构造后调用）。
+// 同 SetNotice 经 stateMu 同步，detectDone 读 / setter 写均持锁。
+func (b *Broadcaster) SetDownloadDoneHook(h DoneHook) {
+	b.stateMu.Lock()
+	b.doneHook = h
 	b.stateMu.Unlock()
 }
 
@@ -142,13 +155,14 @@ func (b *Broadcaster) broadcast(ctx context.Context) {
 func (b *Broadcaster) detectDone(ctx context.Context, snap []TorrentSnapshot) {
 	b.stateMu.Lock()
 	defer b.stateMu.Unlock()
-	// notice 读写均经 stateMu：与 SetNotice 建立 happens-before，消除数据竞争（race detector 会标记原写法）。
-	if b.notice == nil {
+	// notice / doneHook 读写均经 stateMu：与 setter 建立 happens-before，消除数据竞争。
+	if b.notice == nil && b.doneHook == nil {
 		return
 	}
 	if b.dlState == nil {
 		b.dlState = map[string]bool{}
 	}
+	hook := b.doneHook
 	for _, s := range snap {
 		for _, t := range s.Torrents {
 			if t.Hash == "" {
@@ -157,13 +171,18 @@ func (b *Broadcaster) detectDone(ctx context.Context, snap []TorrentSnapshot) {
 			key := fmt.Sprintf("%d:%s", s.DownloaderID, t.Hash)
 			nowDone := t.State == "completed" || !t.CompletedAt.IsZero()
 			if b.primed && !b.dlState[key] && nowDone {
-				_ = b.notice.Notice(ctx, notice.Input{
-					Source: notice.SourceDLDone,
-					Key:    "dl:" + t.Hash,
-					Title:  "下载完成：" + t.Name,
-					Body:   s.Name,
-					Level:  "success",
-				}, true)
+				if b.notice != nil {
+					_ = b.notice.Notice(ctx, notice.Input{
+						Source: notice.SourceDLDone,
+						Key:    "dl:" + t.Hash,
+						Title:  "下载完成：" + t.Name,
+						Body:   s.Name,
+						Level:  "success",
+					}, true)
+				}
+				if hook != nil {
+					hook(ctx, s.DownloaderID, t.Name, t.Hash) // 媒体库刷新等副作用
+				}
 			}
 			b.dlState[key] = nowDone
 		}

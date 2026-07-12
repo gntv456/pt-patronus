@@ -55,6 +55,7 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		&models.Webhook{},
 		&models.BrushFlowTask{}, &models.BrushFlowSeed{},
 		&models.ContractRule{},
+		&models.MediaServer{},
 	); err != nil {
 		return nil, fmt.Errorf("automigrate: %w", err)
 	}

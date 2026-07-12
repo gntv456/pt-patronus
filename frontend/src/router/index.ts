@@ -111,6 +111,11 @@ const router = createRouter({
           component: () => import('@/views/Contract.vue'),
         },
         {
+          path: 'mediaserver',
+          name: 'mediaserver',
+          component: () => import('@/views/MediaServer.vue'),
+        },
+        {
           path: 'harem',
           name: 'harem',
           component: () => import('@/views/Harem.vue'),

@@ -309,6 +309,17 @@ func New(cfg *config.Config) (*App, error) {
 	contractOp := oper.NewContractOper(database)
 	contractCh := chain.NewContractChain(base, siteCh, siteOp, contractOp, noticeSvc)
 
+	// 媒体服务器（Emby/JF/Plex）：CRUD + 库扫描/刷新 + 封面生成 + 下载完成触发刷新
+	mediaServerOp := oper.NewMediaServerOper(database, crypto)
+	mediaServerCh, err := chain.NewMediaServerChain(base, mediaServerOp, noticeSvc)
+	if err != nil {
+		return nil, err
+	}
+	// 下载完成 → 触发开启 RefreshOnDownload 的服务器扫库（best-effort，单服务器失败不阻断）。
+	wsBC.SetDownloadDoneHook(func(ctx context.Context, dlID uint, name, hash string) {
+		mediaServerCh.OnDownloadCompleted(ctx, name)
+	})
+
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
@@ -577,6 +588,7 @@ func New(cfg *config.Config) (*App, error) {
 		Rss:       rssCh,
 		BrushFlow: brushCh,
 		Contract:  contractCh,
+		MediaServer: mediaServerCh,
 		Webhook:   webhookH,
 		MonOp:     monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,

@@ -19,6 +19,7 @@ import '../rss/rss_page.dart';
 import '../savept/savept_page.dart';
 import '../brushflow/brushflow_page.dart';
 import '../contract/contract_page.dart';
+import '../media_server/media_server_page.dart';
 import '../search/search_page.dart';
 import '../sites/sites_page.dart';
 import '../subscriptions/subscriptions_page.dart';
@@ -95,6 +96,7 @@ final List<({String title, List<NavItem> items})> navGroups = [
     title: '基础设施',
     items: [
       NavItem(label: '下载器', glyph: 'downloaders', from: const Color(0xFF11998E), to: const Color(0xFF38EF7D), builder: (_) => const DownloadersPage()),
+      NavItem(label: '媒体服务器', glyph: 'mediaserver', from: const Color(0xFF52B788), to: const Color(0xFF2D6A4F), builder: (_) => const MediaServerPage(), desc: 'Emby/Jellyfin/Plex'),
       NavItem(label: '文件', glyph: 'files', from: const Color(0xFFF7971E), to: const Color(0xFFFFD200), builder: (_) => const FileManagePage()),
       NavItem(label: 'NAS', glyph: 'server', from: const Color(0xFF0F2027), to: const Color(0xFF2C5364), builder: (_) => const MonitorPage()),
       NavItem(label: '工作流', glyph: 'workflow', from: const Color(0xFF6C5CE7), to: const Color(0xFF00B894), builder: (_) => const WorkflowListPage()),

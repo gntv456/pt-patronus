@@ -74,6 +74,7 @@ const navGroups = [
     title: '基础设施',
     items: [
       { name: 'downloaders', label: '下载器', icon: 'downloaders', from: '#11998e', to: '#38ef7d' },
+      { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver', from: '#52b788', to: '#2d6a4f' },
       { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
       { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
       { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
@@ -94,6 +95,7 @@ const navDesc: Record<string, string> = {
   savept: '监护室 · 站点健康监控',
   brushflow: '刷流 · 自动选种做种刷量',
   contract: '保种契约 · 分享率/做种/上传下限告警',
+  mediaserver: '媒体服务器 · Emby/Jellyfin/Plex 库扫描与封面',
   plugins: '插件 · 事件扩展 / 动作执行',
 }
 

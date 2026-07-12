@@ -664,3 +664,21 @@ type ContractRule struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
+
+// MediaServer — 媒体服务器（Emby / Jellyfin / Plex）。多实例 CRUD（同 Downloader 范式）：
+// 凭据（API Key / X-Plex-Token）加密存 TokenEnc；事件开关 per-server（下载完成→刷新、
+// 播放 webhook→通知）。MediaServerChain 按需构建 client 调 REST API（库扫描/刷新/通知）。
+type MediaServer struct {
+	ID        uint   `gorm:"primaryKey" json:"id"`
+	Name      string `gorm:"size:64;not null" json:"name"`
+	Type      string `gorm:"size:16;not null" json:"type"` // emby | jellyfin | plex
+	URL       string `gorm:"size:255" json:"url"`
+	Username  string `gorm:"size:64" json:"username"` // Emby/JF 管理员（通知目标 / 演职员推送用）；Plex 可空
+	TokenEnc  string `gorm:"type:text" json:"-"`      // 加密的 API Key(Emby/JF) 或 X-Plex-Token
+	IsDefault bool   `gorm:"default:false" json:"is_default"`
+	// 事件开关
+	RefreshOnDownload bool `gorm:"default:true" json:"refresh_on_download"` // 种子下载完成→触发该服务器媒体库刷新
+	NotifyOnPlay      bool `gorm:"default:false" json:"notify_on_play"`     // 收到播放 webhook→通知中心
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}

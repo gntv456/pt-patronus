@@ -103,6 +103,52 @@ function attrText(attrs?: { key: string; value: string }[]) {
 function onTabChange(tab: string | number) {
   if (tab === 'logs' && !logs.value.length) loadLogs()
   if (tab === 'notification' && !notifCfg.value) loadNotif()
+  if (tab === 'oidc' && !oidcCfg.value) loadOIDC()
+}
+
+// —— OIDC/SSO 设置（管理员配置 Authelia/Keycloak/Casdoor 等）——
+import { oidcApi, type OIDCConfig, type OIDCConfigInput } from '@/api/oidc'
+// OIDC 回调地址（需在 Provider 端登记）：同源 /api/v1/auth/oidc/callback。
+const callbackURL = `${window.location.origin}/api/v1/auth/oidc/callback`
+const oidcCfg = ref<OIDCConfig | null>(null)
+const oidcForm = ref<OIDCConfigInput>({
+  enabled: false, issuer: '', client_id: '', client_secret: '',
+  scopes: 'openid profile email', display_name: 'OIDC / SSO', frontend_redirect: '/login',
+})
+const oidcLoading = ref(false)
+const oidcSaving = ref(false)
+
+async function loadOIDC() {
+  oidcLoading.value = true
+  try {
+    oidcCfg.value = await oidcApi.getConfig()
+    oidcForm.value = {
+      enabled: oidcCfg.value.enabled,
+      issuer: oidcCfg.value.issuer,
+      client_id: oidcCfg.value.client_id,
+      client_secret: '',
+      scopes: oidcCfg.value.scopes || 'openid profile email',
+      display_name: oidcCfg.value.display_name || 'OIDC / SSO',
+      frontend_redirect: oidcCfg.value.frontend_redirect || '/login',
+    }
+  } catch {
+    ElMessage.error('加载 OIDC 配置失败')
+  } finally {
+    oidcLoading.value = false
+  }
+}
+
+async function saveOIDC() {
+  oidcSaving.value = true
+  try {
+    await oidcApi.setConfig(oidcForm.value)
+    ElMessage.success('已保存')
+    await loadOIDC()
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    oidcSaving.value = false
+  }
 }
 
 // —— 通知通道设置（DB+UI 热更新；微信扫码登录）——
@@ -733,6 +779,45 @@ async function openChangelog() {
         </el-dialog>
       </el-tab-pane>
 
+      <el-tab-pane label="OIDC / SSO" name="oidc">
+        <div v-loading="oidcLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            配置标准 OIDC Provider（Authelia/Keycloak/Casdoor 等）后，登录页出现 SSO 入口。
+            回调地址需在 Provider 端登记为 <code>{{ callbackURL }}</code>。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">OIDC Provider</div>
+              <el-switch v-model="oidcForm.enabled" />
+            </div>
+            <el-input v-model="oidcForm.issuer" class="mt8">
+              <template #prepend>Issuer</template>
+            </el-input>
+            <el-input v-model="oidcForm.client_id" class="mt8">
+              <template #prepend>Client ID</template>
+            </el-input>
+            <el-input
+              v-model="oidcForm.client_secret"
+              type="password"
+              show-password
+              class="mt8"
+              :placeholder="oidcCfg?.client_secret_configured ? '已配置（留空=不修改）' : 'Client Secret'"
+            >
+              <template #prepend>Client Secret</template>
+            </el-input>
+            <el-input v-model="oidcForm.scopes" class="mt8">
+              <template #prepend>Scopes</template>
+            </el-input>
+            <el-input v-model="oidcForm.display_name" class="mt8">
+              <template #prepend>按钮文案</template>
+            </el-input>
+          </div>
+          <div class="oidc-save">
+            <el-button type="primary" :loading="oidcSaving" @click="saveOIDC">保存</el-button>
+          </div>
+        </div>
+      </el-tab-pane>
+
       <el-tab-pane label="运行日志" name="logs">
         <div class="logs-bar">
           <el-select v-model="logLevel" @change="loadLogs" style="width: 140px">
@@ -863,4 +948,8 @@ async function openChangelog() {
 .wx-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .qr-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .qr-img { width: 220px; height: 220px; object-fit: contain; }
+.oidc-wrap { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+.oidc-help { font-size: 13px; line-height: 1.6; }
+.oidc-help code { background: var(--card); padding: 2px 6px; border-radius: 4px; }
+.oidc-save { display: flex; justify-content: flex-end; }
 </style>

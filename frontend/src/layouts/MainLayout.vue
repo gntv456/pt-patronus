@@ -77,6 +77,7 @@ const navGroups = [
       { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver', from: '#52b788', to: '#2d6a4f' },
       { name: 'cloud', label: '云盘·STRM', icon: 'cloud', from: '#4cc9f0', to: '#4361ee' },
       { name: 'subtitle', label: '字幕', icon: 'subtitle', from: '#4361ee', to: '#7209b7' },
+      { name: 'trakt', label: 'Trakt', icon: 'trakt', from: '#b5179e', to: '#f72585' },
       { name: 'mediaquality', label: '媒体质量', icon: 'mediaquality', from: '#f12711', to: '#f5af19' },
       { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
       { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
@@ -101,6 +102,7 @@ const navDesc: Record<string, string> = {
   mediaserver: '媒体服务器 · Emby/Jellyfin/Plex 库扫描与封面',
   cloud: '云盘·STRM · 115/夸克/123 浏览 + STRM 生成 + 订阅追更',
   subtitle: '字幕 · ASSRT/OpenSubtitles/SubHD/字幕库 聚合搜索下载',
+  trakt: 'Trakt · WatchList 自动同步为本地订阅',
   plugins: '插件 · 事件扩展 / 动作执行',
 }
 

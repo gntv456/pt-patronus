@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi, type AuthStatus, type CaptchaChallenge } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 type Tab = 'account' | 'cookie'
@@ -26,6 +27,13 @@ const cookieStr = ref('')
 onMounted(async () => {
   if (auth.authenticated) {
     router.push({ name: 'dashboard' })
+    return
+  }
+  // OIDC/SSO 回调：URL ?oidc_token= 携带后端签发的 JWT（302 跳转回来）。存 token 后进首页。
+  const oidcToken = route.query.oidc_token
+  if (typeof oidcToken === 'string' && oidcToken) {
+    await auth.loginByToken(oidcToken)
+    router.replace({ name: 'dashboard' })
     return
   }
   await Promise.all([loadBootStatus(), fetchCaptcha()])
@@ -122,6 +130,11 @@ async function demoLogin() {
   }
 }
 
+// OIDC/SSO：整页跳转到后端 /auth/oidc/start，后端 302 到 Provider，完成后回带 oidc_token。
+function oidcLogin() {
+  window.location.href = '/api/v1/auth/oidc/start'
+}
+
 function msg(e: unknown): string {
   const r = (e as { response?: { data?: { message?: string; error?: string } } })?.response?.data
   return r?.message || r?.error || ''
@@ -202,6 +215,9 @@ function msg(e: unknown): string {
       <p v-if="err" class="err">{{ err }}</p>
       <button v-if="authStatus?.demo_mode" class="demo-btn" type="button" :disabled="loading" @click="demoLogin">
         浏览演示环境
+      </button>
+      <button v-if="authStatus?.oidc_enabled" class="oidc-btn" type="button" :disabled="loading" @click="oidcLogin">
+        {{ authStatus?.oidc_display_name || 'OIDC / SSO' }} 登录
       </button>
       <div class="deploy-hint">
         Web 端跟随后端同源访问 API。若移动端首次连接，请在客户端填写你的 Docker/后端地址，例如
@@ -370,6 +386,21 @@ function msg(e: unknown): string {
   cursor: pointer;
 }
 .demo-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.oidc-btn {
+  width: 100%;
+  margin-top: 8px;
+  height: 38px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(108, 92, 231, 0.16);
+  color: #6c5ce7;
+  font-weight: 600;
+  cursor: pointer;
+}
+.oidc-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }

@@ -126,6 +126,11 @@ const router = createRouter({
           component: () => import('@/views/Subtitle.vue'),
         },
         {
+          path: 'trakt',
+          name: 'trakt',
+          component: () => import('@/views/Trakt.vue'),
+        },
+        {
           path: 'mediaquality',
           name: 'mediaquality',
           component: () => import('@/views/MediaQuality.vue'),

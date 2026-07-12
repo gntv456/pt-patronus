@@ -162,6 +162,8 @@ func NewManager(db *gorm.DB, bus *event.Bus, noticeSvc *notice.Service, sites *o
 	_ = m.Register(NewDramaScrapePlugin())
 	_ = m.Register(NewPlayletCategoryPlugin())
 	_ = m.Register(NewForumSigninPlugin())
+	_ = m.Register(NewCustomCommandPlugin())
+	_ = m.Register(NewPlexSuitePlugin())
 	return m
 }
 

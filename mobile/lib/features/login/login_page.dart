@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_logo.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../home/home_shell.dart';
 import 'server_config_page.dart';
 import 'hxpt_web_login_page.dart';
@@ -20,6 +21,8 @@ class _LoginPageState extends State<LoginPage> {
   int _tab = 0; // 0=账号 1=cookie
   bool _loading = false;
   bool _demoMode = false;
+  bool _oidcEnabled = false;
+  String _oidcName = 'OIDC / SSO';
   String? _err;
 
   // 账号登录
@@ -45,7 +48,13 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final s = await ApiClient().get('/auth/status');
       if (!mounted) return;
-      setState(() => _demoMode = s['demo_mode'] == true);
+      setState(() {
+        _demoMode = s['demo_mode'] == true;
+        _oidcEnabled = s['oidc_enabled'] == true;
+        _oidcName = (s['oidc_display_name'] as String?)?.isNotEmpty == true
+            ? (s['oidc_display_name'] as String)
+            : 'OIDC / SSO';
+      });
     } catch (_) {}
   }
 
@@ -183,6 +192,20 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // OIDC/SSO：用系统浏览器打开后端 /auth/oidc/start 完成跳转授权。
+  // 回调把令牌交给 Web SPA；原生 App 取回令牌需 deep-link（ptpatronus://），留待联调。
+  Future<void> _oidcLogin() async {
+    final url = '${ApiClient().baseUrl}/api/v1/auth/oidc/start';
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已在浏览器打开 SSO 授权；完成后请返回 App 重新进入')),
+      );
+    }
+  }
+
   Future<void> _onLoginOk(Map<String, dynamic> res) async {
     await ApiClient().setToken(res['token'] as String?);
     final u = res['user'];
@@ -258,6 +281,14 @@ class _LoginPageState extends State<LoginPage> {
                         onPressed: _loading ? null : _demoLogin,
                         icon: const Icon(Icons.visibility_outlined, size: 18),
                         label: const Text('浏览演示环境'),
+                      ),
+                    ],
+                    if (_oidcEnabled) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: _loading ? null : _oidcLogin,
+                        icon: const Icon(Icons.login_outlined, size: 18),
+                        label: Text('$_oidcName 登录'),
                       ),
                     ],
                     if (_err != null)

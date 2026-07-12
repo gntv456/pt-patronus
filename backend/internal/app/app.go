@@ -29,6 +29,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/filemanager"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/iyuu"
+	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/monitor"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
@@ -295,6 +296,9 @@ func New(cfg *config.Config) (*App, error) {
 
 	hxpt := auth.NewHxptVIP(registry, "hxpt", cfg.AuthSiteURL, cfg.AuthVIPLevel, hc)
 
+	// OIDC/SSO 服务（Authelia/Keycloak/Casdoor 等标准 OIDC；凭据落 SystemConfig auth.oidc）。
+	oidcSvc := auth.NewOIDCService(cfgOp)
+
 	// 好学登录服务：编排账号登录两步 + VIP 校验；每条登录用独立临时 client（独立 jar、不跟随重定向）
 	loginClientFactory := func() (site.LoginHTTPDoer, error) {
 		return httpclient.New(httpclient.Options{Timeout: 30 * time.Second, FollowRedirect: false})
@@ -341,6 +345,25 @@ func New(cfg *config.Config) (*App, error) {
 	}
 	subtitleCh := chain.NewSubtitleChain(base, subtitleProvider)
 
+	// MCP 服务端：把宿主能力（站点/订阅/下载器/搜索）暴露为 MCP 工具，供 AI Agent / IDE 经
+	// JSON-RPC 调用。配置（启用/令牌）由 ptp-mcp-server 插件承载，服务端每次请求经
+	// SettingsGetter 读取插件配置，单一真源、热改即时生效。公开路由 /api/v1/mcp 在 router 注册。
+	mcpSrv := mcp.NewServer()
+	registerHostMCPTools(mcpSrv, siteOp, siteCh, subCh, dlOp)
+	mcpSrv.SetSettingsGetter(func() mcp.Settings {
+		if v, err := pluginMgr.Get(plugins.MCPPluginID); err == nil {
+			return plugins.ParseMCPSettings(v.Config)
+		}
+		return mcp.Settings{}
+	})
+	if err := pluginMgr.Register(plugins.NewMCPServerPlugin(mcpSrv)); err != nil {
+		slog.Warn("register mcp plugin", "err", err)
+	}
+
+	// Trakt 同步：WatchList → 本地订阅（device OAuth 授权 + 定时同步）。复用 subCh 建订阅、
+	// cfgOp 存凭据、noticeSvc 推送同步结果。独立 API /trakt/* + 三端 Trakt 页。
+	traktCh := chain.NewTraktChain(subCh, cfgOp, noticeSvc)
+
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
@@ -371,6 +394,14 @@ func New(cfg *config.Config) (*App, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
 		contractCh.CheckAll(ctx)
+	})
+	// Trakt 同步：每小时拉取一次 WatchList → 订阅（已授权后；授权/令牌刷新在链内自管）。
+	_ = sched.AddFunc("trakt-sync", "7 * * * *", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		if err := traktCh.SyncAll(ctx); err != nil {
+			slog.Warn("trakt sync failed", "err", err)
+		}
 	})
 	auto.Start()
 
@@ -601,6 +632,7 @@ func New(cfg *config.Config) (*App, error) {
 		Cfg: cfg, DB: database, JWT: j, Act: act,
 		HxptVIP: hxpt, HxptAuth: hxptLogin, Crypto: crypto, TVCache: tvCache, VIPGraceDays: cfg.VIPGraceDays,
 		Tickets: ticketStore,
+		OIDC:    oidcSvc,
 		SiteOp:  siteOp, SiteCh: siteCh, Reg: registry, SiteHC: hc,
 		DLOp: dlOp, DLCh: dlCh, DLMgr: dlMgr,
 		Notif: notifCh, NotifMgr: notifMgr, NotifProvider: notifProvider,
@@ -619,6 +651,8 @@ func New(cfg *config.Config) (*App, error) {
 		MediaServer: mediaServerCh,
 		Cloud:       cloudCh,
 		Subtitle:    subtitleCh,
+		Trakt:       traktCh,
+		MCP:         mcpSrv,
 		Webhook:   webhookH,
 		MonOp:     monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,

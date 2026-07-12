@@ -114,6 +114,9 @@ const Map<String, String> kGlyphs = {
   // 字幕：对话气泡（字幕/对白）
   'subtitle':
       '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  // Trakt：播放列表（WatchList → 订阅）—— 与 Web GlassIcon.vue 1:1
+  'trakt':
+      '<rect x="3" y="4" width="6" height="16" rx="1"/><rect x="11" y="4" width="3" height="16" rx="1"/><path d="M16.5 6.5l4 1.5-4 1.5z"/><path d="M16.5 13l4 1.5-4 1.5z"/>',
   // 媒体质量：星形评分（多源评分聚合 / 低分保护）—— 与 Web GlassIcon.vue 1:1
   'mediaquality':
       '<path d="M12 2l2.9 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17.3 5.8 20.6l1.6-6.7L2.2 8.9l6.9-.6z"/>',

@@ -52,6 +52,13 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('token', token)
       localStorage.setItem('user', JSON.stringify(user))
     },
+    // OIDC/SSO 回调：只拿 token（无 user），存 token 后由 router guard 的 restoreUser 拉回 user。
+    async loginByToken(token: string) {
+      this.token = token
+      this.user = null
+      localStorage.setItem('token', token)
+      localStorage.removeItem('user')
+    },
     // 登出：先清本地（UI 立即响应），再通知后端 bump TokenVersion
     async logout() {
       this.token = ''

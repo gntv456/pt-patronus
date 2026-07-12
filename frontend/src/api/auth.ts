@@ -6,6 +6,8 @@ export interface AuthStatus {
   auth_site_on: boolean
   vip_verified: boolean
   demo_mode?: boolean
+  oidc_enabled?: boolean // 管理员配置了 OIDC/SSO 且启用
+  oidc_display_name?: string // 登录按钮文案（默认 "OIDC / SSO"）
   user?: HxptUser | null // authed 时附当前 user（刷新后恢复顶栏用户名 / VIP 状态）
 }
 

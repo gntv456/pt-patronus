@@ -2,9 +2,12 @@ package v1
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -45,13 +48,14 @@ type AuthHandler struct {
 	tvCache  *auth.TokenVersionCache // 登出 invalidate
 	tickets  *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
 	demoMode bool                    // 显式开启演示登录（默认关闭）
+	oidc     *auth.OIDCService       // OIDC/SSO（可空：未装配时 OIDC 端点返 503）
 }
 
 // NewAuthHandler 构造。
 func NewAuthHandler(db *gorm.DB, jwt *security.JWT, act *auth.Activation,
 	hxptAuth auth.HxptAuthenticator, crypto *security.Crypto, tvCache *auth.TokenVersionCache,
-	tickets *auth.TicketStore, demoMode bool) *AuthHandler {
-	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets, demoMode: demoMode}
+	tickets *auth.TicketStore, demoMode bool, oidc *auth.OIDCService) *AuthHandler {
+	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets, demoMode: demoMode, oidc: oidc}
 }
 
 // WsTicket 签发一次性 WS/RTSP ticket（guarded 内：header JWT 已校验，含 TokenVersion 失效校验）。
@@ -370,6 +374,13 @@ func (h *AuthHandler) Status(c *gin.Context) {
 		"vip_verified":  verified,
 		"demo_mode":     h.demoMode,
 	}
+	if h.oidc != nil {
+		oc := h.oidc.LoadSettings()
+		resp["oidc_enabled"] = oc.Enabled && oc.Issuer != "" && oc.ClientID != ""
+		resp["oidc_display_name"] = oc.DisplayName
+	} else {
+		resp["oidc_enabled"] = false
+	}
 	if user != nil {
 		resp["user"] = user
 	}
@@ -401,4 +412,202 @@ func boolStr(b bool) string {
 		return "ok"
 	}
 	return "fail"
+}
+
+// ===== OIDC / SSO（Authorization Code + PKCE） =====
+
+// oidcRedirectURI 计算回调地址（本后端的 /api/v1/auth/oidc/callback）。
+// 优先用请求的对外基址（X-Forwarded-Proto/Host），回退 Request.Host。
+func oidcRedirectURI(c *gin.Context) string {
+	scheme := "http"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s/api/v1/auth/oidc/callback", scheme, c.Request.Host)
+}
+
+// OIDCStart 发起 OIDC 授权：写 state/verifier cookie 并 302 跳转到 Provider 授权端点。
+func (h *AuthHandler) OIDCStart(c *gin.Context) {
+	if h.oidc == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		return
+	}
+	flow, err := h.oidc.StartFlow(c.Request.Context(), oidcRedirectURI(c))
+	if err != nil {
+		audit(c, "oidc_start", "fail", slog.String("err", err.Error()))
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	http.SetCookie(c.Writer, &flow.StateCookie)
+	http.SetCookie(c.Writer, &flow.VerifierCookie)
+	c.Redirect(http.StatusFound, flow.AuthorizeURL)
+}
+
+// OIDCCallback 处理 Provider 回调：校验 state + 换令牌 + 取 userinfo + 签发本地 JWT + 302 回前端。
+func (h *AuthHandler) OIDCCallback(c *gin.Context) {
+	if h.oidc == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		return
+	}
+	stateCookie, err := c.Cookie("ptp_oidc_state")
+	verifier, _ := c.Cookie("ptp_oidc_verifier")
+	code := c.Query("code")
+	state := c.Query("state")
+	if err != nil || code == "" || state == "" || state != stateCookie {
+		audit(c, "oidc_callback", "fail", slog.String("reason", "state_mismatch"))
+		c.JSON(http.StatusForbidden, gin.H{"error": "OIDC state 校验失败"})
+		return
+	}
+	ui, err := h.oidc.CompleteFlow(c.Request.Context(), code, state, verifier, oidcRedirectURI(c))
+	// 清掉一次性 cookie。
+	clearOIDCCookie(c, "ptp_oidc_state")
+	clearOIDCCookie(c, "ptp_oidc_verifier")
+	if err != nil {
+		audit(c, "oidc_callback", "fail", slog.String("err", err.Error()))
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	// 映射用户名：preferred_username → name → email 前缀 → sub。
+	username := ui.Username
+	if username == "" {
+		username = ui.Name
+	}
+	if username == "" && ui.Email != "" {
+		username = strings.SplitN(ui.Email, "@", 2)[0]
+	}
+	if username == "" {
+		username = ui.Sub
+	}
+	token, err := h.issueForOIDC("oidc:"+ui.Sub, username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token failed"})
+		return
+	}
+	audit(c, "oidc_callback", "ok", slog.String("sub", ui.Sub), slog.String("user", username))
+	// 302 回前端：query 带 oidc_token（短 TTL JWT；生产应走 HTTPS 防链路泄露）。
+	cfg := h.oidc.LoadSettings()
+	target := strings.TrimSpace(cfg.FrontendRedirect)
+	if target == "" {
+		target = "/login"
+	}
+	sep := "?"
+	if strings.Contains(target, "?") {
+		sep = "&"
+	}
+	c.Redirect(http.StatusFound, target+sep+"oidc_token="+url.QueryEscape(token))
+}
+
+func clearOIDCCookie(c *gin.Context, name string) {
+	http.SetCookie(c.Writer, &http.Cookie{Name: name, Value: "", Path: "/", MaxAge: -1})
+}
+
+// issueForOIDC 按 OIDC sub upsert User 并签发 JWT。OIDC 由管理员显式启用，视为可信身份：
+// VipLevel=1 + VipVerifiedAt=now（放行 VIP 准入）；首个 OIDC 用户成为 admin（供配置者自助）。
+func (h *AuthHandler) issueForOIDC(hxptUID, username string) (string, error) {
+	now := time.Now()
+	var u models.User
+	err := h.db.Where("hxpt_uid = ?", hxptUID).First(&u).Error
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		u = models.User{
+			Username: username, HxptUID: hxptUID, HxptUsername: username,
+			VipLevel: 1, VipVerifiedAt: &now, IsAdmin: h.firstOIDCUser(),
+		}
+		if err := h.db.Create(&u).Error; err != nil {
+			return "", err
+		}
+	case err != nil:
+		return "", err
+	default:
+		u.VipLevel = 1
+		u.VipVerifiedAt = &now
+		if u.Username == "" {
+			u.Username = username
+		}
+		if err := h.db.Save(&u).Error; err != nil {
+			return "", err
+		}
+	}
+	return h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, now)
+}
+
+// firstOIDCUser 报告是否尚无 OIDC 绑定用户（首个 OIDC 用户成为 admin）。
+func (h *AuthHandler) firstOIDCUser() bool {
+	var n int64
+	h.db.Model(&models.User{}).Where("hxpt_uid LIKE 'oidc:%'").Count(&n)
+	return n == 0
+}
+
+// ===== OIDC 配置（管理员） =====
+
+// oidcConfigResp 对外脱敏配置视图。
+type oidcConfigResp struct {
+	Enabled          bool   `json:"enabled"`
+	Issuer           string `json:"issuer"`
+	ClientID         string `json:"client_id"`
+	ClientSecretSet  bool   `json:"client_secret_configured"`
+	Scopes           string `json:"scopes"`
+	DisplayName      string `json:"display_name"`
+	FrontendRedirect string `json:"frontend_redirect"`
+}
+
+// GetOIDCConfig 返回脱敏配置。
+func (h *AuthHandler) GetOIDCConfig(c *gin.Context) {
+	if h.oidc == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		return
+	}
+	s := h.oidc.LoadSettings()
+	c.JSON(http.StatusOK, oidcConfigResp{
+		Enabled: s.Enabled, Issuer: s.Issuer, ClientID: s.ClientID,
+		ClientSecretSet: s.ClientSecret != "", Scopes: s.Scopes,
+		DisplayName: s.DisplayName, FrontendRedirect: s.FrontendRedirect,
+	})
+}
+
+// oidcConfigReq 管理员提交（client_secret 空串=保留旧值）。
+type oidcConfigReq struct {
+	Enabled          bool   `json:"enabled"`
+	Issuer           string `json:"issuer"`
+	ClientID         string `json:"client_id"`
+	ClientSecret     string `json:"client_secret"`
+	Scopes           string `json:"scopes"`
+	DisplayName      string `json:"display_name"`
+	FrontendRedirect string `json:"frontend_redirect"`
+}
+
+// SetOIDCConfig 保存配置（client_secret 空串保留）。
+func (h *AuthHandler) SetOIDCConfig(c *gin.Context) {
+	if h.oidc == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		return
+	}
+	var req oidcConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	cur := h.oidc.LoadSettings()
+	next := cur
+	next.Enabled = req.Enabled
+	next.Issuer = req.Issuer
+	next.ClientID = req.ClientID
+	if req.ClientSecret != "" {
+		next.ClientSecret = req.ClientSecret
+	}
+	if req.Scopes != "" {
+		next.Scopes = req.Scopes
+	}
+	if req.DisplayName != "" {
+		next.DisplayName = req.DisplayName
+	}
+	if req.FrontendRedirect != "" {
+		next.FrontendRedirect = req.FrontendRedirect
+	}
+	if err := h.oidc.SaveSettings(next); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
+		return
+	}
+	audit(c, "oidc_config", "ok", slog.Bool("enabled", next.Enabled))
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

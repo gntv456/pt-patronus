@@ -16,6 +16,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/downloader/manager"
 	"github.com/hxpt/ptpatronus/internal/filemanager"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/monitor"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
@@ -39,6 +40,7 @@ type Deps struct {
 	Crypto        *security.Crypto
 	TVCache       *auth.TokenVersionCache
 	Tickets       *auth.TicketStore
+	OIDC          *auth.OIDCService
 	VIPGraceDays  int
 	SiteOp        *oper.SiteOper
 	SiteCh        *chain.SiteChain
@@ -70,6 +72,8 @@ type Deps struct {
 	MediaServer   *chain.MediaServerChain
 	Cloud         *chain.CloudChain
 	Subtitle      *chain.SubtitleChain
+	Trakt         *chain.TraktChain
+	MCP           *mcp.Server
 	Webhook       *v1.WebhookHandler
 	MonOp         *oper.MonitorOper
 	MonSvc        *monitor.Service
@@ -132,7 +136,7 @@ func Build(d *Deps) *gin.Engine {
 	}
 	engine.Use(middleware.NewRateLimiter(float64(globalRPS), globalRPS).Middleware())
 
-	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode)
+	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC)
 	sysH := v1.NewSystemHandler(d.Update)
 
 	api := engine.Group("/api/v1")
@@ -154,6 +158,9 @@ func Build(d *Deps) *gin.Engine {
 			authRoutes.POST("/activate", authH.Activate)
 			authRoutes.GET("/status", authH.Status)
 			authRoutes.POST("/verify-vip", authH.VerifyVIP)
+			// OIDC/SSO：start/callback 为公开 302（浏览器跳转）；config 为管理员配置。
+			authRoutes.GET("/oidc/start", authH.OIDCStart)
+			authRoutes.GET("/oidc/callback", authH.OIDCCallback)
 		}
 
 		// 受保护路由：需登录 + 好学 VIP（按用户，宽限期内放行）。
@@ -166,6 +173,9 @@ func Build(d *Deps) *gin.Engine {
 		guarded.Use(auth.RequireVIP(d.DB, vipGrace))
 		guarded.POST("/auth/logout", authH.Logout)
 		guarded.POST("/auth/ws-ticket", authH.WsTicket)
+		// OIDC/SSO 配置（管理员；start/callback 在公开区）
+		guarded.GET("/auth/oidc/config", middleware.RequireAdmin(), authH.GetOIDCConfig)
+		guarded.PUT("/auth/oidc/config", middleware.RequireAdmin(), authH.SetOIDCConfig)
 		// 在线更新：客户端经本后端中转检查（不直连官方源）；管理员写自托管清单覆盖官方源
 		guarded.GET("/system/update/check", sysH.UpdateCheck)
 		guarded.POST("/admin/update/manifest", middleware.RequireAdmin(), sysH.SetManifest)
@@ -585,6 +595,18 @@ func Build(d *Deps) *gin.Engine {
 				subt.PUT("/config", middleware.RequireAdmin(), subtH.SetConfig)
 			}
 
+			// Trakt 同步：Device OAuth 授权 + WatchList→订阅 + 同步状态/配置
+			traktH := v1.NewTraktHandler(d.Trakt)
+			trakt := guarded.Group("/trakt")
+			{
+				trakt.GET("/config", traktH.GetConfig)
+				trakt.PUT("/config", middleware.RequireAdmin(), traktH.SetConfig)
+				trakt.POST("/device-code", traktH.DeviceCode)
+				trakt.GET("/device-status", traktH.DeviceStatus)
+				trakt.POST("/sync", traktH.Sync)
+				trakt.GET("/history", traktH.History)
+			}
+
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。
 			rssH := v1.NewRssHandler(d.Rss)
 			rss := guarded.Group("/rss")
@@ -679,6 +701,11 @@ func Build(d *Deps) *gin.Engine {
 		// Emby 302 直链反代（公开：播放器不能带 JWT）。读取服务器 DirectLinkBase 配置静态改写，
 		// 不泄露 Token；未开启直链的服务器返 404。
 		api.GET("/mediaserver/:id/direct/*path", v1.NewMediaServerHandler(d.MediaServer).Direct)
+		// MCP 服务端（公开：MCP 客户端不能走 JWT。由 mcp.Server 自身校验 enable + Bearer token）。
+		api.GET("/mcp", gin.WrapH(d.MCP))
+		api.POST("/mcp", gin.WrapH(d.MCP))
+		// Trakt OAuth Device 授权页（公开：授权时用户尚未登录，浏览器直接打开）。
+		api.GET("/trakt/device", v1.NewTraktHandler(d.Trakt).DevicePage)
 	}
 
 	// 非匹配路径回退到内嵌的 Web UI（go:embed），由 vue-router 接管。

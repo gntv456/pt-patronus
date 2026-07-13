@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -25,6 +26,9 @@ func (f *Feishu) Send(ctx context.Context, msg Message) error {
 	if f.url == "" {
 		return fmt.Errorf("feishu: url empty")
 	}
+	if err := assertNotifyURL(ctx, "feishu", f.url); err != nil {
+		return err
+	}
 	title, body, link := splitContent(msg)
 	text := strings.TrimSpace(title + "\n" + body)
 	if link != "" {
@@ -44,8 +48,17 @@ func (f *Feishu) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("feishu: status %d", resp.StatusCode)
+		return fmt.Errorf("feishu: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（飞书 webhook 失败时 code != 0）。
+	var be struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+		return fmt.Errorf("feishu: code %d: %s", be.Code, be.Msg)
 	}
 	return nil
 }

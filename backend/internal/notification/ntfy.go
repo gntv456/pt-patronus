@@ -36,6 +36,9 @@ func (n *Ntfy) Send(ctx context.Context, msg Message) error {
 	if link != "" {
 		text += "\n" + link
 	}
+	if err := assertNotifyURL(ctx, "ntfy", n.server+"/"+n.topic); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, n.server+"/"+n.topic, strings.NewReader(text))
 	if err != nil {
 		return err

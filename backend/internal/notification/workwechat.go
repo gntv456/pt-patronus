@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -29,6 +30,9 @@ func (w *WorkWechat) Send(ctx context.Context, msg Message) error {
 	if w.url == "" {
 		return fmt.Errorf("workwechat: url empty")
 	}
+	if err := assertNotifyURL(ctx, "workwechat", w.url); err != nil {
+		return err
+	}
 	title, body, link := splitContent(msg)
 	content := strings.TrimSpace("### " + title + "\n\n" + body)
 	if link != "" {
@@ -50,8 +54,17 @@ func (w *WorkWechat) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("workwechat: status %d", resp.StatusCode)
+		return fmt.Errorf("workwechat: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（企业微信失败时 errcode != 0，如 key 失效=93000）。
+	var be struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.ErrCode != 0 {
+		return fmt.Errorf("workwechat: errcode %d: %s", be.ErrCode, be.ErrMsg)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -71,12 +72,18 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 	}
 	st, err := c.siteOp.Get(rule.SiteID)
 	if err != nil {
-		_ = c.op.MarkChecked(ruleID, "error", "站点不存在")
+		slog.Warn("contract site lookup failed", "rule", ruleID, "site", rule.SiteID, "err", err)
+		if e := c.op.MarkChecked(ruleID, "error", "站点不存在"); e != nil {
+			slog.Warn("contract MarkChecked failed", "rule", ruleID, "err", e)
+		}
 		return &CheckResult{RuleID: ruleID, SiteID: rule.SiteID, Status: "error", Detail: "站点不存在"}, nil
 	}
 	ui, err := c.siteCh.UserInfo(ctx, st)
 	if err != nil {
-		_ = c.op.MarkChecked(ruleID, "error", err.Error())
+		slog.Warn("contract UserInfo failed", "rule", ruleID, "site", st.Name, "err", err)
+		if e := c.op.MarkChecked(ruleID, "error", err.Error()); e != nil {
+			slog.Warn("contract MarkChecked failed", "rule", ruleID, "err", e)
+		}
 		return &CheckResult{RuleID: ruleID, SiteID: rule.SiteID, SiteName: st.Name, Status: "error", Detail: err.Error()}, nil
 	}
 	breaches := evalBreaches(rule, ui)
@@ -88,7 +95,9 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 	if len(breaches) > 0 {
 		res.Status = "breach"
 		res.Detail = strings.Join(breaches, "；")
-		_ = c.op.MarkChecked(ruleID, "breach", res.Detail)
+		if e := c.op.MarkChecked(ruleID, "breach", res.Detail); e != nil {
+			slog.Warn("contract MarkChecked failed", "rule", ruleID, "status", "breach", "err", e)
+		}
 		c.Emit(ctx, "ContractBreach", map[string]any{"site_id": rule.SiteID, "breaches": breaches})
 		if c.notice != nil {
 			_ = c.notice.Notice(ctx, notice.Input{
@@ -101,7 +110,9 @@ func (c *ContractChain) Check(ctx context.Context, ruleID uint) (*CheckResult, e
 		}
 	} else {
 		res.Status = "ok"
-		_ = c.op.MarkChecked(ruleID, "ok", "")
+		if e := c.op.MarkChecked(ruleID, "ok", ""); e != nil {
+			slog.Warn("contract MarkChecked failed", "rule", ruleID, "status", "ok", "err", e)
+		}
 	}
 	return res, nil
 }

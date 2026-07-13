@@ -1,6 +1,10 @@
 package chain
 
-import "golang.org/x/sync/singleflight"
+import (
+	"fmt"
+
+	"golang.org/x/sync/singleflight"
+)
 
 // sfDo 包装 singleflight.Group.Do，消除调用处 interface{} 类型断言样板，做 read-coalescing
 // （同 key 并发请求只回源一次，其余共享结果，防缓存击穿）。
@@ -15,5 +19,8 @@ func sfDo[V any](g *singleflight.Group, key string, fn func() (V, error)) (V, er
 		var zero V
 		return zero, err
 	}
-	return v.(V), nil
+	if vv, ok := v.(V); ok {
+		return vv, nil
+	}
+	return *new(V), fmt.Errorf("singleflight: unexpected type %T", v)
 }

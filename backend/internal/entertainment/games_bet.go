@@ -16,6 +16,13 @@ import (
 // 下注/选号类娱乐（Bettable）：猜大小/骰宝/双色球/翻面/Betting/红包。纯 Cookie。
 // 各 Game 实现 LotteryGame.Play（默认下注兜底）+ Bettable.Bet + Statable。
 
+// 校验加固常量：防负数/超大值透传站点（真实单注上限仍由各站 max_bet 字段优先钳位）。
+const (
+	maxBetCeiling     = 1e8 // 魔力/积分下注硬上限（1 亿，超出即钳位）
+	maxMultiCount     = 100 // 连抽次数硬上限
+	maxRedpacketClick = 200 // 红包雨单轮点击硬上限（服务端 click_limit 可能被篡改/超大）
+)
+
 // ── 好学 猜大小（hxpt.org） ────────────────────────────────
 // games/bigsmall/ajax.php?action=：game_status / bet / add_bet / trends / rankings /
 // game_history / my_items / my_tasks / chat_get / chat_send / claim_task / claim_reward /
@@ -105,6 +112,13 @@ func (HxptBigSmallGame) Bet(ctx context.Context, hc *httpclient.Client, baseURL 
 	}
 	if amount <= 0 {
 		amount = 100
+	}
+	// 上限钳位：优先用站点 max_bet，再兜底硬上限（防超大值透传）。
+	if mb := numField(data, "max_bet"); mb > 0 && amount > mb {
+		amount = mb
+	}
+	if amount > maxBetCeiling {
+		amount = maxBetCeiling
 	}
 	amtStr := strconv.FormatFloat(amount, 'f', -1, 64)
 
@@ -941,6 +955,9 @@ func (PandaBigSmallGame) Bet(ctx context.Context, hc *httpclient.Client, baseURL
 	if amount <= 0 {
 		amount = 100
 	}
+	if amount > maxBetCeiling {
+		amount = maxBetCeiling
+	}
 	gameID := strings.TrimSpace(req.Extra["game_id"])
 	if gameID == "" {
 		if m, err := pandaBigSmallAjax(ctx, hc, baseURL, "reloadData", cr.Cookie, nil); err == nil {
@@ -1011,9 +1028,9 @@ func (PandaBigSmallGame) BigSmallSendChat(ctx context.Context, hc *httpclient.Cl
 		return &PlayResult{Success: false, Message: "内容不能为空"}, nil
 	}
 	m, err := pandaBigSmallAjax(ctx, hc, baseURL, "sendMsg", cr.Cookie, map[string]string{
-		"userId":   "0",
-		"username": cr.Username,
-		"content":  message,
+		"userId":    "0",
+		"username":  cr.Username,
+		"content":   message,
 		"timestamp": strconv.FormatInt(time.Now().UnixMilli(), 10),
 	})
 	if err != nil || m == nil {
@@ -1114,6 +1131,9 @@ func (CbgSicboGame) Bet(ctx context.Context, hc *httpclient.Client, baseURL stri
 	if amt <= 0 {
 		amt = 100
 	}
+	if amt > maxBetCeiling {
+		amt = maxBetCeiling
+	}
 	m, err := cbgApiPost(ctx, hc, baseURL, "api/api_sicbo.php", "sicboarena.php", cr.Cookie, map[string]any{"amount": amt, "type": sel})
 	if err != nil || m == nil {
 		return &PlayResult{Success: false, Message: "站点响应异常，可能未登录或 cookie 已失效"}, nil
@@ -1189,9 +1209,11 @@ func (CrabUnionLottoGame) Play(ctx context.Context, hc *httpclient.Client, baseU
 
 // ── PANDA 翻面夺宝（pandapt.net） ─────────────────────────
 // POST /ajax_flip.php form action=…&params[…]=…：
-//   gameState → {ret,data:{roundNumber,balance,costPerFlip,layout:[{index,tierId,flipped}]}}
-//   getFlipTiers → {ret,data:[{id,name,reward,reward_type,count,color}]}（6 档合计 100 张）
-//   recordFlip + params[round_number]+params[tile_index] → {ret,data:{status,balance,flipResult:{tier,tierId,reward,isSpecial,reward_type}}}
+//
+//	gameState → {ret,data:{roundNumber,balance,costPerFlip,layout:[{index,tierId,flipped}]}}
+//	getFlipTiers → {ret,data:[{id,name,reward,reward_type,count,color}]}（6 档合计 100 张）
+//	recordFlip + params[round_number]+params[tile_index] → {ret,data:{status,balance,flipResult:{tier,tierId,reward,isSpecial,reward_type}}}
+//
 // task_id 只用于旁支任务系统（startTask/flipGetReward），翻格不需要。
 type PandaFlipGame struct{}
 
@@ -1247,10 +1269,10 @@ func (PandaFlipGame) FlipState(ctx context.Context, hc *httpclient.Client, baseU
 						continue
 					}
 					state.Tiles = append(state.Tiles, FlipTile{
-						Index:  idx,
+						Index:   idx,
 						Flipped: true,
-						TierID: firstNonEmpty(strField(f, "tierId"), tierIDOf(f)),
-						ByUser: firstNonEmpty(strField(f, "user"), strField(f, "playerName"), strField(f, "player")),
+						TierID:  firstNonEmpty(strField(f, "tierId"), tierIDOf(f)),
+						ByUser:  firstNonEmpty(strField(f, "user"), strField(f, "playerName"), strField(f, "player")),
 					})
 					state.FlippedCount++
 				}
@@ -1466,8 +1488,10 @@ func (PandaFlipGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL s
 
 // ── OurBits 赛事押注（ourbits.club，NexusPHP「博彩频道」菠菜插件） ────────
 // bet.php 当前竞猜列表（主题/结束时间/剩余/庄家/下注总数/投注总额/我的下注/状态）
-//   → bet_odds.php?id=N 盘口（<h1>主题名 + 选项表：每行 队名/赔率/押注表单/已押）
-//   → POST bet_odds2.php  bonus=<魔力>&id=<选项id>  （无 csrf，纯 cookie；注意 id 是选项 id 非主题 id）
+//
+//	→ bet_odds.php?id=N 盘口（<h1>主题名 + 选项表：每行 队名/赔率/押注表单/已押）
+//	→ POST bet_odds2.php  bonus=<魔力>&id=<选项id>  （无 csrf，纯 cookie；注意 id 是选项 id 非主题 id）
+//
 // bet_coupon.php 我的押注（押注选项/倍率/押注金额/可获金额/状态）。
 type OurbitsBetGame struct{}
 
@@ -1764,7 +1788,14 @@ func (UbitsRedpacketGame) Bet(ctx context.Context, hc *httpclient.Client, baseUR
 	u := joinPath(baseURL, "redpacket.php")
 	var body string
 	if action == "send" {
-		body = "action=send&amount=" + strconv.FormatFloat(req.Amount, 'f', -1, 64) +
+		if req.Amount <= 0 {
+			return &PlayResult{Success: false, Message: "红包总额须 > 0"}, nil
+		}
+		amt := req.Amount
+		if amt > maxBetCeiling {
+			amt = maxBetCeiling
+		}
+		body = "action=send&amount=" + strconv.FormatFloat(amt, 'f', -1, 64) +
 			"&packet_type=" + req.Extra["packet_type"] + "&distribution_type=" + req.Extra["distribution_type"] +
 			"&packet_count=" + req.Extra["packet_count"]
 	} else {

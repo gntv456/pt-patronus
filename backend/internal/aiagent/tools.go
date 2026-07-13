@@ -43,6 +43,9 @@ func (r *ToolRegistry) Schemas(whitelist []string) []llm.Tool {
 // 送入 LLM 上下文时由 agent 层按需截断，控制 token）。
 // 工具不存在/执行错均回灌给模型自适应。
 func (r *ToolRegistry) Exec(ctx context.Context, name string, args map[string]any) (string, error) {
+	if ctx.Err() != nil {
+		return "", ctx.Err() // 客户端已断开：不再执行任何（含写类）工具，避免悬空副作用
+	}
 	for _, t := range r.tools {
 		if t.Name != name {
 			continue
@@ -68,12 +71,16 @@ func truncate(s string, n int) string {
 	return string(r[:n]) + "\n…(结果已截断，如需更多请缩小查询范围)"
 }
 
-// parseArgs 把工具调用的 arguments JSON 串解析为 map；空/损坏返回空 map。
-func parseArgs(args string) map[string]any {
-	out := map[string]any{}
+// parseArgs 把工具调用的 arguments JSON 串解析为 map。空串返回空 map（合法，工具可用默认值）；
+// 非空但损坏返回 error，由 agent 回灌给模型自适应重试——避免副作用工具以零值参数执行
+// （如 downloader_id=0 导致误删/误订阅）。仅当 arguments 确为空对象时才落空 map。
+func parseArgs(args string) (map[string]any, error) {
 	if args == "" {
-		return out
+		return map[string]any{}, nil
 	}
-	_ = json.Unmarshal([]byte(args), &out) // 容错：忽略解析错误，给模型自纠正机会
-	return out
+	out := map[string]any{}
+	if err := json.Unmarshal([]byte(args), &out); err != nil {
+		return nil, fmt.Errorf("arguments 非法 JSON: %w", err)
+	}
+	return out, nil
 }

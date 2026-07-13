@@ -157,7 +157,10 @@ func (h *WebhookHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	out, _ := h.op.Get(w.ID)
+	out, err := h.op.Get(w.ID)
+	if err != nil {
+		out = w // re-fetch 失败：用刚创建的对象（含 ID），避免返回 200 null
+	}
 	c.JSON(http.StatusOK, out)
 }
 
@@ -186,7 +189,10 @@ func (h *WebhookHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	out, _ := h.op.Get(id)
+	out, err := h.op.Get(id)
+	if err != nil {
+		out = w // re-fetch 失败：用已更新的对象，避免返回 200 null
+	}
 	c.JSON(http.StatusOK, out)
 }
 

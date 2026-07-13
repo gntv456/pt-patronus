@@ -54,8 +54,17 @@ func (o *OMDb) Search(ctx context.Context, keyword string, year int) ([]MediaInf
 	if err := o.get(ctx, params, &raw); err != nil {
 		return nil, err
 	}
-	if raw.Response == "False" || raw.IMDbID == "" {
-		return nil, nil // 无匹配（标题不符），非错误
+	if raw.Response == "False" {
+		// OMDb 永远返 HTTP 200，失败信号在 body 的 Response:"False"+Error。
+		// "not found" 类是正常无匹配；其余（Invalid API key!/Request limit reached!/Daily limit exceeded!）
+		// 是配置错误/配额耗尽，须上报——否则误配对用户完全不可见（与 Detail:79 处理一致）。
+		if e := strings.TrimSpace(raw.Error); e != "" && !strings.Contains(strings.ToLower(e), "not found") {
+			return nil, fmt.Errorf("omdb: %s", e)
+		}
+		return nil, nil // 真正的"无匹配"
+	}
+	if raw.IMDbID == "" {
+		return nil, nil
 	}
 	mi, ok := omdbToMedia(raw)
 	if !ok {

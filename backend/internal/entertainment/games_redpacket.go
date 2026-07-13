@@ -39,6 +39,10 @@ func (HxptRedpacketGame) Play(ctx context.Context, hc *httpclient.Client, baseUR
 	if clickLimit <= 0 {
 		clickLimit = 30
 	}
+	// 硬上限：防服务端返回/被篡改超大值导致循环近百万次 POST。
+	if clickLimit > maxRedpacketClick {
+		clickLimit = maxRedpacketClick
+	}
 	// 2. 循环点击领红包（每轮上限 clickLimit）
 	rpURL := joinPath(baseURL, "hby/redpacket.php")
 	headers := map[string]string{"Referer": joinPath(baseURL, "hby/redpacket.php")}

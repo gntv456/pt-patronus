@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,7 +52,10 @@ func (c *BrushFlowChain) RunAllSelect(ctx context.Context) {
 	}
 	for _, t := range tasks {
 		if err := c.RunSelect(ctx, t.ID); err != nil {
-			_ = c.op.SetTaskError(t.ID, err.Error())
+			slog.Warn("brushflow RunSelect failed", "task", t.ID, "err", err)
+			if e := c.op.SetTaskError(t.ID, err.Error()); e != nil {
+				slog.Warn("brushflow SetTaskError failed", "task", t.ID, "err", e)
+			}
 		}
 	}
 }
@@ -64,7 +68,10 @@ func (c *BrushFlowChain) RunAllSweep(ctx context.Context) {
 	}
 	for _, t := range tasks {
 		if err := c.RunSweep(ctx, t.ID); err != nil {
-			_ = c.op.SetTaskError(t.ID, err.Error())
+			slog.Warn("brushflow RunSweep failed", "task", t.ID, "err", err)
+			if e := c.op.SetTaskError(t.ID, err.Error()); e != nil {
+				slog.Warn("brushflow SetTaskError failed", "task", t.ID, "err", e)
+			}
 		}
 	}
 }

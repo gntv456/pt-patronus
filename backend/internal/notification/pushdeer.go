@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -47,6 +48,9 @@ func (p *PushDeer) Send(ctx context.Context, msg Message) error {
 		"desp":    desp,
 		"type":    "text",
 	})
+	if err := assertNotifyURL(ctx, "pushdeer", p.server+"/message/push"); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.server+"/message/push", bytes.NewReader(payload))
 	if err != nil {
 		return err
@@ -57,8 +61,21 @@ func (p *PushDeer) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("pushdeer: status %d", resp.StatusCode)
+		return fmt.Errorf("pushdeer: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（PushDeer 约定 code=0 才算成功，失败在 error/msg 字段）。
+	var be struct {
+		Code  int    `json:"code"`
+		Msg   string `json:"msg"`
+		Error string `json:"error"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+		if be.Msg != "" {
+			return fmt.Errorf("pushdeer: code %d: %s", be.Code, be.Msg)
+		}
+		return fmt.Errorf("pushdeer: code %d: %s", be.Code, be.Error)
 	}
 	return nil
 }

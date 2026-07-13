@@ -73,6 +73,12 @@ func (q *QQ) Send(ctx context.Context, msg Message) error {
 	if q.appID == "" || q.appSecret == "" {
 		return fmt.Errorf("qq: app_id or app_secret empty")
 	}
+	if err := assertNotifyURL(ctx, "qq", q.tokenURL); err != nil {
+		return err
+	}
+	if err := assertNotifyURL(ctx, "qq", q.apiBase); err != nil {
+		return err
+	}
 	target, isGroup := q.resolveTarget()
 	if target == "" {
 		return fmt.Errorf("qq: no recipient (set qq openid or group_openid)")
@@ -132,9 +138,31 @@ func qqBuildMarkdown(title, text, link string) string {
 		parts = append(parts, qqEscapeMarkdown(text))
 	}
 	if link != "" {
-		parts = append(parts, "[查看详情]("+link+")")
+		if l := qqSafeLink(link); l != "" {
+			parts = append(parts, "[查看详情]("+l+")")
+		}
 	}
 	return strings.Join(parts, "\n\n")
+}
+
+// qqSafeLink 仅放行 http/https 链接，防 javascript:/data:/vbscript: 等协议在
+// QQ Markdown [文字](url) 中触发客户端 XSS。非法协议丢弃（渲染为无链接，无害）。
+func qqSafeLink(link string) string {
+	l := strings.ToLower(strings.TrimSpace(link))
+	if strings.HasPrefix(l, "http://") || strings.HasPrefix(l, "https://") {
+		return strings.TrimSpace(link)
+	}
+	return ""
+}
+
+// qqErrBody 截断 QQ 接口响应体用于错误信息：防超大 body 灌日志/返回前端，
+// 同时限制潜在敏感字段（access_token 片段等）的泄露面。
+func qqErrBody(b []byte) string {
+	const max = 200
+	if len(b) > max {
+		return string(b[:max]) + "…"
+	}
+	return string(b)
 }
 
 // qqBuildPlain 组装纯文本回退：【标题】+ 正文 + link。
@@ -181,7 +209,7 @@ func (q *QQ) accessToken(ctx context.Context) (string, error) {
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return "", fmt.Errorf("token http %d: %s", resp.StatusCode, string(raw))
+		return "", fmt.Errorf("token http %d: %s", resp.StatusCode, qqErrBody(raw))
 	}
 	var out struct {
 		AccessToken string `json:"access_token"`
@@ -191,7 +219,7 @@ func (q *QQ) accessToken(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("token decode: %w", err)
 	}
 	if out.AccessToken == "" {
-		return "", fmt.Errorf("token empty: %s", string(raw))
+		return "", fmt.Errorf("token empty: %s", qqErrBody(raw))
 	}
 	expires := qqParseExpiresIn(out.ExpiresIn, 7200)
 
@@ -238,7 +266,7 @@ func (q *QQ) postMessage(ctx context.Context, token, target string, isGroup bool
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("http %d: %s", resp.StatusCode, string(raw))
+		return fmt.Errorf("http %d: %s", resp.StatusCode, qqErrBody(raw))
 	}
 	// HTTP 200 仍可能携带业务错误（code != 0）。
 	var be qqError

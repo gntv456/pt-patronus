@@ -16,22 +16,28 @@ import (
 // EventToolResult 跳过；EventDone→收尾。
 func StreamAnthropic(w http.ResponseWriter, model string, events <-chan llm.Event) error {
 	flusher, _ := w.(http.Flusher)
-	writeEv := func(evType string, payload map[string]any) {
+	writeEv := func(evType string, payload map[string]any) error {
 		payload["type"] = evType
 		b, _ := json.Marshal(payload)
-		fmt.Fprintf(w, "event: %s\ndata: %s\n\n", evType, b)
+		// 客户端断开后写失败：返回 error 让主循环停止消费事件流。
+		if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", evType, b); err != nil {
+			return err
+		}
 		if flusher != nil {
 			flusher.Flush()
 		}
+		return nil
 	}
 
-	writeEv("message_start", map[string]any{
+	if err := writeEv("message_start", map[string]any{
 		"message": map[string]any{
 			"id": oaChatID, "type": "message", "role": "assistant",
 			"model": model, "content": []any{}, "stop_reason": nil,
 			"usage": map[string]any{"input_tokens": 0, "output_tokens": 0},
 		},
-	})
+	}); err != nil {
+		return nil // 客户端在首事件前就断开
+	}
 
 	const (
 		blkNone = iota
@@ -80,10 +86,12 @@ func StreamAnthropic(w http.ResponseWriter, model string, events <-chan llm.Even
 				openBlock("text")
 				curBlock = blkText
 			}
-			writeEv("content_block_delta", map[string]any{
+			if err := writeEv("content_block_delta", map[string]any{
 				"index": curIdx,
 				"delta": map[string]any{"type": "text_delta", "text": ev.Text},
-			})
+			}); err != nil {
+				return nil // 客户端断开：非服务端错误；agent 由 ctx 取消自行停止
+			}
 		case llm.EventReasoning:
 			if ev.Text == "" {
 				continue
@@ -93,20 +101,24 @@ func StreamAnthropic(w http.ResponseWriter, model string, events <-chan llm.Even
 				openBlock("thinking")
 				curBlock = blkThinking
 			}
-			writeEv("content_block_delta", map[string]any{
+			if err := writeEv("content_block_delta", map[string]any{
 				"index": curIdx,
 				"delta": map[string]any{"type": "thinking_delta", "thinking": ev.Text},
-			})
+			}); err != nil {
+				return nil
+			}
 		case llm.EventToolCall:
 			closeBlock()
 			idx := nextIdx
 			nextIdx++
-			writeEv("content_block_start", map[string]any{
+			if err := writeEv("content_block_start", map[string]any{
 				"index": idx,
 				"content_block": map[string]any{
 					"type": "tool_use", "id": ev.ToolCall.ID, "name": ev.ToolCall.Name, "input": map[string]any{},
 				},
-			})
+			}); err != nil {
+				return nil
+			}
 			writeEv("content_block_delta", map[string]any{
 				"index": idx,
 				"delta": map[string]any{"type": "input_json_delta", "partial_json": ev.ToolCall.Arguments},

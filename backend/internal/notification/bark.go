@@ -35,6 +35,9 @@ func (b *Bark) Send(ctx context.Context, msg Message) error {
 	}
 	payload, _ := json.Marshal(map[string]string{"title": msg.Title, "body": msg.Body})
 	url := b.server + "/" + b.deviceKey
+	if err := assertNotifyURL(ctx, "bark", url); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return err

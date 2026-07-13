@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -48,7 +49,10 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("openai HTTP %d: %s", resp.StatusCode, truncate(string(b), 300))
+		// 上游错误体可能回显凭据片段/内网路径：仅落服务端日志，对外 error 只带状态码，
+		// 避免经 agent.EventError 透传到前端 SSE / 外部网关客户端。
+		log.Printf("llm/openai upstream error HTTP %d: %s", resp.StatusCode, truncate(string(b), 300))
+		return nil, fmt.Errorf("openai upstream HTTP %d", resp.StatusCode)
 	}
 
 	out := make(chan Event, 32)

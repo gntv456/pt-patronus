@@ -175,6 +175,9 @@ func (g LongPTWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, b
 	if count < 1 {
 		count = 1
 	}
+	if count > maxMultiCount {
+		count = maxMultiCount
+	}
 	return g.draw(ctx, hc, baseURL, cr, count)
 }
 

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -66,7 +67,9 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 	if resp.StatusCode != 200 {
 		b, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		return nil, fmt.Errorf("anthropic HTTP %d: %s", resp.StatusCode, truncate(string(b), 300))
+		// 上游错误体可能回显凭据片段/内网路径：仅落服务端日志，对外 error 只带状态码。
+		log.Printf("llm/anthropic upstream error HTTP %d: %s", resp.StatusCode, truncate(string(b), 300))
+		return nil, fmt.Errorf("anthropic upstream HTTP %d", resp.StatusCode)
 	}
 
 	out := make(chan Event, 32)

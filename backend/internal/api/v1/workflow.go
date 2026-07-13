@@ -247,7 +247,10 @@ func (h *WorkflowHandler) Reset(c *gin.Context) {
 	if !ok {
 		return
 	}
-	_ = h.ch.Reset(id)
+	if err := h.ch.Reset(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"reset": id})
 }
 

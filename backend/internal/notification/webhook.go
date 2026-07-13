@@ -27,6 +27,9 @@ func (w *Webhook) Send(ctx context.Context, msg Message) error {
 	if w.url == "" {
 		return fmt.Errorf("webhook: url empty")
 	}
+	if err := assertNotifyURL(ctx, "webhook", w.url); err != nil {
+		return err
+	}
 	payload, _ := json.Marshal(msg)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.url, bytes.NewReader(payload))
 	if err != nil {

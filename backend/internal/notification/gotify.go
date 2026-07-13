@@ -42,6 +42,9 @@ func (g *Gotify) Send(ctx context.Context, msg Message) error {
 		"message":  text,
 		"priority": 5,
 	})
+	if err := assertNotifyURL(ctx, "gotify", g.server+"/message?token="+g.token); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, g.server+"/message?token="+g.token, bytes.NewReader(payload))
 	if err != nil {
 		return err

@@ -216,21 +216,25 @@ func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}
 				}
 				switch newSt {
 				case string(assessment.StatusCompleted):
-					_ = c.notice.Notice(ctx, notice.Input{
+					if e := c.notice.Notice(ctx, notice.Input{
 						Source: notice.SourceAssessPass,
 						Key:    fmt.Sprintf("assess:%d:%s:pass", s.ID, t.Name),
 						Title:  "考核完成：" + s.Name,
 						Body:   t.Name + " 已完成",
 						Level:  "success",
-					}, true)
+					}, true); e != nil {
+						slog.Warn("assessment notice failed", "site", s.ID, "task", t.Name, "event", "pass", "err", e)
+					}
 				case string(assessment.StatusFailed):
-					_ = c.notice.Notice(ctx, notice.Input{
+					if e := c.notice.Notice(ctx, notice.Input{
 						Source: notice.SourceAssessFail,
 						Key:    fmt.Sprintf("assess:%d:%s:fail", s.ID, t.Name),
 						Title:  "考核失败：" + s.Name,
 						Body:   t.Name + " 未通过",
 						Level:  "danger",
-					}, true)
+					}, true); e != nil {
+						slog.Warn("assessment notice failed", "site", s.ID, "task", t.Name, "event", "fail", "err", e)
+					}
 				}
 			}
 		}

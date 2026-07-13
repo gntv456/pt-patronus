@@ -66,6 +66,9 @@ func (UbWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseURL
 	if count < 1 {
 		count = 1
 	}
+	if count > maxMultiCount {
+		count = maxMultiCount
+	}
 	return UbWheelGame{}.draw(ctx, hc, baseURL, cr, count)
 }
 
@@ -126,6 +129,9 @@ func (LuckyDrawWheelGame) Play(ctx context.Context, hc *httpclient.Client, baseU
 func (LuckyDrawWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, count int) (*PlayResult, error) {
 	if count < 1 {
 		count = 1
+	}
+	if count > maxMultiCount {
+		count = maxMultiCount
 	}
 	m, err := luckyDrawPost(ctx, hc, baseURL, "plugin/lucky-draw-bulk", cr.Cookie, map[string]any{"option": count})
 	if err != nil || m == nil {
@@ -283,6 +289,9 @@ func (MarchWheelGame) Play(ctx context.Context, hc *httpclient.Client, baseURL s
 
 // PlayMulti 连抽：March spin 端点单次即返回 results 数组（站点自身聚合）；直接返回其结果。
 func (MarchWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, count int) (*PlayResult, error) {
+	if count > maxMultiCount {
+		count = maxMultiCount
+	}
 	return MarchWheelGame{}.spin(ctx, hc, baseURL, cr)
 }
 
@@ -345,6 +354,9 @@ func (TangptLotteryGame) Play(ctx context.Context, hc *httpclient.Client, baseUR
 }
 
 func (TangptLotteryGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, count int) (*PlayResult, error) {
+	if count > maxMultiCount {
+		count = maxMultiCount
+	}
 	return TangptLotteryGame{}.draw(ctx, hc, baseURL, cr, count)
 }
 

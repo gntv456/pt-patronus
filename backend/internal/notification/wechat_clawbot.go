@@ -74,6 +74,9 @@ func (w *WeChatClawBot) Send(ctx context.Context, msg Message) error {
 		w.baseURL + "/ilink/bot/sendmessage",
 		w.baseURL + "/ilink/bot/sendmessage?bot_type=3",
 	}
+	if err := assertNotifyURL(ctx, "wechat_clawbot", urls[0]); err != nil {
+		return err
+	}
 	var lastErr error
 	for _, body := range candidates {
 		for _, u := range urls {

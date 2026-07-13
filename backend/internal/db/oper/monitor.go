@@ -191,14 +191,16 @@ func (o *MonitorOper) Get(id uint) (*models.MonitorTarget, error) {
 	return &t, err
 }
 
-// Delete 删除（连带删快照/告警）。
+// Delete 删除（连带删快照/告警，单事务保证不残留孤儿行；对齐 RssOper/WorkflowOper 写法）。
 func (o *MonitorOper) Delete(id uint) error {
-	if err := o.db.Delete(&models.MonitorTarget{}, id).Error; err != nil {
-		return err
-	}
-	o.db.Where("target_id = ?", id).Delete(&models.MetricSnapshot{})
-	o.db.Where("target_id = ?", id).Delete(&models.MonitorAlert{})
-	return nil
+	return o.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&models.MonitorTarget{}, id).Error; err != nil {
+			return err
+		}
+		tx.Where("target_id = ?", id).Delete(&models.MetricSnapshot{})
+		tx.Where("target_id = ?", id).Delete(&models.MonitorAlert{})
+		return nil
+	})
 }
 
 // Credentials 解密返回凭据（无凭据时字段为空，不报错）。
@@ -295,6 +297,8 @@ func (o *MonitorOper) ensureCredentialExists(id uint) error {
 }
 
 // RecordSnapshot 写快照并更新 target 状态；对比上次快照算网络速率（service 委托）。
+// 返回持久化错误（而非恒 nil）：快照落库 / target 状态更新失败时让调用方可感知并记录。
+// collectErr（采集错误）已写入 last_error 字段，不影响此处返回的持久化错误。
 func (o *MonitorOper) RecordSnapshot(t *models.MonitorTarget, m monitor.Metrics, collectErr error) error {
 	now := time.Now()
 	online := m.Online && collectErr == nil
@@ -304,17 +308,22 @@ func (o *MonitorOper) RecordSnapshot(t *models.MonitorTarget, m monitor.Metrics,
 	snap := &models.MetricSnapshot{
 		TargetID: t.ID, SnapAt: now, Online: online, Metrics: monitor.MetricsJSON(m),
 	}
-	o.db.Create(snap)
+	var firstErr error
+	if err := o.db.Create(snap).Error; err != nil {
+		firstErr = fmt.Errorf("save snapshot: %w", err)
+	}
 	errMsg := ""
 	if collectErr != nil {
 		errMsg = truncateErr(collectErr.Error())
 	}
-	o.db.Model(t).Updates(map[string]any{
+	if err := o.db.Model(t).Updates(map[string]any{
 		"last_checked_at": now,
 		"last_error":      errMsg,
 		"last_online":     online,
-	})
-	return nil
+	}).Error; err != nil && firstErr == nil {
+		firstErr = fmt.Errorf("update target status: %w", err)
+	}
+	return firstErr
 }
 
 // computeNetRate 对比上一条快照的累计字节算收发速率。

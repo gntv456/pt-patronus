@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,12 +16,12 @@ import (
 
 // FlipEvent 站点 wss 推送的翻牌事件（归一化后转发前端；对齐站点 JS 的 d.type==='tileFlip'）。
 type FlipEvent struct {
-	Type      string  `json:"type"`                 // tileFlip | special
-	TileIndex int     `json:"tile_index,omitempty"`  // 被翻的格子 1..100
-	TierID    string  `json:"tier_id,omitempty"`     // 奖项 id
-	TierName  string  `json:"tier_name,omitempty"`   // 奖项名（站点 d.tier.name 或 d.tierId）
-	Player    string  `json:"player,omitempty"`      // 谁翻的（playerName）
-	EndReason string  `json:"end_reason,omitempty"`  // special=特等奖出现（新局）
+	Type      string `json:"type"`                 // tileFlip | special
+	TileIndex int    `json:"tile_index,omitempty"` // 被翻的格子 1..100
+	TierID    string `json:"tier_id,omitempty"`    // 奖项 id
+	TierName  string `json:"tier_name,omitempty"`  // 奖项名（站点 d.tier.name 或 d.tierId）
+	Player    string `json:"player,omitempty"`     // 谁翻的（playerName）
+	EndReason string `json:"end_reason,omitempty"` // special=特等奖出现（新局）
 }
 
 // flipBridgeDialer 上游 WS 拨号器（浏览器化 UA/Origin，过站点 CSWSH 校验）。
@@ -129,12 +130,27 @@ func pumpFlipBridge(ctx context.Context, baseURL, cookie string, ch chan<- FlipE
 	}
 }
 
-// ServeFlipBridge 维护一条到站点的 wss 连接，断开后自动重连（指数退避上限 30s），
+// flipBridgeConns 按 host 去重：同一 host 仅维护一条上游 WS 连接，重复调用复用 channel。
+var flipBridgeConns sync.Map // key: flipWSURL(baseURL) → value: chan FlipEvent
+
+// ServeFlipBridge 维护一条到站点 host 的 wss 连接，断开后自动重连（指数退避上限 30s），
 // 直到 ctx 取消。返回事件 channel（ctx 取消时关闭）。调用方只需读 channel。
+// 按 host 去重：同一 host 重复调用复用已有连接的 channel，避免每次都 go func() 启动新 WS。
 func ServeFlipBridge(ctx context.Context, baseURL, cookie string) <-chan FlipEvent {
+	key := flipWSURL(baseURL)
+	if v, ok := flipBridgeConns.Load(key); ok {
+		return v.(chan FlipEvent)
+	}
 	ch := make(chan FlipEvent, 16)
+	if actual, loaded := flipBridgeConns.LoadOrStore(key, ch); loaded {
+		// 并发下已有赢家建连，复用其 channel，丢弃本次新建的 ch。
+		return actual.(chan FlipEvent)
+	}
 	go func() {
-		defer close(ch)
+		defer func() {
+			flipBridgeConns.Delete(key)
+			close(ch)
+		}()
 		backoff := 2 * time.Second
 		for {
 			if ctx.Err() != nil {

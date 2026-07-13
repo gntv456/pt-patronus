@@ -360,6 +360,9 @@ func (NovaHDLuckyGame) PlayMulti(ctx context.Context, hc *httpclient.Client, bas
 	if count < 1 {
 		count = 1
 	}
+	if count > maxMultiCount {
+		count = maxMultiCount
+	}
 	return NovaHDLuckyGame{}.spin(ctx, hc, baseURL, cr, count)
 }
 

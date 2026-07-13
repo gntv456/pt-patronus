@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -52,6 +53,9 @@ func (t *Telegram) Send(ctx context.Context, msg Message) error {
 		base = "https://api.telegram.org"
 	}
 	url := base + "/bot" + t.token + "/sendMessage"
+	if err := assertNotifyURL(ctx, "telegram", url); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
 	if err != nil {
 		return err
@@ -62,8 +66,17 @@ func (t *Telegram) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("telegram: status %d", resp.StatusCode)
+		return fmt.Errorf("telegram: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（Telegram 约定 ok=true 才算成功，失败带 description）。
+	var be struct {
+		OK          bool   `json:"ok"`
+		Description string `json:"description"`
+	}
+	if json.Unmarshal(raw, &be) == nil && !be.OK {
+		return fmt.Errorf("telegram: %s", be.Description)
 	}
 	return nil
 }

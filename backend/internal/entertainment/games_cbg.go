@@ -95,6 +95,9 @@ func (CbgWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseUR
 	if count < 1 {
 		count = 1
 	}
+	if count > maxMultiCount {
+		count = maxMultiCount
+	}
 	return CbgWheelGame{}.draw(ctx, hc, baseURL, cr, count)
 }
 

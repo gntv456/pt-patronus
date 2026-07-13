@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -43,6 +44,9 @@ func (p *PushPlus) Send(ctx context.Context, msg Message) error {
 		"content":  content,
 		"template": "txt",
 	})
+	if err := assertNotifyURL(ctx, "pushplus", p.base+"/send"); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.base+"/send", bytes.NewReader(payload))
 	if err != nil {
 		return err
@@ -53,8 +57,17 @@ func (p *PushPlus) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("pushplus: status %d", resp.StatusCode)
+		return fmt.Errorf("pushplus: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（PushPlus 约定 code=200 才算成功，token 失效=900 等）。
+	var be struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.Code != 200 {
+		return fmt.Errorf("pushplus: code %d: %s", be.Code, be.Msg)
 	}
 	return nil
 }

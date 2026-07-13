@@ -66,7 +66,12 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 		_ = a.convs.Touch(convID)
 
 		// 2. 加载历史（含刚追加的 user）→ 统一消息
-		hist, _ := a.msgs.ListByConv(convID)
+		hist, err := a.msgs.ListByConv(convID)
+		if err != nil {
+			// 历史加载失败则不应继续：上下文缺失会让 LLM 只看到 system prompt 空答。
+			emit(out, llm.Event{Type: llm.EventError, Error: "加载历史消息失败：" + err.Error()})
+			return
+		}
 		firstTurn := len(hist) == 1
 		if firstTurn {
 			// 首条消息：先用截断兜底标题；首轮回合后 LLM 总结覆盖。
@@ -82,6 +87,14 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 
 		// 4. ReAct 循环
 		for iter := 0; iter < ac.MaxIterations; iter++ {
+			// 客户端断开（ctx 取消）则立即停止：避免继续调用计费 LLM 与执行写类工具，
+			// 并防止 out channel 因无人消费而阻塞悬挂 goroutine。
+			select {
+			case <-ctx.Done():
+				emit(out, llm.Event{Type: llm.EventError, Error: "对话已取消"})
+				return
+			default:
+			}
 			stream, err := provider.ChatStream(ctx, llm.Req{
 				Messages: msgs, Tools: toolSchemas,
 				Model: lc.Model, Temperature: lc.Temperature,
@@ -111,9 +124,17 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 			msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Content: content, ToolCalls: calls})
 			// 执行每个工具 → 回灌结果（UI/DB 存全量；LLM 上下文截断）
 			for _, tc := range calls {
-				full, err := a.tools.Exec(ctx, tc.Name, parseArgs(tc.Arguments))
-				if err != nil {
-					full = "ERROR: " + err.Error()
+				args, perr := parseArgs(tc.Arguments)
+				var full string
+				if perr != nil {
+					// 参数解析失败：回灌错误让模型重试，而非以零值参数执行副作用工具。
+					full = "ERROR: " + perr.Error()
+				} else {
+					var execErr error
+					full, execErr = a.tools.Exec(ctx, tc.Name, args)
+					if execErr != nil {
+						full = "ERROR: " + execErr.Error()
+					}
 				}
 				emit(out, llm.Event{Type: llm.EventToolResult, ToolCall: tc, Text: full}) // UI 看全量
 				_ = a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "tool", ToolCallID: tc.ID, Name: tc.Name, Content: full}) // DB 全量

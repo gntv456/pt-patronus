@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -24,6 +25,9 @@ func (d *DingTalk) Name() string { return "dingtalk" }
 func (d *DingTalk) Send(ctx context.Context, msg Message) error {
 	if d.url == "" {
 		return fmt.Errorf("dingtalk: url empty")
+	}
+	if err := assertNotifyURL(ctx, "dingtalk", d.url); err != nil {
+		return err
 	}
 	title, body, link := splitContent(msg)
 	text := strings.TrimSpace("### " + title + "\n\n" + body)
@@ -47,8 +51,17 @@ func (d *DingTalk) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("dingtalk: status %d", resp.StatusCode)
+		return fmt.Errorf("dingtalk: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（如 errcode=310000 关键词不匹配/频率限制）。
+	var be struct {
+		ErrCode int    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.ErrCode != 0 {
+		return fmt.Errorf("dingtalk: errcode %d: %s", be.ErrCode, be.ErrMsg)
 	}
 	return nil
 }

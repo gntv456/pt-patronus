@@ -23,3 +23,7 @@ func resolvePath(base, p string) string {
 	}
 	return path.Clean(baseAbs + "/" + strings.TrimLeft(cleaned, "/"))
 }
+
+func isResolvedStorageRoot(base, p string) bool {
+	return resolvePath(base, strings.TrimSpace(p)) == resolvePath(base, "/")
+}

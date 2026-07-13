@@ -140,9 +140,10 @@ def translate_lines(srt_text, cfg):
     bilingual = str(cfg.get("bilingual", "false")).lower() in ("1", "true", "yes", "on")
     if not base or not key:
         raise RuntimeError("翻译启用但未配置 openai_base_url / openai_api_key")
+    output_mode = "双语：每行译文后跟原文（译文\\n原文）。" if bilingual else "仅译文。"
     prompt = (
         f"你是专业字幕翻译。把下面 SRT 字幕翻译为「{target}」，保持序号与时间轴完全不变，"
-        f"只输出翻译后的 SRT。{'双语：每行译文后跟原文（译文\\n原文）。' if bilingual else '仅译文。'}"
+        f"只输出翻译后的 SRT。{output_mode}"
     )
     body = json.dumps({
         "model": model,

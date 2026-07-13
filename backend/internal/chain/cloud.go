@@ -133,7 +133,7 @@ func clampCloudPath(root, p string) string {
 
 // ---- STRM 规则 CRUD ----
 
-func (c *CloudChain) ListRules() ([]models.StrmRule, error)          { return c.ruleOp.List() }
+func (c *CloudChain) ListRules() ([]models.StrmRule, error) { return c.ruleOp.List() }
 func (c *CloudChain) CreateRule(in oper.StrmRuleInput) (*models.StrmRule, error) {
 	return c.ruleOp.Create(in)
 }
@@ -157,13 +157,13 @@ func (c *CloudChain) GenerateStrm(ctx context.Context, ruleID uint) (cloud.Gener
 	if err != nil {
 		return cloud.GenerateResult{}, err
 	}
-	cli, _, err := c.client(rule.DriveID)
+	cli, drive, err := c.client(rule.DriveID)
 	if err != nil {
 		return cloud.GenerateResult{}, err
 	}
 	return cloud.Generate(ctx, cli, cloud.GenerateOptions{
 		DriveID:   rule.DriveID,
-		CloudPath: rule.CloudPath,
+		CloudPath: clampCloudPath(drive.RootPath, rule.CloudPath),
 		OutputDir: rule.OutputDir,
 		MountRoot: rule.MountRoot,
 		Template:  rule.Template,
@@ -190,13 +190,13 @@ type GenerateInput struct {
 
 // GenerateInstant 即时生成 STRM（不持久化规则；仍 upsert 记录便于追溯删除）。
 func (c *CloudChain) GenerateInstant(ctx context.Context, in GenerateInput) (cloud.GenerateResult, error) {
-	cli, _, err := c.client(in.DriveID)
+	cli, drive, err := c.client(in.DriveID)
 	if err != nil {
 		return cloud.GenerateResult{}, err
 	}
 	return cloud.Generate(ctx, cli, cloud.GenerateOptions{
 		DriveID:   in.DriveID,
-		CloudPath: in.CloudPath,
+		CloudPath: clampCloudPath(drive.RootPath, in.CloudPath),
 		OutputDir: in.OutputDir,
 		MountRoot: in.MountRoot,
 		Template:  in.Template,

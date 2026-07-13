@@ -199,6 +199,9 @@ func (s *SMB) Mkdir(ctx context.Context, p string) error {
 // Rename 同目录改名（go-smb2 Share.Rename）。newName 经 sanitizeNewName 钳制，防
 // `name="../x"` 经 path.Join 折叠后上溯逃出 basePath 到 share 根。
 func (s *SMB) Rename(ctx context.Context, p, newName string) error {
+	if isResolvedStorageRoot(s.basePath, p) {
+		return fmt.Errorf("不允许重命名存储根目录")
+	}
 	share, cleanup, err := s.session(ctx)
 	if err != nil {
 		return err
@@ -218,6 +221,9 @@ func (s *SMB) Rename(ctx context.Context, p, newName string) error {
 
 // Move 跨目录改名（SMB Rename 支持同 share 内跨目录移动）。
 func (s *SMB) Move(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(s.basePath, src) {
+		return fmt.Errorf("不允许移动存储根目录")
+	}
 	share, cleanup, err := s.session(ctx)
 	if err != nil {
 		return err
@@ -234,6 +240,9 @@ func (s *SMB) Move(ctx context.Context, src, dstDir string) error {
 // Copy 手动读+写（go-smb2 无原生 copy）。源为目录时递归复制（与 local/agent/webdav 一致），
 // 避免原先对目录 share.Open 拿目录句柄 io.Copy 失败、且已在目标残留同名空文件的问题。
 func (s *SMB) Copy(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(s.basePath, src) {
+		return fmt.Errorf("不允许复制存储根目录")
+	}
 	share, cleanup, err := s.session(ctx)
 	if err != nil {
 		return err

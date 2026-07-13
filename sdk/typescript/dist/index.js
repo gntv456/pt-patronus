@@ -73,6 +73,23 @@ export class PTPHostClient {
     mediaSearch(keyword, year = 0) {
         return this.request('POST', '/media/search', { keyword, year }).then((r) => r.results ?? []);
     }
+    /** List host tools this plugin is permitted to call (GET /tools, self-describing). */
+    tools() {
+        return this.request('GET', '/tools').then((r) => r.tools ?? []);
+    }
+    /** Invoke a host tool by name (POST /tools/{name}). Permission gated by manifest declarations. */
+    call(name, input) {
+        return this.request('POST', `/tools/${encodeURIComponent(name)}`, { input: input ?? {} });
+    }
+    // ---- 核心域便捷方法（薄封装，等价于 call(name, {...})；未列出的工具请用 call）----
+    torrentsList(downloaderId) { return this.call('torrents_list', { downloader_id: downloaderId }); }
+    torrentsAdd(downloaderId, url, category = '') { return this.call('torrents_add', { downloader_id: downloaderId, url, category }); }
+    mediaserverList() { return this.call('mediaserver_list'); }
+    mediaserverLibraryScan(serverId, libraryId = '') { return this.call('mediaserver_library_scan', { server_id: serverId, library_id: libraryId }); }
+    subscribeList() { return this.call('subscribe_list'); }
+    /** Multi-channel notification (Bark/TG/QQ/WeChat/Webhook). Perm: notify:send. Differs from notice() (站内). */
+    sendNotification(title, body, level = 'info') { return this.call('send_notification', { title, body, level }); }
+    dashboardOverview() { return this.call('dashboard_overview'); }
     async request(method, path, body) {
         const response = await this.fetchImpl(`${this.context.base_url}${path}`, {
             method,
@@ -169,6 +186,14 @@ export class PTPPluginViewClient {
     /** Invoke a declared plugin action from the view (e.g. a dashboard fetching live data). */
     action(name, input) {
         return this.request('action.invoke', { action: name, input: input ?? {} });
+    }
+    /** List host tools via the view bridge (tool.list). Same source as GET /tools. */
+    tools() {
+        return this.request('tool.list').then((r) => r.tools ?? []);
+    }
+    /** Invoke a host tool via the view bridge (tool.call). Result unwrapped from {result:...}. */
+    call(name, input) {
+        return this.request('tool.call', { name, input: input ?? {} }).then((r) => r.result);
     }
     request(method, params) {
         const id = String(++this.sequence);

@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -38,19 +39,19 @@ type ccFakeRT struct {
 	notices []string
 }
 
-func (f *ccFakeRT) Config() map[string]any                  { return f.cfg }
+func (f *ccFakeRT) Config() map[string]any                         { return f.cfg }
 func (f *ccFakeRT) Log(level, ev, msg string, data map[string]any) {}
 func (f *ccFakeRT) Notice(ctx context.Context, in NoticeInput) error {
 	f.notices = append(f.notices, in.Title+":"+in.Level)
 	return nil
 }
-func (f *ccFakeRT) Publish(context.Context, string, map[string]any)  {}
-func (f *ccFakeRT) KVGet(string, any) error                          { return nil }
-func (f *ccFakeRT) KVSet(string, any) error                          { return nil }
-func (f *ccFakeRT) KVDelete(string) error                            { return nil }
-func (f *ccFakeRT) SiteList() []SiteRef                              { return nil }
-func (f *ccFakeRT) SiteCookie(uint) (string, error)                  { return "", nil }
-func (f *ccFakeRT) SetRuntimeConfig(string, any) error               { return nil }
+func (f *ccFakeRT) Publish(context.Context, string, map[string]any) {}
+func (f *ccFakeRT) KVGet(string, any) error                         { return nil }
+func (f *ccFakeRT) KVSet(string, any) error                         { return nil }
+func (f *ccFakeRT) KVDelete(string) error                           { return nil }
+func (f *ccFakeRT) SiteList() []SiteRef                             { return nil }
+func (f *ccFakeRT) SiteCookie(uint) (string, error)                 { return "", nil }
+func (f *ccFakeRT) SetRuntimeConfig(string, any) error              { return nil }
 
 // 注意：custom_command.runOne 期望的是 *plugins Runtime 接口（具体类型在 plugins 包）。
 // runOne 接收 Runtime（plugins 包内接口），ccFakeRT 实现之。
@@ -62,7 +63,11 @@ func TestCustomCommandRunOneSuccessAndFail(t *testing.T) {
 	if !ok.Succeeded || ok.ExitCode != 0 || !strings.Contains(ok.Output, "hello") {
 		t.Fatalf("success case bad: %+v", ok)
 	}
-	fail := p.runOne(context.Background(), rt, cmdItem{Name: "bad", Command: "exit 3"})
+	failCommand := "exit 3"
+	if runtime.GOOS == "windows" {
+		failCommand = "exit /b 3"
+	}
+	fail := p.runOne(context.Background(), rt, cmdItem{Name: "bad", Command: failCommand})
 	if fail.Succeeded || fail.ExitCode != 3 {
 		t.Fatalf("fail case bad: %+v", fail)
 	}
@@ -71,7 +76,11 @@ func TestCustomCommandRunOneSuccessAndFail(t *testing.T) {
 func TestCustomCommandRunOneTimeout(t *testing.T) {
 	p := &customCommandPlugin{}
 	rt := &ccFakeRT{cfg: map[string]any{"timeout": 1}}
-	r := p.runOne(context.Background(), rt, cmdItem{Name: "sleep", Command: "sleep 10", Timeout: 1})
+	sleepCommand := "sleep 10"
+	if runtime.GOOS == "windows" {
+		sleepCommand = "ping -n 6 127.0.0.1 >NUL"
+	}
+	r := p.runOne(context.Background(), rt, cmdItem{Name: "sleep", Command: sleepCommand, Timeout: 1})
 	if !r.TimedOut {
 		t.Fatalf("expect timeout, got %+v", r)
 	}

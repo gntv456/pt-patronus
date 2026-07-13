@@ -2,6 +2,7 @@ package filemanager
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/hxpt/ptpatronus/internal/agentrpc"
@@ -61,6 +62,9 @@ func (a *AgentBackend) Download(ctx context.Context, p string) (io.ReadCloser, e
 
 // Delete 删除文件/目录。
 func (a *AgentBackend) Delete(ctx context.Context, p string) error {
+	if isResolvedStorageRoot(a.basePath, p) {
+		return fmt.Errorf("不允许删除存储根目录")
+	}
 	c, err := a.client(ctx)
 	if err != nil {
 		return err
@@ -79,6 +83,9 @@ func (a *AgentBackend) Mkdir(ctx context.Context, p string) error {
 
 // Rename 改名（NewName 随 cmd 下发；agent 端 filepath.Base 钳制防注入路径）。
 func (a *AgentBackend) Rename(ctx context.Context, p, newName string) error {
+	if isResolvedStorageRoot(a.basePath, p) {
+		return fmt.Errorf("不允许重命名存储根目录")
+	}
 	c, err := a.client(ctx)
 	if err != nil {
 		return err
@@ -90,6 +97,9 @@ func (a *AgentBackend) Rename(ctx context.Context, p, newName string) error {
 
 // Move 移到 dstDir（DstDir 服务端 resolvePath 钳制 + agent 端 safePath 二次钳制）。
 func (a *AgentBackend) Move(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(a.basePath, src) {
+		return fmt.Errorf("不允许移动存储根目录")
+	}
 	c, err := a.client(ctx)
 	if err != nil {
 		return err
@@ -101,6 +111,9 @@ func (a *AgentBackend) Move(ctx context.Context, src, dstDir string) error {
 
 // Copy 复制到 dstDir。
 func (a *AgentBackend) Copy(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(a.basePath, src) {
+		return fmt.Errorf("不允许复制存储根目录")
+	}
 	c, err := a.client(ctx)
 	if err != nil {
 		return err

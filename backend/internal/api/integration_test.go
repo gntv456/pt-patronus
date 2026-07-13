@@ -234,6 +234,10 @@ func TestNonVIPLoginBlocked(t *testing.T) {
 // TestAccountLoginSuccess 好学账号登录（fake VIP）→ 200 + token → 受保护资源在 VIP 宽限内放行。
 func TestAccountLoginSuccess(t *testing.T) {
 	deps := newTestDeps(t)
+	legacyUser := models.User{Username: "u", HxptUID: "777", IsAdmin: false}
+	if err := deps.DB.Create(&legacyUser).Error; err != nil {
+		t.Fatal(err)
+	}
 	srv := httptest.NewServer(Build(deps))
 	defer srv.Close()
 
@@ -246,7 +250,14 @@ func TestAccountLoginSuccess(t *testing.T) {
 	if token == "" {
 		t.Fatal("no token")
 	}
+	user, _ := body["user"].(map[string]any)
+	if user["is_admin"] != true {
+		t.Fatalf("hxpt user is_admin = %v, want true", user["is_admin"])
+	}
 	if code, _ := do(t, srv, "GET", "/api/v1/sites", nil, token); code != 200 {
 		t.Fatalf("sites after account login = %d, want 200", code)
+	}
+	if code, _ := do(t, srv, "GET", "/api/v1/backup/export", nil, token); code != 200 {
+		t.Fatalf("admin endpoint after account login = %d, want 200", code)
 	}
 }

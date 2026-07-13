@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -160,7 +161,14 @@ func (p *customCommandPlugin) runAll(ctx context.Context, rt Runtime) []cmdResul
 	return results
 }
 
-// runOne 执行单条命令：sh -c <command>，带超时；超时则 kill 进程。
+func hostShellCommand(ctx context.Context, command string) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.CommandContext(ctx, "cmd.exe", "/D", "/S", "/C", command)
+	}
+	return exec.CommandContext(ctx, "sh", "-c", command)
+}
+
+// runOne 执行单条命令，使用宿主平台 shell，带超时；超时则 kill 进程。
 func (p *customCommandPlugin) runOne(ctx context.Context, rt Runtime, it cmdItem) cmdResult {
 	cfg := rt.Config()
 	timeout := it.Timeout
@@ -174,7 +182,7 @@ func (p *customCommandPlugin) runOne(ctx context.Context, rt Runtime, it cmdItem
 	defer cancel()
 
 	start := time.Now()
-	cmd := exec.CommandContext(cctx, "sh", "-c", it.Command)
+	cmd := hostShellCommand(cctx, it.Command)
 	if wd := strings.TrimSpace(pluginString(cfg["working_dir"])); wd != "" {
 		cmd.Dir = wd
 	}

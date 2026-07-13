@@ -249,7 +249,7 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 		u = models.User{
 			Username: username, HxptUID: hxptUID, HxptUsername: username,
 			VipLevel: 1, VipVerifiedAt: &now, HxptCookieEnc: cookieEnc,
-			IsAdmin: h.firstHxptUser(),
+			IsAdmin: true,
 		}
 		if err := h.db.Create(&u).Error; err != nil {
 			dbFail(c, "hxpt_user_create", err)
@@ -262,6 +262,7 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 		u.VipLevel = 1
 		u.VipVerifiedAt = &now
 		u.HxptCookieEnc = cookieEnc
+		u.IsAdmin = true
 		if u.Username == "" {
 			u.Username = username
 		}
@@ -280,13 +281,6 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 	}
 	audit(c, "hxpt_login", "ok", slog.String("hxpt_uid", hxptUID))
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
-}
-
-// firstHxptUser 报告是否尚无好学绑定用户（首个好学 VIP 用户成为 admin）。
-func (h *AuthHandler) firstHxptUser() bool {
-	var n int64
-	h.db.Model(&models.User{}).Where("hxpt_uid <> ''").Count(&n)
-	return n == 0
 }
 
 // ===== 登出（TokenVersion 失效） =====

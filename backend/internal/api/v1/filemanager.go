@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -255,6 +256,6 @@ func (h *FileStorageHandler) Copy(c *gin.Context) {
 // 作用于根会清空/搬空整个存储，故在 handler 入口拒绝（各 backend 另有纵深防护，
 // 防 AI 工具绕过 HTTP 直调 backend）。
 func isRootPath(p string) bool {
-	p = strings.TrimSpace(p)
-	return p == "" || p == "/" || strings.TrimRight(p, "/") == ""
+	p = strings.ReplaceAll(strings.TrimSpace(p), "\\", "/")
+	return path.Clean("/"+strings.TrimLeft(p, "/")) == "/"
 }

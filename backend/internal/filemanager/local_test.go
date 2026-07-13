@@ -319,6 +319,19 @@ func TestLocal_DeleteRoot_Rejected(t *testing.T) {
 	}
 }
 
+func TestLocal_RenameRootVariants_Rejected(t *testing.T) {
+	dir := t.TempDir()
+	backend, err := NewLocal(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, root := range []string{"/", "/.", "/..", `\\.`} {
+		if err := backend.Rename(context.Background(), root, "renamed"); err == nil {
+			t.Errorf("Rename(%q) should reject storage root", root)
+		}
+	}
+}
+
 // TestLocal_CopyIntoDescendant_Rejected 钉死目录复制/移动到自身后代必须被拒——
 // 否则 copyDir Walk 会撞刚 MkdirAll 出的 dst 子树，产生嵌套垃圾/重复拷贝。
 func TestLocal_CopyIntoDescendant_Rejected(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -138,9 +139,16 @@ func validateStrmOutputDir(dir string) error {
 		return fmt.Errorf("output_dir 非法（含 ..）: %s", dir)
 	}
 	sep := string(os.PathSeparator)
+	if volume := filepath.VolumeName(cleaned); volume != "" && cleaned == volume+sep {
+		return fmt.Errorf("output_dir 不允许为磁盘根目录: %s", cleaned)
+	}
 	for _, bad := range sensitiveStrmDirs {
 		normBad := filepath.Clean(bad)
-		if cleaned == normBad || strings.HasPrefix(cleaned, normBad+sep) {
+		candidate, blocked := cleaned, normBad
+		if runtime.GOOS == "windows" {
+			candidate, blocked = strings.ToLower(candidate), strings.ToLower(blocked)
+		}
+		if candidate == blocked || strings.HasPrefix(candidate, blocked+sep) {
 			return fmt.Errorf("output_dir 落在系统敏感目录，已拒绝: %s", cleaned)
 		}
 	}
@@ -180,10 +188,11 @@ func writeStrm(opts GenerateOptions, f File) (bool, string, error) {
 }
 
 // RenderTemplate 渲染 STRM 内容路径。可用变量：
-//   {mount}     挂载根（MountRoot）
-//   {cloudpath} 媒体在云盘的完整路径（/电影/X/a.mkv）
-//   {relpath}   扫描根下相对路径（含前导 /）
-//   {filename}  文件名（a.mkv）
+//
+//	{mount}     挂载根（MountRoot）
+//	{cloudpath} 媒体在云盘的完整路径（/电影/X/a.mkv）
+//	{relpath}   扫描根下相对路径（含前导 /）
+//	{filename}  文件名（a.mkv）
 func RenderTemplate(tmpl, mount, cloudpath, relpath, filename string) string {
 	out := tmpl
 	out = strings.ReplaceAll(out, "{mount}", mount)

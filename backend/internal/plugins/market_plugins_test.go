@@ -96,7 +96,7 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 
 	// Install ptp-library-scrape: its media:search permission (P3) must be accepted,
 	// and the host-side manifest validation must accept the new resource_access field (P1).
-	// ptp-cd2-assistant 触发 pip install clouddrive（best-effort）；pip 失败不阻断安装，
+	// ptp-cd2-assistant 触发 pip install python-clouddrive2（best-effort）；低于 Python 3.11 时失败不阻断安装，
 	// 只要注册成功即可。
 	for _, pid := range []string{"ptp-library-scrape", "ptp-cd2-assistant"} {
 		mp := filepath.Join(root, "market-plugins", pid, "plugin.json")

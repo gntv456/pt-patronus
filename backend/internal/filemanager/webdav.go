@@ -178,6 +178,9 @@ func (w *WebDAV) moveOrCopy(ctx context.Context, method, srcRel, dstRel string) 
 // Rename 同目录改名（WebDAV MOVE 到父目录下的 newName）。newName 经 sanitizeNewName 钳制，
 // 防 `name="a/b"` 把文件移进子目录或 `name="../x"` 越界（违反"同目录改名"契约）。
 func (w *WebDAV) Rename(ctx context.Context, p, newName string) error {
+	if isResolvedStorageRoot(w.basePath, p) {
+		return fmt.Errorf("不允许重命名存储根目录")
+	}
 	src := resolvePath(w.basePath, p)
 	name, err := sanitizeNewName(newName)
 	if err != nil {
@@ -189,6 +192,9 @@ func (w *WebDAV) Rename(ctx context.Context, p, newName string) error {
 
 // Move 移到 dstDir（保留文件名）。
 func (w *WebDAV) Move(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(w.basePath, src) {
+		return fmt.Errorf("不允许移动存储根目录")
+	}
 	srcRel := resolvePath(w.basePath, src)
 	dst := resolvePath(w.basePath, path.Join(normalizePath(resolvePath(w.basePath, dstDir)), path.Base(srcRel)))
 	return w.moveOrCopy(ctx, "MOVE", srcRel, dst)
@@ -196,6 +202,9 @@ func (w *WebDAV) Move(ctx context.Context, src, dstDir string) error {
 
 // Copy 复制到 dstDir（保留文件名）。
 func (w *WebDAV) Copy(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(w.basePath, src) {
+		return fmt.Errorf("不允许复制存储根目录")
+	}
 	srcRel := resolvePath(w.basePath, src)
 	dst := resolvePath(w.basePath, path.Join(normalizePath(resolvePath(w.basePath, dstDir)), path.Base(srcRel)))
 	return w.moveOrCopy(ctx, "COPY", srcRel, dst)
@@ -236,10 +245,10 @@ func parseMultiStatus(data []byte, base string) ([]Entry, error) {
 			name = path.Base(strings.TrimRight(decode(r.Href), "/"))
 		}
 		e := Entry{
-			Name:  name,
-			Path:  normalizePath(decode(r.Href)),
-			IsDir: prop.Resourcetype.Collection != nil || strings.HasSuffix(decode(r.Href), "/"),
-			Size:  prop.Size,
+			Name:    name,
+			Path:    normalizePath(decode(r.Href)),
+			IsDir:   prop.Resourcetype.Collection != nil || strings.HasSuffix(decode(r.Href), "/"),
+			Size:    prop.Size,
 			ModTime: parseHTTPDate(prop.Modified),
 		}
 		out = append(out, e)

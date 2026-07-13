@@ -254,6 +254,9 @@ func (r *Rclone) Mkdir(ctx context.Context, p string) error {
 
 // Rename 用 rclone moveto 改名（文件→文件，自动建父目录）。newName 经 sanitizeNewName 钳制。
 func (r *Rclone) Rename(ctx context.Context, p, newName string) error {
+	if isResolvedStorageRoot(r.rootDir, p) {
+		return fmt.Errorf("不允许重命名存储根目录")
+	}
 	src := r.resolve(p)
 	clamped := resolvePath(r.rootDir, p)
 	name, err := sanitizeNewName(newName)
@@ -267,6 +270,9 @@ func (r *Rclone) Rename(ctx context.Context, p, newName string) error {
 
 // Move 用 rclone moveto 移到 dstDir（保留文件名）。
 func (r *Rclone) Move(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(r.rootDir, src) {
+		return fmt.Errorf("不允许移动存储根目录")
+	}
 	srcR := r.resolve(src)
 	srcClamped := resolvePath(r.rootDir, src)
 	dst := r.resolve(path.Join(resolvePath(r.rootDir, dstDir), path.Base(srcClamped)))
@@ -277,6 +283,9 @@ func (r *Rclone) Move(ctx context.Context, src, dstDir string) error {
 // Copy 复制到 dstDir（保留文件名）。源为目录用 rclone copy（递归），文件用 copyto（单文件）——
 // copyto 对目录语义不明，原先一律 copyto 与 local/agent 的"递归复制目录树"契约不一致。
 func (r *Rclone) Copy(ctx context.Context, src, dstDir string) error {
+	if isResolvedStorageRoot(r.rootDir, src) {
+		return fmt.Errorf("不允许复制存储根目录")
+	}
 	srcClamped := resolvePath(r.rootDir, src)
 	srcR := r.resolve(src)
 	dst := r.resolve(path.Join(resolvePath(r.rootDir, dstDir), path.Base(srcClamped)))

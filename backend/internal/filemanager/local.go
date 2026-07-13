@@ -144,6 +144,9 @@ func (l *Local) Rename(ctx context.Context, p, newName string) error {
 	if err != nil {
 		return err
 	}
+	if filepath.Clean(full) == filepath.Clean(l.rootDir) {
+		return fmt.Errorf("不允许重命名存储根目录")
+	}
 	name, err := sanitizeNewName(newName)
 	if err != nil {
 		return err

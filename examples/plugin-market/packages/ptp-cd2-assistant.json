@@ -5,7 +5,7 @@
   "api_version": "1",
   "runtime": "external-http",
   "archive": "archives/ptp-cd2-assistant-0.1.0.zip",
-  "sha256": "b1914ca6b64044c3c90f652f8ab25c95745d91cab7e4891013e68b08a169a18e",
+  "sha256": "8008edb59575f8216876915a158d30405c7f42a0b393c4f43507784c60880a3e",
   "app_version": ">=0.1.0",
   "host_capabilities": [
     "host.runtime.external-http.command",
@@ -18,7 +18,7 @@
     "host.api.kv.write"
   ],
   "author": "PTPatronus Community",
-  "description": "\u5b9a\u65f6\u68c0\u67e5 CloudDrive2 \u5b9e\u4f8b\uff1a\u63a2\u6d4b\u4e0a\u4f20\u4efb\u52a1\u9519\u8bef/\u8d26\u53f7\u5931\u6548\u5e76\u901a\u77e5\uff1b\u63d0\u4f9b\u91cd\u542f\u3001\u67e5\u770b\u7cfb\u7edf\u4fe1\u606f\u3001\u63d0\u4ea4\u79bb\u7ebf\u4e0b\u8f7d\u7b49\u52a8\u4f5c\uff0c\u5e76\u5728\u63d2\u4ef6\u89c6\u56fe\u9875\u7528\u4eea\u8868\u76d8\u5c55\u793a CPU/\u5185\u5b58/\u4efb\u52a1/\u901f\u5ea6/\u5bb9\u91cf\u3002\u4f9d\u8d56 clouddrive \u5305\uff08\u5b89\u88c5\u65f6\u81ea\u52a8 pip \u88c5\uff09\u3002",
+  "description": "\u5b9a\u65f6\u68c0\u67e5 CloudDrive2 \u5b9e\u4f8b\uff1a\u63a2\u6d4b\u4e0a\u4f20\u4efb\u52a1\u9519\u8bef/\u8d26\u53f7\u5931\u6548\u5e76\u901a\u77e5\uff1b\u63d0\u4f9b\u91cd\u542f\u3001\u67e5\u770b\u7cfb\u7edf\u4fe1\u606f\u3001\u63d0\u4ea4\u79bb\u7ebf\u4e0b\u8f7d\u7b49\u52a8\u4f5c\uff0c\u5e76\u5728\u63d2\u4ef6\u89c6\u56fe\u9875\u7528\u4eea\u8868\u76d8\u5c55\u793a CPU/\u5185\u5b58/\u4efb\u52a1/\u901f\u5ea6/\u5bb9\u91cf\u3002\u4f9d\u8d56 python-clouddrive2\uff08\u8981\u6c42 Python 3.11+\uff0c\u5b89\u88c5\u65f6\u81ea\u52a8 pip \u5b89\u88c5\uff09\u3002",
   "license": "MIT",
   "keywords": [
     "clouddrive",
@@ -121,7 +121,7 @@
     ]
   },
   "requirements": [
-    "clouddrive"
+    "python-clouddrive2>=2.0.8.1.2"
   ],
-  "signature": "A1p+V+8NUh68JZgTkOg28lVxCFtRruk54Kjg2jG72t8IWoM4MXD86M/NuTk9o0fxlgbnwIeSjJ3HaB7Ca+uHDg=="
+  "signature": "75XYLAyhxIAx38OIATvt4814KmC7vkaViXIG8dWL2IZIiy/jokq+YmTec8t9Fde7AAE56yWCIVJy5+WNQYqSAA=="
 }

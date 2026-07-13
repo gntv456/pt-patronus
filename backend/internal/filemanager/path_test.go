@@ -26,3 +26,16 @@ func TestResolvePath(t *testing.T) {
 		}
 	}
 }
+
+func TestIsResolvedStorageRoot(t *testing.T) {
+	for _, input := range []string{"", "/", "/.", "/..", "///", `\\.`, "/media", "/media/.", " /./ "} {
+		if !isResolvedStorageRoot("/media", input) {
+			t.Errorf("%q should resolve to storage root", input)
+		}
+	}
+	for _, input := range []string{"/file", "/media/file", "../file"} {
+		if isResolvedStorageRoot("/media", input) {
+			t.Errorf("%q should not resolve to storage root", input)
+		}
+	}
+}

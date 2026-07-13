@@ -583,11 +583,16 @@ def sign_payload(private_key_source: str, payload: bytes) -> tuple[str, str]:
     return encode_base64(public_key), encode_base64(signature)
 
 
+def write_text_lf(path: Path, content: str) -> None:
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(content)
+
+
 def write_key_text(path: Path, content: str, force: bool) -> None:
     if path.exists() and not force:
         raise SystemExit(f"refusing to overwrite existing key file: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content.rstrip() + "\n", encoding="utf-8")
+    write_text_lf(path, content.rstrip() + "\n")
     if os.name != "nt":
         try:
             os.chmod(path, 0o600)
@@ -731,13 +736,13 @@ def load_market_index(path: Path) -> dict[str, Any]:
 
 def write_market_index(path: Path, index: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(path, json.dumps(index, indent=2) + "\n")
 
 
 def write_json_output(path: str, payload: dict[str, Any]) -> Path:
     target = Path(path).resolve()
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    write_text_lf(target, json.dumps(payload, indent=2) + "\n")
     return target
 
 

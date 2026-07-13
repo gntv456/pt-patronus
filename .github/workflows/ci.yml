@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  push:
+    branches: [main, master]
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -31,8 +34,50 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm install --no-audit --no-fund
+      - run: npm test
       - run: npm run typecheck   # vue-tsc 严格类型检查（vite build 用 esbuild 擦除类型，单独跑 typecheck 才能抓类型错误）
       - run: npm run build
+
+  backend-windows:
+    name: Backend Windows
+    runs-on: windows-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+      - run: go test ./internal/plugins ./internal/filemanager ./internal/cloud ./internal/api/... -short -timeout 20m
+      - run: go build ./...
+
+  plugin-sdk:
+    name: Plugin SDK and Market
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Test Python SDK
+        working-directory: sdk/python
+        run: PYTHONPATH=src python -m unittest discover -s test -v
+      - name: Validate plugin sources and manifests
+        run: |
+          export PYTHONPATH="$PWD/sdk/python/src"
+          python -m py_compile market-plugins/*/*.py
+          for plugin in market-plugins/*; do
+            python -m ptpatronus_plugin_sdk.pluginctl validate "$plugin"
+          done
+          python -m ptpatronus_plugin_sdk.pluginctl market aggregate \
+            --packages-dir examples/plugin-market/packages \
+            --public-key examples/plugin-market/keys/plugin-market.public.key \
+            --archives-dir examples/plugin-market/archives \
+            --out "$RUNNER_TEMP/plugin-market.json"
+      - name: Test TypeScript SDK
+        working-directory: sdk/typescript
+        run: npm install --no-package-lock --no-audit --no-fund && npm test && npm run build
 
   flutter:
     name: Client (Flutter)
@@ -47,3 +92,16 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+
+  flutter-windows:
+    name: Client Windows Build
+    runs-on: windows-latest
+    defaults: { run: { working-directory: mobile } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.x'
+          cache: true
+      - run: flutter pub get
+      - run: flutter build windows --debug

@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -12,8 +14,8 @@ type fakeClient struct {
 	tree map[string][]File
 }
 
-func (f *fakeClient) Type() string                       { return "fake" }
-func (f *fakeClient) Test(context.Context) (string, error) { return "fake", nil }
+func (f *fakeClient) Type() string                          { return "fake" }
+func (f *fakeClient) Test(context.Context) (string, error)  { return "fake", nil }
 func (f *fakeClient) Quota(context.Context) (*Quota, error) { return &Quota{}, nil }
 func (f *fakeClient) List(_ context.Context, dir string) ([]File, error) {
 	return f.tree[cleanCloudPath(dir)], nil
@@ -126,5 +128,25 @@ func TestWriteStrmRejectsTraversal(t *testing.T) {
 	// 确认没有文件被写到 OutputDir 之外。
 	if _, err := os.Stat(filepath.Join(tmp, "..", "pwned.mkv.strm")); err == nil {
 		t.Fatal("traversal wrote a file outside OutputDir")
+	}
+}
+
+func TestValidateStrmOutputDirRejectsFilesystemRoots(t *testing.T) {
+	root := string(os.PathSeparator)
+	if runtime.GOOS == "windows" {
+		root = filepath.VolumeName(t.TempDir()) + string(os.PathSeparator)
+	}
+	if err := validateStrmOutputDir(root); err == nil {
+		t.Fatalf("filesystem root %q should be rejected", root)
+	}
+}
+
+func TestValidateStrmOutputDirWindowsCaseInsensitive(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows path semantics")
+	}
+	path := strings.ToLower(`C:\Windows\Temp\ptpatronus`)
+	if err := validateStrmOutputDir(path); err == nil {
+		t.Fatalf("case-variant sensitive path %q should be rejected", path)
 	}
 }

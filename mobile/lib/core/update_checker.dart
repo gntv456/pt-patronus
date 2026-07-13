@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatf
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ptpatronus/api/system.dart';
+import 'package:ptpatronus/core/version.dart';
 import 'apk_downloader.dart';
 
 /// 当前客户端对应的更新清单 platform key：docker(android 兜底) / android / ios / macos / windows。
@@ -21,14 +22,28 @@ String currentUpdatePlatform() {
   }
 }
 
-/// 检查在线更新。有新版本：
-///   - Android 且 downloadUrl 是 APK 直链 → 应用内 OTA（下载 + sha256 校验 + 系统安装，pt_mate 式）
-///   - 否则（桌面 / 非直链）→ 外链浏览器下载（兜底）
-/// silent=true 时不提示「已是最新」（启动场景）；设置页手动检查传 silent=false。
+/// 检查在线更新（客户端 + 后端双端状态）。
+///   - 客户端：发本机版本号，按客户端平台对比清单；有新版则：
+///     · Android 且 downloadUrl 是 APK 直链 → 应用内 OTA（下载 + sha256 校验 + 系统安装，pt_mate 式）
+///     · 否则（桌面 / 非直链）→ 外链浏览器下载（兜底）
+///   - 后端：手动检查（silent=false）时顺带查后端版本是否落后，提示在服务端更新。
+/// silent=true（启动场景）仅查客户端、不打扰「均最新」；设置页手动检查传 silent=false。
 Future<void> checkAndPromptUpdate(BuildContext context, {bool silent = false}) async {
-  UpdateCheckResult r;
+  UpdateCheckResult clientR;
+  UpdateCheckResult? backendR;
   try {
-    r = await SystemApi.checkUpdate(platform: currentUpdatePlatform());
+    final clientVer = await getClientVersion();
+    final futures = <Future<UpdateCheckResult>>[
+      SystemApi.checkUpdate(platform: currentUpdatePlatform(), version: clientVer),
+    ];
+    // 手动检查才顺带查后端状态（启动静默检查保持单次请求，省一次网络）。
+    if (!silent) {
+      // version 空→后端用自身版本自检；platform=docker 取服务端产物（仅看 hasUpdate）。
+      futures.add(SystemApi.checkUpdate(platform: 'docker'));
+    }
+    final results = await Future.wait(futures);
+    clientR = results[0];
+    if (results.length > 1) backendR = results[1];
   } catch (_) {
     if (!silent && context.mounted) {
       ScaffoldMessenger.of(context)
@@ -37,19 +52,56 @@ Future<void> checkAndPromptUpdate(BuildContext context, {bool silent = false}) a
     return;
   }
   if (!context.mounted) return;
-  if (!r.hasUpdate) {
+
+  final latest = clientR.latestVersion;
+  final backendHasUpdate = backendR?.hasUpdate ?? false;
+
+  // 两端都最新。
+  if (!clientR.hasUpdate && !backendHasUpdate) {
     if (!silent) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('已是最新版本')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(latest.isNotEmpty ? '客户端与后端均为最新版本 v$latest' : '已是最新版本')));
     }
     return;
   }
-  if (!context.mounted) return;
-  if (_canInAppOta(r)) {
-    _showOtaDialog(context, r);
-  } else {
-    _showExternalDialog(context, r);
+
+  // 客户端有新版 → 客户端更新流程；后端也落后时先 SnackBar 提示（OTA 对话框聚焦客户端）。
+  if (clientR.hasUpdate) {
+    if (backendHasUpdate && context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('另：后端也有新版，需在服务端更新')));
+    }
+    if (!context.mounted) return;
+    if (_canInAppOta(clientR)) {
+      _showOtaDialog(context, clientR);
+    } else {
+      _showExternalDialog(context, clientR);
+    }
+    return;
   }
+
+  // 仅后端有新版（客户端已是最新）。
+  if (!context.mounted) return;
+  _showBackendOnlyDialog(context, latest);
+}
+
+/// 仅后端有新版：客户端已是最新，提示后端在服务端更新（客户端无法代为更新后端）。
+void _showBackendOnlyDialog(BuildContext context, String latest) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('后端有新版本'),
+      content: Text(latest.isNotEmpty
+          ? '客户端已是最新；后端服务有新版本 v$latest，请在服务端执行更新（如 docker compose pull && up -d）。'
+          : '客户端已是最新；后端服务有新版本，请在服务端执行更新。'),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('知道了'),
+        ),
+      ],
+    ),
+  );
 }
 
 bool _canInAppOta(UpdateCheckResult r) {

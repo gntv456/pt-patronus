@@ -62,16 +62,18 @@ func (h *SystemHandler) ClearLogs(c *gin.Context) {
 }
 
 // UpdateCheck 在线更新检查。?platform=docker|android|windows|agent-linux-* 决定返回哪个
-// 平台的产物信息；当前版本默认取内置 version.Version（服务端自检场景）。需登录。
+// 平台的产物信息；?version= 透传客户端版本（客户端自检：按客户端版本对比清单），
+// 留空则取内置 version.Version（服务端自检场景）。需登录。
 func (h *SystemHandler) UpdateCheck(c *gin.Context) {
 	if h.update == nil {
 		c.JSON(http.StatusOK, gin.H{"hasUpdate": false})
 		return
 	}
 	platform := c.DefaultQuery("platform", update.PlatformDocker)
+	clientVer := c.Query("version") // 客户端自检透传；空→Check 内部默认取服务端版本
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
 	defer cancel()
-	res, err := h.update.Check(ctx, platform, "")
+	res, err := h.update.Check(ctx, platform, clientVer)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "检查更新失败", "detail": err.Error()})
 		return

@@ -50,6 +50,8 @@ dependencies:
   file_picker: ^8.1.4
   # 系统分享（备份导出存盘到「文件」/云盘/其它 app；并重导出 XFile）
   share_plus: ^10.0.0
+  # 读取本机安装的客户端版本（pubspec version）显示客户端版本号，与后端版本区分
+  package_info_plus: ^9.0.0
   # 在线更新：浏览器打开下载页（外链兜底，downloadUrl 非直链/桌面平台时）
   url_launcher: ^6.3.1
   # 在线更新应用内 OTA（pt_mate 式）：dio 下载 APK(进度/取消) + crypto sha256 校验

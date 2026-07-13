@@ -22,18 +22,23 @@ class AccountPage extends StatefulWidget {
 
 class _AccountPageState extends State<AccountPage> {
   bool _busy = false;
-  String _version = appVersion; // 离线兜底；运行时优先读后端 /system/info
+  String _clientVersion = appVersion; // 本机安装版本（package_info_plus，兜底 appVersion）
+  String _backendVersion = '-'; // 所连后端版本（/system/info）
 
   @override
   void initState() {
     super.initState();
-    // 版本号以后端为单一真源：运行时拉取，失败用本地兜底常量。
+    // 客户端版本：本机安装版本（package_info_plus），与所连后端无关。
+    getClientVersion().then((v) {
+      if (mounted) setState(() => _clientVersion = v);
+    });
+    // 后端版本：所连后端 /system/info 的 version（失败保留 '-'）。
     ApiClient()
         .get('/system/info')
         .then((m) {
           final v = m['version'] as String?;
           if (v != null && v.isNotEmpty && mounted) {
-            setState(() => _version = v);
+            setState(() => _backendVersion = v);
           }
         })
         .catchError((_) {});
@@ -121,8 +126,8 @@ class _AccountPageState extends State<AccountPage> {
     final u = ApiClient().user;
     final text = [
       'PTPatronus mobile',
-      'version: $_version',
-      'backend: ${ApiClient().baseUrl}',
+      'client: $_clientVersion',
+      'backend: $_backendVersion (${ApiClient().baseUrl})',
       'user: ${u?['username'] ?? u?['hxpt_username'] ?? '-'}',
       'admin: ${u?['is_admin'] == true}',
     ].join('\n');
@@ -198,42 +203,47 @@ class _AccountPageState extends State<AccountPage> {
                       );
                     },
                   ),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '版本 $_version',
+                        '客户端 v$_clientVersion · 后端 v$_backendVersion',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 12,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => checkAndPromptUpdate(context),
-                        child: const Text(
-                          '检查更新',
-                          style: TextStyle(color: Colors.blue, fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _showHelp(context),
-                        child: const Text(
-                          '使用帮助',
-                          style: TextStyle(color: Colors.blue, fontSize: 12),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _showFeedback(context),
-                        child: const Text(
-                          '问题反馈',
-                          style: TextStyle(color: Colors.blue, fontSize: 12),
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => checkAndPromptUpdate(context),
+                            child: const Text(
+                              '检查更新',
+                              style: TextStyle(color: Colors.blue, fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _showHelp(context),
+                            child: const Text(
+                              '使用帮助',
+                              style: TextStyle(color: Colors.blue, fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _showFeedback(context),
+                            child: const Text(
+                              '问题反馈',
+                              style: TextStyle(color: Colors.blue, fontSize: 12),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

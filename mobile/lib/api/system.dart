@@ -43,8 +43,16 @@ class UpdateCheckResult {
 /// 系统级 API：在线更新检查等。客户端经所连后端中转（/system/update/check），
 /// 不直连官方源（避墙、不泄露官方清单地址）。
 class SystemApi {
-  static Future<UpdateCheckResult> checkUpdate({String platform = 'android'}) async {
-    final m = await ApiClient().get('/system/update/check?platform=$platform');
+  static Future<UpdateCheckResult> checkUpdate({
+    String platform = 'android',
+    String? version, // 客户端版本；空则后端默认取服务端版本（服务端自检）
+  }) async {
+    var path =
+        '/system/update/check?platform=${Uri.encodeQueryComponent(platform)}';
+    if (version != null && version.isNotEmpty) {
+      path += '&version=${Uri.encodeQueryComponent(version)}';
+    }
+    final m = await ApiClient().get(path);
     return UpdateCheckResult.fromJson(m);
   }
 

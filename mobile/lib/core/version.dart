@@ -1,9 +1,28 @@
-/// 应用版本号 —— **离线兜底常量**，非权威来源。
+import 'package:package_info_plus/package_info_plus.dart';
+
+/// 客户端版本号。
 ///
-/// 权威版本号在后端 `backend/internal/version/version.go`，经 `GET /system/info`
-/// 暴露；前端/移动端运行时读取该值显示。本常量仅在后端不可达（离线/首次加载）时兜底，
-/// 因此**不必每次升版精确同步**——正常运行时显示的是后端的值。
+/// **客户端版本以本机安装包为准**（pubspec.yaml 的 `version:`，经 package_info_plus
+/// 运行时读取），与所连后端无关——一个客户端可能连不同后端，app 版本是其固有属性。
+/// 后端版本是另一回事（GET /system/info 的 version），二者各自独立更新，需分别显示。
 ///
-/// 唯一需要与后端保持一致的是发布构建元数据 `pubspec.yaml` 的 `version:`（影响
-/// Android versionCode / iOS build），那属于发布流程，与日常开发显示版本解耦。
+/// 下面的 `appVersion` 常量仅作 package_info 取值失败/未就绪时的同步兜底，应随 pubspec
+/// `version:` 同步维护；正常运行时 [getClientVersion] 读到的是真实安装版本。
 const String appVersion = '0.88.00';
+
+String? _cachedClientVersion;
+
+/// 客户端真实版本（package_info_plus，形如 "0.88.00"；失败回退 appVersion 常量）。
+/// 进程内缓存（安装版本运行期不变）。
+Future<String> getClientVersion() async {
+  final cached = _cachedClientVersion;
+  if (cached != null) return cached;
+  try {
+    final info = await PackageInfo.fromPlatform();
+    final v = info.version;
+    _cachedClientVersion = v.isNotEmpty ? v : appVersion;
+  } catch (_) {
+    _cachedClientVersion = appVersion;
+  }
+  return _cachedClientVersion!;
+}

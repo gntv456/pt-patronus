@@ -89,7 +89,8 @@ export const cloudApi = {
     http.put<StrmRule>(`/cloud/rules/${id}`, r).then((res) => res.data),
   removeRule: (id: number) => http.delete(`/cloud/rules/${id}`).then((r) => r.data),
   generateRule: (id: number) =>
-    http.post<StrmResult>(`/cloud/rules/${id}/generate`).then((r) => r.data),
+    // 递归生成 STRM 可能很久：不限时，覆盖 http 实例默认 15s。
+    http.post<StrmResult>(`/cloud/rules/${id}/generate`, null, { timeout: 0 }).then((r) => r.data),
   // 即时生成 STRM（文件页选中目录直接生成，不持久化为规则）。
   generate: (opts: {
     drive_id: number
@@ -99,8 +100,10 @@ export const cloudApi = {
     template?: string
     recursive?: boolean
     keep_ext?: boolean
-  }) => http.post<StrmResult>('/cloud/generate', opts).then((r) => r.data),
-  generateAll: () => http.post('/cloud/generate-all').then((r) => r.data),
+  }) =>
+    // 即时/递归生成 STRM 可能很久：不限时，覆盖 http 实例默认 15s。
+    http.post<StrmResult>('/cloud/generate', opts, { timeout: 0 }).then((r) => r.data),
+  generateAll: () => http.post('/cloud/generate-all', null, { timeout: 0 }).then((r) => r.data),
   syncSubscriptions: () => http.post('/cloud/sync-subscriptions').then((r) => r.data),
   // ---- STRM 记录 ----
   listRecords: (driveId?: number) =>

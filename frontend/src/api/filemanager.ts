@@ -42,6 +42,8 @@ export const fileApi = {
     form.append('file', file)
     return http
       .post(`/storages/${id}/upload`, form, {
+        // 大文件上传不限时：覆盖 http 实例默认 15s，否则慢网/大文件必超时失败。
+        timeout: 0,
         onUploadProgress: (ev) => {
           if (onProgress && ev.total) {
             onProgress(Math.round((ev.loaded / ev.total) * 100))

@@ -55,6 +55,11 @@ const strmDir = ref<FileEntry | null>(null)
 const strmForm = ref({ output_dir: '', mount_root: '', template: '', recursive: true, keep_ext: true })
 const strmLoading = ref(false)
 
+// 写操作防重复提交锁：执行中禁用/Loading 按钮，防止慢网连点重复创建/重命名/移动/复制。
+const submitting = ref(false)
+// 文件名非法字符（与 OS 保留字符对齐）：含其一即拒绝提交。
+const ILLEGAL_NAME_RE = /[\/\\:*?"<>|]/
+
 // ── 派生 ──
 const curFs = computed(() => (current.value?.kind === 'fs' ? current.value.fs : null))
 const curCloud = computed(() => (current.value?.kind === 'cloud' ? current.value.drive : null))
@@ -98,19 +103,25 @@ function agentName(id: number) {
 }
 
 async function probeAll() {
-  const next: Record<string, { state: ConnState; error?: string }> = {}
-  for (const it of list.value) {
-    const k = itemKey(it)
-    next[k] = { state: 'checking' }
-    const id = it.kind === 'fs' ? it.fs.id : it.drive.id
-    try {
-      const ok = it.kind === 'fs' ? (await fileApi.test(id)).ok : (await cloudApi.test(id)).ok
-      next[k] = ok ? { state: 'ok' } : { state: 'fail', error: '连接失败' }
-    } catch (e: unknown) {
-      next[k] = { state: 'fail', error: (e as Error).message }
-    }
-  }
-  statusMap.value = next
+  // 并行探测（串行在 5+ 存储时明显卡顿）；先标 checking 再合并结果，保留其余项既有状态。
+  const pending = { ...statusMap.value }
+  for (const it of list.value) pending[itemKey(it)] = { state: 'checking' }
+  statusMap.value = pending
+  const results = await Promise.all(
+    list.value.map(async (it): Promise<[string, { state: ConnState; error?: string }]> => {
+      const k = itemKey(it)
+      const id = it.kind === 'fs' ? it.fs.id : it.drive.id
+      try {
+        const ok = it.kind === 'fs' ? (await fileApi.test(id)).ok : (await cloudApi.test(id)).ok
+        return [k, ok ? { state: 'ok' } : { state: 'fail', error: '连接失败' }]
+      } catch (e: unknown) {
+        return [k, { state: 'fail', error: (e as Error).message }]
+      }
+    }),
+  )
+  const merged = { ...statusMap.value }
+  for (const [k, v] of results) merged[k] = v
+  statusMap.value = merged
 }
 
 async function testOne(it: StorageItem) {
@@ -214,15 +225,24 @@ function dlUrl(e: FileEntry) {
 
 // ── 写操作（仅 fs；只读后端模板隐藏入口）──
 async function doMkdir() {
-  if (!curFs.value || !mkdirName.value.trim()) return
+  if (!curFs.value || submitting.value) return
+  const name = mkdirName.value.trim()
+  if (!name) return
+  if (ILLEGAL_NAME_RE.test(name)) {
+    ElMessage.warning('名称不能包含 / \\ : * ? " < > | 等非法字符')
+    return
+  }
+  submitting.value = true
   try {
-    await fileApi.mkdir(curFs.value.id, path.value.replace(/\/$/, '') + '/' + mkdirName.value.trim())
+    await fileApi.mkdir(curFs.value.id, path.value.replace(/\/$/, '') + '/' + name)
     ElMessage.success('已新建')
     mkdirVisible.value = false
     mkdirName.value = ''
     await refresh()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '新建失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -254,14 +274,23 @@ function openRename(e: FileEntry) {
   renameVisible.value = true
 }
 async function doRename() {
-  if (!curFs.value || !renameTarget.value || !renameNewName.value.trim()) return
+  if (!curFs.value || !renameTarget.value || submitting.value) return
+  const name = renameNewName.value.trim()
+  if (!name) return
+  if (ILLEGAL_NAME_RE.test(name)) {
+    ElMessage.warning('名称不能包含 / \\ : * ? " < > | 等非法字符')
+    return
+  }
+  submitting.value = true
   try {
-    await fileApi.rename(curFs.value.id, renameTarget.value.path, renameNewName.value.trim())
+    await fileApi.rename(curFs.value.id, renameTarget.value.path, name)
     ElMessage.success('已重命名')
     renameVisible.value = false
     await refresh()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '重命名失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -297,7 +326,12 @@ async function delBatch() {
       ElMessage.error(`「${e.name}」删除失败：${(err as Error).message}`)
     }
   }
-  ElMessage.success(`已删除 ${ok} 项`)
+  // 全部失败时不弹 success（避免「已删除 0 项」误导），仅汇总错误。
+  if (ok > 0) {
+    ElMessage.success(`已删除 ${ok} 项`)
+  } else {
+    ElMessage.error('选中项全部删除失败')
+  }
   await refresh()
 }
 
@@ -332,21 +366,51 @@ function moveCopyUp() {
   refreshMoveCopy()
 }
 async function doMoveCopy() {
-  if (!curFs.value || !moveCopySources.value.length) return
+  if (!curFs.value || !moveCopySources.value.length || submitting.value) return
+  // 目标目录同名覆盖确认：先取目标已有文件名，源 basename 命中则弹确认（后端静默覆盖会丢数据）。
+  // 列目录失败（如权限）则跳过检查交给后端，不阻断操作。
+  try {
+    const targetEntries = await fileApi.files(curFs.value.id, moveCopyPath.value)
+    const existing = new Set(targetEntries.map((e) => e.name))
+    const conflicts = moveCopySources.value.filter((s) => existing.has(s.name))
+    if (conflicts.length) {
+      try {
+        await ElMessageBox.confirm(
+          `目标存在同名 ${conflicts.length} 项（如「${conflicts[0].name}」），${moveCopyMode.value === 'move' ? '移动' : '复制'}将覆盖，是否继续？`,
+          '覆盖确认',
+          { type: 'warning' },
+        )
+      } catch {
+        return // 用户取消覆盖
+      }
+    }
+  } catch {
+    // 列目标目录失败，跳过覆盖检查
+  }
   const fn = moveCopyMode.value === 'move' ? fileApi.move : fileApi.copy
   const verb = moveCopyMode.value === 'move' ? '移动' : '复制'
+  submitting.value = true
   let ok = 0
-  for (const e of moveCopySources.value) {
-    try {
-      await fn(curFs.value.id, e.path, moveCopyPath.value)
-      ok++
-    } catch (err) {
-      ElMessage.error(`「${e.name}」${verb}失败：${(err as Error).message}`)
+  try {
+    for (const e of moveCopySources.value) {
+      try {
+        await fn(curFs.value.id, e.path, moveCopyPath.value)
+        ok++
+      } catch (err) {
+        ElMessage.error(`「${e.name}」${verb}失败：${(err as Error).message}`)
+      }
     }
+    // 全部失败时不弹 success（避免「已移动 0 项」误导）；至少一项成功才关对话框并刷新。
+    if (ok > 0) {
+      ElMessage.success(`已${verb} ${ok} 项`)
+      moveCopyVisible.value = false
+      await refresh()
+    } else {
+      ElMessage.error(`选中项全部${verb}失败`)
+    }
+  } finally {
+    submitting.value = false
   }
-  ElMessage.success(`已${verb} ${ok} 项`)
-  moveCopyVisible.value = false
-  await refresh()
 }
 
 // ── STRM 即时生成（仅云盘目录）──
@@ -392,10 +456,12 @@ function openEdit(fs: FileStorage) {
   storageDialog.value = true
 }
 async function submit() {
+  if (submitting.value) return
   if (!form.value.name) return ElMessage.warning('请填写名称')
   if (form.value.type === 'agent' && !form.value.agent_id) return ElMessage.warning('请选择 Agent')
   if (form.value.type === 'rclone' && !form.value.username) return ElMessage.warning('请填写 remote 名')
   if (['webdav', 'alist', 'smb'].includes(form.value.type) && !form.value.url) return ElMessage.warning('请填写地址')
+  submitting.value = true
   try {
     if (editingId.value) {
       await fileApi.update(editingId.value, form.value)
@@ -408,6 +474,8 @@ async function submit() {
     await loadStorages()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '失败')
+  } finally {
+    submitting.value = false
   }
 }
 async function delStorage(fs: FileStorage) {
@@ -633,7 +701,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
       <template #footer>
         <el-button v-if="editingId" type="danger" plain @click="delEditingStorage">删除该存储</el-button>
         <el-button @click="storageDialog = false">取消</el-button>
-        <el-button type="primary" @click="submit">{{ editingId ? '保存' : '添加' }}</el-button>
+        <el-button type="primary" :loading="submitting" @click="submit">{{ editingId ? '保存' : '添加' }}</el-button>
       </template>
     </el-dialog>
 
@@ -642,7 +710,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
       <el-input v-model="mkdirName" placeholder="文件夹名称" @keyup.enter="doMkdir" />
       <template #footer>
         <el-button @click="mkdirVisible = false">取消</el-button>
-        <el-button type="primary" @click="doMkdir">新建</el-button>
+        <el-button type="primary" :loading="submitting" @click="doMkdir">新建</el-button>
       </template>
     </el-dialog>
 
@@ -651,7 +719,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
       <el-input v-model="renameNewName" @keyup.enter="doRename" />
       <template #footer>
         <el-button @click="renameVisible = false">取消</el-button>
-        <el-button type="primary" @click="doRename">确认</el-button>
+        <el-button type="primary" :loading="submitting" @click="doRename">确认</el-button>
       </template>
     </el-dialog>
 
@@ -669,7 +737,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
       </div>
       <template #footer>
         <el-button @click="moveCopyVisible = false">取消</el-button>
-        <el-button type="primary" @click="doMoveCopy">{{ moveCopyMode === 'move' ? '移动到此处' : '复制到此处' }}</el-button>
+        <el-button type="primary" :loading="submitting" @click="doMoveCopy">{{ moveCopyMode === 'move' ? '移动到此处' : '复制到此处' }}</el-button>
       </template>
     </el-dialog>
 

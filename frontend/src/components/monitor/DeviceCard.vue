@@ -45,9 +45,22 @@ const status = computed(() => {
   if (props.target.last_online) return { cls: 'online', text: '在线' }
   return { cls: 'offline', text: '离线' }
 })
-const diskMax = computed(() => {
+// 磁盘百分比须与详情页同源：sum(used)/sum(total)，不能用 max(单盘 usage)——
+// 否则多盘时取最满那块，与「已用/总量」对不上（曾出现 78% 配 87.7TB/1.1PB 的矛盾）。
+const diskUsage = computed(() => {
   const ds = props.metrics?.disks
-  return ds && ds.length ? Math.max(...ds.map((d) => d.usage)) : undefined
+  if (!ds || !ds.length) return undefined
+  const total = ds.reduce((n, d) => n + (d.total || 0), 0)
+  if (!total) return undefined
+  const used = ds.reduce((n, d) => n + (d.used || 0), 0)
+  return (used / total) * 100
+})
+const diskDetail = computed(() => {
+  const ds = props.metrics?.disks
+  if (!ds || !ds.length) return ''
+  const total = ds.reduce((n, d) => n + (d.total || 0), 0)
+  const used = ds.reduce((n, d) => n + (d.used || 0), 0)
+  return total ? `已用 ${fmtBytes(used)} / 共 ${fmtBytes(total)}` : ''
 })
 const lastCheck = computed(() =>
   props.target.last_checked_at ? new Date(props.target.last_checked_at).toLocaleTimeString() : '-',
@@ -133,7 +146,7 @@ const serviceRows = computed(() => {
           :value="metrics.mem_usage"
           :detail="metrics.mem_total ? `${fmtBytes(metrics.mem_used ?? 0)} / ${fmtBytes(metrics.mem_total)}` : ''"
         />
-        <MetricBar v-if="diskMax !== undefined" label="磁盘" :value="diskMax" :detail="metrics?.disks?.[0]?.device" />
+        <MetricBar v-if="diskUsage !== undefined" label="磁盘" :value="diskUsage" :detail="diskDetail" />
       </template>
       <template v-else-if="target.type === 'camera' && metrics?.device_info">
         <div class="dc-info"><span>厂商</span>{{ metrics.device_info.manufacturer || '-' }}</div>

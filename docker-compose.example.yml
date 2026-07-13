@@ -3,7 +3,7 @@
 
 services:
   ptpatronus:
-    image: ghcr.io/gntv456/pt-patronus:latest   # latest=最新；或锁定版本 :0.80.04
+    image: ghcr.io/gntv456/pt-patronus:latest   # latest=最新；或锁定版本
     container_name: ptpatronus
     restart: unless-stopped
     pull_policy: always      # docker compose up -d 时自动拉最新镜像（像 MoviePilot 那样更新即拉新；注意是 up 不是 restart）
@@ -23,9 +23,8 @@ services:
       UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/gntv456/ptpatronus-plugin-market/main/update-manifest.json
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
-      # 宿主磁盘监控（MoviePilot 式）：取消注释把宿主目录挂进容器，
-      # 再到「本机」监控 target 的「宿主磁盘路径」填对应容器内路径（如 /mnt/nas）
-      # - /mnt:/mnt:ro
+      # - /mnt:/mnt:ro          # 宿主磁盘路径监控：取消注释并将容器内路径填入 target「宿主磁盘路径」配置
+      - /:/hostfs:ro          # （可选）挂载整个根文件系统（只读），可监控所有挂载点；需确保容器有权限
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s

@@ -258,7 +258,7 @@ onMounted(() => {
     <header class="header">
       <div>
         <h1>资源过滤规则</h1>
-        <p class="sub">对标 MoviePilot 过滤模块：用规则组表达式对种子分级筛选，命中越靠前的优先级越高。</p>
+        <p class="sub">用规则组表达式对种子分级筛选，命中越靠前的优先级越高。</p>
       </div>
     </header>
 

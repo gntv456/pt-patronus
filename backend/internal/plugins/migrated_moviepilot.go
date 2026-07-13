@@ -172,7 +172,7 @@ func (p *groupChatZonePlugin) Manifest() Manifest {
 		Builtin:     true,
 		Permissions: []string{"network:http", "action:execute", "notice:write"},
 		Actions: []ActionSpec{
-			{Name: "run_now", Label: "立即执行", Description: "立即触发一次主喊话任务(对标 onlyonce)。织梦在首次执行时一并初始化独立调度。"},
+			{Name: "run_now", Label: "立即执行", Description: "立即触发一次主喊话任务。织梦在首次执行时一并初始化独立调度。"},
 			{
 				Name:        "send_message",
 				Label:       "发送喊话(自定义)",

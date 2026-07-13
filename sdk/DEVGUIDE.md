@@ -121,7 +121,8 @@ Validate against the schema: `ptp-pluginctl validate .`. The full JSON schema is
 
 ## Host API (you call these)
 
-`PTPHostClient` (bearer-auth, env: `PTP_HOST_URL` / `PTP_HOST_TOKEN`):
+`PTPHostClient` (bearer-auth, env: `PTP_HOST_URL` / `PTP_HOST_TOKEN`; command plugins also receive
+`PTP_HOST_PERMISSIONS` and `PTP_HOST_CAPABILITIES` as comma-separated lists):
 
 | Method | Permission | Purpose |
 |---|---|---|
@@ -139,10 +140,10 @@ Permissions are accepted at install (admin must approve the exact set) + wildcar
 `host.event.subscription`, `host.schedule.cron`, `host.api.*` (config/log/notice/event/kv/site/media),
 `host.ui.view/bridge` — inferred from your manifest (`entry.command`, `events`, `schedule`, `views`, `permissions`).
 
-## Tool RPC — the full host capability surface (~80 tools)
+## Tool RPC — the full host capability surface (~100 tools)
 
 The endpoints above are the legacy narrow surface. **Tool RPC** is the full surface: a single
-`POST /tools/{name}` dispatches to ~80 host tools covering every backend chain (downloader, media
+`POST /tools/{name}` dispatches to ~100 host tools covering every backend chain (downloader, media
 server, subscribe, cloud/STRM, brush-flow, RSS, subtitle, reseed, transfer, dashboard, notification,
 filter, file storage, workflow). It's **additive** — legacy endpoints still work; new plugins should
 prefer Tool RPC.
@@ -195,16 +196,20 @@ it in `permissions[]`. Wildcards work (`downloader:*`, `*`).
 | reseed | `reseed_run` `reseed_resolve` | `reseed:write` |
 | dashboard | `dashboard_overview` `dashboard_trend` | `dashboard:read` |
 | notify | `send_notification` (multi-channel, differs from `notice()` 站内) | `notify:send` |
-| cloud | `cloud_list` `cloud_browse` `cloud_quota` `cloud_rules` | `cloud:read` |
-| cloud | `cloud_generate_strm` `cloud_generate_all` | `cloud:write` |
+| cloud | `cloud_list` `cloud_browse` `cloud_quota` `cloud_test` `cloud_rules` `cloud_records` | `cloud:read` |
+| cloud | `cloud_create` `cloud_update` `cloud_generate_strm` `cloud_generate_all` `cloud_rule_create` `cloud_rule_update` | `cloud:write` |
+| cloud | `cloud_delete` `cloud_rule_delete` `cloud_record_delete` (destructive) | `cloud:write` |
 | brushflow | `brushflow_tasks_list` `brushflow_task_get` `brushflow_seeds` | `brushflow:read` |
-| brushflow | `brushflow_run_select` `brushflow_run_sweep` | `brushflow:write` |
-| rss | `rss_list` `rss_items` | `rss:read` |
-| rss | `rss_check` | `rss:write` |
+| brushflow | `brushflow_task_create` `brushflow_task_update` `brushflow_run_select` `brushflow_run_sweep` | `brushflow:write` |
+| brushflow | `brushflow_task_delete` (destructive) | `brushflow:write` |
+| rss | `rss_list` `rss_get` `rss_items` | `rss:read` |
+| rss | `rss_create` `rss_update` `rss_check` | `rss:write` |
+| rss | `rss_delete` (destructive) | `rss:write` |
 | subtitle | `subtitle_search` | `subtitle:read` |
 | filter | `filter_builtin_rules_query` `filter_custom_rules_query` `filter_rule_groups_query` | `filter:read` |
 | filter | `filter_custom_rule_create/update` `filter_rule_group_create/update` `filter_custom_rule_delete` 🔧 `filter_rule_group_delete` 🔧 | `filter:write` |
-| file | `file_list` | `file:read` |
+| file | `file_list` `file_test` | `file:read` |
+| file | `file_rename` `file_move` `file_copy` | `file:write` |
 | file | `file_mkdir` `file_delete` 🔧 | `file:write` |
 | workflow | `workflow_list` `workflow_catalog` | `workflow:read` |
 | workflow | `workflow_run` | `workflow:write` |
@@ -223,9 +228,9 @@ runtime rather than hard-coding field names. Inputs use snake_case keys (`downlo
 - **Permission denial** returns HTTP 403 with `{"permission":"downloader:write"}` — surface it to the
   user so they know which permission to add.
 - **Body limit** 1 MB per call (loopback JSON).
-- **Not yet exposed** (open for follow-up): `subtitle_download` (needs struct round-trip), `file_upload`
-  /`file_download` (binary streams — will use a multipart endpoint), `*_create` for full-struct CRUD
-  (brushflow/rss/cloud-drive create). Use the REST API or ask for them.
+- **Binary operations**: `file_upload` / `file_download` are intentionally not encoded into the 1 MB
+  JSON RPC body. They need a dedicated authenticated multipart/stream endpoint to avoid base64 memory
+  amplification. `subtitle_download` also remains pending a bounded binary response contract.
 
 ## Long-running work MUST be async
 

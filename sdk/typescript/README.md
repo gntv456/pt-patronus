@@ -6,7 +6,7 @@ External plugins receive host access in two ways:
 
 - Command plugins receive `PTP_HOST_URL` and `PTP_HOST_TOKEN` environment variables.
 - Managed or remote HTTP plugins receive the same data in the `host` field of `/action` and `/event` payloads.
-- Command plugins also receive `PTP_HOST_CAPABILITIES` as a comma-separated list.
+- Command plugins also receive `PTP_HOST_PERMISSIONS` and `PTP_HOST_CAPABILITIES` as comma-separated lists.
 - Plugin views running inside the sandboxed iframe can talk to the host through `postMessage`.
 
 ```ts
@@ -38,11 +38,12 @@ Supported Host API capabilities:
 - `config:read`, `config:write`
 - `media:search` — `host.mediaSearch(keyword, year)` reuses the host TMDB/豆瓣/寸光集 metadata chain
 
-### Tool RPC — ~80 host capabilities via one entry point
+### Tool RPC — ~100 host capabilities via one entry point
 
 `host.tools()` lists every tool your permissions allow; `host.call(name, input)` invokes any of them
 (downloader, media server, subscribe, cloud/STRM, brush-flow, RSS, subtitle, reseed, transfer,
-dashboard, notification, filter, file storage, workflow). Typed convenience wrappers exist for the
+dashboard, notification, filter, file storage, workflow, including cloud/RSS/brush-flow CRUD and
+file rename/move/copy/test). Typed convenience wrappers exist for the
 hottest domains (`torrentsList`, `torrentsAdd`, `mediaserverLibraryScan`, `subscribeList`,
 `sendNotification`, `dashboardOverview`, …). Declare domain permissions (`downloader:read`,
 `mediaserver:write`, …) in your manifest. Full catalog: **[DEVGUIDE.md](../DEVGUIDE.md)** → "Tool RPC".

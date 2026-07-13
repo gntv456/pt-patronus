@@ -54,6 +54,9 @@ func TestExternalPluginHelperProcess(t *testing.T) {
 	if port == "" {
 		os.Exit(2)
 	}
+	if expected := os.Getenv("PTP_TEST_EXPECT_HOST_PERMISSIONS"); expected != "" && os.Getenv("PTP_HOST_PERMISSIONS") != expected {
+		os.Exit(4)
+	}
 	exitAfterAction := os.Getenv("PTP_TEST_EXIT_AFTER_ACTION") == "1"
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -508,12 +511,14 @@ func TestExternalHTTPPluginAutoRestart(t *testing.T) {
 			Command: exe,
 			Args:    []string{"-test.run=TestExternalPluginHelperProcess"},
 			Env: map[string]string{
-				"PTP_TEST_HELPER_PROCESS":    "1",
-				"PTP_TEST_EXIT_AFTER_ACTION": "1",
+				"PTP_TEST_HELPER_PROCESS":          "1",
+				"PTP_TEST_EXIT_AFTER_ACTION":       "1",
+				"PTP_TEST_EXPECT_HOST_PERMISSIONS": "kv:read,downloader:*",
 			},
 			Health: "/health",
 		},
-		Actions: []ActionSpec{{Name: "ping", Label: "Ping"}},
+		Permissions: []string{"kv:read", "downloader:*"},
+		Actions:     []ActionSpec{{Name: "ping", Label: "Ping"}},
 	}
 	raw, _ := json.Marshal(manifest)
 	if err := os.WriteFile(filepath.Join(dir, "plugin.json"), raw, 0o644); err != nil {

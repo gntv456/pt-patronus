@@ -269,6 +269,7 @@ func (p *externalHTTPPlugin) ensureStarted(ctx context.Context, rt Runtime) erro
 		env["PTP_HOST_URL"] = p.host.baseURL
 		env["PTP_HOST_TOKEN"] = p.host.token
 		env["PTP_HOST_PROTOCOL"] = "1"
+		env["PTP_HOST_PERMISSIONS"] = strings.Join(p.manifest.Permissions, ",")
 		env["PTP_HOST_CAPABILITIES"] = strings.Join(supportedHostCapabilities(), ",")
 	}
 	for k, v := range entry.Env {

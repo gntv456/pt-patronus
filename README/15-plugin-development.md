@@ -201,6 +201,7 @@ The host starts the process and injects:
 - `PTP_HOST_URL`
 - `PTP_HOST_TOKEN`
 - `PTP_HOST_PROTOCOL`
+- `PTP_HOST_PERMISSIONS`
 - `PTP_HOST_CAPABILITIES`
 
 The plugin implements:

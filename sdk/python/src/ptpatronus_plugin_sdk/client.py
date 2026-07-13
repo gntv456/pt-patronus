@@ -38,12 +38,14 @@ class PTPHostClient:
         token = env.get("PTP_HOST_TOKEN") or ""
         if not base_url or not token:
             return None
+        permissions = [p.strip() for p in (env.get("PTP_HOST_PERMISSIONS") or "").split(",") if p.strip()]
         caps = [c.strip() for c in (env.get("PTP_HOST_CAPABILITIES") or "").split(",") if c.strip()]
         return cls(HostContext(
             protocol_version=int(env.get("PTP_HOST_PROTOCOL") or 1),
             plugin_id=env.get("PTP_PLUGIN_ID") or "",
             base_url=base_url,
             token=token,
+            permissions=permissions,
             host_capabilities=caps,
         ))
 

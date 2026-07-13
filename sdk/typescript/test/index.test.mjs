@@ -3,6 +3,20 @@ import assert from 'node:assert/strict'
 
 import { PTPHostClient, PTPPluginViewClient } from '../dist/index.js'
 
+test('PTPHostClient fromEnv includes granted permissions', () => {
+  const client = PTPHostClient.fromEnv({
+    PTP_HOST_URL: 'http://127.0.0.1:19091',
+    PTP_HOST_TOKEN: 'secret',
+    PTP_PLUGIN_ID: 'env-demo',
+    PTP_HOST_PERMISSIONS: 'kv:read, downloader:*',
+    PTP_HOST_CAPABILITIES: 'host.api.kv.read, host.api.tools',
+  })
+  assert.ok(client)
+  assert.equal(client.hasPermission('kv:read'), true)
+  assert.equal(client.hasPermission('downloader:write'), true)
+  assert.equal(client.hasCapability('host.api.tools'), true)
+})
+
 test('PTPHostClient permission and capability helpers respect scoped grants', () => {
   const client = new PTPHostClient({
     plugin_id: 'demo',

@@ -22,6 +22,7 @@ export class PTPHostClient {
             plugin_id: env.PTP_PLUGIN_ID || '',
             base_url: baseURL,
             token,
+            permissions: splitEnvList(env.PTP_HOST_PERMISSIONS),
             host_capabilities: splitEnvList(env.PTP_HOST_CAPABILITIES),
         });
     }

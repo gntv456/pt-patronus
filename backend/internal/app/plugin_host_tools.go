@@ -3,11 +3,14 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/chain"
+	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/plugins"
@@ -56,41 +59,41 @@ type toolMeta struct {
 // agentToolMeta 为每个被 adopt 的 agent tool 指定插件权限、分类、是否破坏性。
 // 权限沿用 plugins 包的域级约定（downloader:read|write 等），与 host_capabilities.go 对齐。
 var agentToolMeta = map[string]toolMeta{
-	"system.info":                 {"", "system", false},
-	"sites.list":                  {"site:read", "site", false},
-	"site_messages":               {"site:read", "site", false},
-	"site_freeleech":              {"site:read", "site", false},
-	"site_checkin_all":            {"site:action", "site", false},
-	"torrent_search":              {"site:read", "site", false},
-	"media_search":                {"media:read", "media", false},
-	"media_detail":                {"media:read", "media", false},
-	"recommend_feeds":             {"media:read", "media", false},
-	"subscribe_list":              {"subscribe:read", "subscribe", false},
-	"subscribe_create":            {"subscribe:write", "subscribe", false},
-	"subscribe_delete":            {"subscribe:write", "subscribe", false},
-	"downloaders.list":            {"downloader:read", "downloader", false},
-	"torrents_list":               {"downloader:read", "downloader", false},
-	"torrents_stats":              {"downloader:read", "downloader", false},
-	"torrents_pause":              {"downloader:write", "downloader", false},
-	"torrents_resume":             {"downloader:write", "downloader", false},
-	"torrents_delete":             {"downloader:write", "downloader", true},
-	"torrents_add":                {"downloader:write", "downloader", false},
-	"transfer_history":            {"transfer:read", "transfer", false},
-	"transfer_organize":           {"transfer:write", "transfer", false},
-	"reseed_list":                 {"reseed:read", "reseed", false},
-	"reseed_run":                  {"reseed:write", "reseed", false},
-	"dashboard_overview":          {"dashboard:read", "dashboard", false},
-	"dashboard_trend":             {"dashboard:read", "dashboard", false},
-	"send_notification":           {"notify:send", "notify", false},
-	"filter_builtin_rules_query":  {"filter:read", "filter", false},
-	"filter_custom_rules_query":   {"filter:read", "filter", false},
-	"filter_custom_rule_create":   {"filter:write", "filter", false},
-	"filter_custom_rule_update":   {"filter:write", "filter", false},
-	"filter_custom_rule_delete":   {"filter:write", "filter", true},
-	"filter_rule_groups_query":    {"filter:read", "filter", false},
-	"filter_rule_group_create":    {"filter:write", "filter", false},
-	"filter_rule_group_update":    {"filter:write", "filter", false},
-	"filter_rule_group_delete":    {"filter:write", "filter", true},
+	"system.info":                {"", "system", false},
+	"sites.list":                 {"site:read", "site", false},
+	"site_messages":              {"site:read", "site", false},
+	"site_freeleech":             {"site:read", "site", false},
+	"site_checkin_all":           {"site:action", "site", false},
+	"torrent_search":             {"site:read", "site", false},
+	"media_search":               {"media:read", "media", false},
+	"media_detail":               {"media:read", "media", false},
+	"recommend_feeds":            {"media:read", "media", false},
+	"subscribe_list":             {"subscribe:read", "subscribe", false},
+	"subscribe_create":           {"subscribe:write", "subscribe", false},
+	"subscribe_delete":           {"subscribe:write", "subscribe", false},
+	"downloaders.list":           {"downloader:read", "downloader", false},
+	"torrents_list":              {"downloader:read", "downloader", false},
+	"torrents_stats":             {"downloader:read", "downloader", false},
+	"torrents_pause":             {"downloader:write", "downloader", false},
+	"torrents_resume":            {"downloader:write", "downloader", false},
+	"torrents_delete":            {"downloader:write", "downloader", true},
+	"torrents_add":               {"downloader:write", "downloader", false},
+	"transfer_history":           {"transfer:read", "transfer", false},
+	"transfer_organize":          {"transfer:write", "transfer", false},
+	"reseed_list":                {"reseed:read", "reseed", false},
+	"reseed_run":                 {"reseed:write", "reseed", false},
+	"dashboard_overview":         {"dashboard:read", "dashboard", false},
+	"dashboard_trend":            {"dashboard:read", "dashboard", false},
+	"send_notification":          {"notify:send", "notify", false},
+	"filter_builtin_rules_query": {"filter:read", "filter", false},
+	"filter_custom_rules_query":  {"filter:read", "filter", false},
+	"filter_custom_rule_create":  {"filter:write", "filter", false},
+	"filter_custom_rule_update":  {"filter:write", "filter", false},
+	"filter_custom_rule_delete":  {"filter:write", "filter", true},
+	"filter_rule_groups_query":   {"filter:read", "filter", false},
+	"filter_rule_group_create":   {"filter:write", "filter", false},
+	"filter_rule_group_update":   {"filter:write", "filter", false},
+	"filter_rule_group_delete":   {"filter:write", "filter", true},
 }
 
 // registerPluginHostTools 构建 plugin HostTool 注册表并注入 Manager。由 app.go 在所有 chain
@@ -193,6 +196,33 @@ func strProp(desc string) map[string]any {
 		m["description"] = desc
 	}
 	return m
+}
+
+func boolProp(desc string) map[string]any {
+	m := map[string]any{"type": "boolean"}
+	if desc != "" {
+		m["description"] = desc
+	}
+	return m
+}
+
+func numberProp(desc string) map[string]any {
+	m := map[string]any{"type": "number"}
+	if desc != "" {
+		m["description"] = desc
+	}
+	return m
+}
+
+func decodeToolInput[T any](input map[string]any, out *T) error {
+	b, err := json.Marshal(input)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(b, out); err != nil {
+		return fmt.Errorf("invalid tool input: %w", err)
+	}
+	return nil
 }
 
 // ===== 下载器高级操作 =====
@@ -468,6 +498,52 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	}, func(ctx context.Context, _ map[string]any) (any, error) {
 		return cl.List()
 	})
+	cloudDriveProps := map[string]any{
+		"name": strProp("Display name"), "type": strProp("115 | quark | 123"),
+		"token": strProp("Provider cookie or access token; write-only"), "root_path": strProp("Accessible root path"),
+		"is_default": boolProp("Use as the default cloud drive"),
+	}
+	reg.Register(plugins.HostTool{
+		Name: "cloud_create", Category: "cloud", Permission: "cloud:write",
+		Description: "Create a cloud-drive configuration. Credentials are encrypted by the host.",
+		InputSchema: objSchema(cloudDriveProps, []string{"name", "type", "token"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		var in oper.CloudDriveInput
+		if err := decodeToolInput(a, &in); err != nil {
+			return nil, err
+		}
+		return cl.Create(in)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "cloud_update", Category: "cloud", Permission: "cloud:write",
+		Description: "Update a cloud-drive configuration; omit token to keep the existing credential.",
+		InputSchema: objSchema(map[string]any{"id": intProp("Cloud drive id"), "name": cloudDriveProps["name"], "type": cloudDriveProps["type"], "token": cloudDriveProps["token"], "root_path": cloudDriveProps["root_path"], "is_default": cloudDriveProps["is_default"]}, []string{"id", "name", "type"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		var in oper.CloudDriveInput
+		if err := decodeToolInput(a, &in); err != nil {
+			return nil, err
+		}
+		return cl.Update(uint(argInt(a, "id")), in)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "cloud_delete", Category: "cloud", Permission: "cloud:write", Destructive: true,
+		Description: "Delete a cloud-drive configuration.",
+		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := cl.Delete(uint(argInt(a, "id")))
+		return okCount("deleted", 1, err)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "cloud_test", Category: "cloud", Permission: "cloud:read",
+		Description: "Test connectivity of a configured cloud drive.",
+		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		message, err := cl.Test(ctx, uint(argInt(a, "id")))
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true, "message": message}, nil
+	})
 	reg.Register(plugins.HostTool{
 		Name: "cloud_browse", Category: "cloud", Permission: "cloud:read",
 		Description: "Browse a cloud drive directory.",
@@ -488,6 +564,55 @@ func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 		InputSchema: noArgsSchema(),
 	}, func(ctx context.Context, _ map[string]any) (any, error) {
 		return cl.ListRules()
+	})
+	ruleProps := map[string]any{
+		"name": strProp(""), "drive_id": intProp(""), "cloud_path": strProp(""), "output_dir": strProp(""),
+		"mount_root": strProp(""), "template": strProp(""), "recursive": boolProp(""), "keep_ext": boolProp(""), "enabled": boolProp(""),
+	}
+	reg.Register(plugins.HostTool{
+		Name: "cloud_rule_create", Category: "cloud", Permission: "cloud:write",
+		Description: "Create a STRM generation rule.",
+		InputSchema: objSchema(ruleProps, []string{"name", "drive_id", "cloud_path", "output_dir"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		var in oper.StrmRuleInput
+		if err := decodeToolInput(a, &in); err != nil {
+			return nil, err
+		}
+		return cl.CreateRule(in)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "cloud_rule_update", Category: "cloud", Permission: "cloud:write",
+		Description: "Update a STRM generation rule. Omitted fields keep their current values.",
+		InputSchema: objSchema(map[string]any{"id": intProp(""), "name": ruleProps["name"], "drive_id": ruleProps["drive_id"], "cloud_path": ruleProps["cloud_path"], "output_dir": ruleProps["output_dir"], "mount_root": ruleProps["mount_root"], "template": ruleProps["template"], "recursive": ruleProps["recursive"], "keep_ext": ruleProps["keep_ext"], "enabled": ruleProps["enabled"]}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		var in oper.StrmRuleInput
+		if err := decodeToolInput(a, &in); err != nil {
+			return nil, err
+		}
+		return cl.UpdateRule(uint(argInt(a, "id")), in)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "cloud_rule_delete", Category: "cloud", Permission: "cloud:write", Destructive: true,
+		Description: "Delete a STRM generation rule.",
+		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := cl.DeleteRule(uint(argInt(a, "id")))
+		return okCount("deleted", 1, err)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "cloud_records", Category: "cloud", Permission: "cloud:read",
+		Description: "List generated STRM records, optionally filtered by cloud drive.",
+		InputSchema: objSchema(map[string]any{"drive_id": intProp("0 lists all drives")}, nil),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		return cl.ListRecords(uint(argInt(a, "drive_id")))
+	})
+	reg.Register(plugins.HostTool{
+		Name: "cloud_record_delete", Category: "cloud", Permission: "cloud:write", Destructive: true,
+		Description: "Delete a generated STRM record.",
+		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := cl.DeleteRecord(uint(argInt(a, "id")))
+		return okCount("deleted", 1, err)
 	})
 	reg.Register(plugins.HostTool{
 		Name: "cloud_generate_strm", Category: "cloud", Permission: "cloud:write",
@@ -516,6 +641,63 @@ func registerBrushFlowTools(reg *plugins.HostToolRegistry, bf *chain.BrushFlowCh
 		InputSchema: noArgsSchema(),
 	}, func(ctx context.Context, _ map[string]any) (any, error) {
 		return bf.ListTasks()
+	})
+	brushProps := map[string]any{
+		"name": strProp(""), "site_id": intProp(""), "downloader_id": intProp(""), "enabled": boolProp(""),
+		"keyword": strProp(""), "category": strProp(""), "min_size_mb": intProp(""), "max_size_mb": intProp(""),
+		"min_seeders": intProp(""), "max_seeders": intProp(""), "free_only": boolProp(""), "paused": boolProp(""),
+		"filter_groups": strProp(""), "delete_ratio": numberProp(""), "delete_seed_hours": numberProp(""),
+		"delete_upload_mb": intProp(""), "delete_files": boolProp(""), "max_seeds": intProp(""),
+		"save_path": strProp(""), "category_dl": strProp(""),
+	}
+	reg.Register(plugins.HostTool{
+		Name: "brushflow_task_create", Category: "brushflow", Permission: "brushflow:write",
+		Description: "Create a brush-flow task.",
+		InputSchema: objSchema(brushProps, []string{"name", "site_id", "downloader_id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		var task models.BrushFlowTask
+		if err := decodeToolInput(a, &task); err != nil {
+			return nil, err
+		}
+		if task.Name == "" || task.SiteID == 0 || task.DownloaderID == 0 {
+			return nil, fmt.Errorf("name/site_id/downloader_id are required")
+		}
+		if task.MaxSeeds <= 0 {
+			task.MaxSeeds = 10
+		}
+		if err := bf.CreateTask(&task); err != nil {
+			return nil, err
+		}
+		return task, nil
+	})
+	reg.Register(plugins.HostTool{
+		Name: "brushflow_task_update", Category: "brushflow", Permission: "brushflow:write",
+		Description: "Update a brush-flow task. Omitted fields keep their current values.",
+		InputSchema: objSchema(map[string]any{"id": intProp(""), "name": brushProps["name"], "site_id": brushProps["site_id"], "downloader_id": brushProps["downloader_id"], "enabled": brushProps["enabled"], "keyword": brushProps["keyword"], "category": brushProps["category"], "min_size_mb": brushProps["min_size_mb"], "max_size_mb": brushProps["max_size_mb"], "min_seeders": brushProps["min_seeders"], "max_seeders": brushProps["max_seeders"], "free_only": brushProps["free_only"], "paused": brushProps["paused"], "filter_groups": brushProps["filter_groups"], "delete_ratio": brushProps["delete_ratio"], "delete_seed_hours": brushProps["delete_seed_hours"], "delete_upload_mb": brushProps["delete_upload_mb"], "delete_files": brushProps["delete_files"], "max_seeds": brushProps["max_seeds"], "save_path": brushProps["save_path"], "category_dl": brushProps["category_dl"]}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		task, err := bf.GetTask(uint(argInt(a, "id")))
+		if err != nil {
+			return nil, err
+		}
+		id, totalAdded, totalDeleted, totalUpload := task.ID, task.TotalAdded, task.TotalDeleted, task.TotalUpload
+		createdAt, lastSelectAt, lastSweepAt, lastError := task.CreatedAt, task.LastSelectAt, task.LastSweepAt, task.LastError
+		if err := decodeToolInput(a, task); err != nil {
+			return nil, err
+		}
+		task.ID, task.TotalAdded, task.TotalDeleted, task.TotalUpload = id, totalAdded, totalDeleted, totalUpload
+		task.CreatedAt, task.LastSelectAt, task.LastSweepAt, task.LastError = createdAt, lastSelectAt, lastSweepAt, lastError
+		if err := bf.UpdateTask(task); err != nil {
+			return nil, err
+		}
+		return task, nil
+	})
+	reg.Register(plugins.HostTool{
+		Name: "brushflow_task_delete", Category: "brushflow", Permission: "brushflow:write", Destructive: true,
+		Description: "Delete a brush-flow task.",
+		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := bf.DeleteTask(uint(argInt(a, "id")))
+		return okCount("deleted", 1, err)
 	})
 	reg.Register(plugins.HostTool{
 		Name: "brushflow_task_get", Category: "brushflow", Permission: "brushflow:read",
@@ -558,6 +740,63 @@ func registerRssTools(reg *plugins.HostToolRegistry, rss *chain.RssChain) {
 		InputSchema: noArgsSchema(),
 	}, func(ctx context.Context, _ map[string]any) (any, error) {
 		return rss.List()
+	})
+	rssProps := map[string]any{
+		"name": strProp(""), "url": strProp(""), "site_id": intProp("0 for anonymous RSS"), "enabled": boolProp(""),
+		"interval_min": intProp(""), "title_include": strProp(""), "title_exclude": strProp(""), "min_size": intProp("bytes"),
+		"max_size": intProp("bytes"), "resolution": strProp(""), "auto_download": boolProp(""), "downloader_id": intProp(""),
+		"save_path": strProp(""), "category": strProp(""), "tags": strProp(""), "filter_groups": strProp(""),
+	}
+	reg.Register(plugins.HostTool{
+		Name: "rss_get", Category: "rss", Permission: "rss:read",
+		Description: "Get an RSS subscription by id.",
+		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		return rss.Get(uint(argInt(a, "id")))
+	})
+	reg.Register(plugins.HostTool{
+		Name: "rss_create", Category: "rss", Permission: "rss:write",
+		Description: "Create an RSS subscription.",
+		InputSchema: objSchema(rssProps, []string{"name", "url"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		var subscription models.RssSubscription
+		if err := decodeToolInput(a, &subscription); err != nil {
+			return nil, err
+		}
+		if subscription.Name == "" || subscription.URL == "" {
+			return nil, fmt.Errorf("name and url are required")
+		}
+		if subscription.IntervalMin <= 0 {
+			subscription.IntervalMin = 30
+		}
+		return rss.Create(&subscription)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "rss_update", Category: "rss", Permission: "rss:write",
+		Description: "Update an RSS subscription. Omitted fields keep their current values.",
+		InputSchema: objSchema(map[string]any{"id": intProp(""), "name": rssProps["name"], "url": rssProps["url"], "site_id": rssProps["site_id"], "enabled": rssProps["enabled"], "interval_min": rssProps["interval_min"], "title_include": rssProps["title_include"], "title_exclude": rssProps["title_exclude"], "min_size": rssProps["min_size"], "max_size": rssProps["max_size"], "resolution": rssProps["resolution"], "auto_download": rssProps["auto_download"], "downloader_id": rssProps["downloader_id"], "save_path": rssProps["save_path"], "category": rssProps["category"], "tags": rssProps["tags"], "filter_groups": rssProps["filter_groups"]}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		subscription, err := rss.Get(uint(argInt(a, "id")))
+		if err != nil {
+			return nil, err
+		}
+		id, createdAt, lastCheckedAt := subscription.ID, subscription.CreatedAt, subscription.LastCheckedAt
+		if err := decodeToolInput(a, subscription); err != nil {
+			return nil, err
+		}
+		subscription.ID, subscription.CreatedAt, subscription.LastCheckedAt = id, createdAt, lastCheckedAt
+		if err := rss.Update(subscription); err != nil {
+			return nil, err
+		}
+		return subscription, nil
+	})
+	reg.Register(plugins.HostTool{
+		Name: "rss_delete", Category: "rss", Permission: "rss:write", Destructive: true,
+		Description: "Delete an RSS subscription and its stored items.",
+		InputSchema: objSchema(map[string]any{"id": intProp("")}, []string{"id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := rss.Delete(uint(argInt(a, "id")))
+		return okCount("deleted", 1, err)
 	})
 	reg.Register(plugins.HostTool{
 		Name: "rss_items", Category: "rss", Permission: "rss:read",
@@ -615,6 +854,40 @@ func registerFileTools(reg *plugins.HostToolRegistry, fc *chain.FileManagerChain
 	}, func(ctx context.Context, a map[string]any) (any, error) {
 		err := fc.Mkdir(ctx, uint(argInt(a, "storage_id")), argString(a, "path", ""))
 		return okCount("created", 1, err)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "file_rename", Category: "file", Permission: "file:write",
+		Description: "Rename a file or directory within its current directory.",
+		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "path": strProp(""), "new_name": strProp("")}, []string{"storage_id", "path", "new_name"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := fc.Rename(ctx, uint(argInt(a, "storage_id")), argString(a, "path", ""), argString(a, "new_name", ""))
+		return okCount("renamed", 1, err)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "file_move", Category: "file", Permission: "file:write",
+		Description: "Move a file or directory to another directory on the same storage backend.",
+		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "source": strProp(""), "destination_dir": strProp("")}, []string{"storage_id", "source", "destination_dir"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := fc.Move(ctx, uint(argInt(a, "storage_id")), argString(a, "source", ""), argString(a, "destination_dir", ""))
+		return okCount("moved", 1, err)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "file_copy", Category: "file", Permission: "file:write",
+		Description: "Copy a file or directory to another directory on the same storage backend.",
+		InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "source": strProp(""), "destination_dir": strProp("")}, []string{"storage_id", "source", "destination_dir"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := fc.Copy(ctx, uint(argInt(a, "storage_id")), argString(a, "source", ""), argString(a, "destination_dir", ""))
+		return okCount("copied", 1, err)
+	})
+	reg.Register(plugins.HostTool{
+		Name: "file_test", Category: "file", Permission: "file:read",
+		Description: "Test connectivity of a configured storage backend.",
+		InputSchema: objSchema(map[string]any{"storage_id": intProp("")}, []string{"storage_id"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		if err := fc.Test(ctx, uint(argInt(a, "storage_id"))); err != nil {
+			return nil, err
+		}
+		return map[string]any{"ok": true}, nil
 	})
 	reg.Register(plugins.HostTool{
 		Name: "file_delete", Category: "file", Permission: "file:write", Destructive: true,

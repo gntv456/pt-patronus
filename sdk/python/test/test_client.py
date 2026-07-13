@@ -91,9 +91,18 @@ class HostClientTests(unittest.TestCase):
         self.assertIsNone(PTPHostClient.from_env({}))
 
     def test_from_env_present(self):
-        c = PTPHostClient.from_env({"PTP_HOST_URL": self.base, "PTP_HOST_TOKEN": self.token, "PTP_PLUGIN_ID": "p"})
+        c = PTPHostClient.from_env({
+            "PTP_HOST_URL": self.base,
+            "PTP_HOST_TOKEN": self.token,
+            "PTP_PLUGIN_ID": "p",
+            "PTP_HOST_PERMISSIONS": "kv:read, downloader:*",
+            "PTP_HOST_CAPABILITIES": "host.api.kv.read, host.api.tools",
+        })
         self.assertIsNotNone(c)
         self.assertEqual(c.context.plugin_id, "p")
+        self.assertTrue(c.has_permission("kv:read"))
+        self.assertTrue(c.has_permission("downloader:write"))
+        self.assertTrue(c.has_capability("host.api.tools"))
 
     def test_requires_base_and_token(self):
         with self.assertRaises(ValueError):

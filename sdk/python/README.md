@@ -65,16 +65,21 @@ ptp-pluginctl package my-plugin --json-out dist/plugin-package.json
 
 ## API surface (PTPHostClient)
 
+Command plugins receive `PTP_HOST_PERMISSIONS` and `PTP_HOST_CAPABILITIES` as comma-separated
+environment variables, so `from_env()` can use `has_permission()` and `has_capability()` before
+making a Host API call.
+
 `from_env()` / `from_payload(payload)` · `has_permission(p)` · `has_capability(c)` ·
 `config()` · `set_runtime_config(k,v)` · `log(level,event,msg,data)` · `notice(title,body,level)` ·
 `publish(type,data)` · `kv_get/set/delete(key)` · `sites()` · `site_cookie(id)` · `media_search(keyword,year)` ·
 `capabilities()`. All synchronous; raise `HostError` on non-2xx.
 
-### Tool RPC — ~80 host capabilities via one entry point
+### Tool RPC — ~100 host capabilities via one entry point
 
 `tools()` lists every tool your permissions allow; `call(name, input)` invokes any of them. Covers
 downloader, media server, subscribe, cloud/STRM, brush-flow, RSS, subtitle, reseed, transfer,
-dashboard, notification, filter, file storage, workflow. Typed convenience wrappers exist for the
+dashboard, notification, filter, file storage, workflow, including cloud/RSS/brush-flow CRUD and
+file rename/move/copy/test. Typed convenience wrappers exist for the
 hottest domains (`torrents_list`, `torrents_add`, `mediaserver_library_scan`, `subscribe_list`,
 `send_notification`, `dashboard_overview`, …). Declare domain permissions (`downloader:read`,
 `mediaserver:write`, …) in your manifest. Full catalog + per-tool input schemas: `DEVGUIDE.md` →

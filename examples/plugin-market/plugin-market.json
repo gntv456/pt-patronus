@@ -2,7 +2,7 @@
   "version": 1,
   "name": "PTPatronus Plugin Market",
   "api_version": "1",
-  "app_version": "0.87.00",
+  "app_version": "0.88.00",
   "host_capabilities": [
     "host.runtime.external-http.command",
     "host.runtime.external-http.base-url",

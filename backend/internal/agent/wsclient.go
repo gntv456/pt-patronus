@@ -109,6 +109,9 @@ func dialAndServe(ctx context.Context, cfg Config) (connected bool, err error) {
 // 与上报循环并发写 conn，均经 writeMu 串行化。
 func (a *agentConn) readLoop(cancel context.CancelFunc) {
 	defer cancel()
+	// 断连/退出时清理所有 pending upload：关闭文件句柄 + 删半成品，防 FD 与磁盘泄漏
+	// （原先仅 cancel()，a.uploads 内 *os.File 不 Close、半成品文件残留磁盘）。
+	defer a.cleanupPendingUploads()
 	for {
 		_, payload, err := a.conn.ReadMessage()
 		if err != nil {
@@ -119,6 +122,19 @@ func (a *agentConn) readLoop(cancel context.CancelFunc) {
 			continue
 		}
 		a.dispatch(env)
+	}
+}
+
+// cleanupPendingUploads 关闭并删除所有未完成的上传文件（readLoop 退出/断连时调用）。
+func (a *agentConn) cleanupPendingUploads() {
+	a.uploadMu.Lock()
+	ids := make([]string, 0, len(a.uploads))
+	for id := range a.uploads {
+		ids = append(ids, id)
+	}
+	a.uploadMu.Unlock()
+	for _, id := range ids {
+		a.cancelUpload(id)
 	}
 }
 

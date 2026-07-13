@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/chain"
@@ -180,6 +181,10 @@ func (h *FileStorageHandler) DeleteFile(c *gin.Context) {
 		return
 	}
 	path := c.Query("path")
+	if isRootPath(path) {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许操作存储根目录"})
+		return
+	}
 	if err := h.fileCh.Delete(c.Request.Context(), id, path); err != nil {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
 		return
@@ -198,7 +203,12 @@ func (h *FileStorageHandler) Rename(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name 必填"})
 		return
 	}
-	if err := h.fileCh.Rename(c.Request.Context(), id, c.Query("path"), name); err != nil {
+	renamePath := c.Query("path")
+	if isRootPath(renamePath) {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许操作存储根目录"})
+		return
+	}
+	if err := h.fileCh.Rename(c.Request.Context(), id, renamePath, name); err != nil {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
 		return
 	}
@@ -211,7 +221,12 @@ func (h *FileStorageHandler) Move(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.fileCh.Move(c.Request.Context(), id, c.Query("from"), c.Query("to")); err != nil {
+	from := c.Query("from")
+	if isRootPath(from) {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许移动存储根目录"})
+		return
+	}
+	if err := h.fileCh.Move(c.Request.Context(), id, from, c.Query("to")); err != nil {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
 		return
 	}
@@ -224,9 +239,22 @@ func (h *FileStorageHandler) Copy(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if err := h.fileCh.Copy(c.Request.Context(), id, c.Query("from"), c.Query("to")); err != nil {
+	from := c.Query("from")
+	if isRootPath(from) {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许复制存储根目录"})
+		return
+	}
+	if err := h.fileCh.Copy(c.Request.Context(), id, from, c.Query("to")); err != nil {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// isRootPath 判断虚拟路径是否指向存储根（"/" 或空）。破坏性操作（删/移/改/复制）
+// 作用于根会清空/搬空整个存储，故在 handler 入口拒绝（各 backend 另有纵深防护，
+// 防 AI 工具绕过 HTTP 直调 backend）。
+func isRootPath(p string) bool {
+	p = strings.TrimSpace(p)
+	return p == "" || p == "/" || strings.TrimRight(p, "/") == ""
 }

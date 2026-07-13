@@ -3,6 +3,9 @@ package db
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"github.com/hxpt/ptpatronus/internal/core/config"
@@ -16,7 +19,19 @@ import (
 // SQLite uses the pure-Go glebarez driver (no CGO), keeping the build single-binary.
 func Open(cfg *config.Config) (*gorm.DB, error) {
 	gormCfg := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
+		// IgnoreRecordNotFoundError：本仓库大量使用「先 First 再判 ErrRecordNotFound 决定插/更」
+		// （如 SystemConfig.Set 的 upsert、Get 的读默认空值）模式，这类 NotFound 都是良性的。
+		// GORM 默认 logger 会把它当告警以红色打印（吓人噪音，如 systemconfig.go:37 record not found），
+		// 全局静默；真实 DB 错误（连接/约束/语法）仍照常打印。
+		Logger: logger.New(
+			log.New(os.Stdout, "", log.LstdFlags),
+			logger.Config{
+				SlowThreshold:             200 * time.Millisecond,
+				LogLevel:                  logger.Warn,
+				IgnoreRecordNotFoundError: true,
+				Colorful:                  true,
+			},
+		),
 	}
 
 	var (

@@ -80,9 +80,9 @@ Future<void> checkAndPromptUpdate(BuildContext context, {bool silent = false}) a
     return;
   }
 
-  // 仅后端有新版（客户端已是最新）。
+  // 仅后端有新版（客户端已是最新）：显示后端的新版本号，而非客户端清单的最新版。
   if (!context.mounted) return;
-  _showBackendOnlyDialog(context, latest);
+  _showBackendOnlyDialog(context, backendR?.latestVersion ?? '');
 }
 
 /// 仅后端有新版：客户端已是最新，提示后端在服务端更新（客户端无法代为更新后端）。

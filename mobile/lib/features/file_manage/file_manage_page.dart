@@ -67,13 +67,15 @@ class _FileManagePageState extends State<FileManagePage> {
   List<_Backend> _backends = [];
   _Backend? _cur; // 当前后端（fs 可读写 / cloud 只读）
   String _path = '/';
-  // 连通性探测状态（瞬时，不持久化）：复合 key → 状态 + 错误
+  // 连通性探测状态（瞬时，不持久化）：复合 key → 状态
   final Map<String, _Conn> _status = {};
-  final Map<String, String> _statusError = {};
   List<FileEntry> _entries = const [];
   bool _loading = false;
   bool _busy = false; // 下载/上传/建目录/STRM 进行中
   String? _error; // 列目录失败（首次/空时显错误态+重试）
+  // 请求竞态守卫：每次加载自增序号，过期响应（序号不匹配）被丢弃，
+  // 防止切换后端/进目录后旧响应覆盖新视图（路径=B 但列表=A 的错乱）。
+  int _loadSeq = 0;
 
   bool get _readOnly => _cur?.readOnly ?? false;
 
@@ -93,6 +95,8 @@ class _FileManagePageState extends State<FileManagePage> {
       _loading = true;
       _error = null;
     });
+    // _select 已触发 → 其 _loadEntries 接管 _loading，finally 不再覆盖（否则进度条闪烁）。
+    var selected = false;
     try {
       // fs 与 cloud 并行加载；云盘接口失败不应阻断本地存储（对齐 Web Promise.all + catch([])）。
       final lateCloud = _cloud.listDrives().catchError((_) => <CloudDrive>[]);
@@ -106,12 +110,14 @@ class _FileManagePageState extends State<FileManagePage> {
       unawaited(_probeAll());
       if (next.isNotEmpty) {
         _select(next.first);
+        selected = true;
         return;
       }
     } catch (e) {
       _error = e.toString();
     } finally {
-      if (mounted) setState(() => _loading = false);
+      // 仅在未触发 _select（无后端/出错分支）时收尾 _loading。
+      if (mounted && !selected) setState(() => _loading = false);
     }
   }
 
@@ -208,13 +214,11 @@ class _FileManagePageState extends State<FileManagePage> {
       if (!mounted) return;
       setState(() {
         _status[b.key] = ok ? _Conn.ok : _Conn.fail;
-        if (!ok) _statusError[b.key] = '连接失败';
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
         _status[b.key] = _Conn.fail;
-        _statusError[b.key] = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
@@ -229,7 +233,6 @@ class _FileManagePageState extends State<FileManagePage> {
       if (!mounted) return;
       setState(() {
         _status[b.key] = ok ? _Conn.ok : _Conn.fail;
-        if (!ok) _statusError[b.key] = '连接失败';
       });
       _toast(ok ? '「${b.name}」连接正常' : '「${b.name}」连接失败');
     } catch (e) {
@@ -250,6 +253,8 @@ class _FileManagePageState extends State<FileManagePage> {
   Future<void> _loadEntries() async {
     final b = _cur;
     if (b == null) return;
+    // 竞态守卫：序号不匹配的过期响应直接丢弃，防止旧请求晚到覆盖新视图。
+    final my = ++_loadSeq;
     setState(() {
       _loading = true;
       _error = null;
@@ -271,12 +276,15 @@ class _FileManagePageState extends State<FileManagePage> {
                 ))
             .toList();
       }
+      // 丢弃过期响应：切换后端/进目录后旧请求晚到，不能覆盖新视图。
+      if (!mounted || my != _loadSeq) return;
       entries.sort((a, b2) {
         if (a.isDir != b2.isDir) return a.isDir ? -1 : 1; // 目录在前
         return a.name.toLowerCase().compareTo(b2.name.toLowerCase());
       });
       _entries = entries;
     } catch (e) {
+      if (!mounted || my != _loadSeq) return;
       final msg = e.toString().replaceFirst('Exception: ', '');
       if (_entries.isEmpty) {
         _error = msg;
@@ -284,7 +292,8 @@ class _FileManagePageState extends State<FileManagePage> {
         _toast(msg);
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      // 仅当本次仍是最新序号时才收尾 _loading，避免覆盖更新一轮加载的状态。
+      if (mounted && my == _loadSeq) setState(() => _loading = false);
     }
   }
 
@@ -537,7 +546,8 @@ class _FileManagePageState extends State<FileManagePage> {
   }
 
   /// 云盘：对选中目录即时生成 STRM（不持久化为规则）。仅 cloud 可用。
-  Future<void> _strm(FileEntry dir) async {
+  /// path 为目标目录的云盘路径（可来自 entry.path 或当前路径 _path，使根目录也能生成）。
+  Future<void> _strm(String path) async {
     final b = _cur;
     if (b == null || b.kind != 'cloud' || b.drive == null) return;
     final driveId = b.drive!.id;
@@ -545,14 +555,14 @@ class _FileManagePageState extends State<FileManagePage> {
       context,
       title: '生成 STRM',
       wideWidth: 480,
-      builder: (_) => _StrmSheet(defaultDir: dir.path),
+      builder: (_) => _StrmSheet(defaultDir: path),
     );
     if (res == null) return;
     setState(() => _busy = true);
     try {
       final r = await _cloud.generate({
         'drive_id': driveId,
-        'cloud_path': dir.path,
+        'cloud_path': path,
         'output_dir': res['output_dir'] ?? '',
         'mount_root': res['mount_root'] ?? '',
         'template': res['template'] ?? '',
@@ -674,7 +684,7 @@ class _FileManagePageState extends State<FileManagePage> {
             IconButton(
               icon: const Icon(Icons.link, size: 20),
               tooltip: '生成 STRM',
-              onPressed: _busy ? null : () => _strm(e),
+              onPressed: _busy ? null : () => _strm(e.path),
             ),
           if (!_readOnly)
             PopupMenuButton<String>(
@@ -741,6 +751,13 @@ class _FileManagePageState extends State<FileManagePage> {
           label: '刷新',
           onPressed: hasStorage ? _loadEntries : null,
         ),
+        // 云盘只读模式：对当前目录（含根目录，根无列表行无操作入口）生成 STRM。
+        if (readOnly)
+          PTBarAction(
+            icon: Icons.link,
+            label: '生成 STRM',
+            onPressed: _busy ? null : () => _strm(_path),
+          ),
         PTBarAction(
           icon: Icons.create_new_folder,
           label: '新建文件夹',
@@ -1122,6 +1139,8 @@ class _MoveCopyPickerState extends State<_MoveCopyPicker> {
   String _path = '/';
   List<FileEntry> _dirs = const [];
   bool _loading = false;
+  // 竞态守卫：序号不匹配的过期响应直接丢弃（与主页 _loadEntries 同模式）。
+  int _loadSeq = 0;
 
   @override
   void initState() {
@@ -1131,14 +1150,17 @@ class _MoveCopyPickerState extends State<_MoveCopyPicker> {
   }
 
   Future<void> _load() async {
+    final my = ++_loadSeq;
     setState(() => _loading = true);
     try {
       final all = await widget.api.files(widget.storageId, _path);
-      if (mounted) setState(() => _dirs = all.where((e) => e.isDir).toList());
+      if (!mounted || my != _loadSeq) return;
+      setState(() => _dirs = all.where((e) => e.isDir).toList());
     } catch (_) {
-      if (mounted) setState(() => _dirs = const []);
+      if (!mounted || my != _loadSeq) return;
+      setState(() => _dirs = const []);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && my == _loadSeq) setState(() => _loading = false);
     }
   }
 

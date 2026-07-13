@@ -116,11 +116,15 @@ func (l *Local) Download(ctx context.Context, p string) (io.ReadCloser, error) {
 	return os.Open(full)
 }
 
-// Delete 删除文件或目录（递归）。
+// Delete 删除文件或目录（递归）。拒绝删除存储根目录（path="/" 或空解析为 rootDir）——
+// 该操作会清空整个存储，前端误传或 AI 提示注入均可触发，故在 backend 层硬拦。
 func (l *Local) Delete(ctx context.Context, p string) error {
 	full, err := l.resolve(p)
 	if err != nil {
 		return err
+	}
+	if full == l.rootDir {
+		return fmt.Errorf("不允许删除存储根目录")
 	}
 	return os.RemoveAll(full)
 }
@@ -134,17 +138,25 @@ func (l *Local) Mkdir(ctx context.Context, p string) error {
 	return os.MkdirAll(full, 0o755)
 }
 
-// Rename 同目录改名：path 的 basename 换成 newName（filepath.Base 钳制防注入路径）。
+// Rename 同目录改名：path 换成 newName（sanitizeNewName 校验防注入路径/非法名）。
 func (l *Local) Rename(ctx context.Context, p, newName string) error {
 	full, err := l.resolve(p)
 	if err != nil {
 		return err
 	}
-	dst := filepath.Join(filepath.Dir(full), filepath.Base(filepath.FromSlash(newName)))
+	name, err := sanitizeNewName(newName)
+	if err != nil {
+		return err
+	}
+	dst := filepath.Join(filepath.Dir(full), name)
 	return os.Rename(full, dst)
 }
 
 // Move 移动到 dstDir（保留文件名）；os.Rename 跨设备失败时降级 copy+delete。
+//
+// 必须在 copy+delete 前拦截 dst==src：否则 copyPath 对「复制到自身」返回成功后，
+// Move 会 RemoveAll(src) 删源；以及 dst 落在 src 子树（目录移入自身后代）会让
+// copyDir Walk 撞刚建的 dst 子树产生嵌套垃圾——两者都致数据损坏。
 func (l *Local) Move(ctx context.Context, src, dstDir string) error {
 	srcFull, err := l.resolve(src)
 	if err != nil {
@@ -155,6 +167,9 @@ func (l *Local) Move(ctx context.Context, src, dstDir string) error {
 		return err
 	}
 	dst := filepath.Join(dstFull, filepath.Base(srcFull))
+	if isSameOrUnder(srcFull, dst) {
+		return fmt.Errorf("目标路径与源相同或位于源内部，拒绝移动")
+	}
 	if err := os.Rename(srcFull, dst); err == nil {
 		return nil
 	}
@@ -165,6 +180,8 @@ func (l *Local) Move(ctx context.Context, src, dstDir string) error {
 }
 
 // Copy 复制到 dstDir（保留文件名）；文件 io.Copy，目录递归。
+// 拦截 dst==src（防 copyFileLocal(src,src) 先 os.Create 截断源致内容清空）与
+// dst 落在 src 子树（目录复制入自身后代）。
 func (l *Local) Copy(ctx context.Context, src, dstDir string) error {
 	srcFull, err := l.resolve(src)
 	if err != nil {
@@ -174,7 +191,38 @@ func (l *Local) Copy(ctx context.Context, src, dstDir string) error {
 	if err != nil {
 		return err
 	}
-	return copyPath(srcFull, filepath.Join(dstFull, filepath.Base(srcFull)))
+	dst := filepath.Join(dstFull, filepath.Base(srcFull))
+	if isSameOrUnder(srcFull, dst) {
+		return fmt.Errorf("目标路径与源相同或位于源内部，拒绝复制")
+	}
+	return copyPath(srcFull, dst)
+}
+
+// isSameOrUnder 判断 dst 是否等于 src 或落在 src 子树内。
+// 用于拦截「复制/移动到自身」(防 copyFileLocal(src,src) 截断清空) 与
+// 「目录移入自身后代」(防 copyDir Walk 撞刚建的 dst 子树)。
+func isSameOrUnder(src, dst string) bool {
+	cs := filepath.Clean(src)
+	cd := filepath.Clean(dst)
+	if cs == cd {
+		return true
+	}
+	return strings.HasPrefix(cd, cs+string(filepath.Separator))
+}
+
+// sanitizeNewName 校验并钳制新文件名：去首尾空白，再用 filepath.Base 钳为纯文件名。
+// 防 "a/b" 把文件移进子目录、防 "../x" 上溯越界（与 local 原先的 filepath.Base 行为一致：
+// 容错但安全）。仅拒绝空 / "." / ".."（Base 后仍非法）。供各后端 Rename 统一采用。
+func sanitizeNewName(newName string) (string, error) {
+	name := strings.TrimSpace(newName)
+	if name == "" {
+		return "", fmt.Errorf("非法新文件名: %q", newName)
+	}
+	name = filepath.Base(filepath.FromSlash(name))
+	if name == "." || name == ".." {
+		return "", fmt.Errorf("非法新文件名: %q", newName)
+	}
+	return name, nil
 }
 
 // copyPath 递归复制文件或目录（文件 copyFileLocal，目录 filepath.Walk 遍历）。
@@ -210,7 +258,11 @@ func copyDir(src, dst string, mode os.FileMode) error {
 	})
 }
 
-// copyFileLocal 逐字节复制单文件（建父目录，保留读权限）。
+// copyFileLocal 逐字节复制单文件（建父目录，保留源权限位）。
+//
+// 关键：out.Close() 的错误不可被 defer 吞掉——NFS/SMB/网络挂载下写错误常延迟到
+// close（刷缓冲）才报；若吞掉，io.Copy 返回 nil 会让调用方（Move 的 copy+delete 降级）
+// 误以为成功并 RemoveAll 源，造成「目标残缺/空、源已删」的不可逆数据丢失。
 func copyFileLocal(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
@@ -224,7 +276,16 @@ func copyFileLocal(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
+	_, copyErr := io.Copy(out, in) // 先取拷贝错误
+	if cerr := out.Close(); copyErr == nil {
+		copyErr = cerr // 拷贝无错时改用 close 错误（含延迟的写失败）
+	}
+	if copyErr != nil {
+		return copyErr
+	}
+	// 保留源权限位（os.Create 受 umask 落地 ~0666，会丢失可执行/只读位）。
+	if info, err := os.Stat(src); err == nil {
+		_ = os.Chmod(dst, info.Mode())
+	}
+	return nil
 }

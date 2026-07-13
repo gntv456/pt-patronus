@@ -56,6 +56,21 @@ const router = createRouter({
           component: () => import('@/views/Rss.vue'),
         },
         {
+          path: 'transfer',
+          name: 'transfer',
+          component: () => import('@/views/Transfer.vue'),
+        },
+        {
+          path: 'filter-rules',
+          name: 'filter-rules',
+          component: () => import('@/views/FilterRules.vue'),
+        },
+        {
+          path: 'assistant',
+          name: 'assistant',
+          component: () => import('@/views/Assistant.vue'),
+        },
+        {
           path: 'media-settings',
           name: 'media-settings',
           component: () => import('@/views/MediaSettings.vue'),
@@ -169,6 +184,11 @@ const router = createRouter({
           path: 'backup',
           name: 'backup',
           component: () => import('@/views/Backup.vue'),
+        },
+        {
+          path: 'doctor',
+          name: 'doctor',
+          component: () => import('@/views/Doctor.vue'),
         },
         {
           path: 'settings',

@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	bundledDefinitions "github.com/hxpt/ptpatronus/definitions"
+	"github.com/hxpt/ptpatronus/internal/aiagent"
 	"github.com/hxpt/ptpatronus/internal/api"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
 	"github.com/hxpt/ptpatronus/internal/auth"
@@ -23,12 +25,16 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/module"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db"
+	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/dirwatch"
 	"github.com/hxpt/ptpatronus/internal/downloader/manager"
 	"github.com/hxpt/ptpatronus/internal/entertainment"
 	"github.com/hxpt/ptpatronus/internal/filemanager"
+	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/iyuu"
+	"github.com/hxpt/ptpatronus/internal/llm"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/monitor"
 	"github.com/hxpt/ptpatronus/internal/notice"
@@ -40,6 +46,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
 	"github.com/hxpt/ptpatronus/internal/site/medalwall"
 	"github.com/hxpt/ptpatronus/internal/site/schemas"
+	"github.com/hxpt/ptpatronus/internal/tgbot"
+	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/workflow"
 	"github.com/hxpt/ptpatronus/internal/workflow/nodes"
@@ -49,12 +57,14 @@ import (
 
 // App is the running application.
 type App struct {
-	cfg       *config.Config
-	db        *gorm.DB
-	sched     *scheduler.Scheduler
-	pluginMgr *plugins.Manager
-	http      *http.Server
-	monCancel context.CancelFunc // 停监控采集 goroutine
+	cfg            *config.Config
+	db             *gorm.DB
+	sched          *scheduler.Scheduler
+	pluginMgr      *plugins.Manager
+	http           *http.Server
+	monCancel      context.CancelFunc // 停监控采集 goroutine
+	dirwatchCancel context.CancelFunc // 停目录监视 goroutine（C 阶段填，nil=safe-mode/未启用）
+	tgbotCancel    context.CancelFunc // 停 Telegram bot goroutine（A 阶段填，nil=safe-mode/未启用）
 }
 
 // New wires all dependencies and builds the HTTP server (does not start it).
@@ -184,13 +194,17 @@ func New(cfg *config.Config) (*App, error) {
 
 	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
 	pluginMgr.SetCfgOp(cfgOp) // 插件市场源等 UI 持久化配置（SystemConfig）
-	if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
-		slog.Warn("load external plugins failed", "err", err)
+	if !cfg.SafeMode {
+		if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
+			slog.Warn("load external plugins failed", "err", err)
+		}
+		if cfg.PluginDevWatch {
+			pluginMgr.EnableDevWatcher(time.Duration(cfg.PluginDevWatchIntervalMS) * time.Millisecond)
+		}
+		pluginMgr.Start(context.Background())
+	} else {
+		slog.Warn("SAFE_MODE 已启用：跳过插件/调度/监控激活（核心 HTTP + 诊断可达）")
 	}
-	if cfg.PluginDevWatch {
-		pluginMgr.EnableDevWatcher(time.Duration(cfg.PluginDevWatchIntervalMS) * time.Millisecond)
-	}
-	pluginMgr.Start(context.Background())
 
 	// 在线更新：拉官方版本清单(UPDATE_MANIFEST_URL)与当前版本比较，供 Web/客户端检查；
 	// 管理员可写自托管清单(data/update-manifest.json)覆盖官方源。
@@ -292,7 +306,12 @@ func New(cfg *config.Config) (*App, error) {
 	// 媒体订阅：cron 跨站搜种子→推送默认下载器+通知。复用 siteCh(搜)、dlCh/dlOp(下载)、noticeSvc(通知)。
 	// mediaCh 注入多评分低分保护闸门（订阅 EnableRatingGuard 或全局 MediaQualityConfig.Enabled）。
 	subOp := oper.NewSubscriptionOper(database)
-	subCh := chain.NewSubscribeChain(siteCh, dlCh, dlOp, subOp, noticeSvc, mediaCh)
+	// 资源过滤规则引擎（对标 MP-2 filter module）：规则/组存 SystemConfig KV；引擎无状态。
+	// 订阅/刷流/RSS/工作流/Agent 共用，破除 workflow/nodes 复制 matchResolution 的循环 import 根因。
+	filterStore := filter.NewStore(cfgOp)
+	filterEng := filter.NewEngine(filterStore)
+
+	subCh := chain.NewSubscribeChain(siteCh, dlCh, dlOp, subOp, noticeSvc, mediaCh, filterEng)
 
 	hxpt := auth.NewHxptVIP(registry, "hxpt", cfg.AuthSiteURL, cfg.AuthVIPLevel, hc)
 
@@ -309,7 +328,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	// 刷流引擎：按规则选种→加入下载器→监控做种→达删除规则自动删种（tag 识别；cron 驱动选种+扫删）
 	brushOp := oper.NewBrushFlowOper(database)
-	brushCh := chain.NewBrushFlowChain(base, siteOp, siteCh, dlCh, brushOp, noticeSvc)
+	brushCh := chain.NewBrushFlowChain(base, siteOp, siteCh, dlCh, brushOp, noticeSvc, filterEng)
 
 	// 保种契约：为站点设分享率/做种数/上传量下限，cron 定时检查 UserInfo 低于阈值则告警
 	contractOp := oper.NewContractOper(database)
@@ -322,8 +341,25 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 	// 下载完成 → 触发开启 RefreshOnDownload 的服务器扫库（best-effort，单服务器失败不阻断）。
-	wsBC.SetDownloadDoneHook(func(ctx context.Context, dlID uint, name, hash string) {
+	wsBC.AddDownloadDoneHook(func(ctx context.Context, dlID uint, name, hash string) {
 		mediaServerCh.OnDownloadCompleted(ctx, name)
+	})
+
+	// 媒体整理：下载完成 → 识别 → 重命名 → 硬链/移动 → 刮削 NFO/海报 → 写历史 + 通知 → 扫库。
+	// 复用 mediaCh(识别)/dlMgr+dlOp(下载器)/mediaServerCh(扫库)/noticeSvc(通知)；hc 取海报图。
+	transferHistOp := oper.NewTransferHistoryOper(database)
+	transferLinkOp := oper.NewDownloadMediaLinkOper(database)
+	imageFetcher := func(ctx context.Context, url string) ([]byte, error) {
+		resp, err := hc.Get(ctx, url, "", true) // ssrf=true：海报来自 TMDB/豆瓣 等白名单域
+		if err != nil {
+			return nil, err
+		}
+		return resp.Body, nil
+	}
+	transferCh := chain.NewTransferChain(base, mediaCh, dlMgr, dlOp, transferHistOp, transferLinkOp, cfgOp, mediaServerCh, noticeSvc, imageFetcher)
+	// 下载完成 → 第二个副作用钩子：媒体整理（与媒体库刷新并存，fan-out，互不阻断）。
+	wsBC.AddDownloadDoneHook(func(ctx context.Context, dlID uint, name, hash string) {
+		transferCh.OnDownloadCompleted(ctx, dlID, name, hash)
 	})
 
 	// 网盘 + STRM（115/夸克/123）：CRUD + 浏览/配额 + STRM 生成 + 订阅追更（复用 subCh 匹配订阅）。
@@ -403,12 +439,14 @@ func New(cfg *config.Config) (*App, error) {
 			slog.Warn("trakt sync failed", "err", err)
 		}
 	})
-	auto.Start()
+	if !cfg.SafeMode {
+		auto.Start()
+	}
 
 	// RSS 订阅 + 工作流引擎（依赖 siteCh/dlCh/subCh/keepSeedCh/noticeSvc/siteOp/dlOp/hc/database，均已构造）。
 	rssOp := oper.NewRssOper(database)
 	rssItemOp := oper.NewRssItemOper(database)
-	rssCh := chain.NewRssChain(base, rssOp, rssItemOp, dlCh, dlOp, siteOp, noticeSvc, hc)
+	rssCh := chain.NewRssChain(base, rssOp, rssItemOp, dlCh, dlOp, siteOp, noticeSvc, hc, filterEng)
 
 	wfOp := oper.NewWorkflowOper(database)
 	wfRunOp := oper.NewWorkflowRunOper(database)
@@ -418,6 +456,7 @@ func New(cfg *config.Config) (*App, error) {
 	wfReg.Register(nodes.NewFetchSiteStatsNode(database))
 	wfReg.Register(nodes.NewFilterTorrentsNode())
 	wfReg.Register(nodes.NewLimitNode())
+	wfReg.Register(nodes.NewFilterRulesNode(filterEng))
 	wfReg.Register(nodes.NewAddDownloadNode(dlCh, dlOp))
 	wfReg.Register(nodes.NewAddSubscribeNode(subCh))
 	wfReg.Register(nodes.NewSendMessageNode(noticeSvc))
@@ -551,7 +590,9 @@ func New(cfg *config.Config) (*App, error) {
 	agentHub := monitor.NewAgentWSHub(agentOp, monSvc.IngestAgentReport, 0)
 	fileMgr.SetAgentHub(agentHub) // agent 文件管理后端依赖 hub；fileMgr 早于 agentHub 构建，此处后注入
 	monCtx, monCancel := context.WithCancel(context.Background())
-	go monSvc.Run(monCtx)
+	if !cfg.SafeMode {
+		go monSvc.Run(monCtx)
+	}
 	// 每日 3 点清理 30 天前的指标快照。
 	sched.AddFunc("metric-cleanup", "0 3 * * *", func() {
 		if _, err := monOp.CleanupSnapshots(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
@@ -620,6 +661,13 @@ func New(cfg *config.Config) (*App, error) {
 		defer cancel()
 		subCh.CheckAll(ctx)
 	})
+	// 媒体整理：定时兜底（catch-up/重试）——已完成种子→识别→重命名→硬链→刮削。
+	// 与下载完成事件钩子互补：覆盖重启/漏触发期；幂等（按 download_hash 成功去重）。
+	sched.AddFunc("transfer-sweep", cfg.TransferSweepCron, func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
+		transferCh.Sweep(ctx)
+	})
 	// 网盘 STRM：定时生成 STRM + 订阅追更匹配（默认每 6 小时；单规则失败不阻断）。
 	sched.AddFunc("cloud-strm", cfg.CloudStrmCron, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
@@ -627,6 +675,69 @@ func New(cfg *config.Config) (*App, error) {
 		cloudCh.GenerateAll(ctx)
 		cloudCh.SyncSubscriptions(ctx)
 	})
+
+	// AI Agent（ReAct 循环 + 双 LLM provider + 工具调用 + 多轮上下文）。
+	// 工具集绑定各业务 chain（读+写，admin-only）；会话/消息持久化；配置+API key 走 SystemConfig+Crypto。
+	agentConvOp := oper.NewAgentConversationOper(database)
+	agentMsgOp := oper.NewAgentMessageOper(database)
+	agentTools := registerAgentTools(siteOp, siteCh, subCh, dlOp, dlCh, mediaCh, recommendCh, transferCh, keepSeedCh, dashCh, notifCh, filterStore)
+	// 把全部 chain 能力批量暴露给插件 Host API（GET /tools、POST /tools/{name}、Bridge tool.*）。
+	// 必须在所有 chain 构造之后调用（闭包捕获 chain 指针）。
+	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh)
+	agentSvc := aiagent.New(llm.New, agentTools, agentMsgOp, agentConvOp, cfgOp, crypto)
+	agentChatH := v1.NewAgentChatHandler(agentSvc, agentConvOp.List, agentConvOp.Create, agentConvOp.Delete, agentMsgOp.ListByConv, cfgOp, crypto)
+	llmGatewayH := v1.NewLLMGatewayHandler(agentSvc, agentConvOp.Create, cfgOp, crypto)
+	doctorH := v1.NewDoctorHandler(cfg, database, nil)
+	tgBotH := v1.NewTgBotHandler(cfgOp, crypto)
+	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。
+	servarrH := v1.NewServarrHandler(subCh, mediaCh, transferHistOp.HasSuccessByMedia, cfg.APIKey)
+
+	// 目录监视：fsnotify 实时喂整理（补 DoneHook + cron 覆盖不到的手动投放 / 非托管来源）。safe-mode 下不启。
+	var dwCancel context.CancelFunc
+	if !cfg.SafeMode {
+		if dwc := dirwatch.Load(cfgOp); dwc.Enabled && len(dwc.Dirs) > 0 {
+			dw := dirwatch.New(dwc, func(ctx context.Context, srcDir string, files []transfer.FileInput) {
+				transferCh.ProcessDiscoveredFiles(ctx, srcDir, files)
+			})
+			dwCtx, cancel := context.WithCancel(context.Background())
+			dwCancel = cancel
+			go dw.Run(dwCtx)
+		}
+	}
+
+	// Telegram bot（入站 chat-ops）：getUpdates 长轮询 → 自然语言经 AI Agent 驱动全平台。safe-mode 下不启。
+	var tgCancel context.CancelFunc
+	if !cfg.SafeMode {
+		if tgc := tgbot.Load(cfgOp); tgc.Enabled && tgc.BotTokenEnc != "" {
+			if token := tgbot.BotToken(tgc, crypto); token != "" {
+				var chatMu sync.Mutex
+				chatConvs := map[string]uint{}
+				talk := func(ctx context.Context, chatKey, text string) <-chan llm.Event {
+					chatMu.Lock()
+					convID, ok := chatConvs[chatKey]
+					if !ok {
+						conv := &models.AgentConversation{}
+						if err := agentConvOp.Create(conv); err == nil && conv.ID != 0 {
+							convID = conv.ID
+							chatConvs[chatKey] = convID
+						}
+					}
+					chatMu.Unlock()
+					if convID == 0 {
+						ch := make(chan llm.Event)
+						close(ch)
+						return ch
+					}
+					return agentSvc.Run(ctx, convID, text)
+				}
+				clear := func(chatKey string) { chatMu.Lock(); delete(chatConvs, chatKey); chatMu.Unlock() }
+				bot := tgbot.New(token, tgc.APIURL, tgc.AllowedUserIDs, tgc.AllowGroupChat, talk, clear)
+				tgCtx, cancel := context.WithCancel(context.Background())
+				tgCancel = cancel
+				go bot.Run(tgCtx)
+			}
+		}
+	}
 
 	engine := api.Build(&api.Deps{
 		Cfg: cfg, DB: database, JWT: j, Act: act,
@@ -643,18 +754,24 @@ func New(cfg *config.Config) (*App, error) {
 		Dashboard:     dashCh,
 		WS:            wsBC,
 		RegOp:         regOp, RegCh: regCh,
-		Subscribe: subCh,
-		Workflow:  wfCh,
-		Rss:       rssCh,
-		BrushFlow: brushCh,
-		Contract:  contractCh,
+		Subscribe:   subCh,
+		Workflow:    wfCh,
+		Rss:         rssCh,
+		BrushFlow:   brushCh,
+		Contract:    contractCh,
 		MediaServer: mediaServerCh,
+		Transfer:    transferCh,
+		AgentChat:   agentChatH,
+		LLMGateway:  llmGatewayH,
+		Doctor:      doctorH,
+		TgBot:       tgBotH,
+		Servarr:     servarrH,
 		Cloud:       cloudCh,
 		Subtitle:    subtitleCh,
 		Trakt:       traktCh,
 		MCP:         mcpSrv,
-		Webhook:   webhookH,
-		MonOp:     monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
+		Webhook:     webhookH,
+		MonOp:       monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,
 		AgentOp:      agentOp, AgentHub: agentHub,
 		Savept:     saveptSvc,
@@ -662,11 +779,13 @@ func New(cfg *config.Config) (*App, error) {
 		Medal:      medalCh,
 		Notice:     noticeSvc,
 		Update:     updateSvc,
+		Filter:     filterStore,
+		FilterEng:  filterEng,
 		Plugins:    pluginMgr,
 	})
 
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: engine}
-	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel}, nil
+	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel, dirwatchCancel: dwCancel, tgbotCancel: tgCancel}, nil
 }
 
 // Run starts the HTTP server (blocking).
@@ -706,6 +825,12 @@ func loadSiteDefinitions(registry *site.Registry, defsDir string, externalExplic
 func (a *App) Shutdown(ctx context.Context) error {
 	if a.monCancel != nil {
 		a.monCancel()
+	}
+	if a.dirwatchCancel != nil {
+		a.dirwatchCancel()
+	}
+	if a.tgbotCancel != nil {
+		a.tgbotCancel()
 	}
 	if a.sched != nil {
 		a.sched.Stop()

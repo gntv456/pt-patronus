@@ -21,11 +21,13 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
   String? _msg;
   bool _ok = false;
   String? _testedUrl;
+  bool _allowInsecure = false;
 
   @override
   void initState() {
     super.initState();
     _url.text = ApiClient().baseUrl;
+    _allowInsecure = ApiClient().allowInsecureHttp;
     _url.addListener(_onUrlChanged);
   }
 
@@ -48,7 +50,7 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
   }
 
   /// 校验后端地址：必须有 scheme+host；http 仅允许私网（公网 http 凭据可被嗅探）。
-  /// 返回 null=合法，否则返回错误提示。
+  /// 勾选「允许公网 http」后跳过私网检查（自负风险）。返回 null=合法，否则返回错误提示。
   String? _validateUrl(String url) {
     final u = Uri.tryParse(url);
     if (u == null ||
@@ -65,7 +67,7 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
         h.startsWith('10.') ||
         h.startsWith('192.168.') ||
         RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(h);
-    if (u.scheme == 'http' && !isPrivate) {
+    if (u.scheme == 'http' && !isPrivate && !_allowInsecure) {
       return '公网地址请用 https://，否则登录凭据在共享网络下可被窃听';
     }
     return null;
@@ -198,6 +200,31 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
                       ),
                       keyboardType: TextInputType.url,
                       autocorrect: false,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Switch(
+                          value: _allowInsecure,
+                          onChanged: (v) async {
+                            await ApiClient().setAllowInsecureHttp(v);
+                            setState(() {
+                              _allowInsecure = v;
+                              _ok = false;
+                              _msg = v ? '已放行公网 http：凭据将明文传输，风险自负' : null;
+                            });
+                          },
+                        ),
+                        const Expanded(
+                          child: Text(
+                            '允许公网 HTTP（不安全，凭据可被窃听）',
+                            style: TextStyle(
+                              color: Colors.orange,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 12),
                     if (compact)

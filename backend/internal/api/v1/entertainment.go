@@ -54,6 +54,16 @@ func spendErr(c *gin.Context, err error) {
 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 }
 
+// Sites 列出全部站点及其已适配的娱乐项目数（娱乐页站点筛选用，GET /entertainment）。
+func (h *EntertainmentHandler) Sites(c *gin.Context) {
+	sites, err := h.ent.Sites()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"sites": sites})
+}
+
 // Games 列出某站点可用的游戏。
 func (h *EntertainmentHandler) Games(c *gin.Context) {
 	id, ok := parseID(c)

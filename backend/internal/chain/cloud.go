@@ -239,12 +239,29 @@ func matchAnySubscription(subs []models.Subscription, filename string) *models.S
 	if nf == "" {
 		return nil
 	}
+	ftSet := make(map[string]bool)
+	for _, t := range strings.Fields(nf) {
+		ftSet[t] = true
+	}
 	for i := range subs {
 		t := normalizeName(subs[i].Title)
 		if t == "" {
 			continue
 		}
-		if strings.Contains(nf, t) {
+		titleTokens := strings.Fields(t)
+		if len(titleTokens) == 0 {
+			continue
+		}
+		// 订阅标题的每个 token 都须作为独立词出现在文件名（避免裸子串误匹配：
+		// "It" 命中 "Comm**it**ments"、"Her" 命中 "Mot**her**"）。
+		all := true
+		for _, tt := range titleTokens {
+			if !ftSet[tt] {
+				all = false
+				break
+			}
+		}
+		if all {
 			return &subs[i]
 		}
 	}

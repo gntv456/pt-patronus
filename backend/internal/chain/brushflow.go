@@ -11,6 +11,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader"
+	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
@@ -27,10 +28,11 @@ type BrushFlowChain struct {
 	dlCh   *DownloadChain
 	op     *oper.BrushFlowOper
 	notice *notice.Service
+	filterEng *filter.Engine // 可空（未装配时 filterAndSort 回退硬过滤）
 }
 
-func NewBrushFlowChain(b Base, siteOp *oper.SiteOper, siteCh *SiteChain, dlCh *DownloadChain, op *oper.BrushFlowOper, noticeSvc *notice.Service) *BrushFlowChain {
-	return &BrushFlowChain{Base: b, siteOp: siteOp, siteCh: siteCh, dlCh: dlCh, op: op, notice: noticeSvc}
+func NewBrushFlowChain(b Base, siteOp *oper.SiteOper, siteCh *SiteChain, dlCh *DownloadChain, op *oper.BrushFlowOper, noticeSvc *notice.Service, filterEng *filter.Engine) *BrushFlowChain {
+	return &BrushFlowChain{Base: b, siteOp: siteOp, siteCh: siteCh, dlCh: dlCh, op: op, notice: noticeSvc, filterEng: filterEng}
 }
 
 // 透传 CRUD
@@ -103,7 +105,7 @@ func (c *BrushFlowChain) RunSelect(ctx context.Context, taskID uint) error {
 	if err != nil {
 		return err
 	}
-	cand := bfFilterAndSort(results, task)
+	cand := c.filterAndSort(ctx, results, task)
 
 	added := 0
 	for _, tor := range cand {
@@ -203,6 +205,26 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 		return fmt.Sprintf("上传 %s≥%dMB", bfFormatBytes(tr.Uploaded), task.DeleteUploadMB)
 	}
 	return ""
+}
+
+// filterAndSort 选种过滤排序：任务配了 FilterGroups 则用规则引擎过滤（剔除不匹配的种子），
+// 再按 seeders 升序排（刷流本质：少做种优先快涨分享率；引擎 pri 优先级排序不适用刷流）；
+// 未配 FilterGroups 则回退 bfFilterAndSort（体积/做种/Free 硬过滤）。
+func (c *BrushFlowChain) filterAndSort(ctx context.Context, results []site.Torrent, task *models.BrushFlowTask) []site.Torrent {
+	groups := parsePipeList(task.FilterGroups)
+	if c.filterEng != nil && len(groups) > 0 {
+		media := &filter.MediaInfo{Category: task.Category}
+		ranked, err := c.filterEng.Filter(ctx, groups, results, media)
+		if err == nil {
+			out := make([]site.Torrent, 0, len(ranked))
+			for _, mt := range ranked {
+				out = append(out, mt.Torrent)
+			}
+			sort.SliceStable(out, func(i, j int) bool { return out[i].Seeders < out[j].Seeders })
+			return out
+		}
+	}
+	return bfFilterAndSort(results, task)
 }
 
 // bfFilterAndSort 按选种规则过滤并按 seeders 升序排（seeders 少的优先快速涨分享率）。

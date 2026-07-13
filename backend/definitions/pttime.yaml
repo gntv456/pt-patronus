@@ -247,6 +247,10 @@ user_info:
                 - "td.rowhead:contains('传输') + td"
                 - "td.rowhead:contains('傳送') + td"
                 - "td.rowhead:contains('Transfers') + td"
+                # PTTime 无「传输」行——上传量聚合在「核心数据」行的 td.rowfollow 里：
+                # 「分享率: 1.495  上传量: 12.07TB  下载量: 8.07TB  魔力值: ...」
+                - "td.rowfollow:contains('分享率')"
+                - "td.rowfollow:contains('上传量')"
         downloaded:
             filters:
                 - name: regexp
@@ -256,6 +260,8 @@ user_info:
                 - "td.rowhead:contains('传输') + td"
                 - "td.rowhead:contains('傳送') + td"
                 - "td.rowhead:contains('Transfers') + td"
+                - "td.rowfollow:contains('分享率')"
+                - "td.rowfollow:contains('下载量')"
         ratio:
             filters:
                 - name: regexp
@@ -270,6 +276,7 @@ user_info:
                   args: Inf.:::9999
             selectors:
                 - "td.rowhead:contains('传输') + td"
+                - "td.rowfollow:contains('分享率')"
         level:
             selectors:
                 - td.rowhead:contains('等级') + td > b
@@ -287,11 +294,16 @@ user_info:
                 - "td.rowhead:contains('Join'):contains('date') + td"
         bonus:
             filters:
+                # PTTime 魔力值聚合在「核心数据」rowfollow 行；parse_number 会误取该行首个数字
+                # （= 分享率 1.495），故必须正则锚定「魔力值」标签后的数值。
+                - name: regexp
+                  args: '(?i)(?:魔力值|魔力|Karma Points)[\s\S]{0,40}?([\d.,]+)'
                 - name: parse_number
             selectors:
                 - "td.rowhead:contains('魔力') + td"
                 - "td.rowhead:contains('Karma Points') + td"
-                - "td.rowfollow:contains('魔力')"
+                - "td.rowfollow:contains('魔力值')"
+                - "td.rowfollow:contains('分享率')"
         seeding_size:
             filters:
                 - name: parse_size

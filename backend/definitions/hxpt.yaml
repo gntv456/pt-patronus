@@ -46,6 +46,12 @@ selectors:
     size:
       # 12 列布局右数第 6 列（在线 inspect 校准：td[6]=体积 106.48GB，右序 size/seeders/leechers/completed/空/空）
       selector: "td:nth-last-child(6)"
+    # 免费/促销图标（NexusPHP 标准 pro_free class；inspect 验证 attr:alt 提取 "Free"）。
+    # class^="pro_free" 同时覆盖 pro_free / pro_free2up（含免费的促销）；
+    # search.go:113 Extract 非空 → Free=true，从而 filter FREE 规则在真实数据生效。
+    free:
+      selector: 'img[class^="pro_free"]'
+      attr: alt
 
 # 种子详情页（details.php）：标题在 <h1>（好学 cute-top-profile 皮肤，在线 inspect 校准）。
 # 其余字段（description=#kdescr / screenshots / poster / imdb_id / douban_id / download）

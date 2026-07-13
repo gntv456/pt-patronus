@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/rss.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/api/downloader.dart';
+import 'package:ptpatronus/api/filter_rules.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
@@ -17,9 +18,11 @@ class RssPage extends StatefulWidget {
 
 class _RssPageState extends State<RssPage> {
   final _api = RssApi();
+  final _filterApi = FilterRuleApi();
   List<RssSubscription> _list = [];
   List<Site> _sites = const [];
   List<Downloader> _downloaders = const [];
+  List<String> _filterGroups = const [];
   bool _loading = false;
   int? _checking;
 
@@ -40,6 +43,10 @@ class _RssPageState extends State<RssPage> {
         _downloaders = await DownloaderApi().list().catchError(
           (_) => <Downloader>[],
         );
+      }
+      if (_filterGroups.isEmpty) {
+        final gs = await _filterApi.groups().catchError((_) => <FilterRuleGroup>[]);
+        _filterGroups = gs.map((g) => g.name).toList();
       }
     } catch (e) {
       _toast('$e');
@@ -102,6 +109,7 @@ class _RssPageState extends State<RssPage> {
         editing: r,
         sites: _sites,
         downloaders: _downloaders,
+        filterGroups: _filterGroups,
         onSaved: () => Navigator.pop(ctx, true),
       ),
     );
@@ -380,11 +388,13 @@ class _RssForm extends StatefulWidget {
   final RssSubscription? editing;
   final List<Site> sites;
   final List<Downloader> downloaders;
+  final List<String> filterGroups;
   final VoidCallback onSaved;
   const _RssForm({
     this.editing,
     required this.sites,
     required this.downloaders,
+    required this.filterGroups,
     required this.onSaved,
   });
   @override
@@ -424,6 +434,8 @@ class _RssFormState extends State<_RssForm> {
   bool _enabled = true;
   bool _autoDownload = false;
   bool _saving = false;
+  // 选中的过滤规则组名（提交时 join('|')）。
+  final _selectedGroups = <String>{};
 
   @override
   void initState() {
@@ -435,6 +447,8 @@ class _RssFormState extends State<_RssForm> {
       _resolution = e.resolution;
       _enabled = e.enabled;
       _autoDownload = e.autoDownload;
+      _selectedGroups.addAll(
+          e.filterGroups.split('|').map((s) => s.trim()).where((s) => s.isNotEmpty));
     }
   }
 
@@ -457,6 +471,7 @@ class _RssFormState extends State<_RssForm> {
       'save_path': _path.text.trim(),
       'category': _category.text.trim(),
       'tags': _tags.text.trim(),
+      'filter_groups': _selectedGroups.join('|'),
     };
     try {
       if (widget.editing != null) {
@@ -545,6 +560,39 @@ class _RssFormState extends State<_RssForm> {
               onChanged: (v) => setState(() => _resolution = v ?? ''),
             ),
             const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '过滤规则组（留空=不过滤）',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            const SizedBox(height: 6),
+            widget.filterGroups.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Text(
+                      '暂无可用规则组，可在「过滤规则」页创建',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        for (final g in widget.filterGroups)
+                          FilterChip(
+                            label: Text(g),
+                            selected: _selectedGroups.contains(g),
+                            onSelected: (v) => setState(() => v
+                                ? _selectedGroups.add(g)
+                                : _selectedGroups.remove(g)),
+                          ),
+                      ],
+                    ),
+                  ),
             Row(
               children: [
                 Expanded(

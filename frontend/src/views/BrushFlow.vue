@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { brushflowApi, type BrushFlowTask, type BrushFlowSeed } from '@/api/brushflow'
 import { siteApi } from '@/api/site'
 import { downloaderApi } from '@/api/downloader'
+import { filterApi } from '@/api/filter'
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
@@ -10,6 +11,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 const tasks = ref<BrushFlowTask[]>([])
 const sites = ref<{ id: number; name: string }[]>([])
 const downloaders = ref<{ id: number; name: string }[]>([])
+const filterGroups = ref<string[]>([])
 const loading = ref(false)
 
 async function load() {
@@ -36,7 +38,7 @@ function defaultForm(): Partial<BrushFlowTask> {
     keyword: '', category: '', min_size_mb: 0, max_size_mb: 0,
     min_seeders: 0, max_seeders: 0, free_only: false, paused: false,
     delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false,
-    max_seeds: 10, save_path: '', category_dl: '',
+    max_seeds: 10, save_path: '', category_dl: '', filter_groups: '',
   }
 }
 
@@ -53,6 +55,14 @@ function openEdit(t: BrushFlowTask) {
   form.value = { ...t }
   showForm.value = true
 }
+
+// 过滤规则组：表单以 | 分隔字符串提交，UI 用多选拆分回填。
+const filterGroupArray = computed<string[]>({
+  get: () => (form.value.filter_groups || '').split('|').map((s) => s.trim()).filter(Boolean),
+  set: (v: string[]) => {
+    form.value.filter_groups = v.join('|')
+  },
+})
 
 async function save() {
   if (!form.value.name || !form.value.site_id || !form.value.downloader_id) {
@@ -131,7 +141,12 @@ function fmtBytes(n: number) {
   return `${v.toFixed(1)} ${u[i]}`
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  filterApi.groups().then((gs) => {
+    filterGroups.value = gs.map((g) => g.name)
+  }).catch(() => [])
+})
 </script>
 
 <template>
@@ -171,12 +186,12 @@ onMounted(load)
       </div>
       <EmptyState
         v-if="!tasks.length && !loading"
-        icon="brushflow"
+        icon="🚀"
         title="暂无刷流任务"
         description="新建任务开始自动刷上传量与分享率"
-        action-label="新建任务"
-        @action="openCreate"
-      />
+      >
+        <el-button type="primary" @click="openCreate">新建任务</el-button>
+      </EmptyState>
     </div>
 
     <el-dialog v-model="showForm" :title="editing ? '编辑任务' : '新建任务'" width="640px" top="6vh">
@@ -218,6 +233,11 @@ onMounted(load)
           </div>
         </el-form-item>
         <el-form-item label="仅免费"><el-switch v-model="form.free_only" /></el-form-item>
+        <el-form-item label="过滤规则组">
+          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip placeholder="留空=不过滤" style="width: 100%">
+            <el-option v-for="g in filterGroups" :key="g" :label="g" :value="g" />
+          </el-select>
+        </el-form-item>
         <el-divider content-position="left">删除规则（满足任一；全 0 = 永不自动删）</el-divider>
         <el-form-item label="分享率 ≥"><el-input-number v-model="form.delete_ratio" :min="0" :step="0.1" controls-position="right" /></el-form-item>
         <el-form-item label="保种(小时) ≥"><el-input-number v-model="form.delete_seed_hours" :min="0" :step="0.5" controls-position="right" /></el-form-item>

@@ -120,6 +120,7 @@ type Manager struct {
 	watchCancel   context.CancelFunc
 	watchWG       sync.WaitGroup
 	mediaSearcher MediaSearcher // 由 app.go 注入（MediaChain 适配器），nil 时 /media/search 返回空
+	hostTools     *HostToolRegistry // 由 app.go 注入（registerPluginHostTools 批量注册 chain 能力）；nil 时 /tools 返回空
 }
 
 type Asset struct {
@@ -169,6 +170,21 @@ func NewManager(db *gorm.DB, bus *event.Bus, noticeSvc *notice.Service, sites *o
 
 // SetMediaSearcher 注入媒体检索适配器（app.go 用 MediaChain 包装），供 Host API /media/search 使用。
 func (m *Manager) SetMediaSearcher(s MediaSearcher) { m.mediaSearcher = s }
+
+// SetHostTools 注入宿主工具注册表（app.go 用 registerPluginHostTools 批量注册 chain 能力），
+// 供 Host API GET /tools、POST /tools/{name} 与 Bridge tool.list/tool.call 使用。应在 Start 前调用。
+func (m *Manager) SetHostTools(r *HostToolRegistry) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.hostTools = r
+}
+
+// HostTools 返回已注入的工具注册表（未注入返回 nil；调用方需 nil 检查）。
+func (m *Manager) HostTools() *HostToolRegistry {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.hostTools
+}
 
 // MediaSearch 供 externalHostServer 的 /media/search 端点调用；未注入时返回空。
 func (m *Manager) MediaSearch(ctx context.Context, keyword string, year int) ([]MediaHit, error) {
@@ -715,6 +731,8 @@ func (m *Manager) Bridge(ctx context.Context, id, method string, params map[stri
 				"notice.send",
 				"sites.list",
 				"action.invoke",
+				"tool.list",
+				"tool.call",
 			},
 		}, nil
 	case "config.get":
@@ -808,6 +826,33 @@ func (m *Manager) Bridge(ctx context.Context, id, method string, params map[stri
 		}
 		input, _ := params["input"].(map[string]any)
 		return m.ExecuteAction(ctx, id, action, input)
+	case "tool.list":
+		// 列出当前插件权限可见的宿主工具（与 externalHostServer GET /tools 同源）。
+		reg := m.HostTools()
+		if reg == nil {
+			return map[string]any{"tools": []HostTool{}}, nil
+		}
+		return map[string]any{"tools": reg.VisibleTools(manifest.Permissions)}, nil
+	case "tool.call":
+		// 让插件视图（iframe dashboard）也能调用宿主工具，与 external-http 进程的 POST /tools/{name} 等价。
+		// 权限/超时/未找到 的处理统一走 Dispatch；Bridge 层只做参数解包与结果包装。
+		reg := m.HostTools()
+		name := bridgeString(params, "name", "")
+		if reg == nil || name == "" {
+			return nil, fmt.Errorf("tool %q not found", name)
+		}
+		input, _ := params["input"].(map[string]any)
+		out, perm, notFound, err := reg.Dispatch(ctx, manifest.Permissions, name, input)
+		if notFound {
+			return nil, fmt.Errorf("tool %q not found", name)
+		}
+		if err == ErrPermissionDenied {
+			return nil, fmt.Errorf("permission %s is required", perm)
+		}
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"result": out}, nil
 	default:
 		return nil, fmt.Errorf("unsupported bridge method %q", method)
 	}

@@ -19,6 +19,7 @@ export interface RssSubscription {
   save_path: string
   category: string
   tags: string
+  filter_groups: string // 绑定过滤规则组名（| 分隔，空=不过滤）
   last_checked_at?: string
   created_at: string
   updated_at: string
@@ -40,6 +41,7 @@ export interface RssInput {
   save_path?: string
   category?: string
   tags?: string
+  filter_groups?: string
 }
 
 export interface RssItem {

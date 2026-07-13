@@ -24,8 +24,9 @@ func MailboxBoxParam(m MailboxType) string {
 }
 
 var (
-	msgDateRe = regexp.MustCompile(`(?i)(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}月\d{1,2}[日号]|\d+\s*(小时|天|周)前|\d+\s*天\d+\s*时前|\d+\s*月\d+\s*天前|yesterday|today|\d+\s*(hours?|days?|weeks?)\s+ago)`)
-	msgIDRe   = regexp.MustCompile(`[?&]id=(\d+)`)
+	msgDateRe   = regexp.MustCompile(`(?i)(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}月\d{1,2}[日号]|\d+\s*(小时|天|周)前|\d+\s*天\d+\s*时前|\d+\s*月\d+\s*天前|yesterday|today|\d+\s*(hours?|days?|weeks?)\s+ago)`)
+	msgIDRe     = regexp.MustCompile(`[?&]id=(\d+)`)
+	pureDigitRe = regexp.MustCompile(`^\d+$`) // 纯数字 uid 链接，sender 提取时跳过取真实用户名
 )
 
 // ParseMessages 从私信列表页解析（NexusPHP table tr:has(td.rowfollow)）。
@@ -75,13 +76,22 @@ func ParseMessages(doc *goquery.Document, mailbox MailboxType) []Message {
 			return
 		}
 		href, _ := titleLink.Attr("href")
-		// sender（第 3 格）
-		sender := "未知"
-		if cells.Length() > 2 {
+		// sender：优先扫 tr 内 userdetails 链接取用户名——适配 PTTime 等皮肤（td 序含图标/回复数
+		// 格导致 cells.Eq(2) 错位成主题）。跳过纯数字 uid 链接（PTTime 同时给 uid 与用户名两个链接）。
+		sender := ""
+		tr.Find(`a[href*="userdetails.php"]`).Each(func(_ int, a *goquery.Selection) {
+			if t := strings.TrimSpace(a.Text()); t != "" && !pureDigitRe.MatchString(t) {
+				sender = t
+			}
+		})
+		if sender == "" && cells.Length() > 2 {
 			sender = strings.TrimSpace(cells.Eq(2).Text())
 		}
 		if sender == "" {
 			sender = strings.TrimSpace(cells.Eq(0).Text())
+		}
+		if sender == "" {
+			sender = "未知"
 		}
 		// date（从第 4 格起扫）
 		date := detectMsgDate(cells, 3)

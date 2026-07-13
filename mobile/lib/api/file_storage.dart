@@ -5,11 +5,12 @@ import 'package:http/http.dart' as http;
 
 import '../core/api_client.dart';
 
-/// 存储后端（WebDAV / Alist / SMB / Agent / 本机）。对齐后端 FileStorage（密码 json:"-" 不外泄）。
+/// 存储后端（WebDAV / Alist / SMB / Agent / Rclone / 本机）。对齐后端 FileStorage（密码 json:"-" 不外泄）。
+/// rclone 字段编码：url=二进制路径、username=remote 名、password=rclone.conf 内容、base_path=remote 内子路径。
 class FileStorage {
   final int id;
   final String name;
-  final String type; // webdav | alist | smb | agent | local
+  final String type; // webdav | alist | smb | agent | rclone | local
   final String url;
   final String username;
   final String basePath;
@@ -144,7 +145,7 @@ class FileStorageApi {
 /// 创建/更新存储入参（对齐后端 oper.FileStorageInput）。密码留空=不修改/不设密码。
 class FileStorageInput {
   final String name;
-  final String type; // webdav | alist | smb | agent | local
+  final String type; // webdav | alist | smb | agent | rclone | local
   final String url;
   final String username;
   final String password;

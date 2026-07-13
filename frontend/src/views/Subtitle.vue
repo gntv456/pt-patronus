@@ -18,6 +18,7 @@ const results = ref<SubtitleResult[]>([])
 const loading = ref(false)
 const downloading = ref<string | null>(null)
 const searched = ref(false)
+const error = ref('')
 
 async function search() {
   if (!q.value.trim()) {
@@ -25,13 +26,16 @@ async function search() {
     return
   }
   loading.value = true
+  error.value = ''
   searched.value = true
   try {
     results.value = await subtitleApi.search(q.value.trim(), language.value)
     if (!results.value.length) ElMessage.info('未找到字幕')
   } catch (e: any) {
     ElMessage.error(e?.message || '搜索失败')
+    error.value = e?.message || '搜索失败'
     results.value = []
+    searched.value = false // 出错时不显示「未找到」，由 error 态承接，避免误导
   } finally {
     loading.value = false
   }
@@ -158,6 +162,14 @@ onMounted(() => {})
           @click="download(s)"
         >下载</el-button>
       </div>
+      <EmptyState
+        v-if="error && !loading"
+        icon="⚠️"
+        title="搜索失败"
+        :description="error"
+      >
+        <el-button @click="search">重试</el-button>
+      </EmptyState>
       <EmptyState
         v-if="searched && !results.length && !loading"
         icon="💬"

@@ -1,6 +1,7 @@
 package site
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -46,5 +47,19 @@ func TestParseAnnouncements_Classic(t *testing.T) {
 func TestAnnTitle(t *testing.T) {
 	if got := annTitle("", "公告：关于元旦活动安排的通知，请查收"); got != "关于元旦活动安排的通知" {
 		t.Errorf("annTitle: got %q want 关于元旦活动安排的通知", got)
+	}
+}
+
+// TestParseAnnouncements_PTTime PTTime 公告在 <div id=news>（无引号 id，net-html 仍可解析），
+// 非 [id^=ka] 经典块。验证 parseAnnDiv 的 #news 选择器命中（否则 PTTime 公告恒空）。
+func TestParseAnnouncements_PTTime(t *testing.T) {
+	html := `<html><body><div id=news class=mt10><b>最新通告</b> - 近期有大量Transmission用户出现下载异常。修复记录：1、修复VIP用户线路nas客户端问题。</div></body></html>`
+	doc := docFromHTML(t, html)
+	a := ParseAnnouncements(doc)
+	if len(a.Items) == 0 {
+		t.Fatal("pttime announcement: expected item, got 0 (#news 未命中?)")
+	}
+	if !strings.Contains(a.Items[0].Content, "Transmission") {
+		t.Errorf("pttime announcement content: got %q", a.Items[0].Content)
 	}
 }

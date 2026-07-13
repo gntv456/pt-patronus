@@ -84,10 +84,18 @@ async function save() {
 }
 
 async function remove(s: MediaServer) {
-  await ElMessageBox.confirm(`确定删除媒体服务器「${s.name}」？`, '提示', { type: 'warning' })
-  await mediaServerApi.remove(s.id)
-  ElMessage.success('已删除')
-  await load()
+  try {
+    await ElMessageBox.confirm(`确定删除媒体服务器「${s.name}」？`, '提示', { type: 'warning' })
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await mediaServerApi.remove(s.id)
+    ElMessage.success('已删除')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '删除失败')
+  }
 }
 
 async function test(s: MediaServer) {

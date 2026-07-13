@@ -22,6 +22,7 @@ export interface Site {
   priority: number
   limit_interval: number
   created_at: string
+  game_count?: number // 已适配娱乐项目数（仅 GET /entertainment 返回）
 }
 
 export interface SiteInput {

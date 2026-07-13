@@ -47,4 +47,79 @@ class SystemApi {
     final m = await ApiClient().get('/system/update/check?platform=$platform');
     return UpdateCheckResult.fromJson(m);
   }
+
+  /// 诊断面板：跑健康检查。
+  static Future<DoctorReport> runDoctor() async {
+    final m = await ApiClient().get('/system/doctor');
+    return DoctorReport.fromJson(m);
+  }
+
+  /// 尝试修复（MVP 原样跑一遍，Fixable 检查未来扩展）。
+  static Future<DoctorReport> fixDoctor() async {
+    final m = await ApiClient().post('/system/doctor/fix', {});
+    return DoctorReport.fromJson(m);
+  }
+}
+
+/// 单项诊断发现。
+class DoctorFinding {
+  final String id;
+  final String severity; // info | warn | error
+  final String status; // ok | skipped | degraded | failed | fixed
+  final String title;
+  final String detail;
+  final String recommendation;
+
+  const DoctorFinding({
+    this.id = '',
+    this.severity = 'info',
+    this.status = 'ok',
+    this.title = '',
+    this.detail = '',
+    this.recommendation = '',
+  });
+
+  factory DoctorFinding.fromJson(Map<String, dynamic> j) => DoctorFinding(
+        id: (j['id'] ?? '').toString(),
+        severity: (j['severity'] ?? 'info').toString(),
+        status: (j['status'] ?? 'ok').toString(),
+        title: (j['title'] ?? '').toString(),
+        detail: (j['detail'] ?? '').toString(),
+        recommendation: (j['recommendation'] ?? '').toString(),
+      );
+}
+
+/// 诊断报告（对标后端 doctor.Report）。
+class DoctorReport {
+  final String status; // healthy | degraded | failed
+  final List<DoctorFinding> findings;
+  final Map<String, dynamic> environment;
+  final int total;
+  final int info;
+  final int warn;
+  final int error;
+
+  const DoctorReport({
+    this.status = 'healthy',
+    this.findings = const [],
+    this.environment = const {},
+    this.total = 0,
+    this.info = 0,
+    this.warn = 0,
+    this.error = 0,
+  });
+
+  factory DoctorReport.fromJson(Map<String, dynamic> j) {
+    final s = (j['summary'] ?? const {}) as Map<String, dynamic>;
+    final list = (j['findings'] ?? const []) as List;
+    return DoctorReport(
+      status: (j['status'] ?? 'healthy').toString(),
+      findings: list.map((e) => DoctorFinding.fromJson(e as Map<String, dynamic>)).toList(),
+      environment: (j['environment'] ?? const {}) as Map<String, dynamic>,
+      total: (s['total'] ?? 0) as int,
+      info: (s['info'] ?? 0) as int,
+      warn: (s['warn'] ?? 0) as int,
+      error: (s['error'] ?? 0) as int,
+    );
+  }
 }

@@ -120,17 +120,24 @@ func Extract(data []byte, fallbackName string) ([]byte, string, error) {
 	return data, name, nil
 }
 
+// maxSubBytes 单个字幕解压上限：字幕源返声明巨大的 UncompressedSize64 条目（zip 炸弹）时，
+// 避免几十 GB 分配拖垮进程。64MB 远超任何正常字幕，安全余量充足。
+const maxSubBytes int64 = 64 << 20
+
 // extractZip 从 zip 字节中取第一个字幕文件。
 func extractZip(data []byte) ([]byte, string, error) {
 	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 	if err != nil {
 		return nil, "", fmt.Errorf("解压 zip 失败: %w", err)
 	}
-	// 优先选字幕文件，否则选最大的文本类文件
+	// 优先选字幕文件，否则选最大的文本类文件；声明体积超上限的条目一律跳过（防 zip 炸弹）。
 	var best *zip.File
 	for i := range zr.File {
 		f := zr.File[i]
 		if f.FileInfo().IsDir() {
+			continue
+		}
+		if f.UncompressedSize64 > uint64(maxSubBytes) {
 			continue
 		}
 		if IsSubtitleExt(f.Name) {
@@ -149,9 +156,13 @@ func extractZip(data []byte) ([]byte, string, error) {
 		return nil, "", fmt.Errorf("打开 zip 条目失败: %w", err)
 	}
 	defer rc.Close()
-	b, err := io.ReadAll(rc)
+	// 即便头部声明体积正常，解压实际字节仍以硬上限兜底（防声明造假/压缩比异常的炸弹）。
+	b, err := io.ReadAll(io.LimitReader(rc, maxSubBytes+1))
 	if err != nil {
 		return nil, "", err
+	}
+	if int64(len(b)) > maxSubBytes {
+		return nil, "", fmt.Errorf("字幕解压超出 %d 字节上限（疑似 zip 炸弹）", maxSubBytes)
 	}
 	return b, path.Base(best.Name), nil
 }

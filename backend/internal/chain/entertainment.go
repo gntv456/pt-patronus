@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/entertainment"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -67,6 +68,27 @@ func (c *EntertainmentChain) Games(siteID uint) ([]entertainment.LotteryGame, er
 		return nil, err
 	}
 	return c.reg.Games(s.BaseURL), nil
+}
+
+// SiteGameCount 站点 + 已适配娱乐项目数。嵌入 models.Site 令 JSON 字段平铺
+// （除站点原有字段外多一个 game_count），供娱乐页站点筛选展示「N 个项目」。
+type SiteGameCount struct {
+	models.Site
+	GameCount int `json:"game_count"`
+}
+
+// Sites 列出全部站点及其已适配的娱乐项目数。计数与 Games() 同一 hostMatch 规则
+// （含 www 子域放宽），按 base_url 的 host 在 registry 匹配——不落库，纯运行时计算。
+func (c *EntertainmentChain) Sites() ([]SiteGameCount, error) {
+	sites, err := c.siteOp.List()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SiteGameCount, len(sites))
+	for i, s := range sites {
+		out[i] = SiteGameCount{Site: s, GameCount: len(c.reg.Games(s.BaseURL))}
+	}
+	return out, nil
 }
 
 // Play 玩一次游戏（带站点凭据调站点端点）。

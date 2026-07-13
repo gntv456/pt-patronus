@@ -90,8 +90,13 @@ loadSites()
     <div class="head">
       <h2 class="title">娱乐</h2>
       <div class="selectors">
-        <el-select v-model="currentSite" placeholder="选择站点" style="width: 160px" @change="loadGames">
-          <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
+        <el-select v-model="currentSite" placeholder="选择站点" style="width: 200px" @change="loadGames">
+          <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id">
+            <div class="opt-row">
+              <span class="opt-name">{{ s.name }}</span>
+              <span class="opt-count" :class="{ zero: !s.game_count }">{{ s.game_count ?? 0 }}</span>
+            </div>
+          </el-option>
         </el-select>
         <el-select v-if="games.length > 1" v-model="currentGame" placeholder="选择玩法" style="width: 160px">
           <el-option v-for="g in games" :key="g.id" :label="g.name" :value="g.id" />
@@ -145,6 +150,10 @@ loadSites()
 .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .title { margin: 4px 0; font-size: 22px; font-weight: 700; }
 .selectors { display: flex; gap: 10px; }
+.opt-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
+.opt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opt-count { flex: none; min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 12px; font-weight: 600; text-align: center; color: var(--pt-primary, #6c5ce7); background: color-mix(in srgb, var(--pt-primary, #6c5ce7) 14%, transparent); }
+.opt-count.zero { color: var(--text-muted, #9aa0a6); background: rgba(120, 120, 120, 0.12); font-weight: 500; }
 .simple-card { padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 360px; margin: 0 auto; }
 .gname { font-size: 18px; font-weight: 600; }
 .result { width: 100%; padding: 10px; border-radius: var(--radius-md); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

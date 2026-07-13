@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import '../account/account_page.dart';
 import '../announcements/announcements_page.dart';
+import '../assistant/assistant_page.dart';
 import '../assessment/assessment_page.dart';
 import '../backup/backup_page.dart';
+import '../doctor/doctor_page.dart';
 import '../dashboard/dashboard_page.dart';
 import '../downloaders/downloaders_page.dart';
 import '../entertainment/entertainment_page.dart';
 import '../file_manage/file_manage_page.dart';
+import '../filter_rules/filter_rules_page.dart';
 import '../freeleech/freeleech_page.dart';
 import '../harem/harem_page.dart';
 import '../medal_wall/medal_wall_page.dart';
@@ -23,11 +26,13 @@ import '../media_server/media_server_page.dart';
 import '../media_quality/media_quality_page.dart';
 import '../cloud/cloud_page.dart';
 import '../subtitle/subtitle_page.dart';
+import '../transfer/transfer_page.dart';
 import '../trakt/trakt_page.dart';
 import '../search/search_page.dart';
 import '../sites/sites_page.dart';
 import '../subscriptions/subscriptions_page.dart';
 import '../workflow/workflow_list_page.dart';
+import '../system_settings/system_settings_page.dart';
 import '../system/logs_page.dart';
 
 /// 一条主菜单目的地。
@@ -68,6 +73,7 @@ final List<({String title, List<NavItem> items})> navGroups = [
     title: '概览',
     items: [
       NavItem(label: '仪表盘', glyph: 'dashboard', from: const Color(0xFF6C5CE7), to: const Color(0xFF4285F4), builder: (_) => const DashboardPage()),
+      NavItem(label: 'AI 助手', glyph: 'bot', from: const Color(0xFF6C5CE7), to: const Color(0xFFA855F7), builder: (_) => const AssistantPage(), desc: '自然语言控制全平台'),
       NavItem(label: '公告', glyph: 'announcement', from: const Color(0xFFF7971E), to: const Color(0xFFFFD200), builder: (_) => const AnnouncementsPage()),
       NavItem(label: '消息', glyph: 'message', from: const Color(0xFF2193B0), to: const Color(0xFF6DD5ED), builder: (_) => const MessagesPage()),
     ],
@@ -80,6 +86,8 @@ final List<({String title, List<NavItem> items})> navGroups = [
       NavItem(label: '推荐', glyph: 'recommend', from: const Color(0xFFF7971E), to: const Color(0xFFFF6A00), builder: (_) => const RecommendPage()),
       NavItem(label: '订阅', glyph: 'subscribe', from: const Color(0xFFE100FF), to: const Color(0xFFFF6A00), builder: (_) => const SubscriptionsPage(), desc: '追剧自动推送'),
       NavItem(label: 'RSS', glyph: 'rss', from: const Color(0xFFF7971E), to: const Color(0xFFFF6A00), builder: (_) => const RssPage(), desc: '资源源订阅'),
+      NavItem(label: '整理', glyph: 'files', from: const Color(0xFF6C5CE7), to: const Color(0xFF00B894), builder: (_) => const TransferPage(), desc: '下载完成自动整理入库'),
+      NavItem(label: '过滤规则', glyph: 'filter', from: const Color(0xFF5B86E5), to: const Color(0xFF36D1DC), builder: (_) => const FilterRulesPage(), desc: '资源筛选优先级规则'),
       NavItem(label: '辅种', glyph: 'seeding', from: const Color(0xFF7F00FF), to: const Color(0xFF38EF7D), builder: (_) => const ReseedPage(), desc: '跨站辅助种子'),
     ],
   ),
@@ -109,6 +117,8 @@ final List<({String title, List<NavItem> items})> navGroups = [
       NavItem(label: 'NAS', glyph: 'server', from: const Color(0xFF0F2027), to: const Color(0xFF2C5364), builder: (_) => const MonitorPage()),
       NavItem(label: '工作流', glyph: 'workflow', from: const Color(0xFF6C5CE7), to: const Color(0xFF00B894), builder: (_) => const WorkflowListPage()),
       NavItem(label: '备份', glyph: 'backup', from: const Color(0xFF536976), to: const Color(0xFF2C3E50), builder: (_) => const BackupPage()),
+      NavItem(label: '诊断', glyph: 'stethoscope', from: const Color(0xFF0F2027), to: const Color(0xFFEF4444), builder: (_) => const DoctorPage()),
+      NavItem(label: '系统设置', glyph: 'settings', from: const Color(0xFF485563), to: const Color(0xFF29323C), builder: (_) => const SystemSettingsPage(), desc: 'AI 网关 / Telegram / 目录监视'),
     ],
   ),
 ];

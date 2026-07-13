@@ -124,9 +124,10 @@ func parseAnnClassic(doc *goquery.Document) []AnnouncementItem {
 	return out
 }
 
-// div#announcement：单公告。
+// div#announcement：单公告。#news 为 PTTime 公告容器（<div id=news>「最新通告」+正文，
+// PTTime 不用经典 [id^=ka] 块，id 无引号 goquery/net-html 仍可解析命中）。
 func parseAnnDiv(doc *goquery.Document) (AnnouncementItem, bool) {
-	blk := doc.Find("div#announcement, #ka1, .announcement").First()
+	blk := doc.Find("div#announcement, #ka1, .announcement, #news").First()
 	if blk.Length() == 0 {
 		return AnnouncementItem{}, false
 	}
@@ -201,7 +202,7 @@ func annTitle(title, body string) string {
 }
 
 var (
-	annCutRe = regexp.MustCompile(`[，,。.!！？?；;]`)
+	annCutRe  = regexp.MustCompile(`[，,。.!！？?；;]`)
 	annDateRe = regexp.MustCompile(`(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?|\d{1,2}\s*(?:小时|天|周|个月|年)前|\d+\s*(?:hours?|days?|weeks?)\s+ago|yesterday|today|前天|昨天|今天)`)
 )
 

@@ -32,6 +32,9 @@ const Map<String, String> kGlyphs = {
   // 备份：数据库
   'backup':
       '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.66 3.58 3 8 3s8-1.34 8-3V5"/><path d="M4 11v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6"/>',
+  // 诊断：听诊器（健康检查，与 Web 端 1:1）
+  'stethoscope':
+      '<path d="M5 3v5a4 4 0 0 0 8 0V3"/><path d="M5 3H7"/><path d="M11 3h2"/><path d="M9 12v3a4 4 0 0 0 4 4h1a3 3 0 1 0 0-2h-1a2 2 0 0 1-2-2v-3"/><circle cx="17" cy="16" r="2.2"/>',
   // 品牌：盾牌（patronus 守护）
   'shield':
       '<path d="M12 3l7 3v6c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
@@ -120,6 +123,12 @@ const Map<String, String> kGlyphs = {
   // 媒体质量：星形评分（多源评分聚合 / 低分保护）—— 与 Web GlassIcon.vue 1:1
   'mediaquality':
       '<path d="M12 2l2.9 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17.3 5.8 20.6l1.6-6.7L2.2 8.9l6.9-.6z"/>',
+  // AI 助手：机器人头（天线 + 圆眼 + 方脸）—— 与 Web GlassIcon.vue 1:1
+  'bot':
+      '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4"/><circle cx="12" cy="4" r="1.4"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/><path d="M2 13v2"/><path d="M22 13v2"/>',
+  // 过滤规则：漏斗（资源筛选/优先级）—— 与 Web GlassIcon.vue 1:1
+  'filter':
+      '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
 };
 
 /// 取字形的完整内联 SVG（外层包裹 24×24 + 白色描边 + 圆角端点），供 flutter_svg 渲染。

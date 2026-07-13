@@ -42,6 +42,7 @@ const navGroups = [
     title: '概览',
     items: [
       { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
+      { name: 'assistant', label: 'AI 助手', icon: 'bot', from: '#6c5ce7', to: '#a855f7' },
       { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
       { name: 'messages', label: '消息', icon: 'message', from: '#2193b0', to: '#6dd5ed' },
     ],
@@ -54,6 +55,8 @@ const navGroups = [
       { name: 'recommend', label: '推荐', icon: 'recommend', from: '#f7971e', to: '#ff6a00' },
       { name: 'subscriptions', label: '订阅', icon: 'subscribe', from: '#e100ff', to: '#ff6a00' },
       { name: 'rss', label: 'RSS', icon: 'rss', from: '#f7971e', to: '#ff6a00' },
+      { name: 'transfer', label: '整理', icon: 'files', from: '#6c5ce7', to: '#00b894' },
+      { name: 'filter-rules', label: '过滤规则', icon: 'settings', from: '#6c5ce7', to: '#4285f4' },
       { name: 'reseed', label: '辅种', icon: 'seeding', from: '#7f00ff', to: '#38ef7d' },
     ],
   },
@@ -84,6 +87,7 @@ const navGroups = [
       { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
       { name: 'plugins', label: '插件', icon: 'plugin', from: '#0ea5e9', to: '#22c55e' },
       { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50' },
+      { name: 'doctor', label: '诊断', icon: 'stethoscope', from: '#0f2027', to: '#ef4444' },
     ],
   },
 ]
@@ -91,6 +95,8 @@ const navGroups = [
 // PT 圈黑话释义：侧栏 hover（title）显示，降低新用户理解门槛。
 const navDesc: Record<string, string> = {
   reseed: '辅种 · 跨站辅助种子',
+  transfer: '整理 · 下载完成自动识别重命名硬链刮削入库',
+  'filter-rules': '过滤规则 · 规则组表达式对种子分级筛选',
   assessment: '考核 · 保级 / 升级条件',
   freeleech: '站免 · 全站免费促销',
   harem: '后宫 · 邀请管理',

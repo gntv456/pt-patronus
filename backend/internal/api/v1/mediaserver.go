@@ -218,7 +218,8 @@ func (h *MediaServerHandler) Webhook(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"ok": false})
 		return
 	}
-	payload, _ := io.ReadAll(c.Request.Body)
+	// 公开端点：显式 1MB 上限兜底（webhook 负载本就极小），避免未授权大 body 放大。
+	payload, _ := io.ReadAll(io.LimitReader(c.Request.Body, 1<<20))
 	h.svc.ReceiveWebhook(c.Request.Context(), id, payload)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
@@ -268,7 +269,8 @@ func (h *MediaServerHandler) Direct(c *gin.Context) {
 	}
 	target, _, err := h.svc.DirectLink(c.Request.Context(), id, c.Param("path"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		// 统一返 404 + 通用文案：不区分「服务器不存在」与「未开启直链」，避免未授权枚举服务器 id。
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
 	c.Redirect(http.StatusFound, target)

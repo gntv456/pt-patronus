@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -48,3 +48,26 @@ class HostCapabilities:
     permissions: List[str] = field(default_factory=list)
     host_capabilities: List[str] = field(default_factory=list)
     endpoints: List[str] = field(default_factory=list)
+
+
+@dataclass
+class HostTool:
+    """一个宿主工具的元数据（GET /tools 返回的单条）。"""
+    name: str = ""
+    description: str = ""
+    input_schema: Dict[str, Any] = field(default_factory=dict)
+    permission: str = ""        # 空=公开（无需权限）
+    category: str = ""          # downloader/media/site/... 用于分组
+    destructive: bool = False   # 破坏性（删数据/删文件）
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "HostTool":
+        data = data or {}
+        return cls(
+            name=str(data.get("name") or ""),
+            description=str(data.get("description") or ""),
+            input_schema=dict(data.get("input_schema") or {}),
+            permission=str(data.get("permission") or ""),
+            category=str(data.get("category") or ""),
+            destructive=bool(data.get("destructive") or False),
+        )

@@ -45,6 +45,7 @@ SUPPORTED_HOST_CAPABILITIES = [
     "host.api.site.cookie",
     "host.ui.view",
     "host.ui.bridge",
+    "host.api.tools",
 ]
 PERMISSION_HOST_CAPABILITIES = {
     "config:read": ["host.api.config.read"],
@@ -58,6 +59,16 @@ PERMISSION_HOST_CAPABILITIES = {
     "site:read": ["host.api.site.read"],
     "site:cookie": ["host.api.site.cookie"],
 }
+# Tool RPC 域级权限 → 统一伞能力 host.api.tools（与 backend host_capabilities.go 对齐）。
+for _p in (
+    "downloader:read", "downloader:write", "mediaserver:read", "mediaserver:write",
+    "subscribe:read", "subscribe:write", "cloud:read", "cloud:write",
+    "brushflow:read", "brushflow:write", "rss:read", "rss:write", "subtitle:read",
+    "reseed:read", "reseed:write", "transfer:read", "transfer:write", "dashboard:read",
+    "notify:send", "filter:read", "filter:write", "site:action", "media:read",
+    "file:read", "file:write", "workflow:read", "workflow:write",
+):
+    PERMISSION_HOST_CAPABILITIES[_p] = ["host.api.tools"]
 PLUGIN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{1,127}$")
 ED25519_FIELD = 2**255 - 19
 ED25519_ORDER = 2**252 + 27742317777372353535851937790883648493
@@ -1388,6 +1399,8 @@ def create_mock_host_server(bind_host: str, port: int, token: str, verbose: bool
                         "PUT /kv/{key}",
                         "DELETE /kv/{key}",
                         "GET /sites",
+                        "GET /tools",
+                        "POST /tools/{name}",
                     ],
                 })
             elif self.path == "/config":
@@ -1397,6 +1410,18 @@ def create_mock_host_server(bind_host: str, port: int, token: str, verbose: bool
                 self._json(200, {"found": key in kv, "value": kv.get(key)})
             elif self.path == "/sites":
                 self._json(200, {"sites": []})
+            elif self.path == "/tools":
+                # 静态示例 tool 清单（让 SDK 的 tools() 离线可测）。
+                self._json(200, {"tools": [
+                    {"name": "system.info", "category": "system", "permission": "",
+                     "description": "Return PTPatronus version and counts."},
+                    {"name": "torrents_list", "category": "downloader", "permission": "downloader:read",
+                     "description": "List torrents in a downloader.",
+                     "input_schema": {"type": "object", "properties": {"downloader_id": {"type": "integer"}}, "required": ["downloader_id"]}},
+                    {"name": "mediaserver_library_scan", "category": "mediaserver", "permission": "mediaserver:write",
+                     "description": "Trigger a library scan.",
+                     "input_schema": {"type": "object", "properties": {"server_id": {"type": "integer"}}, "required": ["server_id"]}},
+                ]})
             else:
                 self._json(404, {"error": "not found"})
 
@@ -1408,6 +1433,10 @@ def create_mock_host_server(bind_host: str, port: int, token: str, verbose: bool
                 if verbose:
                     print(json.dumps({"path": self.path, "body": body}, ensure_ascii=False), flush=True)
                 self._json(200, {"ok": True})
+            elif self.path.startswith("/tools/"):
+                # Tool RPC echo：回显 name + input，让 SDK 的 call() 离线可测。
+                name = self.path[len("/tools/"):]
+                self._json(200, {"tool": name, "input": body.get("input"), "echo": True})
             elif self.path.startswith("/kv/"):
                 key = self.path[len("/kv/"):]
                 kv[key] = body.get("value")

@@ -23,6 +23,7 @@ class _SubtitlePageState extends State<SubtitlePage> {
   List<SubtitleResult> _results = [];
   bool _loading = false;
   bool _searched = false;
+  String _error = ''; // 搜索失败文案；非空时显示错误态而非「未找到字幕」（区分失败与无果）
   String _language = '';
   final _downloading = <String>{};
 
@@ -46,6 +47,7 @@ class _SubtitlePageState extends State<SubtitlePage> {
     setState(() {
       _loading = true;
       _searched = true;
+      _error = '';
     });
     try {
       final res = await _api.search(q, language: _language);
@@ -54,7 +56,13 @@ class _SubtitlePageState extends State<SubtitlePage> {
       if (res.isEmpty) _toast('未找到字幕');
     } catch (e) {
       _toast('搜索失败：$e');
-      if (mounted) setState(() => _results = []);
+      if (mounted) {
+        setState(() {
+          _results = [];
+          _error = e.toString();
+          _searched = false; // 失败时不显示「未找到」，由 _error 态承接
+        });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -162,6 +170,24 @@ class _SubtitlePageState extends State<SubtitlePage> {
   }
 
   Widget _content() {
+    if (_error.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
+              const SizedBox(height: 8),
+              Text('搜索失败：$_error', textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+              const SizedBox(height: 10),
+              OutlinedButton(onPressed: _search, child: const Text('重试')),
+            ],
+          ),
+        ),
+      );
+    }
     if (_results.isEmpty) {
       return PTEmptyState(
         icon: Icons.subtitles_outlined,

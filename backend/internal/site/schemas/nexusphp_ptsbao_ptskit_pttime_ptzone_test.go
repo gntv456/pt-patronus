@@ -120,7 +120,24 @@ func TestNexusPHPFetchPTSBaoPTSKITPTTimePTZoneUserInfoFromMigratedDefinitions(t 
 					}
 					switch r.URL.Query().Get("type") {
 					case "seeding":
-						_, _ = w.Write([]byte(fmt.Sprintf(`<div>%d | %.2f TiB</div>`, tc.seeding, tc.seedingTiB)))
+						// PTTime 的 getusertorrentlist.php 用 #outer>span 聚合格式（非标准 ajax），
+						// 子元素序：h1 / span(用户名) / span(共有<b>N</b>条记录) / span(资源总大小：XB) / ...
+						// 对应 PT-depiler #outer > span:nth-child(3)（做种数）/ :nth-child(4)（做种体积）。
+						// 其余 NexusPHP 站走标准 ajax「N | SIZE」汇总。
+						if tc.id == "pttime" {
+							_, _ = w.Write([]byte(fmt.Sprintf(
+								`<div id="outer"><h1>正在做种</h1>`+
+									`<span><b>%s:</b></span>`+
+									`<span>共有<b>%d</b>条记录</span>`+
+									`<span>资源总大小：%.2f TiB</span>`+
+									`<span>上传总量：0B</span>`+
+									`<span>下载总大小：0B</span>`+
+									`<p>1 - %d</p>`+
+									`<table><tbody><tr><th>类型</th></tr><tr><td>种子</td></tr></tbody></table></div>`,
+								tc.name, tc.seeding, tc.seedingTiB, tc.seeding)))
+						} else {
+							_, _ = w.Write([]byte(fmt.Sprintf(`<div>%d | %.2f TiB</div>`, tc.seeding, tc.seedingTiB)))
+						}
 					case "uploaded":
 						_, _ = w.Write([]byte(fmt.Sprintf(`<b>%d</b> records`, tc.uploads)))
 					default:
@@ -144,12 +161,14 @@ func TestNexusPHPFetchPTSBaoPTSKITPTTimePTZoneUserInfoFromMigratedDefinitions(t 
 	}
 }
 
+// pttimeDetailHTML 生成 PTTime 风格的 userdetails.php：统计聚合在「核心数据」行的
+// td.rowfollow 里（PTTime 无独立「传输」/「魔力」行），等级是 <b> 文本（非 img title）。
+// 形态对齐真实 PTTime 页面（校准自实测抓取）。
 func pttimeDetailHTML(level, joinDate string, uploadedTiB, downloadGiB int64, ratio float64, bonusLabel string, bonus float64) string {
 	return fmt.Sprintf(`
 <table>
-  <tr><td class="rowhead">等级</td><td><b>%s</b></td></tr>
+  <tr><td class="rowhead">用户等级</td><td><b alt="%s" title="%s">%s</b></td></tr>
   <tr><td class="rowhead">加入日期</td><td>%s 09:10:11</td></tr>
-  <tr><td class="rowhead">传输</td><td>上传量 %d.00 TiB 下载量 %d GiB 分享率 %.3g</td></tr>
-  <tr><td class="rowhead">%s</td><td>%.2f</td></tr>
-</table>`, level, joinDate, uploadedTiB, downloadGiB, ratio, bonusLabel, bonus)
+  <tr><td class="rowhead">核心数据</td><td width="95%%" class="rowfollow" valign="top" align="left">分享率: <font color="">%.3g</font>&nbsp;&nbsp;&nbsp;&nbsp;上传量: %d.00 TB&nbsp;&nbsp;&nbsp;&nbsp;下载量: %d GB&nbsp;&nbsp;&nbsp;&nbsp;%s: %.2f</td></tr>
+</table>`, level, level, level, joinDate, ratio, uploadedTiB, downloadGiB, bonusLabel, bonus)
 }

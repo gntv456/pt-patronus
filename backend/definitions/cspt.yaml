@@ -12,27 +12,28 @@ urls:
 search_entry: torrents.php
 search_param: search
 selectors:
+  # 财神 2026 改版：种子列表用 div flex 布局（torrent-table-for-spider），非标准 table.torrents。
+  # 在线 inspect 校准（2026-07-13）：行=torrent-table-for-spider，字段=size/seeders/leechers/snatched + a.torrent-info-text-name。
   rows:
-    selector: "table.torrents tr"
+    selector: "div.torrent-table-sub-info"
   fields:
     title:
-      selector: 'a[href^="details.php"]:not([href*="#"])'
-    subtitle:
-      selector: ".torrent-subtitle"
+      selector: "a.torrent-info-text-name b"
     detail:
-      selector: 'a[href^="details.php"]:not([href*="#"])'
+      selector: 'a[href^="details.php"]'
       attr: href
     download:
       selector: 'a[href^="download.php"]'
       attr: href
     completed:
-      selector: 'a[href^="viewsnatches.php"]'
+      selector: ".snatched"
     seeders:
-      selector: 'a[href*="#seeders"]'
+      selector: ".torrent-info-text-seeders"
     leechers:
-      selector: 'a[href*="#leechers"]'
+      selector: ".torrent-info-text-leechers"
     size:
-      selector: "td:nth-last-child(5)"
+      selector: ".torrent-info-text-size"
+    # free 复用 NexusPHP 默认（img[class^=pro_free] attr:alt）— 财神沿用标准 pro_free 图标。
 
 # 用户资料（按 D:\html 真实页面校准，Audiences「menu-base-info」皮肤）：
 #   <a href="userdetails.php?id=10014"><font class="color_uploaded" style="display:none">上传量:</font>44.069 TB</a>

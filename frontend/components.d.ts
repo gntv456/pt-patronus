@@ -17,6 +17,7 @@ declare module 'vue' {
     DeviceCard: typeof import('./src/components/monitor/DeviceCard.vue')['default']
     DeviceDetail: typeof import('./src/components/monitor/DeviceDetail.vue')['default']
     DeviceForm: typeof import('./src/components/monitor/DeviceForm.vue')['default']
+    ElAlert: typeof import('element-plus/es')['ElAlert']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElButtonGroup: typeof import('element-plus/es')['ElButtonGroup']
     ElCheckbox: typeof import('element-plus/es')['ElCheckbox']

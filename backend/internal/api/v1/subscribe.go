@@ -33,6 +33,12 @@ type subReq struct {
 	Status            string `json:"status" binding:"max=16"`
 	// EnableRatingGuard 用指针以区分「未提供」与「显式 false」：Create nil→默认关；Update nil→不改。
 	EnableRatingGuard *bool `json:"enable_rating_guard"`
+	// FilterGroups 过滤规则组名（管道分隔）；nil=不改，空串=清空（回退全局 SubscribeFilterRuleGroups）。
+	// omitempty：nil 指针跳过 max 校验（否则 validator 对 nil *string 报 max 失败，致正常请求被 400）。
+	FilterGroups *string `json:"filter_groups" binding:"omitempty,max=255"`
+	// 洗版（best_version）：nil=不改（Update）/ 默认关（Create）。
+	BestVersion     *bool `json:"best_version"`
+	BestVersionFull *bool `json:"best_version_full"`
 }
 
 // List 列出全部订阅。
@@ -65,6 +71,15 @@ func (h *SubscribeHandler) Create(c *gin.Context) {
 	if in.EnableRatingGuard != nil {
 		s.EnableRatingGuard = *in.EnableRatingGuard
 	}
+	if in.FilterGroups != nil {
+		s.FilterGroups = *in.FilterGroups
+	}
+	if in.BestVersion != nil {
+		s.BestVersion = *in.BestVersion
+	}
+	if in.BestVersionFull != nil {
+		s.BestVersionFull = *in.BestVersionFull
+	}
 	out, err := h.subCh.Create(c.Request.Context(), s)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -91,6 +106,15 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 	}
 	if in.EnableRatingGuard != nil {
 		s.EnableRatingGuard = *in.EnableRatingGuard
+	}
+	if in.FilterGroups != nil {
+		s.FilterGroups = *in.FilterGroups
+	}
+	if in.BestVersion != nil {
+		s.BestVersion = *in.BestVersion
+	}
+	if in.BestVersionFull != nil {
+		s.BestVersionFull = *in.BestVersionFull
 	}
 	if in.Resolution != "" || in.Status != "" || in.DownloaderID != 0 || in.SavePath != "" {
 		// 仅更新提供的字段（空=不改）

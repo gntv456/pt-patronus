@@ -111,3 +111,20 @@ func TestGenerateStrmStripExt(t *testing.T) {
 		t.Errorf("keep-ext strm should NOT exist when KeepExt=false")
 	}
 }
+
+// TestWriteStrmRejectsTraversal 防御纵深：云条目路径含 ".." 时，.strm 不得逃出 OutputDir。
+func TestWriteStrmRejectsTraversal(t *testing.T) {
+	tmp := t.TempDir()
+	// 恶意云路径：CloudPath 下相对路径含 ..，试图逃出 OutputDir 写到上级。
+	f := File{Name: "x.mkv", Path: "/电影/../../pwned.mkv", Size: 1}
+	_, _, err := writeStrm(GenerateOptions{
+		CloudPath: "/电影", OutputDir: tmp, MountRoot: "/mnt", KeepExt: true,
+	}, f)
+	if err == nil {
+		t.Fatal("writeStrm should reject path escaping OutputDir")
+	}
+	// 确认没有文件被写到 OutputDir 之外。
+	if _, err := os.Stat(filepath.Join(tmp, "..", "pwned.mkv.strm")); err == nil {
+		t.Fatal("traversal wrote a file outside OutputDir")
+	}
+}

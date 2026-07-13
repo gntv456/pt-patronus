@@ -38,6 +38,20 @@ Supported Host API capabilities:
 - `config:read`, `config:write`
 - `media:search` — `host.mediaSearch(keyword, year)` reuses the host TMDB/豆瓣/寸光集 metadata chain
 
+### Tool RPC — ~80 host capabilities via one entry point
+
+`host.tools()` lists every tool your permissions allow; `host.call(name, input)` invokes any of them
+(downloader, media server, subscribe, cloud/STRM, brush-flow, RSS, subtitle, reseed, transfer,
+dashboard, notification, filter, file storage, workflow). Typed convenience wrappers exist for the
+hottest domains (`torrentsList`, `torrentsAdd`, `mediaserverLibraryScan`, `subscribeList`,
+`sendNotification`, `dashboardOverview`, …). Declare domain permissions (`downloader:read`,
+`mediaserver:write`, …) in your manifest. Full catalog: **[DEVGUIDE.md](../DEVGUIDE.md)** → "Tool RPC".
+
+```ts
+await host.mediaserverLibraryScan(1)                    // typed convenience
+await host.call<unknown>('subscribe_check', { id: 7 })  // generic — works for any tool
+```
+
 Use `host:*` or `*` only for trusted internal plugins.
 
 ## Plugin view bridge
@@ -67,6 +81,8 @@ Available plugin-view bridge helpers:
 - `kvGet()`, `kvSet()`, `kvDelete()`
 - `sites()`
 - `action(name, input?)` — invoke a declared plugin action (e.g. a dashboard fetching live data)
+- `tools()` — list host tools via the bridge (same source as `GET /tools`)
+- `call(name, input?)` — invoke a host tool via the bridge (`tool.call`)
 - `request(method, params)`
 
 Call `dispose()` if your plugin view creates a long-lived client and later tears it down.

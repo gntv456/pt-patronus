@@ -3,10 +3,15 @@
 package oper
 
 import (
+	"errors"
+
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"gorm.io/gorm"
 )
+
+// ErrDuplicateSite 同名 + 同 base_url 的站点已存在（防重复添加致仪表盘聚合双计）。
+var ErrDuplicateSite = errors.New("同名同地址的站点已存在")
 
 // SiteOper 封装 Site 表的 CRUD 与密钥加解密。
 type SiteOper struct {
@@ -49,6 +54,20 @@ type SiteInput struct {
 
 // Create 创建站点。
 func (o *SiteOper) Create(in SiteInput) (*models.Site, error) {
+	// 防重复添加（同名 + 同 base_url）：重复站点会在仪表盘聚合里被双计（上传/做种翻倍）。
+	// 批量导入 CreateMany 不走此校验，保留其「跳过单条错误」的恢复语义。
+	var cnt int64
+	if err := o.db.Model(&models.Site{}).Where("name = ? AND base_url = ?", in.Name, in.BaseURL).Count(&cnt).Error; err != nil {
+		return nil, err
+	}
+	if cnt > 0 {
+		return nil, ErrDuplicateSite
+	}
+	return o.createOnDB(o.db, in)
+}
+
+// createOnDB 在给定 db（o.db 或事务 tx）上创建站点，复用加密 + IsActive 兜底逻辑。
+func (o *SiteOper) createOnDB(db *gorm.DB, in SiteInput) (*models.Site, error) {
 	s := &models.Site{
 		Name: in.Name, Platform: in.Platform, Definition: in.Definition,
 		BaseURL: in.BaseURL, Username: in.Username, IsActive: in.IsActive, Priority: in.Priority,
@@ -57,17 +76,38 @@ func (o *SiteOper) Create(in SiteInput) (*models.Site, error) {
 	if err := o.encryptSecrets(s, in); err != nil {
 		return nil, err
 	}
-	if err := o.db.Create(s).Error; err != nil {
+	if err := db.Create(s).Error; err != nil {
 		return nil, err
 	}
 	// GORM default:true 会把 IsActive=false 当零值吞为 true（导入 PT-Depiler isOffline
 	// 站时本应停用却变启用）→ 显式写回。Update 走 Save 写全字段，不受此影响。
 	if !in.IsActive {
-		if err := o.db.Model(s).Update("is_active", false).Error; err != nil {
+		if err := db.Model(s).Update("is_active", false).Error; err != nil {
 			return nil, err
 		}
 	}
 	return s, nil
+}
+
+// CreateMany 单事务批量创建站点。逐条 INSERT 以保留「单条失败跳过、其余继续」语义，
+// 但全部包在一个事务内——把 N 次 fsync 压成 1 次（慢盘上 200 站从数十秒降到 <1s）。
+// 单条错误（极罕见，Site 无唯一约束）跳过不计；仅事务级失败（ctx 取消 / 磁盘满）整体回滚。
+// 返回成功创建的条数。
+func (o *SiteOper) CreateMany(ins []SiteInput) (int, error) {
+	if len(ins) == 0 {
+		return 0, nil
+	}
+	n := 0
+	err := o.db.Transaction(func(tx *gorm.DB) error {
+		for _, in := range ins {
+			if _, e := o.createOnDB(tx, in); e != nil {
+				continue
+			}
+			n++
+		}
+		return nil
+	})
+	return n, err
 }
 
 // Update 更新站点（密钥为空则保留原值）。

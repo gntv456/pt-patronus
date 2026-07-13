@@ -132,12 +132,12 @@ onMounted(load)
       </div>
       <EmptyState
         v-if="!rules.length && !loading"
-        icon="contract"
+        icon="🔖"
         title="暂无契约"
         description="新建契约，为站点设保种下限"
-        action-label="新建契约"
-        @action="openCreate"
-      />
+      >
+        <el-button type="primary" @click="openCreate">新建契约</el-button>
+      </EmptyState>
     </div>
 
     <el-dialog v-model="showForm" :title="editing ? '编辑契约' : '新建契约'" width="480px">

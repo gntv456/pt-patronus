@@ -14,6 +14,8 @@ class Subscription {
   final int downloaderId; // 0=默认下载器
   final String savePath;
   final String status; // subscribed | completed | paused
+  final bool bestVersion; // 洗版：持续寻找更高画质版本替换库中旧版
+  final int currentPriority; // 洗版电影当前最优 PriOrder（0=未下过）
   final String? lastCheckedAt;
   final String createdAt;
 
@@ -30,6 +32,8 @@ class Subscription {
     required this.downloaderId,
     required this.savePath,
     required this.status,
+    this.bestVersion = false,
+    this.currentPriority = 0,
     required this.lastCheckedAt,
     required this.createdAt,
   });
@@ -47,6 +51,8 @@ class Subscription {
         downloaderId: (j['downloader_id'] as num?)?.toInt() ?? 0,
         savePath: j['save_path'] as String? ?? '',
         status: j['status'] as String? ?? '',
+        bestVersion: j['best_version'] == true,
+        currentPriority: (j['current_priority'] as num?)?.toInt() ?? 0,
         lastCheckedAt: j['last_checked_at'] as String?,
         createdAt: j['created_at'] as String? ?? '',
       );

@@ -183,3 +183,21 @@ func TestCloudChainDeleteCascade(t *testing.T) {
 		t.Errorf("rules not cascaded: %d", len(rs))
 	}
 }
+
+// TestMatchAnySubscriptionTokenized 订阅匹配按独立 token，避免裸子串误匹配
+// （"It" 不应命中 "The Comm**it**ments"、"Her" 不应命中 "Mot**her**"）。
+func TestMatchAnySubscriptionTokenized(t *testing.T) {
+	subs := []models.Subscription{
+		{Title: "It"},
+		{Title: "Dune"},
+	}
+	if m := matchAnySubscription(subs, "The.Commitments.1991.1080p.BluRay.mkv"); m != nil {
+		t.Errorf("It should NOT match The Commitments, got %q", m.Title)
+	}
+	if m := matchAnySubscription(subs, "It.1990.1080p.BluRay.mkv"); m == nil || m.Title != "It" {
+		t.Errorf("It should match It.1990, got %v", m)
+	}
+	if m := matchAnySubscription(subs, "Dune.2021.2160p.UHD.mkv"); m == nil || m.Title != "Dune" {
+		t.Errorf("Dune should match Dune.2021, got %v", m)
+	}
+}

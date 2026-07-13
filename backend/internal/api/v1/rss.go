@@ -33,6 +33,7 @@ type rssReq struct {
 	SavePath     string `json:"save_path" binding:"max=255"`
 	Category     string `json:"category" binding:"max=64"`
 	Tags         string `json:"tags" binding:"max=500"`
+	FilterGroups string `json:"filter_groups" binding:"max=255"` // 绑定规则组（| 分隔，空=不过滤）
 }
 
 func applyRssReq(r *models.RssSubscription, in rssReq) {
@@ -51,6 +52,7 @@ func applyRssReq(r *models.RssSubscription, in rssReq) {
 	r.SavePath = in.SavePath
 	r.Category = in.Category
 	r.Tags = in.Tags
+	r.FilterGroups = in.FilterGroups
 }
 
 // List 全部订阅。

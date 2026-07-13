@@ -74,6 +74,9 @@ func (m *Manager) buildBackend(f *models.FileStorage, password string) (StorageB
 		return NewCloudBackend(f.Type, password, f.BasePath)
 	case "smb":
 		return NewSMB(f.URL, f.Username, password, f.BasePath), nil
+	case "rclone":
+		// URL=二进制路径；Username=remote 名；password=已解密的 rclone.conf INI 原文；BasePath=remote 内根子路径。
+		return NewRclone(f.URL, f.Username, password, f.BasePath)
 	case "agent":
 		if m.agentHub == nil {
 			return nil, fmt.Errorf("agent 文件管理后端未就绪")

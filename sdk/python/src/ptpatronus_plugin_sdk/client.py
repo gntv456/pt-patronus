@@ -119,6 +119,53 @@ class PTPHostClient:
         data = self._request("POST", "/media/search", {"keyword": keyword, "year": int(year or 0)})
         return list(data.get("results") or [])
 
+    # ---- Tool RPC（统一能力入口；~80 个工具覆盖下载器/媒体服务器/订阅/云盘/刷流/RSS/字幕/辅种/整理/仪表盘/通知/过滤/文件/工作流）----
+
+    def tools(self) -> List[Dict[str, Any]]:
+        """List host tools this plugin is permitted to call (自描述：含 name/description/input_schema/permission)."""
+        return list(self._request("GET", "/tools").get("tools") or [])
+
+    def call(self, name: str, input: Optional[Dict[str, Any]] = None) -> Any:
+        """Invoke a host tool by name. Returns the tool's raw JSON result (dict/list/scalar).
+
+        权限由插件 manifest 的 permissions 声明控制（如 downloader:read、mediaserver:write）；
+        权限不足时抛 HostError(HTTP 403)。可用工具见 ``tools()`` 或 DEVGUIDE 的完整目录。
+        """
+        return self._request("POST", f"/tools/{urllib.parse.quote(name, safe='')}", {"input": input or {}})
+
+    # ---- 核心域便捷方法（薄封装，等价于 self.call(name, {...})；未列出的工具请用 call）----
+
+    def torrents_list(self, downloader_id: int) -> Any:
+        """List torrents in a downloader. Perm: downloader:read."""
+        return self.call("torrents_list", {"downloader_id": int(downloader_id)})
+
+    def torrents_add(self, downloader_id: int, url: str, category: str = "") -> Any:
+        """Add a torrent by magnet/URL. Perm: downloader:write."""
+        return self.call("torrents_add", {"downloader_id": int(downloader_id), "url": url, "category": category})
+
+    def mediaserver_list(self) -> Any:
+        """List media servers. Perm: mediaserver:read."""
+        return self.call("mediaserver_list")
+
+    def mediaserver_library_scan(self, server_id: int, library_id: str = "") -> Any:
+        """Trigger a library scan (unblocks NFO/poster → refresh). Perm: mediaserver:write."""
+        return self.call("mediaserver_library_scan", {"server_id": int(server_id), "library_id": library_id})
+
+    def subscribe_list(self) -> Any:
+        """List subscriptions. Perm: subscribe:read."""
+        return self.call("subscribe_list")
+
+    def send_notification(self, title: str, body: str, level: str = "info") -> Any:
+        """Send a multi-channel notification (Bark/TG/QQ/WeChat/Webhook). Perm: notify:send.
+
+        注意：``notice()`` 是站内收件箱；本方法是多通道外发（等价于宿主通知系统）。
+        """
+        return self.call("send_notification", {"title": title, "body": body, "level": level})
+
+    def dashboard_overview(self) -> Any:
+        """Aggregated cross-site overview. Perm: dashboard:read."""
+        return self.call("dashboard_overview")
+
     # ---- internals ----
 
     def _request(self, method: str, path: str, body: Any = None) -> Dict[str, Any]:

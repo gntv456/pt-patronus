@@ -13,6 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader"
+	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
@@ -30,12 +31,13 @@ type RssChain struct {
 	notice *notice.Service
 	hc     *httpclient.Client
 	fp     *gofeed.Parser
+	filterEng *filter.Engine // 可空（未装配时跳过规则过滤，按 feed 序）
 }
 
 // NewRssChain 构造。
 func NewRssChain(b Base, op *oper.RssOper, itemOp *oper.RssItemOper, dlCh *DownloadChain,
-	dlOp *oper.DownloaderOper, siteOp *oper.SiteOper, ns *notice.Service, hc *httpclient.Client) *RssChain {
-	return &RssChain{Base: b, op: op, itemOp: itemOp, dlCh: dlCh, dlOp: dlOp, siteOp: siteOp, notice: ns, hc: hc, fp: gofeed.NewParser()}
+	dlOp *oper.DownloaderOper, siteOp *oper.SiteOper, ns *notice.Service, hc *httpclient.Client, filterEng *filter.Engine) *RssChain {
+	return &RssChain{Base: b, op: op, itemOp: itemOp, dlCh: dlCh, dlOp: dlOp, siteOp: siteOp, notice: ns, hc: hc, fp: gofeed.NewParser(), filterEng: filterEng}
 }
 
 // List 全部订阅。
@@ -94,7 +96,15 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		}
 	}
 
-	newCount := 0
+	// 收集候选（前置过滤：include/exclude 关键词 + 分辨率 + 体积，始终生效）。
+	type rssCandidate struct {
+		item         *gofeed.Item
+		key, torrURL string
+		title        string
+		size         int64
+		pub          *time.Time
+	}
+	cands := make([]rssCandidate, 0, len(feed.Items))
 	for i, item := range feed.Items {
 		if i >= 200 {
 			break
@@ -109,7 +119,6 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		if torrURL == "" {
 			continue // 无可下载链接，跳过
 		}
-		// 过滤
 		if !rssMatchAny(title, sub.TitleInclude) || !rssMatchNone(title, sub.TitleExclude) {
 			continue
 		}
@@ -122,13 +131,52 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		if sub.MaxSize > 0 && size > sub.MaxSize {
 			continue
 		}
-		// 去重
-		if seen, _ := c.itemOp.Exists(sub.ID, key); seen {
+		cands = append(cands, rssCandidate{item: item, key: key, torrURL: torrURL, title: title, size: size, pub: rssItemPubDate(item)})
+	}
+	// 规则引擎：订阅 FilterGroups 优先，否则用全局 SubscribeFilterRuleGroups；空=不排序（按 feed 序）。
+	if c.filterEng != nil {
+		groups := parsePipeList(sub.FilterGroups)
+		if len(groups) == 0 {
+			if gnames, _ := c.filterEng.Store().GetBindings(filter.KeySubscribeFilterRuleGroups); len(gnames) > 0 {
+				groups = gnames
+			}
+		}
+		if len(groups) > 0 && len(cands) > 0 {
+			torrents := make([]site.Torrent, 0, len(cands))
+			for _, cd := range cands {
+				var pub time.Time
+				if cd.pub != nil {
+					pub = *cd.pub
+				}
+				torrents = append(torrents, site.Torrent{Title: cd.title, DownloadURL: cd.torrURL, Size: bfFormatBytes(cd.size), PubDate: pub})
+			}
+			ranked, err := c.filterEng.Filter(ctx, groups, torrents, nil)
+			if err == nil {
+				byURL := make(map[string]rssCandidate, len(cands))
+				for _, cd := range cands {
+					byURL[cd.torrURL] = cd
+				}
+				filtered := make([]rssCandidate, 0, len(ranked))
+				for _, mt := range ranked {
+					if cd, ok := byURL[mt.Torrent.DownloadURL]; ok {
+						filtered = append(filtered, cd)
+					}
+				}
+				cands = filtered
+			} else {
+				slog.Warn("rss filter engine failed, keep feed order", "sub", sub.ID, "err", err)
+			}
+		}
+	}
+	// 去重 + 写库 + 自动下载。
+	newCount := 0
+	for _, cd := range cands {
+		if seen, _ := c.itemOp.Exists(sub.ID, cd.key); seen {
 			continue
 		}
 		it := &models.RssItem{
-			SubscriptionID: sub.ID, ItemKey: key, Title: title, Link: item.Link,
-			TorrentURL: torrURL, Size: size, PubDate: rssItemPubDate(item),
+			SubscriptionID: sub.ID, ItemKey: cd.key, Title: cd.title, Link: cd.item.Link,
+			TorrentURL: cd.torrURL, Size: cd.size, PubDate: cd.pub,
 		}
 		if err := c.itemOp.Create(it); err != nil {
 			slog.Warn("rss item create failed", "sub", sub.ID, "err", err)
@@ -139,18 +187,18 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		// 自动下载
 		if sub.AutoDownload && dlID != 0 {
 			opts := downloader.AddOptions{
-				URL: torrURL, Category: sub.Category,
+				URL: cd.torrURL, Category: sub.Category,
 				Tags: parseCsv(sub.Tags), SavePath: sub.SavePath,
 			}
 			if err := c.dlCh.Add(ctx, dlID, opts); err != nil {
-				slog.Warn("rss auto download failed", "sub", sub.ID, "title", title, "err", err)
+				slog.Warn("rss auto download failed", "sub", sub.ID, "title", cd.title, "err", err)
 			} else {
 				_ = c.itemOp.MarkDownloaded(it.ID)
 				if c.notice != nil {
 					_ = c.notice.Notice(ctx, notice.Input{
 						Source: notice.SourceRssHit,
-						Key:    fmt.Sprintf("rss:%d:%s", sub.ID, key),
-						Title:  "RSS 命中：" + sub.Name, Body: title, Level: "success",
+						Key:    fmt.Sprintf("rss:%d:%s", sub.ID, cd.key),
+						Title:  "RSS 命中：" + sub.Name, Body: cd.title, Level: "success",
 					}, true)
 				}
 			}

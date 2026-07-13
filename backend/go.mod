@@ -41,6 +41,7 @@ require (
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
 	github.com/geoffgarside/ber v1.1.0 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect

@@ -1,8 +1,8 @@
 import { http } from './http'
-import { siteApi } from './site'
+import type { Site } from './site'
 
 // 复用 site 类型，避免重复定义
-export type { Site } from './site'
+export type { Site }
 
 export interface Game {
   id: string
@@ -431,6 +431,6 @@ export const entertainmentApi = {
   /** 二十一点动作（new/hit/stand/double） */
   blackjack: (siteId: number, game: string, action: string) =>
     http.post<BlackjackResult>(`/entertainment/${siteId}/games/${game}/blackjack`, { action }).then((r) => r.data),
-  /** 站点列表（复用 siteApi） */
-  sites: siteApi.list,
+  /** 站点列表（含各站已适配娱乐项目数 game_count，独立于通用 /sites） */
+  sites: () => http.get<{ sites: Site[] }>('/entertainment').then((r) => r.data.sites ?? []),
 }

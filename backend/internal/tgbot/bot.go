@@ -1,0 +1,250 @@
+package tgbot
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/hxpt/ptpatronus/internal/llm"
+)
+
+// TalkFunc 由 app.go 注入：按 chatKey 取/建会话并跑 agent，返回事件流（tgbot 不触 aiagent/oper）。
+type TalkFunc func(ctx context.Context, chatKey, text string) <-chan llm.Event
+
+// ClearFunc 清空某 chatKey 的会话上下文（/clear 用）。
+type ClearFunc func(chatKey string)
+
+// Bot 入站 Telegram bot。
+type Bot struct {
+	token      string
+	apiURL     string // 空走官方 api.telegram.org
+	client     *http.Client
+	allowed    map[int64]bool
+	allowGroup bool
+	talk       TalkFunc
+	clear      ClearFunc
+	offset     int64
+}
+
+// New 构造。token 为解密后的 BotFather token；talk 必须非 nil；clear 可为 nil。
+func New(token, apiURL string, allowedUserIDs []int64, allowGroup bool, talk TalkFunc, clear ClearFunc) *Bot {
+	allowed := map[int64]bool{}
+	for _, id := range allowedUserIDs {
+		allowed[id] = true
+	}
+	return &Bot{
+		token:      token,
+		apiURL:     strings.TrimSpace(apiURL),
+		client:     &http.Client{Timeout: 65 * time.Second}, // 长轮询 timeout=30，留余量
+		allowed:    allowed,
+		allowGroup: allowGroup,
+		talk:       talk,
+		clear:      clear,
+	}
+}
+
+const helpText = "我是 PTPatronus 助手，可直接用自然语言下指令（搜影视、订阅、整理、查站点…）。\n命令：\n/help - 帮助\n/clear - 清空对话上下文\n\n示例：帮我搜索 Inception 并订阅 1080p。"
+
+// Run 启动长轮询（阻塞，直至 ctx 取消）。
+func (b *Bot) Run(ctx context.Context) {
+	slog.Info("tgbot: 长轮询启动")
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		upds, err := b.getUpdates(ctx)
+		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			slog.Warn("tgbot: getUpdates 失败，5s 后重试", "err", err)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
+			continue
+		}
+		for _, u := range upds {
+			b.offset = u.UpdateID + 1
+			b.handleUpdate(ctx, u)
+		}
+	}
+}
+
+func (b *Bot) base() string {
+	if b.apiURL != "" {
+		return strings.TrimRight(b.apiURL, "/")
+	}
+	return "https://api.telegram.org"
+}
+
+// ===== Bot API =====
+
+type tgUpdate struct {
+	UpdateID int64      `json:"update_id"`
+	Message  *tgMessage `json:"message"`
+}
+type tgMessage struct {
+	MessageID int64  `json:"message_id"`
+	Chat      tgChat `json:"chat"`
+	From      tgUser `json:"from"`
+	Text      string `json:"text"`
+}
+type tgChat struct {
+	ID   int64  `json:"id"`
+	Type string `json:"type"` // private | group | supergroup
+}
+type tgUser struct {
+	ID int64 `json:"id"`
+}
+type apiResp struct {
+	OK          bool `json:"ok"`
+	Result      []tgUpdate `json:"result"`
+	ErrorCode   int    `json:"error_code"`
+	Description string `json:"description"`
+}
+
+func (b *Bot) getUpdates(ctx context.Context) ([]tgUpdate, error) {
+	u := b.base() + "/bot" + b.token + "/getUpdates?timeout=30&offset=" + strconv.FormatInt(b.offset, 10)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var r apiResp
+	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
+		return nil, err
+	}
+	if !r.OK {
+		return nil, fmt.Errorf("getUpdates !ok: %d %s", r.ErrorCode, r.Description)
+	}
+	return r.Result, nil
+}
+
+func (b *Bot) sendMessage(chatID int64, text string) error {
+	if strings.TrimSpace(text) == "" {
+		return nil
+	}
+	form := url.Values{}
+	form.Set("chat_id", strconv.FormatInt(chatID, 10))
+	form.Set("text", text)
+	return b.postAPI("/bot"+b.token+"/sendMessage", form)
+}
+
+// sendSplit 超长按 4096 分段（Telegram 单条上限）。
+func (b *Bot) sendSplit(chatID int64, text string) {
+	for len(text) > 0 {
+		chunk := text
+		if len(chunk) > 4096 {
+			chunk = chunk[:4096]
+		}
+		if err := b.sendMessage(chatID, chunk); err != nil {
+			slog.Warn("tgbot: sendMessage 失败", "err", err)
+			return
+		}
+		text = text[len(chunk):]
+	}
+}
+
+func (b *Bot) sendChatAction(chatID int64, action string) {
+	form := url.Values{}
+	form.Set("chat_id", strconv.FormatInt(chatID, 10))
+	form.Set("action", action)
+	_ = b.postAPI("/bot"+b.token+"/sendChatAction", form)
+}
+
+func (b *Bot) postAPI(path string, form url.Values) error {
+	u := b.base() + path
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, u, strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("tg api %s HTTP %d: %s", path, resp.StatusCode, truncate(string(b), 200))
+	}
+	return nil
+}
+
+// ===== 消息处理 =====
+
+func (b *Bot) handleUpdate(ctx context.Context, u tgUpdate) {
+	if u.Message == nil || strings.TrimSpace(u.Message.Text) == "" {
+		return
+	}
+	uid := u.Message.From.ID
+	chatID := u.Message.Chat.ID
+	text := u.Message.Text
+
+	// 权限：白名单非空时仅放行白名单用户。
+	if len(b.allowed) > 0 && !b.allowed[uid] {
+		return
+	}
+	// 群聊：默认不响应（避免噪音）；仅 AllowGroupChat 时响应。
+	if u.Message.Chat.Type != "private" && !b.allowGroup {
+		return
+	}
+	chatKey := "tg:" + strconv.FormatInt(chatID, 10)
+
+	// 斜杠命令
+	if strings.HasPrefix(text, "/") {
+		cmd := strings.Fields(text)[0]
+		switch cmd {
+		case "/start", "/help":
+			_ = b.sendMessage(chatID, helpText)
+			return
+		case "/clear":
+			if b.clear != nil {
+				b.clear(chatKey)
+			}
+			_ = b.sendMessage(chatID, "已清空对话上下文。")
+			return
+		}
+	}
+
+	// 自然语言 → agent
+	b.sendChatAction(chatID, "typing")
+	var sb strings.Builder
+	stream := b.talk(ctx, chatKey, text)
+	for ev := range stream {
+		switch ev.Type {
+		case llm.EventText:
+			sb.WriteString(ev.Text)
+		case llm.EventError:
+			_ = b.sendMessage(chatID, "⚠️ "+ev.Error)
+			return
+		}
+	}
+	reply := strings.TrimSpace(sb.String())
+	if reply == "" {
+		reply = "（已执行，无文本输出）"
+	}
+	b.sendSplit(chatID, reply)
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
+}

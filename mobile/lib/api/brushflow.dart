@@ -25,6 +25,7 @@ class BrushFlowTask {
   final int maxSeeds;
   final String savePath;
   final String categoryDl;
+  final String filterGroups; // 绑定过滤规则组名（| 分隔，空=不过滤）
   final int totalAdded;
   final int totalDeleted;
   final int totalUpload;
@@ -55,6 +56,7 @@ class BrushFlowTask {
     required this.maxSeeds,
     required this.savePath,
     required this.categoryDl,
+    required this.filterGroups,
     required this.totalAdded,
     required this.totalDeleted,
     required this.totalUpload,
@@ -86,6 +88,7 @@ class BrushFlowTask {
         maxSeeds: (j['max_seeds'] as num?)?.toInt() ?? 0,
         savePath: j['save_path'] as String? ?? '',
         categoryDl: j['category_dl'] as String? ?? '',
+        filterGroups: j['filter_groups'] as String? ?? '',
         totalAdded: (j['total_added'] as num?)?.toInt() ?? 0,
         totalDeleted: (j['total_deleted'] as num?)?.toInt() ?? 0,
         totalUpload: (j['total_upload'] as num?)?.toInt() ?? 0,
@@ -120,6 +123,7 @@ class BrushFlowTask {
         maxSeeds: maxSeeds,
         savePath: savePath,
         categoryDl: categoryDl,
+        filterGroups: filterGroups,
         totalAdded: totalAdded,
         totalDeleted: totalDeleted,
         totalUpload: totalUpload,

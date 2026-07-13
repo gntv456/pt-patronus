@@ -1,1 +1,0 @@
-import{h as e}from"./index-BD5PYFZM.js";const p={list:()=>e.get("/subscriptions").then(t=>t.data.subscriptions??[]),create:t=>e.post("/subscriptions",t).then(s=>s.data),update:(t,s)=>e.put(`/subscriptions/${t}`,s).then(i=>i.data),remove:t=>e.delete(`/subscriptions/${t}`).then(s=>s.data),check:t=>e.post(`/subscriptions/${t}/check`).then(s=>s.data)};export{p as s};

@@ -1,1 +1,0 @@
-import{h as e}from"./index-zSMpG3Wj.js";const a="0.88.00",c={info:()=>e.get("/system/info").then(t=>t.data),checkUpdate:(t="docker")=>e.get("/system/update/check",{params:{platform:t}}).then(s=>s.data),runDoctor:()=>e.get("/system/doctor").then(t=>t.data),fixDoctor:()=>e.post("/system/doctor/fix").then(t=>t.data)};export{a as A,c as s};

@@ -66,6 +66,12 @@ func (o *WorkflowOper) ResetStuckRunning() error {
 		Update("state", "failed").Error
 }
 
+func (o *WorkflowOper) ResetState(id uint) error {
+	return o.db.Model(&models.Workflow{}).Where("id = ?", id).Updates(map[string]any{
+		"state": "idle", "last_result": "",
+	}).Error
+}
+
 // MarkRun 记录一次执行结果：状态、运行数+1、上次时间、上次结果。
 func (o *WorkflowOper) MarkRun(id uint, state, result string) error {
 	now := time.Now()

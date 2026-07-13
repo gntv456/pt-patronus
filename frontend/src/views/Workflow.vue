@@ -52,6 +52,8 @@ async function createFromTemplate(t: WorkflowTemplate) {
       description: t.description,
       trigger_type: t.trigger_type,
       timer: t.timer,
+	  event_type: t.event_type,
+	  event_conditions: t.event_conditions,
       enabled: false,
       nodes: t.nodes,
       edges: t.edges,

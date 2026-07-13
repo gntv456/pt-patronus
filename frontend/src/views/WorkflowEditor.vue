@@ -9,7 +9,7 @@ import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
-import { workflowApi, type NodeInfo, type GraphNode, type GraphEdge, type WorkflowRun, type WorkflowTemplate } from '@/api/workflow'
+import { workflowApi, type NodeInfo, type GraphNode, type GraphEdge, type WorkflowRun, type WorkflowTemplate, type EventCondition } from '@/api/workflow'
 import WorkflowNode from '@/components/workflow/WorkflowNode.vue'
 import NodeParamForm from '@/components/workflow/NodeParamForm.vue'
 
@@ -39,6 +39,7 @@ const description = ref('')
 const triggerType = ref<'manual' | 'timer' | 'event'>('manual')
 const timer = ref('*/30 * * * *')
 const eventType = ref('')
+const eventConditions = ref<EventCondition[]>([])
 const enabled = ref(false)
 const saving = ref(false)
 const running = ref(false)
@@ -74,6 +75,7 @@ async function load() {
       triggerType.value = wf.trigger_type
       timer.value = wf.timer || '*/30 * * * *'
       eventType.value = wf.event_type
+      eventConditions.value = [...(wf.event_conditions || [])]
       enabled.value = wf.enabled
       setNodes((wf.nodes ?? []).map(toVFNode))
       setEdges((wf.edges ?? []).map(toVFEdge))
@@ -161,6 +163,7 @@ function buildInput() {
     trigger_type: triggerType.value,
     timer: timer.value,
     event_type: eventType.value,
+    event_conditions: eventConditions.value,
     enabled: enabled.value,
     nodes,
     edges,
@@ -260,6 +263,8 @@ function applyTemplate(t: WorkflowTemplate) {
   description.value = t.description
   triggerType.value = (t.trigger_type as any) || 'manual'
   timer.value = t.timer || '*/30 * * * *'
+	 eventType.value = t.event_type || ''
+	 eventConditions.value = [...(t.event_conditions || [])]
   enabled.value = false
   setNodes((t.nodes ?? []).map(toVFNode))
   setEdges((t.edges ?? []).map(toVFEdge))
@@ -289,6 +294,7 @@ function onImportFile(ev: Event) {
       triggerType.value = (data.trigger_type as any) || 'manual'
       timer.value = data.timer || '*/30 * * * *'
       eventType.value = data.event_type || ''
+      eventConditions.value = [...(data.event_conditions || [])]
       enabled.value = false
       setNodes((data.nodes || []).map(toVFNode))
       setEdges((data.edges || []).map(toVFEdge))

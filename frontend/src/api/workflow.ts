@@ -116,6 +116,8 @@ export interface WorkflowTemplate {
   category: string
   trigger_type: string
   timer: string
+  event_type?: string
+  event_conditions?: EventCondition[]
   nodes: GraphNode[]
   edges: GraphEdge[]
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/workflow"
+	"github.com/robfig/cron/v3"
 )
 
 // runTimeout 单次工作流执行整体超时（兜底，防节点卡死）。
@@ -33,8 +34,8 @@ type WorkflowChain struct {
 	bus    *event.Bus
 	notice *notice.Service
 
-	mu              sync.Mutex    // 重入守卫 + 事件订阅登记
-	eventSubscribed map[uint]bool // 已注册事件监听的工作流 id（bus 无 Unsubscribe，登记去重）
+	mu              sync.Mutex      // 重入守卫 + 事件订阅登记
+	eventSubscribed map[string]bool // 已注册事件监听 key="wfID:eventType"（bus 无 Unsubscribe；按 id+eventType 去重，改 EventType 可重订阅新类型）
 }
 
 // NewWorkflowChain 构造。
@@ -42,7 +43,7 @@ func NewWorkflowChain(b Base, op *oper.WorkflowOper, runOp *oper.WorkflowRunOper
 	reg *workflow.Registry, sched *scheduler.Scheduler, bus *event.Bus, ns *notice.Service) *WorkflowChain {
 	return &WorkflowChain{
 		Base: b, op: op, runOp: runOp, reg: reg, exec: workflow.NewExecutor(reg),
-		sched: sched, bus: bus, notice: ns, eventSubscribed: make(map[uint]bool),
+		sched: sched, bus: bus, notice: ns, eventSubscribed: make(map[string]bool),
 	}
 }
 
@@ -148,11 +149,16 @@ func (c *WorkflowChain) Get(id uint) (*models.Workflow, error) { return c.op.Get
 
 // Create 新建（校验图 → 落库 → 注册触发器）。
 func (c *WorkflowChain) Create(wf *models.Workflow) (*models.Workflow, error) {
+	if wf.TriggerType == "" {
+		wf.TriggerType = "manual"
+	}
 	if err := c.validateGraph(wf); err != nil {
 		return nil, err
 	}
-	if wf.TriggerType == "" {
-		wf.TriggerType = "manual"
+	if wf.Enabled {
+		if err := validateWorkflowTrigger(wf); err != nil {
+			return nil, err
+		}
 	}
 	if wf.State == "" {
 		wf.State = "idle"
@@ -162,7 +168,8 @@ func (c *WorkflowChain) Create(wf *models.Workflow) (*models.Workflow, error) {
 	}
 	if wf.Enabled {
 		if err := c.RegisterTriggers(wf); err != nil {
-			slog.Warn("workflow register triggers failed", "id", wf.ID, "err", err)
+			_ = c.op.Delete(wf.ID)
+			return nil, err
 		}
 	}
 	return wf, nil
@@ -172,6 +179,11 @@ func (c *WorkflowChain) Create(wf *models.Workflow) (*models.Workflow, error) {
 func (c *WorkflowChain) Update(wf *models.Workflow) error {
 	if err := c.validateGraph(wf); err != nil {
 		return err
+	}
+	if wf.Enabled {
+		if err := validateWorkflowTrigger(wf); err != nil {
+			return err
+		}
 	}
 	old, err := c.op.Get(wf.ID)
 	if err != nil {
@@ -187,7 +199,11 @@ func (c *WorkflowChain) Update(wf *models.Workflow) error {
 	}
 	if wf.Enabled {
 		if err := c.RegisterTriggers(wf); err != nil {
-			slog.Warn("workflow register triggers failed", "id", wf.ID, "err", err)
+			_ = c.op.Update(old)
+			if old.Enabled {
+				_ = c.RegisterTriggers(old)
+			}
+			return err
 		}
 	}
 	return nil
@@ -214,11 +230,21 @@ func (c *WorkflowChain) SetEnabled(id uint, enabled bool) error {
 		return err
 	}
 	wf.Enabled = enabled
+	if enabled {
+		if err := validateWorkflowTrigger(wf); err != nil {
+			return err
+		}
+	}
 	if err := c.op.Update(wf); err != nil {
 		return err
 	}
 	if enabled {
-		return c.RegisterTriggers(wf)
+		if err := c.RegisterTriggers(wf); err != nil {
+			wf.Enabled = false
+			_ = c.op.Update(wf)
+			return err
+		}
+		return nil
 	}
 	c.UnregisterTriggers(wf)
 	return nil
@@ -226,7 +252,7 @@ func (c *WorkflowChain) SetEnabled(id uint, enabled bool) error {
 
 // Reset 重置状态与运行数。
 func (c *WorkflowChain) Reset(id uint) error {
-	return c.op.MarkRun(id, "idle", "") // MarkRun 自增 run_count；这里仅需重置状态
+	return c.op.ResetState(id)
 }
 
 // Run 执行工作流。trigger ∈ manual|timer|event；eventData 为事件触发时的负载（种子进 Variables）。
@@ -321,6 +347,9 @@ func (c *WorkflowChain) RegisterTriggers(wf *models.Workflow) error {
 	if wf == nil || !wf.Enabled {
 		return nil
 	}
+	if err := validateWorkflowTrigger(wf); err != nil {
+		return err
+	}
 	switch wf.TriggerType {
 	case "timer":
 		if strings.TrimSpace(wf.Timer) == "" {
@@ -340,6 +369,57 @@ func (c *WorkflowChain) RegisterTriggers(wf *models.Workflow) error {
 			return fmt.Errorf("事件工作流缺少事件类型")
 		}
 		c.registerEventHandler(wf)
+	}
+	return nil
+}
+
+func validateWorkflowTrigger(wf *models.Workflow) error {
+	if wf == nil {
+		return fmt.Errorf("workflow is nil")
+	}
+	switch strings.TrimSpace(wf.TriggerType) {
+	case "manual":
+		return nil
+	case "timer":
+		if strings.TrimSpace(wf.Timer) == "" {
+			return fmt.Errorf("timer workflow requires a cron expression")
+		}
+		if _, err := cron.ParseStandard(wf.Timer); err != nil {
+			return fmt.Errorf("invalid cron expression: %w", err)
+		}
+		return nil
+	case "event":
+		if strings.TrimSpace(wf.EventType) == "" {
+			return fmt.Errorf("event workflow requires an event type")
+		}
+		return validateEventConditions(wf.EventConditions)
+	default:
+		return fmt.Errorf("unsupported trigger type: %s", wf.TriggerType)
+	}
+}
+
+func validateEventConditions(raw string) error {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var conds []workflow.EventCondition
+	if err := json.Unmarshal([]byte(raw), &conds); err != nil {
+		return fmt.Errorf("invalid event conditions JSON: %w", err)
+	}
+	for _, condition := range conds {
+		if strings.TrimSpace(condition.Field) == "" {
+			return fmt.Errorf("event condition field is required")
+		}
+		switch condition.Operator {
+		case "eq", "ne", "contains":
+		case "regex":
+			if _, err := regexp.Compile(condition.Value); err != nil {
+				return fmt.Errorf("invalid event condition regex: %w", err)
+			}
+		default:
+			return fmt.Errorf("unsupported event condition operator: %s", condition.Operator)
+		}
 	}
 	return nil
 }
@@ -369,23 +449,25 @@ func (c *WorkflowChain) RegisterAllTriggers(ctx context.Context) error {
 	return nil
 }
 
-// registerEventHandler 注册一次事件监听（按工作流 id 去重，bus 无 Unsubscribe）。
-// handler 每次触发重载工作流：不存在/禁用 → 早返回；校验 EventConditions → Run。
+// registerEventHandler 注册一次事件监听（按 "wfID:eventType" 去重，bus 无 Unsubscribe）。
+// 关键：去重键含 EventType——用户改事件类型时新类型会生成新 key 从而重新订阅；
+// 旧订阅无法注销，但 handler 每次触发重载 cur 校验 EventType 是否仍等于注册时的值，改了即自废。
 func (c *WorkflowChain) registerEventHandler(wf *models.Workflow) {
+	key := fmt.Sprintf("%d:%s", wf.ID, wf.EventType)
 	c.mu.Lock()
-	if c.eventSubscribed[wf.ID] {
+	if c.eventSubscribed[key] {
 		c.mu.Unlock()
 		return
 	}
-	c.eventSubscribed[wf.ID] = true
+	c.eventSubscribed[key] = true
 	c.mu.Unlock()
 
 	wfID := wf.ID
 	eventType := wf.EventType
 	c.bus.Subscribe(eventType, 100, func(ctx context.Context, e event.Event) {
 		cur, err := c.op.Get(wfID)
-		if err != nil || cur == nil || !cur.Enabled || cur.TriggerType != "event" {
-			return // 已删除/禁用/改型，自废
+		if err != nil || cur == nil || !cur.Enabled || cur.TriggerType != "event" || cur.EventType != eventType {
+			return // 已删除/禁用/改型/改事件类型 → 自废（bus 无 Unsubscribe，靠重载判定失效）
 		}
 		if !evaluateEventConditions(cur.EventConditions, e.Data) {
 			return
@@ -423,7 +505,7 @@ func evaluateEventConditions(condsJSON string, data map[string]any) bool {
 	}
 	var conds []workflow.EventCondition
 	if err := json.Unmarshal([]byte(condsJSON), &conds); err != nil {
-		return true // 条件解析失败，放行（避免误锁）
+		return false
 	}
 	for _, c := range conds {
 		raw, ok := data[c.Field]
@@ -445,9 +527,12 @@ func evaluateEventConditions(condsJSON string, data map[string]any) bool {
 				return false
 			}
 		case "regex":
-			if matched, err := regexp.MatchString(c.Value, val); err == nil && !matched {
+			matched, err := regexp.MatchString(c.Value, val)
+			if err != nil || !matched {
 				return false
 			}
+		default:
+			return false
 		}
 	}
 	return true

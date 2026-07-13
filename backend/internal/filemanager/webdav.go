@@ -113,6 +113,9 @@ func (w *WebDAV) Download(ctx context.Context, p string) (io.ReadCloser, error) 
 // Delete 删除。
 func (w *WebDAV) Delete(ctx context.Context, p string) error {
 	p = resolvePath(w.basePath, p)
+	if p == resolvePath(w.basePath, "/") {
+		return fmt.Errorf("不允许删除存储根目录")
+	}
 	resp, err := w.req(ctx, http.MethodDelete, p, nil)
 	if err != nil {
 		return err
@@ -139,6 +142,10 @@ func (w *WebDAV) Mkdir(ctx context.Context, p string) error {
 }
 
 // moveOrCopy 执行 WebDAV MOVE/COPY：src→dst，Overwrite 允许覆盖。
+//
+// 207 Multi-Status 处理：COPY/MOVE 一个目录（Depth:infinity）时，部分子资源失败
+// （锁/权限）会让服务器返回 207，body 内含每个 href 的 status。原先仅判 >=300，而
+// 207<300 被当成功 → 静默部分数据丢失/源目标分裂态。现解析 body，任一子资源 4xx/5xx 即报错。
 func (w *WebDAV) moveOrCopy(ctx context.Context, method, srcRel, dstRel string) error {
 	req, err := http.NewRequestWithContext(ctx, method, w.baseURL+srcRel, nil)
 	if err != nil {
@@ -153,17 +160,30 @@ func (w *WebDAV) moveOrCopy(ctx context.Context, method, srcRel, dstRel string) 
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	defer resp.Body.Close()
+	if resp.StatusCode == 207 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		// 任一子资源返回 4xx/5xx 即视为部分失败。
+		if strings.Contains(string(body), "HTTP/1.1 4") || strings.Contains(string(body), "HTTP/1.1 5") {
+			return fmt.Errorf("webdav %s 部分子资源失败（207 含错误状态）", method)
+		}
+		return nil
+	}
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("webdav %s: status %d", method, resp.StatusCode)
 	}
 	return nil
 }
 
-// Rename 同目录改名（WebDAV MOVE 到父目录下的 newName）。
+// Rename 同目录改名（WebDAV MOVE 到父目录下的 newName）。newName 经 sanitizeNewName 钳制，
+// 防 `name="a/b"` 把文件移进子目录或 `name="../x"` 越界（违反"同目录改名"契约）。
 func (w *WebDAV) Rename(ctx context.Context, p, newName string) error {
 	src := resolvePath(w.basePath, p)
-	dst := resolvePath(w.basePath, path.Join(path.Dir(normalizePath(src)), newName))
+	name, err := sanitizeNewName(newName)
+	if err != nil {
+		return err
+	}
+	dst := resolvePath(w.basePath, path.Join(path.Dir(normalizePath(src)), name))
 	return w.moveOrCopy(ctx, "MOVE", src, dst)
 }
 
@@ -216,10 +236,10 @@ func parseMultiStatus(data []byte, base string) ([]Entry, error) {
 			name = path.Base(strings.TrimRight(decode(r.Href), "/"))
 		}
 		e := Entry{
-			Name:    name,
-			Path:    normalizePath(decode(r.Href)),
-			IsDir:   prop.Resourcetype.Collection != nil,
-			Size:    prop.Size,
+			Name:  name,
+			Path:  normalizePath(decode(r.Href)),
+			IsDir: prop.Resourcetype.Collection != nil || strings.HasSuffix(decode(r.Href), "/"),
+			Size:  prop.Size,
 			ModTime: parseHTTPDate(prop.Modified),
 		}
 		out = append(out, e)

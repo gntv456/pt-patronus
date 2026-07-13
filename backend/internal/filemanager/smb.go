@@ -168,6 +168,9 @@ func (s *SMB) Delete(ctx context.Context, p string) error {
 	}
 	defer cleanup()
 	rel := s.rel(p)
+	if rel == "." {
+		return fmt.Errorf("不允许删除存储根目录")
+	}
 	if fi, statErr := share.Stat(rel); statErr == nil && fi.IsDir() {
 		if err := share.RemoveAll(rel); err != nil {
 			return fmt.Errorf("smb 删除目录失败: %w", err)
@@ -193,7 +196,8 @@ func (s *SMB) Mkdir(ctx context.Context, p string) error {
 	return nil
 }
 
-// Rename 同目录改名（go-smb2 Share.Rename）。
+// Rename 同目录改名（go-smb2 Share.Rename）。newName 经 sanitizeNewName 钳制，防
+// `name="../x"` 经 path.Join 折叠后上溯逃出 basePath 到 share 根。
 func (s *SMB) Rename(ctx context.Context, p, newName string) error {
 	share, cleanup, err := s.session(ctx)
 	if err != nil {
@@ -201,7 +205,11 @@ func (s *SMB) Rename(ctx context.Context, p, newName string) error {
 	}
 	defer cleanup()
 	oldRel := s.rel(p)
-	newRel := path.Join(path.Dir(oldRel), newName)
+	name, err := sanitizeNewName(newName)
+	if err != nil {
+		return err
+	}
+	newRel := path.Join(path.Dir(oldRel), name)
 	if err := share.Rename(oldRel, newRel); err != nil {
 		return fmt.Errorf("smb 重命名失败: %w", err)
 	}
@@ -223,7 +231,8 @@ func (s *SMB) Move(ctx context.Context, src, dstDir string) error {
 	return nil
 }
 
-// Copy 手动读+写（go-smb2 无原生 copy）。
+// Copy 手动读+写（go-smb2 无原生 copy）。源为目录时递归复制（与 local/agent/webdav 一致），
+// 避免原先对目录 share.Open 拿目录句柄 io.Copy 失败、且已在目标残留同名空文件的问题。
 func (s *SMB) Copy(ctx context.Context, src, dstDir string) error {
 	share, cleanup, err := s.session(ctx)
 	if err != nil {
@@ -232,18 +241,52 @@ func (s *SMB) Copy(ctx context.Context, src, dstDir string) error {
 	defer cleanup()
 	srcRel := s.rel(src)
 	dstRel := path.Join(s.rel(dstDir), path.Base(srcRel))
-	in, err := share.Open(srcRel)
+	fi, err := share.Stat(srcRel)
 	if err != nil {
-		return fmt.Errorf("smb 打开源失败: %w", err)
+		return fmt.Errorf("smb stat 源失败: %w", err)
+	}
+	if fi.IsDir() {
+		return smbCopyTree(share, srcRel, dstRel)
+	}
+	return smbCopyFile(share, srcRel, dstRel)
+}
+
+// smbCopyFile 在同一 share 内复制单文件（手动读+写）。out.Close 的错误不被吞
+// （同 local.copyFileLocal：写错误延迟到 close 才报时，吞掉会让上层误判成功）。
+func smbCopyFile(share *smb2.Share, src, dst string) error {
+	in, err := share.Open(src)
+	if err != nil {
+		return err
 	}
 	defer in.Close()
-	out, err := share.Create(dstRel)
+	out, err := share.Create(dst)
 	if err != nil {
-		return fmt.Errorf("smb 创建目标失败: %w", err)
+		return err
 	}
-	defer out.Close()
-	if _, err := io.Copy(out, in); err != nil {
-		return fmt.Errorf("smb 复制失败: %w", err)
+	_, copyErr := io.Copy(out, in)
+	if cerr := out.Close(); copyErr == nil {
+		copyErr = cerr
+	}
+	return copyErr
+}
+
+// smbCopyTree 递归复制目录树（同 share 内）。父目录用 Mkdir 建立并容忍已存在。
+func smbCopyTree(share *smb2.Share, src, dst string) error {
+	_ = share.Mkdir(dst, 0755) // 已存在不报错
+	infos, err := share.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, fi := range infos {
+		sp := path.Join(src, fi.Name())
+		dp := path.Join(dst, fi.Name())
+		if fi.IsDir() {
+			if err := smbCopyTree(share, sp, dp); err != nil {
+				return err
+			}
+		} else if err := smbCopyFile(share, sp, dp); err != nil {
+			return err
+		}
 	}
 	return nil
 }

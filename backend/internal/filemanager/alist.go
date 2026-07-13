@@ -139,10 +139,14 @@ func (a *Alist) Download(ctx context.Context, p string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-// Delete 调 /api/fs/remove。
+// Delete 调 /api/fs/remove。basePath 为空且 p="/" 时 dir 解析为空，原先 dir[:LastIndex] 会
+// slice 越界 panic（每次必崩）——前置拒绝根操作，既防 panic 也防误删存储根。
 func (a *Alist) Delete(ctx context.Context, p string) error {
 	p = resolvePath(a.basePath, p)
 	dir := strings.TrimRight(p, "/")
+	if dir == "" {
+		return fmt.Errorf("不允许删除存储根目录")
+	}
 	name := dir[strings.LastIndex(dir, "/")+1:]
 	parent := dir[:strings.LastIndex(dir, "/")]
 	return a.call(ctx, "remove", "/api/fs/remove", map[string]any{
@@ -156,17 +160,26 @@ func (a *Alist) Mkdir(ctx context.Context, p string) error {
 	return a.call(ctx, "mkdir", "/api/fs/mkdir", map[string]any{"path": p}, nil)
 }
 
-// Rename 调 /api/fs/rename（path 指定原文件/目录，name 为新名）。
+// Rename 调 /api/fs/rename（path 指定原文件/目录，name 为新名）。newName 经 sanitizeNewName
+// 校验防 "/api/fs/rename" 收到含分隔符的恶意名（与 local/smb/webdav 统一）。
 func (a *Alist) Rename(ctx context.Context, p, newName string) error {
 	p = resolvePath(a.basePath, p)
-	return a.call(ctx, "rename", "/api/fs/rename", map[string]any{"path": p, "name": newName}, nil)
+	name, err := sanitizeNewName(newName)
+	if err != nil {
+		return err
+	}
+	return a.call(ctx, "rename", "/api/fs/rename", map[string]any{"path": p, "name": name}, nil)
 }
 
 // moveOrCopy 拆 src 为 src_dir+name，调 Alist 的 move/copy 端点（src_dir/names → dst_dir）。
+// dir==""（basePath 空 + 根路径）前置拒绝，防 dir[:LastIndex] 越界 panic。
 func (a *Alist) moveOrCopy(ctx context.Context, src, dstDir, endpoint, tag string) error {
 	srcP := resolvePath(a.basePath, src)
 	dstP := resolvePath(a.basePath, dstDir)
 	dir := strings.TrimRight(srcP, "/")
+	if dir == "" {
+		return fmt.Errorf("不允许操作存储根目录")
+	}
 	name := dir[strings.LastIndex(dir, "/")+1:]
 	srcDir := dir[:strings.LastIndex(dir, "/")]
 	if srcDir == "" {

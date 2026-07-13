@@ -224,8 +224,12 @@ func (r *Rclone) isDirPath(ctx context.Context, clamped string) (isDir, found bo
 }
 
 // Delete 先探测类型：目录用 purge（递归），文件用 deletefile；不存在视为已删除（幂等，与 webdav 404 处理一致）。
+// 拒绝删除存储根（p 解析为 rootDir）——防 AI 工具 file_delete 清空整个存储（与 local/smb/alist 一致）。
 func (r *Rclone) Delete(ctx context.Context, p string) error {
 	clamped := resolvePath(r.rootDir, p)
+	if clamped == resolvePath(r.rootDir, "/") {
+		return fmt.Errorf("不允许删除存储根目录")
+	}
 	rp := r.remote + ":" + clamped
 	isDir, found, err := r.isDirPath(ctx, clamped)
 	if err != nil {
@@ -248,12 +252,16 @@ func (r *Rclone) Mkdir(ctx context.Context, p string) error {
 	return err
 }
 
-// Rename 用 rclone moveto 改名（文件→文件，自动建父目录）。
+// Rename 用 rclone moveto 改名（文件→文件，自动建父目录）。newName 经 sanitizeNewName 钳制。
 func (r *Rclone) Rename(ctx context.Context, p, newName string) error {
 	src := r.resolve(p)
 	clamped := resolvePath(r.rootDir, p)
-	dst := r.resolve(path.Join(path.Dir(clamped), newName))
-	_, err := r.run(ctx, "moveto", src, dst)
+	name, err := sanitizeNewName(newName)
+	if err != nil {
+		return err
+	}
+	dst := r.resolve(path.Join(path.Dir(clamped), name))
+	_, err = r.run(ctx, "moveto", src, dst)
 	return err
 }
 
@@ -266,12 +274,21 @@ func (r *Rclone) Move(ctx context.Context, src, dstDir string) error {
 	return err
 }
 
-// Copy 用 rclone copyto 复制到 dstDir（保留文件名）。
+// Copy 复制到 dstDir（保留文件名）。源为目录用 rclone copy（递归），文件用 copyto（单文件）——
+// copyto 对目录语义不明，原先一律 copyto 与 local/agent 的"递归复制目录树"契约不一致。
 func (r *Rclone) Copy(ctx context.Context, src, dstDir string) error {
-	srcR := r.resolve(src)
 	srcClamped := resolvePath(r.rootDir, src)
+	srcR := r.resolve(src)
 	dst := r.resolve(path.Join(resolvePath(r.rootDir, dstDir), path.Base(srcClamped)))
-	_, err := r.run(ctx, "copyto", srcR, dst)
+	isDir, _, err := r.isDirPath(ctx, srcClamped)
+	if err != nil {
+		return err
+	}
+	cmd := "copyto"
+	if isDir {
+		cmd = "copy"
+	}
+	_, err = r.run(ctx, cmd, srcR, dst)
 	return err
 }
 

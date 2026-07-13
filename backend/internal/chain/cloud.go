@@ -99,15 +99,14 @@ func (c *CloudChain) Quota(ctx context.Context, id uint) (*cloud.Quota, error) {
 	return cli.Quota(ctx)
 }
 
-// Browse 列目录（UI 文件夹选择器用）。path 为云盘绝对路径（以 / 起）。
+// Browse 列目录（UI 文件夹选择器用）。path 钳制在 RootPath 子树内，防浏览越界
+// （原先直传 cli.List 可浏览网盘 RootPath 之外目录，与只读 cloudBackend.List 不一致）。
 func (c *CloudChain) Browse(ctx context.Context, id uint, p string) ([]cloud.File, error) {
 	cli, m, err := c.client(id)
 	if err != nil {
 		return nil, err
 	}
-	if strings.TrimSpace(p) == "" {
-		p = m.RootPath
-	}
+	p = clampCloudPath(m.RootPath, p)
 	files, err := cli.List(ctx, p)
 	if err != nil {
 		return nil, err
@@ -116,6 +115,20 @@ func (c *CloudChain) Browse(ctx context.Context, id uint, p string) ([]cloud.Fil
 		files = []cloud.File{}
 	}
 	return files, nil
+}
+
+// clampCloudPath 把云盘路径 p 钳制在 root 子树内（与 filemanager.resolvePath 同语义）：
+// path.Clean 抹 ../，再校验未逃出 root，越界则回 root。
+func clampCloudPath(root, p string) string {
+	root = strings.TrimRight(path.Clean("/"+strings.TrimLeft(root, "/")), "/")
+	cleaned := path.Clean("/" + strings.TrimLeft(strings.TrimSpace(p), "/"))
+	if root == "" || root == "/" {
+		return cleaned
+	}
+	if cleaned == root || strings.HasPrefix(cleaned, root+"/") {
+		return cleaned
+	}
+	return root
 }
 
 // ---- STRM 规则 CRUD ----

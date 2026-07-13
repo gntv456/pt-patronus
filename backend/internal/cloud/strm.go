@@ -41,6 +41,9 @@ func Generate(ctx context.Context, cli Client, opts GenerateOptions) (GenerateRe
 	if opts.Template == "" {
 		opts.Template = defaultStrmTemplate
 	}
+	if err := validateStrmOutputDir(opts.OutputDir); err != nil {
+		return GenerateResult{}, err
+	}
 	if err := os.MkdirAll(opts.OutputDir, 0o755); err != nil {
 		return GenerateResult{}, fmt.Errorf("创建输出目录失败: %w", err)
 	}
@@ -110,6 +113,38 @@ func isWithinDir(path, dir string) bool {
 		return true
 	}
 	return strings.HasPrefix(cp, cd+string(os.PathSeparator))
+}
+
+// sensitiveStrmDirs STRM 输出禁止落入的系统/二进制敏感目录。即时生成（/cloud/generate，
+// 登录用户可调）的 output_dir 若能任意指定，可在服务器关键目录投递 .strm；此黑名单堵住
+// 明显的系统目录写入。理想方案是配置化白名单媒体库根，此处先做基本防线。
+var sensitiveStrmDirs = []string{
+	"/", "/etc", "/usr", "/bin", "/sbin", "/boot", "/dev", "/proc", "/sys",
+	"/root", "/lib", "/lib64", "/var/log", "/var/spool", "/var/lib", "/opt",
+	`C:\Windows`, `C:\Program Files`, `C:\Program Files (x86)`, `C:\ProgramData`,
+}
+
+// validateStrmOutputDir 校验 STRM 输出目录安全性：非空、绝对路径、Clean 后不含 ".."、
+// 不落在系统敏感目录内。os.MkdirAll 之前调用，防 output_dir 被设为 /etc 等任意路径。
+func validateStrmOutputDir(dir string) error {
+	if strings.TrimSpace(dir) == "" {
+		return fmt.Errorf("output_dir 不能为空")
+	}
+	if !filepath.IsAbs(dir) {
+		return fmt.Errorf("output_dir 必须为绝对路径: %s", dir)
+	}
+	cleaned := filepath.Clean(dir)
+	if strings.Contains(cleaned, "..") {
+		return fmt.Errorf("output_dir 非法（含 ..）: %s", dir)
+	}
+	sep := string(os.PathSeparator)
+	for _, bad := range sensitiveStrmDirs {
+		normBad := filepath.Clean(bad)
+		if cleaned == normBad || strings.HasPrefix(cleaned, normBad+sep) {
+			return fmt.Errorf("output_dir 落在系统敏感目录，已拒绝: %s", cleaned)
+		}
+	}
+	return nil
 }
 
 // writeStrm 生成单个 .strm：计算本地路径 + 渲染内容 + 幂等写入。返回 (是否写入, strm路径, err)。

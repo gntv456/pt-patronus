@@ -362,6 +362,9 @@ func Build(d *Deps) *gin.Engine {
 				storages.GET("/:id/download", fsH.Download)
 				storages.POST("/:id/mkdir", fsH.Mkdir)
 				storages.POST("/:id/delete", fsH.DeleteFile)
+				storages.POST("/:id/rename", fsH.Rename)
+				storages.POST("/:id/move", fsH.Move)
+				storages.POST("/:id/copy", fsH.Copy)
 			}
 
 			bkH := v1.NewBackupHandler(d.Backup, d.Notice)
@@ -597,6 +600,7 @@ func Build(d *Deps) *gin.Engine {
 					rc.GET("", cloudH.ListRecords)
 					rc.DELETE("/:id", middleware.RequireAdmin(), cloudH.DeleteRecord)
 				}
+				cl.POST("/generate", cloudH.Generate)
 				cl.POST("/generate-all", cloudH.GenerateAll)
 				cl.POST("/sync-subscriptions", cloudH.SyncSubscriptions)
 			}

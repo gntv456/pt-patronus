@@ -41,6 +41,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this); // 监听前后台：后台断 WS 省电省流量
     refreshNoticeUnread();
     _noticeSub = WsClient().notices.listen((_) => refreshNoticeUnread());
+    // AI 助手已移出抽屉/侧栏（NavItem.hidden），顶栏常驻按钮凭此索引 select。
+    _controller.assistantIndex = navItems.indexWhere((n) => n.glyph == 'bot');
     // 启动后台检查更新（silent：仅在有新版时弹对话框，不打扰已是最新版本的用户）
     checkAndPromptUpdate(context, silent: true);
   }

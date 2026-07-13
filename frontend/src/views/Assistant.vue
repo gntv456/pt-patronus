@@ -257,7 +257,10 @@ onMounted(loadConversations)
 </template>
 
 <style scoped>
-.page { padding: 12px; height: calc(100vh - 56px); }
+/* 填满 .content 可用高度（随 topbar / GlobalNoticeBar 显隐 / 移动端自适应），
+   不能写死 calc(100vh - Npx)：通知栏 v-if 条件渲染会改变下方可用高度，
+   固定值会导致输入框被顶到视口外。box-sizing 让 padding 留在高度内。 */
+.page { padding: 12px; height: 100%; box-sizing: border-box; }
 .layout { display: flex; gap: 12px; height: 100%; }
 .sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; padding: 10px; border-radius: 14px; }
 .side-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 8px; }

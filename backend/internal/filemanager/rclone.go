@@ -248,6 +248,33 @@ func (r *Rclone) Mkdir(ctx context.Context, p string) error {
 	return err
 }
 
+// Rename 用 rclone moveto 改名（文件→文件，自动建父目录）。
+func (r *Rclone) Rename(ctx context.Context, p, newName string) error {
+	src := r.resolve(p)
+	clamped := resolvePath(r.rootDir, p)
+	dst := r.resolve(path.Join(path.Dir(clamped), newName))
+	_, err := r.run(ctx, "moveto", src, dst)
+	return err
+}
+
+// Move 用 rclone moveto 移到 dstDir（保留文件名）。
+func (r *Rclone) Move(ctx context.Context, src, dstDir string) error {
+	srcR := r.resolve(src)
+	srcClamped := resolvePath(r.rootDir, src)
+	dst := r.resolve(path.Join(resolvePath(r.rootDir, dstDir), path.Base(srcClamped)))
+	_, err := r.run(ctx, "moveto", srcR, dst)
+	return err
+}
+
+// Copy 用 rclone copyto 复制到 dstDir（保留文件名）。
+func (r *Rclone) Copy(ctx context.Context, src, dstDir string) error {
+	srcR := r.resolve(src)
+	srcClamped := resolvePath(r.rootDir, src)
+	dst := r.resolve(path.Join(resolvePath(r.rootDir, dstDir), path.Base(srcClamped)))
+	_, err := r.run(ctx, "copyto", srcR, dst)
+	return err
+}
+
 // parseRcloneTime 解析 rclone lsjson 的 ModTime（RFC3339，可能带小数秒）。
 // Go time.Parse 即便 layout 无小数位也能容忍输入带小数秒，故单一 RFC3339 layout 足够；失败返回零值。
 func parseRcloneTime(s string) time.Time {

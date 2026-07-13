@@ -42,7 +42,6 @@ const navGroups = [
     title: '概览',
     items: [
       { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
-      { name: 'assistant', label: 'AI 助手', icon: 'bot', from: '#6c5ce7', to: '#a855f7' },
       { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
       { name: 'messages', label: '消息', icon: 'message', from: '#2193b0', to: '#6dd5ed' },
     ],
@@ -174,6 +173,10 @@ function closeMobileNav() {
         <button class="icon-btn" :title="isMobile ? '打开导航' : '折叠导航'" aria-label="打开导航" @click="toggleNav"><el-icon><Menu /></el-icon></button>
         <div class="spacer"></div>
         <NotificationCenter />
+        <router-link :to="{ name: 'assistant' }" class="ai-btn" title="AI 助手" aria-label="AI 助手">
+          <GlassIcon name="bot" from="#6c5ce7" to="#a855f7" :size="24" />
+          <span class="ai-label">AI</span>
+        </router-link>
         <el-dropdown trigger="click" @command="onUserCommand">
           <div class="user-trigger">
             <span class="user-name">{{ auth.username || '—' }}</span>
@@ -348,6 +351,24 @@ function closeMobileNav() {
   font-size: 12px;
   opacity: 0.6;
 }
+/* 顶栏 AI 助手常驻入口（侧栏已移除，见 design/menu-redesign.md §3） */
+.ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--text-strong);
+  padding: 3px 10px 3px 5px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ai-btn:hover {
+  background: rgba(108, 92, 231, 0.12);
+}
+.ai-btn.router-link-active {
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(168, 85, 247, 0.18));
+}
 .content {
   flex: 1;
   overflow: auto;
@@ -399,6 +420,9 @@ function closeMobileNav() {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .ai-label {
+    display: none;
   }
   .content {
     min-width: 0;

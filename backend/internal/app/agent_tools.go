@@ -19,6 +19,8 @@ import (
 
 // registerAgentTools 构建 AI Agent 的全功能工具集（读+写），绑定各业务 chain。
 // 与公开 MCP 工具（/api/v1/mcp）分离：MCP 公开只读；Agent 仅 admin 可用且含动作工具。
+// 末尾 7 个 chain（mediaServerCh/cloudCh/brushCh/rssCh/subtitleCh/fileCh/wfCh）由
+// agent_tools_ext.go 的 build* 函数展开为各域工具，使 agent 与 plugin Host API 能力对等。
 func registerAgentTools(
 	siteOp *oper.SiteOper, siteCh *chain.SiteChain,
 	subCh *chain.SubscribeChain,
@@ -27,6 +29,10 @@ func registerAgentTools(
 	transfer *chain.TransferChain, keepseed *chain.KeepSeedChain,
 	dash *chain.DashboardChain, notify *chain.NotificationChain,
 	filterStore *filter.Store,
+	mediaServerCh *chain.MediaServerChain, cloudCh *chain.CloudChain,
+	brushCh *chain.BrushFlowChain, rssCh *chain.RssChain,
+	subtitleCh *chain.SubtitleChain, fileCh *chain.FileManagerChain,
+	wfCh *chain.WorkflowChain,
 ) []mcp.Tool {
 	var tools []mcp.Tool
 	reg := func(t mcp.Tool) { tools = append(tools, t) }
@@ -234,6 +240,19 @@ func registerAgentTools(
 		}
 		return mcpJSON(map[string]any{"deleted": argString(a, "name", "")}), nil
 	}})
+
+	// —— 扩展域：与 plugin Host API 对等的 chain 能力（agent_tools_ext.go）——
+	tools = append(tools, buildDownloaderAdvTools(dlCh)...)
+	tools = append(tools, buildMediaServerTools(mediaServerCh)...)
+	tools = append(tools, buildSubscribeAdvTools(subCh)...)
+	tools = append(tools, buildTransferAdvTools(transfer)...)
+	tools = append(tools, buildReseedAdvTools(keepseed)...)
+	tools = append(tools, buildCloudTools(cloudCh)...)
+	tools = append(tools, buildBrushFlowTools(brushCh)...)
+	tools = append(tools, buildRssTools(rssCh)...)
+	tools = append(tools, buildSubtitleTools(subtitleCh)...)
+	tools = append(tools, buildFileTools(fileCh)...)
+	tools = append(tools, buildWorkflowTools(wfCh)...)
 
 	return tools
 }

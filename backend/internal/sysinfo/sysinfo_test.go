@@ -51,7 +51,8 @@ func TestCollectDisks_ExtraPath(t *testing.T) {
 	}
 }
 
-// TestCollectDisks_Dedup 同设备多个子目录应去重（st_dev），仅 Linux 验证。
+// TestCollectDisks_Dedup 同文件系统多个子目录应去重（dedupKey 优先 fsid——btrfs 子卷同池共享 fsid，
+// 退化 st_dev），仅 Linux 验证。
 func TestCollectDisks_Dedup(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("st_dev 去重仅 Linux 验证（devOf 在其他平台返 0 不去重）")
@@ -73,6 +74,6 @@ func TestCollectDisks_Dedup(t *testing.T) {
 		}
 	}
 	if count > 1 {
-		t.Errorf("同设备两子目录未去重，count=%d（devOf 应识别为同一 st_dev）", count)
+		t.Errorf("同文件系统两子目录未去重，count=%d（dedupKey 应识别为同一 fsid）", count)
 	}
 }

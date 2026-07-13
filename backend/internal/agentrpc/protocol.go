@@ -14,9 +14,11 @@ const CapabilityFile = "file"
 
 // Command server→agent 文件命令（agent 端 agent.Command 的 JSON 对齐镜像，agent 独立定义不 import 本包）。
 type Command struct {
-	Op   string `json:"op"`             // list | mkdir | delete | download | upload
-	Path string `json:"path"`           // 用户视角路径（服务端已 resolvePath 钳制）
-	Base string `json:"base,omitempty"` // agent 端钳制根（FileStorage.base_path，深度防御二次校验）
+	Op      string `json:"op"`                        // list | mkdir | delete | download | upload | rename | move | copy
+	Path    string `json:"path"`                      // 用户视角路径（服务端已 resolvePath 钳制）
+	Base    string `json:"base,omitempty"`            // agent 端钳制根（FileStorage.base_path，深度防御二次校验）
+	NewName string `json:"new_name,omitempty"`        // op=rename：新文件名（纯名）
+	DstDir  string `json:"dst_dir,omitempty"`         // op=move|copy：目标目录（服务端已钳制）
 }
 
 // Response agent→server 小操作响应（list/mkdir/delete）。
@@ -50,6 +52,9 @@ type AgentFileRPC interface {
 	Delete(ctx context.Context, cmd Command) error
 	Download(ctx context.Context, cmd Command) (io.ReadCloser, error)
 	Upload(ctx context.Context, cmd Command, r io.Reader) error
+	Rename(ctx context.Context, cmd Command) error
+	Move(ctx context.Context, cmd Command) error
+	Copy(ctx context.Context, cmd Command) error
 }
 
 // AgentRPCHub 按 agentID 取在线 agent 的文件 RPC 客户端（由 *monitor.AgentWSHub 实现）。

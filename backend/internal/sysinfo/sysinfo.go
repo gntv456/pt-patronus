@@ -139,9 +139,19 @@ var pseudoFS = map[string]bool{
 
 func isPseudoFS(fstype string) bool { return pseudoFS[fstype] }
 
+// dedupKey 返回挂载点的去重键：优先 fsid（btrfs/zfs 同一文件系统的所有子卷共享相同 fsid，
+// 而 st_dev 对每个子卷是动态 anon_dev 各不相同——故 btrfs 池必须按 fsid 去重，否则同一物理池
+// 会被每个子卷重复计入），fsid 无效时退化 st_dev（同设备 bind mount）。两者都拿不到返 0。
+func dedupKey(path string) uint64 {
+	if k := fsidOf(path); k != 0 {
+		return k
+	}
+	return devOf(path)
+}
+
 // collectDisks 采集磁盘用量：先遍历所有挂载点（pseudoFS 黑名单过滤），再对 extraPaths 逐个 statvfs。
-// 用 st_dev 去重——同一物理设备上的多个挂载点/bind/子目录只统计一次（防 /mnt/nas/movies 与
-// /mnt/nas/tv 同池重复计入，对齐 MoviePilot space_usage 的 st_dev 去重）。devOf 在非 Linux 返 0 即跳过去重。
+// 用 dedupKey 去重——同一文件系统上的多个挂载点/bind/子卷/子目录只统计一次（防 btrfs 子卷把
+// 同池重复计入，也防 /mnt/nas/movies 与 /mnt/nas/tv 同设备重复）。dedupKey 在非 Linux 返 0 即跳过去重。
 func collectDisks(extraPaths []string) []DiskMetric {
 	var out []DiskMetric
 	seen := map[uint64]bool{}
@@ -154,7 +164,7 @@ func collectDisks(extraPaths []string) []DiskMetric {
 			if err != nil {
 				continue
 			}
-			if dev := devOf(p.Mountpoint); dev != 0 {
+			if dev := dedupKey(p.Mountpoint); dev != 0 {
 				if seen[dev] {
 					continue
 				}
@@ -173,7 +183,7 @@ func collectDisks(extraPaths []string) []DiskMetric {
 		if err != nil {
 			continue
 		}
-		if dev := devOf(p); dev != 0 {
+		if dev := dedupKey(p); dev != 0 {
 			if seen[dev] {
 				continue
 			}

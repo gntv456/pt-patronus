@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 // ServerName 默认服务端标识。
@@ -29,10 +30,13 @@ type Settings struct {
 
 // Tool 是一个 MCP 工具：名称 + 描述 + JSON Schema 入参 + 处理器。
 // 处理器返回文本结果与可选错误（错误转成 isError=true 的内容块，不破坏 JSON-RPC）。
+// Timeout 为可选的单工具执行超时；零值由调用方（如 aiagent.ToolRegistry）用默认值。
+// 不参与 JSON 序列化（json:"-"）：既不下发到 LLM 的 tools/list，也不进 MCP schema。
 type Tool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	InputSchema map[string]any         `json:"inputSchema"`
+	Timeout     time.Duration          `json:"-"`
 	Handler     func(ctx context.Context, args map[string]any) (string, error)
 }
 

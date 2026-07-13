@@ -184,6 +184,21 @@ func (h *CloudHandler) GenerateRule(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// Generate 即时生成 STRM（文件页选中目录直接生成，不持久化为规则）。
+func (h *CloudHandler) Generate(c *gin.Context) {
+	var in chain.GenerateInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	res, err := h.svc.GenerateInstant(c.Request.Context(), in)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
 // GenerateAll 手动触发全部启用规则生成。
 func (h *CloudHandler) GenerateAll(c *gin.Context) {
 	h.svc.GenerateAll(c.Request.Context())

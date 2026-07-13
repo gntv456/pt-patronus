@@ -186,3 +186,47 @@ func (h *FileStorageHandler) DeleteFile(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
+
+// Rename 同目录改名（path=原路径 + name=新名，走 query）。
+func (h *FileStorageHandler) Rename(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	name := c.Query("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name 必填"})
+		return
+	}
+	if err := h.fileCh.Rename(c.Request.Context(), id, c.Query("path"), name); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// Move 移动（from=源路径 + to=目标目录，走 query）。
+func (h *FileStorageHandler) Move(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	if err := h.fileCh.Move(c.Request.Context(), id, c.Query("from"), c.Query("to")); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// Copy 复制（from=源路径 + to=目标目录，走 query）。
+func (h *FileStorageHandler) Copy(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	if err := h.fileCh.Copy(c.Request.Context(), id, c.Query("from"), c.Query("to")); err != nil {
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}

@@ -13,6 +13,12 @@ class HomeController extends ChangeNotifier {
   bool _sidebarVisible = true; // 桌面端默认显示常驻侧栏（对齐 Docker）
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
 
+  /// AI 助手在 [navItems] 中的索引（由 HomeShell 在 init 时按 glyph `'bot'` 解析注入）。
+  /// 顶栏常驻按钮据此 select；该 NavItem 已 `hidden`，不在抽屉/侧栏渲染。
+  /// 放控制器而非 widget 层解析，避免 widgets/pt_page_scaffold → features/home/home_nav_items
+  /// 的循环导入（nav_items 反向导入各页面 → 页面又用 PTPageScaffold）。
+  int? assistantIndex;
+
   int get index => _index;
   bool get sidebarVisible => _sidebarVisible;
 

@@ -21,6 +21,12 @@ func (a *agentConn) handleCmd(env Envelope) {
 		a.cmdMkdir(env)
 	case "delete":
 		a.cmdDelete(env)
+	case "rename":
+		a.cmdRename(env)
+	case "move":
+		a.cmdMove(env)
+	case "copy":
+		a.cmdCopy(env)
 	case "download":
 		a.cmdDownload(env)
 	case "upload":
@@ -116,6 +122,131 @@ func (a *agentConn) cmdDelete(env Envelope) {
 		return
 	}
 	_ = a.writeResp(env.ID, true, "", nil)
+}
+
+// cmdRename 同目录改名（NewName 经 filepath.Base 钳制防注入路径）。
+func (a *agentConn) cmdRename(env Envelope) {
+	srcFull := a.resolve(env)
+	if srcFull == "" {
+		_ = a.writeResp(env.ID, false, "path denied by ALLOWED_ROOTS", nil)
+		return
+	}
+	newName := filepath.Base(filepath.FromSlash(env.Cmd.NewName))
+	dst := filepath.Join(filepath.Dir(srcFull), newName)
+	if err := os.Rename(srcFull, dst); err != nil {
+		_ = a.writeResp(env.ID, false, err.Error(), nil)
+		return
+	}
+	_ = a.writeResp(env.ID, true, "", nil)
+}
+
+// resolveDst 钳制目标目录（cmd.DstDir）到 base 下并校验白名单。
+func (a *agentConn) resolveDst(env Envelope) string {
+	full := safePath(env.Cmd.Base, env.Cmd.DstDir)
+	if !a.allowed(full) {
+		return ""
+	}
+	return full
+}
+
+// cmdMove 移到 DstDir（保留文件名；os.Rename 跨设备失败时降级 copy+delete）。
+func (a *agentConn) cmdMove(env Envelope) {
+	srcFull := a.resolve(env)
+	if srcFull == "" {
+		_ = a.writeResp(env.ID, false, "src path denied by ALLOWED_ROOTS", nil)
+		return
+	}
+	dstDirFull := a.resolveDst(env)
+	if dstDirFull == "" {
+		_ = a.writeResp(env.ID, false, "dst path denied by ALLOWED_ROOTS", nil)
+		return
+	}
+	dst := filepath.Join(dstDirFull, filepath.Base(srcFull))
+	if err := os.Rename(srcFull, dst); err == nil {
+		_ = a.writeResp(env.ID, true, "", nil)
+		return
+	}
+	if err := agentCopyPath(srcFull, dst); err != nil {
+		_ = a.writeResp(env.ID, false, err.Error(), nil)
+		return
+	}
+	if err := os.RemoveAll(srcFull); err != nil {
+		_ = a.writeResp(env.ID, false, err.Error(), nil)
+		return
+	}
+	_ = a.writeResp(env.ID, true, "", nil)
+}
+
+// cmdCopy 复制到 DstDir（保留文件名）。
+func (a *agentConn) cmdCopy(env Envelope) {
+	srcFull := a.resolve(env)
+	if srcFull == "" {
+		_ = a.writeResp(env.ID, false, "src path denied by ALLOWED_ROOTS", nil)
+		return
+	}
+	dstDirFull := a.resolveDst(env)
+	if dstDirFull == "" {
+		_ = a.writeResp(env.ID, false, "dst path denied by ALLOWED_ROOTS", nil)
+		return
+	}
+	dst := filepath.Join(dstDirFull, filepath.Base(srcFull))
+	if err := agentCopyPath(srcFull, dst); err != nil {
+		_ = a.writeResp(env.ID, false, err.Error(), nil)
+		return
+	}
+	_ = a.writeResp(env.ID, true, "", nil)
+}
+
+// agentCopyPath 递归复制文件或目录（文件 io.Copy，目录 filepath.Walk）。
+func agentCopyPath(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return agentCopyDir(src, dst, info.Mode())
+	}
+	return agentCopyFile(src, dst)
+}
+
+// agentCopyDir 递归复制目录树，保留目录权限位。
+func agentCopyDir(src, dst string, mode os.FileMode) error {
+	if err := os.MkdirAll(dst, mode); err != nil {
+		return err
+	}
+	return filepath.Walk(src, func(p string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, p)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if fi.IsDir() {
+			return os.MkdirAll(target, fi.Mode())
+		}
+		return agentCopyFile(p, target)
+	})
+}
+
+// agentCopyFile 逐字节复制单文件（建父目录）。
+func agentCopyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	return err
 }
 
 // cmdDownload 流式回传文件：32KB 块 base64 编码发 data 帧，最后 Last:true。

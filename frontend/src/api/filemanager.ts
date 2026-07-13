@@ -60,4 +60,25 @@ export const fileApi = {
       .then((r) => {
         if (!r.data.ok) throw new Error(r.data.error || '删除失败')
       }),
+  // 重命名（同目录改名）。
+  rename: (id: number, path: string, name: string) =>
+    http
+      .post<{ ok: boolean; error?: string }>(`/storages/${id}/rename`, null, { params: { path, name } })
+      .then((r) => {
+        if (!r.data.ok) throw new Error(r.data.error || '重命名失败')
+      }),
+  // 移动（from 源 → to 目标目录）。
+  move: (id: number, from: string, to: string) =>
+    http
+      .post<{ ok: boolean; error?: string }>(`/storages/${id}/move`, null, { params: { from, to } })
+      .then((r) => {
+        if (!r.data.ok) throw new Error(r.data.error || '移动失败')
+      }),
+  // 复制（from 源 → to 目标目录）。
+  copy: (id: number, from: string, to: string) =>
+    http
+      .post<{ ok: boolean; error?: string }>(`/storages/${id}/copy`, null, { params: { from, to } })
+      .then((r) => {
+        if (!r.data.ok) throw new Error(r.data.error || '复制失败')
+      }),
 }

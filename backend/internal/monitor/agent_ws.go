@@ -250,6 +250,42 @@ func (ac *agentConn) Delete(ctx context.Context, cmd agentrpc.Command) error {
 	return nil
 }
 
+// Rename 同目录改名（小操作，走 sendRPC；NewName 在 cmd 内）。
+func (ac *agentConn) Rename(ctx context.Context, cmd agentrpc.Command) error {
+	resp, err := ac.sendRPC(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	if !resp.OK {
+		return errors.New(resp.Err)
+	}
+	return nil
+}
+
+// Move 移动（DstDir 在 cmd 内）。
+func (ac *agentConn) Move(ctx context.Context, cmd agentrpc.Command) error {
+	resp, err := ac.sendRPC(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	if !resp.OK {
+		return errors.New(resp.Err)
+	}
+	return nil
+}
+
+// Copy 复制（DstDir 在 cmd 内）。
+func (ac *agentConn) Copy(ctx context.Context, cmd agentrpc.Command) error {
+	resp, err := ac.sendRPC(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	if !resp.OK {
+		return errors.New(resp.Err)
+	}
+	return nil
+}
+
 // Download 发 download 命令，用 io.Pipe 桥接 agent 回传的 data 帧，返回流式 ReadCloser 给上层 io.Copy。
 func (ac *agentConn) Download(ctx context.Context, cmd agentrpc.Command) (io.ReadCloser, error) {
 	if !ac.hasCap(agentrpc.CapabilityFile) {

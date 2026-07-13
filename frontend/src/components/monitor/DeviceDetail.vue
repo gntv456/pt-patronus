@@ -24,9 +24,15 @@ function seriesOf(pick: (m: Metrics) => number | undefined): number[] {
 
 const cpuSeries = computed(() => seriesOf((m) => m.cpu_usage))
 const memSeries = computed(() => seriesOf((m) => m.mem_usage))
+// 存储卡百分比须与「已用/总量」同源：用 sum(used)/sum(total)，不能用 max(单盘 usage)——
+// 否则多盘时百分比取最满那块，与累加出的总量对不上（曾出现 78% 配 87.7TB/1.1PB 的矛盾）。
 const diskUsage = computed(() => {
   const ds = latest.value?.disks
-  return ds && ds.length ? Math.max(...ds.map((d) => d.usage)) : undefined
+  if (!ds || !ds.length) return undefined
+  const total = ds.reduce((n, d) => n + (d.total || 0), 0)
+  if (!total) return undefined
+  const used = ds.reduce((n, d) => n + (d.used || 0), 0)
+  return (used / total) * 100
 })
 const diskTotal = computed(() => (latest.value?.disks ?? []).reduce((n, d) => n + (d.total || 0), 0))
 const diskUsed = computed(() => (latest.value?.disks ?? []).reduce((n, d) => n + (d.used || 0), 0))

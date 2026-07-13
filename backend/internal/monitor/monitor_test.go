@@ -76,6 +76,41 @@ func TestParseRemoteProc(t *testing.T) {
 	}
 }
 
+// TestParseDF_BtrfsSubvolumeDedup 验证 btrfs 同一文件系统的多个 subvolume/snapshot 在 df 里各自成行、
+// 且每行报告整池容量时，按 Filesystem(source)去重——同 /dev/ 设备只算一次。
+// 回归飞牛 btrfs 把 50.92TB 池的 ~22 个子卷重复累加成 1.1PB 的缺陷。
+func TestParseDF_BtrfsSubvolumeDedup(t *testing.T) {
+	raw := `Filesystem     1B-blocks          Used Available Use% Mounted on
+/dev/sda3      50920000000000   39870000000000 10000000000000  79% /mnt/pool
+/dev/sda3      50920000000000   39870000000000 10000000000000  79% /mnt/pool/movies
+/dev/sda3      50920000000000   39870000000000 10000000000000  79% /mnt/pool/tv
+/dev/sda1      886000000000     579000000000    300000000000   66% /`
+	disks := parseDF(raw)
+	// 3 行 /dev/sda3 + 1 行 /dev/sda1 → 去重后 2 条
+	if len(disks) != 2 {
+		t.Fatalf("disks = %d (%+v), want 2（/dev/sda3 三子卷应去重为 1）", len(disks), disks)
+	}
+	// /dev/sda3 只计入一次：total 应为 单池50.92TB + 系统886GB，而非把 50.92TB 累加 3 次
+	var sum uint64
+	for _, d := range disks {
+		sum += d.Total
+	}
+	if want := uint64(50920000000000 + 886000000000); sum != want {
+		t.Errorf("total = %d, want %d（/dev/sda3 不应重复累加）", sum, want)
+	}
+}
+
+// TestParseDF_OverlayNotDeduped overlay/aufs 等非块设备层 source 名相同却确是不同挂载，不应被去重。
+func TestParseDF_OverlayNotDeduped(t *testing.T) {
+	raw := `Filesystem     1B-blocks      Used Available Use% Mounted on
+overlay        10000000000 5000000000 5000000000  50% /var/lib/docker/a
+overlay        10000000000 6000000000 4000000000  60% /var/lib/docker/b`
+	disks := parseDF(raw)
+	if len(disks) != 2 {
+		t.Errorf("overlay 两层应各自计入（source 非 /dev/ 不去重），got %d", len(disks))
+	}
+}
+
 func TestCPUUsageFromStat(t *testing.T) {
 	// dt==0 应返回 0（防除零）
 	if v := cpuUsageFromStat("cpu 1 2 3 4 5", "cpu 1 2 3 4 5"); v != 0 {

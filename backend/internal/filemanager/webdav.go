@@ -138,6 +138,49 @@ func (w *WebDAV) Mkdir(ctx context.Context, p string) error {
 	return nil
 }
 
+// moveOrCopy 执行 WebDAV MOVE/COPY：src→dst，Overwrite 允许覆盖。
+func (w *WebDAV) moveOrCopy(ctx context.Context, method, srcRel, dstRel string) error {
+	req, err := http.NewRequestWithContext(ctx, method, w.baseURL+srcRel, nil)
+	if err != nil {
+		return err
+	}
+	if w.username != "" {
+		req.SetBasicAuth(w.username, w.password)
+	}
+	req.Header.Set("Destination", w.baseURL+dstRel)
+	req.Header.Set("Overwrite", "T")
+	resp, err := w.hc.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("webdav %s: status %d", method, resp.StatusCode)
+	}
+	return nil
+}
+
+// Rename 同目录改名（WebDAV MOVE 到父目录下的 newName）。
+func (w *WebDAV) Rename(ctx context.Context, p, newName string) error {
+	src := resolvePath(w.basePath, p)
+	dst := resolvePath(w.basePath, path.Join(path.Dir(normalizePath(src)), newName))
+	return w.moveOrCopy(ctx, "MOVE", src, dst)
+}
+
+// Move 移到 dstDir（保留文件名）。
+func (w *WebDAV) Move(ctx context.Context, src, dstDir string) error {
+	srcRel := resolvePath(w.basePath, src)
+	dst := resolvePath(w.basePath, path.Join(normalizePath(resolvePath(w.basePath, dstDir)), path.Base(srcRel)))
+	return w.moveOrCopy(ctx, "MOVE", srcRel, dst)
+}
+
+// Copy 复制到 dstDir（保留文件名）。
+func (w *WebDAV) Copy(ctx context.Context, src, dstDir string) error {
+	srcRel := resolvePath(w.basePath, src)
+	dst := resolvePath(w.basePath, path.Join(normalizePath(resolvePath(w.basePath, dstDir)), path.Base(srcRel)))
+	return w.moveOrCopy(ctx, "COPY", srcRel, dst)
+}
+
 // ── multistatus XML 解析 ──
 
 type multistatus struct {
@@ -149,7 +192,7 @@ type multistatus struct {
 				Name         string `xml:"DAV: displayname"`
 				Size         int64  `xml:"DAV: getcontentlength"`
 				Resourcetype struct {
-					Collection struct{} `xml:"DAV: collection"`
+					Collection *struct{} `xml:"DAV: collection"`
 				} `xml:"DAV: resourcetype"`
 				Modified string `xml:"DAV: getlastmodified"`
 			} `xml:"DAV: prop"`
@@ -175,7 +218,7 @@ func parseMultiStatus(data []byte, base string) ([]Entry, error) {
 		e := Entry{
 			Name:    name,
 			Path:    normalizePath(decode(r.Href)),
-			IsDir:   prop.Resourcetype.Collection != struct{}{},
+			IsDir:   prop.Resourcetype.Collection != nil,
 			Size:    prop.Size,
 			ModTime: parseHTTPDate(prop.Modified),
 		}

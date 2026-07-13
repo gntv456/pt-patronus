@@ -133,3 +133,98 @@ func (l *Local) Mkdir(ctx context.Context, p string) error {
 	}
 	return os.MkdirAll(full, 0o755)
 }
+
+// Rename 同目录改名：path 的 basename 换成 newName（filepath.Base 钳制防注入路径）。
+func (l *Local) Rename(ctx context.Context, p, newName string) error {
+	full, err := l.resolve(p)
+	if err != nil {
+		return err
+	}
+	dst := filepath.Join(filepath.Dir(full), filepath.Base(filepath.FromSlash(newName)))
+	return os.Rename(full, dst)
+}
+
+// Move 移动到 dstDir（保留文件名）；os.Rename 跨设备失败时降级 copy+delete。
+func (l *Local) Move(ctx context.Context, src, dstDir string) error {
+	srcFull, err := l.resolve(src)
+	if err != nil {
+		return err
+	}
+	dstFull, err := l.resolve(dstDir)
+	if err != nil {
+		return err
+	}
+	dst := filepath.Join(dstFull, filepath.Base(srcFull))
+	if err := os.Rename(srcFull, dst); err == nil {
+		return nil
+	}
+	if err := copyPath(srcFull, dst); err != nil {
+		return err
+	}
+	return os.RemoveAll(srcFull)
+}
+
+// Copy 复制到 dstDir（保留文件名）；文件 io.Copy，目录递归。
+func (l *Local) Copy(ctx context.Context, src, dstDir string) error {
+	srcFull, err := l.resolve(src)
+	if err != nil {
+		return err
+	}
+	dstFull, err := l.resolve(dstDir)
+	if err != nil {
+		return err
+	}
+	return copyPath(srcFull, filepath.Join(dstFull, filepath.Base(srcFull)))
+}
+
+// copyPath 递归复制文件或目录（文件 copyFileLocal，目录 filepath.Walk 遍历）。
+func copyPath(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return copyDir(src, dst, info.Mode())
+	}
+	return copyFileLocal(src, dst)
+}
+
+// copyDir 递归复制目录树，保留目录权限位。
+func copyDir(src, dst string, mode os.FileMode) error {
+	if err := os.MkdirAll(dst, mode); err != nil {
+		return err
+	}
+	return filepath.Walk(src, func(p string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(src, p)
+		if err != nil {
+			return err
+		}
+		target := filepath.Join(dst, rel)
+		if fi.IsDir() {
+			return os.MkdirAll(target, fi.Mode())
+		}
+		return copyFileLocal(p, target)
+	})
+}
+
+// copyFileLocal 逐字节复制单文件（建父目录，保留读权限）。
+func copyFileLocal(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, in)
+	return err
+}

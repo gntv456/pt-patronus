@@ -124,10 +124,20 @@ func parseUptime(raw string) uint64 {
 // parseDF 解析 df -B1 输出：Filesystem 1B-blocks Used Avail Use% Mountpoint。
 func parseDF(raw string) []DiskMetric {
 	var disks []DiskMetric
+	seen := map[string]bool{}
 	for _, line := range strings.Split(raw, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 6 || f[0] == "Filesystem" || !strings.HasSuffix(f[4], "%") {
 			continue
+		}
+		// 按 Filesystem(source)去重：btrfs/zfs 同一文件系统的子卷/快照在 df 里各自一行，
+		// 且每行都报告整池容量，全累加会把同一物理池重复计入 N 倍（飞牛 btrfs 实测 22 倍成 1.1PB）。
+		// 只对真实块设备（/dev/…）去重——overlay/aufs 等各层 source 名相同却确是不同层，不去重。
+		if src := f[0]; strings.HasPrefix(src, "/dev/") {
+			if seen[src] {
+				continue
+			}
+			seen[src] = true
 		}
 		total, _ := strconv.ParseUint(f[1], 10, 64)
 		used, _ := strconv.ParseUint(f[2], 10, 64)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/responsive.dart';
+import 'package:ptpatronus/features/home/home_controller.dart';
 import 'package:ptpatronus/features/home/home_menu_button.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
@@ -251,6 +252,27 @@ class _PTPageAppBarState extends State<PTPageAppBar> {
           ),
         ),
       );
+    }
+
+    // 8. AI 助手常驻入口：侧栏/抽屉已隐藏该项（NavItem.hidden），统一进顶栏（对齐
+    //    Web MainLayout 顶栏 🤖）。当前已在 AI 页则不重复显示（该页工具栏自有新对话/设置）。
+    //    通过 HomeShellScope（leaf，仅 import material）拿控制器，避免 widget 层反向导入
+    //    home_nav_items 造成循环（nav_items → 各页面 → PTPageScaffold）。
+    final scope = context.dependOnInheritedWidgetOfExactType<HomeShellScope>();
+    if (scope != null) {
+      final ai = scope.controller.assistantIndex;
+      if (ai != null && ai >= 0 && scope.controller.index != ai) {
+        out.add(
+          IconButton(
+            tooltip: 'AI 助手',
+            icon: const Icon(Icons.smart_toy),
+            iconSize: 22,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            onPressed: () => scope.controller.select(ai),
+          ),
+        );
+      }
     }
 
     return out;

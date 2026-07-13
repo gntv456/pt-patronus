@@ -183,6 +183,10 @@ class CloudApi {
   Future<Map<String, dynamic>> generateRule(int id) async =>
       _api.post('/cloud/rules/$id/generate', <String, dynamic>{});
 
+  /// 即时生成 STRM（文件页选中目录直接生成，不持久化为规则）。
+  Future<Map<String, dynamic>> generate(Map<String, dynamic> opts) =>
+      _api.post('/cloud/generate', opts);
+
   Future<void> generateAll() async => _api.post('/cloud/generate-all', <String, dynamic>{});
 
   Future<void> syncSubscriptions() async =>

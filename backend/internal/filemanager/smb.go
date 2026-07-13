@@ -193,6 +193,61 @@ func (s *SMB) Mkdir(ctx context.Context, p string) error {
 	return nil
 }
 
+// Rename 同目录改名（go-smb2 Share.Rename）。
+func (s *SMB) Rename(ctx context.Context, p, newName string) error {
+	share, cleanup, err := s.session(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	oldRel := s.rel(p)
+	newRel := path.Join(path.Dir(oldRel), newName)
+	if err := share.Rename(oldRel, newRel); err != nil {
+		return fmt.Errorf("smb 重命名失败: %w", err)
+	}
+	return nil
+}
+
+// Move 跨目录改名（SMB Rename 支持同 share 内跨目录移动）。
+func (s *SMB) Move(ctx context.Context, src, dstDir string) error {
+	share, cleanup, err := s.session(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	srcRel := s.rel(src)
+	dstRel := path.Join(s.rel(dstDir), path.Base(srcRel))
+	if err := share.Rename(srcRel, dstRel); err != nil {
+		return fmt.Errorf("smb 移动失败: %w", err)
+	}
+	return nil
+}
+
+// Copy 手动读+写（go-smb2 无原生 copy）。
+func (s *SMB) Copy(ctx context.Context, src, dstDir string) error {
+	share, cleanup, err := s.session(ctx)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	srcRel := s.rel(src)
+	dstRel := path.Join(s.rel(dstDir), path.Base(srcRel))
+	in, err := share.Open(srcRel)
+	if err != nil {
+		return fmt.Errorf("smb 打开源失败: %w", err)
+	}
+	defer in.Close()
+	out, err := share.Create(dstRel)
+	if err != nil {
+		return fmt.Errorf("smb 创建目标失败: %w", err)
+	}
+	defer out.Close()
+	if _, err := io.Copy(out, in); err != nil {
+		return fmt.Errorf("smb 复制失败: %w", err)
+	}
+	return nil
+}
+
 // splitShare 把 /share/sub/path 拆成 share 名与 share 内绝对路径。
 // /Media/Movies → ("Media", "/Movies")；/Media → ("Media", "/")；""/"/" → ("", "/")。
 func splitShare(p string) (share, sub string) {

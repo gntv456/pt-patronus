@@ -49,6 +49,10 @@ class NavItem {
   /// true → 固定渲染在抽屉/侧栏底部分组（通知设置、用户中心），不随主列表滚动。
   final bool footer;
 
+  /// true → 不在抽屉/侧栏渲染，但仍占 [navItems] 索引位（供顶栏入口 select，保持 IndexedStack 保活）。
+  /// 用途：AI 助手已移至顶栏常驻（对齐 Web [MainLayout.vue] 顶栏 🤖），菜单中隐藏。
+  final bool hidden;
+
   /// 副标题释义（可选）：移动端无 hover，PT 黑话项用小字释义降低新手理解门槛（对齐 Web navDesc tooltip）。
   final String? desc;
 
@@ -59,6 +63,7 @@ class NavItem {
     required this.to,
     required this.builder,
     this.footer = false,
+    this.hidden = false,
     this.desc,
   });
 }
@@ -73,7 +78,7 @@ final List<({String title, List<NavItem> items})> navGroups = [
     title: '概览',
     items: [
       NavItem(label: '仪表盘', glyph: 'dashboard', from: const Color(0xFF6C5CE7), to: const Color(0xFF4285F4), builder: (_) => const DashboardPage()),
-      NavItem(label: 'AI 助手', glyph: 'bot', from: const Color(0xFF6C5CE7), to: const Color(0xFFA855F7), builder: (_) => const AssistantPage(), desc: '自然语言控制全平台'),
+      NavItem(label: 'AI 助手', glyph: 'bot', from: const Color(0xFF6C5CE7), to: const Color(0xFFA855F7), builder: (_) => const AssistantPage(), hidden: true, desc: '自然语言控制全平台'),
       NavItem(label: '公告', glyph: 'announcement', from: const Color(0xFFF7971E), to: const Color(0xFFFFD200), builder: (_) => const AnnouncementsPage()),
       NavItem(label: '消息', glyph: 'message', from: const Color(0xFF2193B0), to: const Color(0xFF6DD5ED), builder: (_) => const MessagesPage()),
     ],

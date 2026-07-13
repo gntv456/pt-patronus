@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:ptpatronus/api/cloud.dart';
 import 'package:ptpatronus/api/file_storage.dart';
 import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -12,10 +13,47 @@ import 'package:share_plus/share_plus.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
-/// 文件管理页：存储后端 CRUD（本机/WebDAV/Alist/SMB/Agent）→ 浏览目录 → 下载/上传/建目录/删除。
+/// 文件管理页：存储后端 CRUD（本机/WebDAV/Alist/SMB/Agent）+ 云盘只读浏览 → 下载/上传/建目录/删除/STRM。
 /// 对齐 Web FileManager.vue。
 /// 存储连通性探测状态（瞬时，仅用于 UI 展示）。
 enum _Conn { checking, ok, fail }
+
+/// 存储后端统一引用：fs（本机/WebDAV/Alist/SMB/Agent/Rclone，可读写）｜cloud（115/夸克/123，只读 + STRM）。
+/// 用 kind+id 复合 key 区分——fs 与 cloud 的 id 是独立 DB 序列（都从 1 起），单 int 会冲突。
+/// 对齐 Web FileManager.vue 的 StorageItem。
+class _Backend {
+  final String kind; // 'fs' | 'cloud'
+  final FileStorage? fs;
+  final CloudDrive? drive;
+  const _Backend({this.kind = 'fs', this.fs, this.drive});
+
+  int get id => kind == 'fs' ? (fs?.id ?? 0) : (drive?.id ?? 0);
+  String get name => kind == 'fs' ? (fs?.name ?? '') : (drive?.name ?? '');
+  String get typeName => kind == 'fs' ? (fs?.type ?? '') : (drive?.type ?? '');
+  bool get readOnly => kind == 'cloud';
+
+  /// 进入该后端时的虚拟根路径。
+  /// fs.local 根固定 '/'（basePath 是服务端物理根，不能当虚拟路径）；
+  /// fs 其他类型用 basePath；cloud 用 root_path。均空兜底 '/'。
+  String get rootPath {
+    if (kind == 'fs') {
+      final f = fs;
+      if (f == null) return '/';
+      if (f.type == 'local') return '/';
+      return f.basePath.isEmpty ? '/' : f.basePath;
+    }
+    final d = drive;
+    return (d == null || d.rootPath.isEmpty) ? '/' : d.rootPath;
+  }
+
+  /// 复合 key（'fs:3' / 'cloud:1'）：连通性状态 Map 索引 + 下拉去重。
+  String get key => '$kind:$id';
+
+  @override
+  bool operator ==(Object o) => o is _Backend && o.key == key;
+  @override
+  int get hashCode => key.hashCode;
+}
 
 class FileManagePage extends StatefulWidget {
   const FileManagePage({super.key});
@@ -25,21 +63,24 @@ class FileManagePage extends StatefulWidget {
 
 class _FileManagePageState extends State<FileManagePage> {
   final _api = FileStorageApi();
-  List<FileStorage> _storages = [];
-  int? _storageId;
+  final _cloud = CloudApi();
+  List<_Backend> _backends = [];
+  _Backend? _cur; // 当前后端（fs 可读写 / cloud 只读）
   String _path = '/';
-  // 连通性探测状态（瞬时，不持久化）：id → 状态 + 错误
-  final Map<int, _Conn> _status = {};
-  final Map<int, String> _statusError = {};
+  // 连通性探测状态（瞬时，不持久化）：复合 key → 状态 + 错误
+  final Map<String, _Conn> _status = {};
+  final Map<String, String> _statusError = {};
   List<FileEntry> _entries = const [];
   bool _loading = false;
-  bool _busy = false; // 下载/上传/建目录进行中
+  bool _busy = false; // 下载/上传/建目录/STRM 进行中
   String? _error; // 列目录失败（首次/空时显错误态+重试）
+
+  bool get _readOnly => _cur?.readOnly ?? false;
 
   @override
   void initState() {
     super.initState();
-    _loadStorages();
+    _loadBackends();
   }
 
   void _toast(String m) {
@@ -47,16 +88,24 @@ class _FileManagePageState extends State<FileManagePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
-  Future<void> _loadStorages() async {
+  Future<void> _loadBackends() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      _storages = await _api.list();
+      // fs 与 cloud 并行加载；云盘接口失败不应阻断本地存储（对齐 Web Promise.all + catch([])）。
+      final lateCloud = _cloud.listDrives().catchError((_) => <CloudDrive>[]);
+      final fs = await _api.list();
+      final drives = await lateCloud;
+      final next = <_Backend>[
+        ...fs.map((f) => _Backend(kind: 'fs', fs: f)),
+        ...drives.map((d) => _Backend(kind: 'cloud', drive: d)),
+      ];
+      _backends = next;
       unawaited(_probeAll());
-      if (_storages.isNotEmpty) {
-        _selectStorage(_storages.first.id);
+      if (next.isNotEmpty) {
+        _select(next.first);
         return;
       }
     } catch (e) {
@@ -66,22 +115,15 @@ class _FileManagePageState extends State<FileManagePage> {
     }
   }
 
-  void _selectStorage(int id) {
-    final s = _storages.where((x) => x.id == id).toList();
-    final fs = s.isNotEmpty ? s.first : null;
+  void _select(_Backend b) {
     setState(() {
-      _storageId = id;
-      // local 的 basePath 是服务端物理根（如 D:\Media），不能当虚拟路径；虚拟根始终从 / 开始
-      final base = fs?.basePath ?? '';
-      _path = (fs != null && fs.type == 'local') ? '/' : (base.isEmpty ? '/' : base);
+      _cur = b;
+      _path = b.rootPath;
       _entries = const [];
       _error = null;
     });
     _loadEntries();
   }
-
-  FileStorage? get _current =>
-      _storages.where((x) => x.id == _storageId).firstOrNull;
 
   // —— 存储后端 CRUD（对齐 Web FileManager.vue 的「添加存储」+ 类型含 Agent）——
   Future<void> _addStorage() async {
@@ -92,25 +134,26 @@ class _FileManagePageState extends State<FileManagePage> {
       builder: (_) => const _StorageFormSheet(),
     );
     if (ok == true) {
-      _loadStorages();
+      _loadBackends();
     }
   }
 
   Future<void> _editStorage() async {
-    final s = _current;
-    if (s == null) return;
+    final b = _cur;
+    if (b == null || b.fs == null) return; // 仅 fs 可在本页编辑（云盘在「云盘」页管理）
     final ok = await showAdaptiveSheet(
       context,
       title: '编辑存储',
       wideWidth: 480,
-      builder: (_) => _StorageFormSheet(editing: s),
+      builder: (_) => _StorageFormSheet(editing: b.fs!),
     );
-    if (ok == true) _loadStorages();
+    if (ok == true) _loadBackends();
   }
 
   Future<void> _deleteStorage() async {
-    final s = _current;
-    if (s == null) return;
+    final b = _cur;
+    if (b == null || b.fs == null) return; // 仅 fs 可在本页删除
+    final s = b.fs!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -133,64 +176,71 @@ class _FileManagePageState extends State<FileManagePage> {
     try {
       await _api.delete(s.id);
       _toast('已删除');
-      _storageId = null;
-      await _loadStorages();
+      _cur = null;
+      await _loadBackends();
     } catch (e) {
       _toast(e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
   // —— 连通性探测 ——
-  // 加载后自动并发探测所有存储（静默，仅更新下拉项状态点）。
+  // 加载后自动并发探测所有后端（静默，仅更新下拉项状态点）。
   Future<void> _probeAll() async {
     if (!mounted) return;
     setState(() {
-      for (final s in _storages) {
-        _status[s.id] = _Conn.checking;
+      for (final b in _backends) {
+        _status[b.key] = _Conn.checking;
       }
     });
-    await Future.wait(_storages.map((s) => _probe(s.id)));
+    await Future.wait(_backends.map((b) => _probe(b)));
   }
 
-  Future<void> _probe(int id) async {
+  /// 统一连通性探测：fs 用 FileStorageApi.test（{ok,error}）；cloud 用 CloudApi.test。
+  Future<bool> _testOk(_Backend b) async {
+    if (b.kind == 'fs') return (await _api.test(b.id)).ok;
+    final r = await _cloud.test(b.id);
+    return r['ok'] == true;
+  }
+
+  Future<void> _probe(_Backend b) async {
     try {
-      final r = await _api.test(id);
+      final ok = await _testOk(b);
       if (!mounted) return;
       setState(() {
-        _status[id] = r.ok ? _Conn.ok : _Conn.fail;
-        _statusError[id] = r.error;
+        _status[b.key] = ok ? _Conn.ok : _Conn.fail;
+        if (!ok) _statusError[b.key] = '连接失败';
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _status[id] = _Conn.fail;
-        _statusError[id] = e.toString().replaceFirst('Exception: ', '');
+        _status[b.key] = _Conn.fail;
+        _statusError[b.key] = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
 
-  // 手动测试当前存储（即时 toast 反馈 + 更新状态点）。
+  // 手动测试当前后端（即时 toast 反馈 + 更新状态点）。
   Future<void> _testCurrent() async {
-    final s = _current;
-    if (s == null) return;
-    setState(() => _status[s.id] = _Conn.checking);
+    final b = _cur;
+    if (b == null) return;
+    setState(() => _status[b.key] = _Conn.checking);
     try {
-      final r = await _api.test(s.id);
+      final ok = await _testOk(b);
       if (!mounted) return;
       setState(() {
-        _status[s.id] = r.ok ? _Conn.ok : _Conn.fail;
-        _statusError[s.id] = r.error;
+        _status[b.key] = ok ? _Conn.ok : _Conn.fail;
+        if (!ok) _statusError[b.key] = '连接失败';
       });
-      _toast(r.ok ? '「${s.name}」连接正常' : '「${s.name}」连接失败：${r.error}');
+      _toast(ok ? '「${b.name}」连接正常' : '「${b.name}」连接失败');
     } catch (e) {
       if (!mounted) return;
-      setState(() => _status[s.id] = _Conn.fail);
-      _toast('「${s.name}」连接失败：${e.toString().replaceFirst('Exception: ', '')}');
+      setState(() => _status[b.key] = _Conn.fail);
+      _toast('「${b.name}」连接失败：${e.toString().replaceFirst('Exception: ', '')}');
     }
   }
 
-  String _statusDot(int id) {
-    final st = _status[id];
+  String _statusDot(String key) {
+    final st = _status[key];
     if (st == _Conn.ok) return '🟢 ';
     if (st == _Conn.fail) return '🔴 ';
     if (st == _Conn.checking) return '⚪ ';
@@ -198,17 +248,32 @@ class _FileManagePageState extends State<FileManagePage> {
   }
 
   Future<void> _loadEntries() async {
-    final id = _storageId;
-    if (id == null) return;
+    final b = _cur;
+    if (b == null) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final entries = await _api.files(id, _path);
-      entries.sort((a, b) {
-        if (a.isDir != b.isDir) return a.isDir ? -1 : 1; // 目录在前
-        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      final List<FileEntry> entries;
+      if (b.kind == 'fs') {
+        entries = await _api.files(b.id, _path);
+      } else {
+        // 云盘只读浏览：CloudFile → FileEntry（无 mod_time）。
+        final files = await _cloud.browse(b.id, _path);
+        entries = files
+            .map((f) => FileEntry(
+                  name: f.name,
+                  path: f.path,
+                  isDir: f.isDir,
+                  size: f.size,
+                  modTime: '',
+                ))
+            .toList();
+      }
+      entries.sort((a, b2) {
+        if (a.isDir != b2.isDir) return a.isDir ? -1 : 1; // 目录在前
+        return a.name.toLowerCase().compareTo(b2.name.toLowerCase());
       });
       _entries = entries;
     } catch (e) {
@@ -239,8 +304,9 @@ class _FileManagePageState extends State<FileManagePage> {
   }
 
   Future<void> _download(FileEntry e) async {
-    final id = _storageId;
-    if (id == null) return;
+    final b = _cur;
+    if (b == null || b.readOnly) return;
+    final id = b.id;
     final cancel = CancelToken();
     final progress = ValueNotifier<double>(-1); // -1=未知大小，否则 0..1
     final dir = await getTemporaryDirectory();
@@ -315,8 +381,9 @@ class _FileManagePageState extends State<FileManagePage> {
   }
 
   Future<void> _upload() async {
-    final id = _storageId;
-    if (id == null) return;
+    final b = _cur;
+    if (b == null || b.readOnly) return;
+    final id = b.id;
     setState(() => _busy = true);
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -347,8 +414,9 @@ class _FileManagePageState extends State<FileManagePage> {
   }
 
   Future<void> _mkdir() async {
-    final id = _storageId;
-    if (id == null) return;
+    final b = _cur;
+    if (b == null || b.readOnly) return;
+    final id = b.id;
     final name = await _prompt('新建文件夹', '文件夹名称');
     if (name == null || name.isEmpty) return;
     final target = _path == '/' ? '/$name' : '$_path/$name';
@@ -364,8 +432,8 @@ class _FileManagePageState extends State<FileManagePage> {
     }
   }
 
-  Future<String?> _prompt(String label, String hint) async {
-    final ctrl = TextEditingController();
+  Future<String?> _prompt(String label, String hint, {String initial = ''}) async {
+    final ctrl = TextEditingController(text: initial);
     return showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
@@ -390,8 +458,9 @@ class _FileManagePageState extends State<FileManagePage> {
   }
 
   Future<void> _delete(FileEntry e) async {
-    final id = _storageId;
-    if (id == null) return;
+    final b = _cur;
+    if (b == null || b.readOnly) return;
+    final id = b.id;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -422,27 +491,107 @@ class _FileManagePageState extends State<FileManagePage> {
     }
   }
 
-  Widget _storageDropdown() {
-    if (_storages.isEmpty) {
+  Future<void> _rename(FileEntry e) async {
+    final b = _cur;
+    if (b == null || b.readOnly) return;
+    final id = b.id;
+    final name = await _prompt('重命名', '新名称', initial: e.name);
+    if (name == null || name.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      await _api.rename(id, e.path, name);
+      _toast('已重命名');
+      await _loadEntries();
+    } catch (e2) {
+      _toast(e2.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _moveCopy(FileEntry e, String mode) async {
+    final b = _cur;
+    if (b == null || b.readOnly) return;
+    final id = b.id;
+    final target = await showAdaptiveSheet<String>(
+      context,
+      title: mode == 'move' ? '移动到…' : '复制到…',
+      wideWidth: 520,
+      builder: (_) => _MoveCopyPicker(api: _api, storageId: id, initialPath: _path),
+    );
+    if (target == null || target.isEmpty) return;
+    setState(() => _busy = true);
+    try {
+      if (mode == 'move') {
+        await _api.move(id, e.path, target);
+      } else {
+        await _api.copy(id, e.path, target);
+      }
+      _toast(mode == 'move' ? '已移动' : '已复制');
+      await _loadEntries();
+    } catch (e2) {
+      _toast(e2.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// 云盘：对选中目录即时生成 STRM（不持久化为规则）。仅 cloud 可用。
+  Future<void> _strm(FileEntry dir) async {
+    final b = _cur;
+    if (b == null || b.kind != 'cloud' || b.drive == null) return;
+    final driveId = b.drive!.id;
+    final res = await showAdaptiveSheet<Map<String, dynamic>>(
+      context,
+      title: '生成 STRM',
+      wideWidth: 480,
+      builder: (_) => _StrmSheet(defaultDir: dir.path),
+    );
+    if (res == null) return;
+    setState(() => _busy = true);
+    try {
+      final r = await _cloud.generate({
+        'drive_id': driveId,
+        'cloud_path': dir.path,
+        'output_dir': res['output_dir'] ?? '',
+        'mount_root': res['mount_root'] ?? '',
+        'template': res['template'] ?? '',
+        'recursive': res['recursive'] ?? true,
+        'keep_ext': res['keep_ext'] ?? true,
+      });
+      final gen = r['generated'] ?? 0;
+      final skip = r['skipped'] ?? 0;
+      final errs = (r['errors'] as List?) ?? const [];
+      _toast('STRM 已生成：新增 $gen，跳过 $skip${errs.isNotEmpty ? '，失败 ${errs.length}' : ''}');
+    } catch (e) {
+      _toast(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Widget _backendDropdown() {
+    if (_backends.isEmpty) {
       return const Text(
         '无存储后端',
         style: TextStyle(color: Colors.grey, fontSize: 13),
       );
     }
-    return DropdownButton<int>(
-      value: _storageId,
+    return DropdownButton<_Backend>(
+      value: _cur,
       underline: const SizedBox(),
       hint: const Text('选择存储'),
-      items: _storages
+      items: _backends
           .map(
-            (s) => DropdownMenuItem(
-              value: s.id,
-              child: Text('${_statusDot(s.id)}${s.name}（${s.type}）'),
+            (b) => DropdownMenuItem(
+              value: b,
+              child: Text(
+                  '${_statusDot(b.key)}${b.kind == 'cloud' ? '☁ ' : ''}${b.name}（${b.typeName}）'),
             ),
           )
           .toList(),
-      onChanged: (id) {
-        if (id != null && id != _storageId) _selectStorage(id);
+      onChanged: (v) {
+        if (v != null && v != _cur) _select(v);
       },
     );
   }
@@ -515,15 +664,41 @@ class _FileManagePageState extends State<FileManagePage> {
               ],
             ),
           ),
-          if (!e.isDir)
+          if (!e.isDir && !_readOnly)
             IconButton(
               icon: const Icon(Icons.download, size: 20),
+              tooltip: '下载',
               onPressed: _busy ? null : () => _download(e),
             ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline, size: 20),
-            onPressed: _busy ? null : () => _delete(e),
-          ),
+          if (_readOnly && e.isDir)
+            IconButton(
+              icon: const Icon(Icons.link, size: 20),
+              tooltip: '生成 STRM',
+              onPressed: _busy ? null : () => _strm(e),
+            ),
+          if (!_readOnly)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              tooltip: '更多',
+              enabled: !_busy,
+              onSelected: (cmd) {
+                if (cmd == 'rename') {
+                  _rename(e);
+                } else if (cmd == 'move') {
+                  _moveCopy(e, 'move');
+                } else if (cmd == 'copy') {
+                  _moveCopy(e, 'copy');
+                } else if (cmd == 'delete') {
+                  _delete(e);
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'rename', child: Text('重命名')),
+                PopupMenuItem(value: 'move', child: Text('移动')),
+                PopupMenuItem(value: 'copy', child: Text('复制')),
+                PopupMenuItem(value: 'delete', child: Text('删除')),
+              ],
+            ),
         ],
       ),
     ),
@@ -555,7 +730,9 @@ class _FileManagePageState extends State<FileManagePage> {
 
   @override
   Widget build(BuildContext context) {
-    final hasStorage = _storageId != null;
+    final b = _cur;
+    final hasStorage = b != null;
+    final readOnly = b?.readOnly ?? false;
     return PTPageScaffold(
       title: '文件管理',
       actions: [
@@ -567,7 +744,7 @@ class _FileManagePageState extends State<FileManagePage> {
         PTBarAction(
           icon: Icons.create_new_folder,
           label: '新建文件夹',
-          onPressed: (hasStorage && !_busy) ? _mkdir : null,
+          onPressed: (hasStorage && !_busy && !readOnly) ? _mkdir : null,
           overflow: true,
         ),
         PTBarAction(
@@ -579,23 +756,23 @@ class _FileManagePageState extends State<FileManagePage> {
         PTBarAction(
           icon: Icons.network_check,
           label: '测试连接',
-          onPressed: _current != null ? _testCurrent : null,
+          onPressed: hasStorage ? _testCurrent : null,
           overflow: true,
         ),
         PTBarAction(
           icon: Icons.edit,
           label: '编辑当前存储',
-          onPressed: _current != null ? _editStorage : null,
+          onPressed: (hasStorage && b.fs != null) ? _editStorage : null,
           overflow: true,
         ),
         PTBarAction(
           icon: Icons.delete,
           label: '删除当前存储',
-          onPressed: _current != null ? _deleteStorage : null,
+          onPressed: (hasStorage && b.fs != null) ? _deleteStorage : null,
           overflow: true,
         ),
       ],
-      floatingActionButton: !hasStorage
+      floatingActionButton: (!hasStorage || readOnly)
           ? null
           : FloatingActionButton(
               onPressed: _busy ? null : _upload,
@@ -608,7 +785,7 @@ class _FileManagePageState extends State<FileManagePage> {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Row(
               children: [
-                _storageDropdown(),
+                _backendDropdown(),
                 const Spacer(),
                 if (_busy)
                   const SizedBox(
@@ -622,10 +799,10 @@ class _FileManagePageState extends State<FileManagePage> {
           if (hasStorage) _pathBar(),
           if (_loading) const LinearProgressIndicator(minHeight: 2),
           Expanded(
-            child: _storages.isEmpty && !_loading
+            child: _backends.isEmpty && !_loading
                 ? const Center(
                     child: Text(
-                      '暂无存储后端，请点右上角更多添加 本机 / WebDAV / Alist / SMB / Agent',
+                      '暂无存储后端，请点右上角更多添加 本机 / WebDAV / Alist / SMB / Agent（云盘在「云盘」页管理）',
                       style: TextStyle(color: Colors.grey),
                     ),
                   )
@@ -921,6 +1098,211 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
                   ),
                 )
               : Text(_isEdit ? '保存' : '添加'),
+        ),
+      ],
+    );
+  }
+}
+
+/// 移动/复制目标目录选择器：在当前存储内浏览目录，选中后 pop 返回目标路径。
+class _MoveCopyPicker extends StatefulWidget {
+  final FileStorageApi api;
+  final int storageId;
+  final String initialPath;
+  const _MoveCopyPicker({
+    required this.api,
+    required this.storageId,
+    required this.initialPath,
+  });
+  @override
+  State<_MoveCopyPicker> createState() => _MoveCopyPickerState();
+}
+
+class _MoveCopyPickerState extends State<_MoveCopyPicker> {
+  String _path = '/';
+  List<FileEntry> _dirs = const [];
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _path = widget.initialPath.isEmpty ? '/' : widget.initialPath;
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final all = await widget.api.files(widget.storageId, _path);
+      if (mounted) setState(() => _dirs = all.where((e) => e.isDir).toList());
+    } catch (_) {
+      if (mounted) setState(() => _dirs = const []);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _cd(String p) {
+    setState(() => _path = p.isEmpty ? '/' : p);
+    _load();
+  }
+
+  String _parentOf(String p) {
+    final segs = p.split('/').where((s) => s.isNotEmpty).toList();
+    if (segs.isEmpty) return '/';
+    segs.removeLast();
+    return segs.isEmpty ? '/' : '/${segs.join('/')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_upward, size: 20),
+              onPressed: _path == '/' ? null : () => _cd(_parentOf(_path)),
+            ),
+            Expanded(
+              child: Text(
+                _path,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        if (_loading) const LinearProgressIndicator(minHeight: 2),
+        SizedBox(
+          height: 320,
+          child: _dirs.isEmpty && !_loading
+              ? const Center(
+                  child: Text('（无子文件夹）', style: TextStyle(color: Colors.grey)),
+                )
+              : ListView.builder(
+                  itemCount: _dirs.length,
+                  itemBuilder: (_, i) {
+                    final d = _dirs[i];
+                    return ListTile(
+                      leading: const Icon(Icons.folder, color: PTColors.primary2),
+                      title: Text(d.name),
+                      trailing: const Icon(Icons.chevron_right, size: 20),
+                      onTap: () => _cd(d.path),
+                    );
+                  },
+                ),
+        ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: () => Navigator.pop(context, _path),
+          icon: const Icon(Icons.check),
+          label: Text('选此目录'),
+        ),
+      ],
+    );
+  }
+}
+
+/// STRM 即时生成表单（云盘文件页选中目录）：输出目录/挂载根/模板/递归/保留扩展名。
+/// 对齐 Web FileManager.vue 的 STRM 对话框字段；提交 pop 出 opts Map（drive_id/cloud_path 由调用方补）。
+class _StrmSheet extends StatefulWidget {
+  final String defaultDir; // 选中目录的云盘路径（仅展示）
+  const _StrmSheet({required this.defaultDir});
+  @override
+  State<_StrmSheet> createState() => _StrmSheetState();
+}
+
+class _StrmSheetState extends State<_StrmSheet> {
+  final _outputDir = TextEditingController();
+  final _mountRoot = TextEditingController();
+  final _template = TextEditingController();
+  bool _recursive = true;
+  bool _keepExt = true;
+
+  @override
+  void dispose() {
+    _outputDir.dispose();
+    _mountRoot.dispose();
+    _template.dispose();
+    super.dispose();
+  }
+
+  void _toast(String s) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            '云盘目录：${widget.defaultDir}',
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ),
+        TextField(
+          controller: _outputDir,
+          decoration: const InputDecoration(
+            labelText: '输出目录',
+            hintText: '本地 .strm 输出根目录，如 /Media/STRM',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _mountRoot,
+          decoration: const InputDecoration(
+            labelText: '挂载根',
+            hintText: '如 /CloudDrive2/115（模板 {mount}）',
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _template,
+          decoration: const InputDecoration(
+            labelText: '模板',
+            hintText: '留空用默认 {mount}{cloudpath}',
+          ),
+        ),
+        const SizedBox(height: 4),
+        SwitchListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          title: const Text('递归'),
+          value: _recursive,
+          onChanged: (v) => setState(() => _recursive = v),
+        ),
+        SwitchListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          title: const Text('保留扩展名'),
+          value: _keepExt,
+          onChanged: (v) => setState(() => _keepExt = v),
+        ),
+        const SizedBox(height: 12),
+        FilledButton(
+          onPressed: () {
+            final dir = _outputDir.text.trim();
+            if (dir.isEmpty) {
+              _toast('请填写输出目录');
+              return;
+            }
+            Navigator.pop(context, {
+              'output_dir': dir,
+              'mount_root': _mountRoot.text.trim(),
+              'template': _template.text.trim(),
+              'recursive': _recursive,
+              'keep_ext': _keepExt,
+            });
+          },
+          child: const Text('生成'),
         ),
       ],
     );

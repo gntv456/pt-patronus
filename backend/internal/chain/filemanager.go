@@ -63,6 +63,33 @@ func (c *FileManagerChain) Mkdir(ctx context.Context, id uint, path string) erro
 	return b.Mkdir(ctx, path)
 }
 
+// Rename 同目录改名。
+func (c *FileManagerChain) Rename(ctx context.Context, id uint, path, newName string) error {
+	b, err := c.mgr.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	return b.Rename(ctx, path, newName)
+}
+
+// Move 移到 dstDir（保留文件名）。
+func (c *FileManagerChain) Move(ctx context.Context, id uint, src, dstDir string) error {
+	b, err := c.mgr.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	return b.Move(ctx, src, dstDir)
+}
+
+// Copy 复制到 dstDir（保留文件名）。
+func (c *FileManagerChain) Copy(ctx context.Context, id uint, src, dstDir string) error {
+	b, err := c.mgr.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	return b.Copy(ctx, src, dstDir)
+}
+
 // Test 探测存储连通性：列配置根成功即视为连通。
 // 复用 List，零接口改动；各后端构造时已注入 BasePath，path="/" 即探测配置根。
 func (c *FileManagerChain) Test(ctx context.Context, id uint) error {

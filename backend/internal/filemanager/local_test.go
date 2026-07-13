@@ -133,3 +133,127 @@ func TestLocal_PathEscape(t *testing.T) {
 		}
 	}
 }
+
+// TestLocal_RenameMoveCopy 验证本机后端重命名 / 移动 / 复制（文件 + 目录递归）。
+func TestLocal_RenameMoveCopy(t *testing.T) {
+	dir := t.TempDir()
+	b, err := NewLocal(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := b.Mkdir(ctx, "/sub"); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Upload(ctx, "/a.txt", strings.NewReader("hello")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Rename：a.txt → a.new.txt
+	if err := b.Rename(ctx, "/a.txt", "a.new.txt"); err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "a.new.txt")); err != nil {
+		t.Fatalf("rename 后新文件不存在: %v", err)
+	}
+
+	// Move：a.new.txt → /sub/（保留文件名）
+	if err := b.Move(ctx, "/a.new.txt", "/sub"); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sub", "a.new.txt")); err != nil {
+		t.Fatalf("move 后目标不存在: %v", err)
+	}
+
+	// Copy 文件：/sub/a.new.txt → /（保留文件名，源不删）
+	if err := b.Copy(ctx, "/sub/a.new.txt", "/"); err != nil {
+		t.Fatalf("copy file: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "a.new.txt"))
+	if err != nil {
+		t.Fatalf("copy 后根目录副本不存在: %v", err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("copy 内容不一致: %q", data)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sub", "a.new.txt")); err != nil {
+		t.Fatalf("copy 后源文件应保留: %v", err)
+	}
+
+	// Copy 目录：/sub → /dest/（递归）
+	if err := b.Copy(ctx, "/sub", "/dest"); err != nil {
+		t.Fatalf("copy dir: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "dest", "sub", "a.new.txt")); err != nil {
+		t.Fatalf("目录复制后子文件不存在: %v", err)
+	}
+}
+
+// TestLocal_RenameNewNameClamped 验证 newName 含 ../ 时被 filepath.Base 钳制，不逃逸 rootDir。
+func TestLocal_RenameNewNameClamped(t *testing.T) {
+	dir := t.TempDir()
+	b, err := NewLocal(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := b.Mkdir(ctx, "/sub"); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Upload(ctx, "/sub/a.txt", strings.NewReader("x")); err != nil {
+		t.Fatal(err)
+	}
+	// "../escape.txt" 经 Base → "escape.txt"，落到 /sub/escape.txt，不逃到 rootDir 之上。
+	if err := b.Rename(ctx, "/sub/a.txt", "../../escape.txt"); err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "sub", "escape.txt")); err != nil {
+		t.Fatalf("newName 应被钳制到同目录: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(dir), "escape.txt")); err == nil {
+		t.Fatalf("newName 未被钳制，逃出了 rootDir")
+	}
+}
+
+// TestParseMultiStatus_DirAndFile 回归 WebDAV 目录/文件识别：collection 标签存在→IsDir=true，
+// getcontentlength→Size。防 `Collection != struct{}{}` 恒 false 的老 bug（所有项被当文件，文件夹点不进）。
+func TestParseMultiStatus_DirAndFile(t *testing.T) {
+	const resp = `<?xml version="1.0" encoding="utf-8"?>
+<multistatus xmlns="DAV:">
+  <response>
+    <href>/dav/Movies/</href>
+    <propstat><prop>
+      <displayname>Movies</displayname>
+      <resourcetype><collection/></resourcetype>
+    </prop></propstat>
+  </response>
+  <response>
+    <href>/dav/Movies/a.mkv</href>
+    <propstat><prop>
+      <displayname>a.mkv</displayname>
+      <getcontentlength>4242424</getcontentlength>
+      <resourcetype/>
+    </prop></propstat>
+  </response>
+</multistatus>`
+	entries, err := parseMultiStatus([]byte(resp), "/dav/Movies/")
+	if err != nil {
+		t.Fatalf("parseMultiStatus: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("entries=%d, want 2", len(entries))
+	}
+	byName := map[string]Entry{}
+	for _, e := range entries {
+		byName[e.Name] = e
+	}
+	if d := byName["Movies"]; !d.IsDir {
+		t.Errorf("Movies 应识别为目录 (IsDir=true)，got IsDir=%v（WebDAV collection 解析回归）", d.IsDir)
+	}
+	if f := byName["a.mkv"]; f.IsDir {
+		t.Errorf("a.mkv 应识别为文件 (IsDir=false)，got IsDir=%v", f.IsDir)
+	}
+	if f := byName["a.mkv"]; f.Size != 4242424 {
+		t.Errorf("a.mkv size=%d, want 4242424", f.Size)
+	}
+}

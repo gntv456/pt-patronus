@@ -155,3 +155,34 @@ func (a *Alist) Mkdir(ctx context.Context, p string) error {
 	p = resolvePath(a.basePath, p)
 	return a.call(ctx, "mkdir", "/api/fs/mkdir", map[string]any{"path": p}, nil)
 }
+
+// Rename 调 /api/fs/rename（path 指定原文件/目录，name 为新名）。
+func (a *Alist) Rename(ctx context.Context, p, newName string) error {
+	p = resolvePath(a.basePath, p)
+	return a.call(ctx, "rename", "/api/fs/rename", map[string]any{"path": p, "name": newName}, nil)
+}
+
+// moveOrCopy 拆 src 为 src_dir+name，调 Alist 的 move/copy 端点（src_dir/names → dst_dir）。
+func (a *Alist) moveOrCopy(ctx context.Context, src, dstDir, endpoint, tag string) error {
+	srcP := resolvePath(a.basePath, src)
+	dstP := resolvePath(a.basePath, dstDir)
+	dir := strings.TrimRight(srcP, "/")
+	name := dir[strings.LastIndex(dir, "/")+1:]
+	srcDir := dir[:strings.LastIndex(dir, "/")]
+	if srcDir == "" {
+		srcDir = "/"
+	}
+	return a.call(ctx, tag, endpoint, map[string]any{
+		"src_dir": srcDir, "dst_dir": dstP, "names": []string{name},
+	}, nil)
+}
+
+// Move 调 /api/fs/move。
+func (a *Alist) Move(ctx context.Context, src, dstDir string) error {
+	return a.moveOrCopy(ctx, src, dstDir, "/api/fs/move", "move")
+}
+
+// Copy 调 /api/fs/copy。
+func (a *Alist) Copy(ctx context.Context, src, dstDir string) error {
+	return a.moveOrCopy(ctx, src, dstDir, "/api/fs/copy", "copy")
+}

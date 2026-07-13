@@ -680,7 +680,7 @@ func New(cfg *config.Config) (*App, error) {
 	// 工具集绑定各业务 chain（读+写，admin-only）；会话/消息持久化；配置+API key 走 SystemConfig+Crypto。
 	agentConvOp := oper.NewAgentConversationOper(database)
 	agentMsgOp := oper.NewAgentMessageOper(database)
-	agentTools := registerAgentTools(siteOp, siteCh, subCh, dlOp, dlCh, mediaCh, recommendCh, transferCh, keepSeedCh, dashCh, notifCh, filterStore)
+	agentTools := registerAgentTools(siteOp, siteCh, subCh, dlOp, dlCh, mediaCh, recommendCh, transferCh, keepSeedCh, dashCh, notifCh, filterStore, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, fileCh, wfCh)
 	// 把全部 chain 能力批量暴露给插件 Host API（GET /tools、POST /tools/{name}、Bridge tool.*）。
 	// 必须在所有 chain 构造之后调用（闭包捕获 chain 指针）。
 	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh)

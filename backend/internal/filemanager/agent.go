@@ -76,3 +76,36 @@ func (a *AgentBackend) Mkdir(ctx context.Context, p string) error {
 	}
 	return c.Mkdir(ctx, a.cmd("mkdir", p))
 }
+
+// Rename 改名（NewName 随 cmd 下发；agent 端 filepath.Base 钳制防注入路径）。
+func (a *AgentBackend) Rename(ctx context.Context, p, newName string) error {
+	c, err := a.client(ctx)
+	if err != nil {
+		return err
+	}
+	cmd := a.cmd("rename", p)
+	cmd.NewName = newName
+	return c.Rename(ctx, cmd)
+}
+
+// Move 移到 dstDir（DstDir 服务端 resolvePath 钳制 + agent 端 safePath 二次钳制）。
+func (a *AgentBackend) Move(ctx context.Context, src, dstDir string) error {
+	c, err := a.client(ctx)
+	if err != nil {
+		return err
+	}
+	cmd := a.cmd("move", src)
+	cmd.DstDir = resolvePath(a.basePath, dstDir)
+	return c.Move(ctx, cmd)
+}
+
+// Copy 复制到 dstDir。
+func (a *AgentBackend) Copy(ctx context.Context, src, dstDir string) error {
+	c, err := a.client(ctx)
+	if err != nil {
+		return err
+	}
+	cmd := a.cmd("copy", src)
+	cmd.DstDir = resolvePath(a.basePath, dstDir)
+	return c.Copy(ctx, cmd)
+}

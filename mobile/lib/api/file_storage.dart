@@ -114,6 +114,30 @@ class FileStorageApi {
     _checkOk(r);
   }
 
+  /// 重命名（同目录改名；path + name 走 query）。
+  Future<void> rename(int id, String path, String name) async {
+    final r = await _api.post(
+        '/storages/$id/rename?path=${Uri.encodeComponent(path)}&name=${Uri.encodeComponent(name)}',
+        {});
+    _checkOk(r);
+  }
+
+  /// 移动（from 源 → to 目标目录）。
+  Future<void> move(int id, String from, String to) async {
+    final r = await _api.post(
+        '/storages/$id/move?from=${Uri.encodeComponent(from)}&to=${Uri.encodeComponent(to)}',
+        {});
+    _checkOk(r);
+  }
+
+  /// 复制（from 源 → to 目标目录）。
+  Future<void> copy(int id, String from, String to) async {
+    final r = await _api.post(
+        '/storages/$id/copy?from=${Uri.encodeComponent(from)}&to=${Uri.encodeComponent(to)}',
+        {});
+    _checkOk(r);
+  }
+
   /// 创建存储后端（对齐后端 POST /storages）。
   Future<FileStorage> create(FileStorageInput in_) async {
     final r = await _api.postJson('/storages', in_.toJson());

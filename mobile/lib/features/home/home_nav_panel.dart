@@ -74,6 +74,7 @@ class NavGroupedList extends StatelessWidget {
         ),
       );
       for (final item in g.items) {
+        if (item.hidden) continue; // 顶栏常驻项（如 AI 助手）不在菜单渲染
         children.add(NavTile(index: navItems.indexOf(item)));
       }
     }
@@ -85,6 +86,7 @@ class NavGroupedList extends StatelessWidget {
         ),
       );
       for (final item in navFooter) {
+        if (item.hidden) continue;
         children.add(NavTile(index: navItems.indexOf(item)));
       }
     }

@@ -50,9 +50,13 @@ func (r *ToolRegistry) Exec(ctx context.Context, name string, args map[string]an
 		if t.Name != name {
 			continue
 		}
-		tctx, cancel := context.WithTimeout(ctx, toolExecTimeout)
-		defer cancel()
-		return t.Handler(tctx, args)
+	timeout := toolExecTimeout
+	if t.Timeout > 0 {
+		timeout = t.Timeout // 慢操作（library_scan/refresh/subscribe_check/transfer_redo/cloud_generate_strm/rss_check/workflow_run）可设 60s
+	}
+	tctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return t.Handler(tctx, args)
 	}
 	return "", fmt.Errorf("tool %q not found", name)
 }

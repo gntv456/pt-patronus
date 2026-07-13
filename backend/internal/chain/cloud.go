@@ -164,6 +164,39 @@ func (c *CloudChain) GenerateStrm(ctx context.Context, ruleID uint) (cloud.Gener
 	})
 }
 
+// GenerateInput 即时 STRM 生成参数（文件页选中目录直接生成，不持久化为规则）。
+type GenerateInput struct {
+	DriveID   uint   `json:"drive_id"`
+	CloudPath string `json:"cloud_path"`
+	OutputDir string `json:"output_dir"`
+	MountRoot string `json:"mount_root"`
+	Template  string `json:"template"`
+	Recursive bool   `json:"recursive"`
+	KeepExt   bool   `json:"keep_ext"`
+}
+
+// GenerateInstant 即时生成 STRM（不持久化规则；仍 upsert 记录便于追溯删除）。
+func (c *CloudChain) GenerateInstant(ctx context.Context, in GenerateInput) (cloud.GenerateResult, error) {
+	cli, _, err := c.client(in.DriveID)
+	if err != nil {
+		return cloud.GenerateResult{}, err
+	}
+	return cloud.Generate(ctx, cli, cloud.GenerateOptions{
+		DriveID:   in.DriveID,
+		CloudPath: in.CloudPath,
+		OutputDir: in.OutputDir,
+		MountRoot: in.MountRoot,
+		Template:  in.Template,
+		Recursive: in.Recursive,
+		KeepExt:   in.KeepExt,
+		OnFile: func(written bool, cloudPath, strmPath string, size int64) {
+			if _, err := c.ruleOp.UpsertRecord(in.DriveID, cloudPath, strmPath, size, 0); err != nil {
+				slog.Debug("cloud: upsert strm record failed", "err", err)
+			}
+		},
+	})
+}
+
 // GenerateAll 遍历启用规则生成 STRM（cron 入口）。单规则失败不阻断其余。
 func (c *CloudChain) GenerateAll(ctx context.Context) {
 	rules, err := c.ruleOp.ListEnabled()

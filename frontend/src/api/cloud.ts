@@ -90,6 +90,16 @@ export const cloudApi = {
   removeRule: (id: number) => http.delete(`/cloud/rules/${id}`).then((r) => r.data),
   generateRule: (id: number) =>
     http.post<StrmResult>(`/cloud/rules/${id}/generate`).then((r) => r.data),
+  // 即时生成 STRM（文件页选中目录直接生成，不持久化为规则）。
+  generate: (opts: {
+    drive_id: number
+    cloud_path: string
+    output_dir: string
+    mount_root: string
+    template?: string
+    recursive?: boolean
+    keep_ext?: boolean
+  }) => http.post<StrmResult>('/cloud/generate', opts).then((r) => r.data),
   generateAll: () => http.post('/cloud/generate-all').then((r) => r.data),
   syncSubscriptions: () => http.post('/cloud/sync-subscriptions').then((r) => r.data),
   // ---- STRM 记录 ----

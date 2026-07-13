@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -29,6 +30,9 @@ func (l *Lark) Send(ctx context.Context, msg Message) error {
 	if l.url == "" {
 		return fmt.Errorf("lark: url empty")
 	}
+	if err := assertNotifyURL(ctx, "lark", l.url); err != nil {
+		return err
+	}
 	title, body, link := splitContent(msg)
 	text := strings.TrimSpace(title + "\n" + body)
 	if link != "" {
@@ -48,8 +52,17 @@ func (l *Lark) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("lark: status %d", resp.StatusCode)
+		return fmt.Errorf("lark: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（Lark 与飞书协议同构，失败时 code != 0）。
+	var be struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+		return fmt.Errorf("lark: code %d: %s", be.Code, be.Msg)
 	}
 	return nil
 }

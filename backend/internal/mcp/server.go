@@ -8,6 +8,7 @@ package mcp
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -124,7 +125,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if st.Token != "" {
-		if extractBearer(r) != st.Token {
+		// 常量时间比较：token 可驱动全部 MCP 工具，需防逐字节时序还原。
+		if subtle.ConstantTimeCompare([]byte(extractBearer(r)), []byte(st.Token)) != 1 {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

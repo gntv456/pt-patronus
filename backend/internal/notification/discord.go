@@ -29,6 +29,9 @@ func (d *Discord) Send(ctx context.Context, msg Message) error {
 	if d.url == "" {
 		return fmt.Errorf("discord: url empty")
 	}
+	if err := assertNotifyURL(ctx, "discord", d.url); err != nil {
+		return err
+	}
 	title, body, link := splitContent(msg)
 	content := strings.TrimSpace(title + "\n" + body)
 	if link != "" {

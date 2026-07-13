@@ -22,7 +22,7 @@ func StreamOpenAI(w http.ResponseWriter, model string, events <-chan llm.Event) 
 	created := time.Now().Unix()
 	tcIdx := 0 // tool_calls 增量下标
 
-	writeChunk := func(delta map[string]any, finish *string) {
+	writeChunk := func(delta map[string]any, finish *string) error {
 		choice := map[string]any{"index": 0, "delta": delta}
 		if finish != nil {
 			choice["finish_reason"] = *finish
@@ -37,29 +37,42 @@ func StreamOpenAI(w http.ResponseWriter, model string, events <-chan llm.Event) 
 			"choices": []map[string]any{choice},
 		}
 		b, _ := json.Marshal(chunk)
-		fmt.Fprintf(w, "data: %s\n\n", b)
+		// 客户端断开后写失败：立即停止消费事件流，避免驱动 agent 跑完全部迭代（持续计费）。
+		if _, err := fmt.Fprintf(w, "data: %s\n\n", b); err != nil {
+			return err
+		}
 		if flusher != nil {
 			flusher.Flush()
 		}
+		return nil
 	}
-	finish := func() {
+	finish := func() error {
 		stop := "stop"
-		writeChunk(map[string]any{}, &stop)
-		fmt.Fprintf(w, "data: [DONE]\n\n")
+		if err := writeChunk(map[string]any{}, &stop); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(w, "data: [DONE]\n\n"); err != nil {
+			return err
+		}
 		if flusher != nil {
 			flusher.Flush()
 		}
+		return nil
 	}
 
 	for ev := range events {
 		switch ev.Type {
 		case llm.EventText:
 			if ev.Text != "" {
-				writeChunk(map[string]any{"content": ev.Text}, nil)
+				if err := writeChunk(map[string]any{"content": ev.Text}, nil); err != nil {
+					return nil // 客户端断开：非服务端错误；agent 由 ctx 取消自行停止
+				}
 			}
 		case llm.EventReasoning:
 			if ev.Text != "" {
-				writeChunk(map[string]any{"reasoning_content": ev.Text}, nil)
+				if err := writeChunk(map[string]any{"reasoning_content": ev.Text}, nil); err != nil {
+					return nil
+				}
 			}
 		case llm.EventToolCall:
 			tc := map[string]any{
@@ -67,10 +80,13 @@ func StreamOpenAI(w http.ResponseWriter, model string, events <-chan llm.Event) 
 				"function": map[string]any{"name": ev.ToolCall.Name, "arguments": ev.ToolCall.Arguments},
 			}
 			tcIdx++
-			writeChunk(map[string]any{"tool_calls": []map[string]any{tc}}, nil)
+			if err := writeChunk(map[string]any{"tool_calls": []map[string]any{tc}}, nil); err != nil {
+				return nil
+			}
 		case llm.EventToolResult:
 			// 工具结果不回传客户端（属下一轮请求）。
 		case llm.EventError:
+			// 错误作为最后一段 content 写出；此时客户端多半还在，写失败也无碍（本来就要返回）。
 			writeChunk(map[string]any{"content": ev.Error}, nil)
 			finish()
 			return fmt.Errorf("%s", ev.Error)

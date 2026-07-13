@@ -2,7 +2,9 @@ package notification
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net/url"
 	"sync"
 )
 
@@ -51,6 +53,23 @@ type SendResult struct {
 	Error   string `json:"error"`
 }
 
+// sanitizeNotifyErr 脱敏通知发送错误：*url.Error 的 URL 常含 bot token / 密钥
+// （telegram/gotify/serverchan/bark/apprise 把凭据放 URL path 或 query），
+// 仅保留 host + 底层错误，避免明文进日志 / 返回前端。
+func sanitizeNotifyErr(err error) string {
+	if err == nil {
+		return ""
+	}
+	if ue, ok := err.(*url.Error); ok {
+		host := ue.URL
+		if u, perr := url.Parse(ue.URL); perr == nil {
+			host = u.Host
+		}
+		return fmt.Sprintf("请求 %s 失败: %v", host, ue.Err)
+	}
+	return err.Error()
+}
+
 // Notify 向所有通道并发发送，返回每个通道的结果。
 func (m *Manager) Notify(ctx context.Context, msg Message) []SendResult {
 	m.mu.RLock()
@@ -69,8 +88,9 @@ func (m *Manager) Notify(ctx context.Context, msg Message) []SendResult {
 			defer wg.Done()
 			r := SendResult{Channel: c.Name()}
 			if err := c.Send(ctx, msg); err != nil {
-				r.Error = err.Error()
-				slog.Warn("notify failed", "channel", c.Name(), "err", err)
+				safe := sanitizeNotifyErr(err)
+				r.Error = safe
+				slog.Warn("notify failed", "channel", c.Name(), "err", safe)
 			} else {
 				r.Ok = true
 			}

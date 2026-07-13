@@ -78,12 +78,18 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 	// ssrf=true：RSS feed 应为公网地址，走 SSRF 防护拒私网/元数据，避免借 cron 持久探测内网。
 	resp, err := c.hc.Get(ctx, sub.URL, cookie, true)
 	if err != nil {
-		_ = c.op.MarkChecked(sub.ID)
+		slog.Warn("rss fetch failed", "sub", sub.ID, "url", sub.URL, "err", err)
+		if e := c.op.MarkChecked(sub.ID); e != nil {
+			slog.Warn("rss MarkChecked failed", "sub", sub.ID, "err", e)
+		}
 		return 0, fmt.Errorf("抓取 RSS 失败: %w", err)
 	}
 	feed, err := c.fp.ParseString(string(resp.Body))
 	if err != nil {
-		_ = c.op.MarkChecked(sub.ID)
+		slog.Warn("rss parse failed", "sub", sub.ID, "err", err)
+		if e := c.op.MarkChecked(sub.ID); e != nil {
+			slog.Warn("rss MarkChecked failed", "sub", sub.ID, "err", e)
+		}
 		return 0, fmt.Errorf("解析 RSS 失败: %w", err)
 	}
 
@@ -205,7 +211,9 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 		}
 	}
 
-	_ = c.op.MarkChecked(sub.ID)
+	if e := c.op.MarkChecked(sub.ID); e != nil {
+		slog.Warn("rss MarkChecked failed", "sub", sub.ID, "err", e)
+	}
 	if newCount > 0 {
 		slog.Info("rss new items", "sub", sub.Name, "count", newCount)
 	}

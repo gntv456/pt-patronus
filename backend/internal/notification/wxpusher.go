@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -55,6 +56,9 @@ func (w *WxPusher) Send(ctx context.Context, msg Message) error {
 		bodyMap["topicIds"] = []string{w.topicID}
 	}
 	payload, _ := json.Marshal(bodyMap)
+	if err := assertNotifyURL(ctx, "wxpusher", w.base+"/api/send/message"); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.base+"/api/send/message", bytes.NewReader(payload))
 	if err != nil {
 		return err
@@ -65,8 +69,17 @@ func (w *WxPusher) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("wxpusher: status %d", resp.StatusCode)
+		return fmt.Errorf("wxpusher: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（WxPusher 约定 code=1000 才算成功，非 1000 即异常）。
+	var be struct {
+		Code int    `json:"code"`
+		Msg  string `json:"msg"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.Code != 1000 {
+		return fmt.Errorf("wxpusher: code %d: %s", be.Code, be.Msg)
 	}
 	return nil
 }

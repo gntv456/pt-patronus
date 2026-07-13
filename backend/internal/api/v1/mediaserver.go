@@ -115,7 +115,12 @@ func (h *MediaServerHandler) Scan(c *gin.Context) {
 	var body struct {
 		LibraryID string `json:"library_id"`
 	}
-	_ = c.ShouldBindJSON(&body)
+	// 空 body（io.EOF）= 扫全部库（合法用法）；仅非法 JSON（非 EOF）才拒绝，
+	// 避免坏请求因 LibraryID 零值静默落入"全库扫描"分支。
+	if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if body.LibraryID != "" {
 		opResult(c, h.svc.LibraryScan(c.Request.Context(), id, body.LibraryID))
 		return
@@ -194,7 +199,10 @@ func (h *MediaServerHandler) Notify(c *gin.Context) {
 		Title string `json:"title"`
 		Body  string `json:"body"`
 	}
-	_ = c.ShouldBindJSON(&body)
+	if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if body.Title == "" {
 		body.Title = "PTPatronus 通知"
 	}

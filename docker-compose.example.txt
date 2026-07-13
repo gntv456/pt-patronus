@@ -23,6 +23,8 @@ services:
       UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/gntv456/ptpatronus-plugin-market/main/update-manifest.json
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
+      # - /mnt:/mnt:ro          # 宿主磁盘路径监控：取消注释并将容器内路径填入 target「宿主磁盘路径」配置
+      - /:/hostfs:ro          # （可选）挂载整个根文件系统（只读），可监控所有挂载点；需确保容器有权限
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s

@@ -189,7 +189,7 @@ async function whSave() {
     <div class="head">
       <div>
         <h2 class="title">工作流</h2>
-        <span class="text-muted hint">可视化节点编排：触发 → 搜索/RSS → 过滤 → 下载 → 通知，支持条件分支。参考 MoviePilot 工作流。</span>
+        <span class="text-muted hint">可视化节点编排：触发 → 搜索/RSS → 过滤 → 下载 → 通知，支持条件分支。</span>
       </div>
       <el-button type="primary" @click="create">+ 新建工作流</el-button>
       <el-button v-if="auth.isAdmin" @click="openWebhooks">Webhook 入口</el-button>

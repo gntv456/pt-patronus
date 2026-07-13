@@ -1,8 +1,10 @@
 package v1
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/aiagent"
@@ -17,6 +19,8 @@ type LLMGatewayHandler struct {
 	convCreate func(*models.AgentConversation) error
 	kv         llmgateway.KVStore
 	crypto     llmgateway.Crypto
+	semMu      sync.Mutex
+	sem        chan struct{} // 按 MaxConcurrency 限制的并发信号量
 }
 
 // NewLLMGatewayHandler 构造。convCreate 由 app.go 绑 oper.AgentConversationOper.Create。
@@ -54,20 +58,35 @@ func (h *LLMGatewayHandler) tokenFrom(c *gin.Context) string {
 	return strings.TrimSpace(c.GetHeader("x-api-key"))
 }
 
-// authorize 校验启用状态 + 访问令牌。失败已写 JSON 响应，返 false。
-func (h *LLMGatewayHandler) authorize(c *gin.Context) bool {
+// authorize 校验启用状态 + 访问令牌（常量时间比较防时序侧信道）。成功返回配置供后续 ModelAllowed 用。
+func (h *LLMGatewayHandler) authorize(c *gin.Context) (llmgateway.Config, bool) {
 	cfg := llmgateway.Load(h.kv)
 	if !cfg.Enabled {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": gin.H{"message": "LLM gateway disabled", "type": "server_error"}})
-		return false
+		return cfg, false
 	}
 	want := llmgateway.AccessToken(cfg, h.crypto)
 	tok := h.tokenFrom(c)
-	if want == "" || tok == "" || tok != want {
+	// 常量时间比较：token 可驱动全部工具（含写操作），需防逐字节时序还原。
+	if want == "" || tok == "" || subtle.ConstantTimeCompare([]byte(tok), []byte(want)) != 1 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": gin.H{"message": "invalid access token", "type": "authentication_error"}})
-		return false
+		return cfg, false
 	}
-	return true
+	return cfg, true
+}
+
+// semFor 返回按当前 MaxConcurrency 大小的并发信号量；配置变更时按新容量重建
+// （在途请求仍释放到旧 chan 并被 GC，仅配置切换瞬态可能短暂越界，可接受）。
+func (h *LLMGatewayHandler) semFor(n int) chan struct{} {
+	if n <= 0 {
+		n = 4
+	}
+	h.semMu.Lock()
+	defer h.semMu.Unlock()
+	if h.sem == nil || cap(h.sem) != n {
+		h.sem = make(chan struct{}, n)
+	}
+	return h.sem
 }
 
 // agentReady 预检底层 AI Agent 是否已配 provider 与 key，避免「200 已流式再报错」。
@@ -86,7 +105,8 @@ func (h *LLMGatewayHandler) agentReady(c *gin.Context) bool {
 
 // OpenAIChat POST /openai/v1/chat/completions —— OpenAI 兼容流式。
 func (h *LLMGatewayHandler) OpenAIChat(c *gin.Context) {
-	if !h.authorize(c) || !h.agentReady(c) {
+	cfg, ok := h.authorize(c)
+	if !ok || !h.agentReady(c) {
 		return
 	}
 	var in openAIReq
@@ -94,11 +114,25 @@ func (h *LLMGatewayHandler) OpenAIChat(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": err.Error(), "type": "invalid_request_error"}})
 		return
 	}
+	if !cfg.ModelAllowed(in.Model) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": "model not allowed: " + in.Model, "type": "invalid_request_error"}})
+		return
+	}
 	userText := lastUserText(in.Messages)
 	if strings.TrimSpace(userText) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": "no user message", "type": "invalid_request_error"}})
 		return
 	}
+	// 并发限流：超 MaxConcurrency 返 429，防外部客户端并发刷爆底层 LLM 额度 / 拖垮进程。
+	sem := h.semFor(cfg.MaxConcurrency)
+	select {
+	case sem <- struct{}{}:
+	default:
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": gin.H{"message": "gateway at max concurrency", "type": "rate_limit_error"}})
+		return
+	}
+	defer func() { <-sem }()
+
 	conv, err := h.newConversation()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": err.Error(), "type": "server_error"}})
@@ -114,7 +148,8 @@ func (h *LLMGatewayHandler) OpenAIChat(c *gin.Context) {
 
 // AnthropicMessages POST /anthropic/v1/messages —— Anthropic 兼容流式。
 func (h *LLMGatewayHandler) AnthropicMessages(c *gin.Context) {
-	if !h.authorize(c) || !h.agentReady(c) {
+	cfg, ok := h.authorize(c)
+	if !ok || !h.agentReady(c) {
 		return
 	}
 	var in anthropicReq
@@ -122,11 +157,24 @@ func (h *LLMGatewayHandler) AnthropicMessages(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": err.Error(), "type": "invalid_request_error"}})
 		return
 	}
+	if !cfg.ModelAllowed(in.Model) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": "model not allowed: " + in.Model, "type": "invalid_request_error"}})
+		return
+	}
 	userText := lastUserText(in.Messages)
 	if strings.TrimSpace(userText) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": gin.H{"message": "no user message", "type": "invalid_request_error"}})
 		return
 	}
+	sem := h.semFor(cfg.MaxConcurrency)
+	select {
+	case sem <- struct{}{}:
+	default:
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": gin.H{"message": "gateway at max concurrency", "type": "rate_limit_error"}})
+		return
+	}
+	defer func() { <-sem }()
+
 	conv, err := h.newConversation()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": err.Error(), "type": "server_error"}})

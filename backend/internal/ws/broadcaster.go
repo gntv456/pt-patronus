@@ -192,7 +192,11 @@ func (b *Broadcaster) detectDone(ctx context.Context, snap []TorrentSnapshot) {
 				// fan-out：逐个钩子调用，单个 panic 不阻断其余（媒体库刷新 / 媒体整理并存）。
 				for _, hk := range hooks {
 					func(h DoneHook) {
-						defer func() { _ = recover() }()
+						defer func() {
+							if r := recover(); r != nil {
+								slog.Error("dl-done hook panic", "downloader", s.DownloaderID, "hash", t.Hash, "panic", r)
+							}
+						}()
 						h(ctx, s.DownloaderID, t.Name, t.Hash)
 					}(hk)
 				}

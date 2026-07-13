@@ -2,7 +2,9 @@ package notification
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -39,6 +41,9 @@ func (s *ServerChan) Send(ctx context.Context, msg Message) error {
 	form := url.Values{}
 	form.Set("title", title)
 	form.Set("desp", desp)
+	if err := assertNotifyURL(ctx, "serverchan", s.base+"/"+s.key+".send"); err != nil {
+		return err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.base+"/"+s.key+".send", strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
@@ -49,8 +54,17 @@ func (s *ServerChan) Send(ctx context.Context, msg Message) error {
 		return err
 	}
 	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("serverchan: status %d", resp.StatusCode)
+		return fmt.Errorf("serverchan: status %d: %s", resp.StatusCode, string(raw))
+	}
+	// HTTP 200 仍可能携带业务错误（Server酱 Turbo 约定 code=0 才算成功）。
+	var be struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(raw, &be) == nil && be.Code != 0 {
+		return fmt.Errorf("serverchan: code %d: %s", be.Code, be.Message)
 	}
 	return nil
 }

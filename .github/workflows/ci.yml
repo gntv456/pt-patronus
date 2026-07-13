@@ -20,6 +20,27 @@ jobs:
       - run: go mod download
       - run: go vet ./...
       - run: go test ./... -race -short -timeout 30m   # -short 跳过真实网络/子进程时序用例（race 放大下易超时 flaky），race 聚焦并发逻辑；30m 防 race 慢化卡死
+      - name: Enforce targeted coverage floors
+        shell: bash
+        run: |
+          check_coverage() {
+            local package="$1"
+            local minimum="$2"
+            local profile="$RUNNER_TEMP/$(echo "$package" | tr '/.' '__').cover"
+            go test "$package" -short -count=1 -coverprofile="$profile"
+            local actual
+            actual=$(go tool cover -func="$profile" | awk '/^total:/ {gsub("%", "", $3); print $3}')
+            awk -v actual="$actual" -v minimum="$minimum" 'BEGIN {
+              if (actual + 0 < minimum + 0) {
+                printf "coverage %.1f%% is below %.1f%%\n", actual, minimum
+                exit 1
+              }
+              printf "coverage %.1f%% meets %.1f%% floor\n", actual, minimum
+            }'
+          }
+          check_coverage ./internal/api/v1 10
+          check_coverage ./internal/workflow/nodes 20
+          check_coverage ./internal/downloader/manager 90
       - run: go build ./...
 
   frontend:

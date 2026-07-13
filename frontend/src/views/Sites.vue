@@ -6,9 +6,12 @@ import { fmtTime } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
 import { siteDefSearchQueries, siteDefSearchText, sortSiteDefsBySearchRelevance } from '@/utils/siteDefSearch'
+import { useWs } from '@/composables/useWs'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
+// WS 推送的 cookie 失效站点名集合，用于在站点表上直接标红（而非只在仪表盘卡片提示）。
+const { cookieAlerts } = useWs()
 
 const sites = ref<Site[]>([])
 const defs = ref<SiteDef[]>([])
@@ -270,10 +273,18 @@ async function openRecords(siteId?: number) {
 }
 
 async function removeSite(s: Site) {
-  await ElMessageBox.confirm(`确认删除站点「${s.name}」？`, '删除', { type: 'warning' })
-  await siteApi.remove(s.id)
-  ElMessage.success('已删除')
-  await load()
+  try {
+    await ElMessageBox.confirm(`确认删除站点「${s.name}」？`, '删除', { type: 'warning' })
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await siteApi.remove(s.id)
+    ElMessage.success('已删除')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '删除失败')
+  }
 }
 
 onMounted(load)
@@ -296,11 +307,18 @@ onMounted(load)
         <el-table-column prop="definition" label="定义" min-width="120" />
         <el-table-column prop="platform" label="平台" min-width="100" />
         <el-table-column prop="base_url" label="地址" min-width="220" show-overflow-tooltip />
-        <el-table-column label="状态" width="90">
+        <el-table-column label="状态" width="120">
           <template #default="{ row }">
-            <span :class="['pill', row.is_active ? 'on' : 'off']">
-              {{ row.is_active ? '启用' : '停用' }}
-            </span>
+            <div class="status-cell">
+              <span :class="['pill', row.is_active ? 'on' : 'off']">
+                {{ row.is_active ? '启用' : '停用' }}
+              </span>
+              <span
+                v-if="cookieAlerts.includes(row.name)"
+                class="pill cookie-bad"
+                title="Cookie 失效，编辑后重新粘贴 cookie"
+              >Cookie 失效</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="320">
@@ -476,6 +494,11 @@ onMounted(load)
 .pill.off {
   background: rgba(231, 76, 60, 0.15);
   color: var(--pt-danger);
+}
+.status-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.pill.cookie-bad {
+  background: rgba(255, 159, 67, 0.18);
+  color: #ff9f43;
 }
 .empty {
   padding: 40px;

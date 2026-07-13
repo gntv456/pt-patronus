@@ -1,8 +1,11 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
+
+	"github.com/hxpt/ptpatronus/internal/downloader"
 )
 
 func TestEncodeHRAlert(t *testing.T) {
@@ -64,5 +67,41 @@ func TestEncodeCookieAlert(t *testing.T) {
 	}
 	if len(sites) != 2 || sites[0] != "好学" {
 		t.Fatalf("unexpected: %+v", sites)
+	}
+}
+
+// detectDone 应 fan-out 调用全部 DoneHook（媒体库刷新 + 媒体整理并存）。
+func TestDetectDone_FanOutHooks(t *testing.T) {
+	b := &Broadcaster{}
+	calls := &[]string{}
+	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { *calls = append(*calls, "a") })
+	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { *calls = append(*calls, "b") })
+
+	completed := []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "h1", Name: "t1", State: "completed"}}}}
+	b.detectDone(context.Background(), completed) // 第一轮仅 prime（primed=false 不触发）
+	*calls = nil
+	b.detectDone(context.Background(), completed) // 同 hash 已知 → 不重触
+	if len(*calls) != 0 {
+		t.Fatalf("known hash should not re-fire, got %v", *calls)
+	}
+	// 新完成 hash → 两个钩子都应触发
+	b.detectDone(context.Background(), []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "h2", Name: "t2", State: "completed"}}}})
+	if len(*calls) != 2 {
+		t.Fatalf("expected 2 hook calls (fan-out), got %d %v", len(*calls), *calls)
+	}
+}
+
+// 单个钩子 panic 不应阻断其余钩子（recover 隔离）。
+func TestDetectDone_PanicHookIsolated(t *testing.T) {
+	b := &Broadcaster{}
+	calls := &[]string{}
+	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { panic("boom") })
+	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { *calls = append(*calls, "ok") })
+
+	b.detectDone(context.Background(), []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "p1", Name: "t", State: "completed"}}}})
+	*calls = nil
+	b.detectDone(context.Background(), []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "p2", Name: "t", State: "completed"}}}})
+	if len(*calls) != 1 {
+		t.Fatalf("second hook must run despite first panicking, got %d", len(*calls))
 	}
 }

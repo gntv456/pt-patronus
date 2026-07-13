@@ -64,7 +64,21 @@ func (o *MediaServerOper) Create(in MediaServerInput) (*models.MediaServer, erro
 	if err := o.db.Create(m).Error; err != nil {
 		return nil, err
 	}
+	// GORM default:true 吞 bool 零值：用户显式传 RefreshOnDownload=false 时被当零值忽略，
+	// 落库变 default true。此处显式写回 false（同 Site.IsActive 的修复范式；第 4 次复发）。
+	if !in.RefreshOnDownload {
+		_ = o.db.Model(m).Update("refresh_on_download", false).Error
+	}
+	if in.IsDefault {
+		o.clearOtherDefaults(m.ID)
+	}
 	return m, nil
+}
+
+// clearOtherDefaults 保证 is_default 唯一：把除 exceptID 外所有服务器置为非默认。
+func (o *MediaServerOper) clearOtherDefaults(exceptID uint) {
+	_ = o.db.Model(&models.MediaServer{}).Where("id <> ?", exceptID).
+		Update("is_default", false).Error
 }
 
 // Update 更新媒体服务器（Token 空串=保留旧值）。
@@ -91,6 +105,9 @@ func (o *MediaServerOper) Update(id uint, in MediaServerInput) (*models.MediaSer
 	}
 	if err := o.db.Save(m).Error; err != nil {
 		return nil, err
+	}
+	if in.IsDefault {
+		o.clearOtherDefaults(m.ID)
 	}
 	return m, nil
 }

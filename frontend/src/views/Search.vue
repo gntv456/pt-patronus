@@ -40,6 +40,10 @@ const searched = ref(false)
 const rows = computed<SearchRow[]>(() =>
   results.value.flatMap((r) => r.torrents.map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name }))),
 )
+// 渲染上限：跨 10+ 站可能返回数百行，一次性渲染卡顿；默认截断，提供「显示全部」展开。
+const MAX_ROWS = 200
+const showAll = ref(false)
+const visibleRows = computed(() => (showAll.value ? rows.value : rows.value.slice(0, MAX_ROWS)))
 const failedSites = computed(() => results.value.filter((r) => r.error))
 const activeSites = computed(() => sites.value.filter((s) => s.is_active))
 // 站点筛选：空=搜全部启用站；非空=仅搜选中站点。UI/逻辑内聚在 SiteFilterDialog 组件。
@@ -296,7 +300,7 @@ onMounted(() => {
       <div v-loading="loading" class="card glass">
         <el-table
           v-if="rows.length"
-          :data="rows"
+          :data="visibleRows"
           style="width: 100%"
           :default-sort="{ prop: 'seeders', order: 'descending' }"
           :row-style="{ background: 'transparent' }"
@@ -336,6 +340,14 @@ onMounted(() => {
             </template>
           </el-table-column>
         </el-table>
+        <div v-if="rows.length > visibleRows.length" class="row-cap">
+          已显示前 {{ visibleRows.length }} 条，共 {{ rows.length }} 条 ·
+          <el-button link type="primary" @click="showAll = true">显示全部</el-button>
+        </div>
+        <div v-else-if="showAll && rows.length > MAX_ROWS" class="row-cap">
+          共 {{ rows.length }} 条 ·
+          <el-button link type="primary" @click="showAll = false">收起</el-button>
+        </div>
 
         <!-- 空态：区分「未搜」与「搜了无果」，文案不再误导已登录站点的用户 -->
         <EmptyState
@@ -910,4 +922,5 @@ onMounted(() => {
     width: 100%;
   }
 }
+.row-cap { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); color: var(--text-muted); }
 </style>

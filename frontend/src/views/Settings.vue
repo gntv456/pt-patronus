@@ -80,6 +80,9 @@ async function clearLogs() {
   }
 }
 
+// Servarr 兼容：API Key = 服务端 API_KEY env（密钥不在前端回显）。
+const apiKeyHint = '（即服务端 API_KEY 环境变量；出于安全不在前端回显）'
+
 // 复制当前日志（按展示顺序，最新在前），每行「时间 级别 正文  属性」。
 async function copyLogs() {
   if (!logs.value.length) return
@@ -104,6 +107,8 @@ function onTabChange(tab: string | number) {
   if (tab === 'logs' && !logs.value.length) loadLogs()
   if (tab === 'notification' && !notifCfg.value) loadNotif()
   if (tab === 'oidc' && !oidcCfg.value) loadOIDC()
+  if (tab === 'llmgateway' && !gwCfg.value) loadLLMGateway()
+  if (tab === 'tgbot' && !tgCfg.value) loadTgBot()
 }
 
 // —— OIDC/SSO 设置（管理员配置 Authelia/Keycloak/Casdoor 等）——
@@ -154,6 +159,95 @@ async function saveOIDC() {
 // —— 通知通道设置（DB+UI 热更新；微信扫码登录）——
 const notifCfg = ref<NotifyConfig | null>(null) // 原始回显（含 *_configured）
 const notif = ref<NotifyConfigInput>(emptyNotifForm())
+
+// —— LLM 网关（把 AI Agent 以 OpenAI/Anthropic 兼容协议对外暴露）——
+import { llmGatewayApi, type LLMGatewayConfig } from '@/api/llmGateway'
+const gwCfg = ref<LLMGatewayConfig | null>(null)
+const gwForm = ref<{ enabled: boolean; access_token: string; allowed_models: string; max_concurrency: number }>({
+  enabled: false, access_token: '', allowed_models: '', max_concurrency: 4,
+})
+const gwLoading = ref(false)
+const gwSaving = ref(false)
+const gwBaseURL = `${window.location.origin}/api/v1/openai/v1`
+async function loadLLMGateway() {
+  gwLoading.value = true
+  try {
+    gwCfg.value = await llmGatewayApi.getConfig()
+    gwForm.value = {
+      enabled: gwCfg.value.enabled,
+      access_token: '',
+      allowed_models: (gwCfg.value.allowed_models ?? []).join(','),
+      max_concurrency: gwCfg.value.max_concurrency || 4,
+    }
+  } catch {
+    ElMessage.error('加载 AI 网关配置失败')
+  } finally {
+    gwLoading.value = false
+  }
+}
+async function saveLLMGateway() {
+  gwSaving.value = true
+  try {
+    const models = gwForm.value.allowed_models.split(',').map((s) => s.trim()).filter(Boolean)
+    await llmGatewayApi.setConfig({
+      enabled: gwForm.value.enabled,
+      access_token: gwForm.value.access_token,
+      allowed_models: models,
+      max_concurrency: gwForm.value.max_concurrency,
+    })
+    ElMessage.success('已保存')
+    await loadLLMGateway()
+  } catch {
+    ElMessage.error('保存 AI 网关配置失败')
+  } finally {
+    gwSaving.value = false
+  }
+}
+
+// —— Telegram bot（入站 chat-ops）——
+import { tgBotApi, type TgBotConfig } from '@/api/tgbot'
+const tgCfg = ref<TgBotConfig | null>(null)
+const tgForm = ref<{ enabled: boolean; bot_token: string; allowed_ids: string; allow_group_chat: boolean; api_url: string }>({
+  enabled: false, bot_token: '', allowed_ids: '', allow_group_chat: false, api_url: '',
+})
+const tgLoading = ref(false)
+const tgSaving = ref(false)
+async function loadTgBot() {
+  tgLoading.value = true
+  try {
+    tgCfg.value = await tgBotApi.getConfig()
+    tgForm.value = {
+      enabled: tgCfg.value.enabled,
+      bot_token: '',
+      allowed_ids: (tgCfg.value.allowed_user_ids ?? []).join(','),
+      allow_group_chat: tgCfg.value.allow_group_chat,
+      api_url: tgCfg.value.api_url || '',
+    }
+  } catch {
+    ElMessage.error('加载 Telegram bot 配置失败')
+  } finally {
+    tgLoading.value = false
+  }
+}
+async function saveTgBot() {
+  tgSaving.value = true
+  try {
+    const ids = tgForm.value.allowed_ids.split(',').map((s) => Number(s.trim())).filter((n) => !isNaN(n) && n > 0)
+    await tgBotApi.setConfig({
+      enabled: tgForm.value.enabled,
+      bot_token: tgForm.value.bot_token,
+      allowed_user_ids: ids,
+      allow_group_chat: tgForm.value.allow_group_chat,
+      api_url: tgForm.value.api_url,
+    })
+    ElMessage.success('已保存（重启进程生效）')
+    await loadTgBot()
+  } catch {
+    ElMessage.error('保存 Telegram bot 配置失败')
+  } finally {
+    tgSaving.value = false
+  }
+}
 const notifLoading = ref(false)
 const notifSaving = ref(false)
 const testLoading = ref(false)
@@ -814,6 +908,71 @@ async function openChangelog() {
           </div>
           <div class="oidc-save">
             <el-button type="primary" :loading="oidcSaving" @click="saveOIDC">保存</el-button>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="AI 网关" name="llmgateway">
+        <div v-loading="gwLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            启用后，外部客户端（Cursor / Claude Desktop / continue.dev 等）可经 OpenAI / Anthropic 兼容协议驱动 PTPatronus 的 AI 助手与工具。
+            OpenAI Base URL：<code>{{ gwBaseURL }}</code>，model 填 <code>ptpatronus-agent</code>。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">启用 AI 网关</div>
+              <el-switch v-model="gwForm.enabled" />
+            </div>
+            <el-input
+              v-model="gwForm.access_token"
+              type="password"
+              show-password
+              class="mt8"
+              :placeholder="gwCfg?.access_token_configured ? '已配置（留空=不修改）' : '访问令牌'"
+            >
+              <template #prepend>访问令牌</template>
+            </el-input>
+            <el-input v-model="gwForm.allowed_models" class="mt8" placeholder="留空=接受任意 model；逗号分隔">
+              <template #prepend>允许的 Model</template>
+            </el-input>
+            <el-input-number v-model="gwForm.max_concurrency" :min="0" :max="64" class="mt8" />
+          </div>
+          <div class="oidc-save">
+            <el-button type="primary" :loading="gwSaving" @click="saveLLMGateway">保存</el-button>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="Telegram Bot" name="tgbot">
+        <div v-loading="tgLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            启用入站 bot 后，可在 Telegram 用自然语言驱动 PTPatronus（搜影视 / 订阅 / 整理…）。命令：<code>/help</code>、<code>/clear</code>。改动需重启进程生效。
+          </p>
+          <div class="card glass">
+            <div class="ch-head"><div class="row-title">启用 Telegram Bot</div><el-switch v-model="tgForm.enabled" /></div>
+            <el-input v-model="tgForm.bot_token" type="password" show-password class="mt8" :placeholder="tgCfg?.bot_token_configured ? '已配置（留空=不修改）' : 'BotFather token'"><template #prepend>Bot Token</template></el-input>
+            <el-input v-model="tgForm.allowed_ids" class="mt8" placeholder="允许的用户 ID，逗号分隔；留空=不限"><template #prepend>白名单</template></el-input>
+            <el-input v-model="tgForm.api_url" class="mt8" placeholder="自定义 Bot API 域名（国内反代）；留空=官方"><template #prepend>API URL</template></el-input>
+            <div class="ch-head mt8"><div class="row-title">允许群聊响应</div><el-switch v-model="tgForm.allow_group_chat" /></div>
+          </div>
+          <div class="oidc-save"><el-button type="primary" :loading="tgSaving" @click="saveTgBot">保存</el-button></div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="Servarr 兼容" name="servarr">
+        <div class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            PTPatronus 订阅已以 Sonarr/Radarr v3 API 对外暴露，供 Overseerr / Jellyseerr 直接接入。无需额外配置——使用全局 <code>API_KEY</code> 作为 *arr 服务的 API Key。
+          </p>
+          <div class="card glass">
+            <div class="ch-head"><div class="row-title">接入信息</div></div>
+            <el-input class="mt8" readonly model-value="Radarr: http://<host>:8088/api/v3"><template #prepend>Radarr URL</template></el-input>
+            <el-input class="mt8" readonly model-value="Sonarr: http://<host>:8088/api/v3"><template #prepend>Sonarr URL</template></el-input>
+            <el-input class="mt8" readonly :model-value="apiKeyHint"><template #prepend>API Key</template></el-input>
+            <p class="text-muted small mt8">
+              映射：电影订阅 ↔ Radarr Movie，剧集订阅 ↔ Sonarr Series；<code>hasFile</code> 取整理历史。<br/>
+              支持端点：<code>/system/status</code>、<code>/movie</code>(GET/POST/DELETE)、<code>/series</code>(GET/POST/PUT/DELETE)、<code>/*/lookup</code>、<code>/rootfolder</code>、<code>/qualityProfile</code>、<code>/tag</code>。
+            </p>
           </div>
         </div>
       </el-tab-pane>

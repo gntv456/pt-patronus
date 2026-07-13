@@ -6,26 +6,43 @@ import (
 	"github.com/longbridgeapp/opencc"
 )
 
-// 繁简转换用 OpenCC（纯 Go，内嵌字典）。两个 profile 各缓存一个实例（New 会加载字典，
-// 重复构造昂贵；Convert 读字典并发安全）。
+// 繁简转换用 OpenCC（纯 Go，内嵌字典）。两个 profile 各懒加载一个实例（New 会加载字典，
+// 重复构造昂贵；Convert 读字典并发安全）。用互斥保护懒加载而非 sync.Once——前者在首次
+// 加载失败时下次调用会重试，后者会把首次错误永久缓存（内嵌字典偶发 FS 抖动致繁简转换永久坏）。
 var (
-	t2sOnce sync.Once
+	t2sMu   sync.Mutex
 	t2sInst *opencc.OpenCC
-	t2sErr  error
 
-	s2tOnce sync.Once
+	s2tMu   sync.Mutex
 	s2tInst *opencc.OpenCC
-	s2tErr  error
 )
 
 func t2s() (*opencc.OpenCC, error) {
-	t2sOnce.Do(func() { t2sInst, t2sErr = opencc.New("t2s") })
-	return t2sInst, t2sErr
+	t2sMu.Lock()
+	defer t2sMu.Unlock()
+	if t2sInst != nil {
+		return t2sInst, nil
+	}
+	inst, err := opencc.New("t2s")
+	if err != nil {
+		return nil, err
+	}
+	t2sInst = inst
+	return t2sInst, nil
 }
 
 func s2t() (*opencc.OpenCC, error) {
-	s2tOnce.Do(func() { s2tInst, s2tErr = opencc.New("s2t") })
-	return s2tInst, s2tErr
+	s2tMu.Lock()
+	defer s2tMu.Unlock()
+	if s2tInst != nil {
+		return s2tInst, nil
+	}
+	inst, err := opencc.New("s2t")
+	if err != nil {
+		return nil, err
+	}
+	s2tInst = inst
+	return s2tInst, nil
 }
 
 // Convert 繁简转换。target="chs"→繁转简，"cht"→简转繁，""/其他→原样（不转换）。

@@ -7,6 +7,7 @@ class Site {
   final String definition;
   final String baseUrl;
   final bool isActive;
+  final int gameCount; // 已适配娱乐项目数（仅 /entertainment 端点返回；/sites 默认 0）
   Site({
     required this.id,
     required this.name,
@@ -14,6 +15,7 @@ class Site {
     required this.definition,
     required this.baseUrl,
     required this.isActive,
+    this.gameCount = 0,
   });
   factory Site.fromJson(Map<String, dynamic> j) => Site(
         id: (j['id'] as num?)?.toInt() ?? 0,
@@ -22,6 +24,7 @@ class Site {
         definition: j['definition'] as String? ?? '',
         baseUrl: j['base_url'] as String? ?? '',
         isActive: j['is_active'] as bool? ?? false,
+        gameCount: (j['game_count'] as num?)?.toInt() ?? 0,
       );
 }
 

@@ -7,6 +7,7 @@ import (
 	"image"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // plexClient 对接 Plex Media Server。鉴权用 X-Plex-Token 头（或 query ?X-Plex-Token=），
@@ -135,8 +136,11 @@ func (c *plexClient) Users(ctx context.Context) ([]User, error) {
 	return out, nil
 }
 
-// PlayedItems: GET /status/sessions → 当前活跃播放（Plex 无公开历史端点，需 Plex Pass）。
-// 返回当前在线会话作为「最近播放」的近似；完整历史留 TODO 联调（Plex Pass /history）。
+// PlayedItems: GET /status/sessions → 当前活跃播放，按 userID 过滤（Plex 无公开历史端点，需 Plex Pass）。
+// 返回该用户当前在线会话作为「最近播放」的近似；完整历史留 TODO 联调（Plex Pass /history）。
+//
+// 注意：必须按 userID 过滤——否则每个用户的调用都拿到全量活跃会话，观影报告会把同一会话
+// 记给所有用户（U×S 重复计数）。活跃会话无 lastPlayed，统一置为当下，便于按时间排序与窗口过滤。
 func (c *plexClient) PlayedItems(ctx context.Context, userID string, limit int) ([]PlayItem, error) {
 	if limit <= 0 {
 		limit = 50
@@ -149,22 +153,36 @@ func (c *plexClient) PlayedItems(ctx context.Context, userID string, limit int) 
 				Year             int    `json:"year"`
 				ViewOffset       int64  `json:"viewOffset"` // ms
 				Duration         int64  `json:"duration"`   // ms
+				User             struct {
+					ID    int    `json:"id"`
+					Title string `json:"title"`
+				} `json:"User"`
+				RatingKey string `json:"ratingKey"`
 			} `json:"Video"`
 		} `json:"MediaContainer"`
 	}
 	if err := jsonGet(ctx, c.hc, c.apiRoot+"/status/sessions", c.headers(), &res); err != nil {
 		return nil, err
 	}
+	now := time.Now().Format(time.RFC3339)
 	out := make([]PlayItem, 0, len(res.MediaContainer.Video))
 	for _, v := range res.MediaContainer.Video {
+		// 仅归属该用户的活跃会话（防止跨用户重复计数）。
+		if plexAccountKey(v.User.ID) != userID {
+			continue
+		}
 		name := v.GrandparentTitle
 		if name == "" {
 			name = v.Title
 		}
 		out = append(out, PlayItem{
-			Name: name, Type: "episode", Year: v.Year, UserID: userID,
-			Duration: int(v.Duration / 1000), PlayCount: 1,
+			ItemID: v.RatingKey, Name: name, Type: "episode", Year: v.Year,
+			UserID: userID, UserName: v.User.Title,
+			Duration: int(v.Duration / 1000), PlayCount: 1, LastPlayed: now,
 		})
+		if len(out) >= limit {
+			break
+		}
 	}
 	return out, nil
 }
@@ -196,11 +214,12 @@ func (c *plexClient) LibraryItems(ctx context.Context, libraryID string) ([]Deta
 			Type: plexItemType(m.Type), Year: m.Year,
 		}
 		for _, g := range m.Guids {
+			// Plex 新版 Guid 形如 "tmdb://438631"（旧版 "tmdb:438631"）；统一剥前缀与多余的 "//"。
 			switch {
-			case strings.HasPrefix(g.ID, "tmdb:"):
-				di.TMDBID = strings.TrimPrefix(g.ID, "tmdb:")
-			case strings.HasPrefix(g.ID, "imdb:"):
-				di.IMDbID = strings.TrimPrefix(g.ID, "imdb:")
+			case strings.HasPrefix(g.ID, "tmdb"):
+				di.TMDBID = strings.TrimLeft(strings.TrimPrefix(strings.TrimPrefix(g.ID, "tmdb:"), "tmdb://"), "/")
+			case strings.HasPrefix(g.ID, "imdb"):
+				di.IMDbID = strings.TrimLeft(strings.TrimPrefix(strings.TrimPrefix(g.ID, "imdb:"), "imdb://"), "/")
 			}
 		}
 		out = append(out, di)

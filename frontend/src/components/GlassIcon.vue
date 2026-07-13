@@ -149,6 +149,12 @@ const GLYPHS: Record<string, string> = {
   // 媒体质量：星形评分（多源评分聚合 / 低分保护）
   mediaquality:
     '<path d="M12 2l2.9 6.3 6.9.6-5.2 4.5 1.6 6.7L12 17.3 5.8 20.6l1.6-6.7L2.2 8.9l6.9-.6z"/>',
+  // AI 助手：机器人头（天线 + 圆眼 + 方脸）
+  bot:
+    '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4"/><circle cx="12" cy="4" r="1.4"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/><path d="M2 13v2"/><path d="M22 13v2"/>',
+  // 诊断：听诊器（健康检查）
+  stethoscope:
+    '<path d="M5 3v5a4 4 0 0 0 8 0V3"/><path d="M5 3H7"/><path d="M11 3h2"/><path d="M9 12v3a4 4 0 0 0 4 4h1a3 3 0 1 0 0-2h-1a2 2 0 0 1-2-2v-3"/><circle cx="17" cy="16" r="2.2"/>',
 }
 
 const dim = computed(() => (typeof props.size === 'number' ? `${props.size}px` : props.size))

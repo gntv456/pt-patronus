@@ -413,8 +413,18 @@ type Subscription struct {
 	// 多评分闸门：开启后命中种子前先查聚合评分，低于全局阈值（媒体质量配置）则跳过推送 + 通知。
 	// 与全局 MediaQualityConfig.Enabled 取并集（任一为真即启用该订阅的评分闸门）。
 	EnableRatingGuard bool `gorm:"default:false" json:"enable_rating_guard"`
+	// FilterGroups 绑定的过滤规则组名（管道分隔，空=用全局 SubscribeFilterRuleGroups）。
+	FilterGroups  string     `gorm:"size:255" json:"filter_groups"`
 	Status        string     `gorm:"size:16;default:subscribed;index" json:"status"`
-	LastCheckedAt *time.Time `json:"last_checked_at"`
+	// 洗版（best_version）：开启后持续寻找更高画质版本替换库中旧版。
+	//   电影：候选 PriOrder 须严格 > CurrentPriority 才推送，达 100 视为洗版完成；
+	//   剧集：按 SxxExx 跟踪每集当前最优 PriOrder（EpisodePriority JSON），候选至少改善一集才推送；
+	//   BestVersionFull：整季包优先模式。
+	BestVersion     bool       `gorm:"default:false" json:"best_version"`
+	BestVersionFull bool       `gorm:"default:false" json:"best_version_full"`
+	CurrentPriority int        `gorm:"default:0" json:"current_priority"`
+	EpisodePriority string     `gorm:"type:text" json:"episode_priority"`
+	LastCheckedAt   *time.Time `json:"last_checked_at"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
@@ -427,6 +437,64 @@ type SubscriptionHit struct {
 	Title          string    `gorm:"size:255" json:"title"`
 	SiteName       string    `gorm:"size:64" json:"site_name"`
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+// TransferHistory — 媒体整理历史：下载完成 → 识别 → 重命名 → 硬链/移动 → 刮削 NFO/海报 的结果记录。
+// 对标 MoviePilot TransferHistory。download_hash 索引供 transfer-sweep 去重（同一种子不重复整理）。
+type TransferHistory struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	Src          string    `gorm:"size:512;index" json:"src"`  // 源文件路径
+	Dest         string    `gorm:"size:512" json:"dest"`       // 目标路径（媒体库）
+	Mode         string    `gorm:"size:16" json:"mode"`        // link | move | copy | softlink
+	Type         string    `gorm:"size:16" json:"type"`        // movie | tv
+	Title        string    `gorm:"size:255;index" json:"title"`
+	Year         int       `json:"year"`
+	Source       string    `gorm:"size:16" json:"source"`   // tmdb | douban | bangumi
+	SourceID     string    `gorm:"size:64" json:"source_id"` // movie:123 / tv:456
+	Seasons      string    `gorm:"size:32" json:"seasons"`   // S01（剧集）
+	Episodes     string    `gorm:"size:64" json:"episodes"`  // E01E02（剧集）
+	PosterURL    string    `gorm:"size:512" json:"poster_url"`
+	DownloaderID uint      `gorm:"index" json:"downloader_id"`
+	DownloadHash string    `gorm:"size:64;index" json:"download_hash"`
+	Status       string    `gorm:"size:16;index" json:"status"` // success | failed
+	ErrorMsg     string    `gorm:"type:text" json:"error_msg,omitempty"`
+	Files        string    `gorm:"type:text" json:"files,omitempty"` // JSON：已整理文件列表
+	CreatedAt    time.Time `gorm:"index" json:"created_at"`
+}
+
+// DownloadMediaLink — 下载推送 → 媒体身份映射：subscribe/rss/workflow 推送种子时落库，
+// 整理时按 hash 秒级命中媒体身份（对标 MP DownloadHistory 的 tmdbid/doubanid 路径），免再搜索。
+// download_hash 唯一：同一种子多次推送以最新身份为准（Upsert）。
+type DownloadMediaLink struct {
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	DownloadHash string    `gorm:"size:64;uniqueIndex" json:"download_hash"`
+	Source       string    `gorm:"size:16" json:"source"`   // tmdb | douban | bangumi
+	SourceID     string    `gorm:"size:64" json:"source_id"` // movie:123
+	Title        string    `gorm:"size:255" json:"title"`
+	Year         int       `json:"year"`
+	Type         string    `gorm:"size:16" json:"type"` // movie | tv
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+// AgentConversation — AI 助手对话会话（多轮上下文记忆）。
+type AgentConversation struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Title     string    `gorm:"size:255" json:"title"` // 首条用户消息摘要
+	CreatedAt time.Time `gorm:"index" json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// AgentMessage — 单条对话消息（user/assistant/tool），含思考过程与工具调用记录。
+type AgentMessage struct {
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	ConversationID uint      `gorm:"index;not null" json:"conversation_id"`
+	Role           string    `gorm:"size:16;not null" json:"role"` // user | assistant | tool
+	Content        string    `gorm:"type:text" json:"content"`      // 文本内容
+	Reasoning      string    `gorm:"type:text" json:"reasoning,omitempty"` // 深度思考过程（reasoning_content / thinking）
+	ToolCalls      string    `gorm:"type:text" json:"tool_calls,omitempty"` // JSON: [{id,name,arguments}]（assistant 发起的调用）
+	ToolCallID     string    `gorm:"size:64" json:"tool_call_id,omitempty"`  // role=tool：回应哪个调用
+	Name           string    `gorm:"size:64" json:"name,omitempty"`          // role=tool：工具名
+	CreatedAt      time.Time `gorm:"index" json:"created_at"`
 }
 
 // SSHHostKey — SSH 远程监控的 host key 记录（TOFU：首次连接记录，后续校验，不符即拒）。
@@ -560,6 +628,7 @@ type RssSubscription struct {
 	SavePath      string     `gorm:"size:255" json:"save_path"`
 	Category      string     `gorm:"size:64" json:"category"`
 	Tags          string     `gorm:"type:text" json:"tags"` // 逗号分隔
+	FilterGroups  string     `gorm:"size:255" json:"filter_groups"` // 绑定规则组（| 分隔，空=不过滤）
 	LastCheckedAt *time.Time `json:"last_checked_at"`
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
@@ -616,6 +685,7 @@ type BrushFlowTask struct {
 	MaxSeeders  int    `json:"max_seeders"`                   // 做种人数上限，0=不限
 	FreeOnly    bool   `gorm:"default:false" json:"free_only"` // 仅免费种
 	Paused      bool   `gorm:"default:false" json:"paused"`    // 加入时暂停(手动放行)
+	FilterGroups string `gorm:"size:255" json:"filter_groups"` // 绑定规则组（| 分隔，空=用体积/做种/Free 硬过滤）
 	// 删除规则（满足任一即删；全 0 = 永不自动删）
 	DeleteRatio     float64 `json:"delete_ratio"`     // 分享率达此值删，0=不限
 	DeleteSeedHours float64 `json:"delete_seed_hours"` // 做种时长达此值删，0=不限

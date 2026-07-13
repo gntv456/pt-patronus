@@ -21,6 +21,8 @@ const overview = ref<DashboardOverview | null>(null)
 const trend = ref<DashboardTrendPoint[]>([])
 // sparkline 数据源：近 14 天跨站聚合趋势（指标卡内嵌迷你折线 + 日环比 + 导出图片共用）。
 const loading = ref(false)
+// 加载失败持久态：overview 为空且出错时显示带重试的错误条，而非全 0 指标卡（避免静默）。
+const loadError = ref('')
 // 首屏加载（无 overview）：用骨架屏占位指标卡，替代整页 spinner，避免布局抖动。
 const initialLoading = computed(() => loading.value && !overview.value)
 const syncing = ref(false)
@@ -41,6 +43,7 @@ const auth = useAuthStore()
 
 async function load() {
   loading.value = true
+  loadError.value = ''
   try {
     // 并行拉 overview 与趋势，减少等待（对齐移动端 Future.wait）。
     const [ov, tr] = await Promise.all([dashboardApi.overview(), dashboardApi.trend(14)])
@@ -49,7 +52,8 @@ async function load() {
   } catch (e: unknown) {
     // 仅在真出错（网络/5xx）时进 catch（无数据是 200 正常返回，不抛）。提示而非静默，
     // 避免用户面对全 0 指标卡分不清是「暂无数据」还是「加载失败」。
-    ElMessage.error((e as Error).message || '仪表盘加载失败')
+    loadError.value = (e as Error).message || '仪表盘加载失败'
+    ElMessage.error(loadError.value)
   } finally {
     loading.value = false
   }
@@ -344,6 +348,12 @@ onMounted(load)
       <p v-if="hrAlerts.length > 5" class="hr-more">…及其它 {{ hrAlerts.length - 5 }} 条</p>
     </div>
 
+    <!-- 加载失败：overview 为空且出错时显示带重试的错误条，而非全 0 指标卡 -->
+    <div v-if="loadError && !overview && !loading" class="glass load-error">
+      <span class="le-msg">⚠ 仪表盘加载失败：{{ loadError }}</span>
+      <el-button size="small" @click="load">重试</el-button>
+    </div>
+
     <!-- 指标卡片墙：首屏加载用骨架占位，避免 spinner 抖动 -->
     <div v-if="initialLoading" class="metric-grid">
       <div v-for="i in 5" :key="i" class="metric-card glass">
@@ -435,9 +445,14 @@ onMounted(load)
         <el-table-column label="下载" min-width="100">
           <template #default="{ row }">{{ fmtBytes(row.downloaded) }}</template>
         </el-table-column>
-        <el-table-column label="分享率" width="80">
+        <el-table-column label="分享率" width="108">
           <template #default="{ row }">
-            <span :class="row.ratio >= 1 ? 'trend-up' : 'trend-down'">{{ row.ratio > 0 ? row.ratio.toFixed(2) : '-' }}</span>
+            <div class="ratio-cell" :title="row.true_ratio > 0 ? '实际分享率（按真实上传/下载）' : '站点上报分享率'">
+              <span :class="(row.true_ratio > 0 ? row.true_ratio : row.ratio) >= 1 ? 'trend-up' : 'trend-down'">
+                {{ (row.true_ratio > 0 ? row.true_ratio : row.ratio) > 0 ? (row.true_ratio > 0 ? row.true_ratio : row.ratio).toFixed(2) : '-' }}
+              </span>
+              <span v-if="row.true_ratio > 0 && row.ratio > 0" class="ratio-sub">站点 {{ row.ratio.toFixed(2) }}</span>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="seeding" label="做种" width="70" />
@@ -730,4 +745,11 @@ onMounted(load)
     grid-column: 1 / -1;
   }
 }
+/* 分享率列：主值（实际分享率优先，否则站点上报）+ 站点上报副值；主值按 ≥1 着色。 */
+.ratio-cell { display: flex; flex-direction: column; line-height: 1.2; }
+.ratio-cell .trend-up { color: #2ecc71; }
+.ratio-cell .trend-down { color: #ff6b6b; }
+.ratio-cell .ratio-sub { font-size: 11px; color: var(--text-muted); }
+.load-error { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
+.load-error .le-msg { color: var(--text-strong); }
 </style>

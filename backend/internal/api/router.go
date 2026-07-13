@@ -15,6 +15,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader/manager"
 	"github.com/hxpt/ptpatronus/internal/filemanager"
+	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/monitor"
@@ -70,6 +71,12 @@ type Deps struct {
 	BrushFlow     *chain.BrushFlowChain
 	Contract      *chain.ContractChain
 	MediaServer   *chain.MediaServerChain
+	Transfer      *chain.TransferChain
+	AgentChat     *v1.AgentChatHandler
+	LLMGateway    *v1.LLMGatewayHandler
+	Doctor        *v1.DoctorHandler
+	TgBot         *v1.TgBotHandler
+	Servarr       *v1.ServarrHandler
 	Cloud         *chain.CloudChain
 	Subtitle      *chain.SubtitleChain
 	Trakt         *chain.TraktChain
@@ -86,6 +93,8 @@ type Deps struct {
 	Medal         *chain.MedalChain
 	Notice        *notice.Service
 	Update        *update.Service
+	Filter        *filter.Store
+	FilterEng     *filter.Engine
 	Plugins       *plugins.Manager
 }
 
@@ -333,7 +342,7 @@ func Build(d *Deps) *gin.Engine {
 				ks.GET("/config", ksH.GetConfig)
 				ks.PUT("/config", ksH.SetConfig)
 				ks.POST("/reseed", ksH.Reseed)
-			ks.POST("/missing", ksH.Missing)
+				ks.POST("/missing", ksH.Missing)
 				ks.GET("/tasks", ksH.Tasks)
 				ks.POST("/tasks/:id/resolve", ksH.Resolve)
 				ks.GET("/setting", ksH.GetSetting)
@@ -395,6 +404,7 @@ func Build(d *Deps) *gin.Engine {
 			entH := v1.NewEntertainmentHandler(d.Entertainment, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins))
 			ent := guarded.Group("/entertainment")
 			{
+				ent.GET("", entH.Sites)
 				ent.GET("/:id/games", entH.Games)
 				ent.POST("/:id/play", entH.Play)
 				ent.GET("/:id/games/:game/stats", entH.Stats)
@@ -442,6 +452,12 @@ func Build(d *Deps) *gin.Engine {
 			// 运行日志（环形缓冲；级别筛选，排查用）
 			guarded.GET("/system/logs", middleware.RequireAdmin(), sysH.Logs)
 			guarded.DELETE("/system/logs", middleware.RequireAdmin(), sysH.ClearLogs)
+
+			// 诊断面板（safe-mode 下仍注册：自救用途）。
+			if d.Doctor != nil {
+				guarded.GET("/system/doctor", middleware.RequireAdmin(), d.Doctor.Run)
+				guarded.POST("/system/doctor/fix", middleware.RequireAdmin(), d.Doctor.Fix)
+			}
 			regH := v1.NewRegistrationHandler(d.RegOp, d.RegCh)
 			regs := guarded.Group("/registrations")
 			{
@@ -619,6 +635,63 @@ func Build(d *Deps) *gin.Engine {
 				rss.GET("/:id/items", rssH.ListItems)
 			}
 
+			// 媒体整理：下载完成→识别→重命名→硬链→刮削→入库历史/配置/手动整理/重做/扫描。
+			trH := v1.NewTransferHandler(d.Transfer)
+			tr := guarded.Group("/transfer")
+			{
+				tr.GET("/history", trH.History)
+				tr.DELETE("/history/:id", middleware.RequireAdmin(), trH.DeleteHistory)
+				tr.GET("/config", trH.GetConfig)
+				tr.PUT("/config", middleware.RequireAdmin(), trH.SetConfig)
+				tr.GET("/dirwatch", trH.GetDirwatchConfig)
+				tr.PUT("/dirwatch", middleware.RequireAdmin(), trH.SetDirwatchConfig)
+				tr.GET("/categories", trH.GetCategoriesConfig)
+				tr.PUT("/categories", middleware.RequireAdmin(), trH.SetCategoriesConfig)
+				tr.POST("/organize", middleware.RequireAdmin(), trH.Organize)
+				tr.POST("/redo/:id", middleware.RequireAdmin(), trH.Redo)
+				tr.POST("/sweep", middleware.RequireAdmin(), trH.Sweep)
+			}
+
+			// 资源过滤规则（对标 MP-2 filter module）：内置/自定义规则 + 规则组 + 全局绑定 + 规则测试。
+			frH := v1.NewFilterRuleHandler(d.Filter, d.FilterEng)
+			fr := guarded.Group("/filter")
+			{
+				fr.GET("/rules/builtin", frH.ListBuiltins)
+				fr.GET("/rules/custom", frH.ListCustom)
+				fr.POST("/rules/custom", middleware.RequireAdmin(), frH.CreateCustom)
+				fr.PUT("/rules/custom/:id", middleware.RequireAdmin(), frH.UpdateCustom)
+				fr.DELETE("/rules/custom/:id", middleware.RequireAdmin(), frH.DeleteCustom)
+				fr.GET("/groups", frH.ListGroups)
+				fr.POST("/groups", middleware.RequireAdmin(), frH.CreateGroup)
+				fr.PUT("/groups/:name", middleware.RequireAdmin(), frH.UpdateGroup)
+				fr.DELETE("/groups/:name", middleware.RequireAdmin(), frH.DeleteGroup)
+				fr.GET("/bindings", frH.ListBindings)
+				fr.PUT("/bindings", middleware.RequireAdmin(), frH.SetBindings)
+				fr.POST("/test", frH.Test)
+			}
+
+			// AI 助手（admin-only）：SSE 对话 + 会话历史 + provider 配置。
+			ag := guarded.Group("/agent")
+			{
+				ag.POST("/chat", middleware.RequireAdmin(), d.AgentChat.Chat)
+				ag.GET("/conversations", middleware.RequireAdmin(), d.AgentChat.Conversations)
+				ag.DELETE("/conversations/:id", middleware.RequireAdmin(), d.AgentChat.DeleteConversation)
+				ag.GET("/conversations/:id/messages", middleware.RequireAdmin(), d.AgentChat.Messages)
+				ag.GET("/config", d.AgentChat.GetConfig)
+				ag.PUT("/config", middleware.RequireAdmin(), d.AgentChat.SetConfig)
+			}
+
+			// LLM 网关配置（管理员）。safe-mode 下 d.LLMGateway 为 nil 时不注册。
+			if d.LLMGateway != nil {
+				guarded.GET("/llmgateway/config", middleware.RequireAdmin(), d.LLMGateway.GetConfig)
+				guarded.PUT("/llmgateway/config", middleware.RequireAdmin(), d.LLMGateway.SetConfig)
+			}
+			// Telegram bot 配置（管理员）。
+			if d.TgBot != nil {
+				guarded.GET("/tgbot/config", middleware.RequireAdmin(), d.TgBot.GetConfig)
+				guarded.PUT("/tgbot/config", middleware.RequireAdmin(), d.TgBot.SetConfig)
+			}
+
 			// 进站 Webhook 管理（CRUD）；公开接收端点 /webhooks/in/:token 在下方公开区注册。
 			whH := d.Webhook
 			whs := guarded.Group("/webhooks")
@@ -704,8 +777,40 @@ func Build(d *Deps) *gin.Engine {
 		// MCP 服务端（公开：MCP 客户端不能走 JWT。由 mcp.Server 自身校验 enable + Bearer token）。
 		api.GET("/mcp", gin.WrapH(d.MCP))
 		api.POST("/mcp", gin.WrapH(d.MCP))
+		// LLM 兼容代理（公开：外部客户端不能走 JWT；handler 自验 Bearer/x-api-key 访问令牌）。
+		// safe-mode 下 d.LLMGateway 为 nil（agent 未构造）时不注册。
+		if d.LLMGateway != nil {
+			api.POST("/openai/v1/chat/completions", d.LLMGateway.OpenAIChat)
+			api.POST("/anthropic/v1/messages", d.LLMGateway.AnthropicMessages)
+		}
 		// Trakt OAuth Device 授权页（公开：授权时用户尚未登录，浏览器直接打开）。
 		api.GET("/trakt/device", v1.NewTraktHandler(d.Trakt).DevicePage)
+	}
+
+	// Servarr 兼容（Sonarr/Radarr v3）：挂 /api/v3 根（非 /api/v1 下），供 Overseerr/Jellyseerr 接入。
+	// 公开自鉴权（?apikey= 或 X-Api-Key 头比对全局 API Key）；safe-mode 下 d.Servarr 为 nil 不注册。
+	// 注意：lookup 等静态路径须在 :id 之前注册，避免 :id 捕获 "lookup"。
+	if d.Servarr != nil {
+		v3 := engine.Group("/api/v3")
+		v3.GET("/system/status", d.Servarr.SystemStatus)
+		v3.GET("/qualityProfile", d.Servarr.StaticList)
+		v3.GET("/profile", d.Servarr.StaticList)
+		v3.GET("/rootfolder", d.Servarr.StaticList)
+		v3.GET("/tag", d.Servarr.StaticList)
+		v3.GET("/languageprofile", d.Servarr.StaticList)
+		// Radarr (movie)
+		v3.GET("/movie", d.Servarr.ListMovies)
+		v3.GET("/movie/lookup", d.Servarr.LookupMovies)
+		v3.POST("/movie", d.Servarr.AddMovie)
+		v3.GET("/movie/:id", d.Servarr.GetMovie)
+		v3.DELETE("/movie/:id", d.Servarr.RemoveMovie)
+		// Sonarr (series)
+		v3.GET("/series", d.Servarr.ListSeries)
+		v3.GET("/series/lookup", d.Servarr.LookupSeries)
+		v3.POST("/series", d.Servarr.AddSeries)
+		v3.PUT("/series", d.Servarr.UpdateSeries)
+		v3.GET("/series/:id", d.Servarr.GetSeries)
+		v3.DELETE("/series/:id", d.Servarr.RemoveSeries)
 	}
 
 	// 非匹配路径回退到内嵌的 Web UI（go:embed），由 vue-router 接管。

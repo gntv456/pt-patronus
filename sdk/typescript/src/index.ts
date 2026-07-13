@@ -33,6 +33,16 @@ export interface KVResult<T> {
   value?: T
 }
 
+/** 一个宿主工具的元数据（GET /tools 返回的单条）。 */
+export interface HostToolInfo {
+  name: string
+  description?: string
+  input_schema?: Record<string, unknown>
+  permission?: string
+  category?: string
+  destructive?: boolean
+}
+
 export interface HostCapabilities {
   api_version: string
   plugin_id: string
@@ -168,6 +178,26 @@ export class PTPHostClient {
     return this.request<{ results: Record<string, unknown>[] }>('POST', '/media/search', { keyword, year }).then((r) => r.results ?? [])
   }
 
+  /** List host tools this plugin is permitted to call (GET /tools, self-describing). */
+  tools(): Promise<HostToolInfo[]> {
+    return this.request<{ tools: HostToolInfo[] }>('GET', '/tools').then((r) => r.tools ?? [])
+  }
+
+  /** Invoke a host tool by name (POST /tools/{name}). Permission gated by manifest declarations. */
+  call<T = unknown>(name: string, input?: Record<string, unknown>): Promise<T> {
+    return this.request<T>('POST', `/tools/${encodeURIComponent(name)}`, { input: input ?? {} })
+  }
+
+  // ---- 核心域便捷方法（薄封装，等价于 call(name, {...})；未列出的工具请用 call）----
+  torrentsList(downloaderId: number): Promise<unknown> { return this.call('torrents_list', { downloader_id: downloaderId }) }
+  torrentsAdd(downloaderId: number, url: string, category = ''): Promise<unknown> { return this.call('torrents_add', { downloader_id: downloaderId, url, category }) }
+  mediaserverList(): Promise<unknown> { return this.call('mediaserver_list') }
+  mediaserverLibraryScan(serverId: number, libraryId = ''): Promise<unknown> { return this.call('mediaserver_library_scan', { server_id: serverId, library_id: libraryId }) }
+  subscribeList(): Promise<unknown> { return this.call('subscribe_list') }
+  /** Multi-channel notification (Bark/TG/QQ/WeChat/Webhook). Perm: notify:send. Differs from notice() (站内). */
+  sendNotification(title: string, body: string, level = 'info'): Promise<unknown> { return this.call('send_notification', { title, body, level }) }
+  dashboardOverview(): Promise<unknown> { return this.call('dashboard_overview') }
+
   private async request<T = Record<string, unknown>>(method: string, path: string, body?: unknown): Promise<T> {
     const response = await this.fetchImpl(`${this.context.base_url}${path}`, {
       method,
@@ -281,6 +311,16 @@ export class PTPPluginViewClient {
   /** Invoke a declared plugin action from the view (e.g. a dashboard fetching live data). */
   action(name: string, input?: Record<string, unknown>): Promise<unknown> {
     return this.request('action.invoke', { action: name, input: input ?? {} })
+  }
+
+  /** List host tools via the view bridge (tool.list). Same source as GET /tools. */
+  tools(): Promise<HostToolInfo[]> {
+    return this.request<{ tools: HostToolInfo[] }>('tool.list').then((r) => r.tools ?? [])
+  }
+
+  /** Invoke a host tool via the view bridge (tool.call). Result unwrapped from {result:...}. */
+  call<T = unknown>(name: string, input?: Record<string, unknown>): Promise<T> {
+    return this.request<{ result: T }>('tool.call', { name, input: input ?? {} }).then((r) => r.result)
   }
 
   request<T = Record<string, unknown>>(method: string, params?: Record<string, unknown>): Promise<T> {

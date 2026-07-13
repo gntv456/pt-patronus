@@ -743,6 +743,11 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
         _toast('请选择 Agent');
         return;
       }
+    } else if (_type == 'rclone') {
+      if (_username.text.trim().isEmpty) {
+        _toast('请填写 Remote 名');
+        return;
+      }
     } else if (_type != 'local' && _url.text.trim().isEmpty) {
       _toast('请填写地址');
       return;
@@ -793,6 +798,7 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
             DropdownMenuItem(value: 'alist', child: Text('Alist')),
             DropdownMenuItem(value: 'smb', child: Text('SMB')),
             DropdownMenuItem(value: 'agent', child: Text('Agent')),
+            DropdownMenuItem(value: 'rclone', child: Text('Rclone')),
           ],
           onChanged: (v) => setState(() => _type = v ?? 'webdav'),
         ),
@@ -837,6 +843,39 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
           const SizedBox(height: 12),
           const Text(
             '直接读写 PTPatronus 服务所在机器的本地目录，无需开网络服务。根路径填本机绝对路径（如 Windows D:\\Media 或 Linux /mnt/nas）。后端进程拥有该目录完整权限，请仅配置可信目录。',
+            style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
+          ),
+        ] else if (_type == 'rclone') ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: _url,
+            decoration: const InputDecoration(
+              labelText: 'rclone 二进制路径',
+              hintText: '留空=用 PATH 中的 rclone',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _username,
+            decoration: const InputDecoration(
+              labelText: 'Remote 名',
+              hintText: 'rclone.conf 中的 [section]，如 myremote',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _password,
+            minLines: 6,
+            maxLines: 12,
+            decoration: InputDecoration(
+              labelText: 'rclone.conf 内容',
+              hintText: _isEdit ? '留空不修改' : '粘贴 rclone.conf INI 全文',
+              alignLabelWithHint: true,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '通过 rclone CLI 访问远端（非挂载）。后端把 conf 临时写盘 + --config 调用；操作需服务端机器装有 rclone。根路径填 remote 内的子路径。',
             style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
           ),
         ] else ...[

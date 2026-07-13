@@ -80,10 +80,18 @@ async function submit() {
 }
 
 async function removeDownloader(dl: Downloader) {
-  await ElMessageBox.confirm(`确认删除下载器「${dl.name}」？`, '删除', { type: 'warning' })
-  await downloaderApi.remove(dl.id)
-  ElMessage.success('已删除')
-  await load()
+  try {
+    await ElMessageBox.confirm(`确认删除下载器「${dl.name}」？`, '删除', { type: 'warning' })
+  } catch {
+    return // 用户取消
+  }
+  try {
+    await downloaderApi.remove(dl.id)
+    ElMessage.success('已删除')
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '删除失败')
+  }
 }
 
 async function test(dl: Downloader) {

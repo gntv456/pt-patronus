@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { safeUrl } from '@/utils/safeUrl'
 import { rssApi, type RssSubscription, type RssItem, type RssInput } from '@/api/rss'
 import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
+import { filterApi } from '@/api/filter'
 import EmptyState from '@/components/EmptyState.vue'
 
 const list = ref<RssSubscription[]>([])
 const sites = ref<Site[]>([])
 const downloaders = ref<Downloader[]>([])
+const filterGroups = ref<string[]>([])
 const loading = ref(false)
 const checking = ref<number | null>(null)
 
@@ -26,6 +28,7 @@ onMounted(async () => {
   await load()
   sites.value = await siteApi.list().catch(() => [])
   downloaders.value = await downloaderApi.list().catch(() => [])
+  filterGroups.value = (await filterApi.groups().catch(() => [])).map((g) => g.name)
 })
 
 // 新增/编辑
@@ -37,6 +40,7 @@ function emptyForm(): RssInput {
     name: '', url: '', site_id: 0, enabled: true, interval_min: 30,
     title_include: '', title_exclude: '', min_size: 0, max_size: 0, resolution: '',
     auto_download: false, downloader_id: 0, save_path: '', category: 'rss', tags: '',
+    filter_groups: '',
   }
 }
 function openCreate() {
@@ -50,10 +54,19 @@ function openEdit(r: RssSubscription) {
     name: r.name, url: r.url, site_id: r.site_id, enabled: r.enabled, interval_min: r.interval_min,
     title_include: r.title_include, title_exclude: r.title_exclude, min_size: r.min_size, max_size: r.max_size,
     resolution: r.resolution, auto_download: r.auto_download, downloader_id: r.downloader_id,
-    save_path: r.save_path, category: r.category, tags: r.tags,
+    save_path: r.save_path, category: r.category, tags: r.tags, filter_groups: r.filter_groups || '',
   }
   showForm.value = true
 }
+
+// 过滤规则组：表单以 | 分隔字符串提交，UI 用多选拆分回填。
+const filterGroupArray = computed<string[]>({
+  get: () => (form.value.filter_groups || '').split('|').map((s) => s.trim()).filter(Boolean),
+  set: (v: string[]) => {
+    form.value.filter_groups = v.join('|')
+  },
+})
+
 async function save() {
   if (!form.value.name || !form.value.url) {
     ElMessage.warning('名称和 URL 必填')
@@ -181,6 +194,11 @@ function fmtTime(t?: string) {
             <el-option label="不限" value="" />
             <el-option label="1080p" value="1080p" />
             <el-option label="2160p" value="2160p" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="过滤规则组">
+          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip placeholder="留空=不过滤" style="width: 100%">
+            <el-option v-for="g in filterGroups" :key="g" :label="g" :value="g" />
           </el-select>
         </el-form-item>
         <el-form-item label="体积范围">

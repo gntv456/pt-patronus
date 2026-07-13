@@ -22,6 +22,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _loading = false;
   bool _demoMode = false;
   bool _oidcEnabled = false;
+  bool _authSiteOn = false; // 后端是否开启好学 VIP 准入（用于登录页显示准入说明）
   String _oidcName = 'OIDC / SSO';
   String? _err;
 
@@ -51,6 +52,7 @@ class _LoginPageState extends State<LoginPage> {
       setState(() {
         _demoMode = s['demo_mode'] == true;
         _oidcEnabled = s['oidc_enabled'] == true;
+        _authSiteOn = s['auth_site_on'] == true;
         _oidcName = (s['oidc_display_name'] as String?)?.isNotEmpty == true
             ? (s['oidc_display_name'] as String)
             : 'OIDC / SSO';
@@ -192,18 +194,38 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // OIDC/SSO：用系统浏览器打开后端 /auth/oidc/start 完成跳转授权。
-  // 回调把令牌交给 Web SPA；原生 App 取回令牌需 deep-link（ptpatronus://），留待联调。
+  // OIDC/SSO：移动端 deep-link（ptpatronus://）回调尚未接通——直接拉起系统浏览器会令牌丢失，
+  // 用户卡在浏览器无法返回 App。改为弹说明引导用账号/Cookie 登录（保留「仍打开浏览器」兜底）。
   Future<void> _oidcLogin() async {
-    final url = '${ApiClient().baseUrl}/api/v1/auth/oidc/start';
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已在浏览器打开 SSO 授权；完成后请返回 App 重新进入')),
-      );
-    }
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('$_oidcName 暂不可用'),
+        content: const Text(
+          '移动端 SSO 自动回调（deep-link）尚未接通：在浏览器完成授权后，令牌无法自动回到 App。\n\n'
+          '请改用「好学账号」或「Cookie」标签页登录。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('知道了'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              final uri = Uri.tryParse(
+                '${ApiClient().baseUrl}/api/v1/auth/oidc/start',
+              );
+              if (uri != null) {
+                launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: const Text('仍打开浏览器'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _onLoginOk(Map<String, dynamic> res) async {
@@ -261,6 +283,15 @@ class _LoginPageState extends State<LoginPage> {
                       'PT 守护神 · 好学 APP 专属',
                       style: TextStyle(color: Colors.grey),
                     ),
+                    if (_oidcEnabled == false && _authSiteOn)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '本服务面向好学 (hxpt.org) APP 专属 VIP 用户；请先在好学获得 VIP 身份后再登录。首个通过验证的用户将成为管理员。',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 11, height: 1.4),
+                        ),
+                      ),
                     const SizedBox(height: 20),
                     SegmentedButton<int>(
                       segments: const [

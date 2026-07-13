@@ -663,6 +663,8 @@ func (h *externalHostServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				"GET /sites",
 				"GET /sites/{id}/cookie",
 				"POST /media/search",
+				"GET /tools",
+				"POST /tools/{name}",
 			},
 		})
 	case r.Method == http.MethodGet && r.URL.Path == "/config":
@@ -707,6 +709,10 @@ func (h *externalHostServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		h.handleMediaSearch(w, r)
+	case r.Method == http.MethodGet && r.URL.Path == "/tools":
+		h.handleToolsList(w, r)
+	case r.Method == http.MethodPost && strings.HasPrefix(r.URL.Path, "/tools/"):
+		h.handleToolCall(w, r)
 	default:
 		writeHostJSON(w, http.StatusNotFound, map[string]any{"error": "not found"})
 	}
@@ -727,6 +733,73 @@ func (h *externalHostServer) handleMediaSearch(w http.ResponseWriter, r *http.Re
 		return
 	}
 	writeHostJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+// handleToolsList 返回当前插件权限可见的宿主工具清单（GET /tools）。
+// 自描述：每条含 name/description/input_schema/permission/category/destructive，
+// 让插件能动态发现宿主能力而无需查文档。未注入 registry 时返回空数组。
+func (h *externalHostServer) handleToolsList(w http.ResponseWriter, r *http.Request) {
+	reg := h.plugin.manager.HostTools()
+	if reg == nil {
+		writeHostJSON(w, http.StatusOK, map[string]any{"tools": []HostTool{}})
+		return
+	}
+	writeHostJSON(w, http.StatusOK, map[string]any{"tools": reg.VisibleTools(h.plugin.manifest.Permissions)})
+}
+
+// handleToolCall 执行一个宿主工具（POST /tools/{name}）。
+// body: {"input": {...}}；权限/超时/未找到统一经 registry.Dispatch 处理。
+// 写操作（:write/:action/:send）成功落审计日志（plugin_logs 表），失败落 warning。
+func (h *externalHostServer) handleToolCall(w http.ResponseWriter, r *http.Request) {
+	name, err := hostPathValue(r.URL.Path, "/tools/")
+	if err != nil || name == "" {
+		writeHostJSON(w, http.StatusBadRequest, map[string]any{"error": "tool name is required"})
+		return
+	}
+	reg := h.plugin.manager.HostTools()
+	if reg == nil {
+		writeHostJSON(w, http.StatusNotFound, map[string]any{"error": "tool not found", "tool": name})
+		return
+	}
+	var in struct {
+		Input map[string]any `json:"input"`
+	}
+	if !decodeHostJSON(w, r, &in) {
+		return
+	}
+	pluginID := h.plugin.manifest.ID
+	out, perm, notFound, derr := reg.Dispatch(r.Context(), h.plugin.manifest.Permissions, name, in.Input)
+	switch {
+	case notFound:
+		writeHostJSON(w, http.StatusNotFound, map[string]any{"error": "tool not found", "tool": name})
+	case derr == ErrPermissionDenied:
+		writeHostJSON(w, http.StatusForbidden, map[string]any{"error": "permission denied", "permission": perm, "tool": name})
+	case derr != nil:
+		h.plugin.manager.log(pluginID, logWarning, "host.tool", fmt.Sprintf("%s failed: %v", name, derr), map[string]any{"input": in.Input})
+		writeHostJSON(w, http.StatusInternalServerError, map[string]any{"error": derr.Error(), "tool": name})
+	default:
+		// 写操作审计（成功）：read 类跳过避免噪音。
+		if isWritePermission(perm) {
+			h.plugin.manager.log(pluginID, logInfo, "host.tool", "tool called: "+name, map[string]any{"input": in.Input})
+		}
+		raw, merr := json.Marshal(out) // json.RawMessage 透传；struct/map 正常序列化
+		if merr != nil {
+			writeHostJSON(w, http.StatusInternalServerError, map[string]any{"error": "result encode failed"})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(raw)
+	}
+}
+
+// isWritePermission 粗判是否为写操作（用于审计日志降噪）。
+// 域级 :write、站点 :action、通知 :send 视为有副作用；其余（含空权限/只读）不计审计。
+func isWritePermission(perm string) bool {
+	if perm == "" {
+		return false
+	}
+	return strings.HasSuffix(perm, ":write") || strings.HasSuffix(perm, ":action") || perm == "notify:send"
 }
 
 func (h *externalHostServer) authorized(r *http.Request) bool {

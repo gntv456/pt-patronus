@@ -24,6 +24,26 @@ export interface UpdateCheckResult {
   isBelowMin?: boolean
 }
 
+export interface DoctorFinding {
+  id: string
+  severity: 'info' | 'warn' | 'error'
+  status: 'ok' | 'skipped' | 'degraded' | 'failed' | 'fixed'
+  title: string
+  detail?: string
+  recommendation?: string
+  fixable: boolean
+  fixed: boolean
+  context?: Record<string, any>
+}
+export interface DoctorReport {
+  generated_at: string
+  version?: string
+  environment?: Record<string, any>
+  findings: DoctorFinding[]
+  status: 'healthy' | 'degraded' | 'failed'
+  summary: { total: number; info: number; warn: number; error: number; fixed: number }
+}
+
 export const systemApi = {
   // 公开端点，免登录：登录页/关于页在认证前读取后端部署态版本。
   info: () => http.get<SystemInfo>('/system/info').then((r) => r.data),
@@ -31,4 +51,7 @@ export const systemApi = {
   // android/windows=客户端，给下载地址)。需登录。客户端经本后端中转，不直连官方源。
   checkUpdate: (platform = 'docker') =>
     http.get<UpdateCheckResult>('/system/update/check', { params: { platform } }).then((r) => r.data),
+  // 诊断面板（管理员）：跑健康检查 / 尝试修复。
+  runDoctor: () => http.get<DoctorReport>('/system/doctor').then((r) => r.data),
+  fixDoctor: () => http.post<DoctorReport>('/system/doctor/fix').then((r) => r.data),
 }

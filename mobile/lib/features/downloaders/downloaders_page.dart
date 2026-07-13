@@ -11,6 +11,28 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
+// 子表（文件/Tracker/Peer/分类）加载失败的统一错误视图：文案 + 重试按钮，
+// 与「真空态」（无文件/无 Tracker…）区分，避免失败被误显示为空。
+Widget _sheetErrorView(String error, VoidCallback onRetry) {
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '加载失败：$error',
+            style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(onPressed: onRetry, child: const Text('重试')),
+        ],
+      ),
+    ),
+  );
+}
+
 class DownloadersPage extends StatefulWidget {
   const DownloadersPage({super.key});
   @override
@@ -1208,6 +1230,7 @@ class _FilesSheetState extends State<_FilesSheet> {
   final _api = DownloaderApi();
   List<TorrentFile> _files = [];
   bool _loading = true;
+  String _error = ''; // 加载失败文案；非空时显示「加载失败+重试」而非「无文件」（区分失败与真空）
 
   @override
   void initState() {
@@ -1222,10 +1245,11 @@ class _FilesSheetState extends State<_FilesSheet> {
         setState(() {
           _files = f;
           _loading = false;
+          _error = '';
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = e.toString(); });
     }
   }
 
@@ -1272,6 +1296,8 @@ class _FilesSheetState extends State<_FilesSheet> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
+              : _error.isNotEmpty
+              ? _sheetErrorView(_error, _load)
               : _files.isEmpty
               ? const Center(
                   child: Text('无文件', style: TextStyle(color: Colors.grey)),
@@ -1319,6 +1345,7 @@ class _TrackersSheetState extends State<_TrackersSheet> {
   final _newCtrl = TextEditingController();
   List<Tracker> _trackers = [];
   bool _loading = true;
+  String _error = '';
 
   @override
   void initState() {
@@ -1333,10 +1360,11 @@ class _TrackersSheetState extends State<_TrackersSheet> {
         setState(() {
           _trackers = t;
           _loading = false;
+          _error = '';
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = e.toString(); });
     }
   }
 
@@ -1401,6 +1429,8 @@ class _TrackersSheetState extends State<_TrackersSheet> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
+              : _error.isNotEmpty
+              ? _sheetErrorView(_error, _load)
               : _trackers.isEmpty
               ? const Center(
                   child: Text(
@@ -1594,6 +1624,7 @@ class _PeersSheetState extends State<_PeersSheet> {
   final _api = DownloaderApi();
   List<Peer> _peers = [];
   bool _loading = true;
+  String _error = '';
 
   @override
   void initState() {
@@ -1608,10 +1639,11 @@ class _PeersSheetState extends State<_PeersSheet> {
         setState(() {
           _peers = p;
           _loading = false;
+          _error = '';
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = e.toString(); });
     }
   }
 
@@ -1643,6 +1675,8 @@ class _PeersSheetState extends State<_PeersSheet> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
+              : _error.isNotEmpty
+              ? _sheetErrorView(_error, _load)
               : _peers.isEmpty
               ? const Center(
                   child: Text('无连接的对等体', style: TextStyle(color: Colors.grey)),
@@ -1688,6 +1722,7 @@ class _CategorySheetState extends State<_CategorySheet> {
   final _pathCtrl = TextEditingController();
   List<String> _cats = [];
   bool _loading = true;
+  String _error = '';
 
   @override
   void initState() {
@@ -1702,10 +1737,11 @@ class _CategorySheetState extends State<_CategorySheet> {
         setState(() {
           _cats = c;
           _loading = false;
+          _error = '';
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = e.toString(); });
     }
   }
 
@@ -1802,6 +1838,8 @@ class _CategorySheetState extends State<_CategorySheet> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
+              : _error.isNotEmpty
+              ? _sheetErrorView(_error, _load)
               : _cats.isEmpty
               ? const Center(
                   child: Text('无分类', style: TextStyle(color: Colors.grey)),

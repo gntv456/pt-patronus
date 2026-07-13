@@ -102,6 +102,16 @@ func Generate(ctx context.Context, cli Client, opts GenerateOptions) (GenerateRe
 // errStopWalk 软上限触发时中止递归（非真实错误）。
 var errStopWalk = fmt.Errorf("stop walk")
 
+// isWithinDir 判断 path（清理后）是否位于 dir 之内或等于 dir。防 STRM 写入逃出 OutputDir。
+func isWithinDir(path, dir string) bool {
+	cp := filepath.Clean(path)
+	cd := filepath.Clean(dir)
+	if cp == cd {
+		return true
+	}
+	return strings.HasPrefix(cp, cd+string(os.PathSeparator))
+}
+
 // writeStrm 生成单个 .strm：计算本地路径 + 渲染内容 + 幂等写入。返回 (是否写入, strm路径, err)。
 func writeStrm(opts GenerateOptions, f File) (bool, string, error) {
 	rel := strings.TrimPrefix(f.Path, opts.CloudPath) // CloudPath 下相对路径，含前导 /
@@ -113,6 +123,11 @@ func writeStrm(opts GenerateOptions, f File) (bool, string, error) {
 		strmName = strings.TrimSuffix(strmName, filepath.Ext(strmName)) + ".strm"
 	}
 	outPath := filepath.Join(opts.OutputDir, relDir, strmName)
+	// 路径穿越防御：若云条目名含 ".." 等被 Join 折叠后逃出 OutputDir，拒绝写入（防御纵深；
+	// 当前 115/夸克/123 API 禁 "/" 和 ".." 故不可利用，但写点是安全边界）。
+	if !isWithinDir(outPath, opts.OutputDir) {
+		return false, outPath, fmt.Errorf("strm 输出路径逃出 OutputDir: %s", outPath)
+	}
 
 	content := RenderTemplate(opts.Template, opts.MountRoot, f.Path, rel, f.Name) + "\n"
 

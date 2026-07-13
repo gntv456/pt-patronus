@@ -38,8 +38,14 @@ ptp-pluginctl run my-plugin --action ping --once
 ptp-pluginctl package my-plugin --json-out dist/plugin-package.json
 ```
 
-See [`DEVGUIDE.md`](DEVGUIDE.md) for the full contract (manifest schema, Host API, permissions,
-async-worker pattern, packaging + market publishing).
+Plugins call back into the host via the **Host API** — config/log/kv/site/media (legacy endpoints)
+**plus Tool RPC** (`host.call(name, input)` / `host.tools()`): ~80 tools covering downloader, media
+server, subscribe, cloud/STRM, brush-flow, RSS, subtitle, reseed, transfer, dashboard, notification,
+filter, file storage, and workflow. Declare domain permissions (`downloader:read`, `mediaserver:write`, …)
+in your manifest; the host gates each tool individually.
+
+See [`DEVGUIDE.md`](DEVGUIDE.md) for the full contract (manifest schema, Host API + Tool RPC catalog,
+permissions, async-worker pattern, packaging + market publishing).
 
 ## Single source of truth
 

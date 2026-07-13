@@ -83,7 +83,7 @@ type Broadcaster struct {
 	mgr      *manager.Manager
 	interval time.Duration
 	notice   *notice.Service     // 下载完成通知中心（nil 跳过）；通过 SetNotice 注入（避开构造顺序）
-	doneHook DoneHook            // 下载完成副作用钩子（媒体库刷新等；nil 跳过），通过 SetDownloadDoneHook 注入
+	doneHooks []DoneHook         // 下载完成副作用钩子（媒体库刷新/媒体整理等；fan-out，nil 跳过），通过 AddDownloadDoneHook 注入
 	stateMu  sync.Mutex
 	dlState  map[string]bool // key=dlID:hash → 是否已完成（下载完成 diff）
 	primed   bool            // 冷启动首轮只填充状态不通知，避免把所有已完成种子当新通知
@@ -102,11 +102,20 @@ func (b *Broadcaster) SetNotice(ns *notice.Service) {
 	b.stateMu.Unlock()
 }
 
-// SetDownloadDoneHook 注入下载完成副作用钩子（app.go 在媒体服务器 chain 构造后调用）。
+// SetDownloadDoneHook 注入单个下载完成副作用钩子（兼容旧调用；等价于 AddDownloadDoneHook）。
 // 同 SetNotice 经 stateMu 同步，detectDone 读 / setter 写均持锁。
 func (b *Broadcaster) SetDownloadDoneHook(h DoneHook) {
+	b.AddDownloadDoneHook(h)
+}
+
+// AddDownloadDoneHook 追加一个下载完成副作用钩子（fan-out：媒体库刷新 + 媒体整理等并存）。
+// 单个钩子 panic 不阻断其余（detectDone 内逐个 recover）。
+func (b *Broadcaster) AddDownloadDoneHook(h DoneHook) {
+	if h == nil {
+		return
+	}
 	b.stateMu.Lock()
-	b.doneHook = h
+	b.doneHooks = append(b.doneHooks, h)
 	b.stateMu.Unlock()
 }
 
@@ -155,14 +164,14 @@ func (b *Broadcaster) broadcast(ctx context.Context) {
 func (b *Broadcaster) detectDone(ctx context.Context, snap []TorrentSnapshot) {
 	b.stateMu.Lock()
 	defer b.stateMu.Unlock()
-	// notice / doneHook 读写均经 stateMu：与 setter 建立 happens-before，消除数据竞争。
-	if b.notice == nil && b.doneHook == nil {
+	// notice / doneHooks 读写均经 stateMu：与 setter 建立 happens-before，消除数据竞争。
+	if b.notice == nil && len(b.doneHooks) == 0 {
 		return
 	}
 	if b.dlState == nil {
 		b.dlState = map[string]bool{}
 	}
-	hook := b.doneHook
+	hooks := b.doneHooks
 	for _, s := range snap {
 		for _, t := range s.Torrents {
 			if t.Hash == "" {
@@ -180,8 +189,12 @@ func (b *Broadcaster) detectDone(ctx context.Context, snap []TorrentSnapshot) {
 						Level:  "success",
 					}, true)
 				}
-				if hook != nil {
-					hook(ctx, s.DownloaderID, t.Name, t.Hash) // 媒体库刷新等副作用
+				// fan-out：逐个钩子调用，单个 panic 不阻断其余（媒体库刷新 / 媒体整理并存）。
+				for _, hk := range hooks {
+					func(h DoneHook) {
+						defer func() { _ = recover() }()
+						h(ctx, s.DownloaderID, t.Name, t.Hash)
+					}(hk)
 				}
 			}
 			b.dlState[key] = nowDone

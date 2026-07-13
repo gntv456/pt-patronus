@@ -89,13 +89,20 @@ func cleanCloudPath(p string) string {
 	return p
 }
 
+// maxPathSegments 云盘路径逐级解析的段数上限：防恶意超长路径触发逐段串行 API 调用（配额/延迟）。
+const maxPathSegments = 32
+
 // splitSegments 把云盘路径拆为非空段（用于逐级 resolvePath）。
 func splitSegments(p string) []string {
 	p = cleanCloudPath(p)
 	if p == "/" {
 		return nil
 	}
-	return strings.Split(strings.TrimPrefix(p, "/"), "/")
+	segs := strings.Split(strings.TrimPrefix(p, "/"), "/")
+	if len(segs) > maxPathSegments {
+		segs = segs[:maxPathSegments]
+	}
+	return segs
 }
 
 // joinCloud 拼接云盘路径段为标准路径。

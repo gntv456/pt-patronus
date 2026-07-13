@@ -289,6 +289,28 @@ class _SitePickerBodyState extends State<_SitePickerBody> {
     widget.onChanged(List.of(_selected));
   }
 
+  // 站点 chip 标签：名字 + 右侧项目计数（PTFilterOption.count）。
+  // >0 主色高亮（已适配），0 灰显（未适配）——一眼区分哪个站有娱乐玩法。
+  Widget _chipLabel(PTFilterOption<Object?> o) {
+    final n = o.count;
+    if (n == null) return Text(o.label);
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: o.label),
+          TextSpan(
+            text: '  $n',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: n > 0 ? PTColors.primary : Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final q = _q.trim().toLowerCase();
@@ -326,7 +348,7 @@ class _SitePickerBodyState extends State<_SitePickerBody> {
               children: opts.map((o) {
                 final id = o.value as int;
                 return FilterChip(
-                  label: Text(o.label),
+                  label: _chipLabel(o),
                   selected: _selected.contains(id),
                   showCheckmark: false,
                   onSelected: (_) {
@@ -387,7 +409,7 @@ class _SitePickerBodyState extends State<_SitePickerBody> {
                 children: opts.map((o) {
                   final id = o.value as int;
                   return FilterChip(
-                    label: Text(o.label),
+                    label: _chipLabel(o),
                     selected: _selected.contains(id),
                     showCheckmark: false,
                     onSelected: (v) => _toggle(id, v),

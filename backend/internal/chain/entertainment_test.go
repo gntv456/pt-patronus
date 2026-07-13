@@ -146,3 +146,40 @@ func TestEntertainmentPlayConcurrentDedup(t *testing.T) {
 		t.Fatalf("first Play should succeed, got res=%v err=%v", fr.res, fr.err)
 	}
 }
+
+// TestEntertainmentSitesGameCount：Sites() 返回每站已适配娱乐项目数，计数按 base_url
+// 的 host 匹配 registry（含 www 子域放宽），未注册游戏的站点为 0——对应娱乐页筛选徽标。
+func TestEntertainmentSitesGameCount(t *testing.T) {
+	db := newChainDB(t)
+	siteOp := oper.NewSiteOper(db, security.NewCrypto("seed"))
+	// rich：base_url 带 www，registry 用裸域 → 验证子域放宽后仍计 3 个。
+	_, _ = siteOp.Create(oper.SiteInput{Name: "rich", Platform: "nexusphp", BaseURL: "https://www.hxpt.org"})
+	_, _ = siteOp.Create(oper.SiteInput{Name: "single", Platform: "nexusphp", BaseURL: "https://cspt.fun"})
+	_, _ = siteOp.Create(oper.SiteInput{Name: "none", Platform: "nexusphp", BaseURL: "https://bare.test"})
+
+	reg := entertainment.NewRegistry()
+	reg.Register("hxpt.org", &blockGame{id: "g1", proceed: make(chan struct{})})
+	reg.Register("hxpt.org", &blockGame{id: "g2", proceed: make(chan struct{})})
+	reg.Register("hxpt.org", &blockGame{id: "g3", proceed: make(chan struct{})})
+	reg.Register("cspt.fun", &blockGame{id: "g1", proceed: make(chan struct{})})
+
+	ch := NewEntertainmentChain(NewBase(module.New(), event.New()), reg, nil, siteOp)
+
+	got, err := ch.Sites()
+	if err != nil {
+		t.Fatalf("Sites() error: %v", err)
+	}
+	byName := map[string]int{}
+	for _, s := range got {
+		byName[s.Name] = s.GameCount
+	}
+	if byName["rich"] != 3 {
+		t.Errorf("rich (www.hxpt.org→hxpt.org) want 3 games, got %d", byName["rich"])
+	}
+	if byName["single"] != 1 {
+		t.Errorf("single (cspt.fun) want 1 game, got %d", byName["single"])
+	}
+	if byName["none"] != 0 {
+		t.Errorf("none (bare.test) want 0 games, got %d", byName["none"])
+	}
+}

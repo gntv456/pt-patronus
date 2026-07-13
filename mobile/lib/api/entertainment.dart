@@ -1,4 +1,5 @@
 import '../core/api_client.dart';
+import 'site.dart';
 
 // Game 是某站点可玩的娱乐游戏（对齐后端 entertainment.LotteryGame）。
 class Game {
@@ -774,6 +775,13 @@ class BlackjackResult {
 
 class EntertainmentApi {
   final _api = ApiClient();
+
+  /// 娱乐页站点列表（含各站已适配娱乐项目数 game_count，独立于通用 /sites）。
+  Future<List<Site>> sites() async {
+    final r = await _api.get('/entertainment');
+    final list = (r['sites'] as List?) ?? const [];
+    return list.map((e) => Site.fromJson(e as Map<String, dynamic>)).toList();
+  }
 
   Future<List<Game>> games(int siteId) async {
     final r = await _api.get('/entertainment/$siteId/games');

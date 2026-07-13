@@ -41,6 +41,8 @@ def _start_fake_host(token):
                 self._json(200, {"found": k in state, "value": state.get(k)})
             elif self.path == "/sites":
                 self._json(200, {"sites": [{"id": 1, "name": "demo", "base_url": "https://demo", "username": "u"}]})
+            elif self.path == "/tools":
+                self._json(200, {"tools": [{"name": "ping", "permission": "x:read", "category": "test"}]})
             else:
                 self._json(404, {"error": "not found"})
 
@@ -52,6 +54,8 @@ def _start_fake_host(token):
                 self._json(200, {"ok": True})
             elif self.path == "/media/search":
                 self._json(200, {"results": [{"title": b.get("keyword"), "year": b.get("year")}]})
+            elif self.path.startswith("/tools/"):
+                self._json(200, {"tool": self.path[len("/tools/"):], "got": b.get("input")})
             else:
                 self._json(404, {"error": "not found"})
 
@@ -119,6 +123,26 @@ class HostClientTests(unittest.TestCase):
         res = self.client.media_search("drama", 2024)
         self.assertEqual(res[0]["title"], "drama")
         self.assertEqual(res[0]["year"], 2024)
+
+    def test_tools_list(self):
+        tools = self.client.tools()
+        self.assertTrue(any(t["name"] == "ping" for t in tools))
+
+    def test_call_with_input(self):
+        r = self.client.call("ping", {"v": 9})
+        self.assertEqual(r["tool"], "ping")
+        self.assertEqual(r["got"], {"v": 9})
+
+    def test_call_no_input(self):
+        r = self.client.call("system.info")
+        self.assertEqual(r["tool"], "system.info")
+        self.assertEqual(r["got"], {})  # input 缺省时 call() 传 {}
+
+    def test_convenience_method_routes_to_call(self):
+        # 便捷方法本质是 call；fake host 的 /tools/ echo 回显 input。
+        r = self.client.torrents_list(3)
+        self.assertEqual(r["tool"], "torrents_list")
+        self.assertEqual(r["got"], {"downloader_id": 3})
 
     def test_host_error_on_unknown(self):
         with self.assertRaises(HostError):

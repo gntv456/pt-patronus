@@ -12,7 +12,7 @@ Import in your plugin process:
 from __future__ import annotations
 
 from .client import PTPHostClient, HostError
-from .types import HostContext, SiteRef, KVResult, HostCapabilities
+from .types import HostContext, SiteRef, KVResult, HostCapabilities, HostTool
 
 __all__ = [
     "PTPHostClient",
@@ -21,6 +21,7 @@ __all__ = [
     "SiteRef",
     "KVResult",
     "HostCapabilities",
+    "HostTool",
 ]
 
 __version__ = "0.1.0"

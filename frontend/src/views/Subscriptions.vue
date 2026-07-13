@@ -66,6 +66,16 @@ async function setRatingGuard(s: Subscription, val: boolean) {
   }
 }
 
+async function setBestVersion(s: Subscription, val: boolean) {
+  try {
+    await subscribeApi.update(s.id, { best_version: val })
+    ElMessage.success(val ? '已开启洗版（自动升级画质）' : '已关闭洗版')
+  } catch (e: unknown) {
+    s.best_version = !val // 回滚
+    ElMessage.error((e as Error).message || '更新失败')
+  }
+}
+
 async function remove(s: Subscription) {
   try {
     await ElMessageBox.confirm('确定删除该订阅？删除后不再推送。', '删除订阅', {
@@ -135,6 +145,18 @@ onMounted(load)
                 @update:model-value="(v: any) => setRatingGuard(s, !!v)"
               />
               <span class="small text-muted">（开启后低分命中跳过推送；阈值见「媒体质量」页）</span>
+            </div>
+            <div class="res-row">
+              <span class="small">洗版：</span>
+              <el-switch
+                :model-value="s.best_version"
+                size="small"
+                @update:model-value="(v: any) => setBestVersion(s, !!v)"
+              />
+              <span class="small text-muted">（开启后持续寻找更高画质版本，自动替换库中旧版；电影达顶级自动完成）</span>
+              <span v-if="s.best_version && s.type === 'movie' && s.current_priority" class="chip res">
+                Pri {{ s.current_priority }}
+              </span>
             </div>
             <div class="actions">
               <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">立即检查</el-button>

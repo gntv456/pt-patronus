@@ -32,7 +32,6 @@ class EntertainmentPage extends StatefulWidget {
 }
 
 class _EntertainmentPageState extends State<EntertainmentPage> {
-  final _siteApi = SiteApi();
   final _entApi = EntertainmentApi();
   List<Site> _sites = [];
   int? _siteId;
@@ -51,7 +50,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
 
   Future<void> _loadSites() async {
     try {
-      _sites = await _siteApi.list();
+      _sites = await _entApi.sites();
       if (_sites.isNotEmpty) {
         if (!mounted) return;
         setState(() => _siteId = _sites.first.id);
@@ -102,7 +101,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
               },
               options: _sites
                   .map(
-                    (s) => PTFilterOption<Object?>(value: s.id, label: s.name),
+                    (s) => PTFilterOption<Object?>(value: s.id, label: s.name, count: s.gameCount),
                   )
                   .toList(),
             ),

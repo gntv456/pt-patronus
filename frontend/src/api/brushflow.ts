@@ -21,6 +21,7 @@ export interface BrushFlowTask {
   max_seeds: number
   save_path: string
   category_dl: string
+  filter_groups: string // 绑定过滤规则组名（| 分隔，空=不过滤）
   total_added: number
   total_deleted: number
   total_upload: number

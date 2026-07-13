@@ -57,7 +57,7 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 	hostBySite := buildHostBySite(siteHostMap)
 	cookies := parseJSON(entries[cookieName])
 
-	n := 0
+	ins := make([]oper.SiteInput, 0, len(sites))
 	for ptdSiteID, siteEl := range sites {
 		config, _ := siteEl.(map[string]any)
 		if config == nil {
@@ -80,7 +80,7 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 		if username == "" {
 			username = firstString(input, "username", "userName", "loginName")
 		}
-		_, err := s.siteOp.Create(oper.SiteInput{
+		ins = append(ins, oper.SiteInput{
 			Name:     name,
 			Platform: inferPlatform(ptdSiteID, config),
 			BaseURL:  baseURL,
@@ -90,10 +90,10 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 			Password: firstString(input, "password", "passWord", "loginPwd"),
 			IsActive: !ptdBool(config, "isOffline"),
 		})
-		if err != nil {
-			continue // 重复 name 等错误跳过
-		}
-		n++
+	}
+	n, err := s.siteOp.CreateMany(ins) // 单事务批量：N 次 fsync → 1 次
+	if err != nil {
+		return 0, err
 	}
 	if n == 0 {
 		return 0, errors.New("PTD 备份中无可导入的站点（均无有效 URL 或全部重复）")

@@ -85,6 +85,11 @@ async function submit() {
       ElMessage.warning('请选择 Agent')
       return
     }
+  } else if (form.value.type === 'rclone') {
+    if (!form.value.username) {
+      ElMessage.warning('请填写 remote 名')
+      return
+    }
   } else if (['webdav', 'alist', 'smb'].includes(form.value.type)) {
     if (!form.value.url) {
       ElMessage.warning('请填写地址')
@@ -295,7 +300,7 @@ onMounted(async () => {
             ></span>
           </div>
           <div class="url text-muted">
-            {{ fs.type === 'agent' ? (agentName(fs.agent_id) ? 'Agent: ' + agentName(fs.agent_id) : 'Agent #' + fs.agent_id) : fs.type === 'local' ? '本机' : fs.url }}{{ fs.base_path }}
+            {{ fs.type === 'agent' ? (agentName(fs.agent_id) ? 'Agent: ' + agentName(fs.agent_id) : 'Agent #' + fs.agent_id) : fs.type === 'local' ? '本机' : fs.type === 'rclone' ? ('rclone: ' + (fs.username || '(未设置 remote)')) : fs.url }}{{ fs.base_path }}
           </div>
           <div class="actions" @click.stop>
             <el-button size="small" link :loading="testing === fs.id" @click="testOne(fs)">测试</el-button>
@@ -324,11 +329,13 @@ onMounted(async () => {
             <el-radio value="webdav">WebDAV</el-radio>
             <el-radio value="alist">Alist</el-radio>
             <el-radio value="smb">SMB</el-radio>
+            <el-radio value="rclone">Rclone</el-radio>
             <el-radio value="agent">Agent</el-radio>
           </el-radio-group>
           <div v-if="form.type === 'local'" class="hint">本机：直接读写 PTPatronus 服务所在机器的本地目录，无需开网络服务。根路径填本机绝对路径（如 Windows <code>D:\Media</code> 或 Linux <code>/mnt/nas</code>）。⚠️ 后端进程拥有该目录的完整权限，请仅配置可信目录。</div>
           <div v-if="form.type === 'webdav'" class="hint">WebDAV：地址填完整 URL（如 http://host:5005），用户名密码按服务端配置填写。</div>
           <div v-if="form.type === 'alist'" class="hint">Alist：地址填 Alist 服务地址（如 http://host:5244），用户名密码按 Alist 配置填写（默认可留空）。</div>
+          <div v-if="form.type === 'rclone'" class="hint">Rclone：通过 rclone 二进制访问任意远端（Google Drive/OneDrive/S3/115 等）。二进制路径填可执行文件（如 <code>/usr/bin/rclone</code>，留空则用 PATH 中的 <code>rclone</code>）；remote 名填 rclone.conf 中的节名（如 <code>myremote</code>，不含冒号）；密码框粘贴完整 rclone.conf 内容（需含 <code>[myremote]</code> 段及 token 等凭据）。</div>
         </el-form-item>
         <template v-if="form.type === 'agent'">
           <el-form-item label="Agent">
@@ -337,6 +344,13 @@ onMounted(async () => {
             </el-select>
           </el-form-item>
           <div class="hint">Agent：选择已部署 ptpatronus-agent 的设备（飞牛/绿联等），根路径填 agent 机器上的绝对路径（如 /mnt/nas）。设备离线或 agent 版本过低（需 0.2.0+）时文件操作不可用。</div>
+        </template>
+        <template v-else-if="form.type === 'rclone'">
+          <el-form-item label="二进制路径"><el-input v-model="form.url" placeholder="rclone（留空用 PATH 中的 rclone）" /></el-form-item>
+          <el-form-item label="remote 名"><el-input v-model="form.username" placeholder="如 myremote（不含冒号）" /></el-form-item>
+          <el-form-item label="rclone.conf">
+            <el-input v-model="form.password" type="textarea" :rows="6" :placeholder="editingId ? '留空不修改' : '粘贴 rclone.conf 全文，需含 [myremote] 段及凭据'" />
+          </el-form-item>
         </template>
         <template v-else-if="form.type !== 'local'">
           <el-form-item label="地址"><el-input v-model="form.url" /></el-form-item>

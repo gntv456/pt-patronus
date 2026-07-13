@@ -78,6 +78,17 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     }
   }
 
+  // 洗版开关：开启后持续寻找更高画质版本，命中更优则替换库中旧版（电影达顶级 Pri100 自动完成）。
+  Future<void> _toggleBestVersion(Subscription s) async {
+    try {
+      await _api.update(s.id, {'best_version': !s.bestVersion});
+      await _load();
+      _toast(s.bestVersion ? '已关闭洗版' : '已开启洗版（自动升级画质）');
+    } catch (e) {
+      _toast('$e');
+    }
+  }
+
   // 分辨率过滤：弹窗编辑（留空=不过滤；后端空=不改，故已设值无法在此清空，与 Web 一致）。
   Future<void> _editResolution(Subscription s) async {
     final ctrl = TextEditingController(text: s.resolution);
@@ -257,6 +268,11 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                     _chip(_statusText(s.status), _statusColor(s.status)),
                     if (s.resolution.isNotEmpty)
                       _chip(s.resolution, PTColors.primary2),
+                    if (s.bestVersion)
+                      _chip(
+                        s.currentPriority > 0 ? '洗版 Pri${s.currentPriority}' : '洗版中',
+                        PTColors.success,
+                      ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -287,6 +303,20 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                       icon: const Icon(Icons.high_quality_outlined, size: 16),
                       label: Text(
                         s.resolution.isEmpty ? '设分辨率' : '改分辨率',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => _toggleBestVersion(s),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: s.bestVersion ? PTColors.success : null,
+                      ),
+                      icon: Icon(
+                        s.bestVersion ? Icons.auto_awesome : Icons.auto_awesome_outlined,
+                        size: 16,
+                      ),
+                      label: Text(
+                        s.bestVersion ? '洗版中' : '洗版',
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),

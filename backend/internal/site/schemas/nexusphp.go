@@ -237,7 +237,10 @@ func fetchClaimCounts(ctx context.Context, hc *httpclient.Client, baseURL, cooki
 // 不再出现「做种数=0、体积=N TB」的自相矛盾。best-effort，失败返回 (0, 0)。
 func fetchSeeding(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie, listAPI string) (count int, size int64) {
 	for _, tpl := range userTorrentListTemplates(listAPI) {
-		c, sz := fetchSeedingFromTemplate(ctx, hc, baseURL, uid, cookie, tpl)
+		c, sz, authoritative := fetchSeedingFromTemplate(ctx, hc, baseURL, uid, cookie, tpl)
+		if authoritative {
+			return c, sz // PTTime #outer 权威解析：size 可为 0（真实值），不 fallback 到下一模板
+		}
 		if sz > 0 {
 			return c, sz
 		}
@@ -248,11 +251,11 @@ func fetchSeeding(ctx context.Context, hc *httpclient.Client, baseURL, uid, cook
 	return count, 0
 }
 
-func fetchSeedingFromTemplate(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie, tpl string) (count int, size int64) {
+func fetchSeedingFromTemplate(ctx context.Context, hc *httpclient.Client, baseURL, uid, cookie, tpl string) (count int, size int64, authoritative bool) {
 	u := userTorrentListURL(baseURL, tpl, uid, "seeding", 0)
 	resp, err := hc.GetWithHeaders(ctx, u, cookie, userTorrentListHeaders(baseURL, uid, tpl), true)
 	if err != nil || resp.IsCloudflare() {
-		return 0, 0
+		return 0, 0, false
 	}
 	body := string(resp.Body)
 	reportedCount := 0
@@ -266,7 +269,7 @@ func fetchSeedingFromTemplate(ctx context.Context, hc *httpclient.Client, baseUR
 	}
 	if m := boldRecordsSizeRe.FindStringSubmatch(body); len(m) == 3 {
 		if sz := site.ParseBytes(m[2]); sz > 0 {
-			return site.ToInt(m[1]), sz
+			return site.ToInt(m[1]), sz, false
 		}
 	}
 	// 1. 汇总 div「N | SIZE」：N=做种数，SIZE=做种体积（站点官方值，最准）
@@ -278,15 +281,17 @@ func fetchSeedingFromTemplate(ctx context.Context, hc *httpclient.Client, baseUR
 			if count == 0 && reportedCount > 0 {
 				count = reportedCount
 			}
-			return count, sz
+			return count, sz, false
 		}
 	}
 	if doc, err := goquery.NewDocumentFromReader(strings.NewReader(body)); err == nil {
-		if c, sz := parsePTTimeSeedingSummary(doc); c > 0 && sz > 0 {
-			return c, sz
+		// PTTime 专用 #outer 汇总：命中即权威返回（size 可为 0——PTTime「资源总大小：0B」是站点真实值），
+		// 不 fallback 到通用表格解析，否则 ajax 表格累加会让做种体积与 #outer 不同源。
+		if c, sz, pttime := parsePTTimeSeedingSummary(doc); pttime && c > 0 {
+			return c, sz, true
 		}
 		if c, sz := parseTorrentListTotalSummary(doc.Selection); c > 0 && sz > 0 {
-			return c, sz
+			return c, sz, false
 		}
 	}
 	// 2. 回退：翻页逐 <td> 累加体积，并按「含体积 token 的行」数估算做种数（无汇总 div 的站点）
@@ -338,25 +343,47 @@ func fetchSeedingFromTemplate(ctx context.Context, hc *httpclient.Client, baseUR
 	if count == 0 && reportedCount > 0 {
 		count = reportedCount
 	}
-	return count, size
+	return count, size, false
 }
 
-func parsePTTimeSeedingSummary(doc *goquery.Document) (count int, size int64) {
+// parsePTTimeSeedingSummary 解析 PTTime getusertorrentlist.php 的 #outer 汇总。
+// PTTime 该页结构（非标准 nexusphp ajax，故 PT-depiler 专门重写 requestUserSeedingPage +
+// parseUserInfoForSeedingStatus）：#outer 直接子元素依次为 h1 / span(用户名) /
+// span(共有<b>N</b>条记录) / span(资源总大小：XB) / ...，对应 PT-depiler 的
+// #outer > span:nth-child(3) > b（做种数）与 :nth-child(4)（做种体积）。
+//
+// ok=true 表示命中此格式——即便 size=0（PTTime 对 0 流量种子显示「资源总大小：0B」，是站点
+// 真实值），调用方据此停止 fallback，不再误入 ajax 表格累加导致做种体积与 #outer 不同源。
+// 注意 :nth-child(N) 在【所有子元素】里数序（含首个 h1），不是「第 N 个 span」——
+// 故用 Children().Eq(2)/Eq(3) 并 Is("span") 校验；若用 ChildrenFiltered("span") 先过滤再数，
+// 索引会整体前移 1 位（h1 被排除）导致把「资源总大小」当做种数、「上传总量」当做种体积。
+func parsePTTimeSeedingSummary(doc *goquery.Document) (count int, size int64, ok bool) {
 	if doc == nil {
-		return 0, 0
+		return 0, 0, false
 	}
 	outer := doc.Find("#outer")
 	if outer.Length() == 0 {
-		return 0, 0
+		return 0, 0, false
 	}
-	if n := site.ToInt(outer.Find("span").Eq(2).Find("b").First().Text()); n > 0 {
-		count = n
+	// #outer 子元素序：h1(标题) / span(用户名) / span(共有<b>N</b>条记录) / span(资源总大小：XB) / ...
+	children := outer.Children()
+	if children.Length() >= 3 {
+		if node := children.Eq(2); node.Is("span") {
+			if n := site.ToInt(node.Find("b").First().Text()); n > 0 {
+				count = n
+				ok = true
+			}
+		}
 	}
-	sizeText := outer.Find("span").Eq(3).Text()
-	if tok := sizeTokenRe.FindString(sizeText); tok != "" {
-		size = site.ParseBytes(tok)
+	if children.Length() >= 4 {
+		if node := children.Eq(3); node.Is("span") {
+			if tok := sizeTokenRe.FindString(node.Text()); tok != "" {
+				size = site.ParseBytes(tok)
+				ok = true
+			}
+		}
 	}
-	return count, size
+	return count, size, ok
 }
 
 func fillSeedingFromDetail(doc *goquery.Document, u *site.UserInfo) {

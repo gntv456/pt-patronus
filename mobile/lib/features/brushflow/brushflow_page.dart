@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/brushflow.dart';
 import 'package:ptpatronus/api/downloader.dart';
+import 'package:ptpatronus/api/filter_rules.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
@@ -19,6 +20,7 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
   final _api = BrushFlowApi();
   final _siteApi = SiteApi();
   final _dlApi = DownloaderApi();
+  final _filterApi = FilterRuleApi();
 
   List<BrushFlowTask> _list = [];
   bool _loading = true;
@@ -27,6 +29,8 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
   // 站点 / 下载器名查表缓存（拉取一次，表单下拉 + 卡片 meta 共用）。
   List<Site> _sites = [];
   List<Downloader> _downloaders = [];
+  // 可选过滤规则组名缓存（表单多选）。
+  List<String> _filterGroups = [];
 
   // 选种 / 扫删进行中的任务 id，禁用对应按钮。
   final _busy = <int>{};
@@ -56,13 +60,18 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
   }
 
   Future<void> _ensureRefs() async {
-    if (_sites.isNotEmpty && _downloaders.isNotEmpty) return;
     try {
-      final results = await Future.wait([_siteApi.list(), _dlApi.list()]);
+      final results = await Future.wait([
+        _siteApi.list(),
+        _dlApi.list(),
+        _filterApi.groups(),
+      ]);
       if (!mounted) return;
       setState(() {
         _sites = results[0] as List<Site>;
         _downloaders = results[1] as List<Downloader>;
+        _filterGroups =
+            (results[2] as List<FilterRuleGroup>).map((g) => g.name).toList();
       });
     } catch (_) {
       // 名称解析回退到「#id」，不阻塞主流程。
@@ -240,6 +249,7 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
       builder: (_) => _BrushFlowForm(
         sites: _sites,
         downloaders: _downloaders,
+        filterGroups: _filterGroups,
         onSubmit: (body) async {
           try {
             await _api.create(body);
@@ -264,6 +274,7 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
       builder: (_) => _BrushFlowForm(
         sites: _sites,
         downloaders: _downloaders,
+        filterGroups: _filterGroups,
         initial: t,
         onSubmit: (body) async {
           try {
@@ -456,12 +467,14 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
 class _BrushFlowForm extends StatefulWidget {
   final List<Site> sites;
   final List<Downloader> downloaders;
+  final List<String> filterGroups;
   final BrushFlowTask? initial;
   final Future<bool> Function(Map<String, dynamic> body) onSubmit;
 
   const _BrushFlowForm({
     required this.sites,
     required this.downloaders,
+    required this.filterGroups,
     required this.onSubmit,
     this.initial,
   });
@@ -505,6 +518,8 @@ class _BrushFlowFormState extends State<_BrushFlowForm> {
   bool _paused = false;
   bool _deleteFiles = false;
   bool _saving = false;
+  // 选中的过滤规则组名（提交时 join('|')）。
+  final _selectedGroups = <String>{};
 
   static const _categories = ['综合', '电影', '电视剧', '音乐'];
 
@@ -523,6 +538,8 @@ class _BrushFlowFormState extends State<_BrushFlowForm> {
       _freeOnly = ini.freeOnly;
       _paused = ini.paused;
       _deleteFiles = ini.deleteFiles;
+      _selectedGroups.addAll(
+          ini.filterGroups.split('|').map((s) => s.trim()).where((s) => s.isNotEmpty));
     } else {
       _siteId = widget.sites.isNotEmpty ? widget.sites.first.id : null;
       _dlId =
@@ -589,6 +606,7 @@ class _BrushFlowFormState extends State<_BrushFlowForm> {
       'max_seeds': _parseInt(_maxSeedsCtrl.text),
       'save_path': _savePathCtrl.text.trim(),
       'category_dl': _categoryDlCtrl.text.trim(),
+      'filter_groups': _selectedGroups.join('|'),
     };
     final ok = await widget.onSubmit(body);
     if (!mounted) return;
@@ -721,6 +739,26 @@ class _BrushFlowFormState extends State<_BrushFlowForm> {
         ),
         _switchRow('启用', _enabled, (v) => setState(() => _enabled = v)),
         _switchRow('仅免费', _freeOnly, (v) => setState(() => _freeOnly = v)),
+        _field(
+          '过滤规则组（留空=不过滤）',
+          widget.filterGroups.isEmpty
+              ? const Text('暂无可用规则组，可在「过滤规则」页创建',
+                  style: TextStyle(fontSize: 12, color: Colors.grey))
+              : Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final g in widget.filterGroups)
+                      FilterChip(
+                        label: Text(g),
+                        selected: _selectedGroups.contains(g),
+                        onSelected: (v) => setState(() => v
+                            ? _selectedGroups.add(g)
+                            : _selectedGroups.remove(g)),
+                      ),
+                  ],
+                ),
+        ),
         _switchRow(
             '添加后暂停', _paused, (v) => setState(() => _paused = v)),
         const Divider(height: 20),

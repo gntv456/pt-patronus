@@ -320,3 +320,22 @@ func TestGenerateCoverSkipBadImage(t *testing.T) {
 		t.Errorf("content type = %q", ct)
 	}
 }
+
+// TestClampCoverOptions 防封面接口 OOM：超大 cols/rows/w/h 被夹到安全范围，且总像素有上限。
+func TestClampCoverOptions(t *testing.T) {
+	got := clampCoverOptions(CoverOptions{Cols: 2000, Rows: 2000, ThumbW: 2000, ThumbH: 2000})
+	if got.Cols > maxCoverCols || got.Rows > maxCoverRows {
+		t.Errorf("cols/rows not capped: %+v", got)
+	}
+	if got.ThumbW > maxCoverThumbW || got.ThumbH > maxCoverThumbH {
+		t.Errorf("thumb size not capped: %+v", got)
+	}
+	if px := got.Cols * got.Rows * got.ThumbW * got.ThumbH; px > maxCoverPixels {
+		t.Errorf("total pixels %d > cap %d", px, maxCoverPixels)
+	}
+	// 现实参数不受影响。
+	normal := clampCoverOptions(CoverOptions{Cols: 3, Rows: 3, ThumbW: 200, ThumbH: 300})
+	if normal != (CoverOptions{Cols: 3, Rows: 3, ThumbW: 200, ThumbH: 300}) {
+		t.Errorf("normal options altered: %+v", normal)
+	}
+}

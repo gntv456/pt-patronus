@@ -19,6 +19,7 @@ class RssSubscription {
   final String savePath;
   final String category;
   final String tags;
+  final String filterGroups; // 绑定过滤规则组名（| 分隔，空=不过滤）
   final String? lastCheckedAt;
   const RssSubscription({
     required this.id,
@@ -37,6 +38,7 @@ class RssSubscription {
     this.savePath = '',
     this.category = 'rss',
     this.tags = '',
+    this.filterGroups = '',
     this.lastCheckedAt,
   });
   factory RssSubscription.fromJson(Map<String, dynamic> j) => RssSubscription(
@@ -56,6 +58,7 @@ class RssSubscription {
         savePath: j['save_path'] as String? ?? '',
         category: j['category'] as String? ?? 'rss',
         tags: j['tags'] as String? ?? '',
+        filterGroups: j['filter_groups'] as String? ?? '',
         lastCheckedAt: j['last_checked_at'] as String?,
       );
 }

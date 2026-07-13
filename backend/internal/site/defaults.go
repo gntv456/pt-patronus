@@ -15,6 +15,10 @@ func DefaultNexusPHPSelectors() SiteSelectors {
 			"seeders":   {Selector: `a[href*="#seeders"]`},
 			"leechers":  {Selector: `a[href*="#leechers"]`},
 			"size":      {Selector: "td:nth-last-child(5)"},
+			// 免费/促销图标（NexusPHP 源码标准 pro_free class；inspect 校准：attr:alt="Free"）。
+			// search.go:113 Extract 非空 → Free=true，filter FREE 规则据此生效。
+			// class^="pro_free" 覆盖 pro_free / pro_free2up（含免费的促销）。
+			"free":      {Selector: `img[class^="pro_free"]`, Attr: "alt"},
 		},
 	}
 }

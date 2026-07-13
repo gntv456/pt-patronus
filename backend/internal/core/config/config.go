@@ -78,6 +78,7 @@ type Config struct {
 	SubscribeCron    string // 媒体订阅自动搜索+下载 cron，默认每 30 分钟
 	CloudStrmCron    string // 云盘 STRM 生成 + 订阅追更 cron，默认每 6 小时
 	RssCheckCron     string // RSS 订阅全局扫描 cron，默认每 5 分钟（按各订阅 interval_min 决定是否实际抓取）
+	TransferSweepCron string // 媒体整理 cron（兜底/重试：已完成种子→识别→重命名→硬链→刮削），默认每 10 分钟
 
 	// 媒体元数据源
 	TMDBAPIKey      string
@@ -101,6 +102,9 @@ type Config struct {
 
 	// 在线更新
 	UpdateManifestURL string // 官方版本清单 URL(gist raw 等)；空=只读自托管清单。客户端经本后端中转检查，不直连官方源
+
+	// 安全模式（SAFE_MODE）：跳过插件/调度/监控激活，仅启动核心 HTTP + 诊断端点（出问题时自救）
+	SafeMode bool
 }
 
 // Load reads configuration from the environment.
@@ -150,6 +154,7 @@ func Load() (*Config, error) {
 		SubscribeCron:           getenv("SUBSCRIBE_CRON", "*/30 * * * *"),
 		CloudStrmCron:           getenv("CLOUD_STRM_CRON", "0 */6 * * *"),
 		RssCheckCron:            getenv("RSS_CHECK_CRON", "*/5 * * * *"),
+		TransferSweepCron:       getenv("TRANSFER_SWEEP_CRON", "*/10 * * * *"),
 		// TMDB 默认带 MoviePilot 同款公开 key（TMDB API key 本就客户端可见、可公开），
 		// 让影视搜索开箱即用；仍可用 TMDB_API_KEY 覆盖。
 		TMDBAPIKey:         getenv("TMDB_API_KEY", "db55323b8d3e4154498498a75642b381"),
@@ -167,6 +172,7 @@ func Load() (*Config, error) {
 		LoginRatePerMin:    getenvInt("LOGIN_RATE_PER_MIN", 10),
 		GlobalRatePerSec:   getenvInt("GLOBAL_RATE_PER_SEC", 20),
 		UpdateManifestURL:  getenv("UPDATE_MANIFEST_URL", ""),
+		SafeMode:          getenvBool("SAFE_MODE", false),
 	}
 	cfg.PluginDevWatch = getenvBool("PLUGIN_DEV_WATCH", cfg.Env == "debug")
 	cfg.PluginDevWatchIntervalMS = getenvInt("PLUGIN_DEV_WATCH_INTERVAL_MS", 1000)

@@ -70,6 +70,22 @@ ptp-pluginctl package my-plugin --json-out dist/plugin-package.json
 `publish(type,data)` · `kv_get/set/delete(key)` · `sites()` · `site_cookie(id)` · `media_search(keyword,year)` ·
 `capabilities()`. All synchronous; raise `HostError` on non-2xx.
 
+### Tool RPC — ~80 host capabilities via one entry point
+
+`tools()` lists every tool your permissions allow; `call(name, input)` invokes any of them. Covers
+downloader, media server, subscribe, cloud/STRM, brush-flow, RSS, subtitle, reseed, transfer,
+dashboard, notification, filter, file storage, workflow. Typed convenience wrappers exist for the
+hottest domains (`torrents_list`, `torrents_add`, `mediaserver_library_scan`, `subscribe_list`,
+`send_notification`, `dashboard_overview`, …). Declare domain permissions (`downloader:read`,
+`mediaserver:write`, …) in your manifest. Full catalog + per-tool input schemas: `DEVGUIDE.md` →
+"Tool RPC".
+
+```python
+host.mediaserver_library_scan(server_id=1)        # typed convenience
+host.call("subscribe_check", {"id": 7})            # generic — works for any tool
+for t in host.tools(): print(t["name"])            # self-describing discovery
+```
+
 ## Versioning
 
 Package version (`0.1.0`) is independent of the PTPatronus app. The plugin **contract** is

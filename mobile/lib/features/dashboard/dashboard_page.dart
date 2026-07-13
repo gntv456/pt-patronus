@@ -355,10 +355,15 @@ class _DashboardPageState extends State<DashboardPage> {
     double Function(SiteStatItem) pick,
   ) => sites.fold<double>(0, (sum, s) => sum + pick(s));
 
-  double _avgRatio(List<SiteStatItem> sites) {
-    final ratios = sites.where((s) => s.ratio > 0).map((s) => s.ratio).toList();
-    if (ratios.isEmpty) return 0;
-    return ratios.reduce((a, b) => a + b) / ratios.length;
+  // 总分享率：优先用后端 totals.true_ratio（真实上传/下载，去魔力膨胀），否则回退到
+  // sum(uploaded)/sum(downloaded)。不再取各站 ratio 的平均——平均分享率数学上无意义，
+  // 且站点 ratio 含魔力/上传系数膨胀，会显著虚高（如 17.7 vs 真实 1.08）。
+  double _totalRatio(List<SiteStatItem> sites) {
+    final tr = _overview?.trueRatio ?? 0;
+    if (tr > 0) return tr;
+    final up = _sumInt(sites, (s) => s.uploaded);
+    final dl = _sumInt(sites, (s) => s.downloaded);
+    return dl > 0 ? up / dl : 0;
   }
 
   SiteStatItem? _topSiteBy(num Function(SiteStatItem) pick) {
@@ -621,7 +626,11 @@ class _DashboardPageState extends State<DashboardPage> {
     final totalUploads = _sumInt(sites, (s) => s.uploads);
     final totalBonus = _sumDouble(sites, (s) => s.bonus);
     final totalBonusPerHour = _sumDouble(sites, (s) => s.bonusPerHour);
-    final ratio = totalDownloaded > 0 ? totalUploaded / totalDownloaded : 0.0;
+    // 优先真实分享率（totals.true_ratio），避免魔力膨胀虚高。
+    final trueRatio = _overview?.trueRatio ?? 0;
+    final ratio = trueRatio > 0
+        ? trueRatio
+        : (totalDownloaded > 0 ? totalUploaded / totalDownloaded : 0.0);
     final displayUser = _shareDisplayUser(sites);
     final shownSites = _config.showSiteList
         ? sites.take(8).toList()
@@ -1471,7 +1480,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final totalUploads = _sumInt(sites, (s) => s.uploads);
     final totalBonus = _sumDouble(sites, (s) => s.bonus);
     final totalBonusPerHour = _sumDouble(sites, (s) => s.bonusPerHour);
-    final ratio = _avgRatio(sites);
+    final ratio = _totalRatio(sites);
 
     return GlassCard(
       padding: EdgeInsets.all(compact ? 12 : 16),

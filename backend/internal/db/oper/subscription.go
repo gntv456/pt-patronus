@@ -81,6 +81,13 @@ func (o *SubscriptionOper) SetStatus(id uint, status string) error {
 	return o.db.Model(&models.Subscription{}).Where("id = ?", id).Update("status", status).Error
 }
 
+// SetBestVersionProgress 回填洗版进度：当前最优 PriOrder（电影）/ 按集 PriOffset JSON（剧集）。
+// 用列级 Updates 避免全行 Save 覆盖并发变更。
+func (o *SubscriptionOper) SetBestVersionProgress(id uint, currentPriority int, episodePriority string) error {
+	return o.db.Model(&models.Subscription{}).Where("id = ?", id).
+		Updates(map[string]any{"current_priority": currentPriority, "episode_priority": episodePriority}).Error
+}
+
 // HitExists 该订阅是否已推送过此 torrent_key（去重）。
 func (o *SubscriptionOper) HitExists(subID uint, key string) (bool, error) {
 	var count int64

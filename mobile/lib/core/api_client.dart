@@ -14,6 +14,7 @@ class ApiClient {
   static const _kToken = 'token';
   static const _kUser = 'user';
   static const _kBaseUrl = 'base_url';
+  static const _kAllowInsecureHttp = 'allow_insecure_http';
 
   /// 运行时配的后端地址（SharedPreferences 持久化），优先于编译期 [Config.baseUrl]。
   /// 分发场景：每个用户后端不同，APP 首次启动让用户填，存本地。
@@ -56,6 +57,7 @@ class ApiClient {
   Future<void> loadBaseUrl() async {
     final p = await SharedPreferences.getInstance();
     _runtimeBaseUrl = p.getString(_kBaseUrl);
+    _allowInsecureHttp = p.getBool(_kAllowInsecureHttp) ?? false;
   }
 
   /// 设置并持久化后端地址（空串/null = 恢复编译期默认 Config.baseUrl）。
@@ -67,6 +69,21 @@ class ApiClient {
       await p.remove(_kBaseUrl);
     } else {
       await p.setString(_kBaseUrl, v);
+    }
+  }
+
+  /// 是否允许公网地址走明文 http（默认 false：仅放行私网 http）。
+  /// 用户在服务器配置页显式勾选「我知风险」才置 true——登录凭据将明文传输，自负风险。
+  bool _allowInsecureHttp = false;
+  bool get allowInsecureHttp => _allowInsecureHttp;
+
+  Future<void> setAllowInsecureHttp(bool v) async {
+    _allowInsecureHttp = v;
+    final p = await SharedPreferences.getInstance();
+    if (v) {
+      await p.setBool(_kAllowInsecureHttp, true);
+    } else {
+      await p.remove(_kAllowInsecureHttp);
     }
   }
 

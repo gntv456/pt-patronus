@@ -89,14 +89,16 @@ func (s *Service) Import(ctx context.Context, data []byte) (sites, downloaders i
 	if err := json.Unmarshal(data, &b); err != nil {
 		return 0, 0, fmt.Errorf("parse backup: %w", err)
 	}
+	siteIns := make([]oper.SiteInput, 0, len(b.Sites))
 	for _, se := range b.Sites {
-		if _, e := s.siteOp.Create(oper.SiteInput{
+		siteIns = append(siteIns, oper.SiteInput{
 			Name: se.Name, Platform: se.Platform, Definition: se.Definition,
 			BaseURL: se.BaseURL, Cookie: se.Cookie, IsActive: se.IsActive,
-		}); e != nil {
-			continue // 重复等错误跳过
-		}
-		sites++
+		})
+	}
+	sites, err = s.siteOp.CreateMany(siteIns) // 单事务批量：N 次 fsync → 1 次
+	if err != nil {
+		return 0, 0, err
 	}
 	for _, de := range b.Downloaders {
 		if _, e := s.dlOp.Create(oper.DownloaderInput{
@@ -125,17 +127,14 @@ func (s *Service) ImportMoviePilot(ctx context.Context, data []byte) (int, error
 	if err := json.Unmarshal(data, &list); err != nil {
 		return 0, fmt.Errorf("parse moviepilot sites: %w", err)
 	}
-	n := 0
+	ins := make([]oper.SiteInput, 0, len(list))
 	for _, m := range list {
 		if m.Name == "" {
 			continue
 		}
-		if _, err := s.siteOp.Create(oper.SiteInput{
+		ins = append(ins, oper.SiteInput{
 			Name: m.Name, Platform: "nexusphp", BaseURL: m.URL, Cookie: m.Cookie, IsActive: true,
-		}); err != nil {
-			continue
-		}
-		n++
+		})
 	}
-	return n, nil
+	return s.siteOp.CreateMany(ins)
 }

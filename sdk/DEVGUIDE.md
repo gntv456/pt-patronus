@@ -139,6 +139,94 @@ Permissions are accepted at install (admin must approve the exact set) + wildcar
 `host.event.subscription`, `host.schedule.cron`, `host.api.*` (config/log/notice/event/kv/site/media),
 `host.ui.view/bridge` — inferred from your manifest (`entry.command`, `events`, `schedule`, `views`, `permissions`).
 
+## Tool RPC — the full host capability surface (~80 tools)
+
+The endpoints above are the legacy narrow surface. **Tool RPC** is the full surface: a single
+`POST /tools/{name}` dispatches to ~80 host tools covering every backend chain (downloader, media
+server, subscribe, cloud/STRM, brush-flow, RSS, subtitle, reseed, transfer, dashboard, notification,
+filter, file storage, workflow). It's **additive** — legacy endpoints still work; new plugins should
+prefer Tool RPC.
+
+```python
+host = PTPHostClient.from_env()
+
+# Self-describing: list every tool your permissions allow you to call.
+for t in host.tools():
+    print(t["name"], t.get("permission"), t.get("description"))
+
+# Generic call (works for ANY tool):
+host.call("mediaserver_library_scan", {"server_id": 1})
+
+# Typed convenience wrappers exist for the hottest domains (thin sugar over call):
+host.torrents_list(1)
+host.subscribe_list()
+host.mediaserver_library_scan(1)
+host.send_notification("done", "scan finished")
+```
+
+```typescript
+const host = PTPHostClient.fromEnv()
+await host.tools()                                  // list
+await host.call<PlaybackReport>('mediaserver_playback_report', { server_id: 1, days: 30 })
+await host.torrentsAdd(1, 'magnet:?xt=...')         // typed convenience
+```
+
+### Tool catalog (by domain)
+
+`R`=read perm · `W`=write perm · 🔧=destructive. Permission column shows the **domain** token; declare
+it in `permissions[]`. Wildcards work (`downloader:*`, `*`).
+
+| Domain | Tool | Perm |
+|---|---|---|
+| system | `system.info` | (public) |
+| site | `sites.list` `torrent_search` `site_messages` `site_freeleech` | `site:read` |
+| site | `site_checkin_all` | `site:action` |
+| media | `media_search` `media_detail` `recommend_feeds` | `media:read` |
+| downloader | `downloaders.list` `torrents_list` `torrents_stats` `torrents_files` `torrents_peers` `torrents_trackers` `downloader_categories` `downloader_tags` | `downloader:read` |
+| downloader | `torrents_add` `torrents_pause` `torrents_resume` `torrents_set_category` `torrents_set_tags` `torrents_recheck` `torrents_reannounce` `torrents_set_limits` `torrents_set_location` `torrents_set_share_limits` `torrents_set_force_start` | `downloader:write` |
+| downloader | `torrents_delete` 🔧 | `downloader:write` |
+| mediaserver | `mediaserver_list` `mediaserver_libraries` `mediaserver_playback_report` `mediaserver_duplicates` | `mediaserver:read` |
+| mediaserver | `mediaserver_library_scan` `mediaserver_refresh` `mediaserver_notify` | `mediaserver:write` |
+| subscribe | `subscribe_list` `subscribe_get` | `subscribe:read` |
+| subscribe | `subscribe_create` `subscribe_delete` `subscribe_check` | `subscribe:write` |
+| transfer | `transfer_history` | `transfer:read` |
+| transfer | `transfer_organize` `transfer_redo` `transfer_sweep` | `transfer:write` |
+| reseed | `reseed_list` `reseed_find_candidates` `reseed_find_missing` | `reseed:read` |
+| reseed | `reseed_run` `reseed_resolve` | `reseed:write` |
+| dashboard | `dashboard_overview` `dashboard_trend` | `dashboard:read` |
+| notify | `send_notification` (multi-channel, differs from `notice()` 站内) | `notify:send` |
+| cloud | `cloud_list` `cloud_browse` `cloud_quota` `cloud_rules` | `cloud:read` |
+| cloud | `cloud_generate_strm` `cloud_generate_all` | `cloud:write` |
+| brushflow | `brushflow_tasks_list` `brushflow_task_get` `brushflow_seeds` | `brushflow:read` |
+| brushflow | `brushflow_run_select` `brushflow_run_sweep` | `brushflow:write` |
+| rss | `rss_list` `rss_items` | `rss:read` |
+| rss | `rss_check` | `rss:write` |
+| subtitle | `subtitle_search` | `subtitle:read` |
+| filter | `filter_builtin_rules_query` `filter_custom_rules_query` `filter_rule_groups_query` | `filter:read` |
+| filter | `filter_custom_rule_create/update` `filter_rule_group_create/update` `filter_custom_rule_delete` 🔧 `filter_rule_group_delete` 🔧 | `filter:write` |
+| file | `file_list` | `file:read` |
+| file | `file_mkdir` `file_delete` 🔧 | `file:write` |
+| workflow | `workflow_list` `workflow_catalog` | `workflow:read` |
+| workflow | `workflow_run` | `workflow:write` |
+
+Each tool's exact input schema is returned by `host.tools()` (`input_schema` field) — query it at
+runtime rather than hard-coding field names. Inputs use snake_case keys (`downloader_id`, `server_id`,
+`hashes`, ...).
+
+### Behavior notes
+
+- **Per-call timeout** is 30s by default; slow tools (`mediaserver_library_scan`, `transfer_organize`,
+  `reseed_run`, `cloud_generate_strm`, `subscribe_check`, `rss_check`, `workflow_run`, `transfer_redo`,
+  `mediaserver_refresh`) get 60s. For anything longer, run async in your process (see below).
+- **Write audit**: successful `:write` / `:action` / `:send` calls are logged to `plugin_logs`
+  (visible in the plugin log UI); failures log as warning.
+- **Permission denial** returns HTTP 403 with `{"permission":"downloader:write"}` — surface it to the
+  user so they know which permission to add.
+- **Body limit** 1 MB per call (loopback JSON).
+- **Not yet exposed** (open for follow-up): `subtitle_download` (needs struct round-trip), `file_upload`
+  /`file_download` (binary streams — will use a multipart endpoint), `*_create` for full-struct CRUD
+  (brushflow/rss/cloud-drive create). Use the REST API or ask for them.
+
 ## Long-running work MUST be async
 
 Each `/action` call is capped at ~30s by the host. Batch jobs (scanning a library, scraping many

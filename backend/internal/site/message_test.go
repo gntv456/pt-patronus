@@ -2,6 +2,7 @@ package site
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -42,6 +43,37 @@ func TestParseMessages(t *testing.T) {
 	}
 	if got[1].IsRead != true {
 		t.Error("msg1 should be read")
+	}
+}
+
+// TestParseMessages_PTTime PTTime messages.php：td 序含图标/回复数格导致 cells.Eq(2) 错位
+// （td[2] 是主题不是发件人），发件人在 td[3] 的 userdetails 链接（同时给 uid 与用户名两个链接）。
+// 验证 sender 从 userdetails 链接取用户名（跳过纯数字 uid），date 从后续格扫到。
+func TestParseMessages_PTTime(t *testing.T) {
+	html := `<html><body><table>
+		<tr class="colhead"><td class="rowfollow">状态</td><td class="rowfollow"></td><td class="rowfollow">主题</td><td class="rowfollow">发件人</td><td class="rowfollow">日期</td><td class="rowfollow"></td><td class="rowfollow">操作</td></tr>
+		<tr>
+			<td class="rowfollow"></td>
+			<td class="rowfollow">🧾</td>
+			<td class="rowfollow"><a href="messages.php?action=viewmessage&id=763247">种子评论：字幕问题</a></td>
+			<td class="rowfollow"><a href="messages.php?action=viewmailbox&keyword=23736">🔁</a> <a href="userdetails.php?id=23736">23736</a> <a href="userdetails.php?id=23736">ptupup</a></td>
+			<td class="rowfollow">2025-02-03 00:15:38</td>
+			<td class="rowfollow"></td>
+			<td class="rowfollow">回复</td>
+		</tr>
+	</table></body></html>`
+	got := ParseMessages(docFromHTML(t, html), MailboxInbox)
+	if len(got) != 1 {
+		t.Fatalf("pttime messages: got %d want 1 (header skipped)", len(got))
+	}
+	if got[0].Title != "种子评论：字幕问题" {
+		t.Errorf("pttime msg title: got %q", got[0].Title)
+	}
+	if got[0].Sender != "ptupup" {
+		t.Errorf("pttime msg sender: got %q want ptupup (not 主题/uid)", got[0].Sender)
+	}
+	if !strings.Contains(got[0].Date, "2025-02-03") {
+		t.Errorf("pttime msg date: got %q", got[0].Date)
 	}
 }
 

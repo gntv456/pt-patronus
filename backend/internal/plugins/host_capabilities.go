@@ -22,6 +22,10 @@ const (
 	HostCapabilityAPIMediaSearch             = "host.api.media.search"
 	HostCapabilityUIView                     = "host.ui.view"
 	HostCapabilityUIBridge                   = "host.ui.bridge"
+	// HostCapabilityAPITools 是统一 Tool RPC 的伞能力（GET /tools、POST /tools/{name}、
+	// Bridge tool.list/tool.call）。镜像 host.ui.bridge：一个能力，多个域级权限控制可见/可调的 tool。
+	// 插件声明任意 *:read/*:write/tool 权限即获得此能力，经 hasPluginPermission 通配符匹配。
+	HostCapabilityAPITools = "host.api.tools"
 )
 
 var permissionHostCapabilities = map[string][]string{
@@ -36,6 +40,35 @@ var permissionHostCapabilities = map[string][]string{
 	"site:read":     {HostCapabilityAPISiteRead},
 	"site:cookie":   {HostCapabilityAPISiteCookie},
 	"media:search":  {HostCapabilityAPIMediaSearch},
+	// Tool RPC 域级权限：每个都授予统一伞能力 host.api.tools。
+	// tool 级别的实际可见/可调由 registry.VisibleTools / Dispatch 经 hasPluginPermission 二次过滤。
+	"downloader:read":  {HostCapabilityAPITools},
+	"downloader:write": {HostCapabilityAPITools},
+	"mediaserver:read": {HostCapabilityAPITools},
+	"mediaserver:write": {HostCapabilityAPITools},
+	"subscribe:read":   {HostCapabilityAPITools},
+	"subscribe:write":  {HostCapabilityAPITools},
+	"cloud:read":       {HostCapabilityAPITools},
+	"cloud:write":      {HostCapabilityAPITools},
+	"brushflow:read":   {HostCapabilityAPITools},
+	"brushflow:write":  {HostCapabilityAPITools},
+	"rss:read":         {HostCapabilityAPITools},
+	"rss:write":        {HostCapabilityAPITools},
+	"subtitle:read":    {HostCapabilityAPITools},
+	"reseed:read":      {HostCapabilityAPITools},
+	"reseed:write":     {HostCapabilityAPITools},
+	"transfer:read":    {HostCapabilityAPITools},
+	"transfer:write":   {HostCapabilityAPITools},
+	"dashboard:read":   {HostCapabilityAPITools},
+	"notify:send":      {HostCapabilityAPITools},
+	"filter:read":      {HostCapabilityAPITools},
+	"filter:write":     {HostCapabilityAPITools},
+	"site:action":      {HostCapabilityAPITools},
+	"media:read":       {HostCapabilityAPITools},
+	"file:read":        {HostCapabilityAPITools},
+	"file:write":       {HostCapabilityAPITools},
+	"workflow:read":    {HostCapabilityAPITools},
+	"workflow:write":   {HostCapabilityAPITools},
 }
 
 func supportedHostCapabilities() []string {
@@ -57,6 +90,7 @@ func supportedHostCapabilities() []string {
 		HostCapabilityAPIMediaSearch,
 		HostCapabilityUIView,
 		HostCapabilityUIBridge,
+		HostCapabilityAPITools,
 	}
 }
 

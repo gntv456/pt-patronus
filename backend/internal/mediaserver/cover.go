@@ -34,6 +34,48 @@ type CoverOptions struct {
 	ThumbH int
 }
 
+// 封面画布尺寸安全上限：封面接口对登录用户开放（非 admin），且为 GET（绕过 MaxBody），
+// 必须防止 cols/rows/w/h 被构造出超大画布导致 image.NewRGBA 分配 OOM 杀进程。
+const (
+	maxCoverCols   = 10
+	maxCoverRows   = 10
+	maxCoverThumbW = 600
+	maxCoverThumbH = 600
+	maxCoverPixels = 8_000_000 // 8MP ≈ 32MB RGBA，足够海报墙
+)
+
+// clampCoverOptions 把用户传入的拼图参数夹到安全范围，防止画布像素爆炸（OOM）。
+func clampCoverOptions(opt CoverOptions) CoverOptions {
+	if opt.Cols > maxCoverCols {
+		opt.Cols = maxCoverCols
+	}
+	if opt.Rows > maxCoverRows {
+		opt.Rows = maxCoverRows
+	}
+	if opt.ThumbW > maxCoverThumbW {
+		opt.ThumbW = maxCoverThumbW
+	}
+	if opt.ThumbH > maxCoverThumbH {
+		opt.ThumbH = maxCoverThumbH
+	}
+	// 总像素仍超上限：按比例缩小缩略图尺寸（下界 100px 保证可读）。
+	for opt.Cols*opt.Rows*opt.ThumbW*opt.ThumbH > maxCoverPixels {
+		shrunk := false
+		if opt.ThumbW > 100 {
+			opt.ThumbW--
+			shrunk = true
+		}
+		if opt.ThumbH > 100 {
+			opt.ThumbH--
+			shrunk = true
+		}
+		if !shrunk {
+			break
+		}
+	}
+	return opt
+}
+
 // DefaultCoverOptions 合理默认：3×3 网格，每张 200×300。
 func DefaultCoverOptions() CoverOptions {
 	return CoverOptions{Cols: 3, Rows: 3, ThumbW: 200, ThumbH: 300}
@@ -53,6 +95,7 @@ func GenerateCover(ctx context.Context, c Client, libraryID string, opt CoverOpt
 	if opt.ThumbH <= 0 {
 		opt.ThumbH = 300
 	}
+	opt = clampCoverOptions(opt)
 	limit := opt.Cols * opt.Rows
 	items, err := c.RecentItems(ctx, libraryID, limit)
 	if err != nil {

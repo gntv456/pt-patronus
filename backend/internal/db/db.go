@@ -57,6 +57,8 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		&models.ContractRule{},
 		&models.MediaServer{},
 		&models.CloudDrive{}, &models.StrmRule{}, &models.StrmRecord{},
+		&models.TransferHistory{}, &models.DownloadMediaLink{},
+		&models.AgentConversation{}, &models.AgentMessage{},
 	); err != nil {
 		return nil, fmt.Errorf("automigrate: %w", err)
 	}

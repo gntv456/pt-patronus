@@ -63,6 +63,8 @@ const (
 	SourceWorkflow     = "workflow"      // 工作流执行（手动/定时/事件）
 	SourceRssHit       = "rss_hit"       // RSS 订阅命中（自动下载）
 	SourceWebhook      = "webhook"       // 进站 Webhook 触发
+	SourceTransferDone = "transfer_done" // 媒体整理完成
+	SourceTransferFail = "transfer_fail" // 媒体整理失败
 	// 勋章墙价格/状态变动（定时刷新 diff 触发）
 	SourceMedalNew        = "medal_new"         // 新勋章可购买
 	SourceMedalAvailable  = "medal_available"   // 上架可购买

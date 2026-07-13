@@ -73,6 +73,11 @@ type Torrent struct {
 	Tags        []string `json:"tags,omitempty"`
 	Free        bool     `json:"free,omitempty"`
 	SiteName    string   `json:"site_name,omitempty"` // 来源站（工作流/RSS 保留；SearchSites 已按站聚合但 Torrent 单条无站名）
+	// 规则引擎结构化字段（publish_time / downloadvolumefactor 规则用）。
+	// 未填充时引擎降级：Free 近似 factor、PubDate 零值时 publish_time 规则放行。
+	PubDate              time.Time `json:"pub_date,omitempty"`
+	DownloadVolumeFactor float64   `json:"downloadvolumefactor,omitempty"` // 0=FREE,1=正常,0.5/2=促销；0 且 Free=false 视为未知→1
+	Labels               []string  `json:"labels,omitempty"`
 }
 
 // HRTorrent 是一条处于 H&R（Hit & Run）考核中的种子。

@@ -35,10 +35,11 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata wget su-exec && \
     addgroup -S app && adduser -S app -G app
 WORKDIR /app
-COPY --from=backend /out/ptpatronus /app/ptpatronus
-COPY backend/definitions /app/definitions
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh && mkdir -p /app/data && chown -R app:app /app
+# --chown 在 COPY 时设定属主，避免随后 `chown -R` 把 50MB 二进制重写进新层（省 ~50MB 镜像体积）。
+COPY --chown=app:app --from=backend /out/ptpatronus /app/ptpatronus
+COPY --chown=app:app backend/definitions /app/definitions
+COPY --chown=app:app entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && mkdir -p /app/data
 # 不设 USER app：entrypoint 以 root 跑（chown 挂载卷 /app/data 给 app），再 su-exec 切 app 跑主程序。
 # 这样宿主卷（compose 自动建，默认属主 root）也能被 app 写（密钥自动生成/SQLite），无需用户手动 chmod。
 ENV APP_ENV=release HTTP_ADDR=:8088 DATA_DIR=/app/data DEFINITIONS_DIR=/app/definitions

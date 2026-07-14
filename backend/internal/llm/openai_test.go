@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -63,5 +64,47 @@ func TestOpenAIChatStream_ParseReasoningContentToolCalls(t *testing.T) {
 	}
 	if !sawDone {
 		t.Fatal("missing done")
+	}
+}
+
+// TestOpenAIChatStream_Usage 断言 include_usage 末块的 token 用量被解析为 EventUsage。
+func TestOpenAIChatStream_Usage(t *testing.T) {
+	body := strings.Join([]string{
+		`data: {"choices":[{"delta":{"content":"hi"}}]}`,
+		``,
+		`data: {"choices":[],"usage":{"prompt_tokens":42,"completion_tokens":7,"total_tokens":49}}`,
+		``,
+		`data: [DONE]`,
+		``,
+	}, "\n")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 验证请求确实带了 stream_options.include_usage
+		var req map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if so, ok := req["stream_options"].(map[string]any); !ok || so["include_usage"] != true {
+			t.Errorf("request missing stream_options.include_usage=true: %+v", req["stream_options"])
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	p := New(Config{Provider: "openai", BaseURL: srv.URL, APIKey: "k"})
+	ch, err := p.ChatStream(context.Background(), Req{Messages: []Message{{Role: RoleUser, Content: "hi"}}, Model: "m"})
+	if err != nil {
+		t.Fatalf("ChatStream: %v", err)
+	}
+	var usage *Usage
+	for ev := range ch {
+		if ev.Type == EventUsage {
+			usage = ev.Usage
+		}
+	}
+	if usage == nil {
+		t.Fatal("missing EventUsage")
+	}
+	if usage.InputTokens != 42 || usage.OutputTokens != 7 {
+		t.Fatalf("usage=%+v", usage)
 	}
 }

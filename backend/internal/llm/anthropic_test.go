@@ -59,3 +59,40 @@ func TestAnthropicChatStream_ThinkingTextToolUse(t *testing.T) {
 		t.Fatalf("calls: %+v", calls)
 	}
 }
+
+// TestAnthropicChatStream_Usage 断言 message_start 的 input_tokens 与 message_delta 的 output_tokens
+// 被汇总为 EventUsage（在 message_stop 时下发）。
+func TestAnthropicChatStream_Usage(t *testing.T) {
+	body := strings.Join([]string{
+		`event: message_start`, `data: {"type":"message_start","message":{"usage":{"input_tokens":128}}}`, ``,
+		`event: content_block_start`, `data: {"type":"content_block_start","index":0,"content_block":{"type":"text"}}`, ``,
+		`event: content_block_delta`, `data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"hi"}}`, ``,
+		`event: content_block_stop`, `data: {"type":"content_block_stop","index":0}`, ``,
+		`event: message_delta`, `data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":64}}`, ``,
+		`event: message_stop`, `data: {"type":"message_stop"}`, ``,
+	}, "\n")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	p := New(Config{Provider: "anthropic", BaseURL: srv.URL, APIKey: "k"})
+	ch, err := p.ChatStream(context.Background(), Req{Messages: []Message{{Role: RoleUser, Content: "hi"}}, Model: "claude"})
+	if err != nil {
+		t.Fatalf("ChatStream: %v", err)
+	}
+	var usage *Usage
+	for ev := range ch {
+		if ev.Type == EventUsage {
+			usage = ev.Usage
+		}
+	}
+	if usage == nil {
+		t.Fatal("missing EventUsage")
+	}
+	if usage.InputTokens != 128 || usage.OutputTokens != 64 {
+		t.Fatalf("usage=%+v", usage)
+	}
+}

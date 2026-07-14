@@ -219,7 +219,7 @@ func buildBrushFlowTools(bf *chain.BrushFlowChain) []mcp.Tool {
 		{Name: "brushflow_run_select", Description: "Manually trigger seed selection of a brush-flow task.", InputSchema: objSchema(map[string]any{"task_id": intProp("")}, []string{"task_id"}), Handler: func(ctx context.Context, a map[string]any) (string, error) {
 			return jsonResult(okCount("selected", 1, bf.RunSelect(ctx, uint(argInt(a, "task_id")))))
 		}},
-		{Name: "brushflow_run_sweep", Description: "Manually trigger sweep (delete) of a brush-flow task.", InputSchema: objSchema(map[string]any{"task_id": intProp("")}, []string{"task_id"}), Handler: func(ctx context.Context, a map[string]any) (string, error) {
+		{Name: "brushflow_run_sweep", Description: "Manually trigger sweep (delete) of a brush-flow task.", Risk: mcp.RiskDestructive, RiskNote: "触发刷流删除已达标种子（做种数据丢失）", InputSchema: objSchema(map[string]any{"task_id": intProp("")}, []string{"task_id"}), Handler: func(ctx context.Context, a map[string]any) (string, error) {
 			return jsonResult(okCount("swept", 1, bf.RunSweep(ctx, uint(argInt(a, "task_id")))))
 		}},
 	}
@@ -267,7 +267,7 @@ func buildFileTools(fc *chain.FileManagerChain) []mcp.Tool {
 		{Name: "file_mkdir", Description: "Create a directory on a storage backend.", InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "path": strProp("")}, []string{"storage_id", "path"}), Handler: func(ctx context.Context, a map[string]any) (string, error) {
 			return jsonResult(okCount("created", 1, fc.Mkdir(ctx, uint(argInt(a, "storage_id")), argString(a, "path", ""))))
 		}},
-		{Name: "file_delete", Description: "Delete a file or directory on a storage backend (irreversible).", InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "path": strProp("")}, []string{"storage_id", "path"}), Handler: func(ctx context.Context, a map[string]any) (string, error) {
+		{Name: "file_delete", Description: "Delete a file or directory on a storage backend (irreversible).", Risk: mcp.RiskDestructive, RiskNote: "删除存储后端文件/目录（不可恢复）", InputSchema: objSchema(map[string]any{"storage_id": intProp(""), "path": strProp("")}, []string{"storage_id", "path"}), Handler: func(ctx context.Context, a map[string]any) (string, error) {
 			return jsonResult(okCount("deleted", 1, fc.Delete(ctx, uint(argInt(a, "storage_id")), argString(a, "path", ""))))
 		}},
 	}
@@ -283,7 +283,7 @@ func buildWorkflowTools(wf *chain.WorkflowChain) []mcp.Tool {
 		{Name: "workflow_catalog", Description: "List available workflow node types (catalog).", InputSchema: noArgsSchema(), Handler: func(_ context.Context, _ map[string]any) (string, error) {
 			return mcpJSON(wf.Catalog()), nil
 		}},
-		{Name: "workflow_run", Description: "Run a workflow by id with a trigger and optional event data.", InputSchema: objSchema(map[string]any{"id": intProp(""), "trigger": strProp("manual | api"), "event_data": map[string]any{"type": "object"}}, []string{"id"}), Timeout: slowTimeout, Handler: func(ctx context.Context, a map[string]any) (string, error) {
+		{Name: "workflow_run", Description: "Run a workflow by id with a trigger and optional event data.", Risk: mcp.RiskDestructive, RiskNote: "运行任意工作流（可含删除/覆盖/发送等任意节点，影响不可预判）", InputSchema: objSchema(map[string]any{"id": intProp(""), "trigger": strProp("manual | api"), "event_data": map[string]any{"type": "object"}}, []string{"id"}), Timeout: slowTimeout, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 			data, _ := a["event_data"].(map[string]any)
 			return jsonResult(wf.Run(ctx, uint(argInt(a, "id")), argString(a, "trigger", "api"), data))
 		}},

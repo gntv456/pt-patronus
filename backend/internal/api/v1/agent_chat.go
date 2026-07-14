@@ -14,13 +14,13 @@ import (
 
 // AgentChatHandler 处理 AI 助手的 SSE 对话 + 会话历史 + provider 配置。
 type AgentChatHandler struct {
-	agent     *aiagent.Agent
-	convList  func() ([]models.AgentConversation, error)
+	agent      *aiagent.Agent
+	convList   func() ([]models.AgentConversation, error)
 	convCreate func(*models.AgentConversation) error
 	convDelete func(uint) error
-	msgList   func(uint) ([]models.AgentMessage, error)
-	kv        aiagent.KVStore
-	crypto    aiagent.Crypto
+	msgList    func(uint) ([]models.AgentMessage, error)
+	kv         aiagent.KVStore
+	crypto     aiagent.Crypto
 }
 
 // NewAgentChatHandler 构造。conv/msg 回调由 app.go 绑 oper。
@@ -89,6 +89,12 @@ func (h *AgentChatHandler) Chat(c *gin.Context) {
 			event, data = "tool_call", map[string]any{"id": ev.ToolCall.ID, "name": ev.ToolCall.Name, "arguments": ev.ToolCall.Arguments}
 		case llm.EventToolResult:
 			event, data = "tool_result", map[string]any{"id": ev.ToolCall.ID, "name": ev.ToolCall.Name, "result": ev.Text}
+		case llm.EventConfirmRequest:
+			token, risk, summary := "", "", ""
+			if ev.Confirm != nil {
+				token, risk, summary = ev.Confirm.Token, ev.Confirm.Risk, ev.Confirm.Summary
+			}
+			event, data = "confirm_request", map[string]any{"id": ev.ToolCall.ID, "name": ev.ToolCall.Name, "arguments": ev.ToolCall.Arguments, "token": token, "risk": risk, "summary": summary}
 		case llm.EventDone:
 			event, data = "done", map[string]any{}
 		case llm.EventError:
@@ -154,19 +160,55 @@ func (h *AgentChatHandler) DeleteConversation(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
 }
 
+// agentConfirmReq 危险工具确认决断请求体。
+type agentConfirmReq struct {
+	ToolCallID string `json:"tool_call_id" binding:"required"`
+	Approved   bool   `json:"approved"`
+}
+
+// Confirm 送达一次危险工具确认决断（用户在 confirm_request 弹窗选择后调用）。
+// token = convID:toolCallID；无在途确认返回 404。
+func (h *AgentChatHandler) Confirm(c *gin.Context) {
+	convID, ok := parseID(c)
+	if !ok {
+		return
+	}
+	var in agentConfirmReq
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	token := fmt.Sprintf("%d:%s", convID, in.ToolCallID)
+	if !h.agent.Resolve(token, in.Approved) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "无在途确认（已过期、已取消或已处理）"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"resolved": true, "approved": in.Approved})
+}
+
+// Tools 返回全部工具目录（含 read/write/destructive 风险等级），供白名单 UI 分组勾选。
+func (h *AgentChatHandler) Tools(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"tools": h.agent.ToolCatalog()})
+}
+
+// Stats 返回用量统计快照（请求数/Token/费用/延迟/错误/429/工具成功率）。
+func (h *AgentChatHandler) Stats(c *gin.Context) {
+	c.JSON(http.StatusOK, h.agent.Stats())
+}
+
 // agentConfigReq 配置更新请求体（api_key 留空=不改）。
 type agentConfigReq struct {
 	Enabled        bool     `json:"enabled"`
-	Provider       string   `json:"provider"`
-	BaseURL        string   `json:"base_url"`
-	APIKey         string   `json:"api_key"` // 明文（仅写入时；GET 不返）
-	Model          string   `json:"model"`
-	Temperature    float64  `json:"temperature"`
-	MaxTokens      int      `json:"max_tokens"`
+	Provider       string   `json:"provider" binding:"required,oneof=openai anthropic"`
+	BaseURL        string   `json:"base_url" binding:"required,url,max=2048"`
+	APIKey         string   `json:"api_key" binding:"max=8192"` // 明文（仅写入时；GET 不返）
+	Model          string   `json:"model" binding:"required,max=256"`
+	Temperature    float64  `json:"temperature" binding:"min=0,max=2"`
+	MaxTokens      int      `json:"max_tokens" binding:"min=1,max=200000"`
 	EnableThinking bool     `json:"enable_thinking"`
-	MaxIterations  int      `json:"max_iterations"`
-	SystemPrompt   string   `json:"system_prompt"`
-	EnabledTools   []string `json:"enabled_tools"`
+	MaxIterations  int      `json:"max_iterations" binding:"min=1,max=30"`
+	SystemPrompt   string   `json:"system_prompt" binding:"required,max=20000"`
+	EnabledTools   []string `json:"enabled_tools" binding:"max=512,dive,required,max=128"`
 }
 
 // GetConfig 读 provider 配置（脱敏，api_key 仅留 _configured）。

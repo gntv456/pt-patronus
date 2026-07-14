@@ -53,20 +53,39 @@ type Req struct {
 type EventType string
 
 const (
-	EventText       EventType = "text"        // 文本增量
-	EventReasoning  EventType = "reasoning"  // 思考增量（深度思考）
-	EventToolCall   EventType = "tool_call"  // 一次完整的工具调用（流末发）
-	EventToolResult EventType = "tool_result" // 工具执行结果（agent 层产出）
-	EventDone       EventType = "done"       // 本轮 provider 响应结束
-	EventError      EventType = "error"      // 错误（流内）
+	EventText          EventType = "text"           // 文本增量
+	EventReasoning     EventType = "reasoning"     // 思考增量（深度思考）
+	EventToolCall      EventType = "tool_call"     // 一次完整的工具调用（流末发）
+	EventToolResult    EventType = "tool_result"    // 工具执行结果（agent 层产出）
+	EventConfirmRequest EventType = "confirm_request" // 危险工具执行前请求用户确认（agent 层产出）
+	EventUsage         EventType = "usage"         // 本轮 token 用量（provider 流末产出，供统计）
+	EventDone          EventType = "done"          // 本轮 provider 响应结束
+	EventError         EventType = "error"         // 错误（流内）
 )
+
+// ConfirmRequest 是危险工具执行前的确认请求（携带令牌与风险摘要）。
+// 工具名/参数/id 复用所在 Event 的 ToolCall 字段。Token 供 /confirm 端点回送决断。
+type ConfirmRequest struct {
+	Token   string `json:"token"`
+	Risk    string `json:"risk"`
+	Summary string `json:"summary"` // = 工具 RiskNote，空则回退 Description
+}
+
+// Usage 是单次 ChatStream 调用的 token 用量（provider 流末产出）。
+// input_tokens 含完整上下文（每轮重发也会计费，求和即账单口径）。
+type Usage struct {
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+}
 
 // Event 是 provider 产出的事件。
 type Event struct {
-	Type     EventType `json:"type"`
-	Text     string    `json:"text,omitempty"`     // text/reasoning
-	ToolCall ToolCall  `json:"tool_call,omitempty"` // tool_call
-	Error    string    `json:"error,omitempty"`    // error
+	Type     EventType        `json:"type"`
+	Text     string           `json:"text,omitempty"`      // text/reasoning
+	ToolCall ToolCall         `json:"tool_call,omitempty"`  // tool_call
+	Confirm  *ConfirmRequest  `json:"confirm,omitempty"`    // confirm_request
+	Usage    *Usage           `json:"usage,omitempty"`      // usage
+	Error    string           `json:"error,omitempty"`      // error
 }
 
 // Config 是 provider 连接配置（APIKey 已解密）。

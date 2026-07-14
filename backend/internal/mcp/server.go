@@ -31,14 +31,25 @@ type Settings struct {
 // Tool 是一个 MCP 工具：名称 + 描述 + JSON Schema 入参 + 处理器。
 // 处理器返回文本结果与可选错误（错误转成 isError=true 的内容块，不破坏 JSON-RPC）。
 // Timeout 为可选的单工具执行超时；零值由调用方（如 aiagent.ToolRegistry）用默认值。
-// 不参与 JSON 序列化（json:"-"）：既不下发到 LLM 的 tools/list，也不进 MCP schema。
+// Risk/RiskNote 不参与 JSON 序列化（json:"-"）：既不下发到 LLM 的 tools/list，也不进 MCP schema；
+// 仅 agent 执行层据此对 destructive 工具做二次确认闸门。
 type Tool struct {
 	Name        string                 `json:"name"`
 	Description string                 `json:"description"`
 	InputSchema map[string]any         `json:"inputSchema"`
 	Timeout     time.Duration          `json:"-"`
+	Risk        string                 `json:"-"` // RiskRead | RiskWrite | RiskDestructive；空视同 write
+	RiskNote    string                 `json:"-"` // destructive 工具的一句话危险说明（确认弹窗展示）
 	Handler     func(ctx context.Context, args map[string]any) (string, error)
 }
+
+// 风险等级。仅 RiskDestructive 驱动 agent 执行层的二次确认闸门；
+// read/write 标注供后续工具白名单 UI 分组用（当前非强制全量标注）。
+const (
+	RiskRead        = "read"        // 只读查询，无副作用
+	RiskWrite       = "write"       // 变更可逆/低影响状态
+	RiskDestructive = "destructive" // 不可逆/高影响，执行前必须经用户确认
+)
 
 // Server 是 MCP JSON-RPC 服务端。线程安全。
 type Server struct {

@@ -79,6 +79,7 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 		// 按 content block index 记类型；tool_use 积累 input JSON。
 		blockType := map[int]string{}
 		toolMeta := map[int]struct{ id, name, args string }{}
+		var inTok, outTok int // token 用量统计（message_start/message_delta）
 
 		sc := bufio.NewScanner(resp.Body)
 		sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
@@ -96,6 +97,16 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 				continue
 			}
 			switch ev["type"] {
+			case "message_start": // 含 message.usage.input_tokens
+				if msg, ok := ev["message"].(map[string]any); ok {
+					if u, ok := msg["usage"].(map[string]any); ok {
+						inTok = intOf(u["input_tokens"])
+					}
+				}
+			case "message_delta": // 含 usage.output_tokens（累计值）
+				if u, ok := ev["usage"].(map[string]any); ok {
+					outTok = intOf(u["output_tokens"])
+				}
 			case "content_block_start":
 				idx := intOf(ev["index"])
 				cb, _ := ev["content_block"].(map[string]any)
@@ -129,6 +140,7 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 					}
 				}
 			case "message_stop":
+				send(out, Event{Type: EventUsage, Usage: &Usage{InputTokens: inTok, OutputTokens: outTok}})
 				send(out, Event{Type: EventDone})
 				return
 			}
@@ -137,6 +149,7 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 			send(out, Event{Type: EventError, Error: err.Error()})
 			return
 		}
+		send(out, Event{Type: EventUsage, Usage: &Usage{InputTokens: inTok, OutputTokens: outTok}})
 		send(out, Event{Type: EventDone})
 	}()
 	return out, nil

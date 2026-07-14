@@ -27,7 +27,7 @@ type ConversationStore interface {
 // ProviderFactory 按 llm.Config 构造 provider（默认 llm.New，测试可注入 fake）。
 type ProviderFactory func(llm.Config) llm.Provider
 
-// Agent 是 ReAct 智能体。Run 返回事件流通道（text/reasoning/tool_call/tool_result/done/error）。
+// Agent 是 ReAct 智能体。Run 返回事件流通道（text/reasoning/tool_call/tool_result/confirm_request/done/error）。
 type Agent struct {
 	newProvider ProviderFactory
 	tools       *ToolRegistry
@@ -35,6 +35,8 @@ type Agent struct {
 	convs       ConversationStore
 	kv          KVStore
 	crypto      Crypto
+	confirms    *confirmRegistry
+	stats       *statsCollector
 }
 
 // New 构造。tools 为全部可用工具（含 handler）。
@@ -42,8 +44,18 @@ func New(f ProviderFactory, tools []mcp.Tool, msgs MessageStore, convs Conversat
 	if f == nil {
 		f = llm.New
 	}
-	return &Agent{newProvider: f, tools: NewToolRegistry(tools), msgs: msgs, convs: convs, kv: kv, crypto: crypto}
+	return &Agent{newProvider: f, tools: NewToolRegistry(tools), msgs: msgs, convs: convs, kv: kv, crypto: crypto, confirms: newConfirmRegistry(), stats: newStatsCollector()}
 }
+
+// Resolve 送达一次危险工具确认决断（由 POST /agent/conversations/:id/confirm 调用）。
+// 返回是否命中在途确认（false=已过期/已取消/未知 token）。
+func (a *Agent) Resolve(token string, approved bool) bool { return a.confirms.resolve(token, approved) }
+
+// ToolCatalog 返回全部工具目录（去 handler，含风险等级），供白名单 UI 分组展示。
+func (a *Agent) ToolCatalog() []ToolCatalogEntry { return a.tools.Catalog() }
+
+// Stats 返回用量统计快照（供 GET /agent/stats）。
+func (a *Agent) Stats() StatsSnapshot { return a.stats.snapshot() }
 
 // Run 执行一轮对话：持久化用户消息 → 加载历史 → ReAct 循环（工具调用→回灌→再请求）。
 // convID 必须已存在（由 API handler 先建空会话）。
@@ -52,6 +64,29 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 	go func() {
 		defer close(out)
 		ac, lc := Load(a.kv, a.crypto)
+		// 用量统计：仅在实际发起 LLM 调用时计数（配置未启用/无 key 的早返回不计）。
+		start := time.Now()
+		status := "ok"
+		var inTok, outTok, toolCalls, toolErrors int
+		counted := false
+		defer func() {
+			if !counted {
+				return
+			}
+			a.stats.record(UsageRecord{
+				ConversationID: convID,
+				Provider:       lc.Provider,
+				Model:          lc.Model,
+				InputTokens:    inTok,
+				OutputTokens:   outTok,
+				CostUSD:        estimateCost(lc.Model, inTok, outTok),
+				DurationMS:     time.Since(start).Milliseconds(),
+				Status:         status,
+				ToolCalls:      toolCalls,
+				ToolErrors:     toolErrors,
+				Timestamp:      start,
+			})
+		}()
 		if !ac.Enabled {
 			emit(out, llm.Event{Type: llm.EventError, Error: "AI 助手未启用，请先在「设置 → AI 助手」配置 LLM provider 与 API key"})
 			return
@@ -62,7 +97,10 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 		}
 
 		// 1. 持久化用户消息
-		_ = a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "user", Content: userText})
+		if err := a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "user", Content: userText}); err != nil {
+			emit(out, llm.Event{Type: llm.EventError, Error: "保存用户消息失败: " + err.Error()})
+			return
+		}
 		_ = a.convs.Touch(convID)
 
 		// 2. 加载历史（含刚追加的 user）→ 统一消息
@@ -79,11 +117,12 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 		}
 		msgs := toLLMMessages(hist)
 
-		// 3. 系统提示 + 裁剪
+		// 3. 系统提示 + 裁剪（按模型 token 窗口预算，保留 system + 最近若干条）
 		msgs = append([]llm.Message{{Role: llm.RoleSystem, Content: ac.SystemPrompt}}, msgs...)
-		msgs = trimMessages(msgs)
+		msgs = trimMessages(msgs, lc.Model, lc.MaxTokens)
 		toolSchemas := a.tools.Schemas(ac.EnabledTools)
-		provider := a.newProvider(lc)
+		provider := withRetry(a.newProvider(lc)) // 429/5xx/网络瞬时错误自动指数退避重试
+		counted = true                            // 即将发起 LLM 调用，开始计入统计
 
 		// 4. ReAct 循环
 		for iter := 0; iter < ac.MaxIterations; iter++ {
@@ -91,6 +130,7 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 			// 并防止 out channel 因无人消费而阻塞悬挂 goroutine。
 			select {
 			case <-ctx.Done():
+				status = "cancelled"
 				emit(out, llm.Event{Type: llm.EventError, Error: "对话已取消"})
 				return
 			default:
@@ -101,16 +141,27 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 				MaxTokens: lc.MaxTokens, EnableThinking: lc.EnableThinking,
 			})
 			if err != nil {
+				if strings.Contains(err.Error(), "429") {
+					status = "ratelimit"
+				} else {
+					status = "error"
+				}
 				emit(out, llm.Event{Type: llm.EventError, Error: "LLM 调用失败：" + err.Error()})
 				return
 			}
-			content, reasoning, calls, sawErr := consumeStream(stream, out)
+			content, reasoning, calls, uIn, uOut, sawErr := consumeStream(stream, out)
+			inTok += uIn
+			outTok += uOut
 			if sawErr {
+				status = "error"
 				return // 错误已在 consumeStream 转发
 			}
 			// 持久化本轮 assistant（含中间 tool-calling 轮）
 			tcJSON, _ := json.Marshal(calls)
-			_ = a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "assistant", Content: content, Reasoning: reasoning, ToolCalls: string(tcJSON)})
+			if err := a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "assistant", Content: content, Reasoning: reasoning, ToolCalls: string(tcJSON)}); err != nil {
+				emit(out, llm.Event{Type: llm.EventError, Error: "保存助手消息失败: " + err.Error()})
+				return
+			}
 			_ = a.convs.Touch(convID)
 
 			if len(calls) == 0 {
@@ -124,32 +175,59 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 			msgs = append(msgs, llm.Message{Role: llm.RoleAssistant, Content: content, ToolCalls: calls})
 			// 执行每个工具 → 回灌结果（UI/DB 存全量；LLM 上下文截断）
 			for _, tc := range calls {
+				toolCalls++
 				args, perr := parseArgs(tc.Arguments)
 				var full string
 				if perr != nil {
 					// 参数解析失败：回灌错误让模型重试，而非以零值参数执行副作用工具。
 					full = "ERROR: " + perr.Error()
+				} else if destructive, note := a.tools.destructiveMeta(tc.Name); destructive {
+					// 危险工具：执行前经 SSE 往返取得用户确认；未确认则不执行并回灌说明。
+					approved, reason := a.confirmDestructive(ctx, out, convID, tc, note)
+					if !approved {
+						if ctx.Err() != nil {
+							// 客户端断开/停止：不再回灌工具结果，直接结束。
+							status = "cancelled"
+							emit(out, llm.Event{Type: llm.EventError, Error: "对话已取消"})
+							return
+						}
+						full = "用户未确认此危险操作（" + reason + "），未执行。"
+					} else {
+						var execErr error
+						full, execErr = a.tools.Exec(ctx, tc.Name, args, ac.EnabledTools)
+						if execErr != nil {
+							full = "ERROR: " + execErr.Error()
+						}
+					}
 				} else {
 					var execErr error
-					full, execErr = a.tools.Exec(ctx, tc.Name, args)
+					full, execErr = a.tools.Exec(ctx, tc.Name, args, ac.EnabledTools)
 					if execErr != nil {
 						full = "ERROR: " + execErr.Error()
 					}
 				}
+				if strings.HasPrefix(full, "ERROR:") {
+					toolErrors++ // 仅解析/执行错误计入；拒绝确认不算工具错误
+				}
 				emit(out, llm.Event{Type: llm.EventToolResult, ToolCall: tc, Text: full}) // UI 看全量
-				_ = a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "tool", ToolCallID: tc.ID, Name: tc.Name, Content: full}) // DB 全量
+				if err := a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "tool", ToolCallID: tc.ID, Name: tc.Name, Content: full}); err != nil {
+					emit(out, llm.Event{Type: llm.EventError, Error: "保存工具结果失败: " + err.Error()})
+					return
+				}
 				msgs = append(msgs, llm.Message{Role: llm.RoleTool, ToolCallID: tc.ID, Name: tc.Name, Content: truncateResult(full)}) // LLM 截断
 			}
 			_ = a.convs.Touch(convID)
 		}
+		status = "maxiter"
 		emit(out, llm.Event{Type: llm.EventError, Error: fmt.Sprintf("达到最大思考轮数(%d)，请缩小问题或重试", ac.MaxIterations)})
 	}()
 	return out
 }
 
 // consumeStream 消费 provider 事件流：转发 text/reasoning/tool_call/error 到 out，
-// 累积本轮 assistant 的 content/reasoning/tool_calls。返回 sawErr 表示是否出现错误（终态）。
-func consumeStream(stream <-chan llm.Event, out chan<- llm.Event) (content, reasoning string, calls []llm.ToolCall, sawErr bool) {
+// 累积本轮 assistant 的 content/reasoning/tool_calls 与 token 用量。
+// usage（EventUsage）仅供统计、不下发 out；返回 sawErr 表示是否出现错误（终态）。
+func consumeStream(stream <-chan llm.Event, out chan<- llm.Event) (content, reasoning string, calls []llm.ToolCall, inTok, outTok int, sawErr bool) {
 	for ev := range stream {
 		switch ev.Type {
 		case llm.EventText:
@@ -161,6 +239,11 @@ func consumeStream(stream <-chan llm.Event, out chan<- llm.Event) (content, reas
 		case llm.EventToolCall:
 			calls = append(calls, ev.ToolCall)
 			emit(out, ev)
+		case llm.EventUsage:
+			if ev.Usage != nil {
+				inTok = ev.Usage.InputTokens
+				outTok = ev.Usage.OutputTokens
+			}
 		case llm.EventError:
 			sawErr = true
 			emit(out, ev)
@@ -214,6 +297,38 @@ func (a *Agent) summarizeTitle(ctx context.Context, provider llm.Provider, lc ll
 	title = strings.Trim(strings.TrimSpace(title), "「」\"'`。., \n\r\t")
 	if rs := []rune(title); len(rs) > 0 && len(rs) <= 40 {
 		_ = a.convs.SetTitle(convID, title)
+	}
+}
+
+// confirmDestructive 在执行 destructive 工具前经 SSE 往返请求用户确认。
+// 已 emit 一条 confirm_request 事件（携带 token/风险/摘要）；客户端弹窗后
+// POST /agent/conversations/:id/confirm → Agent.Resolve 唤醒本阻塞。
+// 返回 (approved, reason)：approved=false 时 reason 说明未执行原因（拒绝/取消/超时/冲突）。
+func (a *Agent) confirmDestructive(ctx context.Context, out chan<- llm.Event, convID uint, tc llm.ToolCall, note string) (bool, string) {
+	token := fmt.Sprintf("%d:%s", convID, tc.ID)
+	ch := a.confirms.register(token)
+	if ch == nil {
+		return false, "确认令牌冲突"
+	}
+	defer a.confirms.cancel(token) // 兜底清理（已 resolve 则 no-op）
+	emit(out, llm.Event{
+		Type:     llm.EventConfirmRequest,
+		ToolCall: tc,
+		Confirm:  &llm.ConfirmRequest{Token: token, Risk: mcp.RiskDestructive, Summary: note},
+	})
+	tctx, cancel := context.WithTimeout(ctx, confirmTimeout)
+	defer cancel()
+	select {
+	case approved := <-ch:
+		if !approved {
+			return false, "用户拒绝"
+		}
+		return true, ""
+	case <-tctx.Done():
+		if ctx.Err() != nil {
+			return false, "对话已取消"
+		}
+		return false, "确认超时"
 	}
 }
 

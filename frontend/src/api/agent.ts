@@ -36,6 +36,44 @@ export interface AgentConfig {
   api_key_configured: boolean
 }
 
+// 工具目录条目（含 read/write/destructive 风险等级，供白名单 UI 分组）。
+export interface ToolCatalogEntry {
+  name: string
+  description: string
+  risk: 'read' | 'write' | 'destructive'
+  risk_note: string
+}
+
+// 用量统计快照（对齐后端 aiagent.StatsSnapshot）。
+export interface AgentUsageRecord {
+  conversation_id: number
+  provider: string
+  model: string
+  input_tokens: number
+  output_tokens: number
+  cost_usd: number
+  duration_ms: number
+  status: string
+  tool_calls: number
+  tool_errors: number
+  timestamp: string
+}
+export interface AgentStats {
+  total_requests: number
+  total_input_tokens: number
+  total_output_tokens: number
+  total_cost_usd: number
+  ok_count: number
+  error_count: number
+  rate_limit_count: number
+  cancelled_count: number
+  max_iter_count: number
+  avg_latency_ms: number
+  tool_calls: number
+  tool_errors: number
+  recent: AgentUsageRecord[]
+}
+
 // SSE 事件（与后端 writeSSE 对齐）。
 export type AgentEvent =
   | { event: 'conversation'; data: { id: number } }
@@ -43,6 +81,7 @@ export type AgentEvent =
   | { event: 'reasoning'; data: { content: string } }
   | { event: 'tool_call'; data: { id: string; name: string; arguments: string } }
   | { event: 'tool_result'; data: { id: string; name: string; result: string } }
+  | { event: 'confirm_request'; data: { id: string; name: string; arguments: string; token: string; risk: string; summary: string } }
   | { event: 'done'; data: Record<string, never> }
   | { event: 'error'; data: { message: string } }
 
@@ -52,6 +91,14 @@ export const agentApi = {
   messages: (id: number) =>
     http.get<{ messages: AgentMessage[] }>(`/agent/conversations/${id}/messages`).then((r) => r.data.messages ?? []),
   deleteConversation: (id: number) => http.delete(`/agent/conversations/${id}`).then((r) => r.data),
+  // 工具目录（含风险等级），供白名单 UI 分组勾选。
+  tools: () =>
+    http.get<{ tools: ToolCatalogEntry[] }>('/agent/tools').then((r) => r.data.tools ?? []),
+  // 用量统计快照（请求数/Token/费用/延迟/错误/工具成功率）。
+  stats: () => http.get<AgentStats>('/agent/stats').then((r) => r.data),
+  // 危险工具二次确认决断：convId 走 URL，tool_call_id（= confirm_request.data.id）走 body。
+  confirmDecision: (convId: number, toolCallId: string, approved: boolean) =>
+    http.post(`/agent/conversations/${convId}/confirm`, { tool_call_id: toolCallId, approved }).then((r) => r.data),
   getConfig: () => http.get<AgentConfig>('/agent/config').then((r) => r.data),
   setConfig: (cfg: Partial<AgentConfig> & { api_key?: string }) => http.put('/agent/config', cfg).then((r) => r.data),
 }
@@ -84,10 +131,10 @@ export async function streamAgentChat(
     if (done) break
     buf += dec.decode(value, { stream: true })
     // SSE 帧以空行分隔
-    let idx: number
-    while ((idx = buf.indexOf('\n\n')) >= 0) {
-      const frame = buf.slice(0, idx)
-      buf = buf.slice(idx + 2)
+    let boundary: RegExpMatchArray | null
+    while ((boundary = buf.match(/\r?\n\r?\n/)) && boundary.index !== undefined) {
+      const frame = buf.slice(0, boundary.index)
+      buf = buf.slice(boundary.index + boundary[0].length)
       const ev = parseSSEFrame(frame)
       if (ev) {
         if (ev.event === 'conversation') convId = ev.data.id
@@ -101,7 +148,7 @@ export async function streamAgentChat(
 function parseSSEFrame(frame: string): AgentEvent | null {
   let event = 'message'
   const dataLines: string[] = []
-  for (const line of frame.split('\n')) {
+  for (const line of frame.split(/\r?\n/)) {
     if (line.startsWith('event:')) event = line.slice(6).trim()
     else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
   }

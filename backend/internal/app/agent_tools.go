@@ -94,7 +94,7 @@ func registerAgentTools(
 		}
 		return mcpJSON(s), nil
 	}})
-	reg(mcp.Tool{Name: "subscribe_delete", Description: "Delete a subscription by id.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "integer"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
+	reg(mcp.Tool{Name: "subscribe_delete", Description: "Delete a subscription by id.", Risk: mcp.RiskDestructive, RiskNote: "删除媒体订阅及其搜索历史", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "integer"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		return mcpJSON(map[string]any{"deleted": argInt(a, "id")}), subCh.Delete(uint(argInt(a, "id")))
 	}})
 
@@ -117,7 +117,7 @@ func registerAgentTools(
 	reg(mcp.Tool{Name: "torrents_resume", Description: "Resume torrents by hashes in a downloader.", InputSchema: hashesSchema(), Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		return mcpJSON(map[string]any{"resumed": len(argStrSlice(a, "hashes"))}), dlCh.Resume(ctx, uint(argInt(a, "downloader_id")), argStrSlice(a, "hashes"))
 	}})
-	reg(mcp.Tool{Name: "torrents_delete", Description: "Delete torrents by hashes (irreversible). Set delete_files=true to also remove data.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "hashes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}, "delete_files": map[string]any{"type": "boolean"}}, "required": []string{"downloader_id", "hashes"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
+	reg(mcp.Tool{Name: "torrents_delete", Description: "Delete torrents by hashes (irreversible). Set delete_files=true to also remove data.", Risk: mcp.RiskDestructive, RiskNote: "删除下载器种子（delete_files=true 时同时删除磁盘数据文件，不可恢复）", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "hashes": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}, "delete_files": map[string]any{"type": "boolean"}}, "required": []string{"downloader_id", "hashes"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		return mcpJSON(map[string]any{"deleted": len(argStrSlice(a, "hashes"))}), dlCh.Delete(ctx, uint(argInt(a, "downloader_id")), argStrSlice(a, "hashes"), argBool(a, "delete_files"))
 	}})
 	reg(mcp.Tool{Name: "torrents_add", Description: "Add a torrent by magnet/URL to a downloader.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "url": map[string]any{"type": "string"}, "category": map[string]any{"type": "string"}}, "required": []string{"downloader_id", "url"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
@@ -200,7 +200,7 @@ func registerAgentTools(
 		}
 		return mcpJSON(r), nil
 	}})
-	reg(mcp.Tool{Name: "filter_custom_rule_delete", Description: "按 id 删除一条自定义过滤规则。若被任一规则组引用则拒绝删除。", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
+	reg(mcp.Tool{Name: "filter_custom_rule_delete", Description: "按 id 删除一条自定义过滤规则。若被任一规则组引用则拒绝删除。", Risk: mcp.RiskDestructive, RiskNote: "删除自定义过滤规则（匹配行为立即改变）", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string"}}, "required": []string{"id"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		if err := filterStore.DeleteCustomRule(argString(a, "id", "")); err != nil {
 			return "", err
 		}
@@ -234,7 +234,7 @@ func registerAgentTools(
 		}
 		return mcpJSON(g), nil
 	}})
-	reg(mcp.Tool{Name: "filter_rule_group_delete", Description: "按 name 删除一个规则组，并清理搜索/订阅/洗版全局绑定中的悬空引用。", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"name": map[string]any{"type": "string"}}, "required": []string{"name"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
+	reg(mcp.Tool{Name: "filter_rule_group_delete", Description: "按 name 删除一个规则组，并清理搜索/订阅/洗版全局绑定中的悬空引用。", Risk: mcp.RiskDestructive, RiskNote: "删除规则组并级联清理全局绑定引用", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"name": map[string]any{"type": "string"}}, "required": []string{"name"}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
 		if err := filterStore.DeleteGroup(argString(a, "name", "")); err != nil {
 			return "", err
 		}
@@ -254,7 +254,39 @@ func registerAgentTools(
 	tools = append(tools, buildFileTools(fileCh)...)
 	tools = append(tools, buildWorkflowTools(wfCh)...)
 
+	classifyToolRisks(tools) // 给未显式标注的工具补 read/write，供白名单 UI 分组
 	return tools
+}
+
+// classifyToolRisks 给未显式标注 Risk 的工具补 read/write 等级（destructive 已在各字面量
+// 显式标注含 RiskNote，此处不覆盖）。依据 destructive 工具普查结果：下列为只读查询，其余默认 write。
+// 仅用于白名单 UI 分组展示与未来细粒度授权；不影响确认闸门（闸门只看 RiskDestructive）。
+func classifyToolRisks(tools []mcp.Tool) {
+	reads := map[string]bool{
+		"system.info": true, "sites.list": true, "site_messages": true, "site_freeleech": true,
+		"media_search": true, "media_detail": true, "recommend_feeds": true, "torrent_search": true,
+		"subscribe_list": true, "downloaders.list": true, "torrents_list": true, "torrents_stats": true,
+		"transfer_history": true, "reseed_list": true, "dashboard_overview": true, "dashboard_trend": true,
+		"filter_builtin_rules_query": true, "filter_custom_rules_query": true, "filter_rule_groups_query": true,
+		"torrents_files": true, "torrents_peers": true, "torrents_trackers": true,
+		"downloader_categories": true, "downloader_tags": true,
+		"mediaserver_list": true, "mediaserver_libraries": true, "mediaserver_playback_report": true, "mediaserver_duplicates": true,
+		"subscribe_get": true, "reseed_find_candidates": true, "reseed_find_missing": true,
+		"cloud_list": true, "cloud_browse": true, "cloud_quota": true, "cloud_rules": true,
+		"brushflow_tasks_list": true, "brushflow_task_get": true, "brushflow_seeds": true,
+		"rss_list": true, "rss_items": true, "subtitle_search": true, "file_list": true,
+		"workflow_list": true, "workflow_catalog": true,
+	}
+	for i := range tools {
+		if tools[i].Risk != "" {
+			continue // 显式标注（destructive）优先
+		}
+		if reads[tools[i].Name] {
+			tools[i].Risk = mcp.RiskRead
+		} else {
+			tools[i].Risk = mcp.RiskWrite
+		}
+	}
 }
 
 // ===== 参数解析小工具（LLM 传 float64/any，需安全转换） =====

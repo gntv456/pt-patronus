@@ -26,6 +26,7 @@ class _AssistantPageState extends State<AssistantPage> {
   String _liveContent = '';
   String _liveReasoning = '';
   bool _hasLive = false;
+  List<Map<String, dynamic>> _liveTools = [];
 
   @override
   void initState() {
@@ -95,6 +96,7 @@ class _AssistantPageState extends State<AssistantPage> {
       _messages = [..._messages, AgentMessage(id: -1, role: 'user', content: text)];
       _liveContent = '';
       _liveReasoning = '';
+      _liveTools = [];
       _hasLive = true;
       _sending = true;
     });
@@ -109,6 +111,18 @@ class _AssistantPageState extends State<AssistantPage> {
             _liveContent += (ev.data['content'] as String?) ?? '';
           case 'reasoning':
             _liveReasoning += (ev.data['content'] as String?) ?? '';
+          case 'tool_call':
+            _liveTools.add({'id': ev.data['id'], 'name': ev.data['name'], 'arguments': ev.data['arguments'], 'result': null});
+          case 'tool_result':
+            final tid = ev.data['id'];
+            for (final t in _liveTools) {
+              if (t['id'] == tid && t['result'] == null) {
+                t['result'] = ev.data['result'];
+                break;
+              }
+            }
+          case 'confirm_request':
+            await _handleConfirm(ev.data);
           case 'error':
             _toast((ev.data['message'] as String?) ?? '错误');
         }
@@ -128,6 +142,33 @@ class _AssistantPageState extends State<AssistantPage> {
   void _toast(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
+  }
+
+  /// 危险工具二次确认：收到 confirm_request 时弹窗，用户选择后 POST 决断。
+  /// await-for 在弹窗期间自然暂停——后端在 Resolve 前不下发后续帧，确认后同一 SSE 连接继续。
+  Future<void> _handleConfirm(Map<String, dynamic> d) async {
+    final name = (d['name'] as String?) ?? '';
+    final summary = (d['summary'] as String?) ?? 'AI 想执行一个不可逆操作';
+    final args = (d['arguments'] as String?) ?? '';
+    final id = (d['id'] as String?) ?? '';
+    final argLine = (args.isNotEmpty && args != '{}') ? '\n参数：$args' : '';
+    if (!mounted) return;
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('⚠️ 危险操作确认'),
+        content: Text('$summary\n工具：$name$argLine'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('拒绝')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('允许执行')),
+        ],
+      ),
+    );
+    try {
+      if (_activeId != null) await _api.confirmDecision(_activeId!, id, approved == true);
+    } catch (e) {
+      _toast('确认回传失败：$e');
+    }
   }
 
   void _scrollToBottom() {
@@ -290,7 +331,14 @@ class _AssistantPageState extends State<AssistantPage> {
   }
 
   Widget _liveBubble() {
-    return _assistantBubble(_liveContent.isEmpty ? '…' : _liveContent, _liveReasoning);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _assistantBubble(_liveContent.isEmpty && _liveTools.isEmpty ? '…' : _liveContent, _liveReasoning),
+        if (_liveTools.isNotEmpty) _toolCard(_liveTools, ''),
+      ],
+    );
   }
 
   Widget _composer() {
@@ -324,23 +372,62 @@ class _AssistantPageState extends State<AssistantPage> {
   // —— 配置 ——
   void _openConfig() async {
     final AgentConfig cfg;
+    List<ToolCatalogEntry> tools;
     try {
       cfg = await _api.getConfig();
     } catch (_) {
       _toast('加载配置失败');
       return;
     }
+    try {
+      tools = await _api.tools();
+    } catch (_) {
+      tools = [];
+    }
+    AgentStats? stats;
+    try {
+      stats = await _api.stats();
+    } catch (_) {
+      stats = null;
+    }
     if (!mounted) return;
+    // enabled_tools 为空 = 全开；否则按显式清单。
+    bool allowAll = cfg.enabledTools.isEmpty;
+    Set<String> enabled = Set<String>.from(allowAll ? tools.map((t) => t.name) : cfg.enabledTools);
     final apiKeyCtrl = TextEditingController();
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setS) {
+        // 按风险分组渲染勾选区（关闭「启用全部」时展示）。
+        Widget group(String title, List<ToolCatalogEntry> items) {
+          if (items.isEmpty) return const SizedBox.shrink();
+          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(padding: const EdgeInsets.only(top: 8, bottom: 2), child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+            ...items.map((t) => CheckboxListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+              controlAffinity: ListTileControlAffinity.leading,
+              value: enabled.contains(t.name),
+              title: Text(t.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              subtitle: Text(t.risk == 'destructive' ? (t.riskNote.isNotEmpty ? t.riskNote : t.description) : t.description, style: const TextStyle(fontSize: 10)),
+              onChanged: (v) => setS(() {
+                if (v == true) {
+                  enabled.add(t.name);
+                } else {
+                  enabled.remove(t.name);
+                }
+              }),
+            )),
+          ]);
+        }
         return SafeArea(
           child: Padding(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
             child: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const Text('AI 助手设置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              if (stats != null) _statsCard(stats),
               const SizedBox(height: 12),
               SwitchListTile(value: cfg.enabled, onChanged: (v) => setS(() => cfg.enabled = v), title: const Text('启用')),
               SwitchListTile(value: cfg.enableThinking, onChanged: (v) => setS(() => cfg.enableThinking = v), title: const Text('深度思考')),
@@ -351,9 +438,27 @@ class _AssistantPageState extends State<AssistantPage> {
               TextField(controller: TextEditingController(text: cfg.baseUrl), decoration: const InputDecoration(labelText: 'Base URL', isDense: true), onChanged: (v) => cfg.baseUrl = v),
               const SizedBox(height: 8),
               TextField(controller: TextEditingController(text: cfg.model), decoration: const InputDecoration(labelText: '模型', isDense: true), onChanged: (v) => cfg.model = v),
+              const Divider(height: 28),
+              // 工具白名单：启用全部 ↔ 按风险勾选。
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: allowAll,
+                onChanged: (v) => setS(() {
+                  allowAll = v;
+                  if (!v && enabled.isEmpty) enabled = tools.map((t) => t.name).toSet();
+                }),
+                title: const Text('启用全部工具', style: TextStyle(fontSize: 14)),
+                subtitle: const Text('关闭后可按风险勾选，新增工具不自动可用', style: TextStyle(fontSize: 11)),
+              ),
+              if (!allowAll) ...[
+                group('⚠️ 危险操作（执行前仍需二次确认）', tools.where((t) => t.risk == 'destructive').toList()),
+                group('写入', tools.where((t) => t.risk == 'write').toList()),
+                group('只读', tools.where((t) => t.risk == 'read').toList()),
+              ],
               const SizedBox(height: 16),
               FilledButton(onPressed: () async {
                 try {
+                  cfg.enabledTools = allowAll ? <String>[] : enabled.toList();
                   await _api.setConfig(cfg, apiKey: apiKeyCtrl.text.trim().isEmpty ? null : apiKeyCtrl.text.trim());
                   if (ctx.mounted) Navigator.pop(ctx);
                   _toast('配置已保存');
@@ -366,6 +471,32 @@ class _AssistantPageState extends State<AssistantPage> {
         );
       }),
     );
+  }
+
+  Widget _statsCard(AgentStats s) {
+    final success = s.toolCalls == 0 ? '—' : '${((1 - s.toolErrors / s.toolCalls) * 100).round()}%';
+    Widget chip(String label, String value) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(children: [
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(fontSize: 10)),
+      ]),
+    );
+    return Wrap(spacing: 6, runSpacing: 6, children: [
+      chip('请求', '${s.totalRequests}'),
+      chip('Token', '${s.totalInputTokens + s.totalOutputTokens}'),
+      chip('费用', '\$${s.totalCostUsd.toStringAsFixed(4)}'),
+      chip('均延迟', '${s.avgLatencyMs}ms'),
+      chip('错误', '${s.errorCount}'),
+      chip('限流', '${s.rateLimitCount}'),
+      chip('工具调用', '${s.toolCalls}'),
+      chip('成功率', success),
+    ]);
   }
 
   Widget _drop(String label, String value, Map<String, String> opts, ValueChanged<String?> onChanged) {

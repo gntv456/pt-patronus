@@ -22,16 +22,32 @@ type ToolRegistry struct{ tools []mcp.Tool }
 // NewToolRegistry 构造。
 func NewToolRegistry(tools []mcp.Tool) *ToolRegistry { return &ToolRegistry{tools: tools} }
 
+// ToolCatalogEntry 是工具目录条目（去 handler，含风险等级），供白名单 UI 分组展示。
+type ToolCatalogEntry struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Risk        string `json:"risk"`     // read | write | destructive
+	RiskNote    string `json:"risk_note"` // destructive 工具的危险说明
+}
+
+// Catalog 返回全部工具的目录（去 handler，含风险等级），供白名单 UI。
+func (r *ToolRegistry) Catalog() []ToolCatalogEntry {
+	out := make([]ToolCatalogEntry, 0, len(r.tools))
+	for _, t := range r.tools {
+		risk := t.Risk
+		if risk == "" {
+			risk = mcp.RiskWrite // 兜底（classifyToolRisks 理论已全标）
+		}
+		out = append(out, ToolCatalogEntry{Name: t.Name, Description: t.Description, Risk: risk, RiskNote: t.RiskNote})
+	}
+	return out
+}
+
 // Schemas 返回下发给 provider 的工具 schema（去 handler；按白名单过滤，空=全开）。
 func (r *ToolRegistry) Schemas(whitelist []string) []llm.Tool {
-	allowAll := len(whitelist) == 0
-	set := make(map[string]bool, len(whitelist))
-	for _, w := range whitelist {
-		set[w] = true
-	}
 	out := make([]llm.Tool, 0, len(r.tools))
 	for _, t := range r.tools {
-		if !allowAll && !set[t.Name] {
+		if !toolAllowed(t.Name, whitelist) {
 			continue
 		}
 		out = append(out, llm.Tool{Name: t.Name, Description: t.Description, InputSchema: t.InputSchema})
@@ -42,7 +58,10 @@ func (r *ToolRegistry) Schemas(whitelist []string) []llm.Tool {
 // Exec 执行命名工具：参数解析 + 超时。返回**完整**结果（不截断——UI/DB 看全量；
 // 送入 LLM 上下文时由 agent 层按需截断，控制 token）。
 // 工具不存在/执行错均回灌给模型自适应。
-func (r *ToolRegistry) Exec(ctx context.Context, name string, args map[string]any) (string, error) {
+func (r *ToolRegistry) Exec(ctx context.Context, name string, args map[string]any, whitelist []string) (string, error) {
+	if !toolAllowed(name, whitelist) {
+		return "", fmt.Errorf("tool %q is not enabled", name)
+	}
 	if ctx.Err() != nil {
 		return "", ctx.Err() // 客户端已断开：不再执行任何（含写类）工具，避免悬空副作用
 	}
@@ -50,15 +69,47 @@ func (r *ToolRegistry) Exec(ctx context.Context, name string, args map[string]an
 		if t.Name != name {
 			continue
 		}
-	timeout := toolExecTimeout
-	if t.Timeout > 0 {
-		timeout = t.Timeout // 慢操作（library_scan/refresh/subscribe_check/transfer_redo/cloud_generate_strm/rss_check/workflow_run）可设 60s
-	}
-	tctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	return t.Handler(tctx, args)
+		timeout := toolExecTimeout
+		if t.Timeout > 0 {
+			timeout = t.Timeout // 慢操作（library_scan/refresh/subscribe_check/transfer_redo/cloud_generate_strm/rss_check/workflow_run）可设 60s
+		}
+		tctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		return t.Handler(tctx, args)
 	}
 	return "", fmt.Errorf("tool %q not found", name)
+}
+
+func toolAllowed(name string, whitelist []string) bool {
+	if len(whitelist) == 0 {
+		return true
+	}
+	for _, allowed := range whitelist {
+		if allowed == name {
+			return true
+		}
+	}
+	return false
+}
+
+// destructiveMeta 返回命名工具是否标记为 destructive 及其危险说明。
+// 说明优先用 RiskNote，为空回退 Description；未注册或非 destructive 返回 (false, "")。
+// agent 执行层据此对 destructive 工具做二次确认闸门。
+func (r *ToolRegistry) destructiveMeta(name string) (bool, string) {
+	for _, t := range r.tools {
+		if t.Name != name {
+			continue
+		}
+		if t.Risk == mcp.RiskDestructive {
+			note := t.RiskNote
+			if note == "" {
+				note = t.Description
+			}
+			return true, note
+		}
+		return false, ""
+	}
+	return false, ""
 }
 
 // truncateResult rune 感知截断超长工具结果（dashboard/seed 列表常见）。

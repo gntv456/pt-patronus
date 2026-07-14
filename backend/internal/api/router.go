@@ -681,6 +681,9 @@ func Build(d *Deps) *gin.Engine {
 				ag.GET("/conversations", middleware.RequireAdmin(), d.AgentChat.Conversations)
 				ag.DELETE("/conversations/:id", middleware.RequireAdmin(), d.AgentChat.DeleteConversation)
 				ag.GET("/conversations/:id/messages", middleware.RequireAdmin(), d.AgentChat.Messages)
+				ag.POST("/conversations/:id/confirm", middleware.RequireAdmin(), d.AgentChat.Confirm)
+				ag.GET("/tools", middleware.RequireAdmin(), d.AgentChat.Tools)
+				ag.GET("/stats", middleware.RequireAdmin(), d.AgentChat.Stats)
 				ag.GET("/config", d.AgentChat.GetConfig)
 				ag.PUT("/config", middleware.RequireAdmin(), d.AgentChat.SetConfig)
 			}

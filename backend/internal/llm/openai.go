@@ -23,12 +23,13 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 		base = "https://api.openai.com/v1"
 	}
 	body, err := json.Marshal(oaRequest{
-		Model: firstNonEmpty(req.Model, p.cfg.Model, "gpt-4o-mini"),
-		Messages: oaMessages(req.Messages),
-		Tools:    oaTools(req.Tools),
-		Temp:     orF(req.Temperature, p.cfg.Temperature, 0.3),
-		MaxTok:   orI(req.MaxTokens, p.cfg.MaxTokens, 2048),
-		Stream:   true,
+		Model:         firstNonEmpty(req.Model, p.cfg.Model, "gpt-4o-mini"),
+		Messages:      oaMessages(req.Messages),
+		Tools:         oaTools(req.Tools),
+		Temp:          orF(req.Temperature, p.cfg.Temperature, 0.3),
+		MaxTok:        orI(req.MaxTokens, p.cfg.MaxTokens, 2048),
+		Stream:        true,
+		StreamOptions: oaStreamOptions{IncludeUsage: true}, // 末块带 usage 供统计
 	})
 	if err != nil {
 		return nil, err
@@ -104,6 +105,10 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 					}
 				}
 			}
+			// include_usage 开启时，末块 choices 为空、带 usage（统计用，不下发前端）。
+			if chunk.Usage != nil {
+				send(out, Event{Type: EventUsage, Usage: &Usage{InputTokens: chunk.Usage.PromptTokens, OutputTokens: chunk.Usage.CompletionTokens}})
+			}
 		}
 		if err := sc.Err(); err != nil {
 			send(out, Event{Type: EventError, Error: err.Error()})
@@ -121,12 +126,18 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 // ===== OpenAI 请求/响应结构 =====
 
 type oaRequest struct {
-	Model    string     `json:"model"`
-	Messages []oaMessage `json:"messages"`
-	Tools    []oaTool   `json:"tools,omitempty"`
-	Temp     float64    `json:"temperature,omitempty"`
-	MaxTok   int        `json:"max_tokens,omitempty"`
-	Stream   bool       `json:"stream"`
+	Model         string      `json:"model"`
+	Messages      []oaMessage `json:"messages"`
+	Tools         []oaTool    `json:"tools,omitempty"`
+	Temp          float64     `json:"temperature,omitempty"`
+	MaxTok        int         `json:"max_tokens,omitempty"`
+	Stream        bool        `json:"stream"`
+	StreamOptions oaStreamOptions `json:"stream_options,omitempty"`
+}
+
+// oaStreamOptions 控制流式响应附加信息（include_usage 让末块带 token 用量）。
+type oaStreamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
 }
 
 type oaMessage struct {
@@ -171,6 +182,13 @@ type oaChunk struct {
 			} `json:"tool_calls"`
 		} `json:"delta"`
 	} `json:"choices"`
+	Usage *oaUsage `json:"usage"`
+}
+
+// oaUsage 仅 include_usage 开启时在末块出现。
+type oaUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
 }
 
 func oaMessages(msgs []Message) []oaMessage {

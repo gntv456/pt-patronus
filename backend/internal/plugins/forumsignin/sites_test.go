@@ -196,17 +196,72 @@ nodeseek|onlycookie
 	}
 }
 
-// TestRegistryLookup 验证 6 站全部注册且可查。
+// TestRegistryLookup 验证 7 站全部注册且可查。
 func TestRegistryLookup(t *testing.T) {
-	want := []string{"nodeseek", "fengchao", "feiniu", "ningmeng", "guoyu", "ssdforum"}
+	want := []string{"nodeseek", "52pojie", "fengchao", "feiniu", "ningmeng", "guoyu", "ssdforum"}
 	for _, k := range want {
 		if Lookup(k) == nil {
 			t.Errorf("Lookup(%q) = nil", k)
 		}
 	}
-	if len(Supported()) < 6 {
-		t.Errorf("Supported() = %d, want >=6", len(Supported()))
+	if len(Supported()) < 7 {
+		t.Errorf("Supported() = %d, want >=7", len(Supported()))
 	}
+}
+
+// Test52pojieSignin 覆盖吾爱破解 Discuz task 签到：成功 / 已签到 / cookie 失效。
+func Test52pojieSignin(t *testing.T) {
+	ctx := context.Background()
+	h := pojieHandler{}
+	hc := mustClient(t)
+
+	t.Run("success", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// /home.php?mod=task&do=apply&id=2 → 签到成功；其余（首页）→ 含 formhash
+			if r.URL.Path == "/home.php" {
+				w.Write([]byte(`<html>恭喜您！任务完成，获得 +1 吾爱币</html>`))
+				return
+			}
+			w.Write([]byte(`<html><input type="hidden" name="formhash" value="a1b2c3d4" /></html>`))
+		}))
+		defer srv.Close()
+		fb, err := h.Signin(ctx, Ctx{HC: hc, BaseURL: srv.URL, Cookie: "session=xxx"})
+		if err != nil {
+			t.Fatalf("Signin: %v", err)
+		}
+		if !fb.Success || fb.Message == "" {
+			t.Errorf("expected success; got %+v", fb)
+		}
+	})
+
+	t.Run("already_signed", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/home.php" {
+				w.Write([]byte(`<html>您今天已经完成过该任务，请明天再来</html>`))
+				return
+			}
+			w.Write([]byte(`<html><input type="hidden" name="formhash" value="a1b2c3d4" /></html>`))
+		}))
+		defer srv.Close()
+		fb, err := h.Signin(ctx, Ctx{HC: hc, BaseURL: srv.URL, Cookie: "session=xxx"})
+		if err != nil {
+			t.Fatalf("Signin: %v", err)
+		}
+		if !fb.Success {
+			t.Errorf("already-signed should count success; got %+v", fb)
+		}
+	})
+
+	t.Run("cookie_invalid", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(`<html>您需要先登录后才能进行此操作</html>`))
+		}))
+		defer srv.Close()
+		fb, _ := h.Signin(ctx, Ctx{HC: hc, BaseURL: srv.URL, Cookie: "bad="})
+		if fb.Success {
+			t.Error("cookie invalid should not be success")
+		}
+	})
 }
 
 // fakeRT 是测试用 Runtime（KV 走 JSON round-trip）。

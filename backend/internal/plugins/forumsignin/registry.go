@@ -44,6 +44,7 @@ func Supported() []SiteEntry {
 func init() {
 	// 特殊站（自有 API/JSON 契约）优先注册。
 	register(nodeseekHandler{})
+	register(pojieHandler{}) // 吾爱破解（Discuz! dsu_paulsign 两步流：GET formhash → POST）
 	// NexusPHP 系论坛区签到（共享 signin.php 路径与关键词解析）。
 	register(nexusSignin{key: "fengchao", label: "蜂巢"})
 	register(nexusSignin{key: "feiniu", label: "飞牛"})

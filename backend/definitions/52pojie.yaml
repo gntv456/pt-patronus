@@ -1,0 +1,72 @@
+# 52pojie — 吾爱破解（52pojie.cn，Discuz! X3 论坛，非 PT 站点）。
+# 仅用于账号信息展示（吾爱币/用户组/注册时间/最后访问）；无种子搜索与流量统计。
+# 选择器已对照真实登录态页面 DOM 校准（2026-07-14）：
+#   - 首页 .vwmy a 取 uid + 用户名（href home.php?mod=space&uid=N）
+#   - 个人资料页 home.php?mod=space&uid=N&do=profile：用户组 li / #pbbs(注册·访问时间) / #psts(吾爱币)
+# 签到由 forumsignin 插件（key=52pojie）走 Discuz task 系统（home.php?mod=task&do=apply&id=2），
+# 非 dsu_paulsign（该插件吾爱破解已关闭，plugin.php?id=dsu_paulsign:sign 返回"插件不存在或已关闭"）。
+
+aka:
+    - 吾爱破解论坛
+description: 吾爱破解论坛（52pojie.cn），国内软件安全与逆向工程社区，基于 Discuz!。本定义仅作账号信息展示（吾爱币/用户组等级/注册时间），非 PT 站点，无种子搜索与上传/下载统计。每日签到由 forumsignin 插件（key=52pojie）的 Discuz task 系统承担。
+id: 52pojie
+name: 吾爱破解
+schema: discuz
+timezone_offset: "+0800"
+urls:
+    - https://www.52pojie.cn/
+dead: false
+
+user_info:
+    pages:
+        # 第 1 页：首页 .vwmy 区取当前登录用户 uid + 用户名。
+        - path: /
+          fields:
+            id:
+                attr: href
+                filters:
+                    - args: uid
+                      name: queryparam
+                selector: '.vwmy a'
+            name:
+                selector: '.vwmy a'
+        # 第 2 页：个人资料页（do=profile），资料字段在标准 Discuz #pbbs / #psts 区。
+        - path: /home.php
+          params:
+            mod: space
+            uid: "{id}"
+            do: profile
+            from: space
+          fields:
+            level:
+                selector: 'li:contains("用户组") a'
+                filters:
+                    - name: trim
+            join_date:
+                selector: '#pbbs li:contains("注册时间")'
+                filters:
+                    - args: '(\d{4}-\d{1,2}-\d{1,2})'
+                      name: regexp
+            last_access_at:
+                selector: '#pbbs li:contains("最后访问")'
+                filters:
+                    - args: '(\d{4}-\d{1,2}-\d{1,2})'
+                      name: regexp
+                    - name: parse_time
+            bonus:
+                selector: '#psts li:contains("吾爱币")'
+                filters:
+                    - name: parse_number
+
+no_login:
+    http_status:
+        - 401
+        - 403
+    url_pattern:
+        - member.php
+        - logging
+        - action=login
+    selector: 'form#lsform, input[name="username"]'
+    content:
+        - 您需要先登录
+        - 请先登录

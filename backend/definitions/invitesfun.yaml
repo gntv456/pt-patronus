@@ -1,0 +1,16 @@
+# 邀玩 invites.fun —— Flarum PT 邀请/分享论坛（schema: flarum）
+#
+# 非 tracker：无种子/上传下载/分享率；走 Flarum JSON:API 抓金币(money)/用户组(等级)/
+# 发帖+回复/加入时间，映射到站点面板（Bonus/Level/Posts/JoinDate）。
+# 鉴权用 flarum_session cookie（Web UI 添加站点 → 选「邀玩」→ 粘贴 cookie）。
+# 每日签到：POST /api/checkin（已实测确认端点），首页 CSRF token 由 flarum 适配器自动提取。
+id: invitesfun
+name: 邀玩(invites.fun)
+schema: flarum
+urls:
+  - https://invites.fun
+aka: [药丸, invites, invitesfun]
+description: PT 邀请/分享论坛（Flarum，金币/签到）
+tags: [forum, flarum]
+extra_param:
+  checkin_path: /api/checkin

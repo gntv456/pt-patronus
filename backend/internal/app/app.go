@@ -116,6 +116,9 @@ func New(cfg *config.Config) (*App, error) {
 	// Rousi Pro（Bearer passkey API）
 	rousi := schemas.NewRousi(hc)
 	registry.RegisterAdapter(rousi)
+	// Flarum 论坛社区（invites.fun / pting.club 等 PT 论坛，JSON:API + cookie + 签到）
+	flarum := schemas.NewFlarum(hc)
+	registry.RegisterAdapter(flarum)
 	// Generic JSON（命名 JSON schema）
 	genericJSONs := make([]*schemas.GenericJSON, 0, 5)
 	for _, sc := range []string{"tnode", "yemapt", "f3nix", "tbdev", "fsm"} {
@@ -136,6 +139,7 @@ func New(cfg *config.Config) (*App, error) {
 	}
 	mm.Register(avistaz)
 	mm.Register(rousi)
+	mm.Register(flarum)
 	for _, gj := range genericJSONs {
 		mm.Register(gj)
 	}

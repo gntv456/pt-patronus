@@ -29,7 +29,10 @@ const editing = ref<ContractRule | null>(null)
 const form = ref<Partial<ContractRule>>(defaultForm())
 
 function defaultForm(): Partial<ContractRule> {
-  return { site_id: 0, enabled: true, min_ratio: 0, min_seeding: 0, min_upload_gb: 0 }
+  return {
+    site_id: 0, enabled: true, min_ratio: 0, min_seeding: 0, min_upload_gb: 0,
+    official_only: false, min_seeding_size_gb: 0, period: '',
+  }
 }
 
 function openCreate() {
@@ -110,7 +113,9 @@ onMounted(load)
           <div class="card-title">
             <div class="name">{{ siteName(r.site_id) }}</div>
             <div class="meta">
-              分享率≥{{ r.min_ratio || '-' }} · 做种≥{{ r.min_seeding || '-' }} · 上传≥{{ r.min_upload_gb || '-' }}GiB
+              分享率≥{{ r.min_ratio || '-' }} · 做种≥{{ r.min_seeding || '-' }} · 上传≥{{ r.min_upload_gb || '-' }}GiB<template
+                v-if="r.official_only"> · 仅官种</template><template v-if="r.min_seeding_size_gb"> · 体积≥{{
+                r.min_seeding_size_gb }}GiB</template><template v-if="r.period"> · {{ r.period === 'weekly' ? '每周' : '每月' }}</template>
             </div>
           </div>
           <el-switch :model-value="r.enabled" @update:model-value="(v: any) => toggle(r, !!v)" />
@@ -121,8 +126,10 @@ onMounted(load)
           <span v-if="r.last_checked_at" class="time">{{ new Date(r.last_checked_at).toLocaleString() }}</span>
         </div>
         <div v-if="results[r.id]" class="check-result">
-          实时：分享率 {{ results[r.id].ratio.toFixed(2) }} · 做种 {{ results[r.id].seeding }} · 上传
-          {{ results[r.id].upload_gb.toFixed(1) }}GiB
+          实时：分享率 {{ results[r.id].ratio.toFixed(2) }} · 做种 {{ results[r.id].seeding }}<template
+            v-if="results[r.id].seeding_official">（官种 {{ results[r.id].seeding_official }}）</template> · 上传
+          {{ results[r.id].upload_gb.toFixed(1) }}GiB · 体积 {{ results[r.id].seeding_size_gb.toFixed(1) }}GiB<template
+            v-if="results[r.id].unsupported"> · ⚠ {{ results[r.id].unsupported }}</template>
         </div>
         <div class="actions">
           <el-button size="small" @click="check(r)">检查</el-button>
@@ -153,6 +160,31 @@ onMounted(load)
         </el-form-item>
         <el-form-item label="做种数 ≥"><el-input-number v-model="form.min_seeding" :min="0" controls-position="right" /></el-form-item>
         <el-form-item label="上传(GiB) ≥"><el-input-number v-model="form.min_upload_gb" :min="0" controls-position="right" /></el-form-item>
+        <el-divider content-position="left"><span class="text-muted">扩展维度（官种 / 体积 / 周期 / 生效时间）</span></el-divider>
+        <el-form-item label="仅官种">
+          <el-switch v-model="form.official_only" />
+          <span class="hint text-muted" style="margin-left: 8px">开启后做种数/体积只统计官方种子</span>
+        </el-form-item>
+        <el-form-item label="做种体积(GiB) ≥">
+          <el-input-number v-model="form.min_seeding_size_gb" :min="0" controls-position="right" />
+        </el-form-item>
+        <el-form-item label="考核周期">
+          <el-select v-model="form.period" style="width: 130px">
+            <el-option label="每日" value="" />
+            <el-option label="每周" value="weekly" />
+            <el-option label="每月" value="monthly" />
+          </el-select>
+          <span class="hint text-muted" style="margin-left: 8px">告警按周期去重</span>
+        </el-form-item>
+        <el-form-item label="生效时间">
+          <el-date-picker
+            v-model="form.start_time"
+            type="datetime"
+            placeholder="留空=立即生效"
+            value-format="YYYY-MM-DDTHH:mm:ssZ"
+            style="width: 220px"
+          />
+        </el-form-item>
         <p class="hint text-muted">设 0 表示该项不检查。</p>
       </el-form>
       <template #footer>

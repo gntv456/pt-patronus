@@ -1,5 +1,7 @@
 package filter
 
+import "github.com/hxpt/ptpatronus/internal/site"
+
 // BuiltinRuleSet 是 22 条内置规则（对齐 MP-2 app/modules/filter/builtin_rules.py BUILTIN_RULE_SET）。
 //
 // regex 字符串均不含 (?i) 前缀——引擎在编译时统一加 IGNORECASE（对齐 MP-2 _compile_ignorecase）。
@@ -37,8 +39,8 @@ var BuiltinRuleSet = map[string]Rule{
 		},
 		TMDB: map[string]string{"original_language": "zh,cn"},
 	},
-	// 官种（只在 labels/Tags 上匹配）
-	"GZ": {ID: "GZ", Include: []string{`官方`, `官种`, `官组`}, Match: []string{"labels"}},
+	// 官种（只在 labels/Tags 上匹配）；关键词与 site.IsOfficial 同源（site.OfficialKeywords）。
+	"GZ": {ID: "GZ", Include: site.OfficialKeywords, Match: []string{"labels"}},
 	// 特效字幕
 	"SPECSUB": {ID: "SPECSUB", Include: []string{`特效`}},
 	// BluRay

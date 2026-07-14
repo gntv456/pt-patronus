@@ -38,7 +38,7 @@ func (o *ContractOper) Upsert(r *models.ContractRule) error {
 	r.UpdatedAt = time.Now()
 	return o.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "site_id"}},
-		DoUpdates: clause.AssignmentColumns([]string{"enabled", "min_ratio", "min_seeding", "min_upload_gb", "updated_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"enabled", "min_ratio", "min_seeding", "min_upload_gb", "official_only", "min_seeding_size_gb", "period", "start_time", "updated_at"}),
 	}).Create(r).Error
 }
 

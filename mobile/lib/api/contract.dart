@@ -1,6 +1,6 @@
 import '../core/api_client.dart';
 
-/// 保种契约：为站点设置分享率 / 做种数 / 上传量下限，定时或手动检查是否达标。
+/// 保种契约：为站点设置分享率 / 做种数 / 上传量 / 官种 / 体积下限，定时或手动检查是否达标。
 /// 对齐后端 /contract/rules（按 site_id upsert）。
 class ContractRule {
   final int id;
@@ -9,6 +9,10 @@ class ContractRule {
   final double minRatio;
   final int minSeeding;
   final int minUploadGb;
+  final bool officialOnly; // true=做种数/体积只统计官种
+  final int minSeedingSizeGb; // 做种总体积下限(GiB)，0=不检
+  final String period; // '' | weekly | monthly（告警去重窗口）
+  final DateTime? startTime; // 生效起始，null=立即
   final DateTime? lastCheckedAt;
   final String lastStatus; // ok / breach / error / ''
   final String lastDetail;
@@ -22,6 +26,10 @@ class ContractRule {
     required this.minRatio,
     required this.minSeeding,
     required this.minUploadGb,
+    this.officialOnly = false,
+    this.minSeedingSizeGb = 0,
+    this.period = '',
+    this.startTime,
     required this.lastCheckedAt,
     required this.lastStatus,
     required this.lastDetail,
@@ -36,6 +44,10 @@ class ContractRule {
         minRatio: (j['min_ratio'] as num?)?.toDouble() ?? 0,
         minSeeding: (j['min_seeding'] as num?)?.toInt() ?? 0,
         minUploadGb: (j['min_upload_gb'] as num?)?.toInt() ?? 0,
+        officialOnly: j['official_only'] as bool? ?? false,
+        minSeedingSizeGb: (j['min_seeding_size_gb'] as num?)?.toInt() ?? 0,
+        period: j['period'] as String? ?? '',
+        startTime: DateTime.tryParse(j['start_time'] as String? ?? ''),
         lastCheckedAt: DateTime.tryParse(j['last_checked_at'] as String? ?? ''),
         lastStatus: j['last_status'] as String? ?? '',
         lastDetail: j['last_detail'] as String? ?? '',
@@ -54,6 +66,9 @@ class ContractCheckResult {
   final double ratio;
   final int seeding;
   final double uploadGb;
+  final int seedingOfficial; // 官种做种数（拉到明细时）
+  final double seedingSizeGb; // 做种总体积(GiB)
+  final String unsupported; // 不支持官种识别时的降级提示
   final List<String> breaches;
 
   ContractCheckResult({
@@ -65,6 +80,9 @@ class ContractCheckResult {
     required this.ratio,
     required this.seeding,
     required this.uploadGb,
+    this.seedingOfficial = 0,
+    this.seedingSizeGb = 0,
+    this.unsupported = '',
     required this.breaches,
   });
 
@@ -78,6 +96,9 @@ class ContractCheckResult {
         ratio: (j['ratio'] as num?)?.toDouble() ?? 0,
         seeding: (j['seeding'] as num?)?.toInt() ?? 0,
         uploadGb: (j['upload_gb'] as num?)?.toDouble() ?? 0,
+        seedingOfficial: (j['seeding_official'] as num?)?.toInt() ?? 0,
+        seedingSizeGb: (j['seeding_size_gb'] as num?)?.toDouble() ?? 0,
+        unsupported: j['unsupported'] as String? ?? '',
         breaches: (j['breaches'] as List?)
                 ?.map((e) => e as String)
                 .toList() ??

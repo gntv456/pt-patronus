@@ -53,6 +53,12 @@ type HRCapable interface {
 	FetchHR(ctx context.Context, def *SiteMetadata, baseURL, cookie string) ([]HRTorrent, error)
 }
 
+// SeedingListCapable 是可选「逐条做种列表」抓取能力。保种契约官种维度需逐条 title/labels 聚合，
+// 故在 UserInfo 的整站汇总之外另开此能力。适配器按需实现（type-assert 判断）。
+type SeedingListCapable interface {
+	FetchSeedingList(ctx context.Context, def *SiteMetadata, baseURL, cookie string) ([]SeedingItem, error)
+}
+
 // FreeleechCapable 是可选「全站免费/促销」检测能力。抓首页横幅，判定 Active/Upcoming。
 // 返回该站点的横幅列表（可能多条）；无促销时返回单条 NONE，抓取失败返回单条 FAILED。
 type FreeleechCapable interface {
@@ -134,7 +140,8 @@ type LoginCapable interface {
 
 // 账号登录相关错误。
 var (
-	ErrLoginNotSupported = errors.New("site: account login not supported")
-	ErrLoginFailed       = errors.New("site: login failed (bad credentials/captcha/2fa)")
-	ErrChallengeMode     = errors.New("site: challenge-response auth mode, use cookie login instead")
+	ErrLoginNotSupported      = errors.New("site: account login not supported")
+	ErrLoginFailed            = errors.New("site: login failed (bad credentials/captcha/2fa)")
+	ErrChallengeMode          = errors.New("site: challenge-response auth mode, use cookie login instead")
+	ErrSeedingListUnsupported = errors.New("site: seeding list per-row parse unsupported")
 )

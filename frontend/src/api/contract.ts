@@ -7,6 +7,10 @@ export interface ContractRule {
   min_ratio: number
   min_seeding: number
   min_upload_gb: number
+  official_only: boolean // true=只统计官种
+  min_seeding_size_gb: number // 做种总体积下限(GiB)，0=不检
+  period: string // '' | 'weekly' | 'monthly'（告警去重窗口）
+  start_time?: string // 生效起始(RFC3339)，留空=立即
   last_checked_at?: string
   last_status: string // ok | breach | error | ''
   last_detail: string
@@ -23,6 +27,9 @@ export interface ContractCheckResult {
   ratio: number
   seeding: number
   upload_gb: number
+  seeding_official?: number // 官种做种数（拉到明细时）
+  seeding_size_gb: number // 做种总体积(GiB)
+  unsupported?: string // 不支持官种识别时的降级提示
   breaches?: string[]
 }
 

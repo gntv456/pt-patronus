@@ -93,6 +93,28 @@ type HRTorrent struct {
 	DetailURL    string  `json:"detail_url"`
 }
 
+// SeedingItem 是做种列表中的一条种子（逐条明细，供保种契约按官种/体积维度聚合）。
+type SeedingItem struct {
+	Title  string   `json:"title"`
+	Size   int64    `json:"size"`             // 字节
+	Labels []string `json:"labels,omitempty"` // 行内促销/官方等标签文本（best-effort）
+}
+
+// SeedingAggregate 是做种明细的一个聚合（全部或官种子集）。
+type SeedingAggregate struct {
+	Count int   `json:"count"`
+	Size  int64 `json:"size"` // 字节
+}
+
+// SeedingStats 是做种明细按官种维度聚合的结果。
+//   - Total：全部做种；Official：官种子集（IsOfficial 命中）
+//   - Supported=false 表示该站不支持逐行做种列表解析（契约层应回退 UserInfo 汇总并提示）
+type SeedingStats struct {
+	Total     SeedingAggregate `json:"total"`
+	Official  SeedingAggregate `json:"official"`
+	Supported bool             `json:"supported"`
+}
+
 // UserInfo 是站点用户资料。Level 用于好学 VIP 判定。
 type UserInfo struct {
 	ID                        string  `json:"id"`

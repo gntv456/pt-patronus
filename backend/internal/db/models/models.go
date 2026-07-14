@@ -399,23 +399,23 @@ type CheckinRecord struct {
 // Subscription — 媒体订阅（对标 MoviePilot 订阅）。cron 定时跨站搜种子，命中即推送到下载器 + 通知。
 // 单 admin 应用，无 user_id。Status: subscribed(订阅中) | completed(电影已下，不再查) | paused(暂停)。
 type Subscription struct {
-	ID            uint       `gorm:"primaryKey" json:"id"`
-	Source        string     `gorm:"size:16" json:"source"`          // tmdb | douban | bangumi
-	SourceID      string     `gorm:"size:64;index" json:"source_id"` // movie:123
-	Title         string     `gorm:"size:255;not null" json:"title"`
-	Year          int        `json:"year"`
-	Type          string     `gorm:"size:16" json:"type"`     // movie | tv
-	Category      string     `gorm:"size:16" json:"category"` // 传给 SearchSites 的 category（movie/tv）
-	PosterURL     string     `gorm:"size:512" json:"poster_url"`
-	Resolution    string     `gorm:"size:32" json:"resolution"`  // 可选：1080p/2160p，空=不过滤
-	DownloaderID  uint       `gorm:"index" json:"downloader_id"` // 0=默认下载器
-	SavePath      string     `gorm:"size:255" json:"save_path"`
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	Source       string `gorm:"size:16" json:"source"`          // tmdb | douban | bangumi
+	SourceID     string `gorm:"size:64;index" json:"source_id"` // movie:123
+	Title        string `gorm:"size:255;not null" json:"title"`
+	Year         int    `json:"year"`
+	Type         string `gorm:"size:16" json:"type"`     // movie | tv
+	Category     string `gorm:"size:16" json:"category"` // 传给 SearchSites 的 category（movie/tv）
+	PosterURL    string `gorm:"size:512" json:"poster_url"`
+	Resolution   string `gorm:"size:32" json:"resolution"`  // 可选：1080p/2160p，空=不过滤
+	DownloaderID uint   `gorm:"index" json:"downloader_id"` // 0=默认下载器
+	SavePath     string `gorm:"size:255" json:"save_path"`
 	// 多评分闸门：开启后命中种子前先查聚合评分，低于全局阈值（媒体质量配置）则跳过推送 + 通知。
 	// 与全局 MediaQualityConfig.Enabled 取并集（任一为真即启用该订阅的评分闸门）。
 	EnableRatingGuard bool `gorm:"default:false" json:"enable_rating_guard"`
 	// FilterGroups 绑定的过滤规则组名（管道分隔，空=用全局 SubscribeFilterRuleGroups）。
-	FilterGroups  string     `gorm:"size:255" json:"filter_groups"`
-	Status        string     `gorm:"size:16;default:subscribed;index" json:"status"`
+	FilterGroups string `gorm:"size:255" json:"filter_groups"`
+	Status       string `gorm:"size:16;default:subscribed;index" json:"status"`
 	// 洗版（best_version）：开启后持续寻找更高画质版本替换库中旧版。
 	//   电影：候选 PriOrder 须严格 > CurrentPriority 才推送，达 100 视为洗版完成；
 	//   剧集：按 SxxExx 跟踪每集当前最优 PriOrder（EpisodePriority JSON），候选至少改善一集才推送；
@@ -425,8 +425,8 @@ type Subscription struct {
 	CurrentPriority int        `gorm:"default:0" json:"current_priority"`
 	EpisodePriority string     `gorm:"type:text" json:"episode_priority"`
 	LastCheckedAt   *time.Time `json:"last_checked_at"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // SubscriptionHit — 订阅命中的种子去重记录（同一下载链接不重复推送）。
@@ -443,13 +443,13 @@ type SubscriptionHit struct {
 // 对标 MoviePilot TransferHistory。download_hash 索引供 transfer-sweep 去重（同一种子不重复整理）。
 type TransferHistory struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
-	Src          string    `gorm:"size:512;index" json:"src"`  // 源文件路径
-	Dest         string    `gorm:"size:512" json:"dest"`       // 目标路径（媒体库）
-	Mode         string    `gorm:"size:16" json:"mode"`        // link | move | copy | softlink
-	Type         string    `gorm:"size:16" json:"type"`        // movie | tv
+	Src          string    `gorm:"size:512;index" json:"src"` // 源文件路径
+	Dest         string    `gorm:"size:512" json:"dest"`      // 目标路径（媒体库）
+	Mode         string    `gorm:"size:16" json:"mode"`       // link | move | copy | softlink
+	Type         string    `gorm:"size:16" json:"type"`       // movie | tv
 	Title        string    `gorm:"size:255;index" json:"title"`
 	Year         int       `json:"year"`
-	Source       string    `gorm:"size:16" json:"source"`   // tmdb | douban | bangumi
+	Source       string    `gorm:"size:16" json:"source"`    // tmdb | douban | bangumi
 	SourceID     string    `gorm:"size:64" json:"source_id"` // movie:123 / tv:456
 	Seasons      string    `gorm:"size:32" json:"seasons"`   // S01（剧集）
 	Episodes     string    `gorm:"size:64" json:"episodes"`  // E01E02（剧集）
@@ -468,7 +468,7 @@ type TransferHistory struct {
 type DownloadMediaLink struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
 	DownloadHash string    `gorm:"size:64;uniqueIndex" json:"download_hash"`
-	Source       string    `gorm:"size:16" json:"source"`   // tmdb | douban | bangumi
+	Source       string    `gorm:"size:16" json:"source"`    // tmdb | douban | bangumi
 	SourceID     string    `gorm:"size:64" json:"source_id"` // movie:123
 	Title        string    `gorm:"size:255" json:"title"`
 	Year         int       `json:"year"`
@@ -488,12 +488,12 @@ type AgentConversation struct {
 type AgentMessage struct {
 	ID             uint      `gorm:"primaryKey" json:"id"`
 	ConversationID uint      `gorm:"index;not null" json:"conversation_id"`
-	Role           string    `gorm:"size:16;not null" json:"role"` // user | assistant | tool
-	Content        string    `gorm:"type:text" json:"content"`      // 文本内容
-	Reasoning      string    `gorm:"type:text" json:"reasoning,omitempty"` // 深度思考过程（reasoning_content / thinking）
+	Role           string    `gorm:"size:16;not null" json:"role"`          // user | assistant | tool
+	Content        string    `gorm:"type:text" json:"content"`              // 文本内容
+	Reasoning      string    `gorm:"type:text" json:"reasoning,omitempty"`  // 深度思考过程（reasoning_content / thinking）
 	ToolCalls      string    `gorm:"type:text" json:"tool_calls,omitempty"` // JSON: [{id,name,arguments}]（assistant 发起的调用）
-	ToolCallID     string    `gorm:"size:64" json:"tool_call_id,omitempty"`  // role=tool：回应哪个调用
-	Name           string    `gorm:"size:64" json:"name,omitempty"`          // role=tool：工具名
+	ToolCallID     string    `gorm:"size:64" json:"tool_call_id,omitempty"` // role=tool：回应哪个调用
+	Name           string    `gorm:"size:64" json:"name,omitempty"`         // role=tool：工具名
 	CreatedAt      time.Time `gorm:"index" json:"created_at"`
 }
 
@@ -627,7 +627,7 @@ type RssSubscription struct {
 	DownloaderID  uint       `gorm:"index" json:"downloader_id"` // 0=默认下载器
 	SavePath      string     `gorm:"size:255" json:"save_path"`
 	Category      string     `gorm:"size:64" json:"category"`
-	Tags          string     `gorm:"type:text" json:"tags"` // 逗号分隔
+	Tags          string     `gorm:"type:text" json:"tags"`         // 逗号分隔
 	FilterGroups  string     `gorm:"size:255" json:"filter_groups"` // 绑定规则组（| 分隔，空=不过滤）
 	LastCheckedAt *time.Time `json:"last_checked_at"`
 	CreatedAt     time.Time  `json:"created_at"`
@@ -671,29 +671,29 @@ type Webhook struct {
 // 识别：加入的种子打 tag "brushflow:<task_id>"，扫删/限流都基于该 tag 在下载器侧统计，
 // 不依赖跨系统 infohash 匹配（站点种子 ID ≠ 下载器 infohash，无法直接对应）。
 type BrushFlowTask struct {
-	ID       uint   `gorm:"primaryKey" json:"id"`
-	Name     string `gorm:"size:128;not null" json:"name"`
-	SiteID   uint   `gorm:"index;not null" json:"site_id"`
-	DownloaderID uint `gorm:"index;not null" json:"downloader_id"`
-	Enabled  bool   `gorm:"default:true" json:"enabled"`
+	ID           uint   `gorm:"primaryKey" json:"id"`
+	Name         string `gorm:"size:128;not null" json:"name"`
+	SiteID       uint   `gorm:"index;not null" json:"site_id"`
+	DownloaderID uint   `gorm:"index;not null" json:"downloader_id"`
+	Enabled      bool   `gorm:"default:true" json:"enabled"`
 	// 选种规则
-	Keyword     string `gorm:"size:128" json:"keyword"`      // 搜种关键字，空=综合
-	Category    string `gorm:"size:32" json:"category"`      // 传给 Search 的分类(movie/tv/music/"")
-	MinSizeMB   int64  `json:"min_size_mb"`                   // 种子大小下限(MB)，0=不限
-	MaxSizeMB   int64  `json:"max_size_mb"`                   // 种子大小上限(MB)，0=不限
-	MinSeeders  int    `json:"min_seeders"`                   // 做种人数下限
-	MaxSeeders  int    `json:"max_seeders"`                   // 做种人数上限，0=不限
-	FreeOnly    bool   `gorm:"default:false" json:"free_only"` // 仅免费种
-	Paused      bool   `gorm:"default:false" json:"paused"`    // 加入时暂停(手动放行)
-	FilterGroups string `gorm:"size:255" json:"filter_groups"` // 绑定规则组（| 分隔，空=用体积/做种/Free 硬过滤）
+	Keyword      string `gorm:"size:128" json:"keyword"`        // 搜种关键字，空=综合
+	Category     string `gorm:"size:32" json:"category"`        // 传给 Search 的分类(movie/tv/music/"")
+	MinSizeMB    int64  `json:"min_size_mb"`                    // 种子大小下限(MB)，0=不限
+	MaxSizeMB    int64  `json:"max_size_mb"`                    // 种子大小上限(MB)，0=不限
+	MinSeeders   int    `json:"min_seeders"`                    // 做种人数下限
+	MaxSeeders   int    `json:"max_seeders"`                    // 做种人数上限，0=不限
+	FreeOnly     bool   `gorm:"default:false" json:"free_only"` // 仅免费种
+	Paused       bool   `gorm:"default:false" json:"paused"`    // 加入时暂停(手动放行)
+	FilterGroups string `gorm:"size:255" json:"filter_groups"`  // 绑定规则组（| 分隔，空=用体积/做种/Free 硬过滤）
 	// 删除规则（满足任一即删；全 0 = 永不自动删）
-	DeleteRatio     float64 `json:"delete_ratio"`     // 分享率达此值删，0=不限
-	DeleteSeedHours float64 `json:"delete_seed_hours"` // 做种时长达此值删，0=不限
-	DeleteUploadMB  int64   `json:"delete_upload_mb"`  // 累计上传达此值删，0=不限
+	DeleteRatio     float64 `json:"delete_ratio"`                      // 分享率达此值删，0=不限
+	DeleteSeedHours float64 `json:"delete_seed_hours"`                 // 做种时长达此值删，0=不限
+	DeleteUploadMB  int64   `json:"delete_upload_mb"`                  // 累计上传达此值删，0=不限
 	DeleteFiles     bool    `gorm:"default:false" json:"delete_files"` // 删种时是否删文件
 	// 并发与分类
-	MaxSeeds  int    `gorm:"default:10" json:"max_seeds"` // 该任务最大同时做种数
-	SavePath  string `gorm:"size:255" json:"save_path"`
+	MaxSeeds   int    `gorm:"default:10" json:"max_seeds"` // 该任务最大同时做种数
+	SavePath   string `gorm:"size:255" json:"save_path"`
 	CategoryDL string `gorm:"size:64" json:"category_dl"` // 下载器内分类
 	// 统计（cron 累加）
 	TotalAdded   int64      `gorm:"default:0" json:"total_added"`
@@ -725,17 +725,21 @@ type BrushFlowSeed struct {
 // SiteChain.UserInfo，低于任一下限则告警通知（防分享率过低被封；与 H&R 告警同属保号自动化）。
 // 每站一条（site_id 唯一），Upsert 按 site_id 合并。
 type ContractRule struct {
-	ID            uint       `gorm:"primaryKey" json:"id"`
-	SiteID        uint       `gorm:"uniqueIndex;not null" json:"site_id"`
-	Enabled       bool       `gorm:"default:true" json:"enabled"`
-	MinRatio      float64    `json:"min_ratio"`     // 分享率下限，0=不检
-	MinSeeding    int        `json:"min_seeding"`   // 做种数下限，0=不检
-	MinUploadGB   int        `json:"min_upload_gb"` // 上传量下限(GiB)，0=不检
-	LastCheckedAt *time.Time `json:"last_checked_at"`
-	LastStatus    string     `gorm:"size:16" json:"last_status"` // ok | breach | error
-	LastDetail    string     `gorm:"type:text" json:"last_detail"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID               uint       `gorm:"primaryKey" json:"id"`
+	SiteID           uint       `gorm:"uniqueIndex;not null" json:"site_id"`
+	Enabled          bool       `gorm:"default:true" json:"enabled"`
+	MinRatio         float64    `json:"min_ratio"`                          // 分享率下限，0=不检
+	MinSeeding       int        `json:"min_seeding"`                        // 做种数下限，0=不检
+	MinUploadGB      int        `json:"min_upload_gb"`                      // 上传量下限(GiB)，0=不检
+	OfficialOnly     bool       `gorm:"default:false" json:"official_only"` // true=只统计官种做种数/体积
+	MinSeedingSizeGB int        `json:"min_seeding_size_gb"`                // 做种总体积下限(GiB)，0=不检
+	Period           string     `gorm:"size:16" json:"period"`              // 考核周期 "" | weekly | monthly（告警去重窗口）
+	StartTime        *time.Time `json:"start_time"`                         // 生效起始，nil=立即
+	LastCheckedAt    *time.Time `json:"last_checked_at"`
+	LastStatus       string     `gorm:"size:16" json:"last_status"` // ok | breach | error
+	LastDetail       string     `gorm:"type:text" json:"last_detail"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 // MediaServer — 媒体服务器（Emby / Jellyfin / Plex）。多实例 CRUD（同 Downloader 范式）：
@@ -754,8 +758,8 @@ type MediaServer struct {
 	NotifyOnPlay      bool `gorm:"default:false" json:"notify_on_play"`     // 收到播放 webhook→通知中心
 	// 直链 302 反代：开启后 /mediaserver/:id/direct/*path 把 Emby 文件路径改写到 DirectLinkBase，
 	// 让播放器直连高带宽 CDN（如网盘直链）而非经 Emby 服务器中转，省本机带宽。base 为空则视为关闭。
-	DirectLinkEnabled bool   `gorm:"default:false" json:"direct_link_enabled"`
-	DirectLinkBase    string `gorm:"size:255" json:"direct_link_base"`
+	DirectLinkEnabled bool      `gorm:"default:false" json:"direct_link_enabled"`
+	DirectLinkBase    string    `gorm:"size:255" json:"direct_link_base"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
@@ -764,12 +768,12 @@ type MediaServer struct {
 // 凭据（cookie(115/夸克) 或 accessToken(123)）加密存 TokenEnc；RootPath 为浏览/STRM 扫描起点。
 // CloudChain 按需构建 client 调网盘 API（列目录/配额/探活）；STRM 规则与订阅追更复用此实例。
 type CloudDrive struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	Name      string `gorm:"size:64;not null" json:"name"`
-	Type      string `gorm:"size:16;not null" json:"type"` // 115 | quark | 123
-	TokenEnc  string `gorm:"type:text" json:"-"`           // 加密的 cookie(115/夸克) 或 accessToken(123)
-	RootPath  string `gorm:"size:255" json:"root_path"`     // 云盘根目录（浏览/扫描起点；"/"=网盘根）
-	IsDefault bool   `gorm:"default:false" json:"is_default"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"size:64;not null" json:"name"`
+	Type      string    `gorm:"size:16;not null" json:"type"` // 115 | quark | 123
+	TokenEnc  string    `gorm:"type:text" json:"-"`           // 加密的 cookie(115/夸克) 或 accessToken(123)
+	RootPath  string    `gorm:"size:255" json:"root_path"`    // 云盘根目录（浏览/扫描起点；"/"=网盘根）
+	IsDefault bool      `gorm:"default:false" json:"is_default"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -777,27 +781,27 @@ type CloudDrive struct {
 // StrmRule — STRM 生成规则：从某网盘的 CloudPath 扫描媒体文件，按模板生成本地 .strm。
 // 一条规则 = 一个 CloudDrive + 云盘源目录 + 本地输出目录 + 路径模板。GenerateAll 遍历 enabled 规则。
 type StrmRule struct {
-	ID        uint   `gorm:"primaryKey" json:"id"`
-	Name      string `gorm:"size:64;not null" json:"name"`
-	DriveID   uint   `gorm:"index;not null" json:"drive_id"`
-	CloudPath string `gorm:"size:255;not null" json:"cloud_path"` // 云盘源目录（扫描起点）
-	OutputDir string `gorm:"size:255;not null" json:"output_dir"` // 本地输出目录（.strm 落地根）
-	MountRoot string `gorm:"size:255" json:"mount_root"`           // 挂载根（模板 {mount} 替换，如 /CloudDrive2/115）
-	Template  string `gorm:"size:255" json:"template"`             // 路径模板，默认 {mount}{cloudpath}
-	Recursive bool   `gorm:"default:true" json:"recursive"`        // 递归扫描子目录
-	KeepExt   bool   `gorm:"default:true" json:"keep_ext"`         // .strm 文件名保留源扩展名（a.mkv→a.mkv.strm）否则 a.strm
-	Enabled   bool   `gorm:"default:true" json:"enabled"`
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	Name      string    `gorm:"size:64;not null" json:"name"`
+	DriveID   uint      `gorm:"index;not null" json:"drive_id"`
+	CloudPath string    `gorm:"size:255;not null" json:"cloud_path"` // 云盘源目录（扫描起点）
+	OutputDir string    `gorm:"size:255;not null" json:"output_dir"` // 本地输出目录（.strm 落地根）
+	MountRoot string    `gorm:"size:255" json:"mount_root"`          // 挂载根（模板 {mount} 替换，如 /CloudDrive2/115）
+	Template  string    `gorm:"size:255" json:"template"`            // 路径模板，默认 {mount}{cloudpath}
+	Recursive bool      `gorm:"default:true" json:"recursive"`       // 递归扫描子目录
+	KeepExt   bool      `gorm:"default:true" json:"keep_ext"`        // .strm 文件名保留源扩展名（a.mkv→a.mkv.strm）否则 a.strm
+	Enabled   bool      `gorm:"default:true" json:"enabled"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // StrmRecord — 已生成的 STRM 记录（去重 + 展示 + 订阅追更 linkage）。同 DriveID+CloudPath 唯一。
 type StrmRecord struct {
-	ID             uint   `gorm:"primaryKey" json:"id"`
-	DriveID        uint   `gorm:"index;uniqueIndex:uk_strm_rec,priority:1" json:"drive_id"`
-	CloudPath      string `gorm:"size:512;uniqueIndex:uk_strm_rec,priority:2" json:"cloud_path"`
-	StrmPath       string `gorm:"size:512" json:"strm_path"`
-	Size           int64  `json:"size"`
-	SubscriptionID uint   `gorm:"index" json:"subscription_id"` // 0=规则生成；>0=订阅追更生成
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	DriveID        uint      `gorm:"index;uniqueIndex:uk_strm_rec,priority:1" json:"drive_id"`
+	CloudPath      string    `gorm:"size:512;uniqueIndex:uk_strm_rec,priority:2" json:"cloud_path"`
+	StrmPath       string    `gorm:"size:512" json:"strm_path"`
+	Size           int64     `json:"size"`
+	SubscriptionID uint      `gorm:"index" json:"subscription_id"` // 0=规则生成；>0=订阅追更生成
 	CreatedAt      time.Time `json:"created_at"`
 }

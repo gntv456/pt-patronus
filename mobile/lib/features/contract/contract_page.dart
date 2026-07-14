@@ -103,6 +103,10 @@ class _ContractPageState extends State<ContractPage> {
         minRatio: r.minRatio,
         minSeeding: r.minSeeding,
         minUploadGb: r.minUploadGb,
+        officialOnly: r.officialOnly,
+        minSeedingSizeGb: r.minSeedingSizeGb,
+        period: r.period,
+        startTime: r.startTime,
         lastCheckedAt: r.lastCheckedAt,
         lastStatus: r.lastStatus,
         lastDetail: r.lastDetail,
@@ -118,6 +122,11 @@ class _ContractPageState extends State<ContractPage> {
         'min_ratio': r.minRatio,
         'min_seeding': r.minSeeding,
         'min_upload_gb': r.minUploadGb,
+        'official_only': r.officialOnly,
+        'min_seeding_size_gb': r.minSeedingSizeGb,
+        'period': r.period,
+        if (r.startTime != null)
+          'start_time': r.startTime!.toUtc().toIso8601String(),
       };
 
   Future<void> _check(ContractRule r) async {
@@ -156,6 +165,24 @@ class _ContractPageState extends State<ContractPage> {
               _statCell('上传', '${res.uploadGb.toStringAsFixed(1)} GiB'),
             ],
           ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (res.seedingOfficial > 0)
+                _statCell('官种', '${res.seedingOfficial}')
+              else
+                const Spacer(),
+              _statCell('体积', '${res.seedingSizeGb.toStringAsFixed(1)} GiB'),
+              if (res.seedingOfficial == 0) const Spacer(),
+            ],
+          ),
+          if (res.unsupported.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              '⚠ ${res.unsupported}',
+              style: const TextStyle(fontSize: 12, color: PTColors.warn),
+            ),
+          ],
           if (res.detail.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(res.detail, style: const TextStyle(fontSize: 13)),
@@ -398,9 +425,12 @@ class _ContractPageState extends State<ContractPage> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '分享率≥${r.minRatio} · 做种≥${r.minSeeding} · 上传≥${r.minUploadGb}GiB',
+                      '分享率≥${r.minRatio} · 做种≥${r.minSeeding} · 上传≥${r.minUploadGb}GiB'
+                      '${r.officialOnly ? " · 仅官种" : ""}'
+                      '${r.minSeedingSizeGb > 0 ? " · 体积≥${r.minSeedingSizeGb}GiB" : ""}'
+                      '${r.period == "weekly" ? " · 每周" : r.period == "monthly" ? " · 每月" : ""}',
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
@@ -513,9 +543,15 @@ class _ContractFormState extends State<_ContractForm> {
   late final _uploadCtrl = TextEditingController(
     text: widget.initial == null ? '' : '${widget.initial!.minUploadGb}',
   );
+  late final _sizeCtrl = TextEditingController(
+    text: widget.initial == null ? '' : '${widget.initial!.minSeedingSizeGb}',
+  );
 
   int? _siteId;
   bool _enabled = true;
+  bool _officialOnly = false;
+  String _period = '';
+  DateTime? _startTime;
   bool _saving = false;
 
   @override
@@ -526,6 +562,9 @@ class _ContractFormState extends State<_ContractForm> {
       _siteId =
           widget.sites.any((s) => s.id == ini.siteId) ? ini.siteId : null;
       _enabled = ini.enabled;
+      _officialOnly = ini.officialOnly;
+      _period = ini.period;
+      _startTime = ini.startTime;
     } else {
       _siteId = widget.sites.isNotEmpty ? widget.sites.first.id : null;
     }
@@ -536,12 +575,37 @@ class _ContractFormState extends State<_ContractForm> {
     _ratioCtrl.dispose();
     _seedingCtrl.dispose();
     _uploadCtrl.dispose();
+    _sizeCtrl.dispose();
     super.dispose();
   }
 
   double _parseDouble(String s, [double def = 0]) =>
       double.tryParse(s.trim()) ?? def;
   int _parseInt(String s, [int def = 0]) => int.tryParse(s.trim()) ?? def;
+
+  Future<void> _pickStartTime() async {
+    final now = DateTime.now();
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _startTime ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (d == null || !mounted) return;
+    final t = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_startTime ?? now),
+    );
+    if (t == null || !mounted) return;
+    setState(() {
+      _startTime = DateTime(d.year, d.month, d.day, t.hour, t.minute);
+    });
+  }
+
+  String _fmtStartTime(DateTime d) {
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
+  }
 
   void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -560,6 +624,11 @@ class _ContractFormState extends State<_ContractForm> {
       'min_ratio': _parseDouble(_ratioCtrl.text),
       'min_seeding': _parseInt(_seedingCtrl.text),
       'min_upload_gb': _parseInt(_uploadCtrl.text),
+      'official_only': _officialOnly,
+      'min_seeding_size_gb': _parseInt(_sizeCtrl.text),
+      'period': _period,
+      if (_startTime != null)
+        'start_time': _startTime!.toUtc().toIso8601String(),
     };
     final ok = await widget.onSubmit(body);
     if (!mounted) return;
@@ -628,6 +697,65 @@ class _ContractFormState extends State<_ContractForm> {
               isDense: true,
               hintText: '如 100',
               border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        const Divider(height: 24),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            '扩展维度（官种 / 体积 / 周期 / 生效时间）',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _switchRow(
+          '仅官种（做种数/体积只计官种）',
+          _officialOnly,
+          (v) => setState(() => _officialOnly = v),
+        ),
+        _field(
+          '做种体积下限（GiB）',
+          TextField(
+            controller: _sizeCtrl,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              isDense: true,
+              hintText: '如 500',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        _field(
+          '考核周期',
+          DropdownButton<String>(
+            value: _period,
+            isExpanded: true,
+            items: const [
+              DropdownMenuItem(value: '', child: Text('每日')),
+              DropdownMenuItem(value: 'weekly', child: Text('每周')),
+              DropdownMenuItem(value: 'monthly', child: Text('每月')),
+            ],
+            onChanged: (v) => setState(() => _period = v ?? ''),
+          ),
+        ),
+        _field(
+          '生效时间',
+          InkWell(
+            onTap: _pickStartTime,
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              child: Text(
+                _startTime == null
+                    ? '留空 = 立即生效'
+                    : _fmtStartTime(_startTime!),
+                style: TextStyle(
+                  color: _startTime == null ? Colors.grey : null,
+                ),
+              ),
             ),
           ),
         ),

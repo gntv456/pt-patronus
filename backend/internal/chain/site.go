@@ -464,6 +464,36 @@ func (c *SiteChain) HR(ctx context.Context, s *models.Site) ([]site.HRTorrent, e
 	return out, err
 }
 
+// SeedingStats 抓取逐条做种列表并按官种维度聚合（适配器需实现 site.SeedingListCapable）。
+// 保种契约 OfficialOnly 维度用；不支持逐行解析的站（返回 ErrNotSupported /
+// site.ErrSeedingListUnsupported）时 Supported=false，调用方应回退 UserInfo 汇总统计。
+func (c *SiteChain) SeedingStats(ctx context.Context, s *models.Site) (*site.SeedingStats, error) {
+	def := c.defFor(s)
+	token := c.credential(s, def)
+	out := &site.SeedingStats{}
+	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
+		lc, ok := a.(site.SeedingListCapable)
+		if !ok {
+			return ErrNotSupported
+		}
+		items, e := lc.FetchSeedingList(ctx, def, s.BaseURL, token)
+		if e != nil {
+			return e
+		}
+		out.Supported = true
+		for _, it := range items {
+			out.Total.Count++
+			out.Total.Size += it.Size
+			if site.IsOfficial(it.Title, it.Labels) {
+				out.Official.Count++
+				out.Official.Size += it.Size
+			}
+		}
+		return nil
+	})
+	return out, err
+}
+
 // detailCacheTTL 详情页缓存有效期（详情较重，且很少变动；过短则失缓存意义）。
 const detailCacheTTL = 10 * time.Minute
 

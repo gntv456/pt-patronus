@@ -159,7 +159,12 @@ func (c *TransferChain) processTorrent(ctx context.Context, dlID uint, t *downlo
 			return nil // 已成功整理，跳过
 		}
 	}
-	files, _ := dl.ListFiles(ctx, t.Hash)
+	files, err := dl.ListFiles(ctx, t.Hash)
+	if err != nil {
+		res := &transfer.Result{ErrMsg: fmt.Sprintf("list torrent files: %v", err)}
+		c.record(ctx, dlID, t.Hash, res)
+		return res
+	}
 	// 解析推送时编码的媒体身份标签（Path A）；并回填 DownloadMediaLink 缓存（供 Sweep/Redo 复用）。
 	hint := transfer.FindMediaHint(t.Tags)
 	if hint != nil && hint.Source != "" && t.Hash != "" {
@@ -302,7 +307,9 @@ func (c *TransferChain) SetDirwatchConfig(cfg dirwatch.Config) error {
 }
 
 // CategoriesConfig 读自动分类规则。
-func (c *TransferChain) CategoriesConfig() transfer.CategoryConfig { return transfer.LoadCategories(c.cfg) }
+func (c *TransferChain) CategoriesConfig() transfer.CategoryConfig {
+	return transfer.LoadCategories(c.cfg)
+}
 
 // SetCategoriesConfig 写自动分类规则（即时生效，引擎每次 Process 现取）。
 func (c *TransferChain) SetCategoriesConfig(cfg transfer.CategoryConfig) error {

@@ -203,7 +203,7 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 	if task.DeleteRatio > 0 && tr.Ratio >= task.DeleteRatio {
 		return fmt.Sprintf("分享率 %.2f≥%.2f", tr.Ratio, task.DeleteRatio)
 	}
-	if task.DeleteSeedHours > 0 {
+	if task.DeleteSeedHours > 0 && !tr.AddedAt.IsZero() {
 		if h := now.Sub(tr.AddedAt).Hours(); h >= task.DeleteSeedHours {
 			return fmt.Sprintf("做种 %.1fh≥%.1fh", h, task.DeleteSeedHours)
 		}

@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -151,6 +152,10 @@ func (h *TransferHandler) DeleteHistory(c *gin.Context) {
 
 // Sweep 手动触发一次整理扫描（所有下载器的已完成种子）。
 func (h *TransferHandler) Sweep(c *gin.Context) {
-	go h.ch.Sweep(c.Request.Context())
+	go h.ch.Sweep(transferSweepContext(c.Request.Context()))
 	c.JSON(http.StatusOK, gin.H{"ok": true, "msg": "sweep started"})
+}
+
+func transferSweepContext(ctx context.Context) context.Context {
+	return context.WithoutCancel(ctx)
 }

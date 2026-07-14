@@ -328,11 +328,44 @@ func (c *Client) AddTrackers(ctx context.Context, hash string, urls []string) er
 	return err
 }
 
-// RemoveTrackers 移除 tracker（TR 4.x trackerRemove 接受 URL 数组；2.92 收索引，会失败但不崩）。
+// RemoveTrackers maps tracker URLs to Transmission tracker IDs before removal.
 func (c *Client) RemoveTrackers(ctx context.Context, hash string, urls []string) error {
-	_, err := c.rpc(ctx, "torrent-set", map[string]any{
+	raw, err := c.rpc(ctx, "torrent-get", map[string]any{
+		"ids":    []string{hash},
+		"fields": []string{"trackers"},
+	})
+	if err != nil {
+		return err
+	}
+	var out struct {
+		Torrents []struct {
+			Trackers []struct {
+				ID       int    `json:"id"`
+				Announce string `json:"announce"`
+			} `json:"trackers"`
+		} `json:"torrents"`
+	}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return fmt.Errorf("parse trackers: %w", err)
+	}
+	wanted := make(map[string]struct{}, len(urls))
+	for _, trackerURL := range urls {
+		wanted[trackerURL] = struct{}{}
+	}
+	var ids []int
+	if len(out.Torrents) > 0 {
+		for _, tracker := range out.Torrents[0].Trackers {
+			if _, ok := wanted[tracker.Announce]; ok {
+				ids = append(ids, tracker.ID)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err = c.rpc(ctx, "torrent-set", map[string]any{
 		"ids":           []string{hash},
-		"trackerRemove": urls,
+		"trackerRemove": ids,
 	})
 	return err
 }

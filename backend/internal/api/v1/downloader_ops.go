@@ -155,7 +155,7 @@ func (h *DownloaderHandler) SetCategoryOp(c *gin.Context) {
 type tagsReq struct {
 	Hashes []string `json:"hashes" binding:"dive,max=64"`
 	Tags   []string `json:"tags" binding:"dive,max=128"`
-	Mode   string   `json:"mode" binding:"max=16"` // set | add | remove
+	Mode   string   `json:"mode" binding:"required,oneof=set add remove"`
 }
 
 // TagsOp 标签操作（按 mode 分发）。
@@ -353,8 +353,8 @@ func (h *DownloaderHandler) Trackers(c *gin.Context) {
 }
 
 type trackersReq struct {
-	Hash string   `json:"hash" binding:"max=64"`
-	URLs []string `json:"urls" binding:"dive,max=512"`
+	Hash string   `json:"hash" binding:"required,max=64"`
+	URLs []string `json:"urls" binding:"required,min=1,dive,required,max=512"`
 }
 
 // AddTrackers 追加 tracker。
@@ -414,7 +414,7 @@ func (h *DownloaderHandler) SetShareLimits(c *gin.Context) {
 
 type queueReq struct {
 	Hashes []string `json:"hashes" binding:"dive,max=64"`
-	Action string   `json:"action" binding:"max=16"` // top|up|down|bottom
+	Action string   `json:"action" binding:"required,oneof=top up down bottom"`
 }
 
 // SetQueuePriority 调整队列优先级。
@@ -506,7 +506,7 @@ func (h *DownloaderHandler) Peers(c *gin.Context) {
 // —— 分类增删 ——
 
 type categoryEditReq struct {
-	Name     string `json:"name" binding:"max=128"`
+	Name     string `json:"name" binding:"required,max=128"`
 	SavePath string `json:"save_path" binding:"max=512"`
 }
 

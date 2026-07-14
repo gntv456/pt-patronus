@@ -19,7 +19,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 // reseedClient 是辅种所需的最小下载器能力（取做种列表 + 添加种子）。
@@ -179,30 +178,54 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 			if !ok {
 				continue // 无可用凭据（MTeam 缺 api_key / 其它站缺 passkey）
 			}
-			if c.taskExists(m.Hash, iyuuSite.Site) {
-				continue // 同 hash+候选站已有 pending/added，去重
-			}
 			save := setting.SavePath
 			if save == "" {
 				save = si.save
 			}
-			task := &models.CrossSeedTask{
-				DownloaderID:  downloaderID,
-				SiteID:        local.ID,
-				InfoHash:      m.Hash,
-				SourceName:    si.name,
-				CandidateSite: iyuuSite.Site,
-				CandidateURL:  candURL,
-				SavePath:      save,
-				Status:        "pending",
+			// 同 (info_hash, 候选站) 去重 / 复活：
+			//   pending|added → 进行中，跳过；
+			//   skipped|failed → 复活为 pending（用户改主意 / 自动辅种重试失败任务）；
+			//   不存在 → 新建。
+			// 不再用 OnConflict{DoNothing}：它冲突时不插入却仍被计入返回值，会返回 ID=0
+			// 幽灵候选，且 skipped/failed 行永久阻塞候选重建。
+			var existing models.CrossSeedTask
+			lookupErr := c.db.Where("info_hash = ? AND candidate_site = ?", m.Hash, iyuuSite.Site).First(&existing).Error
+			switch {
+			case lookupErr == nil:
+				if existing.Status == "pending" || existing.Status == "added" {
+					continue // 进行中，去重
+				}
+				if e := c.db.Model(&existing).Updates(map[string]any{
+					"status": "pending", "candidate_url": candURL, "save_path": save, "resolved_at": nil,
+				}).Error; e != nil {
+					slog.Warn("reseed revive task", "hash", m.Hash, "site", iyuuSite.Site, "err", e)
+					continue
+				}
+				existing.Status = "pending"
+				existing.CandidateURL = candURL
+				existing.SavePath = save
+				existing.ResolvedAt = nil
+				created = append(created, existing)
+			case errors.Is(lookupErr, gorm.ErrRecordNotFound):
+				task := &models.CrossSeedTask{
+					DownloaderID:  downloaderID,
+					SiteID:        local.ID,
+					InfoHash:      m.Hash,
+					SourceName:    si.name,
+					CandidateSite: iyuuSite.Site,
+					CandidateURL:  candURL,
+					SavePath:      save,
+					Status:        "pending",
+				}
+				// 并发兜底：唯一索引冲突（另一协程刚建同记录）静默跳过
+				if e := c.db.Create(task).Error; e != nil {
+					slog.Warn("reseed create task", "hash", m.Hash, "site", iyuuSite.Site, "err", e)
+					continue
+				}
+				created = append(created, *task)
+			default:
+				slog.Warn("reseed lookup task", "hash", m.Hash, "site", iyuuSite.Site, "err", lookupErr)
 			}
-			// OnConflict DoNothing：(info_hash,candidate_site) 唯一索引兜底，
-			// cron 重叠（已加 SkipIfStillRunning 进一步收敛）或手动并发时重复候选静默跳过。
-			if err := c.db.Clauses(clause.OnConflict{DoNothing: true}).Create(task).Error; err != nil {
-				slog.Warn("reseed create task", "hash", m.Hash, "site", iyuuSite.Site, "err", err)
-				continue
-			}
-			created = append(created, *task)
 		}
 	}
 	slog.Info("reseed done", "downloader", downloaderID, "hashes", len(hashes), "candidates", len(created))
@@ -520,15 +543,6 @@ func (c *KeepSeedChain) ListAutoReseedSettings() ([]models.CrossSeedSetting, err
 		return nil, err
 	}
 	return out, nil
-}
-
-// taskExists 同 infohash + 候选站是否已有 pending/added 任务（去重）。
-func (c *KeepSeedChain) taskExists(infoHash, candidateSite string) bool {
-	var count int64
-	c.db.Model(&models.CrossSeedTask{}).
-		Where("info_hash = ? AND candidate_site = ? AND status IN ?", infoHash, candidateSite, []string{"pending", "added"}).
-		Count(&count)
-	return count > 0
 }
 
 // matchSiteByHost 把 IYUU 站点 host 匹配到本地 Site（按 base_url host 精确，回退后缀）。

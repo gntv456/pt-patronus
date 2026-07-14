@@ -376,7 +376,7 @@ func (h *EntertainmentHandler) Farm(c *gin.Context) {
 }
 
 type farmItemReq struct {
-	Section string `json:"section" binding:"max=16"` // crop | animal
+	Section string `json:"section" binding:"required,oneof=crop animal"`
 	ItemID  int    `json:"item_id" binding:"min=1,max=100000"`
 }
 
@@ -433,7 +433,7 @@ func (h *EntertainmentHandler) HarvestAll(c *gin.Context) {
 }
 
 type sellReq struct {
-	Key string `json:"key" binding:"max=64"`
+	Key string `json:"key" binding:"required,max=64"`
 }
 
 // Sell 出售仓库物品。
@@ -516,7 +516,7 @@ func (h *EntertainmentHandler) EventDetail(c *gin.Context) {
 }
 
 type blackjackReq struct {
-	Action string `json:"action" binding:"max=16"`
+	Action string `json:"action" binding:"required,oneof=new hit stand double"`
 }
 
 // Blackjack 二十一点动作（new/hit/stand/double）。
@@ -632,7 +632,7 @@ func (h *EntertainmentHandler) BigSmallChat(c *gin.Context) {
 }
 
 type bsSendChatReq struct {
-	Message string `json:"message" binding:"max=2000"`
+	Message string `json:"message" binding:"required,max=2000"`
 }
 
 // BigSmallSendChat 发聊天。
@@ -655,7 +655,7 @@ func (h *EntertainmentHandler) BigSmallSendChat(c *gin.Context) {
 }
 
 type bsTaskReq struct {
-	Action string `json:"action" binding:"max=16"` // claim | reward | refund
+	Action string `json:"action" binding:"required,oneof=claim reward refund"`
 	TaskID int    `json:"task_id" binding:"min=1,max=100000"`
 }
 
@@ -679,7 +679,7 @@ func (h *EntertainmentHandler) BigSmallTaskAction(c *gin.Context) {
 }
 
 type bsItemReq struct {
-	Tag string `json:"tag" binding:"max=64"`
+	Tag string `json:"tag" binding:"required,max=64"`
 }
 
 // BigSmallUseItem 使用道具（熊猫 useItem；好学亏返卡 refund）。
@@ -702,7 +702,7 @@ func (h *EntertainmentHandler) BigSmallUseItem(c *gin.Context) {
 }
 
 type bsRedpacketReq struct {
-	Action string            `json:"action" binding:"max=16"` // send | claim | info
+	Action string            `json:"action" binding:"required,oneof=send claim info"`
 	Extra  map[string]string `json:"extra" binding:"dive,max=512"`
 }
 

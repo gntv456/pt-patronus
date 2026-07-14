@@ -35,11 +35,13 @@ type Bus struct {
 	mu        sync.RWMutex
 	handlers  map[string][]handlerEntry
 	chainHand map[string][]chainEntry
+	nextID    int64
 }
 
 type handlerEntry struct {
 	h    Handler
 	prio int
+	id   int64
 }
 type chainEntry struct {
 	h    ChainHandler
@@ -54,11 +56,29 @@ func New() *Bus {
 	}
 }
 
-// Subscribe 订阅广播事件（priority 越小越先；广播实际并发执行）。
-func (b *Bus) Subscribe(eventType string, prio int, h Handler) {
+// Subscribe 订阅广播事件（priority 越小越先；广播实际并发执行）。返回订阅 handle，供 Unsubscribe
+// 精确退订。返回值可忽略——仅需要退订的订阅方（如工作流按 EventType 改型重建）才接收 handle。
+func (b *Bus) Subscribe(eventType string, prio int, h Handler) int {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.handlers[eventType] = append(b.handlers[eventType], handlerEntry{h: h, prio: prio})
+	b.nextID++
+	id := b.nextID
+	b.handlers[eventType] = append(b.handlers[eventType], handlerEntry{h: h, prio: prio, id: id})
+	return int(id)
+}
+
+// Unsubscribe 按 Subscribe 返回的 handle 精确退订一个广播订阅（不存在则无操作）。
+// 让订阅方可真正释放 handler 闭包，避免长期累积泄漏（Publish 已 copy 到独立数组，退订改原切片无 race）。
+func (b *Bus) Unsubscribe(eventType string, id int) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	entries := b.handlers[eventType]
+	for i := range entries {
+		if entries[i].id == int64(id) {
+			b.handlers[eventType] = append(entries[:i], entries[i+1:]...)
+			return
+		}
+	}
 }
 
 // Publish 并发扇出广播事件；每个 handler 独立 recover，互不影响。

@@ -24,6 +24,11 @@ type Executor struct {
 // NewExecutor 构造（failFast=true：首个失败节点立即终止）。
 func NewExecutor(reg *Registry) *Executor { return &Executor{reg: reg, failFast: true} }
 
+// WithContinueOnError 切换为容错模式：节点失败时仅记录日志并继续后续节点，而非 fail-fast 终止。
+// 适用于「某节点失败不应阻断整条流」的场景（如非关键通知）。默认仍 fail-fast。
+// 同时让原本不可达的容错分支可被测试覆盖。
+func (e *Executor) WithContinueOnError() *Executor { e.failFast = false; return e }
+
 // Run 执行整张图，返回累积日志与首个错误（fail-fast 时）。
 func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdge, ecx *Context) ([]LogEntry, error) {
 	if ecx.Variables == nil {
@@ -133,6 +138,7 @@ func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdg
 		}
 		start := time.Now()
 		var err error
+		attempts := 1 // 重试次数（loop 模式下 >1），用于失败日志标注「重试 N 次后仍失败」
 		if ParamBool(gnode.Params, "loop") {
 			times := ParamInt(gnode.Params, "loop_times")
 			if times <= 0 {
@@ -146,6 +152,7 @@ func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdg
 				interval = 60
 			}
 			for i := 0; i < times; i++ {
+				attempts = i + 1
 				err = runOnce()
 				if err == nil {
 					break // 成功即停（重试语义）
@@ -167,13 +174,17 @@ func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdg
 		dur := time.Since(start).Milliseconds()
 
 		if err != nil {
+			msg := err.Error()
+			if attempts > 1 {
+				msg = fmt.Sprintf("重试 %d 次后仍失败：%s", attempts, msg)
+			}
 			ecx.Log = append(ecx.Log, LogEntry{
 				NodeID: next, NodeType: gnode.Type, NodeName: gnode.Name,
-				Status: "failed", Message: err.Error(), DurationMS: dur, At: nowRFC3339(),
+				Status: "failed", Message: msg, DurationMS: dur, At: nowRFC3339(),
 			})
 			executed[next] = true
 			if e.failFast {
-				return ecx.Log, fmt.Errorf("节点 %s(%s) 执行失败: %w", gnode.Name, gnode.Type, err)
+				return ecx.Log, fmt.Errorf("节点 %s(%s) 执行失败: %s", gnode.Name, gnode.Type, msg)
 			}
 		} else {
 			ecx.Log = append(ecx.Log, LogEntry{

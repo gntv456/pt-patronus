@@ -65,3 +65,30 @@ func TestChainOrderAndMutation(t *testing.T) {
 		t.Errorf("v = %v, want 11", out["v"])
 	}
 }
+
+// TestUnsubscribe 验证 Subscribe 返回 handle + Unsubscribe 精确退订：退订后 Publish 不再触发该 handler，
+// 其他 handler 仍触发；重复退订/退订不存在 handle 无副作用。
+func TestUnsubscribe(t *testing.T) {
+	bus := New()
+	var hits int32
+	h1 := bus.Subscribe("evt", 0, func(ctx context.Context, e Event) {
+		atomic.AddInt32(&hits, 100)
+	})
+	bus.Subscribe("evt", 0, func(ctx context.Context, e Event) {
+		atomic.AddInt32(&hits, 1)
+	})
+
+	bus.Unsubscribe("evt", h1)
+	bus.Publish(context.Background(), "evt", nil)
+	if got := atomic.LoadInt32(&hits); got != 1 {
+		t.Fatalf("退订 h1 后应只剩第二个 handler（hits=1），got %d", got)
+	}
+
+	// 重复退订 / 退订不存在的 handle 应无副作用（幂等、不 panic）。
+	bus.Unsubscribe("evt", h1)
+	bus.Unsubscribe("evt", 99999)
+	bus.Publish(context.Background(), "evt", nil)
+	if got := atomic.LoadInt32(&hits); got != 2 {
+		t.Fatalf("第二次 Publish 应再 +1（hits=2），got %d", got)
+	}
+}

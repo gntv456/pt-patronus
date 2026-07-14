@@ -28,12 +28,12 @@ type dlMgmtNode struct {
 	run      func(ctx context.Context, dl *chain.DownloadChain, id uint, hashes []string, p map[string]any, ecx *workflow.Context) error
 }
 
-func (n *dlMgmtNode) Type() string                 { return n.typ }
-func (n *dlMgmtNode) Name() string                 { return n.name }
-func (n *dlMgmtNode) Category() string             { return "下载" }
-func (n *dlMgmtNode) Description() string          { return n.desc }
-func (n *dlMgmtNode) Icon() string                 { return n.icon }
-func (n *dlMgmtNode) DefaultParams() map[string]any { return n.defaults }
+func (n *dlMgmtNode) Type() string                       { return n.typ }
+func (n *dlMgmtNode) Name() string                       { return n.name }
+func (n *dlMgmtNode) Category() string                   { return "下载" }
+func (n *dlMgmtNode) Description() string                { return n.desc }
+func (n *dlMgmtNode) Icon() string                       { return n.icon }
+func (n *dlMgmtNode) DefaultParams() map[string]any      { return n.defaults }
 func (n *dlMgmtNode) ParamSchema() []workflow.ParamField { return n.schema }
 
 func (n *dlMgmtNode) Execute(ctx context.Context, params map[string]any, ecx *workflow.Context) error {
@@ -118,6 +118,9 @@ func NewListTorrentsNode(dlCh *chain.DownloadChain, dlOp *oper.DownloaderOper) *
 		},
 		defaults: map[string]any{"downloader_id": float64(0), "state": "", "category": ""},
 		run: func(ctx context.Context, dl *chain.DownloadChain, id uint, _ []string, p map[string]any, ecx *workflow.Context) error {
+			if dl == nil {
+				return fmt.Errorf("下载器服务未初始化")
+			}
 			list, err := dl.List(ctx, id)
 			if err != nil {
 				return fmt.Errorf("列出失败: %w", err)
@@ -343,6 +346,9 @@ func NewSetSpeedLimitNode(dlCh *chain.DownloadChain, dlOp *oper.DownloaderOper) 
 		typ: "set_speed_limit", name: "全局限速", desc: "设置下载器全局上传/下载限速", icon: "speed",
 		dlCh: dlCh, dlOp: dlOp, schema: s, defaults: d,
 		run: func(ctx context.Context, dl *chain.DownloadChain, id uint, _ []string, p map[string]any, ecx *workflow.Context) error {
+			if dl == nil {
+				return fmt.Errorf("下载器服务未初始化")
+			}
 			limits := downloader.Limits{
 				UploadLimit:   int64(workflow.ParamInt(p, "up_limit")) * 1024,
 				DownloadLimit: int64(workflow.ParamInt(p, "dl_limit")) * 1024,

@@ -18,11 +18,13 @@ type SendMessageNode struct {
 
 func NewSendMessageNode(ns *notice.Service) *SendMessageNode { return &SendMessageNode{notice: ns} }
 
-func (n *SendMessageNode) Type() string        { return "send_message" }
-func (n *SendMessageNode) Name() string        { return "发送通知" }
-func (n *SendMessageNode) Category() string    { return "通知" }
-func (n *SendMessageNode) Description() string { return "推送一条通知（站内 + bark/tg/webhook）" }
-func (n *SendMessageNode) Icon() string        { return "message" }
+func (n *SendMessageNode) Type() string     { return "send_message" }
+func (n *SendMessageNode) Name() string     { return "发送通知" }
+func (n *SendMessageNode) Category() string { return "通知" }
+func (n *SendMessageNode) Description() string {
+	return "推送一条通知（站内 + bark/tg/webhook）"
+}
+func (n *SendMessageNode) Icon() string { return "message" }
 func (n *SendMessageNode) DefaultParams() map[string]any {
 	return map[string]any{"title": "工作流通知", "body": "", "level": "info"}
 }
@@ -68,11 +70,13 @@ func NewSendNotificationNode(notif *chain.NotificationChain) *SendNotificationNo
 	return &SendNotificationNode{notif: notif}
 }
 
-func (n *SendNotificationNode) Type() string        { return "send_notification" }
-func (n *SendNotificationNode) Name() string        { return "多通道通知" }
-func (n *SendNotificationNode) Category() string    { return "通知" }
-func (n *SendNotificationNode) Description() string { return "直接推送外发渠道（bark/TG/Webhook），不入站内通知中心" }
-func (n *SendNotificationNode) Icon() string        { return "notify" }
+func (n *SendNotificationNode) Type() string     { return "send_notification" }
+func (n *SendNotificationNode) Name() string     { return "多通道通知" }
+func (n *SendNotificationNode) Category() string { return "通知" }
+func (n *SendNotificationNode) Description() string {
+	return "直接推送外发渠道（bark/TG/Webhook），不入站内通知中心"
+}
+func (n *SendNotificationNode) Icon() string { return "notify" }
 func (n *SendNotificationNode) DefaultParams() map[string]any {
 	return map[string]any{"title": "工作流通知", "body": "", "level": "info"}
 }
@@ -88,6 +92,9 @@ func (n *SendNotificationNode) ParamSchema() []workflow.ParamField {
 }
 
 func (n *SendNotificationNode) Execute(ctx context.Context, params map[string]any, ecx *workflow.Context) error {
+	if n.notif == nil {
+		return fmt.Errorf("通知服务未初始化")
+	}
 	title := strings.TrimSpace(render(workflow.ParamString(params, "title"), ecx))
 	body := render(workflow.ParamString(params, "body"), ecx)
 	level := workflow.ParamString(params, "level")

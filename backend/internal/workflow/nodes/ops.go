@@ -62,7 +62,7 @@ func (n *SSHCommandNode) Execute(ctx context.Context, params map[string]any, ecx
 	timeoutSec := workflow.ParamInt(params, "timeout_sec")
 	result, err := n.runner.RunCommandNow(ctx, uint(targetID), command, timeoutSec)
 	if err != nil {
-		return err
+		return fmt.Errorf("SSH 命令执行失败: %w", err)
 	}
 	outputVar := strings.TrimSpace(workflow.ParamString(params, "output_var"))
 	if outputVar == "" {

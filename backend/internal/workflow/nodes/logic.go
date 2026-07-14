@@ -61,20 +61,34 @@ func (n *ConditionNode) Execute(ctx context.Context, params map[string]any, ecx 
 		name := strings.TrimSpace(workflow.ParamString(params, "variable"))
 		var lv string
 		if ecx.Variables != nil {
-			lv = fmt.Sprintf("%v", ecx.Variables[name])
+			if v, ok := ecx.Variables[name]; ok {
+				lv = fmt.Sprintf("%v", v)
+			} // 缺失 key → lv 保持空串（统一「缺失=空」，不再产生字面 "<nil>"）
 		}
 		if op == "contains" {
 			matched = strings.Contains(lv, val)
 		} else {
-			// 尝试数值比较，失败回退字符串相等
+			// 尝试数值比较，失败回退字符串字典序比较（支持全部算子，gt/lt 不再恒 false）
 			if ln, e1 := strconv.ParseFloat(lv, 64); e1 == nil {
 				if rn, e2 := strconv.ParseFloat(val, 64); e2 == nil {
 					matched = cmpFloat(ln, rn, op)
 					break
 				}
 			}
-			matched = (lv == val && (op == "eq" || op == "ge" || op == "le")) ||
-				(lv != val && op == "ne")
+			switch op {
+			case "gt":
+				matched = lv > val
+			case "ge":
+				matched = lv >= val
+			case "eq":
+				matched = lv == val
+			case "ne":
+				matched = lv != val
+			case "lt":
+				matched = lv < val
+			case "le":
+				matched = lv <= val
+			}
 		}
 	}
 	if matched {
@@ -283,11 +297,13 @@ type FormatSizeNode struct{}
 
 func NewFormatSizeNode() *FormatSizeNode { return &FormatSizeNode{} }
 
-func (n *FormatSizeNode) Type() string        { return "format_size" }
-func (n *FormatSizeNode) Name() string        { return "格式化字节" }
-func (n *FormatSizeNode) Category() string    { return "流程" }
-func (n *FormatSizeNode) Description() string { return "把字节数格式化为人类可读（如 1.50 GiB）" }
-func (n *FormatSizeNode) Icon() string        { return "format" }
+func (n *FormatSizeNode) Type() string     { return "format_size" }
+func (n *FormatSizeNode) Name() string     { return "格式化字节" }
+func (n *FormatSizeNode) Category() string { return "流程" }
+func (n *FormatSizeNode) Description() string {
+	return "把字节数格式化为人类可读（如 1.50 GiB）"
+}
+func (n *FormatSizeNode) Icon() string { return "format" }
 func (n *FormatSizeNode) DefaultParams() map[string]any {
 	return map[string]any{"value": "", "output_var": "size_text"}
 }

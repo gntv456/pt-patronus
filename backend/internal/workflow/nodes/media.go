@@ -21,11 +21,13 @@ func NewSearchMediaNode(mediaCh *chain.MediaChain) *SearchMediaNode {
 	return &SearchMediaNode{mediaCh: mediaCh}
 }
 
-func (n *SearchMediaNode) Type() string        { return "search_media" }
-func (n *SearchMediaNode) Name() string        { return "搜索媒体" }
-func (n *SearchMediaNode) Category() string    { return "媒体" }
-func (n *SearchMediaNode) Description() string { return "按关键词搜索影视/音乐元数据（写入文本载荷）" }
-func (n *SearchMediaNode) Icon() string        { return "media" }
+func (n *SearchMediaNode) Type() string     { return "search_media" }
+func (n *SearchMediaNode) Name() string     { return "搜索媒体" }
+func (n *SearchMediaNode) Category() string { return "媒体" }
+func (n *SearchMediaNode) Description() string {
+	return "按关键词搜索影视/音乐元数据（写入文本载荷）"
+}
+func (n *SearchMediaNode) Icon() string { return "media" }
 func (n *SearchMediaNode) DefaultParams() map[string]any {
 	return map[string]any{"keyword": "", "year": float64(0), "filter": "video"}
 }
@@ -64,11 +66,13 @@ func NewMediaDetailNode(mediaCh *chain.MediaChain) *MediaDetailNode {
 	return &MediaDetailNode{mediaCh: mediaCh}
 }
 
-func (n *MediaDetailNode) Type() string        { return "media_detail" }
-func (n *MediaDetailNode) Name() string        { return "媒体详情" }
-func (n *MediaDetailNode) Category() string    { return "媒体" }
-func (n *MediaDetailNode) Description() string { return "取单条媒体详情（评分/演职/简介，写入文本载荷）" }
-func (n *MediaDetailNode) Icon() string        { return "media" }
+func (n *MediaDetailNode) Type() string     { return "media_detail" }
+func (n *MediaDetailNode) Name() string     { return "媒体详情" }
+func (n *MediaDetailNode) Category() string { return "媒体" }
+func (n *MediaDetailNode) Description() string {
+	return "取单条媒体详情（评分/演职/简介，写入文本载荷）"
+}
+func (n *MediaDetailNode) Icon() string { return "media" }
 func (n *MediaDetailNode) DefaultParams() map[string]any {
 	return map[string]any{"source": "tmdb", "source_id": ""}
 }
@@ -112,11 +116,13 @@ func NewRecommendFeedNode(recommendCh *chain.RecommendChain) *RecommendFeedNode 
 	return &RecommendFeedNode{recommendCh: recommendCh}
 }
 
-func (n *RecommendFeedNode) Type() string        { return "recommend_feed" }
-func (n *RecommendFeedNode) Name() string        { return "推荐信息流" }
-func (n *RecommendFeedNode) Category() string    { return "媒体" }
-func (n *RecommendFeedNode) Description() string { return "取热门/趋势推荐（豆瓣热映/TMDB 趋势等，写入文本载荷）" }
-func (n *RecommendFeedNode) Icon() string        { return "recommend" }
+func (n *RecommendFeedNode) Type() string     { return "recommend_feed" }
+func (n *RecommendFeedNode) Name() string     { return "推荐信息流" }
+func (n *RecommendFeedNode) Category() string { return "媒体" }
+func (n *RecommendFeedNode) Description() string {
+	return "取热门/趋势推荐（豆瓣热映/TMDB 趋势等，写入文本载荷）"
+}
+func (n *RecommendFeedNode) Icon() string { return "recommend" }
 func (n *RecommendFeedNode) DefaultParams() map[string]any {
 	return map[string]any{"source": "", "category": "", "page": float64(1), "force": false}
 }
@@ -130,6 +136,9 @@ func (n *RecommendFeedNode) ParamSchema() []workflow.ParamField {
 }
 
 func (n *RecommendFeedNode) Execute(ctx context.Context, params map[string]any, ecx *workflow.Context) error {
+	if n.recommendCh == nil {
+		return fmt.Errorf("推荐服务未初始化")
+	}
 	source := workflow.ParamString(params, "source")
 	category := workflow.ParamString(params, "category")
 	page := workflow.ParamInt(params, "page")

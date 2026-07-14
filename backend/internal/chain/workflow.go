@@ -15,13 +15,19 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/notice"
-	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/workflow"
 	"github.com/robfig/cron/v3"
 )
 
 // runTimeout 单次工作流执行整体超时（兜底，防节点卡死）。
 const runTimeout = 10 * time.Minute
+
+// cronScheduler 抽象 scheduler.Scheduler 的工作流所需子集，便于测试注入故障实现
+// （验证 Create 在 RegisterTriggers 失败时回滚）。*scheduler.Scheduler 天然实现此接口。
+type cronScheduler interface {
+	AddFunc(name, spec string, fn func()) error
+	Remove(name string)
+}
 
 // WorkflowChain 编排工作流：CRUD + 执行 + 触发器注册（timer cron / event 总线）。
 type WorkflowChain struct {
@@ -30,20 +36,20 @@ type WorkflowChain struct {
 	runOp  *oper.WorkflowRunOper
 	reg    *workflow.Registry
 	exec   *workflow.Executor
-	sched  *scheduler.Scheduler
+	sched  cronScheduler
 	bus    *event.Bus
 	notice *notice.Service
 
-	mu              sync.Mutex      // 重入守卫 + 事件订阅登记
-	eventSubscribed map[string]bool // 已注册事件监听 key="wfID:eventType"（bus 无 Unsubscribe；按 id+eventType 去重，改 EventType 可重订阅新类型）
+	mu              sync.Mutex     // 重入守卫 + 事件订阅登记
+	eventSubscribed map[string]int // 已注册事件监听 key="wfID:eventType" → bus.Subscribe 返回的 handle（供 UnregisterTriggers 精确退订）
 }
 
 // NewWorkflowChain 构造。
 func NewWorkflowChain(b Base, op *oper.WorkflowOper, runOp *oper.WorkflowRunOper,
-	reg *workflow.Registry, sched *scheduler.Scheduler, bus *event.Bus, ns *notice.Service) *WorkflowChain {
+	reg *workflow.Registry, sched cronScheduler, bus *event.Bus, ns *notice.Service) *WorkflowChain {
 	return &WorkflowChain{
 		Base: b, op: op, runOp: runOp, reg: reg, exec: workflow.NewExecutor(reg),
-		sched: sched, bus: bus, notice: ns, eventSubscribed: make(map[string]bool),
+		sched: sched, bus: bus, notice: ns, eventSubscribed: make(map[string]int),
 	}
 }
 
@@ -424,15 +430,25 @@ func validateEventConditions(raw string) error {
 	return nil
 }
 
-// UnregisterTriggers 注销触发器。timer→sched.Remove；event→无 Unsubscribe（handler 惰性查 Enabled 自废）。
+// UnregisterTriggers 注销触发器。timer→sched.Remove；event→bus.Unsubscribe 按 handle 精确退订。
 func (c *WorkflowChain) UnregisterTriggers(wf *models.Workflow) {
 	if wf == nil {
 		return
 	}
 	if wf.TriggerType == "timer" {
 		c.sched.Remove(fmt.Sprintf("wf-timer-%d", wf.ID))
+	} else if wf.TriggerType == "event" {
+		key := fmt.Sprintf("%d:%s", wf.ID, wf.EventType)
+		c.mu.Lock()
+		handle, ok := c.eventSubscribed[key]
+		if ok {
+			delete(c.eventSubscribed, key)
+		}
+		c.mu.Unlock()
+		if ok {
+			c.bus.Unsubscribe(wf.EventType, handle) // 真正退订，释放 handler 闭包（治本，非惰性自废）
+		}
 	}
-	// event 处理器无法注销；它每次触发会重载工作流查 Enabled，禁用/删除即自废。
 }
 
 // RegisterAllTriggers 启动时遍历启用的工作流注册触发器（cron 任务随进程重启丢失，需重建）。
@@ -449,25 +465,24 @@ func (c *WorkflowChain) RegisterAllTriggers(ctx context.Context) error {
 	return nil
 }
 
-// registerEventHandler 注册一次事件监听（按 "wfID:eventType" 去重，bus 无 Unsubscribe）。
-// 关键：去重键含 EventType——用户改事件类型时新类型会生成新 key 从而重新订阅；
-// 旧订阅无法注销，但 handler 每次触发重载 cur 校验 EventType 是否仍等于注册时的值，改了即自废。
+// registerEventHandler 注册一次事件监听（按 "wfID:eventType" 去重），并记录 bus.Subscribe 返回的 handle，
+// 供 UnregisterTriggers 调 bus.Unsubscribe 精确退订。去重键含 EventType——改事件类型时新类型生成新 key
+// 重新订阅；handler 仍保留 EventType 自废校验作双保险（防任何路径漏退订）。
 func (c *WorkflowChain) registerEventHandler(wf *models.Workflow) {
 	key := fmt.Sprintf("%d:%s", wf.ID, wf.EventType)
 	c.mu.Lock()
-	if c.eventSubscribed[key] {
+	if _, ok := c.eventSubscribed[key]; ok {
 		c.mu.Unlock()
 		return
 	}
-	c.eventSubscribed[key] = true
 	c.mu.Unlock()
 
 	wfID := wf.ID
 	eventType := wf.EventType
-	c.bus.Subscribe(eventType, 100, func(ctx context.Context, e event.Event) {
+	handle := c.bus.Subscribe(eventType, 100, func(ctx context.Context, e event.Event) {
 		cur, err := c.op.Get(wfID)
 		if err != nil || cur == nil || !cur.Enabled || cur.TriggerType != "event" || cur.EventType != eventType {
-			return // 已删除/禁用/改型/改事件类型 → 自废（bus 无 Unsubscribe，靠重载判定失效）
+			return // 已删除/禁用/改型/改事件类型 → 自废（双保险，正常路径已由 Unsubscribe 退订）
 		}
 		if !evaluateEventConditions(cur.EventConditions, e.Data) {
 			return
@@ -478,6 +493,9 @@ func (c *WorkflowChain) registerEventHandler(wf *models.Workflow) {
 			slog.Warn("workflow event run failed", "id", wfID, "err", err)
 		}
 	})
+	c.mu.Lock()
+	c.eventSubscribed[key] = handle
+	c.mu.Unlock()
 }
 
 // validateGraph 解析并校验节点图。

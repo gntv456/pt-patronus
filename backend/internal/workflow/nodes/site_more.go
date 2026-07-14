@@ -29,12 +29,12 @@ type siteNode struct {
 	run func(ctx context.Context, siteCh *chain.SiteChain, s *models.Site, p map[string]any, ecx *workflow.Context) error
 }
 
-func (n *siteNode) Type() string                 { return n.typ }
-func (n *siteNode) Name() string                 { return n.name }
-func (n *siteNode) Category() string             { return "站点" }
-func (n *siteNode) Description() string          { return n.desc }
-func (n *siteNode) Icon() string                 { return n.icon }
-func (n *siteNode) DefaultParams() map[string]any { return n.defaults }
+func (n *siteNode) Type() string                       { return n.typ }
+func (n *siteNode) Name() string                       { return n.name }
+func (n *siteNode) Category() string                   { return "站点" }
+func (n *siteNode) Description() string                { return n.desc }
+func (n *siteNode) Icon() string                       { return n.icon }
+func (n *siteNode) DefaultParams() map[string]any      { return n.defaults }
 func (n *siteNode) ParamSchema() []workflow.ParamField { return n.schema }
 
 func (n *siteNode) Execute(ctx context.Context, params map[string]any, ecx *workflow.Context) error {
@@ -85,6 +85,9 @@ func NewCheckinAllNode(siteCh *chain.SiteChain, siteOp *oper.SiteOper) *siteNode
 		typ: "checkin_all", name: "全站签到", desc: "对所有启用站点并发签到", icon: "checkin",
 		siteCh: siteCh, siteOp: siteOp, schema: nil, defaults: map[string]any{},
 		run: func(ctx context.Context, siteCh *chain.SiteChain, _ *models.Site, _ map[string]any, ecx *workflow.Context) error {
+			if siteCh == nil {
+				return fmt.Errorf("站点服务未初始化")
+			}
 			results := siteCh.CheckinAll(ctx)
 			ok := 0
 			for _, r := range results {

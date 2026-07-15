@@ -90,7 +90,7 @@ loadSites()
     <div class="head">
       <h2 class="title">娱乐</h2>
       <div class="selectors">
-        <el-select v-model="currentSite" placeholder="选择站点" style="width: 200px" @change="loadGames">
+        <el-select v-model="currentSite" placeholder="选择站点" style="width: 200px" popper-class="ent-site-dropdown" @change="loadGames">
           <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id">
             <div class="opt-row">
               <span class="opt-name">{{ s.name }}</span>
@@ -164,4 +164,16 @@ loadSites()
 .amount { color: var(--pt-warn, #f59e0b); font-weight: 600; }
 .msg { width: 100%; }
 .empty { padding: 50px; text-align: center; }
+</style>
+
+<style>
+/* 娱乐页站点筛选下拉：加高面板以显示更多站点（el-select 默认 max-height 仅约 274px，只够 7-8 项）。
+   popper-class 作用在 teleport 到 body 的 dropdown 根元素，必须用非 scoped 全局样式才能命中。 */
+.ent-site-dropdown.el-select-dropdown {
+  max-height: 60vh;
+}
+.ent-site-dropdown .el-select-dropdown__wrap,
+.ent-site-dropdown .el-scrollbar__wrap {
+  max-height: 60vh;
+}
 </style>

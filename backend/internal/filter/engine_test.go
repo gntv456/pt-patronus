@@ -121,3 +121,26 @@ func TestParseSizeRangeFormats(t *testing.T) {
 		t.Errorf("纯数字应为 unknown，实际 %s", op)
 	}
 }
+
+// TestIsFree：订阅「仅免费」过滤依赖 IsFree（下载因子=0 即免费）。须与 torrentDownloadFactor
+// 一致：DownloadVolumeFactor>0 时以其值为准（≠0 即不免费），否则看 Free。
+func TestIsFree(t *testing.T) {
+	cases := []struct {
+		name string
+		t    site.Torrent
+		want bool
+	}{
+		{"Free 标记", site.Torrent{Free: true}, true},
+		{"无任何标记", site.Torrent{}, false},
+		{"促销因子0.5", site.Torrent{DownloadVolumeFactor: 0.5}, false},
+		{"促销因子1（全速）", site.Torrent{DownloadVolumeFactor: 1}, false},
+		{"Free 但有非零因子（因子优先）", site.Torrent{Free: true, DownloadVolumeFactor: 0.5}, false},
+		{"Free 且因子0", site.Torrent{Free: true, DownloadVolumeFactor: 0}, true},
+	}
+	for _, c := range cases {
+		if got := IsFree(c.t); got != c.want {
+			t.Errorf("%s: IsFree=%v want %v (factor=%v free=%v)",
+				c.name, got, c.want, c.t.DownloadVolumeFactor, c.t.Free)
+		}
+	}
+}

@@ -32,6 +32,17 @@ func (h *HaremHandler) All(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// AllStream SSE 流式推送全站后宫（?refresh=1）。每站完成即推一帧 event:batch
+// （results 为单元素数组，该站药单）；结束推 event:done（带 overview 全量汇总）。
+func (h *HaremHandler) AllStream(c *gin.Context) {
+	force := c.Query("refresh") == "1"
+	emit := beginSSE(c.Writer)
+	overview := h.ch.HaremAllStream(c.Request.Context(), force, func(item site.PrescriptionItem) {
+		emit("batch", gin.H{"results": []site.PrescriptionItem{item}})
+	})
+	emit("done", gin.H{"overview": overview})
+}
+
 // SyncOne 立即抓取单站后宫（药单+花名册）。
 func (h *HaremHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)

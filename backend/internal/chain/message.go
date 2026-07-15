@@ -12,11 +12,9 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-// 消息抓取并发与超时。
-const (
-	msgConcurrency = 8
-	msgTimeout     = 15 * time.Second
-)
+// 消息缓存 TTL（平衡档：私信时效 vs 体验；过期走 SWR 后台刷新，故可较短）。
+// 并发/超时复用 site_info.go 的 infoFetchConcurrency(8)/infoFetchTimeout(15s)，与公告/站免同值。
+const messageCacheTTL = 2 * time.Minute
 
 // MessageResult 是单站消息聚合结果。
 type MessageResult struct {
@@ -24,6 +22,12 @@ type MessageResult struct {
 	SiteName string          `json:"site_name"`
 	Messages []site.Message  `json:"messages"`
 	Error    string          `json:"error,omitempty"`
+}
+
+// msgSFResult 是消息单次回源的 singleflight 结果（messages + 展示用 errMsg）。
+type msgSFResult struct {
+	messages []site.Message
+	errMsg   string
 }
 
 // Messages 抓单站消息（capability dispatch + 盖章 siteID/name/ID）。
@@ -67,43 +71,150 @@ func (c *SiteChain) Messages(ctx context.Context, s *models.Site, mailbox site.M
 	return out, err
 }
 
-// MessagesAll 跨站并发聚合消息（无缓存，每次实时；并发 + 每站超时 + 容错）。
-func (c *SiteChain) MessagesAll(ctx context.Context, mailbox site.MailboxType) []MessageResult {
+// msgCacheKey 消息缓存 key：siteID + mailbox（信箱 6 类，防切信箱串数据）。
+func msgCacheKey(siteID uint, mailbox site.MailboxType) string {
+	return strconv.Itoa(int(siteID)) + "|" + string(mailbox)
+}
+
+// resolveMessage 解析单站消息结果（缓存命中/SWR/miss/force 同聚合逻辑），供聚合与流式复用。
+func (c *SiteChain) resolveMessage(ctx context.Context, sem chan struct{}, s models.Site, mailbox site.MailboxType, force bool) MessageResult {
+	key := msgCacheKey(s.ID, mailbox)
+	// 快速路径：缓存存在（含已过期）且非 force → 立即用旧值；过期则后台 SWR 刷新。
+	if !force {
+		c.msgMu.Lock()
+		e, ok := c.msgCache[key]
+		c.msgMu.Unlock()
+		if ok {
+			if time.Since(e.at) > messageCacheTTL {
+				c.refreshMessagesAsync(s, mailbox)
+			}
+			return MessageResult{SiteID: s.ID, SiteName: s.Name, Messages: e.messages, Error: e.errMsg}
+		}
+	}
+	// miss 或 force：同步抓取（force 直连回源；miss 走 singleflight 合并防击穿）。
+	var res msgSFResult
+	if force {
+		res = c.fetchMessagesOnce(ctx, sem, &s, mailbox)
+	} else {
+		res, _ = sfDo(&c.msgSF, key, func() (msgSFResult, error) {
+			// double-check：leader 完成后紧随 caller 重跑 fn，缓存可能已满。
+			c.msgMu.Lock()
+			ce, ok := c.msgCache[key]
+			c.msgMu.Unlock()
+			if ok {
+				return msgSFResult{messages: ce.messages, errMsg: ce.errMsg}, nil
+			}
+			return c.fetchMessagesOnce(ctx, sem, &s, mailbox), nil
+		})
+	}
+	return msgResult(s.ID, s.Name, res)
+}
+
+// MessagesAll 跨站并发聚合消息（per-(site|mailbox) 缓存 + SWR；force=true 跳过缓存强抓）。
+// 等全部站完成后一次性返回（MCP 工具/cron 用）；前端页面要"加载一个显示一个"用 MessagesStream。
+func (c *SiteChain) MessagesAll(ctx context.Context, mailbox site.MailboxType, force bool) []MessageResult {
 	sites, err := c.sites.ListActive()
 	if err != nil {
 		slog.Warn("messages list sites failed", "err", err)
 		return nil
 	}
 	results := make([]MessageResult, len(sites))
-	sem := make(chan struct{}, msgConcurrency)
+	sem := make(chan struct{}, infoFetchConcurrency)
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
 		go func(i int, s models.Site) {
 			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			siteCtx, cancel := context.WithTimeout(ctx, msgTimeout)
-			defer cancel()
-			msgs, e := c.Messages(siteCtx, &s, mailbox)
-			if msgs == nil {
-				msgs = []site.Message{} // nil → [] 防 JSON null 致前端 .length 崩
-			}
-			r := MessageResult{SiteID: s.ID, SiteName: s.Name}
-			if e != nil {
-				if !errors.Is(e, site.ErrNotLoggedIn) {
-					r.Error = e.Error()
-					slog.Debug("messages fetch failed", "site", s.Name, "err", e)
-				} else {
-					r.Error = "未登录"
-				}
-			}
-			r.Messages = msgs
-			results[i] = r
+			results[i] = c.resolveMessage(ctx, sem, s, mailbox, force)
 		}(i, s)
 	}
 	wg.Wait()
 	return results
+}
+
+// MessagesStream 流式聚合：每站解析完立即通过 emit 推送（不等全部），供前端"加载一个显示一个"。
+// 缓存命中的站秒级 emit，慢站（context deadline 15s）最后到达；缓存/SWR/负缓存逻辑同聚合。
+// emit 由调用方保证并发安全（多 goroutine 同时回调）。
+func (c *SiteChain) MessagesStream(ctx context.Context, mailbox site.MailboxType, force bool, emit func(MessageResult)) {
+	sites, err := c.sites.ListActive()
+	if err != nil {
+		slog.Warn("messages stream list sites failed", "err", err)
+		return
+	}
+	sem := make(chan struct{}, infoFetchConcurrency)
+	var wg sync.WaitGroup
+	for _, s := range sites {
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+			emit(c.resolveMessage(ctx, sem, s, mailbox, force))
+		}(s)
+	}
+	wg.Wait()
+}
+
+// fetchMessages 抓单站消息（盖章由 Messages 内部完成）；成功与失败结果都写缓存（负缓存）。
+// 失败站（context deadline / SSRF no-host / CF 阻挡 / 未登录）短期不再重试——这些站单次抓取
+// 就要等到 15s 超时，若不缓存每次请求都会被少数慢站拖到前端超时。配合 SWR（过期返旧值+
+// 后台刷），失败站也仅在缓存过期后由后台异步重试，不阻塞用户。
+// ctx 超时由调用方控制：同步路径用 infoFetchTimeout，SWR 后台用独立 Background ctx。
+func (c *SiteChain) fetchMessages(ctx context.Context, s *models.Site, mailbox site.MailboxType) msgSFResult {
+	msgs, e := c.Messages(ctx, s, mailbox)
+	var errMsg string
+	if e != nil {
+		switch {
+		case errors.Is(e, site.ErrNotLoggedIn):
+			errMsg = "未登录"
+		default:
+			errMsg = e.Error()
+			slog.Debug("messages fetch failed", "site", s.Name, "err", e)
+		}
+	}
+	if msgs == nil {
+		msgs = []site.Message{}
+	}
+	c.msgMu.Lock()
+	c.msgCache[msgCacheKey(s.ID, mailbox)] = msgCacheEntry{messages: msgs, errMsg: errMsg, at: time.Now()}
+	c.msgMu.Unlock()
+	return msgSFResult{messages: msgs, errMsg: errMsg}
+}
+
+// fetchMessagesOnce 占一个 sem 槽 + 独立超时后抓取（同步路径限流，对标 fetchAnnouncementOnce）。
+func (c *SiteChain) fetchMessagesOnce(ctx context.Context, sem chan struct{}, s *models.Site, mailbox site.MailboxType) msgSFResult {
+	sem <- struct{}{}
+	defer func() { <-sem }()
+	siteCtx, cancel := context.WithTimeout(ctx, infoFetchTimeout)
+	defer cancel()
+	return c.fetchMessages(siteCtx, s, mailbox)
+}
+
+// refreshMessagesAsync SWR 后台刷新：缓存过期时立即返回旧值后，异步拉最新写缓存。
+// 独立 ctx（不绑请求生命周期，请求结束不中断刷新）+ sfDo 合并同 key（防刷新风暴）+ recover 防 panic。
+func (c *SiteChain) refreshMessagesAsync(s models.Site, mailbox site.MailboxType) {
+	key := msgCacheKey(s.ID, mailbox)
+	go func() {
+		defer func() { _ = recover() }()
+		_, _ = sfDo(&c.msgSF, key, func() (msgSFResult, error) {
+			c.msgMu.Lock()
+			ce, ok := c.msgCache[key]
+			c.msgMu.Unlock()
+			if ok && time.Since(ce.at) <= messageCacheTTL { // double-check：可能已被并发回源填满
+				return msgSFResult{messages: ce.messages, errMsg: ce.errMsg}, nil
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), infoFetchTimeout)
+			defer cancel()
+			return c.fetchMessages(ctx, &s, mailbox), nil
+		})
+	}()
+}
+
+// msgResult 组装单站展示结果（nil → [] 防 JSON null 致前端 .length 崩）。
+func msgResult(id uint, name string, res msgSFResult) MessageResult {
+	msgs := res.messages
+	if msgs == nil {
+		msgs = []site.Message{}
+	}
+	return MessageResult{SiteID: id, SiteName: name, Messages: msgs, Error: res.errMsg}
 }
 
 // MessageContent 抓单站消息正文。

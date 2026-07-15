@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/core/api_client.dart';
@@ -20,6 +22,8 @@ class _SitesPageState extends State<SitesPage> {
   List<SiteDef> _defs = []; // 添加表单下拉项缓存
   bool _loading = true; // 首访即显示加载态，避免短暂空白像页面坏了
   String? _error;
+  Map<int, SiteConnectivityStatus> _connectivity = {};
+  bool _connectivityLoading = false;
   int? _checkining; // 正在签到的站点 id
   int? _testing; // 正在连接测试的站点 id
   bool _checkinAllLoading = false;
@@ -52,6 +56,20 @@ class _SitesPageState extends State<SitesPage> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+    unawaited(_loadConnectivity());
+  }
+
+  Future<void> _loadConnectivity() async {
+    if (mounted) setState(() => _connectivityLoading = true);
+    try {
+      final statuses = await SiteApi().statuses();
+      if (!mounted) return;
+      setState(() => _connectivity = {for (final s in statuses) s.siteId: s});
+    } catch (_) {
+      if (mounted) setState(() => _connectivity = {});
+    } finally {
+      if (mounted) setState(() => _connectivityLoading = false);
     }
   }
 
@@ -91,15 +109,77 @@ class _SitesPageState extends State<SitesPage> {
     try {
       final r = await SiteApi().test(s.id);
       if (r['ok'] == true) {
+        if (mounted) {
+          setState(() {
+            _connectivity = {
+              ..._connectivity,
+              s.id: SiteConnectivityStatus(
+                siteId: s.id,
+                siteName: s.name,
+                state: SiteConnectivityState.connected,
+                level: r['level'] as String? ?? '',
+              ),
+            };
+          });
+        }
         _toast('${s.name}：连接正常，等级 ${r['level'] ?? '-'}');
       } else {
+        if (mounted) {
+          setState(() {
+            _connectivity = {
+              ..._connectivity,
+              s.id: SiteConnectivityStatus(
+                siteId: s.id,
+                siteName: s.name,
+                state: SiteConnectivityState.disconnected,
+                error: r['error'] as String? ?? '',
+              ),
+            };
+          });
+        }
         _toast('${s.name}：${r['error'] ?? '连接失败'}');
       }
     } catch (e) {
+      if (mounted) {
+        setState(() {
+          _connectivity = {
+            ..._connectivity,
+            s.id: SiteConnectivityStatus(
+              siteId: s.id,
+              siteName: s.name,
+              state: SiteConnectivityState.disconnected,
+              error: '$e',
+            ),
+          };
+        });
+      }
       _toast('请求失败：$e');
     } finally {
       if (mounted) setState(() => _testing = null);
     }
+  }
+
+  Future<void> _showConnectivityReason(Site s) async {
+    final status = _connectivity[s.id];
+    if (status == null || status.state == SiteConnectivityState.connected) {
+      return;
+    }
+    final title = status.state == SiteConnectivityState.disabled
+        ? '${s.name} 已停用'
+        : '${s.name} 未联通';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(status.error.isNotEmpty ? status.error : '站点未返回具体失败原因'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
   }
 
   String _checkinMsg(Map<String, dynamic> r) {
@@ -189,6 +269,73 @@ class _SitesPageState extends State<SitesPage> {
     try {
       await SiteApi().remove(s.id);
       _toast('已删除');
+      await _load();
+    } catch (e) {
+      _toast('失败：$e');
+    }
+  }
+
+  Future<void> _batchDelete() async {
+    if (_sites.isEmpty) {
+      _toast('暂无站点');
+      return;
+    }
+    final picked = <Site>[];
+    final ok = await showAdaptiveSheet<bool>(
+      context,
+      title: '批量删除站点',
+      wideWidth: 460,
+      builder: (_) => StatefulBuilder(builder: (ctx, setS) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ..._sites.map((s) => CheckboxListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  value: picked.contains(s),
+                  title: Text(s.name, style: const TextStyle(fontSize: 14)),
+                  onChanged: (v) => setS(() {
+                    if (v == true) {
+                      picked.add(s);
+                    } else {
+                      picked.remove(s);
+                    }
+                  }),
+                )),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: picked.isEmpty ? null : () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              child: Text('删除选中（${picked.length}）'),
+            ),
+          ],
+        );
+      }),
+    );
+    if (ok != true || picked.isEmpty) return;
+    if (!mounted) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('批量删除'),
+        content: Text('确认删除选中的 ${picked.length} 个站点？相关配置将被移除。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final res = await SiteApi().batchDelete(picked.map((s) => s.id).toList());
+      final deleted = res['deleted'] as int? ?? 0;
+      final failed = (res['failed'] as List?)?.length ?? 0;
+      _toast(failed > 0 ? '已删除 $deleted 个，失败 $failed 个' : '已删除 $deleted 个站点');
       await _load();
     } catch (e) {
       _toast('失败：$e');
@@ -616,6 +763,13 @@ class _SitesPageState extends State<SitesPage> {
           onPressed: _checkinAllLoading ? null : _checkinAll,
           overflow: true,
         ),
+        if (_isAdmin)
+          PTBarAction(
+            icon: Icons.delete_sweep,
+            label: '批量删除',
+            onPressed: _batchDelete,
+            overflow: true,
+          ),
       ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -687,6 +841,11 @@ class _SitesPageState extends State<SitesPage> {
             ),
           ),
           PTColumn(
+            label: '联通状态',
+            flex: 1,
+            cell: (_, s) => _connectivityPill(s),
+          ),
+          PTColumn(
             label: '状态',
             flex: 1,
             cell: (_, s) => _statusPill(s.isActive),
@@ -710,6 +869,8 @@ class _SitesPageState extends State<SitesPage> {
                       ),
                     ),
                   ),
+                  _connectivityPill(s),
+                  const SizedBox(width: 6),
                   _statusPill(s.isActive),
                 ],
               ),
@@ -750,6 +911,63 @@ class _SitesPageState extends State<SitesPage> {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+
+  Widget _connectivityPill(Site s) {
+    final status = _connectivity[s.id];
+    final pending = _connectivityLoading;
+    final state = status?.state;
+    final label = pending
+        ? '检测中'
+        : status == null
+        ? '未检测'
+        : state == SiteConnectivityState.connected
+        ? '已联通'
+        : state == SiteConnectivityState.disabled
+        ? '已停用'
+        : '未联通';
+    final color = pending || status == null
+        ? Colors.grey
+        : state == SiteConnectivityState.connected
+        ? PTColors.success
+        : state == SiteConnectivityState.disabled
+        ? Colors.grey
+        : PTColors.danger;
+    final child = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: pending || status == null ? 0.1 : 0.16),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (pending ||
+        status == null ||
+        status.state == SiteConnectivityState.connected) {
+      return child;
+    }
+    return GestureDetector(
+      onTap: () => _showConnectivityReason(s),
+      child: child,
     );
   }
 

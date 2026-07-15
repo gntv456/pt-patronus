@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/medal_wall.dart';
 import 'package:ptpatronus/core/responsive.dart';
@@ -14,6 +15,7 @@ class MedalWallPage extends StatefulWidget {
 
 class _MedalWallPageState extends State<MedalWallPage> {
   final _api = MedalWallApi();
+  StreamSubscription<List<Medal>>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
   List<Medal> _medals = [];
   bool _loading = true;
   String? _error;
@@ -26,18 +28,36 @@ class _MedalWallPageState extends State<MedalWallPage> {
     _load();
   }
 
-  Future<void> _load({bool refresh = false}) async {
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool refresh = false}) {
+    _sub?.cancel();
     setState(() {
+      _medals = [];
       _loading = true;
       _error = null;
     });
-    try {
-      _medals = await _api.all(refresh: refresh);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    _sub = _api.allStream(refresh: refresh).listen(
+      (cards) {
+        if (!mounted) return;
+        setState(() => _medals = [..._medals, ...cards]);
+      },
+      onDone: () {
+        if (mounted) setState(() => _loading = false);
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
+      },
+    );
+    return Future.value();
   }
 
   List<MapEntry<int, String>> get _sites {
@@ -109,7 +129,7 @@ class _MedalWallPageState extends State<MedalWallPage> {
       filterOnClearAll: () => setState(() => _filter = 'all'),
       body: RefreshIndicator(
         onRefresh: () => _load(refresh: true),
-        child: _loading
+        child: _loading && _medals.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : _error != null
             ? PTEmptyState(text: _error!, onRetry: _load)

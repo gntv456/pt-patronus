@@ -4,14 +4,16 @@ package oper
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/site"
 	"gorm.io/gorm"
 )
 
-// ErrDuplicateSite 同名 + 同 base_url 的站点已存在（防重复添加致仪表盘聚合双计）。
-var ErrDuplicateSite = errors.New("同名同地址的站点已存在")
+// ErrDuplicateSite 同注册域的站点已存在（防重复添加致仪表盘聚合双计）。
+var ErrDuplicateSite = errors.New("该站点已存在")
 
 // SiteOper 封装 Site 表的 CRUD 与密钥加解密。
 type SiteOper struct {
@@ -53,15 +55,21 @@ type SiteInput struct {
 }
 
 // Create 创建站点。
+//
+// 按注册域（eTLD+1）去重：同注册域视为同一站点，拒绝添加——对齐 MoviePilot「一站点一账号」。
+// 无论 name / 子域 / path / trailing-slash 写法如何，同站只能有一条；杜绝重复站点导致的仪表盘
+// 聚合双计（上传/做种翻倍）与搜索结果重复。CreateMany 同样按注册域跳过（见下）。
 func (o *SiteOper) Create(in SiteInput) (*models.Site, error) {
-	// 防重复添加（同名 + 同 base_url）：重复站点会在仪表盘聚合里被双计（上传/做种翻倍）。
-	// 批量导入 CreateMany 不走此校验，保留其「跳过单条错误」的恢复语义。
-	var cnt int64
-	if err := o.db.Model(&models.Site{}).Where("name = ? AND base_url = ?", in.Name, in.BaseURL).Count(&cnt).Error; err != nil {
-		return nil, err
-	}
-	if cnt > 0 {
-		return nil, ErrDuplicateSite
+	if dom := site.RegisteredDomain(in.BaseURL); dom != "" {
+		var existing []string
+		if err := o.db.Model(&models.Site{}).Pluck("base_url", &existing).Error; err != nil {
+			return nil, err
+		}
+		for _, u := range existing {
+			if site.RegisteredDomain(u) == dom {
+				return nil, fmt.Errorf("%w: %s", ErrDuplicateSite, dom)
+			}
+		}
 	}
 	return o.createOnDB(o.db, in)
 }
@@ -91,18 +99,34 @@ func (o *SiteOper) createOnDB(db *gorm.DB, in SiteInput) (*models.Site, error) {
 
 // CreateMany 单事务批量创建站点。逐条 INSERT 以保留「单条失败跳过、其余继续」语义，
 // 但全部包在一个事务内——把 N 次 fsync 压成 1 次（慢盘上 200 站从数十秒降到 <1s）。
-// 单条错误（极罕见，Site 无唯一约束）跳过不计；仅事务级失败（ctx 取消 / 磁盘满）整体回滚。
-// 返回成功创建的条数。
+//
+// 按注册域去重：库内已存在 或 本批次已处理的注册域 → 跳过（对齐 MoviePilot，防备份导入产生
+// 重复站点/重复账号）。单条其他错误同样跳过不计；仅事务级失败（ctx 取消 / 磁盘满）整体回滚。
+// 返回成功创建的条数（调用方用 len(ins)-n 自算跳过数）。
 func (o *SiteOper) CreateMany(ins []SiteInput) (int, error) {
 	if len(ins) == 0 {
 		return 0, nil
 	}
 	n := 0
 	err := o.db.Transaction(func(tx *gorm.DB) error {
+		// 已占用注册域集合（库内既有 + 本批次已建），同注册域只保留第一条。
+		seen := map[string]bool{}
+		var existing []string
+		if e := tx.Model(&models.Site{}).Pluck("base_url", &existing).Error; e != nil {
+			return e
+		}
+		for _, u := range existing {
+			seen[site.RegisteredDomain(u)] = true
+		}
 		for _, in := range ins {
+			dom := site.RegisteredDomain(in.BaseURL)
+			if dom != "" && seen[dom] {
+				continue // 同注册域已存在/已处理 → 跳过
+			}
 			if _, e := o.createOnDB(tx, in); e != nil {
 				continue
 			}
+			seen[dom] = true
 			n++
 		}
 		return nil
@@ -163,6 +187,35 @@ func (o *SiteOper) Get(id uint) (*models.Site, error) {
 // Delete 删除站点。
 func (o *SiteOper) Delete(id uint) error {
 	return o.db.Delete(&models.Site{}, id).Error
+}
+
+// DeleteMany 批量删除站点，返回「不存在/删除失败」的 id 列表。
+// 与 Delete 一致的硬删语义（无级联，等同多次单删）：先查存在集，再一条 SQL 删除已存在的，
+// 不存在的计入 failed —— 这样既能批量又能精确汇报逐条结果，避免「整批失败」。
+func (o *SiteOper) DeleteMany(ids []uint) ([]uint, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var found []uint
+	if err := o.db.Model(&models.Site{}).Where("id IN ?", ids).Pluck("id", &found).Error; err != nil {
+		return nil, err
+	}
+	foundSet := make(map[uint]struct{}, len(found))
+	for _, id := range found {
+		foundSet[id] = struct{}{}
+	}
+	var failed []uint
+	for _, id := range ids {
+		if _, ok := foundSet[id]; !ok {
+			failed = append(failed, id)
+		}
+	}
+	if len(found) > 0 {
+		if err := o.db.Where("id IN ?", found).Delete(&models.Site{}).Error; err != nil {
+			return nil, err
+		}
+	}
+	return failed, nil
 }
 
 // Cookie 解密返回站点 cookie。

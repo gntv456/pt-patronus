@@ -15,6 +15,8 @@ class Subscription {
   final String savePath;
   final String status; // subscribed | completed | paused
   final bool bestVersion; // 洗版：持续寻找更高画质版本替换库中旧版
+  final List<String> promoTypes; // 接受的促销类型多选；空=不过滤
+  final List<int> siteIds; // 参与站点 id；空=全部活跃站点
   final int currentPriority; // 洗版电影当前最优 PriOrder（0=未下过）
   final String? lastCheckedAt;
   final String createdAt;
@@ -33,6 +35,8 @@ class Subscription {
     required this.savePath,
     required this.status,
     this.bestVersion = false,
+    this.promoTypes = const [],
+    this.siteIds = const [],
     this.currentPriority = 0,
     required this.lastCheckedAt,
     required this.createdAt,
@@ -52,10 +56,36 @@ class Subscription {
         savePath: j['save_path'] as String? ?? '',
         status: j['status'] as String? ?? '',
         bestVersion: j['best_version'] == true,
+        promoTypes: (j['promo_types'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        siteIds: (j['site_ids'] as List?)?.map((e) => (e as num).toInt()).toList() ?? const [],
         currentPriority: (j['current_priority'] as num?)?.toInt() ?? 0,
         lastCheckedAt: j['last_checked_at'] as String?,
         createdAt: j['created_at'] as String? ?? '',
       );
+
+  /// 乐观更新用：仅复制 onlyFree / siteIds（订阅列表卡片 inline 编辑回写本地）。
+  Subscription copyWith({List<String>? promoTypes, List<int>? siteIds}) {
+    return Subscription(
+      id: id,
+      source: source,
+      sourceId: sourceId,
+      title: title,
+      year: year,
+      type: type,
+      category: category,
+      posterUrl: posterUrl,
+      resolution: resolution,
+      downloaderId: downloaderId,
+      savePath: savePath,
+      status: status,
+      bestVersion: bestVersion,
+      promoTypes: promoTypes ?? this.promoTypes,
+      siteIds: siteIds ?? this.siteIds,
+      currentPriority: currentPriority,
+      lastCheckedAt: lastCheckedAt,
+      createdAt: createdAt,
+    );
+  }
 }
 
 class SubscribeApi {

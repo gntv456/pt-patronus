@@ -20,7 +20,7 @@ import (
 //   - metadata 文件：{sites:{id:{url,merge,inputSetting,isOffline}}, siteNameMap, lastUserInfo, siteHostMap}
 //   - cookies 文件：{host:[{name,value}]}
 //
-// 加密备份（manifest.encryption=true）拒绝；重复站点按 name 跳过（与自身/MoviePilot 导入一致）。
+// 加密备份（manifest.encryption=true）拒绝；重复站点按注册域跳过（CreateMany 统一去重，与自身/MoviePilot 导入一致）。
 // 与旧项目唯一差异：cookie 拼成 header 串（"k=v; k=v"）而非 JSON map（适配新 SiteInput.Cookie）。
 func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 	entries, err := readPTDZipEntries(zipBytes)
@@ -80,10 +80,13 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 		if username == "" {
 			username = firstString(input, "username", "userName", "loginName")
 		}
+		// 按 URL 匹配站点定义：朱雀等 tnode 站、以及各有专属 yaml 的 nexusphp 站
+		// 都挂正确定义（不再全退化为默认 nexusphp）；未命中回退 platform 推断。
 		ins = append(ins, oper.SiteInput{
-			Name:     name,
-			Platform: inferPlatform(ptdSiteID, config),
-			BaseURL:  baseURL,
+			Name:       name,
+			Definition: s.matchDef(baseURL),
+			Platform:   inferPlatform(ptdSiteID, config),
+			BaseURL:    baseURL,
 			Cookie:   buildCookieString(cookies, ptdSiteID, baseURL, hostBySite),
 			Passkey:  firstString(input, "passkey", "passKey", "pid", "rsskey"),
 			Username: username,

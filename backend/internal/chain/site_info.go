@@ -15,7 +15,7 @@ import (
 // 站免/公告抓取的并发与缓存参数（对齐原版：站免 30min、公告 60s）。
 const (
 	freeleechCacheTTL    = 30 * time.Minute
-	announcementCacheTTL = 60 * time.Second
+	announcementCacheTTL = 5 * time.Minute
 	infoFetchConcurrency = 8
 	infoFetchTimeout     = 15 * time.Second
 )
@@ -214,8 +214,12 @@ func (c *SiteChain) AnnouncementsAll(ctx context.Context, force bool) []Announce
 				c.annMu.Lock()
 				e, ok := c.annCache[s.ID]
 				c.annMu.Unlock()
-				if ok && time.Since(e.at) <= announcementCacheTTL && e.ann != nil {
+				// SWR：缓存存在（含已过期）且有 ann → 立即返回旧值（秒回）；过期则后台异步刷新。
+				if ok && e.ann != nil {
 					results[i] = annResult(s.ID, s.Name, e.ann, "")
+					if time.Since(e.at) > announcementCacheTTL {
+						c.refreshAnnouncementsAsync(s)
+					}
 					return
 				}
 			}
@@ -253,9 +257,17 @@ func (c *SiteChain) fetchAnnouncementOnce(ctx context.Context, sem chan struct{}
 	defer cancel()
 	ann, e := c.Announcements(siteCtx, s)
 	var errMsg string
-	if e != nil && !errors.Is(e, site.ErrNotLoggedIn) {
-		errMsg = e.Error()
-		slog.Debug("announcement fetch failed", "site", s.Name, "err", e)
+	if e != nil {
+		// 未登录同样作为错误暴露（与站免路径 FreeleechAll 一致）：否则 cookie 过期会被前端
+		// 误显为「暂无公告」，用户无从知晓该站需刷新登录。ErrNotLoggedIn 文本 "not logged in"
+		// 不含 "login" 子串，前端 friendlySiteError 匹配不到关键词会落到兜底「该站点获取失败」，
+		// 故此处补 "cookie"/"login" 关键词，使其译为「站点登录已失效，请在「站点」页重新配置 Cookie」。
+		if errors.Is(e, site.ErrNotLoggedIn) {
+			errMsg = "cookie expired or not logged in"
+		} else {
+			errMsg = e.Error()
+			slog.Debug("announcement fetch failed", "site", s.Name, "err", e)
+		}
 	}
 	if e == nil {
 		c.annMu.Lock()
@@ -263,6 +275,26 @@ func (c *SiteChain) fetchAnnouncementOnce(ctx context.Context, sem chan struct{}
 		c.annMu.Unlock()
 	}
 	return annSFResult{ann: ann, errMsg: errMsg}
+}
+
+// refreshAnnouncementsAsync SWR 后台刷新：公告缓存过期时立即返回旧值后，异步拉最新写缓存。
+// 独立 ctx（不绑请求）+ sfDo 合并同 siteID（防刷新风暴）+ recover 防 panic。容量 1 的 sem
+// 仅占槽不阻塞（真实限流靠 sfDo 合并 + 站点有界），与消息路径 refreshMessagesAsync 等效。
+func (c *SiteChain) refreshAnnouncementsAsync(s models.Site) {
+	go func() {
+		defer func() { _ = recover() }()
+		_, _ = sfDo(&c.annSF, strconv.Itoa(int(s.ID)), func() (annSFResult, error) {
+			c.annMu.Lock()
+			ce, ok := c.annCache[s.ID]
+			c.annMu.Unlock()
+			if ok && ce.ann != nil && time.Since(ce.at) <= announcementCacheTTL { // double-check
+				return annSFResult{ann: ce.ann}, nil
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), infoFetchTimeout)
+			defer cancel()
+			return c.fetchAnnouncementOnce(ctx, make(chan struct{}, 1), &s), nil
+		})
+	}()
 }
 
 func annResult(id uint, name string, ann *site.SiteAnnouncement, errMsg string) AnnouncementResult {

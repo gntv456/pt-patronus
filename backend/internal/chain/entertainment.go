@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -88,6 +89,15 @@ func (c *EntertainmentChain) Sites() ([]SiteGameCount, error) {
 	for i, s := range sites {
 		out[i] = SiteGameCount{Site: s, GameCount: len(c.reg.Games(s.BaseURL))}
 	}
+	// 按已适配游戏数降序：游戏多的站靠前，方便在站点筛选里快速找到适配了游戏的站。
+	// 游戏数相同则保持 siteOp.List 的原顺序（priority desc, id asc）——
+	// SliceStable + 恒 false 即原样保留相对次序。
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].GameCount != out[j].GameCount {
+			return out[i].GameCount > out[j].GameCount
+		}
+		return false
+	})
 	return out, nil
 }
 

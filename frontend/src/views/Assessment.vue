@@ -9,14 +9,24 @@ const cards = ref<AssessmentCard[]>([])
 const loading = ref(false)
 const filter = ref<string>('all')
 
+let abortCtrl: AbortController | null = null
 async function load(refresh = false) {
+  abortCtrl?.abort()
+  const ctrl = new AbortController()
+  abortCtrl = ctrl
   loading.value = true
+  cards.value = []
   try {
-    cards.value = await assessmentApi.all(refresh)
+    await assessmentApi.allStream(refresh, (card) => {
+      cards.value.push(card)
+    }, ctrl.signal)
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载考核失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载考核失败')
   } finally {
-    loading.value = false
+    if (abortCtrl === ctrl) {
+      loading.value = false
+      abortCtrl = null
+    }
   }
 }
 
@@ -65,7 +75,7 @@ onMounted(() => load())
 </script>
 
 <template>
-  <div class="page" v-loading="loading">
+  <div class="page">
     <div class="head">
       <h2 class="title">站点考核</h2>
       <div class="head-tools">
@@ -80,6 +90,8 @@ onMounted(() => load())
       <button class="chip" :class="{ on: filter === 'progress' }" @click="filter = 'progress'" style="color:#3498db">进行中 ({{ counts.progress }})</button>
       <button class="chip" :class="{ on: filter === 'danger' }" @click="filter = 'danger'" style="color:#f56c6c">危险 ({{ counts.danger }})</button>
     </div>
+
+    <p v-if="loading && !cards.length" style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
 
     <div class="cards">
       <div v-for="c in filtered" :key="c.site_id" class="assess-card glass" :style="{ borderLeftColor: statusColor[c.status] }">

@@ -12,14 +12,24 @@ const detail = ref<Medal | null>(null)
 const drawer = ref(false)
 const acting = ref(false)
 
+let abortCtrl: AbortController | null = null
 async function load(refresh = false) {
+  abortCtrl?.abort()
+  const ctrl = new AbortController()
+  abortCtrl = ctrl
   loading.value = true
+  medals.value = []
   try {
-    medals.value = await medalWallApi.all(refresh)
+    await medalWallApi.allStream(refresh, (cards) => {
+      medals.value.push(...cards)
+    }, ctrl.signal)
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载勋章墙失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载勋章墙失败')
   } finally {
-    loading.value = false
+    if (abortCtrl === ctrl) {
+      loading.value = false
+      abortCtrl = null
+    }
   }
 }
 
@@ -112,7 +122,7 @@ onMounted(() => load())
 </script>
 
 <template>
-  <div class="page" v-loading="loading">
+  <div class="page">
     <div class="head">
       <h2 class="title">勋章墙</h2>
       <el-button :loading="loading" @click="load(true)">刷新</el-button>
@@ -126,6 +136,8 @@ onMounted(() => load())
       <button class="chip" :class="{ on: filter === 'out_of_stock' }" @click="filter = 'out_of_stock'" style="color:#f56c6c">缺货 ({{ counts.out_of_stock }})</button>
       <button class="chip" :class="{ on: filter === 'wearing' }" @click="filter = 'wearing'" style="color:#f39c12">佩戴中 ({{ counts.wearing }})</button>
     </div>
+
+    <p v-if="loading && !medals.length" style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
 
     <div class="cards">
       <div

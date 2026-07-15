@@ -155,6 +155,12 @@ const GLYPHS: Record<string, string> = {
   // 诊断：听诊器（健康检查）
   stethoscope:
     '<path d="M5 3v5a4 4 0 0 0 8 0V3"/><path d="M5 3H7"/><path d="M11 3h2"/><path d="M9 12v3a4 4 0 0 0 4 4h1a3 3 0 1 0 0-2h-1a2 2 0 0 1-2-2v-3"/><circle cx="17" cy="16" r="2.2"/>',
+  // 下载器·qBittorrent：官方圆形 logo 轮廓 + 内部向下箭头 + 底部种子波浪（蓝）
+  qbittorrent:
+    '<circle cx="12" cy="12" r="9"/><path d="M12 7v3.5"/><path d="M9.6 9L12 11.4 14.4 9"/><path d="M8 16q1.2 -1.2 2.4 0t2.4 0t2.4 0"/>',
+  // 下载器·Transmission：顶部红把手 + 竖杆 + 向下楔形箭头 + 底部 U 形托盘（传输活塞造型，红）
+  transmission:
+    '<path d="M9.5 2.5h5"/><path d="M12 3v10"/><path d="M8 9.5l4 4 4-4"/><path d="M6.5 15.5h11"/><path d="M6.5 15.5v1.5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V15.5"/>',
 }
 
 const dim = computed(() => (typeof props.size === 'number' ? `${props.size}px` : props.size))

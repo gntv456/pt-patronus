@@ -14,7 +14,7 @@ import (
 
 // MediaHandler 处理媒体搜索/海报/NFO/推荐/探索。
 type MediaHandler struct {
-	mediaCh  *chain.MediaChain
+	mediaCh   *chain.MediaChain
 	recommend *chain.RecommendChain
 }
 
@@ -54,6 +54,24 @@ func (h *MediaHandler) Recommend(c *gin.Context) {
 	}
 	items := h.recommend.RecommendFeeds(c.Request.Context(), source, category, page, force)
 	c.JSON(http.StatusOK, gin.H{"results": items})
+}
+
+// RecommendStream SSE 流式推送趋势信息流（?source=&category=&page=&refresh=1）。
+// 每源完成即推一帧 event:batch（results 为该源条目）；全部完成推 event:done。
+// 供推荐页「加载一个显示一个」——边抓边显，不等最慢源。emit 经 beginSSE 串行化，chain 并发回调安全。
+func (h *MediaHandler) RecommendStream(c *gin.Context) {
+	if h.recommend == nil {
+		return
+	}
+	source := c.Query("source")
+	category := c.DefaultQuery("category", "movie")
+	page := atoiDefault(c.Query("page"), 1)
+	force := c.Query("refresh") == "1"
+	emit := beginSSE(c.Writer)
+	h.recommend.RecommendFeedsStream(c.Request.Context(), source, category, page, force, func(items []media.MediaInfo) {
+		emit("batch", gin.H{"results": items})
+	})
+	emit("done", gin.H{"page": page})
 }
 
 // Discover 跨源关键词搜索媒体（?keyword=&year=&source=&type=）。复用 MediaChain.Search。

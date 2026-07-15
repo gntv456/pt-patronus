@@ -18,7 +18,7 @@ export interface AnnouncementResult {
 export const announcementApi = {
   all: (refresh = false) =>
     http
-      .get<{ sites: AnnouncementResult[] }>(`/announcements${refresh ? '?refresh=1' : ''}`)
+      .get<{ sites: AnnouncementResult[] }>(`/announcements${refresh ? '?refresh=1' : ''}`, { timeout: 30000 })
       // 后端 nil 切片序列化为 JSON null（站点无公告/未配置时），归一为 [] 防模板 .length 崩溃
       .then((r) => (r.data.sites || []).map((s) => ({ ...s, items: s.items || [] }))),
   syncOne: (id: number) =>

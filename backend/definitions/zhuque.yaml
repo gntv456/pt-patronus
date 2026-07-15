@@ -126,11 +126,11 @@ user_info:
                 selector: data.bonusPerHour
             join_date:
                 filters:
-                    - name: unix_millis
+                    - name: unix_seconds
                 selector: data.joinTime
             last_access_at:
                 filters:
-                    - name: unix_millis
+                    - name: unix_seconds
                 selector: data.lastUpdateTime
             seeding:
                 selector: data.seeding
@@ -140,3 +140,10 @@ user_info:
                 selector: data.seedingSize
             uploads:
                 selector: data.uploadCount
+# 公告/消息：朱雀为 SPA + JSON API，端点由适配器（GenericJSON/tnode）硬编码，
+# 这里仅放行 chain 守卫（Enabled=true）。公告/消息 GET 均需 x-csrf-token 头
+# （从 /index 的 <meta name="x-csrf-token"> 提取，ptppUserInfo 除外）。
+announcement:
+    enabled: true
+messages:
+    enabled: true

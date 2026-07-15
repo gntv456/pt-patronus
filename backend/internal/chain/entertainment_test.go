@@ -152,10 +152,11 @@ func TestEntertainmentPlayConcurrentDedup(t *testing.T) {
 func TestEntertainmentSitesGameCount(t *testing.T) {
 	db := newChainDB(t)
 	siteOp := oper.NewSiteOper(db, security.NewCrypto("seed"))
-	// rich：base_url 带 www，registry 用裸域 → 验证子域放宽后仍计 3 个。
-	_, _ = siteOp.Create(oper.SiteInput{Name: "rich", Platform: "nexusphp", BaseURL: "https://www.hxpt.org"})
-	_, _ = siteOp.Create(oper.SiteInput{Name: "single", Platform: "nexusphp", BaseURL: "https://cspt.fun"})
+	// 创建顺序故意与游戏数降序相反（none0/single1/rich3），验证 Sites() 会按 game_count 重排。
+	// rich：base_url 带 www，registry 用裸域 → 同时验证子域放宽后仍计 3 个。
 	_, _ = siteOp.Create(oper.SiteInput{Name: "none", Platform: "nexusphp", BaseURL: "https://bare.test"})
+	_, _ = siteOp.Create(oper.SiteInput{Name: "single", Platform: "nexusphp", BaseURL: "https://cspt.fun"})
+	_, _ = siteOp.Create(oper.SiteInput{Name: "rich", Platform: "nexusphp", BaseURL: "https://www.hxpt.org"})
 
 	reg := entertainment.NewRegistry()
 	reg.Register("hxpt.org", &blockGame{id: "g1", proceed: make(chan struct{})})
@@ -181,5 +182,18 @@ func TestEntertainmentSitesGameCount(t *testing.T) {
 	}
 	if byName["none"] != 0 {
 		t.Errorf("none (bare.test) want 0 games, got %d", byName["none"])
+	}
+	// 站点须按已适配游戏数降序：游戏多的站靠前（娱乐页筛选排序依据）。
+	// 创建顺序是 none/single/rich，重排后应为 rich/single/none。
+	wantOrder := []string{"rich", "single", "none"}
+	for i, name := range wantOrder {
+		if got[i].Name != name {
+			var gotOrder []string
+			for _, s := range got {
+				gotOrder = append(gotOrder, s.Name)
+			}
+			t.Errorf("Sites() 顺序 want %v (按 game_count 降序), got %v", wantOrder, gotOrder)
+			break
+		}
 	}
 }

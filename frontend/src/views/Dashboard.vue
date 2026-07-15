@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { dashboardApi, type DashboardOverview, type SiteHistoryPoint, type SiteStatItem, type DashboardTrendPoint } from '@/api/dashboard'
-import { siteApi, type Site } from '@/api/site'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { dashboardApi, type DashboardOverview, type SiteStatItem, type DashboardTrendPoint } from '@/api/dashboard'
+import { siteApi, type Site, type SiteConnectivityStatus } from '@/api/site'
 import { useWs } from '@/composables/useWs'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardShareData } from '@/utils/dashboardImage'
-import Sparkline from '@/components/dashboard/Sparkline.vue'
+import DashboardTrendChart from '@/components/dashboard/DashboardTrendChart.vue'
 import DashboardExportDialog from '@/components/dashboard/DashboardExportDialog.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFavicon from '@/components/SiteFavicon.vue'
+import DashboardRealtimeCard from '@/components/dashboard/DashboardRealtimeCard.vue'
+import DashboardResourceCard from '@/components/dashboard/DashboardResourceCard.vue'
+import DashboardAutomationCard from '@/components/dashboard/DashboardAutomationCard.vue'
+import DashboardAICard from '@/components/dashboard/DashboardAICard.vue'
+import DashboardActivityTimeline from '@/components/dashboard/DashboardActivityTimeline.vue'
+import DashboardRingChart, { type RingSegment } from '@/components/dashboard/DashboardRingChart.vue'
 
 type SyncLog = {
   id: number
@@ -17,9 +25,22 @@ type SyncLog = {
   message: string
 }
 
+type TrendMode = 'traffic' | 'seeding' | 'size' | 'bonus'
+type ActionTone = 'danger' | 'warning' | 'info'
+type DashboardAction = {
+  key: string
+  tone: ActionTone
+  site: string
+  title: string
+  detail: string
+  siteId?: number
+}
+
 const overview = ref<DashboardOverview | null>(null)
 const trend = ref<DashboardTrendPoint[]>([])
-// sparkline 数据源：近 14 天跨站聚合趋势（指标卡内嵌迷你折线 + 日环比 + 导出图片共用）。
+const trendDays = ref<7 | 30 | 90>(30)
+const trendMode = ref<TrendMode>('traffic')
+const trendLoading = ref(false)
 const loading = ref(false)
 // 加载失败持久态：overview 为空且出错时显示带重试的错误条，而非全 0 指标卡（避免静默）。
 const loadError = ref('')
@@ -34,19 +55,44 @@ const syncErrors = ref<{ site: string; error: string }[]>([])
 const syncLogs = ref<SyncLog[]>([])
 const exportVisible = ref(false)
 const allSites = ref<Site[]>([]) // 站点列表(含 base_url)，导出时按 id join favicon 用
-// 单站刷新中的 site_id 集合（操作列「刷新数据」按钮 loading）
-const refreshing = reactive(new Set<number>())
+const connectivity = ref<Record<number, SiteConnectivityStatus>>({})
+const connectivityLoading = ref(false)
 
-// WS 实时告警：H&R 危险种子 / Cookie 失效站点（后端 hr-alert / cookie-alert 推送）。
-const { hrAlerts, cookieAlerts } = useWs()
+// 区③④⑥ 组件 ref：syncStats 完成后触发刷新自动化/AI/时间线数据。
+const autoCard = ref<{ refresh: () => Promise<void> } | null>(null)
+const aiCard = ref<{ refresh: () => Promise<void> } | null>(null)
+const timelineCard = ref<{ refresh: () => Promise<void> } | null>(null)
+
+// WS 实时告警：H&R 危险种子 / Cookie 失效站点（后端 hr-alert / cookie-alert 推送）；
+// notices（实时通知）供仪表盘未读计数；下载器速率由 RealtimeCard 自取 useWs 单例。
+const { hrAlerts, cookieAlerts, notices } = useWs()
 const auth = useAuthStore()
+const router = useRouter()
+
+function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
+  void router.push({ name: 'sites', query: { matrix: filter } })
+}
+
+async function loadConnectivity() {
+  connectivityLoading.value = true
+  const [statusResult, sitesResult] = await Promise.allSettled([siteApi.statuses(), siteApi.list()])
+  if (statusResult.status === 'fulfilled') {
+    connectivity.value = Object.fromEntries(statusResult.value.map((status) => [status.site_id, status]))
+  } else {
+    connectivity.value = {}
+  }
+  if (sitesResult.status === 'fulfilled') {
+    allSites.value = sitesResult.value
+  }
+  connectivityLoading.value = false
+}
 
 async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    // 并行拉 overview 与趋势，减少等待（对齐移动端 Future.wait）。
-    const [ov, tr] = await Promise.all([dashboardApi.overview(), dashboardApi.trend(14)])
+    // 统计和趋势先加载，联通检查在后台执行，避免慢站点拖住仪表盘首屏。
+    const [ov, tr] = await Promise.all([dashboardApi.overview(), dashboardApi.trend(trendDays.value)])
     overview.value = ov
     trend.value = tr
   } catch (e: unknown) {
@@ -56,6 +102,20 @@ async function load() {
     ElMessage.error(loadError.value)
   } finally {
     loading.value = false
+  }
+  void loadConnectivity()
+}
+
+async function changeTrendDays(days: 7 | 30 | 90) {
+  if (trendDays.value === days || trendLoading.value) return
+  trendDays.value = days
+  trendLoading.value = true
+  try {
+    trend.value = await dashboardApi.trend(days)
+  } catch (e: unknown) {
+    ElMessage.warning(`趋势加载失败：${errorText(e)}`)
+  } finally {
+    trendLoading.value = false
   }
 }
 
@@ -70,20 +130,110 @@ function pctOf(pick: (p: DashboardTrendPoint) => number): number | null {
 const upPct = computed(() => pctOf((p) => p.uploaded))
 const dlPct = computed(() => pctOf((p) => p.downloaded))
 const syncPercent = computed(() => (syncTotal.value ? Math.round((syncDone.value / syncTotal.value) * 100) : 0))
-
-// 指标卡 sparkline 数据：各字段近 14 天序列 + 共享日期轴（hover tooltip 用）。
-const spark = computed(() => ({
-  uploaded: trend.value.map((p) => p.uploaded),
-  downloaded: trend.value.map((p) => p.downloaded),
-  seeding: trend.value.map((p) => p.seeding),
-  seeding_size: trend.value.map((p) => p.seeding_size),
-  bonus: trend.value.map((p) => p.bonus),
-  days: trend.value.map((p) => p.day),
-}))
 function fmtPct(p: number | null): string {
   if (p === null) return ''
   return `${p >= 0 ? '+' : ''}${p.toFixed(1)}%`
 }
+
+const trendSeries = computed(() => {
+  if (trendMode.value === 'traffic') {
+    return [
+      { label: '上传总量', color: '#0f766e', values: trend.value.map((point) => point.uploaded) },
+      { label: '下载总量', color: '#2563eb', values: trend.value.map((point) => point.downloaded) },
+    ]
+  }
+  if (trendMode.value === 'seeding') {
+    return [{ label: '做种数量', color: '#16a34a', values: trend.value.map((point) => point.seeding) }]
+  }
+  if (trendMode.value === 'size') {
+    return [{ label: '做种体积', color: '#0891b2', values: trend.value.map((point) => point.seeding_size) }]
+  }
+  return [{ label: '魔力', color: '#d97706', values: trend.value.map((point) => point.bonus) }]
+})
+const trendUnit = computed<'bytes' | 'count'>(() =>
+  trendMode.value === 'traffic' || trendMode.value === 'size' ? 'bytes' : 'count',
+)
+const trendDaysAxis = computed(() => trend.value.map((point) => point.day))
+
+const metricItems = computed(() => [
+  { label: '总上传', value: fmtBytes(overview.value?.totals.uploaded ?? 0), change: fmtPct(upPct.value), tone: 'teal' },
+  { label: '总下载', value: fmtBytes(overview.value?.totals.downloaded ?? 0), change: fmtPct(dlPct.value), tone: 'blue' },
+  { label: '真实分享率', value: (overview.value?.totals.true_ratio ?? 0) > 0 ? overview.value!.totals.true_ratio.toFixed(2) : '-', change: '', tone: 'indigo' },
+  { label: '总做种', value: (overview.value?.totals.seeding ?? 0).toLocaleString('zh-CN'), change: fmtBytes(overview.value?.totals.seeding_size ?? 0), tone: 'green' },
+  { label: '总魔力', value: Math.round(overview.value?.totals.bonus ?? 0).toLocaleString('zh-CN'), change: `${(overview.value?.totals.bonus_per_hour ?? 0).toFixed(1)}/h`, tone: 'amber' },
+])
+
+const siteBaseUrls = computed(() => new Map(allSites.value.map((site) => [site.id, site.base_url])))
+function siteBaseUrl(siteId: number): string {
+  return siteBaseUrls.value.get(siteId) || ''
+}
+
+const connectivityValues = computed(() => Object.values(connectivity.value))
+const connectedCount = computed(() => connectivityValues.value.filter((item) => item.status === 'connected').length)
+const disconnectedCount = computed(() => connectivityValues.value.filter((item) => item.status === 'disconnected').length)
+const disabledCount = computed(() => connectivityValues.value.filter((item) => item.status === 'disabled').length)
+const configuredSiteCount = computed(() => allSites.value.length || overview.value?.site_count || 0)
+
+// 区②站点健康分布环形图分段 + 未读通知数（WS notices 近似；下拉刷新以通知中心为准）。
+const healthSegments = computed<RingSegment[]>(() => [
+  { label: '在线', value: connectedCount.value, color: '#16a34a' },
+  { label: '未联通', value: disconnectedCount.value, color: '#dc2626' },
+  { label: '已停用', value: disabledCount.value, color: '#94a3b8' },
+])
+const unreadCount = computed(() => notices.value.filter((n) => !n.read).length)
+
+const dashboardActions = computed<DashboardAction[]>(() => {
+  const actions: DashboardAction[] = []
+  for (const site of cookieAlerts.value) {
+    actions.push({ key: `cookie-${site}`, tone: 'danger', site, title: 'Cookie 已失效', detail: '登录态失效，统计与自动化已暂停' })
+  }
+  for (const status of connectivityValues.value) {
+    if (status.status !== 'disconnected' || cookieAlerts.value.includes(status.site_name)) continue
+    actions.push({ key: `connect-${status.site_id}`, tone: 'danger', site: status.site_name, title: '站点未联通', detail: status.error || '未返回具体原因', siteId: status.site_id })
+  }
+  hrAlerts.value.forEach((alert, index) => {
+    actions.push({
+      key: `hr-${index}`,
+      tone: 'warning',
+      site: alert.site,
+      title: alert.title,
+      detail: `${alert.status}${alert.deadline ? ` · 剩 ${alert.deadline}` : ''}`,
+    })
+  })
+  for (const item of syncErrors.value) {
+    actions.push({ key: `sync-${item.site}`, tone: 'info', site: item.site, title: '统计同步失败', detail: item.error })
+  }
+  return actions
+})
+const totalIssueCount = computed(() => dashboardActions.value.length)
+
+function showAction(action: DashboardAction) {
+  if (action.siteId) {
+    const row = overview.value?.sites.find((site) => site.site_id === action.siteId)
+    if (row) {
+      showConnectivityReason(row)
+      return
+    }
+  }
+  ElMessageBox.alert(action.detail, `${action.site} · ${action.title}`, {
+    type: action.tone === 'danger' ? 'error' : action.tone === 'warning' ? 'warning' : 'info',
+    confirmButtonText: '知道了',
+  })
+}
+
+const latestUpdatedAt = computed(() => {
+  let latest = 0
+  for (const site of overview.value?.sites ?? []) latest = Math.max(latest, new Date(site.updated_at).getTime() || 0)
+  return latest
+})
+const latestUpdatedText = computed(() => {
+  if (!latestUpdatedAt.value) return '尚未同步'
+  const seconds = Math.max(0, Math.floor((Date.now() - latestUpdatedAt.value) / 1000))
+  if (seconds < 60) return '刚刚更新'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} 分钟前更新`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} 小时前更新`
+  return fmtTime(new Date(latestUpdatedAt.value).toISOString())
+})
 
 function errorText(e: unknown): string {
   return (e as Error)?.message || '未知错误'
@@ -146,7 +296,7 @@ async function syncStats() {
       }
     }
 
-    trend.value = await dashboardApi.trend(14).catch(() => trend.value)
+    trend.value = await dashboardApi.trend(trendDays.value).catch(() => trend.value)
     if (syncErrors.value.length) {
       const msg = `同步完成：成功 ${syncSuccess.value} 个，失败 ${syncErrors.value.length} 个`
       addSyncLog(syncSuccess.value ? 'info' : 'error', '刷新统计', msg)
@@ -162,6 +312,11 @@ async function syncStats() {
   } finally {
     syncing.value = false
     syncCurrent.value = ''
+    void loadConnectivity()
+    // 站点统计刷新后，联动刷新自动化/AI/活动时间线卡片。
+    autoCard.value?.refresh()
+    aiCard.value?.refresh()
+    timelineCard.value?.refresh()
   }
 }
 
@@ -215,37 +370,14 @@ const exportData = computed<DashboardShareData | null>(() => {
   }
 })
 
-// 操作列「刷新数据」：仅重新抓取该站点，刷新成功后用返回的总览替换。
-async function syncOne(row: SiteStatItem) {
-  refreshing.add(row.site_id)
-  try {
-    overview.value = await dashboardApi.syncOne(row.site_id)
-    ElMessage.success(`${row.site_name} 已刷新`)
-  } catch (e: unknown) {
-    ElMessage.warning(`${row.site_name} 刷新失败：${errorText(e)}`)
-  } finally {
-    refreshing.delete(row.site_id)
-  }
-}
-
-// 操作列「用户历史数据」：打开弹窗加载该站点历史快照。
-const historyVisible = ref(false)
-const historyLoading = ref(false)
-const historySiteName = ref('')
-const history = ref<SiteHistoryPoint[]>([])
-
-async function viewHistory(row: SiteStatItem) {
-  historySiteName.value = row.site_name
-  historyVisible.value = true
-  history.value = []
-  historyLoading.value = true
-  try {
-    history.value = await dashboardApi.history(row.site_id, 90)
-  } catch {
-    ElMessage.warning('历史数据加载失败')
-  } finally {
-    historyLoading.value = false
-  }
+function showConnectivityReason(row: SiteStatItem) {
+  const status = connectivity.value[row.site_id]
+  if (!status || status.status === 'connected') return
+  const title = status.status === 'disabled' ? `${row.site_name} 已停用` : `${row.site_name} 未联通`
+  ElMessageBox.alert(status.error || '站点未返回具体失败原因', title, {
+    type: 'error',
+    confirmButtonText: '知道了',
+  })
 }
 
 function fmtBytes(n: number) {
@@ -265,22 +397,73 @@ function fmtTime(s: string) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
+function siteConfigByName(name: string): Site | undefined {
+  return allSites.value.find((site) => site.name === name)
+}
+
 onMounted(load)
 </script>
 
 <template>
   <div class="dashboard">
     <div class="page-head">
-      <h2 class="page-title">仪表盘</h2>
+      <div class="page-heading">
+        <h2 class="page-title">仪表盘</h2>
+        <span class="page-subtitle">站点运行与账号增长</span>
+      </div>
       <div class="head-actions">
+        <span class="updated-at">{{ latestUpdatedText }}</span>
+        <div class="period-control" aria-label="趋势周期">
+          <button
+            v-for="days in ([7, 30, 90] as const)"
+            :key="days"
+            type="button"
+            :class="{ active: trendDays === days }"
+            :disabled="trendLoading"
+            @click="changeTrendDays(days)"
+          >
+            {{ days }}天
+          </button>
+        </div>
         <el-button :disabled="!overview" @click="openExport">
-          <GlassIcon name="download" from="#6c5ce7" to="#4285f4" :size="16" class="btn-ico" />
+          <GlassIcon name="download" from="#2563eb" to="#0f766e" :size="16" class="btn-ico" />
           <span>导出图片</span>
         </el-button>
-        <el-button :loading="syncing" @click="syncStats">
-          <GlassIcon name="seeding" from="#11998e" to="#38ef7d" :size="16" class="btn-ico" />
-          <span>{{ syncing ? (syncTotal ? `刷新中 ${syncDone}/${syncTotal}` : '准备刷新') : '刷新统计' }}</span>
+        <el-button type="primary" :loading="syncing" @click="syncStats">
+          <GlassIcon name="refresh" from="#ffffff" to="#dbeafe" :size="16" class="btn-ico" />
+          <span>{{ syncing ? (syncTotal ? `刷新中 ${syncDone}/${syncTotal}` : '准备刷新') : '刷新数据' }}</span>
         </el-button>
+      </div>
+    </div>
+
+    <div class="health-strip ops-surface">
+      <button type="button" class="health-main" @click="openSiteMatrix('all')">
+        <span class="health-icon health-ok"><i /></span>
+        <span>
+          <small>站点健康</small>
+          <strong v-if="connectivityLoading">检测中</strong>
+          <strong v-else>{{ connectedCount }} / {{ configuredSiteCount }} 联通</strong>
+        </span>
+      </button>
+      <button type="button" class="health-item is-danger" @click="openSiteMatrix('issues')">
+        <span class="status-dot" />
+        <span>未联通</span>
+        <b>{{ disconnectedCount }}</b>
+      </button>
+      <button type="button" class="health-item is-muted" @click="openSiteMatrix('disabled')">
+        <span class="status-dot" />
+        <span>已停用</span>
+        <b>{{ disabledCount }}</b>
+      </button>
+      <div class="health-item is-success">
+        <span class="status-dot" />
+        <span>下载器配置</span>
+        <b>{{ overview?.downloader_count ?? 0 }}</b>
+      </div>
+      <div class="health-item" :class="totalIssueCount ? 'is-warning' : 'is-success'">
+        <span class="status-dot" />
+        <span>待处理</span>
+        <b>{{ totalIssueCount }}</b>
       </div>
     </div>
 
@@ -320,89 +503,116 @@ onMounted(load)
       </ul>
     </div>
 
-    <!-- Cookie 失效告警卡（最高优先级：签到/统计/H&R 自动化已停摆） -->
-    <div v-if="cookieAlerts.length" class="alert-card glass alert-danger">
-      <div class="alert-head">
-        <GlassIcon name="alert" from="#e74c3c" to="#c0392b" :size="22" />
-        <span class="alert-title">Cookie 失效：{{ cookieAlerts.length }} 个站点</span>
-      </div>
-      <p class="alert-desc">以下站点 cookie 已失效，签到 / 统计 / H&R 自动化已停摆，请尽快重新登录：</p>
-      <div class="chip-wrap">
-        <span v-for="s in cookieAlerts" :key="s" class="danger-chip">{{ s }}</span>
-      </div>
-    </div>
-
-    <!-- H&R 告警卡：危险种子列表（站点 / 标题 / 状态 / 剩余考核时间） -->
-    <div v-if="hrAlerts.length" class="alert-card glass alert-danger">
-      <div class="alert-head">
-        <GlassIcon name="alert" from="#ff6b6b" to="#e74c3c" :size="22" />
-        <span class="alert-title">H&amp;R 告警：{{ hrAlerts.length }} 条需关注</span>
-      </div>
-      <ul class="hr-list">
-        <li v-for="(a, i) in hrAlerts.slice(0, 5)" :key="i">
-          <span class="hr-dot"></span>
-          <span class="hr-title">{{ a.title }}</span>
-          <span class="hr-meta">{{ a.site }} · {{ a.status }}<template v-if="a.deadline"> · 剩 {{ a.deadline }}</template></span>
-        </li>
-      </ul>
-      <p v-if="hrAlerts.length > 5" class="hr-more">…及其它 {{ hrAlerts.length - 5 }} 条</p>
-    </div>
-
     <!-- 加载失败：overview 为空且出错时显示带重试的错误条，而非全 0 指标卡 -->
-    <div v-if="loadError && !overview && !loading" class="glass load-error">
-      <span class="le-msg">⚠ 仪表盘加载失败：{{ loadError }}</span>
+    <div v-if="loadError && !overview && !loading" class="ops-surface load-error">
+      <span class="le-msg">仪表盘加载失败：{{ loadError }}</span>
       <el-button size="small" @click="load">重试</el-button>
     </div>
 
-    <!-- 指标卡片墙：首屏加载用骨架占位，避免 spinner 抖动 -->
-    <div v-if="initialLoading" class="metric-grid">
-      <div v-for="i in 5" :key="i" class="metric-card glass">
-        <div class="metric-top"><el-skeleton-item variant="circle" style="width: 40px; height: 40px" /></div>
-        <el-skeleton-item variant="h1" style="width: 60%; margin-top: 10px" />
-        <el-skeleton-item variant="text" style="width: 40%; margin-top: 8px" />
-        <el-skeleton-item variant="rect" style="width: 100%; height: 36px; margin-top: 10px" />
-      </div>
-    </div>
-    <div v-else class="metric-grid">
-      <div class="metric-card glass glass-hover">
-        <div class="metric-top">
-          <GlassIcon name="upload" from="#2ecc71" to="#1abc9c" :size="40" />
-          <span v-if="upPct !== null" class="trend-badge" :class="upPct >= 0 ? 'trend-up' : 'trend-down'">{{ fmtPct(upPct) }}</span>
+    <div class="operations-grid">
+      <section class="trend-panel ops-surface" v-loading="trendLoading">
+        <div class="section-head">
+          <div>
+            <h3>账号增长趋势</h3>
+            <p>跨站聚合数据 · 最近 {{ trendDays }} 天</p>
+          </div>
+          <div class="metric-switch" aria-label="趋势指标">
+            <button type="button" :class="{ active: trendMode === 'traffic' }" @click="trendMode = 'traffic'">上传/下载</button>
+            <button type="button" :class="{ active: trendMode === 'seeding' }" @click="trendMode = 'seeding'">做种数</button>
+            <button type="button" :class="{ active: trendMode === 'size' }" @click="trendMode = 'size'">做种体积</button>
+            <button type="button" :class="{ active: trendMode === 'bonus' }" @click="trendMode = 'bonus'">魔力</button>
+          </div>
         </div>
-        <div class="metric-value">{{ fmtBytes(overview?.totals.uploaded ?? 0) }}</div>
-        <div class="metric-label text-muted">总上传</div>
-        <Sparkline :values="spark.uploaded" color="#6c5ce7" unit="bytes" :days="spark.days" />
-      </div>
-      <div class="metric-card glass glass-hover">
-        <div class="metric-top">
-          <GlassIcon name="download" from="#4285f4" to="#22d3ee" :size="40" />
-          <span v-if="dlPct !== null" class="trend-badge" :class="dlPct >= 0 ? 'trend-up' : 'trend-down'">{{ fmtPct(dlPct) }}</span>
+
+        <div v-if="initialLoading" class="metric-strip">
+          <div v-for="i in 5" :key="i" class="metric-item">
+            <el-skeleton-item variant="text" style="width: 52%" />
+            <el-skeleton-item variant="h1" style="width: 74%; margin-top: 8px" />
+          </div>
         </div>
-        <div class="metric-value">{{ fmtBytes(overview?.totals.downloaded ?? 0) }}</div>
-        <div class="metric-label text-muted">总下载</div>
-        <Sparkline :values="spark.downloaded" color="#4285f4" unit="bytes" :days="spark.days" />
-      </div>
-      <div class="metric-card glass glass-hover">
-        <div class="metric-top"><GlassIcon name="seeding" from="#38ef7d" to="#11998e" :size="40" /></div>
-        <div class="metric-value">{{ overview?.totals.seeding ?? 0 }}</div>
-        <div class="metric-label text-muted">总做种</div>
-        <Sparkline :values="spark.seeding" color="#38ef7d" unit="count" :days="spark.days" />
-      </div>
-      <div class="metric-card glass glass-hover">
-        <div class="metric-top"><GlassIcon name="backup" from="#43cea2" to="#185a9d" :size="40" /></div>
-        <div class="metric-value">{{ fmtBytes(overview?.totals.seeding_size ?? 0) }}</div>
-        <div class="metric-label text-muted">总做种体积</div>
-        <Sparkline :values="spark.seeding_size" color="#43cea2" unit="bytes" :days="spark.days" />
-      </div>
-      <div class="metric-card glass glass-hover">
-        <div class="metric-top"><GlassIcon name="bonus" from="#f7971e" to="#ffd200" :size="40" /></div>
-        <div class="metric-value">{{ (overview?.totals.bonus ?? 0).toFixed(0) }}</div>
-        <div class="metric-label text-muted">总魔力</div>
-        <Sparkline :values="spark.bonus" color="#f7971e" unit="count" :days="spark.days" />
-      </div>
+        <div v-else class="metric-strip">
+          <div v-for="item in metricItems" :key="item.label" class="metric-item" :class="`tone-${item.tone}`">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+            <small v-if="item.change">{{ item.change }}</small>
+          </div>
+        </div>
+
+        <div class="chart-legend">
+          <span v-for="item in trendSeries" :key="item.label">
+            <i :style="{ backgroundColor: item.color }" />{{ item.label }}
+          </span>
+        </div>
+        <DashboardTrendChart :days="trendDaysAxis" :series="trendSeries" :unit="trendUnit" />
+      </section>
+
+      <aside class="action-panel ops-surface">
+        <div class="section-head action-heading">
+          <div>
+            <h3>待处理事项</h3>
+            <p>{{ totalIssueCount ? `${totalIssueCount} 项需要关注` : '当前运行正常' }}</p>
+          </div>
+          <span class="issue-counter" :class="{ empty: !totalIssueCount }">{{ totalIssueCount }}</span>
+        </div>
+        <div v-if="dashboardActions.length" class="action-list">
+          <button
+            v-for="action in dashboardActions.slice(0, 6)"
+            :key="action.key"
+            type="button"
+            class="action-row"
+            @click="showAction(action)"
+          >
+            <SiteFavicon
+              :name="action.site"
+              :base-url="siteConfigByName(action.site)?.base_url"
+              :size="30"
+            />
+            <span class="action-copy">
+              <b>{{ action.site }}</b>
+              <span>{{ action.title }}</span>
+              <small>{{ action.detail }}</small>
+            </span>
+            <i class="action-severity" :class="`tone-${action.tone}`" />
+          </button>
+        </div>
+        <div v-else class="action-empty">
+          <span class="empty-check">✓</span>
+          <strong>暂无待处理事项</strong>
+          <p>站点连接、Cookie 和 H&amp;R 状态正常</p>
+        </div>
+        <router-link to="/sites" class="action-footer">前往站点管理</router-link>
+      </aside>
     </div>
 
-    <div v-if="!loading && overview && !(overview.sites?.length)" class="setup-card glass">
+    <!-- 区② 实时运维：站点健康分布 · 下载器实时速率 · 系统资源 -->
+    <div class="zone zone-3col">
+      <section class="ops-surface zone-card">
+        <div class="zc-head"><h3>站点健康</h3><p>联通状态分布</p></div>
+        <DashboardRingChart
+          :items="healthSegments"
+          :size="116"
+          :thickness="13"
+          :center-value="String(connectedCount)"
+          center-label="在线"
+        />
+        <div class="health-foot">未读通知<b>{{ unreadCount }}</b></div>
+      </section>
+      <section class="ops-surface zone-card"><DashboardRealtimeCard /></section>
+      <section class="ops-surface zone-card"><DashboardResourceCard /></section>
+    </div>
+
+    <!-- 区③④ 自动化运行 · AI 用量与成本 -->
+    <div class="zone zone-2col">
+      <section class="ops-surface zone-card"><DashboardAutomationCard ref="autoCard" /></section>
+      <section class="ops-surface zone-card"><DashboardAICard ref="aiCard" /></section>
+    </div>
+
+    <!-- 区⑥ 最近活动时间线 -->
+    <div class="zone">
+      <section class="ops-surface zone-card"><DashboardActivityTimeline ref="timelineCard" /></section>
+    </div>
+
+    <div v-if="!loading && overview && !(overview.sites?.length)" class="setup-card ops-surface">
       <EmptyState
         icon="🧭"
         title="还没有可展示的站点数据"
@@ -412,103 +622,6 @@ onMounted(load)
         <router-link to="/downloaders"><el-button>添加下载器</el-button></router-link>
       </EmptyState>
     </div>
-
-    <!-- 站点明细 -->
-    <div class="sites-card glass">
-      <div class="card-head">
-        <span>站点明细</span>
-        <span class="text-muted">站点 {{ overview?.site_count ?? 0 }} · 下载器 {{ overview?.downloader_count ?? 0 }}</span>
-      </div>
-      <el-table :data="overview?.sites ?? []" style="width: 100%" empty-text="暂无数据，等待统计同步">
-        <el-table-column type="expand">
-          <template #default="{ row }">
-            <div class="site-expand">
-              <div class="exp-cell"><span class="exp-lbl">发布数</span><span class="exp-val">{{ row.uploads > 0 ? row.uploads : '-' }}</span></div>
-              <div class="exp-cell"><span class="exp-lbl">做种体积</span><span class="exp-val">{{ row.seeding_size > 0 ? fmtBytes(row.seeding_size) : '-' }}</span></div>
-              <div class="exp-cell"><span class="exp-lbl">下载中</span><span class="exp-val">{{ row.leeching }}</span></div>
-              <div class="exp-cell"><span class="exp-lbl">魔力</span><span class="exp-val">{{ row.bonus > 0 ? row.bonus.toFixed(0) : '-' }}</span></div>
-              <div class="exp-cell"><span class="exp-lbl">时魔/时</span><span class="exp-val">{{ row.bonus_per_hour > 0 ? row.bonus_per_hour.toFixed(1) : '-' }}</span></div>
-              <div class="exp-cell"><span class="exp-lbl">加入时间</span><span class="exp-val">{{ row.join_date || '-' }}</span></div>
-              <div class="exp-cell"><span class="exp-lbl">更新时间</span><span class="exp-val">{{ row.updated_at ? fmtTime(row.updated_at) : '-' }}</span></div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="site_name" label="站点" min-width="100" fixed="left" />
-        <el-table-column label="等级" min-width="80">
-          <template #default="{ row }">
-            <span class="level-tag">{{ row.level || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="上传" min-width="100">
-          <template #default="{ row }">{{ fmtBytes(row.uploaded) }}</template>
-        </el-table-column>
-        <el-table-column label="下载" min-width="100">
-          <template #default="{ row }">{{ fmtBytes(row.downloaded) }}</template>
-        </el-table-column>
-        <el-table-column label="分享率" width="108">
-          <template #default="{ row }">
-            <div class="ratio-cell" :title="row.true_ratio > 0 ? '实际分享率（按真实上传/下载）' : '站点上报分享率'">
-              <span :class="(row.true_ratio > 0 ? row.true_ratio : row.ratio) >= 1 ? 'trend-up' : 'trend-down'">
-                {{ (row.true_ratio > 0 ? row.true_ratio : row.ratio) > 0 ? (row.true_ratio > 0 ? row.true_ratio : row.ratio).toFixed(2) : '-' }}
-              </span>
-              <span v-if="row.true_ratio > 0 && row.ratio > 0" class="ratio-sub">站点 {{ row.ratio.toFixed(2) }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="seeding" label="做种" width="70" />
-        <el-table-column label="操作" width="110" fixed="right">
-          <template #default="{ row }">
-            <div class="row-actions">
-              <button
-                class="row-act"
-                title="用户历史数据"
-                @click="viewHistory(row as SiteStatItem)"
-              >
-                <GlassIcon name="history" from="#4285f4" to="#22d3ee" :size="16" />
-              </button>
-              <button
-                class="row-act"
-                :disabled="refreshing.has(row.site_id)"
-                :title="refreshing.has(row.site_id) ? '刷新中…' : '刷新数据'"
-                @click="syncOne(row as SiteStatItem)"
-              >
-                <GlassIcon name="refresh" from="#11998e" to="#38ef7d" :size="16" />
-              </button>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-    </div>
-
-    <!-- 用户历史数据弹窗 -->
-    <el-dialog v-model="historyVisible" :title="`${historySiteName} · 历史数据`" width="780px" append-to-body>
-      <el-table :data="history" v-loading="historyLoading" max-height="480" empty-text="暂无历史快照" size="small">
-        <el-table-column label="时间" min-width="135">
-          <template #default="{ row }">{{ fmtTime(row.snap_at) }}</template>
-        </el-table-column>
-        <el-table-column label="等级" min-width="80">
-          <template #default="{ row }">{{ row.level || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="上传" min-width="95">
-          <template #default="{ row }">{{ fmtBytes(row.uploaded) }}</template>
-        </el-table-column>
-        <el-table-column label="下载" min-width="95">
-          <template #default="{ row }">{{ fmtBytes(row.downloaded) }}</template>
-        </el-table-column>
-        <el-table-column label="分享率" width="75">
-          <template #default="{ row }">{{ row.ratio > 0 ? row.ratio.toFixed(2) : '-' }}</template>
-        </el-table-column>
-        <el-table-column label="做种" width="60">
-          <template #default="{ row }">{{ row.seeding || '-' }}</template>
-        </el-table-column>
-        <el-table-column label="发布" width="60">
-          <template #default="{ row }">{{ row.uploads > 0 ? row.uploads : '-' }}</template>
-        </el-table-column>
-        <el-table-column label="魔力" min-width="85">
-          <template #default="{ row }">{{ row.bonus > 0 ? row.bonus.toFixed(0) : '-' }}</template>
-        </el-table-column>
-      </el-table>
-    </el-dialog>
 
     <!-- 导出图片配置弹窗（字段/主题/脱敏/背景图/冠军/站点筛选，配置持久化） -->
     <DashboardExportDialog v-model="exportVisible" :data="exportData" />
@@ -531,44 +644,9 @@ onMounted(load)
 .metric-label { margin-top: 4px; font-size: 14px; }
 .sites-card { padding: 20px; }
 .card-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; font-weight: 600; font-size: 15px; }
-.level-tag {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-  background: rgba(120, 160, 255, 0.16);
-  color: #6ea8fe;
-  white-space: nowrap;
-}
-/* 展开行：次要字段（发布数/做种体积/下载中/魔力/时魔/时间）紧凑网格 */
-.site-expand {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px 24px;
-  padding: 4px 16px 10px 50px;
-}
-.exp-cell { display: flex; flex-direction: column; gap: 2px; }
-.exp-lbl { font-size: var(--fs-xs); color: var(--text-muted); }
-.exp-val { font-size: var(--fs-md); font-weight: 600; }
 :deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) {
   background-color: transparent !important;
 }
-.row-actions { display: flex; align-items: center; gap: 6px; }
-.row-act {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.row-act:hover { background: rgba(108, 92, 231, 0.14); }
-.row-act:disabled { opacity: 0.5; cursor: progress; }
 
 .sync-card {
   padding: 14px 16px;
@@ -752,4 +830,464 @@ onMounted(load)
 .ratio-cell .ratio-sub { font-size: 11px; color: var(--text-muted); }
 .load-error { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
 .load-error .le-msg { color: var(--text-strong); }
+</style>
+
+<style scoped>
+/* 运行控制台视觉层：克制的实色面、细边框与紧凑数据密度。 */
+.dashboard {
+  gap: 14px;
+  letter-spacing: 0;
+}
+.ops-surface,
+.sync-card {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.06);
+  backdrop-filter: none;
+}
+:global(:root.dark) .ops-surface,
+:global(:root.dark) .sync-card {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(30, 32, 44, 0.92);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+}
+.page-head {
+  align-items: center;
+  min-height: 46px;
+}
+.page-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.page-title {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+}
+.page-subtitle,
+.updated-at {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.head-actions {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.period-control,
+.metric-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--divider);
+  border-radius: 6px;
+  background: var(--surface-muted);
+}
+.period-control button,
+.metric-switch button {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.period-control button.active,
+.metric-switch button.active {
+  color: #2563eb;
+  background: var(--glass-bg-strong);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+  font-weight: 650;
+}
+.period-control button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.health-strip {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.45fr) repeat(4, minmax(126px, 1fr));
+  min-height: 68px;
+  overflow: hidden;
+}
+.health-strip button {
+  font: inherit;
+  cursor: pointer;
+}
+.health-main,
+.health-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  padding: 12px 16px;
+  border: 0;
+  border-right: 1px solid var(--divider);
+  color: var(--text-strong);
+  background: transparent;
+  text-align: left;
+}
+.health-item:last-child {
+  border-right: 0;
+}
+.health-main:hover,
+.health-item:hover {
+  background: var(--surface-muted);
+}
+.health-main > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.health-main small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.health-main strong {
+  overflow: hidden;
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.health-icon {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 6px;
+  background: rgba(22, 163, 74, 0.12);
+}
+.health-icon i {
+  position: absolute;
+  inset: 8px;
+  border: 2px solid #16a34a;
+  border-radius: 50%;
+}
+.health-icon i::after {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 3px;
+  height: 6px;
+  border-right: 2px solid #16a34a;
+  border-bottom: 2px solid #16a34a;
+  content: '';
+  transform: rotate(45deg);
+}
+.health-item span:not(.status-dot) {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.health-item b {
+  margin-left: auto;
+  font-size: 17px;
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #64748b;
+}
+.health-item.is-danger b { color: #dc2626; }
+.health-item.is-danger .status-dot { background: #dc2626; }
+.health-item.is-warning b { color: #d97706; }
+.health-item.is-warning .status-dot { background: #d97706; }
+.health-item.is-success b { color: #16a34a; }
+.health-item.is-success .status-dot { background: #16a34a; }
+.health-item.is-muted b { color: var(--text-muted); }
+
+.operations-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(310px, 0.82fr);
+  gap: 14px;
+  align-items: stretch;
+}
+.trend-panel,
+.action-panel {
+  min-width: 0;
+  padding: 16px;
+}
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.section-head h3 {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.section-head p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.metric-switch {
+  flex: 0 0 auto;
+}
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 14px;
+  border-top: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider);
+}
+.metric-item {
+  position: relative;
+  min-width: 0;
+  padding: 12px 12px 11px;
+  border-right: 1px solid var(--divider);
+}
+.metric-item:last-child { border-right: 0; }
+.metric-item::before {
+  position: absolute;
+  top: 13px;
+  left: 0;
+  width: 3px;
+  height: 28px;
+  border-radius: 0 2px 2px 0;
+  background: #64748b;
+  content: '';
+}
+.metric-item.tone-teal::before { background: #0f766e; }
+.metric-item.tone-blue::before { background: #2563eb; }
+.metric-item.tone-indigo::before { background: #4f46e5; }
+.metric-item.tone-green::before { background: #16a34a; }
+.metric-item.tone-amber::before { background: #d97706; }
+.metric-item > span {
+  display: block;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.metric-item strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  font-size: 18px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.metric-item small {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chart-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  min-height: 18px;
+  margin: 10px 8px -4px 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.chart-legend i { width: 7px; height: 7px; border-radius: 50%; }
+
+.action-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 430px;
+}
+.action-heading { align-items: center; }
+.issue-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: #b45309;
+  background: rgba(217, 119, 6, 0.13);
+  font-size: 12px;
+  font-weight: 700;
+}
+.issue-counter.empty {
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.12);
+}
+.action-list {
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+  overflow-y: auto;
+}
+.action-row {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 8px;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 4px;
+  border: 0;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-strong);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.action-row:hover { background: var(--surface-muted); }
+.action-copy { min-width: 0; }
+.action-copy b,
+.action-copy span,
+.action-copy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.action-copy b { font-size: 12px; }
+.action-copy span { margin-top: 1px; font-size: 12px; }
+.action-copy small { margin-top: 2px; color: var(--text-muted); font-size: 10px; }
+.action-severity { width: 7px; height: 7px; border-radius: 50%; }
+.action-severity.tone-danger { background: #dc2626; }
+.action-severity.tone-warning { background: #d97706; }
+.action-severity.tone-info { background: #2563eb; }
+.action-empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 210px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.empty-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+  font-weight: 700;
+}
+.action-empty strong { color: var(--text-strong); font-size: 13px; }
+.action-empty p { margin: 4px 0 0; font-size: 11px; }
+.action-footer {
+  display: block;
+  margin-top: 10px;
+  color: #2563eb;
+  font-size: 12px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.setup-card { padding: 6px; }
+.setup-card a { text-decoration: none; }
+
+@media (max-width: 1180px) {
+  .health-strip { grid-template-columns: minmax(200px, 1.25fr) repeat(4, minmax(108px, 1fr)); }
+  .operations-grid { grid-template-columns: minmax(0, 1fr) 290px; }
+  .metric-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .metric-item:nth-child(3) { border-right: 0; }
+  .metric-item:nth-child(n + 4) { border-top: 1px solid var(--divider); }
+}
+@media (max-width: 900px) {
+  .page-head { align-items: flex-start; flex-direction: column; }
+  .head-actions { width: 100%; justify-content: flex-start; }
+  .updated-at { margin-right: auto; }
+  .health-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .health-main { grid-column: 1 / -1; }
+  .health-item:nth-child(3) { border-right: 0; }
+  .operations-grid { grid-template-columns: 1fr; }
+  .action-panel { max-height: none; }
+  .action-list { max-height: 330px; }
+}
+@media (max-width: 640px) {
+  .page-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .head-actions { gap: 6px; }
+  .updated-at { width: 100%; }
+  .period-control { order: 2; }
+  .health-main,
+  .health-item { padding: 10px 12px; }
+  .section-head { align-items: flex-start; flex-direction: column; }
+  .metric-switch { width: 100%; overflow-x: auto; }
+  .metric-switch button { flex: 1 0 auto; }
+  .metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-item:nth-child(2n) { border-right: 0; }
+  .metric-item:nth-child(3) { border-right: 1px solid var(--divider); }
+  .metric-item:nth-child(n + 3) { border-top: 1px solid var(--divider); }
+  .metric-item:last-child { grid-column: 1 / -1; border-right: 0; }
+}
+
+/* —— 仪表盘新增区（实时运维 / 自动化 / 活动时间线）布局 —— */
+.zone {
+  display: grid;
+  gap: 14px;
+}
+.zone-3col {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+.zone-2col {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+}
+.zone-card {
+  min-width: 0;
+  padding: 16px;
+}
+.zc-head {
+  margin-bottom: 12px;
+}
+.zc-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.zc-head p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.health-foot {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--divider);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.health-foot b {
+  margin-left: 4px;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+@media (max-width: 1180px) {
+  .zone-3col {
+    grid-template-columns: 1fr 1fr;
+  }
+  .zone-3col > section:first-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 900px) {
+  .zone-3col,
+  .zone-2col {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

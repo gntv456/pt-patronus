@@ -37,6 +37,11 @@ const (
 // 取自官方市场仓 examples/plugin-market/plugin-market.json，官方签名插件自动受信。
 const OfficialMarketPublicKey = "cbK2okPdJoXOUPlW3vL1KEKWM6Owm4rO6Mw3+kICRfs="
 
+// OfficialMarketSource 是 PTPatronus 官方插件市场仓库（github.com 页面地址）。
+// normalizeMarketSource（market.go）会将其转换为 raw.githubusercontent.com 上的 plugin-market.json。
+// 全新安装时由 EnsureDefaultMarketSource 种子化为默认市场源；用户可删除或追加第三方源。
+const OfficialMarketSource = "https://github.com/gntv456/ptpatronus-plugin-market"
+
 const (
 	cfgKeyTrustedPublicKeys = "plugin.trusted_public_keys" // JSON []string(base64)：用户追加的受信公钥
 	cfgKeyAllowUnsigned     = "plugin.allow_unsigned"      // "true"/"false"，默认 false（严格）
@@ -320,6 +325,10 @@ func (m *Manager) GetMarketSources() []string {
 
 // SetMarketSources 持久化插件市场源列表（normalize 后写入；空列表即清除，回退本地 plugin-market.json）。
 // 同时清空旧版单源 key 完成迁移。
+//
+// 不变式：空列表必须持久化为字面量 "[]"（而非删除 key）。EnsureDefaultMarketSource 据此区分
+// 「用户显式清空所有源」（"[]"，尊重、不重新播种官方源）与「全新安装从未配置」（key 缺失，需播种）。
+// 若改为删 key，将导致用户删掉的官方源在下次启动被"复活"。
 func (m *Manager) SetMarketSources(sources []string) error {
 	m.mu.RLock()
 	cfgOp := m.cfgOp
@@ -340,6 +349,35 @@ func (m *Manager) SetMarketSources(sources []string) error {
 		slog.Warn("clear legacy plugin market source key", "err", err)
 	}
 	return nil
+}
+
+// EnsureDefaultMarketSource 在全新安装（从未配置过市场源）时种子化官方市场仓库。
+// 判定依据（无需独立 flag）：直接读持久化原始值——
+//   - 新 key 存在任意非空值（含 "[]"＝用户显式清空）→ 已被用户管理，跳过；
+//   - 否则旧 key 非空（老版本迁移态）→ 尊重既有源，跳过；
+//   - 否则视为全新安装：写入官方源。
+//
+// 注意：必须读原始 key（cfgOp.Get），不能用 GetMarketSources()——后者会把 "[]"（用户清空）
+// 与 key 缺失（全新）都塌缩成空切片，无法区分。不变式见 SetMarketSources 注释。
+// 失败仅记录日志不 panic；cfgOp 未注入时安全返回（供测试与未完成初始化的场景）。
+func (m *Manager) EnsureDefaultMarketSource() {
+	m.mu.RLock()
+	cfgOp := m.cfgOp
+	m.mu.RUnlock()
+	if cfgOp == nil {
+		return
+	}
+	if raw, err := cfgOp.Get(pluginMarketSourcesKey); err == nil && strings.TrimSpace(raw) != "" {
+		return // 用户已管理（含显式清空 "[]"）
+	}
+	if old, err := cfgOp.Get(pluginMarketSourceKey); err == nil && strings.TrimSpace(old) != "" {
+		return // 老版本单源迁移态：保留其源，交由 GetMarketSources 回退读取
+	}
+	if err := m.SetMarketSources([]string{OfficialMarketSource}); err != nil {
+		slog.Warn("seed default plugin market source", "err", err)
+		return
+	}
+	slog.Info("seeded default plugin market source", "source", OfficialMarketSource)
 }
 
 func (m *Manager) Register(p Plugin) error {

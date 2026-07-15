@@ -11,6 +11,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/site"
 	"gorm.io/gorm"
 )
 
@@ -49,7 +50,10 @@ func newPTDSvc(t *testing.T) *Service {
 		}
 	})
 	c := security.NewCrypto("test-seed-for-ptd-unit-tests-32bytes!")
-	return New(oper.NewSiteOper(db, c), nil)
+	// 注入带 mteam 定义的 registry，验证 .ptd 导入按 URL 自动挂 definition。
+	reg := site.NewRegistry()
+	reg.AddDefinition(&site.SiteMetadata{ID: "mteam", Schema: "mteam", URLs: []string{"https://kp.m-team.cc", "https://m-team.cc"}})
+	return New(oper.NewSiteOper(db, c), nil, reg)
 }
 
 const ptdManifest = `{"encryption":false,"version":"PT-Depiler","files":{"metadata":{"name":"metadata.json"},"cookies":{"name":"cookies.json"}}}`
@@ -114,6 +118,9 @@ func TestImportPTD(t *testing.T) {
 	if s1.Platform != "nexusphp" {
 		t.Errorf("Platform=%q, want nexusphp", s1.Platform)
 	}
+	if s1.Definition != "" {
+		t.Errorf("site_1 Definition=%q, want empty（无对应 yaml → 回退 platform 推断）", s1.Definition)
+	}
 	if s1.Username != "alice_real" {
 		t.Errorf("Username=%q, want alice_real", s1.Username)
 	}
@@ -138,6 +145,9 @@ func TestImportPTD(t *testing.T) {
 	}
 	if mt.Platform != "mteam" {
 		t.Errorf("mteam Platform=%q, want mteam", mt.Platform)
+	}
+	if mt.Definition != "mteam" {
+		t.Errorf("mteam Definition=%q, want mteam（按 URL 匹配 yaml）", mt.Definition)
 	}
 	if mt.IsActive {
 		t.Errorf("mteam IsActive=true, want false (isOffline)")

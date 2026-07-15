@@ -142,6 +142,44 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 	return out
 }
 
+// MedalAllStream 流式推送跨站勋章墙：每站完成即 emit（成功站多张卡，失败站一张错误占位卡）。
+// 供 SSE 端点「加载一个显示一个」。与 MedalAll 不同：不按站序输出（按到达顺序）。
+// medalSite 内部已有 3 级缓存 + per-site singleflight（24h/48h），缓存命中时逐站瞬时返回。
+// 注意：emit 会被多个站点 goroutine 并发调用，调用方（handler）须自行串行化写入。
+func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(cards []MedalCard)) {
+	sites, err := c.siteCh.sites.ListActive()
+	if err != nil {
+		slog.Warn("medal list sites failed", "err", err)
+		return
+	}
+	sem := make(chan struct{}, medalConcurrency)
+	var wg sync.WaitGroup
+	for _, s := range sites {
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+			def := c.siteCh.defFor(&s)
+			if !def.Medal.Enabled {
+				return // 该站未开启勋章墙抓取
+			}
+			items, errMsg := c.medalSite(ctx, sem, &s, force)
+			// 失败站：一张占位错误卡；成功站：items 展开成多张卡
+			if len(items) == 0 && errMsg != "" {
+				emit([]MedalCard{{SiteID: s.ID, SiteName: s.Name, Error: errMsg}})
+				return
+			}
+			cards := make([]MedalCard, 0, len(items))
+			for _, it := range items {
+				cards = append(cards, itemToCard(s.ID, s.Name, it))
+			}
+			if len(cards) > 0 {
+				emit(cards)
+			}
+		}(s)
+	}
+	wg.Wait()
+}
+
 // MedalOne 单站强制网络刷新（写操作后调用；单站不限并发，sem=nil）。
 func (c *MedalChain) MedalOne(ctx context.Context, s *models.Site) []MedalCard {
 	items, _ := c.medalSite(ctx, nil, s, true)

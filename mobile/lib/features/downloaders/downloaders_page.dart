@@ -9,7 +9,40 @@ import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+
+// 下载器类型 → 品牌图标/配色/标签（与 Web Downloaders.vue 的 DL_META 1:1）。
+// 新增下载器类型时在此加一条 case，卡片徽标与表单下拉会自动用上对应图标。
+({String glyph, Color from, Color to, String label}) _dlMeta(String t) {
+  switch (t) {
+    case 'tr':
+      return (
+        glyph: 'transmission',
+        from: const Color(0xFFE8443C),
+        to: const Color(0xFFA82424),
+        label: 'Transmission',
+      );
+    default:
+      return (
+        glyph: 'qbittorrent',
+        from: const Color(0xFF72B4F5),
+        to: const Color(0xFF356EBF),
+        label: 'qBittorrent',
+      );
+  }
+}
+
+// 表单类型选项：品牌 GlassIcon + 名称（下拉选中态与展开列表均显示）。
+Widget _dlOption(({String glyph, Color from, Color to, String label}) m) {
+  return Row(
+    children: [
+      GlassIcon(glyph: m.glyph, from: m.from, to: m.to, size: 22),
+      const SizedBox(width: 8),
+      Text(m.label),
+    ],
+  );
+}
 
 // 子表（文件/Tracker/Peer/分类）加载失败的统一错误视图：文案 + 重试按钮，
 // 与「真空态」（无文件/无 Tracker…）区分，避免失败被误显示为空。
@@ -276,31 +309,13 @@ class _DownloadersPageState extends State<DownloadersPage> {
     );
   }
 
-  // 类型图标徽章：渐变色取自 Web GlassIcon（qb=紫蓝 / tr=灰青）。
+  // 类型图标徽章：GlassIcon 渲染品牌字形（qb 蓝 / tr 红，与 Web 卡片完全一致）。
   Widget _dlBadge(String t) {
-    final isTr = t == 'tr';
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isTr
-              ? const [Color(0xFF536976), Color(0xFF29323C)]
-              : const [Color(0xFF6C5CE7), Color(0xFF4285F4)],
-        ),
-      ),
-      child: Icon(
-        isTr ? Icons.sync_rounded : Icons.download_rounded,
-        color: Colors.white,
-        size: 20,
-      ),
-    );
+    final m = _dlMeta(t);
+    return GlassIcon(glyph: m.glyph, from: m.from, to: m.to, size: 40);
   }
 
-  String _typeLabel(String t) => t == 'tr' ? 'Transmission' : 'qBittorrent';
+  String _typeLabel(String t) => _dlMeta(t).label;
 }
 
 // 下载器添加/编辑表单（BottomSheet）：name/type/url/username/password/is_default。
@@ -404,9 +419,9 @@ class _DownloaderFormSheetState extends State<_DownloaderFormSheet> {
         DropdownButtonFormField<String>(
           initialValue: _type,
           decoration: const InputDecoration(labelText: '类型'),
-          items: const [
-            DropdownMenuItem(value: 'qb', child: Text('qBittorrent')),
-            DropdownMenuItem(value: 'tr', child: Text('Transmission')),
+          items: [
+            DropdownMenuItem(value: 'qb', child: _dlOption(_dlMeta('qb'))),
+            DropdownMenuItem(value: 'tr', child: _dlOption(_dlMeta('tr'))),
           ],
           onChanged: (v) => setState(() => _type = v ?? 'qb'),
         ),

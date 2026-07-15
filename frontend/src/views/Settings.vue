@@ -108,6 +108,7 @@ function onTabChange(tab: string | number) {
   if (tab === 'notification' && !notifCfg.value) loadNotif()
   if (tab === 'oidc' && !oidcCfg.value) loadOIDC()
   if (tab === 'llmgateway' && !gwCfg.value) loadLLMGateway()
+  if (tab === 'cookiecloud' && !ccCfg.value) loadCookieCloud()
   if (tab === 'tgbot' && !tgCfg.value) loadTgBot()
 }
 
@@ -201,6 +202,57 @@ async function saveLLMGateway() {
     ElMessage.error('保存 AI 网关配置失败')
   } finally {
     gwSaving.value = false
+  }
+}
+
+// —— CookieCloud 同步（浏览器扩展推送最新 cookie → 覆盖本地失效站 + 自动新增匹配站）——
+import { cookieCloudApi, type CookieCloudConfig, type CookieCloudConfigInput } from '@/api/cookiecloud'
+const ccCfg = ref<CookieCloudConfig | null>(null)
+const ccForm = ref<CookieCloudConfigInput>({
+  enabled: false, server: '', uuid: '', password: '', interval_min: 120,
+})
+const ccLoading = ref(false)
+const ccSaving = ref(false)
+const ccSyncing = ref(false)
+async function loadCookieCloud() {
+  ccLoading.value = true
+  try {
+    ccCfg.value = await cookieCloudApi.getConfig()
+    ccForm.value = {
+      enabled: ccCfg.value.enabled,
+      server: ccCfg.value.server,
+      uuid: ccCfg.value.uuid,
+      password: '',
+      interval_min: ccCfg.value.interval_min || 120,
+    }
+  } catch {
+    ElMessage.error('加载 CookieCloud 配置失败')
+  } finally {
+    ccLoading.value = false
+  }
+}
+async function saveCookieCloud() {
+  ccSaving.value = true
+  try {
+    await cookieCloudApi.setConfig(ccForm.value)
+    ElMessage.success('已保存')
+    await loadCookieCloud()
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    ccSaving.value = false
+  }
+}
+async function syncCookieCloud() {
+  ccSyncing.value = true
+  try {
+    const r = await cookieCloudApi.sync()
+    ElMessage.success(`同步完成：更新 ${r.report.updated}，新增 ${r.report.added}，跳过 ${r.report.skipped}`)
+    await loadCookieCloud()
+  } catch {
+    ElMessage.error('同步失败，请检查服务器/UUID/密码')
+  } finally {
+    ccSyncing.value = false
   }
 }
 
@@ -939,6 +991,49 @@ async function openChangelog() {
           </div>
           <div class="oidc-save">
             <el-button type="primary" :loading="gwSaving" @click="saveLLMGateway">保存</el-button>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="CookieCloud" name="cookiecloud">
+        <div v-loading="ccLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            浏览器装 CookieCloud 扩展并填服务器/UUID/密码后，PTPatronus 定时拉取最新 cookie，
+            按域名覆盖本地 <b>已失效</b> 站点 + 自动新增匹配内置定义的站点，根治 session 短寿站掉 cookie。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">启用 CookieCloud 同步</div>
+              <el-switch v-model="ccForm.enabled" />
+            </div>
+            <el-input v-model="ccForm.server" class="mt8" placeholder="https://cc.example.com">
+              <template #prepend>服务器</template>
+            </el-input>
+            <el-input v-model="ccForm.uuid" class="mt8" placeholder="UUID / Key">
+              <template #prepend>UUID</template>
+            </el-input>
+            <el-input
+              v-model="ccForm.password"
+              type="password"
+              show-password
+              class="mt8"
+              :placeholder="ccCfg?.password_configured ? '已配置（留空=不修改）' : '端到端密码'"
+            >
+              <template #prepend>密码</template>
+            </el-input>
+            <el-input v-model.number="ccForm.interval_min" type="number" class="mt8" placeholder="120">
+              <template #prepend>间隔(分钟)</template>
+            </el-input>
+          </div>
+          <div class="oidc-save">
+            <span v-if="ccCfg?.last_error" class="text-muted" style="margin-right: 12px">
+              上次错误：{{ ccCfg.last_error }}
+            </span>
+            <span v-else-if="ccCfg?.last_sync_unix" class="text-muted" style="margin-right: 12px">
+              上次同步：{{ new Date(ccCfg.last_sync_unix * 1000).toLocaleString() }}
+            </span>
+            <el-button :loading="ccSyncing" @click="syncCookieCloud">立即同步</el-button>
+            <el-button type="primary" :loading="ccSaving" @click="saveCookieCloud">保存</el-button>
           </div>
         </div>
       </el-tab-pane>

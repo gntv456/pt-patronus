@@ -13,8 +13,14 @@ import 'package:ptpatronus/features/home/home_nav_items.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
 import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:path_provider/path_provider.dart';
+import 'package:ptpatronus/api/agent.dart';
+import 'package:ptpatronus/api/brushflow.dart';
+import 'package:ptpatronus/api/contract.dart';
 import 'package:ptpatronus/api/dashboard.dart';
+import 'package:ptpatronus/api/notice.dart';
 import 'package:ptpatronus/api/site.dart';
+import 'package:ptpatronus/api/system.dart';
+import 'package:ptpatronus/api/workflow.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -195,6 +201,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Map<int, String> _siteBaseUrls = {};
   List<HRAlert> _hrAlerts = [];
   List<String> _cookieAlerts = [];
+  Map<int, SiteConnectivityStatus> _connectivity = {};
+  bool _connectivityLoading = false;
   TotalDashboardConfig _config = TotalDashboardConfig.defaults;
   final Set<int> _refreshing = {}; // 单站刷新中的 site_id 集合
   bool _syncing = false; // 全站同步中（刷新统计按钮 loading）
@@ -203,11 +211,28 @@ class _DashboardPageState extends State<DashboardPage> {
   StreamSubscription? _hrSub;
   StreamSubscription? _cookieSub;
 
+  // —— 仪表盘新增区数据（实时运维 / 自动化 / 活动时间线）——
+  List<TorrentSnapshot> _snapshots = [];
+  SystemMetrics? _metrics;
+  WorkflowStats? _wfStats;
+  AgentStats? _agentStats;
+  List<BrushFlowTask> _brush = [];
+  List<ContractRule> _contract = [];
+  List<Notice> _recentNotices = [];
+  StreamSubscription? _snapSub;
+  StreamSubscription? _noticeSub;
+  final _wfApi = WorkflowApi();
+  final _agentApi = AgentApi();
+  final _brushApi = BrushFlowApi();
+  final _contractApi = ContractApi();
+  final _noticeApi = NoticeApi();
+
   @override
   void initState() {
     super.initState();
     _loadConfig();
     _load();
+    unawaited(_loadExtras());
     _ws.connect();
     _hrSub = _ws.hrAlerts.listen((list) {
       if (!mounted) return;
@@ -216,6 +241,14 @@ class _DashboardPageState extends State<DashboardPage> {
     _cookieSub = _ws.cookieAlerts.listen((list) {
       if (!mounted) return;
       setState(() => _cookieAlerts = list);
+    });
+    _snapSub = _ws.snapshots.listen((list) {
+      if (!mounted) return;
+      setState(() => _snapshots = list);
+    });
+    _noticeSub = _ws.notices.listen((n) {
+      if (!mounted) return;
+      setState(() => _recentNotices = [n, ..._recentNotices].take(30).toList());
     });
   }
 
@@ -246,6 +279,8 @@ class _DashboardPageState extends State<DashboardPage> {
   void dispose() {
     _hrSub?.cancel();
     _cookieSub?.cancel();
+    _snapSub?.cancel();
+    _noticeSub?.cancel();
     super.dispose();
   }
 
@@ -258,6 +293,47 @@ class _DashboardPageState extends State<DashboardPage> {
       _error = '$e';
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+    unawaited(_loadConnectivity());
+  }
+
+  // 并发拉取仪表盘新增区数据（自动化/AI/系统资源/通知），单项失败不阻断（对齐 Web Promise.allSettled）。
+  Future<void> _loadExtras() async {
+    WorkflowStats? wf;
+    AgentStats? ai;
+    List<BrushFlowTask> brush = [];
+    List<ContractRule> contract = [];
+    List<Notice> notices = [];
+    SystemMetrics? metrics;
+    await Future.wait([
+      () async { try { wf = await _wfApi.stats(); } catch (_) {} }(),
+      () async { try { ai = await _agentApi.stats(); } catch (_) {} }(),
+      () async { try { brush = await _brushApi.list(); } catch (_) {} }(),
+      () async { try { contract = await _contractApi.list(); } catch (_) {} }(),
+      () async { try { notices = await _noticeApi.list(); } catch (_) {} }(),
+      () async { try { metrics = await SystemApi.metrics(); } catch (_) {} }(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _wfStats = wf;
+      _agentStats = ai;
+      _brush = brush;
+      _contract = contract;
+      _recentNotices = notices.take(30).toList();
+      _metrics = metrics;
+    });
+  }
+
+  Future<void> _loadConnectivity() async {
+    if (mounted) setState(() => _connectivityLoading = true);
+    try {
+      final statuses = await _siteApi.statuses();
+      if (!mounted) return;
+      setState(() => _connectivity = {for (final s in statuses) s.siteId: s});
+    } catch (_) {
+      if (mounted) setState(() => _connectivity = {});
+    } finally {
+      if (mounted) setState(() => _connectivityLoading = false);
     }
   }
 
@@ -272,6 +348,30 @@ class _DashboardPageState extends State<DashboardPage> {
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     }
+    unawaited(_loadConnectivity());
+  }
+
+  Future<void> _showConnectivityReason(SiteStatItem site) async {
+    final status = _connectivity[site.siteId];
+    if (status == null || status.state == SiteConnectivityState.connected) {
+      return;
+    }
+    final title = status.state == SiteConnectivityState.disabled
+        ? '${site.siteName} 已停用'
+        : '${site.siteName} 未联通';
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(status.error.isNotEmpty ? status.error : '站点未返回具体失败原因'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
+    );
   }
 
   // 全站同步：立即抓取所有启用站点统计（回填新加入站点的 0 数据），刷新成功替换总览。
@@ -1330,10 +1430,209 @@ class _DashboardPageState extends State<DashboardPage> {
           _metricGrid(context),
           SizedBox(height: isWideScreen(context) ? 14 : 10),
           _sitesSection(context),
+          SizedBox(height: isWideScreen(context) ? 14 : 10),
+          _opsSection(context),
+          SizedBox(height: isWideScreen(context) ? 14 : 10),
+          _autoSection(context),
+          SizedBox(height: isWideScreen(context) ? 14 : 10),
+          _activitySection(context),
           const SizedBox(height: 4),
         ],
       ),
     );
+  }
+
+  // 区②实时运维：下载器实时速率（WS snapshots）+ 系统资源（/system/metrics）。
+  Widget _opsSection(BuildContext context) {
+    final dl = _snapshots.fold<int>(0, (s, t) => s + (t.dlRate ?? 0));
+    final up = _snapshots.fold<int>(0, (s, t) => s + (t.upRate ?? 0));
+    final downloading = _snapshots.fold<int>(
+        0,
+        (s, t) =>
+            s + t.torrents.where((x) => RegExp(r'download|leech').hasMatch(x.state)).length);
+    final seeding = _snapshots.fold<int>(
+        0, (s, t) => s + t.torrents.where((x) => RegExp(r'upload|seed').hasMatch(x.state)).length);
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('实时运维', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(child: _kvCell('↓ 总下载', _fmtSpeed(dl), const Color(0xff2563eb))),
+          const SizedBox(width: 10),
+          Expanded(child: _kvCell('↑ 总上传', _fmtSpeed(up), const Color(0xff2ecc71))),
+        ]),
+        const SizedBox(height: 8),
+        Text('下载中 $downloading · 做种 $seeding · ${_snapshots.length} 个下载器',
+            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        const Divider(height: 24),
+        if (_metrics == null)
+          const Text('系统资源采集中…', style: TextStyle(fontSize: 12, color: Colors.grey))
+        else ...[
+          _resBar('CPU', _metrics!.cpuUsage, '${_metrics!.cpuCores} 核'),
+          const SizedBox(height: 8),
+          _resBar('内存', _metrics!.memUsage,
+              '${_fmtBytes(_metrics!.memUsed)} / ${_fmtBytes(_metrics!.memTotal)}'),
+          ..._metrics!.disks.take(2).map((d) => Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: _resBar(d.device, d.usage, '${_fmtBytes(d.used)} / ${_fmtBytes(d.total)}'),
+              )),
+        ],
+      ]),
+    );
+  }
+
+  // 区③④自动化运行 + AI 用量。
+  Widget _autoSection(BuildContext context) {
+    final brushOn = _brush.where((t) => t.enabled).length;
+    final brushUp = _brush.fold<int>(0, (s, t) => s + t.totalUpload);
+    final brushAdded = _brush.fold<int>(0, (s, t) => s + t.totalAdded);
+    final contractOn = _contract.where((r) => r.enabled).toList();
+    final breach = contractOn.where((r) => r.lastStatus == 'breach').length;
+    final aiTokens =
+        (_agentStats?.totalInputTokens ?? 0) + (_agentStats?.totalOutputTokens ?? 0);
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          const Text('自动化运行', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          if (breach > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xffdc2626).withValues(alpha: 0.13),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: const Text('契约违约',
+                  style: TextStyle(fontSize: 11, color: Color(0xffdc2626))),
+            ),
+        ]),
+        const SizedBox(height: 8),
+        _statChip('工作流', '${_wfStats?.enabled ?? 0}/${_wfStats?.total ?? 0}',
+            '启用/总数 · 成功 ${_wfStats?.runsSuccess ?? 0}'),
+        _statChip('刷流', '$brushOn', '累计 ↑${_fmtBytes(brushUp)} · $brushAdded 种'),
+        _statChip('契约违约', '$breach', '共 ${contractOn.length} 条契约'),
+        if (_agentStats != null) ...[
+          const Divider(height: 20),
+          _statChip('AI 用量', '${_agentStats!.totalRequests} 次',
+              'Token ${_fmtToken(aiTokens)} · \$${_agentStats!.totalCostUsd.toStringAsFixed(4)}'),
+        ],
+      ]),
+    );
+  }
+
+  // 区⑥最近活动时间线（notice 聚合）。
+  Widget _activitySection(BuildContext context) {
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('最近活动', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        if (_recentNotices.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+                child: Text('暂无最近活动', style: TextStyle(fontSize: 12, color: Colors.grey))),
+          )
+        else
+          ..._recentNotices.take(12).map((n) {
+            final lvlColor = switch (n.level) {
+              NoticeLevel.success => const Color(0xff16a34a),
+              NoticeLevel.warning => const Color(0xffd97706),
+              NoticeLevel.danger => const Color(0xffdc2626),
+              NoticeLevel.info => const Color(0xff2563eb),
+            };
+            final label = noticeSourceLabel[n.source] ?? n.source;
+            String p(int v) => v.toString().padLeft(2, '0');
+            final t = '${p(n.createdAt.month)}-${p(n.createdAt.day)} '
+                '${p(n.createdAt.hour)}:${p(n.createdAt.minute)}';
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5),
+              child: Row(children: [
+                Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(color: lvlColor, shape: BoxShape.circle)),
+                const SizedBox(width: 9),
+                Expanded(
+                    child: Text(n.title,
+                        style: const TextStyle(fontSize: 12.5),
+                        overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: 8),
+                Text(label, style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+                const SizedBox(width: 8),
+                Text(t, style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+              ]),
+            );
+          }),
+      ]),
+    );
+  }
+
+  Widget _kvCell(String label, String value, Color color) => Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 3),
+          Text(value,
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: color)),
+        ]),
+      );
+
+  Widget _resBar(String label, double pct, String detail) {
+    final p = pct.clamp(0.0, 100.0);
+    final color = p >= 90
+        ? const Color(0xffe74c3c)
+        : p >= 80
+            ? const Color(0xfff39c12)
+            : const Color(0xff16a34a);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text('${p.toStringAsFixed(0)}%',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+      ]),
+      const SizedBox(height: 4),
+      ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: LinearProgressIndicator(
+          value: p / 100,
+          minHeight: 7,
+          backgroundColor: Colors.grey.withValues(alpha: 0.15),
+          valueColor: AlwaysStoppedAnimation<Color>(color),
+        ),
+      ),
+      Text(detail, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+    ]);
+  }
+
+  Widget _statChip(String label, String value, String sub) => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          SizedBox(
+              width: 76,
+              child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey))),
+          const SizedBox(width: 8),
+          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(sub,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis)),
+        ]),
+      );
+
+  String _fmtSpeed(int bytesPerSec) =>
+      bytesPerSec == 0 ? '0 B/s' : '${_fmtBytes(bytesPerSec)}/s';
+
+  String _fmtToken(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
   }
 
   // 首登向导：无站点且无下载器时置顶，3 步引导（加站点→配下载器→同步），每步直达对应页。
@@ -1686,6 +1985,7 @@ class _DashboardPageState extends State<DashboardPage> {
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
+      PTColumn(label: '联通状态', flex: 1, cell: (_, s) => _connectivityPill(s)),
       PTColumn(label: '等级', flex: 1, cell: (_, s) => _levelTag(s.level)),
       PTColumn(
         label: '上传',
@@ -1746,9 +2046,9 @@ class _DashboardPageState extends State<DashboardPage> {
           emptyText: '暂无数据，等待统计同步',
           narrowCard: (c, s) => _siteStatCard(c, s),
           // 宽屏表格最小宽 860：窗口更窄时整表横向滚动（对齐 Web el-table min-width + 横滚），
-          // 而非把 7 列硬塞进窗口宽度——否则操作列(flex:1)塞不下两个按钮→黄黑溢出斜纹，
+          // 而非把 8 列硬塞进窗口宽度——否则操作列(flex:1)塞不下两个按钮→黄黑溢出斜纹，
           // 相邻站点列被压到极窄→英文站名逐字竖排（曾见于馒头/MTeam 行的刷新按钮处）。
-          // 860÷8(flex 总和)=107.5：操作列够放两枚 40px 按钮，站点列(flex:2)≈215 不压字。
+          // 860÷9(flex 总和)≈95：操作列够放两枚 40px 按钮，站点列(flex:2)≈190 不压字。
           minTableWidth: 860,
           embedded: true, // 嵌在外层 ListView：窄屏卡片列表 shrinkWrap，避免塌缩空白
         ),
@@ -1809,6 +2109,61 @@ class _DashboardPageState extends State<DashboardPage> {
         level.isNotEmpty ? level : '-',
         style: const TextStyle(color: Color(0xFF6EA8FE), fontSize: 11),
       ),
+    );
+  }
+
+  Widget _connectivityPill(SiteStatItem site) {
+    final status = _connectivity[site.siteId];
+    final pending = _connectivityLoading;
+    final state = status?.state;
+    final label = pending
+        ? '检测中'
+        : status == null
+        ? '未检测'
+        : state == SiteConnectivityState.connected
+        ? '已联通'
+        : state == SiteConnectivityState.disabled
+        ? '已停用'
+        : '未联通';
+    final color = pending || status == null
+        ? Colors.grey
+        : state == SiteConnectivityState.connected
+        ? PTColors.success
+        : state == SiteConnectivityState.disabled
+        ? Colors.grey
+        : PTColors.danger;
+    final child = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: pending || status == null ? 0.1 : 0.16),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (pending || status == null || state == SiteConnectivityState.connected) {
+      return child;
+    }
+    return GestureDetector(
+      onTap: () => _showConnectivityReason(site),
+      child: child,
     );
   }
 
@@ -1935,6 +2290,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
               ),
+              _connectivityPill(s),
               const SizedBox(width: 6),
               if (_config.showUsername && s.level.isNotEmpty)
                 _levelTag(_config.blurUserInfo ? '***' : s.level),

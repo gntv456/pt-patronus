@@ -1,4 +1,5 @@
 import { http } from './http'
+import { streamSSE } from './sse'
 
 // 统一媒体元数据（对齐 backend media.MediaInfo）。
 export interface MediaInfo {
@@ -42,4 +43,19 @@ export const recommendApi = {
         params: { source, category, page, ...(refresh ? { refresh: 1 } : {}) },
       })
       .then((r) => r.data.results || []),
+  // 流式首屏：GET /media/recommend/stream（SSE），每源完成推一帧 batch。onBatch 收该源条目，逐批 push。
+  feedStream: (
+    source = '',
+    category = 'movie',
+    page = 1,
+    refresh = false,
+    onBatch: (items: MediaInfo[]) => void,
+    signal?: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ source, category, page: String(page) })
+    if (refresh) params.set('refresh', '1')
+    return streamSSE(`/api/v1/media/recommend/stream?${params}`, (event, data) => {
+      if (event === 'batch' && data?.results) onBatch(data.results as MediaInfo[])
+    }, signal)
+  },
 }

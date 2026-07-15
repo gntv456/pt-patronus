@@ -3,6 +3,7 @@ package site
 import (
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -116,4 +117,38 @@ func (r *Registry) ActiveDefinitions() []*SiteMetadata {
 		}
 	}
 	return out
+}
+
+// MatchByURL 按主机名匹配站点定义：给定站点 baseURL，返回 definitions 中
+// URLs/LegacyURLs 命中同 host 的定义 ID。用于 .ptd 等备份恢复时自动挂「正确定义」
+// （而非全部退化为默认 nexusphp）—— tnode/特殊 schema 站（如朱雀）走错适配器会彻底抓空，
+// nexusphp 站用通用 def 也常抓不全（选择器/字段差异）。未匹配返回 ("", false)，
+// 调用方回退到 schema 推断（如 nexusphp 通用）。
+func (r *Registry) MatchByURL(rawURL string) (string, bool) {
+	host := matchHost(rawURL)
+	if host == "" {
+		return "", false
+	}
+	for _, def := range r.defs {
+		for _, u := range def.URLs {
+			if matchHost(u) == host {
+				return def.ID, true
+			}
+		}
+		for _, u := range def.LegacyURLs {
+			if matchHost(u) == host {
+				return def.ID, true
+			}
+		}
+	}
+	return "", false
+}
+
+// matchHost 提取 URL 的主机名（小写）；非法/无 host 返回空串。
+func matchHost(rawURL string) string {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Hostname())
 }

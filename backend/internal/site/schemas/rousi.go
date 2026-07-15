@@ -210,9 +210,24 @@ func parseRousiTorrent(baseURL, passkey string, item map[string]any) site.Torren
 	if promo, _ := item["promotion"].(map[string]any); promo != nil && rousiPromotionActive(promo) {
 		if tag := rousiPromotionTag(promo); tag != "" {
 			t.Tags = append(t.Tags, tag)
-		}
-		if tag := rousiPromotionTag(promo); tag == "Free" || tag == "2xFree" {
-			t.Free = true
+			// 填下载/上传因子（对齐 NexusPHP spstate），供订阅促销类型分类。
+			switch tag {
+			case "Free":
+				t.DownloadVolumeFactor, t.UploadVolumeFactor = 0, 1
+			case "2xFree":
+				t.DownloadVolumeFactor, t.UploadVolumeFactor = 0, 2
+			case "2xUp":
+				t.DownloadVolumeFactor, t.UploadVolumeFactor = 1, 2
+			case "50%":
+				t.DownloadVolumeFactor, t.UploadVolumeFactor = 0.5, 1
+			case "2x50%":
+				t.DownloadVolumeFactor, t.UploadVolumeFactor = 0.5, 2
+			case "30%":
+				t.DownloadVolumeFactor, t.UploadVolumeFactor = 0.7, 1
+			}
+			if tag == "Free" || tag == "2xFree" {
+				t.Free = true
+			}
 		}
 	}
 	return t

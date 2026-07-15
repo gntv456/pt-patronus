@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { siteApi, type Site, type SiteDef, type TestResult, type CheckinResult, type CheckinRecord } from '@/api/site'
+import {
+  siteApi,
+  type Site,
+  type SiteDef,
+  type TestResult,
+  type CheckinResult,
+  type CheckinRecord,
+  type SiteConnectivityStatus,
+} from '@/api/site'
 import { dashboardApi } from '@/api/dashboard'
 import { fmtTime } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth'
-import EmptyState from '@/components/EmptyState.vue'
 import { siteDefSearchQueries, siteDefSearchText, sortSiteDefsBySearchRelevance } from '@/utils/siteDefSearch'
 import { useWs } from '@/composables/useWs'
+import SiteOperationsMatrix from '@/components/sites/SiteOperationsMatrix.vue'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
@@ -17,11 +25,17 @@ const sites = ref<Site[]>([])
 const defs = ref<SiteDef[]>([])
 const loading = ref(false)
 const testing = ref<number | null>(null)
+const connectivity = ref<Record<number, SiteConnectivityStatus>>({})
+const connectivityLoading = ref(false)
 const checkining = ref<number | null>(null)
 const checkinAllLoading = ref(false)
 const recordsDrawer = ref(false)
 const records = ref<CheckinRecord[]>([])
 const recordsLoading = ref(false)
+const operationsMatrixRef = ref<InstanceType<typeof SiteOperationsMatrix> | null>(null)
+const staleVisitLoading = ref(false)
+const staleVisitProgress = ref('')
+const inactiveSiteCount = computed(() => operationsMatrixRef.value?.inactiveSiteCount ?? 0)
 
 const dialogVisible = ref(false)
 // 编辑态：null=新建，否则持有正在编辑的站点 id
@@ -98,15 +112,31 @@ function onDefChange() {
   }
 }
 
+async function loadConnectivity() {
+  connectivityLoading.value = true
+  try {
+    const statuses = await siteApi.statuses()
+    connectivity.value = Object.fromEntries(statuses.map((status) => [status.site_id, status]))
+  } catch {
+    // 联通检查失败不影响合并矩阵；状态列会显示“未检测”。
+    connectivity.value = {}
+  } finally {
+    connectivityLoading.value = false
+  }
+}
+
 async function load() {
   loading.value = true
   try {
-    ;[sites.value, defs.value] = await Promise.all([siteApi.list(), siteApi.definitions()])
+    const [nextSites, nextDefs] = await Promise.all([siteApi.list(), siteApi.definitions()])
+    sites.value = nextSites
+    defs.value = nextDefs
   } catch (e) {
     ElMessage.error('加载失败')
   } finally {
     loading.value = false
   }
+  void loadConnectivity()
 }
 
 async function openCreate() {
@@ -181,10 +211,14 @@ async function submit() {
       })
       ElMessage.success('已添加')
       // 新建站点：立即抓取统计，避免切到仪表盘看到全 0。
-      dashboardApi.sync().catch(() => {})
+      dashboardApi
+        .sync()
+        .then(() => operationsMatrixRef.value?.reload())
+        .catch(() => {})
     }
     dialogVisible.value = false
     await load()
+    await operationsMatrixRef.value?.reload()
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
     ElMessage.error(msg || (isEdit.value ? '更新失败' : '添加失败'))
@@ -195,10 +229,25 @@ async function testSite(s: Site) {
   testing.value = s.id
   try {
     const r: TestResult = await siteApi.test(s.id)
+    connectivity.value = {
+      ...connectivity.value,
+      [s.id]: {
+        site_id: s.id,
+        site_name: s.name,
+        status: r.ok ? 'connected' : 'disconnected',
+        level: r.level,
+        error: r.error,
+      },
+    }
     if (r.ok) ElMessage.success(`${s.name}：连接正常，等级 ${r.level || '-'}`)
     else ElMessage.warning(`${s.name}：${r.error || '连接失败'}`)
-  } catch {
-    ElMessage.error('请求失败')
+  } catch (e: unknown) {
+    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || '请求失败'
+    connectivity.value = {
+      ...connectivity.value,
+      [s.id]: { site_id: s.id, site_name: s.name, status: 'disconnected', error: msg },
+    }
+    ElMessage.error(msg)
   } finally {
     testing.value = null
   }
@@ -258,6 +307,21 @@ async function checkinAll() {
   }
 }
 
+async function visitStaleSites() {
+  const matrix = operationsMatrixRef.value
+  if (!matrix || staleVisitLoading.value) return
+  staleVisitLoading.value = true
+  staleVisitProgress.value = ''
+  try {
+    await matrix.visitInactiveSites((current, total) => {
+      staleVisitProgress.value = `${current}/${total}`
+    })
+  } finally {
+    staleVisitLoading.value = false
+    staleVisitProgress.value = ''
+  }
+}
+
 // 签到记录抽屉：siteId 省略=全部站点最近 100 条（含 cron 自动 + 手动）。
 async function openRecords(siteId?: number) {
   recordsDrawer.value = true
@@ -282,8 +346,35 @@ async function removeSite(s: Site) {
     await siteApi.remove(s.id)
     ElMessage.success('已删除')
     await load()
+    await operationsMatrixRef.value?.reload()
   } catch (e: any) {
     ElMessage.error(e?.message || '删除失败')
+  }
+}
+
+async function batchRemoveSites(selected: Site[]) {
+  if (!selected.length) return
+  const names = selected.map((s) => s.name).join('、')
+  try {
+    await ElMessageBox.confirm(
+      `确认删除选中的 ${selected.length} 个站点？\n${names}`,
+      '批量删除',
+      { type: 'warning' },
+    )
+  } catch {
+    return // 用户取消
+  }
+  try {
+    const res = await siteApi.batchDelete(selected.map((s) => s.id))
+    if (res.failed?.length) {
+      ElMessage.warning(`已删除 ${res.deleted} 个，失败 ${res.failed.length} 个`)
+    } else {
+      ElMessage.success(`已删除 ${res.deleted} 个站点`)
+    }
+    await load()
+    await operationsMatrixRef.value?.reload()
+  } catch (e: any) {
+    ElMessage.error(e?.message || '批量删除失败')
   }
 }
 
@@ -297,57 +388,37 @@ onMounted(load)
       <div class="head-actions">
         <el-button @click="openRecords()">签到记录</el-button>
         <el-button :loading="checkinAllLoading" @click="checkinAll">一键签到</el-button>
+        <el-button
+          :loading="staleVisitLoading"
+          :disabled="!inactiveSiteCount || staleVisitLoading"
+          title="依次访问最后访问时间超过 30 天的启用站点，每站停留 8 秒后自动切换并关闭"
+          @click="visitStaleSites"
+        >
+          {{ staleVisitLoading && staleVisitProgress
+            ? `访问中 ${staleVisitProgress}`
+            : `一键访问超30天站点${inactiveSiteCount ? ` (${inactiveSiteCount})` : ''}` }}
+        </el-button>
         <el-button type="primary" @click="openCreate">+ 添加站点</el-button>
       </div>
     </div>
 
-    <div v-loading="loading" class="card glass">
-      <el-table :data="sites" style="width: 100%" :row-style="{ background: 'transparent' }">
-        <el-table-column prop="name" label="名称" min-width="120" />
-        <el-table-column prop="definition" label="定义" min-width="120" />
-        <el-table-column prop="platform" label="平台" min-width="100" />
-        <el-table-column prop="base_url" label="地址" min-width="220" show-overflow-tooltip />
-        <el-table-column label="状态" width="120">
-          <template #default="{ row }">
-            <div class="status-cell">
-              <span :class="['pill', row.is_active ? 'on' : 'off']">
-                {{ row.is_active ? '启用' : '停用' }}
-              </span>
-              <span
-                v-if="cookieAlerts.includes(row.name)"
-                class="pill cookie-bad"
-                title="Cookie 失效，编辑后重新粘贴 cookie"
-              >Cookie 失效</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="320">
-          <template #default="{ row }">
-            <el-button
-              v-if="row.platform === 'nexusphp'"
-              size="small"
-              :loading="checkining === row.id"
-              @click="checkinSite(row as Site)"
-            >
-              签到
-            </el-button>
-            <el-button size="small" :loading="testing === row.id" @click="testSite(row as Site)">
-              连接测试
-            </el-button>
-            <el-button size="small" @click="openEdit(row as Site)">编辑</el-button>
-            <el-button v-if="auth.isAdmin" size="small" type="danger" plain @click="removeSite(row as Site)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <EmptyState
-        v-if="!sites.length && !loading"
-        icon="🌐"
-        title="暂无站点"
-        description="添加第一个 PT 站点并粘贴 Cookie/API Key，随后即可做跨站统计、签到、H&R 告警和内容搜索。"
-      >
-        <el-button type="primary" @click="openCreate">+ 添加站点</el-button>
-      </EmptyState>
-    </div>
+    <SiteOperationsMatrix
+      ref="operationsMatrixRef"
+      :sites="sites"
+      :connectivity="connectivity"
+      :connectivity-loading="connectivityLoading"
+      :cookie-alerts="cookieAlerts"
+      :loading-sites="loading"
+      :testing-site-id="testing"
+      :checkining-site-id="checkining"
+      :can-delete="auth.isAdmin"
+      @create="openCreate"
+      @edit="openEdit"
+      @remove="removeSite"
+      @batch-remove="batchRemoveSites"
+      @test="testSite"
+      @checkin="checkinSite"
+    />
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="480">
       <el-form label-width="80">
@@ -467,19 +538,18 @@ onMounted(load)
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 .head-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 .page-title {
   margin: 4px 0;
   font-size: 22px;
   font-weight: 700;
-}
-.card {
-  padding: 18px;
-  min-height: 200px;
 }
 .pill {
   display: inline-block;
@@ -494,11 +564,6 @@ onMounted(load)
 .pill.off {
   background: rgba(231, 76, 60, 0.15);
   color: var(--pt-danger);
-}
-.status-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-.pill.cookie-bad {
-  background: rgba(255, 159, 67, 0.18);
-  color: #ff9f43;
 }
 .empty {
   padding: 40px;

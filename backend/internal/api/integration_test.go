@@ -76,7 +76,7 @@ func newTestDepsWith(t *testing.T, fa auth.HxptAuthenticator) *Deps {
 	fileCh := chain.NewFileManagerChain(base, fileMgr)
 
 	keepSeed := chain.NewKeepSeedChain(base, siteCh, iyuu.New(siteHC, ""), chain.NewManagerProvider(dlMgr), nil, siteOp, oper.NewSystemConfigOper(db), db, nil)
-	backupSvc := backup.New(siteOp, dlOp)
+	backupSvc := backup.New(siteOp, dlOp, registry)
 	hxpt := auth.NewHxptVIP(registry, "hxpt", "https://hxpt.org", 1, siteHC)
 	tvCache := auth.NewTokenVersionCache(db, time.Second*60)
 
@@ -168,6 +168,10 @@ func TestUserJourney(t *testing.T) {
 	token, _ := body["token"].(string)
 	if token == "" {
 		t.Fatal("no token")
+	}
+	// 空站点列表也应返回结构化的联通状态数组，验证批量检查路由已受保护。
+	if code, body := do(t, srv, "POST", "/api/v1/sites/status", nil, token); code != 200 || body["statuses"] == nil {
+		t.Fatalf("site statuses = %d %v", code, body)
 	}
 
 	// 建站点

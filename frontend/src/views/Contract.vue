@@ -2,12 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { contractApi, type ContractRule, type ContractCheckResult } from '@/api/contract'
 import { siteApi } from '@/api/site'
-import GlassIcon from '@/components/GlassIcon.vue'
+import SiteFavicon from '@/components/SiteFavicon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
 const rules = ref<ContractRule[]>([])
-const sites = ref<{ id: number; name: string }[]>([])
+const sites = ref<{ id: number; name: string; base_url: string }[]>([])
 const loading = ref(false)
 const results = ref<Record<number, ContractCheckResult>>({})
 
@@ -16,7 +16,7 @@ async function load() {
   try {
     const [rs, ss] = await Promise.all([contractApi.list(), siteApi.list()])
     rules.value = rs
-    sites.value = ss.map((s) => ({ id: s.id, name: s.name }))
+    sites.value = ss.map((s) => ({ id: s.id, name: s.name, base_url: s.base_url }))
   } catch (e: any) {
     ElMessage.error(e?.userMessage || e?.message || '加载失败')
   } finally {
@@ -88,6 +88,9 @@ async function check(r: ContractRule) {
 function siteName(id: number) {
   return sites.value.find((s) => s.id === id)?.name || `#${id}`
 }
+function siteBaseUrl(id: number) {
+  return sites.value.find((s) => s.id === id)?.base_url || ''
+}
 function statusType(s: string): 'success' | 'warning' | 'danger' | 'info' {
   return ({ ok: 'success', breach: 'warning', error: 'danger' } as const)[s as 'ok'] || 'info'
 }
@@ -109,7 +112,7 @@ onMounted(load)
     <div v-loading="loading" class="grid">
       <div v-for="r in rules" :key="r.id" class="glass glass-hover card">
         <div class="card-head">
-          <GlassIcon name="contract" :size="34" from="#6c5ce7" to="#4285f4" />
+          <SiteFavicon :name="siteName(r.site_id)" :base-url="siteBaseUrl(r.site_id)" :size="34" />
           <div class="card-title">
             <div class="name">{{ siteName(r.site_id) }}</div>
             <div class="meta">

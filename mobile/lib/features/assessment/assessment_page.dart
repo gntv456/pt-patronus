@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/assessment.dart';
 import 'package:ptpatronus/theme/glass.dart';
@@ -13,6 +14,7 @@ class AssessmentPage extends StatefulWidget {
 
 class _AssessmentPageState extends State<AssessmentPage> {
   final _api = AssessmentApi();
+  StreamSubscription<AssessmentCard>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
   List<AssessmentCard> _cards = [];
   bool _loading = true;
   String? _error;
@@ -25,18 +27,36 @@ class _AssessmentPageState extends State<AssessmentPage> {
     _load();
   }
 
-  Future<void> _load({bool refresh = false}) async {
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool refresh = false}) {
+    _sub?.cancel();
     setState(() {
+      _cards = [];
       _loading = true;
       _error = null;
     });
-    try {
-      _cards = await _api.all(refresh: refresh);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    _sub = _api.allStream(refresh: refresh).listen(
+      (card) {
+        if (!mounted) return;
+        setState(() => _cards = [..._cards, card]);
+      },
+      onDone: () {
+        if (mounted) setState(() => _loading = false);
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
+      },
+    );
+    return Future.value();
   }
 
   List<AssessmentCard> get _filtered {
@@ -95,7 +115,7 @@ class _AssessmentPageState extends State<AssessmentPage> {
         _filter = 'all';
         _selectedSiteIds = [];
       }),
-      body: _loading
+      body: _loading && _cards.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? PTEmptyState(text: _error!, onRetry: _load)

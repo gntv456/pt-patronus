@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -299,6 +300,49 @@ class ApiClient {
   Future<Map<String, dynamic>> postJson(String path, Object body) =>
       _do(() => http.post(_u(path), headers: _headers, body: jsonEncode(body)));
 
+  /// SSE 流式 GET（聚合页「加载一个显示一个」）：发送带 JWT 的 GET，按空行分帧，逐帧产出
+  /// (event, data)。返回的 Stream 取消监听即中断底层请求（onCancel 关 client）——切换筛选/刷新
+  /// 时 cancel 上一次流，避免乱序回灌。
+  Stream<MapEntry<String, Map<String, dynamic>>> streamGet(String path) {
+    final client = http.Client();
+    final ctl = StreamController<MapEntry<String, Map<String, dynamic>>>();
+    Future(() async {
+      try {
+        final req = http.Request('GET', _u(path))
+          ..headers['Authorization'] =
+              (token != null && token!.isNotEmpty) ? 'Bearer $token' : '';
+        final resp = await client.send(req);
+        if (resp.statusCode != 200) {
+          final body = await resp.stream.bytesToString();
+          if (resp.statusCode == 401) _handle401();
+          throw ApiException(resp.statusCode, _sseErrMsg(body));
+        }
+        String buf = '';
+        await for (final chunk in resp.stream.transform(utf8.decoder)) {
+          if (ctl.isClosed) break;
+          buf += chunk;
+          Match? m;
+          while ((m = RegExp(r'\r?\n\r?\n').firstMatch(buf)) != null) {
+            final frame = buf.substring(0, m!.start);
+            buf = buf.substring(m.end);
+            final ev = _parseSSE(frame);
+            if (ev != null && !ctl.isClosed) ctl.add(ev);
+          }
+        }
+      } catch (e) {
+        if (!ctl.isClosed) {
+          ctl.addError(e is ApiException
+              ? e
+              : ApiException(0, '$e', userMessage: '网络连接失败，请检查网络或后端地址'));
+        }
+      } finally {
+        if (!ctl.isClosed) ctl.close();
+      }
+    });
+    ctl.onCancel = () => client.close();
+    return ctl.stream;
+  }
+
   /// 统一请求包装：网络层错误（连接失败/超时/DNS）转为友好 ApiException；HTTP 错误由 _json 转。
   Future<Map<String, dynamic>> _do(Future<http.Response> Function() fn) async {
     try {
@@ -368,4 +412,32 @@ String friendlyMessage(int status, String backendMsg) {
   if (status == 429) return '操作过于频繁，请稍后再试';
   if (status >= 500) return '服务暂时不可用，请稍后重试';
   return '请求失败，请稍后重试';
+}
+
+/// 解析一帧 SSE（event:/data:），data 按换行拼接后 JSON 解析。
+MapEntry<String, Map<String, dynamic>>? _parseSSE(String frame) {
+  String event = 'message';
+  final dataLines = <String>[];
+  for (final line in frame.split(RegExp(r'\r?\n'))) {
+    if (line.startsWith('event:')) {
+      event = line.substring(6).trim();
+    } else if (line.startsWith('data:')) {
+      dataLines.add(line.substring(5).trim());
+    }
+  }
+  if (dataLines.isEmpty) return null;
+  try {
+    return MapEntry(event, jsonDecode(dataLines.join('\n')) as Map<String, dynamic>);
+  } catch (_) {
+    return null;
+  }
+}
+
+String _sseErrMsg(String body) {
+  try {
+    final b = jsonDecode(body) as Map<String, dynamic>;
+    return (b['error'] as String?) ?? (b['message'] as String?) ?? '请求失败';
+  } catch (_) {
+    return '请求失败';
+  }
 }

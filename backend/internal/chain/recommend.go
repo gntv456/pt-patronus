@@ -82,20 +82,8 @@ func (c *RecommendChain) fetchRecommend(ctx context.Context, source, category st
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 	var all []media.MediaInfo
-	for _, s := range c.provider.Sources() {
-		if source != "" && s.Name() != source {
-			continue
-		}
-		tc, ok := s.(media.TrendingCapable)
-		if !ok {
-			continue // MusicBrainz 等不支持趋势的源跳过
-		}
-		// CategoryCapable：源声明了支持的 category 时，跳过不支持当前分类的源
-		// （「短剧」只由星光集响应；亦避免豆瓣在 anime 等分类回退默认热映污染）。
-		// 未实现该接口的源视为支持全部（向后兼容）。
-		if cc, ok := s.(media.CategoryCapable); ok && category != "" && !slices.Contains(cc.Categories(), category) {
-			continue
-		}
+	for _, s := range c.filteredTrendingSources(source, category) {
+		tc := s.(media.TrendingCapable)
 		wg.Add(1)
 		go func(name string, tc media.TrendingCapable) {
 			defer wg.Done()
@@ -125,4 +113,87 @@ func (c *RecommendChain) fetchRecommend(ctx context.Context, source, category st
 		c.mu.Unlock()
 	}
 	return all
+}
+
+// filteredTrendingSources 按当前筛选选出应扇出的趋势源（fetchRecommend 与流式推送共用）：
+// source 非空只留同名源；仅留实现 TrendingCapable 的源（MusicBrainz 等跳过）；
+// CategoryCapable 声明分类时跳过不支持当前分类的源（「短剧」只由星光集响应，亦避免豆瓣
+// 在 anime 等分类回退默认热映污染），未实现该接口视为支持全部（向后兼容）。
+func (c *RecommendChain) filteredTrendingSources(source, category string) []media.MediaSource {
+	var out []media.MediaSource
+	for _, s := range c.provider.Sources() {
+		if source != "" && s.Name() != source {
+			continue
+		}
+		if _, ok := s.(media.TrendingCapable); !ok {
+			continue
+		}
+		if cc, ok := s.(media.CategoryCapable); ok && category != "" && !slices.Contains(cc.Categories(), category) {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+// RecommendFeedsStream 流式推送趋势信息流：每源 Trending 完成即调用 emit(items)，
+// 供 SSE 端点「加载一个显示一个」。命中内存缓存（非 force）时一次性 emit 全量后返回
+// （命中缓存本就瞬时，无需逐源扇出）。
+// 与 RecommendFeeds 不同：不走 singleflight（回调流与单值合并不兼容），但缓存快速路径
+// 已大幅压低并发回源压力；全部完成后按现有逻辑写缓存。
+// 注意：emit 会被多个源 goroutine 并发调用，调用方（handler）须自行串行化实际写入。
+func (c *RecommendChain) RecommendFeedsStream(ctx context.Context, source, category string, page int, force bool, emit func(items []media.MediaInfo)) {
+	if page < 1 {
+		page = 1
+	}
+	key := source + "|" + category + "|" + strconv.Itoa(page)
+	// 缓存快速路径：命中即一次性吐全量。
+	if !force {
+		c.mu.Lock()
+		if e, ok := c.cache[key]; ok && time.Since(e.at) <= recommendMemTTL {
+			c.mu.Unlock()
+			if len(e.items) > 0 {
+				emit(e.items)
+			}
+			return
+		}
+		c.mu.Unlock()
+	}
+	// miss / force：并发扇出，每源完成即 emit；同时聚合用于缓存。
+	srcs := c.filteredTrendingSources(source, category)
+	sem := make(chan struct{}, recommendConcurrency)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var all []media.MediaInfo
+	for _, s := range srcs {
+		tc := s.(media.TrendingCapable)
+		wg.Add(1)
+		go func(name string, tc media.TrendingCapable) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			cctx, cancel := context.WithTimeout(ctx, recommendTimeout)
+			defer cancel()
+			items, err := tc.Trending(cctx, category, page)
+			if err != nil {
+				if errors.Is(err, media.ErrNotConfigured) {
+					return
+				}
+				slog.Debug("recommend source failed", "source", name, "err", err)
+				return
+			}
+			mu.Lock()
+			all = append(all, items...)
+			mu.Unlock()
+			if len(items) > 0 {
+				emit(items)
+			}
+		}(s.Name(), tc)
+	}
+	wg.Wait()
+	if len(all) > 0 {
+		c.mu.Lock()
+		c.cache[key] = recommendCacheEntry{items: all, at: time.Now()}
+		c.mu.Unlock()
+	}
 }

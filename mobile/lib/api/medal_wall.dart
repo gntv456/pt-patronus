@@ -91,6 +91,20 @@ class MedalWallApi {
     return list.map((e) => Medal.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  /// 流式首屏（SSE）：每站完成推一帧 batch（该站多张卡）；取消监听即中断。
+  Stream<List<Medal>> allStream({bool refresh = false}) {
+    return _api.streamGet('/medalwall/stream${refresh ? '?refresh=1' : ''}').expand((ev) {
+      if (ev.key == 'batch' && ev.value['results'] is List) {
+        return [
+          (ev.value['results'] as List)
+              .map((e) => Medal.fromJson(e as Map<String, dynamic>))
+              .toList(),
+        ];
+      }
+      return const <List<Medal>>[];
+    });
+  }
+
   Future<ActionResult> buy(int siteId, String medalId) => _action('buy', siteId, medalId);
   Future<ActionResult> wear(int siteId, String medalId) => _action('wear', siteId, medalId);
   Future<ActionResult> takeOff(int siteId, String medalId) => _action('takeoff', siteId, medalId);

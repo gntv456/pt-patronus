@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -33,6 +34,9 @@ type Options struct {
 	// AllowPrivate 放行内网/环回目标（用于本地测试或内网下载器）；
 	// 默认 false——站点抓取必须 SSRF 防护。
 	AllowPrivate bool
+	// UTLS 启用 uTLS（Chrome ClientHello）拨号，绕过按 TLS 指纹拦截非浏览器流量的 WAF/CDN
+	// （如 SafeLine 雷池对签到端点的 468 拦截）。仅对需要的站点 opt-in；默认 false 用标准 TLS。
+	UTLS bool
 }
 
 // Response 是请求结果。
@@ -114,6 +118,12 @@ func New(opts Options) (*Client, error) {
 		// 「解析后校验、拨号时再解析」的 DNS 重绑定窗口。非 SSRF 调用退化为普通拨号。
 		DialContext: ssrfDialContext,
 	}
+	if opts.UTLS {
+		// uTLS（Chrome 指纹）拨号：仅 https 走 DialTLSContext 用 utls 握手，绕 TLS 指纹 WAF。
+		// ALPN 强制 http/1.1（net/http 不能在自管 TLS 连接上说 h2）。见 utls_dial.go。
+		transport.ForceAttemptHTTP2 = false
+		transport.DialTLSContext = utlsDialContext(opts.AllowPrivate, opts.InsecureTLS)
+	}
 	hc := &http.Client{
 		Timeout:   opts.Timeout,
 		Jar:       jar,
@@ -135,7 +145,7 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 	headers map[string]string, cookieStr string, ssrf bool) (*Response, error) {
 
 	if ssrf && !c.allowPrivate {
-		if err := AssertPublicURL(rawURL); err != nil {
+		if err := c.assertPublicWithRetry(rawURL); err != nil {
 			return nil, fmt.Errorf("ssrf: %w", err)
 		}
 		// 标记本次请求（含重定向后续跳）走 SSRF 拨号校验。
@@ -211,7 +221,7 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 // 公网站点，故默认启用 SSRF 守卫（AllowPrivate 的 client 例外，用于测试）。
 func (c *Client) PostWithCookie(ctx context.Context, rawURL, cookieStr string) (*Response, error) {
 	if !c.allowPrivate {
-		if err := AssertPublicURL(rawURL); err != nil {
+		if err := c.assertPublicWithRetry(rawURL); err != nil {
 			return nil, fmt.Errorf("ssrf: %w", err)
 		}
 		ctx = context.WithValue(ctx, ssrfCtxKey{}, true)
@@ -339,6 +349,42 @@ func (c *Client) backoff(attempt int) {
 		d = 2 * time.Second
 	}
 	time.Sleep(d)
+}
+
+// maxPrecheckAttempts 是 SSRF 预检的重试总次数：1 次首检 + 2 次重试。
+const maxPrecheckAttempts = 3
+
+// retryAssert 重复执行 check，对其返回的临时性错误（非 [ErrBlocked]）按指数退避重试。
+// 确定的 SSRF 拒绝（errors.Is(err, ErrBlocked)）立即返回、绝不重试。
+//
+// 抽出为独立方法以便测试注入 check 直接验证重试边界，不依赖真实 DNS。
+func (c *Client) retryAssert(check func() error) error {
+	var err error
+	for attempt := 0; attempt < maxPrecheckAttempts; attempt++ {
+		err = check()
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, ErrBlocked) {
+			return err // 确定的拒绝，立即返回
+		}
+		// 临时性解析错误，退避后重试。
+		if attempt < maxPrecheckAttempts-1 {
+			c.backoff(attempt)
+		}
+	}
+	return err
+}
+
+// assertPublicWithRetry 校验目标为公网站点，对 DNS 解析超时 / NXDOMAIN / 网络瞬时错误做
+// 有限重试；确定的 SSRF 拒绝（解析到私有地址等，errors.Is(err, ErrBlocked)）立即返回。
+//
+// 背景：原 Do/PostWithCookie 在请求重试循环【之外】做一次 AssertPublicURL 预检，DNS 一次
+// 超时（容器内 Docker DNS 127.0.0.11 转发到不通的上游时极常见）即令整次站点抓取硬失败，
+// 即便配了 MaxRetries 也不重试预检。这里把预检的重试从请求重试中分离：只对临时性解析
+// 错误重试，安全拒绝一触即拒——既避免误杀正常抓取，也不给攻击者重试探针的机会。
+func (c *Client) assertPublicWithRetry(rawURL string) error {
+	return c.retryAssert(func() error { return AssertPublicURL(rawURL) })
 }
 
 // ssrfCtxKey 标记请求需在拨号时做 SSRF 校验（由 Do 在 ssrf && !allowPrivate 时注入）。

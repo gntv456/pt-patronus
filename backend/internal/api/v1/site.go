@@ -121,6 +121,26 @@ func (h *SiteHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
 }
 
+// BatchDelete 批量删除站点（admin 专属）。返回删除成功数与失败 id 列表（不存在的）。
+func (h *SiteHandler) BatchDelete(c *gin.Context) {
+	var body struct {
+		IDs []uint `json:"ids" binding:"required,min=1,max=200,dive"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	failed, err := h.oper.DeleteMany(body.IDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if failed == nil {
+		failed = []uint{}
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": len(body.IDs) - len(failed), "failed": failed})
+}
+
 // Test 测试站点连接与登录态。
 func (h *SiteHandler) Test(c *gin.Context) {
 	id, ok := parseID(c)
@@ -138,6 +158,16 @@ func (h *SiteHandler) Test(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "level": level})
+}
+
+// Status 检查全部站点的联通状态，失败结果包含具体原因供仪表盘和站点页展示。
+func (h *SiteHandler) Status(c *gin.Context) {
+	statuses, err := h.siteCh.TestConnections(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"statuses": statuses})
 }
 
 // Checkin 立即对单个站点签到（站点行「签到」按钮）。返回适配器签到结果；

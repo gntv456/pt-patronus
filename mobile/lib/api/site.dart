@@ -28,6 +28,40 @@ class Site {
       );
 }
 
+enum SiteConnectivityState { connected, disconnected, disabled }
+
+class SiteConnectivityStatus {
+  final int siteId;
+  final String siteName;
+  final SiteConnectivityState state;
+  final String level;
+  final String error;
+
+  const SiteConnectivityStatus({
+    required this.siteId,
+    required this.siteName,
+    required this.state,
+    this.level = '',
+    this.error = '',
+  });
+
+  factory SiteConnectivityStatus.fromJson(Map<String, dynamic> j) {
+    final raw = j['status'] as String? ?? '';
+    final state = switch (raw) {
+      'connected' => SiteConnectivityState.connected,
+      'disabled' => SiteConnectivityState.disabled,
+      _ => SiteConnectivityState.disconnected,
+    };
+    return SiteConnectivityStatus(
+      siteId: (j['site_id'] as num?)?.toInt() ?? 0,
+      siteName: j['site_name'] as String? ?? '',
+      state: state,
+      level: j['level'] as String? ?? '',
+      error: j['error'] as String? ?? '',
+    );
+  }
+}
+
 /// 站点定义（definitions/*.yaml 模板，供「添加站点」选择）。
 class SiteDef {
   final String id;
@@ -166,6 +200,15 @@ class SiteApi {
   Future<Map<String, dynamic>> test(int id) async =>
       _api.post('/sites/$id/test', <String, dynamic>{});
 
+  /// 批量检查站点联通状态：返回 {statuses:[{site_id, site_name, status, level?, error?}]}。
+  Future<List<SiteConnectivityStatus>> statuses() async {
+    final r = await _api.post('/sites/status', <String, dynamic>{});
+    final list = (r['statuses'] as List?) ?? const [];
+    return list
+        .map((e) => SiteConnectivityStatus.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// 单站签到：返回 {site_id, site_name, success, message?, bonus, error?}。
   /// 仅 nexusphp 等实现了签到的适配器有效；馒头等会 success=false 且 error 含 not supported。
   Future<Map<String, dynamic>> checkin(int id) async =>
@@ -188,6 +231,10 @@ class SiteApi {
   }
 
   Future<void> remove(int id) async => _api.delete('/sites/$id');
+
+  /// 批量删除站点（admin）。返回 deleted（成功数）与 failed（失败 id 列表）。
+  Future<Map<String, dynamic>> batchDelete(List<int> ids) async =>
+      _api.post('/sites/batch-delete', {'ids': ids});
 
   /// 上传站点 cookie（WebView 登录后调用）。
   Future<void> uploadCookie(int id, String cookie) async =>

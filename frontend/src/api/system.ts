@@ -44,7 +44,38 @@ export interface DoctorReport {
   summary: { total: number; info: number; warn: number; error: number; fixed: number }
 }
 
+// 本机系统资源快照（对齐后端 sysinfo.Metrics；仪表盘「系统资源」卡用）。
+// 集合字段（disks/temps）带 omitempty，无数据时后端省略，调用方用 ?? [] 兜底。
+export interface DiskMetric {
+  device: string
+  total: number
+  used: number
+  usage: number
+  type?: string
+}
+export interface SystemMetrics {
+  online?: boolean
+  cpu_usage?: number
+  cpu_cores?: number
+  mem_total?: number
+  mem_used?: number
+  mem_usage?: number
+  swap_total?: number
+  swap_used?: number
+  disks?: DiskMetric[]
+  load1?: number
+  load5?: number
+  load15?: number
+  uptime?: number
+  os?: string
+  hostname?: string
+  kernel_version?: string
+  temps?: { name: string; temp: number }[]
+}
+
 export const systemApi = {
+  // 本机资源即时快照（管理员）：CPU/内存/磁盘/负载。仪表盘「系统资源」卡用。
+  metrics: () => http.get<SystemMetrics>('/system/metrics').then((r) => r.data),
   // 公开端点，免登录：登录页/关于页在认证前读取后端部署态版本。
   info: () => http.get<SystemInfo>('/system/info').then((r) => r.data),
   // 在线更新检查：platform 决定返回哪个平台的产物(docker=服务端自检，给升级命令；

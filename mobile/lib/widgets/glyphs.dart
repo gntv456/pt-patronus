@@ -129,6 +129,12 @@ const Map<String, String> kGlyphs = {
   // 过滤规则：漏斗（资源筛选/优先级）—— 与 Web GlassIcon.vue 1:1
   'filter':
       '<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>',
+  // 下载器·qBittorrent：官方圆形 logo 轮廓 + 向下箭头 + 种子波浪（蓝）—— 与 Web GlassIcon.vue 1:1
+  'qbittorrent':
+      '<circle cx="12" cy="12" r="9"/><path d="M12 7v3.5"/><path d="M9.6 9L12 11.4 14.4 9"/><path d="M8 16q1.2 -1.2 2.4 0t2.4 0t2.4 0"/>',
+  // 下载器·Transmission：顶部把手 + 竖杆 + 向下楔形箭头 + 底部 U 形托盘（红）—— 与 Web GlassIcon.vue 1:1
+  'transmission':
+      '<path d="M9.5 2.5h5"/><path d="M12 3v10"/><path d="M8 9.5l4 4 4-4"/><path d="M6.5 15.5h11"/><path d="M6.5 15.5v1.5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V15.5"/>',
 };
 
 /// 取字形的完整内联 SVG（外层包裹 24×24 + 白色描边 + 圆角端点），供 flutter_svg 渲染。

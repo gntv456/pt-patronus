@@ -22,7 +22,7 @@ func (s *Service) runMessages() {
 	}
 	ctx, cancel := context.WithTimeout(s.rootCtx, 5*time.Minute)
 	defer cancel()
-	results := s.siteCh.MessagesAll(ctx, site.MailboxInbox)
+	results := s.siteCh.MessagesAll(ctx, site.MailboxInbox, true)
 	for _, r := range results {
 		if r.Error != "" || len(r.Messages) == 0 {
 			continue

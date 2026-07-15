@@ -42,11 +42,36 @@ export interface BatchResult {
 }
 
 export const messageApi = {
-  all: (mailbox: Mailbox = 'inbox') =>
+  all: (mailbox: Mailbox = 'inbox', refresh = false) =>
     http
-      .get<{ sites: MessageResult[] }>(`/messages?mailbox=${mailbox}`)
+      .get<{ sites: MessageResult[] }>(`/messages?mailbox=${mailbox}${refresh ? '&refresh=1' : ''}`, { timeout: 30000 })
       // 后端 nil 切片序列化为 JSON null（站点无消息/未配置时），归一为 [] 防模板 .length 崩溃
       .then((r) => (r.data.sites || []).map((s) => ({ ...s, messages: s.messages || [] }))),
+  // 流式：每站抓完即推一行 NDJSON，前端逐站追加渲染，不等全部抓完（加载一个显示一个）。
+  streamAll: (mailbox: Mailbox = 'inbox', refresh = false, onResult: (r: MessageResult) => void): Promise<void> => {
+    const token = localStorage.getItem('token')
+    const url = `/api/v1/messages/stream?mailbox=${mailbox}${refresh ? '&refresh=1' : ''}`
+    return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(async (res) => {
+      if (!res.ok) throw new Error(`加载失败 (HTTP ${res.status})`)
+      const reader = res.body!.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += dec.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          const t = line.trim()
+          if (t) {
+            const r = JSON.parse(t) as MessageResult
+            onResult({ ...r, messages: r.messages || [] })
+          }
+        }
+      }
+    })
+  },
   syncOne: (id: number, mailbox: Mailbox = 'inbox') =>
     http.post<MessageResult>(`/messages/sync/${id}?mailbox=${mailbox}`).then((r) => ({ ...r.data, messages: r.data.messages || [] })),
   content: (siteId: number, url: string) =>

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/core/log"
+	"github.com/hxpt/ptpatronus/internal/sysinfo"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/version"
 )
@@ -59,6 +60,13 @@ func (h *SystemHandler) Logs(c *gin.Context) {
 func (h *SystemHandler) ClearLogs(c *gin.Context) {
 	log.Ring.Clear()
 	c.JSON(http.StatusOK, gin.H{"cleared": true})
+}
+
+// Metrics 返回本机系统资源快照（CPU/内存/磁盘/负载等，即时采集 gopsutil）。需管理员。
+// 仪表盘「系统资源」卡用。Metrics 的集合字段（disks/temps）带 omitempty：无数据时省略而非输出
+// 空数组，前端用 `?? []` 兜底（记忆 [[go-nil-slice-json-null]]）。
+func (h *SystemHandler) Metrics(c *gin.Context) {
+	c.JSON(http.StatusOK, sysinfo.CollectSystemMetrics())
 }
 
 // UpdateCheck 在线更新检查。?platform=docker|android|windows|agent-linux-* 决定返回哪个

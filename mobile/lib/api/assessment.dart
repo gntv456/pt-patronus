@@ -79,4 +79,15 @@ class AssessmentApi {
     final list = (r['sites'] as List?) ?? const [];
     return list.map((e) => AssessmentCard.fromJson(e as Map<String, dynamic>)).toList();
   }
+
+  /// 流式首屏（SSE）：每站完成推一帧 batch（单元素数组），逐帧产出该站卡片；取消监听即中断。
+  Stream<AssessmentCard> allStream({bool refresh = false}) {
+    return _api.streamGet('/assessment/stream${refresh ? '?refresh=1' : ''}').expand((ev) {
+      if (ev.key == 'batch' && ev.value['results'] is List) {
+        return (ev.value['results'] as List)
+            .map((e) => AssessmentCard.fromJson(e as Map<String, dynamic>));
+      }
+      return const <AssessmentCard>[];
+    });
+  }
 }

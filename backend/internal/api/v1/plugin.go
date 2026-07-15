@@ -76,8 +76,9 @@ func (h *PluginHandler) List(c *gin.Context) {
 }
 
 // MarketSources 返回 UI 持久化的插件市场源列表（GitHub 仓库地址或任意 URL）。
+// official 为官方市场仓库地址，供前端打「官方」标签与「恢复官方源」。
 func (h *PluginHandler) MarketSources(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources()})
+	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources(), "official": plugins.OfficialMarketSource})
 }
 
 type pluginMarketSourcesReq struct {
@@ -95,7 +96,7 @@ func (h *PluginHandler) SetMarketSources(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources()})
+	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources(), "official": plugins.OfficialMarketSource})
 }
 
 // TrustConfig 返回插件签名信任配置（官方只读公钥 + 用户受信公钥 + allow_unsigned）。

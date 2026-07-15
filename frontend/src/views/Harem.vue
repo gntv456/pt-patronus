@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { haremApi, type HaremResult, type PrescriptionItem } from '@/api/harem'
+import { haremApi, type HaremResult, type HaremOverview, type PrescriptionItem } from '@/api/harem'
 import { copyText } from '@/utils/clipboard'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
@@ -12,14 +12,31 @@ const detail = ref<PrescriptionItem | null>(null)
 const exportText = ref('')
 const exportVisible = ref(false)
 
+const EMPTY_OVERVIEW: HaremOverview = {
+  total_sites: 0, total_invitees: 0, total_perm_invites: 0, total_temp_invites: 0,
+  total_low_ratio: 0, total_banned: 0, total_no_data: 0,
+}
+let abortCtrl: AbortController | null = null
 async function load(refresh = false) {
+  abortCtrl?.abort()
+  const ctrl = new AbortController()
+  abortCtrl = ctrl
   loading.value = true
+  data.value = { overview: { ...EMPTY_OVERVIEW }, prescriptions: [] }
   try {
-    data.value = await haremApi.all(refresh)
+    await haremApi.allStream(
+      refresh,
+      (item) => data.value?.prescriptions.push(item),
+      (o) => { if (data.value) data.value.overview = o },
+      ctrl.signal,
+    )
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载后宫失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载后宫失败')
   } finally {
-    loading.value = false
+    if (abortCtrl === ctrl) {
+      loading.value = false
+      abortCtrl = null
+    }
   }
 }
 
@@ -55,7 +72,7 @@ onMounted(() => load())
 </script>
 
 <template>
-  <div class="page" v-loading="loading">
+  <div class="page">
     <div class="head">
       <h2 class="title">后宫</h2>
       <div class="head-tools">
@@ -116,6 +133,7 @@ onMounted(() => load())
         title="暂无数据，请先添加并登录站点"
         description="添加并启用 PT 站点后，这里会聚合展示各站后宫成员与可购买邀请名额"
       />
+      <p v-else style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
     </div>
 
     <el-dialog v-model="exportVisible" title="药单" width="560">

@@ -67,6 +67,12 @@ class SystemApi {
     final m = await ApiClient().post('/system/doctor/fix', {});
     return DoctorReport.fromJson(m);
   }
+
+  /// 本机系统资源快照（管理员）：CPU/内存/磁盘/负载。仪表盘「系统资源」卡用。
+  static Future<SystemMetrics> metrics() async {
+    final m = await ApiClient().get('/system/metrics');
+    return SystemMetrics.fromJson(m);
+  }
 }
 
 /// 单项诊断发现。
@@ -130,4 +136,77 @@ class DoctorReport {
       error: (s['error'] ?? 0) as int,
     );
   }
+}
+
+/// 单个磁盘分区用量（对齐后端 sysinfo.DiskMetric）。
+class DiskMetric {
+  final String device;
+  final int total;
+  final int used;
+  final double usage; // %
+  final String type; // partition | pool
+
+  const DiskMetric({
+    this.device = '',
+    this.total = 0,
+    this.used = 0,
+    this.usage = 0,
+    this.type = '',
+  });
+
+  factory DiskMetric.fromJson(Map<String, dynamic> j) => DiskMetric(
+        device: (j['device'] ?? '').toString(),
+        total: (j['total'] as num?)?.toInt() ?? 0,
+        used: (j['used'] as num?)?.toInt() ?? 0,
+        usage: (j['usage'] as num?)?.toDouble() ?? 0,
+        type: (j['type'] ?? '').toString(),
+      );
+}
+
+/// 本机系统资源快照（对齐后端 sysinfo.Metrics）。集合字段带 omitempty，无数据时为空。
+class SystemMetrics {
+  final bool online;
+  final double cpuUsage; // %
+  final int cpuCores;
+  final int memTotal; // bytes
+  final int memUsed;
+  final double memUsage; // %
+  final List<DiskMetric> disks;
+  final double load1;
+  final double load5;
+  final double load15;
+  final String hostname;
+  final String os;
+
+  const SystemMetrics({
+    this.online = true,
+    this.cpuUsage = 0,
+    this.cpuCores = 0,
+    this.memTotal = 0,
+    this.memUsed = 0,
+    this.memUsage = 0,
+    this.disks = const [],
+    this.load1 = 0,
+    this.load5 = 0,
+    this.load15 = 0,
+    this.hostname = '',
+    this.os = '',
+  });
+
+  factory SystemMetrics.fromJson(Map<String, dynamic> j) => SystemMetrics(
+        online: j['online'] ?? true,
+        cpuUsage: (j['cpu_usage'] as num?)?.toDouble() ?? 0,
+        cpuCores: (j['cpu_cores'] as num?)?.toInt() ?? 0,
+        memTotal: (j['mem_total'] as num?)?.toInt() ?? 0,
+        memUsed: (j['mem_used'] as num?)?.toInt() ?? 0,
+        memUsage: (j['mem_usage'] as num?)?.toDouble() ?? 0,
+        disks: ((j['disks'] as List?) ?? const [])
+            .map((e) => DiskMetric.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        load1: (j['load1'] as num?)?.toDouble() ?? 0,
+        load5: (j['load5'] as num?)?.toDouble() ?? 0,
+        load15: (j['load15'] as num?)?.toDouble() ?? 0,
+        hostname: (j['hostname'] ?? '').toString(),
+        os: (j['os'] ?? '').toString(),
+      );
 }

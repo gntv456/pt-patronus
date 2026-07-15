@@ -32,7 +32,7 @@ DEMO_MODE=false            # true 时登录页显示“浏览演示环境”（�
 
 # ── 自动化（7×24 保号）──────────────────────────────
 STATS_SYNC_CRON="*/30 * * * *"        # 统计同步：每 30 分钟抓用户资料写 SiteStat
-COOKIE_KEEPALIVE_CRON="0 */4 * * *"   # cookie 保活：每 4 小时认证 GET 刷新 session + 回写轮换 cookie
+COOKIE_KEEPALIVE_CRON="13 * * * *"      # cookie 保活：每小时错峰认证 GET 刷新 session + 回写轮换 cookie（短于 Laravel qw_session 等 session 寿命，每 4h 会过期）
 REGISTRATION_CRON="0 */6 * * *"       # 注册开放检测：每 6 小时探测候选站 signup 页
 HR_WARN_DEADLINE_HOURS=24             # H&R 临期告警阈值：剩余考核时间 < 此值（小时）即告警
 KEEPSEED_CRON="0 3 * * *"             # IYUU 定时自动辅种：每天 3 点扫「启用自动辅种」的下载器刷新 pending 候选；该下载器再开「自动添加」则自动 add。无下载器启用即零动作

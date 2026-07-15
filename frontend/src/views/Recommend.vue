@@ -39,18 +39,29 @@ const findLoading = ref(false)
 const findTitle = ref('')
 const findResults = ref<SiteSearchResult[]>([])
 
+let abortCtrl: AbortController | null = null
 async function load(refresh = false) {
+  abortCtrl?.abort()
+  const ctrl = new AbortController()
+  abortCtrl = ctrl
   loading.value = true
   searchMode.value = false
   page.value = 1
   hasMore.value = true
+  feedItems.value = []
   try {
-    feedItems.value = await recommendApi.feed(source.value, category.value, 1, refresh)
+    await recommendApi.feedStream(source.value, category.value, 1, refresh, (items) => {
+      feedItems.value.push(...items)
+    }, ctrl.signal)
     if (feedItems.value.length < PAGE_MIN_HINT) hasMore.value = false
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载推荐失败')
+    // 切换筛选时 abort 上一次流，AbortError 是预期，不报错
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载推荐失败')
   } finally {
-    loading.value = false
+    if (abortCtrl === ctrl) {
+      loading.value = false
+      abortCtrl = null
+    }
   }
 }
 
@@ -167,7 +178,7 @@ onMounted(() => load())
 </script>
 
 <template>
-  <div class="page" v-loading="loading || searchLoading">
+  <div class="page" v-loading="searchLoading">
     <div class="head">
       <h2 class="title">推荐</h2>
       <el-button :loading="loading || searchLoading" @click="refresh">刷新</el-button>
@@ -190,6 +201,8 @@ onMounted(() => load())
         <el-button size="small" type="primary" :loading="searchLoading" @click="doSearch">搜索</el-button>
       </div>
     </div>
+
+    <p v-if="loading && !items.length && !searchMode" class="sub">加载中…</p>
 
     <div class="cards">
       <div v-for="(m, i) in items" :key="m.source_id || i" class="rec-card glass clickable" @click="openMediaDetail(m)">

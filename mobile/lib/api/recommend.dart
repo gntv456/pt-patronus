@@ -57,4 +57,26 @@ class RecommendApi {
     final list = (r['results'] as List?) ?? const [];
     return list.map((e) => MediaInfo.fromJson(e as Map<String, dynamic>)).toList();
   }
+
+  /// 流式首屏（SSE）：每源完成推一帧 batch，逐帧产出该源条目列表；取消监听即中断请求。
+  Stream<List<MediaInfo>> feedStream({
+    String source = '',
+    String category = 'movie',
+    int page = 1,
+    bool refresh = false,
+  }) {
+    var q = '?category=${Uri.encodeQueryComponent(category)}&page=$page';
+    if (source.isNotEmpty) q += '&source=${Uri.encodeQueryComponent(source)}';
+    if (refresh) q += '&refresh=1';
+    return _api.streamGet('/media/recommend/stream$q').expand((ev) {
+      if (ev.key == 'batch' && ev.value['results'] is List) {
+        return [
+          (ev.value['results'] as List)
+              .map((e) => MediaInfo.fromJson(e as Map<String, dynamic>))
+              .toList(),
+        ];
+      }
+      return const <List<MediaInfo>>[];
+    });
+  }
 }

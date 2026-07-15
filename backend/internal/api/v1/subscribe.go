@@ -39,6 +39,10 @@ type subReq struct {
 	// 洗版（best_version）：nil=不改（Update）/ 默认关（Create）。
 	BestVersion     *bool `json:"best_version"`
 	BestVersionFull *bool `json:"best_version_full"`
+	// PromoTypes 接受的促销类型多选：非 nil 即赋值（空 slice=不限=不过滤，未传字段=不改）。
+	PromoTypes []string `json:"promo_types"`
+	// SiteIDs 参与站点 id：非 nil 即赋值（空 slice=不限全部站，未传字段=不改）。
+	SiteIDs []uint `json:"site_ids"`
 }
 
 // List 列出全部订阅。
@@ -80,6 +84,12 @@ func (h *SubscribeHandler) Create(c *gin.Context) {
 	if in.BestVersionFull != nil {
 		s.BestVersionFull = *in.BestVersionFull
 	}
+	if in.PromoTypes != nil {
+		s.PromoTypes = models.StringSlice(in.PromoTypes)
+	}
+	if in.SiteIDs != nil {
+		s.SiteIDs = models.IntSlice(in.SiteIDs)
+	}
 	out, err := h.subCh.Create(c.Request.Context(), s)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -115,6 +125,12 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 	}
 	if in.BestVersionFull != nil {
 		s.BestVersionFull = *in.BestVersionFull
+	}
+	if in.PromoTypes != nil {
+		s.PromoTypes = models.StringSlice(in.PromoTypes)
+	}
+	if in.SiteIDs != nil {
+		s.SiteIDs = models.IntSlice(in.SiteIDs)
 	}
 	if in.Resolution != "" || in.Status != "" || in.DownloaderID != 0 || in.SavePath != "" {
 		// 仅更新提供的字段（空=不改）

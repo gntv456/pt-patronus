@@ -46,6 +46,16 @@ export interface TestResult {
   error?: string
 }
 
+export type SiteConnectivityState = 'connected' | 'disconnected' | 'disabled'
+
+export interface SiteConnectivityStatus {
+  site_id: number
+  site_name: string
+  status: SiteConnectivityState
+  level?: string
+  error?: string
+}
+
 export interface CheckinResult {
   site_id: number
   site_name: string
@@ -74,7 +84,13 @@ export const siteApi = {
   create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
   update: (id: number, input: SiteInput) => http.put<Site>(`/sites/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/sites/${id}`).then((r) => r.data),
+  batchDelete: (ids: number[]) =>
+    http.post<{ deleted: number; failed: number[] }>('/sites/batch-delete', { ids }).then((r) => r.data),
   test: (id: number) => http.post<TestResult>(`/sites/${id}/test`).then((r) => r.data),
+  statuses: () =>
+    http
+      .post<{ statuses: SiteConnectivityStatus[] }>('/sites/status', undefined, { timeout: 60_000 })
+      .then((r) => r.data.statuses ?? []),
   checkin: (id: number) => http.post<CheckinResult>(`/sites/${id}/checkin`).then((r) => r.data),
   checkinAll: () =>
     http.post<{ results: CheckinResult[] }>('/sites/checkin').then((r) => r.data.results ?? []),

@@ -267,9 +267,13 @@ export const pluginApi = {
   market: (source = '') =>
     http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
   getMarketSources: () =>
-    http.get<{ sources: string[] }>('/plugins/market-sources').then((r) => r.data.sources ?? []),
+    http
+      .get<{ sources: string[]; official?: string }>('/plugins/market-sources')
+      .then((r) => ({ sources: r.data.sources ?? [], official: r.data.official ?? '' })),
   setMarketSources: (sources: string[]) =>
-    http.put<{ sources: string[] }>('/plugins/market-sources', { sources }).then((r) => r.data.sources ?? []),
+    http
+      .put<{ sources: string[]; official?: string }>('/plugins/market-sources', { sources })
+      .then((r) => ({ sources: r.data.sources ?? [], official: r.data.official ?? '' })),
   install: (
     source: string,
     id: string,

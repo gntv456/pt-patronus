@@ -198,6 +198,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
 	pluginMgr.SetCfgOp(cfgOp) // 插件市场源等 UI 持久化配置（SystemConfig）
+	pluginMgr.EnsureDefaultMarketSource() // 首次启动种子化官方市场仓库（纯 DB 写，无网络/插件活动；安全模式也执行）
 	if !cfg.SafeMode {
 		if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
 			slog.Warn("load external plugins failed", "err", err)
@@ -242,7 +243,7 @@ func New(cfg *config.Config) (*App, error) {
 	keepSeedCh := chain.NewKeepSeedChain(base, siteCh, iyuu.New(hc, ""), chain.NewManagerProvider(dlMgr), mteam, siteOp, cfgOp, database, noticeSvc)
 
 	// 备份
-	backupSvc := backup.New(siteOp, dlOp)
+	backupSvc := backup.New(siteOp, dlOp, registry)
 
 	// 娱乐游戏（好学：九宫格 + 魔力刮刮乐 + 勋章合成；财神：刮刮乐）
 	entReg := entertainment.NewRegistry()
@@ -404,6 +405,10 @@ func New(cfg *config.Config) (*App, error) {
 	// cfgOp 存凭据、noticeSvc 推送同步结果。独立 API /trakt/* + 三端 Trakt 页。
 	traktCh := chain.NewTraktChain(subCh, cfgOp, noticeSvc)
 
+	// CookieCloud 同步：浏览器扩展把最新 cookie 推到服务器，本端定时拉取并按域名覆盖本地失效站 cookie。
+	// 设置存 SystemConfig（密码 AES-GCM 加密）；独立 API /cookiecloud/* + 三端设置页。tick 软间隔（读 DB interval）。
+	cookieCloudCh := chain.NewCookieCloudChain(cfgOp, crypto, siteOp, registry, siteCh, hc)
+
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
@@ -442,6 +447,12 @@ func New(cfg *config.Config) (*App, error) {
 		if err := traktCh.SyncAll(ctx); err != nil {
 			slog.Warn("trakt sync failed", "err", err)
 		}
+	})
+	// CookieCloud 软间隔：固定每 5 分钟 tick，链内按 DB 配置的 interval + last_sync 决定是否真正同步。
+	_ = sched.AddFunc("cookiecloud-tick", "*/5 * * * *", func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		cookieCloudCh.MaybeSync(ctx)
 	})
 	if !cfg.SafeMode {
 		auto.Start()
@@ -773,6 +784,7 @@ func New(cfg *config.Config) (*App, error) {
 		Cloud:       cloudCh,
 		Subtitle:    subtitleCh,
 		Trakt:       traktCh,
+		CookieCloud: cookieCloudCh,
 		MCP:         mcpSrv,
 		Webhook:     webhookH,
 		MonOp:       monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,

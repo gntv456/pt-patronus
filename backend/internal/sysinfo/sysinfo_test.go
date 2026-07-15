@@ -53,6 +53,24 @@ func TestCollectDisks_ExtraPath(t *testing.T) {
 
 // TestCollectDisks_Dedup 同文件系统多个子目录应去重（dedupKey 优先 fsid——btrfs 子卷同池共享 fsid，
 // 退化 st_dev），仅 Linux 验证。
+// TestDedupKeyForPartition_BtrfsSamePool 验证 btrfs 同一存储池的多个 subvolume（/proc/mounts 里共享同一
+// source /dev/sdX）映射到同一去重键——只计一次，否则同池子卷会把容量重复累加（飞牛 50.92TB→1.1PB）。
+// 不依赖真实 btrfs 内核的 f_fsid（man 2 statfs：未定义，btrfs 实测可能全 0 或随子卷变化），纯字符串键判定，
+// 全平台可跑（device 以 /dev/ 开头即短路，不走 syscall）。
+func TestDedupKeyForPartition_BtrfsSamePool(t *testing.T) {
+	a := dedupKeyForPartition("/dev/sda3", "/mnt/pool")
+	b := dedupKeyForPartition("/dev/sda3", "/mnt/pool/movies")
+	c := dedupKeyForPartition("/dev/sda3", "/mnt/pool/tv")
+	if a == "" || a != b || b != c {
+		t.Errorf("同池子卷应映射到同一去重键：a=%q b=%q c=%q", a, b, c)
+	}
+	// 不同物理盘 → 不同键，均各自计入
+	d := dedupKeyForPartition("/dev/sda1", "/")
+	if d == "" || d == a {
+		t.Errorf("不同设备应不同键：a=%q d=%q", a, d)
+	}
+}
+
 func TestCollectDisks_Dedup(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("st_dev 去重仅 Linux 验证（devOf 在其他平台返 0 不去重）")

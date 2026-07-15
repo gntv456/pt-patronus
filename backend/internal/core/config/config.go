@@ -62,7 +62,7 @@ type Config struct {
 
 	// 自动化
 	StatsSyncCron           string // 统计同步 cron，默认每 30 分钟
-	CookieKeepAliveCron     string // cookie 保活 cron，默认每 4 小时（防 cookie 过期致自动化全失效）
+	CookieKeepAliveCron     string // cookie 保活 cron，默认每小时（13 * * * *，防 Laravel qw_session 等 session 在两次保活间过期致自动化全失效）
 	RegistrationCron        string // 注册开放检测 cron，默认每 6 小时
 	HRWarnDeadlineHours     int    // H&R 临期告警阈值（剩余小时），默认 24
 	CheckinRecordRetainDays int    // 签到历史保留天数，默认 90（超期自动清理，控制表体积）
@@ -140,7 +140,7 @@ func Load() (*Config, error) {
 		WXClawBotBaseURL:        getenv("WECHAT_CLAWBOT_BASE_URL", ""),
 		WebhookURL:              getenv("WEBHOOK_URL", ""),
 		StatsSyncCron:           getenv("STATS_SYNC_CRON", "*/30 * * * *"),
-		CookieKeepAliveCron:     getenv("COOKIE_KEEPALIVE_CRON", "0 */4 * * *"),
+		CookieKeepAliveCron:     getenv("COOKIE_KEEPALIVE_CRON", "13 * * * *"),
 		RegistrationCron:        getenv("REGISTRATION_CRON", "0 */6 * * *"),
 		HRWarnDeadlineHours:     getenvInt("HR_WARN_DEADLINE_HOURS", 24),
 		CheckinRecordRetainDays: getenvInt("CHECKIN_RECORD_RETAIN_DAYS", 90),

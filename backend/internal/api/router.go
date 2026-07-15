@@ -80,6 +80,7 @@ type Deps struct {
 	Cloud         *chain.CloudChain
 	Subtitle      *chain.SubtitleChain
 	Trakt         *chain.TraktChain
+	CookieCloud   *chain.CookieCloudChain
 	MCP           *mcp.Server
 	Webhook       *v1.WebhookHandler
 	MonOp         *oper.MonitorOper
@@ -199,6 +200,8 @@ func Build(d *Deps) *gin.Engine {
 				sites.GET("/:id", siteH.Get)
 				sites.PUT("/:id", siteH.Update)
 				sites.DELETE("/:id", middleware.RequireAdmin(), siteH.Delete)
+				sites.POST("/batch-delete", middleware.RequireAdmin(), siteH.BatchDelete)
+				sites.POST("/status", siteH.Status)
 				sites.POST("/:id/test", siteH.Test)
 				sites.POST("/:id/checkin", siteH.Checkin)
 				sites.POST("/checkin", siteH.CheckinAll)
@@ -228,6 +231,7 @@ func Build(d *Deps) *gin.Engine {
 			harem := guarded.Group("/harem")
 			{
 				harem.GET("", haremH.All)
+				harem.GET("/stream", haremH.AllStream)
 				harem.POST("/sync/:id", haremH.SyncOne)
 				harem.GET("/export", haremH.Export)
 			}
@@ -237,6 +241,7 @@ func Build(d *Deps) *gin.Engine {
 			assess := guarded.Group("/assessment")
 			{
 				assess.GET("", assessH.All)
+				assess.GET("/stream", assessH.AllStream)
 				assess.POST("/sync/:id", assessH.SyncOne)
 			}
 
@@ -245,6 +250,7 @@ func Build(d *Deps) *gin.Engine {
 			medal := guarded.Group("/medalwall")
 			{
 				medal.GET("", medalH.All)
+				medal.GET("/stream", medalH.AllStream)
 				medal.POST("/buy", medalH.Buy)
 				medal.POST("/wear", medalH.Wear)
 				medal.POST("/takeoff", medalH.TakeOff)
@@ -255,6 +261,7 @@ func Build(d *Deps) *gin.Engine {
 			msg := guarded.Group("/messages")
 			{
 				msg.GET("", msgH.All)
+				msg.GET("/stream", msgH.Stream) // 流式：每站一行 NDJSON，前端逐站显示
 				msg.POST("/sync/:id", msgH.SyncOne)
 				msg.GET("/:id/content", msgH.Content)
 				msg.POST("/:id/reply", msgH.Reply)
@@ -323,6 +330,7 @@ func Build(d *Deps) *gin.Engine {
 			{
 				md.GET("/search", mediaH.Search)
 				md.GET("/recommend", mediaH.Recommend)
+				md.GET("/recommend/stream", mediaH.RecommendStream)
 				md.GET("/discover", mediaH.Discover)
 				md.GET("/poster", mediaH.Poster)
 				md.GET("/detail", mediaH.Detail)
@@ -455,6 +463,8 @@ func Build(d *Deps) *gin.Engine {
 			// 运行日志（环形缓冲；级别筛选，排查用）
 			guarded.GET("/system/logs", middleware.RequireAdmin(), sysH.Logs)
 			guarded.DELETE("/system/logs", middleware.RequireAdmin(), sysH.ClearLogs)
+			// 本机系统资源快照（CPU/内存/磁盘/负载；仪表盘用，需管理员）
+			guarded.GET("/system/metrics", middleware.RequireAdmin(), sysH.Metrics)
 
 			// 诊断面板（safe-mode 下仍注册：自救用途）。
 			if d.Doctor != nil {
@@ -625,6 +635,15 @@ func Build(d *Deps) *gin.Engine {
 				trakt.GET("/device-status", traktH.DeviceStatus)
 				trakt.POST("/sync", traktH.Sync)
 				trakt.GET("/history", traktH.History)
+			}
+
+			// CookieCloud 同步：拉取浏览器扩展推送的最新 cookie，按域名覆盖本地失效站 + 自动新增匹配站。
+			cookieCloudH := v1.NewCookieCloudHandler(d.CookieCloud)
+			cookieCloud := guarded.Group("/cookiecloud")
+			{
+				cookieCloud.GET("/config", cookieCloudH.GetConfig)
+				cookieCloud.PUT("/config", middleware.RequireAdmin(), cookieCloudH.SetConfig)
+				cookieCloud.POST("/sync", middleware.RequireAdmin(), cookieCloudH.Sync)
 			}
 
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

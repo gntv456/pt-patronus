@@ -32,6 +32,11 @@ categories:
       name: 其他
     - id: "420"
       name: 综艺
+# checkin: 启用 uTLS（Chrome 指纹）拨号绕 SafeLine WAF——HDKylin 的 attendance.php 对标准
+# net/http 的 TLS 指纹返回 468 拦截页（实测加 Referer/body/Sec-Fetch/换 GET/换 cf. 域名均拦），
+# uTLS 伪装 Chrome ClientHello 通过。手动维护（非 PT-depiler 自动生成字段）。
+checkin:
+    utls: true
 description: 与志同道合之人前行 分享更多值得珍藏的资源
 id: hdkylin
 level_requirements:

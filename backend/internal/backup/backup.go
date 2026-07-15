@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 // SiteExport 站点导出项（密钥明文，由用户妥善保管备份文件）。
@@ -46,11 +47,12 @@ const backupVersion = 1
 type Service struct {
 	siteOp *oper.SiteOper
 	dlOp   *oper.DownloaderOper
+	reg    *site.Registry // .ptd 恢复时按 URL 匹配站点定义（MatchByURL），避免全退化为默认 nexusphp
 }
 
 // New 构造。
-func New(siteOp *oper.SiteOper, dlOp *oper.DownloaderOper) *Service {
-	return &Service{siteOp: siteOp, dlOp: dlOp}
+func New(siteOp *oper.SiteOper, dlOp *oper.DownloaderOper, reg *site.Registry) *Service {
+	return &Service{siteOp: siteOp, dlOp: dlOp, reg: reg}
 }
 
 // Export 导出为 JSON 字节。
@@ -83,7 +85,7 @@ func (s *Service) Export(ctx context.Context) ([]byte, error) {
 	return json.MarshalIndent(b, "", "  ")
 }
 
-// Import 从自身格式 JSON 导入（重复站点按 name 跳过已存在）。
+// Import 从自身格式 JSON 导入（重复站点按注册域跳过，CreateMany 统一去重）。
 func (s *Service) Import(ctx context.Context, data []byte) (sites, downloaders int, err error) {
 	var b Backup
 	if err := json.Unmarshal(data, &b); err != nil {
@@ -91,8 +93,12 @@ func (s *Service) Import(ctx context.Context, data []byte) (sites, downloaders i
 	}
 	siteIns := make([]oper.SiteInput, 0, len(b.Sites))
 	for _, se := range b.Sites {
+		defID := se.Definition
+		if defID == "" {
+			defID = s.matchDef(se.BaseURL) // 备份未带 definition → 按 URL 匹配 yaml
+		}
 		siteIns = append(siteIns, oper.SiteInput{
-			Name: se.Name, Platform: se.Platform, Definition: se.Definition,
+			Name: se.Name, Platform: se.Platform, Definition: defID,
 			BaseURL: se.BaseURL, Cookie: se.Cookie, IsActive: se.IsActive,
 		})
 	}
@@ -133,8 +139,21 @@ func (s *Service) ImportMoviePilot(ctx context.Context, data []byte) (int, error
 			continue
 		}
 		ins = append(ins, oper.SiteInput{
-			Name: m.Name, Platform: "nexusphp", BaseURL: m.URL, Cookie: m.Cookie, IsActive: true,
+			Name: m.Name, Platform: "nexusphp", Definition: s.matchDef(m.URL),
+			BaseURL: m.URL, Cookie: m.Cookie, IsActive: true,
 		})
 	}
 	return s.siteOp.CreateMany(ins)
+}
+
+// matchDef 按 baseURL 匹配站点定义（definitions/*.yaml 的 host）。用于各导入路径
+// （.ptd / 自身 JSON / MoviePilot）统一挂「正确定义」，避免全退化为默认 nexusphp——
+// tnode/特殊 schema 站走错适配器会彻底抓空，nexusphp 站用通用 def 也常抓不全。
+// s.reg 为空（测试）或无匹配返回空串，调用方回退到 platform 推断。
+func (s *Service) matchDef(baseURL string) string {
+	if s.reg == nil {
+		return ""
+	}
+	id, _ := s.reg.MatchByURL(baseURL)
+	return id
 }

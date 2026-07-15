@@ -110,7 +110,16 @@ func ParseSearch(doc *goquery.Document, def *SiteMetadata, baseURL string) []Tor
 		}
 		t.DetailURL = ResolveURL(base, Extract(row, f["detail"]))
 		t.DownloadURL = ResolveURL(base, Extract(row, f["download"]))
-		if Extract(row, f["free"]) != "" {
+		// 促销：优先用 NexusPHP 标准 pro_* class 提取完整类型（下载/上传因子，覆盖 80+ 站）；
+		// 命中且免费时 Free=true；未命中则 fallback 站点 free 选择器布尔判断（兼容非标准皮肤，
+		// 仍至少能识别"是否免费"，零回归）。
+		if dvf, uvf, ok := nexusPromotionFactor(row); ok {
+			t.DownloadVolumeFactor = dvf
+			t.UploadVolumeFactor = uvf
+			if dvf == 0 {
+				t.Free = true
+			}
+		} else if Extract(row, f["free"]) != "" {
 			t.Free = true
 		}
 		// 跳过表头/空行等非种子行

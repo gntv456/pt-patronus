@@ -1,13 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { subscribeApi, type Subscription } from '@/api/subscribe'
+import { siteApi } from '@/api/site'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 // 订阅列表：展示订阅状态，支持手动检查 / 暂停-恢复 / 改分辨率 / 删除。
 const list = ref<Subscription[]>([])
 const loading = ref(false)
 const checking = ref<number | null>(null)
+// 站点多选（参与订阅搜索）选项：活跃站点 {id,name}，复用 SiteFilterDialog。
+const sites = ref<{ id: number; name: string }[]>([])
+
+async function loadSites() {
+  try {
+    const all = await siteApi.list()
+    sites.value = all.filter((s) => s.is_active).map((s) => ({ id: s.id, name: s.name }))
+  } catch {
+    // 站点列表加载失败不阻塞订阅展示，选择器显示空即可。
+  }
+}
 
 async function load() {
   loading.value = true
@@ -76,6 +89,39 @@ async function setBestVersion(s: Subscription, val: boolean) {
   }
 }
 
+// 促销类型选项（与后端 site.PromoType 对齐；空=不限，任何促销都接受）。
+const PROMO_OPTIONS = [
+  { value: 'free', label: '免费' },
+  { value: '2xfree', label: '2X免费' },
+  { value: '2x', label: '双倍上传' },
+  { value: 'discount', label: '折扣下载' },
+  { value: '2xdiscount', label: '2X+折扣' },
+]
+
+// 促销类型多选：el-select 实时 change → 乐观更新 + 失败回滚（空数组=不限）。
+async function setPromoTypes(s: Subscription, vals: string[]) {
+  const prev = s.promo_types
+  s.promo_types = vals
+  try {
+    await subscribeApi.update(s.id, { promo_types: vals })
+  } catch (e: unknown) {
+    s.promo_types = prev
+    ElMessage.error((e as Error).message || '更新失败')
+  }
+}
+
+// 参与站点：SiteFilterDialog 实时 emit 选中态，乐观更新本地 + 失败回滚（空数组=全部活跃站）。
+async function setSiteIds(s: Subscription, ids: number[]) {
+  const prev = s.site_ids
+  s.site_ids = ids
+  try {
+    await subscribeApi.update(s.id, { site_ids: ids })
+  } catch (e: unknown) {
+    s.site_ids = prev
+    ElMessage.error((e as Error).message || '更新失败')
+  }
+}
+
 async function remove(s: Subscription) {
   try {
     await ElMessageBox.confirm('确定删除该订阅？删除后不再推送。', '删除订阅', {
@@ -102,7 +148,10 @@ function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '—'
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadSites()
+})
 </script>
 
 <template>
@@ -157,6 +206,34 @@ onMounted(load)
               <span v-if="s.best_version && s.type === 'movie' && s.current_priority" class="chip res">
                 Pri {{ s.current_priority }}
               </span>
+            </div>
+            <div class="res-row">
+              <span class="small">促销类型：</span>
+              <el-select
+                :model-value="s.promo_types"
+                multiple
+                collapse-tags
+                collapse-tags-tooltip
+                size="small"
+                style="width: 240px"
+                placeholder="不限"
+                @change="(v: any) => setPromoTypes(s, v as string[])"
+              >
+                <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+              </el-select>
+              <span class="small text-muted">（空=不限；只推送所选促销类型，含免费/2X/折扣等）</span>
+            </div>
+            <div class="res-row">
+              <span class="small">参与站点：</span>
+              <SiteFilterDialog
+                :model-value="s.site_ids"
+                :sites="sites"
+                title="参与订阅的站点"
+                @update:model-value="(ids: number[]) => setSiteIds(s, ids)"
+              >
+                <span class="small">{{ s.site_ids.length ? `${s.site_ids.length} 个站点` : '全部站点' }}</span>
+              </SiteFilterDialog>
+              <span class="small text-muted">（空=全部活跃站点）</span>
             </div>
             <div class="actions">
               <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">立即检查</el-button>

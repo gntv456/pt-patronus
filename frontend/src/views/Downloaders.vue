@@ -18,6 +18,16 @@ const editingId = ref<number | null>(null)
 const isEdit = computed(() => editingId.value !== null)
 const dialogTitle = computed(() => (isEdit.value ? '编辑下载器' : '添加下载器'))
 
+// 下载器类型 → 品牌图标/配色/标签。
+// 基于各品牌官方 logo 提炼，描边化后统一于 GlassIcon（字形见 GlassIcon.vue 的 GLYPHS）。
+// 新增下载器类型（aria2 / deluge 等）时在此加一条即可，卡片与表单会自动用上对应图标。
+const DL_META: Record<string, { glyph: string; from: string; to: string; label: string }> = {
+  qb: { glyph: 'qbittorrent', from: '#72B4F5', to: '#356EBF', label: 'qBittorrent' }, // 官方蓝
+  tr: { glyph: 'transmission', from: '#E8443C', to: '#A82424', label: 'Transmission' }, // 官方红把手
+}
+const dlMeta = (type: string) =>
+  DL_META[type] ?? { glyph: 'downloaders', from: '#6c5ce7', to: '#4285f4', label: type || '下载器' }
+
 // 种子抽屉
 const drawerDl = ref<Downloader | null>(null)
 const drawerVisible = ref(false)
@@ -130,16 +140,16 @@ onMounted(load)
       <div v-for="dl in list" :key="dl.id" class="glass glass-hover card">
         <div class="row1">
           <GlassIcon
-            :name="dl.type === 'tr' ? 'files' : 'downloaders'"
-            :from="dl.type === 'tr' ? '#536976' : '#6c5ce7'"
-            :to="dl.type === 'tr' ? '#29323c' : '#4285f4'"
+            :name="dlMeta(dl.type).glyph"
+            :from="dlMeta(dl.type).from"
+            :to="dlMeta(dl.type).to"
             :size="40"
             class="dl-badge"
           />
           <div class="dname-wrap">
             <span class="dname">{{ dl.name }}</span>
             <span v-if="dl.is_default" class="default-chip">默认</span>
-            <span class="dtype-tag text-muted">{{ dl.type === 'tr' ? 'Transmission' : 'qBittorrent' }}</span>
+            <span class="dtype-tag text-muted">{{ dlMeta(dl.type).label }}</span>
           </div>
         </div>
         <div class="url text-muted">{{ dl.url }}</div>
@@ -168,8 +178,12 @@ onMounted(load)
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="类型">
           <el-radio-group v-model="form.type">
-            <el-radio value="qb">qBittorrent</el-radio>
-            <el-radio value="tr">Transmission</el-radio>
+            <el-radio value="qb">
+              <GlassIcon :name="dlMeta('qb').glyph" :from="dlMeta('qb').from" :to="dlMeta('qb').to" :size="22" class="type-badge" /> qBittorrent
+            </el-radio>
+            <el-radio value="tr">
+              <GlassIcon :name="dlMeta('tr').glyph" :from="dlMeta('tr').from" :to="dlMeta('tr').to" :size="22" class="type-badge" /> Transmission
+            </el-radio>
           </el-radio-group>
         </el-form-item>
         <el-form-item label="地址"><el-input v-model="form.url" placeholder="http://127.0.0.1:8080" /></el-form-item>
@@ -245,6 +259,10 @@ onMounted(load)
 }
 .dtype-tag {
   font-size: 12px;
+}
+.type-badge {
+  vertical-align: middle;
+  margin-right: 6px;
 }
 .url {
   margin: 12px 0 14px;

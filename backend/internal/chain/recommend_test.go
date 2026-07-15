@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -193,5 +194,62 @@ func TestRecommendFeedsConcurrentDedup(t *testing.T) {
 	rc.RecommendFeeds(context.Background(), "", "movie", 1, false)
 	if got := atomic.LoadInt32(&src.calls); got != 1 {
 		t.Errorf("cached call should not re-fetch, calls=%d", got)
+	}
+}
+
+// errSrc：Trending 返回 error，应被跳过不 emit（验证单源失败隔离）。
+type errSrc struct{ name string }
+
+func (e *errSrc) Name() string                                       { return e.name }
+func (e *errSrc) Search(context.Context, string, int) ([]media.MediaInfo, error) { return nil, nil }
+func (e *errSrc) Detail(context.Context, string) (*media.MediaInfo, error)        { return nil, nil }
+func (e *errSrc) Trending(context.Context, string, int) ([]media.MediaInfo, error) {
+	return nil, errors.New("boom")
+}
+
+// TestRecommendFeedsStream 流式推送：每源完成即 emit，累计 = 全量；缓存命中一次性吐全量。
+func TestRecommendFeedsStream(t *testing.T) {
+	b := NewBase(module.New(), event.New())
+	s1 := &fakeSrc{name: "s1", items: []media.MediaInfo{{Source: "s1", Title: "A"}}}
+	s2 := &fakeSrc{name: "s2", items: []media.MediaInfo{{Source: "s2", Title: "B"}}}
+	rc := NewRecommendChain(b, &MediaSourceProvider{sources: []media.MediaSource{s1, s2}})
+
+	// ① 多源：emit 累计应等于两源合并（流式不排序，顺序不定）
+	var got []media.MediaInfo
+	rc.RecommendFeedsStream(context.Background(), "", "movie", 1, true, func(items []media.MediaInfo) {
+		got = append(got, items...)
+	})
+	if len(got) != 2 {
+		t.Fatalf("stream: expected 2 items across emits, got %d", len(got))
+	}
+
+	// ② force 回源后写缓存；非 force 再调应命中缓存一次性 emit 全量（只 emit 一次）
+	var emits int
+	var cached []media.MediaInfo
+	rc.RecommendFeedsStream(context.Background(), "", "movie", 1, false, func(items []media.MediaInfo) {
+		emits++
+		cached = items
+	})
+	if emits != 1 {
+		t.Fatalf("cache hit: expected 1 emit, got %d", emits)
+	}
+	if len(cached) != 2 {
+		t.Fatalf("cache hit: expected 2 in one batch, got %d", len(cached))
+	}
+}
+
+// TestRecommendFeedsStreamSourceFailure 单源失败不影响其它源 emit。
+func TestRecommendFeedsStreamSourceFailure(t *testing.T) {
+	b := NewBase(module.New(), event.New())
+	ok := &fakeSrc{name: "ok", items: []media.MediaInfo{{Title: "OK"}}}
+	bad := &errSrc{name: "bad"}
+	rc := NewRecommendChain(b, &MediaSourceProvider{sources: []media.MediaSource{ok, bad}})
+
+	var got []media.MediaInfo
+	rc.RecommendFeedsStream(context.Background(), "", "movie", 1, true, func(items []media.MediaInfo) {
+		got = append(got, items...)
+	})
+	if len(got) != 1 || got[0].Title != "OK" {
+		t.Fatalf("expected only OK source emitted (bad failed), got %+v", got)
 	}
 }

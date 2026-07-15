@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/recommend.dart';
 import 'package:ptpatronus/api/search.dart';
@@ -22,6 +23,7 @@ class _RecommendPageState extends State<RecommendPage> {
   final _api = RecommendApi();
   final _searchApi = SearchApi(); // 供「在站点查找」用；关键词搜索已统一到搜索页。
 
+  StreamSubscription<List<MediaInfo>>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
   List<MediaInfo> _items = []; // 信息流
   bool _loading = true;
   String? _error;
@@ -54,26 +56,44 @@ class _RecommendPageState extends State<RecommendPage> {
     _load();
   }
 
-  Future<void> _load({bool refresh = false}) async {
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool refresh = false}) {
+    _sub?.cancel();
     setState(() {
+      _items = [];
       _loading = true;
       _error = null;
       _page = 1;
       _hasMore = true;
     });
-    try {
-      _items = await _api.feed(
-        source: _source,
-        category: _category,
-        page: 1,
-        refresh: refresh,
-      );
-      if (_items.length < _pageSize) _hasMore = false;
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    _sub = _api
+        .feedStream(source: _source, category: _category, page: 1, refresh: refresh)
+        .listen(
+      (batch) {
+        if (!mounted) return;
+        setState(() => _items = [..._items, ...batch]);
+      },
+      onDone: () {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          if (_items.length < _pageSize) _hasMore = false;
+        });
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
+      },
+    );
+    return Future.value();
   }
 
   // 加载更多：追加下一页；返回不足一页视为到底。
@@ -150,14 +170,15 @@ class _RecommendPageState extends State<RecommendPage> {
   }
 
   Widget _buildList() {
-    if (_loading && _items.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
-    }
     if (_error != null) {
       return PTEmptyState(text: _error!, onRetry: _refresh);
     }
     final list = _items;
     if (list.isEmpty) {
+      // 首批未到：轻量转圈占位（非全屏遮罩，首批一到即切列表渐进显示）
+      if (_loading) {
+        return const Center(child: CircularProgressIndicator());
+      }
       return RefreshIndicator(
         onRefresh: _refresh,
         child: const PTEmptyState(
@@ -178,6 +199,10 @@ class _RecommendPageState extends State<RecommendPage> {
           final rowCount = (list.length / cols).ceil();
           return CustomScrollView(
             slivers: [
+              if (_loading)
+                const SliverToBoxAdapter(
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
               SliverList(
                 delegate: SliverChildBuilderDelegate((ctx, rowIdx) {
                   final start = rowIdx * cols;

@@ -30,6 +30,17 @@ func (h *AssessmentHandler) All(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"sites": cards})
 }
 
+// AllStream SSE 流式推送全站考核（?refresh=1）。每站完成即推一帧 event:batch
+// （results 为单元素数组，该站卡片）；结束推 event:done。供考核页「加载一个显示一个」。
+func (h *AssessmentHandler) AllStream(c *gin.Context) {
+	force := c.Query("refresh") == "1"
+	emit := beginSSE(c.Writer)
+	h.ch.AssessAllStream(c.Request.Context(), force, func(card chain.AssessmentCard) {
+		emit("batch", gin.H{"results": []chain.AssessmentCard{card}})
+	})
+	emit("done", gin.H{})
+}
+
 // SyncOne 立即抓取单站考核。
 func (h *AssessmentHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)

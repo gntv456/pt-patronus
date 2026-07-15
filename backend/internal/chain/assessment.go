@@ -385,3 +385,29 @@ func dbTasksToAssess(dbTasks []models.AssessmentTask) []assessment.Task {
 	}
 	return out
 }
+
+// AssessAllStream 流式推送跨站考核：每站完成即 emit(card)。供 SSE 端点「加载一个显示一个」。
+// 与 AssessAll 不同：不排序（流式按到达顺序显示，渐进加载下排序反而使卡片跳动）；不走额外的
+// singleflight 编排——assessSite 内部每站已有 3 级缓存（内存→DB→网络）+ per-site singleflight，
+// 足以压低并发回源压力。force=true 各站强制网络刷新。
+// 注意：emit 会被多个站点 goroutine 并发调用，调用方（handler）须自行串行化实际写入。
+func (c *AssessmentChain) AssessAllStream(ctx context.Context, force bool, emit func(AssessmentCard)) {
+	sites, err := c.siteCh.sites.ListActive()
+	if err != nil {
+		slog.Warn("assessment list sites failed", "err", err)
+		return
+	}
+	sem := make(chan struct{}, assessConcurrency)
+	var wg sync.WaitGroup
+	for _, s := range sites {
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+			card := c.assessSite(ctx, sem, &s, force)
+			if card.SiteID != 0 {
+				emit(card.normalized())
+			}
+		}(s)
+	}
+	wg.Wait()
+}

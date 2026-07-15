@@ -31,6 +31,7 @@ const activeTab = ref('installed')
 const marketSources = ref<string[]>([])
 const marketSourceVisible = ref(false)
 const marketSourceDraft = ref<string[]>([])
+const marketSourceOfficial = ref('')
 const market = ref<PluginMarketIndex | null>(null)
 const marketLoading = ref(false)
 const installing = ref('')
@@ -167,7 +168,9 @@ async function loadMarket() {
 // 预读持久化的插件市场源列表（UI 设置），用于弹窗回填与计数显示。
 onMounted(async () => {
   try {
-    marketSources.value = await pluginApi.getMarketSources()
+    const r = await pluginApi.getMarketSources()
+    marketSources.value = r.sources
+    marketSourceOfficial.value = r.official
   } catch {
     // 忽略：未配置时为空列表，刷新走本地 data/plugin-market.json
   }
@@ -192,13 +195,21 @@ function removeMarketSourceRow(index: number) {
   marketSourceDraft.value.splice(index, 1)
 }
 
+// 恢复官方市场仓库到草稿顶部（仅当草稿中尚无官方源时显示按钮）。
+function restoreOfficialSource() {
+  const o = marketSourceOfficial.value
+  if (o && !marketSourceDraft.value.includes(o)) marketSourceDraft.value.unshift(o)
+}
+
 // 保存草稿：trim/去空/去重 → 持久化 → 关闭弹窗 → 重新拉取市场。
 async function saveMarketSources() {
   const normalized = marketSourceDraft.value
     .map((s) => (s || '').trim())
     .filter((s, i, arr) => s !== '' && arr.indexOf(s) === i)
   try {
-    marketSources.value = await pluginApi.setMarketSources(normalized)
+    const r = await pluginApi.setMarketSources(normalized)
+    marketSources.value = r.sources
+    marketSourceOfficial.value = r.official
     marketSourceVisible.value = false
     market.value = null
     ElMessage.success(normalized.length ? `已保存 ${normalized.length} 个市场源` : '市场源已清空')
@@ -1051,10 +1062,11 @@ function jsonText(v?: Record<string, any>) {
 
     <el-dialog v-model="marketSourceVisible" title="市场源管理" width="560px">
       <div class="market-source-tip">
-        支持 GitHub 仓库地址（如 https://github.com/user/repo，可用 /tree/分支/目录 指定）或任意 plugin-market.json URL。列表顺序即优先级：刷新市场时按此处顺序聚合，相同插件 ID 先列者优先。
+        默认已内置官方仓库，可删除或追加第三方仓库。支持 GitHub 仓库地址（如 https://github.com/user/repo，可用 /tree/分支/目录 指定）或任意 plugin-market.json URL。列表顺序即优先级：刷新市场时按此处顺序聚合，相同插件 ID 先列者优先。
       </div>
       <div class="market-source-list">
         <div v-for="(_, i) in marketSourceDraft" :key="i" class="market-source-row">
+          <el-tag v-if="marketSourceDraft[i] === marketSourceOfficial" type="warning" size="small" effect="light">官方</el-tag>
           <el-input
             v-model="marketSourceDraft[i]"
             clearable
@@ -1063,7 +1075,10 @@ function jsonText(v?: Record<string, any>) {
           <el-button :icon="Delete" circle plain @click="removeMarketSourceRow(i)" />
         </div>
       </div>
-      <el-button :icon="Plus" plain class="market-source-add" @click="addMarketSourceRow">添加源</el-button>
+      <div class="market-source-add">
+        <el-button :icon="Plus" plain @click="addMarketSourceRow">添加源</el-button>
+        <el-button v-if="marketSourceOfficial && !marketSourceDraft.includes(marketSourceOfficial)" plain @click="restoreOfficialSource">恢复官方源</el-button>
+      </div>
       <template #footer>
         <el-button @click="marketSourceVisible = false">取消</el-button>
         <el-button type="primary" @click="saveMarketSources">保存</el-button>
@@ -1609,7 +1624,9 @@ function jsonText(v?: Record<string, any>) {
   align-items: center;
 }
 .market-source-add {
-  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 .market-name {
   font-weight: 700;

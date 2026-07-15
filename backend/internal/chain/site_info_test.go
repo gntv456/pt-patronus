@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -155,4 +156,37 @@ func TestAnnouncementsAllConcurrentDedup(t *testing.T) {
 	if got := atomic.LoadInt32(&src.calls); got != 1 {
 		t.Errorf("cached call should not re-fetch, calls=%d", got)
 	}
+}
+
+// TestAnnouncementsAll_LoggedOutSurfaced 防回归：cookie 过期(ErrNotLoggedIn) 必须作为 Error
+// 暴露给前端，否则公告页会把「登录失效」误显为「暂无公告」，用户无从知晓该站需刷新登录
+// （与站免路径 FreeleechAll 行为一致）。前端 friendlySiteError 据错误串中的 "login" 关键词
+// 把 "not logged in" 译为「站点登录已失效，请在「站点」页重新配置 Cookie」。
+func TestAnnouncementsAll_LoggedOutSurfaced(t *testing.T) {
+	siteOp := oper.NewSiteOper(newChainDB(t), security.NewCrypto("seed"))
+	s, _ := siteOp.Create(oper.SiteInput{Name: "t", Platform: "nexusphp", BaseURL: "https://x", IsActive: true})
+	src := &loggedOutAnnAdapter{fakeAdapter: &fakeAdapter{schema: "nexusphp"}}
+	mm := module.New()
+	mm.Register(src)
+	ch := NewSiteChain(NewBase(mm, event.New()), siteOp, site.NewRegistry())
+
+	results := ch.AnnouncementsAll(context.Background(), true)
+	if len(results) != 1 || results[0].SiteID != s.ID {
+		t.Fatalf("results: got %+v want one result for site %d", results, s.ID)
+	}
+	if results[0].Error == "" {
+		t.Fatalf("expected Error surfaced for ErrNotLoggedIn, got empty (silent \"暂无公告\")")
+	}
+	if !strings.Contains(strings.ToLower(results[0].Error), "cookie") {
+		t.Errorf("Error=%q want contains \"cookie\" (前端 friendlySiteError 据此译为「站点登录已失效」)", results[0].Error)
+	}
+}
+
+// loggedOutAnnAdapter 模拟 cookie 过期：FetchAnnouncement 恒返回 ErrNotLoggedIn。
+type loggedOutAnnAdapter struct {
+	*fakeAdapter
+}
+
+func (f *loggedOutAnnAdapter) FetchAnnouncement(context.Context, *site.SiteMetadata, string, string) (*site.SiteAnnouncement, error) {
+	return nil, site.ErrNotLoggedIn
 }

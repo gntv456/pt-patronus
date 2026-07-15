@@ -1,0 +1,154 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { agentApi, type AgentStats } from '@/api/agent'
+import Sparkline from './Sparkline.vue'
+
+// DashboardAICard — 区④AI 助手用量与成本：消费 GET /agent/stats（13 维度，进程内内存，重启清零）。
+const stats = ref<AgentStats | null>(null)
+async function load() {
+  stats.value = await agentApi.stats().catch(() => null)
+}
+onMounted(load)
+defineExpose({ refresh: load })
+
+const totalTokens = computed(
+  () => (stats.value?.total_input_tokens ?? 0) + (stats.value?.total_output_tokens ?? 0),
+)
+const errRate = computed(() => {
+  const t = stats.value?.total_requests ?? 0
+  const e = stats.value?.error_count ?? 0
+  return t > 0 ? Math.round((e / t) * 100) : null
+})
+const sparkValues = computed(() =>
+  (stats.value?.recent ?? [])
+    .slice(-20)
+    .map((r) => (r.input_tokens || 0) + (r.output_tokens || 0)),
+)
+function fmtToken(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`
+  return String(n)
+}
+</script>
+
+<template>
+  <div class="dash-card">
+    <div class="dc-head">
+      <div>
+        <h3>AI 助手用量</h3>
+        <p>Token · 费用 · 调用质量（进程内统计）</p>
+      </div>
+    </div>
+
+    <div v-if="!stats" class="dc-empty">暂无用量数据</div>
+    <template v-else>
+      <div class="ai-grid">
+        <div class="ai-cell">
+          <span class="ac-label">总请求</span>
+          <strong>{{ stats.total_requests }}</strong>
+          <small class="ac-sub">成功 {{ stats.ok_count }} · 工具 {{ stats.tool_calls }}</small>
+        </div>
+        <div class="ai-cell">
+          <span class="ac-label">Token</span>
+          <strong>{{ fmtToken(totalTokens) }}</strong>
+          <small class="ac-sub">↑{{ fmtToken(stats.total_input_tokens) }} ↓{{
+            fmtToken(stats.total_output_tokens)
+          }}</small>
+        </div>
+        <div class="ai-cell">
+          <span class="ac-label">成本</span>
+          <strong>${{ stats.total_cost_usd.toFixed(4) }}</strong>
+          <small class="ac-sub">均延 {{ Math.round((stats.avg_latency_ms ?? 0) / 1000) }}s</small>
+        </div>
+        <div class="ai-cell">
+          <span class="ac-label">错误率</span>
+          <strong :class="{ danger: (errRate ?? 0) > 0 }">{{ errRate === null ? '-' : errRate + '%' }}</strong>
+          <small class="ac-sub">错误 {{ stats.error_count }} · 限流 {{ stats.rate_limit_count }}</small>
+        </div>
+      </div>
+      <div v-if="sparkValues.length >= 2" class="ai-spark">
+        <span class="spark-label">近 {{ sparkValues.length }} 次用量</span>
+        <Sparkline :values="sparkValues" color="#8b5cf6" unit="count" />
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.dc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.dc-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.dc-head p {
+  margin: 3px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.ai-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.ai-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+.ac-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.ai-cell strong {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  line-height: 1.2;
+}
+.ai-cell strong.danger {
+  color: #dc2626;
+}
+.ac-sub {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+.ai-spark {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.spark-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.dc-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 90px;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+@media (max-width: 560px) {
+  .ai-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+</style>

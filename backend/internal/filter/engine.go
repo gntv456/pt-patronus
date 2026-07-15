@@ -269,6 +269,9 @@ func torrentDownloadFactor(t site.Torrent) float64 {
 	return 1
 }
 
+// IsFree 种子是否免费（下载因子=0）。导出供订阅「仅免费」过滤复用，判定逻辑与规则引擎一致。
+func IsFree(t site.Torrent) bool { return torrentDownloadFactor(t) == 0 }
+
 // torrentAgeMinutes 返回种子发布年龄（分钟）及是否已知。
 // site.Torrent.PubDate 零值时返回未知（publish_time 规则降级为通过，不因缺数据丢种）。
 func torrentAgeMinutes(t site.Torrent) (float64, bool) {

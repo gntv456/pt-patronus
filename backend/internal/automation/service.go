@@ -26,7 +26,7 @@ import (
 // Config 汇集自动化各任务的 cron 与阈值。空字段用默认值（见 New）。
 type Config struct {
 	StatsSyncCron           string // 统计同步，默认 */30 * * * *
-	CookieKeepAliveCron     string // cookie 保活，默认 0 */4 * * *（每 4 小时）
+	CookieKeepAliveCron     string // cookie 保活，默认 13 * * * *（每小时错峰，避开整点公告/半点统计的并发尖峰）
 	RegistrationCron        string // 注册检测，默认 0 */6 * * *（每 6 小时）
 	HRWarnDeadlineHours     int    // H&R 临期告警阈值（剩余小时），默认 24
 	CheckinRecordRetainDays int    // 签到历史保留天数，默认 90（超期自动清理）
@@ -73,7 +73,7 @@ func New(sched *scheduler.Scheduler, siteCh *chain.SiteChain, siteOp *oper.SiteO
 		cfg.StatsSyncCron = "*/30 * * * *"
 	}
 	if cfg.CookieKeepAliveCron == "" {
-		cfg.CookieKeepAliveCron = "0 */4 * * *"
+		cfg.CookieKeepAliveCron = "13 * * * *" // 每小时：滑动续期须短于 Laravel qw_session 等 session 寿命（默认 120min），每 4h 会在两次保活间过期
 	}
 	if cfg.RegistrationCron == "" {
 		cfg.RegistrationCron = "0 */6 * * *"

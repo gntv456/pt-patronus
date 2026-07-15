@@ -1,7 +1,12 @@
 // Package models defines GORM models for the persistence layer.
 package models
 
-import "time"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+	"time"
+)
 
 // User — phase-0 single admin；登录改造后以好学外部身份(HxptUID)为准，本地密码登录弃用。
 type User struct {
@@ -415,7 +420,12 @@ type Subscription struct {
 	EnableRatingGuard bool `gorm:"default:false" json:"enable_rating_guard"`
 	// FilterGroups 绑定的过滤规则组名（管道分隔，空=用全局 SubscribeFilterRuleGroups）。
 	FilterGroups string `gorm:"size:255" json:"filter_groups"`
-	Status       string `gorm:"size:16;default:subscribed;index" json:"status"`
+	// PromoTypes 接受的促销类型多选（free/2xfree/2x/discount/2xdiscount，见 site.PromoType）；
+	// 空=不过滤（任何促销都接受，含非促销）。替代早期的 OnlyFree 单一开关。
+	PromoTypes StringSlice `gorm:"type:text" json:"promo_types"`
+	// SiteIDs 参与本订阅搜索的站点 id 列表；空=全部活跃站点（类型见文件末 IntSlice）。
+	SiteIDs IntSlice `gorm:"type:text" json:"site_ids"`
+	Status  string   `gorm:"size:16;default:subscribed;index" json:"status"`
 	// 洗版（best_version）：开启后持续寻找更高画质版本替换库中旧版。
 	//   电影：候选 PriOrder 须严格 > CurrentPriority 才推送，达 100 视为洗版完成；
 	//   剧集：按 SxxExx 跟踪每集当前最优 PriOrder（EpisodePriority JSON），候选至少改善一集才推送；
@@ -427,6 +437,62 @@ type Subscription struct {
 	LastCheckedAt   *time.Time `json:"last_checked_at"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
+}
+
+// IntSlice — uint 切片自定义类型：DB 存 JSON 文本（"[]" / "[1,2]"），JSON/API 暴露为 number 数组。
+// 用于 Subscription.SiteIDs 等数字 id 列表字段（项目此前无 JSON int-slice 先例；FilterGroups 那种管道
+// string 不适合数字数组）。MarshalJSON 保证空值序列化为 [] 而非 null（对齐 go-nil-slice-json-null 教训，
+// 免去前端逐处 ?? [] 防御）。
+type IntSlice []uint
+
+// Value 写入 DB：空切片存 "[]"，否则 JSON 文本。
+func (s IntSlice) Value() (driver.Value, error) {
+	if len(s) == 0 {
+		return "[]", nil
+	}
+	b, err := json.Marshal(s)
+	return string(b), err
+}
+
+// Scan 从 DB 读取：NULL/空文本 → nil；JSON 文本 → 反序列化。
+func (s *IntSlice) Scan(v interface{}) error {
+	switch x := v.(type) {
+	case nil:
+		*s = nil
+		return nil
+	case []byte:
+		return json.Unmarshal(x, s)
+	case string:
+		return json.Unmarshal([]byte(x), s)
+	}
+	return fmt.Errorf("IntSlice.Scan: unsupported type %T", v)
+}
+
+// StringSlice — string 切片自定义类型：DB 存 JSON 文本（"[]"/"[\"free\",\"2x\"]"），JSON/API
+// 暴露为 string 数组。用于 Subscription.PromoTypes 等枚举多选字段。空值序列化为 []（同 IntSlice）。
+type StringSlice []string
+
+// Value 写入 DB：空切片存 "[]"，否则 JSON 文本。
+func (s StringSlice) Value() (driver.Value, error) {
+	if len(s) == 0 {
+		return "[]", nil
+	}
+	b, err := json.Marshal(s)
+	return string(b), err
+}
+
+// Scan 从 DB 读取：NULL/空文本 → nil；JSON 文本 → 反序列化。
+func (s *StringSlice) Scan(v interface{}) error {
+	switch x := v.(type) {
+	case nil:
+		*s = nil
+		return nil
+	case []byte:
+		return json.Unmarshal(x, s)
+	case string:
+		return json.Unmarshal([]byte(x), s)
+	}
+	return fmt.Errorf("StringSlice.Scan: unsupported type %T", v)
 }
 
 // SubscriptionHit — 订阅命中的种子去重记录（同一下载链接不重复推送）。

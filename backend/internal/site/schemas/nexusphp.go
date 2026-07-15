@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -18,11 +19,25 @@ import (
 // HTML 抓取，选择器完全由 definition（YAML）驱动；内嵌 BaseHTMLAdapter 复用 fetchDoc。
 type NexusPHP struct {
 	BaseHTMLAdapter
+	utlsOnce sync.Once
+	utlsHC   *httpclient.Client
 }
 
 // NewNexusPHP 构造适配器，注入共享 httpclient。
 func NewNexusPHP(hc *httpclient.Client) *NexusPHP {
 	return &NexusPHP{BaseHTMLAdapter: BaseHTMLAdapter{hc: hc}}
+}
+
+// utlsClient 返回一个 uTLS（Chrome 指纹）httpclient，sync.Once lazy 构造。
+// 供启用 checkin.utls 的 WAF 站签到 opt-in：标准 TLS 被 SafeLine 等按 TLS 指纹拦截（468），
+// uTLS 伪装 Chrome ClientHello 绕过。构造失败返回 nil，调用方回退标准 hc。
+func (n *NexusPHP) utlsClient() *httpclient.Client {
+	n.utlsOnce.Do(func() {
+		if c, err := httpclient.New(httpclient.Options{FollowRedirect: true, MaxRetries: 2, UTLS: true}); err == nil {
+			n.utlsHC = c
+		}
+	})
+	return n.utlsHC
 }
 
 // Schema 返回平台标识。

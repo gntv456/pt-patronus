@@ -8,6 +8,7 @@
 package sysinfo
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -149,12 +150,29 @@ func dedupKey(path string) uint64 {
 	return devOf(path)
 }
 
+// dedupKeyForPartition 返回分区的去重键（纯函数，便于单测）。
+// 优先 source 设备路径：btrfs/zfs 同一存储池的所有 subvolume/snapshot 在 /proc/mounts 里共享同一 source
+// 设备（/dev/sdX），这是唯一可靠的同池标识——而其 st_dev 是随子卷变化的 anon_dev、statfs.f_fsid 也不可靠
+// （man 2 statfs 明示 f_fsid 未定义；btrfs 实测可能全 0，或 fsid[1] 随子卷变化）。故同池子卷必须按 source
+// 设备去重，否则同一物理池会被每个子卷重复计入（飞牛 btrfs 实测 ~22 子卷把 50.92TB 池累成 1.1PB）。
+// source 非 /dev/（网络/伪设备，如 NFS "host:/share"）时退化 fsid→st_dev；都拿不到返空串（不去重）。
+func dedupKeyForPartition(device, mountpoint string) string {
+	if strings.HasPrefix(device, "/dev/") {
+		return "dev:" + device
+	}
+	if k := dedupKey(mountpoint); k != 0 {
+		return "fid:" + strconv.FormatUint(k, 16)
+	}
+	return ""
+}
+
 // collectDisks 采集磁盘用量：先遍历所有挂载点（pseudoFS 黑名单过滤），再对 extraPaths 逐个 statvfs。
-// 用 dedupKey 去重——同一文件系统上的多个挂载点/bind/子卷/子目录只统计一次（防 btrfs 子卷把
-// 同池重复计入，也防 /mnt/nas/movies 与 /mnt/nas/tv 同设备重复）。dedupKey 在非 Linux 返 0 即跳过去重。
+// 用 dedupKeyForPartition 去重——按 /proc/mounts 的 source 设备把同一物理池的多个挂载点/bind/子卷只计一次
+// （防 btrfs 子卷把同池重复计入，也防 /mnt/nas/movies 与 /mnt/nas/tv 同设备重复）。非 Linux 下退化键为空即跳过。
 func collectDisks(extraPaths []string) []DiskMetric {
 	var out []DiskMetric
-	seen := map[uint64]bool{}
+	// seen 用字符串键共享于分区与 extraPath：/dev/ source 形如 "dev:/dev/sda3"，fsid/st_dev 形如 "fid:1a2b3c"。
+	seen := map[string]bool{}
 	if parts, err := disk.Partitions(true); err == nil {
 		for _, p := range parts {
 			if isPseudoFS(p.Fstype) {
@@ -164,16 +182,17 @@ func collectDisks(extraPaths []string) []DiskMetric {
 			if err != nil {
 				continue
 			}
-			if dev := dedupKey(p.Mountpoint); dev != 0 {
-				if seen[dev] {
+			if k := dedupKeyForPartition(p.Device, p.Mountpoint); k != "" {
+				if seen[k] {
 					continue
 				}
-				seen[dev] = true
+				seen[k] = true
 			}
 			out = append(out, DiskMetric{Device: p.Mountpoint, Total: u.Total, Used: u.Used, Usage: u.UsedPercent, Type: "partition"})
 		}
 	}
 	// 额外路径：宿主目录经 docker bind mount 进容器，statvfs 穿透到宿主 FS（MoviePilot 式）。
+	// 裸路径无 source 设备信息，用 fsid/st_dev 退化去重，与上面分区表共享 seen。
 	for _, raw := range extraPaths {
 		p := strings.TrimSpace(raw)
 		if p == "" {
@@ -183,11 +202,11 @@ func collectDisks(extraPaths []string) []DiskMetric {
 		if err != nil {
 			continue
 		}
-		if dev := dedupKey(p); dev != 0 {
-			if seen[dev] {
+		if k := dedupKeyForPartition("", p); k != "" {
+			if seen[k] {
 				continue
 			}
-			seen[dev] = true
+			seen[k] = true
 		}
 		out = append(out, DiskMetric{Device: p, Total: u.Total, Used: u.Used, Usage: u.UsedPercent, Type: "partition"})
 	}

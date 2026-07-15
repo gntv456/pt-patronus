@@ -21,7 +21,7 @@ const (
 
 // HaremResult 是后宫聚合结果。
 type HaremResult struct {
-	Overview      site.HaremOverview     `json:"overview"`
+	Overview      site.HaremOverview      `json:"overview"`
 	Prescriptions []site.PrescriptionItem `json:"prescriptions"`
 }
 
@@ -284,4 +284,66 @@ func itoa(n int) string {
 		b[i] = '-'
 	}
 	return string(b[i:])
+}
+
+// HaremAllStream 流式推送跨站后宫：每站完成即 emit(prescription)，并在全部完成后返回 overview
+// （供 handler 在 done 帧一次性下发准确汇总）。供 SSE 端点「加载一个显示一个」——卡片渐进显示，
+// 顶部 7 格汇总数字在全部完成时给出（汇总本就需全量数据）。与 HaremAll 不同：不排序（按到达顺序显示，
+// 渐进加载下排序反而使卡片跳动）。非 force 单站 miss 仍走 singleflight + 30min 缓存；force 各站强制回源。
+// 注意：emit 会被多个站点 goroutine 并发调用，调用方（handler）须自行串行化实际写入。
+func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(site.PrescriptionItem)) site.HaremOverview {
+	sites, err := c.sites.ListActive()
+	if err != nil {
+		slog.Warn("harem list sites failed", "err", err)
+		return site.HaremOverview{}
+	}
+	sem := make(chan struct{}, haremConcurrency)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var all []site.PrescriptionItem
+	// push 累积到 all（用于最终 overview）并转发给调用方 emit。
+	push := func(item site.PrescriptionItem) {
+		mu.Lock()
+		all = append(all, item)
+		mu.Unlock()
+		emit(item)
+	}
+	for _, s := range sites {
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+			// 快速路径：缓存命中
+			if !force {
+				c.haremMu.Lock()
+				e, ok := c.haremCache[s.ID]
+				c.haremMu.Unlock()
+				if ok && time.Since(e.at) <= haremCacheTTL {
+					push(buildPrescription(s.ID, s.Name, e.status, e.invitees, ""))
+					return
+				}
+			}
+			// miss：force 直接回源；否则 singleflight 合并同 siteID 并发回源。
+			var res haremSFResult
+			if force {
+				res = c.fetchHaremOnce(ctx, sem, &s)
+			} else {
+				res, _ = sfDo(&c.haremSF, strconv.Itoa(int(s.ID)), func() (haremSFResult, error) {
+					c.haremMu.Lock()
+					ce, ok := c.haremCache[s.ID]
+					c.haremMu.Unlock()
+					if ok && time.Since(ce.at) <= haremCacheTTL {
+						return haremSFResult{status: ce.status, invitees: ce.invitees}, nil
+					}
+					return c.fetchHaremOnce(ctx, sem, &s), nil
+				})
+			}
+			status := res.status
+			if status == nil {
+				status = &site.InviteStatus{}
+			}
+			push(buildPrescription(s.ID, s.Name, status, res.invitees, res.errMsg))
+		}(s)
+	}
+	wg.Wait()
+	return haremOverview(all)
 }

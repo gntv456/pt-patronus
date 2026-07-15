@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/site"
-	"golang.org/x/net/publicsuffix"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -25,6 +23,16 @@ type SiteResult struct {
 	SiteName string         `json:"site_name"`
 	Torrents []site.Torrent `json:"torrents"`
 	Error    string         `json:"error,omitempty"`
+}
+
+// SiteConnectionResult 是站点联通检查结果。
+// Status 为 connected、disconnected 或 disabled；失败时 Error 保留具体原因，供前端提示。
+type SiteConnectionResult struct {
+	SiteID   uint   `json:"site_id"`
+	SiteName string `json:"site_name"`
+	Status   string `json:"status"`
+	Level    string `json:"level,omitempty"`
+	Error    string `json:"error,omitempty"`
 }
 
 // SiteChain 编排站点相关业务：搜索、连接测试、用户信息。
@@ -50,6 +58,10 @@ type SiteChain struct {
 	detailMu    sync.Mutex
 	detailCache map[string]detailCacheEntry
 	detailSF    singleflight.Group // 同 key 详情并发抓取合并（防击穿）
+	// 消息 per-(site|mailbox) 缓存（信箱 6 类，key=siteID|mailbox 防串数据）。
+	msgMu    sync.Mutex
+	msgCache map[string]msgCacheEntry
+	msgSF    singleflight.Group // 同 site+mailbox 并发抓取合并（防击穿）
 }
 
 // flCacheEntry / annCacheEntry 是 per-site 缓存条目。
@@ -71,6 +83,11 @@ type (
 		detail *site.TorrentDetail
 		at     time.Time
 	}
+	msgCacheEntry struct {
+		messages []site.Message
+		errMsg   string
+		at       time.Time
+	}
 )
 
 // NewSiteChain 构造 SiteChain。
@@ -84,6 +101,7 @@ func NewSiteChain(b Base, sites *oper.SiteOper, registry *site.Registry) *SiteCh
 		annCache:     make(map[uint]annCacheEntry),
 		haremCache:   make(map[uint]haremCacheEntry),
 		detailCache:  make(map[string]detailCacheEntry),
+		msgCache:     make(map[string]msgCacheEntry),
 	}
 }
 
@@ -282,11 +300,52 @@ func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string, s
 	return results
 }
 
+// TestConnections 并发检查全部站点的网络连接与登录态。
+// 停用站点不发起网络请求，直接返回 disabled；启用站点各自有独立超时，单站失败不影响其它站点。
+func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult, error) {
+	sites, err := c.sites.List()
+	if err != nil {
+		return nil, err
+	}
+	results := make([]SiteConnectionResult, len(sites))
+	sem := make(chan struct{}, infoFetchConcurrency)
+	var wg sync.WaitGroup
+	for i, s := range sites {
+		if !s.IsActive {
+			results[i] = SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Status: "disabled", Error: "站点已停用"}
+			continue
+		}
+		wg.Add(1)
+		go func(i int, s models.Site) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			siteCtx, cancel := context.WithTimeout(ctx, infoFetchTimeout)
+			defer cancel()
+			level, e := c.TestConnection(siteCtx, &s)
+			result := SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Level: level}
+			if e != nil {
+				result.Status = "disconnected"
+				result.Error = e.Error()
+			} else {
+				result.Status = "connected"
+			}
+			results[i] = result
+		}(i, s)
+	}
+	wg.Wait()
+	return results, nil
+}
+
 // TestConnection 测试站点连接与登录态，返回用户等级。
 func (c *SiteChain) TestConnection(ctx context.Context, s *models.Site) (string, error) {
 	ui, err := c.UserInfo(ctx, s)
 	if err != nil {
 		return "", err
+	}
+	if ui == nil {
+		return "", errors.New("站点未返回用户信息")
 	}
 	return ui.Level, nil
 }
@@ -577,11 +636,7 @@ func sameHost(baseURL, candidateURL string) bool {
 	if c.Host == "" || (c.Scheme != "http" && c.Scheme != "https") {
 		return false
 	}
-	if br, err := publicsuffix.EffectiveTLDPlusOne(b.Hostname()); err == nil {
-		if dr, err := publicsuffix.EffectiveTLDPlusOne(c.Hostname()); err == nil {
-			return strings.EqualFold(br, dr)
-		}
-	}
-	// 回退：无公共后缀（IP / 单标签主机）→ 精确主机比对。
-	return strings.EqualFold(b.Hostname(), c.Hostname())
+	// 同注册域视为同站（site.RegisteredDomain 对无公共后缀的 IP/单标签主机回退小写裸 host，
+	// 与原 EqualFold 精确主机比对等价）。
+	return site.RegisteredDomain(b.Hostname()) == site.RegisteredDomain(c.Hostname())
 }

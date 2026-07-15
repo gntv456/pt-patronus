@@ -104,8 +104,35 @@ class HaremApi {
     final r = await _api.get('/harem${refresh ? '?refresh=1' : ''}');
     return HaremResult.fromJson(r);
   }
+
+  /// 流式首屏（SSE）：batch 帧产出药单批（通常单站），done 帧产出全量 overview；取消监听即中断。
+  Stream<HaremStreamEvent> allStream({bool refresh = false}) {
+    return _api.streamGet('/harem/stream${refresh ? '?refresh=1' : ''}').map((ev) {
+      if (ev.key == 'batch' && ev.value['results'] is List) {
+        return HaremStreamEvent(
+          items: (ev.value['results'] as List)
+              .map((e) => PrescriptionItem.fromJson(e as Map<String, dynamic>))
+              .toList(),
+        );
+      }
+      if (ev.key == 'done' && ev.value['overview'] is Map) {
+        return HaremStreamEvent(
+          overview: HaremOverview.fromJson(ev.value['overview'] as Map<String, dynamic>),
+        );
+      }
+      return HaremStreamEvent();
+    });
+  }
+
   Future<String> exportText() async {
     final r = await _api.get('/harem/export');
     return r['text'] as String? ?? '';
   }
+}
+
+/// 后宫流式事件：item 帧（一批药单）或 done 帧（全量 overview）。
+class HaremStreamEvent {
+  final List<PrescriptionItem> items;
+  final HaremOverview? overview;
+  HaremStreamEvent({this.items = const [], this.overview});
 }

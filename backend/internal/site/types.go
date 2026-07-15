@@ -77,6 +77,7 @@ type Torrent struct {
 	// 未填充时引擎降级：Free 近似 factor、PubDate 零值时 publish_time 规则放行。
 	PubDate              time.Time `json:"pub_date,omitempty"`
 	DownloadVolumeFactor float64   `json:"downloadvolumefactor,omitempty"` // 0=FREE,1=正常,0.5/2=促销；0 且 Free=false 视为未知→1
+	UploadVolumeFactor   float64   `json:"uploadvolumefactor,omitempty"`   // 上传因子：0=未设/正常,2=双倍上传（对齐 MP-2，此前遗漏）
 	Labels               []string  `json:"labels,omitempty"`
 }
 
@@ -178,6 +179,7 @@ type SiteMetadata struct {
 	Harem             HaremDef            `yaml:"harem"`
 	Medal             MedalDef            `yaml:"medal"`
 	Messages          MessageDef          `yaml:"messages"`
+	Checkin           CheckinDef          `yaml:"checkin"`
 	Detail            DetailDef           `yaml:"detail"`
 	NoLogin           NoLoginDef          `yaml:"no_login"`
 	Login             LoginDef            `yaml:"login"`
@@ -421,6 +423,21 @@ type MessageDef struct {
 	Enabled   bool   `yaml:"enabled"`    // 默认 true
 	ListPath  string `yaml:"list_path"`  // 列表页，默认 messages.php
 	CSRFField string `yaml:"csrf_field"` // 回复所需 CSRF 字段名（空=无 CSRF，直接 POST）
+}
+
+// CheckinDef 描述站点签到（NexusPHP 标准 POST attendance.php）。解决三类签到失败：
+//   - Path：配真实签到端点（attendance.php 不存在的站，404）。
+//   - 签到前总先 GET 首页探测真实签到表单/链接 + 提取 hidden（含 formhash），命中则用之，
+//     否则回退 Path+Method+Form（解决空 POST 缺 formhash 被拒，500）。
+//   - Headers：配自定义请求头（Referer/UA/X-CSRF，绕 WAF/CSRF，如 468）。
+//   - Form：固定表单字段（如 qdxq=fd），与探测提取的 hidden 合并。
+type CheckinDef struct {
+	Enabled bool              `yaml:"enabled"` // 默认 true
+	Path    string            `yaml:"path"`    // 签到端点相对路径，默认 attendance.php
+	Method  string            `yaml:"method"`  // GET|POST，默认 POST；探测命中表单时按表单 method
+	Form    map[string]string `yaml:"form"`    // 固定表单字段（如 qdxq=fd）；与探测提取的 hidden 合并
+	Headers map[string]string `yaml:"headers"` // 自定义请求头（Referer/UA/X-CSRF，绕 WAF/CSRF）
+	UTLS    bool              `yaml:"utls"`    // 启用 uTLS（Chrome 指纹）拨号绕 TLS 指纹 WAF（如 SafeLine 雷池 468）
 }
 
 // DetailDef 描述种子详情页（details.php?id=...）。Enabled 默认 true（NexusPHP 通用）。

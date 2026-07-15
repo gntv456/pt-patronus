@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/harem.dart';
@@ -30,6 +31,7 @@ class HaremPage extends StatefulWidget {
 
 class _HaremPageState extends State<HaremPage> {
   final _api = HaremApi();
+  StreamSubscription<HaremStreamEvent>? _sub; // 流式首屏订阅（切换/刷新时 cancel）
   HaremResult? _data;
   bool _loading = true;
   String? _error;
@@ -59,18 +61,52 @@ class _HaremPageState extends State<HaremPage> {
     _load();
   }
 
-  Future<void> _load({bool refresh = false}) async {
+  @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  HaremOverview get _emptyOverview => HaremOverview(
+        totalSites: 0,
+        totalInvitees: 0,
+        totalPermInvites: 0,
+        totalTempInvites: 0,
+        totalLowRatio: 0,
+        totalBanned: 0,
+        totalNoData: 0,
+      );
+
+  Future<void> _load({bool refresh = false}) {
+    _sub?.cancel();
     setState(() {
+      _data = HaremResult(overview: _emptyOverview, prescriptions: []);
       _loading = true;
       _error = null;
     });
-    try {
-      _data = await _api.all(refresh: refresh);
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    _sub = _api.allStream(refresh: refresh).listen(
+      (ev) {
+        if (!mounted) return;
+        setState(() {
+          final cur = _data!;
+          _data = HaremResult(
+            overview: ev.overview ?? cur.overview,
+            prescriptions: [...cur.prescriptions, ...ev.items],
+          );
+        });
+      },
+      onDone: () {
+        if (mounted) setState(() => _loading = false);
+      },
+      onError: (e) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _error = e.toString();
+        });
+      },
+    );
+    return Future.value();
   }
 
   Future<void> _export() async {
@@ -141,7 +177,7 @@ class _HaremPageState extends State<HaremPage> {
               onChanged: (v) => setState(() => _selectedSiteIds = v),
               options: _siteOptions,
             ),
-      body: _loading
+      body: _loading && (_data?.prescriptions ?? []).isEmpty
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? PTEmptyState(text: _error!, onRetry: _load)

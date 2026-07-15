@@ -29,6 +29,17 @@ func (h *MedalHandler) All(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"medals": cards})
 }
 
+// AllStream SSE 流式推送全站勋章（?refresh=1）。每站完成即推一帧 event:batch
+// （results 为该站多张卡，失败站为单张错误卡）；结束推 event:done。供勋章墙「加载一个显示一个」。
+func (h *MedalHandler) AllStream(c *gin.Context) {
+	force := c.Query("refresh") == "1"
+	emit := beginSSE(c.Writer)
+	h.ch.MedalAllStream(c.Request.Context(), force, func(cards []chain.MedalCard) {
+		emit("batch", gin.H{"results": cards})
+	})
+	emit("done", gin.H{})
+}
+
 // medalActionBody 写操作请求体。
 type medalActionBody struct {
 	SiteID  uint   `json:"site_id" binding:"min=1"`

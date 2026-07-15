@@ -1,4 +1,5 @@
 import { http } from './http'
+import { streamSSE } from './sse'
 
 export interface Medal {
   site_id: number
@@ -34,6 +35,15 @@ export const medalWallApi = {
       .get<{ medals: Medal[] }>(`/medalwall${refresh ? '?refresh=1' : ''}`)
       // 后端失败站可能产出 error 卡片；nil 切片归一为 []
       .then((r) => r.data.medals || []),
+  // 流式首屏：GET /medalwall/stream（SSE），每站完成推一帧 batch（该站多张卡），逐批 push。
+  allStream: (
+    refresh = false,
+    onCards: (cards: Medal[]) => void,
+    signal?: AbortSignal,
+  ) =>
+    streamSSE(`/api/v1/medalwall/stream${refresh ? '?refresh=1' : ''}`, (event, data) => {
+      if (event === 'batch' && data?.results) onCards(data.results as Medal[])
+    }, signal),
   buy: (siteId: number, medalId: string) =>
     http.post<ActionResult>('/medalwall/buy', { site_id: siteId, medal_id: medalId }).then((r) => r.data),
   wear: (siteId: number, medalId: string) =>

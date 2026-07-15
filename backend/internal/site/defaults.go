@@ -18,7 +18,7 @@ func DefaultNexusPHPSelectors() SiteSelectors {
 			// 免费/促销图标（NexusPHP 源码标准 pro_free class；inspect 校准：attr:alt="Free"）。
 			// search.go:113 Extract 非空 → Free=true，filter FREE 规则据此生效。
 			// class^="pro_free" 覆盖 pro_free / pro_free2up（含免费的促销）。
-			"free":      {Selector: `img[class^="pro_free"]`, Attr: "alt"},
+			"free": {Selector: `img[class^="pro_free"]`, Attr: "alt"},
 		},
 	}
 }
@@ -853,6 +853,17 @@ func ensureNexusPHPDefaults(cp *SiteMetadata) {
 	}
 	if cp.Messages.ListPath == "" {
 		cp.Messages.ListPath = "messages.php"
+	}
+	// 签到：默认开启 attendance.php + POST。签到前总先探测首页提取真实签到表单/链接
+	// （探测失败回退 Path），故无需单独的探测开关。
+	if !cp.Checkin.Enabled && cp.Checkin.Path == "" {
+		cp.Checkin.Enabled = true
+	}
+	if cp.Checkin.Path == "" {
+		cp.Checkin.Path = "attendance.php"
+	}
+	if cp.Checkin.Method == "" {
+		cp.Checkin.Method = "POST"
 	}
 	// 种子详情页：默认开启。逐字段合并默认值——站点可只覆盖个别字段（如 title），
 	// 其余（description/screenshots/...）继承 NexusPHP 默认，无需为改一个字段而重写整块。

@@ -53,7 +53,7 @@ func registerAgentTools(
 	}})
 	reg(mcp.Tool{Name: "site_messages", Description: "Read recent PT site inbox messages across all sites.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"mailbox": map[string]any{"type": "string", "description": "inbox | sent | system (default inbox)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		mb := argString(a, "mailbox", "inbox")
-		return mcpJSON(siteCh.MessagesAll(ctx, mailboxType(mb))), nil
+		return mcpJSON(siteCh.MessagesAll(ctx, mailboxType(mb), false)), nil
 	}})
 	reg(mcp.Tool{Name: "site_freeleech", Description: "List current site-wide freeleech/promotions across all sites.", InputSchema: noArgs, Handler: func(ctx context.Context, _ map[string]any) (string, error) {
 		return mcpJSON(siteCh.FreeleechAll(ctx, false)), nil

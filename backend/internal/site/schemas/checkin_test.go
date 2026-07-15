@@ -1,0 +1,194 @@
+package schemas
+
+import (
+	"context"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/site"
+)
+
+// newCheckinServer 起一个 mock：首页返回 homeHTML（探测用），其余路径交 checkin 回调，
+// 并把收到的签到请求 path/method/formhash 回填到 gotXxx 便于断言。
+func newCheckinServer(t *testing.T, homeHTML string, checkin func(w http.ResponseWriter, r *http.Request),
+) (srv *httptest.Server, gotPath, gotMethod, gotForm *string) {
+	t.Helper()
+	gp, gm, gf := "", "", ""
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "/index.php" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, _ = io.WriteString(w, homeHTML)
+			return
+		}
+		gp = r.URL.Path
+		gm = r.Method
+		_ = r.ParseForm()
+		gf = r.Form.Get("formhash")
+		checkin(w, r)
+	}))
+	return srv, &gp, &gm, &gf
+}
+
+func mustCheckin(t *testing.T, srv *httptest.Server, def *site.SiteMetadata) *site.CheckinResult {
+	t.Helper()
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	n := NewNexusPHP(hc)
+	if def == nil {
+		def = &site.SiteMetadata{Schema: "nexusphp"}
+	}
+	r, err := n.Checkin(context.Background(), def, srv.URL, "session=abc")
+	if err != nil {
+		t.Fatalf("Checkin error: %v", err)
+	}
+	return r
+}
+
+// 纯 HTML 站：首页无签到入口→探测回退 POST attendance.php→返回「签到成功」HTML。
+func TestNexusPHPCheckinHTMLSuccess(t *testing.T) {
+	srv, _, _, _ := newCheckinServer(t, "<html><body>home</body></html>", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "<html>签到成功，获得 10 魔力</html>")
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if !r.Success {
+		t.Fatalf("want success, got %+v", r)
+	}
+	if r.Bonus != 10 {
+		t.Errorf("bonus want 10, got %v", r.Bonus)
+	}
+}
+
+// HTML 已签到。
+func TestNexusPHPCheckinHTMLAlready(t *testing.T) {
+	srv, _, _, _ := newCheckinServer(t, "<html><body>home</body></html>", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "<html>您今天已经签到过了</html>")
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if !r.Success || !strings.Contains(r.Message, "已签到") {
+		t.Fatalf("want already-checked success, got %+v", r)
+	}
+}
+
+// JSON 签到（msg 不含 HTML 关键字，走 JSON 分支，success:true）。
+func TestNexusPHPCheckinJSONSuccess(t *testing.T) {
+	srv, _, _, _ := newCheckinServer(t, "<html><body>home</body></html>", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"success":true,"msg":"ok","bonus":10}`)
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if !r.Success {
+		t.Fatalf("want success, got %+v", r)
+	}
+	if r.Bonus != 10 {
+		t.Errorf("bonus want 10, got %v", r.Bonus)
+	}
+}
+
+// JSON 已签（msg=「重复签到」，走 JSON 分支）。
+func TestNexusPHPCheckinJSONAlready(t *testing.T) {
+	srv, _, _, _ := newCheckinServer(t, "<html><body>home</body></html>", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"ret":1,"msg":"重复签到"}`)
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if !r.Success || !strings.Contains(r.Message, "已签到") {
+		t.Fatalf("want already-checked success, got %+v", r)
+	}
+}
+
+// JSON 仅 ret=0 无 msg（按 ret 推断成功）。
+func TestNexusPHPCheckinJSONRet0(t *testing.T) {
+	srv, _, _, _ := newCheckinServer(t, "<html><body>home</body></html>", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"ret":0}`)
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if !r.Success {
+		t.Fatalf("want success on ret=0, got %+v", r)
+	}
+}
+
+// 探测命中签到表单：POST signin.php 并携带探测到的 formhash。
+func TestNexusPHPCheckinProbeForm(t *testing.T) {
+	home := `<html><body><form action="signin.php" method="post">` +
+		`<input type="hidden" name="formhash" value="abc123"/>` +
+		`<input type="submit" value="签到"/></form></body></html>`
+	srv, gotPath, gotMethod, gotForm := newCheckinServer(t, home, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "<html>签到成功</html>")
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if !r.Success {
+		t.Fatalf("want success, got %+v", r)
+	}
+	if *gotPath != "/signin.php" {
+		t.Errorf("probe should POST signin.php, got path=%q", *gotPath)
+	}
+	if *gotMethod != "POST" {
+		t.Errorf("form method should be POST, got %q", *gotMethod)
+	}
+	if *gotForm != "abc123" {
+		t.Errorf("probe should carry formhash=abc123, got %q", *gotForm)
+	}
+}
+
+// 探测命中签到链接：GET signin.php?op=ds。
+func TestNexusPHPCheckinProbeLink(t *testing.T) {
+	home := `<html><body><a href="signin.php?op=ds">每日签到</a></body></html>`
+	srv, gotPath, gotMethod, _ := newCheckinServer(t, home, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "<html>签到成功</html>")
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if !r.Success {
+		t.Fatalf("want success, got %+v", r)
+	}
+	if *gotPath != "/signin.php" {
+		t.Errorf("probe should hit signin.php, got path=%q", *gotPath)
+	}
+	if *gotMethod != "GET" {
+		t.Errorf("link should be GET, got %q", *gotMethod)
+	}
+}
+
+// 自定义 Headers 透传（绕 WAF/CSRF 出口）。
+func TestNexusPHPCheckinCustomHeaders(t *testing.T) {
+	var gotHeader string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" || r.URL.Path == "/index.php" {
+			_, _ = io.WriteString(w, "<html><body>home</body></html>")
+			return
+		}
+		gotHeader = r.Header.Get("X-Foo")
+		_, _ = io.WriteString(w, "<html>unknown</html>")
+	}))
+	defer srv.Close()
+	def := &site.SiteMetadata{Schema: "nexusphp", Checkin: site.CheckinDef{Headers: map[string]string{"X-Foo": "bar"}}}
+	mustCheckin(t, srv, def)
+	if gotHeader != "bar" {
+		t.Errorf("custom header X-Foo=bar not sent, got %q", gotHeader)
+	}
+}
+
+// 响应无可识别内容→兜底「未识别」。
+func TestNexusPHPCheckinUnrecognized(t *testing.T) {
+	srv, _, _, _ := newCheckinServer(t, "<html><body>home</body></html>", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "<html>some opaque response</html>")
+	})
+	defer srv.Close()
+	r := mustCheckin(t, srv, nil)
+	if r.Success {
+		t.Fatalf("want failure on unrecognized response, got %+v", r)
+	}
+	if !strings.Contains(r.Message, "未识别") {
+		t.Errorf("want 未识别 fallback message, got %q", r.Message)
+	}
+}

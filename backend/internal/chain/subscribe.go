@@ -92,7 +92,8 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 		}
 	}
 
-	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, nil)
+	// SiteIDs 非空则只在指定站点搜（SearchSites 已处理空=全部活跃站）。
+	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, []uint(sub.SiteIDs))
 
 	// 多评分低分保护：闸门开启则命中种子前先查聚合评分；未通过则本轮整体跳过 + 通知。
 	// 评分查询失败 fail-open（不阻断下载——外网评分服务故障不应让订阅停摆）。
@@ -124,6 +125,21 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 	// 简单参数前置过滤：分辨率（始终生效，对齐 MP-2 TorrentHelper 两阶段前置过滤）。
 	if sub.Resolution != "" {
 		all = filterByResolution(all, sub.Resolution)
+	}
+	// 促销类型多选：非空则只保留促销类型 ∈ sub.PromoTypes 的种（位于分辨率过滤后、规则引擎前）。
+	// 空 PromoTypes=不过滤（任何促销都接受，含非促销）。
+	if len(sub.PromoTypes) > 0 {
+		want := make(map[site.PromoType]struct{}, len(sub.PromoTypes))
+		for _, p := range sub.PromoTypes {
+			want[site.PromoType(p)] = struct{}{}
+		}
+		kept := make([]site.Torrent, 0, len(all))
+		for _, t := range all {
+			if _, ok := want[site.PromoTypeOf(t)]; ok {
+				kept = append(kept, t)
+			}
+		}
+		all = kept
 	}
 	// 规则引擎排序（保留 PriOrder 供洗版门控）：
 	//   普通订阅 → FilterGroups 优先，否则全局 SubscribeFilterRuleGroups；

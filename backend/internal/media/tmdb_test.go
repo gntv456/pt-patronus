@@ -3,10 +3,46 @@ package media
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+func TestTMDBDetailReturnsCompleteCastAndRecommendations(t *testing.T) {
+	cast := make([]map[string]any, 24)
+	for i := range cast {
+		cast[i] = map[string]any{
+			"name": fmt.Sprintf("Actor %d", i+1), "character": "Role", "profile_path": "/actor.jpg",
+		}
+	}
+	recommendations := make([]map[string]any, 16)
+	for i := range recommendations {
+		recommendations[i] = map[string]any{
+			"id": i + 1, "title": fmt.Sprintf("Recommendation %d", i+1), "poster_path": "/poster.jpg",
+		}
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": 123, "title": "The Movie", "credits": map[string]any{"cast": cast},
+			"recommendations": map[string]any{"results": recommendations},
+		})
+	}))
+	defer srv.Close()
+
+	tmdb := NewTMDB("test-key", "")
+	overrideBase(tmdb, srv.URL)
+	detail, err := tmdb.Detail(context.Background(), "movie:123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(detail.Cast) != len(cast) {
+		t.Fatalf("cast count = %d, want %d", len(detail.Cast), len(cast))
+	}
+	if len(detail.Recommendations) != len(recommendations) {
+		t.Fatalf("recommendation count = %d, want %d", len(detail.Recommendations), len(recommendations))
+	}
+}
 
 func TestTMDBSearchAndDetail(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -2,11 +2,63 @@ package media
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestDoubanDetailReturnsCompleteCastAndRequestsTwentyRecommendations(t *testing.T) {
+	actors := make([]map[string]any, 24)
+	for i := range actors {
+		actors[i] = map[string]any{
+			"name": fmt.Sprintf("演员 %d", i+1), "character": "角色",
+			"avatar": map[string]any{"large": "https://img9.doubanio.com/view/celebrity/m/public/p1.jpg"},
+		}
+	}
+	recommendations := make([]map[string]any, 16)
+	for i := range recommendations {
+		recommendations[i] = map[string]any{
+			"id": fmt.Sprintf("%d", i+1), "title": fmt.Sprintf("推荐 %d", i+1),
+			"pic": map[string]any{"large": "https://img9.doubanio.com/view/photo/m_ratio_poster/public/p1.jpg"},
+		}
+	}
+	recommendationCount := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/movie/1":
+			_, _ = w.Write([]byte(`{"title":"测试电影"}`))
+		case "/movie/1/celebrities":
+			_ = json.NewEncoder(w).Encode(map[string]any{"actors": actors})
+		case "/movie/1/recommendations":
+			recommendationCount = r.URL.Query().Get("count")
+			_ = json.NewEncoder(w).Encode(recommendations)
+		case "/movie/1/photos":
+			_, _ = w.Write([]byte(`{"photos":[]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	douban := NewDouban("", "test-key")
+	douban.base = srv.URL
+	detail, err := douban.Detail(context.Background(), "movie:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(detail.Cast) != len(actors) {
+		t.Fatalf("cast count = %d, want %d", len(detail.Cast), len(actors))
+	}
+	if len(detail.Recommendations) != len(recommendations) {
+		t.Fatalf("recommendation count = %d, want %d", len(detail.Recommendations), len(recommendations))
+	}
+	if recommendationCount != "20" {
+		t.Fatalf("recommendation request count = %q, want 20", recommendationCount)
+	}
+}
 
 // TestDoubanSearchAndDetail：canned frodo JSON 解析 + 微信 UA/apiKey 注入校验。
 func TestDoubanSearchAndDetail(t *testing.T) {

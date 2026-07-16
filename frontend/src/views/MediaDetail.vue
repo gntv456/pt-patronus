@@ -1,11 +1,12 @@
 <script setup lang="ts">
 // 媒体详情页（对标 MoviePilot 详情）：点搜索结果卡片进入，展示海报/背景/简介/演职/推荐，
 // 并提供「搜索资源」一键跨到种子搜索（按标题在站点找片）。route: /media-detail?source=&id=
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { mediaApi, type MediaInfo, type CreditPerson, type CelebrityProfile } from '@/api/media'
 import { subscribeApi } from '@/api/subscribe'
 import MediaPoster from '@/components/MediaPoster.vue'
+import SptIcon from '@/components/SptIcon.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +14,21 @@ const detail = ref<MediaInfo | null>(null)
 const loading = ref(false)
 const error = ref('')
 const subscribing = ref(false)
+const castExpanded = ref(false)
+const recommendationsExpanded = ref(false)
+
+const CAST_PREVIEW_LIMIT = 12
+const RECOMMENDATIONS_PREVIEW_LIMIT = 8
+const visibleCast = computed(() => {
+  const cast = detail.value?.cast || []
+  return castExpanded.value ? cast : cast.slice(0, CAST_PREVIEW_LIMIT)
+})
+const visibleRecommendations = computed(() => {
+  const recommendations = detail.value?.recommendations || []
+  return recommendationsExpanded.value
+    ? recommendations
+    : recommendations.slice(0, RECOMMENDATIONS_PREVIEW_LIMIT)
+})
 
 function typeBadge(t: string) {
   return ({ movie: '电影', tv: '剧集', music: '音乐' } as Record<string, string>)[t] || t
@@ -40,6 +56,8 @@ async function load() {
     error.value = '缺少 source/id'
     return
   }
+  castExpanded.value = false
+  recommendationsExpanded.value = false
   loading.value = true
   error.value = ''
   try {
@@ -164,9 +182,22 @@ watch(() => [route.query.source, route.query.id], load, { immediate: true })
 
         <!-- 演员 -->
         <div v-if="detail.cast?.length" class="card glass section">
-          <div class="sec-title">演员阵容</div>
-          <div class="cast">
-            <div v-for="(p, i) in detail.cast" :key="i" class="cast-item" :class="{ clickable: p.id }" @click="openCelebrity(p)">
+          <div class="section-head">
+            <div class="sec-title">演员阵容 <span class="sec-count">{{ detail.cast.length }}</span></div>
+            <el-button
+              v-if="detail.cast.length > CAST_PREVIEW_LIMIT"
+              link
+              class="section-more"
+              :aria-expanded="castExpanded"
+              aria-controls="media-detail-cast"
+              @click="castExpanded = !castExpanded"
+            >
+              {{ castExpanded ? '收起' : '更多' }}
+              <SptIcon :name="castExpanded ? 'chevron-up' : 'chevron-down'" :size="15" />
+            </el-button>
+          </div>
+          <div id="media-detail-cast" class="cast">
+            <div v-for="(p, i) in visibleCast" :key="`${p.id || p.name}-${i}`" class="cast-item" :class="{ clickable: p.id }" @click="openCelebrity(p)">
               <div class="avatar"><MediaPoster :url="p.avatar || ''" kind="person" /></div>
               <div class="cname">{{ p.name }}</div>
               <div v-if="p.role" class="crole text-muted">{{ p.role }}</div>
@@ -176,11 +207,24 @@ watch(() => [route.query.source, route.query.id], load, { immediate: true })
 
         <!-- 推荐 -->
         <div v-if="detail.recommendations?.length" class="card glass section">
-          <div class="sec-title">推荐</div>
-          <div class="recs">
+          <div class="section-head">
+            <div class="sec-title">推荐 <span class="sec-count">{{ detail.recommendations.length }}</span></div>
+            <el-button
+              v-if="detail.recommendations.length > RECOMMENDATIONS_PREVIEW_LIMIT"
+              link
+              class="section-more"
+              :aria-expanded="recommendationsExpanded"
+              aria-controls="media-detail-recommendations"
+              @click="recommendationsExpanded = !recommendationsExpanded"
+            >
+              {{ recommendationsExpanded ? '收起' : '更多' }}
+              <SptIcon :name="recommendationsExpanded ? 'chevron-up' : 'chevron-down'" :size="15" />
+            </el-button>
+          </div>
+          <div id="media-detail-recommendations" class="recs">
             <div
-              v-for="(m, i) in detail.recommendations"
-              :key="i"
+              v-for="(m, i) in visibleRecommendations"
+              :key="`${m.source}-${m.source_id}-${i}`"
               class="rec glass-hover"
               @click="openRec(m)"
             >
@@ -261,13 +305,17 @@ watch(() => [route.query.source, route.query.id], load, { immediate: true })
 .actions { margin-top: 6px; }
 
 .section { padding: 18px; }
-.sec-title { font-weight: 700; font-size: 15px; margin-bottom: 12px; }
+.section-head { min-height: 32px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.sec-title { font-weight: 700; font-size: 15px; line-height: 32px; margin-bottom: 12px; }
+.section-head .sec-title { margin-bottom: 0; }
+.sec-count { margin-left: 4px; color: var(--text-muted); font-size: 12px; font-weight: 500; }
+.section-more { flex: none; gap: 3px; }
 .overview { font-size: 14px; line-height: 1.8; white-space: pre-line; }
 
 /* cast */
-.cast { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 6px; }
-.cast-item { flex: none; width: 84px; text-align: center; }
-.avatar { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; background: var(--surface-muted); margin-bottom: 6px; }
+.cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 16px; }
+.cast-item { min-width: 0; text-align: center; }
+.avatar { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; background: var(--surface-muted); margin: 0 auto 6px; }
 .cname { font-size: 12px; font-weight: 600; line-height: 1.3; }
 .crole { font-size: 11px; line-height: 1.3; }
 

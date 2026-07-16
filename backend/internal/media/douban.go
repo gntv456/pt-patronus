@@ -480,7 +480,7 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	// detail 端点的 actors 只有 name 无头像，appendCast 作 celebrities 失败时的 fallback。
 	seenCast := make(map[string]struct{})
 	appendCast := func(c doubanDetailPerson) {
-		if len(mi.Cast) >= 15 || c.Name == "" {
+		if c.Name == "" {
 			return
 		}
 		if _, ok := seenCast[c.Name]; ok {
@@ -542,7 +542,7 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	go func() { defer wg.Done(); haveCel = d.get(ctx, "/"+mtype+"/"+sid+"/celebrities", nil, &cel) == nil }()
 	go func() {
 		defer wg.Done()
-		_ = d.get(ctx, "/"+mtype+"/"+sid+"/recommendations", map[string]string{"start": "0", "count": "8"}, &recs)
+		_ = d.get(ctx, "/"+mtype+"/"+sid+"/recommendations", map[string]string{"start": "0", "count": "20"}, &recs)
 	}()
 	go func() {
 		defer wg.Done()
@@ -554,8 +554,8 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	if haveCel && len(cel.Actors) > 0 {
 		seen := make(map[string]struct{}, len(cel.Actors))
 		for _, a := range cel.Actors {
-			if a.Name == "" || len(mi.Cast) >= 15 {
-				break
+			if a.Name == "" {
+				continue
 			}
 			if _, ok := seen[a.Name]; ok {
 				continue

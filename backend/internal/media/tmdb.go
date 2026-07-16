@@ -129,18 +129,18 @@ func (t *TMDB) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 		return nil, fmt.Errorf("tmdb: bad id %q", id)
 	}
 	var raw struct {
-		ID            int64   `json:"id"`
-		Title         string  `json:"title"`
-		Name          string  `json:"name"`
-		PosterPath    string  `json:"poster_path"`
-		BackdropPath  string  `json:"backdrop_path"`
-		Overview      string  `json:"overview"`
-		Release       string  `json:"release_date"`
-		FirstAir      string  `json:"first_air_date"`
-		Runtime       int     `json:"runtime"`
-		Vote          float64 `json:"vote_average"`
-		VoteCount     int64   `json:"vote_count"`
-		Genres        []struct {
+		ID           int64   `json:"id"`
+		Title        string  `json:"title"`
+		Name         string  `json:"name"`
+		PosterPath   string  `json:"poster_path"`
+		BackdropPath string  `json:"backdrop_path"`
+		Overview     string  `json:"overview"`
+		Release      string  `json:"release_date"`
+		FirstAir     string  `json:"first_air_date"`
+		Runtime      int     `json:"runtime"`
+		Vote         float64 `json:"vote_average"`
+		VoteCount    int64   `json:"vote_count"`
+		Genres       []struct {
 			Name string `json:"name"`
 		} `json:"genres"`
 		ProdCountries []struct {
@@ -228,10 +228,7 @@ func (t *TMDB) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 			mi.Directors = append(mi.Directors, cr.Name)
 		}
 	}
-	for i, c := range raw.Credits.Cast {
-		if i >= 15 {
-			break
-		}
+	for _, c := range raw.Credits.Cast {
 		mi.Cast = append(mi.Cast, CreditPerson{Name: c.Name, Role: c.Character, Avatar: tmdbImage(c.ProfilePath)})
 	}
 	for _, r := range raw.Recommendations.Results {

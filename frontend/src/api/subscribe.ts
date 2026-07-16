@@ -13,8 +13,8 @@ export interface Subscription {
   resolution: string // 可选：1080p/2160p，空=不过滤
   downloader_id: number // 0=默认下载器
   save_path: string
-  enable_rating_guard: boolean // 多评分低分保护：与全局 MediaQualityConfig.Enabled 取并集
-  best_version: boolean // 洗版：持续寻找更高画质版本替换库中旧版
+  enable_rating_guard: boolean | null // 三态：null=跟随全局默认；true/false=订阅自定义
+  best_version: boolean | null // 三态：null=跟随全局默认；true/false=订阅自定义
   best_version_full: boolean // 洗版整季包优先模式
   promo_types: string[] // 接受的促销类型多选（free/2xfree/2x/discount/2xdiscount）；空=不过滤
   site_ids: number[] // 参与站点 id；空=全部活跃站点
@@ -39,6 +39,15 @@ export interface SubInput {
   site_ids?: number[]
 }
 
+// 全局订阅默认设置：未单独设置某项的订阅在检查时回退到此（运行时回退）。
+export interface GlobalDefaults {
+  resolution: string // 空=不限
+  promo_types: string[] // 空=不限
+  site_ids: number[] // 空=全部活跃站点
+  enable_rating_guard: boolean // 全局二态，默认 false
+  best_version: boolean // 全局二态，默认 false
+}
+
 export const subscribeApi = {
   list: () =>
     http.get<{ subscriptions: Subscription[] }>('/subscriptions').then((r) => r.data.subscriptions ?? []),
@@ -48,4 +57,10 @@ export const subscribeApi = {
   remove: (id: number) => http.delete(`/subscriptions/${id}`).then((r) => r.data),
   check: (id: number) =>
     http.post<{ ok: boolean; pushed: number; error?: string }>(`/subscriptions/${id}/check`).then((r) => r.data),
+  // 全局订阅默认设置（未单独设置的订阅回退到此）
+  getGlobalDefaults: () => http.get<GlobalDefaults>('/subscribe/settings').then((r) => r.data),
+  updateGlobalDefaults: (d: GlobalDefaults) => http.put<GlobalDefaults>('/subscribe/settings', d).then((r) => r.data),
+  // 清空订阅指定字段回退全局默认（enable_rating_guard/best_version/resolution/promo_types/site_ids）
+  reset: (id: number, fields: string[]) =>
+    http.post<Subscription>(`/subscriptions/${id}/reset`, { fields }).then((r) => r.data),
 }

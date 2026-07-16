@@ -25,12 +25,14 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
   bool _loading = true;
   String? _error;
   final _checking = <int>{};
+  GlobalDefaults _global = const GlobalDefaults();
 
   @override
   void initState() {
     super.initState();
     _load();
     _loadSites();
+    _loadGlobal();
   }
 
   Future<void> _loadSites() async {
@@ -54,6 +56,32 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       _error = '$e';
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadGlobal() async {
+    try {
+      final g = await _api.getGlobalDefaults();
+      if (!mounted) return;
+      setState(() => _global = g);
+    } catch (_) {
+      // 加载失败不阻塞订阅展示。
+    }
+  }
+
+  Future<void> _openGlobal() async {
+    final result = await showDialog<GlobalDefaults>(
+      context: context,
+      builder: (_) => _GlobalDefaultsDialog(initial: _global, sites: _sites),
+    );
+    if (result == null) return;
+    try {
+      final saved = await _api.updateGlobalDefaults(result);
+      if (!mounted) return;
+      setState(() => _global = saved);
+      _toast('全局默认已保存');
+    } catch (e) {
+      _toast('$e');
     }
   }
 
@@ -93,12 +121,53 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     }
   }
 
-  // 洗版开关：开启后持续寻找更高画质版本，命中更优则替换库中旧版（电影达顶级 Pri100 自动完成）。
+  // 洗版三态：单击 toggle 自定义值；长按重置跟随全局。
   Future<void> _toggleBestVersion(Subscription s) async {
+    final next = !(s.bestVersion ?? _global.bestVersion);
+    setState(() {
+      final i = _subs.indexWhere((x) => x.id == s.id);
+      if (i >= 0) _subs[i] = s.copyWith(bestVersion: next);
+    });
     try {
-      await _api.update(s.id, {'best_version': !s.bestVersion});
+      await _api.update(s.id, {'best_version': next});
+      if (mounted) _toast(next ? '已开启洗版' : '已关闭洗版');
+    } catch (e) {
+      if (mounted) await _load();
+      _toast('$e');
+    }
+  }
+
+  Future<void> _resetBestVersion(Subscription s) async {
+    try {
+      await _api.reset(s.id, ['best_version']);
       await _load();
-      _toast(s.bestVersion ? '已关闭洗版' : '已开启洗版（自动升级画质）');
+      _toast('洗版已恢复跟随全局');
+    } catch (e) {
+      _toast('$e');
+    }
+  }
+
+  // 评分保护三态（同洗版）。
+  Future<void> _toggleRatingGuard(Subscription s) async {
+    final next = !(s.enableRatingGuard ?? _global.enableRatingGuard);
+    setState(() {
+      final i = _subs.indexWhere((x) => x.id == s.id);
+      if (i >= 0) _subs[i] = s.copyWith(enableRatingGuard: next);
+    });
+    try {
+      await _api.update(s.id, {'enable_rating_guard': next});
+      if (mounted) _toast(next ? '已开启评分保护' : '已关闭评分保护');
+    } catch (e) {
+      if (mounted) await _load();
+      _toast('$e');
+    }
+  }
+
+  Future<void> _resetRatingGuard(Subscription s) async {
+    try {
+      await _api.reset(s.id, ['enable_rating_guard']);
+      await _load();
+      _toast('评分保护已恢复跟随全局');
     } catch (e) {
       _toast('$e');
     }
@@ -157,7 +226,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     );
   }
 
-  // 分辨率过滤：弹窗编辑（留空=不过滤；后端空=不改，故已设值无法在此清空，与 Web 一致）。
+  // 分辨率过滤：弹窗编辑（留空=不过滤；后端用字段存在性区分清空与不修改）。
   Future<void> _editResolution(Subscription s) async {
     final ctrl = TextEditingController(text: s.resolution);
     final v = await showDialog<String>(
@@ -243,6 +312,11 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
     return PTPageScaffold(
       title: '订阅',
       actions: [
+        PTBarAction(
+          icon: Icons.tune,
+          label: '全局设置',
+          onPressed: _openGlobal,
+        ),
         PTBarAction(
           icon: Icons.refresh,
           label: '刷新',
@@ -336,7 +410,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                     _chip(_statusText(s.status), _statusColor(s.status)),
                     if (s.resolution.isNotEmpty)
                       _chip(s.resolution, PTColors.primary2),
-                    if (s.bestVersion)
+                    if (s.bestVersion ?? _global.bestVersion)
                       _chip(
                         s.currentPriority > 0 ? '洗版 Pri${s.currentPriority}' : '洗版中',
                         PTColors.success,
@@ -374,18 +448,42 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         style: const TextStyle(fontSize: 12),
                       ),
                     ),
-                    FilledButton.tonalIcon(
-                      onPressed: () => _toggleBestVersion(s),
-                      style: FilledButton.styleFrom(
-                        foregroundColor: s.bestVersion ? PTColors.success : null,
+                    GestureDetector(
+                      onLongPress: () => _resetRatingGuard(s),
+                      child: FilledButton.tonalIcon(
+                        onPressed: () => _toggleRatingGuard(s),
+                        style: FilledButton.styleFrom(
+                          foregroundColor: (s.enableRatingGuard ?? _global.enableRatingGuard) ? PTColors.warn : null,
+                        ),
+                        icon: Icon(
+                          (s.enableRatingGuard ?? _global.enableRatingGuard) ? Icons.shield : Icons.shield_outlined,
+                          size: 16,
+                        ),
+                        label: Text(
+                          (s.enableRatingGuard ?? _global.enableRatingGuard)
+                              ? (s.enableRatingGuard == null ? '保护(全局)' : '保护中')
+                              : (s.enableRatingGuard == null ? '保护关(全局)' : '保护'),
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ),
-                      icon: Icon(
-                        s.bestVersion ? Icons.auto_awesome : Icons.auto_awesome_outlined,
-                        size: 16,
-                      ),
-                      label: Text(
-                        s.bestVersion ? '洗版中' : '洗版',
-                        style: const TextStyle(fontSize: 12),
+                    ),
+                    GestureDetector(
+                      onLongPress: () => _resetBestVersion(s),
+                      child: FilledButton.tonalIcon(
+                        onPressed: () => _toggleBestVersion(s),
+                        style: FilledButton.styleFrom(
+                          foregroundColor: (s.bestVersion ?? _global.bestVersion) ? PTColors.success : null,
+                        ),
+                        icon: Icon(
+                          (s.bestVersion ?? _global.bestVersion) ? Icons.auto_awesome : Icons.auto_awesome_outlined,
+                          size: 16,
+                        ),
+                        label: Text(
+                          (s.bestVersion ?? _global.bestVersion)
+                              ? (s.bestVersion == null ? '洗版(全局)' : '洗版中')
+                              : (s.bestVersion == null ? '洗版关(全局)' : '洗版'),
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ),
                     ),
                     FilledButton.tonalIcon(
@@ -467,6 +565,14 @@ const _promoOptions = <(String, String)>[
   ('2xdiscount', '2X+折扣'),
 ];
 
+// 促销值 → 中文标签（_promoOptions 查表；全局设置弹窗摘要用）。
+String promoLabel(String v) {
+  for (final o in _promoOptions) {
+    if (o.$1 == v) return o.$2;
+  }
+  return v;
+}
+
 // 促销类型多选对话框（CheckboxListTile 列表 + 确定/取消；空选=不限）。
 class _PromoTypeDialog extends StatefulWidget {
   final List<String> initial;
@@ -517,6 +623,129 @@ class _PromoTypeDialogState extends State<_PromoTypeDialog> {
         TextButton(
           onPressed: () => Navigator.pop(context, _selected.toList()),
           child: const Text('确定'),
+        ),
+      ],
+    );
+  }
+}
+
+// 全局订阅默认设置对话框：5 项（分辨率/评分保护/洗版/促销/站点）。保存返回 GlobalDefaults。
+class _GlobalDefaultsDialog extends StatefulWidget {
+  final GlobalDefaults initial;
+  final List<Site> sites;
+  const _GlobalDefaultsDialog({required this.initial, required this.sites});
+  @override
+  State<_GlobalDefaultsDialog> createState() => _GlobalDefaultsDialogState();
+}
+
+class _GlobalDefaultsDialogState extends State<_GlobalDefaultsDialog> {
+  late GlobalDefaults _d;
+  late final TextEditingController _resCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _d = widget.initial;
+    _resCtrl = TextEditingController(text: _d.resolution);
+  }
+
+  @override
+  void dispose() {
+    _resCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('全局订阅默认设置'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text(
+                  '未单独设置某项的订阅将使用此处的默认值（改后立即对所有未自定义订阅生效）。',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+              TextField(
+                controller: _resCtrl,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  labelText: '分辨率',
+                  hintText: '如 1080p/2160p，空=不限',
+                ),
+                onChanged: (v) => _d = _d.copyWith(resolution: v.trim()),
+              ),
+              SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('评分保护'),
+                value: _d.enableRatingGuard,
+                onChanged: (v) => setState(() => _d = _d.copyWith(enableRatingGuard: v)),
+              ),
+              SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('洗版'),
+                value: _d.bestVersion,
+                onChanged: (v) => setState(() => _d = _d.copyWith(bestVersion: v)),
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('促销类型'),
+                subtitle: Text(
+                  _d.promoTypes.isEmpty ? '不限' : _d.promoTypes.map(promoLabel).join('、'),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () async {
+                  final result = await showDialog<List<String>>(
+                    context: context,
+                    builder: (_) => _PromoTypeDialog(initial: _d.promoTypes),
+                  );
+                  if (result != null) setState(() => _d = _d.copyWith(promoTypes: result));
+                },
+              ),
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: const Text('参与站点'),
+                subtitle: Text(
+                  _d.siteIds.isEmpty ? '全部站点' : '${_d.siteIds.length} 个站点',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () {
+                  showSitePickerSheet(
+                    context,
+                    title: '全局默认参与站点',
+                    selected: [..._d.siteIds],
+                    options: widget.sites
+                        .map((s) => PTFilterOption<Object?>(value: s.id, label: s.name))
+                        .toList(),
+                    onChanged: (v) => setState(() => _d = _d.copyWith(siteIds: v)),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, _d),
+          child: const Text('保存'),
         ),
       ],
     );

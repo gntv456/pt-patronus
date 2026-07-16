@@ -316,7 +316,7 @@ func New(cfg *config.Config) (*App, error) {
 	filterStore := filter.NewStore(cfgOp)
 	filterEng := filter.NewEngine(filterStore)
 
-	subCh := chain.NewSubscribeChain(siteCh, dlCh, dlOp, subOp, noticeSvc, mediaCh, filterEng)
+	subCh := chain.NewSubscribeChain(siteCh, dlCh, dlOp, subOp, noticeSvc, mediaCh, filterEng, cfgOp)
 
 	hxpt := auth.NewHxptVIP(registry, "hxpt", cfg.AuthSiteURL, cfg.AuthVIPLevel, hc)
 

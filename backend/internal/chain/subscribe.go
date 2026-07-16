@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -26,22 +27,75 @@ import (
 // 全局 MediaQualityConfig.Enabled 或订阅 EnableRatingGuard 任一为真即对该订阅启用闸门；
 // 评分查询失败 fail-open（不阻断下载）。
 type SubscribeChain struct {
-	siteCh  *SiteChain
-	dlCh    *DownloadChain
-	dlOp    *oper.DownloaderOper
-	op      *oper.SubscriptionOper
-	notice  *notice.Service
-	mediaCh *MediaChain // 可空（测试/未装配时跳过评分闸门）
+	siteCh    *SiteChain
+	dlCh      *DownloadChain
+	dlOp      *oper.DownloaderOper
+	op        *oper.SubscriptionOper
+	notice    *notice.Service
+	mediaCh   *MediaChain    // 可空（测试/未装配时跳过评分闸门与海报补全）
 	filterEng *filter.Engine // 可空（未装配时跳过规则过滤，回退 first-match）
+	cfgOp     *oper.SystemConfigOper // 可空（测试/未装配时全局订阅默认取零值）
 }
 
-// NewSubscribeChain 构造。mediaCh 为多评分闸门用，可传 nil（评分保护置灰）；filterEng 为规则过滤用，可传 nil（回退 first-match）。
-func NewSubscribeChain(siteCh *SiteChain, dlCh *DownloadChain, dlOp *oper.DownloaderOper, op *oper.SubscriptionOper, ns *notice.Service, mediaCh *MediaChain, filterEng *filter.Engine) *SubscribeChain {
-	return &SubscribeChain{siteCh: siteCh, dlCh: dlCh, dlOp: dlOp, op: op, notice: ns, mediaCh: mediaCh, filterEng: filterEng}
+// NewSubscribeChain 构造。mediaCh 为多评分闸门用，可传 nil（评分保护置灰）；filterEng 为规则过滤用，可传 nil（回退 first-match）；
+// cfgOp 为全局订阅默认用，可传 nil（回退零值默认）。
+func NewSubscribeChain(siteCh *SiteChain, dlCh *DownloadChain, dlOp *oper.DownloaderOper, op *oper.SubscriptionOper, ns *notice.Service, mediaCh *MediaChain, filterEng *filter.Engine, cfgOp *oper.SystemConfigOper) *SubscribeChain {
+	return &SubscribeChain{siteCh: siteCh, dlCh: dlCh, dlOp: dlOp, op: op, notice: ns, mediaCh: mediaCh, filterEng: filterEng, cfgOp: cfgOp}
 }
 
 // List 全部订阅（handler 用）。
 func (c *SubscribeChain) List() ([]models.Subscription, error) { return c.op.List() }
+
+// ListWithPosters 列出订阅并补齐历史记录或其他创建入口遗漏的海报。
+// 精确来源详情优先，失败后才按标题跨源匹配；补图并发受限并写回数据库，后续列表无需重复请求。
+func (c *SubscribeChain) ListWithPosters(ctx context.Context) ([]models.Subscription, error) {
+	ss, err := c.op.List()
+	if err != nil || c.mediaCh == nil {
+		return ss, err
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, mediaSearchBudget)
+	defer cancel()
+	sem := make(chan struct{}, 4)
+	var wg sync.WaitGroup
+	for i := range ss {
+		if ss[i].PosterURL != "" {
+			continue
+		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			select {
+			case sem <- struct{}{}:
+				defer func() { <-sem }()
+			case <-ctx.Done():
+				return
+			}
+
+			posterURL := c.subscriptionPoster(ctx, &ss[i])
+			if posterURL == "" {
+				return
+			}
+			ss[i].PosterURL = posterURL
+			if err := c.op.SetPosterURL(ss[i].ID, posterURL); err != nil {
+				slog.Warn("subscribe poster backfill failed", "sub", ss[i].ID, "err", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	return ss, nil
+}
+
+func (c *SubscribeChain) subscriptionPoster(ctx context.Context, sub *models.Subscription) string {
+	if detail, err := c.mediaCh.Detail(ctx, sub.Source, sub.SourceID); err == nil && detail != nil && detail.PosterURL != "" {
+		return detail.PosterURL
+	}
+	posterURL, err := c.mediaCh.MatchPoster(ctx, sub.Title, sub.Year)
+	if err != nil {
+		return ""
+	}
+	return posterURL
+}
 
 // Delete 删除（handler 用）。
 func (c *SubscribeChain) Delete(id uint) error { return c.op.Delete(id) }
@@ -78,8 +132,14 @@ func (c *SubscribeChain) Create(ctx context.Context, s *models.Subscription) (*m
 	return s, nil
 }
 
-// Check 检查单个订阅：跨站搜 → 分辨率过滤 → 去重 → 推送 → 通知。返回本轮推送条数。
+// Check 检查单个订阅：读一次全局默认后委托 checkWithDefaults。返回本轮推送条数。
 func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (int, error) {
+	return c.checkWithDefaults(ctx, sub, loadGlobalDefaults(c.cfgOp))
+}
+
+// checkWithDefaults 检查单个订阅（用传入全局默认计算有效设置）：跨站搜 → 分辨率过滤 → 去重 → 推送 → 通知。
+func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subscription, gd GlobalDefaults) (int, error) {
+	eff := resolveEffective(sub, gd)
 	dlID := sub.DownloaderID
 	if dlID == 0 {
 		dlID = c.defaultDownloaderID()
@@ -92,12 +152,12 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 		}
 	}
 
-	// SiteIDs 非空则只在指定站点搜（SearchSites 已处理空=全部活跃站）。
-	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, []uint(sub.SiteIDs))
+	// SiteIDs 有效值（订阅空→全局默认；都空→全部活跃站，SearchSites 已处理）。
+	results := c.siteCh.SearchSites(ctx, sub.Title, sub.Category, eff.SiteIDs)
 
 	// 多评分低分保护：闸门开启则命中种子前先查聚合评分；未通过则本轮整体跳过 + 通知。
 	// 评分查询失败 fail-open（不阻断下载——外网评分服务故障不应让订阅停摆）。
-	if held, reason := c.ratingGate(ctx, sub); held {
+	if held, reason := c.ratingGate(ctx, sub, eff.EnableRatingGuard); held {
 		c.noticeOnce(ctx, sub, "订阅评分保护："+sub.Title,
 			fmt.Sprintf("未通过质量闸门：%s（本轮跳过）", reason), "warning")
 		if err := c.op.MarkChecked(sub.ID); err != nil {
@@ -122,15 +182,15 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 			all = append(all, t)
 		}
 	}
-	// 简单参数前置过滤：分辨率（始终生效，对齐 MP-2 TorrentHelper 两阶段前置过滤）。
-	if sub.Resolution != "" {
-		all = filterByResolution(all, sub.Resolution)
+	// 简单参数前置过滤：分辨率有效值（订阅空→全局默认；空=不过滤；对齐 MP-2 TorrentHelper 两阶段前置过滤）。
+	if eff.Resolution != "" {
+		all = filterByResolution(all, eff.Resolution)
 	}
-	// 促销类型多选：非空则只保留促销类型 ∈ sub.PromoTypes 的种（位于分辨率过滤后、规则引擎前）。
-	// 空 PromoTypes=不过滤（任何促销都接受，含非促销）。
-	if len(sub.PromoTypes) > 0 {
-		want := make(map[site.PromoType]struct{}, len(sub.PromoTypes))
-		for _, p := range sub.PromoTypes {
+	// 促销类型多选：有效值非空则只保留促销类型 ∈ eff.PromoTypes 的种（位于分辨率过滤后、规则引擎前）。
+	// 空=不过滤（任何促销都接受，含非促销）。
+	if len(eff.PromoTypes) > 0 {
+		want := make(map[site.PromoType]struct{}, len(eff.PromoTypes))
+		for _, p := range eff.PromoTypes {
 			want[site.PromoType(p)] = struct{}{}
 		}
 		kept := make([]site.Torrent, 0, len(all))
@@ -150,7 +210,7 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 	}
 	var ranked []candidate
 	if c.filterEng != nil {
-		groups := resolveFilterGroups(c.filterEng, sub)
+		groups := resolveFilterGroups(c.filterEng, sub, eff.BestVersion)
 		if len(groups) > 0 {
 			media := &filter.MediaInfo{Type: sub.Type, Category: sub.Category}
 			matched, err := c.filterEng.Filter(ctx, groups, all, media)
@@ -176,7 +236,7 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 	for _, cand := range ranked {
 		t, pri := cand.t, cand.pri
 		// 洗版门控：候选画质须严格优于已记录最优才推送（避免重复下同级/更低版）。
-		if sub.BestVersion {
+		if eff.BestVersion {
 			if sub.Type == "movie" {
 				if pri <= sub.CurrentPriority {
 					continue // 未更优
@@ -219,7 +279,7 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 			fmt.Sprintf("已从 %s 推送：%s", t.SiteName, t.Title), "success")
 		pushed++
 		// 洗版进度回填（内存，循环外统一持久化）。
-		if sub.BestVersion {
+		if eff.BestVersion {
 			if sub.Type == "movie" {
 				sub.CurrentPriority = pri
 			} else {
@@ -233,7 +293,7 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 		slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
 	}
 	// 洗版进度持久化 + 完成判定。
-	if sub.BestVersion && pushed > 0 {
+	if eff.BestVersion && pushed > 0 {
 		if err := c.op.SetBestVersionProgress(sub.ID, sub.CurrentPriority, saveEpisodePriority(epPri)); err != nil {
 			slog.Warn("subscribe SetBestVersionProgress failed", "sub", sub.ID, "err", err)
 		}
@@ -246,7 +306,7 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 		}
 	}
 	// 非洗版电影：推送过即视为完成（不再周期查）；剧集持续追新集，保持 subscribed。
-	if !sub.BestVersion && sub.Type == "movie" && pushed > 0 {
+	if !eff.BestVersion && sub.Type == "movie" && pushed > 0 {
 		if err := c.op.SetStatus(sub.ID, "completed"); err != nil {
 			slog.Warn("subscribe SetStatus completed failed", "sub", sub.ID, "err", err)
 		}
@@ -254,16 +314,17 @@ func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (i
 	return pushed, nil
 }
 
-// CheckAll cron 入口：遍历订阅中的订阅逐个检查（各自超时，互不影响）。
+// CheckAll cron 入口：遍历订阅中的订阅逐个检查（各自超时，互不影响）。全局默认只读一次。
 func (c *SubscribeChain) CheckAll(ctx context.Context) {
 	subs, err := c.op.ListActive()
 	if err != nil {
 		slog.Warn("subscribe list active failed", "err", err)
 		return
 	}
+	gd := loadGlobalDefaults(c.cfgOp)
 	for i := range subs {
 		sctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		n, err := c.Check(sctx, &subs[i])
+		n, err := c.checkWithDefaults(sctx, &subs[i], gd)
 		cancel()
 		if err != nil {
 			slog.Warn("subscribe check failed", "title", subs[i].Title, "err", err)
@@ -333,13 +394,13 @@ func torrentKey(url string) string {
 //   - 聚合查询失败 → (false, "") fail-open 放行（外网评分故障不应阻断下载）。
 //   - 查到但 summary.Passed==false → (true, reason) 拦截。
 //
-// 启用条件：全局 MediaQualityConfig.Enabled 或本订阅 EnableRatingGuard 任一为真。
-func (c *SubscribeChain) ratingGate(ctx context.Context, sub *models.Subscription) (bool, string) {
+// 启用条件：全局 MediaQualityConfig.Enabled 或本订阅有效 EnableRatingGuard（已回退全局订阅默认）任一为真。
+func (c *SubscribeChain) ratingGate(ctx context.Context, sub *models.Subscription, enableGuard bool) (bool, string) {
 	if c.mediaCh == nil {
 		return false, ""
 	}
 	cfg := c.mediaCh.LoadQuality()
-	if !cfg.Enabled && !sub.EnableRatingGuard {
+	if !cfg.Enabled && !enableGuard {
 		return false, ""
 	}
 	summary, err := c.mediaCh.AggregatedRating(ctx, sub.Title, sub.Year, sub.Type)
@@ -378,8 +439,8 @@ func parsePipeList(s string) []string {
 //   - 洗版订阅优先 BestVersionFilterRuleGroups（允许更严格画质门槛），空则回退普通绑定；
 //   - 普通订阅用 FilterGroups，空则全局 SubscribeFilterRuleGroups。
 // 空切片 = 不过滤（全部保留 PriOrder=0）。
-func resolveFilterGroups(eng *filter.Engine, sub *models.Subscription) []string {
-	if sub.BestVersion {
+func resolveFilterGroups(eng *filter.Engine, sub *models.Subscription, bestVersion bool) []string {
+	if bestVersion {
 		if names, _ := eng.Store().GetBindings(filter.KeyBestVersionFilterRuleGroups); len(names) > 0 {
 			return names
 		}

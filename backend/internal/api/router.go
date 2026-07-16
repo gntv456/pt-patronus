@@ -489,7 +489,12 @@ func Build(d *Deps) *gin.Engine {
 				subs.PUT("/:id", subH.Update)
 				subs.DELETE("/:id", subH.Delete)
 				subs.POST("/:id/check", subH.Check)
+				subs.POST("/:id/reset", subH.ResetFields) // 清空指定字段回退全局默认
 			}
+			// 全局订阅默认设置：独立前缀避 /subscriptions/:id 参数位冲突（Gin radix 静态+参数同层会 panic）。
+			// 未单独设置的订阅在 Check 时回退到此。
+			guarded.GET("/subscribe/settings", subH.GetGlobalSettings)
+			guarded.PUT("/subscribe/settings", subH.UpdateGlobalSettings)
 
 			// 工作流：可视化节点图引擎。静态路由 /actions、/runs 置于 /:id 前避免冲突。
 			wfH := v1.NewWorkflowHandler(d.Workflow)

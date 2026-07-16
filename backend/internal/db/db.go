@@ -15,6 +15,8 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+const subscriptionNullableBooleansMigrationKey = "MigrationSubscriptionNullableBooleansV1"
+
 // Open initializes the DB connection based on cfg.DBType and auto-migrates core models.
 // SQLite uses the pure-Go glebarez driver (no CGO), keeping the build single-binary.
 func Open(cfg *config.Config) (*gorm.DB, error) {
@@ -77,5 +79,40 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 	); err != nil {
 		return nil, fmt.Errorf("automigrate: %w", err)
 	}
+
+	if err := migrateSubscriptionNullableBooleans(db); err != nil {
+		return nil, err
+	}
 	return db, nil
+}
+
+// migrateSubscriptionNullableBooleans converts historical false values to the new
+// "inherit global default" state exactly once. New explicit false values must survive
+// subsequent application restarts.
+func migrateSubscriptionNullableBooleans(db *gorm.DB) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&models.SystemConfig{}).
+			Where("key = ?", subscriptionNullableBooleansMigrationKey).
+			Count(&count).Error; err != nil {
+			return fmt.Errorf("check subscription nullable migration: %w", err)
+		}
+		if count > 0 {
+			return nil
+		}
+
+		for _, col := range []string{"enable_rating_guard", "best_version"} {
+			if err := tx.Model(&models.Subscription{}).
+				Where(col+" = ?", false).
+				Update(col, nil).Error; err != nil {
+				return fmt.Errorf("migrate subscriptions.%s nullable: %w", col, err)
+			}
+		}
+		if err := tx.Create(&models.SystemConfig{
+			Key: subscriptionNullableBooleansMigrationKey, Value: "done",
+		}).Error; err != nil {
+			return fmt.Errorf("record subscription nullable migration: %w", err)
+		}
+		return nil
+	})
 }

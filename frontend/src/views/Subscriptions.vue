@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { subscribeApi, type Subscription } from '@/api/subscribe'
+import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subscribe'
+import { mediaApi } from '@/api/media'
 import { siteApi } from '@/api/site'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -12,6 +13,44 @@ const loading = ref(false)
 const checking = ref<number | null>(null)
 // 站点多选（参与订阅搜索）选项：活跃站点 {id,name}，复用 SiteFilterDialog。
 const sites = ref<{ id: number; name: string }[]>([])
+
+// 全局订阅默认设置：未单独设置某项的订阅回退到此（运行时回退）。
+const globalDefaults = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false })
+const globalOpen = ref(false)
+const globalForm = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false })
+const savingGlobal = ref(false)
+
+async function loadGlobalDefaults() {
+  try {
+    globalDefaults.value = await subscribeApi.getGlobalDefaults()
+  } catch {
+    // 加载失败不阻塞订阅展示，「跟随全局」提示退化为不显示。
+  }
+}
+
+function openGlobal() {
+  const g = globalDefaults.value
+  globalForm.value = { ...g, promo_types: [...g.promo_types], site_ids: [...g.site_ids] }
+  globalOpen.value = true
+}
+
+async function saveGlobal() {
+  savingGlobal.value = true
+  try {
+    globalDefaults.value = await subscribeApi.updateGlobalDefaults(globalForm.value)
+    globalOpen.value = false
+    ElMessage.success('全局默认已保存')
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '保存失败')
+  } finally {
+    savingGlobal.value = false
+  }
+}
+
+// 有效值：订阅自定义优先，空/null 回退全局默认。
+function effRatingGuard(s: Subscription) { return s.enable_rating_guard ?? globalDefaults.value.enable_rating_guard }
+function effBestVersion(s: Subscription) { return s.best_version ?? globalDefaults.value.best_version }
+function promoLabel(v: string) { return PROMO_OPTIONS.find((o) => o.value === v)?.label || v }
 
 async function loadSites() {
   try {
@@ -26,11 +65,29 @@ async function load() {
   loading.value = true
   try {
     list.value = await subscribeApi.list()
+    void fillMissingPosters(list.value)
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '加载失败')
   } finally {
     loading.value = false
   }
+}
+
+// 兼容尚未升级后端时创建的旧订阅：页面端也按标题补图，最多同时请求 4 个。
+async function fillMissingPosters(items: Subscription[]) {
+  const pending = items.filter((s) => !s.poster_url)
+  let next = 0
+  const worker = async () => {
+    while (next < pending.length) {
+      const s = pending[next++]
+      try {
+        s.poster_url = await mediaApi.poster(s.title, s.year)
+      } catch {
+        // 单张补图失败不影响订阅列表和其他海报。
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(4, pending.length) }, worker))
 }
 
 async function checkNow(s: Subscription) {
@@ -69,22 +126,47 @@ async function setResolution(s: Subscription) {
   }
 }
 
+// 三态开关：设订阅自定义值（true/false）；恢复跟随全局走 reset。
 async function setRatingGuard(s: Subscription, val: boolean) {
+  const prev = s.enable_rating_guard
+  s.enable_rating_guard = val
   try {
     await subscribeApi.update(s.id, { enable_rating_guard: val })
-    ElMessage.success(val ? '已开启评分保护' : '已关闭评分保护')
   } catch (e: unknown) {
-    s.enable_rating_guard = !val // 回滚
+    s.enable_rating_guard = prev
+    ElMessage.error((e as Error).message || '更新失败')
+  }
+}
+async function resetRatingGuard(s: Subscription) {
+  const prev = s.enable_rating_guard
+  s.enable_rating_guard = null
+  try {
+    await subscribeApi.reset(s.id, ['enable_rating_guard'])
+    ElMessage.success('评分保护已恢复跟随全局')
+  } catch (e: unknown) {
+    s.enable_rating_guard = prev
     ElMessage.error((e as Error).message || '更新失败')
   }
 }
 
 async function setBestVersion(s: Subscription, val: boolean) {
+  const prev = s.best_version
+  s.best_version = val
   try {
     await subscribeApi.update(s.id, { best_version: val })
-    ElMessage.success(val ? '已开启洗版（自动升级画质）' : '已关闭洗版')
   } catch (e: unknown) {
-    s.best_version = !val // 回滚
+    s.best_version = prev
+    ElMessage.error((e as Error).message || '更新失败')
+  }
+}
+async function resetBestVersion(s: Subscription) {
+  const prev = s.best_version
+  s.best_version = null
+  try {
+    await subscribeApi.reset(s.id, ['best_version'])
+    ElMessage.success('洗版已恢复跟随全局')
+  } catch (e: unknown) {
+    s.best_version = prev
     ElMessage.error((e as Error).message || '更新失败')
   }
 }
@@ -151,15 +233,63 @@ function fmtTime(t?: string) {
 onMounted(() => {
   load()
   loadSites()
+  loadGlobalDefaults()
 })
 </script>
 
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">订阅</h2>
-      <span class="text-muted hint">cron 自动跨站搜索，命中即推送到默认下载器并通知。点此 <router-link to="/search">搜索</router-link> → 影视详情页订阅。</span>
+      <div class="head-left">
+        <h2 class="title">订阅</h2>
+        <span class="text-muted hint">cron 自动跨站搜索，命中即推送到默认下载器并通知。点此 <router-link to="/search">搜索</router-link> → 影视详情页订阅。</span>
+      </div>
+      <el-button class="global-btn" @click="openGlobal">⚙ 全局订阅设置</el-button>
     </div>
+
+    <el-dialog v-model="globalOpen" title="全局订阅默认设置" width="540px">
+      <div class="text-muted small" style="margin-bottom: 12px;">
+        未单独设置某项的订阅将使用此处的默认值（改后立即对所有未自定义订阅生效）。
+      </div>
+      <div class="gd-row">
+        <span class="small gd-label">分辨率</span>
+        <el-input v-model="globalForm.resolution" size="small" style="width: 160px" placeholder="不限" />
+        <span class="small text-muted">如 1080p/2160p，空=不限</span>
+      </div>
+      <div class="gd-row">
+        <span class="small gd-label">评分保护</span>
+        <el-switch v-model="globalForm.enable_rating_guard" size="small" />
+        <span class="small text-muted">开启后低分命中跳过推送</span>
+      </div>
+      <div class="gd-row">
+        <span class="small gd-label">洗版</span>
+        <el-switch v-model="globalForm.best_version" size="small" />
+        <span class="small text-muted">持续寻找更高画质版本</span>
+      </div>
+      <div class="gd-row">
+        <span class="small gd-label">促销类型</span>
+        <el-select v-model="globalForm.promo_types" multiple collapse-tags collapse-tags-tooltip size="small" style="width: 240px" placeholder="不限">
+          <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+        </el-select>
+        <span class="small text-muted">空=不限</span>
+      </div>
+      <div class="gd-row">
+        <span class="small gd-label">参与站点</span>
+        <SiteFilterDialog
+          :model-value="globalForm.site_ids"
+          :sites="sites"
+          title="全局默认参与站点"
+          @update:model-value="(ids: number[]) => (globalForm.site_ids = ids)"
+        >
+          <span class="small">{{ globalForm.site_ids.length ? `${globalForm.site_ids.length} 个站点` : '全部站点' }}</span>
+        </SiteFilterDialog>
+        <span class="small text-muted">空=全部活跃站点</span>
+      </div>
+      <template #footer>
+        <el-button @click="globalOpen = false">取消</el-button>
+        <el-button type="primary" :loading="savingGlobal" @click="saveGlobal">保存</el-button>
+      </template>
+    </el-dialog>
 
     <div v-loading="loading" class="card glass">
       <div v-if="list.length" class="subs">
@@ -184,26 +314,37 @@ onMounted(() => {
                 placeholder="不限"
                 @change="setResolution(s)"
               />
-              <span class="small text-muted">（如 1080p / 2160p，留空=不限）</span>
+              <span v-if="!s.resolution && globalDefaults.resolution" class="small text-muted">（跟随全局：{{ globalDefaults.resolution }}）</span>
+              <span v-else class="small text-muted">（如 1080p / 2160p，留空=不限）</span>
             </div>
             <div class="res-row">
               <span class="small">评分保护：</span>
               <el-switch
-                :model-value="s.enable_rating_guard"
+                :model-value="effRatingGuard(s)"
+                :disabled="s.enable_rating_guard === null"
                 size="small"
                 @update:model-value="(v: any) => setRatingGuard(s, !!v)"
               />
-              <span class="small text-muted">（开启后低分命中跳过推送；阈值见「媒体质量」页）</span>
+              <span v-if="s.enable_rating_guard === null" class="small text-muted">（跟随全局：{{ globalDefaults.enable_rating_guard ? '开' : '关' }}）</span>
+              <template v-else>
+                <el-button link type="primary" class="small" @click="resetRatingGuard(s)">恢复全局</el-button>
+                <span class="small text-muted">（阈值见「媒体质量」页）</span>
+              </template>
             </div>
             <div class="res-row">
               <span class="small">洗版：</span>
               <el-switch
-                :model-value="s.best_version"
+                :model-value="effBestVersion(s)"
+                :disabled="s.best_version === null"
                 size="small"
                 @update:model-value="(v: any) => setBestVersion(s, !!v)"
               />
-              <span class="small text-muted">（开启后持续寻找更高画质版本，自动替换库中旧版；电影达顶级自动完成）</span>
-              <span v-if="s.best_version && s.type === 'movie' && s.current_priority" class="chip res">
+              <span v-if="s.best_version === null" class="small text-muted">（跟随全局：{{ globalDefaults.best_version ? '开' : '关' }}）</span>
+              <template v-else>
+                <el-button link type="primary" class="small" @click="resetBestVersion(s)">恢复全局</el-button>
+                <span class="small text-muted">（持续寻找更高画质版本替换旧版）</span>
+              </template>
+              <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="chip res">
                 Pri {{ s.current_priority }}
               </span>
             </div>
@@ -221,7 +362,8 @@ onMounted(() => {
               >
                 <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
-              <span class="small text-muted">（空=不限；只推送所选促销类型，含免费/2X/折扣等）</span>
+              <span v-if="!s.promo_types.length && globalDefaults.promo_types.length" class="small text-muted">（跟随全局：{{ globalDefaults.promo_types.map(promoLabel).join('、') }}）</span>
+              <span v-else class="small text-muted">（空=不限；只推送所选促销类型）</span>
             </div>
             <div class="res-row">
               <span class="small">参与站点：</span>
@@ -231,9 +373,10 @@ onMounted(() => {
                 title="参与订阅的站点"
                 @update:model-value="(ids: number[]) => setSiteIds(s, ids)"
               >
-                <span class="small">{{ s.site_ids.length ? `${s.site_ids.length} 个站点` : '全部站点' }}</span>
+                <span class="small">{{ s.site_ids.length ? `${s.site_ids.length} 个站点` : (globalDefaults.site_ids.length ? `跟随全局 ${globalDefaults.site_ids.length} 站` : '全部站点') }}</span>
               </SiteFilterDialog>
-              <span class="small text-muted">（空=全部活跃站点）</span>
+              <span v-if="!s.site_ids.length && globalDefaults.site_ids.length" class="small text-muted">（空=用全局默认站点）</span>
+              <span v-else class="small text-muted">（空=全部活跃站点）</span>
             </div>
             <div class="actions">
               <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">立即检查</el-button>
@@ -259,13 +402,39 @@ onMounted(() => {
 
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 16px; }
-.head { display: flex; flex-direction: column; gap: 4px; }
+.head { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.head-left { display: flex; flex-direction: column; gap: 4px; }
+.global-btn { flex: none; }
+.gd-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.gd-label { width: 64px; flex: none; }
 .title { margin: 4px 0; font-size: 22px; font-weight: 700; }
 .hint { font-size: 13px; }
 .card { padding: 18px; min-height: 160px; }
-.subs { display: flex; flex-direction: column; gap: 14px; }
-.sub { display: flex; gap: 14px; padding: 14px; border-radius: 12px; background: var(--surface-muted); }
-.poster { width: 72px; height: 104px; flex: none; border-radius: 8px; overflow: hidden; background: var(--surface-muted); }
+.subs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 410px), 450px));
+  gap: 14px;
+  align-items: start;
+}
+.sub {
+  display: flex;
+  width: 100%;
+  max-width: 450px;
+  box-sizing: border-box;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+.poster {
+  width: 92px;
+  aspect-ratio: 2 / 3;
+  align-self: flex-start;
+  flex: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
 .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .s-title { font-weight: 700; font-size: 16px; }
@@ -278,4 +447,10 @@ onMounted(() => {
 .res-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
 .empty { padding: 40px; text-align: center; }
+
+@media (max-width: 640px) {
+  .card { padding: 12px; }
+  .sub { gap: 12px; padding: 12px; }
+  .poster { width: 76px; }
+}
 </style>

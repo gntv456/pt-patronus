@@ -60,6 +60,11 @@ func (o *SubscriptionOper) Update(s *models.Subscription) error {
 	return o.db.Save(s).Error
 }
 
+// SetPosterURL 仅回填海报，避免列表补图时用 Save 覆盖订阅的并发编辑。
+func (o *SubscriptionOper) SetPosterURL(id uint, posterURL string) error {
+	return o.db.Model(&models.Subscription{}).Where("id = ?", id).Update("poster_url", posterURL).Error
+}
+
 // Delete 删除订阅及其命中记录。
 func (o *SubscriptionOper) Delete(id uint) error {
 	return o.db.Transaction(func(tx *gorm.DB) error {

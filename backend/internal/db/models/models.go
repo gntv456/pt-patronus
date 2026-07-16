@@ -417,7 +417,8 @@ type Subscription struct {
 	SavePath     string `gorm:"size:255" json:"save_path"`
 	// 多评分闸门：开启后命中种子前先查聚合评分，低于全局阈值（媒体质量配置）则跳过推送 + 通知。
 	// 与全局 MediaQualityConfig.Enabled 取并集（任一为真即启用该订阅的评分闸门）。
-	EnableRatingGuard bool `gorm:"default:false" json:"enable_rating_guard"`
+	// *bool 三态：nil=未设置（Check 时回退全局订阅默认 SubscribeGlobalDefaults）；true/false=订阅自定义。
+	EnableRatingGuard *bool `json:"enable_rating_guard"`
 	// FilterGroups 绑定的过滤规则组名（管道分隔，空=用全局 SubscribeFilterRuleGroups）。
 	FilterGroups string `gorm:"size:255" json:"filter_groups"`
 	// PromoTypes 接受的促销类型多选（free/2xfree/2x/discount/2xdiscount，见 site.PromoType）；
@@ -430,7 +431,8 @@ type Subscription struct {
 	//   电影：候选 PriOrder 须严格 > CurrentPriority 才推送，达 100 视为洗版完成；
 	//   剧集：按 SxxExx 跟踪每集当前最优 PriOrder（EpisodePriority JSON），候选至少改善一集才推送；
 	//   BestVersionFull：整季包优先模式。
-	BestVersion     bool       `gorm:"default:false" json:"best_version"`
+	// *bool 三态：nil=未设置（Check 时回退全局订阅默认 SubscribeGlobalDefaults）；true/false=订阅自定义。
+	BestVersion     *bool      `json:"best_version"`
 	BestVersionFull bool       `gorm:"default:false" json:"best_version_full"`
 	CurrentPriority int        `gorm:"default:0" json:"current_priority"`
 	EpisodePriority string     `gorm:"type:text" json:"episode_priority"`
@@ -444,6 +446,14 @@ type Subscription struct {
 // string 不适合数字数组）。MarshalJSON 保证空值序列化为 [] 而非 null（对齐 go-nil-slice-json-null 教训，
 // 免去前端逐处 ?? [] 防御）。
 type IntSlice []uint
+
+// MarshalJSON 保证 nil/空切片对 API 均输出 []，避免前端数组字段出现 null。
+func (s IntSlice) MarshalJSON() ([]byte, error) {
+	if len(s) == 0 {
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]uint(s))
+}
 
 // Value 写入 DB：空切片存 "[]"，否则 JSON 文本。
 func (s IntSlice) Value() (driver.Value, error) {
@@ -471,6 +481,14 @@ func (s *IntSlice) Scan(v interface{}) error {
 // StringSlice — string 切片自定义类型：DB 存 JSON 文本（"[]"/"[\"free\",\"2x\"]"），JSON/API
 // 暴露为 string 数组。用于 Subscription.PromoTypes 等枚举多选字段。空值序列化为 []（同 IntSlice）。
 type StringSlice []string
+
+// MarshalJSON 保证 nil/空切片对 API 均输出 []，避免前端数组字段出现 null。
+func (s StringSlice) MarshalJSON() ([]byte, error) {
+	if len(s) == 0 {
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]string(s))
+}
 
 // Value 写入 DB：空切片存 "[]"，否则 JSON 文本。
 func (s StringSlice) Value() (driver.Value, error) {

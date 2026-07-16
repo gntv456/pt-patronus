@@ -114,6 +114,14 @@ func TestMTeamExamineMetrics(t *testing.T) {
 	}
 }
 
+func TestMTeamExamineAcceptsNumericCode(t *testing.T) {
+	body := []byte(`{"code":0,"data":[{"name":"numeric-code","uploadTarget":"1073741824","uploaded":"1073741824"}]}`)
+	tasks := parseMTeamExamine(body)
+	if len(tasks) != 1 || tasks[0].Name != "numeric-code" {
+		t.Fatalf("tasks=%+v", tasks)
+	}
+}
+
 // TestMTeamExamineTimeString 馒头考核时间为 "2006-01-02 15:04:05" 字符串（同 freeleech 端点），
 // 必须经 ParseInLocation 解析；旧实现走数字拼接会把 "2026-01-02 03:04:05" 拼成
 // 20260102030405ms（≈公元 2600 年），导致前端考核截止时间显示错乱。

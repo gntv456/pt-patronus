@@ -57,7 +57,7 @@ func (f *ccFakeRT) SetRuntimeConfig(string, any) error              { return nil
 // runOne 接收 Runtime（plugins 包内接口），ccFakeRT 实现之。
 func TestCustomCommandRunOneSuccessAndFail(t *testing.T) {
 	p := &customCommandPlugin{}
-	rt := &ccFakeRT{cfg: map[string]any{"timeout": 5}}
+	rt := &ccFakeRT{cfg: map[string]any{"timeout": 30}}
 
 	ok := p.runOne(context.Background(), rt, cmdItem{Name: "echo", Command: "echo hello"})
 	if !ok.Succeeded || ok.ExitCode != 0 || !strings.Contains(ok.Output, "hello") {

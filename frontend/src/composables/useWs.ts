@@ -20,6 +20,24 @@ export interface TorrentSnapshot {
   stats?: { dl_rate: number; up_rate: number } // qb 零请求取；tr 留空
 }
 
+// 单下载器本轮增量（对齐后端 ws.DownloaderDiff）。
+export interface DownloaderDiff {
+  downloader_id: number
+  name?: string // 仅变化时带
+  error?: string // 后端始终带（空串=无错），覆盖式
+  stats?: { dl_rate: number; up_rate: number }
+  added?: Torrent[] // 新 hash
+  changed?: Torrent[] // 字段变化（整条替换）
+  removed?: string[] // 删除的 hash
+}
+
+// 本轮所有下载器增量（对齐后端 ws.TorrentDiff）。
+export interface TorrentDiff {
+  added?: TorrentSnapshot[] // 新增整个下载器
+  removed?: number[] // 删除的 downloader_id
+  changed?: DownloaderDiff[]
+}
+
 // 模块级单例：同一时刻一个 WS 连接服务所有订阅者（对齐 mobile WsClient 单例）。
 const connected = ref(false)
 const hrAlerts = ref<HRAlert[]>([])
@@ -32,22 +50,69 @@ let retry = 0
 let stopped = false
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
+// 增量协议状态（?proto=inc 协商成功后用）。
+let lastSeq = 0 // 最近一次 torrents_full/diff 的 seq
+let dirty = false // 丢帧标记：true 时暂停 apply，等下个 torrents_full 重同步
+
 function clearState() {
   hrAlerts.value = []
   cookieAlerts.value = []
   torrents.value = []
   notices.value = []
   connected.value = false
+  lastSeq = 0
+  dirty = false
+}
+
+// applyDiff 把一轮增量合并到当前快照，返回新数组（触发 Vue 响应式）。纯函数，便于单测。
+export function applyDiff(cur: TorrentSnapshot[], diff: TorrentDiff): TorrentSnapshot[] {
+  const byId = new Map<number, TorrentSnapshot>(
+    cur.map((s) => [s.downloader_id, { ...s, torrents: [...s.torrents] }]),
+  )
+  for (const id of diff.removed ?? []) byId.delete(id)
+  for (const s of diff.added ?? []) byId.set(s.downloader_id, { ...s, torrents: [...s.torrents] })
+  for (const dd of diff.changed ?? []) {
+    const s = byId.get(dd.downloader_id)
+    if (!s) continue
+    if (dd.name !== undefined) s.name = dd.name
+    if ('error' in dd) s.error = dd.error ?? ''
+    if (dd.stats !== undefined) s.stats = dd.stats
+    const tmap = new Map<string, Torrent>(s.torrents.map((t) => [t.hash, t]))
+    for (const h of dd.removed ?? []) tmap.delete(h)
+    for (const t of dd.added ?? []) tmap.set(t.hash, t)
+    for (const t of dd.changed ?? []) tmap.set(t.hash, t) // 整条替换
+    s.torrents = [...tmap.values()]
+    byId.set(dd.downloader_id, s)
+  }
+  return [...byId.values()]
 }
 
 function onMessage(raw: MessageEvent) {
   try {
-    const j = JSON.parse(raw.data as string) as { type?: string; data?: unknown }
+    const j = JSON.parse(raw.data as string) as { type?: string; seq?: number; data?: unknown }
     const list = Array.isArray(j.data) ? j.data : []
     switch (j.type) {
-      case 'torrents':
+      case 'torrents': // legacy 全量（未协商增量的旧前端，或后端回落）
         torrents.value = list as TorrentSnapshot[]
+        lastSeq = 0
+        dirty = false
         break
+      case 'torrents_full': // inc 首帧 / 周期重同步
+        torrents.value = list as TorrentSnapshot[]
+        lastSeq = j.seq ?? 0
+        dirty = false
+        break
+      case 'torrents_diff': { // inc 稳态增量
+        if (dirty) break // 丢帧中：等下个 full 重同步
+        const seq = j.seq ?? 0
+        if (seq !== lastSeq + 1) {
+          dirty = true // 不连号=丢帧
+          break
+        }
+        lastSeq = seq
+        torrents.value = applyDiff(torrents.value, (j.data ?? {}) as TorrentDiff)
+        break
+      }
       case 'hr-alert':
         hrAlerts.value = list as HRAlert[]
         break
@@ -92,7 +157,7 @@ async function connect() {
   // await 期间若已 disconnect（stopped 被置 true），放弃本次连接，避免登出后又连上。
   if (stopped) return
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = `${proto}://${location.host}/api/v1/ws?ticket=${encodeURIComponent(ticket)}`
+  const url = `${proto}://${location.host}/api/v1/ws?ticket=${encodeURIComponent(ticket)}&proto=inc`
   try {
     ws = new WebSocket(url)
     retry = 0

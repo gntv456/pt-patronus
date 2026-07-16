@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"context"
 	"fmt"
 
 	"golang.org/x/sync/singleflight"
@@ -23,4 +24,23 @@ func sfDo[V any](g *singleflight.Group, key string, fn func() (V, error)) (V, er
 		return vv, nil
 	}
 	return *new(V), fmt.Errorf("singleflight: unexpected type %T", v)
+}
+
+// sfDoContext coalesces reads while allowing a waiting caller to honor its own deadline.
+func sfDoContext[V any](ctx context.Context, g *singleflight.Group, key string, fn func() (V, error)) (V, error) {
+	result := g.DoChan(key, func() (interface{}, error) { return fn() })
+	select {
+	case r := <-result:
+		if r.Err != nil {
+			var zero V
+			return zero, r.Err
+		}
+		if value, ok := r.Val.(V); ok {
+			return value, nil
+		}
+		return *new(V), fmt.Errorf("singleflight: unexpected type %T", r.Val)
+	case <-ctx.Done():
+		var zero V
+		return zero, ctx.Err()
+	}
 }

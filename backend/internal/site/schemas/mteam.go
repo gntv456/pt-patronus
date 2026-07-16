@@ -32,9 +32,9 @@ func (m *MTeam) Schema() string { return "mteam" }
 func (m *MTeam) Name() string  { return "site.mteam" }
 func (m *MTeam) Priority() int { return 100 }
 
-// mtEnvelope 是 MTeam 统一响应信封：Code=="0"（字符串）表示成功。
+// mtEnvelope 是 MTeam 统一响应信封：Code 兼容字符串 "0" 与数字 0。
 type mtEnvelope struct {
-	Code    string          `json:"code"`
+	Code    json.Number     `json:"code"`
 	Message string          `json:"message"`
 	Data    json.RawMessage `json:"data"`
 }
@@ -346,11 +346,12 @@ func (m *MTeam) mtRequest(ctx context.Context, baseURL, token, path string, body
 	if err := json.Unmarshal(resp.Body, &env); err != nil {
 		return nil, fmt.Errorf("parse mteam response: %w", err)
 	}
-	if env.Code != "0" {
-		if isMTAuthError(env.Code, env.Message) {
+	code := env.Code.String()
+	if code != "0" {
+		if isMTAuthError(code, env.Message) {
 			return nil, site.ErrNotLoggedIn
 		}
-		return nil, fmt.Errorf("mteam api error: code=%s msg=%s", env.Code, env.Message)
+		return nil, fmt.Errorf("mteam api error: code=%s msg=%s", code, env.Message)
 	}
 	return env.Data, nil
 }
@@ -384,8 +385,8 @@ func (m *MTeam) GenDlToken(ctx context.Context, baseURL, apiKey, torrentID strin
 	if err := json.Unmarshal(resp.Body, &env); err != nil {
 		return "", fmt.Errorf("parse genDlToken response: %w", err)
 	}
-	if env.Code != "0" {
-		return "", fmt.Errorf("genDlToken error: code=%s msg=%s", env.Code, env.Message)
+	if env.Code.String() != "0" {
+		return "", fmt.Errorf("genDlToken error: code=%s msg=%s", env.Code.String(), env.Message)
 	}
 	var dlURL string
 	if err := json.Unmarshal(env.Data, &dlURL); err != nil {

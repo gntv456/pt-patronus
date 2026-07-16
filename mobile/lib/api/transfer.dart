@@ -161,5 +161,13 @@ class TransferApi {
 
   Future<void> deleteHistory(int id) => _api.delete('/transfer/history/$id');
 
+  // POST /transfer/history/batch-delete {ids} → {deleted, failed}
+  Future<Map<String, dynamic>> batchDeleteHistory(List<int> ids) =>
+      _api.post('/transfer/history/batch-delete', {'ids': ids});
+
+  // POST /transfer/history/clear-failed → {deleted}
+  Future<Map<String, dynamic>> clearFailedHistory() =>
+      _api.post('/transfer/history/clear-failed', {});
+
   Future<void> sweep() => _api.post('/transfer/sweep', {});
 }

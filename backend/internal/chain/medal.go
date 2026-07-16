@@ -217,7 +217,7 @@ func (c *MedalChain) medalSite(ctx context.Context, sem chan struct{}, s *models
 		return e.items, ""
 	}
 	// miss → singleflight 合并同 siteID 并发回源。
-	res, _ := sfDo(&c.sf, strconv.Itoa(int(s.ID)), func() (medalSFResult, error) {
+	res, waitErr := sfDoContext(ctx, &c.sf, strconv.Itoa(int(s.ID)), func() (medalSFResult, error) {
 		// double-check 内存：leader 完成后紧随的 caller 重跑 fn，缓存可能已满。
 		c.mu.Lock()
 		ce, ok := c.cache[s.ID]
@@ -236,14 +236,19 @@ func (c *MedalChain) medalSite(ctx context.Context, sem chan struct{}, s *models
 		items, errMsg := c.fetchMedalSite(ctx, sem, s, def, adapter)
 		return medalSFResult{items: items, errMsg: errMsg}, nil
 	})
+	if waitErr != nil {
+		return nil, waitErr.Error()
+	}
 	return res.items, res.errMsg
 }
 
 // fetchMedalSite 网络抓取勋章墙（FetchShop + discoverUID + FetchOwned）→ 合并 → BatchUpsert →
 // 价格变动通知 → 内存缓存。sem 非空时占一个槽（聚合级并发闸；nil 表示不限，单站用）。
 func (c *MedalChain) fetchMedalSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter medalwall.Adapter) ([]medalwall.Item, string) {
+	if err := acquireSemaphore(ctx, sem); err != nil {
+		return nil, err.Error()
+	}
 	if sem != nil {
-		sem <- struct{}{}
 		defer func() { <-sem }()
 	}
 	siteCtx, cancel := context.WithTimeout(ctx, medalTimeout)

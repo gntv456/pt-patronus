@@ -195,6 +195,7 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 			opts := downloader.AddOptions{
 				URL: cd.torrURL, Category: sub.Category,
 				Tags: parseCsv(sub.Tags), SavePath: sub.SavePath,
+				SiteID: sub.SiteID,
 			}
 			if err := c.dlCh.Add(ctx, dlID, opts); err != nil {
 				slog.Warn("rss auto download failed", "sub", sub.ID, "title", cd.title, "err", err)

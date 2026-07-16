@@ -14,7 +14,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -52,6 +55,54 @@ type Douban struct {
 	secret string // DOUBAN_SECRET：自定义签名密钥；空则用公开默认。非空同时把签名切为主策略
 	base   string
 	hc     *http.Client
+}
+
+// doubanStringList accepts both legacy arrays and current Frodo scalar strings.
+// For example, pubdate changed from ["2026-07-03"] to "2026-07-03(中国大陆)".
+type doubanStringList []string
+
+func (v *doubanStringList) UnmarshalJSON(data []byte) error {
+	var list []string
+	if err := json.Unmarshal(data, &list); err == nil {
+		*v = list
+		return nil
+	}
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	if value == "" {
+		*v = nil
+		return nil
+	}
+	*v = []string{value}
+	return nil
+}
+
+type doubanYear int
+
+func (v *doubanYear) UnmarshalJSON(data []byte) error {
+	var number int
+	if err := json.Unmarshal(data, &number); err == nil {
+		*v = doubanYear(number)
+		return nil
+	}
+	var value string
+	if err := json.Unmarshal(data, &value); err != nil {
+		return err
+	}
+	*v = doubanYear(yearFromDate(value))
+	return nil
+}
+
+type doubanDetailPerson struct {
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	Character string `json:"character"`
+	Avatar    string `json:"avatar"`
+	Avatars   struct {
+		Large string `json:"large"`
+	} `json:"avatars"`
 }
 
 // NewDouban 构造。appKey 为空用公开微信默认 apiKey；secret 为空时签名策略用公开默认 secret
@@ -160,7 +211,9 @@ type doubanStatusError struct {
 	body   string
 }
 
-func (e *doubanStatusError) Error() string { return fmt.Sprintf("douban %s: status %d", e.path, e.status) }
+func (e *doubanStatusError) Error() string {
+	return fmt.Sprintf("douban %s: status %d", e.path, e.status)
+}
 
 var errDoubanRateLimited = errors.New("douban rate limited")
 
@@ -365,10 +418,11 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 		return nil, fmt.Errorf("douban: bad id %q", id)
 	}
 	var raw struct {
-		Title         string `json:"title"`
-		OriginalTitle string `json:"original_title"`
-		Year          string `json:"year"`
-		Summary       string `json:"summary"`
+		Title         string     `json:"title"`
+		OriginalTitle string     `json:"original_title"`
+		Year          doubanYear `json:"year"`
+		Summary       string     `json:"summary"`
+		Intro         string     `json:"intro"`
 		Rating        struct {
 			Value float64 `json:"value"`
 			Count int     `json:"count"`
@@ -376,19 +430,19 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 		Images struct {
 			Large string `json:"large"`
 		} `json:"images"`
-		Genres    []string `json:"genres"`
-		PubDate   []string `json:"pubdate"`
-		Countries []string `json:"countries"`
-		Durations []string `json:"durations"` // 如 "110分钟"
+		Pic struct {
+			Large string `json:"large"`
+		} `json:"pic"`
+		Genres    []string         `json:"genres"`
+		PubDate   doubanStringList `json:"pubdate"`
+		Countries []string         `json:"countries"`
+		Durations []string         `json:"durations"` // 如 "110分钟"
 		Directors []struct {
 			Name string `json:"name"`
 		} `json:"directors"`
-		Casts []struct {
-			Name    string `json:"name"`
-			Avatars struct {
-				Large string `json:"large"`
-			} `json:"avatars"`
-		} `json:"casts"`
+		Casts  []doubanDetailPerson `json:"casts"`  // legacy Frodo response
+		Actors []doubanDetailPerson `json:"actors"` // current Frodo response
+		AKA    []string             `json:"aka"`    // 又名（跨语言标题匹配用）
 	}
 	if err := d.get(ctx, "/"+mtype+"/"+sid, nil, &raw); err != nil {
 		return nil, err
@@ -401,22 +455,152 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	if len(raw.PubDate) > 0 {
 		date = raw.PubDate[0]
 	}
+	posterURL := raw.Images.Large
+	if posterURL == "" {
+		posterURL = raw.Pic.Large
+	}
+	overview := raw.Intro
+	if overview == "" {
+		overview = raw.Summary
+	}
 	mi := &MediaInfo{
 		Source: "douban", SourceID: id, Title: raw.Title,
-		OriginalTitle: raw.OriginalTitle, Type: mt, Overview: raw.Summary,
-		Rating: raw.Rating.Value, VoteCount: raw.Rating.Count, PosterURL: doubanPosterURL(raw.Images.Large),
+		OriginalTitle: raw.OriginalTitle, Type: mt, Overview: overview,
+		Rating: raw.Rating.Value, VoteCount: raw.Rating.Count, PosterURL: doubanPosterURL(posterURL),
 		ReleaseDate: date, Year: yearFromDate(date), Genres: raw.Genres,
 		Countries: raw.Countries, Runtime: parseMinutes(raw.Durations),
+		Names: raw.AKA,
+	}
+	if mi.Year == 0 {
+		mi.Year = int(raw.Year)
 	}
 	for _, dr := range raw.Directors {
 		mi.Directors = append(mi.Directors, dr.Name)
 	}
-	for i, c := range raw.Casts {
-		if i >= 15 {
+	// detail 端点的 actors 只有 name 无头像，appendCast 作 celebrities 失败时的 fallback。
+	seenCast := make(map[string]struct{})
+	appendCast := func(c doubanDetailPerson) {
+		if len(mi.Cast) >= 15 || c.Name == "" {
+			return
+		}
+		if _, ok := seenCast[c.Name]; ok {
+			return
+		}
+		seenCast[c.Name] = struct{}{}
+		avatar := c.Avatar
+		if avatar == "" {
+			avatar = c.Avatars.Large
+		}
+		role := c.Character
+		if role == "" {
+			role = c.Role
+		}
+		mi.Cast = append(mi.Cast, CreditPerson{Name: c.Name, Role: role, Avatar: doubanPosterURL(avatar)})
+	}
+
+	// 三个增强子请求并行、尽力而为（任一失败降级，不阻塞主结果）。detail 端点的 actors
+	// 只有 name 无 avatar、无 recommendations、cover 字段是用户相册封面（非横幅），
+	// 故分别向 celebrities / recommendations / photos 取带头像演员 / 推荐 / 横幅剧照。
+	var (
+		wg  sync.WaitGroup
+		cel struct {
+			Actors []struct {
+				Name      string `json:"name"`
+				Character string `json:"character"`
+				URI       string `json:"uri"` // 含 subject_id（personage id），用于点头像拉演员简介
+				Avatar    struct {
+					Large string `json:"large"`
+				} `json:"avatar"`
+			} `json:"actors"`
+		}
+		recs []struct {
+			ID           string `json:"id"`
+			Title        string `json:"title"`
+			Year         string `json:"year"`
+			CardSubtitle string `json:"card_subtitle"`
+			Pic          struct {
+				Large string `json:"large"`
+			} `json:"pic"`
+			Rating struct {
+				Value float64 `json:"value"`
+			} `json:"rating"`
+		}
+		photos struct {
+			Photos []struct {
+				Image struct {
+					Large struct {
+						URL    string `json:"url"`
+						Width  int    `json:"width"`
+						Height int    `json:"height"`
+					} `json:"large"`
+				} `json:"image"`
+			} `json:"photos"`
+		}
+		haveCel bool
+	)
+	wg.Add(3)
+	go func() { defer wg.Done(); haveCel = d.get(ctx, "/"+mtype+"/"+sid+"/celebrities", nil, &cel) == nil }()
+	go func() {
+		defer wg.Done()
+		_ = d.get(ctx, "/"+mtype+"/"+sid+"/recommendations", map[string]string{"start": "0", "count": "8"}, &recs)
+	}()
+	go func() {
+		defer wg.Done()
+		_ = d.get(ctx, "/"+mtype+"/"+sid+"/photos", map[string]string{"start": "0", "count": "10"}, &photos)
+	}()
+	wg.Wait()
+
+	// 演员：celebrities 优先（带头像）；失败回退 detail 裸 actors（无头像）。
+	if haveCel && len(cel.Actors) > 0 {
+		seen := make(map[string]struct{}, len(cel.Actors))
+		for _, a := range cel.Actors {
+			if a.Name == "" || len(mi.Cast) >= 15 {
+				break
+			}
+			if _, ok := seen[a.Name]; ok {
+				continue
+			}
+			seen[a.Name] = struct{}{}
+			// celebrity 头像原样返回：personage/m/public/pXXXX.jpg 若过 doubanPosterURL 会被
+			// (p\d+)\.jpg 误重写成不存在的海报路径 → 404。故不重写，交前端 /media/image 反代取真图。
+			mi.Cast = append(mi.Cast, CreditPerson{Name: a.Name, Role: a.Character, Avatar: a.Avatar.Large, ID: doubanSubjectID(a.URI)})
+		}
+	} else {
+		for _, c := range raw.Casts {
+			appendCast(c)
+		}
+		for _, c := range raw.Actors {
+			appendCast(c)
+		}
+	}
+
+	// 推荐：裸数组映射（镜像 tmdb.go 的 Recommendations 映射）。
+	for _, r := range recs {
+		if r.ID == "" {
+			continue
+		}
+		y := yearFromDate(r.Year)
+		if y == 0 && r.CardSubtitle != "" {
+			// card_subtitle 形如 "2026 / 美国 / 喜剧 ..."，取首个 / 前的年份
+			if i := strings.IndexByte(r.CardSubtitle, '/'); i > 0 {
+				y = yearFromDate(strings.TrimSpace(r.CardSubtitle[:i]))
+			}
+		}
+		mi.Recommendations = append(mi.Recommendations, MediaInfo{
+			Source: "douban", SourceID: mtype + ":" + r.ID,
+			Title: r.Title, Type: mt, PosterURL: doubanPosterURL(r.Pic.Large),
+			Rating: r.Rating.Value, Year: y,
+		})
+	}
+
+	// 背景：取剧照里第一张横幅（width>height）；URL 原样返回（photo 走前端反代）。
+	for _, ph := range photos.Photos {
+		if ph.Image.Large.URL != "" && ph.Image.Large.Width > ph.Image.Large.Height {
+			mi.BackdropURL = ph.Image.Large.URL
 			break
 		}
-		mi.Cast = append(mi.Cast, CreditPerson{Name: c.Name, Avatar: doubanPosterURL(c.Avatars.Large)})
 	}
+
 	return mi, nil
 }
 
@@ -436,6 +620,94 @@ func parseMinutes(ds []string) int {
 		}
 	}
 	return 0
+}
+
+// doubanSubjectIDRe 匹配 celebrities actor.uri 里的 personage subject_id。
+var doubanSubjectIDRe = regexp.MustCompile(`subject_id=(\d+)`)
+
+// doubanSubjectID 从 celebrities actor 的 uri（douban://douban.com/celebrity/{cid}?subject_id={pid}）
+// 提取 personage subject_id，用于调 /elessar/subject 拉演员简介。无则空。
+func doubanSubjectID(uri string) string {
+	if m := doubanSubjectIDRe.FindStringSubmatch(uri); m != nil {
+		return m[1]
+	}
+	return ""
+}
+
+// Celebrity 拉演员简介（点头像用）：调 /elessar/subject/{personageID}，返回生平/结构化/作品。
+// desc 是 HTML 多段 <p>，用 goquery 提纯文本段落（避免前端 v-html XSS）。
+func (d *Douban) Celebrity(ctx context.Context, personageID string) (*CelebrityProfile, error) {
+	var raw struct {
+		Name      string `json:"name"`
+		LatinName string `json:"latin_title"`
+		Cover     struct {
+			Large struct {
+				URL string `json:"url"`
+			} `json:"large"`
+		} `json:"cover"`
+		FollowedCount int    `json:"followed_count"`
+		Desc          string `json:"desc"`
+		URL           string `json:"url"`
+		Extra         struct {
+			Info      [][2]string `json:"info"`
+			ShortInfo string      `json:"short_info"`
+		} `json:"extra"`
+		Modules []struct {
+			Type    string `json:"type"`
+			Payload struct {
+				Collections []struct {
+					Works []struct {
+						Roles   []string `json:"roles"`
+						Subject struct {
+							Title string `json:"title"`
+							URL   string `json:"url"`
+						} `json:"subject"`
+					} `json:"works"`
+				} `json:"collections"`
+			} `json:"payload"`
+		} `json:"modules"`
+	}
+	if err := d.get(ctx, "/elessar/subject/"+personageID, nil, &raw); err != nil {
+		return nil, err
+	}
+	p := &CelebrityProfile{
+		Name: raw.Name, LatinName: raw.LatinName, Avatar: raw.Cover.Large.URL,
+		ShortInfo: raw.Extra.ShortInfo, Info: raw.Extra.Info,
+		FollowedCount: raw.FollowedCount, DoubanURL: raw.URL,
+	}
+	// desc 是 HTML 多段 <p>，提纯文本段落；avatar 原样（personage 路径不过 doubanPosterURL）。
+	if raw.Desc != "" {
+		if doc, err := goquery.NewDocumentFromReader(strings.NewReader(raw.Desc)); err == nil {
+			doc.Find("p").Each(func(_ int, s *goquery.Selection) {
+				if t := strings.TrimSpace(s.Text()); t != "" {
+					p.Bio = append(p.Bio, t)
+				}
+			})
+			if len(p.Bio) == 0 { // 无 <p> 标签时取整体文本兜底
+				if t := strings.TrimSpace(doc.Text()); t != "" {
+					p.Bio = []string{t}
+				}
+			}
+		}
+	}
+	// 参演作品：work_collections 下各 collection 的 works（最多 20 个，跳过无标题）。
+	for _, m := range raw.Modules {
+		if m.Type != "work_collections" {
+			continue
+		}
+		for _, col := range m.Payload.Collections {
+			for _, w := range col.Works {
+				if w.Subject.Title == "" || len(p.Works) >= 20 {
+					break
+				}
+				p.Works = append(p.Works, CelebrityWork{
+					Title: w.Subject.Title, Role: strings.Join(w.Roles, " / "), URL: w.Subject.URL,
+				})
+			}
+		}
+		break
+	}
+	return p, nil
 }
 
 // doubanPhotoFile 匹配豆瓣 photo 文件名（p 开头 + 数字）。

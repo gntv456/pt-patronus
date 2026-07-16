@@ -24,7 +24,7 @@ func TestDashboardHistoryBadID(t *testing.T) {
 }
 
 func TestDownloaderAddValidation(t *testing.T) {
-	h := NewDownloaderHandler(nil, nil, nil)
+	h := NewDownloaderHandler(nil, nil, nil, nil)
 	r := gin.New()
 	r.POST("/dl/:id/add", h.Add)
 

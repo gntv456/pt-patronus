@@ -63,6 +63,49 @@ async function deleteRow(h: TransferHistory) {
   }
 }
 
+// —— 批量删除 ——
+const selectedRows = ref<TransferHistory[]>([])
+function handleSelectionChange(rows: TransferHistory[]) {
+  selectedRows.value = rows
+}
+async function batchDeleteRows() {
+  if (!selectedRows.value.length) return
+  try {
+    await ElMessageBox.confirm(
+      `确认删除选中的 ${selectedRows.value.length} 条整理记录？`,
+      '批量删除',
+      { type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  try {
+    const res = await transferApi.batchDeleteHistory(selectedRows.value.map((h) => h.id))
+    if (res.failed?.length) {
+      ElMessage.warning(`已删除 ${res.deleted} 条，失败 ${res.failed.length} 条`)
+    } else {
+      ElMessage.success(`已删除 ${res.deleted} 条记录`)
+    }
+    selectedRows.value = []
+    await load()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '批量删除失败')
+  }
+}
+async function clearFailed() {
+  try {
+    await ElMessageBox.confirm('确认清除全部失败记录？此操作不可撤销。', '清除失败', { type: 'warning' })
+  } catch {
+    return
+  }
+  try {
+    const res = await transferApi.clearFailedHistory()
+    ElMessage.success(`已清除 ${res.deleted} 条失败记录`)
+    await load()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '清除失败')
+  }
+}
 // —— 配置 ——
 const showConfig = ref(false)
 const cfg = ref<TransferConfig>(emptyConfig())
@@ -262,11 +305,17 @@ onMounted(load)
         <el-button size="small" type="primary" @click="openOrganize">手动整理</el-button>
         <el-button size="small" @click="openConfig">整理设置</el-button>
         <el-button size="small" @click="openDirwatch">目录监视</el-button>
+        <el-button size="small" type="danger" plain :disabled="!selectedRows.length" @click="batchDeleteRows">
+          批量删除{{ selectedRows.length ? `(${selectedRows.length})` : '' }}
+        </el-button>
+        <el-button size="small" type="danger" plain @click="clearFailed">清除失败</el-button>
       </div>
     </header>
 
     <div class="glass card">
-      <el-table :data="filtered" v-loading="loading" size="small" empty-text="暂无整理记录">
+      <el-table :data="filtered" v-loading="loading" size="small" empty-text="暂无整理记录"
+        row-key="id" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="36" :reserve-selection="true" fixed="left" />
         <el-table-column label="媒体" min-width="220">
           <template #default="{ row }">
             <div class="media-cell">

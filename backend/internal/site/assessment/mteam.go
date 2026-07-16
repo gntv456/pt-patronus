@@ -44,13 +44,13 @@ func (MTeamAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, 
 // ParseInLocation（见 parseTimeMs），不能按数字拼接——否则日期串的数字会被拼成错乱的 epoch ms。
 func parseMTeamExamine(body []byte) []Task {
 	var env struct {
-		Code string            `json:"code"`
+		Code json.Number      `json:"code"`
 		Data []map[string]any `json:"data"`
 	}
 	if err := json.Unmarshal(body, &env); err != nil {
 		return nil
 	}
-	if env.Code != "0" || len(env.Data) == 0 {
+	if env.Code.String() != "0" || len(env.Data) == 0 {
 		return nil
 	}
 	var out []Task

@@ -4,18 +4,39 @@ export interface CreditPerson {
   name: string
   role?: string
   avatar?: string
+  id?: string // 源内人员 id（豆瓣=personage subject_id），点头像拉演员简介
+}
+
+export interface CelebrityWork {
+  title: string
+  role?: string
+  url?: string
+}
+
+export interface CelebrityProfile {
+  name: string
+  latin_name?: string
+  avatar?: string
+  short_info?: string
+  bio?: string[]
+  info?: [string, string][]
+  followed_count?: number
+  douban_url?: string
+  works?: CelebrityWork[]
 }
 
 export interface MediaInfo {
   source: string
   source_id: string
   title: string
+  original_title?: string
   year: number
   type: string // movie | tv | music
   overview?: string
   poster_url: string
   backdrop_url?: string
   rating?: number
+  vote_count?: number
   genres?: string[]
   // 富字段（Detail 填充）：
   runtime?: number // 分钟
@@ -31,6 +52,8 @@ export const mediaApi = {
     http.get<{ results: MediaInfo[] }>(`/media/search`, { params: { keyword, year } }).then((r) => r.data.results ?? []),
   detail: (source: string, id: string) =>
     http.get<{ result: MediaInfo }>(`/media/detail`, { params: { source, id } }).then((r) => r.data.result),
+  celebrity: (source: string, id: string) =>
+    http.get<{ result: CelebrityProfile }>(`/media/celebrity`, { params: { source, id } }).then((r) => r.data.result),
   poster: (keyword: string, year = 0) =>
     http.get<{ poster_url: string }>(`/media/poster`, { params: { keyword, year } }).then((r) => r.data.poster_url),
   nfo: (info: Partial<MediaInfo>) => http.post<{ nfo: string }>('/media/nfo', { info }).then((r) => r.data.nfo),

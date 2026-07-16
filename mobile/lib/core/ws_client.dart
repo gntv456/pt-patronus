@@ -63,6 +63,68 @@ class HRAlert {
       );
 }
 
+// 单下载器本轮增量（对齐后端 ws.DownloaderDiff）。
+class DownloaderDiff {
+  final int downloaderId;
+  final String? name; // 仅变化时带
+  final String? error; // 后端始终带（空串=无错），覆盖式
+  final int? dlRate;
+  final int? upRate;
+  final List<Torrent> added; // 新 hash
+  final List<Torrent> changed; // 字段变化（整条替换）
+  final List<String> removed; // 删除的 hash
+
+  DownloaderDiff({
+    required this.downloaderId,
+    this.name,
+    this.error,
+    this.dlRate,
+    this.upRate,
+    this.added = const [],
+    this.changed = const [],
+    this.removed = const [],
+  });
+
+  factory DownloaderDiff.fromJson(Map<String, dynamic> j) {
+    final stats = j['stats'] as Map<String, dynamic>?;
+    return DownloaderDiff(
+      downloaderId: (j['downloader_id'] as num?)?.toInt() ?? 0,
+      name: j['name'] as String?,
+      error: j['error'] as String?,
+      dlRate: (stats?['dl_rate'] as num?)?.toInt(),
+      upRate: (stats?['up_rate'] as num?)?.toInt(),
+      added: ((j['added'] as List?) ?? const [])
+          .map((e) => Torrent.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      changed: ((j['changed'] as List?) ?? const [])
+          .map((e) => Torrent.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      removed: ((j['removed'] as List?) ?? const []).map((e) => e as String).toList(),
+    );
+  }
+}
+
+// 本轮所有下载器增量（对齐后端 ws.TorrentDiff）。
+class TorrentDiff {
+  final List<TorrentSnapshot> added; // 新增整个下载器
+  final List<int> removed; // 删除的 downloader_id
+  final List<DownloaderDiff> changed;
+
+  TorrentDiff({this.added = const [], this.removed = const [], this.changed = const []});
+
+  factory TorrentDiff.fromJson(Map<String, dynamic> j) => TorrentDiff(
+        added: ((j['added'] as List?) ?? const [])
+            .map((e) => TorrentSnapshot.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        removed: ((j['removed'] as List?) ?? const [])
+            .map((e) => (e as num).toInt())
+            .toList(),
+        changed: ((j['changed'] as List?) ?? const [])
+            .map((e) => DownloaderDiff.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
 // WsClient 连后端实时推送 WS（/api/v1/ws?ticket=<一次性>），监听种子快照广播流，
 // 断线指数退避重连。单例：同一时刻一个连接服务所有订阅者。
 // 先用 header JWT 换一次性 ticket 再连（JWT 不落 URL），对齐 Web useWs。
@@ -81,6 +143,11 @@ class WsClient {
   final _ctlHR = StreamController<List<HRAlert>>.broadcast();
   final _ctlCookie = StreamController<List<String>>.broadcast();
   final _ctlNotice = StreamController<Notice>.broadcast();
+
+  // 增量协议状态（?proto=inc 协商成功后用）。
+  List<TorrentSnapshot> _snapshots = const [];
+  int _lastSeq = 0; // 最近一次 torrents_full/diff 的 seq
+  bool _dirty = false; // 丢帧标记：true 时暂停 apply，等下个 torrents_full 重同步
 
   /// 种子快照广播流。订阅即收后续推送；首帧由后端握手后单推。
   Stream<List<TorrentSnapshot>> get snapshots => _ctl.stream;
@@ -113,7 +180,8 @@ class WsClient {
     }
     if (ticket.isEmpty || _disposed) return;
     final base = ApiClient().baseUrl.replaceFirst(RegExp(r'^http'), 'ws');
-    final uri = Uri.parse('$base/api/v1/ws?ticket=${Uri.encodeQueryComponent(ticket)}');
+    final uri = Uri.parse(
+        '$base/api/v1/ws?ticket=${Uri.encodeQueryComponent(ticket)}&proto=inc');
     try {
       _ch = WebSocketChannel.connect(uri);
       _retry = 0;
@@ -127,11 +195,35 @@ class WsClient {
     try {
       final j = jsonDecode(raw as String) as Map<String, dynamic>;
       final list = (j['data'] as List?) ?? const [];
+      final seq = (j['seq'] as num?)?.toInt() ?? 0;
       switch (j['type']) {
-        case 'torrents':
-          _ctl.add(list
+        case 'torrents': // legacy 全量（未协商增量的旧客户端，或后端回落）
+          _snapshots = list
               .map((e) => TorrentSnapshot.fromJson(e as Map<String, dynamic>))
-              .toList());
+              .toList();
+          _lastSeq = 0;
+          _dirty = false;
+          _ctl.add(_snapshots);
+          break;
+        case 'torrents_full': // inc 首帧 / 周期重同步
+          _snapshots = list
+              .map((e) => TorrentSnapshot.fromJson(e as Map<String, dynamic>))
+              .toList();
+          _lastSeq = seq;
+          _dirty = false;
+          _ctl.add(_snapshots);
+          break;
+        case 'torrents_diff': // inc 稳态增量
+          if (!_dirty) {
+            if (seq != _lastSeq + 1) {
+              _dirty = true; // 不连号=丢帧，等下个 full 重同步
+            } else {
+              _lastSeq = seq;
+              _applyDiff(TorrentDiff.fromJson(
+                  (j['data'] as Map<String, dynamic>?) ?? const {}));
+              _ctl.add(_snapshots);
+            }
+          }
           break;
         case 'hr-alert':
           _ctlHR.add(list
@@ -149,6 +241,42 @@ class WsClient {
     } catch (_) {
       // 忽略畸形帧
     }
+  }
+
+  // _applyDiff 把一轮增量合并进 _snapshots（不可变快照→重建新实例）。
+  void _applyDiff(TorrentDiff d) {
+    final byId = <int, TorrentSnapshot>{
+      for (final s in _snapshots) s.downloaderId: s
+    };
+    for (final id in d.removed) {
+      byId.remove(id);
+    }
+    for (final s in d.added) {
+      byId[s.downloaderId] = s;
+    }
+    for (final dd in d.changed) {
+      final s = byId[dd.downloaderId];
+      if (s == null) continue;
+      final tmap = <String, Torrent>{for (final t in s.torrents) t.hash: t};
+      for (final h in dd.removed) {
+        tmap.remove(h);
+      }
+      for (final t in dd.added) {
+        tmap[t.hash] = t;
+      }
+      for (final t in dd.changed) {
+        tmap[t.hash] = t; // 整条替换
+      }
+      byId[dd.downloaderId] = TorrentSnapshot(
+        downloaderId: s.downloaderId,
+        name: dd.name ?? s.name,
+        error: dd.error ?? s.error,
+        torrents: tmap.values.toList(),
+        dlRate: dd.dlRate ?? s.dlRate,
+        upRate: dd.upRate ?? s.upRate,
+      );
+    }
+    _snapshots = byId.values.toList();
   }
 
   void _onDone() {

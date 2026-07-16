@@ -209,6 +209,22 @@ func (h *MediaHandler) Detail(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"result": res})
 }
 
+// Celebrity 拉演员简介（点 cast 头像用）。
+func (h *MediaHandler) Celebrity(c *gin.Context) {
+	source := c.Query("source")
+	id := c.Query("id")
+	if source == "" || id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "source and id required"})
+		return
+	}
+	res, err := h.mediaCh.Celebrity(c.Request.Context(), source, id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"result": res})
+}
+
 // NFO 生成 NFO。
 func (h *MediaHandler) NFO(c *gin.Context) {
 	var req nfoReq

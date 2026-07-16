@@ -40,6 +40,8 @@ const logsVisible = ref(false)
 const configVisible = ref(false)
 const configTarget = ref<PluginInfo | null>(null)
 const configForm = ref<Record<string, any>>({})
+// 配置弹窗折叠面板当前展开的分组名(默认全展开,对标 MoviePilot)。
+const configExpanded = ref<string[]>([])
 const savingConfig = ref(false)
 
 const actionVisible = ref(false)
@@ -776,6 +778,8 @@ async function togglePlugin(p: PluginInfo) {
 function openConfig(p: PluginInfo) {
   configTarget.value = p
   configForm.value = { ...defaultsFromSchema(p.config_schema), ...(p.config || {}) }
+  // 默认展开所有有标题分组(对标 MP:全部可见、可手动收起)。
+  configExpanded.value = configGroups(p.config_schema).filter((g) => g.name).map((g) => g.name)
   configVisible.value = true
 }
 
@@ -905,6 +909,15 @@ function configGroups(schema?: PluginConfigField[] | null): { name: string; fiel
   return order.map((name) => ({ name, fields: map.get(name)! }))
 }
 
+// 有标题分组 → 折叠面板;无标题字段(通常核心必填项)→ 顶部平铺,不套折叠面板。
+const configTitledGroups = computed(() =>
+  configGroups(configTarget.value?.config_schema).filter((g) => g.name),
+)
+const configUntitledFields = computed(() => {
+  const untitled = configGroups(configTarget.value?.config_schema).find((g) => !g.name)
+  return untitled ? untitled.fields : []
+})
+
 function defaultsFromSchema(schema?: PluginConfigField[] | null) {
   const out: Record<string, any> = {}
   for (const f of schemaFields(schema)) {
@@ -986,7 +999,7 @@ function jsonText(v?: Record<string, any>) {
     </el-tabs>
 
     <div v-if="activeTab === 'installed'" v-loading="loading" class="plugin-grid">
-      <div v-for="p in filteredPlugins" :key="p.id" class="plugin-card glass-hover">
+      <div v-for="p in filteredPlugins" :key="p.id" class="plugin-card solid-card solid-card-hover">
         <div class="plugin-top">
           <GlassIcon name="plugin" from="#0ea5e9" to="#22c55e" :size="40" />
           <div class="plugin-title">
@@ -1283,109 +1296,38 @@ function jsonText(v?: Record<string, any>) {
         <el-radio-button label="">全部 {{ (market?.plugins || []).length }}</el-radio-button>
         <el-radio-button v-for="c in marketCategories" :key="c" :label="c">{{ c }}</el-radio-button>
       </el-radio-group>
-      <el-table v-loading="marketLoading" :data="filteredMarketPlugins" empty-text="暂无市场数据">
-        <el-table-column label="插件" min-width="220">
-          <template #default="{ row }">
-            <div class="market-name">{{ row.name }}</div>
-            <div class="meta">{{ row.id }} · v{{ row.version }} · {{ row.runtime }}</div>
-            <div v-if="shortSource(row.source)" class="meta">来源：{{ shortSource(row.source) }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="分类" width="100">
-          <template #default="{ row }">
-            <el-tag v-if="row.category" size="small" effect="plain">{{ row.category }}</el-tag>
-            <span v-else class="meta">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="发布者 / 信任" min-width="220">
-          <template #default="{ row }">
-            <div class="market-name">{{ row.publisher?.name || row.author || '未知' }}</div>
-            <div class="chips">
-              <el-tag size="small" :type="trustType(row.trust_level)">{{ trustLabel(row.trust_level) }}</el-tag>
-              <el-tag v-if="row.publisher?.verified" size="small" effect="plain">已验证</el-tag>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="版本 / 兼容性" min-width="220">
-          <template #default="{ row }">
-            <div v-if="row.installed_version" class="meta">{{ row.installed_version }} → {{ row.version }}</div>
-            <div v-else class="meta">v{{ row.version }}</div>
-            <div class="chips chips--compact">
-              <el-tag size="small" :type="compatibilityType(row)">{{ compatibilityLabel(row) }}</el-tag>
-              <el-tag v-if="row.installable === false && row.compatible" size="small" type="warning">依赖未满足</el-tag>
-            </div>
-            <div class="meta">{{ compatibilitySummary(row) }}</div>
-            <div v-if="row.install_plan?.length" class="meta">{{ installPlanSummary(row.install_plan) }}</div>
-            <div v-if="row.dependencies_status?.length" class="meta">{{ dependencySummary(row.dependencies_status) }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="说明" min-width="260" />
-        <el-table-column label="权限" min-width="220">
-          <template #default="{ row }">
-            <div class="chips">
-              <el-tag v-for="perm in row.permissions || []" :key="perm" size="small" effect="plain">{{ perm }}</el-tag>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="宿主能力" min-width="220">
-          <template #default="{ row }">
-            <div class="chips">
-              <el-tag v-for="capability in row.host_capabilities || []" :key="capability" size="small" effect="plain">
-                {{ hostCapabilityLabel(capability) }}
-              </el-tag>
-            </div>
-            <div class="meta">{{ optionalCapabilitySummary(row) }}</div>
-            <div v-if="row.missing_optional_host_capabilities?.length" class="meta">
-              缺失：{{ (row.missing_optional_host_capabilities || []).map(hostCapabilityLabel).join('、') }}
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="依赖" min-width="220">
-          <template #default="{ row }">
-            <div class="chips">
-              <el-tag
-                v-for="dependency in row.dependencies_status || []"
-                :key="dependency.id"
-                size="small"
-                effect="plain"
-                :type="dependencyStatusType(dependency)"
-              >
-                {{ dependency.id }}
-              </el-tag>
-            </div>
-            <div v-if="row.install_plan?.length" class="chips chips--compact">
-              <el-tag
-                v-for="step in row.install_plan || []"
-                :key="`${row.id}-${step.id}`"
-                size="small"
-                effect="plain"
-                :type="installPlanActionType(step.action)"
-              >
-                {{ step.id }} · {{ installPlanActionLabel(step.action) }}
-              </el-tag>
-            </div>
-            <div class="meta">{{ dependencySummary(row.dependencies_status) }}</div>
-          </template>
-        </el-table-column>
-        <el-table-column label="校验" min-width="180">
-          <template #default="{ row }">
-            <span class="mono">{{ row.sha256 ? row.sha256.slice(0, 16) + '...' : '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="130" fixed="right">
-          <template #default="{ row }">
+      <div v-loading="marketLoading" class="market-grid">
+        <div
+          v-for="item in filteredMarketPlugins"
+          :key="item.id"
+          class="market-card solid-card solid-card-hover"
+        >
+          <div class="market-card-head">
+            <div class="market-name">{{ item.name }}</div>
+            <el-tag size="small" effect="plain">v{{ item.version }}</el-tag>
+          </div>
+          <div class="market-desc">{{ item.description || '无说明' }}</div>
+          <div class="market-card-meta">
+            <el-tag size="small" :type="trustType(item.trust_level)">{{ trustLabel(item.trust_level) }}</el-tag>
+            <el-tag v-if="item.category" size="small" effect="plain">{{ item.category }}</el-tag>
+            <span class="meta">{{ item.publisher?.name || item.author || shortSource(item.source) || '未知' }}</span>
+          </div>
+          <div class="market-card-foot">
+            <el-tag size="small" :type="compatibilityType(item)" effect="plain">{{ compatibilityLabel(item) }}</el-tag>
             <el-button
+              size="small"
               type="primary"
               :icon="Download"
-              :disabled="!canInstallMarketItem(row)"
-              :loading="installing === row.id"
-              @click="installMarketPlugin(row.id)"
+              :disabled="!canInstallMarketItem(item)"
+              :loading="installing === item.id"
+              @click="installMarketPlugin(item.id)"
             >
-              {{ marketInstallLabel(row) }}
+              {{ marketInstallLabel(item) }}
             </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+          </div>
+        </div>
+        <el-empty v-if="!marketLoading && !filteredMarketPlugins.length" description="暂无市场数据" />
+      </div>
     </div>
 
     <el-dialog
@@ -1395,22 +1337,27 @@ function jsonText(v?: Record<string, any>) {
       class="plugin-cfg-dialog"
     >
       <div class="config-body">
-        <div
-          v-for="g in configGroups(configTarget?.config_schema)"
-          :key="g.name || '__default__'"
-          class="config-group"
-          :class="{ 'config-group--untitled': !g.name }"
-        >
-          <div v-if="g.name" class="config-group-title">{{ g.name }}</div>
-          <div class="config-group-grid">
-            <PluginSchemaField
-              v-for="f in g.fields"
-              :key="f.key"
-              :field="f"
-              v-model="configForm[f.key]"
-            />
-          </div>
+        <div v-if="configUntitledFields.length" class="config-group-grid">
+          <PluginSchemaField
+            v-for="f in configUntitledFields"
+            :key="f.key"
+            :field="f"
+            v-model="configForm[f.key]"
+          />
         </div>
+        <el-collapse v-if="configTitledGroups.length" v-model="configExpanded" class="config-collapse">
+          <el-collapse-item v-for="g in configTitledGroups" :key="g.name" :name="g.name">
+            <template #title><span class="config-collapse-title">{{ g.name }}</span></template>
+            <div class="config-group-grid">
+              <PluginSchemaField
+                v-for="f in g.fields"
+                :key="f.key"
+                :field="f"
+                v-model="configForm[f.key]"
+              />
+            </div>
+          </el-collapse-item>
+        </el-collapse>
       </div>
       <template #footer>
         <el-button @click="configVisible = false">取消</el-button>
@@ -1559,9 +1506,9 @@ function jsonText(v?: Record<string, any>) {
   flex-direction: column;
   gap: 10px;
   padding: 14px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--surface-border);
   border-radius: var(--radius-md);
-  background: var(--glass-bg);
+  background: var(--surface-2);
 }
 .audit-title {
   font-size: var(--fs-md);
@@ -1601,6 +1548,66 @@ function jsonText(v?: Record<string, any>) {
   margin-bottom: 12px;
   color: var(--text-muted);
   font-size: var(--fs-sm);
+}
+/* 市场卡片网格（对标 MP：紧凑、一屏多个）。详情（权限/依赖/宿主能力）走安装确认弹窗，主列表只露核心。 */
+.market-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  min-height: 80px;
+}
+.market-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+}
+.market-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.market-card .market-name {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.market-desc {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.9em;
+}
+.market-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.market-card-meta .meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.market-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--surface-border);
 }
 .market-source-count {
   margin-left: 6px;
@@ -1661,6 +1668,11 @@ function jsonText(v?: Record<string, any>) {
   margin-top: 4px;
   line-height: 1.4;
 }
+.plugin-cfg-dialog :deep(.el-dialog) {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow-hover);
+}
 .plugin-cfg-dialog :deep(.el-dialog__body) {
   max-height: 68vh;
   overflow-y: auto;
@@ -1671,25 +1683,36 @@ function jsonText(v?: Record<string, any>) {
   flex-direction: column;
   gap: 14px;
 }
-.config-group {
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  background: var(--glass-bg);
-  padding: 14px 16px;
-}
-.config-group--untitled {
+/* 折叠面板:对标 MoviePilot 插件配置的分组折叠,默认全展开、可手动收起。
+   header 走实体卡视觉(surface-1 + 清晰边框 + 主色左边框),跟整体实体卡风格一致。 */
+.config-collapse {
   border: none;
-  background: transparent;
-  padding: 0;
 }
-.config-group-title {
-  margin-bottom: 12px;
-  padding-left: 10px;
-  border-left: 3px solid #0ea5e9;
+.config-collapse :deep(.el-collapse-item__header) {
+  height: 40px;
+  margin-bottom: 8px;
+  padding-left: 12px;
+  border: 1px solid var(--surface-border);
+  border-left: 3px solid #6c5ce7;
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
   font-size: var(--fs-md);
   font-weight: 600;
-  color: var(--text, rgba(15, 23, 42, 0.9));
-  line-height: 1.2;
+  color: var(--text-strong);
+}
+.config-collapse :deep(.el-collapse-item__header:hover) {
+  border-color: var(--surface-border-strong);
+}
+.config-collapse :deep(.el-collapse-item__wrap) {
+  border: none;
+  background: transparent;
+}
+.config-collapse :deep(.el-collapse-item__content) {
+  padding: 12px 4px 4px;
+}
+.config-collapse-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
 }
 .config-group-grid {
   display: grid;

@@ -47,7 +47,7 @@ onUnmounted(() => {
 
 <template>
   <img v-if="src && !failed" :src="src" alt="" loading="lazy" @error="failed = true" />
-  <div v-else class="no-poster">{{ kind === 'music' ? '🎵' : '🎬' }}</div>
+  <div v-else class="no-poster">{{ kind === 'music' ? '🎵' : kind === 'person' ? '👤' : '🎬' }}</div>
 </template>
 
 <style scoped>

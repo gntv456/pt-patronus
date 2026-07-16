@@ -278,8 +278,9 @@ func (h *WorkflowHandler) ListRuns(c *gin.Context) {
 
 // RunDetail 单次运行详情（GET /workflow-runs/:rid）。
 func (h *WorkflowHandler) RunDetail(c *gin.Context) {
-	rid, ok := parseID(c)
-	if !ok {
+	rid, err := strconv.ParseUint(c.Param("rid"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 	r, err := h.ch.GetRun(uint(rid))

@@ -150,6 +150,15 @@ func (c *TransferChain) resolveAndProcessResult(ctx context.Context, dlID uint, 
 
 // processTorrent 核心：过滤→去重→整理→记录。
 func (c *TransferChain) processTorrent(ctx context.Context, dlID uint, t *downloader.Torrent, dl downloader.Downloader, manual bool) *transfer.Result {
+	// 未下完的种子不整理：文件不全无法识别/硬链，会一路走到 link failed（远程下载器路径不可达 / stalledDL 未完成）。
+	// 记 skipped 历史让用户可见；record() 见 Skipped 不再重复写，洗版跳过逻辑不受影响。
+	if t.State != "completed" && t.CompletedAt.IsZero() {
+		reason := fmt.Sprintf("种子未完成(state=%s, progress=%.0f%%)", t.State, t.Progress*100)
+		_ = c.hist.AddSkipped(&models.TransferHistory{
+			Src: t.SavePath, Title: t.Name, DownloaderID: dlID, DownloadHash: t.Hash,
+		}, reason)
+		return &transfer.Result{Skipped: true, SkipReason: reason}
+	}
 	if !manual {
 		cfg := transfer.Load(c.cfg)
 		if !cfg.ShouldProcess(t.Category, t.Tags) {
@@ -291,6 +300,12 @@ func (c *TransferChain) History(status string, limit int) ([]models.TransferHist
 
 // DeleteHistory 删单条历史。
 func (c *TransferChain) DeleteHistory(id uint) error { return c.hist.Delete(id) }
+
+// DeleteHistories 批量删除历史，返回不存在的 id 列表（对标站点批量删除）。
+func (c *TransferChain) DeleteHistories(ids []uint) ([]uint, error) { return c.hist.DeleteMany(ids) }
+
+// ClearFailed 一键清除全部失败记录，返回删除条数。
+func (c *TransferChain) ClearFailed() (int64, error) { return c.hist.DeleteByStatus("failed") }
 
 // Config 读整理配置。
 func (c *TransferChain) Config() transfer.Config { return transfer.Load(c.cfg) }

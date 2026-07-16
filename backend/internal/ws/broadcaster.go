@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"sync"
 	"time"
 
@@ -26,8 +27,45 @@ type TorrentSnapshot struct {
 
 // Message 是广播给所有连接的消息信封。Data 按 Type 不同承载不同结构。
 type Message struct {
-	Type string `json:"type"` // "torrents" | "hr-alert"
+	Type string `json:"type"`           // torrents | torrents_full | torrents_diff | hr-alert | ...
+	Seq  uint64 `json:"seq,omitempty"`  // 增量协议序列号（torrents_full/diff 带；其余消息不用）
 	Data any    `json:"data"`
+}
+
+// 增量推送消息类型。
+const (
+	MsgTorrentsLegacy = "torrents"      // 旧全量（legacy 客户端兼容）
+	MsgTorrentsFull   = "torrents_full" // 带 seq 的全量（inc 首帧 / 周期重同步）
+	MsgTorrentsDiff   = "torrents_diff" // 增量（inc 稳态）
+)
+
+// fullResyncInterval 每 N 个 diff 强推一次 full，兜底丢帧/状态发散（≈60s@2s 间隔）。
+const fullResyncInterval = 30
+
+// DownloaderDiff 是单个下载器本轮增量。
+type DownloaderDiff struct {
+	DownloaderID uint                    `json:"downloader_id"`
+	Name         string                  `json:"name,omitempty"`    // 仅变化时带
+	Error        string                  `json:"error"`             // 始终带（空串=无错），覆盖式赋值
+	Stats        *downloader.GlobalStats `json:"stats,omitempty"`   // 仅变化时带
+	Added        []downloader.Torrent    `json:"added,omitempty"`   // 新 hash
+	Changed      []downloader.Torrent    `json:"changed,omitempty"` // 字段变化（整条替换）
+	Removed      []string                `json:"removed,omitempty"` // 删除的 hash
+}
+
+// TorrentDiff 是本轮所有下载器的增量。
+type TorrentDiff struct {
+	Added   []TorrentSnapshot `json:"added,omitempty"`   // 新增的整个下载器快照
+	Removed []uint            `json:"removed,omitempty"` // 删除的 downloader_id
+	Changed []DownloaderDiff  `json:"changed,omitempty"` // 已存在下载器内的变更
+}
+
+// dlCache 是单个下载器的上轮快照缓存（diff 基准）。
+type dlCache struct {
+	torrents map[string]downloader.Torrent
+	name     string
+	err      string
+	stats    *downloader.GlobalStats
 }
 
 // HRAlert 是一条 H&R 危险种子（对齐 automation runHRCheck 收集项）。
@@ -76,6 +114,21 @@ func EncodeNotice(n NoticeMsg) ([]byte, error) {
 	return json.Marshal(Message{Type: "notice", Data: n})
 }
 
+// EncodeTorrentsLegacy 编码旧式全量（type=torrents，给未协商增量的客户端，保持向后兼容）。
+func EncodeTorrentsLegacy(snap []TorrentSnapshot) ([]byte, error) {
+	return json.Marshal(Message{Type: MsgTorrentsLegacy, Data: snap})
+}
+
+// EncodeTorrentsFull 编码带 seq 的全量（inc 首帧 / 周期重同步）。
+func EncodeTorrentsFull(snap []TorrentSnapshot, seq uint64) ([]byte, error) {
+	return json.Marshal(Message{Type: MsgTorrentsFull, Seq: seq, Data: snap})
+}
+
+// EncodeTorrentsDiff 编码增量（inc 稳态）。
+func EncodeTorrentsDiff(diff *TorrentDiff, seq uint64) ([]byte, error) {
+	return json.Marshal(Message{Type: MsgTorrentsDiff, Seq: seq, Data: diff})
+}
+
 // Broadcaster 每 interval 聚合所有下载器种子快照，广播给所有 WS 连接。
 type Broadcaster struct {
 	hub      *Hub
@@ -87,6 +140,10 @@ type Broadcaster struct {
 	stateMu  sync.Mutex
 	dlState  map[string]bool // key=dlID:hash → 是否已完成（下载完成 diff）
 	primed   bool            // 冷启动首轮只填充状态不通知，避免把所有已完成种子当新通知
+	cacheMu  sync.Mutex
+	cache    map[uint]*dlCache // 上一轮快照（diff 基准）；nil=首轮，强制全量
+	seq      uint64            // 增量协议序列号（每轮 +1）
+	sinceFull uint             // 距上次强推 full 的 diff 数（达 fullResyncInterval 重置）
 }
 
 // DoneHook 下载完成副作用钩子：媒体服务器刷新等 best-effort 副作用（不应阻塞广播循环）。
@@ -142,7 +199,7 @@ func (b *Broadcaster) Run(ctx context.Context) {
 	}
 }
 
-// broadcast 聚合一次快照并广播；下载完成 diff 始终执行（不依赖 WS 连接）。
+// broadcast 聚合一次快照并按客户端协议分发；下载完成 diff 始终执行（不依赖 WS 连接）。
 func (b *Broadcaster) broadcast(ctx context.Context) {
 	snap, err := b.aggregate(ctx)
 	if err != nil {
@@ -151,13 +208,35 @@ func (b *Broadcaster) broadcast(ctx context.Context) {
 	}
 	b.detectDone(ctx, snap) // 下载完成通知（持久化，用户上线即可见）
 	if b.hub.Count() == 0 {
-		return // 无连接：不广播 torrent 快照（省不去重，但 diff 已做）
+		return // 无连接：不广播 torrent 快照
 	}
-	payload, err := json.Marshal(Message{Type: "torrents", Data: snap})
-	if err != nil {
-		return
+
+	b.cacheMu.Lock()
+	b.seq++
+	seq := b.seq
+	needFull := b.cache == nil || b.sinceFull >= fullResyncInterval
+	legacy := b.hub.HasLegacyClients()
+	diff, next := b.buildDiff(snap, b.cache, needFull)
+	b.cache = next
+	if needFull {
+		b.sinceFull = 0
+	} else {
+		b.sinceFull++
 	}
-	b.hub.Broadcast(payload)
+	b.cacheMu.Unlock()
+
+	// legacy 客户端收旧式 torrents 全量（仅在首轮/周期重同步/有 legacy 时序列化）；
+	// inc 客户端：needFull 时收 torrents_full（重同步），否则 torrents_diff（稳态增量）。
+	var legacyPayload, incPayload []byte
+	if needFull || legacy {
+		legacyPayload, _ = EncodeTorrentsLegacy(snap)
+	}
+	if needFull {
+		incPayload, _ = EncodeTorrentsFull(snap, seq)
+	} else {
+		incPayload, _ = EncodeTorrentsDiff(diff, seq)
+	}
+	b.hub.BroadcastInc(legacyPayload, incPayload)
 }
 
 // detectDone 检测种子「下载完成」转换 → 通知中心。冷启动首轮只填充状态不通知。
@@ -238,19 +317,108 @@ func (b *Broadcaster) aggregate(ctx context.Context) ([]TorrentSnapshot, error) 
 	return out, nil
 }
 
+func torrentEqual(a, b downloader.Torrent) bool { return reflect.DeepEqual(a, b) }
+
+func statsEqual(a, b *downloader.GlobalStats) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return reflect.DeepEqual(*a, *b)
+}
+
+// buildDiff 对比新快照与上次缓存，产出本轮增量与新缓存。纯计算（不持锁、不 I/O），便于单测。
+// forceFull=true 时返回 nil diff（调用方走全量路径），但仍返回 next 缓存。
+func (b *Broadcaster) buildDiff(snap []TorrentSnapshot, prev map[uint]*dlCache, forceFull bool) (*TorrentDiff, map[uint]*dlCache) {
+	next := make(map[uint]*dlCache, len(snap))
+	snapByID := make(map[uint]*TorrentSnapshot, len(snap))
+	for i := range snap {
+		s := &snap[i]
+		snapByID[s.DownloaderID] = s
+		cur := &dlCache{
+			torrents: make(map[string]downloader.Torrent, len(s.Torrents)),
+			name:     s.Name, err: s.Error, stats: s.Stats,
+		}
+		for _, t := range s.Torrents {
+			if t.Hash != "" {
+				cur.torrents[t.Hash] = t
+			}
+		}
+		next[s.DownloaderID] = cur
+	}
+	if forceFull || len(prev) == 0 {
+		return nil, next
+	}
+	diff := &TorrentDiff{}
+	for id, cur := range next {
+		old, ok := prev[id]
+		if !ok {
+			if s := snapByID[id]; s != nil {
+				diff.Added = append(diff.Added, *s)
+			}
+			continue
+		}
+		nameCh := cur.name != old.name
+		errCh := cur.err != old.err
+		statsCh := !statsEqual(cur.stats, old.stats)
+		dd := DownloaderDiff{DownloaderID: id, Error: cur.err}
+		if nameCh {
+			dd.Name = cur.name
+		}
+		if statsCh {
+			dd.Stats = cur.stats
+		}
+		for h := range old.torrents {
+			if _, exists := cur.torrents[h]; !exists {
+				dd.Removed = append(dd.Removed, h)
+			}
+		}
+		for h, newT := range cur.torrents {
+			oldT, exists := old.torrents[h]
+			if !exists {
+				dd.Added = append(dd.Added, newT)
+			} else if !torrentEqual(oldT, newT) {
+				dd.Changed = append(dd.Changed, newT)
+			}
+		}
+		if nameCh || errCh || statsCh || len(dd.Added) > 0 || len(dd.Changed) > 0 || len(dd.Removed) > 0 {
+			diff.Changed = append(diff.Changed, dd)
+		}
+	}
+	for id := range prev {
+		if _, exists := next[id]; !exists {
+			diff.Removed = append(diff.Removed, id)
+		}
+	}
+	return diff, next
+}
+
 // Snapshot 导出当前聚合（测试用）。
 func (b *Broadcaster) Snapshot(ctx context.Context) ([]TorrentSnapshot, error) {
 	return b.aggregate(ctx)
 }
 
 // Serve 把一个已升级的连接注册到 Hub、单推首帧、并启动读写泵。
+// inc=true 时客户端声明支持增量协议（收 torrents_full/torrents_diff）；否则收旧式 torrents 全量。
 // 调用方负责完成 Upgrade 与鉴权；连接生命周期交由泵管理。
-func (b *Broadcaster) Serve(ctx context.Context, conn *websocket.Conn) {
-	client := newClient(conn)
+func (b *Broadcaster) Serve(ctx context.Context, conn *websocket.Conn, inc bool) {
+	client := newClient(conn, inc)
 	b.hub.register(client)
-	// 首帧：立即单推当前快照，避免新连接等满一个 interval。
+	// 首帧：立即单推当前快照（inc 用 torrents_full 带当前 seq；legacy 用旧 torrents），
+	// 用当前 seq（不递增）——客户端 lastSeq=seq，下一轮 broadcast seq+1 连号 apply。
 	if snap, err := b.aggregate(ctx); err == nil {
-		if payload, err := json.Marshal(Message{Type: "torrents", Data: snap}); err == nil {
+		b.cacheMu.Lock()
+		seq := b.seq
+		b.cacheMu.Unlock()
+		var payload []byte
+		if inc {
+			payload, _ = EncodeTorrentsFull(snap, seq)
+		} else {
+			payload, _ = EncodeTorrentsLegacy(snap)
+		}
+		if payload != nil {
 			select {
 			case client.send <- payload:
 			default:

@@ -456,11 +456,24 @@ func (c *KeepSeedChain) Resolve(ctx context.Context, taskID uint, action string)
 			return err
 		}
 		setting := c.loadSetting(task.DownloaderID)
-		if err := dl.AddTorrent(ctx, downloader.AddOptions{
+		opts := downloader.AddOptions{
 			URL:      url,
 			SavePath: task.SavePath,
 			Paused:   setting.PauseAfterAdd,
-		}); err != nil {
+		}
+		// 辅种 URL 多为 passkey/MTeam token 直链（FetchTorrentFileByID 按 schema 自动委托）；
+		// 否则用站点 cookie 下载 .torrent 再以文件方式推（对标 DownloadChain.Add）。
+		if task.SiteID != 0 && c.siteCh != nil {
+			if content, _, ferr := c.siteCh.FetchTorrentFileByID(ctx, task.SiteID, url); ferr == nil {
+				opts.FileContent, opts.URL = content, ""
+			} else if !errors.Is(ferr, ErrDelegatedToDownloader) {
+				task.Status = "failed"
+				task.ResolvedAt = &now
+				_ = c.db.Save(&task).Error
+				return ferr
+			}
+		}
+		if err := dl.AddTorrent(ctx, opts); err != nil {
 			task.Status = "failed"
 			task.ResolvedAt = &now
 			if e := c.db.Save(&task).Error; e != nil {

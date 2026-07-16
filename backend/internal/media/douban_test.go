@@ -74,6 +74,187 @@ func TestDoubanSearchAndDetail(t *testing.T) {
 	}
 }
 
+// Current Frodo detail payloads use intro/pic/actors and scalar pubdate. Keep this
+// regression test aligned with the live payload so the detail page does not silently
+// lose its poster, synopsis, and cast after an upstream field migration.
+func TestDoubanDetailCurrentFrodoFields(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/movie/36953973" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(`{
+			"title":"特立独行","original_title":"The Standalone","year":2026,
+			"intro":"这是一段当前字段名的简介。","rating":{"value":7.4,"count":1200},
+			"pic":{"large":"https://img3.doubanio.com/view/photo/m_ratio_poster/public/p2933638302.jpg"},
+			"genres":["剧情","喜剧"],"pubdate":"2026-07-03(中国大陆)",
+			"countries":["中国大陆"],"durations":["109分钟"],
+			"directors":[{"name":"邢文雄"}],
+			"actors":[{"name":"白敬亭"},{"name":"魏翔"}]
+		}`))
+	}))
+	defer srv.Close()
+
+	d := NewDouban("", "test-key")
+	d.base = srv.URL
+	got, err := d.Detail(context.Background(), "movie:36953973")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.PosterURL != "https://img9.doubanio.com/view/photo/m_ratio_poster/public/p2933638302.jpg" {
+		t.Fatalf("poster_url = %q", got.PosterURL)
+	}
+	if got.Overview != "这是一段当前字段名的简介。" {
+		t.Fatalf("overview = %q", got.Overview)
+	}
+	if got.ReleaseDate != "2026-07-03(中国大陆)" || got.Year != 2026 {
+		t.Fatalf("release date/year = %q/%d", got.ReleaseDate, got.Year)
+	}
+	if len(got.Cast) != 2 || got.Cast[0].Name != "白敬亭" || got.Cast[1].Name != "魏翔" {
+		t.Fatalf("cast = %+v", got.Cast)
+	}
+}
+
+// TestDoubanDetailEnrichments：detail 后并行补 celebrities（带头像演员）/recommendations
+// （裸数组）/photos（横幅剧照）。钉死：① celebrity 头像原样返回，不被 doubanPosterURL 的
+// (p\d+)\.jpg 误重写成不存在的海报路径；② 推荐从 year 取年，缺失则从 card_subtitle 提取；
+// ③ backdrop 跳过竖图、取首张横幅剧照。
+//
+// 注：TestDoubanDetailCurrentFrodoFields 的 handler 只认 detail path（其余 404）→ 走降级路径
+// （cast 回退 detail 裸 actors）；本测走成功路径，两条路径互补。
+func TestDoubanDetailEnrichments(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/movie/1":
+			_, _ = w.Write([]byte(`{"title":"X","year":"2026","pic":{"large":"https://img9.doubanio.com/view/photo/m_ratio_poster/public/p1.jpg"}}`))
+		case "/movie/1/celebrities":
+			_, _ = w.Write([]byte(`{"directors":[],"actors":[
+				{"name":"白敬亭","character":"男主","uri":"douban://douban.com/celebrity/1?subject_id=1001","avatar":{"large":"https://img1.doubanio.com/view/personage/m/public/p1.jpg"}},
+				{"name":"魏翔","character":"男二","uri":"douban://douban.com/celebrity/2?subject_id=1002","avatar":{"large":"https://img3.doubanio.com/view/personage/m/public/p2.jpg"}}
+			]}`))
+		case "/movie/1/recommendations":
+			_, _ = w.Write([]byte(`[
+				{"id":"36999793","title":"类似片A","year":"2026","pic":{"large":"https://img2.doubanio.com/view/photo/m_ratio_poster/public/p2929759261.jpg"},"rating":{"value":7.4}},
+				{"id":"123","title":"类似片B","card_subtitle":"2025 / 中国","pic":{"large":"https://img9.doubanio.com/view/photo/l/public/p999.jpg"},"rating":{"value":6.0}}
+			]`))
+		case "/movie/1/photos":
+			_, _ = w.Write([]byte(`{"photos":[
+				{"image":{"large":{"url":"https://img.doubanio.com/view/photo/vertical.jpg","width":400,"height":600}}},
+				{"image":{"large":{"url":"https://img.doubanio.com/view/photo/banner.jpg","width":1920,"height":1080}}}
+			]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+	d := NewDouban("", "test-key")
+	d.base = srv.URL
+	got, err := d.Detail(context.Background(), "movie:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 演员：celebrities 带头像，avatar 原样（personage 路径不可过 doubanPosterURL）
+	if len(got.Cast) != 2 || got.Cast[0].Name != "白敬亭" {
+		t.Fatalf("cast = %+v", got.Cast)
+	}
+	if got.Cast[0].Avatar != "https://img1.doubanio.com/view/personage/m/public/p1.jpg" {
+		t.Errorf("cast[0].avatar = %q, want personage 原样（不被重写成 m_ratio_poster）", got.Cast[0].Avatar)
+	}
+	if got.Cast[0].ID != "1001" {
+		t.Errorf("cast[0].id = %q, want 1001（从 actor.uri 提取 subject_id）", got.Cast[0].ID)
+	}
+	if got.Cast[0].Role != "男主" {
+		t.Errorf("cast[0].role = %q, want 男主", got.Cast[0].Role)
+	}
+	// 推荐：裸数组映射；rec[1] 无 year 字段，从 card_subtitle "2025 / 中国" 提取
+	if len(got.Recommendations) != 2 {
+		t.Fatalf("recommendations = %+v", got.Recommendations)
+	}
+	r0 := got.Recommendations[0]
+	if r0.SourceID != "movie:36999793" || r0.Title != "类似片A" || r0.Year != 2026 || r0.Rating != 7.4 {
+		t.Errorf("rec[0] = %+v", r0)
+	}
+	if r0.PosterURL != "https://img9.doubanio.com/view/photo/m_ratio_poster/public/p2929759261.jpg" {
+		t.Errorf("rec[0].poster = %q（应经 doubanPosterURL 规整为 m_ratio_poster）", r0.PosterURL)
+	}
+	if got.Recommendations[1].Year != 2025 {
+		t.Errorf("rec[1].year = %d, want 2025（从 card_subtitle 提取）", got.Recommendations[1].Year)
+	}
+	// backdrop：跳过竖图，取首张横幅剧照
+	if got.BackdropURL != "https://img.doubanio.com/view/photo/banner.jpg" {
+		t.Errorf("backdrop = %q, want 横幅剧照 banner.jpg", got.BackdropURL)
+	}
+}
+
+// TestDoubanCelebrity：点演员头像拉的简介。/elessar/subject/{id} 返回 desc（HTML 多段 <p>）+
+// extra.info 结构化 + short_info + modules.work_collections 参演作品。钉死：goquery 解析 desc 成段落、
+// info/works 映射、avatar 原样（personage 路径不过 doubanPosterURL）。
+func TestDoubanCelebrity(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/elessar/subject/1001" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(`{
+			"name":"白敬亭","latin_title":"Bai Jingting",
+			"cover":{"large":{"url":"https://img1.doubanio.com/view/personage/l/public/p1.jpg"}},
+			"followed_count":1234,
+			"desc":"<div class=\"content\"><p>第一段生平。</p><p>第二段生平。</p></div>",
+			"url":"https://www.douban.com/personage/1001",
+			"extra":{"info":[["性别","男"],["出生日期","1993年"]],"short_info":"演员 / 作品A 作品B"},
+			"modules":[{"type":"work_collections","payload":{"collections":[{"works":[
+				{"roles":["演员 - 男主"],"subject":{"title":"作品A","url":"https://movie.douban.com/subject/a"}},
+				{"roles":["演员"],"subject":{"title":"作品B","url":"https://movie.douban.com/subject/b"}}
+			]}]}}]
+		}`))
+	}))
+	defer srv.Close()
+	d := NewDouban("", "test-key")
+	d.base = srv.URL
+	p, err := d.Celebrity(context.Background(), "1001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Name != "白敬亭" || p.LatinName != "Bai Jingting" {
+		t.Errorf("name/latin = %q/%q", p.Name, p.LatinName)
+	}
+	// avatar 原样（personage 路径不过 doubanPosterURL）
+	if p.Avatar != "https://img1.doubanio.com/view/personage/l/public/p1.jpg" {
+		t.Errorf("avatar = %q, want 原样 personage/l", p.Avatar)
+	}
+	if len(p.Bio) != 2 || p.Bio[0] != "第一段生平。" || p.Bio[1] != "第二段生平。" {
+		t.Errorf("bio = %v（应 goquery 解析 2 段 <p>）", p.Bio)
+	}
+	if len(p.Info) != 2 || p.Info[0] != [2]string{"性别", "男"} {
+		t.Errorf("info = %v", p.Info)
+	}
+	if p.ShortInfo != "演员 / 作品A 作品B" || p.FollowedCount != 1234 {
+		t.Errorf("short_info/followed = %q/%d", p.ShortInfo, p.FollowedCount)
+	}
+	if len(p.Works) != 2 || p.Works[0].Title != "作品A" || p.Works[0].Role != "演员 - 男主" {
+		t.Errorf("works = %+v", p.Works)
+	}
+	if p.DoubanURL != "https://www.douban.com/personage/1001" {
+		t.Errorf("douban_url = %q", p.DoubanURL)
+	}
+}
+
+func TestDoubanDetailYearFallsBackWhenPubdateMissing(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"title":"待映影片","year":"2027","intro":"简介"}`))
+	}))
+	defer srv.Close()
+	d := NewDouban("", "test-key")
+	d.base = srv.URL
+	got, err := d.Detail(context.Background(), "movie:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Year != 2027 {
+		t.Fatalf("year = %d, want 2027", got.Year)
+	}
+}
+
 // TestDoubanYearFilter：年份容差 ±1 过滤。
 func TestDoubanYearFilter(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -124,8 +305,8 @@ func TestDoubanPosterURL(t *testing.T) {
 			"https://img9.doubanio.com/view/photo/l/public/p2483150779.jpg",
 			"https://img9.doubanio.com/view/photo/m_ratio_poster/public/p2483150779.jpg",
 		},
-		{"", ""},                                                               // 空
-		{"https://img9.doubanio.com/view/subject/m/public/s33778346.jpg",       // s* 封面无法换算，原样
+		{"", ""}, // 空
+		{"https://img9.doubanio.com/view/subject/m/public/s33778346.jpg", // s* 封面无法换算，原样
 			"https://img9.doubanio.com/view/subject/m/public/s33778346.jpg"},
 	}
 	for _, c := range cases {
@@ -232,9 +413,9 @@ func TestDoubanSignedFallsBackToWechat(t *testing.T) {
 // 回退签名（公开默认凭据），证明零配置下签名 fallback 也可用。
 func TestDoubanWechatFallsBackToSigned(t *testing.T) {
 	var (
-		hits                []string
-		signedKey, sig, ts  string
-		signedPath          string
+		hits               []string
+		signedKey, sig, ts string
+		signedPath         string
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {

@@ -108,7 +108,8 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 			if force {
 				res = c.fetchHaremOnce(ctx, sem, &s)
 			} else {
-				res, _ = sfDo(&c.haremSF, strconv.Itoa(int(s.ID)), func() (haremSFResult, error) {
+				var waitErr error
+				res, waitErr = sfDoContext(ctx, &c.haremSF, strconv.Itoa(int(s.ID)), func() (haremSFResult, error) {
 					// double-check：leader 完成后紧随的 caller 重跑 fn，缓存可能已满。
 					c.haremMu.Lock()
 					ce, ok := c.haremCache[s.ID]
@@ -118,6 +119,9 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 					}
 					return c.fetchHaremOnce(ctx, sem, &s), nil
 				})
+				if waitErr != nil {
+					res.errMsg = waitErr.Error()
+				}
 			}
 			status := res.status
 			if status == nil {
@@ -162,8 +166,12 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 
 // fetchHaremOnce 抓单站邀请库存 + 被邀请人（占一个 sem 槽、独立超时），成功时写缓存。
 func (c *SiteChain) fetchHaremOnce(ctx context.Context, sem chan struct{}, s *models.Site) haremSFResult {
-	sem <- struct{}{}
-	defer func() { <-sem }()
+	if err := acquireSemaphore(ctx, sem); err != nil {
+		return haremSFResult{errMsg: err.Error()}
+	}
+	if sem != nil {
+		defer func() { <-sem }()
+	}
 	siteCtx, cancel := context.WithTimeout(ctx, haremTimeout)
 	defer cancel()
 	status, e1 := c.HaremStatus(siteCtx, s)
@@ -327,7 +335,8 @@ func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(si
 			if force {
 				res = c.fetchHaremOnce(ctx, sem, &s)
 			} else {
-				res, _ = sfDo(&c.haremSF, strconv.Itoa(int(s.ID)), func() (haremSFResult, error) {
+				var waitErr error
+				res, waitErr = sfDoContext(ctx, &c.haremSF, strconv.Itoa(int(s.ID)), func() (haremSFResult, error) {
 					c.haremMu.Lock()
 					ce, ok := c.haremCache[s.ID]
 					c.haremMu.Unlock()
@@ -336,6 +345,9 @@ func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(si
 					}
 					return c.fetchHaremOnce(ctx, sem, &s), nil
 				})
+				if waitErr != nil {
+					res.errMsg = waitErr.Error()
+				}
 			}
 			status := res.status
 			if status == nil {

@@ -223,6 +223,25 @@ func (o *SiteOper) Cookie(s *models.Site) (string, error) {
 	return o.c.Decrypt(s.CookieEnc)
 }
 
+// FindByDownloadURL 按 download URL 的注册域匹配启用站点（手动加种/AI 工具无 SiteID 时反查用）。
+// 命中返回首个；未命中返回 (nil, nil)——调用方据此退化为旧 URL 直推（不阻断，向后兼容）。
+func (o *SiteOper) FindByDownloadURL(rawURL string) (*models.Site, error) {
+	dom := site.RegisteredDomain(rawURL)
+	if dom == "" {
+		return nil, nil
+	}
+	sites, err := o.ListActive()
+	if err != nil {
+		return nil, err
+	}
+	for i := range sites {
+		if site.RegisteredDomain(sites[i].BaseURL) == dom {
+			return &sites[i], nil
+		}
+	}
+	return nil, nil
+}
+
 // UpdateCookie 仅更新站点 cookie（WebView 登录后上传用）。
 func (o *SiteOper) UpdateCookie(id uint, cookie string) error {
 	s, err := o.Get(id)

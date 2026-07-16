@@ -42,6 +42,38 @@ func (h *Hub) Broadcast(payload []byte) {
 	}
 }
 
+// BroadcastInc 按客户端协议分发：旧客户端收 legacyPayload（type=torrents 全量），
+// 增量客户端收 incPayload（torrents_full 或 torrents_diff）。对应 payload 为空则该 cohort 跳过。
+func (h *Hub) BroadcastInc(legacyPayload, incPayload []byte) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		payload := legacyPayload
+		if c.inc {
+			payload = incPayload
+		}
+		if len(payload) == 0 {
+			continue
+		}
+		select {
+		case c.send <- payload:
+		default:
+		}
+	}
+}
+
+// HasLegacyClients 是否存在未协商增量协议的连接（决定本轮是否必须广播全量）。
+func (h *Hub) HasLegacyClients() bool {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		if !c.inc {
+			return true
+		}
+	}
+	return false
+}
+
 // Count 返回当前连接数（观测/「无连接则跳过聚合」优化用）。
 func (h *Hub) Count() int {
 	h.mu.RLock()

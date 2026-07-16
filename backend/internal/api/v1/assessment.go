@@ -23,7 +23,9 @@ func NewAssessmentHandler(ch *chain.AssessmentChain, siteOp *oper.SiteOper) *Ass
 // All 返回全站考核聚合（按 progress 降序；?refresh=1 强制刷新）。
 func (h *AssessmentHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
-	cards := h.ch.AssessAll(c.Request.Context(), force)
+	ctx, cancel := aggregateRequestContext(c)
+	defer cancel()
+	cards := h.ch.AssessAll(ctx, force)
 	if cards == nil {
 		cards = []chain.AssessmentCard{}
 	}

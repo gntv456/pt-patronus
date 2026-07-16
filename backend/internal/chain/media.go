@@ -72,6 +72,24 @@ func (c *MediaChain) Detail(ctx context.Context, source, id string) (*media.Medi
 	return nil, fmt.Errorf("unknown media source %q", source)
 }
 
+// CelebrityCapable 是可选源能力：按源内人员 id 返回演员简介（点 cast 头像拉取）。
+type CelebrityCapable interface {
+	Celebrity(ctx context.Context, personageID string) (*media.CelebrityProfile, error)
+}
+
+// Celebrity 按源名 + 演员源内 id 拉演员简介。源无该能力则报错（目前仅豆瓣实现）。
+func (c *MediaChain) Celebrity(ctx context.Context, source, personageID string) (*media.CelebrityProfile, error) {
+	for _, s := range c.provider.Sources() {
+		if s.Name() == source {
+			if cc, ok := s.(CelebrityCapable); ok {
+				return cc.Celebrity(ctx, personageID)
+			}
+			return nil, fmt.Errorf("source %q 不支持演员简介", source)
+		}
+	}
+	return nil, fmt.Errorf("unknown media source %q", source)
+}
+
 // Search 跨源搜索。命中（且未过期）缓存直接返回；否则**并发**逐源搜索、按 filter
 // 过滤、按源优先级合并、写缓存。
 //

@@ -1,4 +1,4 @@
-// Package downloader 定义统一的下载器抽象（qBittorrent / Transmission）与数据模型。
+// Package downloader 定义统一下载器抽象（qBittorrent / Transmission / uTorrent / Deluge / Aria2 / ruTorrent / Flood）与数据模型。
 // 接口粒度参考 qBitController 的 Repository 层（已验证的业务方法集）。
 package downloader
 
@@ -102,6 +102,11 @@ type AddOptions struct {
 	FileContent []byte
 	FileName    string
 
+	// SiteID 非 0 时，DownloadChain.Add 会先用该站点 cookie/passkey 把 URL 指向的
+	// .torrent 下载成字节（FileContent）再推下载器——解决 PT 站 download.php 需登录态、
+	// 下载器无站点 cookie 拿不到种子的问题（对标 MoviePilot）。0=沿用旧 URL 直推。
+	SiteID uint
+
 	Category      string
 	Tags          []string
 	SavePath      string
@@ -112,7 +117,7 @@ type AddOptions struct {
 
 // Downloader 是统一下载器接口。
 type Downloader interface {
-	// Type 返回下载器类型（qb | tr）。
+	// Type 返回下载器类型（qb | tr | ut | dl | ar | rt | fl）。
 	Type() string
 	// TestConnection 探测连接与登录态。
 	TestConnection(ctx context.Context) error

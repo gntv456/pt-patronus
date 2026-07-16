@@ -99,7 +99,9 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 		wname := wh.Name
 		reqCtx := c.Request.Context()
 		go func() {
-			bg, cancel := context.WithTimeout(reqCtx, 10*time.Minute) // 派生自请求 ctx：客户端断开即取消，避免孤儿工作流执行
+			// HTTP 请求在 handler 返回后必然取消；后台工作流应保留请求值，
+			// 但由自身超时控制，不能继承这次请求的取消信号。
+			bg, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), 10*time.Minute)
 			defer cancel()
 			if _, err := h.wfCh.Run(bg, target, "webhook", payload); err != nil {
 				slog.Warn("webhook trigger workflow failed", "workflow_id", target, "err", err, "webhook", wname)

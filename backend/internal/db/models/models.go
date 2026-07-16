@@ -540,7 +540,7 @@ type TransferHistory struct {
 	PosterURL    string    `gorm:"size:512" json:"poster_url"`
 	DownloaderID uint      `gorm:"index" json:"downloader_id"`
 	DownloadHash string    `gorm:"size:64;index" json:"download_hash"`
-	Status       string    `gorm:"size:16;index" json:"status"` // success | failed
+	Status       string    `gorm:"size:16;index" json:"status"` // success | failed | skipped（skipped=未下完等前置跳过）
 	ErrorMsg     string    `gorm:"type:text" json:"error_msg,omitempty"`
 	Files        string    `gorm:"type:text" json:"files,omitempty"` // JSON：已整理文件列表
 	CreatedAt    time.Time `gorm:"index" json:"created_at"`

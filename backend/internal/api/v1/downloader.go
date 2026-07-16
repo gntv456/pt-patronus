@@ -3,6 +3,8 @@ package v1
 import (
 	"errors"
 	"net/http"
+	"sort"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/chain"
@@ -13,14 +15,15 @@ import (
 
 // DownloaderHandler 处理下载器 CRUD 与任务操作。
 type DownloaderHandler struct {
-	op  *oper.DownloaderOper
-	dl  *chain.DownloadChain
-	mgr *manager.Manager
+	op     *oper.DownloaderOper
+	dl     *chain.DownloadChain
+	mgr    *manager.Manager
+	siteOp *oper.SiteOper // 手动加种 URL 反查站点用（cookie 下载 .torrent）
 }
 
 // NewDownloaderHandler 构造。
-func NewDownloaderHandler(op *oper.DownloaderOper, dl *chain.DownloadChain, mgr *manager.Manager) *DownloaderHandler {
-	return &DownloaderHandler{op: op, dl: dl, mgr: mgr}
+func NewDownloaderHandler(op *oper.DownloaderOper, dl *chain.DownloadChain, mgr *manager.Manager, siteOp *oper.SiteOper) *DownloaderHandler {
+	return &DownloaderHandler{op: op, dl: dl, mgr: mgr, siteOp: siteOp}
 }
 
 // List 列出全部下载器。
@@ -31,6 +34,20 @@ func (h *DownloaderHandler) List(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"downloaders": ds})
+}
+
+// Get 取单个下载器详情。
+func (h *DownloaderHandler) Get(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	d, err := h.op.Get(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"downloader": d})
 }
 
 // Create 创建下载器。
@@ -103,7 +120,8 @@ func (h *DownloaderHandler) Test(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// Torrents 列出任务。
+// Torrents 列出任务（支持 category/state/tag/q 过滤 + limit/offset 分页 + sort/order 排序）。
+// 不传 query 时返回全部（仅多 total/limit/offset 元字段），向后兼容。
 func (h *DownloaderHandler) Torrents(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -111,10 +129,139 @@ func (h *DownloaderHandler) Torrents(c *gin.Context) {
 	}
 	ts, err := h.dl.List(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"torrents": []any{}, "error": err.Error()})
+		c.JSON(http.StatusOK, gin.H{"torrents": []any{}, "total": 0, "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"torrents": ts})
+	ts = filterTorrents(ts, c)
+	sortTorrents(ts, c)
+	total := len(ts)
+	limit := clampQueryInt(c, "limit", 200, 1, 1000)
+	offset := clampQueryInt(c, "offset", 0, 0, total)
+	if offset > total {
+		offset = total
+	}
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	c.JSON(http.StatusOK, gin.H{"torrents": ts[offset:end], "total": total, "limit": limit, "offset": offset})
+}
+
+// clampQueryInt 解析 query 整数，越界钳到 [lo,hi]。
+func clampQueryInt(c *gin.Context, key string, def, lo, hi int) int {
+	v := atoiDefault(c.Query(key), def)
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+// torrentStateGroup 把各下载器原始 state 归并为前端分组（对齐 TorrentTable.stateFilter）。
+func torrentStateGroup(s string) string {
+	low := strings.ToLower(s)
+	switch {
+	case strings.Contains(low, "error"):
+		return "error"
+	case strings.Contains(low, "upload") || strings.Contains(low, "seed"):
+		return "seeding"
+	case strings.Contains(low, "pause") || strings.Contains(low, "stop"):
+		return "paused"
+	case strings.Contains(low, "download"):
+		return "downloading"
+	default:
+		return "other"
+	}
+}
+
+func containsString(ss []string, s string) bool {
+	for _, v := range ss {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+// filterTorrents 按 category/state/tag/q 内存过滤（种子量级千以内可接受）。
+func filterTorrents(ts []downloader.Torrent, c *gin.Context) []downloader.Torrent {
+	cat := c.Query("category")
+	st := c.Query("state")
+	tag := c.Query("tag")
+	q := strings.ToLower(c.Query("q"))
+	if cat == "" && (st == "" || st == "all") && tag == "" && q == "" {
+		return ts
+	}
+	out := make([]downloader.Torrent, 0, len(ts))
+	for _, t := range ts {
+		if cat != "" && t.Category != cat {
+			continue
+		}
+		if st != "" && st != "all" && torrentStateGroup(t.State) != st {
+			continue
+		}
+		if tag != "" && !containsString(t.Tags, tag) {
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(t.Name), q) {
+			continue
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
+func cmpInt64(a, b int64) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
+}
+
+func cmpFloat(a, b float64) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
+}
+
+// sortTorrents 按 sort/order 原地排序（默认 added_at desc）；用 cmp int 避免违反严格弱序。
+func sortTorrents(ts []downloader.Torrent, c *gin.Context) {
+	key := c.DefaultQuery("sort", "added_at")
+	desc := c.DefaultQuery("order", "desc") != "asc"
+	cmp := func(a, b downloader.Torrent) int {
+		switch key {
+		case "name":
+			return strings.Compare(a.Name, b.Name)
+		case "size":
+			return cmpInt64(a.Size, b.Size)
+		case "progress":
+			return cmpFloat(a.Progress, b.Progress)
+		case "ratio":
+			return cmpFloat(a.Ratio, b.Ratio)
+		case "dl_rate":
+			return cmpInt64(a.DLRate, b.DLRate)
+		case "up_rate":
+			return cmpInt64(a.UPRate, b.UPRate)
+		default:
+			return cmpInt64(a.AddedAt.UnixNano(), b.AddedAt.UnixNano())
+		}
+	}
+	sort.Slice(ts, func(i, j int) bool {
+		r := cmp(ts[i], ts[j])
+		if desc {
+			return r > 0
+		}
+		return r < 0
+	})
 }
 
 type addReq struct {
@@ -138,10 +285,17 @@ func (h *DownloaderHandler) Add(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	err := h.dl.Add(c.Request.Context(), id, downloader.AddOptions{
+	opts := downloader.AddOptions{
 		URL: req.URL, Category: req.Category, Tags: req.Tags, SavePath: req.SavePath, Paused: req.Paused,
 		UploadLimit: req.UploadLimit, DownloadLimit: req.DownloadLimit,
-	})
+	}
+	// 手动加种：URL 可能来自 PT 站（需 cookie 下载），反查站点设 SiteID 让 DownloadChain.Add 处理。
+	if h.siteOp != nil {
+		if st, _ := h.siteOp.FindByDownloadURL(req.URL); st != nil {
+			opts.SiteID = st.ID
+		}
+	}
+	err := h.dl.Add(c.Request.Context(), id, opts)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})
 		return

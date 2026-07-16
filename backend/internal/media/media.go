@@ -24,6 +24,27 @@ type CreditPerson struct {
 	Name   string `json:"name" binding:"max=128"`
 	Role   string `json:"role,omitempty" binding:"max=128"`   // 角色名 / 职务
 	Avatar string `json:"avatar,omitempty" binding:"max=512"` // 头像 URL
+	ID     string `json:"id,omitempty" binding:"max=32"`      // 源内人员 id（豆瓣=personage subject_id，点头像拉演员简介）
+}
+
+// CelebrityProfile 是演员简介（点 cast 头像拉取，对应豆瓣 /elessar/subject）。
+type CelebrityProfile struct {
+	Name          string          `json:"name"`
+	LatinName     string          `json:"latin_name,omitempty"`
+	Avatar        string          `json:"avatar,omitempty"`     // 原样 personage URL，不过 doubanPosterURL
+	ShortInfo     string          `json:"short_info,omitempty"` // 代表作一句话
+	Bio           []string        `json:"bio,omitempty"`        // 生平段落（goquery 从 desc HTML 提纯文本）
+	Info          [][2]string     `json:"info,omitempty"`       // 结构化 [label,value]
+	FollowedCount int             `json:"followed_count,omitempty"`
+	DoubanURL     string          `json:"douban_url,omitempty"`
+	Works         []CelebrityWork `json:"works,omitempty"`
+}
+
+// CelebrityWork 是参演作品（无海报，仅标题+角色+链接）。
+type CelebrityWork struct {
+	Title string `json:"title"`
+	Role  string `json:"role,omitempty"`
+	URL   string `json:"url,omitempty"`
 }
 
 // MediaInfo 是统一的元数据。Search 返回基础字段；Detail 额外填充演职/推荐等富字段。
@@ -42,6 +63,7 @@ type MediaInfo struct {
 	Rating        float64   `json:"rating,omitempty"`
 	VoteCount     int       `json:"vote_count,omitempty"` // 评分人数（统计意义；0=未知/未提供）
 	Genres        []string  `json:"genres,omitempty" binding:"dive,max=64"`
+	Names         []string  `json:"names,omitempty" binding:"dive,max=512"` // 别名/译名（豆瓣 aka / TMDB alternative_titles 等），跨语言标题匹配用
 
 	// 富字段（Detail 填充，Search 不填）：
 	Runtime         int            `json:"runtime,omitempty"` // 分钟

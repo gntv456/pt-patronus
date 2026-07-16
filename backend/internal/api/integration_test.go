@@ -63,7 +63,7 @@ func newTestDepsWith(t *testing.T, fa auth.HxptAuthenticator) *Deps {
 
 	dlOp := oper.NewDownloaderOper(db, crypto)
 	dlMgr := manager.NewManager(dlOp)
-	dlCh := chain.NewDownloadChain(base, dlMgr, dlOp)
+	dlCh := chain.NewDownloadChain(base, dlMgr, dlOp, nil)
 
 	notifMgr := notification.NewManager()
 	notifCh := chain.NewNotificationChain(base, notifMgr)

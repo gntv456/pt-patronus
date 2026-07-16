@@ -85,6 +85,102 @@ class _TransferPageState extends State<TransferPage> {
     }
   }
 
+  Future<void> _batchDelete() async {
+    if (_list.isEmpty) {
+      _toast('暂无记录');
+      return;
+    }
+    final picked = <TransferHistory>[];
+    final ok = await showAdaptiveSheet<bool>(
+      context,
+      title: '批量删除整理记录',
+      wideWidth: 460,
+      builder: (_) => StatefulBuilder(builder: (ctx, setS) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ..._list.map((h) => CheckboxListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  value: picked.contains(h),
+                  title: Text('${h.title}${h.year > 0 ? ' (${h.year})' : ''}',
+                      style: const TextStyle(fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(h.status == 'success' ? '成功' : '失败', style: const TextStyle(fontSize: 11)),
+                  onChanged: (v) => setS(() {
+                    if (v == true) {
+                      picked.add(h);
+                    } else {
+                      picked.remove(h);
+                    }
+                  }),
+                )),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: picked.isEmpty ? null : () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+              child: Text('删除选中（${picked.length}）'),
+            ),
+          ],
+        );
+      }),
+    );
+    if (ok != true || picked.isEmpty) return;
+    if (!mounted) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('批量删除'),
+        content: Text('确认删除选中的 ${picked.length} 条整理记录？'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final res = await _api.batchDeleteHistory(picked.map((h) => h.id).toList());
+      final deleted = res['deleted'] as int? ?? 0;
+      final failed = (res['failed'] as List?)?.length ?? 0;
+      _toast(failed > 0 ? '已删除 $deleted 条，失败 $failed 条' : '已删除 $deleted 条记录');
+      _load();
+    } catch (e) {
+      _toast('失败：$e');
+    }
+  }
+
+  Future<void> _clearFailed() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('清除全部失败记录'),
+        content: const Text('确认清除全部失败整理记录？此操作不可撤销。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text('清除'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      final res = await _api.clearFailedHistory();
+      final deleted = res['deleted'] as int? ?? 0;
+      _toast('已清除 $deleted 条失败记录');
+      _load();
+    } catch (e) {
+      _toast('失败：$e');
+    }
+  }
+
   void _toast(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
@@ -96,6 +192,8 @@ class _TransferPageState extends State<TransferPage> {
       title: const Text('媒体整理', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
       actions: [
         PTBarAction(icon: Icons.refresh, label: '刷新', loading: _loading, onPressed: _loading ? null : _load),
+        PTBarAction(icon: Icons.delete_sweep, label: '批量删除', onPressed: _batchDelete, overflow: true),
+        PTBarAction(icon: Icons.delete_forever, label: '清除失败', onPressed: _clearFailed, overflow: true),
         PTBarAction(icon: Icons.cleaning_services, label: '扫描兜底', onPressed: _sweep),
         PTBarAction(icon: Icons.post_add, label: '手动整理', onPressed: _openOrganize),
         PTBarAction(icon: Icons.settings, label: '整理设置', onPressed: _openConfig),

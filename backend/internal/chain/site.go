@@ -13,6 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/module"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"golang.org/x/sync/singleflight"
 )
@@ -40,6 +41,7 @@ type SiteChain struct {
 	Base
 	sites        *oper.SiteOper
 	registry     *site.Registry
+	hc           *httpclient.Client // 站点 HTTP 客户端（FetchTorrentFile 下载种子用；SetHTTPClient 注入）
 	records      *oper.CheckinRecordOper // 签到历史落库（可选；未注入则不落库，测试用）
 	checkinGuard *spendGuard             // 签到 in-flight 去重（防双击/重放/cron 重叠重复签到）
 
@@ -104,6 +106,10 @@ func NewSiteChain(b Base, sites *oper.SiteOper, registry *site.Registry) *SiteCh
 		msgCache:     make(map[string]msgCacheEntry),
 	}
 }
+
+// SetHTTPClient 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用）。app 装配时调用；
+// 用 setter 而非改 NewSiteChain 签名，避免波及现有测试构造。
+func (c *SiteChain) SetHTTPClient(hc *httpclient.Client) { c.hc = hc }
 
 // defFor 返回站点对应的定义；无则回退为仅含 schema 的最小定义。
 func (c *SiteChain) defFor(s *models.Site) *site.SiteMetadata {
@@ -287,6 +293,9 @@ func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string, s
 			defer cancel()
 
 			ts, e := c.Search(siteCtx, &s, keyword, category, 1)
+			for i := range ts {
+				ts[i].SiteID = s.ID
+			}
 			r := SiteResult{SiteID: s.ID, SiteName: s.Name, Torrents: ts}
 			if e != nil {
 				r.Torrents = nil

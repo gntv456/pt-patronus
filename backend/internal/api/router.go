@@ -269,10 +269,11 @@ func Build(d *Deps) *gin.Engine {
 				msg.POST("/:id/markread", msgH.MarkRead)
 			}
 
-			dlH := v1.NewDownloaderHandler(d.DLOp, d.DLCh, d.DLMgr)
+			dlH := v1.NewDownloaderHandler(d.DLOp, d.DLCh, d.DLMgr, d.SiteOp)
 			dls := guarded.Group("/downloaders")
 			{
 				dls.GET("", dlH.List)
+					dls.GET("/:id", dlH.Get)
 				dls.POST("", dlH.Create)
 				dls.PUT("/:id", dlH.Update)
 				dls.DELETE("/:id", middleware.RequireAdmin(), dlH.Delete)
@@ -334,6 +335,7 @@ func Build(d *Deps) *gin.Engine {
 				md.GET("/discover", mediaH.Discover)
 				md.GET("/poster", mediaH.Poster)
 				md.GET("/detail", mediaH.Detail)
+				md.GET("/celebrity", mediaH.Celebrity)
 				md.GET("/image", mediaH.Image)
 				md.POST("/nfo", mediaH.NFO)
 				md.GET("/config", mediaH.GetConfig)
@@ -669,6 +671,8 @@ func Build(d *Deps) *gin.Engine {
 			{
 				tr.GET("/history", trH.History)
 				tr.DELETE("/history/:id", middleware.RequireAdmin(), trH.DeleteHistory)
+				tr.POST("/history/batch-delete", middleware.RequireAdmin(), trH.BatchDeleteHistory)
+				tr.POST("/history/clear-failed", middleware.RequireAdmin(), trH.ClearFailedHistory)
 				tr.GET("/config", trH.GetConfig)
 				tr.PUT("/config", middleware.RequireAdmin(), trH.SetConfig)
 				tr.GET("/dirwatch", trH.GetDirwatchConfig)

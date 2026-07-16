@@ -60,5 +60,6 @@ func (h *WSHandler) Handle(c *gin.Context) {
 		return // Upgrade 已写过错误响应
 	}
 	// Serve 内部注册连接、单推首帧并启动读写泵；连接断开由泵自清理。
-	h.bc.Serve(c.Request.Context(), conn)
+	// proto=inc：客户端声明支持增量协议（收 torrents_full/torrents_diff 而非旧 torrents 全量）。
+	h.bc.Serve(c.Request.Context(), conn, c.Query("proto") == "inc")
 }

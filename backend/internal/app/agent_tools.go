@@ -121,7 +121,12 @@ func registerAgentTools(
 		return mcpJSON(map[string]any{"deleted": len(argStrSlice(a, "hashes"))}), dlCh.Delete(ctx, uint(argInt(a, "downloader_id")), argStrSlice(a, "hashes"), argBool(a, "delete_files"))
 	}})
 	reg(mcp.Tool{Name: "torrents_add", Description: "Add a torrent by magnet/URL to a downloader.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}, "url": map[string]any{"type": "string"}, "category": map[string]any{"type": "string"}}, "required": []string{"downloader_id", "url"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
-		err := dlCh.Add(ctx, uint(argInt(a, "downloader_id")), downloader.AddOptions{URL: argString(a, "url", ""), Category: argString(a, "category", "")})
+		opts := downloader.AddOptions{URL: argString(a, "url", ""), Category: argString(a, "category", "")}
+		// URL 可能来自 PT 站（需 cookie 下载），反查站点设 SiteID。
+		if st, _ := siteOp.FindByDownloadURL(opts.URL); st != nil {
+			opts.SiteID = st.ID
+		}
+		err := dlCh.Add(ctx, uint(argInt(a, "downloader_id")), opts)
 		return mcpJSON(map[string]any{"added": err == nil}), err
 	}})
 

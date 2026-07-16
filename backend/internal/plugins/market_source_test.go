@@ -8,22 +8,23 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
 
-// TestNormalizeMarketSource 覆盖 GitHub 仓库 URL → raw 转换、简写、tree 分支/子目录、以及
+// TestNormalizeMarketSource 覆盖 GitHub 仓库 URL → jsDelivr CDN 转换、简写、tree 分支/子目录、以及
 // raw/file/其它 http(s) 源原样返回等分支。
 func TestNormalizeMarketSource(t *testing.T) {
 	cases := []struct{ in, want string }{
 		// GitHub 仓库页 → raw 默认分支 main / 根目录 plugin-market.json
-		{"https://github.com/owner/repo", "https://raw.githubusercontent.com/owner/repo/main/plugin-market.json"},
-		{"https://github.com/owner/repo/", "https://raw.githubusercontent.com/owner/repo/main/plugin-market.json"},
+		// GitHub 仓库页 → jsDelivr CDN 默认分支 main / 根目录 plugin-market.json
+		{"https://github.com/owner/repo", "https://cdn.jsdelivr.net/gh/owner/repo@main/plugin-market.json"},
+		{"https://github.com/owner/repo/", "https://cdn.jsdelivr.net/gh/owner/repo@main/plugin-market.json"},
 		// 官方种子 URL 解析（锁定 EnsureDefaultMarketSource 播种地址）
-		{"https://github.com/gntv456/ptpatronus-plugin-market", "https://raw.githubusercontent.com/gntv456/ptpatronus-plugin-market/main/plugin-market.json"},
+		{"https://github.com/gntv456/ptpatronus-plugin-market", "https://cdn.jsdelivr.net/gh/gntv456/ptpatronus-plugin-market@main/plugin-market.json"},
 		// tree/{branch} 与 tree/{branch}/{path}
-		{"https://github.com/owner/repo/tree/dev", "https://raw.githubusercontent.com/owner/repo/dev/plugin-market.json"},
-		{"https://github.com/owner/repo/tree/dev/market", "https://raw.githubusercontent.com/owner/repo/dev/market/plugin-market.json"},
+		{"https://github.com/owner/repo/tree/dev", "https://cdn.jsdelivr.net/gh/owner/repo@dev/plugin-market.json"},
+		{"https://github.com/owner/repo/tree/dev/market", "https://cdn.jsdelivr.net/gh/owner/repo@dev/market/plugin-market.json"},
 		// 无 scheme 与 owner/repo 简写
-		{"github.com/owner/repo", "https://raw.githubusercontent.com/owner/repo/main/plugin-market.json"},
-		{"owner/repo", "https://raw.githubusercontent.com/owner/repo/main/plugin-market.json"},
-		{"https://www.github.com/owner/repo", "https://raw.githubusercontent.com/owner/repo/main/plugin-market.json"},
+		{"github.com/owner/repo", "https://cdn.jsdelivr.net/gh/owner/repo@main/plugin-market.json"},
+		{"owner/repo", "https://cdn.jsdelivr.net/gh/owner/repo@main/plugin-market.json"},
+		{"https://www.github.com/owner/repo", "https://cdn.jsdelivr.net/gh/owner/repo@main/plugin-market.json"},
 		// 已是 raw / 其它 http 源 / 本地路径 → 原样
 		{"https://raw.githubusercontent.com/owner/repo/main/plugin-market.json", "https://raw.githubusercontent.com/owner/repo/main/plugin-market.json"},
 		{"https://example.com/market.json", "https://example.com/market.json"},

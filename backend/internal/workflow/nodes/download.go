@@ -68,6 +68,7 @@ func (n *AddDownloadNode) Execute(ctx context.Context, params map[string]any, ec
 		}
 		opts := downloader.AddOptions{
 			URL: t.DownloadURL, Category: category, Tags: tags, SavePath: savePath, Paused: paused,
+			SiteID: t.SiteID,
 		}
 		if err := n.dlCh.Add(ctx, dlID, opts); err != nil {
 			slog.Warn("workflow add_download failed", "title", t.Title, "err", err)

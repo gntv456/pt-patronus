@@ -61,6 +61,22 @@ func TestMTeamSearch(t *testing.T) {
 	}
 }
 
+func TestMTeamEnvelopeAcceptsNumericCode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"code":0,"message":"success","data":{"ok":true}}`))
+	}))
+	defer srv.Close()
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	data, err := NewMTeam(hc).mtRequest(context.Background(), srv.URL, "key", "/api/test", map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != `{"ok":true}` {
+		t.Fatalf("data=%s", data)
+	}
+}
+
 // TestMTeamGenDlToken：multipart {id} + x-api-key POST → data 字符串即签名下载 URL。
 func TestMTeamGenDlToken(t *testing.T) {
 	var gotKey, gotID string

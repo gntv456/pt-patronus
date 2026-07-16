@@ -181,6 +181,17 @@ func TestWorkflowHandlerE2E(t *testing.T) {
 		t.Fatalf("ListRuns 应 1 条，got %d", len(runs))
 	}
 
+	// RunDetail：路由参数名为 :rid，合法运行 ID 应返回反序列化后的节点日志。
+	runs := bodyJSON(t, rec)["runs"].([]any)
+	runID := int64(runs[0].(map[string]any)["id"].(float64))
+	rec = doReq(t, r, http.MethodGet, "/workflow-runs/"+strconv.FormatInt(runID, 10), "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("RunDetail code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if execs := bodyJSON(t, rec)["node_executions"].([]any); len(execs) != 1 {
+		t.Fatalf("RunDetail 节点日志应 1 条，got %d", len(execs))
+	}
+
 	// Delete
 	rec = doReq(t, r, http.MethodDelete, idPath, "")
 	if rec.Code != http.StatusOK {

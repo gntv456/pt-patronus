@@ -155,7 +155,7 @@ func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *
 		return convertTaskToCard(s.ID, s.Name, primaryTask(e.tasks), "")
 	}
 	// miss → singleflight 合并同 siteID 并发回源。
-	card, _ := sfDo(&c.sf, strconv.Itoa(int(s.ID)), func() (AssessmentCard, error) {
+	card, waitErr := sfDoContext(ctx, &c.sf, strconv.Itoa(int(s.ID)), func() (AssessmentCard, error) {
 		// double-check 内存：leader 完成后紧随的 caller 重跑 fn，缓存可能已满。
 		c.mu.Lock()
 		ce, ok := c.cache[s.ID]
@@ -174,14 +174,19 @@ func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *
 		}
 		return c.fetchAssessSite(ctx, sem, s, def, adapter), nil
 	})
+	if waitErr != nil {
+		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: waitErr.Error()}
+	}
 	return card
 }
 
 // fetchAssessSite 网络抓取考核 + BatchUpsert + 状态转换通知 + 内存缓存。
 // sem 非空时占一个槽（聚合级并发闸；nil 表示不限，单站 AssessOne 用）。
 func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter assessment.Adapter) AssessmentCard {
+	if err := acquireSemaphore(ctx, sem); err != nil {
+		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: err.Error()}
+	}
 	if sem != nil {
-		sem <- struct{}{}
 		defer func() { <-sem }()
 	}
 	siteCtx, cancel := context.WithTimeout(ctx, assessTimeout)

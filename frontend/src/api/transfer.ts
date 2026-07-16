@@ -93,6 +93,10 @@ export const transferApi = {
   redo: (id: number) =>
     http.post<{ result: OrganizeResult | null }>(`/transfer/redo/${id}`).then((r) => r.data.result),
   deleteHistory: (id: number) => http.delete(`/transfer/history/${id}`).then((r) => r.data),
+  batchDeleteHistory: (ids: number[]) =>
+    http.post<{ deleted: number; failed: number[] }>('/transfer/history/batch-delete', { ids }).then((r) => r.data),
+  clearFailedHistory: () =>
+    http.post<{ deleted: number }>('/transfer/history/clear-failed').then((r) => r.data),
   sweep: () => http.post('/transfer/sweep').then((r) => r.data),
   // 目录监视配置（重启进程生效）。
   getDirwatchConfig: () => http.get<DirwatchConfig>('/transfer/dirwatch').then((r) => r.data),

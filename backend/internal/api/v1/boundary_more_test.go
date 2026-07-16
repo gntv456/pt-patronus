@@ -183,7 +183,7 @@ func TestDownloaderOperationHelpersAndValidation(t *testing.T) {
 		}
 	}
 
-	h := NewDownloaderHandler(nil, nil, nil)
+	h := NewDownloaderHandler(nil, nil, nil, nil)
 	r := gin.New()
 	r.POST("/downloaders/:id/upload", h.UploadTorrent)
 	r.POST("/downloaders/:id/category", h.SetCategoryOp)

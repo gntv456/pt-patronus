@@ -133,6 +133,7 @@ func (c *BrushFlowChain) RunSelect(ctx context.Context, taskID uint) error {
 			Tags:     []string{tag},
 			SavePath: task.SavePath,
 			Paused:   task.Paused,
+			SiteID:   task.SiteID,
 		}); err != nil {
 			continue // 单个失败不阻断其余
 		}

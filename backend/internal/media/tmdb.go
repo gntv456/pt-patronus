@@ -169,8 +169,21 @@ func (t *TMDB) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 				Overview   string  `json:"overview"`
 			} `json:"results"`
 		} `json:"recommendations"`
+		AlternativeTitles struct {
+			Results []struct {
+				Title string `json:"title"`
+			} `json:"results"`
+		} `json:"alternative_titles"`
+		Translations struct {
+			Translations []struct {
+				Data struct {
+					Title string `json:"title"` // movie
+					Name  string `json:"name"`  // tv
+				} `json:"data"`
+			} `json:"translations"`
+		} `json:"translations"`
 	}
-	if err := t.get(ctx, "/"+mtype+"/"+sid, map[string]string{"append_to_response": "credits,recommendations"}, &raw); err != nil {
+	if err := t.get(ctx, "/"+mtype+"/"+sid, map[string]string{"append_to_response": "credits,recommendations,alternative_titles,translations"}, &raw); err != nil {
 		return nil, err
 	}
 	title := raw.Title
@@ -188,6 +201,21 @@ func (t *TMDB) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 		Overview: raw.Overview, ReleaseDate: date, Rating: raw.Vote, VoteCount: int(raw.VoteCount),
 		PosterURL: tmdbImage(raw.PosterPath), BackdropURL: tmdbImage(raw.BackdropPath),
 		Year: yearFromDate(date), Runtime: raw.Runtime,
+	}
+	// 别名/译名：TMDB alternative_titles + translations 各语种标题，供跨语言标题匹配。
+	for _, at := range raw.AlternativeTitles.Results {
+		if at.Title != "" {
+			mi.Names = append(mi.Names, at.Title)
+		}
+	}
+	for _, tr := range raw.Translations.Translations {
+		t := tr.Data.Title
+		if t == "" {
+			t = tr.Data.Name
+		}
+		if t != "" {
+			mi.Names = append(mi.Names, t)
+		}
 	}
 	for _, g := range raw.Genres {
 		mi.Genres = append(mi.Genres, g.Name)

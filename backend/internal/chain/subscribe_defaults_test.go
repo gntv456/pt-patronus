@@ -114,4 +114,8 @@ func TestLoadGlobalDefaultsNilCfgOp(t *testing.T) {
 	if gd.Resolution != "" || gd.EnableRatingGuard {
 		t.Fatalf("nil cfgOp should yield zero: %+v", gd)
 	}
+	// 切片须非 nil：API 序列化为 [] 而非 null，否则前端读 .length 崩溃（go-nil-slice-json-null）。
+	if gd.PromoTypes == nil || gd.SiteIDs == nil {
+		t.Fatalf("nil cfgOp slices must be empty-non-nil, got promo=%v site=%v", gd.PromoTypes, gd.SiteIDs)
+	}
 }

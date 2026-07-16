@@ -24,14 +24,19 @@ type GlobalDefaults struct {
 // loadGlobalDefaults 读全局订阅默认；cfgOp nil（测试/未装配）或未配置返回零值。
 func loadGlobalDefaults(cfgOp *oper.SystemConfigOper) GlobalDefaults {
 	var gd GlobalDefaults
-	if cfgOp == nil {
-		return gd
+	if cfgOp != nil {
+		if raw, err := cfgOp.Get(subscribeGlobalDefaultsKey); err == nil && raw != "" {
+			_ = json.Unmarshal([]byte(raw), &gd)
+		}
 	}
-	raw, err := cfgOp.Get(subscribeGlobalDefaultsKey)
-	if err != nil || raw == "" {
-		return gd
+	// 保证切片非 nil：API 序列化为 [] 而非 null，避免前端 globalDefaults.promo_types.length 崩溃
+	// （go-nil-slice-json-null 教训）。零值/未配置/历史 JSON null 均归一为空切片。
+	if gd.PromoTypes == nil {
+		gd.PromoTypes = []string{}
 	}
-	_ = json.Unmarshal([]byte(raw), &gd)
+	if gd.SiteIDs == nil {
+		gd.SiteIDs = []uint{}
+	}
 	return gd
 }
 

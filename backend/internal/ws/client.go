@@ -18,10 +18,11 @@ const (
 type Client struct {
 	conn *websocket.Conn
 	send chan []byte
+	inc  bool // 增量协议客户端（收 torrents_diff；否则收全量 torrents/torrents_full）
 }
 
-func newClient(conn *websocket.Conn) *Client {
-	return &Client{conn: conn, send: make(chan []byte, sendBuf)}
+func newClient(conn *websocket.Conn, inc bool) *Client {
+	return &Client{conn: conn, send: make(chan []byte, sendBuf), inc: inc}
 }
 
 // readPump 持续读客户端消息。本服务为「服务端推送」模型，客户端不发业务消息，

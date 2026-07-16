@@ -533,9 +533,10 @@ func (m *Manager) installedVersion(id string) string {
 }
 
 // normalizeMarketSource 把市场源地址归一化为可直接请求的 URL/路径。
-// GitHub 仓库页（含 owner/repo 简写）→ raw.githubusercontent.com 上的 plugin-market.json：
-//   https://github.com/o/r                  → https://raw.githubusercontent.com/o/r/main/plugin-market.json
-//   https://github.com/o/r/tree/dev/market  → https://raw.githubusercontent.com/o/r/dev/market/plugin-market.json
+// GitHub 仓库页（含 owner/repo 简写）→ jsDelivr CDN 上的 plugin-market.json
+// （jsDelivr 国内/全球均比 raw.githubusercontent.com 直连快且稳定，raw 国内偶发 >30s 超时）：
+//   https://github.com/o/r                  → https://cdn.jsdelivr.net/gh/o/r@main/plugin-market.json
+//   https://github.com/o/r/tree/dev/market  → https://cdn.jsdelivr.net/gh/o/r@dev/market/plugin-market.json
 //   o/r / github.com/o/r（无 scheme）        → 同上补 https
 // 已是 raw.githubusercontent.com / file / 其它 http(s) 源 → 原样返回。
 // resolveArchiveSource 会把 index 内相对 archive 基于此 URL 解析，自动指向仓库内 zip。
@@ -571,16 +572,23 @@ func normalizeMarketSource(source string) string {
 	if path == "" {
 		return source
 	}
+	// 走 jsDelivr CDN（国内/全球均比 raw.githubusercontent.com 直连快且稳定，raw 直连国内偶发 >30s 超时）。
 	const defaultRef, indexFile = "main", "plugin-market.json"
+	const cdnBase = "https://cdn.jsdelivr.net/gh/"
 	if i := strings.Index(path, "/tree/"); i >= 0 {
 		repoPart := path[:i]
 		sub := strings.Trim(path[i+len("/tree/"):], "/") // ref/path...
 		if sub == "" {
 			return source
 		}
-		return "https://raw.githubusercontent.com/" + repoPart + "/" + sub + "/" + indexFile
+		// sub 形如 "ref" 或 "ref/dir1/dir2" → jsDelivr 用 @ref 区分 ref 与路径。
+		ref, dir := sub, ""
+		if j := strings.Index(sub, "/"); j >= 0 {
+			ref, dir = sub[:j], sub[j+1:]+"/"
+		}
+		return cdnBase + repoPart + "@" + ref + "/" + dir + indexFile
 	}
-	return "https://raw.githubusercontent.com/" + path + "/" + defaultRef + "/" + indexFile
+	return cdnBase + path + "@" + defaultRef + "/" + indexFile
 }
 
 // looksLikeOwnerRepo 判断 owner/repo 简写（无 scheme、非绝对/相对路径）。

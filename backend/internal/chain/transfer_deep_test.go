@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -44,10 +45,15 @@ func (d *transferDeepDownloader) ListFiles(context.Context, string) ([]downloade
 
 func newTransferDeepChain(t *testing.T, info media.MediaInfo) (*TransferChain, *gorm.DB) {
 	t.Helper()
-	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "transfer.db")+"?_pragma=busy_timeout(5000)"), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	if err := db.AutoMigrate(&models.SystemConfig{}, &models.TransferHistory{}, &models.DownloadMediaLink{}); err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +86,7 @@ func TestTransferProcessTorrentFiltersAndDeduplicates(t *testing.T) {
 		t.Fatal(err)
 	}
 	dl := &transferDeepDownloader{files: []downloader.TorrentFile{{Name: filepath.Base(src), Size: 5}}}
-	torrent := &downloader.Torrent{Hash: "hash-1", Name: filepath.Base(src), SavePath: srcDir, Category: "other"}
+	torrent := &downloader.Torrent{Hash: "hash-1", Name: filepath.Base(src), SavePath: srcDir, Category: "other", State: "completed", CompletedAt: time.Now()}
 
 	if got := chain.processTorrent(context.Background(), 1, torrent, dl, false); got != nil {
 		t.Fatalf("automatic organize should honor category filter, got %+v", got)
@@ -112,7 +118,7 @@ func TestTransferProcessTorrentFiltersAndDeduplicates(t *testing.T) {
 func TestTransferProcessTorrentRecordsListFilesFailure(t *testing.T) {
 	chain, db := newTransferDeepChain(t, media.MediaInfo{Title: "Unused", Type: media.TypeMovie})
 	dl := &transferDeepDownloader{filesErr: errors.New("downloader offline")}
-	torrent := &downloader.Torrent{Hash: "hash-error", Name: "Broken.mkv", Category: "subscribe"}
+	torrent := &downloader.Torrent{Hash: "hash-error", Name: "Broken.mkv", Category: "subscribe", State: "completed", CompletedAt: time.Now()}
 
 	res := chain.processTorrent(context.Background(), 9, torrent, dl, false)
 	if res == nil || res.Success || !strings.Contains(res.ErrMsg, "downloader offline") {
@@ -124,6 +130,28 @@ func TestTransferProcessTorrentRecordsListFilesFailure(t *testing.T) {
 	}
 	if history.Status != "failed" || !strings.Contains(history.ErrorMsg, "list torrent files") {
 		t.Fatalf("unexpected history: %+v", history)
+	}
+}
+
+func TestTransferProcessTorrentSkipsIncomplete(t *testing.T) {
+	chain, db := newTransferDeepChain(t, media.MediaInfo{Title: "X", Type: media.TypeMovie})
+	dl := &transferDeepDownloader{files: []downloader.TorrentFile{{Name: "v.mkv", Size: 5}}}
+	// 未下完（stalledDL + 无 CompletedAt）：即便 manual 也跳过，且不调 ListFiles。
+	torrent := &downloader.Torrent{Hash: "hash-inc", Name: "Incomplete.mkv", Category: "subscribe", State: "stalledDL", Progress: 0.4}
+
+	res := chain.processTorrent(context.Background(), 1, torrent, dl, true)
+	if res == nil || !res.Skipped {
+		t.Fatalf("expected skipped result for incomplete torrent, got %+v", res)
+	}
+	if dl.listCalls != 0 {
+		t.Fatalf("incomplete torrent should not list files, calls=%d", dl.listCalls)
+	}
+	var hist models.TransferHistory
+	if err := db.Where("download_hash = ?", torrent.Hash).First(&hist).Error; err != nil {
+		t.Fatalf("expected skipped history row, got err: %v", err)
+	}
+	if hist.Status != "skipped" || !strings.Contains(hist.ErrorMsg, "未完成") {
+		t.Fatalf("unexpected skipped history: %+v", hist)
 	}
 }
 

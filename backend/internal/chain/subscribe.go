@@ -179,9 +179,13 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 			if t.SiteName == "" {
 				t.SiteName = sr.SiteName // SearchSites 按站聚合，但单条 Torrent 无站名（types.go 注释）
 			}
+			t.SiteID = sr.SiteID
 			all = append(all, t)
 		}
 	}
+	// 标题匹配确认：对标 MP match_torrent。用订阅媒体别名集（Title+OriginalTitle+Names）精确匹配，
+	// 接受集覆盖种子语言时收紧（过滤无关），无该语言别名时放行（不误杀跨语言合法命中）。
+	all = filterByTitleMatch(all, sub, buildSubscribeAcceptSet(ctx, c.mediaCh, sub))
 	// 简单参数前置过滤：分辨率有效值（订阅空→全局默认；空=不过滤；对齐 MP-2 TorrentHelper 两阶段前置过滤）。
 	if eff.Resolution != "" {
 		all = filterByResolution(all, eff.Resolution)
@@ -262,6 +266,7 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 			URL:      t.DownloadURL,
 			Category: "subscribe",
 			Tags:     []string{"subscribe", sub.Title, transfer.EncodeMediaTag(sub.Source, sub.SourceID, sub.Type)},
+			SiteID:   t.SiteID,
 		}
 		if sub.SavePath != "" {
 			opts.SavePath = sub.SavePath
@@ -422,6 +427,127 @@ func filterByResolution(torrents []site.Torrent, want string) []site.Torrent {
 		}
 	}
 	return out
+}
+
+// filterByTitleMatch 用标题匹配确认过滤无关种子（对标 MoviePilot TorrentHelper.match_torrent）。
+// acceptSet 为订阅媒体的接受标题集（订阅 Title + 媒体 OriginalTitle + Names 别名，均归一化）。
+//   - 精确命中（种子 clean 标题归一化 ∈ acceptSet）→ 保留（含别名跨语言命中，如「让子弹飞」命中「Let the Bullets Fly」）。
+//   - 未命中但接受集覆盖种子语言（有该语言别名）→ 过滤（对标 MP 精确，过滤子串误命中如「特立独行」≠「一只特立独行的猪」）。
+//   - 未命中且接受集无该语言别名（如豆瓣国产片 aka 全中文、种子却是英文）→ 放行（无法精确，信任站点搜索，避免误杀）。
+//   - 类型门控 + 年份门控（电影±1）。
+func filterByTitleMatch(torrents []site.Torrent, sub *models.Subscription, acceptSet map[string]struct{}) []site.Torrent {
+	acceptHasCJK, acceptHasNonCJK := false, false
+	for k := range acceptSet {
+		if containsCJK(k) {
+			acceptHasCJK = true
+		} else {
+			acceptHasNonCJK = true
+		}
+	}
+	wantTV := sub.Type == "tv"
+	out := torrents[:0]
+	for _, t := range torrents {
+		m := transfer.ParseMeta(t.Title)
+		if m.IsTV != wantTV {
+			continue
+		}
+		if !wantTV && sub.Year > 0 && m.Year > 0 && absInt(m.Year-sub.Year) > 1 {
+			continue
+		}
+		if _, ok := acceptSet[normalizeTitle(m.Title)]; ok {
+			out = append(out, t) // 精确命中（含别名）
+			continue
+		}
+		if tokenHitsAccept(splitTitleTokens(t.Title), acceptSet) {
+			out = append(out, t) // 拆词兜底（对标 MP Step6：救「让子弹飞.简繁中字.CMCT」clean 含噪声但拆词含主标题）
+			continue
+		}
+		seedHasCJK := containsCJK(m.Title)
+		if (seedHasCJK && acceptHasCJK) || (!seedHasCJK && acceptHasNonCJK) {
+			continue // 接受集覆盖该语言却未命中 → 过滤（「特立独行」≠「一只特立独行的猪」）
+		}
+		out = append(out, t) // 接受集无该语言别名 → 放行不误杀
+	}
+	return out
+}
+
+// buildSubscribeAcceptSet 构造订阅标题接受集：订阅 Title + 媒体 OriginalTitle + Names 别名（归一化）。
+// mediaCh 未装配或 Detail 失败时仅含订阅 Title（回退跨语言放行，不误杀）。
+func buildSubscribeAcceptSet(ctx context.Context, mediaCh *MediaChain, sub *models.Subscription) map[string]struct{} {
+	accept := map[string]struct{}{normalizeTitle(sub.Title): {}}
+	if mediaCh == nil {
+		return accept
+	}
+	mi, err := mediaCh.Detail(ctx, sub.Source, sub.SourceID)
+	if err != nil || mi == nil {
+		return accept
+	}
+	if mi.OriginalTitle != "" {
+		accept[normalizeTitle(mi.OriginalTitle)] = struct{}{}
+	}
+	for _, n := range mi.Names {
+		if n != "" {
+			accept[normalizeTitle(n)] = struct{}{}
+		}
+	}
+	return accept
+}
+
+// normalizeTitle 归一化标题：仅保留字母数字与 CJK 汉字、转小写、去空格标点符号。用于精确相等比对。
+func normalizeTitle(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z':
+			b.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			b.WriteRune(r + 32)
+		case r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r >= 0x4e00 && r <= 0x9fff, r >= 0x3400 && r <= 0x4dbf: // CJK 统一汉字 / 扩展 A
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+// containsCJK 判断是否含 CJK 汉字。
+func containsCJK(s string) bool {
+	for _, r := range s {
+		if (r >= 0x4e00 && r <= 0x9fff) || (r >= 0x3400 && r <= 0x4dbf) {
+			return true
+		}
+	}
+	return false
+}
+
+// splitTitleTokens 按分隔符把标题拆成归一化 token 集合（对标 MP match_torrent Step6 拆词兜底）。
+// 连续中文不拆（「一只特立独行的猪」仍为整体 token），故不会放过子串误命中；
+// 而「让子弹飞.简繁中字.CMCT」会拆出「让子弹飞」命中主标题。
+func splitTitleTokens(s string) map[string]struct{} {
+	set := map[string]struct{}{}
+	for _, p := range strings.FieldsFunc(s, func(r rune) bool {
+		switch r {
+		case ' ', '.', '-', '_', '[', ']', '【', '】', '/', '·', '(', ')', '。', ',':
+			return true
+		}
+		return false
+	}) {
+		if n := normalizeTitle(p); n != "" {
+			set[n] = struct{}{}
+		}
+	}
+	return set
+}
+
+// tokenHitsAccept 判断接受集任一标题是否出现在种子的拆词 token 集合中。
+func tokenHitsAccept(tokens, accept map[string]struct{}) bool {
+	for k := range accept {
+		if _, ok := tokens[k]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // parsePipeList 按管道符拆分（trim + 去空）；FilterGroups 字段格式 "组A|组B"。

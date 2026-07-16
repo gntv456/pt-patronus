@@ -28,6 +28,47 @@ func newSiteTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// TestSiteFindByDownloadURL 验证按 download URL 注册域反查活跃站点（手动加种/AI 工具用）。
+// 注意 models.Site.IsActive GORM default:true 会吞零值，停用站须 Update 强制写 false。
+func TestSiteFindByDownloadURL(t *testing.T) {
+	db := newSiteTestDB(t)
+	op := NewSiteOper(db, nil) // FindByDownloadURL 不涉加解密，Crypto 传 nil
+	for _, s := range []models.Site{
+		{Name: "A", BaseURL: "https://cspt.top"},
+		{Name: "B", BaseURL: "https://hdsky.me"},
+		{Name: "C", BaseURL: "https://pter.club"},
+	} {
+		if err := db.Create(&s).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	// C 停用（IsActive default:true 吞零值，须显式 Update）。
+	if err := db.Model(&models.Site{}).Where("name = ?", "C").Update("is_active", false).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	// 同注册域命中 A。
+	got, err := op.FindByDownloadURL("https://cspt.top/download.php?id=1&passkey=x")
+	if err != nil || got == nil || got.Name != "A" {
+		t.Errorf("cspt.top: got %+v err=%v, want A", got, err)
+	}
+	// 子域同注册域也命中 A。
+	got, _ = op.FindByDownloadURL("https://sub.cspt.top/dl?id=2")
+	if got == nil || got.Name != "A" {
+		t.Errorf("sub.cspt.top: got %+v, want A", got)
+	}
+	// 停用站不命中（FindByDownloadURL 只扫 ListActive）。
+	got, _ = op.FindByDownloadURL("https://pter.club/download.php?id=3")
+	if got != nil {
+		t.Errorf("inactive pter should not match, got %q", got.Name)
+	}
+	// 未匹配返回 (nil, nil)——调用方据此退化为旧 URL 推送。
+	got, err = op.FindByDownloadURL("https://unknown.example/dl?id=9")
+	if err != nil || got != nil {
+		t.Errorf("unknown: got %+v err=%v, want (nil,nil)", got, err)
+	}
+}
+
 // TestSiteDeleteMany 验证批量删除：存在的删掉、不存在的计入 failed、空入参安全。
 func TestSiteDeleteMany(t *testing.T) {
 	db := newSiteTestDB(t)

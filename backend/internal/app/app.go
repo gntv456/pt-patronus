@@ -148,13 +148,15 @@ func New(cfg *config.Config) (*App, error) {
 
 	siteOp := oper.NewSiteOper(database, crypto)
 	siteCh := chain.NewSiteChain(base, siteOp, registry)
+	// 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用，对标 MoviePilot）。
+	siteCh.SetHTTPClient(hc)
 	// 签到历史落库：chain.Checkin 统一记录（cron 自动 + 手动触发均覆盖），未注入则不落库。
 	checkinRecordOp := oper.NewCheckinRecordOper(database)
 	siteCh.SetRecordOper(checkinRecordOp)
 
 	dlOp := oper.NewDownloaderOper(database, crypto)
 	dlMgr := manager.NewManager(dlOp)
-	dlCh := chain.NewDownloadChain(base, dlMgr, dlOp)
+	dlCh := chain.NewDownloadChain(base, dlMgr, dlOp, siteCh)
 
 	// WebSocket 实时推送：Hub 连接池 + 广播器（随进程常驻；无连接时广播为空操作）。
 	wsHub := ws.NewHub()

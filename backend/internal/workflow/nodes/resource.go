@@ -149,6 +149,7 @@ func (n *SearchTorrentsNode) Execute(ctx context.Context, params map[string]any,
 			if t.SiteName == "" {
 				t.SiteName = sr.SiteName
 			}
+			t.SiteID = sr.SiteID
 			ecx.Torrents = append(ecx.Torrents, t)
 			total++
 		}

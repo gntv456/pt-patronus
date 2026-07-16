@@ -94,6 +94,13 @@ type bgmSubject struct {
 	Images struct {
 		Large string `json:"large"`
 	} `json:"images"`
+	Infobox []bgmInfoboxItem `json:"infobox"`
+}
+
+// bgmInfoboxItem infobox 键值对；value 可能是 string 或 []string，用 RawMessage 延迟解析。
+type bgmInfoboxItem struct {
+	Key   string          `json:"key"`
+	Value json.RawMessage `json:"value"`
 }
 
 // bgmSubjectToMedia 把 Bangumi subject 映射到统一 MediaInfo。
@@ -154,7 +161,40 @@ func (b *Bangumi) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	}
 	mi := bgmSubjectToMedia(raw)
 	mi.SourceID = id
+	mi.Names = bangumiAliasFromInfobox(raw.Infobox)
 	return &mi, nil
+}
+
+// bangumiAliasFromInfobox 从 infobox 提取「别名」（value 为 string 或 []string；string 多值按换行/顿号/分号拆分）。
+func bangumiAliasFromInfobox(infobox []bgmInfoboxItem) []string {
+	for _, it := range infobox {
+		if it.Key != "别名" {
+			continue
+		}
+		var arr []string
+		if json.Unmarshal(it.Value, &arr) == nil {
+			return arr
+		}
+		var s string
+		if json.Unmarshal(it.Value, &s) == nil {
+			return splitAliasString(s)
+		}
+	}
+	return nil
+}
+
+func splitAliasString(s string) []string {
+	s = strings.ReplaceAll(s, "\n", "/")
+	s = strings.ReplaceAll(s, "、", "/")
+	s = strings.ReplaceAll(s, ";", "/")
+	s = strings.ReplaceAll(s, "；", "/")
+	var out []string
+	for _, p := range strings.Split(s, "/") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // Trending 实现 TrendingCapable：按热度取动漫(category="anime")，

@@ -41,6 +41,16 @@
   --surface-muted: rgba(0, 0, 0, 0.04);
   --divider: rgba(0, 0, 0, 0.08);
 
+  /* 实体表面（信息密集功能页专用：去磨砂、实色底、清晰边框、高对比）。
+     与 .glass 并存——glass 留给 Dashboard 等装饰页，实体卡给配置/列表/表格等扫读页，
+     避免半透明磨砂让文字浮在模糊背景上、显得「半成品」。 */
+  --surface-1: #ffffff;
+  --surface-2: #f6f7f9;
+  --surface-border: rgba(15, 23, 42, 0.1);
+  --surface-border-strong: rgba(108, 92, 231, 0.45);
+  --surface-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.06);
+  --surface-shadow-hover: 0 6px 16px rgba(108, 92, 231, 0.12), 0 12px 28px rgba(15, 23, 42, 0.08);
+
   /* 圆角阶梯（保留 sm/md/lg，补 xs / xl / pill） */
   --radius-xs: 6px;
   --radius-sm: 10px;
@@ -85,6 +95,14 @@
   --surface-hover: rgba(255, 255, 255, 0.10);
   --surface-muted: rgba(255, 255, 255, 0.05);
   --divider: rgba(255, 255, 255, 0.08);
+
+  /* 实体表面（深色）：实色卡片底，比 body 渐变更实、边界更清晰，文字对比更强 */
+  --surface-1: #1b2030;
+  --surface-2: #141826;
+  --surface-border: rgba(255, 255, 255, 0.1);
+  --surface-border-strong: rgba(108, 92, 231, 0.55);
+  --surface-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.35);
+  --surface-shadow-hover: 0 6px 18px rgba(0, 0, 0, 0.55), 0 14px 30px rgba(0, 0, 0, 0.45);
 }
 
 html,
@@ -166,6 +184,22 @@ body {
 
 .glass-hover:hover {
   box-shadow: var(--glass-hover-shadow);
+  transform: translateY(-2px);
+}
+
+/* ── 实体卡：实色底 + 清晰边框 + 克制阴影，信息密集页（插件/配置/列表）专用 ──
+   替代 glass 的磨砂模糊——扫读时层次分明、文字不浮、不像半成品。 */
+.solid-card {
+  background: var(--surface-1);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow);
+}
+.solid-card-hover {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+.solid-card-hover:hover {
+  border-color: var(--surface-border-strong);
+  box-shadow: var(--surface-shadow-hover);
   transform: translateY(-2px);
 }
 

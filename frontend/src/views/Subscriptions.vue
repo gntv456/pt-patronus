@@ -22,7 +22,9 @@ const savingGlobal = ref(false)
 
 async function loadGlobalDefaults() {
   try {
-    globalDefaults.value = await subscribeApi.getGlobalDefaults()
+    const g = await subscribeApi.getGlobalDefaults()
+    // 后端零值切片历史会回 null（go-nil-slice-json-null），此处归一 [] 兜底，避免模板读 .length 崩溃。
+    globalDefaults.value = { ...g, promo_types: g.promo_types ?? [], site_ids: g.site_ids ?? [] }
   } catch {
     // 加载失败不阻塞订阅展示，「跟随全局」提示退化为不显示。
   }
@@ -30,7 +32,7 @@ async function loadGlobalDefaults() {
 
 function openGlobal() {
   const g = globalDefaults.value
-  globalForm.value = { ...g, promo_types: [...g.promo_types], site_ids: [...g.site_ids] }
+  globalForm.value = { ...g, promo_types: [...(g.promo_types ?? [])], site_ids: [...(g.site_ids ?? [])] }
   globalOpen.value = true
 }
 

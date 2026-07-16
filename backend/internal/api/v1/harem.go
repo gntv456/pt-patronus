@@ -24,7 +24,9 @@ func NewHaremHandler(ch *chain.SiteChain, siteOp *oper.SiteOper) *HaremHandler {
 // All 返回全站后宫聚合（?refresh=1 强制刷新）。
 func (h *HaremHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
-	res := h.ch.HaremAll(c.Request.Context(), force)
+	ctx, cancel := aggregateRequestContext(c)
+	defer cancel()
+	res := h.ch.HaremAll(ctx, force)
 	if res == nil {
 		c.JSON(http.StatusOK, &chain.HaremResult{Prescriptions: []site.PrescriptionItem{}})
 		return
@@ -70,7 +72,9 @@ func (h *HaremHandler) SyncOne(c *gin.Context) {
 // Export 返回药单文本（站点[X]: 剩余[N]个. 可购买[N]个. 权限[✓/✗]，CRLF）。
 func (h *HaremHandler) Export(c *gin.Context) {
 	force := c.Query("refresh") == "1"
-	res := h.ch.HaremAll(c.Request.Context(), force)
+	ctx, cancel := aggregateRequestContext(c)
+	defer cancel()
+	res := h.ch.HaremAll(ctx, force)
 	items := []site.PrescriptionItem{}
 	if res != nil {
 		items = res.Prescriptions

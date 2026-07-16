@@ -150,6 +150,36 @@ func (h *TransferHandler) DeleteHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
 }
 
+// BatchDeleteHistory 批量删除整理历史（admin）。返回删除成功数与失败 id 列表（不存在的）。
+func (h *TransferHandler) BatchDeleteHistory(c *gin.Context) {
+	var body struct {
+		IDs []uint `json:"ids" binding:"required,min=1,max=200,dive"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	failed, err := h.ch.DeleteHistories(body.IDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if failed == nil {
+		failed = []uint{}
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": len(body.IDs) - len(failed), "failed": failed})
+}
+
+// ClearFailedHistory 一键清除全部失败整理记录（admin）。返回删除条数。
+func (h *TransferHandler) ClearFailedHistory(c *gin.Context) {
+	n, err := h.ch.ClearFailed()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": n})
+}
+
 // Sweep 手动触发一次整理扫描（所有下载器的已完成种子）。
 func (h *TransferHandler) Sweep(c *gin.Context) {
 	go h.ch.Sweep(transferSweepContext(c.Request.Context()))

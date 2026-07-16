@@ -51,9 +51,54 @@ func (o *TransferHistoryOper) AddFail(h *models.TransferHistory, errMsg string) 
 	return o.db.Create(h).Error
 }
 
+// AddSkipped 记录一次跳过（如种子未下完未到整理阶段，避免误记 failed）。
+func (o *TransferHistoryOper) AddSkipped(h *models.TransferHistory, reason string) error {
+	h.Status = "skipped"
+	h.ErrorMsg = reason
+	return o.db.Create(h).Error
+}
+
 // Delete 删单条。
 func (o *TransferHistoryOper) Delete(id uint) error {
 	return o.db.Delete(&models.TransferHistory{}, id).Error
+}
+
+// DeleteMany 批量删除整理历史，返回「不存在」的 id 列表（对标 SiteOper.DeleteMany）。
+// 先 Pluck 存在集，再一条 SQL 删除已存在的，不存在的计入 failed —— 既能批量又能精确汇报逐条结果。
+func (o *TransferHistoryOper) DeleteMany(ids []uint) ([]uint, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	var found []uint
+	if err := o.db.Model(&models.TransferHistory{}).Where("id IN ?", ids).Pluck("id", &found).Error; err != nil {
+		return nil, err
+	}
+	foundSet := make(map[uint]struct{}, len(found))
+	for _, id := range found {
+		foundSet[id] = struct{}{}
+	}
+	var failed []uint
+	for _, id := range ids {
+		if _, ok := foundSet[id]; !ok {
+			failed = append(failed, id)
+		}
+	}
+	if len(found) > 0 {
+		if err := o.db.Where("id IN ?", found).Delete(&models.TransferHistory{}).Error; err != nil {
+			return nil, err
+		}
+	}
+	return failed, nil
+}
+
+// DeleteByStatus 按 status 批量删除，返回删除条数（一键清失败：DELETE WHERE status='failed'，
+// 仅限 failed，不动 success 以免破坏 SuccessExistsByHash/SrcPath 去重）。
+func (o *TransferHistoryOper) DeleteByStatus(status string) (int64, error) {
+	if status == "" {
+		return 0, nil
+	}
+	res := o.db.Where("status = ?", status).Delete(&models.TransferHistory{})
+	return res.RowsAffected, res.Error
 }
 
 // SuccessExistsByHash 该 hash 是否已有成功记录（Sweep 去重：避免重复整理同一种子）。

@@ -10,8 +10,10 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader"
+	"github.com/hxpt/ptpatronus/internal/downloader/dl"
 	"github.com/hxpt/ptpatronus/internal/downloader/qb"
 	"github.com/hxpt/ptpatronus/internal/downloader/tr"
+	"github.com/hxpt/ptpatronus/internal/downloader/ut"
 )
 
 // Manager 管理多下载器实例。
@@ -69,6 +71,10 @@ func BuildClient(d *models.Downloader, password string) (downloader.Downloader, 
 	case "tr", "transmission":
 		c := tr.New(d.URL, d.Username, password)
 		return c, nil
+	case "ut", "utorrent":
+		return ut.New(d.URL, d.Username, password)
+	case "dl", "deluge":
+		return dl.New(d.URL, d.Username, password), nil
 	default:
 		return nil, fmt.Errorf("unknown downloader type: %s", d.Type)
 	}

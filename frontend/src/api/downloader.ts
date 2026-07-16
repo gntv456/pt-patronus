@@ -3,7 +3,7 @@ import { http } from './http'
 export interface Downloader {
   id: number
   name: string
-  type: string // qb | tr
+  type: string // qb | tr | ut | dl
   url: string
   username: string
   is_default: boolean

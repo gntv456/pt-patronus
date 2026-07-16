@@ -161,6 +161,12 @@ const GLYPHS: Record<string, string> = {
   // 下载器·Transmission：顶部红把手 + 竖杆 + 向下楔形箭头 + 底部 U 形托盘（传输活塞造型，红）
   transmission:
     '<path d="M9.5 2.5h5"/><path d="M12 3v10"/><path d="M8 9.5l4 4 4-4"/><path d="M6.5 15.5h11"/><path d="M6.5 15.5v1.5a1.5 1.5 0 0 0 1.5 1.5h8a1.5 1.5 0 0 0 1.5-1.5V15.5"/>',
+  // 下载器·uTorrent：绿色圆盘 + 内部 µ（U 形杯 + 左下延伸尾），µTorrent 官方绿
+  utorrent:
+    '<circle cx="12" cy="12" r="9"/><path d="M8 7v5.5a4 4 0 0 0 8 0V7"/><path d="M8 12.5c-.4 2-1.2 3-2.6 3.6"/>',
+  // 下载器·Deluge：蓝色水滴 + 内部向下箭头（Deluge 官方水滴 + 下载意象，蓝）
+  deluge:
+    '<path d="M12 3c3.5 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 2.5-6.5 6-11z"/><path d="M12 10v5"/><path d="M9.5 13l2.5 2.5L14.5 13"/>',
 }
 
 const dim = computed(() => (typeof props.size === 'number' ? `${props.size}px` : props.size))

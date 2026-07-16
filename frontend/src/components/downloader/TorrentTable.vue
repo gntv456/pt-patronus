@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { downloaderApi, type Torrent, type DownloaderResult } from '@/api/downloader'
 import { fmtBytes, fmtSpeed } from '@/utils/format'
 import { copyText } from '@/utils/clipboard'
+import { dlCaps } from './caps'
 
 export type DialogKind =
   | 'remove'
@@ -17,9 +18,11 @@ export type DialogKind =
 const props = defineProps<{
   torrents: readonly Torrent[]
   downloaderId: number
-  type: string // qb | tr
+  type: string // qb | tr | ut | dl
   categories: string[]
 }>()
+
+const caps = computed(() => dlCaps(props.type))
 
 const emit = defineEmits<{
   refresh: []
@@ -230,12 +233,12 @@ function stateColor(s: string): string {
       <el-button size="small" @click="batchCmd('recheck')">校验</el-button>
       <el-button size="small" @click="batchCmd('reannounce')">汇报</el-button>
       <el-button size="small" @click="emit('dialog', { kind: 'remove', hashes: selected })">删除…</el-button>
-      <el-button size="small" @click="emit('dialog', { kind: 'category', hashes: selected })" v-if="type === 'qb'">分类…</el-button>
-      <el-button size="small" @click="emit('dialog', { kind: 'tags', hashes: selected })">标签…</el-button>
+      <el-button size="small" @click="emit('dialog', { kind: 'category', hashes: selected })" v-if="caps.category">分类…</el-button>
+      <el-button size="small" @click="emit('dialog', { kind: 'tags', hashes: selected })" v-if="caps.tags">标签…</el-button>
       <el-button size="small" @click="emit('dialog', { kind: 'limits', hashes: selected })">限速…</el-button>
       <el-button size="small" @click="emit('dialog', { kind: 'share-limits', hashes: selected })">做种限制…</el-button>
-      <template v-if="type === 'qb'">
-        <el-button size="small" @click="batchCmd('forceStart')">强制开始</el-button>
+      <el-button size="small" @click="batchCmd('forceStart')" v-if="caps.forceStart">强制开始</el-button>
+      <template v-if="caps.queueFull">
         <el-button size="small" @click="batchCmd('top')">置顶</el-button>
         <el-button size="small" @click="batchCmd('bottom')">置底</el-button>
       </template>
@@ -278,7 +281,7 @@ function stateColor(s: string): string {
           <span style="color: var(--pt-primary-2)">{{ row.num_leechs }}</span>
         </template>
       </el-table-column>
-      <el-table-column v-if="type === 'qb'" label="分类" width="90">
+      <el-table-column v-if="caps.category" label="分类" width="90">
         <template #default="{ row }">
           <span v-if="row.category" class="chip">{{ row.category }}</span>
         </template>
@@ -305,24 +308,24 @@ function stateColor(s: string): string {
               <el-dropdown-menu>
                 <el-dropdown-item command="recheck">重新校验</el-dropdown-item>
                 <el-dropdown-item command="reannounce">重新汇报</el-dropdown-item>
-                <template v-if="type === 'qb'">
-                  <el-dropdown-item command="forceStart" divided>
-                    {{ row.force_start ? '取消强制开始' : '强制开始' }}
-                  </el-dropdown-item>
+                <el-dropdown-item v-if="caps.forceStart" command="forceStart" divided>
+                  {{ row.force_start ? '取消强制开始' : '强制开始' }}
+                </el-dropdown-item>
+                <template v-if="caps.queueFull">
                   <el-dropdown-item command="top">队列置顶</el-dropdown-item>
                   <el-dropdown-item command="up">队列上移</el-dropdown-item>
                   <el-dropdown-item command="down">队列下移</el-dropdown-item>
                   <el-dropdown-item command="bottom">队列置底</el-dropdown-item>
-                  <el-dropdown-item command="seq">{{ row.sequential ? '取消顺序下载' : '顺序下载' }}</el-dropdown-item>
-                  <el-dropdown-item command="firstlast">{{ row.first_last_piece ? '取消首尾优先' : '首尾优先' }}</el-dropdown-item>
                 </template>
-                <el-dropdown-item command="category" divided v-if="type === 'qb'">设置分类…</el-dropdown-item>
-                <el-dropdown-item command="tags">设置标签…</el-dropdown-item>
+                <el-dropdown-item v-if="caps.sequential" command="seq">{{ row.sequential ? '取消顺序下载' : '顺序下载' }}</el-dropdown-item>
+                <el-dropdown-item v-if="caps.firstLast" command="firstlast">{{ row.first_last_piece ? '取消首尾优先' : '首尾优先' }}</el-dropdown-item>
+                <el-dropdown-item command="category" divided v-if="caps.category">设置分类…</el-dropdown-item>
+                <el-dropdown-item command="tags" v-if="caps.tags">设置标签…</el-dropdown-item>
                 <el-dropdown-item command="limits">限速…</el-dropdown-item>
                 <el-dropdown-item command="share-limits">做种限制…</el-dropdown-item>
-                <el-dropdown-item command="location">移动路径…</el-dropdown-item>
+                <el-dropdown-item command="location" v-if="caps.location">移动路径…</el-dropdown-item>
                 <el-dropdown-item command="files">文件优先级…</el-dropdown-item>
-                <el-dropdown-item command="trackers">Tracker…</el-dropdown-item>
+                <el-dropdown-item command="trackers" v-if="caps.trackers">Tracker…</el-dropdown-item>
                 <el-dropdown-item command="copyMagnet" divided>复制磁力链</el-dropdown-item>
                 <el-dropdown-item command="copyHash">复制哈希</el-dropdown-item>
               </el-dropdown-menu>

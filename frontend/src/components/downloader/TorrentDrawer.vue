@@ -8,9 +8,12 @@ import TorrentTable, { type DialogKind } from './TorrentTable.vue'
 import TorrentDetail from './TorrentDetail.vue'
 import FilesDialog from './FilesDialog.vue'
 import TrackersDialog from './TrackersDialog.vue'
+import { dlCaps } from './caps'
 
 const props = defineProps<{ downloader: Downloader; visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
+
+const caps = computed(() => dlCaps(props.downloader.type))
 
 const { torrents, connect, disconnect } = useWs()
 
@@ -233,7 +236,8 @@ watch(
     if (v) {
       connect()
       loadCats()
-      if (props.downloader.type === 'tr') {
+      if (props.downloader.type !== 'qb') {
+        // qb 经 StatsCacher 由 WS 推送 stats；tr/ut/dl 无 StatsCacher → 兜底轮询 GET /stats
         refreshStats()
         statsTimer = setInterval(refreshStats, 5000)
       }
@@ -265,7 +269,7 @@ onUnmounted(() => {
       :total="counts.total"
     />
     <AddTorrentPanel :downloader="downloader" @added="refresh" />
-    <div v-if="downloader.type === 'qb'" class="extra-ops">
+    <div v-if="caps.categoryCRUD" class="extra-ops">
       <el-button size="small" @click="catManageVisible = true">分类管理</el-button>
     </div>
     <TorrentTable

@@ -24,6 +24,8 @@ const dialogTitle = computed(() => (isEdit.value ? '编辑下载器' : '添加�
 const DL_META: Record<string, { glyph: string; from: string; to: string; label: string }> = {
   qb: { glyph: 'qbittorrent', from: '#72B4F5', to: '#356EBF', label: 'qBittorrent' }, // 官方蓝
   tr: { glyph: 'transmission', from: '#E8443C', to: '#A82424', label: 'Transmission' }, // 官方红把手
+  ut: { glyph: 'utorrent', from: '#5BB04C', to: '#3A7A2E', label: 'uTorrent' }, // 官方绿
+  dl: { glyph: 'deluge', from: '#4FB6E8', to: '#2A7AB3', label: 'Deluge' }, // 官方水蓝
 }
 const dlMeta = (type: string) =>
   DL_META[type] ?? { glyph: 'downloaders', from: '#6c5ce7', to: '#4285f4', label: type || '下载器' }
@@ -164,7 +166,7 @@ onMounted(load)
         <EmptyState
           icon="⬇"
           title="还没有下载器"
-          description="添加 qBittorrent 或 Transmission 后，就能在搜索结果里一键推送种子，并查看实时任务状态。"
+          description="添加 qBittorrent / Transmission / uTorrent / Deluge 后，就能在搜索结果里一键推送种子，并查看实时任务状态。"
         >
           <el-button type="primary" @click="openCreate">添加下载器</el-button>
         </EmptyState>
@@ -183,6 +185,12 @@ onMounted(load)
             </el-radio>
             <el-radio value="tr">
               <GlassIcon :name="dlMeta('tr').glyph" :from="dlMeta('tr').from" :to="dlMeta('tr').to" :size="22" class="type-badge" /> Transmission
+            </el-radio>
+            <el-radio value="ut">
+              <GlassIcon :name="dlMeta('ut').glyph" :from="dlMeta('ut').from" :to="dlMeta('ut').to" :size="22" class="type-badge" /> uTorrent
+            </el-radio>
+            <el-radio value="dl">
+              <GlassIcon :name="dlMeta('dl').glyph" :from="dlMeta('dl').from" :to="dlMeta('dl').to" :size="22" class="type-badge" /> Deluge
             </el-radio>
           </el-radio-group>
         </el-form-item>

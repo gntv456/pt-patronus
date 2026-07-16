@@ -40,6 +40,10 @@ func TestBuildClient(t *testing.T) {
 		{typ: "qbittorrent", wantType: "qb"},
 		{typ: "tr", wantType: "tr"},
 		{typ: "transmission", wantType: "tr"},
+		{typ: "ut", wantType: "ut"},
+		{typ: "utorrent", wantType: "ut"},
+		{typ: "dl", wantType: "dl"},
+		{typ: "deluge", wantType: "dl"},
 		{typ: "unknown", wantErr: true},
 	}
 	for _, tt := range tests {

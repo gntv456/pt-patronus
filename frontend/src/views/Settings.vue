@@ -1104,7 +1104,7 @@ async function openChangelog() {
         <p>PTPatronus 是 PT 站点保号防封利器。推荐上手路径：</p>
         <ol>
           <li>在「站点」添加并登录你的 PT 站点（填 Cookie / 账号）</li>
-          <li>在「下载器」添加 qBittorrent / Transmission</li>
+          <li>在「下载器」添加 qBittorrent / Transmission / uTorrent / Deluge</li>
           <li>开启「辅种」「考核」「签到」等自动化，让工具替你保级</li>
         </ol>
 

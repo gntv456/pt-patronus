@@ -16,6 +16,11 @@ import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 const route = useRoute()
 const router = useRouter()
 
+// 下载器类型 → 中文标签（推送对话框下拉显示）
+const dlTypeLabel: Record<string, string> = {
+  qb: 'qBittorrent', tr: 'Transmission', ut: 'uTorrent', dl: 'Deluge',
+}
+
 // 种子简介来自 PT 站原始 HTML，渲染前必须净化（防存储型 XSS：注入 onerror/script 窃 token）。
 const sanitizeHtml = (html?: string) => (html ? DOMPurify.sanitize(html) : '')
 
@@ -413,7 +418,7 @@ onMounted(() => {
         <el-option
           v-for="d in downloaders"
           :key="d.id"
-          :label="`${d.name}（${d.type === 'tr' ? 'Transmission' : 'qBittorrent'}）`"
+          :label="`${d.name}（${dlTypeLabel[d.type] ?? d.type}）`"
           :value="d.id"
         />
       </el-select>

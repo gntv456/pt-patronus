@@ -82,7 +82,7 @@ type SiteStat struct {
 type Downloader struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`
 	Name        string    `gorm:"size:64;not null" json:"name"`
-	Type        string    `gorm:"size:16;not null" json:"type"` // qb | tr
+	Type        string    `gorm:"size:16;not null" json:"type"` // qb | tr | ut | dl
 	URL         string    `gorm:"size:255" json:"url"`
 	Username    string    `gorm:"size:64" json:"username"`
 	PasswordEnc string    `gorm:"type:text" json:"-"`

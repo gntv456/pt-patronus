@@ -5,6 +5,7 @@ import { fmtBytes, fmtSpeed, fmtTime } from '@/utils/format'
 import { copyText } from '@/utils/clipboard'
 import FilesDialog from './FilesDialog.vue'
 import TrackersDialog from './TrackersDialog.vue'
+import { dlCaps } from './caps'
 
 const props = defineProps<{ downloaderId: number; type: string; torrent: Torrent; visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
@@ -65,7 +66,7 @@ function stateGroup(s: string): string {
   return 'other'
 }
 const isPaused = computed(() => stateGroup(props.torrent.state) === 'paused')
-const isQB = computed(() => props.type === 'qb')
+const caps = computed(() => dlCaps(props.type))
 </script>
 
 <template>
@@ -81,7 +82,7 @@ const isQB = computed(() => props.type === 'qb')
           {{ isPaused ? '恢复' : '暂停' }}
         </el-button>
         <el-button
-          v-if="isQB"
+          v-if="caps.forceStart"
           size="small"
           :type="torrent.force_start ? 'warning' : 'default'"
           @click="op(() => downloaderApi.setForceStart(downloaderId, [torrent.hash], !torrent.force_start), '已切换')"
@@ -103,23 +104,23 @@ const isQB = computed(() => props.type === 'qb')
           <div class="cell"><span class="k">进度</span><span class="v">{{ (torrent.progress * 100).toFixed(1) }}%</span></div>
           <div class="cell"><span class="k">可用性</span><span class="v">{{ torrent.availability ? torrent.availability.toFixed(2) : '-' }}</span></div>
           <div class="cell"><span class="k">做种/下载</span><span class="v">{{ torrent.num_seeds }} / {{ torrent.num_leechs }}</span></div>
-          <div class="cell" v-if="isQB"><span class="k">Swarm 做/下</span><span class="v">{{ torrent.num_complete }} / {{ torrent.num_incomplete }}</span></div>
+          <div class="cell" v-if="caps.swarm"><span class="k">Swarm 做/下</span><span class="v">{{ torrent.num_complete }} / {{ torrent.num_incomplete }}</span></div>
           <div class="cell"><span class="k">↓ 速度</span><span class="v" style="color: var(--pt-primary-2)">{{ fmtSpeed(torrent.dl_rate) }}</span></div>
           <div class="cell"><span class="k">↑ 速度</span><span class="v" style="color: var(--pt-success)">{{ fmtSpeed(torrent.up_rate) }}</span></div>
-          <div class="cell" v-if="isQB"><span class="k">队列位置</span><span class="v">{{ torrent.priority }}</span></div>
+          <div class="cell" v-if="caps.swarm"><span class="k">队列位置</span><span class="v">{{ torrent.priority }}</span></div>
           <div class="cell"><span class="k">创建时间</span><span class="v">{{ fmtTime(torrent.added_at as unknown as string) }}</span></div>
           <div class="cell"><span class="k">完成时间</span><span class="v">{{ fmtTime(torrent.completed_at) }}</span></div>
           <div class="cell wide"><span class="k">保存路径</span><span class="v" :title="torrent.save_path">{{ torrent.save_path || '-' }}</span></div>
         </div>
 
-        <div v-if="isQB" class="flags">
+        <div v-if="caps.forceStart || caps.sequential || caps.firstLast" class="flags">
           <span class="flag" :class="{ on: torrent.force_start }">强制开始</span>
           <span class="flag" :class="{ on: torrent.sequential }">顺序下载</span>
           <span class="flag" :class="{ on: torrent.first_last_piece }">首尾优先</span>
           <span class="flag" :class="{ on: torrent.auto_tmm }">自动管理</span>
         </div>
 
-        <div v-if="isQB" class="flag-ops">
+        <div v-if="caps.sequential" class="flag-ops">
           <el-button size="small" @click="op(() => downloaderApi.toggleSequential(downloaderId, [torrent.hash]), '已切换顺序下载')">
             {{ torrent.sequential ? '取消' : '开启' }}顺序下载
           </el-button>

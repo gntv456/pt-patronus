@@ -23,6 +23,20 @@ import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
         to: const Color(0xFFA82424),
         label: 'Transmission',
       );
+    case 'ut':
+      return (
+        glyph: 'utorrent',
+        from: const Color(0xFF5BB04C),
+        to: const Color(0xFF3A7A2E),
+        label: 'uTorrent',
+      );
+    case 'dl':
+      return (
+        glyph: 'deluge',
+        from: const Color(0xFF4FB6E8),
+        to: const Color(0xFF2A7AB3),
+        label: 'Deluge',
+      );
     default:
       return (
         glyph: 'qbittorrent',
@@ -42,6 +56,20 @@ Widget _dlOption(({String glyph, Color from, Color to, String label}) m) {
       Text(m.label),
     ],
   );
+}
+
+// 下载器能力位（与 Web caps.ts 1:1）：UI 按能力门控，新增类型在此加一条 case。
+({bool category, bool categoryCRUD, bool forceStart, bool queueFull, bool sequential, bool firstLast, bool swarm, bool tags, bool trackers, List<({String label, int value})> filePrio}) _dlCaps(String t) {
+  switch (t) {
+    case 'tr':
+      return (category: false, categoryCRUD: false, forceStart: false, queueFull: false, sequential: false, firstLast: false, swarm: false, tags: true, trackers: true, filePrio: const [(label: '低', value: -1), (label: '正常', value: 0), (label: '高', value: 1)]);
+    case 'ut':
+      return (category: true, categoryCRUD: false, forceStart: true, queueFull: true, sequential: false, firstLast: false, swarm: true, tags: false, trackers: false, filePrio: const [(label: '跳过', value: 0), (label: '低', value: 1), (label: '正常', value: 2), (label: '高', value: 3)]);
+    case 'dl':
+      return (category: true, categoryCRUD: false, forceStart: false, queueFull: true, sequential: false, firstLast: false, swarm: true, tags: false, trackers: true, filePrio: const [(label: '跳过', value: 0), (label: '低', value: 1), (label: '正常', value: 2), (label: '高', value: 3)]);
+    default: // qb
+      return (category: true, categoryCRUD: true, forceStart: true, queueFull: true, sequential: true, firstLast: true, swarm: true, tags: true, trackers: true, filePrio: const [(label: '不下载', value: 0), (label: '正常', value: 2), (label: '高', value: 1), (label: '最高', value: 7)]);
+  }
 }
 
 // 子表（文件/Tracker/Peer/分类）加载失败的统一错误视图：文案 + 重试按钮，
@@ -422,6 +450,8 @@ class _DownloaderFormSheetState extends State<_DownloaderFormSheet> {
           items: [
             DropdownMenuItem(value: 'qb', child: _dlOption(_dlMeta('qb'))),
             DropdownMenuItem(value: 'tr', child: _dlOption(_dlMeta('tr'))),
+            DropdownMenuItem(value: 'ut', child: _dlOption(_dlMeta('ut'))),
+            DropdownMenuItem(value: 'dl', child: _dlOption(_dlMeta('dl'))),
           ],
           onChanged: (v) => setState(() => _type = v ?? 'qb'),
         ),
@@ -964,7 +994,7 @@ class _TorrentSheetState extends State<_TorrentSheet> {
                 ),
               ),
               const Spacer(),
-              if (_type == 'qb')
+              if (_dlCaps(_type).categoryCRUD)
                 IconButton(
                   icon: const Icon(Icons.category_outlined),
                   onPressed: _showCategoryManager,
@@ -1054,34 +1084,40 @@ class _TorrentSheetState extends State<_TorrentSheet> {
           const PopupMenuItem(value: 'resume', child: Text('恢复')),
           const PopupMenuItem(value: 'recheck', child: Text('重新校验')),
           const PopupMenuItem(value: 'reannounce', child: Text('重新汇报')),
-          if (_type == 'qb') ...[
+          if (_dlCaps(_type).forceStart || _dlCaps(_type).queueFull || _dlCaps(_type).sequential || _dlCaps(_type).firstLast)
             const PopupMenuDivider(),
+          if (_dlCaps(_type).forceStart)
             PopupMenuItem(
               value: 'forceStart',
               child: Text(t.forceStart ? '取消强制开始' : '强制开始'),
             ),
+          if (_dlCaps(_type).queueFull) ...[
             const PopupMenuItem(value: 'top', child: Text('队列置顶')),
             const PopupMenuItem(value: 'up', child: Text('队列上移')),
             const PopupMenuItem(value: 'down', child: Text('队列下移')),
             const PopupMenuItem(value: 'bottom', child: Text('队列置底')),
+          ],
+          if (_dlCaps(_type).sequential)
             PopupMenuItem(
               value: 'seq',
               child: Text(t.sequential ? '取消顺序下载' : '顺序下载'),
             ),
+          if (_dlCaps(_type).firstLast)
             PopupMenuItem(
               value: 'firstlast',
               child: Text(t.firstLastPiece ? '取消首尾优先' : '首尾优先'),
             ),
-          ],
           const PopupMenuDivider(),
           const PopupMenuItem(value: 'remove', child: Text('删除…')),
-          if (_type == 'qb')
+          if (_dlCaps(_type).category)
             const PopupMenuItem(value: 'category', child: Text('设置分类…')),
-          const PopupMenuItem(value: 'tags', child: Text('设置标签…')),
+          if (_dlCaps(_type).tags)
+            const PopupMenuItem(value: 'tags', child: Text('设置标签…')),
           const PopupMenuItem(value: 'limits', child: Text('限速…')),
           const PopupMenuItem(value: 'shareLimits', child: Text('做种限制…')),
           const PopupMenuItem(value: 'files', child: Text('文件优先级…')),
-          const PopupMenuItem(value: 'trackers', child: Text('Tracker…')),
+          if (_dlCaps(_type).trackers)
+            const PopupMenuItem(value: 'trackers', child: Text('Tracker…')),
           const PopupMenuItem(value: 'peers', child: Text('Peers…')),
           const PopupMenuDivider(),
           const PopupMenuItem(value: 'copyMagnet', child: Text('复制磁力链')),
@@ -1268,18 +1304,10 @@ class _FilesSheetState extends State<_FilesSheet> {
     }
   }
 
-  List<DropdownMenuItem<int>> _prioOpts() => widget.type == 'tr'
-      ? const [
-          DropdownMenuItem(value: -1, child: Text('低')),
-          DropdownMenuItem(value: 0, child: Text('正常')),
-          DropdownMenuItem(value: 1, child: Text('高')),
-        ]
-      : const [
-          DropdownMenuItem(value: 0, child: Text('不下载')),
-          DropdownMenuItem(value: 2, child: Text('正常')),
-          DropdownMenuItem(value: 1, child: Text('高')),
-          DropdownMenuItem(value: 7, child: Text('最高')),
-        ];
+  List<DropdownMenuItem<int>> _prioOpts() => [
+        for (final o in _dlCaps(widget.type).filePrio)
+          DropdownMenuItem(value: o.value, child: Text(o.label)),
+      ];
 
   Future<void> _setPrio(TorrentFile f, int p) async {
     try {
@@ -1587,19 +1615,19 @@ class _DetailSheet extends StatelessWidget {
               ),
               _kv('分享率', t.ratio.toStringAsFixed(2)),
               _kv('进度', '${(t.progress * 100).toStringAsFixed(1)}%'),
-              if (type == 'qb')
+              if (_dlCaps(type).swarm)
                 _kv(
                   '可用性',
                   t.availability > 0 ? t.availability.toStringAsFixed(2) : '-',
                 ),
               _kv('做种/下载', '${t.numSeeds} / ${t.numLeechs}'),
-              if (type == 'qb')
+              if (_dlCaps(type).swarm)
                 _kv('Swarm 做/下', '${t.numComplete} / ${t.numIncomplete}'),
-              if (type == 'qb') _kv('队列位置', '${t.priority}'),
+              if (_dlCaps(type).swarm) _kv('队列位置', '${t.priority}'),
               if (t.addedAt.isNotEmpty) _kv('创建', _fmtIso(t.addedAt)),
               if (_isCompleted(t.completedAt))
                 _kv('完成', _fmtIso(t.completedAt)),
-              if (type == 'qb') ...[
+              if (_dlCaps(type).forceStart || _dlCaps(type).sequential || _dlCaps(type).firstLast) ...[
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,

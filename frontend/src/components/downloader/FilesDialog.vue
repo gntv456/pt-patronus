@@ -2,26 +2,14 @@
 import { ref, watch, computed } from 'vue'
 import { downloaderApi, type TorrentFile } from '@/api/downloader'
 import { fmtBytes } from '@/utils/format'
+import { dlCaps } from './caps'
 
 const props = defineProps<{ downloaderId: number; hash: string; type: string }>()
 const files = ref<TorrentFile[]>([])
 const loading = ref(false)
 
-// qB priority: 0=不下载 1=高 2=正常 7=最高；TR priority: -1=低 0=正常 1=高
-const prioOptions = computed(() =>
-  props.type === 'tr'
-    ? [
-        { label: '低', value: -1 },
-        { label: '正常', value: 0 },
-        { label: '高', value: 1 },
-      ]
-    : [
-        { label: '不下载', value: 0 },
-        { label: '正常', value: 2 },
-        { label: '高', value: 1 },
-        { label: '最高', value: 7 },
-      ],
-)
+// 文件优先级取值按下载器类型（见 caps.ts）：qb {0/2/1/7}、tr {-1/0/1}、ut/dl {0/1/2/3}
+const prioOptions = computed(() => dlCaps(props.type).filePrio)
 
 async function load() {
   loading.value = true

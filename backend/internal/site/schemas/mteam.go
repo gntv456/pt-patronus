@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -293,9 +294,36 @@ func (m *MTeam) FetchFreeleech(ctx context.Context, def *site.SiteMetadata, base
 	return out, nil
 }
 
+// mtAPIBase 把 baseURL 归一化到 M-Team 的 JSON API 主机 api.m-team.cc。
+//
+// M-Team 的 JSON API（/api/...）只服务于 api.m-team.cc；网页主机 kp.m-team.cc /
+// personal.m-team.cc 受 Cloudflare 严防且并无该 API。MP/.ptd 导入与手动添加常把
+// 网页地址写进 BaseURL，致连通性检测 / 搜索 / 下载签名全部撞 Cloudflare（表现为
+// 「blocked by cloudflare on https://kp.m-team.cc」）。
+//
+// 仅改写 M-Team 官方域（m-team.cc 及其子域）下、非 api 的主机；用户自建反代
+// （如 https://mt-proxy.example.com）与任意第三方域原样保留，不破坏自定义接入。
+// 解析失败也原样返回，交由下游 joinURL / 请求层报错，不在 helper 里吞异常。
+func mtAPIBase(baseURL string) string {
+	u, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return baseURL
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "api.m-team.cc" {
+		return baseURL // 已是 API 主机，原样返回（不引入 path/大小写等意外差异）
+	}
+	if host == "m-team.cc" || strings.HasSuffix(host, ".m-team.cc") {
+		u.Host = "api.m-team.cc"
+		return u.String()
+	}
+	return baseURL
+}
+
 // mtRequest 发送 JSON POST，校验信封，返回 data 原始 JSON。
 // HTTP 401/403 或鉴权类业务错误 → site.ErrNotLoggedIn；其它 code!="0" → 带消息的错误。
 func (m *MTeam) mtRequest(ctx context.Context, baseURL, token, path string, body map[string]any) (json.RawMessage, error) {
+	baseURL = mtAPIBase(baseURL) // 网页主机（kp./personal.）→ api.m-team.cc，绕 Cloudflare
 	payload, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -331,6 +359,7 @@ func (m *MTeam) mtRequest(ctx context.Context, baseURL, token, path string, body
 // 头 x-api-key。契约源 pt_mate mteam_adapter.genDlToken（data 为签名 URL 字符串）。
 // URL 有时效（签名），调用方应在「添加」时现取，勿提前入库缓存。
 func (m *MTeam) GenDlToken(ctx context.Context, baseURL, apiKey, torrentID string) (string, error) {
+	baseURL = mtAPIBase(baseURL) // 同 mtRequest：网页主机 → api.m-team.cc
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	_ = w.WriteField("id", torrentID)

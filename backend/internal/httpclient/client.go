@@ -122,7 +122,7 @@ func New(opts Options) (*Client, error) {
 		// uTLS（Chrome 指纹）拨号：仅 https 走 DialTLSContext 用 utls 握手，绕 TLS 指纹 WAF。
 		// ALPN 强制 http/1.1（net/http 不能在自管 TLS 连接上说 h2）。见 utls_dial.go。
 		transport.ForceAttemptHTTP2 = false
-		transport.DialTLSContext = utlsDialContext(opts.AllowPrivate, opts.InsecureTLS)
+		transport.DialTLSContext = UTLSDialContext(opts.AllowPrivate, opts.InsecureTLS)
 	}
 	hc := &http.Client{
 		Timeout:   opts.Timeout,

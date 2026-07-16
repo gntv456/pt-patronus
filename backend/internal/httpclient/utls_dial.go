@@ -9,7 +9,7 @@ import (
 	utls "github.com/refraction-networking/utls"
 )
 
-// utlsDialContext 返回一个 https 拨号函数：TCP 连接后用 utls.UClient（Chrome ClientHello）
+// UTLSDialContext returns an HTTPS dialer using a Chrome-compatible ClientHello.
 // 做 TLS 握手，绕过按 TLS 指纹（JA3/JA4）拦截非浏览器流量的 WAF/CDN——典型如 SafeLine（雷池）
 // WAF 对签到端点 attendance.php 的拦截：标准 net/http 的指纹非浏览器，被返回 468 拦截页。
 //
@@ -18,7 +18,7 @@ import (
 //   - SSRF：allowPrivate=false 时解析 host→公网 IP 直连（防内网探测 + DNS 重绑定），与
 //     ssrfDialContext 同策略；allowPrivate=true（本地 httptest 测试）时直连原 addr。
 //   - insecure=true 时跳过证书校验（仅自签 httptest 测试用；生产保持 false）。
-func utlsDialContext(allowPrivate, insecure bool) func(ctx context.Context, network, addr string) (net.Conn, error) {
+func UTLSDialContext(allowPrivate, insecure bool) func(ctx context.Context, network, addr string) (net.Conn, error) {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		host, port, err := net.SplitHostPort(addr)
 		if err != nil {

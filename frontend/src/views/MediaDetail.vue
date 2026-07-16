@@ -14,21 +14,19 @@ const detail = ref<MediaInfo | null>(null)
 const loading = ref(false)
 const error = ref('')
 const subscribing = ref(false)
-const castExpanded = ref(false)
-const recommendationsExpanded = ref(false)
+const moreKind = ref<'cast' | 'recommendations' | null>(null)
 
 const CAST_PREVIEW_LIMIT = 12
 const RECOMMENDATIONS_PREVIEW_LIMIT = 8
-const visibleCast = computed(() => {
-  const cast = detail.value?.cast || []
-  return castExpanded.value ? cast : cast.slice(0, CAST_PREVIEW_LIMIT)
+const visibleCast = computed(() => (detail.value?.cast || []).slice(0, CAST_PREVIEW_LIMIT))
+const visibleRecommendations = computed(() => (detail.value?.recommendations || []).slice(0, RECOMMENDATIONS_PREVIEW_LIMIT))
+const moreVisible = computed({
+  get: () => moreKind.value !== null,
+  set: (visible: boolean) => {
+    if (!visible) moreKind.value = null
+  },
 })
-const visibleRecommendations = computed(() => {
-  const recommendations = detail.value?.recommendations || []
-  return recommendationsExpanded.value
-    ? recommendations
-    : recommendations.slice(0, RECOMMENDATIONS_PREVIEW_LIMIT)
-})
+const moreTitle = computed(() => (moreKind.value === 'cast' ? '演员阵容' : '推荐'))
 
 function typeBadge(t: string) {
   return ({ movie: '电影', tv: '剧集', music: '音乐' } as Record<string, string>)[t] || t
@@ -56,8 +54,7 @@ async function load() {
     error.value = '缺少 source/id'
     return
   }
-  castExpanded.value = false
-  recommendationsExpanded.value = false
+  moreKind.value = null
   loading.value = true
   error.value = ''
   try {
@@ -100,6 +97,10 @@ async function subscribe() {
 // 点推荐项 → 换源/id 重载本页
 function openRec(m: MediaInfo) {
   router.push({ path: '/media-detail', query: { source: m.source, id: m.source_id } })
+}
+
+function openMore(kind: 'cast' | 'recommendations') {
+  moreKind.value = kind
 }
 
 // 点演员头像 → 拉演员简介弹窗（豆瓣 /elessar/subject）
@@ -188,12 +189,11 @@ watch(() => [route.query.source, route.query.id], load, { immediate: true })
               v-if="detail.cast.length > CAST_PREVIEW_LIMIT"
               link
               class="section-more"
-              :aria-expanded="castExpanded"
-              aria-controls="media-detail-cast"
-              @click="castExpanded = !castExpanded"
+              aria-haspopup="dialog"
+              @click="openMore('cast')"
             >
-              {{ castExpanded ? '收起' : '更多' }}
-              <SptIcon :name="castExpanded ? 'chevron-up' : 'chevron-down'" :size="15" />
+              更多
+              <SptIcon name="chevron-right" :size="15" />
             </el-button>
           </div>
           <div id="media-detail-cast" class="cast">
@@ -213,12 +213,11 @@ watch(() => [route.query.source, route.query.id], load, { immediate: true })
               v-if="detail.recommendations.length > RECOMMENDATIONS_PREVIEW_LIMIT"
               link
               class="section-more"
-              :aria-expanded="recommendationsExpanded"
-              aria-controls="media-detail-recommendations"
-              @click="recommendationsExpanded = !recommendationsExpanded"
+              aria-haspopup="dialog"
+              @click="openMore('recommendations')"
             >
-              {{ recommendationsExpanded ? '收起' : '更多' }}
-              <SptIcon :name="recommendationsExpanded ? 'chevron-up' : 'chevron-down'" :size="15" />
+              更多
+              <SptIcon name="chevron-right" :size="15" />
             </el-button>
           </div>
           <div id="media-detail-recommendations" class="recs">
@@ -235,8 +234,25 @@ watch(() => [route.query.source, route.query.id], load, { immediate: true })
           </div>
         </div>
 
+        <el-dialog v-model="moreVisible" :title="moreTitle" width="min(960px, calc(100% - 32px))" class="more-dialog" append-to-body>
+          <div v-if="moreKind === 'cast'" class="more-list cast">
+            <div v-for="(p, i) in detail.cast" :key="`${p.id || p.name}-${i}`" class="cast-item" :class="{ clickable: p.id }" @click="openCelebrity(p)">
+              <div class="avatar"><MediaPoster :url="p.avatar || ''" kind="person" /></div>
+              <div class="cname">{{ p.name }}</div>
+              <div v-if="p.role" class="crole text-muted">{{ p.role }}</div>
+            </div>
+          </div>
+          <div v-else class="more-list recs">
+            <div v-for="(m, i) in detail.recommendations" :key="`${m.source}-${m.source_id}-${i}`" class="rec glass-hover" @click="openRec(m)">
+              <div class="rec-poster"><MediaPoster :url="m.poster_url" :kind="m.type" /></div>
+              <div class="rec-title">{{ m.title }}</div>
+              <div v-if="m.rating" class="rec-rating text-muted">⭐ {{ m.rating.toFixed(1) }}</div>
+            </div>
+          </div>
+        </el-dialog>
+
         <!-- 演员简介弹窗（点 cast 头像） -->
-        <el-dialog v-model="celVisible" :title="celProfile?.name || '演员简介'" width="560px" class="cel-dialog" align-center>
+        <el-dialog v-model="celVisible" :title="celProfile?.name || '演员简介'" width="560px" class="cel-dialog" align-center append-to-body>
           <div v-loading="celLoading" class="cel-body">
             <template v-if="celProfile">
               <div class="cel-head">
@@ -325,6 +341,9 @@ watch(() => [route.query.source, route.query.id], load, { immediate: true })
 .rec-poster { aspect-ratio: 2/3; background: var(--surface-muted); }
 .rec-title { padding: 8px 10px 2px; font-size: 13px; font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .rec-rating { padding: 0 10px 10px; font-size: 12px; }
+
+.more-list { max-height: min(68vh, 680px); overflow-y: auto; padding: 4px; }
+.more-dialog :deep(.el-dialog__body) { padding-top: 4px; }
 
 .empty { padding: 40px; text-align: center; }
 .error-state { display: flex; flex-direction: column; align-items: center; gap: 12px; }

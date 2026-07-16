@@ -167,6 +167,12 @@ const GLYPHS: Record<string, string> = {
   // 下载器·Deluge：蓝色水滴 + 内部向下箭头（Deluge 官方水滴 + 下载意象，蓝）
   deluge:
     '<path d="M12 3c3.5 4.5 6 7.5 6 11a6 6 0 0 1-12 0c0-3.5 2.5-6.5 6-11z"/><path d="M12 10v5"/><path d="M9.5 13l2.5 2.5L14.5 13"/>',
+  aria2:
+    '<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/>',
+  rutorrent:
+    '<circle cx="12" cy="12" r="9"/><path d="M9 8h4.5a2.5 2.5 0 0 1 0 5H9z"/><path d="M9 13l4 4"/>',
+  flood:
+    '<path d="M4 14c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M4 18c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2"/><path d="M12 4v6"/>',
 }
 
 const dim = computed(() => (typeof props.size === 'number' ? `${props.size}px` : props.size))

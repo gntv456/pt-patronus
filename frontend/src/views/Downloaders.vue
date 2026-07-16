@@ -26,6 +26,9 @@ const DL_META: Record<string, { glyph: string; from: string; to: string; label: 
   tr: { glyph: 'transmission', from: '#E8443C', to: '#A82424', label: 'Transmission' }, // 官方红把手
   ut: { glyph: 'utorrent', from: '#5BB04C', to: '#3A7A2E', label: 'uTorrent' }, // 官方绿
   dl: { glyph: 'deluge', from: '#4FB6E8', to: '#2A7AB3', label: 'Deluge' }, // 官方水蓝
+  ar: { glyph: 'aria2', from: '#F0A030', to: '#C07010', label: 'Aria2' },
+  rt: { glyph: 'rutorrent', from: '#2E8B57', to: '#1A5C38', label: 'ruTorrent' },
+  fl: { glyph: 'flood', from: '#5B8DEF', to: '#2F5FCC', label: 'Flood' },
 }
 const dlMeta = (type: string) =>
   DL_META[type] ?? { glyph: 'downloaders', from: '#6c5ce7', to: '#4285f4', label: type || '下载器' }
@@ -191,6 +194,15 @@ onMounted(load)
             </el-radio>
             <el-radio value="dl">
               <GlassIcon :name="dlMeta('dl').glyph" :from="dlMeta('dl').from" :to="dlMeta('dl').to" :size="22" class="type-badge" /> Deluge
+            </el-radio>
+            <el-radio value="ar">
+              <GlassIcon :name="dlMeta('ar').glyph" :from="dlMeta('ar').from" :to="dlMeta('ar').to" :size="22" class="type-badge" /> Aria2
+            </el-radio>
+            <el-radio value="rt">
+              <GlassIcon :name="dlMeta('rt').glyph" :from="dlMeta('rt').from" :to="dlMeta('rt').to" :size="22" class="type-badge" /> ruTorrent
+            </el-radio>
+            <el-radio value="fl">
+              <GlassIcon :name="dlMeta('fl').glyph" :from="dlMeta('fl').from" :to="dlMeta('fl').to" :size="22" class="type-badge" /> Flood
             </el-radio>
           </el-radio-group>
         </el-form-item>

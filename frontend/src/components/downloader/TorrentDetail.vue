@@ -130,7 +130,7 @@ const caps = computed(() => dlCaps(props.type))
         </div>
       </el-tab-pane>
 
-      <el-tab-pane :label="`Peers (${peers.length})`" name="peers">
+      <el-tab-pane v-if="caps.peers" :label="`Peers (${peers.length})`" name="peers">
         <el-table v-loading="peersLoading" :data="peers" size="small" max-height="420">
           <el-table-column prop="ip" label="地址" min-width="150" show-overflow-tooltip />
           <el-table-column prop="client" label="客户端" min-width="140" show-overflow-tooltip />
@@ -149,11 +149,11 @@ const caps = computed(() => dlCaps(props.type))
         <el-button size="small" text @click="loadPeers" style="margin-top: 8px">刷新</el-button>
       </el-tab-pane>
 
-      <el-tab-pane label="文件" name="files">
+      <el-tab-pane v-if="caps.files" label="文件" name="files">
         <FilesDialog :downloader-id="downloaderId" :hash="torrent.hash" :type="type" />
       </el-tab-pane>
 
-      <el-tab-pane label="Tracker" name="trackers">
+      <el-tab-pane v-if="caps.trackers" label="Tracker" name="trackers">
         <TrackersDialog :downloader-id="downloaderId" :hash="torrent.hash" />
       </el-tab-pane>
     </el-tabs>

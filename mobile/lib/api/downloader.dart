@@ -29,6 +29,7 @@ class Downloader {
 
 class Torrent {
   final String hash;
+  final String infoHash;
   final String name;
   final int size;
   final double progress;
@@ -58,6 +59,7 @@ class Torrent {
 
   Torrent({
     required this.hash,
+    this.infoHash = '',
     required this.name,
     required this.size,
     required this.progress,
@@ -86,6 +88,7 @@ class Torrent {
   });
   factory Torrent.fromJson(Map<String, dynamic> j) => Torrent(
         hash: j['hash'] as String? ?? '',
+        infoHash: j['info_hash'] as String? ?? '',
         name: j['name'] as String? ?? '',
         size: (j['size'] as num?)?.toInt() ?? 0,
         progress: (j['progress'] as num?)?.toDouble() ?? 0,
@@ -114,7 +117,7 @@ class Torrent {
       );
 
   /// 磁力链（hash + 名称）。
-  String get magnet => 'magnet:?xt=urn:btih:$hash&dn=${Uri.encodeComponent(name)}';
+  String get magnet => 'magnet:?xt=urn:btih:${infoHash.isNotEmpty ? infoHash : hash}&dn=${Uri.encodeComponent(name)}';
 }
 
 class TorrentFile {

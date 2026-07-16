@@ -10,8 +10,11 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader"
+	"github.com/hxpt/ptpatronus/internal/downloader/ar"
 	"github.com/hxpt/ptpatronus/internal/downloader/dl"
+	"github.com/hxpt/ptpatronus/internal/downloader/fl"
 	"github.com/hxpt/ptpatronus/internal/downloader/qb"
+	"github.com/hxpt/ptpatronus/internal/downloader/rt"
 	"github.com/hxpt/ptpatronus/internal/downloader/tr"
 	"github.com/hxpt/ptpatronus/internal/downloader/ut"
 )
@@ -75,6 +78,12 @@ func BuildClient(d *models.Downloader, password string) (downloader.Downloader, 
 		return ut.New(d.URL, d.Username, password)
 	case "dl", "deluge":
 		return dl.New(d.URL, d.Username, password), nil
+	case "ar", "aria2":
+		return ar.New(d.URL, d.Username, password), nil
+	case "rt", "rutorrent":
+		return rt.New(d.URL, d.Username, password), nil
+	case "fl", "flood":
+		return fl.New(d.URL, d.Username, password)
 	default:
 		return nil, fmt.Errorf("unknown downloader type: %s", d.Type)
 	}

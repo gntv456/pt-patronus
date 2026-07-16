@@ -37,6 +37,27 @@ import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
         to: const Color(0xFF2A7AB3),
         label: 'Deluge',
       );
+    case 'ar':
+      return (
+        glyph: 'aria2',
+        from: const Color(0xFFF0A030),
+        to: const Color(0xFFC07010),
+        label: 'Aria2',
+      );
+    case 'rt':
+      return (
+        glyph: 'rutorrent',
+        from: const Color(0xFF2E8B57),
+        to: const Color(0xFF1A5C38),
+        label: 'ruTorrent',
+      );
+    case 'fl':
+      return (
+        glyph: 'flood',
+        from: const Color(0xFF5B8DEF),
+        to: const Color(0xFF2F5FCC),
+        label: 'Flood',
+      );
     default:
       return (
         glyph: 'qbittorrent',
@@ -59,16 +80,22 @@ Widget _dlOption(({String glyph, Color from, Color to, String label}) m) {
 }
 
 // 下载器能力位（与 Web caps.ts 1:1）：UI 按能力门控，新增类型在此加一条 case。
-({bool category, bool categoryCRUD, bool forceStart, bool queueFull, bool sequential, bool firstLast, bool swarm, bool tags, bool trackers, List<({String label, int value})> filePrio}) _dlCaps(String t) {
+({bool category, bool categoryCRUD, bool forceStart, bool queueFull, bool sequential, bool firstLast, bool swarm, bool tags, bool trackers, bool files, bool peers, List<({String label, int value})> filePrio}) _dlCaps(String t) {
   switch (t) {
     case 'tr':
-      return (category: false, categoryCRUD: false, forceStart: false, queueFull: false, sequential: false, firstLast: false, swarm: false, tags: true, trackers: true, filePrio: const [(label: '低', value: -1), (label: '正常', value: 0), (label: '高', value: 1)]);
+      return (category: false, categoryCRUD: false, forceStart: false, queueFull: false, sequential: false, firstLast: false, swarm: false, tags: true, trackers: true, files: true, peers: true, filePrio: const [(label: '低', value: -1), (label: '正常', value: 0), (label: '高', value: 1)]);
     case 'ut':
-      return (category: true, categoryCRUD: false, forceStart: true, queueFull: true, sequential: false, firstLast: false, swarm: true, tags: false, trackers: false, filePrio: const [(label: '跳过', value: 0), (label: '低', value: 1), (label: '正常', value: 2), (label: '高', value: 3)]);
+      return (category: true, categoryCRUD: false, forceStart: true, queueFull: true, sequential: false, firstLast: false, swarm: true, tags: false, trackers: false, files: true, peers: true, filePrio: const [(label: '跳过', value: 0), (label: '低', value: 1), (label: '正常', value: 2), (label: '高', value: 3)]);
     case 'dl':
-      return (category: true, categoryCRUD: false, forceStart: false, queueFull: true, sequential: false, firstLast: false, swarm: true, tags: false, trackers: true, filePrio: const [(label: '跳过', value: 0), (label: '低', value: 1), (label: '正常', value: 2), (label: '高', value: 3)]);
+      return (category: true, categoryCRUD: false, forceStart: false, queueFull: true, sequential: false, firstLast: false, swarm: true, tags: false, trackers: true, files: true, peers: true, filePrio: const [(label: '跳过', value: 0), (label: '低', value: 1), (label: '正常', value: 2), (label: '高', value: 3)]);
+    case 'ar':
+      return (category: false, categoryCRUD: false, forceStart: false, queueFull: true, sequential: false, firstLast: false, swarm: false, tags: false, trackers: false, files: true, peers: true, filePrio: const [(label: '跳过', value: 0), (label: '下载', value: 1)]);
+    case 'rt':
+      return (category: true, categoryCRUD: false, forceStart: false, queueFull: false, sequential: false, firstLast: false, swarm: false, tags: false, trackers: false, files: false, peers: false, filePrio: const []);
+    case 'fl':
+      return (category: true, categoryCRUD: false, forceStart: false, queueFull: false, sequential: false, firstLast: false, swarm: true, tags: true, trackers: false, files: true, peers: true, filePrio: const [(label: '跳过', value: 0), (label: '低', value: 1), (label: '正常', value: 2), (label: '高', value: 3)]);
     default: // qb
-      return (category: true, categoryCRUD: true, forceStart: true, queueFull: true, sequential: true, firstLast: true, swarm: true, tags: true, trackers: true, filePrio: const [(label: '不下载', value: 0), (label: '正常', value: 2), (label: '高', value: 1), (label: '最高', value: 7)]);
+      return (category: true, categoryCRUD: true, forceStart: true, queueFull: true, sequential: true, firstLast: true, swarm: true, tags: true, trackers: true, files: true, peers: true, filePrio: const [(label: '不下载', value: 0), (label: '正常', value: 2), (label: '高', value: 1), (label: '最高', value: 7)]);
   }
 }
 
@@ -452,6 +479,9 @@ class _DownloaderFormSheetState extends State<_DownloaderFormSheet> {
             DropdownMenuItem(value: 'tr', child: _dlOption(_dlMeta('tr'))),
             DropdownMenuItem(value: 'ut', child: _dlOption(_dlMeta('ut'))),
             DropdownMenuItem(value: 'dl', child: _dlOption(_dlMeta('dl'))),
+            DropdownMenuItem(value: 'ar', child: _dlOption(_dlMeta('ar'))),
+            DropdownMenuItem(value: 'rt', child: _dlOption(_dlMeta('rt'))),
+            DropdownMenuItem(value: 'fl', child: _dlOption(_dlMeta('fl'))),
           ],
           onChanged: (v) => setState(() => _type = v ?? 'qb'),
         ),
@@ -671,7 +701,7 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       case 'copyMagnet':
         _copy(t.magnet, '磁力链');
       case 'copyHash':
-        _copy(t.hash, '哈希');
+        _copy(t.infoHash.isNotEmpty ? t.infoHash : t.hash, '哈希');
       case 'remove':
         final df = await _confirmDelete(t.name);
         if (df != null) {
@@ -1115,10 +1145,12 @@ class _TorrentSheetState extends State<_TorrentSheet> {
             const PopupMenuItem(value: 'tags', child: Text('设置标签…')),
           const PopupMenuItem(value: 'limits', child: Text('限速…')),
           const PopupMenuItem(value: 'shareLimits', child: Text('做种限制…')),
-          const PopupMenuItem(value: 'files', child: Text('文件优先级…')),
+          if (_dlCaps(_type).files)
+            const PopupMenuItem(value: 'files', child: Text('文件优先级…')),
           if (_dlCaps(_type).trackers)
             const PopupMenuItem(value: 'trackers', child: Text('Tracker…')),
-          const PopupMenuItem(value: 'peers', child: Text('Peers…')),
+          if (_dlCaps(_type).peers)
+            const PopupMenuItem(value: 'peers', child: Text('Peers…')),
           const PopupMenuDivider(),
           const PopupMenuItem(value: 'copyMagnet', child: Text('复制磁力链')),
           const PopupMenuItem(value: 'copyHash', child: Text('复制哈希')),

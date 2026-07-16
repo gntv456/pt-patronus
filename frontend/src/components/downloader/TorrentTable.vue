@@ -106,7 +106,7 @@ async function copy(text: string, label: string) {
 }
 
 function magnetOf(t: Torrent) {
-  return `magnet:?xt=urn:btih:${t.hash}&dn=${encodeURIComponent(t.name)}`
+  return `magnet:?xt=urn:btih:${t.info_hash || t.hash}&dn=${encodeURIComponent(t.name)}`
 }
 
 // 单条「更多」菜单命令分发：即时操作内部处理，对话框类 emit 给父。
@@ -139,7 +139,7 @@ function onCommand(cmd: string, t: Torrent) {
     case 'copyMagnet':
       copy(magnetOf(t), '磁力链'); break
     case 'copyHash':
-      copy(t.hash, '哈希'); break
+      copy(t.info_hash || t.hash, '哈希'); break
     default:
       emit('dialog', { kind: cmd as DialogKind, hashes: [t.hash] })
   }
@@ -324,7 +324,7 @@ function stateColor(s: string): string {
                 <el-dropdown-item command="limits">限速…</el-dropdown-item>
                 <el-dropdown-item command="share-limits">做种限制…</el-dropdown-item>
                 <el-dropdown-item command="location" v-if="caps.location">移动路径…</el-dropdown-item>
-                <el-dropdown-item command="files">文件优先级…</el-dropdown-item>
+                <el-dropdown-item command="files" v-if="caps.files">文件优先级…</el-dropdown-item>
                 <el-dropdown-item command="trackers" v-if="caps.trackers">Tracker…</el-dropdown-item>
                 <el-dropdown-item command="copyMagnet" divided>复制磁力链</el-dropdown-item>
                 <el-dropdown-item command="copyHash">复制哈希</el-dropdown-item>

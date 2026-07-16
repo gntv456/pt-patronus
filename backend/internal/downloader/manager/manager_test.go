@@ -44,6 +44,12 @@ func TestBuildClient(t *testing.T) {
 		{typ: "utorrent", wantType: "ut"},
 		{typ: "dl", wantType: "dl"},
 		{typ: "deluge", wantType: "dl"},
+		{typ: "ar", wantType: "ar"},
+		{typ: "aria2", wantType: "ar"},
+		{typ: "rt", wantType: "rt"},
+		{typ: "rutorrent", wantType: "rt"},
+		{typ: "fl", wantType: "fl"},
+		{typ: "flood", wantType: "fl"},
 		{typ: "unknown", wantErr: true},
 	}
 	for _, tt := range tests {

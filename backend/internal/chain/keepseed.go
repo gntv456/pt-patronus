@@ -130,11 +130,12 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 	srcByHash := map[string]src{}
 	hashes := make([]string, 0, len(torrents))
 	for _, t := range torrents {
-		if t.Hash == "" || t.SavePath == "" {
+		infoHash := torrentInfoHash(t)
+		if infoHash == "" || t.SavePath == "" {
 			continue
 		}
-		srcByHash[t.Hash] = src{t.Name, t.SavePath}
-		hashes = append(hashes, t.Hash)
+		srcByHash[infoHash] = src{t.Name, t.SavePath}
+		hashes = append(hashes, infoHash)
 	}
 	if len(hashes) == 0 {
 		return nil, nil
@@ -255,6 +256,13 @@ type MissingSummary struct {
 	Missing      []MissingSeed `json:"missing"`
 }
 
+func torrentInfoHash(t downloader.Torrent) string {
+	if t.InfoHash != "" {
+		return t.InfoHash
+	}
+	return t.Hash
+}
+
 // FindMissing 未辅种检查：对源下载器的做种，用 IYUU hash 跨站匹配检查目标站是否已辅种，
 // 返回每个目标站未辅种的种子清单（仅统计，不自动添加——与 Reseed「加辅种」互补，这里是「查漏」）。
 // 目标站经域名映射到 IYUU sid；未在 IYUU 目录的目标站 Count=-1 标注无法判定。
@@ -283,11 +291,12 @@ func (c *KeepSeedChain) FindMissing(ctx context.Context, downloaderID uint, targ
 	srcByHash := map[string]srcInfo{}
 	hashes := make([]string, 0, len(torrents))
 	for _, t := range torrents {
-		if t.Hash == "" {
+		infoHash := torrentInfoHash(t)
+		if infoHash == "" {
 			continue
 		}
-		srcByHash[t.Hash] = srcInfo{t.Name}
-		hashes = append(hashes, t.Hash)
+		srcByHash[infoHash] = srcInfo{t.Name}
+		hashes = append(hashes, infoHash)
 	}
 	summary.Total = len(hashes)
 	if len(hashes) == 0 {

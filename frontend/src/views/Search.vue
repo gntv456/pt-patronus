@@ -18,7 +18,7 @@ const router = useRouter()
 
 // 下载器类型 → 中文标签（推送对话框下拉显示）
 const dlTypeLabel: Record<string, string> = {
-  qb: 'qBittorrent', tr: 'Transmission', ut: 'uTorrent', dl: 'Deluge',
+  qb: 'qBittorrent', tr: 'Transmission', ut: 'uTorrent', dl: 'Deluge', ar: 'Aria2', rt: 'ruTorrent', fl: 'Flood',
 }
 
 // 种子简介来自 PT 站原始 HTML，渲染前必须净化（防存储型 XSS：注入 onerror/script 窃 token）。

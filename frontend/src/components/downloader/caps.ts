@@ -13,6 +13,8 @@ export type DlCaps = {
   tags: boolean // 多标签
   location: boolean // 移动保存路径
   trackers: boolean // Tracker 增删查
+  files: boolean // 文件列表与优先级
+  peers: boolean // Peer 列表
   filePrio: PrioOption[] // 该类型可用文件优先级
 }
 
@@ -20,7 +22,7 @@ export const DL_CAPS: Record<string, DlCaps> = {
   qb: {
     category: true, categoryCRUD: true, forceStart: true, queueFull: true,
     sequential: true, firstLast: true, swarm: true,
-    tags: true, location: true, trackers: true,
+    tags: true, location: true, trackers: true, files: true, peers: true,
     filePrio: [
       { label: '不下载', value: 0 }, { label: '正常', value: 2 },
       { label: '高', value: 1 }, { label: '最高', value: 7 },
@@ -29,7 +31,7 @@ export const DL_CAPS: Record<string, DlCaps> = {
   tr: {
     category: false, categoryCRUD: false, forceStart: false, queueFull: false,
     sequential: false, firstLast: false, swarm: false,
-    tags: true, location: true, trackers: true,
+    tags: true, location: true, trackers: true, files: true, peers: true,
     filePrio: [
       { label: '低', value: -1 }, { label: '正常', value: 0 }, { label: '高', value: 1 },
     ],
@@ -37,7 +39,7 @@ export const DL_CAPS: Record<string, DlCaps> = {
   ut: {
     category: true, categoryCRUD: false, forceStart: true, queueFull: true,
     sequential: false, firstLast: false, swarm: true,
-    tags: false, location: false, trackers: false,
+    tags: false, location: false, trackers: false, files: true, peers: true,
     filePrio: [
       { label: '跳过', value: 0 }, { label: '低', value: 1 },
       { label: '正常', value: 2 }, { label: '高', value: 3 },
@@ -46,7 +48,28 @@ export const DL_CAPS: Record<string, DlCaps> = {
   dl: {
     category: true, categoryCRUD: false, forceStart: false, queueFull: true,
     sequential: false, firstLast: false, swarm: true,
-    tags: false, location: true, trackers: true,
+    tags: false, location: true, trackers: true, files: true, peers: true,
+    filePrio: [
+      { label: '跳过', value: 0 }, { label: '低', value: 1 },
+      { label: '正常', value: 2 }, { label: '高', value: 3 },
+    ],
+  },
+  ar: {
+    category: false, categoryCRUD: false, forceStart: false, queueFull: true,
+    sequential: false, firstLast: false, swarm: false,
+    tags: false, location: false, trackers: false, files: true, peers: true,
+    filePrio: [{ label: '跳过', value: 0 }, { label: '下载', value: 1 }],
+  },
+  rt: {
+    category: true, categoryCRUD: false, forceStart: false, queueFull: false,
+    sequential: false, firstLast: false, swarm: false,
+    tags: false, location: false, trackers: false, files: false, peers: false,
+    filePrio: [],
+  },
+  fl: {
+    category: true, categoryCRUD: false, forceStart: false, queueFull: false,
+    sequential: false, firstLast: false, swarm: true,
+    tags: true, location: true, trackers: false, files: true, peers: true,
     filePrio: [
       { label: '跳过', value: 0 }, { label: '低', value: 1 },
       { label: '正常', value: 2 }, { label: '高', value: 3 },

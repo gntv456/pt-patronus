@@ -25,6 +25,15 @@ type fakeDL struct {
 	added    []downloader.AddOptions
 }
 
+func TestTorrentInfoHashPrefersBTInfoHash(t *testing.T) {
+	if got := torrentInfoHash(downloader.Torrent{Hash: "GID", InfoHash: "BTIH"}); got != "BTIH" {
+		t.Fatalf("got %q, want BTIH", got)
+	}
+	if got := torrentInfoHash(downloader.Torrent{Hash: "HASH"}); got != "HASH" {
+		t.Fatalf("got %q, want HASH", got)
+	}
+}
+
 func (f *fakeDL) ListTorrents(ctx context.Context) ([]downloader.Torrent, error) {
 	return f.torrents, nil
 }

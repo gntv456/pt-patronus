@@ -3,7 +3,7 @@ import { http } from './http'
 export interface Downloader {
   id: number
   name: string
-  type: string // qb | tr | ut | dl
+  type: string // qb | tr | ut | dl | ar | rt | fl
   url: string
   username: string
   is_default: boolean
@@ -20,6 +20,7 @@ export interface DownloaderInput {
 
 export interface Torrent {
   hash: string
+  info_hash?: string
   name: string
   size: number
   progress: number

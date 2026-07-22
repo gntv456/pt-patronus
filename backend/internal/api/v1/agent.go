@@ -3,13 +3,14 @@ package v1
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"gorm.io/gorm"
 )
 
-// AgentHandler 管理 agent（创建/列表/删除/重置 secret）。创建时同步建一个 host|agent 的 MonitorTarget。
+// AgentHandler 管理 agent（创建/列表/删除/重置 secret）。创建时同步建一个 host/nas|agent 的 MonitorTarget。
 type AgentHandler struct {
 	op    *oper.AgentOper
 	monOp *oper.MonitorOper
@@ -31,20 +32,26 @@ func (h *AgentHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"agents": as})
 }
 
-// Create 创建 agent：先建 host|agent 的 MonitorTarget，再建 Agent 关联，返回明文 secret（仅此一次）。
+// Create 创建 agent：先建 host/nas|agent 的 MonitorTarget，再建 Agent 关联，返回明文 secret（仅此一次）。
 // 两次写包在事务里——Agent 创建失败则 target 自动回滚，杜绝孤儿监控目标。
 func (h *AgentHandler) Create(c *gin.Context) {
 	var in struct {
 		Name string `json:"name" binding:"max=64"`
+		Type string `json:"type" binding:"max=16"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil || in.Name == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
 		return
 	}
+	targetType, ok := normalizeAgentTargetType(in.Type)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "type must be host or nas"})
+		return
+	}
 	var res oper.AgentSecretResult
 	err := h.db.Transaction(func(tx *gorm.DB) error {
 		t, err := h.monOp.WithTx(tx).Create(oper.TargetInput{
-			Name: in.Name, Type: "host", Protocol: "agent", Enabled: true,
+			Name: in.Name, Type: targetType, Protocol: "agent", Enabled: true,
 			IntervalSec: 5, TimeoutSec: 15,
 		})
 		if err != nil {
@@ -62,6 +69,17 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"agent": res.Agent, "plain_secret": res.PlainSecret})
+}
+
+func normalizeAgentTargetType(raw string) (string, bool) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "host":
+		return "host", true
+	case "nas":
+		return "nas", true
+	default:
+		return "", false
+	}
 }
 
 // Delete 删除 agent，并级联删除关联的 MonitorTarget（连带快照/告警）。

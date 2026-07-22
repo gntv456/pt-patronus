@@ -133,6 +133,63 @@ func TestTransferProcessTorrentRecordsListFilesFailure(t *testing.T) {
 	}
 }
 
+func TestTransferProcessTorrentCoolsDownAutomaticFailures(t *testing.T) {
+	chain, db := newTransferDeepChain(t, media.MediaInfo{Title: "Unused", Type: media.TypeMovie})
+	dl := &transferDeepDownloader{filesErr: errors.New("downloader offline")}
+	torrent := &downloader.Torrent{Hash: "hash-cooldown", Name: "Broken.mkv", Category: "subscribe", State: "completed", CompletedAt: time.Now()}
+
+	if res := chain.processTorrent(context.Background(), 9, torrent, dl, false); res == nil || res.ErrMsg == "" {
+		t.Fatalf("first automatic attempt should record the failure, got %+v", res)
+	}
+	if res := chain.processTorrent(context.Background(), 9, torrent, dl, false); res != nil {
+		t.Fatalf("second automatic attempt should be cooled down, got %+v", res)
+	}
+	if dl.listCalls != 1 {
+		t.Fatalf("cooled down attempt reached downloader, calls=%d", dl.listCalls)
+	}
+	if res := chain.processTorrent(context.Background(), 9, torrent, dl, true); res == nil || res.ErrMsg == "" {
+		t.Fatalf("manual attempt must bypass cooldown, got %+v", res)
+	}
+	if dl.listCalls != 2 {
+		t.Fatalf("manual attempt did not reach downloader, calls=%d", dl.listCalls)
+	}
+	var failures int64
+	if err := db.Model(&models.TransferHistory{}).Where("download_hash = ? AND status = ?", torrent.Hash, "failed").Count(&failures).Error; err != nil {
+		t.Fatal(err)
+	}
+	if failures != 2 {
+		t.Fatalf("failure history count=%d, want 2", failures)
+	}
+	var manualCount int64
+	if err := db.Model(&models.TransferHistory{}).Where("download_hash = ? AND manual = ?", torrent.Hash, true).Count(&manualCount).Error; err != nil {
+		t.Fatal(err)
+	}
+	if manualCount != 1 {
+		t.Fatalf("manual failure marker count=%d, want 1", manualCount)
+	}
+}
+
+func TestTransferProcessTorrentReportsUnavailableSource(t *testing.T) {
+	chain, db := newTransferDeepChain(t, media.MediaInfo{Title: "Unused", Type: media.TypeMovie})
+	dl := &transferDeepDownloader{files: []downloader.TorrentFile{{Name: "Let.Movie.mkv", Size: 5}}}
+	torrent := &downloader.Torrent{
+		Hash: "hash-missing", Name: "Let.Movie", SavePath: filepath.Join(t.TempDir(), "not-mounted"),
+		Category: "subscribe", State: "completed", CompletedAt: time.Now(),
+	}
+
+	res := chain.processTorrent(context.Background(), 3, torrent, dl, false)
+	if res == nil || !strings.Contains(res.ErrMsg, "源文件不可访问") || !strings.Contains(res.ErrMsg, "路径映射") {
+		t.Fatalf("unexpected source error: %+v", res)
+	}
+	var history models.TransferHistory
+	if err := db.Where("download_hash = ?", torrent.Hash).First(&history).Error; err != nil {
+		t.Fatal(err)
+	}
+	if history.Src == "" || history.ErrorMsg != res.ErrMsg {
+		t.Fatalf("source failure was not recorded: %+v", history)
+	}
+}
+
 func TestTransferProcessTorrentSkipsIncomplete(t *testing.T) {
 	chain, db := newTransferDeepChain(t, media.MediaInfo{Title: "X", Type: media.TypeMovie})
 	dl := &transferDeepDownloader{files: []downloader.TorrentFile{{Name: "v.mkv", Size: 5}}}
@@ -170,5 +227,17 @@ func TestToFileInputsNormalizesRelativePaths(t *testing.T) {
 	}
 	if got[1].Path != abs || got[1].Size != 22 {
 		t.Fatalf("absolute path changed: %+v", got[1])
+	}
+}
+
+func TestToFileInputsAppliesRemotePathMapping(t *testing.T) {
+	local := t.TempDir()
+	cfg := transfer.DefaultConfig()
+	cfg.PathMappings = []transfer.PathMapping{{DownloaderID: 12, RemotePath: "/video", LocalPath: local}}
+	got := toFileInputsMapped(12, "/video", []downloader.TorrentFile{
+		{Name: "Let.Movie/Let.Movie.mkv", Size: 42},
+	}, cfg)
+	if len(got) != 1 || got[0].Path != filepath.Join(local, "Let.Movie", "Let.Movie.mkv") {
+		t.Fatalf("mapped files = %+v", got)
 	}
 }

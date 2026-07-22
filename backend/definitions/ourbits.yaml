@@ -10,6 +10,9 @@ tags:
   - 纪录片
   - 综艺
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 urls:
   - https://ourbits.club
   - https://www.ourbits.club

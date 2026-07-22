@@ -110,6 +110,7 @@ function onTabChange(tab: string | number) {
   if (tab === 'llmgateway' && !gwCfg.value) loadLLMGateway()
   if (tab === 'cookiecloud' && !ccCfg.value) loadCookieCloud()
   if (tab === 'tgbot' && !tgCfg.value) loadTgBot()
+  if (tab === 'schedule' && !schedCfg.value) loadSchedule()
 }
 
 // —— OIDC/SSO 设置（管理员配置 Authelia/Keycloak/Casdoor 等）——
@@ -253,6 +254,42 @@ async function syncCookieCloud() {
     ElMessage.error('同步失败，请检查服务器/UUID/密码')
   } finally {
     ccSyncing.value = false
+  }
+}
+
+// —— 调度频率（聚合站点快照 cron，平衡站点隐蔽性与数据时效）——
+import { scheduleApi, type ScheduleConfig } from '@/api/schedule'
+const schedCfg = ref<ScheduleConfig | null>(null)
+const schedForm = ref<{ snapshot_cron: string }>({ snapshot_cron: '' })
+const schedLoading = ref(false)
+const schedSaving = ref(false)
+const schedPresets = [
+  { label: '每 2 小时（更及时）', value: '7 */2 * * *' },
+  { label: '每 4 小时（默认）', value: '7 */4 * * *' },
+  { label: '每 6 小时（最隐蔽）', value: '17 */6 * * *' },
+  { label: '每 12 小时', value: '23 */12 * * *' },
+]
+async function loadSchedule() {
+  schedLoading.value = true
+  try {
+    schedCfg.value = await scheduleApi.getConfig()
+    schedForm.value.snapshot_cron = schedCfg.value.snapshot_cron || schedCfg.value.snapshot_default
+  } catch {
+    ElMessage.error('加载调度配置失败')
+  } finally {
+    schedLoading.value = false
+  }
+}
+async function saveSchedule() {
+  schedSaving.value = true
+  try {
+    await scheduleApi.setConfig(schedForm.value.snapshot_cron.trim())
+    ElMessage.success('已保存，新频率已即时生效')
+    await loadSchedule()
+  } catch {
+    ElMessage.error('保存失败（cron 表达式可能非法）')
+  } finally {
+    schedSaving.value = false
   }
 }
 
@@ -1034,6 +1071,41 @@ async function openChangelog() {
             </span>
             <el-button :loading="ccSyncing" @click="syncCookieCloud">立即同步</el-button>
             <el-button type="primary" :loading="ccSaving" @click="saveCookieCloud">保存</el-button>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="调度频率" name="schedule">
+        <div v-loading="schedLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            聚合站点快照：合并 <b>统计 / H&amp;R / 站免 / 公告 / 消息 / Cookie 保活 / 考核</b> 为一次串行抓取。
+            间隔越大越隐蔽（对站点越友好，不易触发风控），但仪表盘数据与 H&amp;R/站免/新邮件告警延迟越高。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">聚合快照频率</div>
+              <el-select
+                v-model="schedForm.snapshot_cron"
+                placeholder="选择预设或自定义"
+                style="width: 240px"
+                filterable
+                allow-create
+              >
+                <el-option v-for="p in schedPresets" :key="p.value" :label="p.label" :value="p.value" />
+              </el-select>
+            </div>
+            <el-input v-model="schedForm.snapshot_cron" class="mt8" placeholder="7 */4 * * *">
+              <template #prepend>cron 表达式</template>
+            </el-input>
+            <p v-if="schedCfg?.hint" class="text-muted mt8" style="font-size: 12px; line-height: 1.6">
+              {{ schedCfg.hint }}
+            </p>
+          </div>
+          <div class="oidc-save">
+            <span v-if="schedCfg" class="text-muted" style="margin-right: 12px">
+              内置默认：{{ schedCfg.snapshot_default }}
+            </span>
+            <el-button type="primary" :loading="schedSaving" @click="saveSchedule">保存</el-button>
           </div>
         </div>
       </el-tab-pane>

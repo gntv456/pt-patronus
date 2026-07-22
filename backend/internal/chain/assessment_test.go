@@ -37,7 +37,7 @@ type fakeAssessAdapter struct {
 
 func (f *fakeAssessAdapter) Platform() string { return "nexusphp" }
 func (f *fakeAssessAdapter) Supported() bool  { return true }
-func (f *fakeAssessAdapter) FetchAssessments(context.Context, assessment.HTTPDoer, assessment.Def, string, string) ([]assessment.Task, error) {
+func (f *fakeAssessAdapter) FetchAssessments(context.Context, assessment.HTTPDoer, assessment.Def, string, string, string) ([]assessment.Task, error) {
 	atomic.AddInt32(&f.calls, 1)
 	<-f.proceed
 	return f.tasks, nil

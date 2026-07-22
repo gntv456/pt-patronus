@@ -128,6 +128,9 @@ level_requirements:
       privilege: 网站主管，可以做任何事。
 name: BTSCHOOL
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 tags:
     - 影视
     - 综合

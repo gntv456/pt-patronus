@@ -9,13 +9,14 @@ import TorrentDetail from './TorrentDetail.vue'
 import FilesDialog from './FilesDialog.vue'
 import TrackersDialog from './TrackersDialog.vue'
 import { dlCaps } from './caps'
+import { CircleCheck, CircleClose, Connection, Plus, Refresh, Setting } from '@element-plus/icons-vue'
 
 const props = defineProps<{ downloader: Downloader; visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
 
 const caps = computed(() => dlCaps(props.downloader.type))
 
-const { torrents, connect, disconnect } = useWs()
+const { torrents, connected, connect, disconnect } = useWs()
 
 // 实时种子（WS 按 downloader_id 过滤）
 const snapshot = computed(() => torrents.value.find((s) => s.downloader_id === props.downloader.id))
@@ -52,8 +53,12 @@ const counts = computed(() => {
     else if (g === 'seeding') seeding++
     else if (g === 'paused') paused++
   }
-  return { active, seeding, paused, total: list.value.length }
+  const errors = list.value.filter((t) => stateGroup(t.state) === 'error').length
+  return { active, seeding, paused, errors, total: list.value.length }
 })
+const connectionError = computed(() => snapshot.value?.error || '')
+const isLive = computed(() => connected.value && Boolean(snapshot.value) && !connectionError.value)
+const lastUpdated = ref<Date | null>(null)
 
 // 分类（表格筛选 + 添加下拉 + 分类管理共用）
 const cats = ref<string[]>([])
@@ -65,6 +70,7 @@ async function loadCats() {
 
 function refresh() {
   loadCats()
+  lastUpdated.value = new Date()
 }
 
 // —— 任务详情抽屉（实时 torrent 引用，随 WS 自动更新）——
@@ -236,6 +242,7 @@ watch(
     if (v) {
       connect()
       loadCats()
+      lastUpdated.value = new Date()
       if (props.downloader.type !== 'qb') {
         // qb 经 StatsCacher 由 WS 推送 stats；tr/ut/dl 无 StatsCacher → 兜底轮询 GET /stats
         refreshStats()
@@ -257,20 +264,56 @@ onUnmounted(() => {
 <template>
   <el-drawer
     :model-value="visible"
-    :title="downloader.name + ' · 任务'"
-    size="64%"
+    :title="downloader.name + ' · 任务工作台'"
+    size="min(1280px, 92vw)"
     @update:model-value="(v: boolean) => emit('update:visible', v)"
   >
+    <header class="workspace-head">
+      <div class="workspace-identity">
+        <div class="workspace-icon">
+          <GlassIcon name="downloaders" from="#11998e" to="#38ef7d" :size="28" />
+        </div>
+        <div class="workspace-copy">
+          <div class="workspace-title-row">
+            <h2>{{ downloader.name }}</h2>
+            <span class="live-indicator" :class="{ online: isLive, pending: !connectionError && !isLive }">
+              <CircleCheck v-if="isLive" />
+              <CircleClose v-else-if="connectionError" />
+              <Connection v-else />
+              {{ connectionError ? '连接异常' : isLive ? '实时同步' : '连接中' }}
+            </span>
+          </div>
+          <p>{{ downloader.url }}<span v-if="lastUpdated"> · 更新于 {{ lastUpdated.toLocaleTimeString() }}</span></p>
+        </div>
+      </div>
+      <div class="workspace-actions">
+        <el-button size="small" :icon="Refresh" @click="refresh">刷新</el-button>
+        <el-button v-if="caps.categoryCRUD" size="small" :icon="Setting" @click="catManageVisible = true">分类管理</el-button>
+      </div>
+    </header>
+
+    <el-alert v-if="connectionError" type="error" :closable="false" show-icon class="connection-alert">
+      {{ connectionError }}
+    </el-alert>
     <StatsBar
       :stats="stats"
       :active="counts.active"
       :seeding="counts.seeding"
       :paused="counts.paused"
+      :errors="counts.errors"
       :total="counts.total"
     />
-    <AddTorrentPanel :downloader="downloader" @added="refresh" />
-    <div v-if="caps.categoryCRUD" class="extra-ops">
-      <el-button size="small" @click="catManageVisible = true">分类管理</el-button>
+    <div class="section-heading">
+      <div>
+        <h3>任务</h3>
+        <p>搜索、筛选并批量管理当前下载器中的任务</p>
+      </div>
+      <el-popover placement="bottom-end" :width="440" trigger="click">
+        <template #reference>
+          <el-button type="primary" size="small" :icon="Plus">添加任务</el-button>
+        </template>
+        <AddTorrentPanel :downloader="downloader" @added="refresh" />
+      </el-popover>
     </div>
     <TorrentTable
       :torrents="list"
@@ -403,6 +446,24 @@ onUnmounted(() => {
 .extra-ops {
   margin: -4px 0 12px;
 }
+.workspace-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 2px 0 15px; border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
+.workspace-identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.workspace-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 8px; background: rgba(17,153,142,.12); }
+.workspace-copy { min-width: 0; }
+.workspace-title-row { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.workspace-title-row h2 { overflow: hidden; max-width: 420px; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; }
+.workspace-copy p { overflow: hidden; max-width: 540px; margin: 3px 0 0; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.live-indicator { display: inline-flex; align-items: center; gap: 4px; color: var(--pt-danger); font-size: 11px; font-weight: 600; }
+.live-indicator.online { color: var(--pt-success); }
+.live-indicator.pending { color: var(--pt-warn); }
+.live-indicator :deep(svg) { width: 13px; }
+.workspace-actions { display: flex; flex: 0 0 auto; gap: 7px; }
+.connection-alert { margin: 14px 0 0; }
+.section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 20px 0 10px; }
+.section-heading h3 { margin: 0; font-size: 15px; }
+.section-heading p { margin: 4px 0 0; color: var(--text-muted); font-size: 11px; }
+.section-heading :deep(.el-popover) { padding: 0; }
+.section-heading :deep(.addpanel) { margin: 0; padding: 0; border: 0; box-shadow: none; }
 .lim-row {
   display: flex;
   align-items: center;
@@ -445,5 +506,10 @@ onUnmounted(() => {
 }
 :deep(.el-drawer__body) {
   background: transparent;
+}
+@media (max-width: 760px) {
+  .workspace-head, .section-heading { align-items: flex-start; flex-direction: column; }
+  .workspace-actions { width: 100%; }
+  .workspace-actions :deep(.el-button) { flex: 1; }
 }
 </style>

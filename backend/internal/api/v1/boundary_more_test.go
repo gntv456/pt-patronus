@@ -131,9 +131,24 @@ func TestAgentHandlerBoundaryValidation(t *testing.T) {
 	r.DELETE("/agents/:id", h.Delete)
 	r.POST("/agents/:id/rotate", h.Rotate)
 
-	for _, body := range []string{`{bad`, `{}`, `{"name":""}`} {
+	for _, body := range []string{`{bad`, `{}`, `{"name":""}`, `{"name":"camera-agent","type":"camera"}`} {
 		if rec := doReq(t, r, http.MethodPost, "/agents", body); rec.Code != http.StatusBadRequest {
 			t.Fatalf("create code = %d, want 400", rec.Code)
+		}
+	}
+	for _, tt := range []struct {
+		raw  string
+		want string
+		ok   bool
+	}{
+		{raw: "", want: "host", ok: true},
+		{raw: "HOST", want: "host", ok: true},
+		{raw: " nas ", want: "nas", ok: true},
+		{raw: "camera", ok: false},
+	} {
+		got, ok := normalizeAgentTargetType(tt.raw)
+		if got != tt.want || ok != tt.ok {
+			t.Errorf("normalizeAgentTargetType(%q) = %q, %v; want %q, %v", tt.raw, got, ok, tt.want, tt.ok)
 		}
 	}
 	if rec := doReq(t, r, http.MethodDelete, "/agents/bad", ""); rec.Code != http.StatusBadRequest {

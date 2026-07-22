@@ -19,25 +19,59 @@ func (Unit3DAdapter) Supported() bool  { return true }
 
 // FetchShop JSON API 候选端点优先，无果 HTML 卡片回退。
 func (Unit3DAdapter) FetchShop(ctx context.Context, hc HTTPDoer, def Def, baseURL, cookie string) ([]Item, error) {
+	var lastErr error
 	for _, ep := range []string{"api/bonus/items", "api/store/items", "api/medals", "api/bonus/transactions"} {
-		resp, err := hc.Get(ctx, joinBase(baseURL, ep), cookie, true)
-		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		u := joinBase(baseURL, ep)
+		resp, err := hc.Get(ctx, u, cookie, true)
+		if err != nil {
+			lastErr = &ShopFetchError{Kind: "request", URL: u, Err: err}
+			continue
+		}
+		if resp == nil {
+			lastErr = &ShopFetchError{Kind: "request", URL: u}
+			continue
+		}
+		if resp.StatusCode == 401 || resp.StatusCode == 403 || isLoginURL(resp.FinalURL) {
+			lastErr = &ShopFetchError{Kind: "auth", URL: u, StatusCode: resp.StatusCode}
+			continue
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			lastErr = &ShopFetchError{Kind: "response", URL: u, StatusCode: resp.StatusCode}
 			continue
 		}
 		if items := parseUnit3DJSON(resp.Body, baseURL); len(items) > 0 {
 			return items, nil
 		}
+		lastErr = &ShopFetchError{Kind: "parse", URL: u, StatusCode: resp.StatusCode, Err: ErrNoMedals}
 	}
 	for _, ep := range []string{"bonus", "store", "shop", "medals", "bonus/store", "bonus/shop"} {
-		resp, err := hc.Get(ctx, joinBase(baseURL, ep), cookie, true)
-		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		u := joinBase(baseURL, ep)
+		resp, err := hc.Get(ctx, u, cookie, true)
+		if err != nil {
+			lastErr = &ShopFetchError{Kind: "request", URL: u, Err: err}
+			continue
+		}
+		if resp == nil {
+			lastErr = &ShopFetchError{Kind: "request", URL: u}
+			continue
+		}
+		if resp.StatusCode == 401 || resp.StatusCode == 403 || isLoginURL(resp.FinalURL) {
+			lastErr = &ShopFetchError{Kind: "auth", URL: u, StatusCode: resp.StatusCode}
+			continue
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			lastErr = &ShopFetchError{Kind: "response", URL: u, StatusCode: resp.StatusCode}
 			continue
 		}
 		if items := parseUnit3DHTML(string(resp.Body), baseURL); len(items) > 0 {
 			return items, nil
 		}
+		lastErr = &ShopFetchError{Kind: "parse", URL: u, StatusCode: resp.StatusCode, Err: ErrNoMedals}
 	}
-	return nil, nil
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, ErrNoMedals
 }
 
 // FetchOwned Unit3D 已拥有勋章：从用户资料页 /users/{name} 的勋章区解析（best-effort）。

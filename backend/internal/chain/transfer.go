@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -159,19 +161,27 @@ func (c *TransferChain) processTorrent(ctx context.Context, dlID uint, t *downlo
 		}, reason)
 		return &transfer.Result{Skipped: true, SkipReason: reason}
 	}
+	cfg := transfer.Load(c.cfg)
 	if !manual {
-		cfg := transfer.Load(c.cfg)
 		if !cfg.ShouldProcess(t.Category, t.Tags) {
 			return nil
 		}
 		if ok, _ := c.hist.SuccessExistsByHash(t.Hash); ok {
 			return nil // 已成功整理，跳过
 		}
+		if cfg.FailedRetryMinutes > 0 {
+			since := time.Now().Add(-time.Duration(cfg.FailedRetryMinutes) * time.Minute)
+			if ok, err := c.hist.RecentFailureExistsByHash(dlID, t.Hash, since); err != nil {
+				slog.Debug("transfer failed retry lookup failed", "hash", t.Hash, "err", err)
+			} else if ok {
+				return nil // 自动扫描冷却期内不重复写失败历史/发通知
+			}
+		}
 	}
 	files, err := dl.ListFiles(ctx, t.Hash)
 	if err != nil {
 		res := &transfer.Result{ErrMsg: fmt.Sprintf("list torrent files: %v", err)}
-		c.record(ctx, dlID, t.Hash, res)
+		c.record(ctx, dlID, t.Hash, res, manual)
 		return res
 	}
 	// 解析推送时编码的媒体身份标签（Path A）；并回填 DownloadMediaLink 缓存（供 Sweep/Redo 复用）。
@@ -181,18 +191,31 @@ func (c *TransferChain) processTorrent(ctx context.Context, dlID uint, t *downlo
 			DownloadHash: t.Hash, Source: hint.Source, SourceID: hint.SourceID, Type: hint.Type,
 		})
 	}
+	resolvedSavePath := resolveSavePath(cfg, dlID, t.SavePath)
+	resolvedFiles := toFileInputsMapped(dlID, t.SavePath, files, cfg)
+	if src := transfer.FirstVideoPath(resolvedFiles); src != "" {
+		if _, statErr := os.Stat(src); statErr != nil {
+			res := &transfer.Result{
+				Src:    src,
+				Mode:   cfg.Mode,
+				ErrMsg: fmt.Sprintf("源文件不可访问: %s: %v（下载器路径未挂载到后端主机，请配置下载路径映射）", src, statErr),
+			}
+			c.record(ctx, dlID, t.Hash, res, manual)
+			return res
+		}
+	}
 	in := transfer.ProcessInput{
 		DownloaderID: dlID, Hash: t.Hash, Name: t.Name,
-		SavePath: t.SavePath, Category: t.Category,
-		Files: toFileInputs(t.SavePath, files), Manual: manual, MediaHint: hint,
+		SavePath: resolvedSavePath, Category: t.Category,
+		Files: resolvedFiles, Manual: manual, MediaHint: hint,
 	}
 	res := c.engine.Process(ctx, in)
-	c.record(ctx, dlID, t.Hash, res)
+	c.record(ctx, dlID, t.Hash, res, manual)
 	return res
 }
 
 // record 据整理结果写 TransferHistory + 通知 +（成功时）触发媒体库刷新。
-func (c *TransferChain) record(ctx context.Context, dlID uint, hash string, res *transfer.Result) {
+func (c *TransferChain) record(ctx context.Context, dlID uint, hash string, res *transfer.Result, manual bool) {
 	if res == nil {
 		return
 	}
@@ -216,6 +239,7 @@ func (c *TransferChain) record(ctx context.Context, dlID uint, hash string, res 
 		Title: title, Year: year, Source: source, SourceID: sourceID,
 		Seasons: res.Seasons, Episodes: res.Episodes, PosterURL: poster,
 		DownloaderID: dlID, DownloadHash: hash, Files: string(filesJSON),
+		Manual: manual,
 	}
 	if res.Success {
 		if err := c.hist.AddSuccess(h); err != nil {
@@ -265,7 +289,7 @@ func (c *TransferChain) ProcessDiscoveredFiles(ctx context.Context, srcDir strin
 		SavePath: srcDir, Files: files, Manual: false, MediaHint: nil,
 	}
 	res := c.engine.Process(ctx, in)
-	c.record(ctx, 0, "", res)
+	c.record(ctx, 0, "", res, false)
 	return res, nil
 }
 
@@ -282,15 +306,45 @@ func (c *TransferChain) noticeOnce(ctx context.Context, source, title, body, lev
 
 // toFileInputs 把下载器文件列表解析为整理入参（相对 SavePath 的补成绝对路径）。
 func toFileInputs(savePath string, files []downloader.TorrentFile) []transfer.FileInput {
+	return toFileInputsMapped(0, savePath, files, transfer.DefaultConfig())
+}
+
+func toFileInputsMapped(dlID uint, savePath string, files []downloader.TorrentFile, cfg transfer.Config) []transfer.FileInput {
 	out := make([]transfer.FileInput, 0, len(files))
 	for _, f := range files {
-		p := f.Name
-		if !filepath.IsAbs(p) && savePath != "" {
-			p = filepath.Join(savePath, p)
-		}
+		p := resolveTorrentPath(cfg, dlID, savePath, f.Name)
 		out = append(out, transfer.FileInput{Path: p, Size: f.Size})
 	}
 	return out
+}
+
+func resolveSavePath(cfg transfer.Config, dlID uint, savePath string) string {
+	if savePath == "" {
+		return ""
+	}
+	if mapped, ok := cfg.MapPath(dlID, savePath); ok {
+		return mapped
+	}
+	return filepath.Clean(filepath.FromSlash(strings.ReplaceAll(savePath, `\`, "/")))
+}
+
+func resolveTorrentPath(cfg transfer.Config, dlID uint, savePath, name string) string {
+	rawName := strings.ReplaceAll(strings.TrimSpace(name), `\`, "/")
+	if !isPortableAbs(rawName) && savePath != "" {
+		base := strings.TrimRight(strings.ReplaceAll(strings.TrimSpace(savePath), `\`, "/"), "/")
+		rawName = base + "/" + strings.TrimLeft(rawName, "/")
+	}
+	if mapped, ok := cfg.MapPath(dlID, rawName); ok {
+		return mapped
+	}
+	return filepath.Clean(filepath.FromSlash(rawName))
+}
+
+func isPortableAbs(p string) bool {
+	if filepath.IsAbs(filepath.FromSlash(p)) || strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") {
+		return true
+	}
+	return len(p) >= 3 && ((p[0] >= 'a' && p[0] <= 'z') || (p[0] >= 'A' && p[0] <= 'Z')) && p[1] == ':' && p[2] == '/'
 }
 
 // History 列整理历史（API 用）。

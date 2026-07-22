@@ -50,11 +50,13 @@ type Def struct {
 }
 
 // Adapter 是 per-platform 考核适配器契约。
-// token：MTeam 为 x-api-key；NexusPHP 为 cookie。返回空表 ≠ 错误（无活跃任务）。
+// token：MTeam 为 x-api-key；NexusPHP 为 cookie。uid：站点用户 ID（来自 UserInfo），
+// 用于拼 userdetails.php?id=<uid>，避免裸访 userdetails.php 触发站点风控（52movie 警告根因）；
+// uid 为空时实现应回退先抓首页提取 uid。返回空表 ≠ 错误（无活跃任务）。
 type Adapter interface {
 	Platform() string
 	Supported() bool
-	FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, baseURL, token string) ([]Task, error)
+	FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, baseURL, token, uid string) ([]Task, error)
 }
 
 // HTTPDoer 是考核适配器需要的 HTTP 子接口（httpclient.Client 已实现）。
@@ -101,6 +103,6 @@ type NoOpAdapter struct{ platform string }
 
 func (n NoOpAdapter) Platform() string { return n.platform }
 func (n NoOpAdapter) Supported() bool  { return false }
-func (n NoOpAdapter) FetchAssessments(context.Context, HTTPDoer, Def, string, string) ([]Task, error) {
+func (n NoOpAdapter) FetchAssessments(context.Context, HTTPDoer, Def, string, string, string) ([]Task, error) {
 	return nil, nil
 }

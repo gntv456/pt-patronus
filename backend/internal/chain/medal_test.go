@@ -209,3 +209,50 @@ func TestMedalSiteNoticeOnce(t *testing.T) {
 		}
 	}
 }
+
+func TestEnsureMedalIDsCreatesStableReadOnlyIDs(t *testing.T) {
+	items := []medalwall.Item{
+		{Name: "秋日☆四季", ImageSmall: "https://x/1.png", PurchaseStatus: medalwall.StatusNotOnSale},
+		{Name: "启程☆限定", ImageSmall: "https://x/2.png", PurchaseStatus: medalwall.StatusAvailable},
+		{MedalID: "6", Name: "纪念 A", ImageSmall: "https://x/a.png", PurchaseStatus: medalwall.StatusOwned},
+		{MedalID: "6", Name: "纪念 B", ImageSmall: "https://x/b.png", PurchaseStatus: medalwall.StatusOwned},
+		{MedalID: "6", Name: "纪念 B", ImageSmall: "https://x/b.png", PurchaseStatus: medalwall.StatusOwned},
+	}
+	first := ensureMedalIDs(items)
+	second := ensureMedalIDs([]medalwall.Item{
+		{Name: "秋日☆四季", ImageSmall: "https://x/1.png", PurchaseStatus: medalwall.StatusNotOnSale},
+		{Name: "启程☆限定", ImageSmall: "https://x/2.png", PurchaseStatus: medalwall.StatusAvailable},
+		{MedalID: "6", Name: "纪念 A", ImageSmall: "https://x/a.png", PurchaseStatus: medalwall.StatusOwned},
+		{MedalID: "6", Name: "纪念 B", ImageSmall: "https://x/b.png", PurchaseStatus: medalwall.StatusOwned},
+		{MedalID: "6", Name: "纪念 B", ImageSmall: "https://x/b.png", PurchaseStatus: medalwall.StatusOwned},
+	})
+	if len(first) != 4 || len(second) != 4 {
+		t.Fatalf("exact duplicate must be removed: got %d / %d items", len(first), len(second))
+	}
+	for i := range first {
+		if first[i].MedalID == "" || first[i].MedalID != second[i].MedalID {
+			t.Fatalf("item %d id is not stable: %q / %q", i, first[i].MedalID, second[i].MedalID)
+		}
+		if medalIDActionable(first[i].MedalID) {
+			t.Fatalf("synthetic id %q must not be actionable", first[i].MedalID)
+		}
+	}
+	if first[1].PurchaseStatus != medalwall.StatusUnknown {
+		t.Fatalf("available item without a real id must become UNKNOWN, got %s", first[1].PurchaseStatus)
+	}
+}
+
+func TestOwnedOnlyMedalSnapshot(t *testing.T) {
+	if !ownedOnlyMedalSnapshot([]medalwall.Item{{MedalID: "owned:a", PurchaseStatus: medalwall.StatusOwned}}) {
+		t.Error("owned-only snapshot should be repairable")
+	}
+	if ownedOnlyMedalSnapshot(nil) {
+		t.Error("empty snapshot must not be repairable")
+	}
+	if ownedOnlyMedalSnapshot([]medalwall.Item{{MedalID: "18", PurchaseStatus: medalwall.StatusOwned}}) {
+		t.Error("real shop ID must preserve the full snapshot on shop failure")
+	}
+	if ownedOnlyMedalSnapshot([]medalwall.Item{{MedalID: "owned:a", PurchaseStatus: medalwall.StatusAvailable}}) {
+		t.Error("non-owned status is not an owned-only snapshot")
+	}
+}

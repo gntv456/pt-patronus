@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/middleware"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
+	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/backup"
 	"github.com/hxpt/ptpatronus/internal/chain"
@@ -97,6 +98,7 @@ type Deps struct {
 	Filter        *filter.Store
 	FilterEng     *filter.Engine
 	Plugins       *plugins.Manager
+	Automation    *automation.Service
 }
 
 // splitOrigins 把逗号分隔的 CORS 配置拆为来源切片（空切片表示开发全开）。
@@ -148,6 +150,7 @@ func Build(d *Deps) *gin.Engine {
 
 	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC)
 	sysH := v1.NewSystemHandler(d.Update)
+	schedH := v1.NewScheduleHandler(d.Automation, d.Cfg.SnapshotCron)
 
 	api := engine.Group("/api/v1")
 	{
@@ -316,7 +319,13 @@ func Build(d *Deps) *gin.Engine {
 			}
 
 			notifH := v1.NewNotificationHandler(d.Notif, d.NotifMgr, d.NotifProvider)
-			notif := guarded.Group("/notification")
+			sched := guarded.Group("/schedule")
+		{
+			sched.GET("/config", schedH.GetConfig)
+			sched.PUT("/config", middleware.RequireAdmin(), schedH.SetConfig)
+		}
+
+		notif := guarded.Group("/notification")
 			{
 				notif.GET("/channels", notifH.Channels)
 				notif.POST("/test", middleware.RequireAdmin(), notifH.Test)

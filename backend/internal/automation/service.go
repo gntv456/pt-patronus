@@ -1,9 +1,10 @@
 // Package automation 实现后台自动化服务（7×24 跑在服务端）：
-//   - 统计同步（真实）
+//   - site-snapshot 聚合快照（真实）：每 4h 串行抓 stats / H&R / 站免 / 公告 / 消息 / cookie 保活 / 考核，
+//     复用 UserInfo 的 uid 访问 userdetails.php?id=<uid>（避免裸访触发站点风控）；降低站点感知的
+//     请求频率，替代原 stats/hr/freeleech/announcement/messages/cookie-keepalive 6 个分散 cron。
 //   - 签到（真实）
-//   - cookie 保活（真实）：认证 GET 刷新 session + 捕获 Set-Cookie 轮换回写 + 失效告警
-//   - H&R 告警（真实）：抓 H&R 列表 → 判定未达标/临期 → 通知
 //   - 注册开放检测（真实）：探测 signup 页 → 关闭→开放转换时通知
+//   - 好学 VIP 重验 / IYUU 辅种（真实）
 //
 // 对应原 Kotlin 项目的 BackgroundAutomationService，但常驻后端 Docker。
 package automation
@@ -11,7 +12,6 @@ package automation
 import (
 	"context"
 	"log/slog"
-	"time"
 
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/chain"
@@ -40,8 +40,12 @@ type Config struct {
 	// 辅种定时扫描（仅扫启用 AutoReseed 的下载器；auto-add 默认关，非破坏）
 	KeepSeedCron string // 默认 0 3 * * *（每天 3 点）
 
-	// 站点私信新邮件轮询（通知中心「新邮件」来源）
-	MessagesCron string // 默认 */30 * * * *
+	// 站点私信新邮件轮询（通知中心「新邮件」来源）——已并入 SnapshotCron，保留字段向后兼容
+	MessagesCron string // deprecated：并入 SnapshotCron
+
+	// 聚合站点快照（合并 stats/hr/freeleech/announcement/messages/cookie-keepalive/assessment
+	// 7 个原任务为一次 4h 串行抓取，降低站点感知的请求频率），默认 7 */4 * * * *
+	SnapshotCron string
 }
 
 // Service 是后台自动化服务。
@@ -60,6 +64,7 @@ type Service struct {
 	crypto   *security.Crypto       // 解密 HxptCookieEnc（VIP 重验用）
 	notice   *notice.Service        // 站内通知中心（站点掉线/站免/公告/新邮件；nil 跳过）
 	cfgOp    *oper.SystemConfigOper // diff baseline（公告 hash / 新邮件 seen ID；nil 跳过 diff）
+	assessCh *chain.AssessmentChain // 聚合快照复用 uid 跑考核（nil 则跳过 assessment）
 }
 
 // New 构造服务。rootCtx 用于任务执行（随进程关闭取消）。
@@ -67,7 +72,7 @@ func New(sched *scheduler.Scheduler, siteCh *chain.SiteChain, siteOp *oper.SiteO
 	notif *chain.NotificationChain, regCh *chain.RegistrationChain, keepSeed keepSeedRunner,
 	db *gorm.DB, cfg Config,
 	rootCtx context.Context, hub *ws.Hub, hxptAuth auth.HxptAuthenticator, crypto *security.Crypto,
-	notice *notice.Service, cfgOp *oper.SystemConfigOper) *Service {
+	notice *notice.Service, cfgOp *oper.SystemConfigOper, assessCh *chain.AssessmentChain) *Service {
 
 	if cfg.StatsSyncCron == "" {
 		cfg.StatsSyncCron = "*/30 * * * *"
@@ -102,56 +107,38 @@ func New(sched *scheduler.Scheduler, siteCh *chain.SiteChain, siteOp *oper.SiteO
 	if cfg.MessagesCron == "" {
 		cfg.MessagesCron = "*/30 * * * *"
 	}
+	if cfg.SnapshotCron == "" {
+		cfg.SnapshotCron = "7 */4 * * *" // 每 4h 错峰 7 分：降频与 session 保活的平衡
+	}
 	return &Service{sched: sched, siteCh: siteCh, siteOp: siteOp, notif: notif, regCh: regCh,
 		keepSeed: keepSeed, db: db, cfg: cfg, rootCtx: rootCtx, hub: hub, hxptAuth: hxptAuth, crypto: crypto,
-		notice: notice, cfgOp: cfgOp}
+		notice: notice, cfgOp: cfgOp, assessCh: assessCh}
 }
 
 // Start 注册并启动所有自动化任务。
 func (s *Service) Start() {
+	// DB 配置覆盖 env 默认（前端「调度频率」改的值优先于环境变量）。
+	if s.cfgOp != nil {
+		if v, _ := s.cfgOp.Get("schedule.site-snapshot"); v != "" {
+			s.cfg.SnapshotCron = v
+		}
+	}
 	must := func(name, spec string, fn func()) {
 		if err := s.sched.AddFunc(name, spec, fn); err != nil {
 			slog.Error("register automation failed", "job", name, "err", err)
 		}
 	}
-	must("stats-sync", s.cfg.StatsSyncCron, s.runStatsSync)
-	must("cookie-keepalive", s.cfg.CookieKeepAliveCron, s.runCookieKeepAlive)
+	must("site-snapshot", s.cfg.SnapshotCron, s.runSnapshot) // 聚合 stats/free/ann/msg/keepalive/assessment（H&R 独立）
+	must("hr-check", "23 * * * *", s.runHRCheck)              // H&R 每小时独立（封号命脉时效优先；错峰 :23）
 	must("checkin", "10 8 * * *", s.runCheckin)
 	must("checkin-record-cleanup", "30 4 * * *", s.runCheckinCleanup) // 每天 4:30 清理超期签到记录
-	must("hr-check", "*/30 * * * *", s.runHRCheck)
 	must("registration", s.cfg.RegistrationCron, s.runRegistration)
 	must("vip-recheck", s.cfg.VIPRecheckCron, s.runVIPRecheck)
-	must("freeleech-check", s.cfg.FreeleechCron, s.runFreeleech)
-	must("announcement-check", s.cfg.AnnouncementCron, s.runAnnouncements)
 	if s.keepSeed != nil {
 		must("keepseed-reseed", s.cfg.KeepSeedCron, s.runKeepSeed)
-	}
-	if s.notice != nil {
-		must("messages-check", s.cfg.MessagesCron, s.runMessages)
 	}
 	s.sched.Start()
 }
 
-// runStatsSync 遍历启用站点抓取用户资料、记录统计快照。
-func (s *Service) runStatsSync() {
-	ctx, cancel := context.WithTimeout(s.rootCtx, 5*time.Minute)
-	defer cancel()
-
-	sites, err := s.siteOp.ListActive()
-	if err != nil {
-		slog.Warn("stats sync list sites failed", "err", err)
-		return
-	}
-	for i := range sites {
-		st := &sites[i]
-		ui, err := s.siteCh.UserInfo(ctx, st)
-		if err != nil {
-			slog.Warn("stats sync fetch failed", "site", st.Name, "err", err)
-			continue
-		}
-		s.recordStat(st, ui)
-		slog.Info("stats synced", "site", st.Name, "uploaded", humanBytes(ui.Uploaded), "ratio", ui.Ratio)
-	}
-}
-
+// runStatsSync 已并入 site-snapshot 聚合任务（dispatchSnapshotSite → recordStat）。
 // humanBytes / recordStat 见 stats.go。

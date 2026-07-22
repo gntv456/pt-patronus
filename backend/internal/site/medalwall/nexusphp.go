@@ -27,7 +27,7 @@ const (
 	shopMaxPages = 20
 )
 
-var shopKeywordRe = regexp.MustCompile(`加成|火花|佩戴|购买|库存|价格|魔力|电力|金币|勋章|有效期`)
+var shopKeywordRe = regexp.MustCompile(`加成|火花|佩戴|購買|购买|庫存|库存|價格|价格|魔力|電力|金币|金幣|勋章|勛章|有效期`)
 
 // FetchShop 分页抓商店勋章（medal.php?page=N），含防伪分页（委托 fetchShopPaged）。
 // 末尾追加 LongPT 六十四卦合成勋章（pluginsMedalInfo/getList，仅 LongPT 有，其他站跳过）。
@@ -36,8 +36,39 @@ func (NexusPHPAdapter) FetchShop(ctx context.Context, hc HTTPDoer, def Def, base
 	if path == "" {
 		path = "medal.php"
 	}
-	items, _ := fetchShopPaged(ctx, hc, baseURL, cookie, path, "page")
+	if isSiQiSite(baseURL) {
+		return fetchSiQiShop(ctx, hc, baseURL, cookie, path)
+	}
+	items, err := fetchShopPaged(ctx, hc, baseURL, cookie, path, "page")
 	items = append(items, fetchSynthesisMedals(ctx, hc, baseURL, cookie)...)
+	if len(items) > 0 {
+		return items, nil
+	}
+	return nil, err
+}
+
+func fetchSiQiShop(ctx context.Context, hc HTTPDoer, baseURL, cookie, path string) ([]Item, error) {
+	u := joinBase(baseURL, path)
+	resp, err := hc.Get(ctx, u, cookie, true)
+	if err != nil {
+		return nil, &ShopFetchError{Kind: "request", URL: u, Err: err}
+	}
+	if resp == nil {
+		return nil, &ShopFetchError{Kind: "request", URL: u}
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if resp.StatusCode == 401 || resp.StatusCode == 403 || isLoginURL(resp.FinalURL) {
+			return nil, &ShopFetchError{Kind: "auth", URL: u, StatusCode: resp.StatusCode}
+		}
+		return nil, &ShopFetchError{Kind: "response", URL: u, StatusCode: resp.StatusCode}
+	}
+	if isLoginURL(resp.FinalURL) {
+		return nil, &ShopFetchError{Kind: "auth", URL: u, StatusCode: resp.StatusCode}
+	}
+	items := parseShopHTML(string(resp.Body), baseURL)
+	if len(items) == 0 {
+		return nil, &ShopFetchError{Kind: "parse", URL: u, StatusCode: resp.StatusCode, Err: ErrNoMedals}
+	}
 	return items, nil
 }
 
@@ -89,35 +120,59 @@ func fetchSynthesisMedals(ctx context.Context, hc HTTPDoer, baseURL, cookie stri
 	return out
 }
 
-// fetchShopPaged 通用分页抓取：GET {baseURL}/{path}?{param}={N} → parseShopHTML，含 4 重防伪分页
+// fetchShopPaged 通用分页抓取：先 GET {baseURL}/{path} 首页，再以 ?{param}={N} 翻页，含 4 重防伪分页
 // （内容指纹去重 / 整页皆已见即停 / 行数骤降 <40% / 20 页上限）。NexusPHP(page) 与 TNode(p) 共用。
 func fetchShopPaged(ctx context.Context, hc HTTPDoer, baseURL, cookie, path, param string) ([]Item, error) {
 	shop := joinBase(baseURL, path)
 	var all []Item
 	seenFp := map[string]bool{}
 	firstPageCount := 0
-	for page := 1; page <= shopMaxPages; page++ {
-		u := appendParam(shop, fmt.Sprintf("%s=%d", param, page))
+	for page := 0; page < shopMaxPages; page++ {
+		u := shop
+		if page > 0 {
+			u = appendParam(shop, fmt.Sprintf("%s=%d", param, page))
+		}
 		resp, err := hc.Get(ctx, u, cookie, true)
+		if resp != nil && isLoginURL(resp.FinalURL) && len(all) == 0 {
+			return nil, &ShopFetchError{Kind: "auth", URL: u, StatusCode: resp.StatusCode}
+		}
 		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 || len(resp.Body) < 200 {
-			// 首页失败才记日志（翻页越界 break 不刷屏），便于排查「勋章墙为何空」
-			if page == 1 {
+			// 尚未抓到任何数据时才把失败上抛；翻页越界则静默停止。
+			if len(all) == 0 {
 				if err != nil {
 					slog.Warn("medal shop fetch failed", "url", u, "err", err)
+					return nil, &ShopFetchError{Kind: "request", URL: u, Err: err}
+				} else if resp == nil {
+					return nil, &ShopFetchError{Kind: "request", URL: u}
 				} else if resp != nil {
 					slog.Warn("medal shop fetch non-2xx/empty", "url", u, "status", resp.StatusCode, "bytes", len(resp.Body))
+					if resp.StatusCode == 401 || resp.StatusCode == 403 || isLoginURL(resp.FinalURL) {
+						return nil, &ShopFetchError{Kind: "auth", URL: u, StatusCode: resp.StatusCode}
+					}
+					if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+						return nil, &ShopFetchError{Kind: "response", URL: u, StatusCode: resp.StatusCode}
+					}
+					if isLoginURL(resp.FinalURL) {
+						return nil, &ShopFetchError{Kind: "auth", URL: u, StatusCode: resp.StatusCode}
+					}
+					return nil, &ShopFetchError{Kind: "parse", URL: u, StatusCode: resp.StatusCode}
 				}
 			}
 			break
 		}
 		items := parseShopHTML(string(resp.Body), baseURL)
 		if len(items) == 0 {
-			if page == 1 {
+			// 少数站点只在 ?page=1 返回首页，允许无参数页解析为空后再试一次。
+			if page == 0 {
+				continue
+			}
+			if len(all) == 0 {
 				slog.Warn("medal shop parse empty", "url", u, "bytes", len(resp.Body))
+				return nil, &ShopFetchError{Kind: "parse", URL: u, StatusCode: resp.StatusCode, Err: ErrNoMedals}
 			}
 			break
 		}
-		if page == 1 {
+		if firstPageCount == 0 {
 			firstPageCount = len(items)
 		}
 		// 内容指纹：整页全是已见条目 → 翻页失效
@@ -137,7 +192,7 @@ func fetchShopPaged(ctx context.Context, hc HTTPDoer, baseURL, cookie, path, par
 			seenFp[fp] = true
 		}
 		// 行数骤降 < 首页 40% → 越界
-		if page > 1 && firstPageCount > 0 && float64(len(items)) < float64(firstPageCount)*0.4 {
+		if len(all) > 0 && firstPageCount > 0 && float64(len(items)) < float64(firstPageCount)*0.4 {
 			break
 		}
 		all = append(all, items...)
@@ -145,8 +200,23 @@ func fetchShopPaged(ctx context.Context, hc HTTPDoer, baseURL, cookie, path, par
 	return all, nil
 }
 
+func isLoginURL(rawURL string) bool {
+	u := strings.ToLower(rawURL)
+	return strings.Contains(u, "login.php") || strings.Contains(u, "takelogin.php") || strings.Contains(u, "/login")
+}
+
 // FetchOwned 抓已拥有勋章；uid 为空返回 nil（chain 层负责发现 uid）。
 func (NexusPHPAdapter) FetchOwned(ctx context.Context, hc HTTPDoer, def Def, baseURL, cookie, uid string) ([]Owned, error) {
+	// 思齐的 userdetails.php 是一个全站聚合页：其中的
+	// img.nexus-username-medal 属于排行榜里的其他用户和玩偶，不能用来判断当前账号。
+	// medal.php 的卡片才带有当前账号的 owned 状态；该页面不需要 uid。
+	if isSiQiSite(baseURL) {
+		resp, err := hc.Get(ctx, shopPath(def, baseURL), cookie, true)
+		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return nil, nil
+		}
+		return parseSiQiOwnedHTML(string(resp.Body), baseURL), nil
+	}
 	if uid == "" {
 		return nil, nil
 	}
@@ -155,7 +225,7 @@ func (NexusPHPAdapter) FetchOwned(ctx context.Context, hc HTTPDoer, def Def, bas
 	if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, nil
 	}
-	return parseOwnedHTML(string(resp.Body), baseURL), nil
+	return parseOwnedHTML(string(resp.Body), baseURL, uid), nil
 }
 
 // Buy 购买：rousipro/通用走 ajax.php?action=buyMedal，否则回退 3 个 medal.php?action=buy 端点。
@@ -223,7 +293,140 @@ func parseShopHTML(html, baseURL string) []Item {
 	if err != nil {
 		return nil
 	}
+	if isSiQiSite(baseURL) {
+		return parseSiQiShopDoc(doc, baseURL)
+	}
 	return parseShopDoc(doc, baseURL)
+}
+
+var siQiMedalNameSuffixRe = regexp.MustCompile(`\s*\(#[0-9]+\)\s*$`)
+
+func isSiQiSite(baseURL string) bool {
+	return strings.Contains(strings.ToLower(baseURL), "si-qi.xyz")
+}
+
+// parseSiQiShopDoc 解析思齐自定义的 medal.php 卡片布局。
+// 思齐没有通用 NexusPHP 的 data-name 属性，业务 ID 位于操作按钮或 owner 统计节点，
+// 卡片标题里的 (#N) 是可靠的最终兜底；图片文件名是对象存储 hash，绝不能当作 ID。
+func parseSiQiShopDoc(doc *goquery.Document, baseURL string) []Item {
+	var out []Item
+	doc.Find(".medal-card").Each(func(_ int, card *goquery.Selection) {
+		id := firstNonEmpty(
+			card.Find("input.buy[data-id], input.gift[data-id]").First().AttrOr("data-id", ""),
+			card.Find("[data-medal-id]").First().AttrOr("data-medal-id", ""),
+		)
+		name := strings.TrimSpace(card.Find(".medal-card__title h2").First().Text())
+		if name == "" {
+			name = strings.TrimSpace(card.Find("img[alt]").First().AttrOr("alt", ""))
+		}
+		name = siQiMedalNameSuffixRe.ReplaceAllString(name, "")
+		if id == "" {
+			if m := siQiMedalNameSuffixRe.FindStringSubmatch(strings.TrimSpace(card.Find(".medal-card__title h2").First().Text())); len(m) > 0 {
+				id = strings.TrimPrefix(strings.TrimSuffix(strings.TrimSpace(m[0]), ")"), "(#")
+			}
+		}
+		if id == "" || name == "" {
+			return
+		}
+
+		buyPrice := parsePrice(siqiCardMeta(card, "价格"))
+		validity := strings.TrimSpace(siqiCardMeta(card, "购买后有效期"))
+		stockText := strings.TrimSpace(siqiCardMeta(card, "库存"))
+		stock := parseStock(stockText)
+		it := Item{
+			MedalID:          id,
+			Name:             name,
+			Description:      strings.TrimSpace(card.Find(".medal-card__desc").First().Text()),
+			ImageSmall:       resolveImg(card.Find("img").First(), baseURL),
+			OriginalImageURL: resolveImg(card.Find("img").First(), baseURL),
+			Price:            buyPrice,
+			OriginalPrice:    buyPrice,
+			Validity:         validity,
+			BonusRate:        strings.TrimSpace(siqiCardMeta(card, "魔力加成")),
+			Currency:         "魔力",
+			PurchaseStatus:   parseSiQiCardStatus(card),
+			Stock:            stock,
+			StockStatus:      stockText,
+		}
+		if sale := strings.TrimSpace(siqiCardMeta(card, "可购买时间")); sale != "" {
+			parts := strings.SplitN(sale, "~", 2)
+			if len(parts) == 2 {
+				if start := strings.TrimSpace(parts[0]); start != "" && start != "不限" {
+					it.SaleBeginTime = parseSaleTimeMs(start)
+				}
+				if end := strings.TrimSpace(parts[1]); end != "" && end != "不限" {
+					it.SaleEndTime = parseSaleTimeMs(end)
+				}
+			}
+		}
+		applySaleWindow(&it)
+		out = append(out, it)
+	})
+	return out
+}
+
+func siqiCardMeta(card *goquery.Selection, label string) string {
+	var value string
+	card.Find(".medal-card__meta > div").EachWithBreak(func(_ int, row *goquery.Selection) bool {
+		key := strings.TrimSpace(row.Find(".meta-label").First().Text())
+		if !strings.Contains(key, label) {
+			return true
+		}
+		value = strings.TrimSpace(row.Find(".meta-value").First().Text())
+		return false
+	})
+	return value
+}
+
+func parseSiQiCardStatus(card *goquery.Selection) Status {
+	if hasClassToken(card.AttrOr("class", ""), "owned") {
+		return StatusOwned
+	}
+	action := strings.TrimSpace(card.Find(".medal-card__actions").Text())
+	card.Find(".medal-card__actions input, .medal-card__actions button").Each(func(_ int, el *goquery.Selection) {
+		action += " " + el.AttrOr("value", "") + " " + el.Text()
+	})
+	switch {
+	case strings.Contains(action, "仅授予"):
+		return StatusGrantOnly
+	case strings.Contains(action, "已过可购买时间"), strings.Contains(action, "已过期"):
+		return StatusDiscontinued
+	case strings.Contains(action, "库存不足"), strings.Contains(action, "售罄"):
+		return StatusOutOfStock
+	case strings.Contains(action, "购买"):
+		return StatusAvailable
+	default:
+		return StatusUnknown
+	}
+}
+
+func parseSiQiOwnedHTML(html, baseURL string) []Owned {
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader([]byte(html)))
+	if err != nil {
+		return nil
+	}
+	var out []Owned
+	doc.Find(".medal-card.owned").Each(func(_ int, card *goquery.Selection) {
+		name := siQiMedalNameSuffixRe.ReplaceAllString(strings.TrimSpace(card.Find(".medal-card__title h2").First().Text()), "")
+		if name == "" {
+			name = strings.TrimSpace(card.Find("img[alt]").First().AttrOr("alt", ""))
+		}
+		if name == "" {
+			return
+		}
+		id := firstNonEmpty(
+			card.Find("input.buy[data-id], input.gift[data-id]").First().AttrOr("data-id", ""),
+			card.Find("[data-medal-id]").First().AttrOr("data-medal-id", ""),
+		)
+		out = append(out, Owned{
+			MedalID: id,
+			Name:    name,
+			Image:   resolveImg(card.Find("img").First(), baseURL),
+			// 思齐页面目前没有可验证的佩戴标记；拥有不等于佩戴。
+			Wearing: false,
+		})
+	})
+	return out
 }
 
 func parseShopDoc(doc *goquery.Document, baseURL string) []Item {
@@ -300,8 +503,9 @@ func parseShopCards(doc *goquery.Document, baseURL string) []Item {
 }
 
 // parseCardStatus 从卡片推断购买状态。
-//   好学：owned-badge / buy 按钮"已拥有"（disabled）；财神：purchased/locked class；Audiences：is-soldout/data-owned；
-//   UBits：unpurchased class（≠purchased，须 token 精确匹配）+ 按钮 value 购买/仅授予/已过可购买时间。
+//
+//	好学：owned-badge / buy 按钮"已拥有"（disabled）；财神：purchased/locked class；Audiences：is-soldout/data-owned；
+//	UBits：unpurchased class（≠purchased，须 token 精确匹配）+ 按钮 value 购买/仅授予/已过可购买时间。
 func parseCardStatus(s *goquery.Selection) Status {
 	if s.Find(".owned-badge").Length() > 0 {
 		return StatusOwned
@@ -328,15 +532,15 @@ func parseCardStatus(s *goquery.Selection) Status {
 		}
 		combined := el.Text() + el.AttrOr("value", "")
 		switch {
-		case strings.Contains(combined, "已拥有") || strings.Contains(combined, "已购") || strings.Contains(combined, "已经购买"):
+		case strings.Contains(combined, "已拥有") || strings.Contains(combined, "已擁有") || strings.Contains(combined, "已购") || strings.Contains(combined, "已購") || strings.Contains(combined, "已经购买") || strings.Contains(combined, "已經購買"):
 			status = StatusOwned
-		case strings.Contains(combined, "售罄") || strings.Contains(combined, "库存不足"):
+		case strings.Contains(combined, "售罄") || strings.Contains(combined, "库存不足") || strings.Contains(combined, "庫存不足"):
 			status = StatusOutOfStock
-		case strings.Contains(combined, "仅授予"):
+		case strings.Contains(combined, "仅授予") || strings.Contains(combined, "僅授予"):
 			status = StatusGrantOnly
-		case strings.Contains(combined, "不可") || strings.Contains(combined, "未开售") || strings.Contains(combined, "未到"):
+		case strings.Contains(combined, "不可") || strings.Contains(combined, "未开售") || strings.Contains(combined, "未開售") || strings.Contains(combined, "未到"):
 			status = StatusNotOnSale
-		case strings.Contains(combined, "已过") || strings.Contains(combined, "过期") || strings.Contains(combined, "结束"):
+		case strings.Contains(combined, "已过") || strings.Contains(combined, "已過") || strings.Contains(combined, "过期") || strings.Contains(combined, "過期") || strings.Contains(combined, "结束") || strings.Contains(combined, "結束"):
 			status = StatusDiscontinued
 		}
 	})
@@ -344,7 +548,7 @@ func parseCardStatus(s *goquery.Selection) Status {
 }
 
 // hasClassToken 检查 class 字符串是否含任一确切 token（空格分隔），避免子串误匹配
-//（如 "purchased" 误中 UBits "unpurchased"、"owned" 误中 "unowned"）。
+// （如 "purchased" 误中 UBits "unpurchased"、"owned" 误中 "unowned"）。
 func hasClassToken(cls string, tokens ...string) bool {
 	for _, c := range strings.Fields(cls) {
 		for _, t := range tokens {
@@ -415,6 +619,8 @@ func detectCurrency(s *goquery.Selection) string {
 			cur = "魔力"
 		case strings.Contains(t, "金币"):
 			cur = "金币"
+		case strings.Contains(t, "金幣"):
+			cur = "金幣"
 		case strings.Contains(t, "Karma"):
 			cur = "Karma"
 		}
@@ -439,7 +645,8 @@ func parseShopTable(doc *goquery.Document, baseURL string) []Item {
 			return true
 		}
 		txt := heads.Text()
-		if strings.Contains(txt, "价格") && (strings.Contains(txt, "库存") || strings.Contains(txt, "ID")) {
+		if (strings.Contains(txt, "价格") || strings.Contains(txt, "價格")) &&
+			(strings.Contains(txt, "库存") || strings.Contains(txt, "庫存") || strings.Contains(txt, "ID")) {
 			tbl = t
 			return false
 		}
@@ -459,21 +666,21 @@ func parseShopTable(doc *goquery.Document, baseURL string) []Item {
 		switch {
 		case h == "ID" || h == "id":
 			cols["id"] = i
-		case strings.Contains(h, "图片") || strings.Contains(h, "图标") || strings.Contains(h, "图像"):
+		case strings.Contains(h, "图片") || strings.Contains(h, "圖片") || strings.Contains(h, "图标") || strings.Contains(h, "圖標") || strings.Contains(h, "图像") || strings.Contains(h, "圖像"):
 			cols["img"] = i
 		case strings.Contains(h, "描述") || strings.Contains(h, "名称") || strings.Contains(h, "勋章") || strings.Contains(h, "标题"):
 			cols["name"] = i
-		case h == "价格" || strings.Contains(h, "费用") || strings.Contains(h, "花费"):
+		case h == "价格" || h == "價格" || strings.Contains(h, "费用") || strings.Contains(h, "費用") || strings.Contains(h, "花费") || strings.Contains(h, "花費"):
 			cols["price"] = i
-		case strings.Contains(h, "库存"):
+		case strings.Contains(h, "库存") || strings.Contains(h, "庫存"):
 			cols["stock"] = i
 		case strings.Contains(h, "加成"):
 			cols["bonus"] = i
 		case strings.Contains(h, "有效期"):
 			cols["validity"] = i
-		case strings.Contains(h, "可购买时间") || strings.Contains(h, "时间"):
+		case strings.Contains(h, "可购买时间") || strings.Contains(h, "可購買時間") || strings.Contains(h, "时间") || strings.Contains(h, "時間"):
 			cols["time"] = i
-		case h == "购买" || (strings.Contains(h, "购买") && !strings.Contains(h, "可购买")):
+		case h == "购买" || h == "購買" || (strings.Contains(h, "购买") && !strings.Contains(h, "可购买")) || (strings.Contains(h, "購買") && !strings.Contains(h, "可購買")):
 			cols["buy"] = i
 		}
 	})
@@ -481,7 +688,9 @@ func parseShopTable(doc *goquery.Document, baseURL string) []Item {
 		return nil // 无价格列 → 非勋章表
 	}
 	var out []Item
-	tbl.Find("tbody tr").Each(func(_ int, tr *goquery.Selection) {
+	// 部分 NexusPHP 站点直接把 tr 放在 table 下，不输出 tbody；所选 tbl 已是无嵌套的叶子表，
+	// 因此遍历全部 tr 并显式跳过表头即可同时兼容两种结构。
+	tbl.Find("tr").Each(func(_ int, tr *goquery.Selection) {
 		if tr.Find("td.colhead").Length() > 0 {
 			return // 跳过混入 tbody 的表头行
 		}
@@ -495,7 +704,7 @@ func parseShopTable(doc *goquery.Document, baseURL string) []Item {
 			}
 			return nil
 		}
-		it := Item{Currency: "魔力", PurchaseStatus: StatusAvailable, Stock: -1}
+		it := Item{Currency: detectTableCurrency(headRow), PurchaseStatus: StatusAvailable, Stock: -1}
 		if td := get("id"); td != nil {
 			it.MedalID = strings.TrimSpace(td.Text())
 		}
@@ -540,8 +749,9 @@ func parseShopTable(doc *goquery.Document, baseURL string) []Item {
 }
 
 // parseBuyCell 从购买单元格 input 的 value/disabled 推断状态（蟹黄堡经典表）。
-//   "购买"→AVAILABLE；"已经购买"/"已拥有"→OWNED；"库存不足"→OUT_OF_STOCK；
-//   "已过"/"过期"→DISCONTINUED；"仅授予"/"不可购买"→NOT_ON_SALE；其它 disabled→UNKNOWN。
+//
+//	"购买"→AVAILABLE；"已经购买"/"已拥有"→OWNED；"库存不足"→OUT_OF_STOCK；
+//	"已过"/"过期"→DISCONTINUED；"仅授予"/"不可购买"→NOT_ON_SALE；其它 disabled→UNKNOWN。
 func parseBuyCell(td *goquery.Selection) Status {
 	input := td.Find("input").First()
 	if input.Length() == 0 {
@@ -550,17 +760,17 @@ func parseBuyCell(td *goquery.Selection) Status {
 	val := input.AttrOr("value", "")
 	_, disabled := input.Attr("disabled")
 	switch {
-	case strings.Contains(val, "已经购买") || strings.Contains(val, "已拥有") || strings.Contains(val, "已购"):
+	case strings.Contains(val, "已经购买") || strings.Contains(val, "已經購買") || strings.Contains(val, "已拥有") || strings.Contains(val, "已擁有") || strings.Contains(val, "已购") || strings.Contains(val, "已購"):
 		return StatusOwned
-	case strings.Contains(val, "库存不足") || strings.Contains(val, "售罄"):
+	case strings.Contains(val, "库存不足") || strings.Contains(val, "庫存不足") || strings.Contains(val, "售罄"):
 		return StatusOutOfStock
-	case strings.Contains(val, "已过") || strings.Contains(val, "过期") || strings.Contains(val, "结束"):
+	case strings.Contains(val, "已过") || strings.Contains(val, "已過") || strings.Contains(val, "过期") || strings.Contains(val, "過期") || strings.Contains(val, "结束") || strings.Contains(val, "結束"):
 		return StatusDiscontinued
-	case strings.Contains(val, "仅授予"):
+	case strings.Contains(val, "仅授予") || strings.Contains(val, "僅授予"):
 		return StatusGrantOnly
-	case strings.Contains(val, "不可") || strings.Contains(val, "未开售") || strings.Contains(val, "未到"):
+	case strings.Contains(val, "不可") || strings.Contains(val, "未开售") || strings.Contains(val, "未開售") || strings.Contains(val, "未到"):
 		return StatusNotOnSale
-	case strings.Contains(val, "购买"):
+	case strings.Contains(val, "购买") || strings.Contains(val, "購買"):
 		if disabled {
 			return StatusUnknown
 		}
@@ -572,11 +782,17 @@ func parseBuyCell(td *goquery.Selection) Status {
 // parseOwnedHTML 已拥有勋章。实测好学/财神/蟹黄堡 userdetails.php：
 //   - img.nexus-username-medal（个人主页顶部小图）= 当前佩戴 → Wearing=true
 //   - img.nexus-username-medal-big（勋章墙大图）= 拥有（未必佩戴）→ Wearing=false
+//
 // 同名按 name 去重并合并（小图优先，佩戴标记保留）。不从 src 抠 id（文件名 hash），靠名称匹配商店。
-func parseOwnedHTML(html, baseURL string) []Owned {
+// uid 可选；传入时只接受与该 UID 用户节点关联的小图，避免把排行榜/邀请人/其他用户的佩戴图混入。
+func parseOwnedHTML(html, baseURL string, uidOpt ...string) []Owned {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader([]byte(html)))
 	if err != nil {
 		return nil
+	}
+	uid := ""
+	if len(uidOpt) > 0 {
+		uid = strings.TrimSpace(uidOpt[0])
 	}
 	var out []Owned
 	seen := map[string]int{} // name → out 下标
@@ -594,6 +810,9 @@ func parseOwnedHTML(html, baseURL string) []Owned {
 		out = append(out, Owned{Name: name, Image: image, Wearing: wearing})
 	}
 	doc.Find("img.nexus-username-medal").Each(func(_ int, s *goquery.Selection) {
+		if uid != "" && !medalBelongsToUID(s, uid) {
+			return
+		}
 		add(strings.TrimSpace(firstNonEmpty(s.AttrOr("title", ""), s.AttrOr("alt", ""))), resolveAsset(baseURL, s.AttrOr("src", "")), true)
 	})
 	doc.Find("img.nexus-username-medal-big").Each(func(_ int, s *goquery.Selection) {
@@ -618,6 +837,32 @@ func parseOwnedHTML(html, baseURL string) []Owned {
 		add(strings.TrimSpace(firstNonEmpty(s.AttrOr("title", ""), s.AttrOr("alt", ""))), resolveAsset(baseURL, s.AttrOr("src", "")), false)
 	})
 	return out
+}
+
+// medalBelongsToUID 判断小勋章图片最近的用户节点是否链接到目标 UID。
+// 只向上检查有限层级，避免把整页排行榜容器误当作单个用户节点。
+func medalBelongsToUID(img *goquery.Selection, uid string) bool {
+	cur := img.Parent()
+	for depth := 0; depth < 4 && cur.Length() > 0; depth++ {
+		matched := false
+		foundUser := false
+		cur.Find("a[href*='userdetails.php']").EachWithBreak(func(_ int, a *goquery.Selection) bool {
+			foundUser = true
+			if m := hrefIDRe.FindStringSubmatch(a.AttrOr("href", "")); len(m) > 1 && m[1] == uid {
+				matched = true
+				return false
+			}
+			return true
+		})
+		if matched {
+			return true
+		}
+		if foundUser {
+			return false
+		}
+		cur = cur.Parent()
+	}
+	return false
 }
 
 // ── helpers ──
@@ -702,12 +947,12 @@ var (
 	imgIDRe           = regexp.MustCompile(`(\d+)\.(?:png|jpe?g|gif|webp)`)
 	whitespaceRe      = regexp.MustCompile(`\s+`)
 	// 写操作响应解析
-	jsonRetRe        = regexp.MustCompile(`"ret"\s*:\s*"?(-?\d+)"?`)
-	jsonCodeRe       = regexp.MustCompile(`"code"\s*:\s*"?(-?\d+)"?`)
+	jsonRetRe         = regexp.MustCompile(`"ret"\s*:\s*"?(-?\d+)"?`)
+	jsonCodeRe        = regexp.MustCompile(`"code"\s*:\s*"?(-?\d+)"?`)
 	jsonSuccessTrueRe = regexp.MustCompile(`"success"\s*:\s*(true|1)`)
-	jsonMsgRe        = regexp.MustCompile(`"msg"\s*:\s*"([^"]*)"`)
-	buyOkRe          = regexp.MustCompile(`成功|兑换|success|OK`)
-	buyFailRe        = regexp.MustCompile(`失败|不足|已拥有|未开售|售罄|已过期|error|fail`)
+	jsonMsgRe         = regexp.MustCompile(`"msg"\s*:\s*"([^"]*)"`)
+	buyOkRe           = regexp.MustCompile(`成功|兑换|success|OK`)
+	buyFailRe         = regexp.MustCompile(`失败|不足|已拥有|未开售|售罄|已过期|error|fail`)
 )
 
 func parsePrice(s string) float64 {
@@ -722,7 +967,7 @@ func parsePrice(s string) float64 {
 
 func parseStock(s string) int {
 	s = strings.ReplaceAll(s, ",", "")
-	if strings.Contains(s, "无限") || strings.Contains(s, "充足") || strings.Contains(s, "不限") {
+	if strings.Contains(s, "无限") || strings.Contains(s, "無限") || strings.Contains(s, "充足") || strings.Contains(s, "不限") {
 		return -1
 	}
 	m := digitRe.FindStringSubmatch(s)
@@ -733,13 +978,31 @@ func parseStock(s string) int {
 	return n
 }
 
+func detectTableCurrency(headRow *goquery.Selection) string {
+	text := headRow.Text()
+	switch {
+	case strings.Contains(text, "金币"):
+		return "金币"
+	case strings.Contains(text, "金幣"):
+		return "金幣"
+	case strings.Contains(text, "电力"):
+		return "电力"
+	case strings.Contains(text, "電力"):
+		return "電力"
+	case strings.Contains(text, "蝌蚪"):
+		return "蝌蚪"
+	default:
+		return "魔力"
+	}
+}
+
 // resolveMedalID 从 input.buy[data-id] / input[name=id]value / onclick buyMedal(N) / href ?id=N / 图片文件名抠真实 id。
 func resolveMedalID(cur string, s *goquery.Selection) string {
 	if cur != "" {
 		return cur
 	}
 	// 蟹黄堡等经典表：input.buy/.gift[data-id]（真实 medalId）
-	if v := s.Find("input.buy, input.gift, input[data-id]").AttrOr("data-id", ""); v != "" {
+	if v := s.Find("input.buy, input.gift, button.buy, button.gift, input[data-id], button[data-id]").AttrOr("data-id", ""); v != "" {
 		return v
 	}
 	if v := s.Find("input[name='id'], input[name='medal_id'], input[name='medalid']").AttrOr("value", ""); v != "" {

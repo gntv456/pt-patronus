@@ -87,6 +87,9 @@ level_requirements:
       is_kept: true
 name: 铂金家
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 search_categories:
     movie:
         - "401"

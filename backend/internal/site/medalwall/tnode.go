@@ -23,12 +23,20 @@ func (TNodeAdapter) FetchShop(ctx context.Context, hc HTTPDoer, def Def, baseURL
 		{"medal.php", "p"},
 		{"medal.php", "page"},
 	}
+	var lastErr error
 	for _, ep := range endpoints {
-		if items, _ := fetchShopPaged(ctx, hc, baseURL, cookie, ep.path, ep.param); len(items) > 0 {
+		items, err := fetchShopPaged(ctx, hc, baseURL, cookie, ep.path, ep.param)
+		if len(items) > 0 {
 			return items, nil
 		}
+		if err != nil {
+			lastErr = err
+		}
 	}
-	return nil, nil
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, ErrNoMedals
 }
 
 // FetchOwned 已拥有：medals.php?action=owned（回退 medal.php?action=owned），复用 parseOwnedHTML。
@@ -42,7 +50,7 @@ func (TNodeAdapter) FetchOwned(ctx context.Context, hc HTTPDoer, def Def, baseUR
 		if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			continue
 		}
-		if owned := parseOwnedHTML(string(resp.Body), baseURL); len(owned) > 0 {
+		if owned := parseOwnedHTML(string(resp.Body), baseURL, uid); len(owned) > 0 {
 			return owned, nil
 		}
 	}

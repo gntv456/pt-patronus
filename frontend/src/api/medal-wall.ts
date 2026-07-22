@@ -21,6 +21,7 @@ export interface Medal {
   group?: string
   wear_status: boolean
   is_owned: boolean
+  actionable?: boolean
   error?: string
 }
 

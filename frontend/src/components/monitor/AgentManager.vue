@@ -5,7 +5,7 @@ import { showAgentSecret } from '@/utils/agent-secret'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // AgentManager — 管理已有 agent（重置 secret / 删除）。
-// 创建新 agent 统一走「+ 添加设备」选「Agent 上报」协议（见 NasServer.onSubmit）。
+// 创建新 agent 统一走「+ 添加设备」选「Agent 上报」采集方式（见 NasServer.onSubmit）。
 const visible = defineModel<boolean>('visible', { default: false })
 const emit = defineEmits<{ changed: [] }>()
 
@@ -59,7 +59,7 @@ function fmtTime(s: string | null): string {
 <template>
   <el-dialog v-model="visible" title="Agent 管理" width="760px">
     <div class="am-bar">
-      <span class="am-hint">添加新 agent 请用顶部「+ 添加设备」选「Agent 上报」协议。这里只管理已有 agent。</span>
+      <span class="am-hint">添加新 agent 请用顶部「+ 添加设备」选「Agent 上报」采集方式。这里只管理已有 agent。</span>
     </div>
     <el-table :data="agents" empty-text="暂无 Agent（用「+ 添加设备」添加）" size="small">
       <el-table-column prop="name" label="名称" />

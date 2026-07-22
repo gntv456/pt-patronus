@@ -535,8 +535,8 @@ function top(i: number): string {
 .mini.ok { background: #16a34a; color: #fff; border-color: transparent; }
 .mini.warn { background: #f59e0b; color: #fff; border-color: transparent; }
 .mini.full { width: 100%; margin-top: 6px; padding: 7px; }
-.rp-form { display: flex; gap: 6px; margin-bottom: 6px; }
-.rp-amt { flex: 1; padding: 6px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 12px; }
+.rp-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+.rp-amt { width: 100%; min-width: 0; box-sizing: border-box; padding: 6px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 12px; }
 .rp-greet { width: 100%; padding: 6px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 12px; margin-bottom: 6px; box-sizing: border-box; }
 .rp-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .rp-item { padding: 6px; border-radius: 7px; border: 1px solid #dc2626; background: rgba(220,38,38,0.1); color: inherit; cursor: pointer; font-size: 12px; }

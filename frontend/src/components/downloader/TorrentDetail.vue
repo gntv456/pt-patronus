@@ -67,15 +67,31 @@ function stateGroup(s: string): string {
 }
 const isPaused = computed(() => stateGroup(props.torrent.state) === 'paused')
 const caps = computed(() => dlCaps(props.type))
+const stateText = computed(() => {
+  const map: Record<string, string> = {
+    error: '错误', uploading: '做种中', forcedUP: '强制做种', stalledUP: '等待做种', pausedUP: '暂停做种',
+    downloading: '下载中', forcedDL: '强制下载', stalledDL: '等待下载', pausedDL: '暂停下载', checkingDL: '校验中',
+    checkingUP: '校验中', moving: '移动中', stopped: '已停止', paused: '已暂停', seeding: '做种中',
+  }
+  return map[props.torrent.state] || props.torrent.state || '未知'
+})
 </script>
 
 <template>
   <el-drawer
     :model-value="visible"
-    :title="torrent.name"
-    size="46%"
+    size="min(680px, 92vw)"
     @update:model-value="(v: boolean) => emit('update:visible', v)"
   >
+    <template #header>
+      <div class="detail-title">
+        <div class="detail-title-copy">
+          <span class="detail-kicker">任务详情</span>
+          <h2 :title="torrent.name">{{ torrent.name }}</h2>
+        </div>
+        <span class="state-chip" :class="stateGroup(torrent.state)"><i />{{ stateText }}</span>
+      </div>
+    </template>
     <div class="detail-head">
       <el-button-group>
         <el-button size="small" @click="op(() => downloaderApi.pause(downloaderId, [torrent.hash]), '已暂停')">
@@ -163,10 +179,24 @@ const caps = computed(() => dlCaps(props.type))
 <style scoped>
 .detail-head {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 14px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18));
 }
+.detail-title { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; }
+.detail-title-copy { min-width: 0; }
+.detail-kicker { display: block; margin-bottom: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.detail-title h2 { overflow: hidden; max-width: 470px; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
+.state-chip { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; font-size: 11px; font-weight: 600; }
+.state-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--pt-warn); }
+.state-chip.downloading { color: var(--pt-primary-2); }.state-chip.downloading i { background: var(--pt-primary-2); }
+.state-chip.seeding { color: var(--pt-success); }.state-chip.seeding i { background: var(--pt-success); }
+.state-chip.paused, .state-chip.other { color: var(--text-muted); }.state-chip.paused i, .state-chip.other i { background: var(--text-muted); }
+.state-chip.error { color: var(--pt-danger); }.state-chip.error i { background: var(--pt-danger); }
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

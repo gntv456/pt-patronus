@@ -4,12 +4,14 @@ import { transferApi, type TransferHistory, type TransferConfig, type OrganizeRe
 import { downloaderApi, type Downloader, type Torrent } from '@/api/downloader'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import { Delete, Plus } from '@element-plus/icons-vue'
 
 const list = ref<TransferHistory[]>([])
 const loading = ref(false)
-const statusFilter = ref<'' | 'success' | 'failed'>('')
+const statusFilter = ref<'' | 'success' | 'failed' | 'skipped'>('')
 const organizing = ref(false)
 const redoing = ref<number | null>(null)
+const downloaders = ref<Downloader[]>([])
 
 const filtered = computed(() => list.value)
 
@@ -149,14 +151,25 @@ function emptyConfig(): TransferConfig {
   return {
     enabled: true, mode: 'link', movie_dir: '/media/movies', tv_dir: '/media/tv',
     categories: ['subscribe', 'workflow'], skip_tags: ['brushflow:', 'keepseed', 'reseed'],
-    organize_tag: 'organize', type_folder: true, category_folder: false,
+    organize_tag: 'organize', path_mappings: [], failed_retry_minutes: 360,
+    type_folder: true, category_folder: false,
     movie_rename: '', tv_rename: '', scrape: 'missing_only', refresh_library: true, overwrite_files: false,
     best_version: false,
   }
 }
 async function openConfig() {
   try {
-    cfg.value = await transferApi.getConfig()
+    const [loaded, dls] = await Promise.all([
+      transferApi.getConfig(),
+      downloaderApi.list().catch(() => []),
+    ])
+    cfg.value = {
+      ...emptyConfig(),
+      ...loaded,
+      path_mappings: loaded.path_mappings ?? [],
+      failed_retry_minutes: loaded.failed_retry_minutes || 360,
+    }
+    downloaders.value = dls
   } catch {
     cfg.value = emptyConfig()
   }
@@ -169,6 +182,9 @@ async function saveConfig() {
   try {
     cfg.value.categories = catsStr.value.split(',').map((s) => s.trim()).filter(Boolean)
     cfg.value.skip_tags = skipStr.value.split(',').map((s) => s.trim()).filter(Boolean)
+    cfg.value.path_mappings = (cfg.value.path_mappings ?? [])
+      .map((m) => ({ ...m, remote_path: m.remote_path.trim(), local_path: m.local_path.trim() }))
+      .filter((m) => m.remote_path && m.local_path)
     await transferApi.setConfig(cfg.value)
     ElMessage.success('配置已保存')
     showConfig.value = false
@@ -177,6 +193,12 @@ async function saveConfig() {
   } finally {
     savingCfg.value = false
   }
+}
+function addPathMapping() {
+  cfg.value.path_mappings.push({ downloader_id: 0, remote_path: '', local_path: '' })
+}
+function removePathMapping(index: number) {
+  cfg.value.path_mappings.splice(index, 1)
 }
 
 // —— 自动分类规则（JSON 文本编辑；高级管理功能）——
@@ -213,7 +235,6 @@ async function saveCategories() {
 
 // —— 手动整理 ——
 const showOrganize = ref(false)
-const downloaders = ref<Downloader[]>([])
 const selDl = ref<number>(0)
 const torrents = ref<Torrent[]>([])
 const selHash = ref('')
@@ -299,6 +320,7 @@ onMounted(load)
           <el-option label="全部" value="" />
           <el-option label="成功" value="success" />
           <el-option label="失败" value="failed" />
+          <el-option label="跳过" value="skipped" />
         </el-select>
         <el-button size="small" @click="load" :loading="loading">刷新</el-button>
         <el-button size="small" @click="sweep">扫描兜底</el-button>
@@ -337,10 +359,16 @@ onMounted(load)
           <template #default="{ row }">{{ modeLabel[row.mode] || row.mode }}</template>
         </el-table-column>
         <el-table-column label="目标目录" prop="dest" min-width="200" show-overflow-tooltip />
+        <el-table-column label="错误原因" min-width="280" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.status === 'failed'" class="error-msg">{{ row.error_msg || '未知错误' }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="90">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.status === 'success' ? 'success' : 'danger'">
-              {{ row.status === 'success' ? '成功' : '失败' }}
+            <el-tag size="small" :type="row.status === 'success' ? 'success' : row.status === 'skipped' ? 'info' : 'danger'">
+              {{ row.status === 'success' ? '成功' : row.status === 'skipped' ? '跳过' : '失败' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -359,7 +387,7 @@ onMounted(load)
     </div>
 
     <!-- 配置抽屉 -->
-    <el-dialog v-model="showConfig" title="整理设置" width="560px">
+    <el-dialog v-model="showConfig" title="整理设置" width="760px">
       <el-form :model="cfg" label-width="120px" size="small">
         <el-form-item label="启用"><el-switch v-model="cfg.enabled" /></el-form-item>
         <el-form-item label="整理模式">
@@ -375,6 +403,25 @@ onMounted(load)
         <el-form-item label="整理分类"><el-input v-model="catsStr" placeholder="subscribe,workflow" /></el-form-item>
         <el-form-item label="跳过标签"><el-input v-model="skipStr" placeholder="brushflow:,keepseed,reseed" /></el-form-item>
         <el-form-item label="强制整理标签"><el-input v-model="cfg.organize_tag" /></el-form-item>
+        <el-form-item label="失败重试间隔">
+          <el-input-number v-model="cfg.failed_retry_minutes" :min="10" :max="10080" :step="60" controls-position="right" />
+          <span class="unit">分钟</span>
+        </el-form-item>
+        <el-form-item label="下载路径映射">
+          <div class="path-mappings">
+            <div v-for="(mapping, index) in cfg.path_mappings" :key="index" class="path-mapping-row">
+              <el-select v-model="mapping.downloader_id" class="mapping-downloader">
+                <el-option label="全部下载器" :value="0" />
+                <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
+              </el-select>
+              <el-input v-model="mapping.remote_path" placeholder="远程路径，如 /video" />
+              <span class="mapping-arrow">→</span>
+              <el-input v-model="mapping.local_path" placeholder="本机路径，如 D:\video" />
+              <el-button circle :icon="Delete" title="删除映射" @click="removePathMapping(index)" />
+            </div>
+            <el-button :icon="Plus" @click="addPathMapping">添加映射</el-button>
+          </div>
+        </el-form-item>
         <el-form-item label="库下加类型子目录"><el-switch v-model="cfg.type_folder" /></el-form-item>
         <el-form-item label="刮削策略">
           <el-select v-model="cfg.scrape" style="width: 100%">
@@ -506,4 +553,9 @@ onMounted(load)
 .rename-preview { font-size: 12px; opacity: 0.8; margin-top: 4px; }
 .rename-preview code { background: var(--glass-hover, rgba(127,127,127,0.15)); padding: 1px 6px; border-radius: 4px; }
 .form-hint { margin-left: 12px; font-size: 12px; opacity: 0.7; }
+.unit { margin-left: 8px; font-size: 12px; opacity: 0.7; }
+.path-mappings { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.path-mapping-row { display: grid; grid-template-columns: 130px minmax(140px, 1fr) 18px minmax(160px, 1fr) 32px; gap: 6px; align-items: center; }
+.mapping-arrow { text-align: center; opacity: 0.6; }
+.error-msg { color: var(--el-color-danger); }
 </style>

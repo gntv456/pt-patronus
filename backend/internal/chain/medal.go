@@ -3,6 +3,8 @@ package chain
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -53,6 +55,7 @@ func (w medalHTTP) Do(ctx context.Context, method, rawURL string, body []byte, h
 type medalCacheEntry struct {
 	items []medalwall.Item
 	at    time.Time
+	err   string
 }
 
 // MedalCard 勋章墙 UI 卡片（API 返回）。
@@ -76,6 +79,7 @@ type MedalCard struct {
 	Group            string  `json:"group,omitempty"`
 	WearStatus       bool    `json:"wear_status"`
 	IsOwned          bool    `json:"is_owned"`
+	Actionable       bool    `json:"actionable"`
 	Error            string  `json:"error,omitempty"`
 }
 
@@ -105,8 +109,9 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 		return []MedalCard{}
 	}
 	type siteRes struct {
-		items []medalwall.Item
-		err   string
+		items     []medalwall.Item
+		err       string
+		supported bool
 	}
 	results := make([]siteRes, len(sites))
 	sem := make(chan struct{}, medalConcurrency)
@@ -120,9 +125,15 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 			if !def.Medal.Enabled {
 				return // 该站未开启勋章墙抓取
 			}
+			if !c.reg.Get(def.Schema).Supported() {
+				return
+			}
 			items, errMsg := c.medalSite(ctx, sem, &s, force)
 			slog.Debug("medal site result", "site", s.Name, "items", len(items), "err", errMsg)
-			results[i] = siteRes{items: items, err: errMsg}
+			if len(items) == 0 && errMsg == "" {
+				errMsg = "未发现勋章数据（站点可能未开放勋章功能或页面结构待适配）"
+			}
+			results[i] = siteRes{items: items, err: errMsg, supported: true}
 		}(i, s)
 	}
 	wg.Wait()
@@ -130,13 +141,11 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 	out := make([]MedalCard, 0)
 	for i, s := range sites {
 		r := results[i]
-		if len(r.items) == 0 && r.err != "" {
-			// 失败站点：放一张占位错误卡，前端据此提示「某站加载失败/未登录」
-			out = append(out, MedalCard{SiteID: s.ID, SiteName: s.Name, Error: r.err})
-			continue
-		}
 		for _, it := range r.items {
 			out = append(out, itemToCard(s.ID, s.Name, it))
+		}
+		if r.supported && r.err != "" {
+			out = append(out, MedalCard{SiteID: s.ID, SiteName: s.Name, Error: r.err})
 		}
 	}
 	return out
@@ -162,15 +171,19 @@ func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(c
 			if !def.Medal.Enabled {
 				return // 该站未开启勋章墙抓取
 			}
-			items, errMsg := c.medalSite(ctx, sem, &s, force)
-			// 失败站：一张占位错误卡；成功站：items 展开成多张卡
-			if len(items) == 0 && errMsg != "" {
-				emit([]MedalCard{{SiteID: s.ID, SiteName: s.Name, Error: errMsg}})
+			if !c.reg.Get(def.Schema).Supported() {
 				return
+			}
+			items, errMsg := c.medalSite(ctx, sem, &s, force)
+			if len(items) == 0 && errMsg == "" {
+				errMsg = "未发现勋章数据（站点可能未开放勋章功能或页面结构待适配）"
 			}
 			cards := make([]MedalCard, 0, len(items))
 			for _, it := range items {
 				cards = append(cards, itemToCard(s.ID, s.Name, it))
+			}
+			if errMsg != "" {
+				cards = append(cards, MedalCard{SiteID: s.ID, SiteName: s.Name, Error: errMsg})
 			}
 			if len(cards) > 0 {
 				emit(cards)
@@ -214,7 +227,7 @@ func (c *MedalChain) medalSite(ctx context.Context, sem chan struct{}, s *models
 	e, ok := c.cache[s.ID]
 	c.mu.Unlock()
 	if ok && time.Since(e.at) <= medalMemTTL {
-		return e.items, ""
+		return e.items, e.err
 	}
 	// miss → singleflight 合并同 siteID 并发回源。
 	res, waitErr := sfDoContext(ctx, &c.sf, strconv.Itoa(int(s.ID)), func() (medalSFResult, error) {
@@ -223,7 +236,7 @@ func (c *MedalChain) medalSite(ctx context.Context, sem chan struct{}, s *models
 		ce, ok := c.cache[s.ID]
 		c.mu.Unlock()
 		if ok && time.Since(ce.at) <= medalMemTTL {
-			return medalSFResult{items: ce.items}, nil
+			return medalSFResult{items: ce.items, errMsg: ce.err}, nil
 		}
 		// double-check DB（48h）：另一调用可能在 leader 期间刚写 DB。
 		if latest, err := c.op.LatestFetchedAt(s.ID); err == nil && !latest.IsZero() && time.Since(latest) <= medalDBTTL {
@@ -254,17 +267,19 @@ func (c *MedalChain) fetchMedalSite(ctx context.Context, sem chan struct{}, s *m
 	siteCtx, cancel := context.WithTimeout(ctx, medalTimeout)
 	defer cancel()
 	cookie := c.siteCh.credential(s, def)
-	shop, err := adapter.FetchShop(siteCtx, c.hc, medalDef(def), s.BaseURL, cookie)
-	if err != nil {
-		if errors.Is(err, site.ErrNotLoggedIn) {
+	shop, shopErr := adapter.FetchShop(siteCtx, c.hc, medalDef(def), s.BaseURL, cookie)
+	if shopErr != nil {
+		if errors.Is(shopErr, site.ErrNotLoggedIn) {
 			slog.Warn("medal site not logged in", "site", s.Name)
-			return nil, "未登录"
+		} else {
+			slog.Warn("medal site shop fetch error", "site", s.Name, "err", shopErr)
 		}
-		slog.Warn("medal site fetch error", "site", s.Name, "err", err)
-		return nil, err.Error()
 	}
 	uid := c.discoverUID(siteCtx, s, def, cookie)
-	owned, _ := adapter.FetchOwned(siteCtx, c.hc, medalDef(def), s.BaseURL, cookie, uid)
+	owned, ownedErr := adapter.FetchOwned(siteCtx, c.hc, medalDef(def), s.BaseURL, cookie, uid)
+	if ownedErr != nil {
+		slog.Warn("medal site owned fetch error", "site", s.Name, "err", ownedErr)
+	}
 	wearing := 0
 	for _, o := range owned {
 		if o.Wearing {
@@ -273,22 +288,47 @@ func (c *MedalChain) fetchMedalSite(ctx context.Context, sem chan struct{}, s *m
 	}
 	slog.Debug("medal owned", "site", s.Name, "uid", uid, "owned", len(owned), "wearing", wearing)
 	merged := mergeMedals(shop, owned)
+	merged = ensureMedalIDs(merged)
+	errMsg := ""
+	if shopErr != nil {
+		errMsg = shopErr.Error()
+	} else if len(merged) == 0 {
+		errMsg = "未发现勋章数据（站点可能未开放勋章功能或页面结构待适配）"
+	}
 
 	// 读旧（BatchUpsert 是删后插，旧数据会被清，必须先读）→ diff → 通知
 	oldItems := medalsToItems(mustFindBySite(c.op, s.ID))
-	if len(merged) > 0 {
+	// 商店失败时保留完整商店快照，避免一次网络/结构故障清空可用数据。
+	// 但旧版本可能把个人页误扫结果以 owned:<name> 写成“仅拥有快照”；若本次仍只能拿到
+	// owned-only 数据，应允许用 UID 限定后的结果替换它，避免错误佩戴状态在 DB TTL 内复活。
+	ownedOnlyRepair := shopErr != nil && len(merged) > 0 && ownedOnlyMedalSnapshot(oldItems) && ownedOnlyMedalSnapshot(merged)
+	if (shopErr == nil && len(merged) > 0) || ownedOnlyRepair {
 		if err := c.op.BatchUpsert(s.ID, itemsToMedals(merged), time.Now()); err != nil {
 			slog.Warn("medal BatchUpsert failed, results not persisted", "site", s.ID, "err", err)
 		}
 	}
 	// 首次无旧记录跳过（防初始化刷屏）
-	if c.notice != nil && len(oldItems) > 0 {
+	if shopErr == nil && c.notice != nil && len(oldItems) > 0 {
 		c.dispatchMedalChanges(ctx, s, oldItems, merged)
 	}
-	c.mu.Lock()
-	c.cache[s.ID] = medalCacheEntry{items: merged, at: time.Now()}
-	c.mu.Unlock()
-	return merged, ""
+	if shopErr == nil && len(merged) > 0 {
+		c.mu.Lock()
+		c.cache[s.ID] = medalCacheEntry{items: merged, at: time.Now(), err: errMsg}
+		c.mu.Unlock()
+	}
+	return merged, errMsg
+}
+
+func ownedOnlyMedalSnapshot(items []medalwall.Item) bool {
+	if len(items) == 0 {
+		return false
+	}
+	for _, item := range items {
+		if !strings.HasPrefix(strings.TrimSpace(item.MedalID), "owned:") || item.PurchaseStatus != medalwall.StatusOwned {
+			return false
+		}
+	}
+	return true
 }
 
 // dispatchMedalChanges 对比新旧勋章，对新勋章/上架/降价/涨价/售罄变动发通知（当天去重）。
@@ -451,6 +491,54 @@ func mergeMedals(shop []medalwall.Item, owned []medalwall.Owned) []medalwall.Ite
 	return shop
 }
 
+// ensureMedalIDs gives parser rows without a real site id a stable read-only id
+// so DB upserts cannot collide on (site_id, ""). Synthetic ids are blocked from
+// write actions below because they cannot be sent back to the site safely.
+func ensureMedalIDs(items []medalwall.Item) []medalwall.Item {
+	variantsByID := make(map[string]map[string]struct{})
+	for _, it := range items {
+		id := strings.TrimSpace(it.MedalID)
+		if id == "" {
+			continue
+		}
+		if variantsByID[id] == nil {
+			variantsByID[id] = make(map[string]struct{})
+		}
+		variantsByID[id][medalVariantKey(it)] = struct{}{}
+	}
+
+	out := make([]medalwall.Item, 0, len(items))
+	seen := make(map[string]struct{}, len(items))
+	for _, it := range items {
+		variantKey := medalVariantKey(it)
+		exactKey := strings.TrimSpace(it.MedalID) + "\x00" + variantKey
+		if _, ok := seen[exactKey]; ok {
+			continue
+		}
+		seen[exactKey] = struct{}{}
+
+		id := strings.TrimSpace(it.MedalID)
+		if id == "" || len(variantsByID[id]) > 1 {
+			sum := sha256.Sum256([]byte(id + "\x00" + variantKey))
+			it.MedalID = "derived:" + hex.EncodeToString(sum[:8])
+			if it.PurchaseStatus == medalwall.StatusAvailable {
+				it.PurchaseStatus = medalwall.StatusUnknown
+			}
+		}
+		out = append(out, it)
+	}
+	return out
+}
+
+func medalVariantKey(it medalwall.Item) string {
+	return medalNormName(it.Name) + "\x00" + it.ImageSmall
+}
+
+func medalIDActionable(id string) bool {
+	return id != "" && !strings.HasPrefix(id, "derived:") &&
+		!strings.HasPrefix(id, "owned:") && !strings.HasPrefix(id, "syn:")
+}
+
 // medalNormName 归一名（trim + lower + 去空白），合并匹配用。
 func medalNormName(s string) string {
 	s = strings.ToLower(strings.TrimSpace(s))
@@ -495,6 +583,7 @@ func itemToCard(siteID uint, siteName string, it medalwall.Item) MedalCard {
 		Group:            it.Group,
 		WearStatus:       it.WearStatus,
 		IsOwned:          it.PurchaseStatus == medalwall.StatusOwned,
+		Actionable:       medalIDActionable(it.MedalID),
 	}
 }
 
@@ -586,6 +675,9 @@ func validatePurchaseCandidate(it *medalwall.Item) error {
 
 // Buy 购买勋章：校验 → adapter.Buy → 成功后清缓存重抓确认 isOwned。
 func (c *MedalChain) Buy(ctx context.Context, s *models.Site, medalID string) (medalwall.ActionResult, error) {
+	if !medalIDActionable(medalID) {
+		return medalwall.ActionResult{Success: false, Message: "该勋章缺少可用的站点 ID，暂不支持写操作"}, nil
+	}
 	// in-flight 去重：防双击/重放重复购买扣站点魔力。
 	guardKey := fmt.Sprintf("buy:%d:%s", s.ID, medalID)
 	if !c.guard.acquire(guardKey) {
@@ -630,6 +722,9 @@ func (c *MedalChain) TakeOff(ctx context.Context, s *models.Site, medalID string
 }
 
 func (c *MedalChain) formAction(ctx context.Context, s *models.Site, medalID, action string) (medalwall.ActionResult, error) {
+	if !medalIDActionable(medalID) {
+		return medalwall.ActionResult{Success: false, Message: "该勋章缺少可用的站点 ID，暂不支持写操作"}, nil
+	}
 	def := c.siteCh.defFor(s)
 	adapter := c.reg.Get(def.Schema)
 	if !adapter.Supported() {

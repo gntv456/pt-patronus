@@ -19,13 +19,17 @@ func (NexusPHPAdapter) Platform() string { return "nexusphp" }
 // Supported 默认支持。
 func (NexusPHPAdapter) Supported() bool { return true }
 
-// FetchAssessments 抓取并解析考核任务。
-func (NexusPHPAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, baseURL, token string) ([]Task, error) {
+// FetchAssessments 抓取并解析考核任务。uid 用于拼 userdetails.php?id=<uid>——
+// 裸访 userdetails.php（无 id）会被站点视为无效参数（52movie 警告根因），故 uid 空时不抓。
+func (NexusPHPAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, baseURL, token, uid string) ([]Task, error) {
 	detail := def.UserInfo.DetailPath
 	if detail == "" {
 		detail = "userdetails.php"
 	}
-	resp, err := hc.Get(ctx, joinBase(baseURL, detail), token, true)
+	if uid == "" {
+		return nil, nil // chain 层负责提供 uid（聚合直传 / 独立路径回退 UserInfo）
+	}
+	resp, err := hc.Get(ctx, joinBase(baseURL, detail+"?id="+uid), token, true)
 	if err != nil {
 		return nil, err
 	}

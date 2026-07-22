@@ -1,5 +1,11 @@
 import { http } from './http'
 
+// Backend check-in uses a 30s per-site context and runs batch work in groups of
+// eight. Keep these timeouts local to check-in requests so ordinary API calls
+// retain the default 15s timeout.
+const checkinTimeout = 45_000
+const checkinAllTimeout = 5 * 60_000
+
 export interface SiteDef {
   id: string
   name: string
@@ -91,9 +97,12 @@ export const siteApi = {
     http
       .post<{ statuses: SiteConnectivityStatus[] }>('/sites/status', undefined, { timeout: 60_000 })
       .then((r) => r.data.statuses ?? []),
-  checkin: (id: number) => http.post<CheckinResult>(`/sites/${id}/checkin`).then((r) => r.data),
+  checkin: (id: number) =>
+    http.post<CheckinResult>(`/sites/${id}/checkin`, undefined, { timeout: checkinTimeout }).then((r) => r.data),
   checkinAll: () =>
-    http.post<{ results: CheckinResult[] }>('/sites/checkin').then((r) => r.data.results ?? []),
+    http
+      .post<{ results: CheckinResult[] }>('/sites/checkin', undefined, { timeout: checkinAllTimeout })
+      .then((r) => r.data.results ?? []),
   records: (siteId?: number, limit = 100, offset = 0) => {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
     if (siteId) params.set('site_id', String(siteId))

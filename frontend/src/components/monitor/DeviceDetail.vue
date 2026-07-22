@@ -202,7 +202,7 @@ function protocolName(raw: string): string {
     case 'agent':
       return 'Agent 上报'
     case 'api':
-      return '厂商 API'
+      return '群晖 / TrueNAS API'
     case 'snmp':
       return '通用 SNMP'
     case 'onvif':
@@ -535,7 +535,7 @@ watch(
               <div class="info-row"><span>负载</span><b>{{ latest?.load1 !== undefined ? `${latest.load1.toFixed(2)} / ${latest.load5?.toFixed(2) ?? '-'} / ${latest.load15?.toFixed(2) ?? '-'}` : '-' }}</b></div>
               <div class="info-row"><span>地址</span><b>{{ target?.host || '本机' }}</b></div>
               <div class="info-row"><span>端口</span><b>{{ target?.port || '-' }}</b></div>
-              <div class="info-row"><span>协议</span><b>{{ protocolName(resolvedProtocol) }}</b></div>
+              <div class="info-row"><span>采集方式</span><b>{{ protocolName(resolvedProtocol) }}</b></div>
             </div>
           </section>
         </div>

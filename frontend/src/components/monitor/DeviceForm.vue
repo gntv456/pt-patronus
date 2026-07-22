@@ -47,7 +47,7 @@ function inferredProtocol(t: MonitorTarget) {
 
 function normalizeNasFields() {
   if (form.value.type !== 'nas') return
-  if (form.value.protocol === 'local') {
+  if (form.value.protocol === 'local' || form.value.protocol === 'agent') {
     form.value.vendor = ''
   } else if (form.value.protocol === 'snmp') {
     form.value.vendor = 'snmp'
@@ -152,8 +152,10 @@ watch(() => [form.value.type, form.value.protocol], () => {
 })
 
 const isLocal = computed(() => form.value.protocol === 'local')
-const showHost = computed(() => !(isLocal.value || (form.value.type === 'host' && form.value.protocol === 'agent')))
+const isAgent = computed(() => form.value.protocol === 'agent')
+const showHost = computed(() => !(isLocal.value || isAgent.value))
 const showPort = computed(() => showHost.value && form.value.type !== 'http')
+const lockAgentProtocol = computed(() => !!props.target && inferredProtocol(props.target) === 'agent')
 const canUseCredential = computed(() => {
   if (form.value.type === 'tcp') return false
   if (form.value.type === 'http' || form.value.type === 'process' || form.value.type === 'script') return true
@@ -208,7 +210,7 @@ function submit() {
     out.password = ''
     out.private_key = ''
   }
-  if (out.type === 'nas' && out.protocol === 'local') out.vendor = ''
+  if (out.type === 'nas' && (out.protocol === 'local' || out.protocol === 'agent')) out.vendor = ''
   if (out.type === 'nas' && out.protocol === 'snmp') out.vendor = 'snmp'
   if (out.type === 'process' || out.type === 'script') out.protocol = 'ssh'
   out.thresholds = buildThresholds(out.thresholds, out.type)
@@ -236,8 +238,8 @@ function submit() {
       </el-form-item>
 
       <template v-if="form.type === 'host'">
-        <el-form-item label="协议">
-          <el-select v-model="form.protocol" style="width: 100%">
+        <el-form-item label="采集方式">
+          <el-select v-model="form.protocol" :disabled="lockAgentProtocol" style="width: 100%">
             <el-option label="本机（gopsutil）" value="local" />
             <el-option label="SSH 远程" value="ssh" />
             <el-option label="Agent 上报" value="agent" />
@@ -245,10 +247,11 @@ function submit() {
         </el-form-item>
       </template>
       <template v-if="form.type === 'nas'">
-        <el-form-item label="协议">
-          <el-select v-model="form.protocol" style="width: 100%">
+        <el-form-item label="采集方式">
+          <el-select v-model="form.protocol" :disabled="lockAgentProtocol" style="width: 100%">
             <el-option label="本机（gopsutil）" value="local" />
-            <el-option label="厂商 API" value="api" />
+            <el-option label="Agent 上报（国产 NAS 推荐）" value="agent" />
+            <el-option label="群晖 / TrueNAS API" value="api" />
             <el-option label="通用 SNMP" value="snmp" />
           </el-select>
         </el-form-item>
@@ -260,7 +263,7 @@ function submit() {
         </el-form-item>
       </template>
       <template v-if="form.type === 'camera'">
-        <el-form-item label="协议">
+        <el-form-item label="采集方式">
           <el-select v-model="form.protocol" style="width: 100%">
             <el-option label="ONVIF" value="onvif" />
             <el-option label="RTSP 直连" value="rtsp" />
@@ -268,7 +271,7 @@ function submit() {
         </el-form-item>
       </template>
 
-      <el-form-item v-if="isLocal && form.type === 'host'" label="宿主磁盘路径">
+      <el-form-item v-if="isLocal && (form.type === 'host' || form.type === 'nas')" label="宿主磁盘路径">
         <el-input v-model="form.disk_paths" type="textarea" :rows="2"
           placeholder="每行一个容器内路径，如 /mnt/nas&#10;需先在 docker-compose 挂载该目录（-v /mnt:/mnt:ro）" />
         <div style="font-size: 12px; color: var(--el-text-color-secondary); line-height: 1.5; margin-top: 4px">

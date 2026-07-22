@@ -1,6 +1,8 @@
 package oper
 
 import (
+	"time"
+
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -109,6 +111,19 @@ func (o *TransferHistoryOper) SuccessExistsByHash(hash string) (bool, error) {
 	var count int64
 	err := o.db.Model(&models.TransferHistory{}).
 		Where("download_hash = ? AND status = ?", hash, "success").Count(&count).Error
+	return count > 0, err
+}
+
+// RecentFailureExistsByHash 判断指定下载器上的种子是否仍处于自动重试冷却期。
+// 手动整理在 chain 层绕过该查询，用户修正配置后可立即验证。
+func (o *TransferHistoryOper) RecentFailureExistsByHash(downloaderID uint, hash string, since time.Time) (bool, error) {
+	if hash == "" || since.IsZero() {
+		return false, nil
+	}
+	var count int64
+	err := o.db.Model(&models.TransferHistory{}).
+		Where("downloader_id = ? AND download_hash = ? AND status = ? AND (manual = ? OR manual IS NULL) AND created_at >= ?", downloaderID, hash, "failed", false, since).
+		Count(&count).Error
 	return count > 0, err
 }
 

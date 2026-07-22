@@ -70,6 +70,21 @@ type AnnouncementCapable interface {
 	FetchAnnouncement(ctx context.Context, def *SiteMetadata, baseURL, cookie string) (*SiteAnnouncement, error)
 }
 
+// IndexInfo 是一次首页抓取同时得到的站免 + 公告——省一次 HTTP：原 FetchFreeleech 与
+// FetchAnnouncement 各 GET 一次 index.php（URL 相同，仅解析逻辑不同）。
+type IndexInfo struct {
+	Freeleech    []SiteFreeleech
+	Announcement *SiteAnnouncement
+}
+
+// IndexInfoCapable 是可选「首页聚合」能力：一次 GET 首页同时解析站免横幅 + 公告区。
+// chain 仅在 Freeleech.Path 与 Announcement.Path 一致（默认 index.php）时用此能力合并请求；
+// 适配器未实现、或两 path 不同时回退分别调用 FetchFreeleech + FetchAnnouncement。
+// 仅首页系 schema（NexusPHP）实现；JSON API 系（MTeam）不实现。
+type IndexInfoCapable interface {
+	FetchIndexInfo(ctx context.Context, def *SiteMetadata, baseURL, cookie string) (*IndexInfo, error)
+}
+
 // HaremCapable 是可选「后宫」（邀请库存 + 被邀请人花名册）抓取能力。
 type HaremCapable interface {
 	FetchInviteStatus(ctx context.Context, def *SiteMetadata, baseURL, cookie string) (*InviteStatus, error)

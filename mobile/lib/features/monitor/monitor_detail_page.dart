@@ -116,7 +116,7 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
     'local' => '本机',
     'ssh' => 'SSH 远程',
     'agent' => 'Agent 上报',
-    'api' => '厂商 API',
+    'api' => '群晖 / TrueNAS API',
     'snmp' => '通用 SNMP',
     'onvif' => 'ONVIF',
     'rtsp' => 'RTSP 直连',

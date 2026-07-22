@@ -414,17 +414,13 @@ func New(cfg *config.Config) (*App, error) {
 	// 后台自动化（7×24）
 	sched := scheduler.New()
 	auto := automation.New(sched, siteCh, siteOp, notifCh, regCh, keepSeedCh, database, automation.Config{
-		StatsSyncCron:           cfg.StatsSyncCron,
-		CookieKeepAliveCron:     cfg.CookieKeepAliveCron,
 		RegistrationCron:        cfg.RegistrationCron,
 		HRWarnDeadlineHours:     cfg.HRWarnDeadlineHours,
 		CheckinRecordRetainDays: cfg.CheckinRecordRetainDays,
 		VIPGraceDays:            cfg.VIPGraceDays,
-		FreeleechCron:           cfg.FreeleechCron,
-		AnnouncementCron:        cfg.AnnouncementCron,
 		KeepSeedCron:            cfg.KeepSeedCron,
-		MessagesCron:            cfg.MessagesCron,
-	}, context.Background(), wsHub, hxptLogin, crypto, noticeSvc, cfgOp)
+		SnapshotCron:            cfg.SnapshotCron,
+	}, context.Background(), wsHub, hxptLogin, crypto, noticeSvc, cfgOp, assessCh)
 	// 刷流 cron：选种每 10 分钟、扫删每 5 分钟（单任务失败不阻断；scheduler 自带 SkipIfStillRunning 防重叠）
 	_ = sched.AddFunc("brushflow-select", "*/10 * * * *", func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -658,13 +654,8 @@ func New(cfg *config.Config) (*App, error) {
 			}
 		}
 	})
-	// 站点考核：定时刷新缓存（3 级缓存的网络层；前端读取秒返回）
-	sched.AddFunc("assessment-refresh", cfg.AssessmentCron, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		cards := assessCh.AssessAll(ctx, true)
-		slog.Debug("assessment cache refreshed", "sites", len(cards))
-	})
+	// 站点考核：已并入 site-snapshot 聚合任务（复用 UserInfo 的 uid 访问 userdetails.php?id=<uid>，
+	// 不再每整小时裸访 userdetails.php——52movie 警告根因）。前端/API 手动刷新仍走 assessCh.AssessAll。
 	// 勋章墙：定时刷新（3 级缓存网络层 + 价格/上架/售罄 diff → 通知中心）
 	sched.AddFunc("medal-refresh", cfg.MedalCron, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -800,6 +791,7 @@ func New(cfg *config.Config) (*App, error) {
 		Filter:     filterStore,
 		FilterEng:  filterEng,
 		Plugins:    pluginMgr,
+		Automation: auto,
 	})
 
 	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: engine}

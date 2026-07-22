@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { medalWallApi, type Medal } from '@/api/medal-wall'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
@@ -46,16 +46,19 @@ const siteFiltered = computed(() =>
     : medals.value,
 )
 
+const siteIssues = computed(() => siteFiltered.value.filter((m) => Boolean(m.error)))
+
 const filtered = computed(() => {
-  const list = siteFiltered.value
+  const list = siteFiltered.value.filter((m) => !m.error)
   if (filter.value === 'all') return list
   if (filter.value === 'wearing') return list.filter((m) => m.wear_status)
   return list.filter((m) => m.purchase_status.toLowerCase() === filter.value)
 })
 
 const counts = computed(() => {
-  const c = { total: siteFiltered.value.length, owned: 0, available: 0, out_of_stock: 0, wearing: 0 }
-  for (const m of siteFiltered.value) {
+  const cards = siteFiltered.value.filter((m) => !m.error)
+  const c = { total: cards.length, owned: 0, available: 0, out_of_stock: 0, wearing: 0 }
+  for (const m of cards) {
     if (m.is_owned) c.owned++
     if (m.purchase_status === 'AVAILABLE') c.available++
     if (m.purchase_status === 'OUT_OF_STOCK') c.out_of_stock++
@@ -137,6 +140,19 @@ onMounted(() => load())
       <button class="chip" :class="{ on: filter === 'wearing' }" @click="filter = 'wearing'" style="color:#f39c12">佩戴中 ({{ counts.wearing }})</button>
     </div>
 
+    <details v-if="siteIssues.length" class="site-issues glass" :open="counts.total === 0">
+      <summary class="issues-head">
+        <strong>站点检查</strong>
+        <span>{{ siteIssues.length }} 个站点需要关注</span>
+      </summary>
+      <div class="issue-list">
+        <div v-for="issue in siteIssues" :key="`issue-${issue.site_id}`" class="issue-row">
+          <span class="issue-site">{{ issue.site_name }}</span>
+          <span class="issue-message">{{ issue.error }}</span>
+        </div>
+      </div>
+    </details>
+
     <p v-if="loading && !medals.length" style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
 
     <div class="cards">
@@ -162,7 +178,7 @@ onMounted(() => load())
       </div>
     </div>
     <EmptyState
-      v-if="!medals.length && !loading"
+      v-if="!medals.some((m) => !m.error) && !loading && !siteIssues.length"
       icon="🎖️"
       title="暂无勋章数据"
       description="NexusPHP 系站点默认自动抓取（无需手动开启）；馒头等平台无勋章页。若你的站点有勋章却显示为空，可能是站点未登录，或该站勋章页结构待校准"
@@ -205,13 +221,13 @@ onMounted(() => load())
       <template #footer>
         <div class="drawer-actions">
           <el-button
-            v-if="!detail?.is_owned && detail?.purchase_status === 'AVAILABLE'"
+            v-if="detail?.actionable !== false && !detail?.is_owned && detail?.purchase_status === 'AVAILABLE'"
             type="primary"
             :loading="acting"
             @click="doAction('buy')"
           >购买</el-button>
-          <el-button v-if="detail?.is_owned && !detail?.wear_status" :loading="acting" @click="doAction('wear')">佩戴</el-button>
-          <el-button v-if="detail?.wear_status" :loading="acting" @click="doAction('takeOff')">摘下</el-button>
+          <el-button v-if="detail?.actionable !== false && detail?.is_owned && !detail?.wear_status" :loading="acting" @click="doAction('wear')">佩戴</el-button>
+          <el-button v-if="detail?.actionable !== false && detail?.wear_status" :loading="acting" @click="doAction('takeOff')">摘下</el-button>
         </div>
       </template>
     </el-drawer>
@@ -241,6 +257,13 @@ onMounted(() => load())
 .m-meta .bonus { color: var(--pt-success,#2ecc71); }
 .m-site { font-size: 11px; }
 .m-err { font-size: 11px; color: var(--pt-danger); }
+.site-issues { padding: 12px 14px; border-left: 3px solid var(--pt-warn,#f59e0b); }
+.issues-head { display: flex; align-items: baseline; gap: 10px; font-size: 13px; cursor: pointer; }
+.issues-head span { color: var(--text-muted); font-size: 12px; }
+.issue-list { margin-top: 8px; max-height: 320px; overflow: auto; }
+.issue-row { display: flex; gap: 12px; padding: 5px 0; border-top: 1px solid rgba(127,127,127,.14); font-size: 12px; color: var(--text-muted); }
+.issue-site { flex: 0 0 96px; color: var(--text-strong); font-weight: 600; }
+.issue-message { min-width: 0; overflow-wrap: anywhere; }
 .empty { padding: 40px; text-align: center; }
 .empty-hint { margin-top: 8px; font-size: 12px; opacity: 0.7; line-height: 1.6; }
 .detail-img { width: 120px; height: 120px; margin: 0 auto 12px; border-radius: 50%; overflow: hidden; background: rgba(108,92,231,0.1); display: flex; align-items: center; justify-content: center; }

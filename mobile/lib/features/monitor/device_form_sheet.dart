@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/monitor.dart';
 
 /// 设备新增/编辑表单（底部 sheet）。type 驱动 protocol/vendor 可选项；凭据编辑留空=不改。
@@ -23,6 +24,7 @@ class DeviceFormSheet extends StatefulWidget {
 
 class _DeviceFormSheetState extends State<DeviceFormSheet> {
   final _api = MonitorApi();
+  final _agentApi = AgentApi();
   final _name = TextEditingController();
   final _host = TextEditingController();
   final _port = TextEditingController();
@@ -95,8 +97,8 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
   }
 
   List<String> _protocols(String type) => switch (type) {
-    'host' => ['local', 'ssh'],
-    'nas' => ['local', 'api', 'snmp'],
+    'host' => ['local', 'ssh', 'agent'],
+    'nas' => ['local', 'agent', 'api', 'snmp'],
     'camera' => ['onvif', 'rtsp'],
     _ => [''],
   };
@@ -105,7 +107,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
     'local' => '本机',
     'ssh' => 'SSH 远程',
     'agent' => 'Agent 上报',
-    'api' => '厂商 API',
+    'api' => '群晖 / TrueNAS API',
     'snmp' => '通用 SNMP',
     'onvif' => 'ONVIF',
     'rtsp' => 'RTSP 直连',
@@ -114,7 +116,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
 
   void _normalizeNasFields() {
     if (_type != 'nas') return;
-    if (_protocol == 'local') {
+    if (_protocol == 'local' || _protocol == 'agent') {
       _vendor = '';
     } else if (_protocol == 'snmp') {
       _vendor = 'snmp';
@@ -155,8 +157,12 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
       final input = TargetInput(
         name: _name.text.trim(),
         type: _type,
-        host: _protocol == 'local' ? '' : _host.text.trim(),
-        port: _protocol == 'local' ? 0 : int.tryParse(_port.text.trim()) ?? 0,
+        host: _protocol == 'local' || _protocol == 'agent'
+            ? ''
+            : _host.text.trim(),
+        port: _protocol == 'local' || _protocol == 'agent'
+            ? 0
+            : int.tryParse(_port.text.trim()) ?? 0,
         vendor: _type == 'nas' ? _vendor : '',
         protocol: _protocol,
         rtspUrl: _type == 'camera' ? _rtsp.text.trim() : '',
@@ -171,7 +177,13 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
         diskPaths: _diskPaths.text.trim(),
       );
       if (widget.target == null) {
-        await _api.create(input);
+        if (_protocol == 'agent') {
+          final result = await _agentApi.create(input.name, type: _type);
+          if (!mounted) return;
+          await _showAgentSecret(result.plainSecret);
+        } else {
+          await _api.create(input);
+        }
       } else {
         await _api.update(widget.target!.id, input);
       }
@@ -185,6 +197,42 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _showAgentSecret(String secret) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Agent Secret（仅显示一次）'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('请立即复制保存，用于 Agent 上报鉴权。关闭后无法再次查看。'),
+            const SizedBox(height: 12),
+            SelectableText(secret),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: secret));
+              if (!ctx.mounted) return;
+              ScaffoldMessenger.of(
+                ctx,
+              ).showSnackBar(const SnackBar(content: Text('Secret 已复制')));
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            label: const Text('复制'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _field(
@@ -216,7 +264,8 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.target != null;
-    final showHost = _protocol != 'local';
+    final showHost = _protocol != 'local' && _protocol != 'agent';
+    final lockAgentProtocol = isEdit && widget.target!.protocol == 'agent';
     return PopScope(
       canPop: !_dirty,
       onPopInvokedWithResult: _confirmExit,
@@ -268,7 +317,7 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
               children: [
                 const SizedBox(
                   width: 72,
-                  child: Text('协议', style: TextStyle(fontSize: 14)),
+                  child: Text('采集方式', style: TextStyle(fontSize: 14)),
                 ),
                 Expanded(
                   child: DropdownButton<String>(
@@ -282,15 +331,17 @@ class _DeviceFormSheetState extends State<DeviceFormSheet> {
                           ),
                         )
                         .toList(),
-                    onChanged: (v) => setState(() {
-                      _protocol = v ?? _protocol;
-                      _normalizeNasFields();
-                    }),
+                    onChanged: lockAgentProtocol
+                        ? null
+                        : (v) => setState(() {
+                            _protocol = v ?? _protocol;
+                            _normalizeNasFields();
+                          }),
                   ),
                 ),
               ],
             ),
-            if (_type == 'host' && _protocol == 'local')
+            if ((_type == 'host' || _type == 'nas') && _protocol == 'local')
               Row(
                 children: [
                   const SizedBox(

@@ -8,6 +8,9 @@ tags:
   - 影视
   - 综合
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 urls:
   - https://pt.keepfrds.com
 categories:

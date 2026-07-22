@@ -71,14 +71,15 @@ type Config struct {
 	FreeleechCron    string // 全站免费/促销检测 cron，默认每 30 分钟
 	AnnouncementCron string // 站点公告抓取 cron，默认每 60 分钟
 	SaveptCron       string // PT监护室 savept.icu 刷新 cron，默认每 2 小时
-	AssessmentCron   string // 站点考核刷新 cron，默认每 60 分钟
-	MedalCron        string // 勋章墙刷新 cron（价格/上架/售罄 diff → 通知），默认每 60 分钟
+	AssessmentCron   string // 站点考核刷新 cron；临时止血默认每天3点(原每小时裸访 userdetails 致52movie警告)，块B后并入 site-snapshot
+	MedalCron        string // 勋章墙刷新 cron（价格/上架/售罄 diff → 通知），默认每 12 小时（对齐其 24h 内存缓存）
 	KeepSeedCron     string // IYUU 定时自动辅种(仅扫启用 AutoReseed 的下载器) cron，默认每天 3 点
 	MessagesCron     string // 站点私信新邮件轮询 cron（通知中心「新邮件」来源），默认每 30 分钟
 	SubscribeCron    string // 媒体订阅自动搜索+下载 cron，默认每 30 分钟
 	CloudStrmCron    string // 云盘 STRM 生成 + 订阅追更 cron，默认每 6 小时
 	RssCheckCron     string // RSS 订阅全局扫描 cron，默认每 5 分钟（按各订阅 interval_min 决定是否实际抓取）
 	TransferSweepCron string // 媒体整理 cron（兜底/重试：已完成种子→识别→重命名→硬链→刮削），默认每 10 分钟
+	SnapshotCron      string // 聚合站点快照 cron（合并 stats/hr/free/ann/msg/keepalive/assessment 7 任务为一次串行抓取），默认 7 */4 * * *
 
 	// 媒体元数据源
 	TMDBAPIKey      string
@@ -147,14 +148,17 @@ func Load() (*Config, error) {
 		FreeleechCron:           getenv("FREELEECH_CRON", "*/30 * * * *"),
 		AnnouncementCron:        getenv("ANNOUNCEMENT_CRON", "0 * * * *"),
 		SaveptCron:              getenv("SAVEPT_CRON", "0 */2 * * *"),
-		AssessmentCron:          getenv("ASSESSMENT_CRON", "0 * * * *"),
-		MedalCron:               getenv("MEDAL_CRON", "0 * * * *"),
+		// 临时止血：原 "0 * * * *" 每整小时裸访 userdetails.php(无 uid)致 52movie 警告。
+		// 块B 完成后 assessment 并入 site-snapshot，此 cron 废弃。
+		AssessmentCron:          getenv("ASSESSMENT_CRON", "0 3 * * *"),
+		MedalCron:               getenv("MEDAL_CRON", "37 */12 * * *"),
 		KeepSeedCron:            getenv("KEEPSEED_CRON", "0 3 * * *"),
 		MessagesCron:            getenv("MESSAGES_CRON", "*/30 * * * *"),
 		SubscribeCron:           getenv("SUBSCRIBE_CRON", "*/30 * * * *"),
 		CloudStrmCron:           getenv("CLOUD_STRM_CRON", "0 */6 * * *"),
 		RssCheckCron:            getenv("RSS_CHECK_CRON", "*/5 * * * *"),
 		TransferSweepCron:       getenv("TRANSFER_SWEEP_CRON", "*/10 * * * *"),
+		SnapshotCron:            getenv("SNAPSHOT_CRON", "7 */4 * * *"),
 		// TMDB 默认带 MoviePilot 同款公开 key（TMDB API key 本就客户端可见、可公开），
 		// 让影视搜索开箱即用；仍可用 TMDB_API_KEY 覆盖。
 		TMDBAPIKey:         getenv("TMDB_API_KEY", "db55323b8d3e4154498498a75642b381"),

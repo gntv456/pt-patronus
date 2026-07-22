@@ -52,6 +52,9 @@ level_requirements:
       ratio: 8
 name: 朱雀
 schema: tnode
+medal:
+    enabled: false
+    shop_path: medals.php
 search_entry: /api/torrent/advancedSearch
 search_param: keyword
 selectors:

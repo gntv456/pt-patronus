@@ -47,7 +47,7 @@ type TargetInput struct {
 	Password     string `json:"password" binding:"max=512"`
 	PrivateKey   string `json:"private_key" binding:"max=8192"` // SSH 私钥 PEM（明文，Oper 加密；空=不改/不设）
 	Thresholds   string `json:"thresholds" binding:"max=5000"`
-	DiskPaths    string `json:"disk_paths" binding:"max=2000"` // host+local：宿主 bind mount 目录（换行/逗号分隔）
+	DiskPaths    string `json:"disk_paths" binding:"max=2000"` // host/nas+local：宿主 bind mount 目录（换行/逗号分隔）
 	Enabled      bool   `json:"enabled"`
 }
 

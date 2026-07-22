@@ -135,6 +135,9 @@ level_requirements:
       ratio: 4.55
 name: PTTime
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 selectors:
     fields:
         category:

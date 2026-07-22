@@ -5,31 +5,60 @@ package medalwall
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 )
+
+var ErrNoMedals = errors.New("no medal data found")
+
+type ShopFetchError struct {
+	Kind       string
+	URL        string
+	StatusCode int
+	Err        error
+}
+
+func (e *ShopFetchError) Error() string {
+	switch e.Kind {
+	case "auth":
+		return "勋章页未登录或 Cookie 已失效"
+	case "response":
+		return fmt.Sprintf("勋章页返回 HTTP %d", e.StatusCode)
+	case "parse":
+		return "勋章页结构无法解析"
+	default:
+		if e.Err != nil {
+			return "勋章页请求失败：" + e.Err.Error()
+		}
+		return "勋章页请求失败"
+	}
+}
+
+func (e *ShopFetchError) Unwrap() error { return e.Err }
 
 // Status 勋章购买/库存状态（对齐旧版 Kotlin MedalPurchaseStatus）。
 type Status string
 
 const (
-	StatusOwned        Status = "OWNED"         // 已拥有
-	StatusAvailable    Status = "AVAILABLE"     // 可购买
-	StatusOutOfStock   Status = "OUT_OF_STOCK"  // 缺货
-	StatusNotOnSale    Status = "NOT_ON_SALE"   // 未开售（时间未到）
-	StatusGrantOnly    Status = "GRANT_ONLY"    // 仅授予（站点授予，不可购买）
-	StatusSynthesis    Status = "SYNTHESIS"     // 仅合成（LongPT 六十四卦等）
-	StatusDiscontinued Status = "DISCONTINUED"  // 已下架/过期
+	StatusOwned        Status = "OWNED"        // 已拥有
+	StatusAvailable    Status = "AVAILABLE"    // 可购买
+	StatusOutOfStock   Status = "OUT_OF_STOCK" // 缺货
+	StatusNotOnSale    Status = "NOT_ON_SALE"  // 未开售（时间未到）
+	StatusGrantOnly    Status = "GRANT_ONLY"   // 仅授予（站点授予，不可购买）
+	StatusSynthesis    Status = "SYNTHESIS"    // 仅合成（LongPT 六十四卦等）
+	StatusDiscontinued Status = "DISCONTINUED" // 已下架/过期
 	StatusUnknown      Status = "UNKNOWN"
 )
 
 // Item 商店勋章（抓取 + 合并 + 持久化用）。字段对齐 models.Medal。
 type Item struct {
-	MedalID          string  // 站点内业务主键
+	MedalID          string // 站点内业务主键
 	Name             string
 	Description      string
-	ImageSmall       string  // 列表小图
-	OriginalImageURL string  // 详情大图
-	SaleBeginTime    *int64  // epoch ms（nil=未知）
+	ImageSmall       string // 列表小图
+	OriginalImageURL string // 详情大图
+	SaleBeginTime    *int64 // epoch ms（nil=未知）
 	SaleEndTime      *int64
 	Price            float64
 	OriginalPrice    float64 // 原价（无溢价=Price；有溢价<Price，前端划线展示）

@@ -78,6 +78,9 @@ level_requirements:
       ratio: 6
 name: PT分享站
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 tags:
     - 综合
 timezone_offset: "+0800"

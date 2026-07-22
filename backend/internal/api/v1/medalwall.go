@@ -22,9 +22,9 @@ func NewMedalHandler(ch *chain.MedalChain, siteOp *oper.SiteOper) *MedalHandler 
 // All 返回全站勋章聚合（?refresh=1 强制刷新）。nil 切片归一为空数组，防前端 JSON null。
 func (h *MedalHandler) All(c *gin.Context) {
 	force := c.Query("refresh") == "1"
-	ctx, cancel := aggregateRequestContext(c)
-	defer cancel()
-	cards := h.ch.MedalAll(ctx, force)
+	// The shared 15s aggregate timeout truncates queued medal sites. Each site is
+	// already bounded by MedalChain, so let the caller control the overall wait.
+	cards := h.ch.MedalAll(c.Request.Context(), force)
 	if cards == nil {
 		cards = []chain.MedalCard{}
 	}

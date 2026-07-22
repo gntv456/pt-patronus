@@ -68,6 +68,9 @@ level_requirements:
       seeding_bonus: 1000000
 name: Afun
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 tags:
     - 综合
     - 电影

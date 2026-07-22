@@ -239,7 +239,7 @@ async function onSubmit(input: TargetInput) {
   try {
     if (!editing.value && input.protocol === 'agent') {
       // Agent 设备：走 Agent 创建（建 target + 生成 secret），弹安装命令
-      const r = await agentApi.create(input.name)
+      const r = await agentApi.create(input.name, input.type === 'nas' ? 'nas' : 'host')
       showAgentSecret(r.agent, r.plain_secret)
     } else if (editing.value) {
       await monitorApi.update(editing.value.id, input)
@@ -1541,7 +1541,7 @@ const tabs = [
         <li><b>SSH 远程</b>：监控其它 Linux，填 IP + 账号 + 密码</li>
         <li><b>Agent 上报</b>：被监控机装 agent 主动上报 —— <b>推荐</b>，免 SSH 认证烦恼</li>
       </ul>
-      <p><b>NAS</b>：可选本机采集，也可用群晖 / TrueNAS 厂商 API 或通用 SNMP</p>
+      <p><b>NAS</b>：国产 NAS 推荐 Agent 上报；群晖 / TrueNAS 也可用厂商 API，支持 SNMP 的设备可用通用 SNMP</p>
       <p><b>摄像头</b>：ONVIF / RTSP</p>
 
       <h4>SSH 连不上？</h4>
@@ -1553,7 +1553,7 @@ const tabs = [
 
       <h4>装 Agent（最省事）</h4>
       <ol>
-        <li>点「+ 添加设备」→ 类型「服务器」→ 协议「Agent 上报」→ 填名 → 保存</li>
+        <li>点「+ 添加设备」→ 选择「服务器」或「NAS」→ 采集方式「Agent 上报」→ 填名 → 保存</li>
         <li>复制弹出的一条命令</li>
         <li>SSH / 宝塔进被监控机（Linux，root），粘贴执行（自动下载 + 装 systemd + 开机自启）</li>
         <li>回本页，设备自动上线并上报指标</li>

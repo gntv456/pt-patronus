@@ -389,7 +389,7 @@ class MonitorApi {
   }
 }
 
-/// Agent（push 架构的上报端，关联一个 host|agent 的 MonitorTarget）。对齐后端 models.Agent。
+/// Agent（push 架构的上报端，关联一个 host/nas|agent 的 MonitorTarget）。对齐后端 models.Agent。
 /// SecretHash 标 json:"-" 不回传；创建/重置时后端额外返回明文 plain_secret（仅一次）。
 class Agent {
   final int id;
@@ -439,9 +439,12 @@ class AgentApi {
     return arr.map((e) => Agent.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// 创建 agent（后端事务化建 host|agent target + agent），返回 agent 与明文 secret。
-  Future<({Agent agent, String plainSecret})> create(String name) async {
-    final r = await _api.post('/monitors/agents', {'name': name});
+  /// 创建 agent（后端事务化建 host/nas|agent target + agent），返回 agent 与明文 secret。
+  Future<({Agent agent, String plainSecret})> create(
+    String name, {
+    String type = 'host',
+  }) async {
+    final r = await _api.post('/monitors/agents', {'name': name, 'type': type});
     return (
       agent: Agent.fromJson(
         (r['agent'] as Map?)?.cast<String, dynamic>() ?? const {},

@@ -330,8 +330,8 @@ export interface Agent {
 
 export const agentApi = {
   list: () => http.get<{ agents: Agent[] }>('/monitors/agents').then((r) => r.data.agents ?? []),
-  create: (name: string) =>
-    http.post<{ agent: Agent; plain_secret: string }>('/monitors/agents', { name }).then((r) => r.data),
+  create: (name: string, type: 'host' | 'nas' = 'host') =>
+    http.post<{ agent: Agent; plain_secret: string }>('/monitors/agents', { name, type }).then((r) => r.data),
   remove: (id: number) => http.delete(`/monitors/agents/${id}`).then((r) => r.data),
   rotate: (id: number) =>
     http.post<{ plain_secret: string }>(`/monitors/agents/${id}/rotate`).then((r) => r.data),

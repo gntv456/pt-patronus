@@ -119,6 +119,9 @@ level_requirements:
       name: 維護開发員
 name: OpenCD
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 tags:
     - 音乐
 urls:

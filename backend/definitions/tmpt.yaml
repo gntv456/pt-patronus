@@ -67,6 +67,9 @@ level_requirements:
       seeding_bonus: 1000000
 name: 唐门
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 tags:
     - 综合
     - 影视

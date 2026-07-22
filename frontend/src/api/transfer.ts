@@ -16,9 +16,10 @@ export interface TransferHistory {
   poster_url: string
   downloader_id: number
   download_hash: string
-  status: 'success' | 'failed'
+  status: 'success' | 'failed' | 'skipped'
   error_msg: string
   files: string
+  manual: boolean
   created_at: string
 }
 
@@ -31,6 +32,8 @@ export interface TransferConfig {
   categories: string[]
   skip_tags: string[]
   organize_tag: string
+  path_mappings: TransferPathMapping[]
+  failed_retry_minutes: number
   type_folder: boolean
   category_folder: boolean
   movie_rename: string
@@ -39,6 +42,12 @@ export interface TransferConfig {
   refresh_library: boolean
   overwrite_files: boolean
   best_version: boolean
+}
+
+export interface TransferPathMapping {
+  downloader_id: number
+  remote_path: string
+  local_path: string
 }
 
 // 自动分类规则（对齐后端 transfer.CategoryConfig）。

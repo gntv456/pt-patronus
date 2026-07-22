@@ -5,6 +5,9 @@ aka:
     - 家园
 description: HDHome 家园
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 tags:
     - 影视
     - 综合

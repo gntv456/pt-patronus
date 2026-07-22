@@ -126,7 +126,7 @@ class _MonitorPageState extends State<MonitorPage>
       wideWidth: 640,
       builder: (_) => const _AgentManagerSheet(),
     );
-    // agent 也是 host|agent 的 MonitorTarget，关闭后刷新列表。
+    // agent 关联 host/nas|agent 的 MonitorTarget，关闭后刷新列表。
     if (mounted) _load();
   }
 
@@ -516,10 +516,10 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
   }
 
   Future<void> _create() async {
-    final name = await _promptName();
-    if (name == null || name.isEmpty) return;
+    final input = await _promptAgent();
+    if (input == null || input.name.isEmpty) return;
     try {
-      final res = await _api.create(name);
+      final res = await _api.create(input.name, type: input.type);
       _toast('已创建');
       await _showSecret(res.plainSecret);
       _load();
@@ -585,27 +585,48 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
     }
   }
 
-  Future<String?> _promptName() async {
+  Future<({String name, String type})?> _promptAgent() async {
     final ctrl = TextEditingController();
-    return showDialog<String>(
+    var type = 'nas';
+    return showDialog<({String name, String type})>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('新建 Agent'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Agent 名称（如 飞牛NAS）'),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('新建 Agent'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Agent 名称（如 飞牛NAS）',
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: type,
+                decoration: const InputDecoration(labelText: '设备类型'),
+                items: const [
+                  DropdownMenuItem(value: 'nas', child: Text('NAS')),
+                  DropdownMenuItem(value: 'host', child: Text('服务器')),
+                ],
+                onChanged: (v) => setDialogState(() => type = v ?? type),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(context, (name: ctrl.text.trim(), type: type)),
+              child: const Text('创建'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            child: const Text('创建'),
-          ),
-        ],
       ),
     );
   }

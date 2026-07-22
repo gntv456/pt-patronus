@@ -64,6 +64,11 @@ type SiteChain struct {
 	msgMu    sync.Mutex
 	msgCache map[string]msgCacheEntry
 	msgSF    singleflight.Group // 同 site+mailbox 并发抓取合并（防击穿）
+
+	// per-site 串行锁：仅保证 SnapshotSite 不与另一个 SnapshotSite 同站并发（runSnapshot 本就串行 +
+	// SkipIfStillRunning 已防重叠，此锁为防御性）。前端 *All 走 singleflight + 跨站 sem，不持此锁。
+	siteLocksMu sync.Mutex
+	siteLocks   map[uint]*sync.Mutex
 }
 
 // flCacheEntry / annCacheEntry 是 per-site 缓存条目。
@@ -104,7 +109,20 @@ func NewSiteChain(b Base, sites *oper.SiteOper, registry *site.Registry) *SiteCh
 		haremCache:   make(map[uint]haremCacheEntry),
 		detailCache:  make(map[string]detailCacheEntry),
 		msgCache:     make(map[string]msgCacheEntry),
+		siteLocks:    make(map[uint]*sync.Mutex),
 	}
+}
+
+// siteLock 返回（并惰性创建）某站的串行 mutex，供 SnapshotSite 持有（防御性，见 siteLocks 注释）。
+func (c *SiteChain) siteLock(siteID uint) *sync.Mutex {
+	c.siteLocksMu.Lock()
+	defer c.siteLocksMu.Unlock()
+	lk, ok := c.siteLocks[siteID]
+	if !ok {
+		lk = &sync.Mutex{}
+		c.siteLocks[siteID] = lk
+	}
+	return lk
 }
 
 // SetHTTPClient 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用）。app 装配时调用；

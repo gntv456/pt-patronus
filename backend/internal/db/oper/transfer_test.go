@@ -2,6 +2,7 @@ package oper
 
 import (
 	"testing"
+	"time"
 
 	"github.com/glebarez/sqlite"
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -24,6 +25,43 @@ func newTransferTestDB(t *testing.T) *gorm.DB {
 		}
 	})
 	return db
+}
+
+func TestTransferHistoryRecentFailureExistsByHash(t *testing.T) {
+	db := newTransferTestDB(t)
+	op := NewTransferHistoryOper(db)
+	now := time.Now()
+	rows := []models.TransferHistory{
+		{DownloaderID: 1, DownloadHash: "same", Status: "failed", CreatedAt: now.Add(-30 * time.Minute)},
+		{DownloaderID: 2, DownloadHash: "same", Status: "failed", CreatedAt: now.Add(-10 * time.Minute)},
+		{DownloaderID: 1, DownloadHash: "manual", Status: "failed", Manual: true, CreatedAt: now},
+		{DownloaderID: 1, DownloadHash: "success-only", Status: "success", CreatedAt: now},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Exec("INSERT INTO transfer_histories (downloader_id, download_hash, status, created_at) VALUES (?, ?, ?, ?)", 1, "legacy", "failed", now.Add(-5*time.Minute)).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if ok, err := op.RecentFailureExistsByHash(1, "same", now.Add(-time.Hour)); err != nil || !ok {
+		t.Fatalf("recent failure = %v, %v", ok, err)
+	}
+	if ok, err := op.RecentFailureExistsByHash(1, "same", now.Add(-10*time.Minute)); err != nil || ok {
+		t.Fatalf("old failure = %v, %v", ok, err)
+	}
+	if ok, err := op.RecentFailureExistsByHash(1, "success-only", now.Add(-time.Hour)); err != nil || ok {
+		t.Fatalf("success must not cool down failures = %v, %v", ok, err)
+	}
+	if ok, err := op.RecentFailureExistsByHash(1, "manual", now.Add(-time.Hour)); err != nil || ok {
+		t.Fatalf("manual failure must not cool down automatic retries = %v, %v", ok, err)
+	}
+	if ok, err := op.RecentFailureExistsByHash(1, "legacy", now.Add(-time.Hour)); err != nil || !ok {
+		t.Fatalf("legacy failure with NULL manual must cool down automatic retries = %v, %v", ok, err)
+	}
+	if ok, err := op.RecentFailureExistsByHash(1, "", now.Add(-time.Hour)); err != nil || ok {
+		t.Fatalf("empty hash = %v, %v", ok, err)
+	}
 }
 
 // TestTransferHistoryDeleteMany 验证批量删除：存在的删掉、不存在的计入 failed、空入参安全。

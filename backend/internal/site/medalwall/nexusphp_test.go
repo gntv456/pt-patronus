@@ -1,11 +1,62 @@
 package medalwall
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+type shopHTTPStub struct {
+	resp *Response
+	err  error
+}
+
+type recordingShopHTTP struct {
+	gotURL  string
+	gotURLs []string
+	resp    *Response
+}
+
+func (s *recordingShopHTTP) Get(_ context.Context, rawURL, _ string, _ bool) (*Response, error) {
+	s.gotURL = rawURL
+	s.gotURLs = append(s.gotURLs, rawURL)
+	return s.resp, nil
+}
+
+func (s *recordingShopHTTP) Do(context.Context, string, string, []byte, map[string]string, string, bool) (*Response, error) {
+	return s.resp, nil
+}
+
+func (s shopHTTPStub) Get(context.Context, string, string, bool) (*Response, error) {
+	return s.resp, s.err
+}
+func (s shopHTTPStub) Do(context.Context, string, string, []byte, map[string]string, string, bool) (*Response, error) {
+	return s.resp, s.err
+}
+
+func TestFetchShopSurfacesFirstPageFailures(t *testing.T) {
+	t.Run("http status", func(t *testing.T) {
+		_, err := (NexusPHPAdapter{}).FetchShop(context.Background(), shopHTTPStub{
+			resp: &Response{StatusCode: 404, Body: []byte("not found")},
+		}, Def{}, "https://tracker.test", "")
+		var fetchErr *ShopFetchError
+		if !errors.As(err, &fetchErr) || fetchErr.Kind != "response" || fetchErr.StatusCode != 404 {
+			t.Fatalf("err = %#v, want response ShopFetchError HTTP 404", err)
+		}
+	})
+	t.Run("unrecognized html", func(t *testing.T) {
+		body := []byte("<html><body>" + strings.Repeat("ordinary page ", 30) + "</body></html>")
+		_, err := (NexusPHPAdapter{}).FetchShop(context.Background(), shopHTTPStub{
+			resp: &Response{StatusCode: 200, Body: body},
+		}, Def{}, "https://tracker.test", "")
+		if !errors.Is(err, ErrNoMedals) {
+			t.Fatalf("err = %#v, want ErrNoMedals", err)
+		}
+	})
+}
 
 func loadDoc(html string) *goquery.Document {
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
@@ -71,6 +122,9 @@ func TestResolveMedalID(t *testing.T) {
 	}
 	if id := resolveMedalID("", loadDoc(`<div><input name="medal_id" value="789"/></div>`).Find("div")); id != "789" {
 		t.Errorf("input id: got %q want 789", id)
+	}
+	if id := resolveMedalID("", loadDoc(`<div><button class="buy" data-id="84">购买</button></div>`).Find("div")); id != "84" {
+		t.Errorf("button data-id: got %q want 84", id)
 	}
 }
 
@@ -160,6 +214,31 @@ func TestParseOwnedHTMLReal(t *testing.T) {
 	}
 }
 
+func TestParseOwnedHTMLScopesWearingToUID(t *testing.T) {
+	html := `<html><body>
+<span class="nowrap"><a href="userdetails.php?id=121">current</a><img class="nexus-username-medal" title="当前佩戴" src="/current.png"></span>
+<span class="nowrap"><a href="userdetails.php?id=999">other</a><img class="nexus-username-medal" title="其他佩戴" src="/other.png"></span>
+<img class="nexus-username-medal-big" title="当前拥有未佩戴" src="/owned.png">
+</body></html>`
+	owned := parseOwnedHTML(html, "https://tracker.test", "121")
+	if len(owned) != 2 {
+		t.Fatalf("owned: got %d want 2", len(owned))
+	}
+	byName := map[string]Owned{}
+	for _, item := range owned {
+		byName[item.Name] = item
+	}
+	if !byName["当前佩戴"].Wearing {
+		t.Errorf("current medal should be wearing: %+v", byName["当前佩戴"])
+	}
+	if _, ok := byName["其他佩戴"]; ok {
+		t.Errorf("other user's medal leaked into owned: %+v", byName)
+	}
+	if byName["当前拥有未佩戴"].Wearing {
+		t.Errorf("big medal should not be marked wearing: %+v", byName["当前拥有未佩戴"])
+	}
+}
+
 // TestParseShopTableReal 真实蟹黄堡 medal.php 经典表（实测 D:\html 快照）：
 // 10 列 colhead（ID/图片/描述/可购买时间/有效期/加成/价格/库存/购买/赠送）+ input.buy[data-id]。
 func TestParseShopTableReal(t *testing.T) {
@@ -195,6 +274,36 @@ func TestParseShopTableReal(t *testing.T) {
 	}
 	if it := byID["27"]; it.PurchaseStatus != StatusOwned {
 		t.Errorf("id27 (已经购买) status: got %s want OWNED", it.PurchaseStatus)
+	}
+}
+
+func TestParseShopTableWithoutTbody(t *testing.T) {
+	html := `<html><body><table class="main"><tr><td><table>
+<tr><td class="colhead">ID</td><td class="colhead">图片</td><td class="colhead">描述</td><td class="colhead">价格</td><td class="colhead">库存</td><td class="colhead">购买</td></tr>
+<tr><td>18</td><td><img src="/18.png"></td><td><h1>无 tbody 勋章</h1></td><td>12,000</td><td>无限</td><td><input class="buy" data-id="18" value="购买"></td></tr>
+</table></td></tr></table><p>勋章 价格 库存 购买</p></body></html>`
+	items := parseShopHTML(html, "https://tracker.test")
+	if len(items) != 1 || items[0].MedalID != "18" || items[0].Name != "无 tbody 勋章" || items[0].Price != 12000 {
+		t.Fatalf("items = %+v, want one parsed row", items)
+	}
+}
+
+func TestParseShopTableTraditionalChinese(t *testing.T) {
+	html := `<html><body><table><tr><td class="colhead">ID</td><td class="colhead">圖片</td><td class="colhead">描述</td><td class="colhead">魔力加成</td><td class="colhead">價格</td><td class="colhead">庫存</td><td class="colhead">購買</td></tr>
+<tr><td>16</td><td><img src="/16.png"></td><td><h1>週年勛章</h1></td><td>1%</td><td>20,000</td><td>無限</td><td><input data-id="16" value="已經購買" disabled></td></tr>
+</table><p>勛章 價格 庫存 購買</p></body></html>`
+	items := parseShopHTML(html, "https://tracker.test")
+	if len(items) != 1 || items[0].MedalID != "16" || items[0].Name != "週年勛章" || items[0].Price != 20000 || items[0].Stock != -1 || items[0].PurchaseStatus != StatusOwned {
+		t.Fatalf("items = %+v, want traditional Chinese row", items)
+	}
+}
+
+func TestFetchShopDetectsLoginRedirect(t *testing.T) {
+	hc := shopHTTPStub{resp: &Response{StatusCode: 200, FinalURL: "https://tracker.test/login.php?returnto=medal.php", Body: []byte(strings.Repeat("login ", 50))}}
+	_, err := (NexusPHPAdapter{}).FetchShop(context.Background(), hc, Def{}, "https://tracker.test", "")
+	var fetchErr *ShopFetchError
+	if !errors.As(err, &fetchErr) || fetchErr.Kind != "auth" {
+		t.Fatalf("err = %#v, want auth ShopFetchError", err)
 	}
 }
 
@@ -320,6 +429,77 @@ func TestParseShopCardsUBits(t *testing.T) {
 		it.PurchaseStatus != StatusAvailable || it.Currency != "U币" {
 		t.Errorf("id60 (购买): name=%q price=%v bonus=%q status=%s currency=%q want 中影/200000/1%%/AVAILABLE/U币 (unpurchased 不得误判 OWNED)",
 			it.Name, it.Price, it.BonusRate, it.PurchaseStatus, it.Currency)
+	}
+}
+
+func TestParseSiQiShopCards(t *testing.T) {
+	html := `<html><body><div class="medal-progress-chip">已拥有 <b>0</b> 枚</div>
+<div class="medal-card">
+  <div class="medal-card__image"><img src="https://img.si-qi.xyz/u/2026/06/21/a.png" alt="一周年庆勋章"></div>
+  <div class="medal-card__body"><div class="medal-card__title"><h2>一周年庆勋章 (#33)</h2></div><div class="medal-card__desc">周年庆勋章</div>
+    <div class="medal-card__meta"><div><span class="meta-label">可购买时间</span><span class="meta-value">不限 ~ 2026-07-22 00:09:39</span></div><div><span class="meta-label">购买后有效期(天)</span><span class="meta-value">永久有效</span></div><div><span class="meta-label">魔力加成</span><span class="meta-value">8%</span></div><div><span class="meta-label">价格</span><span class="meta-value">88,888</span></div><div><span class="meta-label">库存</span><span class="meta-value">无限</span></div></div>
+  </div><div class="medal-card__actions"><input type="button" class="buy" data-id="33" value="购买"></div>
+</div>
+<div class="medal-card"><div class="medal-card__image"><img src="/pic/grant.png" alt="开站勋章"></div><div class="medal-card__title"><h2>开站勋章 (#3)</h2></div><div class="medal-card__actions"><span>仅授予</span></div></div>
+<div class="medal-card"><div class="medal-card__image"><img src="/pic/old.png" alt="维护勋章"></div><div class="medal-card__title"><h2>维护勋章 (#30)</h2></div><div class="medal-card__actions"><input value="已过可购买时间" disabled></div></div>
+</body></html>`
+	items := parseShopHTML(html, "https://si-qi.xyz")
+	if len(items) != 3 {
+		t.Fatalf("items: got %d want 3", len(items))
+	}
+	byID := map[string]Item{}
+	for _, it := range items {
+		byID[it.MedalID] = it
+		if strings.Contains(it.Name, "(#") {
+			t.Errorf("name still has id suffix: %q", it.Name)
+		}
+	}
+	if it := byID["33"]; it.Name != "一周年庆勋章" || it.Price != 88888 || it.BonusRate != "8%" || it.PurchaseStatus != StatusAvailable {
+		t.Errorf("id33: %+v", it)
+	}
+	if byID["3"].PurchaseStatus != StatusGrantOnly {
+		t.Errorf("id3 status = %s, want GRANT_ONLY", byID["3"].PurchaseStatus)
+	}
+	if byID["30"].PurchaseStatus != StatusDiscontinued {
+		t.Errorf("id30 status = %s, want DISCONTINUED", byID["30"].PurchaseStatus)
+	}
+}
+
+func TestFetchSiQiShopDoesNotAppendPage(t *testing.T) {
+	body := []byte(`<html><body><p>勋章 购买 价格 库存</p><div class="medal-card"><div class="medal-card__title"><h2>测试勋章 (#7)</h2></div><img src="/7.png" alt="测试勋章"><div class="medal-card__actions"><input class="buy" data-id="7" value="购买"></div></div></body></html>`)
+	hc := &recordingShopHTTP{resp: &Response{StatusCode: 200, Body: body}}
+	items, err := (NexusPHPAdapter{}).FetchShop(context.Background(), hc, Def{}, "https://si-qi.xyz", "")
+	if err != nil || len(items) != 1 {
+		t.Fatalf("FetchShop: items=%d err=%v", len(items), err)
+	}
+	if hc.gotURL != "https://si-qi.xyz/medal.php" {
+		t.Errorf("URL = %q, want unpaged medal.php", hc.gotURL)
+	}
+}
+
+func TestFetchNexusShopStartsWithUnpagedURL(t *testing.T) {
+	body := []byte(`<html><body><p>勋章 购买 价格 库存</p><div class="medal-card" data-id="7" data-name="测试勋章" data-price="100"><img src="/7.png"></div>` + strings.Repeat("x", 220) + `</body></html>`)
+	hc := &recordingShopHTTP{resp: &Response{StatusCode: 200, Body: body}}
+	items, err := (NexusPHPAdapter{}).FetchShop(context.Background(), hc, Def{}, "https://tracker.test", "")
+	if err != nil || len(items) != 1 {
+		t.Fatalf("FetchShop: items=%d err=%v", len(items), err)
+	}
+	if len(hc.gotURLs) < 1 || hc.gotURLs[0] != "https://tracker.test/medal.php" {
+		t.Fatalf("URLs = %v, want unpaged URL first", hc.gotURLs)
+	}
+}
+
+func TestParseSiQiOwnedIgnoresGlobalMedalImages(t *testing.T) {
+	html := `<html><body>
+<img class="nexus-username-medal preview" title="其他用户的勋章" src="/other.png">
+<div class="medal-card owned"><div class="medal-card__title"><h2>开站勋章 (#3)</h2></div><img alt="开站勋章" src="/pic/open.png"><input class="buy" data-id="3"></div>
+</body></html>`
+	owned := parseSiQiOwnedHTML(html, "https://si-qi.xyz")
+	if len(owned) != 1 {
+		t.Fatalf("owned: got %d want 1", len(owned))
+	}
+	if owned[0].MedalID != "3" || owned[0].Name != "开站勋章" || owned[0].Wearing {
+		t.Errorf("owned = %+v, want id=3 name=开站勋章 wearing=false", owned[0])
 	}
 }
 
@@ -455,7 +635,7 @@ func TestParseShopCardsWornExcluded(t *testing.T) {
 }
 
 // TestParseShopCardsHxptPremium 好学过期勋章：sale-end 已过但可溢价 +50% 购买
-//（data-buy-price=溢价 283332 > data-price=原价 188888），价格取溢价、状态可购买（非下架）。
+// （data-buy-price=溢价 283332 > data-price=原价 188888），价格取溢价、状态可购买（非下架）。
 func TestParseShopCardsHxptPremium(t *testing.T) {
 	html := `<html><body><div class="medal-grid">
 <div class="medal-card">

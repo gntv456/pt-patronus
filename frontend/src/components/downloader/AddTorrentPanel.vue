@@ -108,7 +108,7 @@ function removeFile(i: number) {
 </script>
 
 <template>
-  <div class="addpanel glass">
+  <div class="addpanel">
     <div class="top">
       <el-radio-group v-model="mode" size="small">
         <el-radio-button value="url">链接 / 磁力</el-radio-button>
@@ -186,8 +186,7 @@ function removeFile(i: number) {
 
 <style scoped>
 .addpanel {
-  padding: 12px 16px;
-  margin-bottom: 14px;
+  padding: 2px;
 }
 .top {
   display: flex;
@@ -232,6 +231,10 @@ function removeFile(i: number) {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4px 16px;
+}
+@media (max-width: 560px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .urlrow, .filerow { align-items: stretch; flex-direction: column; }
 }
 .grid2 :deep(.el-form-item) {
   margin-bottom: 8px;

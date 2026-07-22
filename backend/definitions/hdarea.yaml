@@ -77,6 +77,9 @@ level_requirements:
       is_kept: true
 name: HDArea
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 search_categories:
     movie:
         - "300"

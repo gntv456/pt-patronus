@@ -433,3 +433,36 @@ func TestAudiencesMedalDef(t *testing.T) {
 		t.Errorf("Medal.OwnPath: got %q want userdetails.php (EnsureDefaults 默认)", d.Medal.OwnPath)
 	}
 }
+
+func TestTNodeMedalDefaults(t *testing.T) {
+	d := EnsureDefaults(&SiteMetadata{Schema: "tnode"})
+	if !d.Medal.Enabled {
+		t.Fatal("TNode medal capability must be enabled when the registered adapter is available")
+	}
+	if d.Medal.ShopPath != "medals.php" || d.Medal.OwnPath != "medals.php?action=owned" {
+		t.Fatalf("unexpected TNode medal defaults: %+v", d.Medal)
+	}
+}
+
+func TestKnownSitesWithoutMedalEndpointsStayDisabled(t *testing.T) {
+	ids := []string{
+		"52pt", "afun", "btschool", "chdbits", "hdarea", "hdhome", "hdsky", "hdupt",
+		"opencd", "ourbits", "keepfrds", "pthome", "itzmx", "springsunday", "nanyangpt",
+		"tmpt", "pttime", "zhuque",
+	}
+	for _, id := range ids {
+		t.Run(id, func(t *testing.T) {
+			data, err := os.ReadFile("../../definitions/" + id + ".yaml")
+			if err != nil {
+				t.Fatalf("read definition: %v", err)
+			}
+			var def SiteMetadata
+			if err := yaml.Unmarshal(data, &def); err != nil {
+				t.Fatalf("parse definition: %v", err)
+			}
+			if got := EnsureDefaults(&def); got.Medal.Enabled {
+				t.Fatalf("Medal.Enabled = true, want false after live endpoint audit")
+			}
+		})
+	}
+}

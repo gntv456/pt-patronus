@@ -55,6 +55,9 @@ level_requirements:
       privilege: 贵宾(VIP)的权限和神王(Immortal)相同。贵宾(VIP)及其以上等级免除自动降级。
 name: SpringSunday
 schema: nexusphp
+medal:
+    enabled: false
+    shop_path: medal.php
 selectors:
     fields:
         detail:

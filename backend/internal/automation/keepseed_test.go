@@ -33,7 +33,7 @@ func (f *fakeKeepSeed) Resolve(_ context.Context, taskID uint, action string) er
 
 // newSvc 用 fake keepSeed 造 Service（其余依赖 nil——runKeepSeed 不用它们）。
 func newSvc(fk *fakeKeepSeed) *Service {
-	return New(nil, nil, nil, nil, nil, fk, nil, Config{}, context.Background(), nil, nil, nil, nil, nil)
+	return New(nil, nil, nil, nil, nil, fk, nil, Config{}, context.Background(), nil, nil, nil, nil, nil, nil)
 }
 
 func TestRunKeepSeed(t *testing.T) {

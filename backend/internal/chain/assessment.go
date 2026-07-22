@@ -134,6 +134,18 @@ func (c *AssessmentChain) AssessOne(ctx context.Context, s *models.Site) Assessm
 	return c.assessSite(ctx, nil, s, true).normalized()
 }
 
+// AssessSiteWithUID 单站考核（聚合快照用）：uid 由聚合的 UserInfo 提供，直接回源不复用 3 级缓存。
+// 用于 site-snapshot 聚合任务步骤 2，复用步骤 1 已抓到的 uid 访问 userdetails.php?id=<uid>。
+func (c *AssessmentChain) AssessSiteWithUID(ctx context.Context, s *models.Site, uid string) AssessmentCard {
+	def := c.siteCh.defFor(s)
+	adapter := c.reg.Get(def.Schema)
+	if !adapter.Supported() {
+		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "EXEMPT",
+			ProgressPercent: 100, AssessmentType: "该平台无考核"}.normalized()
+	}
+	return c.fetchAssessSite(ctx, nil, s, def, adapter, uid).normalized()
+}
+
 // assessSite 单站 3 级缓存：内存→DB→网络。sem 为聚合级并发闸（nil 表示不限，单站用）。
 // force=true 绕过缓存与 singleflight 直接网络回源；否则 miss 时 singleflight 合并同 siteID
 // 并发回源（防击穿，sem 仅 leader 占用）。3 级缓存包整个回源——避免 waiter 各自 BatchUpsert + 发通知。
@@ -145,7 +157,7 @@ func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *
 			ProgressPercent: 100, AssessmentType: "该平台无考核"}
 	}
 	if force {
-		return c.fetchAssessSite(ctx, sem, s, def, adapter)
+		return c.fetchAssessSite(ctx, sem, s, def, adapter, "")
 	}
 	// 快速路径：内存命中直接返回（不经 singleflight）。
 	c.mu.Lock()
@@ -172,7 +184,7 @@ func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *
 			c.mu.Unlock()
 			return convertTaskToCard(s.ID, s.Name, primaryTask(tasks), ""), nil
 		}
-		return c.fetchAssessSite(ctx, sem, s, def, adapter), nil
+		return c.fetchAssessSite(ctx, sem, s, def, adapter, ""), nil
 	})
 	if waitErr != nil {
 		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: waitErr.Error()}
@@ -182,7 +194,7 @@ func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *
 
 // fetchAssessSite 网络抓取考核 + BatchUpsert + 状态转换通知 + 内存缓存。
 // sem 非空时占一个槽（聚合级并发闸；nil 表示不限，单站 AssessOne 用）。
-func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter assessment.Adapter) AssessmentCard {
+func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}, s *models.Site, def *site.SiteMetadata, adapter assessment.Adapter, uid string) AssessmentCard {
 	if err := acquireSemaphore(ctx, sem); err != nil {
 		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: err.Error()}
 	}
@@ -192,7 +204,14 @@ func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}
 	siteCtx, cancel := context.WithTimeout(ctx, assessTimeout)
 	defer cancel()
 	token := c.siteCh.credential(s, def)
-	tasks, err := adapter.FetchAssessments(siteCtx, c.hc, assessDef(def), s.BaseURL, token)
+	// uid 缺失（独立路径 AssessAll/AssessOne）→ 回源 UserInfo 拿 uid，绝不裸访 userdetails.php。
+	// 聚合路径 AssessSiteWithUID 已直传 uid，跳过本次 UserInfo。
+	if uid == "" {
+		if ui, e := c.siteCh.UserInfo(siteCtx, s); e == nil && ui != nil {
+			uid = ui.ID
+		}
+	}
+	tasks, err := adapter.FetchAssessments(siteCtx, c.hc, assessDef(def), s.BaseURL, token, uid)
 	if err != nil {
 		if errors.Is(err, site.ErrNotLoggedIn) {
 			return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "UNKNOWN", Error: "未登录"}

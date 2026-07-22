@@ -18,7 +18,7 @@ func (MTeamAdapter) Platform() string { return "mteam" }
 func (MTeamAdapter) Supported() bool { return true }
 
 // FetchAssessments 抓取活跃考核任务。
-func (MTeamAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, baseURL, token string) ([]Task, error) {
+func (MTeamAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, baseURL, token, uid string) ([]Task, error) {
 	if token == "" {
 		return nil, nil
 	}
@@ -174,7 +174,7 @@ func (TNodeAdapter) Platform() string { return "tnode" }
 func (TNodeAdapter) Supported() bool { return false }
 
 // FetchAssessments 返回空。
-func (TNodeAdapter) FetchAssessments(context.Context, HTTPDoer, Def, string, string) ([]Task, error) {
+func (TNodeAdapter) FetchAssessments(context.Context, HTTPDoer, Def, string, string, string) ([]Task, error) {
 	return nil, nil
 }
 

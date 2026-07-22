@@ -14,9 +14,9 @@ import (
 )
 
 // runHRCheck 遍历启用 H&R 检测的站点，抓取 H&R 列表，筛出未达标/临期种子并告警。
-// 防止因 H&R 超时被封号——PT 用户最担心的风险。
+// 从聚合快照拆出独立每小时跑——H&R 是封号命脉，时效优先于隐蔽（4h 聚合延迟过大）。
 //   - 站点定义未 hr.enabled: true → 跳过（chain.HR 返回空）
-//   - 未登录 → 跳过（由 cookie 保活告警）
+//   - 未登录 → 跳过（由聚合快照的 cookie 保活统一告警）
 //   - 无危险种子 → 仅 debug，不刷屏
 func (s *Service) runHRCheck() {
 	ctx, cancel := context.WithTimeout(s.rootCtx, 5*time.Minute)
@@ -36,7 +36,7 @@ func (s *Service) runHRCheck() {
 		list, err := s.siteCh.HR(ctx, st)
 		if err != nil {
 			if errors.Is(err, site.ErrNotLoggedIn) {
-				continue // 由 cookie 保活统一告警
+				continue // 由聚合快照 cookie 保活统一告警
 			}
 			slog.Debug("hr fetch failed", "site", st.Name, "err", err)
 			continue
@@ -68,7 +68,6 @@ func (s *Service) runHRCheck() {
 		Level: "warning",
 	})
 
-	// 实时推送：在线 WS 连接秒收，移动端首屏即可见。
 	if s.hub != nil {
 		alerts := make([]ws.HRAlert, len(dangers))
 		for i, d := range dangers {
@@ -80,10 +79,12 @@ func (s *Service) runHRCheck() {
 	}
 }
 
+// 通知文案辅助。
+
+// truncTitle 截断标题（按 rune，避免切断中文）。
 func truncTitle(s string) string {
 	const max = 60
 	for len(s) > max {
-		// 按 rune 截断，避免切断中文
 		r := []rune(s)
 		if len(r) <= max {
 			break

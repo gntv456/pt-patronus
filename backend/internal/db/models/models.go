@@ -280,7 +280,7 @@ type RegistrationWatch struct {
 }
 
 // MonitorTarget — 设备监控目标（服务器 host / NAS / 摄像头 camera）。
-// Protocol 决定采集器分发：host=local(本机 gopsutil)/ssh(远程)；nas=api(厂商)/snmp；camera=onvif/rtsp。
+// Protocol 决定采集器分发：host=local/ssh/agent；nas=local/agent/api/snmp；camera=onvif/rtsp。
 type MonitorTarget struct {
 	ID             uint       `gorm:"primaryKey" json:"id"`
 	Name           string     `gorm:"size:64;not null" json:"name"`
@@ -288,7 +288,7 @@ type MonitorTarget struct {
 	Host           string     `gorm:"size:255" json:"host"`               // 地址/IP；host 本机留空
 	Port           int        `json:"port"`
 	Vendor         string     `gorm:"size:32" json:"vendor"`              // nas: synology|truenas|snmp；camera: onvif|rtsp
-	Protocol       string     `gorm:"size:16" json:"protocol"`            // local|ssh|api|snmp|onvif|rtsp
+	Protocol       string     `gorm:"size:16" json:"protocol"`            // local|ssh|agent|api|snmp|onvif|rtsp
 	CredentialID   uint       `gorm:"index" json:"credential_id"`         // 0=使用本设备内嵌凭据；非 0=引用 OpsCredential
 	UsernameEnc    string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
 	PasswordEnc    string     `gorm:"type:text" json:"-"`                 // AES-GCM 加密
@@ -301,7 +301,7 @@ type MonitorTarget struct {
 	TimeoutSec     int        `gorm:"default:15" json:"timeout_sec"`      // 单次采集超时
 	Enabled        bool       `gorm:"default:true" json:"enabled"`
 	Thresholds     string     `gorm:"type:text" json:"thresholds"` // 阈值规则 JSON（见 monitor.Thresholds）
-	DiskPaths      string     `gorm:"type:text" json:"disk_paths"` // host+local：宿主 bind mount 目录（换行/逗号分隔，MoviePilot 式磁盘监控）
+	DiskPaths      string     `gorm:"type:text" json:"disk_paths"` // host/nas+local：宿主 bind mount 目录（换行/逗号分隔，MoviePilot 式磁盘监控）
 	LastOnline     *bool      `json:"last_online"`                 // 上次探活结果（nil=从未探活）
 	LastError      string     `gorm:"type:text" json:"last_error"`
 	LastCheckedAt  *time.Time `json:"last_checked_at"`
@@ -543,6 +543,7 @@ type TransferHistory struct {
 	Status       string    `gorm:"size:16;index" json:"status"` // success | failed | skipped（skipped=未下完等前置跳过）
 	ErrorMsg     string    `gorm:"type:text" json:"error_msg,omitempty"`
 	Files        string    `gorm:"type:text" json:"files,omitempty"` // JSON：已整理文件列表
+	Manual       bool      `json:"manual"`                           // true=手动整理/重做；自动失败冷却不统计手动失败
 	CreatedAt    time.Time `gorm:"index" json:"created_at"`
 }
 
@@ -596,7 +597,7 @@ type SSHHostKey struct {
 }
 
 // Agent — push 架构的被监控 agent 身份（per-agent secret 鉴权）。1:1 关联 MonitorTarget
-// （type=host, protocol=agent）。SecretHash 为 bcrypt；明文 secret 仅创建/重置时返回一次。
+// （type=host/nas, protocol=agent）。SecretHash 为 bcrypt；明文 secret 仅创建/重置时返回一次。
 type Agent struct {
 	ID         uint       `gorm:"primaryKey" json:"id"`
 	Name       string     `gorm:"size:64;not null" json:"name"`

@@ -282,6 +282,8 @@ func EnsureDefaults(def *SiteMetadata) *SiteMetadata {
 	switch cp.Schema {
 	case "", "nexusphp":
 		ensureNexusPHPDefaults(&cp)
+	case "tnode":
+		ensureTNodeDefaults(&cp)
 	case "unit3d":
 		ensureUnit3DDefaults(&cp)
 	case "gazelle":
@@ -300,6 +302,18 @@ func EnsureDefaults(def *SiteMetadata) *SiteMetadata {
 		// 非 nexusphp：仅通用项，保留站点 YAML 自定义，不注入 NexusPHP 默认。
 	}
 	return &cp
+}
+
+func ensureTNodeDefaults(cp *SiteMetadata) {
+	if !cp.Medal.Enabled && cp.Medal.ShopPath == "" {
+		cp.Medal.Enabled = true
+	}
+	if cp.Medal.ShopPath == "" {
+		cp.Medal.ShopPath = "medals.php"
+	}
+	if cp.Medal.OwnPath == "" {
+		cp.Medal.OwnPath = "medals.php?action=owned"
+	}
 }
 
 // ensureMinimalDefaults 填所有 schema 共享的通用路径默认。

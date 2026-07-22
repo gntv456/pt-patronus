@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import TorrentDrawer from '@/components/downloader/TorrentDrawer.vue'
 import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
+import { CircleCheck, CircleClose, Delete, Edit, Link, MoreFilled, Plus, VideoPlay } from '@element-plus/icons-vue'
 
-// 非 admin 可读可用，但删除下载器是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
 
 const list = ref<Downloader[]>([])
@@ -13,30 +13,29 @@ const loading = ref(false)
 const error = ref('')
 const dialogVisible = ref(false)
 const form = ref({ name: '', type: 'qb', url: '', username: '', password: '', is_default: false })
-// 编辑态：null=新建，否则持有正在编辑的下载器 id
 const editingId = ref<number | null>(null)
 const isEdit = computed(() => editingId.value !== null)
 const dialogTitle = computed(() => (isEdit.value ? '编辑下载器' : '添加下载器'))
+const connectionState = ref<Record<number, 'idle' | 'connected' | 'failed'>>({})
+const connectedCount = computed(() => Object.values(connectionState.value).filter((s) => s === 'connected').length)
+const defaultDownloader = computed(() => list.value.find((dl) => dl.is_default))
+const typeCount = computed(() => new Set(list.value.map((dl) => dl.type)).size)
 
-// 下载器类型 → 品牌图标/配色/标签。
-// 基于各品牌官方 logo 提炼，描边化后统一于 GlassIcon（字形见 GlassIcon.vue 的 GLYPHS）。
-// 新增下载器类型（aria2 / deluge 等）时在此加一条即可，卡片与表单会自动用上对应图标。
 const DL_META: Record<string, { glyph: string; from: string; to: string; label: string }> = {
-  qb: { glyph: 'qbittorrent', from: '#72B4F5', to: '#356EBF', label: 'qBittorrent' }, // 官方蓝
-  tr: { glyph: 'transmission', from: '#E8443C', to: '#A82424', label: 'Transmission' }, // 官方红把手
-  ut: { glyph: 'utorrent', from: '#5BB04C', to: '#3A7A2E', label: 'uTorrent' }, // 官方绿
-  dl: { glyph: 'deluge', from: '#4FB6E8', to: '#2A7AB3', label: 'Deluge' }, // 官方水蓝
+  qb: { glyph: 'qbittorrent', from: '#72B4F5', to: '#356EBF', label: 'qBittorrent' },
+  tr: { glyph: 'transmission', from: '#E8443C', to: '#A82424', label: 'Transmission' },
+  ut: { glyph: 'utorrent', from: '#5BB04C', to: '#3A7A2E', label: 'uTorrent' },
+  dl: { glyph: 'deluge', from: '#4FB6E8', to: '#2A7AB3', label: 'Deluge' },
   ar: { glyph: 'aria2', from: '#F0A030', to: '#C07010', label: 'Aria2' },
   rt: { glyph: 'rutorrent', from: '#2E8B57', to: '#1A5C38', label: 'ruTorrent' },
   fl: { glyph: 'flood', from: '#5B8DEF', to: '#2F5FCC', label: 'Flood' },
 }
 const dlMeta = (type: string) =>
-  DL_META[type] ?? { glyph: 'downloaders', from: '#6c5ce7', to: '#4285f4', label: type || '下载器' }
+  DL_META[type] ?? { glyph: 'downloaders', from: '#536976', to: '#2c3e50', label: type || '下载器' }
+const typeOptions = Object.entries(DL_META).map(([value, meta]) => ({ value, ...meta }))
 
-// 种子抽屉
 const drawerDl = ref<Downloader | null>(null)
 const drawerVisible = ref(false)
-// 连接测试 loading（按下载器 id 标记，单卡测试时仅该卡按钮转圈）
 const testing = ref<number | null>(null)
 
 async function load() {
@@ -44,6 +43,9 @@ async function load() {
   error.value = ''
   try {
     list.value = await downloaderApi.list()
+    connectionState.value = Object.fromEntries(
+      list.value.map((dl) => [dl.id, connectionState.value[dl.id] ?? 'idle']),
+    )
   } catch (e: unknown) {
     error.value = (e as Error).message || '加载失败'
   } finally {
@@ -64,61 +66,79 @@ function openEdit(dl: Downloader) {
     type: dl.type,
     url: dl.url,
     username: dl.username,
-    password: '', // 留空=不修改（后端 Update 仅在非空时覆写）
+    password: '',
     is_default: dl.is_default,
   }
   dialogVisible.value = true
 }
 
 async function submit() {
+  form.value.name = form.value.name.trim()
+  form.value.url = form.value.url.trim()
   if (!form.value.name || !form.value.url) {
     ElMessage.warning('名称与地址必填')
     return
   }
-  if (!/^https?:\/\/.+/i.test(form.value.url.trim())) {
-    ElMessage.warning('地址需以 http:// 或 https:// 开头（如 http://127.0.0.1:8080）')
+  if (!/^https?:\/\/.+/i.test(form.value.url)) {
+    ElMessage.warning('地址需以 http:// 或 https:// 开头')
     return
   }
   try {
     if (isEdit.value) {
       await downloaderApi.update(editingId.value!, form.value)
-      ElMessage.success('已更新')
+      ElMessage.success('下载器配置已更新')
     } else {
       await downloaderApi.create(form.value)
-      ElMessage.success('已添加')
+      ElMessage.success('下载器已添加')
     }
     dialogVisible.value = false
     await load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '失败')
+    ElMessage.error((e as Error).message || '保存失败')
   }
 }
 
 async function removeDownloader(dl: Downloader) {
   try {
-    await ElMessageBox.confirm(`确认删除下载器「${dl.name}」？`, '删除', { type: 'warning' })
+    await ElMessageBox.confirm(`确认删除下载器「${dl.name}」？`, '删除下载器', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
   } catch {
-    return // 用户取消
+    return
   }
   try {
     await downloaderApi.remove(dl.id)
-    ElMessage.success('已删除')
+    ElMessage.success('下载器已删除')
     await load()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '删除失败')
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '删除失败')
   }
 }
 
 async function test(dl: Downloader) {
   testing.value = dl.id
   try {
-    const r = await downloaderApi.test(dl.id)
-    r.ok ? ElMessage.success(`${dl.name} 连接正常`) : ElMessage.warning(r.error || '连接失败')
+    const result = await downloaderApi.test(dl.id)
+    connectionState.value = { ...connectionState.value, [dl.id]: result.ok ? 'connected' : 'failed' }
+    result.ok ? ElMessage.success(`${dl.name} 连接正常`) : ElMessage.warning(result.error || '连接失败')
   } catch (e: unknown) {
+    connectionState.value = { ...connectionState.value, [dl.id]: 'failed' }
     ElMessage.error((e as Error).message || '请求失败')
   } finally {
     testing.value = null
   }
+}
+
+function connectionLabel(dl: Downloader): string {
+  const state = connectionState.value[dl.id] ?? 'idle'
+  return state === 'connected' ? '连接正常' : state === 'failed' ? '连接异常' : '尚未测试'
+}
+
+function onCardCommand(command: string, dl: Downloader) {
+  if (command === 'edit') openEdit(dl)
+  else if (command === 'delete') removeDownloader(dl)
 }
 
 function openTorrents(dl: Downloader) {
@@ -131,185 +151,204 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="head">
-      <h2 class="title">下载器</h2>
-      <el-button type="primary" @click="openCreate">+ 添加下载器</el-button>
-    </div>
+    <header class="head">
+      <div class="head-copy">
+        <span class="eyebrow">INFRASTRUCTURE / DOWNLOADERS</span>
+        <h1 class="title">下载器</h1>
+        <p class="subtitle">统一管理连接、任务和实时传输状态</p>
+      </div>
+      <el-button type="primary" :icon="Plus" @click="openCreate">添加下载器</el-button>
+    </header>
+
+    <section class="overview-strip" aria-label="下载器概览">
+      <div class="overview-item">
+        <span class="overview-label">已配置</span>
+        <strong>{{ list.length }}</strong>
+        <span class="overview-caption">个下载器</span>
+      </div>
+      <div class="overview-item status-overview">
+        <span class="overview-label">已测试连接</span>
+        <strong>{{ connectedCount }}</strong>
+        <span class="overview-caption">个正常</span>
+      </div>
+      <div class="overview-item">
+        <span class="overview-label">类型覆盖</span>
+        <strong>{{ typeCount }}</strong>
+        <span class="overview-caption">种客户端</span>
+      </div>
+      <div class="overview-note">
+        <span class="overview-label">默认下载器</span>
+        <strong>{{ defaultDownloader?.name || '未设置' }}</strong>
+        <span class="overview-caption">搜索、订阅和工作流会优先使用</span>
+      </div>
+    </section>
 
     <div v-loading="loading" class="grid">
-      <div v-if="error" class="empty glass error-state">
-        <div class="err-text">⚠ {{ error }}</div>
+      <div v-if="error" class="empty error-state">
+        <CircleClose class="state-icon" />
+        <div class="err-text">{{ error }}</div>
         <el-button size="small" @click="load">重试</el-button>
       </div>
       <template v-else>
-      <div v-for="dl in list" :key="dl.id" class="glass glass-hover card">
-        <div class="row1">
-          <GlassIcon
-            :name="dlMeta(dl.type).glyph"
-            :from="dlMeta(dl.type).from"
-            :to="dlMeta(dl.type).to"
-            :size="40"
-            class="dl-badge"
-          />
-          <div class="dname-wrap">
-            <span class="dname">{{ dl.name }}</span>
-            <span v-if="dl.is_default" class="default-chip">默认</span>
-            <span class="dtype-tag text-muted">{{ dlMeta(dl.type).label }}</span>
+        <article v-for="dl in list" :key="dl.id" class="glass glass-hover card">
+          <div class="card-head">
+            <GlassIcon
+              :name="dlMeta(dl.type).glyph"
+              :from="dlMeta(dl.type).from"
+              :to="dlMeta(dl.type).to"
+              :size="42"
+              class="dl-badge"
+            />
+            <div class="identity">
+              <div class="identity-title">
+                <span class="dname">{{ dl.name }}</span>
+                <span v-if="dl.is_default" class="default-chip">默认</span>
+              </div>
+              <span class="dtype-tag text-muted">{{ dlMeta(dl.type).label }}</span>
+            </div>
+            <el-dropdown trigger="click" @command="(command: string) => onCardCommand(command, dl)">
+              <el-button text circle :icon="MoreFilled" title="更多设置" aria-label="更多设置" />
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>编辑配置</el-dropdown-item>
+                  <el-dropdown-item v-if="auth.isAdmin" command="delete" divided>
+                    <el-icon><Delete /></el-icon>删除下载器
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </div>
+
+          <div class="connection-row">
+            <span class="connection-status" :class="connectionState[dl.id] || 'idle'">
+              <el-icon>
+                <CircleCheck v-if="connectionState[dl.id] === 'connected'" />
+                <CircleClose v-else-if="connectionState[dl.id] === 'failed'" />
+                <Link v-else />
+              </el-icon>
+              {{ connectionLabel(dl) }}
+            </span>
+            <span class="url text-muted" :title="dl.url">{{ dl.url }}</span>
+          </div>
+
+          <div class="card-actions">
+            <el-button type="primary" :icon="VideoPlay" @click="openTorrents(dl)">打开任务</el-button>
+            <el-button :loading="testing === dl.id" :icon="Link" @click="test(dl)">测试连接</el-button>
+          </div>
+        </article>
+
+        <div v-if="!list.length && !loading" class="empty">
+          <EmptyState icon="downloaders" title="还没有下载器" description="添加下载器后即可统一查看实时任务和传输状态。">
+            <el-button type="primary" :icon="Plus" @click="openCreate">添加下载器</el-button>
+          </EmptyState>
         </div>
-        <div class="url text-muted">{{ dl.url }}</div>
-        <div class="actions">
-          <el-button size="small" :loading="testing === dl.id" @click="test(dl)">连接测试</el-button>
-          <el-button size="small" type="primary" @click="openTorrents(dl)">任务列表</el-button>
-          <el-button size="small" @click="openEdit(dl)">编辑</el-button>
-          <el-button v-if="auth.isAdmin" size="small" type="danger" plain @click="removeDownloader(dl)">删除</el-button>
-        </div>
-      </div>
-      <div v-if="!list.length && !loading" class="empty glass">
-        <EmptyState
-          icon="⬇"
-          title="还没有下载器"
-          description="添加 qBittorrent / Transmission / uTorrent / Deluge 后，就能在搜索结果里一键推送种子，并查看实时任务状态。"
-        >
-          <el-button type="primary" @click="openCreate">添加下载器</el-button>
-        </EmptyState>
-      </div>
       </template>
     </div>
 
-    <!-- 新建/编辑对话框 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="460">
-      <el-form label-width="80">
-        <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item label="类型">
-          <el-radio-group v-model="form.type">
-            <el-radio value="qb">
-              <GlassIcon :name="dlMeta('qb').glyph" :from="dlMeta('qb').from" :to="dlMeta('qb').to" :size="22" class="type-badge" /> qBittorrent
-            </el-radio>
-            <el-radio value="tr">
-              <GlassIcon :name="dlMeta('tr').glyph" :from="dlMeta('tr').from" :to="dlMeta('tr').to" :size="22" class="type-badge" /> Transmission
-            </el-radio>
-            <el-radio value="ut">
-              <GlassIcon :name="dlMeta('ut').glyph" :from="dlMeta('ut').from" :to="dlMeta('ut').to" :size="22" class="type-badge" /> uTorrent
-            </el-radio>
-            <el-radio value="dl">
-              <GlassIcon :name="dlMeta('dl').glyph" :from="dlMeta('dl').from" :to="dlMeta('dl').to" :size="22" class="type-badge" /> Deluge
-            </el-radio>
-            <el-radio value="ar">
-              <GlassIcon :name="dlMeta('ar').glyph" :from="dlMeta('ar').from" :to="dlMeta('ar').to" :size="22" class="type-badge" /> Aria2
-            </el-radio>
-            <el-radio value="rt">
-              <GlassIcon :name="dlMeta('rt').glyph" :from="dlMeta('rt').from" :to="dlMeta('rt').to" :size="22" class="type-badge" /> ruTorrent
-            </el-radio>
-            <el-radio value="fl">
-              <GlassIcon :name="dlMeta('fl').glyph" :from="dlMeta('fl').from" :to="dlMeta('fl').to" :size="22" class="type-badge" /> Flood
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="680px" class="downloader-dialog">
+      <div class="dialog-intro">
+        <span class="dialog-kicker">连接配置</span>
+        <p>保存后可立即测试连接；编辑时密码留空会沿用现有凭据。</p>
+      </div>
+      <el-form :model="form" label-position="top" class="config-form">
+        <div class="form-grid">
+          <el-form-item label="显示名称" required>
+            <el-input v-model="form.name" placeholder="例如：家庭 qB" />
+          </el-form-item>
+          <el-form-item label="设为默认">
+            <el-switch v-model="form.is_default" inline-prompt active-text="是" inactive-text="否" />
+          </el-form-item>
+        </div>
+        <el-form-item label="客户端类型" required>
+          <el-radio-group v-model="form.type" class="type-grid">
+            <el-radio v-for="option in typeOptions" :key="option.value" :value="option.value" class="type-option">
+              <GlassIcon :name="option.glyph" :from="option.from" :to="option.to" :size="28" />
+              <span>{{ option.label }}</span>
             </el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="地址"><el-input v-model="form.url" placeholder="http://127.0.0.1:8080" /></el-form-item>
-        <el-form-item label="用户名"><el-input v-model="form.username" /></el-form-item>
-        <el-form-item label="密码">
-          <el-input
-            v-model="form.password"
-            type="password"
-            show-password
-            :placeholder="isEdit ? '留空则不修改' : ''"
-          />
+        <el-form-item label="服务地址" required>
+          <el-input v-model="form.url" placeholder="http://127.0.0.1:8080" autocomplete="url" />
+          <span class="field-hint">填写下载器 Web API 地址，不要带具体接口路径。</span>
         </el-form-item>
-        <el-form-item label="默认"><el-switch v-model="form.is_default" /></el-form-item>
+        <div class="form-grid">
+          <el-form-item label="用户名">
+            <el-input v-model="form.username" autocomplete="username" />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input
+              v-model="form.password"
+              type="password"
+              show-password
+              autocomplete="new-password"
+              :placeholder="isEdit ? '留空则不修改' : '请输入密码'"
+            />
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submit">{{ isEdit ? '保存' : '添加' }}</el-button>
+        <el-button type="primary" @click="submit">{{ isEdit ? '保存配置' : '添加下载器' }}</el-button>
       </template>
     </el-dialog>
 
-    <!-- 任务抽屉（种子管理全功能） -->
     <TorrentDrawer v-if="drawerDl" :downloader="drawerDl" v-model:visible="drawerVisible" />
   </div>
 </template>
 
 <style scoped>
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.title {
-  margin: 4px 0;
-  font-size: 22px;
-  font-weight: 700;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-.card {
-  padding: 18px;
-}
-.row1 {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.dname-wrap {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.dname {
-  font-size: 16px;
-  font-weight: 600;
-}
-.default-chip {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #f39c12, #e74c3c);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: 2px;
-}
-.dtype-tag {
-  font-size: 12px;
-}
-.type-badge {
-  vertical-align: middle;
-  margin-right: 6px;
-}
-.url {
-  margin: 12px 0 14px;
-  font-size: 13px;
-  word-break: break-all;
-}
-.actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-.actions :deep(.el-button) {
-  width: 100%;
-  margin: 0;
-}
-.empty {
-  padding: 40px;
-  text-align: center;
-}
-.error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-.err-text {
-  color: var(--pt-danger);
-  font-size: 14px;
+.page { display: flex; flex-direction: column; gap: 18px; }
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.head-copy { min-width: 0; }
+.eyebrow { display: block; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; margin-bottom: 6px; }
+.title { margin: 0; font-size: 26px; font-weight: 700; }
+.subtitle { margin: 5px 0 0; color: var(--text-muted); font-size: 13px; }
+.overview-strip { display: grid; grid-template-columns: repeat(3, minmax(140px, .7fr)) minmax(220px, 1.4fr); gap: 1px; overflow: hidden; border: 1px solid var(--glass-border, rgba(127,127,127,.18)); border-radius: 8px; background: var(--glass-border, rgba(127,127,127,.18)); }
+.overview-item, .overview-note { min-height: 74px; padding: 14px 16px; background: var(--surface, rgba(255,255,255,.04)); }
+.overview-item { display: grid; grid-template-columns: auto auto; column-gap: 10px; align-content: center; }
+.overview-label { grid-column: 1 / -1; color: var(--text-muted); font-size: 11px; }
+.overview-item strong { font-size: 22px; line-height: 1.1; }
+.overview-caption { align-self: end; padding-bottom: 2px; color: var(--text-muted); font-size: 11px; }
+.status-overview strong { color: var(--pt-success); }
+.overview-note { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.overview-note strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 14px; }
+.card { padding: 18px; min-width: 0; border-radius: 8px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.identity { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.identity-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 650; }
+.default-chip { display: inline-block; padding: 2px 7px; border-radius: 4px; background: rgba(243,156,18,.15); color: var(--pt-warn); font-size: 10px; font-weight: 700; }
+.dtype-tag { font-size: 12px; }
+.connection-row { display: flex; align-items: center; gap: 9px; min-width: 0; margin: 16px 0 18px; }
+.connection-status { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; font-size: 12px; font-weight: 600; }
+.connection-status.connected { color: var(--pt-success); }
+.connection-status.failed { color: var(--pt-danger); }
+.connection-status.idle { color: var(--text-muted); }
+.url { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.card-actions { display: grid; grid-template-columns: 1.15fr 1fr; gap: 8px; }
+.card-actions :deep(.el-button) { width: 100%; margin: 0; }
+.empty { grid-column: 1 / -1; padding: 42px; text-align: center; }
+.error-state { display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--pt-danger); }
+.state-icon { width: 28px; }
+.err-text { font-size: 14px; }
+.dialog-intro { padding: 12px 14px; margin-bottom: 18px; border-left: 3px solid var(--pt-primary-2); background: var(--surface-muted, rgba(127,127,127,.08)); }
+.dialog-kicker { font-size: 12px; font-weight: 700; }
+.dialog-intro p { margin: 4px 0 0; color: var(--text-muted); font-size: 12px; }
+.config-form :deep(.el-form-item) { margin-bottom: 16px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.type-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+.type-option { display: flex; align-items: center; min-height: 58px; padding: 8px 10px; margin: 0 !important; border: 1px solid var(--glass-border, rgba(127,127,127,.2)); border-radius: 8px; background: var(--surface-muted, rgba(127,127,127,.05)); }
+.type-option.is-checked { border-color: var(--pt-primary-2); background: color-mix(in srgb, var(--pt-primary-2) 10%, transparent); }
+.type-option :deep(.el-radio__input) { margin-right: 5px; }
+.type-option :deep(.el-radio__label) { display: inline-flex; align-items: center; gap: 8px; overflow: hidden; padding-left: 0; font-size: 12px; }
+.field-hint { display: block; margin-top: 5px; color: var(--text-muted); font-size: 11px; }
+
+@media (max-width: 720px) {
+  .head { align-items: flex-start; }
+  .overview-strip { grid-template-columns: repeat(2, 1fr); }
+  .overview-note { grid-column: 1 / -1; }
+  .type-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-grid { grid-template-columns: 1fr; gap: 0; }
 }
 </style>

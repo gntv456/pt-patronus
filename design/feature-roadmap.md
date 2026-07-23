@@ -16,7 +16,7 @@
 
 ### 1.2 辅种匹配增强 — P1（去 IYUU 单点 + 提升命中率）
 
-> **进度（2026-07-23）**：无 IYUU token 时 `KeepSeedChain.reseedLocal` 走名称+大小跨站搜索（score≥75）；IYUU 路径保留。IMDb/TMDB ID、数据块、Torznab 仍待。
+> **进度（2026-07-23）**：无 IYUU token 时 `reseedLocal` 走名称+大小跨站搜索（score≥75）；已接 **Torznab**（Jackett/Prowlarr）候选源，标题粗提 IMDb ID 查询并抬分；IYUU 路径在配置 Torznab 时也会补充候选。**仍待**：TMDB ID、torrent 数据块/piece 级匹配。
 - **现状**：IYUU 移植，infohash 跨站匹配，走 IYUU 中心化 API；cookie 下载 .torrent；Reseed 按下载器维度。
 - **差距**：cross-seed 是本地数据驱动，用 Torznab（Jackett/Prowlarr）搜候选 + IMDb/TMDB ID + 数据块匹配（**支持重命名/部分匹配**），不依赖中心化服务。
 - **借鉴**：① 匹配引入 IMDb/TMDB ID + 数据块（提升重命名场景命中率）② 候选来源支持 Torznab，降低 IYUU 单点依赖 ③ 不改 daemon 模式（保持任务驱动）

@@ -8,6 +8,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'home_controller.dart';
 import 'home_drawer.dart';
 import 'home_nav_items.dart';
+import 'command_palette.dart';
 import 'home_sidebar.dart';
 
 /// 登录后的主壳：响应式导航容器（对齐 Docker 端 Web 布局）。
@@ -154,16 +155,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
                 builder: (_, n, _) => Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (_controller.searchIndex != null)
-                      FloatingActionButton(
+                    FloatingActionButton(
                         mini: true,
                         heroTag: 'home-search-fab',
-                        tooltip: '搜索',
+                        tooltip: '命令面板 / 搜索',
                         backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                        onPressed: () => _controller.select(_controller.searchIndex!),
+                        onPressed: () => CommandPaletteSheet.open(context, _controller),
                         child: const Icon(Icons.search),
                       ),
-                    if (_controller.searchIndex != null) const SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     FloatingActionButton(
                       mini: true,
                       heroTag: 'home-notice-fab',

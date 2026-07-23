@@ -315,7 +315,7 @@
 - [x] 侧栏分组可折叠 + 折叠态记忆（localStorage `collapsedGroups`）
 - [x] 收藏置顶 + 最近访问（localStorage `ptp.nav`）
 - [x] ⌘K 命令面板（fuzzy 搜扁平 nav 表 + PT 黑话别名 + 插件/设置 Tab）——移除菜单的安全网，必须先于移除就绪。**顶栏搜索升级为该浮层入口（⌘K 同源，参考 MP `SearchBarDialog`），替代当前图标直跳 /search**
-- [x] Flutter 侧栏同步：P2 定稿菜单 + 折叠/收藏 + 搜索 FAB（AI hidden ✅；⌘K 全屏面板仍待）
+- [x] Flutter 侧栏同步：P2 定稿菜单 + 折叠/收藏 + 搜索 FAB + ⌘K 全屏命令面板（AI hidden ✅）
 
 ### P1 — 结构性页面收敛（建替代触达，3–5 天）
 > 这批做完，B/C/D 类项才有归宿，P2 才能安全移菜单。
@@ -333,7 +333,7 @@
 - [x] 抽屉分组重组 + 折叠 + 收藏置顶
 - [x] **搜索移出抽屉** → FAB 搜索入口（IndexedStack 索引保留）
 - [x] **运行日志进设置**顶栏入口（footer 隐藏 Logs）
-- [ ] ⌘K 搜索面板（移动端全屏命令面板仍待）
+- [x] ⌘K 搜索面板（移动端全屏命令面板 `command_palette.dart`，FAB 入口 + 无匹配回车跳搜索）
 
 ### 影响面
 | 阶段 | 改动域 | 风险 | 回滚 |

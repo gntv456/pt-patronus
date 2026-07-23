@@ -26,6 +26,10 @@ enum _Sort { none, seeders, leechers }
 class SearchPage extends StatefulWidget {
   final String? initialKeyword;
   const SearchPage({super.key, this.initialKeyword});
+
+  /// 命令面板等在 IndexedStack 保活页上注入的待搜关键词。
+  static final ValueNotifier<String?> pendingKeyword = ValueNotifier<String?>(null);
+
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
@@ -50,10 +54,22 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
+    SearchPage.pendingKeyword.addListener(_onPendingKeyword);
     _loadSites();
     if ((widget.initialKeyword ?? '').isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _search());
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _onPendingKeyword());
     }
+  }
+
+  void _onPendingKeyword() {
+    final q = SearchPage.pendingKeyword.value;
+    if (q == null || q.trim().isEmpty) return;
+    SearchPage.pendingKeyword.value = null;
+    if (!mounted) return;
+    _ctrl.text = q.trim();
+    _search();
   }
 
   Future<void> _loadSites() async {
@@ -183,6 +199,7 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   void dispose() {
+    SearchPage.pendingKeyword.removeListener(_onPendingKeyword);
     _ctrl.dispose();
     super.dispose();
   }

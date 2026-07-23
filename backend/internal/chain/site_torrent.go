@@ -3,6 +3,8 @@ package chain
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -45,6 +47,10 @@ func (c *SiteChain) FetchTorrentFile(ctx context.Context, s *models.Site, downlo
 		return nil, "", ErrDelegatedToDownloader
 	}
 	def := c.defFor(s)
+	// sunnypt:下载走 Bearer 直连 api.sunnypt.top(主站 cookie 会话层对后端不可用,须用 accessToken)。
+	if def != nil && def.ID == "sunnypt" {
+		return c.fetchSunnyptTorrentFile(ctx, downloadURL, c.credential(s, def))
+	}
 	// schema 分流：mteam/rousi 的 download URL 自带临时 token/passkey，下载器可直连；
 	// 且 mteam 用 cookie 下载反致错（对标 MP 注释「涉及解析地址的不使用Cookie下载种子，否则MT会出错」）。
 	if def != nil && (def.Schema == "mteam" || def.Schema == "rousi") {
@@ -247,4 +253,75 @@ func appendQuery(rawURL, key, val string) string {
 	q.Set(key, val)
 	u.RawQuery = q.Encode()
 	return u.String()
+}
+
+var (
+	sunnyptDLIDRe   = regexp.MustCompile(`/torrent/([A-Za-z0-9]+)`)
+	sunnyptDLAuthRe = regexp.MustCompile(`AuthSession=([^;\s]+)`)
+)
+
+// fetchSunnyptTorrentFile sunnypt 下载:从 downloadURL(/torrent/<id>)抽 id + 从 cookie 抽
+// accessToken → Bearer GET api.sunnypt.top/api/v1/torrent/download?id=<id> → .torrent 字节。
+// sunnypt 主站 cookie 会话层对后端不可用(shouldClearAuth),故下载必须用 accessToken 直连 api 子域。
+func (c *SiteChain) fetchSunnyptTorrentFile(ctx context.Context, downloadURL, cookie string) ([]byte, string, error) {
+	id := sunnyptDLIDFromURL(downloadURL)
+	if id == "" {
+		return nil, "", ErrDelegatedToDownloader
+	}
+	tok, err := sunnyptDLAccessToken(cookie)
+	if err != nil {
+		return nil, "", ErrCookieInvalid
+	}
+	resp, err := c.hc.GetWithHeaders(ctx,
+		"https://api.sunnypt.top/api/v1/torrent/download?id="+id, "",
+		map[string]string{"Authorization": "Bearer " + tok, "Accept": "application/x-bittorrent"}, true)
+	if err != nil {
+		return nil, "", fmt.Errorf("sunnypt download: %w", err)
+	}
+	if !isTorrentBytes(resp.Body) {
+		if resp.StatusCode == 401 || resp.StatusCode == 403 {
+			return nil, "", ErrCookieInvalid
+		}
+		return nil, "", ErrNotTorrent
+	}
+	return resp.Body, "sunnypt-" + id + ".torrent", nil
+}
+
+func sunnyptDLIDFromURL(u string) string {
+	m := sunnyptDLIDRe.FindStringSubmatch(u)
+	if len(m) > 1 {
+		return m[1]
+	}
+	return ""
+}
+
+// sunnyptDLAccessToken 从 cookie 串解析 AuthSession JWT 内的 accessToken(取最长段,兼容重复/截断)。
+func sunnyptDLAccessToken(cookie string) (string, error) {
+	matches := sunnyptDLAuthRe.FindAllString(cookie, -1)
+	var best string
+	for _, m := range matches {
+		v := strings.TrimPrefix(m, "AuthSession=")
+		if strings.Count(v, ".") == 2 && len(v) > len(best) {
+			best = v
+		}
+	}
+	if best == "" {
+		return "", errors.New("sunnypt: AuthSession cookie 未找到")
+	}
+	parts := strings.Split(best, ".")
+	if len(parts) < 2 {
+		return "", errors.New("sunnypt: AuthSession JWT 段数不足")
+	}
+	pad := strings.Repeat("=", (4-len(parts[1])%4)%4)
+	payload, err := base64.URLEncoding.DecodeString(parts[1] + pad)
+	if err != nil {
+		return "", fmt.Errorf("sunnypt: 解析 AuthSession payload: %w", err)
+	}
+	var p struct {
+		AccessToken string `json:"accessToken"`
+	}
+	if err := json.Unmarshal(payload, &p); err != nil || p.AccessToken == "" {
+		return "", errors.New("sunnypt: AuthSession 内无 accessToken")
+	}
+	return p.AccessToken, nil
 }

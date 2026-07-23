@@ -36,6 +36,9 @@ func (g *GenericJSON) Search(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie, keyword, category string, page int) ([]site.Torrent, error) {
 
 	def = site.EnsureDefaults(def)
+	if def.ID == "sunnypt" {
+		return g.SearchSunnypt(ctx, def, baseURL, cookie, keyword, category, page)
+	}
 	if def.ID == "yemapt" || g.schema == "yemapt" {
 		return g.searchYemaPT(ctx, def, baseURL, cookie, keyword, page)
 	}
@@ -162,6 +165,9 @@ func (g *GenericJSON) searchYemaPT(ctx context.Context, def *site.SiteMetadata, 
 func (g *GenericJSON) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string) (*site.UserInfo, error) {
 	def = site.EnsureDefaults(def)
+	if def.ID == "sunnypt" {
+		return g.FetchSunnyptUserInfo(ctx, def, baseURL, cookie)
+	}
 	if def.ID == "beyondhd" || g.schema == "f3nix" {
 		cookie = parseF3NIXCredential(cookie).Cookie
 	}

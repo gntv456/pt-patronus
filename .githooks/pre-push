@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# pre-push：把回归拦在本地。仅对本次推送里改动的后端 Go 包跑 `go vet`+`go test -short`。
+#
+# 起因：b171568 把体积评分分档从「≤5% 即满分」细化（≤1%=98 / ≤5%=90），
+# 却漏改 TestScoreBoundary 用例，本地积压十几个提交批量推送后才在 CI 暴露。
+# CI 已跑全量 `go test ./... -race`，但本地不跑就攒着推 → 回归溜进远端。
+# 本钩补本地这一环：改动到哪测到哪，几秒~几十秒。
+#
+# 旁路（需要快速迭代时）：
+#   git push --no-verify           # 内建旁路
+#   PTPATRONUS_SKIP_TESTS=1 git push
+#
+# 启用（每个 clone 一次性）：
+#   git config core.hooksPath .githooks
+set -uo pipefail
+
+if [ "${PTPATRONUS_SKIP_TESTS:-0}" = "1" ]; then
+  echo "〔pre-push〕PTPATRONUS_SKIP_TESTS=1，跳过。"
+  exit 0
+fi
+
+ROOT="$(git rev-parse --show-toplevel)"
+BE="$ROOT/backend"
+[ -f "$BE/go.mod" ] || exit 0
+
+# pre-push stdin 每行：<local_ref> <local_sha> <remote_ref> <remote_sha>
+ZERO=0000000000000000000000000000000000000000
+have_go=0
+all_pkgs=""
+while read -r _local_ref local_sha _remote_ref remote_sha; do
+  [ "$local_sha" = "$ZERO" ] && continue          # 删除分支
+  base="$remote_sha"
+  if [ "$base" = "$ZERO" ]; then
+    base="$(git hash-object -t tree /dev/null)"    # 新分支：对比空树
+  fi
+  # 本次推送引入提交里、backend/ 下改动的 *.go
+  files=$(git diff --name-only "$base" "$local_sha" -- backend/ 2>/dev/null | grep '\.go$' || true)
+  [ -z "$files" ] && continue
+  have_go=1
+  # 文件 → 所属包目录（相对 backend/），再补成 ./ 前缀；去重
+  dirs=$(printf '%s\n' "$files" \
+    | sed 's|^backend/||' \
+    | while read -r rel; do [ -n "$rel" ] && dirname "$rel"; done \
+    | sed -e 's|^|./|' -e 's|^\./\.$|./|' \
+    | sort -u)
+  all_pkgs="$all_pkgs $dirs"
+done
+
+if [ "$have_go" = "0" ]; then
+  echo "〔pre-push〕本次推送无后端 Go 改动，跳过。"
+  exit 0
+fi
+
+cd "$BE"
+pkgs=$(echo $all_pkgs | tr ' ' '\n' | sort -u | grep -v '^$' | tr '\n' ' ')
+echo "〔pre-push〕go vet + test 改动包：$pkgs"
+if ! go vet $pkgs; then
+  echo "✗ go vet 失败，推送中止。（旁路：git push --no-verify）" >&2
+  exit 1
+fi
+if ! go test -short -timeout 10m $pkgs; then
+  echo "✗ go test 失败，推送中止。（旁路：git push --no-verify）" >&2
+  exit 1
+fi
+echo "〔pre-push〕✓ 通过"
+exit 0

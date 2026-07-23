@@ -1,4 +1,4 @@
-.PHONY: help dev-backend dev-frontend dev-mobile test test-backend test-frontend test-mobile image clean embed
+.PHONY: help dev-backend dev-frontend dev-mobile test test-backend test-frontend test-mobile image clean embed hooks
 
 help:
 	@echo "PTPatronus 开发/构建命令"
@@ -9,6 +9,7 @@ help:
 	@echo "  make image          构建单镜像(API + 内嵌 Web UI)"
 	@echo "  make up             docker compose 启动"
 	@echo "  make embed-preview  把前端产物拷进后端 web/dist 便于本地 go run 验证内嵌"
+	@echo "  make hooks          启用 .githooks（pre-push 对改动的后端包跑 go vet+test，旁路 --no-verify）"
 
 dev-backend:
 	cd backend && DEFINITIONS_DIR=./definitions go run ./cmd/ptpatronus
@@ -23,6 +24,12 @@ test: test-backend test-frontend test-mobile
 
 test-backend:
 	cd backend && go vet ./... && go test ./...
+
+# 启用共享 git 钩子（pre-push：对推送改动的后端 Go 包跑 go vet + go test -short）。
+# 每个 clone 一次性；旁路用 git push --no-verify 或 PTPATRONUS_SKIP_TESTS=1。
+hooks:
+	git config core.hooksPath .githooks
+	@echo "✓ core.hooksPath=.githooks（pre-push 生效）"
 
 test-frontend:
 	cd frontend && npm run build

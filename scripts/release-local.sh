@@ -22,6 +22,11 @@ mkdir -p "$OUT"
 IMAGE="ghcr.io/gntv456/pt-patronus"
 LDFLAGS="-s -w -X github.com/hxpt/ptpatronus/internal/version.Version=$VERSION"
 
+# 0. 后端测试门槛：发版前必须通过 vet + 全量 -short 测试，防止带病发版
+#    （CI 跑 -race 更严；这里本地去掉 race 换速度，作为发版兜底）。
+echo "=== [0] backend test gate (go vet + go test -short) ==="
+(cd backend && go vet ./... && go test ./... -short -timeout 20m)
+
 # 1. 前端 build（npm install 触发 postinstall 打 element-plus 补丁）+ embed 进后端 web/dist
 echo "=== [1/6] frontend build + embed ==="
 (cd frontend && npm install --no-audit --no-fund && npm run build)

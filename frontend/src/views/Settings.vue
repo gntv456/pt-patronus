@@ -648,7 +648,11 @@ async function openChangelog() {
             </button>
             <button type="button" class="link-card" @click="goPage('cloud')">
               <span class="link-title">云盘账号</span>
-              <span class="link-desc">115 / 夸克 / 123 · STRM 规则</span>
+              <span class="link-desc">账号 / STRM 规则 / 追更（配置）</span>
+            </button>
+            <button type="button" class="link-card" @click="goPage('files')">
+              <span class="link-title">文件浏览 · STRM</span>
+              <span class="link-desc">本地/NAS/云盘统一浏览（§5.2）</span>
             </button>
           </div>
         </div>

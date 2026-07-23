@@ -1,22 +1,32 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWs } from '@/composables/useWs'
+import {
+  loadCollapsedGroups,
+  saveCollapsedGroups,
+  loadFavorites,
+  saveFavorites,
+  toggleFavorite,
+  loadRecent,
+  pushRecent,
+} from '@/composables/useNavPrefs'
 import NotificationCenter from '@/components/NotificationCenter.vue'
 import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
-import { Menu, Moon, Setting, SwitchButton } from '@element-plus/icons-vue'
+import CommandPalette, { type PaletteItem } from '@/components/CommandPalette.vue'
+import { Menu, Moon, Search, Setting, SwitchButton, Star, StarFilled, ArrowRight } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const { connect, disconnect } = useWs()
 const collapsed = ref(false)
 const isMobile = ref(false)
 const mobileNavOpen = ref(false)
 const sidebarCollapsed = computed(() => collapsed.value && !isMobile.value)
+const paletteOpen = ref(false)
 
-// 进入鉴权外壳即连 WS（仪表盘 H&R/Cookie 告警实时推送），离开/登出时断开。
-// 窄屏（分屏 / 平板 / 缩窗）自动折叠侧栏，避免 220px 侧栏挤占内容。
 function syncCollapsed() {
   isMobile.value = window.innerWidth <= 720
   if (isMobile.value) {
@@ -35,24 +45,39 @@ onUnmounted(() => {
   window.removeEventListener('resize', syncCollapsed)
 })
 
-// 主导航按任务域分 4 组：扫读从「20 项线性查找」降到「4 组 × 4-6 项」。
-// 顺序经编排：高频概览在前，内容获取/站点活动居中，基础设施收尾。
-const navGroups = [
+interface NavItem {
+  name: string
+  label: string
+  icon: string
+  from: string
+  to: string
+}
+interface NavGroup {
+  title: string
+  items: NavItem[]
+}
+
+// P0: 4->6 groups (menu-redesign). Keep all items; remove only in P2.
+const navGroups: NavGroup[] = [
   {
     title: '概览',
     items: [
       { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
-      { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
+      { name: 'recommend', label: '推荐', icon: 'recommend', from: '#f7971e', to: '#ff6a00' },
+      { name: 'subscriptions', label: '订阅', icon: 'subscribe', from: '#e100ff', to: '#ff6a00' },
+      { name: 'sites', label: '站点', icon: 'sites', from: '#4285f4', to: '#22d3ee' },
+    ],
+  },
+  {
+    title: '动态',
+    items: [
       { name: 'messages', label: '消息', icon: 'message', from: '#2193b0', to: '#6dd5ed' },
+      { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
     ],
   },
   {
     title: '内容获取',
     items: [
-      { name: 'sites', label: '站点', icon: 'sites', from: '#4285f4', to: '#22d3ee' },
-      { name: 'search', label: '搜索', icon: 'search', from: '#a18cd1', to: '#fbc2eb' },
-      { name: 'recommend', label: '推荐', icon: 'recommend', from: '#f7971e', to: '#ff6a00' },
-      { name: 'subscriptions', label: '订阅', icon: 'subscribe', from: '#e100ff', to: '#ff6a00' },
       { name: 'rss', label: 'RSS', icon: 'rss', from: '#f7971e', to: '#ff6a00' },
       { name: 'transfer', label: '整理', icon: 'files', from: '#6c5ce7', to: '#00b894' },
       { name: 'filter-rules', label: '过滤规则', icon: 'settings', from: '#6c5ce7', to: '#4285f4' },
@@ -62,11 +87,11 @@ const navGroups = [
   {
     title: '站点活动',
     items: [
+      { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
+      { name: 'medal-wall', label: '勋章墙', icon: 'medalwall', from: '#f39c12', to: '#e100ff' },
+      { name: 'harem', label: '后宫', icon: 'harem', from: '#e100ff', to: '#7f00ff' },
       { name: 'assessment', label: '考核', icon: 'assessment', from: '#0f9b0f', to: '#43cea2' },
       { name: 'freeleech', label: '站免', icon: 'freeleech', from: '#11998e', to: '#38ef7d' },
-      { name: 'harem', label: '后宫', icon: 'harem', from: '#e100ff', to: '#7f00ff' },
-      { name: 'medal-wall', label: '勋章墙', icon: 'medalwall', from: '#f39c12', to: '#e100ff' },
-      { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
       { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12' },
       { name: 'brushflow', label: '刷流', icon: 'brushflow', from: '#f7971e', to: '#ff6a00' },
       { name: 'contract', label: '保种契约', icon: 'contract', from: '#6c5ce7', to: '#4285f4' },
@@ -77,21 +102,25 @@ const navGroups = [
     items: [
       { name: 'downloaders', label: '下载器', icon: 'downloaders', from: '#11998e', to: '#38ef7d' },
       { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver', from: '#52b788', to: '#2d6a4f' },
+      { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
+      { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
       { name: 'cloud', label: '云盘·STRM', icon: 'cloud', from: '#4cc9f0', to: '#4361ee' },
       { name: 'subtitle', label: '字幕', icon: 'subtitle', from: '#4361ee', to: '#7209b7' },
       { name: 'trakt', label: 'Trakt', icon: 'trakt', from: '#b5179e', to: '#f72585' },
       { name: 'mediaquality', label: '媒体质量', icon: 'mediaquality', from: '#f12711', to: '#f5af19' },
-      { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
-      { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
-      { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
-      { name: 'plugins', label: '插件', icon: 'plugin', from: '#0ea5e9', to: '#22c55e' },
       { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50' },
       { name: 'doctor', label: '诊断', icon: 'stethoscope', from: '#0f2027', to: '#ef4444' },
     ],
   },
+  {
+    title: '自动化',
+    items: [
+      { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },
+      { name: 'plugins', label: '插件', icon: 'plugin', from: '#0ea5e9', to: '#22c55e' },
+    ],
+  },
 ]
 
-// PT 圈黑话释义：侧栏 hover（title）显示，降低新用户理解门槛。
 const navDesc: Record<string, string> = {
   reseed: '辅种 · 跨站辅助种子',
   transfer: '整理 · 下载完成自动识别重命名硬链刮削入库',
@@ -109,7 +138,144 @@ const navDesc: Record<string, string> = {
   subtitle: '字幕 · ASSRT/OpenSubtitles/SubHD/字幕库 聚合搜索下载',
   trakt: 'Trakt · WatchList 自动同步为本地订阅',
   plugins: '插件 · 事件扩展 / 动作执行',
+  recommend: '推荐 · 热门 / 口碑 / 个性化',
+  subscriptions: '订阅 · 追剧自动推送',
+  sites: '站点 · Cookie / 连通 / 用户数据',
+  rss: 'RSS · 资源源订阅',
+  downloaders: '下载器 · qB/TR/Deluge/Aria2',
+  files: '文件 · 本地/NAS/云盘统一浏览',
+  'nas-server': 'NAS · 设备与服务监控',
+  mediaquality: '媒体质量 · 多评分聚合 + 低分保护',
+  backup: '备份 · 配置导出/导入',
+  doctor: '诊断 · 健康自检',
+  workflow: '工作流 · 可视化自动化',
+  messages: '消息 · 站内信聚合',
+  announcements: '公告 · 站点公告聚合',
 }
+
+const navAliases: Record<string, string[]> = {
+  brushflow: ['刷量', '刷上传', 'auto brush', '刷ratio'],
+  assessment: ['保级', '升级', '考核进度', 'HR考核'],
+  savept: ['HR', 'Hit and Run', '健康', '监护'],
+  contract: ['保种', '做种契约', '分享率告警', 'HR契约'],
+  freeleech: ['FL', '免费', '全站免流', 'free'],
+  reseed: ['cross-seed', '辅种匹配', '跨站辅种'],
+  harem: ['邀请', '邀请树', 'invite'],
+  'medal-wall': ['勋章', 'badge', 'medal'],
+  entertainment: ['小游戏', '游戏', '抽奖'],
+  downloaders: ['qb', 'qBittorrent', 'transmission', '下载'],
+  mediaserver: ['Emby', 'Jellyfin', 'Plex', '媒体库'],
+  cloud: ['115', '夸克', '123', 'STRM', '网盘'],
+  transfer: ['硬链', '整理入库', '刮削'],
+  doctor: ['自检', '诊断', 'health'],
+  backup: ['导出', '导入', '备份恢复'],
+  sites: ['PT站', '站点管理', 'cookie'],
+  assistant: ['AI', '助手', 'chat'],
+  search: ['搜种', '搜索', '种子', '影视'],
+  settings: ['设置', '配置', '系统设置'],
+}
+
+const flatNav = computed(() =>
+  navGroups.flatMap((g) => g.items.map((it) => ({ ...it, group: g.title }))),
+)
+
+const itemByName = computed(() => {
+  const m = new Map<string, NavItem & { group: string }>()
+  for (const it of flatNav.value) m.set(it.name, it)
+  return m
+})
+
+const collapsedGroups = ref<Record<string, boolean>>(loadCollapsedGroups())
+const favorites = ref<string[]>(loadFavorites())
+const recent = ref<string[]>(loadRecent())
+
+function isGroupCollapsed(title: string) {
+  return !!collapsedGroups.value[title]
+}
+function toggleGroup(title: string) {
+  collapsedGroups.value = {
+    ...collapsedGroups.value,
+    [title]: !collapsedGroups.value[title],
+  }
+  saveCollapsedGroups(collapsedGroups.value)
+}
+function isFav(name: string) {
+  return favorites.value.includes(name)
+}
+function onToggleFav(name: string, e: Event) {
+  e.preventDefault()
+  e.stopPropagation()
+  favorites.value = toggleFavorite(name)
+}
+function clearFavorites() {
+  favorites.value = []
+  saveFavorites([])
+}
+
+watch(
+  () => route.name,
+  (name) => {
+    if (typeof name === 'string') recent.value = pushRecent(name)
+  },
+  { immediate: true },
+)
+
+const favoriteItems = computed(() =>
+  favorites.value.map((n) => itemByName.value.get(n)).filter(Boolean) as (NavItem & { group: string })[],
+)
+const recentItems = computed(() =>
+  recent.value
+    .filter((n) => n !== route.name)
+    .map((n) => itemByName.value.get(n))
+    .filter(Boolean)
+    .slice(0, 5) as (NavItem & { group: string })[],
+)
+
+const paletteItems = computed<PaletteItem[]>(() => {
+  const base: PaletteItem[] = flatNav.value.map((it) => ({
+    name: it.name,
+    label: it.label,
+    icon: it.icon,
+    from: it.from,
+    to: it.to,
+    group: it.group,
+    desc: navDesc[it.name],
+    aliases: navAliases[it.name],
+  }))
+  base.push(
+    {
+      name: 'search',
+      label: '搜索工作台',
+      icon: 'search',
+      from: '#a18cd1',
+      to: '#fbc2eb',
+      group: '顶栏',
+      desc: '种子 / 影视聚合搜索',
+      aliases: navAliases.search,
+    },
+    {
+      name: 'assistant',
+      label: 'AI 助手',
+      icon: 'bot',
+      from: '#6c5ce7',
+      to: '#a855f7',
+      group: '顶栏',
+      desc: '自然语言控制全平台',
+      aliases: navAliases.assistant,
+    },
+    {
+      name: 'settings',
+      label: '系统设置',
+      icon: 'settings',
+      from: '#485563',
+      to: '#29323c',
+      group: '底部',
+      desc: '通用 / 通知 / OIDC / AI 网关',
+      aliases: navAliases.settings,
+    },
+  )
+  return base
+})
 
 function toggleTheme() {
   const dark = document.documentElement.classList.toggle('dark')
@@ -135,11 +301,14 @@ function toggleNav() {
 function closeMobileNav() {
   if (isMobile.value) mobileNavOpen.value = false
 }
+
+function openPalette() {
+  paletteOpen.value = true
+}
 </script>
 
 <template>
   <div class="layout">
-    <!-- 左侧固定玻璃导航 -->
     <div v-if="mobileNavOpen" class="mobile-nav-backdrop" @click="closeMobileNav"></div>
     <aside class="sidebar glass" :class="{ collapsed: sidebarCollapsed, 'mobile-open': mobileNavOpen }">
       <div class="brand">
@@ -147,19 +316,81 @@ function closeMobileNav() {
         <span v-if="!sidebarCollapsed" class="brand-name">PTPatronus</span>
       </div>
       <nav class="nav">
-        <div v-for="group in navGroups" :key="group.title" class="nav-group">
-          <span v-if="!sidebarCollapsed" class="nav-group-title">{{ group.title }}</span>
+        <div v-if="!sidebarCollapsed && favoriteItems.length" class="nav-group fav-group">
+          <div class="nav-group-title-row">
+            <span class="nav-group-title">收藏</span>
+            <button type="button" class="group-action" title="清空收藏" @click="clearFavorites">清空</button>
+          </div>
           <router-link
-            v-for="item in group.items"
-            :key="item.name"
+            v-for="item in favoriteItems"
+            :key="'fav-' + item.name"
             :to="{ name: item.name }"
             class="nav-item glass-hover"
             :title="navDesc[item.name] || item.label"
             @click="closeMobileNav()"
           >
             <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
-            <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+            <span class="nav-label">{{ item.label }}</span>
+            <button type="button" class="fav-btn on" title="取消收藏" @click="onToggleFav(item.name, $event)">
+              <el-icon><StarFilled /></el-icon>
+            </button>
           </router-link>
+        </div>
+
+        <div v-if="!sidebarCollapsed && recentItems.length" class="nav-group recent-group">
+          <span class="nav-group-title static">最近</span>
+          <router-link
+            v-for="item in recentItems"
+            :key="'recent-' + item.name"
+            :to="{ name: item.name }"
+            class="nav-item glass-hover recent-item"
+            :title="navDesc[item.name] || item.label"
+            @click="closeMobileNav()"
+          >
+            <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="26" class="nav-icon" />
+            <span class="nav-label">{{ item.label }}</span>
+          </router-link>
+        </div>
+
+        <div v-for="group in navGroups" :key="group.title" class="nav-group">
+          <button
+            v-if="!sidebarCollapsed"
+            type="button"
+            class="nav-group-title-row clickable"
+            :aria-expanded="!isGroupCollapsed(group.title)"
+            @click="toggleGroup(group.title)"
+          >
+            <span class="nav-group-title">{{ group.title }}</span>
+            <el-icon class="group-chevron" :class="{ collapsed: isGroupCollapsed(group.title) }">
+              <ArrowRight />
+            </el-icon>
+          </button>
+          <template v-if="sidebarCollapsed || !isGroupCollapsed(group.title)">
+            <router-link
+              v-for="item in group.items"
+              :key="item.name"
+              :to="{ name: item.name }"
+              class="nav-item glass-hover"
+              :title="navDesc[item.name] || item.label"
+              @click="closeMobileNav()"
+            >
+              <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
+              <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+              <button
+                v-if="!sidebarCollapsed"
+                type="button"
+                class="fav-btn"
+                :class="{ on: isFav(item.name) }"
+                :title="isFav(item.name) ? '取消收藏' : '收藏'"
+                @click="onToggleFav(item.name, $event)"
+              >
+                <el-icon>
+                  <StarFilled v-if="isFav(item.name)" />
+                  <Star v-else />
+                </el-icon>
+              </button>
+            </router-link>
+          </template>
         </div>
       </nav>
       <div class="sidebar-footer">
@@ -168,9 +399,15 @@ function closeMobileNav() {
     </aside>
 
     <div class="main">
-      <!-- 顶部悬浮玻璃栏 -->
       <header class="topbar glass-bar">
-        <button class="icon-btn" :title="isMobile ? '打开导航' : '折叠导航'" aria-label="打开导航" @click="toggleNav"><el-icon><Menu /></el-icon></button>
+        <button class="icon-btn" :title="isMobile ? '打开导航' : '折叠导航'" aria-label="打开导航" @click="toggleNav">
+          <el-icon><Menu /></el-icon>
+        </button>
+        <button class="search-trigger" type="button" title="跳转到… (Ctrl+K)" aria-label="打开命令面板" @click="openPalette">
+          <el-icon><Search /></el-icon>
+          <span v-if="!isMobile" class="search-placeholder">跳转到…</span>
+          <kbd v-if="!isMobile" class="search-kbd">⌘K</kbd>
+        </button>
         <div class="spacer"></div>
         <NotificationCenter />
         <router-link :to="{ name: 'assistant' }" class="ai-btn" title="AI 助手" aria-label="AI 助手">
@@ -198,6 +435,8 @@ function closeMobileNav() {
         <router-view />
       </main>
     </div>
+
+    <CommandPalette v-model="paletteOpen" :items="paletteItems" :recent="recent" />
   </div>
 </template>
 
@@ -221,7 +460,6 @@ function closeMobileNav() {
 .sidebar.collapsed {
   width: 72px;
 }
-/* 收起态：品牌 logo 与导航图标水平居中（去掉左右 padding 偏移 + 弹性居中） */
 .sidebar.collapsed .brand {
   justify-content: center;
   padding: 6px 0 18px;
@@ -248,12 +486,9 @@ function closeMobileNav() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* 占满 brand 与 footer 之间的剩余空间，并在内部滚动，
-     避免导航项过多时溢出侧栏玻璃底图 */
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  /* 隐藏横向滚动条；纵向滚动条样式由 glass.css 全局统一（细 / 悬停才显形） */
   overflow-x: hidden;
   padding-right: 2px;
 }
@@ -263,11 +498,57 @@ function closeMobileNav() {
   gap: 4px;
 }
 .nav-group-title {
-  padding: 6px 14px 2px;
+  padding: 0;
   font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
   opacity: 0.6;
+}
+.nav-group-title.static {
+  display: block;
+  padding: 6px 14px 2px;
+}
+.nav-group-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px 2px 14px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.nav-group-title-row.clickable {
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.nav-group-title-row.clickable:hover {
+  background: rgba(108, 92, 231, 0.08);
+}
+.group-chevron {
+  font-size: 12px;
+  opacity: 0.45;
+  transition: transform 0.15s ease;
+  transform: rotate(90deg);
+}
+.group-chevron.collapsed {
+  transform: rotate(0deg);
+}
+.group-action {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.55;
+  padding: 0 2px;
+}
+.group-action:hover {
+  opacity: 1;
+  color: var(--text-strong);
 }
 .nav-item {
   display: flex;
@@ -278,13 +559,49 @@ function closeMobileNav() {
   text-decoration: none;
   color: var(--text-strong);
   font-size: 15px;
+  position: relative;
 }
 .nav-item.router-link-active {
   background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(66, 133, 244, 0.18));
   font-weight: 600;
 }
+.nav-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .nav-icon {
   font-size: 18px;
+}
+.fav-btn {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+.nav-item:hover .fav-btn,
+.fav-btn.on {
+  opacity: 1;
+}
+.fav-btn.on {
+  color: #f39c12;
+}
+.fav-btn:hover {
+  background: rgba(108, 92, 231, 0.12);
+}
+.recent-item {
+  padding: 6px 14px;
+  font-size: 13px;
+  opacity: 0.85;
 }
 .sidebar-footer {
   margin-top: auto;
@@ -307,9 +624,6 @@ function closeMobileNav() {
   min-width: 0;
 }
 .topbar {
-  /* backdrop-filter(glass-bar)已使 topbar 成为层叠上下文；
-     显式正 z-index 让它高于内容区里所有 z-index:auto 的 .glass 卡片，
-     否则通知中心下拉面板会被下方卡片覆盖。 */
   position: relative;
   z-index: 100;
   display: flex;
@@ -332,6 +646,36 @@ function closeMobileNav() {
 .icon-btn:hover {
   background: rgba(108, 92, 231, 0.12);
 }
+.search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(108, 92, 231, 0.06);
+  border: 1px solid rgba(108, 92, 231, 0.12);
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  min-width: 0;
+  font-size: 13px;
+}
+.search-trigger:hover {
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--text-strong);
+}
+.search-placeholder {
+  opacity: 0.75;
+}
+.search-kbd {
+  font-family: inherit;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(108, 92, 231, 0.1);
+  border: 1px solid rgba(108, 92, 231, 0.14);
+  color: var(--text-muted);
+  margin-left: 4px;
+}
 .user-trigger {
   display: flex;
   align-items: center;
@@ -351,7 +695,6 @@ function closeMobileNav() {
   font-size: 12px;
   opacity: 0.6;
 }
-/* 顶栏 AI 助手常驻入口（侧栏已移除，见 design/menu-redesign.md §3） */
 .ai-btn {
   display: inline-flex;
   align-items: center;
@@ -376,7 +719,6 @@ function closeMobileNav() {
 .mobile-nav-backdrop {
   display: none;
 }
-/* 窄屏（分屏 / 平板 / 缩窗）：收紧外边距；侧栏已由 syncCollapsed 自动折叠 */
 @media (max-width: 720px) {
   .layout {
     display: block;
@@ -411,6 +753,9 @@ function closeMobileNav() {
   .topbar {
     padding: 8px 10px;
     min-height: 36px;
+  }
+  .search-trigger {
+    padding: 6px 8px;
   }
   .user-trigger {
     padding: 5px 6px;

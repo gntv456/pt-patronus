@@ -124,3 +124,78 @@ func TestBFShareLimits(t *testing.T) {
 		t.Errorf("both want 3/120, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
 	}
 }
+
+
+func TestBFMatchRuleEnhanced(t *testing.T) {
+	now := time.Now()
+	base := downloader.Torrent{
+		Ratio: 2.5, Uploaded: 10 << 20, UPRate: 100, Progress: 1,
+		AddedAt: now.Add(-3 * time.Hour), CompletedAt: now.Add(-2 * time.Hour),
+		LastActivity: now.Add(-90 * time.Minute), State: "uploading",
+	}
+
+	// or 默认：ratio 命中
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteRatio: 2}, &base, now); r == "" {
+		t.Fatal("or ratio should hit")
+	}
+	// and：ratio 命中但 seed hours 未到 → 不删
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteRatio: 2, DeleteSeedHours: 10, DeleteLogic: "and"}, &base, now); r != "" {
+		t.Fatalf("and should miss, got %q", r)
+	}
+	// and：两项都命中
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteRatio: 2, DeleteSeedHours: 1, DeleteLogic: "and"}, &base, now); r == "" {
+		t.Fatal("and both should hit")
+	}
+	// 低上传速度
+	slow := base
+	slow.UPRate = 500 // 0.5 KB/s
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteMinUPRateKB: 2}, &slow, now); r == "" {
+		t.Fatal("min uprate should hit")
+	}
+	// 下载中不因低速误杀
+	dl := base
+	dl.Progress = 0.5
+	dl.CompletedAt = time.Time{}
+	dl.State = "downloading"
+	dl.UPRate = 0
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteMinUPRateKB: 2}, &dl, now); r != "" {
+		t.Fatalf("downloading should not hit min uprate, got %q", r)
+	}
+	// 不活跃
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteInactiveHours: 1}, &base, now); r == "" {
+		t.Fatal("inactive should hit")
+	}
+	// 表达式阶梯
+	exprTask := &models.BrushFlowTask{DeleteRuleExpr: "(ratio>=1 && seed_hours>=24) || ratio>=2"}
+	if r := bfMatchRule(exprTask, &base, now); r == "" {
+		t.Fatal("expr ratio>=2 should hit")
+	}
+	low := base
+	low.Ratio = 1.2
+	low.AddedAt = now.Add(-2 * time.Hour)
+	if r := bfMatchRule(exprTask, &low, now); r != "" {
+		t.Fatalf("expr should miss for young low ratio, got %q", r)
+	}
+	old := base
+	old.Ratio = 1.2
+	old.AddedAt = now.Add(-30 * time.Hour)
+	if r := bfMatchRule(exprTask, &old, now); r == "" {
+		t.Fatal("expr ladder old+ratio>=1 should hit")
+	}
+}
+
+func TestBFEvalExpr(t *testing.T) {
+	now := time.Now()
+	tr := &downloader.Torrent{Ratio: 1.5, Uploaded: 2048 << 20, UPRate: 3 * 1024, AddedAt: now.Add(-10 * time.Hour)}
+	ok, _, err := bfEvalExpr("ratio>=1 && upload_mb>=1000", tr, now)
+	if err != nil || !ok {
+		t.Fatalf("want true, ok=%v err=%v", ok, err)
+	}
+	ok, _, err = bfEvalExpr("ratio>=3 || up_rate_kb<1", tr, now)
+	if err != nil || ok {
+		t.Fatalf("want false, ok=%v err=%v", ok, err)
+	}
+	if _, _, err := bfEvalExpr("ratio>=", tr, now); err == nil {
+		t.Fatal("broken expr should error")
+	}
+}

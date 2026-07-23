@@ -166,17 +166,44 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 	var toDelete []string
 	var uploadSum int64
 	var taskHashes []string // 本任务全部种子 hash（用于设下载器原生 share limit）
+	var kept []downloader.Torrent // 本任务未命中删种规则的种子（供体积淘汰）
 	now := time.Now()
 	for _, tr := range list {
 		if !bfHasTag(tr.Tags, tag) {
 			continue
 		}
 		taskHashes = append(taskHashes, tr.Hash)
-		if bfMatchRule(task, &tr, now) == "" {
+		if reason := bfMatchRule(task, &tr, now); reason != "" {
+			toDelete = append(toDelete, tr.Hash)
+			uploadSum += tr.Uploaded
 			continue
 		}
-		toDelete = append(toDelete, tr.Hash)
-		uploadSum += tr.Uploaded
+		kept = append(kept, tr)
+	}
+	// 总体积上限：超出后按「上传最慢 → 最久未活跃」淘汰（对标 autoremove free-space/max-size 思路）
+	if task.MaxTotalSizeGB > 0 {
+		limit := int64(task.MaxTotalSizeGB * float64(1<<30))
+		var total int64
+		for _, tr := range kept {
+			total += tr.Size
+		}
+		if total > limit {
+			sort.SliceStable(kept, func(i, j int) bool {
+				if kept[i].UPRate != kept[j].UPRate {
+					return kept[i].UPRate < kept[j].UPRate
+				}
+				li, lj := bfLastActive(kept[i]), bfLastActive(kept[j])
+				return li.Before(lj)
+			})
+			for _, tr := range kept {
+				if total <= limit {
+					break
+				}
+				toDelete = append(toDelete, tr.Hash)
+				uploadSum += tr.Uploaded
+				total -= tr.Size
+			}
+		}
 	}
 	// 原生 share limit：开启时对任务种子设下载器原生「达标即暂停」（即时保护，补充应用层扫删）。
 	// SetShareLimits 幂等（重复设同值无害），每轮 sweep 设一次；待删种子也设（马上删除，无害）。
@@ -208,20 +235,123 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 
 // ---- 纯函数（bf 前缀避免与 chain 包其他工具冲突）----
 
-// bfMatchRule 返回非空原因=应删；空=不删。任一规则命中即删。
+// bfMatchRule 返回非空原因=应删；空=不删。
+// 优先级：DeleteRuleExpr（布尔表达式）> DeleteLogic 组合基础条件。
+// DeleteLogic=or（默认）任一已配置条件命中即删；=and 则全部已配置条件都命中才删。
+// 全 0 / 空表达式 = 永不因规则删（体积淘汰仍可删）。
 func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Time) string {
-	if task.DeleteRatio > 0 && tr.Ratio >= task.DeleteRatio {
-		return fmt.Sprintf("分享率 %.2f≥%.2f", tr.Ratio, task.DeleteRatio)
+	if expr := strings.TrimSpace(task.DeleteRuleExpr); expr != "" {
+		ok, reason, err := bfEvalExpr(expr, tr, now)
+		if err != nil {
+			slog.Warn("brushflow delete expr error", "expr", expr, "err", err)
+			return ""
+		}
+		if ok {
+			return reason
+		}
+		return ""
 	}
-	if task.DeleteSeedHours > 0 && !tr.AddedAt.IsZero() {
-		if h := now.Sub(tr.AddedAt).Hours(); h >= task.DeleteSeedHours {
-			return fmt.Sprintf("做种 %.1fh≥%.1fh", h, task.DeleteSeedHours)
+
+	type cond struct {
+		active bool
+		hit    bool
+		reason string
+	}
+	var cs []cond
+
+	// ratio
+	if task.DeleteRatio > 0 {
+		hit := tr.Ratio >= task.DeleteRatio
+		cs = append(cs, cond{true, hit, fmt.Sprintf("分享率 %.2f≥%.2f", tr.Ratio, task.DeleteRatio)})
+	}
+	// seed hours（加入至今）
+	if task.DeleteSeedHours > 0 {
+		hit := false
+		reason := ""
+		if !tr.AddedAt.IsZero() {
+			h := now.Sub(tr.AddedAt).Hours()
+			hit = h >= task.DeleteSeedHours
+			reason = fmt.Sprintf("做种 %.1fh≥%.1fh", h, task.DeleteSeedHours)
+		}
+		cs = append(cs, cond{true, hit, reason})
+	}
+	// upload volume
+	if task.DeleteUploadMB > 0 {
+		hit := tr.Uploaded >= task.DeleteUploadMB<<20
+		cs = append(cs, cond{true, hit, fmt.Sprintf("上传 %s≥%dMB", bfFormatBytes(tr.Uploaded), task.DeleteUploadMB)})
+	}
+	// min upload speed（仅对已完成/做种中的种子；下载中不因低速误杀）
+	if task.DeleteMinUPRateKB > 0 {
+		hit := false
+		reason := ""
+		if bfIsSeedingDone(tr) {
+			thr := task.DeleteMinUPRateKB << 10
+			hit = tr.UPRate < thr
+			reason = fmt.Sprintf("上传速度 %dB/s<%dKB/s", tr.UPRate, task.DeleteMinUPRateKB)
+		}
+		cs = append(cs, cond{true, hit, reason})
+	}
+	// inactive
+	if task.DeleteInactiveHours > 0 {
+		hit := false
+		reason := ""
+		if last := bfLastActive(*tr); !last.IsZero() {
+			h := now.Sub(last).Hours()
+			hit = h >= task.DeleteInactiveHours
+			reason = fmt.Sprintf("不活跃 %.1fh≥%.1fh", h, task.DeleteInactiveHours)
+		}
+		cs = append(cs, cond{true, hit, reason})
+	}
+
+	if len(cs) == 0 {
+		return ""
+	}
+	logic := strings.ToLower(strings.TrimSpace(task.DeleteLogic))
+	if logic == "and" {
+		var reasons []string
+		for _, c := range cs {
+			if !c.hit {
+				return ""
+			}
+			if c.reason != "" {
+				reasons = append(reasons, c.reason)
+			}
+		}
+		return strings.Join(reasons, " & ")
+	}
+	// default: or
+	for _, c := range cs {
+		if c.hit && c.reason != "" {
+			return c.reason
 		}
 	}
-	if task.DeleteUploadMB > 0 && tr.Uploaded >= task.DeleteUploadMB<<20 {
-		return fmt.Sprintf("上传 %s≥%dMB", bfFormatBytes(tr.Uploaded), task.DeleteUploadMB)
-	}
 	return ""
+}
+
+// bfIsSeedingDone 是否视为「已完成下载、进入做种阶段」（低上传速度规则仅在此时生效）。
+func bfIsSeedingDone(tr *downloader.Torrent) bool {
+	if tr.Progress >= 0.999 {
+		return true
+	}
+	if !tr.CompletedAt.IsZero() {
+		return true
+	}
+	switch strings.ToLower(tr.State) {
+	case "uploading", "stalledup", "forcedup", "queuedup", "pausedup", "stoppedup", "seeding", "seed":
+		return true
+	}
+	return false
+}
+
+// bfLastActive 最后活跃时间：优先 LastActivity → CompletedAt → AddedAt。
+func bfLastActive(tr downloader.Torrent) time.Time {
+	if !tr.LastActivity.IsZero() {
+		return tr.LastActivity
+	}
+	if !tr.CompletedAt.IsZero() {
+		return tr.CompletedAt
+	}
+	return tr.AddedAt
 }
 
 // bfShareLimits 把任务的删除阈值（DeleteRatio/DeleteSeedHours）映射为下载器原生 ShareLimits。
@@ -348,4 +478,212 @@ func bfFormatBytes(n int64) string {
 	default:
 		return fmt.Sprintf("%d B", n)
 	}
+}
+
+
+// ---- 布尔表达式（阶梯策略）----
+// 语法：ratio / seed_hours / upload_mb / up_rate_kb / inactive_hours 与数字比较，支持 && || () >= <= > < ==
+// 例：(ratio>=1 && seed_hours>=24) || ratio>=3 || upload_mb>=5000
+
+func bfEvalExpr(expr string, tr *downloader.Torrent, now time.Time) (bool, string, error) {
+	vals := bfExprVars(tr, now)
+	parser := &bfExprParser{s: expr, vals: vals}
+	ok, err := parser.parseOr()
+	if err != nil {
+		return false, "", err
+	}
+	parser.skip()
+	if parser.pos < len(parser.s) {
+		return false, "", fmt.Errorf("多余输入 @%d", parser.pos)
+	}
+	if !ok {
+		return false, "", nil
+	}
+	return true, "表达式:" + expr, nil
+}
+
+func bfExprVars(tr *downloader.Torrent, now time.Time) map[string]float64 {
+	seedH := 0.0
+	if !tr.AddedAt.IsZero() {
+		seedH = now.Sub(tr.AddedAt).Hours()
+	}
+	inactiveH := 0.0
+	if last := bfLastActive(*tr); !last.IsZero() {
+		inactiveH = now.Sub(last).Hours()
+	}
+	return map[string]float64{
+		"ratio":          tr.Ratio,
+		"seed_hours":     seedH,
+		"upload_mb":      float64(tr.Uploaded) / float64(1<<20),
+		"up_rate_kb":     float64(tr.UPRate) / 1024.0,
+		"inactive_hours": inactiveH,
+	}
+}
+
+type bfExprParser struct {
+	s    string
+	pos  int
+	vals map[string]float64
+}
+
+func (p *bfExprParser) skip() {
+	for p.pos < len(p.s) {
+		switch p.s[p.pos] {
+		case ' ', '\t', '\n', '\r':
+			p.pos++
+		default:
+			return
+		}
+	}
+}
+
+func (p *bfExprParser) parseOr() (bool, error) {
+	left, err := p.parseAnd()
+	if err != nil {
+		return false, err
+	}
+	for {
+		p.skip()
+		if p.pos+1 < len(p.s) && p.s[p.pos:p.pos+2] == "||" {
+			p.pos += 2
+			right, err := p.parseAnd()
+			if err != nil {
+				return false, err
+			}
+			left = left || right
+			continue
+		}
+		return left, nil
+	}
+}
+
+func (p *bfExprParser) parseAnd() (bool, error) {
+	left, err := p.parsePrimary()
+	if err != nil {
+		return false, err
+	}
+	for {
+		p.skip()
+		if p.pos+1 < len(p.s) && p.s[p.pos:p.pos+2] == "&&" {
+			p.pos += 2
+			right, err := p.parsePrimary()
+			if err != nil {
+				return false, err
+			}
+			left = left && right
+			continue
+		}
+		return left, nil
+	}
+}
+
+func (p *bfExprParser) parsePrimary() (bool, error) {
+	p.skip()
+	if p.pos >= len(p.s) {
+		return false, fmt.Errorf("意外结束")
+	}
+	if p.s[p.pos] == '(' {
+		p.pos++
+		v, err := p.parseOr()
+		if err != nil {
+			return false, err
+		}
+		p.skip()
+		if p.pos >= len(p.s) || p.s[p.pos] != ')' {
+			return false, fmt.Errorf("缺少 )")
+		}
+		p.pos++
+		return v, nil
+	}
+	ident, err := p.readIdent()
+	if err != nil {
+		return false, err
+	}
+	val, ok := p.vals[ident]
+	if !ok {
+		return false, fmt.Errorf("未知变量 %s", ident)
+	}
+	p.skip()
+	op, err := p.readOp()
+	if err != nil {
+		return false, err
+	}
+	p.skip()
+	num, err := p.readNumber()
+	if err != nil {
+		return false, err
+	}
+	switch op {
+	case ">=":
+		return val >= num, nil
+	case "<=":
+		return val <= num, nil
+	case ">":
+		return val > num, nil
+	case "<":
+		return val < num, nil
+	case "==", "=":
+		return val == num, nil
+	default:
+		return false, fmt.Errorf("未知运算符 %s", op)
+	}
+}
+
+func (p *bfExprParser) readIdent() (string, error) {
+	p.skip()
+	start := p.pos
+	for p.pos < len(p.s) {
+		c := p.s[p.pos]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_' || (c >= '0' && c <= '9' && p.pos > start) {
+			p.pos++
+			continue
+		}
+		break
+	}
+	if p.pos == start {
+		return "", fmt.Errorf("期望变量名 @%d", p.pos)
+	}
+	return p.s[start:p.pos], nil
+}
+
+func (p *bfExprParser) readOp() (string, error) {
+	p.skip()
+	if p.pos >= len(p.s) {
+		return "", fmt.Errorf("期望运算符")
+	}
+	if p.pos+1 < len(p.s) {
+		two := p.s[p.pos : p.pos+2]
+		switch two {
+		case ">=", "<=", "==":
+			p.pos += 2
+			return two, nil
+		}
+	}
+	switch p.s[p.pos] {
+	case '>', '<', '=':
+		op := string(p.s[p.pos])
+		p.pos++
+		return op, nil
+	}
+	return "", fmt.Errorf("期望运算符 @%d", p.pos)
+}
+
+func (p *bfExprParser) readNumber() (float64, error) {
+	p.skip()
+	start := p.pos
+	if p.pos < len(p.s) && (p.s[p.pos] == '+' || p.s[p.pos] == '-') {
+		p.pos++
+	}
+	for p.pos < len(p.s) {
+		c := p.s[p.pos]
+		if (c >= '0' && c <= '9') || c == '.' {
+			p.pos++
+			continue
+		}
+		break
+	}
+	if p.pos == start {
+		return 0, fmt.Errorf("期望数字 @%d", p.pos)
+	}
+	return strconv.ParseFloat(p.s[start:p.pos], 64)
 }

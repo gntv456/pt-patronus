@@ -14,6 +14,7 @@ import DashboardRealtimeCard from '@/components/dashboard/DashboardRealtimeCard.
 import DashboardResourceCard from '@/components/dashboard/DashboardResourceCard.vue'
 import DashboardAutomationCard from '@/components/dashboard/DashboardAutomationCard.vue'
 import DashboardAICard from '@/components/dashboard/DashboardAICard.vue'
+import DashboardTaskCards from '@/components/dashboard/DashboardTaskCards.vue'
 import DashboardActivityTimeline from '@/components/dashboard/DashboardActivityTimeline.vue'
 import DashboardRingChart, { type RingSegment } from '@/components/dashboard/DashboardRingChart.vue'
 
@@ -61,6 +62,7 @@ const connectivityLoading = ref(false)
 // 区③④⑥ 组件 ref：syncStats 完成后触发刷新自动化/AI/时间线数据。
 const autoCard = ref<{ refresh: () => Promise<void> } | null>(null)
 const aiCard = ref<{ refresh: () => Promise<void> } | null>(null)
+const taskCards = ref<{ refresh: () => Promise<void> } | null>(null)
 const timelineCard = ref<{ refresh: () => Promise<void> } | null>(null)
 
 // WS 实时告警：H&R 危险种子 / Cookie 失效站点（后端 hr-alert / cookie-alert 推送）；
@@ -316,6 +318,7 @@ async function syncStats() {
     // 站点统计刷新后，联动刷新自动化/AI/活动时间线卡片。
     autoCard.value?.refresh()
     aiCard.value?.refresh()
+  taskCards.value?.refresh()
     timelineCard.value?.refresh()
   }
 }
@@ -599,6 +602,13 @@ onMounted(load)
       </section>
       <section class="ops-surface zone-card"><DashboardRealtimeCard /></section>
       <section class="ops-surface zone-card"><DashboardResourceCard /></section>
+    </div>
+
+    <!-- 区②.5 任务卡片（menu-redesign §5.4 D 类全局总览入口） -->
+    <div class="zone">
+      <section class="ops-surface zone-card">
+        <DashboardTaskCards ref="taskCards" />
+      </section>
     </div>
 
     <!-- 区③④ 自动化运行 · AI 用量与成本 -->

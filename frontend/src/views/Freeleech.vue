@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import { safeUrl } from '@/utils/safeUrl'
 import { ElMessage } from 'element-plus'
@@ -48,7 +49,10 @@ const summary = computed(() => {
 // 顶层筛选：点 chip 按状态过滤站点卡片；再点同一个 = 取消（回 all）。
 const filter = ref<FilterKey>('all')
 // 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。UI 用 SiteFilterDialog 组件。
-const selectedSiteIds = ref<number[]>([])
+const route = useRoute()
+const selectedSiteIds = ref<number[]>(
+  route.query.site_id ? [Number(route.query.site_id)].filter((n) => Number.isFinite(n) && n > 0) : [],
+)
 const sites = computed(() => {
   const m = new Map<number, string>()
   for (const r of results.value) if (!m.has(r.site_id)) m.set(r.site_id, r.site_name)

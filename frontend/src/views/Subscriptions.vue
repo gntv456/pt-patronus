@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subscribe'
 import { mediaApi } from '@/api/media'
 import { siteApi } from '@/api/site'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
+import RssView from '@/views/Rss.vue'
 
 // 订阅列表：展示订阅状态，支持手动检查 / 暂停-恢复 / 改分辨率 / 删除。
+const route = useRoute()
+const router = useRouter()
+const mainTab = ref(String(route.query.tab || 'media'))
 const list = ref<Subscription[]>([])
 const loading = ref(false)
 const checking = ref<number | null>(null)
@@ -232,6 +237,18 @@ function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '—'
 }
 
+watch(
+  () => route.query.tab,
+  (v) => {
+    mainTab.value = String(v || 'media')
+  },
+)
+function onMainTab(name: string | number) {
+  const n = String(name)
+  mainTab.value = n
+  router.replace({ name: 'subscriptions', query: n === 'media' ? {} : { tab: n } })
+}
+
 onMounted(() => {
   load()
   loadSites()
@@ -249,7 +266,10 @@ onMounted(() => {
       <el-button class="global-btn" @click="openGlobal">⚙ 全局订阅设置</el-button>
     </div>
 
-    <el-dialog v-model="globalOpen" title="全局订阅默认设置" width="540px">
+    
+    <el-tabs v-model="mainTab" class="page-tabs glass" @tab-change="onMainTab">
+      <el-tab-pane label="追剧订阅" name="media">
+<el-dialog v-model="globalOpen" title="全局订阅默认设置" width="540px">
       <div class="text-muted small" style="margin-bottom: 12px;">
         未单独设置某项的订阅将使用此处的默认值（改后立即对所有未自定义订阅生效）。
       </div>
@@ -399,6 +419,13 @@ onMounted(() => {
         </router-link>
       </EmptyState>
     </div>
+      </el-tab-pane>
+      <el-tab-pane label="RSS" name="rss" lazy>
+        <div class="rss-embed">
+          <RssView />
+        </div>
+      </el-tab-pane>
+    </el-tabs>
   </div>
 </template>
 
@@ -455,4 +482,7 @@ onMounted(() => {
   .sub { gap: 12px; padding: 12px; }
   .poster { width: 76px; }
 }
+.page-tabs { margin-top: 4px; padding: 4px 10px 12px; }
+.rss-embed :deep(.page) { padding: 0; }
+.rss-embed :deep(.title) { font-size: 16px; }
 </style>

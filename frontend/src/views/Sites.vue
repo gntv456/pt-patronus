@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import {
   siteApi,
@@ -18,6 +19,7 @@ import SiteOperationsMatrix from '@/components/sites/SiteOperationsMatrix.vue'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
 const auth = useAuthStore()
+const router = useRouter()
 // WS 推送的 cookie 失效站点名集合，用于在站点表上直接标红（而非只在仪表盘卡片提示）。
 const { cookieAlerts } = useWs()
 
@@ -153,6 +155,10 @@ async function openCreate() {
   definitionQuery.value = ''
   form.value = { name: '', definition: '', base_url: '', cookie: '', api_key: '', username: '', password: '', is_active: true }
   dialogVisible.value = true
+}
+
+function openDetail(s: Site) {
+  router.push({ name: 'site-detail', params: { id: String(s.id) } })
 }
 
 function openEdit(s: Site) {
@@ -414,6 +420,7 @@ onMounted(load)
       :can-delete="auth.isAdmin"
       @create="openCreate"
       @edit="openEdit"
+      @detail="openDetail"
       @remove="removeSite"
       @batch-remove="batchRemoveSites"
       @test="testSite"

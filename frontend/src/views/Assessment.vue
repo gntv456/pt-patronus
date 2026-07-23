@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { assessmentApi, type AssessmentCard } from '@/api/assessment'
@@ -31,7 +32,10 @@ async function load(refresh = false) {
 }
 
 // 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。
-const selectedSiteIds = ref<number[]>([])
+const route = useRoute()
+const selectedSiteIds = ref<number[]>(
+  route.query.site_id ? [Number(route.query.site_id)].filter((n) => Number.isFinite(n) && n > 0) : [],
+)
 const sites = computed(() => {
   const m = new Map<number, string>()
   for (const c of cards.value) if (!m.has(c.site_id)) m.set(c.site_id, c.site_name)

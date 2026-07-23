@@ -39,6 +39,7 @@ const emit = defineEmits<{
   batchRemove: [sites: Site[]]
   test: [site: Site]
   checkin: [site: Site]
+  detail: [site: Site]
 }>()
 
 const route = useRoute()
@@ -308,6 +309,15 @@ function showConnectivityReason(row: SiteStatItem) {
   })
 }
 
+function openDetail(row: SiteStatItem) {
+  const site = siteConfig(row.site_id)
+  if (!site) {
+    ElMessage.warning('该统计记录没有对应的站点配置')
+    return
+  }
+  emit('detail', site)
+}
+
 function handleRowCommand(command: string, row: SiteStatItem) {
   if (command === 'refresh') {
     void syncOne(row)
@@ -322,7 +332,8 @@ function handleRowCommand(command: string, row: SiteStatItem) {
     ElMessage.warning('该统计记录没有对应的站点配置')
     return
   }
-  if (command === 'checkin') emit('checkin', site)
+  if (command === 'detail') emit('detail', site)
+  else if (command === 'checkin') emit('checkin', site)
   else if (command === 'test') emit('test', site)
   else if (command === 'edit') emit('edit', site)
   else if (command === 'remove') emit('remove', site)
@@ -506,31 +517,38 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
 
       <el-table-column v-if="matrixLayout === 'compact'" label="站点 / 状态" width="145" fixed="left">
         <template #default="{ row }">
-          <div class="site-identity is-compact">
+          <div class="site-identity is-compact site-name-btn" role="button" @click="openDetail(row as SiteStatItem)">
             <SiteFavicon :name="row.site_name" :base-url="siteBaseUrl(row.site_id)" :size="26" />
             <span>
               <b>{{ row.site_name }}</b>
               <SiteConnectivityStatusBadge
                 :status="connectivity[row.site_id]"
                 :loading="connectivityLoading"
-                @reason="showConnectivityReason(row as SiteStatItem)"
+                @reason.stop="showConnectivityReason(row as SiteStatItem)"
               />
             </span>
           </div>
         </template>
       </el-table-column>
-      <el-table-column v-else prop="site_name" label="站点" :width="matrixLayout === 'wide' ? 150 : 120" fixed="left" sortable="custom">
+            <el-table-column
+        v-if="matrixLayout !== 'compact'"
+        prop="site_name"
+        label="站点"
+        min-width="160"
+        fixed="left"
+        sortable="custom"
+      >
         <template #default="{ row }">
-          <div class="site-identity">
+          <button type="button" class="site-identity site-name-btn" @click="openDetail(row as SiteStatItem)">
             <SiteFavicon :name="row.site_name" :base-url="siteBaseUrl(row.site_id)" :size="26" />
             <span>
               <b>{{ row.site_name }}</b>
               <small>{{ siteBaseUrl(row.site_id).replace(/^https?:\/\//, '').replace(/\/$/, '') || '未配置地址' }}</small>
             </span>
-          </div>
+          </button>
         </template>
       </el-table-column>
-      <el-table-column
+<el-table-column
         v-if="matrixLayout !== 'compact'"
         prop="status"
         label="状态"
@@ -680,7 +698,8 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
               </button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="refresh" :disabled="refreshing.has(row.site_id)">
+                  <el-dropdown-item command="detail">站点详情</el-dropdown-item>
+                <el-dropdown-item command="refresh" :disabled="refreshing.has(row.site_id)">
                     {{ refreshing.has(row.site_id) ? '刷新中…' : '刷新统计' }}
                   </el-dropdown-item>
                   <el-dropdown-item
@@ -970,4 +989,19 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
   :deep(.matrix-table td.el-table-fixed-column--left) { background: transparent !important; }
   :deep(.matrix-table th.el-table-fixed-column--left) { background: rgba(148, 163, 184, 0.08) !important; }
 }
+.site-name-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-strong);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  width: 100%;
+  text-align: left;
+}
+.site-name-btn:hover { color: #6c5ce7; }
 </style>

@@ -40,6 +40,7 @@ type Torrent struct {
 	FirstLastPiece   bool      `json:"first_last_piece"`   // 首尾优先（qB）
 	Priority         int       `json:"priority"`           // 队列优先级（qB：0=最高）
 	CompletedAt      time.Time `json:"completed_at"`       // 完成时间（零值=未完成）
+	LastActivity     time.Time `json:"last_activity"`      // 最后活跃（qB last_activity；零值=未知）
 }
 
 // GlobalStats 是下载器全局速率统计。

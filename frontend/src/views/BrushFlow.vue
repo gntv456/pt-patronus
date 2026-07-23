@@ -37,7 +37,7 @@ function defaultForm(): Partial<BrushFlowTask> {
     name: '', site_id: 0, downloader_id: 0, enabled: true,
     keyword: '', category: '', min_size_mb: 0, max_size_mb: 0,
     min_seeders: 0, max_seeders: 0, free_only: false, paused: false,
-    delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false, use_share_limit: false,
+    delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false, use_share_limit: false, delete_min_up_rate_kb: 0, delete_inactive_hours: 0, delete_logic: 'or', delete_rule_expr: '', max_total_size_gb: 0,
     max_seeds: 10, save_path: '', category_dl: '', filter_groups: '',
   }
 }
@@ -52,7 +52,13 @@ function openCreate() {
 
 function openEdit(t: BrushFlowTask) {
   editing.value = t
-  form.value = { ...t }
+  // 旧任务缺省新字段时回落 defaultForm，避免 el-radio 空值
+  form.value = {
+    ...defaultForm(),
+    ...t,
+    delete_logic: t.delete_logic || 'or',
+    delete_rule_expr: t.delete_rule_expr || '',
+  }
   showForm.value = true
 }
 
@@ -238,10 +244,33 @@ onMounted(() => {
             <el-option v-for="g in filterGroups" :key="g" :label="g" :value="g" />
           </el-select>
         </el-form-item>
-        <el-divider content-position="left">删除规则（满足任一；全 0 = 永不自动删）</el-divider>
+        <el-divider content-position="left">删除规则（全 0 / 空表达式 = 永不因规则删）</el-divider>
+        <el-form-item label="组合逻辑">
+          <el-radio-group v-model="form.delete_logic">
+            <el-radio-button label="or">任一命中</el-radio-button>
+            <el-radio-button label="and">全部命中</el-radio-button>
+          </el-radio-group>
+          <span class="hint">有「阶梯表达式」时以表达式为准</span>
+        </el-form-item>
         <el-form-item label="分享率 ≥"><el-input-number v-model="form.delete_ratio" :min="0" :step="0.1" controls-position="right" /></el-form-item>
         <el-form-item label="保种(小时) ≥"><el-input-number v-model="form.delete_seed_hours" :min="0" :step="0.5" controls-position="right" /></el-form-item>
         <el-form-item label="上传(MB) ≥"><el-input-number v-model="form.delete_upload_mb" :min="0" controls-position="right" /></el-form-item>
+        <el-form-item label="最低上传(KB/s)">
+          <el-input-number v-model="form.delete_min_up_rate_kb" :min="0" controls-position="right" />
+          <span class="hint">仅对已完成做种；上传速度低于此值则删</span>
+        </el-form-item>
+        <el-form-item label="不活跃(小时)">
+          <el-input-number v-model="form.delete_inactive_hours" :min="0" :step="0.5" controls-position="right" />
+          <span class="hint">最后活跃超过此时长则删</span>
+        </el-form-item>
+        <el-form-item label="阶梯表达式">
+          <el-input v-model="form.delete_rule_expr" type="textarea" :rows="2" placeholder="例：(ratio>=1 &amp;&amp; seed_hours>=24) || ratio>=3" />
+          <span class="hint">变量：ratio / seed_hours / upload_mb / up_rate_kb / inactive_hours；支持 &amp;&amp; || () &gt;= &lt;= &gt; &lt; ==</span>
+        </el-form-item>
+        <el-form-item label="总体积上限(GB)">
+          <el-input-number v-model="form.max_total_size_gb" :min="0" :step="1" controls-position="right" />
+          <span class="hint">超限按最慢上传淘汰；0=不限</span>
+        </el-form-item>
         <el-form-item label="删种删文件"><el-switch v-model="form.delete_files" /></el-form-item>
         <el-form-item label="原生停种">
           <el-switch v-model="form.use_share_limit" />

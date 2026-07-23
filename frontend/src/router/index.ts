@@ -21,6 +21,12 @@ const router = createRouter({
           component: () => import('@/views/Sites.vue'),
         },
         {
+          path: 'sites/:id',
+          name: 'site-detail',
+          component: () => import('@/views/SiteDetail.vue'),
+          props: true,
+        },
+        {
           path: 'search',
           name: 'search',
           component: () => import('@/views/Search.vue'),

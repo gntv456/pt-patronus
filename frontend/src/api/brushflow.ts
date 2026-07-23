@@ -19,6 +19,11 @@ export interface BrushFlowTask {
   delete_upload_mb: number
   delete_files: boolean
   use_share_limit: boolean
+  delete_min_up_rate_kb: number
+  delete_inactive_hours: number
+  delete_logic: string // 'or' | 'and'
+  delete_rule_expr: string
+  max_total_size_gb: number
   max_seeds: number
   save_path: string
   category_dl: string

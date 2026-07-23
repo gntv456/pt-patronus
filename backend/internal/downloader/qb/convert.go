@@ -16,6 +16,10 @@ func toTorrent(h string, m map[string]any) downloader.Torrent {
 	if co := num(m["completion_on"]); co > 0 { // 0/缺失 = 未完成
 		completedAt = time.Unix(co, 0)
 	}
+	var lastActivity time.Time
+	if la := num(m["last_activity"]); la > 0 {
+		lastActivity = time.Unix(la, 0)
+	}
 	return downloader.Torrent{
 		Hash:       h,
 		Name:       str(m["name"]),
@@ -46,6 +50,7 @@ func toTorrent(h string, m map[string]any) downloader.Torrent {
 		FirstLastPiece:   boolean(m["f_l_piece_prio"]),
 		Priority:         int(num(m["priority"])),
 		CompletedAt:      completedAt,
+		LastActivity:     lastActivity,
 	}
 }
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { logsApi, type LogEntry } from '@/api/logs'
 import { systemApi, APP_VERSION, type UpdateCheckResult } from '@/api/system'
@@ -45,7 +46,16 @@ function toggleTheme() {
 }
 
 // 运行日志（环形缓冲）
+const settingsSection = ref('general')
 const activeTab = ref('general')
+// P1 六分区：外层 section → 内层 activeTab（连接/通知/维护等嵌套）
+const connectTab = ref('oidc')
+const notifyTab = ref('notification')
+const maintainTab = ref('logs')
+const settingsRouter = useRouter()
+function goPage(name: string) {
+  settingsRouter.push({ name })
+}
 const logs = ref<LogEntry[]>([])
 const logLevel = ref('')
 const logLoading = ref(false)
@@ -104,13 +114,23 @@ function attrText(attrs?: { key: string; value: string }[]) {
   return attrs.map((a) => `${a.key}=${a.value}`).join(' ')
 }
 function onTabChange(tab: string | number) {
-  if (tab === 'logs' && !logs.value.length) loadLogs()
-  if (tab === 'notification' && !notifCfg.value) loadNotif()
-  if (tab === 'oidc' && !oidcCfg.value) loadOIDC()
-  if (tab === 'llmgateway' && !gwCfg.value) loadLLMGateway()
-  if (tab === 'cookiecloud' && !ccCfg.value) loadCookieCloud()
-  if (tab === 'tgbot' && !tgCfg.value) loadTgBot()
-  if (tab === 'schedule' && !schedCfg.value) loadSchedule()
+  const name = String(tab)
+  if (name === 'logs' && !logs.value.length) loadLogs()
+  if (name === 'notification' && !notifCfg.value) loadNotif()
+  if (name === 'oidc' && !oidcCfg.value) loadOIDC()
+  if (name === 'llmgateway' && !gwCfg.value) loadLLMGateway()
+  if (name === 'cookiecloud' && !ccCfg.value) loadCookieCloud()
+  if (name === 'tgbot' && !tgCfg.value) loadTgBot()
+  if (name === 'schedule' && !schedCfg.value) loadSchedule()
+}
+function onSectionChange(sec: string | number) {
+  const s = String(sec)
+  // 切到分区时懒加载默认子 Tab
+  if (s === 'connect') onTabChange(connectTab.value)
+  else if (s === 'notify') onTabChange(notifyTab.value)
+  else if (s === 'automation') onTabChange('schedule')
+  else if (s === 'maintain') onTabChange(maintainTab.value)
+  else if (s === 'general') onTabChange('general')
 }
 
 // —— OIDC/SSO 设置（管理员配置 Authelia/Keycloak/Casdoor 等）——
@@ -565,8 +585,9 @@ async function openChangelog() {
   <div class="page">
     <h2 class="title">设置</h2>
 
-    <el-tabs v-model="activeTab" @tab-change="onTabChange" class="glass tabs">
+        <el-tabs v-model="settingsSection" @tab-change="onSectionChange" class="glass tabs settings-sections">
       <el-tab-pane label="通用" name="general">
+
         <div class="card glass">
           <div class="row">
             <div class="row-label">
@@ -613,9 +634,229 @@ async function openChangelog() {
             <span class="help-arrow">›</span>
           </div>
         </div>
+      
       </el-tab-pane>
 
-      <el-tab-pane label="通知" name="notification">
+      <el-tab-pane label="连接" name="connect">
+
+        <div class="card glass link-grid">
+          <div class="section-hint text-muted">以下独立配置页将逐步迁入本分区；现提供快捷入口。</div>
+          <div class="links">
+                        <button type="button" class="link-card" @click="goPage('trakt')">
+              <span class="link-title">Trakt</span>
+              <span class="link-desc">WatchList → 订阅</span>
+            </button>
+            <button type="button" class="link-card" @click="goPage('cloud')">
+              <span class="link-title">云盘账号</span>
+              <span class="link-desc">115 / 夸克 / 123 · STRM 规则</span>
+            </button>
+          </div>
+        </div>
+        <el-tabs v-model="connectTab" @tab-change="onTabChange" class="nested-tabs">
+          <el-tab-pane label="OIDC / SSO" name="oidc">
+
+        <div v-loading="oidcLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            配置标准 OIDC Provider（Authelia/Keycloak/Casdoor 等）后，登录页出现 SSO 入口。
+            回调地址需在 Provider 端登记为 <code>{{ callbackURL }}</code>。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">OIDC Provider</div>
+              <el-switch v-model="oidcForm.enabled" />
+            </div>
+            <el-input v-model="oidcForm.issuer" class="mt8">
+              <template #prepend>Issuer</template>
+            </el-input>
+            <el-input v-model="oidcForm.client_id" class="mt8">
+              <template #prepend>Client ID</template>
+            </el-input>
+            <el-input
+              v-model="oidcForm.client_secret"
+              type="password"
+              show-password
+              class="mt8"
+              :placeholder="oidcCfg?.client_secret_configured ? '已配置（留空=不修改）' : 'Client Secret'"
+            >
+              <template #prepend>Client Secret</template>
+            </el-input>
+            <el-input v-model="oidcForm.scopes" class="mt8">
+              <template #prepend>Scopes</template>
+            </el-input>
+            <el-input v-model="oidcForm.display_name" class="mt8">
+              <template #prepend>按钮文案</template>
+            </el-input>
+          </div>
+          <div class="oidc-save">
+            <el-button type="primary" :loading="oidcSaving" @click="saveOIDC">保存</el-button>
+          </div>
+        </div>
+      
+          </el-tab-pane>
+          <el-tab-pane label="AI 网关" name="llmgateway">
+
+        <div v-loading="gwLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            启用后，外部客户端（Cursor / Claude Desktop / continue.dev 等）可经 OpenAI / Anthropic 兼容协议驱动 PTPatronus 的 AI 助手与工具。
+            OpenAI Base URL：<code>{{ gwBaseURL }}</code>，model 填 <code>ptpatronus-agent</code>。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">启用 AI 网关</div>
+              <el-switch v-model="gwForm.enabled" />
+            </div>
+            <el-input
+              v-model="gwForm.access_token"
+              type="password"
+              show-password
+              class="mt8"
+              :placeholder="gwCfg?.access_token_configured ? '已配置（留空=不修改）' : '访问令牌'"
+            >
+              <template #prepend>访问令牌</template>
+            </el-input>
+            <el-input v-model="gwForm.allowed_models" class="mt8" placeholder="留空=接受任意 model；逗号分隔">
+              <template #prepend>允许的 Model</template>
+            </el-input>
+            <el-input-number v-model="gwForm.max_concurrency" :min="0" :max="64" class="mt8" />
+          </div>
+          <div class="oidc-save">
+            <el-button type="primary" :loading="gwSaving" @click="saveLLMGateway">保存</el-button>
+          </div>
+        </div>
+      
+          </el-tab-pane>
+          <el-tab-pane label="CookieCloud" name="cookiecloud">
+
+        <div v-loading="ccLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            浏览器装 CookieCloud 扩展并填服务器/UUID/密码后，PTPatronus 定时拉取最新 cookie，
+            按域名覆盖本地 <b>已失效</b> 站点 + 自动新增匹配内置定义的站点，根治 session 短寿站掉 cookie。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">启用 CookieCloud 同步</div>
+              <el-switch v-model="ccForm.enabled" />
+            </div>
+            <el-input v-model="ccForm.server" class="mt8" placeholder="https://cc.example.com">
+              <template #prepend>服务器</template>
+            </el-input>
+            <el-input v-model="ccForm.uuid" class="mt8" placeholder="UUID / Key">
+              <template #prepend>UUID</template>
+            </el-input>
+            <el-input
+              v-model="ccForm.password"
+              type="password"
+              show-password
+              class="mt8"
+              :placeholder="ccCfg?.password_configured ? '已配置（留空=不修改）' : '端到端密码'"
+            >
+              <template #prepend>密码</template>
+            </el-input>
+            <el-input v-model.number="ccForm.interval_min" type="number" class="mt8" placeholder="120">
+              <template #prepend>间隔(分钟)</template>
+            </el-input>
+          </div>
+          <div class="oidc-save">
+            <span v-if="ccCfg?.last_error" class="text-muted" style="margin-right: 12px">
+              上次错误：{{ ccCfg.last_error }}
+            </span>
+            <span v-else-if="ccCfg?.last_sync_unix" class="text-muted" style="margin-right: 12px">
+              上次同步：{{ new Date(ccCfg.last_sync_unix * 1000).toLocaleString() }}
+            </span>
+            <el-button :loading="ccSyncing" @click="syncCookieCloud">立即同步</el-button>
+            <el-button type="primary" :loading="ccSaving" @click="saveCookieCloud">保存</el-button>
+          </div>
+        </div>
+      
+          </el-tab-pane>
+          <el-tab-pane label="Servarr 兼容" name="servarr">
+
+        <div class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            PTPatronus 订阅已以 Sonarr/Radarr v3 API 对外暴露，供 Overseerr / Jellyseerr 直接接入。无需额外配置——使用全局 <code>API_KEY</code> 作为 *arr 服务的 API Key。
+          </p>
+          <div class="card glass">
+            <div class="ch-head"><div class="row-title">接入信息</div></div>
+            <el-input class="mt8" readonly model-value="Radarr: http://<host>:8088/api/v3"><template #prepend>Radarr URL</template></el-input>
+            <el-input class="mt8" readonly model-value="Sonarr: http://<host>:8088/api/v3"><template #prepend>Sonarr URL</template></el-input>
+            <el-input class="mt8" readonly :model-value="apiKeyHint"><template #prepend>API Key</template></el-input>
+            <p class="text-muted small mt8">
+              映射：电影订阅 ↔ Radarr Movie，剧集订阅 ↔ Sonarr Series；<code>hasFile</code> 取整理历史。<br/>
+              支持端点：<code>/system/status</code>、<code>/movie</code>(GET/POST/DELETE)、<code>/series</code>(GET/POST/PUT/DELETE)、<code>/*/lookup</code>、<code>/rootfolder</code>、<code>/qualityProfile</code>、<code>/tag</code>。
+            </p>
+          </div>
+        </div>
+      
+          </el-tab-pane>
+        </el-tabs>
+      </el-tab-pane>
+
+      <el-tab-pane label="媒体" name="media">
+
+        <div class="card glass link-grid">
+          <div class="section-hint text-muted">以下独立配置页将逐步迁入本分区；现提供快捷入口。</div>
+          <div class="links">
+                        <button type="button" class="link-card" @click="goPage('mediaquality')">
+              <span class="link-title">媒体质量</span>
+              <span class="link-desc">多评分聚合 · 低分保护</span>
+            </button>
+            <button type="button" class="link-card" @click="goPage('subtitle')">
+              <span class="link-title">字幕源</span>
+              <span class="link-desc">ASSRT / OpenSubtitles / SubHD</span>
+            </button>
+            <button type="button" class="link-card" @click="goPage('media-settings')">
+              <span class="link-title">媒体设置</span>
+              <span class="link-desc">识别与刮削参数</span>
+            </button>
+            <button type="button" class="link-card" @click="goPage('filter-rules')">
+              <span class="link-title">过滤规则</span>
+              <span class="link-desc">规则组优先级</span>
+            </button>
+          </div>
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane label="自动化" name="automation">
+
+        <div v-loading="schedLoading" class="oidc-wrap">
+          <p class="text-muted oidc-help">
+            聚合站点快照：合并 <b>统计 / H&amp;R / 站免 / 公告 / 消息 / Cookie 保活 / 考核</b> 为一次串行抓取。
+            间隔越大越隐蔽（对站点越友好，不易触发风控），但仪表盘数据与 H&amp;R/站免/新邮件告警延迟越高。
+          </p>
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">聚合快照频率</div>
+              <el-select
+                v-model="schedForm.snapshot_cron"
+                placeholder="选择预设或自定义"
+                style="width: 240px"
+                filterable
+                allow-create
+              >
+                <el-option v-for="p in schedPresets" :key="p.value" :label="p.label" :value="p.value" />
+              </el-select>
+            </div>
+            <el-input v-model="schedForm.snapshot_cron" class="mt8" placeholder="7 */4 * * *">
+              <template #prepend>cron 表达式</template>
+            </el-input>
+            <p v-if="schedCfg?.hint" class="text-muted mt8" style="font-size: 12px; line-height: 1.6">
+              {{ schedCfg.hint }}
+            </p>
+          </div>
+          <div class="oidc-save">
+            <span v-if="schedCfg" class="text-muted" style="margin-right: 12px">
+              内置默认：{{ schedCfg.snapshot_default }}
+            </span>
+            <el-button type="primary" :loading="schedSaving" @click="saveSchedule">保存</el-button>
+          </div>
+        </div>
+      
+      </el-tab-pane>
+
+      <el-tab-pane label="通知" name="notify">
+        <el-tabs v-model="notifyTab" @tab-change="onTabChange" class="nested-tabs">
+          <el-tab-pane label="通知通道" name="notification">
+
         <div v-loading="notifLoading" class="notif-wrap">
           <div class="card glass">
             <div class="ch-head">
@@ -960,157 +1201,10 @@ async function openChangelog() {
             <el-button @click="updateDlgVisible = false">{{ updateInfo?.isForced ? '我已知悉' : '稍后再说' }}</el-button>
           </template>
         </el-dialog>
-      </el-tab-pane>
+      
+          </el-tab-pane>
+          <el-tab-pane label="Telegram Bot" name="tgbot">
 
-      <el-tab-pane label="OIDC / SSO" name="oidc">
-        <div v-loading="oidcLoading" class="oidc-wrap">
-          <p class="text-muted oidc-help">
-            配置标准 OIDC Provider（Authelia/Keycloak/Casdoor 等）后，登录页出现 SSO 入口。
-            回调地址需在 Provider 端登记为 <code>{{ callbackURL }}</code>。
-          </p>
-          <div class="card glass">
-            <div class="ch-head">
-              <div class="row-title">OIDC Provider</div>
-              <el-switch v-model="oidcForm.enabled" />
-            </div>
-            <el-input v-model="oidcForm.issuer" class="mt8">
-              <template #prepend>Issuer</template>
-            </el-input>
-            <el-input v-model="oidcForm.client_id" class="mt8">
-              <template #prepend>Client ID</template>
-            </el-input>
-            <el-input
-              v-model="oidcForm.client_secret"
-              type="password"
-              show-password
-              class="mt8"
-              :placeholder="oidcCfg?.client_secret_configured ? '已配置（留空=不修改）' : 'Client Secret'"
-            >
-              <template #prepend>Client Secret</template>
-            </el-input>
-            <el-input v-model="oidcForm.scopes" class="mt8">
-              <template #prepend>Scopes</template>
-            </el-input>
-            <el-input v-model="oidcForm.display_name" class="mt8">
-              <template #prepend>按钮文案</template>
-            </el-input>
-          </div>
-          <div class="oidc-save">
-            <el-button type="primary" :loading="oidcSaving" @click="saveOIDC">保存</el-button>
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="AI 网关" name="llmgateway">
-        <div v-loading="gwLoading" class="oidc-wrap">
-          <p class="text-muted oidc-help">
-            启用后，外部客户端（Cursor / Claude Desktop / continue.dev 等）可经 OpenAI / Anthropic 兼容协议驱动 PTPatronus 的 AI 助手与工具。
-            OpenAI Base URL：<code>{{ gwBaseURL }}</code>，model 填 <code>ptpatronus-agent</code>。
-          </p>
-          <div class="card glass">
-            <div class="ch-head">
-              <div class="row-title">启用 AI 网关</div>
-              <el-switch v-model="gwForm.enabled" />
-            </div>
-            <el-input
-              v-model="gwForm.access_token"
-              type="password"
-              show-password
-              class="mt8"
-              :placeholder="gwCfg?.access_token_configured ? '已配置（留空=不修改）' : '访问令牌'"
-            >
-              <template #prepend>访问令牌</template>
-            </el-input>
-            <el-input v-model="gwForm.allowed_models" class="mt8" placeholder="留空=接受任意 model；逗号分隔">
-              <template #prepend>允许的 Model</template>
-            </el-input>
-            <el-input-number v-model="gwForm.max_concurrency" :min="0" :max="64" class="mt8" />
-          </div>
-          <div class="oidc-save">
-            <el-button type="primary" :loading="gwSaving" @click="saveLLMGateway">保存</el-button>
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="CookieCloud" name="cookiecloud">
-        <div v-loading="ccLoading" class="oidc-wrap">
-          <p class="text-muted oidc-help">
-            浏览器装 CookieCloud 扩展并填服务器/UUID/密码后，PTPatronus 定时拉取最新 cookie，
-            按域名覆盖本地 <b>已失效</b> 站点 + 自动新增匹配内置定义的站点，根治 session 短寿站掉 cookie。
-          </p>
-          <div class="card glass">
-            <div class="ch-head">
-              <div class="row-title">启用 CookieCloud 同步</div>
-              <el-switch v-model="ccForm.enabled" />
-            </div>
-            <el-input v-model="ccForm.server" class="mt8" placeholder="https://cc.example.com">
-              <template #prepend>服务器</template>
-            </el-input>
-            <el-input v-model="ccForm.uuid" class="mt8" placeholder="UUID / Key">
-              <template #prepend>UUID</template>
-            </el-input>
-            <el-input
-              v-model="ccForm.password"
-              type="password"
-              show-password
-              class="mt8"
-              :placeholder="ccCfg?.password_configured ? '已配置（留空=不修改）' : '端到端密码'"
-            >
-              <template #prepend>密码</template>
-            </el-input>
-            <el-input v-model.number="ccForm.interval_min" type="number" class="mt8" placeholder="120">
-              <template #prepend>间隔(分钟)</template>
-            </el-input>
-          </div>
-          <div class="oidc-save">
-            <span v-if="ccCfg?.last_error" class="text-muted" style="margin-right: 12px">
-              上次错误：{{ ccCfg.last_error }}
-            </span>
-            <span v-else-if="ccCfg?.last_sync_unix" class="text-muted" style="margin-right: 12px">
-              上次同步：{{ new Date(ccCfg.last_sync_unix * 1000).toLocaleString() }}
-            </span>
-            <el-button :loading="ccSyncing" @click="syncCookieCloud">立即同步</el-button>
-            <el-button type="primary" :loading="ccSaving" @click="saveCookieCloud">保存</el-button>
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="调度频率" name="schedule">
-        <div v-loading="schedLoading" class="oidc-wrap">
-          <p class="text-muted oidc-help">
-            聚合站点快照：合并 <b>统计 / H&amp;R / 站免 / 公告 / 消息 / Cookie 保活 / 考核</b> 为一次串行抓取。
-            间隔越大越隐蔽（对站点越友好，不易触发风控），但仪表盘数据与 H&amp;R/站免/新邮件告警延迟越高。
-          </p>
-          <div class="card glass">
-            <div class="ch-head">
-              <div class="row-title">聚合快照频率</div>
-              <el-select
-                v-model="schedForm.snapshot_cron"
-                placeholder="选择预设或自定义"
-                style="width: 240px"
-                filterable
-                allow-create
-              >
-                <el-option v-for="p in schedPresets" :key="p.value" :label="p.label" :value="p.value" />
-              </el-select>
-            </div>
-            <el-input v-model="schedForm.snapshot_cron" class="mt8" placeholder="7 */4 * * *">
-              <template #prepend>cron 表达式</template>
-            </el-input>
-            <p v-if="schedCfg?.hint" class="text-muted mt8" style="font-size: 12px; line-height: 1.6">
-              {{ schedCfg.hint }}
-            </p>
-          </div>
-          <div class="oidc-save">
-            <span v-if="schedCfg" class="text-muted" style="margin-right: 12px">
-              内置默认：{{ schedCfg.snapshot_default }}
-            </span>
-            <el-button type="primary" :loading="schedSaving" @click="saveSchedule">保存</el-button>
-          </div>
-        </div>
-      </el-tab-pane>
-
-      <el-tab-pane label="Telegram Bot" name="tgbot">
         <div v-loading="tgLoading" class="oidc-wrap">
           <p class="text-muted oidc-help">
             启用入站 bot 后，可在 Telegram 用自然语言驱动 PTPatronus（搜影视 / 订阅 / 整理…）。命令：<code>/help</code>、<code>/clear</code>。改动需重启进程生效。
@@ -1124,27 +1218,29 @@ async function openChangelog() {
           </div>
           <div class="oidc-save"><el-button type="primary" :loading="tgSaving" @click="saveTgBot">保存</el-button></div>
         </div>
+      
+          </el-tab-pane>
+        </el-tabs>
       </el-tab-pane>
 
-      <el-tab-pane label="Servarr 兼容" name="servarr">
-        <div class="oidc-wrap">
-          <p class="text-muted oidc-help">
-            PTPatronus 订阅已以 Sonarr/Radarr v3 API 对外暴露，供 Overseerr / Jellyseerr 直接接入。无需额外配置——使用全局 <code>API_KEY</code> 作为 *arr 服务的 API Key。
-          </p>
-          <div class="card glass">
-            <div class="ch-head"><div class="row-title">接入信息</div></div>
-            <el-input class="mt8" readonly model-value="Radarr: http://<host>:8088/api/v3"><template #prepend>Radarr URL</template></el-input>
-            <el-input class="mt8" readonly model-value="Sonarr: http://<host>:8088/api/v3"><template #prepend>Sonarr URL</template></el-input>
-            <el-input class="mt8" readonly :model-value="apiKeyHint"><template #prepend>API Key</template></el-input>
-            <p class="text-muted small mt8">
-              映射：电影订阅 ↔ Radarr Movie，剧集订阅 ↔ Sonarr Series；<code>hasFile</code> 取整理历史。<br/>
-              支持端点：<code>/system/status</code>、<code>/movie</code>(GET/POST/DELETE)、<code>/series</code>(GET/POST/PUT/DELETE)、<code>/*/lookup</code>、<code>/rootfolder</code>、<code>/qualityProfile</code>、<code>/tag</code>。
-            </p>
+      <el-tab-pane label="维护" name="maintain">
+
+        <div class="card glass link-grid">
+          <div class="section-hint text-muted">以下独立配置页将逐步迁入本分区；现提供快捷入口。</div>
+          <div class="links">
+                        <button type="button" class="link-card" @click="goPage('backup')">
+              <span class="link-title">备份</span>
+              <span class="link-desc">配置导出 / 导入</span>
+            </button>
+            <button type="button" class="link-card" @click="goPage('doctor')">
+              <span class="link-title">诊断</span>
+              <span class="link-desc">健康自检</span>
+            </button>
           </div>
         </div>
-      </el-tab-pane>
+        <el-tabs v-model="maintainTab" @tab-change="onTabChange" class="nested-tabs">
+          <el-tab-pane label="运行日志" name="logs">
 
-      <el-tab-pane label="运行日志" name="logs">
         <div class="logs-bar">
           <el-select v-model="logLevel" @change="loadLogs" style="width: 140px">
             <el-option label="全部 (Info+)" value="" />
@@ -1166,6 +1262,9 @@ async function openChangelog() {
           </div>
           <div v-if="!logs.length && !logLoading" class="log-empty text-muted">暂无日志</div>
         </div>
+      
+          </el-tab-pane>
+        </el-tabs>
       </el-tab-pane>
     </el-tabs>
 
@@ -1278,4 +1377,29 @@ async function openChangelog() {
 .oidc-help { font-size: 13px; line-height: 1.6; }
 .oidc-help code { background: var(--card); padding: 2px 6px; border-radius: 4px; }
 .oidc-save { display: flex; justify-content: flex-end; }
+
+.section-hint { margin-bottom: 10px; font-size: 13px; }
+.link-grid .links {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+.link-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(108, 92, 231, 0.14);
+  background: rgba(108, 92, 231, 0.06);
+  color: var(--text-strong);
+  cursor: pointer;
+}
+.link-card:hover {
+  background: rgba(108, 92, 231, 0.12);
+}
+.link-title { font-weight: 600; font-size: 14px; }
+.link-desc { font-size: 12px; color: var(--text-muted); }
+.nested-tabs { margin-top: 8px; }
 </style>

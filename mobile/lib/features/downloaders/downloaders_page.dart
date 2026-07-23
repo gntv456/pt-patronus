@@ -865,14 +865,23 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      useSafeArea: true,
       showDragHandle: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: 0.9,
-        child: _DetailSheet(id: _id, type: _type, torrent: t),
+      useSafeArea: true,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.55,
+        minChildSize: 0.35,
+        maxChildSize: 0.92,
+        builder: (ctx, scrollCtrl) => _DetailSheet(
+          id: _id,
+          type: _type,
+          torrent: t,
+          scrollController: scrollCtrl,
+        ),
       ),
     );
   }
+
 
   void _showCategoryManager() {
     showModalBottomSheet(
@@ -1097,66 +1106,163 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     );
   }
 
+  bool _isPaused(Torrent t) =>
+      t.state.contains('pause') || t.state.contains('stop');
+
+  /// 左滑删除（可 SnackBar 撤销 4s）；右滑暂停/恢复（不移除行）。
   Widget _row(Torrent t) {
-    return ListTile(
-      title: Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        '${(t.progress * 100).toStringAsFixed(0)}% · ${_stateLabel(t.state)} · ↓${_fmtSpeed(t.downRate)} ↑${_fmtSpeed(t.upRate)}'
-        '${t.tags.isNotEmpty ? ' · ${t.tags.join(",")}' : ''}',
-        style: const TextStyle(fontSize: 12),
-      ),
-      trailing: PopupMenuButton<String>(
-        icon: const Icon(Icons.more_vert),
-        onSelected: (v) => _onMenu(v, t),
-        itemBuilder: (_) => [
-          const PopupMenuItem(value: 'detail', child: Text('详情…')),
-          const PopupMenuItem(value: 'pause', child: Text('暂停')),
-          const PopupMenuItem(value: 'resume', child: Text('恢复')),
-          const PopupMenuItem(value: 'recheck', child: Text('重新校验')),
-          const PopupMenuItem(value: 'reannounce', child: Text('重新汇报')),
-          if (_dlCaps(_type).forceStart || _dlCaps(_type).queueFull || _dlCaps(_type).sequential || _dlCaps(_type).firstLast)
-            const PopupMenuDivider(),
-          if (_dlCaps(_type).forceStart)
-            PopupMenuItem(
-              value: 'forceStart',
-              child: Text(t.forceStart ? '取消强制开始' : '强制开始'),
+    final paused = _isPaused(t);
+    return Dismissible(
+      key: ValueKey('torrent-${t.hash}'),
+      direction: DismissDirection.horizontal,
+      confirmDismiss: (dir) async {
+        if (dir == DismissDirection.startToEnd) {
+          // 右滑：暂停 / 恢复，不移除列表项
+          if (paused) {
+            await _act(() => _api.resume(_id, [t.hash]), '已恢复');
+          } else {
+            await _act(() => _api.pause(_id, [t.hash]), '已暂停');
+          }
+          return false;
+        }
+        // 左滑：删除（确认是否删文件后，乐观移除 + 撤销）
+        return _swipeDelete(t);
+      },
+      background: Container(
+        color: (paused ? Colors.green : Colors.orange).withValues(alpha: 0.88),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.only(left: 20),
+        child: Row(
+          children: [
+            Icon(paused ? Icons.play_arrow : Icons.pause, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(
+              paused ? '恢复' : '暂停',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
             ),
-          if (_dlCaps(_type).queueFull) ...[
-            const PopupMenuItem(value: 'top', child: Text('队列置顶')),
-            const PopupMenuItem(value: 'up', child: Text('队列上移')),
-            const PopupMenuItem(value: 'down', child: Text('队列下移')),
-            const PopupMenuItem(value: 'bottom', child: Text('队列置底')),
           ],
-          if (_dlCaps(_type).sequential)
-            PopupMenuItem(
-              value: 'seq',
-              child: Text(t.sequential ? '取消顺序下载' : '顺序下载'),
-            ),
-          if (_dlCaps(_type).firstLast)
-            PopupMenuItem(
-              value: 'firstlast',
-              child: Text(t.firstLastPiece ? '取消首尾优先' : '首尾优先'),
-            ),
-          const PopupMenuDivider(),
-          const PopupMenuItem(value: 'remove', child: Text('删除…')),
-          if (_dlCaps(_type).category)
-            const PopupMenuItem(value: 'category', child: Text('设置分类…')),
-          if (_dlCaps(_type).tags)
-            const PopupMenuItem(value: 'tags', child: Text('设置标签…')),
-          const PopupMenuItem(value: 'limits', child: Text('限速…')),
-          const PopupMenuItem(value: 'shareLimits', child: Text('做种限制…')),
-          if (_dlCaps(_type).files)
-            const PopupMenuItem(value: 'files', child: Text('文件优先级…')),
-          if (_dlCaps(_type).trackers)
-            const PopupMenuItem(value: 'trackers', child: Text('Tracker…')),
-          if (_dlCaps(_type).peers)
-            const PopupMenuItem(value: 'peers', child: Text('Peers…')),
-          const PopupMenuDivider(),
-          const PopupMenuItem(value: 'copyMagnet', child: Text('复制磁力链')),
-          const PopupMenuItem(value: 'copyHash', child: Text('复制哈希')),
-        ],
+        ),
+      ),
+      secondaryBackground: Container(
+        color: Colors.red.withValues(alpha: 0.88),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text('删除', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            SizedBox(width: 8),
+            Icon(Icons.delete_outline, color: Colors.white),
+          ],
+        ),
+      ),
+      child: ListTile(
+        onTap: () => _showDetail(t),
+        title: Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          '${(t.progress * 100).toStringAsFixed(0)}% · ${_stateLabel(t.state)} · ↓${_fmtSpeed(t.downRate)} ↑${_fmtSpeed(t.upRate)}'
+          '${t.tags.isNotEmpty ? ' · ${t.tags.join(",")}' : ''}',
+          style: const TextStyle(fontSize: 12),
+        ),
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          onSelected: (v) => _onMenu(v, t),
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'detail', child: Text('详情…')),
+            const PopupMenuItem(value: 'pause', child: Text('暂停')),
+            const PopupMenuItem(value: 'resume', child: Text('恢复')),
+            const PopupMenuItem(value: 'recheck', child: Text('重新校验')),
+            const PopupMenuItem(value: 'reannounce', child: Text('重新汇报')),
+            if (_dlCaps(_type).forceStart || _dlCaps(_type).queueFull || _dlCaps(_type).sequential || _dlCaps(_type).firstLast)
+              const PopupMenuDivider(),
+            if (_dlCaps(_type).forceStart)
+              PopupMenuItem(
+                value: 'forceStart',
+                child: Text(t.forceStart ? '取消强制开始' : '强制开始'),
+              ),
+            if (_dlCaps(_type).queueFull) ...[
+              const PopupMenuItem(value: 'top', child: Text('队列置顶')),
+              const PopupMenuItem(value: 'up', child: Text('队列上移')),
+              const PopupMenuItem(value: 'down', child: Text('队列下移')),
+              const PopupMenuItem(value: 'bottom', child: Text('队列置底')),
+            ],
+            if (_dlCaps(_type).sequential)
+              PopupMenuItem(
+                value: 'seq',
+                child: Text(t.sequential ? '取消顺序下载' : '顺序下载'),
+              ),
+            if (_dlCaps(_type).firstLast)
+              PopupMenuItem(
+                value: 'firstlast',
+                child: Text(t.firstLastPiece ? '取消首尾优先' : '首尾优先'),
+              ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(value: 'remove', child: Text('删除…')),
+            if (_dlCaps(_type).category)
+              const PopupMenuItem(value: 'category', child: Text('设置分类…')),
+            if (_dlCaps(_type).tags)
+              const PopupMenuItem(value: 'tags', child: Text('设置标签…')),
+            const PopupMenuItem(value: 'limits', child: Text('限速…')),
+            const PopupMenuItem(value: 'shareLimits', child: Text('做种限制…')),
+            if (_dlCaps(_type).files)
+              const PopupMenuItem(value: 'files', child: Text('文件优先级…')),
+            if (_dlCaps(_type).trackers)
+              const PopupMenuItem(value: 'trackers', child: Text('Tracker…')),
+            if (_dlCaps(_type).peers)
+              const PopupMenuItem(value: 'peers', child: Text('Peers…')),
+            const PopupMenuDivider(),
+            const PopupMenuItem(value: 'copyMagnet', child: Text('复制磁力链')),
+            const PopupMenuItem(value: 'copyHash', child: Text('复制哈希')),
+          ],
+        ),
       ),
     );
+  }
+
+  /// 左滑删除：确认是否删文件 → 乐观移除列表 → SnackBar 4s 可撤销 → 超时才真正请求删除。
+  Future<bool> _swipeDelete(Torrent t) async {
+    final df = await _confirmDelete(t.name);
+    if (df == null) return false;
+    final idx = _torrents.indexWhere((x) => x.hash == t.hash);
+    if (idx < 0) return false;
+    final removed = _torrents[idx];
+    setState(() => _torrents.removeAt(idx));
+    var undone = false;
+    if (!mounted) return true;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    final controller = messenger.showSnackBar(
+      SnackBar(
+        content: Text('已删除「${removed.name}」'),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: '撤销',
+          onPressed: () {
+            undone = true;
+            if (!mounted) return;
+            setState(() {
+              final at = idx.clamp(0, _torrents.length);
+              _torrents.insert(at, removed);
+            });
+          },
+        ),
+      ),
+    );
+    await controller.closed;
+    if (!undone) {
+      try {
+        await _api.removeTorrents(_id, [removed.hash], deleteFiles: df);
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            final at = idx.clamp(0, _torrents.length);
+            _torrents.insert(at, removed);
+          });
+          _toast(_cleanErr(e));
+        }
+      }
+    }
+    return true;
   }
 
   String _stateLabel(String s) {
@@ -1570,10 +1676,12 @@ class _DetailSheet extends StatelessWidget {
   final int id;
   final String type;
   final Torrent torrent;
+  final ScrollController? scrollController;
   const _DetailSheet({
     required this.id,
     required this.type,
     required this.torrent,
+    this.scrollController,
   });
 
   Widget _kv(String k, String v) => Padding(
@@ -1638,6 +1746,7 @@ class _DetailSheet extends StatelessWidget {
         const Divider(height: 1),
         Expanded(
           child: ListView(
+            controller: scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             children: [
               _kv('大小', _fmtBytes(t.size)),

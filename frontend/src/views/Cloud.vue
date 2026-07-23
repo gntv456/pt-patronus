@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 import {
   cloudApi,
   TYPE_LABEL,
@@ -297,18 +299,22 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 class="title">云盘 · STRM</h2>
+      <h2 v-if="!props.embedded" class="title">云盘 · STRM</h2>
+      <h3 v-else class="title embedded-title">云盘账号 / STRM 规则</h3>
       <div class="head-actions">
         <el-button @click="syncSubs">订阅追更</el-button>
         <el-button @click="generateAll">生成全部 STRM</el-button>
         <el-button type="primary" @click="openCreateDrive">+ 添加网盘</el-button>
       </div>
     </div>
-    <p class="sub">
+    <p v-if="!props.embedded" class="sub">
       115 / 夸克 / 123云盘原生接入：浏览云盘资源、按规则批量生成 .strm 直链文件供媒体服务器播放；
       订阅追更自动把已生成的 STRM 链接到媒体订阅并提醒。
+    </p>
+    <p v-else class="sub embedded-sub">
+      账号与规则配置；文件浏览/STRM 生成请用「文件」页。
     </p>
 
     <el-tabs v-model="activeTab" class="tabs">
@@ -522,6 +528,19 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.page.embedded {
+  padding: 0;
+}
+.page.embedded .embedded-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.page.embedded .embedded-sub {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 12px;
+}
 .page { display: flex; flex-direction: column; gap: 14px; }
 .head { display: flex; align-items: center; justify-content: space-between; }
 .head-actions { display: flex; gap: 8px; }

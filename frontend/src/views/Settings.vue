@@ -6,6 +6,7 @@ import { logsApi, type LogEntry } from '@/api/logs'
 import { systemApi, APP_VERSION, type UpdateCheckResult } from '@/api/system'
 import { notificationApi, type NotifyConfig, type NotifyConfigInput, type NotifySendResult } from '@/api/notification'
 import { copyText } from '@/utils/clipboard'
+import Cloud from '@/views/Cloud.vue'
 
 const dark = ref(false)
 // 版本号：优先读后端 /system/info（部署态真源），失败兜底构建期常量。
@@ -54,6 +55,11 @@ const notifyTab = ref('notification')
 const maintainTab = ref('logs')
 const settingsRouter = useRouter()
 function goPage(name: string) {
+  if (name === 'cloud') {
+    settingsSection.value = 'connect'
+    connectTab.value = 'cloud'
+    return
+  }
   settingsRouter.push({ name })
 }
 const logs = ref<LogEntry[]>([])
@@ -648,7 +654,7 @@ async function openChangelog() {
             </button>
             <button type="button" class="link-card" @click="goPage('cloud')">
               <span class="link-title">云盘账号</span>
-              <span class="link-desc">账号 / STRM 规则 / 追更（配置）</span>
+              <span class="link-desc">已迁入下方「云盘」子 Tab</span>
             </button>
             <button type="button" class="link-card" @click="goPage('files')">
               <span class="link-title">文件浏览 · STRM</span>
@@ -657,6 +663,9 @@ async function openChangelog() {
           </div>
         </div>
         <el-tabs v-model="connectTab" @tab-change="onTabChange" class="nested-tabs">
+          <el-tab-pane label="云盘" name="cloud">
+            <Cloud :embedded="true" />
+          </el-tab-pane>
           <el-tab-pane label="OIDC / SSO" name="oidc">
 
         <div v-loading="oidcLoading" class="oidc-wrap">

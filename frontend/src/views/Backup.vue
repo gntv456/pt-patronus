@@ -4,6 +4,8 @@ import { backupApi } from '@/api/backup'
 import { useAuthStore } from '@/stores/auth'
 import type { UploadFile } from 'element-plus'
 
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 const auth = useAuthStore()
 const importing = ref(false)
 const exporting = ref(false)
@@ -85,8 +87,9 @@ function onPTDUpload(f: UploadFile) {
 </script>
 
 <template>
-  <div class="page">
-    <h2 class="title">备份</h2>
+  <div class="page" :class="{ embedded: props.embedded }">
+    <h2 v-if="!props.embedded" class="title">备份</h2>
+    <h3 v-else class="title embedded-title">备份</h3>
 
     <div class="glass card">
       <div class="brow">
@@ -143,4 +146,11 @@ function onPTDUpload(f: UploadFile) {
 .brow { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .btitle { font-weight: 600; font-size: 15px; }
 .bdesc { margin-top: 4px; font-size: 13px; }
+
+/* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
+.page.embedded { padding: 0; max-width: none; }
+.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded > .sub { display: none; }
+
 </style>

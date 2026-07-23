@@ -117,7 +117,7 @@ func SourceMatches(types []MediaType, filter string) bool {
 }
 
 // CategoryCapable 是可选能力：声明该源 Trending 支持哪些 category。RecommendChain 用它在
-// 某分类下跳过不支持该分类的源——例如「短剧」分类只由星光集响应，豆瓣/TMDB/Bangumi 不会
+// 某分类下跳过不支持该分类的源——例如「短剧」分类只由寸光集响应，豆瓣/TMDB/Bangumi 不会
 // 各自回退默认热映污染结果；亦修复「anime 让豆瓣回退热映」之类既有回退污染。
 // 未实现该接口的源视为支持全部 category（向后兼容）。
 type CategoryCapable interface {

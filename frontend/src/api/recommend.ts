@@ -1,61 +1,61 @@
-import { http } from './http'
-import { streamSSE } from './sse'
-
-// 统一媒体元数据（对齐 backend media.MediaInfo）。
-export interface MediaInfo {
-  source: string // tmdb | douban | bangumi | musicbrainz
-  source_id: string
-  title: string
-  original_title?: string
-  year: number
-  type: string // movie | tv | music
-  overview?: string
-  poster_url: string
-  backdrop_url?: string
-  release_date?: string
-  rating?: number
-  genres?: string[]
-}
-
-// 推荐源/分类筛选项。
-export const recommendSources = [
-  { key: '', label: '全部' },
-  { key: 'douban', label: '豆瓣' },
-  { key: 'tmdb', label: 'TMDB' },
-  { key: 'bangumi', label: 'Bangumi' },
-  { key: 'xingguangji', label: '星光集' },
-]
-
-export const recommendCategories = [
-  { key: 'movie', label: '热映电影' },
-  { key: 'coming', label: '即将上映' },
-  { key: 'tv', label: '剧集' },
-  { key: 'anime', label: '动漫' },
-  { key: 'duanju', label: '短剧' },
-]
-
-export const recommendApi = {
-  // 热门/趋势信息流：GET /media/recommend?source=&category=&page=&refresh=1
-  // 全源失败时后端返回 results=null，此处兜底为 []，避免前端 .length 踩 null。
-  feed: (source = '', category = 'movie', page = 1, refresh = false) =>
-    http
-      .get<{ results: MediaInfo[] }>('/media/recommend', {
-        params: { source, category, page, ...(refresh ? { refresh: 1 } : {}) },
-      })
-      .then((r) => r.data.results || []),
-  // 流式首屏：GET /media/recommend/stream（SSE），每源完成推一帧 batch。onBatch 收该源条目，逐批 push。
-  feedStream: (
-    source = '',
-    category = 'movie',
-    page = 1,
-    refresh = false,
-    onBatch: (items: MediaInfo[]) => void,
-    signal?: AbortSignal,
-  ) => {
-    const params = new URLSearchParams({ source, category, page: String(page) })
-    if (refresh) params.set('refresh', '1')
-    return streamSSE(`/api/v1/media/recommend/stream?${params}`, (event, data) => {
-      if (event === 'batch' && data?.results) onBatch(data.results as MediaInfo[])
-    }, signal)
-  },
-}
+import { http } from './http'
+import { streamSSE } from './sse'
+
+// 统一媒体元数据（对齐 backend media.MediaInfo）。
+export interface MediaInfo {
+  source: string // tmdb | douban | bangumi | musicbrainz
+  source_id: string
+  title: string
+  original_title?: string
+  year: number
+  type: string // movie | tv | music
+  overview?: string
+  poster_url: string
+  backdrop_url?: string
+  release_date?: string
+  rating?: number
+  genres?: string[]
+}
+
+// 推荐源/分类筛选项。
+export const recommendSources = [
+  { key: '', label: '全部' },
+  { key: 'douban', label: '豆瓣' },
+  { key: 'tmdb', label: 'TMDB' },
+  { key: 'bangumi', label: 'Bangumi' },
+  { key: 'cunguangji', label: '寸光集' },
+]
+
+export const recommendCategories = [
+  { key: 'movie', label: '热映电影' },
+  { key: 'coming', label: '即将上映' },
+  { key: 'tv', label: '剧集' },
+  { key: 'anime', label: '动漫' },
+  { key: 'duanju', label: '短剧' },
+]
+
+export const recommendApi = {
+  // 热门/趋势信息流：GET /media/recommend?source=&category=&page=&refresh=1
+  // 全源失败时后端返回 results=null，此处兜底为 []，避免前端 .length 踩 null。
+  feed: (source = '', category = 'movie', page = 1, refresh = false) =>
+    http
+      .get<{ results: MediaInfo[] }>('/media/recommend', {
+        params: { source, category, page, ...(refresh ? { refresh: 1 } : {}) },
+      })
+      .then((r) => r.data.results || []),
+  // 流式首屏：GET /media/recommend/stream（SSE），每源完成推一帧 batch。onBatch 收该源条目，逐批 push。
+  feedStream: (
+    source = '',
+    category = 'movie',
+    page = 1,
+    refresh = false,
+    onBatch: (items: MediaInfo[]) => void,
+    signal?: AbortSignal,
+  ) => {
+    const params = new URLSearchParams({ source, category, page: String(page) })
+    if (refresh) params.set('refresh', '1')
+    return streamSSE(`/api/v1/media/recommend/stream?${params}`, (event, data) => {
+      if (event === 'batch' && data?.results) onBatch(data.results as MediaInfo[])
+    }, signal)
+  },
+}

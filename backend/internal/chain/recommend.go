@@ -117,7 +117,7 @@ func (c *RecommendChain) fetchRecommend(ctx context.Context, source, category st
 
 // filteredTrendingSources 按当前筛选选出应扇出的趋势源（fetchRecommend 与流式推送共用）：
 // source 非空只留同名源；仅留实现 TrendingCapable 的源（MusicBrainz 等跳过）；
-// CategoryCapable 声明分类时跳过不支持当前分类的源（「短剧」只由星光集响应，亦避免豆瓣
+// CategoryCapable 声明分类时跳过不支持当前分类的源（「短剧」只由寸光集响应，亦避免豆瓣
 // 在 anime 等分类回退默认热映污染），未实现该接口视为支持全部（向后兼容）。
 func (c *RecommendChain) filteredTrendingSources(source, category string) []media.MediaSource {
 	var out []media.MediaSource

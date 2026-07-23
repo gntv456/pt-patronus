@@ -428,7 +428,7 @@ onMounted(async () => {
     </el-tabs>
 
     <!-- 网盘表单 -->
-    <el-dialog v-model="showDriveForm" :title="editingDrive ? '编辑网盘' : '添加网盘'" width="560px" top="8vh">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showDriveForm" :title="editingDrive ? '编辑网盘' : '添加网盘'" width="560px">
       <el-form :model="driveForm" label-width="120px" label-position="right">
         <el-form-item label="名称">
           <el-input v-model="driveForm.name" placeholder="如：我的 115" />
@@ -462,7 +462,7 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 规则表单 -->
-    <el-dialog v-model="showRuleForm" :title="editingRule ? '编辑规则' : '添加规则'" width="600px" top="8vh">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showRuleForm" :title="editingRule ? '编辑规则' : '添加规则'" width="600px">
       <el-form :model="ruleForm" label-width="110px" label-position="right">
         <el-form-item label="名称">
           <el-input v-model="ruleForm.name" placeholder="如：电影 STRM" />
@@ -502,7 +502,7 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 浏览 -->
-    <el-dialog v-model="showBrowse" :title="`浏览 · ${browseDrive?.name ?? ''}`" width="640px" top="8vh">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showBrowse" :title="`浏览 · ${browseDrive?.name ?? ''}`" width="640px">
       <div class="browse-bar">
         <el-button size="small" :disabled="browsePath === '/'" @click="browseUp">↑ 上级</el-button>
         <span class="browse-path">{{ browsePath }}</span>

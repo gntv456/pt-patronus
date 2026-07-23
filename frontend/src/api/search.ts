@@ -23,7 +23,8 @@ export interface SiteTorrent {
 export interface SiteSearchResult {
   site_id: number
   site_name: string
-  torrents: SiteTorrent[]
+  // 失败站 Go 侧 nil slice → JSON null
+  torrents: SiteTorrent[] | null
   error?: string
 }
 

@@ -4,10 +4,14 @@ import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { cloudApi, type CloudDrive, type CloudFile } from '@/api/cloud'
 import { agentApi, type Agent } from '@/api/monitor'
 import {
+
   Folder, Document, Top, Plus, Refresh, Upload, FolderAdd,
   Download, Edit, Rank as MoveIcon, CopyDocument, Delete, Link,
 } from '@element-plus/icons-vue'
 import EmptyState from '@/components/EmptyState.vue'
+
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 
 // 存储项统一：本地/WebDAV/SMB 等（可读写）｜云盘（115/夸克/123，只读 + STRM）。
 type StorageItem = { kind: 'fs'; fs: FileStorage } | { kind: 'cloud'; drive: CloudDrive }
@@ -542,7 +546,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
 </script>
 
 <template>
-  <div class="fm-page">
+  <div class="fm-page" :class="{ embedded: props.embedded }">
     <!-- 左栏 -->
     <aside class="fm-sidebar">
       <div class="sb-head">
@@ -660,7 +664,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
     </section>
 
     <!-- 存储添加/编辑 -->
-    <el-dialog v-model="storageDialog" :title="editingId ? '编辑存储' : '添加存储'" width="460">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="storageDialog" :title="editingId ? '编辑存储' : '添加存储'" width="460">
       <el-form label-width="80">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="类型">
@@ -706,7 +710,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
     </el-dialog>
 
     <!-- 新建文件夹 -->
-    <el-dialog v-model="mkdirVisible" title="新建文件夹" width="360">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="mkdirVisible" title="新建文件夹" width="360">
       <el-input v-model="mkdirName" placeholder="文件夹名称" @keyup.enter="doMkdir" />
       <template #footer>
         <el-button @click="mkdirVisible = false">取消</el-button>
@@ -715,7 +719,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
     </el-dialog>
 
     <!-- 重命名 -->
-    <el-dialog v-model="renameVisible" title="重命名" width="360">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="renameVisible" title="重命名" width="360">
       <el-input v-model="renameNewName" @keyup.enter="doRename" />
       <template #footer>
         <el-button @click="renameVisible = false">取消</el-button>
@@ -724,7 +728,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
     </el-dialog>
 
     <!-- 移动/复制 -->
-    <el-dialog v-model="moveCopyVisible" :title="moveCopyMode === 'move' ? '移动到…' : '复制到…'" width="560">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="moveCopyVisible" :title="moveCopyMode === 'move' ? '移动到…' : '复制到…'" width="560">
       <div class="mc-bar">
         <el-button size="small" :icon="Top" :disabled="moveCopyPath === '/'" @click="moveCopyUp">上级</el-button>
         <span class="mc-path">{{ moveCopyPath }}</span>
@@ -742,7 +746,7 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
     </el-dialog>
 
     <!-- STRM 即时生成 -->
-    <el-dialog v-model="strmVisible" title="生成 STRM" width="480">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="strmVisible" title="生成 STRM" width="480">
       <div class="hint">为云盘目录「{{ strmDir?.name }}」下的媒体文件生成本地 .strm（媒体服务器读取后直链播放云盘资源，无需落地）。</div>
       <el-form label-width="88" style="margin-top: 8px">
         <el-form-item label="输出目录"><el-input v-model="strmForm.output_dir" placeholder="本地 .strm 输出根目录，如 /Media/STRM" /></el-form-item>
@@ -823,4 +827,5 @@ watch(() => storageDialog.value, (v) => { if (v) loadAgents() })
   .fm-sidebar { flex: none; }
   .sb-list { max-height: 200px; }
 }
+.fm-page.embedded { height: calc(100vh - 240px); min-height: 420px; }
 </style>

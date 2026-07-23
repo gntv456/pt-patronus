@@ -97,7 +97,7 @@ func matchesAny(keywords []string, s string) bool {
 }
 
 // ---------------- 寸光集（ptang.top）client ----------------
-// 与 internal/media/xingguangji.go 同源（/api/explore），但 drama-scrape 走寸光集 ptang.top
+// 与 internal/media/cunguangji.go 同源（/api/explore），但 drama-scrape 走寸光集 ptang.top
 // 需要 Bearer API key 鉴权，且要保留 totalEpisodes/region/casts 全字段写进 NFO，故独立实现。
 
 type xgItem struct {

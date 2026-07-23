@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import {
+
   mediaQualityApi,
   sourceOptions,
   sourceLabel,
@@ -9,6 +10,9 @@ import {
 } from '@/api/mediaQuality'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { ElMessage } from 'element-plus'
+
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 
 const cfg = ref<MediaQualityConfig>({
   enabled: false,
@@ -72,9 +76,10 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 class="title">媒体质量</h2>
+      <h2 v-if="!props.embedded" class="title">媒体质量</h2>
+      <h3 v-else class="title embedded-title">媒体质量</h3>
       <el-button type="primary" :loading="saving" @click="save">保存配置</el-button>
     </div>
     <p class="sub">聚合豆瓣 / TMDB / IMDb / Bangumi 多源评分，对订阅做低分保护：评分、投票数、上映天数三道闸门任一不达标即跳过推送。评分查询失败 fail-open（不阻断下载）。</p>
@@ -168,4 +173,11 @@ onMounted(load)
 .src-name { color: var(--text-muted); }
 .src-score { font-weight: 700; }
 .src-votes { color: var(--text-muted); font-size: 12px; }
+
+/* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
+.page.embedded { padding: 0; max-width: none; }
+.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded > .sub { display: none; }
+
 </style>

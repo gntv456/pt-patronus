@@ -4,6 +4,8 @@ import { traktApi, type TraktConfig } from '@/api/trakt'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { ElMessage } from 'element-plus'
 
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 const cfg = ref<TraktConfig | null>(null)
 const loading = ref(false)
 
@@ -132,9 +134,10 @@ onUnmounted(stopPolling)
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 class="title"><GlassIcon name="trakt" :size="26" /> Trakt 同步</h2>
+      <h2 v-if="!props.embedded" class="title"><GlassIcon name="trakt" :size="26" /> Trakt 同步</h2>
+      <h3 v-else class="title embedded-title">Trakt 同步</h3>
       <div class="head-actions">
         <el-button @click="openConfig">配置</el-button>
         <el-button v-if="cfg?.authorized" type="primary" :loading="syncing" @click="syncNow">立即同步</el-button>
@@ -163,7 +166,7 @@ onUnmounted(stopPolling)
       </div>
     </div>
 
-    <el-dialog v-model="showConfig" title="Trakt 配置" width="520px" top="8vh">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" title="Trakt 配置" width="520px">
       <el-form :model="form" label-width="150px" label-position="right">
         <el-form-item label="启用定时同步">
           <el-switch v-model="form.enabled" />
@@ -217,4 +220,11 @@ onUnmounted(stopPolling)
 .device { padding-top: 8px; border-top: 1px solid var(--border); }
 .uc { font-size: 26px; font-weight: 700; letter-spacing: 3px; background: var(--card); padding: 6px 14px; border-radius: 8px; }
 .muted { font-size: 12px; color: var(--text-muted); }
+
+/* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
+.page.embedded { padding: 0; max-width: none; }
+.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded > .sub { display: none; }
+
 </style>

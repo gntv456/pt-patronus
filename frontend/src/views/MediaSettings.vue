@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { mediaConfigApi, type MediaSourceConfig } from '@/api/media'
 
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 // 媒体源设置：TMDB/豆瓣/Bangumi 凭据。secret 回显脱敏；提交时空字段=不修改（可只改部分）。
 // 保存即时 rebuild 源，无需重启。参考 Reseed.vue 的 token 配置范式。
 const router = useRouter()
@@ -61,10 +63,11 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 class="title">媒体源设置</h2>
-      <el-button size="small" @click="router.push('/search')">返回搜索</el-button>
+      <h2 v-if="!props.embedded" class="title">媒体源设置</h2>
+      <h3 v-else class="title embedded-title">媒体源设置</h3>
+      <el-button v-if="!props.embedded" size="small" @click="router.push('/search')">返回搜索</el-button>
     </div>
 
     <div v-loading="loading" class="card glass">
@@ -211,4 +214,11 @@ onMounted(load)
     align-items: start;
   }
 }
+
+/* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
+.page.embedded { padding: 0; max-width: none; }
+.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded > .sub { display: none; }
+
 </style>

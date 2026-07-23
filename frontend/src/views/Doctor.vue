@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { systemApi, type DoctorReport } from '@/api/system'
 
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 const report = ref<DoctorReport | null>(null)
 const loading = ref(false)
 const fixing = ref(false)
@@ -29,10 +31,11 @@ onMounted(() => run(false))
 </script>
 
 <template>
-  <div class="doctor-wrap">
+  <div class="doctor-wrap" :class="{ embedded: props.embedded }">
     <div class="doctor-head">
       <div>
-        <h2>诊断</h2>
+        <h2 v-if="!props.embedded">诊断</h2>
+        <h3 v-else class="title embedded-title">诊断</h3>
         <p v-if="report" class="text-muted">
           状态：
           <el-tag :type="report.status === 'healthy' ? 'success' : report.status === 'degraded' ? 'warning' : 'danger'">
@@ -82,4 +85,6 @@ onMounted(() => run(false))
 .f-id { margin-left: auto; font-size: 12px; }
 .f-detail { margin-top: 6px; font-size: 13px; }
 .f-rec { margin-top: 4px; font-size: 12px; opacity: 0.7; }
+.doctor-wrap.embedded { padding: 0; }
+.doctor-wrap.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
 </style>

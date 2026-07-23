@@ -15,7 +15,7 @@ type MediaSettings struct {
 	DoubanSecret   string
 	DoubanAppKey   string
 	BangumiToken   string
-	XingguangjiBase string // 星光集（短剧）站点根，默认 https://dj.hxpt.org
+	CunguangjiBase string // 寸光集（短剧）站点根，默认 https://dj.hxpt.org
 	OMDbAPIKey     string // OMDb（IMDb 评分源）API Key，空则跳过 IMDb
 }
 
@@ -26,7 +26,7 @@ const (
 	cfgKeyDoubanSecret   = "media.douban_secret"
 	cfgKeyDoubanAppKey   = "media.douban_app_key"
 	cfgKeyBangumiToken   = "media.bangumi_token"
-	cfgKeyXingguangjiBase = "media.xingguangji_base"
+	cfgKeyCunguangjiBase = "media.cunguangji_base"
 	cfgKeyOMDbAPIKey     = "media.omdb_api_key"
 )
 
@@ -73,7 +73,12 @@ func (p *MediaSourceProvider) LoadSettings() MediaSettings {
 		DoubanSecret:    get(cfgKeyDoubanSecret, p.defaults.DoubanSecret),
 		DoubanAppKey:    get(cfgKeyDoubanAppKey, p.defaults.DoubanAppKey),
 		BangumiToken:    get(cfgKeyBangumiToken, p.defaults.BangumiToken),
-		XingguangjiBase: get(cfgKeyXingguangjiBase, p.defaults.XingguangjiBase),
+		CunguangjiBase: func() string {
+			if v := get(cfgKeyCunguangjiBase, ""); v != "" {
+				return v
+			}
+			return get("media.xingguangji_base", p.defaults.CunguangjiBase)
+		}(),
 		OMDbAPIKey:      get(cfgKeyOMDbAPIKey, p.defaults.OMDbAPIKey),
 	}
 }
@@ -87,7 +92,7 @@ func (p *MediaSourceProvider) ApplySettings(in MediaSettings) error {
 		cfgKeyDoubanSecret:    in.DoubanSecret,
 		cfgKeyDoubanAppKey:    in.DoubanAppKey,
 		cfgKeyBangumiToken:    in.BangumiToken,
-		cfgKeyXingguangjiBase: in.XingguangjiBase,
+		cfgKeyCunguangjiBase: in.CunguangjiBase,
 		cfgKeyOMDbAPIKey:      in.OMDbAPIKey,
 	}
 	for k, v := range updates {
@@ -110,7 +115,7 @@ func (p *MediaSourceProvider) rebuild() {
 		media.NewDouban(s.DoubanSecret, s.DoubanAppKey),
 		media.NewBangumi(s.BangumiToken),
 		media.NewOMDb(s.OMDbAPIKey),
-		media.NewXingguangji(s.XingguangjiBase),
+		media.NewCunguangji(s.CunguangjiBase),
 		media.NewMusicBrainz(),
 	}
 	p.mu.Lock()

@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import { showErrorOverlay } from './utils/errorOverlay'
 import './styles/glass.css'
+import './styles/dialog.css'
 
 // 服务式组件 ElMessageBox 的样式在 unplugin AutoImport + ElementPlusResolver 下注入不可靠
 // （JS 调用的服务式组件 CSS 常被漏掉 → 弹窗跑到左上角、半透明）。手动确保加载。

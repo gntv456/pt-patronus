@@ -93,30 +93,30 @@ func TestRecommendFeedsSourceFilter(t *testing.T) {
 }
 
 // CategoryCapable 过滤：声明了 Categories() 的源在「不支持当前分类」时被跳过。
-// 模拟「短剧」分类——只由星光集类源（仅声明 duanju）响应，豆瓣类源（声明 movie/tv）
+// 模拟「短剧」分类——只由寸光集类源（仅声明 duanju）响应，豆瓣类源（声明 movie/tv）
 // 不应被调用，避免回退默认热映污染短剧结果。
 func TestRecommendFeedsCategoryFilter(t *testing.T) {
 	b := NewBase(module.New(), event.New())
-	xg := &catSrc{fakeSrc: fakeSrc{name: "xingguangji", items: []media.MediaInfo{{Source: "xingguangji", Title: "短剧A"}}}, cats: []string{"duanju"}}
+	xg := &catSrc{fakeSrc: fakeSrc{name: "cunguangji", items: []media.MediaInfo{{Source: "cunguangji", Title: "短剧A"}}}, cats: []string{"duanju"}}
 	db := &catSrc{fakeSrc: fakeSrc{name: "douban", items: []media.MediaInfo{{Source: "douban", Title: "电影B"}}}, cats: []string{"movie", "coming", "tv"}}
 	rc := NewRecommendChain(b, &MediaSourceProvider{sources: []media.MediaSource{xg, db}})
 
-	// 「短剧」分类：只取星光集，豆瓣被跳过
+	// 「短剧」分类：只取寸光集，豆瓣被跳过
 	got := rc.RecommendFeeds(context.Background(), "", "duanju", 1, false)
 	if len(got) != 1 || got[0].Title != "短剧A" {
-		t.Fatalf("duanju: expected only xingguangji, got %+v", got)
+		t.Fatalf("duanju: expected only cunguangji, got %+v", got)
 	}
 	if db.calls != 0 {
 		t.Errorf("duanju: douban (declares movie/tv) should be skipped, called %d", db.calls)
 	}
 
-	// 反向：movie 分类时，只声明 duanju 的星光集被跳过
+	// 反向：movie 分类时，只声明 duanju 的寸光集被跳过
 	got2 := rc.RecommendFeeds(context.Background(), "", "movie", 1, false)
 	if len(got2) != 1 || got[0].Title == got2[0].Title {
 		t.Fatalf("movie: expected douban only, got %+v", got2)
 	}
 	if xg.calls != 1 {
-		t.Errorf("movie: xingguangji should be skipped (still called once for duanju above), calls=%d", xg.calls)
+		t.Errorf("movie: cunguangji should be skipped (still called once for duanju above), calls=%d", xg.calls)
 	}
 }
 

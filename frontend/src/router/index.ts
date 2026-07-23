@@ -67,9 +67,10 @@ const router = createRouter({
           component: () => import('@/views/Transfer.vue'),
         },
         {
+          // C 类迁入设置「媒体」分区
           path: 'filter-rules',
           name: 'filter-rules',
-          component: () => import('@/views/FilterRules.vue'),
+          redirect: { name: 'settings', query: { section: 'media', tab: 'filter-rules' } },
         },
         {
           path: 'assistant',
@@ -79,7 +80,7 @@ const router = createRouter({
         {
           path: 'media-settings',
           name: 'media-settings',
-          component: () => import('@/views/MediaSettings.vue'),
+          redirect: { name: 'settings', query: { section: 'media', tab: 'media-settings' } },
         },
         {
           path: 'media-detail',
@@ -139,22 +140,22 @@ const router = createRouter({
         {
           path: 'cloud',
           name: 'cloud',
-          component: () => import('@/views/Cloud.vue'),
+          redirect: { name: 'settings', query: { section: 'connect', tab: 'cloud' } },
         },
         {
           path: 'subtitle',
           name: 'subtitle',
-          component: () => import('@/views/Subtitle.vue'),
+          redirect: { name: 'settings', query: { section: 'media', tab: 'subtitle' } },
         },
         {
           path: 'trakt',
           name: 'trakt',
-          component: () => import('@/views/Trakt.vue'),
+          redirect: { name: 'settings', query: { section: 'connect', tab: 'trakt' } },
         },
         {
           path: 'mediaquality',
           name: 'mediaquality',
-          component: () => import('@/views/MediaQuality.vue'),
+          redirect: { name: 'settings', query: { section: 'media', tab: 'mediaquality' } },
         },
         {
           path: 'harem',
@@ -189,12 +190,12 @@ const router = createRouter({
         {
           path: 'backup',
           name: 'backup',
-          component: () => import('@/views/Backup.vue'),
+          redirect: { name: 'settings', query: { section: 'maintain', tab: 'backup' } },
         },
         {
           path: 'doctor',
           name: 'doctor',
-          component: () => import('@/views/Doctor.vue'),
+          redirect: { name: 'settings', query: { section: 'maintain', tab: 'doctor' } },
         },
         {
           path: 'settings',

@@ -29,7 +29,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // ws:true：开发期转发 /api/v1/ws 的 WebSocket 升级（生产同源 go:embed 不受影响）。
-      '/api': { target: 'http://localhost:8088', changeOrigin: true, ws: true },
+      // timeout 拉长：跨站搜索 SSE 最长可达多站×15s，默认代理超时会掐流。
+      '/api': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+        ws: true,
+        timeout: 120_000,
+        proxyTimeout: 120_000,
+      },
     },
   },
   build: {

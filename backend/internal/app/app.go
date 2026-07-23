@@ -226,7 +226,7 @@ func New(cfg *config.Config) (*App, error) {
 		DoubanSecret:    cfg.DoubanSecret,
 		DoubanAppKey:    cfg.DoubanAppKey,
 		BangumiToken:    cfg.BangumiToken,
-		XingguangjiBase: cfg.XingguangjiBase,
+		CunguangjiBase: cfg.CunguangjiBase,
 		OMDbAPIKey:      cfg.OMDbAPIKey,
 	})
 	posterCache := oper.NewPosterCacheOper(database)

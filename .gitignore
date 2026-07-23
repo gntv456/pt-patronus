@@ -33,6 +33,11 @@ Thumbs.db
 # 调试产物
 mobile/_dbg_*
 
+# 本地调试 / 逆向分析产物（编译测试二进制、抓取页面、临时脚本与日志）
+tmp/
+.apk-analyze/
+backend/.localtest/
+
 # Python 字节码缓存
 __pycache__/
 *.py[cod]

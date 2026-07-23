@@ -87,7 +87,7 @@ type Config struct {
 	DoubanSecret    string // Frodo HMAC 签名密钥(DOUBAN_SECRET)；空则用公开默认。非空→签名为主、微信免签兜底
 	DoubanAppKey    string
 	BangumiToken    string // bgm.tv 可选 Bearer token（提升速率限制；空走匿名配额）
-	XingguangjiBase string // 星光集（短剧）站点根，默认 https://dj.hxpt.org；可指向本地实例联调
+	CunguangjiBase string // 寸光集（短剧）站点根，默认 https://dj.hxpt.org；可指向本地实例联调
 	OMDbAPIKey      string // OMDb( IMDb 评分源 ) API Key(OMDB_API_KEY)；空则跳过 IMDb 聚合
 
 	// 字幕源（env 提供 SystemConfig 默认；UI 改动运行时覆盖）
@@ -166,7 +166,7 @@ func Load() (*Config, error) {
 		DoubanSecret:       getenv("DOUBAN_SECRET", ""),
 		DoubanAppKey:       getenv("DOUBAN_API_KEY", ""),
 		BangumiToken:       getenv("BANGUMI_TOKEN", ""),
-		XingguangjiBase:    getenv("XINGGUANGJI_BASE", "https://dj.hxpt.org"),
+		CunguangjiBase:    getenvFallback("CUNGUANGJI_BASE", "XINGGUANGJI_BASE", "https://dj.hxpt.org"),
 		OMDbAPIKey:         getenv("OMDB_API_KEY", ""),
 		AssrtToken:         getenv("ASSRT_TOKEN", ""),
 		OpenSubtitlesKey:   getenv("OPENSUBTITLES_KEY", ""),
@@ -265,6 +265,17 @@ func (c *Config) SQLitePath() string {
 	return strings.TrimRight(c.DataDir, "/\\") + string(os.PathSeparator) + "ptpatronus.db"
 }
 
+
+// getenvFallback 读 primary；空则读 secondary；都空用 def。
+func getenvFallback(primary, secondary, def string) string {
+	if v := getenv(primary, ""); v != "" {
+		return v
+	}
+	if v := getenv(secondary, ""); v != "" {
+		return v
+	}
+	return def
+}
 func getenv(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v

@@ -42,14 +42,19 @@ const loading = ref(false)
 const error = ref('')
 const searched = ref(false)
 
+// 失败站后端 JSON 里 torrents 可能是 null（Go slice nil），不能直接 .map。
 const rows = computed<SearchRow[]>(() =>
-  results.value.flatMap((r) => r.torrents.map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name }))),
+  results.value.flatMap((r) =>
+    (r.torrents ?? []).map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name })),
+  ),
 )
 // 渲染上限：跨 10+ 站可能返回数百行，一次性渲染卡顿；默认截断，提供「显示全部」展开。
 const MAX_ROWS = 200
 const showAll = ref(false)
 const visibleRows = computed(() => (showAll.value ? rows.value : rows.value.slice(0, MAX_ROWS)))
 const failedSites = computed(() => results.value.filter((r) => r.error))
+// 流式进度：已回站数 / 目标站数（筛选或全部启用）
+const streamDoneSites = computed(() => results.value.length)
 const activeSites = computed(() => sites.value.filter((s) => s.is_active))
 // 站点筛选：空=搜全部启用站；非空=仅搜选中站点。UI/逻辑内聚在 SiteFilterDialog 组件。
 const selectedSiteIds = ref<number[]>([])
@@ -83,7 +88,7 @@ async function search() {
         selectedSiteIds.value,
         (r) => {
           if (torrentAbort !== ctrl) return
-          results.value = [...results.value, r]
+          results.value = [...results.value, { ...r, torrents: r.torrents ?? [] }]
         },
         ctrl.signal,
       )
@@ -353,7 +358,12 @@ onUnmounted(() => {
       </div>
 
       <!-- 种子结果表 -->
-      <div v-loading="loading" class="card glass">
+      <!-- 流式：有结果即显；仅空结果时全卡 loading，避免遮罩挡住「搜出即显」 -->
+      <p v-if="loading && mode === 'torrent'" class="stream-progress text-muted">
+        搜索中… 已返回 {{ streamDoneSites }} / {{ scopeSiteCount }} 站
+        <template v-if="rows.length"> · 命中 {{ rows.length }} 条</template>
+      </p>
+      <div v-loading="loading && !rows.length" class="card glass">
         <el-table
           v-if="rows.length"
           :data="visibleRows"
@@ -979,4 +989,10 @@ onUnmounted(() => {
   }
 }
 .row-cap { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); color: var(--text-muted); }
+
+.stream-progress {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.4;
+}
 </style>

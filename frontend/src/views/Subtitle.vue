@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import {
+
   subtitleApi,
   SOURCE_LABEL,
   LANG_LABEL,
@@ -11,6 +12,9 @@ import {
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 
 const q = ref('')
 const language = ref('')
@@ -121,9 +125,10 @@ onMounted(() => {})
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 class="title">字幕</h2>
+      <h2 v-if="!props.embedded" class="title">字幕</h2>
+      <h3 v-else class="title embedded-title">字幕源</h3>
       <el-button @click="openConfig">字幕源设置</el-button>
     </div>
     <p class="sub">
@@ -185,7 +190,7 @@ onMounted(() => {})
     </div>
 
     <!-- 字幕源配置 -->
-    <el-dialog v-model="showConfig" title="字幕源设置" width="560px" top="8vh">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" title="字幕源设置" width="560px">
       <el-form :model="cfgForm" label-width="150px" label-position="right">
         <el-form-item label="ASSRT Token">
           <el-input v-model="cfgForm.assrt_token" type="password" show-password
@@ -233,4 +238,11 @@ onMounted(() => {})
 .result-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
 .result-title { font-size: var(--fs-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hint { font-size: var(--fs-xs); color: var(--text-muted); display: block; margin-top: 4px; }
+
+/* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
+.page.embedded { padding: 0; max-width: none; }
+.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded > .sub { display: none; }
+
 </style>

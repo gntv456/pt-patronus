@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+
   filterApi,
   type FilterRule,
   type FilterRuleGroup,
@@ -13,6 +14,9 @@ import {
   type FilterTorrent,
 } from '@/api/filter'
 import EmptyState from '@/components/EmptyState.vue'
+
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 
 const activeTab = ref<'builtin' | 'custom' | 'group'>('builtin')
 
@@ -254,11 +258,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ embedded: props.embedded }">
     <header class="header">
       <div>
-        <h1>资源过滤规则</h1>
-        <p class="sub">用规则组表达式对种子分级筛选，命中越靠前的优先级越高。</p>
+        <h1 v-if="!props.embedded">资源过滤规则</h1>
+        <h3 v-else class="title embedded-title">过滤规则</h3>
+        <p v-if="!props.embedded" class="sub">用规则组表达式对种子分级筛选，命中越靠前的优先级越高。</p>
       </div>
     </header>
 
@@ -452,7 +457,7 @@ onMounted(() => {
     </el-tabs>
 
     <!-- 自定义规则表单 -->
-    <el-dialog v-model="showCustomForm" :title="editingCustom ? '编辑自定义规则' : '新建自定义规则'" width="560px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showCustomForm" :title="editingCustom ? '编辑自定义规则' : '新建自定义规则'" width="560px">
       <el-form :model="customForm" label-width="110px" size="small">
         <el-form-item label="规则 ID" required>
           <el-input v-model="customForm.id" placeholder="仅字母数字，如 CN_AUDIO" :disabled="!!editingCustom" />
@@ -481,7 +486,7 @@ onMounted(() => {
     </el-dialog>
 
     <!-- 规则组表单 -->
-    <el-dialog v-model="showGroupForm" :title="editingGroup ? '编辑规则组' : '新建规则组'" width="560px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showGroupForm" :title="editingGroup ? '编辑规则组' : '新建规则组'" width="560px">
       <el-form :model="groupForm" label-width="110px" size="small">
         <el-form-item label="组名" required>
           <el-input v-model="groupForm.name" placeholder="如：默认规则组" :disabled="!!editingGroup" />
@@ -618,4 +623,11 @@ code.re {
   color: var(--text-muted);
   font-size: 12px;
 }
+
+/* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
+.page.embedded { padding: 0; max-width: none; }
+.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded > .sub { display: none; }
+
 </style>

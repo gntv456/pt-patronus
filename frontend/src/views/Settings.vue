@@ -7,6 +7,14 @@ import { systemApi, APP_VERSION, type UpdateCheckResult } from '@/api/system'
 import { notificationApi, type NotifyConfig, type NotifyConfigInput, type NotifySendResult } from '@/api/notification'
 import { copyText } from '@/utils/clipboard'
 import Cloud from '@/views/Cloud.vue'
+import Trakt from '@/views/Trakt.vue'
+import FileManager from '@/views/FileManager.vue'
+import MediaQuality from '@/views/MediaQuality.vue'
+import Subtitle from '@/views/Subtitle.vue'
+import MediaSettings from '@/views/MediaSettings.vue'
+import FilterRules from '@/views/FilterRules.vue'
+import Backup from '@/views/Backup.vue'
+import Doctor from '@/views/Doctor.vue'
 
 const dark = ref(false)
 // 版本号：优先读后端 /system/info（部署态真源），失败兜底构建期常量。
@@ -49,19 +57,63 @@ function toggleTheme() {
 // 运行日志（环形缓冲）
 const settingsSection = ref('general')
 const activeTab = ref('general')
-// P1 六分区：外层 section → 内层 activeTab（连接/通知/维护等嵌套）
-const connectTab = ref('oidc')
+// P1 六分区：外层 section → 内层 activeTab（连接/媒体/通知/维护等嵌套）
+const connectTab = ref('cloud')
+const mediaTab = ref('mediaquality')
 const notifyTab = ref('notification')
 const maintainTab = ref('logs')
 const settingsRouter = useRouter()
+
+// 原独立配置页 → 设置分区内嵌 Tab（C 类迁入完成）
+const settingsPageMap: Record<string, { section: string; tab: string }> = {
+  cloud: { section: 'connect', tab: 'cloud' },
+  trakt: { section: 'connect', tab: 'trakt' },
+  files: { section: 'connect', tab: 'files' },
+  mediaquality: { section: 'media', tab: 'mediaquality' },
+  subtitle: { section: 'media', tab: 'subtitle' },
+  'media-settings': { section: 'media', tab: 'media-settings' },
+  'filter-rules': { section: 'media', tab: 'filter-rules' },
+  backup: { section: 'maintain', tab: 'backup' },
+  doctor: { section: 'maintain', tab: 'doctor' },
+}
+
 function goPage(name: string) {
-  if (name === 'cloud') {
-    settingsSection.value = 'connect'
-    connectTab.value = 'cloud'
+  const m = settingsPageMap[name]
+  if (m) {
+    settingsSection.value = m.section
+    if (m.section === 'connect') connectTab.value = m.tab
+    else if (m.section === 'media') mediaTab.value = m.tab
+    else if (m.section === 'maintain') maintainTab.value = m.tab
+    onTabChange(m.tab)
     return
   }
   settingsRouter.push({ name })
 }
+
+function applySettingsQuery() {
+  const q = settingsRouter.currentRoute.value.query
+  const sec = typeof q.section === 'string' ? q.section : ''
+  const tab = typeof q.tab === 'string' ? q.tab : ''
+  if (sec) settingsSection.value = sec
+  if (tab) {
+    if (sec === 'connect' || (!sec && ['cloud','trakt','files','oidc','llmgateway','cookiecloud','servarr'].includes(tab))) {
+      if (!sec) settingsSection.value = 'connect'
+      connectTab.value = tab
+    } else if (sec === 'media' || (!sec && ['mediaquality','subtitle','media-settings','filter-rules'].includes(tab))) {
+      if (!sec) settingsSection.value = 'media'
+      mediaTab.value = tab
+    } else if (sec === 'maintain' || (!sec && ['logs','backup','doctor'].includes(tab))) {
+      if (!sec) settingsSection.value = 'maintain'
+      maintainTab.value = tab
+    } else if (sec === 'notify') {
+      notifyTab.value = tab
+    }
+    onTabChange(tab)
+  } else if (sec) {
+    onSectionChange(sec)
+  }
+}
+onMounted(() => { applySettingsQuery() })
 const logs = ref<LogEntry[]>([])
 const logLevel = ref('')
 const logLoading = ref(false)
@@ -131,8 +183,9 @@ function onTabChange(tab: string | number) {
 }
 function onSectionChange(sec: string | number) {
   const s = String(sec)
-  // 切到分区时懒加载默认子 Tab
+  // 切入分区时触发该区默认子 Tab
   if (s === 'connect') onTabChange(connectTab.value)
+  else if (s === 'media') onTabChange(mediaTab.value)
   else if (s === 'notify') onTabChange(notifyTab.value)
   else if (s === 'automation') onTabChange('schedule')
   else if (s === 'maintain') onTabChange(maintainTab.value)
@@ -644,27 +697,15 @@ async function openChangelog() {
       </el-tab-pane>
 
       <el-tab-pane label="连接" name="connect">
-
-        <div class="card glass link-grid">
-          <div class="section-hint text-muted">以下独立配置页将逐步迁入本分区；现提供快捷入口。</div>
-          <div class="links">
-                        <button type="button" class="link-card" @click="goPage('trakt')">
-              <span class="link-title">Trakt</span>
-              <span class="link-desc">WatchList → 订阅</span>
-            </button>
-            <button type="button" class="link-card" @click="goPage('cloud')">
-              <span class="link-title">云盘账号</span>
-              <span class="link-desc">已迁入下方「云盘」子 Tab</span>
-            </button>
-            <button type="button" class="link-card" @click="goPage('files')">
-              <span class="link-title">文件浏览 · STRM</span>
-              <span class="link-desc">本地/NAS/云盘统一浏览（§5.2）</span>
-            </button>
-          </div>
-        </div>
         <el-tabs v-model="connectTab" @tab-change="onTabChange" class="nested-tabs">
           <el-tab-pane label="云盘" name="cloud" lazy>
             <Cloud :embedded="true" />
+          </el-tab-pane>
+          <el-tab-pane label="Trakt" name="trakt" lazy>
+            <Trakt :embedded="true" />
+          </el-tab-pane>
+          <el-tab-pane label="文件 · STRM" name="files" lazy>
+            <FileManager :embedded="true" />
           </el-tab-pane>
           <el-tab-pane label="OIDC / SSO" name="oidc">
 
@@ -805,28 +846,20 @@ async function openChangelog() {
       </el-tab-pane>
 
       <el-tab-pane label="媒体" name="media">
-
-        <div class="card glass link-grid">
-          <div class="section-hint text-muted">以下独立配置页将逐步迁入本分区；现提供快捷入口。</div>
-          <div class="links">
-                        <button type="button" class="link-card" @click="goPage('mediaquality')">
-              <span class="link-title">媒体质量</span>
-              <span class="link-desc">多评分聚合 · 低分保护</span>
-            </button>
-            <button type="button" class="link-card" @click="goPage('subtitle')">
-              <span class="link-title">字幕源</span>
-              <span class="link-desc">ASSRT / OpenSubtitles / SubHD</span>
-            </button>
-            <button type="button" class="link-card" @click="goPage('media-settings')">
-              <span class="link-title">媒体设置</span>
-              <span class="link-desc">识别与刮削参数</span>
-            </button>
-            <button type="button" class="link-card" @click="goPage('filter-rules')">
-              <span class="link-title">过滤规则</span>
-              <span class="link-desc">规则组优先级</span>
-            </button>
-          </div>
-        </div>
+        <el-tabs v-model="mediaTab" @tab-change="onTabChange" class="nested-tabs">
+          <el-tab-pane label="媒体质量" name="mediaquality" lazy>
+            <MediaQuality :embedded="true" />
+          </el-tab-pane>
+          <el-tab-pane label="字幕源" name="subtitle" lazy>
+            <Subtitle :embedded="true" />
+          </el-tab-pane>
+          <el-tab-pane label="媒体设置" name="media-settings" lazy>
+            <MediaSettings :embedded="true" />
+          </el-tab-pane>
+          <el-tab-pane label="过滤规则" name="filter-rules" lazy>
+            <FilterRules :embedded="true" />
+          </el-tab-pane>
+        </el-tabs>
       </el-tab-pane>
 
       <el-tab-pane label="自动化" name="automation">
@@ -1190,7 +1223,7 @@ async function openChangelog() {
         </div>
 
         <!-- 微信扫码弹窗 -->
-        <el-dialog v-model="wxQrVisible" title="微信 ClawBot 扫码登录" width="320px" @close="stopWxPoll">
+        <el-dialog class="pt-dialog" append-to-body align-center v-model="wxQrVisible" title="微信 ClawBot 扫码登录" width="320px" @close="stopWxPoll">
           <div class="qr-box">
             <img v-if="wxQrUrl" :src="wxQrUrl" alt="微信登录二维码" class="qr-img" />
             <div class="text-muted">请用微信扫码完成登录，成功后自动关闭</div>
@@ -1198,7 +1231,7 @@ async function openChangelog() {
         </el-dialog>
 
         <!-- 在线更新检查弹窗 -->
-        <el-dialog v-model="updateDlgVisible" :title="`发现新版本 v${updateInfo?.latestVersion ?? ''}`" width="560px">
+        <el-dialog class="pt-dialog" append-to-body align-center v-model="updateDlgVisible" :title="`发现新版本 v${updateInfo?.latestVersion ?? ''}`" width="560px">
           <div v-if="updateInfo" class="update-body">
             <p class="update-ver">当前 v{{ updateInfo.currentVersion }} → 最新 v{{ updateInfo.latestVersion }}<span v-if="updateInfo.isBelowMin" class="update-forced">（版本过低，建议立即升级）</span></p>
             <div v-if="updateInfo.releaseName" class="update-name">{{ updateInfo.releaseName }}</div>
@@ -1237,20 +1270,6 @@ async function openChangelog() {
       </el-tab-pane>
 
       <el-tab-pane label="维护" name="maintain">
-
-        <div class="card glass link-grid">
-          <div class="section-hint text-muted">以下独立配置页将逐步迁入本分区；现提供快捷入口。</div>
-          <div class="links">
-                        <button type="button" class="link-card" @click="goPage('backup')">
-              <span class="link-title">备份</span>
-              <span class="link-desc">配置导出 / 导入</span>
-            </button>
-            <button type="button" class="link-card" @click="goPage('doctor')">
-              <span class="link-title">诊断</span>
-              <span class="link-desc">健康自检</span>
-            </button>
-          </div>
-        </div>
         <el-tabs v-model="maintainTab" @tab-change="onTabChange" class="nested-tabs">
           <el-tab-pane label="运行日志" name="logs">
 
@@ -1277,12 +1296,18 @@ async function openChangelog() {
         </div>
       
           </el-tab-pane>
+          <el-tab-pane label="备份" name="backup" lazy>
+            <Backup :embedded="true" />
+          </el-tab-pane>
+          <el-tab-pane label="诊断" name="doctor" lazy>
+            <Doctor :embedded="true" />
+          </el-tab-pane>
         </el-tabs>
       </el-tab-pane>
     </el-tabs>
 
     <!-- 使用帮助 -->
-    <el-dialog v-model="helpVisible" title="使用帮助" width="560px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="helpVisible" title="使用帮助" width="560px">
       <div class="help-body">
         <h4>核心价值</h4>
         <p>PTPatronus 是 PT 站点保号防封利器。推荐上手路径：</p>
@@ -1391,27 +1416,6 @@ async function openChangelog() {
 .oidc-help code { background: var(--card); padding: 2px 6px; border-radius: 4px; }
 .oidc-save { display: flex; justify-content: flex-end; }
 
-.section-hint { margin-bottom: 10px; font-size: 13px; }
-.link-grid .links {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 10px;
-}
-.link-card {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: left;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(108, 92, 231, 0.14);
-  background: rgba(108, 92, 231, 0.06);
-  color: var(--text-strong);
-  cursor: pointer;
-}
-.link-card:hover {
-  background: rgba(108, 92, 231, 0.12);
-}
 .link-title { font-weight: 600; font-size: 14px; }
 .link-desc { font-size: 12px; color: var(--text-muted); }
 .nested-tabs { margin-top: 8px; }

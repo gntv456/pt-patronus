@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { transferApi, type TransferHistory, type TransferConfig, type OrganizeResult } from '@/api/transfer'
 import { downloaderApi, type Downloader, type Torrent } from '@/api/downloader'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { Delete, Plus } from '@element-plus/icons-vue'
 
+const route = useRoute()
 const list = ref<TransferHistory[]>([])
 const loading = ref(false)
-const statusFilter = ref<'' | 'success' | 'failed' | 'skipped'>('')
+const allowedStatus = new Set(['success', 'failed', 'skipped'])
+const qStatus = String(route.query.status || '')
+const statusFilter = ref<'' | 'success' | 'failed' | 'skipped'>(
+  allowedStatus.has(qStatus) ? (qStatus as 'success' | 'failed' | 'skipped') : '',
+)
 const organizing = ref(false)
 const redoing = ref<number | null>(null)
 const downloaders = ref<Downloader[]>([])

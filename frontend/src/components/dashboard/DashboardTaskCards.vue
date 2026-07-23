@@ -20,7 +20,7 @@ interface TaskCard {
 
 const cards = ref<TaskCard[]>([
   { key: 'assess', title: '保级风险', value: '—', hint: '考核 DANGER/PROGRESS', tone: 'info', route: 'assessment' },
-  { key: 'transfer', title: '待整理', value: '—', hint: '下载完成待入库', tone: 'info', route: 'transfer' },
+  { key: 'transfer', title: '整理失败', value: '—', hint: '失败历史（入口）', tone: 'info', route: 'transfer', query: { status: 'failed' } },
   { key: 'brush', title: '刷流中', value: '—', hint: '启用中的刷流任务', tone: 'info', route: 'brushflow' },
   { key: 'health', title: '站点健康', value: '—', hint: '监护室 critical', tone: 'info', route: 'savept' },
   { key: 'reseed', title: '辅种建议', value: '—', hint: '待处理候选', tone: 'info', route: 'reseed' },
@@ -36,52 +36,75 @@ function setCard(key: string, patch: Partial<TaskCard>) {
 async function refresh() {
   loading.value = true
   try {
-    const [assess, bf, savept, reseedTasks] = await Promise.all([
-      assessmentApi.all(false).catch(() => []),
-      brushflowApi.list().catch(() => []),
-      saveptApi.get(false).catch(() => null),
-      reseedApi.tasks('pending').catch(() => []),
+    // 并行拉数；用 allSettled 区分「成功空数据」与「接口失败」，避免失败时误报平稳/健康
+    const { transferApi } = await import('@/api/transfer')
+    const [assessR, bfR, saveptR, reseedR, transferR] = await Promise.allSettled([
+      assessmentApi.all(false),
+      brushflowApi.list(),
+      saveptApi.get(false),
+      reseedApi.tasks('pending'),
+      transferApi.history('failed', 50),
     ])
 
-    const danger = assess.filter((c) => c.status === 'DANGER').length
-    const progress = assess.filter((c) => c.status === 'PROGRESS').length
-    setCard('assess', {
-      value: String(danger + progress),
-      hint: danger ? `${danger} 站危急 · ${progress} 进行中` : progress ? `${progress} 站进行中` : '考核状态平稳',
-      tone: danger ? 'danger' : progress ? 'warn' : 'ok',
-    })
+    if (assessR.status === 'fulfilled') {
+      const assess = assessR.value
+      const danger = assess.filter((c) => c.status === 'DANGER').length
+      const progress = assess.filter((c) => c.status === 'PROGRESS').length
+      setCard('assess', {
+        value: String(danger + progress),
+        hint: danger
+          ? `${danger} 站危急 · ${progress} 进行中`
+          : progress
+            ? `${progress} 站进行中`
+            : '考核状态平稳',
+        tone: danger ? 'danger' : progress ? 'warn' : 'ok',
+      })
+    } else {
+      setCard('assess', { value: '—', hint: '考核数据加载失败', tone: 'info' })
+    }
 
-    const enabledBf = bf.filter((t) => t.enabled).length
-    setCard('brush', {
-      value: String(enabledBf),
-      hint: enabledBf ? `${enabledBf} 个任务启用` : '暂无启用任务',
-      tone: enabledBf ? 'warn' : 'ok',
-    })
+    if (bfR.status === 'fulfilled') {
+      const enabledBf = bfR.value.filter((t) => t.enabled).length
+      setCard('brush', {
+        value: String(enabledBf),
+        hint: enabledBf ? `${enabledBf} 个任务启用` : '暂无启用任务',
+        tone: enabledBf ? 'warn' : 'ok',
+      })
+    } else {
+      setCard('brush', { value: '—', hint: '刷流数据加载失败', tone: 'info' })
+    }
 
-    const critical = savept?.summary?.critical ?? 0
-    setCard('health', {
-      value: String(critical),
-      hint: critical ? `${critical} 站异常` : '监护站健康',
-      tone: critical ? 'danger' : 'ok',
-    })
+    if (saveptR.status === 'fulfilled' && saveptR.value) {
+      const critical = saveptR.value.summary?.critical ?? 0
+      setCard('health', {
+        value: String(critical),
+        hint: critical ? `${critical} 站异常` : '监护站健康',
+        tone: critical ? 'danger' : 'ok',
+      })
+    } else {
+      setCard('health', { value: '—', hint: '监护数据加载失败', tone: 'info' })
+    }
 
-    setCard('reseed', {
-      value: String(reseedTasks.length),
-      hint: reseedTasks.length ? `${reseedTasks.length} 待处理候选` : '无待处理辅种',
-      tone: reseedTasks.length ? 'warn' : 'ok',
-    })
+    if (reseedR.status === 'fulfilled') {
+      const n = reseedR.value.length
+      setCard('reseed', {
+        value: String(n),
+        hint: n ? `${n} 待处理候选` : '无待处理辅种',
+        tone: n ? 'warn' : 'ok',
+      })
+    } else {
+      setCard('reseed', { value: '—', hint: '辅种数据加载失败', tone: 'info' })
+    }
 
-    // 待整理：无独立队列 API，用失败/最近历史作提示入口
-    try {
-      const { transferApi } = await import('@/api/transfer')
-      const hist = await transferApi.history('failed', 50)
-      const n = hist.length
+    // 无「待入库队列」API：以整理失败历史作为可操作提示（非待办真值）
+    if (transferR.status === 'fulfilled') {
+      const n = transferR.value.length
       setCard('transfer', {
         value: n ? String(n) : '→',
         hint: n ? `${n} 条失败记录` : '打开整理页查看',
         tone: n ? 'warn' : 'info',
       })
-    } catch {
+    } else {
       setCard('transfer', { value: '→', hint: '打开整理页查看', tone: 'info' })
     }
   } finally {

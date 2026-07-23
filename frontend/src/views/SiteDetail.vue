@@ -49,6 +49,16 @@ const statusColor: Record<string, string> = {
   UNKNOWN: '#94a3b8',
 }
 
+function clearTabState() {
+  assess.value = null
+  contract.value = null
+  contractCheck.value = null
+  fl.value = null
+  bfTasks.value = []
+  saveptCard.value = null
+  reseedHint.value = ''
+}
+
 async function loadSite() {
   loading.value = true
   loadError.value = ''
@@ -184,12 +194,13 @@ function fmtBytes(n: number) {
 
 onMounted(async () => {
   await loadSite()
-  void loadTab(tab.value)
+  if (site.value) void loadTab(tab.value)
 })
 
 watch(siteId, async () => {
+  clearTabState()
   await loadSite()
-  void loadTab(tab.value)
+  if (site.value) void loadTab(tab.value)
 })
 
 // 外部改 ?tab= 时同步（浏览器前进/后退或深链）
@@ -199,7 +210,15 @@ watch(
     const n = validTabs.has(v) ? v : 'overview'
     if (n !== tab.value) {
       tab.value = n
-      void loadTab(n)
+      if (site.value) void loadTab(n)
+    }
+    // 非法 tab 写回 overview，避免地址栏与 UI 不一致
+    if (!validTabs.has(v) && route.query.tab != null) {
+      router.replace({
+        name: 'site-detail',
+        params: { id: String(siteId.value || route.params.id) },
+        query: { tab: 'overview' },
+      })
     }
   },
 )

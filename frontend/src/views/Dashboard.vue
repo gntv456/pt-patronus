@@ -318,7 +318,7 @@ async function syncStats() {
     // 站点统计刷新后，联动刷新自动化/AI/活动时间线卡片。
     autoCard.value?.refresh()
     aiCard.value?.refresh()
-  taskCards.value?.refresh()
+    taskCards.value?.refresh()
     timelineCard.value?.refresh()
   }
 }

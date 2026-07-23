@@ -405,9 +405,13 @@ function applySiteFocusFromQuery() {
 }
 
 // 数据首次到位时套用站点详情深链筛选（无 keep-alive 时每进页 remount）
-watch(sites, (list) => {
-  if (list.length) applySiteFocusFromQuery()
-}, { once: true })
+watch(
+  data,
+  (d) => {
+    if (d) applySiteFocusFromQuery()
+  },
+  { once: true },
+)
 
 onMounted(() => {
   document.addEventListener('click', handleDocumentClick)

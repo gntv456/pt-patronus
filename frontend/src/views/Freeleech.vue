@@ -50,9 +50,20 @@ const summary = computed(() => {
 const filter = ref<FilterKey>('all')
 // 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。UI 用 SiteFilterDialog 组件。
 const route = useRoute()
-const selectedSiteIds = ref<number[]>(
-  route.query.site_id ? [Number(route.query.site_id)].filter((n) => Number.isFinite(n) && n > 0) : [],
-)
+function parseSiteIdsFromQuery(): number[] {
+  const raw = route.query.site_id
+  const parts = Array.isArray(raw) ? raw : raw != null && raw !== '' ? [raw] : []
+  return parts.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)
+}
+const selectedSiteIds = ref<number[]>(parseSiteIdsFromQuery())
+const focusFromQuery = computed(() => selectedSiteIds.value.length === 1)
+const focusLabel = computed(() => {
+  if (!focusFromQuery.value) return ''
+  const id = selectedSiteIds.value[0]
+  const fromCard = results.value.find((r) => r.site_id === id)?.site_name
+  const q = route.query.site_name
+  return fromCard || (typeof q === 'string' ? q : '') || `site_id=${id}`
+})
 const sites = computed(() => {
   const m = new Map<number, string>()
   for (const r of results.value) if (!m.has(r.site_id)) m.set(r.site_id, r.site_name)
@@ -143,6 +154,15 @@ onMounted(() => load())
         <span class="lbl">{{ t.label }}</span>
       </div>
     </div>
+
+    <el-alert
+      v-if="focusFromQuery && !loading"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 12px"
+      :title="`已按站点详情筛选：${focusLabel}`"
+    />
 
     <EmptyState
       v-if="!results.length && !loading"

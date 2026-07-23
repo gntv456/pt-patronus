@@ -33,9 +33,20 @@ async function load(refresh = false) {
 
 // 站点筛选：空=全部，非空=仅选中站点（多选，纯前端筛选）。
 const route = useRoute()
-const selectedSiteIds = ref<number[]>(
-  route.query.site_id ? [Number(route.query.site_id)].filter((n) => Number.isFinite(n) && n > 0) : [],
-)
+function parseSiteIdsFromQuery(): number[] {
+  const raw = route.query.site_id
+  const parts = Array.isArray(raw) ? raw : raw != null && raw !== '' ? [raw] : []
+  return parts.map((x) => Number(x)).filter((n) => Number.isFinite(n) && n > 0)
+}
+const selectedSiteIds = ref<number[]>(parseSiteIdsFromQuery())
+const focusFromQuery = computed(() => selectedSiteIds.value.length === 1)
+const focusLabel = computed(() => {
+  if (!focusFromQuery.value) return ''
+  const id = selectedSiteIds.value[0]
+  const fromCard = cards.value.find((c) => c.site_id === id)?.site_name
+  const q = route.query.site_name
+  return fromCard || (typeof q === 'string' ? q : '') || `site_id=${id}`
+})
 const sites = computed(() => {
   const m = new Map<number, string>()
   for (const c of cards.value) if (!m.has(c.site_id)) m.set(c.site_id, c.site_name)
@@ -97,6 +108,15 @@ onMounted(() => load())
 
     <p v-if="loading && !cards.length" style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
 
+    <el-alert
+      v-if="focusFromQuery && !loading"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 12px"
+      :title="`已按站点详情筛选：${focusLabel}`"
+    />
+
     <div class="cards">
       <div v-for="c in filtered" :key="c.site_id" class="assess-card glass" :style="{ borderLeftColor: statusColor[c.status] }">
         <div class="card-top">
@@ -129,6 +149,12 @@ onMounted(() => load())
       icon="📋"
       title="暂无考核数据"
       description="添加并登录 PT 站点后，这里会展示各站的考核进度、剩余天数与达标情况"
+    />
+    <EmptyState
+      v-else-if="!filtered.length && !loading"
+      icon="🔎"
+      title="当前筛选下无站点"
+      description="可切换状态筛选或清空站点筛选"
     />
   </div>
 </template>

@@ -84,6 +84,13 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
       title: '系统设置',
       actions: [
         PTBarAction(
+          icon: Icons.receipt_long_outlined,
+          label: '日志',
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const LogsPage()),
+          ),
+        ),
+        PTBarAction(
           icon: Icons.refresh,
           label: '刷新',
           loading: _loading,

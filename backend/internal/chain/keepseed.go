@@ -82,14 +82,29 @@ func NewKeepSeedChain(b Base, siteCh *SiteChain, iyuuC *iyuu.Client, dl dlProvid
 
 // FindCandidates 跨站搜索同名种子，按名称相似度+大小接近度评分，返回高分候选（名称模糊匹配）。
 func (c *KeepSeedChain) FindCandidates(ctx context.Context, name string, size int64) []keepseed.Candidate {
+	return c.findCandidatesWith(ctx, name, size, keepseed.IDHints{
+		ImdbID: torznab.ExtractImdbID(name),
+		TmdbID: keepseed.ExtractTmdbID(name),
+	}, nil)
+}
+
+// findCandidatesWith 跨站搜索；ids/fileNames 用于抬分（TMDB/IMDb/文件树）。
+func (c *KeepSeedChain) findCandidatesWith(ctx context.Context, name string, size int64, ids keepseed.IDHints, fileNames []string) []keepseed.Candidate {
+	if c.siteCh == nil {
+		return nil
+	}
 	results := c.siteCh.SearchSites(ctx, name, "", nil) // 辅种按名称+大小匹配，不限媒体类型
 	var out []keepseed.Candidate
 	for _, r := range results {
-		for _, t := range r.Torrents {
-			score := keepseed.Score(name, t.Title, size, site.ParseBytes(t.Size))
+		for _, tor := range r.Torrents {
+			score := keepseed.ScoreWith(name, tor.Title, size, site.ParseBytes(tor.Size), ids,
+				torznab.ExtractImdbID(tor.Title), keepseed.ExtractTmdbID(tor.Title))
+			if fs := keepseed.ScoreFileTree(fileNames, []string{tor.Title, tor.SubTitle}); fs > 0 {
+				score = keepseed.BlendFileTree(score, fs)
+			}
 			if score >= 60 {
 				out = append(out, keepseed.Candidate{
-					SiteID: r.SiteID, SiteName: r.SiteName, Torrent: t, Score: score,
+					SiteID: r.SiteID, SiteName: r.SiteName, Torrent: tor, Score: score,
 				})
 			}
 		}
@@ -292,9 +307,11 @@ func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]m
 				continue
 			}
 		}
-		cands := c.FindCandidates(ctx, t.Name, t.Size)
+		ids := c.mediaIDHints(infoHash, t.Name)
+		fileNames := listTorrentFileNames(ctx, dl, infoHash)
+		cands := c.findCandidatesWith(ctx, t.Name, t.Size, ids, fileNames)
 		// 合并 Torznab 候选（Jackett/Prowlarr），按同一评分阈值过滤
-		cands = append(cands, c.findTorznabCandidates(ctx, t.Name, t.Size)...)
+		cands = append(cands, c.findTorznabCandidates(ctx, t.Name, t.Size, ids)...)
 		n := 0
 		for _, cand := range cands {
 			if cand.Score < minScore {
@@ -329,28 +346,72 @@ func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]m
 // findTorznabCandidates 用 Jackett/Prowlarr Torznab 端点搜候选，再按 keepseed.Score 评分。
 // 标题中若含 IMDb ID（tt...），优先带 imdbid 查询；结果 IMDb 一致时抬升到 ≥90。
 // SiteID=0：添加时走下载器直链 URL（Torznab/indexer 下载链），不经站点 cookie。
-func (c *KeepSeedChain) findTorznabCandidates(ctx context.Context, name string, size int64) []keepseed.Candidate {
+
+// mediaIDHints 合并标题提取 + DownloadMediaLink（按 infohash）。
+func (c *KeepSeedChain) mediaIDHints(infoHash, name string) keepseed.IDHints {
+	ids := keepseed.IDHints{
+		ImdbID: torznab.ExtractImdbID(name),
+		TmdbID: keepseed.ExtractTmdbID(name),
+	}
+	if c.db == nil || infoHash == "" {
+		return ids
+	}
+	var link models.DownloadMediaLink
+	// hash 大小写不敏感：下载器可能返回大小写混合
+	err := c.db.Where("LOWER(download_hash) = ?", strings.ToLower(infoHash)).First(&link).Error
+	if err != nil {
+		return ids
+	}
+	if link.Source == "tmdb" && link.SourceID != "" {
+		ids.TmdbID = link.SourceID
+	}
+	return ids
+}
+
+// listTorrentFileNames 尝试从下载器取文件路径列表（类型断言 ListFiles）。
+func listTorrentFileNames(ctx context.Context, dl reseedClient, hash string) []string {
+	type fileLister interface {
+		ListFiles(ctx context.Context, hash string) ([]downloader.TorrentFile, error)
+	}
+	fl, ok := dl.(fileLister)
+	if !ok || hash == "" {
+		return nil
+	}
+	files, err := fl.ListFiles(ctx, hash)
+	if err != nil || len(files) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(files))
+	for _, f := range files {
+		if f.Name != "" {
+			out = append(out, f.Name)
+		}
+	}
+	return out
+}
+
+func (c *KeepSeedChain) findTorznabCandidates(ctx context.Context, name string, size int64, ids keepseed.IDHints) []keepseed.Candidate {
 	baseURL, apiKey, err := c.GetTorznab()
 	if err != nil || strings.TrimSpace(baseURL) == "" {
 		return nil
 	}
 	cli := &torznab.Client{BaseURL: baseURL, APIKey: apiKey}
-	imdb := torznab.ExtractImdbID(name)
-	results, err := cli.Search(ctx, name, imdb)
+	imdb := ids.ImdbID
+	if imdb == "" {
+		imdb = torznab.ExtractImdbID(name)
+	}
+	tmdb := keepseed.NormalizeTmdbID(ids.TmdbID)
+	if tmdb == "" {
+		tmdb = keepseed.ExtractTmdbID(name)
+	}
+	results, err := cli.Search(ctx, name, imdb, tmdb)
 	if err != nil {
 		slog.Debug("torznab search failed", "err", err, "q", name)
 		return nil
 	}
 	out := make([]keepseed.Candidate, 0, len(results))
 	for _, r := range results {
-		score := keepseed.Score(name, r.Title, size, r.Size)
-		if imdb != "" && r.ImdbID != "" {
-			id1 := strings.TrimPrefix(strings.ToLower(imdb), "tt")
-			id2 := strings.TrimPrefix(strings.ToLower(r.ImdbID), "tt")
-			if id1 != "" && id1 == id2 && score < 90 {
-				score = 90
-			}
-		}
+		score := keepseed.ScoreWith(name, r.Title, size, r.Size, ids, r.ImdbID, r.TmdbID)
 		if score < 60 {
 			continue
 		}
@@ -394,7 +455,8 @@ func (c *KeepSeedChain) ingestTorznabForDownloader(ctx context.Context, download
 		if infoHash == "" || t.SavePath == "" {
 			continue
 		}
-		cands := c.findTorznabCandidates(ctx, t.Name, t.Size)
+		ids := c.mediaIDHints(infoHash, t.Name)
+		cands := c.findTorznabCandidates(ctx, t.Name, t.Size, ids)
 		n := 0
 		for _, cand := range cands {
 			if cand.Score < minScore {

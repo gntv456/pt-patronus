@@ -9,8 +9,8 @@
 
 | 层 | 状态 |
 |---|---|
-| **导航层** | 设计稿 v2；P0 全落地；P1：设置分区外壳 + 站点详情 Tab + 仪表盘任务卡片 + 订阅 RSS Tab；云盘管理拆分仍待 |
-| **功能层** | setShareLimits + 刷流删种增强；**辅种本地回退 + Torznab 候选**；字幕自动化等待做 |
+| **导航层** | 设计稿 v2；P0–P3 全落地；P1 云盘已嵌 Settings 连接区 + FileManager 浏览 |
+| **功能层** | setShareLimits + 刷流删种 P0/P1(swarm)；**辅种 Torznab+IMDb/TMDB+体积数据块信号**；字幕自动化/IRC 仍低优 |
 | **下载器** | 7 下载器（qb/tr/ut/dl/ar/rt/fl）全链路；setShareLimits 早已全实现（API+工作流+插件+AI），刷流刚接 |
 
 **新窗口优先读**：本文 → menu-redesign.md §10（P0 清单）→ feature-roadmap.md（功能优先级）。
@@ -57,7 +57,7 @@
 | 项 | 现状 | 目标 | 优先 |
 |---|---|---|---|
 | **刷流删种** | [brushflow.go](../backend/internal/chain/brushflow.go) `bfMatchRule` 仅 3 维（ratio/seed_hours/upload），OR-only；Torrent 结构体已采集 UPRate/NumSeeds 等未接入 | 补 min_uploadspeed/last_activity/布尔表达式（阶梯策略）/磁盘约束+淘汰 action（对标 autoremove 22 条件） | **高** |
-| **辅种** | IYUU API 驱动（中心化单点） | IMDb/TMDB ID + 数据块匹配（支持重命名）+ Torznab 候选（去 IYUU 单点，对标 cross-seed） | 中 |
+| **辅种** | IYUU + 本地 + Torznab | ✅ ID/体积/文件树/Torznab 已落地；piece hash 级可选增强 | 低 |
 | **字幕** | 手动搜索（ASSRT/OpenSubtitles/SubHD/字幕库） | Bazarr 式监听媒体库自动匹配 | 中 |
 | **识别引擎** | 自实现 | 对照 parse-torrent-title 规则查漏 | 低 |
 
@@ -161,9 +161,9 @@ Bit远控 把 qb `/api/v2` 几乎全覆盖。**注意：setShareLimits 我们已
 4. ~~**【刷流增强】** 删种 4 项~~ ✅ min_uprate / inactive / and-or+表达式 / max_total_size 淘汰
 5. ~~**【导航 P1】** 设置 6 分区外壳~~ ✅ `Settings.vue`（独立页暂深链）
 6. ~~**【导航 P1】** 站点详情 Tab 化~~ ✅ `SiteDetail.vue` + 矩阵/站名入口；仪表盘任务卡片 + 订阅 RSS Tab 已落地
-7. ~~**【辅种】** 去 IYUU 单点~~ 大部：`reseedLocal` + **Torznab 候选** + 标题 IMDb 粗匹配；仍待 TMDB / 数据块 piece 匹配
+7. ~~**【辅种】** 去 IYUU 单点~~ ✅ `reseedLocal` + Torznab + IMDb/TMDB ID + 体积精确/文件树；.torrent piece hash 级比对可后续增强
 8. ~~**【UI 移植】** Slidable 滑动操作 + Undo 撤销 + 底部 Sheet~~ ✅ 下载器任务列表：右滑暂停/恢复、左滑删除+4s 撤销、详情 DraggableScrollableSheet
-9. 【低】字幕自动化 / 识别引擎对照 / 发种插件对接 / IRC 对接 autobrr。
+9. 【低】字幕自动化（现有手动+插件 Host API）/ 识别引擎对照 / 发种插件对接 / IRC→**既有进站 Webhook**（`/api/v1/webhooks/in/:token` 可接 Autobrr）。
 
 ---
 

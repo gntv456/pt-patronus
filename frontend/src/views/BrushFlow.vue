@@ -37,7 +37,7 @@ function defaultForm(): Partial<BrushFlowTask> {
     name: '', site_id: 0, downloader_id: 0, enabled: true,
     keyword: '', category: '', min_size_mb: 0, max_size_mb: 0,
     min_seeders: 0, max_seeders: 0, free_only: false, paused: false,
-    delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false, use_share_limit: false, delete_min_up_rate_kb: 0, delete_inactive_hours: 0, delete_logic: 'or', delete_rule_expr: '', max_total_size_gb: 0,
+    delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false, use_share_limit: false, delete_min_up_rate_kb: 0, delete_inactive_hours: 0, delete_logic: 'or', delete_rule_expr: '', max_total_size_gb: 0, delete_max_swarm_seeders: 0, delete_min_swarm_leechers: 0,
     max_seeds: 10, save_path: '', category_dl: '', filter_groups: '',
   }
 }
@@ -264,12 +264,20 @@ onMounted(() => {
           <span class="hint">最后活跃超过此时长则删</span>
         </el-form-item>
         <el-form-item label="阶梯表达式">
-          <el-input v-model="form.delete_rule_expr" type="textarea" :rows="2" placeholder="例：(ratio>=1 &amp;&amp; seed_hours>=24) || ratio>=3" />
+          <el-input v-model="form.delete_rule_expr" type="textarea" :rows="2" placeholder="例：swarm_seeders>50 || (ratio>=1 && seed_hours>=24)" />
           <span class="hint">变量：ratio / seed_hours / upload_mb / up_rate_kb / inactive_hours；支持 &amp;&amp; || () &gt;= &lt;= &gt; &lt; ==</span>
         </el-form-item>
         <el-form-item label="总体积上限(GB)">
           <el-input-number v-model="form.max_total_size_gb" :min="0" :step="1" controls-position="right" />
           <span class="hint">超限按最慢上传淘汰；0=不限</span>
+        </el-form-item>
+        <el-form-item label="swarm做种上限">
+          <el-input-number v-model="form.delete_max_swarm_seeders" :min="0" controls-position="right" />
+          <span class="hint">NumComplete 超过则删，0=不限</span>
+        </el-form-item>
+        <el-form-item label="swarm下载下限">
+          <el-input-number v-model="form.delete_min_swarm_leechers" :min="0" controls-position="right" />
+          <span class="hint">做种中 NumIncomplete 低于则删，0=不限</span>
         </el-form-item>
         <el-form-item label="删种删文件"><el-switch v-model="form.delete_files" /></el-form-item>
         <el-form-item label="原生停种">

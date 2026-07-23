@@ -302,6 +302,27 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 		}
 		cs = append(cs, cond{true, hit, reason})
 	}
+	// swarm 做种过多（NumComplete；0 表示未知则跳过该条件）
+	if task.DeleteMaxSwarmSeeders > 0 {
+		hit := false
+		reason := ""
+		if tr.NumComplete > 0 {
+			hit = tr.NumComplete > task.DeleteMaxSwarmSeeders
+			reason = fmt.Sprintf("swarm做种 %d>%d", tr.NumComplete, task.DeleteMaxSwarmSeeders)
+		}
+		cs = append(cs, cond{true, hit, reason})
+	}
+	// swarm 下载过少（已完成做种时才判，避免下载中误杀）
+	if task.DeleteMinSwarmLeechers > 0 {
+		hit := false
+		reason := ""
+		if bfIsSeedingDone(tr) && tr.NumIncomplete >= 0 {
+			// NumIncomplete=0 且字段已填充时命中；未知时 qB 通常给 0，与「无下载者」同义
+			hit = tr.NumIncomplete < task.DeleteMinSwarmLeechers
+			reason = fmt.Sprintf("swarm下载 %d<%d", tr.NumIncomplete, task.DeleteMinSwarmLeechers)
+		}
+		cs = append(cs, cond{true, hit, reason})
+	}
 
 	if len(cs) == 0 {
 		return ""
@@ -512,11 +533,13 @@ func bfExprVars(tr *downloader.Torrent, now time.Time) map[string]float64 {
 		inactiveH = now.Sub(last).Hours()
 	}
 	return map[string]float64{
-		"ratio":          tr.Ratio,
-		"seed_hours":     seedH,
-		"upload_mb":      float64(tr.Uploaded) / float64(1<<20),
-		"up_rate_kb":     float64(tr.UPRate) / 1024.0,
-		"inactive_hours": inactiveH,
+		"ratio":           tr.Ratio,
+		"seed_hours":      seedH,
+		"upload_mb":       float64(tr.Uploaded) / float64(1<<20),
+		"up_rate_kb":      float64(tr.UPRate) / 1024.0,
+		"inactive_hours":  inactiveH,
+		"swarm_seeders":   float64(tr.NumComplete),
+		"swarm_leechers":  float64(tr.NumIncomplete),
 	}
 }
 

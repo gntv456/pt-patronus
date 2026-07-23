@@ -11,12 +11,12 @@
 - **现状**：[brushflow.go](backend/internal/chain/brushflow.go) `bfMatchRule()` 仅 3 维（DeleteRatio/DeleteSeedHours/DeleteUploadMB），OR 组合。
 - **差距**：autoremove-torrents 有 22 条件 + 布尔表达式 + 9 淘汰策略。[Torrent 结构体](backend/internal/downloader/downloader.go) 已采集 `UPRate`/`NumSeeds`/`NumLeechs`/`NumComplete`/`NumIncomplete`/`Availability` 等，**未接入删种**。
 - **P0 补**：① 上传速度下限（`UPRate` 已有）② 最后活跃 `last_activity` ③ 布尔表达式（阶梯策略：新种 ratio>1 删 / 老种 ratio>3 才删）④ 磁盘/总量约束 + 淘汰 action（满时优先删不活跃/慢速）
-- **P1 补**：swarm 人数 max_seeder/min_leecher（NumComplete/Incomplete 已有）、多策略
+- **P1 补**：~~swarm 人数 max_seeder/min_leecher~~ ✅ `DeleteMaxSwarmSeeders` / `DeleteMinSwarmLeechers` + 表达式 `swarm_seeders`/`swarm_leechers`；多策略仍可用 DeleteRuleExpr
 - **不借鉴**：YAML 配置（DB+UI 更优）、tracker 过滤（用 tag）、多 client（6 适配器更广）
 
 ### 1.2 辅种匹配增强 — P1（去 IYUU 单点 + 提升命中率）
 
-> **进度（2026-07-23）**：无 IYUU token 时 `reseedLocal` 走名称+大小跨站搜索（score≥75）；已接 **Torznab**（Jackett/Prowlarr）候选源，标题粗提 IMDb ID 查询并抬分；IYUU 路径在配置 Torznab 时也会补充候选。**仍待**：TMDB ID、torrent 数据块/piece 级匹配。
+> **进度（2026-07-23）**：无 IYUU token 时 `reseedLocal` 走名称+大小跨站搜索（score≥75）；**Torznab** 候选；**IMDb/TMDB ID**（标题提取 + `DownloadMediaLink`）抬分；**体积字节级一致**作数据块强信号（≥92）；文件树 basename 重叠辅助；Torznab 支持 imdbid/tmdbid 查询。完整 .torrent piece hash 比对仍属增强项（需种子元数据）。
 - **现状**：IYUU 移植，infohash 跨站匹配，走 IYUU 中心化 API；cookie 下载 .torrent；Reseed 按下载器维度。
 - **差距**：cross-seed 是本地数据驱动，用 Torznab（Jackett/Prowlarr）搜候选 + IMDb/TMDB ID + 数据块匹配（**支持重命名/部分匹配**），不依赖中心化服务。
 - **借鉴**：① 匹配引入 IMDb/TMDB ID + 数据块（提升重命名场景命中率）② 候选来源支持 Torznab，降低 IYUU 单点依赖 ③ 不改 daemon 模式（保持任务驱动）
@@ -52,7 +52,7 @@
 | 项 | 档 | 优先 | 成本 |
 |---|---|---|---|
 | 刷流删种 P0 四项 | 优化 | 高 | 低（数据已在） |
-| 辅种 ID/数据块匹配 + Torznab | 优化 | 中 | 中 |
+| ~~辅种 ID/数据块匹配 + Torznab~~ ✅ | 优化 | 中 | 中 |
 | 字幕自动化 | 优化 | 中 | 中 |
 | 发种 | 扩张 | 低（插件） | 高（自建）/低（对接） |
 | IRC 抢种 | 扩张 | 低（对接） | 中（自建）/低（对接） |

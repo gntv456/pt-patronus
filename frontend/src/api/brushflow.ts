@@ -24,6 +24,8 @@ export interface BrushFlowTask {
   delete_logic: string // 'or' | 'and'
   delete_rule_expr: string
   max_total_size_gb: number
+  delete_max_swarm_seeders: number
+  delete_min_swarm_leechers: number
   max_seeds: number
   save_path: string
   category_dl: string

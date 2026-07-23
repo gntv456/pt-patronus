@@ -199,3 +199,22 @@ func TestBFEvalExpr(t *testing.T) {
 		t.Fatal("broken expr should error")
 	}
 }
+
+func TestBfMatchRuleSwarm(t *testing.T) {
+	now := time.Now()
+	tr := &downloader.Torrent{
+		Ratio: 0.1, Progress: 1, State: "uploading",
+		NumComplete: 100, NumIncomplete: 0,
+		AddedAt: now.Add(-2 * time.Hour),
+	}
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteMaxSwarmSeeders: 50}, tr, now); r == "" {
+		t.Fatal("expected delete when swarm seeders high")
+	}
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteMinSwarmLeechers: 1}, tr, now); r == "" {
+		t.Fatal("expected delete when swarm leechers low")
+	}
+	// expr
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteRuleExpr: "swarm_seeders>80"}, tr, now); r == "" {
+		t.Fatal("expr swarm_seeders")
+	}
+}

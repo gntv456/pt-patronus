@@ -783,6 +783,9 @@ type BrushFlowTask struct {
 	DeleteLogic         string  `gorm:"size:8;default:or" json:"delete_logic"`      // or=任一命中即删 / and=已配置项全部命中
 	DeleteRuleExpr      string  `gorm:"size:512" json:"delete_rule_expr"`           // 可选布尔表达式（非空时优先于基础条件组合）
 	MaxTotalSizeGB      float64 `json:"max_total_size_gb"`                          // 本任务种子总体积上限(GB)，超限按最慢上传淘汰
+	// 删种 P1：swarm 人数（NumComplete/NumIncomplete，0=不启用）
+	DeleteMaxSwarmSeeders  int `json:"delete_max_swarm_seeders"`   // swarm 做种数 > 此值 → 删
+	DeleteMinSwarmLeechers int `json:"delete_min_swarm_leechers"` // swarm 下载数 < 此值（且已做种）→ 删
 	// 并发与分类
 	MaxSeeds   int    `gorm:"default:10" json:"max_seeds"` // 该任务最大同时做种数
 	SavePath   string `gorm:"size:255" json:"save_path"`

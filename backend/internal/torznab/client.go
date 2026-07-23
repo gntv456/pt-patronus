@@ -21,6 +21,7 @@ type Result struct {
 	Link        string // 下载链
 	Guid        string
 	ImdbID      string
+	TmdbID      string
 	Seeders     int
 	Indexer     string
 	PublishDate time.Time
@@ -33,8 +34,8 @@ type Client struct {
 	APIKey  string
 }
 
-// Search 按关键字搜索；imdbID 非空时优先带 imdbid 参数（去 tt 前缀亦可）。
-func (c *Client) Search(ctx context.Context, query, imdbID string) ([]Result, error) {
+// Search 按关键字搜索；imdbID/tmdbID 非空时附带对应参数（Jackett/Prowlarr 支持）。
+func (c *Client) Search(ctx context.Context, query, imdbID, tmdbID string) ([]Result, error) {
 	if c == nil || strings.TrimSpace(c.BaseURL) == "" {
 		return nil, fmt.Errorf("torznab base url empty")
 	}
@@ -51,6 +52,22 @@ func (c *Client) Search(ctx context.Context, query, imdbID string) ([]Result, er
 	if imdbID != "" {
 		id := strings.TrimPrefix(strings.TrimSpace(imdbID), "tt")
 		q.Set("imdbid", id)
+	}
+	if tmdbID != "" {
+		id := strings.TrimSpace(tmdbID)
+		for _, pfx := range []string{"movie:", "tv:", "tmdb:"} {
+			id = strings.TrimPrefix(strings.ToLower(id), pfx)
+		}
+		// 仅数字
+		digits := make([]rune, 0, len(id))
+		for _, r := range id {
+			if r >= '0' && r <= '9' {
+				digits = append(digits, r)
+			}
+		}
+		if len(digits) > 0 {
+			q.Set("tmdbid", string(digits))
+		}
 	}
 	if query != "" {
 		q.Set("q", query)
@@ -136,6 +153,8 @@ func parseRSS(r io.Reader) ([]Result, error) {
 				}
 			case "imdb", "imdbid":
 				res.ImdbID = a.Value
+			case "tmdb", "tmdbid":
+				res.TmdbID = a.Value
 			case "magneturl":
 				if res.Link == "" {
 					res.Link = a.Value

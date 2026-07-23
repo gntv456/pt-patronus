@@ -95,11 +95,11 @@ func (h *KeepSeedHandler) GetConfig(c *gin.Context) {
 }
 
 type configReq struct {
-	IYUUToken   string `json:"iyuu_token" binding:"max=256"`
-	TorznabURL  string `json:"torznab_url" binding:"max=512"`
-	TorznabKey  string `json:"torznab_apikey" binding:"max=256"`
+	IYUUToken  string `json:"iyuu_token" binding:"max=256"`
+	TorznabURL string `json:"torznab_url" binding:"max=512"`
+	TorznabKey string `json:"torznab_apikey" binding:"max=256"`
 	// HasTorznab 为 true 时才写 Torznab（避免仅改 IYUU 时清空端点）
-	SetTorznab  bool   `json:"set_torznab"`
+	SetTorznab bool `json:"set_torznab"`
 }
 
 // SetConfig 保存辅种配置（IYUU token / 可选 Torznab）。
@@ -163,9 +163,15 @@ func (h *KeepSeedHandler) Missing(c *gin.Context) {
 	c.JSON(http.StatusOK, summary)
 }
 
-// Tasks 列出辅种候选任务（?status=pending|added|skipped|failed）。
+// Tasks 列出辅种候选任务（?status=pending|added|skipped|failed；?site_id= 按候选站过滤）。
 func (h *KeepSeedHandler) Tasks(c *gin.Context) {
-	tasks, err := h.ks.ListTasks(c.Query("status"))
+	var siteID uint
+	if s := c.Query("site_id"); s != "" {
+		if n, err := strconv.ParseUint(s, 10, 64); err == nil && n > 0 {
+			siteID = uint(n)
+		}
+	}
+	tasks, err := h.ks.ListTasks(c.Query("status"), siteID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

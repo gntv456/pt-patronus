@@ -85,6 +85,25 @@ export interface DirwatchConfig {
   poll_interval_sec: number
 }
 
+export interface TransferPendingItem {
+  downloader_id: number
+  downloader_name: string
+  hash: string
+  name: string
+  category: string
+  save_path: string
+  completed_at?: string
+}
+
+/** 整理待办汇总：真实待入库 + 失败历史 */
+export interface TransferSummary {
+  failed: number
+  pending: number
+  pending_items?: TransferPendingItem[]
+  enabled: boolean
+  scan_partial?: boolean
+}
+
 export const transferApi = {
   history: (status = '', limit = 200) =>
     http
@@ -92,6 +111,12 @@ export const transferApi = {
         params: { ...(status ? { status } : {}), limit },
       })
       .then((r) => r.data.history ?? []),
+  summary: (withItems = false, limit = 50) =>
+    http
+      .get<TransferSummary>('/transfer/summary', {
+        params: { ...(withItems ? { items: '1' } : {}), limit },
+      })
+      .then((r) => r.data),
   getConfig: () => http.get<TransferConfig>('/transfer/config').then((r) => r.data),
   setConfig: (cfg: TransferConfig) => http.put('/transfer/config', cfg).then((r) => r.data),
   organize: (downloaderId: number, hash: string) =>

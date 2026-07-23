@@ -20,7 +20,7 @@ interface TaskCard {
 
 const cards = ref<TaskCard[]>([
   { key: 'assess', title: '保级风险', value: '—', hint: '考核 DANGER/PROGRESS', tone: 'info', route: 'assessment' },
-  { key: 'transfer', title: '整理失败', value: '—', hint: '失败历史（入口）', tone: 'info', route: 'transfer', query: { status: 'failed' } },
+  { key: 'transfer', title: '待整理', value: '—', hint: '待入库 + 失败', tone: 'info', route: 'transfer' },
   { key: 'brush', title: '刷流中', value: '—', hint: '启用中的刷流任务', tone: 'info', route: 'brushflow' },
   { key: 'health', title: '站点健康', value: '—', hint: '监护室 critical', tone: 'info', route: 'savept' },
   { key: 'reseed', title: '辅种建议', value: '—', hint: '待处理候选', tone: 'info', route: 'reseed' },
@@ -43,7 +43,7 @@ async function refresh() {
       brushflowApi.list(),
       saveptApi.get(false),
       reseedApi.tasks('pending'),
-      transferApi.history('failed', 50),
+      transferApi.summary(false, 50),
     ])
 
     if (assessR.status === 'fulfilled') {
@@ -96,16 +96,25 @@ async function refresh() {
       setCard('reseed', { value: '—', hint: '辅种数据加载失败', tone: 'info' })
     }
 
-    // 无「待入库队列」API：以整理失败历史作为可操作提示（非待办真值）
+    // 真实待入库（扫下载器）+ 失败历史
     if (transferR.status === 'fulfilled') {
-      const n = transferR.value.length
+      const s = transferR.value
+      const pending = s.pending || 0
+      const failed = s.failed || 0
+      const total = pending + failed
+      const hints: string[] = []
+      if (pending) hints.push(`${pending} 待入库`)
+      if (failed) hints.push(`${failed} 失败`)
+      if (s.scan_partial) hints.push('扫描部分失败')
+      if (!s.enabled) hints.push('整理未启用')
       setCard('transfer', {
-        value: n ? String(n) : '→',
-        hint: n ? `${n} 条失败记录` : '打开整理页查看',
-        tone: n ? 'warn' : 'info',
+        value: total ? String(total) : s.enabled ? '0' : '→',
+        hint: hints.length ? hints.join(' · ') : '无待办',
+        tone: failed ? 'danger' : pending ? 'warn' : s.enabled ? 'ok' : 'info',
+        query: failed && !pending ? { status: 'failed' } : pending ? { view: 'pending' } : undefined,
       })
     } else {
-      setCard('transfer', { value: '→', hint: '打开整理页查看', tone: 'info' })
+      setCard('transfer', { value: '—', hint: '整理汇总加载失败', tone: 'info' })
     }
   } finally {
     loading.value = false

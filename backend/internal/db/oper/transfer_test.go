@@ -136,3 +136,26 @@ func TestTransferHistoryDeleteByStatus(t *testing.T) {
 		t.Errorf("DeleteByStatus(\"\") = %d %v, want 0 nil", n, err)
 	}
 }
+
+func TestTransferHistoryCountByStatus(t *testing.T) {
+	db := newTransferTestDB(t)
+	op := NewTransferHistoryOper(db)
+	rows := []models.TransferHistory{
+		{DownloadHash: "a", Status: "failed"},
+		{DownloadHash: "b", Status: "failed"},
+		{DownloadHash: "c", Status: "success"},
+		{DownloadHash: "d", Status: "skipped"},
+	}
+	if err := db.Create(&rows).Error; err != nil {
+		t.Fatal(err)
+	}
+	n, err := op.CountByStatus("failed")
+	if err != nil || n != 2 {
+		t.Fatalf("failed count=%d err=%v want 2", n, err)
+	}
+	n, err = op.CountByStatus("")
+	if err != nil || n != 4 {
+		t.Fatalf("all count=%d err=%v want 4", n, err)
+	}
+}
+

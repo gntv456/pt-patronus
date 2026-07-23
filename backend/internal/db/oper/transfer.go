@@ -31,6 +31,16 @@ func (o *TransferHistoryOper) List(status string, limit int) ([]models.TransferH
 	return hs, q.Find(&hs).Error
 }
 
+// CountByStatus 按 status 计数（""=全部）。用于仪表盘汇总。
+func (o *TransferHistoryOper) CountByStatus(status string) (int64, error) {
+	q := o.db.Model(&models.TransferHistory{})
+	if status != "" {
+		q = q.Where("status = ?", status)
+	}
+	var n int64
+	return n, q.Count(&n).Error
+}
+
 // Get 单条。
 func (o *TransferHistoryOper) Get(id uint) (*models.TransferHistory, error) {
 	var h models.TransferHistory

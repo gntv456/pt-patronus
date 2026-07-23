@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { transferApi, type TransferHistory, type TransferConfig, type OrganizeResult } from '@/api/transfer'
+import { transferApi, type TransferHistory, type TransferConfig, type OrganizeResult, type TransferPendingItem } from '@/api/transfer'
 import { downloaderApi, type Downloader, type Torrent } from '@/api/downloader'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -15,6 +15,11 @@ const qStatus = String(route.query.status || '')
 const statusFilter = ref<'' | 'success' | 'failed' | 'skipped'>(
   allowedStatus.has(qStatus) ? (qStatus as 'success' | 'failed' | 'skipped') : '',
 )
+/** view=pending 时展示真实待入库队列（来自 /transfer/summary?items=1） */
+const viewMode = ref<'history' | 'pending'>(route.query.view === 'pending' ? 'pending' : 'history')
+const pendingItems = ref<TransferPendingItem[]>([])
+const pendingTotal = ref(0)
+const pendingEnabled = ref(true)
 const organizing = ref(false)
 const redoing = ref<number | null>(null)
 const downloaders = ref<Downloader[]>([])
@@ -24,11 +29,37 @@ const filtered = computed(() => list.value)
 async function load() {
   loading.value = true
   try {
-    list.value = await transferApi.history(statusFilter.value, 200)
+    if (viewMode.value === 'pending') {
+      const sum = await transferApi.summary(true, 100)
+      pendingItems.value = sum.pending_items || []
+      pendingTotal.value = sum.pending || 0
+      pendingEnabled.value = sum.enabled
+      list.value = []
+    } else {
+      list.value = await transferApi.history(statusFilter.value, 200)
+    }
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+function setView(mode: 'history' | 'pending') {
+  viewMode.value = mode
+  void load()
+}
+
+async function organizePending(row: TransferPendingItem) {
+  organizing.value = true
+  try {
+    await transferApi.organize(row.downloader_id, row.hash)
+    ElMessage.success('已提交整理')
+    await load()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '整理失败')
+  } finally {
+    organizing.value = false
   }
 }
 
@@ -322,7 +353,11 @@ onMounted(load)
         <p class="sub">下载完成 → 识别 → 重命名 → 硬链/移动 → 刮削 NFO/海报 → 入媒体库</p>
       </div>
       <div class="actions">
-        <el-select v-model="statusFilter" size="small" style="width: 110px" @change="load">
+        <el-radio-group v-model="viewMode" size="small" @change="load">
+          <el-radio-button value="history">历史</el-radio-button>
+          <el-radio-button value="pending">待入库</el-radio-button>
+        </el-radio-group>
+        <el-select v-model="statusFilter" size="small" style="width: 110px" :disabled="viewMode === 'pending'" @change="load">
           <el-option label="全部" value="" />
           <el-option label="成功" value="success" />
           <el-option label="失败" value="failed" />
@@ -341,6 +376,33 @@ onMounted(load)
     </header>
 
     <div class="glass card">
+      <div v-if="viewMode === 'pending'" v-loading="loading" class="pending-panel">
+      <el-alert
+        v-if="!pendingEnabled"
+        type="warning"
+        :closable="false"
+        show-icon
+        title="媒体整理未启用"
+        description="请在下方配置中开启整理后，才会扫描待入库种子。"
+        style="margin-bottom: 12px"
+      />
+      <p class="text-muted" style="margin: 0 0 10px">
+        待入库 {{ pendingTotal }} 条（已完成且命中规则、尚未成功整理；列表最多 100 条）
+      </p>
+      <el-table :data="pendingItems" stripe empty-text="暂无待入库种子">
+        <el-table-column prop="name" label="种子" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="downloader_name" label="下载器" width="120" />
+        <el-table-column prop="category" label="分类" width="100" />
+        <el-table-column prop="save_path" label="路径" min-width="160" show-overflow-tooltip />
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" link :loading="organizing" @click="organizePending(row)">整理</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
+
+      <div v-show="viewMode === 'history'">
       <el-table :data="filtered" v-loading="loading" size="small" empty-text="暂无整理记录"
         row-key="id" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="36" :reserve-selection="true" fixed="left" />
@@ -390,6 +452,7 @@ onMounted(load)
       </el-table>
       <EmptyState v-if="!loading && !filtered.length" icon="files" title="暂无整理记录"
         sub="订阅/RSS 下载完成后会自动整理；也可点「手动整理」立即处理一个种子" />
+    </div>
     </div>
 
     <!-- 配置抽屉 -->

@@ -347,6 +347,95 @@ func isPortableAbs(p string) bool {
 	return len(p) >= 3 && ((p[0] >= 'a' && p[0] <= 'z') || (p[0] >= 'A' && p[0] <= 'Z')) && p[1] == ':' && p[2] == '/'
 }
 
+// TransferPendingItem 已完成且命中整理规则、但尚未成功入库的种子（仪表盘/整理页待办）。
+type TransferPendingItem struct {
+	DownloaderID   uint      `json:"downloader_id"`
+	DownloaderName string    `json:"downloader_name"`
+	Hash           string    `json:"hash"`
+	Name           string    `json:"name"`
+	Category       string    `json:"category"`
+	SavePath       string    `json:"save_path"`
+	CompletedAt    time.Time `json:"completed_at,omitempty"`
+}
+
+// TransferSummary 整理待办汇总：失败历史 + 真实待入库（扫下载器完成种）。
+type TransferSummary struct {
+	Failed       int64                 `json:"failed"`
+	Pending      int                   `json:"pending"`
+	PendingItems []TransferPendingItem `json:"pending_items,omitempty"`
+	Enabled      bool                  `json:"enabled"`
+	ScanPartial  bool                  `json:"scan_partial,omitempty"` // 扫描中途出错时 true
+}
+
+// Summary 汇总失败条数与待入库数。withItems 时附带待入库明细（最多 itemLimit，默认 50）。
+// 待入库定义与 Sweep 一致：已完成 + 命中分类/标签规则 + 尚无 success 历史。
+func (c *TransferChain) Summary(ctx context.Context, withItems bool, itemLimit int) (*TransferSummary, error) {
+	failed, err := c.hist.CountByStatus("failed")
+	if err != nil {
+		return nil, err
+	}
+	sum := &TransferSummary{Failed: failed, PendingItems: make([]TransferPendingItem, 0)}
+	cfg := transfer.Load(c.cfg)
+	sum.Enabled = cfg.Enabled
+	if !cfg.Enabled {
+		return sum, nil
+	}
+	if itemLimit <= 0 || itemLimit > 100 {
+		itemLimit = 50
+	}
+	dls, err := c.dlOp.List()
+	if err != nil {
+		sum.ScanPartial = true
+		return sum, nil
+	}
+	for i := range dls {
+		if err := ctx.Err(); err != nil {
+			sum.ScanPartial = true
+			break
+		}
+		dl, err := c.dlMgr.Get(ctx, dls[i].ID)
+		if err != nil {
+			sum.ScanPartial = true
+			continue
+		}
+		ts, err := dl.ListTorrents(ctx)
+		if err != nil {
+			sum.ScanPartial = true
+			continue
+		}
+		for j := range ts {
+			t := &ts[j]
+			if t.State != "completed" && t.CompletedAt.IsZero() {
+				continue
+			}
+			if !cfg.ShouldProcess(t.Category, t.Tags) {
+				continue
+			}
+			ok, err := c.hist.SuccessExistsByHash(t.Hash)
+			if err != nil {
+				sum.ScanPartial = true
+				continue
+			}
+			if ok {
+				continue
+			}
+			sum.Pending++
+			if withItems && len(sum.PendingItems) < itemLimit {
+				sum.PendingItems = append(sum.PendingItems, TransferPendingItem{
+					DownloaderID:   dls[i].ID,
+					DownloaderName: dls[i].Name,
+					Hash:           t.Hash,
+					Name:           t.Name,
+					Category:       t.Category,
+					SavePath:       t.SavePath,
+					CompletedAt:    t.CompletedAt,
+				})
+			}
+		}
+	}
+	return sum, nil
+}
+
 // History 列整理历史（API 用）。
 func (c *TransferChain) History(status string, limit int) ([]models.TransferHistory, error) {
 	return c.hist.List(status, limit)

@@ -156,7 +156,6 @@ func (c *KeepSeedChain) SetTorznab(baseURL, apiKey string) error {
 	return nil // 保留旧 key
 }
 
-
 // Reseed 对指定下载器的做种种子做辅种匹配，落 pending 候选任务并返回新增项。
 // 优先 IYUU 精确 infohash（配置了 token 时）；未配置 token 时回退本地名称+大小跨站搜索（FindCandidates），
 // 降低 IYUU 中心化单点依赖（feature-roadmap §1.2）。
@@ -291,7 +290,6 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 	return created, nil
 }
 
-
 // reseedLocal 本地辅种：对下载器做种按名称+大小跨站搜索（keepseed.Score），高分候选落库。
 // 不依赖 IYUU；适合 token 未配置或 IYUU 不可达时的兜底。score≥75 才收录，每源最多 5 候选。
 func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]models.CrossSeedTask, error) {
@@ -355,7 +353,6 @@ func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]m
 	return created, nil
 }
 
-
 // findTorznabCandidates 用 Jackett/Prowlarr Torznab 端点搜候选，再按 keepseed.Score 评分。
 // 标题中若含 IMDb ID（tt...），优先带 imdbid 查询；结果 IMDb 一致时抬升到 ≥90。
 // SiteID=0：添加时走下载器直链 URL（Torznab/indexer 下载链），不经站点 cookie。
@@ -402,7 +399,6 @@ func listTorrentFileNames(ctx context.Context, dl reseedClient, hash string) []s
 	}
 	return out
 }
-
 
 // torznabCandidateSite 生成 candidate_site 去重键（DB size:64）。
 // 用 FNV64 压缩 Guid/Link，避免长 URL 截断碰撞与字段溢出。
@@ -834,12 +830,15 @@ func (c *KeepSeedChain) Resolve(ctx context.Context, taskID uint, action string)
 	}
 }
 
-// ListTasks 列出辅种候选任务（status 空则全部），按创建时间倒序。
-func (c *KeepSeedChain) ListTasks(status string) ([]models.CrossSeedTask, error) {
+// ListTasks 列出辅种候选任务（status 空则全部；siteID>0 时按候选站 site_id 过滤），按创建时间倒序。
+func (c *KeepSeedChain) ListTasks(status string, siteID uint) ([]models.CrossSeedTask, error) {
 	var out []models.CrossSeedTask
 	q := c.db.Model(&models.CrossSeedTask{})
 	if status != "" {
 		q = q.Where("status = ?", status)
+	}
+	if siteID > 0 {
+		q = q.Where("site_id = ?", siteID)
 	}
 	if err := q.Order("created_at DESC").Limit(500).Find(&out).Error; err != nil {
 		return nil, err

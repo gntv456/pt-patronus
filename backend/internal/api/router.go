@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/middleware"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
-	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/auth"
+	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/backup"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/config"
@@ -214,6 +214,7 @@ func Build(d *Deps) *gin.Engine {
 				sites.POST("/:id/cookie", siteH.UpdateCookie)
 			}
 			guarded.POST("/search", siteH.SearchAll)
+			guarded.GET("/search/stream", siteH.SearchAllStream)
 
 			// 站点信息聚合：全站免费/促销 + 公告（套用站点 capability，per-site 缓存）
 			flH := v1.NewFreeleechHandler(d.SiteCh, d.SiteOp)
@@ -276,7 +277,7 @@ func Build(d *Deps) *gin.Engine {
 			dls := guarded.Group("/downloaders")
 			{
 				dls.GET("", dlH.List)
-					dls.GET("/:id", dlH.Get)
+				dls.GET("/:id", dlH.Get)
 				dls.POST("", dlH.Create)
 				dls.PUT("/:id", dlH.Update)
 				dls.DELETE("/:id", middleware.RequireAdmin(), dlH.Delete)
@@ -320,12 +321,12 @@ func Build(d *Deps) *gin.Engine {
 
 			notifH := v1.NewNotificationHandler(d.Notif, d.NotifMgr, d.NotifProvider)
 			sched := guarded.Group("/schedule")
-		{
-			sched.GET("/config", schedH.GetConfig)
-			sched.PUT("/config", middleware.RequireAdmin(), schedH.SetConfig)
-		}
+			{
+				sched.GET("/config", schedH.GetConfig)
+				sched.PUT("/config", middleware.RequireAdmin(), schedH.SetConfig)
+			}
 
-		notif := guarded.Group("/notification")
+			notif := guarded.Group("/notification")
 			{
 				notif.GET("/channels", notifH.Channels)
 				notif.POST("/test", middleware.RequireAdmin(), notifH.Test)
@@ -679,6 +680,7 @@ func Build(d *Deps) *gin.Engine {
 			tr := guarded.Group("/transfer")
 			{
 				tr.GET("/history", trH.History)
+				tr.GET("/summary", trH.Summary)
 				tr.DELETE("/history/:id", middleware.RequireAdmin(), trH.DeleteHistory)
 				tr.POST("/history/batch-delete", middleware.RequireAdmin(), trH.BatchDeleteHistory)
 				tr.POST("/history/clear-failed", middleware.RequireAdmin(), trH.ClearFailedHistory)

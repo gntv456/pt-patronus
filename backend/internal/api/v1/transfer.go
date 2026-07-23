@@ -47,6 +47,22 @@ func (h *TransferHandler) History(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"history": hs}) // oper 保证非 nil
 }
 
+// Summary 整理待办汇总：failed 历史数 + 扫下载器得到的真实待入库数（可选 items 明细）。
+// Query: items=1 附带 pending_items；limit 限制明细条数（默认 50，最大 100）。
+func (h *TransferHandler) Summary(c *gin.Context) {
+	withItems := c.Query("items") == "1" || c.Query("items") == "true"
+	itemLimit := 50
+	if n, err := parseLimit(c.Query("limit")); err == nil && n > 0 {
+		itemLimit = int(n)
+	}
+	sum, err := h.ch.Summary(c.Request.Context(), withItems, itemLimit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, sum)
+}
+
 // GetConfig 读整理配置。
 func (h *TransferHandler) GetConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, h.ch.Config())

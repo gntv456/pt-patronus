@@ -142,7 +142,7 @@ func registerAgentTools(
 
 	// —— 辅种 ——
 	reg(mcp.Tool{Name: "reseed_list", Description: "List cross-seed (IYUU) candidate tasks.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"status": map[string]any{"type": "string"}}, "required": []string{}}, Handler: func(_ context.Context, a map[string]any) (string, error) {
-		t, err := keepseed.ListTasks(argString(a, "status", ""))
+		t, err := keepseed.ListTasks(argString(a, "status", ""), uint(argIntDefault(a, "site_id", 0)))
 		return mcpJSON(t), err
 	}})
 	reg(mcp.Tool{Name: "reseed_run", Description: "Run IYUU precise cross-seed scan on a downloader.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"downloader_id": map[string]any{"type": "integer"}}, "required": []string{"downloader_id"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {

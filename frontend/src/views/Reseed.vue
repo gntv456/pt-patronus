@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { safeUrl } from '@/utils/safeUrl'
 import { reseedApi, type ReseedTask, type ReseedSetting, type MissingSummary, type MissingSample } from '@/api/reseed'
 import { downloaderApi, type Downloader } from '@/api/downloader'
@@ -30,6 +31,16 @@ const reseeding = ref(false)
 
 const tasks = ref<ReseedTask[]>([])
 const loadingTasks = ref(false)
+const route = useRoute()
+const focusSiteId = computed(() => {
+  const n = Number(route.query.site_id)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
+const focusSiteName = computed(() => {
+  if (!focusSiteId.value) return ''
+  const q = route.query.site_name
+  return (typeof q === 'string' ? q : '') || `#${focusSiteId.value}`
+})
 const statusFilter = ref<'pending' | 'added' | 'skipped' | 'failed' | ''>('pending')
 const resolving = ref(new Set<number>())
 
@@ -105,7 +116,7 @@ async function loadDownloaders() {
 async function loadTasks() {
   loadingTasks.value = true
   try {
-    tasks.value = await reseedApi.tasks(statusFilter.value)
+    tasks.value = await reseedApi.tasks(statusFilter.value, focusSiteId.value)
   } catch {
     ElMessage.warning('任务列表加载失败')
   } finally {
@@ -222,6 +233,8 @@ function statusLabel(s: ReseedTask['status']) {
 }
 
 watch(selectedDl, () => loadSetting())
+
+watch(focusSiteId, () => { void loadTasks() })
 
 onMounted(async () => {
   await Promise.all([loadConfig(), loadDownloaders(), loadTasks()])
@@ -355,6 +368,15 @@ onMounted(async () => {
         </div>
       </el-popover>
     </div>
+
+    <el-alert
+      v-if="focusSiteId"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 12px"
+      :title="`仅显示候选站「${focusSiteName}」的辅种任务（${tasks.length}）`"
+    />
 
     <!-- 候选任务表（撑满剩余视口，内部滚动） -->
     <div class="card glass table-card">

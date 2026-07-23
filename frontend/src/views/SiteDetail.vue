@@ -152,11 +152,16 @@ async function loadTab(name: string) {
   } else if (name === 'reseed') {
     reseedLoading.value = true
     try {
-      const tasks = await reseedApi.tasks('')
-      const pending = tasks.filter((t) => t.status === 'pending').length
-      reseedHint.value = `辅种候选 ${tasks.length} 个（待处理 ${pending}）。辅种按下载器/任务维度跨站组织，非单站绑定。`
+      // 按候选站 site_id 过滤：展示「可辅到本站」的任务
+      const tasks = await reseedApi.tasks('', siteId.value)
+      const pending = tasks.filter((x) => x.status === 'pending').length
+      if (tasks.length) {
+        reseedHint.value = `本站相关辅种候选 ${tasks.length} 个（待处理 ${pending}）。`
+      } else {
+        reseedHint.value = '暂无指向本站的辅种候选。辅种任务以下载器扫描产生，候选站匹配后会显示在此。'
+      }
     } catch {
-      reseedHint.value = '辅种以「任务 + 下载器」组织，跨站保活；点下方进入全局辅种页。'
+      reseedHint.value = '加载辅种候选失败；可点下方进入全局辅种页。'
     } finally {
       reseedLoading.value = false
     }

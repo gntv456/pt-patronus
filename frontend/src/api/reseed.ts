@@ -60,9 +60,14 @@ export const reseedApi = {
   reseed: (downloaderId: number) =>
     http.post<{ tasks: ReseedTask[]; count: number }>('/keepseed/reseed', { downloader_id: downloaderId }).then((r) => r.data),
   // 列候选任务（status 空则全部）。
-  tasks: (status = '') =>
+  tasks: (status = '', siteId = 0) =>
     http
-      .get<{ tasks: ReseedTask[] }>('/keepseed/tasks', { params: status ? { status } : {} })
+      .get<{ tasks: ReseedTask[] }>('/keepseed/tasks', {
+        params: {
+          ...(status ? { status } : {}),
+          ...(siteId > 0 ? { site_id: siteId } : {}),
+        },
+      })
       .then((r) => r.data.tasks ?? []),
   // 处理一个候选：add（添加辅种）/ skip。
   resolve: (id: number, action: 'add' | 'skip') =>

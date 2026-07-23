@@ -134,8 +134,8 @@ onMounted(() => load())
           <div class="progress-num">{{ c.progress_percent }}%</div>
           <div v-if="c.assessment_type" class="task-name">{{ c.assessment_type }}</div>
           <div v-if="c.description" class="note">{{ c.description }}</div>
-          <div v-if="c.metrics.length" class="metrics">
-            <div v-for="(m, i) in c.metrics" :key="i" class="metric">
+          <div v-if="c.metrics?.length" class="metrics">
+            <div v-for="(m, i) in (c.metrics || [])" :key="i" class="metric">
               <span class="m-label">{{ m.label }}</span>
               <span class="m-val">{{ m.current }}/{{ m.required }} {{ m.unit }}</span>
               <span class="m-met" :style="{ color: m.is_completed ? '#2ecc71' : '#f56c6c' }">{{ m.is_completed ? '✓' : '✗' }}</span>

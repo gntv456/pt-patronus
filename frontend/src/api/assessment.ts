@@ -36,7 +36,10 @@ export const assessmentApi = {
     signal?: AbortSignal,
   ) =>
     streamSSE(`/api/v1/assessment/stream${refresh ? '?refresh=1' : ''}`, (event, data) => {
-      if (event === 'batch' && data?.results?.length) onCard((data.results as AssessmentCard[])[0])
+      if (event === 'batch' && data?.results?.length) {
+        const card = (data.results as AssessmentCard[])[0]
+        onCard({ ...card, metrics: card.metrics || [] })
+      }
     }, signal),
   syncOne: (id: number) => http.post<AssessmentCard>(`/assessment/sync/${id}`).then((r) => ({ ...r.data, metrics: r.data.metrics || [] })),
 }

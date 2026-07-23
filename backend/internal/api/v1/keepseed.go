@@ -61,7 +61,7 @@ func toTorrentJSON(t site.Torrent) gin.H {
 
 // ---- IYUU 精确辅种 ----
 
-// GetConfig 返回辅种配置（token 掩码：仅显长度，不回明文）。
+// GetConfig 返回辅种配置（IYUU token 掩码 + Torznab 端点）。
 func (h *KeepSeedHandler) GetConfig(c *gin.Context) {
 	token, err := h.ks.GetToken()
 	if err != nil {
@@ -76,23 +76,50 @@ func (h *KeepSeedHandler) GetConfig(c *gin.Context) {
 			masked = "****"
 		}
 	}
-	c.JSON(http.StatusOK, gin.H{"iyuu_token_masked": masked, "configured": token != ""})
+	tzURL, tzKey, _ := h.ks.GetTorznab()
+	tzKeyMasked := ""
+	if tzKey != "" {
+		if len(tzKey) > 6 {
+			tzKeyMasked = tzKey[:3] + "****" + tzKey[len(tzKey)-2:]
+		} else {
+			tzKeyMasked = "****"
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"iyuu_token_masked":  masked,
+		"configured":         token != "",
+		"torznab_url":        tzURL,
+		"torznab_key_masked": tzKeyMasked,
+		"torznab_configured": strings.TrimSpace(tzURL) != "",
+	})
 }
 
 type configReq struct {
-	IYUUToken string `json:"iyuu_token" binding:"max=256"`
+	IYUUToken   string `json:"iyuu_token" binding:"max=256"`
+	TorznabURL  string `json:"torznab_url" binding:"max=512"`
+	TorznabKey  string `json:"torznab_apikey" binding:"max=256"`
+	// HasTorznab 为 true 时才写 Torznab（避免仅改 IYUU 时清空端点）
+	SetTorznab  bool   `json:"set_torznab"`
 }
 
-// SetConfig 保存辅种配置（IYUU token 明文写，DB 存储）。
+// SetConfig 保存辅种配置（IYUU token / 可选 Torznab）。
 func (h *KeepSeedHandler) SetConfig(c *gin.Context) {
 	var req configReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.ks.SetToken(strings.TrimSpace(req.IYUUToken)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	if tok := strings.TrimSpace(req.IYUUToken); tok != "" {
+		if err := h.ks.SetToken(tok); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	if req.SetTorznab {
+		if err := h.ks.SetTorznab(req.TorznabURL, req.TorznabKey); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

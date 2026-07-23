@@ -19,6 +19,9 @@ export interface ReseedTask {
 export interface ReseedConfig {
   iyuu_token_masked: string
   configured: boolean
+  torznab_url?: string
+  torznab_key_masked?: string
+  torznab_configured?: boolean
 }
 
 // 辅种设置（per-downloader，对齐后端 models.CrossSeedSetting）。
@@ -51,8 +54,8 @@ export interface MissingSummary {
 
 export const reseedApi = {
   getConfig: () => http.get<ReseedConfig>('/keepseed/config').then((r) => r.data),
-  setConfig: (iyuuToken: string) =>
-    http.put('/keepseed/config', { iyuu_token: iyuuToken }).then((r) => r.data),
+  setConfig: (body: { iyuu_token?: string; torznab_url?: string; torznab_apikey?: string; set_torznab?: boolean }) =>
+    http.put('/keepseed/config', body).then((r) => r.data),
   // 触发某下载器的 IYUU 精确辅种，返回新增 pending 候选。
   reseed: (downloaderId: number) =>
     http.post<{ tasks: ReseedTask[]; count: number }>('/keepseed/reseed', { downloader_id: downloaderId }).then((r) => r.data),

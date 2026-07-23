@@ -18,6 +18,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/keepseed"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/torznab"
 	"gorm.io/gorm"
 )
 
@@ -100,11 +101,36 @@ func (c *KeepSeedChain) FindCandidates(ctx context.Context, name string, size in
 // IYUUTokenKey 是 SystemConfig 中 IYUU token 的键。
 const IYUUTokenKey = "iyuu_token"
 
+// Torznab 配置键（Jackett/Prowlarr 端点，可选辅种候选源）。
+const (
+	TorznabURLKey    = "torznab_url"
+	TorznabAPIKeyKey = "torznab_apikey"
+)
+
 // GetToken 读 IYUU token（空表示未配置）。
 func (c *KeepSeedChain) GetToken() (string, error) { return c.cfgOp.Get(IYUUTokenKey) }
 
 // SetToken 写 IYUU token。
 func (c *KeepSeedChain) SetToken(token string) error { return c.cfgOp.Set(IYUUTokenKey, token) }
+
+// GetTorznab 读 Torznab 端点配置。
+func (c *KeepSeedChain) GetTorznab() (baseURL, apiKey string, err error) {
+	baseURL, err = c.cfgOp.Get(TorznabURLKey)
+	if err != nil {
+		return "", "", err
+	}
+	apiKey, err = c.cfgOp.Get(TorznabAPIKeyKey)
+	return baseURL, apiKey, err
+}
+
+// SetTorznab 写 Torznab 端点配置（url 空则清空）。
+func (c *KeepSeedChain) SetTorznab(baseURL, apiKey string) error {
+	if err := c.cfgOp.Set(TorznabURLKey, strings.TrimSpace(baseURL)); err != nil {
+		return err
+	}
+	// apiKey 空串表示清空；非空覆盖
+	return c.cfgOp.Set(TorznabAPIKeyKey, strings.TrimSpace(apiKey))
+}
 
 // Reseed 对指定下载器的做种种子做辅种匹配，落 pending 候选任务并返回新增项。
 // 优先 IYUU 精确 infohash（配置了 token 时）；未配置 token 时回退本地名称+大小跨站搜索（FindCandidates），
@@ -231,6 +257,9 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 			}
 		}
 	}
+	// 补充 Torznab 候选（已配置 Jackett/Prowlarr 时），降低 IYUU 单点依赖
+	extra := c.ingestTorznabForDownloader(ctx, downloaderID, torrents, setting)
+	created = append(created, extra...)
 	slog.Info("reseed done", "downloader", downloaderID, "hashes", len(hashes), "candidates", len(created))
 	return created, nil
 }
@@ -264,6 +293,8 @@ func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]m
 			}
 		}
 		cands := c.FindCandidates(ctx, t.Name, t.Size)
+		// 合并 Torznab 候选（Jackett/Prowlarr），按同一评分阈值过滤
+		cands = append(cands, c.findTorznabCandidates(ctx, t.Name, t.Size)...)
 		n := 0
 		for _, cand := range cands {
 			if cand.Score < minScore {
@@ -292,6 +323,108 @@ func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]m
 	}
 	slog.Info("reseed local done", "downloader", downloaderID, "candidates", len(created))
 	return created, nil
+}
+
+
+// findTorznabCandidates 用 Jackett/Prowlarr Torznab 端点搜候选，再按 keepseed.Score 评分。
+// 标题中若含 IMDb ID（tt...），优先带 imdbid 查询；结果 IMDb 一致时抬升到 ≥90。
+// SiteID=0：添加时走下载器直链 URL（Torznab/indexer 下载链），不经站点 cookie。
+func (c *KeepSeedChain) findTorznabCandidates(ctx context.Context, name string, size int64) []keepseed.Candidate {
+	baseURL, apiKey, err := c.GetTorznab()
+	if err != nil || strings.TrimSpace(baseURL) == "" {
+		return nil
+	}
+	cli := &torznab.Client{BaseURL: baseURL, APIKey: apiKey}
+	imdb := torznab.ExtractImdbID(name)
+	results, err := cli.Search(ctx, name, imdb)
+	if err != nil {
+		slog.Debug("torznab search failed", "err", err, "q", name)
+		return nil
+	}
+	out := make([]keepseed.Candidate, 0, len(results))
+	for _, r := range results {
+		score := keepseed.Score(name, r.Title, size, r.Size)
+		if imdb != "" && r.ImdbID != "" {
+			id1 := strings.TrimPrefix(strings.ToLower(imdb), "tt")
+			id2 := strings.TrimPrefix(strings.ToLower(r.ImdbID), "tt")
+			if id1 != "" && id1 == id2 && score < 90 {
+				score = 90
+			}
+		}
+		if score < 60 {
+			continue
+		}
+		siteName := strings.TrimSpace(r.Indexer)
+		if siteName == "" {
+			siteName = "Torznab"
+		}
+		sizeStr := ""
+		if r.Size > 0 {
+			sizeStr = strconv.FormatInt(r.Size, 10)
+		}
+		out = append(out, keepseed.Candidate{
+			SiteID:   0,
+			SiteName: siteName,
+			Torrent: site.Torrent{
+				Title:       r.Title,
+				DownloadURL: r.Link,
+				DetailURL:   r.Guid,
+				Size:        sizeStr,
+				Seeders:     r.Seeders,
+				SiteName:    siteName,
+			},
+			Score: score,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
+	return out
+}
+
+// ingestTorznabForDownloader 对下载器做种补搜 Torznab 候选并落库（IYUU 路径补充 / 与 reseedLocal 共用逻辑）。
+func (c *KeepSeedChain) ingestTorznabForDownloader(ctx context.Context, downloaderID uint, torrents []downloader.Torrent, setting models.CrossSeedSetting) []models.CrossSeedTask {
+	baseURL, _, err := c.GetTorznab()
+	if err != nil || strings.TrimSpace(baseURL) == "" {
+		return nil
+	}
+	const minScore = 75
+	const maxPerSrc = 5
+	created := make([]models.CrossSeedTask, 0)
+	for _, t := range torrents {
+		infoHash := torrentInfoHash(t)
+		if infoHash == "" || t.SavePath == "" {
+			continue
+		}
+		cands := c.findTorznabCandidates(ctx, t.Name, t.Size)
+		n := 0
+		for _, cand := range cands {
+			if cand.Score < minScore {
+				continue
+			}
+			url := cand.Torrent.DownloadURL
+			if url == "" {
+				url = cand.Torrent.DetailURL
+			}
+			if url == "" {
+				continue
+			}
+			save := setting.SavePath
+			if save == "" {
+				save = t.SavePath
+			}
+			task, ok := c.upsertCrossSeedTask(downloaderID, cand.SiteID, infoHash, t.Name, cand.SiteName, url, save, cand.Score)
+			if ok {
+				created = append(created, task)
+				n++
+				if n >= maxPerSrc {
+					break
+				}
+			}
+		}
+	}
+	if len(created) > 0 {
+		slog.Info("reseed torznab supplement", "downloader", downloaderID, "candidates", len(created))
+	}
+	return created
 }
 
 // upsertCrossSeedTask 新建或复活 CrossSeedTask；返回 (task, true) 表示有新增/复活。

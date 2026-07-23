@@ -5,9 +5,24 @@ import { reseedApi, type ReseedTask, type ReseedSetting, type MissingSummary, ty
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import { siteApi, type Site } from '@/api/site'
 
-const config = ref<{ masked: string; configured: boolean }>({ masked: '', configured: false })
+const config = ref<{
+  masked: string
+  configured: boolean
+  torznab_url: string
+  torznab_key_masked: string
+  torznab_configured: boolean
+}>({
+  masked: '',
+  configured: false,
+  torznab_url: '',
+  torznab_key_masked: '',
+  torznab_configured: false,
+})
 const tokenInput = ref('')
 const savingToken = ref(false)
+const torznabUrl = ref('')
+const torznabKey = ref('')
+const savingTorznab = ref(false)
 
 const downloaders = ref<Downloader[]>([])
 const selectedDl = ref<number | null>(null)
@@ -27,7 +42,14 @@ const savingSetting = ref(false)
 async function loadConfig() {
   try {
     const c = await reseedApi.getConfig()
-    config.value = { masked: c.iyuu_token_masked, configured: c.configured }
+    config.value = {
+      masked: c.iyuu_token_masked,
+      configured: c.configured,
+      torznab_url: c.torznab_url || '',
+      torznab_key_masked: c.torznab_key_masked || '',
+      torznab_configured: !!c.torznab_configured,
+    }
+    torznabUrl.value = c.torznab_url || ''
   } catch {
     ElMessage.warning('辅种配置加载失败')
   }
@@ -40,7 +62,7 @@ async function saveToken() {
   }
   savingToken.value = true
   try {
-    await reseedApi.setConfig(tokenInput.value.trim())
+    await reseedApi.setConfig({ iyuu_token: tokenInput.value.trim() })
     tokenInput.value = ''
     ElMessage.success('IYUU token 已保存')
     await loadConfig()
@@ -48,6 +70,24 @@ async function saveToken() {
     ElMessage.warning('保存失败')
   } finally {
     savingToken.value = false
+  }
+}
+
+async function saveTorznab() {
+  savingTorznab.value = true
+  try {
+    await reseedApi.setConfig({
+      torznab_url: torznabUrl.value.trim(),
+      torznab_apikey: torznabKey.value.trim(),
+      set_torznab: true,
+    })
+    torznabKey.value = ''
+    ElMessage.success('Torznab 配置已保存')
+    await loadConfig()
+  } catch {
+    ElMessage.warning('Torznab 保存失败')
+  } finally {
+    savingTorznab.value = false
   }
 }
 
@@ -104,7 +144,10 @@ async function startReseed() {
   reseeding.value = true
   try {
     const r = await reseedApi.reseed(selectedDl.value)
-    ElMessage.success(`辅种完成，新增 ${r.count} 个候选${config.value.configured ? '' : '（本地匹配）'}`)
+    const mode = config.value.configured
+      ? (config.value.torznab_configured ? '（IYUU + Torznab）' : '')
+      : (config.value.torznab_configured ? '（本地 + Torznab）' : '（本地匹配）')
+    ElMessage.success(`辅种完成，新增 ${r.count} 个候选${mode}`)
     statusFilter.value = 'pending'
     await loadTasks()
   } catch (e: unknown) {
@@ -191,9 +234,12 @@ onMounted(async () => {
     <!-- 标题行：标题 + 一句话副标题 + 右侧 IYUU 配置状态 -->
     <div class="page-head">
       <h2 class="page-title">辅种</h2>
-      <span class="subtitle text-muted">IYUU 精确跨站匹配 · 一键添加辅种（复用源种子保存路径）</span>
+      <span class="subtitle text-muted">IYUU 精确匹配 / Torznab 候选 / 本地名称+大小 · 一键添加辅种</span>
       <span class="cfg-chip" :class="config.configured ? 'ok' : 'warn'">
         <span class="dot"></span>{{ config.configured ? 'IYUU 已配置' : 'IYUU 未配置' }}
+      </span>
+      <span class="cfg-chip" :class="config.torznab_configured ? 'ok' : 'warn'">
+        <span class="dot"></span>{{ config.torznab_configured ? 'Torznab 已配置' : 'Torznab 未配置' }}
       </span>
     </div>
 
@@ -221,7 +267,7 @@ onMounted(async () => {
 
       <div class="spacer"></div>
 
-      <el-popover trigger="click" placement="bottom-end" :width="340" popper-class="reseed-cfg-pop">
+      <el-popover trigger="click" placement="bottom-end" :width="380" popper-class="reseed-cfg-pop">
         <template #reference>
           <el-button class="cfg-btn">
             <GlassIcon name="settings" from="#6c5ce7" to="#4285f4" :size="16" class="btn-ico" />
@@ -251,6 +297,38 @@ onMounted(async () => {
             <a class="cfg-link" href="https://iyuu.cn" target="_blank" rel="noopener">
               前往 iyuu.cn 获取 token 并绑定站点 →
             </a>
+          </div>
+
+          <div class="cfg-divider"></div>
+
+          <!-- Torznab（Jackett / Prowlarr） -->
+          <div class="cfg-sec">
+            <div class="cfg-sec-head">
+              <span class="cfg-sec-title">Torznab</span>
+              <span class="cfg-state" :class="config.torznab_configured ? 'ok' : 'warn'">
+                {{ config.torznab_configured ? '已配置' : '未配置' }}
+              </span>
+            </div>
+            <p class="cfg-hint text-muted">Jackett/Prowlarr 端点，作辅种候选源（可与 IYUU 并存）</p>
+            <div class="token-row">
+              <el-input
+                v-model="torznabUrl"
+                placeholder="https://jackett/api/v2.0/indexers/all/results/torznab"
+                clearable
+                size="small"
+              />
+            </div>
+            <div class="token-row" style="margin-top: 6px">
+              <el-input
+                v-model="torznabKey"
+                :placeholder="config.torznab_key_masked ? `API Key（已配置 ${config.torznab_key_masked}）` : 'API Key（可选）'"
+                show-password
+                clearable
+                size="small"
+                @keyup.enter="saveTorznab"
+              />
+              <el-button type="primary" :loading="savingTorznab" @click="saveTorznab">保存</el-button>
+            </div>
           </div>
 
           <div class="cfg-divider"></div>
@@ -516,6 +594,11 @@ onMounted(async () => {
 }
 .reseed-cfg-pop .cfg-state.ok {
   color: var(--pt-success);
+}
+.reseed-cfg-pop .cfg-hint {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 .reseed-cfg-pop .cfg-state.warn {
   color: var(--pt-warn);

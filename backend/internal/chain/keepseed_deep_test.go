@@ -133,7 +133,7 @@ func TestScoreBoundary(t *testing.T) {
 		want                  int
 	}{
 		{"identical", "Movie 2023", "Movie 2023", 1000, 1000, 100},
-		{"size within 5pct", "Movie 2023", "Movie 2023", 1000, 950, 100},   // ratio<=0.05 → sizeScore=100
+		{"size within 5pct", "Movie 2023", "Movie 2023", 1000, 950, 97},    // ratio=0.05 → sizeScore=90（≤0.05 档）；title=100 → 70+27=97
 		{"size diff over 50pct", "Movie 2023", "Movie 2023", 1000, 100, 70}, // sizeScore=0 → 100*0.7
 		{"unrelated title same size", "Alpha", "Beta", 1000, 1000, 30},      // title=0,size=100 → 30
 		{"wantSize zero title match", "Movie 2023", "Movie 2023", 0, 0, 100},

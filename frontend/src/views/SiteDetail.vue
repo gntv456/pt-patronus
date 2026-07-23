@@ -14,8 +14,13 @@ const props = defineProps<{ id: string }>()
 const route = useRoute()
 const router = useRouter()
 
-const siteId = computed(() => Number(props.id || route.params.id))
+const siteId = computed(() => {
+  const n = Number(props.id || route.params.id)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
 const tab = ref(String(route.query.tab || 'overview'))
+const validTabs = new Set(['overview', 'assessment', 'brushflow', 'reseed', 'freeleech', 'savept'])
+if (!validTabs.has(tab.value)) tab.value = 'overview'
 const site = ref<Site | null>(null)
 const conn = ref<SiteConnectivityStatus | null>(null)
 const stat = ref<SiteStatItem | null>(null)
@@ -47,6 +52,14 @@ const statusColor: Record<string, string> = {
 async function loadSite() {
   loading.value = true
   loadError.value = ''
+  site.value = null
+  conn.value = null
+  stat.value = null
+  if (!siteId.value) {
+    loadError.value = '无效的站点 ID'
+    loading.value = false
+    return
+  }
   try {
     const list = await siteApi.list()
     site.value = list.find((s) => s.id === siteId.value) || null
@@ -152,7 +165,9 @@ function onTab(name: string | number) {
 }
 
 function goGlobal(name: string) {
-  router.push({ name, query: { site_id: String(siteId.value) } })
+  const q: Record<string, string> = { site_id: String(siteId.value) }
+  if (site.value?.name) q.site_name = site.value.name
+  router.push({ name, query: q })
 }
 
 function fmtBytes(n: number) {
@@ -176,6 +191,18 @@ watch(siteId, async () => {
   await loadSite()
   void loadTab(tab.value)
 })
+
+// 外部改 ?tab= 时同步（浏览器前进/后退或深链）
+watch(
+  () => String(route.query.tab || 'overview'),
+  (v) => {
+    const n = validTabs.has(v) ? v : 'overview'
+    if (n !== tab.value) {
+      tab.value = n
+      void loadTab(n)
+    }
+  },
+)
 </script>
 
 <template>

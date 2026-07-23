@@ -1,13 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { contractApi, type ContractRule, type ContractCheckResult } from '@/api/contract'
 import { siteApi } from '@/api/site'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
+const route = useRoute()
+const focusSiteId = computed(() => {
+  const n = Number(route.query.site_id)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
 const rules = ref<ContractRule[]>([])
+const displayRules = computed(() =>
+  focusSiteId.value ? rules.value.filter((r) => r.site_id === focusSiteId.value) : rules.value,
+)
 const sites = ref<{ id: number; name: string; base_url: string }[]>([])
+const focusSiteName = computed(() => {
+  if (!focusSiteId.value) return ''
+  const fromList = sites.value.find((s) => s.id === focusSiteId.value)?.name
+  const q = route.query.site_name
+  return fromList || (typeof q === 'string' ? q : '') || `#${focusSiteId.value}`
+})
 const loading = ref(false)
 const results = ref<Record<number, ContractCheckResult>>({})
 
@@ -38,7 +53,8 @@ function defaultForm(): Partial<ContractRule> {
 function openCreate() {
   editing.value = null
   form.value = defaultForm()
-  if (sites.value.length) form.value.site_id = sites.value[0].id
+  if (focusSiteId.value) form.value.site_id = focusSiteId.value
+  else if (sites.value.length) form.value.site_id = sites.value[0].id
   showForm.value = true
 }
 
@@ -109,8 +125,17 @@ onMounted(load)
     </div>
     <p class="sub">为站点设分享率 / 做种数 / 上传量下限，每日 9 点自动检查，低于下限告警通知（防分享率过低被封）。</p>
 
+    <el-alert
+      v-if="focusSiteId"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 12px"
+      :title="`仅显示站点「${focusSiteName}」的保种契约（${displayRules.length}）`"
+    />
+
     <div v-loading="loading" class="grid">
-      <div v-for="r in rules" :key="r.id" class="glass glass-hover card">
+      <div v-for="r in displayRules" :key="r.id" class="glass glass-hover card">
         <div class="card-head">
           <SiteFavicon :name="siteName(r.site_id)" :base-url="siteBaseUrl(r.site_id)" :size="34" />
           <div class="card-title">
@@ -141,10 +166,10 @@ onMounted(load)
         </div>
       </div>
       <EmptyState
-        v-if="!rules.length && !loading"
+        v-if="!displayRules.length && !loading"
         icon="🔖"
-        title="暂无契约"
-        description="新建契约，为站点设保种下限"
+        :title="focusSiteId ? '该站点暂无契约' : '暂无契约'"
+        :description="focusSiteId ? '可为该站新建保种契约' : '新建契约，为站点设保种下限'"
       >
         <el-button type="primary" @click="openCreate">新建契约</el-button>
       </EmptyState>

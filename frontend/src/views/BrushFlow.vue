@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { brushflowApi, type BrushFlowTask, type BrushFlowSeed } from '@/api/brushflow'
 import { siteApi } from '@/api/site'
 import { downloaderApi } from '@/api/downloader'
@@ -8,7 +9,22 @@ import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
+const route = useRoute()
 const tasks = ref<BrushFlowTask[]>([])
+/** 站点详情深链：?site_id= 仅显示该站任务 */
+const focusSiteId = computed(() => {
+  const n = Number(route.query.site_id)
+  return Number.isFinite(n) && n > 0 ? n : 0
+})
+const displayTasks = computed(() =>
+  focusSiteId.value ? tasks.value.filter((t) => t.site_id === focusSiteId.value) : tasks.value,
+)
+const focusSiteName = computed(() => {
+  if (!focusSiteId.value) return ''
+  const fromList = sites.value.find((s) => s.id === focusSiteId.value)?.name
+  const q = route.query.site_name
+  return fromList || (typeof q === 'string' ? q : '') || `#${focusSiteId.value}`
+})
 const sites = ref<{ id: number; name: string }[]>([])
 const downloaders = ref<{ id: number; name: string }[]>([])
 const filterGroups = ref<string[]>([])
@@ -45,7 +61,8 @@ function defaultForm(): Partial<BrushFlowTask> {
 function openCreate() {
   editing.value = null
   form.value = defaultForm()
-  if (sites.value.length) form.value.site_id = sites.value[0].id
+  if (focusSiteId.value) form.value.site_id = focusSiteId.value
+  else if (sites.value.length) form.value.site_id = sites.value[0].id
   if (downloaders.value.length) form.value.downloader_id = downloaders.value[0].id
   showForm.value = true
 }
@@ -163,8 +180,17 @@ onMounted(() => {
     </div>
     <p class="sub">按规则自动选种做种，达到删除规则（分享率 / 保种时长 / 上传量）后自动删种，循环刷上传量与分享率。</p>
 
+    <el-alert
+      v-if="focusSiteId"
+      type="info"
+      :closable="false"
+      show-icon
+      style="margin-bottom: 12px"
+      :title="`仅显示站点「${focusSiteName}」的刷流任务（${displayTasks.length}）`"
+    />
+
     <div v-loading="loading" class="grid">
-      <div v-for="t in tasks" :key="t.id" class="glass glass-hover card">
+      <div v-for="t in displayTasks" :key="t.id" class="glass glass-hover card">
         <div class="card-head">
           <GlassIcon name="brushflow" :size="34" from="#f7971e" to="#ff6a00" />
           <div class="card-title">
@@ -191,10 +217,10 @@ onMounted(() => {
         </div>
       </div>
       <EmptyState
-        v-if="!tasks.length && !loading"
+        v-if="!displayTasks.length && !loading"
         icon="🚀"
-        title="暂无刷流任务"
-        description="新建任务开始自动刷上传量与分享率"
+        :title="focusSiteId ? '该站点暂无刷流任务' : '暂无刷流任务'"
+        :description="focusSiteId ? '可为该站新建刷流任务' : '新建任务开始自动刷上传量与分享率'"
       >
         <el-button type="primary" @click="openCreate">新建任务</el-button>
       </EmptyState>

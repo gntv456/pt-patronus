@@ -8,6 +8,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import '../system/logs_page.dart';
 
 /// 系统设置页：聚合三个管理员级配置卡片（后端均已存在）。
 ///  1. AI 网关（/llmgateway/config）—— 把内置 Agent 以 OpenAI/Anthropic 兼容协议暴露。

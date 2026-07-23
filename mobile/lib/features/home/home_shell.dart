@@ -43,6 +43,8 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     _noticeSub = WsClient().notices.listen((_) => refreshNoticeUnread());
     // AI 助手已移出抽屉/侧栏（NavItem.hidden），顶栏常驻按钮凭此索引 select。
     _controller.assistantIndex = navItems.indexWhere((n) => n.glyph == 'bot');
+    // P3：搜索移出抽屉（hidden），顶栏/FAB 入口用此索引 select。
+    _controller.searchIndex = navItems.indexWhere((n) => n.glyph == 'search');
     // 启动后台检查更新（silent：仅在有新版时弹对话框，不打扰已是最新版本的用户）
     checkAndPromptUpdate(context, silent: true);
   }
@@ -143,30 +145,48 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               drawer: const HomeDrawer(),
               drawerEdgeDragWidth: 48,
               body: body,
-              floatingActionButton: ValueListenableBuilder<int>(
+              // AI 助手页有底部输入框，左下通知 FAP 会遮挡输入框 → 该页隐藏
+              // （通知中心入口从其它页/抽屉进；AI 页对话期间不打断）。
+              floatingActionButton: _controller.index == _controller.assistantIndex
+                  ? null
+                  : ValueListenableBuilder<int>(
                 valueListenable: noticeUnread,
-                builder: (_, n, _) => FloatingActionButton(
-                  mini: true,
-                  tooltip: '通知中心',
-                  backgroundColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  onPressed: _openNotices,
-                  child: Badge(
-                    isLabelVisible: n > 0,
-                    label: Text(
-                      n > 99 ? '99+' : '$n',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                builder: (_, n, _) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_controller.searchIndex != null)
+                      FloatingActionButton(
+                        mini: true,
+                        heroTag: 'home-search-fab',
+                        tooltip: '搜索',
+                        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                        onPressed: () => _controller.select(_controller.searchIndex!),
+                        child: const Icon(Icons.search),
+                      ),
+                    if (_controller.searchIndex != null) const SizedBox(height: 8),
+                    FloatingActionButton(
+                      mini: true,
+                      heroTag: 'home-notice-fab',
+                      tooltip: '通知中心',
+                      backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      onPressed: _openNotices,
+                      child: Badge(
+                        isLabelVisible: n > 0,
+                        label: Text(
+                          n > 99 ? '99+' : '$n',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        child: const Icon(Icons.notifications),
                       ),
                     ),
-                    child: const Icon(Icons.notifications),
-                  ),
+                  ],
                 ),
               ),
               floatingActionButtonLocation:
-                  FloatingActionButtonLocation.startFloat,
+                  FloatingActionButtonLocation.endFloat,
             );
           },
         ),

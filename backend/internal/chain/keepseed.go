@@ -106,14 +106,16 @@ func (c *KeepSeedChain) GetToken() (string, error) { return c.cfgOp.Get(IYUUToke
 // SetToken 写 IYUU token。
 func (c *KeepSeedChain) SetToken(token string) error { return c.cfgOp.Set(IYUUTokenKey, token) }
 
-// Reseed 对指定下载器的做种种子做 IYUU 精确辅种匹配，落 pending 候选任务并返回新增项。
+// Reseed 对指定下载器的做种种子做辅种匹配，落 pending 候选任务并返回新增项。
+// 优先 IYUU 精确 infohash（配置了 token 时）；未配置 token 时回退本地名称+大小跨站搜索（FindCandidates），
+// 降低 IYUU 中心化单点依赖（feature-roadmap §1.2）。
 func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models.CrossSeedTask, error) {
 	token, err := c.cfgOp.Get(IYUUTokenKey)
 	if err != nil {
 		return nil, err
 	}
 	if token == "" {
-		return nil, errors.New("未配置 IYUU token，请先在辅种页保存")
+		return c.reseedLocal(ctx, downloaderID)
 	}
 
 	dl, err := c.dl.Get(ctx, downloaderID)
@@ -231,6 +233,109 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 	}
 	slog.Info("reseed done", "downloader", downloaderID, "hashes", len(hashes), "candidates", len(created))
 	return created, nil
+}
+
+
+// reseedLocal 本地辅种：对下载器做种按名称+大小跨站搜索（keepseed.Score），高分候选落库。
+// 不依赖 IYUU；适合 token 未配置或 IYUU 不可达时的兜底。score≥75 才收录，每源最多 5 候选。
+func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]models.CrossSeedTask, error) {
+	dl, err := c.dl.Get(ctx, downloaderID)
+	if err != nil {
+		return nil, err
+	}
+	torrents, err := dl.ListTorrents(ctx)
+	if err != nil {
+		return nil, err
+	}
+	setting := c.loadSetting(downloaderID)
+	created := make([]models.CrossSeedTask, 0)
+	const minScore = 75
+	const maxPerSrc = 5
+	for _, t := range torrents {
+		infoHash := torrentInfoHash(t)
+		if infoHash == "" || t.SavePath == "" {
+			continue
+		}
+		// 仅处理已完成/做种中的种子
+		if t.Progress < 0.999 && t.CompletedAt.IsZero() {
+			st := strings.ToLower(t.State)
+			if st != "uploading" && st != "stalledup" && st != "forcedup" && st != "seeding" && st != "seed" {
+				continue
+			}
+		}
+		cands := c.FindCandidates(ctx, t.Name, t.Size)
+		n := 0
+		for _, cand := range cands {
+			if cand.Score < minScore {
+				continue
+			}
+			url := cand.Torrent.DownloadURL
+			if url == "" {
+				url = cand.Torrent.DetailURL
+			}
+			if url == "" {
+				continue
+			}
+			save := setting.SavePath
+			if save == "" {
+				save = t.SavePath
+			}
+			task, ok := c.upsertCrossSeedTask(downloaderID, cand.SiteID, infoHash, t.Name, cand.SiteName, url, save, cand.Score)
+			if ok {
+				created = append(created, task)
+				n++
+				if n >= maxPerSrc {
+					break
+				}
+			}
+		}
+	}
+	slog.Info("reseed local done", "downloader", downloaderID, "candidates", len(created))
+	return created, nil
+}
+
+// upsertCrossSeedTask 新建或复活 CrossSeedTask；返回 (task, true) 表示有新增/复活。
+func (c *KeepSeedChain) upsertCrossSeedTask(downloaderID, siteID uint, infoHash, sourceName, candidateSite, candURL, save string, score int) (models.CrossSeedTask, bool) {
+	var existing models.CrossSeedTask
+	lookupErr := c.db.Where("info_hash = ? AND candidate_site = ?", infoHash, candidateSite).First(&existing).Error
+	switch {
+	case lookupErr == nil:
+		if existing.Status == "pending" || existing.Status == "added" {
+			return models.CrossSeedTask{}, false
+		}
+		if e := c.db.Model(&existing).Updates(map[string]any{
+			"status": "pending", "candidate_url": candURL, "save_path": save, "resolved_at": nil, "match_score": score,
+		}).Error; e != nil {
+			slog.Warn("reseed revive task", "hash", infoHash, "site", candidateSite, "err", e)
+			return models.CrossSeedTask{}, false
+		}
+		existing.Status = "pending"
+		existing.CandidateURL = candURL
+		existing.SavePath = save
+		existing.ResolvedAt = nil
+		existing.MatchScore = score
+		return existing, true
+	case errors.Is(lookupErr, gorm.ErrRecordNotFound):
+		task := &models.CrossSeedTask{
+			DownloaderID:  downloaderID,
+			SiteID:        siteID,
+			InfoHash:      infoHash,
+			SourceName:    sourceName,
+			CandidateSite: candidateSite,
+			CandidateURL:  candURL,
+			SavePath:      save,
+			Status:        "pending",
+			MatchScore:    score,
+		}
+		if e := c.db.Create(task).Error; e != nil {
+			slog.Warn("reseed create task", "hash", infoHash, "site", candidateSite, "err", e)
+			return models.CrossSeedTask{}, false
+		}
+		return *task, true
+	default:
+		slog.Warn("reseed lookup task", "hash", infoHash, "site", candidateSite, "err", lookupErr)
+		return models.CrossSeedTask{}, false
+	}
 }
 
 // MissingSample 是一个未辅种种子的简要信息。

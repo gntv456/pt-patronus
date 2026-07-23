@@ -96,18 +96,15 @@ async function saveSettingField() {
 }
 
 async function startReseed() {
-  if (selectedDl.value === null) {
+  if (!selectedDl.value) {
     ElMessage.warning('请选择下载器')
     return
   }
-  if (!config.value.configured) {
-    ElMessage.warning('请先保存 IYUU token')
-    return
-  }
+  // 无 IYUU token 时后端走本地名称+大小跨站匹配，不再硬挡
   reseeding.value = true
   try {
     const r = await reseedApi.reseed(selectedDl.value)
-    ElMessage.success(`辅种完成，新增 ${r.count} 个候选`)
+    ElMessage.success(`辅种完成，新增 ${r.count} 个候选${config.value.configured ? '' : '（本地匹配）'}`)
     statusFilter.value = 'pending'
     await loadTasks()
   } catch (e: unknown) {
@@ -205,7 +202,15 @@ onMounted(async () => {
       <el-select v-model="selectedDl" placeholder="选择下载器" class="dl-select">
         <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
       </el-select>
-      <el-button type="primary" :loading="reseeding" @click="startReseed">
+      <el-alert
+      v-if="!config.configured"
+      type="info"
+      :closable="false"
+      show-icon
+      title="未配置 IYUU：触发辅种将使用本地名称+大小跨站匹配（去 IYUU 单点兜底）"
+      style="margin-bottom: 12px"
+    />
+    <el-button type="primary" :loading="reseeding" @click="startReseed">
         <GlassIcon name="seeding" from="#11998e" to="#38ef7d" :size="16" class="btn-ico" />
         <span>开始辅种</span>
       </el-button>

@@ -18,6 +18,8 @@ class HomeController extends ChangeNotifier {
   /// 放控制器而非 widget 层解析，避免 widgets/pt_page_scaffold → features/home/home_nav_items
   /// 的循环导入（nav_items 反向导入各页面 → 页面又用 PTPageScaffold）。
   int? assistantIndex;
+  /// 搜索页索引（P3 抽屉隐藏搜索后，由 FAB 入口 select）。
+  int? searchIndex;
 
   int get index => _index;
   bool get sidebarVisible => _sidebarVisible;

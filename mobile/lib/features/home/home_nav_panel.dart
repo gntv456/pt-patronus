@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/glass.dart';
 import '../../widgets/glass_icon.dart';
 import '../../widgets/pt_logo.dart';
@@ -45,10 +46,9 @@ class NavPanel extends StatelessWidget {
   }
 }
 
-/// 抽屉与侧栏共用的分组导航列表 —— 渲染 [navGroups]（4 组，每组带小标题）+ 底部 [navFooter]。
-/// 全局 index 与扁平 [navItems] 对齐（组展开顺序 + footer），故 [NavTile.index] 可直接驱动
-/// [HomeController.select]。组标题样式对齐 Web `.nav-group-title`（小号 muted 文本）。
-class NavGroupedList extends StatelessWidget {
+/// 抽屉与侧栏共用的分组导航列表 —— 渲染 [navGroups] + 底部 [navFooter]。
+/// P3：分组折叠记忆 + 收藏置顶（SharedPreferences，对齐 Web useNavPrefs）。
+class NavGroupedList extends StatefulWidget {
   final EdgeInsets padding;
   const NavGroupedList({
     super.key,
@@ -56,15 +56,83 @@ class NavGroupedList extends StatelessWidget {
   });
 
   @override
+  State<NavGroupedList> createState() => _NavGroupedListState();
+}
+
+class _NavGroupedListState extends State<NavGroupedList> {
+  static const _kCollapsed = 'nav.collapsedGroups';
+  static const _kFavorites = 'nav.favorites';
+
+  final Set<String> _collapsed = {};
+  final List<String> _favorites = []; // label 列表
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrefs();
+  }
+
+  Future<void> _loadPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final collapsed = prefs.getStringList(_kCollapsed) ?? const [];
+    final favs = prefs.getStringList(_kFavorites) ?? const [];
+    if (!mounted) return;
+    setState(() {
+      _collapsed
+        ..clear()
+        ..addAll(collapsed);
+      _favorites
+        ..clear()
+        ..addAll(favs);
+      _ready = true;
+    });
+  }
+
+  Future<void> _saveCollapsed() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kCollapsed, _collapsed.toList());
+  }
+
+  Future<void> _saveFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_kFavorites, _favorites);
+  }
+
+  void _toggleGroup(String title) {
+    setState(() {
+      if (_collapsed.contains(title)) {
+        _collapsed.remove(title);
+      } else {
+        _collapsed.add(title);
+      }
+    });
+    _saveCollapsed();
+  }
+
+  void _toggleFavorite(String label) {
+    setState(() {
+      if (_favorites.contains(label)) {
+        _favorites.remove(label);
+      } else {
+        _favorites.add(label);
+      }
+    });
+    _saveFavorites();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final children = <Widget>[];
-    for (final g in navGroups) {
+
+    // 收藏置顶
+    if (_ready && _favorites.isNotEmpty) {
       children.add(
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 2),
           child: Text(
-            g.title,
+            '收藏',
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -73,25 +141,75 @@ class NavGroupedList extends StatelessWidget {
           ),
         ),
       );
-      for (final item in g.items) {
-        if (item.hidden) continue; // 顶栏常驻项（如 AI 助手）不在菜单渲染
-        children.add(NavTile(index: navItems.indexOf(item)));
+      for (final label in _favorites) {
+        final idx = navItems.indexWhere((n) => n.label == label && !n.hidden);
+        if (idx < 0) continue;
+        children.add(NavTile(index: idx, favorite: true, onToggleFavorite: () => _toggleFavorite(label)));
       }
     }
-    if (navFooter.isNotEmpty) {
+
+    for (final g in navGroups) {
+      final visible = g.items.where((it) => !it.hidden).toList();
+      if (visible.isEmpty) continue;
+      final collapsed = _collapsed.contains(g.title);
+      children.add(
+        InkWell(
+          onTap: () => _toggleGroup(g.title),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 2),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    g.title,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: muted.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ),
+                Icon(
+                  collapsed ? Icons.chevron_right : Icons.expand_more,
+                  size: 16,
+                  color: muted.withValues(alpha: 0.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (collapsed) continue;
+      for (final item in visible) {
+        final idx = navItems.indexOf(item);
+        if (idx < 0) continue;
+        children.add(NavTile(
+          index: idx,
+          favorite: _favorites.contains(item.label),
+          onToggleFavorite: () => _toggleFavorite(item.label),
+        ));
+      }
+    }
+    final footerVisible = navFooter.where((it) => !it.hidden).toList();
+    if (footerVisible.isNotEmpty) {
       children.add(
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Divider(height: 1),
         ),
       );
-      for (final item in navFooter) {
-        if (item.hidden) continue;
-        children.add(NavTile(index: navItems.indexOf(item)));
+      for (final item in footerVisible) {
+        final idx = navItems.indexOf(item);
+        if (idx < 0) continue;
+        children.add(NavTile(
+          index: idx,
+          favorite: _favorites.contains(item.label),
+          onToggleFavorite: () => _toggleFavorite(item.label),
+        ));
       }
     }
     children.add(const SizedBox(height: 12));
-    return ListView(padding: padding, children: children);
+    return ListView(padding: widget.padding, children: children);
   }
 }
 
@@ -99,7 +217,14 @@ class NavGroupedList extends StatelessWidget {
 /// 避免父级整树重建。
 class NavTile extends StatelessWidget {
   final int index;
-  const NavTile({super.key, required this.index});
+  final bool favorite;
+  final VoidCallback? onToggleFavorite;
+  const NavTile({
+    super.key,
+    required this.index,
+    this.favorite = false,
+    this.onToggleFavorite,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +262,17 @@ class NavTile extends StatelessWidget {
                     item.desc!,
                     style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
+            trailing: onToggleFavorite == null
+                ? null
+                : IconButton(
+                    tooltip: favorite ? '取消收藏' : '收藏',
+                    icon: Icon(
+                      favorite ? Icons.star : Icons.star_border,
+                      size: 18,
+                      color: favorite ? Colors.amber : Colors.grey,
+                    ),
+                    onPressed: onToggleFavorite,
+                  ),
             selected: sel,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -149,7 +285,7 @@ class NavTile extends StatelessWidget {
   }
 }
 
-/// 抽屉 / 侧栏顶部品牌区。
+/// 侧栏 / 抽屉顶部品牌条（logo + 名称），可选右侧操作（如侧栏收起按钮）。
 class NavBrandHeader extends StatelessWidget {
   final Widget? trailing;
   const NavBrandHeader({super.key, this.trailing});

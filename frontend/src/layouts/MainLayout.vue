@@ -57,7 +57,7 @@ interface NavGroup {
   items: NavItem[]
 }
 
-// P0: 4->6 groups (menu-redesign). Keep all items; remove only in P2.
+// P2: 侧栏收敛到定稿主菜单；移出项保留在 paletteOnly（⌘K/收藏/深链）。
 const navGroups: NavGroup[] = [
   {
     title: '概览',
@@ -76,25 +76,11 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: '内容获取',
-    items: [
-      { name: 'rss', label: 'RSS', icon: 'rss', from: '#f7971e', to: '#ff6a00' },
-      { name: 'transfer', label: '整理', icon: 'files', from: '#6c5ce7', to: '#00b894' },
-      { name: 'filter-rules', label: '过滤规则', icon: 'settings', from: '#6c5ce7', to: '#4285f4' },
-      { name: 'reseed', label: '辅种', icon: 'seeding', from: '#7f00ff', to: '#38ef7d' },
-    ],
-  },
-  {
     title: '站点活动',
     items: [
       { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
       { name: 'medal-wall', label: '勋章墙', icon: 'medalwall', from: '#f39c12', to: '#e100ff' },
       { name: 'harem', label: '后宫', icon: 'harem', from: '#e100ff', to: '#7f00ff' },
-      { name: 'assessment', label: '考核', icon: 'assessment', from: '#0f9b0f', to: '#43cea2' },
-      { name: 'freeleech', label: '站免', icon: 'freeleech', from: '#11998e', to: '#38ef7d' },
-      { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12' },
-      { name: 'brushflow', label: '刷流', icon: 'brushflow', from: '#f7971e', to: '#ff6a00' },
-      { name: 'contract', label: '保种契约', icon: 'contract', from: '#6c5ce7', to: '#4285f4' },
     ],
   },
   {
@@ -104,12 +90,6 @@ const navGroups: NavGroup[] = [
       { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver', from: '#52b788', to: '#2d6a4f' },
       { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
       { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
-      { name: 'cloud', label: '云盘·STRM', icon: 'cloud', from: '#4cc9f0', to: '#4361ee' },
-      { name: 'subtitle', label: '字幕', icon: 'subtitle', from: '#4361ee', to: '#7209b7' },
-      { name: 'trakt', label: 'Trakt', icon: 'trakt', from: '#b5179e', to: '#f72585' },
-      { name: 'mediaquality', label: '媒体质量', icon: 'mediaquality', from: '#f12711', to: '#f5af19' },
-      { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50' },
-      { name: 'doctor', label: '诊断', icon: 'stethoscope', from: '#0f2027', to: '#ef4444' },
     ],
   },
   {
@@ -119,6 +99,25 @@ const navGroups: NavGroup[] = [
       { name: 'plugins', label: '插件', icon: 'plugin', from: '#0ea5e9', to: '#22c55e' },
     ],
   },
+]
+
+// P2 移出侧栏但仍可 ⌘K / 深链 / 收藏：全局页与配置页保留在 paletteOnly。
+const paletteOnly: (NavItem & { group: string })[] = [
+  { name: 'rss', label: 'RSS', icon: 'rss', from: '#f7971e', to: '#ff6a00', group: '内容获取' },
+  { name: 'transfer', label: '整理', icon: 'files', from: '#6c5ce7', to: '#00b894', group: '内容获取' },
+  { name: 'filter-rules', label: '过滤规则', icon: 'settings', from: '#6c5ce7', to: '#4285f4', group: '内容获取' },
+  { name: 'reseed', label: '辅种', icon: 'seeding', from: '#7f00ff', to: '#38ef7d', group: '内容获取' },
+  { name: 'assessment', label: '考核', icon: 'assessment', from: '#0f9b0f', to: '#43cea2', group: '站点活动' },
+  { name: 'freeleech', label: '站免', icon: 'freeleech', from: '#11998e', to: '#38ef7d', group: '站点活动' },
+  { name: 'savept', label: '监护室', icon: 'savept', from: '#e74c3c', to: '#f39c12', group: '站点活动' },
+  { name: 'brushflow', label: '刷流', icon: 'brushflow', from: '#f7971e', to: '#ff6a00', group: '站点活动' },
+  { name: 'contract', label: '保种契约', icon: 'contract', from: '#6c5ce7', to: '#4285f4', group: '站点活动' },
+  { name: 'cloud', label: '云盘·STRM', icon: 'cloud', from: '#4cc9f0', to: '#4361ee', group: '基础设施' },
+  { name: 'subtitle', label: '字幕', icon: 'subtitle', from: '#4361ee', to: '#7209b7', group: '基础设施' },
+  { name: 'trakt', label: 'Trakt', icon: 'trakt', from: '#b5179e', to: '#f72585', group: '基础设施' },
+  { name: 'mediaquality', label: '媒体质量', icon: 'mediaquality', from: '#f12711', to: '#f5af19', group: '基础设施' },
+  { name: 'backup', label: '备份', icon: 'backup', from: '#536976', to: '#2c3e50', group: '基础设施' },
+  { name: 'doctor', label: '诊断', icon: 'stethoscope', from: '#0f2027', to: '#ef4444', group: '基础设施' },
 ]
 
 const navDesc: Record<string, string> = {
@@ -175,9 +174,10 @@ const navAliases: Record<string, string[]> = {
   settings: ['设置', '配置', '系统设置'],
 }
 
-const flatNav = computed(() =>
-  navGroups.flatMap((g) => g.items.map((it) => ({ ...it, group: g.title }))),
-)
+const flatNav = computed(() => [
+  ...navGroups.flatMap((g) => g.items.map((it) => ({ ...it, group: g.title }))),
+  ...paletteOnly,
+])
 
 const itemByName = computed(() => {
   const m = new Map<string, NavItem & { group: string }>()

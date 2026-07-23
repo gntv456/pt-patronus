@@ -165,16 +165,25 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 	}
 	var toDelete []string
 	var uploadSum int64
+	var taskHashes []string // 本任务全部种子 hash（用于设下载器原生 share limit）
 	now := time.Now()
 	for _, tr := range list {
 		if !bfHasTag(tr.Tags, tag) {
 			continue
 		}
+		taskHashes = append(taskHashes, tr.Hash)
 		if bfMatchRule(task, &tr, now) == "" {
 			continue
 		}
 		toDelete = append(toDelete, tr.Hash)
 		uploadSum += tr.Uploaded
+	}
+	// 原生 share limit：开启时对任务种子设下载器原生「达标即暂停」（即时保护，补充应用层扫删）。
+	// SetShareLimits 幂等（重复设同值无害），每轮 sweep 设一次；待删种子也设（马上删除，无害）。
+	if task.UseShareLimit && len(taskHashes) > 0 {
+		if err := c.dlCh.SetShareLimits(ctx, task.DownloaderID, taskHashes, bfShareLimits(task)); err != nil {
+			slog.Warn("brushflow setShareLimits failed", "task", taskID, "err", err)
+		}
 	}
 	if len(toDelete) > 0 {
 		if err := c.dlCh.Delete(ctx, task.DownloaderID, toDelete, task.DeleteFiles); err != nil {
@@ -213,6 +222,20 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 		return fmt.Sprintf("上传 %s≥%dMB", bfFormatBytes(tr.Uploaded), task.DeleteUploadMB)
 	}
 	return ""
+}
+
+// bfShareLimits 把任务的删除阈值（DeleteRatio/DeleteSeedHours）映射为下载器原生 ShareLimits。
+// 未配维度（值 0）→ -2（无限）。DeleteUploadMB 无原生对应（qb share limit 仅 ratio/time），仅应用层删种。
+// tr 的 SeedingTimeLimit 语义见 downloader.ShareLimits（qb 总时长 / tr 空闲时长）。
+func bfShareLimits(task *models.BrushFlowTask) downloader.ShareLimits {
+	lim := downloader.ShareLimits{RatioLimit: -2, SeedingTimeLimit: -2}
+	if task.DeleteRatio > 0 {
+		lim.RatioLimit = task.DeleteRatio
+	}
+	if task.DeleteSeedHours > 0 {
+		lim.SeedingTimeLimit = int(task.DeleteSeedHours * 60) // 小时 → 分钟
+	}
+	return lim
 }
 
 // filterAndSort 选种过滤排序：任务配了 FilterGroups 则用规则引擎过滤（剔除不匹配的种子），

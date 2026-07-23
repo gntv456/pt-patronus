@@ -776,6 +776,7 @@ type BrushFlowTask struct {
 	DeleteSeedHours float64 `json:"delete_seed_hours"`                 // 做种时长达此值删，0=不限
 	DeleteUploadMB  int64   `json:"delete_upload_mb"`                  // 累计上传达此值删，0=不限
 	DeleteFiles     bool    `gorm:"default:false" json:"delete_files"` // 删种时是否删文件
+	UseShareLimit   bool    `gorm:"default:false" json:"use_share_limit"` // 开启：RunSweep 时对任务种子设下载器原生 share limit（达标即暂停，即时保护，补充应用层扫删）；复用 DeleteRatio/DeleteSeedHours 作阈值
 	// 并发与分类
 	MaxSeeds   int    `gorm:"default:10" json:"max_seeds"` // 该任务最大同时做种数
 	SavePath   string `gorm:"size:255" json:"save_path"`

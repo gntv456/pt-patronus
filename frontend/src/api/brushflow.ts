@@ -18,6 +18,7 @@ export interface BrushFlowTask {
   delete_seed_hours: number
   delete_upload_mb: number
   delete_files: boolean
+  use_share_limit: boolean
   max_seeds: number
   save_path: string
   category_dl: string

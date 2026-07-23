@@ -37,7 +37,7 @@ function defaultForm(): Partial<BrushFlowTask> {
     name: '', site_id: 0, downloader_id: 0, enabled: true,
     keyword: '', category: '', min_size_mb: 0, max_size_mb: 0,
     min_seeders: 0, max_seeders: 0, free_only: false, paused: false,
-    delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false,
+    delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false, use_share_limit: false,
     max_seeds: 10, save_path: '', category_dl: '', filter_groups: '',
   }
 }
@@ -243,6 +243,10 @@ onMounted(() => {
         <el-form-item label="保种(小时) ≥"><el-input-number v-model="form.delete_seed_hours" :min="0" :step="0.5" controls-position="right" /></el-form-item>
         <el-form-item label="上传(MB) ≥"><el-input-number v-model="form.delete_upload_mb" :min="0" controls-position="right" /></el-form-item>
         <el-form-item label="删种删文件"><el-switch v-model="form.delete_files" /></el-form-item>
+        <el-form-item label="原生停种">
+          <el-switch v-model="form.use_share_limit" />
+          <span class="hint">开启：下载器达标即暂停（不必等扫删），扫删仍会清理删种</span>
+        </el-form-item>
         <el-divider content-position="left">并发与路径</el-divider>
         <el-form-item label="最大做种数"><el-input-number v-model="form.max_seeds" :min="1" controls-position="right" /></el-form-item>
         <el-form-item label="保存路径"><el-input v-model="form.save_path" placeholder="留空=下载器默认" /></el-form-item>

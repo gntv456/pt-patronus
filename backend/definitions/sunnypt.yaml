@@ -99,3 +99,14 @@ tags:
 timezone_offset: "+0800"
 urls:
     - https://sunnypt.top/
+
+# 互动能力：签到 / 公告 / 消息（抓取实现见 schemas/sunnypt_interact.go）
+checkin:
+  enabled: true
+  path: /api/v1/attendance/check-in
+  method: POST
+announcement:
+  enabled: true
+messages:
+  enabled: true
+

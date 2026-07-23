@@ -245,8 +245,9 @@ func (c *SiteChain) dispatchAdapter(ctx context.Context, schema string, fn func(
 // ErrNoAdapter 表示没有已注册的适配器能处理该 schema。
 var ErrNoAdapter = errors.New("no registered adapter for site schema")
 
-// ErrNotSupported 表示适配器不支持该操作（如签到）。
-var ErrNotSupported = errors.New("operation not supported by adapter")
+// ErrNotSupported 表示适配器不支持该操作（如签到）。与 site.ErrNotSupported 同一 sentinel，
+// 便于适配器返回 site.ErrNotSupported 时 chain 用 errors.Is 识别并跳过落库。
+var ErrNotSupported = site.ErrNotSupported
 
 // Search 在单个站点搜索。category 为媒体类型过滤（""=综合；movie/tv/music 按 schema 过滤），
 // 后置过滤（丢弃音乐等异类）在此统一施加，所有 schema 受益。

@@ -81,6 +81,9 @@ func (g *GenericJSON) zhuqueGet(ctx context.Context, baseURL, cookie, path strin
 func (g *GenericJSON) FetchAnnouncement(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string) (*site.SiteAnnouncement, error) {
 
+	if def.ID == "sunnypt" {
+		return g.sunnyptFetchAnnouncement(ctx, def, baseURL, cookie)
+	}
 	if def.ID != "zhuque" {
 		return &site.SiteAnnouncement{Items: []site.AnnouncementItem{}}, nil
 	}
@@ -119,6 +122,9 @@ func (g *GenericJSON) FetchAnnouncement(ctx context.Context, def *site.SiteMetad
 func (g *GenericJSON) FetchMessages(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string, mailbox site.MailboxType) ([]site.Message, error) {
 
+	if def.ID == "sunnypt" {
+		return g.sunnyptFetchMessages(ctx, def, baseURL, cookie, mailbox)
+	}
 	if def.ID != "zhuque" {
 		return []site.Message{}, nil
 	}
@@ -185,6 +191,9 @@ func (g *GenericJSON) zhuquePost(ctx context.Context, baseURL, cookie, path stri
 func (g *GenericJSON) FetchMessageContent(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie, msgURL string) (string, error) {
 
+	if def.ID == "sunnypt" {
+		return g.sunnyptFetchMessageContent(ctx, def, baseURL, cookie, msgURL)
+	}
 	if def.ID != "zhuque" {
 		return "", nil
 	}
@@ -224,6 +233,9 @@ func (g *GenericJSON) FetchMessageContent(ctx context.Context, def *site.SiteMet
 func (g *GenericJSON) ReplyMessage(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie, msgURL, content string) (*site.MessageReplyResult, error) {
 
+	if def.ID == "sunnypt" {
+		return &site.MessageReplyResult{Success: false, Message: "sunnypt 暂不支持站内回复（请到站点聊天页操作）"}, nil
+	}
 	if def.ID != "zhuque" {
 		return &site.MessageReplyResult{Success: false, Message: "不支持"}, nil
 	}
@@ -256,6 +268,9 @@ func (g *GenericJSON) ReplyMessage(ctx context.Context, def *site.SiteMetadata,
 func (g *GenericJSON) DeleteMessage(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie, deleteURL string) error {
 
+	if def.ID == "sunnypt" {
+		return fmt.Errorf("sunnypt 暂不支持删除消息")
+	}
 	if def.ID != "zhuque" {
 		return nil
 	}
@@ -289,6 +304,9 @@ func (g *GenericJSON) DeleteMessage(ctx context.Context, def *site.SiteMetadata,
 func (g *GenericJSON) MarkRead(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string, itemIDs []string) (*site.BatchResult, error) {
 
+	if def.ID == "sunnypt" {
+		return g.sunnyptMarkRead(ctx, def, baseURL, cookie, itemIDs)
+	}
 	if def.ID != "zhuque" {
 		return &site.BatchResult{Failed: 0}, nil
 	}

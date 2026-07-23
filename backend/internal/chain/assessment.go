@@ -138,7 +138,10 @@ func (c *AssessmentChain) AssessOne(ctx context.Context, s *models.Site) Assessm
 // 用于 site-snapshot 聚合任务步骤 2，复用步骤 1 已抓到的 uid 访问 userdetails.php?id=<uid>。
 func (c *AssessmentChain) AssessSiteWithUID(ctx context.Context, s *models.Site, uid string) AssessmentCard {
 	def := c.siteCh.defFor(s)
-	adapter := c.reg.Get(def.Schema)
+	adapter := c.reg.Get(def.ID)
+	if !adapter.Supported() {
+		adapter = c.reg.Get(def.Schema)
+	}
 	if !adapter.Supported() {
 		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "EXEMPT",
 			ProgressPercent: 100, AssessmentType: "该平台无考核"}.normalized()
@@ -151,7 +154,10 @@ func (c *AssessmentChain) AssessSiteWithUID(ctx context.Context, s *models.Site,
 // 并发回源（防击穿，sem 仅 leader 占用）。3 级缓存包整个回源——避免 waiter 各自 BatchUpsert + 发通知。
 func (c *AssessmentChain) assessSite(ctx context.Context, sem chan struct{}, s *models.Site, force bool) AssessmentCard {
 	def := c.siteCh.defFor(s)
-	adapter := c.reg.Get(def.Schema)
+	adapter := c.reg.Get(def.ID)
+	if !adapter.Supported() {
+		adapter = c.reg.Get(def.Schema)
+	}
 	if !adapter.Supported() {
 		return AssessmentCard{SiteID: s.ID, SiteName: s.Name, Status: "EXEMPT",
 			ProgressPercent: 100, AssessmentType: "该平台无考核"}
@@ -276,7 +282,7 @@ func (c *AssessmentChain) fetchAssessSite(ctx context.Context, sem chan struct{}
 
 // assessDef 把 site.SiteMetadata 投影为 assessment.Def。
 func assessDef(def *site.SiteMetadata) assessment.Def {
-	d := assessment.Def{Schema: def.Schema}
+	d := assessment.Def{Schema: def.Schema, ID: def.ID}
 	d.UserInfo.DetailPath = def.UserInfo.DetailPath
 	return d
 }

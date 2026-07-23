@@ -295,6 +295,7 @@ func New(cfg *config.Config) (*App, error) {
 	assessReg.Register(assessment.NexusPHPAdapter{})
 	assessReg.Register(assessment.MTeamAdapter{})
 	assessReg.Register(assessment.TNodeAdapter{})
+	assessReg.Register(assessment.SunnyptAdapter{})
 	assessOp := oper.NewAssessmentOper(database)
 	assessCh := chain.NewAssessmentChain(siteCh, assessReg, assessOp, hc, noticeSvc)
 

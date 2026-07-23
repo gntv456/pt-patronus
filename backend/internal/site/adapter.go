@@ -155,6 +155,8 @@ type LoginCapable interface {
 
 // 账号登录相关错误。
 var (
+	// ErrNotSupported 适配器不支持该操作（签到/消息等）；chain 侧以 errors.Is 识别并跳过落库。
+	ErrNotSupported           = errors.New("operation not supported by adapter")
 	ErrLoginNotSupported      = errors.New("site: account login not supported")
 	ErrLoginFailed            = errors.New("site: login failed (bad credentials/captcha/2fa)")
 	ErrChallengeMode          = errors.New("site: challenge-response auth mode, use cookie login instead")

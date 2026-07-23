@@ -44,6 +44,7 @@ type Task struct {
 // Def 是考核所需的最小站点定义（从 site.SiteMetadata 投影，避免 assessment 反向依赖 site 包）。
 type Def struct {
 	Schema   string
+	ID       string // 站点定义 id（如 sunnypt）；优先于 Schema 分发适配器
 	UserInfo struct {
 		DetailPath string // NexusPHP userdetails.php
 	}

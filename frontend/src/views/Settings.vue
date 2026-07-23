@@ -663,7 +663,7 @@ async function openChangelog() {
           </div>
         </div>
         <el-tabs v-model="connectTab" @tab-change="onTabChange" class="nested-tabs">
-          <el-tab-pane label="云盘" name="cloud">
+          <el-tab-pane label="云盘" name="cloud" lazy>
             <Cloud :embedded="true" />
           </el-tab-pane>
           <el-tab-pane label="OIDC / SSO" name="oidc">

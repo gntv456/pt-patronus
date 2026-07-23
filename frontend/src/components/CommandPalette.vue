@@ -113,7 +113,7 @@ function run(item: PaletteItem) {
   }
   // 命中媒体/种子类关键词时带 query 跳搜索；普通菜单项直达
   if (item.name === 'search' && query.value.trim()) {
-    router.push({ name: 'search', query: { q: query.value.trim() } })
+    router.push({ name: 'search', query: { q: query.value.trim(), keyword: query.value.trim() } })
     return
   }
   router.push({ name: item.name })
@@ -143,7 +143,7 @@ function onKeydown(e: KeyboardEvent) {
     else if (query.value.trim()) {
       // 无菜单命中 → 跳搜索工作台
       close()
-      router.push({ name: 'search', query: { q: query.value.trim() } })
+      router.push({ name: 'search', query: { q: query.value.trim(), keyword: query.value.trim() } })
     }
   }
 }

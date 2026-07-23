@@ -138,7 +138,7 @@ class _CommandPaletteSheetState extends State<CommandPaletteSheet> {
       SearchPage.pendingKeyword.value = q;
     }
     final si = widget.controller.searchIndex;
-    if (si != null) {
+    if (si != null && si >= 0) {
       widget.controller.select(si);
     }
   }

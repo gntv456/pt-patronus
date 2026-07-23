@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted , watch } from 'vue'
 import { safeUrl } from '@/utils/safeUrl'
 import { useRoute, useRouter } from 'vue-router'
 import { searchApi, type SiteSearchResult, type SiteTorrent } from '@/api/search'
@@ -217,7 +217,8 @@ function openMediaDetail(m: MediaInfo) {
 // 接受跨页跳转带来的 keyword / mode（如详情页「搜索资源」按钮回跳）。
 onMounted(() => {
   siteApi.list().then((l) => { sites.value = l }).catch(() => {})
-  const q = route.query.keyword
+  // 兼容详情页 keyword 与命令面板 q
+  const q = route.query.keyword ?? route.query.q
   if (typeof q === 'string' && q) {
     keyword.value = q
   }
@@ -227,6 +228,20 @@ onMounted(() => {
   }
   if (keyword.value) search()
 })
+
+// 已在搜索页时命令面板再次带 q/keyword 跳入
+watch(
+  () => [route.query.keyword, route.query.q, route.query.mode] as const,
+  ([kw, q, md]) => {
+    const next = (typeof kw === 'string' && kw) ? kw : (typeof q === 'string' ? q : '')
+    if (next && next !== keyword.value) {
+      keyword.value = next
+      search()
+    }
+    if (md === 'torrent' || md === 'media') mode.value = md
+  },
+)
+
 </script>
 
 <template>

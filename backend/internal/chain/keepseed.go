@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"log/slog"
 	"net/url"
 	"sort"
@@ -195,7 +196,9 @@ func (c *KeepSeedChain) Reseed(ctx context.Context, downloaderID uint) ([]models
 
 	matches, err := c.iyuu.HashIndex(ctx, token, hashes)
 	if err != nil {
-		return nil, err
+		// token 已配但 IYUU 不可达时回退本地+Torznab，避免自动辅种整链瘫痪
+		slog.Warn("iyuu HashIndex failed, fallback reseedLocal", "err", err, "downloader", downloaderID)
+		return c.reseedLocal(ctx, downloaderID)
 	}
 	iyuuSites, err := c.iyuu.Sites(ctx, token)
 	if err != nil {
@@ -319,8 +322,9 @@ func (c *KeepSeedChain) reseedLocal(ctx context.Context, downloaderID uint) ([]m
 		ids := c.mediaIDHints(infoHash, t.Name)
 		fileNames := listTorrentFileNames(ctx, dl, infoHash)
 		cands := c.findCandidatesWith(ctx, t.Name, t.Size, ids, fileNames)
-		// 合并 Torznab 候选（Jackett/Prowlarr），按同一评分阈值过滤
+		// 合并 Torznab 候选后按评分重排，再取 top maxPerSrc
 		cands = append(cands, c.findTorznabCandidates(ctx, t.Name, t.Size, ids)...)
+		sort.SliceStable(cands, func(i, j int) bool { return cands[i].Score > cands[j].Score })
 		n := 0
 		for _, cand := range cands {
 			if cand.Score < minScore {
@@ -399,6 +403,32 @@ func listTorrentFileNames(ctx context.Context, dl reseedClient, hash string) []s
 	return out
 }
 
+
+// torznabCandidateSite 生成 candidate_site 去重键（DB size:64）。
+// 用 FNV64 压缩 Guid/Link，避免长 URL 截断碰撞与字段溢出。
+func torznabCandidateSite(r torznab.Result) string {
+	raw := strings.TrimSpace(r.Guid)
+	if raw == "" {
+		raw = strings.TrimSpace(r.Link)
+	}
+	if raw == "" {
+		raw = strings.TrimSpace(r.Title) + "|" + strconv.FormatInt(r.Size, 10)
+	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(raw))
+	key := fmt.Sprintf("%016x", h.Sum64())
+	idx := strings.TrimSpace(r.Indexer)
+	if idx == "" {
+		return "tz:" + key // 19 字符
+	}
+	// 索引名压缩到 20，总长 ≤ 3+20+1+16 = 40
+	runes := []rune(idx)
+	if len(runes) > 20 {
+		idx = string(runes[:20])
+	}
+	return "tz/" + idx + ":" + key
+}
+
 func (c *KeepSeedChain) findTorznabCandidates(ctx context.Context, name string, size int64, ids keepseed.IDHints) []keepseed.Candidate {
 	baseURL, apiKey, err := c.GetTorznab()
 	if err != nil || strings.TrimSpace(baseURL) == "" {
@@ -424,10 +454,8 @@ func (c *KeepSeedChain) findTorznabCandidates(ctx context.Context, name string, 
 		if score < 60 {
 			continue
 		}
-		siteName := strings.TrimSpace(r.Indexer)
-		if siteName == "" {
-			siteName = "Torznab"
-		}
+		// CandidateSite 必须唯一：同 Indexer 多条结果不能共用 "Torznab"，否则 upsert 互相覆盖
+		siteName := torznabCandidateSite(r)
 		sizeStr := ""
 		if r.Size > 0 {
 			sizeStr = strconv.FormatInt(r.Size, 10)

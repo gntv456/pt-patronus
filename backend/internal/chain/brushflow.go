@@ -312,12 +312,11 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 		}
 		cs = append(cs, cond{true, hit, reason})
 	}
-	// swarm 下载过少（已完成做种时才判，避免下载中误杀）
+	// swarm 下载过少（已完成做种时才判；须 NumComplete>0 表示 swarm 数据可用，避免 TR/未填字段全 0 误杀）
 	if task.DeleteMinSwarmLeechers > 0 {
 		hit := false
 		reason := ""
-		if bfIsSeedingDone(tr) && tr.NumIncomplete >= 0 {
-			// NumIncomplete=0 且字段已填充时命中；未知时 qB 通常给 0，与「无下载者」同义
+		if bfIsSeedingDone(tr) && tr.NumComplete > 0 {
 			hit = tr.NumIncomplete < task.DeleteMinSwarmLeechers
 			reason = fmt.Sprintf("swarm下载 %d<%d", tr.NumIncomplete, task.DeleteMinSwarmLeechers)
 		}

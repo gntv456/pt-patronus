@@ -65,23 +65,53 @@ func ScoreWith(wantName, gotName string, wantSize, gotSize int64, ids IDHints, c
 	}
 	base := titleScore*7/10 + sizeScore*3/10
 
-	// 数据块强信号：体积字节完全一致
-	if exactSize && base < 92 {
-		base = 92
-	}
-	// ID 一致抬分（重命名场景标题 Jaccard 可能偏低）
-	if imdbMatch(ids.ImdbID, candImdb) {
-		if base < 95 {
-			base = 95
+	// 数据块强信号：体积字节完全一致，且标题有最低相似度（避免无关同体积误配）
+	if exactSize {
+		switch {
+		case titleScore >= 50 && base < 92:
+			base = 92
+		case titleScore >= 30 && base < 85:
+			base = 85
 		}
+	}
+	// ID 一致抬分（重命名场景）；必须体积接近，避免同 IMDb 不同版本/体积误配
+	if imdbMatch(ids.ImdbID, candImdb) {
+		base = boostByID(base, wantSize, gotSize, 95, 80)
 	}
 	if tmdbMatch(ids.TmdbID, candTmdb) {
-		if base < 93 {
-			base = 93
-		}
+		base = boostByID(base, wantSize, gotSize, 93, 78)
 	}
 	if base > 100 {
 		return 100
+	}
+	return base
+}
+
+// boostByID：体积差 ≤5% 抬到 hi；≤15% 抬到 mid；无体积信息抬到 mid；体积差过大不抬分。
+func boostByID(base int, wantSize, gotSize int64, hi, mid int) int {
+	if wantSize > 0 && gotSize > 0 {
+		diff := wantSize - gotSize
+		if diff < 0 {
+			diff = -diff
+		}
+		ratio := float64(diff) / float64(wantSize)
+		switch {
+		case ratio <= 0.05:
+			if base < hi {
+				return hi
+			}
+		case ratio <= 0.15:
+			if base < mid {
+				return mid
+			}
+		default:
+			return base // 体积差过大，不因 ID 抬分
+		}
+		return base
+	}
+	// 无体积信息时适度抬分
+	if base < mid {
+		return mid
 	}
 	return base
 }

@@ -21,12 +21,23 @@ func TestScoreExactSizeBoost(t *testing.T) {
 	if s < 92 {
 		t.Fatalf("exact size boost = %d, want >=92", s)
 	}
+	// 标题完全无关 + 同体积 → 不得因体积单独抬到高分
+	s2 := ScoreWith("Alpha.Bravo.2020", "Zulu.Yankee.1999.Something", 1234567890, 1234567890, IDHints{}, "", "")
+	if s2 >= 85 {
+		t.Fatalf("unrelated titles same size should not high-score, got %d", s2)
+	}
 }
 
 func TestScoreImdbBoost(t *testing.T) {
-	s := ScoreWith("Renamed.File.mkv", "Totally.Different.Name", 100, 200, IDHints{ImdbID: "tt1234567"}, "tt1234567", "")
+	// 体积接近才高抬
+	s := ScoreWith("Renamed.File.mkv", "Totally.Different.Name", 1000, 1000, IDHints{ImdbID: "tt1234567"}, "tt1234567", "")
 	if s < 95 {
-		t.Fatalf("imdb boost = %d, want >=95", s)
+		t.Fatalf("imdb+exact size boost = %d, want >=95", s)
+	}
+	// 体积差过大不抬到 95
+	s2 := ScoreWith("Renamed.File.mkv", "Totally.Different.Name", 100, 10_000_000, IDHints{ImdbID: "tt1234567"}, "tt1234567", "")
+	if s2 >= 90 {
+		t.Fatalf("imdb with huge size mismatch should not high-boost, got %d", s2)
 	}
 }
 

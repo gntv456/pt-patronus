@@ -138,14 +138,23 @@ func (c *KeepSeedChain) GetTorznab() (baseURL, apiKey string, err error) {
 	return baseURL, apiKey, err
 }
 
-// SetTorznab 写 Torznab 端点配置（url 空则清空）。
+// SetTorznab 写 Torznab 端点配置。
+// url 空：清空 url+key；url 非空且 apiKey 空：只更新 url、保留已有 key（避免前端仅改 URL 时把 key 冲掉）。
 func (c *KeepSeedChain) SetTorznab(baseURL, apiKey string) error {
-	if err := c.cfgOp.Set(TorznabURLKey, strings.TrimSpace(baseURL)); err != nil {
+	baseURL = strings.TrimSpace(baseURL)
+	apiKey = strings.TrimSpace(apiKey)
+	if err := c.cfgOp.Set(TorznabURLKey, baseURL); err != nil {
 		return err
 	}
-	// apiKey 空串表示清空；非空覆盖
-	return c.cfgOp.Set(TorznabAPIKeyKey, strings.TrimSpace(apiKey))
+	if apiKey != "" {
+		return c.cfgOp.Set(TorznabAPIKeyKey, apiKey)
+	}
+	if baseURL == "" {
+		return c.cfgOp.Set(TorznabAPIKeyKey, "")
+	}
+	return nil // 保留旧 key
 }
+
 
 // Reseed 对指定下载器的做种种子做辅种匹配，落 pending 候选任务并返回新增项。
 // 优先 IYUU 精确 infohash（配置了 token 时）；未配置 token 时回退本地名称+大小跨站搜索（FindCandidates），

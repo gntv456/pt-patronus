@@ -321,7 +321,7 @@ onMounted(async () => {
             <div class="token-row" style="margin-top: 6px">
               <el-input
                 v-model="torznabKey"
-                :placeholder="config.torznab_key_masked ? `API Key（已配置 ${config.torznab_key_masked}）` : 'API Key（可选）'"
+                :placeholder="config.torznab_key_masked ? `API Key（已配置 ${config.torznab_key_masked}，留空保留）` : 'API Key（可选）'"
                 show-password
                 clearable
                 size="small"

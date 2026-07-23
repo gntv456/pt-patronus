@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-
-const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 import {
   cloudApi,
   TYPE_LABEL,
@@ -16,6 +14,8 @@ import {
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const activeTab = ref('drives')
 const drives = ref<CloudDrive[]>([])

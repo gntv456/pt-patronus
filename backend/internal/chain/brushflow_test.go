@@ -217,4 +217,9 @@ func TestBfMatchRuleSwarm(t *testing.T) {
 	if r := bfMatchRule(&models.BrushFlowTask{DeleteRuleExpr: "swarm_seeders>80"}, tr, now); r == "" {
 		t.Fatal("expr swarm_seeders")
 	}
+	// swarm 数据全 0（下载器未提供）不得因 leechers 规则误删
+	unknown := &downloader.Torrent{Progress: 1, State: "uploading", NumComplete: 0, NumIncomplete: 0}
+	if r := bfMatchRule(&models.BrushFlowTask{DeleteMinSwarmLeechers: 1}, unknown, now); r != "" {
+		t.Fatalf("unknown swarm should not delete, got %q", r)
+	}
 }

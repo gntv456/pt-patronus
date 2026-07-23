@@ -243,6 +243,19 @@ func (h *SiteHandler) SearchAll(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"results": results})
 }
 
+// SearchAllStream SSE 流式跨站搜索：每站完成推一帧 event:batch（results 为单元素数组），
+// 供搜索页「搜出一个显示一个」；结束推 event:done。失败站也推送（Error 字段承载错误）。
+func (h *SiteHandler) SearchAllStream(c *gin.Context) {
+	keyword := c.Query("keyword")
+	category := c.Query("category")
+	siteIDs := parseUintSlice(c.Query("site_ids"))
+	emit := beginSSE(c.Writer)
+	h.siteCh.SearchSitesStream(c.Request.Context(), keyword, category, siteIDs, func(r chain.SiteResult) {
+		emit("batch", gin.H{"results": []chain.SiteResult{r}})
+	})
+	emit("done", gin.H{})
+}
+
 // TorrentDetail 抓取并解析单条种子详情页（?url=<详情页绝对 URL>）。
 // URL 必须落在该站点 baseURL 的同注册域下（chain 内 sameHost 守卫）。
 func (h *SiteHandler) TorrentDetail(c *gin.Context) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted , watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { safeUrl } from '@/utils/safeUrl'
 import { useRoute, useRouter } from 'vue-router'
 import { searchApi, type SiteSearchResult, type SiteTorrent } from '@/api/search'
@@ -58,20 +58,51 @@ const scopeSiteCount = computed(() =>
 )
 const showFailed = ref(false)
 
+// 种子跨站 SSE 流：切换关键词/重复搜索时中断上一流，避免乱序覆盖。
+let torrentAbort: AbortController | null = null
+
 async function search() {
   const kw = keyword.value.trim()
   if (!kw) {
     ElMessage.warning('请输入关键词')
     return
   }
+  if (mode.value === 'torrent') {
+    torrentAbort?.abort()
+    const ctrl = new AbortController()
+    torrentAbort = ctrl
+    loading.value = true
+    error.value = ''
+    results.value = []
+    searched.value = true
+    showAll.value = false
+    try {
+      await searchApi.allStream(
+        kw,
+        category.value,
+        selectedSiteIds.value,
+        (r) => {
+          if (torrentAbort !== ctrl) return
+          results.value = [...results.value, r]
+        },
+        ctrl.signal,
+      )
+    } catch (e: unknown) {
+      if ((e as Error).name !== 'AbortError') {
+        error.value = (e as Error).message || '搜索失败'
+      }
+    } finally {
+      if (torrentAbort === ctrl) {
+        loading.value = false
+        torrentAbort = null
+      }
+    }
+    return
+  }
   loading.value = true
   error.value = ''
   try {
-    if (mode.value === 'torrent') {
-      results.value = await searchApi.all(kw, category.value, selectedSiteIds.value)
-    } else {
-      mediaResults.value = await mediaApi.search(kw, year.value || 0)
-    }
+    mediaResults.value = await mediaApi.search(kw, year.value || 0)
     searched.value = true
   } catch (e: unknown) {
     error.value = (e as Error).message || '搜索失败'
@@ -241,6 +272,11 @@ watch(
     if (md === 'torrent' || md === 'media') mode.value = md
   },
 )
+
+onUnmounted(() => {
+  torrentAbort?.abort()
+  torrentAbort = null
+})
 
 </script>
 

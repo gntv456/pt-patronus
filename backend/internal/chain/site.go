@@ -328,6 +328,57 @@ func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string, s
 	return results
 }
 
+// SearchSitesStream 是 SearchSites 的流式版：每搜完一个站点立即通过 emit 推送该站结果
+// （含失败站，Error 字段承载错误），供 SSE「搜出一个显示一个」。并发/超时/过滤逻辑与
+// SearchSites 完全一致，仅把"预分配 results[i]=r"换成"完成后 emit(r)"。
+func (c *SiteChain) SearchSitesStream(ctx context.Context, keyword, category string,
+	siteIDs []uint, emit func(SiteResult)) {
+	sites, err := c.sites.ListActive()
+	if err != nil {
+		return
+	}
+	// siteIDs 非空时仅搜索指定的启用站点子集（与 SearchSites 同款原地过滤）。
+	if len(siteIDs) > 0 {
+		want := make(map[uint]struct{}, len(siteIDs))
+		for _, id := range siteIDs {
+			want[id] = struct{}{}
+		}
+		filtered := sites[:0]
+		for _, s := range sites {
+			if _, ok := want[s.ID]; ok {
+				filtered = append(filtered, s)
+			}
+		}
+		sites = filtered
+	}
+	sem := make(chan struct{}, searchConcurrency)
+	var wg sync.WaitGroup
+	for _, s := range sites {
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			siteCtx, cancel := context.WithTimeout(ctx, searchTimeout)
+			defer cancel()
+
+			ts, e := c.Search(siteCtx, &s, keyword, category, 1)
+			for i := range ts {
+				ts[i].SiteID = s.ID
+			}
+			r := SiteResult{SiteID: s.ID, SiteName: s.Name, Torrents: ts}
+			if e != nil {
+				r.Torrents = nil
+				r.Error = e.Error()
+				slog.Debug("site search failed", "site", s.Name, "err", e)
+			}
+			emit(r)
+		}(s)
+	}
+	wg.Wait()
+}
+
 // TestConnections 并发检查全部站点的网络连接与登录态。
 // 停用站点不发起网络请求，直接返回 disabled；启用站点各自有独立超时，单站失败不影响其它站点。
 func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult, error) {

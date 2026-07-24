@@ -223,13 +223,6 @@ watch(
 const favoriteItems = computed(() =>
   favorites.value.map((n) => itemByName.value.get(n)).filter(Boolean) as (NavItem & { group: string })[],
 )
-const recentItems = computed(() =>
-  recent.value
-    .filter((n) => n !== route.name)
-    .map((n) => itemByName.value.get(n))
-    .filter(Boolean)
-    .slice(0, 5) as (NavItem & { group: string })[],
-)
 
 const paletteItems = computed<PaletteItem[]>(() => {
   const base: PaletteItem[] = flatNav.value.map((it) => ({
@@ -334,21 +327,6 @@ function openPalette() {
             <button type="button" class="fav-btn on" title="取消收藏" @click="onToggleFav(item.name, $event)">
               <el-icon><StarFilled /></el-icon>
             </button>
-          </router-link>
-        </div>
-
-        <div v-if="!sidebarCollapsed && recentItems.length" class="nav-group recent-group">
-          <span class="nav-group-title static">最近</span>
-          <router-link
-            v-for="item in recentItems"
-            :key="'recent-' + item.name"
-            :to="{ name: item.name }"
-            class="nav-item glass-hover recent-item"
-            :title="navDesc[item.name] || item.label"
-            @click="closeMobileNav()"
-          >
-            <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="26" class="nav-icon" />
-            <span class="nav-label">{{ item.label }}</span>
           </router-link>
         </div>
 
@@ -597,11 +575,6 @@ function openPalette() {
 }
 .fav-btn:hover {
   background: rgba(108, 92, 231, 0.12);
-}
-.recent-item {
-  padding: 6px 14px;
-  font-size: 13px;
-  opacity: 0.85;
 }
 .sidebar-footer {
   margin-top: auto;

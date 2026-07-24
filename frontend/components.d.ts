@@ -93,6 +93,7 @@ declare module 'vue' {
     RouterView: typeof import('vue-router')['RouterView']
     RtspPlayer: typeof import('./src/components/monitor/RtspPlayer.vue')['default']
     ScratchCardGame: typeof import('./src/components/ScratchCardGame.vue')['default']
+    SearchFilterBar: typeof import('./src/components/SearchFilterBar.vue')['default']
     SiteConnectivityStatus: typeof import('./src/components/SiteConnectivityStatus.vue')['default']
     SiteFavicon: typeof import('./src/components/SiteFavicon.vue')['default']
     SiteFilterDialog: typeof import('./src/components/SiteFilterDialog.vue')['default']

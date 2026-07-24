@@ -8,7 +8,9 @@ import { mediaApi, type MediaInfo } from '@/api/media'
 import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import { copyText } from '@/utils/clipboard'
-import { formatTorrentSize } from '@/utils/torrentMeta'
+import { formatTorrentSize, enrichTorrent } from '@/utils/torrentMeta'
+import { useSearchFilter } from '@/composables/useSearchFilter'
+import SearchFilterBar from '@/components/SearchFilterBar.vue'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DOMPurify from 'dompurify'
@@ -49,10 +51,16 @@ const rows = computed<SearchRow[]>(() =>
     (r.torrents ?? []).map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name })),
   ),
 )
+// 派生筛选 meta（分辨率/编码/来源/促销/体积/时间，一次提取）+ 前端过滤/排序 composable。
+const enrichedRows = computed(() => rows.value.map((r) => enrichTorrent(r)))
+const { filter, sort, options, filtered, sorted, hasActive, activeTags, removeFilter, clearAll } = useSearchFilter(enrichedRows)
 // 渲染上限：跨 10+ 站可能返回数百行，一次性渲染卡顿；默认截断，提供「显示全部」展开。
 const MAX_ROWS = 200
 const showAll = ref(false)
-const visibleRows = computed(() => (showAll.value ? rows.value : rows.value.slice(0, MAX_ROWS)))
+const visibleRows = computed(() => {
+  const s = sorted.value
+  return showAll.value ? s : s.slice(0, MAX_ROWS)
+})
 const failedSites = computed(() => results.value.filter((r) => r.error))
 // 流式进度：已回站数 / 目标站数（筛选或全部启用）
 const streamDoneSites = computed(() => results.value.length)
@@ -398,12 +406,23 @@ onUnmounted(() => {
         搜索中… 已返回 {{ streamDoneSites }} / {{ scopeSiteCount }} 站
         <template v-if="rows.length"> · 命中 {{ rows.length }} 条</template>
       </p>
+      <SearchFilterBar
+        v-if="mode === 'torrent' && rows.length"
+        :filter="filter"
+        :sort="sort"
+        :options="options"
+        :active-tags="activeTags"
+        :has-active="hasActive"
+        :result-count="filtered.length"
+        :total-count="rows.length"
+        :remove-filter="removeFilter"
+        :clear-all="clearAll"
+      />
       <div v-loading="loading && !rows.length" class="card glass">
         <el-table
-          v-if="rows.length"
+          v-if="visibleRows.length"
           :data="visibleRows"
           style="width: 100%"
-          :default-sort="{ prop: 'seeders', order: 'descending' }"
           :row-style="{ background: 'transparent' }"
         >
           <el-table-column label="站点" width="120">
@@ -415,15 +434,19 @@ onUnmounted(() => {
             <template #default="{ row }">
               <div class="t-title">{{ row.title }}</div>
               <div v-if="row.subtitle" class="t-sub text-muted">{{ row.subtitle }}</div>
+              <div v-if="row.promo || row.tags?.length" class="t-tags">
+                <span v-if="row.promo" class="ttag promo" :class="`tone-${row.promo.tone}`">{{ row.promo.text }}</span>
+                <span v-for="tag in row.tags" :key="tag.label" class="ttag" :class="`tone-${tag.tone}`">{{ tag.label }}</span>
+              </div>
             </template>
           </el-table-column>
           <el-table-column prop="size" label="大小" width="90" />
-          <el-table-column prop="seeders" label="做种" width="90" sortable align="right">
+          <el-table-column prop="seeders" label="做种" width="90" align="right">
             <template #default="{ row }">
               <span class="num up">↑ {{ row.seeders }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="leechers" label="吸血" width="90" sortable align="right">
+          <el-table-column prop="leechers" label="吸血" width="90" align="right">
             <template #default="{ row }">
               <span class="num">↓ {{ row.leechers }}</span>
             </template>
@@ -441,21 +464,21 @@ onUnmounted(() => {
             </template>
           </el-table-column>
         </el-table>
-        <div v-if="rows.length > visibleRows.length" class="row-cap">
-          已显示前 {{ visibleRows.length }} 条，共 {{ rows.length }} 条 ·
+        <div v-if="filtered.length > visibleRows.length" class="row-cap">
+          已显示前 {{ visibleRows.length }} 条 · 筛选后 {{ filtered.length }} 条（共 {{ rows.length }} 条） ·
           <el-button link type="primary" @click="showAll = true">显示全部</el-button>
         </div>
-        <div v-else-if="showAll && rows.length > MAX_ROWS" class="row-cap">
-          共 {{ rows.length }} 条 ·
+        <div v-else-if="showAll && filtered.length > MAX_ROWS" class="row-cap">
+          筛选后 {{ filtered.length }} 条（共 {{ rows.length }} 条） ·
           <el-button link type="primary" @click="showAll = false">收起</el-button>
         </div>
 
-        <!-- 空态：区分「未搜」与「搜了无果」，文案不再误导已登录站点的用户 -->
+        <!-- 空态：区分「未搜」/「搜了无果」/「筛选无结果」 -->
         <EmptyState
           v-else-if="!loading"
-          :icon="searched ? '🔍' : '🌱'"
-          :title="searched ? '没有找到相关种子' : '跨站搜索种子'"
-          :description="searched ? '试试更换关键词，或切换上方的分类筛选' : '输入关键词，聚合所有已登录站点的资源'"
+          :icon="searched ? (hasActive ? '🔎' : '🔍') : '🌱'"
+          :title="searched ? (hasActive ? '筛选后无结果' : '没有找到相关种子') : '跨站搜索种子'"
+          :description="searched ? (hasActive ? '当前筛选条件太严格，试试清除部分筛选' : '试试更换关键词，或切换上方的分类筛选') : '输入关键词，聚合所有已登录站点的资源'"
         />
       </div>
     </template>
@@ -738,6 +761,31 @@ onUnmounted(() => {
   font-size: 12px;
   line-height: 1.4;
 }
+.t-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+.ttag {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.5;
+}
+.ttag.tone-res { background: #7b1fa2; }
+.ttag.tone-src { background: #8000ff; }
+.ttag.tone-codec { background: #ff9800; }
+.ttag.tone-hdr { background: #e91e63; }
+.ttag.tone-audio { background: #00897b; }
+.ttag.tone-lang { background: #5c6bc0; }
+.ttag.tone-misc { background: #607d8b; }
+.ttag.promo { background: var(--pt-success, #2ecc71); }
+.ttag.promo.tone-half { background: #ff5722; }
+.ttag.promo.tone-double { background: #9c27b0; }
 .num {
   font-variant-numeric: tabular-nums;
 }

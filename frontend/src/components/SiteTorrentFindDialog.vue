@@ -11,14 +11,17 @@ import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import MediaPoster from '@/components/MediaPoster.vue'
+import SearchFilterBar from '@/components/SearchFilterBar.vue'
 import {
   cardGroupKey,
-  extractTorrentTags,
+  enrichTorrent,
   formatTorrentSize,
   relativeTime,
   volumeFactorLabel,
+  type EnrichedMeta,
   type TorrentTag,
 } from '@/utils/torrentMeta'
+import { useSearchFilter } from '@/composables/useSearchFilter'
 
 export type FindRow = SiteTorrent & {
   site_id: number
@@ -26,12 +29,13 @@ export type FindRow = SiteTorrent & {
   base_url?: string
 }
 
+type EnrichedFindRow = FindRow & EnrichedMeta
 type CardGroup = {
   key: string
-  primary: FindRow
-  more: FindRow[]
+  primary: EnrichedFindRow
+  more: EnrichedFindRow[]
   tags: TorrentTag[]
-  promo: ReturnType<typeof volumeFactorLabel>
+  promo: { text: string; tone: string } | null
   timeText: string
 }
 
@@ -81,6 +85,9 @@ const flatRows = computed<FindRow[]>(() =>
     })),
   ),
 )
+// 派生筛选 meta + 前端过滤 composable（筛后聚合分组，保留 promo+seeders 卡片排序）。
+const enrichedRows = computed<EnrichedFindRow[]>(() => flatRows.value.map((r) => enrichTorrent(r)))
+const { filter, sort, options, filtered, hasActive, activeTags, removeFilter, clearAll } = useSearchFilter(enrichedRows)
 
 const hitSites = computed(() =>
   props.results.filter((r) => !r.error && (r.torrents?.length ?? 0) > 0).length,
@@ -90,8 +97,8 @@ const failedSites = computed(() => props.results.filter((r) => r.error))
 const showFailed = ref(false)
 
 const cards = computed<CardGroup[]>(() => {
-  const map = new Map<string, FindRow[]>()
-  for (const row of flatRows.value) {
+  const map = new Map<string, EnrichedFindRow[]>()
+  for (const row of filtered.value) {
     const key = cardGroupKey(row)
     const list = map.get(key)
     if (list) list.push(row)
@@ -101,22 +108,13 @@ const cards = computed<CardGroup[]>(() => {
   for (const [key, list] of map) {
     list.sort((a, b) => (b.seeders || 0) - (a.seeders || 0))
     const primary = list[0]
-    // 副标题只参与规则识别，不作为 raw tag（避免卡片上副标题显示两遍）
-    const tags = extractTorrentTags(
-      `${primary.title} ${primary.subtitle || ''}`,
-      [...(primary.tags || []), ...(primary.labels || []), primary.category || ''].filter(Boolean),
-    )
+    // tags/promo 已由 enrichTorrent 一次提取；副标题只参与识别不重复展示。
     groups.push({
       key,
       primary,
       more: list.slice(1),
-      tags,
-      promo: volumeFactorLabel(
-        primary.uploadvolumefactor,
-        primary.downloadvolumefactor,
-        primary.free,
-        [...(primary.tags || []), ...(primary.labels || [])],
-      ),
+      tags: primary.tags,
+      promo: primary.promo,
       timeText: relativeTime(primary.time || primary.pub_date),
     })
   }
@@ -286,6 +284,7 @@ watch(
       moreVisible.value = false
       showFailed.value = false
       closePush()
+      clearAll()
     }
   },
 )
@@ -316,9 +315,24 @@ watch(
         </template>
         <template v-else>
           命中 <b>{{ hitSites }}</b> 个站点，共 <b>{{ hitTotal }}</b> 条种子
+          <template v-if="hasActive"> · 筛选后 <b>{{ filtered.length }}</b> 条</template>
           <span v-if="results.length" class="text-muted">（共查询 {{ results.length }} 站 · 展示 {{ cards.length }} 组）</span>
         </template>
       </div>
+
+      <SearchFilterBar
+        v-if="flatRows.length"
+        :filter="filter"
+        :sort="sort"
+        :options="options"
+        :active-tags="activeTags"
+        :has-active="hasActive"
+        :result-count="filtered.length"
+        :total-count="hitTotal"
+        :sortable="false"
+        :remove-filter="removeFilter"
+        :clear-all="clearAll"
+      />
 
       <div v-if="failedSites.length" class="sf-fail">
         <button type="button" class="sf-fail-toggle" @click="showFailed = !showFailed">
@@ -335,6 +349,9 @@ watch(
 
       <div v-if="!loading && !flatRows.length" class="sf-empty text-muted">
         未从任何站点返回结果
+      </div>
+      <div v-else-if="hasActive && !cards.length" class="sf-empty text-muted">
+        当前筛选无结果，试试清除筛选
       </div>
 
       <div v-else class="sf-grid">

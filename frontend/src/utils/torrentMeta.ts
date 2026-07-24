@@ -182,3 +182,101 @@ function formatBytes(n: number): string {
   const digits = v >= 100 || i === 0 ? 0 : v >= 10 ? 1 : 2
   return `${v.toFixed(digits)} ${u[i]}`
 }
+
+// —— 搜索筛选：体积/时间反解析 + 一次性 meta 派生（Search 表格 & SiteTorrentFindDialog 共用）——
+
+const SIZE_UNITS: Record<string, number> = {
+  b: 1, kb: 1024, mb: 1024 ** 2, gb: 1024 ** 3, tb: 1024 ** 4, pb: 1024 ** 5,
+  kib: 1024, mib: 1024 ** 2, gib: 1024 ** 3, tib: 1024 ** 4, pib: 1024 ** 5,
+  byte: 1, bytes: 1,
+}
+
+/** Parse human size ("4.3 GB"/"709.84MB"/"1.2TiB") → bytes; 0 if unparseable. Inverse of formatTorrentSize. */
+export function parseSizeToBytes(size?: string | number | null): number {
+  if (size == null || size === '') return 0
+  if (typeof size === 'number') return Number.isFinite(size) && size > 0 ? size : 0
+  const s = String(size).trim()
+  const m = s.match(/^([\d.]+)\s*([a-z]+)$/i)
+  if (m) {
+    const n = Number(m[1])
+    const unit = SIZE_UNITS[m[2].toLowerCase()]
+    if (Number.isFinite(n) && n > 0 && unit) return Math.round(n * unit)
+    return 0
+  }
+  // bare number → assume bytes
+  const n = Number(s)
+  return Number.isFinite(n) && n > 0 ? n : 0
+}
+
+/** Best-effort pubdate → epoch ms. Prefers ISO (pub_date); falls back to site text (time, 相对文案). 0 if unknown. */
+export function parsePubDateToMs(raw?: string | null): number {
+  if (!raw) return 0
+  const s = String(raw).trim()
+  if (!s) return 0
+  const iso = s.replace(/[年\/.]/g, '-').replace(/月/g, '-').replace(/日/g, '').replace('T', ' ')
+  const d = new Date(iso)
+  const t = d.getTime()
+  if (!Number.isNaN(t)) return t
+  // 中文相对："3天前"/"2小时前" 等
+  const rel = s.match(/(\d+)\s*(秒|分钟|小时|天|周|月|年)/)
+  if (rel) {
+    const n = Number(rel[1])
+    const unitMs: Record<string, number> = {
+      秒: 1000, 分钟: 60_000, 小时: 3_600_000, 天: 86_400_000,
+      周: 604_800_000, 月: 2_592_000_000, 年: 31_536_000_000,
+    }
+    const ms = unitMs[rel[2]]
+    if (ms) return Date.now() - n * ms
+  }
+  return 0
+}
+
+/** Derived filterable meta for a torrent row (search table & find dialog share this). */
+export interface EnrichedMeta {
+  tags: TorrentTag[]
+  res: string
+  codec: string
+  src: string
+  hdr: string
+  cnSub: boolean
+  promo: { text: string; tone: string } | null
+  sizeBytes: number
+  pubMs: number
+}
+
+/** Enrich any torrent-like row with filterable meta in one pass (avoids repeated regex). */
+export function enrichTorrent<T extends {
+  title?: string
+  subtitle?: string
+  size?: string | number
+  free?: boolean
+  uploadvolumefactor?: number
+  downloadvolumefactor?: number
+  tags?: string[] | null
+  labels?: string[] | null
+  category?: string
+  pub_date?: string
+  time?: string
+}>(row: T): T & EnrichedMeta {
+  const tagSeed = [...(row.tags || []), ...(row.labels || []), row.category || ''].filter(Boolean) as string[]
+  const tags = extractTorrentTags(`${row.title || ''} ${row.subtitle || ''}`, tagSeed)
+  const pick = (tone: string) => tags.find((t) => t.tone === tone)?.label || ''
+  const promo = volumeFactorLabel(
+    row.uploadvolumefactor,
+    row.downloadvolumefactor,
+    row.free,
+    [...(row.tags || []), ...(row.labels || [])],
+  )
+  return {
+    ...row,
+    tags,
+    res: pick('res'),
+    codec: pick('codec'),
+    src: pick('src'),
+    hdr: pick('hdr'),
+    cnSub: tags.some((t) => t.tone === 'lang'),
+    promo: promo ?? null,
+    sizeBytes: parseSizeToBytes(row.size),
+    pubMs: parsePubDateToMs(row.pub_date || row.time),
+  }
+}

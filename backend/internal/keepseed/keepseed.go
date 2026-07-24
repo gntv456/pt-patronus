@@ -54,10 +54,10 @@ func ScoreWith(wantName, gotName string, wantSize, gotSize int64, ids IDHints, c
 			switch {
 			case ratio <= 0.01: // 1% 内近似 piece 对齐
 				sizeScore = 98
-			case ratio <= 0.05:
-				sizeScore = 90
 			case ratio <= 0.5:
-				sizeScore = int((0.5 - ratio) / 0.45 * 100)
+				// 0.01→98 线性递减到 0.5→0，与上一档(≤0.01→98)单调衔接（0.05 处恰好=90）。
+				// 旧公式 /0.45*100 在 ratio=0.05 处得 100，与固定 90 档冲突，致 5%→90、6%→99 的反单调跳升，已修。
+				sizeScore = int((0.5 - ratio) / 0.49 * 98)
 			default:
 				sizeScore = 0
 			}

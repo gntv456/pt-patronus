@@ -11,8 +11,8 @@ import (
 
 // listFields 是 get_torrents_status 请求的字段集。
 var listFields = []string{
-	"hash", "name", "progress", "ratio", "time_added", "save_path", "label",
-	"state", "total_size", "upload_payload_rate", "download_payload_rate",
+	"hash", "name", "progress", "ratio", "time_added", "completed_time", "save_path",
+	"label", "state", "total_size", "upload_payload_rate", "download_payload_rate",
 	"total_uploaded", "total_done", "num_seeds", "num_peers", "total_seeds", "total_peers",
 }
 

@@ -2,12 +2,14 @@ package assessment
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 func TestSunnyptLiveAssessments(t *testing.T) {
@@ -20,6 +22,10 @@ func TestSunnyptLiveAssessments(t *testing.T) {
 	ad := SunnyptAdapter{}
 	tasks, err := ad.FetchAssessments(context.Background(), liveHC{hc}, Def{ID: "sunnypt", Schema: "tnode"}, "https://sunnypt.top", string(b), "10792")
 	if err != nil {
+		// 本地 cookie 文件可能已过期——此时适配器正确返回 ErrNotLoggedIn，live 验证 skip 而非 fail。
+		if errors.Is(err, site.ErrNotLoggedIn) {
+			t.Skip("sunny cookie expired (not logged in)")
+		}
 		t.Fatalf("assess: %v", err)
 	}
 	t.Logf("tasks=%d", len(tasks))

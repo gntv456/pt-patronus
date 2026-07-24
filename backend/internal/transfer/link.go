@@ -50,7 +50,16 @@ func (LinkOps) Move(src, dst string) error {
 	if err := copyFile(src, dst); err != nil {
 		return err
 	}
-	return os.Remove(src)
+	// 删源失败时：dst 已存在且与 src 等大（copy 已完整落地）→ 视为幂等成功。
+	// 否则整理会无限重试且卡在 target-exists，不如让上层跳过重试。
+	if err := os.Remove(src); err != nil {
+		if sameSize(src, dst) {
+			slog.Warn("transfer: move remove source failed but dst complete, treat as idempotent success", "src", src, "err", err)
+			return nil
+		}
+		return fmt.Errorf("remove source: %w", err)
+	}
+	return nil
 }
 
 // Copy 复制 src→dst。
@@ -77,8 +86,49 @@ func (LinkOps) Apply(mode Mode, src, dst string) error {
 	}
 }
 
+// replaceViaTemp 实现「先链新到临时名→校验成功→删旧→重命名为最终名」的洗版原子替换。
+// 任何步骤失败都保证旧库文件不丢、不留残临时文件：
+//  1. Apply 到 dst 同目录的临时名 dst.new（链失败直接返回，旧文件未动）；
+//  2. 删除旧库文件（删失败回滚：清理临时文件后返回）；
+//  3. rename 临时名为 dst（rename 同目录原子，极少失败；若失败临时文件仍在，已记 Replaced）。
+//
+// 成功删除的旧路径追加到 *replaced（洗版通知/历史用）。
+func replaceViaTemp(mode Mode, src, dst, old string, replaced *[]string) error {
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return fmt.Errorf("mkdir: %w", err)
+	}
+	tmp := dst + ".new"
+	// 若上轮失败遗留同名 tmp，先清。
+	if _, err := os.Lstat(tmp); err == nil {
+		_ = os.Remove(tmp)
+	}
+	if err := (LinkOps{}).Apply(mode, src, tmp); err != nil {
+		return fmt.Errorf("link temp: %w", err)
+	}
+	// 删旧失败 → 清理临时文件后返回（旧库文件未丢）。
+	if _, err := removeMediaFile(old); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("remove old: %w", err)
+	}
+	if replaced != nil {
+		*replaced = append(*replaced, old)
+	}
+	// rename 同目录原子。失败时临时文件仍在（但不影响做种源/旧库已让位）。
+	if err := os.Rename(tmp, dst); err != nil {
+		return fmt.Errorf("rename temp: %w", err)
+	}
+	return nil
+}
+
 // copyFile 逐字节复制（兼容跨设备/跨盘）。
+// 安全保证：
+//   - dst 已存在且与 src 同 inode（如已是硬链到同一文件）→ 跳过，避免 O_TRUNC 自毁源；
+//   - io.Copy 失败时 os.Remove(dst) 清理残文件，避免半写文件被当成完成。
 func copyFile(src, dst string) error {
+	// dst 已存在且与 src 同 inode → 不再截断，视为已完成（幂等成功）。
+	if sameInode(src, dst) {
+		return nil
+	}
 	sf, err := os.Open(src)
 	if err != nil {
 		return err
@@ -88,14 +138,46 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer df.Close()
 	if _, err := io.Copy(df, sf); err != nil {
+		_ = df.Close()
+		// 清理半写残文件，避免下次被当成完整目标。
+		_ = os.Remove(dst)
+		return err
+	}
+	if err := df.Close(); err != nil {
+		_ = os.Remove(dst)
 		return err
 	}
 	if si, err := os.Stat(src); err == nil {
 		_ = os.Chmod(dst, si.Mode())
 	}
 	return nil
+}
+
+// sameInode 报告 src 与 dst 是否同一 inode（同盘硬链到自身/同名）。任一 stat 失败返 false。
+func sameInode(src, dst string) bool {
+	ss, err := os.Stat(src)
+	if err != nil {
+		return false
+	}
+	ds, err := os.Stat(dst)
+	if err != nil {
+		return false
+	}
+	return os.SameFile(ss, ds)
+}
+
+// sameSize 报告 src 与 dst 当前大小是否相等（copy 落地后 dst 应等大）。任一 stat 失败返 false。
+func sameSize(src, dst string) bool {
+	ss, err := os.Stat(src)
+	if err != nil {
+		return false
+	}
+	ds, err := os.Stat(dst)
+	if err != nil {
+		return false
+	}
+	return ss.Size() == ds.Size()
 }
 
 // pathExists 本地路径是否存在。

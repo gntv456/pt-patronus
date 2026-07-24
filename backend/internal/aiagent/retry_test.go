@@ -164,32 +164,41 @@ func TestContextBudgetModelAware(t *testing.T) {
 }
 
 func TestTrimByTokenBudget(t *testing.T) {
-	// 构造超出预算的长上下文：system + 多条大 user 消息。
+	// 构造中文密集场景：每条 user 消息 6000 个汉字。
+	// 按新估算（CJK ~1 token/字）每条 ≈6000 token；旧 rune/3 估算仅 ~2000 token/条，
+	// 会严重低估导致 32k 窗口中文场景实际撑爆 400——本测试以真实 token 比例断言保留条数。
+	const cjkPerMsg = 6000
+	big := strings.Repeat("中", cjkPerMsg)
 	msgs := []llm.Message{{Role: llm.RoleSystem, Content: "sys"}}
-	big := strings.Repeat("中", 6000) // ~2000 token/条
 	for i := 0; i < 20; i++ {
 		msgs = append(msgs, llm.Message{Role: llm.RoleUser, Content: big})
 	}
-	trimmed := trimMessages(msgs, "qwen-max", 2048) // 32k 窗口 → 预算 ~28k；每条 ~2000 tok，20 条必超
-	// 应保留 system 且裁掉最早的若干条
+	budget := contextBudget("qwen-max", 2048) // 32k 窗口，reserve=4096 → 27904
+	trimmed := trimMessages(msgs, "qwen-max", 2048)
 	if len(trimmed) < 2 {
 		t.Fatalf("trimmed too far: %d", len(trimmed))
 	}
 	if trimmed[0].Role != llm.RoleSystem {
 		t.Fatalf("first must be system, got %s", trimmed[0].Role)
 	}
-	// 最后一条必须保留（最近上下文最重要）
 	if trimmed[len(trimmed)-1].Content != big {
 		t.Fatal("last message must be retained")
 	}
-	// token 估算不应超预算太多（含 system）
-	budget := contextBudget("qwen-max", 2048)
-	total := 0
-	for _, m := range trimmed {
-		total += estimateTokens(m)
+	// 用真实 token 比例校验（非循环自证 estimateTokens）：
+	//   "sys" 3 个非 CJK → 0 token + overhead 4 = 4；
+	//   6000 个汉字 → 6000 + overhead 4 = 6004。
+	sysTok := estimateTokens(llm.Message{Role: llm.RoleSystem, Content: "sys"})
+	msgTok := estimateTokens(llm.Message{Role: llm.RoleUser, Content: big})
+	if sysTok != 4 {
+		t.Fatalf("sysTok=%d want 4 (non-CJK 3 chars / 4 + overhead 4)", sysTok)
 	}
-	if total > budget+10 { // 允许单条取整误差
-		t.Fatalf("trimmed total tokens %d > budget %d", total, budget)
+	if msgTok != cjkPerMsg+4 {
+		t.Fatalf("msgTok=%d want %d (CJK 1:1 + overhead 4)", msgTok, cjkPerMsg+4)
+	}
+	// 保留 user 条数应满足 sysTok + n*msgTok <= budget（向下取整）。
+	wantN := (budget - sysTok) / msgTok
+	if got := len(trimmed) - 1; got != wantN {
+		t.Fatalf("retained user msgs=%d want %d (budget=%d sysTok=%d msgTok=%d)", got, wantN, budget, sysTok, msgTok)
 	}
 }
 

@@ -270,3 +270,64 @@ func TestToolRegistryCatalog(t *testing.T) {
 		t.Errorf("untagged should default to write, got %q", byName["legacy"].Risk)
 	}
 }
+
+// TestAgent_DestructiveCancelledEmitsToolResult 验证 destructive 工具确认期 ctx 取消时，
+// 仍补一条 tool 结果（emit + DB 持久化），保持 tool_call 序列完整——
+// 否则下轮 provider 会因 assistant(tool_calls) 缺父 tool 结果而 400。
+func TestAgent_DestructiveCancelledEmitsToolResult(t *testing.T) {
+	executed := false
+	store := &fakeMsgStore{}
+	tools := []mcp.Tool{
+		{Name: "boom", Description: "destructive boom", Risk: mcp.RiskDestructive, RiskNote: "会爆炸", InputSchema: map[string]any{"type": "object"}, Handler: func(context.Context, map[string]any) (string, error) {
+			executed = true
+			return "done", nil
+		}},
+	}
+	plans := [][]llm.Event{
+		{{Type: llm.EventToolCall, ToolCall: llm.ToolCall{ID: "c1", Name: "boom", Arguments: `{}`}}, {Type: llm.EventDone}},
+	}
+	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
+	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
+	a := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, store, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var sawToolResult, sawErr bool
+	var toolResultText string
+	for ev := range a.Run(ctx, 1, "炸") {
+		switch ev.Type {
+		case llm.EventConfirmRequest:
+			cancel()
+		case llm.EventToolResult:
+			sawToolResult = true
+			toolResultText = ev.Text
+		case llm.EventError:
+			sawErr = true
+		}
+	}
+	if executed {
+		t.Fatal("destructive tool should not execute on cancel")
+	}
+	if !sawErr {
+		t.Fatal("expected error event on cancel")
+	}
+	if !sawToolResult {
+		t.Fatal("expected tool_result emitted on cancel to keep tool_call sequence intact")
+	}
+	if !strings.Contains(toolResultText, "已取消") {
+		t.Fatalf("tool result=%q, want contains 已取消", toolResultText)
+	}
+	// DB 应有对应 tool 消息（ToolCallID=c1），内容含"已取消"
+	var hasToolMsg bool
+	for _, m := range store.msgs {
+		if m.Role == "tool" && m.ToolCallID == "c1" {
+			hasToolMsg = true
+			if !strings.Contains(m.Content, "已取消") {
+				t.Fatalf("db tool content=%q", m.Content)
+			}
+		}
+	}
+	if !hasToolMsg {
+		t.Fatal("expected tool message persisted in DB to keep sequence complete")
+	}
+}

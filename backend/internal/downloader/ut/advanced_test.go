@@ -48,6 +48,14 @@ func TestUTAdvancedOps(t *testing.T) {
 		t.Errorf("sharelimits raw: action=%s raw=%s", f.action, f.raw)
 	}
 
+	// seed_ratio 四舍五入：2.05*10=20.5 → 21（旧实现 int(20.5)=20 截断偏低）
+	if err := c.SetShareLimits(ctx, []string{"h1"}, downloader.ShareLimits{RatioLimit: 2.05}); err != nil {
+		t.Fatalf("sharelimits rounding: %v", err)
+	}
+	if !strings.Contains(f.raw, "v=21") {
+		t.Errorf("seed_ratio rounding: raw=%s want v=21", f.raw)
+	}
+
 	if err := c.SetLimits(ctx, []string{"h1"}, downloader.Limits{UploadLimit: 100, DownloadLimit: 200}); err != nil {
 		t.Fatalf("limits: %v", err)
 	}

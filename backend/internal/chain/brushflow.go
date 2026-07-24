@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -165,14 +166,12 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 	}
 	var toDelete []string
 	var uploadSum int64
-	var taskHashes []string // 本任务全部种子 hash（用于设下载器原生 share limit）
-	var kept []downloader.Torrent // 本任务未命中删种规则的种子（供体积淘汰）
+	var kept []downloader.Torrent // 本任务未命中删种规则的种子（供体积淘汰 + 原生 share limit）
 	now := time.Now()
 	for _, tr := range list {
 		if !bfHasTag(tr.Tags, tag) {
 			continue
 		}
-		taskHashes = append(taskHashes, tr.Hash)
 		if reason := bfMatchRule(task, &tr, now); reason != "" {
 			toDelete = append(toDelete, tr.Hash)
 			uploadSum += tr.Uploaded
@@ -189,11 +188,7 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 		}
 		if total > limit {
 			sort.SliceStable(kept, func(i, j int) bool {
-				if kept[i].UPRate != kept[j].UPRate {
-					return kept[i].UPRate < kept[j].UPRate
-				}
-				li, lj := bfLastActive(kept[i]), bfLastActive(kept[j])
-				return li.Before(lj)
+				return bfEvictionLess(kept[i], kept[j])
 			})
 			for _, tr := range kept {
 				if total <= limit {
@@ -205,13 +200,8 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 			}
 		}
 	}
-	// 原生 share limit：开启时对任务种子设下载器原生「达标即暂停」（即时保护，补充应用层扫删）。
-	// SetShareLimits 幂等（重复设同值无害），每轮 sweep 设一次；待删种子也设（马上删除，无害）。
-	if task.UseShareLimit && len(taskHashes) > 0 {
-		if err := c.dlCh.SetShareLimits(ctx, task.DownloaderID, taskHashes, bfShareLimits(task)); err != nil {
-			slog.Warn("brushflow setShareLimits failed", "task", taskID, "err", err)
-		}
-	}
+	// 先删种：share limit 仅对保留种子有意义，待删种子无需先设限；
+	// Delete 失败直接返回（不让 share limit 掩盖错误），share limit 失败仅 warn（best-effort）。
 	if len(toDelete) > 0 {
 		if err := c.dlCh.Delete(ctx, task.DownloaderID, toDelete, task.DeleteFiles); err != nil {
 			return err
@@ -226,6 +216,17 @@ func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
 				Body:   fmt.Sprintf("本轮新增上传 %s。", bfFormatBytes(uploadSum)),
 				Level:  "info",
 			}, false)
+		}
+	}
+	// 原生 share limit：开启时对「保留」种子设下载器原生「达标即暂停」（即时保护，补充应用层扫删）。
+	// SetShareLimits 幂等（重复设同值无害），每轮 sweep 对 kept 设一次。
+	if task.UseShareLimit && len(kept) > 0 {
+		keptHashes := make([]string, 0, len(kept))
+		for _, tr := range kept {
+			keptHashes = append(keptHashes, tr.Hash)
+		}
+		if err := c.dlCh.SetShareLimits(ctx, task.DownloaderID, keptHashes, bfShareLimits(task)); err != nil {
+			slog.Warn("brushflow setShareLimits failed", "task", taskID, "err", err)
 		}
 	}
 	_ = c.op.TouchTask(taskID, "last_sweep_at")
@@ -284,7 +285,8 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 	if task.DeleteMinUPRateKB > 0 {
 		hit := false
 		reason := ""
-		if bfIsSeedingDone(tr) {
+		// 已完成做种 + 满足最小做种时长兜底（DeleteMinSeedMinutes，防刚完成瞬时低速误杀）才判速度
+		if bfIsSeedingDone(tr) && bfMeetsMinSeedTime(task, tr, now) {
 			thr := task.DeleteMinUPRateKB << 10
 			hit = tr.UPRate < thr
 			reason = fmt.Sprintf("上传速度 %dB/s<%dKB/s", tr.UPRate, task.DeleteMinUPRateKB)
@@ -302,11 +304,11 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 		}
 		cs = append(cs, cond{true, hit, reason})
 	}
-	// swarm 做种过多（NumComplete；0 表示未知则跳过该条件）
+	// swarm 做种过多（NumComplete；下载中/swarm 数据缺失不删，对称于 DeleteMinSwarmLeechers）
 	if task.DeleteMaxSwarmSeeders > 0 {
 		hit := false
 		reason := ""
-		if tr.NumComplete > 0 {
+		if bfIsSeedingDone(tr) && tr.NumComplete > 0 {
 			hit = tr.NumComplete > task.DeleteMaxSwarmSeeders
 			reason = fmt.Sprintf("swarm做种 %d>%d", tr.NumComplete, task.DeleteMaxSwarmSeeders)
 		}
@@ -316,7 +318,7 @@ func bfMatchRule(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Ti
 	if task.DeleteMinSwarmLeechers > 0 {
 		hit := false
 		reason := ""
-		if bfIsSeedingDone(tr) && tr.NumComplete > 0 {
+		if bfIsSeedingDone(tr) && bfMeetsMinSeedTime(task, tr, now) && tr.NumComplete > 0 {
 			hit = tr.NumIncomplete < task.DeleteMinSwarmLeechers
 			reason = fmt.Sprintf("swarm下载 %d<%d", tr.NumIncomplete, task.DeleteMinSwarmLeechers)
 		}
@@ -363,6 +365,21 @@ func bfIsSeedingDone(tr *downloader.Torrent) bool {
 	return false
 }
 
+// bfMeetsMinSeedTime 最小做种时长兜底（DeleteMinSeedMinutes，防刚完成做种瞬时速度/swarm 为 0 即被误删）。
+// 返回 true=允许瞬时规则（低速/swarm）生效，false=跳过（不命中删除）。
+//   - DeleteMinSeedMinutes<=0：不启用此守卫，直接放行（true）。
+//   - CompletedAt 零值（未完成/未知完成时间）：视为不满足（false），与 bfIsSeedingDone 协同防御。
+//   - 否则要求 now-CompletedAt ≥ DeleteMinSeedMinutes 分钟。
+func bfMeetsMinSeedTime(task *models.BrushFlowTask, tr *downloader.Torrent, now time.Time) bool {
+	if task.DeleteMinSeedMinutes <= 0 {
+		return true
+	}
+	if tr.CompletedAt.IsZero() {
+		return false
+	}
+	return now.Sub(tr.CompletedAt) >= time.Duration(task.DeleteMinSeedMinutes)*time.Minute
+}
+
 // bfLastActive 最后活跃时间：优先 LastActivity → CompletedAt → AddedAt。
 func bfLastActive(tr downloader.Torrent) time.Time {
 	if !tr.LastActivity.IsZero() {
@@ -374,11 +391,34 @@ func bfLastActive(tr downloader.Torrent) time.Time {
 	return tr.AddedAt
 }
 
+// bfEvictionLess 体积淘汰排序比较：上传速度慢优先 → 最久未活跃优先。
+// 数据缺失守卫：bfLastActive 零值（所有时间字段都未知）的种子排最后，不优先淘汰
+// （避免信息不全的种子被 0001 年时间戳误判为"最久未活跃"而优先删）。
+func bfEvictionLess(i, j downloader.Torrent) bool {
+	if i.UPRate != j.UPRate {
+		return i.UPRate < j.UPRate
+	}
+	li, lj := bfLastActive(i), bfLastActive(j)
+	liZero, ljZero := li.IsZero(), lj.IsZero()
+	if liZero || ljZero {
+		// 任一零值时：零值排后（i 零值返 false，j 零值返 true；都零值保持稳定）
+		return ljZero && !liZero
+	}
+	return li.Before(lj)
+}
+
 // bfShareLimits 把任务的删除阈值（DeleteRatio/DeleteSeedHours）映射为下载器原生 ShareLimits。
-// 未配维度（值 0）→ -2（无限）。DeleteUploadMB 无原生对应（qb share limit 仅 ratio/time），仅应用层删种。
-// tr 的 SeedingTimeLimit 语义见 downloader.ShareLimits（qb 总时长 / tr 空闲时长）。
+// 未配维度（值 0）→ -1（全局默认，不覆盖下载器设置）。
+// DeleteUploadMB 无原生对应（qb share limit 仅 ratio/time），仅应用层删种。
+//
+// 注意：跨下载器 SeedingTimeLimit 语义不一致（已知差异，不改语义，仅注释说明）：
+//   - qBittorrent：总做种时长（达到后暂停，活跃也算）
+//   - Transmission：映射为 seedIdleLimit 空闲时长（无 peer 上传一段时间后暂停）
+//
+// 因此 DeleteSeedHours 在 TR 上效果偏宽松（高活跃种子不会被暂停）；前端/任务编辑 UI 需注明此差异。
 func bfShareLimits(task *models.BrushFlowTask) downloader.ShareLimits {
-	lim := downloader.ShareLimits{RatioLimit: -2, SeedingTimeLimit: -2}
+	// 未配维度 = -1（全局默认，不覆盖下载器设置），区别于 -2（无限）。
+	lim := downloader.ShareLimits{RatioLimit: -1, SeedingTimeLimit: -1}
 	if task.DeleteRatio > 0 {
 		lim.RatioLimit = task.DeleteRatio
 	}
@@ -531,14 +571,28 @@ func bfExprVars(tr *downloader.Torrent, now time.Time) map[string]float64 {
 	if last := bfLastActive(*tr); !last.IsZero() {
 		inactiveH = now.Sub(last).Hours()
 	}
+	// 数据缺失守卫：用 NaN 表示"该值不可信/未知"，表达式引擎用 Go 原生 float 比较，
+	// NaN 与任何数比较均返回 false（恰好"不命中删除"），与基础规则守卫语义一致。
+	//   - 下载中（!bfIsSeedingDone）的 up_rate 不可靠（瞬态低速）→ NaN
+	//   - swarm 数据缺失（NumComplete<=0，TR/旧 qB 不上报）→ swarm_seeders/leechers 设 NaN
+	upRateKB := float64(tr.UPRate) / 1024.0
+	if !bfIsSeedingDone(tr) {
+		upRateKB = math.NaN()
+	}
+	swarmSeeders := float64(tr.NumComplete)
+	swarmLeechers := float64(tr.NumIncomplete)
+	if tr.NumComplete <= 0 {
+		swarmSeeders = math.NaN()
+		swarmLeechers = math.NaN()
+	}
 	return map[string]float64{
-		"ratio":           tr.Ratio,
-		"seed_hours":      seedH,
-		"upload_mb":       float64(tr.Uploaded) / float64(1<<20),
-		"up_rate_kb":      float64(tr.UPRate) / 1024.0,
-		"inactive_hours":  inactiveH,
-		"swarm_seeders":   float64(tr.NumComplete),
-		"swarm_leechers":  float64(tr.NumIncomplete),
+		"ratio":          tr.Ratio,
+		"seed_hours":     seedH,
+		"upload_mb":      float64(tr.Uploaded) / float64(1<<20),
+		"up_rate_kb":     upRateKB,
+		"inactive_hours": inactiveH,
+		"swarm_seeders":  swarmSeeders,
+		"swarm_leechers": swarmLeechers,
 	}
 }
 

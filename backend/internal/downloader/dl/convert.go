@@ -14,6 +14,7 @@ type dlTorrent struct {
 	Progress            float64 `json:"progress"` // 0-100
 	Ratio               float64 `json:"ratio"`
 	TimeAdded           float64 `json:"time_added"` // unix
+	CompletedTime       float64 `json:"completed_time"`
 	SavePath            string  `json:"save_path"`
 	Label               string  `json:"label"`
 	State               string  `json:"state"`
@@ -34,6 +35,10 @@ func toTorrent(t dlTorrent) downloader.Torrent {
 	if t.TimeAdded > 0 {
 		added = time.Unix(int64(t.TimeAdded), 0)
 	}
+	var completed time.Time
+	if t.CompletedTime > 0 { // 0 = 未完成
+		completed = time.Unix(int64(t.CompletedTime), 0)
+	}
 	return downloader.Torrent{
 		Hash:       t.Hash,
 		Name:       t.Name,
@@ -48,6 +53,7 @@ func toTorrent(t dlTorrent) downloader.Torrent {
 		SavePath:   t.SavePath,
 		Category:   t.Label,
 		AddedAt:    added,
+		CompletedAt: completed,
 
 		NumSeeds:      t.NumSeeds,
 		NumLeechs:     t.NumPeers,

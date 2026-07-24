@@ -3,11 +3,14 @@ package assessment
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+
+	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 // NexusPHPAdapter NexusPHP 站考核：GET userdetails.php → HTML 归一 + 跨行聚合。
@@ -33,8 +36,21 @@ func (NexusPHPAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def De
 	if err != nil {
 		return nil, err
 	}
-	if resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 || len(resp.Body) < 500 {
-		return nil, nil
+	if resp == nil {
+		return nil, fmt.Errorf("nexusphp assessment: empty response")
+	}
+	if resp.StatusCode == 401 || resp.StatusCode == 403 {
+		return nil, site.ErrNotLoggedIn
+	}
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("nexusphp assessment: status %d", resp.StatusCode)
+	}
+	// cookie 失效：userdetails.php 被重定向到登录页（FollowRedirect 已跟随成 200+HTML），
+	// 靠 body 关键词识别；响应过短也视为异常（正常 userdetails 页远大于 500 字节）。
+	bodyLow := strings.ToLower(string(resp.Body))
+	if strings.Contains(bodyLow, "takelogin") || strings.Contains(bodyLow, "login.php") ||
+		strings.Contains(bodyLow, "请登录") || len(resp.Body) < 500 {
+		return nil, site.ErrNotLoggedIn
 	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {

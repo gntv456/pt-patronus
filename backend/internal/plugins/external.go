@@ -321,9 +321,33 @@ func (p *externalHTTPPlugin) ensureStarted(ctx context.Context, rt Runtime) erro
 			return nil
 		}
 		if time.Now().After(deadline) {
+			// 健康检查超时：清理已起的子进程与 host 回调端口，避免泄漏。
+			p.cleanupStartedProcessLocked("health check timeout")
 			return fmt.Errorf("external plugin %s health check timeout", p.manifest.ID)
 		}
 		time.Sleep(250 * time.Millisecond)
+	}
+}
+
+// cleanupStartedProcessLocked 在 ensureStarted 失败路径上清理已起的子进程与 host 回调服务，
+// 复位运行态（调用方已持有 p.mu）。recordExit 的后台 goroutine 因 p.cmd 被置 nil 而早退
+//（p.cmd != cmd），不会重复清理或触发重启。lastExit 记录失败原因便于排障。
+func (p *externalHTTPPlugin) cleanupStartedProcessLocked(lastExit string) {
+	if p.cmd != nil && p.cmd.Process != nil {
+		_ = p.cmd.Process.Kill()
+	}
+	host := p.host
+	p.cmd = nil
+	p.baseURL = ""
+	p.token = ""
+	p.host = nil
+	p.pid = 0
+	now := time.Now()
+	p.stoppedAt = &now
+	p.lastExit = lastExit
+	p.nextRestartAt = nil
+	if host != nil {
+		_ = host.stop()
 	}
 }
 
@@ -615,7 +639,12 @@ func newExternalHostServer(plugin *externalHTTPPlugin) (*externalHostServer, err
 		baseURL: "http://" + ln.Addr().String(),
 		token:   token,
 	}
-	h.server = &http.Server{Handler: h}
+	// 回调服务仅 loopback，但仍施加读超时，避免恶意/卡死插件慢速读取占用连接。
+	h.server = &http.Server{
+		Handler:           h,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       60 * time.Second,
+	}
 	go func() {
 		if err := h.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			// Best effort: plugin host callbacks are loopback-only and surfaced through plugin calls.

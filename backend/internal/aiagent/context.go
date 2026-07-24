@@ -2,6 +2,7 @@ package aiagent
 
 import (
 	"strings"
+	"unicode"
 
 	"github.com/hxpt/ptpatronus/internal/llm"
 )
@@ -49,17 +50,42 @@ func trimMessages(msgs []llm.Message, model string, maxTokens int) []llm.Message
 }
 
 // estimateTokens 粗估单条消息 token 数（无 tokenizer 依赖）：
-// content/reasoning 按 ~3 rune/token（中英混合的保守估计），tool_calls 的 JSON 也计入，加每条固定开销。
-// 用于上下文裁剪的预算控制——高估偏保守（宁可多裁），不会因低估而撑爆。
+// content/reasoning/tool_calls 的文本按 CJK ~1 token/字、非 CJK ~4 字符/token 累加，加每条固定开销。
+// 用于上下文裁剪的预算控制——**中文是高 token 密度语言**（Qwen/GLM 等中文 1 字≈1 token，
+// 远高于英文 ~4 字符/token），旧版 rune/3 对中文严重低估 3-4 倍，导致 32k 窗口中文密集会话 400 超限。
+// 这里改为加权估算：CJK 字符（Han/Hiragana/Katakana/Hangul）按 1 token/字，其余按 rune/4，
+// 取两者之和——对纯中文、纯英文、中英混合均偏向保守高估（宁可多裁），不会因低估撑爆窗口。
 func estimateTokens(m llm.Message) int {
 	const overhead = 4
 	n := overhead
-	n += len([]rune(m.Content)) / 3
-	n += len([]rune(m.Reasoning)) / 3
+	n += tokenEstimate(m.Content)
+	n += tokenEstimate(m.Reasoning)
 	for _, tc := range m.ToolCalls {
-		n += len([]rune(tc.Name))/3 + len([]rune(tc.Arguments))/3 + overhead
+		n += tokenEstimate(tc.Name) + tokenEstimate(tc.Arguments) + overhead
 	}
 	return n
+}
+
+// tokenEstimate 对单段文本估算 token 数：CJK 字符 1 token/字，其余字符 4 字符/token。
+// 一次遍历统计 rune 总数与其中 CJK 数，避免重复 rune 切片分配。
+func tokenEstimate(s string) int {
+	total, cjk := 0, 0
+	for _, r := range s {
+		total++
+		if isCJKRune(r) {
+			cjk++
+		}
+	}
+	return cjk + (total-cjk)/4
+}
+
+// isCJKRune 判定 rune 是否为 CJK 表意/音节文字（这些字符在主流 BPE 分词器中 ≈1 token/字，
+// 远高于拉丁字符的 ~4 字符/token）。覆盖中日韩四种主要文字及兼容区。
+func isCJKRune(r rune) bool {
+	return unicode.Is(unicode.Han, r) ||
+		unicode.Is(unicode.Hiragana, r) ||
+		unicode.Is(unicode.Katakana, r) ||
+		unicode.Is(unicode.Hangul, r)
 }
 
 // contextBudget 返回输入上下文的 token 预算：模型窗口 − 输出(max_tokens) − 工具 schema 余量。

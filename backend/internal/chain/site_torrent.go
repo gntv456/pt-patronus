@@ -63,14 +63,19 @@ func (c *SiteChain) FetchTorrentFile(ctx context.Context, s *models.Site, downlo
 	}
 	// passkey 补全：URL 不含 passkey 且站点配了 passkey → append（实测 NexusPHP download.php 支持 ?passkey=）。
 	dlURL := downloadURL
-	if passkey != "" && !strings.Contains(strings.ToLower(dlURL), "passkey=") {
-		dlURL = appendQuery(dlURL, "passkey", passkey)
+	// 精确检查 query 是否已含 passkey 键（避免 URL 值里含字面 "passkey=" 被误判跳过补全）。
+	if passkey != "" {
+		if u, e := url.Parse(dlURL); e == nil {
+			if _, has := u.Query()["passkey"]; !has {
+				dlURL = appendQuery(dlURL, "passkey", passkey)
+			}
+		}
 	}
 	resp, gerr := c.hc.Get(ctx, dlURL, cookie, true)
 	if gerr != nil {
 		return nil, "", fmt.Errorf("fetch torrent: %w", gerr)
 	}
-	content, err = c.classifyAndConfirm(ctx, resp, dlURL, cookie)
+	content, err = c.classifyAndConfirm(ctx, resp, s.BaseURL, dlURL, cookie)
 	if err != nil {
 		return nil, "", err
 	}
@@ -91,7 +96,7 @@ func (c *SiteChain) FetchTorrentFileByID(ctx context.Context, siteID uint, downl
 
 // classifyAndConfirm 对 download 响应分类：合法 .torrent 直接返回；NexusPHP 首次下载确认页
 // 则 POST 确认后重判；登录页/HTML 报错。对标 MP 处理 download.php 确认表单。
-func (c *SiteChain) classifyAndConfirm(ctx context.Context, resp *httpclient.Response, dlURL, cookie string) ([]byte, error) {
+func (c *SiteChain) classifyAndConfirm(ctx context.Context, resp *httpclient.Response, baseURL, dlURL, cookie string) ([]byte, error) {
 	if resp == nil {
 		return nil, ErrNotTorrent
 	}
@@ -101,6 +106,11 @@ func (c *SiteChain) classifyAndConfirm(ctx context.Context, resp *httpclient.Res
 	body := string(resp.Body)
 	// NexusPHP 首次下载确认页：form action 含 download + hidden 字段（cookie 有效才出现，优先判）。
 	if action, form := parseDownloadConfirmForm(body, resp.FinalURL); action != "" {
+		// 同源守卫：确认表单 action 必须落在站点 baseURL 同注册域，防恶意/被入侵站点
+		// 把 download.php 确认页的 form action 指向第三方域，借机套走站点 cookie。
+		if !sameHost(baseURL, action) {
+			return nil, fmt.Errorf("download confirm action cross-site blocked: %s", action)
+		}
 		slog.Info("torrent download confirm page detected, posting", "url", dlURL)
 		postResp, perr := c.hc.PostFormAjaxWith(ctx, action, cookie, form, dlURL, nil, true)
 		if perr != nil {

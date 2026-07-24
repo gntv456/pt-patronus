@@ -50,6 +50,10 @@ func TestDLAdvancedOps(t *testing.T) {
 	if f.method != "core.set_torrent" {
 		t.Errorf("sharelimits: %s", f.method)
 	}
+	// SeedingTimeLimit>0 时 Deluge 无原生单种子选项 → ErrNotImplemented
+	if err := c.SetShareLimits(ctx, []string{"h1"}, downloader.ShareLimits{RatioLimit: 2.0, SeedingTimeLimit: 60}); !errors.Is(err, downloader.ErrNotImplemented) {
+		t.Errorf("SeedingTimeLimit>0 want ErrNotImplemented, got %v", err)
+	}
 
 	lim, err := c.GetSpeedLimits(ctx)
 	if err != nil {

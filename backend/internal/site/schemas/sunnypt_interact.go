@@ -154,11 +154,8 @@ func (g *GenericJSON) sunnyptFetchNewsContent(ctx context.Context, baseURL, cook
 
 // sunnyptEnsureSession POST /api/auth/session with accessToken, merge AuthSession cookie.
 func (g *GenericJSON) sunnyptEnsureSession(ctx context.Context, baseURL, cookie string) (string, error) {
-	// Prefer a clean cookie: only non-AuthSession pairs + one valid AuthSession JWT.
-	// Nested/broken AuthSession values in the DB cookie confuse the NextAuth session layer.
-	if clean := sunnyCleanSessionCookie(cookie); clean != "" && sunnyHasUsableAuthSession(clean) {
-		// Still refresh via API so HttpOnly session is server-recognized.
-	}
+	// 始终用 accessToken 刷新会话，让 HttpOnly AuthSession 被服务端识别。DB cookie 里嵌套/破损的
+	// AuthSession 会干扰 NextAuth 会话层，故不直接信任原 cookie，走 API 换干净 session（刷新失败时用 clean cookie 兜底）。
 	tok, err := sunnyAccessToken(cookie)
 	if err != nil {
 		if clean := sunnyCleanSessionCookie(cookie); clean != "" {
@@ -536,8 +533,11 @@ func sunnyIsRead(v any) bool {
 	if v == nil {
 		return false
 	}
+	if b, ok := v.(bool); ok {
+		return b
+	}
 	s := fmt.Sprint(v)
-	return s != "" && s != "0" && s != "<nil>" && s != "null"
+	return s != "" && s != "0" && s != "<nil>" && s != "null" && s != "false"
 }
 
 func sunnyQueryID(raw, key string) string {

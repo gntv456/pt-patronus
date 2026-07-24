@@ -43,6 +43,13 @@ func validateExternalManifest(manifest Manifest) error {
 		if strings.ContainsAny(perm, " \t\r\n") {
 			errs = append(errs, fmt.Errorf("permissions[%d] %q must not contain whitespace", i, perm))
 		}
+		// 白名单校验：拒绝无具体能力的裸通配（* / ** / 裸 host: / host:* / plugin:*）。
+		// host:* 与 plugin:* 在 ACL(external.go hasPluginPermission) 中被特判为全局超级授权，
+		// 等价 *，声明即静默获得全部权限——故禁止；具体能力（config:read）与域级通配
+		// （downloader:*）允许。
+		if perr := validatePermissionString(perm); perr != nil {
+			errs = append(errs, fmt.Errorf("permissions[%d]: %w", i, perr))
+		}
 	}
 	seenDeps := make(map[string]bool, len(manifest.Dependencies))
 	for i, dep := range manifest.Dependencies {
@@ -149,6 +156,39 @@ func validateExternalManifest(manifest Manifest) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// validatePermissionString 校验单个权限字符串，拒绝无具体能力的裸通配。
+// 合法形式为 <domain>:<capability>：
+//   - 具体能力：config:read、kv:write、site:cookie
+//   - 域级通配：downloader:*（仅授予 downloader 域）
+//
+// 拒绝（在 ACL 中等价全局超级授权或为空，声明即静默获得全部权限）：
+//   - 纯通配：* / ** / ***
+//   - 裸前缀：host: / plugin:（冒号后为空）
+//   - 超级授权：host:* / plugin:*（hasPluginPermission 特判为全局授权）
+//
+// host/plugin 两域的通配被特别拒绝，因其等价 *；其余域的 :* 保留为合法域级通配。
+func validatePermissionString(perm string) error {
+	perm = strings.TrimSpace(perm)
+	if perm == "" {
+		return errors.New("is empty")
+	}
+	// 纯通配（无域）：*、**、***……
+	if strings.Trim(perm, "*") == "" {
+		return fmt.Errorf("%q is a bare global wildcard; declare specific <domain>:<capability> instead", perm)
+	}
+	domain, capability, found := strings.Cut(perm, ":")
+	domain = strings.TrimSpace(domain)
+	capability = strings.TrimSpace(capability)
+	if !found || domain == "" || capability == "" {
+		return fmt.Errorf("%q must be in <domain>:<capability> form", perm)
+	}
+	// host:* / plugin:* 在 ACL 中被特判为全局超级授权（等价 *），拒绝。
+	if (domain == "host" || domain == "plugin") && strings.Trim(capability, "*") == "" {
+		return fmt.Errorf("%q is a global super-grant; use specific %s:<capability> instead", perm, domain)
+	}
+	return nil
 }
 
 func PermissionSetEqual(a, b []string) bool {

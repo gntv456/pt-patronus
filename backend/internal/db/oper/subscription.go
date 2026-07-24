@@ -60,6 +60,26 @@ func (o *SubscriptionOper) Update(s *models.Subscription) error {
 	return o.db.Save(s).Error
 }
 
+// UpdateEditableFields 仅写用户可编辑字段（列级 Updates），不覆盖 cron 维护的
+// last_checked_at/current_priority/episode_priority，避免与 cron CheckAll 并发丢字段。
+// 用于 SubscribeChain.Update（handler 编辑 / ResetFields）。updated_at 显式刷新
+// （map 形式 Updates 不触发 GORM 自动时间戳）。
+func (o *SubscriptionOper) UpdateEditableFields(s *models.Subscription) error {
+	return o.db.Model(&models.Subscription{}).Where("id = ?", s.ID).Updates(map[string]any{
+		"enable_rating_guard": s.EnableRatingGuard,
+		"filter_groups":       s.FilterGroups,
+		"best_version":        s.BestVersion,
+		"best_version_full":   s.BestVersionFull,
+		"promo_types":         s.PromoTypes,
+		"site_ids":            s.SiteIDs,
+		"resolution":          s.Resolution,
+		"status":              s.Status,
+		"downloader_id":       s.DownloaderID,
+		"save_path":           s.SavePath,
+		"updated_at":          time.Now(),
+	}).Error
+}
+
 // SetPosterURL 仅回填海报，避免列表补图时用 Save 覆盖订阅的并发编辑。
 func (o *SubscriptionOper) SetPosterURL(id uint, posterURL string) error {
 	return o.db.Model(&models.Subscription{}).Where("id = ?", id).Update("poster_url", posterURL).Error

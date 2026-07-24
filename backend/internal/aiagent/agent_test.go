@@ -184,3 +184,32 @@ func TestAgent_MaxIterations(t *testing.T) {
 		t.Fatal("expected max-iterations error")
 	}
 }
+
+// TestAgent_StreamErrorPreservesUsage 流发 usage 后再出错，
+// 验证 stats 仍记录已收到的部分 usage（不因 sawErr 强制归零）。
+func TestAgent_StreamErrorPreservesUsage(t *testing.T) {
+	plans := [][]llm.Event{
+		{
+			llm.Event{Type: llm.EventUsage, Usage: &llm.Usage{InputTokens: 1234, OutputTokens: 56}},
+			llm.Event{Type: llm.EventError, Error: "upstream 500"},
+		},
+	}
+	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
+	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
+	a := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, testTools(), &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+
+	for range a.Run(context.Background(), 1, "go") {
+	}
+
+	snap := a.Stats()
+	if len(snap.Recent) != 1 {
+		t.Fatalf("stats recent len=%d want 1", len(snap.Recent))
+	}
+	r := snap.Recent[0]
+	if r.Status != "error" {
+		t.Fatalf("status=%q want error", r.Status)
+	}
+	if r.InputTokens != 1234 || r.OutputTokens != 56 {
+		t.Fatalf("tokens in=%d out=%d, want 1234/56 (preserved despite stream error)", r.InputTokens, r.OutputTokens)
+	}
+}

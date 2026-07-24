@@ -85,6 +85,67 @@ func TestValidateExternalManifestCompatibility(t *testing.T) {
 	}
 }
 
+func TestValidatePermissionString(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name    string
+		perm    string
+		wantErr bool
+	}{
+		{"specific capability", "config:read", false},
+		{"domain wildcard", "downloader:*", false},
+		{"kv wildcard", "kv:*", false},
+		{"global star", "*", true},
+		{"double star", "**", true},
+		{"bare host prefix", "host:", true},
+		{"bare plugin prefix", "plugin:", true},
+		{"host super grant", "host:*", true},
+		{"plugin super grant", "plugin:*", true},
+		{"no colon", "network", true},
+		{"empty capability", "config:", true},
+		{"whitespace only", "  ", true},
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			err := validatePermissionString(c.perm)
+			if c.wantErr && err == nil {
+				t.Errorf("validatePermissionString(%q) expected error, got nil", c.perm)
+			}
+			if !c.wantErr && err != nil {
+				t.Errorf("validatePermissionString(%q) unexpected error: %v", c.perm, err)
+			}
+		})
+	}
+}
+
+// TestValidateExternalManifest_RejectsWildcardPermissions 验证 manifest 权限白名单：
+// 含裸通配（*/host:*/plugin:*）的 manifest 被 validateExternalManifest 拒绝，具体能力放行。
+func TestValidateExternalManifest_RejectsWildcardPermissions(t *testing.T) {
+	t.Parallel()
+	base := Manifest{
+		ID:         "perm-demo",
+		Name:       "Perm Demo",
+		Version:    "1.0.0",
+		APIVersion: CurrentPluginAPIVersion,
+		Runtime:    RuntimeExternalHTTP,
+		Entry:      &RuntimeEntry{BaseURL: "http://127.0.0.1:19090", Health: "/health"},
+	}
+	good := base
+	good.Permissions = []string{"config:read", "downloader:*"}
+	if err := validateExternalManifest(good); err != nil {
+		t.Fatalf("specific permissions should pass, got %v", err)
+	}
+	for _, bad := range []string{"*", "host:*", "plugin:*", "host:"} {
+		m := base
+		m.Permissions = []string{"config:read", bad}
+		if err := validateExternalManifest(m); err == nil {
+			t.Errorf("manifest with permission %q should be rejected", bad)
+		}
+	}
+}
+
 func TestEffectiveManifestHostCapabilities(t *testing.T) {
 	t.Parallel()
 

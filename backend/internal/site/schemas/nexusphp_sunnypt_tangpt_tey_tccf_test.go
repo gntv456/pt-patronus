@@ -23,21 +23,9 @@ func TestNexusPHPFetchSunnyPTTangPTTeyTCCFUserInfoFromMigratedDefinitions(t *tes
 		seedingTiB   float64
 		uploads      int
 	}{
-		{
-			id:           "sunnypt",
-			uid:          "1401",
-			name:         "sunny-user",
-			level:        "Power User",
-			joinDate:     "2024-01-02",
-			uploadedTiB:  2,
-			downloadGiB:  512,
-			ratio:        4,
-			bonus:        12345.5,
-			bonusPerHour: 21.5,
-			seeding:      8,
-			seedingTiB:   2.25,
-			uploads:      3,
-		},
+		// 注：sunnypt 已于 2026 年从 NexusPHP 整体改版为 Next.js SPA（schema=tnode），不再走 HTML 解析；
+		// 其用户信息抓取由 schemas/sunnypt.go 的 def.ID=="sunnypt" 分支短路（Bearer JSON API），
+		// 故从此 NexusPHP HTML 迁移定义测试中移除。tangpt/tey/tccf 仍为 NexusPHP，保留。
 		{
 			id:           "tangpt",
 			uid:          "1402",

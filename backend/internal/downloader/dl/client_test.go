@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
@@ -58,7 +59,7 @@ func newDLClient(t *testing.T) (*Client, *dlFake) {
 		case "web.connected":
 			_, _ = w.Write([]byte(rpcResp("true")))
 		case "core.get_torrents_status":
-			torrent := `{"H1":{"hash":"H1","name":"Test","progress":50,"ratio":1.5,"time_added":1700000000,"save_path":"/d","label":"cat","state":"Downloading","total_size":2048,"upload_payload_rate":100,"download_payload_rate":200,"total_uploaded":500,"total_done":1000,"num_seeds":3,"num_peers":4,"total_seeds":10,"total_peers":20}}`
+			torrent := `{"H1":{"hash":"H1","name":"Test","progress":50,"ratio":1.5,"time_added":1700000000,"completed_time":1700000500,"save_path":"/d","label":"cat","state":"Downloading","total_size":2048,"upload_payload_rate":100,"download_payload_rate":200,"total_uploaded":500,"total_done":1000,"num_seeds":3,"num_peers":4,"total_seeds":10,"total_peers":20}}`
 			_, _ = w.Write([]byte(rpcResp(torrent)))
 		case "core.get_session_status":
 			_, _ = w.Write([]byte(rpcResp(`{"upload_rate":100,"download_rate":200,"total_upload":1,"total_download":2}`)))
@@ -101,6 +102,10 @@ func TestDLConnectionAndList(t *testing.T) {
 	}
 	if tt.Category != "cat" || tt.NumComplete != 10 {
 		t.Errorf("cat=%s complete=%d", tt.Category, tt.NumComplete)
+	}
+	// CompletedAt 由 completed_time 映射
+	if !tt.CompletedAt.Equal(time.Unix(1700000500, 0)) {
+		t.Errorf("CompletedAt: %v want 1700000500", tt.CompletedAt)
 	}
 }
 

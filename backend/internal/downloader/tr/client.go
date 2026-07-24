@@ -232,7 +232,7 @@ func (c *Client) SetCategory(ctx context.Context, hashes []string, category stri
 	return downloader.ErrNotImplemented
 }
 
-// GlobalStats 从 session-get 取全局速率。
+// GlobalStats 从 session-get 取全局速率；TotalSize 累加所有种子体积（参照 ut/dl 实现）。
 func (c *Client) GlobalStats(ctx context.Context) (*downloader.GlobalStats, error) {
 	raw, err := c.rpc(ctx, "session-get", nil)
 	if err != nil {
@@ -245,7 +245,16 @@ func (c *Client) GlobalStats(ctx context.Context) (*downloader.GlobalStats, erro
 	if err := json.Unmarshal(raw, &s); err != nil {
 		return nil, err
 	}
-	return &downloader.GlobalStats{DLRate: s.DownloadSpeed, UPRate: s.UploadSpeed}, nil
+	stats := &downloader.GlobalStats{DLRate: s.DownloadSpeed, UPRate: s.UploadSpeed}
+	// TR 无全局体积端点，复用 ListTorrents 累加 totalSize（ut/dl 同模式）
+	ts, err := c.ListTorrents(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range ts {
+		stats.TotalSize += t.Size
+	}
+	return stats, nil
 }
 
 func (c *Client) rpcMethodIds(ctx context.Context, method string, hashes []string) error {

@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
@@ -52,6 +53,7 @@ func sampleRow() []any {
 	row[17] = float64(65536)      // AVAILABILITY → 1.0
 	row[18] = float64(1)          // QUEUE ORDER
 	row[23] = float64(1700000000) // DATE_ADDED
+	row[24] = float64(1700000500) // COMPLETION_DATE
 	row[26] = "/data"             // SAVE_PATH
 	return row
 }
@@ -124,6 +126,10 @@ func TestUTConnectionAndList(t *testing.T) {
 	}
 	if tt.NumSeeds != 3 || tt.NumComplete != 20 {
 		t.Errorf("seeds: %d/%d", tt.NumSeeds, tt.NumComplete)
+	}
+	// CompletedAt 由元组索引 24（COMPLETION_DATE）映射
+	if !tt.CompletedAt.Equal(time.Unix(1700000500, 0)) {
+		t.Errorf("CompletedAt: %v want 1700000500", tt.CompletedAt)
 	}
 }
 
@@ -222,5 +228,60 @@ func TestUTBadCredentials(t *testing.T) {
 	c, _ := New(srv.URL, "u", "p")
 	if err := c.TestConnection(context.Background()); err != downloader.ErrInvalidCredentials {
 		t.Fatalf("want ErrInvalidCredentials, got %v", err)
+	}
+}
+
+// TestUTMultipartTokenRetry 验证 doPostMultipart 在 400（token 失效）后清 token、重取、重试一次。
+// 与 do 的重试行为一致（add-file 也应自愈），不再静默丢 400 给上层。
+func TestUTMultipartTokenRetry(t *testing.T) {
+	var (
+		mu         sync.Mutex
+		tokenCalls int
+		postCalls  int
+	)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/gui/token.html", func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		tokenCalls++
+		tok := "OLD"
+		if tokenCalls == 2 { // 第二次（重取）返回新 token
+			tok = "NEW"
+		}
+		mu.Unlock()
+		_, _ = w.Write([]byte(`<html><div>` + tok + `</div></html>`))
+	})
+	mux.HandleFunc("/gui/", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		if r.Method == http.MethodPost {
+			mu.Lock()
+			postCalls++
+			mu.Unlock()
+			if q.Get("token") == "OLD" { // 旧 token 失效
+				w.WriteHeader(400)
+				return
+			}
+			_, _ = w.Write([]byte(`{"build":47178}`))
+			return
+		}
+		w.WriteHeader(400)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	c, _ := New(srv.URL, "u", "p")
+	err := c.AddTorrent(context.Background(), downloader.AddOptions{
+		FileContent: []byte("dummy"),
+		FileName:    "x.torrent",
+	})
+	if err != nil {
+		t.Fatalf("AddTorrent multipart retry: %v", err)
+	}
+	mu.Lock()
+	tc, pc := tokenCalls, postCalls
+	mu.Unlock()
+	if tc != 2 {
+		t.Errorf("token.html calls: %d want 2", tc)
+	}
+	if pc != 2 {
+		t.Errorf("multipart POST calls: %d want 2", pc)
 	}
 }

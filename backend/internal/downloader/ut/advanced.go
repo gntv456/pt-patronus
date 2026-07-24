@@ -99,7 +99,8 @@ func (c *Client) SetShareLimits(ctx context.Context, hashes []string, limits dow
 		case -1:
 			props = append(props, kv{"s", "seed_ratio"}, kv{"v", "0"})
 		default:
-			props = append(props, kv{"s", "seed_ratio"}, kv{"v", strconv.Itoa(int(limits.RatioLimit * 10))})
+			// uT 存 ratio×10 的整数倍，四舍五入避免小数截断偏低（2.05→21 而非 20）
+			props = append(props, kv{"s", "seed_ratio"}, kv{"v", strconv.Itoa(int(limits.RatioLimit*10 + 0.5))})
 		}
 		// seed_time（分钟）：>=0=具体；-2=无限→-1；-1=全局→0
 		switch limits.SeedingTimeLimit {

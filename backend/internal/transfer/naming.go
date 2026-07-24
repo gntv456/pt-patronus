@@ -45,10 +45,12 @@ func fallbackName(c namingCtx) string {
 }
 
 // destPathForMovie 计算电影目标：库/[type]/[category]/Title (Year)/<name>.ext + nfo/图。
-// category 非空且 cfg.CategoryFolder 时插入分类子目录。返回 (目标文件完整路径, 目标目录, 命名串)。
-func destPathForMovie(cfg Config, baseDir, category, name, ext string) (string, string) {
+// 目录名 movieFolder 仅取 Title (Year)（与剧集 showFolderName 一致）——
+// 画质/发布组只进文件名，不进目录名，确保 1080P/2160P 落同一片目录，洗版方可识别旧版。
+// name 已由 renderName 清洗过，这里直接拼接。category 非空且 cfg.CategoryFolder 时插入分类子目录。
+// 返回 (目标文件完整路径, 目标目录)。
+func destPathForMovie(cfg Config, baseDir, category, movieFolder, name, ext string) (string, string) {
 	dir := libraryDir(cfg, baseDir, "movie", category)
-	movieFolder := sanitizePath(name)
 	targetDir := filepath.Join(dir, movieFolder)
 	return filepath.Join(targetDir, name+ext), targetDir
 }
@@ -95,10 +97,19 @@ func seasonFolderName(season int) string {
 }
 
 // sanitizePath 去除路径非法字符（Windows/Linux 通用）：\ / : * ? " < > |。
+// 再以 path.Clean 校验：拒绝裸的 .. / . 段（防路径穿越，标题恰为 ".."/"." 也不越界）。
 func sanitizePath(s string) string {
 	r := strings.NewReplacer(
 		"/", " ", "\\", " ", ":", " ", "*", " ",
 		"?", " ", "\"", "'", "<", "(", ">", ")", "|", "-")
 	s = r.Replace(s)
-	return collapseSpaces(s)
+	s = collapseSpaces(s)
+	// path.Clean 后若残留裸 ".."/"." 段（理论上 Replacer 已替换分隔符，此处为防御性二次校验）。
+	cleaned := filepath.Clean(s)
+	for _, seg := range strings.Split(cleaned, string(filepath.Separator)) {
+		if seg == ".." || seg == "." {
+			return "" // 拒绝穿越段；调用方再以 fallbackName 兜底
+		}
+	}
+	return cleaned
 }

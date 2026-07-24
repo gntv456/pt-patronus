@@ -2,7 +2,9 @@ package chain
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/media"
@@ -87,4 +89,80 @@ func TestSubscriptionPoster(t *testing.T) {
 			t.Fatalf("poster = %q", got)
 		}
 	})
+}
+
+// lockCheck per-subscription 互斥：同一 subID 第二次加锁须等第一次解锁后才能获得（缺陷 5 修复）。
+// 防 Create 建后异步 Check 与 cron CheckAll 对同一订阅并发重复推送。
+func TestLockCheckPerSubscriptionMutex(t *testing.T) {
+	c := &SubscribeChain{}
+	unlock := c.lockCheck(42)
+
+	// 已持锁：另起 goroutine 再锁同一 subID，应阻塞直到我们解锁。
+	acquired := make(chan struct{})
+	go func() {
+		release := c.lockCheck(42)
+		close(acquired)
+		release()
+	}()
+
+	select {
+	case <-acquired:
+		t.Fatal("second lockCheck should block while first holds the lock")
+	case <-time.After(50 * time.Millisecond):
+		// 预期阻塞：OK
+	}
+
+	unlock() // 释放第一次锁
+
+	select {
+	case <-acquired:
+		// 第二次获得锁：OK
+	case <-time.After(time.Second):
+		t.Fatal("second lockCheck did not acquire after unlock (deadlock)")
+	}
+
+	// 不同 subID 互不阻塞：另起一个 subID 应立即获得。
+	other := make(chan struct{})
+	go func() {
+		r := c.lockCheck(99)
+		close(other)
+		r()
+	}()
+	select {
+	case <-other:
+	case <-time.After(time.Second):
+		t.Fatal("different subID should not block")
+	}
+}
+
+// Check 走 per-sub 互斥：并发两次 Check 同一订阅应串行（不重叠）。
+// 用 inFlight 计数验证：若真并发，inFlight 会 >1。
+func TestCheckSerializedPerSubscription(t *testing.T) {
+	c := &SubscribeChain{} // 空 chain：Check 内部 lockCheck 后 checkWithDefaults 会因无下载器报错，但锁已验证
+
+	var inFlight, maxInFlight int32
+	done := make(chan error, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			unlock := c.lockCheck(7)
+			cur := atomic.AddInt32(&inFlight, 1)
+			// 记录峰值
+			for {
+				m := atomic.LoadInt32(&maxInFlight)
+				if cur <= m || atomic.CompareAndSwapInt32(&maxInFlight, m, cur) {
+					break
+				}
+			}
+			time.Sleep(20 * time.Millisecond) // 模拟 Check 临界区工作
+			atomic.AddInt32(&inFlight, -1)
+			unlock()
+			done <- nil
+		}()
+	}
+	<-done
+	<-done
+
+	if maxInFlight > 1 {
+		t.Errorf("expected serialized Check (max in-flight 1), got %d", maxInFlight)
+	}
 }

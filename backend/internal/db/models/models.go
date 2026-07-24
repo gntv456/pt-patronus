@@ -430,7 +430,9 @@ type Subscription struct {
 	// 洗版（best_version）：开启后持续寻找更高画质版本替换库中旧版。
 	//   电影：候选 PriOrder 须严格 > CurrentPriority 才推送，达 100 视为洗版完成；
 	//   剧集：按 SxxExx 跟踪每集当前最优 PriOrder（EpisodePriority JSON），候选至少改善一集才推送；
-	//   BestVersionFull：整季包优先模式。
+	//   BestVersionFull：整季包优先模式（仅剧集订阅生效）。开启后 checkWithDefaults 候选排序把整季包
+	//     (Season Pack) 置顶，配合洗版门控优先用整季包提升整季进度；单集作为回退（整季包未改善时才考虑）。
+	//     电影订阅与 false 时行为不变。
 	// *bool 三态：nil=未设置（Check 时回退全局订阅默认 SubscribeGlobalDefaults）；true/false=订阅自定义。
 	BestVersion     *bool      `json:"best_version"`
 	BestVersionFull bool       `gorm:"default:false" json:"best_version_full"`
@@ -786,6 +788,8 @@ type BrushFlowTask struct {
 	// 删种 P1：swarm 人数（NumComplete/NumIncomplete，0=不启用）
 	DeleteMaxSwarmSeeders  int `json:"delete_max_swarm_seeders"`   // swarm 做种数 > 此值 → 删
 	DeleteMinSwarmLeechers int `json:"delete_min_swarm_leechers"` // swarm 下载数 < 此值（且已做种）→ 删
+	// 删种 P1：最小做种时长兜底（防止刚完成做种瞬时速度/swarm 为 0 即被误删）
+	DeleteMinSeedMinutes int `gorm:"default:0" json:"delete_min_seed_minutes"` // 已完成做种满此分钟数后才允许瞬时规则（低速/swarm）生效，0=不限
 	// 并发与分类
 	MaxSeeds   int    `gorm:"default:10" json:"max_seeds"` // 该任务最大同时做种数
 	SavePath   string `gorm:"size:255" json:"save_path"`

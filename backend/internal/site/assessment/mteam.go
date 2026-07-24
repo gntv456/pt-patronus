@@ -3,8 +3,12 @@ package assessment
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"regexp"
 	"time"
+
+	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 // MTeamAdapter 馒头考核：POST /api/examine/getMyActiveList（x-api-key）。
@@ -28,8 +32,17 @@ func (MTeamAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def, 
 		"Content-Type": "application/json",
 		"Accept":       "application/json",
 	}, "", true)
-	if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, nil
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, errors.New("mteam assessment: empty response")
+	}
+	if resp.StatusCode == 401 || resp.StatusCode == 403 {
+		return nil, site.ErrNotLoggedIn
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("mteam assessment: status %d", resp.StatusCode)
 	}
 	tasks := parseMTeamExamine(resp.Body)
 	if len(tasks) == 0 {

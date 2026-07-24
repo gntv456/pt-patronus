@@ -150,11 +150,13 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 				return
 			}
 			content, reasoning, calls, uIn, uOut, sawErr := consumeStream(stream, out)
+			// 即使 sawErr 也累加本轮已收到的 EventUsage：上游限流/内容错误常在 done 前中断，
+			// usage 可能仅部分到达（如只有 input），仍计入 stats 以反映真实消耗，而非强制归零。
 			inTok += uIn
 			outTok += uOut
 			if sawErr {
 				status = "error"
-				return // 错误已在 consumeStream 转发
+				return // 错误已在 consumeStream 转发；上方累加的 usage 由 defer 记入 stats
 			}
 			// 持久化本轮 assistant（含中间 tool-calling 轮）
 			tcJSON, _ := json.Marshal(calls)
@@ -186,7 +188,12 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 					approved, reason := a.confirmDestructive(ctx, out, convID, tc, note)
 					if !approved {
 						if ctx.Err() != nil {
-							// 客户端断开/停止：不再回灌工具结果，直接结束。
+							// 客户端断开/停止：补一条 tool 结果（保持 tool_call 序列完整，
+							// 避免下轮 provider 因 assistant(tool_calls) 缺父 tool 结果而 400），
+							// 行为与非破坏路径一致；取消不计入 toolErrors。
+							full = "已取消：用户中断对话，此危险工具未执行。"
+							emit(out, llm.Event{Type: llm.EventToolResult, ToolCall: tc, Text: full})
+							_ = a.msgs.Append(&models.AgentMessage{ConversationID: convID, Role: "tool", ToolCallID: tc.ID, Name: tc.Name, Content: full})
 							status = "cancelled"
 							emit(out, llm.Event{Type: llm.EventError, Error: "对话已取消"})
 							return
@@ -227,6 +234,8 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 // consumeStream 消费 provider 事件流：转发 text/reasoning/tool_call/error 到 out，
 // 累积本轮 assistant 的 content/reasoning/tool_calls 与 token 用量。
 // usage（EventUsage）仅供统计、不下发 out；返回 sawErr 表示是否出现错误（终态）。
+// 错误处理契约：EventError 不 break 循环——继续读到 stream 关闭，以便捕获**错误之后**可能
+// 到达的 EventUsage（部分 provider 在异常关闭前补发 usage），让 stats 能反映已消耗的 token。
 func consumeStream(stream <-chan llm.Event, out chan<- llm.Event) (content, reasoning string, calls []llm.ToolCall, inTok, outTok int, sawErr bool) {
 	for ev := range stream {
 		switch ev.Type {
@@ -240,7 +249,8 @@ func consumeStream(stream <-chan llm.Event, out chan<- llm.Event) (content, reas
 			calls = append(calls, ev.ToolCall)
 			emit(out, ev)
 		case llm.EventUsage:
-			if ev.Usage != nil {
+			// 防御：仅当本次 usage 携带非零值才更新，避免异常空 usage 覆盖先前已收到的部分 usage。
+			if ev.Usage != nil && (ev.Usage.InputTokens > 0 || ev.Usage.OutputTokens > 0) {
 				inTok = ev.Usage.InputTokens
 				outTok = ev.Usage.OutputTokens
 			}
@@ -325,6 +335,18 @@ func (a *Agent) confirmDestructive(ctx context.Context, out chan<- llm.Event, co
 		}
 		return true, ""
 	case <-tctx.Done():
+		// 窄窗口竞态防御：resolve 可能恰在 tctx 到期瞬间送达 approved=true
+		// （resolve 已 delete pending 并向 buffered channel 非阻塞 send，POST /confirm 返回 true，
+		// 用户看到「已确认」），但本 select 同时命中 ch 与 tctx.Done()，Go 随机选分支可能误判超时。
+		// 故超时分支先非阻塞再读一次 ch：若有 approved=true 则视为已批准继续执行，避免「已确认未执行」。
+		select {
+		case approved := <-ch:
+			if approved {
+				return true, ""
+			}
+			return false, "用户拒绝"
+		default:
+		}
 		if ctx.Err() != nil {
 			return false, "对话已取消"
 		}

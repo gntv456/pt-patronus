@@ -79,7 +79,13 @@ func (c *Client) DeleteCategories(ctx context.Context, names []string) error {
 }
 
 // —— 做种限制（core.set_torrent options）——
+// Deluge 单种子仅支持分享比率维度（stop_at_ratio/stop_ratio/remove_at_ratio）；
+// 做种时长无原生单种子选项（仅全局 max_seeding_time）。SeedingTimeLimit>0 时返回
+// ErrNotImplemented 让上层（brushflow）感知而非静默丢弃；-1/-2/0 等<=0 值不阻断 ratio 维度。
 func (c *Client) SetShareLimits(ctx context.Context, hashes []string, limits downloader.ShareLimits) error {
+	if limits.SeedingTimeLimit > 0 {
+		return downloader.ErrNotImplemented
+	}
 	opts := map[string]any{}
 	if limits.RatioLimit >= 0 {
 		opts["stop_ratio"] = limits.RatioLimit

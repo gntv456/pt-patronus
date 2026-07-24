@@ -2,6 +2,8 @@ package tr
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -52,5 +54,48 @@ func TestTRSessionHandshakeAndList(t *testing.T) {
 	}
 	if len(ts) != 1 || ts[0].Name != "T1" || ts[0].State != "downloading" || ts[0].UPRate != 100 {
 		t.Errorf("list = %+v", ts)
+	}
+}
+
+// TestTRGlobalStats 验证 GlobalStats 同时填速率（session-get）与 TotalSize（各种子 totalSize 累加）。
+func TestTRGlobalStats(t *testing.T) {
+	const sid = "SID-xyz"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/transmission/rpc" {
+			w.WriteHeader(404)
+			return
+		}
+		if r.Header.Get("X-Transmission-Session-Id") != sid {
+			w.Header().Set("X-Transmission-Session-Id", sid)
+			w.WriteHeader(409)
+			return
+		}
+		body, _ := io.ReadAll(r.Body)
+		var req struct {
+			Method string `json:"method"`
+		}
+		_ = json.Unmarshal(body, &req)
+		switch req.Method {
+		case "session-get":
+			_, _ = w.Write([]byte(`{"result":"success","arguments":{"downloadSpeed":1000,"uploadSpeed":2000}}`))
+		default: // torrent-get
+			_, _ = w.Write([]byte(`{"result":"success","arguments":{"torrents":[
+				{"id":1,"name":"T1","hashString":"abc","totalSize":1500,"status":4,"percentDone":0.5,"uploadRatio":1.2,"rateDownload":500,"rateUpload":100,"downloadDir":"/data","labels":["seed"],"addedDate":1700000000},
+				{"id":2,"name":"T2","hashString":"def","totalSize":2500,"status":5,"percentDone":1.0,"uploadRatio":2.0,"rateDownload":0,"rateUpload":200,"downloadDir":"/data","labels":[],"addedDate":1700000001}
+			]}}`))
+		}
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "", "")
+	stats, err := c.GlobalStats(context.Background())
+	if err != nil {
+		t.Fatalf("GlobalStats: %v", err)
+	}
+	if stats.DLRate != 1000 || stats.UPRate != 2000 {
+		t.Errorf("rates: dl=%d up=%d", stats.DLRate, stats.UPRate)
+	}
+	if stats.TotalSize != 4000 { // 1500 + 2500
+		t.Errorf("TotalSize: %d want 4000", stats.TotalSize)
 	}
 }

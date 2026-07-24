@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -32,6 +33,9 @@ type TransferChain struct {
 	cfg     *oper.SystemConfigOper
 	mediaMS *MediaServerChain // 整理后触发媒体库刷新（nil 跳过）
 	notice  *notice.Service
+
+	// per-hash 互斥锁：防止 DoneHook / Sweep / Manual 同时整理同一 hash 造成硬链覆盖/历史重写。
+	hashMu sync.Map // map[string]*sync.Mutex
 }
 
 // NewTransferChain 构造。mediaCh 作为 transfer.Recognizer（结构化满足）；fetch 取图片字节。
@@ -152,6 +156,12 @@ func (c *TransferChain) resolveAndProcessResult(ctx context.Context, dlID uint, 
 
 // processTorrent 核心：过滤→去重→整理→记录。
 func (c *TransferChain) processTorrent(ctx context.Context, dlID uint, t *downloader.Torrent, dl downloader.Downloader, manual bool) *transfer.Result {
+	// per-hash 互斥：串行化同一 hash 的并发整理（DoneHook+Sweep+Manual 重叠时）。
+	if t.Hash != "" {
+		mu := c.hashLock(t.Hash)
+		mu.Lock()
+		defer mu.Unlock()
+	}
 	// 未下完的种子不整理：文件不全无法识别/硬链，会一路走到 link failed（远程下载器路径不可达 / stalledDL 未完成）。
 	// 记 skipped 历史让用户可见；record() 见 Skipped 不再重复写，洗版跳过逻辑不受影响。
 	if t.State != "completed" && t.CompletedAt.IsZero() {
@@ -472,4 +482,10 @@ func (c *TransferChain) CategoriesConfig() transfer.CategoryConfig {
 // SetCategoriesConfig 写自动分类规则（即时生效，引擎每次 Process 现取）。
 func (c *TransferChain) SetCategoriesConfig(cfg transfer.CategoryConfig) error {
 	return transfer.SaveCategories(c.cfg, cfg)
+}
+
+// hashLock 返回 per-key 的互斥锁；同 key 总返回同一把 *sync.Mutex，使并发整理同一 hash 时串行。
+func (c *TransferChain) hashLock(key string) *sync.Mutex {
+	v, _ := c.hashMu.LoadOrStore(key, &sync.Mutex{})
+	return v.(*sync.Mutex)
 }

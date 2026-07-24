@@ -11,7 +11,9 @@ import (
 )
 
 // maxToolResult 工具结果送入上下文的最大字符数（rune 计），超出截断。
-const maxToolResult = 2000
+// 对齐中文 token 密度：中文 1 字≈1 token，1200 rune 约占 1200 token（英文场景仅 ~300 token），
+// 比旧值 2000 更紧凑，避免单条工具结果吞掉过多上下文预算（Qwen/GLM 32k 窗口下尤为关键）。
+const maxToolResult = 1200
 
 // toolExecTimeout 单工具执行超时。
 const toolExecTimeout = 30 * time.Second

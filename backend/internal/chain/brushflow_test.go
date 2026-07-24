@@ -103,20 +103,20 @@ func TestBFHasTag(t *testing.T) {
 }
 
 func TestBFShareLimits(t *testing.T) {
-	// 全未配 → -2/-2（不限制）
+	// 全未配 → -1/-1（全局默认，不覆盖下载器设置）
 	lim := bfShareLimits(&models.BrushFlowTask{})
-	if lim.RatioLimit != -2 || lim.SeedingTimeLimit != -2 {
-		t.Errorf("empty task want -2/-2, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
+	if lim.RatioLimit != -1 || lim.SeedingTimeLimit != -1 {
+		t.Errorf("empty task want -1/-1, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
 	}
 	// 仅配 ratio
 	lim = bfShareLimits(&models.BrushFlowTask{DeleteRatio: 2.5})
-	if lim.RatioLimit != 2.5 || lim.SeedingTimeLimit != -2 {
-		t.Errorf("ratio only want 2.5/-2, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
+	if lim.RatioLimit != 2.5 || lim.SeedingTimeLimit != -1 {
+		t.Errorf("ratio only want 2.5/-1, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
 	}
 	// 仅配做种时长（小时→分钟）
 	lim = bfShareLimits(&models.BrushFlowTask{DeleteSeedHours: 1.5})
-	if lim.RatioLimit != -2 || lim.SeedingTimeLimit != 90 {
-		t.Errorf("hours 1.5 want -2/90, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
+	if lim.RatioLimit != -1 || lim.SeedingTimeLimit != 90 {
+		t.Errorf("hours 1.5 want -1/90, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
 	}
 	// 两者都配
 	lim = bfShareLimits(&models.BrushFlowTask{DeleteRatio: 3, DeleteSeedHours: 2})

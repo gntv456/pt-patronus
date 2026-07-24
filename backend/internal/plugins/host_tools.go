@@ -117,11 +117,11 @@ func (r *HostToolRegistry) Dispatch(ctx context.Context, permissions []string, n
 	if t.Permission != "" && !hasPluginPermission(permissions, t.Permission) {
 		return nil, t.Permission, false, ErrPermissionDenied
 	}
-	if t.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, t.timeout())
-		defer cancel()
-	}
+	// 始终施加单次调用超时：timeout() 在 Timeout<=0 时回落 defaultHostToolTimeout(30s)，
+	// 保证每个 tool 调用（含未显式配置超时的）都有上限，避免无界挂起。
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, t.timeout())
+	defer cancel()
 	out, err := t.Handler(ctx, input)
 	return out, t.Permission, false, err
 }

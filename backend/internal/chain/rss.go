@@ -238,9 +238,17 @@ func (c *RssChain) CheckAll(ctx context.Context) {
 			continue // 未到点
 		}
 		sctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-		if _, err := c.Check(sctx, sub); err != nil {
-			slog.Warn("rss check failed", "sub", sub.Name, "err", err)
-		}
+		// per-sub recover：单个坏源 panic（解析/过滤/下载链 bug）不得拖累同 tick 其它订阅的检查。
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Warn("rss check panic recovered", "sub", sub.Name, "panic", r)
+				}
+			}()
+			if _, err := c.Check(sctx, sub); err != nil {
+				slog.Warn("rss check failed", "sub", sub.Name, "err", err)
+			}
+		}()
 		cancel()
 	}
 }

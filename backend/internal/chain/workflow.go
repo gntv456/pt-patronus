@@ -263,7 +263,38 @@ func (c *WorkflowChain) Reset(id uint) error {
 
 // Run 执行工作流。trigger ∈ manual|timer|event；eventData 为事件触发时的负载（种子进 Variables）。
 // 重入守卫：State==running 时拒绝。执行期间不持锁。
-func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventData map[string]any) (*models.WorkflowRun, error) {
+// panic 兜底：节点 Execute 等任意 panic 会跳过末尾 MarkRun/Update（非 defer）→ state 永久 running。
+// 命名返回值 run/err 便于 defer 在 recover 后写回失败终态与错误；committed/finalized 守卫精确控制兜底时机，
+// 不破坏既有 5 处 nil 守卫，仅作额外兜底。
+func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventData map[string]any) (run *models.WorkflowRun, err error) {
+	committed := false // 已置 running（SetState 完成）→ panic 兜底须写终态；Get 前的 panic 不误写。
+	finalized := false // 正常路径已写终态（MarkRun 完成）→ panic 兜底不再覆盖。
+	defer func() {
+		if !committed {
+			return
+		}
+		if r := recover(); r != nil {
+			slog.Error("workflow panic recovered, force failed", "id", id, "panic", r)
+			if !finalized {
+				// 末尾 Update/MarkRun 未完成 → 兜底写 failed 终态（run 记录可能尚未创建，如 JSON 解析前 panic）。
+				if run == nil {
+					run = &models.WorkflowRun{WorkflowID: id, Trigger: trigger, StartedAt: time.Now()}
+				}
+				run.State = "failed"
+				run.Result = fmt.Sprintf("工作流 panic: %v", r)
+				run.FinishedAt = ptrTime(time.Now())
+				run.DurationMS = time.Since(run.StartedAt).Milliseconds()
+				if e := c.runOp.Update(run); e != nil {
+					slog.Error("workflow panic run update failed", "id", id, "err", e)
+				}
+				if e := c.op.MarkRun(id, "failed", firstLine(run.Result)); e != nil {
+					slog.Error("workflow panic mark final state failed", "id", id, "err", e)
+				}
+			}
+			err = fmt.Errorf("工作流 panic: %v", r)
+		}
+	}()
+
 	// 重入守卫：检查并置 running（临界区内完成，不持有锁执行）。
 	c.mu.Lock()
 	wf, err := c.op.Get(id)
@@ -279,12 +310,13 @@ func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventD
 		// 状态写失败不阻断执行，但必须可见——否则工作流会卡在 running 无法被重新触发。
 		slog.Error("workflow mark running failed", "id", id, "err", err)
 	}
+	committed = true
 	c.mu.Unlock()
 
 	rctx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 
-	run := &models.WorkflowRun{WorkflowID: id, State: "running", Trigger: trigger, StartedAt: time.Now()}
+	run = &models.WorkflowRun{WorkflowID: id, State: "running", Trigger: trigger, StartedAt: time.Now()}
 	if err := c.runOp.Create(run); err != nil {
 		// 运行记录创建失败不阻断执行，但 run.ID 缺失会让后续 Update 落到零值。
 		slog.Error("workflow run record create failed", "id", id, "err", err)
@@ -328,6 +360,7 @@ func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventD
 		// 终态写失败会让工作流永久停在 running，下次触发会被「正在执行中」挡住——必须可见。
 		slog.Error("workflow mark final state failed", "id", id, "state", state, "err", err)
 	}
+	finalized = true // 正常路径终态已落（含失败）；此后 notice 等环节若 panic 不再覆盖
 
 	if runErr != nil && c.notice != nil {
 		nc, ncancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -420,6 +453,11 @@ func validateEventConditions(raw string) error {
 		switch condition.Operator {
 		case "eq", "ne", "contains":
 		case "regex":
+			// 轻量启发式：限制 regex 长度上限，拒绝明显异常的拼凑巨型 pattern（可能拖慢编译/匹配）。
+			// Go regexp 基于 RE2 保证匹配线性、无 ReDoS 回溯爆炸，此处仅作防御性拦截。
+			if len(condition.Value) > 256 {
+				return fmt.Errorf("event condition regex 过长（>%d 字符），已拒绝", 256)
+			}
 			if _, err := regexp.Compile(condition.Value); err != nil {
 				return fmt.Errorf("invalid event condition regex: %w", err)
 			}
@@ -470,15 +508,17 @@ func (c *WorkflowChain) RegisterAllTriggers(ctx context.Context) error {
 // 重新订阅；handler 仍保留 EventType 自废校验作双保险（防任何路径漏退订）。
 func (c *WorkflowChain) registerEventHandler(wf *models.Workflow) {
 	key := fmt.Sprintf("%d:%s", wf.ID, wf.EventType)
-	c.mu.Lock()
-	if _, ok := c.eventSubscribed[key]; ok {
-		c.mu.Unlock()
-		return
-	}
-	c.mu.Unlock()
-
 	wfID := wf.ID
 	eventType := wf.EventType
+	// check-then-act 原子化：去重检查、bus.Subscribe、写 map 全程持 c.mu，消除原先「释放锁再订阅再抢锁」
+	// 的 TOCTOU 窗口（两并发调用会双双通过去重检查 → 重复订阅，泄漏一个无法退订的 handle）。
+	// bus.Subscribe 内部自带 bus.mu，锁序恒为 c.mu→bus.mu；Publish 在 copy handlers 后即释放 bus.mu 再回调，
+	// 回调内经 c.Run 取 c.mu 不构成反向嵌套，无死锁风险。
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.eventSubscribed[key]; ok {
+		return
+	}
 	handle := c.bus.Subscribe(eventType, 100, func(ctx context.Context, e event.Event) {
 		cur, err := c.op.Get(wfID)
 		if err != nil || cur == nil || !cur.Enabled || cur.TriggerType != "event" || cur.EventType != eventType {
@@ -493,9 +533,7 @@ func (c *WorkflowChain) registerEventHandler(wf *models.Workflow) {
 			slog.Warn("workflow event run failed", "id", wfID, "err", err)
 		}
 	})
-	c.mu.Lock()
 	c.eventSubscribed[key] = handle
-	c.mu.Unlock()
 }
 
 // validateGraph 解析并校验节点图。
@@ -545,6 +583,9 @@ func evaluateEventConditions(condsJSON string, data map[string]any) bool {
 				return false
 			}
 		case "regex":
+			// 安全说明：Go regexp（RE2）匹配为线性时间，不存在 PCRE 风格的灾难性回溯（ReDoS）；
+			// 且 validateEventConditions 已对 pattern 长度做上限拦截，val 来自单个事件字段通常很短，
+			// 故此处无需额外超时机制（Go regexp 也不支持 MatchString 传 context/超时）。
 			matched, err := regexp.MatchString(c.Value, val)
 			if err != nil || !matched {
 				return false

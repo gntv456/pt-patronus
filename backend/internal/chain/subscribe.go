@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,10 @@ type SubscribeChain struct {
 	mediaCh   *MediaChain    // 可空（测试/未装配时跳过评分闸门与海报补全）
 	filterEng *filter.Engine // 可空（未装配时跳过规则过滤，回退 first-match）
 	cfgOp     *oper.SystemConfigOper // 可空（测试/未装配时全局订阅默认取零值）
+	// checkMu per-subscription (subID → *sync.Mutex) Check 互斥：Create 建后异步 Check 与
+	// cron CheckAll 可能对同一订阅并发执行，虽 HitExists + 唯一索引兜底，仍存在双发竞态，
+	// 故按 subID 串行 Check。零值 sync.Map 可用，无需构造。
+	checkMu sync.Map
 }
 
 // NewSubscribeChain 构造。mediaCh 为多评分闸门用，可传 nil（评分保护置灰）；filterEng 为规则过滤用，可传 nil（回退 first-match）；
@@ -101,7 +106,8 @@ func (c *SubscribeChain) subscriptionPoster(ctx context.Context, sub *models.Sub
 func (c *SubscribeChain) Delete(id uint) error { return c.op.Delete(id) }
 
 // Update 编辑（resolution/downloader/status/save_path 等）。
-func (c *SubscribeChain) Update(s *models.Subscription) error { return c.op.Update(s) }
+// 用列级 Updates 仅写用户可编辑字段，不覆盖 cron 维护的 last_checked_at/current_priority/episode_priority。
+func (c *SubscribeChain) Update(s *models.Subscription) error { return c.op.UpdateEditableFields(s) }
 
 // Get 单条。
 func (c *SubscribeChain) Get(id uint) (*models.Subscription, error) { return c.op.Get(id) }
@@ -133,8 +139,20 @@ func (c *SubscribeChain) Create(ctx context.Context, s *models.Subscription) (*m
 }
 
 // Check 检查单个订阅：读一次全局默认后委托 checkWithDefaults。返回本轮推送条数。
+// 经 per-subscription 互斥串行：Create 建后异步 Check 与 cron CheckAll 对同一订阅并发时互斥，
+// 避免重复推送（HitExists + 唯一索引兜底之外的竞态保护）。
 func (c *SubscribeChain) Check(ctx context.Context, sub *models.Subscription) (int, error) {
+	unlock := c.lockCheck(sub.ID)
+	defer unlock()
 	return c.checkWithDefaults(ctx, sub, loadGlobalDefaults(c.cfgOp))
+}
+
+// lockCheck 取/建 per-subscription 互斥并加锁，返回解锁函数。
+func (c *SubscribeChain) lockCheck(subID uint) func() {
+	muAny, _ := c.checkMu.LoadOrStore(subID, &sync.Mutex{})
+	mu := muAny.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
 
 // checkWithDefaults 检查单个订阅（用传入全局默认计算有效设置）：跨站搜 → 分辨率过滤 → 去重 → 推送 → 通知。
@@ -234,6 +252,21 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		}
 	}
 
+	// BestVersionFull（整季包优先）：剧集订阅开启时，候选稳定排序把整季包（Season Pack）置顶，
+	// 同类内按 PriOrder 降序。配合下方洗版门控优先用整季包提升整季进度；若整季包未改善，
+	// 单集仍有机会（回退）。字段定义见 models.Subscription.BestVersionFull。仅影响剧集订阅排序顺序，
+	// 不改变去重/洗版门控语义，故 BestVersionFull=false 时行为完全不变。
+	if sub.BestVersionFull && sub.Type == "tv" && len(ranked) > 1 {
+		sort.SliceStable(ranked, func(i, j int) bool {
+			iPack := isSeasonPackTitle(ranked[i].t.Title)
+			jPack := isSeasonPackTitle(ranked[j].t.Title)
+			if iPack != jPack {
+				return iPack // 整季包排前
+			}
+			return ranked[i].pri > ranked[j].pri // 同类内 PriOrder 降序
+		})
+	}
+
 	// 推送（按 PriOrder 降序，去重 + 洗版门控 + 推送 + 通知）。
 	pushed := 0
 	epPri := loadEpisodePriority(sub.EpisodePriority) // 剧集洗版按集进度（非洗版/电影不使用）
@@ -328,9 +361,12 @@ func (c *SubscribeChain) CheckAll(ctx context.Context) {
 	}
 	gd := loadGlobalDefaults(c.cfgOp)
 	for i := range subs {
+		// per-subscription 互斥：与 Create 建后异步 Check 串行，防同订阅并发重复推送。
+		unlock := c.lockCheck(subs[i].ID)
 		sctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		n, err := c.checkWithDefaults(sctx, &subs[i], gd)
 		cancel()
+		unlock()
 		if err != nil {
 			slog.Warn("subscribe check failed", "title", subs[i].Title, "err", err)
 		} else if n > 0 {
@@ -366,27 +402,83 @@ func (c *SubscribeChain) noticeOnce(ctx context.Context, sub *models.Subscriptio
 }
 
 // matchResolution 种子标题是否含期望分辨率（大小写不敏感）。如 "2160p" 匹配含 "2160P"/"2160" 的标题。
+// 所有子串匹配走 containsTokenBoundary：w 的数字端须有词边界（前/后非 ASCII 数字），
+// 避免 "12160p" 误命中 "2160p"（前字符 1 是数字，2160p 被嵌在更长数字串中）。
 func matchResolution(title, want string) bool {
 	if want == "" {
 		return true
 	}
 	w := strings.ToUpper(strings.TrimSpace(want))
 	t := strings.ToUpper(title)
-	if strings.Contains(t, w) {
+	if containsTokenBoundary(t, w) {
 		return true
 	}
 	// 2160p ↔ 4K、1080p ↔ 1080 互认
 	num := strings.TrimRight(strings.TrimRight(w, "PI"), " ")
 	switch {
-	case strings.HasPrefix(w, "2160") && strings.Contains(t, "4K"):
+	case strings.HasPrefix(w, "2160") && containsTokenBoundary(t, "4K"):
 		return true
-	case strings.HasPrefix(w, "4K") && strings.Contains(t, "2160"):
+	case strings.HasPrefix(w, "4K") && containsTokenBoundary(t, "2160"):
 		return true
-	case num != "" && num != w && strings.Contains(t, num):
+	case num != "" && num != w && containsTokenBoundary(t, num):
 		return true
 	}
 	return false
 }
+
+// containsTokenBoundary 报告 w 在 t 中是否作为「带数字词边界」的子串出现：
+// w 首字符为数字时要求前字符非数字（或边界），末字符为数字时要求后字符非数字（或边界）。
+// w 的字母端无需边界（字母天然分隔数字）。覆盖含字母的分辨率串（"2160p"/"4k"）与纯数字（"2160"/"1080"）。
+// 仅按字节判断 ASCII 数字边界，对含多字节 CJK 字符的标题安全（多字节首字节 >0x7F，绝非 ASCII 数字）。
+func containsTokenBoundary(t, w string) bool {
+	if w == "" {
+		return false
+	}
+	firstDigit := isASCIIDigit(w[0])
+	lastDigit := isASCIIDigit(w[len(w)-1])
+	off := 0
+	for off+len(w) <= len(t) {
+		i := strings.Index(t[off:], w)
+		if i < 0 {
+			return false
+		}
+		i += off
+		beforeOK := !firstDigit || i == 0 || !isASCIIDigit(t[i-1])
+		afterOK := !lastDigit || i+len(w) == len(t) || !isASCIIDigit(t[i+len(w)])
+		if beforeOK && afterOK {
+			return true
+		}
+		off = i + 1 // 继续找下一次出现
+	}
+	return false
+}
+
+// containsNumWord 报告纯数字 num 在 t 中是否作为独立「数字词」出现（前后为非 ASCII 数字或串首/尾）。
+// containsTokenBoundary 的纯数字特化（保留供测试与显式纯数字场景）。避免标题中非分辨率上下文的
+// 数字误命中：如 "12160" 不应命中 "2160"（前字符 1 是数字）。
+func containsNumWord(t, num string) bool {
+	if num == "" {
+		return false
+	}
+	off := 0
+	for off+len(num) <= len(t) {
+		i := strings.Index(t[off:], num)
+		if i < 0 {
+			return false
+		}
+		i += off
+		beforeOK := i == 0 || !isASCIIDigit(t[i-1])
+		afterOK := i+len(num) == len(t) || !isASCIIDigit(t[i+len(num)])
+		if beforeOK && afterOK {
+			return true
+		}
+		off = i + 1 // 继续找下一次出现
+	}
+	return false
+}
+
+// isASCIIDigit 判断字节是否 ASCII 数字（0-9）。
+func isASCIIDigit(b byte) bool { return b >= '0' && b <= '9' }
 
 // torrentKey 下载链接的稳定哈希（去重键）。
 func torrentKey(url string) string {
@@ -466,6 +558,12 @@ func filterByTitleMatch(torrents []site.Torrent, sub *models.Subscription, accep
 		if (seedHasCJK && acceptHasCJK) || (!seedHasCJK && acceptHasNonCJK) {
 			continue // 接受集覆盖该语言却未命中 → 过滤（「特立独行」≠「一只特立独行的猪」）
 		}
+		// 订阅标题非 CJK（如纯英文）且种子为 CJK：接受集无 CJK 别名也无法精确确认，
+		// 不放行纯语言不匹配的噪声（对标 MP 跨语言精确，避免同年中文无关种子误入）。
+		// 反向（CJK 订阅 + 英文种子）仍放行，因站点搜索常跨语言返回结果，不误杀。
+		if !containsCJK(sub.Title) && seedHasCJK {
+			continue
+		}
 		out = append(out, t) // 接受集无该语言别名 → 放行不误杀
 	}
 	return out
@@ -521,11 +619,13 @@ func containsCJK(s string) bool {
 	return false
 }
 
-// splitTitleTokens 按分隔符把标题拆成归一化 token 集合（对标 MP match_torrent Step6 拆词兜底）。
+// splitTitleTokens 按分隔符把标题拆成归一化 token 切片（保留出现顺序、去重）。
 // 连续中文不拆（「一只特立独行的猪」仍为整体 token），故不会放过子串误命中；
 // 而「让子弹飞.简繁中字.CMCT」会拆出「让子弹飞」命中主标题。
-func splitTitleTokens(s string) map[string]struct{} {
-	set := map[string]struct{}{}
+// 返回有序切片以供 tokenHitsAccept 判断短词是否作为标题首/末 token（短词门槛）。
+func splitTitleTokens(s string) []string {
+	seen := map[string]struct{}{}
+	var out []string
 	for _, p := range strings.FieldsFunc(s, func(r rune) bool {
 		switch r {
 		case ' ', '.', '-', '_', '[', ']', '【', '】', '/', '·', '(', ')', '。', ',':
@@ -534,20 +634,68 @@ func splitTitleTokens(s string) map[string]struct{} {
 		return false
 	}) {
 		if n := normalizeTitle(p); n != "" {
-			set[n] = struct{}{}
+			if _, ok := seen[n]; !ok {
+				seen[n] = struct{}{}
+				out = append(out, n)
+			}
 		}
 	}
-	return set
+	return out
 }
 
 // tokenHitsAccept 判断接受集任一标题是否出现在种子的拆词 token 集合中。
-func tokenHitsAccept(tokens, accept map[string]struct{}) bool {
+// 短词门槛：长度<=2 的非 CJK token（如 "Up"/"It"）须作为标题首 token 且（短词是唯一 token
+// 或第二个 token 是 4 位年份）才命中。避免「Up」订阅误命中「Up.In.The.Air」
+// （首 token up 但第二 token 非年份，是另一多词作品）；正常短词作品种子惯例为「Up.2009.BluRay」→命中。
+// 长词/CJK 词仍走全量 token 集合匹配（救「让子弹飞.简繁中字.CMCT」clean 含噪声兜底）。
+func tokenHitsAccept(tokens []string, accept map[string]struct{}) bool {
+	if len(tokens) == 0 {
+		return false
+	}
+	first := tokens[0]
+	tokSet := make(map[string]struct{}, len(tokens))
+	for _, t := range tokens {
+		tokSet[t] = struct{}{}
+	}
 	for k := range accept {
-		if _, ok := tokens[k]; ok {
+		if isShortNonCJKToken(k) {
+			// 短词：仅首 token 等于且（唯一 token 或第二 token 是 4 位年份）才命中。
+			if k != first {
+				continue
+			}
+			if len(tokens) == 1 || isYearToken(tokens[1]) {
+				return true
+			}
+			continue
+		}
+		if _, ok := tokSet[k]; ok {
 			return true
 		}
 	}
 	return false
+}
+
+// isShortNonCJKToken 判断 token 是否为长度<=2 的纯非 CJK 短词（英文/数字等，如 "Up"/"It"/"Pi"）。
+// CJK 词字节长度≥3，故不会落入此分支。
+func isShortNonCJKToken(s string) bool {
+	if containsCJK(s) {
+		return false
+	}
+	return len(s) <= 2
+}
+
+// isYearToken 判断 token 是否为 4 位纯数字年份（如 "2009"/"2010"）。
+// 短词门槛用：短词后紧跟年份说明短词即作品名主体（标题惯例 "Title.Year.Quality-Group"）。
+func isYearToken(s string) bool {
+	if len(s) != 4 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if !isASCIIDigit(s[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // parsePipeList 按管道符拆分（trim + 去空）；FilterGroups 字段格式 "组A|组B"。
@@ -620,6 +768,13 @@ func episodeKeys(title string) (keys []string, seasonPack bool) {
 		return nil, true
 	}
 	return []string{se}, false
+}
+
+// isSeasonPackTitle 标题是否为整季包（S01 无集号或仅有季号），复用 episodeKeys。
+// BestVersionFull 整季包优先排序用。
+func isSeasonPackTitle(title string) bool {
+	_, pack := episodeKeys(title)
+	return pack
 }
 
 // interestedEpisode 报告候选（画质=pri）是否对该订阅的剧集进度有改善。

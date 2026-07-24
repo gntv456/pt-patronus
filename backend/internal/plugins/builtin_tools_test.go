@@ -3,9 +3,11 @@ package plugins
 import (
 	"context"
 	"encoding/base64"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/event"
 )
@@ -175,5 +177,35 @@ func TestCronHelperNextRuns(t *testing.T) {
 	}
 	if runs, ok := out["next_runs"].([]string); !ok || len(runs) != 3 {
 		t.Fatalf("unexpected cron output: %#v", out)
+	}
+}
+
+// TestPluginSSRFDialContext_BlocksPrivateIP 验证拨号时 SSRF 校验：直连 loopback 地址被拒，
+// 而非真正建连。这把校验绑定到实际连接，消除预检与连接间的 DNS 重绑定窗口（TOCTOU）。
+func TestPluginSSRFDialContext_BlocksPrivateIP(t *testing.T) {
+	t.Parallel()
+	// 起一个本地监听（127.0.0.1 = loopback，应被 SSRF 拨号拒绝，绝不产生真实连接）。
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer ln.Close()
+	connected := make(chan struct{})
+	go func() {
+		conn, _ := ln.Accept()
+		if conn != nil {
+			close(connected)
+			_ = conn.Close()
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if _, err := pluginSSRFDialContext(ctx, "tcp", ln.Addr().String()); err == nil {
+		t.Error("pluginSSRFDialContext should block loopback address")
+	}
+	select {
+	case <-connected:
+		t.Error("dial should not have connected to loopback address")
+	default:
 	}
 }

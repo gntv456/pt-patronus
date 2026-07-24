@@ -99,6 +99,8 @@ func (httpProbePlugin) ExecuteAction(ctx context.Context, rt Runtime, action str
 		return nil, errors.New("URL 缺少主机名")
 	}
 	if !asBool(cfg["allow_private_network"]) {
+		// 预检提供早期清晰错误（主机名非法/字面内网 IP）；实际连接由 pluginSSRFDialContext
+		// 在拨号时原子「解析→校验→直连」，消除预检与连接间的 DNS 重绑定窗口（TOCTOU）。
 		if err := pluginValidatePublicHost(ctx, parsed.Hostname()); err != nil {
 			return nil, err
 		}
@@ -127,6 +129,11 @@ func (httpProbePlugin) ExecuteAction(ctx context.Context, rt Runtime, action str
 		client.CheckRedirect = func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
+	}
+	// 公网模式下用拨号时校验的 transport，把 SSRF 校验绑定到实际连接（消除 DNS 重绑定）；
+	// allow_private_network 模式放行内网，沿用默认 transport。
+	if !asBool(cfg["allow_private_network"]) {
+		client.Transport = &http.Transport{DialContext: pluginSSRFDialContext}
 	}
 	req, err := http.NewRequestWithContext(ctx, method, parsed.String(), body)
 	if err != nil {
@@ -854,6 +861,49 @@ func pluginIsPrivateIP(ip net.IP) bool {
 		ip.IsLinkLocalMulticast() ||
 		ip.IsUnspecified() ||
 		ip.IsMulticast()
+}
+
+// pluginZeroDialer 复用同一零配置拨号器（无 KeepAlive 干扰，按需建连）。
+var pluginZeroDialer = &net.Dialer{}
+
+// pluginSSRFDialContext 在拨号时原子地「解析主机→逐 IP 校验公网→直连已校验 IP」，
+// 消除 pluginValidatePublicHost 预检与实际连接之间的 DNS 重绑定窗口（TOCTOU）：
+// 预检与请求各做一次 DNS 解析，攻击者可在两次解析间令记录从公网 IP 翻转至内网 IP。
+// 此处把校验下沉到拨号点，解析得到的 IP 直接用于建连，不再二次解析。
+// 每次拨号（含重定向新主机）都独立校验，首跳与后续跳一视同仁。
+// 参考 httpclient.ssrfDialContext。
+func pluginSSRFDialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	// 字面 IP：直接校验，无需解析（无重绑定窗口）。
+	if ip := net.ParseIP(host); ip != nil {
+		if pluginIsPrivateIP(ip) {
+			return nil, fmt.Errorf("已阻止内网/本机地址 %s", host)
+		}
+		return pluginZeroDialer.DialContext(ctx, network, addr)
+	}
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	var lastErr error
+	for _, a := range addrs {
+		if pluginIsPrivateIP(a.IP) {
+			lastErr = fmt.Errorf("已阻止解析到内网/本机地址 %s", a.IP.String())
+			continue
+		}
+		conn, derr := pluginZeroDialer.DialContext(ctx, network, net.JoinHostPort(a.IP.String(), port))
+		if derr == nil {
+			return conn, nil
+		}
+		lastErr = derr
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("主机 %s 没有可用的公网 IP", host)
+	}
+	return nil, lastErr
 }
 
 func pluginDecodeJSON(raw string, out any) error {

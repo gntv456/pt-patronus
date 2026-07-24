@@ -83,3 +83,24 @@ func TestUpdateEpisodePriority(t *testing.T) {
 		t.Fatalf("season pack should bump all seen eps, got %v", ep)
 	}
 }
+
+// isSeasonPackTitle 整季包识别（BestVersionFull 整季包优先排序用）。
+func TestIsSeasonPackTitle(t *testing.T) {
+	cases := []struct {
+		title string
+		pack  bool
+		why   string
+	}{
+		{"Show.Name.S01.1080p.BluRay-GROUP", true, "S01 纯季号=整季包"},
+		{"Show.Name.S01-S03.1080p", true, "仅季号=整季包"},
+		{"Show.Name.S01E02.1080p.WEB-GROUP", false, "单集非整季包"},
+		{"Some.Movie.2024.1080p.mkv", false, "电影非整季包"},
+		{"Show.Name.Complete.S01.2160p", true, "含 S01=整季包"},
+	}
+	for _, c := range cases {
+		got := isSeasonPackTitle(c.title)
+		if got != c.pack {
+			t.Errorf("isSeasonPackTitle(%q)=%v want %v (%s)", c.title, got, c.pack, c.why)
+		}
+	}
+}

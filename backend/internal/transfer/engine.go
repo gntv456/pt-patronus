@@ -165,19 +165,20 @@ func (e *Engine) organizeMovie(ctx context.Context, cfg Config, in ProcessInput,
 	meta := ParseMeta(filepath.Base(main.Path))
 	name := renderName(cfg.MovieRename, namingCtxFrom(mi, meta))
 	ext := filepath.Ext(main.Path)
-	destFile, destDir := destPathForMovie(cfg, cfg.MovieDir, category, name, ext)
+	// 电影目录名仅 Title (Year)（与剧集 showFolderName 一致）：1080P/2160P 同片归同目录，洗版可识别旧版。
+	movieFolder := showFolderName(mi.Title, mi.Year)
+	destFile, destDir := destPathForMovie(cfg, cfg.MovieDir, category, movieFolder, name, ext)
 
 	// 目标库目录已有版本时的处理：洗版升级 / 强制覆盖 / 跳过。
 	if existing := firstVideoInDir(destDir); existing != "" {
 		switch {
 		case cfg.BestVersion && qualityScore(main.Path) > qualityScore(existing):
-			// 新版画质更高 → 删旧链新（硬链模式仅去库链接，不毁做种源）。
-			rem, err := removeMediaFile(existing)
-			if err != nil {
-				res.ErrMsg = "remove old version failed: " + err.Error()
+			// 新版画质更高 → 先链新到临时名→校验成功→删旧→重命名为最终名。
+			// 保证硬链失败时旧库文件不丢，洗版可重试。
+			if err := replaceViaTemp(cfg.Mode, main.Path, destFile, existing, &res.Replaced); err != nil {
+				res.ErrMsg = "best_version replace failed: " + err.Error()
 				return
 			}
-			res.Replaced = []string{rem}
 		case cfg.OverwriteFiles && existing == destFile:
 			// 同名强制覆盖：先删再链。
 			if _, err := removeMediaFile(existing); err != nil {
@@ -220,6 +221,7 @@ func (e *Engine) organizeTV(ctx context.Context, cfg Config, in ProcessInput, mi
 	})
 
 	var eps []string
+	var missingEps []string // 单集 link 失败时累计集号，ErrMsg 反映缺集
 	showMetaWritten := false
 	for _, f := range sorted {
 		meta := ParseMeta(filepath.Base(f.Path))
@@ -254,6 +256,10 @@ func (e *Engine) organizeTV(ctx context.Context, cfg Config, in ProcessInput, mi
 		}
 		if err := e.linkOps.Apply(cfg.Mode, f.Path, destFile); err != nil {
 			slog.Warn("transfer: link episode failed", "src", f.Path, "err", err)
+			// 单集 link 失败累计到 missingEps：ErrMsg 非空 → Success=false，通知/历史反映缺集。
+			if se := meta.SeasonEpisode; se != "" {
+				missingEps = append(missingEps, se)
+			}
 			continue
 		}
 		res.Files = append(res.Files, destFile)
@@ -283,6 +289,10 @@ func (e *Engine) organizeTV(ctx context.Context, cfg Config, in ProcessInput, mi
 	if len(res.Files) == 0 {
 		res.ErrMsg = "no episode organized (all targets exist or link failed)"
 		return
+	}
+	// 单集 link 失败时让 ErrMsg 非空（Success=false），通知/历史反映缺集；已成功的集仍在 res.Files。
+	if len(missingEps) > 0 {
+		res.ErrMsg = "缺失 " + strings.Join(missingEps, ",")
 	}
 	if len(eps) > 0 {
 		res.Episodes = joinNonEmpty(eps, " ")

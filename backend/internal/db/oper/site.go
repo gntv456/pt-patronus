@@ -140,6 +140,19 @@ func (o *SiteOper) Update(id uint, in SiteInput) (*models.Site, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 按注册域去重（与 Create/CreateMany 一致）：新 BaseURL 的注册域不得与其它站点冲突（排除自身），
+	// 否则会产生同注册域重复站点，导致仪表盘聚合双计、搜索结果重复。
+	if dom := site.RegisteredDomain(in.BaseURL); dom != "" {
+		var existing []string
+		if err := o.db.Model(&models.Site{}).Where("id <> ?", id).Pluck("base_url", &existing).Error; err != nil {
+			return nil, err
+		}
+		for _, u := range existing {
+			if site.RegisteredDomain(u) == dom {
+				return nil, fmt.Errorf("%w: %s", ErrDuplicateSite, dom)
+			}
+		}
+	}
 	s.Name = in.Name
 	s.Platform = in.Platform
 	s.Definition = in.Definition

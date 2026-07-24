@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 // SunnyptAdapter sunnypt（schema=tnode 特例）：GET /api/v1/user/assessments。
@@ -37,8 +40,17 @@ func (SunnyptAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def Def
 		"Origin":        "https://sunnypt.top",
 		"Referer":       "https://sunnypt.top/",
 	}, "", true)
-	if err != nil || resp == nil || resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, nil
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil {
+		return nil, errors.New("sunnypt assessment: empty response")
+	}
+	if resp.StatusCode == 401 || resp.StatusCode == 403 {
+		return nil, site.ErrNotLoggedIn
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("sunnypt assessment: status %d", resp.StatusCode)
 	}
 	return parseSunnyptAssessments(resp.Body), nil
 }

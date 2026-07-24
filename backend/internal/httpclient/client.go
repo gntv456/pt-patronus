@@ -24,6 +24,11 @@ import (
 const defaultUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
 	"(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
+// defaultMaxBodyBytes 是 Do/PostWithCookie 读取响应体的默认上限（32MB）。
+// 防止恶意/损坏的 RSS、webhook、CF 挑战页等返回超大响应体导致 OOM——RSS 是定时任务，
+// 单条恶意源每个 cron 周期都会重复触发，无上限会拖垮整机。需要更大响应时用 Options.MaxBodyBytes 放宽。
+const defaultMaxBodyBytes int64 = 32 << 20
+
 // Options 配置一个 Client。
 type Options struct {
 	Timeout        time.Duration
@@ -37,6 +42,9 @@ type Options struct {
 	// UTLS 启用 uTLS（Chrome ClientHello）拨号，绕过按 TLS 指纹拦截非浏览器流量的 WAF/CDN
 	// （如 SafeLine 雷池对签到端点的 468 拦截）。仅对需要的站点 opt-in；默认 false 用标准 TLS。
 	UTLS bool
+	// MaxBodyBytes 读取响应体的最大字节数；0 表示用 defaultMaxBodyBytes（32MB）。
+	// 超额返回错误而非返回截断数据，防止超大响应体撑爆内存。
+	MaxBodyBytes int64
 }
 
 // Response 是请求结果。
@@ -90,12 +98,26 @@ func decodeBody(data []byte, contentType string) []byte {
 	return decoded
 }
 
+// readCapped 读取最多 max 字节的响应体；超限返回错误（不返回截断数据）。
+// LimitReader 读到 max+1 即止（不会读完整个超大响应），据此判定越限，防止 OOM。
+func readCapped(r io.Reader, max int64) ([]byte, error) {
+	b, err := io.ReadAll(io.LimitReader(r, max+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(b)) > max {
+		return nil, fmt.Errorf("response body exceeds %d bytes", max)
+	}
+	return b, nil
+}
+
 // Client 封装 *http.Client + cookie jar + 重试 + SSRF 守卫。
 type Client struct {
 	hc           *http.Client
 	ua           string
 	retries      int
 	allowPrivate bool
+	maxBody      int64
 }
 
 // New 构造一个 Client。
@@ -137,7 +159,11 @@ func New(opts Options) (*Client, error) {
 			return nil
 		}
 	}
-	return &Client{hc: hc, ua: opts.UserAgent, retries: opts.MaxRetries, allowPrivate: opts.AllowPrivate}, nil
+	maxBody := opts.MaxBodyBytes
+	if maxBody <= 0 {
+		maxBody = defaultMaxBodyBytes
+	}
+	return &Client{hc: hc, ua: opts.UserAgent, retries: opts.MaxRetries, allowPrivate: opts.AllowPrivate, maxBody: maxBody}, nil
 }
 
 // Do 发起请求。ssrf=true 时阻止内网目标（站点抓取用）；cookieStr 形如 "k=v; k2=v2"。
@@ -175,6 +201,10 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 
 		resp, err := c.hc.Do(req)
 		if err != nil {
+			// SSRF 拨号拒绝（私网/重定向到内网，ssrfDialContext 返回）是确定的拒绝，不重试。
+			if errors.Is(err, ErrBlocked) {
+				return nil, err
+			}
 			lastErr = err
 			if attempt < maxRetries {
 				c.backoff(attempt)
@@ -182,7 +212,7 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 			}
 			return nil, err
 		}
-		data, err := io.ReadAll(resp.Body)
+		data, err := readCapped(resp.Body, c.maxBody)
 		resp.Body.Close()
 		if err != nil {
 			lastErr = err
@@ -244,7 +274,7 @@ func (c *Client) PostWithCookie(ctx context.Context, rawURL, cookieStr string) (
 		return nil, err
 	}
 	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
+	data, err := readCapped(resp.Body, c.maxBody)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +440,7 @@ func ssrfDialContext(ctx context.Context, network, addr string) (net.Conn, error
 	var lastErr error
 	for _, ipa := range ips {
 		if !IsPublicIP(ipa.IP) {
-			lastErr = fmt.Errorf("ssrf: blocked private/internal address %s", ipa.IP)
+			lastErr = fmt.Errorf("%w: %s", ErrBlocked, ipa.IP)
 			continue
 		}
 		conn, err := zeroDialer.DialContext(ctx, network, net.JoinHostPort(ipa.IP.String(), port))

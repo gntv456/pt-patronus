@@ -291,9 +291,6 @@ func (g *GenericJSON) SearchSunnypt(ctx context.Context, def *site.SiteMetadata,
 		return nil, site.ErrNotLoggedIn
 	}
 	body, st := resp.Body, resp.StatusCode
-	if err != nil {
-		return nil, err
-	}
 	tail := string(body)
 	if len(tail) > 2048 {
 		tail = tail[:2048]

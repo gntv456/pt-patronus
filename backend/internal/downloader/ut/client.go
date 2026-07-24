@@ -191,40 +191,58 @@ func (c *Client) do(ctx context.Context, action string, extra ...kv) (int, []byt
 
 // doPostMultipart 执行 multipart POST（add-file）。query 同 do（token/t/action/download_dir/path），
 // body 为 multipart，字段名 torrent_file。add-file 也要带 Basic Auth。
+// 与 do 一致：401→ErrInvalidCredentials；400/403（token 失效）→重取 token 重试一次。
 func (c *Client) doPostMultipart(ctx context.Context, action string, extra []kv, fileName string, file []byte) (int, []byte, error) {
+	exec := func(tok string) (int, []byte, error) {
+		var body bytes.Buffer
+		w := multipart.NewWriter(&body)
+		fw, err := w.CreateFormFile("torrent_file", safeFileName(fileName))
+		if err != nil {
+			return 0, nil, err
+		}
+		if _, err := fw.Write(file); err != nil {
+			return 0, nil, err
+		}
+		if err := w.Close(); err != nil {
+			return 0, nil, err
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+			c.baseURL+"?"+buildQuery(tok, action, extra), &body)
+		if err != nil {
+			return 0, nil, err
+		}
+		req.Header.Set("Content-Type", w.FormDataContentType())
+		if c.username != "" {
+			req.SetBasicAuth(c.username, c.password)
+		}
+		resp, err := c.hc.Do(req)
+		if err != nil {
+			return 0, nil, fmt.Errorf("%w: %v", downloader.ErrCannotConnect, err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, b, nil
+	}
 	tok, err := c.ensureToken(ctx)
 	if err != nil {
 		return 0, nil, err
 	}
-	var body bytes.Buffer
-	w := multipart.NewWriter(&body)
-	fw, err := w.CreateFormFile("torrent_file", safeFileName(fileName))
+	status, b, err := exec(tok)
 	if err != nil {
-		return 0, nil, err
+		return status, b, err
 	}
-	if _, err := fw.Write(file); err != nil {
-		return 0, nil, err
+	if status == 401 {
+		return status, b, downloader.ErrInvalidCredentials
 	}
-	if err := w.Close(); err != nil {
-		return 0, nil, err
+	if status == 400 || status == 403 { // token 失效 → 重取重试一次（与 do 一致）
+		c.mu.Lock()
+		c.token = ""
+		c.mu.Unlock()
+		tok, err = c.ensureToken(ctx)
+		if err != nil {
+			return status, b, err
+		}
+		status, b, err = exec(tok)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		c.baseURL+"?"+buildQuery(tok, action, extra), &body)
-	if err != nil {
-		return 0, nil, err
-	}
-	req.Header.Set("Content-Type", w.FormDataContentType())
-	if c.username != "" {
-		req.SetBasicAuth(c.username, c.password)
-	}
-	resp, err := c.hc.Do(req)
-	if err != nil {
-		return 0, nil, fmt.Errorf("%w: %v", downloader.ErrCannotConnect, err)
-	}
-	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode == 401 {
-		return resp.StatusCode, b, downloader.ErrInvalidCredentials
-	}
-	return resp.StatusCode, b, nil
+	return status, b, err
 }

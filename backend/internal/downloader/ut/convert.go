@@ -66,6 +66,10 @@ func toTorrent(row []any) downloader.Torrent {
 	if t := numAt(row, 23); t > 0 {
 		added = time.Unix(t, 0)
 	}
+	var completed time.Time
+	if t := numAt(row, 24); t > 0 { // COMPLETION_DATE（0 = 未完成）
+		completed = time.Unix(t, 0)
+	}
 	return downloader.Torrent{
 		Hash:       strAt(row, 0),
 		Name:       strAt(row, 2),
@@ -80,6 +84,7 @@ func toTorrent(row []any) downloader.Torrent {
 		SavePath:   strAt(row, 26),
 		Category:   strAt(row, 11), // LABEL
 		AddedAt:    added,
+		CompletedAt: completed,
 
 		// —— 详情字段（list=1 零额外请求）——
 		NumSeeds:      int(numAt(row, 15)),             // SEEDS CONNECTED

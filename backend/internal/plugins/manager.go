@@ -448,6 +448,16 @@ func (m *Manager) Start(ctx context.Context) {
 // Stop shuts down plugin background services.
 func (m *Manager) Stop() {
 	m.stopDevWatcher()
+	// 停止运行中的外部插件子进程与 host 回调服务（内置插件未实现 Stop，stopPlugin 为 no-op）。
+	m.mu.RLock()
+	plugins := make([]Plugin, 0, len(m.plugins))
+	for _, p := range m.plugins {
+		plugins = append(plugins, p)
+	}
+	m.mu.RUnlock()
+	for _, p := range plugins {
+		stopPlugin(p)
+	}
 	m.schedMu.Lock()
 	sched := m.sched
 	m.sched = nil

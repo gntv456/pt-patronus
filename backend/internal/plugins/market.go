@@ -383,6 +383,12 @@ func (m *Manager) installMarketItem(ctx context.Context, source string, idx *Mar
 	if manifest.Runtime != RuntimeExternalHTTP {
 		return nil, fmt.Errorf("manifest runtime %s is not supported", manifest.Runtime)
 	}
+	// 权限对齐：归档内 manifest 的权限必须与市场索引声明的（用户已确认接受的）完全一致。
+	// 签名只覆盖归档字节、不覆盖市场索引元数据；若不校验，受信仓库被劫持改 market index
+	// （不动归档→签名仍有效）即可让用户接受的低权集合（如 log:write）静默升级为 host:* 全权。
+	if !PermissionSetEqual(manifest.Permissions, item.Permissions) {
+		return nil, fmt.Errorf("manifest permissions mismatch: market declared %v but archive has %v (possible permission escalation)", item.Permissions, manifest.Permissions)
+	}
 	srcDir := filepath.Dir(manifestPath)
 	dst := filepath.Join(root, manifest.ID)
 	if !isSubpath(root, dst) {

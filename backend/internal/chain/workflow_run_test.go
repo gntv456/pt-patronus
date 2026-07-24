@@ -46,6 +46,21 @@ type strErr string
 
 func (e strErr) Error() string { return string(e) }
 
+// panicN 测试节点：Execute 直接 panic，模拟节点实现 bug（如 nil 指针解引用）。
+// 用于验证 WorkflowChain.Run 的 defer recover 兜底：panic 后 wf.State 必须置 failed 而非永久卡 running。
+type panicN struct{ typ string }
+
+func (n panicN) Type() string                     { return n.typ }
+func (panicN) Name() string                       { return "panic" }
+func (panicN) Category() string                   { return "测试" }
+func (panicN) Description() string                { return "test panic" }
+func (panicN) Icon() string                       { return "test" }
+func (panicN) DefaultParams() map[string]any      { return nil }
+func (panicN) ParamSchema() []workflow.ParamField { return nil }
+func (panicN) Execute(_ context.Context, _ map[string]any, _ *workflow.Context) error {
+	panic("node boom")
+}
+
 // newChainTB 构造一个接真实 sqlite 的 WorkflowChain，registry 预注册给定节点。
 // scheduler/bus 可传 nil；传 nil 时 timer/event 触发器相关测试不可用。
 func newChainTB(t *testing.T, sched cronScheduler, bus *event.Bus, nodes ...workflow.Node) (
@@ -152,6 +167,44 @@ func TestChainRunFailedSetsStateAndResult(t *testing.T) {
 	got, _ := op.Get(wf.ID)
 	if got.State != "failed" {
 		t.Fatalf("wf.State=%s want failed", got.State)
+	}
+}
+
+// TestChainRunPanicSetsFailedState 回归：节点 Execute panic 曾让 wf.State 永久卡在 running
+// （panic 跳过末尾 MarkRun/Update，二者非 defer）。修复后 defer recover 兜底写 failed 终态，
+// 且 Run 把 panic 转为错误返回（不逃逸出函数），run 记录同样置 failed。
+func TestChainRunPanicSetsFailedState(t *testing.T) {
+	c, op, _ := newChainTB(t, nil, nil, panicN{typ: "t_panic"})
+	nodes := mustJSON(t, []workflow.GraphNode{{ID: "n1", Type: "t_panic", Name: "panic节点"}})
+	wf := &models.Workflow{Name: "panic流", TriggerType: "manual", State: "idle", Nodes: nodes, Edges: "[]"}
+	if _, err := c.Create(wf); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	run, err := c.Run(context.Background(), wf.ID, "manual", nil)
+	if err == nil {
+		t.Fatal("panic 节点应被 recover 并返回错误，不应逃逸")
+	}
+	if run == nil {
+		t.Fatal("panic 后 run 记录不应为 nil")
+	}
+	if run.State != "failed" {
+		t.Fatalf("run.State=%s want failed", run.State)
+	}
+	if !strings.Contains(run.Result, "node boom") {
+		t.Fatalf("run.Result 应含 panic 信息，got %q", run.Result)
+	}
+	got, _ := op.Get(wf.ID)
+	if got.State == "running" {
+		t.Fatal("panic 让工作流卡 running（回归缺陷），应为 failed")
+	}
+	if got.State != "failed" {
+		t.Fatalf("panic 后 wf.State=%s want failed", got.State)
+	}
+	// 重入守卫不再被卡：panic 后状态已 failed，可再次触发（应再次 panic→failed，而非「执行中」拒绝）。
+	_, err = c.Run(context.Background(), wf.ID, "manual", nil)
+	if err == nil || strings.Contains(err.Error(), "执行中") {
+		t.Fatalf("panic 后应允许重跑而非被重入守卫挡住，got err=%v", err)
 	}
 }
 

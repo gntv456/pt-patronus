@@ -131,6 +131,27 @@ func TestHostToolRegistry_Dispatch_PerToolTimeout(t *testing.T) {
 	}
 }
 
+// TestHostToolRegistry_Dispatch_DefaultTimeoutApplied：Timeout 未设置（=0）的 tool 也获得
+// 单次调用超时。修复 if t.Timeout>0 死代码——原先无 Timeout 的 tool 完全无调用上限。
+// 用 ctx.Deadline() 存在性验证，无需等待 30s。
+func TestHostToolRegistry_Dispatch_DefaultTimeoutApplied(t *testing.T) {
+	t.Parallel()
+	reg := NewHostToolRegistry()
+	reg.Register(HostTool{Name: "no-timeout"}, func(ctx context.Context, _ map[string]any) (any, error) {
+		if _, ok := ctx.Deadline(); !ok {
+			return nil, errors.New("ctx has no deadline")
+		}
+		return map[string]any{"has_deadline": true}, nil
+	})
+	out, _, _, err := reg.Dispatch(context.Background(), nil, "no-timeout", nil)
+	if err != nil {
+		t.Fatalf("Dispatch err: %v", err)
+	}
+	if m, _ := out.(map[string]any); m["has_deadline"] != true {
+		t.Errorf("expected deadline applied for Timeout=0 tool, got %v", out)
+	}
+}
+
 // TestDispatch_RawMessage_NoDoubleEscape：handler 返回 json.RawMessage 时，json.Marshal 透传
 // 预序列化 JSON，不双重转义。这是 adoptAgentTool 的正确性前提。
 func TestDispatch_RawMessage_NoDoubleEscape(t *testing.T) {

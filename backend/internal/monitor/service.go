@@ -19,7 +19,7 @@ type Store interface {
 	ListEnabled() ([]models.MonitorTarget, error)
 	Get(id uint) (*models.MonitorTarget, error)
 	Credentials(t *models.MonitorTarget) (Credentials, error)
-	RecordSnapshot(t *models.MonitorTarget, m Metrics, err error) error
+	RecordSnapshot(t *models.MonitorTarget, m Metrics, err error) (Metrics, error)
 	UpdateRTSPURL(id uint, url string) error
 	CreateAlert(a *models.MonitorAlert) error
 	ResolveOpenAlerts(targetID uint, metric string) error
@@ -103,13 +103,13 @@ func (s *Service) collectOne(parent context.Context, t *models.MonitorTarget) {
 
 	c, ok := s.reg.CollectorFor(t.Type, ResolveProtocol(t))
 	if !ok {
-		_ = s.store.RecordSnapshot(t, Metrics{Online: false}, ErrUnsupported)
+		_, _ = s.store.RecordSnapshot(t, Metrics{Online: false}, ErrUnsupported)
 		s.alerter.Evaluate(ctx, t, Metrics{Online: false}, ErrUnsupported)
 		return
 	}
 	creds, _ := s.store.Credentials(t)
 	m, err := c.Collect(ctx, t, creds)
-	_ = s.store.RecordSnapshot(t, m, err)
+	m, _ = s.store.RecordSnapshot(t, m, err)
 	if t.Type == "camera" && t.RTSPURL == "" {
 		if u, ok := m.Extra["rtsp_url"].(string); ok && u != "" {
 			_ = s.store.UpdateRTSPURL(t.ID, u)
@@ -133,7 +133,7 @@ func (s *Service) CollectNow(ctx context.Context, id uint) (Metrics, error) {
 	}
 	creds, _ := s.store.Credentials(t)
 	m, err := c.Collect(ctx, t, creds)
-	_ = s.store.RecordSnapshot(t, m, err)
+	m, _ = s.store.RecordSnapshot(t, m, err)
 	s.alerter.Evaluate(ctx, t, m, err)
 	return m, err
 }
@@ -165,7 +165,8 @@ func (s *Service) IngestAgentReport(ctx context.Context, targetID uint, m Metric
 	if ResolveProtocol(t) != "agent" {
 		return errors.New("target is not an agent target")
 	}
-	if err := s.store.RecordSnapshot(t, m, nil); err != nil {
+	m, err = s.store.RecordSnapshot(t, m, nil)
+	if err != nil {
 		return err
 	}
 	s.alerter.Evaluate(ctx, t, m, nil)

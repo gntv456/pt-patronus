@@ -19,7 +19,6 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 	gnet "github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/shirou/gopsutil/v4/sensors"
 )
 
 // Metrics 一次本机采集的指标快照。字段与 json tag 与（未来的）monitor.Metrics 别名完全一致。
@@ -114,14 +113,8 @@ func CollectSystemMetrics(extraPaths ...string) Metrics {
 	if ps, err := process.Processes(); err == nil {
 		m.ProcessCount = len(ps)
 	}
-	// 温度：Linux 读 hwmon；Windows 多为空，忽略错误。
-	if temps, err := sensors.SensorsTemperatures(); err == nil {
-		for _, t := range temps {
-			if t.Temperature > 0 {
-				m.Temps = append(m.Temps, TempMetric{Name: t.SensorKey, Temp: t.Temperature})
-			}
-		}
-	}
+	// 温度：平台相关（Linux hwmon；Windows 多源：LHM/OHM/ACPI/nvidia-smi）。
+	m.Temps = collectTemps()
 	return m
 }
 
@@ -131,14 +124,40 @@ func HostOnline() bool {
 	return err == nil
 }
 
-// pseudoFS 列出不需要统计用量的伪/虚拟文件系统类型（overlay 不在此列——容器根）。
+// pseudoFS 列出不需要统计用量的伪/虚拟文件系统类型。
+// overlay/aufs 也在此列：容器层 df/statvfs 报的是底层盘容量，计入会把同一块盘乘 N 倍。
 var pseudoFS = map[string]bool{
 	"tmpfs": true, "devtmpfs": true, "devfs": true, "proc": true, "sysfs": true,
 	"cgroup": true, "cgroup2": true, "mqueue": true, "shm": true, "autofs": true,
 	"rpc_pipefs": true, "fuse.gvfsd-fuse": true, "fdescfs": true,
+	"overlay": true, "overlay2": true, "aufs": true, "nsfs": true, "fuse.lxcfs": true,
+	"squashfs": true,
 }
 
 func isPseudoFS(fstype string) bool { return pseudoFS[fstype] }
+
+// skipContainerMount 过滤容器运行时挂载点（即使 fstype 未识别为 overlay，路径下的用量也是宿主盘镜像）。
+func skipContainerMount(mount string) bool {
+	m := strings.ToLower(mount)
+	for _, p := range []string{
+		"/var/lib/docker/",
+		"/var/lib/containerd/",
+		"/var/lib/containers/",
+		"/run/docker/",
+		"/run/containerd/",
+		"/run/containers/",
+		"/var/lib/lxc/",
+		"/snap/",
+	} {
+		if strings.HasPrefix(m, p) {
+			return true
+		}
+	}
+	if strings.Contains(m, "/docker/rootfs/") || strings.Contains(m, "/overlay2/") {
+		return true
+	}
+	return false
+}
 
 // dedupKey 返回挂载点的去重键：优先 fsid（btrfs/zfs 同一文件系统的所有子卷共享相同 fsid，
 // 而 st_dev 对每个子卷是动态 anon_dev 各不相同——故 btrfs 池必须按 fsid 去重，否则同一物理池
@@ -175,7 +194,7 @@ func collectDisks(extraPaths []string) []DiskMetric {
 	seen := map[string]bool{}
 	if parts, err := disk.Partitions(true); err == nil {
 		for _, p := range parts {
-			if isPseudoFS(p.Fstype) {
+			if isPseudoFS(p.Fstype) || skipContainerMount(p.Mountpoint) {
 				continue
 			}
 			u, err := disk.Usage(p.Mountpoint)

@@ -297,9 +297,10 @@ func (o *MonitorOper) ensureCredentialExists(id uint) error {
 }
 
 // RecordSnapshot 写快照并更新 target 状态；对比上次快照算网络速率（service 委托）。
-// 返回持久化错误（而非恒 nil）：快照落库 / target 状态更新失败时让调用方可感知并记录。
+// 返回填充了 NetRxRate/NetTxRate 的 Metrics 副本 + 持久化错误。
+// 注意：必须把算好的速率回传调用方——CollectNow 若只 return 原始 m，详情页网速会恒为 0。
 // collectErr（采集错误）已写入 last_error 字段，不影响此处返回的持久化错误。
-func (o *MonitorOper) RecordSnapshot(t *models.MonitorTarget, m monitor.Metrics, collectErr error) error {
+func (o *MonitorOper) RecordSnapshot(t *models.MonitorTarget, m monitor.Metrics, collectErr error) (monitor.Metrics, error) {
 	now := time.Now()
 	online := m.Online && collectErr == nil
 	if online {
@@ -323,7 +324,7 @@ func (o *MonitorOper) RecordSnapshot(t *models.MonitorTarget, m monitor.Metrics,
 	}).Error; err != nil && firstErr == nil {
 		firstErr = fmt.Errorf("update target status: %w", err)
 	}
-	return firstErr
+	return m, firstErr
 }
 
 // computeNetRate 对比上一条快照的累计字节算收发速率。
@@ -353,7 +354,9 @@ func (o *MonitorOper) UpdateRTSPURL(id uint, url string) error {
 	return o.db.Model(&models.MonitorTarget{}).Where("id = ?", id).Update("rtsp_url", url).Error
 }
 
-// ListSnapshots 取历史快照（升序，便于前端绘图）。
+// ListSnapshots 取最近 limit 条快照，再按时间升序返回（便于前端绘图与取最新）。
+// 绝不能 Order(asc)+Limit：那是「最旧 N 条」。卡片 limit=1 会永远显示第一笔旧数据
+//（派糖磁盘修完后详情对、卡片仍 3.9TB 即此 bug）。正确：DESC 取最近 N，再反转为 ASC。
 func (o *MonitorOper) ListSnapshots(targetID uint, since time.Time, limit int) ([]models.MetricSnapshot, error) {
 	var snaps []models.MetricSnapshot
 	q := o.db.Where("target_id = ?", targetID)
@@ -363,8 +366,14 @@ func (o *MonitorOper) ListSnapshots(targetID uint, since time.Time, limit int) (
 	if limit <= 0 || limit > 1000 {
 		limit = 500
 	}
-	err := q.Order("snap_at asc").Limit(limit).Find(&snaps).Error
-	return snaps, err
+	if err := q.Order("snap_at desc").Limit(limit).Find(&snaps).Error; err != nil {
+		return nil, err
+	}
+	// 反转为升序：索引 0 最旧、末项最新——与前端 parseMetrics(snaps[last]) / 图表序列约定一致。
+	for i, j := 0, len(snaps)-1; i < j; i, j = i+1, j-1 {
+		snaps[i], snaps[j] = snaps[j], snaps[i]
+	}
+	return snaps, nil
 }
 
 // CleanupSnapshots 删除 before 之前的快照。

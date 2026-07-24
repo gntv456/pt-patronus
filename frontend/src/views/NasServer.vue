@@ -188,11 +188,13 @@ async function loadAll() {
       commandRuns.value = runList
     }
     latestMap.value = {}
-    // 每个 target 取最新一条快照作为卡片实时指标
+    // 每个 target 取最新一条快照作为卡片实时指标。
+    // 后端 ListSnapshots 返回「最近 N 条升序」——末项才是最新；limit=1 时 [0] 也是最新。
+    // 仍取 last，避免以后 limit 调大时又踩到最旧条。
     await Promise.all(
       ts.map(async (t) => {
         const snaps = await monitorApi.metrics(t.id, undefined, 1).catch(() => [])
-        latestMap.value[t.id] = snaps.length ? parseMetrics(snaps[0]) : null
+        latestMap.value[t.id] = snaps.length ? parseMetrics(snaps[snaps.length - 1]) : null
       }),
     )
     error.value = ''

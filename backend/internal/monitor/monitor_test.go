@@ -23,10 +23,14 @@ const sshSample = `@@STAT1@@
 cpu  100 0 0 900 0
 @@STAT2@@
 cpu  110 0 0 990 0
+cpu0 50 0 0 450 0
+cpu1 60 0 0 540 0
 @@MEM@@
 MemTotal:       16384 kB
 MemFree:          256 kB
 MemAvailable:    8192 kB
+SwapTotal:        2048 kB
+SwapFree:         1024 kB
 @@LOAD@@
 0.52 0.41 0.33 1/100 1234
 @@UPT@@
@@ -40,6 +44,15 @@ Inter-|   Receive                                                |  Transmit
  face |bytes packets errs drop fifo frame compressed multicast|bytes    packets
   eth0: 123456 789 0 0 0 0 0 0 654321 210 0 0 0 0 0 0
     lo: 999 1 0 0 0 0 0 0 999 1 0 0 0 0 0 0
+@@HOST@@
+hostname=paitang
+kernel=6.8.0-51-generic
+os=Ubuntu 24.04.1 LTS
+cores=4
+@@TEMP@@
+coretemp Package_id_0 45000
+coretemp Core_0 42000
+thermal x86_pkg_temp 44000
 @@END@@
 `
 
@@ -74,6 +87,43 @@ func TestParseRemoteProc(t *testing.T) {
 	if m.NetRxBytes != 123456 || m.NetTxBytes != 654321 {
 		t.Errorf("net = rx %d tx %d", m.NetRxBytes, m.NetTxBytes)
 	}
+	// 扩展字段：核心/Swap/进程/主机/温度
+	if m.CPUCores != 4 { // HOST.cores 优先于 STAT cpuN 行数(2)
+		t.Errorf("cpu cores = %d, want 4", m.CPUCores)
+	}
+	if m.SwapTotal != 2048*1024 || m.SwapUsed != 1024*1024 {
+		t.Errorf("swap = %d/%d, want 1024k used of 2048k", m.SwapUsed, m.SwapTotal)
+	}
+	if m.ProcessCount != 100 {
+		t.Errorf("process_count = %d, want 100", m.ProcessCount)
+	}
+	if m.Hostname != "paitang" || m.Kernel != "6.8.0-51-generic" {
+		t.Errorf("host = %q kernel = %q", m.Hostname, m.Kernel)
+	}
+	if m.OS != "Ubuntu 24.04.1 LTS" {
+		t.Errorf("os = %q", m.OS)
+	}
+	if len(m.Temps) < 2 {
+		t.Fatalf("temps = %d, want >=2", len(m.Temps))
+	}
+	if m.Temps[0].Temp < 40 || m.Temps[0].Temp > 50 {
+		t.Errorf("temp0 = %+v, want ~45C", m.Temps[0])
+	}
+}
+
+func TestCountCPUCoresFromStat(t *testing.T) {
+	raw := "cpu  1 2 3\ncpu0 1\ncpu1 1\ncpu2 1\nintr 0"
+	if n := countCPUCoresFromStat(raw); n != 3 {
+		t.Errorf("cores = %d, want 3", n)
+	}
+}
+
+func TestParseTemps_SkipInvalid(t *testing.T) {
+	raw := "coretemp Core_0 45000\nbogus\nhwmon bad 999999"
+	ts := parseTemps(raw)
+	if len(ts) != 1 || ts[0].Temp != 45 {
+		t.Fatalf("temps = %+v", ts)
+	}
 }
 
 // TestParseDF_BtrfsSubvolumeDedup 验证 btrfs 同一文件系统的多个 subvolume/snapshot 在 df 里各自成行、
@@ -100,14 +150,40 @@ func TestParseDF_BtrfsSubvolumeDedup(t *testing.T) {
 	}
 }
 
-// TestParseDF_OverlayNotDeduped overlay/aufs 等非块设备层 source 名相同却确是不同挂载，不应被去重。
-func TestParseDF_OverlayNotDeduped(t *testing.T) {
+// TestParseDF_OverlaySkipped docker overlay 把底层盘容量原样报出，必须整层跳过，否则同盘乘 N 倍。
+// 回归：派糖 1 块 ~500GB 根盘 + 8 个 overlay → 卡片显示 4.4TB。
+func TestParseDF_OverlaySkipped(t *testing.T) {
 	raw := `Filesystem     1B-blocks      Used Available Use% Mounted on
-overlay        10000000000 5000000000 5000000000  50% /var/lib/docker/a
-overlay        10000000000 6000000000 4000000000  60% /var/lib/docker/b`
+/dev/sda1      539792977920 331035738112 180000000000  64% /
+/dev/sda2         989052928    117829632    800000000  13% /boot
+overlay        539792977920 331035738112 180000000000  64% /var/lib/docker/rootfs/overlayfs/aaa
+overlay        539792977920 331035738112 180000000000  64% /var/lib/docker/rootfs/overlayfs/bbb
+overlay        539792977920 331035738112 180000000000  64% /var/lib/docker/rootfs/overlayfs/ccc
+/dev/sda1      539792977920 331035738112 180000000000  64% /var/lib/docker/volumes/x/_data`
 	disks := parseDF(raw)
 	if len(disks) != 2 {
-		t.Errorf("overlay 两层应各自计入（source 非 /dev/ 不去重），got %d", len(disks))
+		t.Fatalf("disks = %d (%+v), want 2（/ + /boot；overlay 跳过；同 /dev/sda1 去重）", len(disks), disks)
+	}
+	var sum uint64
+	for _, d := range disks {
+		sum += d.Total
+	}
+	if want := uint64(539792977920 + 989052928); sum != want {
+		t.Errorf("total = %d, want %d", sum, want)
+	}
+}
+
+// TestParseDF_SameDeviceDockerBindDedup 同一 /dev 先挂 /data 再 bind 进 docker，只计一次。
+func TestParseDF_SameDeviceDockerBindDedup(t *testing.T) {
+	raw := `Filesystem     1B-blocks      Used Available Use% Mounted on
+/dev/sdb1      1000000000000 500000000000 500000000000  50% /data
+/dev/sdb1      1000000000000 500000000000 500000000000  50% /var/lib/docker/volumes/media/_data`
+	disks := parseDF(raw)
+	if len(disks) != 1 {
+		t.Fatalf("disks = %d, want 1", len(disks))
+	}
+	if disks[0].Device != "/data" {
+		t.Errorf("device = %q, want /data", disks[0].Device)
 	}
 }
 

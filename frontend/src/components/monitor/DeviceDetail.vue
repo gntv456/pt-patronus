@@ -40,6 +40,19 @@ const hottestTemp = computed(() => {
   const ts = latest.value?.temps
   return ts && ts.length ? Math.max(...ts.map((t) => t.temp)) : undefined
 })
+// 空温度提示：区分云 VPS / Windows 本机（ACPI 需管理员或 LHM）/ 其它。
+const tempEmptyHint = computed(() => {
+  if (!latest.value) return '等待采集…'
+  const p = props.target ? resolveProtocol(props.target) : ''
+  if (p === 'ssh' || p === 'agent') return '主机未暴露温度传感器'
+  if (p === 'local') {
+    const os = (latest.value.os || '').toLowerCase()
+    if (os.includes('windows')) {
+      return 'Win 需管理员或安装 LibreHardwareMonitor'
+    }
+  }
+  return '未读到温度传感器'
+})
 const serviceTypes = ['http', 'tcp', 'process', 'script']
 const isServiceMonitor = computed(() => !!props.target && serviceTypes.includes(props.target.type))
 const resolvedProtocol = computed(() => (props.target ? resolveProtocol(props.target) : ''))
@@ -77,6 +90,14 @@ const serviceOutput = computed(() => {
   const exitError = extraText('exit_error', '')
   return { stdout, stderr, exitError }
 })
+
+/** Swap：有容量显示已用/总量；0 或 omitempty 缺省且已有内存 → 未配置（云 VPS 常见）。 */
+function formatSwap(m?: Metrics | null): string {
+  if (!m) return '-'
+  if (m.swap_total) return `${fmtBytes(m.swap_used ?? 0)} / ${fmtBytes(m.swap_total)}`
+  if (m.mem_total) return '未配置'
+  return '-'
+}
 
 function fmtUptime(sec?: number): string {
   if (!sec) return '-'
@@ -161,6 +182,10 @@ function humanTempName(raw: string): string {
   if (key === 'k10temp_tctl') return 'AMD CPU 控制温度'
   if (key === 'k10temp_tccd1') return 'AMD CCD1 温度'
   if (key.startsWith('k10temp_tccd')) return `AMD CCD${key.replace('k10temp_tccd', '')} 温度`
+  const nvidia = key.match(/^nvidia_gpu_(\d+)$/)
+  if (nvidia) return nvidia[1] === '0' ? 'NVIDIA GPU' : `NVIDIA GPU ${nvidia[1]}`
+  if (key.startsWith('lhm_')) return name.slice(4).replace(/_/g, ' ') + ' (LHM)'
+  if (key.startsWith('ohm_')) return name.slice(4).replace(/_/g, ' ') + ' (OHM)'
   if (key.includes('cpu')) return name.replace(/_/g, ' ').replace(/\bcpu\b/i, 'CPU')
   return name.replace(/_/g, ' ')
 }
@@ -256,16 +281,40 @@ function donutStyle(v?: number) {
   }
 }
 
+/** 若快照未带 net_*_rate，用最近两条累计字节差补算（bytes/s）。 */
+function withNetRate(snapsList: MetricSnapshot[], m: Metrics | null): Metrics | null {
+  if (!m) return null
+  // 快照已带速率字段（含 0=空闲）则直接用；缺字段时再按累计字节补算
+  if (m.net_rx_rate !== undefined || m.net_tx_rate !== undefined) return m
+  if (snapsList.length < 2) return m
+  const a = parseMetrics(snapsList[snapsList.length - 2])
+  const b = parseMetrics(snapsList[snapsList.length - 1])
+  if (!a || !b) return m
+  const t0 = new Date(snapsList[snapsList.length - 2].snap_at).getTime()
+  const t1 = new Date(snapsList[snapsList.length - 1].snap_at).getTime()
+  const dt = (t1 - t0) / 1000
+  if (dt <= 0) return m
+  const out = { ...m }
+  if (m.net_rx_rate === undefined && b.net_rx_bytes !== undefined && a.net_rx_bytes !== undefined && b.net_rx_bytes >= a.net_rx_bytes) {
+    out.net_rx_rate = Math.round((b.net_rx_bytes - a.net_rx_bytes) / dt)
+  }
+  if (m.net_tx_rate === undefined && b.net_tx_bytes !== undefined && a.net_tx_bytes !== undefined && b.net_tx_bytes >= a.net_tx_bytes) {
+    out.net_tx_rate = Math.round((b.net_tx_bytes - a.net_tx_bytes) / dt)
+  }
+  return out
+}
+
 async function load() {
   if (!props.target) return
   loading.value = true
   try {
-    const [s, res] = await Promise.all([
-      monitorApi.metrics(props.target.id, undefined, 120),
-      monitorApi.collect(props.target.id).catch(() => null),
-    ])
+    // 先 collect 写入含网速的新快照，再拉历史——避免 Promise.all 竞态：
+    // collect 返回值若未带回 net_*_rate，详情会显示 0 B/s，而库里快照其实已有速率。
+    await monitorApi.collect(props.target.id).catch(() => null)
+    const s = await monitorApi.metrics(props.target.id, undefined, 120)
     snaps.value = s
-    latest.value = res?.metrics ?? (s.length ? parseMetrics(s[s.length - 1]) : null)
+    const raw = s.length ? parseMetrics(s[s.length - 1]) : null
+    latest.value = withNetRate(s, raw)
   } finally {
     loading.value = false
   }
@@ -447,10 +496,10 @@ watch(
             <strong>{{ pct(diskUsage) }}</strong>
             <small>{{ diskTotal ? `${fmtBytes(diskUsed)} / ${fmtBytes(diskTotal)}` : '暂无磁盘数据' }}</small>
           </section>
-          <section class="stat-card">
+          <section class="stat-card" :class="{ muted: hottestTemp === undefined }">
             <span>最高温度</span>
-            <strong>{{ temp(hottestTemp) }}</strong>
-            <small>{{ latest?.temps?.length ? `${latest.temps.length} 个传感器` : '暂无温度数据' }}</small>
+            <strong>{{ hottestTemp === undefined ? 'N/A' : temp(hottestTemp) }}</strong>
+            <small>{{ latest?.temps?.length ? `${latest.temps.length} 个传感器` : tempEmptyHint }}</small>
           </section>
         </div>
 
@@ -520,7 +569,7 @@ watch(
             <div class="info-list">
               <div class="info-row"><span>CPU 核心</span><b>{{ latest?.cpu_cores ? `${latest.cpu_cores} 核` : '-' }}</b></div>
               <div class="info-row"><span>物理内存</span><b>{{ latest?.mem_total ? fmtBytes(latest.mem_total) : '-' }}</b></div>
-              <div class="info-row"><span>Swap</span><b>{{ latest?.swap_total ? `${fmtBytes(latest.swap_used ?? 0)} / ${fmtBytes(latest.swap_total)}` : '-' }}</b></div>
+              <div class="info-row"><span>Swap</span><b>{{ formatSwap(latest) }}</b></div>
               <div class="info-row"><span>进程数</span><b>{{ latest?.process_count || '-' }}</b></div>
               <div class="info-row"><span>主机名</span><b>{{ latest?.hostname || '-' }}</b></div>
               <div class="info-row"><span>内核版本</span><b>{{ latest?.kernel_version || '-' }}</b></div>
@@ -769,6 +818,10 @@ watch(
   display: flex;
   align-items: center;
   gap: 10px;
+}
+.stat-card.muted strong {
+  color: var(--text-muted);
+  font-size: 22px;
 }
 .stat-card {
   min-height: 94px;

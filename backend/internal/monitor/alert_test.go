@@ -21,7 +21,9 @@ func newFakeStore() *fakeStore { return &fakeStore{open: map[string]*models.Moni
 func (f *fakeStore) ListEnabled() ([]models.MonitorTarget, error)                  { return nil, nil }
 func (f *fakeStore) Get(uint) (*models.MonitorTarget, error)                       { return nil, nil }
 func (f *fakeStore) Credentials(*models.MonitorTarget) (Credentials, error)        { return Credentials{}, nil }
-func (f *fakeStore) RecordSnapshot(*models.MonitorTarget, Metrics, error) error    { return nil }
+func (f *fakeStore) RecordSnapshot(_ *models.MonitorTarget, m Metrics, _ error) (Metrics, error) {
+	return m, nil
+}
 func (f *fakeStore) UpdateRTSPURL(uint, string) error                              { return nil }
 func (f *fakeStore) CreateAlert(a *models.MonitorAlert) error {
 	f.mu.Lock()

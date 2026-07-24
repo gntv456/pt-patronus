@@ -52,11 +52,15 @@ func NewSSHCollector(keyStore HostKeyStore) SSHCollector {
 
 func (SSHCollector) String() string { return "host(ssh)" }
 
-// sshScript 一次会话采集 CPU(两次 stat 差值)/内存/负载/运行时长/磁盘/网络，减少往返。
-const sshScript = `printf '@@STAT1@@\n'; head -n1 /proc/stat; sleep 1; printf '@@STAT2@@\n'; head -n1 /proc/stat; ` +
+// sshScript 一次会话采集 CPU/内存/负载/运行时长/磁盘/网络/主机信息/温度，减少往返。
+// HOST/TEMP 为扩展段：旧服务端解析会忽略未知标记，向前兼容。
+const sshScript = `printf '@@STAT1@@\n'; head -n1 /proc/stat; sleep 1; printf '@@STAT2@@\n'; cat /proc/stat; ` +
 	`printf '@@MEM@@\n'; cat /proc/meminfo; printf '@@LOAD@@\n'; cat /proc/loadavg; ` +
-	`printf '@@UPT@@\n'; cat /proc/uptime; printf '@@DISK@@\n'; df -B1 -x tmpfs -x devtmpfs -x squashfs 2>/dev/null; ` +
-	`printf '@@NET@@\n'; cat /proc/net/dev; printf '@@END@@\n'`
+	`printf '@@UPT@@\n'; cat /proc/uptime; printf '@@DISK@@\n'; df -B1 -x tmpfs -x devtmpfs -x squashfs -x overlay -x overlay2 -x aufs 2>/dev/null; ` +
+	`printf '@@NET@@\n'; cat /proc/net/dev; ` +
+	`printf '@@HOST@@\n'; printf 'hostname='; cat /proc/sys/kernel/hostname 2>/dev/null; printf '\nkernel='; uname -r 2>/dev/null; printf '\nos='; ( . /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-$(uname -s)}"); printf '\ncores='; (grep -c '^processor' /proc/cpuinfo 2>/dev/null || nproc 2>/dev/null || echo 0); ` +
+	`printf '@@TEMP@@\n'; (for d in /sys/class/hwmon/hwmon*; do [ -d "$d" ] || continue; n=$(cat "$d/name" 2>/dev/null || echo hwmon); for f in "$d"/temp*_input; do [ -r "$f" ] || continue; lbl=$(cat "${f%_input}_label" 2>/dev/null || basename "$f" | sed 's/_input$//'); v=$(cat "$f" 2>/dev/null) || continue; echo "$n $lbl $v"; done; done; for z in /sys/class/thermal/thermal_zone*; do [ -d "$z" ] || continue; t=$(cat "$z/type" 2>/dev/null || echo zone); v=$(cat "$z/temp" 2>/dev/null) || continue; echo "thermal $t $v"; done) 2>/dev/null; ` +
+	`printf '@@END@@\n'`
 
 // Probe 探活：建立会话并执行 echo。
 func (c SSHCollector) Probe(ctx context.Context, t *models.MonitorTarget, creds Credentials) (bool, error) {

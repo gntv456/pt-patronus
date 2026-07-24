@@ -37,7 +37,7 @@ func newTestDepsWith(t *testing.T, fa auth.HxptAuthenticator) *Deps {
 		t.Fatal(err)
 	}
 	if err := db.AutoMigrate(
-		&models.User{}, &models.Site{}, &models.SiteStat{},
+		&models.User{}, &models.Site{}, &models.SiteStat{}, &models.SiteConnectivity{},
 		&models.Downloader{}, &models.ActivationCode{}, &models.SystemConfig{},
 		&models.PosterCache{}, &models.CrossSeedSetting{}, &models.CrossSeedTask{},
 		&models.FileStorage{},
@@ -169,8 +169,8 @@ func TestUserJourney(t *testing.T) {
 	if token == "" {
 		t.Fatal("no token")
 	}
-	// 空站点列表也应返回结构化的联通状态数组，验证批量检查路由已受保护。
-	if code, body := do(t, srv, "POST", "/api/v1/sites/status", nil, token); code != 200 || body["statuses"] == nil {
+	// 空站点列表也应返回结构化的联通状态数组（GET 返回缓存，瞬时无网络请求）。
+	if code, body := do(t, srv, "GET", "/api/v1/sites/status", nil, token); code != 200 || body["statuses"] == nil {
 		t.Fatalf("site statuses = %d %v", code, body)
 	}
 

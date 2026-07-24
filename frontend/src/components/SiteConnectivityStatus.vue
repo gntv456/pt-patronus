@@ -21,6 +21,37 @@ function label() {
 function canOpenReason() {
   return !props.loading && !!props.status && props.status.status !== 'connected'
 }
+
+// 上次检测相对时间（鼠标悬停 title 用，让用户感知缓存新旧而非误以为是实时）；无 checked_at 返回空串。
+function lastCheckedLabel(): string {
+  const t = props.status?.checked_at
+  if (!t) return ''
+  const ms = Date.now() - new Date(t).getTime()
+  if (Number.isNaN(ms) || ms < 0) return ''
+  const min = Math.floor(ms / 60000)
+  if (min < 1) return '上次检测：刚刚'
+  if (min < 60) return `上次检测：${min} 分钟前`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `上次检测：${hr} 小时前`
+  return `上次检测：${Math.floor(hr / 24)} 天前`
+}
+
+// 站点稳定性统计（成功率 + 平均耗时，对标 MP SiteStatistic）；无累计数据返回空串。
+function statsLabel(): string {
+  const s = props.status?.success ?? 0
+  const f = props.status?.fail ?? 0
+  if (s + f === 0) return ''
+  const rate = Math.round((s / (s + f)) * 100)
+  const avg = props.status?.avg_seconds ?? 0
+  const avgStr = avg > 0 ? ` · 平均 ${avg < 1 ? Math.round(avg * 1000) + 'ms' : avg.toFixed(1) + 's'}` : ''
+  return `成功率 ${rate}%（${s}/${s + f}）${avgStr}`
+}
+
+// badge title：优先显示统计 + 上次检测；都无则用 fallback。
+function fullTitle(fallback: string): string {
+  const parts = [statsLabel(), lastCheckedLabel()].filter(Boolean)
+  return parts.length ? parts.join(' · ') : fallback
+}
 </script>
 
 <template>
@@ -29,13 +60,13 @@ function canOpenReason() {
     type="button"
     class="connectivity-status is-clickable"
     :class="`is-${status?.status}`"
-    title="点击查看状态原因"
+    :title="fullTitle('点击查看状态原因')"
     @click="emit('reason')"
   >
     <span class="connectivity-dot" aria-hidden="true" />
     <span>{{ label() }}</span>
   </button>
-  <span v-else class="connectivity-status" :class="loading || !status ? 'is-pending' : `is-${status.status}`">
+  <span v-else class="connectivity-status" :class="loading || !status ? 'is-pending' : `is-${status.status}`" :title="fullTitle('')">
     <span class="connectivity-dot" aria-hidden="true" />
     <span>{{ label() }}</span>
   </span>

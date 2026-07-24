@@ -160,14 +160,26 @@ func (h *SiteHandler) Test(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "level": level})
 }
 
-// Status 检查全部站点的联通状态，失败结果包含具体原因供仪表盘和站点页展示。
+// Status 返回全部站点的上次联通状态缓存（瞬时读、不发网络请求）。
+// 进页面 GET 此接口瞬时回显「上次检测结果」；后台逐站实时检测走 GET /sites/status/stream（SSE）。
 func (h *SiteHandler) Status(c *gin.Context) {
-	statuses, err := h.siteCh.TestConnections(c.Request.Context())
+	list, err := h.oper.ListConnectivity()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"statuses": statuses})
+	c.JSON(http.StatusOK, gin.H{"statuses": list})
+}
+
+// StatusStream SSE 流式逐站检测：每站完成推一帧 event:status，结束推 event:done。
+// 供站点运营矩阵/Dashboard「检测到一个更新一个」；每站结果顺带 upsert 进 site_connectivity 缓存。
+// 完全照搬 SearchAllStream 的 beginSSE + chain 流式回调 + done 收尾模式。
+func (h *SiteHandler) StatusStream(c *gin.Context) {
+	emit := beginSSE(c.Writer)
+	h.siteCh.TestConnectionsStream(c.Request.Context(), func(r chain.SiteConnectionResult) {
+		emit("status", r)
+	})
+	emit("done", gin.H{})
 }
 
 // Checkin 立即对单个站点签到（站点行「签到」按钮）。返回适配器签到结果；

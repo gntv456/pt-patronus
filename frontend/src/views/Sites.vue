@@ -8,13 +8,13 @@ import {
   type TestResult,
   type CheckinResult,
   type CheckinRecord,
-  type SiteConnectivityStatus,
 } from '@/api/site'
 import { dashboardApi } from '@/api/dashboard'
 import { fmtTime } from '@/utils/format'
 import { useAuthStore } from '@/stores/auth'
 import { siteDefSearchQueries, siteDefSearchText, sortSiteDefsBySearchRelevance } from '@/utils/siteDefSearch'
 import { useWs } from '@/composables/useWs'
+import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
 import SiteOperationsMatrix from '@/components/sites/SiteOperationsMatrix.vue'
 
 // 非 admin 的 VIP 用户可读可用，但删除站点是 admin 专属（后端 RequireAdmin 守卫）。
@@ -27,8 +27,8 @@ const sites = ref<Site[]>([])
 const defs = ref<SiteDef[]>([])
 const loading = ref(false)
 const testing = ref<number | null>(null)
-const connectivity = ref<Record<number, SiteConnectivityStatus>>({})
-const connectivityLoading = ref(false)
+// 站点连通状态：进页面瞬时显示上次结果 + 后台 SSE 逐站刷新（composable 封装缓存/节流/中断）。
+const { connectivity, refreshing, loadCached, refresh: refreshConnectivity } = useSiteConnectivity()
 const checkining = ref<number | null>(null)
 const checkinAllLoading = ref(false)
 const recordsDrawer = ref(false)
@@ -114,19 +114,6 @@ function onDefChange() {
   }
 }
 
-async function loadConnectivity() {
-  connectivityLoading.value = true
-  try {
-    const statuses = await siteApi.statuses()
-    connectivity.value = Object.fromEntries(statuses.map((status) => [status.site_id, status]))
-  } catch {
-    // 联通检查失败不影响合并矩阵；状态列会显示“未检测”。
-    connectivity.value = {}
-  } finally {
-    connectivityLoading.value = false
-  }
-}
-
 async function load() {
   loading.value = true
   try {
@@ -138,7 +125,8 @@ async function load() {
   } finally {
     loading.value = false
   }
-  void loadConnectivity()
+  // 进页面瞬时填充上次检测结果，随后后台 SSE 逐站刷新（带 2 分钟节流，频繁进出不反复探测）。
+  void loadCached().then(() => refreshConnectivity())
 }
 
 async function openCreate() {
@@ -394,6 +382,7 @@ onMounted(load)
       <div class="head-actions">
         <el-button @click="openRecords()">签到记录</el-button>
         <el-button :loading="checkinAllLoading" @click="checkinAll">一键签到</el-button>
+        <el-button :loading="refreshing" title="强制重新逐站检测连通状态" @click="refreshConnectivity(true)">刷新状态</el-button>
         <el-button
           :loading="staleVisitLoading"
           :disabled="!inactiveSiteCount || staleVisitLoading"
@@ -412,7 +401,7 @@ onMounted(load)
       ref="operationsMatrixRef"
       :sites="sites"
       :connectivity="connectivity"
-      :connectivity-loading="connectivityLoading"
+      :connectivity-loading="false"
       :cookie-alerts="cookieAlerts"
       :loading-sites="loading"
       :testing-site-id="testing"

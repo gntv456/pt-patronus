@@ -8,6 +8,7 @@ import { mediaApi, type MediaInfo } from '@/api/media'
 import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import { copyText } from '@/utils/clipboard'
+import { formatTorrentSize } from '@/utils/torrentMeta'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import DOMPurify from 'dompurify'
@@ -120,12 +121,41 @@ function openDetail(url: string) {
   window.open(url, '_blank', 'noopener')
 }
 
-// —— 推送下载器（对齐移动端 search_page._download 闭环）——
+// —— 确认下载（对齐推荐页 / MoviePilot：信息完善 + 保存目录 + 视口居中）——
 const pushVisible = ref(false)
 const pushRow = ref<SearchRow | null>(null)
 const downloaders = ref<Downloader[]>([])
 const selectedDl = ref<number | null>(null)
+const categories = ref<string[]>([])
+const selectedCategory = ref('')
+const savePath = ref('')
+const showAdvanced = ref(false)
+const paused = ref(false)
 const pushLoading = ref(false)
+const pushedDlName = ref('')
+const pushedDlId = ref<number | null>(null)
+
+const pushSubtitle = computed(() => {
+  const row = pushRow.value
+  if (!row) return ''
+  return [row.site_name, row.category].filter(Boolean).join(' · ')
+})
+
+async function loadPushCategories(dlId: number | null) {
+  categories.value = []
+  selectedCategory.value = ''
+  if (dlId == null) return
+  try {
+    const r = await downloaderApi.categories(dlId)
+    categories.value = r.categories ?? []
+  } catch {
+    categories.value = []
+  }
+}
+
+watch(selectedDl, (id) => {
+  void loadPushCategories(id)
+})
 
 async function startPush(row: SearchRow) {
   if (!row.download_url) {
@@ -136,6 +166,11 @@ async function startPush(row: SearchRow) {
   pushVisible.value = true
   pushLoading.value = true
   selectedDl.value = null
+  selectedCategory.value = ''
+  savePath.value = ''
+  showAdvanced.value = false
+  paused.value = false
+  categories.value = []
   pushedDlName.value = ''
   pushedDlId.value = null
   try {
@@ -158,10 +193,13 @@ async function confirmPush() {
   const dl = downloaders.value.find((d) => d.id === selectedDl.value)
   pushLoading.value = true
   try {
-    const r = await downloaderApi.add(selectedDl.value, pushRow.value.download_url)
+    const r = await downloaderApi.add(selectedDl.value, pushRow.value.download_url, {
+      category: selectedCategory.value || undefined,
+      save_path: savePath.value.trim() || undefined,
+      paused: paused.value || undefined,
+    })
     if (r.ok) {
       ElMessage.success(`已推送到 ${dl?.name ?? '下载器'}`)
-      // 不立即关弹窗，切换为成功态供用户选择「查看任务」或「关闭」
       pushedDlName.value = dl?.name ?? '下载器'
       pushedDlId.value = selectedDl.value
     } else {
@@ -173,10 +211,6 @@ async function confirmPush() {
     pushLoading.value = false
   }
 }
-
-// 推送成功态：显示成功提示 + 「查看任务 / 关闭」
-const pushedDlName = ref('')
-const pushedDlId = ref<number | null>(null)
 
 function gotoDownloaderTasks() {
   const id = pushedDlId.value
@@ -192,6 +226,7 @@ function closePush() {
   pushVisible.value = false
   pushedDlName.value = ''
   pushedDlId.value = null
+  showAdvanced.value = false
 }
 
 // —— 种子详情抽屉：抓取并解析单条种子详情页（简介/截图/MediaInfo/文件列表）——
@@ -457,51 +492,104 @@ onUnmounted(() => {
       />
     </template>
 
-    <!-- 推送下载器对话框 -->
-    <el-dialog v-model="pushVisible" title="推送到下载器" width="420" @close="closePush">
-      <!-- 成功态 -->
-      <div v-if="pushedDlName" class="push-success">
-        <div class="push-ok">已推送到 {{ pushedDlName }} ✓</div>
-        <div class="text-muted small">可前往下载器查看任务进度。</div>
-      </div>
-      <!-- 选择态 -->
-      <template v-else>
-      <div v-if="pushRow" class="push-target">
-        <div class="t-title">{{ pushRow.title }}</div>
-        <div class="text-muted">{{ pushRow.site_name }} · {{ pushRow.size }}</div>
-      </div>
-      <el-select
-        v-if="downloaders.length"
-        v-model="selectedDl"
-        placeholder="选择下载器"
-        style="width: 100%"
-      >
-        <el-option
-          v-for="d in downloaders"
-          :key="d.id"
-          :label="`${d.name}（${dlTypeLabel[d.type] ?? d.type}）`"
-          :value="d.id"
-        />
-      </el-select>
-      <div v-else-if="!pushLoading" class="empty text-muted">请先在「下载器」添加一个</div>
+    <!-- 确认下载（完善信息 + 视口居中） -->
+    <el-dialog
+      v-model="pushVisible"
+      width="min(520px, 94vw)"
+      append-to-body
+      align-center
+      class="search-push-dialog"
+      @closed="closePush"
+    >
+      <template #header>
+        <div class="sp-header">
+          <div class="sp-title-main">确认下载</div>
+          <div v-if="pushSubtitle" class="sp-title-sub text-muted">{{ pushSubtitle }}</div>
+        </div>
       </template>
-      <template #footer>
-        <template v-if="pushedDlName">
+
+      <div v-if="pushedDlName" class="sp-ok">
+        <p>已推送到 <b>{{ pushedDlName }}</b></p>
+        <div class="text-muted small">可前往下载器查看任务进度。</div>
+        <div class="sp-actions">
           <el-button type="primary" @click="gotoDownloaderTasks">查看任务</el-button>
           <el-button @click="closePush">关闭</el-button>
-        </template>
-        <template v-else>
-        <el-button @click="closePush">取消</el-button>
+        </div>
+      </div>
+
+      <div v-else v-loading="pushLoading" class="sp-body">
+        <div v-if="pushRow" class="sp-meta">
+          <div class="sp-t-title" :title="pushRow.title">
+            {{ pushRow.title }}
+            <span class="up">↑{{ pushRow.seeders ?? 0 }}</span>
+            <span class="down">↓{{ pushRow.leechers ?? 0 }}</span>
+          </div>
+          <div v-if="pushRow.subtitle" class="sp-t-sub text-muted" :title="pushRow.subtitle">
+            {{ pushRow.subtitle }}
+          </div>
+          <div class="sp-chips">
+            <span v-if="formatTorrentSize(pushRow.size)" class="sp-size">{{ formatTorrentSize(pushRow.size) }}</span>
+            <span v-if="pushRow.free" class="sp-free">FREE</span>
+            <span v-if="pushRow.site_name" class="sp-site text-muted">{{ pushRow.site_name }}</span>
+          </div>
+        </div>
+
+        <div class="sp-fields">
+          <div class="sp-field">
+            <label>下载器</label>
+            <el-select v-model="selectedDl" placeholder="选择下载器" style="width: 100%">
+              <el-option
+                v-for="d in downloaders"
+                :key="d.id"
+                :label="`${d.name}${d.is_default ? '（默认）' : ''} · ${dlTypeLabel[d.type] ?? d.type}`"
+                :value="d.id"
+              />
+            </el-select>
+          </div>
+          <div class="sp-field">
+            <label>保存目录</label>
+            <el-select
+              v-model="selectedCategory"
+              clearable
+              filterable
+              allow-create
+              default-first-option
+              placeholder="自动（下载器默认）"
+              style="width: 100%"
+            >
+              <el-option label="自动（下载器默认）" value="" />
+              <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
+            </el-select>
+          </div>
+        </div>
+
+        <button type="button" class="sp-adv-toggle" @click="showAdvanced = !showAdvanced">
+          {{ showAdvanced ? '▾ 收起高级选项' : '▸ 显示高级选项' }}
+        </button>
+        <div v-if="showAdvanced" class="sp-advanced">
+          <div class="sp-field">
+            <label>自定义保存路径</label>
+            <el-input v-model="savePath" placeholder="留空则用分类/下载器默认路径" clearable />
+          </div>
+          <div class="sp-field row">
+            <label>添加后暂停</label>
+            <el-switch v-model="paused" />
+          </div>
+        </div>
+
+        <div v-if="!downloaders.length && !pushLoading" class="empty text-muted">请先在「下载器」添加一个</div>
+
         <el-button
           type="primary"
+          size="large"
+          class="sp-start"
           :loading="pushLoading"
-          :disabled="!downloaders.length"
+          :disabled="!downloaders.length || selectedDl == null"
           @click="confirmPush"
         >
-          推送
+          ⬇ 开始下载
         </el-button>
-        </template>
-      </template>
+      </div>
     </el-dialog>
 
     <!-- 种子详情抽屉 -->
@@ -995,4 +1083,44 @@ onUnmounted(() => {
   font-size: 13px;
   line-height: 1.4;
 }
+
+/* 搜索页确认下载弹窗 */
+.sp-header { min-width: 0; }
+.sp-title-main { font-size: 16px; font-weight: 700; line-height: 1.3; }
+.sp-title-sub { margin-top: 2px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sp-body { display: flex; flex-direction: column; gap: 14px; }
+.sp-meta { display: flex; flex-direction: column; gap: 6px; }
+.sp-t-title { font-size: 13px; font-weight: 600; line-height: 1.45; word-break: break-word; }
+.sp-t-title .up { color: var(--pt-success, #2ecc71); margin-left: 8px; font-size: 12px; font-weight: 700; }
+.sp-t-title .down { color: #f39c12; margin-left: 6px; font-size: 12px; font-weight: 700; }
+.sp-t-sub {
+  font-size: 12px; line-height: 1.45; color: var(--text-muted);
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
+}
+.sp-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.sp-size {
+  display: inline-block; padding: 1px 8px; border-radius: 4px;
+  background: rgba(108, 92, 231, 0.14); color: var(--pt-primary, #6c5ce7); font-size: 11px; font-weight: 700;
+}
+.sp-free {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  background: rgba(46, 204, 113, 0.18); color: var(--pt-success, #2ecc71); font-size: 11px; font-weight: 700;
+}
+.sp-site { font-size: 12px; }
+.sp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 520px) { .sp-fields { grid-template-columns: 1fr; } }
+.sp-field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.sp-field.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sp-field.row label { margin: 0; }
+.sp-adv-toggle {
+  align-self: flex-start; background: transparent; border: 0;
+  color: var(--pt-primary, #6c5ce7); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0;
+}
+.sp-advanced {
+  display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border-radius: 10px;
+  background: var(--surface-muted, rgba(0,0,0,0.03));
+}
+.sp-start { width: 100%; font-weight: 700; }
+.sp-ok p { margin: 0 0 8px; }
+.sp-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 </style>

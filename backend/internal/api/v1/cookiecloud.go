@@ -24,6 +24,8 @@ type cookieCloudConfigResp struct {
 	UUID               string `json:"uuid"`
 	PasswordConfigured bool   `json:"password_configured"`
 	IntervalMin        int    `json:"interval_min"`
+	UpdateMode         string `json:"update_mode"`
+	Direction          string `json:"direction"`
 	LastSyncUnix       int64  `json:"last_sync_unix"`
 	LastError          string `json:"last_error"`
 }
@@ -37,6 +39,8 @@ func (h *CookieCloudHandler) GetConfig(c *gin.Context) {
 		UUID:               s.UUID,
 		PasswordConfigured: s.PasswordEnc != "",
 		IntervalMin:        s.IntervalMin,
+		UpdateMode:         s.UpdateMode,
+		Direction:          s.Direction,
 		LastSyncUnix:       s.LastSyncUnix,
 		LastError:          s.LastError,
 	})
@@ -49,6 +53,8 @@ type cookieCloudConfigReq struct {
 	UUID        string `json:"uuid"`
 	Password    string `json:"password"`
 	IntervalMin int    `json:"interval_min"`
+	UpdateMode  string `json:"update_mode"`
+	Direction   string `json:"direction"`
 }
 
 // SetConfig 保存配置（password 空串保留）。
@@ -64,6 +70,8 @@ func (h *CookieCloudHandler) SetConfig(c *gin.Context) {
 		UUID:        req.UUID,
 		Password:    req.Password,
 		IntervalMin: req.IntervalMin,
+		UpdateMode:  req.UpdateMode,
+		Direction:   req.Direction,
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -74,6 +82,17 @@ func (h *CookieCloudHandler) SetConfig(c *gin.Context) {
 // Sync 手动强制同步一次（忽略间隔），返回结果汇总。
 func (h *CookieCloudHandler) Sync(c *gin.Context) {
 	report, err := h.ch.Sync(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "report": report})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "report": report})
+}
+
+
+// Push 仅推送本地站点 cookie 到 CookieCloud（管理员）。
+func (h *CookieCloudHandler) Push(c *gin.Context) {
+	report, err := h.ch.Push(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "report": report})
 		return

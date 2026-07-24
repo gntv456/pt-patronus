@@ -51,7 +51,12 @@ func ccEncrypt(t *testing.T, plain, uuid, password string) string {
 func mockCCServer(t *testing.T, uuid, password, plain string) string {
 	t.Helper()
 	enc := ccEncrypt(t, plain, uuid, password)
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// GET /get/{uuid} 拉；POST /update 推（双向同步需要两者）。
+		if r.Method == http.MethodPost {
+			_, _ = w.Write([]byte(`{"action":"done"}`))
+			return
+		}
 		_, _ = w.Write([]byte(`{"encrypted":"` + enc + `"}`))
 	}))
 	t.Cleanup(srv.Close)
@@ -222,5 +227,104 @@ func TestMaybeSync_RespectsInterval(t *testing.T) {
 	got := ch.GetSettings()
 	if got.LastSyncUnix != now {
 		t.Errorf("MaybeSync should be skipped within interval; LastSyncUnix changed to %d, want %d", got.LastSyncUnix, now)
+	}
+}
+
+
+// TestDoSync_AlwaysModeUpdatesConnected update_mode=always 时，即使站点仍登录也覆盖 cookie。
+func TestDoSync_AlwaysModeUpdatesConnected(t *testing.T) {
+	uuid, password := "u-123", "pass"
+	plain := `{"cookie_data":{"demo.pt":[{"name":"sess","value":"from-cloud","domain":"demo.pt","path":"/"}]}}`
+	srvURL := mockCCServer(t, uuid, password, plain)
+
+	crypto := security.NewCrypto("seed")
+	db := newChainDB(t)
+	siteOp := oper.NewSiteOper(db, crypto)
+	demo, _ := siteOp.Create(oper.SiteInput{Name: "Demo", Platform: "nexusphp", BaseURL: "https://demo.pt", Cookie: "sess=keepold; local_only=1", IsActive: true})
+
+	reg := site.NewRegistry()
+	mm := module.New()
+	mm.Register(&fakeAdapter{schema: "nexusphp", ui: &site.UserInfo{Level: "User"}})
+	siteChain := NewSiteChain(NewBase(mm, event.New()), siteOp, reg)
+
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	ch := NewCookieCloudChain(&memStore{}, crypto, siteOp, reg, siteChain, hc)
+	s := CookieCloudSettings{Server: srvURL, UUID: uuid, UpdateMode: "always"}
+	s.PasswordEnc, _ = crypto.Encrypt(password)
+
+	report, err := ch.doSync(context.Background(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Updated != 1 {
+		t.Errorf("Updated = %d, want 1 (always mode should update connected site)", report.Updated)
+	}
+	demo2, _ := siteOp.Get(demo.ID)
+	c, _ := siteOp.Cookie(demo2)
+	if !strings.Contains(c, "sess=from-cloud") {
+		t.Errorf("cookie = %q, want sess=from-cloud", c)
+	}
+	if !strings.Contains(c, "local_only=1") {
+		t.Errorf("cookie = %q, want preserve local_only=1 via merge", c)
+	}
+}
+
+func TestCookieForSiteDedupesBySpecificHost(t *testing.T) {
+	payload := map[string][]cookiecloud.CookieEntry{
+		"demo.pt":     {{Name: "sess", Value: "root"}},
+		"www.demo.pt": {{Name: "sess", Value: "www"}, {Name: "x", Value: "1"}},
+	}
+	got := cookieForSite(payload, "https://www.demo.pt/")
+	if !strings.Contains(got, "sess=www") {
+		t.Fatalf("want more-specific host to win, got %q", got)
+	}
+	if strings.Contains(got, "sess=root") {
+		t.Fatalf("root value should be overwritten, got %q", got)
+	}
+	if !strings.Contains(got, "x=1") {
+		t.Fatalf("missing x=1 in %q", got)
+	}
+}
+
+
+// TestDoSync_PushMergesLocalCookies direction=push 时把本地 cookie 推到云端（mock 接受 POST）。
+func TestDoSync_PushMergesLocalCookies(t *testing.T) {
+	uuid, password := "u-push", "pass"
+	// 云端已有 unrelated host，推送后应保留（merge）——本测试主要断言 push 不报错且 Pushed>=1。
+	plain := `{"cookie_data":{"other.io":[{"name":"o","value":"1","domain":"other.io","path":"/"}]}}`
+	srvURL := mockCCServer(t, uuid, password, plain)
+
+	crypto := security.NewCrypto("seed")
+	db := newChainDB(t)
+	siteOp := oper.NewSiteOper(db, crypto)
+	_, _ = siteOp.Create(oper.SiteInput{Name: "Demo", Platform: "nexusphp", BaseURL: "https://demo.pt", Cookie: "sess=local1; uid=9", IsActive: true})
+
+	reg := site.NewRegistry()
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	ch := NewCookieCloudChain(&memStore{}, crypto, siteOp, reg, nil, hc)
+	s := CookieCloudSettings{Server: srvURL, UUID: uuid, Direction: "push"}
+	s.PasswordEnc, _ = crypto.Encrypt(password)
+
+	report, err := ch.doSync(context.Background(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Pushed != 1 {
+		t.Errorf("Pushed=%d, want 1", report.Pushed)
+	}
+	if report.Updated != 0 {
+		t.Errorf("push-only should not update local, Updated=%d", report.Updated)
+	}
+}
+
+func TestNormalizeCookieCloudDirection(t *testing.T) {
+	if normalizeCookieCloudDirection("") != "both" {
+		t.Fatal("empty -> both")
+	}
+	if normalizeCookieCloudDirection("PULL") != "pull" {
+		t.Fatal("PULL -> pull")
+	}
+	if normalizeCookieCloudDirection("nope") != "" {
+		t.Fatal("invalid -> empty")
 	}
 }

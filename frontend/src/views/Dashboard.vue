@@ -2,8 +2,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { dashboardApi, type DashboardOverview, type SiteStatItem, type DashboardTrendPoint } from '@/api/dashboard'
-import { siteApi, type Site, type SiteConnectivityStatus } from '@/api/site'
+import { siteApi, type Site } from '@/api/site'
 import { useWs } from '@/composables/useWs'
+import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardShareData } from '@/utils/dashboardImage'
 import DashboardTrendChart from '@/components/dashboard/DashboardTrendChart.vue'
@@ -56,8 +57,8 @@ const syncErrors = ref<{ site: string; error: string }[]>([])
 const syncLogs = ref<SyncLog[]>([])
 const exportVisible = ref(false)
 const allSites = ref<Site[]>([]) // 站点列表(含 base_url)，导出时按 id join favicon 用
-const connectivity = ref<Record<number, SiteConnectivityStatus>>({})
-const connectivityLoading = ref(false)
+// 站点连通状态：进页面瞬时显示上次结果 + 后台 SSE 逐站刷新（composable 封装缓存/节流/中断）。
+const { connectivity, refreshing, loadCached, refresh: refreshConnectivity } = useSiteConnectivity()
 
 // 区③④⑥ 组件 ref：syncStats 完成后触发刷新自动化/AI/时间线数据。
 const autoCard = ref<{ refresh: () => Promise<void> } | null>(null)
@@ -75,18 +76,13 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   void router.push({ name: 'sites', query: { matrix: filter } })
 }
 
-async function loadConnectivity() {
-  connectivityLoading.value = true
-  const [statusResult, sitesResult] = await Promise.allSettled([siteApi.statuses(), siteApi.list()])
-  if (statusResult.status === 'fulfilled') {
-    connectivity.value = Object.fromEntries(statusResult.value.map((status) => [status.site_id, status]))
-  } else {
-    connectivity.value = {}
+// 仅加载站点列表（含 base_url，导出 favicon 用）；连通状态由 useSiteConnectivity composable 管理。
+async function loadSites() {
+  try {
+    allSites.value = await siteApi.list()
+  } catch {
+    // 仅导出用，失败不阻断
   }
-  if (sitesResult.status === 'fulfilled') {
-    allSites.value = sitesResult.value
-  }
-  connectivityLoading.value = false
 }
 
 async function load() {
@@ -105,7 +101,9 @@ async function load() {
   } finally {
     loading.value = false
   }
-  void loadConnectivity()
+  // 进页面瞬时填充上次检测结果，随后后台 SSE 逐站刷新（带 2 分钟节流）。
+  void loadSites()
+  void loadCached().then(() => refreshConnectivity())
 }
 
 async function changeTrendDays(days: 7 | 30 | 90) {
@@ -314,7 +312,8 @@ async function syncStats() {
   } finally {
     syncing.value = false
     syncCurrent.value = ''
-    void loadConnectivity()
+    void loadSites()
+    void refreshConnectivity(true)
     // 站点统计刷新后，联动刷新自动化/AI/活动时间线卡片。
     autoCard.value?.refresh()
     aiCard.value?.refresh()
@@ -444,7 +443,7 @@ onMounted(load)
         <span class="health-icon health-ok"><i /></span>
         <span>
           <small>站点健康</small>
-          <strong v-if="connectivityLoading">检测中</strong>
+          <strong v-if="refreshing">刷新中…</strong>
           <strong v-else>{{ connectedCount }} / {{ configuredSiteCount }} 联通</strong>
         </span>
       </button>

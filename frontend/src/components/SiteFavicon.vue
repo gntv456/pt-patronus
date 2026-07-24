@@ -1,5 +1,8 @@
 <script setup lang="ts">
+// SiteFavicon — site logo/avatar with multi-source fallback.
+// Tries base/favicon.ico → origin icons → public resolvers → letter block.
 import { computed, ref, watch } from 'vue'
+import { faviconCandidates } from '@/utils/siteFavicon'
 
 const props = withDefaults(
   defineProps<{
@@ -10,18 +13,10 @@ const props = withDefaults(
   { baseUrl: '', size: 28 },
 )
 
-const failed = ref(false)
-const faviconUrl = computed(() => {
-  const raw = props.baseUrl.trim()
-  if (!raw) return ''
-  try {
-    const parsed = new URL(raw)
-    if (!['http:', 'https:'].includes(parsed.protocol)) return ''
-    return `${raw.replace(/\/$/, '')}/favicon.ico`
-  } catch {
-    return ''
-  }
-})
+const tryIndex = ref(0)
+const candidates = computed(() => faviconCandidates(props.baseUrl))
+const currentUrl = computed(() => candidates.value[tryIndex.value] || '')
+const showImage = computed(() => Boolean(currentUrl.value))
 const initial = computed(() => (props.name.trim()[0] || '?').toUpperCase())
 const fallbackColor = computed(() => {
   let hash = 0
@@ -30,19 +25,32 @@ const fallbackColor = computed(() => {
 })
 const boxStyle = computed(() => ({ width: `${props.size}px`, height: `${props.size}px` }))
 
-watch(faviconUrl, () => {
-  failed.value = false
-})
+watch(
+  () => props.baseUrl,
+  () => {
+    tryIndex.value = 0
+  },
+)
+
+function onImgError() {
+  // Advance to next candidate; when exhausted, currentUrl becomes '' and letter shows.
+  if (tryIndex.value < candidates.value.length) {
+    tryIndex.value += 1
+  }
+}
 </script>
 
 <template>
   <span class="site-favicon" :style="boxStyle">
     <img
-      v-if="faviconUrl && !failed"
-      :src="faviconUrl"
+      v-if="showImage"
+      :key="currentUrl"
+      :src="currentUrl"
       :alt="`${name} Logo`"
       loading="lazy"
-      @error="failed = true"
+      decoding="async"
+      referrerpolicy="no-referrer"
+      @error="onImgError"
     />
     <span v-else class="site-favicon-fallback" :style="{ backgroundColor: fallbackColor }">
       {{ initial }}

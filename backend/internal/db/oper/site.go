@@ -5,6 +5,7 @@ package oper
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -310,4 +311,39 @@ func (o *SiteOper) encryptSecrets(s *models.Site, in SiteInput) error {
 		s.PasswordEnc = enc
 	}
 	return nil
+}
+
+// UpsertConnectivity 覆盖写一站联通状态缓存（site_id 唯一：存在则更新，不存在则创建）并累加统计。
+// connected → Success++ 且（seconds>0 时）滑动平均更新 AvgSeconds；disconnected → Fail++；
+// disabled（停用站未发请求）不计统计。status/level/error_msg/checked_at 始终覆盖。
+// 读-改-写：单站检测串行（每站一个 goroutine / 手动触发），无并发累加冲突。
+func (o *SiteOper) UpsertConnectivity(siteID uint, status, level, errMsg string, seconds float64) error {
+	rec := models.SiteConnectivity{SiteID: siteID}
+	if err := o.db.Where(&models.SiteConnectivity{SiteID: siteID}).FirstOrCreate(&rec).Error; err != nil {
+		return err
+	}
+	switch status {
+	case "connected":
+		rec.Success++
+		if seconds > 0 {
+			// 滑动平均：新均 = (旧均 × (n-1) + 本次) / n（n 为本次成功后的次数）
+			rec.AvgSeconds = (rec.AvgSeconds*float64(rec.Success-1) + seconds) / float64(rec.Success)
+		}
+	case "disconnected":
+		rec.Fail++
+	}
+	rec.Status = status
+	rec.Level = level
+	rec.ErrorMsg = errMsg
+	rec.CheckedAt = time.Now()
+	return o.db.Save(&rec).Error
+}
+
+// ListConnectivity 返回全部站点联通状态缓存（GET /sites/status 进页面用，瞬时读、不发网络请求）。
+func (o *SiteOper) ListConnectivity() ([]models.SiteConnectivity, error) {
+	var list []models.SiteConnectivity
+	if err := o.db.Find(&list).Error; err != nil {
+		return nil, err
+	}
+	return list, nil
 }

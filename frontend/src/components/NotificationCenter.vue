@@ -159,7 +159,7 @@ function relTime(iso: string): string {
     </button>
 
     <Transition name="nc-slide">
-      <div v-if="open" class="nc-panel glass">
+      <div v-if="open" class="nc-panel solid-card">
         <div class="nc-head">
           <span class="nc-title">通知中心 <small v-if="unread">未读 {{ unread }}<template v-if="urgentUnread"> · 高风险 {{ urgentUnread }}</template></small></span>
           <div class="nc-actions">
@@ -253,13 +253,18 @@ function relTime(iso: string): string {
   flex-direction: column;
   overflow: hidden;
   z-index: 300;
+  /* Floating notices need solid contrast over page content. */
+  background: var(--surface-1);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--surface-shadow-hover), 0 18px 40px rgba(15, 23, 42, 0.14);
 }
 .nc-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--surface-border);
+  background: var(--surface-2);
 }
 .nc-title {
   font-weight: 700;
@@ -303,14 +308,14 @@ function relTime(iso: string): string {
   align-items: flex-start;
   gap: 10px;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--divider);
   transition: background 0.15s;
 }
 .nc-item:hover {
-  background: rgba(108, 92, 231, 0.05);
+  background: var(--surface-hover);
 }
 .nc-item--unread {
-  background: rgba(108, 92, 231, 0.06);
+  background: rgba(108, 92, 231, 0.08);
 }
 .nc-ic {
   flex: none;
@@ -347,9 +352,11 @@ function relTime(iso: string): string {
 }
 .nc-text {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-strong);
+  opacity: 0.82;
   margin-top: 2px;
   line-height: 1.45;
+  word-break: break-word;
 }
 .nc-del {
   flex: none;

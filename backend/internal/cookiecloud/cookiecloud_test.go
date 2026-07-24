@@ -110,3 +110,38 @@ func TestHostMatches(t *testing.T) {
 		t.Error("should not match suffix trap")
 	}
 }
+
+
+func TestEncryptDecryptRoundTrip(t *testing.T) {
+	plain := `{"cookie_data":{"demo.pt":[{"name":"sess","value":"xyz","domain":"demo.pt","path":"/"}]},"update_time":1}`
+	enc, err := Encrypt([]byte(plain), DeriveKey("u", "p"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := DecryptPayload(enc, "u", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(payload["demo.pt"]) != 1 || payload["demo.pt"][0].Value != "xyz" {
+		t.Fatalf("payload=%v", payload)
+	}
+}
+
+func TestEntriesFromCookieHeader(t *testing.T) {
+	es := EntriesFromCookieHeader("demo.pt", "a=1; b=2")
+	if len(es) != 2 || es[0].Name != "a" || es[1].Value != "2" {
+		t.Fatalf("entries=%v", es)
+	}
+	if es[0].Domain != "demo.pt" || es[0].Path != "/" || !es[0].Secure {
+		t.Fatalf("defaults wrong: %+v", es[0])
+	}
+}
+
+func TestMergeCookieData(t *testing.T) {
+	dst := map[string][]CookieEntry{"old.io": {{Name: "o", Value: "1"}}}
+	src := map[string][]CookieEntry{"demo.pt": {{Name: "s", Value: "2"}}}
+	got := MergeCookieData(dst, src)
+	if len(got["old.io"]) != 1 || len(got["demo.pt"]) != 1 {
+		t.Fatalf("merge=%v", got)
+	}
+}

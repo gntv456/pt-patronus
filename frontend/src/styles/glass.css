@@ -348,8 +348,14 @@ body {
   overflow-x: hidden !important;
   padding: 12px !important;
   box-sizing: border-box !important;
+  /* 默认顶对齐：超高主弹窗可从顶部滚动，避免被视口裁切 */
   align-items: flex-start !important;
   justify-content: center !important;
+}
+
+/* align-center 弹窗（二级/三级小窗）在浏览器视口内垂直+水平居中 */
+.el-overlay-dialog:has(.el-dialog.is-align-center) {
+  align-items: center !important;
 }
 
 .el-dialog,
@@ -365,7 +371,8 @@ body {
 }
 
 .el-dialog.is-align-center {
-  margin: 12px auto !important;
+  /* 由 overlay flex 居中，不再额外顶边距把小窗顶到上方 */
+  margin: 0 auto !important;
 }
 
 .el-dialog.is-fullscreen {
@@ -401,18 +408,24 @@ body {
   max-height: none !important;
 }
 
-/* MessageBox */
+/* MessageBox
+ * Element Plus 默认：width:100% + max-width:var(--el-messagebox-width, 420px)。
+ * 之前把 max-width 改成 100vw 后，确认框会被撑满整页。
+ * 这里保留视口上限，同时锁回默认宽度；用 inline-flex 保持垂直居中。
+ */
 .el-message-box {
-  max-width: calc(100vw - 24px) !important;
+  width: min(var(--el-messagebox-width, 420px), calc(100vw - 32px)) !important;
+  max-width: min(var(--el-messagebox-width, 420px), calc(100vw - 32px)) !important;
   max-height: calc(100vh - 24px) !important;
   max-height: calc(100dvh - 24px) !important;
-  display: flex !important;
+  display: inline-flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+  box-sizing: border-box !important;
+  vertical-align: middle;
 }
 .el-message-box__content {
   max-height: calc(100dvh - 180px) !important;
   overflow-y: auto !important;
   min-height: 0 !important;
 }
-

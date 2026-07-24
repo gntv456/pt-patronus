@@ -78,6 +78,14 @@ type snapshotAgg struct {
 // （站免/公告/新邮件），并把汇总类项（H&R 危险 / 掉线 / 站免 WS）累积到 agg，由 broadcast 统一推送。
 // 通知去重 key 与 SystemConfig baseline 完全复用原 6 个 run*，不引入新 key。
 func (s *Service) dispatchSnapshotSite(ctx context.Context, st *models.Site, res *chain.SnapshotResult, agg *snapshotAgg) {
+	// 0. 连通状态缓存：与 stats 落库互补——disconnected 也写，供站点运营矩阵/Dashboard 进页面
+	//    瞬时回显「上次检测结果」。后台 4h 聚合快照顺带刷新缓存，保证页面不打开也有定期更新。
+	if res.UserInfo != nil && res.UserErr == "" {
+		_ = s.siteOp.UpsertConnectivity(st.ID, "connected", res.UserInfo.Level, "", 0)
+	} else {
+		_ = s.siteOp.UpsertConnectivity(st.ID, "disconnected", "", res.UserErr, 0)
+	}
+
 	// 1. stats 落库（UserInfo 成功且无错误才记录，避免部分结果写脏统计行）
 	if res.UserInfo != nil && res.UserErr == "" {
 		s.recordStat(st, res.UserInfo)
@@ -206,5 +214,22 @@ func (s *Service) ReloadSnapshot(spec string) error {
 		_ = s.cfgOp.Set("schedule.site-snapshot", spec)
 	}
 	slog.Info("site-snapshot cron reloaded", "spec", spec)
+	return nil
+}
+
+
+// KeepAliveCronSpec 返回当前 cookie 保活 cron。
+func (s *Service) KeepAliveCronSpec() string { return s.cfg.CookieKeepAliveCron }
+
+// ReloadKeepAlive 运行时更新 cookie-keepalive cron + 持久化 schedule.cookie-keepalive。
+func (s *Service) ReloadKeepAlive(spec string) error {
+	if err := s.sched.AddFunc("cookie-keepalive", spec, s.runCookieKeepAlive); err != nil {
+		return err
+	}
+	s.cfg.CookieKeepAliveCron = spec
+	if s.cfgOp != nil {
+		_ = s.cfgOp.Set("schedule.cookie-keepalive", spec)
+	}
+	slog.Info("cookie-keepalive cron reloaded", "spec", spec)
 	return nil
 }

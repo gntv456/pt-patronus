@@ -206,6 +206,11 @@ func NewKeepAliveNode(siteCh *chain.SiteChain, siteOp *oper.SiteOper) *siteNode 
 			msg := "已保活"
 			if res != nil && !res.LoggedIn {
 				msg = "未登录"
+			} else if res != nil && res.RefreshedCookie != "" && siteOp != nil {
+				if err := siteOp.UpdateCookie(s.ID, res.RefreshedCookie); err != nil {
+					return fmt.Errorf("持久化 cookie 失败: %w", err)
+				}
+				msg = "已保活并更新 cookie"
 			}
 			ecx.Messages = append(ecx.Messages, fmt.Sprintf("保活：%s → %s", s.Name, msg))
 			return nil

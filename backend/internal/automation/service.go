@@ -1,5 +1,5 @@
 // Package automation 实现后台自动化服务（7×24 跑在服务端）：
-//   - site-snapshot 聚合快照（真实）：每 4h 串行抓 stats / H&R / 站免 / 公告 / 消息 / cookie 保活 / 考核，
+//   - site-snapshot 聚合快照（真实）：每 4h 串行抓 stats / 站免 / 公告 / 消息 / cookie 保活 / 考核；另有小时级 cookie-keepalive，
 //     复用 UserInfo 的 uid 访问 userdetails.php?id=<uid>（避免裸访触发站点风控）；降低站点感知的
 //     请求频率，替代原 stats/hr/freeleech/announcement/messages/cookie-keepalive 6 个分散 cron。
 //   - 签到（真实）
@@ -122,6 +122,9 @@ func (s *Service) Start() {
 		if v, _ := s.cfgOp.Get("schedule.site-snapshot"); v != "" {
 			s.cfg.SnapshotCron = v
 		}
+		if v, _ := s.cfgOp.Get("schedule.cookie-keepalive"); v != "" {
+			s.cfg.CookieKeepAliveCron = v
+		}
 	}
 	must := func(name, spec string, fn func()) {
 		if err := s.sched.AddFunc(name, spec, fn); err != nil {
@@ -129,6 +132,7 @@ func (s *Service) Start() {
 		}
 	}
 	must("site-snapshot", s.cfg.SnapshotCron, s.runSnapshot) // 聚合 stats/free/ann/msg/keepalive/assessment（H&R 独立）
+	must("cookie-keepalive", s.cfg.CookieKeepAliveCron, s.runCookieKeepAlive) // 小时级 session 滑动续期（短于 Laravel 默认 120min）
 	must("hr-check", "23 * * * *", s.runHRCheck)              // H&R 每小时独立（封号命脉时效优先；错峰 :23）
 	must("checkin", "10 8 * * *", s.runCheckin)
 	must("checkin-record-cleanup", "30 4 * * *", s.runCheckinCleanup) // 每天 4:30 清理超期签到记录

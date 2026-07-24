@@ -48,6 +48,103 @@ func DeriveKey(uuid, password string) []byte {
 	return []byte(full[:16])
 }
 
+// Encrypt 用 AES-128-CBC（IV=密钥）加密明文并做 PKCS7 填充，返回 base64 密文。
+// 与 Decrypt 对称，供推送 CookieCloud /update 使用。
+func Encrypt(plain []byte, key []byte) (string, error) {
+	if len(key) < aes.BlockSize {
+		return "", fmt.Errorf("key too short")
+	}
+	if len(plain) == 0 {
+		return "", fmt.Errorf("empty plaintext")
+	}
+	pad := aes.BlockSize - len(plain)%aes.BlockSize
+	if pad == 0 {
+		pad = aes.BlockSize
+	}
+	padded := make([]byte, len(plain)+pad)
+	copy(padded, plain)
+	for i := len(plain); i < len(padded); i++ {
+		padded[i] = byte(pad)
+	}
+	block, err := aes.NewCipher(key[:aes.BlockSize])
+	if err != nil {
+		return "", err
+	}
+	out := make([]byte, len(padded))
+	cipher.NewCBCEncrypter(block, key[:aes.BlockSize]).CryptBlocks(out, padded)
+	return base64.StdEncoding.EncodeToString(out), nil
+}
+
+// EncryptPayload 将 cookie_data 包成标准 CookieCloud JSON 并加密。
+func EncryptPayload(cookieData map[string][]CookieEntry, uuid, password string) (string, error) {
+	if cookieData == nil {
+		cookieData = map[string][]CookieEntry{}
+	}
+	body := struct {
+		CookieData map[string][]CookieEntry `json:"cookie_data"`
+		UpdateTime int64                    `json:"update_time"`
+	}{CookieData: cookieData, UpdateTime: time.Now().Unix()}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		return "", err
+	}
+	return Encrypt(raw, DeriveKey(uuid, password))
+}
+
+// EncodeUpdateRequest 构造 POST /update 的 JSON body：{"uuid","encrypted"}。
+func EncodeUpdateRequest(uuid, encrypted string) ([]byte, error) {
+	return json.Marshal(map[string]string{
+		"uuid":      uuid,
+		"encrypted": encrypted,
+	})
+}
+
+// EntriesFromCookieHeader 把 "k=v; k2=v2" 转为 CookieCloud CookieEntry 列表。
+// domain 使用站点 host；path 默认 "/"；Secure 默认 true（PT 站几乎全 HTTPS）。
+func EntriesFromCookieHeader(domain, cookieStr string) []CookieEntry {
+	domain = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(domain)), ".")
+	if domain == "" || strings.TrimSpace(cookieStr) == "" {
+		return nil
+	}
+	var out []CookieEntry
+	for _, part := range strings.Split(cookieStr, ";") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		name := strings.TrimSpace(kv[0])
+		if name == "" {
+			continue
+		}
+		out = append(out, CookieEntry{
+			Name:   name,
+			Value:  strings.TrimSpace(kv[1]),
+			Domain: domain,
+			Path:   "/",
+			Secure: true,
+		})
+	}
+	return out
+}
+
+// MergeCookieData 把 src 合并进 dst：同 host 整表覆盖（推送端本地为真源）。
+func MergeCookieData(dst, src map[string][]CookieEntry) map[string][]CookieEntry {
+	if dst == nil {
+		dst = map[string][]CookieEntry{}
+	}
+	for h, entries := range src {
+		if h == "" || len(entries) == 0 {
+			continue
+		}
+		dst[h] = entries
+	}
+	return dst
+}
+
 // Decrypt 用 AES-128-CBC（IV=密钥）解密 base64 密文并去 PKCS7 填充。
 // key 需为 DeriveKey 派生的 16 字节。
 func Decrypt(b64 string, key []byte) ([]byte, error) {

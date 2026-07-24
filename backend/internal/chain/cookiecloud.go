@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -37,13 +38,15 @@ type CookieCloudSettings struct {
 	UUID         string `json:"uuid"`          // 用户 UUID/key
 	PasswordEnc  string `json:"password_enc"`  // AES-GCM 加密的端到端密码（security.Crypto.Encrypt）
 	IntervalMin  int    `json:"interval_min"`  // 同步间隔（分钟），软间隔
+	UpdateMode   string `json:"update_mode"`   // disconnected=仅失效站（默认）；always=总是用云端覆盖同名 cookie
+	Direction    string `json:"direction"`     // pull=仅拉取；push=仅推送；both=双向（默认）
 	LastSyncUnix int64  `json:"last_sync_unix"`
 	LastError    string `json:"last_error"`
 }
 
 // defaultCookieCloudSettings 填充合理默认值（间隔 2 小时）。
 func defaultCookieCloudSettings() CookieCloudSettings {
-	return CookieCloudSettings{IntervalMin: 120}
+	return CookieCloudSettings{IntervalMin: 120, UpdateMode: "disconnected", Direction: "both"}
 }
 
 // CookieCloudSettingsInput 是 handler 传入的输入（密码明文，空=保留旧密码）。
@@ -53,6 +56,8 @@ type CookieCloudSettingsInput struct {
 	UUID        string `json:"uuid"`
 	Password    string `json:"password"` // 明文；空=保留旧密码
 	IntervalMin int    `json:"interval_min"`
+	UpdateMode  string `json:"update_mode"` // disconnected | always
+	Direction   string `json:"direction"`   // pull | push | both
 }
 
 // CookieCloudSyncReport 是一次同步的结果汇总。
@@ -60,6 +65,7 @@ type CookieCloudSyncReport struct {
 	Updated   int       `json:"updated"`
 	Added     int       `json:"added"`
 	Skipped   int       `json:"skipped"`
+	Pushed    int       `json:"pushed"` // 推送到云端的站点 host 数
 	Errors    []string  `json:"errors,omitempty"`
 	FetchedAt time.Time `json:"fetched_at"`
 }
@@ -93,6 +99,12 @@ func (c *CookieCloudChain) GetSettings() CookieCloudSettings {
 		return s
 	}
 	_ = json.Unmarshal([]byte(raw), &s) // 合并到默认值上，缺失字段不丢
+	if s.UpdateMode == "" {
+		s.UpdateMode = "disconnected"
+	}
+	if s.Direction == "" {
+		s.Direction = "both"
+	}
 	return s
 }
 
@@ -124,6 +136,16 @@ func (c *CookieCloudChain) SaveSettings(in CookieCloudSettingsInput) (CookieClou
 	s.UUID = strings.TrimSpace(in.UUID)
 	if in.IntervalMin > 0 {
 		s.IntervalMin = in.IntervalMin
+	}
+	if mode := normalizeCookieCloudUpdateMode(in.UpdateMode); mode != "" {
+		s.UpdateMode = mode
+	} else if s.UpdateMode == "" {
+		s.UpdateMode = "disconnected"
+	}
+	if dir := normalizeCookieCloudDirection(in.Direction); dir != "" {
+		s.Direction = dir
+	} else if s.Direction == "" {
+		s.Direction = "both"
 	}
 	if in.Password != "" {
 		enc, err := c.crypto.Encrypt(in.Password)
@@ -176,11 +198,14 @@ func (c *CookieCloudChain) recordSyncResult(s CookieCloudSettings, report Cookie
 	if err != nil {
 		slog.Warn("cookiecloud sync failed", "err", err)
 	} else {
-		slog.Info("cookiecloud sync done", "updated", report.Updated, "added", report.Added, "skipped", report.Skipped)
+		slog.Info("cookiecloud sync done", "updated", report.Updated, "added", report.Added, "skipped", report.Skipped, "pushed", report.Pushed)
 	}
 }
 
-// doSync 核心逻辑：拉取 → 匹配本地失效站更新 → 自动新增匹配定义的站。
+// doSync 核心逻辑：按 direction 拉取 / 推送 / 双向。
+//   - pull：云端 → 本地（失效站更新 + 自动新增）
+//   - push：本地启用站 cookie → 合并进云端 cookie_data 后 POST /update
+//   - both：先 pull 再 push（推送用最新本地态，含刚 pull 的结果）
 func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (CookieCloudSyncReport, error) {
 	if s.Server == "" || s.UUID == "" || s.PasswordEnc == "" {
 		return CookieCloudSyncReport{}, errors.New("CookieCloud 未配置完整（server/uuid/password）")
@@ -190,19 +215,65 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 		return CookieCloudSyncReport{}, fmt.Errorf("解密密码失败: %w", err)
 	}
 
-	// 拉取：server 是管理员在设置页配的可信 URL（常含内网自建 CookieCloud 容器，如 192.168.x.x / 容器名），
-	// 非「站点抓取」里用户可控 URL，故 ssrf=false 放行内网。
+	dir := normalizeCookieCloudDirection(s.Direction)
+	if dir == "" {
+		dir = "both"
+	}
+	report := CookieCloudSyncReport{FetchedAt: time.Now()}
+
+	// 需要云端现有 payload 的场景：pull 必拉；push/both 也先拉以便合并，避免冲掉其它设备 host。
+	var payload map[string][]cookiecloud.CookieEntry
+	if dir == "pull" || dir == "push" || dir == "both" {
+		p, ferr := c.fetchPayload(ctx, s, password)
+		if ferr != nil {
+			if dir == "pull" {
+				return report, ferr
+			}
+			// push/both：拉取失败时从空 map 推送，至少上传本端站点
+			slog.Warn("cookiecloud fetch before push failed; pushing from empty base", "err", ferr)
+			payload = map[string][]cookiecloud.CookieEntry{}
+			report.Errors = append(report.Errors, "拉取云端失败，将仅推送本地: "+ferr.Error())
+		} else {
+			payload = p
+		}
+	}
+
+	if dir == "pull" || dir == "both" {
+		if err := c.applyPull(ctx, s, payload, &report); err != nil {
+			return report, err
+		}
+	}
+
+	if dir == "push" || dir == "both" {
+		pushed, perr := c.pushLocal(ctx, s, password, payload)
+		if perr != nil {
+			return report, perr
+		}
+		report.Pushed = pushed
+	}
+	return report, nil
+}
+
+// fetchPayload GET /get/{uuid} 并解密。
+func (c *CookieCloudChain) fetchPayload(ctx context.Context, s CookieCloudSettings, password string) (map[string][]cookiecloud.CookieEntry, error) {
+	// server 是管理员在设置页配的可信 URL（常含内网自建 CookieCloud），ssrf=false 放行内网。
 	fetchURL := strings.TrimRight(s.Server, "/") + "/get/" + url.PathEscape(s.UUID)
 	resp, err := c.hc.Get(ctx, fetchURL, "", false)
 	if err != nil {
-		return CookieCloudSyncReport{}, fmt.Errorf("拉取 CookieCloud 失败: %w", err)
+		return nil, fmt.Errorf("拉取 CookieCloud 失败: %w", err)
 	}
 	payload, err := cookiecloud.DecodeEnvelope(resp.Body, s.UUID, password)
 	if err != nil {
-		return CookieCloudSyncReport{}, fmt.Errorf("解密 CookieCloud 数据失败: %w", err)
+		return nil, fmt.Errorf("解密 CookieCloud 数据失败: %w", err)
 	}
+	if payload == nil {
+		payload = map[string][]cookiecloud.CookieEntry{}
+	}
+	return payload, nil
+}
 
-	report := CookieCloudSyncReport{FetchedAt: time.Now()}
+// applyPull 把云端 cookie 写入本地失效站 + 自动新增匹配定义站。
+func (c *CookieCloudChain) applyPull(ctx context.Context, s CookieCloudSettings, payload map[string][]cookiecloud.CookieEntry, report *CookieCloudSyncReport) error {
 	var mu sync.Mutex
 	addErr := func(msg string) {
 		mu.Lock()
@@ -210,24 +281,21 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 		mu.Unlock()
 	}
 
-	// 本地启用站点 + 已占用域名集合（用于判断 CookieCloud 里哪些 host 是新站）。
 	sites, err := c.siteOp.ListActive()
 	if err != nil {
-		return report, fmt.Errorf("读取本地站点失败: %w", err)
+		return fmt.Errorf("读取本地站点失败: %w", err)
 	}
 	occupied := map[string]bool{}
 	for i := range sites {
 		occupied[site.RegisteredDomain(sites[i].BaseURL)] = true
 	}
 
-	// 并发处理本地站点：仅更新已失效站（TestConnection 失败才覆盖），仍有效则跳过。
 	sem := make(chan struct{}, 5)
 	var wg sync.WaitGroup
 	for i := range sites {
 		st := &sites[i]
 		cookieStr := cookieForSite(payload, st.BaseURL)
 		if cookieStr == "" {
-			// CookieCloud 里没有该站的 cookie：跳过（不置 occupied 之外的动作）。
 			mu.Lock()
 			report.Skipped++
 			mu.Unlock()
@@ -238,12 +306,15 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			if c.isConnected(ctx, st) {
-				// 当前 cookie 仍有效：不动手动维护的有效 cookie（对齐 MoviePilot）。
+			force := normalizeCookieCloudUpdateMode(s.UpdateMode) == "always"
+			if !force && c.isConnected(ctx, st) {
 				mu.Lock()
 				report.Skipped++
 				mu.Unlock()
 				return
+			}
+			if cur, err := c.siteOp.Cookie(st); err == nil && cur != "" {
+				cookieStr = site.MergeCookieHeader(cur, cookieStr)
 			}
 			if err := c.siteOp.UpdateCookie(st.ID, cookieStr); err != nil {
 				addErr(fmt.Sprintf("%s: 更新失败 %v", st.Name, err))
@@ -256,7 +327,6 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 	}
 	wg.Wait()
 
-	// 自动新增：CookieCloud 里匹配不到任何本地站的 host → 查内置定义 → 找到则创建（带 cookie）。
 	defs := c.registry.ActiveDefinitions()
 	for h := range payload {
 		dom := site.RegisteredDomain(h)
@@ -269,7 +339,7 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 		}
 		def := findDefinitionByHost(h, defs)
 		if def == nil || len(def.URLs) == 0 {
-			continue // 非内置 286 站之一，不自动新增（范围边界）
+			continue
 		}
 		_, err := c.siteOp.Create(oper.SiteInput{
 			Name:       def.Name,
@@ -288,7 +358,74 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 		occupied[dom] = true
 		mu.Unlock()
 	}
-	return report, nil
+	return nil
+}
+
+// pushLocal 把本地启用站 cookie 合并进 base payload 后 POST /update。
+// 返回成功写入云端的 host 数。base 可为 nil。
+func (c *CookieCloudChain) pushLocal(ctx context.Context, s CookieCloudSettings, password string, base map[string][]cookiecloud.CookieEntry) (int, error) {
+	sites, err := c.siteOp.ListActive()
+	if err != nil {
+		return 0, fmt.Errorf("读取本地站点失败: %w", err)
+	}
+	local := map[string][]cookiecloud.CookieEntry{}
+	for i := range sites {
+		st := &sites[i]
+		host := cookieHostFromBaseURL(st.BaseURL)
+		if host == "" {
+			continue
+		}
+		ck, err := c.siteOp.Cookie(st)
+		if err != nil || strings.TrimSpace(ck) == "" {
+			continue
+		}
+		entries := cookiecloud.EntriesFromCookieHeader(host, ck)
+		if len(entries) == 0 {
+			continue
+		}
+		local[host] = entries
+	}
+	if len(local) == 0 {
+		return 0, nil
+	}
+	merged := cookiecloud.MergeCookieData(base, local)
+	enc, err := cookiecloud.EncryptPayload(merged, s.UUID, password)
+	if err != nil {
+		return 0, fmt.Errorf("加密推送数据失败: %w", err)
+	}
+	body, err := cookiecloud.EncodeUpdateRequest(s.UUID, enc)
+	if err != nil {
+		return 0, err
+	}
+	updateURL := strings.TrimRight(s.Server, "/") + "/update"
+	resp, err := c.hc.Do(ctx, "POST", updateURL, body, map[string]string{"Content-Type": "application/json"}, "", false)
+	if err != nil {
+		return 0, fmt.Errorf("推送 CookieCloud 失败: %w", err)
+	}
+	// 标准服务返回 {"action":"done"|"error"}；兼容无 body / 其它 2xx。
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return 0, fmt.Errorf("推送 CookieCloud 返回 HTTP %d", resp.StatusCode)
+	}
+	if len(resp.Body) > 0 {
+		var out struct {
+			Action string `json:"action"`
+		}
+		if json.Unmarshal(resp.Body, &out) == nil && out.Action != "" && out.Action != "done" {
+			return 0, fmt.Errorf("推送 CookieCloud 失败: action=%s", out.Action)
+		}
+	}
+	return len(local), nil
+}
+
+// Push 仅推送本地 cookie 到云端（忽略配置中的 direction；手动按钮用）。
+// 回写 last_sync 时保留用户原 direction，避免把配置改成 push。
+func (c *CookieCloudChain) Push(ctx context.Context) (CookieCloudSyncReport, error) {
+	s := c.GetSettings()
+	run := s
+	run.Direction = "push"
+	report, err := c.doSync(ctx, run)
+	c.recordSyncResult(s, report, err)
+	return report, err
 }
 
 // isConnected 复用 SiteChain.TestConnection 判定当前 cookie 是否仍有效（err=nil 即已登录）。
@@ -305,26 +442,53 @@ func (c *CookieCloudChain) isConnected(ctx context.Context, s *models.Site) bool
 // ── 纯函数（便于单测，不依赖 DB/网络）──
 
 // cookieForSite 从 CookieCloud payload 中提取匹配 siteBaseURL 注册域的所有 cookie，拼成 "k=v; k2=v2"。
+// 同名 cookie 去重：更长（更具体）的 host 后写入并覆盖短 host。
 func cookieForSite(payload map[string][]cookiecloud.CookieEntry, siteBaseURL string) string {
 	siteDom := site.RegisteredDomain(siteBaseURL)
 	if siteDom == "" {
 		return ""
 	}
-	var parts []string
+	type hostBag struct {
+		host    string
+		cookies []cookiecloud.CookieEntry
+	}
+	var matched []hostBag
 	for h, cookies := range payload {
 		if site.RegisteredDomain(h) != siteDom {
 			continue
 		}
-		for _, ck := range cookies {
-			if ck.Name != "" {
-				parts = append(parts, ck.Name+"="+ck.Value)
+		matched = append(matched, hostBag{host: h, cookies: cookies})
+	}
+	if len(matched) == 0 {
+		return ""
+	}
+	sort.SliceStable(matched, func(i, j int) bool {
+		return len(matched[i].host) < len(matched[j].host)
+	})
+	m := map[string]string{}
+	for _, hb := range matched {
+		for _, ck := range hb.cookies {
+			if ck.Name == "" {
+				continue
 			}
+			m[ck.Name] = ck.Value
 		}
 	}
-	return strings.Join(parts, "; ")
+	return site.FormatCookieHeader(m)
 }
 
-// findDefinitionByHost 在内置站点定义里按注册域匹配 host，返回首个命中者（用于自动新增）。
+// normalizeCookieCloudUpdateMode 归一化更新策略。
+func normalizeCookieCloudUpdateMode(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "always":
+		return "always"
+	case "disconnected", "":
+		return "disconnected"
+	default:
+		return ""
+	}
+}
+
 func findDefinitionByHost(host string, defs []*site.SiteMetadata) *site.SiteMetadata {
 	dom := site.RegisteredDomain(host)
 	if dom == "" {
@@ -338,4 +502,26 @@ func findDefinitionByHost(host string, defs []*site.SiteMetadata) *site.SiteMeta
 		}
 	}
 	return nil
+}
+
+
+// normalizeCookieCloudDirection 归一化同步方向。
+func normalizeCookieCloudDirection(dir string) string {
+	switch strings.ToLower(strings.TrimSpace(dir)) {
+	case "pull", "push", "both":
+		return strings.ToLower(strings.TrimSpace(dir))
+	case "":
+		return "both"
+	default:
+		return ""
+	}
+}
+
+// cookieHostFromBaseURL 取 URL hostname（小写、无端口）作为 CookieCloud cookie_data 的 key。
+func cookieHostFromBaseURL(baseURL string) string {
+	u, err := url.Parse(strings.TrimSpace(baseURL))
+	if err != nil || u.Hostname() == "" {
+		return site.RegisteredDomain(baseURL)
+	}
+	return strings.ToLower(u.Hostname())
 }

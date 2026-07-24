@@ -421,6 +421,7 @@ func New(cfg *config.Config) (*App, error) {
 		VIPGraceDays:            cfg.VIPGraceDays,
 		KeepSeedCron:            cfg.KeepSeedCron,
 		SnapshotCron:            cfg.SnapshotCron,
+		CookieKeepAliveCron:     cfg.CookieKeepAliveCron,
 	}, context.Background(), wsHub, hxptLogin, crypto, noticeSvc, cfgOp, assessCh)
 	// 刷流 cron：选种每 10 分钟、扫删每 5 分钟（单任务失败不阻断；scheduler 自带 SkipIfStillRunning 防重叠）
 	_ = sched.AddFunc("brushflow-select", "*/10 * * * *", func() {

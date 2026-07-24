@@ -78,6 +78,22 @@ type SiteStat struct {
 	CreatedAt                 time.Time `json:"created_at"`
 }
 
+// SiteConnectivity — 站点联通状态缓存（每站一行，upsert 覆盖）。
+// 与 SiteStat（仅 UserInfo 成功才写）互补：此处也记录 disconnected/disabled，
+// 供站点运营矩阵/Dashboard 进页面瞬时显示「上次检测结果」，后台 SSE 逐站刷新覆盖。
+// Success/Fail/AvgSeconds 为累计统计（对标 MP SiteStatistic），供展示站点稳定性（成功率/平均耗时）。
+type SiteConnectivity struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	SiteID     uint      `gorm:"uniqueIndex;not null" json:"site_id"`
+	Status     string    `gorm:"size:16" json:"status"` // connected | disconnected | disabled
+	Level      string    `gorm:"size:64" json:"level"`
+	ErrorMsg   string    `gorm:"size:512" json:"error_msg"`
+	Success    int       `gorm:"default:0" json:"success"`      // 累计成功次数（connected 时 +1）
+	Fail       int       `gorm:"default:0" json:"fail"`         // 累计失败次数（disconnected 时 +1）
+	AvgSeconds float64   `gorm:"default:0" json:"avg_seconds"`  // 平均成功响应耗时（秒，仅 seconds>0 的成功计入，snapshot 不计）
+	CheckedAt  time.Time `json:"checked_at"`
+}
+
 // Downloader — 下载器连接配置。
 type Downloader struct {
 	ID          uint      `gorm:"primaryKey" json:"id"`

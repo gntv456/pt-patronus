@@ -2,51 +2,78 @@ package v1
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/robfig/cron/v3"
 )
 
-// ScheduleHandler 处理定时任务频率配置（前端「调度频率」tab）。
-// 当前管理聚合站点快照（site-snapshot）——本次降频的核心杠杆，用户可在此平衡隐蔽性与数据时效。
+// ScheduleHandler 处理后台定时任务频率配置（前端「调度频率」tab）。
+// 管理：聚合站点快照（site-snapshot）+ 小时级 cookie 保活（cookie-keepalive）。
 type ScheduleHandler struct {
-	auto            *automation.Service
-	snapshotDefault string
+	auto             *automation.Service
+	snapshotDefault  string
+	keepaliveDefault string
 }
 
-// NewScheduleHandler 构造。snapshotDefault 为 env/内置默认（UI 展示回退参考）。
-func NewScheduleHandler(auto *automation.Service, snapshotDefault string) *ScheduleHandler {
-	return &ScheduleHandler{auto: auto, snapshotDefault: snapshotDefault}
+// NewScheduleHandler 构造。defaults 为 env/配置默认，UI 展示「内置参考」。
+func NewScheduleHandler(auto *automation.Service, snapshotDefault, keepaliveDefault string) *ScheduleHandler {
+	return &ScheduleHandler{auto: auto, snapshotDefault: snapshotDefault, keepaliveDefault: keepaliveDefault}
 }
 
-// GetConfig 返回聚合快照 cron 当前值 + 默认值 + 说明。
+// GetConfig 返回当前 cron + 默认值 + 说明。
 func (h *ScheduleHandler) GetConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"snapshot_cron":    h.auto.SnapshotCronSpec(),
-		"snapshot_default": h.snapshotDefault,
-		"hint": "聚合站点快照：合并 stats / H&R / 站免 / 公告 / 消息 / cookie 保活 / 考核 为一次串行抓取。" +
-			"间隔越大越隐蔽（对站点越友好，不易触发风控），但仪表盘数据与 H&R/站免/新邮件告警延迟越高。" +
-			"默认每 4 小时；更隐蔽可设每 6 小时（如 '17 */6 * * *'）。",
+		"snapshot_cron":     h.auto.SnapshotCronSpec(),
+		"snapshot_default":  h.snapshotDefault,
+		"keepalive_cron":    h.auto.KeepAliveCronSpec(),
+		"keepalive_default": h.keepaliveDefault,
+		"hint": "聚合快照合并统计/站免/公告/消息/考核为低频串行抓取；cookie 保活需更勤（建议 ≤1h），" +
+			"以免 Laravel qw_session 等短寿 session 在两次保活间过期。" +
+			"H&R 仍由独立小时任务处理，不在此配置。",
 	})
 }
 
-// SetConfig 更新聚合快照 cron：校验表达式 → 运行时 Reload（sched 同名替换，立即生效）+ 持久化 DB。
+// SetConfig 更新 cron：校验表达式 → 运行时 Reload → 持久化 DB。
+// 字段可只传需要改的；空串表示不改该项。
 func (h *ScheduleHandler) SetConfig(c *gin.Context) {
 	var req struct {
-		SnapshotCron string `json:"snapshot_cron" binding:"required"`
+		SnapshotCron  string `json:"snapshot_cron"`
+		KeepAliveCron string `json:"keepalive_cron"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if _, err := cron.ParseStandard(req.SnapshotCron); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cron 表达式非法：" + err.Error()})
+	req.SnapshotCron = strings.TrimSpace(req.SnapshotCron)
+	req.KeepAliveCron = strings.TrimSpace(req.KeepAliveCron)
+	if req.SnapshotCron == "" && req.KeepAliveCron == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请至少提供 snapshot_cron 或 keepalive_cron"})
 		return
 	}
-	if err := h.auto.ReloadSnapshot(req.SnapshotCron); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+	if req.SnapshotCron != "" {
+		if _, err := cron.ParseStandard(req.SnapshotCron); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "snapshot cron 表达式非法：" + err.Error()})
+			return
+		}
+		if err := h.auto.ReloadSnapshot(req.SnapshotCron); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{"snapshot_cron": req.SnapshotCron})
+	if req.KeepAliveCron != "" {
+		if _, err := cron.ParseStandard(req.KeepAliveCron); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "keepalive cron 表达式非法：" + err.Error()})
+			return
+		}
+		if err := h.auto.ReloadKeepAlive(req.KeepAliveCron); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"snapshot_cron":  h.auto.SnapshotCronSpec(),
+		"keepalive_cron": h.auto.KeepAliveCronSpec(),
+	})
 }

@@ -97,6 +97,7 @@ declare module 'vue' {
     SiteFavicon: typeof import('./src/components/SiteFavicon.vue')['default']
     SiteFilterDialog: typeof import('./src/components/SiteFilterDialog.vue')['default']
     SiteOperationsMatrix: typeof import('./src/components/sites/SiteOperationsMatrix.vue')['default']
+    SiteTorrentFindDialog: typeof import('./src/components/SiteTorrentFindDialog.vue')['default']
     Sparkline: typeof import('./src/components/dashboard/Sparkline.vue')['default']
     SpinnerGame: typeof import('./src/components/SpinnerGame.vue')['default']
     SptIcon: typeof import('./src/components/SptIcon.vue')['default']

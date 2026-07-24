@@ -71,7 +71,7 @@ func (c *SiteChain) snapshotSite(ctx context.Context, s *models.Site) SnapshotRe
 
 	// 2. KeepAlive：刷新 session + 捕获 cookie 轮换 + 补充掉线检测（端点敏感度与 UserInfo 不同，
 	// 任一判掉线即视为掉线；KeepAlive 判掉线则跳过后续 HR/indexInfo/Messages）。
-	if ka, e := c.KeepAlive(ctx, s); e == nil && ka != nil {
+	if ka, e := c.keepAliveLocked(ctx, s); e == nil && ka != nil {
 		if !ka.LoggedIn {
 			res.LoggedOut = true
 		}

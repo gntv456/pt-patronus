@@ -1,6 +1,7 @@
 // 零依赖：Canvas 2D 绘制「PTPatronus 仪表盘」成就海报，config 驱动（字段显隐/主题/脱敏/背景图/冠军 7 类）。
 // 参考 PT-depiler UserDataTimeline + 旧版 Kotlin DashboardExporter。@2x 渲染，不引 html2canvas/konva。
 import type { DashboardExportConfig, ExportTheme, RankMetric } from './dashboardExportConfig'
+import { faviconCandidates } from '@/utils/siteFavicon'
 
 export interface DashboardShareSite {
   site_id: number
@@ -120,26 +121,37 @@ function ptYears(sites: DashboardShareSite[]): number | null {
 
 // ---------- 图像加载 ----------
 function loadFavicon(baseUrl: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    if (!baseUrl) return resolve(null)
-    const img = new Image()
-    img.crossOrigin = 'anonymous' // 防 canvas taint；CORS 不通 → onerror 回退色块
-    const timer = setTimeout(() => resolve(null), 3000)
-    img.onload = () => {
-      clearTimeout(timer)
-      resolve(img)
-    }
-    img.onerror = () => {
-      clearTimeout(timer)
-      resolve(null)
-    }
-    try {
-      img.src = baseUrl.replace(/\/$/, '') + '/favicon.ico'
-    } catch {
-      clearTimeout(timer)
-      resolve(null)
-    }
-  })
+  const urls = faviconCandidates(baseUrl)
+  if (!urls.length) return Promise.resolve(null)
+
+  const tryAt = (i: number): Promise<HTMLImageElement | null> =>
+    new Promise((resolve) => {
+      if (i >= urls.length) return resolve(null)
+      const img = new Image()
+      img.crossOrigin = 'anonymous' // 防 canvas taint；CORS 不通 → 试下一源或回退色块
+      const timer = setTimeout(() => {
+        img.onload = null
+        img.onerror = null
+        resolve(tryAt(i + 1))
+      }, 3000)
+      img.onload = () => {
+        clearTimeout(timer)
+        resolve(img)
+      }
+      img.onerror = () => {
+        clearTimeout(timer)
+        resolve(tryAt(i + 1))
+      }
+      try {
+        img.referrerPolicy = 'no-referrer'
+        img.src = urls[i]
+      } catch {
+        clearTimeout(timer)
+        resolve(tryAt(i + 1))
+      }
+    })
+
+  return tryAt(0)
 }
 
 // 用户本地上传背景图（dataURL，同源不 taint）。

@@ -150,7 +150,7 @@ func Build(d *Deps) *gin.Engine {
 
 	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC)
 	sysH := v1.NewSystemHandler(d.Update)
-	schedH := v1.NewScheduleHandler(d.Automation, d.Cfg.SnapshotCron)
+	schedH := v1.NewScheduleHandler(d.Automation, d.Cfg.SnapshotCron, d.Cfg.CookieKeepAliveCron)
 
 	api := engine.Group("/api/v1")
 	{
@@ -204,7 +204,8 @@ func Build(d *Deps) *gin.Engine {
 				sites.PUT("/:id", siteH.Update)
 				sites.DELETE("/:id", middleware.RequireAdmin(), siteH.Delete)
 				sites.POST("/batch-delete", middleware.RequireAdmin(), siteH.BatchDelete)
-				sites.POST("/status", siteH.Status)
+				sites.GET("/status", siteH.Status)
+					sites.GET("/status/stream", siteH.StatusStream)
 				sites.POST("/:id/test", siteH.Test)
 				sites.POST("/:id/checkin", siteH.Checkin)
 				sites.POST("/checkin", siteH.CheckinAll)
@@ -661,6 +662,7 @@ func Build(d *Deps) *gin.Engine {
 				cookieCloud.GET("/config", cookieCloudH.GetConfig)
 				cookieCloud.PUT("/config", middleware.RequireAdmin(), cookieCloudH.SetConfig)
 				cookieCloud.POST("/sync", middleware.RequireAdmin(), cookieCloudH.Sync)
+				cookieCloud.POST("/push", middleware.RequireAdmin(), cookieCloudH.Push)
 			}
 
 			// RSS 订阅：feed 抓取→过滤→去重→(可选)下载→通知。

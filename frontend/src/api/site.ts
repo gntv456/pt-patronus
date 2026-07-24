@@ -1,4 +1,5 @@
 import { http } from './http'
+import { streamSSE } from './sse'
 
 // Backend check-in uses a 30s per-site context and runs batch work in groups of
 // eight. Keep these timeouts local to check-in requests so ordinary API calls
@@ -60,6 +61,10 @@ export interface SiteConnectivityStatus {
   status: SiteConnectivityState
   level?: string
   error?: string
+  checked_at?: string // 上次检测时刻（后端 site_connectivity 缓存；ISO 字符串）
+  success?: number // 累计成功次数（对标 MP SiteStatistic，供展示成功率）
+  fail?: number // 累计失败次数
+  avg_seconds?: number // 平均成功响应耗时（秒）
 }
 
 export interface CheckinResult {
@@ -93,10 +98,24 @@ export const siteApi = {
   batchDelete: (ids: number[]) =>
     http.post<{ deleted: number; failed: number[] }>('/sites/batch-delete', { ids }).then((r) => r.data),
   test: (id: number) => http.post<TestResult>(`/sites/${id}/test`).then((r) => r.data),
+  // GET 返回上次检测缓存（瞬时、不发网络请求），进页面瞬时回显「上次检测结果」。
   statuses: () =>
-    http
-      .post<{ statuses: SiteConnectivityStatus[] }>('/sites/status', undefined, { timeout: 60_000 })
-      .then((r) => r.data.statuses ?? []),
+    http.get<{ statuses: SiteConnectivityStatus[] }>('/sites/status').then((r) => r.data.statuses ?? []),
+  // 流式逐站检测（SSE）：每站完成推一帧 event:status，结束推 event:done。
+  // 实现「检测到一个更新一个」；signal 用于切页中断。返回 streamSSE 的 Promise（done 后 resolve）。
+  statusesStream: (
+    onStatus: (s: SiteConnectivityStatus) => void,
+    onDone?: () => void,
+    signal?: AbortSignal,
+  ) =>
+    streamSSE(
+      '/api/v1/sites/status/stream',
+      (event, data) => {
+        if (event === 'status') onStatus(data as SiteConnectivityStatus)
+        else if (event === 'done') onDone?.()
+      },
+      signal,
+    ),
   checkin: (id: number) =>
     http.post<CheckinResult>(`/sites/${id}/checkin`, undefined, { timeout: checkinTimeout }).then((r) => r.data),
   checkinAll: () =>

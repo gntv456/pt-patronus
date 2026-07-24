@@ -289,7 +289,7 @@ async function saveLLMGateway() {
 import { cookieCloudApi, type CookieCloudConfig, type CookieCloudConfigInput } from '@/api/cookiecloud'
 const ccCfg = ref<CookieCloudConfig | null>(null)
 const ccForm = ref<CookieCloudConfigInput>({
-  enabled: false, server: '', uuid: '', password: '', interval_min: 120,
+  enabled: false, server: '', uuid: '', password: '', interval_min: 120, update_mode: 'disconnected', direction: 'both',
 })
 const ccLoading = ref(false)
 const ccSaving = ref(false)
@@ -303,6 +303,8 @@ async function loadCookieCloud() {
       server: ccCfg.value.server,
       uuid: ccCfg.value.uuid,
       password: '',
+      update_mode: ccCfg.value.update_mode || 'disconnected',
+      direction: ccCfg.value.direction || 'both',
       interval_min: ccCfg.value.interval_min || 120,
     }
   } catch {
@@ -327,10 +329,25 @@ async function syncCookieCloud() {
   ccSyncing.value = true
   try {
     const r = await cookieCloudApi.sync()
-    ElMessage.success(`同步完成：更新 ${r.report.updated}，新增 ${r.report.added}，跳过 ${r.report.skipped}`)
+    const rep = r.report
+    ElMessage.success(
+      `同步完成：更新 ${rep.updated} / 新增 ${rep.added} / 跳过 ${rep.skipped} / 推送 ${rep.pushed ?? 0}`,
+    )
     await loadCookieCloud()
-  } catch {
-    ElMessage.error('同步失败，请检查服务器/UUID/密码')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || e?.message || '同步失败')
+  } finally {
+    ccSyncing.value = false
+  }
+}
+async function pushCookieCloud() {
+  ccSyncing.value = true
+  try {
+    const r = await cookieCloudApi.push()
+    ElMessage.success(`推送完成：${r.report.pushed ?? 0} 个站点 host`)
+    await loadCookieCloud()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || e?.message || '推送失败')
   } finally {
     ccSyncing.value = false
   }
@@ -339,7 +356,7 @@ async function syncCookieCloud() {
 // —— 调度频率（聚合站点快照 cron，平衡站点隐蔽性与数据时效）——
 import { scheduleApi, type ScheduleConfig } from '@/api/schedule'
 const schedCfg = ref<ScheduleConfig | null>(null)
-const schedForm = ref<{ snapshot_cron: string }>({ snapshot_cron: '' })
+const schedForm = ref<{ snapshot_cron: string; keepalive_cron: string }>({ snapshot_cron: '', keepalive_cron: '' })
 const schedLoading = ref(false)
 const schedSaving = ref(false)
 const schedPresets = [
@@ -348,11 +365,17 @@ const schedPresets = [
   { label: '每 6 小时（最隐蔽）', value: '17 */6 * * *' },
   { label: '每 12 小时', value: '23 */12 * * *' },
 ]
+const keepalivePresets = [
+  { label: '每小时（推荐）', value: '13 * * * *' },
+  { label: '每 30 分钟', value: '*/30 * * * *' },
+  { label: '每 2 小时', value: '17 */2 * * *' },
+]
 async function loadSchedule() {
   schedLoading.value = true
   try {
     schedCfg.value = await scheduleApi.getConfig()
     schedForm.value.snapshot_cron = schedCfg.value.snapshot_cron || schedCfg.value.snapshot_default
+    schedForm.value.keepalive_cron = schedCfg.value.keepalive_cron || schedCfg.value.keepalive_default
   } catch {
     ElMessage.error('加载调度配置失败')
   } finally {
@@ -362,11 +385,14 @@ async function loadSchedule() {
 async function saveSchedule() {
   schedSaving.value = true
   try {
-    await scheduleApi.setConfig(schedForm.value.snapshot_cron.trim())
-    ElMessage.success('已保存，新频率已即时生效')
+    await scheduleApi.setConfig({
+      snapshot_cron: schedForm.value.snapshot_cron.trim(),
+      keepalive_cron: schedForm.value.keepalive_cron.trim(),
+    })
+    ElMessage.success('调度配置已保存')
     await loadSchedule()
-  } catch {
-    ElMessage.error('保存失败（cron 表达式可能非法）')
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || e?.message || '保存失败')
   } finally {
     schedSaving.value = false
   }
@@ -784,7 +810,7 @@ async function openChangelog() {
         <div v-loading="ccLoading" class="oidc-wrap">
           <p class="text-muted oidc-help">
             浏览器装 CookieCloud 扩展并填服务器/UUID/密码后，PTPatronus 定时拉取最新 cookie，
-            按域名覆盖本地 <b>已失效</b> 站点 + 自动新增匹配内置定义的站点，根治 session 短寿站掉 cookie。
+            按域名同步浏览器 cookie：默认可仅覆盖本地 <b>已失效</b> 站点，也可选总是覆盖；并自动新增匹配内置定义的站点。配合小时级 cookie 保活，根治 session 短寿站掉线。
           </p>
           <div class="card glass">
             <div class="ch-head">
@@ -809,6 +835,27 @@ async function openChangelog() {
             <el-input v-model.number="ccForm.interval_min" type="number" class="mt8" placeholder="120">
               <template #prepend>间隔(分钟)</template>
             </el-input>
+            <div class="mt8" style="display:flex;align-items:center;gap:12px">
+              <span class="text-muted" style="min-width:7em">更新策略</span>
+              <el-select v-model="ccForm.update_mode" style="flex:1">
+                <el-option label="仅覆盖已失效站点（推荐）" value="disconnected" />
+                <el-option label="总是用浏览器 cookie 覆盖" value="always" />
+              </el-select>
+            </div>
+            <p class="text-muted" style="margin:6px 0 0;font-size:12px">
+              「仅失效」对齐 MoviePilot，保护本地手填有效 cookie；「总是覆盖」更接近浏览器 CookieCloud 实时同步，适合 session 短寿站。
+            </p>
+            <div class="mt8" style="display:flex;align-items:center;gap:12px">
+              <span class="text-muted" style="min-width:7em">同步方向</span>
+              <el-select v-model="ccForm.direction" style="flex:1">
+                <el-option label="双向：先拉后推（推荐）" value="both" />
+                <el-option label="仅拉取（云端 → 本地）" value="pull" />
+                <el-option label="仅推送（本地 → 云端）" value="push" />
+              </el-select>
+            </div>
+            <p class="text-muted" style="margin:6px 0 0;font-size:12px">
+              推送会把本端启用站 cookie 合并进 CookieCloud（保留云端其它 host），供浏览器/其它实例同步。
+            </p>
           </div>
           <div class="oidc-save">
             <span v-if="ccCfg?.last_error" class="text-muted" style="margin-right: 12px">
@@ -818,6 +865,7 @@ async function openChangelog() {
               上次同步：{{ new Date(ccCfg.last_sync_unix * 1000).toLocaleString() }}
             </span>
             <el-button :loading="ccSyncing" @click="syncCookieCloud">立即同步</el-button>
+            <el-button :loading="ccSyncing" @click="pushCookieCloud">仅推送</el-button>
             <el-button type="primary" :loading="ccSaving" @click="saveCookieCloud">保存</el-button>
           </div>
         </div>
@@ -866,7 +914,7 @@ async function openChangelog() {
 
         <div v-loading="schedLoading" class="oidc-wrap">
           <p class="text-muted oidc-help">
-            聚合站点快照：合并 <b>统计 / H&amp;R / 站免 / 公告 / 消息 / Cookie 保活 / 考核</b> 为一次串行抓取。
+            聚合站点快照：合并 <b>统计 / 站免 / 公告 / 消息 / Cookie 保活 / 考核</b> 为一次串行抓取（H&amp;R 与小时级 cookie-keepalive 仍独立调度）。
             间隔越大越隐蔽（对站点越友好，不易触发风控），但仪表盘数据与 H&amp;R/站免/新邮件告警延迟越高。
           </p>
           <div class="card glass">
@@ -891,7 +939,7 @@ async function openChangelog() {
           </div>
           <div class="oidc-save">
             <span v-if="schedCfg" class="text-muted" style="margin-right: 12px">
-              内置默认：{{ schedCfg.snapshot_default }}
+              快照默认：{{ schedCfg.snapshot_default }}
             </span>
             <el-button type="primary" :loading="schedSaving" @click="saveSchedule">保存</el-button>
           </div>
@@ -1262,7 +1310,31 @@ async function openChangelog() {
             <el-input v-model="tgForm.api_url" class="mt8" placeholder="自定义 Bot API 域名（国内反代）；留空=官方"><template #prepend>API URL</template></el-input>
             <div class="ch-head mt8"><div class="row-title">允许群聊响应</div><el-switch v-model="tgForm.allow_group_chat" /></div>
           </div>
-          <div class="oidc-save"><el-button type="primary" :loading="tgSaving" @click="saveTgBot">保存</el-button></div>
+          
+          <div class="card glass mt8">
+            <div class="ch-head"><div class="row-title">Cookie 保活频率</div></div>
+            <p class="text-muted" style="font-size:12px;line-height:1.6;margin:0 0 8px">
+              独立于聚合快照：对启用站做认证 GET，刷新短寿 session 并回写轮换 cookie。建议不超过 1 小时。
+            </p>
+            <el-select
+              v-model="schedForm.keepalive_cron"
+              filterable
+              allow-create
+              default-first-option
+              class="mt8"
+              style="width:100%"
+              placeholder="选择或输入 cron"
+            >
+              <el-option v-for="p in keepalivePresets" :key="p.value" :label="p.label" :value="p.value" />
+            </el-select>
+            <el-input v-model="schedForm.keepalive_cron" class="mt8" placeholder="13 * * * *">
+              <template #prepend>cron</template>
+            </el-input>
+            <p v-if="schedCfg" class="text-muted mt8" style="font-size:12px">
+              内置默认：{{ schedCfg.keepalive_default }}
+            </p>
+          </div>
+<div class="oidc-save"><el-button type="primary" :loading="tgSaving" @click="saveTgBot">保存</el-button></div>
         </div>
       
           </el-tab-pane>

@@ -7,6 +7,8 @@ export interface CookieCloudConfig {
   uuid: string
   password_configured: boolean
   interval_min: number
+  update_mode: string
+  direction: string
   last_sync_unix: number
   last_error: string
 }
@@ -21,6 +23,7 @@ export interface CookieCloudSyncReport {
   updated: number
   added: number
   skipped: number
+  pushed: number
   errors?: string[]
   fetched_at: string
 }
@@ -29,4 +32,5 @@ export const cookieCloudApi = {
   getConfig: () => http.get<CookieCloudConfig>('/cookiecloud/config').then((r) => r.data),
   setConfig: (cfg: CookieCloudConfigInput) => http.put('/cookiecloud/config', cfg).then((r) => r.data),
   sync: () => http.post<{ ok: boolean; report: CookieCloudSyncReport }>('/cookiecloud/sync').then((r) => r.data),
+  push: () => http.post<{ ok: boolean; report: CookieCloudSyncReport }>('/cookiecloud/push').then((r) => r.data),
 }

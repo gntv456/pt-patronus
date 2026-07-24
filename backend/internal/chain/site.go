@@ -28,12 +28,14 @@ type SiteResult struct {
 
 // SiteConnectionResult 是站点联通检查结果。
 // Status 为 connected、disconnected 或 disabled；失败时 Error 保留具体原因，供前端提示。
+// CheckedAt 为本次检测时刻，供前端展示「X 分钟前检测」并做节流判断。
 type SiteConnectionResult struct {
-	SiteID   uint   `json:"site_id"`
-	SiteName string `json:"site_name"`
-	Status   string `json:"status"`
-	Level    string `json:"level,omitempty"`
-	Error    string `json:"error,omitempty"`
+	SiteID    uint      `json:"site_id"`
+	SiteName  string    `json:"site_name"`
+	Status    string    `json:"status"`
+	Level     string    `json:"level,omitempty"`
+	Error     string    `json:"error,omitempty"`
+	CheckedAt time.Time `json:"checked_at"`
 }
 
 // SiteChain 编排站点相关业务：搜索、连接测试、用户信息。
@@ -417,15 +419,64 @@ func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult
 	return results, nil
 }
 
-// TestConnection 测试站点连接与登录态，返回用户等级。
-func (c *SiteChain) TestConnection(ctx context.Context, s *models.Site) (string, error) {
-	ui, err := c.UserInfo(ctx, s)
+// TestConnectionsStream 流式并发检查全部站点：每站检测完即回调 emit（由 SSE handler 推给前端，
+// 实现「检测到一个更新一个」）。并发骨架与 TestConnections 一致——infoFetchConcurrency 上限、
+// 每站 infoFetchTimeout 独立超时、停用站直接 disabled（不发网络请求）。连通结果由 TestConnection
+// 顺带 upsert 进 site_connectivity 缓存；停用站在此处单独 upsert。emit 无返回值——客户端断开时
+// 链路靠 request ctx 取消自然收敛（各站 siteCtx 随之取消），与 SearchSitesStream 同款容错。
+func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteConnectionResult)) {
+	sites, err := c.sites.List()
 	if err != nil {
+		slog.Warn("TestConnectionsStream list sites failed", "err", err)
+		return
+	}
+	sem := make(chan struct{}, infoFetchConcurrency)
+	var wg sync.WaitGroup
+	for i := range sites {
+		s := sites[i]
+		if !s.IsActive {
+			_ = c.sites.UpsertConnectivity(s.ID, "disabled", "", "站点已停用", 0)
+			emit(SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Status: "disabled", Error: "站点已停用", CheckedAt: time.Now()})
+			continue
+		}
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			siteCtx, cancel := context.WithTimeout(ctx, infoFetchTimeout)
+			defer cancel()
+			level, e := c.TestConnection(siteCtx, &s) // 内部已 upsert 连通缓存
+			r := SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Level: level, CheckedAt: time.Now()}
+			if e != nil {
+				r.Status = "disconnected"
+				r.Error = e.Error()
+			} else {
+				r.Status = "connected"
+			}
+			emit(r)
+		}(s)
+	}
+	wg.Wait()
+}
+
+// TestConnection 测试站点连接与登录态，返回用户等级；同时把结果 upsert 进 site_connectivity 缓存，
+// 供站点运营矩阵/Dashboard 进页面瞬时显示「上次检测结果」（connected/disconnected 三态，含失败）。
+// 因此 TestConnections、流式 TestConnectionsStream、手动 Test、workflow 节点、CookieCloud 同步
+// 任一路径检测后，缓存都会被刷新——下次进页面即看到本次结果。计时计入 AvgSeconds（成功才用）。
+func (c *SiteChain) TestConnection(ctx context.Context, s *models.Site) (string, error) {
+	start := time.Now()
+	ui, err := c.UserInfo(ctx, s)
+	secs := time.Since(start).Seconds()
+	if err != nil {
+		_ = c.sites.UpsertConnectivity(s.ID, "disconnected", "", err.Error(), secs)
 		return "", err
 	}
 	if ui == nil {
+		_ = c.sites.UpsertConnectivity(s.ID, "disconnected", "", "站点未返回用户信息", secs)
 		return "", errors.New("站点未返回用户信息")
 	}
+	_ = c.sites.UpsertConnectivity(s.ID, "connected", ui.Level, "", secs)
 	return ui.Level, nil
 }
 
@@ -559,7 +610,17 @@ func (c *SiteChain) CheckinAll(ctx context.Context) []CheckinSiteResult {
 
 // KeepAlive 保活站点 cookie（适配器需实现 site.KeepAliveCapable）。
 // 做一次认证 GET 刷新 session，并返回轮换后的最新 cookie（若有）。
+// 持有 per-site 锁，避免共享 cookie jar 并发污染；调用方无需再加锁。
 func (c *SiteChain) KeepAlive(ctx context.Context, s *models.Site) (*site.KeepAliveResult, error) {
+	lk := c.siteLock(s.ID)
+	lk.Lock()
+	defer lk.Unlock()
+	return c.keepAliveLocked(ctx, s)
+}
+
+// keepAliveLocked 是 KeepAlive 的无锁内核（调用方已持有 siteLock）。
+// 将适配器返回的 jar cookie 与原凭证合并，仅在语义变化时填 RefreshedCookie。
+func (c *SiteChain) keepAliveLocked(ctx context.Context, s *models.Site) (*site.KeepAliveResult, error) {
 	def := c.defFor(s)
 	token := c.credential(s, def)
 	var res *site.KeepAliveResult
@@ -575,7 +636,20 @@ func (c *SiteChain) KeepAlive(ctx context.Context, s *models.Site) (*site.KeepAl
 		res = r
 		return nil
 	})
-	return res, err
+	if err != nil || res == nil {
+		return res, err
+	}
+	merged := site.MergeCookieHeader(token, res.RefreshedCookie)
+	if merged == "" {
+		merged = token
+	}
+	if site.CookieHeaderChanged(token, merged) {
+		res.RefreshedCookie = merged
+	} else {
+		// 无变化：清空，调用方跳过落库
+		res.RefreshedCookie = ""
+	}
+	return res, nil
 }
 
 // HR 抓取站点 H&R 列表（适配器需实现 site.HRCapable）。

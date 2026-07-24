@@ -17,6 +17,11 @@ export interface SiteTorrent {
   category?: string
   tags?: string[]
   free?: boolean
+  // Align MoviePilot TorrentInfo promo fields when backend fills them.
+  downloadvolumefactor?: number
+  uploadvolumefactor?: number
+  pub_date?: string
+  labels?: string[]
 }
 
 // 单站聚合结果（含错误容错字段：error 非空表示该站搜索失败，不影响其它站）。

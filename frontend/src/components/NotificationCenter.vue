@@ -159,7 +159,7 @@ function relTime(iso: string): string {
     </button>
 
     <Transition name="nc-slide">
-      <div v-if="open" class="nc-panel solid-card">
+      <div v-if="open" class="nc-panel glass">
         <div class="nc-head">
           <span class="nc-title">通知中心 <small v-if="unread">未读 {{ unread }}<template v-if="urgentUnread"> · 高风险 {{ urgentUnread }}</template></small></span>
           <div class="nc-actions">
@@ -253,18 +253,21 @@ function relTime(iso: string): string {
   flex-direction: column;
   overflow: hidden;
   z-index: 300;
-  /* Floating notices need solid contrast over page content. */
-  background: var(--surface-1);
-  border: 1px solid var(--surface-border);
-  box-shadow: var(--surface-shadow-hover), 0 18px 40px rgba(15, 23, 42, 0.14);
+  /* 磨砂玻璃（与命令面板同体系）。下拉面板无全屏遮罩打底，背景要比命令面板更实，
+     否则背后复杂图文透出会压低文字对比、看不清字。 */
+  border-radius: 16px;
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
+  -webkit-backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
+  box-shadow: var(--glass-hover-shadow), 0 18px 40px rgba(15, 23, 42, 0.18);
 }
 .nc-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--surface-border);
-  background: var(--surface-2);
+  border-bottom: 1px solid var(--divider);
+  background: var(--surface-muted);
 }
 .nc-title {
   font-weight: 700;

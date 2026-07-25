@@ -175,8 +175,8 @@ const navAliases: Record<string, string[]> = {
 }
 
 const flatNav = computed(() => [
-  ...navGroups.flatMap((g) => g.items.map((it) => ({ ...it, group: g.title }))),
-  ...paletteOnly,
+  ...navGroups.flatMap((g) => g.items.map((it) => ({ ...it, group: g.title, sidebar: true }))),
+  ...paletteOnly.map((it) => ({ ...it, sidebar: false })),
 ])
 
 const itemByName = computed(() => {
@@ -224,6 +224,7 @@ const favoriteItems = computed(() =>
   favorites.value.map((n) => itemByName.value.get(n)).filter(Boolean) as (NavItem & { group: string })[],
 )
 
+// 命令面板：空查询默认只列侧栏之外的入口；输入查询时全量 fuzzy（含侧栏项）。
 const paletteItems = computed<PaletteItem[]>(() => {
   const base: PaletteItem[] = flatNav.value.map((it) => ({
     name: it.name,
@@ -234,6 +235,7 @@ const paletteItems = computed<PaletteItem[]>(() => {
     group: it.group,
     desc: navDesc[it.name],
     aliases: navAliases[it.name],
+    sidebar: it.sidebar === true,
   }))
   base.push(
     {

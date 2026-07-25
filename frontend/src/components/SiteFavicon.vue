@@ -6,11 +6,11 @@ import { faviconCandidates } from '@/utils/siteFavicon'
 
 const props = withDefaults(
   defineProps<{
-    name: string
+    name?: string
     baseUrl?: string
     size?: number
   }>(),
-  { baseUrl: '', size: 28 },
+  { name: '', baseUrl: '', size: 28 },
 )
 
 const tryIndex = ref(0)

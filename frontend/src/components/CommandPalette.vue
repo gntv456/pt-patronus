@@ -14,6 +14,8 @@ export interface PaletteItem {
   desc?: string
   /** 自定义动作；无则 router.push({ name }) */
   action?: () => void
+  /** true = 侧栏已有此入口；空查询时隐藏，仅输入查询时参与 fuzzy */
+  sidebar?: boolean
 }
 
 const props = defineProps<{
@@ -78,11 +80,13 @@ function itemScore(item: PaletteItem, q: string): number {
 
 const filtered = computed(() => {
   const q = query.value
+  const empty = !q.trim()
   const scored = props.items
+    .filter((it) => (empty ? !it.sidebar : true))
     .map((it) => ({ it, sc: itemScore(it, q) }))
     .filter((x) => x.sc > 0)
     .sort((a, b) => b.sc - a.sc)
-  return scored.slice(0, 12).map((x) => x.it)
+  return scored.slice(0, 30).map((x) => x.it)
 })
 
 watch(filtered, () => {

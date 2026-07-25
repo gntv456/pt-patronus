@@ -115,14 +115,16 @@ class _CommandPaletteSheetState extends State<CommandPaletteSheet> {
 
   List<({NavItem item, int index, int score})> get _filtered {
     final q = _query.text;
+    final empty = q.trim().isEmpty;
     final out = <({NavItem item, int index, int score})>[];
     for (var i = 0; i < navItems.length; i++) {
       final it = navItems[i];
+      // 空查询只显主菜单（抽屉）之外的功能入口（hidden）；输入查询时全量 fuzzy（含 visible）。
+      if (empty && !it.hidden) continue;
       final sc = _itemScore(it, q);
       if (sc > 0) out.add((item: it, index: i, score: sc));
     }
     out.sort((a, b) => b.score.compareTo(a.score));
-    if (out.length > 12) return out.sublist(0, 12);
     return out;
   }
 
@@ -238,9 +240,6 @@ class _CommandPaletteSheetState extends State<CommandPaletteSheet> {
                               subtitle: hit.item.desc == null
                                   ? null
                                   : Text(hit.item.desc!, style: const TextStyle(fontSize: 12)),
-                              trailing: hit.item.hidden
-                                  ? const Text('深链', style: TextStyle(fontSize: 11, color: Colors.grey))
-                                  : null,
                               onTap: () => _run(hit),
                               onFocusChange: (f) {
                                 if (f) setState(() => _active = i);

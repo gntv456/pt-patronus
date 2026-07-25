@@ -196,7 +196,7 @@ type annSFResult struct {
 }
 
 // AnnouncementsAll 跨站并发聚合公告（带 per-site 缓存；force=true 跳过缓存）。
-// 非 force 时单站 miss 走 singleflight 合并同 siteID 并发抓取（防击穿）。
+// 等全部站完成后一次性返回（MCP 工具/cron 用）；前端页面要"加载一个显示一个"用 AnnouncementsStream。
 func (c *SiteChain) AnnouncementsAll(ctx context.Context, force bool) []AnnouncementResult {
 	sites, err := c.sites.ListActive()
 	if err != nil {
@@ -210,42 +210,67 @@ func (c *SiteChain) AnnouncementsAll(ctx context.Context, force bool) []Announce
 		wg.Add(1)
 		go func(i int, s models.Site) {
 			defer wg.Done()
-			if !force {
-				c.annMu.Lock()
-				e, ok := c.annCache[s.ID]
-				c.annMu.Unlock()
-				// SWR：缓存存在（含已过期）且有 ann → 立即返回旧值（秒回）；过期则后台异步刷新。
-				if ok && e.ann != nil {
-					results[i] = annResult(s.ID, s.Name, e.ann, "")
-					if time.Since(e.at) > announcementCacheTTL {
-						c.refreshAnnouncementsAsync(s)
-					}
-					return
-				}
-			}
-			var res annSFResult
-			if force {
-				res = c.fetchAnnouncementOnce(ctx, sem, &s)
-			} else {
-				res, _ = sfDo(&c.annSF, strconv.Itoa(int(s.ID)), func() (annSFResult, error) {
-					c.annMu.Lock()
-					ce, ok := c.annCache[s.ID]
-					c.annMu.Unlock()
-					if ok && time.Since(ce.at) <= announcementCacheTTL && ce.ann != nil {
-						return annSFResult{ann: ce.ann}, nil
-					}
-					return c.fetchAnnouncementOnce(ctx, sem, &s), nil
-				})
-			}
-			ann := res.ann
-			if ann == nil {
-				ann = &site.SiteAnnouncement{SiteID: s.ID, SiteName: s.Name, FetchedAt: time.Now()}
-			}
-			results[i] = annResult(s.ID, s.Name, ann, res.errMsg)
+			results[i] = c.resolveAnnouncement(ctx, sem, s, force)
 		}(i, s)
 	}
 	wg.Wait()
 	return results
+}
+
+// resolveAnnouncement 解析单站公告结果（缓存命中/SWR/miss/force 同聚合逻辑），供聚合与流式复用。
+func (c *SiteChain) resolveAnnouncement(ctx context.Context, sem chan struct{}, s models.Site, force bool) AnnouncementResult {
+	if !force {
+		c.annMu.Lock()
+		e, ok := c.annCache[s.ID]
+		c.annMu.Unlock()
+		// SWR：缓存存在（含已过期）且有 ann → 立即返回旧值（秒回）；过期则后台异步刷新。
+		if ok && e.ann != nil {
+			if time.Since(e.at) > announcementCacheTTL {
+				c.refreshAnnouncementsAsync(s)
+			}
+			return annResult(s.ID, s.Name, e.ann, "")
+		}
+	}
+	var res annSFResult
+	if force {
+		res = c.fetchAnnouncementOnce(ctx, sem, &s)
+	} else {
+		res, _ = sfDo(&c.annSF, strconv.Itoa(int(s.ID)), func() (annSFResult, error) {
+			c.annMu.Lock()
+			ce, ok := c.annCache[s.ID]
+			c.annMu.Unlock()
+			if ok && time.Since(ce.at) <= announcementCacheTTL && ce.ann != nil {
+				return annSFResult{ann: ce.ann}, nil
+			}
+			return c.fetchAnnouncementOnce(ctx, sem, &s), nil
+		})
+	}
+	ann := res.ann
+	if ann == nil {
+		ann = &site.SiteAnnouncement{SiteID: s.ID, SiteName: s.Name, FetchedAt: time.Now()}
+	}
+	return annResult(s.ID, s.Name, ann, res.errMsg)
+}
+
+// AnnouncementsStream 流式聚合：每站解析完立即通过 emit 推送（不等全部），供前端"加载一个显示一个"。
+// 缓存命中的站秒级 emit，慢站（context deadline 15s）最后到达；缓存/SWR/负缓存逻辑同聚合。
+// emit 由调用方保证并发安全（多 goroutine 同时回调）。
+func (c *SiteChain) AnnouncementsStream(ctx context.Context, force bool, emit func(AnnouncementResult)) {
+	sites, err := c.sites.ListActive()
+	if err != nil {
+		slog.Warn("announcements stream list sites failed", "err", err)
+		return
+	}
+	sem := make(chan struct{}, infoFetchConcurrency)
+	var wg sync.WaitGroup
+	for _, s := range sites {
+		wg.Add(1)
+		go func(s models.Site) {
+			defer wg.Done()
+			emit(c.resolveAnnouncement(ctx, sem, s, force))
+		}(s)
+	}
+	wg.Wait()
 }
 
 // fetchAnnouncementOnce 抓单站公告（占一个 sem 槽、独立超时），成功时写缓存。

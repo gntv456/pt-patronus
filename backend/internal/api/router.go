@@ -228,6 +228,7 @@ func Build(d *Deps) *gin.Engine {
 			ann := guarded.Group("/announcements")
 			{
 				ann.GET("", annH.All)
+				ann.GET("/stream", annH.AllStream) // 流式：每站一行 NDJSON，前端逐站显示
 				ann.POST("/sync/:id", annH.SyncOne)
 			}
 

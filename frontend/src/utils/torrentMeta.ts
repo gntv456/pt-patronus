@@ -4,7 +4,7 @@
  */
 
 const TAG_RULES: Array<{ re: RegExp; label: string; tone?: string }> = [
-  { re: /\b(2160p|4k|x2160)\b/i, label: '2160p', tone: 'res' },
+  { re: /\b(2160p|4k|x2160|uhd)\b/i, label: '4K', tone: 'res' },
   { re: /\b(1080[pi]|x1080)\b/i, label: '1080p', tone: 'res' },
   { re: /\b(720[pi]|x720)\b/i, label: '720p', tone: 'res' },
   { re: /\bWEB-?DL\b/i, label: 'WEB-DL', tone: 'src' },

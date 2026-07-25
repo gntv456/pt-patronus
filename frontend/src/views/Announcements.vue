@@ -28,8 +28,14 @@ const filtered = computed(() =>
 
 async function load(refresh = false) {
   loading.value = true
+  results.value = []
   try {
-    results.value = await announcementApi.all(refresh)
+    await announcementApi.streamAll(refresh, (r) => {
+      // 流式逐站追加：同 site_id 覆盖（刷新），否则追加。Vue 响应式即时渲染"加载一个显示一个"。
+      const idx = results.value.findIndex((x) => x.site_id === r.site_id)
+      if (idx >= 0) results.value[idx] = r
+      else results.value.push(r)
+    })
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '加载公告失败')
   } finally {
@@ -54,7 +60,7 @@ onMounted(() => load())
 </script>
 
 <template>
-  <div class="page" v-loading="loading">
+  <div class="page" v-loading="loading && !filtered.length">
     <div class="head">
       <h2 class="title">公告</h2>
       <div class="head-tools">

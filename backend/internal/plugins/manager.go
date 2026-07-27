@@ -152,24 +152,10 @@ func NewManager(db *gorm.DB, bus *event.Bus, noticeSvc *notice.Service, sites *o
 		notice:     noticeSvc,
 		schedJobs:  make(map[string][]string),
 	}
-	_ = m.Register(NewEventAuditPlugin())
-	_ = m.Register(NewNoticeForwarderPlugin())
-	_ = m.Register(NewHTTPProbePlugin())
-	_ = m.Register(NewJSONToolboxPlugin())
-	_ = m.Register(NewTextToolboxPlugin())
-	_ = m.Register(NewWebhookTransformerPlugin())
-	_ = m.Register(NewKeywordAlertPlugin())
-	_ = m.Register(NewCronHelperPlugin())
-	_ = m.Register(NewCloudflareSubscribePlugin())
-	_ = m.Register(NewGroupChatZonePlugin())
-	_ = m.Register(NewTwoFAHelperPlugin())
-	_ = m.Register(NewXiaomiRouterPlugin())
-	_ = m.Register(NewAutoSpeedPlugin())
-	_ = m.Register(NewDramaScrapePlugin())
-	_ = m.Register(NewPlayletCategoryPlugin())
-	_ = m.Register(NewForumSigninPlugin())
-	_ = m.Register(NewCustomCommandPlugin())
-	_ = m.Register(NewPlexSuitePlugin())
+	// Built-in feature plugins have been moved to the open plugin market:
+	// https://github.com/gntv456/ptpatronus-plugin-market
+	// Install them from the market UI instead of compiling into the host.
+	// MCP server plugin remains host-registered in app.go (needs in-process mcp.Server).
 	return m
 }
 

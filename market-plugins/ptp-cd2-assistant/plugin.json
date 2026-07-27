@@ -5,10 +5,9 @@
   "api_version": "1",
   "app_version": ">=0.1.0",
   "author": "PTPatronus Community",
-  "description": "定时检查 CloudDrive2 实例：探测上传任务错误/账号失效并通知；提供重启、查看系统信息、提交离线下载等动作，并在插件视图页用仪表盘展示 CPU/内存/任务/速度/容量。依赖 python-clouddrive2（要求 Python 3.11+，安装时自动 pip 安装）。",
+  "description": "定时检查 CloudDrive2 实例：探测上传任务错误/账号失效并通知；提供重启、查看系统信息、提交离线下载等动作，并在插件视图页用仪表盘展示 CPU/内存/任务/速度/容量。依赖 clouddrive 包（安装时自动 pip 装）。",
   "license": "MIT",
   "keywords": ["clouddrive", "cd2", "monitor"],
-  "category": "网盘",
   "runtime": "external-http",
   "entry": {
     "command": "python",
@@ -33,7 +32,7 @@
   "schedule": [
     { "id": "check", "label": "定时检查 CloudDrive2", "action": "check", "cron_config_key": "cron" }
   ],
-  "requirements": ["python-clouddrive2>=2.0.8.1.2"],
+  "requirements": ["clouddrive"],
   "resource_access": {
     "net_hosts": ["用户配置的 CloudDrive2 实例（gRPC）"]
   },

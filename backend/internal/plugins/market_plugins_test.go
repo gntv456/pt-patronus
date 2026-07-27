@@ -43,9 +43,10 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 	m.SetPluginRoot(filepath.Join(t.TempDir(), "plugins"))
 
 	// builtin 移植验证：drama-scrape / playlet-category 已内置注册（不再走市场安装）。
-	for _, id := range []string{"ptp-drama-scrape", "ptp-playlet-category"} {
-		if p, err := m.plugin(id); err != nil || p == nil {
-			t.Errorf("builtin %s not registered after NewManager: %v", id, err)
+	// Feature plugins moved to open market; should not be auto-registered.
+	for _, id := range []string{"ptp-drama-scrape", "ptp-playlet-category", "xiaomi-router"} {
+		if pl, err := m.plugin(id); err == nil && pl != nil {
+			t.Errorf("%s should not be built-in anymore (moved to market)", id)
 		}
 	}
 
@@ -60,13 +61,12 @@ func TestRealMarketFetchAndInstall(t *testing.T) {
 		"ptp-ffmpeg-thumb":   false,
 		"ptp-library-scrape": false, // uses media:search (P3)
 		"ptp-cd2-assistant":  false, // declares requirements (P2) + a view (P4 dashboard)
+		"ptp-ai-subtitle":    false,
+		"ptp-miwifi":         false,
 	}
 	for _, p := range market.Plugins {
 		// 已移植为 builtin 的两个不应再出现在市场。
-		if p.ID == "ptp-drama-scrape" || p.ID == "ptp-playlet-category" {
-			t.Errorf("%s should no longer be in market (moved to builtin)", p.ID)
-			continue
-		}
+		// drama/playlet are published on the open market again.
 		if _, ok := want[p.ID]; !ok {
 			continue
 		}

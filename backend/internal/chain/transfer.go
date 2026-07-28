@@ -266,6 +266,17 @@ func (c *TransferChain) record(ctx context.Context, dlID uint, hash string, res 
 			level = "success"
 		}
 		c.noticeOnce(ctx, notice.SourceTransferDone, "整理完成："+title, body, level)
+		// 广播 transfer_done 事件供字幕自动化等后台副作用订阅（异步 handler 不阻塞本方法）。
+		c.Emit(ctx, "transfer_done", map[string]any{
+			"title":           title,
+			"year":            year,
+			"type":            res.Type,
+			"dest_dir":        res.DestDir,
+			"files":           res.Files,
+			"episodes":        res.Episodes,
+			"media_source":    source,
+			"media_source_id": sourceID,
+		})
 		if cfg := transfer.Load(c.cfg); cfg.RefreshLibrary && c.mediaMS != nil {
 			c.mediaMS.OnDownloadCompleted(ctx, title) // best-effort 扫库
 		}

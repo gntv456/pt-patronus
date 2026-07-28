@@ -46,6 +46,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
 	"github.com/hxpt/ptpatronus/internal/site/medalwall"
 	"github.com/hxpt/ptpatronus/internal/site/schemas"
+	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
 	"github.com/hxpt/ptpatronus/internal/tgbot"
 	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
@@ -199,7 +200,7 @@ func New(cfg *config.Config) (*App, error) {
 	wsBC.SetNotice(noticeSvc) // 下载器种子完成 diff → 通知中心
 
 	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
-	pluginMgr.SetCfgOp(cfgOp) // 插件市场源等 UI 持久化配置（SystemConfig）
+	pluginMgr.SetCfgOp(cfgOp)             // 插件市场源等 UI 持久化配置（SystemConfig）
 	pluginMgr.EnsureDefaultMarketSource() // 首次启动种子化官方市场仓库（纯 DB 写，无网络/插件活动；安全模式也执行）
 	if !cfg.SafeMode {
 		if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
@@ -221,13 +222,13 @@ func New(cfg *config.Config) (*App, error) {
 	// 凭据走 SystemConfig（UI 可热改，回退环境变量默认），由 provider 统一构建/重建，
 	// 搜索(MediaChain)与推荐(RecommendChain)共用，UI 改 key/域名/镜像即时生效。
 	mediaProvider := chain.NewMediaSourceProvider(cfgOp, chain.MediaSettings{
-		TMDBAPIKey:      cfg.TMDBAPIKey,
-		TMDBAPIDomain:   cfg.TMDBAPIDomain,
-		DoubanSecret:    cfg.DoubanSecret,
-		DoubanAppKey:    cfg.DoubanAppKey,
-		BangumiToken:    cfg.BangumiToken,
+		TMDBAPIKey:     cfg.TMDBAPIKey,
+		TMDBAPIDomain:  cfg.TMDBAPIDomain,
+		DoubanSecret:   cfg.DoubanSecret,
+		DoubanAppKey:   cfg.DoubanAppKey,
+		BangumiToken:   cfg.BangumiToken,
 		CunguangjiBase: cfg.CunguangjiBase,
-		OMDbAPIKey:      cfg.OMDbAPIKey,
+		OMDbAPIKey:     cfg.OMDbAPIKey,
 	})
 	posterCache := oper.NewPosterCacheOper(database)
 	mediaCh := chain.NewMediaChain(base, mediaProvider, posterCache, cfgOp)
@@ -388,6 +389,12 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 	subtitleCh := chain.NewSubtitleChain(base, subtitleProvider)
+
+	// 字幕自动化：监听 transfer_done → 按语言/provider 优先级自动搜字幕落盘到媒体同目录（Bazarr /
+	// ChineseSubFinder 模式）。复用 subtitleCh 搜/下载（结构化实现 subauto.Searcher）；配置走 cfgOp，
+	// 通知走 noticeSvc；默认关闭，用户经 /subtitle/automation/config 开启。异步 handler 不阻塞整理。
+	subAutoSvc := subauto.New(bus, subtitleCh, cfgOp, noticeSvc)
+	subAutoSvc.Start()
 
 	// MCP 服务端：把宿主能力（站点/订阅/下载器/搜索）暴露为 MCP 工具，供 AI Agent / IDE 经
 	// JSON-RPC 调用。配置（启用/令牌）由 ptp-mcp-server 插件承载，服务端每次请求经
@@ -764,25 +771,26 @@ func New(cfg *config.Config) (*App, error) {
 		Dashboard:     dashCh,
 		WS:            wsBC,
 		RegOp:         regOp, RegCh: regCh,
-		Subscribe:   subCh,
-		Workflow:    wfCh,
-		Rss:         rssCh,
-		BrushFlow:   brushCh,
-		Contract:    contractCh,
-		MediaServer: mediaServerCh,
-		Transfer:    transferCh,
-		AgentChat:   agentChatH,
-		LLMGateway:  llmGatewayH,
-		Doctor:      doctorH,
-		TgBot:       tgBotH,
-		Servarr:     servarrH,
-		Cloud:       cloudCh,
-		Subtitle:    subtitleCh,
-		Trakt:       traktCh,
-		CookieCloud: cookieCloudCh,
-		MCP:         mcpSrv,
-		Webhook:     webhookH,
-		MonOp:       monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
+		Subscribe:          subCh,
+		Workflow:           wfCh,
+		Rss:                rssCh,
+		BrushFlow:          brushCh,
+		Contract:           contractCh,
+		MediaServer:        mediaServerCh,
+		Transfer:           transferCh,
+		AgentChat:          agentChatH,
+		LLMGateway:         llmGatewayH,
+		Doctor:             doctorH,
+		TgBot:              tgBotH,
+		Servarr:            servarrH,
+		Cloud:              cloudCh,
+		Subtitle:           subtitleCh,
+		SubtitleAutomation: subAutoSvc,
+		Trakt:              traktCh,
+		CookieCloud:        cookieCloudCh,
+		MCP:                mcpSrv,
+		Webhook:            webhookH,
+		MonOp:              monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
 		SSHHostKeyOp: sshKeyOp,
 		AgentOp:      agentOp, AgentHub: agentHub,
 		Savept:     saveptSvc,

@@ -25,6 +25,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/site"
+	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/web"
 	"github.com/hxpt/ptpatronus/internal/ws"
@@ -33,72 +34,73 @@ import (
 
 // Deps 聚合路由装配所需的全部依赖。
 type Deps struct {
-	Cfg           *config.Config
-	DB            *gorm.DB
-	JWT           *security.JWT
-	Act           *auth.Activation
-	HxptVIP       *auth.HxptVIP
-	HxptAuth      auth.HxptAuthenticator
-	Crypto        *security.Crypto
-	TVCache       *auth.TokenVersionCache
-	Tickets       *auth.TicketStore
-	OIDC          *auth.OIDCService
-	VIPGraceDays  int
-	SiteOp        *oper.SiteOper
-	SiteCh        *chain.SiteChain
-	Reg           *site.Registry
-	SiteHC        *httpclient.Client
-	DLOp          *oper.DownloaderOper
-	DLCh          *chain.DownloadChain
-	DLMgr         *manager.Manager
-	Notif         *chain.NotificationChain
-	NotifMgr      *notification.Manager
-	NotifProvider *chain.NotificationSettingsProvider
-	MediaCh       *chain.MediaChain
-	Recommend     *chain.RecommendChain
-	FileOp        *oper.FileStorageOper
-	FileCh        *chain.FileManagerChain
-	FileMgr       *filemanager.Manager
-	KeepSeed      *chain.KeepSeedChain
-	Backup        *backup.Service
-	Entertainment *chain.EntertainmentChain
-	Dashboard     *chain.DashboardChain
-	WS            *ws.Broadcaster
-	RegOp         *oper.RegistrationOper
-	RegCh         *chain.RegistrationChain
-	Subscribe     *chain.SubscribeChain
-	Workflow      *chain.WorkflowChain
-	Rss           *chain.RssChain
-	BrushFlow     *chain.BrushFlowChain
-	Contract      *chain.ContractChain
-	MediaServer   *chain.MediaServerChain
-	Transfer      *chain.TransferChain
-	AgentChat     *v1.AgentChatHandler
-	LLMGateway    *v1.LLMGatewayHandler
-	Doctor        *v1.DoctorHandler
-	TgBot         *v1.TgBotHandler
-	Servarr       *v1.ServarrHandler
-	Cloud         *chain.CloudChain
-	Subtitle      *chain.SubtitleChain
-	Trakt         *chain.TraktChain
-	CookieCloud   *chain.CookieCloudChain
-	MCP           *mcp.Server
-	Webhook       *v1.WebhookHandler
-	MonOp         *oper.MonitorOper
-	MonSvc        *monitor.Service
-	RTSPProxy     *monitor.RTSPProxy
-	SSHHostKeyOp  *oper.SSHHostKeyOper
-	AgentOp       *oper.AgentOper
-	AgentHub      *monitor.AgentWSHub
-	Savept        *savept.Service
-	Assessment    *chain.AssessmentChain
-	Medal         *chain.MedalChain
-	Notice        *notice.Service
-	Update        *update.Service
-	Filter        *filter.Store
-	FilterEng     *filter.Engine
-	Plugins       *plugins.Manager
-	Automation    *automation.Service
+	Cfg                *config.Config
+	DB                 *gorm.DB
+	JWT                *security.JWT
+	Act                *auth.Activation
+	HxptVIP            *auth.HxptVIP
+	HxptAuth           auth.HxptAuthenticator
+	Crypto             *security.Crypto
+	TVCache            *auth.TokenVersionCache
+	Tickets            *auth.TicketStore
+	OIDC               *auth.OIDCService
+	VIPGraceDays       int
+	SiteOp             *oper.SiteOper
+	SiteCh             *chain.SiteChain
+	Reg                *site.Registry
+	SiteHC             *httpclient.Client
+	DLOp               *oper.DownloaderOper
+	DLCh               *chain.DownloadChain
+	DLMgr              *manager.Manager
+	Notif              *chain.NotificationChain
+	NotifMgr           *notification.Manager
+	NotifProvider      *chain.NotificationSettingsProvider
+	MediaCh            *chain.MediaChain
+	Recommend          *chain.RecommendChain
+	FileOp             *oper.FileStorageOper
+	FileCh             *chain.FileManagerChain
+	FileMgr            *filemanager.Manager
+	KeepSeed           *chain.KeepSeedChain
+	Backup             *backup.Service
+	Entertainment      *chain.EntertainmentChain
+	Dashboard          *chain.DashboardChain
+	WS                 *ws.Broadcaster
+	RegOp              *oper.RegistrationOper
+	RegCh              *chain.RegistrationChain
+	Subscribe          *chain.SubscribeChain
+	Workflow           *chain.WorkflowChain
+	Rss                *chain.RssChain
+	BrushFlow          *chain.BrushFlowChain
+	Contract           *chain.ContractChain
+	MediaServer        *chain.MediaServerChain
+	Transfer           *chain.TransferChain
+	AgentChat          *v1.AgentChatHandler
+	LLMGateway         *v1.LLMGatewayHandler
+	Doctor             *v1.DoctorHandler
+	TgBot              *v1.TgBotHandler
+	Servarr            *v1.ServarrHandler
+	Cloud              *chain.CloudChain
+	Subtitle           *chain.SubtitleChain
+	SubtitleAutomation *subauto.Service
+	Trakt              *chain.TraktChain
+	CookieCloud        *chain.CookieCloudChain
+	MCP                *mcp.Server
+	Webhook            *v1.WebhookHandler
+	MonOp              *oper.MonitorOper
+	MonSvc             *monitor.Service
+	RTSPProxy          *monitor.RTSPProxy
+	SSHHostKeyOp       *oper.SSHHostKeyOper
+	AgentOp            *oper.AgentOper
+	AgentHub           *monitor.AgentWSHub
+	Savept             *savept.Service
+	Assessment         *chain.AssessmentChain
+	Medal              *chain.MedalChain
+	Notice             *notice.Service
+	Update             *update.Service
+	Filter             *filter.Store
+	FilterEng          *filter.Engine
+	Plugins            *plugins.Manager
+	Automation         *automation.Service
 }
 
 // splitOrigins 把逗号分隔的 CORS 配置拆为来源切片（空切片表示开发全开）。
@@ -205,7 +207,7 @@ func Build(d *Deps) *gin.Engine {
 				sites.DELETE("/:id", middleware.RequireAdmin(), siteH.Delete)
 				sites.POST("/batch-delete", middleware.RequireAdmin(), siteH.BatchDelete)
 				sites.GET("/status", siteH.Status)
-					sites.GET("/status/stream", siteH.StatusStream)
+				sites.GET("/status/stream", siteH.StatusStream)
 				sites.POST("/:id/test", siteH.Test)
 				sites.POST("/:id/checkin", siteH.Checkin)
 				sites.POST("/checkin", siteH.CheckinAll)
@@ -279,6 +281,7 @@ func Build(d *Deps) *gin.Engine {
 			dls := guarded.Group("/downloaders")
 			{
 				dls.GET("", dlH.List)
+				dls.GET("/caps", dlH.Caps) // 各类型能力位矩阵（静态，前端门控 UI 用；替代散落的 type 判断）
 				dls.GET("/:id", dlH.Get)
 				dls.POST("", dlH.Create)
 				dls.PUT("/:id", dlH.Update)
@@ -635,13 +638,16 @@ func Build(d *Deps) *gin.Engine {
 			}
 
 			// 字幕：跨源搜索 + 下载 + 源配置（ASSRT/OpenSubtitles token、SubHD/Zimuku cookie、繁简）
-			subtH := v1.NewSubtitleHandler(d.Subtitle)
+			// + 字幕自动化配置（整理完成自动下载字幕）
+			subtH := v1.NewSubtitleHandler(d.Subtitle, d.SubtitleAutomation)
 			subt := guarded.Group("/subtitle")
 			{
 				subt.GET("/search", subtH.Search)
 				subt.POST("/download", subtH.Download)
 				subt.GET("/config", subtH.GetConfig)
 				subt.PUT("/config", middleware.RequireAdmin(), subtH.SetConfig)
+				subt.GET("/automation/config", subtH.GetAutomationConfig)
+				subt.PUT("/automation/config", middleware.RequireAdmin(), subtH.SetAutomationConfig)
 			}
 
 			// Trakt 同步：Device OAuth 授权 + WatchList→订阅 + 同步状态/配置

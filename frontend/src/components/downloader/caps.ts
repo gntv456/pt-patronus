@@ -63,18 +63,29 @@ export const DL_CAPS: Record<string, DlCaps> = {
   rt: {
     category: true, categoryCRUD: false, forceStart: false, queueFull: false,
     sequential: false, firstLast: false, swarm: false,
-    tags: false, location: false, trackers: false, files: false, peers: false,
-    filePrio: [],
+    tags: false, location: false, trackers: false, files: true, peers: true,
+    filePrio: [
+      { label: '不下载', value: 0 }, { label: '正常', value: 1 }, { label: '高', value: 2 },
+    ],
   },
   fl: {
     category: true, categoryCRUD: false, forceStart: false, queueFull: false,
-    sequential: false, firstLast: false, swarm: true,
-    tags: true, location: true, trackers: false, files: true, peers: true,
+    sequential: true, firstLast: false, swarm: true,
+    tags: true, location: true, trackers: true, files: true, peers: true,
     filePrio: [
-      { label: '跳过', value: 0 }, { label: '低', value: 1 },
-      { label: '正常', value: 2 }, { label: '高', value: 3 },
+      { label: '跳过', value: 0 }, { label: '正常', value: 1 },
+      { label: '高', value: 2 },
     ],
   },
 }
 
-export const dlCaps = (type: string): DlCaps => DL_CAPS[type] ?? DL_CAPS.qb
+// MINIMAL_CAPS 是未登记下载器类型的兜底（最保守：仅文件列表），替代旧 ?? DL_CAPS.qb
+// ——避免新客户端未登记时 UI 显示一堆后端会 ErrNotImplemented 的按钮（与后端 caps.go 同源）。
+const MINIMAL_CAPS: DlCaps = {
+  category: false, categoryCRUD: false, forceStart: false, queueFull: false,
+  sequential: false, firstLast: false, swarm: false,
+  tags: false, location: false, trackers: false, files: true, peers: false,
+  filePrio: [{ label: '正常', value: 1 }],
+}
+
+export const dlCaps = (type: string): DlCaps => DL_CAPS[type] ?? MINIMAL_CAPS

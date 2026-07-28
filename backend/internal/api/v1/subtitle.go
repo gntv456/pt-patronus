@@ -9,15 +9,17 @@ import (
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/subtitle"
+	"github.com/hxpt/ptpatronus/internal/subtitle/automation"
 )
 
-// SubtitleHandler 处理字幕搜索 / 下载 / 源配置。
+// SubtitleHandler 处理字幕搜索 / 下载 / 源配置 + 字幕自动化配置。
 type SubtitleHandler struct {
-	svc *chain.SubtitleChain
+	svc  *chain.SubtitleChain
+	auto *subauto.Service // 字幕自动化服务（可能为 nil：旧部署未启用时）
 }
 
-func NewSubtitleHandler(svc *chain.SubtitleChain) *SubtitleHandler {
-	return &SubtitleHandler{svc: svc}
+func NewSubtitleHandler(svc *chain.SubtitleChain, auto *subauto.Service) *SubtitleHandler {
+	return &SubtitleHandler{svc: svc, auto: auto}
 }
 
 // Search 跨源搜索字幕。?q=&language=（language: 空=任意 chs/cht/eng）。
@@ -84,15 +86,15 @@ func (h *SubtitleHandler) Download(c *gin.Context) {
 
 // subtitleConfigResp 配置回显（secret 脱敏 + _configured）。
 type subtitleConfigResp struct {
-	AssrtToken             string `json:"assrt_token"`
-	AssrtTokenConfigured   bool   `json:"assrt_token_configured"`
-	OpenSubtitlesKey       string `json:"opensubtitles_key"`
-	OpenSubtitlesConfigured bool  `json:"opensubtitles_key_configured"`
-	SubHDCookie            string `json:"subhd_cookie"`
-	SubHDCookieConfigured  bool   `json:"subhd_cookie_configured"`
-	ZimukuCookie           string `json:"zimuku_cookie"`
-	ZimukuCookieConfigured bool   `json:"zimuku_cookie_configured"`
-	TargetLang             string `json:"target_lang"`
+	AssrtToken              string `json:"assrt_token"`
+	AssrtTokenConfigured    bool   `json:"assrt_token_configured"`
+	OpenSubtitlesKey        string `json:"opensubtitles_key"`
+	OpenSubtitlesConfigured bool   `json:"opensubtitles_key_configured"`
+	SubHDCookie             string `json:"subhd_cookie"`
+	SubHDCookieConfigured   bool   `json:"subhd_cookie_configured"`
+	ZimukuCookie            string `json:"zimuku_cookie"`
+	ZimukuCookieConfigured  bool   `json:"zimuku_cookie_configured"`
+	TargetLang              string `json:"target_lang"`
 }
 
 func (h *SubtitleHandler) GetConfig(c *gin.Context) {
@@ -152,4 +154,31 @@ func sanitizeFilename(name string) string {
 		name = "subtitle.srt"
 	}
 	return name
+}
+
+// GetAutomationConfig 读字幕自动化配置（开关 / 语言 / provider 优先级 / 仅缺字幕）。
+func (h *SubtitleHandler) GetAutomationConfig(c *gin.Context) {
+	if h.auto == nil {
+		c.JSON(http.StatusOK, subauto.DefaultConfig())
+		return
+	}
+	c.JSON(http.StatusOK, h.auto.Config())
+}
+
+// SetAutomationConfig 写字幕自动化配置（即时生效：下次 transfer_done 现取）。
+func (h *SubtitleHandler) SetAutomationConfig(c *gin.Context) {
+	if h.auto == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "字幕自动化服务未初始化"})
+		return
+	}
+	var cfg subauto.Config
+	if err := c.ShouldBindJSON(&cfg); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.auto.SetConfig(cfg); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

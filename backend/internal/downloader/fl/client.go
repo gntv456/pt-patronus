@@ -335,10 +335,12 @@ func (c *Client) TestConnection(ctx context.Context) error {
 	if status != http.StatusOK {
 		return fmt.Errorf("flood connection-test status %d", status)
 	}
+	// jesec connection-test 返回 {isConnected: bool}；旧字段 isConnect 作兼容回退。
 	var r struct {
-		IsConnect bool `json:"isConnect"`
+		IsConnected bool `json:"isConnected"`
+		IsConnect   bool `json:"isConnect"`
 	}
-	if err := json.Unmarshal(b, &r); err == nil && !r.IsConnect {
+	if err := json.Unmarshal(b, &r); err == nil && !r.IsConnected && !r.IsConnect {
 		return fmt.Errorf("flood client not connected to rtorrent")
 	}
 	return nil

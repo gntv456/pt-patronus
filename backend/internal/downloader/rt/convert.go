@@ -155,3 +155,30 @@ func safeFileName(s string) string {
 	}
 	return name
 }
+
+// peerFlags 拼接 ruTorrent peer 标志位为短串（对标 qB flags 字段）：
+// I=入站连接 E=加密传输 S=被忽略(snubbed)。
+func peerFlags(incoming, encrypted, snubbed bool) string {
+	var b strings.Builder
+	if incoming {
+		b.WriteString("I")
+	}
+	if encrypted {
+		b.WriteString("E")
+	}
+	if snubbed {
+		b.WriteString("S")
+	}
+	return b.String()
+}
+
+// rtTrackerStatus 映射 ruTorrent tracker 字段为状态串。
+// enabled: 0=禁用 1=启用；ttype: 1=http 2=udp 3=dht。
+// ruTorrent 的 tracker 状态字段不如 qB 丰富（无 updating/not_working 细分），
+// 简化为 working/disabled 两态。
+func rtTrackerStatus(enabled, ttype int64) string {
+	if enabled == 0 {
+		return "disabled"
+	}
+	return "working"
+}

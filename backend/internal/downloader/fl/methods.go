@@ -12,28 +12,31 @@ import (
 )
 
 // torrentProps Flood 单种子属性（jesec/legacy 共用字段子集）。
+// 字段对齐 jesec/flood 的 TorrentProperties 类型（shared/types/Torrent.ts）。
 type torrentProps struct {
-	Hash            string   `json:"hash"`
-	Name            string   `json:"name"`
-	BytesDone       int64    `json:"bytesDone"`
-	SizeBytes       int64    `json:"sizeBytes"`
-	PercentComplete float64  `json:"percentComplete"`
-	Ratio           float64  `json:"ratio"`
-	DownRate        int64    `json:"downRate"`
-	UpRate          int64    `json:"upRate"`
-	DownTotal       int64    `json:"downTotal"`
-	UpTotal         int64    `json:"upTotal"`
-	Directory       string   `json:"directory"`
-	DateAdded       float64  `json:"dateAdded"`
-	IsComplete      bool     `json:"isComplete"`
-	Status          []string `json:"status"`
-	Tags            []string `json:"tags"`
-	SeedsConnected  int      `json:"seedsConnected"`
-	PeersConnected  int      `json:"peersConnected"`
-	SeedsTotal      int      `json:"seedsTotal"`
-	PeersTotal      int      `json:"peersTotal"`
-	Priority        int      `json:"priority"`
-	IsSequential    bool     `json:"isSequential"`
+	Hash             string   `json:"hash"`
+	Name             string   `json:"name"`
+	BytesDone        int64    `json:"bytesDone"`
+	SizeBytes        int64    `json:"sizeBytes"`
+	PercentComplete  float64  `json:"percentComplete"`
+	Ratio            float64  `json:"ratio"`
+	DownRate         int64    `json:"downRate"`
+	UpRate           int64    `json:"upRate"`
+	DownTotal        int64    `json:"downTotal"`
+	UpTotal          int64    `json:"upTotal"`
+	Directory        string   `json:"directory"`
+	DateAdded        float64  `json:"dateAdded"`
+	DateFinished     float64  `json:"dateFinished"`
+	IsComplete       bool     `json:"isComplete"`
+	IsInitialSeeding bool     `json:"isInitialSeeding"`
+	Status           []string `json:"status"`
+	Tags             []string `json:"tags"`
+	SeedsConnected   int      `json:"seedsConnected"`
+	PeersConnected   int      `json:"peersConnected"`
+	SeedsTotal       int      `json:"seedsTotal"`
+	PeersTotal       int      `json:"peersTotal"`
+	Priority         int      `json:"priority"`
+	IsSequential     bool     `json:"isSequential"`
 }
 
 // ListTorrents 列任务。

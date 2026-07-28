@@ -26,6 +26,12 @@ func NewDownloaderHandler(op *oper.DownloaderOper, dl *chain.DownloadChain, mgr 
 	return &DownloaderHandler{op: op, dl: dl, mgr: mgr, siteOp: siteOp}
 }
 
+// Caps 返回各下载器类型的能力位矩阵（后端权威，供前端按类型门控 UI 控件、避免显示后端
+// 会 ErrNotImplemented 的按钮）。GET /downloaders/caps。
+func (h *DownloaderHandler) Caps(c *gin.Context) {
+	c.JSON(http.StatusOK, downloader.AllCapabilities())
+}
+
 // List 列出全部下载器。
 func (h *DownloaderHandler) List(c *gin.Context) {
 	ds, err := h.op.List()

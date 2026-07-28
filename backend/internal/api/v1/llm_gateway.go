@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/aiagent"
@@ -21,6 +22,8 @@ type LLMGatewayHandler struct {
 	crypto     llmgateway.Crypto
 	semMu      sync.Mutex
 	sem        chan struct{} // 按 MaxConcurrency 限制的并发信号量
+	sessionsMu sync.Mutex
+	sessions   map[string]sessionEntry // x-session-id → convID（多轮对话复用同一会话）
 }
 
 // NewLLMGatewayHandler 构造。convCreate 由 app.go 绑 oper.AgentConversationOper.Create。
@@ -28,7 +31,8 @@ func NewLLMGatewayHandler(agent *aiagent.Agent,
 	convCreate func(*models.AgentConversation) error,
 	kv llmgateway.KVStore, crypto llmgateway.Crypto,
 ) *LLMGatewayHandler {
-	return &LLMGatewayHandler{agent: agent, convCreate: convCreate, kv: kv, crypto: crypto}
+	return &LLMGatewayHandler{agent: agent, convCreate: convCreate, kv: kv, crypto: crypto,
+		sessions: map[string]sessionEntry{}}
 }
 
 // proxyMessage 兼容 OpenAI / Anthropic 的 messages[].content（string 或多模态数组）。
@@ -133,7 +137,7 @@ func (h *LLMGatewayHandler) OpenAIChat(c *gin.Context) {
 	}
 	defer func() { <-sem }()
 
-	conv, err := h.newConversation()
+	convID, err := h.convForSession(c.GetHeader("x-session-id"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": err.Error(), "type": "server_error"}})
 		return
@@ -143,7 +147,7 @@ func (h *LLMGatewayHandler) OpenAIChat(c *gin.Context) {
 		model = "ptpatronus-agent"
 	}
 	h.streamSSE(c)
-	_ = llmgateway.StreamOpenAI(c.Writer, model, h.agent.Run(c.Request.Context(), conv.ID, userText))
+	_ = llmgateway.StreamOpenAI(c.Writer, model, h.agent.Run(c.Request.Context(), convID, userText))
 }
 
 // AnthropicMessages POST /anthropic/v1/messages —— Anthropic 兼容流式。
@@ -175,7 +179,7 @@ func (h *LLMGatewayHandler) AnthropicMessages(c *gin.Context) {
 	}
 	defer func() { <-sem }()
 
-	conv, err := h.newConversation()
+	convID, err := h.convForSession(c.GetHeader("x-session-id"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": err.Error(), "type": "server_error"}})
 		return
@@ -185,16 +189,55 @@ func (h *LLMGatewayHandler) AnthropicMessages(c *gin.Context) {
 		model = "ptpatronus-agent"
 	}
 	h.streamSSE(c)
-	_ = llmgateway.StreamAnthropic(c.Writer, model, h.agent.Run(c.Request.Context(), conv.ID, userText))
+	_ = llmgateway.StreamAnthropic(c.Writer, model, h.agent.Run(c.Request.Context(), convID, userText))
 }
 
-// newConversation 建空会话（MVP 每请求单轮；多轮 TODO：按 x-session-id 复用）。
+// newConversation 建空会话。多轮复用见 convForSession（按 x-session-id 复用同一会话，
+// agent.Run 会按 convID 用 ListByConv 加载历史消息，实现跨请求上下文连续）。
 func (h *LLMGatewayHandler) newConversation() (*models.AgentConversation, error) {
 	conv := &models.AgentConversation{}
 	if err := h.convCreate(conv); err != nil {
 		return nil, err
 	}
 	return conv, nil
+}
+
+// sessionTTL 是多轮会话的最长空闲保留时长；超过则该 session 重建会话（防无限堆积）。
+const sessionTTL = 30 * time.Minute
+
+// sessionEntry 记录 x-session-id → 会话 ID 与最后活跃时间（TTL 过期重建）。
+type sessionEntry struct {
+	convID uint
+	last   time.Time
+}
+
+// convForSession 多轮对话核心：同 x-session-id 在 TTL 内复用同一 convID（agent.Run 按 convID
+// 加载历史），无 session 头则每次建新会话（兼容旧行为）。替代了原「每请求单轮」的局限。
+func (h *LLMGatewayHandler) convForSession(sessionID string) (uint, error) {
+	sid := strings.TrimSpace(sessionID)
+	if sid == "" {
+		conv, err := h.newConversation()
+		if err != nil {
+			return 0, err
+		}
+		return conv.ID, nil
+	}
+	h.sessionsMu.Lock()
+	defer h.sessionsMu.Unlock()
+	if h.sessions == nil {
+		h.sessions = map[string]sessionEntry{}
+	}
+	now := time.Now()
+	if e, ok := h.sessions[sid]; ok && now.Sub(e.last) < sessionTTL {
+		h.sessions[sid] = sessionEntry{convID: e.convID, last: now}
+		return e.convID, nil
+	}
+	conv, err := h.newConversation()
+	if err != nil {
+		return 0, err
+	}
+	h.sessions[sid] = sessionEntry{convID: conv.ID, last: now}
+	return conv.ID, nil
 }
 
 // streamSSE 写 SSE 响应头并立即 flush（复用 agent_chat.go 的范式）。

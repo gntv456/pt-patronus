@@ -56,6 +56,7 @@ func TestEffectiveCron(t *testing.T) {
 func TestPluginScheduleRegistration(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
+	mustRegister(t, m, NewCloudflareSubscribePlugin())
 	fake := &fakeScheduler{}
 	m.sched = fake // 注入假调度器（绕过 Start 里的 scheduler.New）
 
@@ -112,6 +113,7 @@ func TestPluginScheduleRegistration(t *testing.T) {
 func TestPluginWithoutScheduleNoOp(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, nil, nil, nil, nil)
+	mustRegister(t, m, NewJSONToolboxPlugin())
 	fake := &fakeScheduler{}
 	m.sched = fake
 	if err := m.SetEnabled("json-toolbox", true); err != nil {

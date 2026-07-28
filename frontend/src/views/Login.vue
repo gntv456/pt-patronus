@@ -29,9 +29,12 @@ onMounted(async () => {
     router.push({ name: 'dashboard' })
     return
   }
-  // OIDC/SSO 回调：URL ?oidc_token= 携带后端签发的 JWT（302 跳转回来）。存 token 后进首页。
-  const oidcToken = route.query.oidc_token
-  if (typeof oidcToken === 'string' && oidcToken) {
+  // OIDC/SSO 回调：从 URL fragment(#oidc_token=) 取后端签发的 JWT（302 跳转回来）。存 token 后进首页。
+  // fragment 不进服务器日志/Referrer/浏览器历史，比 query 安全（仍建议生产走 HTTPS）。
+  // 兜底读 query，兼容旧后端可能仍签发的 query 跳转。
+  const oidcHash = new URLSearchParams((route.hash || '').replace(/^#/, ''))
+  const oidcToken = oidcHash.get('oidc_token') ?? (typeof route.query.oidc_token === 'string' ? route.query.oidc_token : '')
+  if (oidcToken) {
     await auth.loginByToken(oidcToken)
     router.replace({ name: 'dashboard' })
     return

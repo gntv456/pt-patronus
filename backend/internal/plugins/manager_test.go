@@ -46,6 +46,15 @@ func newPluginTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// mustRegister 把内置插件显式注册进测试 manager。自 fe52adb 起 feature builtins 迁至
+// 开放插件市场，NewManager 不再自动注册它们；测试需要时在此显式注册（Go 实现仍在仓内）。
+func mustRegister(t *testing.T, m *Manager, p Plugin) {
+	t.Helper()
+	if err := m.Register(p); err != nil {
+		t.Fatalf("register %s: %v", p.Manifest().ID, err)
+	}
+}
+
 func TestExternalPluginHelperProcess(t *testing.T) {
 	if os.Getenv("PTP_TEST_HELPER_PROCESS") != "1" {
 		return
@@ -86,6 +95,7 @@ func TestManagerHandlesEnabledPluginEvent(t *testing.T) {
 
 	bus := event.New()
 	m := NewManager(db, bus, nil, nil, nil)
+	mustRegister(t, m, NewEventAuditPlugin())
 	m.Start(context.Background())
 
 	if err := m.SetEnabled("event-audit", true); err != nil {
@@ -841,6 +851,7 @@ func TestSetEnabledBlocksOnMissingDependency(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewJSONToolboxPlugin())
 	m.SetPluginRoot(pluginRoot)
 	if err := m.LoadExternal(pluginRoot); err != nil {
 		t.Fatalf("load external: %v", err)
@@ -898,6 +909,7 @@ func TestMarketDependencyInstallableStatus(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewJSONToolboxPlugin())
 	m.SetPluginRoot(filepath.Join(root, "plugins"))
 
 	market, err := m.FetchMarket(context.Background(), indexPath)

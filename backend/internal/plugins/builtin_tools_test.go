@@ -50,6 +50,7 @@ func TestManagerRegistersUsefulBuiltinPlugins(t *testing.T) {
 func TestJSONToolboxActions(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewJSONToolboxPlugin())
 	if err := m.SetEnabled("json-toolbox", true); err != nil {
 		t.Fatalf("enable json toolbox: %v", err)
 	}
@@ -80,6 +81,7 @@ func TestJSONToolboxActions(t *testing.T) {
 func TestTextToolboxBase64(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewTextToolboxPlugin())
 	if err := m.SetEnabled("text-toolbox", true); err != nil {
 		t.Fatalf("enable text toolbox: %v", err)
 	}
@@ -105,6 +107,7 @@ func TestHTTPProbeAction(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewHTTPProbePlugin())
 	if _, err := m.SaveConfig("http-probe", map[string]any{"allow_private_network": true}); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
@@ -128,6 +131,7 @@ func TestHTTPProbeAction(t *testing.T) {
 func TestWebhookTransformerPreview(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewWebhookTransformerPlugin())
 	if err := m.SetEnabled("webhook-transformer", true); err != nil {
 		t.Fatalf("enable transformer: %v", err)
 	}
@@ -147,6 +151,7 @@ func TestWebhookTransformerPreview(t *testing.T) {
 func TestKeywordAlertMatchAction(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewKeywordAlertPlugin())
 	if err := m.SetEnabled("keyword-alert", true); err != nil {
 		t.Fatalf("enable keyword alert: %v", err)
 	}
@@ -165,6 +170,7 @@ func TestKeywordAlertMatchAction(t *testing.T) {
 func TestCronHelperNextRuns(t *testing.T) {
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewCronHelperPlugin())
 	if err := m.SetEnabled("cron-helper", true); err != nil {
 		t.Fatalf("enable cron helper: %v", err)
 	}

@@ -108,7 +108,7 @@ func (m *Manager) SetTrustConfig(trustedKeys []string, allowUnsigned bool) error
 type Manager struct {
 	mu            sync.RWMutex
 	plugins       map[string]Plugin
-	subscribed    map[string]map[string]bool
+	subscribed    map[string]map[string]int // eventType → bus handle（Unsubscribe 用，治 reload/卸载泄漏）
 	op            *oper.PluginOper
 	kv            *oper.PluginKVOper
 	sites         *oper.SiteOper
@@ -144,7 +144,7 @@ type cronScheduler interface {
 func NewManager(db *gorm.DB, bus *event.Bus, noticeSvc *notice.Service, sites *oper.SiteOper, kv *oper.PluginKVOper) *Manager {
 	m := &Manager{
 		plugins:    make(map[string]Plugin),
-		subscribed: make(map[string]map[string]bool),
+		subscribed: make(map[string]map[string]int),
 		op:         oper.NewPluginOper(db),
 		kv:         kv,
 		sites:      sites,
@@ -395,6 +395,9 @@ func (m *Manager) register(p Plugin, replace bool) error {
 	started := m.started
 	m.mu.Unlock()
 	if started {
+		if ok {
+			m.unsubscribePlugin(manifest.ID) // 替换：先摘掉旧实例的总线订阅，再订阅新实例
+		}
 		m.subscribePlugin(p)
 		m.refreshSchedules(manifest.ID)
 	}
@@ -443,6 +446,7 @@ func (m *Manager) Stop() {
 	m.mu.RUnlock()
 	for _, p := range plugins {
 		stopPlugin(p)
+		m.unsubscribePlugin(p.Manifest().ID) // 停机：摘除全部总线订阅，避免 handler 泄漏
 	}
 	m.schedMu.Lock()
 	sched := m.sched
@@ -471,18 +475,37 @@ func (m *Manager) subscribePlugin(p Plugin) {
 		}
 		m.mu.Lock()
 		if m.subscribed[manifest.ID] == nil {
-			m.subscribed[manifest.ID] = make(map[string]bool)
+			m.subscribed[manifest.ID] = make(map[string]int)
 		}
-		if m.subscribed[manifest.ID][eventType] {
+		if _, dup := m.subscribed[manifest.ID][eventType]; dup {
 			m.mu.Unlock()
 			continue
 		}
-		m.subscribed[manifest.ID][eventType] = true
 		m.mu.Unlock()
 		pluginID := manifest.ID
-		m.bus.Subscribe(eventType, 1000, func(ctx context.Context, e event.Event) {
+		// 不在持有 m.mu 时调 bus.Subscribe，避免与总线锁的顺序耦合。
+		handle := m.bus.Subscribe(eventType, 1000, func(ctx context.Context, e event.Event) {
 			m.handleEvent(ctx, pluginID, Event{Type: e.Type, Data: e.Data})
 		})
+		m.mu.Lock()
+		m.subscribed[manifest.ID][eventType] = handle
+		m.mu.Unlock()
+	}
+}
+
+// unsubscribePlugin 移除某插件在事件总线上的全部订阅。旧实现只存 bool 且从不
+// Unsubscribe：dev-watch 频繁重载时 handler 单调增长，且重载后事件仍路由到已 stop
+// 的旧插件实例（subscribePlugin 的 dedup 会让新实例跳过订阅）。需在 bus 上调用，不持有 m.mu。
+func (m *Manager) unsubscribePlugin(id string) {
+	if m.bus == nil {
+		return
+	}
+	m.mu.Lock()
+	handles := m.subscribed[id]
+	delete(m.subscribed, id)
+	m.mu.Unlock()
+	for eventType, handle := range handles {
+		m.bus.Unsubscribe(eventType, handle)
 	}
 }
 
@@ -522,6 +545,7 @@ func (m *Manager) Uninstall(id string) error {
 	}
 	m.mu.Unlock()
 	m.removeSchedules(id)
+	m.unsubscribePlugin(id) // 卸载：摘除总线订阅，避免旧闭包残留
 	dir := filepath.Join(root, id)
 	if !isSubpath(root, dir) {
 		return errors.New("invalid plugin path")

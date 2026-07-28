@@ -478,17 +478,18 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 		return
 	}
 	audit(c, "oidc_callback", "ok", slog.String("sub", ui.Sub), slog.String("user", username))
-	// 302 回前端：query 带 oidc_token（短 TTL JWT；生产应走 HTTPS 防链路泄露）。
+	// 302 回前端：用 fragment(#oidc_token=) 传递短 TTL JWT。fragment 不进服务器访问日志、
+	// 不随 Referrer 头外泄、不留在浏览器历史的 query 串里，比 query 更安全（仍建议生产走 HTTPS）。
 	cfg := h.oidc.LoadSettings()
 	target := strings.TrimSpace(cfg.FrontendRedirect)
 	if target == "" {
 		target = "/login"
 	}
-	sep := "?"
-	if strings.Contains(target, "?") {
-		sep = "&"
+	fragSep := "#"
+	if strings.Contains(target, "#") {
+		fragSep = "&"
 	}
-	c.Redirect(http.StatusFound, target+sep+"oidc_token="+url.QueryEscape(token))
+	c.Redirect(http.StatusFound, target+fragSep+"oidc_token="+url.QueryEscape(token))
 }
 
 func clearOIDCCookie(c *gin.Context, name string) {

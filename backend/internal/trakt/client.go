@@ -260,10 +260,20 @@ func (c *Client) raw(req *http.Request) ([]byte, error) {
 	defer resp.Body.Close()
 	data := readBody(resp)
 	if resp.StatusCode >= 400 {
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, &UnauthorizedError{Body: snippet(data)}
+		}
 		return nil, fmt.Errorf("trakt %d: %s", resp.StatusCode, snippet(data))
 	}
 	return data, nil
 }
+
+// UnauthorizedError 表示访问令牌被服务端拒绝（401）——通常令牌被提前吊销或失效。
+// 调用方可据此强制刷新 refresh_token 后重试（见 chain.TraktChain.watchlistWithRetry），
+// 弥补仅按 ExpiresAt 主动刷新、无法应对提前失效的短板。
+type UnauthorizedError struct{ Body string }
+
+func (e *UnauthorizedError) Error() string { return "trakt 401 unauthorized: " + e.Body }
 
 // snippet 取错误响应摘要。
 func snippet(b []byte) string {

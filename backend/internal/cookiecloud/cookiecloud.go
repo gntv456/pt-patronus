@@ -6,7 +6,7 @@
 // {"cookie_data": {host: [CookieEntry]}, "update_time": ...}（标准扩展带 cookie_data 包裹）。
 //
 // 本包只负责「解密 + 解析」纯逻辑，不持有 HTTP 客户端：生产拉取由 chain 层用项目的
-// httpclient（带 SSRF 防护）GET 后调 DecodeEnvelope；Fetch 仅供测试/CLI（标准库、无 SSRF）。
+// httpclient（带 SSRF 防护）GET 后调 DecodeEnvelope；Fetch 仅供测试/CLI，已兜底加公网校验。
 package cookiecloud
 
 import (
@@ -23,6 +23,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
 // CookieEntry 是 CookieCloud 负载里的单条 cookie。
@@ -246,6 +248,11 @@ func hostMatches(cookieHost, target string) bool {
 // httpclient.Client.Get（ssrf=true）拉取后调 DecodeEnvelope，避免用户把 server 配成内网。
 func Fetch(ctx context.Context, server, uuid, password string) (map[string][]CookieEntry, error) {
 	u := strings.TrimRight(server, "/") + "/get/" + url.PathEscape(uuid)
+	// 即便 Fetch 仅用于测试/CLI（生产由 chain 层 httpclient 拉取），也兜底做公网校验，
+	// 防止误用拉取内网地址（与 chain 层 SSRF 防护一致）。
+	if err := httpclient.AssertPublicURL(u); err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err

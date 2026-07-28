@@ -21,6 +21,7 @@ func TestCloudflareSubscribeUpdateHosts(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewCloudflareSubscribePlugin())
 	if _, err := m.SaveConfig("cloudflare-subscribe", map[string]any{"allow_private_network": true}); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
@@ -55,6 +56,7 @@ func TestTwoFAHelperGenerateOne(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewTwoFAHelperPlugin())
 	if err := m.SetEnabled("twofa-helper", true); err != nil {
 		t.Fatalf("enable: %v", err)
 	}
@@ -87,6 +89,7 @@ func TestGroupChatZoneSendMessage(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewGroupChatZonePlugin())
 	if _, err := m.SaveConfig("group-chat-zone", map[string]any{"allow_private_network": true}); err != nil {
 		t.Fatalf("save config: %v", err)
 	}
@@ -134,6 +137,7 @@ func TestXiaomiRouterStatusAndPortList(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewXiaomiRouterPlugin())
 	if _, err := m.SaveConfig("xiaomi-router", map[string]any{
 		"router_url":          server.URL,
 		"password":            "pass",
@@ -168,6 +172,7 @@ func TestAutoSpeedRunSpeedtest(t *testing.T) {
 
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
+	mustRegister(t, m, NewAutoSpeedPlugin())
 	if _, err := m.SaveConfig("auto-speed", map[string]any{
 		"download_url":          server.URL + "/down",
 		"upload_url":            server.URL + "/up",

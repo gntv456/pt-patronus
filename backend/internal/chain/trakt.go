@@ -150,12 +150,12 @@ func (c *TraktChain) PollDeviceStatus(ctx context.Context) (bool, error) {
 }
 
 // refreshTokenIfNeeded 令牌临近过期则刷新；刷新失败清令牌并记错误（要求重新授权）。
-func (c *TraktChain) refreshTokenIfNeeded(ctx context.Context, s *TraktSettings) error {
+func (c *TraktChain) refreshTokenIfNeeded(ctx context.Context, s *TraktSettings, force bool) error {
 	if s.AccessToken == "" {
 		return errors.New("未授权，请先完成设备授权")
 	}
-	if s.ExpiresAt == 0 || time.Now().Unix() < s.ExpiresAt-60 {
-		return nil // 未到期
+	if !force && (s.ExpiresAt == 0 || time.Now().Unix() < s.ExpiresAt-60) {
+		return nil // 未到期（force=true 时跳过，用于 401 后强制刷新）
 	}
 	if s.RefreshToken == "" {
 		return errors.New("令牌过期且无 refresh_token，请重新授权")
@@ -181,7 +181,7 @@ func (c *TraktChain) SyncAll(ctx context.Context) error {
 	if !s.Enabled || s.AccessToken == "" {
 		return nil
 	}
-	if err := c.refreshTokenIfNeeded(ctx, &s); err != nil {
+	if err := c.refreshTokenIfNeeded(ctx, &s, false); err != nil {
 		s.LastError = err.Error()
 		_ = c.saveSettings(s)
 		return err
@@ -214,7 +214,7 @@ func (c *TraktChain) SyncNow(ctx context.Context) (int, error) {
 	if s.AccessToken == "" {
 		return 0, errors.New("未授权，请先完成设备授权")
 	}
-	if err := c.refreshTokenIfNeeded(ctx, &s); err != nil {
+	if err := c.refreshTokenIfNeeded(ctx, &s, false); err != nil {
 		return 0, err
 	}
 	n, err := c.syncWatchlist(ctx, &s)
@@ -233,20 +233,38 @@ func (c *TraktChain) SyncNow(ctx context.Context) (int, error) {
 func (c *TraktChain) syncWatchlist(ctx context.Context, s *TraktSettings) (int, error) {
 	created := 0
 	if s.SyncMovies {
-		items, err := c.client.Watchlist(ctx, s.AccessToken, s.ClientID, "movies")
+		items, err := c.watchlistWithRetry(ctx, s, "movies")
 		if err != nil {
 			return 0, fmt.Errorf("拉取电影 watchlist 失败：%w", err)
 		}
 		created += c.createFor(items, "movie", s)
 	}
 	if s.SyncShows {
-		items, err := c.client.Watchlist(ctx, s.AccessToken, s.ClientID, "shows")
+		items, err := c.watchlistWithRetry(ctx, s, "shows")
 		if err != nil {
 			return created, fmt.Errorf("拉取剧集 watchlist 失败：%w", err)
 		}
 		created += c.createFor(items, "tv", s)
 	}
 	return created, nil
+}
+
+// watchlistWithRetry 拉取 watchlist；遇 401（令牌被服务端提前吊销）时强制刷新一次后重试，
+// 弥补 refreshTokenIfNeeded 仅按 ExpiresAt 主动刷新、无法应对提前失效的短板。
+func (c *TraktChain) watchlistWithRetry(ctx context.Context, s *TraktSettings, kind string) ([]trakt.WatchlistItem, error) {
+	items, err := c.client.Watchlist(ctx, s.AccessToken, s.ClientID, kind)
+	if err == nil {
+		return items, nil
+	}
+	var unauth *trakt.UnauthorizedError
+	if !errors.As(err, &unauth) {
+		return nil, err
+	}
+	if rerr := c.refreshTokenIfNeeded(ctx, s, true); rerr != nil {
+		return nil, rerr
+	}
+	_ = c.saveSettings(*s)
+	return c.client.Watchlist(ctx, s.AccessToken, s.ClientID, kind)
 }
 
 // createFor 把 watchlist 条目逐个建为订阅（subCh.Create 幂等：同 source+source_id 不重复）。

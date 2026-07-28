@@ -30,6 +30,34 @@ func (h *FreeleechHandler) All(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"sites": results})
 }
 
+// AllStream 流式返回站免（NDJSON，每站一行）：每站抓完即 flush，前端"加载一个显示一个"，
+// 不等全部站抓完。慢站（context deadline 15s）不会阻塞已就绪站的展示；首次进页面不再因
+// 阻塞等全量而超过前端 timeout 显示失败（与公告 AllStream 同范式）。
+func (h *FreeleechHandler) AllStream(c *gin.Context) {
+	force := c.Query("refresh") == "1"
+	w := c.Writer
+	w.Header().Set("Content-Type", "application/x-ndjson; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("X-Accel-Buffering", "no") // 关反代缓冲，每站即时到前端
+	w.WriteHeader(http.StatusOK)
+	flusher, _ := w.(http.Flusher)
+	var mu sync.Mutex // emit 并发回调，写 ResponseWriter 需串行化
+	emit := func(r chain.FreeleechResult) {
+		b, err := json.Marshal(r)
+		if err != nil {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		_, _ = w.Write(b)
+		_, _ = w.Write([]byte("\n"))
+		if flusher != nil {
+			flusher.Flush()
+		}
+	}
+	h.ch.FreeleechStream(c.Request.Context(), force, emit)
+}
+
 // SyncOne 立即抓取单个站点站免并返回（站点卡片「刷新」按钮）。
 func (h *FreeleechHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)

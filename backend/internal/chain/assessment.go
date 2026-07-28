@@ -26,7 +26,7 @@ const (
 	assessMemTTL      = 30 * time.Minute
 	assessDBTTL       = 6 * time.Hour
 	assessTimeout     = 30 * time.Second
-	assessConcurrency = 5
+	assessConcurrency = 8
 )
 
 // assessHTTP 把 httpclient.Client 适配为 assessment.HTTPDoer。

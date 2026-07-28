@@ -430,6 +430,16 @@ func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteCon
 		slog.Warn("TestConnectionsStream list sites failed", "err", err)
 		return
 	}
+	// 新鲜度节流：进页面时若某站最近 connectivityFreshTTL 内已检测过（connected/disconnected），
+	// 直接复用 site_connectivity 缓存结果推送，跳过网络探测——兑现「进页面显示上次结果 + 后台仅刷新过期站」
+	// 的设计意图，避免每次打开页面都全量重测所有站（28s→近瞬时）。从未检测或已过期的站才走真实并发探测。
+	// 注意：仅 SSE 流式路径节流；手动 TestConnections / 单站 Test 仍强制实测。
+	fresh := make(map[uint]models.SiteConnectivity, len(sites))
+	if cache, err := c.sites.ListConnectivity(); err == nil {
+		for _, sc := range cache {
+			fresh[sc.SiteID] = sc
+		}
+	}
 	sem := make(chan struct{}, infoFetchConcurrency)
 	var wg sync.WaitGroup
 	for i := range sites {
@@ -437,6 +447,11 @@ func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteCon
 		if !s.IsActive {
 			_ = c.sites.UpsertConnectivity(s.ID, "disabled", "", "站点已停用", 0)
 			emit(SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Status: "disabled", Error: "站点已停用", CheckedAt: time.Now()})
+			continue
+		}
+		// 新鲜缓存直接推送，跳过网络探测（缓存状态为 disabled 表示上次检测时站点停用，现已激活须重测）
+		if sc, ok := fresh[s.ID]; ok && sc.Status != "" && sc.Status != "disabled" && time.Since(sc.CheckedAt) < connectivityFreshTTL {
+			emit(SiteConnectionResult{SiteID: s.ID, SiteName: s.Name, Status: sc.Status, Level: sc.Level, Error: sc.ErrorMsg, CheckedAt: sc.CheckedAt})
 			continue
 		}
 		wg.Add(1)

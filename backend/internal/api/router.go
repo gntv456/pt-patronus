@@ -224,6 +224,7 @@ func Build(d *Deps) *gin.Engine {
 			fl := guarded.Group("/freeleech")
 			{
 				fl.GET("", flH.All)
+				fl.GET("/stream", flH.AllStream) // 流式：每站一行 NDJSON，前端逐站显示（加载一个显示一个）
 				fl.POST("/sync/:id", flH.SyncOne)
 			}
 			annH := v1.NewAnnouncementHandler(d.SiteCh, d.SiteOp)

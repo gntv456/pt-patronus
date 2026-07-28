@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { safeUrl } from '@/utils/safeUrl'
 import { ElMessage } from 'element-plus'
 import { freeleechApi, type FreeleechResult, type FreeleechStatus } from '@/api/freeleech'
@@ -90,14 +90,34 @@ const tiles = computed(() => [
 // 展开每站全部公告（可能多条横幅）
 const expanded = ref<Record<number, boolean>>({})
 
+// 流式逐站渲染：清空后每站到达即 upsert（按 site_id），边加载边显示；切页/重新加载中断上一次。
+// fetch 无整体 timeout，慢站逐个到达不再导致首屏「等很久显示失败」（缓存命中的站秒到）。
+let abortCtrl: AbortController | null = null
+
 async function load(refresh = false) {
+  abortCtrl?.abort()
+  const ac = new AbortController()
+  abortCtrl = ac
   loading.value = true
+  results.value = [] // 清空，逐站重新填充（缓存命中的站秒级到达，几乎不闪）
   try {
-    results.value = await freeleechApi.all(refresh)
+    await freeleechApi.streamAll(
+      refresh,
+      (r) => {
+        const idx = results.value.findIndex((x) => x.site_id === r.site_id)
+        if (idx >= 0) results.value[idx] = r
+        else results.value.push(r)
+      },
+      ac.signal,
+    )
   } catch (e: unknown) {
+    if (ac.signal.aborted) return // 切页/重载中断，静默
     ElMessage.error((e as Error).message || '加载站免失败')
   } finally {
-    loading.value = false
+    if (abortCtrl === ac) {
+      loading.value = false
+      abortCtrl = null
+    }
   }
 }
 
@@ -128,6 +148,7 @@ const statusLabel: Record<FreeleechStatus, string> = {
 }
 
 onMounted(() => load())
+onUnmounted(() => abortCtrl?.abort())
 </script>
 
 <template>

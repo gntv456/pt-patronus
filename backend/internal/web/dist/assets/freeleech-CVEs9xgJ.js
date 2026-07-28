@@ -1,1 +1,0 @@
-import{h as a}from"./index-B4tWsnHF.js";const n={all:(t=!1)=>a.get(`/freeleech${t?"?refresh=1":""}`).then(e=>(e.data.sites||[]).map(s=>({...s,notices:s.notices||[]}))),syncOne:t=>a.post(`/freeleech/sync/${t}`).then(e=>({...e.data,notices:e.data.notices||[]}))};export{n as f};

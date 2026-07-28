@@ -2,7 +2,6 @@ package site
 
 import (
 	"encoding/base64"
-	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
@@ -95,14 +94,27 @@ func ExtractUserIDFromCookie(cookieStr string) string {
 	return ""
 }
 
-// parseCookieJar 解析 "k=v; k2=v2" 为 map。
+// parseCookieJar 解析 "k=v; k2=v2" 为 map（同名后者覆盖）。
+// 手动分割而非 net/http 的 (*http.Request).Cookies()：后者按 RFC 6265 严格校验每个字节，
+// PT 站 cookie（c_secure_pass 的 JSON/base64 payload、PHP 序列化值等）常含合法的 '"'，
+// 会触发 "net/http: invalid byte '"' in Cookie.Value; dropping invalid bytes" 刷屏日志、
+// 且会静默丢弃该字节（破坏 cookie 值）。手动分割忠实保留原值，仅做键值拆分。
 func parseCookieJar(s string) map[string]string {
 	out := map[string]string{}
-	h := http.Header{}
-	h.Add("Cookie", s)
-	req := http.Request{Header: h}
-	for _, c := range req.Cookies() {
-		out[c.Name] = c.Value
+	for _, part := range strings.Split(s, ";") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		name := strings.TrimSpace(kv[0])
+		if name == "" {
+			continue
+		}
+		out[name] = strings.TrimSpace(kv[1])
 	}
 	return out
 }

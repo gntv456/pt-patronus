@@ -4,7 +4,7 @@ import { downloaderApi, type Downloader } from '@/api/downloader'
 import TorrentDrawer from '@/components/downloader/TorrentDrawer.vue'
 import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
-import { CircleCheck, CircleClose, Delete, Edit, Link, MoreFilled, Plus, VideoPlay } from '@element-plus/icons-vue'
+import { ArrowDown, Check, CircleCheck, CircleClose, Delete, Edit, Link, MoreFilled, Plus, VideoPlay } from '@element-plus/icons-vue'
 
 const auth = useAuthStore()
 
@@ -98,6 +98,25 @@ async function submit() {
   }
 }
 
+// 概览条上点击选择默认下载器：复用 update（is_default=true），后端事务内自动清掉其他默认。
+async function setDefault(id: number) {
+  const dl = list.value.find((d) => d.id === id)
+  if (!dl || dl.is_default) return
+  try {
+    await downloaderApi.update(id, {
+      name: dl.name,
+      type: dl.type,
+      url: dl.url,
+      username: dl.username,
+      is_default: true,
+    })
+    ElMessage.success(`已将「${dl.name}」设为默认下载器`)
+    await load()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '设置失败')
+  }
+}
+
 async function removeDownloader(dl: Downloader) {
   try {
     await ElMessageBox.confirm(`确认删除下载器「${dl.name}」？`, '删除下载器', {
@@ -153,7 +172,6 @@ onMounted(load)
   <div class="page">
     <header class="head">
       <div class="head-copy">
-        <span class="eyebrow">INFRASTRUCTURE / DOWNLOADERS</span>
         <h1 class="title">下载器</h1>
         <p class="subtitle">统一管理连接、任务和实时传输状态</p>
       </div>
@@ -178,7 +196,20 @@ onMounted(load)
       </div>
       <div class="overview-note">
         <span class="overview-label">默认下载器</span>
-        <strong>{{ defaultDownloader?.name || '未设置' }}</strong>
+        <el-dropdown trigger="click" :disabled="!list.length" class="default-dropdown" @command="setDefault">
+          <el-button size="small" :title="list.length ? '点击选择默认下载器' : '请先添加下载器'">
+            <span class="default-name">{{ defaultDownloader?.name || '未设置' }}</span>
+            <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item v-for="dl in list" :key="dl.id" :command="dl.id">
+                <el-icon v-if="dl.is_default" class="default-check"><Check /></el-icon>
+                {{ dl.name }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
         <span class="overview-caption">搜索、订阅和工作流会优先使用</span>
       </div>
     </section>
@@ -300,7 +331,6 @@ onMounted(load)
 .page { display: flex; flex-direction: column; gap: 18px; }
 .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .head-copy { min-width: 0; }
-.eyebrow { display: block; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: 0.14em; margin-bottom: 6px; }
 .title { margin: 0; font-size: 26px; font-weight: 700; }
 .subtitle { margin: 5px 0 0; color: var(--text-muted); font-size: 13px; }
 .overview-strip { display: grid; grid-template-columns: repeat(3, minmax(140px, .7fr)) minmax(220px, 1.4fr); gap: 1px; overflow: hidden; border: 1px solid var(--glass-border, rgba(127,127,127,.18)); border-radius: 8px; background: var(--glass-border, rgba(127,127,127,.18)); }
@@ -310,8 +340,10 @@ onMounted(load)
 .overview-item strong { font-size: 22px; line-height: 1.1; }
 .overview-caption { align-self: end; padding-bottom: 2px; color: var(--text-muted); font-size: 11px; }
 .status-overview strong { color: var(--pt-success); }
-.overview-note { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
-.overview-note strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.overview-note { display: flex; flex-direction: column; justify-content: center; min-width: 0; gap: 6px; }
+.default-dropdown { align-self: flex-start; }
+.default-name { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 650; vertical-align: middle; }
+.default-check { margin-right: 4px; color: var(--pt-success); }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 14px; }
 .card { padding: 18px; min-width: 0; border-radius: 8px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

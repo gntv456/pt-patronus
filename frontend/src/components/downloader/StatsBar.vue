@@ -16,47 +16,39 @@ defineProps<{
     <div class="metric metric-download">
       <span class="metric-label">下载速度</span>
       <strong>{{ fmtSpeed(stats?.dl_rate ?? 0) }}</strong>
-      <span class="metric-caption">当前总速率</span>
     </div>
     <div class="metric metric-upload">
       <span class="metric-label">上传速度</span>
       <strong>{{ fmtSpeed(stats?.up_rate ?? 0) }}</strong>
-      <span class="metric-caption">当前总速率</span>
     </div>
     <div class="metric">
       <span class="metric-label">下载中</span>
       <strong>{{ active }}</strong>
-      <span class="metric-caption">个任务</span>
     </div>
     <div class="metric">
       <span class="metric-label">做种中</span>
       <strong>{{ seeding }}</strong>
-      <span class="metric-caption">个任务</span>
     </div>
     <div class="metric metric-muted">
       <span class="metric-label">暂停</span>
       <strong>{{ paused }}</strong>
-      <span class="metric-caption">个任务</span>
     </div>
     <div class="metric metric-error">
       <span class="metric-label">异常</span>
       <strong>{{ errors }}</strong>
-      <span class="metric-caption">需处理</span>
     </div>
     <div class="metric metric-total">
       <span class="metric-label">任务总数</span>
       <strong>{{ total }}</strong>
-      <span class="metric-caption">实时快照</span>
     </div>
   </section>
 </template>
 
 <style scoped>
-.statsbar { display: grid; grid-template-columns: 1.35fr 1.35fr repeat(5, 1fr); gap: 1px; overflow: hidden; margin-bottom: 18px; border: 1px solid var(--glass-border, rgba(127,127,127,.18)); border-radius: 8px; background: var(--glass-border, rgba(127,127,127,.18)); }
-.metric { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 3px; min-height: 82px; padding: 13px 15px; background: var(--surface, rgba(255,255,255,.04)); }
+.statsbar { display: grid; grid-template-columns: 1.35fr 1.35fr repeat(5, 1fr); gap: 1px; overflow: hidden; margin-bottom: 10px; border: 1px solid var(--glass-border, rgba(127,127,127,.18)); border-radius: 8px; background: var(--glass-border, rgba(127,127,127,.18)); }
+.metric { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 8px 12px; background: var(--surface, rgba(255,255,255,.04)); }
 .metric-label { color: var(--text-muted); font-size: 11px; }
-.metric strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; line-height: 1.1; }
-.metric-caption { color: var(--text-muted); font-size: 10px; }
+.metric strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 1.1; }
 .metric-download strong { color: var(--pt-primary-2); }
 .metric-upload strong { color: var(--pt-success); }
 .metric-muted strong { color: var(--text-muted); }

@@ -269,23 +269,15 @@ onUnmounted(() => {
     @update:model-value="(v: boolean) => emit('update:visible', v)"
   >
     <header class="workspace-head">
-      <div class="workspace-identity">
-        <div class="workspace-icon">
-          <GlassIcon name="downloaders" from="#11998e" to="#38ef7d" :size="28" />
-        </div>
-        <div class="workspace-copy">
-          <div class="workspace-title-row">
-            <h2>{{ downloader.name }}</h2>
-            <span class="live-indicator" :class="{ online: isLive, pending: !connectionError && !isLive }">
-              <CircleCheck v-if="isLive" />
-              <CircleClose v-else-if="connectionError" />
-              <Connection v-else />
-              {{ connectionError ? '连接异常' : isLive ? '实时同步' : '连接中' }}
-            </span>
-          </div>
-          <p>{{ downloader.url }}<span v-if="lastUpdated"> · 更新于 {{ lastUpdated.toLocaleTimeString() }}</span></p>
-        </div>
-      </div>
+      <span class="live-indicator" :class="{ online: isLive, pending: !connectionError && !isLive }">
+        <CircleCheck v-if="isLive" />
+        <CircleClose v-else-if="connectionError" />
+        <Connection v-else />
+        {{ connectionError ? '连接异常' : isLive ? '实时同步' : '连接中' }}
+      </span>
+      <span class="ws-url text-muted" :title="downloader.url">
+        {{ downloader.url }}<span v-if="lastUpdated"> · {{ lastUpdated.toLocaleTimeString() }}</span>
+      </span>
       <div class="workspace-actions">
         <el-button size="small" :icon="Refresh" @click="refresh">刷新</el-button>
         <el-button v-if="caps.categoryCRUD" size="small" :icon="Setting" @click="catManageVisible = true">分类管理</el-button>
@@ -303,18 +295,6 @@ onUnmounted(() => {
       :errors="counts.errors"
       :total="counts.total"
     />
-    <div class="section-heading">
-      <div>
-        <h3>任务</h3>
-        <p>搜索、筛选并批量管理当前下载器中的任务</p>
-      </div>
-      <el-popover placement="bottom-end" :width="440" trigger="click">
-        <template #reference>
-          <el-button type="primary" size="small" :icon="Plus">添加任务</el-button>
-        </template>
-        <AddTorrentPanel :downloader="downloader" @added="refresh" />
-      </el-popover>
-    </div>
     <TorrentTable
       :torrents="list"
       :downloader-id="downloader.id"
@@ -323,9 +303,18 @@ onUnmounted(() => {
       @refresh="refresh"
       @dialog="openDialog"
       @detail="openDetail"
-    />
+    >
+      <template #toolbar-extra>
+        <el-popover placement="bottom-end" :width="440" trigger="click">
+          <template #reference>
+            <el-button type="primary" size="small" :icon="Plus">添加任务</el-button>
+          </template>
+          <AddTorrentPanel :downloader="downloader" @added="refresh" />
+        </el-popover>
+      </template>
+    </TorrentTable>
 
-    <el-dialog v-model="dialogOpen" :title="dialogTitle" width="480">
+    <el-dialog v-model="dialogOpen" :title="dialogTitle" width="480" align-center append-to-body>
       <div v-if="activeDialog?.kind === 'remove'">
         <p>确认删除 {{ activeDialog.hashes.length }} 个任务？</p>
         <el-checkbox v-model="removeFiles">同时删除已下载的文件</el-checkbox>
@@ -418,7 +407,7 @@ onUnmounted(() => {
     </el-dialog>
 
     <!-- 分类管理 -->
-    <el-dialog v-model="catManageVisible" title="分类管理" width="480">
+    <el-dialog v-model="catManageVisible" title="分类管理" width="480" align-center append-to-body>
       <div class="cat-add">
         <el-input v-model="newCatName" placeholder="新分类名" size="small" />
         <el-input v-model="newCatPath" placeholder="保存路径（可空）" size="small" />
@@ -446,24 +435,14 @@ onUnmounted(() => {
 .extra-ops {
   margin: -4px 0 12px;
 }
-.workspace-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 2px 0 15px; border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
-.workspace-identity { display: flex; align-items: center; gap: 11px; min-width: 0; }
-.workspace-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 8px; background: rgba(17,153,142,.12); }
-.workspace-copy { min-width: 0; }
-.workspace-title-row { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.workspace-title-row h2 { overflow: hidden; max-width: 420px; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; }
-.workspace-copy p { overflow: hidden; max-width: 540px; margin: 3px 0 0; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
-.live-indicator { display: inline-flex; align-items: center; gap: 4px; color: var(--pt-danger); font-size: 11px; font-weight: 600; }
+.workspace-head { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
+.ws-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.live-indicator { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; color: var(--pt-danger); font-size: 12px; font-weight: 600; }
 .live-indicator.online { color: var(--pt-success); }
 .live-indicator.pending { color: var(--pt-warn); }
 .live-indicator :deep(svg) { width: 13px; }
 .workspace-actions { display: flex; flex: 0 0 auto; gap: 7px; }
-.connection-alert { margin: 14px 0 0; }
-.section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin: 20px 0 10px; }
-.section-heading h3 { margin: 0; font-size: 15px; }
-.section-heading p { margin: 4px 0 0; color: var(--text-muted); font-size: 11px; }
-.section-heading :deep(.el-popover) { padding: 0; }
-.section-heading :deep(.addpanel) { margin: 0; padding: 0; border: 0; box-shadow: none; }
+.connection-alert { margin: 10px 0 0; }
 .lim-row {
   display: flex;
   align-items: center;
@@ -508,7 +487,7 @@ onUnmounted(() => {
   background: transparent;
 }
 @media (max-width: 760px) {
-  .workspace-head, .section-heading { align-items: flex-start; flex-direction: column; }
+  .workspace-head { align-items: flex-start; flex-direction: column; }
   .workspace-actions { width: 100%; }
   .workspace-actions :deep(.el-button) { flex: 1; }
 }

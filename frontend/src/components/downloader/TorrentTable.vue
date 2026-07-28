@@ -143,6 +143,49 @@ function onCommand(command: string, torrent: Torrent) {
   }
 }
 
+// 单行「更多操作」改为居中弹窗：下拉菜单在触发点偏下/列表短时底部会被视口裁切且无滚动条，
+// 改成固定居中的操作面板后，不论行在哪、列表长短都能完整看到全部操作。
+type ActionItem = { command: string; label: string; danger?: boolean }
+const actionVisible = ref(false)
+const actionRow = ref<Torrent | null>(null)
+function openActions(row: Torrent) {
+  actionRow.value = row
+  actionVisible.value = true
+}
+function runAction(command: string) {
+  const row = actionRow.value
+  actionVisible.value = false
+  if (row) onCommand(command, row)
+}
+const actionGroups = computed<{ items: ActionItem[] }[]>(() => {
+  const row = actionRow.value
+  if (!row) return []
+  const ctrl: ActionItem[] = [
+    { command: 'recheck', label: '重新校验' },
+    { command: 'reannounce', label: '重新汇报' },
+  ]
+  if (caps.value.forceStart) ctrl.push({ command: 'forceStart', label: row.force_start ? '取消强制开始' : '强制开始' })
+  if (caps.value.queueFull) {
+    ctrl.push({ command: 'top', label: '队列置顶' })
+    ctrl.push({ command: 'bottom', label: '队列置底' })
+  }
+  if (caps.value.sequential) ctrl.push({ command: 'seq', label: row.sequential ? '取消顺序下载' : '顺序下载' })
+  if (caps.value.firstLast) ctrl.push({ command: 'firstlast', label: row.first_last_piece ? '取消首尾优先' : '首尾优先' })
+  const manage: ActionItem[] = []
+  if (caps.value.category) manage.push({ command: 'category', label: '设置分类' })
+  if (caps.value.tags) manage.push({ command: 'tags', label: '设置标签' })
+  manage.push({ command: 'limits', label: '设置限速' })
+  manage.push({ command: 'share-limits', label: '做种限制' })
+  if (caps.value.location) manage.push({ command: 'location', label: '移动保存路径' })
+  if (caps.value.files) manage.push({ command: 'files', label: '文件优先级' })
+  if (caps.value.trackers) manage.push({ command: 'trackers', label: 'Tracker 管理' })
+  const groups: { items: ActionItem[] }[] = [{ items: ctrl }]
+  if (manage.length) groups.push({ items: manage })
+  groups.push({ items: [{ command: 'copyMagnet', label: '复制磁力链' }, { command: 'copyHash', label: '复制哈希' }] })
+  groups.push({ items: [{ command: 'remove', label: '删除任务', danger: true }] })
+  return groups
+})
+
 function batchCmd(command: 'pause' | 'resume' | 'recheck' | 'reannounce' | 'forceStart' | 'top' | 'bottom') {
   if (!selected.value.length) return
   const id = props.downloaderId
@@ -183,6 +226,7 @@ function onBatchCommand(command: string) {
       </el-select>
       <el-button v-if="hasFilters" text size="small" @click="clearFilters">清除筛选</el-button>
       <span class="result-count">{{ filtered.length }} / {{ props.torrents.length }} 个任务</span>
+      <slot name="toolbar-extra" />
     </div>
 
     <div v-if="selected.length" class="batchbar">
@@ -193,7 +237,7 @@ function onBatchCommand(command: string) {
         <el-dropdown trigger="click" @command="onBatchCommand">
           <el-button text size="small">更多操作 <el-icon><MoreFilled /></el-icon></el-button>
           <template #dropdown>
-            <el-dropdown-menu>
+            <el-dropdown-menu style="max-height: calc(100vh - 32px); overflow-y: auto">
               <el-dropdown-item command="recheck">重新校验</el-dropdown-item>
               <el-dropdown-item command="reannounce">重新汇报</el-dropdown-item>
               <el-dropdown-item v-if="caps.forceStart" command="forceStart">强制开始</el-dropdown-item>
@@ -250,30 +294,7 @@ function onBatchCommand(command: string) {
           <el-button text size="small" :icon="stateGroup(row.state) === 'paused' ? VideoPlay : VideoPause" @click="onCommand(stateGroup(row.state) === 'paused' ? 'resume' : 'pause', row as Torrent)">
             {{ stateGroup(row.state) === 'paused' ? '恢复' : '暂停' }}
           </el-button>
-          <el-dropdown trigger="click" @command="(command: string) => onCommand(command, row as Torrent)">
-            <el-button text circle :icon="MoreFilled" title="更多操作" aria-label="更多操作" />
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="recheck">重新校验</el-dropdown-item>
-                <el-dropdown-item command="reannounce">重新汇报</el-dropdown-item>
-                <el-dropdown-item v-if="caps.forceStart" command="forceStart" divided>{{ row.force_start ? '取消强制开始' : '强制开始' }}</el-dropdown-item>
-                <el-dropdown-item v-if="caps.queueFull" command="top">队列置顶</el-dropdown-item>
-                <el-dropdown-item v-if="caps.queueFull" command="bottom">队列置底</el-dropdown-item>
-                <el-dropdown-item v-if="caps.sequential" command="seq">{{ row.sequential ? '取消顺序下载' : '顺序下载' }}</el-dropdown-item>
-                <el-dropdown-item v-if="caps.firstLast" command="firstlast">{{ row.first_last_piece ? '取消首尾优先' : '首尾优先' }}</el-dropdown-item>
-                <el-dropdown-item command="category" divided v-if="caps.category">设置分类</el-dropdown-item>
-                <el-dropdown-item command="tags" v-if="caps.tags">设置标签</el-dropdown-item>
-                <el-dropdown-item command="limits">设置限速</el-dropdown-item>
-                <el-dropdown-item command="share-limits">设置做种限制</el-dropdown-item>
-                <el-dropdown-item command="location" v-if="caps.location">移动保存路径</el-dropdown-item>
-                <el-dropdown-item command="files" v-if="caps.files">文件优先级</el-dropdown-item>
-                <el-dropdown-item command="trackers" v-if="caps.trackers">Tracker 管理</el-dropdown-item>
-                <el-dropdown-item command="copyMagnet" divided>复制磁力链</el-dropdown-item>
-                <el-dropdown-item command="copyHash">复制哈希</el-dropdown-item>
-                <el-dropdown-item command="remove" divided>删除任务</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-button text circle :icon="MoreFilled" title="更多操作" aria-label="更多操作" @click="openActions(row as Torrent)" />
         </template>
       </el-table-column>
     </el-table>
@@ -281,6 +302,24 @@ function onBatchCommand(command: string) {
     <div v-else class="pager-row">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filtered.length" :page-sizes="[50, 100, 200]" layout="total, sizes, prev, pager, next" background small />
     </div>
+
+    <!-- 单行「更多操作」居中弹窗 -->
+    <el-dialog v-model="actionVisible" title="更多操作" width="420" align-center append-to-body>
+      <div v-for="(group, gi) in actionGroups" :key="gi" class="action-group" :class="{ first: gi === 0 }">
+        <div class="action-grid">
+          <button
+            v-for="item in group.items"
+            :key="item.command"
+            type="button"
+            class="action-cell"
+            :class="{ danger: item.danger }"
+            @click="runAction(item.command)"
+          >
+            {{ item.label }}
+          </button>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -325,5 +364,15 @@ function onBatchCommand(command: string) {
   .filter { flex: 1; width: auto; }
   .result-count { width: 100%; }
   .batchbar { align-items: flex-start; flex-direction: column; }
+}
+.action-group { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
+.action-group.first { padding-top: 0; margin-top: 0; border-top: 0; }
+.action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.action-cell { display: flex; align-items: center; min-height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: background .15s; }
+.action-cell:hover { background: var(--surface-muted, rgba(127,127,127,.1)); }
+.action-cell.danger { color: var(--pt-danger); }
+.action-cell.danger:hover { background: color-mix(in srgb, var(--pt-danger) 12%, transparent); }
+@media (max-width: 480px) {
+  .action-grid { grid-template-columns: 1fr; }
 }
 </style>

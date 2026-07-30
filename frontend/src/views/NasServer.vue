@@ -59,6 +59,7 @@ import {
 } from './nasServerHelpers'
 import { useNasCredentials } from './useNasCredentials'
 import { useNasOpsConfigs } from './useNasOpsConfigs'
+import { useCommandExec } from './useCommandExec'
 
 // Agent 创建/删除/重置密钥是 admin 专属（后端 RequireAdmin）；非 admin 隐藏入口。
 const auth = useAuthStore()
@@ -145,15 +146,6 @@ const deployForm = ref<DeployForm>({
   grayFirst: true,
 })
 const execPanel = ref<HTMLElement | null>(null)
-const scriptFileInput = ref<HTMLInputElement | null>(null)
-const execTargetIds = ref<number[]>([])
-const execCommand = ref('uptime && df -h')
-const execTimeout = ref(30)
-const execRunning = ref(false)
-const execLogs = ref<ExecLog[]>([])
-const commandHistory = ref<string[]>([])
-const commandRuns = ref<CommandRun[]>([])
-const selectedCommandRun = ref<CommandRun | null>(null)
 
 const filtered = computed(() => targets.value.filter((t) => t.type === activeTab.value))
 const unreadCount = computed(() => alerts.value.filter((a) => !a.read).length)
@@ -163,7 +155,27 @@ const configCount = computed(() => opsConfigs.value.length)
 const deployProfiles = computed(() => opsConfigs.value.filter((c) => c.key.startsWith('deploy.') && c.format === 'json'))
 const activeAlertCount = computed(() => alerts.value.filter((a) => !a.resolved_at).length)
 const sshTargets = computed(() => targets.value.filter(isSSHHost))
-const selectedExecTargets = computed(() => sshTargets.value.filter((t) => execTargetIds.value.includes(t.id)))
+const {
+  scriptFileInput,
+  execTargetIds,
+  execCommand,
+  execTimeout,
+  execRunning,
+  execLogs,
+  commandHistory,
+  commandRuns,
+  selectedCommandRun,
+  selectedExecTargets,
+  loadCommandHistory,
+  selectAllExecTargets,
+  selectOnlineExecTargets,
+  clearExecTargets,
+  applyCommand,
+  pickScriptFile,
+  importScriptFile,
+  showCommandRun,
+  runBatchCommand,
+} = useCommandExec(sshTargets, focusExecPanel)
 const deployRuns = computed(() => commandRuns.value.filter((run) => run.source === 'deploy'))
 const assetTabs = computed(() => tabs.filter((t) => ['host', 'nas', 'camera'].includes(t.name)))
 const monitorTabs = computed(() => tabs.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.name)))
@@ -401,33 +413,6 @@ function sendTerminalCtrlC() {
   if (terminalSocket?.readyState === WebSocket.OPEN) terminalSocket.send('\x03')
 }
 
-function loadCommandHistory() {
-  try {
-    commandHistory.value = JSON.parse(localStorage.getItem('ptp_command_history') || '[]')
-  } catch {
-    commandHistory.value = []
-  }
-}
-
-function rememberCommand(command: string) {
-  const cmd = command.trim()
-  if (!cmd) return
-  commandHistory.value = [cmd, ...commandHistory.value.filter((x) => x !== cmd)].slice(0, 8)
-  localStorage.setItem('ptp_command_history', JSON.stringify(commandHistory.value))
-}
-
-function selectAllExecTargets() {
-  execTargetIds.value = sshTargets.value.map((t) => t.id)
-}
-
-function selectOnlineExecTargets() {
-  execTargetIds.value = sshTargets.value.filter((t) => t.last_online !== false).map((t) => t.id)
-}
-
-function clearExecTargets() {
-  execTargetIds.value = []
-}
-
 function focusExecPanel() {
   setWorkspace('execute')
   nextTick(() => execPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
@@ -572,129 +557,6 @@ async function runDeployCommand(kind: 'deploy' | 'rollback') {
   focusExecPanel()
   await nextTick()
   await runBatchCommand('deploy', kind === 'deploy' ? '发布部署' : '回滚上一版')
-}
-
-function applyCommand(command: string) {
-  execCommand.value = command
-}
-
-function pickScriptFile() {
-  scriptFileInput.value?.click()
-}
-
-async function importScriptFile(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (!file) return
-  if (file.size > 256 * 1024) {
-    ElMessage.warning('脚本文件不能超过 256KB')
-    return
-  }
-  execCommand.value = await file.text()
-  ElMessage.success(`已导入脚本：${file.name}`)
-}
-
-async function confirmCommandRun(command: string, targetCount: number, risk: CommandRisk, source: string) {
-  const sourceText = source === 'deploy' ? '发布/回滚脚本' : '命令'
-  if (risk.level === 'high') {
-    await ElMessageBox.prompt(
-      `检测到高风险操作：${risk.reason}。将在 ${targetCount} 台服务器执行${sourceText}，请输入“我确认”继续。`,
-      '高风险确认',
-      {
-        type: 'error',
-        confirmButtonText: '确认执行',
-        cancelButtonText: '取消',
-        inputPattern: /^我确认$/,
-        inputErrorMessage: '请输入：我确认',
-      },
-    )
-    return
-  }
-  await ElMessageBox.confirm(
-    `将在 ${targetCount} 台服务器执行${sourceText}${risk.level === 'medium' ? `，风险提示：${risk.reason}` : ''}，请确认。`,
-    risk.level === 'medium' ? '风险命令确认' : '批量执行',
-    { type: risk.level === 'medium' ? 'warning' : 'info', confirmButtonText: '开始执行', cancelButtonText: '取消' },
-  )
-}
-
-function rememberRun(run: CommandRun) {
-  commandRuns.value = [run, ...commandRuns.value.filter((item) => item.id !== run.id)].slice(0, 20)
-}
-
-async function showCommandRun(run: CommandRun) {
-  const detail = run.targets?.length ? run : await commandRunApi.get(run.id)
-  selectedCommandRun.value = detail
-  execLogs.value = execLogsFromRun(detail)
-  focusExecPanel()
-}
-
-async function runBatchCommand(source = 'batch', note = '') {
-  if (!auth.isAdmin) {
-    ElMessage.warning('只有管理员可以执行命令')
-    return
-  }
-  const command = execCommand.value.trim()
-  if (!command) {
-    ElMessage.warning('请输入要执行的命令')
-    return
-  }
-  if (!selectedExecTargets.value.length) {
-    ElMessage.warning('请选择 SSH 主机')
-    return
-  }
-  const startedTargets = [...selectedExecTargets.value]
-  const risk = commandRisk(command)
-  try {
-    await confirmCommandRun(command, startedTargets.length, risk, source)
-  } catch {
-    return
-  }
-
-  execRunning.value = true
-  rememberCommand(command)
-  const base = Date.now()
-  selectedCommandRun.value = null
-  execLogs.value = [
-    ...startedTargets.map((t, index) => ({
-      id: base + index,
-      targetId: t.id,
-      targetName: t.name,
-      command,
-      status: 'running' as ExecStatus,
-      time: nowTime(),
-      stdout: '',
-      stderr: '',
-      error: '',
-      durationMs: 0,
-    })),
-    ...execLogs.value,
-  ]
-  try {
-    const run = await commandRunApi.create({
-      target_ids: startedTargets.map((t) => t.id),
-      command,
-      timeout_sec: execTimeout.value,
-      source,
-      note,
-      confirm_risk: risk.level === 'high',
-    })
-    selectedCommandRun.value = run
-    execLogs.value = execLogsFromRun(run)
-    rememberRun(run)
-    if (run.failure_count) ElMessage.warning(`执行完成：成功 ${run.success_count} 台，失败 ${run.failure_count} 台`)
-    else ElMessage.success(`执行完成：${run.success_count} 台全部成功`)
-  } catch (e: unknown) {
-    const err = (e as Error).message || '执行失败'
-    execLogs.value = execLogs.value.map((log) =>
-      startedTargets.some((target) => target.id === log.targetId) && log.status === 'running'
-        ? { ...log, status: 'error', time: nowTime(), error: err }
-        : log,
-    )
-    ElMessage.error(err)
-  } finally {
-    execRunning.value = false
-  }
 }
 
 onMounted(() => {

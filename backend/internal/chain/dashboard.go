@@ -69,6 +69,24 @@ type DashboardOverview struct {
 	Sites           []SiteStatItem `json:"sites"`
 	SiteCount       int            `json:"site_count"`
 	DownloaderCount int            `json:"downloader_count"`
+	NoDataSites     []NoDataSite   `json:"no_data_sites"` // 启用且非论坛、却无任何统计的站点（疑似 cookie 失效/未采集）
+}
+
+// NoDataSite 标记一个「应采集却无数据」的 PT 站点（用于仪表盘首屏红色汇总）。
+type NoDataSite struct {
+	SiteID   uint   `json:"site_id"`
+	SiteName string `json:"site_name"`
+	Platform string `json:"platform"`
+}
+
+// isForumPlatform 判断该平台是否为「无 PT 用户统计」的论坛/社区——此类站点本就没有
+// 上传/下载/做种等指标，不应纳入「无数据」告警。
+func isForumPlatform(p string) bool {
+	switch p {
+	case "flarum", "discuz":
+		return true
+	}
+	return false
 }
 
 // TrendPoint 是某一天的跨站聚合趋势点。
@@ -114,7 +132,7 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 
 	// Sites 预分配空切片：无站点时 nil slice 会被 json.Marshal 序列化成 "sites":null，
 	// 前端裸访问 overview.sites.length 会抛 "Cannot read properties of null"。
-	out := &DashboardOverview{Sites: make([]SiteStatItem, 0, len(sites))}
+	out := &DashboardOverview{Sites: make([]SiteStatItem, 0, len(sites)), NoDataSites: []NoDataSite{}}
 	out.DownloaderCount = len(dls)
 
 	// 单 SQL 取每站最新统计（MAX(id) GROUP BY site_id），避免 N+1（原每站一次 First +
@@ -159,6 +177,14 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 			item.JoinDate = stat.JoinDate
 			item.LastAccessAt = stat.LastAccessAt
 			item.UpdatedAt = stat.SnapAt
+			// ratio 兜底：适配器未解析出 ratio（=0）但已有上下行量时按 uploaded/downloaded 计算，
+			// 避免「上传>下载却显示成无分享率」（如朱雀 /api/plugins/ptppUserInfo 响应缺 ratio 字段）。
+			if item.Ratio == 0 && item.Uploaded > 0 && item.Downloaded > 0 {
+				item.Ratio = float64(item.Uploaded) / float64(item.Downloaded)
+			}
+			if item.TrueRatio == 0 && item.TrueUploaded > 0 && item.TrueDownloaded > 0 {
+				item.TrueRatio = float64(item.TrueUploaded) / float64(item.TrueDownloaded)
+			}
 		}
 		out.Sites = append(out.Sites, item)
 		out.Totals.Uploaded += item.Uploaded
@@ -178,6 +204,12 @@ func (c *DashboardChain) Overview(ctx context.Context) (*DashboardOverview, erro
 		out.Totals.RescueSeedingBonusPerHour += item.RescueSeedingBonusPerHour
 		out.Totals.ClaimCount += item.ClaimCount
 		out.Totals.MaxClaim += item.MaxClaim
+		// 无数据站点：启用、非论坛、却无任何统计（疑似 cookie 失效/未采集）→ 仪表盘首屏红色汇总。
+		if s.IsActive && !isForumPlatform(s.Platform) &&
+			item.Uploaded == 0 && item.Downloaded == 0 && item.Seeding == 0 &&
+			item.SeedingSize == 0 && item.Bonus == 0 {
+			out.NoDataSites = append(out.NoDataSites, NoDataSite{SiteID: s.ID, SiteName: s.Name, Platform: s.Platform})
+		}
 	}
 	if out.Totals.TrueDownloaded > 0 {
 		out.Totals.TrueRatio = float64(out.Totals.TrueUploaded) / float64(out.Totals.TrueDownloaded)

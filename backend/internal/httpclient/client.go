@@ -172,7 +172,13 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 
 	if ssrf && !c.allowPrivate {
 		if err := c.assertPublicWithRetry(rawURL); err != nil {
-			return nil, fmt.Errorf("ssrf: %w", err)
+			// 区分两类失败：ErrBlocked=确定的 SSRF 策略拦截（私网/环回等）；其余为 DNS 解析失败/
+			// 网络不可达（临时性）。前者标 ssrf，后者标 unreachable，避免把「站点域名解析不了」
+			// 误报成 SSRF 拦截，误导排障（如 hhanclub.top/lemonhd.club 域名失效被显示为 ssrf）。
+			if errors.Is(err, ErrBlocked) {
+				return nil, fmt.Errorf("ssrf: %w", err)
+			}
+			return nil, fmt.Errorf("unreachable: %w", err)
 		}
 		// 标记本次请求（含重定向后续跳）走 SSRF 拨号校验。
 		ctx = context.WithValue(ctx, ssrfCtxKey{}, true)
@@ -252,7 +258,10 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 func (c *Client) PostWithCookie(ctx context.Context, rawURL, cookieStr string) (*Response, error) {
 	if !c.allowPrivate {
 		if err := c.assertPublicWithRetry(rawURL); err != nil {
-			return nil, fmt.Errorf("ssrf: %w", err)
+			if errors.Is(err, ErrBlocked) {
+				return nil, fmt.Errorf("ssrf: %w", err)
+			}
+			return nil, fmt.Errorf("unreachable: %w", err)
 		}
 		ctx = context.WithValue(ctx, ssrfCtxKey{}, true)
 	}

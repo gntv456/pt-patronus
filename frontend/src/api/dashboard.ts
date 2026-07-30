@@ -93,6 +93,14 @@ export interface DashboardOverview {
   sites: SiteStatItem[]
   site_count: number
   downloader_count: number
+  no_data_sites: NoDataSite[]
+}
+
+// 无采集数据的 PT 站点（启用、非论坛、却无任何统计；疑似 cookie 失效/未采集）。
+export interface NoDataSite {
+  site_id: number
+  site_name: string
+  platform: string
 }
 
 export const dashboardApi = {

@@ -148,6 +148,13 @@ func (n *NexusPHP) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
 			}
 		}
 	}
+	// 4.1 做种体积兜底：ajax 需 uid，uid 缺失/解析失败（SeedingSize 仍为 0）时从基础页(usercp)
+	//     文本提取「做种大小/体积」。fillSeedingFromDetail 仅补零值、不覆盖已有，在 usercp doc 上
+	//     调用安全（无种子表时行扫描空操作，仅汇总正则可能命中）。修「做种数>0、体积=0」回归
+	//     （DiscFan/藏宝阁/星陨阁/ZRPT 等 uid 抽取失败致 ajax 跳过）。
+	if u.SeedingSize == 0 {
+		fillSeedingFromDetail(doc, u)
+	}
 	// 5. 发布数（getusertorrentlistajax?type=uploaded 的「N条记录」/行数）——best-effort
 	if effectiveUID != "" && u.Uploads == 0 {
 		if n := fetchUploadsCount(ctx, n.hc, baseURL, effectiveUID, cookie, def.UserInfo.UserTorrentListAPI); n > 0 {

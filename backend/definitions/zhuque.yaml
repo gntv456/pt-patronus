@@ -117,6 +117,8 @@ user_info:
                 filters:
                     - name: parse_size
                 selector: data.downloaded
+            true_uploaded:
+                selector: data.trueUploaded
             true_downloaded:
                 selector: data.trueDownloaded
             ratio:

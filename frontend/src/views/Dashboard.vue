@@ -452,6 +452,16 @@ onMounted(load)
         <span>未联通</span>
         <b>{{ disconnectedCount }}</b>
       </button>
+      <button
+        v-if="(overview?.no_data_sites?.length ?? 0) > 0"
+        type="button"
+        class="health-item is-warning"
+        @click="openSiteMatrix('issues')"
+      >
+        <span class="status-dot" />
+        <span>无数据</span>
+        <b>{{ overview?.no_data_sites?.length }}</b>
+      </button>
       <button type="button" class="health-item is-muted" @click="openSiteMatrix('disabled')">
         <span class="status-dot" />
         <span>已停用</span>
@@ -467,6 +477,28 @@ onMounted(load)
         <span>待处理</span>
         <b>{{ totalIssueCount }}</b>
       </div>
+    </div>
+
+    <div v-if="(overview?.no_data_sites?.length ?? 0) > 0" class="nodata-alert glass">
+      <span class="nodata-badge">⚠</span>
+      <div class="nodata-body">
+        <div class="nodata-title">
+          <strong>{{ overview?.no_data_sites?.length }} 个站点无采集数据</strong>
+          <span class="nodata-hint">疑似 Cookie 失效或未采集，签到 / 统计 / H&amp;R 自动化可能已停摆</span>
+        </div>
+        <div class="nodata-names">
+          <button
+            v-for="s in overview?.no_data_sites"
+            :key="s.site_id"
+            type="button"
+            class="nodata-chip"
+            @click="openSiteMatrix('issues')"
+          >
+            {{ s.site_name }}
+          </button>
+        </div>
+      </div>
+      <el-button text type="warning" @click="openSiteMatrix('issues')">查看站点</el-button>
     </div>
 
     <div v-if="syncing || syncErrors.length" class="sync-card glass" :class="{ 'has-error': syncErrors.length && !syncing }">
@@ -1013,6 +1045,41 @@ onMounted(load)
 .health-item.is-danger b { color: #dc2626; }
 .health-item.is-danger .status-dot { background: #dc2626; }
 .health-item.is-warning b { color: #d97706; }
+
+/* 无采集数据站点告警卡（保号可观测性：疑似 cookie 失效/未采集的 PT 站首屏红字汇总） */
+.nodata-alert {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  border-left: 3px solid #f59e0b;
+}
+.nodata-badge {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  font-size: 18px;
+}
+.nodata-body { flex: 1 1 auto; min-width: 0; }
+.nodata-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.nodata-hint { font-size: 12px; color: var(--text-muted); }
+.nodata-names { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.nodata-chip {
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.nodata-chip:hover { background: rgba(245, 158, 11, 0.18); }
 .health-item.is-warning .status-dot { background: #d97706; }
 .health-item.is-success b { color: #16a34a; }
 .health-item.is-success .status-dot { background: #16a34a; }

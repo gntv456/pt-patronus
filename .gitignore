@@ -13,7 +13,7 @@ data/
 node_modules/
 frontend/dist/
 mobile/.dart_tool/
-mobile/build/
+**/build/
 *.log
 *.exe
 

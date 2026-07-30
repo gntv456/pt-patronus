@@ -48,10 +48,10 @@ export const messageApi = {
       // 后端 nil 切片序列化为 JSON null（站点无消息/未配置时），归一为 [] 防模板 .length 崩溃
       .then((r) => (r.data.sites || []).map((s) => ({ ...s, messages: s.messages || [] }))),
   // 流式：每站抓完即推一行 NDJSON，前端逐站追加渲染，不等全部抓完（加载一个显示一个）。
-  streamAll: (mailbox: Mailbox = 'inbox', refresh = false, onResult: (r: MessageResult) => void): Promise<void> => {
+  streamAll: (mailbox: Mailbox = 'inbox', refresh = false, onResult: (r: MessageResult) => void, signal?: AbortSignal): Promise<void> => {
     const token = localStorage.getItem('token')
     const url = `/api/v1/messages/stream?mailbox=${mailbox}${refresh ? '&refresh=1' : ''}`
-    return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} }).then(async (res) => {
+    return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal }).then(async (res) => {
       if (!res.ok) throw new Error(`加载失败 (HTTP ${res.status})`)
       const reader = res.body!.getReader()
       const dec = new TextDecoder()

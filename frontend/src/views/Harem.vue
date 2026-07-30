@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { haremApi, type HaremResult, type HaremOverview, type PrescriptionItem } from '@/api/harem'
 import { copyText } from '@/utils/clipboard'
@@ -69,6 +69,7 @@ const filteredPrescriptions = computed(() => {
 })
 
 onMounted(() => load())
+onUnmounted(() => abortCtrl?.abort())
 </script>
 
 <template>

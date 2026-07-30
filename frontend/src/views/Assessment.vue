@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { assessmentApi, type AssessmentCard } from '@/api/assessment'
 import EmptyState from '@/components/EmptyState.vue'
@@ -87,6 +87,7 @@ function statusText(s: string): string {
 }
 
 onMounted(() => load())
+onUnmounted(() => abortCtrl?.abort())
 </script>
 
 <template>

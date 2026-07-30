@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { logsApi, type LogEntry } from '@/api/logs'
 import { systemApi, APP_VERSION, type UpdateCheckResult } from '@/api/system'
 import { notificationApi, type NotifyConfig, type NotifyConfigInput, type NotifySendResult } from '@/api/notification'
 import { copyText } from '@/utils/clipboard'
-import Cloud from '@/views/Cloud.vue'
-import Trakt from '@/views/Trakt.vue'
-import FileManager from '@/views/FileManager.vue'
-import MediaQuality from '@/views/MediaQuality.vue'
-import Subtitle from '@/views/Subtitle.vue'
-import MediaSettings from '@/views/MediaSettings.vue'
-import FilterRules from '@/views/FilterRules.vue'
-import Backup from '@/views/Backup.vue'
-import Doctor from '@/views/Doctor.vue'
+// 设置分区内嵌的 9 个重组件改为按需异步加载：进任意 tab 只下载该 tab 代码，
+// 避免首屏一次性解析全部（FileManager/FilterRules 等共 3000+ 行）。
+const Cloud = defineAsyncComponent(() => import('@/views/Cloud.vue'))
+const Trakt = defineAsyncComponent(() => import('@/views/Trakt.vue'))
+const FileManager = defineAsyncComponent(() => import('@/views/FileManager.vue'))
+const MediaQuality = defineAsyncComponent(() => import('@/views/MediaQuality.vue'))
+const Subtitle = defineAsyncComponent(() => import('@/views/Subtitle.vue'))
+const MediaSettings = defineAsyncComponent(() => import('@/views/MediaSettings.vue'))
+const FilterRules = defineAsyncComponent(() => import('@/views/FilterRules.vue'))
+const Backup = defineAsyncComponent(() => import('@/views/Backup.vue'))
+const Doctor = defineAsyncComponent(() => import('@/views/Doctor.vue'))
 
 const dark = ref(false)
 // 版本号：优先读后端 /system/info（部署态真源），失败兜底构建期常量。

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 import { useRouter } from 'vue-router'
 
@@ -348,6 +348,10 @@ function openMediaDetail(m: MediaInfo) {
 
 
 onMounted(() => load())
+onUnmounted(() => {
+  abortCtrl?.abort()
+  findAbort?.abort()
+})
 
 </script>
 

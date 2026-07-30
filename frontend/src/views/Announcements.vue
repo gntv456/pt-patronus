@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { announcementApi, type AnnouncementResult } from '@/api/announcement'
 import { friendlySiteError } from '@/utils/siteError'
@@ -26,7 +26,11 @@ const filtered = computed(() =>
     : results.value,
 )
 
+let abortCtrl: AbortController | null = null
 async function load(refresh = false) {
+  abortCtrl?.abort()
+  const ctrl = new AbortController()
+  abortCtrl = ctrl
   loading.value = true
   results.value = []
   try {
@@ -35,11 +39,14 @@ async function load(refresh = false) {
       const idx = results.value.findIndex((x) => x.site_id === r.site_id)
       if (idx >= 0) results.value[idx] = r
       else results.value.push(r)
-    })
+    }, ctrl.signal)
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载公告失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载公告失败')
   } finally {
-    loading.value = false
+    if (abortCtrl === ctrl) {
+      loading.value = false
+      abortCtrl = null
+    }
   }
 }
 
@@ -57,6 +64,7 @@ async function syncOne(r: AnnouncementResult) {
 }
 
 onMounted(() => load())
+onUnmounted(() => abortCtrl?.abort())
 </script>
 
 <template>

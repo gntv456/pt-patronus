@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { agentApi, streamAgentChat, type AgentConversation, type AgentMessage, type AgentConfig, type ToolCatalogEntry, type AgentStats } from '@/api/agent'
 import EmptyState from '@/components/EmptyState.vue'
 
@@ -228,6 +228,7 @@ function scrollToBottom() { if (scroller.value) scroller.value.scrollTop = scrol
 function onKey(e: KeyboardEvent) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }
 
 onMounted(loadConversations)
+onUnmounted(() => abortCtrl?.abort())
 </script>
 
 <template>

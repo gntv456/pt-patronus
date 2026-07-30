@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { medalWallApi, type Medal } from '@/api/medal-wall'
 import EmptyState from '@/components/EmptyState.vue'
@@ -122,6 +122,7 @@ async function doAction(action: 'buy' | 'wear' | 'takeOff') {
 }
 
 onMounted(() => load())
+onUnmounted(() => abortCtrl?.abort())
 </script>
 
 <template>

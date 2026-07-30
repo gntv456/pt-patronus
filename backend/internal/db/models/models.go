@@ -47,7 +47,7 @@ type Site struct {
 // SiteStat — 站点统计快照。
 type SiteStat struct {
 	ID                        uint      `gorm:"primaryKey" json:"id"`
-	SiteID                    uint      `gorm:"index;not null" json:"site_id"`
+	SiteID                    uint      `gorm:"index;index:idx_site_stat_site_snap,priority:1;not null" json:"site_id"`
 	Level                     string    `gorm:"size:64" json:"level"`    // 用户等级（展示用）
 	UserName                  string    `gorm:"size:64" json:"username"` // 站点用户名（导出海报身份行，best-effort）
 	UserID                    string    `gorm:"size:32" json:"user_id"`  // 站点用户 ID
@@ -74,7 +74,7 @@ type SiteStat struct {
 	MaxClaim                  int       `gorm:"default:0" json:"max_claim"`    // 可认领上限
 	JoinDate                  string    `gorm:"size:32" json:"join_date"`      // 加入日期（原始文本）
 	LastAccessAt              string    `gorm:"size:64" json:"last_access_at"` // 最近动向/访问时间（原始文本）
-	SnapAt                    time.Time `json:"snap_at"`
+	SnapAt                    time.Time `gorm:"index;index:idx_site_stat_site_snap,priority:2" json:"snap_at"`
 	CreatedAt                 time.Time `json:"created_at"`
 }
 

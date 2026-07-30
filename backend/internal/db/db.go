@@ -57,6 +57,21 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 
+	// 连接池配置：database/sql 默认 MaxOpenConns=0（无限制），高并发采集（monitor 10s + automation cron）
+	// 会瞬间打开上百连接打爆 PostgreSQL max_connections（默认 100）；SQLite 多写连接则增加锁争用。
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("get underlying sql db: %w", err)
+	}
+	if cfg.DBType == "postgres" || cfg.DBType == "postgresql" {
+		sqlDB.SetMaxOpenConns(25)
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetConnMaxLifetime(30 * time.Minute)
+	} else {
+		// SQLite：写串行（单连接 + busy_timeout=5000），避免多连接抢写锁触发 database is locked。
+		sqlDB.SetMaxOpenConns(1)
+	}
+
 	if err := db.AutoMigrate(
 		&models.User{}, &models.Site{}, &models.SiteStat{}, &models.SiteConnectivity{},
 		&models.Downloader{}, &models.ActivationCode{}, &models.SystemConfig{},

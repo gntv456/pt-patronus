@@ -59,6 +59,24 @@ func (s *Service) runCheckinCleanup() {
 	}
 }
 
+// siteStatRetainDays 统计快照保留天数，与趋势图最大区间（90 天）对齐：
+// 趋势查询为 snap_at > now-90d，删除 snap_at < now-90d 不会动到任何可能被渲染的点。
+const siteStatRetainDays = 90
+
+// runSiteStatCleanup 清理超期站点统计快照。每次 site-snapshot 对每站新增一行，
+// 不清理则 site_stats 无限膨胀（30 站 × 6 次/天 ≈ 6.5 万行/年），拖慢仪表盘趋势/历史聚合。
+func (s *Service) runSiteStatCleanup() {
+	before := time.Now().AddDate(0, 0, -siteStatRetainDays)
+	res := s.db.Where("snap_at < ?", before).Delete(&models.SiteStat{})
+	if res.Error != nil {
+		slog.Warn("site stat cleanup failed", "err", res.Error)
+		return
+	}
+	if res.RowsAffected > 0 {
+		slog.Info("site stats cleaned", "deleted", res.RowsAffected, "retain_days", siteStatRetainDays)
+	}
+}
+
 // recordStat 写入一条统计快照。
 func (s *Service) recordStat(st *models.Site, ui *site.UserInfo) {
 	stat := &models.SiteStat{

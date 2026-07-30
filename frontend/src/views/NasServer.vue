@@ -60,21 +60,12 @@ import {
 import { useNasCredentials } from './useNasCredentials'
 import { useNasOpsConfigs } from './useNasOpsConfigs'
 import { useCommandExec } from './useCommandExec'
+import { useDeploy } from './useDeploy'
 
 // Agent 创建/删除/重置密钥是 admin 专属（后端 RequireAdmin）；非 admin 隐藏入口。
 const auth = useAuthStore()
 const router = useRouter()
 
-type DeployForm = {
-  targetIds: number[]
-  repoUrl: string
-  branch: string
-  projectDir: string
-  buildCmd: string
-  serviceName: string
-  backupDir: string
-  grayFirst: boolean
-}
 type MonitorTab = 'host' | 'nas' | 'camera' | 'http' | 'tcp' | 'process' | 'script'
 type Workspace = 'asset' | 'execute' | 'monitor' | 'deploy'
 
@@ -133,18 +124,6 @@ const terminalConnected = ref(false)
 const terminalConnecting = ref(false)
 const terminalOutputEl = ref<HTMLElement | null>(null)
 let terminalSocket: WebSocket | null = null
-const deployVisible = ref(false)
-const deployConfigId = ref<number | null>(null)
-const deployForm = ref<DeployForm>({
-  targetIds: [],
-  repoUrl: '',
-  branch: 'main',
-  projectDir: '/opt/app',
-  buildCmd: '',
-  serviceName: '',
-  backupDir: '/opt/backups',
-  grayFirst: true,
-})
 const execPanel = ref<HTMLElement | null>(null)
 
 const filtered = computed(() => targets.value.filter((t) => t.type === activeTab.value))
@@ -152,7 +131,6 @@ const unreadCount = computed(() => alerts.value.filter((a) => !a.read).length)
 const hostCount = computed(() => targets.value.filter((t) => t.type === 'host').length)
 const monitorCount = computed(() => targets.value.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.type)).length)
 const configCount = computed(() => opsConfigs.value.length)
-const deployProfiles = computed(() => opsConfigs.value.filter((c) => c.key.startsWith('deploy.') && c.format === 'json'))
 const activeAlertCount = computed(() => alerts.value.filter((a) => !a.resolved_at).length)
 const sshTargets = computed(() => targets.value.filter(isSSHHost))
 const {
@@ -176,20 +154,38 @@ const {
   showCommandRun,
   runBatchCommand,
 } = useCommandExec(sshTargets, focusExecPanel)
-const deployRuns = computed(() => commandRuns.value.filter((run) => run.source === 'deploy'))
+
+const {
+  deployVisible,
+  deployConfigId,
+  deployForm,
+  deployProfiles,
+  deployRuns,
+  deploySteps,
+  openDeployPanel,
+  loadDeployProfile,
+  saveDeployProfile,
+  runDeployCommand,
+  buildDeployCommand,
+  buildRollbackCommand,
+} = useDeploy({
+  sshTargets,
+  selectedExecTargets,
+  opsConfigs,
+  commandRuns,
+  execTargetIds,
+  execCommand,
+  execTimeout,
+  runBatchCommand,
+  focusExecPanel,
+  enterDeployWorkspace: () => setWorkspace('deploy'),
+})
 const assetTabs = computed(() => tabs.filter((t) => ['host', 'nas', 'camera'].includes(t.name)))
 const monitorTabs = computed(() => tabs.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.name)))
 const visibleTabs = computed(() => (activeWorkspace.value === 'monitor' ? monitorTabs.value : assetTabs.value))
 const configValuePlaceholder = computed(() =>
   configForm.value.format === 'text' ? '任意文本配置' : '{\n  "key": "value"\n}',
 )
-const deploySteps = computed(() => [
-  { title: '备份当前目录', desc: deployForm.value.backupDir || '/opt/backups' },
-  { title: '拉取代码', desc: `${deployForm.value.branch || 'main'} · ${deployForm.value.repoUrl || '未填写仓库'}` },
-  { title: '执行构建', desc: deployForm.value.buildCmd.trim() || '跳过构建' },
-  { title: '重启服务', desc: deployForm.value.serviceName.trim() || '未配置服务名' },
-  { title: '完成记录', desc: deployForm.value.grayFirst ? '灰度：先执行第一台' : '全部服务器执行' },
-])
 let timer: number | undefined
 
 // 区分首屏与后台轮询：首屏失败显示 error 态 + 重试；后台轮询失败仍静默。
@@ -426,137 +422,6 @@ function openMonitorTab() {
 
 function go(name: string) {
   router.push({ name })
-}
-
-function openDeployPanel() {
-  setWorkspace('deploy')
-  deployForm.value.targetIds = selectedExecTargets.value.length
-    ? selectedExecTargets.value.map((t) => t.id)
-    : sshTargets.value.filter((t) => t.last_online !== false).slice(0, 1).map((t) => t.id)
-  deployVisible.value = true
-}
-
-function loadDeployProfile(id: number | null) {
-  const profile = deployProfiles.value.find((p) => p.id === id)
-  if (!profile) return
-  try {
-    const parsed = JSON.parse(profile.value) as Partial<DeployForm>
-    deployForm.value = {
-      ...deployForm.value,
-      ...parsed,
-      targetIds: Array.isArray(parsed.targetIds) ? parsed.targetIds : deployForm.value.targetIds,
-      grayFirst: parsed.grayFirst !== false,
-    }
-  } catch {
-    ElMessage.error('部署模板 JSON 格式错误')
-  }
-}
-
-async function saveDeployProfile() {
-  if (!deployForm.value.repoUrl.trim() || !deployForm.value.projectDir.trim()) {
-    ElMessage.warning('请先填写 Git 仓库和项目目录')
-    return
-  }
-  const keyBase = basenameOf(deployForm.value.projectDir).replace(/[^\w.-]+/g, '-').toLowerCase() || 'app'
-  const input: OpsConfigInput = {
-    key: `deploy.${keyBase}`,
-    name: `${keyBase} 发布流程`,
-    env: deployForm.value.branch || 'main',
-    format: 'json',
-    value: JSON.stringify(deployForm.value, null, 2),
-    tags: '部署,发布',
-    note: 'NAS 运维控制台发布部署模板',
-  }
-  try {
-    if (deployConfigId.value) await opsConfigApi.update(deployConfigId.value, input)
-    else {
-      const created = await opsConfigApi.create(input)
-      deployConfigId.value = created.id
-    }
-    opsConfigs.value = await opsConfigApi.list()
-    ElMessage.success('发布模板已保存')
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存发布模板失败')
-  }
-}
-
-function deployTargets() {
-  const ids = deployForm.value.grayFirst ? deployForm.value.targetIds.slice(0, 1) : deployForm.value.targetIds
-  return ids.filter((id) => sshTargets.value.some((t) => t.id === id))
-}
-
-function buildDeployCommand() {
-  const f = deployForm.value
-  const app = shQuote(f.projectDir)
-  const backup = shQuote(f.backupDir)
-  const appName = shQuote(basenameOf(f.projectDir))
-  const branch = shQuote(f.branch || 'main')
-  const repo = shQuote(f.repoUrl)
-  const build = f.buildCmd.trim()
-  const service = f.serviceName.trim()
-  return [
-    'set -e',
-    `APP_DIR=${app}`,
-    `BACKUP_DIR=${backup}`,
-    `APP_NAME=${appName}`,
-    'TS=$(date +%Y%m%d%H%M%S)',
-    'mkdir -p "$BACKUP_DIR"',
-    'if [ -d "$APP_DIR" ]; then tar -czf "$BACKUP_DIR/$APP_NAME-$TS.tgz" -C "$(dirname "$APP_DIR")" "$APP_NAME"; fi',
-    `if [ ! -d "$APP_DIR/.git" ]; then mkdir -p "$(dirname "$APP_DIR")"; git clone --branch ${branch} ${repo} "$APP_DIR"; else cd "$APP_DIR"; git fetch --all; git checkout ${branch}; git pull --ff-only origin ${branch}; fi`,
-    'cd "$APP_DIR"',
-    build ? build : 'echo "跳过构建"',
-    service ? `sudo -n systemctl restart ${shQuote(service)}` : 'echo "未配置服务名，跳过重启"',
-    'echo "部署完成：$APP_DIR"',
-  ].join('\n')
-}
-
-function buildRollbackCommand() {
-  const f = deployForm.value
-  const app = shQuote(f.projectDir)
-  const backup = shQuote(f.backupDir)
-  const appName = shQuote(basenameOf(f.projectDir))
-  const service = f.serviceName.trim()
-  return [
-    'set -e',
-    `APP_DIR=${app}`,
-    `BACKUP_DIR=${backup}`,
-    `APP_NAME=${appName}`,
-    'LATEST=$(ls -1t "$BACKUP_DIR"/"$APP_NAME"-*.tgz 2>/dev/null | head -n1)',
-    'if [ -z "$LATEST" ]; then echo "没有可回滚的备份"; exit 1; fi',
-    service ? `sudo -n systemctl stop ${shQuote(service)} || true` : 'echo "未配置服务名，跳过停止服务"',
-    'rm -rf "$APP_DIR"',
-    'mkdir -p "$(dirname "$APP_DIR")"',
-    'tar -xzf "$LATEST" -C "$(dirname "$APP_DIR")"',
-    service ? `sudo -n systemctl start ${shQuote(service)}` : 'echo "未配置服务名，跳过启动服务"',
-    'echo "已回滚到：$LATEST"',
-  ].join('\n')
-}
-
-async function runDeployCommand(kind: 'deploy' | 'rollback') {
-  if (!deployForm.value.targetIds.length) {
-    ElMessage.warning('请选择部署服务器')
-    return
-  }
-  if (!deployForm.value.projectDir.trim()) {
-    ElMessage.warning('请填写项目目录')
-    return
-  }
-  if (kind === 'deploy' && !deployForm.value.repoUrl.trim()) {
-    ElMessage.warning('请填写 Git 仓库地址')
-    return
-  }
-  const ids = deployTargets()
-  if (!ids.length) {
-    ElMessage.warning('没有可部署的 SSH 主机')
-    return
-  }
-  execTargetIds.value = ids
-  execCommand.value = kind === 'deploy' ? buildDeployCommand() : buildRollbackCommand()
-  if (execTimeout.value < 300) execTimeout.value = 300
-  deployVisible.value = false
-  focusExecPanel()
-  await nextTick()
-  await runBatchCommand('deploy', kind === 'deploy' ? '发布部署' : '回滚上一版')
 }
 
 onMounted(() => {

@@ -71,37 +71,58 @@ func TestEncodeCookieAlert(t *testing.T) {
 }
 
 // detectDone 应 fan-out 调用全部 DoneHook（媒体库刷新 + 媒体整理并存）。
+// 钩子经 hookQ 异步投递，drainHooks 同步消费以验证「投递 + 执行」全链路。
 func TestDetectDone_FanOutHooks(t *testing.T) {
-	b := &Broadcaster{}
+	b := &Broadcaster{hookQ: make(chan hookJob, hookQueueCap)}
 	calls := &[]string{}
 	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { *calls = append(*calls, "a") })
 	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { *calls = append(*calls, "b") })
 
 	completed := []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "h1", Name: "t1", State: "completed"}}}}
 	b.detectDone(context.Background(), completed) // 第一轮仅 prime（primed=false 不触发）
+	drainHooks(b)
 	*calls = nil
 	b.detectDone(context.Background(), completed) // 同 hash 已知 → 不重触
+	drainHooks(b)
 	if len(*calls) != 0 {
 		t.Fatalf("known hash should not re-fire, got %v", *calls)
 	}
-	// 新完成 hash → 两个钩子都应触发
+	// 新完成 hash → 两个钩子都应投递并执行
 	b.detectDone(context.Background(), []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "h2", Name: "t2", State: "completed"}}}})
+	drainHooks(b)
 	if len(*calls) != 2 {
 		t.Fatalf("expected 2 hook calls (fan-out), got %d %v", len(*calls), *calls)
 	}
 }
 
-// 单个钩子 panic 不应阻断其余钩子（recover 隔离）。
+// 单个钩子 panic 不应阻断其余钩子（worker/drain 内 per-job recover 隔离）。
 func TestDetectDone_PanicHookIsolated(t *testing.T) {
-	b := &Broadcaster{}
+	b := &Broadcaster{hookQ: make(chan hookJob, hookQueueCap)}
 	calls := &[]string{}
 	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { panic("boom") })
 	b.AddDownloadDoneHook(func(context.Context, uint, string, string) { *calls = append(*calls, "ok") })
 
 	b.detectDone(context.Background(), []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "p1", Name: "t", State: "completed"}}}})
+	drainHooks(b)
 	*calls = nil
 	b.detectDone(context.Background(), []TorrentSnapshot{{DownloaderID: 1, Torrents: []downloader.Torrent{{Hash: "p2", Name: "t", State: "completed"}}}})
+	drainHooks(b)
 	if len(*calls) != 1 {
 		t.Fatalf("second hook must run despite first panicking, got %d", len(*calls))
+	}
+}
+
+// drainHooks 同步消费 hookQ 中已投递的钩子任务（测试用：模拟 worker 执行，每任务独立 recover）。
+func drainHooks(b *Broadcaster) {
+	for {
+		select {
+		case job := <-b.hookQ:
+			func() {
+				defer func() { _ = recover() }()
+				job.hk(context.Background(), job.dlID, job.name, job.hash)
+			}()
+		default:
+			return
+		}
 	}
 }

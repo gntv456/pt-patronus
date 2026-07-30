@@ -42,6 +42,16 @@ const (
 // fullResyncInterval 每 N 个 diff 强推一次 full，兜底丢帧/状态发散（≈60s@2s 间隔）。
 const fullResyncInterval = 30
 
+// 下载完成钩子后台 worker 配置：媒体整理等重副作用异步化，不阻塞广播循环。
+const (
+	hookWorkers  = 4   // 并发 worker 数（限流，防批量完成瞬时大量整理压垮系统）
+	hookQueueCap = 128 // 任务队列容量；满则丢弃 + warn（best-effort，绝不阻塞广播）
+)
+
+// doneDetectInterval 无 WS 连接（无人看仪表盘）时，下载完成检测的聚合间隔。
+// 有人看时复用广播聚合；无人看时降频到 10s，把闲时下载器轮询从 interval×N 降到 10s×N。
+const doneDetectInterval = 10 * time.Second
+
 // DownloaderDiff 是单个下载器本轮增量。
 type DownloaderDiff struct {
 	DownloaderID uint                    `json:"downloader_id"`
@@ -66,6 +76,14 @@ type dlCache struct {
 	name     string
 	err      string
 	stats    *downloader.GlobalStats
+}
+
+// hookJob 是一个下载完成钩子任务（投递给后台 worker 异步执行，避免重整理阻塞广播）。
+type hookJob struct {
+	hk   DoneHook
+	dlID uint
+	name string
+	hash string
 }
 
 // HRAlert 是一条 H&R 危险种子（对齐 automation runHRCheck 收集项）。
@@ -140,10 +158,11 @@ type Broadcaster struct {
 	stateMu  sync.Mutex
 	dlState  map[string]bool // key=dlID:hash → 是否已完成（下载完成 diff）
 	primed   bool            // 冷启动首轮只填充状态不通知，避免把所有已完成种子当新通知
-	cacheMu  sync.Mutex
-	cache    map[uint]*dlCache // 上一轮快照（diff 基准）；nil=首轮，强制全量
-	seq      uint64            // 增量协议序列号（每轮 +1）
-	sinceFull uint             // 距上次强推 full 的 diff 数（达 fullResyncInterval 重置）
+	cacheMu   sync.Mutex
+	cache     map[uint]*dlCache // 上一轮快照（diff 基准）；nil=首轮，强制全量
+	seq       uint64            // 增量协议序列号（每轮 +1）
+	sinceFull uint              // 距上次强推 full 的 diff 数（达 fullResyncInterval 重置）
+	hookQ     chan hookJob      // 下载完成钩子任务队列（后台 worker 消费）
 }
 
 // DoneHook 下载完成副作用钩子：媒体服务器刷新等 best-effort 副作用（不应阻塞广播循环）。
@@ -181,35 +200,76 @@ func NewBroadcaster(hub *Hub, dlOp *oper.DownloaderOper, mgr *manager.Manager, i
 	if interval <= 0 {
 		interval = 2 * time.Second
 	}
-	return &Broadcaster{hub: hub, dlOp: dlOp, mgr: mgr, interval: interval}
+	return &Broadcaster{hub: hub, dlOp: dlOp, mgr: mgr, interval: interval, hookQ: make(chan hookJob, hookQueueCap)}
 }
 
-// Run 启动广播循环，随 ctx 取消退出。
+// Run 启动广播循环与下载完成检测，随 ctx 取消退出。
+// 解耦两条关注点：种子快照广播仅在有 WS 连接时按 interval 聚合（无人看不打下载器 API）；
+// 下载完成检测（持久化通知，用户上线即可见）走独立慢速 ticker，有人看时复用广播聚合。
 func (b *Broadcaster) Run(ctx context.Context) {
-	ticker := time.NewTicker(b.interval)
-	defer ticker.Stop()
-	b.broadcast(ctx) // 启动即推一次（此时通常无连接，等价空操作）
+	broadcastTick := time.NewTicker(b.interval)
+	doneInterval := b.interval
+	if doneDetectInterval > doneInterval {
+		doneInterval = doneDetectInterval
+	}
+	doneTick := time.NewTicker(doneInterval)
+	defer broadcastTick.Stop()
+	defer doneTick.Stop()
+
+	// 下载完成钩子 worker：媒体整理等重副作用异步执行，不阻塞广播。
+	var wg sync.WaitGroup
+	for i := 0; i < hookWorkers; i++ {
+		wg.Add(1)
+		go b.hookWorker(ctx, &wg)
+	}
+	defer func() {
+		close(b.hookQ) // 关闭队列让 worker 退出
+		wg.Wait()      // 等待在途钩子完成（ctx 已取消，尊重 ctx 的钩子会快速返回）
+	}()
+
+	b.detectFromFresh(ctx) // 启动即 prime 完成状态（首轮只填充状态不通知）
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			b.broadcast(ctx)
+		case <-broadcastTick.C:
+			// 有人看才聚合广播（种子 2s 刷新只在「有人看仪表盘」时需要）。
+			if b.hub.Count() > 0 {
+				b.broadcastAndDetect(ctx)
+			}
+		case <-doneTick.C:
+			// 无人看时仍低频检测完成（持久化通知）；有人看时已由 broadcastAndDetect 顺带完成。
+			if b.hub.Count() == 0 {
+				b.detectFromFresh(ctx)
+			}
 		}
 	}
 }
 
-// broadcast 聚合一次快照并按客户端协议分发；下载完成 diff 始终执行（不依赖 WS 连接）。
-func (b *Broadcaster) broadcast(ctx context.Context) {
+// hookWorker 消费下载完成钩子任务（限流 worker 之一），单个 panic 不阻断其余。
+func (b *Broadcaster) hookWorker(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for job := range b.hookQ {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("dl-done hook panic", "downloader", job.dlID, "hash", job.hash, "panic", r)
+				}
+			}()
+			job.hk(ctx, job.dlID, job.name, job.hash)
+		}()
+	}
+}
+
+// broadcastAndDetect 聚合一次快照：顺带检测下载完成（复用 snap），再广播给已连接客户端。
+// 调用方须保证 hub.Count()>0（无人看时不调，省去无谓的下载器轮询）。
+func (b *Broadcaster) broadcastAndDetect(ctx context.Context) {
 	snap, err := b.aggregate(ctx)
 	if err != nil {
 		slog.Warn("ws aggregate list downloaders failed", "err", err)
 		return
 	}
-	b.detectDone(ctx, snap) // 下载完成通知（持久化，用户上线即可见）
-	if b.hub.Count() == 0 {
-		return // 无连接：不广播 torrent 快照
-	}
+	b.detectDone(ctx, snap) // 有人看时顺带检测下载完成（复用本轮聚合）
 
 	b.cacheMu.Lock()
 	b.seq++
@@ -237,6 +297,16 @@ func (b *Broadcaster) broadcast(ctx context.Context) {
 		incPayload, _ = EncodeTorrentsDiff(diff, seq)
 	}
 	b.hub.BroadcastInc(legacyPayload, incPayload)
+}
+
+// detectFromFresh 聚合一次快照仅用于下载完成检测（无 WS 连接时的低频路径，不广播）。
+func (b *Broadcaster) detectFromFresh(ctx context.Context) {
+	snap, err := b.aggregate(ctx)
+	if err != nil {
+		slog.Warn("ws aggregate list downloaders failed", "err", err)
+		return
+	}
+	b.detectDone(ctx, snap)
 }
 
 // detectDone 检测种子「下载完成」转换 → 通知中心。冷启动首轮只填充状态不通知。
@@ -268,16 +338,14 @@ func (b *Broadcaster) detectDone(ctx context.Context, snap []TorrentSnapshot) {
 						Level:  "success",
 					}, true)
 				}
-				// fan-out：逐个钩子调用，单个 panic 不阻断其余（媒体库刷新 / 媒体整理并存）。
+				// fan-out：钩子投递到后台 worker 异步执行（媒体整理含多次 HTTP/文件操作，
+				// 同步会阻塞广播循环）；队列满则丢弃 + warn（best-effort，dlState 已置 true 防重入）。
 				for _, hk := range hooks {
-					func(h DoneHook) {
-						defer func() {
-							if r := recover(); r != nil {
-								slog.Error("dl-done hook panic", "downloader", s.DownloaderID, "hash", t.Hash, "panic", r)
-							}
-						}()
-						h(ctx, s.DownloaderID, t.Name, t.Hash)
-					}(hk)
+					select {
+					case b.hookQ <- hookJob{hk: hk, dlID: s.DownloaderID, name: t.Name, hash: t.Hash}:
+					default:
+						slog.Warn("dl-done hook queue full, skipping", "downloader", s.DownloaderID, "hash", t.Hash)
+					}
 				}
 			}
 			b.dlState[key] = nowDone

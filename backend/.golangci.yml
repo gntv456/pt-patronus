@@ -1,0 +1,21 @@
+# golangci-lint 配置。
+# 项目历史代码未经 lint（首次接入），CI 以 continue-on-error 渐进报告，清理后转阻断门禁。
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  # 用 golangci-lint 默认 linter 集（errcheck/gosimple/govet/ineffassign/staticcheck/unused）。
+  # 不开 gofmt/goimports——历史 192 文件未格式化会刷屏，待整库 gofmt 后再启用。
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+issues:
+  max-issues-per-linter: 50  # 限制单 linter 输出，避免历史代码刷爆日志
+  max-same-issues: 20

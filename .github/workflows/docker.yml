@@ -47,3 +47,11 @@ jobs:
           build-args: VERSION=${{ steps.ver.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: 扫描镜像漏洞（Trivy）
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:latest
+          format: table
+          severity: CRITICAL,HIGH
+        continue-on-error: true  # 渐进：首次确认基线，后续可移除此行转门禁

@@ -19,6 +19,12 @@ jobs:
           cache-dependency-path: backend/go.sum
       - run: go mod download
       - run: go vet ./...
+      - name: golangci-lint（渐进采纳）
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.62
+          args: --timeout 5m
+        continue-on-error: true  # 历史代码未 lint，首次仅报告不阻断；清理后移除此行转门禁
       - run: go test ./... -race -short -timeout 30m   # -short 跳过真实网络/子进程时序用例（race 放大下易超时 flaky），race 聚焦并发逻辑；30m 防 race 慢化卡死
       - name: Enforce targeted coverage floors
         shell: bash

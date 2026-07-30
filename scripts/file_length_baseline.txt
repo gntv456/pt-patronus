@@ -74,7 +74,7 @@
 770	frontend/src/views/MediaDetail.vue
 509	frontend/src/views/MediaServer.vue
 1051	frontend/src/views/NasServer.vue
-1765	frontend/src/views/Plugins.vue
+1396	frontend/src/views/Plugins.vue
 546	frontend/src/views/Recommend.vue
 662	frontend/src/views/Reseed.vue
 1104	frontend/src/views/Savept.vue

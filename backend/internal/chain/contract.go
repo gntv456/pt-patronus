@@ -201,7 +201,7 @@ func (c *ContractChain) CheckAll(ctx context.Context) {
 	}
 	for _, r := range rules {
 		if _, err := c.Check(ctx, r.ID); err != nil {
-			// 单条失败不阻断
+			slog.Warn("contract check failed", "rule", r.ID, "err", err) // 单条失败不阻断
 		}
 	}
 }

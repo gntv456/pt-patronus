@@ -90,12 +90,16 @@ func TestRegistrationOperCreateInactiveNotSwallowed(t *testing.T) {
 	}
 
 	active, _ := op.ListActive()
+	foundOn := false
 	for _, a := range active {
 		if a.ID == off.ID {
 			t.Errorf("停用站出现在 ListActive 里（cron 会错误轮询它）")
 		}
 		if a.ID == on.ID {
-			// 启用站应在 ListActive
+			foundOn = true
 		}
+	}
+	if !foundOn {
+		t.Errorf("启用站未出现在 ListActive 里（应在）")
 	}
 }

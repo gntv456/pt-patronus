@@ -58,21 +58,21 @@ func StreamAnthropic(w http.ResponseWriter, model string, events <-chan llm.Even
 		case "thinking":
 			cb["thinking"] = ""
 		}
-		writeEv("content_block_start", map[string]any{"index": curIdx, "content_block": cb})
+		_ = writeEv("content_block_start", map[string]any{"index": curIdx, "content_block": cb})
 	}
 	closeBlock := func() {
 		if curBlock != blkNone {
-			writeEv("content_block_stop", map[string]any{"index": curIdx})
+			_ = writeEv("content_block_stop", map[string]any{"index": curIdx})
 			curBlock = blkNone
 		}
 	}
 	end := func() {
 		closeBlock()
-		writeEv("message_delta", map[string]any{
+		_ = writeEv("message_delta", map[string]any{
 			"delta": map[string]any{"stop_reason": "end_turn", "stop_sequence": nil},
 			"usage": map[string]any{"output_tokens": 0},
 		})
-		writeEv("message_stop", map[string]any{})
+		_ = writeEv("message_stop", map[string]any{})
 	}
 
 	for ev := range events {
@@ -119,11 +119,11 @@ func StreamAnthropic(w http.ResponseWriter, model string, events <-chan llm.Even
 			}); err != nil {
 				return nil
 			}
-			writeEv("content_block_delta", map[string]any{
+			_ = writeEv("content_block_delta", map[string]any{
 				"index": idx,
 				"delta": map[string]any{"type": "input_json_delta", "partial_json": ev.ToolCall.Arguments},
 			})
-			writeEv("content_block_stop", map[string]any{"index": idx})
+			_ = writeEv("content_block_stop", map[string]any{"index": idx})
 		case llm.EventToolResult:
 			// 工具结果属下一轮；跳过。
 		case llm.EventError:

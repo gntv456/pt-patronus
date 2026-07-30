@@ -87,14 +87,14 @@ func StreamOpenAI(w http.ResponseWriter, model string, events <-chan llm.Event) 
 			// 工具结果不回传客户端（属下一轮请求）。
 		case llm.EventError:
 			// 错误作为最后一段 content 写出；此时客户端多半还在，写失败也无碍（本来就要返回）。
-			writeChunk(map[string]any{"content": ev.Error}, nil)
-			finish()
+			_ = writeChunk(map[string]any{"content": ev.Error}, nil)
+			_ = finish()
 			return fmt.Errorf("%s", ev.Error)
 		case llm.EventDone:
-			finish()
+			_ = finish()
 			return nil
 		}
 	}
-	finish() // 流关闭但无 done：正常收尾
+	_ = finish() // 流关闭但无 done：正常收尾
 	return nil
 }

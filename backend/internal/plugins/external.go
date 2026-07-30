@@ -646,9 +646,8 @@ func newExternalHostServer(plugin *externalHTTPPlugin) (*externalHostServer, err
 		ReadTimeout:       60 * time.Second,
 	}
 	go func() {
-		if err := h.server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			// Best effort: plugin host callbacks are loopback-only and surfaced through plugin calls.
-		}
+		// Serve 总会返回非 nil 错误；ErrServerClosed 为正常关闭，其余异常因 host 回调仅 loopback 可达而无法外暴。
+		_ = h.server.Serve(ln)
 	}()
 	return h, nil
 }

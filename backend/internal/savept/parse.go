@@ -46,8 +46,7 @@ func attr(tag, name string) string {
 }
 
 var (
-	tagRe       = regexp.MustCompile(`<[^>]+>`)
-	yearGroupRe = regexp.MustCompile(`(?s)>(\d{4}|未知)\s*年\s*<.*?\((\d+)\s*个站点\)`)
+	tagRe = regexp.MustCompile(`<[^>]+>`)
 )
 
 func extractCards(html string) []SaveptSiteCard {
@@ -144,10 +143,8 @@ func extractAlerts(html string) []SaveptAlert {
 			return
 		}
 		text := compactSpaces(s.Parent().Text())
-		if strings.HasPrefix(text, rawTitle) {
-			text = text[len(rawTitle):]
-		}
-		text = strings.TrimLeft(text, "：: \t\n ")
+		text = strings.TrimPrefix(text, rawTitle)
+		text = strings.TrimLeft(text, "：:\t\n ")
 		if text != "" {
 			out = append(out, SaveptAlert{Type: typ, Title: title, Content: text})
 		}

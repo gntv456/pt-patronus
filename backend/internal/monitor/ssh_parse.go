@@ -101,12 +101,6 @@ func cpuIdleTotal(line string) (idle, total uint64) {
 	return
 }
 
-// parseMemInfo 取 MemTotal / MemAvailable（kB → bytes）。保留给旧调用/测试。
-func parseMemInfo(raw string) (total, avail uint64) {
-	mi := parseMemInfoFull(raw)
-	return mi.Total, mi.Available
-}
-
 type memInfo struct {
 	Total, Available, SwapTotal, SwapFree uint64
 }
@@ -213,11 +207,6 @@ func parseKB(line string) uint64 {
 	}
 	v, _ := strconv.ParseUint(f[1], 10, 64)
 	return v * 1024
-}
-
-func parseLoadAvg(raw string) (l1, l5, l15 float64) {
-	l1, l5, l15, _ = parseLoadAvgFull(raw)
-	return
 }
 
 // parseLoadAvgFull 解析负载与进程数。第 4 字段形如 "1/234"（运行中/总进程）。

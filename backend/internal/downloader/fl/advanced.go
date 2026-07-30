@@ -176,7 +176,7 @@ func (c *Client) SetShareLimits(ctx context.Context, hashes []string, limits dow
 // 接口 action∈top|up|down|bottom 映射为绝对优先级；Flood 无相对位移概念，
 // 故 up/top 同为高、down/bottom 区分正常/低（caps.queueFull=false 反映此限制）。
 func (c *Client) SetQueuePriority(ctx context.Context, hashes []string, action string) error {
-	prio := 2
+	var prio int
 	switch action {
 	case "top", "up":
 		prio = 3

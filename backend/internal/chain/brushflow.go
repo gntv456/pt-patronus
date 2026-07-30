@@ -511,7 +511,7 @@ func bfParseSize(s string) int64 {
 		}
 		return 0
 	}
-	mul := int64(1)
+	var mul int64
 	switch strings.ToUpper(strings.TrimSpace(unit)) {
 	case "KB", "KIB", "K":
 		mul = 1 << 10

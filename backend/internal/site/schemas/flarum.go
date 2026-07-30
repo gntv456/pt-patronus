@@ -109,7 +109,6 @@ func (doc *flarumForumDoc) groupTable() map[string]string {
 
 // FetchUserInfo GET /api 取 uid+组名表，再 GET /api/users/{uid} 取资料，映射到 UserInfo。
 func (f *Flarum) FetchUserInfo(ctx context.Context, def *site.SiteMetadata, baseURL, cookie string) (*site.UserInfo, error) {
-	def = site.EnsureDefaults(def)
 
 	// Step1: /api 取当前 uid + groups 表。
 	resp, err := f.hc.Get(ctx, joinURL(baseURL, "/api"), cookie, true)
@@ -194,7 +193,6 @@ func strAttr(a map[string]any, key string) string {
 // KeepAlive 实现 site.KeepAliveCapable：GET /api，actor/currentUser 关系存在即登录态；
 // 捕获 flarum_session 轮换后的最新 cookie 回写 DB。自动接入 cookie-keepalive cron。
 func (f *Flarum) KeepAlive(ctx context.Context, def *site.SiteMetadata, baseURL, cookie string) (*site.KeepAliveResult, error) {
-	def = site.EnsureDefaults(def)
 	resp, err := f.hc.Get(ctx, joinURL(baseURL, "/api"), cookie, true)
 	if err != nil {
 		return nil, err

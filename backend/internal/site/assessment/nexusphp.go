@@ -74,8 +74,6 @@ var (
 	requireRe     = regexp.MustCompile(`要求[：:]\s*(.+)`)
 	currentRe     = regexp.MustCompile(`当前[：:]\s*(.+)`)
 	resultRe      = regexp.MustCompile(`结果[：:]\s*(.+)`)
-	// 指标字段（用于 line-by-line 回退按名抽取）
-	metricNameRe = regexp.MustCompile(`指标\s*\d+[：:]\s*([^,，]+)`)
 	// 考核信号
 	assessSignalRe = regexp.MustCompile(`(?i)(考核|新手任务|任务进度|assessment|examine)`)
 	// 结果完成关键词（须先排除「未达标/未完成」等否定前缀）
@@ -83,8 +81,6 @@ var (
 	failedResultRe    = regexp.MustCompile(`未达标|未完成|未通过|不达标|失败|未达`)
 	// metric 黑名单（噪声行）
 	metricBlacklistRe = regexp.MustCompile(`火花|佩戴|过期时间|优先级|gntv|加成系数`)
-	// 剩余天数
-	remainingDaysRe = regexp.MustCompile(`(?:考核.{0,12}?还有|剩余)\s*(\d{1,4})\s*天`)
 )
 
 // parseNexusPHPAssessment 从 userdetails 纯文本解析考核任务。

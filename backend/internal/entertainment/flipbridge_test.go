@@ -53,10 +53,8 @@ func TestServeFlipBridgeCancel(t *testing.T) {
 	cancel()
 	// ctx 取消后 channel 应关闭（即使拨号失败也在重连循环，cancel 必须能打断）
 	select {
-	case _, ok := <-ch:
-		if ok {
-			// 可能先收到关闭：等 drain
-		}
+	case <-ch:
+		// 可能先收到值或关闭：均视为可正常退出
 	case <-time.After(2 * time.Second):
 		t.Error("channel not closed after ctx cancel within 2s")
 	}

@@ -38,8 +38,8 @@ func TestParseMediaWebhook(t *testing.T) {
 
 	// 空载荷
 	title, event = parseMediaWebhook(nil)
-	if title != "" {
-		t.Errorf("empty: title=%q want empty", title)
+	if title != "" || event != "" {
+		t.Errorf("empty: title=%q event=%q want both empty", title, event)
 	}
 
 	// 缺 event 字段 → 归一为 "play"

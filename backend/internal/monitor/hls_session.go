@@ -197,10 +197,3 @@ func (s *hlsSink) segment(seq uint64) []byte {
 	}
 	return nil
 }
-
-// idle 报告自 since 以来是否无访问（保活判定用）。
-func (s *hlsSink) idle(since time.Time) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.lastAccess.Before(since)
-}

@@ -193,9 +193,7 @@ func ExtractTmdbID(title string) string {
 func NormalizeTmdbID(id string) string {
 	id = strings.TrimSpace(strings.ToLower(id))
 	for _, p := range []string{"movie:", "tv:", "show:", "tmdb:"} {
-		if strings.HasPrefix(id, p) {
-			id = id[len(p):]
-		}
+		id = strings.TrimPrefix(id, p)
 	}
 	// 只保留数字
 	var b strings.Builder

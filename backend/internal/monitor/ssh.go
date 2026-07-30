@@ -273,12 +273,3 @@ func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, 
 }
 
 func (e *sshExec) Close() error { return e.client.Close() }
-
-// hostAddr 工具：拼 host:port（供其它采集器复用）。
-func hostAddr(t *models.MonitorTarget, defPort int) string {
-	port := t.Port
-	if port == 0 {
-		port = defPort
-	}
-	return net.JoinHostPort(strings.TrimSpace(t.Host), strconv.Itoa(port))
-}

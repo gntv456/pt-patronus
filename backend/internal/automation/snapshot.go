@@ -95,7 +95,7 @@ func (s *Service) dispatchSnapshotSite(ctx context.Context, st *models.Site, res
 	if res.LoggedOut {
 		agg.loggedOut = append(agg.loggedOut, st.Name)
 		if s.notice != nil {
-			s.notice.Notice(ctx, notice.Input{
+			_ = s.notice.Notice(ctx, notice.Input{
 				Source: notice.SourceSiteOffline,
 				Key:    "cookie:" + st.Name,
 				Title:  "站点掉线：" + st.Name,
@@ -120,7 +120,7 @@ func (s *Service) dispatchSnapshotSite(ctx context.Context, st *models.Site, res
 				agg.flAlerts = append(agg.flAlerts, ws.FreeleechAlert{Site: st.Name, Title: n.Title, Content: n.Content})
 			}
 			if s.notice != nil {
-				s.notice.Notice(ctx, notice.Input{
+				_ = s.notice.Notice(ctx, notice.Input{
 					Source: notice.SourceFreeleech,
 					Key:    "freeleech:" + st.Name + ":" + time.Now().Format("2006-01-02"),
 					Title:  "今日站免：" + st.Name,
@@ -138,7 +138,7 @@ func (s *Service) dispatchSnapshotSite(ctx context.Context, st *models.Site, res
 		last, _ := s.cfgOp.Get(key)
 		if last != h {
 			if last != "" {
-				s.notice.Notice(ctx, notice.Input{
+				_ = s.notice.Notice(ctx, notice.Input{
 					Source: notice.SourceAnnounce,
 					Key:    "announce:" + st.Name + ":" + h,
 					Title:  "新公告：" + st.Name,
@@ -163,7 +163,7 @@ func (s *Service) dispatchSnapshotSite(ctx context.Context, st *models.Site, res
 			}
 		}
 		if fresh > 0 {
-			s.notice.Notice(ctx, notice.Input{
+			_ = s.notice.Notice(ctx, notice.Input{
 				Source: notice.SourceNewMail,
 				Key:    "mail:" + st.Name + ":" + time.Now().Format("2006-01-02"),
 				Title:  "新邮件：" + st.Name,

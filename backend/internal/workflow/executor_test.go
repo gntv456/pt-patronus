@@ -9,7 +9,7 @@ import (
 
 // echoNode 测试用节点：执行时把自身 name 追加到 ecx.Messages。
 type echoNode struct {
-	id, typ, name string
+	typ, name string
 }
 
 func (n echoNode) Type() string                  { return n.typ }
@@ -25,7 +25,7 @@ func (n echoNode) Execute(_ context.Context, _ map[string]any, ecx *Context) err
 }
 
 // branchNode 模拟条件节点：按 param "choose" 设置 ecx.Next。
-type branchNode struct{ choose string }
+type branchNode struct{}
 
 func (b branchNode) Type() string                  { return "test_branch" }
 func (b branchNode) Name() string                  { return "分支" }

@@ -55,15 +55,6 @@ func destPathForMovie(cfg Config, baseDir, category, movieFolder, name, ext stri
 	return filepath.Join(targetDir, name+ext), targetDir
 }
 
-// destPathForEpisode 计算剧集单集目标：库/[type]/[category]/Title (Year)/Season NN/<name>.ext。
-// showDir = 库/.../Title (Year)；返回 (集文件路径, season目录, show目录)。
-func destPathForEpisode(cfg Config, baseDir, category, showFolder, seasonFolder, name, ext string) (string, string, string) {
-	dir := libraryDir(cfg, baseDir, "tv", category)
-	showDir := filepath.Join(dir, showFolder)
-	seasonDir := filepath.Join(showDir, seasonFolder)
-	return filepath.Join(seasonDir, name+ext), seasonDir, showDir
-}
-
 // libraryDir 库根 + 可选 type 子目录（movie/tv）+ 可选 category 子目录。
 func libraryDir(cfg Config, baseDir, typeKey, category string) string {
 	dir := baseDir

@@ -90,7 +90,7 @@ func render(s string, ecx *workflow.Context) string {
 				return ""
 			}
 			idx := 0
-			fmt.Sscanf(parts[0], "%d", &idx)
+			_, _ = fmt.Sscanf(parts[0], "%d", &idx)
 			if idx < 0 || idx >= len(ecx.Torrents) {
 				return ""
 			}

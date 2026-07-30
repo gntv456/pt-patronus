@@ -146,7 +146,6 @@ func (a *Avistaz) torrentRequest(ctx context.Context, baseURL, jwt, params strin
 func (a *Avistaz) Search(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cred, keyword, category string, page int) ([]site.Torrent, error) {
 
-	def = site.EnsureDefaults(def)
 	if page < 1 {
 		page = 1
 	}

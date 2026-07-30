@@ -149,18 +149,3 @@ func numToStr(v any) string {
 	}
 	return fmt.Sprintf("%v", v)
 }
-
-// idField 取响应里的 id（scratch_id / id / scratchId 任一）。
-func idField(m map[string]any) string {
-	for _, k := range []string{"scratch_id", "id", "scratchId"} {
-		switch v := m[k].(type) {
-		case string:
-			if v != "" {
-				return v
-			}
-		case float64:
-			return fmt.Sprintf("%v", v)
-		}
-	}
-	return ""
-}

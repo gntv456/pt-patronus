@@ -36,7 +36,7 @@ func (s *Service) runCookieKeepAlive() {
 			if !res.LoggedIn {
 				loggedOut++
 				if s.notice != nil {
-					s.notice.Notice(ctx, notice.Input{
+					_ = s.notice.Notice(ctx, notice.Input{
 						Source: notice.SourceSiteOffline,
 						Key:    "cookie:" + st.Name,
 						Title:  "站点掉线：" + st.Name,

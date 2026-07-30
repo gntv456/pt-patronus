@@ -719,9 +719,7 @@ func (m *Manager) ReadAsset(id, name string) (*Asset, error) {
 	if name == "" {
 		name = "index.html"
 	}
-	if strings.HasPrefix(name, "web/") {
-		name = strings.TrimPrefix(name, "web/")
-	}
+	name = strings.TrimPrefix(name, "web/")
 	assetRoot := filepath.Join(root, id, "web")
 	target := filepath.Join(assetRoot, filepath.FromSlash(name))
 	if !isSubpath(assetRoot, target) {

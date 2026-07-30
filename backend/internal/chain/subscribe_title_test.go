@@ -8,14 +8,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-func titles(ts []site.Torrent) []string {
-	out := make([]string, len(ts))
-	for i, t := range ts {
-		out[i] = t.Title
-	}
-	return out
-}
-
 func setOf(ss ...string) map[string]struct{} {
 	m := make(map[string]struct{}, len(ss))
 	for _, s := range ss {

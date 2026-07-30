@@ -168,7 +168,7 @@ func (h *AgentWSHub) readLoop(ac *agentConn) {
 	defer ac.conn.Close()
 	defer ac.shutdown() // 关 closeCh + 清 pending/stream，唤醒所有阻塞的 RPC 返回 ErrAgentDisconnected
 	for {
-		ac.conn.SetReadDeadline(time.Now().Add(h.readTimeout))
+		_ = ac.conn.SetReadDeadline(time.Now().Add(h.readTimeout))
 		_, payload, err := ac.conn.ReadMessage()
 		if err != nil {
 			return

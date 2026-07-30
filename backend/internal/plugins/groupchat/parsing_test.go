@@ -92,10 +92,10 @@ func TestParseZmMailTimeNotFound(t *testing.T) {
 }
 
 func TestParseZmMailTimeLayouts(t *testing.T) {
-	// 验证多种格式都能解析
+	// 验证 layouts 切片里的格式可被标准库解析（与实现一致）
 	for _, s := range []string{"2025-01-02 03:04", "2025-01-02T03:04:05"} {
 		if _, err := time.ParseInLocation("2006-01-02 15:04", s, time.Local); err != nil && !strings.Contains(s, "T") {
-			// 仅验证 layouts 切片里的格式可被标准库解析(与实现一致)
+			t.Errorf("layout 无法解析 %q: %v", s, err)
 		}
 	}
 }

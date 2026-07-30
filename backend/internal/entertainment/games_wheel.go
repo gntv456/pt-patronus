@@ -287,10 +287,9 @@ func (MarchWheelGame) Play(ctx context.Context, hc *httpclient.Client, baseURL s
 }
 
 // PlayMulti 连抽：March spin 端点单次即返回 results 数组（站点自身聚合）；直接返回其结果。
+// count 上限由调用方在更上层裁剪，此处站点单次聚合故不下发。
 func (MarchWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, count int) (*PlayResult, error) {
-	if count > maxMultiCount {
-		count = maxMultiCount
-	}
+	_ = count
 	return MarchWheelGame{}.spin(ctx, hc, baseURL, cr)
 }
 

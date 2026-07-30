@@ -129,7 +129,7 @@ func (c *Client) SetShareLimits(ctx context.Context, hashes []string, limits dow
 // top/up 映射为 high(3)，down 映射为 normal(2)，bottom 映射为 low(1)。
 // 注意 rTorrent priority 为绝对优先级而非相对队列位移，与 qB 的 up/down 语义有别。
 func (c *Client) SetQueuePriority(ctx context.Context, hashes []string, action string) error {
-	prio := "2"
+	var prio string
 	switch action {
 	case "top", "up":
 		prio = "3"

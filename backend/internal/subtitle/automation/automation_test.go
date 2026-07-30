@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/event"
-	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/subtitle"
 )
 
@@ -50,25 +49,6 @@ type memKV struct{ m map[string]string }
 
 func (k *memKV) Get(key string) (string, error) { return k.m[key], nil }
 func (k *memKV) Set(key, v string) error        { k.m[key] = v; return nil }
-
-// fakeNotifier 记录通知（验证成功/失败时是否触发）。
-type fakeNotifier struct {
-	mu    sync.Mutex
-	calls []notice.Input
-}
-
-func (n *fakeNotifier) Notice(_ context.Context, in notice.Input, _ bool) error {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	n.calls = append(n.calls, in)
-	return nil
-}
-
-func (n *fakeNotifier) count() int {
-	n.mu.Lock()
-	defer n.mu.Unlock()
-	return len(n.calls)
-}
 
 func writeVideo(t *testing.T, dir, name string) string {
 	t.Helper()

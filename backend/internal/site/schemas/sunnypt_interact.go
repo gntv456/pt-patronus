@@ -232,17 +232,6 @@ func sunnyCleanSessionCookie(cookie string) string {
 	return strings.Join(others, "; ")
 }
 
-func sunnyHasUsableAuthSession(cookie string) bool {
-	matches := sunnyAuthSessionRe.FindAllString(cookie, -1)
-	for _, m := range matches {
-		val := strings.TrimPrefix(m, "AuthSession=")
-		if strings.Count(val, ".") == 2 && len(val) > 80 {
-			return true
-		}
-	}
-	return false
-}
-
 // sunnyExtractContentField 从 RSC/HTML 中取最长的含 "## " 标题的 content 字段。
 func sunnyExtractContentField(text string) string {
 	re := regexp.MustCompile(`"content":"((?:\\.|[^"\\])*)"`)

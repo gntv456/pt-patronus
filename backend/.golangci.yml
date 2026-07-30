@@ -1,12 +1,9 @@
-# golangci-lint 配置。
-# 项目历史代码未经 lint（首次接入），CI 以 continue-on-error 渐进报告，清理后转阻断门禁。
+# golangci-lint 配置（收紧阻断门禁）。
 run:
   timeout: 5m
   tests: true
 
 linters:
-  # 用 golangci-lint 默认 linter 集（errcheck/gosimple/govet/ineffassign/staticcheck/unused）。
-  # 不开 gofmt/goimports——历史 192 文件未格式化会刷屏，待整库 gofmt 后再启用。
   disable-all: true
   enable:
     - errcheck
@@ -16,6 +13,24 @@ linters:
     - staticcheck
     - unused
 
+linters-settings:
+  errcheck:
+    # 这些方法的返回值按惯例忽略（HTTP 响应写入/刷新、流关闭、标准输出打印）。
+    exclude-functions:
+      - (net/http.ResponseWriter).Write
+      - (net/http.ResponseWriter).Flush
+      - (net/http.ResponseWriter).Header
+      - (io.Closer).Close
+      - (io.StringWriter).WriteString
+      - fmt.Fprint
+      - fmt.Fprintf
+      - fmt.Fprintln
+
 issues:
-  max-issues-per-linter: 50  # 限制单 linter 输出，避免历史代码刷爆日志
-  max-same-issues: 20
+  exclude-rules:
+    # 测试代码的 setup/断言调用常忽略错误返回（如 op.Create / w.Write），不阻断。
+    - path: _test\.go
+      linters:
+        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0

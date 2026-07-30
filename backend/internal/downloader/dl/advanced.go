@@ -345,7 +345,7 @@ func toInt64(v any) int64 {
 		return int64(n)
 	case string:
 		var f float64
-		fmt.Sscanf(n, "%f", &f)
+		_, _ = fmt.Sscanf(n, "%f", &f)
 		return int64(f)
 	case int64:
 		return n

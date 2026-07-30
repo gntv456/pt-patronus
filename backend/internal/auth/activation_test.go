@@ -42,8 +42,9 @@ func TestActivationLifecycle(t *testing.T) {
 		t.Error("tampered code should fail validation")
 	}
 
-	if !a.AnyActivated() == false {
-	} // 初始未激活
+	if a.AnyActivated() {
+		t.Error("初始应为未激活状态")
+	}
 	lvl, err := a.Activate(code, "dev1")
 	if err != nil || lvl != 3 {
 		t.Fatalf("activate: lvl=%d err=%v", lvl, err)

@@ -1,6 +1,9 @@
 package medalwall
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 // TestParseUnit3DJSON JSON API 响应解析（递归找 name+cost 对象，货币 BP）。
 func TestParseUnit3DJSON(t *testing.T) {
@@ -67,7 +70,7 @@ func TestUnit3DAdapter(t *testing.T) {
 	if a.Platform() != "unit3d" {
 		t.Errorf("platform: got %q want unit3d", a.Platform())
 	}
-	r, _ := a.Wear(nil, nil, Def{}, "", "", "")
+	r, _ := a.Wear(context.Background(), nil, Def{}, "", "", "")
 	if r.Success {
 		t.Error("Unit3D Wear should be unsupported")
 	}

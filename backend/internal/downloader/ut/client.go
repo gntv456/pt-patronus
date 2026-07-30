@@ -57,9 +57,7 @@ func New(baseURL, username, password string) (*Client, error) {
 // normalizeGUI 确保 baseURL 以 /gui/ 结尾（uT WebUI 强制尾斜杠，缺失会 400）。
 func normalizeGUI(s string) string {
 	s = strings.TrimRight(strings.TrimSpace(s), "/")
-	if strings.HasSuffix(s, "/gui") {
-		s = s[:len(s)-len("/gui")]
-	}
+	s = strings.TrimSuffix(s, "/gui")
 	return s + "/gui/"
 }
 

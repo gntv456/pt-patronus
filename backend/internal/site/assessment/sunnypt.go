@@ -211,7 +211,7 @@ func jsonFloat(m map[string]any, keys ...string) float64 {
 				return f
 			case string:
 				var f float64
-				fmt.Sscanf(t, "%f", &f)
+				_, _ = fmt.Sscanf(t, "%f", &f)
 				return f
 			}
 		}

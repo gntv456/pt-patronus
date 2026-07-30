@@ -64,9 +64,7 @@ func collectSNMP(_ context.Context, t *models.MonitorTarget, creds Credentials) 
 
 	// 存储表 hrStorageEntry：按 index 关联 descr/units/size/used
 	if entries, err := params.BulkWalkAll(".1.3.6.1.2.1.25.2.3.1"); err == nil {
-		for _, d := range buildHRStorage(entries) {
-			m.Disks = append(m.Disks, d)
-		}
+		m.Disks = append(m.Disks, buildHRStorage(entries)...)
 	}
 	return m, nil
 }

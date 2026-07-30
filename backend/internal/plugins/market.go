@@ -443,32 +443,6 @@ func (m *Manager) installMarketItem(ctx context.Context, source string, idx *Mar
 	}, nil
 }
 
-func verifySignature(publicKey, signature string, payload []byte) error {
-	publicKey = strings.TrimSpace(publicKey)
-	signature = strings.TrimSpace(signature)
-	if publicKey == "" && signature == "" {
-		return nil
-	}
-	if publicKey == "" || signature == "" {
-		return errors.New("market public_key and plugin signature must be provided together")
-	}
-	pub, err := base64.StdEncoding.DecodeString(publicKey)
-	if err != nil {
-		return fmt.Errorf("decode market public key: %w", err)
-	}
-	sig, err := base64.StdEncoding.DecodeString(signature)
-	if err != nil {
-		return fmt.Errorf("decode plugin signature: %w", err)
-	}
-	if len(pub) != ed25519.PublicKeySize {
-		return fmt.Errorf("invalid ed25519 public key size %d", len(pub))
-	}
-	if !ed25519.Verify(ed25519.PublicKey(pub), payload, sig) {
-		return errors.New("plugin archive signature verification failed")
-	}
-	return nil
-}
-
 // ErrUnsigned 表示插件归档无签名（由 verifySignatureTrusted 返回，调用方据 AllowUnsigned 决定是否放行）。
 var ErrUnsigned = errors.New("plugin archive is not signed")
 

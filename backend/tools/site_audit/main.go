@@ -112,21 +112,6 @@ func loadAuditDefs(dir string) ([]auditDef, error) {
 	return out, nil
 }
 
-func refIDs(dir, ext string) map[string]bool {
-	out := map[string]bool{}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return out
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ext) {
-			continue
-		}
-		out[strings.ToLower(strings.TrimSuffix(e.Name(), ext))] = true
-	}
-	return out
-}
-
 type userFieldSelectorState string
 
 const (

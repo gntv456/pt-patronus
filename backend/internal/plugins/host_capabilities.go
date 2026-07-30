@@ -129,9 +129,7 @@ func effectiveMarketHostCapabilities(item MarketPlugin) []string {
 
 func appendPermissionHostCapabilities(caps, permissions []string) []string {
 	for _, permission := range permissions {
-		for _, capability := range permissionHostCapabilities[strings.TrimSpace(permission)] {
-			caps = append(caps, capability)
-		}
+		caps = append(caps, permissionHostCapabilities[strings.TrimSpace(permission)]...)
 	}
 	return normalizeHostCapabilities(caps)
 }

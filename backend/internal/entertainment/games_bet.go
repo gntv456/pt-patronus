@@ -146,7 +146,7 @@ func (HxptBigSmallGame) Bet(ctx context.Context, hc *httpclient.Client, baseURL 
 	}
 	bm, code, msg := hxptBigSmallAjax(ctx, hc, baseURL, action, cr.Cookie, csrf, body)
 	if code == 0 {
-		prize := "押 " + amtStr
+		var prize string
 		if !addBet {
 			betType := req.Selection
 			if betType != "big" && betType != "small" {

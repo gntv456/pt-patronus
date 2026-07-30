@@ -46,8 +46,6 @@ func TestTMDBDetailReturnsCompleteCastAndRecommendations(t *testing.T) {
 
 func TestTMDBSearchAndDetail(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Accept") == "" {
-		}
 		switch r.URL.Path {
 		case "/3/search/multi":
 			_ = json.NewEncoder(w).Encode(map[string]any{

@@ -17,6 +17,9 @@ jobs:
         with:
           go-version: '1.26'
           cache-dependency-path: backend/go.sum
+      - name: 文件行数门禁(单文件 ≤400 行,棘轮 baseline)
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/check_file_length.sh check
       - run: go mod download
       - run: go vet ./...
       - name: golangci-lint

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# scripts/hooks/pre-push — 推送前行数门禁(对标 README 「单文件 ~400 行」规范)。
+#
+# 安装(本 clone 生效,CI 另有同款门禁兜底):
+#   git config core.hooksPath scripts/hooks
+# 旁路(仅本地,CI 仍会拦):
+#   git push --no-verify
+set -euo pipefail
+
+# 排空 stdin:pre-push 收到 "<local ref> <local sha> <remote ref> <remote sha>" 行。
+while read -r _ref _lsha _rref _rsha; do :; done
+
+ROOT="$(git rev-parse --show-toplevel)"
+exec bash "$ROOT/scripts/check_file_length.sh" check

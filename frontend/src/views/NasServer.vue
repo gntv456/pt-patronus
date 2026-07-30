@@ -32,24 +32,37 @@ import { isSSHAuthError, showSSHAuthFix } from '@/utils/ssh-fix'
 import { showAgentSecret } from '@/utils/agent-secret'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import {
+  type ExecStatus,
+  type ExecLog,
+  type CommandRisk,
+  highRiskRules,
+  mediumRiskRules,
+  quickCommands,
+  tabs,
+  shQuote,
+  basenameOf,
+  nowTime,
+  runTimeText,
+  runDateText,
+  runStatusText,
+  runStatusType,
+  runSourceText,
+  logStatus,
+  commandRisk,
+  credentialTypeText,
+  configFormatText,
+  isSSHHost,
+  targetAddr,
+  targetState,
+  execLogsFromRun,
+} from './nasServerHelpers'
+import { useNasCredentials } from './useNasCredentials'
+import { useNasOpsConfigs } from './useNasOpsConfigs'
 
 // Agent 创建/删除/重置密钥是 admin 专属（后端 RequireAdmin）；非 admin 隐藏入口。
 const auth = useAuthStore()
 const router = useRouter()
-
-type ExecStatus = 'running' | 'success' | 'error'
-type ExecLog = {
-  id: number
-  targetId: number
-  targetName: string
-  command: string
-  status: ExecStatus
-  time: string
-  stdout: string
-  stderr: string
-  error: string
-  durationMs: number
-}
 
 type DeployForm = {
   targetIds: number[]
@@ -68,10 +81,38 @@ type Workspace = 'asset' | 'execute' | 'monitor' | 'deploy'
 const targets = ref<MonitorTarget[]>([])
 const latestMap = ref<Record<number, Metrics | null>>({})
 const alerts = ref<MonitorAlert[]>([])
-const credentials = ref<OpsCredential[]>([])
-const opsConfigs = ref<OpsConfig[]>([])
 const activeTab = ref<MonitorTab>('host')
 const activeWorkspace = ref<Workspace>('asset')
+
+const {
+  credentials,
+  credentialVisible,
+  credentialFormVisible,
+  editingCredential,
+  credentialForm,
+  openCredentialCenter,
+  openCredentialAdd,
+  openCredentialEdit,
+  credentialUsage,
+  saveCredential,
+  removeCredential,
+} = useNasCredentials(targets, loadAll)
+
+const {
+  opsConfigs,
+  configVisible,
+  configFormVisible,
+  editingConfig,
+  configHistory,
+  configHistoryTarget,
+  configForm,
+  openConfigCenter,
+  openConfigAdd,
+  openConfigEdit,
+  saveConfig,
+  removeConfig,
+  showConfigHistory,
+} = useNasOpsConfigs()
 
 const formVisible = ref(false)
 const editing = ref<MonitorTarget | null>(null)
@@ -83,32 +124,6 @@ const previewTarget = ref<MonitorTarget | null>(null)
 const alertVisible = ref(false)
 const agentVisible = ref(false)
 const helpVisible = ref(false)
-const credentialVisible = ref(false)
-const credentialFormVisible = ref(false)
-const editingCredential = ref<OpsCredential | null>(null)
-const credentialForm = ref<OpsCredentialInput>({
-  name: '',
-  type: 'ssh',
-  username: '',
-  password: '',
-  private_key: '',
-  tags: '',
-  note: '',
-})
-const configVisible = ref(false)
-const configFormVisible = ref(false)
-const editingConfig = ref<OpsConfig | null>(null)
-const configHistory = ref<OpsConfigHistory[]>([])
-const configHistoryTarget = ref<OpsConfig | null>(null)
-const configForm = ref<OpsConfigInput>({
-  key: '',
-  name: '',
-  env: 'prod',
-  format: 'kv',
-  value: '{}',
-  tags: '',
-  note: '',
-})
 const terminalVisible = ref(false)
 const terminalTarget = ref<MonitorTarget | null>(null)
 const terminalOutput = ref('')
@@ -386,188 +401,6 @@ function sendTerminalCtrlC() {
   if (terminalSocket?.readyState === WebSocket.OPEN) terminalSocket.send('\x03')
 }
 
-function blankCredential(): OpsCredentialInput {
-  return { name: '', type: 'ssh', username: '', password: '', private_key: '', tags: '', note: '' }
-}
-
-function openCredentialCenter() {
-  credentialVisible.value = true
-}
-
-function openCredentialAdd() {
-  editingCredential.value = null
-  credentialForm.value = blankCredential()
-  credentialFormVisible.value = true
-}
-
-function openCredentialEdit(c: OpsCredential) {
-  editingCredential.value = c
-  credentialForm.value = {
-    name: c.name,
-    type: c.type || 'ssh',
-    username: c.username || '',
-    password: '',
-    private_key: '',
-    tags: c.tags || '',
-    note: c.note || '',
-  }
-  credentialFormVisible.value = true
-}
-
-function credentialUsage(id: number) {
-  return targets.value.filter((t) => t.credential_id === id).length
-}
-
-async function saveCredential() {
-  if (!credentialForm.value.name?.trim()) {
-    ElMessage.warning('请填写凭据名称')
-    return
-  }
-  try {
-    if (editingCredential.value) {
-      await credentialApi.update(editingCredential.value.id, credentialForm.value)
-      ElMessage.success('凭据已更新')
-    } else {
-      await credentialApi.create(credentialForm.value)
-      ElMessage.success('凭据已创建')
-    }
-    credentialFormVisible.value = false
-    credentials.value = await credentialApi.list()
-    await loadAll()
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
-  }
-}
-
-async function removeCredential(c: OpsCredential) {
-  try {
-    await ElMessageBox.confirm(`确定删除凭据「${c.name}」？`, '删除凭据', { type: 'warning' })
-  } catch {
-    return
-  }
-  try {
-    await credentialApi.remove(c.id)
-    ElMessage.success('凭据已删除')
-    credentials.value = await credentialApi.list()
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '删除失败')
-  }
-}
-
-function credentialTypeText(type: string) {
-  return { ssh: 'SSH', nas: 'NAS', generic: '通用' }[type] || type
-}
-
-function blankConfig(): OpsConfigInput {
-  return { key: '', name: '', env: 'prod', format: 'kv', value: '{}', tags: '', note: '' }
-}
-
-function openConfigCenter() {
-  configVisible.value = true
-  if (auth.isAdmin) opsConfigApi.list().then((items) => { opsConfigs.value = items }).catch(() => {})
-}
-
-function openConfigAdd() {
-  editingConfig.value = null
-  configForm.value = blankConfig()
-  configHistoryTarget.value = null
-  configHistory.value = []
-  configFormVisible.value = true
-}
-
-function openConfigEdit(c: OpsConfig) {
-  editingConfig.value = c
-  configForm.value = {
-    key: c.key,
-    name: c.name,
-    env: c.env || 'prod',
-    format: c.format || 'text',
-    value: c.value || '',
-    tags: c.tags || '',
-    note: c.note || '',
-  }
-  configFormVisible.value = true
-}
-
-function validateConfigForm(): string {
-  const f = configForm.value
-  if (!f.key.trim()) return '请填写配置 Key'
-  if (!f.name.trim()) return '请填写配置名称'
-  if ((f.format === 'kv' || f.format === 'json') && f.value.trim()) {
-    try {
-      const parsed = JSON.parse(f.value)
-      if (f.format === 'kv' && (!parsed || Array.isArray(parsed) || typeof parsed !== 'object')) return 'KV 格式必须是 JSON 对象'
-    } catch {
-      return `${f.format.toUpperCase()} 格式必须是合法 JSON`
-    }
-  }
-  return ''
-}
-
-async function saveConfig() {
-  const err = validateConfigForm()
-  if (err) {
-    ElMessage.warning(err)
-    return
-  }
-  try {
-    if (editingConfig.value) {
-      await opsConfigApi.update(editingConfig.value.id, configForm.value)
-      ElMessage.success('配置已更新')
-    } else {
-      await opsConfigApi.create(configForm.value)
-      ElMessage.success('配置已创建')
-    }
-    configFormVisible.value = false
-    opsConfigs.value = await opsConfigApi.list()
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
-  }
-}
-
-async function removeConfig(c: OpsConfig) {
-  try {
-    await ElMessageBox.confirm(`确定删除配置「${c.name}」？历史记录也会一起删除。`, '删除配置', { type: 'warning' })
-  } catch {
-    return
-  }
-  try {
-    await opsConfigApi.remove(c.id)
-    ElMessage.success('配置已删除')
-    opsConfigs.value = await opsConfigApi.list()
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '删除失败')
-  }
-}
-
-async function showConfigHistory(c: OpsConfig) {
-  configHistoryTarget.value = c
-  configHistory.value = await opsConfigApi.history(c.id).catch(() => [])
-}
-
-function configFormatText(format: string) {
-  return { kv: 'KV', text: '文本', json: 'JSON' }[format] || format
-}
-
-function isSSHHost(t: MonitorTarget) {
-  return t.type === 'host' && (t.protocol === 'ssh' || (!t.protocol && !!t.host))
-}
-
-function targetAddr(t: MonitorTarget) {
-  const port = t.port || 22
-  return `${t.host}:${port}`
-}
-
-function targetState(t: MonitorTarget) {
-  if (t.last_online === true) return '在线'
-  if (t.last_online === false) return '离线'
-  return '未检测'
-}
-
-function nowTime() {
-  return new Date().toLocaleTimeString('zh-CN', { hour12: false })
-}
-
 function loadCommandHistory() {
   try {
     commandHistory.value = JSON.parse(localStorage.getItem('ptp_command_history') || '[]')
@@ -660,14 +493,6 @@ async function saveDeployProfile() {
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '保存发布模板失败')
   }
-}
-
-function shQuote(v: string) {
-  return `'${String(v || '').replace(/'/g, `'\\''`)}'`
-}
-
-function basenameOf(path: string) {
-  return (path || '/opt/app').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'app'
 }
 
 function deployTargets() {
@@ -770,34 +595,6 @@ async function importScriptFile(e: Event) {
   ElMessage.success(`已导入脚本：${file.name}`)
 }
 
-type CommandRisk = { level: 'low' | 'medium' | 'high'; reason: string }
-
-const highRiskRules = [
-  { reason: '删除根目录或系统目录', re: /\brm\s+-[^\n;|&]*r[^\n;|&]*f[^\n;|&]*\s+\/(?:\s|$|[;&|])/i },
-  { reason: '格式化或擦除磁盘', re: /\b(mkfs|wipefs)\b/i },
-  { reason: '向磁盘设备写入原始数据', re: /\bdd\s+.*\bof=\/dev\//i },
-  { reason: '电源操作', re: /\b(shutdown|reboot|poweroff|halt)\b/i },
-  { reason: '递归放开根目录权限', re: /\bchmod\s+-R\s+777\s+\//i },
-  { reason: '递归修改根目录属主', re: /\bchown\s+-R\s+\S+\s+\//i },
-]
-
-const mediumRiskRules = [
-  { reason: '递归强制删除', re: /\brm\s+-[^\n;|&]*r[^\n;|&]*f/i },
-  { reason: '停止或重启服务', re: /\bsystemctl\s+(stop|restart)\b/i },
-  { reason: '清理容器或镜像', re: /\bdocker\s+(rm|rmi|system\s+prune)\b/i },
-  { reason: '数据库破坏性操作', re: /\b(drop\s+database|truncate\s+table)\b/i },
-]
-
-function commandRisk(command: string): CommandRisk {
-  for (const rule of highRiskRules) {
-    if (rule.re.test(command)) return { level: 'high', reason: rule.reason }
-  }
-  for (const rule of mediumRiskRules) {
-    if (rule.re.test(command)) return { level: 'medium', reason: rule.reason }
-  }
-  return { level: 'low', reason: '' }
-}
-
 async function confirmCommandRun(command: string, targetCount: number, risk: CommandRisk, source: string) {
   const sourceText = source === 'deploy' ? '发布/回滚脚本' : '命令'
   if (risk.level === 'high') {
@@ -819,50 +616,6 @@ async function confirmCommandRun(command: string, targetCount: number, risk: Com
     risk.level === 'medium' ? '风险命令确认' : '批量执行',
     { type: risk.level === 'medium' ? 'warning' : 'info', confirmButtonText: '开始执行', cancelButtonText: '取消' },
   )
-}
-
-function runTimeText(value?: string | null) {
-  return value ? new Date(value).toLocaleTimeString('zh-CN', { hour12: false }) : nowTime()
-}
-
-function runDateText(value?: string | null) {
-  return value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '-'
-}
-
-function runStatusText(status: string) {
-  return { success: '成功', partial: '部分失败', failed: '失败', running: '运行中' }[status] || status
-}
-
-function runStatusType(status: string) {
-  if (status === 'success') return 'success'
-  if (status === 'running') return 'info'
-  if (status === 'partial') return 'warning'
-  return 'danger'
-}
-
-function runSourceText(source: string) {
-  return { batch: '批量执行', deploy: '发布部署', manual: '手动', terminal: '终端' }[source] || source
-}
-
-function logStatus(status: string): ExecStatus {
-  if (status === 'success') return 'success'
-  if (status === 'running') return 'running'
-  return 'error'
-}
-
-function execLogsFromRun(run: CommandRun): ExecLog[] {
-  return (run.targets || []).map((target: CommandRunTarget) => ({
-    id: target.id,
-    targetId: target.target_id,
-    targetName: target.target_name,
-    command: run.command,
-    status: logStatus(target.status),
-    time: runTimeText(target.finished_at || target.started_at),
-    stdout: target.stdout || '',
-    stderr: target.stderr || '',
-    error: target.error || '',
-    durationMs: target.duration_ms || 0,
-  }))
 }
 
 function rememberRun(run: CommandRun) {
@@ -944,13 +697,6 @@ async function runBatchCommand(source = 'batch', note = '') {
   }
 }
 
-const quickCommands = [
-  { label: '系统负载', command: 'uptime && free -h' },
-  { label: '磁盘空间', command: 'df -h' },
-  { label: 'Docker', command: 'docker ps --format "table {{.Names}}\\t{{.Status}}\\t{{.Ports}}"' },
-  { label: '服务状态', command: 'systemctl status ptpatronus --no-pager' },
-]
-
 onMounted(() => {
   loadCommandHistory()
   loadAll()
@@ -961,15 +707,6 @@ onBeforeUnmount(() => {
   closeTerminalSocket()
 })
 
-const tabs = [
-  { name: 'host' as const, label: '服务器', icon: 'server', color: ['#0f2027', '#2c5364'] },
-  { name: 'nas' as const, label: 'NAS', icon: 'nas', color: ['#f7971e', '#ffd200'] },
-  { name: 'camera' as const, label: '摄像头', icon: 'camera', color: ['#ff5f6d', '#ffc371'] },
-  { name: 'http' as const, label: '网站', icon: 'sites', color: ['#00b894', '#0984e3'] },
-  { name: 'tcp' as const, label: '端口', icon: 'settings', color: ['#34495e', '#16a085'] },
-  { name: 'process' as const, label: '进程', icon: 'workflow', color: ['#8e44ad', '#3498db'] },
-  { name: 'script' as const, label: '脚本', icon: 'history', color: ['#d35400', '#f1c40f'] },
-]
 </script>
 
 <template>

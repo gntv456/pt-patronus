@@ -28,11 +28,11 @@ type Node interface {
 
 // ParamField 描述一个配置字段，供前端渲染表单（type 决定控件）。
 type ParamField struct {
-	Name    string        `json:"name"`              // params map 的 key
-	Label   string        `json:"label"`             // 中文标签
-	Type    string        `json:"type"`              // text|number|select|textarea|switch|kv|site_select|downloader_select
-	Options []ParamOption `json:"options,omitempty"` // type=select 时
-	Required bool         `json:"required,omitempty"`
+	Name     string        `json:"name"`              // params map 的 key
+	Label    string        `json:"label"`             // 中文标签
+	Type     string        `json:"type"`              // text|number|select|textarea|switch|kv|site_select|downloader_select
+	Options  []ParamOption `json:"options,omitempty"` // type=select 时
+	Required bool          `json:"required,omitempty"`
 	Default  any           `json:"default,omitempty"`
 	Help     string        `json:"help,omitempty"`
 }

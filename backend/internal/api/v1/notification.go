@@ -103,47 +103,48 @@ type notifyEmailConfig struct {
 	From               string `json:"from"`
 	To                 string `json:"to"`
 }
+
 // 批次6 补全渠道配置（GET 回显；秘密脱敏 + *_configured）。
 type notifyPushPlusConfig struct {
-	Enabled        bool   `json:"enabled"`
-	Token          string `json:"token"` // 脱敏
-	TokenConfigured bool  `json:"token_configured"`
+	Enabled         bool   `json:"enabled"`
+	Token           string `json:"token"` // 脱敏
+	TokenConfigured bool   `json:"token_configured"`
 }
 type notifyPushDeerConfig struct {
-	Enabled          bool   `json:"enabled"`
-	Server           string `json:"server"`
-	Pushkey          string `json:"pushkey"` // 脱敏
-	PushkeyConfigured bool  `json:"pushkey_configured"`
+	Enabled           bool   `json:"enabled"`
+	Server            string `json:"server"`
+	Pushkey           string `json:"pushkey"` // 脱敏
+	PushkeyConfigured bool   `json:"pushkey_configured"`
 }
 type notifyNtfyConfig struct {
-	Enabled        bool   `json:"enabled"`
-	Server         string `json:"server"`
-	Topic          string `json:"topic"`
-	Token          string `json:"token"` // 脱敏
-	TokenConfigured bool  `json:"token_configured"`
+	Enabled         bool   `json:"enabled"`
+	Server          string `json:"server"`
+	Topic           string `json:"topic"`
+	Token           string `json:"token"` // 脱敏
+	TokenConfigured bool   `json:"token_configured"`
 }
 type notifyGotifyConfig struct {
-	Enabled        bool   `json:"enabled"`
-	Server         string `json:"server"`
-	Token          string `json:"token"` // 脱敏
-	TokenConfigured bool  `json:"token_configured"`
+	Enabled         bool   `json:"enabled"`
+	Server          string `json:"server"`
+	Token           string `json:"token"` // 脱敏
+	TokenConfigured bool   `json:"token_configured"`
 }
 type notifyAppriseConfig struct {
-	Enabled        bool   `json:"enabled"`
-	Server         string `json:"server"`
-	Apikey         string `json:"apikey"` // 脱敏
-	ApikeyConfigured bool `json:"apikey_configured"`
+	Enabled          bool   `json:"enabled"`
+	Server           string `json:"server"`
+	Apikey           string `json:"apikey"` // 脱敏
+	ApikeyConfigured bool   `json:"apikey_configured"`
 }
 type notifyWorkWechatConfig struct {
 	Enabled bool   `json:"enabled"`
 	URL     string `json:"url"`
 }
 type notifyWxPusherConfig struct {
-	Enabled          bool   `json:"enabled"`
-	UID              string `json:"uid"`
-	TopicID          string `json:"topic_id"`
-	AppToken         string `json:"app_token"` // 脱敏
-	AppTokenConfigured bool `json:"app_token_configured"`
+	Enabled            bool   `json:"enabled"`
+	UID                string `json:"uid"`
+	TopicID            string `json:"topic_id"`
+	AppToken           string `json:"app_token"` // 脱敏
+	AppTokenConfigured bool   `json:"app_token_configured"`
 }
 type notifyLarkConfig struct {
 	Enabled bool   `json:"enabled"`
@@ -154,39 +155,39 @@ type notifyDiscordConfig struct {
 	URL     string `json:"url"`
 }
 type notifyMQTTConfig struct {
-	Enabled          bool   `json:"enabled"`
-	Broker           string `json:"broker"`
-	Topic            string `json:"topic"`
-	Username         string `json:"username"`
-	Password         string `json:"password"` // 脱敏
-	PasswordConfigured bool `json:"password_configured"`
-	ClientID         string `json:"client_id"`
+	Enabled            bool   `json:"enabled"`
+	Broker             string `json:"broker"`
+	Topic              string `json:"topic"`
+	Username           string `json:"username"`
+	Password           string `json:"password"` // 脱敏
+	PasswordConfigured bool   `json:"password_configured"`
+	ClientID           string `json:"client_id"`
 }
 type notifyServerChanConfig struct {
-	Enabled        bool   `json:"enabled"`
-	Key            string `json:"key"` // 脱敏
-	KeyConfigured  bool   `json:"key_configured"`
+	Enabled       bool   `json:"enabled"`
+	Key           string `json:"key"` // 脱敏
+	KeyConfigured bool   `json:"key_configured"`
 }
 type notifyConfigResp struct {
-	Bark     notifyBarkConfig     `json:"bark"`
-	Telegram notifyTGConfig       `json:"telegram"`
-	QQ       notifyQQConfig       `json:"qq"`
-	WeChat   notifyWXConfig       `json:"wechat"`
-	Webhook  notifyWebhookConfig  `json:"webhook"`
-	DingTalk notifyDingTalkConfig `json:"dingtalk"`
-	Feishu   notifyFeishuConfig   `json:"feishu"`
-	Email    notifyEmailConfig    `json:"email"`
-	PushPlus    notifyPushPlusConfig    `json:"pushplus"`
-	PushDeer    notifyPushDeerConfig    `json:"pushdeer"`
-	Ntfy        notifyNtfyConfig        `json:"ntfy"`
-	Gotify      notifyGotifyConfig      `json:"gotify"`
-	Apprise     notifyAppriseConfig     `json:"apprise"`
-	WorkWechat  notifyWorkWechatConfig  `json:"workwechat"`
-	WxPusher    notifyWxPusherConfig    `json:"wxpusher"`
-	Lark        notifyLarkConfig        `json:"lark"`
-	Discord     notifyDiscordConfig     `json:"discord"`
-	MQTT        notifyMQTTConfig        `json:"mqtt"`
-	ServerChan  notifyServerChanConfig  `json:"serverchan"`
+	Bark       notifyBarkConfig       `json:"bark"`
+	Telegram   notifyTGConfig         `json:"telegram"`
+	QQ         notifyQQConfig         `json:"qq"`
+	WeChat     notifyWXConfig         `json:"wechat"`
+	Webhook    notifyWebhookConfig    `json:"webhook"`
+	DingTalk   notifyDingTalkConfig   `json:"dingtalk"`
+	Feishu     notifyFeishuConfig     `json:"feishu"`
+	Email      notifyEmailConfig      `json:"email"`
+	PushPlus   notifyPushPlusConfig   `json:"pushplus"`
+	PushDeer   notifyPushDeerConfig   `json:"pushdeer"`
+	Ntfy       notifyNtfyConfig       `json:"ntfy"`
+	Gotify     notifyGotifyConfig     `json:"gotify"`
+	Apprise    notifyAppriseConfig    `json:"apprise"`
+	WorkWechat notifyWorkWechatConfig `json:"workwechat"`
+	WxPusher   notifyWxPusherConfig   `json:"wxpusher"`
+	Lark       notifyLarkConfig       `json:"lark"`
+	Discord    notifyDiscordConfig    `json:"discord"`
+	MQTT       notifyMQTTConfig       `json:"mqtt"`
+	ServerChan notifyServerChanConfig `json:"serverchan"`
 }
 
 // GetConfig 返回当前通知通道配置（secret 脱敏 + configured 标记）。供「设置→通知」回显。
@@ -345,12 +346,12 @@ type notifyConfigReq struct {
 		URL     string `json:"url" binding:"max=1024"`
 	} `json:"discord"`
 	MQTT struct {
-		Enabled   bool   `json:"enabled"`
-		Broker    string `json:"broker" binding:"max=512"`
-		Topic     string `json:"topic" binding:"max=256"`
-		Username  string `json:"username" binding:"max=128"`
-		Password  string `json:"password" binding:"max=256"`
-		ClientID  string `json:"client_id" binding:"max=128"`
+		Enabled  bool   `json:"enabled"`
+		Broker   string `json:"broker" binding:"max=512"`
+		Topic    string `json:"topic" binding:"max=256"`
+		Username string `json:"username" binding:"max=128"`
+		Password string `json:"password" binding:"max=256"`
+		ClientID string `json:"client_id" binding:"max=128"`
 	} `json:"mqtt"`
 	ServerChan struct {
 		Enabled bool   `json:"enabled"`

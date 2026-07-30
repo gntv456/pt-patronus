@@ -16,15 +16,15 @@ import (
 
 // mediaFake 测试用媒体源：按 delay 睡眠后返回 items（模拟慢/快源），实现 TypedSource。
 type mediaFake struct {
-	name    string
-	delay   time.Duration
-	items   []media.MediaInfo
-	types   []media.MediaType
-	called  bool
+	name   string
+	delay  time.Duration
+	items  []media.MediaInfo
+	types  []media.MediaType
+	called bool
 }
 
-func (f *mediaFake) Name() string             { return f.name }
-func (f *mediaFake) Types() []media.MediaType { return f.types }
+func (f *mediaFake) Name() string                                             { return f.name }
+func (f *mediaFake) Types() []media.MediaType                                 { return f.types }
 func (f *mediaFake) Detail(context.Context, string) (*media.MediaInfo, error) { return nil, nil }
 func (f *mediaFake) Search(ctx context.Context, _ string, _ int) ([]media.MediaInfo, error) {
 	f.called = true

@@ -13,9 +13,9 @@ import (
 // Config 是 agent 配置（存 SystemConfig `agent.config`，APIKey AES-GCM 加密）。
 type Config struct {
 	Enabled        bool     `json:"enabled"`
-	Provider       string   `json:"provider"`        // openai | anthropic
+	Provider       string   `json:"provider"` // openai | anthropic
 	BaseURL        string   `json:"base_url"`
-	APIKeyEnc      string   `json:"api_key_enc"`     // 加密的 API key（落库）；运行时解密
+	APIKeyEnc      string   `json:"api_key_enc"` // 加密的 API key（落库）；运行时解密
 	Model          string   `json:"model"`
 	Temperature    float64  `json:"temperature"`
 	MaxTokens      int      `json:"max_tokens"`
@@ -116,8 +116,8 @@ func Redacted(c Config) map[string]any {
 		"enabled": c.Enabled, "provider": c.Provider, "base_url": c.BaseURL,
 		"model": c.Model, "temperature": c.Temperature, "max_tokens": c.MaxTokens,
 		"enable_thinking": c.EnableThinking, "max_iterations": c.MaxIterations,
-		"system_prompt":    c.SystemPrompt,
-		"enabled_tools":    c.EnabledTools,
+		"system_prompt":      c.SystemPrompt,
+		"enabled_tools":      c.EnabledTools,
 		"api_key_configured": strings.TrimSpace(c.APIKeyEnc) != "",
 	}
 }

@@ -22,11 +22,13 @@ func NewListFilesNode(fileCh *chain.FileManagerChain) *listFilesNode {
 	return &listFilesNode{fileCh: fileCh}
 }
 
-func (n *listFilesNode) Type() string        { return "list_files" }
-func (n *listFilesNode) Name() string        { return "列文件" }
-func (n *listFilesNode) Category() string    { return "文件" }
-func (n *listFilesNode) Description() string { return "列出文件存储后端的目录条目（写入文本载荷）" }
-func (n *listFilesNode) Icon() string        { return "files" }
+func (n *listFilesNode) Type() string     { return "list_files" }
+func (n *listFilesNode) Name() string     { return "列文件" }
+func (n *listFilesNode) Category() string { return "文件" }
+func (n *listFilesNode) Description() string {
+	return "列出文件存储后端的目录条目（写入文本载荷）"
+}
+func (n *listFilesNode) Icon() string { return "files" }
 func (n *listFilesNode) DefaultParams() map[string]any {
 	return map[string]any{"storage_id": float64(0), "path": "/"}
 }

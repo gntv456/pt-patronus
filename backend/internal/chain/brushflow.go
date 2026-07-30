@@ -25,11 +25,11 @@ import (
 // 在下载器侧识别本任务种子；BrushFlowSeed 仅作加入历史（去重+展示），删种判定与限流都基于 tag 计数。
 type BrushFlowChain struct {
 	Base
-	siteOp *oper.SiteOper
-	siteCh *SiteChain
-	dlCh   *DownloadChain
-	op     *oper.BrushFlowOper
-	notice *notice.Service
+	siteOp    *oper.SiteOper
+	siteCh    *SiteChain
+	dlCh      *DownloadChain
+	op        *oper.BrushFlowOper
+	notice    *notice.Service
 	filterEng *filter.Engine // 可空（未装配时 filterAndSort 回退硬过滤）
 }
 
@@ -38,12 +38,14 @@ func NewBrushFlowChain(b Base, siteOp *oper.SiteOper, siteCh *SiteChain, dlCh *D
 }
 
 // 透传 CRUD
-func (c *BrushFlowChain) ListTasks() ([]models.BrushFlowTask, error) { return c.op.ListTasks() }
+func (c *BrushFlowChain) ListTasks() ([]models.BrushFlowTask, error)     { return c.op.ListTasks() }
 func (c *BrushFlowChain) GetTask(id uint) (*models.BrushFlowTask, error) { return c.op.GetTask(id) }
-func (c *BrushFlowChain) CreateTask(t *models.BrushFlowTask) error { return c.op.CreateTask(t) }
-func (c *BrushFlowChain) UpdateTask(t *models.BrushFlowTask) error { return c.op.UpdateTask(t) }
-func (c *BrushFlowChain) DeleteTask(id uint) error { return c.op.DeleteTask(id) }
-func (c *BrushFlowChain) ListSeeds(taskID uint) ([]models.BrushFlowSeed, error) { return c.op.ListSeeds(taskID) }
+func (c *BrushFlowChain) CreateTask(t *models.BrushFlowTask) error       { return c.op.CreateTask(t) }
+func (c *BrushFlowChain) UpdateTask(t *models.BrushFlowTask) error       { return c.op.UpdateTask(t) }
+func (c *BrushFlowChain) DeleteTask(id uint) error                       { return c.op.DeleteTask(id) }
+func (c *BrushFlowChain) ListSeeds(taskID uint) ([]models.BrushFlowSeed, error) {
+	return c.op.ListSeeds(taskID)
+}
 
 // RunAllSelect 定时入口：遍历所有启用任务选种（单任务失败不阻断其余）。
 func (c *BrushFlowChain) RunAllSelect(ctx context.Context) {
@@ -539,7 +541,6 @@ func bfFormatBytes(n int64) string {
 		return fmt.Sprintf("%d B", n)
 	}
 }
-
 
 // ---- 布尔表达式（阶梯策略）----
 // 语法：ratio / seed_hours / upload_mb / up_rate_kb / inactive_hours 与数字比较，支持 && || () >= <= > < ==

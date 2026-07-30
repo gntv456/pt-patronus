@@ -68,31 +68,31 @@ type Config struct {
 	CheckinRecordRetainDays int    // 签到历史保留天数，默认 90（超期自动清理，控制表体积）
 
 	// 站点信息聚合
-	FreeleechCron    string // 全站免费/促销检测 cron，默认每 30 分钟
-	AnnouncementCron string // 站点公告抓取 cron，默认每 60 分钟
-	SaveptCron       string // PT监护室 savept.icu 刷新 cron，默认每 2 小时
-	AssessmentCron   string // 站点考核刷新 cron；临时止血默认每天3点(原每小时裸访 userdetails 致52movie警告)，块B后并入 site-snapshot
-	MedalCron        string // 勋章墙刷新 cron（价格/上架/售罄 diff → 通知），默认每 12 小时（对齐其 24h 内存缓存）
-	KeepSeedCron     string // IYUU 定时自动辅种(仅扫启用 AutoReseed 的下载器) cron，默认每天 3 点
-	MessagesCron     string // 站点私信新邮件轮询 cron（通知中心「新邮件」来源），默认每 30 分钟
-	SubscribeCron    string // 媒体订阅自动搜索+下载 cron，默认每 30 分钟
-	CloudStrmCron    string // 云盘 STRM 生成 + 订阅追更 cron，默认每 6 小时
-	RssCheckCron     string // RSS 订阅全局扫描 cron，默认每 5 分钟（按各订阅 interval_min 决定是否实际抓取）
+	FreeleechCron     string // 全站免费/促销检测 cron，默认每 30 分钟
+	AnnouncementCron  string // 站点公告抓取 cron，默认每 60 分钟
+	SaveptCron        string // PT监护室 savept.icu 刷新 cron，默认每 2 小时
+	AssessmentCron    string // 站点考核刷新 cron；临时止血默认每天3点(原每小时裸访 userdetails 致52movie警告)，块B后并入 site-snapshot
+	MedalCron         string // 勋章墙刷新 cron（价格/上架/售罄 diff → 通知），默认每 12 小时（对齐其 24h 内存缓存）
+	KeepSeedCron      string // IYUU 定时自动辅种(仅扫启用 AutoReseed 的下载器) cron，默认每天 3 点
+	MessagesCron      string // 站点私信新邮件轮询 cron（通知中心「新邮件」来源），默认每 30 分钟
+	SubscribeCron     string // 媒体订阅自动搜索+下载 cron，默认每 30 分钟
+	CloudStrmCron     string // 云盘 STRM 生成 + 订阅追更 cron，默认每 6 小时
+	RssCheckCron      string // RSS 订阅全局扫描 cron，默认每 5 分钟（按各订阅 interval_min 决定是否实际抓取）
 	TransferSweepCron string // 媒体整理 cron（兜底/重试：已完成种子→识别→重命名→硬链→刮削），默认每 10 分钟
 	SnapshotCron      string // 聚合站点快照 cron（合并 stats/hr/free/ann/msg/keepalive/assessment 7 任务为一次串行抓取），默认 7 */4 * * *
 
 	// 媒体元数据源
-	TMDBAPIKey      string
-	TMDBAPIDomain   string // TMDB API 域名(TMDB_API_DOMAIN)，默认 api.tmdb.org（官方 api.themoviedb.org 国内常被墙，短域名可达）
-	DoubanSecret    string // Frodo HMAC 签名密钥(DOUBAN_SECRET)；空则用公开默认。非空→签名为主、微信免签兜底
-	DoubanAppKey    string
-	BangumiToken    string // bgm.tv 可选 Bearer token（提升速率限制；空走匿名配额）
+	TMDBAPIKey     string
+	TMDBAPIDomain  string // TMDB API 域名(TMDB_API_DOMAIN)，默认 api.tmdb.org（官方 api.themoviedb.org 国内常被墙，短域名可达）
+	DoubanSecret   string // Frodo HMAC 签名密钥(DOUBAN_SECRET)；空则用公开默认。非空→签名为主、微信免签兜底
+	DoubanAppKey   string
+	BangumiToken   string // bgm.tv 可选 Bearer token（提升速率限制；空走匿名配额）
 	CunguangjiBase string // 寸光集（短剧）站点根，默认 https://dj.hxpt.org；可指向本地实例联调
-	OMDbAPIKey      string // OMDb( IMDb 评分源 ) API Key(OMDB_API_KEY)；空则跳过 IMDb 聚合
+	OMDbAPIKey     string // OMDb( IMDb 评分源 ) API Key(OMDB_API_KEY)；空则跳过 IMDb 聚合
 
 	// 字幕源（env 提供 SystemConfig 默认；UI 改动运行时覆盖）
-	AssrtToken         string // assrt.net API token
-	OpenSubtitlesKey   string // opensubtitles.com Api-Key
+	AssrtToken       string // assrt.net API token
+	OpenSubtitlesKey string // opensubtitles.com Api-Key
 
 	// 安全 / 限流
 	CORSAllowedOrigins string // 逗号分隔；"*" 或空=开发全开，生产应收敛为具体域名
@@ -150,15 +150,15 @@ func Load() (*Config, error) {
 		SaveptCron:              getenv("SAVEPT_CRON", "0 */2 * * *"),
 		// 临时止血：原 "0 * * * *" 每整小时裸访 userdetails.php(无 uid)致 52movie 警告。
 		// 块B 完成后 assessment 并入 site-snapshot，此 cron 废弃。
-		AssessmentCron:          getenv("ASSESSMENT_CRON", "0 3 * * *"),
-		MedalCron:               getenv("MEDAL_CRON", "37 */12 * * *"),
-		KeepSeedCron:            getenv("KEEPSEED_CRON", "0 3 * * *"),
-		MessagesCron:            getenv("MESSAGES_CRON", "*/30 * * * *"),
-		SubscribeCron:           getenv("SUBSCRIBE_CRON", "*/30 * * * *"),
-		CloudStrmCron:           getenv("CLOUD_STRM_CRON", "0 */6 * * *"),
-		RssCheckCron:            getenv("RSS_CHECK_CRON", "*/5 * * * *"),
-		TransferSweepCron:       getenv("TRANSFER_SWEEP_CRON", "*/10 * * * *"),
-		SnapshotCron:            getenv("SNAPSHOT_CRON", "7 */4 * * *"),
+		AssessmentCron:    getenv("ASSESSMENT_CRON", "0 3 * * *"),
+		MedalCron:         getenv("MEDAL_CRON", "37 */12 * * *"),
+		KeepSeedCron:      getenv("KEEPSEED_CRON", "0 3 * * *"),
+		MessagesCron:      getenv("MESSAGES_CRON", "*/30 * * * *"),
+		SubscribeCron:     getenv("SUBSCRIBE_CRON", "*/30 * * * *"),
+		CloudStrmCron:     getenv("CLOUD_STRM_CRON", "0 */6 * * *"),
+		RssCheckCron:      getenv("RSS_CHECK_CRON", "*/5 * * * *"),
+		TransferSweepCron: getenv("TRANSFER_SWEEP_CRON", "*/10 * * * *"),
+		SnapshotCron:      getenv("SNAPSHOT_CRON", "7 */4 * * *"),
 		// TMDB 默认带 MoviePilot 同款公开 key（TMDB API key 本就客户端可见、可公开），
 		// 让影视搜索开箱即用；仍可用 TMDB_API_KEY 覆盖。
 		TMDBAPIKey:         getenv("TMDB_API_KEY", "db55323b8d3e4154498498a75642b381"),
@@ -166,7 +166,7 @@ func Load() (*Config, error) {
 		DoubanSecret:       getenv("DOUBAN_SECRET", ""),
 		DoubanAppKey:       getenv("DOUBAN_API_KEY", ""),
 		BangumiToken:       getenv("BANGUMI_TOKEN", ""),
-		CunguangjiBase:    getenvFallback("CUNGUANGJI_BASE", "XINGGUANGJI_BASE", "https://dj.hxpt.org"),
+		CunguangjiBase:     getenvFallback("CUNGUANGJI_BASE", "XINGGUANGJI_BASE", "https://dj.hxpt.org"),
 		OMDbAPIKey:         getenv("OMDB_API_KEY", ""),
 		AssrtToken:         getenv("ASSRT_TOKEN", ""),
 		OpenSubtitlesKey:   getenv("OPENSUBTITLES_KEY", ""),
@@ -176,7 +176,7 @@ func Load() (*Config, error) {
 		LoginRatePerMin:    getenvInt("LOGIN_RATE_PER_MIN", 10),
 		GlobalRatePerSec:   getenvInt("GLOBAL_RATE_PER_SEC", 20),
 		UpdateManifestURL:  getenv("UPDATE_MANIFEST_URL", ""),
-		SafeMode:          getenvBool("SAFE_MODE", false),
+		SafeMode:           getenvBool("SAFE_MODE", false),
 	}
 	cfg.PluginDevWatch = getenvBool("PLUGIN_DEV_WATCH", cfg.Env == "debug")
 	cfg.PluginDevWatchIntervalMS = getenvInt("PLUGIN_DEV_WATCH_INTERVAL_MS", 1000)
@@ -264,7 +264,6 @@ func (c *Config) SQLitePath() string {
 	}
 	return strings.TrimRight(c.DataDir, "/\\") + string(os.PathSeparator) + "ptpatronus.db"
 }
-
 
 // getenvFallback 读 primary；空则读 secondary；都空用 def。
 func getenvFallback(primary, secondary, def string) string {

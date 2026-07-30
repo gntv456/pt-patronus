@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mmcdole/gofeed"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/downloader"
@@ -17,20 +16,21 @@ import (
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/mmcdole/gofeed"
 )
 
 // RssChain 编排 RSS 订阅：抓取→解析→过滤→去重→(可选)下载→通知。cron 全局扫描按各订阅间隔到点调 Check。
 // 对标 MoviePilot FetchRssAction + 订阅检查（dedup 靠 RssItem.item_key）。
 type RssChain struct {
 	Base
-	op     *oper.RssOper
-	itemOp *oper.RssItemOper
-	dlCh   *DownloadChain
-	dlOp   *oper.DownloaderOper
-	siteOp *oper.SiteOper
-	notice *notice.Service
-	hc     *httpclient.Client
-	fp     *gofeed.Parser
+	op        *oper.RssOper
+	itemOp    *oper.RssItemOper
+	dlCh      *DownloadChain
+	dlOp      *oper.DownloaderOper
+	siteOp    *oper.SiteOper
+	notice    *notice.Service
+	hc        *httpclient.Client
+	fp        *gofeed.Parser
 	filterEng *filter.Engine // 可空（未装配时跳过规则过滤，按 feed 序）
 }
 

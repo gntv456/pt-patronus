@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/mmcdole/gofeed"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/workflow"
+	"github.com/mmcdole/gofeed"
 	"gorm.io/gorm"
 )
 
@@ -28,11 +28,13 @@ func NewFetchRSSNode(hc *httpclient.Client, siteOp *oper.SiteOper) *FetchRSSNode
 	return &FetchRSSNode{hc: hc, siteOp: siteOp, fp: gofeed.NewParser()}
 }
 
-func (n *FetchRSSNode) Type() string        { return "fetch_rss" }
-func (n *FetchRSSNode) Name() string        { return "RSS 获取" }
-func (n *FetchRSSNode) Category() string    { return "资源" }
-func (n *FetchRSSNode) Description() string { return "解析 RSS/Atom 订阅源，产出种子到资源集合" }
-func (n *FetchRSSNode) Icon() string        { return "rss" }
+func (n *FetchRSSNode) Type() string     { return "fetch_rss" }
+func (n *FetchRSSNode) Name() string     { return "RSS 获取" }
+func (n *FetchRSSNode) Category() string { return "资源" }
+func (n *FetchRSSNode) Description() string {
+	return "解析 RSS/Atom 订阅源，产出种子到资源集合"
+}
+func (n *FetchRSSNode) Icon() string { return "rss" }
 func (n *FetchRSSNode) DefaultParams() map[string]any {
 	return map[string]any{"url": "", "site_id": float64(0)}
 }
@@ -112,11 +114,13 @@ func NewSearchTorrentsNode(siteCh *chain.SiteChain) *SearchTorrentsNode {
 	return &SearchTorrentsNode{siteCh: siteCh}
 }
 
-func (n *SearchTorrentsNode) Type() string        { return "search_torrents" }
-func (n *SearchTorrentsNode) Name() string        { return "搜索资源" }
-func (n *SearchTorrentsNode) Category() string    { return "资源" }
-func (n *SearchTorrentsNode) Description() string { return "跨站关键字搜索种子，产出到资源集合" }
-func (n *SearchTorrentsNode) Icon() string        { return "search" }
+func (n *SearchTorrentsNode) Type() string     { return "search_torrents" }
+func (n *SearchTorrentsNode) Name() string     { return "搜索资源" }
+func (n *SearchTorrentsNode) Category() string { return "资源" }
+func (n *SearchTorrentsNode) Description() string {
+	return "跨站关键字搜索种子，产出到资源集合"
+}
+func (n *SearchTorrentsNode) Icon() string { return "search" }
 func (n *SearchTorrentsNode) DefaultParams() map[string]any {
 	return map[string]any{"keyword": "", "category": ""}
 }

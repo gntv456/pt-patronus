@@ -162,9 +162,9 @@ func TestCreateMany_SkipsDuplicates(t *testing.T) {
 
 	ins := []SiteInput{
 		{Name: "好学2", Platform: "nexusphp", BaseURL: "https://www.hxpt.org/", IsActive: true}, // 与库内同注册域 → 跳过
-		{Name: "mt1", Platform: "mteam", BaseURL: "https://m-team.cc", IsActive: true},           // 批量内首个 m-team.cc → 成功
-		{Name: "mt2", Platform: "mteam", BaseURL: "https://kp.m-team.cc", IsActive: true},        // 与上一条同注册域 → 跳过
-		{Name: "新", Platform: "nexusphp", BaseURL: "https://cspt.fun", IsActive: true},          // 新注册域 → 成功
+		{Name: "mt1", Platform: "mteam", BaseURL: "https://m-team.cc", IsActive: true},        // 批量内首个 m-team.cc → 成功
+		{Name: "mt2", Platform: "mteam", BaseURL: "https://kp.m-team.cc", IsActive: true},     // 与上一条同注册域 → 跳过
+		{Name: "新", Platform: "nexusphp", BaseURL: "https://cspt.fun", IsActive: true},        // 新注册域 → 成功
 	}
 	n, err := op.CreateMany(ins)
 	if err != nil {

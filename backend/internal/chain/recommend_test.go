@@ -33,9 +33,9 @@ func (f *fakeSrc) Trending(context.Context, string, int) ([]media.MediaInfo, err
 // plainSrc 仅实现 MediaSource（无 TrendingCapable）——应被 RecommendChain 跳过。
 type plainSrc struct{ name string }
 
-func (p *plainSrc) Name() string                                       { return p.name }
+func (p *plainSrc) Name() string                                                   { return p.name }
 func (p *plainSrc) Search(context.Context, string, int) ([]media.MediaInfo, error) { return nil, nil }
-func (p *plainSrc) Detail(context.Context, string) (*media.MediaInfo, error)        { return nil, nil }
+func (p *plainSrc) Detail(context.Context, string) (*media.MediaInfo, error)       { return nil, nil }
 
 // catSrc 在 fakeSrc 基础上声明 CategoryCapable：只支持 cats 里的分类。
 type catSrc struct {
@@ -200,9 +200,9 @@ func TestRecommendFeedsConcurrentDedup(t *testing.T) {
 // errSrc：Trending 返回 error，应被跳过不 emit（验证单源失败隔离）。
 type errSrc struct{ name string }
 
-func (e *errSrc) Name() string                                       { return e.name }
+func (e *errSrc) Name() string                                                   { return e.name }
 func (e *errSrc) Search(context.Context, string, int) ([]media.MediaInfo, error) { return nil, nil }
-func (e *errSrc) Detail(context.Context, string) (*media.MediaInfo, error)        { return nil, nil }
+func (e *errSrc) Detail(context.Context, string) (*media.MediaInfo, error)       { return nil, nil }
 func (e *errSrc) Trending(context.Context, string, int) ([]media.MediaInfo, error) {
 	return nil, errors.New("boom")
 }

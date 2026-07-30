@@ -32,9 +32,9 @@ type VIPStatus struct {
 // c_secure_uid/c_secure_pass，返回 {payload:{isVip,...}}。
 type HxptVIP struct {
 	registry    *site.Registry
-	defID       string // 默认 "hxpt"
-	fallbackURL string // 无定义 URL 时的回退（cfg.AuthSiteURL）
-	required    int    // 要求的最低等级（保留字段）
+	defID       string             // 默认 "hxpt"
+	fallbackURL string             // 无定义 URL 时的回退（cfg.AuthSiteURL）
+	required    int                // 要求的最低等级（保留字段）
 	hc          *httpclient.Client // 调 verifyAccess.php 用
 }
 

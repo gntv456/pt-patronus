@@ -92,7 +92,7 @@ type NotificationSettings struct {
 		URL     string `json:"url"` // webhook url（含 key；按既有 DingTalk/Feishu 惯例不脱敏）
 	} `json:"workwechat"`
 	WxPusher struct {
-		Enabled bool   `json:"enabled"`
+		Enabled  bool   `json:"enabled"`
 		AppToken string `json:"app_token"` // 秘密
 		UID      string `json:"uid"`
 		TopicID  string `json:"topic_id"`
@@ -106,12 +106,12 @@ type NotificationSettings struct {
 		URL     string `json:"url"`
 	} `json:"discord"`
 	MQTT struct {
-		Enabled   bool   `json:"enabled"`
-		Broker    string `json:"broker"`
-		Topic     string `json:"topic"`
-		Username  string `json:"username"`
-		Password  string `json:"password"` // 秘密
-		ClientID  string `json:"client_id"`
+		Enabled  bool   `json:"enabled"`
+		Broker   string `json:"broker"`
+		Topic    string `json:"topic"`
+		Username string `json:"username"`
+		Password string `json:"password"` // 秘密
+		ClientID string `json:"client_id"`
 	} `json:"mqtt"`
 	ServerChan struct {
 		Enabled bool   `json:"enabled"`

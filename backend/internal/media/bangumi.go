@@ -111,17 +111,17 @@ func bgmSubjectToMedia(it bgmSubject) MediaInfo {
 		title = it.Name
 	}
 	return MediaInfo{
-		Source:      "bangumi",
-		SourceID:    "bangumi:" + strconv.FormatInt(it.ID, 10),
-		Title:       title,
+		Source:        "bangumi",
+		SourceID:      "bangumi:" + strconv.FormatInt(it.ID, 10),
+		Title:         title,
 		OriginalTitle: it.Name,
-		Type:        TypeTV,
-		Overview:    it.Summary,
-		ReleaseDate: it.Date,
-		PosterURL:   bangumiImage(it.Images.Large),
-		Rating:      it.Rating.Score,
-		VoteCount:   it.Rating.Total,
-		Year:        yearFromDate(it.Date),
+		Type:          TypeTV,
+		Overview:      it.Summary,
+		ReleaseDate:   it.Date,
+		PosterURL:     bangumiImage(it.Images.Large),
+		Rating:        it.Rating.Score,
+		VoteCount:     it.Rating.Total,
+		Year:          yearFromDate(it.Date),
 	}
 }
 

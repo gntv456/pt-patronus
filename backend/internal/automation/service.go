@@ -131,12 +131,12 @@ func (s *Service) Start() {
 			slog.Error("register automation failed", "job", name, "err", err)
 		}
 	}
-	must("site-snapshot", s.cfg.SnapshotCron, s.runSnapshot) // 聚合 stats/free/ann/msg/keepalive/assessment（H&R 独立）
+	must("site-snapshot", s.cfg.SnapshotCron, s.runSnapshot)                  // 聚合 stats/free/ann/msg/keepalive/assessment（H&R 独立）
 	must("cookie-keepalive", s.cfg.CookieKeepAliveCron, s.runCookieKeepAlive) // 小时级 session 滑动续期（短于 Laravel 默认 120min）
-	must("hr-check", "23 * * * *", s.runHRCheck)              // H&R 每小时独立（封号命脉时效优先；错峰 :23）
+	must("hr-check", "23 * * * *", s.runHRCheck)                              // H&R 每小时独立（封号命脉时效优先；错峰 :23）
 	must("checkin", "10 8 * * *", s.runCheckin)
 	must("checkin-record-cleanup", "30 4 * * *", s.runCheckinCleanup) // 每天 4:30 清理超期签到记录
-	must("site-stat-cleanup", "40 4 * * *", s.runSiteStatCleanup)    // 每天 4:40 清理超期统计快照（错峰签到清理）
+	must("site-stat-cleanup", "40 4 * * *", s.runSiteStatCleanup)     // 每天 4:40 清理超期统计快照（错峰签到清理）
 	must("registration", s.cfg.RegistrationCron, s.runRegistration)
 	must("vip-recheck", s.cfg.VIPRecheckCron, s.runVIPRecheck)
 	if s.keepSeed != nil {

@@ -104,9 +104,9 @@ type PluginDependency struct {
 // 子进程，没有 OS sandbox 可强制）。声明后会在安装确认页向管理员展示，让"这个插件会碰哪些
 // 目录/跑哪些二进制/连哪些主机"可见。诚实优先：不假装能 gate，只 surface。
 type ResourceAccessSpec struct {
-	FsPaths      []string `json:"fs_paths,omitempty"`       // 会读写的目录/路径前缀
-	ExecBinaries []string `json:"exec_binaries,omitempty"`  // 会调用的外部二进制（如 ffmpeg）
-	NetHosts     []string `json:"net_hosts,omitempty"`      // 会出站连接的主机/域名（如 ptang.top）
+	FsPaths      []string `json:"fs_paths,omitempty"`      // 会读写的目录/路径前缀
+	ExecBinaries []string `json:"exec_binaries,omitempty"` // 会调用的外部二进制（如 ffmpeg）
+	NetHosts     []string `json:"net_hosts,omitempty"`     // 会出站连接的主机/域名（如 ptang.top）
 }
 
 // MediaHit 是 Host API /media/search 返回给插件的一条媒体元数据（镜像 media.MediaInfo 的子集，
@@ -303,21 +303,21 @@ type MarketPublisher struct {
 }
 
 type MarketPlugin struct {
-	ID                                string             `json:"id"`
-	Name                              string             `json:"name"`
-	Version                           string             `json:"version"`
-	Source                            string             `json:"source,omitempty"`
-	APIVersion                        string             `json:"api_version,omitempty"`
-	AppVersion                        string             `json:"app_version,omitempty"`
-	HostCapabilities                  []string           `json:"host_capabilities,omitempty"`
-	OptionalHostCapabilities          []string           `json:"optional_host_capabilities,omitempty"`
-	Dependencies                      []PluginDependency `json:"dependencies,omitempty"`
-	Author                            string             `json:"author,omitempty"`
-	Description                       string             `json:"description,omitempty"`
-	Homepage                          string             `json:"homepage,omitempty"`
-	Repository                        string             `json:"repository,omitempty"`
-	License                           string             `json:"license,omitempty"`
-	Keywords                          []string           `json:"keywords,omitempty"`
+	ID                       string             `json:"id"`
+	Name                     string             `json:"name"`
+	Version                  string             `json:"version"`
+	Source                   string             `json:"source,omitempty"`
+	APIVersion               string             `json:"api_version,omitempty"`
+	AppVersion               string             `json:"app_version,omitempty"`
+	HostCapabilities         []string           `json:"host_capabilities,omitempty"`
+	OptionalHostCapabilities []string           `json:"optional_host_capabilities,omitempty"`
+	Dependencies             []PluginDependency `json:"dependencies,omitempty"`
+	Author                   string             `json:"author,omitempty"`
+	Description              string             `json:"description,omitempty"`
+	Homepage                 string             `json:"homepage,omitempty"`
+	Repository               string             `json:"repository,omitempty"`
+	License                  string             `json:"license,omitempty"`
+	Keywords                 []string           `json:"keywords,omitempty"`
 	// Category 是市场展示用的分类标签（如「媒体库」「短剧」「网盘」「工具」），仅供前端分组/筛选，
 	// 不进运行时 Manifest、不参与签名校验（签名只盖 archive 字节）。
 	Category                          string             `json:"category,omitempty"`

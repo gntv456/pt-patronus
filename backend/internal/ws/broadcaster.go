@@ -27,8 +27,8 @@ type TorrentSnapshot struct {
 
 // Message 是广播给所有连接的消息信封。Data 按 Type 不同承载不同结构。
 type Message struct {
-	Type string `json:"type"`           // torrents | torrents_full | torrents_diff | hr-alert | ...
-	Seq  uint64 `json:"seq,omitempty"`  // 增量协议序列号（torrents_full/diff 带；其余消息不用）
+	Type string `json:"type"`          // torrents | torrents_full | torrents_diff | hr-alert | ...
+	Seq  uint64 `json:"seq,omitempty"` // 增量协议序列号（torrents_full/diff 带；其余消息不用）
 	Data any    `json:"data"`
 }
 
@@ -149,15 +149,15 @@ func EncodeTorrentsDiff(diff *TorrentDiff, seq uint64) ([]byte, error) {
 
 // Broadcaster 每 interval 聚合所有下载器种子快照，广播给所有 WS 连接。
 type Broadcaster struct {
-	hub      *Hub
-	dlOp     *oper.DownloaderOper
-	mgr      *manager.Manager
-	interval time.Duration
-	notice   *notice.Service     // 下载完成通知中心（nil 跳过）；通过 SetNotice 注入（避开构造顺序）
-	doneHooks []DoneHook         // 下载完成副作用钩子（媒体库刷新/媒体整理等；fan-out，nil 跳过），通过 AddDownloadDoneHook 注入
-	stateMu  sync.Mutex
-	dlState  map[string]bool // key=dlID:hash → 是否已完成（下载完成 diff）
-	primed   bool            // 冷启动首轮只填充状态不通知，避免把所有已完成种子当新通知
+	hub       *Hub
+	dlOp      *oper.DownloaderOper
+	mgr       *manager.Manager
+	interval  time.Duration
+	notice    *notice.Service // 下载完成通知中心（nil 跳过）；通过 SetNotice 注入（避开构造顺序）
+	doneHooks []DoneHook      // 下载完成副作用钩子（媒体库刷新/媒体整理等；fan-out，nil 跳过），通过 AddDownloadDoneHook 注入
+	stateMu   sync.Mutex
+	dlState   map[string]bool // key=dlID:hash → 是否已完成（下载完成 diff）
+	primed    bool            // 冷启动首轮只填充状态不通知，避免把所有已完成种子当新通知
 	cacheMu   sync.Mutex
 	cache     map[uint]*dlCache // 上一轮快照（diff 基准）；nil=首轮，强制全量
 	seq       uint64            // 增量协议序列号（每轮 +1）

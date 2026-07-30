@@ -518,7 +518,7 @@ func (p *dramaScrapePlugin) startScan(rt Runtime) map[string]any {
 
 type dramaScanResult struct {
 	ok, miss, exists, skipped int
-	errors                     []string
+	errors                    []string
 }
 
 func (p *dramaScrapePlugin) scanWorker(rt Runtime, cfg map[string]any) {

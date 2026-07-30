@@ -106,8 +106,8 @@ func (s *ProxySession) startStream(ctx context.Context) error {
 		return err
 	}
 	c := &gortsplib.Client{
-		Scheme:     u.Scheme,
-		Host:       u.Host,
+		Scheme:      u.Scheme,
+		Host:        u.Host,
 		DialContext: (&net.Dialer{Timeout: streamDialTimeout}).DialContext,
 	}
 	s.client = c

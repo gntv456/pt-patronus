@@ -24,7 +24,7 @@ import (
 //     不再像原 assessment-refresh 那样每整小时裸访 userdetails.php——52movie 警告根因）
 //   - dispatchSnapshotSite 分派 stats 落库 / cookie 轮换 / H&R / 站免 / 公告 / 新邮件 通知
 func (s *Service) runSnapshot() {
-	s.jitterSleep() // 随机抖动 0-180s，打散整点齐发
+	s.jitterSleep()                                               // 随机抖动 0-180s，打散整点齐发
 	ctx, cancel := context.WithTimeout(s.rootCtx, 30*time.Minute) // 4h 周期可宽松：串行 N 站每站多步 + 站间抖动，10min 在站点多时会截断
 	defer cancel()
 
@@ -216,7 +216,6 @@ func (s *Service) ReloadSnapshot(spec string) error {
 	slog.Info("site-snapshot cron reloaded", "spec", spec)
 	return nil
 }
-
 
 // KeepAliveCronSpec 返回当前 cookie 保活 cron。
 func (s *Service) KeepAliveCronSpec() string { return s.cfg.CookieKeepAliveCron }

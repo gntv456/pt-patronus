@@ -156,7 +156,7 @@ func TestEnsureVerifyCookie_AlreadyHasUID(t *testing.T) {
 }
 
 // TestUIDFromSecurePass_TolerantArtifact 验证容错解码：cookie 值尾部有 base64 伪影
-//（如 + 被当空格注入），仍能从已解出的前段 tokenJson 取到 user_id（修复 synth_uid 空）。
+// （如 + 被当空格注入），仍能从已解出的前段 tokenJson 取到 user_id（修复 synth_uid 空）。
 func TestUIDFromSecurePass_TolerantArtifact(t *testing.T) {
 	clean := makeSecurePass(8)
 	// 在尾部注入一个空格（模拟 +→空格伪影），破坏 base64 末段

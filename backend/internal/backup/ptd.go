@@ -87,11 +87,11 @@ func (s *Service) ImportPTD(ctx context.Context, zipBytes []byte) (int, error) {
 			Definition: s.matchDef(baseURL),
 			Platform:   inferPlatform(ptdSiteID, config),
 			BaseURL:    baseURL,
-			Cookie:   buildCookieString(cookies, ptdSiteID, baseURL, hostBySite),
-			Passkey:  firstString(input, "passkey", "passKey", "pid", "rsskey"),
-			Username: username,
-			Password: firstString(input, "password", "passWord", "loginPwd"),
-			IsActive: !ptdBool(config, "isOffline"),
+			Cookie:     buildCookieString(cookies, ptdSiteID, baseURL, hostBySite),
+			Passkey:    firstString(input, "passkey", "passKey", "pid", "rsskey"),
+			Username:   username,
+			Password:   firstString(input, "password", "passWord", "loginPwd"),
+			IsActive:   !ptdBool(config, "isOffline"),
 		})
 	}
 	n, err := s.siteOp.CreateMany(ins) // 单事务批量：N 次 fsync → 1 次

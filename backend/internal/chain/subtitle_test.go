@@ -139,11 +139,11 @@ func TestShouldConvert(t *testing.T) {
 	}{
 		{".srt", "cht", "chs", true},
 		{".srt", "chs", "cht", true},
-		{".srt", "chs", "chs", false},  // 相同
-		{".srt", "bi", "chs", false},   // 双语不转
-		{".srt", "eng", "chs", false},  // 英文不转
-		{".mp4", "cht", "chs", false},  // 非文本字幕
-		{".srt", "cht", "", false},     // 无目标
+		{".srt", "chs", "chs", false}, // 相同
+		{".srt", "bi", "chs", false},  // 双语不转
+		{".srt", "eng", "chs", false}, // 英文不转
+		{".mp4", "cht", "chs", false}, // 非文本字幕
+		{".srt", "cht", "", false},    // 无目标
 	}
 	for _, c := range cases {
 		if got := shouldConvert(c.ext, c.src, c.target); got != c.want {

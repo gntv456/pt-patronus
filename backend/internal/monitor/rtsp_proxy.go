@@ -18,9 +18,9 @@ import (
 type RTSPProxy struct {
 	mu             sync.Mutex
 	sessions       map[uint]*ProxySession
-	jwt            *security.JWT                 // HLS playlist/segment 的 query token 校验
-	tickets        *auth.TicketStore             // WS /stream 的一次性 ticket 校验
-	tvCache        *auth.TokenVersionCache       // HLS token 的 TokenVersion 校验（登出/改绑后旧 token 立即失效）
+	jwt            *security.JWT           // HLS playlist/segment 的 query token 校验
+	tickets        *auth.TicketStore       // WS /stream 的一次性 ticket 校验
+	tvCache        *auth.TokenVersionCache // HLS token 的 TokenVersion 校验（登出/改绑后旧 token 立即失效）
 	allowedOrigins map[string]bool
 	maxViewers     int                           // 全局并发观众上限（防 CPU/带宽耗尽）
 	resolveURL     func(id uint) (string, error) // 按 :id 从 DB 取 RTSPURL（服务端控制，防 SSRF/流劫持）

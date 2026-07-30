@@ -14,11 +14,11 @@ import (
 
 // 站免/公告抓取的并发与缓存参数（对齐原版：站免 30min、公告 60s）。
 const (
-	freeleechCacheTTL     = 30 * time.Minute
-	announcementCacheTTL  = 5 * time.Minute
-	infoFetchConcurrency  = 8
-	infoFetchTimeout      = 15 * time.Second
-	connectivityFreshTTL  = 2 * time.Minute // SSE 进页面新鲜度节流：近此窗口内已测的站直接复用缓存，避免每次打开页面全量重测
+	freeleechCacheTTL    = 30 * time.Minute
+	announcementCacheTTL = 5 * time.Minute
+	infoFetchConcurrency = 8
+	infoFetchTimeout     = 15 * time.Second
+	connectivityFreshTTL = 2 * time.Minute // SSE 进页面新鲜度节流：近此窗口内已测的站直接复用缓存，避免每次打开页面全量重测
 )
 
 // FreeleechResult 是单站站免聚合结果（含错误，便于容错展示）。
@@ -30,7 +30,7 @@ type FreeleechResult struct {
 }
 
 // Normalize 保证 Notices 非 nil：nil 切片 JSON 序列化为 null，前端 .length/[0] 会崩
-//（未开启站免检测/抓空/未登录兜底时 Notices 为 nil）。All 与 SyncOne 出口统一调用。
+// （未开启站免检测/抓空/未登录兜底时 Notices 为 nil）。All 与 SyncOne 出口统一调用。
 func (r FreeleechResult) Normalize() FreeleechResult {
 	if r.Notices == nil {
 		r.Notices = []site.SiteFreeleech{}

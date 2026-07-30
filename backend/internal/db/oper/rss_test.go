@@ -26,7 +26,7 @@ func newRssDB(t *testing.T) *gorm.DB {
 }
 
 // P0-5 回归：GORM default:true 会把 Enabled=false 当零值吞为 true
-//（RssSubscription.Enabled 标了 default:true;index）。显式创建停用订阅，
+// （RssSubscription.Enabled 标了 default:true;index）。显式创建停用订阅，
 // DB 必须存 false（修复后回写），且不出现在 ListEnabled（cron 不会错误轮询）。
 func TestRssOperCreateDisabledNotSwallowed(t *testing.T) {
 	op := NewRssOper(newRssDB(t))

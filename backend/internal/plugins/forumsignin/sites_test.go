@@ -266,9 +266,9 @@ func Test52pojieSignin(t *testing.T) {
 
 // fakeRT 是测试用 Runtime（KV 走 JSON round-trip）。
 type fakeRT struct {
-	logs     []string
-	notices  []string
-	kv       map[string]any
+	logs    []string
+	notices []string
+	kv      map[string]any
 }
 
 func (f *fakeRT) Log(level, event, msg string, _ map[string]any) { f.logs = append(f.logs, msg) }
@@ -305,9 +305,9 @@ func TestEngineRun(t *testing.T) {
 	defer badSrv.Close()
 
 	cfg := map[string]any{
-		"forums":       fmt.Sprintf("nodeseek|%s|k=v\nningmeng|%s|k=v", okSrv.URL, badSrv.URL),
-		"notify":       true,
-		"retry_count":  0, // 不重试，简化断言
+		"forums":      fmt.Sprintf("nodeseek|%s|k=v\nningmeng|%s|k=v", okSrv.URL, badSrv.URL),
+		"notify":      true,
+		"retry_count": 0, // 不重试，简化断言
 	}
 	rt := &fakeRT{}
 	e := NewEngine(rt, nil, cfg) // hc nil → 引擎自建

@@ -44,12 +44,12 @@ type Result struct {
 	LatestVersion  string `json:"latestVersion"`
 	ReleaseName    string `json:"releaseName,omitempty"`
 	ReleaseNotes   string `json:"releaseNotes,omitempty"`
-	DownloadURL    string `json:"downloadUrl,omitempty"`    // 该平台的下载地址(网盘/直链)
-	SHA256         string `json:"sha256,omitempty"`         // 下载后校验
-	Image          string `json:"image,omitempty"`          // docker 镜像 tag(docker 形态)
-	Instructions   string `json:"instructions,omitempty"`   // 更新命令(docker 形态，如 docker compose pull && up -d)
-	IsForced       bool   `json:"isForced,omitempty"`       // 强制更新(软强制：UI 不可忽略)
-	IsBelowMin     bool   `json:"isBelowMin,omitempty"`     // 当前版本低于 minVersion(真·强制阻断)
+	DownloadURL    string `json:"downloadUrl,omitempty"`  // 该平台的下载地址(网盘/直链)
+	SHA256         string `json:"sha256,omitempty"`       // 下载后校验
+	Image          string `json:"image,omitempty"`        // docker 镜像 tag(docker 形态)
+	Instructions   string `json:"instructions,omitempty"` // 更新命令(docker 形态，如 docker compose pull && up -d)
+	IsForced       bool   `json:"isForced,omitempty"`     // 强制更新(软强制：UI 不可忽略)
+	IsBelowMin     bool   `json:"isBelowMin,omitempty"`   // 当前版本低于 minVersion(真·强制阻断)
 }
 
 // Check 拉清单并比较。platform 决定取 Targets 里的哪个产物；currentVersion 为空则用

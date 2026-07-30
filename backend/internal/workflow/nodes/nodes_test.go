@@ -121,7 +121,7 @@ func TestParseJSON(t *testing.T) {
 	ecx := &workflow.Context{Content: `{"name":"x","items":[{"t":"a"},{"t":"b"}],"nested":{"k":42}}`}
 	n := NewParseJSONNode()
 	fields := map[string]any{
-		"name": "name",
+		"name":  "name",
 		"item0": "items.0.t",
 		"miss":  "nope",
 		"num":   "nested.k",

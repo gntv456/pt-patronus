@@ -71,19 +71,19 @@ func toTorrent(row []any) downloader.Torrent {
 		completed = time.Unix(t, 0)
 	}
 	return downloader.Torrent{
-		Hash:       strAt(row, 0),
-		Name:       strAt(row, 2),
-		Size:       numAt(row, 3),
-		Downloaded: numAt(row, 5),
-		Uploaded:   numAt(row, 6),
-		Progress:   prog,
-		Ratio:      float64(numAt(row, 7)) / 1000, // RATIO per-mille
-		State:      utState(status, prog),
-		DLRate:     numAt(row, 9), // DOWNSPEED
-		UPRate:     numAt(row, 8), // UPSPEED
-		SavePath:   strAt(row, 26),
-		Category:   strAt(row, 11), // LABEL
-		AddedAt:    added,
+		Hash:        strAt(row, 0),
+		Name:        strAt(row, 2),
+		Size:        numAt(row, 3),
+		Downloaded:  numAt(row, 5),
+		Uploaded:    numAt(row, 6),
+		Progress:    prog,
+		Ratio:       float64(numAt(row, 7)) / 1000, // RATIO per-mille
+		State:       utState(status, prog),
+		DLRate:      numAt(row, 9), // DOWNSPEED
+		UPRate:      numAt(row, 8), // UPSPEED
+		SavePath:    strAt(row, 26),
+		Category:    strAt(row, 11), // LABEL
+		AddedAt:     added,
 		CompletedAt: completed,
 
 		// —— 详情字段（list=1 零额外请求）——

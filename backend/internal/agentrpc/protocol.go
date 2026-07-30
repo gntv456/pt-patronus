@@ -14,11 +14,11 @@ const CapabilityFile = "file"
 
 // Command server→agent 文件命令（agent 端 agent.Command 的 JSON 对齐镜像，agent 独立定义不 import 本包）。
 type Command struct {
-	Op      string `json:"op"`                        // list | mkdir | delete | download | upload | rename | move | copy
-	Path    string `json:"path"`                      // 用户视角路径（服务端已 resolvePath 钳制）
-	Base    string `json:"base,omitempty"`            // agent 端钳制根（FileStorage.base_path，深度防御二次校验）
-	NewName string `json:"new_name,omitempty"`        // op=rename：新文件名（纯名）
-	DstDir  string `json:"dst_dir,omitempty"`         // op=move|copy：目标目录（服务端已钳制）
+	Op      string `json:"op"`                 // list | mkdir | delete | download | upload | rename | move | copy
+	Path    string `json:"path"`               // 用户视角路径（服务端已 resolvePath 钳制）
+	Base    string `json:"base,omitempty"`     // agent 端钳制根（FileStorage.base_path，深度防御二次校验）
+	NewName string `json:"new_name,omitempty"` // op=rename：新文件名（纯名）
+	DstDir  string `json:"dst_dir,omitempty"`  // op=move|copy：目标目录（服务端已钳制）
 }
 
 // Response agent→server 小操作响应（list/mkdir/delete）。

@@ -50,8 +50,8 @@ func TestAssessSiteConcurrentDedup(t *testing.T) {
 	s, _ := siteOp.Create(oper.SiteInput{Name: "t", Platform: "nexusphp", BaseURL: "https://x", IsActive: true})
 	src := &fakeAssessAdapter{
 		tasks: []assessment.Task{{
-			Name:   "考核",
-			Status: assessment.StatusActive,
+			Name:    "考核",
+			Status:  assessment.StatusActive,
 			Metrics: []assessment.Metric{{Label: "上传", Required: 100, Current: 50, Unit: "GB"}},
 		}},
 		proceed: make(chan struct{}),
@@ -125,8 +125,8 @@ func TestAssessSiteNoticeOnce(t *testing.T) {
 
 	src := &fakeAssessAdapter{
 		tasks: []assessment.Task{{
-			Name:   "考核",
-			Status: assessment.StatusCompleted,
+			Name:    "考核",
+			Status:  assessment.StatusCompleted,
 			Metrics: []assessment.Metric{{Label: "上传", Required: 100, Current: 100, Unit: "GB", IsCompleted: true}},
 		}},
 		proceed: make(chan struct{}),

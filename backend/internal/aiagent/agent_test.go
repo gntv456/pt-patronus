@@ -14,8 +14,8 @@ import (
 // fakes —— 内存实现各接口。
 
 type fakeProvider struct {
-	round  int
-	plans  [][]llm.Event
+	round int
+	plans [][]llm.Event
 }
 
 func (f *fakeProvider) ChatStream(_ context.Context, _ llm.Req) (<-chan llm.Event, error) {
@@ -39,7 +39,7 @@ func (f *fakeProvider) ChatStream(_ context.Context, _ llm.Req) (<-chan llm.Even
 type fakeMsgStore struct{ msgs []models.AgentMessage }
 
 func (s *fakeMsgStore) ListByConv(_ uint) ([]models.AgentMessage, error) { return s.msgs, nil }
-func (s *fakeMsgStore) Append(m *models.AgentMessage) error             { s.msgs = append(s.msgs, *m); return nil }
+func (s *fakeMsgStore) Append(m *models.AgentMessage) error              { s.msgs = append(s.msgs, *m); return nil }
 
 type fakeConvStore struct{ titles map[uint]string }
 
@@ -48,7 +48,7 @@ func (c *fakeConvStore) Touch(_ uint) error               { return nil }
 
 type fakeKV struct{ m map[string]string }
 
-func (k *fakeKV) Get(key string) (string, error)  { return k.m[key], nil }
+func (k *fakeKV) Get(key string) (string, error) { return k.m[key], nil }
 func (k *fakeKV) Set(key string, v string) error { k.m[key] = v; return nil }
 
 type fakeCrypto struct{}

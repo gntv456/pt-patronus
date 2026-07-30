@@ -104,7 +104,7 @@ var (
 	emailRe         = regexp.MustCompile(`(?i)[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}`)
 	ratioTextRe     = regexp.MustCompile(`^(\d{1,4}(?:\.\d{1,4})?)$`)
 	// userdetails 链接里的 id（用于排除"自己"）：userdetails.php?id=123。
-	inviteeIDRe     = regexp.MustCompile(`(?i)[?&]id=(\d+)`)
+	inviteeIDRe = regexp.MustCompile(`(?i)[?&]id=(\d+)`)
 	// 禁用：属性或文本含 banned/disabled/禁用 等（扫描行 HTML，非纯文本）。
 	inviteeDisabledRe = regexp.MustCompile(`(?i)(?:\browbanned\b|\buserbanned\b|\bbanned\b|\bdisabled\b|\bsuspended\b|\bforbidden\b|disabled\.png|disable\.png|banned\.png|class\s*=\s*[^"']*(?:banned|disabled)|alt\s*=\s*[^"']*(?:disabled|banned)|title\s*=\s*[^"']*(?:disabled|banned)|(?:已\s*)?(?:禁用|封禁|停用)|被\s*(?:禁用|封禁|停用|禁止)|未启用)`)
 	inviteePendingRe  = regexp.MustCompile(`(?i)(?:\bpending\b|\bunconfirmed\b|\bnot\s+confirmed\b|待确认|待確認|未确认|未確認|未激活)`)

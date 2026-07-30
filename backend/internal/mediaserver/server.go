@@ -51,7 +51,7 @@ type User struct {
 type PlayItem struct {
 	ItemID     string `json:"item_id"`
 	Name       string `json:"name"`
-	Type       string `json:"type"`      // movie | series | episode
+	Type       string `json:"type"` // movie | series | episode
 	Year       int    `json:"year"`
 	UserID     string `json:"user_id"`
 	UserName   string `json:"user_name"`
@@ -62,13 +62,13 @@ type PlayItem struct {
 
 // DetailedItem 库内条目（重复检测用，带年份与 Provider ID）。TMDBID/IMDbID 为空则按标题+年份归组。
 type DetailedItem struct {
-	ItemID  string `json:"item_id"`
-	Name    string `json:"name"`
-	Type    string `json:"type"` // movie | series
-	Year    int    `json:"year"`
-	TMDBID  string `json:"tmdb_id"`
-	IMDbID  string `json:"imdb_id"`
-	Path    string `json:"path"`
+	ItemID string `json:"item_id"`
+	Name   string `json:"name"`
+	Type   string `json:"type"` // movie | series
+	Year   int    `json:"year"`
+	TMDBID string `json:"tmdb_id"`
+	IMDbID string `json:"imdb_id"`
+	Path   string `json:"path"`
 }
 
 // Client 统一三家媒体服务器的操作子集。

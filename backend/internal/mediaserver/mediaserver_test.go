@@ -256,7 +256,7 @@ func TestDetectDuplicates(t *testing.T) {
 		{ItemID: "4", Name: "Oldboy", Year: 2013, IMDbID: "tt007"}, // 同 IMDb 但不同年份（翻拍）→ 仍判重
 		{ItemID: "5", Name: "Inception.2010", Year: 2010},
 		{ItemID: "6", Name: "Inception (2010)", Year: 2010}, // 无 Provider ID，按归一化标题+年份归并
-		{ItemID: "7", Name: "Solo", Year: 2018}, // 无重复
+		{ItemID: "7", Name: "Solo", Year: 2018},             // 无重复
 	}
 	groups := DetectDuplicates(items)
 	if len(groups) != 3 {
@@ -283,10 +283,10 @@ func TestDetectDuplicatesEmpty(t *testing.T) {
 // TestNormalizeTitle 验证归一化：去尾部年份块 + 折叠分隔符。
 func TestNormalizeTitle(t *testing.T) {
 	cases := map[string]string{
-		"Inception.2010":          "inception",
-		"Inception (2010)":        "inception",
-		"  Movie_Name-2023 ":      "movie name",
-		"AlreadyClean":            "alreadyclean",
+		"Inception.2010":     "inception",
+		"Inception (2010)":   "inception",
+		"  Movie_Name-2023 ": "movie name",
+		"AlreadyClean":       "alreadyclean",
 	}
 	for in, want := range cases {
 		if got := normalizeTitle(in); got != want {

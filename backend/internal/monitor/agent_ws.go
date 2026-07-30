@@ -21,8 +21,8 @@ import (
 
 // 文件 RPC 超时。
 const (
-	rpcShortTimeout = 30 * time.Second  // 小操作 list/mkdir/delete
-	rpcLongTimeout  = 10 * time.Minute  // 流式 upload/download
+	rpcShortTimeout = 30 * time.Second // 小操作 list/mkdir/delete
+	rpcLongTimeout  = 10 * time.Minute // 流式 upload/download
 )
 
 // 流式分块大小（payload；base64 后约 43KB，< gorilla 默认帧限制，内存可控、可反压）。
@@ -49,15 +49,15 @@ type AgentIngestFunc func(ctx context.Context, targetID uint, m Metrics) error
 
 // AgentEnvelope 是 agent ↔ server 的 WS 消息信封（agent 端 internal/agent/protocol.go 独立定义，JSON 对齐）。
 type AgentEnvelope struct {
-	Type    string                `json:"type"`              // hello | report | ping | cmd | resp | data | error
-	Version string                `json:"version,omitempty"` // agent 版本号（report/hello 带上）
-	ID      string                `json:"id,omitempty"`      // RPC 请求 ID（cmd/resp/data/error 带）
-	Metrics json.RawMessage       `json:"metrics,omitempty"` // sysinfo.Metrics 序列化（report 带上）
-	Caps    []string              `json:"caps,omitempty"`    // hello 带的能力清单
-	Cmd     *agentrpc.Command     `json:"cmd,omitempty"`     // server→agent 命令
-	Resp    *agentrpc.Response    `json:"resp,omitempty"`    // agent→server 小操作响应
-	Chunk   *agentrpc.Chunk       `json:"chunk,omitempty"`   // 双向分块数据
-	Error   string                `json:"error,omitempty"`   // 异常终止/取消
+	Type    string             `json:"type"`              // hello | report | ping | cmd | resp | data | error
+	Version string             `json:"version,omitempty"` // agent 版本号（report/hello 带上）
+	ID      string             `json:"id,omitempty"`      // RPC 请求 ID（cmd/resp/data/error 带）
+	Metrics json.RawMessage    `json:"metrics,omitempty"` // sysinfo.Metrics 序列化（report 带上）
+	Caps    []string           `json:"caps,omitempty"`    // hello 带的能力清单
+	Cmd     *agentrpc.Command  `json:"cmd,omitempty"`     // server→agent 命令
+	Resp    *agentrpc.Response `json:"resp,omitempty"`    // agent→server 小操作响应
+	Chunk   *agentrpc.Chunk    `json:"chunk,omitempty"`   // 双向分块数据
+	Error   string             `json:"error,omitempty"`   // 异常终止/取消
 }
 
 // AgentWSHub 管理所有 agent 的 WS 连接（单实例，进程内 map；多副本部署需上 Redis，与 ws.Broadcaster 同约束）。

@@ -124,7 +124,7 @@ type Manager struct {
 	watchMu       sync.Mutex
 	watchCancel   context.CancelFunc
 	watchWG       sync.WaitGroup
-	mediaSearcher MediaSearcher // 由 app.go 注入（MediaChain 适配器），nil 时 /media/search 返回空
+	mediaSearcher MediaSearcher     // 由 app.go 注入（MediaChain 适配器），nil 时 /media/search 返回空
 	hostTools     *HostToolRegistry // 由 app.go 注入（registerPluginHostTools 批量注册 chain 能力）；nil 时 /tools 返回空
 }
 

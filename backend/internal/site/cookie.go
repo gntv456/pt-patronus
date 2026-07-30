@@ -11,8 +11,6 @@ import (
 // userIDRe 在 base64 解码后的 c_secure_pass payload JSON 里锚定 user_id。
 var userIDRe = regexp.MustCompile(`"user_id"\s*:\s*"(\d+)"`)
 
-
-
 // ParseCookieHeader 解析 "k=v; k2=v2" 为 map（同名后者覆盖）。
 func ParseCookieHeader(s string) map[string]string {
 	return parseCookieJar(s)

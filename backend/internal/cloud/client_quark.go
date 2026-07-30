@@ -122,7 +122,7 @@ func (c *clientQuark) Quota(ctx context.Context) (*Quota, error) {
 	}
 	var body struct {
 		Data struct {
-			UseCapacity json.Number `json:"use_capacity"`
+			UseCapacity   json.Number `json:"use_capacity"`
 			TotalCapacity json.Number `json:"total_capacity"`
 		} `json:"data"`
 	}

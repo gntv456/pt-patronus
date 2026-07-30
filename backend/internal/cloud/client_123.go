@@ -32,10 +32,10 @@ func (c *client123) authHeader() map[string]string {
 
 // raw123Item 123 /api/v1/file/list 返回条目。Type=0 目录，1 文件。
 type raw123Item struct {
-	FileID   json.Number `json:"FileId"`
-	Name     string      `json:"FileName"`
-	Size     json.Number `json:"Size"`
-	Type     json.Number `json:"Type"`
+	FileID json.Number `json:"FileId"`
+	Name   string      `json:"FileName"`
+	Size   json.Number `json:"Size"`
+	Type   json.Number `json:"Type"`
 }
 
 func (it raw123Item) isDir() bool { return it.Type.String() == "0" }
@@ -131,7 +131,7 @@ func (c *client123) Quota(ctx context.Context) (*Quota, error) {
 	}
 	var body struct {
 		Data struct {
-			UseSize  json.Number `json:"spaceUsed"`
+			UseSize   json.Number `json:"spaceUsed"`
 			TotalSize json.Number `json:"spaceTotal"`
 		} `json:"data"`
 	}

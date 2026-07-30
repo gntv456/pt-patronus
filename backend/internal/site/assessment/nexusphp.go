@@ -62,9 +62,9 @@ func (NexusPHPAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def De
 var (
 	// normalizeHTML：把块级标签（含每个 </td>）转为换行，再剥剩余标签。
 	htmlBlockRe = regexp.MustCompile(`(?is)<(?:script|style|noscript)\b[^>]*>.*?</(?:script|style|noscript)>`)
-	htmlBrRe     = regexp.MustCompile(`(?i)<br\s*/?>`)
-	htmlCloseRe  = regexp.MustCompile(`(?i)</?(?:p|div|li|tr|td|th|h\d)[^>]*>`)
-	htmlTagRe    = regexp.MustCompile(`<[^>]+>`)
+	htmlBrRe    = regexp.MustCompile(`(?i)<br\s*/?>`)
+	htmlCloseRe = regexp.MustCompile(`(?i)</?(?:p|div|li|tr|td|th|h\d)[^>]*>`)
+	htmlTagRe   = regexp.MustCompile(`<[^>]+>`)
 	// header：名称：X 时间：YYYY-MM-DD HH:MM ~ YYYY-MM-DD HH:MM
 	headerRe = regexp.MustCompile(`名称[：:]\s*(.+?)\s+时间[：:]\s*(\d{4}[./-]\d{1,2}[./-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\s*[~～\-]\s*(\d{4}[./-]\d{1,2}[./-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)`)
 	// 单行完整指标：指标N：名称, 要求:X, 当前:Y, 结果:Z

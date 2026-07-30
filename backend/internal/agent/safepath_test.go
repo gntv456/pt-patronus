@@ -15,9 +15,9 @@ func TestSafePath(t *testing.T) {
 		{"", "data/x", "/data/x"},
 		{"/media", "movies/a.mkv", "/media/movies/a.mkv"},
 		{"/media", "../../../etc/passwd", "/media/etc/passwd"}, // POSIX ../ 越界被钳回 base 下
-		{"/media", "/etc/passwd", "/media/etc/passwd"},          // 绝对路径钳回 base
-		{"/media", "", "/media"},                                // 空路径 → base 本身
-		{"media", "a/b", "/media/a/b"},                          // base 无前导斜杠归一
+		{"/media", "/etc/passwd", "/media/etc/passwd"},         // 绝对路径钳回 base
+		{"/media", "", "/media"},                               // 空路径 → base 本身
+		{"media", "a/b", "/media/a/b"},                         // base 无前导斜杠归一
 	}
 	for _, c := range cases {
 		got := safePath(c.base, c.p)

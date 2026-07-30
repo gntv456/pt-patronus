@@ -138,7 +138,7 @@ func TestNormalizeName(t *testing.T) {
 	cases := map[string]string{
 		"Inception.2010.1080p.BluRay.x264.mkv": "inception",
 		"Movie.1999.X265-HDC":                  "movie hdc", // 1999/year 与 x265 剥离，hdc 非 noise 保留
-		"庆余年 第二季 S02E12.mkv":                "庆余年 第二季 s02e12",
+		"庆余年 第二季 S02E12.mkv":                   "庆余年 第二季 s02e12",
 		"a.b.c.mp4":                            "a b c",
 	}
 	for in, want := range cases {

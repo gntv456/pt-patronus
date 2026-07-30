@@ -18,17 +18,17 @@ func Dispatch(s SiteRef) Handler {
 
 func init() {
 	// 特殊站按需注册(站名子串互斥，顺序不敏感)；NexusPHP 兜底必须最后。
-	register(zmHandler{})         // 织梦
-	register(qingwaHandler{})     // 青蛙
-	register(vicomoHandler{})     // 象站
-	register(luckptHandler{})     // 幸运
-	register(cangbaoHandler{})    // 藏宝阁
-	register(dubheHandler{})      // 天枢
-	register(hxptHandler{})       // 好学
-	register(longPTHandler{})     // LongPT
-	register(momentHandler{})     // Moment
-	register(ptlgsHandler{})      // PTLGS
-	register(ptskitHandler{})     // PTS
+	register(zmHandler{})           // 织梦
+	register(qingwaHandler{})       // 青蛙
+	register(vicomoHandler{})       // 象站
+	register(luckptHandler{})       // 幸运
+	register(cangbaoHandler{})      // 藏宝阁
+	register(dubheHandler{})        // 天枢
+	register(hxptHandler{})         // 好学
+	register(longPTHandler{})       // LongPT
+	register(momentHandler{})       // Moment
+	register(ptlgsHandler{})        // PTLGS
+	register(ptskitHandler{})       // PTS
 	register(thirteenCityHandler{}) // 13City
-	register(nexusPHPHandler{})   // 兜底：所有未被特殊站认领的 NexusPHP 站
+	register(nexusPHPHandler{})     // 兜底：所有未被特殊站认领的 NexusPHP 站
 }

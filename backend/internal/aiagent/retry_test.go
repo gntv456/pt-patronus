@@ -59,11 +59,11 @@ func TestIsRetryableLLMError(t *testing.T) {
 	}{
 		{fmt.Errorf("openai upstream HTTP 429"), true},
 		{fmt.Errorf("anthropic upstream HTTP 503"), true},
-		{fmt.Errorf("openai upstream HTTP 400"), false},  // 4xx 非法请求
-		{fmt.Errorf("openai upstream HTTP 401"), false},  // 鉴权失败
-		{fakeNetErr{}, true},                             // 网络
-		{context.Canceled, false},                        // ctx 取消
-		{errors.New("some other error"), false},          // 未知/JSON 错误
+		{fmt.Errorf("openai upstream HTTP 400"), false}, // 4xx 非法请求
+		{fmt.Errorf("openai upstream HTTP 401"), false}, // 鉴权失败
+		{fakeNetErr{}, true},                            // 网络
+		{context.Canceled, false},                       // ctx 取消
+		{errors.New("some other error"), false},         // 未知/JSON 错误
 		{nil, false},
 	}
 	for i, c := range cases {

@@ -31,22 +31,22 @@ import (
 // 已序列化的合法 JSON 直接写入，不会双重转义（RawMessage.MarshalJSON 返回原始字节）。
 func adoptAgentTool(t mcp.Tool, permission, category string, destructive bool) (plugins.HostTool, plugins.HostToolHandler) {
 	return plugins.HostTool{
-		Name:        t.Name,
-		Description: t.Description,
-		InputSchema: t.InputSchema,
-		Permission:  permission,
-		Category:    category,
-		Destructive: destructive,
-	}, func(ctx context.Context, in map[string]any) (any, error) {
-		s, err := t.Handler(ctx, in)
-		if err != nil {
-			return nil, err
+			Name:        t.Name,
+			Description: t.Description,
+			InputSchema: t.InputSchema,
+			Permission:  permission,
+			Category:    category,
+			Destructive: destructive,
+		}, func(ctx context.Context, in map[string]any) (any, error) {
+			s, err := t.Handler(ctx, in)
+			if err != nil {
+				return nil, err
+			}
+			if s == "" {
+				return json.RawMessage("null"), nil
+			}
+			return json.RawMessage(s), nil
 		}
-		if s == "" {
-			return json.RawMessage("null"), nil
-		}
-		return json.RawMessage(s), nil
-	}
 }
 
 // toolMeta 是 agent tool 的插件侧元数据补充（agent tool 自身不带权限/分类）。

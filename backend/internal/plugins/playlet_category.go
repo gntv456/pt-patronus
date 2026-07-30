@@ -223,7 +223,7 @@ func (p *playletCategoryPlugin) startScan(rt Runtime) map[string]any {
 
 type playletScanResult struct {
 	scanned, moved, nonShort, skipped int
-	errors                             []string
+	errors                            []string
 }
 
 func (p *playletCategoryPlugin) scanWorker(rt Runtime, cfg map[string]any) {

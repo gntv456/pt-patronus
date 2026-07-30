@@ -4,15 +4,15 @@ import "testing"
 
 func TestCleanCloudPath(t *testing.T) {
 	cases := map[string]string{
-		"":              "/",
-		"/":             "/",
-		"电影":           "/电影",
-		"电影/动作":        "/电影/动作",
-		"/电影/":         "/电影",
-		"\\电影\\动作":     "/电影/动作",
-		"/a/../b":       "/b",
-		"/a/./b":        "/a/b",
-		"//a///b//":     "/a/b",
+		"":          "/",
+		"/":         "/",
+		"电影":        "/电影",
+		"电影/动作":     "/电影/动作",
+		"/电影/":      "/电影",
+		"\\电影\\动作":  "/电影/动作",
+		"/a/../b":   "/b",
+		"/a/./b":    "/a/b",
+		"//a///b//": "/a/b",
 	}
 	for in, want := range cases {
 		if got := cleanCloudPath(in); got != want {

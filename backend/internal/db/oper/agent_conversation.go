@@ -29,7 +29,9 @@ func (o *AgentConversationOper) Get(id uint) (*models.AgentConversation, error) 
 }
 
 // Create 新建会话。
-func (o *AgentConversationOper) Create(c *models.AgentConversation) error { return o.db.Create(c).Error }
+func (o *AgentConversationOper) Create(c *models.AgentConversation) error {
+	return o.db.Create(c).Error
+}
 
 // SetTitle 更新标题（首条消息后）。
 func (o *AgentConversationOper) SetTitle(id uint, title string) error {

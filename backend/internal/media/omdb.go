@@ -118,23 +118,23 @@ func (o *OMDb) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 
 // omdbTitle 是 ?t/?i 的响应（扁平字段；Response/Error 用于判定成败）。
 type omdbTitle struct {
-	Title       string `json:"Title"`
-	Year        string `json:"Year"`
-	Rated       string `json:"Rated"`
-	Released    string `json:"Released"`
-	Runtime     string `json:"Runtime"`
-	Genre       string `json:"Genre"`
-	Director    string `json:"Director"`
-	Actors      string `json:"Actors"`
-	Country     string `json:"Country"`
-	Plot        string `json:"Plot"`
-	IMDbID      string `json:"imdbID"`
-	Type        string `json:"Type"`
-	Poster      string `json:"Poster"`
-	IMDbRating  string `json:"imdbRating"`
-	IMDbVotes   string `json:"imdbVotes"`
-	Response    string `json:"Response"`
-	Error       string `json:"Error"`
+	Title      string `json:"Title"`
+	Year       string `json:"Year"`
+	Rated      string `json:"Rated"`
+	Released   string `json:"Released"`
+	Runtime    string `json:"Runtime"`
+	Genre      string `json:"Genre"`
+	Director   string `json:"Director"`
+	Actors     string `json:"Actors"`
+	Country    string `json:"Country"`
+	Plot       string `json:"Plot"`
+	IMDbID     string `json:"imdbID"`
+	Type       string `json:"Type"`
+	Poster     string `json:"Poster"`
+	IMDbRating string `json:"imdbRating"`
+	IMDbVotes  string `json:"imdbVotes"`
+	Response   string `json:"Response"`
+	Error      string `json:"Error"`
 }
 
 // get 发 GET 并解码；OMDb 一律 HTTP 200，靠 Response 字段判成败。

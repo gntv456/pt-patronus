@@ -113,7 +113,7 @@ func TestIntegrationCRUDAndFilter(t *testing.T) {
 // TestIntegrationResolveGroupsByMedia 验证 ResolveGroups 按 media_type/category 筛选适用组。
 func TestIntegrationResolveGroupsByMedia(t *testing.T) {
 	store := setupTestStore(t)
-	store.AddGroup(RuleGroupInput{Name: "全局组", RuleString: "4K"})                 // media_type 空 → 全局
+	store.AddGroup(RuleGroupInput{Name: "全局组", RuleString: "4K"})                  // media_type 空 → 全局
 	store.AddGroup(RuleGroupInput{Name: "电影组", RuleString: "4K", MediaType: "电影"}) // 仅电影
 	store.AddGroup(RuleGroupInput{Name: "电视组", RuleString: "4K", MediaType: "电视剧"})
 

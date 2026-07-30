@@ -24,7 +24,7 @@ func TestDispatch(t *testing.T) {
 		{"PTS", "groupchat.ptskitHandler"},
 		{"13City", "groupchat.thirteenCityHandler"},
 		{"某个普通 NexusPHP 站", "groupchat.nexusPHPHandler"}, // 兜底
-		{"OurHome", "groupchat.nexusPHPHandler"},             // 未识别 → 兜底
+		{"OurHome", "groupchat.nexusPHPHandler"},         // 未识别 → 兜底
 	}
 	for _, c := range cases {
 		h := Dispatch(SiteRef{Name: c.name})

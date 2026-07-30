@@ -148,7 +148,7 @@ func TestMergeNotifySettings(t *testing.T) {
 
 	var in NotificationSettings
 	in.Bark.Enabled = true
-	in.Bark.Key = "" // 保留 old-bark
+	in.Bark.Key = ""     // 保留 old-bark
 	in.QQ.AppSecret = "" // 保留 old-qq
 	in.QQ.AppID = "new-appid"
 	in.WeChat.BotToken = "new-wx" // 覆盖

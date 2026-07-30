@@ -56,9 +56,9 @@ func TestInviteStatusBuyable(t *testing.T) {
 
 	// BuyablePermanent：price>0 且 bonus>0 时 bonus/price 向零截断；否则 0。
 	bpCases := []struct {
-		name   string
-		st     InviteStatus
-		want   int
+		name string
+		st   InviteStatus
+		want int
 	}{
 		{"exact division", InviteStatus{Bonus: 10000, PermanentInvitePrice: 2000}, 5},
 		{"truncation toward zero", InviteStatus{Bonus: 9999, PermanentInvitePrice: 2000}, 4},
@@ -211,9 +211,9 @@ func TestInviteeInfoIsLowRatio(t *testing.T) {
 		{"ratio infinity not low", InviteeInfo{Downloaded: 1000, Ratio: "∞"}, false},
 		{"comma thousands ratio 1,000", InviteeInfo{Downloaded: 1, Ratio: "1,000"}, false}, // 1000.0
 		// Ratio 解析失败（-1）→ 回退 Uploaded/Downloaded
-		{"empty ratio fallback low", InviteeInfo{Downloaded: 100, Uploaded: 50, Ratio: ""}, true},  // 0.5
+		{"empty ratio fallback low", InviteeInfo{Downloaded: 100, Uploaded: 50, Ratio: ""}, true},   // 0.5
 		{"n/a ratio fallback ok", InviteeInfo{Downloaded: 100, Uploaded: 200, Ratio: "N/A"}, false}, // 2.0
-		{"empty ratio zero-up not low", InviteeInfo{Downloaded: 100, Uploaded: 0, Ratio: ""}, true},  // 0/100=0 → low
+		{"empty ratio zero-up not low", InviteeInfo{Downloaded: 100, Uploaded: 0, Ratio: ""}, true}, // 0/100=0 → low
 	}
 	for _, c := range cases {
 		c := c

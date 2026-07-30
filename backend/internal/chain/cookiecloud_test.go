@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/cookiecloud"
 	"github.com/hxpt/ptpatronus/internal/core/event"
 	"github.com/hxpt/ptpatronus/internal/core/module"
 	"github.com/hxpt/ptpatronus/internal/core/security"
-	"github.com/hxpt/ptpatronus/internal/cookiecloud"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
@@ -23,7 +23,7 @@ import (
 // memStore 是 ccStore 的内存实现（无 DB 单测用）。
 type memStore struct{ m map[string]string }
 
-func (s *memStore) Get(k string) (string, error)  { return s.m[k], nil }
+func (s *memStore) Get(k string) (string, error) { return s.m[k], nil }
 func (s *memStore) Set(k, v string) error {
 	if s.m == nil {
 		s.m = map[string]string{}
@@ -65,9 +65,9 @@ func mockCCServer(t *testing.T, uuid, password, plain string) string {
 
 func TestCookieForSite(t *testing.T) {
 	payload := map[string][]cookiecloud.CookieEntry{
-		"demo.pt":      {{Name: "sess", Value: "abc"}, {Name: "x", Value: "1"}},
-		"sub.demo.pt":  {{Name: "sub", Value: "v"}},
-		"other.io":     {{Name: "o", Value: "z"}},
+		"demo.pt":     {{Name: "sess", Value: "abc"}, {Name: "x", Value: "1"}},
+		"sub.demo.pt": {{Name: "sub", Value: "v"}},
+		"other.io":    {{Name: "o", Value: "z"}},
 	}
 	got := cookieForSite(payload, "https://www.demo.pt/")
 	for _, want := range []string{"sess=abc", "x=1", "sub=v"} {
@@ -230,7 +230,6 @@ func TestMaybeSync_RespectsInterval(t *testing.T) {
 	}
 }
 
-
 // TestDoSync_AlwaysModeUpdatesConnected update_mode=always 时，即使站点仍登录也覆盖 cookie。
 func TestDoSync_AlwaysModeUpdatesConnected(t *testing.T) {
 	uuid, password := "u-123", "pass"
@@ -285,7 +284,6 @@ func TestCookieForSiteDedupesBySpecificHost(t *testing.T) {
 		t.Fatalf("missing x=1 in %q", got)
 	}
 }
-
 
 // TestDoSync_PushMergesLocalCookies direction=push 时把本地 cookie 推到云端（mock 接受 POST）。
 func TestDoSync_PushMergesLocalCookies(t *testing.T) {

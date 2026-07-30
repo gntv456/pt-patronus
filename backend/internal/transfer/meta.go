@@ -9,30 +9,30 @@ import (
 // Meta 是从文件名/种子名解析出的元信息（对标 MP MetaBase，精简版）。
 // 用于：(1) 无 DownloadMediaLink 时构造搜索关键字；(2) 命名时填季集/分辨率/组。
 type Meta struct {
-	Title        string // 清洗后的标题（搜索关键字）
-	Year         int
-	Season       int    // 0=未识别
-	Episode      int    // 0=未识别（季包或电影）
-	Seasons      string // 展示用 "S01"
-	Episodes     string // 展示用 "S01E02" / "E01E02"
+	Title         string // 清洗后的标题（搜索关键字）
+	Year          int
+	Season        int    // 0=未识别
+	Episode       int    // 0=未识别（季包或电影）
+	Seasons       string // 展示用 "S01"
+	Episodes      string // 展示用 "S01E02" / "E01E02"
 	SeasonEpisode string // 命名用 "S01E02" / "S01"
-	Resolution   string // 1080P / 2160P / 720P / 4K ...
-	ReleaseGroup string // 发布组（末段 -XXX）
-	IsTV         bool
+	Resolution    string // 1080P / 2160P / 720P / 4K ...
+	ReleaseGroup  string // 发布组（末段 -XXX）
+	IsTV          bool
 }
 
 var (
 	reSeasonEpisode = regexp.MustCompile(`(?i)S(\d{1,2})\s*E(\d{1,3})`)
 	// 季包「S01」：仅当未命中 S01E02 时才尝试（见 ParseMeta 顺序），故无需 lookahead 排除。
-	reSeasonPack    = regexp.MustCompile(`(?i)\bS(\d{1,2})\b`)
-	reEpisodeOnly   = regexp.MustCompile(`(?i)\bE(\d{1,3})\b`)
-	reYear          = regexp.MustCompile(`[\(\[]?((?:19|20)\d{2})[\)\]]?`)
+	reSeasonPack  = regexp.MustCompile(`(?i)\bS(\d{1,2})\b`)
+	reEpisodeOnly = regexp.MustCompile(`(?i)\bE(\d{1,3})\b`)
+	reYear        = regexp.MustCompile(`[\(\[]?((?:19|20)\d{2})[\)\]]?`)
 	// 分辨率：4K/2160P/1080P/720P/480P/8K/UHD（统一大写，2160↔4K 归一在 normalize）。
 	reResolution = regexp.MustCompile(`(?i)\b(4K|2160P|1080P|1080I|720P|480P|8K|UHD|H265|H264|HEVC|X264|X265|AVC)\b`)
 	reResNorm    = regexp.MustCompile(`(?i)^(2160P|4K|UHD)$`)
 	// 质量噪声词：从标题里剥离，避免污染搜索关键字。
-	reNoise = regexp.MustCompile(`(?i)\b(bluray|blu-ray|bdrip|brrip|webrip|web-dl|webdl|web|hdtv|dvdrip|remux|hdr10?|hdr10plus|dts|atmos|truehd|ddp|ddp5|aac|ac3|flac|dual|10bit|hybrid|avc|hevc|x264|x265|h264|h265)\b`)
-	reSep    = regexp.MustCompile(`[._]`)
+	reNoise   = regexp.MustCompile(`(?i)\b(bluray|blu-ray|bdrip|brrip|webrip|web-dl|webdl|web|hdtv|dvdrip|remux|hdr10?|hdr10plus|dts|atmos|truehd|ddp|ddp5|aac|ac3|flac|dual|10bit|hybrid|avc|hevc|x264|x265|h264|h265)\b`)
+	reSep     = regexp.MustCompile(`[._]`)
 	reMultiEp = regexp.MustCompile(`(?i)E(\d{1,3})[-E]?(\d{1,3})`)
 )
 

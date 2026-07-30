@@ -68,18 +68,18 @@ func (p *MediaSourceProvider) LoadSettings() MediaSettings {
 		return def
 	}
 	return MediaSettings{
-		TMDBAPIKey:      get(cfgKeyTMDBAPIKey, p.defaults.TMDBAPIKey),
-		TMDBAPIDomain:   get(cfgKeyTMDBAPIDomain, p.defaults.TMDBAPIDomain),
-		DoubanSecret:    get(cfgKeyDoubanSecret, p.defaults.DoubanSecret),
-		DoubanAppKey:    get(cfgKeyDoubanAppKey, p.defaults.DoubanAppKey),
-		BangumiToken:    get(cfgKeyBangumiToken, p.defaults.BangumiToken),
+		TMDBAPIKey:    get(cfgKeyTMDBAPIKey, p.defaults.TMDBAPIKey),
+		TMDBAPIDomain: get(cfgKeyTMDBAPIDomain, p.defaults.TMDBAPIDomain),
+		DoubanSecret:  get(cfgKeyDoubanSecret, p.defaults.DoubanSecret),
+		DoubanAppKey:  get(cfgKeyDoubanAppKey, p.defaults.DoubanAppKey),
+		BangumiToken:  get(cfgKeyBangumiToken, p.defaults.BangumiToken),
 		CunguangjiBase: func() string {
 			if v := get(cfgKeyCunguangjiBase, ""); v != "" {
 				return v
 			}
 			return get("media.xingguangji_base", p.defaults.CunguangjiBase)
 		}(),
-		OMDbAPIKey:      get(cfgKeyOMDbAPIKey, p.defaults.OMDbAPIKey),
+		OMDbAPIKey: get(cfgKeyOMDbAPIKey, p.defaults.OMDbAPIKey),
 	}
 }
 
@@ -87,13 +87,13 @@ func (p *MediaSourceProvider) LoadSettings() MediaSettings {
 // 然后 rebuild 源切片使改动即时生效。
 func (p *MediaSourceProvider) ApplySettings(in MediaSettings) error {
 	updates := map[string]string{
-		cfgKeyTMDBAPIKey:      in.TMDBAPIKey,
-		cfgKeyTMDBAPIDomain:   in.TMDBAPIDomain,
-		cfgKeyDoubanSecret:    in.DoubanSecret,
-		cfgKeyDoubanAppKey:    in.DoubanAppKey,
-		cfgKeyBangumiToken:    in.BangumiToken,
+		cfgKeyTMDBAPIKey:     in.TMDBAPIKey,
+		cfgKeyTMDBAPIDomain:  in.TMDBAPIDomain,
+		cfgKeyDoubanSecret:   in.DoubanSecret,
+		cfgKeyDoubanAppKey:   in.DoubanAppKey,
+		cfgKeyBangumiToken:   in.BangumiToken,
 		cfgKeyCunguangjiBase: in.CunguangjiBase,
-		cfgKeyOMDbAPIKey:      in.OMDbAPIKey,
+		cfgKeyOMDbAPIKey:     in.OMDbAPIKey,
 	}
 	for k, v := range updates {
 		if v == "" {

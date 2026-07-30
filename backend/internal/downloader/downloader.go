@@ -10,7 +10,7 @@ import (
 
 // Torrent 是跨下载器统一的任务模型。
 type Torrent struct {
-	Hash       string    `json:"hash"`      // 下载器操作标识（Aria2 为 GID）
+	Hash       string    `json:"hash"`                // 下载器操作标识（Aria2 为 GID）
 	InfoHash   string    `json:"info_hash,omitempty"` // BT info hash（Aria2 与操作标识不同）
 	Name       string    `json:"name"`
 	Size       int64     `json:"size"`

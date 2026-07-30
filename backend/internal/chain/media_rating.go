@@ -23,11 +23,11 @@ const ratingCacheTTL = 6 * time.Hour
 // MediaQualityConfig 订阅质量闸门配置。Enabled 为总开关；订阅自身 EnableRatingGuard
 // 与此处 Enabled 取并集（任一为真即对该订阅启用评分闸门）。
 type MediaQualityConfig struct {
-	Enabled        bool     `json:"enabled"`         // 总开关
-	MinScore       float64  `json:"min_score"`       // 最低综合评分（默认 6.0）
-	MinVotes       int      `json:"min_votes"`       // 最低投票数（统计意义，默认 100）
+	Enabled        bool     `json:"enabled"`          // 总开关
+	MinScore       float64  `json:"min_score"`        // 最低综合评分（默认 6.0）
+	MinVotes       int      `json:"min_votes"`        // 最低投票数（统计意义，默认 100）
 	MinReleaseDays int      `json:"min_release_days"` // 上映满 N 天才放行（评分稳定，默认 7）
-	Sources        []string `json:"sources"`         // 参与聚合的源（tmdb/douban/imdb/bangumi）；空=全部
+	Sources        []string `json:"sources"`          // 参与聚合的源（tmdb/douban/imdb/bangumi）；空=全部
 }
 
 // DefaultMediaQualityConfig 合理默认值。
@@ -106,7 +106,7 @@ type RatingSummary struct {
 
 // ratingCacheEntry 内存缓存项（避免订阅 cron 高频查外网）。
 type ratingCacheEntry struct {
-	summary  *RatingSummary
+	summary   *RatingSummary
 	fetchedAt time.Time
 }
 

@@ -34,12 +34,12 @@ type Settings struct {
 // Risk/RiskNote 不参与 JSON 序列化（json:"-"）：既不下发到 LLM 的 tools/list，也不进 MCP schema；
 // 仅 agent 执行层据此对 destructive 工具做二次确认闸门。
 type Tool struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	InputSchema map[string]any         `json:"inputSchema"`
-	Timeout     time.Duration          `json:"-"`
-	Risk        string                 `json:"-"` // RiskRead | RiskWrite | RiskDestructive；空视同 write
-	RiskNote    string                 `json:"-"` // destructive 工具的一句话危险说明（确认弹窗展示）
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	InputSchema map[string]any `json:"inputSchema"`
+	Timeout     time.Duration  `json:"-"`
+	Risk        string         `json:"-"` // RiskRead | RiskWrite | RiskDestructive；空视同 write
+	RiskNote    string         `json:"-"` // destructive 工具的一句话危险说明（确认弹窗展示）
 	Handler     func(ctx context.Context, args map[string]any) (string, error)
 }
 
@@ -53,8 +53,8 @@ const (
 
 // Server 是 MCP JSON-RPC 服务端。线程安全。
 type Server struct {
-	mu            sync.RWMutex
-	tools         map[string]Tool
+	mu             sync.RWMutex
+	tools          map[string]Tool
 	settingsGetter func() Settings
 }
 

@@ -17,7 +17,7 @@ type mqttTestBroker struct {
 	topic      string
 	payload    string
 	gotConn    bool
-	returnCode byte  // CONNACK 返回码（0=接受；5=未授权）
+	returnCode byte          // CONNACK 返回码（0=接受；5=未授权）
 	done       chan struct{} // serve 处理完（连接关闭）后 close，供测试等待避免竞态
 }
 

@@ -35,7 +35,7 @@ func TestServerDisabledReturns404(t *testing.T) {
 
 func TestServerTokenGuard(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"}})
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"} })
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"ping"}`)))
 	if rec.Code != http.StatusUnauthorized {
@@ -45,7 +45,7 @@ func TestServerTokenGuard(t *testing.T) {
 
 func TestServerInitializeAndToolsList(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true}})
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
 	srv.RegisterTool(Tool{
 		Name: "echo", Description: "echo back",
 		InputSchema: map[string]any{"type": "object"},
@@ -69,7 +69,7 @@ func TestServerInitializeAndToolsList(t *testing.T) {
 
 func TestServerToolCallSuccess(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true}})
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
 	srv.RegisterTool(Tool{
 		Name: "add", Handler: func(ctx context.Context, args map[string]any) (string, error) {
 			return "42", nil
@@ -85,7 +85,7 @@ func TestServerToolCallSuccess(t *testing.T) {
 
 func TestServerToolCallErrorIsNotRPCError(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true}})
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
 	srv.RegisterTool(Tool{
 		Name: "boom", Handler: func(ctx context.Context, args map[string]any) (string, error) {
 			return "", errBoom
@@ -104,7 +104,7 @@ func TestServerToolCallErrorIsNotRPCError(t *testing.T) {
 
 func TestServerUnknownMethod(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true}})
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
 	r := rpc(t, srv, `{"jsonrpc":"2.0","id":5,"method":"nope"}`)
 	if r["error"] == nil {
 		t.Fatalf("want rpc error for unknown method: %v", r)
@@ -113,7 +113,7 @@ func TestServerUnknownMethod(t *testing.T) {
 
 func TestServerNotificationNoResponse(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true}})
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","method":"notifications/initialized"}`))
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)

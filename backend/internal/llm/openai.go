@@ -60,7 +60,10 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 	go func() {
 		defer resp.Body.Close()
 		defer close(out)
-		type tcAcc struct{ id, name string; args strings.Builder }
+		type tcAcc struct {
+			id, name string
+			args     strings.Builder
+		}
 		tools := map[int]*tcAcc{}
 		var order []int
 
@@ -126,12 +129,12 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 // ===== OpenAI 请求/响应结构 =====
 
 type oaRequest struct {
-	Model         string      `json:"model"`
-	Messages      []oaMessage `json:"messages"`
-	Tools         []oaTool    `json:"tools,omitempty"`
-	Temp          float64     `json:"temperature,omitempty"`
-	MaxTok        int         `json:"max_tokens,omitempty"`
-	Stream        bool        `json:"stream"`
+	Model         string          `json:"model"`
+	Messages      []oaMessage     `json:"messages"`
+	Tools         []oaTool        `json:"tools,omitempty"`
+	Temp          float64         `json:"temperature,omitempty"`
+	MaxTok        int             `json:"max_tokens,omitempty"`
+	Stream        bool            `json:"stream"`
 	StreamOptions oaStreamOptions `json:"stream_options,omitempty"`
 }
 
@@ -141,10 +144,10 @@ type oaStreamOptions struct {
 }
 
 type oaMessage struct {
-	Role       string      `json:"role"`
-	Content    string      `json:"content,omitempty"`
+	Role       string       `json:"role"`
+	Content    string       `json:"content,omitempty"`
 	ToolCalls  []oaToolCall `json:"tool_calls,omitempty"`
-	ToolCallID string      `json:"tool_call_id,omitempty"`
+	ToolCallID string       `json:"tool_call_id,omitempty"`
 }
 
 type oaTool struct {
@@ -158,9 +161,9 @@ type oaToolFn struct {
 }
 
 type oaToolCall struct {
-	ID       string        `json:"id"`
-	Type     string        `json:"type"`
-	Function oaToolCallFn  `json:"function"`
+	ID       string       `json:"id"`
+	Type     string       `json:"type"`
+	Function oaToolCallFn `json:"function"`
 }
 type oaToolCallFn struct {
 	Name      string `json:"name"`

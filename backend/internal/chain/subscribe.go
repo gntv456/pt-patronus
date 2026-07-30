@@ -33,8 +33,8 @@ type SubscribeChain struct {
 	dlOp      *oper.DownloaderOper
 	op        *oper.SubscriptionOper
 	notice    *notice.Service
-	mediaCh   *MediaChain    // 可空（测试/未装配时跳过评分闸门与海报补全）
-	filterEng *filter.Engine // 可空（未装配时跳过规则过滤，回退 first-match）
+	mediaCh   *MediaChain            // 可空（测试/未装配时跳过评分闸门与海报补全）
+	filterEng *filter.Engine         // 可空（未装配时跳过规则过滤，回退 first-match）
 	cfgOp     *oper.SystemConfigOper // 可空（测试/未装配时全局订阅默认取零值）
 	// checkMu per-subscription (subID → *sync.Mutex) Check 互斥：Create 建后异步 Check 与
 	// cron CheckAll 可能对同一订阅并发执行，虽 HitExists + 唯一索引兜底，仍存在双发竞态，
@@ -712,6 +712,7 @@ func parsePipeList(s string) []string {
 // resolveFilterGroups 解析订阅应使用的规则组：
 //   - 洗版订阅优先 BestVersionFilterRuleGroups（允许更严格画质门槛），空则回退普通绑定；
 //   - 普通订阅用 FilterGroups，空则全局 SubscribeFilterRuleGroups。
+//
 // 空切片 = 不过滤（全部保留 PriOrder=0）。
 func resolveFilterGroups(eng *filter.Engine, sub *models.Subscription, bestVersion bool) []string {
 	if bestVersion {

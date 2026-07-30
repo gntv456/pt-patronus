@@ -14,7 +14,9 @@ import (
 // 额外实现 DailyBonusBuyer(POST /api/bonus-shop/exchange {id:28,amount:1} 兑换 1000蝌蚪)。
 type qingwaHandler struct{ nexusPHPBase }
 
-func (qingwaHandler) Match(s SiteRef) bool { return strings.Contains(strings.ToLower(s.Name), "青蛙") }
+func (qingwaHandler) Match(s SiteRef) bool {
+	return strings.Contains(strings.ToLower(s.Name), "青蛙")
+}
 
 // Send 覆写：用基类的 GET 发送，但响应按 ul/li 解析(青蛙 shoutbox 结构不同)。
 func (h qingwaHandler) Send(ctx context.Context, c Ctx, message string) (*Feedback, error) {

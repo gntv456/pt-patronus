@@ -43,7 +43,7 @@ type SiteChain struct {
 	Base
 	sites        *oper.SiteOper
 	registry     *site.Registry
-	hc           *httpclient.Client // 站点 HTTP 客户端（FetchTorrentFile 下载种子用；SetHTTPClient 注入）
+	hc           *httpclient.Client      // 站点 HTTP 客户端（FetchTorrentFile 下载种子用；SetHTTPClient 注入）
 	records      *oper.CheckinRecordOper // 签到历史落库（可选；未注入则不落库，测试用）
 	checkinGuard *spendGuard             // 签到 in-flight 去重（防双击/重放/cron 重叠重复签到）
 

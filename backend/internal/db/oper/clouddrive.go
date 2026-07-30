@@ -22,7 +22,7 @@ func NewCloudDriveOper(db *gorm.DB, c *security.Crypto) *CloudDriveOper {
 // CloudDriveInput 创建/更新网盘入参（Token 明文，由 Oper 加密）。
 type CloudDriveInput struct {
 	Name      string `json:"name" binding:"max=64"`
-	Type      string `json:"type" binding:"max=16"` // 115 | quark | 123
+	Type      string `json:"type" binding:"max=16"`    // 115 | quark | 123
 	Token     string `json:"token" binding:"max=2048"` // cookie(115/夸克) 或 accessToken(123)
 	RootPath  string `json:"root_path" binding:"max=255"`
 	IsDefault bool   `json:"is_default"`

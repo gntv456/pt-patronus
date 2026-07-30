@@ -331,7 +331,7 @@ func (p *externalHTTPPlugin) ensureStarted(ctx context.Context, rt Runtime) erro
 
 // cleanupStartedProcessLocked 在 ensureStarted 失败路径上清理已起的子进程与 host 回调服务，
 // 复位运行态（调用方已持有 p.mu）。recordExit 的后台 goroutine 因 p.cmd 被置 nil 而早退
-//（p.cmd != cmd），不会重复清理或触发重启。lastExit 记录失败原因便于排障。
+// （p.cmd != cmd），不会重复清理或触发重启。lastExit 记录失败原因便于排障。
 func (p *externalHTTPPlugin) cleanupStartedProcessLocked(lastExit string) {
 	if p.cmd != nil && p.cmd.Process != nil {
 		_ = p.cmd.Process.Kill()

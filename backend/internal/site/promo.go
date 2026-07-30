@@ -11,12 +11,12 @@ import (
 type PromoType string
 
 const (
-	PromoNone       PromoType = ""            // 无促销/正常（下载上传均不计优惠）
-	PromoFree       PromoType = "free"        // 免费（下载因子=0）
-	Promo2xFree     PromoType = "2xfree"      // 2X免费（免费+双倍上传）
-	Promo2x         PromoType = "2x"          // 双倍上传（不免费）
-	PromoDiscount   PromoType = "discount"    // 折扣下载（50%/30%等，0<因子<1）
-	Promo2xDiscount PromoType = "2xdiscount"  // 2X+折扣（双倍上传+折扣下载）
+	PromoNone       PromoType = ""           // 无促销/正常（下载上传均不计优惠）
+	PromoFree       PromoType = "free"       // 免费（下载因子=0）
+	Promo2xFree     PromoType = "2xfree"     // 2X免费（免费+双倍上传）
+	Promo2x         PromoType = "2x"         // 双倍上传（不免费）
+	PromoDiscount   PromoType = "discount"   // 折扣下载（50%/30%等，0<因子<1）
+	Promo2xDiscount PromoType = "2xdiscount" // 2X+折扣（双倍上传+折扣下载）
 )
 
 // PromoTypeOf 按 Torrent 的下载/上传因子 + Free 标记判定促销类型。

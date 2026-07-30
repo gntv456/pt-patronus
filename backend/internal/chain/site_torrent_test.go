@@ -219,9 +219,9 @@ func TestApplyFetchedTorrentSkipped(t *testing.T) {
 	// SiteID=0 / magnet / FileContent 已有 → 不调 tf
 	tf := &stubFetcher{content: validTorrentFixture}
 	for name, opts := range map[string]downloader.AddOptions{
-		"no-siteid":     {URL: "https://x.test/dl?id=1"},
-		"magnet":        {URL: "magnet:?xt=urn:btih:aa", SiteID: 7},
-		"has-file":      {URL: "https://x.test/dl?id=1", SiteID: 7, FileContent: []byte("x")},
+		"no-siteid": {URL: "https://x.test/dl?id=1"},
+		"magnet":    {URL: "magnet:?xt=urn:btih:aa", SiteID: 7},
+		"has-file":  {URL: "https://x.test/dl?id=1", SiteID: 7, FileContent: []byte("x")},
 	} {
 		o := opts
 		if err := applyFetchedTorrent(context.Background(), tf, &o); err != nil {

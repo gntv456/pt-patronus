@@ -10,15 +10,15 @@ import (
 
 func TestNormalizeLang(t *testing.T) {
 	cases := map[string]string{
-		"简体中文":            "chs",
-		"繁體中文":            "cht",
-		"繁体中文":            "cht",
-		"English":         "eng",
-		"中英双语":            "bi",
-		"chinese(简)":      "chs",
-		"zh-TW":           "cht",
-		"":                "und",
-		"unknown lang":    "und",
+		"简体中文":         "chs",
+		"繁體中文":         "cht",
+		"繁体中文":         "cht",
+		"English":      "eng",
+		"中英双语":         "bi",
+		"chinese(简)":   "chs",
+		"zh-TW":        "cht",
+		"":             "und",
+		"unknown lang": "und",
 	}
 	for in, want := range cases {
 		if got := normalizeLang(in); got != want {

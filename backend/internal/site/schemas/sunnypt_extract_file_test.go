@@ -16,7 +16,7 @@ func TestSunnyExtractFromFile(t *testing.T) {
 	}
 	items := sunnyParseNewsMD(c)
 	if len(items) < 1 {
-		t.Fatalf("items=%d content head=%q", len(items), c[:min(80,len(c))])
+		t.Fatalf("items=%d content head=%q", len(items), c[:min(80, len(c))])
 	}
 	t.Logf("items=%d first=%s %s", len(items), items[0].Date, items[0].Title)
 }

@@ -18,21 +18,21 @@ func NewTraktHandler(ch *chain.TraktChain) *TraktHandler { return &TraktHandler{
 
 // traktConfigResp 是对外脱敏的配置视图（不回传 client_secret/access_token/refresh_token）。
 type traktConfigResp struct {
-	Enabled                 bool   `json:"enabled"`
-	ClientID                string `json:"client_id"`
-	ClientSecretConfigured  bool   `json:"client_secret_configured"`
-	RedirectURI             string `json:"redirect_uri"`
-	SyncMovies              bool   `json:"sync_movies"`
-	SyncShows               bool   `json:"sync_shows"`
-	Resolution              string `json:"resolution"`
-	DownloaderID            uint   `json:"downloader_id"`
-	Authorized              bool   `json:"authorized"`
-	LastSyncAt              int64  `json:"last_sync_at"`
-	LastSyncCount           int    `json:"last_sync_count"`
-	LastError               string `json:"last_error"`
-	PendingUserCode         string `json:"pending_user_code"`
-	PendingVerificationURL  string `json:"pending_verification_url"`
-	PendingExpiresAt        int64  `json:"pending_expires_at"`
+	Enabled                bool   `json:"enabled"`
+	ClientID               string `json:"client_id"`
+	ClientSecretConfigured bool   `json:"client_secret_configured"`
+	RedirectURI            string `json:"redirect_uri"`
+	SyncMovies             bool   `json:"sync_movies"`
+	SyncShows              bool   `json:"sync_shows"`
+	Resolution             string `json:"resolution"`
+	DownloaderID           uint   `json:"downloader_id"`
+	Authorized             bool   `json:"authorized"`
+	LastSyncAt             int64  `json:"last_sync_at"`
+	LastSyncCount          int    `json:"last_sync_count"`
+	LastError              string `json:"last_error"`
+	PendingUserCode        string `json:"pending_user_code"`
+	PendingVerificationURL string `json:"pending_verification_url"`
+	PendingExpiresAt       int64  `json:"pending_expires_at"`
 }
 
 // GetConfig 返回脱敏配置 + 授权/同步状态。

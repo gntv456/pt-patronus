@@ -24,7 +24,7 @@ func TestQualityScore(t *testing.T) {
 		{"Movie.2024.2160p.WEB-DL.DDP5.1.H.266-GROUP", 93},        // 90+3=93
 		{"Movie.2024.1080p.BluRay.x265.10bit-GROUP", 81},          // 70+8+3=81
 		{"Movie.2024.1080p.WEB-DL.DDP5.01.H.264-GROUP", 74},       // 70+3+1=74
-		{"Movie.2024.720p.WEB-DL.x264-GROUP", 54},                // 50+3+1=54
+		{"Movie.2024.720p.WEB-DL.x264-GROUP", 54},                 // 50+3+1=54
 		{"Movie.2024.480p.SDTV-GROUP", 32},
 		{"random.mkv", 30},
 	}

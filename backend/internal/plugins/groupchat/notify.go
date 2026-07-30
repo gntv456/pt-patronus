@@ -31,11 +31,11 @@ func IconFor(t string) string {
 
 // SiteResult 单站点的喊话结果汇总。
 type SiteResult struct {
-	Site      SiteRef
-	Feedback  []Feedback
-	Failed    []FailedMessage
-	Skipped   int // 因权限/重复跳过的消息数
-	BonusText string // 青蛙每日福利结果
+	Site        SiteRef
+	Feedback    []Feedback
+	Failed      []FailedMessage
+	Skipped     int    // 因权限/重复跳过的消息数
+	BonusText   string // 青蛙每日福利结果
 	LotteryText string // LongPT 抽奖结果
 }
 

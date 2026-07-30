@@ -13,22 +13,22 @@ import (
 type PrizeOutcome struct {
 	PrizeID   int     `json:"prize_id"`
 	PrizeName string  `json:"prize_name"`
-	PrizeType string  `json:"prize_type"`            // LongPT 类型码：01魔力 02VIP 03上传 04彩虹ID … 99未中奖
-	Amount    float64 `json:"amount"`                // prizeValue
-	UnitName  string  `json:"unit_name,omitempty"`   // GB / 天 / 个 …
-	IsWin     bool    `json:"is_win"`                // prizeType != "99"
+	PrizeType string  `json:"prize_type"`          // LongPT 类型码：01魔力 02VIP 03上传 04彩虹ID … 99未中奖
+	Amount    float64 `json:"amount"`              // prizeValue
+	UnitName  string  `json:"unit_name,omitempty"` // GB / 天 / 个 …
+	IsWin     bool    `json:"is_win"`              // prizeType != "99"
 }
 
 // PlayResult 是一次游戏的结果。
 type PlayResult struct {
-	Success bool             `json:"success"`
-	Message string           `json:"message,omitempty"` // 中奖信息 / 失败原因
-	Prize   string           `json:"prize,omitempty"`   // 奖项名/描述
-	PrizeID int              `json:"prize_id,omitempty"` // 奖品 id（九宫格/转盘动画定位用）
-	Amount  float64          `json:"amount,omitempty"`  // 奖励数值（火花/魔力）
-	Balance float64          `json:"balance,omitempty"` // 剩余火花
-	Prizes  []PrizeOutcome   `json:"prizes,omitempty"`  // 多次抽奖结果（连抽）；单抽时含 1 项
-	Raw     map[string]any   `json:"raw,omitempty"`     // 原始响应
+	Success bool           `json:"success"`
+	Message string         `json:"message,omitempty"`  // 中奖信息 / 失败原因
+	Prize   string         `json:"prize,omitempty"`    // 奖项名/描述
+	PrizeID int            `json:"prize_id,omitempty"` // 奖品 id（九宫格/转盘动画定位用）
+	Amount  float64        `json:"amount,omitempty"`   // 奖励数值（火花/魔力）
+	Balance float64        `json:"balance,omitempty"`  // 剩余火花
+	Prizes  []PrizeOutcome `json:"prizes,omitempty"`   // 多次抽奖结果（连抽）；单抽时含 1 项
+	Raw     map[string]any `json:"raw,omitempty"`      // 原始响应
 }
 
 // Creds 是玩游戏所需的站点凭据：cookie 为主；财神等需 username/password 做 API 登录。
@@ -47,17 +47,17 @@ type LotteryGame interface {
 
 // StatsResult 游戏统计（富 UI 用：余额/剩余次数/价格）。
 type StatsResult struct {
-	Balance     float64 `json:"balance"`      // 货币余额（火花/金元宝/魔力）
-	CardNumber  int     `json:"card_number"`  // 剩余刮卡数（cspt）
-	TodaySpins  int     `json:"today_spins"`  // 今日已抽
-	MaxDaily    int     `json:"max_daily"`    // 每日上限
+	Balance     float64 `json:"balance"`     // 货币余额（火花/金元宝/魔力）
+	CardNumber  int     `json:"card_number"` // 剩余刮卡数（cspt）
+	TodaySpins  int     `json:"today_spins"` // 今日已抽
+	MaxDaily    int     `json:"max_daily"`   // 每日上限
 	CostPerPlay float64 `json:"cost_per_play"`
 	// 以下为 LongPT 等站点特有可选字段（omitempty 向后兼容现有游戏）：
-	Discount     int    `json:"discount,omitempty"`      // 连抽折扣（百分比，75 = 7.5 折）
-	Participants int    `json:"participants,omitempty"`  // 每日抽奖当前参与人数
-	StartTime    string `json:"start_time,omitempty"`    // 每日抽奖可参与开始时间
-	EndTime      string `json:"end_time,omitempty"`      // 每日抽奖可参与结束时间
-	OpenTime     string `json:"open_time,omitempty"`     // 每日抽奖开奖时间
+	Discount     int    `json:"discount,omitempty"`     // 连抽折扣（百分比，75 = 7.5 折）
+	Participants int    `json:"participants,omitempty"` // 每日抽奖当前参与人数
+	StartTime    string `json:"start_time,omitempty"`   // 每日抽奖可参与开始时间
+	EndTime      string `json:"end_time,omitempty"`     // 每日抽奖可参与结束时间
+	OpenTime     string `json:"open_time,omitempty"`    // 每日抽奖开奖时间
 }
 
 // BuyOption 购卡/充值档位（cspt 刮刮乐：1/10/50/100 张）。
@@ -97,17 +97,17 @@ type SynthFragment struct {
 
 // SynthesisTarget 勋章合成目标（碎片抽取/合成面板用）。
 type SynthesisTarget struct {
-	ID            int            `json:"id"`
-	Name          string         `json:"name"`
-	Image         string         `json:"image"`
-	Got           int            `json:"got"`      // 已集碎片数（汇总）
-	Need          int            `json:"need"`     // 所需碎片数（汇总）
+	ID            int             `json:"id"`
+	Name          string          `json:"name"`
+	Image         string          `json:"image"`
+	Got           int             `json:"got"`       // 已集碎片数（汇总）
+	Need          int             `json:"need"`      // 所需碎片数（汇总）
 	Fragments     []SynthFragment `json:"fragments"` // 各碎片持有/所需
-	DrawPrice     int            `json:"draw_price"`
-	TenPrice      int            `json:"ten_price"`
-	HundredPrice  int            `json:"hundred_price"`
-	CanSynthesize bool           `json:"can_synthesize"`
-	Pity          string         `json:"pity"` // 保底进度文本
+	DrawPrice     int             `json:"draw_price"`
+	TenPrice      int             `json:"ten_price"`
+	HundredPrice  int             `json:"hundred_price"`
+	CanSynthesize bool            `json:"can_synthesize"`
+	Pity          string          `json:"pity"` // 保底进度文本
 }
 
 // 可选能力接口：游戏按需实现，chain/API 按类型断言分发（对齐 Kotlin LotteryCardShop 等）。
@@ -132,11 +132,11 @@ type MultiPlayable interface {
 
 // MedalNode 六十四卦勋章树节点（LongPT：太极→两仪→四象→八卦→六十四卦 金字塔）。
 type MedalNode struct {
-	MedalID  string `json:"medal_id"`  // 二进制串（卦象："1"=阳爻 "0"=阴爻）；位数=该层爻数
+	MedalID  string `json:"medal_id"` // 二进制串（卦象："1"=阳爻 "0"=阴爻）；位数=该层爻数
 	ParentID string `json:"parent_id"`
-	Type     string `json:"type"`      // taiji/liangyi/sixiang/bagua/liushisi
+	Type     string `json:"type"` // taiji/liangyi/sixiang/bagua/liushisi
 	Name     string `json:"name"`
-	Level    int    `json:"level"`     // 1-5
+	Level    int    `json:"level"` // 1-5
 	ImageURL string `json:"image_url"`
 	Owned    bool   `json:"owned"`
 	NeedYang int    `json:"need_yang"` // 碎片合成所需阳爻数（由 medalId 二进制位数算）
@@ -252,10 +252,10 @@ type BetOption struct {
 
 // BetEventDetail 某主题盘口（bet_odds.php?id=N：主题信息 + 选项赔率列表）。
 type BetEventDetail struct {
-	Event    BetEvent   `json:"event"`
+	Event    BetEvent    `json:"event"`
 	Options  []BetOption `json:"options"`
-	MyOption string     `json:"my_option,omitempty"` // 已押选项
-	Note     string     `json:"note,omitempty"`      // 规则/赔付提示
+	MyOption string      `json:"my_option,omitempty"` // 已押选项
+	Note     string      `json:"note,omitempty"`      // 规则/赔付提示
 }
 
 // EventBettable 赛事押注能力（OurBits 菠菜）：列竞猜主题 + 某主题盘口。
@@ -285,12 +285,12 @@ type Blackjackable interface {
 
 // FlipTier 翻面夺宝奖项档位（PandaPT getFlipTiers：特等/一等/…/五等）。
 type FlipTier struct {
-	ID         string  `json:"id"`                   // a/b/c/d/e/f 或站点 tierId
-	Name       string  `json:"name"`                 // 特等奖 …
-	Reward     float64 `json:"reward"`               // 50000（魔力）
-	RewardType string  `json:"reward_type"`          // coins/medal/vip/none
-	Count      int     `json:"count"`                // 该档卡牌张数（合计 100）
-	Color      string  `json:"color,omitempty"`      // 前端格子配色
+	ID         string  `json:"id"`              // a/b/c/d/e/f 或站点 tierId
+	Name       string  `json:"name"`            // 特等奖 …
+	Reward     float64 `json:"reward"`          // 50000（魔力）
+	RewardType string  `json:"reward_type"`     // coins/medal/vip/none
+	Count      int     `json:"count"`           // 该档卡牌张数（合计 100）
+	Color      string  `json:"color,omitempty"` // 前端格子配色
 }
 
 // FlipTile 翻面夺宝单格（100 格之一）。
@@ -345,9 +345,9 @@ type BigSmallBetSpot struct {
 // BigSmallMyBet 我的下注 / 上局结算（Result/NetResult 仅 last_result 有意义）。
 type BigSmallMyBet struct {
 	GameNo    string  `json:"game_no,omitempty"`
-	BetType   string  `json:"bet_type"`         // big | small
+	BetType   string  `json:"bet_type"` // big | small
 	Amount    float64 `json:"amount"`
-	Result    string  `json:"result,omitempty"`    // 上局开奖 big|small|house
+	Result    string  `json:"result,omitempty"`     // 上局开奖 big|small|house
 	NetResult float64 `json:"net_result,omitempty"` // 上局输赢（正赢负输）
 }
 
@@ -381,7 +381,7 @@ type BigSmallRecord struct {
 	EndTime     string  `json:"end_time,omitempty"`
 	PlayerCount int     `json:"player_count,omitempty"`
 	TotalBet    float64 `json:"total_bet,omitempty"`
-	Result      string  `json:"result"`            // big | small | house
+	Result      string  `json:"result"` // big | small | house
 	MyBetType   string  `json:"my_bet_type,omitempty"`
 	MyBet       float64 `json:"my_bet,omitempty"`
 	MyResult    float64 `json:"my_result,omitempty"` // 我的输赢（正赢负输）
@@ -404,7 +404,7 @@ type BigSmallTask struct {
 // BigSmallProp 道具单项（好学随注 prop_id；熊猫独立 useItem）。
 type BigSmallProp struct {
 	ID       string `json:"id"`
-	Tag      string `json:"tag"`    // code/unique_tag（下单或使用用）
+	Tag      string `json:"tag"` // code/unique_tag（下单或使用用）
 	Name     string `json:"name"`
 	Desc     string `json:"desc,omitempty"`
 	Image    string `json:"image,omitempty"`
@@ -451,9 +451,9 @@ type BigSmallState struct {
 	TrendText     string        `json:"trend_text,omitempty"`
 	RecentResults []string      `json:"recent_results,omitempty"` // 走势点阵：big|small|house
 
-	Rankings   []BigSmallRank     `json:"rankings,omitempty"`
-	MyRecords  []BigSmallRecord   `json:"my_records,omitempty"`
-	AllRecords []BigSmallRecord   `json:"all_records,omitempty"`
+	Rankings   []BigSmallRank   `json:"rankings,omitempty"`
+	MyRecords  []BigSmallRecord `json:"my_records,omitempty"`
+	AllRecords []BigSmallRecord `json:"all_records,omitempty"`
 
 	Tasks      []BigSmallTask      `json:"tasks,omitempty"`
 	Props      []BigSmallProp      `json:"props,omitempty"`

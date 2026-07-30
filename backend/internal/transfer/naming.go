@@ -10,12 +10,12 @@ import (
 
 // namingCtx 是命名模板的上下文（对齐 MP 的 RENAME_FORMAT 变量集，精简）。
 type namingCtx struct {
-	Title        string
-	Year         int
-	Resolution   string
-	ReleaseGroup string
-	Season       int
-	Episode      int
+	Title         string
+	Year          int
+	Resolution    string
+	ReleaseGroup  string
+	Season        int
+	Episode       int
 	SeasonEpisode string
 }
 

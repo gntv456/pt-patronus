@@ -122,7 +122,7 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 		msgs = trimMessages(msgs, lc.Model, lc.MaxTokens)
 		toolSchemas := a.tools.Schemas(ac.EnabledTools)
 		provider := withRetry(a.newProvider(lc)) // 429/5xx/网络瞬时错误自动指数退避重试
-		counted = true                            // 即将发起 LLM 调用，开始计入统计
+		counted = true                           // 即将发起 LLM 调用，开始计入统计
 
 		// 4. ReAct 循环
 		for iter := 0; iter < ac.MaxIterations; iter++ {

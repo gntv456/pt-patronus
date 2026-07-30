@@ -199,10 +199,10 @@ func (c *TraktChain) SyncAll(ctx context.Context) error {
 	if c.notice != nil {
 		_ = c.notice.Notice(ctx, notice.Input{
 			Source: notice.SourceSubscribeHit, // 复用订阅命中通道
-			Key:   fmt.Sprintf("trakt:%d", s.LastSyncAt),
-			Title: "Trakt 同步完成",
-			Body:  fmt.Sprintf("本次新增 %d 条订阅。", created),
-			Level: "success",
+			Key:    fmt.Sprintf("trakt:%d", s.LastSyncAt),
+			Title:  "Trakt 同步完成",
+			Body:   fmt.Sprintf("本次新增 %d 条订阅。", created),
+			Level:  "success",
 		}, false)
 	}
 	return nil

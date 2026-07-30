@@ -541,9 +541,11 @@ func (m *Manager) installedVersion(id string) string {
 // normalizeMarketSource 把市场源地址归一化为可直接请求的 URL/路径。
 // GitHub 仓库页（含 owner/repo 简写）→ jsDelivr CDN 上的 plugin-market.json
 // （jsDelivr 国内/全球均比 raw.githubusercontent.com 直连快且稳定，raw 国内偶发 >30s 超时）：
-//   https://github.com/o/r                  → https://cdn.jsdelivr.net/gh/o/r@main/plugin-market.json
-//   https://github.com/o/r/tree/dev/market  → https://cdn.jsdelivr.net/gh/o/r@dev/market/plugin-market.json
-//   o/r / github.com/o/r（无 scheme）        → 同上补 https
+//
+//	https://github.com/o/r                  → https://cdn.jsdelivr.net/gh/o/r@main/plugin-market.json
+//	https://github.com/o/r/tree/dev/market  → https://cdn.jsdelivr.net/gh/o/r@dev/market/plugin-market.json
+//	o/r / github.com/o/r（无 scheme）        → 同上补 https
+//
 // 已是 raw.githubusercontent.com / file / 其它 http(s) 源 → 原样返回。
 // resolveArchiveSource 会把 index 内相对 archive 基于此 URL 解析，自动指向仓库内 zip。
 func normalizeMarketSource(source string) string {

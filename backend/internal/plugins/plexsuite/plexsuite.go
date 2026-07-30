@@ -27,11 +27,11 @@ type Settings struct {
 	AudioLanguage    string `json:"audio_language"`
 	SubtitleLanguage string `json:"subtitle_language"`
 	// 各特性开关
-	EnableLocalization bool `json:"enable_localization"` // 库本地化（语言/国家）
-	EnableSkipIntro    bool `json:"enable_skip_intro"`   // 触发片头分析
-	EnableAutoLanguage bool `json:"enable_auto_language"` // 设置自动语言偏好
-	EnableIPOptimize   bool `json:"enable_ip_optimize"`   // IP 优选探测
-	LibraryLanguage    string `json:"library_language"`   // 本地化：库语言（zh/en…）
+	EnableLocalization bool   `json:"enable_localization"`  // 库本地化（语言/国家）
+	EnableSkipIntro    bool   `json:"enable_skip_intro"`    // 触发片头分析
+	EnableAutoLanguage bool   `json:"enable_auto_language"` // 设置自动语言偏好
+	EnableIPOptimize   bool   `json:"enable_ip_optimize"`   // IP 优选探测
+	LibraryLanguage    string `json:"library_language"`     // 本地化：库语言（zh/en…）
 }
 
 // FeatureResult 是单个特性一次执行的产出。
@@ -44,10 +44,10 @@ type FeatureResult struct {
 
 // ProbeResult 是 IP 优选的一次候选探测。
 type ProbeResult struct {
-	URL      string `json:"url"`
-	OK       bool   `json:"ok"`
-	Latency  int    `json:"latency_ms"`
-	Error    string `json:"error,omitempty"`
+	URL     string `json:"url"`
+	OK      bool   `json:"ok"`
+	Latency int    `json:"latency_ms"`
+	Error   string `json:"error,omitempty"`
 }
 
 // Engine 编排 Plex 套件特性。hc 复用宿主 httpclient（Plex 多为内网，AllowPrivate=true）。
@@ -235,9 +235,9 @@ func serializeProbes(probes []ProbeResult) string {
 
 // Library 是 Plex 库的统一视图。
 type Library struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Type  string `json:"type"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 func (e *Engine) libraries(ctx context.Context, s Settings) ([]Library, error) {

@@ -13,8 +13,9 @@ import (
 // 特殊站通过嵌入本结构体 + 覆写 Send/FetchFeedback 实现差异化。
 //
 // 默认协议(对标原版 ISiteHandler.send_messagebox)：
-//   Send:         GET /shoutbox.php?shbox_text=<msg>&shout=我喊&sent=yes&type=shoutbox
-//   FetchFeedback: GET /shoutbox.php → goquery 解析 //tr[td.shoutrow] 找含 @username 的行
+//
+//	Send:         GET /shoutbox.php?shbox_text=<msg>&shout=我喊&sent=yes&type=shoutbox
+//	FetchFeedback: GET /shoutbox.php → goquery 解析 //tr[td.shoutrow] 找含 @username 的行
 type nexusPHPBase struct{}
 
 func shoutboxURL(base string) string { return joinBase(base, "/shoutbox.php") }

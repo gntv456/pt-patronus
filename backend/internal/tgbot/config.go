@@ -68,11 +68,11 @@ func Redacted(c Config) map[string]any {
 		ids = []int64{}
 	}
 	return map[string]any{
-		"enabled":             c.Enabled,
+		"enabled":              c.Enabled,
 		"bot_token_configured": c.BotTokenEnc != "",
-		"allowed_user_ids":    ids,
-		"allow_group_chat":    c.AllowGroupChat,
-		"api_url":             c.APIURL,
+		"allowed_user_ids":     ids,
+		"allow_group_chat":     c.AllowGroupChat,
+		"api_url":              c.APIURL,
 	}
 }
 

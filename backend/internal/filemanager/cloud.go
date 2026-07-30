@@ -72,5 +72,5 @@ func (b *cloudBackend) Mkdir(ctx context.Context, p string) error {
 
 // 网盘只读：Rename/Move/Copy 均不支持（同 Upload/Delete/Mkdir）。
 func (b *cloudBackend) Rename(ctx context.Context, p, newName string) error { return ErrCloudReadOnly }
-func (b *cloudBackend) Move(ctx context.Context, src, dstDir string) error   { return ErrCloudReadOnly }
-func (b *cloudBackend) Copy(ctx context.Context, src, dstDir string) error   { return ErrCloudReadOnly }
+func (b *cloudBackend) Move(ctx context.Context, src, dstDir string) error  { return ErrCloudReadOnly }
+func (b *cloudBackend) Copy(ctx context.Context, src, dstDir string) error  { return ErrCloudReadOnly }

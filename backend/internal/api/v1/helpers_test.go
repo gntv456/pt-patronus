@@ -14,10 +14,10 @@ import (
 func TestClampDays(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name        string
-		q           string
+		name         string
+		q            string
 		def, min, mx int
-		want        int
+		want         int
 	}{
 		{"empty uses default", "", 30, 1, 365, 30},
 		{"non-numeric uses default", "abc", 30, 1, 365, 30},
@@ -42,9 +42,9 @@ func TestClampDays(t *testing.T) {
 func TestClassifyCommandRisk(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name    string
-		cmd     string
-		risk    string
+		name       string
+		cmd        string
+		risk       string
 		wantReason bool // 仅校验是否给了 reason（具体文案易变，断言非空即可）
 	}{
 		{"rm -rf root", "rm -rf /", "high", true},
@@ -89,11 +89,11 @@ func TestParseLimit(t *testing.T) {
 		want    int64
 		wantErr bool
 	}{
-		{"", 0, false},        // 空串=不限速
+		{"", 0, false}, // 空串=不限速
 		{"1048576", 1048576, false},
 		{"0", 0, false},
-		{"abc", 0, true},      // 非法不可静默当 0
-		{"-1", 0, true},       // 负数禁止（防误解除限速）
+		{"abc", 0, true}, // 非法不可静默当 0
+		{"-1", 0, true},  // 负数禁止（防误解除限速）
 		{"1.5", 0, true},
 	}
 	for _, c := range cases {
@@ -166,16 +166,16 @@ func TestMaskSecret(t *testing.T) {
 func TestMediaImageRefererMapping(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		host   string
-		ref    string
-		ok     bool
+		host string
+		ref  string
+		ok   bool
 	}{
-		{"img.doubanio.com", "https://movie.douban.com/", true},   // suffix
-		{"doubanio.com", "https://movie.douban.com/", true},       // exact
-		{"DOUBANIO.COM", "https://movie.douban.com/", true},       // lower
-		{"image.tmdb.org", "", true},                              // 白名单无需 referer
-		{"evil.com", "", false},                                   // 非白名单
-		{"img9.doubanio.com.cn", "", false},                       // .cn 后缀不匹配 doubanio.com
+		{"img.doubanio.com", "https://movie.douban.com/", true}, // suffix
+		{"doubanio.com", "https://movie.douban.com/", true},     // exact
+		{"DOUBANIO.COM", "https://movie.douban.com/", true},     // lower
+		{"image.tmdb.org", "", true},                            // 白名单无需 referer
+		{"evil.com", "", false},                                 // 非白名单
+		{"img9.doubanio.com.cn", "", false},                     // .cn 后缀不匹配 doubanio.com
 	}
 	for _, c := range cases {
 		c := c
@@ -226,9 +226,9 @@ func TestCommandRunSource(t *testing.T) {
 		{"manual", "manual"},
 		{"terminal", "terminal"},
 		{"", "batch"},
-		{"  deploy  ", "deploy"},   // trim
-		{"unknown", "batch"},       // 默认
-		{"BATCH", "batch"},         // 大小写不匹配→默认（仅精确匹配白名单）
+		{"  deploy  ", "deploy"}, // trim
+		{"unknown", "batch"},     // 默认
+		{"BATCH", "batch"},       // 大小写不匹配→默认（仅精确匹配白名单）
 	}
 	for _, c := range cases {
 		if got := commandRunSource(c.in); got != c.want {
@@ -287,9 +287,9 @@ func TestParseUintSlice(t *testing.T) {
 		want []uint
 	}{
 		{"1,2,3", []uint{1, 2, 3}},
-		{" 1 , 2 ,, 3 ", []uint{1, 2, 3}},   // trim + 空丢弃
-		{"1,abc,3", []uint{1, 3}},            // 非法项跳过
-		{"0,5", []uint{0, 5}},                // 0 保留（不滤零）
+		{" 1 , 2 ,, 3 ", []uint{1, 2, 3}}, // trim + 空丢弃
+		{"1,abc,3", []uint{1, 3}},         // 非法项跳过
+		{"0,5", []uint{0, 5}},             // 0 保留（不滤零）
 	}
 	for _, c := range cases {
 		c := c
@@ -420,8 +420,8 @@ func TestParseMailbox(t *testing.T) {
 		{"cheater", site.MailboxCheater},
 		{"reports", site.MailboxReports},
 		{"staff", site.MailboxStaff},
-		{"", site.MailboxInbox},           // 默认 inbox
-		{"unknown", site.MailboxInbox},    // 未知回退 inbox
+		{"", site.MailboxInbox},        // 默认 inbox
+		{"unknown", site.MailboxInbox}, // 未知回退 inbox
 	}
 	for _, c := range cases {
 		c := c

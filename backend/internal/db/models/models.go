@@ -88,9 +88,9 @@ type SiteConnectivity struct {
 	Status     string    `gorm:"size:16" json:"status"` // connected | disconnected | disabled
 	Level      string    `gorm:"size:64" json:"level"`
 	ErrorMsg   string    `gorm:"size:512" json:"error_msg"`
-	Success    int       `gorm:"default:0" json:"success"`      // 累计成功次数（connected 时 +1）
-	Fail       int       `gorm:"default:0" json:"fail"`         // 累计失败次数（disconnected 时 +1）
-	AvgSeconds float64   `gorm:"default:0" json:"avg_seconds"`  // 平均成功响应耗时（秒，仅 seconds>0 的成功计入，snapshot 不计）
+	Success    int       `gorm:"default:0" json:"success"`     // 累计成功次数（connected 时 +1）
+	Fail       int       `gorm:"default:0" json:"fail"`        // 累计失败次数（disconnected 时 +1）
+	AvgSeconds float64   `gorm:"default:0" json:"avg_seconds"` // 平均成功响应耗时（秒，仅 seconds>0 的成功计入，snapshot 不计）
 	CheckedAt  time.Time `json:"checked_at"`
 }
 
@@ -790,19 +790,19 @@ type BrushFlowTask struct {
 	Paused       bool   `gorm:"default:false" json:"paused"`    // 加入时暂停(手动放行)
 	FilterGroups string `gorm:"size:255" json:"filter_groups"`  // 绑定规则组（| 分隔，空=用体积/做种/Free 硬过滤）
 	// 删除规则（满足任一即删；全 0 = 永不自动删）
-	DeleteRatio     float64 `json:"delete_ratio"`                      // 分享率达此值删，0=不限
-	DeleteSeedHours float64 `json:"delete_seed_hours"`                 // 做种时长达此值删，0=不限
-	DeleteUploadMB  int64   `json:"delete_upload_mb"`                  // 累计上传达此值删，0=不限
-	DeleteFiles     bool    `gorm:"default:false" json:"delete_files"` // 删种时是否删文件
+	DeleteRatio     float64 `json:"delete_ratio"`                         // 分享率达此值删，0=不限
+	DeleteSeedHours float64 `json:"delete_seed_hours"`                    // 做种时长达此值删，0=不限
+	DeleteUploadMB  int64   `json:"delete_upload_mb"`                     // 累计上传达此值删，0=不限
+	DeleteFiles     bool    `gorm:"default:false" json:"delete_files"`    // 删种时是否删文件
 	UseShareLimit   bool    `gorm:"default:false" json:"use_share_limit"` // 开启：RunSweep 时对任务种子设下载器原生 share limit（达标即暂停，即时保护，补充应用层扫删）；复用 DeleteRatio/DeleteSeedHours 作阈值
 	// 删种增强（对标 autoremove；0/空=不启用；默认 DeleteLogic=or 保持旧行为）
-	DeleteMinUPRateKB   int64   `json:"delete_min_up_rate_kb"`                      // 上传速度低于此值(KB/s)且已完成做种 → 删
-	DeleteInactiveHours float64 `json:"delete_inactive_hours"`                      // 最后活跃超过此小时 → 删
-	DeleteLogic         string  `gorm:"size:8;default:or" json:"delete_logic"`      // or=任一命中即删 / and=已配置项全部命中
-	DeleteRuleExpr      string  `gorm:"size:512" json:"delete_rule_expr"`           // 可选布尔表达式（非空时优先于基础条件组合）
-	MaxTotalSizeGB      float64 `json:"max_total_size_gb"`                          // 本任务种子总体积上限(GB)，超限按最慢上传淘汰
+	DeleteMinUPRateKB   int64   `json:"delete_min_up_rate_kb"`                 // 上传速度低于此值(KB/s)且已完成做种 → 删
+	DeleteInactiveHours float64 `json:"delete_inactive_hours"`                 // 最后活跃超过此小时 → 删
+	DeleteLogic         string  `gorm:"size:8;default:or" json:"delete_logic"` // or=任一命中即删 / and=已配置项全部命中
+	DeleteRuleExpr      string  `gorm:"size:512" json:"delete_rule_expr"`      // 可选布尔表达式（非空时优先于基础条件组合）
+	MaxTotalSizeGB      float64 `json:"max_total_size_gb"`                     // 本任务种子总体积上限(GB)，超限按最慢上传淘汰
 	// 删种 P1：swarm 人数（NumComplete/NumIncomplete，0=不启用）
-	DeleteMaxSwarmSeeders  int `json:"delete_max_swarm_seeders"`   // swarm 做种数 > 此值 → 删
+	DeleteMaxSwarmSeeders  int `json:"delete_max_swarm_seeders"`  // swarm 做种数 > 此值 → 删
 	DeleteMinSwarmLeechers int `json:"delete_min_swarm_leechers"` // swarm 下载数 < 此值（且已做种）→ 删
 	// 删种 P1：最小做种时长兜底（防止刚完成做种瞬时速度/swarm 为 0 即被误删）
 	DeleteMinSeedMinutes int `gorm:"default:0" json:"delete_min_seed_minutes"` // 已完成做种满此分钟数后才允许瞬时规则（低速/swarm）生效，0=不限

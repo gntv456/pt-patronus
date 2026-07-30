@@ -137,11 +137,11 @@ func (c *embyJellyfinClient) PlayedItems(ctx context.Context, userID string, lim
 		c.apiRoot, esc(userID), limit)
 	var res struct {
 		Items []struct {
-			ID    string `json:"Id"`
-			Name  string `json:"Name"`
-			Type  string `json:"Type"`
-			Year  int    `json:"ProductionYear"`
-			User  struct {
+			ID   string `json:"Id"`
+			Name string `json:"Name"`
+			Type string `json:"Type"`
+			Year int    `json:"ProductionYear"`
+			User struct {
 				PlayCount    int    `json:"PlayCount"`
 				LastPlayed   string `json:"LastPlayedDate"`
 				RuntimeTicks int64  `json:"RuntimeTicks"` // 10μs 单位

@@ -89,7 +89,6 @@ func (h *CookieCloudHandler) Sync(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "report": report})
 }
 
-
 // Push 仅推送本地站点 cookie 到 CookieCloud（管理员）。
 func (h *CookieCloudHandler) Push(c *gin.Context) {
 	report, err := h.ch.Push(c.Request.Context())

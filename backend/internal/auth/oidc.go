@@ -31,12 +31,12 @@ type SettingsStore interface {
 
 // OIDCSettings 是管理员配置的 OIDC Provider 凭据与开关。
 type OIDCSettings struct {
-	Enabled         bool   `json:"enabled"`
-	Issuer          string `json:"issuer"`           // 如 https://auth.example.com（不含 /.well-known）
-	ClientID        string `json:"client_id"`
-	ClientSecret    string `json:"client_secret"`
-	Scopes          string `json:"scopes"`           // 默认 "openid profile email"
-	DisplayName     string `json:"display_name"`     // 登录按钮文案，默认 "OIDC / SSO"
+	Enabled          bool   `json:"enabled"`
+	Issuer           string `json:"issuer"` // 如 https://auth.example.com（不含 /.well-known）
+	ClientID         string `json:"client_id"`
+	ClientSecret     string `json:"client_secret"`
+	Scopes           string `json:"scopes"`            // 默认 "openid profile email"
+	DisplayName      string `json:"display_name"`      // 登录按钮文案，默认 "OIDC / SSO"
 	FrontendRedirect string `json:"frontend_redirect"` // 授权成功后把浏览器送去的前端路径，默认 /login
 }
 
@@ -47,10 +47,10 @@ func defaultOIDCSettings() OIDCSettings {
 
 // UserInfo 是从 userinfo 端点解析出的身份（字段按 OIDC standard claims 取）。
 type UserInfo struct {
-	Sub       string `json:"sub"`
-	Username  string `json:"preferred_username"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
+	Sub      string `json:"sub"`
+	Username string `json:"preferred_username"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
 }
 
 // discovery 是 /.well-known/openid-configuration 的必要字段。
@@ -63,10 +63,10 @@ type discovery struct {
 
 // OIDCService 编排 OIDC 流程：发现 + 授权 URL + 令牌交换 + userinfo。
 type OIDCService struct {
-	store SettingsStore
-	hc    *http.Client
-	mu    sync.Mutex
-	disco map[string]discovery // issuer → discovery（带 TTL 见 discoTTL）
+	store   SettingsStore
+	hc      *http.Client
+	mu      sync.Mutex
+	disco   map[string]discovery // issuer → discovery（带 TTL 见 discoTTL）
 	discoAt map[string]time.Time
 }
 
@@ -161,8 +161,8 @@ func (s *OIDCService) discover(ctx context.Context, issuer string) (discovery, e
 
 // FlowResult 是 StartFlow 的产出：浏览器要跳转的授权 URL + 写回浏览器的 cookie 键值。
 type FlowResult struct {
-	AuthorizeURL string
-	StateCookie  http.Cookie
+	AuthorizeURL   string
+	StateCookie    http.Cookie
 	VerifierCookie http.Cookie
 }
 

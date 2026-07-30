@@ -26,11 +26,11 @@ func registerHostMCPTools(srv *mcp.Server, siteOp *oper.SiteOper, siteCh *chain.
 			subs, _ := subCh.List()
 			dls, _ := dlOp.List()
 			return mcpJSON(map[string]any{
-				"app":            "PTPatronus",
-				"version":        version.Version,
-				"sites":          len(sites),
-				"subscriptions":  len(subs),
-				"downloaders":    len(dls),
+				"app":           "PTPatronus",
+				"version":       version.Version,
+				"sites":         len(sites),
+				"subscriptions": len(subs),
+				"downloaders":   len(dls),
 			}), nil
 		},
 	})

@@ -13,13 +13,13 @@ import (
 
 // PlaybackReport 观影报告：聚合某服务器近 N 天的播放数据（用户列表 + 最近播放 + 热门条目）。
 type PlaybackReport struct {
-	Server      string               `json:"server"`
-	GeneratedAt time.Time            `json:"generated_at"`
-	Days        int                  `json:"days"`
-	Users       []mediaserver.User   `json:"users"`
+	Server      string                 `json:"server"`
+	GeneratedAt time.Time              `json:"generated_at"`
+	Days        int                    `json:"days"`
+	Users       []mediaserver.User     `json:"users"`
 	RecentPlays []mediaserver.PlayItem `json:"recent_plays"`
 	TopItems    []mediaserver.PlayItem `json:"top_items"`
-	TotalPlays  int                  `json:"total_plays"`
+	TotalPlays  int                    `json:"total_plays"`
 }
 
 // reportRecentLimit 单用户最近播放抓取条数（观影报告默认覆盖面；过大拖慢）。

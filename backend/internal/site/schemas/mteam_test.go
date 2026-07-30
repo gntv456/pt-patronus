@@ -297,15 +297,15 @@ func TestMTeamSearchCategoryMode(t *testing.T) {
 // 地址时，API 调用自动改走 api 主机，不再撞 Cloudflare。
 func TestMtAPIBase(t *testing.T) {
 	cases := []struct{ in, want string }{
-		{"https://kp.m-team.cc", "https://api.m-team.cc"},       // TP 网页端（用户报错场景）
-		{"https://personal.m-team.cc", "https://api.m-team.cc"}, // 个人中心网页端
-		{"https://www.m-team.cc", "https://api.m-team.cc"},      // 其它官方子域
-		{"https://m-team.cc", "https://api.m-team.cc"},          // 裸域
-		{"https://KP.M-Team.CC", "https://api.m-team.cc"},       // 大小写不敏感
-		{"https://api.m-team.cc", "https://api.m-team.cc"},      // 已是 API 主机，不动
+		{"https://kp.m-team.cc", "https://api.m-team.cc"},                // TP 网页端（用户报错场景）
+		{"https://personal.m-team.cc", "https://api.m-team.cc"},          // 个人中心网页端
+		{"https://www.m-team.cc", "https://api.m-team.cc"},               // 其它官方子域
+		{"https://m-team.cc", "https://api.m-team.cc"},                   // 裸域
+		{"https://KP.M-Team.CC", "https://api.m-team.cc"},                // 大小写不敏感
+		{"https://api.m-team.cc", "https://api.m-team.cc"},               // 已是 API 主机，不动
 		{"https://mt-proxy.example.com", "https://mt-proxy.example.com"}, // 自建反代，原样
-		{"https://example.com/path", "https://example.com/path"},        // 第三方域 + path，原样
-		{"", ""},             // 空串
+		{"https://example.com/path", "https://example.com/path"},         // 第三方域 + path，原样
+		{"", ""},               // 空串
 		{"garbage", "garbage"}, // 无 scheme/host，原样返回
 	}
 	for _, tc := range cases {

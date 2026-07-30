@@ -45,12 +45,12 @@ type Token struct {
 
 // WatchlistItem 是一条 watchlist 条目（movie/show）。
 type WatchlistItem struct {
-	Type    string   `json:"type"` // movie | show | season | episode
-	Title   string   `json:"title"`
-	Year    int      `json:"year"`
-	TMDBID  int      `json:"tmdb"`
-	IMDbID  string   `json:"imdb"`
-	TraktID int      `json:"trakt"`
+	Type    string `json:"type"` // movie | show | season | episode
+	Title   string `json:"title"`
+	Year    int    `json:"year"`
+	TMDBID  int    `json:"tmdb"`
+	IMDbID  string `json:"imdb"`
+	TraktID int    `json:"trakt"`
 }
 
 // rawWatchlistItem 对应 Trakt 返回结构：{type, movie:{title,year,ids:{...}}}

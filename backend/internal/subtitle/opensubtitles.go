@@ -56,12 +56,12 @@ func (p *opensubtitlesProvider) Search(ctx context.Context, query string, opts S
 		Data []struct {
 			ID         string `json:"id"`
 			Attributes struct {
-				FileName     string `json:"file_name"`
-				Language     string `json:"language"`
-				DownloadCnt  int    `json:"download_count"`
-				Ratings      int    `json:"ratings"`
-				Release      string `json:"release"`
-				Files []struct {
+				FileName    string `json:"file_name"`
+				Language    string `json:"language"`
+				DownloadCnt int    `json:"download_count"`
+				Ratings     int    `json:"ratings"`
+				Release     string `json:"release"`
+				Files       []struct {
 					FileID   json.Number `json:"file_id"`
 					FileName string      `json:"file_name"`
 				} `json:"files"`

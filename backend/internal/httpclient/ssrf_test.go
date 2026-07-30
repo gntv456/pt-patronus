@@ -92,8 +92,10 @@ func TestAssertPublicURLKernelClassification(t *testing.T) {
 		wantErr bool // 是否应有错（nil 除外）
 	}{
 		{
-			name:    "resolved private ip",
-			lookup:  func(ctx context.Context, host string) ([]net.IP, error) { return []net.IP{net.ParseIP("10.1.2.3")}, nil },
+			name: "resolved private ip",
+			lookup: func(ctx context.Context, host string) ([]net.IP, error) {
+				return []net.IP{net.ParseIP("10.1.2.3")}, nil
+			},
 			blocked: true,
 			wantErr: true,
 		},
@@ -102,8 +104,10 @@ func TestAssertPublicURLKernelClassification(t *testing.T) {
 			lookup: func(ctx context.Context, host string) ([]net.IP, error) { return []net.IP{net.ParseIP("8.8.8.8")}, nil },
 		},
 		{
-			name:    "resolved mix incl private",
-			lookup:  func(ctx context.Context, host string) ([]net.IP, error) { return []net.IP{net.ParseIP("8.8.8.8"), net.ParseIP("169.254.169.254")}, nil },
+			name: "resolved mix incl private",
+			lookup: func(ctx context.Context, host string) ([]net.IP, error) {
+				return []net.IP{net.ParseIP("8.8.8.8"), net.ParseIP("169.254.169.254")}, nil
+			},
 			blocked: true,
 			wantErr: true,
 		},

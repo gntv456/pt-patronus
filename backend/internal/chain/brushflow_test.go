@@ -48,11 +48,11 @@ func TestBFFilterAndSort(t *testing.T) {
 	task := &models.BrushFlowTask{MinSeeders: 1, MaxSeeders: 50, FreeOnly: true, MinSizeMB: 500}
 	in := []site.Torrent{
 		{ID: "1", Title: "a", DownloadURL: "u1", Size: "1 GB", Seeders: 30, Free: true},
-		{ID: "2", Title: "b", DownloadURL: "u2", Size: "2 GB", Seeders: 5, Free: false},  // 非免费过滤
+		{ID: "2", Title: "b", DownloadURL: "u2", Size: "2 GB", Seeders: 5, Free: false}, // 非免费过滤
 		{ID: "3", Title: "c", DownloadURL: "u3", Size: "3 GB", Seeders: 10, Free: true},
 		{ID: "4", Title: "d", DownloadURL: "u4", Size: "4 GB", Seeders: 100, Free: true}, // seeders 超
 		{ID: "5", Title: "e", DownloadURL: "u5", Size: "100 MB", Seeders: 8, Free: true}, // 体积过小
-		{ID: "6", Title: "f", Size: "5 GB", Seeders: 3, Free: true},                     // 无下载链接
+		{ID: "6", Title: "f", Size: "5 GB", Seeders: 3, Free: true},                      // 无下载链接
 	}
 	out := bfFilterAndSort(in, task)
 	if len(out) != 2 {
@@ -124,7 +124,6 @@ func TestBFShareLimits(t *testing.T) {
 		t.Errorf("both want 3/120, got %v/%v", lim.RatioLimit, lim.SeedingTimeLimit)
 	}
 }
-
 
 func TestBFMatchRuleEnhanced(t *testing.T) {
 	now := time.Now()

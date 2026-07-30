@@ -58,10 +58,10 @@ type flarumRelationships struct {
 
 // flarumResource 是 JSON:API 资源（forum document 的 data、included[]、user document 的 data）。
 type flarumResource struct {
-	Type          string                 `json:"type"`
-	ID            string                 `json:"id"`
-	Attributes    map[string]any         `json:"attributes"`
-	Relationships flarumRelationships    `json:"relationships"`
+	Type          string              `json:"type"`
+	ID            string              `json:"id"`
+	Attributes    map[string]any      `json:"attributes"`
+	Relationships flarumRelationships `json:"relationships"`
 }
 
 // flarumForumDoc 是 GET /api 的响应结构。
@@ -70,8 +70,12 @@ type flarumForumDoc struct {
 		Relationships struct {
 			// 当前登录用户关系：JSON:API 形如 {"data":{"type":"users","id":"6457"}}。
 			// 标准为 currentUser，这两个二开站用 actor；两者皆查兼容上游与二开。
-			Actor       *struct{ Data *flarumRef `json:"data"` } `json:"actor"`
-			CurrentUser *struct{ Data *flarumRef `json:"data"` } `json:"currentUser"`
+			Actor *struct {
+				Data *flarumRef `json:"data"`
+			} `json:"actor"`
+			CurrentUser *struct {
+				Data *flarumRef `json:"data"`
+			} `json:"currentUser"`
 		} `json:"relationships"`
 	} `json:"data"`
 	Included []flarumResource `json:"included"`

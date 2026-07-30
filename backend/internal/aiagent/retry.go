@@ -15,8 +15,8 @@ import (
 // 仅重试 ChatStream 的「立即错误」（建连/首响）；流内中途错误（EventError）不重试——
 // 无法干净重放已部分下发的流，且中途错误多为上游内容问题而非可重试的传输问题。
 const (
-	defaultMaxRetries  = 3                          // 额外重试次数（首次 + 3 次 = 最多 4 次请求）
-	defaultBaseBackoff = 800 * time.Millisecond    // 指数退避基数：800ms → 1.6s → 3.2s
+	defaultMaxRetries  = 3                      // 额外重试次数（首次 + 3 次 = 最多 4 次请求）
+	defaultBaseBackoff = 800 * time.Millisecond // 指数退避基数：800ms → 1.6s → 3.2s
 )
 
 // retryProvider 包装一个 provider，对可重试错误按指数退避重试。

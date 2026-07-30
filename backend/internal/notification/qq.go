@@ -53,13 +53,15 @@ func (q *QQ) Name() string { return "qq" }
 // qqMessage 是 QQ 主动消息请求体。
 // msg_type=0 文本、msg_type=2 Markdown；Markdown 走 markdown.content。
 type qqMessage struct {
-	Content   string          `json:"content,omitempty"`
-	MsgType   int             `json:"msg_type"`
-	Markdown  *qqMarkdownBody `json:"markdown,omitempty"`
-	MsgID     string          `json:"msg_id,omitempty"`
-	MsgSeq    int             `json:"msg_seq,omitempty"`
+	Content  string          `json:"content,omitempty"`
+	MsgType  int             `json:"msg_type"`
+	Markdown *qqMarkdownBody `json:"markdown,omitempty"`
+	MsgID    string          `json:"msg_id,omitempty"`
+	MsgSeq   int             `json:"msg_seq,omitempty"`
 }
-type qqMarkdownBody struct{ Content string `json:"content"` }
+type qqMarkdownBody struct {
+	Content string `json:"content"`
+}
 
 // qqError 是 QQ API 业务错误（HTTP 200 但 code != 0）。
 type qqError struct {

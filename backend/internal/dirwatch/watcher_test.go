@@ -14,7 +14,7 @@ func TestScanAndProcessSkipsTempAndNonMedia(t *testing.T) {
 	dir := t.TempDir()
 	_ = os.WriteFile(filepath.Join(dir, "Movie.2024.mkv"), []byte("x"), 0o644)
 	_ = os.WriteFile(filepath.Join(dir, "incomplete.part"), []byte("x"), 0o644) // 临时扩展名
-	_ = os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("x"), 0o644)      // 非媒体
+	_ = os.WriteFile(filepath.Join(dir, "notes.txt"), []byte("x"), 0o644)       // 非媒体
 
 	var mu sync.Mutex
 	var got []transfer.FileInput

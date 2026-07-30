@@ -14,7 +14,7 @@ import (
 
 func TestManagerRegistersUsefulBuiltinPlugins(t *testing.T) {
 	t.Skip("feature builtins moved to open plugin market")
-	
+
 	db := newPluginTestDB(t)
 	m := NewManager(db, event.New(), nil, nil, nil)
 

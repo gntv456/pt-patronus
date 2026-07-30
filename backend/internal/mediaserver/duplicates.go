@@ -7,12 +7,12 @@ import (
 
 // DuplicateGroup 一组判定为重复的条目（同一 TMDB/IMDb ID，或归一化标题+年份相同）。
 type DuplicateGroup struct {
-	Key   string          `json:"key"`   // 归并键（provider id 或 normalized title+year）
-	Title string          `json:"title"`
-	Year  int             `json:"year"`
-	Type  string          `json:"type"`
-	Count int             `json:"count"`
-	Items []DetailedItem  `json:"items"`
+	Key   string         `json:"key"` // 归并键（provider id 或 normalized title+year）
+	Title string         `json:"title"`
+	Year  int            `json:"year"`
+	Type  string         `json:"type"`
+	Count int            `json:"count"`
+	Items []DetailedItem `json:"items"`
 }
 
 // DetectDuplicates 对库内条目做重复检测：

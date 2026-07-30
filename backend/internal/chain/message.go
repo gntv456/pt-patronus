@@ -18,10 +18,10 @@ const messageCacheTTL = 2 * time.Minute
 
 // MessageResult 是单站消息聚合结果。
 type MessageResult struct {
-	SiteID   uint            `json:"site_id"`
-	SiteName string          `json:"site_name"`
-	Messages []site.Message  `json:"messages"`
-	Error    string          `json:"error,omitempty"`
+	SiteID   uint           `json:"site_id"`
+	SiteName string         `json:"site_name"`
+	Messages []site.Message `json:"messages"`
+	Error    string         `json:"error,omitempty"`
 }
 
 // msgSFResult 是消息单次回源的 singleflight 结果（messages + 展示用 errMsg）。

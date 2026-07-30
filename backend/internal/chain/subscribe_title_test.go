@@ -24,7 +24,11 @@ func setOf(ss ...string) map[string]struct{} {
 	return m
 }
 
-func runTitleCases(t *testing.T, sub *models.Subscription, accept map[string]struct{}, cases []struct{ seed string; keep bool; why string }) {
+func runTitleCases(t *testing.T, sub *models.Subscription, accept map[string]struct{}, cases []struct {
+	seed string
+	keep bool
+	why  string
+}) {
 	t.Helper()
 	var ts []site.Torrent
 	for _, c := range cases {
@@ -47,7 +51,11 @@ func runTitleCases(t *testing.T, sub *models.Subscription, accept map[string]str
 func TestFilterByTitleMatchNoAlias(t *testing.T) {
 	sub := &models.Subscription{Title: "特立独行", Year: 2026, Type: "movie"}
 	accept := setOf(normalizeTitle("特立独行"))
-	runTitleCases(t, sub, accept, []struct{ seed string; keep bool; why string }{
+	runTitleCases(t, sub, accept, []struct {
+		seed string
+		keep bool
+		why  string
+	}{
 		{"特立独行.2026.1080p.x264-A", true, "精确命中"},
 		{"一只特立独行的猪.2026.mkv", false, "同语言不命中→过滤（误命中）"},
 		{"A Maverick Pig.2026.mkv", true, "接受集无英文别名→跨语言放行不误杀"},
@@ -60,7 +68,11 @@ func TestFilterByTitleMatchNoAlias(t *testing.T) {
 func TestFilterByTitleMatchWithEnAlias(t *testing.T) {
 	sub := &models.Subscription{Title: "让子弹飞", Year: 2010, Type: "movie"}
 	accept := setOf(normalizeTitle("让子弹飞"), normalizeTitle("Let the Bullets Fly"))
-	runTitleCases(t, sub, accept, []struct{ seed string; keep bool; why string }{
+	runTitleCases(t, sub, accept, []struct {
+		seed string
+		keep bool
+		why  string
+	}{
 		{"Let.the.Bullets.Fly.2010.Bluray.1080p-PTer", true, "英文别名精确命中"},
 		{"让子弹飞.2010.1080p.mkv", true, "中文精确命中"},
 		{"让子弹飞.2010.1080p.简繁中字-CMCT风潇潇", true, "clean 含噪声但拆词含让子弹飞→兜底命中"},
@@ -75,7 +87,11 @@ func TestFilterByTitleMatchWithEnAlias(t *testing.T) {
 func TestFilterByTitleMatchNoEnAliasCrossLangKeep(t *testing.T) {
 	sub := &models.Subscription{Title: "让子弹飞", Year: 2010, Type: "movie"}
 	accept := setOf(normalizeTitle("让子弹飞"))
-	runTitleCases(t, sub, accept, []struct{ seed string; keep bool; why string }{
+	runTitleCases(t, sub, accept, []struct {
+		seed string
+		keep bool
+		why  string
+	}{
 		{"Let.the.Bullets.Fly.2010-PTer", true, "接受集无英文→放行不误杀"},
 		{"让子弹飞.2010.mkv", true, "中文命中"},
 		{"让子弹飞2.2010.mkv", false, "中文不命中→过滤"},
@@ -148,8 +164,8 @@ func TestContainsNumWord(t *testing.T) {
 		{"2160", "2160", true},
 		{".2160.", "2160", true},
 		{"MOVIE.2160P", "2160", true},
-		{"12160", "2160", false},  // 前字符 1 是数字
-		{"21601", "2160", false},  // 后字符 1 是数字
+		{"12160", "2160", false},   // 前字符 1 是数字
+		{"21601", "2160", false},   // 后字符 1 是数字
 		{"A12160B", "2160", false}, // 前后都是数字（1 和 0）→ 嵌在 12160 中
 		{"4K.2160", "2160", true},
 		{"", "2160", false},
@@ -230,7 +246,11 @@ func TestTokenHitsAcceptShortTokenGate(t *testing.T) {
 func TestFilterByTitleMatchEnSubCJKSeedFiltered(t *testing.T) {
 	sub := &models.Subscription{Title: "Maverick", Year: 2026, Type: "movie"}
 	accept := setOf(normalizeTitle("Maverick")) // 纯英文接受集
-	runTitleCases(t, sub, accept, []struct{ seed string; keep bool; why string }{
+	runTitleCases(t, sub, accept, []struct {
+		seed string
+		keep bool
+		why  string
+	}{
 		{"Maverick.2026.1080p-GROUP", true, "英文精确命中"},
 		{"Maverick.2025.mkv", true, "英文精确+年份门控通过（差<=1）"},
 		// 关键缺陷 6 case：英文订阅 + 中文种子未精确命中 → 过滤（旧逻辑会放行）
@@ -244,7 +264,11 @@ func TestFilterByTitleMatchEnSubCJKSeedFiltered(t *testing.T) {
 func TestFilterByTitleMatchCJKSubEnSeedStillKeeps(t *testing.T) {
 	sub := &models.Subscription{Title: "让子弹飞", Year: 2010, Type: "movie"}
 	accept := setOf(normalizeTitle("让子弹飞")) // 仅中文接受集
-	runTitleCases(t, sub, accept, []struct{ seed string; keep bool; why string }{
+	runTitleCases(t, sub, accept, []struct {
+		seed string
+		keep bool
+		why  string
+	}{
 		{"Let.the.Bullets.Fly.2010-PTer", true, "CJK 订阅+英文种子→放行不误杀（缺陷6不影响反向）"},
 		{"让子弹飞.2010.mkv", true, "中文精确命中"},
 	})

@@ -139,8 +139,8 @@ func TestMessagesAll_CronWarmsInbox(t *testing.T) {
 	}
 	ch, _ := newMsgChain(t, src)
 
-	ch.MessagesAll(context.Background(), site.MailboxInbox, true)                            // cron 预热 calls=1
-	res := ch.MessagesAll(context.Background(), site.MailboxInbox, false)                    // 命中
+	ch.MessagesAll(context.Background(), site.MailboxInbox, true)         // cron 预热 calls=1
+	res := ch.MessagesAll(context.Background(), site.MailboxInbox, false) // 命中
 	if calls := atomic.LoadInt32(&src.calls); calls != 1 {
 		t.Errorf("cron-warmed cache should hit: calls=%d want 1", calls)
 	}

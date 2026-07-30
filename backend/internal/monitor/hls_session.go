@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	hlsMaxSegs = 5      // ring：保留最近 N 个 ts 段（sliding window）
-	hlsClock   = 90000  // H264 RTP 时钟频率（Hz），PTS/DTS 单位
-	hlsMinDur  = 1.0    // 段时长下限（秒），防 0/负
+	hlsMaxSegs = 5     // ring：保留最近 N 个 ts 段（sliding window）
+	hlsClock   = 90000 // H264 RTP 时钟频率（Hz），PTS/DTS 单位
+	hlsMinDur  = 1.0   // 段时长下限（秒），防 0/负
 )
 
 // hlsSegment 是一个已完成的 MPEG-TS 段。

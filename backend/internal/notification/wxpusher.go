@@ -13,7 +13,7 @@ import (
 
 // WxPusher 推送到 WxPusher（微信推送，appToken + uid 或 topicId）。
 type WxPusher struct {
-	base    string // 默认 https://wxpusher.zjiecode.com
+	base     string // 默认 https://wxpusher.zjiecode.com
 	appToken string
 	uid      string // 接收者 UID（与 topicId 至少填一个）
 	topicID  string // 主题 ID（可选）

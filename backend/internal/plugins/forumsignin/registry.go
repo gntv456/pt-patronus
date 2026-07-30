@@ -2,8 +2,8 @@ package forumsignin
 
 // byKey 是 key → handler 注册表；order 保留注册顺序（决定结果列表稳定排序）。
 var (
-	byKey  = map[string]Handler{}
-	order  []string
+	byKey = map[string]Handler{}
+	order []string
 )
 
 func register(h Handler) {

@@ -19,11 +19,13 @@ type HTTPRequestNode struct {
 
 func NewHTTPRequestNode(hc *httpclient.Client) *HTTPRequestNode { return &HTTPRequestNode{hc: hc} }
 
-func (n *HTTPRequestNode) Type() string        { return "http_request" }
-func (n *HTTPRequestNode) Name() string        { return "HTTP 请求" }
-func (n *HTTPRequestNode) Category() string    { return "数据" }
-func (n *HTTPRequestNode) Description() string { return "发起 GET/POST 请求，响应体写入文本载荷" }
-func (n *HTTPRequestNode) Icon() string        { return "http" }
+func (n *HTTPRequestNode) Type() string     { return "http_request" }
+func (n *HTTPRequestNode) Name() string     { return "HTTP 请求" }
+func (n *HTTPRequestNode) Category() string { return "数据" }
+func (n *HTTPRequestNode) Description() string {
+	return "发起 GET/POST 请求，响应体写入文本载荷"
+}
+func (n *HTTPRequestNode) Icon() string { return "http" }
 func (n *HTTPRequestNode) DefaultParams() map[string]any {
 	return map[string]any{"method": "GET", "url": "", "headers": map[string]any{}, "body": "", "cookie": ""}
 }
@@ -70,11 +72,13 @@ type ExtractFieldsNode struct{}
 
 func NewExtractFieldsNode() *ExtractFieldsNode { return &ExtractFieldsNode{} }
 
-func (n *ExtractFieldsNode) Type() string        { return "extract_fields" }
-func (n *ExtractFieldsNode) Name() string        { return "解析字段" }
-func (n *ExtractFieldsNode) Category() string    { return "数据" }
-func (n *ExtractFieldsNode) Description() string { return "用正则命名组从文本载荷抽取字段到变量" }
-func (n *ExtractFieldsNode) Icon() string        { return "extract" }
+func (n *ExtractFieldsNode) Type() string     { return "extract_fields" }
+func (n *ExtractFieldsNode) Name() string     { return "解析字段" }
+func (n *ExtractFieldsNode) Category() string { return "数据" }
+func (n *ExtractFieldsNode) Description() string {
+	return "用正则命名组从文本载荷抽取字段到变量"
+}
+func (n *ExtractFieldsNode) Icon() string { return "extract" }
 func (n *ExtractFieldsNode) DefaultParams() map[string]any {
 	return map[string]any{"pattern": ""}
 }
@@ -125,11 +129,13 @@ type ParseJSONNode struct{}
 
 func NewParseJSONNode() *ParseJSONNode { return &ParseJSONNode{} }
 
-func (n *ParseJSONNode) Type() string        { return "parse_json" }
-func (n *ParseJSONNode) Name() string        { return "JSON 解析" }
-func (n *ParseJSONNode) Category() string    { return "数据" }
-func (n *ParseJSONNode) Description() string { return "解析文本载荷为 JSON，按点分路径抽取到变量" }
-func (n *ParseJSONNode) Icon() string        { return "json" }
+func (n *ParseJSONNode) Type() string     { return "parse_json" }
+func (n *ParseJSONNode) Name() string     { return "JSON 解析" }
+func (n *ParseJSONNode) Category() string { return "数据" }
+func (n *ParseJSONNode) Description() string {
+	return "解析文本载荷为 JSON，按点分路径抽取到变量"
+}
+func (n *ParseJSONNode) Icon() string { return "json" }
 func (n *ParseJSONNode) DefaultParams() map[string]any {
 	return map[string]any{"fields": map[string]any{}}
 }
@@ -217,11 +223,13 @@ type RegexExtractNode struct{}
 
 func NewRegexExtractNode() *RegexExtractNode { return &RegexExtractNode{} }
 
-func (n *RegexExtractNode) Type() string        { return "regex_extract" }
-func (n *RegexExtractNode) Name() string        { return "正则提取" }
-func (n *RegexExtractNode) Category() string    { return "数据" }
-func (n *RegexExtractNode) Description() string { return "正则提取全部匹配为列表变量（首个捕获组）" }
-func (n *RegexExtractNode) Icon() string        { return "extract" }
+func (n *RegexExtractNode) Type() string     { return "regex_extract" }
+func (n *RegexExtractNode) Name() string     { return "正则提取" }
+func (n *RegexExtractNode) Category() string { return "数据" }
+func (n *RegexExtractNode) Description() string {
+	return "正则提取全部匹配为列表变量（首个捕获组）"
+}
+func (n *RegexExtractNode) Icon() string { return "extract" }
 func (n *RegexExtractNode) DefaultParams() map[string]any {
 	return map[string]any{"pattern": "", "output_var": "matches"}
 }

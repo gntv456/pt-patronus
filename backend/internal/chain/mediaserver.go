@@ -203,9 +203,9 @@ func parseMediaWebhook(payload []byte) (title, event string) {
 	}
 	// 顶层常见字段（Emby/JF 直发 Title；Plex 发 event + Metadata）。
 	var top struct {
-		Title string `json:"Title"`
-		Name  string `json:"Name"`
-		Event string `json:"Event"`
+		Title    string `json:"Title"`
+		Name     string `json:"Name"`
+		Event    string `json:"Event"`
 		Metadata struct {
 			Title string `json:"title"`
 		} `json:"Metadata"`

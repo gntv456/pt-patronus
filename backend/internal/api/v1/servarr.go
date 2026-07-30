@@ -270,19 +270,19 @@ type radarrMovie struct {
 }
 
 type sonarrSeries struct {
-	ID               uint          `json:"id"`
-	Title            string        `json:"title"`
-	SeasonCount      int           `json:"seasonCount"`
-	Seasons          []gin.H       `json:"seasons"`
-	Year             int           `json:"year"`
-	TmdbID           int           `json:"tmdbId"`
-	TvdbID           int           `json:"tvdbId"`
-	ImdbID           string        `json:"imdbId"`
-	ProfileID        int           `json:"profileId"`
-	LanguageProfileID int          `json:"languageProfileId"`
-	QualityProfileID int           `json:"qualityProfileId"`
-	Monitored        bool          `json:"monitored"`
-	HasFile          bool          `json:"hasFile"`
+	ID                uint    `json:"id"`
+	Title             string  `json:"title"`
+	SeasonCount       int     `json:"seasonCount"`
+	Seasons           []gin.H `json:"seasons"`
+	Year              int     `json:"year"`
+	TmdbID            int     `json:"tmdbId"`
+	TvdbID            int     `json:"tvdbId"`
+	ImdbID            string  `json:"imdbId"`
+	ProfileID         int     `json:"profileId"`
+	LanguageProfileID int     `json:"languageProfileId"`
+	QualityProfileID  int     `json:"qualityProfileId"`
+	Monitored         bool    `json:"monitored"`
+	HasFile           bool    `json:"hasFile"`
 }
 
 func (h *ServarrHandler) toRadarrMovie(s *models.Subscription) radarrMovie {
@@ -301,7 +301,7 @@ func (h *ServarrHandler) toRadarrMovie(s *models.Subscription) radarrMovie {
 func (h *ServarrHandler) toSonarrSeries(s *models.Subscription) sonarrSeries {
 	return sonarrSeries{
 		ID: s.ID, Title: s.Title, Year: s.Year, SeasonCount: 1,
-		Seasons: []gin.H{{"seasonNumber": 1, "monitored": true}},
+		Seasons:   []gin.H{{"seasonNumber": 1, "monitored": true}},
 		Monitored: s.Status == "subscribed" || s.Status == "",
 		ProfileID: 1, LanguageProfileID: 1, QualityProfileID: 1,
 		HasFile: h.mediaExists(s),

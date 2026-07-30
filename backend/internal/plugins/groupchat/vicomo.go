@@ -12,7 +12,9 @@ import (
 // 标记已读逻辑待真机校准(原版 POST messages.php?action=moveordel&markread)，本轮先只读。
 type vicomoHandler struct{ nexusPHPBase }
 
-func (vicomoHandler) Match(s SiteRef) bool { return strings.Contains(strings.ToLower(s.Name), "象站") }
+func (vicomoHandler) Match(s SiteRef) bool {
+	return strings.Contains(strings.ToLower(s.Name), "象站")
+}
 
 func (h vicomoHandler) PollFeedback(ctx context.Context, c Ctx, message string, initial *Feedback) (*Feedback, error) {
 	u := joinBase(c.Site.BaseURL, "/messages.php")

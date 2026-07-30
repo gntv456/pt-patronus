@@ -12,8 +12,8 @@ import (
 // memKV 内存 KVStore，用于测试。
 type memKV struct{ m map[string]string }
 
-func (m *memKV) Get(k string) (string, error)  { return m.m[k], nil }
-func (m *memKV) Set(k, v string) error { m.m[k] = v; return nil }
+func (m *memKV) Get(k string) (string, error) { return m.m[k], nil }
+func (m *memKV) Set(k, v string) error        { m.m[k] = v; return nil }
 
 type fakeRecognizer struct{ mi media.MediaInfo }
 

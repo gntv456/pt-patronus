@@ -36,8 +36,8 @@ func (f *fakeStore) ExistsSince(source, key string, since time.Time) (bool, erro
 	f.existsCalls++
 	return f.exists, nil
 }
-func (f *fakeStore) CountUnread() (int64, error)               { return 0, nil }
-func (f *fakeStore) Cleanup(before time.Time) (int64, error)   { return 0, nil }
+func (f *fakeStore) CountUnread() (int64, error)             { return 0, nil }
+func (f *fakeStore) Cleanup(before time.Time) (int64, error) { return 0, nil }
 
 // 当天已存在 → dedup 跳过（不写库、不广播）。
 func TestNoticeDedupSkipsExisting(t *testing.T) {

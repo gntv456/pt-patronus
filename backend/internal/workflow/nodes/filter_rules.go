@@ -21,11 +21,13 @@ func NewFilterRulesNode(eng *filter.Engine) *FilterRulesNode {
 	return &FilterRulesNode{eng: eng}
 }
 
-func (n *FilterRulesNode) Type() string        { return "filter_rules" }
-func (n *FilterRulesNode) Name() string        { return "优先级规则过滤" }
-func (n *FilterRulesNode) Category() string    { return "过滤" }
-func (n *FilterRulesNode) Description() string { return "按 MP-2 规则组（rule_string 优先级层 + 22 内置规则）过滤并排序资源" }
-func (n *FilterRulesNode) Icon() string        { return "filter_rules" }
+func (n *FilterRulesNode) Type() string     { return "filter_rules" }
+func (n *FilterRulesNode) Name() string     { return "优先级规则过滤" }
+func (n *FilterRulesNode) Category() string { return "过滤" }
+func (n *FilterRulesNode) Description() string {
+	return "按 MP-2 规则组（rule_string 优先级层 + 22 内置规则）过滤并排序资源"
+}
+func (n *FilterRulesNode) Icon() string { return "filter_rules" }
 func (n *FilterRulesNode) DefaultParams() map[string]any {
 	return map[string]any{"rule_groups": "", "media_type": ""}
 }

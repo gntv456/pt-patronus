@@ -52,4 +52,3 @@ func (s *Service) runKeepSeed() {
 		slog.Info("auto-reseed done", "downloader", st.DownloaderID, "new", len(created), "autoAdded", added)
 	}
 }
-

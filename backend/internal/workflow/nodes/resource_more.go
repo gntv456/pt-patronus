@@ -23,11 +23,13 @@ func NewSearchAllSitesNode(siteCh *chain.SiteChain) *SearchAllSitesNode {
 	return &SearchAllSitesNode{siteCh: siteCh}
 }
 
-func (n *SearchAllSitesNode) Type() string        { return "search_all_sites" }
-func (n *SearchAllSitesNode) Name() string        { return "跨站搜索" }
-func (n *SearchAllSitesNode) Category() string    { return "资源" }
-func (n *SearchAllSitesNode) Description() string { return "跨所有启用站点并发搜索，聚合进资源集合" }
-func (n *SearchAllSitesNode) Icon() string        { return "search" }
+func (n *SearchAllSitesNode) Type() string     { return "search_all_sites" }
+func (n *SearchAllSitesNode) Name() string     { return "跨站搜索" }
+func (n *SearchAllSitesNode) Category() string { return "资源" }
+func (n *SearchAllSitesNode) Description() string {
+	return "跨所有启用站点并发搜索，聚合进资源集合"
+}
+func (n *SearchAllSitesNode) Icon() string { return "search" }
 func (n *SearchAllSitesNode) DefaultParams() map[string]any {
 	return map[string]any{"keyword": "", "category": ""}
 }
@@ -71,11 +73,13 @@ func NewTorrentDetailNode(siteCh *chain.SiteChain, siteOp *oper.SiteOper) *Torre
 	return &TorrentDetailNode{siteCh: siteCh, siteOp: siteOp}
 }
 
-func (n *TorrentDetailNode) Type() string        { return "torrent_detail" }
-func (n *TorrentDetailNode) Name() string        { return "种子详情" }
-func (n *TorrentDetailNode) Category() string    { return "资源" }
-func (n *TorrentDetailNode) Description() string { return "抓取单条种子详情页（写入文本载荷）" }
-func (n *TorrentDetailNode) Icon() string        { return "detail" }
+func (n *TorrentDetailNode) Type() string     { return "torrent_detail" }
+func (n *TorrentDetailNode) Name() string     { return "种子详情" }
+func (n *TorrentDetailNode) Category() string { return "资源" }
+func (n *TorrentDetailNode) Description() string {
+	return "抓取单条种子详情页（写入文本载荷）"
+}
+func (n *TorrentDetailNode) Icon() string { return "detail" }
 func (n *TorrentDetailNode) DefaultParams() map[string]any {
 	return map[string]any{"site_id": float64(0), "detail_url": ""}
 }
@@ -110,11 +114,13 @@ type SortTorrentsNode struct{}
 
 func NewSortTorrentsNode() *SortTorrentsNode { return &SortTorrentsNode{} }
 
-func (n *SortTorrentsNode) Type() string        { return "sort_torrents" }
-func (n *SortTorrentsNode) Name() string        { return "排序资源" }
-func (n *SortTorrentsNode) Category() string    { return "资源" }
-func (n *SortTorrentsNode) Description() string { return "按做种数/体积/完成数排序资源集合" }
-func (n *SortTorrentsNode) Icon() string        { return "sort" }
+func (n *SortTorrentsNode) Type() string     { return "sort_torrents" }
+func (n *SortTorrentsNode) Name() string     { return "排序资源" }
+func (n *SortTorrentsNode) Category() string { return "资源" }
+func (n *SortTorrentsNode) Description() string {
+	return "按做种数/体积/完成数排序资源集合"
+}
+func (n *SortTorrentsNode) Icon() string { return "sort" }
 func (n *SortTorrentsNode) DefaultParams() map[string]any {
 	return map[string]any{"field": "seeders", "order": "desc"}
 }
@@ -160,11 +166,13 @@ type DedupeTorrentsNode struct{}
 
 func NewDedupeTorrentsNode() *DedupeTorrentsNode { return &DedupeTorrentsNode{} }
 
-func (n *DedupeTorrentsNode) Type() string        { return "dedupe_torrents" }
-func (n *DedupeTorrentsNode) Name() string        { return "去重资源" }
-func (n *DedupeTorrentsNode) Category() string    { return "资源" }
-func (n *DedupeTorrentsNode) Description() string { return "按归一化标题去重，每组保留最优者" }
-func (n *DedupeTorrentsNode) Icon() string        { return "dedupe" }
+func (n *DedupeTorrentsNode) Type() string     { return "dedupe_torrents" }
+func (n *DedupeTorrentsNode) Name() string     { return "去重资源" }
+func (n *DedupeTorrentsNode) Category() string { return "资源" }
+func (n *DedupeTorrentsNode) Description() string {
+	return "按归一化标题去重，每组保留最优者"
+}
+func (n *DedupeTorrentsNode) Icon() string { return "dedupe" }
 func (n *DedupeTorrentsNode) DefaultParams() map[string]any {
 	return map[string]any{"keep": "seeders"}
 }
@@ -209,11 +217,13 @@ type PickBestNode struct{}
 
 func NewPickBestNode() *PickBestNode { return &PickBestNode{} }
 
-func (n *PickBestNode) Type() string        { return "pick_best" }
-func (n *PickBestNode) Name() string        { return "择优" }
-func (n *PickBestNode) Category() string    { return "资源" }
-func (n *PickBestNode) Description() string { return "按 免费→分辨率→做种数 评分，取质量最高的 N 条" }
-func (n *PickBestNode) Icon() string        { return "best" }
+func (n *PickBestNode) Type() string     { return "pick_best" }
+func (n *PickBestNode) Name() string     { return "择优" }
+func (n *PickBestNode) Category() string { return "资源" }
+func (n *PickBestNode) Description() string {
+	return "按 免费→分辨率→做种数 评分，取质量最高的 N 条"
+}
+func (n *PickBestNode) Icon() string { return "best" }
 func (n *PickBestNode) DefaultParams() map[string]any {
 	return map[string]any{"count": float64(1)}
 }

@@ -16,9 +16,9 @@ const categoryConfigKey = "transfer.categories"
 // （MP-2 用 TMDB genre_ids + original_language，本仓库 MediaInfo 不含这两项，故按名匹配；
 // 常见分类——动漫/华语/日剧/韩剧/欧美剧——按 genre 名 + 国家即可覆盖。）
 type CategoryRule struct {
-	Genres    []string `json:"genres,omitempty"`     // 任一命中即可（OR）；"!X" 表不得含 X
-	Countries []string `json:"countries,omitempty"`  // 任一命中即可（OR）；"!X" 表不得含 X
-	Year      string   `json:"year,omitempty"`       // "2024" 或范围 "2020-2024"
+	Genres    []string `json:"genres,omitempty"`    // 任一命中即可（OR）；"!X" 表不得含 X
+	Countries []string `json:"countries,omitempty"` // 任一命中即可（OR）；"!X" 表不得含 X
+	Year      string   `json:"year,omitempty"`      // "2024" 或范围 "2020-2024"
 }
 
 // NamedRule 带名称的规则（Name 同时是库子目录名）。切片保序 → first-match-wins。

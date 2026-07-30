@@ -42,16 +42,16 @@ type proxyMessage struct {
 }
 
 type openAIReq struct {
-	Model    string          `json:"model"`
-	Messages []proxyMessage  `json:"messages"`
-	Stream   bool            `json:"stream"`
+	Model    string         `json:"model"`
+	Messages []proxyMessage `json:"messages"`
+	Stream   bool           `json:"stream"`
 }
 
 type anthropicReq struct {
-	Model    string          `json:"model"`
-	System   any             `json:"system"`
-	Messages []proxyMessage  `json:"messages"`
-	Stream   bool            `json:"stream"`
+	Model    string         `json:"model"`
+	System   any            `json:"system"`
+	Messages []proxyMessage `json:"messages"`
+	Stream   bool           `json:"stream"`
 }
 
 // tokenFrom 取访问令牌：优先 Authorization: Bearer，其次 x-api-key（Anthropic 习惯）。

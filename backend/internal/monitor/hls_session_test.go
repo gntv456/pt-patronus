@@ -17,9 +17,9 @@ var (
 // TestHLSSinkMuxAndPlaylist 验证：合法 H264 喂入 → 产出正确 m3u8 + 结构合法的 TS 段。
 func TestHLSSinkMuxAndPlaylist(t *testing.T) {
 	sink := newHLSSink(hlsTestSPS, hlsTestPPS)
-	sink.writeAU(0, [][]byte{hlsTestIDR})      // 首帧 IDR：初始化 extractor + 开 seg0
-	sink.writeAU(3600, [][]byte{hlsTestNonIDR}) // non-IDR 入 seg0
-	sink.writeAU(7200, [][]byte{hlsTestIDR})    // IDR：收尾 seg0、开 seg1
+	sink.writeAU(0, [][]byte{hlsTestIDR})        // 首帧 IDR：初始化 extractor + 开 seg0
+	sink.writeAU(3600, [][]byte{hlsTestNonIDR})  // non-IDR 入 seg0
+	sink.writeAU(7200, [][]byte{hlsTestIDR})     // IDR：收尾 seg0、开 seg1
 	sink.writeAU(10800, [][]byte{hlsTestNonIDR}) // non-IDR 入 seg1
 	sink.writeAU(14400, [][]byte{hlsTestIDR})    // IDR：收尾 seg1、开 seg2
 

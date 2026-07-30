@@ -108,10 +108,10 @@ type tgUser struct {
 	ID int64 `json:"id"`
 }
 type apiResp struct {
-	OK          bool `json:"ok"`
+	OK          bool       `json:"ok"`
 	Result      []tgUpdate `json:"result"`
-	ErrorCode   int    `json:"error_code"`
-	Description string `json:"description"`
+	ErrorCode   int        `json:"error_code"`
+	Description string     `json:"description"`
 }
 
 func (b *Bot) getUpdates(ctx context.Context) ([]tgUpdate, error) {

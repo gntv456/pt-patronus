@@ -6,9 +6,9 @@ import "testing"
 // 跨域、非 http(s) 协议、IP 回退。
 func TestSameHost(t *testing.T) {
 	cases := []struct {
-		name        string
-		base, cand  string
-		want        bool
+		name       string
+		base, cand string
+		want       bool
 	}{
 		{"same subdomain", "https://kp.m-team.cc", "https://kp.m-team.cc/details.php?id=1", true},
 		{"sibling subdomain same registrable", "https://api.m-team.cc", "https://kp.m-team.cc/details.php?id=1", true},

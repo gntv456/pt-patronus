@@ -222,9 +222,9 @@ func TestExternalRuntimeStatus(t *testing.T) {
 	t.Run("running with host + managed", func(t *testing.T) {
 		t.Parallel()
 		p := &externalHTTPPlugin{
-			baseURL: "http://127.0.0.1:8080",
-			pid:     1234,
-			host:    &externalHostServer{baseURL: "http://127.0.0.1:9000"},
+			baseURL:  "http://127.0.0.1:8080",
+			pid:      1234,
+			host:     &externalHostServer{baseURL: "http://127.0.0.1:9000"},
 			manifest: Manifest{ID: "demo", Entry: &RuntimeEntry{Command: "python main.py"}},
 		}
 		rs := p.RuntimeStatus()
@@ -363,7 +363,9 @@ func TestDecodeHostJSON(t *testing.T) {
 	t.Parallel()
 	t.Run("valid decode", func(t *testing.T) {
 		t.Parallel()
-		var in struct{ Level string `json:"level"` }
+		var in struct {
+			Level string `json:"level"`
+		}
 		req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte(`{"level":"info"}`)))
 		rec := httptest.NewRecorder()
 		if !decodeHostJSON(rec, req, &in) {
@@ -406,7 +408,7 @@ func TestExternalHostContext(t *testing.T) {
 	t.Run("with host maps fields", func(t *testing.T) {
 		t.Parallel()
 		p := &externalHTTPPlugin{
-			host: &externalHostServer{baseURL: "http://host:9000", token: "htok"},
+			host:     &externalHostServer{baseURL: "http://host:9000", token: "htok"},
 			manifest: Manifest{ID: "demo", Permissions: []string{"log:write", "kv:get"}},
 		}
 		ctx := p.hostContext()
@@ -431,18 +433,18 @@ func TestExternalHostContext(t *testing.T) {
 // recordingRuntime 捕获 Log 调用，用于验证 pluginOutputWriter 的行切分逻辑。
 type recordingRuntime struct{ logs []string }
 
-func (r *recordingRuntime) Config() map[string]any                       { return nil }
+func (r *recordingRuntime) Config() map[string]any { return nil }
 func (r *recordingRuntime) Log(level, eventName, message string, _ map[string]any) {
 	r.logs = append(r.logs, message)
 }
-func (r *recordingRuntime) Notice(context.Context, NoticeInput) error              { return nil }
-func (r *recordingRuntime) Publish(context.Context, string, map[string]any)         {}
-func (r *recordingRuntime) KVGet(string, any) error                                { return nil }
-func (r *recordingRuntime) KVSet(string, any) error                                { return nil }
-func (r *recordingRuntime) KVDelete(string) error                                  { return nil }
-func (r *recordingRuntime) SiteList() []SiteRef                                    { return nil }
-func (r *recordingRuntime) SiteCookie(uint) (string, error)                        { return "", nil }
-func (r *recordingRuntime) SetRuntimeConfig(string, any) error                     { return nil }
+func (r *recordingRuntime) Notice(context.Context, NoticeInput) error       { return nil }
+func (r *recordingRuntime) Publish(context.Context, string, map[string]any) {}
+func (r *recordingRuntime) KVGet(string, any) error                         { return nil }
+func (r *recordingRuntime) KVSet(string, any) error                         { return nil }
+func (r *recordingRuntime) KVDelete(string) error                           { return nil }
+func (r *recordingRuntime) SiteList() []SiteRef                             { return nil }
+func (r *recordingRuntime) SiteCookie(uint) (string, error)                 { return "", nil }
+func (r *recordingRuntime) SetRuntimeConfig(string, any) error              { return nil }
 
 func newWriter(rt Runtime) *pluginOutputWriter {
 	p := &externalHTTPPlugin{}
@@ -467,7 +469,7 @@ func TestPluginOutputWriterLineSplitting(t *testing.T) {
 		t.Parallel()
 		rt := &recordingRuntime{}
 		w := newWriter(rt)
-		_, _ = w.Write([]byte("par"))   // 无 \n → 缓冲
+		_, _ = w.Write([]byte("par")) // 无 \n → 缓冲
 		if len(rt.logs) != 0 {
 			t.Errorf("after partial: logs = %v, want []", rt.logs)
 		}

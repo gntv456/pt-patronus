@@ -57,10 +57,10 @@ type Summary struct {
 
 // Report 一次诊断运行的报告。
 type Report struct {
-	GeneratedAt time.Time     `json:"generated_at"`
-	Version     string        `json:"version,omitempty"`
+	GeneratedAt time.Time      `json:"generated_at"`
+	Version     string         `json:"version,omitempty"`
 	Environment map[string]any `json:"environment,omitempty"`
-	Findings    []Finding     `json:"findings"`
-	Status      ReportStatus  `json:"status"`
-	Summary     Summary       `json:"summary"`
+	Findings    []Finding      `json:"findings"`
+	Status      ReportStatus   `json:"status"`
+	Summary     Summary        `json:"summary"`
 }

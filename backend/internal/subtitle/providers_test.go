@@ -35,7 +35,7 @@ func TestAssrtSearchAndDownload(t *testing.T) {
 			{"id":"100","native_name":"电影A 简体中文","videoname":"MovieA","lang":{"langlistdesc":"简体中文"}},
 			{"id":"101","native_name":"电影B","lang":{"langlistdesc":"繁體中文"}}
 		]}}`,
-		"/v1/sub/detail": `{"status":0,"sub":{"subs":[{"filelist":[{"url":"/tools/export/abc.zip","f":"A.srt"}]}]}}`,
+		"/v1/sub/detail":        `{"status":0,"sub":{"subs":[{"filelist":[{"url":"/tools/export/abc.zip","f":"A.srt"}]}]}}`,
 		"/tools/export/abc.zip": "ZIPBYTES",
 	}}
 	p := NewAssrt("tok123", doer)

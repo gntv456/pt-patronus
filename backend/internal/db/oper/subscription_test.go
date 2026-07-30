@@ -42,9 +42,9 @@ func TestUpdateEditableFieldsPreservesCronFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := db.Model(&models.Subscription{}).Where("id = ?", s.ID).Updates(map[string]any{
-		"last_checked_at":    now,
-		"current_priority":   80,
-		"episode_priority":   `{"S01E01":80}`,
+		"last_checked_at":  now,
+		"current_priority": 80,
+		"episode_priority": `{"S01E01":80}`,
 	}).Error; err != nil {
 		t.Fatal(err)
 	}

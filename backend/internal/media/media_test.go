@@ -35,7 +35,7 @@ func TestTypeMatches(t *testing.T) {
 // TestSourceMatches 锁定「源产物是否落在 filter 内」——Chain 据此跳过必无用的源
 // （如 video 搜时跳过只产音乐的 MusicBrainz，省一次无用且常慢的海外请求）。
 func TestSourceMatches(t *testing.T) {
-	mb := []MediaType{TypeMusic}        // MusicBrainz
+	mb := []MediaType{TypeMusic}            // MusicBrainz
 	video := []MediaType{TypeMovie, TypeTV} // TMDB/豆瓣
 	if SourceMatches(mb, "") != true {
 		t.Error("filter=空应放行所有源")

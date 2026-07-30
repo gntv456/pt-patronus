@@ -59,10 +59,10 @@ func TestRclone_Resolve(t *testing.T) {
 		{"/", "myremote:/Media"},
 		{"/Movies", "myremote:/Media/Movies"},
 		{"/Movies/2024/a.mkv", "myremote:/Media/Movies/2024/a.mkv"},
-		{"../../../etc/passwd", "myremote:/Media/etc/passwd"},   // ../ 被钳制回 root
-		{`\..\..\etc`, "myremote:/Media/etc"},                   // 反斜杠变体同样钳制
-		{"/a/../../etc", "myremote:/Media/etc"},                 // 多级回溯被钳
-		{"", "myremote:/Media"},                                 // 空路径落到根
+		{"../../../etc/passwd", "myremote:/Media/etc/passwd"}, // ../ 被钳制回 root
+		{`\..\..\etc`, "myremote:/Media/etc"},                 // 反斜杠变体同样钳制
+		{"/a/../../etc", "myremote:/Media/etc"},               // 多级回溯被钳
+		{"", "myremote:/Media"},                               // 空路径落到根
 	}
 	for _, c := range cases {
 		if got := r.resolve(c.in); got != c.want {

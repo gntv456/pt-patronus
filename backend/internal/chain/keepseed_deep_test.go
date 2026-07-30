@@ -127,13 +127,13 @@ func TestReseedRetryAfterResolveFailure(t *testing.T) {
 // TestScoreBoundary 精确评分边界（标题 Jaccard 70% + 大小接近度 30%）。
 func TestScoreBoundary(t *testing.T) {
 	cases := []struct {
-		name                  string
-		wantName, gotName     string
-		wantSize, gotSize     int64
-		want                  int
+		name              string
+		wantName, gotName string
+		wantSize, gotSize int64
+		want              int
 	}{
 		{"identical", "Movie 2023", "Movie 2023", 1000, 1000, 100},
-		{"size within 5pct", "Movie 2023", "Movie 2023", 1000, 950, 97},    // ratio=0.05 → sizeScore=90（≤0.05 档）；title=100 → 70+27=97
+		{"size within 5pct", "Movie 2023", "Movie 2023", 1000, 950, 97},     // ratio=0.05 → sizeScore=90（≤0.05 档）；title=100 → 70+27=97
 		{"size diff over 50pct", "Movie 2023", "Movie 2023", 1000, 100, 70}, // sizeScore=0 → 100*0.7
 		{"unrelated title same size", "Alpha", "Beta", 1000, 1000, 30},      // title=0,size=100 → 30
 		{"wantSize zero title match", "Movie 2023", "Movie 2023", 0, 0, 100},

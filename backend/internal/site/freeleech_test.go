@@ -61,8 +61,8 @@ func TestLooksLikeFreeleech(t *testing.T) {
 		text string
 		want bool
 	}{
-		{"全站免费下载", true},     // 全站(prom) + 免费(free)
-		{"2X 促销活动", true},     // 2X(prom) + 促销(free)
+		{"全站免费下载", true},         // 全站(prom) + 免费(free)
+		{"2X 促销活动", true},        // 2X(prom) + 促销(free)
 		{"Free Promotion", true}, // free + promotion
 		{"普通种子标题", false},
 		{"仅含上传量", false}, // 上传 仅在 promo 列表，free 列表无 → false

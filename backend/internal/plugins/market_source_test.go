@@ -177,7 +177,7 @@ func TestEnsureDefaultMarketSource_Idempotent(t *testing.T) {
 
 // TestEnsureDefaultMarketSource_NoCfgOpNoOp：cfgOp 未注入 → 安全返回不 panic。
 func TestEnsureDefaultMarketSource_NoCfgOpNoOp(t *testing.T) {
-	m := &Manager{} // cfgOp nil
+	m := &Manager{}               // cfgOp nil
 	m.EnsureDefaultMarketSource() // must not panic
 	if got := m.GetMarketSources(); len(got) != 0 {
 		t.Fatalf("no cfgOp should yield empty sources, got %v", got)

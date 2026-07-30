@@ -154,7 +154,7 @@ func TestMaxHardenedBounds(t *testing.T) {
 	})
 
 	t.Run("hashesReq dive caps element length", func(t *testing.T) {
-		mustBind(t, v, hashesReq{Hashes: []string{"abcdef"}}, false)            // 40-hex 合法
+		mustBind(t, v, hashesReq{Hashes: []string{"abcdef"}}, false)               // 40-hex 合法
 		mustBind(t, v, hashesReq{Hashes: []string{strings.Repeat("a", 65)}}, true) // 单元素 >64 拒
 	})
 
@@ -270,7 +270,7 @@ func TestMaxHardenedBoundsRound2(t *testing.T) {
 		mustBind(t, v, buyReq{OptionType: 5}, false)
 		mustBind(t, v, buyReq{OptionType: 101}, true)
 		mustBind(t, v, playMultiReq{Count: 10}, false)
-		mustBind(t, v, playMultiReq{Count: 0}, true)  // min=1
+		mustBind(t, v, playMultiReq{Count: 0}, true) // min=1
 		mustBind(t, v, playMultiReq{Count: 101}, true)
 		mustBind(t, v, drawReq{SynthesisID: 1, Count: 10}, false)
 		mustBind(t, v, drawReq{SynthesisID: 0, Count: 1}, true) // SynthesisID min=1
@@ -296,10 +296,10 @@ func TestMaxHardenedBoundsRound2(t *testing.T) {
 
 	t.Run("commandRunRequest target list + timeout bounded", func(t *testing.T) {
 		mustBind(t, v, commandRunRequest{Command: "ls", TargetIDs: make([]uint, 200)}, false) // DoS 上限内（业务上限 50 由 handler 友好处理）
-		mustBind(t, v, commandRunRequest{Command: "ls", TargetIDs: make([]uint, 201)}, true) // >200 DoS 拒
+		mustBind(t, v, commandRunRequest{Command: "ls", TargetIDs: make([]uint, 201)}, true)  // >200 DoS 拒
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: 3600}, false)
 		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: 3601}, true)
-		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: -1}, true)                    // min=0
+		mustBind(t, v, commandRunRequest{Command: "ls", TimeoutSec: -1}, true) // min=0
 	})
 
 	t.Run("hxptLoginReq.ExtraForm dive bounded (公开登录端点)", func(t *testing.T) {

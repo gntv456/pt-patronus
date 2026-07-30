@@ -158,4 +158,3 @@ func TestTransferHistoryCountByStatus(t *testing.T) {
 		t.Fatalf("all count=%d err=%v want 4", n, err)
 	}
 }
-

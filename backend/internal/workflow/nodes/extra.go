@@ -16,11 +16,13 @@ type SwitchNode struct{}
 
 func NewSwitchNode() *SwitchNode { return &SwitchNode{} }
 
-func (n *SwitchNode) Type() string        { return "switch" }
-func (n *SwitchNode) Name() string        { return "多分支" }
-func (n *SwitchNode) Category() string    { return "逻辑" }
-func (n *SwitchNode) Description() string { return "多路分支（switch/case），命中即走对应分支" }
-func (n *SwitchNode) Icon() string        { return "switch" }
+func (n *SwitchNode) Type() string     { return "switch" }
+func (n *SwitchNode) Name() string     { return "多分支" }
+func (n *SwitchNode) Category() string { return "逻辑" }
+func (n *SwitchNode) Description() string {
+	return "多路分支（switch/case），命中即走对应分支"
+}
+func (n *SwitchNode) Icon() string { return "switch" }
 func (n *SwitchNode) DefaultParams() map[string]any {
 	return map[string]any{
 		"branches":       "大,中,小",
@@ -60,7 +62,7 @@ func (n *SwitchNode) Execute(_ context.Context, params map[string]any, ecx *work
 		}
 	}
 	ecx.Next = []string{defaultB}
-	ecx.Messages = append(ecx.Messages, "多分支 → " + defaultB + "（默认）")
+	ecx.Messages = append(ecx.Messages, "多分支 → "+defaultB+"（默认）")
 	return nil
 }
 
@@ -105,11 +107,13 @@ type WebhookSendNode struct {
 
 func NewWebhookSendNode(hc *httpclient.Client) *WebhookSendNode { return &WebhookSendNode{hc: hc} }
 
-func (n *WebhookSendNode) Type() string        { return "webhook_send" }
-func (n *WebhookSendNode) Name() string        { return "发送 Webhook" }
-func (n *WebhookSendNode) Category() string    { return "通知" }
-func (n *WebhookSendNode) Description() string { return "向外部 URL 发送 HTTP 请求（webhook 通知）" }
-func (n *WebhookSendNode) Icon() string        { return "webhook" }
+func (n *WebhookSendNode) Type() string     { return "webhook_send" }
+func (n *WebhookSendNode) Name() string     { return "发送 Webhook" }
+func (n *WebhookSendNode) Category() string { return "通知" }
+func (n *WebhookSendNode) Description() string {
+	return "向外部 URL 发送 HTTP 请求（webhook 通知）"
+}
+func (n *WebhookSendNode) Icon() string { return "webhook" }
 func (n *WebhookSendNode) DefaultParams() map[string]any {
 	return map[string]any{"url": "", "method": "POST", "body": "", "headers": map[string]any{}}
 }
@@ -155,11 +159,13 @@ type MathNode struct{}
 
 func NewMathNode() *MathNode { return &MathNode{} }
 
-func (n *MathNode) Type() string        { return "math" }
-func (n *MathNode) Name() string        { return "变量运算" }
-func (n *MathNode) Category() string    { return "流程" }
-func (n *MathNode) Description() string { return "对两个值做加减乘除或拼接，结果存入变量" }
-func (n *MathNode) Icon() string        { return "math" }
+func (n *MathNode) Type() string     { return "math" }
+func (n *MathNode) Name() string     { return "变量运算" }
+func (n *MathNode) Category() string { return "流程" }
+func (n *MathNode) Description() string {
+	return "对两个值做加减乘除或拼接，结果存入变量"
+}
+func (n *MathNode) Icon() string { return "math" }
 func (n *MathNode) DefaultParams() map[string]any {
 	return map[string]any{"operation": "add", "left": "0", "right": "0", "result_var": "result"}
 }

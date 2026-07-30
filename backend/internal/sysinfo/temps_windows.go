@@ -14,10 +14,11 @@ import (
 )
 
 // collectTemps Windows 多源合并：
-//  1) LibreHardwareMonitor WMI（推荐，无需本进程提权）
-//  2) OpenHardwareMonitor WMI
-//  3) gopsutil → MSAcpi_ThermalZoneTemperature（常需管理员，失败则空）
-//  4) nvidia-smi GPU 温度（有 NVIDIA 驱动时）
+//  1. LibreHardwareMonitor WMI（推荐，无需本进程提权）
+//  2. OpenHardwareMonitor WMI
+//  3. gopsutil → MSAcpi_ThermalZoneTemperature（常需管理员，失败则空）
+//  4. nvidia-smi GPU 温度（有 NVIDIA 驱动时）
+//
 // 多数消费级 Win10 默认不暴露 ACPI 温度，未装 LHM/OHM 且非管理员时会为空。
 func collectTemps() []TempMetric {
 	seen := map[string]bool{}

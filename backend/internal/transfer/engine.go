@@ -49,21 +49,21 @@ type ProcessInput struct {
 
 // Result 是一次整理的结果（chain 据此写 TransferHistory + 通知）。
 type Result struct {
-	Success   bool
-	ErrMsg    string
-	Src       string // 源（首个视频）
-	DestDir   string // 目标根目录（电影=片目录，剧集=剧根目录）
-	Mode      Mode
-	Files     []string // 已整理的目标文件完整路径
-	NFO       []string // 已写的 NFO/图（相对 DestDir 或剧根）
-	Media     *media.MediaInfo
-	Type      string // movie | tv
-	Category  string // 自动分类名（库子目录；空=未分类）
-	Replaced  []string // 洗版被替换删除的旧文件（空=非洗版或首版）
-	Skipped   bool   // 整理被跳过（如洗版判定画质未提升）——record 不写失败/不通知
+	Success    bool
+	ErrMsg     string
+	Src        string // 源（首个视频）
+	DestDir    string // 目标根目录（电影=片目录，剧集=剧根目录）
+	Mode       Mode
+	Files      []string // 已整理的目标文件完整路径
+	NFO        []string // 已写的 NFO/图（相对 DestDir 或剧根）
+	Media      *media.MediaInfo
+	Type       string   // movie | tv
+	Category   string   // 自动分类名（库子目录；空=未分类）
+	Replaced   []string // 洗版被替换删除的旧文件（空=非洗版或首版）
+	Skipped    bool     // 整理被跳过（如洗版判定画质未提升）——record 不写失败/不通知
 	SkipReason string
-	Seasons   string
-	Episodes  string
+	Seasons    string
+	Episodes   string
 }
 
 // Engine 整理流水线引擎。所有依赖经接口/函数注入。

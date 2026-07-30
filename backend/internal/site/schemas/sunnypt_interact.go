@@ -338,13 +338,13 @@ func (g *GenericJSON) sunnyptListNotifications(ctx context.Context, apiBase, coo
 	for _, it := range wrap.Data.List {
 		id := sunnyAnyID(it.ID)
 		out = append(out, site.Message{
-			Sender:  "系统通知",
-			Title:   it.Title,
-			Content: it.Body,
-			Date:    sunnyAnyDate(it.Created),
-			URL:     "/notifications?id=" + id,
-			IsRead:  sunnyIsRead(it.ReadAt),
-			Mailbox: site.MailboxSystem,
+			Sender:       "系统通知",
+			Title:        it.Title,
+			Content:      it.Body,
+			Date:         sunnyAnyDate(it.Created),
+			URL:          "/notifications?id=" + id,
+			IsRead:       sunnyIsRead(it.ReadAt),
+			Mailbox:      site.MailboxSystem,
 			AdminActions: &site.AdminActions{ItemID: id},
 			FetchedAt:    time.Now(),
 		})

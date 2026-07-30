@@ -7,8 +7,8 @@ import (
 
 func TestSanitizeHTML(t *testing.T) {
 	cases := []struct {
-		name      string
-		in        string
+		name       string
+		in         string
 		notContain string
 	}{
 		{"strips script", `<p>ok</p><script>alert(1)</script>`, "alert(1)"},

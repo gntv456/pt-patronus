@@ -8,9 +8,9 @@ import (
 
 func TestParseTerm(t *testing.T) {
 	cases := []struct {
-		in       string
-		wantSrc  string
-		wantID   string
+		in      string
+		wantSrc string
+		wantID  string
 	}{
 		{"tmdb:123", "tmdb", "123"},
 		{"tvdb:456", "tvdb", "456"},

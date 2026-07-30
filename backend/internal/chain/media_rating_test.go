@@ -14,9 +14,11 @@ type ratingFakeSrc struct {
 	items []media.MediaInfo
 }
 
-func (f ratingFakeSrc) Name() string                                                        { return f.name }
-func (f ratingFakeSrc) Search(_ context.Context, _ string, _ int) ([]media.MediaInfo, error) { return f.items, nil }
-func (f ratingFakeSrc) Detail(_ context.Context, _ string) (*media.MediaInfo, error)         { return nil, nil }
+func (f ratingFakeSrc) Name() string { return f.name }
+func (f ratingFakeSrc) Search(_ context.Context, _ string, _ int) ([]media.MediaInfo, error) {
+	return f.items, nil
+}
+func (f ratingFakeSrc) Detail(_ context.Context, _ string) (*media.MediaInfo, error) { return nil, nil }
 
 // newRatingChain 构造一个注入 fake 源的 MediaChain（cfg=nil → LoadQuality 用默认）。
 func newRatingChain(srcs ...media.MediaSource) *MediaChain {

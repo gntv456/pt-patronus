@@ -14,11 +14,13 @@ type FilterTorrentsNode struct{}
 
 func NewFilterTorrentsNode() *FilterTorrentsNode { return &FilterTorrentsNode{} }
 
-func (n *FilterTorrentsNode) Type() string        { return "filter_torrents" }
-func (n *FilterTorrentsNode) Name() string        { return "过滤资源" }
-func (n *FilterTorrentsNode) Category() string    { return "过滤" }
-func (n *FilterTorrentsNode) Description() string { return "按关键词/大小/分辨率/免费过滤资源集合" }
-func (n *FilterTorrentsNode) Icon() string        { return "filter" }
+func (n *FilterTorrentsNode) Type() string     { return "filter_torrents" }
+func (n *FilterTorrentsNode) Name() string     { return "过滤资源" }
+func (n *FilterTorrentsNode) Category() string { return "过滤" }
+func (n *FilterTorrentsNode) Description() string {
+	return "按关键词/大小/分辨率/免费过滤资源集合"
+}
+func (n *FilterTorrentsNode) Icon() string { return "filter" }
 func (n *FilterTorrentsNode) DefaultParams() map[string]any {
 	return map[string]any{
 		"include": "", "exclude": "", "min_size": "", "max_size": "",

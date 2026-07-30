@@ -182,10 +182,10 @@ func wxBuildTextPayloads(accountID, toUser, text string) []map[string]any {
 	clientID := "pt-" + wxRandomToken(8)
 	protocol := map[string]any{
 		"msg": map[string]any{
-			"from_user_id": accountID,
-			"to_user_id":   toUser,
-			"client_id":    clientID,
-			"message_type": 2,
+			"from_user_id":  accountID,
+			"to_user_id":    toUser,
+			"client_id":     clientID,
+			"message_type":  2,
 			"message_state": 2,
 			"item_list": []map[string]any{
 				{"type": 1, "text_item": map[string]any{"text": text}},

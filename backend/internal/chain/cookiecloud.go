@@ -34,12 +34,12 @@ type ccStore interface {
 // 并按域名覆盖本地失效站的 cookie，根治 Laravel qw_session 等 session 短寿站的掉 cookie 问题。
 type CookieCloudSettings struct {
 	Enabled      bool   `json:"enabled"`
-	Server       string `json:"server"`        // CookieCloud 服务器 URL，如 https://cc.example.com
-	UUID         string `json:"uuid"`          // 用户 UUID/key
-	PasswordEnc  string `json:"password_enc"`  // AES-GCM 加密的端到端密码（security.Crypto.Encrypt）
-	IntervalMin  int    `json:"interval_min"`  // 同步间隔（分钟），软间隔
-	UpdateMode   string `json:"update_mode"`   // disconnected=仅失效站（默认）；always=总是用云端覆盖同名 cookie
-	Direction    string `json:"direction"`     // pull=仅拉取；push=仅推送；both=双向（默认）
+	Server       string `json:"server"`       // CookieCloud 服务器 URL，如 https://cc.example.com
+	UUID         string `json:"uuid"`         // 用户 UUID/key
+	PasswordEnc  string `json:"password_enc"` // AES-GCM 加密的端到端密码（security.Crypto.Encrypt）
+	IntervalMin  int    `json:"interval_min"` // 同步间隔（分钟），软间隔
+	UpdateMode   string `json:"update_mode"`  // disconnected=仅失效站（默认）；always=总是用云端覆盖同名 cookie
+	Direction    string `json:"direction"`    // pull=仅拉取；push=仅推送；both=双向（默认）
 	LastSyncUnix int64  `json:"last_sync_unix"`
 	LastError    string `json:"last_error"`
 }
@@ -503,7 +503,6 @@ func findDefinitionByHost(host string, defs []*site.SiteMetadata) *site.SiteMeta
 	}
 	return nil
 }
-
 
 // normalizeCookieCloudDirection 归一化同步方向。
 func normalizeCookieCloudDirection(dir string) string {

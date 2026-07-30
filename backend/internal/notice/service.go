@@ -66,10 +66,10 @@ const (
 	SourceTransferDone = "transfer_done" // 媒体整理完成
 	SourceTransferFail = "transfer_fail" // 媒体整理失败
 	// 勋章墙价格/状态变动（定时刷新 diff 触发）
-	SourceMedalNew        = "medal_new"         // 新勋章可购买
-	SourceMedalAvailable  = "medal_available"   // 上架可购买
-	SourceMedalPriceDrop  = "medal_price_drop"  // 降价
-	SourceMedalPriceRise  = "medal_price_rise"  // 涨价
+	SourceMedalNew        = "medal_new"          // 新勋章可购买
+	SourceMedalAvailable  = "medal_available"    // 上架可购买
+	SourceMedalPriceDrop  = "medal_price_drop"   // 降价
+	SourceMedalPriceRise  = "medal_price_rise"   // 涨价
 	SourceMedalOutOfStock = "medal_out_of_stock" // 售罄
 )
 
@@ -85,7 +85,7 @@ type Input struct {
 // Service 站内通知服务：去重 → 写库 → WS 广播 → 外发渠道。
 type Service struct {
 	store  Store
-	bcast  Broadcaster         // WS 实时广播（app.go 适配 ws.Hub.Broadcast）；nil 跳过
+	bcast  Broadcaster           // WS 实时广播（app.go 适配 ws.Hub.Broadcast）；nil 跳过
 	outbox *notification.Manager // 外发渠道（bark/tg/webhook）；nil 跳过外发
 }
 

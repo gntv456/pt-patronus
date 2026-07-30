@@ -74,9 +74,9 @@ func Save(kv KVStore, c Config) error {
 // Redacted 返回脱敏配置（令牌仅留 _configured 布尔）供 GET。
 func Redacted(c Config) map[string]any {
 	return map[string]any{
-		"enabled":                c.Enabled,
-		"allowed_models":         c.AllowedModels,
-		"max_concurrency":        c.MaxConcurrency,
+		"enabled":                 c.Enabled,
+		"allowed_models":          c.AllowedModels,
+		"max_concurrency":         c.MaxConcurrency,
 		"access_token_configured": strings.TrimSpace(c.AccessTokenEnc) != "",
 	}
 }

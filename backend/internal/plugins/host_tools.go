@@ -27,7 +27,7 @@ type HostTool struct {
 	InputSchema map[string]any `json:"input_schema,omitempty"`
 	Permission  string         `json:"permission,omitempty"`  // 空=无需权限（公开）
 	Category    string         `json:"category,omitempty"`    // downloader/media/site/... 用于 GET /tools 分组
-	Timeout     time.Duration  `json:"-"`                      // >0 覆盖默认 30s（慢操作如 scan/organize）
+	Timeout     time.Duration  `json:"-"`                     // >0 覆盖默认 30s（慢操作如 scan/organize）
 	Destructive bool           `json:"destructive,omitempty"` // 破坏性（删数据/删文件）；仅元数据，供前端标红
 }
 

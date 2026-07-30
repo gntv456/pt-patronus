@@ -28,7 +28,7 @@ func NewToolRegistry(tools []mcp.Tool) *ToolRegistry { return &ToolRegistry{tool
 type ToolCatalogEntry struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Risk        string `json:"risk"`     // read | write | destructive
+	Risk        string `json:"risk"`      // read | write | destructive
 	RiskNote    string `json:"risk_note"` // destructive 工具的危险说明
 }
 

@@ -272,7 +272,7 @@ func mtFirstStr(m map[string]any, keys ...string) string {
 func mtStatsPseudoMessage(data []byte) []site.Message {
 	var s struct {
 		Count  json.Number `json:"count"`
-		Unread json.Number  `json:"unMake"`
+		Unread json.Number `json:"unMake"`
 	}
 	_ = json.Unmarshal(data, &s)
 	count := toInt(s.Count.String())

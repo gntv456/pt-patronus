@@ -145,14 +145,16 @@ func (f *fakeAgentStore) Get(id uint) (*models.MonitorTarget, error) {
 	}
 	return nil, errors.New("not found")
 }
-func (f *fakeAgentStore) Credentials(*models.MonitorTarget) (Credentials, error) { return Credentials{}, nil }
+func (f *fakeAgentStore) Credentials(*models.MonitorTarget) (Credentials, error) {
+	return Credentials{}, nil
+}
 func (f *fakeAgentStore) RecordSnapshot(_ *models.MonitorTarget, m Metrics, _ error) (Metrics, error) {
 	f.snapshots++
 	return m, nil
 }
-func (f *fakeAgentStore) UpdateRTSPURL(uint, string) error          { return nil }
-func (f *fakeAgentStore) CreateAlert(*models.MonitorAlert) error    { return nil }
-func (f *fakeAgentStore) ResolveOpenAlerts(uint, string) error      { return nil }
+func (f *fakeAgentStore) UpdateRTSPURL(uint, string) error                         { return nil }
+func (f *fakeAgentStore) CreateAlert(*models.MonitorAlert) error                   { return nil }
+func (f *fakeAgentStore) ResolveOpenAlerts(uint, string) error                     { return nil }
 func (f *fakeAgentStore) LastOpenAlert(uint, string) (*models.MonitorAlert, error) { return nil, nil }
 
 func noopNotifier(context.Context, string, string, string) {}

@@ -35,10 +35,10 @@ const (
 
 // SubtitleSourceProvider 按 SystemConfig（回退 env 默认）构建并缓存字幕源；ApplySettings 后 rebuild。
 type SubtitleSourceProvider struct {
-	cfg      *oper.SystemConfigOper
-	defaults SubtitleSettings
-	hc       *httpclient.Client
-	mu       sync.RWMutex
+	cfg       *oper.SystemConfigOper
+	defaults  SubtitleSettings
+	hc        *httpclient.Client
+	mu        sync.RWMutex
 	providers []subtitle.Provider
 }
 

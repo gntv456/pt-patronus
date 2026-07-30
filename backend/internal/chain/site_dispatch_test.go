@@ -21,7 +21,7 @@ type fakeAdapter struct {
 	schema   string
 	torrents []site.Torrent
 	ui       *site.UserInfo
-	err      error        // Search 返回的错误（零值 nil，向后兼容已有用例）
+	err      error         // Search 返回的错误（零值 nil，向后兼容已有用例）
 	delay    time.Duration // Search 前的模拟耗时（零值不阻塞）
 }
 

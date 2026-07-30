@@ -14,9 +14,9 @@ func TestMatchCards(t *testing.T) {
 		{Name: "仅名称匹配", URL: "https://foo.pt", Domain: "foo.pt"},
 	}
 	sites := []models.Site{
-		{ID: 1, Name: "示例站", BaseURL: "https://example.pt"},                 // URL 精确
-		{ID: 2, Name: "其它站", BaseURL: "https://bar.example.pt"},             // 干扰
-		{ID: 3, Name: "仅名称匹配的别名", BaseURL: "https://other.pt"},            // 名称模糊
+		{ID: 1, Name: "示例站", BaseURL: "https://example.pt"},     // URL 精确
+		{ID: 2, Name: "其它站", BaseURL: "https://bar.example.pt"}, // 干扰
+		{ID: 3, Name: "仅名称匹配的别名", BaseURL: "https://other.pt"},  // 名称模糊
 	}
 	matchCards(cards, sites)
 

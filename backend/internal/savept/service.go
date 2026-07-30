@@ -21,10 +21,10 @@ const fetchTimeout = 30 * time.Second
 
 // Service 抓取并缓存 savept.icu 数据，按用户本地站点做匹配。
 type Service struct {
-	hc      *httpclient.Client
-	siteOp  *oper.SiteOper
-	mu      sync.Mutex
-	cache   *Result
+	hc       *httpclient.Client
+	siteOp   *oper.SiteOper
+	mu       sync.Mutex
+	cache    *Result
 	cachedAt time.Time
 }
 

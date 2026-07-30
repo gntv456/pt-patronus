@@ -356,7 +356,7 @@ func (o *MonitorOper) UpdateRTSPURL(id uint, url string) error {
 
 // ListSnapshots 取最近 limit 条快照，再按时间升序返回（便于前端绘图与取最新）。
 // 绝不能 Order(asc)+Limit：那是「最旧 N 条」。卡片 limit=1 会永远显示第一笔旧数据
-//（派糖磁盘修完后详情对、卡片仍 3.9TB 即此 bug）。正确：DESC 取最近 N，再反转为 ASC。
+// （派糖磁盘修完后详情对、卡片仍 3.9TB 即此 bug）。正确：DESC 取最近 N，再反转为 ASC。
 func (o *MonitorOper) ListSnapshots(targetID uint, since time.Time, limit int) ([]models.MetricSnapshot, error) {
 	var snaps []models.MetricSnapshot
 	q := o.db.Where("target_id = ?", targetID)

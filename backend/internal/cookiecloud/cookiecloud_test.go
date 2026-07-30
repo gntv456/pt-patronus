@@ -111,7 +111,6 @@ func TestHostMatches(t *testing.T) {
 	}
 }
 
-
 func TestEncryptDecryptRoundTrip(t *testing.T) {
 	plain := `{"cookie_data":{"demo.pt":[{"name":"sess","value":"xyz","domain":"demo.pt","path":"/"}]},"update_time":1}`
 	enc, err := Encrypt([]byte(plain), DeriveKey("u", "p"))

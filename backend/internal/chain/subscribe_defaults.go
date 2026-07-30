@@ -53,7 +53,9 @@ func saveGlobalDefaults(cfgOp *oper.SystemConfigOper, gd GlobalDefaults) error {
 func (c *SubscribeChain) LoadGlobalDefaults() GlobalDefaults { return loadGlobalDefaults(c.cfgOp) }
 
 // SaveGlobalDefaults 写全局订阅默认设置（handler 用）。
-func (c *SubscribeChain) SaveGlobalDefaults(gd GlobalDefaults) error { return saveGlobalDefaults(c.cfgOp, gd) }
+func (c *SubscribeChain) SaveGlobalDefaults(gd GlobalDefaults) error {
+	return saveGlobalDefaults(c.cfgOp, gd)
+}
 
 // effectiveSettings 订阅各项设置经回退后的有效值（订阅自定义优先，空/nil 回退全局默认）。
 type effectiveSettings struct {

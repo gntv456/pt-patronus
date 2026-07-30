@@ -103,8 +103,11 @@ func wrapAll(torrents []site.Torrent) []MatchedTorrent {
 	return out
 }
 
-// parseLevels 解析 rule_string 各层为 AST（与 SplitLevels 同源切分）。
+// parseLevels 解析 rule_string 各层为 AST（与 SplitLevels 同源切分）；按 ruleString 缓存（astCache 在 store.go）。
 func parseLevels(ruleString string) ([]expr, error) {
+	if v, ok := astCache.Load(ruleString); ok {
+		return v.([]expr), nil
+	}
 	levels, err := SplitLevels(ruleString)
 	if err != nil {
 		return nil, err
@@ -117,6 +120,7 @@ func parseLevels(ruleString string) ([]expr, error) {
 		}
 		asts = append(asts, a)
 	}
+	astCache.Store(ruleString, asts)
 	return asts, nil
 }
 

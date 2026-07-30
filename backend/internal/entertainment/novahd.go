@@ -3,7 +3,6 @@ package entertainment
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -105,7 +104,7 @@ func magicFarmStatus(body []byte, section string, id int) string {
 
 // magicFarmWarehouse 抠仓库表行（名称/数量/出售 key）。
 func magicFarmWarehouse(body []byte) []StorageItem {
-	re := regexp.MustCompile(`(?s)<tr>\s*<td>.*?</td>\s*<td>([^<]+)</td>\s*<td>(\d+)</td>.*?action=sell&key=([^"&']+?)["&']`)
+	re := compileRegex(`(?s)<tr>\s*<td>.*?</td>\s*<td>([^<]+)</td>\s*<td>(\d+)</td>.*?action=sell&key=([^"&']+?)["&']`)
 	out := make([]StorageItem, 0)
 	for _, m := range re.FindAllStringSubmatch(string(body), -1) {
 		count, _ := strconv.Atoi(strings.TrimSpace(m[2]))
@@ -116,8 +115,8 @@ func magicFarmWarehouse(body []byte) []StorageItem {
 
 // magicFarmMarket 抠菜市场两张表（第一张 crops，其后 animals）。
 func magicFarmMarket(body []byte) []MarketItem {
-	catRe := regexp.MustCompile(`(?s)market-category.*?<table[^>]*>(.*?)</table>`)
-	rowRe := regexp.MustCompile(`(?s)<tr>\s*<td>.*?</td>\s*<td>([^<]+)</td>\s*<td>([\d,.]+)</td>`)
+	catRe := compileRegex(`(?s)market-category.*?<table[^>]*>(.*?)</table>`)
+	rowRe := compileRegex(`(?s)<tr>\s*<td>.*?</td>\s*<td>([^<]+)</td>\s*<td>([\d,.]+)</td>`)
 	out := make([]MarketItem, 0)
 	cats := catRe.FindAllStringSubmatch(string(body), -1)
 	for i, cat := range cats {
@@ -138,7 +137,7 @@ func magicFarmExpireDays(body []byte, section string) int {
 	if section == "animal" {
 		label = "动物有效期"
 	}
-	if m := regexp.MustCompile(label + `\s*(\d+)\s*天`).FindSubmatch(body); len(m) >= 2 {
+	if m := compileRegex(label + `\s*(\d+)\s*天`).FindSubmatch(body); len(m) >= 2 {
 		n, _ := strconv.Atoi(string(m[1]))
 		return n
 	}

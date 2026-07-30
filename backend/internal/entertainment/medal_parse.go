@@ -26,7 +26,7 @@ var (
 
 // extractDivBlocks 找出所有 class 含 className 的 <div> 块（按深度配对闭合）。
 func extractDivBlocks(html, className string) []htmlBlock {
-	startRe := regexp.MustCompile(`(?i)<div\b[^>]*\b` + regexp.QuoteMeta(className) + `\b[^>]*>`)
+	startRe := compileRegex(`(?i)<div\b[^>]*\b` + regexp.QuoteMeta(className) + `\b[^>]*>`)
 	var out []htmlBlock
 	idx := 0
 	for idx < len(html) {
@@ -66,7 +66,7 @@ func findMatchingDivEnd(html string, startIndex int) int {
 
 // attrVal 取标签里某属性值（双引号或单引号）。
 func attrVal(tag, name string) string {
-	re := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(name) + `\s*=\s*(?:"([^"]*)"|'([^']*)')`)
+	re := compileRegex(`(?i)\b` + regexp.QuoteMeta(name) + `\s*=\s*(?:"([^"]*)"|'([^']*)')`)
 	m := re.FindStringSubmatch(tag)
 	if m == nil {
 		return ""
@@ -84,7 +84,7 @@ func parseHTMLInt(s string) int {
 }
 
 func extractDrawPrice(block string, id, count int) int {
-	re := regexp.MustCompile(`drawFragment\(\s*` + strconv.Itoa(id) + `\s*,\s*` + strconv.Itoa(count) + `\s*,\s*([\d,]+)\s*\)`)
+	re := compileRegex(`drawFragment\(\s*` + strconv.Itoa(id) + `\s*,\s*` + strconv.Itoa(count) + `\s*,\s*([\d,]+)\s*\)`)
 	m := re.FindStringSubmatch(block)
 	if m == nil {
 		return 0
@@ -93,7 +93,7 @@ func extractDrawPrice(block string, id, count int) int {
 }
 
 func canSynth(block string) bool {
-	btnRe := regexp.MustCompile(`(?is)<button\b[^>]*\bbtn-synthesize\b[\s\S]*?</button>`)
+	btnRe := compileRegex(`(?is)<button\b[^>]*\bbtn-synthesize\b[\s\S]*?</button>`)
 	btn := btnRe.FindString(block)
 	if btn == "" {
 		return false

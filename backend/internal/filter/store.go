@@ -14,6 +14,10 @@ import (
 // 对齐 MP-2 _compile_ignorecase 的 lru_cache(1024)。
 var reCache sync.Map // pattern(string) → *regexp.Regexp
 
+// astCache 缓存 rule_string 解析后的 AST（组定义不常变，Filter 每组每次重解析纯浪费）。
+// 声明在本文件因已 import sync；engine.go parseLevels 同包直接引用。
+var astCache sync.Map // ruleString(string) → []expr
+
 // compilePattern 编译 pattern 为 IGNORECASE 正则；失败返回错误（坏规则会在 Normalize 阶段被拒）。
 func compilePattern(pattern string) (*regexp.Regexp, error) {
 	if v, ok := reCache.Load(pattern); ok {
@@ -40,6 +44,14 @@ func reSearch(pattern, content string) bool {
 // 规则/组以 JSON 存 SystemConfig 表（零 schema 迁移）；自定义规则按 id 覆盖内置。
 type Store struct {
 	op *oper.SystemConfigOper
+
+	// 自定义规则/规则组内存缓存：Filter 热路径（搜索/订阅/RSS/刷流每次命中）各读一次 DB First
+	// 是瓶颈。saveCustomRules/saveGroups 写后失效；首次 Get 填充。返回拷贝防调用方篡改缓存。
+	cacheMu      sync.RWMutex
+	rulesCache   []Rule
+	rulesLoaded  bool
+	groupsCache  []RuleGroup
+	groupsLoaded bool
 }
 
 // NewStore 构造。
@@ -47,19 +59,29 @@ func NewStore(op *oper.SystemConfigOper) *Store { return &Store{op: op} }
 
 // ---------- 自定义规则 ----------
 
-// GetCustomRules 读取自定义规则（按入库顺序）。
+// GetCustomRules 读取自定义规则（按入库顺序）。命中内存缓存免 DB 往返（Filter 热路径）。
 func (s *Store) GetCustomRules() ([]Rule, error) {
+	s.cacheMu.RLock()
+	if s.rulesLoaded {
+		out := append([]Rule(nil), s.rulesCache...) // 拷贝防篡改
+		s.cacheMu.RUnlock()
+		return out, nil
+	}
+	s.cacheMu.RUnlock()
 	v, err := s.op.Get(KeyCustomFilterRules)
 	if err != nil {
 		return nil, err
 	}
-	if v == "" {
-		return nil, nil
-	}
 	var rs []Rule
-	if err := json.Unmarshal([]byte(v), &rs); err != nil {
-		return nil, fmt.Errorf("解析自定义规则失败：%w", err)
+	if v != "" {
+		if err := json.Unmarshal([]byte(v), &rs); err != nil {
+			return nil, fmt.Errorf("解析自定义规则失败：%w", err)
+		}
 	}
+	s.cacheMu.Lock()
+	s.rulesCache = append([]Rule(nil), rs...)
+	s.rulesLoaded = true
+	s.cacheMu.Unlock()
 	return rs, nil
 }
 
@@ -68,7 +90,14 @@ func (s *Store) saveCustomRules(rs []Rule) error {
 	if err != nil {
 		return err
 	}
-	return s.op.Set(KeyCustomFilterRules, string(b))
+	if err := s.op.Set(KeyCustomFilterRules, string(b)); err != nil {
+		return err
+	}
+	s.cacheMu.Lock()
+	s.rulesCache = nil
+	s.rulesLoaded = false
+	s.cacheMu.Unlock()
+	return nil
 }
 
 // AddCustomRule 新增（id 重复则报错）。自定义 id 可与内置相同（覆盖语义），但自定义间不可重复。
@@ -164,19 +193,29 @@ func (s *Store) DeleteCustomRule(id string) error {
 
 // ---------- 规则组 ----------
 
-// GetGroups 读取规则组定义（按入库顺序）。
+// GetGroups 读取规则组定义（按入库顺序）。命中内存缓存免 DB 往返（Filter 热路径）。
 func (s *Store) GetGroups() ([]RuleGroup, error) {
+	s.cacheMu.RLock()
+	if s.groupsLoaded {
+		out := append([]RuleGroup(nil), s.groupsCache...)
+		s.cacheMu.RUnlock()
+		return out, nil
+	}
+	s.cacheMu.RUnlock()
 	v, err := s.op.Get(KeyUserFilterRuleGroups)
 	if err != nil {
 		return nil, err
 	}
-	if v == "" {
-		return nil, nil
-	}
 	var gs []RuleGroup
-	if err := json.Unmarshal([]byte(v), &gs); err != nil {
-		return nil, fmt.Errorf("解析规则组失败：%w", err)
+	if v != "" {
+		if err := json.Unmarshal([]byte(v), &gs); err != nil {
+			return nil, fmt.Errorf("解析规则组失败：%w", err)
+		}
 	}
+	s.cacheMu.Lock()
+	s.groupsCache = append([]RuleGroup(nil), gs...)
+	s.groupsLoaded = true
+	s.cacheMu.Unlock()
 	return gs, nil
 }
 
@@ -185,7 +224,14 @@ func (s *Store) saveGroups(gs []RuleGroup) error {
 	if err != nil {
 		return err
 	}
-	return s.op.Set(KeyUserFilterRuleGroups, string(b))
+	if err := s.op.Set(KeyUserFilterRuleGroups, string(b)); err != nil {
+		return err
+	}
+	s.cacheMu.Lock()
+	s.groupsCache = nil
+	s.groupsLoaded = false
+	s.cacheMu.Unlock()
+	return nil
 }
 
 // AddGroup 新增规则组（校验语法 + 引用 id 存在 + name 唯一）。

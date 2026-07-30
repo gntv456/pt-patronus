@@ -7,15 +7,33 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
+
+// reTag 去 HTML 标签的固定正则（stripTags 用），包级预编译避免每次调用重编译。
+var reTag = regexp.MustCompile(`<[^>]+>`)
+
+// reCache 缓存动态拼接的正则（按 pattern 原样编译，不额外加 (?i)——调用方自行指定前缀）。
+// 站点 HTML 解析正则多含 className/id/name 等动态片段，勋章合成/抽卡解析热路径上反复编译纯浪费。
+var reCache sync.Map // pattern(string) → *regexp.Regexp
+
+// compileRegex 编译 pattern 并缓存（原样，不加前缀）；pattern 假定合法（站点数据已验）。
+func compileRegex(pattern string) *regexp.Regexp {
+	if v, ok := reCache.Load(pattern); ok {
+		return v.(*regexp.Regexp)
+	}
+	re := regexp.MustCompile(pattern)
+	reCache.Store(pattern, re)
+	return re
+}
 
 // 通用 JSON 响应小工具（九宫格/刮刮乐/财神刮刮乐等游戏复用）。
 
 // firstGroup 取 body 中正则首个捕获组；无匹配返回空（魔力刮刮乐 buy 返 HTML 抠 scratch_id 用）。
 func firstGroup(body []byte, pattern string) string {
-	m := regexp.MustCompile(pattern).FindSubmatch(body)
+	m := compileRegex(pattern).FindSubmatch(body)
 	if len(m) >= 2 {
 		return string(m[1])
 	}
@@ -24,7 +42,7 @@ func firstGroup(body []byte, pattern string) string {
 
 // findGroups 取正则全部捕获组（含整体匹配）；无匹配返回 nil（魔力刮刮乐 stats 抠 剩余/上限 用）。
 func findGroups(body []byte, pattern string) []string {
-	m := regexp.MustCompile(pattern).FindSubmatch(body)
+	m := compileRegex(pattern).FindSubmatch(body)
 	if m == nil {
 		return nil
 	}
@@ -37,7 +55,7 @@ func findGroups(body []byte, pattern string) []string {
 
 // stripTags 去 HTML 标签（抠 buy 失败提示文本用）。
 func stripTags(s string) string {
-	return regexp.MustCompile(`<[^>]+>`).ReplaceAllString(s, "")
+	return reTag.ReplaceAllString(s, "")
 }
 
 // pathTail 取 URL 最后一段（日志标识用）。

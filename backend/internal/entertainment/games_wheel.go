@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -150,8 +149,8 @@ func (LuckyDrawWheelGame) Prizes(ctx context.Context, hc *httpclient.Client, bas
 	}
 	// 整体匹配每个奖品对象（扁平、无嵌套花括号），再从中抠 id/typeText/amountText，
 	// 避免页面里其它 "id": 干扰配对。
-	objRe := regexp.MustCompile(`\{[^{}]*"typeText":"([^"]*)"[^{}]*"amountText":"([^"]*)"[^{}]*\}`)
-	idRe := regexp.MustCompile(`"id":(\d+)`)
+	objRe := compileRegex(`\{[^{}]*"typeText":"([^"]*)"[^{}]*"amountText":"([^"]*)"[^{}]*\}`)
+	idRe := compileRegex(`"id":(\d+)`)
 	matches := objRe.FindAllSubmatch(resp.Body, -1)
 	out := make([]PrizeDef, 0, len(matches))
 	for i, m := range matches {

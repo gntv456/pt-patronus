@@ -385,7 +385,26 @@ func (b *Broadcaster) aggregate(ctx context.Context) ([]TorrentSnapshot, error) 
 	return out, nil
 }
 
-func torrentEqual(a, b downloader.Torrent) bool { return reflect.DeepEqual(a, b) }
+func torrentEqual(a, b downloader.Torrent) bool {
+	// 标量字段直接 == 短路比较：任一不等立即返回，避免 reflect.DeepEqual 对整个 ~30 字段
+	// struct 反射（慢 10-100×）。每轮广播（有人看时 2s）对每个种子调用，是热路径。
+	if a.Hash != b.Hash || a.InfoHash != b.InfoHash || a.Name != b.Name ||
+		a.Size != b.Size || a.Downloaded != b.Downloaded || a.Uploaded != b.Uploaded ||
+		a.Progress != b.Progress || a.Ratio != b.Ratio || a.State != b.State ||
+		a.DLRate != b.DLRate || a.UPRate != b.UPRate || a.SavePath != b.SavePath ||
+		a.Category != b.Category || a.AddedAt != b.AddedAt ||
+		a.NumSeeds != b.NumSeeds || a.NumLeechs != b.NumLeechs ||
+		a.NumComplete != b.NumComplete || a.NumIncomplete != b.NumIncomplete ||
+		a.Availability != b.Availability || a.RatioLimit != b.RatioLimit ||
+		a.SeedingTimeLimit != b.SeedingTimeLimit || a.ForceStart != b.ForceStart ||
+		a.AutoTMM != b.AutoTMM || a.Sequential != b.Sequential ||
+		a.FirstLastPiece != b.FirstLastPiece || a.Priority != b.Priority ||
+		a.CompletedAt != b.CompletedAt || a.LastActivity != b.LastActivity {
+		return false
+	}
+	// 标量全等时再比 Tags 切片（通常 0-3 元素）。
+	return reflect.DeepEqual(a.Tags, b.Tags)
+}
 
 func statsEqual(a, b *downloader.GlobalStats) bool {
 	if a == nil && b == nil {

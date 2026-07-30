@@ -3,7 +3,6 @@ package entertainment
 import (
 	"context"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -63,7 +62,7 @@ func (AudiencesBlackjackGame) Blackjack(ctx context.Context, hc *httpclient.Clie
 
 // parseBlackjackCards 宽松抠牌（♠♥♦♣ + 点数）；精确结构待真实页面校准。
 func parseBlackjackCards(html string) []string {
-	re := regexp.MustCompile(`[♠♥♦♣🂡-🂾][\dAJQK]+|[\dAJQK]+[♠♥♦♣]`)
+	re := compileRegex(`[♠♥♦♣🂡-🂾][\dAJQK]+|[\dAJQK]+[♠♥♦♣]`)
 	return re.FindAllString(html, -1)
 }
 

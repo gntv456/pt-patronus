@@ -35,4 +35,17 @@ window.addEventListener('unhandledrejection', (e) => {
   showErrorOverlay(e.reason, '未处理的 Promise 错误')
 })
 
+// 玻璃性能降级：低端设备（CPU/RAM 低）或手动开启（localStorage['perf-glass-flat']='1'）时，
+// 给 body 加 glass-reduced 类，关闭全站 backdrop-filter（GPU 合成性能杀手，187 处卡片层叠掉帧）。
+// 对齐移动端 glassReduced；系统「减少透明度」偏好由 glass.css @media 自动处理。
+{
+  const nav = navigator as Navigator & { deviceMemory?: number }
+  const lowEnd =
+    (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4) ||
+    (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 4)
+  if (lowEnd || localStorage.getItem('perf-glass-flat') === '1') {
+    document.body.classList.add('glass-reduced')
+  }
+}
+
 app.mount('#app')

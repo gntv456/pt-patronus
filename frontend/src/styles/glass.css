@@ -220,6 +220,31 @@ body {
   border-radius: var(--radius-lg);
 }
 
+/* backdrop-filter 全局降级（blur+saturate 是 GPU 合成性能杀手，全站 187 处，低端机/大量卡片层叠掉帧）：
+   ① body.glass-reduced —— main.ts 检测低端设备或读 localStorage['perf-glass-flat']='1' 注入；
+   ② @media prefers-reduced-transparency —— 用户系统「减少透明度」偏好（无障碍/省电）。
+   两条路径都关闭模糊、改不透明底、隐藏 rim 高光，等价 .glass-flat。对齐移动端 glassReduced。 */
+body.glass-reduced .glass,
+body.glass-reduced .glass-bar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--glass-bg-strong);
+}
+body.glass-reduced .glass::before {
+  opacity: 0;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-bar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--glass-bg-strong);
+  }
+  .glass::before {
+    opacity: 0;
+  }
+}
+
 /* ── 语义色 ── */
 .trend-up {
   color: var(--pt-success);

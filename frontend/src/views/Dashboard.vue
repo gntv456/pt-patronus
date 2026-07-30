@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
 import { dashboardApi, type DashboardOverview, type SiteStatItem, type DashboardTrendPoint } from '@/api/dashboard'
 import { siteApi, type Site } from '@/api/site'
@@ -8,7 +8,8 @@ import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardShareData } from '@/utils/dashboardImage'
 import DashboardTrendChart from '@/components/dashboard/DashboardTrendChart.vue'
-import DashboardExportDialog from '@/components/dashboard/DashboardExportDialog.vue'
+// 导出对话框含 661 行 canvas 绘制逻辑，仅在用户点「导出图片」时需要 → 异步加载，不进首屏 chunk。
+const DashboardExportDialog = defineAsyncComponent(() => import('@/components/dashboard/DashboardExportDialog.vue'))
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import DashboardRealtimeCard from '@/components/dashboard/DashboardRealtimeCard.vue'

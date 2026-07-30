@@ -66,14 +66,16 @@ function clearState() {
 
 // applyDiff 把一轮增量合并到当前快照，返回新数组（触发 Vue 响应式）。纯函数，便于单测。
 export function applyDiff(cur: TorrentSnapshot[], diff: TorrentDiff): TorrentSnapshot[] {
-  const byId = new Map<number, TorrentSnapshot>(
-    cur.map((s) => [s.downloader_id, { ...s, torrents: [...s.torrents] }]),
-  )
+  // 只克隆本轮有变更的下载器快照，未命中的复用原引用（避免每轮 WS 推送全量浅拷贝 + torrents 重建）。
+  const byId = new Map<number, TorrentSnapshot>()
+  for (const s of cur) byId.set(s.downloader_id, s)
   for (const id of diff.removed ?? []) byId.delete(id)
   for (const s of diff.added ?? []) byId.set(s.downloader_id, { ...s, torrents: [...s.torrents] })
   for (const dd of diff.changed ?? []) {
-    const s = byId.get(dd.downloader_id)
-    if (!s) continue
+    const prev = byId.get(dd.downloader_id)
+    if (!prev) continue
+    // 仅克隆命中的快照（torrents 数组需重建以应用增删改），未变快照保持原引用。
+    const s: TorrentSnapshot = { ...prev, torrents: [...prev.torrents] }
     if (dd.name !== undefined) s.name = dd.name
     if ('error' in dd) s.error = dd.error ?? ''
     if (dd.stats !== undefined) s.stats = dd.stats

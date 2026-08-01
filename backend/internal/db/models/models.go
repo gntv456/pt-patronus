@@ -451,6 +451,8 @@ type Subscription struct {
 	//     电影订阅与 false 时行为不变。
 	// *bool 三态：nil=未设置（Check 时回退全局订阅默认 SubscribeGlobalDefaults）；true/false=订阅自定义。
 	BestVersion     *bool      `json:"best_version"`
+	// OfficialOnly 仅官种：*bool 三态(nil 回退全局默认)；true=只留 site.IsOfficial 命中者。复刻 BestVersion 模式。
+	OfficialOnly    *bool      `json:"official_only"`
 	BestVersionFull bool       `gorm:"default:false" json:"best_version_full"`
 	CurrentPriority int        `gorm:"default:0" json:"current_priority"`
 	EpisodePriority string     `gorm:"type:text" json:"episode_priority"`

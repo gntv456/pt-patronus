@@ -18,13 +18,13 @@ func (n *FilterTorrentsNode) Type() string     { return "filter_torrents" }
 func (n *FilterTorrentsNode) Name() string     { return "过滤资源" }
 func (n *FilterTorrentsNode) Category() string { return "过滤" }
 func (n *FilterTorrentsNode) Description() string {
-	return "按关键词/大小/分辨率/免费过滤资源集合"
+	return "按关键词/大小/分辨率/免费/官种过滤资源集合"
 }
 func (n *FilterTorrentsNode) Icon() string { return "filter" }
 func (n *FilterTorrentsNode) DefaultParams() map[string]any {
 	return map[string]any{
 		"include": "", "exclude": "", "min_size": "", "max_size": "",
-		"resolution": "", "free_only": false,
+		"resolution": "", "free_only": false, "official_only": false,
 	}
 }
 func (n *FilterTorrentsNode) ParamSchema() []workflow.ParamField {
@@ -37,6 +37,7 @@ func (n *FilterTorrentsNode) ParamSchema() []workflow.ParamField {
 			{Label: "不限", Value: ""}, {Label: "1080p", Value: "1080p"}, {Label: "2160p/4K", Value: "2160p"},
 		}},
 		{Name: "free_only", Label: "仅免费", Type: "switch"},
+		{Name: "official_only", Label: "仅官种", Type: "switch", Help: "只保留官方/官种/官组发布（标题或标签命中）"},
 	}
 }
 
@@ -45,6 +46,7 @@ func (n *FilterTorrentsNode) Execute(ctx context.Context, params map[string]any,
 	exclude := workflow.ParamString(params, "exclude")
 	res := workflow.ParamString(params, "resolution")
 	freeOnly := workflow.ParamBool(params, "free_only")
+	officialOnly := workflow.ParamBool(params, "official_only")
 	minBytes := int64(workflow.ParamInt(params, "min_size")) * 1024 * 1024 * 1024
 	maxBytes := int64(workflow.ParamInt(params, "max_size")) * 1024 * 1024 * 1024
 
@@ -57,6 +59,9 @@ func (n *FilterTorrentsNode) Execute(ctx context.Context, params map[string]any,
 			continue
 		}
 		if freeOnly && !t.Free {
+			continue
+		}
+		if officialOnly && !site.IsOfficial(t.Title, t.Labels) {
 			continue
 		}
 		if minBytes > 0 || maxBytes > 0 {

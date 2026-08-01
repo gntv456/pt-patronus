@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subscribe'
 import { mediaApi } from '@/api/media'
 import { siteApi } from '@/api/site'
+import { useSubscriptionToggles } from '@/composables/useSubscriptionToggles'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
@@ -20,9 +21,9 @@ const checking = ref<number | null>(null)
 const sites = ref<{ id: number; name: string }[]>([])
 
 // 全局订阅默认设置：未单独设置某项的订阅回退到此（运行时回退）。
-const globalDefaults = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false })
+const globalDefaults = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false, official_only: false })
 const globalOpen = ref(false)
-const globalForm = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false })
+const globalForm = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false, official_only: false })
 const savingGlobal = ref(false)
 
 async function loadGlobalDefaults() {
@@ -54,9 +55,8 @@ async function saveGlobal() {
   }
 }
 
-// 有效值：订阅自定义优先，空/null 回退全局默认。
-function effRatingGuard(s: Subscription) { return s.enable_rating_guard ?? globalDefaults.value.enable_rating_guard }
-function effBestVersion(s: Subscription) { return s.best_version ?? globalDefaults.value.best_version }
+// 三态开关簇（评分保护/洗版/仅官种）抽出为 composable：订阅自定义优先，null 回退全局默认。
+const { effRatingGuard, effBestVersion, effOfficialOnly, setRatingGuard, resetRatingGuard, setBestVersion, resetBestVersion, setOfficialOnly, resetOfficialOnly } = useSubscriptionToggles(globalDefaults)
 function promoLabel(v: string) { return PROMO_OPTIONS.find((o) => o.value === v)?.label || v }
 
 async function loadSites() {
@@ -129,51 +129,6 @@ async function setResolution(s: Subscription) {
     await subscribeApi.update(s.id, { resolution: s.resolution })
     ElMessage.success('分辨率已更新')
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '更新失败')
-  }
-}
-
-// 三态开关：设订阅自定义值（true/false）；恢复跟随全局走 reset。
-async function setRatingGuard(s: Subscription, val: boolean) {
-  const prev = s.enable_rating_guard
-  s.enable_rating_guard = val
-  try {
-    await subscribeApi.update(s.id, { enable_rating_guard: val })
-  } catch (e: unknown) {
-    s.enable_rating_guard = prev
-    ElMessage.error((e as Error).message || '更新失败')
-  }
-}
-async function resetRatingGuard(s: Subscription) {
-  const prev = s.enable_rating_guard
-  s.enable_rating_guard = null
-  try {
-    await subscribeApi.reset(s.id, ['enable_rating_guard'])
-    ElMessage.success('评分保护已恢复跟随全局')
-  } catch (e: unknown) {
-    s.enable_rating_guard = prev
-    ElMessage.error((e as Error).message || '更新失败')
-  }
-}
-
-async function setBestVersion(s: Subscription, val: boolean) {
-  const prev = s.best_version
-  s.best_version = val
-  try {
-    await subscribeApi.update(s.id, { best_version: val })
-  } catch (e: unknown) {
-    s.best_version = prev
-    ElMessage.error((e as Error).message || '更新失败')
-  }
-}
-async function resetBestVersion(s: Subscription) {
-  const prev = s.best_version
-  s.best_version = null
-  try {
-    await subscribeApi.reset(s.id, ['best_version'])
-    ElMessage.success('洗版已恢复跟随全局')
-  } catch (e: unknown) {
-    s.best_version = prev
     ElMessage.error((e as Error).message || '更新失败')
   }
 }
@@ -269,7 +224,7 @@ onMounted(() => {
     
     <el-tabs v-model="mainTab" class="page-tabs glass" @tab-change="onMainTab">
       <el-tab-pane label="追剧订阅" name="media">
-<el-dialog v-model="globalOpen" title="全局订阅默认设置" width="540px">
+<el-dialog v-model="globalOpen" title="全局订阅默认设置" width="540px" append-to-body align-center>
       <div class="text-muted small" style="margin-bottom: 12px;">
         未单独设置某项的订阅将使用此处的默认值（改后立即对所有未自定义订阅生效）。
       </div>
@@ -287,6 +242,11 @@ onMounted(() => {
         <span class="small gd-label">洗版</span>
         <el-switch v-model="globalForm.best_version" size="small" />
         <span class="small text-muted">持续寻找更高画质版本</span>
+      </div>
+      <div class="gd-row">
+        <span class="small gd-label">仅官种</span>
+        <el-switch v-model="globalForm.official_only" size="small" />
+        <span class="small text-muted">只推送官方/官组发布的资源</span>
       </div>
       <div class="gd-row">
         <span class="small gd-label">促销类型</span>
@@ -369,6 +329,20 @@ onMounted(() => {
               <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="chip res">
                 Pri {{ s.current_priority }}
               </span>
+            </div>
+            <div class="res-row">
+              <span class="small">仅官种：</span>
+              <el-switch
+                :model-value="effOfficialOnly(s)"
+                :disabled="s.official_only === null"
+                size="small"
+                @update:model-value="(v: any) => setOfficialOnly(s, !!v)"
+              />
+              <span v-if="s.official_only === null" class="small text-muted">（跟随全局：{{ globalDefaults.official_only ? '开' : '关' }}）</span>
+              <template v-else>
+                <el-button link type="primary" class="small" @click="resetOfficialOnly(s)">恢复全局</el-button>
+                <span class="small text-muted">（只推标题/标签含「官方/官种/官组」的资源）</span>
+              </template>
             </div>
             <div class="res-row">
               <span class="small">促销类型：</span>

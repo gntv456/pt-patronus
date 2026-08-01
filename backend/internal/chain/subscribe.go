@@ -223,6 +223,10 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		}
 		all = kept
 	}
+	// 仅官种：eff.OfficialOnly 为 true 时硬过滤（促销后/规则引擎前），只留 site.IsOfficial 命中者。
+	if eff.OfficialOnly {
+		all = filterByOfficial(all)
+	}
 	// 规则引擎排序（保留 PriOrder 供洗版门控）：
 	//   普通订阅 → FilterGroups 优先，否则全局 SubscribeFilterRuleGroups；
 	//   洗版订阅 → BestVersionFilterRuleGroups 优先（允许更严格的画质门槛），空则回退普通绑定。
@@ -515,6 +519,17 @@ func filterByResolution(torrents []site.Torrent, want string) []site.Torrent {
 	out := torrents[:0]
 	for _, t := range torrents {
 		if matchResolution(t.Title, want) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// filterByOfficial 仅保留官种：复用 site.IsOfficial（labels 命中「官方/官种/官组」，空则回退 title）。
+func filterByOfficial(torrents []site.Torrent) []site.Torrent {
+	out := torrents[:0]
+	for _, t := range torrents {
+		if site.IsOfficial(t.Title, t.Labels) {
 			out = append(out, t)
 		}
 	}

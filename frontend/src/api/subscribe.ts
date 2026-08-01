@@ -16,6 +16,7 @@ export interface Subscription {
   enable_rating_guard: boolean | null // 三态：null=跟随全局默认；true/false=订阅自定义
   best_version: boolean | null // 三态：null=跟随全局默认；true/false=订阅自定义
   best_version_full: boolean // 洗版整季包优先模式
+  official_only: boolean | null // 三态：null=跟随全局默认；true=仅收官种；false=不过滤
   promo_types: string[] // 接受的促销类型多选（free/2xfree/2x/discount/2xdiscount）；空=不过滤
   site_ids: number[] // 参与站点 id；空=全部活跃站点
   current_priority: number // 电影当前最优 PriOrder（0=未下过）
@@ -35,6 +36,7 @@ export interface SubInput {
   poster_url?: string
   resolution?: string
   best_version?: boolean
+  official_only?: boolean
   promo_types?: string[]
   site_ids?: number[]
 }
@@ -46,13 +48,14 @@ export interface GlobalDefaults {
   site_ids: number[] // 空=全部活跃站点
   enable_rating_guard: boolean // 全局二态，默认 false
   best_version: boolean // 全局二态，默认 false
+  official_only: boolean // 全局二态，默认 false（开启后订阅只收官种）
 }
 
 export const subscribeApi = {
   list: () =>
     http.get<{ subscriptions: Subscription[] }>('/subscriptions').then((r) => r.data.subscriptions ?? []),
   create: (data: SubInput) => http.post<Subscription>('/subscriptions', data).then((r) => r.data),
-  update: (id: number, patch: Partial<Pick<Subscription, 'resolution' | 'status' | 'downloader_id' | 'save_path' | 'enable_rating_guard' | 'best_version' | 'best_version_full' | 'promo_types' | 'site_ids'>>) =>
+  update: (id: number, patch: Partial<Pick<Subscription, 'resolution' | 'status' | 'downloader_id' | 'save_path' | 'enable_rating_guard' | 'best_version' | 'best_version_full' | 'official_only' | 'promo_types' | 'site_ids'>>) =>
     http.put<Subscription>(`/subscriptions/${id}`, patch).then((r) => r.data),
   remove: (id: number) => http.delete(`/subscriptions/${id}`).then((r) => r.data),
   check: (id: number) =>

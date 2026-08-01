@@ -70,6 +70,7 @@ func (o *SubscriptionOper) UpdateEditableFields(s *models.Subscription) error {
 		"filter_groups":       s.FilterGroups,
 		"best_version":        s.BestVersion,
 		"best_version_full":   s.BestVersionFull,
+		"official_only":       s.OfficialOnly,
 		"promo_types":         s.PromoTypes,
 		"site_ids":            s.SiteIDs,
 		"resolution":          s.Resolution,

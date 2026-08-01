@@ -19,6 +19,7 @@ type GlobalDefaults struct {
 	SiteIDs           []uint   `json:"site_ids"`            // 空=全部活跃站点
 	EnableRatingGuard bool     `json:"enable_rating_guard"` // 默认关
 	BestVersion       bool     `json:"best_version"`        // 默认关
+	OfficialOnly      bool     `json:"official_only"`       // 默认关（开启后订阅只收官种）
 }
 
 // loadGlobalDefaults 读全局订阅默认；cfgOp nil（测试/未装配）或未配置返回零值。
@@ -64,6 +65,7 @@ type effectiveSettings struct {
 	SiteIDs           []uint
 	EnableRatingGuard bool
 	BestVersion       bool
+	OfficialOnly      bool
 }
 
 // resolveEffective 计算订阅有效设置：订阅级值优先；resolution/promo_types/site_ids 空回退全局，
@@ -92,6 +94,11 @@ func resolveEffective(sub *models.Subscription, gd GlobalDefaults) effectiveSett
 		eff.BestVersion = *sub.BestVersion
 	} else {
 		eff.BestVersion = gd.BestVersion
+	}
+	if sub.OfficialOnly != nil {
+		eff.OfficialOnly = *sub.OfficialOnly
+	} else {
+		eff.OfficialOnly = gd.OfficialOnly
 	}
 	return eff
 }

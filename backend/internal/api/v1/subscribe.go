@@ -39,6 +39,8 @@ type subReq struct {
 	// 洗版（best_version）：nil 在 Create 时继承全局默认，在 Update 时不改。
 	BestVersion     *bool `json:"best_version"`
 	BestVersionFull *bool `json:"best_version_full"`
+	// OfficialOnly 仅官种：nil 在 Create 时继承全局默认，在 Update 时不改；清空回全局默认走 reset 端点。
+	OfficialOnly *bool `json:"official_only"`
 	// PromoTypes 接受的促销类型多选：非 nil 即赋值（空 slice=不限=不过滤，未传字段=不改）。
 	PromoTypes []string `json:"promo_types"`
 	// SiteIDs 参与站点 id：非 nil 即赋值（空 slice=不限全部站，未传字段=不改）。
@@ -73,6 +75,7 @@ func (h *SubscribeHandler) Create(c *gin.Context) {
 		// *bool 直接赋值：nil=未设置（Check 时回退全局默认 SubscribeGlobalDefaults），true/false=订阅自定义。
 		EnableRatingGuard: in.EnableRatingGuard,
 		BestVersion:       in.BestVersion,
+		OfficialOnly:      in.OfficialOnly,
 	}
 	if in.Resolution != nil {
 		s.Resolution = *in.Resolution
@@ -128,6 +131,9 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 	}
 	if in.BestVersion != nil {
 		s.BestVersion = in.BestVersion
+	}
+	if in.OfficialOnly != nil {
+		s.OfficialOnly = in.OfficialOnly
 	}
 	if in.BestVersionFull != nil {
 		s.BestVersionFull = *in.BestVersionFull
@@ -235,6 +241,8 @@ func (h *SubscribeHandler) ResetFields(c *gin.Context) {
 			s.EnableRatingGuard = nil
 		case "best_version":
 			s.BestVersion = nil
+		case "official_only":
+			s.OfficialOnly = nil
 		case "resolution":
 			s.Resolution = ""
 		case "promo_types":

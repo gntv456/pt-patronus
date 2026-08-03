@@ -141,3 +141,48 @@ func (a *authCapture) Do(ctx context.Context, method, rawURL string, body []byte
 	}
 	return a.inner.Do(ctx, method, rawURL, body, headers, cookieStr, ssrf)
 }
+
+// pagingDoer 每次返回满页条目，用于验证 rawList 的翻页上限（防无限翻页）。
+type pagingDoer struct {
+	pageSize int
+	pages    int // 已返回的页数
+	maxPages int // 上限（测试期望不超过此值）
+}
+
+func (p *pagingDoer) Do(_ context.Context, method, rawURL string, body []byte,
+	headers map[string]string, cookieStr string, ssrf bool) (*httpclient.Response, error) {
+	p.pages++
+	if p.pages > p.maxPages+5 {
+		// 翻页明显失控，提前失败避免无限循环拖死测试
+		return &httpclient.Response{StatusCode: 500, Body: []byte("runaway paging")}, nil
+	}
+	// 115 用 state+data；构造满页（pageSize 条）让翻页继续
+	if strings.Contains(rawURL, "115.com") || strings.Contains(rawURL, "/files") {
+		items := make([]string, p.pageSize)
+		for i := range items {
+			items[i] = `{"file_name":"f","sha1":"x","file_size":"1","fid":"1"}`
+		}
+		body := `{"state":true,"data":[` + strings.Join(items, ",") + `]}`
+		return &httpclient.Response{StatusCode: 200, Body: []byte(body)}, nil
+	}
+	return &httpclient.Response{StatusCode: 200, Body: []byte(`{"state":true,"data":[]}`)}, nil
+}
+
+// TestClient115RawListPaginationCap 验证 115 翻页在 200 页（2 万条目）处终止，
+// 不会因服务端恒返回满页而无限循环。
+func TestClient115RawListPaginationCap(t *testing.T) {
+	pd := &pagingDoer{pageSize: 100, maxPages: 200}
+	c := &client115{drive: Drive{Type: "115"}, hc: pd}
+	items, err := c.rawList(context.Background(), "0")
+	if err != nil {
+		t.Fatalf("rawList returned error: %v", err)
+	}
+	if pd.pages > 210 {
+		t.Fatalf("pagination runaway: %d pages (cap should be ~200)", pd.pages)
+	}
+	wantMax := 200 * 100
+	if len(items) > wantMax {
+		t.Fatalf("got %d items, cap is %d", len(items), wantMax)
+	}
+}
+

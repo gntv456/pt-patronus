@@ -367,12 +367,14 @@ func (b *Broadcaster) aggregate(ctx context.Context) ([]TorrentSnapshot, error) 
 		c, err := b.mgr.Get(ctx, d.ID)
 		if err != nil {
 			snap.Error = err.Error()
+			snap.Torrents = []downloader.Torrent{} // 显式空数组：避免 nil → JSON "torrents":null 致前端崩溃
 			out = append(out, snap)
 			continue
 		}
 		ts, err := c.ListTorrents(ctx)
 		if err != nil {
 			snap.Error = err.Error()
+			snap.Torrents = []downloader.Torrent{}
 			out = append(out, snap)
 			continue
 		}

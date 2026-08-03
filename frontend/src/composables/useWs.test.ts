@@ -62,4 +62,19 @@ describe('applyDiff', () => {
     expect(r[0].torrents).toHaveLength(1)
     expect(r).not.toBe(cur)
   })
+
+  it('出错下载器 snapshot.torrents 为 null（Go nil slice → JSON null）不崩溃，归一为 []', () => {
+    // 后端 aggregate：下载器连接失败时 snap.Torrents 未赋值（nil），JSON 序列化为 "torrents": null。
+    const nullSnap = { downloader_id: 2, name: 'err-dl', error: 'connection refused', torrents: null as unknown as Torrent[] }
+    // added 路径：[...null] 会抛 "not iterable"，须归一
+    const r1 = applyDiff([], { added: [nullSnap] })
+    expect(r1).toHaveLength(1)
+    expect(r1[0].torrents).toEqual([])
+    // cur 路径： torrents_full 已在 onMessage 归一，applyDiff 接收到的 cur 不应含 null torrents；
+    // 但 changed 增删改若 prev.torrents 异常为 null 也需兜底——此处验证 prev 已归一后正常工作。
+    const normalizedCur = [{ ...nullSnap, torrents: [] as Torrent[] }]
+    const r2 = applyDiff(normalizedCur, { changed: [{ downloader_id: 2, error: '', added: [], changed: [], removed: [] }] })
+    expect(r2[0].torrents).toEqual([])
+    expect(r2[0].error).toBe('')
+  })
 })

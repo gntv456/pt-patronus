@@ -8,22 +8,24 @@ import { fmtSpeed } from '@/utils/format'
 const { torrents } = useWs()
 
 const count = computed(() => torrents.value.length)
-const dlRate = computed(() => torrents.value.reduce((s, t) => s + (t.stats?.dl_rate ?? 0), 0))
-const upRate = computed(() => torrents.value.reduce((s, t) => s + (t.stats?.up_rate ?? 0), 0))
+// 防御 null torrents（后端出错下载器 snapshot.Torrents 为 Go nil → JSON null）
+const snaps = computed(() => torrents.value.map((t) => ({ ...t, torrents: t.torrents ?? [] })))
+const dlRate = computed(() => snaps.value.reduce((s, t) => s + (t.stats?.dl_rate ?? 0), 0))
+const upRate = computed(() => snaps.value.reduce((s, t) => s + (t.stats?.up_rate ?? 0), 0))
 const downloading = computed(() =>
-  torrents.value.reduce(
+  snaps.value.reduce(
     (s, t) => s + t.torrents.filter((x) => /download|leech/i.test(x.state)).length,
     0,
   ),
 )
 const seeding = computed(() =>
-  torrents.value.reduce(
+  snaps.value.reduce(
     (s, t) => s + t.torrents.filter((x) => /upload|seed/i.test(x.state)).length,
     0,
   ),
 )
-const total = computed(() => torrents.value.reduce((s, t) => s + t.torrents.length, 0))
-const errored = computed(() => torrents.value.filter((t) => t.error).length)
+const total = computed(() => snaps.value.reduce((s, t) => s + t.torrents.length, 0))
+const errored = computed(() => snaps.value.filter((t) => t.error).length)
 </script>
 
 <template>

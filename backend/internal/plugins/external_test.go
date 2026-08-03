@@ -501,3 +501,27 @@ func TestPluginOutputWriterLineSplitting(t *testing.T) {
 		}
 	})
 }
+
+// TestPostDecodeLimited 验证 external plugin 响应解码有 1MB 上限：
+// 超大响应体不应让 host 进程 OOM，应返回读取/解码错误。
+func TestPostDecodeLimited(t *testing.T) {
+	bigPayload := strings.Repeat("x", 2<<20) // 2MB > 1MB 上限
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 不论路径都回大 JSON 字符串
+		_, _ = w.Write([]byte(`{"output":"` + bigPayload + `"}`))
+	}))
+	defer server.Close()
+
+	p := &externalHTTPPlugin{
+		manifest: Manifest{ID: "big", Entry: &RuntimeEntry{BaseURL: server.URL, Health: "/health"}},
+		client:   &http.Client{Timeout: 30 * time.Second},
+		baseURL:  server.URL,
+	}
+	// 直接调 post：baseURL 已设，避免走 ensureStarted 的健康检查路径。
+	var out map[string]any
+	err := p.post(context.Background(), "/anything", map[string]any{}, &out)
+	// httptest 默认 200，post 不会因 status 报错；超大 body 解码应失败。
+	if err == nil {
+		t.Fatalf("expected decode error for >1MB body, got nil; out=%v", out)
+	}
+}

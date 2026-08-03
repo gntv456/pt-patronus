@@ -3,6 +3,7 @@ package groupchat
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -274,6 +275,12 @@ func (e *Engine) enqueueRetry(ctx context.Context, failed []FailedMessage) {
 }
 
 func (e *Engine) executeRetry(ctx context.Context) {
+	// AfterFunc 裸跑；HTML 解析 panic 不应崩进程级 goroutine（断重试链）。
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("groupchat retry panic", "error", r)
+		}
+	}()
 	var failed []FailedMessage
 	if err := e.rt.KVGet(kvFailedMessages, &failed); err != nil || len(failed) == 0 {
 		return

@@ -6,9 +6,16 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
+
+// notifyResolveTimeout 限制单次 DNS 解析耗时：net.DefaultResolver.LookupIPAddr 走系统
+// resolver 且无有界超时，上游 DNS 不通时会挂到系统默认的数十秒，整条 Notify 链被一个
+// 配错的 webhook host 拖死（manager 并发扇出也救不回——wg.Wait 仍要等最慢通道）。
+// 这里施加有界超时，与 httpclient.resolveTimeout 对齐。
+const notifyResolveTimeout = 8 * time.Second
 
 // assertNotifyURL 校验通知目标 URL：scheme 限 http/https、host 非空、解析到的 IP
 // 仅允许 loopback（本地通知服务如 Apprise/ntfy 容器，合理用例）或公网，
@@ -28,7 +35,9 @@ func assertNotifyURL(ctx context.Context, channel, rawURL string) error {
 	if host == "" {
 		return fmt.Errorf("%s: empty host", channel)
 	}
-	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	resolveCtx, cancel := context.WithTimeout(ctx, notifyResolveTimeout)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx, host)
 	if err != nil {
 		return fmt.Errorf("%s: resolve %s: %w", channel, host, err)
 	}

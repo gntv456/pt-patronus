@@ -390,5 +390,5 @@ func joinNonEmpty(ss []string, sep string) string {
 	if len(out) == 1 {
 		return out[0]
 	}
-	return out[0] // 多集只记首个，避免历史字段过长
+	return strings.Join(out, sep)
 }

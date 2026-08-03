@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -120,6 +121,21 @@ func (h *CommandRunHandler) Create(c *gin.Context) {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
+			// recover 防止单个 target 执行 panic 致 wg 永不 Done（wg.Wait 阻塞、批量请求挂死）。
+			// SSH/命令执行链路涉及多层协议解析，panic 不可扩散到整个批量。
+			defer func() {
+				if r := recover(); r != nil {
+					result := &models.OpsCommandRunTarget{
+						RunID: run.ID, TargetID: targetID, Status: "error",
+						Error: fmt.Sprintf("执行异常(panic): %v", r),
+					}
+					_ = h.runs.AddTargetResult(result)
+					mu.Lock()
+					failureCount++
+					mu.Unlock()
+					slog.Error("ops command run panic", "target", targetID, "panic", r)
+				}
+			}()
 			result := h.runOneTarget(ctx, run.ID, targetID, in.Command, in.TimeoutSec)
 			if err := h.runs.AddTargetResult(result); err != nil {
 				result.Status = "error"

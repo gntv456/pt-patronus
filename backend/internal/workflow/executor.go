@@ -130,11 +130,17 @@ func (e *Executor) Run(ctx context.Context, gnodes []GraphNode, edges []GraphEdg
 		}
 
 		// 每节点循环（参考 MoviePilot loop/loop_interval）：loop=true 时按 loop_times 重试，成功即停。
-		runOnce := func() error {
+		runOnce := func() (runErr error) {
 			octx, ocancel := context.WithTimeout(ctx, nodeExecutionTimeout(gnode.Params))
-			err := node.Execute(octx, gnode.Params, ecx)
-			ocancel()
-			return err
+			defer ocancel()
+			// 节点 Execute 涉及 HTTP/JSON/类型断言等多层，panic 不应炸垮整个工作流执行器
+			// （会冒泡到 webhook/agent 等后台 goroutine，进程级 goroutine 崩溃）。
+			defer func() {
+				if r := recover(); r != nil {
+					runErr = fmt.Errorf("节点 %s 执行 panic: %v", gnode.Type, r)
+				}
+			}()
+			return node.Execute(octx, gnode.Params, ecx)
 		}
 		start := time.Now()
 		var err error

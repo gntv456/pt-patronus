@@ -12,7 +12,9 @@ describe('torrentMeta', () => {
   it('extracts resolution/codec/source tags', () => {
     const tags = extractTorrentTags('Ne Zha 2 2025 2160p WEB-DL H.265 HDR Atmos-Team')
     const labels = tags.map((t) => t.label)
-    expect(labels).toContain('2160p')
+    // 2160p 归一为 4K 卡片标签（与 STRIP/TAG_RULES 一致），分辨率 tone 仍为 res
+    expect(tags.some((t) => t.tone === 'res' && /4K|2160p/i.test(t.label))).toBe(true)
+    expect(labels).toContain('4K')
     expect(labels).toContain('WEB-DL')
     expect(labels).toContain('H265')
     expect(labels).toContain('HDR')

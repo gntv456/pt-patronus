@@ -3,6 +3,7 @@ package entertainment
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
@@ -148,6 +149,9 @@ func ServeFlipBridge(ctx context.Context, baseURL, cookie string) <-chan FlipEve
 	}
 	go func() {
 		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("flipbridge pump panic", "host", key, "error", r)
+			}
 			flipBridgeConns.Delete(key)
 			close(ch)
 		}()

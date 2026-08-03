@@ -129,6 +129,11 @@ func (c *SubscribeChain) Create(ctx context.Context, s *models.Subscription) (*m
 	// 立即异步检查一次（不等 cron），让订阅即时生效；不阻塞创建响应。
 	sub := *s
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("subscribe initial check panic", "title", sub.Title, "panic", r)
+			}
+		}()
 		cctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 		defer cancel()
 		if _, err := c.Check(cctx, &sub); err != nil {

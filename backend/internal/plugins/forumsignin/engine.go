@@ -3,6 +3,7 @@ package forumsignin
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -184,6 +185,12 @@ func (e *Engine) enqueueRetry(ctx context.Context, failed []ForumCred) {
 }
 
 func (e *Engine) executeRetry(ctx context.Context, passesLeft int) {
+	// AfterFunc 裸跑；HTML 解析 panic 不应崩进程级 goroutine（断重试链）。
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("forumsignin retry panic", "error", r)
+		}
+	}()
 	var failed []ForumCred
 	if err := e.rt.KVGet(kvFailed, &failed); err != nil || len(failed) == 0 {
 		return

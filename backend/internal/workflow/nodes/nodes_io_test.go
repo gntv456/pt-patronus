@@ -205,3 +205,39 @@ func TestNilDepNodesGuarded(t *testing.T) {
 		})
 	}
 }
+
+// TestDlMgmtNodesGuardedOnNilDep dlMgmt 骨架节点的 nil 守卫：downloader_id>0 绕开 dlOp.List 后，
+// 在调用 dlCh.* 前由 runEarlyValidate 拦下空参数（与 list_torrents 等已有守卫一致）。
+// 回归：修复前 dlMgmtNode.Execute 直接解引用 nil dlCh，全部 panic。
+func TestDlMgmtNodesGuardedOnNilDep(t *testing.T) {
+	// downloader_id=0 让 resolveDLID 走 defaultDownloaderID(nil) → 返回 0 → 报「未配置下载器」。
+	for _, n := range []workflow.Node{
+		NewPauseTorrentsNode(nil, nil),
+		NewResumeTorrentsNode(nil, nil),
+		NewDeleteTorrentsNode(nil, nil),
+		NewRecheckTorrentsNode(nil, nil),
+		NewReannounceTorrentsNode(nil, nil),
+		NewForceStartNode(nil, nil),
+		NewSetCategoryNode(nil, nil),
+		NewAddTagsNode(nil, nil),
+		NewSetSavePathNode(nil, nil),
+		NewSetTorrentLimitNode(nil, nil),
+		NewSetShareLimitNode(nil, nil),
+	} {
+		// 合法 hashes + 必填字段：先经 runEarlyValidate 通过；再到 nil 依赖守卫报「下载器服务未初始化」。
+		err := n.Execute(context.Background(),
+			map[string]any{"downloader_id": float64(1), "hashes": "abc", "category": "c", "tags": "t", "location": "/x"},
+			&workflow.Context{})
+		if err == nil || !strings.Contains(err.Error(), "下载器服务未初始化") {
+			t.Fatalf("%s nil dlCh/dlOp 应报「下载器服务未初始化」, got %v", n.Type(), err)
+		}
+	}
+	// add_tracker 用单数 hash 字段，独立验证。
+	err := NewAddTrackerNode(nil, nil).Execute(context.Background(),
+		map[string]any{"downloader_id": float64(1), "hash": "abc", "trackers": "http://t.example/x"},
+		&workflow.Context{})
+	if err == nil || !strings.Contains(err.Error(), "下载器服务未初始化") {
+		t.Fatalf("add_tracker nil dlCh/dlOp 应报「下载器服务未初始化」, got %v", err)
+	}
+}
+

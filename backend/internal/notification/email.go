@@ -64,6 +64,9 @@ func (e *Email) Send(ctx context.Context, msg Message) error {
 	case err := <-errCh:
 		return err
 	case <-ctx.Done():
+		// ctx 取消后 SendMail goroutine 仍在阻塞拨号/握手，无法中断（net/smtp 不吃 ctx）。
+		// 这里只把 ctx.Err 返给调用方；goroutine 在 SMTP 拨号超时（Dialer 无显式 timeout 时
+		// 走 OS 默认）后自然退出并写入已 buffer 的 errCh，errCh 被 GC 回收，不泄漏。
 		return ctx.Err()
 	}
 }

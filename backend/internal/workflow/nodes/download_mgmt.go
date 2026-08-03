@@ -37,12 +37,62 @@ func (n *dlMgmtNode) DefaultParams() map[string]any      { return n.defaults }
 func (n *dlMgmtNode) ParamSchema() []workflow.ParamField { return n.schema }
 
 func (n *dlMgmtNode) Execute(ctx context.Context, params map[string]any, ecx *workflow.Context) error {
+	// 前置参数解析（哈希 / 分类 / 标签 / 路径 等空校验）放在 nil 依赖检查之前：
+	// 既覆盖测试（nil 依赖 + 合法参数），也保证用户填错的图先于「服务未就绪」报出可读错误。
+	hashes := resolveHashes(params, ecx)
+	if early := n.runEarlyValidate(params, ecx, hashes); early != nil {
+		return early
+	}
+	// dlOp/dlCh 为构造期注入，正常不会 nil；这里前置判 nil，避免测试与误用场景 panic。
+	if n.dlOp == nil || n.dlCh == nil {
+		return fmt.Errorf("下载器服务未初始化")
+	}
 	id, err := resolveDLID(params, n.dlOp)
 	if err != nil {
 		return err
 	}
-	hashes := resolveHashes(params, ecx)
 	return n.run(ctx, n.dlCh, id, hashes, params, ecx)
+}
+
+// runEarlyValidate 在依赖就绪前先做纯参数校验，nil dlCh/dlOp 下安全。
+func (n *dlMgmtNode) runEarlyValidate(params map[string]any, ecx *workflow.Context, hashes []string) error {
+	// 需要 hashes 的节点类型（list_torrents 列全部、set_speed_limit 全局限速 不需要）。
+	switch n.typ {
+	case "add_tracker":
+		if strings.TrimSpace(render(workflow.ParamString(params, "hash"), ecx)) == "" {
+			return fmt.Errorf("未提供任务哈希")
+		}
+		if len(nonEmptyLines(workflow.ParamString(params, "trackers"))) == 0 {
+			return fmt.Errorf("Tracker 为空")
+		}
+	case "set_category":
+		if len(hashes) == 0 {
+			return fmt.Errorf("未提供任务哈希")
+		}
+		if workflow.ParamString(params, "category") == "" {
+			return fmt.Errorf("分类为空")
+		}
+	case "add_tags":
+		if len(hashes) == 0 {
+			return fmt.Errorf("未提供任务哈希")
+		}
+		if len(workflow.ParamStringSlice(params, "tags")) == 0 {
+			return fmt.Errorf("标签为空")
+		}
+	case "set_save_path":
+		if len(hashes) == 0 {
+			return fmt.Errorf("未提供任务哈希")
+		}
+		if workflow.ParamString(params, "location") == "" {
+			return fmt.Errorf("路径为空")
+		}
+	case "pause_torrents", "resume_torrents", "recheck_torrents", "reannounce_torrents",
+		"delete_torrents", "force_start", "set_torrent_limit", "set_share_limit":
+		if len(hashes) == 0 {
+			return fmt.Errorf("未提供任务哈希")
+		}
+	}
+	return nil
 }
 
 // resolveDLID 解析 downloader_id 参数：0 → 默认下载器（复用 AddDownloadNode 同款回退）。

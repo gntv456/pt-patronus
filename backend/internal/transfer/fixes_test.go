@@ -255,3 +255,19 @@ func TestSanitizePath_RejectsTraversal(t *testing.T) {
 		t.Fatalf("separator should be stripped: %q", got)
 	}
 }
+
+// [P2] #8 joinNonEmpty 多元素须用 sep 拼接（修复前恒返回首个元素，丢集号）。
+func TestJoinNonEmpty_MultipleUsesSep(t *testing.T) {
+	if got := joinNonEmpty([]string{"S01E01", "S01E02", "S01E03"}, ","); got != "S01E01,S01E02,S01E03" {
+		t.Fatalf("multi join = %q", got)
+	}
+	if got := joinNonEmpty([]string{"S01E01", "", "S01E02"}, " "); got != "S01E01 S01E02" {
+		t.Fatalf("skip empty join = %q", got)
+	}
+	if got := joinNonEmpty([]string{"", ""}, " "); got != "" {
+		t.Fatalf("all empty = %q want empty", got)
+	}
+	if got := joinNonEmpty([]string{"S01E01"}, " "); got != "S01E01" {
+		t.Fatalf("single = %q", got)
+	}
+}

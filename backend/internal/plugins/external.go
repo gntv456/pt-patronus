@@ -429,6 +429,12 @@ func (p *externalHTTPPlugin) scheduleRestart() {
 			p.scheduleRestart()
 			return
 		}
+		// 重启成功：复位 restarting，否则下次崩溃 scheduleRestart 因 restarting==true 早退，
+		// 插件永久失去自愈（restartCount 不归零，保留累计计数可见性）。
+		p.mu.Lock()
+		p.restarting = false
+		p.nextRestartAt = nil
+		p.mu.Unlock()
 		if manager != nil {
 			manager.log(pluginID, logInfo, "process.restart", "plugin process restarted", map[string]any{"restart_count": restartCount})
 		}
@@ -551,7 +557,8 @@ func (p *externalHTTPPlugin) post(ctx context.Context, path string, body any, ou
 		return fmt.Errorf("external plugin status %d", res.StatusCode)
 	}
 	if out != nil {
-		return json.NewDecoder(res.Body).Decode(out)
+		// 限制解码体积防 OOM（受信插件仍是外部进程，可能回传超大 body）。1<<20 对齐 host 回调侧。
+		return json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(out)
 	}
 	return nil
 }
@@ -644,6 +651,7 @@ func newExternalHostServer(plugin *externalHTTPPlugin) (*externalHostServer, err
 		Handler:           h,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      60 * time.Second, // 没有写超时，慢速/卡死插件可让 host goroutine 长期占用；与读超时对称
 	}
 	go func() {
 		// Serve 总会返回非 nil 错误；ErrServerClosed 为正常关闭，其余异常因 host 回调仅 loopback 可达而无法外暴。
@@ -752,7 +760,8 @@ func (h *externalHostServer) handleMediaSearch(w http.ResponseWriter, r *http.Re
 		Keyword string `json:"keyword"`
 		Year    int    `json:"year"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	// 与 decodeHostJSON 一致施加 1MB 上限，防恶意/失控插件 body 撑爆内存。
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&body); err != nil {
 		writeHostJSON(w, http.StatusBadRequest, map[string]any{"error": "invalid body"})
 		return
 	}

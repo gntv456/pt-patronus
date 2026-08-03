@@ -63,6 +63,18 @@ func newARClient(t *testing.T) (*Client, *arFake) {
 			_, _ = w.Write([]byte(`{"id":"1","jsonrpc":"2.0","result":[{"ip":"1.2.3.4","port":"6881","peerId":"PeerX","downloadSpeed":"10","uploadSpeed":"5"}]}`))
 		case "aria2.tellStatus":
 			_, _ = w.Write([]byte(`{"id":"1","jsonrpc":"2.0","result":` + sampleBTTask() + `}`))
+		case "aria2.removeDownloadResult":
+			// 模拟 Aria2 实际错误：仅对未 removed 的 GID 调 removeDownloadResult 会返 fault。
+			// 用于验证 Delete 现在会传播该错误而非吞掉。
+			var p []any
+			_ = json.Unmarshal(req.Params, &p)
+			if len(p) >= 1 {
+				if _, ok := p[len(p)-1].(string); ok {
+					_, _ = w.Write([]byte(`{"id":"1","jsonrpc":"2.0","error":{"code":1,"message":"GID not found"}}`))
+					return
+				}
+			}
+			_, _ = w.Write([]byte(`{"id":"1","jsonrpc":"2.0","result":"ok"}`))
 		default:
 			_, _ = w.Write([]byte(`{"id":"1","jsonrpc":"2.0","result":"ok"}`))
 		}
@@ -131,11 +143,10 @@ func TestARCoreOps(t *testing.T) {
 	if f.method != "aria2.unpause" {
 		t.Errorf("resume: %s", f.method)
 	}
-	if err := c.Delete(ctx, []string{"GID1"}, true); err != nil {
-		t.Fatal(err)
-	}
-	if f.method != "aria2.removeDownloadResult" {
-		t.Errorf("delete last: %s", f.method)
+	// Delete：remove 成功后 removeDownloadResult 也须调用且错误须传播（修复前用 _,_ 吞错）。
+	// 此 mock 对 removeDownloadResult 返 fault，故 Delete 应报错。
+	if err := c.Delete(ctx, []string{"GID1"}, false); err == nil {
+		t.Fatal("Delete should propagate removeDownloadResult error, got nil")
 	}
 }
 

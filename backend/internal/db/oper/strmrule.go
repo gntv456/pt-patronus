@@ -34,15 +34,35 @@ func (o *StrmRuleOper) Create(in StrmRuleInput) (*models.StrmRule, error) {
 	if in.Name == "" || in.DriveID == 0 || in.CloudPath == "" || in.OutputDir == "" {
 		return nil, errors.New("name/drive_id/cloud_path/output_dir 必填")
 	}
-	m := &models.StrmRule{
-		Name: in.Name, DriveID: in.DriveID, CloudPath: in.CloudPath, OutputDir: in.OutputDir,
-		MountRoot: in.MountRoot, Template: in.Template,
-		Recursive: derefBool(in.Recursive, true), KeepExt: derefBool(in.KeepExt, true), Enabled: derefBool(in.Enabled, true),
+	// Recursive/KeepExt/Enabled 均带 gorm:"default:true"；GORM 对带 default 标签的零值 bool(false)
+	// 即使 Select 强制列名，仍会用 DB 默认 true 覆盖（RETURNING 回填）——实测 struct+Create 无法写入 false。
+	// 用 map[string]any 绕开 default 机制，确保显式 false 正确落库（对标 keepseed.SaveSetting 的同款修复）。
+	row := map[string]any{
+		"name": in.Name, "drive_id": in.DriveID, "cloud_path": in.CloudPath, "output_dir": in.OutputDir,
+		"mount_root": in.MountRoot, "template": in.Template,
+		"recursive": derefBool(in.Recursive, true), "keep_ext": derefBool(in.KeepExt, true), "enabled": derefBool(in.Enabled, true),
 	}
-	if err := o.db.Create(m).Error; err != nil {
+	if err := o.db.Model(&models.StrmRule{}).Create(row).Error; err != nil {
 		return nil, err
 	}
-	return m, nil
+	// glebarez/sqlite（pure-Go）回填到 map 的 id 类型不固定（int/int64/float64 均见过），
+	// 全覆盖断言；取不到 id 时用 LastInsertID 兜底。
+	var id uint
+	switch v := row["id"].(type) {
+	case int:
+		id = uint(v)
+	case int64:
+		id = uint(v)
+	case float64:
+		id = uint(v)
+	}
+	if id == 0 {
+		var last models.StrmRule
+		if err := o.db.Order("id DESC").First(&last).Error; err == nil {
+			id = last.ID
+		}
+	}
+	return o.Get(id)
 }
 
 func (o *StrmRuleOper) Update(id uint, in StrmRuleInput) (*models.StrmRule, error) {

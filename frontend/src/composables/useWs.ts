@@ -67,10 +67,12 @@ function clearState() {
 // applyDiff 把一轮增量合并到当前快照，返回新数组（触发 Vue 响应式）。纯函数，便于单测。
 export function applyDiff(cur: TorrentSnapshot[], diff: TorrentDiff): TorrentSnapshot[] {
   // 只克隆本轮有变更的下载器快照，未命中的复用原引用（避免每轮 WS 推送全量浅拷贝 + torrents 重建）。
+  // cur 已在 onMessage 的 torrents/torrents_full 路径归一过 torrents（null → []），此处无需再处理。
+  // added 路径仍需归一：diff.added 来自后端 torrents_diff 帧，出错下载器的 torrents 可能为 null。
   const byId = new Map<number, TorrentSnapshot>()
   for (const s of cur) byId.set(s.downloader_id, s)
   for (const id of diff.removed ?? []) byId.delete(id)
-  for (const s of diff.added ?? []) byId.set(s.downloader_id, { ...s, torrents: [...s.torrents] })
+  for (const s of diff.added ?? []) byId.set(s.downloader_id, { ...s, torrents: [...(s.torrents ?? [])] })
   for (const dd of diff.changed ?? []) {
     const prev = byId.get(dd.downloader_id)
     if (!prev) continue
@@ -95,12 +97,12 @@ function onMessage(raw: MessageEvent) {
     const list = Array.isArray(j.data) ? j.data : []
     switch (j.type) {
       case 'torrents': // legacy 全量（未协商增量的旧前端，或后端回落）
-        torrents.value = list as TorrentSnapshot[]
+        torrents.value = (list as TorrentSnapshot[]).map((s) => ({ ...s, torrents: s.torrents ?? [] }))
         lastSeq = 0
         dirty = false
         break
       case 'torrents_full': // inc 首帧 / 周期重同步
-        torrents.value = list as TorrentSnapshot[]
+        torrents.value = (list as TorrentSnapshot[]).map((s) => ({ ...s, torrents: s.torrents ?? [] }))
         lastSeq = j.seq ?? 0
         dirty = false
         break

@@ -49,7 +49,8 @@ func (a *Alist) call(ctx context.Context, method, p string, body map[string]any,
 		return err
 	}
 	defer resp.Body.Close()
-	b, _ := io.ReadAll(resp.Body)
+	// Alist API JSON 响应正常 <1MB；限制 4MB 防恶意/超大目录列表撑爆内存。
+	b, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	var envelope struct {
 		Code    int             `json:"code"`
 		Message string          `json:"message"`

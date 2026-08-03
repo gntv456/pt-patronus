@@ -96,10 +96,14 @@ func (c *Client) Delete(ctx context.Context, hashes []string, deleteFiles bool) 
 		method = "aria2.forceRemove"
 	}
 	for _, h := range hashes {
+		// removeDownloadResult 仅对已 stopped/removed 的任务有效；先 remove 再清理结果。
+		// remove 失败立即返回；清理结果失败不阻断（尽力删除本地记录，Aria2 不影响实际文件）。
 		if _, err := c.call(ctx, method, []any{h}); err != nil {
 			return err
 		}
-		_, _ = c.call(ctx, "aria2.removeDownloadResult", []any{h})
+		if _, err := c.call(ctx, "aria2.removeDownloadResult", []any{h}); err != nil {
+			return fmt.Errorf("remove download result %s: %w", h, err)
+		}
 	}
 	return nil
 }

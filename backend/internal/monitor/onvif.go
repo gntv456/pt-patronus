@@ -92,7 +92,9 @@ func (d *onvifDevice) call(ctx context.Context, body string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+	// ONVIF 设备 SOAP 响应正常 <64KB；限制 1MB 防恶意/故障设备回超大 body 撑爆内存
+	// （采集是 cron 高频路径，无上限会逐次累积）。LimitReader 读到 1MB+1 即止。
+	b, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	return string(b), err
 }
 

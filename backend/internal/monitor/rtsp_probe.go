@@ -23,9 +23,19 @@ func ProbeRTSP(ctx context.Context, rawURL string) (bool, error) {
 		return false, err
 	}
 	done := make(chan probeResult, 1)
+	stop := make(chan struct{})
 	go func() {
 		c := gortsplib.Client{Scheme: u.Scheme, Host: u.Host}
 		defer c.Close()
+		// 上层 ctx 取消时强制关 client，让阻塞中的 Start/Describe 返回错误，
+		// 否则 goroutine 持续阻塞在 RTSP 握手 → 每次超时探活泄漏一个。
+		go func() {
+			select {
+			case <-ctx.Done():
+				c.Close()
+			case <-stop:
+			}
+		}()
 		if err := c.Start(); err != nil {
 			done <- probeResult{false, err}
 			return
@@ -38,6 +48,7 @@ func ProbeRTSP(ctx context.Context, rawURL string) (bool, error) {
 	}()
 	select {
 	case r := <-done:
+		close(stop)
 		return r.ok, r.err
 	case <-ctx.Done():
 		return false, ctx.Err()

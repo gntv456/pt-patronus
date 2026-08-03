@@ -70,6 +70,10 @@ func (c *client123) rawList(ctx context.Context, parentID string) ([]raw123Item,
 		if len(body.Data.InfoList) < limit {
 			return out, nil
 		}
+		// 上限 200 页（2 万条目）：防恶意/异常服务端返回恒满页致无限翻页。
+		if page >= 200 {
+			return out, nil
+		}
 	}
 }
 

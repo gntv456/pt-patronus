@@ -57,6 +57,15 @@ func (h *BrushFlowHandler) Create(c *gin.Context) {
 	if t.MaxSeeds <= 0 {
 		t.MaxSeeds = 10
 	}
+	// 防注入：直接 bind 到 model 会让客户端设置 ID（覆盖/主键冲突）与统计字段（TotalAdded 等
+	// 虚假初值，污染刷流统计）。Create 前清零服务端管控字段。
+	t.ID = 0
+	t.TotalAdded = 0
+	t.TotalDeleted = 0
+	t.TotalUpload = 0
+	t.LastSelectAt = nil
+	t.LastSweepAt = nil
+	t.LastError = ""
 	if err := h.svc.CreateTask(&t); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

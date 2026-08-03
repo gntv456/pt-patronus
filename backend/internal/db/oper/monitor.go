@@ -197,9 +197,11 @@ func (o *MonitorOper) Delete(id uint) error {
 		if err := tx.Delete(&models.MonitorTarget{}, id).Error; err != nil {
 			return err
 		}
-		tx.Where("target_id = ?", id).Delete(&models.MetricSnapshot{})
-		tx.Where("target_id = ?", id).Delete(&models.MonitorAlert{})
-		return nil
+		// 级联删快照/告警：错误必须返回，否则级联失败仍提交 → 孤儿行（外键破坏）。
+		if err := tx.Where("target_id = ?", id).Delete(&models.MetricSnapshot{}).Error; err != nil {
+			return err
+		}
+		return tx.Where("target_id = ?", id).Delete(&models.MonitorAlert{}).Error
 	})
 }
 

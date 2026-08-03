@@ -52,7 +52,10 @@ func sampleTorrent() map[string]any {
 // 鉴权路径（/auth/*、/api/auth/*）不受 failPath 影响，保证错误路径测试仍能登录。
 func registerFLMocks(mux *http.ServeMux, f *flFake) {
 	mux.HandleFunc("/auth/verify", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404) // jesec 探测：/auth/verify 不存在
+		// jesec 探测：404 + 非空 body。detectAPI 须读完 body 才能让 keep-alive 连接复用。
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(404)
+		_, _ = w.Write([]byte(`{"error":"not found"}`))
 	})
 	mux.HandleFunc("/api/auth/authenticate", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
@@ -196,6 +199,9 @@ func newLegacyFLClient(t *testing.T) (*Client, *flFake) {
 	f := &flFake{}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/auth/verify", func(w http.ResponseWriter, r *http.Request) {
+		// 写一段 body 模拟 legacy 401 响应；detectAPI 必须读完才能复用连接。
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"error":"unauthorized","reason":"session expired"}`))
 		w.WriteHeader(http.StatusUnauthorized)
 	})
 	mux.HandleFunc("/auth/authenticate", func(w http.ResponseWriter, r *http.Request) {

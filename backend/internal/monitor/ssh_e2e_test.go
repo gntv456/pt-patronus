@@ -243,3 +243,28 @@ func TestSSHAuthMethods_Empty(t *testing.T) {
 		t.Errorf("expected 0 methods, got %d", len(methods))
 	}
 }
+
+// TestSSHRunOutputCtxCancel 验证 ctx 取消时 RunOutput 不阻塞、不 panic。
+func TestSSHRunOutputCtxCancel(t *testing.T) {
+	addr, cleanup := startTestSSHServer(t, nil, "s3cret")
+	defer cleanup()
+	host, port := splitAddr(t, addr)
+
+	store := &fakeHostKeyStore{keys: map[string][]byte{}}
+	creds := Credentials{Username: "root", Password: "s3cret"}
+	ex, err := dialSSH(store, testTarget(host, port), creds, 10*time.Second)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer ex.Close()
+	oe, ok := ex.(sshOutputExecutor)
+	if !ok {
+		t.Skip("dialSSH 返回的 executor 不实现 RunOutput")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, _, _ = oe.RunOutput(ctx, "echo ok")
+}
+
+

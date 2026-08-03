@@ -71,6 +71,13 @@ func (c *client115) rawList(ctx context.Context, cid string) ([]raw115Item, erro
 		if len(body.Data) < limit {
 			return out, nil
 		}
+		// 上限 200 页（2 万条目）：防恶意/异常服务端返回恒满页致无限翻页耗尽资源。
+		// 正常云盘目录远低于此；超额返回已收集的部分，由上层截断展示。
+		// offset 从 0 起，每轮 += limit；offset=19900 时是第 200 页（已累计 20000 条），
+		// 检测应在累加后再决定，故用 offset/limit+1（页号从 1 计）≥ 200。
+		if offset/limit+1 >= 200 {
+			return out, nil
+		}
 	}
 }
 

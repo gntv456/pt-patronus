@@ -109,6 +109,9 @@ func (c *Client) detectAPI(ctx context.Context) (apiType, error) {
 	resp, err := c.hc.Do(req)
 	kind := apiJesec
 	if err == nil {
+		// 必须读完并关闭 body，否则底层 TCP 连接无法被 keep-alive 复用，
+		// 后续请求会因连接耗尽/读残留字节而失败。
+		_, _ = io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 		// legacy 即使 401 也说明路径存在
 		if resp.StatusCode != 404 {

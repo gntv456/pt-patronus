@@ -69,7 +69,9 @@ func (w *WebDAV) List(ctx context.Context, p string) ([]Entry, error) {
 	if resp.StatusCode != http.StatusMultiStatus {
 		return nil, fmt.Errorf("webdav PROPFIND: status %d", resp.StatusCode)
 	}
-	data, _ := io.ReadAll(resp.Body)
+	// PROPFIND 响应正常 <1MB；限制 4MB 防恶意/超大目录 PROPFIND 撑爆内存
+	// （basePath 已约束，但目录内条目数仍可巨大）。LimitReader 读到上限即止。
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	entries, err := parseMultiStatus(data, p)
 	if err != nil {
 		return nil, err

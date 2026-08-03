@@ -13,11 +13,11 @@
 957	backend/internal/chain/keepseed.go
 750	backend/internal/chain/medal.go
 810	backend/internal/chain/site.go
-842	backend/internal/chain/subscribe.go
+847	backend/internal/chain/subscribe.go
 502	backend/internal/chain/transfer.go
 607	backend/internal/chain/workflow.go
 924	backend/internal/db/models/models.go
-529	backend/internal/db/oper/monitor.go
+531	backend/internal/db/oper/monitor.go
 535	backend/internal/downloader/fl/advanced.go
 595	backend/internal/downloader/qb/advanced.go
 488	backend/internal/downloader/tr/advanced.go
@@ -31,8 +31,8 @@
 533	backend/internal/monitor/agent_ws.go
 1030	backend/internal/plugins/builtin_tools.go
 675	backend/internal/plugins/drama_scrape.go
-1095	backend/internal/plugins/external.go
-483	backend/internal/plugins/groupchat/engine.go
+1104	backend/internal/plugins/external.go
+490	backend/internal/plugins/groupchat/engine.go
 1234	backend/internal/plugins/manager.go
 831	backend/internal/plugins/market.go
 1501	backend/internal/plugins/migrated_moviepilot.go
@@ -48,8 +48,8 @@
 1264	backend/internal/site/selector.go
 578	backend/internal/site/types.go
 436	backend/internal/subtitle/automation/automation.go
-499	backend/internal/workflow/nodes/download_mgmt.go
-517	backend/internal/ws/broadcaster.go
+549	backend/internal/workflow/nodes/download_mgmt.go
+519	backend/internal/ws/broadcaster.go
 680	backend/tools/convert-definitions.go
 2057	backend/tools/site_audit/main.go
 436	frontend/src/api/entertainment.ts

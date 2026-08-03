@@ -362,7 +362,12 @@ export function defaultsFromSchema(schema?: PluginConfigField[] | null) {
 }
 
 export function fmtTime(t?: string) {
-  return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'
+  if (!t) return '-'
+  const d = new Date(t)
+  if (isNaN(d.getTime())) return '-'
+  // Go time.Time 零值（0001-01-01，DB 脏数据/未设置时）→ 占位 '-'（与 utils/format 一致）
+  if (d.getFullYear() < 1971) return '-'
+  return d.toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-')
 }
 export function jsonText(v?: Record<string, any>) {
   if (!v || !Object.keys(v).length) return ''

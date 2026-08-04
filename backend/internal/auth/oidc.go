@@ -194,7 +194,10 @@ func (s *OIDCService) StartFlow(ctx context.Context, redirectURI string) (FlowRe
 	q.Set("code_challenge", challenge)
 	q.Set("code_challenge_method", "S256")
 	authorizeURL := d.AuthorizationEndpoint + "?" + q.Encode()
-	common := http.Cookie{Path: "/", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 600}
+		// Secure 自适应：HTTPS redirect → Secure cookie（浏览器才回传）；HTTP（本地自托管）→ 非 Secure。
+	// 生产应走 HTTPS；本地 http:// 开发不设 Secure 否则浏览器不回传 cookie → state mismatch。
+	secureCookie := strings.HasPrefix(redirectURI, "https://")
+	common := http.Cookie{Path: "/", Secure: secureCookie, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 600}
 	sc := common
 	sc.Name = "ptp_oidc_state"
 	sc.Value = state
@@ -289,6 +292,14 @@ func pkceChallenge(verifier string) string {
 }
 
 // decodeIDTokenClaims 解 id_token 第二段（payload）取标准 claims（无验签，仅 fallback）。
+type idTokenClaims struct {
+	Sub string `json:"sub"`
+	Exp int64  `json:"exp"`
+	Aud string `json:"aud"`
+}
+
+// decodeIDTokenClaims 解 id_token 第二段（payload）取标准 claims 并校验 exp。
+// 仍不验签（fallback 路径：授权已由 code 交换保证），但至少拒绝过期 token。
 func decodeIDTokenClaims(idToken string) (UserInfo, bool) {
 	parts := strings.Split(idToken, ".")
 	if len(parts) < 2 {
@@ -298,11 +309,18 @@ func decodeIDTokenClaims(idToken string) (UserInfo, bool) {
 	if err != nil {
 		return UserInfo{}, false
 	}
-	var ui UserInfo
-	if json.Unmarshal(payload, &ui) != nil {
+	var c idTokenClaims
+	if json.Unmarshal(payload, &c) != nil {
 		return UserInfo{}, false
 	}
-	return ui, ui.Sub != ""
+	if c.Sub == "" {
+		return UserInfo{}, false
+	}
+	// exp 校验：过期 token 拒绝（防止 replay 过期 id_token）。
+	if c.Exp > 0 && time.Now().Unix() > c.Exp {
+		return UserInfo{}, false
+	}
+	return UserInfo{Sub: c.Sub}, true
 }
 
 func snippetStr(s string) string {

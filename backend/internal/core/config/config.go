@@ -102,7 +102,8 @@ type Config struct {
 	GlobalRatePerSec   int    // 全局每 IP 每秒上限，默认 20
 
 	// 在线更新
-	UpdateManifestURL string // 官方版本清单 URL(gist raw 等)；空=只读自托管清单。客户端经本后端中转检查，不直连官方源
+	UpdateManifestURL    string // 官方版本清单 URL(gist raw 等)；空=只读自托管清单。客户端经本后端中转检查，不直连官方源
+	UpdateManifestPubKey string // 可选 ed25519 公钥(base64)；配置后验证远端 manifest 签名
 
 	// 安全模式（SAFE_MODE）：跳过插件/调度/监控激活，仅启动核心 HTTP + 诊断端点（出问题时自救）
 	SafeMode bool
@@ -176,6 +177,7 @@ func Load() (*Config, error) {
 		LoginRatePerMin:    getenvInt("LOGIN_RATE_PER_MIN", 10),
 		GlobalRatePerSec:   getenvInt("GLOBAL_RATE_PER_SEC", 20),
 		UpdateManifestURL:  getenv("UPDATE_MANIFEST_URL", ""),
+		UpdateManifestPubKey: getenv("UPDATE_MANIFEST_PUBKEY", ""),
 		SafeMode:           getenvBool("SAFE_MODE", false),
 	}
 	cfg.PluginDevWatch = getenvBool("PLUGIN_DEV_WATCH", cfg.Env == "debug")

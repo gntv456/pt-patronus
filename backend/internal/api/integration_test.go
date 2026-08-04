@@ -238,6 +238,7 @@ func TestNonVIPLoginBlocked(t *testing.T) {
 // TestAccountLoginSuccess 好学账号登录（fake VIP）→ 200 + token → 受保护资源在 VIP 宽限内放行。
 func TestAccountLoginSuccess(t *testing.T) {
 	deps := newTestDeps(t)
+	// P0-1 修复后：预置的非 admin 用户重登录保持非 admin（不再被升权）。
 	legacyUser := models.User{Username: "u", HxptUID: "777", IsAdmin: false}
 	if err := deps.DB.Create(&legacyUser).Error; err != nil {
 		t.Fatal(err)
@@ -255,13 +256,15 @@ func TestAccountLoginSuccess(t *testing.T) {
 		t.Fatal("no token")
 	}
 	user, _ := body["user"].(map[string]any)
-	if user["is_admin"] != true {
-		t.Fatalf("hxpt user is_admin = %v, want true", user["is_admin"])
+	if user["is_admin"] != false {
+		t.Fatalf("pre-existing non-admin user should stay non-admin after login, got is_admin = %v", user["is_admin"])
 	}
+	// 非 admin 用户能访问普通 VIP 路由（sites）
 	if code, _ := do(t, srv, "GET", "/api/v1/sites", nil, token); code != 200 {
 		t.Fatalf("sites after account login = %d, want 200", code)
 	}
-	if code, _ := do(t, srv, "GET", "/api/v1/backup/export", nil, token); code != 200 {
-		t.Fatalf("admin endpoint after account login = %d, want 200", code)
+	// 非 admin 用户不能访问 admin 路由（backup/export）
+	if code, _ := do(t, srv, "GET", "/api/v1/backup/export", nil, token); code != 403 {
+		t.Fatalf("admin endpoint for non-admin user = %d, want 403", code)
 	}
 }

@@ -1,4 +1,4 @@
-package v1
+﻿package v1
 
 import (
 	"errors"
@@ -121,6 +121,10 @@ func (h *AuthHandler) HxptLogin(c *gin.Context) {
 	// 应急兜底：好学 POST 链路坏掉时，运维设 HXPT_EMERGENCY_ADMIN=<username> 临时放行
 	// （以 env 为信用的引导登录，不恢复本地密码语义；仅应急、可审计）。
 	if emerg := os.Getenv("HXPT_EMERGENCY_ADMIN"); emerg != "" && emerg == req.Username {
+		// 安全审计：emergency 旁路绕过 VIP 校验，仅应极端运维场景临时开启。
+		// 开启时任何知道该用户名的人都可登录（密码随意），必须用后立即清除该 env。
+		slog.Warn("SECURITY: emergency admin login bypass used — disable HXPT_EMERGENCY_ADMIN immediately after use",
+			slog.String("user", req.Username), slog.String("ip", c.ClientIP()))
 		audit(c, "hxpt_login", "ok", slog.String("via", "emergency"), slog.String("user", req.Username))
 		h.issueForHxpt(c, "emergency:"+req.Username, req.Username, "")
 		return
@@ -249,7 +253,7 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 		u = models.User{
 			Username: username, HxptUID: hxptUID, HxptUsername: username,
 			VipLevel: 1, VipVerifiedAt: &now, HxptCookieEnc: cookieEnc,
-			IsAdmin: true,
+			IsAdmin: h.firstHxptUser(),
 		}
 		if err := h.db.Create(&u).Error; err != nil {
 			dbFail(c, "hxpt_user_create", err)
@@ -262,7 +266,6 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 		u.VipLevel = 1
 		u.VipVerifiedAt = &now
 		u.HxptCookieEnc = cookieEnc
-		u.IsAdmin = true
 		if u.Username == "" {
 			u.Username = username
 		}
@@ -530,6 +533,14 @@ func (h *AuthHandler) issueForOIDC(hxptUID, username string) (string, error) {
 func (h *AuthHandler) firstOIDCUser() bool {
 	var n int64
 	h.db.Model(&models.User{}).Where("hxpt_uid LIKE 'oidc:%'").Count(&n)
+	return n == 0
+}
+
+// firstHxptUser 报告是否尚无好学 VIP 绑定用户（首个 HXPT 用户成为 admin）。
+// 与 firstOIDCUser 对称：排除 emergency/demo/oidc 前缀，只数真实好学用户。
+func (h *AuthHandler) firstHxptUser() bool {
+	var n int64
+	h.db.Model(&models.User{}).Where("hxpt_uid NOT LIKE 'oidc:%' AND hxpt_uid NOT LIKE 'emergency:%' AND hxpt_uid != 'demo'").Count(&n)
 	return n == 0
 }
 

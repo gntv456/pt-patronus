@@ -377,6 +377,7 @@ func Build(d *Deps) *gin.Engine {
 
 			fsH := v1.NewFileStorageHandler(d.FileOp, d.FileCh, d.FileMgr)
 			storages := guarded.Group("/storages")
+			storages.Use(middleware.RequireAdmin()) // 存储后端配置 + 文件读写均限管理员（local 后端可访问宿主磁盘）
 			{
 				storages.GET("", fsH.List)
 				storages.POST("", fsH.Create)

@@ -23,6 +23,12 @@ func liveSkipOnAuth(t *testing.T, stage string, err error) {
 
 // 需本地 cookie 文件时才跑：D:/PTPatronus/tmp/sunny_cookie.txt
 func TestSunnyptLiveInteract(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping live test in short mode")
+	}
+	if os.Getenv("PTP_RUN_LIVE_TESTS") == "" {
+		t.Skip("set PTP_RUN_LIVE_TESTS=1 to run live tests")
+	}
 	ckPath := filepath.Clean(`D:/PTPatronus/tmp/sunny_cookie.txt`)
 	b, err := os.ReadFile(ckPath)
 	if err != nil || len(b) < 20 {

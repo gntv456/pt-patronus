@@ -2,7 +2,10 @@ package update
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,6 +25,7 @@ type Service struct {
 	hc          *httpclient.Client
 	manifestURL string
 	overlayPath string // 自托管清单落盘路径(<DataDir>/update-manifest.json)
+	publicKey   string // 可选 ed25519 公钥（base64）；配置后验证远端 manifest 签名
 
 	mu       sync.RWMutex
 	cached   *Manifest // 远端官方清单缓存(不含自托管)
@@ -34,7 +38,7 @@ func NewService(cfg *config.Config, hc *httpclient.Client) *Service {
 	if cfg.DataDir != "" {
 		overlay = filepath.Join(cfg.DataDir, "update-manifest.json")
 	}
-	return &Service{hc: hc, manifestURL: cfg.UpdateManifestURL, overlayPath: overlay}
+	return &Service{hc: hc, manifestURL: cfg.UpdateManifestURL, overlayPath: overlay, publicKey: cfg.UpdateManifestPubKey}
 }
 
 // Result 是 Check 的返回，序列化为 GET /system/update/check 的响应体。
@@ -163,7 +167,34 @@ func (s *Service) fetchRemote(ctx context.Context) (*Manifest, error) {
 	if err := json.Unmarshal(resp.Body, &m); err != nil {
 		return nil, fmt.Errorf("manifest parse: %w", err)
 	}
+	// 签名验证：配置了公钥时，manifest 必须携带有效 ed25519 签名。
+	// 防中间人篡改 manifest（替换 downloadUrl+sha256 植入恶意 APK/二进制）。
+	if s.publicKey != "" {
+		if err := verifyManifestSignature(s.publicKey, m.Signature, resp.Body); err != nil {
+			return nil, fmt.Errorf("manifest signature: %w", err)
+		}
+	}
 	return &m, nil
+}
+
+// verifyManifestSignature 用 ed25519 公钥验证 manifest 签名。
+// manifest JSON 的原始字节作为被签数据（签名是对完整 JSON 的，不是对反序列化再序列化后的）。
+func verifyManifestSignature(publicKeyB64, signatureB64 string, payload []byte) error {
+	pubBytes, err := base64.StdEncoding.DecodeString(publicKeyB64)
+	if err != nil {
+		return fmt.Errorf("decode public key: %w", err)
+	}
+	if len(pubBytes) != ed25519.PublicKeySize {
+		return fmt.Errorf("invalid public key size: %d", len(pubBytes))
+	}
+	sig, err := base64.StdEncoding.DecodeString(signatureB64)
+	if err != nil {
+		return fmt.Errorf("decode signature: %w", err)
+	}
+	if !ed25519.Verify(ed25519.PublicKey(pubBytes), payload, sig) {
+		return errors.New("manifest signature verification failed")
+	}
+	return nil
 }
 
 func (s *Service) readOverlay() *Manifest {

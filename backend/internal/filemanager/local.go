@@ -55,6 +55,14 @@ func (l *Local) resolve(p string) (string, error) {
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("path escapes root: %s", p)
 	}
+	// 符号链接越界防御：EvalSymlinks 解析 full 路径中的所有软链到真实物理路径，
+	// 再校验真实路径仍在 rootDir 之下。root 内指向外部的 symlink 会被拦截。
+	if real, e := filepath.EvalSymlinks(full); e == nil {
+		realRel, rerr := filepath.Rel(l.rootDir, real)
+		if rerr != nil || realRel == ".." || strings.HasPrefix(realRel, ".."+string(filepath.Separator)) {
+			return "", fmt.Errorf("symlink escapes root: %s -> %s", p, real)
+		}
+	}
 	return full, nil
 }
 

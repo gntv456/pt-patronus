@@ -43,7 +43,9 @@ void main() {
     );
 
     await tester.pump();
-    expect(find.text('搜索'), findsOneWidget);
+    // 搜索已移出抽屉（hidden=true），改由顶栏 FAB / 命令面板入口（见 home_shell.dart）。
+    // 这里验证抽屉中实际可见的导航项。
     expect(find.text('仪表盘'), findsOneWidget);
+    expect(find.text('站点'), findsOneWidget);
   });
 }

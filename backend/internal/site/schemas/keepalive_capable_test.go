@@ -10,12 +10,14 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-// 编译期断言：unit3d / gazelle / luminance 均实现 site.KeepAliveCapable，
-// 从而被 automation 的 cookie 保活 cron 自动纳入（此前仅 NexusPHP）。
+// 编译期断言：unit3d / gazelle / luminance / generic-json(sunnypt) 均实现 site.KeepAliveCapable，
+// 从而被 automation 的 cookie 保活 cron 自动纳入。
+// GenericJSON 实现 KeepAlive 是 sunnypt 专用（def.ID=="sunnypt" 分支），其余 tnode 站返回 ErrNotSupported。
 var (
 	_ site.KeepAliveCapable = (*Unit3D)(nil)
 	_ site.KeepAliveCapable = (*Gazelle)(nil)
 	_ site.KeepAliveCapable = (*Luminance)(nil)
+	_ site.KeepAliveCapable = (*GenericJSON)(nil)
 )
 
 // TestKeepAliveIndexLoggedIn 首页返回正常（title 不含登录标记）→ 报告仍登录。

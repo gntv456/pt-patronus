@@ -36,15 +36,15 @@ type Options struct {
 	MaxRetries     int
 	InsecureTLS    bool
 	FollowRedirect bool
-	// AllowPrivate 放行内网/环回目标（用于本地测试或内网下载器）；
-	// 默认 false——站点抓取必须 SSRF 防护。
+	// AllowPrivate 放行内网/环回目标（本地测试或内网下载器）；默认 false——站点抓取必须 SSRF 防护。
 	AllowPrivate bool
 	// UTLS 启用 uTLS（Chrome ClientHello）拨号，绕过按 TLS 指纹拦截非浏览器流量的 WAF/CDN
 	// （如 SafeLine 雷池对签到端点的 468 拦截）。仅对需要的站点 opt-in；默认 false 用标准 TLS。
 	UTLS bool
-	// MaxBodyBytes 读取响应体的最大字节数；0 表示用 defaultMaxBodyBytes（32MB）。
-	// 超额返回错误而非返回截断数据，防止超大响应体撑爆内存。
+	// MaxBodyBytes 响应体上限；0 用 defaultMaxBodyBytes(32MB)。超额返回错误而非截断数据，防 OOM。
 	MaxBodyBytes int64
+	// DialContext 可选自定义拨号（仅测试）：接管拨号绕过 SSRF 守卫与 DNS，重定向到本地 testserver。
+	DialContext func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
 // Response 是请求结果。
@@ -85,11 +85,8 @@ func decodeBody(data []byte, contentType string) []byte {
 	if e == nil || !certain {
 		return data
 	}
-	switch name {
-	case "gbk", "gb2312", "gb18030":
-		// GBK 族，转码到 UTF-8。
-	default:
-		return data
+	if name != "gbk" && name != "gb2312" && name != "gb18030" {
+		return data // 非 GBK 族原样返回
 	}
 	decoded, err := io.ReadAll(transform.NewReader(bytes.NewReader(data), e.NewDecoder()))
 	if err != nil || len(decoded) == 0 {
@@ -135,10 +132,12 @@ func New(opts Options) (*Client, error) {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: opts.InsecureTLS},
 		Proxy:           http.ProxyFromEnvironment,
-		// 自定义拨号：SSRF 模式下解析主机并对每个 IP 做 IsPublicIP 校验，再直连已校验的
-		// IP。既拦截重定向到内网/元数据的后续跳（每跳都触发新拨号且复用同一 ctx），又消除
-		// 「解析后校验、拨号时再解析」的 DNS 重绑定窗口。非 SSRF 调用退化为普通拨号。
+		// SSRF 模式下解析主机并对每个 IP 做 IsPublicIP 校验再直连（拦截重定向到内网/元数据，
+		// 消除「解析后校验、拨号时再解析」的 DNS 重绑定窗口）；非 SSRF 退化为普通拨号。
 		DialContext: ssrfDialContext,
+	}
+	if opts.DialContext != nil { // 仅测试：完全接管拨号，绕过守卫与 DNS，重定向到本地 testserver。
+		transport.DialContext = opts.DialContext
 	}
 	if opts.UTLS {
 		// uTLS（Chrome 指纹）拨号：仅 https 走 DialTLSContext 用 utls 握手，绕 TLS 指纹 WAF。

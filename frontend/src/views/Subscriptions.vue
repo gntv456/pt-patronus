@@ -225,7 +225,6 @@ onMounted(() => {
     <el-tabs v-model="mainTab" class="page-tabs glass" @tab-change="onMainTab">
       <el-tab-pane label="追剧订阅" name="media">
 <el-dialog v-model="globalOpen" title="全局订阅默认设置" width="540px" append-to-body top="6vh" class="global-subscribe-dialog">
-  <div style="max-height: 70vh; overflow-y: auto; padding-right: 8px;">
       <div class="text-muted small" style="margin-bottom: 12px;">
         未单独设置某项的订阅将使用此处的默认值（改后立即对所有未自定义订阅生效）。
       </div>
@@ -268,7 +267,6 @@ onMounted(() => {
         </SiteFilterDialog>
         <span class="small text-muted">空=全部活跃站点</span>
       </div>
-  </div>
       <template #footer>
         <el-button @click="globalOpen = false">取消</el-button>
         <el-button type="primary" :loading="savingGlobal" @click="saveGlobal">保存</el-button>
@@ -458,8 +456,7 @@ onMounted(() => {
   .sub { gap: 12px; padding: 12px; }
   .poster { width: 76px; }
 }
-.page-tabs { margin-top: 4px; padding: 4px 10px 12px; }
+.page-tabs { margin-top: 4px; padding: 4px 10px 12px; } .global-subscribe-dialog :deep(.el-dialog__body) { max-height: 72vh; overflow-y: auto; padding-right: 8px; }
 .rss-embed :deep(.page) { padding: 0; }
 .rss-embed :deep(.title) { font-size: 16px; }
-</style>
-
+</style>

@@ -44,3 +44,4 @@ __pycache__/
 
 # Claude 本地设置（个人授权，不进 git）
 .claude/
+.tmp-gocache/

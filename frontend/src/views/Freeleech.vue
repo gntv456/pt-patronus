@@ -152,7 +152,7 @@ onUnmounted(() => abortCtrl?.abort())
 </script>
 
 <template>
-  <div class="page" v-loading="loading">
+  <div class="page">
     <div class="head">
       <h2 class="title">站免</h2>
       <div class="head-tools">

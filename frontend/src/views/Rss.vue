@@ -176,7 +176,7 @@ function fmtTime(t?: string) {
     </div>
 
     <!-- 表单 -->
-    <el-dialog v-model="showForm" :title="editingId ? '编辑订阅' : '添加订阅'" width="560px">
+    <el-dialog v-model="showForm" :title="editingId ? '编辑订阅' : '添加订阅'" width="560px" append-to-body>
       <el-form label-width="100px" size="small">
         <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
         <el-form-item label="URL"><el-input v-model="form.url" placeholder="https://site.com/rss.xml" /></el-form-item>
@@ -229,7 +229,7 @@ function fmtTime(t?: string) {
     </el-dialog>
 
     <!-- 条目 -->
-    <el-drawer v-model="showItems" :title="`条目：${itemsTitle}`" size="50%">
+    <el-drawer v-model="showItems" :title="`条目：${itemsTitle}`" size="50%" append-to-body>
       <el-table :data="items" size="small">
         <el-table-column label="标题" min-width="240">
           <template #default="{ row }">

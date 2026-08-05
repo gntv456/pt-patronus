@@ -1,5 +1,5 @@
 884	backend/internal/api/router.go
-608	backend/internal/api/v1/auth.go
+615	backend/internal/api/v1/auth.go
 557	backend/internal/api/v1/downloader_ops.go
 726	backend/internal/api/v1/entertainment.go
 431	backend/internal/api/v1/notification.go
@@ -26,7 +26,7 @@
 410	backend/internal/entertainment/longpt.go
 475	backend/internal/entertainment/novahd.go
 459	backend/internal/filter/store.go
-465	backend/internal/httpclient/client.go
+464	backend/internal/httpclient/client.go
 742	backend/internal/media/douban.go
 533	backend/internal/monitor/agent_ws.go
 1030	backend/internal/plugins/builtin_tools.go

@@ -1,7 +1,7 @@
 {
   "name": "ptpatronus-frontend",
   "private": true,
-  "version": "1.02.02",
+  "version": "1.02.03",
   "type": "module",
   "scripts": {
     "dev": "vite",

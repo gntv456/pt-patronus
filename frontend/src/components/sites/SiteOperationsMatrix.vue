@@ -472,7 +472,6 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
 
     <el-table
       :key="matrixLayout"
-      v-loading="loading || loadingSites"
       :data="pagedRows"
       class="matrix-table"
       :class="`is-${matrixLayout}`"

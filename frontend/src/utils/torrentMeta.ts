@@ -49,7 +49,7 @@ export function extractTorrentTags(title: string, extra: string[] = []): Torrent
     out.push({ label: rule.label, tone: rule.tone || 'misc' })
   }
   for (const raw of extra) {
-    const label = raw.trim()
+    const label = String(raw).trim()
     // 副标题/长描述不进标签（会和卡片副标题重复，且 chip 过长）
     if (!label || label.length > 20) continue
     if (/\s{2,}/.test(label) || (label.length > 12 && /[\u4e00-\u9fff].*[\u4e00-\u9fff]/.test(label) && label.includes('|'))) continue
@@ -258,7 +258,7 @@ export function enrichTorrent<T extends {
   pub_date?: string
   time?: string
 }>(row: T): T & EnrichedMeta {
-  const tagSeed = [...(row.tags || []), ...(row.labels || []), row.category || ''].filter(Boolean) as string[]
+  const tagSeed = [...(row.tags || []), ...(row.labels || []), row.category || ''].filter((x): x is string => typeof x === 'string')
   const tags = extractTorrentTags(`${row.title || ''} ${row.subtitle || ''}`, tagSeed)
   const pick = (tone: string) => tags.find((t) => t.tone === tone)?.label || ''
   const promo = volumeFactorLabel(

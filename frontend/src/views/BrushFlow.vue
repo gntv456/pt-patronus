@@ -297,13 +297,13 @@ onMounted(() => {
           <el-input-number v-model="form.max_total_size_gb" :min="0" :step="1" controls-position="right" />
           <span class="hint">超限按最慢上传淘汰；0=不限</span>
         </el-form-item>
-        <el-form-item label="swarm做种上限">
+        <el-form-item label="全网做种上限">
           <el-input-number v-model="form.delete_max_swarm_seeders" :min="0" controls-position="right" />
-          <span class="hint">NumComplete 超过则删，0=不限</span>
+          <span class="hint">全网做种总数超过则删，0=不限</span>
         </el-form-item>
-        <el-form-item label="swarm下载下限">
+        <el-form-item label="全网下载下限">
           <el-input-number v-model="form.delete_min_swarm_leechers" :min="0" controls-position="right" />
-          <span class="hint">做种中 NumIncomplete 低于则删，0=不限</span>
+          <span class="hint">做种中全网下载总数低于则删，0=不限</span>
         </el-form-item>
         <el-form-item label="删种删文件"><el-switch v-model="form.delete_files" /></el-form-item>
         <el-form-item label="原生停种">

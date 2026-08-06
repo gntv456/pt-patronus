@@ -183,3 +183,116 @@ func (h *DockerHandler) LocalRemoveImage(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
+
+
+// LocalPull 拉取镜像（本机模式）。
+func (h *DockerHandler) LocalPull(c *gin.Context) {
+	if h.local == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		return
+	}
+	ref := c.Query("ref")
+	if ref == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "image reference is required (?ref=nginx)"})
+		return
+	}
+	progress, err := h.local.LocalPull(c.Request.Context(), ref)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "progress": progress})
+}
+
+// LocalPrune 清理无用资源（本机模式）。?type=container|image|volume|network。
+func (h *DockerHandler) LocalPrune(c *gin.Context) {
+	if h.local == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		return
+	}
+	typ := c.DefaultQuery("type", "image")
+	result, err := h.local.LocalPruneResult(c.Request.Context(), typ)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "result": result})
+}
+
+// LocalVolumeCreate 创建卷（本机模式）。
+func (h *DockerHandler) LocalVolumeCreate(c *gin.Context) {
+	if h.local == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		return
+	}
+	var in struct {
+		Name   string `json:"name" binding:"required"`
+		Driver string `json:"driver"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.local.LocalVolumeCreate(c.Request.Context(), in.Name, in.Driver); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// LocalVolumeRemove 删除卷（本机模式）。
+func (h *DockerHandler) LocalVolumeRemove(c *gin.Context) {
+	if h.local == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		return
+	}
+	name := c.Param("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "volume name is required"})
+		return
+	}
+	if err := h.local.LocalVolumeRemove(c.Request.Context(), name, true); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// LocalNetworkCreate 创建网络（本机模式）。
+func (h *DockerHandler) LocalNetworkCreate(c *gin.Context) {
+	if h.local == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		return
+	}
+	var in struct {
+		Name   string `json:"name" binding:"required"`
+		Driver string `json:"driver"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.local.LocalNetworkCreate(c.Request.Context(), in.Name, in.Driver); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// LocalNetworkRemove 删除网络（本机模式）。
+func (h *DockerHandler) LocalNetworkRemove(c *gin.Context) {
+	if h.local == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		return
+	}
+	name := c.Param("name")
+	if name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "network name is required"})
+		return
+	}
+	if err := h.local.LocalNetworkRemove(c.Request.Context(), name); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}

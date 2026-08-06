@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { dockerApi, type DockerContainer, type DockerImage, type DockerListResp, type DockerStatsRow } from '@/api/docker'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 import GlassIcon from '@/components/GlassIcon.vue'
+import { useDockerOps } from './useDockerOps'
 
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
@@ -156,45 +157,15 @@ async function showInspect(container: DockerContainer) {
   }
 }
 
+
+
+const { pullDialog, pullRef, pullLoading, pullResult, openPull, doPull, doPrune, createVolume, removeVolume, createNetwork, removeNetwork, composeVisible, composePath, composeOutput, composeLoading, openCompose, composeAction } = useDockerOps(refresh, () => mode.value, () => selectedTarget.value)
+
 function stateColor(state: string): string {
   const colors: Record<string, string> = {
     running: 'success', exited: 'muted', paused: 'warn', created: 'info', restarting: 'info', dead: 'danger',
   }
   return colors[state] || 'muted'
-}
-
-const composeVisible = ref(false)
-const composePath = ref('')
-const composeOutput = ref('')
-const composeLoading = ref(false)
-
-function openCompose() {
-  if (!selectedTarget.value) {
-    ElMessage.warning('请先选择 SSH 主机')
-    return
-  }
-  composeVisible.value = true
-  composeOutput.value = ''
-}
-
-async function composeAction(action: 'up' | 'down') {
-  if (!composePath.value.trim()) {
-    ElMessage.warning('请输入 compose 文件所在目录')
-    return
-  }
-  composeLoading.value = true
-  composeOutput.value = ''
-  try {
-    const fn = action === 'up' ? dockerApi.composeUp : dockerApi.composeDown
-    const res = await fn(selectedTarget.value, composePath.value.trim(), action === 'down')
-    composeOutput.value = res.output || (res.ok ? '成功' : '失败')
-    if (res.ok) ElMessage.success(action === 'up' ? '部署成功' : '已停止')
-    refresh()
-  } catch (e: any) {
-    composeOutput.value = e.message
-  } finally {
-    composeLoading.value = false
-  }
 }
 
 onMounted(async () => {
@@ -279,6 +250,9 @@ onMounted(async () => {
 
       <!-- 容器列表 -->
       <div v-if="activeTab === 'containers'" class="docker-table glass">
+        <div v-if="mode === 'local'" class="tab-toolbar">
+          <el-button size="small" type="warning" @click="doPrune('container')">清理已停止容器</el-button>
+        </div>
         <table>
           <thead>
             <tr>
@@ -313,6 +287,10 @@ onMounted(async () => {
 
       <!-- 镜像列表 -->
       <div v-if="activeTab === 'images'" class="docker-table glass">
+        <div v-if="mode === 'local'" class="tab-toolbar">
+          <el-button size="small" type="primary" @click="openPull">拉取镜像</el-button>
+          <el-button size="small" type="warning" @click="doPrune('image')">清理悬空镜像</el-button>
+        </div>
         <table>
           <thead><tr><th>仓库</th><th>标签</th><th>ID</th><th>大小</th><th>操作</th></tr></thead>
           <tbody>
@@ -330,22 +308,30 @@ onMounted(async () => {
 
       <!-- 卷列表 -->
       <div v-if="activeTab === 'volumes'" class="docker-table glass">
+        <div v-if="mode === 'local'" class="tab-toolbar">
+          <el-button size="small" type="primary" @click="createVolume">创建卷</el-button>
+          <el-button size="small" type="warning" @click="doPrune('volume')">清理无用卷</el-button>
+        </div>
         <table>
-          <thead><tr><th>名称</th><th>驱动</th></tr></thead>
+          <thead><tr><th>名称</th><th>驱动</th><th v-if="mode === 'local'">操作</th></tr></thead>
           <tbody>
-            <tr v-for="(v, i) in data.volumes" :key="i"><td class="td-mono">{{ v.Name }}</td><td>{{ v.Driver }}</td></tr>
-            <tr v-if="!data.volumes.length"><td colspan="2" class="td-empty">暂无卷</td></tr>
+            <tr v-for="(v, i) in data.volumes" :key="i"><td class="td-mono">{{ v.Name }}</td><td>{{ v.Driver }}</td><td v-if="mode === 'local'"><button class="mini-btn danger" @click="removeVolume(v)">✕</button></td></tr>
+            <tr v-if="!data.volumes.length"><td :colspan="mode === 'local' ? 3 : 2" class="td-empty">暂无卷</td></tr>
           </tbody>
         </table>
       </div>
 
       <!-- 网络列表 -->
       <div v-if="activeTab === 'networks'" class="docker-table glass">
+        <div v-if="mode === 'local'" class="tab-toolbar">
+          <el-button size="small" type="primary" @click="createNetwork">创建网络</el-button>
+          <el-button size="small" type="warning" @click="doPrune('network')">清理无用网络</el-button>
+        </div>
         <table>
-          <thead><tr><th>名称</th><th>驱动</th><th>范围</th></tr></thead>
+          <thead><tr><th>名称</th><th>驱动</th><th>范围</th><th v-if="mode === 'local'">操作</th></tr></thead>
           <tbody>
-            <tr v-for="(n, i) in data.networks" :key="i"><td>{{ n.Name }}</td><td>{{ n.Driver }}</td><td>{{ n.Scope }}</td></tr>
-            <tr v-if="!data.networks.length"><td colspan="3" class="td-empty">暂无网络</td></tr>
+            <tr v-for="(n, i) in data.networks" :key="i"><td>{{ n.Name }}</td><td>{{ n.Driver }}</td><td>{{ n.Scope }}</td><td v-if="mode === 'local'"><button class="mini-btn danger" @click="removeNetwork(n)">✕</button></td></tr>
+            <tr v-if="!data.networks.length"><td :colspan="mode === 'local' ? 4 : 3" class="td-empty">暂无网络</td></tr>
           </tbody>
         </table>
       </div>
@@ -380,6 +366,20 @@ onMounted(async () => {
         <el-button @click="composeVisible = false">关闭</el-button>
         <el-button type="danger" :loading="composeLoading" @click="composeAction('down')">Compose Down</el-button>
         <el-button type="primary" :loading="composeLoading" @click="composeAction('up')">Compose Up</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 拉取镜像对话框 -->
+    <el-dialog v-model="pullDialog" title="拉取镜像" width="500px">
+      <el-form label-width="80px">
+        <el-form-item label="镜像名">
+          <el-input v-model="pullRef" placeholder="nginx / redis:7 / ghcr.io/..." @keyup.enter="doPull" />
+        </el-form-item>
+      </el-form>
+      <div v-if="pullResult" class="pull-output"><pre>{{ pullResult }}</pre></div>
+      <template #footer>
+        <el-button @click="pullDialog = false">关闭</el-button>
+        <el-button type="primary" :loading="pullLoading" @click="doPull">拉取</el-button>
       </template>
     </el-dialog>
   </div>

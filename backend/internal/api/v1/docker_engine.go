@@ -2,12 +2,12 @@
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-
 )
 
 // --- 高层 API ---
@@ -219,4 +219,146 @@ func (c *DockerLocalClient) LocalRemoveImage(ctx context.Context, ref string) er
 		return fmt.Errorf("rmi %s: %s %s", ref, resp.Status, string(raw))
 	}
 	return nil
+}
+
+
+// LocalPull 拉取镜像（流式返回进度，Docker API 的 /images/create 返回 JSON 流）。
+func (c *DockerLocalClient) LocalPull(ctx context.Context, ref string) (string, error) {
+	// /images/create?fromImage=<ref> 返回逐行 JSON：{"status":"...","id":"..."}
+	resp, err := c.do(ctx, http.MethodPost, "/images/create?fromImage="+urlEncode(ref)+"&tag=latest", nil)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("pull %s: %s %s", ref, resp.Status, string(raw))
+	}
+	return parsePullProgress(raw), nil
+}
+
+// postRaw 执行 POST 并返回原始 body（用于 prune 等需解析特殊响应的场景）。
+func (c *DockerLocalClient) postRaw(ctx context.Context, path string, body any) ([]byte, error) {
+	var r io.Reader
+	if body != nil {
+		b, _ := json.Marshal(body)
+		r = strings.NewReader(string(b))
+	}
+	resp, err := c.do(ctx, http.MethodPost, path, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode >= 400 {
+		return raw, fmt.Errorf("docker API %s: %s", path, resp.Status)
+	}
+	return raw, nil
+}
+
+// LocalPruneResult 带 JSON 解析的清理结果。
+func (c *DockerLocalClient) LocalPruneResult(ctx context.Context, typ string) (map[string]any, error) {
+	path := ""
+	switch typ {
+	case "container":
+		path = "/containers/prune"
+	case "image":
+		path = "/images/prune"
+	case "volume":
+		path = "/volumes/prune"
+	case "network":
+		path = "/networks/prune"
+	default:
+		return nil, fmt.Errorf("unknown prune type: %s", typ)
+	}
+	raw, err := c.postRaw(ctx, path, nil)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]any
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return map[string]any{"raw": string(raw)}, nil
+	}
+	return result, nil
+}
+
+// LocalVolumeCreate 创建卷。
+func (c *DockerLocalClient) LocalVolumeCreate(ctx context.Context, name, driver string) error {
+	body := map[string]any{"Name": name}
+	if driver != "" {
+		body["Driver"] = driver
+	}
+	return c.post(ctx, "/volumes/create", body)
+}
+
+// LocalVolumeRemove 删除卷。
+func (c *DockerLocalClient) LocalVolumeRemove(ctx context.Context, name string, force bool) error {
+	path := "/volumes/" + name
+	resp, err := c.do(ctx, http.MethodDelete, path, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		raw, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("remove volume %s: %s %s", name, resp.Status, string(raw))
+	}
+	return nil
+}
+
+// LocalNetworkCreate 创建网络。
+func (c *DockerLocalClient) LocalNetworkCreate(ctx context.Context, name, driver string) error {
+	body := map[string]any{"Name": name}
+	if driver != "" {
+		body["Driver"] = driver
+	}
+	return c.post(ctx, "/networks/create", body)
+}
+
+// LocalNetworkRemove 删除网络。
+func (c *DockerLocalClient) LocalNetworkRemove(ctx context.Context, name string) error {
+	resp, err := c.do(ctx, http.MethodDelete, "/networks/"+name, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		raw, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("remove network %s: %s %s", name, resp.Status, string(raw))
+	}
+	return nil
+}
+
+// parsePullProgress 从 Docker /images/create 的 JSON 流提取人类可读进度。
+func parsePullProgress(raw []byte) string {
+	var lines []string
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var entry struct {
+			Status   string `json:"status"`
+			ID       string `json:"id"`
+			Error    string `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			continue
+		}
+		if entry.Error != "" {
+			lines = append(lines, "ERROR: "+entry.Error)
+			continue
+		}
+		if entry.ID != "" {
+			lines = append(lines, entry.ID+": "+entry.Status)
+		} else if entry.Status != "" {
+			lines = append(lines, entry.Status)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+// urlEncode 对镜像名做 URL 编码（处理仓库地址中的特殊字符）。
+func urlEncode(s string) string {
+	return strings.NewReplacer(" ", "%20", "/", "%2F").Replace(s)
 }

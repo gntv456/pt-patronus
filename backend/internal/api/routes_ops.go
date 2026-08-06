@@ -93,6 +93,13 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		docker.POST("/local/containers/:name/remove", dockerH.LocalRemove)
 		docker.POST("/local/containers/:name/:action", dockerH.LocalContainerAction)
 		docker.DELETE("/local/images/:ref", dockerH.LocalRemoveImage)
+		// 本机扩展：拉取镜像 / 清理 / 卷网络管理
+		docker.POST("/local/images/pull", dockerH.LocalPull)
+		docker.POST("/local/prune", dockerH.LocalPrune)
+		docker.POST("/local/volumes", dockerH.LocalVolumeCreate)
+		docker.DELETE("/local/volumes/:name", dockerH.LocalVolumeRemove)
+		docker.POST("/local/networks", dockerH.LocalNetworkCreate)
+		docker.DELETE("/local/networks/:name", dockerH.LocalNetworkRemove)
 	}
 
 	// === 运维中心：磁盘管理（SSH 远程主机，分区/格式化/挂载）===

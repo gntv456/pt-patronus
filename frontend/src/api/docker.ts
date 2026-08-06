@@ -104,4 +104,18 @@ export const dockerApi = {
     http.post(`/ops/docker/local/containers/${name}/remove`, { confirm_risk: confirmRisk }, { params: { force: force ? 1 : 0 } }).then((r) => r.data),
   localRemoveImage: (ref: string, confirmRisk = false) =>
     http.delete(`/ops/docker/local/images/${ref}`, { data: { confirm_risk: confirmRisk } }).then((r) => r.data),
+
+  // === 本机扩展：拉取镜像 / 清理 / 卷网络管理 ===
+  localPull: (ref: string) =>
+    http.post<{ ok: boolean; progress?: string; error?: string }>('/ops/docker/local/images/pull', null, { params: { ref } }).then((r) => r.data),
+  localPrune: (type: 'container' | 'image' | 'volume' | 'network') =>
+    http.post<{ ok: boolean; result?: Record<string, any> }>('/ops/docker/local/prune', null, { params: { type } }).then((r) => r.data),
+  localVolumeCreate: (name: string, driver?: string) =>
+    http.post('/ops/docker/local/volumes', { name, driver }).then((r) => r.data),
+  localVolumeRemove: (name: string) =>
+    http.delete(`/ops/docker/local/volumes/${name}`).then((r) => r.data),
+  localNetworkCreate: (name: string, driver?: string) =>
+    http.post('/ops/docker/local/networks', { name, driver }).then((r) => r.data),
+  localNetworkRemove: (name: string) =>
+    http.delete(`/ops/docker/local/networks/${name}`).then((r) => r.data),
 }

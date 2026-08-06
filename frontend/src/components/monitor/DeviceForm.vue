@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { MonitorTarget, OpsCredential, TargetInput } from '@/api/monitor'
+import { useDeviceOpsConfig } from '@/composables/useDeviceOpsConfig'
 
 // DeviceForm — 新增/编辑监控目标对话框。按 type 动态展示连接字段；编辑时密码留空表示不改。
 const visible = defineModel<boolean>('visible', { default: false })
@@ -17,15 +18,8 @@ function blank(): TargetInput {
 }
 const form = ref<TargetInput>(blank())
 const isEdit = computed(() => !!props.target)
-const opsConfig = ref({
-  http_method: 'GET',
-  http_expected_min: 200,
-  http_expected_max: 399,
-  response_ms: 0,
-  process_name: '',
-  process_min_count: 1,
-  script_command: '',
-})
+// 可选配置（HTTP 方法/进程名/脚本命令等）与 thresholds 序列化抽出为 composable（useDeviceOpsConfig）。
+const { opsConfig, loadOpsConfig, buildThresholds } = useDeviceOpsConfig()
 
 function defaultProtocol(type: string) {
   if (type === 'camera') return 'onvif'
@@ -54,59 +48,6 @@ function normalizeNasFields() {
   } else if (!form.value.vendor || form.value.vendor === 'snmp') {
     form.value.vendor = 'synology'
   }
-}
-
-function parseThresholds(raw?: string): Record<string, unknown> {
-  if (!raw) return {}
-  try {
-    const v = JSON.parse(raw)
-    return v && typeof v === 'object' ? v : {}
-  } catch {
-    return {}
-  }
-}
-
-function loadOpsConfig(raw?: string) {
-  const cfg = parseThresholds(raw)
-  opsConfig.value = {
-    http_method: String(cfg.http_method || 'GET').toUpperCase(),
-    http_expected_min: Number(cfg.http_expected_min || 200),
-    http_expected_max: Number(cfg.http_expected_max || 399),
-    response_ms: Number(cfg.response_ms || 0),
-    process_name: String(cfg.process_name || ''),
-    process_min_count: Number(cfg.process_min_count || 1),
-    script_command: String(cfg.script_command || ''),
-  }
-}
-
-function buildThresholds(raw: string | undefined, type: string): string {
-  const cfg = parseThresholds(raw)
-  for (const key of [
-    'http_method',
-    'http_expected_min',
-    'http_expected_max',
-    'response_ms',
-    'process_name',
-    'process_min_count',
-    'script_command',
-  ]) {
-    delete cfg[key]
-  }
-  if (type === 'http') {
-    cfg.http_method = opsConfig.value.http_method || 'GET'
-    cfg.http_expected_min = Number(opsConfig.value.http_expected_min || 200)
-    cfg.http_expected_max = Number(opsConfig.value.http_expected_max || 399)
-    if (Number(opsConfig.value.response_ms) > 0) cfg.response_ms = Number(opsConfig.value.response_ms)
-  } else if (type === 'tcp') {
-    if (Number(opsConfig.value.response_ms) > 0) cfg.response_ms = Number(opsConfig.value.response_ms)
-  } else if (type === 'process') {
-    cfg.process_name = opsConfig.value.process_name.trim()
-    cfg.process_min_count = Number(opsConfig.value.process_min_count || 1)
-  } else if (type === 'script') {
-    cfg.script_command = opsConfig.value.script_command.trim()
-    if (Number(opsConfig.value.response_ms) > 0) cfg.response_ms = Number(opsConfig.value.response_ms)
-  }
-  return Object.keys(cfg).length ? JSON.stringify(cfg) : ''
 }
 
 watch(visible, (v) => {
@@ -218,6 +159,7 @@ function submit() {
   visible.value = false
 }
 </script>
+
 
 <template>
   <el-dialog v-model="visible" :title="isEdit ? '编辑设备' : '添加设备'" width="480px">

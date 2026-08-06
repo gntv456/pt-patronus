@@ -4,23 +4,20 @@ import {
   cloudApi,
   TYPE_LABEL,
   type CloudDrive,
-  type CloudDriveType,
   type CloudFile,
-  type StrmRule,
-  type StrmRecord,
-  type StrmResult,
   type DriveInput,
 } from '@/api/cloud'
+import type { StrmRule, StrmRecord } from '@/api/cloud'
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { useCloudDriveBrowse, fmtSize } from '@/composables/useCloudDriveBrowse'
+import { useCloudStrmRules } from '@/composables/useCloudStrmRules'
 
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const activeTab = ref('drives')
 const drives = ref<CloudDrive[]>([])
-const rules = ref<StrmRule[]>([])
-const records = ref<StrmRecord[]>([])
 const loading = ref(false)
 
 async function loadDrives() {
@@ -33,22 +30,6 @@ async function loadDrives() {
     loading.value = false
   }
 }
-async function loadRules() {
-  try {
-    rules.value = await cloudApi.listRules()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '加载规则失败')
-  }
-}
-async function loadRecords() {
-  try {
-    records.value = await cloudApi.listRecords()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '加载记录失败')
-  }
-}
-
-const driveName = (id: number) => drives.value.find((d) => d.id === id)?.name ?? `#${id}`
 
 // ---- 网盘 CRUD ----
 const showDriveForm = ref(false)
@@ -102,7 +83,7 @@ async function removeDrive(d: CloudDrive) {
   await loadDrives()
 }
 
-// ---- 测试 / 配额 / 浏览 ----
+// ---- 测试 / 配额 ----
 const testing = ref<number | null>(null)
 async function testDrive(d: CloudDrive) {
   testing.value = d.id
@@ -124,154 +105,14 @@ async function loadQuota(d: CloudDrive) {
   }
 }
 
-// 浏览对话框（选目录填入规则 cloud_path）
-const showBrowse = ref(false)
-const browseDrive = ref<CloudDrive | null>(null)
-const browsePath = ref('/')
-const browseFiles = ref<CloudFile[]>([])
-const browseLoading = ref(false)
-const browseTarget = ref<((p: string) => void) | null>(null)
-
-async function openBrowse(d: CloudDrive, target: (p: string) => void) {
-  browseDrive.value = d
-  browseTarget.value = target
-  browsePath.value = d.root_path || '/'
-  showBrowse.value = true
-  await fetchBrowse()
-}
-async function fetchBrowse() {
-  if (!browseDrive.value) return
-  browseLoading.value = true
-  try {
-    browseFiles.value = await cloudApi.browse(browseDrive.value.id, browsePath.value)
-  } catch (e: any) {
-    ElMessage.error(e?.message || '浏览失败')
-    browseFiles.value = []
-  } finally {
-    browseLoading.value = false
-  }
-}
-function enterDir(f: CloudFile) {
-  if (!f.is_dir) return
-  browsePath.value = f.path
-  fetchBrowse()
-}
-function browseUp() {
-  if (browsePath.value === '/') return
-  const parts = browsePath.value.split('/').filter(Boolean)
-  parts.pop()
-  browsePath.value = '/' + parts.join('/')
-  fetchBrowse()
-}
-function pickDir() {
-  if (browseTarget.value) browseTarget.value(browsePath.value)
-  showBrowse.value = false
-}
-
-// ---- STRM 规则 CRUD ----
-const showRuleForm = ref(false)
-const editingRule = ref<StrmRule | null>(null)
-const ruleForm = ref(defaultRule())
-function defaultRule() {
-  return {
-    name: '',
-    drive_id: 0,
-    cloud_path: '/',
-    output_dir: '',
-    mount_root: '',
-    template: '',
-    recursive: true,
-    keep_ext: true,
-    enabled: true,
-  }
-}
-function openCreateRule() {
-  editingRule.value = null
-  ruleForm.value = { ...defaultRule(), drive_id: drives.value[0]?.id ?? 0 }
-  showRuleForm.value = true
-}
-function openEditRule(r: StrmRule) {
-  editingRule.value = r
-  ruleForm.value = { ...r }
-  showRuleForm.value = true
-}
-function ruleBrowse() {
-  const d = drives.value.find((x) => x.id === ruleForm.value.drive_id)
-  if (!d) {
-    ElMessage.warning('请先选择网盘')
-    return
-  }
-  openBrowse(d, (p) => (ruleForm.value.cloud_path = p))
-}
-async function saveRule() {
-  const f = ruleForm.value
-  if (!f.name || !f.drive_id || !f.cloud_path || !f.output_dir) {
-    ElMessage.warning('名称/网盘/云盘目录/输出目录必填')
-    return
-  }
-  try {
-    if (editingRule.value) {
-      await cloudApi.updateRule(editingRule.value.id, f)
-      ElMessage.success('已更新')
-    } else {
-      await cloudApi.createRule(f)
-      ElMessage.success('已创建')
-    }
-    showRuleForm.value = false
-    await loadRules()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
-  }
-}
-async function removeRule(r: StrmRule) {
-  await ElMessageBox.confirm(`确定删除规则「${r.name}」？`, '提示', { type: 'warning' })
-  await cloudApi.removeRule(r.id)
-  ElMessage.success('已删除')
-  await loadRules()
-}
-
-// ---- 生成 ----
-const generating = ref<number | null>(null)
-function report(res: StrmResult, prefix: string) {
-  if (res.errors?.length) {
-    ElMessage.warning(`${prefix}：新增 ${res.generated}，跳过 ${res.skipped}，失败 ${res.errors.length}`)
-  } else {
-    ElMessage.success(`${prefix}：新增 ${res.generated}，跳过 ${res.skipped}`)
-  }
-}
-async function generateOne(r: StrmRule) {
-  generating.value = r.id
-  try {
-    const res = await cloudApi.generateRule(r.id)
-    report(res, r.name)
-    await loadRecords()
-  } catch (e: any) {
-    ElMessage.error(e?.message || '生成失败')
-  } finally {
-    generating.value = null
-  }
-}
-async function generateAll() {
-  try {
-    await cloudApi.generateAll()
-    ElMessage.success('已触发全部规则生成')
-    setTimeout(loadRecords, 1500)
-  } catch (e: any) {
-    ElMessage.error(e?.message || '请求失败')
-  }
-}
-async function syncSubs() {
-  try {
-    await cloudApi.syncSubscriptions()
-    ElMessage.success('订阅追更匹配完成')
-  } catch (e: any) {
-    ElMessage.error(e?.message || '请求失败')
-  }
-}
-async function removeRecord(r: StrmRecord) {
-  await cloudApi.removeRecord(r.id)
-  await loadRecords()
-}
+// ---- 浏览 + 规则（composable 封装） ----
+const { showBrowse, browseDrive, browsePath, browseFiles, browseLoading, openBrowse, enterDir, browseUp, pickDir } = useCloudDriveBrowse()
+const {
+  rules, records, loadRules, loadRecords, driveName,
+  showRuleForm, editingRule, ruleForm,
+  openCreateRule, openEditRule, ruleBrowse, saveRule, removeRule,
+  generating, generateOne, generateAll, syncSubs, removeRecord,
+} = useCloudStrmRules(drives, openBrowse)
 
 const tokenLabel = computed(() => {
   switch (driveForm.value.type) {
@@ -283,14 +124,6 @@ const tokenLabel = computed(() => {
       return 'Cookie（115网页登录后的 cookie）'
   }
 })
-
-function fmtSize(n: number) {
-  if (!n) return '-'
-  const g = 1 << 30
-  if (n >= g) return (n / g).toFixed(1) + ' GB'
-  if (n >= 1 << 20) return (n / (1 << 20)).toFixed(1) + ' MB'
-  return (n / (1 << 10)).toFixed(1) + ' KB'
-}
 
 onMounted(async () => {
   await loadDrives()

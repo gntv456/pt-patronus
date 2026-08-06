@@ -1,20 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
-import { downloaderApi, type Downloader, type Torrent, type Stats, type DownloaderResult } from '@/api/downloader'
+import { ref, computed, watch, onUnmounted, toRef } from 'vue'
+import { downloaderApi, type Stats } from '@/api/downloader'
 import { useWs } from '@/composables/useWs'
 import StatsBar from './StatsBar.vue'
 import AddTorrentPanel from './AddTorrentPanel.vue'
-import TorrentTable, { type DialogKind } from './TorrentTable.vue'
+import TorrentTable from './TorrentTable.vue'
 import TorrentDetail from './TorrentDetail.vue'
 import FilesDialog from './FilesDialog.vue'
 import TrackersDialog from './TrackersDialog.vue'
 import { dlCaps } from './caps'
+import { useTorrentDialog, useCategoryManage } from './useTorrentDrawer'
 import { CircleCheck, CircleClose, Connection, Plus, Refresh, Setting } from '@element-plus/icons-vue'
 
-const props = defineProps<{ downloader: Downloader; visible: boolean }>()
+const props = defineProps<{ downloader: import('@/api/downloader').Downloader; visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
 
 const caps = computed(() => dlCaps(props.downloader.type))
+const downloaderRef = toRef(props, 'downloader')
 
 const { torrents, connected, connect, disconnect } = useWs()
 
@@ -62,7 +64,6 @@ const lastUpdated = ref<Date | null>(null)
 
 // 分类（表格筛选 + 添加下拉 + 分类管理共用）
 const cats = ref<string[]>([])
-const tagOpts = ref<string[]>([])
 async function loadCats() {
   const c = await downloaderApi.categories(props.downloader.id).catch(() => null)
   cats.value = c?.categories ?? []
@@ -82,159 +83,15 @@ function openDetail(hash: string) {
   detailVisible.value = true
 }
 
-// —— 操作对话框（remove/category/tags/limits/share-limits/location）——
-const activeDialog = ref<{ kind: DialogKind; hashes: string[] } | null>(null)
-const dialogOpen = computed({
-  get: () => activeDialog.value !== null,
-  set: (v) => {
-    if (!v) activeDialog.value = null
-  },
-})
-const dialogTitle = computed(() => {
-  switch (activeDialog.value?.kind) {
-    case 'remove':
-      return `删除任务 (${activeDialog.value.hashes.length})`
-    case 'category':
-      return '设置分类'
-    case 'tags':
-      return '设置标签'
-    case 'limits':
-      return '限速'
-    case 'share-limits':
-      return '做种限制'
-    case 'location':
-      return '移动保存路径'
-    case 'files':
-      return '文件优先级'
-    case 'trackers':
-      return 'Tracker 管理'
-    default:
-      return ''
-  }
-})
-const hasFooter = computed(() => {
-  const k = activeDialog.value?.kind
-  return k === 'remove' || k === 'category' || k === 'tags' || k === 'limits' || k === 'share-limits' || k === 'location'
-})
+// —— 对话框 + 分类管理（composable） ——
+const {
+  activeDialog, dialogOpen, dialogTitle, hasFooter,
+  removeFiles, dlgCategory, dlgTags, dlgUpLimit, dlgDlLimit, dlgLocation,
+  dlgRatioMode, dlgRatio, dlgSeedMode, dlgSeedTime, dlgLoading, tagOpts,
+  openDialog, submitDialog,
+} = useTorrentDialog(downloaderRef, refresh)
 
-// 对话框表单状态
-const removeFiles = ref(false)
-const dlgCategory = ref('')
-const dlgTags = ref<string[]>([])
-const dlgUpLimit = ref<number | undefined>(undefined)
-const dlgDlLimit = ref<number | undefined>(undefined)
-const dlgLocation = ref('')
-const dlgRatioMode = ref<'global' | 'unlimited' | 'custom'>('global')
-const dlgRatio = ref(2)
-const dlgSeedMode = ref<'global' | 'unlimited' | 'custom'>('global')
-const dlgSeedTime = ref(60)
-const dlgLoading = ref(false)
-
-function openDialog(payload: { kind: DialogKind; hashes: string[] }) {
-  activeDialog.value = payload
-  removeFiles.value = false
-  dlgCategory.value = ''
-  dlgTags.value = []
-  dlgUpLimit.value = undefined
-  dlgDlLimit.value = undefined
-  dlgLocation.value = ''
-  dlgRatioMode.value = 'global'
-  dlgSeedMode.value = 'global'
-}
-watch(activeDialog, async (d) => {
-  if (d?.kind === 'tags' && !tagOpts.value.length) {
-    const t = await downloaderApi.tags(props.downloader.id).catch(() => null)
-    tagOpts.value = t?.tags ?? []
-  }
-})
-
-function kb(v?: number): number {
-  return v && v > 0 ? Math.round(v * 1024) : 0
-}
-
-async function submitDialog() {
-  const d = activeDialog.value
-  if (!d) return
-  dlgLoading.value = true
-  try {
-    let r: DownloaderResult | null = null
-    switch (d.kind) {
-      case 'remove':
-        r = await downloaderApi.removeTorrents(props.downloader.id, d.hashes, removeFiles.value)
-        break
-      case 'category':
-        r = await downloaderApi.setCategory(props.downloader.id, d.hashes, dlgCategory.value)
-        break
-      case 'tags':
-        r = await downloaderApi.editTags(props.downloader.id, d.hashes, dlgTags.value, 'set')
-        break
-      case 'limits':
-        r = await downloaderApi.setLimits(props.downloader.id, d.hashes, {
-          upload_limit: kb(dlgUpLimit.value),
-          download_limit: kb(dlgDlLimit.value),
-        })
-        break
-      case 'share-limits': {
-        const ratio = dlgRatioMode.value === 'global' ? -1 : dlgRatioMode.value === 'unlimited' ? -2 : dlgRatio.value
-        const seed = dlgSeedMode.value === 'global' ? -1 : dlgSeedMode.value === 'unlimited' ? -2 : dlgSeedTime.value
-        r = await downloaderApi.setShareLimits(props.downloader.id, d.hashes, {
-          ratio_limit: ratio,
-          seeding_time_limit: seed,
-        })
-        break
-      }
-      case 'location':
-        r = await downloaderApi.setLocation(props.downloader.id, d.hashes, dlgLocation.value)
-        break
-      default:
-        return
-    }
-    if (r && r.ok) {
-      ElMessage.success('操作成功')
-      activeDialog.value = null
-      refresh()
-    } else if (r) {
-      ElMessage.warning(r.error || '失败')
-    }
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '请求失败')
-  } finally {
-    dlgLoading.value = false
-  }
-}
-
-// —— 分类管理（qB）——
-const catManageVisible = ref(false)
-const newCatName = ref('')
-const newCatPath = ref('')
-async function addCat() {
-  if (!newCatName.value.trim()) return
-  const r = await downloaderApi.createCategory(props.downloader.id, newCatName.value.trim(), newCatPath.value.trim())
-  if (r.ok) {
-    ElMessage.success('已添加')
-    newCatName.value = ''
-    newCatPath.value = ''
-    loadCats()
-  } else {
-    ElMessage.warning(r.error || '失败')
-  }
-}
-async function delCat(name: string) {
-  try {
-    await ElMessageBox.confirm(`确认删除分类「${name}」？该分类下任务将变为无分类。`, '删除分类', {
-      type: 'warning',
-    })
-  } catch {
-    return
-  }
-  const r = await downloaderApi.deleteCategories(props.downloader.id, [name])
-  if (r.ok) {
-    ElMessage.success('已删除')
-    loadCats()
-  } else {
-    ElMessage.warning(r.error || '失败')
-  }
-}
+const { catManageVisible, newCatName, newCatPath, addCat, delCat } = useCategoryManage(downloaderRef, loadCats)
 
 watch(
   () => props.visible,

@@ -6,6 +6,7 @@
  */
 import { computed } from 'vue'
 import type { ActiveTag, ArrKey, FilterOptions, FilterState, SortField } from '@/composables/useSearchFilter'
+import { SEARCH_DIMS, TIME_OPTS, SORT_FIELDS } from './searchFilterConstants'
 
 const props = withDefaults(
   defineProps<{
@@ -23,30 +24,8 @@ const props = withDefaults(
   { sortable: true },
 )
 
-const dims: { key: ArrKey; label: string; icon: string }[] = [
-  { key: 'site', label: '站点', icon: '🌐' },
-  { key: 'promo', label: '促销', icon: '🎁' },
-  { key: 'res', label: '分辨率', icon: '🖥' },
-  { key: 'codec', label: '编码', icon: '🎬' },
-  { key: 'src', label: '来源', icon: '📦' },
-  { key: 'hdr', label: '特效', icon: '✨' },
-]
-
-const timeOpts: { key: 'today' | 'week' | 'month'; label: string }[] = [
-  { key: 'today', label: '今天' },
-  { key: 'week', label: '本周' },
-  { key: 'month', label: '本月' },
-]
-
-const sortFields: { key: SortField; label: string }[] = [
-  { key: 'seeders', label: '做种数' },
-  { key: 'size', label: '大小' },
-  { key: 'leechers', label: '下载数' },
-  { key: 'site', label: '站点' },
-]
-
 const sortLabel = computed(
-  () => sortFields.find((f) => f.key === props.sort.field)?.label || '做种数',
+  () => SORT_FIELDS.find((f) => f.key === props.sort.field)?.label || '做种数',
 )
 
 function onSortField(key: SortField) {
@@ -63,6 +42,7 @@ function clearDim(key: ArrKey) {
 }
 </script>
 
+
 <template>
   <div class="sfb">
     <div class="sfb-row">
@@ -76,7 +56,7 @@ function clearDim(key: ArrKey) {
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item
-                v-for="f in sortFields"
+                v-for="f in SORT_FIELDS"
                 :key="f.key"
                 :command="f.key"
                 :class="{ 'is-active': sort.field === f.key }"
@@ -94,7 +74,7 @@ function clearDim(key: ArrKey) {
 
       <div class="sfb-pills">
         <el-popover
-          v-for="d in dims"
+          v-for="d in SEARCH_DIMS"
           :key="d.key"
           trigger="click"
           placement="bottom-start"
@@ -181,7 +161,7 @@ function clearDim(key: ArrKey) {
                   @click="filter.timePreset = ''"
                 >不限</button>
                 <button
-                  v-for="t in timeOpts"
+                  v-for="t in TIME_OPTS"
                   :key="t.key"
                   type="button"
                   class="time-chip"

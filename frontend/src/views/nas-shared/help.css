@@ -1,0 +1,25 @@
+.help h4 {
+  margin: 14px 0 6px;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+.help h4:first-child {
+  margin-top: 0;
+}
+.help p,
+.help ul,
+.help ol {
+  margin: 4px 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.help ul,
+.help ol {
+  padding-left: 20px;
+}
+.help code {
+  background: var(--glass-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}

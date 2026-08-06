@@ -1,0 +1,127 @@
+/* 确认下载弹窗（sf-push-* 系列，从 SiteTorrentFindDialog 抽出保持一致） */
+.sf-push-header-text { min-width: 0; }
+.sf-push-title-main {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.sf-push-title-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sf-push-body { display: flex; flex-direction: column; gap: 14px; }
+.sf-push-media {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.sf-push-poster {
+  width: 72px;
+  height: 108px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-muted, #f0f0f0);
+  border: 1px solid var(--divider, rgba(0,0,0,0.06));
+}
+.sf-push-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sf-push-t-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.sf-push-t-title .up,
+.sf-push-t-title .down {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.sf-push-t-sub {
+  font-size: 12px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.sf-push-size-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sf-push-cat { font-size: 12px; }
+.sf-push-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 520px) {
+  .sf-push-fields { grid-template-columns: 1fr; }
+}
+.sf-push-field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.sf-push-field.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.sf-push-field.row label { margin: 0; }
+.sf-adv-toggle {
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--pt-primary, #6c5ce7);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.sf-push-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-muted, rgba(0,0,0,0.03));
+}
+.sf-push-ok p { margin: 0 0 14px; }
+.sf-push-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.sf-push-actions.primary {
+  justify-content: stretch;
+  margin-top: 2px;
+}
+.sf-start-btn {
+  width: 100%;
+  font-weight: 700;
+}
+.sf-size {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: rgba(108, 92, 231, 0.14);
+  color: var(--pt-primary, #6c5ce7);
+  font-size: 10px;
+  font-weight: 700;
+}

@@ -1,0 +1,186 @@
+<script setup lang="ts">
+// 仪表盘逐站同步进度卡片：进度条、当前站点、同步日志与失败列表。
+// 状态来自 useDashboardSync 组合式函数。
+import { useDashboardSync } from '@/composables/useDashboardSync'
+
+const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, syncLogs, syncPercent } = useDashboardSync()
+</script>
+
+<template>
+    <div v-if="syncing || syncErrors.length" class="sync-card glass" :class="{ 'has-error': syncErrors.length && !syncing }">
+      <div class="sync-head">
+        <div class="sync-title">
+          <GlassIcon name="refresh" from="#11998e" to="#38ef7d" :size="22" />
+          <div>
+            <strong v-if="syncing">正在刷新统计 {{ syncDone }}/{{ syncTotal || '—' }}</strong>
+            <strong v-else>刷新完成：成功 {{ syncSuccess }} 个，失败 {{ syncErrors.length }} 个</strong>
+            <p v-if="syncing">{{ syncCurrent ? `当前：${syncCurrent}` : '正在准备同步任务' }}</p>
+            <p v-else>失败原因已列出，可单独刷新对应站点或检查 Cookie / 站点适配。</p>
+          </div>
+        </div>
+        <span class="sync-percent">{{ syncPercent }}%</span>
+      </div>
+      <el-progress
+        :percentage="syncPercent"
+        :status="syncErrors.length && !syncing ? 'exception' : undefined"
+        :stroke-width="8"
+      />
+      <div v-if="syncLogs.length" class="sync-log-box">
+        <div class="sync-log-title">同步日志</div>
+        <ul class="sync-logs">
+          <li v-for="log in syncLogs" :key="log.id" :class="`log-${log.status}`">
+            <span class="log-time">{{ log.time }}</span>
+            <b>{{ log.site }}</b>
+            <span>{{ log.message }}</span>
+          </li>
+        </ul>
+      </div>
+      <ul v-if="syncErrors.length" class="sync-errors">
+        <li v-for="err in syncErrors" :key="err.site">
+          <b>{{ err.site }}</b>
+          <span>{{ err.error }}</span>
+        </li>
+      </ul>
+    </div>
+</template>
+
+<style scoped>
+.sync-card {
+  padding: 14px 16px;
+  border-left: 3px solid #11998e;
+}
+.sync-card.has-error {
+  border-left-color: #e74c3c;
+}
+.sync-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.sync-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+.sync-title strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+.sync-title p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.sync-percent {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.sync-log-box {
+  margin-top: 12px;
+}
+.sync-log-title {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.sync-logs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+  gap: 5px;
+}
+.sync-logs li {
+  display: grid;
+  grid-template-columns: 72px minmax(92px, 150px) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.08);
+  font-size: 12.5px;
+}
+.sync-logs .log-time {
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.sync-logs b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sync-logs span:last-child {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.sync-logs .log-running {
+  background: rgba(66, 133, 244, 0.1);
+}
+.sync-logs .log-running b {
+  color: #4285f4;
+}
+.sync-logs .log-success {
+  background: rgba(17, 153, 142, 0.1);
+}
+.sync-logs .log-success b {
+  color: #11998e;
+}
+.sync-logs .log-error {
+  background: rgba(231, 76, 60, 0.1);
+}
+.sync-logs .log-error b {
+  color: #e74c3c;
+}
+.sync-errors {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.sync-errors li {
+  display: grid;
+  grid-template-columns: minmax(90px, 160px) minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: rgba(231, 76, 60, 0.08);
+  font-size: 12.5px;
+}
+.sync-errors b {
+  color: #e74c3c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sync-errors span {
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .sync-head {
+    flex-direction: column;
+  }
+  .sync-errors li {
+    grid-template-columns: 1fr;
+  }
+  .sync-logs li {
+    grid-template-columns: 68px 1fr;
+  }
+  .sync-logs li span:last-child {
+    grid-column: 1 / -1;
+  }
+}
+</style>

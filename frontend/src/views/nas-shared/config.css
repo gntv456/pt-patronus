@@ -1,0 +1,44 @@
+/* 配置中心抽屉共享凭据卡片的 .cred-* 基础样式 */
+@import './credential.css';
+
+.config-preview,
+.history-item pre {
+  max-height: 150px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--text-strong);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.config-history {
+  margin-top: 16px;
+}
+.section-title {
+  margin: 0 0 10px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+.history-item {
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+}
+.history-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.history-top b {
+  color: var(--text-strong);
+}

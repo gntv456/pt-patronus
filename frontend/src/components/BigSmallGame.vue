@@ -1,18 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import {
-  entertainmentApi,
-  type BigSmallState,
-  type BigSmallChat,
-  type BigSmallTask,
-  type BigSmallProp,
-  type BigSmallRedpacket,
-} from '@/api/entertainment'
+import { ref, computed, onMounted, onBeforeUnmount, toRef } from 'vue'
+import { entertainmentApi, type BigSmallState } from '@/api/entertainment'
+import { useBigSmallChat, useBigSmallItems, fmt } from '@/composables/useBigSmallGame'
+import BigSmallSidebar from '@/components/BigSmallSidebar.vue'
 
 // 猜大小富组件（好学 hxpt_bigsmall + 熊猫 panda_bigsmall 共用）。
-// 时间：后端 BigSmallState 给权威 countdown/seal_countdown/status 快照；前端按 fetchedAt 本地每秒递减
-// （自动补偿往返耗时/时钟偏差），仅在新局(≤0)/封盘切换/下注后/25s 兜底回拉。封盘=status≠betting 或 seal_remaining≤0。
-// 聊天另走 5s 轻量轮询（bigsmallChat）。
 const props = defineProps<{ siteId: number; game: string; name: string }>()
 
 const state = ref<BigSmallState | null>(null)
@@ -21,6 +13,8 @@ const fetchedAt = ref(0) // 上次 state 拉取的 Date.now()
 const now = ref(Date.now()) // 每秒 tick 更新，驱动 remaining 重算
 
 const isHxpt = computed(() => props.game.startsWith('hxpt'))
+const siteIdRef = toRef(props, 'siteId')
+const gameRef = toRef(props, 'game')
 
 // ── 倒计时（快照 + 客户端递减） ──
 const elapsed = computed(() => Math.floor((now.value - fetchedAt.value) / 1000))
@@ -87,10 +81,7 @@ async function load(silent = false) {
     now.value = fetchedAt.value
     if (s.min_bet && amount.value < s.min_bet) amount.value = Math.floor(s.min_bet)
     // 聊天用 state 首播 + 后续轮询增量
-    if (chat.value.length === 0 && s.chat?.length) {
-      chat.value = s.chat
-      lastChatId.value = s.chat.reduce((m, c) => Math.max(m, c.id), 0)
-    }
+    initChatFromState(s)
     if (!silent) ElMessage.success('已刷新')
   } catch (e: unknown) {
     if (!silent) ElMessage.error((e as Error).message || '加载失败')
@@ -99,102 +90,12 @@ async function load(silent = false) {
   }
 }
 
-// ── 聊天（5s 轻量轮询） ──
-const chat = ref<BigSmallChat[]>([])
-const chatInput = ref('')
-const lastChatId = ref(0)
-const sending = ref(false)
-function mergeChat(inc: BigSmallChat[]) {
-  const map = new Map(chat.value.map((m) => [m.id, m]))
-  for (const m of inc) map.set(m.id, m)
-  chat.value = [...map.values()].sort((a, b) => a.id - b.id).slice(-60)
-  if (inc.length) lastChatId.value = chat.value.reduce((m, c) => Math.max(m, c.id), lastChatId.value)
-}
-async function refreshChat(silent = true) {
-  try {
-    const list = await entertainmentApi.bigsmallChat(props.siteId, props.game, lastChatId.value)
-    if (list.length) mergeChat(list)
-  } catch {
-    /* 静默 */
-  }
-}
-async function sendChat() {
-  const msg = chatInput.value.trim()
-  if (!msg || sending.value) return
-  sending.value = true
-  try {
-    const res = await entertainmentApi.bigsmallSendChat(props.siteId, props.game, msg)
-    if (res.success) {
-      chatInput.value = ''
-      await refreshChat()
-    } else ElMessage.warning(res.message || '发送失败')
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '发送失败')
-  } finally {
-    sending.value = false
-  }
-}
-
-// ── 任务 / 道具 / 红包 ──
-async function doTask(t: BigSmallTask, action: 'claim' | 'reward') {
-  try {
-    const res = await entertainmentApi.bigsmallTask(props.siteId, props.game, action, t.id)
-    ElMessage[res.success ? 'success' : 'warning'](res.message || (action === 'reward' ? '已领取' : '已接取'))
-    if (res.success) await load(true)
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '操作失败')
-  }
-}
-async function useRefund() {
-  try {
-    const res = await entertainmentApi.bigsmallTask(props.siteId, props.game, 'refund', 0)
-    ElMessage[res.success ? 'success' : 'warning'](res.message || '操作结果')
-    if (res.success) await load(true)
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '操作失败')
-  }
-}
-async function useProp(p: BigSmallProp) {
-  try {
-    const res = await entertainmentApi.bigsmallItem(props.siteId, props.game, p.tag)
-    ElMessage[res.success ? 'success' : 'warning'](res.message || '已使用')
-    if (res.success) await load(true)
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '使用失败')
-  }
-}
-async function claimRed(r: BigSmallRedpacket) {
-  try {
-    const res = await entertainmentApi.bigsmallRedpacket(props.siteId, props.game, 'claim', { id: r.id })
-    ElMessage[res.success ? 'success' : 'warning'](res.message || '操作结果')
-    if (res.success) await load(true)
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '操作失败')
-  }
-}
-
-// 红包发送表单
-const rpAmount = ref(1000)
-const rpCount = ref(5)
-const rpGreeting = ref('恭喜发财')
-const rpSending = ref(false)
-async function sendRed() {
-  if (rpSending.value) return
-  rpSending.value = true
-  try {
-    const res = await entertainmentApi.bigsmallRedpacket(props.siteId, props.game, 'send', {
-      amount: String(rpAmount.value),
-      count: String(rpCount.value),
-      greeting: rpGreeting.value,
-    })
-    ElMessage[res.success ? 'success' : 'warning'](res.message || '操作结果')
-    if (res.success) await load(true)
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '发送失败')
-  } finally {
-    rpSending.value = false
-  }
-}
+// ── 聊天 / 任务 / 道具 / 红包（composable） ──
+const { chat, chatInput, sending, refreshChat, sendChat, initChatFromState } = useBigSmallChat(siteIdRef, gameRef, load, state)
+const {
+  doTask, useRefund, useProp, claimRed,
+  rpAmount, rpCount, rpGreeting, rpSending, sendRed,
+} = useBigSmallItems(siteIdRef, gameRef, load)
 
 // ── 排行 / 记录 tab ──
 const rankTab = ref(0)
@@ -202,7 +103,12 @@ const recTab = ref<'my' | 'all'>('my')
 
 const dotColor = (r: string) => (r === 'big' ? '#ef4444' : r === 'house' ? '#22c55e' : '#3b82f6')
 const dotLabel = (r: string) => (r === 'big' ? '大' : r === 'house' ? '庄' : '小')
-const fmt = (n: number | undefined) => (n ? n.toLocaleString() : '0')
+
+// 排名配色类名（1/2/3 名）
+const topCls = ['gold', 'silver', 'bronze']
+function top(i: number): string {
+  return topCls[i] ?? ''
+}
 
 // ── 定时器 ──
 let tickTimer: ReturnType<typeof setInterval> | null = null
@@ -212,7 +118,6 @@ function startTimers() {
   stopTimers()
   tickTimer = setInterval(() => {
     now.value = Date.now()
-    // 边界刷新：倒计时到 0（新局）/ 下注中即将封盘（切 sealed）
     if (loading.value) return
     if (remaining.value <= 0) load(true)
     else if (roundStatus.value === 'betting' && sealRemaining.value <= 0) load(true)
@@ -236,12 +141,6 @@ onMounted(async () => {
   startTimers()
 })
 onBeforeUnmount(stopTimers)
-
-// 排名配色类名（1/2/3 名）
-const topCls = ['gold', 'silver', 'bronze']
-function top(i: number): string {
-  return topCls[i] ?? ''
-}
 </script>
 
 <template>
@@ -336,64 +235,21 @@ function top(i: number): string {
         </section>
       </div>
 
-      <!-- 右：排行 -->
-      <aside class="side">
-        <section class="glass panel">
-          <div class="sec-title">🏆 用户排行</div>
-          <div v-if="!state?.rankings?.length" class="empty">暂无排行</div>
-          <template v-else>
-            <div class="tabs">
-              <button v-for="(r, i) in state.rankings" :key="r.key" class="tab" :class="{ on: rankTab === i }" @click="rankTab = i">{{ r.title }}</button>
-            </div>
-            <div class="rank-list">
-              <div v-for="(e, i) in state.rankings[rankTab]?.entries ?? []" :key="i" class="rank-row">
-                <span class="rank-no" :class="top(i)">{{ i + 1 }}</span>
-                <span class="rank-name">{{ e.username }}</span>
-                <span class="rank-amt">{{ fmt(Math.abs(e.amount)) }}</span>
-                <span v-if="e.count" class="rank-cnt">{{ e.count }}次</span>
-              </div>
-              <div v-if="!(state.rankings[rankTab]?.entries?.length)" class="empty">暂无数据</div>
-            </div>
-          </template>
-        </section>
-
-        <!-- 任务 / 道具 -->
-        <section v-if="state?.tasks?.length || state?.props?.length" class="glass panel">
-          <div class="sec-title">🎯 任务 / 道具</div>
-          <div v-for="t in state?.tasks ?? []" :key="t.id" class="task-row">
-            <div class="task-info">
-              <span class="task-title">{{ t.title }}</span>
-              <span v-if="t.progress_text" class="task-prog">{{ t.progress_text }}</span>
-            </div>
-            <button v-if="t.status === 'rewardable'" class="mini ok" @click="doTask(t, 'reward')">领奖</button>
-            <button v-else-if="t.status === 'idle'" class="mini" @click="doTask(t, 'claim')">接取</button>
-            <span v-else class="task-st">{{ t.status === 'doing' ? '进行中' : '已完成' }}</span>
-          </div>
-          <!-- 好学亏返卡 -->
-          <button v-if="isHxpt && state?.props?.some((p) => p.usable === false)" class="mini warn full" @click="useRefund">💳 使用亏返卡</button>
-          <!-- 熊猫道具独立使用 -->
-          <div v-for="p in isHxpt ? [] : state?.props ?? []" :key="p.id" class="prop-row">
-            <span class="prop-name">{{ p.name }} ×{{ p.quantity }}</span>
-            <button class="mini" @click="useProp(p)">使用</button>
-          </div>
-        </section>
-
-        <!-- 红包 -->
-        <section class="glass panel">
-          <div class="sec-title">🧧 红包</div>
-          <div class="rp-form">
-            <input v-model.number="rpAmount" type="number" class="rp-amt" placeholder="总额" />
-            <input v-model.number="rpCount" type="number" class="rp-amt" placeholder="个数" />
-          </div>
-          <input v-model="rpGreeting" class="rp-greet" placeholder="祝福语" />
-          <button class="mini ok full" :disabled="rpSending" @click="sendRed">{{ rpSending ? '发送中…' : '发红包' }}</button>
-          <div v-if="state?.redpackets?.length" class="rp-list">
-            <button v-for="r in state.redpackets" :key="r.id" class="rp-item" @click="claimRed(r)">
-              🧧 {{ r.count }}个 / {{ fmt(r.total) }}
-            </button>
-          </div>
-        </section>
-      </aside>
+      <!-- 右：排行 / 任务 / 红包 -->
+      <BigSmallSidebar
+        :state="state"
+        :is-hxpt="isHxpt"
+        v-model:rank-tab="rankTab"
+        v-model:rp-amount="rpAmount"
+        v-model:rp-count="rpCount"
+        v-model:rp-greeting="rpGreeting"
+        :rp-sending="rpSending"
+        @do-task="doTask"
+        @use-refund="useRefund"
+        @use-prop="useProp"
+        @claim-red="claimRed"
+        @send-red="sendRed"
+      />
     </div>
 
     <!-- 游戏记录 -->
@@ -515,31 +371,6 @@ function top(i: number): string {
 .tabs.sm .tab { font-size: 11px; padding: 3px 8px; }
 .tab { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: transparent; color: var(--text-muted, #999); cursor: pointer; font-size: 12px; }
 .tab.on { background: var(--pt-primary, #6c5ce7); color: #fff; border-color: transparent; }
-.rank-list { display: flex; flex-direction: column; gap: 4px; }
-.rank-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
-.rank-no { width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; background: rgba(255,255,255,0.1); font-size: 10px; }
-.rank-no.gold { background: #f59e0b; color: #fff; }
-.rank-no.silver { background: #9ca3af; color: #fff; }
-.rank-no.bronze { background: #b45309; color: #fff; }
-.rank-name { flex: 1; font-weight: 600; }
-.rank-amt { color: #16a34a; font-weight: 600; }
-.rank-cnt { color: var(--text-muted, #999); font-size: 10px; }
-
-/* 任务/道具/红包 */
-.task-row, .prop-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
-.task-info { display: flex; flex-direction: column; }
-.task-title { font-weight: 600; }
-.task-prog { font-size: 10px; color: var(--text-muted, #999); }
-.task-st { font-size: 11px; color: var(--text-muted, #999); }
-.mini { padding: 4px 10px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.2)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; cursor: pointer; font-size: 11px; }
-.mini.ok { background: #16a34a; color: #fff; border-color: transparent; }
-.mini.warn { background: #f59e0b; color: #fff; border-color: transparent; }
-.mini.full { width: 100%; margin-top: 6px; padding: 7px; }
-.rp-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
-.rp-amt { width: 100%; min-width: 0; box-sizing: border-box; padding: 6px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 12px; }
-.rp-greet { width: 100%; padding: 6px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 12px; margin-bottom: 6px; box-sizing: border-box; }
-.rp-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-.rp-item { padding: 6px; border-radius: 7px; border: 1px solid #dc2626; background: rgba(220,38,38,0.1); color: inherit; cursor: pointer; font-size: 12px; }
 
 /* 记录 */
 .rec-table { font-size: 12px; }
@@ -561,3 +392,4 @@ function top(i: number): string {
 .chat-input button { padding: 0 16px; border: 0; border-radius: 8px; background: var(--pt-primary, #6c5ce7); color: #fff; cursor: pointer; font-size: 13px; }
 .chat-input button:disabled { opacity: 0.5; }
 </style>
+

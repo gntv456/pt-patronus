@@ -3,12 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { siteApi, type Site, type SiteConnectivityStatus } from '@/api/site'
 import { dashboardApi, type SiteStatItem } from '@/api/dashboard'
-import { assessmentApi, type AssessmentCard } from '@/api/assessment'
-import { freeleechApi, type FreeleechResult } from '@/api/freeleech'
-import { contractApi, type ContractRule, type ContractCheckResult } from '@/api/contract'
-import { brushflowApi, type BrushFlowTask } from '@/api/brushflow'
-import { saveptApi, type SaveptSiteCard } from '@/api/savept'
-import { reseedApi } from '@/api/reseed'
+import { useSiteDetailTabs } from '@/composables/useSiteDetailTabs'
 
 const props = defineProps<{ id: string }>()
 const route = useRoute()
@@ -27,19 +22,12 @@ const stat = ref<SiteStatItem | null>(null)
 const loading = ref(true)
 const loadError = ref('')
 
-const assess = ref<AssessmentCard | null>(null)
-const assessLoading = ref(false)
-const fl = ref<FreeleechResult | null>(null)
-const flLoading = ref(false)
-const contract = ref<ContractRule | null>(null)
-const contractCheck = ref<ContractCheckResult | null>(null)
-const contractLoading = ref(false)
-const bfTasks = ref<BrushFlowTask[]>([])
-const bfLoading = ref(false)
-const saveptCard = ref<SaveptSiteCard | null>(null)
-const saveptLoading = ref(false)
-const reseedHint = ref('')
-const reseedLoading = ref(false)
+// 各 Tab 的懒加载数据与状态抽出为 composable（useSiteDetailTabs）。
+const {
+  assess, assessLoading, fl, flLoading, contract, contractCheck, contractLoading,
+  bfTasks, bfLoading, saveptCard, saveptLoading, reseedHint, reseedLoading,
+  clearTabState, loadTab,
+} = useSiteDetailTabs(() => siteId.value, () => site.value?.name)
 
 const statusColor: Record<string, string> = {
   SAFE: '#22c55e',
@@ -47,16 +35,6 @@ const statusColor: Record<string, string> = {
   DANGER: '#ef4444',
   EXEMPT: '#6b7280',
   UNKNOWN: '#94a3b8',
-}
-
-function clearTabState() {
-  assess.value = null
-  contract.value = null
-  contractCheck.value = null
-  fl.value = null
-  bfTasks.value = []
-  saveptCard.value = null
-  reseedHint.value = ''
 }
 
 async function loadSite() {
@@ -87,84 +65,6 @@ async function loadSite() {
     loadError.value = (e as Error).message || '加载失败'
   } finally {
     loading.value = false
-  }
-}
-
-async function loadTab(name: string) {
-  if (!siteId.value) return
-  if (name === 'assessment') {
-    assessLoading.value = true
-    contractLoading.value = true
-    try {
-      const [cards, rules] = await Promise.all([
-        assessmentApi.all(false).catch(() => [] as AssessmentCard[]),
-        contractApi.list().catch(() => [] as ContractRule[]),
-      ])
-      assess.value = cards.find((c) => c.site_id === siteId.value) || null
-      contract.value = rules.find((r) => r.site_id === siteId.value) || null
-      if (contract.value?.id) {
-        try {
-          contractCheck.value = await contractApi.check(contract.value.id)
-        } catch {
-          contractCheck.value = null
-        }
-      } else {
-        contractCheck.value = null
-      }
-    } finally {
-      assessLoading.value = false
-      contractLoading.value = false
-    }
-  } else if (name === 'freeleech') {
-    flLoading.value = true
-    try {
-      const all = await freeleechApi.all(false)
-      fl.value = all.find((x) => x.site_id === siteId.value) || null
-    } catch {
-      fl.value = null
-    } finally {
-      flLoading.value = false
-    }
-  } else if (name === 'brushflow') {
-    bfLoading.value = true
-    try {
-      const tasks = await brushflowApi.list()
-      bfTasks.value = tasks.filter((t) => t.site_id === siteId.value)
-    } catch {
-      bfTasks.value = []
-    } finally {
-      bfLoading.value = false
-    }
-  } else if (name === 'savept') {
-    saveptLoading.value = true
-    try {
-      const result = await saveptApi.get(false)
-      const cards = result.cards || []
-      saveptCard.value =
-        cards.find((c) => c.local_site_id === siteId.value) ||
-        cards.find((c) => c.local_site_name === site.value?.name) ||
-        null
-    } catch {
-      saveptCard.value = null
-    } finally {
-      saveptLoading.value = false
-    }
-  } else if (name === 'reseed') {
-    reseedLoading.value = true
-    try {
-      // 按候选站 site_id 过滤：展示「可辅到本站」的任务
-      const tasks = await reseedApi.tasks('', siteId.value)
-      const pending = tasks.filter((x) => x.status === 'pending').length
-      if (tasks.length) {
-        reseedHint.value = `本站相关辅种候选 ${tasks.length} 个（待处理 ${pending}）。`
-      } else {
-        reseedHint.value = '暂无指向本站的辅种候选。辅种任务以下载器扫描产生，候选站匹配后会显示在此。'
-      }
-    } catch {
-      reseedHint.value = '加载辅种候选失败；可点下方进入全局辅种页。'
-    } finally {
-      reseedLoading.value = false
-    }
   }
 }
 
@@ -228,6 +128,7 @@ watch(
   },
 )
 </script>
+
 
 <template>
   <div class="page" v-loading="loading">

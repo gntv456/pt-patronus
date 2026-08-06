@@ -2,9 +2,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subscribe'
-import { mediaApi } from '@/api/media'
 import { siteApi } from '@/api/site'
 import { useSubscriptionToggles } from '@/composables/useSubscriptionToggles'
+import { useSubscriptionList } from '@/composables/useSubscriptionList'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
@@ -14,9 +14,6 @@ import RssView from '@/views/Rss.vue'
 const route = useRoute()
 const router = useRouter()
 const mainTab = ref(String(route.query.tab || 'media'))
-const list = ref<Subscription[]>([])
-const loading = ref(false)
-const checking = ref<number | null>(null)
 // 站点多选（参与订阅搜索）选项：活跃站点 {id,name}，复用 SiteFilterDialog。
 const sites = ref<{ id: number; name: string }[]>([])
 
@@ -25,6 +22,9 @@ const globalDefaults = ref<GlobalDefaults>({ resolution: '', promo_types: [], si
 const globalOpen = ref(false)
 const globalForm = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false, official_only: false })
 const savingGlobal = ref(false)
+
+// 列表加载与逐条操作抽出为 composable（useSubscriptionList）。
+const { list, loading, checking, load, checkNow, toggleStatus, setResolution, setPromoTypes, setSiteIds, remove } = useSubscriptionList()
 
 async function loadGlobalDefaults() {
   try {
@@ -68,71 +68,6 @@ async function loadSites() {
   }
 }
 
-async function load() {
-  loading.value = true
-  try {
-    list.value = await subscribeApi.list()
-    void fillMissingPosters(list.value)
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-// 兼容尚未升级后端时创建的旧订阅：页面端也按标题补图，最多同时请求 4 个。
-async function fillMissingPosters(items: Subscription[]) {
-  const pending = items.filter((s) => !s.poster_url)
-  let next = 0
-  const worker = async () => {
-    while (next < pending.length) {
-      const s = pending[next++]
-      try {
-        s.poster_url = await mediaApi.poster(s.title, s.year)
-      } catch {
-        // 单张补图失败不影响订阅列表和其他海报。
-      }
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(4, pending.length) }, worker))
-}
-
-async function checkNow(s: Subscription) {
-  checking.value = s.id
-  try {
-    const r = await subscribeApi.check(s.id)
-    if (r.ok) {
-      ElMessage.success(r.pushed > 0 ? `命中并推送 ${r.pushed} 条` : '本轮暂无新资源')
-    } else {
-      ElMessage.warning(r.error || '检查失败')
-    }
-    await load()
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '检查失败')
-  } finally {
-    checking.value = null
-  }
-}
-
-async function toggleStatus(s: Subscription) {
-  const next = s.status === 'paused' ? 'subscribed' : 'paused'
-  try {
-    await subscribeApi.update(s.id, { status: next })
-    await load()
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '操作失败')
-  }
-}
-
-async function setResolution(s: Subscription) {
-  try {
-    await subscribeApi.update(s.id, { resolution: s.resolution })
-    ElMessage.success('分辨率已更新')
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '更新失败')
-  }
-}
-
 // 促销类型选项（与后端 site.PromoType 对齐；空=不限，任何促销都接受）。
 const PROMO_OPTIONS = [
   { value: 'free', label: '免费' },
@@ -141,49 +76,6 @@ const PROMO_OPTIONS = [
   { value: 'discount', label: '折扣下载' },
   { value: '2xdiscount', label: '2X+折扣' },
 ]
-
-// 促销类型多选：el-select 实时 change → 乐观更新 + 失败回滚（空数组=不限）。
-async function setPromoTypes(s: Subscription, vals: string[]) {
-  const prev = s.promo_types
-  s.promo_types = vals
-  try {
-    await subscribeApi.update(s.id, { promo_types: vals })
-  } catch (e: unknown) {
-    s.promo_types = prev
-    ElMessage.error((e as Error).message || '更新失败')
-  }
-}
-
-// 参与站点：SiteFilterDialog 实时 emit 选中态，乐观更新本地 + 失败回滚（空数组=全部活跃站）。
-async function setSiteIds(s: Subscription, ids: number[]) {
-  const prev = s.site_ids
-  s.site_ids = ids
-  try {
-    await subscribeApi.update(s.id, { site_ids: ids })
-  } catch (e: unknown) {
-    s.site_ids = prev
-    ElMessage.error((e as Error).message || '更新失败')
-  }
-}
-
-async function remove(s: Subscription) {
-  try {
-    await ElMessageBox.confirm('确定删除该订阅？删除后不再推送。', '删除订阅', {
-      type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
-    })
-  } catch {
-    return // 用户取消
-  }
-  try {
-    await subscribeApi.remove(s.id)
-    await load()
-    ElMessage.success('已删除')
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '删除失败')
-  }
-}
 
 function statusText(s: string) {
   return ({ subscribed: '订阅中', completed: '已完成', paused: '已暂停' } as Record<string, string>)[s] || s

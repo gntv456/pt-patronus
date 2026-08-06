@@ -1,28 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { authApi, type AuthStatus, type CaptchaChallenge } from '@/api/auth'
+import { authApi, type AuthStatus } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
+import { useLoginAuth } from '@/composables/useLoginAuth'
 
 const router = useRouter()
 const route = useRoute()
-const auth = useAuthStore()
 
 type Tab = 'account' | 'cookie'
 const tab = ref<Tab>('account')
-const loading = ref(false)
-const err = ref('')
 const bootLoading = ref(false)
 const systemInfo = ref<SystemInfo | null>(null)
 const authStatus = ref<AuthStatus | null>(null)
 const serviceErr = ref('')
 
-// 账号登录
-const acc = ref({ username: '', password: '', twoStep: '', imagestring: '' })
-const captcha = ref<CaptchaChallenge | null>(null)
-// Cookie 登录
-const cookieStr = ref('')
+// 登录表单与各登录方式抽出为 composable（useLoginAuth）。
+const { auth, loading, err, captcha, acc, cookieStr, fetchCaptcha, accountLogin, cookieLogin, demoLogin, oidcLogin } = useLoginAuth()
+
+function goDashboard() {
+  router.push({ name: 'dashboard' })
+}
 
 onMounted(async () => {
   if (auth.authenticated) {
@@ -49,100 +47,19 @@ async function loadBootStatus() {
     const [info, status] = await Promise.all([systemApi.info(), authApi.status()])
     systemInfo.value = info
     authStatus.value = status
-  } catch (e: unknown) {
-    serviceErr.value = msg(e) || '无法连接后端服务，请确认 Docker/后端已启动'
+  } catch {
+    serviceErr.value = '无法连接后端服务，请确认 Docker/后端已启动'
   } finally {
     bootLoading.value = false
   }
 }
 
-async function fetchCaptcha() {
-  try {
-    captcha.value = await authApi.hxptCaptcha()
-  } catch (e: unknown) {
-    err.value = msg(e) || '取验证码失败（可改用 Cookie 登录）'
-  }
-}
-
-async function accountLogin() {
-  if (!acc.value.username || !acc.value.password) {
-    err.value = '请填写好学账号和密码'
-    return
-  }
-  if (acc.value.twoStep && !/^\d{6}$/.test(acc.value.twoStep.trim())) {
-    err.value = '二级验证码应为 6 位数字'
-    return
-  }
-  loading.value = true
-  err.value = ''
-  try {
-    await auth.loginByHxpt({
-      username: acc.value.username,
-      password: acc.value.password,
-      two_step_code: acc.value.twoStep || undefined,
-      imagehash: captcha.value?.need_captcha ? captcha.value.imagehash : undefined,
-      imagestring: captcha.value?.need_captcha ? acc.value.imagestring : undefined,
-      extra_form: captcha.value?.extra_form,
-      challenge_mode: captcha.value?.challenge_mode || false,
-    })
-    router.push({ name: 'dashboard' })
-  } catch (e: unknown) {
-    err.value = msg(e) || '登录失败'
-    // 凭据/验证码错（401）→ 刷新验证码
-    if ((e as { response?: { status?: number } })?.response?.status === 401) {
-      acc.value.imagestring = ''
-      await fetchCaptcha()
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
-async function cookieLogin() {
-  const c = cookieStr.value.trim()
-  if (!c) {
-    err.value = '请粘贴好学 cookie'
-    return
-  }
-  if (!c.includes('=')) {
-    err.value = 'cookie 格式有误：应含「键=值」字段，请从浏览器完整复制整段 cookie'
-    return
-  }
-  loading.value = true
-  err.value = ''
-  try {
-    await auth.loginByCookie(c)
-    router.push({ name: 'dashboard' })
-  } catch (e: unknown) {
-    err.value = msg(e) || '登录失败'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function demoLogin() {
-  loading.value = true
-  err.value = ''
-  try {
-    await auth.loginDemo()
-    router.push({ name: 'dashboard' })
-  } catch (e: unknown) {
-    err.value = msg(e) || '演示登录未启用'
-  } finally {
-    loading.value = false
-  }
-}
-
-// OIDC/SSO：整页跳转到后端 /auth/oidc/start，后端 302 到 Provider，完成后回带 oidc_token。
-function oidcLogin() {
-  window.location.href = '/api/v1/auth/oidc/start'
-}
-
-function msg(e: unknown): string {
-  const r = (e as { response?: { data?: { message?: string; error?: string } } })?.response?.data
-  return r?.message || r?.error || ''
-}
+// 包装登录成功回调：跳转首页。
+function doAccountLogin() { accountLogin(goDashboard) }
+function doCookieLogin() { cookieLogin(goDashboard) }
+function doDemoLogin() { demoLogin(goDashboard) }
 </script>
+
 
 <template>
   <div class="login-wrap">
@@ -171,7 +88,7 @@ function msg(e: unknown): string {
       </div>
 
       <!-- 好学账号登录 -->
-      <form v-if="tab === 'account'" class="form" @submit.prevent="accountLogin">
+      <form v-if="tab === 'account'" class="form" @submit.prevent="doAccountLogin">
         <el-input v-model="acc.username" placeholder="好学用户名" size="large" autocomplete="username" class="field" />
         <el-input
           v-model="acc.password"
@@ -200,7 +117,7 @@ function msg(e: unknown): string {
       </form>
 
       <!-- Cookie 登录 -->
-      <form v-else class="form" @submit.prevent="cookieLogin">
+      <form v-else class="form" @submit.prevent="doCookieLogin">
         <el-input
           v-model="cookieStr"
           type="textarea"
@@ -216,7 +133,7 @@ function msg(e: unknown): string {
       </form>
 
       <p v-if="err" class="err">{{ err }}</p>
-      <button v-if="authStatus?.demo_mode" class="demo-btn" type="button" :disabled="loading" @click="demoLogin">
+      <button v-if="authStatus?.demo_mode" class="demo-btn" type="button" :disabled="loading" @click="doDemoLogin">
         浏览演示环境
       </button>
       <button v-if="authStatus?.oidc_enabled" class="oidc-btn" type="button" :disabled="loading" @click="oidcLogin">

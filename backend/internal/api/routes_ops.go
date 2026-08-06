@@ -106,6 +106,16 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		disks.POST("/:id/umount", diskH.Umount)
 	}
 
+	// === 运维中心：进程管理（SSH 远程主机，进程列表/网络连接/结束进程）===
+	procH := v1.NewProcHandler(d.MonSvc)
+	procs := guarded.Group("/ops/proc")
+	procs.Use(middleware.RequireAdmin())
+	{
+		procs.GET("/:id/list", procH.List)
+		procs.GET("/:id/connections", procH.Connections)
+		procs.POST("/:id/kill", procH.Kill)
+	}
+
 	// === 运维中心：数据库可视化管理（受限查询器）===
 	dbH := v1.NewDatabaseHandler(d.DB)
 	dbAdmin := guarded.Group("/ops/database")

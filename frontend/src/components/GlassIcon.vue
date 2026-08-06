@@ -157,6 +157,12 @@ const GLYPHS: Record<string, string> = {
     '<path d="M5 3v5a4 4 0 0 0 8 0V3"/><path d="M5 3H7"/><path d="M11 3h2"/><path d="M9 12v3a4 4 0 0 0 4 4h1a3 3 0 1 0 0-2h-1a2 2 0 0 1-2-2v-3"/><circle cx="17" cy="16" r="2.2"/>',
   // 下载器·qBittorrent：官方圆形 logo 轮廓 + 内部向下箭头 + 底部种子波浪（蓝）
   // 磁盘：硬盘（圆柱形盘片 + 读写头）
+  // 进程：CPU 活动波纹（心跳脉冲）
+  activity:
+    '<path d="M3 12h4l2-7 4 14 2-7h6"/>',
+  // 网络：连接节点（三圆点 + 连线）
+  network:
+    '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.5 7L11 16M16.5 7L13 16M8 6h8"/>',
   harddisk:
     '<rect x="4" y="4" width="16" height="16" rx="2.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 7v3"/><path d="M15.5 8.5l-2 2.5"/>',
   qbittorrent:

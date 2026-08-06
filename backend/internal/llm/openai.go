@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // openaiProvider 兼容 OpenAI / DeepSeek / Qwen / Ollama / one-api 中转等。
@@ -57,7 +58,7 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 	}
 
 	out := make(chan Event, 32)
-	go func() {
+	safego.Go("openai:60", func() {
 		defer resp.Body.Close()
 		defer close(out)
 		type tcAcc struct {
@@ -122,7 +123,7 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 			send(out, Event{Type: EventToolCall, ToolCall: ToolCall{ID: acc.id, Name: acc.name, Arguments: acc.args.String()}})
 		}
 		send(out, Event{Type: EventDone})
-	}()
+	})
 	return out, nil
 }
 

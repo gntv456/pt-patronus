@@ -14,6 +14,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/media"
 
 	"golang.org/x/sync/singleflight"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // mediaCacheTTL 搜索/元数据缓存有效期。影视元数据相对稳定，但过期重查可避免
@@ -160,11 +161,11 @@ func (c *MediaChain) searchSources(ctx context.Context, keyword string, year int
 			continue
 		}
 		wg.Add(1)
-		go func(i int, s media.MediaSource) {
+		safego.Go("media:163", func() {
 			defer wg.Done()
 			items, err := s.Search(ctx, keyword, year)
 			outs[i] = srcOut{items: items, err: err} // 各写各的索引，无竞争
-		}(i, s)
+		})
 	}
 	wg.Wait()
 

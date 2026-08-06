@@ -15,6 +15,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/config"
 	applog "github.com/hxpt/ptpatronus/internal/core/log"
 	"github.com/hxpt/ptpatronus/internal/version"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 func main() {
@@ -54,12 +55,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	go func() {
+	safego.Go("main:57", func() {
 		if err := application.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("server error", "err", err)
 			os.Exit(1)
 		}
-	}()
+	})
 	slog.Info("server listening", "addr", cfg.HTTPAddr)
 
 	quit := make(chan os.Signal, 1)

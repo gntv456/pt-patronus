@@ -19,6 +19,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/transfer"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // SubscribeChain 编排媒体订阅：跨站搜种子 → 分辨率过滤 → 去重 → 推送下载器 + 通知。
@@ -68,7 +69,7 @@ func (c *SubscribeChain) ListWithPosters(ctx context.Context) ([]models.Subscrip
 			continue
 		}
 		wg.Add(1)
-		go func(i int) {
+		safego.Go("subscribe:71", func() {
 			defer wg.Done()
 			select {
 			case sem <- struct{}{}:
@@ -85,7 +86,7 @@ func (c *SubscribeChain) ListWithPosters(ctx context.Context) ([]models.Subscrip
 			if err := c.op.SetPosterURL(ss[i].ID, posterURL); err != nil {
 				slog.Warn("subscribe poster backfill failed", "sub", ss[i].ID, "err", err)
 			}
-		}(i)
+		})
 	}
 	wg.Wait()
 	return ss, nil

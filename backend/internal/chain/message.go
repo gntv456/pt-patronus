@@ -10,6 +10,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 消息缓存 TTL（平衡档：私信时效 vs 体验；过期走 SWR 后台刷新，故可较短）。
@@ -123,10 +124,10 @@ func (c *SiteChain) MessagesAll(ctx context.Context, mailbox site.MailboxType, f
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("message:126", func() {
 			defer wg.Done()
 			results[i] = c.resolveMessage(ctx, sem, s, mailbox, force)
-		}(i, s)
+		})
 	}
 	wg.Wait()
 	return results
@@ -145,10 +146,10 @@ func (c *SiteChain) MessagesStream(ctx context.Context, mailbox site.MailboxType
 	var wg sync.WaitGroup
 	for _, s := range sites {
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("message:148", func() {
 			defer wg.Done()
 			emit(c.resolveMessage(ctx, sem, s, mailbox, force))
-		}(s)
+		})
 	}
 	wg.Wait()
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/entertainment"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // EntertainmentHandler 处理娱乐游戏。
@@ -579,14 +580,14 @@ func (h *EntertainmentHandler) FlipWS(c *gin.Context) {
 		return
 	}
 	// 读泵：仅用于探测客户端断开（读到错即取消 ctx，关上游）
-	go func() {
+	safego.Go("entertainment:582", func() {
 		for {
 			if _, _, err := conn.ReadMessage(); err != nil {
 				cancel()
 				return
 			}
 		}
-	}()
+	})
 	for {
 		select {
 		case ev, ok := <-events:

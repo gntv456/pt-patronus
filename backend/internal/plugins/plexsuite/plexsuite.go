@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // Settings 是 plex-suite 插件的配置视图（由插件 config map 解析）。
@@ -179,7 +180,8 @@ func (e *Engine) probeAll(ctx context.Context, s Settings) []ProbeResult {
 			continue
 		}
 		wg.Add(1)
-		go func(u string) {
+		safego.Go("plexsuite:182", func() {
+			u := cand
 			defer wg.Done()
 			pr := ProbeResult{URL: u}
 			cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -194,7 +196,7 @@ func (e *Engine) probeAll(ctx context.Context, s Settings) []ProbeResult {
 			mu.Lock()
 			results = append(results, pr)
 			mu.Unlock()
-		}(cand)
+		})
 	}
 	wg.Wait()
 	// 稳定排序：可达优先，按延迟升序

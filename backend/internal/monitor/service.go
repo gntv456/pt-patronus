@@ -9,6 +9,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // Notifier 发送告警通知的回调（由 app.go 适配到 NotificationChain，解耦 monitor 与 chain/notification）。
@@ -74,11 +75,11 @@ func (s *Service) scanAndCollect(ctx context.Context) {
 		}
 		wg.Add(1)
 		sem <- struct{}{}
-		go func() {
+		safego.Go("service:77", func() {
 			defer wg.Done()
 			defer func() { <-sem }()
 			s.collectOne(ctx, t)
-		}()
+		})
 	}
 	wg.Wait()
 }

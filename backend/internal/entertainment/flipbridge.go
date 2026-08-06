@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 翻面夺宝 websocket 桥接：连站点 wss://<host>/wss（带 cookie），读 tileFlip 推送，转发前端。
@@ -109,13 +110,13 @@ func pumpFlipBridge(ctx context.Context, baseURL, cookie string, ch chan<- FlipE
 	// ctx 取消 → 强关 conn 使 ReadMessage 解阻塞
 	stop := make(chan struct{})
 	defer close(stop)
-	go func() {
+	safego.Go("flipbridge:112", func() {
 		select {
 		case <-ctx.Done():
 			_ = conn.Close()
 		case <-stop:
 		}
-	}()
+	})
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {

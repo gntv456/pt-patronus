@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 const (
@@ -539,15 +540,15 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 		haveCel bool
 	)
 	wg.Add(3)
-	go func() { defer wg.Done(); haveCel = d.get(ctx, "/"+mtype+"/"+sid+"/celebrities", nil, &cel) == nil }()
-	go func() {
+	safego.Go("douban:542", func() { defer wg.Done(); haveCel = d.get(ctx, "/"+mtype+"/"+sid+"/celebrities", nil, &cel) == nil })
+	safego.Go("douban:543", func() {
 		defer wg.Done()
 		_ = d.get(ctx, "/"+mtype+"/"+sid+"/recommendations", map[string]string{"start": "0", "count": "20"}, &recs)
-	}()
-	go func() {
+	})
+	safego.Go("douban:547", func() {
 		defer wg.Done()
 		_ = d.get(ctx, "/"+mtype+"/"+sid+"/photos", map[string]string{"start": "0", "count": "10"}, &photos)
-	}()
+	})
 	wg.Wait()
 
 	// 演员：celebrities 优先（带头像）；失败回退 detail 裸 actors（无头像）。

@@ -12,6 +12,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/media"
 
 	"golang.org/x/sync/singleflight"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 推荐信息流（热门/趋势）：并发扇出 + 内存缓存。
@@ -85,7 +86,8 @@ func (c *RecommendChain) fetchRecommend(ctx context.Context, source, category st
 	for _, s := range c.filteredTrendingSources(source, category) {
 		tc := s.(media.TrendingCapable)
 		wg.Add(1)
-		go func(name string, tc media.TrendingCapable) {
+		name := s.Name()
+		safego.Go("recommend:88", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -102,7 +104,7 @@ func (c *RecommendChain) fetchRecommend(ctx context.Context, source, category st
 			mu.Lock()
 			all = append(all, items...)
 			mu.Unlock()
-		}(s.Name(), tc)
+		})
 	}
 	wg.Wait()
 
@@ -168,7 +170,8 @@ func (c *RecommendChain) RecommendFeedsStream(ctx context.Context, source, categ
 	for _, s := range srcs {
 		tc := s.(media.TrendingCapable)
 		wg.Add(1)
-		go func(name string, tc media.TrendingCapable) {
+		name := s.Name()
+		safego.Go("recommend:171", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -188,7 +191,7 @@ func (c *RecommendChain) RecommendFeedsStream(ctx context.Context, source, categ
 			if len(items) > 0 {
 				emit(items)
 			}
-		}(s.Name(), tc)
+		})
 	}
 	wg.Wait()
 	if len(all) > 0 {

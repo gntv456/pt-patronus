@@ -13,6 +13,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"golang.org/x/crypto/ssh"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // sshExecutor 抽象「在一个 SSH 会话里执行命令」，便于测试注入 fake（解析逻辑单测无需真实连接）。
@@ -225,7 +226,7 @@ func (e *sshExec) RunOutput(ctx context.Context, cmd string) (string, string, er
 	sess.Stdout = &stdout
 	sess.Stderr = &stderr
 	done := make(chan error, 1)
-	go func() { done <- sess.Run(cmd) }()
+	safego.Go("ssh:228", func() { done <- sess.Run(cmd) })
 	select {
 	case err := <-done:
 		return stdout.String(), stderr.String(), err
@@ -237,7 +238,7 @@ func (e *sshExec) RunOutput(ctx context.Context, cmd string) (string, string, er
 		<-done // 等 sess.Run 收尾，确保 defer sess.Close 不与 Run 竞争
 		return stdout.String(), stderr.String(), ctx.Err()
 	}
-}
+	}
 
 func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, cols, rows int) error {
 	sess, err := e.client.NewSession()
@@ -266,7 +267,7 @@ func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, 
 		return err
 	}
 	done := make(chan error, 1)
-	go func() { done <- sess.Wait() }()
+	safego.Go("ssh:269", func() { done <- sess.Wait() })
 	select {
 	case err := <-done:
 		return err
@@ -278,6 +279,6 @@ func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, 
 		<-done
 		return ctx.Err()
 	}
-}
 
+	}
 func (e *sshExec) Close() error { return e.client.Close() }

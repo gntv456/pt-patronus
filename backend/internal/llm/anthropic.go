@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // anthropicProvider 原生 Claude（/v1/messages，SSE）。
@@ -73,7 +74,7 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 	}
 
 	out := make(chan Event, 32)
-	go func() {
+	safego.Go("anthropic:76", func() {
 		defer resp.Body.Close()
 		defer close(out)
 		// 按 content block index 记类型；tool_use 积累 input JSON。
@@ -151,7 +152,7 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 		}
 		send(out, Event{Type: EventUsage, Usage: &Usage{InputTokens: inTok, OutputTokens: outTok}})
 		send(out, Event{Type: EventDone})
-	}()
+	})
 	return out, nil
 }
 

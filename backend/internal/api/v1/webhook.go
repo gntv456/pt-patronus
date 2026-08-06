@@ -20,6 +20,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // WebhookHandler 处理进站 Webhook（公开接收）+ 管理端 CRUD。
@@ -98,7 +99,7 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 		target := wh.TargetWorkflowID
 		wname := wh.Name
 		reqCtx := c.Request.Context()
-		go func() {
+		safego.Go("webhook:101", func() {
 			// HTTP 请求在 handler 返回后必然取消；后台工作流应保留请求值，
 			// 但由自身超时控制，不能继承这次请求的取消信号。
 			bg, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), 10*time.Minute)
@@ -106,7 +107,7 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 			if _, err := h.wfCh.Run(bg, target, "webhook", payload); err != nil {
 				slog.Warn("webhook trigger workflow failed", "workflow_id", target, "err", err, "webhook", wname)
 			}
-		}()
+		})
 	}
 
 	// 广播 "webhook" 事件（event 型工作流可监听 event_type=webhook）

@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hxpt/ptpatronus/internal/agentrpc"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 文件 RPC 超时。
@@ -299,14 +300,14 @@ func (ac *agentConn) Download(ctx context.Context, cmd agentrpc.Command) (io.Rea
 		return nil, err
 	}
 	r := &streamReader{PipeReader: pr, cancel: make(chan struct{})}
-	go func() { // 监听断开/调用方关闭：关 pipe 终止 io.Copy，并通知 agent 取消
+	safego.Go("agent_ws:302", func() { // 监听断开/调用方关闭：关 pipe 终止 io.Copy，并通知 agent 取消
 		select {
 		case <-ac.closeCh:
 			pw.CloseWithError(ErrAgentDisconnected)
 		case <-r.cancel:
 			_ = ac.writeJSON(AgentEnvelope{Type: "error", ID: id, Error: "client closed"})
 		}
-	}()
+	})
 	return r, nil
 }
 

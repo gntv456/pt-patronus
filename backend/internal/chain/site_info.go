@@ -10,6 +10,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 站免/公告抓取的并发与缓存参数（对齐原版：站免 30min、公告 60s）。
@@ -127,10 +128,10 @@ func (c *SiteChain) FreeleechAll(ctx context.Context, force bool) []FreeleechRes
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("site_info:130", func() {
 			defer wg.Done()
 			results[i] = c.resolveFreeleech(ctx, sem, s, force)
-		}(i, s)
+		})
 	}
 	wg.Wait()
 	return results
@@ -149,10 +150,10 @@ func (c *SiteChain) FreeleechStream(ctx context.Context, force bool, emit func(F
 	var wg sync.WaitGroup
 	for _, s := range sites {
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("site_info:152", func() {
 			defer wg.Done()
 			emit(c.resolveFreeleech(ctx, sem, s, force))
-		}(s)
+		})
 	}
 	wg.Wait()
 }
@@ -259,10 +260,10 @@ func (c *SiteChain) AnnouncementsAll(ctx context.Context, force bool) []Announce
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("site_info:262", func() {
 			defer wg.Done()
 			results[i] = c.resolveAnnouncement(ctx, sem, s, force)
-		}(i, s)
+		})
 	}
 	wg.Wait()
 	return results
@@ -316,10 +317,10 @@ func (c *SiteChain) AnnouncementsStream(ctx context.Context, force bool, emit fu
 	var wg sync.WaitGroup
 	for _, s := range sites {
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("site_info:319", func() {
 			defer wg.Done()
 			emit(c.resolveAnnouncement(ctx, sem, s, force))
-		}(s)
+		})
 	}
 	wg.Wait()
 }

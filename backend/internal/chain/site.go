@@ -16,6 +16,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"golang.org/x/sync/singleflight"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // SiteResult 是单站搜索结果（含可能的错误，用于聚合容错）。
@@ -305,7 +306,7 @@ func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string, s
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("site:308", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -324,7 +325,7 @@ func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string, s
 				slog.Debug("site search failed", "site", s.Name, "err", e)
 			}
 			results[i] = r
-		}(i, s)
+		})
 	}
 	wg.Wait()
 	return results
@@ -357,7 +358,7 @@ func (c *SiteChain) SearchSitesStream(ctx context.Context, keyword, category str
 	var wg sync.WaitGroup
 	for _, s := range sites {
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("site:360", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -376,7 +377,7 @@ func (c *SiteChain) SearchSitesStream(ctx context.Context, keyword, category str
 				slog.Debug("site search failed", "site", s.Name, "err", e)
 			}
 			emit(r)
-		}(s)
+		})
 	}
 	wg.Wait()
 }
@@ -397,7 +398,7 @@ func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult
 			continue
 		}
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("site:400", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -413,7 +414,7 @@ func (c *SiteChain) TestConnections(ctx context.Context) ([]SiteConnectionResult
 				result.Status = "connected"
 			}
 			results[i] = result
-		}(i, s)
+		})
 	}
 	wg.Wait()
 	return results, nil
@@ -455,7 +456,7 @@ func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteCon
 			continue
 		}
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("site:458", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -470,7 +471,7 @@ func (c *SiteChain) TestConnectionsStream(ctx context.Context, emit func(SiteCon
 				r.Status = "connected"
 			}
 			emit(r)
-		}(s)
+		})
 	}
 	wg.Wait()
 }
@@ -598,7 +599,7 @@ func (c *SiteChain) CheckinAll(ctx context.Context) []CheckinSiteResult {
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("site:601", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -617,7 +618,7 @@ func (c *SiteChain) CheckinAll(ctx context.Context) []CheckinSiteResult {
 				r.Bonus = res.Bonus
 			}
 			results[i] = r
-		}(i, s)
+		})
 	}
 	wg.Wait()
 	return results

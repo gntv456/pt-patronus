@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/url"
 	"sync"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // Manager 管理多个通知通道，Notify 并发扇出、错误隔离（单通道失败不影响其它）。
@@ -84,7 +85,8 @@ func (m *Manager) Notify(ctx context.Context, msg Message) []SendResult {
 	var wg sync.WaitGroup
 	for i, c := range chs {
 		wg.Add(1)
-		go func(i int, c Channel) {
+		safego.Go("manager:87", func() {
+			i, c := i, c // capture loop vars
 			defer wg.Done()
 			r := SendResult{Channel: c.Name()}
 			if err := c.Send(ctx, msg); err != nil {
@@ -95,7 +97,7 @@ func (m *Manager) Notify(ctx context.Context, msg Message) []SendResult {
 				r.Ok = true
 			}
 			results[i] = r
-		}(i, c)
+		})
 	}
 	wg.Wait()
 	return results

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 type externalHTTPPlugin struct {
@@ -308,10 +309,10 @@ func (p *externalHTTPPlugin) ensureStarted(ctx context.Context, rt Runtime) erro
 	p.lastRestartAt = &now
 	p.stoppedAt = nil
 	p.lastExit = ""
-	go func() {
+	safego.Go("external:311", func() {
 		err := cmd.Wait()
 		p.recordExit(cmd, err)
-	}()
+	})
 
 	deadline := time.Now().Add(8 * time.Second)
 	for {
@@ -653,10 +654,10 @@ func newExternalHostServer(plugin *externalHTTPPlugin) (*externalHostServer, err
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second, // 没有写超时，慢速/卡死插件可让 host goroutine 长期占用；与读超时对称
 	}
-	go func() {
+	safego.Go("external:656", func() {
 		// Serve 总会返回非 nil 错误；ErrServerClosed 为正常关闭，其余异常因 host 回调仅 loopback 可达而无法外暴。
 		_ = h.server.Serve(ln)
-	}()
+	})
 	return h, nil
 }
 

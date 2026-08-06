@@ -11,6 +11,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/hxpt/ptpatronus/internal/transfer"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // ProcessFunc 处理一批发现的媒体文件（由 TransferChain.ProcessDiscoveredFiles 实现）。
@@ -104,7 +105,8 @@ func (w *Watcher) runPoll(ctx context.Context) {
 		}
 		slog.Info("dirwatch: 监视中", "dir", d.Path, "mode", "poll", "interval", interval)
 		wg.Add(1)
-		go func(dir string) {
+		safego.Go("watcher:107", func() {
+			dir := d.Path
 			defer wg.Done()
 			t := time.NewTicker(interval)
 			defer t.Stop()
@@ -117,7 +119,7 @@ func (w *Watcher) runPoll(ctx context.Context) {
 					w.scanAndProcess(ctx, dir)
 				}
 			}
-		}(d.Path)
+		})
 	}
 	<-ctx.Done()
 	wg.Wait()

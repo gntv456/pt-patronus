@@ -7,6 +7,7 @@ import (
 	"net/smtp"
 	"strconv"
 	"strings"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 type Email struct {
@@ -59,7 +60,7 @@ func (e *Email) Send(ctx context.Context, msg Message) error {
 		auth = smtp.PlainAuth("", e.username, e.password, e.host)
 	}
 	errCh := make(chan error, 1)
-	go func() { errCh <- smtp.SendMail(addr, auth, e.from, e.to, []byte(raw)) }()
+	safego.Go("email:62", func() { errCh <- smtp.SendMail(addr, auth, e.from, e.to, []byte(raw)) })
 	select {
 	case err := <-errCh:
 		return err

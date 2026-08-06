@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/media"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // cfgKeyMediaQuality 多评分订阅质量配置（JSON blob 存 SystemConfig）。
@@ -165,7 +166,7 @@ func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, 
 			continue
 		}
 		wg.Add(1)
-		go func(i int, s media.MediaSource) {
+		safego.Go("media_rating:168", func() {
 			defer wg.Done()
 			items, err := s.Search(ctx, title, year)
 			if err != nil {
@@ -175,7 +176,7 @@ func (c *MediaChain) computeAggregatedRating(ctx context.Context, title string, 
 				return
 			}
 			results[i] = srcResult{source: s, items: items}
-		}(i, s)
+		})
 	}
 	wg.Wait()
 

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 const defaultDevWatchInterval = time.Second
@@ -36,10 +37,10 @@ func (m *Manager) EnableDevWatcher(interval time.Duration) {
 	m.watchWG.Add(1)
 	m.watchMu.Unlock()
 
-	go func() {
+	safego.Go("devwatch:39", func() {
 		defer m.watchWG.Done()
 		m.devWatchLoop(ctx, root, interval)
-	}()
+	})
 
 	slog.Info("plugin dev watcher started", "root", root, "interval", interval.String())
 }

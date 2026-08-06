@@ -18,6 +18,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // cookiecloudSettingsKey 是 SystemConfig 中存储 CookieCloud 配置的 key（JSON）。
@@ -302,7 +303,7 @@ func (c *CookieCloudChain) applyPull(ctx context.Context, s CookieCloudSettings,
 			continue
 		}
 		wg.Add(1)
-		go func(st *models.Site, cookieStr string) {
+		safego.Go("cookiecloud:305", func() {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -323,7 +324,7 @@ func (c *CookieCloudChain) applyPull(ctx context.Context, s CookieCloudSettings,
 			mu.Lock()
 			report.Updated++
 			mu.Unlock()
-		}(st, cookieStr)
+		})
 	}
 	wg.Wait()
 

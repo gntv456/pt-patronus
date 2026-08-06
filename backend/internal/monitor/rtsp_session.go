@@ -14,6 +14,7 @@ import (
 	"github.com/bluenviron/gortsplib/v5/pkg/format"
 	"github.com/gorilla/websocket"
 	"github.com/pion/rtp"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 const (
@@ -165,11 +166,11 @@ func (s *ProxySession) startStream(ctx context.Context) error {
 		c.Close()
 		return err
 	}
-	go func() {
+	safego.Go("rtsp_session:168", func() {
 		defer close(s.done)
 		defer c.Close()
 		<-ctx.Done()
-	}()
+	})
 	return nil
 }
 

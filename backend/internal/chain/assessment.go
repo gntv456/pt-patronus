@@ -19,6 +19,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
 
 	"golang.org/x/sync/singleflight"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 考核缓存参数（对齐原版：内存 30min、DB 6h）。
@@ -107,10 +108,10 @@ func (c *AssessmentChain) AssessAll(ctx context.Context, force bool) []Assessmen
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("assessment:110", func() {
 			defer wg.Done()
 			cards[i] = c.assessSite(ctx, sem, &s, force)
-		}(i, s)
+		})
 	}
 	wg.Wait()
 
@@ -431,13 +432,13 @@ func (c *AssessmentChain) AssessAllStream(ctx context.Context, force bool, emit 
 	var wg sync.WaitGroup
 	for _, s := range sites {
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("assessment:434", func() {
 			defer wg.Done()
 			card := c.assessSite(ctx, sem, &s, force)
 			if card.SiteID != 0 {
 				emit(card.normalized())
 			}
-		}(s)
+		})
 	}
 	wg.Wait()
 }

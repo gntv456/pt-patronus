@@ -13,6 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/subtitle"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // SubtitleSettings 字幕源凭据 + 转换偏好。空 token/key → 该源跳过（ErrNotConfigured）。
@@ -134,11 +135,11 @@ func (c *SubtitleChain) Search(ctx context.Context, query string, language strin
 	var wg sync.WaitGroup
 	for i, p := range providers {
 		wg.Add(1)
-		go func(i int, p subtitle.Provider) {
+		safego.Go("subtitle:137", func() {
 			defer wg.Done()
 			items, err := p.Search(ctx, query, opts)
 			outs[i] = srcOut{items: items, err: err}
-		}(i, p)
+		})
 	}
 	wg.Wait()
 

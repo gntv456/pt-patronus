@@ -22,6 +22,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site/medalwall"
 
 	"golang.org/x/sync/singleflight"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 勋章墙缓存参数（对齐旧版：内存 24h、DB 48h）。
@@ -118,7 +119,7 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("medal:121", func() {
 			defer wg.Done()
 			def := c.siteCh.defFor(&s)
 			slog.Debug("medal site check", "site", s.Name, "enabled", def.Medal.Enabled, "schema", def.Schema, "shop", def.Medal.ShopPath)
@@ -134,7 +135,7 @@ func (c *MedalChain) MedalAll(ctx context.Context, force bool) []MedalCard {
 				errMsg = "未发现勋章数据（站点可能未开放勋章功能或页面结构待适配）"
 			}
 			results[i] = siteRes{items: items, err: errMsg, supported: true}
-		}(i, s)
+		})
 	}
 	wg.Wait()
 
@@ -165,7 +166,7 @@ func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(c
 	var wg sync.WaitGroup
 	for _, s := range sites {
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("medal:168", func() {
 			defer wg.Done()
 			def := c.siteCh.defFor(&s)
 			if !def.Medal.Enabled {
@@ -188,7 +189,7 @@ func (c *MedalChain) MedalAllStream(ctx context.Context, force bool, emit func(c
 			if len(cards) > 0 {
 				emit(cards)
 			}
-		}(s)
+		})
 	}
 	wg.Wait()
 }

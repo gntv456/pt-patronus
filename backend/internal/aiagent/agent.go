@@ -10,6 +10,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/llm"
 	"github.com/hxpt/ptpatronus/internal/mcp"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // MessageStore 抽象 oper.AgentMessageOper（破 aiagent→oper 依赖）。
@@ -61,7 +62,7 @@ func (a *Agent) Stats() StatsSnapshot { return a.stats.snapshot() }
 // convID 必须已存在（由 API handler 先建空会话）。
 func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan llm.Event {
 	out := make(chan llm.Event, 64)
-	go func() {
+	safego.Go("agent:64", func() {
 		defer close(out)
 		ac, lc := Load(a.kv, a.crypto)
 		// 用量统计：仅在实际发起 LLM 调用时计数（配置未启用/无 key 的早返回不计）。
@@ -227,7 +228,7 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 		}
 		status = "maxiter"
 		emit(out, llm.Event{Type: llm.EventError, Error: fmt.Sprintf("达到最大思考轮数(%d)，请缩小问题或重试", ac.MaxIterations)})
-	}()
+	})
 	return out
 }
 

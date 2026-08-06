@@ -10,6 +10,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 后宫抓取并发与缓存参数（对齐原版：Semaphore(5) + per-site Mutex + 30min 缓存）。
@@ -91,7 +92,7 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 	var wg sync.WaitGroup
 	for i, s := range sites {
 		wg.Add(1)
-		go func(i int, s models.Site) {
+		safego.Go("harem:94", func() {
 			defer wg.Done()
 			// 快速路径：缓存命中
 			if !force {
@@ -128,7 +129,7 @@ func (c *SiteChain) HaremAll(ctx context.Context, force bool) *HaremResult {
 				status = &site.InviteStatus{}
 			}
 			items[i] = buildPrescription(s.ID, s.Name, status, res.invitees, res.errMsg)
-		}(i, s)
+		})
 	}
 	wg.Wait()
 
@@ -318,7 +319,7 @@ func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(si
 	}
 	for _, s := range sites {
 		wg.Add(1)
-		go func(s models.Site) {
+		safego.Go("harem:321", func() {
 			defer wg.Done()
 			// 快速路径：缓存命中
 			if !force {
@@ -354,7 +355,7 @@ func (c *SiteChain) HaremAllStream(ctx context.Context, force bool, emit func(si
 				status = &site.InviteStatus{}
 			}
 			push(buildPrescription(s.ID, s.Name, status, res.invitees, res.errMsg))
-		}(s)
+		})
 	}
 	wg.Wait()
 	return haremOverview(all)

@@ -7,6 +7,7 @@ import GlassIcon from '@/components/GlassIcon.vue'
 import { useDockerOps } from './useDockerOps'
 import DockerExecTerminal from './DockerExecTerminal.vue'
 import DockerCreateDialog from './DockerCreateDialog.vue'
+import DockerComposeLocal from './DockerComposeLocal.vue'
 
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
@@ -159,7 +160,7 @@ async function showInspect(container: DockerContainer) {
   }
 }
 
-const { pullDialog, pullRef, pullLoading, pullResult, openPull, doPull, doPrune, createVolume, removeVolume, createNetwork, removeNetwork, composeVisible, composePath, composeOutput, composeLoading, openCompose, composeAction} = useDockerOps(refresh, () => mode.value, () => selectedTarget.value)
+const { pullDialog, pullRef, pullLoading, pullResult, openPull, doPull, doPrune, createVolume, removeVolume, createNetwork, removeNetwork, composeVisible, composePath, composeOutput, composeLoading, openCompose, composeAction, localComposeVisible, openLocalCompose} = useDockerOps(refresh, () => mode.value, () => selectedTarget.value)
 
 // 创建容器（用独立组件）
 const createDialog = ref(false)
@@ -385,6 +386,8 @@ onMounted(async () => {
     <!-- exec 终端 -->
     <DockerExecTerminal v-model:visible="execDrawer" :container="execContainer" />
     <DockerCreateDialog v-model:visible="createDialog" @created="refresh" />
+
+    <DockerComposeLocal v-model:visible="localComposeVisible" @done="refresh" />
   </div>
 </template>
 

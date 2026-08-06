@@ -35,6 +35,7 @@ declare module 'vue' {
     DeviceForm: typeof import('./src/components/monitor/DeviceForm.vue')['default']
     DeviceHostDetail: typeof import('./src/components/monitor/DeviceHostDetail.vue')['default']
     DeviceServiceDetail: typeof import('./src/components/monitor/DeviceServiceDetail.vue')['default']
+    DockerComposeLocal: typeof import('./src/components/ops/DockerComposeLocal.vue')['default']
     DockerCreateDialog: typeof import('./src/components/ops/DockerCreateDialog.vue')['default']
     DockerExecTerminal: typeof import('./src/components/ops/DockerExecTerminal.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']

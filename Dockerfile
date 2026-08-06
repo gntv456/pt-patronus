@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 # ---- 运行时 ----
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata wget su-exec && \
+RUN apk add --no-cache ca-certificates tzdata wget su-exec docker docker-cli-compose && \
     addgroup -S app && adduser -S app -G app
 WORKDIR /app
 # --chown 在 COPY 时设定属主，避免随后 `chown -R` 把 50MB 二进制重写进新层（省 ~50MB 镜像体积）。

@@ -119,6 +119,16 @@ export const dockerApi = {
   localNetworkRemove: (name: string) =>
     http.delete(`/ops/docker/local/networks/${name}`).then((r) => r.data),
 
+  // === 本机 Compose（容器内 CLI + socket）===
+  localComposeCheck: () =>
+    http.get<{ available: boolean; version?: string }>('/ops/docker/local/compose/check').then((r) => r.data),
+  localComposeUp: (content: string, name?: string) =>
+    http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/up', { content, name }).then((r) => r.data),
+  localComposeDown: (content: string, name?: string) =>
+    http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/down', { content, name }).then((r) => r.data),
+  localComposeValidate: (content: string, name?: string) =>
+    http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/validate', { content, name }).then((r) => r.data),
+
   // === 创建容器 + exec 终端 ===
   localCreate: (data: {
     image: string

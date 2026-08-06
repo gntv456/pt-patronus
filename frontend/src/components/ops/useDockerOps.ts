@@ -114,10 +114,16 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
   }
 
 
+
+  // 本机 Compose 对话框可见性（实际逻辑在 DockerComposeLocal 组件内）
+  const localComposeVisible = ref(false)
+  function openLocalCompose() { localComposeVisible.value = true }
+
   return {
     pullDialog, pullRef, pullLoading, pullResult,
     openPull, doPull, doPrune,
     createVolume, removeVolume, createNetwork, removeNetwork,
     composeVisible, composePath, composeOutput, composeLoading, openCompose, composeAction,
+    localComposeVisible, openLocalCompose,
   }
 }

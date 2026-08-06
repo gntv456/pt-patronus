@@ -1,41 +1,32 @@
 <script setup lang="ts">
+/**
+ * 统一搜索页：[种子 | 影视] 分段切换，共享关键词。
+ *  - 种子：跨站 SSE 流式聚合 + 前端筛选排序；结果表/失败容错见 TorrentResultsTable；
+ *    下载推送见 SearchPushDialog；详情抽屉见 TorrentDetailDrawer。
+ *  - 影视：豆瓣/TMDB/Bangumi 元数据 + 海报卡片（MediaResultsGrid）。后端默认按 movie+tv 过滤，
+ *    不含音乐（与 MoviePilot 媒体搜索一致）。
+ * 本文件仅做编排：搜索状态/请求 + 生命周期 + 顶部搜索栏，具体 UI 拆到子组件。
+ */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { safeUrl } from '@/utils/safeUrl'
 import { useRoute, useRouter } from 'vue-router'
-import { searchApi, type SiteSearchResult, type SiteTorrent } from '@/api/search'
+import { searchApi, type SiteSearchResult } from '@/api/search'
 import { seedbrowseApi, type TorrentDetail } from '@/api/seedbrowse'
 import { mediaApi, type MediaInfo } from '@/api/media'
 import { siteApi, type Site } from '@/api/site'
-import { downloaderApi, type Downloader } from '@/api/downloader'
-import { copyText } from '@/utils/clipboard'
-import { formatTorrentSize, enrichTorrent } from '@/utils/torrentMeta'
+import { enrichTorrent } from '@/utils/torrentMeta'
 import { useSearchFilter } from '@/composables/useSearchFilter'
-import SearchFilterBar from '@/components/SearchFilterBar.vue'
-import MediaPoster from '@/components/MediaPoster.vue'
-import EmptyState from '@/components/EmptyState.vue'
-import DOMPurify from 'dompurify'
+import { useSearchPush } from '@/composables/useSearchPush'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
+import TorrentResultsTable from '@/components/TorrentResultsTable.vue'
+import MediaResultsGrid from '@/components/MediaResultsGrid.vue'
+import SearchPushDialog from '@/components/SearchPushDialog.vue'
+import TorrentDetailDrawer from '@/components/TorrentDetailDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-// 下载器类型 → 中文标签（推送对话框下拉显示）
-const dlTypeLabel: Record<string, string> = {
-  qb: 'qBittorrent', tr: 'Transmission', ut: 'uTorrent', dl: 'Deluge', ar: 'Aria2', rt: 'ruTorrent', fl: 'Flood',
-}
-
-// 种子简介来自 PT 站原始 HTML，渲染前必须净化（防存储型 XSS：注入 onerror/script 窃 token）。
-const sanitizeHtml = (html?: string) => (html ? DOMPurify.sanitize(html) : '')
-
-// 统一搜索页：[种子 | 影视] 分段切换，共享关键词。
-//  - 种子：合并自旧 Search（下载推送 + 单站失败容错）+ SeedBrowse（详情抽屉解析种子页）。
-//  - 影视：豆瓣/TMDB/Bangumi 元数据 + 海报卡片（原 Media）。后端默认按 movie+tv 过滤，
-//    不含音乐（与 MoviePilot 媒体搜索一致）。
 type SearchMode = 'torrent' | 'media'
 const mode = ref<SearchMode>('torrent')
-
-// 扁平表行：种子字段 + 来源站点名（跨站合并到一张表）。
-type SearchRow = SiteTorrent & { site_id: number; site_name: string }
 
 const keyword = ref('')
 const category = ref<'' | 'movie' | 'tv' | 'music'>('')
@@ -45,32 +36,22 @@ const loading = ref(false)
 const error = ref('')
 const searched = ref(false)
 
-// 失败站后端 JSON 里 torrents 可能是 null（Go slice nil），不能直接 .map。
-const rows = computed<SearchRow[]>(() =>
+// 扁平表行：种子字段 + 来源站点名（跨站合并到一张表）。
+const rows = computed(() =>
   results.value.flatMap((r) =>
     (r.torrents ?? []).map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name })),
   ),
 )
-// 派生筛选 meta（分辨率/编码/来源/促销/体积/时间，一次提取）+ 前端过滤/排序 composable。
+// 派生筛选 meta + 前端过滤/排序 composable。
 const enrichedRows = computed(() => rows.value.map((r) => enrichTorrent(r)))
-const { filter, sort, options, filtered, sorted, hasActive, activeTags, removeFilter, clearAll } = useSearchFilter(enrichedRows)
-// 渲染上限：跨 10+ 站可能返回数百行，一次性渲染卡顿；默认截断，提供「显示全部」展开。
-const MAX_ROWS = 200
-const showAll = ref(false)
-const visibleRows = computed(() => {
-  const s = sorted.value
-  return showAll.value ? s : s.slice(0, MAX_ROWS)
-})
-const failedSites = computed(() => results.value.filter((r) => r.error))
-// 流式进度：已回站数 / 目标站数（筛选或全部启用）
-const streamDoneSites = computed(() => results.value.length)
-const activeSites = computed(() => sites.value.filter((s) => s.is_active))
+const filter = useSearchFilter(enrichedRows)
+
 // 站点筛选：空=搜全部启用站；非空=仅搜选中站点。UI/逻辑内聚在 SiteFilterDialog 组件。
 const selectedSiteIds = ref<number[]>([])
+const activeSites = computed(() => sites.value.filter((s) => s.is_active))
 const scopeSiteCount = computed(() =>
   selectedSiteIds.value.length ? selectedSiteIds.value.length : activeSites.value.length,
 )
-const showFailed = ref(false)
 
 // 种子跨站 SSE 流：切换关键词/重复搜索时中断上一流，避免乱序覆盖。
 let torrentAbort: AbortController | null = null
@@ -89,7 +70,7 @@ async function search() {
     error.value = ''
     results.value = []
     searched.value = true
-    showAll.value = false
+    resultsTable.value?.resetShowAll()
     try {
       await searchApi.allStream(
         kw,
@@ -125,124 +106,22 @@ async function search() {
   }
 }
 
-function openDetail(url: string) {
-  window.open(url, '_blank', 'noopener')
-}
+// —— 确认下载：逻辑在 composable（解构后 ref 在模板自动解包）——
+const {
+  visible: pushVisible, row: pushRow, subtitle: pushSubtitle, downloaders: pushDownloaders,
+  selectedDl, categories: pushCategories, selectedCategory, savePath, showAdvanced, paused,
+  loading: pushLoading, pushedDlName,
+  start: startPush, confirm: confirmPush, gotoDownloaderTasks, close: closePush,
+} = useSearchPush()
 
-// —— 确认下载（对齐推荐页 / MoviePilot：信息完善 + 保存目录 + 视口居中）——
-const pushVisible = ref(false)
-const pushRow = ref<SearchRow | null>(null)
-const downloaders = ref<Downloader[]>([])
-const selectedDl = ref<number | null>(null)
-const categories = ref<string[]>([])
-const selectedCategory = ref('')
-const savePath = ref('')
-const showAdvanced = ref(false)
-const paused = ref(false)
-const pushLoading = ref(false)
-const pushedDlName = ref('')
-const pushedDlId = ref<number | null>(null)
-
-const pushSubtitle = computed(() => {
-  const row = pushRow.value
-  if (!row) return ''
-  return [row.site_name, row.category].filter(Boolean).join(' · ')
-})
-
-async function loadPushCategories(dlId: number | null) {
-  categories.value = []
-  selectedCategory.value = ''
-  if (dlId == null) return
-  try {
-    const r = await downloaderApi.categories(dlId)
-    categories.value = r.categories ?? []
-  } catch {
-    categories.value = []
-  }
-}
-
-watch(selectedDl, (id) => {
-  void loadPushCategories(id)
-})
-
-async function startPush(row: SearchRow) {
-  if (!row.download_url) {
-    ElMessage.warning('该站点暂不支持直接下载')
-    return
-  }
-  pushRow.value = row
-  pushVisible.value = true
-  pushLoading.value = true
-  selectedDl.value = null
-  selectedCategory.value = ''
-  savePath.value = ''
-  showAdvanced.value = false
-  paused.value = false
-  categories.value = []
-  pushedDlName.value = ''
-  pushedDlId.value = null
-  try {
-    downloaders.value = await downloaderApi.list()
-    if (!downloaders.value.length) {
-      ElMessage.warning('请先在「下载器」添加一个')
-    } else {
-      const def = downloaders.value.find((d) => d.is_default)
-      selectedDl.value = def ? def.id : downloaders.value[0].id
-    }
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载下载器失败')
-  } finally {
-    pushLoading.value = false
-  }
-}
-
-async function confirmPush() {
-  if (!pushRow.value || selectedDl.value == null) return
-  const dl = downloaders.value.find((d) => d.id === selectedDl.value)
-  pushLoading.value = true
-  try {
-    const r = await downloaderApi.add(selectedDl.value, pushRow.value.download_url, {
-      category: selectedCategory.value || undefined,
-      save_path: savePath.value.trim() || undefined,
-      paused: paused.value || undefined,
-    })
-    if (r.ok) {
-      ElMessage.success(`已推送到 ${dl?.name ?? '下载器'}`)
-      pushedDlName.value = dl?.name ?? '下载器'
-      pushedDlId.value = selectedDl.value
-    } else {
-      ElMessage.warning(r.error || '推送失败')
-    }
-  } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '推送失败')
-  } finally {
-    pushLoading.value = false
-  }
-}
-
-function gotoDownloaderTasks() {
-  const id = pushedDlId.value
-  closePush()
-  if (id != null) {
-    router.push({ name: 'downloaders', query: { dl: String(id) } })
-  } else {
-    router.push({ name: 'downloaders' })
-  }
-}
-
-function closePush() {
-  pushVisible.value = false
-  pushedDlName.value = ''
-  pushedDlId.value = null
-  showAdvanced.value = false
-}
-
-// —— 种子详情抽屉：抓取并解析单条种子详情页（简介/截图/MediaInfo/文件列表）——
+// —— 种子详情抽屉：抓取并解析单条种子详情页 ——
 const detail = ref<TorrentDetail | null>(null)
 const detailLoading = ref(false)
 const detailVisible = ref(false)
 
-async function openTorrentDetail(row: SearchRow) {
+const resultsTable = ref<InstanceType<typeof TorrentResultsTable> | null>(null)
+
+async function openTorrentDetail(row: { site_id: number; detail_url?: string }) {
   if (!row.detail_url) {
     ElMessage.warning('该种子无详情页链接')
     return
@@ -266,28 +145,10 @@ async function openTorrentDetail(row: SearchRow) {
   }
 }
 
-// 下载链接：打开 + 复制（详情页主操作，比小 el-link 更显眼）
-function openDl() {
-  if (detail.value?.download_url) window.open(detail.value.download_url, '_blank', 'noopener')
-}
-async function copyDl() {
-  if (!detail.value?.download_url) return
-  await copyText(detail.value.download_url, '已复制下载链接', '复制失败，请手动复制')
-}
-function imdbUrl(id: string) {
-  return id ? `https://www.imdb.com/title/${id}/` : ''
-}
-
 // —— 影视模式：元数据 + 海报卡片 ——
 const mediaResults = ref<MediaInfo[]>([])
 const year = ref<number | undefined>(undefined)
 
-function typeBadge(t: string) {
-  return { movie: '电影', tv: '剧集', music: '音乐' }[t] || t
-}
-function sourceBadge(s: string) {
-  return { tmdb: 'TMDB', douban: '豆瓣', musicbrainz: 'MB' }[s] || s
-}
 // 卡片点击 → 进入媒体详情页（对标 MoviePilot），不再跳外站。
 function openMediaDetail(m: MediaInfo) {
   router.push({ path: '/media-detail', query: { source: m.source, id: m.source_id } })
@@ -325,7 +186,6 @@ onUnmounted(() => {
   torrentAbort?.abort()
   torrentAbort = null
 })
-
 </script>
 
 <template>
@@ -385,301 +245,50 @@ onUnmounted(() => {
       <el-button size="small" @click="search">重试</el-button>
     </div>
 
-    <template v-else-if="mode === 'torrent'">
-      <!-- 单站失败折叠提示（聚合容错：失败不影响已返回的结果） -->
-      <div v-if="failedSites.length" class="fail-bar glass">
-        <button class="fail-toggle" @click="showFailed = !showFailed">
-          <span class="warn">⚠ {{ failedSites.length }} 个站点搜索失败</span>
-          <span class="caret">{{ showFailed ? '收起' : '展开' }}</span>
-        </button>
-        <ul v-if="showFailed" class="fail-list">
-          <li v-for="f in failedSites" :key="f.site_id">
-            <strong>{{ f.site_name }}</strong>
-            <span class="text-muted">{{ f.error }}</span>
-          </li>
-        </ul>
-      </div>
-
-      <!-- 种子结果表 -->
-      <!-- 流式：有结果即显；仅空结果时全卡 loading，避免遮罩挡住「搜出即显」 -->
-      <p v-if="loading && mode === 'torrent'" class="stream-progress text-muted">
-        搜索中… 已返回 {{ streamDoneSites }} / {{ scopeSiteCount }} 站
-        <template v-if="rows.length"> · 命中 {{ rows.length }} 条</template>
-      </p>
-      <SearchFilterBar
-        v-if="mode === 'torrent' && rows.length"
-        :filter="filter"
-        :sort="sort"
-        :options="options"
-        :active-tags="activeTags"
-        :has-active="hasActive"
-        :result-count="filtered.length"
-        :total-count="rows.length"
-        :remove-filter="removeFilter"
-        :clear-all="clearAll"
-      />
-      <div v-loading="loading && !rows.length" class="card glass">
-        <el-table
-          v-if="visibleRows.length"
-          :data="visibleRows"
-          style="width: 100%"
-          :row-style="{ background: 'transparent' }"
-        >
-          <el-table-column label="站点" width="120">
-            <template #default="{ row }">
-              <span class="site-tag">{{ row.site_name }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="标题" min-width="280" show-overflow-tooltip>
-            <template #default="{ row }">
-              <div class="t-title">{{ row.title }}</div>
-              <div v-if="row.subtitle" class="t-sub text-muted">{{ row.subtitle }}</div>
-              <div v-if="row.promo || row.tags?.length" class="t-tags">
-                <span v-if="row.promo" class="ttag promo" :class="`tone-${row.promo.tone}`">{{ row.promo.text }}</span>
-                <span v-for="tag in row.tags" :key="tag.label" class="ttag" :class="`tone-${tag.tone}`">{{ tag.label }}</span>
-              </div>
-            </template>
-          </el-table-column>
-          <el-table-column prop="size" label="大小" width="90" />
-          <el-table-column prop="seeders" label="做种" width="90" align="right">
-            <template #default="{ row }">
-              <span class="num up">↑ {{ row.seeders }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column prop="leechers" label="吸血" width="90" align="right">
-            <template #default="{ row }">
-              <span class="num">↓ {{ row.leechers }}</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="Free" width="70" align="center">
-            <template #default="{ row }">
-              <span v-if="row.free" class="chip free">FREE</span>
-              <span v-else class="text-muted">—</span>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="160" fixed="right">
-            <template #default="{ row }">
-              <el-button size="small" type="primary" @click="startPush(row as SearchRow)">下载</el-button>
-              <el-button size="small" @click="openTorrentDetail(row as SearchRow)">详情</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-        <div v-if="filtered.length > visibleRows.length" class="row-cap">
-          已显示前 {{ visibleRows.length }} 条 · 筛选后 {{ filtered.length }} 条（共 {{ rows.length }} 条） ·
-          <el-button link type="primary" @click="showAll = true">显示全部</el-button>
-        </div>
-        <div v-else-if="showAll && filtered.length > MAX_ROWS" class="row-cap">
-          筛选后 {{ filtered.length }} 条（共 {{ rows.length }} 条） ·
-          <el-button link type="primary" @click="showAll = false">收起</el-button>
-        </div>
-
-        <!-- 空态：区分「未搜」/「搜了无果」/「筛选无结果」 -->
-        <EmptyState
-          v-else-if="!loading"
-          :icon="searched ? (hasActive ? '🔎' : '🔍') : '🌱'"
-          :title="searched ? (hasActive ? '筛选后无结果' : '没有找到相关种子') : '跨站搜索种子'"
-          :description="searched ? (hasActive ? '当前筛选条件太严格，试试清除部分筛选' : '试试更换关键词，或切换上方的分类筛选') : '输入关键词，聚合所有已登录站点的资源'"
-        />
-      </div>
-    </template>
+    <TorrentResultsTable
+      v-else-if="mode === 'torrent'"
+      ref="resultsTable"
+      :filter="filter"
+      :enriched-rows="enrichedRows"
+      :results="results"
+      :loading="loading"
+      :searched="searched"
+      :scope-site-count="scopeSiteCount"
+      @start-push="startPush"
+      @open-detail="openTorrentDetail"
+    />
 
     <!-- 影视模式：海报卡片 -->
-    <template v-else>
-      <div v-loading="loading" class="grid">
-        <div
-          v-for="(m, i) in mediaResults"
-          :key="i"
-          class="glass glass-hover mcard clickable"
-          @click="openMediaDetail(m)"
-        >
-          <div class="poster">
-            <MediaPoster :url="m.poster_url" :kind="m.type" />
-            <span class="src">{{ sourceBadge(m.source) }}</span>
-          </div>
-          <div class="meta">
-            <div class="mtitle">{{ m.title }}</div>
-            <div class="sub">
-              <span class="badge">{{ typeBadge(m.type) }}</span>
-              <span v-if="m.year" class="year">{{ m.year }}</span>
-              <span v-if="m.rating" class="rating">⭐ {{ m.rating.toFixed(1) }}</span>
-            </div>
-            <div v-if="m.overview" class="overview text-muted">{{ m.overview }}</div>
-          </div>
-        </div>
-      </div>
-      <EmptyState
-        v-if="!mediaResults.length && !loading"
-        icon="🎬"
-        title="搜索影视"
-        description="输入关键字查找影视元数据、海报与评分"
-      />
-    </template>
+    <MediaResultsGrid
+      v-else
+      :results="mediaResults"
+      :loading="loading"
+      @open="openMediaDetail"
+    />
 
-    <!-- 确认下载（完善信息 + 视口居中） -->
-    <el-dialog
+    <SearchPushDialog
       v-model="pushVisible"
-      width="min(520px, 94vw)"
-      append-to-body
-      align-center
-      class="search-push-dialog"
-      @closed="closePush"
-    >
-      <template #header>
-        <div class="sp-header">
-          <div class="sp-title-main">确认下载</div>
-          <div v-if="pushSubtitle" class="sp-title-sub text-muted">{{ pushSubtitle }}</div>
-        </div>
-      </template>
+      v-model:selected-dl="selectedDl"
+      v-model:selected-category="selectedCategory"
+      v-model:save-path="savePath"
+      v-model:show-advanced="showAdvanced"
+      v-model:paused="paused"
+      :row="pushRow"
+      :subtitle="pushSubtitle"
+      :downloaders="pushDownloaders"
+      :categories="pushCategories"
+      :loading="pushLoading"
+      :pushed-dl-name="pushedDlName"
+      @confirm="confirmPush"
+      @goto-downloader-tasks="gotoDownloaderTasks"
+      @close="closePush"
+    />
 
-      <div v-if="pushedDlName" class="sp-ok">
-        <p>已推送到 <b>{{ pushedDlName }}</b></p>
-        <div class="text-muted small">可前往下载器查看任务进度。</div>
-        <div class="sp-actions">
-          <el-button type="primary" @click="gotoDownloaderTasks">查看任务</el-button>
-          <el-button @click="closePush">关闭</el-button>
-        </div>
-      </div>
-
-      <div v-else v-loading="pushLoading" class="sp-body">
-        <div v-if="pushRow" class="sp-meta">
-          <div class="sp-t-title" :title="pushRow.title">
-            {{ pushRow.title }}
-            <span class="up">↑{{ pushRow.seeders ?? 0 }}</span>
-            <span class="down">↓{{ pushRow.leechers ?? 0 }}</span>
-          </div>
-          <div v-if="pushRow.subtitle" class="sp-t-sub text-muted" :title="pushRow.subtitle">
-            {{ pushRow.subtitle }}
-          </div>
-          <div class="sp-chips">
-            <span v-if="formatTorrentSize(pushRow.size)" class="sp-size">{{ formatTorrentSize(pushRow.size) }}</span>
-            <span v-if="pushRow.free" class="sp-free">FREE</span>
-            <span v-if="pushRow.site_name" class="sp-site text-muted">{{ pushRow.site_name }}</span>
-          </div>
-        </div>
-
-        <div class="sp-fields">
-          <div class="sp-field">
-            <label>下载器</label>
-            <el-select v-model="selectedDl" placeholder="选择下载器" style="width: 100%">
-              <el-option
-                v-for="d in downloaders"
-                :key="d.id"
-                :label="`${d.name}${d.is_default ? '（默认）' : ''} · ${dlTypeLabel[d.type] ?? d.type}`"
-                :value="d.id"
-              />
-            </el-select>
-          </div>
-          <div class="sp-field">
-            <label>保存目录</label>
-            <el-select
-              v-model="selectedCategory"
-              clearable
-              filterable
-              allow-create
-              default-first-option
-              placeholder="自动（下载器默认）"
-              style="width: 100%"
-            >
-              <el-option label="自动（下载器默认）" value="" />
-              <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
-            </el-select>
-          </div>
-        </div>
-
-        <button type="button" class="sp-adv-toggle" @click="showAdvanced = !showAdvanced">
-          {{ showAdvanced ? '▾ 收起高级选项' : '▸ 显示高级选项' }}
-        </button>
-        <div v-if="showAdvanced" class="sp-advanced">
-          <div class="sp-field">
-            <label>自定义保存路径</label>
-            <el-input v-model="savePath" placeholder="留空则用分类/下载器默认路径" clearable />
-          </div>
-          <div class="sp-field row">
-            <label>添加后暂停</label>
-            <el-switch v-model="paused" />
-          </div>
-        </div>
-
-        <div v-if="!downloaders.length && !pushLoading" class="empty text-muted">请先在「下载器」添加一个</div>
-
-        <el-button
-          type="primary"
-          size="large"
-          class="sp-start"
-          :loading="pushLoading"
-          :disabled="!downloaders.length || selectedDl == null"
-          @click="confirmPush"
-        >
-          ⬇ 开始下载
-        </el-button>
-      </div>
-    </el-dialog>
-
-    <!-- 种子详情抽屉 -->
-    <el-drawer v-model="detailVisible" title="种子详情" size="50%" direction="rtl">
-      <div v-loading="detailLoading" class="detail-body">
-        <template v-if="detail">
-          <!-- 头部：海报 + 标题/副标题 + 规格彩签 + 下载操作 -->
-          <div class="detail-head glass">
-            <div v-if="detail.poster_url" class="dposter"><MediaPoster :url="detail.poster_url" kind="movie" /></div>
-            <div class="meta">
-              <h3 class="dt-title">{{ detail.title }}</h3>
-              <div v-if="detail.subtitle" class="dt-sub text-muted">{{ detail.subtitle }}</div>
-              <div class="specs">
-                <span v-if="detail.category" class="chip cat">{{ detail.category }}</span>
-                <span v-if="detail.resolution" class="chip res">{{ detail.resolution }}</span>
-                <span v-if="detail.codec" class="chip codec">{{ detail.codec }}</span>
-                <span v-if="detail.source" class="chip src">{{ detail.source }}</span>
-                <span v-if="detail.size" class="chip">{{ detail.size }}</span>
-                <span v-if="detail.seeders !== undefined" class="chip seed">↑ {{ detail.seeders }}</span>
-                <a
-                  v-if="detail.imdb_id"
-                  :href="imdbUrl(detail.imdb_id)"
-                  target="_blank"
-                  rel="noopener"
-                  class="chip imdb"
-                >{{ detail.imdb_id }}</a>
-              </div>
-              <div v-if="detail.download_url" class="dl-row">
-                <el-button type="primary" @click="openDl">⬇ 下载</el-button>
-                <el-button @click="copyDl">复制链接</el-button>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="detail.screenshots?.length" class="card glass">
-            <div class="sec-title">截图 <span class="text-muted">({{ detail.screenshots.length }})</span></div>
-            <div class="shots">
-              <a
-                v-for="(s, i) in detail.screenshots"
-                :key="i"
-                :href="safeUrl(s)"
-                target="_blank"
-                rel="noopener"
-                class="shot"
-              ><MediaPoster :url="s" kind="movie" /></a>
-            </div>
-          </div>
-
-          <div v-if="detail.description" class="card glass">
-            <div class="sec-title">简介</div>
-            <div class="desc" v-html="sanitizeHtml(detail.description)"></div>
-          </div>
-
-          <div v-if="detail.mediainfo" class="card glass">
-            <div class="sec-title">MediaInfo</div>
-            <pre class="mediainfo">{{ detail.mediainfo }}</pre>
-          </div>
-
-          <div v-if="detail.file_list?.length" class="card glass">
-            <div class="sec-title">文件列表 <span class="text-muted">({{ detail.file_list.length }})</span></div>
-            <div class="file-list">
-              <div v-for="(f, i) in detail.file_list" :key="i" class="file-row"><span class="file-ic">📄</span>{{ f }}</div>
-            </div>
-          </div>
-        </template>
-      </div>
-    </el-drawer>
+    <TorrentDetailDrawer
+      v-model:visible="detailVisible"
+      :detail="detail"
+      :loading="detailLoading"
+    />
   </div>
 </template>
 
@@ -739,73 +348,6 @@ onUnmounted(() => {
 .scope-line a:hover {
   text-decoration: underline;
 }
-.card {
-  padding: 18px;
-  min-height: 200px;
-}
-.site-tag {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: rgba(108, 92, 231, 0.16);
-  color: var(--pt-primary, #6c5ce7);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.t-title {
-  font-weight: 600;
-  line-height: 1.4;
-}
-.t-sub {
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.t-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-top: 3px;
-}
-.ttag {
-  display: inline-block;
-  padding: 0 5px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 600;
-  color: #fff;
-  line-height: 1.5;
-}
-.ttag.tone-res { background: #7b1fa2; }
-.ttag.tone-src { background: #8000ff; }
-.ttag.tone-codec { background: #ff9800; }
-.ttag.tone-hdr { background: #e91e63; }
-.ttag.tone-audio { background: #00897b; }
-.ttag.tone-lang { background: #5c6bc0; }
-.ttag.tone-misc { background: #607d8b; }
-.ttag.promo { background: var(--pt-success, #2ecc71); }
-.ttag.promo.tone-half { background: #ff5722; }
-.ttag.promo.tone-double { background: #9c27b0; }
-.num {
-  font-variant-numeric: tabular-nums;
-}
-.num.up {
-  color: var(--pt-success, #2ecc71);
-  font-weight: 600;
-}
-.chip {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--surface-muted);
-  font-size: 11px;
-  margin: 2px;
-}
-.chip.free {
-  background: rgba(46, 204, 113, 0.18);
-  color: var(--pt-success, #2ecc71);
-  font-weight: 600;
-}
 .empty {
   padding: 40px;
   text-align: center;
@@ -819,296 +361,6 @@ onUnmounted(() => {
 .err-text {
   color: var(--pt-danger);
   font-size: 14px;
-}
-.fail-bar {
-  padding: 10px 16px;
-}
-.fail-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--text-strong);
-}
-.warn {
-  color: var(--pt-warn, #f39c12);
-  font-weight: 600;
-}
-.caret {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.fail-list {
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.fail-list li {
-  font-size: 13px;
-  display: flex;
-  gap: 8px;
-}
-.push-target {
-  margin-bottom: 16px;
-}
-.push-success {
-  text-align: center;
-  padding: 16px 0;
-}
-.push-ok {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--pt-success, #2ecc71);
-  margin-bottom: 6px;
-}
-/* 影视卡片网格 */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  min-height: 120px;
-}
-.mcard {
-  padding: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.mcard.clickable {
-  cursor: pointer;
-}
-.mcard .poster {
-  position: relative;
-  aspect-ratio: 2/3;
-  background: var(--surface-muted);
-}
-.src {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 2px 8px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  font-size: 11px;
-}
-.meta {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.mtitle {
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.3;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.sub {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-}
-.badge {
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.3), rgba(66, 133, 244, 0.2));
-}
-.rating {
-  color: var(--pt-warn, #f39c12);
-}
-.overview {
-  font-size: 12px;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-/* 种子详情抽屉 */
-.detail-body {
-  padding: 0 2px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.detail-head {
-  display: flex;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 12px;
-}
-.dposter {
-  width: 120px;
-  height: 170px;
-  border-radius: 10px;
-  overflow: hidden;
-  flex: none;
-  background: var(--surface-muted);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-}
-.detail-head .meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.dt-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.35;
-  word-break: break-word;
-}
-.dt-sub {
-  font-size: 12px;
-  line-height: 1.4;
-}
-.specs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.specs .chip {
-  margin: 0;
-  font-weight: 600;
-}
-.specs .chip.cat {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.3), rgba(66, 133, 244, 0.2));
-}
-.specs .chip.res {
-  background: rgba(66, 133, 244, 0.18);
-  color: #4285f4;
-}
-.specs .chip.codec {
-  background: rgba(156, 39, 176, 0.16);
-  color: #9c27b0;
-}
-.specs .chip.src {
-  background: rgba(0, 150, 136, 0.16);
-  color: #009688;
-}
-.specs .chip.seed {
-  background: rgba(46, 204, 113, 0.18);
-  color: var(--pt-success, #2ecc71);
-}
-.specs .chip.imdb {
-  background: rgba(247, 197, 41, 0.18);
-  color: #c6a000;
-  text-decoration: none;
-  cursor: pointer;
-}
-.specs .chip.imdb:hover {
-  filter: brightness(1.05);
-}
-.dl-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-.card {
-  padding: 16px;
-  border-radius: 12px;
-}
-.sec-title {
-  font-weight: 700;
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: var(--text-strong);
-}
-.shots {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px;
-}
-.shot {
-  display: block;
-  aspect-ratio: 16/9;
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--surface-muted);
-  transition: transform 0.15s;
-}
-.shot:hover {
-  transform: scale(1.02);
-}
-.desc {
-  line-height: 1.7;
-  font-size: 14px;
-  max-height: 520px;
-  overflow: auto;
-  padding-right: 4px;
-  word-break: break-word;
-}
-.desc :deep(img) {
-  max-width: 100%;
-  height: auto;
-  border-radius: 6px;
-  margin: 4px 0;
-}
-.desc :deep(a) {
-  color: var(--pt-primary, #6c5ce7);
-}
-.desc :deep(table) {
-  max-width: 100%;
-  border-collapse: collapse;
-}
-.mediainfo {
-  background: rgba(0, 0, 0, 0.78);
-  color: #d4d4d4;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  font-family: ui-monospace, 'Cascadia Code', monospace;
-  white-space: pre-wrap;
-  word-break: break-all;
-  max-height: 320px;
-  overflow: auto;
-}
-.file-list {
-  max-height: 280px;
-  overflow: auto;
-  font-size: 12px;
-  font-family: ui-monospace, monospace;
-  border-radius: 8px;
-  background: var(--surface-muted);
-}
-.file-row {
-  padding: 5px 10px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  word-break: break-all;
-}
-.file-row:last-child {
-  border-bottom: none;
-}
-.file-ic {
-  flex: none;
-  opacity: 0.6;
-}
-:deep(.el-table),
-:deep(.el-table tr),
-:deep(.el-table td),
-:deep(.el-table th) {
-  background-color: transparent !important;
-}
-:deep(.el-table) {
-  --el-table-border-color: rgba(0, 0, 0, 0.06);
 }
 @media (max-width: 720px) {
   .head,
@@ -1124,51 +376,4 @@ onUnmounted(() => {
     width: 100%;
   }
 }
-.row-cap { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); color: var(--text-muted); }
-
-.stream-progress {
-  margin: 0 0 10px;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-/* 搜索页确认下载弹窗 */
-.sp-header { min-width: 0; }
-.sp-title-main { font-size: 16px; font-weight: 700; line-height: 1.3; }
-.sp-title-sub { margin-top: 2px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sp-body { display: flex; flex-direction: column; gap: 14px; }
-.sp-meta { display: flex; flex-direction: column; gap: 6px; }
-.sp-t-title { font-size: 13px; font-weight: 600; line-height: 1.45; word-break: break-word; }
-.sp-t-title .up { color: var(--pt-success, #2ecc71); margin-left: 8px; font-size: 12px; font-weight: 700; }
-.sp-t-title .down { color: #f39c12; margin-left: 6px; font-size: 12px; font-weight: 700; }
-.sp-t-sub {
-  font-size: 12px; line-height: 1.45; color: var(--text-muted);
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
-}
-.sp-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.sp-size {
-  display: inline-block; padding: 1px 8px; border-radius: 4px;
-  background: rgba(108, 92, 231, 0.14); color: var(--pt-primary, #6c5ce7); font-size: 11px; font-weight: 700;
-}
-.sp-free {
-  display: inline-block; padding: 1px 8px; border-radius: 999px;
-  background: rgba(46, 204, 113, 0.18); color: var(--pt-success, #2ecc71); font-size: 11px; font-weight: 700;
-}
-.sp-site { font-size: 12px; }
-.sp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-@media (max-width: 520px) { .sp-fields { grid-template-columns: 1fr; } }
-.sp-field label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-.sp-field.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.sp-field.row label { margin: 0; }
-.sp-adv-toggle {
-  align-self: flex-start; background: transparent; border: 0;
-  color: var(--pt-primary, #6c5ce7); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0;
-}
-.sp-advanced {
-  display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border-radius: 10px;
-  background: var(--surface-muted, rgba(0,0,0,0.03));
-}
-.sp-start { width: 100%; font-weight: 700; }
-.sp-ok p { margin: 0 0 8px; }
-.sp-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 </style>

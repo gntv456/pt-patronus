@@ -45,23 +45,17 @@ const status = computed(() => {
   if (props.target.last_online) return { cls: 'online', text: '在线' }
   return { cls: 'offline', text: '离线' }
 })
-// 磁盘百分比须与详情页同源：sum(used)/sum(total)，不能用 max(单盘 usage)——
-// 否则多盘时取最满那块，与「已用/总量」对不上（曾出现 78% 配 87.7TB/1.1PB 的矛盾）。
-const diskUsage = computed(() => {
-  const ds = props.metrics?.disks
-  if (!ds || !ds.length) return undefined
-  const total = ds.reduce((n, d) => n + (d.total || 0), 0)
-  if (!total) return undefined
-  const used = ds.reduce((n, d) => n + (d.used || 0), 0)
-  return (used / total) * 100
+// 磁盘总量须去重后再累加（btrfs子卷/ZFS dataset 报相同整盘容量会乘N倍）。
+const diskStats = computed(() => {
+  const seen = new Set<number>(); const devs = new Set<string>(); let t = 0, u = 0
+  for (const d of props.metrics?.disks ?? []) {
+    if (d.total <= 0 || devs.has(d.device || "") || seen.has(d.total)) continue
+    devs.add(d.device || ""); seen.add(d.total); t += d.total; u += d.used || 0
+  }
+  return { total: t, used: u, usage: t ? (u / t) * 100 : undefined, empty: !t }
 })
-const diskDetail = computed(() => {
-  const ds = props.metrics?.disks
-  if (!ds || !ds.length) return ''
-  const total = ds.reduce((n, d) => n + (d.total || 0), 0)
-  const used = ds.reduce((n, d) => n + (d.used || 0), 0)
-  return total ? `已用 ${fmtBytes(used)} / 共 ${fmtBytes(total)}` : ''
-})
+const diskUsage = computed(() => diskStats.value.usage)
+const diskDetail = computed(() => { const s = diskStats.value; return s.empty ? "" : `已用 ${fmtBytes(s.used)} / 共 ${fmtBytes(s.total)}` })
 const lastCheck = computed(() =>
   props.target.last_checked_at ? new Date(props.target.last_checked_at).toLocaleTimeString() : '-',
 )

@@ -24,18 +24,17 @@ function seriesOf(pick: (m: Metrics) => number | undefined): number[] {
 
 const cpuSeries = computed(() => seriesOf((m) => m.cpu_usage))
 const memSeries = computed(() => seriesOf((m) => m.mem_usage))
-// 存储卡百分比须与「已用/总量」同源：用 sum(used)/sum(total)，不能用 max(单盘 usage)——
-// 否则多盘时百分比取最满那块，与累加出的总量对不上（曾出现 78% 配 87.7TB/1.1PB 的矛盾）。
-const diskUsage = computed(() => {
-  const ds = latest.value?.disks
-  if (!ds || !ds.length) return undefined
-  const total = ds.reduce((n, d) => n + (d.total || 0), 0)
-  if (!total) return undefined
-  const used = ds.reduce((n, d) => n + (d.used || 0), 0)
-  return (used / total) * 100
+// 磁盘总量须去重后再累加（btrfs子卷/ZFS dataset 报相同整盘容量会乘N倍）。
+const diskStats = computed(() => {
+  const seen = new Set<number>(); const devs = new Set<string>()
+  let t = 0, u = 0
+  for (const d of latest.value?.disks ?? []) {
+    if (d.total <= 0 || devs.has(d.device || "") || seen.has(d.total)) continue
+    devs.add(d.device || ""); seen.add(d.total); t += d.total; u += d.used || 0
+  }
+  return { total: t, used: u, usage: t ? (u / t) * 100 : undefined }
 })
-const diskTotal = computed(() => (latest.value?.disks ?? []).reduce((n, d) => n + (d.total || 0), 0))
-const diskUsed = computed(() => (latest.value?.disks ?? []).reduce((n, d) => n + (d.used || 0), 0))
+const diskUsage = computed(() => diskStats.value.usage); const diskTotal = computed(() => diskStats.value.total); const diskUsed = computed(() => diskStats.value.used)
 const hottestTemp = computed(() => {
   const ts = latest.value?.temps
   return ts && ts.length ? Math.max(...ts.map((t) => t.temp)) : undefined

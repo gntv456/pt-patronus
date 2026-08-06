@@ -271,7 +271,8 @@ func skipDiskMount(mount string) bool {
 // parseDF 解析 df -B1 输出：Filesystem 1B-blocks Used Avail Use% Mountpoint。
 func parseDF(raw string) []DiskMetric {
 	var disks []DiskMetric
-	seen := map[string]bool{}
+	seenSrc := map[string]bool{}   // 块设备源去重（/dev/sda1 的 bind/subvol 只计一次）
+	seenPool := map[string]bool{}  // ZFS 池去重（tank/data、tank/media 共享 tank 物理池）
 	for _, line := range strings.Split(raw, "\n") {
 		f := strings.Fields(line)
 		if len(f) < 6 || f[0] == "Filesystem" || !strings.HasSuffix(f[4], "%") {
@@ -282,18 +283,33 @@ func parseDF(raw string) []DiskMetric {
 		if virtualDFSources[src] {
 			continue
 		}
-		// 按 Filesystem(source)去重：btrfs/zfs 同一文件系统的子卷/快照在 df 里各自一行，
-		// 且每行都报告整池容量，全累加会把同一物理池重复计入 N 倍（飞牛 btrfs 实测 22 倍成 1.1PB）。
-		if strings.HasPrefix(src, "/dev/") {
-			if seen[src] {
+		// 跳过网络文件系统（NFS/SMB/CIFS via df）：非本机存储，累加会造成重复或虚高。
+		if isNetworkFS(src) {
+			continue
+		}
+		// 跳过容器挂载路径（非块设备挂在容器路径下也跳过，防重复）。
+		if skipDiskMount(mount) {
+			continue
+		}
+		// ZFS dataset（src 形如 tank/data）：同一物理池的多个 dataset 共享容量，
+		// 按 pool 名（首个 / 之前部分）去重，只计第一个出现的 dataset。
+		if pool := zfsPool(src); pool != "" {
+			if seenPool[pool] {
 				continue
 			}
-			seen[src] = true
-			// 同设备若先出现在 docker 挂载点、后出现在正常挂载点，仍只计一次（seen 已标记）。
-			// 展示名优先非容器路径：容器路径先到时仍计入容量，避免「盘只 bind 进 docker」被丢。
-		} else if skipDiskMount(mount) {
-			// 非块设备（NFS 等）挂在容器路径下也跳过，防重复。
-			continue
+			seenPool[pool] = true
+		} else if strings.HasPrefix(src, "/dev/") {
+			// 块设备：按 src 去重（btrfs 子卷/bind mount 同一 /dev/sda1 只计一次）。
+			if seenSrc[src] {
+				continue
+			}
+			seenSrc[src] = true
+		} else {
+			// 其他源（fuse.gvfs 等）：按 src 去重。
+			if seenSrc[src] {
+				continue
+			}
+			seenSrc[src] = true
 		}
 		total, _ := strconv.ParseUint(f[1], 10, 64)
 		used, _ := strconv.ParseUint(f[2], 10, 64)
@@ -303,7 +319,32 @@ func parseDF(raw string) []DiskMetric {
 	return disks
 }
 
-// parseNetDev 解析 /proc/net/dev，累加非 lo 接口的 rx/tx 字节。
+// isNetworkFS 判断是否网络文件系统（NFS/SMB/CIFS 等）：非本机物理存储，
+// 累加会造成与远程重复或虚高，默认跳过。
+func isNetworkFS(src string) bool {
+	s := strings.ToLower(src)
+	switch s {
+	case "nfs", "nfs4", "cifs", "smbfs", "smb2", "smb3",
+		"fuse.sshfs", "fuse.glusterfs", "fuse.ceph", "9p",
+		"afd", "ahafs", "autofs":
+		return true
+	}
+	// colon in non-/dev source = host:path (NFS classic syntax like 192.168.1.1:/data)
+	if !strings.HasPrefix(src, "/") && strings.Contains(src, ":") {
+		return true
+	}
+	return false
+}
+
+// zfsPool 从 src（如 tank/data、tank/media）提取 ZFS 池名（tank）;
+// src 不含 / 或为 /dev/ 块设备时返回空。
+func zfsPool(src string) string {
+	if strings.HasPrefix(src, "/dev/") || !strings.Contains(src, "/") {
+		return ""
+	}
+	return src[:strings.IndexByte(src, '/')]
+}
+
 func parseNetDev(raw string) (rx, tx uint64) {
 	for _, line := range strings.Split(raw, "\n") {
 		idx := strings.Index(line, ":")

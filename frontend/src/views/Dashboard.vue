@@ -20,7 +20,7 @@ import DashboardTrendSection from '@/components/dashboard/DashboardTrendSection.
 import DashboardHealthStrip from '@/components/dashboard/DashboardHealthStrip.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
-const { overview, trendDays, loading, loadError, load, allSites } = useDashboardData()
+const { overview, trendDays, trendLoading, changeTrendDays, latestUpdatedText, loading, loadError, load, allSites } = useDashboardData()
 const { syncing, syncTotal, syncDone, syncStats } = useDashboardSync()
 const {
   refreshing, loadCached, refreshConnectivity,
@@ -130,7 +130,7 @@ onMounted(() => {
               <GlassIcon name="download" from="#2563eb" to="#0f766e" :size="16" class="btn-ico" />
               <span>导出图片</span>
             </el-button>
-            <el-button type="primary" :loading="syncing" @click="syncStats">
+            <el-button type="primary" :loading="syncing" @click="() => syncStats()">
               <GlassIcon name="refresh" from="#ffffff" to="#dbeafe" :size="16" class="btn-ico" />
               <span>{{ syncing ? (syncTotal ? `刷新中 ${syncDone}/${syncTotal}` : '准备刷新') : '刷新数据' }}</span>
             </el-button>

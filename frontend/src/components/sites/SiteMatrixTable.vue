@@ -29,6 +29,7 @@ const emit = defineEmits<{
   (e: 'history', row: SiteStatItem): void
   (e: 'command', command: string, row: SiteStatItem): void
   (e: 'reason', row: SiteStatItem): void
+  (e: 'create'): void
 }>()
 
 </script>
@@ -41,7 +42,6 @@ const emit = defineEmits<{
     :class="`is-${layout}`"
     style="width: 100%"
     empty-text="暂无匹配站点统计"
-    :row-class-name="rowClassName"
     :default-sort="{ prop: 'updated_at', order: 'descending' }"
     @sort-change="emit('sort-change', $event)"
     row-key="site_id"

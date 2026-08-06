@@ -30,7 +30,7 @@ export function useDeploy(deps: {
   enterDeployWorkspace: () => void
 }) {
   const deployVisible = ref(false)
-  const deployConfigId = ref<number | null>(null)
+  const deployConfigId = ref<number | undefined>(undefined)
   const deployForm = ref<DeployForm>({
     targetIds: [],
     repoUrl: '',
@@ -60,7 +60,7 @@ export function useDeploy(deps: {
     deployVisible.value = true
   }
 
-  function loadDeployProfile(id: number | null) {
+  function loadDeployProfile(id: number | undefined) {
     const profile = deployProfiles.value.find((p) => p.id === id)
     if (!profile) return
     try {

@@ -30,7 +30,12 @@ const summary = computed(() => data.value?.summary)
 
 // 筛选逻辑抽到 composable
 import { useSaveptFilters } from "@/composables/useSaveptFilters"
-const { filters, collapsedYears, filteredSites, groupedSites, isYearGroupCollapsed, toggleYearGroup, clearFilters } = useSaveptFilters(sites as any)
+const { filters, collapsedYears, filteredSites, groupedSites, isYearGroupCollapsed, toggleYearGroup, clearFilters, formatYearLabel, isUnknownYear, formatFetchedAt } = useSaveptFilters(sites as any)
+
+const rootRef = ref<HTMLElement | null>(null)
+let scrollTarget: Window | HTMLElement = window
+const showBackToTop = ref(false)
+const backTopStyle = ref<Record<string, string>>({})
 
 let messageTimer: ReturnType<typeof setTimeout> | null = null
 function clearMessageTimer() {
@@ -168,7 +173,7 @@ onBeforeUnmount(() => {
       @refresh="refresh"
     />
 
-    <SaveptNotices :alerts="data?.alerts" :sites="sites" />
+    <SaveptNotices :alerts="data?.alerts ?? []" :sites="sites" />
 
     <!-- ═══ toast & 降级提示 ═══ -->
     <Transition name="spt-slide">

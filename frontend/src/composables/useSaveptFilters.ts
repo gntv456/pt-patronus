@@ -1,5 +1,5 @@
-import { computed, reactive, type Ref } from 'vue'
-import type { SiteCardData } from '@/utils/savept'
+import { computed, reactive, ref, type Ref } from 'vue'
+import type { SaveptSiteCard as SiteCardData } from '@/api/savept'
 import { getStatusMeta, getMpStatusMeta, buildSiteKeywords } from '@/utils/savept'
 import { siteTypeLabel } from '@/utils/savept'
 
@@ -81,5 +81,5 @@ function clearFilters() {
 }
 
 // ── toast ──
-  return { filters, collapsedYears, filteredSites, groupedSites, isYearGroupCollapsed, toggleYearGroup, clearFilters }
+  return { filters, collapsedYears, filteredSites, groupedSites, isYearGroupCollapsed, toggleYearGroup, clearFilters, formatYearLabel, isUnknownYear, formatFetchedAt }
 }

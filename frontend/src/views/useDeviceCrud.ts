@@ -14,15 +14,16 @@ import { showAgentSecret } from '@/utils/agent-secret'
 import type { OpsCredential } from '@/api/monitor'
 
 type MonitorTab = 'host' | 'nas' | 'camera' | 'http' | 'tcp' | 'process' | 'script'
+export type Workspace = 'asset' | 'execute' | 'monitor' | 'deploy'
 
 export function useDeviceCrud(
   auth: { isAdmin: boolean },
   deps: {
-    activeWorkspace: Ref<string>
+    activeWorkspace: Ref<Workspace>
     activeTab: Ref<MonitorTab>
     credentials: Ref<OpsCredential[]>
     reload: () => Promise<void>
-    setWorkspace: (w: string) => void
+    setWorkspace: (w: Workspace) => void
   },
 ) {
   const formVisible = ref(false)

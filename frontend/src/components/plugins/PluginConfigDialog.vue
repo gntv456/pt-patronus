@@ -41,7 +41,7 @@ const emit = defineEmits<{
         v-if="titledGroups.length"
         :model-value="expanded"
         class="config-collapse"
-        @update:model-value="emit('update:expanded', $event)"
+        @update:model-value="emit('update:expanded', $event as string[])"
       >
         <el-collapse-item v-for="g in titledGroups" :key="g.name" :name="g.name">
           <template #title><span class="config-collapse-title">{{ g.name }}</span></template>

@@ -124,7 +124,7 @@ const {
             <div class="tr-block">
               <span class="tr-label">命中层级（{{ testResult.levels.length }}）</span>
               <div class="levels">
-                <el-tag v-for="(lv, i) in testResult.levels" :key="i" type="success" size="small">{{ (lv as FilterTorrent).title }}</el-tag>
+                <el-tag v-for="(lv, i) in testResult.levels" :key="i" type="success" size="small">{{ (lv as unknown as FilterTorrent).title }}</el-tag>
               </div>
             </div>
             <div class="tr-block">

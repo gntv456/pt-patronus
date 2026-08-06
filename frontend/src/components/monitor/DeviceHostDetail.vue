@@ -13,7 +13,7 @@ import {
 defineProps<{
   target: MonitorTarget
   latest: Metrics | null
-  deviceID: string
+  deviceId: string
   collectTime: string
   cpuSeries: number[]
   memSeries: number[]
@@ -35,7 +35,7 @@ const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
     <section class="hero-card hero-primary">
       <span class="hero-label">设备名称</span>
       <strong>{{ target.name || '-' }}</strong>
-      <div class="hero-line">设备ID {{ deviceID }}</div>
+      <div class="hero-line">设备ID {{ deviceId }}</div>
       <div class="hero-tags">
         <span>{{ target.host || '本机' }}</span>
         <span>{{ protocolName(resolvedProtocol) }}</span>

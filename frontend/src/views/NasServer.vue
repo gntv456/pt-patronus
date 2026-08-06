@@ -166,7 +166,7 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); closeTerminalSoc
     <NasOpsGrid v-if="!error" :active-workspace="activeWorkspace" :host-count="hostCount" :monitor-count="monitorCount"
       :ssh-target-count="sshTargets.length" :credential-count="credentials.length" :config-count="configCount"
       :active-alert-count="activeAlertCount"
-      @workspace="setWorkspace" @execute="focusExecPanel" @go="go" @deploy="openDeployPanel"
+      @workspace="(w: string) => setWorkspace(w as Workspace)" @execute="focusExecPanel" @go="go" @deploy="openDeployPanel"
       @credentials="openCredentialCenter" @configs="openConfigCenter" @monitor="openMonitorTab" />
 
     <NasExecPanel v-if="!error && activeWorkspace === 'execute'" :exec-target-ids="execTargetIds"
@@ -212,7 +212,7 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); closeTerminalSoc
     <NasDeployDrawer :visible="deployVisible" :config-id="deployConfigId" :form="deployForm" :profiles="deployProfiles"
       :runs="deployRuns" :steps="deploySteps" :ssh-targets="sshTargets" :deploy-command="buildDeployCommand()"
       @update:visible="deployVisible = $event" @update:config-id="deployConfigId = $event"
-      @load-profile="loadDeployProfile" @save-profile="saveDeployProfile" @run="runDeployCommand" />
+      @load-profile="() => loadDeployProfile(deployConfigId)" @save-profile="saveDeployProfile" @run="runDeployCommand" />
 
     <NasTerminalDrawer :visible="terminalVisible" :target="terminalTarget" :output="terminalOutput" :input="terminalInput"
       :connected="terminalConnected" :connecting="terminalConnecting"

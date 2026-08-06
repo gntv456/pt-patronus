@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { MonitorTarget } from '@/api/monitor'
-import type { ExecLog, CommandRun } from '@/views/nasServerHelpers'
+import type { ExecLog } from '@/views/nasServerHelpers'
+import type { CommandRun } from '@/api/monitor'
 import { quickCommands } from '@/views/nasServerHelpers'
 import { targetAddr, targetState, runSourceText, runDateText, runStatusText, runStatusType } from '@/views/nasServerHelpers'
 
@@ -62,7 +63,7 @@ function onPickScriptFile() {
         <div v-if="sshTargets.length" class="target-list">
           <el-checkbox-group
             :model-value="execTargetIds"
-            @update:model-value="emit('update:execTargetIds', $event)"
+            @update:model-value="emit('update:execTargetIds', $event as number[])"
           >
             <el-checkbox v-for="t in sshTargets" :key="t.id" :value="t.id" class="target-check">
               <span class="target-main">
@@ -114,7 +115,7 @@ function onPickScriptFile() {
             :max="600"
             :step="5"
             size="small"
-            @update:model-value="emit('update:execTimeout', $event)"
+            @update:model-value="emit('update:execTimeout', Number($event))"
           />
           <span>秒超时</span>
           <el-button type="primary" :loading="execRunning" :disabled="!isAdmin" @click="emit('runBatch')">

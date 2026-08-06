@@ -5,7 +5,7 @@ import { extraMs } from './useDeviceDetail'
 defineProps<{
   target: MonitorTarget
   latest: Metrics | null
-  deviceID: string
+  deviceId: string
   statusText: string
   collectTime: string
   serviceRows: Array<{ label: string; value: string }>
@@ -26,7 +26,7 @@ function targetTypeName(type: string) {
     <section class="hero-card hero-primary">
       <span class="hero-label">监控项</span>
       <strong>{{ target.name }}</strong>
-      <div class="hero-line">设备ID {{ deviceID }}</div>
+      <div class="hero-line">设备ID {{ deviceId }}</div>
       <div class="hero-tags">
         <span>{{ targetTypeName(target.type) }}</span>
       </div>

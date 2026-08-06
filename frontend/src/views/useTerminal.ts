@@ -3,7 +3,8 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authApi } from '@/api/auth'
-import { nowTime, isSSHHost, targetAddr, type MonitorTarget } from './nasServerHelpers'
+import { nowTime, isSSHHost, targetAddr } from './nasServerHelpers'
+import type { MonitorTarget } from '@/api/monitor'
 
 export function useTerminal(auth: { isAdmin: boolean }) {
   const terminalVisible = ref(false)

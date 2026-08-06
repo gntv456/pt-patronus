@@ -73,9 +73,9 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
       v-if="enrichedRows.length"
       :filter="filter.filter"
       :sort="filter.sort"
-      :options="filter.options"
-      :active-tags="filter.activeTags"
-      :has-active="filter.hasActive"
+      :options="filter.options.value"
+      :active-tags="filter.activeTags.value"
+      :has-active="filter.hasActive.value"
       :result-count="filter.filtered.value.length"
       :total-count="enrichedRows.length"
       :remove-filter="filter.removeFilter"
@@ -122,8 +122,8 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
         </el-table-column>
         <el-table-column label="操作" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="emit('startPush', row)">下载</el-button>
-            <el-button size="small" @click="emit('openDetail', row)">详情</el-button>
+            <el-button size="small" type="primary" @click="emit('startPush', row as SearchRow)">下载</el-button>
+            <el-button size="small" @click="emit('openDetail', row as SearchRow)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>

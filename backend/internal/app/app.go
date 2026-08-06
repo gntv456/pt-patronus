@@ -3,55 +3,34 @@ package app
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
-	"strings"
-	"sync"
 	"time"
 
-	bundledDefinitions "github.com/hxpt/ptpatronus/definitions"
-	"github.com/hxpt/ptpatronus/internal/aiagent"
-	"github.com/hxpt/ptpatronus/internal/api"
-	"github.com/hxpt/ptpatronus/internal/api/v1"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/backup"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/config"
-	"github.com/hxpt/ptpatronus/internal/core/event"
-	"github.com/hxpt/ptpatronus/internal/core/module"
-	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db"
-	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
-	"github.com/hxpt/ptpatronus/internal/dirwatch"
 	"github.com/hxpt/ptpatronus/internal/downloader/manager"
-	"github.com/hxpt/ptpatronus/internal/entertainment"
 	"github.com/hxpt/ptpatronus/internal/filemanager"
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/iyuu"
-	"github.com/hxpt/ptpatronus/internal/llm"
 	"github.com/hxpt/ptpatronus/internal/mcp"
-	"github.com/hxpt/ptpatronus/internal/monitor"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
+	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/site"
-	"github.com/hxpt/ptpatronus/internal/site/assessment"
-	"github.com/hxpt/ptpatronus/internal/site/medalwall"
-	"github.com/hxpt/ptpatronus/internal/site/schemas"
 	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
-	"github.com/hxpt/ptpatronus/internal/tgbot"
-	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/workflow"
-	"github.com/hxpt/ptpatronus/internal/workflow/nodes"
 	"github.com/hxpt/ptpatronus/internal/ws"
 	"gorm.io/gorm"
 )
@@ -85,67 +64,7 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
-	registry := site.NewRegistry()
-	defsDir := os.Getenv("DEFINITIONS_DIR")
-	defsDirExplicit := defsDir != ""
-	if defsDir == "" {
-		defsDir = defaultDefinitionsDir()
-	}
-	loadSiteDefinitions(registry, defsDir, defsDirExplicit)
-	nexus := schemas.NewNexusPHP(hc)
-	registry.RegisterAdapter(nexus)
-	mteam := schemas.NewMTeam(hc)
-	registry.RegisterAdapter(mteam)
-	unit3d := schemas.NewUnit3D(hc)
-	registry.RegisterAdapter(unit3d)
-	gazelle := schemas.NewGazelle(hc)
-	registry.RegisterAdapter(gazelle)
-	luminance := schemas.NewLuminance(hc)
-	registry.RegisterAdapter(luminance)
-	gazelleJSONAPI := schemas.NewGazelleJSONAPI(hc)
-	registry.RegisterAdapter(gazelleJSONAPI)
-	// Generic HTML（兜底，多 schema 实例）：解锁 "" + 命名 HTML schema 的选择器驱动站。
-	genericHTMLs := make([]*schemas.GenericHTML, 0, 12)
-	for _, sc := range []string{"", "xbtit", "tcg", "tbsource", "filelist", "discuz", "rartracker", "cgbtsource", "meantorrent", "aidoruonline", "smallhorse"} {
-		g := schemas.NewGenericHTML(hc, sc)
-		registry.RegisterAdapter(g)
-		genericHTMLs = append(genericHTMLs, g)
-	}
-	// Avistaz 网络（JWT token API，4 站）
-	avistaz := schemas.NewAvistaz(hc)
-	registry.RegisterAdapter(avistaz)
-	// Rousi Pro（Bearer passkey API）
-	rousi := schemas.NewRousi(hc)
-	registry.RegisterAdapter(rousi)
-	// Flarum 论坛社区（invites.fun / pting.club 等 PT 论坛，JSON:API + cookie + 签到）
-	flarum := schemas.NewFlarum(hc)
-	registry.RegisterAdapter(flarum)
-	// Generic JSON（命名 JSON schema）
-	genericJSONs := make([]*schemas.GenericJSON, 0, 5)
-	for _, sc := range []string{"tnode", "yemapt", "f3nix", "tbdev", "fsm"} {
-		gj := schemas.NewGenericJSON(hc, sc)
-		registry.RegisterAdapter(gj)
-		genericJSONs = append(genericJSONs, gj)
-	}
-
-	mm := module.New()
-	mm.Register(nexus)
-	mm.Register(mteam)
-	mm.Register(unit3d)
-	mm.Register(gazelle)
-	mm.Register(luminance)
-	mm.Register(gazelleJSONAPI)
-	for _, g := range genericHTMLs {
-		mm.Register(g)
-	}
-	mm.Register(avistaz)
-	mm.Register(rousi)
-	mm.Register(flarum)
-	for _, gj := range genericJSONs {
-		mm.Register(gj)
-	}
-	bus := event.New()
-	base := chain.NewBase(mm, bus)
+	registry, bus, base, mteam := newSiteInfra(hc)
 
 	siteOp := oper.NewSiteOper(database, crypto)
 	siteCh := chain.NewSiteChain(base, siteOp, registry)
@@ -249,42 +168,7 @@ func New(cfg *config.Config) (*App, error) {
 	backupSvc := backup.New(siteOp, dlOp, registry)
 
 	// 娱乐游戏（好学：九宫格 + 魔力刮刮乐 + 勋章合成；财神：刮刮乐）
-	entReg := entertainment.NewRegistry()
-	entReg.Register("hxpt.org", entertainment.JggGame{})
-	entReg.Register("hxpt.org", entertainment.MagicScratchGame{})
-	entReg.Register("hxpt.org", entertainment.MedalSynthesisGame{})
-	for _, h := range []string{"cspt.top", "cspt.cc"} {
-		entReg.Register(h, entertainment.CsptScratchGame{})
-	}
-	// LongPT：幸运大转盘 + 每日抽奖 + 六十四卦勋章（/pt-api/v1/lucky|medals|nexus/*，纯 Cookie 鉴权）
-	entReg.Register("longpt.org", entertainment.LongPTWheelGame{})
-	entReg.Register("longpt.org", entertainment.LongPTDailyGame{})
-	entReg.Register("longpt.org", entertainment.LongPTMedalGame{})
-	// 魔力农场（通用 magic_fram.php 插件，好学 hxpt + NovaHD 共用；纯 Cookie，货币=seedbonus）
-	entReg.Register("hxpt.org", entertainment.MagicFarmGame{})
-	entReg.Register("novahd.top", entertainment.MagicFarmGame{})
-	// NovaHD：魔力值刮刮乐 + 幸运抽奖（magic_scratch.php / fortune-wheel-spin.php，纯 Cookie 鉴权）
-	entReg.Register("novahd.top", entertainment.NovaHDScratchGame{})
-	entReg.Register("novahd.top", entertainment.NovaHDLuckyGame{})
-	// 多站幸运转盘/老虎机/抽奖（批1，纯 Cookie）：CBG(藏宝阁) 转盘+老虎机、UB 转盘、PANDA+蟹黄堡 LuckyDraw 插件、March 转盘、不可躺抽奖
-	entReg.Register("cangbao.ge", entertainment.CbgWheelGame{})
-	entReg.Register("cangbao.ge", entertainment.CbgSlotGame{})
-	entReg.Register("ubits.club", entertainment.UbWheelGame{})
-	entReg.Register("pandapt.net", entertainment.LuckyDrawWheelGame{})
-	entReg.Register("crabpt.vip", entertainment.LuckyDrawWheelGame{})
-	entReg.Register("duckboobee.org", entertainment.MarchWheelGame{})
-	entReg.Register("www.tangpt.top", entertainment.TangptLotteryGame{})
-	// 下注/选号（批2，Bettable）：猜大小/骰宝/双色球/翻面/赛事押注/红包
-	entReg.Register("hxpt.org", entertainment.HxptBigSmallGame{})
-	entReg.Register("pandapt.net", entertainment.PandaBigSmallGame{})
-	entReg.Register("cangbao.ge", entertainment.CbgSicboGame{})
-	entReg.Register("crabpt.vip", entertainment.CrabUnionLottoGame{})
-	entReg.Register("pandapt.net", entertainment.PandaFlipGame{})
-	entReg.Register("ourbits.club", entertainment.OurbitsBetGame{})
-	entReg.Register("ubits.club", entertainment.UbitsRedpacketGame{})
-	// 状态机/红包雨（批3）：二十一点 + 好学红包雨
-	entReg.Register("audiences.me", entertainment.AudiencesBlackjackGame{})
-	entReg.Register("hxpt.org", entertainment.HxptRedpacketGame{})
+	entReg := newEntertainmentRegistry()
 	entCh := chain.NewEntertainmentChain(base, entReg, hc, siteOp)
 	dashCh := chain.NewDashboardChain(database, siteOp, dlOp, siteCh)
 
@@ -292,20 +176,12 @@ func New(cfg *config.Config) (*App, error) {
 	saveptSvc := savept.NewService(hc, siteOp)
 
 	// 站点考核：per-platform 适配器 Registry（MTeam JSON / NexusPHP HTML / TNode 不支持）
-	assessReg := assessment.NewRegistry()
-	assessReg.Register(assessment.NexusPHPAdapter{})
-	assessReg.Register(assessment.MTeamAdapter{})
-	assessReg.Register(assessment.TNodeAdapter{})
-	assessReg.Register(assessment.SunnyptAdapter{})
+	assessReg := newAssessmentRegistry()
 	assessOp := oper.NewAssessmentOper(database)
 	assessCh := chain.NewAssessmentChain(siteCh, assessReg, assessOp, hc, noticeSvc)
 
 	// 勋章墙：per-platform 适配器 Registry（NexusPHP HTML 双布局 / MTeam 占位；TNode/Unit3D 待 P5）
-	medalReg := medalwall.NewRegistry()
-	medalReg.Register(medalwall.NexusPHPAdapter{})
-	medalReg.Register(medalwall.MTeamAdapter{})
-	medalReg.Register(medalwall.TNodeAdapter{})
-	medalReg.Register(medalwall.Unit3DAdapter{})
+	medalReg := newMedalRegistry()
 	medalOp := oper.NewMedalOper(database)
 	medalCh := chain.NewMedalChain(siteCh, medalReg, medalOp, hc, noticeSvc)
 
@@ -430,37 +306,6 @@ func New(cfg *config.Config) (*App, error) {
 		SnapshotCron:            cfg.SnapshotCron,
 		CookieKeepAliveCron:     cfg.CookieKeepAliveCron,
 	}, context.Background(), wsHub, hxptLogin, crypto, noticeSvc, cfgOp, assessCh)
-	// 刷流 cron：选种每 10 分钟、扫删每 5 分钟（单任务失败不阻断；scheduler 自带 SkipIfStillRunning 防重叠）
-	_ = sched.AddFunc("brushflow-select", "*/10 * * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		brushCh.RunAllSelect(ctx)
-	})
-	_ = sched.AddFunc("brushflow-sweep", "*/5 * * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		brushCh.RunAllSweep(ctx)
-	})
-	// 保种契约检查：每日 9 点（低于分享率/做种/上传下限则告警，当天去重）
-	_ = sched.AddFunc("contract-check", "0 9 * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		contractCh.CheckAll(ctx)
-	})
-	// Trakt 同步：每小时拉取一次 WatchList → 订阅（已授权后；授权/令牌刷新在链内自管）。
-	_ = sched.AddFunc("trakt-sync", "7 * * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		if err := traktCh.SyncAll(ctx); err != nil {
-			slog.Warn("trakt sync failed", "err", err)
-		}
-	})
-	// CookieCloud 软间隔：固定每 5 分钟 tick，链内按 DB 配置的 interval + last_sync 决定是否真正同步。
-	_ = sched.AddFunc("cookiecloud-tick", "*/5 * * * *", func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		cookieCloudCh.MaybeSync(ctx)
-	})
 	if !cfg.SafeMode {
 		auto.Start()
 	}
@@ -473,373 +318,78 @@ func New(cfg *config.Config) (*App, error) {
 	wfOp := oper.NewWorkflowOper(database)
 	wfRunOp := oper.NewWorkflowRunOper(database)
 	wfReg := workflow.NewRegistry()
-	wfReg.Register(nodes.NewFetchRSSNode(hc, siteOp))
-	wfReg.Register(nodes.NewSearchTorrentsNode(siteCh))
-	wfReg.Register(nodes.NewFetchSiteStatsNode(database))
-	wfReg.Register(nodes.NewFilterTorrentsNode())
-	wfReg.Register(nodes.NewLimitNode())
-	wfReg.Register(nodes.NewFilterRulesNode(filterEng))
-	wfReg.Register(nodes.NewAddDownloadNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewAddSubscribeNode(subCh))
-	wfReg.Register(nodes.NewSendMessageNode(noticeSvc))
-	wfReg.Register(nodes.NewHTTPRequestNode(hc))
-	wfReg.Register(nodes.NewExtractFieldsNode())
-	wfReg.Register(nodes.NewCheckinNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewReseedNode(keepSeedCh))
-	wfReg.Register(nodes.NewConditionNode())
-	wfReg.Register(nodes.NewSwitchNode())
-	wfReg.Register(nodes.NewWebhookSendNode(hc))
-	wfReg.Register(nodes.NewMathNode())
-	wfReg.Register(nodes.NewDelayNode())
-	wfReg.Register(nodes.NewNoteNode())
-	wfReg.Register(nodes.NewSetVariableNode())
-	// 下载管理（封装 DownloadChain 进阶操作）
-	wfReg.Register(nodes.NewListTorrentsNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewPauseTorrentsNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewResumeTorrentsNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewDeleteTorrentsNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewRecheckTorrentsNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewReannounceTorrentsNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewForceStartNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewSetCategoryNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewAddTagsNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewSetSavePathNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewSetSpeedLimitNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewSetTorrentLimitNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewSetShareLimitNode(dlCh, dlOp))
-	wfReg.Register(nodes.NewAddTrackerNode(dlCh, dlOp))
-	// 站点业务（封装 SiteChain）
-	wfReg.Register(nodes.NewCheckinAllNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewFetchFreeleechNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewFetchAnnouncementNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewFetchMessagesNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewCheckHRNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewKeepAliveNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewSiteUserinfoNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewSiteTestNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewHaremStatusNode(siteCh, siteOp))
-	// 资源处理
-	wfReg.Register(nodes.NewSearchAllSitesNode(siteCh))
-	wfReg.Register(nodes.NewTorrentDetailNode(siteCh, siteOp))
-	wfReg.Register(nodes.NewSortTorrentsNode())
-	wfReg.Register(nodes.NewDedupeTorrentsNode())
-	wfReg.Register(nodes.NewPickBestNode())
-	// 媒体（MediaChain / RecommendChain）
-	wfReg.Register(nodes.NewSearchMediaNode(mediaCh))
-	wfReg.Register(nodes.NewMediaDetailNode(mediaCh))
-	wfReg.Register(nodes.NewRecommendFeedNode(recommendCh))
-	// 文件（FileManagerChain）
-	wfReg.Register(nodes.NewListFilesNode(fileCh))
-	wfReg.Register(nodes.NewDeleteFileNode(fileCh))
-	wfReg.Register(nodes.NewMkdirNode(fileCh))
-	// 数据
-	wfReg.Register(nodes.NewParseJSONNode())
-	wfReg.Register(nodes.NewRegexExtractNode())
-	// 通知（直发外发渠道）
-	wfReg.Register(nodes.NewSendNotificationNode(notifCh))
-	// 流程
-	wfReg.Register(nodes.NewStopFlowNode())
-	wfReg.Register(nodes.NewRandomPickNode())
-	wfReg.Register(nodes.NewFormatSizeNode())
+	registerWorkflowNodes(wfReg, database, hc, siteOp, siteCh, filterEng, dlCh, dlOp, subCh, noticeSvc, keepSeedCh, mediaCh, recommendCh, fileCh, notifCh)
 
-	// monitor 设备监控（服务器 host / NAS / 摄像头 camera）。先构造服务，供工作流运维节点复用 SSH 执行能力。
-	monOp := oper.NewMonitorOper(database, crypto)
-	sshKeyOp := oper.NewSSHHostKeyOper(database) // SSH host key TOFU 存储（满足 monitor.HostKeyStore）
-	monReg := monitor.NewRegistry()
-	localCollector := monitor.NewHostCollector()
-	monReg.Register("host", "local", localCollector)
-	monReg.Register("host", "ssh", monitor.NewSSHCollector(sshKeyOp))
-	monReg.Register("nas", "local", localCollector)
-	monReg.Register("nas", "api", monitor.NewNASCollector(hc))
-	monReg.Register("nas", "snmp", monitor.NewNASCollector(hc))
-	monReg.Register("camera", "onvif", monitor.NewCameraCollector())
-	monReg.Register("camera", "rtsp", monitor.NewCameraCollector())
-	monReg.Register("http", "http", monitor.NewHTTPCollector())
-	monReg.Register("tcp", "tcp", monitor.NewTCPCollector())
-	monReg.Register("process", "ssh", monitor.NewSSHProcessCollector(sshKeyOp))
-	monReg.Register("script", "ssh", monitor.NewSSHScriptCollector(sshKeyOp))
-	// 告警通知适配到现有 NotificationChain（bark/tg/webhook 多通道扇出）。
-	monNotifier := monitor.Notifier(func(ctx context.Context, title, body, level string) {
-		notifCh.Notify(ctx, notification.Message{Title: title, Body: body, Level: level})
-	})
-	monSvc := monitor.NewService(monOp, monReg, monNotifier, 10*time.Second, noticeSvc)
-	wfReg.Register(nodes.NewSSHCommandNode(monSvc))
 
-	wfCh := chain.NewWorkflowChain(base, wfOp, wfRunOp, wfReg, sched, base.Bus, noticeSvc)
-	// 进站 Webhook：外部 POST /api/v1/webhooks/in/:token → 触发目标工作流 + 广播 "webhook" 事件 + 通知。
-	webhookOp := oper.NewWebhookOper(database, crypto)
-	webhookH := v1.NewWebhookHandler(webhookOp, wfCh, bus, noticeSvc)
-	// 启动恢复：进程崩溃可能留下 state=running 的工作流（下次触发被重入守卫挡死），先重置为 failed。
-	if err := wfOp.ResetStuckRunning(); err != nil {
-		slog.Warn("workflow stuck-running reset failed", "err", err)
-	}
-	// 启动时重建工作流触发器（cron 任务随进程重启丢失；event 监听惰性查 Enabled 自废）。
-	if err := wfCh.RegisterAllTriggers(context.Background()); err != nil {
-		slog.Warn("workflow trigger registration failed", "err", err)
-	}
-	// RSS 全局扫描（按各订阅 interval_min 决定是否到点抓取）。
-	_ = sched.AddFunc("rss-check", cfg.RssCheckCron, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		rssCh.CheckAll(ctx)
-	})
-	// 每日清理 30 天前的工作流运行记录。
-	_ = sched.AddFunc("workflow-run-cleanup", "0 3 * * *", func() {
-		if _, err := wfRunOp.Cleanup(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
-			slog.Warn("workflow run cleanup failed", "err", err)
-		}
+	srv, monCancel, dwCancel, tgCancel := buildHTTPServer(runtimeDeps{
+		cfg: cfg,
+		database: database,
+		bus: bus,
+		hc: hc,
+		registry: registry,
+		base: base,
+		act: act,
+		assessCh: assessCh,
+		auto: auto,
+		backupSvc: backupSvc,
+		brushCh: brushCh,
+		cfgOp: cfgOp,
+		contractCh: contractCh,
+		cookieCloudCh: cookieCloudCh,
+		crypto: crypto,
+		dashCh: dashCh,
+		dlCh: dlCh,
+		dlMgr: dlMgr,
+		dlOp: dlOp,
+		entCh: entCh,
+		fileCh: fileCh,
+		fileMgr: fileMgr,
+		fileOp: fileOp,
+		filterEng: filterEng,
+		filterStore: filterStore,
+		hxpt: hxpt,
+		hxptLogin: hxptLogin,
+		j: j,
+		keepSeedCh: keepSeedCh,
+		mcpSrv: mcpSrv,
+		medalCh: medalCh,
+		mediaCh: mediaCh,
+		mediaServerCh: mediaServerCh,
+		cloudCh: cloudCh,
+		noticeOp: noticeOp,
+		noticeSvc: noticeSvc,
+		notifCh: notifCh,
+		notifMgr: notifMgr,
+		notifProvider: notifProvider,
+		oidcSvc: oidcSvc,
+		pluginMgr: pluginMgr,
+		recommendCh: recommendCh,
+		regCh: regCh,
+		regOp: regOp,
+		rssCh: rssCh,
+		saveptSvc: saveptSvc,
+		sched: sched,
+		siteCh: siteCh,
+		siteOp: siteOp,
+		subAutoSvc: subAutoSvc,
+		subCh: subCh,
+		subtitleCh: subtitleCh,
+		traktCh: traktCh,
+		transferCh: transferCh,
+		transferHistOp: transferHistOp,
+		tvCache: tvCache,
+		updateSvc: updateSvc,
+		wfOp: wfOp,
+		wfReg: wfReg,
+		wfRunOp: wfRunOp,
+		wsBC: wsBC,
 	})
 
-	// monitor 运行时：RTSP→WS 转发、Agent 推送、后台采集与清理任务。
-	var monitorOrigins []string
-	for _, o := range strings.Split(cfg.CORSAllowedOrigins, ",") {
-		if o = strings.TrimSpace(o); o != "" {
-			monitorOrigins = append(monitorOrigins, o)
-		}
-	}
-	ticketStore := auth.NewTicketStore() // WS/RTSP 一次性 ticket（替代 query JWT）
-	rtspProxy := monitor.NewRTSPProxy(j, ticketStore, tvCache, monitorOrigins, 8, func(id uint) (string, error) {
-		// url 由服务端按 :id 从 DB 取（防 RTSP 代理 SSRF/流劫持），禁止客户端传入
-		t, err := monOp.Get(id)
-		if err != nil {
-			return "", err
-		}
-		return t.RTSPURL, nil
-	})
-	// Agent push 架构：agentOp 实现 AgentAuthenticator 接口（Authenticate+TouchSeen）；
-	// ingest = monSvc.IngestAgentReport（复用 pull 链路的 RecordSnapshot + Evaluate）。
-	agentOp := oper.NewAgentOper(database)
-	agentHub := monitor.NewAgentWSHub(agentOp, monSvc.IngestAgentReport, 0)
-	fileMgr.SetAgentHub(agentHub) // agent 文件管理后端依赖 hub；fileMgr 早于 agentHub 构建，此处后注入
-	monCtx, monCancel := context.WithCancel(context.Background())
-	if !cfg.SafeMode {
-		go monSvc.Run(monCtx)
-	}
-	// 每日 3 点清理 30 天前的指标快照。
-	_ = sched.AddFunc("metric-cleanup", "0 3 * * *", func() {
-		if _, err := monOp.CleanupSnapshots(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
-			slog.Warn("metric cleanup failed", "err", err)
-		}
-	})
-	// 每日 3 点清理 30 天前已解决的告警（保留未解决的活跃告警）。
-	_ = sched.AddFunc("alert-cleanup", "0 3 * * *", func() {
-		if _, err := monOp.CleanupAlerts(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
-			slog.Warn("alert cleanup failed", "err", err)
-		}
-	})
-	// 每日 3 点清理 30 天前已读通知（保留未读）。
-	_ = sched.AddFunc("notice-cleanup", "0 3 * * *", func() {
-		if _, err := noticeOp.Cleanup(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
-			slog.Warn("notice cleanup failed", "err", err)
-		}
-	})
-	// PT监护室：定时刷新 savept.icu 全局缓存；出现病危/讣告时通知。
-	_ = sched.AddFunc("savept-refresh", cfg.SaveptCron, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		res, err := saveptSvc.Fetch(ctx, true)
-		if err != nil {
-			slog.Warn("savept refresh failed", "err", err)
-			return
-		}
-		for _, a := range res.Alerts {
-			if a.Type == savept.AlertDanger {
-				notifCh.Notify(ctx, notification.Message{
-					Title: "PT监护室：" + a.Title, Body: a.Content, Level: "warning",
-				})
-				break
-			}
-		}
-		// 今日站庆 / 站庆预告 → 通知中心（当天聚合去重一次）
-		for _, a := range res.Alerts {
-			if a.Type == savept.AlertCelebration || a.Type == savept.AlertInfo {
-				_ = noticeSvc.Notice(ctx, notice.Input{
-					Source: notice.SourceSiteAnniv,
-					Key:    "anniv:" + time.Now().Format("2006-01-02"),
-					Title:  "今日站庆：" + a.Title,
-					Body:   a.Content,
-					Level:  "info",
-				}, true)
-			}
-		}
-	})
-	// 站点考核：已并入 site-snapshot 聚合任务（复用 UserInfo 的 uid 访问 userdetails.php?id=<uid>，
-	// 不再每整小时裸访 userdetails.php——52movie 警告根因）。前端/API 手动刷新仍走 assessCh.AssessAll。
-	// 勋章墙：定时刷新（3 级缓存网络层 + 价格/上架/售罄 diff → 通知中心）
-	_ = sched.AddFunc("medal-refresh", cfg.MedalCron, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		cards := medalCh.MedalAll(ctx, true)
-		slog.Debug("medal cache refreshed", "medals", len(cards))
-	})
-	// 媒体订阅：定时跨站搜种子，命中即推送到默认下载器 + 通知中心提醒。
-	_ = sched.AddFunc("subscribe-check", cfg.SubscribeCron, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		subCh.CheckAll(ctx)
-	})
-	// 媒体整理：定时兜底（catch-up/重试）——已完成种子→识别→重命名→硬链→刮削。
-	// 与下载完成事件钩子互补：覆盖重启/漏触发期；幂等（按 download_hash 成功去重）。
-	_ = sched.AddFunc("transfer-sweep", cfg.TransferSweepCron, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-		transferCh.Sweep(ctx)
-	})
-	// 网盘 STRM：定时生成 STRM + 订阅追更匹配（默认每 6 小时；单规则失败不阻断）。
-	_ = sched.AddFunc("cloud-strm", cfg.CloudStrmCron, func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
-		defer cancel()
-		cloudCh.GenerateAll(ctx)
-		cloudCh.SyncSubscriptions(ctx)
-	})
-
-	// AI Agent（ReAct 循环 + 双 LLM provider + 工具调用 + 多轮上下文）。
-	// 工具集绑定各业务 chain（读+写，admin-only）；会话/消息持久化；配置+API key 走 SystemConfig+Crypto。
-	agentConvOp := oper.NewAgentConversationOper(database)
-	agentMsgOp := oper.NewAgentMessageOper(database)
-	agentTools := registerAgentTools(siteOp, siteCh, subCh, dlOp, dlCh, mediaCh, recommendCh, transferCh, keepSeedCh, dashCh, notifCh, filterStore, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, fileCh, wfCh)
-	// 把全部 chain 能力批量暴露给插件 Host API（GET /tools、POST /tools/{name}、Bridge tool.*）。
-	// 必须在所有 chain 构造之后调用（闭包捕获 chain 指针）。
-	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh)
-	agentSvc := aiagent.New(llm.New, agentTools, agentMsgOp, agentConvOp, cfgOp, crypto)
-	agentChatH := v1.NewAgentChatHandler(agentSvc, agentConvOp.List, agentConvOp.Create, agentConvOp.Delete, agentMsgOp.ListByConv, cfgOp, crypto)
-	llmGatewayH := v1.NewLLMGatewayHandler(agentSvc, agentConvOp.Create, cfgOp, crypto)
-	doctorH := v1.NewDoctorHandler(cfg, database, nil)
-	tgBotH := v1.NewTgBotHandler(cfgOp, crypto)
-	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。
-	servarrH := v1.NewServarrHandler(subCh, mediaCh, transferHistOp.HasSuccessByMedia, cfg.APIKey)
-
-	// 目录监视：fsnotify 实时喂整理（补 DoneHook + cron 覆盖不到的手动投放 / 非托管来源）。safe-mode 下不启。
-	var dwCancel context.CancelFunc
-	if !cfg.SafeMode {
-		if dwc := dirwatch.Load(cfgOp); dwc.Enabled && len(dwc.Dirs) > 0 {
-			dw := dirwatch.New(dwc, func(ctx context.Context, srcDir string, files []transfer.FileInput) {
-				_, _ = transferCh.ProcessDiscoveredFiles(ctx, srcDir, files)
-			})
-			dwCtx, cancel := context.WithCancel(context.Background())
-			dwCancel = cancel
-			go dw.Run(dwCtx)
-		}
-	}
-
-	// Telegram bot（入站 chat-ops）：getUpdates 长轮询 → 自然语言经 AI Agent 驱动全平台。safe-mode 下不启。
-	var tgCancel context.CancelFunc
-	if !cfg.SafeMode {
-		if tgc := tgbot.Load(cfgOp); tgc.Enabled && tgc.BotTokenEnc != "" {
-			if token := tgbot.BotToken(tgc, crypto); token != "" {
-				var chatMu sync.Mutex
-				chatConvs := map[string]uint{}
-				talk := func(ctx context.Context, chatKey, text string) <-chan llm.Event {
-					chatMu.Lock()
-					convID, ok := chatConvs[chatKey]
-					if !ok {
-						conv := &models.AgentConversation{}
-						if err := agentConvOp.Create(conv); err == nil && conv.ID != 0 {
-							convID = conv.ID
-							chatConvs[chatKey] = convID
-						}
-					}
-					chatMu.Unlock()
-					if convID == 0 {
-						ch := make(chan llm.Event)
-						close(ch)
-						return ch
-					}
-					return agentSvc.Run(ctx, convID, text)
-				}
-				clear := func(chatKey string) { chatMu.Lock(); delete(chatConvs, chatKey); chatMu.Unlock() }
-				bot := tgbot.New(token, tgc.APIURL, tgc.AllowedUserIDs, tgc.AllowGroupChat, talk, clear)
-				tgCtx, cancel := context.WithCancel(context.Background())
-				tgCancel = cancel
-				go bot.Run(tgCtx)
-			}
-		}
-	}
-
-	engine := api.Build(&api.Deps{
-		Cfg: cfg, DB: database, JWT: j, Act: act,
-		HxptVIP: hxpt, HxptAuth: hxptLogin, Crypto: crypto, TVCache: tvCache, VIPGraceDays: cfg.VIPGraceDays,
-		Tickets: ticketStore,
-		OIDC:    oidcSvc,
-		SiteOp:  siteOp, SiteCh: siteCh, Reg: registry, SiteHC: hc,
-		DLOp: dlOp, DLCh: dlCh, DLMgr: dlMgr,
-		Notif: notifCh, NotifMgr: notifMgr, NotifProvider: notifProvider,
-		MediaCh: mediaCh, FileOp: fileOp, FileCh: fileCh, FileMgr: fileMgr,
-		Recommend: recommendCh,
-		KeepSeed:  keepSeedCh, Backup: backupSvc,
-		Entertainment: entCh,
-		Dashboard:     dashCh,
-		WS:            wsBC,
-		RegOp:         regOp, RegCh: regCh,
-		Subscribe:          subCh,
-		Workflow:           wfCh,
-		Rss:                rssCh,
-		BrushFlow:          brushCh,
-		Contract:           contractCh,
-		MediaServer:        mediaServerCh,
-		Transfer:           transferCh,
-		AgentChat:          agentChatH,
-		LLMGateway:         llmGatewayH,
-		Doctor:             doctorH,
-		TgBot:              tgBotH,
-		Servarr:            servarrH,
-		Cloud:              cloudCh,
-		Subtitle:           subtitleCh,
-		SubtitleAutomation: subAutoSvc,
-		Trakt:              traktCh,
-		CookieCloud:        cookieCloudCh,
-		MCP:                mcpSrv,
-		Webhook:            webhookH,
-		MonOp:              monOp, MonSvc: monSvc, RTSPProxy: rtspProxy,
-		SSHHostKeyOp: sshKeyOp,
-		AgentOp:      agentOp, AgentHub: agentHub,
-		Savept:     saveptSvc,
-		Assessment: assessCh,
-		Medal:      medalCh,
-		Notice:     noticeSvc,
-		Update:     updateSvc,
-		Filter:     filterStore,
-		FilterEng:  filterEng,
-		Plugins:    pluginMgr,
-		Automation: auto,
-	})
-
-	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: engine}
 	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel, dirwatchCancel: dwCancel, tgbotCancel: tgCancel}, nil
 }
 
 // Run starts the HTTP server (blocking).
 func (a *App) Run() error { return a.http.ListenAndServe() }
-
-func defaultDefinitionsDir() string {
-	for _, dir := range []string{"./definitions", "./backend/definitions"} {
-		if st, err := os.Stat(dir); err == nil && st.IsDir() {
-			return dir
-		}
-	}
-	return "./definitions"
-}
-
-func loadSiteDefinitions(registry *site.Registry, defsDir string, externalExplicit bool) {
-	if err := registry.LoadDefinitionsFS(bundledDefinitions.FS, "."); err != nil {
-		slog.Warn("load bundled site definitions failed", "err", err)
-	} else {
-		slog.Info("loaded bundled site definitions", "count", len(registry.Definitions()))
-	}
-
-	if strings.TrimSpace(defsDir) == "" {
-		return
-	}
-	if err := registry.LoadDefinitions(defsDir); err != nil {
-		if !externalExplicit && errors.Is(err, os.ErrNotExist) {
-			slog.Info("external site definitions directory not found; using bundled definitions", "dir", defsDir, "count", len(registry.Definitions()))
-			return
-		}
-		slog.Warn("load external site definitions failed; using bundled definitions", "dir", defsDir, "err", err)
-		return
-	}
-	slog.Info("loaded external site definitions", "dir", defsDir, "total", len(registry.Definitions()))
-}
 
 // Shutdown gracefully stops scheduler + monitor loop + HTTP server.
 func (a *App) Shutdown(ctx context.Context) error {
@@ -860,3 +410,4 @@ func (a *App) Shutdown(ctx context.Context) error {
 	}
 	return a.http.Shutdown(ctx)
 }
+

@@ -86,4 +86,22 @@ export const dockerApi = {
     http.post<{ ok: boolean; output: string }>(`/ops/docker/${targetId}/compose/up`, { path }).then((r) => r.data),
   composeDown: (targetId: number, path: string, confirmRisk = false) =>
     http.post<{ ok: boolean; output: string }>(`/ops/docker/${targetId}/compose/down`, { path, confirm_risk: confirmRisk }).then((r) => r.data),
+
+  // === 本机模式（Docker Engine API / docker.sock，无需 SSH）===
+  localStatus: () =>
+    http.get<{ available: boolean }>('/ops/docker/local/status').then((r) => r.data),
+  localList: () =>
+    http.get<DockerListResp>('/ops/docker/local/list').then((r) => r.data),
+  localStats: () =>
+    http.get<{ stats: DockerStatsRow[] }>('/ops/docker/local/stats').then((r) => r.data),
+  localInspect: (name: string) =>
+    http.get<DockerInspect>(`/ops/docker/local/containers/${name}/inspect`).then((r) => r.data),
+  localLogs: (name: string, tail = 100) =>
+    http.get<{ logs: string }>(`/ops/docker/local/containers/${name}/logs`, { params: { tail } }).then((r) => r.data),
+  localAction: (name: string, action: string) =>
+    http.post(`/ops/docker/local/containers/${name}/${action}`).then((r) => r.data),
+  localRemove: (name: string, force = false, confirmRisk = false) =>
+    http.post(`/ops/docker/local/containers/${name}/remove`, { confirm_risk: confirmRisk }, { params: { force: force ? 1 : 0 } }).then((r) => r.data),
+  localRemoveImage: (ref: string, confirmRisk = false) =>
+    http.delete(`/ops/docker/local/images/${ref}`, { data: { confirm_risk: confirmRisk } }).then((r) => r.data),
 }

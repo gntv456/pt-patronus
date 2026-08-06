@@ -7,6 +7,8 @@ import GlassIcon from '@/components/GlassIcon.vue'
 
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
+const mode = ref<'local' | 'remote'>('local')
+const localAvailable = ref(false)
 const loading = ref(false)
 const actionLoading = ref(false)
 const error = ref('')
@@ -34,16 +36,25 @@ async function loadTargets() {
 }
 
 async function refresh() {
-  if (!selectedTarget.value) return
   loading.value = true
   error.value = ''
   try {
-    const [list, st] = await Promise.all([
-      dockerApi.list(selectedTarget.value),
-      dockerApi.stats(selectedTarget.value).catch(() => ({ stats: [] })),
-    ])
-    data.value = list
-    stats.value = st.stats || []
+    if (mode.value === 'local') {
+      const [list, st] = await Promise.all([
+        dockerApi.localList(),
+        dockerApi.localStats().catch(() => ({ stats: [] })),
+      ])
+      data.value = list
+      stats.value = st.stats || []
+    } else {
+      if (!selectedTarget.value) return
+      const [list, st] = await Promise.all([
+        dockerApi.list(selectedTarget.value),
+        dockerApi.stats(selectedTarget.value).catch(() => ({ stats: [] })),
+      ])
+      data.value = list
+      stats.value = st.stats || []
+    }
   } catch (e: any) {
     error.value = e.message
     data.value = { containers: [], images: [], volumes: [], networks: [] }
@@ -61,7 +72,11 @@ async function doAction(container: DockerContainer, action: string, label: strin
   actionLoading.value = true
   try {
     const name = container.Names.replace(/^\//, '')
-    await (dockerApi as any)[action](selectedTarget.value, name)
+    if (mode.value === 'local') {
+      await dockerApi.localAction(name, action)
+    } else {
+      await (dockerApi as any)[action](selectedTarget.value, name)
+    }
     ElMessage.success(`${label}成功`)
     refresh()
   } catch (e: any) {
@@ -80,7 +95,11 @@ async function removeContainer(container: DockerContainer) {
       { type: 'warning', confirmButtonText: '强制删除', cancelButtonText: '取消' },
     )
     actionLoading.value = true
-    await dockerApi.remove(selectedTarget.value, name, true, true)
+    if (mode.value === 'local') {
+      await dockerApi.localRemove(name, true, true)
+    } else {
+      await dockerApi.remove(selectedTarget.value, name, true, true)
+    }
     ElMessage.success('容器已删除')
     refresh()
   } catch (e: any) {
@@ -95,7 +114,11 @@ async function removeImage(img: DockerImage) {
   try {
     await ElMessageBox.confirm(`确定要删除镜像「${ref}」吗？`, '危险操作确认', { type: 'warning' })
     actionLoading.value = true
-    await dockerApi.removeImage(selectedTarget.value, ref, true)
+    if (mode.value === 'local') {
+      await dockerApi.localRemoveImage(ref, true)
+    } else {
+      await dockerApi.removeImage(selectedTarget.value, ref, true)
+    }
     ElMessage.success('镜像已删除')
     refresh()
   } catch (e: any) {
@@ -110,7 +133,9 @@ async function showLogs(container: DockerContainer) {
   logDrawer.value = true
   logLoading.value = true
   try {
-    const res = await dockerApi.logs(selectedTarget.value, logContainer.value, 200)
+    const res = mode.value === 'local'
+      ? await dockerApi.localLogs(logContainer.value, 200)
+      : await dockerApi.logs(selectedTarget.value, logContainer.value, 200)
     logContent.value = res.logs || '(无日志)'
   } catch (e: any) {
     logContent.value = '获取日志失败: ' + e.message
@@ -123,7 +148,9 @@ async function showInspect(container: DockerContainer) {
   const name = container.Names.replace(/^\//, '')
   inspectDrawer.value = true
   try {
-    inspectData.value = await dockerApi.inspect(selectedTarget.value, name)
+    inspectData.value = mode.value === 'local'
+      ? await dockerApi.localInspect(name)
+      : await dockerApi.inspect(selectedTarget.value, name)
   } catch (e: any) {
     ElMessage.error(e.message)
   }
@@ -172,7 +199,17 @@ async function composeAction(action: 'up' | 'down') {
 
 onMounted(async () => {
   await loadTargets()
-  if (selectedTarget.value) refresh()
+  try {
+    const st = await dockerApi.localStatus()
+    localAvailable.value = st.available
+  } catch { localAvailable.value = false }
+  if (localAvailable.value) {
+    mode.value = 'local'
+    refresh()
+  } else if (selectedTarget.value) {
+    mode.value = 'remote'
+    refresh()
+  }
 })
 </script>
 
@@ -180,11 +217,23 @@ onMounted(async () => {
   <div class="ops-docker">
     <!-- 主机选择 + 刷新 -->
     <div class="docker-toolbar">
-      <el-select v-model="selectedTarget" placeholder="选择 SSH 主机" @change="refresh" style="width: 240px">
+      <div class="mode-switch">
+        <button class="mode-btn" :class="{ active: mode === 'local' }" :disabled="!localAvailable"
+          @click="mode = 'local'; refresh()">
+          🏠 本机
+        </button>
+        <button class="mode-btn" :class="{ active: mode === 'remote' }"
+          @click="mode = 'remote'; refresh()">
+          🔗 SSH 远程
+        </button>
+      </div>
+      <el-select v-if="mode === 'remote'" v-model="selectedTarget" placeholder="选择 SSH 主机" @change="refresh" style="width: 200px">
         <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
       </el-select>
       <el-button :loading="loading" @click="refresh">刷新</el-button>
-      <el-button type="primary" @click="openCompose" :disabled="!selectedTarget">Compose 部署</el-button>
+      <span v-if="!localAvailable && mode === 'local'" class="docker-hint">
+        Docker socket 未挂载，在 docker-compose 添加：/var/run/docker.sock:/var/run/docker.sock
+      </span>
       <span v-if="error" class="docker-error">{{ error }}</span>
     </div>
 
@@ -336,57 +385,4 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-.ops-docker { display: flex; flex-direction: column; gap: var(--sp-3); }
-.docker-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-.docker-error { color: var(--pt-danger); font-size: var(--fs-sm); }
-.docker-empty {
-  display: flex; flex-direction: column; align-items: center; gap: var(--sp-4);
-  padding: var(--sp-10); border-radius: var(--radius-lg); color: var(--text-muted);
-}
-.docker-stats {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: var(--sp-2);
-}
-.stat-tile {
-  padding: var(--sp-3); text-align: center; border-radius: var(--radius-md);
-  display: flex; flex-direction: column; gap: 2px;
-}
-.stat-tile strong { font-size: var(--fs-xl); color: var(--text-strong); }
-.stat-tile span { font-size: var(--fs-xs); color: var(--text-muted); }
-.docker-tabs { display: flex; gap: var(--sp-1); }
-.docker-tab {
-  padding: var(--sp-2) var(--sp-4); border: 0; background: none; cursor: pointer;
-  font-size: var(--fs-sm); color: var(--text-muted); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  border-bottom: 2px solid transparent;
-}
-.docker-tab.active { color: var(--pt-primary); border-bottom-color: var(--pt-primary); font-weight: 600; }
-.docker-table { border-radius: var(--radius-md); overflow: auto; }
-.docker-table table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-.docker-table th {
-  text-align: left; padding: var(--sp-2) var(--sp-3); color: var(--text-muted);
-  font-weight: 500; border-bottom: 1px solid var(--divider); white-space: nowrap;
-}
-.docker-table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--divider); }
-.docker-table tr:hover td { background: var(--surface-hover); }
-.td-name { font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.td-image, .td-mono { font-family: monospace; font-size: var(--fs-xs); color: var(--text-muted); }
-.td-status-sub { font-size: var(--fs-xs); color: var(--text-muted); }
-.td-actions { display: flex; gap: 4px; }
-.td-empty { text-align: center; color: var(--text-muted); padding: var(--sp-6); }
-.mini-btn {
-  width: 28px; height: 28px; border: 1px solid var(--divider); background: var(--surface-1);
-  border-radius: var(--radius-xs); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
-}
-.mini-btn:hover { background: var(--surface-hover); }
-.mini-btn.danger:hover { background: rgba(231,76,60,0.15); color: var(--pt-danger); }
-.mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.log-viewer, .compose-output { margin-top: var(--sp-3); }
-.compose-output pre {
-  font-family: monospace; font-size: var(--fs-xs); white-space: pre-wrap; word-break: break-all;
-  background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-sm); max-height: 200px; overflow: auto;
-}
-.inspect-viewer {
-  font-family: monospace; font-size: var(--fs-xs); white-space: pre-wrap; word-break: break-all;
-  background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-sm); overflow: auto;
-}
-</style>
+<style scoped src="../../views/nas-shared/opsDocker.css"></style>

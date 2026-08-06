@@ -28,6 +28,8 @@ services:
       DATABASE_URL: ${DATABASE_URL:-}
     volumes:
       - ./data:/app/data
+      # Docker 管理：挂载 docker.sock 让本机容器管理可用（运维中心 → Docker → 本机模式）
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s

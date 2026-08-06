@@ -22,6 +22,7 @@ type DockerCommandRunner interface {
 // 复用已有 SSH 凭据与权限链，与项目"特权后端 + SSH/Agent 远程通道"模型一致。
 type DockerHandler struct {
 	runner DockerCommandRunner
+	local  *DockerLocalClient
 }
 
 // nilRunner 在 svc 为 nil 时返回错误而非 panic（防御性：避免集成测试/部分启动场景崩溃）。
@@ -37,7 +38,7 @@ func NewDockerHandler(svc DockerCommandRunner) *DockerHandler {
 	if svc == nil || reflect.ValueOf(svc).IsNil() {
 		svc = nilRunner{}
 	}
-	return &DockerHandler{runner: svc}
+	return &DockerHandler{runner: svc, local: NewDockerLocalClient()}
 }
 
 // List 返回目标主机上的容器/镜像/卷/网络概览。

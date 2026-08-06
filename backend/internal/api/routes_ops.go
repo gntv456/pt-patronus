@@ -82,6 +82,17 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		docker.POST("/:id/images/:ref/remove", dockerH.ImageRemove)
 		docker.POST("/:id/compose/up", dockerH.ComposeUp)
 		docker.POST("/:id/compose/down", dockerH.ComposeDown)
+
+		// 本机模式（Docker Engine API / docker.sock，无需 SSH）
+		docker.GET("/local/status", dockerH.LocalStatus)
+		docker.GET("/local/list", dockerH.LocalList)
+		docker.GET("/local/stats", dockerH.LocalStats)
+		docker.GET("/local/containers/:name/inspect", dockerH.LocalInspect)
+		docker.GET("/local/containers/:name/logs", dockerH.LocalLogs)
+		// remove 必须注册在 :action 通配之前（静态段优先匹配）
+		docker.POST("/local/containers/:name/remove", dockerH.LocalRemove)
+		docker.POST("/local/containers/:name/:action", dockerH.LocalContainerAction)
+		docker.DELETE("/local/images/:ref", dockerH.LocalRemoveImage)
 	}
 
 	// === 运维中心：数据库可视化管理（受限查询器）===

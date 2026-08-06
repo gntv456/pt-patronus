@@ -161,6 +161,12 @@ const GLYPHS: Record<string, string> = {
   activity:
     '<path d="M3 12h4l2-7 4 14 2-7h6"/>',
   // 网络：连接节点（三圆点 + 连线）
+  // 终端：SSH 管理窗口
+  // 命令行/控制台（终端入口）
+  console:
+    '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M6 9l3 3-3 3"/><path d="M12 15h5"/><path d="M3 8h18"/>',
+  terminal:
+    '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><path d="M13 15h4"/>',
   network:
     '<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.5 7L11 16M16.5 7L13 16M8 6h8"/>',
   harddisk:

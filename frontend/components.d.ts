@@ -117,6 +117,8 @@ declare module 'vue' {
     OpsDocker: typeof import('./src/components/ops/OpsDocker.vue')['default']
     OpsMonitor: typeof import('./src/components/ops/OpsMonitor.vue')['default']
     OpsProcess: typeof import('./src/components/ops/OpsProcess.vue')['default']
+    OpsSsh: typeof import('./src/components/ops/OpsSsh.vue')['default']
+    OpsTerminal: typeof import('./src/components/ops/OpsTerminal.vue')['default']
     PandaFlipGame: typeof import('./src/components/PandaFlipGame.vue')['default']
     PluginActionDialog: typeof import('./src/components/plugins/PluginActionDialog.vue')['default']
     PluginConfigDialog: typeof import('./src/components/plugins/PluginConfigDialog.vue')['default']

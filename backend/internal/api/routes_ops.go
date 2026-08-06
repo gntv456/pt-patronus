@@ -116,6 +116,20 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		procs.POST("/:id/kill", procH.Kill)
 	}
 
+	// === 运维中心：SSH 管理（SSH 服务配置/会话/登录日志）===
+	sshH := v1.NewSshAdminHandler(d.MonSvc)
+	sshd := guarded.Group("/ops/ssh")
+	sshd.Use(middleware.RequireAdmin())
+	{
+		sshd.GET("/:id/status", sshH.Status)
+		sshd.POST("/:id/action", sshH.Action)
+		sshd.POST("/:id/enable", sshH.ToggleEnable)
+		sshd.POST("/:id/config", sshH.Config)
+		sshd.GET("/:id/sessions", sshH.Sessions)
+		sshd.DELETE("/:id/sessions/:pid", sshH.KillSession)
+		sshd.GET("/:id/logs", sshH.Logs)
+	}
+
 	// === 运维中心：数据库可视化管理（受限查询器）===
 	dbH := v1.NewDatabaseHandler(d.DB)
 	dbAdmin := guarded.Group("/ops/database")

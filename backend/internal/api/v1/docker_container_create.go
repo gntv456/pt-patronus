@@ -1,0 +1,99 @@
+﻿package v1
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+)
+
+// LocalCreateContainer 创建并可选启动容器（Docker Engine API /containers/create）。
+func (c *DockerLocalClient) LocalCreateContainer(ctx context.Context, req map[string]any) (string, error) {
+	// body 结构：{"Image":"nginx","Name":"myweb","Env":[],"PortBindings":{},"Cmd":[],"Binds":[]...}
+	// 直接透传给 Engine API，由前端组装标准 Docker API 格式。
+	raw, err := c.postRaw(ctx, "/containers/create", req)
+	if err != nil {
+		return "", err
+	}
+	var result struct {
+		ID string `json:"Id"`
+	}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		return "", fmt.Errorf("parse create response: %w", err)
+	}
+	return result.ID, nil
+}
+
+// LocalCreateFromSimple 接收简化的前端表单，组装成 Engine API 的完整请求体。
+// 对齐 1Panel 创建容器表单：镜像、名称、端口映射、环境变量、挂载、命令。
+func (c *DockerLocalClient) LocalCreateFromSimple(ctx context.Context, in simpleCreateReq) (string, error) {
+	body := map[string]any{
+		"Image": in.Image,
+	}
+	if in.Name != "" {
+		body["Hostname"] = in.Name
+	}
+	if len(in.Cmd) > 0 {
+		body["Cmd"] = in.Cmd
+	}
+	if len(in.Env) > 0 {
+		env := make([]string, 0, len(in.Env))
+		for k, v := range in.Env {
+			env = append(env, k+"="+v)
+		}
+		body["Env"] = env
+	}
+	// 端口绑定：{端口: [{HostPort:"8080"}]}
+	exposedPorts := map[string]struct{}{}
+	portBindings := map[string][]map[string]any{}
+	for _, p := range in.Ports {
+		containerPort := fmt.Sprintf("%d/tcp", p.Container)
+		exposedPorts[containerPort] = struct{}{}
+		binding := map[string]any{}
+		if p.Host > 0 {
+			binding["HostPort"] = fmt.Sprintf("%d", p.Host)
+		}
+		portBindings[containerPort] = append(portBindings[containerPort], binding)
+	}
+	if len(exposedPorts) > 0 {
+		body["ExposedPorts"] = exposedPorts
+		body["HostConfig"] = map[string]any{
+			"PortBindings": portBindings,
+			"RestartPolicy": map[string]any{
+				"Name": in.RestartPolicy,
+			},
+		}
+	} else {
+		body["HostConfig"] = map[string]any{
+			"RestartPolicy": map[string]any{"Name": in.RestartPolicy},
+		}
+	}
+	// 卷绑定
+	if len(in.Binds) > 0 {
+		hc := body["HostConfig"].(map[string]any)
+		hc["Binds"] = in.Binds
+	}
+	return c.LocalCreateContainer(ctx, body)
+}
+
+// simpleCreateReq 创建容器的简化前端表单（对齐 1Panel 创建容器 UI）。
+type simpleCreateReq struct {
+	Image         string            `json:"image" binding:"required"`
+	Name          string            `json:"name"`
+	Cmd           []string          `json:"cmd"`
+	Env           map[string]string `json:"env"`
+	Ports         []portMapping     `json:"ports"`
+	Binds         []string          `json:"binds"`
+	RestartPolicy string            `json:"restart_policy"` // no|always|unless-stopped|on-failure
+	AutoStart     bool              `json:"auto_start"`
+}
+
+// portMapping 端口映射项。
+type portMapping struct {
+	Container int `json:"container"`
+	Host      int `json:"host"`
+}
+
+// LocalExecCheck 检查 exec 是否可用（Docker socket 可连即支持）。
+func (c *DockerLocalClient) LocalExecCheck(ctx context.Context) bool {
+	return c.Available()
+}

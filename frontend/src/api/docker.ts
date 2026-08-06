@@ -118,4 +118,22 @@ export const dockerApi = {
     http.post('/ops/docker/local/networks', { name, driver }).then((r) => r.data),
   localNetworkRemove: (name: string) =>
     http.delete(`/ops/docker/local/networks/${name}`).then((r) => r.data),
+
+  // === 创建容器 + exec 终端 ===
+  localCreate: (data: {
+    image: string
+    name?: string
+    cmd?: string[]
+    env?: Record<string, string>
+    ports?: { container: number; host: number }[]
+    binds?: string[]
+    restart_policy?: string
+    auto_start?: boolean
+  }) =>
+    http.post<{ ok: boolean; id?: string; error?: string }>('/ops/docker/local/containers/create', data).then((r) => r.data),
+  // exec 终端的 WebSocket URL（前端自行 new WebSocket）
+  localExecURL: (name: string, cmd = '/bin/sh') => {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws'
+    return `${proto}://${location.host}/ops/docker/local/containers/${name}/exec/ws?cmd=${encodeURIComponent(cmd)}&cols=120&rows=32`
+  },
 }

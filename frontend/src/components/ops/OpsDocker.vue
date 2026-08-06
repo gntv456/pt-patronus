@@ -5,6 +5,8 @@ import { dockerApi, type DockerContainer, type DockerImage, type DockerListResp,
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { useDockerOps } from './useDockerOps'
+import DockerExecTerminal from './DockerExecTerminal.vue'
+import DockerCreateDialog from './DockerCreateDialog.vue'
 
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
@@ -157,9 +159,18 @@ async function showInspect(container: DockerContainer) {
   }
 }
 
+const { pullDialog, pullRef, pullLoading, pullResult, openPull, doPull, doPrune, createVolume, removeVolume, createNetwork, removeNetwork, composeVisible, composePath, composeOutput, composeLoading, openCompose, composeAction} = useDockerOps(refresh, () => mode.value, () => selectedTarget.value)
 
+// 创建容器（用独立组件）
+const createDialog = ref(false)
 
-const { pullDialog, pullRef, pullLoading, pullResult, openPull, doPull, doPrune, createVolume, removeVolume, createNetwork, removeNetwork, composeVisible, composePath, composeOutput, composeLoading, openCompose, composeAction } = useDockerOps(refresh, () => mode.value, () => selectedTarget.value)
+// exec 终端（用独立组件）
+const execDrawer = ref(false)
+const execContainer = ref('')
+function openExec(c: DockerContainer) {
+  execContainer.value = c.Names.replace(/^\//, '')
+  execDrawer.value = true
+}
 
 function stateColor(state: string): string {
   const colors: Record<string, string> = {
@@ -251,6 +262,7 @@ onMounted(async () => {
       <!-- 容器列表 -->
       <div v-if="activeTab === 'containers'" class="docker-table glass">
         <div v-if="mode === 'local'" class="tab-toolbar">
+          <el-button size="small" type="primary" @click="createDialog = true">创建容器</el-button>
           <el-button size="small" type="warning" @click="doPrune('container')">清理已停止容器</el-button>
         </div>
         <table>
@@ -273,6 +285,7 @@ onMounted(async () => {
                 <button v-if="c.State !== 'running'" class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'start', '启动')">▶</button>
                 <button v-if="c.State === 'running'" class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'stop', '停止')">■</button>
                 <button class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'restart', '重启')">↻</button>
+                <button v-if="c.State === 'running' && mode === 'local'" class="mini-btn" title="终端" @click="openExec(c)">⌘</button>
                 <button class="mini-btn" title="日志" @click="showLogs(c)">☰</button>
                 <button class="mini-btn" title="详情" @click="showInspect(c)">ℹ</button>
                 <button class="mini-btn danger" title="删除" @click="removeContainer(c)">✕</button>
@@ -351,37 +364,27 @@ onMounted(async () => {
 
     <!-- Compose 部署对话框 -->
     <el-dialog v-model="composeVisible" title="Docker Compose 部署" width="500px">
-      <el-form label-width="80px">
-        <el-form-item label="主机">
-          <span>{{ sshTargets.find((t) => t.id === selectedTarget)?.name || '-' }}</span>
-        </el-form-item>
-        <el-form-item label="目录">
-          <el-input v-model="composePath" placeholder="/opt/myapp" />
-        </el-form-item>
-      </el-form>
+      <el-form label-width="60px"><el-form-item label="目录"><el-input v-model="composePath" placeholder="/opt/myapp" /></el-form-item></el-form>
       <div v-if="composeOutput" class="compose-output">
         <pre>{{ composeOutput }}</pre>
       </div>
       <template #footer>
-        <el-button @click="composeVisible = false">关闭</el-button>
-        <el-button type="danger" :loading="composeLoading" @click="composeAction('down')">Compose Down</el-button>
-        <el-button type="primary" :loading="composeLoading" @click="composeAction('up')">Compose Up</el-button>
+        <el-button @click="composeVisible = false">关闭</el-button><el-button type="danger" :loading="composeLoading" @click="composeAction('down')">Compose Down</el-button><el-button type="primary" :loading="composeLoading" @click="composeAction('up')">Compose Up</el-button>
       </template>
     </el-dialog>
 
     <!-- 拉取镜像对话框 -->
     <el-dialog v-model="pullDialog" title="拉取镜像" width="500px">
-      <el-form label-width="80px">
-        <el-form-item label="镜像名">
-          <el-input v-model="pullRef" placeholder="nginx / redis:7 / ghcr.io/..." @keyup.enter="doPull" />
-        </el-form-item>
-      </el-form>
+      <el-form label-width="70px"><el-form-item label="镜像名"><el-input v-model="pullRef" placeholder="nginx / redis:7 / ghcr.io/..." @keyup.enter="doPull" /></el-form-item></el-form>
       <div v-if="pullResult" class="pull-output"><pre>{{ pullResult }}</pre></div>
       <template #footer>
-        <el-button @click="pullDialog = false">关闭</el-button>
-        <el-button type="primary" :loading="pullLoading" @click="doPull">拉取</el-button>
+        <el-button @click="pullDialog = false">关闭</el-button><el-button type="primary" :loading="pullLoading" @click="doPull">拉取</el-button>
       </template>
     </el-dialog>
+
+    <!-- exec 终端 -->
+    <DockerExecTerminal v-model:visible="execDrawer" :container="execContainer" />
+    <DockerCreateDialog v-model:visible="createDialog" @created="refresh" />
   </div>
 </template>
 

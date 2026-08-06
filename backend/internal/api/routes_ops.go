@@ -66,6 +66,7 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 	}
 	// === 运维中心：Docker 容器管理（SSH 远程主机）===
 	dockerH := v1.NewDockerHandler(d.MonSvc)
+	execH := v1.NewDockerExecHandler()
 	docker := guarded.Group("/ops/docker")
 	docker.Use(middleware.RequireAdmin())
 	{
@@ -100,6 +101,9 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		docker.DELETE("/local/volumes/:name", dockerH.LocalVolumeRemove)
 		docker.POST("/local/networks", dockerH.LocalNetworkCreate)
 		docker.DELETE("/local/networks/:name", dockerH.LocalNetworkRemove)
+		// 创建容器 + exec 终端
+		docker.POST("/local/containers/create", dockerH.LocalCreateContainer)
+		docker.GET("/local/containers/:name/exec/ws", execH.Handle)
 	}
 
 	// === 运维中心：磁盘管理（SSH 远程主机，分区/格式化/挂载）===

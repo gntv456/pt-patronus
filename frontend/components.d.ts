@@ -113,6 +113,7 @@ declare module 'vue' {
     NovaHDScratchGame: typeof import('./src/components/NovaHDScratchGame.vue')['default']
     OidcPanel: typeof import('./src/components/settings/OidcPanel.vue')['default']
     OpsDatabase: typeof import('./src/components/ops/OpsDatabase.vue')['default']
+    OpsDisk: typeof import('./src/components/ops/OpsDisk.vue')['default']
     OpsDocker: typeof import('./src/components/ops/OpsDocker.vue')['default']
     OpsMonitor: typeof import('./src/components/ops/OpsMonitor.vue')['default']
     PandaFlipGame: typeof import('./src/components/PandaFlipGame.vue')['default']

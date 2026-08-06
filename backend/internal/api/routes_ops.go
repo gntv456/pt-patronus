@@ -95,6 +95,17 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		docker.DELETE("/local/images/:ref", dockerH.LocalRemoveImage)
 	}
 
+	// === 运维中心：磁盘管理（SSH 远程主机，分区/格式化/挂载）===
+	diskH := v1.NewDiskHandler(d.MonSvc)
+	disks := guarded.Group("/ops/disk")
+	disks.Use(middleware.RequireAdmin())
+	{
+		disks.GET("/:id/list", diskH.List)
+		disks.POST("/:id/partition", diskH.Partition)
+		disks.POST("/:id/mount", diskH.Mount)
+		disks.POST("/:id/umount", diskH.Umount)
+	}
+
 	// === 运维中心：数据库可视化管理（受限查询器）===
 	dbH := v1.NewDatabaseHandler(d.DB)
 	dbAdmin := guarded.Group("/ops/database")

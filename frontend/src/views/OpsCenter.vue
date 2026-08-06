@@ -4,9 +4,10 @@ import GlassIcon from '@/components/GlassIcon.vue'
 import OpsMonitor from '@/components/ops/OpsMonitor.vue'
 import OpsDocker from '@/components/ops/OpsDocker.vue'
 import OpsDatabase from '@/components/ops/OpsDatabase.vue'
+import OpsDisk from '@/components/ops/OpsDisk.vue'
 import FileManager from '@/views/FileManager.vue'
 
-type Tab = 'monitor' | 'files' | 'docker' | 'database'
+type Tab = 'monitor' | 'files' | 'docker' | 'database' | 'disk'
 
 const activeTab = ref<Tab>('monitor')
 
@@ -15,6 +16,7 @@ const tabs: { key: Tab; label: string; icon: string; from: string; to: string; d
   { key: 'files', label: '文件管理', icon: 'files', from: '#f7971e', to: '#ffd200', desc: '本地/NAS/云盘统一浏览' },
   { key: 'docker', label: 'Docker', icon: 'server', from: '#0f2027', to: '#2c5364', desc: '远程容器编排与管理' },
   { key: 'database', label: '数据库', icon: 'settings', from: '#11998e', to: '#38ef7d', desc: '受限查询与可视化浏览' },
+  { key: 'disk', label: '磁盘管理', icon: 'harddisk', from: '#0984e3', to: '#6c5ce7', desc: '分区/格式化/挂载/卸载' },
 ]
 </script>
 
@@ -22,7 +24,7 @@ const tabs: { key: Tab; label: string; icon: string; from: string; to: string; d
   <div class="ops-center">
     <header class="ops-header">
       <h1 class="ops-title">运维中心</h1>
-      <p class="ops-subtitle">系统监控 · 文件管理 · Docker 容器 · 数据库 · 四大特权运维功能</p>
+      <p class="ops-subtitle">系统监控 · 文件管理 · Docker 容器 · 数据库 · 磁盘管理 · 五大特权运维功能</p>
     </header>
 
     <!-- 功能 Tab -->
@@ -49,6 +51,7 @@ const tabs: { key: Tab; label: string; icon: string; from: string; to: string; d
         <FileManager v-else-if="activeTab === 'files'" :embedded="true" />
         <OpsDocker v-else-if="activeTab === 'docker'" />
         <OpsDatabase v-else-if="activeTab === 'database'" />
+        <OpsDisk v-else-if="activeTab === 'disk'" />
       </KeepAlive>
     </main>
   </div>

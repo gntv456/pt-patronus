@@ -156,6 +156,9 @@ const GLYPHS: Record<string, string> = {
   stethoscope:
     '<path d="M5 3v5a4 4 0 0 0 8 0V3"/><path d="M5 3H7"/><path d="M11 3h2"/><path d="M9 12v3a4 4 0 0 0 4 4h1a3 3 0 1 0 0-2h-1a2 2 0 0 1-2-2v-3"/><circle cx="17" cy="16" r="2.2"/>',
   // 下载器·qBittorrent：官方圆形 logo 轮廓 + 内部向下箭头 + 底部种子波浪（蓝）
+  // 磁盘：硬盘（圆柱形盘片 + 读写头）
+  harddisk:
+    '<rect x="4" y="4" width="16" height="16" rx="2.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 7v3"/><path d="M15.5 8.5l-2 2.5"/>',
   qbittorrent:
     '<circle cx="12" cy="12" r="9"/><path d="M12 7v3.5"/><path d="M9.6 9L12 11.4 14.4 9"/><path d="M8 16q1.2 -1.2 2.4 0t2.4 0t2.4 0"/>',
   // 下载器·Transmission：顶部红把手 + 竖杆 + 向下楔形箭头 + 底部 U 形托盘（传输活塞造型，红）

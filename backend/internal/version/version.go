@@ -8,4 +8,4 @@
 package version
 
 // Version 是当前应用版本号。var 而非 const，以便 ldflags 在构建期注入。
-var Version = "1.03.01"
+var Version = "1.03.02"

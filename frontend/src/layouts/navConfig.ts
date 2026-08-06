@@ -51,6 +51,7 @@ export const navGroups: NavGroup[] = [
       { name: 'mediaserver', label: '媒体服务器', icon: 'mediaserver', from: '#52b788', to: '#2d6a4f' },
       { name: 'files', label: '文件', icon: 'files', from: '#f7971e', to: '#ffd200' },
       { name: 'nas-server', label: 'NAS', icon: 'server', from: '#0f2027', to: '#2c5364' },
+      { name: 'ops-center', label: '运维', icon: 'server', from: '#11998e', to: '#38ef7d' },
     ],
   },
   {
@@ -99,6 +100,7 @@ export const navDesc: Record<string, string> = {
   downloaders: '下载器 · qB/TR/Deluge/Aria2',
   files: '文件 · 本地/NAS/云盘统一浏览',
   'nas-server': 'NAS · 设备与服务监控',
+  'ops-center': '运维 · 系统监控/Docker/文件/数据库',
   mediaquality: '媒体质量 · 多评分聚合 + 低分保护',
   backup: '备份 · 配置导出/导入',
   doctor: '诊断 · 健康自检',

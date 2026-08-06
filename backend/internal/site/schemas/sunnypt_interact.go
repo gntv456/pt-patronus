@@ -14,9 +14,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
-// sunnypt 互动能力：签到 / 公告 / 消息。考核见 assessment.SunnyptAdapter。
-
-// sunnyPost Bearer POST JSON；401/403 → ErrNotLoggedIn。
 func (g *GenericJSON) sunnyPost(ctx context.Context, apiBase, cookie, path string, body []byte) ([]byte, int, error) {
 	tok, err := sunnyAccessToken(cookie)
 	if err != nil {
@@ -41,8 +38,6 @@ func (g *GenericJSON) sunnyPost(ctx context.Context, apiBase, cookie, path strin
 	return resp.Body, resp.StatusCode, nil
 }
 
-// Checkin 实现 site.CheckinCapable（仅 sunnypt）。
-// POST /api/v1/attendance/check-in；code==0 成功；code==400001 今天已签到（亦成功）。
 func (g *GenericJSON) Checkin(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string) (*site.CheckinResult, error) {
 
@@ -98,7 +93,6 @@ func (g *GenericJSON) Checkin(ctx context.Context, def *site.SiteMetadata,
 	return &site.CheckinResult{Success: true, Message: msg, Bonus: wrap.Data.Points}, nil
 }
 
-// sunnyptFetchAnnouncement 抓主站 /site/posts/站点公告 的 MDX 内容并拆条。
 func (g *GenericJSON) sunnyptFetchAnnouncement(ctx context.Context, def *site.SiteMetadata,
 	baseURL, cookie string) (*site.SiteAnnouncement, error) {
 
@@ -110,7 +104,6 @@ func (g *GenericJSON) sunnyptFetchAnnouncement(ctx context.Context, def *site.Si
 	return &site.SiteAnnouncement{Items: items, FetchedAt: time.Now(), RawText: raw}, nil
 }
 
-// sunnyptFetchNewsContent 用 AuthSession 拉站点公告页，从 RSC/HTML 中提取 content 字段。
 func (g *GenericJSON) sunnyptFetchNewsContent(ctx context.Context, baseURL, cookie string) (string, error) {
 	// Next.js RSC：必须带 RSC:1，且不要 Next-Router-Prefetch（prefetch 响应无 MDX content）。
 	// 先 POST /api/auth/session 拿干净 AuthSession，再 GET /site/posts/站点公告。
@@ -152,7 +145,6 @@ func (g *GenericJSON) sunnyptFetchNewsContent(ctx context.Context, baseURL, cook
 	return "", fmt.Errorf("sunnypt: news content not found (status=%d bodyLen=%d)", resp.StatusCode, len(resp.Body))
 }
 
-// sunnyptEnsureSession POST /api/auth/session with accessToken, merge AuthSession cookie.
 func (g *GenericJSON) sunnyptEnsureSession(ctx context.Context, baseURL, cookie string) (string, error) {
 	// 始终用 accessToken 刷新会话，让 HttpOnly AuthSession 被服务端识别。DB cookie 里嵌套/破损的
 	// AuthSession 会干扰 NextAuth 会话层，故不直接信任原 cookie，走 API 换干净 session（刷新失败时用 clean cookie 兜底）。
@@ -232,7 +224,6 @@ func sunnyCleanSessionCookie(cookie string) string {
 	return strings.Join(others, "; ")
 }
 
-// sunnyExtractContentField 从 RSC/HTML 中取最长的含 "## " 标题的 content 字段。
 func sunnyExtractContentField(text string) string {
 	re := regexp.MustCompile(`"content":"((?:\\.|[^"\\])*)"`)
 	best := ""
@@ -251,292 +242,4 @@ func sunnyExtractContentField(text string) string {
 		}
 	}
 	return best
-}
-
-// sunnyParseNewsMD 按「## 日期 - 标题」拆公告条。
-var sunnyNewsHeadRe = regexp.MustCompile(`(?m)^##\s*([0-9]{4}[./][0-9]{1,2}[./][0-9]{1,2})\s*[-–—]\s*(.+)$`)
-
-func sunnyParseNewsMD(md string) []site.AnnouncementItem {
-	md = strings.ReplaceAll(md, "\r\n", "\n")
-	idxs := sunnyNewsHeadRe.FindAllStringSubmatchIndex(md, -1)
-	if len(idxs) == 0 {
-		if strings.TrimSpace(md) == "" {
-			return nil
-		}
-		return []site.AnnouncementItem{{Title: "站点公告", Content: strings.TrimSpace(md)}}
-	}
-	items := make([]site.AnnouncementItem, 0, len(idxs))
-	for i, loc := range idxs {
-		date := md[loc[2]:loc[3]]
-		title := strings.TrimSpace(md[loc[4]:loc[5]])
-		start := loc[1]
-		end := len(md)
-		if i+1 < len(idxs) {
-			end = idxs[i+1][0]
-		}
-		body := strings.TrimSpace(md[start:end])
-		date = strings.ReplaceAll(date, ".", "-")
-		date = strings.ReplaceAll(date, "/", "-")
-		items = append(items, site.AnnouncementItem{Title: title, Date: date, Content: body})
-	}
-	return items
-}
-
-// sunnyptFetchMessages 系统通知 + 私聊/管理对话列表。
-func (g *GenericJSON) sunnyptFetchMessages(ctx context.Context, def *site.SiteMetadata,
-	baseURL, cookie string, mailbox site.MailboxType) ([]site.Message, error) {
-
-	apiBase := sunnyAPIBase(baseURL)
-	switch mailbox {
-	case site.MailboxSystem:
-		return g.sunnyptListNotifications(ctx, apiBase, cookie)
-	case site.MailboxInbox:
-		return g.sunnyptListChatRooms(ctx, apiBase, cookie, "/api/v1/chat/private/list", site.MailboxInbox)
-	case site.MailboxStaff:
-		return g.sunnyptListChatRooms(ctx, apiBase, cookie, "/api/v1/chat/admin/list", site.MailboxStaff)
-	default:
-		return []site.Message{}, nil
-	}
-}
-
-func (g *GenericJSON) sunnyptListNotifications(ctx context.Context, apiBase, cookie string) ([]site.Message, error) {
-	body, _, err := g.sunnyGet(ctx, apiBase, cookie, "/api/v1/notifications?limit=100&offset=0")
-	if err != nil {
-		return nil, err
-	}
-	var wrap struct {
-		Code int `json:"code"`
-		Data struct {
-			List []struct {
-				ID      any    `json:"id"`
-				Title   string `json:"title"`
-				Body    string `json:"body"`
-				Type    string `json:"type"`
-				ReadAt  any    `json:"read_at"`
-				Created any    `json:"created_at"`
-			} `json:"list"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &wrap); err != nil {
-		return nil, fmt.Errorf("sunnypt: 解析通知: %w", err)
-	}
-	if wrap.Code != 0 {
-		return []site.Message{}, nil
-	}
-	out := make([]site.Message, 0, len(wrap.Data.List))
-	for _, it := range wrap.Data.List {
-		id := sunnyAnyID(it.ID)
-		out = append(out, site.Message{
-			Sender:       "系统通知",
-			Title:        it.Title,
-			Content:      it.Body,
-			Date:         sunnyAnyDate(it.Created),
-			URL:          "/notifications?id=" + id,
-			IsRead:       sunnyIsRead(it.ReadAt),
-			Mailbox:      site.MailboxSystem,
-			AdminActions: &site.AdminActions{ItemID: id},
-			FetchedAt:    time.Now(),
-		})
-	}
-	return out, nil
-}
-
-func (g *GenericJSON) sunnyptListChatRooms(ctx context.Context, apiBase, cookie, path string, mb site.MailboxType) ([]site.Message, error) {
-	body, _, err := g.sunnyGet(ctx, apiBase, cookie, path)
-	if err != nil {
-		return nil, err
-	}
-	type room struct {
-		ID    string `json:"id"`
-		Title string `json:"title"`
-		State int    `json:"state"`
-	}
-	var rooms []room
-	var wrap struct {
-		Code int    `json:"code"`
-		Data []room `json:"data"`
-	}
-	if json.Unmarshal(body, &wrap) == nil && wrap.Data != nil {
-		rooms = wrap.Data
-	} else {
-		var wrap2 struct {
-			Code int `json:"code"`
-			Data struct {
-				List []room `json:"list"`
-			} `json:"data"`
-		}
-		if json.Unmarshal(body, &wrap2) == nil {
-			rooms = wrap2.Data.List
-			wrap.Code = wrap2.Code
-		}
-	}
-	if wrap.Code != 0 && len(rooms) == 0 {
-		return []site.Message{}, nil
-	}
-	sender := "私信"
-	if mb == site.MailboxStaff {
-		sender = "管理员"
-	}
-	out := make([]site.Message, 0, len(rooms))
-	for _, it := range rooms {
-		out = append(out, site.Message{
-			Sender:  sender,
-			Title:   it.Title,
-			URL:     "/chat?roomId=" + url.QueryEscape(it.ID),
-			IsRead:  it.State != 0,
-			Mailbox: mb,
-			AdminActions: &site.AdminActions{
-				ItemID:   it.ID,
-				ReplyURL: "/chat?roomId=" + url.QueryEscape(it.ID),
-			},
-			FetchedAt: time.Now(),
-		})
-	}
-	return out, nil
-}
-
-// sunnyptFetchMessageContent 通知用列表 body；聊天拉 history。
-func (g *GenericJSON) sunnyptFetchMessageContent(ctx context.Context, def *site.SiteMetadata,
-	baseURL, cookie, msgURL string) (string, error) {
-
-	apiBase := sunnyAPIBase(baseURL)
-	if strings.Contains(msgURL, "notifications") {
-		id := sunnyQueryID(msgURL, "id")
-		if id == "" {
-			return "", nil
-		}
-		msgs, err := g.sunnyptListNotifications(ctx, apiBase, cookie)
-		if err != nil {
-			return "", err
-		}
-		for _, m := range msgs {
-			if m.AdminActions != nil && m.AdminActions.ItemID == id {
-				return m.Content, nil
-			}
-		}
-		return "", nil
-	}
-	roomID := sunnyQueryID(msgURL, "roomId")
-	if roomID == "" {
-		return "", nil
-	}
-	path := "/api/v1/chat/history?roomId=" + url.QueryEscape(roomID) + "&count=200"
-	body, _, err := g.sunnyGet(ctx, apiBase, cookie, path)
-	if err != nil {
-		return "", err
-	}
-	var raw struct {
-		Code int             `json:"code"`
-		Data json.RawMessage `json:"data"`
-	}
-	if json.Unmarshal(body, &raw) != nil || raw.Code != 0 {
-		return "", nil
-	}
-	return strings.Join(sunnyChatHistoryLines(raw.Data), "\n"), nil
-}
-
-func sunnyChatHistoryLines(data json.RawMessage) []string {
-	var arr []map[string]any
-	if json.Unmarshal(data, &arr) != nil {
-		var obj map[string]json.RawMessage
-		if json.Unmarshal(data, &obj) == nil {
-			for _, k := range []string{"messages", "list", "history", "items", "data"} {
-				if v, ok := obj[k]; ok {
-					_ = json.Unmarshal(v, &arr)
-					if len(arr) > 0 {
-						break
-					}
-				}
-			}
-		}
-	}
-	out := make([]string, 0, len(arr))
-	for _, it := range arr {
-		text := sunnyMapStr(it, "content", "text", "body", "message", "words")
-		if text == "" {
-			continue
-		}
-		who := sunnyMapStr(it, "username", "user_name", "sender", "from", "admin_name")
-		if who != "" {
-			out = append(out, who+": "+text)
-		} else {
-			out = append(out, text)
-		}
-	}
-	return out
-}
-
-// sunnyptMarkRead POST /api/v1/notifications/{id}/read；聊天房间 no-op。
-func (g *GenericJSON) sunnyptMarkRead(ctx context.Context, def *site.SiteMetadata,
-	baseURL, cookie string, itemIDs []string) (*site.BatchResult, error) {
-
-	apiBase := sunnyAPIBase(baseURL)
-	ok, fail := 0, 0
-	for _, id := range itemIDs {
-		if id == "" || strings.HasPrefix(id, "private_") {
-			ok++
-			continue
-		}
-		_, st, err := g.sunnyPost(ctx, apiBase, cookie, "/api/v1/notifications/"+url.PathEscape(id)+"/read", []byte("{}"))
-		if err != nil || (st != 0 && st != 200) {
-			fail++
-			continue
-		}
-		ok++
-	}
-	return &site.BatchResult{Success: ok, Failed: fail}, nil
-}
-
-func sunnyAnyID(v any) string {
-	switch t := v.(type) {
-	case string:
-		return t
-	case float64:
-		return strconv.FormatInt(int64(t), 10)
-	case json.Number:
-		return t.String()
-	default:
-		if v == nil {
-			return ""
-		}
-		return fmt.Sprint(v)
-	}
-}
-
-func sunnyAnyDate(v any) string {
-	switch t := v.(type) {
-	case string:
-		return t
-	case float64:
-		if t > 1e12 {
-			return sunnyFmtDate(int64(t) / 1000)
-		}
-		if t > 1e9 {
-			return sunnyFmtDate(int64(t))
-		}
-	}
-	return ""
-}
-
-func sunnyIsRead(v any) bool {
-	if v == nil {
-		return false
-	}
-	if b, ok := v.(bool); ok {
-		return b
-	}
-	s := fmt.Sprint(v)
-	return s != "" && s != "0" && s != "<nil>" && s != "null" && s != "false"
-}
-
-func sunnyQueryID(raw, key string) string {
-	if i := strings.Index(raw, key+"="); i >= 0 {
-		s := raw[i+len(key)+1:]
-		if j := strings.IndexAny(s, "&#"); j >= 0 {
-			s = s[:j]
-		}
-		s, _ = url.QueryUnescape(s)
-		return s
-	}
-	return ""
 }

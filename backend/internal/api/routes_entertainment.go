@@ -1,0 +1,50 @@
+package api
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/v1"
+)
+
+// registerEntertainmentRoutes 注册娱乐游戏路由（翻面夺宝 WS 桥接注册在 api 上绕过 header 鉴权）。
+func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
+	entH := v1.NewEntertainmentHandler(d.Entertainment, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins))
+	ent := guarded.Group("/entertainment")
+	{
+		ent.GET("", entH.Sites)
+		ent.GET("/:id/games", entH.Games)
+		ent.POST("/:id/play", entH.Play)
+		ent.GET("/:id/games/:game/stats", entH.Stats)
+		ent.GET("/:id/games/:game/buy-options", entH.BuyOptions)
+		ent.POST("/:id/games/:game/buy", entH.Buy)
+		ent.POST("/:id/games/:game/play-multi", entH.PlayMulti)
+		ent.GET("/:id/games/:game/prizes", entH.Prizes)
+		ent.GET("/:id/games/:game/history", entH.History)
+		ent.GET("/:id/games/:game/syntheses", entH.Syntheses)
+		ent.POST("/:id/games/:game/draw", entH.Draw)
+		ent.POST("/:id/games/:game/synthesize", entH.Synthesize)
+		ent.GET("/:id/games/:game/medal-tree", entH.MedalTree)
+		ent.GET("/:id/games/:game/medal-shards", entH.MedalShards)
+		ent.POST("/:id/games/:game/compose", entH.ComposeMedal)
+		ent.POST("/:id/games/:game/compose-big", entH.ComposeBigMedal)
+		ent.POST("/:id/games/:game/convert-shard", entH.ConvertShard)
+		ent.GET("/:id/games/:game/farm", entH.Farm)
+		ent.POST("/:id/games/:game/plant", entH.Plant)
+		ent.POST("/:id/games/:game/harvest", entH.Harvest)
+		ent.POST("/:id/games/:game/harvest-all", entH.HarvestAll)
+		ent.POST("/:id/games/:game/sell", entH.Sell)
+		ent.POST("/:id/games/:game/bet", entH.Bet)
+		ent.GET("/:id/games/:game/events", entH.Events)
+		ent.GET("/:id/games/:game/events/:eventID", entH.EventDetail)
+		ent.POST("/:id/games/:game/blackjack", entH.Blackjack)
+		ent.GET("/:id/games/:game/flip-state", entH.FlipState)
+		ent.GET("/:id/games/:game/bigsmall-state", entH.BigSmallState)
+		ent.GET("/:id/games/:game/bigsmall-chat", entH.BigSmallChat)
+		ent.POST("/:id/games/:game/bigsmall-task", entH.BigSmallTaskAction)
+		ent.POST("/:id/games/:game/bigsmall-item", entH.BigSmallUseItem)
+		ent.POST("/:id/games/:game/bigsmall-chat", entH.BigSmallSendChat)
+		ent.POST("/:id/games/:game/bigsmall-redpacket", entH.BigSmallRedpacket)
+		// 翻面夺宝 websocket 桥接：?ticket= 鉴权（浏览器 WS 不能发 header JWT），
+		// 注册在 api（非 guarded）绕过 header 鉴权，handler 内自验 ticket。
+		api.GET("/entertainment/:id/games/:game/flip-ws", entH.FlipWS)
+	}
+}

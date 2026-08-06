@@ -1,0 +1,93 @@
+package api
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/middleware"
+	"github.com/hxpt/ptpatronus/internal/api/v1"
+)
+
+// registerSiteRoutes 注册站点相关路由：站点 CRUD/搜索/签到 + 免费促销/公告/后宫/考核/勋章/私信聚合。
+func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
+	siteH := v1.NewSiteHandler(d.SiteOp, d.SiteCh, d.Reg, d.SiteHC)
+	sites := guarded.Group("/sites")
+	{
+		sites.GET("", siteH.List)
+		sites.POST("", siteH.Create)
+		sites.GET("/definitions", siteH.Definitions)
+		sites.POST("/inspect", siteH.Inspect)
+		sites.GET("/:id", siteH.Get)
+		sites.PUT("/:id", siteH.Update)
+		sites.DELETE("/:id", middleware.RequireAdmin(), siteH.Delete)
+		sites.POST("/batch-delete", middleware.RequireAdmin(), siteH.BatchDelete)
+		sites.GET("/status", siteH.Status)
+		sites.GET("/status/stream", siteH.StatusStream)
+		sites.POST("/:id/test", siteH.Test)
+		sites.POST("/:id/checkin", siteH.Checkin)
+		sites.POST("/checkin", siteH.CheckinAll)
+		sites.GET("/checkin/records", siteH.CheckinRecords)
+		sites.POST("/:id/search", siteH.Search)
+		sites.GET("/:id/torrent/detail", siteH.TorrentDetail)
+		sites.POST("/:id/cookie", siteH.UpdateCookie)
+	}
+	guarded.POST("/search", siteH.SearchAll)
+	guarded.GET("/search/stream", siteH.SearchAllStream)
+
+	// 站点信息聚合：全站免费/促销 + 公告（套用站点 capability，per-site 缓存）
+	flH := v1.NewFreeleechHandler(d.SiteCh, d.SiteOp)
+	fl := guarded.Group("/freeleech")
+	{
+		fl.GET("", flH.All)
+		fl.GET("/stream", flH.AllStream) // 流式：每站一行 NDJSON，前端逐站显示（加载一个显示一个）
+		fl.POST("/sync/:id", flH.SyncOne)
+	}
+	annH := v1.NewAnnouncementHandler(d.SiteCh, d.SiteOp)
+	ann := guarded.Group("/announcements")
+	{
+		ann.GET("", annH.All)
+		ann.GET("/stream", annH.AllStream) // 流式：每站一行 NDJSON，前端逐站显示
+		ann.POST("/sync/:id", annH.SyncOne)
+	}
+
+	// 后宫：邀请库存 + 被邀请人花名册
+	haremH := v1.NewHaremHandler(d.SiteCh, d.SiteOp)
+	harem := guarded.Group("/harem")
+	{
+		harem.GET("", haremH.All)
+		harem.GET("/stream", haremH.AllStream)
+		harem.POST("/sync/:id", haremH.SyncOne)
+		harem.GET("/export", haremH.Export)
+	}
+
+	// 站点考核：per-platform 适配（MTeam JSON / NexusPHP HTML / TNode 不支持）
+	assessH := v1.NewAssessmentHandler(d.Assessment, d.SiteOp)
+	assess := guarded.Group("/assessment")
+	{
+		assess.GET("", assessH.All)
+		assess.GET("/stream", assessH.AllStream)
+		assess.POST("/sync/:id", assessH.SyncOne)
+	}
+
+	// 勋章墙：跨站勋章聚合 + 购买/佩戴/摘下
+	medalH := v1.NewMedalHandler(d.Medal, d.SiteOp)
+	medal := guarded.Group("/medalwall")
+	{
+		medal.GET("", medalH.All)
+		medal.GET("/stream", medalH.AllStream)
+		medal.POST("/buy", medalH.Buy)
+		medal.POST("/wear", medalH.Wear)
+		medal.POST("/takeoff", medalH.TakeOff)
+	}
+
+	// 站点私信：列表 + 正文 + 回复/删除/标记已读
+	msgH := v1.NewMessageHandler(d.SiteCh, d.SiteOp)
+	msg := guarded.Group("/messages")
+	{
+		msg.GET("", msgH.All)
+		msg.GET("/stream", msgH.Stream) // 流式：每站一行 NDJSON，前端逐站显示
+		msg.POST("/sync/:id", msgH.SyncOne)
+		msg.GET("/:id/content", msgH.Content)
+		msg.POST("/:id/reply", msgH.Reply)
+		msg.POST("/:id/delete", msgH.Delete)
+		msg.POST("/:id/markread", msgH.MarkRead)
+	}
+}

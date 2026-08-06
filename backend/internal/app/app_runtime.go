@@ -355,3 +355,26 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 
 	return srv, monCancel, dwCancel, tgCancel
 }
+
+// Run starts the HTTP server (blocking).
+func (a *App) Run() error { return a.http.ListenAndServe() }
+
+// Shutdown gracefully stops scheduler + monitor loop + HTTP server.
+func (a *App) Shutdown(ctx context.Context) error {
+	if a.monCancel != nil {
+		a.monCancel()
+	}
+	if a.dirwatchCancel != nil {
+		a.dirwatchCancel()
+	}
+	if a.tgbotCancel != nil {
+		a.tgbotCancel()
+	}
+	if a.sched != nil {
+		a.sched.Stop()
+	}
+	if a.pluginMgr != nil {
+		a.pluginMgr.Stop()
+	}
+	return a.http.Shutdown(ctx)
+}

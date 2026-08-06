@@ -388,26 +388,3 @@ func New(cfg *config.Config) (*App, error) {
 	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel, dirwatchCancel: dwCancel, tgbotCancel: tgCancel}, nil
 }
 
-// Run starts the HTTP server (blocking).
-func (a *App) Run() error { return a.http.ListenAndServe() }
-
-// Shutdown gracefully stops scheduler + monitor loop + HTTP server.
-func (a *App) Shutdown(ctx context.Context) error {
-	if a.monCancel != nil {
-		a.monCancel()
-	}
-	if a.dirwatchCancel != nil {
-		a.dirwatchCancel()
-	}
-	if a.tgbotCancel != nil {
-		a.tgbotCancel()
-	}
-	if a.sched != nil {
-		a.sched.Stop()
-	}
-	if a.pluginMgr != nil {
-		a.pluginMgr.Stop()
-	}
-	return a.http.Shutdown(ctx)
-}
-

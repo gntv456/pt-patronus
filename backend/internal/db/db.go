@@ -68,8 +68,12 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		sqlDB.SetMaxIdleConns(10)
 		sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	} else {
-		// SQLite：写串行（单连接 + busy_timeout=5000），避免多连接抢写锁触发 database is locked。
-		sqlDB.SetMaxOpenConns(1)
+		// SQLite + WAL：读写并发。WAL 模式下读不阻塞写、写不阻塞读，多连接并行
+		// 提升并发吞吐（仪表盘读 + monitor 写 + cron 同时跑不再串行排队）。
+		// busy_timeout=5000 兜底偶发写冲突（多连接同时写时等锁而非立即 locked）。
+		sqlDB.SetMaxOpenConns(4)
+		sqlDB.SetMaxIdleConns(2)
+		sqlDB.SetConnMaxLifetime(30 * time.Minute)
 	}
 
 	if err := db.AutoMigrate(

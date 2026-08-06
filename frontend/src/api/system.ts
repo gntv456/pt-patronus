@@ -62,6 +62,11 @@ export interface SystemMetrics {
   mem_usage?: number
   swap_total?: number
   swap_used?: number
+  net_rx_bytes?: number
+  net_tx_bytes?: number
+  net_rx_rate?: number
+  net_tx_rate?: number
+  process_count?: number
   disks?: DiskMetric[]
   load1?: number
   load5?: number

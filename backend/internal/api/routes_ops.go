@@ -64,4 +64,33 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		cmdRuns.POST("", cmdRunH.Create)
 		cmdRuns.GET("/:id", cmdRunH.Get)
 	}
+	// === 运维中心：Docker 容器管理（SSH 远程主机）===
+	dockerH := v1.NewDockerHandler(d.MonSvc)
+	docker := guarded.Group("/ops/docker")
+	docker.Use(middleware.RequireAdmin())
+	{
+		docker.GET("/:id/list", dockerH.List)
+		docker.GET("/:id/stats", dockerH.Stats)
+		docker.GET("/:id/containers/:name/inspect", dockerH.Inspect)
+		docker.GET("/:id/containers/:name/logs", dockerH.Logs)
+		docker.POST("/:id/containers/:name/start", dockerH.Start)
+		docker.POST("/:id/containers/:name/stop", dockerH.Stop)
+		docker.POST("/:id/containers/:name/restart", dockerH.Restart)
+		docker.POST("/:id/containers/:name/pause", dockerH.Pause)
+		docker.POST("/:id/containers/:name/unpause", dockerH.Unpause)
+		docker.POST("/:id/containers/:name/remove", dockerH.Remove)
+		docker.POST("/:id/images/:ref/remove", dockerH.ImageRemove)
+		docker.POST("/:id/compose/up", dockerH.ComposeUp)
+		docker.POST("/:id/compose/down", dockerH.ComposeDown)
+	}
+
+	// === 运维中心：数据库可视化管理（受限查询器）===
+	dbH := v1.NewDatabaseHandler(d.DB)
+	dbAdmin := guarded.Group("/ops/database")
+	dbAdmin.Use(middleware.RequireAdmin())
+	{
+		dbAdmin.GET("/tables", dbH.Tables)
+		dbAdmin.GET("/tables/:table/schema", dbH.Schema)
+		dbAdmin.POST("/query", dbH.Query)
+	}
 }

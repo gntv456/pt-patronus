@@ -94,6 +94,11 @@ const emit = defineEmits<{
       <strong>{{ monitorCount }}</strong>
       <span>监控中心</span>
     </button>
+    <button class="ops-tile glass glass-hover" type="button" @click="emit('go', 'ops-center')">
+      <GlassIcon name="dashboard" from="#11998e" to="#38ef7d" :size="24" />
+      <strong>运维</strong>
+      <span>监控/Docker/DB</span>
+    </button>
     <button class="ops-tile glass glass-hover" type="button" @click="emit('go', 'settings')">
       <GlassIcon name="alert" from="#e74c3c" to="#c0392b" :size="24" />
       <strong>{{ activeAlertCount }}</strong>

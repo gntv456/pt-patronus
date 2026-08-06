@@ -103,6 +103,11 @@ const router = createRouter({
           component: () => import('@/views/NasServer.vue'),
         },
         {
+          path: 'ops-center',
+          name: 'ops-center',
+          component: () => import('@/views/OpsCenter.vue'),
+        },
+        {
           path: 'entertainment',
           name: 'entertainment',
           component: () => import('@/views/Entertainment.vue'),

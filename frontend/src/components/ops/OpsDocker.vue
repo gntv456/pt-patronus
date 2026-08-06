@@ -1,0 +1,392 @@
+﻿<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { dockerApi, type DockerContainer, type DockerImage, type DockerListResp, type DockerStatsRow } from '@/api/docker'
+import { monitorApi, type MonitorTarget } from '@/api/monitor'
+import GlassIcon from '@/components/GlassIcon.vue'
+
+const targets = ref<MonitorTarget[]>([])
+const selectedTarget = ref<number>(0)
+const loading = ref(false)
+const actionLoading = ref(false)
+const error = ref('')
+const data = ref<DockerListResp>({ containers: [], images: [], volumes: [], networks: [] })
+const stats = ref<DockerStatsRow[]>([])
+const activeTab = ref<'containers' | 'images' | 'volumes' | 'networks'>('containers')
+const logDrawer = ref(false)
+const logContainer = ref('')
+const logContent = ref('')
+const logLoading = ref(false)
+const inspectDrawer = ref(false)
+const inspectData = ref<any>(null)
+
+const sshTargets = computed(() => targets.value.filter((t) => t.type === 'host'))
+
+async function loadTargets() {
+  try {
+    targets.value = await monitorApi.list()
+    if (sshTargets.value.length && !selectedTarget.value) {
+      selectedTarget.value = sshTargets.value[0].id
+    }
+  } catch (e: any) {
+    error.value = e.message
+  }
+}
+
+async function refresh() {
+  if (!selectedTarget.value) return
+  loading.value = true
+  error.value = ''
+  try {
+    const [list, st] = await Promise.all([
+      dockerApi.list(selectedTarget.value),
+      dockerApi.stats(selectedTarget.value).catch(() => ({ stats: [] })),
+    ])
+    data.value = list
+    stats.value = st.stats || []
+  } catch (e: any) {
+    error.value = e.message
+    data.value = { containers: [], images: [], volumes: [], networks: [] }
+  } finally {
+    loading.value = false
+  }
+}
+
+function statFor(name: string): DockerStatsRow | undefined {
+  const clean = name.replace(/^\//, '')
+  return stats.value.find((s) => s.Name === clean || s.Container === clean.slice(0, 12))
+}
+
+async function doAction(container: DockerContainer, action: string, label: string) {
+  actionLoading.value = true
+  try {
+    const name = container.Names.replace(/^\//, '')
+    await (dockerApi as any)[action](selectedTarget.value, name)
+    ElMessage.success(`${label}成功`)
+    refresh()
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function removeContainer(container: DockerContainer) {
+  const name = container.Names.replace(/^\//, '')
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除容器「${name}」吗？此操作不可撤销。`,
+      '危险操作确认',
+      { type: 'warning', confirmButtonText: '强制删除', cancelButtonText: '取消' },
+    )
+    actionLoading.value = true
+    await dockerApi.remove(selectedTarget.value, name, true, true)
+    ElMessage.success('容器已删除')
+    refresh()
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e.message || '取消删除')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function removeImage(img: DockerImage) {
+  const ref = `${img.Repository}:${img.Tag}`
+  try {
+    await ElMessageBox.confirm(`确定要删除镜像「${ref}」吗？`, '危险操作确认', { type: 'warning' })
+    actionLoading.value = true
+    await dockerApi.removeImage(selectedTarget.value, ref, true)
+    ElMessage.success('镜像已删除')
+    refresh()
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e.message)
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function showLogs(container: DockerContainer) {
+  logContainer.value = container.Names.replace(/^\//, '')
+  logDrawer.value = true
+  logLoading.value = true
+  try {
+    const res = await dockerApi.logs(selectedTarget.value, logContainer.value, 200)
+    logContent.value = res.logs || '(无日志)'
+  } catch (e: any) {
+    logContent.value = '获取日志失败: ' + e.message
+  } finally {
+    logLoading.value = false
+  }
+}
+
+async function showInspect(container: DockerContainer) {
+  const name = container.Names.replace(/^\//, '')
+  inspectDrawer.value = true
+  try {
+    inspectData.value = await dockerApi.inspect(selectedTarget.value, name)
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
+}
+
+function stateColor(state: string): string {
+  const colors: Record<string, string> = {
+    running: 'success', exited: 'muted', paused: 'warn', created: 'info', restarting: 'info', dead: 'danger',
+  }
+  return colors[state] || 'muted'
+}
+
+const composeVisible = ref(false)
+const composePath = ref('')
+const composeOutput = ref('')
+const composeLoading = ref(false)
+
+function openCompose() {
+  if (!selectedTarget.value) {
+    ElMessage.warning('请先选择 SSH 主机')
+    return
+  }
+  composeVisible.value = true
+  composeOutput.value = ''
+}
+
+async function composeAction(action: 'up' | 'down') {
+  if (!composePath.value.trim()) {
+    ElMessage.warning('请输入 compose 文件所在目录')
+    return
+  }
+  composeLoading.value = true
+  composeOutput.value = ''
+  try {
+    const fn = action === 'up' ? dockerApi.composeUp : dockerApi.composeDown
+    const res = await fn(selectedTarget.value, composePath.value.trim(), action === 'down')
+    composeOutput.value = res.output || (res.ok ? '成功' : '失败')
+    if (res.ok) ElMessage.success(action === 'up' ? '部署成功' : '已停止')
+    refresh()
+  } catch (e: any) {
+    composeOutput.value = e.message
+  } finally {
+    composeLoading.value = false
+  }
+}
+
+onMounted(async () => {
+  await loadTargets()
+  if (selectedTarget.value) refresh()
+})
+</script>
+
+<template>
+  <div class="ops-docker">
+    <!-- 主机选择 + 刷新 -->
+    <div class="docker-toolbar">
+      <el-select v-model="selectedTarget" placeholder="选择 SSH 主机" @change="refresh" style="width: 240px">
+        <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
+      </el-select>
+      <el-button :loading="loading" @click="refresh">刷新</el-button>
+      <el-button type="primary" @click="openCompose" :disabled="!selectedTarget">Compose 部署</el-button>
+      <span v-if="error" class="docker-error">{{ error }}</span>
+    </div>
+
+    <template v-if="!selectedTarget && sshTargets.length === 0">
+      <div class="docker-empty glass">
+        <GlassIcon name="server" from="#6c5ce7" to="#4285f4" :size="48" />
+        <p>请先在 NAS 页面添加 SSH 类型的主机监控目标</p>
+      </div>
+    </template>
+
+    <template v-else-if="selectedTarget">
+      <!-- 概览卡片 -->
+      <div class="docker-stats">
+        <div class="stat-tile glass">
+          <strong>{{ data.containers.filter((c) => c.State === 'running').length }}</strong>
+          <span>运行中</span>
+        </div>
+        <div class="stat-tile glass">
+          <strong>{{ data.containers.length }}</strong>
+          <span>容器总数</span>
+        </div>
+        <div class="stat-tile glass">
+          <strong>{{ data.images.length }}</strong>
+          <span>镜像</span>
+        </div>
+        <div class="stat-tile glass">
+          <strong>{{ data.volumes.length }}</strong>
+          <span>卷</span>
+        </div>
+        <div class="stat-tile glass">
+          <strong>{{ data.networks.length }}</strong>
+          <span>网络</span>
+        </div>
+      </div>
+
+      <!-- Tab 切换 -->
+      <div class="docker-tabs">
+        <button v-for="tab in (['containers','images','volumes','networks'] as const)" :key="tab"
+          class="docker-tab" :class="{ active: activeTab === tab }" @click="activeTab = tab">
+          {{ { containers: '容器', images: '镜像', volumes: '卷', networks: '网络' }[tab] }}
+        </button>
+      </div>
+
+      <!-- 容器列表 -->
+      <div v-if="activeTab === 'containers'" class="docker-table glass">
+        <table>
+          <thead>
+            <tr>
+              <th>名称</th><th>镜像</th><th>状态</th><th>CPU</th><th>内存</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in data.containers" :key="c.ID">
+              <td class="td-name" :title="c.Names">{{ c.Names.replace(/^\//, '') }}</td>
+              <td class="td-image" :title="c.Image">{{ c.Image }}</td>
+              <td>
+                <span class="pt-chip" :class="`pt-chip--${stateColor(c.State)}`">{{ c.State }}</span>
+                <div class="td-status-sub">{{ c.Status }}</div>
+              </td>
+              <td>{{ statFor(c.Names)?.CPUPerc || '-' }}</td>
+              <td>{{ statFor(c.Names)?.MemUsage || '-' }}</td>
+              <td class="td-actions">
+                <button v-if="c.State !== 'running'" class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'start', '启动')">▶</button>
+                <button v-if="c.State === 'running'" class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'stop', '停止')">■</button>
+                <button class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'restart', '重启')">↻</button>
+                <button class="mini-btn" title="日志" @click="showLogs(c)">☰</button>
+                <button class="mini-btn" title="详情" @click="showInspect(c)">ℹ</button>
+                <button class="mini-btn danger" title="删除" @click="removeContainer(c)">✕</button>
+              </td>
+            </tr>
+            <tr v-if="!data.containers.length">
+              <td colspan="6" class="td-empty">暂无容器</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 镜像列表 -->
+      <div v-if="activeTab === 'images'" class="docker-table glass">
+        <table>
+          <thead><tr><th>仓库</th><th>标签</th><th>ID</th><th>大小</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="(img, i) in data.images" :key="i">
+              <td>{{ img.Repository }}</td>
+              <td><span class="pt-chip">{{ img.Tag }}</span></td>
+              <td class="td-mono">{{ img.ID }}</td>
+              <td>{{ img.Size }}</td>
+              <td><button class="mini-btn danger" @click="removeImage(img)">✕</button></td>
+            </tr>
+            <tr v-if="!data.images.length"><td colspan="5" class="td-empty">暂无镜像</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 卷列表 -->
+      <div v-if="activeTab === 'volumes'" class="docker-table glass">
+        <table>
+          <thead><tr><th>名称</th><th>驱动</th></tr></thead>
+          <tbody>
+            <tr v-for="(v, i) in data.volumes" :key="i"><td class="td-mono">{{ v.Name }}</td><td>{{ v.Driver }}</td></tr>
+            <tr v-if="!data.volumes.length"><td colspan="2" class="td-empty">暂无卷</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 网络列表 -->
+      <div v-if="activeTab === 'networks'" class="docker-table glass">
+        <table>
+          <thead><tr><th>名称</th><th>驱动</th><th>范围</th></tr></thead>
+          <tbody>
+            <tr v-for="(n, i) in data.networks" :key="i"><td>{{ n.Name }}</td><td>{{ n.Driver }}</td><td>{{ n.Scope }}</td></tr>
+            <tr v-if="!data.networks.length"><td colspan="3" class="td-empty">暂无网络</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+
+    <!-- 日志抽屉 -->
+    <el-drawer v-model="logDrawer" :title="`日志: ${logContainer}`" size="60%" direction="rtl">
+      <div v-loading="logLoading" class="log-viewer">
+        <pre>{{ logContent }}</pre>
+      </div>
+    </el-drawer>
+
+    <!-- 详情抽屉 -->
+    <el-drawer v-model="inspectDrawer" title="容器详情" size="50%" direction="rtl">
+      <pre v-if="inspectData" class="inspect-viewer">{{ JSON.stringify(inspectData, null, 2) }}</pre>
+    </el-drawer>
+
+    <!-- Compose 部署对话框 -->
+    <el-dialog v-model="composeVisible" title="Docker Compose 部署" width="500px">
+      <el-form label-width="80px">
+        <el-form-item label="主机">
+          <span>{{ sshTargets.find((t) => t.id === selectedTarget)?.name || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="目录">
+          <el-input v-model="composePath" placeholder="/opt/myapp" />
+        </el-form-item>
+      </el-form>
+      <div v-if="composeOutput" class="compose-output">
+        <pre>{{ composeOutput }}</pre>
+      </div>
+      <template #footer>
+        <el-button @click="composeVisible = false">关闭</el-button>
+        <el-button type="danger" :loading="composeLoading" @click="composeAction('down')">Compose Down</el-button>
+        <el-button type="primary" :loading="composeLoading" @click="composeAction('up')">Compose Up</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<style scoped>
+.ops-docker { display: flex; flex-direction: column; gap: var(--sp-3); }
+.docker-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.docker-error { color: var(--pt-danger); font-size: var(--fs-sm); }
+.docker-empty {
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-4);
+  padding: var(--sp-10); border-radius: var(--radius-lg); color: var(--text-muted);
+}
+.docker-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: var(--sp-2);
+}
+.stat-tile {
+  padding: var(--sp-3); text-align: center; border-radius: var(--radius-md);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.stat-tile strong { font-size: var(--fs-xl); color: var(--text-strong); }
+.stat-tile span { font-size: var(--fs-xs); color: var(--text-muted); }
+.docker-tabs { display: flex; gap: var(--sp-1); }
+.docker-tab {
+  padding: var(--sp-2) var(--sp-4); border: 0; background: none; cursor: pointer;
+  font-size: var(--fs-sm); color: var(--text-muted); border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-bottom: 2px solid transparent;
+}
+.docker-tab.active { color: var(--pt-primary); border-bottom-color: var(--pt-primary); font-weight: 600; }
+.docker-table { border-radius: var(--radius-md); overflow: auto; }
+.docker-table table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.docker-table th {
+  text-align: left; padding: var(--sp-2) var(--sp-3); color: var(--text-muted);
+  font-weight: 500; border-bottom: 1px solid var(--divider); white-space: nowrap;
+}
+.docker-table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--divider); }
+.docker-table tr:hover td { background: var(--surface-hover); }
+.td-name { font-weight: 500; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-image, .td-mono { font-family: monospace; font-size: var(--fs-xs); color: var(--text-muted); }
+.td-status-sub { font-size: var(--fs-xs); color: var(--text-muted); }
+.td-actions { display: flex; gap: 4px; }
+.td-empty { text-align: center; color: var(--text-muted); padding: var(--sp-6); }
+.mini-btn {
+  width: 28px; height: 28px; border: 1px solid var(--divider); background: var(--surface-1);
+  border-radius: var(--radius-xs); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
+}
+.mini-btn:hover { background: var(--surface-hover); }
+.mini-btn.danger:hover { background: rgba(231,76,60,0.15); color: var(--pt-danger); }
+.mini-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.log-viewer, .compose-output { margin-top: var(--sp-3); }
+.compose-output pre {
+  font-family: monospace; font-size: var(--fs-xs); white-space: pre-wrap; word-break: break-all;
+  background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-sm); max-height: 200px; overflow: auto;
+}
+.inspect-viewer {
+  font-family: monospace; font-size: var(--fs-xs); white-space: pre-wrap; word-break: break-all;
+  background: var(--surface-2); padding: var(--sp-3); border-radius: var(--radius-sm); overflow: auto;
+}
+</style>

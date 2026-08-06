@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: ['**']   # 所有分支都触发——防止开发分支积累类型/编译错误到发版才暴露
   pull_request:
   workflow_dispatch:
 

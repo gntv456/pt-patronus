@@ -1,14 +1,53 @@
 #!/usr/bin/env bash
-# scripts/hooks/pre-push — 推送前行数门禁(对标 README 「单文件 ~400 行」规范)。
+# scripts/hooks/pre-push — 推送前质量门禁。
 #
-# 安装(本 clone 生效,CI 另有同款门禁兜底):
+# 三道防线，任一失败即中止推送（CI 另有同款兜底）：
+#   1. 文件行数门禁（棘轮 baseline，对标 README「单文件 ~400 行」）
+#   2. 后端编译 + vet（go build + go vet）
+#   3. 前端类型检查（vue-tsc --noEmit）
+#
+# 安装（本 clone 生效）:
 #   git config core.hooksPath scripts/hooks
-# 旁路(仅本地,CI 仍会拦):
+# 旁路（仅本地，CI 仍会拦）:
 #   git push --no-verify
 set -euo pipefail
 
-# 排空 stdin:pre-push 收到 "<local ref> <local sha> <remote ref> <remote sha>" 行。
+# 排空 stdin: pre-push 收到 "<local ref> <local sha> <remote ref> <remote sha>" 行。
 while read -r _ref _lsha _rref _rsha; do :; done
 
 ROOT="$(git rev-parse --show-toplevel)"
-exec bash "$ROOT/scripts/check_file_length.sh" check
+FAIL=0
+
+echo "▶ 文件行数门禁（≤400 行，棘轮 baseline）..."
+bash "$ROOT/scripts/check_file_length.sh" check || FAIL=1
+
+if command -v go >/dev/null 2>&1 && [[ -d "$ROOT/backend" ]]; then
+  echo "▶ 后端 go vet + go build..."
+  ( cd "$ROOT/backend" && go vet ./... && go build ./... ) || {
+    echo "✗ 后端编译/vet 失败——请修复后再推送"
+    FAIL=1
+  }
+else
+  echo "▷ 跳过后端检查（未安装 go 或无 backend 目录）"
+fi
+
+if command -v npx >/dev/null 2>&1 && [[ -d "$ROOT/frontend" ]]; then
+  echo "▶ 前端类型检查 vue-tsc --noEmit..."
+  ( cd "$ROOT/frontend" && npx vue-tsc --noEmit ) || {
+    echo "✗ 前端类型检查失败——请修复后再推送"
+    FAIL=1
+  }
+else
+  echo "▷ 跳过前端检查（未安装 node/npx 或无 frontend 目录）"
+fi
+
+if [[ $FAIL -ne 0 ]]; then
+  echo ""
+  echo "════════════════════════════════════════"
+  echo "  ✗ pre-push 质量门禁未通过，已中止推送"
+  echo "  旁路（不推荐）: git push --no-verify"
+  echo "════════════════════════════════════════"
+  exit 1
+fi
+
+echo "✓ 质量门禁全部通过"

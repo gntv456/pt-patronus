@@ -25,6 +25,9 @@ services:
       COMPOSE_SCAN_DIR: /host/compose
       # 宿主机 compose 项目根（页面反推显示宿主路径用）；按实际放 compose 的目录改
       COMPOSE_ROOT: /opt
+      # agent 自动更新：最新版本号 + 下载地址（含 {arch} 占位）
+      AGENT_LATEST_VERSION: 0.3.1
+      AGENT_DOWNLOAD_URL: https://github.com/gntv456/pt-patronus/releases/latest/download/ptpatronus-agent-linux-{arch}
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
 

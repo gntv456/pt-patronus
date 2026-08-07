@@ -156,7 +156,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
                   <el-button size="small" link :icon="MoveIcon" @click="openMoveCopy('move', [row as FileEntry])">移动</el-button>
                   <el-button size="small" link :icon="CopyDocument" @click="openMoveCopy('copy', [row as FileEntry])">复制</el-button>
                   <el-button size="small" link type="danger" :icon="Delete" @click="delOne(row as FileEntry)">删除</el-button>
-                  <el-dropdown v-if="curFs?.type === 'local'" trigger="click" @command="(cmd) => onFileExtra(cmd, row as FileEntry)">
+                  <el-dropdown v-if="curFs && (curFs.type === 'local' || curFs.type === 'agent')" trigger="click" @command="(cmd) => onFileExtra(cmd, row as FileEntry)">
                     <el-button size="small" link>更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
                     <template #dropdown><el-dropdown-menu>
                       <el-dropdown-item v-if="!row.is_dir" command="preview">预览</el-dropdown-item>

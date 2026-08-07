@@ -18,7 +18,7 @@ const (
 )
 
 // AgentVersion agent 版本号（hello/report 带上；0.2.0 起支持文件管理能力）。
-const AgentVersion = "0.2.0"
+const AgentVersion = "0.3.0"
 
 // CapabilityFile 文件管理能力标识（hello 的 Caps 带上，服务端据此判断是否可做文件 RPC）。
 const CapabilityFile = "file"
@@ -38,18 +38,24 @@ type Envelope struct {
 
 // Command server→agent 文件命令（JSON 对齐 agentrpc.Command，agent 独立定义避免 import filemanager）。
 type Command struct {
-	Op      string `json:"op"`                 // list | mkdir | delete | download | upload | rename | move | copy
-	Path    string `json:"path"`               // 用户视角路径（服务端已钳制）
-	Base    string `json:"base,omitempty"`     // agent 端钳制根（深度防御二次校验）
-	NewName string `json:"new_name,omitempty"` // op=rename：新文件名（纯名）
-	DstDir  string `json:"dst_dir,omitempty"`  // op=move|copy：目标目录（服务端已钳制）
+	Op        string `json:"op"`                  // list | ... | readfile | writefile | archive | extract | chmod | dirsize
+	Path      string `json:"path"`                // 用户视角路径
+	Base      string `json:"base,omitempty"`      // agent 端钳制根
+	NewName   string `json:"new_name,omitempty"`  // op=rename
+	DstDir    string `json:"dst_dir,omitempty"`   // op=move|copy
+	Dst       string `json:"dst,omitempty"`       // op=archive|extract
+	Content   string `json:"content,omitempty"`   // op=writefile
+	Mode      uint32 `json:"mode,omitempty"`      // op=chmod
+	Recursive bool   `json:"recursive,omitempty"` // op=chmod
 }
 
 // Response agent→server 小操作响应（JSON 对齐 filemanager.Response）。
 type Response struct {
 	OK      bool      `json:"ok"`
 	Err     string    `json:"err,omitempty"`
-	Entries []Entry   `json:"entries"` // op=list
+	Entries []Entry   `json:"entries"`           // op=list
+	Content string    `json:"content,omitempty"`  // op=readfile
+	Size    int64     `json:"size,omitempty"`     // op=dirsize
 	ModTime time.Time `json:"mod_time,omitempty"`
 }
 

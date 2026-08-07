@@ -31,6 +31,18 @@ func (a *agentConn) handleCmd(env Envelope) {
 		a.cmdDownload(env)
 	case "upload":
 		a.cmdUpload(env)
+	case "readfile":
+		a.cmdReadFile(env)
+	case "writefile":
+		a.cmdWriteFile(env)
+	case "archive":
+		a.cmdArchive(env)
+	case "extract":
+		a.cmdExtract(env)
+	case "chmod":
+		a.cmdChmod(env)
+	case "dirsize":
+		a.cmdDirSize(env)
 	default:
 		_ = a.writeResp(env.ID, false, "unknown op: "+env.Cmd.Op, nil)
 	}

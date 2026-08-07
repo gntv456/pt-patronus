@@ -43,6 +43,8 @@ func (a *agentConn) handleCmd(env Envelope) {
 		a.cmdChmod(env)
 	case "dirsize":
 		a.cmdDirSize(env)
+	case "upgrade":
+		a.cmdUpgrade(env)
 	default:
 		_ = a.writeResp(env.ID, false, "unknown op: "+env.Cmd.Op, nil)
 	}

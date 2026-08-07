@@ -338,4 +338,8 @@ export const agentApi = {
   remove: (id: number) => http.delete(`/monitors/agents/${id}`).then((r) => r.data),
   rotate: (id: number) =>
     http.post<{ plain_secret: string }>(`/monitors/agents/${id}/rotate`).then((r) => r.data),
+  upgrade: (id: number) =>
+    http.post<{ ok: boolean; error?: string }>(`/monitors/agents/${id}/upgrade`).then((r) => r.data),
+  latestAgentVersion: () =>
+    http.get<{ version: string; download_url: string }>('/monitors/agents/latest-version').then((r) => r.data),
 }

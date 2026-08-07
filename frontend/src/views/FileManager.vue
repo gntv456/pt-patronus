@@ -50,6 +50,10 @@ function onFileExtra(cmd: string, e: FileEntry) {
   else if (cmd === 'dirsize') calcDirSize(e)
   else if (cmd === 'preview') openPreview(e)
 }
+function supportsFsCmds(): boolean {
+  const fs = curFs.value
+  return !!fs && (fs.type === 'local' || fs.type === 'agent')
+}
 function isArchive(e: FileEntry): boolean {
   return /\.(zip|tar\.gz|tgz)$/i.test(e.name)
 }
@@ -156,14 +160,14 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
                   <el-button size="small" link :icon="MoveIcon" @click="openMoveCopy('move', [row as FileEntry])">移动</el-button>
                   <el-button size="small" link :icon="CopyDocument" @click="openMoveCopy('copy', [row as FileEntry])">复制</el-button>
                   <el-button size="small" link type="danger" :icon="Delete" @click="delOne(row as FileEntry)">删除</el-button>
-                  <el-dropdown v-if="curFs && (curFs.type === 'local' || curFs.type === 'agent')" trigger="click" @command="(cmd) => onFileExtra(cmd, row as FileEntry)">
+                  <el-dropdown v-if="curFs" trigger="click" @command="(cmd) => onFileExtra(cmd, row as FileEntry)">
                     <el-button size="small" link>更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
                     <template #dropdown><el-dropdown-menu>
                       <el-dropdown-item v-if="!row.is_dir" command="preview">预览</el-dropdown-item>
                       <el-dropdown-item v-if="!row.is_dir" command="edit">编辑</el-dropdown-item>
-                      <el-dropdown-item command="archive">压缩</el-dropdown-item>
+                      <el-dropdown-item v-if="supportsFsCmds()" command="archive">压缩</el-dropdown-item>
                       <el-dropdown-item v-if="isArchive(row as FileEntry)" command="extract">解压</el-dropdown-item>
-                      <el-dropdown-item command="chmod">权限</el-dropdown-item>
+                      <el-dropdown-item v-if="supportsFsCmds()" command="chmod">权限</el-dropdown-item>
                       <el-dropdown-item v-if="row.is_dir" command="dirsize">计算大小</el-dropdown-item>
                     </el-dropdown-menu></template>
                   </el-dropdown>

@@ -209,3 +209,18 @@ func (a *Alist) Move(ctx context.Context, src, dstDir string) error {
 func (a *Alist) Copy(ctx context.Context, src, dstDir string) error {
 	return a.moveOrCopy(ctx, src, dstDir, "/api/fs/copy", "copy")
 }
+
+// ReadFile 读取文件内容（通用实现：Download 全读到内存）。
+func (a *Alist) ReadFile(ctx context.Context, p string) ([]byte, error) {
+	return genericReadFile(ctx, a, p)
+}
+
+// WriteFile 写入文件内容（通用实现：Upload 桥接）。
+func (a *Alist) WriteFile(ctx context.Context, p string, data []byte) error {
+	return genericWriteFile(ctx, a, p, data)
+}
+
+// DirSize 计算目录大小（通用实现：List 递归累加）。
+func (a *Alist) DirSize(ctx context.Context, p string) (int64, error) {
+	return genericDirSize(ctx, a, p)
+}

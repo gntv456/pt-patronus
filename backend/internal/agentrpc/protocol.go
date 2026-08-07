@@ -23,6 +23,7 @@ type Command struct {
 	Content   string `json:"content,omitempty"`   // op=writefile：文件内容（小文件 ≤10MB）
 	Mode      uint32 `json:"mode,omitempty"`      // op=chmod：八进制权限位
 	Recursive bool   `json:"recursive,omitempty"` // op=chmod：是否递归
+	Checksum string `json:"checksum,omitempty"` // op=upgrade：期望 sha256（校验下载完整性）
 }
 
 // Response agent→server 小操作响应（list/mkdir/delete）。
@@ -67,6 +68,7 @@ type AgentFileRPC interface {
 	Extract(ctx context.Context, cmd Command) error
 	Chmod(ctx context.Context, cmd Command) error
 	DirSize(ctx context.Context, cmd Command) (int64, error)
+	Upgrade(ctx context.Context, cmd Command) error
 }
 
 // AgentRPCHub 按 agentID 取在线 agent 的文件 RPC 客户端（由 *monitor.AgentWSHub 实现）。

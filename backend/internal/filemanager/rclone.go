@@ -310,3 +310,18 @@ func parseRcloneTime(s string) time.Time {
 	}
 	return t
 }
+
+// ReadFile 读取文件内容（通用实现：Download 全读到内存）。
+func (r *Rclone) ReadFile(ctx context.Context, p string) ([]byte, error) {
+	return genericReadFile(ctx, r, p)
+}
+
+// WriteFile 写入文件内容（通用实现：Upload 桥接）。
+func (r *Rclone) WriteFile(ctx context.Context, p string, data []byte) error {
+	return genericWriteFile(ctx, r, p, data)
+}
+
+// DirSize 计算目录大小（通用实现：List 递归累加）。
+func (r *Rclone) DirSize(ctx context.Context, p string) (int64, error) {
+	return genericDirSize(ctx, r, p)
+}

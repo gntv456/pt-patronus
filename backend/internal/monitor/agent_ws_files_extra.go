@@ -65,6 +65,11 @@ func (ac *agentConn) simpleRPC(ctx context.Context, cmd agentrpc.Command) error 
 	return nil
 }
 
+// Upgrade 下发自更新命令（cmd.Dst=下载URL，cmd.Checksum=sha256）。
+func (ac *agentConn) Upgrade(ctx context.Context, cmd agentrpc.Command) error {
+	return ac.simpleRPC(ctx, cmd)
+}
+
 // agentErrOf 把 agent 回的错误字符串包成 error。
 func agentErrOf(msg string) error { return &agentErrStr{msg: msg} }
 

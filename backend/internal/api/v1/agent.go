@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/agentrpc"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"gorm.io/gorm"
 )
@@ -14,12 +15,13 @@ import (
 type AgentHandler struct {
 	op    *oper.AgentOper
 	monOp *oper.MonitorOper
-	db    *gorm.DB // 用于 Create 的事务化（Agent + MonitorTarget 原子写）
+	db    *gorm.DB
+	hub   agentrpc.AgentRPCHub // 用于 Create 的事务化（Agent + MonitorTarget 原子写）
 }
 
 // NewAgentHandler 构造。monOp 用于创建/删除关联的 MonitorTarget；db 用于事务化创建。
-func NewAgentHandler(op *oper.AgentOper, monOp *oper.MonitorOper, db *gorm.DB) *AgentHandler {
-	return &AgentHandler{op: op, monOp: monOp, db: db}
+func NewAgentHandler(op *oper.AgentOper, monOp *oper.MonitorOper, db *gorm.DB, hub agentrpc.AgentRPCHub) *AgentHandler {
+	return &AgentHandler{op: op, monOp: monOp, db: db, hub: hub}
 }
 
 // List 列出全部 agent（SecretHash 标 json:"-" 不泄露）。

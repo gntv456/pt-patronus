@@ -125,7 +125,7 @@ func TestRespondCloudErr(t *testing.T) {
 }
 
 func TestAgentHandlerBoundaryValidation(t *testing.T) {
-	h := NewAgentHandler(nil, nil, nil)
+	h := NewAgentHandler(nil, nil, nil, nil)
 	r := gin.New()
 	r.POST("/agents", h.Create)
 	r.DELETE("/agents/:id", h.Delete)

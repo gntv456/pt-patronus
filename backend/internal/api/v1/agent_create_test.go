@@ -30,6 +30,7 @@ func TestAgentHandlerCreateTargetType(t *testing.T) {
 		oper.NewAgentOper(db),
 		oper.NewMonitorOper(db, security.NewCrypto("agent-handler-test")),
 		db,
+		nil,
 	)
 	r := gin.New()
 	r.POST("/agents", h.Create)

@@ -18,7 +18,7 @@ const (
 )
 
 // AgentVersion agent 版本号（hello/report 带上；0.2.0 起支持文件管理能力）。
-const AgentVersion = "0.3.0"
+const AgentVersion = "0.3.1"
 
 // CapabilityFile 文件管理能力标识（hello 的 Caps 带上，服务端据此判断是否可做文件 RPC）。
 const CapabilityFile = "file"
@@ -47,6 +47,7 @@ type Command struct {
 	Content   string `json:"content,omitempty"`   // op=writefile
 	Mode      uint32 `json:"mode,omitempty"`      // op=chmod
 	Recursive bool   `json:"recursive,omitempty"` // op=chmod
+	Checksum  string `json:"checksum,omitempty"` // op=upgrade：期望 sha256
 }
 
 // Response agent→server 小操作响应（JSON 对齐 filemanager.Response）。

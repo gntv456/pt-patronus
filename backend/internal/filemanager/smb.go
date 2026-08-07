@@ -316,3 +316,18 @@ func splitShare(p string) (share, sub string) {
 	}
 	return share, sub
 }
+
+// ReadFile 读取文件内容（通用实现：Download 全读到内存）。
+func (s *SMB) ReadFile(ctx context.Context, p string) ([]byte, error) {
+	return genericReadFile(ctx, s, p)
+}
+
+// WriteFile 写入文件内容（通用实现：Upload 桥接）。
+func (s *SMB) WriteFile(ctx context.Context, p string, data []byte) error {
+	return genericWriteFile(ctx, s, p, data)
+}
+
+// DirSize 计算目录大小（通用实现：List 递归累加）。
+func (s *SMB) DirSize(ctx context.Context, p string) (int64, error) {
+	return genericDirSize(ctx, s, p)
+}

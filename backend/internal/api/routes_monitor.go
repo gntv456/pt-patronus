@@ -206,13 +206,15 @@ func registerMonitorRoutes(guarded *gin.RouterGroup, d *Deps) {
 	}
 
 	// Agent 管理（push 架构）：创建 agent 返回明文 secret、列表、删除、重置 secret。
-	agentH := v1.NewAgentHandler(d.AgentOp, d.MonOp, d.DB)
+	agentH := v1.NewAgentHandler(d.AgentOp, d.MonOp, d.DB, d.AgentHub)
 	agents := guarded.Group("/monitors/agents")
 	{
 		agents.GET("", agentH.List)
 		agents.POST("", middleware.RequireAdmin(), agentH.Create)
 		agents.DELETE("/:id", middleware.RequireAdmin(), agentH.Delete)
 		agents.POST("/:id/rotate", middleware.RequireAdmin(), agentH.Rotate)
+		agents.POST("/:id/upgrade", middleware.RequireAdmin(), agentH.Upgrade)
+		agents.GET("/latest-version", agentH.LatestAgentVersion)
 	}
 
 	// PT监护室：聚合 savept.icu 站点健康数据

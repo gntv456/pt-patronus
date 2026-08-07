@@ -21,10 +21,23 @@ services:
       # 在线更新：后端读这份 manifest 检查新版本（Web UI「设置→关于→检查更新」+ 客户端 OTA）。
       # 官方托管在公开仓 raw，默认即用；想关掉检查就注释掉这行。
       UPDATE_MANIFEST_URL: https://raw.githubusercontent.com/gntv456/ptpatronus-plugin-market/main/update-manifest.json
+      # Compose 项目扫描：容器内路径，对应下方 /host/compose 挂载
+      COMPOSE_SCAN_DIR: /host/compose
+      # 宿主机 compose 项目根（页面反推显示宿主路径用）；按实际放 compose 的目录改
+      COMPOSE_ROOT: /opt
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
-      # - /mnt:/mnt:ro          # 宿主磁盘路径监控：取消注释并将容器内路径填入 target「宿主磁盘路径」配置
-      - /:/hostfs:ro          # （可选）挂载整个根文件系统（只读），可监控所有挂载点；需确保容器有权限
+
+      # 文件管理器「本机」存储：挂载宿主文件系统，去掉 :ro 才能上传/删除/重命名/建目录。
+      # 根路径填 /hostfs 即可浏览整个宿主（含 /hostfs/vol1/1000/、/hostfs/video）。
+      # 只暴露特定盘可改为多行：- /vol1:/hostfs/vol1  - /vol2:/hostfs/vol2
+      - /:/hostfs
+
+      # Docker 容器管理（运维中心 → Docker → 本机模式）：必需，否则 Docker/容器/compose 功能不可用
+      - /var/run/docker.sock:/var/run/docker.sock
+
+      # Compose 项目管理：挂载宿主 compose 目录扫描已有项目；按实际放 compose 的目录改
+      - /opt:/host/compose
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s

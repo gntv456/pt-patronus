@@ -131,6 +131,36 @@ export function useDeviceCrud(
     await deps.reload()
   }
 
+  async function onDeleteAlert(a: MonitorAlert) {
+    try {
+      await ElMessageBox.confirm('确定删除该告警记录?', '删除告警', {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+      })
+    } catch {
+      return
+    }
+    await monitorApi.deleteAlert(a.id)
+    ElMessage.success('已删除')
+    await deps.reload()
+  }
+
+  async function onClearAlerts() {
+    try {
+      await ElMessageBox.confirm('确定清空全部告警记录?此操作不可恢复。', '清空告警', {
+        type: 'warning',
+        confirmButtonText: '清空',
+        cancelButtonText: '取消',
+      })
+    } catch {
+      return
+    }
+    await monitorApi.clearAlerts(false)
+    ElMessage.success('已清空告警记录')
+    await deps.reload()
+  }
+
   return {
     formVisible,
     editing,
@@ -152,5 +182,7 @@ export function useDeviceCrud(
     onReadAlert,
     onAckAlert,
     onSilenceAlert,
+    onDeleteAlert,
+    onClearAlerts,
   }
 }

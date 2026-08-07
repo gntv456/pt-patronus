@@ -194,3 +194,56 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 
 // ensure exec is used（runComposeCLIWithFlags 在 docker_compose_local.go 定义）
 var _ = exec.Command
+
+
+// projectSaveRequest 保存 compose 文件内容。
+type projectSaveRequest struct {
+	Dir     string `json:"dir" binding:"required"`
+	Content string `json:"content" binding:"required"`
+}
+
+// ProjectSave 保存（覆盖）compose 文件内容，支持在线编辑。
+func (h *LocalComposeHandler) ProjectSave(c *gin.Context) {
+	var in projectSaveRequest
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	// 安全校验：dir 必须在扫描目录下（防目录穿越写任意文件）
+	root := composeScanDir()
+	if !strings.HasPrefix(in.Dir, root) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "dir must be under scan root"})
+		return
+	}
+	name := findComposeFile(in.Dir)
+	if name == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no compose file found in dir"})
+		return
+	}
+	fullPath := filepath.Join(in.Dir, name)
+	// 写前先验证语法：写到临时文件，用 compose config 验证，通过才覆盖。
+	tmpPath := fullPath + ".tmp"
+	if err := os.WriteFile(tmpPath, []byte(in.Content), 0644); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": "write temp file: " + err.Error()})
+		return
+	}
+	// 验证语法
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "docker", "compose", "-f", tmpPath, "config")
+	cmd.Env = append(os.Environ(), "DOCKER_HOST=unix:///var/run/docker.sock")
+	validateOut, validateErr := cmd.CombinedOutput()
+	if validateErr != nil {
+		// 语法错误：删临时文件，返回验证错误（不覆盖原文件）
+		os.Remove(tmpPath)
+		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "compose 语法验证失败，未保存", "output": string(validateOut)})
+		return
+	}
+	// 验证通过：原子替换（rename 是原子的）
+	os.Remove(tmpPath)
+	if err := os.WriteFile(fullPath, []byte(in.Content), 0644); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true, "file": name})
+}

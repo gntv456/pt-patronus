@@ -201,6 +201,8 @@ func registerMonitorRoutes(guarded *gin.RouterGroup, d *Deps) {
 		alerts.POST("/:id/read", monH.ReadAlert)
 		alerts.POST("/:id/ack", middleware.RequireAdmin(), monH.AckAlert)
 		alerts.POST("/:id/silence", middleware.RequireAdmin(), monH.SilenceAlert)
+		alerts.DELETE("/:id", middleware.RequireAdmin(), monH.DeleteAlert)
+		alerts.POST("/clear", middleware.RequireAdmin(), monH.ClearAlerts)
 	}
 
 	// Agent 管理（push 架构）：创建 agent 返回明文 secret、列表、删除、重置 secret。

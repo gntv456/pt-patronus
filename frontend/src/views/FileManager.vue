@@ -3,12 +3,14 @@ import { onMounted, watch } from 'vue'
 import { fileApi, type FileEntry } from '@/api/filemanager'
 import {
   Folder, Document, Top, Plus, Refresh, Upload, FolderAdd,
-  Download, Edit, Rank as MoveIcon, CopyDocument, Delete, Link,
+  Download, Edit, Rank as MoveIcon, CopyDocument, Delete, Link, ArrowDown,
 } from '@element-plus/icons-vue'
 import EmptyState from '@/components/EmptyState.vue'
 import FileManagerDialogs from '@/components/FileManagerDialogs.vue'
+import FileManagerExtraDialogs from '@/components/FileManagerExtraDialogs.vue'
 import { useFileManager, type StorageItem } from '@/composables/useFileManager'
 import { useFileOps } from '@/composables/useFileOps'
+import { useFileExtraOps } from '@/composables/useFileExtraOps'
 
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
@@ -22,15 +24,35 @@ const {
   mkdirVisible, mkdirName, renameVisible, renameNewName,
   moveCopyVisible, moveCopyMode, moveCopyPath, moveCopyEntries, moveCopyLoading,
   strmVisible, strmDir, strmForm, strmLoading, submitting,
+  editVisible, editTarget, editContent, editLoading,
+  archiveVisible, archiveTarget, archiveName, archiveFmt, archiveLoading,
+  chmodVisible, chmodTarget, chmodMode, chmodRecursive, chmodLoading,
+  dirSizeMap, dirSizeLoading, previewVisible, previewTarget, previewContent, previewLoading,
   curFs, curReadOnly, crumbs,
   itemKey, loadStorages, testOne, statusOf, selectStorage, refresh, onSelectionChange, enter, jump, up, dlUrl,
 } = fm
+const extra = useFileExtraOps(fm, refresh)
 const {
   onStorageMenu, openCreate, openEdit, submit, delEditingStorage,
   doMkdir, handleUpload, openRename, doRename, delOne, delBatch,
   openMoveCopy, moveCopyUp, moveCopyEnter, doMoveCopy, openStrm, doStrm,
   toggleView, toggleSelect, isSelected, fmtBytes, itemIcon, itemLabel,
 } = ops
+const {
+  openEditFile, doSaveFile, openArchive, doArchive, doExtract, openChmod, doChmod, calcDirSize, openPreview,
+} = extra
+
+function onFileExtra(cmd: string, e: FileEntry) {
+  if (cmd === 'edit') openEditFile(e)
+  else if (cmd === 'archive') openArchive(e)
+  else if (cmd === 'extract') doExtract(e)
+  else if (cmd === 'chmod') openChmod(e)
+  else if (cmd === 'dirsize') calcDirSize(e)
+  else if (cmd === 'preview') openPreview(e)
+}
+function isArchive(e: FileEntry): boolean {
+  return /\.(zip|tar\.gz|tgz)$/i.test(e.name)
+}
 
 onMounted(async () => {
   await Promise.all([fm.loadStorages(), fm.loadAgents()])
@@ -124,7 +146,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
                 <span v-else><el-icon><Document /></el-icon>&nbsp;{{ row.name }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="大小" width="100"><template #default="{ row }">{{ row.is_dir ? '-' : fmtBytes(row.size) }}</template></el-table-column>
+            <el-table-column label="大小" width="120"><template #default="{ row }"><span v-if="row.is_dir">{{ dirSizeMap[row.path] || '-' }}</span><span v-else>{{ fmtBytes(row.size) }}</span></template></el-table-column>
             <el-table-column :label="curReadOnly ? '操作' : ''" :width="curReadOnly ? 130 : 280">
               <template #default="{ row }">
                 <el-button v-if="row.is_dir && curReadOnly" size="small" link :icon="Link" @click="openStrm(row as FileEntry)">生成 STRM</el-button>
@@ -134,6 +156,17 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
                   <el-button size="small" link :icon="MoveIcon" @click="openMoveCopy('move', [row as FileEntry])">移动</el-button>
                   <el-button size="small" link :icon="CopyDocument" @click="openMoveCopy('copy', [row as FileEntry])">复制</el-button>
                   <el-button size="small" link type="danger" :icon="Delete" @click="delOne(row as FileEntry)">删除</el-button>
+                  <el-dropdown v-if="curFs?.type === 'local'" trigger="click" @command="(cmd) => onFileExtra(cmd, row as FileEntry)">
+                    <el-button size="small" link>更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+                    <template #dropdown><el-dropdown-menu>
+                      <el-dropdown-item v-if="!row.is_dir" command="preview">预览</el-dropdown-item>
+                      <el-dropdown-item v-if="!row.is_dir" command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="archive">压缩</el-dropdown-item>
+                      <el-dropdown-item v-if="isArchive(row as FileEntry)" command="extract">解压</el-dropdown-item>
+                      <el-dropdown-item command="chmod">权限</el-dropdown-item>
+                      <el-dropdown-item v-if="row.is_dir" command="dirsize">计算大小</el-dropdown-item>
+                    </el-dropdown-menu></template>
+                  </el-dropdown>
                 </template>
               </template>
             </el-table-column>
@@ -164,6 +197,13 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
       v-model:strm-visible="strmVisible" v-model:strm-dir="strmDir" v-model:strm-form="strmForm" v-model:strm-loading="strmLoading"
       @submit="submit" @del-editing-storage="delEditingStorage" @do-mkdir="doMkdir" @do-rename="doRename"
       @move-copy-up="moveCopyUp" @move-copy-enter="moveCopyEnter" @do-move-copy="doMoveCopy" @do-strm="doStrm"
+    />
+    <FileManagerExtraDialogs
+      v-model:edit-visible="editVisible" v-model:edit-content="editContent" :edit-target="editTarget" :edit-loading="editLoading"
+      v-model:archive-visible="archiveVisible" v-model:archive-name="archiveName" v-model:archive-fmt="archiveFmt" :archive-target="archiveTarget" :archive-loading="archiveLoading"
+      v-model:chmod-visible="chmodVisible" v-model:chmod-mode="chmodMode" v-model:chmod-recursive="chmodRecursive" :chmod-target="chmodTarget" :chmod-loading="chmodLoading"
+      v-model:preview-visible="previewVisible" :preview-target="previewTarget" :preview-content="previewContent" :preview-loading="previewLoading" :storage-id="curFs?.id ?? 0"
+      @save="doSaveFile" @archive="doArchive" @chmod="doChmod"
     />
   </div>
 </template>

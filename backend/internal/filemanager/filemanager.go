@@ -3,6 +3,7 @@ package filemanager
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/hxpt/ptpatronus/internal/agentrpc"
@@ -26,4 +27,38 @@ type StorageBackend interface {
 	Move(ctx context.Context, srcPath, dstDir string) error
 	// Copy 把 srcPath 复制到 dstDir 下（保留原文件名）。
 	Copy(ctx context.Context, srcPath, dstDir string) error
+}
+
+// ErrUnsupported 表示该后端不支持此操作（如 webdav/alist 不支持 chmod）。
+// chain 层对可选能力做类型断言，未实现则返回此错误；前端按后端类型隐藏按钮。
+var ErrUnsupported = fmt.Errorf("该存储后端不支持此操作")
+
+// FileReader 读取文件全部内容（用于在线编辑/文本预览）。
+type FileReader interface {
+	ReadFile(ctx context.Context, path string) ([]byte, error)
+}
+
+// FileWriter 写入文件全部内容（用于在线编辑保存）。
+type FileWriter interface {
+	WriteFile(ctx context.Context, path string, data []byte) error
+}
+
+// Archiver 压缩：把 src（文件或目录）打包为 dst（.zip/.tar.gz）。
+type Archiver interface {
+	Archive(ctx context.Context, src, dst string) error
+}
+
+// Extractor 解压：把 src（.zip/.tar.gz）解到 dstDir。
+type Extractor interface {
+	Extract(ctx context.Context, src, dstDir string) error
+}
+
+// Chmoder 修改权限/属主（仅 local/agent 支持）。
+type Chmoder interface {
+	Chmod(ctx context.Context, path string, mode uint32, recursive bool) error
+}
+
+// DirSizer 计算目录递归大小。
+type DirSizer interface {
+	DirSize(ctx context.Context, path string) (int64, error)
 }

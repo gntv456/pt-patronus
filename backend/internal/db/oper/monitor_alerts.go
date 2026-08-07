@@ -143,6 +143,21 @@ func (o *MonitorOper) SilenceAlert(id uint, until time.Time, by string) error {
 	}).Error
 }
 
+// DeleteAlert deletes a single alert by id.
+func (o *MonitorOper) DeleteAlert(id uint) error {
+	return o.db.Delete(&models.MonitorAlert{}, id).Error
+}
+
+// ClearAlerts removes all alerts, or only resolved ones when keepOpen is true.
+func (o *MonitorOper) ClearAlerts(keepOpen bool) (int64, error) {
+	q := o.db
+	if keepOpen {
+		q = q.Where("resolved_at IS NOT NULL")
+	}
+	res := q.Delete(&models.MonitorAlert{})
+	return res.RowsAffected, res.Error
+}
+
 // CreateAlert 新建告警记录。
 func (o *MonitorOper) CreateAlert(a *models.MonitorAlert) error {
 	return o.db.Create(a).Error

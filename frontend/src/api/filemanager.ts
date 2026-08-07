@@ -83,4 +83,30 @@ export const fileApi = {
       .then((r) => {
         if (!r.data.ok) throw new Error(r.data.error || '复制失败')
       }),
+  readFile: (id: number, path: string) =>
+    http.get<{ ok: boolean; content?: string; error?: string }>(`/storages/${id}/read`, { params: { path } }).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || '????')
+      return r.data.content || ''
+    }),
+  writeFile: (id: number, path: string, content: string) =>
+    http.post<{ ok: boolean; error?: string }>(`/storages/${id}/write`, { content }, { params: { path } }).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || '????')
+    }),
+  archive: (id: number, src: string, dst: string) =>
+    http.post<{ ok: boolean; error?: string }>(`/storages/${id}/archive`, null, { params: { src, dst } }).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || '????')
+    }),
+  extract: (id: number, src: string, dst: string) =>
+    http.post<{ ok: boolean; error?: string }>(`/storages/${id}/extract`, null, { params: { src, dst } }).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || '????')
+    }),
+  chmod: (id: number, path: string, mode: number, recursive: boolean) =>
+    http.post<{ ok: boolean; error?: string }>(`/storages/${id}/chmod`, { mode, recursive }, { params: { path } }).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || '??????')
+    }),
+  dirSize: (id: number, path: string) =>
+    http.get<{ ok: boolean; size?: number; size_str?: string; error?: string }>(`/storages/${id}/dirsize`, { params: { path } }).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || '????')
+      return { size: r.data.size || 0, sizeStr: r.data.size_str || '0 B' }
+    }),
 }

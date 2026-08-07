@@ -26,6 +26,12 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		storages.POST("/:id/rename", fsH.Rename)
 		storages.POST("/:id/move", fsH.Move)
 		storages.POST("/:id/copy", fsH.Copy)
+		storages.GET("/:id/read", fsH.ReadFile)
+		storages.POST("/:id/write", fsH.WriteFile)
+		storages.POST("/:id/archive", fsH.Archive)
+		storages.POST("/:id/extract", fsH.Extract)
+		storages.POST("/:id/chmod", fsH.Chmod)
+		storages.GET("/:id/dirsize", fsH.DirSize)
 	}
 
 	bkH := v1.NewBackupHandler(d.Backup, d.Notice)
@@ -114,6 +120,7 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		docker.GET("/local/compose/projects", composeLocalH.ScanProjects)
 		docker.GET("/local/compose/project", composeLocalH.ProjectDetail)
 		docker.POST("/local/compose/project/action", composeLocalH.ProjectAction)
+		docker.POST("/local/compose/project/save", composeLocalH.ProjectSave)
 	}
 
 	// === 运维中心：磁盘管理（SSH 远程主机，分区/格式化/挂载）===

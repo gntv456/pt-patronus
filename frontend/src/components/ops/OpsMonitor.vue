@@ -1,6 +1,7 @@
 ﻿<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { systemApi, type SystemMetrics } from '@/api/system'
+import { humanTempName } from '@/components/monitor/useDeviceDetail'
 import GlassIcon from '@/components/GlassIcon.vue'
 
 const metrics = ref<SystemMetrics>({})
@@ -182,7 +183,7 @@ onBeforeUnmount(() => {
       <h3 class="section-title">温度</h3>
       <div class="temp-list">
         <span v-for="t in metrics.temps" :key="t.name" class="temp-chip" :class="{ hot: t.temp > 70, warm: t.temp > 50 && t.temp <= 70 }">
-          {{ t.name }}: {{ t.temp.toFixed(0) }}°C
+          {{ humanTempName(t.name) }}: {{ t.temp.toFixed(0) }}°C
         </span>
       </div>
     </div>

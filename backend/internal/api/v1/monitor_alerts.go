@@ -95,6 +95,30 @@ func (h *MonitorHandler) SilenceAlert(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"silenced": id, "until": until})
 }
 
+// DeleteAlert removes a single alert record.
+func (h *MonitorHandler) DeleteAlert(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	if err := h.op.DeleteAlert(id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": id})
+}
+
+// ClearAlerts deletes all alerts. With ?keep_open=true only resolved alerts are removed.
+func (h *MonitorHandler) ClearAlerts(c *gin.Context) {
+	keepOpen := c.Query("keep_open") == "true"
+	n, err := h.op.ClearAlerts(keepOpen)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"cleared": n})
+}
+
 func currentUsername(c *gin.Context) string {
 	if v, ok := c.Get("username"); ok {
 		if s, ok := v.(string); ok && s != "" {

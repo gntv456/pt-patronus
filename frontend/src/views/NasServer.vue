@@ -116,7 +116,7 @@ async function retry() { firstLoad.value = true; await loadAll() }
 
 const { formVisible, editing, formDefaultType, detailVisible, detailTarget, previewVisible, previewTarget, alertVisible,
   openAddAsset, openAddMonitorItem, openAdd, openEdit, onSubmit, onProbe, onRemove, onDetail, onPreview,
-  onReadAlert, onAckAlert, onSilenceAlert,
+  onReadAlert, onAckAlert, onSilenceAlert, onDeleteAlert, onClearAlerts,
 } = useDeviceCrud(auth, { activeWorkspace, activeTab, credentials, reload: loadAll, setWorkspace })
 
 const { terminalVisible, terminalTarget, terminalOutput, terminalInput, terminalConnected, terminalConnecting,
@@ -235,8 +235,16 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); closeTerminalSoc
       <RtspPlayer v-if="previewTarget" :target="previewTarget" />
     </el-dialog>
 
-    <el-drawer v-model="alertVisible" title="告警记录" size="420px">
-      <AlertList :alerts="alerts" @read="onReadAlert" @ack="onAckAlert" @silence="onSilenceAlert" />
+    <el-drawer v-model="alertVisible" size="420px" :with-header="false" :body-style="{ padding: '0', display: 'flex', flexDirection: 'column' }">
+      <div class="alert-drawer">
+        <div class="alert-drawer-head">
+          <span class="alert-drawer-title">告警记录</span>
+          <el-button size="small" type="danger" plain :disabled="!alerts.length" @click="onClearAlerts">清空记录</el-button>
+        </div>
+        <div class="alert-drawer-body">
+          <AlertList :alerts="alerts" @read="onReadAlert" @ack="onAckAlert" @silence="onSilenceAlert" @del="onDeleteAlert" />
+        </div>
+      </div>
     </el-drawer>
   </div>
 </template>

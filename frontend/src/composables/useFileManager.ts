@@ -55,6 +55,31 @@ export function useFileManager() {
   const strmLoading = ref(false)
 
   // 写操作防重复提交锁：执行中禁用/Loading 按钮，防止慢网连点重复创建/重命名/移动/复制。
+  // 在线编辑
+  const editVisible = ref(false)
+  const editTarget = ref<FileEntry | null>(null)
+  const editContent = ref('')
+  const editLoading = ref(false)
+  // 压缩
+  const archiveVisible = ref(false)
+  const archiveTarget = ref<FileEntry | null>(null)
+  const archiveName = ref('')
+  const archiveFmt = ref<'zip' | 'targz'>('targz')
+  const archiveLoading = ref(false)
+  // 权限
+  const chmodVisible = ref(false)
+  const chmodTarget = ref<FileEntry | null>(null)
+  const chmodMode = ref('755')
+  const chmodRecursive = ref(false)
+  const chmodLoading = ref(false)
+  // 目录大小（行内显示）
+  const dirSizeMap = ref<Record<string, string>>({})
+  const dirSizeLoading = ref<Record<string, boolean>>({})
+  // 文件预览
+  const previewVisible = ref(false)
+  const previewTarget = ref<FileEntry | null>(null)
+  const previewContent = ref('')
+  const previewLoading = ref(false)
   const submitting = ref(false)
 
   // ── 派生 ──
@@ -217,6 +242,10 @@ export function useFileManager() {
     mkdirVisible, mkdirName, renameVisible, renameTarget, renameNewName,
     moveCopyVisible, moveCopyMode, moveCopyPath, moveCopyEntries, moveCopyLoading, moveCopySources,
     strmVisible, strmDir, strmForm, strmLoading, submitting,
+    editVisible, editTarget, editContent, editLoading,
+    archiveVisible, archiveTarget, archiveName, archiveFmt, archiveLoading,
+    chmodVisible, chmodTarget, chmodMode, chmodRecursive, chmodLoading,
+    dirSizeMap, dirSizeLoading, previewVisible, previewTarget, previewContent, previewLoading,
     curFs, curCloud, curReadOnly, curName, curId, crumbs,
     itemKey, loadStorages, loadAgents, agentName, probeAll, testOne, statusOf,
     selectStorage, refresh, onSelectionChange, enter, jump, up, dlUrl,

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { MonitorAlert } from '@/api/monitor'
 
-// AlertList — 告警列表（按级别着色，未读可标记）。
+// AlertList — 告警列表（按级别着色，未读可标记）。支持单条删除。
 defineProps<{ alerts: MonitorAlert[] }>()
-const emit = defineEmits<{ read: [MonitorAlert]; ack: [MonitorAlert]; silence: [MonitorAlert] }>()
+const emit = defineEmits<{ read: [MonitorAlert]; ack: [MonitorAlert]; silence: [MonitorAlert]; del: [MonitorAlert] }>()
 
 const levelColor: Record<string, string> = {
   danger: '#e74c3c',
@@ -32,6 +32,7 @@ const levelColor: Record<string, string> = {
         <el-button v-if="!a.read" size="small" text @click="emit('read', a)">已读</el-button>
         <el-button v-if="!a.acknowledged_at" size="small" text type="primary" @click="emit('ack', a)">确认</el-button>
         <el-button v-if="!a.resolved_at" size="small" text type="warning" @click="emit('silence', a)">静默</el-button>
+        <el-button size="small" text type="danger" @click="emit('del', a)">删除</el-button>
       </div>
     </div>
   </div>
@@ -42,8 +43,9 @@ const levelColor: Record<string, string> = {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 320px;
+  height: 100%;
   overflow: auto;
+  padding-right: 2px;
 }
 .empty {
   color: var(--text-muted);

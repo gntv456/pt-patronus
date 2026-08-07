@@ -134,6 +134,8 @@ export const dockerApi = {
     http.get<{ projects: any[]; scan_dir: string; available: boolean }>('/ops/docker/local/compose/projects').then((r) => r.data),
   localProjectDetail: (dir: string) =>
     http.get<{ content: string; file: string; dir: string }>('/ops/docker/local/compose/project', { params: { dir } }).then((r) => r.data),
+  localProjectSave: (dir: string, content: string) =>
+    http.post<{ ok: boolean; error?: string; output?: string }>('/ops/docker/local/compose/project/save', { dir, content }).then((r) => r.data),
   localProjectAction: (dir: string, action: 'up' | 'down' | 'restart' | 'pull') =>
     http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/project/action', { dir, action }).then((r) => r.data),
 

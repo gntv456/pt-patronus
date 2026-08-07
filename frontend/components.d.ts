@@ -84,6 +84,7 @@ declare module 'vue' {
     EmptyState: typeof import('./src/components/EmptyState.vue')['default']
     EventBet: typeof import('./src/components/EventBet.vue')['default']
     FileManagerDialogs: typeof import('./src/components/FileManagerDialogs.vue')['default']
+    FileManagerExtraDialogs: typeof import('./src/components/FileManagerExtraDialogs.vue')['default']
     FilesDialog: typeof import('./src/components/downloader/FilesDialog.vue')['default']
     FilterRuleDialogs: typeof import('./src/components/FilterRuleDialogs.vue')['default']
     GeneralPanel: typeof import('./src/components/settings/GeneralPanel.vue')['default']

@@ -274,6 +274,9 @@ export const monitorApi = {
   ackAlert: (id: number) => http.post(`/monitor/alerts/${id}/ack`).then((r) => r.data),
   silenceAlert: (id: number, minutes = 30) =>
     http.post(`/monitor/alerts/${id}/silence`, { minutes }).then((r) => r.data),
+  deleteAlert: (id: number) => http.delete(`/monitor/alerts/${id}`).then((r) => r.data),
+  clearAlerts: (keepOpen = false) =>
+    http.post(`/monitor/alerts/clear`, null, { params: { keep_open: keepOpen } }).then((r) => r.data),
   /** 拼接 RTSP→WS 流地址（前端 jessibuca 消费；?ticket=<一次性> 鉴权，url 由服务端按 id 从 DB 取） */
   streamURL: (id: number, ticket: string) => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'

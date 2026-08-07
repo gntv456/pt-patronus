@@ -16,6 +16,9 @@ const detailName = ref('')
 const outputVisible = ref(false)
 const outputText = ref('')
 const actionLoading = ref(false)
+const editing = ref(false)
+const saveLoading = ref(false)
+const detailDir = ref('')
 
 async function refresh() {
   loading.value = true
@@ -33,6 +36,8 @@ async function showDetail(p: Project) {
     const r = await dockerApi.localProjectDetail(p.dir)
     detailContent.value = r.content
     detailName.value = p.name
+    detailDir.value = p.dir
+    editing.value = false
     detailVisible.value = true
   } catch (e: any) { ElMessage.error(e.message) }
 }
@@ -52,6 +57,24 @@ async function doAction(p: Project, action: 'up' | 'down' | 'restart' | 'pull') 
   } catch (e: any) {
     if (e !== 'cancel') { outputText.value = e.message; outputVisible.value = true }
   } finally { actionLoading.value = false }
+}
+
+
+async function saveProject() {
+  saveLoading.value = true
+  try {
+    const res = await dockerApi.localProjectSave(detailDir.value, detailContent.value)
+    if (res.ok) {
+      ElMessage.success('已保存')
+      editing.value = false
+      refresh()
+    } else {
+      ElMessage.error('保存失败：' + (res.error || '语法错误'))
+      if (res.output) { outputText.value = res.output; outputVisible.value = true }
+    }
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  } finally { saveLoading.value = false }
 }
 
 onMounted(() => refresh())
@@ -90,7 +113,15 @@ onMounted(() => refresh())
     </div>
 
     <el-drawer v-model="detailVisible" :title="`项目: ${detailName}`" size="60%" direction="rtl">
-      <pre class="detail-content">{{ detailContent }}</pre>
+      <div class="detail-toolbar">
+        <el-button v-if="!editing" size="small" type="primary" @click="editing = true">编辑</el-button>
+        <template v-else>
+          <el-button size="small" type="success" :loading="saveLoading" @click="saveProject">保存</el-button>
+          <el-button size="small" @click="editing = false">取消</el-button>
+        </template>
+      </div>
+      <pre v-if="!editing" class="detail-content">{{ detailContent }}</pre>
+      <el-input v-else v-model="detailContent" type="textarea" :autosize="{ minRows: 20 }" class="detail-editor" />
     </el-drawer>
     <el-drawer v-model="outputVisible" title="命令输出" size="50%" direction="rtl">
       <pre class="output-content">{{ outputText }}</pre>
@@ -112,6 +143,8 @@ onMounted(() => refresh())
 .project-host { font-size: 11px; color: var(--text-tertiary,#aaa); font-family: monospace; }
 .project-actions { display: flex; gap: 4px; }
 .project-preview { font-size: 12px; font-family: monospace; color: var(--text-secondary,#888); max-height: 120px; overflow: auto; margin: 0; white-space: pre-wrap; background: rgba(0,0,0,.04); padding: 8px; border-radius: 4px; }
+.detail-toolbar { padding: 0 0 12px; display: flex; gap: 8px; }
+.detail-editor :deep(textarea) { font-family: monospace; font-size: 13px; }
 .detail-content, .output-content { font-size: 13px; font-family: monospace; white-space: pre-wrap; padding: 12px; }
 .empty { text-align: center; padding: 32px; color: var(--text-tertiary, #aaa); }
 </style>

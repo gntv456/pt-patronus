@@ -97,3 +97,32 @@
     flex-wrap: wrap;
   }
 }
+
+/* 告警记录抽屉：自定义头部 + 列表撑满剩余高度 */
+.alert-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.alert-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 12px;
+  border-bottom: 1px solid var(--divider, rgba(0, 0, 0, 0.08));
+}
+.alert-drawer-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.alert-drawer-body {
+  flex: 1;
+  min-height: 0;
+  padding: 12px 20px;
+  overflow: hidden;
+  display: flex;
+}
+.alert-drawer-body > .alert-list {
+  width: 100%;
+}

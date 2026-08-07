@@ -1,0 +1,1 @@
+import{h as c}from"./index-CYnlHJXf.js";const r={list:()=>c.get("/contract/rules").then(t=>t.data.rules??[]),upsert:t=>c.post("/contract/rules",t).then(e=>e.data),remove:t=>c.delete(`/contract/rules/${t}`).then(e=>e.data),check:t=>c.post(`/contract/rules/${t}/check`).then(e=>e.data)};export{r as c};

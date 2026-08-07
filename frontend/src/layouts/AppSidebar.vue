@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { Star, StarFilled, ArrowRight } from '@element-plus/icons-vue'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { navDesc, type NavItem, type NavGroup } from '@/layouts/navConfig'
@@ -9,6 +9,8 @@ const props = defineProps<{
   favoriteItems: (NavItem & { group: string })[]
   collapsedGroups: Record<string, boolean>
   favorites: string[]
+  noticeUnread?: number
+  noticeUrgent?: number
 }>()
 
 const mobileNavOpen = defineModel<boolean>('mobileNavOpen', { required: true })
@@ -22,6 +24,11 @@ const emit = defineEmits<{
 
 function isGroupCollapsed(title: string) { return !!props.collapsedGroups[title] }
 function isFav(name: string) { return props.favorites.includes(name) }
+// 通知中心项的未读计数（用于红点 / 角标）
+function noticeBadge(name: string): number {
+  if (name === 'notices') return props.noticeUnread ?? 0
+  return 0
+}
 </script>
 
 <template>
@@ -60,7 +67,8 @@ function isFav(name: string) { return props.favorites.includes(name) }
             v-for="item in group.items" :key="item.name" :to="{ name: item.name }"
             class="nav-item glass-hover" :title="navDesc[item.name] || item.label" @click="emit('closeMobileNav')"
           >
-            <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
+            <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" :class="{ 'nav-icon--ring': noticeBadge(item.name) > 0 }" />
+            <span v-if="noticeBadge(item.name) > 0" class="nav-badge" :class="{ 'nav-badge--urgent': noticeUnread && noticeUrgent }">{{ noticeBadge(item.name) > 99 ? '99+' : noticeBadge(item.name) }}</span>
             <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
             <button v-if="!sidebarCollapsed" type="button" class="fav-btn" :class="{ on: isFav(item.name) }"
             :title="isFav(item.name) ? '取消收藏' : '收藏'" @click="emit('onToggleFav', item.name, $event)"
@@ -111,5 +119,56 @@ function isFav(name: string) { return props.favorites.includes(name) }
 @media (max-width: 720px) {
   .sidebar { position: fixed; inset: 8px auto 8px 8px; z-index: 210; width: min(260px, calc(100vw - 32px)); box-sizing: border-box; transform: translateX(calc(-100% - 16px)); box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22); }
   .sidebar.mobile-open { transform: translateX(0); }
+
+/* 通知中心未读徽标 */
+.nav-badge {
+  position: absolute;
+  top: 4px;
+  left: 30px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.85));
+  z-index: 2;
+}
+.nav-badge--urgent {
+  background: #e74c3c;
+  animation: nav-badge-pulse 1.6s ease-in-out infinite;
+}
+.sidebar.collapsed .nav-badge {
+  top: 2px;
+  left: 38px;
+}
+.nav-icon--ring {
+  animation: bell-ring 1.6s ease-in-out infinite;
+  transform-origin: top center;
+}
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0deg); }
+  10% { transform: rotate(12deg); }
+  20% { transform: rotate(-12deg); }
+  30% { transform: rotate(8deg); }
+  40% { transform: rotate(-8deg); }
+  50% { transform: rotate(4deg); }
+  60% { transform: rotate(0deg); }
+}
+@keyframes nav-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.85)), 0 0 0 0 rgba(231, 76, 60, 0.5); }
+  50% { box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.85)), 0 0 0 6px rgba(231, 76, 60, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-icon--ring { animation: none; }
+  .nav-badge--urgent { animation: none; }
+}
 }
 </style>

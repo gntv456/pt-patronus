@@ -45,13 +45,26 @@ func NewDockerLocalClient() *DockerLocalClient {
 
 // Available 检测 Docker socket 是否可连接（不报错即可用）。
 func (c *DockerLocalClient) Available() bool {
+	_, err := c.Probe()
+	return err == nil
+}
+
+// Probe 检测 Docker socket，返回具体错误原因（区分未挂载/权限/连接失败）。
+func (c *DockerLocalClient) Probe() (string, error) {
 	if c.scheme == "http+unix" {
-		if _, err := os.Stat(c.host); err != nil {
-			return false
+		info, err := os.Stat(c.host)
+		if err != nil {
+			return c.host, fmt.Errorf("socket 文件不存在：%s（容器是否挂载了 /var/run/docker.sock？）", c.host)
+		}
+		// socket 文件存在但无读写权限
+		if info.Mode()&0o666 == 0 {
+			// 进一步尝试连接确认（权限位不准时仍可能可连）
 		}
 	}
-	_, err := c.get(context.Background(), "/version", nil)
-	return err == nil
+	if _, err := c.get(context.Background(), "/version", nil); err != nil {
+		return c.host, fmt.Errorf("socket 连接失败：%s（权限不足或 Docker 服务未运行）：%v", c.host, err)
+	}
+	return c.host, nil
 }
 
 func (c *DockerLocalClient) transport() *http.Transport {

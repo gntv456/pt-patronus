@@ -183,6 +183,37 @@ function stateColor(state: string): string {
   return colors[state] || 'muted'
 }
 
+function stateLabel(state: string): string {
+  const labels: Record<string, string> = {
+    running: '运行中', exited: '已停止', paused: '已暂停', created: '已创建', restarting: '重启中', dead: '已死亡', removing: '移除中',
+  }
+  return labels[state] || state
+}
+
+// 端口列简写：取 host:container 协议，去掉 0.0.0.0 前缀，多个用空格分隔
+function shortPorts(ports: string): string {
+  if (!ports) return ''
+  // Docker ports 字段形如 "0.0.0.0:8080->80/tcp, :::8080->80/tcp"
+  const items = ports.split(',').map((s) => s.trim()).filter(Boolean)
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of items) {
+    if (raw.startsWith('::')) continue
+    let p = raw.replace(/^0\.0\.0\.0:/, '').replace(/^:::*/, '')
+    if (seen.has(p)) continue
+    seen.add(p)
+    out.push(p)
+  }
+  return out.join('  ')
+}
+
+// �������� -> CSS �������� opsDocker.css �� .driver-chip--* ��Ӧ��
+function netDriverClass(driver: string): string {
+  const d = (driver || '').toLowerCase()
+  if (['bridge', 'vlan', 'host', 'overlay'].includes(d)) return `driver-chip--${d}`
+  return ''
+}
+
 onMounted(async () => {
   await loadTargets()
   try {
@@ -231,27 +262,27 @@ onMounted(async () => {
     </template>
 
     <template v-else-if="selectedTarget">
-      <!-- 概览卡片 -->
+      <!-- 概览卡片（1Panel 风格：图标 + 彩色 + 大数字） -->
       <div class="docker-stats">
-        <div class="stat-tile glass">
-          <strong>{{ data.containers.filter((c) => c.State === 'running').length }}</strong>
-          <span>运行中</span>
+        <div class="stat-tile glass stat--running">
+          <span class="stat-ic"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
+          <div class="stat-meta"><strong>{{ data.containers.filter((c) => c.State === 'running').length }}</strong><span>运行中</span></div>
         </div>
-        <div class="stat-tile glass">
-          <strong>{{ data.containers.length }}</strong>
-          <span>容器总数</span>
+        <div class="stat-tile glass stat--container">
+          <span class="stat-ic"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 6v12M12 6v12M17 6v12" stroke="currentColor" stroke-width="1.5"/></svg></span>
+          <div class="stat-meta"><strong>{{ data.containers.length }}</strong><span>容器总数</span></div>
         </div>
-        <div class="stat-tile glass">
-          <strong>{{ data.images.length }}</strong>
-          <span>镜像</span>
+        <div class="stat-tile glass stat--image">
+          <span class="stat-ic"><svg viewBox="0 0 24 24"><path d="M21 5H3v14h18V5zm-9 2c2.2 0 4 1.8 4 4s-1.8 4-4 4-4-1.8-4-4 1.8-4 4-4z"/></svg></span>
+          <div class="stat-meta"><strong>{{ data.images.length }}</strong><span>镜像</span></div>
         </div>
-        <div class="stat-tile glass">
-          <strong>{{ data.volumes.length }}</strong>
-          <span>卷</span>
+        <div class="stat-tile glass stat--volume">
+          <span class="stat-ic"><svg viewBox="0 0 24 24"><path d="M4 6h16l-1 14H5L4 6zm5 0V4h6v2"/></svg></span>
+          <div class="stat-meta"><strong>{{ data.volumes.length }}</strong><span>卷</span></div>
         </div>
-        <div class="stat-tile glass">
-          <strong>{{ data.networks.length }}</strong>
-          <span>网络</span>
+        <div class="stat-tile glass stat--network">
+          <span class="stat-ic"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a6 6 0 016 6M7 9a6 6 0 015-3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2"/></svg></span>
+          <div class="stat-meta"><strong>{{ data.networks.length }}</strong><span>网络</span></div>
         </div>
       </div>
 
@@ -265,38 +296,44 @@ onMounted(async () => {
 
       <!-- 容器列表 -->
       <div v-if="activeTab === 'containers'" class="docker-table glass">
-        <div v-if="mode === 'local'" class="tab-toolbar">
+        <div class="tab-toolbar">
           <el-button size="small" type="primary" @click="createDialog = true">创建容器</el-button>
           <el-button size="small" type="warning" @click="doPrune('container')">清理已停止容器</el-button>
         </div>
         <table>
           <thead>
             <tr>
-              <th>名称</th><th>镜像</th><th>状态</th><th>CPU</th><th>内存</th><th>操作</th>
+              <th>名称</th><th>镜像</th><th>端口</th><th>状态</th><th>CPU</th><th>内存</th><th>操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="c in data.containers" :key="c.ID">
               <td class="td-name" :title="c.Names">{{ c.Names.replace(/^\//, '') }}</td>
-              <td class="td-image" :title="c.Image">{{ c.Image }}</td>
+              <td class="td-image" :title="c.Image"><span class="img-tag">{{ c.Image }}</span></td>
+              <td class="td-ports">
+                <span v-if="c.Ports" class="port-chip" :title="c.Ports">{{ shortPorts(c.Ports) }}</span>
+                <span v-else class="td-muted">—</span>
+              </td>
               <td>
-                <span class="pt-chip" :class="`pt-chip--${stateColor(c.State)}`">{{ c.State }}</span>
+                <span class="state-badge" :class="`state-badge--${stateColor(c.State)}`">
+                  <span class="state-dot"></span>{{ stateLabel(c.State) }}
+                </span>
                 <div class="td-status-sub">{{ c.Status }}</div>
               </td>
-              <td>{{ statFor(c.Names)?.CPUPerc || '-' }}</td>
-              <td>{{ statFor(c.Names)?.MemUsage || '-' }}</td>
+              <td class="td-stat">{{ statFor(c.Names)?.CPUPerc || '-' }}</td>
+              <td class="td-stat">{{ statFor(c.Names)?.MemUsage || '-' }}</td>
               <td class="td-actions">
-                <button v-if="c.State !== 'running'" class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'start', '启动')">▶</button>
-                <button v-if="c.State === 'running'" class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'stop', '停止')">■</button>
-                <button class="mini-btn" :disabled="actionLoading" @click="doAction(c, 'restart', '重启')">↻</button>
-                <button v-if="c.State === 'running' && mode === 'local'" class="mini-btn" title="终端" @click="openExec(c)">⌘</button>
-                <button class="mini-btn" title="日志" @click="showLogs(c)">☰</button>
-                <button class="mini-btn" title="详情" @click="showInspect(c)">ℹ</button>
-                <button class="mini-btn danger" title="删除" @click="removeContainer(c)">✕</button>
+                <button v-if="c.State !== 'running'" class="mini-btn" title="启动" :disabled="actionLoading" @click="doAction(c, 'start', '启动')"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M8 5v14l11-7z"/></svg></button>
+                <button v-if="c.State === 'running'" class="mini-btn" title="停止" :disabled="actionLoading" @click="doAction(c, 'stop', '停止')"><svg viewBox="0 0 24 24" class="btn-ico"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
+                <button class="mini-btn" title="重启" :disabled="actionLoading" @click="doAction(c, 'restart', '重启')"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg></button>
+                <button v-if="c.State === 'running' && mode === 'local'" class="mini-btn" title="终端" @click="openExec(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h2l2 3 2-3h2l-3 4 3 4h-2l-2-3-2 3H8l3-4-3-4z"/></svg></button>
+                <button class="mini-btn" title="日志" @click="showLogs(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M5 3h14a1 1 0 0 1 1 1v16l-3-2-3 2V8H5V4a1 1 0 0 1 0-1zm1 6h2v2H6V9zm0 3h2v2H6v-2zm0 3h2v2H6v-2z"/></svg></button>
+                <button class="mini-btn" title="详情" @click="showInspect(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm2 10h-4v-1h1v-3h-1v-1h3v4h1v1z"/></svg></button>
+                <button class="mini-btn danger" title="删除" @click="removeContainer(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M9 3h6v2h5v2H4V5h5V3zm-3 6h12l-1 12H7L6 9zm3 2v8H8v-8h1zm3 0v8h-1v-8h1z"/></svg></button>
               </td>
             </tr>
             <tr v-if="!data.containers.length">
-              <td colspan="6" class="td-empty">暂无容器</td>
+              <td colspan="7" class="td-empty">暂无容器</td>
             </tr>
           </tbody>
         </table>
@@ -347,7 +384,12 @@ onMounted(async () => {
         <table>
           <thead><tr><th>名称</th><th>驱动</th><th>范围</th><th v-if="mode === 'local'">操作</th></tr></thead>
           <tbody>
-            <tr v-for="(n, i) in data.networks" :key="i"><td>{{ n.Name }}</td><td>{{ n.Driver }}</td><td>{{ n.Scope }}</td><td v-if="mode === 'local'"><button class="mini-btn danger" @click="removeNetwork(n)">✕</button></td></tr>
+            <tr v-for="(n, i) in data.networks" :key="i">
+              <td class="td-name"><span class="net-name">{{ n.Name }}</span></td>
+              <td><span class="driver-chip" :class="netDriverClass(n.Driver)">{{ n.Driver }}</span></td>
+              <td><span class="scope-chip">{{ n.Scope }}</span></td>
+              <td v-if="mode === 'local'"><button class="mini-btn danger" title="删除网络" @click="removeNetwork(n)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M9 3h6v2h5v2H4V5h5V3zm-3 6h12l-1 12H7L6 9zm3 2v8H8v-8h1zm3 0v8h-1v-8h1z"/></svg></button></td>
+            </tr>
             <tr v-if="!data.networks.length"><td :colspan="mode === 'local' ? 4 : 3" class="td-empty">暂无网络</td></tr>
           </tbody>
         </table>

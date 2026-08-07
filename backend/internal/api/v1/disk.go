@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -59,7 +60,7 @@ func (h *DiskHandler) List(c *gin.Context) {
 			Model:      dev.Model,
 			Vendor:     dev.Vendor,
 			Serial:     dev.Serial,
-			Rota:       dev.Rota,
+			Rota:       string(dev.Rota),
 			Category:   "normal",
 			Partitions: []diskPartition{},
 		}
@@ -93,6 +94,58 @@ func (h *DiskHandler) List(c *gin.Context) {
 			entry.Category = "normal"
 		}
 		resp.Disks = append(resp.Disks, entry)
+	}
+
+	// df 集成：获取各分区的实际使用量，填充 usage 字段并聚合到磁盘级别。
+	// df -B1 以字节为单位输出；--output 指定列顺序，兼容性好。
+	dfCmd := `df -B1 --output=source,size,used,avail,pcent,target`
+	dfResult, dfErr := h.runner.RunCommandNow(c.Request.Context(), id, dfCmd, 15)
+	type dfRow struct {
+		Source string
+		Size   uint64
+		Used   uint64
+		Pct    float64
+	}
+	dfMap := map[string]dfRow{}
+	if dfErr == nil && dfResult.Success {
+		lines := strings.Split(strings.TrimSpace(dfResult.Stdout), "\n")
+		for i, line := range lines {
+			if i == 0 {
+				continue // 跳过表头
+			}
+			fields := strings.Fields(line)
+			if len(fields) < 5 {
+				continue
+			}
+			src := fields[0]
+			sizeV, _ := strconv.ParseUint(fields[1], 10, 64)
+			usedV, _ := strconv.ParseUint(fields[2], 10, 64)
+			pctStr := strings.TrimSuffix(fields[4], "%")
+			pctV, _ := strconv.ParseFloat(pctStr, 64)
+			dfMap[src] = dfRow{Source: src, Size: sizeV, Used: usedV, Pct: pctV}
+		}
+	}
+
+	// 填充分区用量并聚合到磁盘级别
+	for i := range resp.Disks {
+		var totalUsed, totalSize uint64
+		for j := range resp.Disks[i].Partitions {
+			p := &resp.Disks[i].Partitions[j]
+			if row, ok := dfMap[p.Name]; ok {
+				p.UsedBytes = row.Used
+				p.UsedHuman = fmtBytes(int64(row.Used))
+				p.UsagePercent = row.Pct
+				totalUsed += row.Used
+				totalSize += p.Size
+			}
+		}
+		if totalSize > 0 {
+			resp.Disks[i].TotalBytes = totalSize
+			resp.Disks[i].TotalHuman = fmtBytes(int64(totalSize))
+			resp.Disks[i].UsedBytes = totalUsed
+			resp.Disks[i].UsedHuman = fmtBytes(int64(totalUsed))
+			resp.Disks[i].UsagePercent = float64(totalUsed) / float64(totalSize) * 100
+		}
 	}
 	c.JSON(http.StatusOK, resp)
 }

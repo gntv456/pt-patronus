@@ -150,11 +150,13 @@ func (o *MonitorOper) DeleteAlert(id uint) error {
 
 // ClearAlerts removes all alerts, or only resolved ones when keepOpen is true.
 func (o *MonitorOper) ClearAlerts(keepOpen bool) (int64, error) {
-	q := o.db
+	// GORM v1.31 默认拒绝无 WHERE 的批量删除（防误删全表）；
+	// 清空全部时显式给永真条件放行。
 	if keepOpen {
-		q = q.Where("resolved_at IS NOT NULL")
+		res := o.db.Where("resolved_at IS NOT NULL").Delete(&models.MonitorAlert{})
+		return res.RowsAffected, res.Error
 	}
-	res := q.Delete(&models.MonitorAlert{})
+	res := o.db.Where("1 = 1").Delete(&models.MonitorAlert{})
 	return res.RowsAffected, res.Error
 }
 

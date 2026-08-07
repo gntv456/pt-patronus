@@ -1,4 +1,4 @@
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+﻿import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWs } from '@/composables/useWs'
@@ -9,12 +9,14 @@ import {
 } from '@/composables/useNavPrefs'
 import type { PaletteItem } from '@/components/CommandPalette.vue'
 import { navGroups, paletteOnly, navDesc, navAliases, type NavItem } from '@/layouts/navConfig'
+import { useNotices } from '@/composables/useNotices'
 
 export function useMainLayout() {
   const router = useRouter()
   const route = useRoute()
   const auth = useAuthStore()
   const { connect, disconnect } = useWs()
+  const { unread: noticeUnread, urgentUnread: noticeUrgent, load: loadNotices } = useNotices()
   const collapsed = ref(false)
   const isMobile = ref(false)
   const mobileNavOpen = ref(false)
@@ -31,6 +33,7 @@ export function useMainLayout() {
   }
   onMounted(() => {
     connect()
+    loadNotices()
     syncCollapsed()
     window.addEventListener('resize', syncCollapsed)
   })
@@ -119,6 +122,7 @@ export function useMainLayout() {
   return {
     router, route, auth, collapsed, isMobile, mobileNavOpen, sidebarCollapsed, paletteOpen,
     navGroups, navDesc, favoriteItems, paletteItems, recent, collapsedGroups, favorites,
+    noticeUnread, noticeUrgent,
     isGroupCollapsed, toggleGroup, isFav, onToggleFav, clearFavorites,
     onUserCommand, toggleNav, closeMobileNav, openPalette,
   }

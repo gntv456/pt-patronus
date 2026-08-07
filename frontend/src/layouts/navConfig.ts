@@ -1,4 +1,4 @@
-// 导航配置数据：侧栏分组、palette-only 项、描述、别名
+﻿// 导航配置数据：侧栏分组、palette-only 项、描述、别名
 
 export interface NavItem {
   name: string
@@ -26,6 +26,7 @@ export const navGroups: NavGroup[] = [
   {
     title: '动态',
     items: [
+      { name: 'notices', label: '通知中心', icon: 'bell', from: '#6c5ce7', to: '#a18cd1' },
       { name: 'messages', label: '消息', icon: 'message', from: '#2193b0', to: '#6dd5ed' },
       { name: 'announcements', label: '公告', icon: 'announcement', from: '#f7971e', to: '#ffd200' },
     ],
@@ -107,6 +108,7 @@ export const navDesc: Record<string, string> = {
   workflow: '工作流 · 可视化自动化',
   messages: '消息 · 站内信聚合',
   announcements: '公告 · 站点公告聚合',
+  notices: '通知中心 · 站点/系统/考核/备份提醒聚合',
 }
 
 export const navAliases: Record<string, string[]> = {

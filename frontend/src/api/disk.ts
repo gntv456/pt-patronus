@@ -9,6 +9,9 @@ export interface DiskPartition {
   fstype?: string
   mountpoint?: string
   partlabel?: string
+  used_bytes?: number
+  used_human?: string
+  usage_percent?: number
 }
 
 export interface DiskEntry {
@@ -22,6 +25,11 @@ export interface DiskEntry {
   rota?: string // 1=HDD 0=SSD
   category: string // system | unpartitioned | normal
   is_system: boolean
+  used_bytes?: number
+  used_human?: string
+  total_bytes?: number
+  total_human?: string
+  usage_percent?: number
   partitions?: DiskPartition[]
 }
 

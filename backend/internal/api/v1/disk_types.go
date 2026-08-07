@@ -1,5 +1,47 @@
 ﻿package v1
 
+import (
+	"strconv"
+	"strings"
+)
+
+// lsblkBool 兼容不同版本 lsblk 的布尔字段输出：
+// 旧版 util-linux 输出字符串 "0"/"1"，新版可能输出 true/false。
+// 统一归一化为 "0"/"1" 字符串，供下游判定使用。
+type lsblkBool string
+
+// UnmarshalJSON 同时接受 bool、数值和字符串，统一转成 "0"/"1"。
+func (b *lsblkBool) UnmarshalJSON(data []byte) error {
+	s := strings.TrimSpace(string(data))
+	if len(s) == 0 || s == "null" {
+		*b = ""
+		return nil
+	}
+	// 布尔字面量 true/false（新版 lsblk 以 JSON bool 输出）
+	if s == "true" {
+		*b = "1"
+		return nil
+	}
+	if s == "false" {
+		*b = "0"
+		return nil
+	}
+	// 去掉可能的引号（旧版 lsblk 以字符串 "0"/"1" 输出）
+	if unquoted, err := strconv.Unquote(s); err == nil {
+		s = unquoted
+	}
+	switch strings.ToLower(s) {
+	case "1", "true", "yes", "on":
+		*b = "1"
+	case "0", "false", "no", "off", "":
+		*b = "0"
+	default:
+		// 未知值原样保留，避免静默吞错
+		*b = lsblkBool(s)
+	}
+	return nil
+}
+
 // diskBlockDevice 对应 lsblk 输出中的一个块设备节点（磁盘或分区）。
 // 与 1Panel 磁盘管理对齐：系统盘/未分区/普通盘三类，含分区、文件系统、挂载点等。
 type diskBlockDevice struct {
@@ -11,8 +53,8 @@ type diskBlockDevice struct {
 	Model      string            `json:"model,omitempty"`       // 磁盘型号
 	Vendor     string            `json:"vendor,omitempty"`      // 厂商
 	Serial     string            `json:"serial,omitempty"`      // 序列号
-	Rota       string            `json:"rota,omitempty"`        // 1=机械 0=固态/NVMe
-	ReadOnly   string            `json:"ro,omitempty"`          // 只读标志
+	Rota       lsblkBool         `json:"rota,omitempty"`        // 1=机械 0=固态/NVMe
+	ReadOnly   lsblkBool         `json:"ro,omitempty"`          // 只读标志
 	FSType     string            `json:"fstype,omitempty"`      // ext4/xfs/ntfs/...
 	PartLabel  string            `json:"partlabel,omitempty"`   // 分区标签
 	Mountpoint string            `json:"mountpoint,omitempty"`  // 挂载点（已挂载）
@@ -42,6 +84,12 @@ type diskEntry struct {
 	Category  string         `json:"category"`         // system | unpartitioned | normal
 	// 系统盘判定依据：磁盘上有分区挂载在 / 或 /boot 或 /boot/efi
 	IsSystem bool `json:"is_system"`
+	// 整盘聚合用量（仅统计有 df 数据的分区）
+	UsedBytes    uint64  `json:"used_bytes,omitempty"`
+	UsedHuman    string  `json:"used_human,omitempty"`
+	TotalBytes   uint64  `json:"total_bytes,omitempty"`
+	TotalHuman   string  `json:"total_human,omitempty"`
+	UsagePercent float64 `json:"usage_percent,omitempty"`
 	// 分区列表（普通盘/系统盘有分区，未分区盘为空）
 	Partitions []diskPartition `json:"partitions,omitempty"`
 }
@@ -53,7 +101,10 @@ type diskPartition struct {
 	SizeHuman  string `json:"size_human"`
 	FSType     string `json:"fstype,omitempty"`      // ext4/xfs/...
 	Mountpoint string `json:"mountpoint,omitempty"`  // 已挂载点；空=未挂载
-	PartLabel  string `json:"partlabel,omitempty"`
+	PartLabel    string  `json:"partlabel,omitempty"`
+	UsedBytes    uint64  `json:"used_bytes,omitempty"`
+	UsedHuman    string  `json:"used_human,omitempty"`
+	UsagePercent float64 `json:"usage_percent,omitempty"`
 }
 
 // diskPartitionRequest 分区并格式化请求体（对应 1Panel"分区并挂载"）。

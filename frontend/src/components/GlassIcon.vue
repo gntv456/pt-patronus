@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed } from 'vue'
 
 // GlassIcon — iOS 26 液态玻璃风格应用图标：圆角 squircle 渐变色块 + 顶部玻璃高光 + 白色描边字形。
@@ -33,6 +33,9 @@ const props = withDefaults(
 
 // 字形字典：name → SVG 内部标记（多条 path/rect/circle）。外层 <svg> 统一包裹。
 const GLYPHS: Record<string, string> = {
+  // 通知中心：铃铛（Lucide bell 风格，描边路径）
+  bell:
+    '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   // 仪表盘：四宫格
   dashboard:
     '<rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/>',

@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+﻿import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
@@ -181,6 +181,11 @@ const router = createRouter({
           path: 'messages',
           name: 'messages',
           component: () => import('@/views/Messages.vue'),
+        },
+        {
+          path: 'notices',
+          name: 'notices',
+          component: () => import('@/views/Notices.vue'),
         },
         {
           path: 'recommend',

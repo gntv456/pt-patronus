@@ -23,10 +23,11 @@ func (h *DockerHandler) LocalStatus(c *gin.Context) {
 		c.JSON(http.StatusOK, localDockerStatus{Available: false, Error: "local docker client not initialized"})
 		return
 	}
-	avail := h.local.Available()
-	st := localDockerStatus{Available: avail, Endpoint: h.local.host}
+	endpoint, probeErr := h.local.Probe()
+	avail := probeErr == nil
+	st := localDockerStatus{Available: avail, Endpoint: endpoint}
 	if !avail {
-		st.Error = "docker socket unreachable（容器是否挂载了 /var/run/docker.sock？）"
+		st.Error = probeErr.Error()
 	}
 	c.JSON(http.StatusOK, st)
 }

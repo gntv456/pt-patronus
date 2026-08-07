@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import NotificationCenter from '@/components/NotificationCenter.vue'
 import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
@@ -7,7 +7,7 @@ import { useMainLayout } from '@/layouts/useMainLayout'
 import { Menu, Moon, Search, Setting, SwitchButton } from '@element-plus/icons-vue'
 
 const {
-  router, auth, isMobile, mobileNavOpen, sidebarCollapsed, paletteOpen,
+  router, auth, isMobile, mobileNavOpen, sidebarCollapsed, paletteOpen, noticeUnread, noticeUrgent,
   navGroups, favoriteItems, paletteItems, recent, collapsedGroups, favorites,
   isGroupCollapsed, toggleGroup, isFav, onToggleFav, clearFavorites,
   onUserCommand, toggleNav, closeMobileNav, openPalette,
@@ -20,7 +20,7 @@ const {
     <AppSidebar
       v-model:mobile-nav-open="mobileNavOpen"
       :nav-groups="navGroups" :sidebar-collapsed="sidebarCollapsed" :favorite-items="favoriteItems"
-      :collapsed-groups="collapsedGroups" :favorites="favorites"
+      :collapsed-groups="collapsedGroups" :favorites="favorites" :notice-unread="noticeUnread" :notice-urgent="noticeUrgent"
       @toggle-group="toggleGroup" @on-toggle-fav="onToggleFav" @clear-favorites="clearFavorites" @close-mobile-nav="closeMobileNav"
     />
     <div class="main">

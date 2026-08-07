@@ -26,10 +26,15 @@ services:
       # 数据库（默认 SQLite；切 PostgreSQL 设 DB_TYPE=postgres + DATABASE_URL）
       DB_TYPE: ${DB_TYPE:-sqlite}
       DATABASE_URL: ${DATABASE_URL:-}
+      # Compose 项目扫描根（容器内路径，对应宿主 COMPOSE_ROOT）
+      COMPOSE_SCAN_DIR: ${COMPOSE_SCAN_DIR:-/host/compose}
     volumes:
       - ./data:/app/data
       # Docker 管理：挂载 docker.sock 让本机容器管理可用（运维中心 → Docker → 本机模式）
       - /var/run/docker.sock:/var/run/docker.sock
+      # Compose 项目管理：挂载宿主 compose 目录（扫描已有项目）
+      # 默认 /opt，按需改为你的 compose 项目根（如 /root /home 等）
+      - ${COMPOSE_ROOT:-/opt}:/host/compose:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s

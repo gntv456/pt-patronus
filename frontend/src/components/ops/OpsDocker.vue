@@ -8,6 +8,7 @@ import { useDockerOps } from './useDockerOps'
 import DockerExecTerminal from './DockerExecTerminal.vue'
 import DockerCreateDialog from './DockerCreateDialog.vue'
 import DockerComposeLocal from './DockerComposeLocal.vue'
+import ComposeProjects from './ComposeProjects.vue'
 
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
@@ -18,7 +19,7 @@ const actionLoading = ref(false)
 const error = ref('')
 const data = ref<DockerListResp>({ containers: [], images: [], volumes: [], networks: [] })
 const stats = ref<DockerStatsRow[]>([])
-const activeTab = ref<'containers' | 'images' | 'volumes' | 'networks'>('containers')
+const activeTab = ref<'containers' | 'images' | 'volumes' | 'networks' | 'projects'>('containers')
 const logDrawer = ref(false)
 const logContainer = ref('')
 const logContent = ref('')
@@ -27,6 +28,8 @@ const inspectDrawer = ref(false)
 const inspectData = ref<any>(null)
 
 const sshTargets = computed(() => targets.value.filter((t) => t.type === 'host'))
+const tabKeys = computed<(typeof activeTab.value)[]>(() =>
+  mode.value === 'local' ? ['containers', 'images', 'volumes', 'networks', 'projects'] : ['containers', 'images', 'volumes', 'networks'])
 
 async function loadTargets() {
   try {
@@ -254,9 +257,9 @@ onMounted(async () => {
 
       <!-- Tab 切换 -->
       <div class="docker-tabs">
-        <button v-for="tab in (['containers','images','volumes','networks'] as const)" :key="tab"
+        <button v-for="tab in tabKeys" :key="tab"
           class="docker-tab" :class="{ active: activeTab === tab }" @click="activeTab = tab">
-          {{ { containers: '容器', images: '镜像', volumes: '卷', networks: '网络' }[tab] }}
+          {{ ({ containers: '容器', images: '镜像', volumes: '卷', networks: '网络', projects: '项目' } as any)[tab] }}
         </button>
       </div>
 
@@ -349,6 +352,9 @@ onMounted(async () => {
           </tbody>
         </table>
       </div>
+
+      <!-- Compose 项目 -->
+      <ComposeProjects v-if="activeTab === 'projects'" />
     </template>
 
     <!-- 日志抽屉 -->

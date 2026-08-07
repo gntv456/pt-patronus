@@ -110,6 +110,10 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		docker.POST("/local/compose/up", composeLocalH.ComposeUp)
 		docker.POST("/local/compose/down", composeLocalH.ComposeDown)
 		docker.POST("/local/compose/validate", composeLocalH.ComposeValidate)
+		// Compose 项目扫描（挂载宿主目录）
+		docker.GET("/local/compose/projects", composeLocalH.ScanProjects)
+		docker.GET("/local/compose/project", composeLocalH.ProjectDetail)
+		docker.POST("/local/compose/project/action", composeLocalH.ProjectAction)
 	}
 
 	// === 运维中心：磁盘管理（SSH 远程主机，分区/格式化/挂载）===

@@ -16,6 +16,7 @@ declare module 'vue' {
     BlackjackGame: typeof import('./src/components/BlackjackGame.vue')['default']
     CelebrityDialog: typeof import('./src/components/CelebrityDialog.vue')['default']
     CommandPalette: typeof import('./src/components/CommandPalette.vue')['default']
+    ComposeProjects: typeof import('./src/components/ops/ComposeProjects.vue')['default']
     CookieCloudPanel: typeof import('./src/components/settings/CookieCloudPanel.vue')['default']
     DashboardActivityTimeline: typeof import('./src/components/dashboard/DashboardActivityTimeline.vue')['default']
     DashboardAICard: typeof import('./src/components/dashboard/DashboardAICard.vue')['default']

@@ -129,6 +129,14 @@ export const dockerApi = {
   localComposeValidate: (content: string, name?: string) =>
     http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/validate', { content, name }).then((r) => r.data),
 
+  // === Compose 项目扫描（挂载宿主目录）===
+  localProjects: () =>
+    http.get<{ projects: any[]; scan_dir: string; available: boolean }>('/ops/docker/local/compose/projects').then((r) => r.data),
+  localProjectDetail: (dir: string) =>
+    http.get<{ content: string; file: string; dir: string }>('/ops/docker/local/compose/project', { params: { dir } }).then((r) => r.data),
+  localProjectAction: (dir: string, action: 'up' | 'down' | 'restart' | 'pull') =>
+    http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/project/action', { dir, action }).then((r) => r.data),
+
   // === 创建容器 + exec 终端 ===
   localCreate: (data: {
     image: string

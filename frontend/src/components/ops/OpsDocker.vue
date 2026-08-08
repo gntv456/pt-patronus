@@ -171,10 +171,23 @@ const createDialog = ref(false)
 // exec 终端（用独立组件）
 const execDrawer = ref(false)
 const execContainer = ref('')
+const searchText = ref('')
+const stateFilter = ref<'all' | 'running' | 'stopped'>('all')
 function openExec(c: DockerContainer) {
   execContainer.value = c.Names.replace(/^\//, '')
   execDrawer.value = true
 }
+
+const filteredContainers = computed(() => {
+  const kw = searchText.value.trim().toLowerCase()
+  return data.value.containers.filter((c) => {
+    if (stateFilter.value === 'running' && c.State !== 'running') return false
+    if (stateFilter.value === 'stopped' && c.State === 'running') return false
+    if (!kw) return true
+    const name = c.Names.replace(/^\//, '').toLowerCase()
+    return name.includes(kw) || (c.Image || '').toLowerCase().includes(kw)
+  })
+})
 
 function stateColor(state: string): string {
   const colors: Record<string, string> = {
@@ -294,49 +307,77 @@ onMounted(async () => {
         </button>
       </div>
 
-      <!-- 容器列表 -->
-      <div v-if="activeTab === 'containers'" class="docker-table glass">
-        <div class="tab-toolbar">
-          <el-button size="small" type="primary" @click="createDialog = true">创建容器</el-button>
-          <el-button size="small" type="warning" @click="doPrune('container')">清理已停止容器</el-button>
+      <!-- 容器列表（飞牛 NAS 卡片风格） -->
+      <div v-if="activeTab === 'containers'" class="docker-cards-section">
+        <div class="cards-toolbar">
+          <el-input
+            v-model="searchText"
+            placeholder="搜索容器名称或镜像…"
+            clearable
+            size="small"
+            class="cards-search"
+          >
+            <template #prefix><svg viewBox="0 0 24 24" class="search-ico"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg></template>
+          </el-input>
+          <div class="state-tabs">
+            <button class="state-tab" :class="{ active: stateFilter === 'all' }" @click="stateFilter = 'all'">
+              全部 <span class="count">{{ data.containers.length }}</span>
+            </button>
+            <button class="state-tab" :class="{ active: stateFilter === 'running' }" @click="stateFilter = 'running'">
+              运行中 <span class="count">{{ data.containers.filter(c => c.State === 'running').length }}</span>
+            </button>
+            <button class="state-tab" :class="{ active: stateFilter === 'stopped' }" @click="stateFilter = 'stopped'">
+              已停止 <span class="count">{{ data.containers.filter(c => c.State !== 'running').length }}</span>
+            </button>
+          </div>
+          <div class="cards-actions">
+            <el-button size="small" type="primary" @click="createDialog = true">创建容器</el-button>
+            <el-button size="small" type="warning" @click="doPrune('container')">清理已停止</el-button>
+          </div>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>名称</th><th>镜像</th><th>端口</th><th>状态</th><th>CPU</th><th>内存</th><th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in data.containers" :key="c.ID">
-              <td class="td-name" :title="c.Names">{{ c.Names.replace(/^\//, '') }}</td>
-              <td class="td-image" :title="c.Image"><span class="img-tag">{{ c.Image }}</span></td>
-              <td class="td-ports">
-                <span v-if="c.Ports" class="port-chip" :title="c.Ports">{{ shortPorts(c.Ports) }}</span>
-                <span v-else class="td-muted">—</span>
-              </td>
-              <td>
-                <span class="state-badge" :class="`state-badge--${stateColor(c.State)}`">
-                  <span class="state-dot"></span>{{ stateLabel(c.State) }}
-                </span>
-                <div class="td-status-sub">{{ c.Status }}</div>
-              </td>
-              <td class="td-stat">{{ statFor(c.Names)?.CPUPerc || '-' }}</td>
-              <td class="td-stat">{{ statFor(c.Names)?.MemUsage || '-' }}</td>
-              <td class="td-actions">
-                <button v-if="c.State !== 'running'" class="mini-btn" title="启动" :disabled="actionLoading" @click="doAction(c, 'start', '启动')"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M8 5v14l11-7z"/></svg></button>
-                <button v-if="c.State === 'running'" class="mini-btn" title="停止" :disabled="actionLoading" @click="doAction(c, 'stop', '停止')"><svg viewBox="0 0 24 24" class="btn-ico"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
-                <button class="mini-btn" title="重启" :disabled="actionLoading" @click="doAction(c, 'restart', '重启')"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg></button>
-                <button v-if="c.State === 'running' && mode === 'local'" class="mini-btn" title="终端" @click="openExec(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h2l2 3 2-3h2l-3 4 3 4h-2l-2-3-2 3H8l3-4-3-4z"/></svg></button>
-                <button class="mini-btn" title="日志" @click="showLogs(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M5 3h14a1 1 0 0 1 1 1v16l-3-2-3 2V8H5V4a1 1 0 0 1 0-1zm1 6h2v2H6V9zm0 3h2v2H6v-2zm0 3h2v2H6v-2z"/></svg></button>
-                <button class="mini-btn" title="详情" @click="showInspect(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm2 10h-4v-1h1v-3h-1v-1h3v4h1v1z"/></svg></button>
-                <button class="mini-btn danger" title="删除" @click="removeContainer(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M9 3h6v2h5v2H4V5h5V3zm-3 6h12l-1 12H7L6 9zm3 2v8H8v-8h1zm3 0v8h-1v-8h1z"/></svg></button>
-              </td>
-            </tr>
-            <tr v-if="!data.containers.length">
-              <td colspan="7" class="td-empty">暂无容器</td>
-            </tr>
-          </tbody>
-        </table>
+
+        <div v-if="filteredContainers.length" class="docker-card-grid">
+          <div v-for="c in filteredContainers" :key="c.ID" class="docker-card" :class="`docker-card--${stateColor(c.State)}`">
+            <div class="card-header">
+              <span class="card-status-dot" :class="`dot--${stateColor(c.State)}`"></span>
+              <span class="card-name" :title="c.Names.replace(/^\//, '')">{{ c.Names.replace(/^\//, '') }}</span>
+              <span class="card-state-chip" :class="`chip--${stateColor(c.State)}`">{{ stateLabel(c.State) }}</span>
+            </div>
+            <div class="card-image" :title="c.Image">
+              <svg viewBox="0 0 24 24" class="card-ic-img"><path d="M21 5H3v14h18V5zm-9 2c2.2 0 4 1.8 4 4s-1.8 4-4 4-4-1.8-4-4 1.8-4 4-4z"/></svg>
+              <span class="card-image-text">{{ c.Image }}</span>
+            </div>
+            <div v-if="c.Ports" class="card-ports" :title="c.Ports">
+              <svg viewBox="0 0 24 24" class="card-ic-port"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+              <span class="port-text">{{ shortPorts(c.Ports) }}</span>
+            </div>
+            <div v-else class="card-ports card-ports--empty">无端口映射</div>
+            <div class="card-stats">
+              <div class="card-stat">
+                <span class="stat-label">CPU</span>
+                <span class="stat-value">{{ statFor(c.Names)?.CPUPerc || '—' }}</span>
+              </div>
+              <div class="card-stat">
+                <span class="stat-label">内存</span>
+                <span class="stat-value">{{ statFor(c.Names)?.MemUsage || '—' }}</span>
+              </div>
+            </div>
+            <div class="card-uptime">{{ c.Status }}</div>
+            <div class="card-actions">
+              <button v-if="c.State !== 'running'" class="card-btn" title="启动" :disabled="actionLoading" @click="doAction(c, 'start', '启动')"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M8 5v14l11-7z"/></svg></button>
+              <button v-if="c.State === 'running'" class="card-btn" title="停止" :disabled="actionLoading" @click="doAction(c, 'stop', '停止')"><svg viewBox="0 0 24 24" class="btn-ico"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
+              <button class="card-btn" title="重启" :disabled="actionLoading" @click="doAction(c, 'restart', '重启')"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/></svg></button>
+              <button v-if="c.State === 'running' && mode === 'local'" class="card-btn" title="终端" @click="openExec(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h2l2 3 2-3h2l-3 4 3 4h-2l-2-3-2 3H8l3-4-3-4z"/></svg></button>
+              <button class="card-btn" title="日志" @click="showLogs(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M5 3h14a1 1 0 0 1 1 1v16l-3-2-3 2V8H5V4a1 1 0 0 1 0-1zm1 6h2v2H6V9zm0 3h2v2H6v-2zm0 3h2v2H6v-2z"/></svg></button>
+              <button class="card-btn" title="详情" @click="showInspect(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm2 10h-4v-1h1v-3h-1v-1h3v4h1v1z"/></svg></button>
+              <button class="card-btn danger" title="删除" @click="removeContainer(c)"><svg viewBox="0 0 24 24" class="btn-ico"><path d="M9 3h6v2h5v2H4V5h5V3zm-3 6h12l-1 12H7L6 9zm3 2v8H8v-8h1zm3 0v8h-1v-8h1z"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div v-else class="docker-empty glass">
+          <GlassIcon name="server" from="#6c5ce7" to="#4285f4" :size="48" />
+          <p>{{ searchText || stateFilter !== 'all' ? '没有匹配的容器' : '暂无容器' }}</p>
+        </div>
       </div>
 
       <!-- 镜像列表 -->

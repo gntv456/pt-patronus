@@ -34,7 +34,7 @@
 .stat-meta { display: flex; flex-direction: column; gap: 0; min-width: 0; }
 .stat-tile strong { font-size: 22px; line-height: 1.15; color: var(--text-strong); }
 .stat-tile span { font-size: var(--fs-xs); color: var(--text-muted); }
-/* 彩色变体（1Panel 风格：每类资源一个主色） */
+/* 彩色变体�?Panel 风格：每类资源一个主色） */
 .stat--running::before { background: var(--pt-success); }
 .stat--running .stat-ic { background: var(--pt-success); }
 .stat--container::before { background: var(--pt-primary); }
@@ -89,7 +89,7 @@
 /* ===== 1Panel 风格增强 ===== */
 .docker-table { border-radius: var(--radius-md); overflow: auto; }
 
-/* 镜像名 / 端口 / 数值列 */
+/* 镜像�?/ 端口 / 数值列 */
 .img-tag {
   font-family: monospace; font-size: var(--fs-xs); color: var(--text-muted);
   background: var(--surface-muted); padding: 2px 8px; border-radius: var(--radius-xs);
@@ -104,7 +104,7 @@
 .td-muted { color: var(--text-disabled); }
 .td-stat { font-family: monospace; font-size: var(--fs-xs); color: var(--text-strong); white-space: nowrap; }
 
-/* 状态徽章：彩色圆点 + 中文标签（1Panel 风格）*/
+/* 状态徽章：彩色圆点 + 中文标签�?Panel 风格�?/
 .state-badge {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: var(--fs-xs); font-weight: 600; padding: 3px 10px; border-radius: var(--radius-pill);
@@ -138,3 +138,111 @@
 .driver-chip--host { background: rgba(243, 156, 18, 0.16); color: var(--pt-warn); }
 .driver-chip--overlay { background: rgba(231, 76, 60, 0.12); color: var(--pt-danger); }
 
+
+
+/* ===== ��ţ NAS ��Ƭ��������б� ===== */
+.docker-cards-section { display: flex; flex-direction: column; gap: var(--sp-3); }
+.cards-toolbar {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+}
+.cards-search { width: 240px; }
+.cards-search .search-ico { width: 16px; height: 16px; fill: var(--text-muted); }
+.state-tabs { display: flex; gap: 2px; background: var(--surface-muted); border-radius: var(--radius-pill); padding: 2px; }
+.state-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 14px; border: 0; background: none; cursor: pointer;
+  font-size: var(--fs-sm); color: var(--text-muted);
+  border-radius: var(--radius-pill); transition: all 0.2s;
+}
+.state-tab.active { background: var(--surface-1); color: var(--pt-primary); font-weight: 600; box-shadow: var(--surface-shadow); }
+.state-tab .count { font-size: var(--fs-xs); opacity: 0.7; }
+.cards-actions { margin-left: auto; display: flex; gap: 8px; }
+
+.docker-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-3);
+}
+
+.docker-card {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  padding: var(--sp-4); border-radius: var(--radius-md);
+  background: var(--surface-1);
+  border: 1px solid var(--divider);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
+  position: relative; overflow: hidden;
+}
+.docker-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--text-muted); opacity: 0.5;
+}
+.docker-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+.docker-card--success::before { background: var(--pt-success); opacity: 0.8; }
+.docker-card--muted::before { background: var(--text-muted); opacity: 0.4; }
+.docker-card--warn::before { background: var(--pt-warn); opacity: 0.8; }
+.docker-card--info::before { background: var(--pt-primary-2, #4285f4); opacity: 0.8; }
+.docker-card--danger::before { background: var(--pt-danger); opacity: 0.8; }
+
+.card-header { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.card-status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+}
+.dot--success { background: var(--pt-success); color: var(--pt-success); }
+.dot--muted { background: var(--text-muted); color: var(--text-muted); }
+.dot--warn { background: var(--pt-warn); color: var(--pt-warn); }
+.dot--info { background: var(--pt-primary-2, #4285f4); color: var(--pt-primary-2, #4285f4); }
+.dot--danger { background: var(--pt-danger); color: var(--pt-danger); }
+.card-name {
+  font-weight: 600; font-size: var(--fs-sm); color: var(--text-strong);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card-state-chip {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-pill);
+  white-space: nowrap; flex-shrink: 0;
+}
+.chip--success { color: var(--pt-success); background: rgba(46,204,113,0.12); }
+.chip--muted { color: var(--text-muted); background: var(--surface-muted); }
+.chip--warn { color: var(--pt-warn); background: rgba(243,156,18,0.14); }
+.chip--info { color: var(--pt-primary-2, #4285f4); background: rgba(66,133,244,0.12); }
+.chip--danger { color: var(--pt-danger); background: rgba(231,76,60,0.12); }
+
+.card-image {
+  display: flex; align-items: center; gap: 6px;
+  font-family: monospace; font-size: var(--fs-xs); color: var(--text-muted);
+  min-width: 0;
+}
+.card-ic-img { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+.card-image-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.card-ports {
+  display: flex; align-items: center; gap: 6px;
+  font-family: monospace; font-size: var(--fs-xs); color: var(--pt-primary-2, #4285f4);
+  background: rgba(66,133,244,0.08); padding: 4px 8px; border-radius: var(--radius-xs);
+  min-width: 0;
+}
+.card-ic-port { width: 14px; height: 14px; fill: currentColor; flex-shrink: 0; }
+.port-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-ports--empty { color: var(--text-disabled); background: var(--surface-muted); }
+
+.card-stats { display: flex; gap: var(--sp-3); }
+.card-stat { display: flex; flex-direction: column; gap: 1px; }
+.stat-label { font-size: 11px; color: var(--text-muted); }
+.stat-value { font-family: monospace; font-size: var(--fs-xs); color: var(--text-strong); font-weight: 600; }
+
+.card-uptime { font-size: 11px; color: var(--text-muted); }
+
+.card-actions { display: flex; gap: 4px; margin-top: auto; padding-top: var(--sp-2); border-top: 1px solid var(--divider); }
+.card-btn {
+  width: 30px; height: 30px; border: 1px solid var(--divider); background: var(--surface-1);
+  border-radius: var(--radius-xs); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-muted); transition: all 0.15s;
+}
+.card-btn:hover { color: var(--pt-primary); border-color: var(--pt-primary); background: rgba(66,133,244,0.06); }
+.card-btn.danger:hover { color: var(--pt-danger); border-color: var(--pt-danger); background: rgba(231,76,60,0.08); }
+.card-btn:disabled { opacity: 0.4; cursor: not-allowed; }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 /**
  * 统一搜索页：[种子 | 影视] 分段切换，共享关键词。
  *  - 种子：跨站 SSE 流式聚合 + 前端筛选排序；结果表/失败容错见 TorrentResultsTable；
@@ -111,7 +111,7 @@ const {
   visible: pushVisible, row: pushRow, subtitle: pushSubtitle, downloaders: pushDownloaders,
   selectedDl, categories: pushCategories, selectedCategory, savePath, showAdvanced, paused,
   loading: pushLoading, pushedDlName,
-  start: startPush, confirm: confirmPush, gotoDownloaderTasks, close: closePush,
+  start: startPush, confirm: confirmPush, gotoDownloaderTasks, gotoDownloaderConfig, close: closePush,
 } = useSearchPush()
 
 // —— 种子详情抽屉：抓取并解析单条种子详情页 ——
@@ -281,6 +281,7 @@ onUnmounted(() => {
       :pushed-dl-name="pushedDlName"
       @confirm="confirmPush"
       @goto-downloader-tasks="gotoDownloaderTasks"
+      @goto-downloader-config="gotoDownloaderConfig"
       @close="closePush"
     />
 

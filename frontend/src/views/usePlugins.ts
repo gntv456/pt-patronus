@@ -492,6 +492,20 @@ export function usePlugins(options: UsePluginsOptions) {
 
   async function saveConfig() {
     if (!configTarget.value) return
+    // P1: 校验必填字段
+    const schema = configTarget.value.config_schema || []
+    const missing: string[] = []
+    for (const f of schema) {
+      if (!f.required) continue
+      const val = configForm.value[f.key]
+      if (val === undefined || val === null || val === '' || (Array.isArray(val) && !val.length)) {
+        missing.push(f.label)
+      }
+    }
+    if (missing.length) {
+      ElMessage.warning(`请填写必填项：${missing.join("、")}`)
+      return
+    }
     savingConfig.value = true
     try {
       await pluginApi.saveConfig(configTarget.value.id, configForm.value)

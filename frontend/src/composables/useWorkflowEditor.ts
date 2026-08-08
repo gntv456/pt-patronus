@@ -1,7 +1,7 @@
-import { ref, computed, type Ref } from 'vue'
+﻿import { ref, computed, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useVueFlow, type Edge, type Node, type Connection } from '@vue-flow/core'
-import { workflowApi, type NodeInfo, type GraphNode, type GraphEdge, type WorkflowRun, type WorkflowTemplate } from '@/api/workflow'
+import { workflowApi, type NodeInfo, type GraphNode, type GraphEdge, type WorkflowRun, type WorkflowTemplate, type ParamField } from '@/api/workflow'
 
 export interface WfNodeData {
   type: string
@@ -16,7 +16,8 @@ export function useWorkflowEditor(flowId: string) {
   const router = useRouter()
   const wfId = computed(() => (route.query.id ? Number(route.query.id) : 0))
 
-  const { onConnect, addEdges, addNodes, screenToFlowCoordinate, onNodeClick, onPaneClick,
+  const { onConnect, addEdges, addNodes, screenToFlowCoordinate, onNodeClick, onPaneClick, onEdgeClick,
+    onEdgesChange, applyEdgeChanges,
     setNodes, setEdges, removeNodes, toObject } = useVueFlow(flowId)
 
   const actions = ref<NodeInfo[]>([])
@@ -42,11 +43,23 @@ export function useWorkflowEditor(flowId: string) {
   const saving = ref(false)
   const running = ref(false)
 
+  // dirty 跟踪（未保存修改提示）
+  const dirty = ref(false)
+  function markDirty() { dirty.value = true }
+
   const selected = ref<Node | null>(null)
   onNodeClick(({ node }) => {
     selected.value = node
   })
   onPaneClick(() => {
+    selected.value = null
+    selectedEdge.value = null
+  })
+
+  // 连线选中
+  const selectedEdge = ref<Edge | null>(null)
+  onEdgeClick(({ edge }) => {
+    selectedEdge.value = edge
     selected.value = null
   })
 
@@ -77,6 +90,7 @@ export function useWorkflowEditor(flowId: string) {
         enabled.value = wf.enabled
         setNodes((wf.nodes ?? []).map(toVFNode))
         setEdges((wf.edges ?? []).map(toVFEdge))
+        dirty.value = false
       } catch (e: unknown) {
         ElMessage.error((e as Error).message || '加载工作流失败')
       }
@@ -106,6 +120,16 @@ export function useWorkflowEditor(flowId: string) {
   // 连线
   onConnect((params: Connection) => {
     addEdges([params])
+    markDirty()
+  })
+
+  // 连线变更（删除等）
+  onEdgesChange((changes) => {
+    applyEdgeChanges(changes)
+    if (changes.some((c) => c.type === 'remove')) {
+      markDirty()
+      selectedEdge.value = null
+    }
   })
 
   // 调色板拖拽 → 画布
@@ -129,6 +153,7 @@ export function useWorkflowEditor(flowId: string) {
         data: { type, name: info.name, params: { ...(info.default_params || {}) }, info, branch: type === 'condition' },
       },
     ])
+    markDirty()
   }
   function onDragOver(e: DragEvent) {
     e.preventDefault()
@@ -170,6 +195,26 @@ export function useWorkflowEditor(flowId: string) {
       ElMessage.warning('请填写工作流名称')
       return
     }
+    // P1: 校验各节点必填参数
+    const obj0 = toObject()
+    const missingNodes: string[] = []
+    for (const n of obj0.nodes) {
+      const info = (n.data as any).info
+      const params = (n.data as any).params || {}
+      if (!info?.param_schema) continue
+      const nodeName = (n.data as any).name || n.id
+      for (const f of info.param_schema as ParamField[]) {
+        if (!f.required) continue
+        const val = params[f.name]
+        if (val === undefined || val === null || val === '' || (Array.isArray(val) && !val.length)) {
+          missingNodes.push(`${nodeName} → ${f.label}`)
+        }
+      }
+    }
+    if (missingNodes.length) {
+      ElMessage.warning(`以下节点必填项为空：${missingNodes.slice(0, 3).join("、")}${missingNodes.length > 3 ? "…" : ""}`)
+      return
+    }
     saving.value = true
     try {
       const input = buildInput()
@@ -180,6 +225,7 @@ export function useWorkflowEditor(flowId: string) {
         router.replace({ name: 'workflow-editor', query: { id: created.id } })
       }
       ElMessage.success('已保存')
+      dirty.value = false
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '保存失败')
     } finally {
@@ -240,6 +286,16 @@ export function useWorkflowEditor(flowId: string) {
     if (!selected.value) return
     removeNodes([selected.value.id])
     selected.value = null
+    markDirty()
+  }
+
+  // 删除选中连线
+  function deleteSelectedEdge() {
+    if (!selectedEdge.value) return
+    const id = selectedEdge.value.id
+    setEdges((eds) => eds.filter((e) => e.id !== id))
+    selectedEdge.value = null
+    markDirty()
   }
 
   // —— 模板 / 导入 / 导出 ——
@@ -264,6 +320,7 @@ export function useWorkflowEditor(flowId: string) {
     setNodes((t.nodes ?? []).map(toVFNode))
     setEdges((t.edges ?? []).map(toVFEdge))
     showTemplates.value = false
+    markDirty()
     ElMessage.success('已载入模板，编辑后保存')
   }
   function exportJSON() {
@@ -293,6 +350,7 @@ export function useWorkflowEditor(flowId: string) {
         enabled.value = false
         setNodes((data.nodes || []).map(toVFNode))
         setEdges((data.edges || []).map(toVFEdge))
+        markDirty()
         ElMessage.success('已导入')
       } catch {
         ElMessage.error('JSON 解析失败')
@@ -306,12 +364,12 @@ export function useWorkflowEditor(flowId: string) {
     route, router, wfId,
     actions, categories, infoByType,
     name, description, triggerType, timer, eventType, eventConditions, enabled,
-    saving, running, selected,
+    saving, running, selected, dirty,
     loadError, load,
     onDragStart, onDrop, onDragOver,
     save, run, runResult, showResult,
     history, showHistory, openHistory, viewRun,
-    deleteSelected,
+    deleteSelected, selectedEdge, deleteSelectedEdge,
     templates, showTemplates, openTemplates, applyTemplate,
     exportJSON, onImportFile,
   }

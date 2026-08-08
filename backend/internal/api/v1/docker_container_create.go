@@ -42,11 +42,16 @@ func (c *DockerLocalClient) LocalCreateFromSimple(ctx context.Context, in simple
 		}
 		body["Env"] = env
 	}
-	// 端口绑定：{端口: [{HostPort:"8080"}]}
+
+	// 端口绑定：{端口/协议: [{HostPort:"8080"}]}
 	exposedPorts := map[string]struct{}{}
 	portBindings := map[string][]map[string]any{}
 	for _, p := range in.Ports {
-		containerPort := fmt.Sprintf("%d/tcp", p.Container)
+		proto := p.Protocol
+		if proto == "" {
+			proto = "tcp"
+		}
+		containerPort := fmt.Sprintf("%d/%s", p.Container, proto)
 		exposedPorts[containerPort] = struct{}{}
 		binding := map[string]any{}
 		if p.Host > 0 {
@@ -54,24 +59,36 @@ func (c *DockerLocalClient) LocalCreateFromSimple(ctx context.Context, in simple
 		}
 		portBindings[containerPort] = append(portBindings[containerPort], binding)
 	}
+
+	// HostConfig 组装（端口绑定 / 重启策略 / 资源限制 / 特权 / 网络模式）
+	hc := map[string]any{
+		"RestartPolicy": map[string]any{
+			"Name": in.RestartPolicy,
+		},
+	}
 	if len(exposedPorts) > 0 {
 		body["ExposedPorts"] = exposedPorts
-		body["HostConfig"] = map[string]any{
-			"PortBindings": portBindings,
-			"RestartPolicy": map[string]any{
-				"Name": in.RestartPolicy,
-			},
-		}
-	} else {
-		body["HostConfig"] = map[string]any{
-			"RestartPolicy": map[string]any{"Name": in.RestartPolicy},
-		}
+		hc["PortBindings"] = portBindings
 	}
-	// 卷绑定
 	if len(in.Binds) > 0 {
-		hc := body["HostConfig"].(map[string]any)
 		hc["Binds"] = in.Binds
 	}
+	if in.Privileged {
+		hc["Privileged"] = true
+	}
+	if in.NetworkMode != "" {
+		hc["NetworkMode"] = in.NetworkMode
+	}
+	// CPU 限制：NanoCPUs = 核数 × 1e9
+	if in.CPULimit > 0 {
+		hc["NanoCpus"] = int64(in.CPULimit * 1e9)
+	}
+	// 内存限制：字节
+	if in.MemoryLimitMB > 0 {
+		hc["Memory"] = in.MemoryLimitMB * 1024 * 1024
+	}
+	body["HostConfig"] = hc
+
 	return c.LocalCreateContainer(ctx, body)
 }
 
@@ -83,14 +100,19 @@ type simpleCreateReq struct {
 	Env           map[string]string `json:"env"`
 	Ports         []portMapping     `json:"ports"`
 	Binds         []string          `json:"binds"`
-	RestartPolicy string            `json:"restart_policy"` // no|always|unless-stopped|on-failure
+	RestartPolicy string            `json:"restart_policy"`  // no|always|unless-stopped|on-failure
 	AutoStart     bool              `json:"auto_start"`
+	CPULimit      float64           `json:"cpu_limit"`       // CPU 核数限制，如 1.5 表示 1.5 核；0 为不限制
+	MemoryLimitMB int64             `json:"memory_limit_mb"` // 内存上限 MB；0 为不限制
+	Privileged    bool              `json:"privileged"`      // 特权模式
+	NetworkMode   string            `json:"network_mode"`    // bridge|host|none|container:<name>|自定义网络名
 }
 
 // portMapping 端口映射项。
 type portMapping struct {
-	Container int `json:"container"`
-	Host      int `json:"host"`
+	Container int    `json:"container"`
+	Host      int    `json:"host"`
+	Protocol  string `json:"protocol"` // tcp|udp，缺省 tcp
 }
 
 // LocalExecCheck 检查 exec 是否可用（Docker socket 可连即支持）。

@@ -13,6 +13,10 @@ import (
 var mountpointRe = regexp.MustCompile(`^/[a-zA-Z0-9_\-/.]*$`)
 var blockDeviceRe = regexp.MustCompile(`^/dev/(sd[a-z]+|nvme\d+n\d+|vd[a-z]+|hd[a-z]+|mmcblk\d+)(p\d+)?$`)
 
+// shellSafeRe restricts to characters safe for embedding in single-quoted shell strings:
+// rejects single quotes, backticks, $, semicolons, pipes, and command substitution.
+var shellSafeRe = regexp.MustCompile(`^[a-zA-Z0-9_\-/=.:+]+$`)
+
 // validateDevice 校验块设备路径合法性（防注入 /dev/../../etc/passwd）。
 func validateDevice(dev string) bool {
 	return blockDeviceRe.MatchString(dev)
@@ -108,13 +112,18 @@ func (h *DiskHandler) buildFstabLine(c *gin.Context, id uint, partName, mountpoi
 		return ""
 	}
 	uuid := strings.TrimSpace(result.Stdout)
+	// Security: reject any value containing characters unsafe for shell/fstab embedding.
+	if !shellSafeRe.MatchString(uuid) || !shellSafeRe.MatchString(fstype) {
+		return ""
+	}
 	opts := "defaults"
 	if nofail {
 		opts = "defaults,nofail"
 	}
 	line := fmt.Sprintf("UUID=%s %s %s %s 0 2", uuid, mountpoint, fstype, opts)
-	// 追加到 fstab（去重：先删后加）
-	dedup := fmt.Sprintf(`sed -i '\#%s#d' /etc/fstab && echo '%s' >> /etc/fstab`, mountpoint, line)
+	// Use printf %s\n with proper quoting to avoid echo/shell injection.
+	// sed uses # as delimiter; mountpoint is validated to not contain #.
+	dedup := fmt.Sprintf(`sed -i '\#%s#d' /etc/fstab && printf '%%s\n' '%s' >> /etc/fstab`, mountpoint, line)
 	_, _ = h.runner.RunCommandNow(c.Request.Context(), id, dedup, 10)
 	return line
 }

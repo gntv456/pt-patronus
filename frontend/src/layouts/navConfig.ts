@@ -18,6 +18,7 @@ export const navGroups: NavGroup[] = [
     title: '概览',
     items: [
       { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
+      { name: 'search', label: '搜索', icon: 'search', from: '#f7971e', to: '#ff6a00' },
       { name: 'recommend', label: '推荐', icon: 'recommend', from: '#f7971e', to: '#ff6a00' },
       { name: 'subscriptions', label: '订阅', icon: 'subscribe', from: '#e100ff', to: '#ff6a00' },
       { name: 'sites', label: '站点', icon: 'sites', from: '#4285f4', to: '#22d3ee' },

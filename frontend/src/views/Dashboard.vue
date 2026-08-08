@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { siteApi } from '@/api/site'
 import { useAuthStore } from '@/stores/auth'
@@ -137,6 +137,41 @@ onMounted(() => {
           </div>
         </div>
 
+    <!-- 新用户引导向导：无站点且无下载器时首屏展示 -->
+    <div v-if="!loading && overview && overview.site_count === 0 && overview.downloader_count === 0" class="onboarding-wizard ops-surface">
+      <div class="ob-header">
+        <h2>🚀 欢迎使用 PTPatronus</h2>
+        <p>完成以下 3 步，即可开始自动追剧、辅种、刷流等全功能体验</p>
+      </div>
+      <div class="ob-steps">
+        <div class="ob-step">
+          <div class="ob-num">1</div>
+          <div class="ob-body">
+            <h4>添加 PT 站点</h4>
+            <p>填入站点地址与 Cookie，系统会自动获取用户数据</p>
+            <router-link to="/sites"><el-button type="primary" size="small">添加站点</el-button></router-link>
+          </div>
+        </div>
+        <div class="ob-step">
+          <div class="ob-num">2</div>
+          <div class="ob-body">
+            <h4>配置下载器</h4>
+            <p>支持 qBittorrent / Transmission / Deluge / Aria2</p>
+            <router-link to="/downloaders"><el-button type="primary" size="small">添加下载器</el-button></router-link>
+          </div>
+        </div>
+        <div class="ob-step">
+          <div class="ob-num">3</div>
+          <div class="ob-body">
+            <h4>刷新统计数据</h4>
+            <p>添加完成后点击右上角「刷新数据」，仪表盘将汇总站点信息</p>
+            <el-button type="primary" size="small" :loading="syncing" @click="() => syncStats()">立即刷新</el-button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <template v-if="!loading && overview && (overview.site_count > 0 || overview.downloader_count > 0)">
     <DashboardHealthStrip />
     <DashboardSyncCard />
 
@@ -195,6 +230,9 @@ onMounted(() => {
     </div>
 
     <!-- 导出图片配置弹窗 -->
+    </template>
+
+    <!-- 导出图片配置弹窗 -->
     <DashboardExportDialog v-model="exportVisible" :data="exportData" />
   </div>
 </template>
@@ -250,5 +288,15 @@ onMounted(() => {
   .updated-at { width: 100%; }
   .period-control { order: 2; }
 }
+.onboarding-wizard { padding: 32px 28px; margin-bottom: 16px; text-align: center; }
+.ob-header h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
+.ob-header p { margin: 0 0 24px; color: var(--text-muted); font-size: 14px; }
+.ob-steps { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 800px; margin: 0 auto; }
+.ob-step { flex: 1; min-width: 200px; max-width: 260px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 16px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.04); }
+.ob-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #6c5ce7, #4285f4); }
+.ob-body { text-align: center; }
+.ob-body h4 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+.ob-body p { margin: 0 0 12px; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+@media (max-width: 768px) { .ob-steps { flex-direction: column; align-items: center; } .ob-step { max-width: 100%; } }
 </style>
 

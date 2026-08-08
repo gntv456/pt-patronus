@@ -1,7 +1,8 @@
-package filemanager
+﻿package filemanager
 
 import (
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -26,4 +27,22 @@ func resolvePath(base, p string) string {
 
 func isResolvedStorageRoot(base, p string) bool {
 	return resolvePath(base, strings.TrimSpace(p)) == resolvePath(base, "/")
+}
+
+// isSubpath checks whether target stays within root after path normalization.
+// Prevents zip-slip / tar-slip by verifying the relative path doesn't escape root.
+func isSubpath(root, target string) bool {
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return false
+	}
+	targetAbs, err := filepath.Abs(target)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(rootAbs, targetAbs)
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
 }

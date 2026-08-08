@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { Top, Folder } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { fileApi } from '@/api/filemanager'
 import type { Agent } from '@/api/monitor'
 import type { FileEntry } from '@/api/filemanager'
 
@@ -32,6 +35,39 @@ const emit = defineEmits<{
   (e: 'doMoveCopy'): void
   (e: 'doStrm'): void
 }>()
+
+// 切换存储类型时重置类型相关字段（避免残留无效值）
+watch(
+  () => form.value.type,
+  (newType, oldType) => {
+    if (oldType && newType !== oldType && !editingId.value) {
+      form.value.url = ''
+      form.value.username = ''
+      form.value.password = ''
+      form.value.agent_id = 0
+      form.value.base_path = '/'
+    }
+  },
+)
+
+// 测试连接（仅编辑已有存储时可用）
+const testingConn = ref(false)
+async function testConnection() {
+  if (!editingId.value) {
+    ElMessage.info('请先保存存储后再测试连接')
+    return
+  }
+  testingConn.value = true
+  try {
+    const r = await fileApi.test(editingId.value)
+    if (r.ok) ElMessage.success('连接成功')
+    else ElMessage.error('连接失败')
+  } catch (e) {
+    ElMessage.error((e as Error).message || '连接失败')
+  } finally {
+    testingConn.value = false
+  }
+}
 </script>
 
 <template>
@@ -77,6 +113,7 @@ const emit = defineEmits<{
     <template #footer>
       <el-button v-if="editingId" type="danger" plain @click="emit('delEditingStorage')">删除该存储</el-button>
       <el-button @click="storageDialog = false">取消</el-button>
+      <el-button v-if="editingId" :loading="testingConn" @click="testConnection">测试连接</el-button>
       <el-button type="primary" :loading="submitting" @click="emit('submit')">{{ editingId ? '保存' : '添加' }}</el-button>
     </template>
   </el-dialog>

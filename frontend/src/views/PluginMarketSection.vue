@@ -133,3 +133,5 @@ const emit = defineEmits<{
     </template>
   </el-dialog>
 </template>
+
+<style src="./Plugins.css"></style>

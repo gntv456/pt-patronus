@@ -90,7 +90,7 @@ function pluginInitial(name: string): string {
           <el-button :icon="Setting" size="small" @click="openMarketSource">仓库</el-button>
           <el-button :icon="Refresh" size="small" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
         </template>
-        <el-button :icon="Refresh" size="small" :loading="loading" @click="load">刷新</el-button>
+        <el-button v-if="activeTab !== 'market'" :icon="Refresh" size="small" :loading="loading" @click="load">刷新</el-button>
       </div>
     </div>
 
@@ -115,14 +115,15 @@ function pluginInitial(name: string): string {
         <div v-if="p.last_error" class="plugin-error">{{ p.last_error }}</div>
 
         <div class="plugin-card-foot">
-          <el-button size="small" :icon="Setting" @click="openConfig(p)">配置</el-button>
-          <el-button size="small" :icon="Refresh" @click="reloadPlugin(p)">重载</el-button>
-          <el-button size="small" :icon="Document" @click="openAudit(p)">审计</el-button>
+          <el-button size="small" type="primary" :icon="Setting" @click="openConfig(p)">配置</el-button>
+          <div class="foot-spacer" />
           <el-dropdown trigger="click">
-            <el-button size="small" :icon="MoreFilled" circle plain />
+            <el-button size="small" circle plain class="more-btn"><el-icon><MoreFilled /></el-icon></el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item v-for="v in p.contributes?.views || []" :key="v.id" :icon="Document" @click="handleOpenPluginView(p, v)">
+                <el-dropdown-item :icon="Refresh" @click="reloadPlugin(p)">重载</el-dropdown-item>
+                <el-dropdown-item :icon="Document" @click="openAudit(p)">审计</el-dropdown-item>
+                <el-dropdown-item v-for="v in p.contributes?.views || []" :key="v.id" :icon="Document" divided @click="handleOpenPluginView(p, v)">
                   {{ v.title }}
                 </el-dropdown-item>
                 <el-dropdown-item v-for="a in p.actions || []" :key="a.name" :icon="VideoPlay" @click="openAction(p, a)">

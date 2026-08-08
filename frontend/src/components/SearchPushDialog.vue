@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 /**
  * 搜索页「确认下载」弹窗：信息预览 + 下载器/分类选择 + 高级选项 + 推送成功态。
  * 受控弹窗：v-model 控制显隐，业务状态由父组件/composable 管理。
@@ -28,6 +28,7 @@ const paused = defineModel<boolean>('paused', { default: false })
 const emit = defineEmits<{
   confirm: []
   gotoDownloaderTasks: []
+  gotoDownloaderConfig: []
   close: []
 }>()
 </script>
@@ -117,7 +118,13 @@ const emit = defineEmits<{
         </div>
       </div>
 
-      <div v-if="!downloaders.length && !loading" class="empty text-muted">请先在「下载器」添加一个</div>
+      <div v-if="!downloaders.length && !loading" class="sp-empty">
+        <div class="sp-empty-text">尚未配置任何下载器</div>
+        <div class="text-muted small">需要先添加一个下载器才能开始下载</div>
+        <el-button type="primary" plain size="small" style="margin-top: 10px" @click="emit('gotoDownloaderConfig')">
+          前往配置下载器
+        </el-button>
+      </div>
 
       <el-button
         type="primary"
@@ -171,6 +178,8 @@ const emit = defineEmits<{
   background: var(--surface-muted, rgba(0,0,0,0.03));
 }
 .sp-start { width: 100%; font-weight: 700; }
+.sp-empty { text-align: center; padding: 16px 12px; border-radius: 10px; background: var(--surface-muted, rgba(0,0,0,0.03)); }
+.sp-empty-text { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .sp-ok p { margin: 0 0 8px; }
 .sp-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 </style>

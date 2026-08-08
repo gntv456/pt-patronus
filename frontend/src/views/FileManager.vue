@@ -28,13 +28,13 @@ const {
   archiveVisible, archiveTarget, archiveName, archiveFmt, archiveLoading,
   chmodVisible, chmodTarget, chmodMode, chmodRecursive, chmodLoading,
   dirSizeMap, dirSizeLoading, previewVisible, previewTarget, previewContent, previewLoading,
-  curFs, curReadOnly, crumbs,
+  curFs, curReadOnly, crumbs, batchDelProgress,
   itemKey, loadStorages, testOne, statusOf, selectStorage, refresh, onSelectionChange, enter, jump, up, dlUrl,
 } = fm
 const extra = useFileExtraOps(fm, refresh)
 const {
   onStorageMenu, openCreate, openEdit, submit, delEditingStorage,
-  doMkdir, handleUpload, openRename, doRename, delOne, delBatch,
+  doMkdir, handleUpload, openRename, doRename, delOne, delBatch, cancelBatchDel,
   openMoveCopy, moveCopyUp, moveCopyEnter, doMoveCopy, openStrm, doStrm,
   toggleView, toggleSelect, isSelected, fmtBytes, itemIcon, itemLabel,
 } = ops
@@ -141,6 +141,19 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
           </div>
         </transition>
 
+        <!-- 批量删除进度 -->
+        <transition name="fade">
+          <div v-if="batchDelProgress" class="batch-del-progress glass">
+            <span>删除中 {{ batchDelProgress.done }}/{{ batchDelProgress.total }}</span>
+            <el-progress
+              :percentage="Math.round((batchDelProgress.done / batchDelProgress.total) * 100)"
+              :stroke-width="14"
+              style="flex: 1; margin: 0 12px"
+            />
+            <el-button size="small" type="warning" plain @click="cancelBatchDel">停止</el-button>
+          </div>
+        </transition>
+
         <div v-loading="bloading" class="fm-files">
           <el-table v-if="viewMode === 'list'" :data="entries" empty-text="该目录为空" @selection-change="onSelectionChange" style="width: 100%">
             <el-table-column v-if="!curReadOnly" type="selection" width="40" />
@@ -178,6 +191,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
 
           <div v-else class="grid-view">
             <div v-for="e in entries" :key="e.path" class="grid-card glass glass-hover" :class="{ sel: !curReadOnly && !e.is_dir && isSelected(e) }" @click="e.is_dir ? enter(e) : (!curReadOnly && toggleSelect(e))">
+              <div v-if="!curReadOnly && !e.is_dir" class="grid-check" :class="{ on: isSelected(e) }">{{ isSelected(e) ? '✓' : '' }}</div>
               <div class="grid-icon">{{ e.is_dir ? '📁' : '🎬' }}</div>
               <div class="grid-name" :title="e.name">{{ e.name }}</div>
               <div class="grid-meta">{{ e.is_dir ? '文件夹' : fmtBytes(e.size) }}</div>
@@ -243,6 +257,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
 .crumb-sep { color: var(--text-muted, #909399); }
 .tb-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .batch-bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; margin: 10px 12px 0; border-radius: 8px; font-size: 13px; }
+.batch-del-progress { display: flex; align-items: center; gap: 10px; padding: 10px 14px; margin: 10px 12px 0; border-radius: 8px; font-size: 13px; }
 .fm-files { flex: 1; overflow-y: auto; padding: 8px 12px 12px; }
 .link { color: var(--pt-primary, #4361ee); cursor: pointer; }
 :deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) { background-color: transparent !important; }
@@ -250,6 +265,9 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
 .grid-card { position: relative; padding: 14px 10px; border-radius: 10px; cursor: pointer; text-align: center; transition: transform 0.12s, box-shadow 0.12s; }
 .grid-card:hover { transform: translateY(-2px); }
 .grid-card.sel { border-color: var(--pt-primary, #4361ee); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pt-primary, #4361ee) 40%, transparent); }
+.grid-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(128,128,128,.4); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; opacity: 0; transition: opacity .12s; }
+.grid-card:hover .grid-check { opacity: 1; }
+.grid-check.on { opacity: 1; background: var(--pt-primary, #4361ee); border-color: var(--pt-primary, #4361ee); }
 .grid-icon { font-size: 34px; }
 .grid-name { margin-top: 6px; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grid-meta { font-size: 11px; color: var(--text-muted, #909399); }

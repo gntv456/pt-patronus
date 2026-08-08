@@ -237,22 +237,33 @@ func tarGzPath(src, dst string) error {
 	})
 }
 
+// maxExtractEntrySize limits single-file decompress to prevent zip-bomb disk exhaustion.
+// maxExtractTotalSize limits the cumulative extracted total (aligned with market archive limits).
+const (
+	maxExtractEntrySize int64 = 100 << 20 // 100MB per file
+	maxExtractTotalSize int64 = 500 << 20 // 500MB total
+)
+
 func unzipTo(src, dst string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
 		return err
 	}
 	defer r.Close()
+	var total int64
 	for _, f := range r.File {
-		target := filepath.Join(dst, f.Name)
-		if !strings.HasPrefix(filepath.Clean(target)+string(filepath.Separator), filepath.Clean(dst)+string(filepath.Separator)) {
-			return fmt.Errorf("zip slip 检测：非法路径 %s", f.Name)
+		target := filepath.Join(dst, filepath.Clean(f.Name))
+		if !isSubpath(dst, target) {
+			return fmt.Errorf("zip slip detected: unsafe path %s", f.Name)
 		}
 		if f.FileInfo().IsDir() {
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
 			continue
+		}
+		if int64(f.UncompressedSize64) > maxExtractEntrySize {
+			return fmt.Errorf("zip entry %q too large (%d bytes, max %d)", f.Name, f.UncompressedSize64, maxExtractEntrySize)
 		}
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
@@ -266,13 +277,22 @@ func unzipTo(src, dst string) error {
 			rc.Close()
 			return err
 		}
-		if _, err := io.Copy(out, rc); err != nil {
-			rc.Close()
-			out.Close()
-			return err
-		}
+		n, copyErr := io.Copy(out, io.LimitReader(rc, maxExtractEntrySize+1))
+		closeErr := out.Close()
 		rc.Close()
-		out.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		if n > maxExtractEntrySize {
+			return fmt.Errorf("zip entry %q exceeds decompress limit", f.Name)
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+		total += n
+		if total > maxExtractTotalSize {
+			return fmt.Errorf("zip archive exceeds total decompress limit (%d bytes)", maxExtractTotalSize)
+		}
 	}
 	return nil
 }
@@ -289,6 +309,7 @@ func untarGzTo(src, dst string) error {
 	}
 	defer gr.Close()
 	tr := tar.NewReader(gr)
+	var total int64
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -297,9 +318,12 @@ func untarGzTo(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(dst, h.Name)
-		if !strings.HasPrefix(filepath.Clean(target)+string(filepath.Separator), filepath.Clean(dst)+string(filepath.Separator)) {
-			return fmt.Errorf("tar slip 检测：非法路径 %s", h.Name)
+		target := filepath.Join(dst, filepath.Clean(h.Name))
+		if !isSubpath(dst, target) {
+			return fmt.Errorf("tar slip detected: unsafe path %s", h.Name)
+		}
+		if h.Size > maxExtractEntrySize {
+			return fmt.Errorf("tar entry %q too large (%d bytes, max %d)", h.Name, h.Size, maxExtractEntrySize)
 		}
 		switch h.Typeflag {
 		case tar.TypeDir:
@@ -314,12 +338,23 @@ func untarGzTo(src, dst string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(out, tr); err != nil {
-				out.Close()
-				return err
+			n, copyErr := io.Copy(out, io.LimitReader(tr, maxExtractEntrySize+1))
+			closeErr := out.Close()
+			if copyErr != nil {
+				return copyErr
 			}
-			out.Close()
+			if n > maxExtractEntrySize {
+				return fmt.Errorf("tar entry %q exceeds decompress limit", h.Name)
+			}
+			if closeErr != nil {
+				return closeErr
+			}
+			total += n
+			if total > maxExtractTotalSize {
+				return fmt.Errorf("tar archive exceeds total decompress limit (%d bytes)", maxExtractTotalSize)
+			}
 		}
 	}
 	return nil
 }
+

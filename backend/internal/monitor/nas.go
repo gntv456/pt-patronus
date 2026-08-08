@@ -1,4 +1,4 @@
-package monitor
+﻿package monitor
 
 import (
 	"context"
@@ -74,9 +74,28 @@ func normalizeBase(raw string) string {
 	raw = strings.TrimSpace(raw)
 	raw = strings.TrimRight(raw, "/")
 	if raw != "" && !strings.Contains(raw, "://") {
-		raw = "http://" + raw
+		if isLikelyHTTPSPort(raw) {
+			raw = "https://" + raw
+		} else {
+			raw = "http://" + raw
+		}
 	}
 	return raw
+}
+
+// isLikelyHTTPSPort judges whether host[:port] should use HTTPS (avoid plaintext credentials).
+// 443 (generic HTTPS), 5001 (Synology HTTPS), 8443 (common HTTPS alt) -> HTTPS.
+func isLikelyHTTPSPort(raw string) bool {
+	if i := strings.LastIndexByte(raw, ':'); i >= 0 {
+		portStr := raw[i+1:]
+		if port, err := strconv.Atoi(portStr); err == nil {
+			switch port {
+			case 443, 5001, 8443:
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // —— JSON 宽松取值 helper（厂商 API 字段类型不一：float64/json.Number/string 混用）——

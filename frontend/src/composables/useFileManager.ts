@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, watch } from 'vue'
+﻿import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { cloudApi, type CloudDrive, type CloudFile } from '@/api/cloud'
@@ -27,6 +27,8 @@ export function useFileManager() {
   const viewMode = ref<'list' | 'grid'>(localStorage.getItem('fm.view') === 'grid' ? 'grid' : 'list')
   const selected = ref<FileEntry[]>([])
   const uploadProgress = ref(-1)
+  // 批量删除进度：{ done, total, active } | null（null=不在删除中）
+  const batchDelProgress = ref<{ done: number; total: number } | null>(null)
 
   // 存储添加/编辑
   const storageDialog = ref(false)
@@ -187,7 +189,9 @@ export function useFileManager() {
       else entries.value = (await cloudApi.browse(current.value.drive.id, path.value)).map(toEntry)
     } catch (e: unknown) {
       entries.value = []
-      ElMessage.warning((e as { response?: { data?: { error?: string } } })?.response?.data?.error || '读取失败')
+      const be = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      const msg = be || (e as Error).message || ''
+      ElMessage.warning(`读取「${path.value}」失败${msg ? '：' + msg : ''}`)
     } finally {
       bloading.value = false
     }
@@ -237,7 +241,7 @@ export function useFileManager() {
 
   return {
     list, loading, agents, current, statusMap, testing,
-    path, entries, bloading, viewMode, selected, uploadProgress,
+    path, entries, bloading, viewMode, selected, uploadProgress, batchDelProgress,
     storageDialog, editingId, form,
     mkdirVisible, mkdirName, renameVisible, renameTarget, renameNewName,
     moveCopyVisible, moveCopyMode, moveCopyPath, moveCopyEntries, moveCopyLoading, moveCopySources,

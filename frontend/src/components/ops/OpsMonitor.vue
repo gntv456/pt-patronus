@@ -74,6 +74,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="ops-monitor">
+    <div class="monitor-scope glass">
+      <span class="scope-dot"></span>
+      <span class="scope-label">本机监控</span>
+      <span class="text-muted small">（采集后端服务器所在主机的实时指标）</span>
+    </div>
     <!-- 顶部指标卡片 -->
     <div class="metric-grid">
       <!-- CPU -->
@@ -359,4 +364,7 @@ onBeforeUnmount(() => {
   }
   .disk-bar { display: none; }
 }
+.monitor-scope { display: flex; align-items: center; gap: 8px; padding: 8px 14px; margin-bottom: 12px; border-radius: 8px; font-size: 13px; }
+.scope-dot { width: 8px; height: 8px; border-radius: 50%; background: #27ae60; box-shadow: 0 0 6px #27ae60; }
+.scope-label { font-weight: 700; }
 </style>

@@ -56,7 +56,9 @@ export interface DockerInspect {
   Config: Record<string, any>
   NetworkSettings: Record<string, any>
   Mounts: Record<string, any>[]
+  HostConfig: Record<string, any>
   Created: string
+  [key: string]: any
 }
 
 export const dockerApi = {
@@ -145,10 +147,14 @@ export const dockerApi = {
     name?: string
     cmd?: string[]
     env?: Record<string, string>
-    ports?: { container: number; host: number }[]
+    ports?: { container: number; host: number; protocol?: string }[]
     binds?: string[]
     restart_policy?: string
     auto_start?: boolean
+    cpu_limit?: number
+    memory_limit_mb?: number
+    privileged?: boolean
+    network_mode?: string
   }) =>
     http.post<{ ok: boolean; id?: string; error?: string }>('/ops/docker/local/containers/create', data).then((r) => r.data),
   // exec 终端的 WebSocket URL（前端自行 new WebSocket）

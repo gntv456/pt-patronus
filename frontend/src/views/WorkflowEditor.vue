@@ -1,5 +1,4 @@
-<script setup lang="ts">
-import { onMounted } from 'vue'
+﻿<script setup lang="ts">
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -12,23 +11,104 @@ import type { WorkflowRun } from '@/api/workflow'
 import WorkflowNode from '@/components/workflow/WorkflowNode.vue'
 import NodeParamForm from '@/components/workflow/NodeParamForm.vue'
 import { useWorkflowEditor } from '@/composables/useWorkflowEditor'
+import type { NodeInfo } from '@/api/workflow'
 
 const FLOW_ID = 'wf-editor'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
+
 const {
   router, wfId,
   categories,
   name, description, triggerType, timer, eventType, enabled,
-  saving, running, selected,
+  saving, running, selected, selectedEdge,
   loadError, load,
   onDragStart, onDrop, onDragOver,
   save, run, runResult, showResult,
   history, showHistory, openHistory, viewRun,
-  deleteSelected,
+  deleteSelected, deleteSelectedEdge,
+  dirty,
   templates, showTemplates, openTemplates, applyTemplate,
   exportJSON, onImportFile,
 } = useWorkflowEditor(FLOW_ID)
 
+// P3: 节点库搜索
+const paletteSearch = ref('')
+const filteredCategories = computed(() => {
+  const q = paletteSearch.value.trim().toLowerCase()
+  if (!q) return categories.value
+  const m: Record<string, NodeInfo[]> = {}
+  for (const [cat, items] of Object.entries(categories.value)) {
+    const f = items.filter((a) => a.name.toLowerCase().includes(q) || a.type.toLowerCase().includes(q) || (a.description || "").toLowerCase().includes(q))
+    if (f.length) m[cat] = f
+  }
+  return m
+})
+
+// P3: cron 表达式可读预览
+const cronDesc = computed(() => {
+  if (triggerType.value !== 'timer') return ''
+  const parts = timer.value.trim().split(/\s+/)
+  if (parts.length !== 5) return '格式应为 5 段：分 时 日 月 周'
+  const [min, hour, dom, mon, dow] = parts
+  const every = (v) => v === '*'
+  if (every(min) && every(hour)) return '每分钟执行'
+  if (min.startsWith('*/')) return `每 ${min.slice(2)} 分钟执行`
+  if (every(hour) && !min.includes('*')) return `每天每小时的第 ${min} 分钟执行`
+  if (hour.startsWith('*/')) return `每 ${hour.slice(2)} 小时的第 ${min || 0} 分钟执行`
+  if (every(dom) && every(mon) && every(dow) && !min.includes('*') && !hour.includes('*')) return `每天 ${hour.padStart(2,'0')}:${min.padStart(2,'0')} 执行`
+  if (dow !== '*' && !dow.includes('*')) {
+    const days = ['周日','周一','周二','周三','周四','周五','周六']
+    return `${days[+dow] || dow} ${hour.padStart(2,'0')}:${min.padStart(2,'0')} 执行`
+  }
+  return `自定义：${timer.value}`
+})
+
 onMounted(load)
+
+// P1: 键盘快捷键
+function onKeydown(e: KeyboardEvent) {
+  // Ctrl+S 保存
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault()
+    save()
+    return
+  }
+  // Delete/Backspace 删除选中的节点或边
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selected.value) {
+    e.preventDefault()
+    deleteSelected()
+    return
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedEdge.value) {
+    e.preventDefault()
+    deleteSelectedEdge()
+    return
+  }
+  // Escape 取消选中
+  if (e.key === 'Escape') {
+    selected.value = null
+    selectedEdge.value = null
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
+// P0: 未保存拦截
+onBeforeRouteLeave(async (_to, _from, next) => {
+  if (!dirty.value) return next()
+  try {
+    await ElMessageBox.confirm('有未保存的修改，确定离开吗？', '离开确认', {
+      confirmButtonText: '离开',
+      cancelButtonText: '继续编辑',
+      type: 'warning',
+    })
+    next()
+  } catch {
+    next(false)
+  }
+})
 </script>
 
 <template>
@@ -53,9 +133,10 @@ onMounted(load)
       <!-- 左：节点库 -->
       <aside class="palette glass">
         <div class="p-title">节点库（拖入画布）</div>
+        <el-input v-model="paletteSearch" size="small" placeholder="搜索节点…" clearable style="margin-bottom: 8px" />
         <div v-if="loadError" class="load-err">{{ loadError }}</div>
-        <div v-else class="cats">
-          <div v-for="(items, cat) in categories" :key="cat" class="cat">
+        <div v-else-if="Object.keys(filteredCategories).length" class="cats">
+          <div v-for="(items, cat) in filteredCategories" :key="cat" class="cat">
             <div class="cat-name">{{ cat }}</div>
             <div
               v-for="a in items"
@@ -69,6 +150,7 @@ onMounted(load)
             </div>
           </div>
         </div>
+        <div v-else-if="!loadError" class="text-muted small" style="padding: 12px; text-align: center">未找到匹配的节点</div>
       </aside>
 
       <!-- 中：画布 -->
@@ -106,7 +188,7 @@ onMounted(load)
           <div v-if="triggerType === 'timer'" class="field">
             <label>Cron 表达式</label>
             <el-input v-model="timer" size="small" placeholder="*/30 * * * *" />
-            <div class="text-muted small">5 段式：分 时 日 月 周</div>
+            <div class="text-muted small">5 段式：分 时 日 月 周 · <b>{{ cronDesc }}</b></div>
           </div>
           <div v-if="triggerType === 'event'" class="field">
             <label>事件类型</label>

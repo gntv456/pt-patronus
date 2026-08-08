@@ -1,4 +1,4 @@
-package monitor
+﻿package monitor
 
 import (
 	"context"
@@ -309,7 +309,7 @@ func TestSSHCollectorPowerRebootUsesFixedCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("power reboot: %v", err)
 	}
-	if ex.cmd != "sudo -n reboot" {
+	if !strings.Contains(ex.cmd, "sudo -n reboot") || !strings.Contains(ex.cmd, "sudo reboot") {
 		t.Fatalf("command = %q", ex.cmd)
 	}
 }
@@ -323,7 +323,7 @@ func TestSSHCollectorPowerShutdownUsesFixedCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("power shutdown: %v", err)
 	}
-	if ex.cmd != "sudo -n shutdown -h now" {
+	if !strings.Contains(ex.cmd, "sudo -n shutdown -h now") || !strings.Contains(ex.cmd, "sudo shutdown -h now") {
 		t.Fatalf("command = %q", ex.cmd)
 	}
 }

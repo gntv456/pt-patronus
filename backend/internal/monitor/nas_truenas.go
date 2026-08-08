@@ -1,4 +1,4 @@
-package monitor
+﻿package monitor
 
 import (
 	"context"
@@ -24,7 +24,12 @@ func collectTrueNAS(ctx context.Context, hc *httpclient.Client, t *models.Monito
 	m := Metrics{Online: true}
 	var info map[string]any
 	_ = json.Unmarshal(infoRaw, &info)
-	m.OS = "TrueNAS " + firstStr(info, "version")
+	version := firstStr(info, "version")
+	if version != "" {
+		m.OS = "TrueNAS " + version
+	} else {
+		m.OS = "TrueNAS"
+	}
 	m.Hostname = firstStr(info, "hostname")
 	if v := numUint(info["uptime_seconds"]); v > 0 {
 		m.Uptime = v
@@ -48,11 +53,14 @@ func collectTrueNAS(ctx context.Context, hc *httpclient.Client, t *models.Monito
 	return m, nil
 }
 
-// tnGet 带 Token 鉴权 GET（ssrf=false：内网）。
+// tnGet 带 Token 鉴权 GET（ssrf=false：内网）。校验 HTTP 状态码，避免把 HTML 错误页当 JSON 解析。
 func tnGet(ctx context.Context, hc *httpclient.Client, u string, hdr map[string]string) (json.RawMessage, error) {
 	resp, err := hc.GetWithHeaders(ctx, u, "", hdr, false)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("truenas API %s returned HTTP %d (check token/permissions)", u, resp.StatusCode)
 	}
 	return json.RawMessage(resp.Body), nil
 }

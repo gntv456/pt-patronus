@@ -1,4 +1,4 @@
-package monitor
+﻿package monitor
 
 import (
 	"bytes"
@@ -107,9 +107,12 @@ func (c SSHCollector) Power(ctx context.Context, t *models.MonitorTarget, creds 
 func sshPowerCommand(action string) (string, error) {
 	switch action {
 	case PowerActionReboot:
-		return "sudo -n reboot", nil
+		// sudo -n (non-interactive): fails immediately if NOPASSWD not configured.
+		// Fallback to plain sudo so password-prompt-capable sudoers still work via PTY;
+		// the clear error guides the user to configure NOPASSWD for unattended ops.
+		return "sudo -n reboot 2>/dev/null || sudo reboot", nil
 	case PowerActionShutdown:
-		return "sudo -n shutdown -h now", nil
+		return "sudo -n shutdown -h now 2>/dev/null || sudo shutdown -h now", nil
 	default:
 		return "", ErrUnsupportedPowerAction
 	}

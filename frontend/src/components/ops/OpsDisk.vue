@@ -84,11 +84,19 @@ async function doPartition() {
     return
   }
   try {
-    await ElMessageBox.confirm(
-      `⚠️ 即将对 ${partDevice.value} 执行分区和格式化（${partForm.value.fstype}）。` +
-      `这会清除该磁盘上的【所有数据】，操作不可撤销！请确认设备名无误且已备份。`,
+    const devName = partDevice.value.replace(/^\/dev\//, '')
+    await ElMessageBox.prompt(
+      `⚠️ 即将对 ${partDevice.value} 执行分区和格式化（${partForm.value.fstype}）。\n` +
+      `这会清除该磁盘上的【所有数据】，操作不可撤销！\n` +
+      `请输入设备名 "${devName}" 以确认：`,
       '危险操作确认',
-      { type: 'error', confirmButtonText: '我已备份，强制执行', cancelButtonText: '取消' },
+      {
+        type: 'error',
+        confirmButtonText: '确认执行',
+        cancelButtonText: '取消',
+        inputPattern: new RegExp('^' + devName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'),
+        inputErrorMessage: `请输入：${devName}`,
+      },
     )
     actionLoading.value = true
     const res = await diskApi.partition(selectedTarget.value, {

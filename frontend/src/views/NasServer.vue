@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import DeviceCard from '@/components/monitor/DeviceCard.vue'
@@ -26,7 +26,7 @@ import { useNasOpsConfigs } from './useNasOpsConfigs'
 import { useCommandExec } from './useCommandExec'
 import { useDeploy } from './useDeploy'
 import { useDeviceCrud } from './useDeviceCrud'
-import { useTerminal } from './useTerminal'
+// 在线终端抽屉已自管理 WebSocket（useTerminal 不再需要）
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -118,9 +118,13 @@ const { formVisible, editing, formDefaultType, detailVisible, detailTarget, prev
   onReadAlert, onAckAlert, onSilenceAlert, onDeleteAlert, onClearAlerts,
 } = useDeviceCrud(auth, { activeWorkspace, activeTab, credentials, reload: loadAll, setWorkspace })
 
-const { terminalVisible, terminalTarget, terminalOutput, terminalInput, terminalConnected, terminalConnecting,
-  openTerminal, closeTerminalSocket, connectTerminal, sendTerminalLine, sendTerminalCtrlC,
-} = useTerminal(auth)
+// 在线终端：抽屉内部自管理 xterm + WebSocket（含重连/心跳），这里仅持有可见性与目标。
+const terminalVisible = ref(false)
+const terminalTarget = ref<MonitorTarget | null>(null)
+function openTerminal(t: MonitorTarget) {
+  terminalTarget.value = t
+  terminalVisible.value = true
+}
 
 function focusExecPanel() {
   setWorkspace('execute')
@@ -133,8 +137,23 @@ function openMonitorTab() {
 }
 function go(name: string) { router.push({ name }) }
 
-onMounted(() => { loadCommandHistory(); loadAll(); timer = window.setInterval(loadAll, 15000) })
-onBeforeUnmount(() => { if (timer) window.clearInterval(timer); closeTerminalSocket() })
+onMounted(() => {
+  loadCommandHistory(); loadAll(); timer = window.setInterval(loadAll, 15000)
+  // 标签页隐藏时暂停轮询（省资源），可见时立即刷新并恢复
+  document.addEventListener('visibilitychange', onVisibilityChange)
+})
+onBeforeUnmount(() => {
+  if (timer) window.clearInterval(timer)
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+})
+function onVisibilityChange() {
+  if (document.hidden) {
+    if (timer) { window.clearInterval(timer); timer = null }
+  } else {
+    loadAll()
+    if (!timer) timer = window.setInterval(loadAll, 15000)
+  }
+}
 </script>
 
 <template>
@@ -206,10 +225,8 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); closeTerminalSoc
       @update:visible="deployVisible = $event" @update:config-id="deployConfigId = $event"
       @load-profile="() => loadDeployProfile(deployConfigId)" @save-profile="saveDeployProfile" @run="runDeployCommand" />
 
-    <NasTerminalDrawer :visible="terminalVisible" :target="terminalTarget" :output="terminalOutput" :input="terminalInput"
-      :connected="terminalConnected" :connecting="terminalConnecting"
-      @update:visible="terminalVisible = $event" @update:input="terminalInput = $event" @closed="closeTerminalSocket"
-      @connect="connectTerminal" @send-line="sendTerminalLine" @ctrl-c="sendTerminalCtrlC" />
+    <NasTerminalDrawer :visible="terminalVisible" :target="terminalTarget"
+      @update:visible="terminalVisible = $event" @closed="terminalVisible = false" />
 
     <NasCredentialDrawer :drawer-visible="credentialVisible" :credentials="credentials" :form-visible="credentialFormVisible"
       :editing="editingCredential" :form="credentialForm" :credential-usage="credentialUsage"

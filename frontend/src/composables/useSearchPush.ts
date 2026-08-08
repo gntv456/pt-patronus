@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 搜索页「确认下载」弹窗状态与逻辑（从 Search.vue 抽出，纯逻辑无 UI）。
  * 行为不变：打开→加载下载器→选默认→推送→显示成功态→可跳下载器任务。
  */
@@ -73,7 +73,7 @@ export function useSearchPush() {
     try {
       downloaders.value = await downloaderApi.list()
       if (!downloaders.value.length) {
-        ElMessage.warning('请先在「下载器」添加一个')
+        // 不再弹 toast，弹窗内的空状态会引导用户前往配置
       } else {
         const def = downloaders.value.find((d) => d.is_default)
         selectedDl.value = def ? def.id : downloaders.value[0].id
@@ -119,6 +119,11 @@ export function useSearchPush() {
     }
   }
 
+  function gotoDownloaderConfig() {
+    close()
+    router.push({ name: 'downloaders' })
+  }
+
   function close() {
     visible.value = false
     pushedDlName.value = ''
@@ -129,6 +134,6 @@ export function useSearchPush() {
   return {
     visible, row, downloaders, selectedDl, categories, selectedCategory,
     savePath, showAdvanced, paused, loading, pushedDlName, pushedDlId,
-    subtitle, start, confirm, gotoDownloaderTasks, close,
+    subtitle, start, confirm, gotoDownloaderTasks, gotoDownloaderConfig, close,
   }
 }

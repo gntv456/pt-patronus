@@ -1,4 +1,4 @@
-package nodes
+﻿package nodes
 
 import (
 	"context"
@@ -60,6 +60,8 @@ func (n *SSHCommandNode) Execute(ctx context.Context, params map[string]any, ecx
 		return fmt.Errorf("命令不能为空")
 	}
 	timeoutSec := workflow.ParamInt(params, "timeout_sec")
+	// Audit: record the fully-rendered command for traceability (variables already expanded).
+	ecx.Messages = append(ecx.Messages, "SSH: "+command)
 	result, err := n.runner.RunCommandNow(ctx, uint(targetID), command, timeoutSec)
 	if err != nil {
 		return fmt.Errorf("SSH 命令执行失败: %w", err)

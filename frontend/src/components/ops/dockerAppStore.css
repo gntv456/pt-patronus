@@ -1,0 +1,285 @@
+/* ===== Docker 应用商店 ===== */
+.app-store-dialog :deep(.el-dialog__body) { padding: 0; }
+.app-store-dialog :deep(.el-dialog__header) { padding: 16px 20px; border-bottom: 1px solid var(--divider); }
+.app-store-dialog :deep(.el-dialog__title) { font-size: var(--fs-lg); font-weight: 700; }
+
+.app-store-layout {
+  display: flex;
+  height: 600px;
+  max-height: 70vh;
+}
+
+/* 左侧分类栏 */
+.app-store-sidebar {
+  flex: none;
+  width: 180px;
+  border-right: 1px solid var(--divider);
+  padding: var(--sp-2);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface-muted);
+}
+.cat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  transition: all 0.15s;
+  text-align: left;
+  width: 100%;
+}
+.cat-item:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+.cat-item.active {
+  background: var(--surface-1);
+  color: var(--pt-primary);
+  font-weight: 600;
+  box-shadow: var(--surface-shadow);
+}
+.cat-icon {
+  font-size: 18px;
+  flex: none;
+  width: 22px;
+  text-align: center;
+}
+.cat-name {
+  flex: 1;
+}
+.cat-count {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-weight: 400;
+}
+.cat-item.active .cat-count {
+  background: var(--pt-primary);
+  color: #fff;
+}
+
+/* 右侧主区域 */
+.app-store-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 搜索栏 */
+.store-search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--divider);
+  flex: none;
+}
+.store-search-input { flex: 1; }
+.store-search-ico { width: 18px; height: 18px; fill: var(--text-muted); }
+.store-result-count {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex: none;
+}
+
+/* 应用卡片网格 */
+.store-app-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--sp-3);
+  align-content: start;
+}
+
+/* 单个应用卡片 */
+.store-app-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--divider);
+  background: var(--surface-1);
+  transition: all 0.18s;
+}
+.store-app-card:hover {
+  border-color: var(--pt-primary);
+  box-shadow: var(--surface-shadow-hover);
+  transform: translateY(-2px);
+}
+.app-card-top {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+}
+.app-icon {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+.app-info {
+  flex: 1;
+  min-width: 0;
+}
+.app-name {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-strong);
+  margin: 0 0 2px 0;
+  line-height: 1.3;
+}
+.app-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.app-card-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.app-cat-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+.app-port {
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 120px;
+}
+
+/* 安装按钮 */
+.app-install-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--pt-primary);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.app-install-btn:hover {
+  background: var(--pt-primary-dark, #5b4bc4);
+}
+.app-install-btn:active {
+  transform: scale(0.98);
+}
+.app-install-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* 空状态 */
+.store-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  color: var(--text-muted);
+}
+.store-empty-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+.store-empty p {
+  font-size: var(--fs-md);
+  margin: 0;
+  color: var(--text-strong);
+}
+.store-empty span {
+  font-size: var(--fs-xs);
+}
+
+/* 响应式 */
+@media (max-width: 600px) {
+  .app-store-sidebar { width: 140px; }
+  .store-app-grid { grid-template-columns: 1fr; }
+}
+
+/* ===== 应用商店：模式切换 + Compose 卡片 ===== */
+.store-mode-switch {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  margin-bottom: 8px;
+  background: var(--surface-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--divider);
+}
+.mode-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border: 0;
+  background: none;
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+.mode-tab:hover { color: var(--text-strong); }
+.mode-tab.active {
+  background: var(--pt-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* Compose 编排卡片 */
+.store-app-card--compose { border-color: var(--pt-primary); border-style: dashed; }
+.store-app-card--compose:hover { border-style: solid; }
+.compose-services { display: flex; flex-wrap: wrap; gap: 4px; }
+.compose-svc-chip {
+  font-size: 11px;
+  font-family: monospace;
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--pt-primary);
+  color: #fff;
+  opacity: 0.85;
+}
+.app-install-btn--compose { background: var(--pt-success, #18a058); }
+.app-install-btn--compose:hover { background: var(--pt-success-dark, #0f7a3e); }

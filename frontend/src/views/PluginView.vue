@@ -107,9 +107,9 @@ async function handleBridgeMessage(event: MessageEvent) {
   const target = event.source as Window
   try {
     const result = await pluginApi.bridge(pluginId.value, String(data.method || ''), data.params || {})
-    target.postMessage({ ptp: 'plugin-host-result', id: data.id, ok: true, result }, '*')
+    target.postMessage({ ptp: 'plugin-host-result', id: data.id, ok: true, result }, event.origin)
   } catch (e: unknown) {
-    target.postMessage({ ptp: 'plugin-host-result', id: data.id, ok: false, error: (e as Error).message || 'Bridge failed' }, '*')
+    target.postMessage({ ptp: 'plugin-host-result', id: data.id, ok: false, error: (e as Error).message || 'Bridge failed' }, event.origin)
   }
 }
 

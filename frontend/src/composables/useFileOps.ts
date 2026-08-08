@@ -98,26 +98,42 @@ export function useFileOps(fm: FileManager) {
     }
   }
 
+  // 批量删除取消标志
+  let batchDelCancelled = false
+  function cancelBatchDel() {
+    batchDelCancelled = true
+  }
+
   async function delBatch() {
     if (!fm.curFs.value || !fm.selected.value.length) return
+    const items = [...fm.selected.value]
     try {
-      await ElMessageBox.confirm(`确认删除选中的 ${fm.selected.value.length} 项？`, '批量删除', { type: 'warning' })
+      await ElMessageBox.confirm(`确认删除选中的 ${items.length} 项？`, '批量删除', { type: 'warning' })
     } catch {
       return
     }
+    batchDelCancelled = false
+    fm.batchDelProgress.value = { done: 0, total: items.length }
     let ok = 0
-    for (const e of fm.selected.value) {
+    let fail = 0
+    for (let i = 0; i < items.length; i++) {
+      if (batchDelCancelled) break
+      const e = items[i]
       try {
         await fileApi.removeFile(fm.curFs.value.id, e.path)
         ok++
       } catch (err) {
+        fail++
         ElMessage.error(`「${e.name}」删除失败：${(err as Error).message}`)
       }
+      fm.batchDelProgress.value = { done: i + 1, total: items.length }
     }
-    // 全部失败时不弹 success（避免「已删除 0 项」误导），仅汇总错误。
+    fm.batchDelProgress.value = null
+    const cancelled = batchDelCancelled
     if (ok > 0) {
-      ElMessage.success(`已删除 ${ok} 项`)
-    } else {
+      const tail = (fail > 0 ? `，失败 ${fail} 项` : '') + (cancelled ? '（已取消）' : '')
+      ElMessage.success(`已删除 ${ok} 项${tail}`)
+    } else if (!cancelled) {
       ElMessage.error('选中项全部删除失败')
     }
     await refresh()
@@ -335,7 +351,7 @@ export function useFileOps(fm: FileManager) {
   }
 
   return {
-    doMkdir, handleUpload, openRename, doRename, delOne, delBatch,
+    doMkdir, handleUpload, openRename, doRename, delOne, delBatch, cancelBatchDel,
     openMoveCopy, refreshMoveCopy, moveCopyEnter, moveCopyUp, doMoveCopy,
     openStrm, doStrm, openCreate, openEdit, submit, delStorage, delEditingStorage, onStorageMenu,
     toggleView, toggleSelect, isSelected, fmtBytes, itemIcon, itemLabel,

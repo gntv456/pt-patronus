@@ -1,4 +1,4 @@
-package monitor
+﻿package monitor
 
 import (
 	"context"
@@ -48,12 +48,17 @@ func collectSNMP(_ context.Context, t *models.MonitorTarget, creds Credentials) 
 		m.Load1 = numFloat(snmpValue(res.Variables[0].Value))
 		m.Load5 = numFloat(snmpValue(res.Variables[1].Value))
 		m.Load15 = numFloat(snmpValue(res.Variables[2].Value))
-		total := snmpInt(res.Variables[3].Value) * 1024
-		avail := snmpInt(res.Variables[4].Value) * 1024
+		totalKB := snmpInt(res.Variables[3].Value)
+		availKB := snmpInt(res.Variables[4].Value)
+		if availKB > totalKB { // 固件 bug 防下溢：可用不应超过总量
+			availKB = totalKB
+		}
+		total := totalKB * 1024
+		used := (totalKB - availKB) * 1024
 		m.MemTotal = uint64(total)
-		m.MemUsed = uint64(total - avail)
+		m.MemUsed = uint64(used)
 		if total > 0 {
-			m.MemUsage = float64(total-avail) / float64(total) * 100
+			m.MemUsage = float64(used) / float64(total) * 100
 		}
 		if s, ok := res.Variables[5].Value.(string); ok {
 			m.OS = s
@@ -78,8 +83,18 @@ func snmpHost(t *models.MonitorTarget) string {
 	if i := strings.IndexByte(h, '/'); i >= 0 {
 		h = h[:i]
 	}
+	// Strip port while preserving IPv6 addresses (count colons to detect IPv6).
+	if strings.Count(h, ":") > 1 {
+		// IPv6: try [host]:port format first, else treat as bare IPv6 address
+		if strings.HasPrefix(h, "[") {
+			if end := strings.IndexByte(h, ']'); end >= 0 {
+				return h[1:end]
+			}
+		}
+		return h // bare IPv6 address (no port)
+	}
 	if i := strings.LastIndexByte(h, ':'); i >= 0 {
-		h = h[:i] // 去端口（SNMP 设备罕见 IPv6）
+		h = h[:i] // strip port for IPv4/host
 	}
 	return h
 }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { Delete, Download, Plus, Refresh, Setting } from '@element-plus/icons-vue'
 import type { PluginMarketIndex } from '@/api/plugin'
 import {
@@ -22,6 +22,8 @@ defineProps<{
   marketCategory: string
   marketCategories: string[]
   filteredMarketPlugins: PluginMarketIndex['plugins']
+  avatarColor: (name: string) => string
+  pluginInitial: (name: string) => string
 }>()
 
 const emit = defineEmits<{
@@ -39,39 +41,51 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="market glass">
-    <div v-if="market" class="market-host">
-      当前宿主：App {{ market.app_version || '-' }} / API {{ market.api_version || '-' }} / 能力 {{ (market.host_capabilities || []).length }}
-      <span v-if="marketSources.length" class="market-source-count">· 已配置 {{ marketSources.length }} 个市场源</span>
+  <div class="market-section">
+    <div v-if="market" class="market-meta-bar">
+      <span>App {{ market.app_version || '-' }} · API {{ market.api_version || '-' }} · 能力 {{ (market.host_capabilities || []).length }}</span>
+      <span v-if="marketSources.length" class="market-src-count">· 已配置 {{ marketSources.length }} 个市场源</span>
     </div>
-    <el-radio-group
-      v-if="marketCategories.length"
-      :model-value="marketCategory"
-      size="small"
-      style="margin: 8px 0 12px;"
-      @update:model-value="emit('update:marketCategory', $event as string)"
-    >
-      <el-radio-button label="">全部 {{ (market?.plugins || []).length }}</el-radio-button>
-      <el-radio-button v-for="c in marketCategories" :key="c" :label="c">{{ c }}</el-radio-button>
-    </el-radio-group>
+
+    <div v-if="marketCategories.length" class="cat-bar">
+      <button
+        class="cat-pill"
+        :class="{ active: marketCategory === '' }"
+        @click="emit('update:marketCategory', '')"
+      >全部 {{ (market?.plugins || []).length }}</button>
+      <button
+        v-for="c in marketCategories"
+        :key="c"
+        class="cat-pill"
+        :class="{ active: marketCategory === c }"
+        @click="emit('update:marketCategory', c)"
+      >{{ c }}</button>
+    </div>
+
     <div v-loading="loading" class="market-grid">
       <div
         v-for="item in filteredMarketPlugins"
         :key="item.id"
         class="market-card solid-card solid-card-hover"
       >
-        <div class="market-card-head">
-          <div class="market-name">{{ item.name }}</div>
+        <div class="mc-top">
+          <div class="mc-avatar" :style="{ background: avatarColor(item.name) }">{{ pluginInitial(item.name) }}</div>
+          <div class="mc-info">
+            <div class="mc-name">{{ item.name }}</div>
+            <div class="mc-publisher">{{ item.publisher?.name || item.author || shortSource(item.source) || '未知' }}</div>
+          </div>
           <el-tag size="small" effect="plain">v{{ item.version }}</el-tag>
         </div>
-        <div class="market-desc">{{ item.description || '无说明' }}</div>
-        <div class="market-card-meta">
+
+        <div class="mc-desc">{{ item.description || '暂无描述' }}</div>
+
+        <div class="mc-tags">
           <el-tag size="small" :type="trustType(item.trust_level)">{{ trustLabel(item.trust_level) }}</el-tag>
           <el-tag v-if="item.category" size="small" effect="plain">{{ item.category }}</el-tag>
-          <span class="meta">{{ item.publisher?.name || item.author || shortSource(item.source) || '未知' }}</span>
-        </div>
-        <div class="market-card-foot">
           <el-tag size="small" :type="compatibilityType(item)" effect="plain">{{ compatibilityLabel(item) }}</el-tag>
+        </div>
+
+        <div class="mc-foot">
           <el-button
             size="small"
             type="primary"

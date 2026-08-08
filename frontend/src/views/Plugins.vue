@@ -1,6 +1,6 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Bell, Delete, Document, Refresh, Setting, SwitchButton, VideoPlay } from '@element-plus/icons-vue'
+import { Bell, Delete, Document, MoreFilled, Refresh, Setting, VideoPlay } from '@element-plus/icons-vue'
 import type { PluginInfo } from '@/api/plugin'
 import PluginConfigDialog from './PluginConfigDialog.vue'
 import PluginActionDialog from './PluginActionDialog.vue'
@@ -10,12 +10,9 @@ import PluginMarketSection from './PluginMarketSection.vue'
 import { usePlugins } from './usePlugins'
 import { usePluginTrust } from './usePluginTrust'
 import {
-  dependencySummary,
-  optionalCapabilitySummary,
   runtimeState,
   runtimeType,
   runtimeLabel,
-  fmtTime,
 } from './pluginsHelpers'
 
 type PluginViewContribution = NonNullable<NonNullable<PluginInfo['contributes']>['views']>[number]
@@ -51,105 +48,85 @@ const {
   trustOfficialKey, trustKeysText, trustAllowUnsigned,
   openTrust, saveTrust,
 } = usePluginTrust()
+
+const pluginColors = ['#6c5ce7', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#8b5cf6']
+
+function avatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  return pluginColors[Math.abs(hash) % pluginColors.length]
+}
+
+function pluginInitial(name: string): string {
+  return name ? name.charAt(0).toUpperCase() : '?'
+}
 </script>
 
 <template>
   <div class="page">
     <div class="head">
-      <div>
-        <h2 class="title">插件</h2>
-        <span class="text-muted hint">内置插件、事件订阅、配置和动作执行</span>
-      </div>
+      <nav class="nav-tabs">
+        <button class="nav-tab" :class="{ active: activeTab === 'installed' }" @click="activeTab = 'installed'">
+          已安装 <span class="nav-count">{{ plugins.length }}</span>
+        </button>
+        <button class="nav-tab" :class="{ active: activeTab === 'market' }" @click="activeTab = 'market'">
+          插件市场
+        </button>
+      </nav>
       <div class="head-actions">
-        <el-radio-group v-model="filter" size="small">
-          <el-radio-button label="all">全部 {{ plugins.length }}</el-radio-button>
-          <el-radio-button label="enabled">已启用 {{ enabledCount }}</el-radio-button>
-          <el-radio-button label="available">可启用</el-radio-button>
-        </el-radio-group>
-        <el-button :icon="Bell" @click="publishTestEvent">测试事件</el-button>
-        <el-button :icon="Document" @click="openLogs">插件日志</el-button>
-        <el-button :icon="Setting" @click="openTrust">信任配置</el-button>
-        <template v-if="activeTab === 'market'">
-          <el-button :icon="Setting" @click="openMarketSource">设置仓库</el-button>
-          <el-button :icon="Refresh" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
+        <template v-if="activeTab === 'installed'">
+          <el-select v-model="filter" size="small" style="width: 110px;">
+            <el-option label="全部" value="all" />
+            <el-option label="已启用" value="enabled" />
+            <el-option label="可启用" value="available" />
+          </el-select>
+          <el-button :icon="Bell" size="small" @click="publishTestEvent">测试事件</el-button>
+          <el-button :icon="Document" size="small" @click="openLogs">日志</el-button>
+          <el-button :icon="Setting" size="small" @click="openTrust">信任</el-button>
         </template>
-        <el-button :icon="Refresh" :loading="loading" @click="load">刷新</el-button>
+        <template v-else>
+          <el-button :icon="Setting" size="small" @click="openMarketSource">仓库</el-button>
+          <el-button :icon="Refresh" size="small" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
+        </template>
+        <el-button :icon="Refresh" size="small" :loading="loading" @click="load">刷新</el-button>
       </div>
     </div>
 
-    <el-tabs v-model="activeTab" class="plugin-tabs">
-      <el-tab-pane label="已安装" name="installed" />
-      <el-tab-pane label="插件市场" name="market" />
-    </el-tabs>
-
     <div v-if="activeTab === 'installed'" v-loading="loading" class="plugin-grid">
       <div v-for="p in filteredPlugins" :key="p.id" class="plugin-card solid-card solid-card-hover">
-        <div class="plugin-top">
-          <GlassIcon name="plugin" from="#0ea5e9" to="#22c55e" :size="40" />
-          <div class="plugin-title">
-            <div class="name-row">
+        <div class="plugin-card-top">
+          <div class="plugin-avatar" :style="{ background: avatarColor(p.name) }">{{ pluginInitial(p.name) }}</div>
+          <div class="plugin-title-area">
+            <div class="plugin-name-row">
               <span class="plugin-name">{{ p.name }}</span>
-              <el-tag size="small" :type="p.enabled ? 'success' : 'info'">{{ p.enabled ? '运行中' : '未启用' }}</el-tag>
-              <el-tag v-if="p.built_in" size="small">内置</el-tag>
-              <el-tag v-if="!p.can_enable" size="small" type="danger">依赖阻塞</el-tag>
-              <el-tag v-if="p.runtime_status" size="small" :type="runtimeType(runtimeState(p))">
-                {{ runtimeLabel(runtimeState(p)) }}
-              </el-tag>
+              <span v-if="p.built_in" class="badge badge-neutral">内置</span>
+              <span class="badge" :class="p.enabled ? 'badge-success' : 'badge-muted'">{{ p.enabled ? '运行中' : '未启用' }}</span>
+              <span v-if="!p.can_enable" class="badge badge-danger">依赖阻塞</span>
+              <span v-if="p.runtime_status" class="badge" :class="'badge-' + runtimeType(runtimeState(p))">{{ runtimeLabel(runtimeState(p)) }}</span>
             </div>
-            <div class="meta">{{ p.id }} · v{{ p.version }} · {{ p.author }}</div>
+            <div class="plugin-sub">v{{ p.version }} · {{ p.author }}</div>
           </div>
+          <el-switch :model-value="p.enabled" :disabled="!p.can_enable" size="small" @change="togglePlugin(p)" />
         </div>
 
-        <div class="desc">{{ p.description }}</div>
+        <div v-if="p.description" class="plugin-desc">{{ p.description }}</div>
+        <div v-if="p.last_error" class="plugin-error">{{ p.last_error }}</div>
 
-        <div class="chips">
-          <el-tag v-for="perm in p.permissions || []" :key="perm" size="small" effect="plain">{{ perm }}</el-tag>
-        </div>
-
-        <div class="detail-row">
-          <span>事件</span>
-          <span>{{ (p.events || []).map((e) => e.type).join(', ') || '-' }}</span>
-        </div>
-        <div class="detail-row">
-          <span>上次事件</span>
-          <span>{{ fmtTime(p.last_event_at) }}</span>
-        </div>
-        <div class="detail-row">
-          <span>依赖</span>
-          <span>{{ dependencySummary(p.dependencies_status) }}</span>
-        </div>
-        <div class="detail-row">
-          <span>可选能力</span>
-          <span>{{ optionalCapabilitySummary(p) }}</span>
-        </div>
-        <div v-if="p.last_error" class="error-line">{{ p.last_error }}</div>
-        <div v-if="!p.can_enable && p.can_enable_reason" class="error-line">{{ p.can_enable_reason }}</div>
-
-        <div class="actions">
-          <el-button :icon="SwitchButton" :type="p.enabled ? 'warning' : 'primary'" @click="togglePlugin(p)">
-            {{ p.enabled ? '停用' : '启用' }}
-          </el-button>
-          <el-button :icon="Setting" @click="openConfig(p)">配置</el-button>
-          <el-button v-if="!p.built_in" :icon="Refresh" @click="reloadPlugin(p)">重载</el-button>
-          <el-button v-if="!p.built_in" :icon="Delete" type="danger" plain @click="uninstallPlugin(p)">卸载</el-button>
-          <el-button :icon="Document" plain @click="openAudit(p)">审计</el-button>
-          <el-dropdown v-if="(p.contributes?.views || []).length" trigger="click">
-            <el-button :icon="Document">Views</el-button>
+        <div class="plugin-card-foot">
+          <el-button size="small" :icon="Setting" @click="openConfig(p)">配置</el-button>
+          <el-button size="small" :icon="Refresh" @click="reloadPlugin(p)">重载</el-button>
+          <el-button size="small" :icon="Document" @click="openAudit(p)">审计</el-button>
+          <el-dropdown trigger="click">
+            <el-button size="small" :icon="MoreFilled" circle plain />
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item v-for="v in p.contributes?.views || []" :key="v.id" @click="handleOpenPluginView(p, v)">
+                <el-dropdown-item v-for="v in p.contributes?.views || []" :key="v.id" :icon="Document" @click="handleOpenPluginView(p, v)">
                   {{ v.title }}
                 </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-dropdown v-if="(p.actions || []).length" trigger="click">
-            <el-button :icon="VideoPlay">动作</el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item v-for="a in p.actions || []" :key="a.name" @click="openAction(p, a)">
+                <el-dropdown-item v-for="a in p.actions || []" :key="a.name" :icon="VideoPlay" @click="openAction(p, a)">
                   {{ a.label }}
                 </el-dropdown-item>
+                <el-dropdown-item v-if="!p.built_in" :icon="Delete" divided @click="uninstallPlugin(p)">卸载</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -169,6 +146,8 @@ const {
       :market-category="marketCategory"
       :market-categories="marketCategories"
       :filtered-market-plugins="filteredMarketPlugins"
+      :avatar-color="avatarColor"
+      :plugin-initial="pluginInitial"
       @refresh="loadMarket"
       @install="installMarketPlugin"
       @open-source="openMarketSource"

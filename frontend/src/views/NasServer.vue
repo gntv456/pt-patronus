@@ -7,7 +7,6 @@ import DeviceDetail from '@/components/monitor/DeviceDetail.vue'
 import AlertList from '@/components/monitor/AlertList.vue'
 import RtspPlayer from '@/components/monitor/RtspPlayer.vue'
 import AgentManager from '@/components/monitor/AgentManager.vue'
-import GlassIcon from '@/components/GlassIcon.vue'
 import NasOpsGrid from '@/components/nas/NasOpsGrid.vue'
 import NasExecPanel from '@/components/nas/NasExecPanel.vue'
 import NasDeployWorkspace from '@/components/nas/NasDeployWorkspace.vue'
@@ -141,10 +140,7 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); closeTerminalSoc
 <template>
   <div class="nas-page">
     <header class="np-head glass-bar">
-      <div class="np-title">
-        <GlassIcon name="server" from="#0f2027" to="#2c5364" :size="32" />
-        <div><h2>NAS 运维控制台</h2><span>主机、文件、发布、监控、告警</span></div>
-      </div>
+      <div class="np-title"><h2>NAS 运维控制台</h2></div>
       <div class="np-actions">
         <el-button @click="helpVisible = true">使用说明</el-button>
         <el-button :type="unreadCount ? 'danger' : 'default'" @click="alertVisible = true">
@@ -182,18 +178,14 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer); closeTerminalSoc
     <el-tabs v-if="!error && (activeWorkspace === 'asset' || activeWorkspace === 'monitor')" v-model="activeTab" class="np-tabs">
       <el-tab-pane v-for="tab in visibleTabs" :key="tab.name" :name="tab.name">
         <template #label>
-          <span class="tab-label">
-            <GlassIcon :name="tab.icon" :from="tab.color[0]" :to="tab.color[1]" :size="22" />
-            {{ tab.label }}
-            <span class="tab-count">{{ targets.filter((t) => t.type === tab.name).length }}</span>
-          </span>
+          <span class="tab-label">{{ tab.label }} <span class="tab-count">{{ targets.filter((t) => t.type === tab.name).length }}</span></span>
         </template>
         <div v-if="filtered.length" class="card-grid">
           <DeviceCard v-for="t in filtered" :key="t.id" :target="t" :metrics="latestMap[t.id]"
             @edit="openEdit" @detail="onDetail" @probe="onProbe" @remove="onRemove" @preview="onPreview" @terminal="openTerminal" />
         </div>
         <div v-else class="empty-state glass">
-          <GlassIcon :name="tab.icon" :from="tab.color[0]" :to="tab.color[1]" :size="48" />
+          <p style="font-size:32px;margin-bottom:8px">ð¦</p>
           <p>暂无{{ tab.label }}{{ activeWorkspace === 'monitor' ? '监控项' : '设备' }}</p>
           <el-button type="primary" @click="activeWorkspace === 'monitor' ? openAddMonitorItem(tab.name) : openAddAsset()">
             {{ activeWorkspace === 'monitor' ? '添加监控项' : '添加第一台' }}

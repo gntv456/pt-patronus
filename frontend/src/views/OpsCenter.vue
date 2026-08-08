@@ -1,6 +1,5 @@
-﻿<script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import GlassIcon from '@/components/GlassIcon.vue'
+<script setup lang="ts">
+import { ref } from 'vue'
 import OpsMonitor from '@/components/ops/OpsMonitor.vue'
 import OpsDocker from '@/components/ops/OpsDocker.vue'
 import OpsDatabase from '@/components/ops/OpsDatabase.vue'
@@ -14,43 +13,33 @@ type Tab = 'monitor' | 'files' | 'docker' | 'database' | 'disk' | 'process' | 's
 
 const activeTab = ref<Tab>('monitor')
 
-const tabs: { key: Tab; label: string; icon: string; from: string; to: string; desc: string }[] = [
-  { key: 'monitor', label: '系统监控', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4', desc: 'CPU/内存/磁盘/网络实时指标' },
-  { key: 'files', label: '文件管理', icon: 'files', from: '#f7971e', to: '#ffd200', desc: '本地/NAS/云盘统一浏览' },
-  { key: 'docker', label: 'Docker', icon: 'server', from: '#0f2027', to: '#2c5364', desc: '远程容器编排与管理' },
-  { key: 'database', label: '数据库', icon: 'settings', from: '#11998e', to: '#38ef7d', desc: '受限查询与可视化浏览' },
-  { key: 'disk', label: '磁盘管理', icon: 'harddisk', from: '#0984e3', to: '#6c5ce7', desc: '分区/格式化/挂载/卸载' },
-  { key: 'process', label: '进程管理', icon: 'activity', from: '#e17055', to: '#fdcb6e', desc: '进程列表/网络连接/结束进程' },
-  { key: 'ssh', label: 'SSH 管理', icon: 'terminal', from: '#6c5ce7', to: '#8e44ad', desc: '服务配置/会话/登录日志' },
-  { key: 'terminal', label: '终端', icon: 'console', from: '#0f2027', to: '#2c5364', desc: '浏览器内 PTY 交互式终端' },
+const tabs: { key: Tab; label: string; icon: string }[] = [
+  { key: 'monitor', label: '监控', icon: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z' },
+  { key: 'files', label: '文件', icon: 'M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z' },
+  { key: 'docker', label: 'Docker', icon: 'M21 5H3v14h18V5zm-9 2c2.2 0 4 1.8 4 4s-1.8 4-4 4-4-1.8-4-4 1.8-4 4-4z' },
+  { key: 'database', label: '数据库', icon: 'M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.59 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2z' },
+  { key: 'disk', label: '磁盘', icon: 'M4 6h16l-1 14H5L4 6zm5 0V4h6v2' },
+  { key: 'process', label: '进程', icon: 'M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z' },
+  { key: 'ssh', label: 'SSH', icon: 'M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v3l4-3h8c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z' },
+  { key: 'terminal', label: '终端', icon: 'M4 4h16v16H4V4zm2 2v12h12V6H6zm2 2h2l2 3 2-3h2l-3 4 3 4h-2l-2-3-2 3H8l3-4-3-4z' },
 ]
 </script>
 
 <template>
   <div class="ops-center">
-    <header class="ops-header">
-      <h1 class="ops-title">运维中心</h1>
-      <p class="ops-subtitle">监控 · 文件 · Docker · 数据库 · 磁盘 · 进程 · SSH · 终端 · 八大特权运维功能</p>
-    </header>
-
-    <!-- 功能 Tab -->
     <nav class="ops-nav">
       <button
         v-for="tab in tabs"
         :key="tab.key"
-        class="ops-nav-item glass"
+        class="ops-tab"
         :class="{ active: activeTab === tab.key }"
         @click="activeTab = tab.key"
       >
-        <GlassIcon :name="tab.icon" :from="tab.from" :to="tab.to" :size="32" />
-        <div class="ops-nav-text">
-          <strong>{{ tab.label }}</strong>
-          <span>{{ tab.desc }}</span>
-        </div>
+        <svg viewBox="0 0 24 24" class="ops-tab-ico"><path :d="tab.icon" /></svg>
+        <span class="ops-tab-label">{{ tab.label }}</span>
       </button>
     </nav>
 
-    <!-- 内容区 -->
     <main class="ops-content">
       <KeepAlive>
         <OpsMonitor v-if="activeTab === 'monitor'" />
@@ -70,54 +59,61 @@ const tabs: { key: Tab; label: string; icon: string; from: string; to: string; d
 .ops-center {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-4);
+  gap: var(--sp-2);
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
 }
-.ops-header { text-align: center; }
-.ops-title {
-  font-size: var(--fs-hero);
-  font-weight: 700;
-  margin: 0;
-  background: var(--grad-primary);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.ops-subtitle { font-size: var(--fs-sm); color: var(--text-muted); margin: var(--sp-1) 0 0; }
 
 .ops-nav {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--sp-3);
-}
-.ops-nav-item {
   display: flex;
   align-items: center;
-  gap: var(--sp-3);
-  padding: var(--sp-4);
-  border: 0;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s ease;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
 }
-.ops-nav-item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--glass-hover-shadow);
-}
-.ops-nav-item.active {
-  outline: 2px solid rgba(108, 92, 231, 0.38);
-  background: rgba(108, 92, 231, 0.12);
-}
-.ops-nav-text { display: flex; flex-direction: column; gap: 2px; }
-.ops-nav-text strong { font-size: var(--fs-md); color: var(--text-strong); }
-.ops-nav-text span { font-size: var(--fs-xs); color: var(--text-muted); }
 
-.ops-content { min-height: 400px; }
+.ops-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.ops-tab:hover {
+  background: var(--surface-hover);
+  color: var(--text-strong);
+}
+.ops-tab.active {
+  background: var(--pt-primary);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.25);
+}
+
+.ops-tab-ico {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+.ops-tab.active .ops-tab-ico { fill: #fff; }
+.ops-tab-label { line-height: 1; }
+
+.ops-content { min-height: 400px; flex: 1; }
 
 @media (max-width: 760px) {
-  .ops-nav { grid-template-columns: 1fr; }
+  .ops-tab-label { display: none; }
+  .ops-tab { padding: 8px 10px; }
+  .ops-tab-ico { width: 20px; height: 20px; }
 }
 </style>

@@ -1,1 +1,0 @@
-import{h as a}from"./index-j5gPVB-W.js";const o={list:(t=!1)=>a.get(`/notices${t?"?unread=true":""}`).then(e=>e.data.notices??[]),read:t=>a.post(`/notices/${t}/read`).then(e=>e.data),readAll:()=>a.post("/notices/read-all").then(t=>t.data),clear:()=>a.post("/notices/clear").then(t=>t.data),delete:t=>a.delete(`/notices/${t}`).then(e=>e.data)};export{o as n};

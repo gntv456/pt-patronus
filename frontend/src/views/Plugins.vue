@@ -1,6 +1,6 @@
 ﻿<script setup lang="ts">
 import { useRouter } from 'vue-router'
-import { Bell, Delete, Document, MoreFilled, Refresh, Setting, VideoPlay } from '@element-plus/icons-vue'
+import { Delete, Document, MoreFilled, Refresh, Search, Setting, VideoPlay } from '@element-plus/icons-vue'
 import type { PluginInfo } from '@/api/plugin'
 import PluginConfigDialog from './PluginConfigDialog.vue'
 import PluginActionDialog from './PluginActionDialog.vue'
@@ -29,6 +29,7 @@ const {
   actionVisible, actionSpec, actionInputForm, actionInputText, actionOutput, actionRunning,
   auditVisible, auditTarget, auditLogs, auditReleases, auditLoading, rollbacking,
   marketCategory,
+  pluginSearch, marketSearch,
   filteredPlugins, enabledCount, actionHasSchema,
   marketCategories, filteredMarketPlugins,
   configTitledGroups, configUntitledFields,
@@ -36,7 +37,7 @@ const {
   loadMarket, openMarketSource, addMarketSourceRow, removeMarketSourceRow,
   restoreOfficialSource, saveMarketSources, installMarketPlugin,
   reloadPlugin, uninstallPlugin, togglePlugin,
-  openConfig, saveConfig, openAction, handleOpenPluginView, runAction, publishTestEvent,
+  openConfig, saveConfig, openAction, handleOpenPluginView, runAction,
 } = usePlugins({
   openPluginView: (p: PluginInfo, view: PluginViewContribution) => {
     router.push({ name: 'plugin-view', params: { pluginId: p.id, viewId: view.id } })
@@ -75,16 +76,17 @@ function pluginInitial(name: string): string {
       </nav>
       <div class="head-actions">
         <template v-if="activeTab === 'installed'">
-          <el-select v-model="filter" size="small" style="width: 110px;">
+          <el-input v-model="pluginSearch" placeholder="搜索插件" :prefix-icon="Search" size="small" clearable style="width: 160px;" />
+          <el-select v-model="filter" size="small" style="width: 100px;">
             <el-option label="全部" value="all" />
             <el-option label="已启用" value="enabled" />
             <el-option label="可启用" value="available" />
           </el-select>
-          <el-button :icon="Bell" size="small" @click="publishTestEvent">测试事件</el-button>
           <el-button :icon="Document" size="small" @click="openLogs">日志</el-button>
           <el-button :icon="Setting" size="small" @click="openTrust">信任</el-button>
         </template>
         <template v-else>
+          <el-input v-model="marketSearch" placeholder="搜索市场插件" :prefix-icon="Search" size="small" clearable style="width: 180px;" />
           <el-button :icon="Setting" size="small" @click="openMarketSource">仓库</el-button>
           <el-button :icon="Refresh" size="small" :loading="marketLoading" @click="loadMarket">刷新市场</el-button>
         </template>

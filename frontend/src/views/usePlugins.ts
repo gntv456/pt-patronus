@@ -1,4 +1,4 @@
-// Plugins 页面主状态与操作 —— 从 Plugins.vue 抽出的核心状态簇。
+﻿// Plugins 页面主状态与操作 —— 从 Plugins.vue 抽出的核心状态簇。
 // 依赖: pluginApi + ElMessage/ElMessageBox + pluginsHelpers。
 import { computed, h, onMounted, ref, watch, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -87,10 +87,16 @@ export function usePlugins(options: UsePluginsOptions) {
   const auditLoading = ref(false)
   const rollbacking = ref<number | null>(null)
 
+  const pluginSearch = ref('')
+  const marketSearch = ref('')
+
   const filteredPlugins = computed(() => {
-    if (filter.value === 'enabled') return plugins.value.filter((p) => p.enabled)
-    if (filter.value === 'available') return plugins.value.filter((p) => !p.enabled)
-    return plugins.value
+    let list = plugins.value
+    if (filter.value === 'enabled') list = list.filter((p) => p.enabled)
+    else if (filter.value === 'available') list = list.filter((p) => !p.enabled)
+    const q = pluginSearch.value.trim().toLowerCase()
+    if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+    return list
   })
 
   const enabledCount = computed(() => plugins.value.filter((p) => p.enabled).length)
@@ -102,8 +108,11 @@ export function usePlugins(options: UsePluginsOptions) {
     Array.from(new Set((market.value?.plugins || []).map((p) => p.category).filter((c): c is string => !!c))),
   )
   const filteredMarketPlugins = computed(() => {
-    const all = market.value?.plugins || []
-    return marketCategory.value ? all.filter((p) => p.category === marketCategory.value) : all
+    let all = market.value?.plugins || []
+    if (marketCategory.value) all = all.filter((p) => p.category === marketCategory.value)
+    const q = marketSearch.value.trim().toLowerCase()
+    if (q) all = all.filter((p) => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q) || (p.author || '').toLowerCase().includes(q))
+    return all
   })
 
   // 有标题分组 → 折叠面板;无标题字段(通常核心必填项)→ 顶部平铺,不套折叠面板。
@@ -584,6 +593,8 @@ export function usePlugins(options: UsePluginsOptions) {
     auditLoading,
     rollbacking,
     marketCategory,
+    pluginSearch,
+    marketSearch,
     filteredPlugins,
     enabledCount,
     actionHasSchema,

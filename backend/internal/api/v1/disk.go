@@ -49,7 +49,8 @@ func (h *DiskHandler) List(c *gin.Context) {
 	resp := diskListResp{Disks: []diskEntry{}}
 	for _, dev := range tree.BlockDevices {
 		// 只取顶层磁盘（type=disk/rom），分区作为子节点归类。
-		if dev.Type != "disk" && dev.Type != "rom" {
+		// 只取真正的磁盘（disk），过滤掉光驱（rom/cdrom）和 loop/ram 等
+		if dev.Type != "disk" {
 			continue
 		}
 		entry := diskEntry{

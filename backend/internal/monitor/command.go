@@ -78,10 +78,21 @@ func (s *Service) RunCommandNow(ctx context.Context, id uint, command string, ti
 		return CommandResult{}, err
 	}
 	protocol := ResolveProtocol(t)
-	if t.Type != "host" || protocol != "ssh" {
+	// 支持 host 和 nas 类型目标执行远程命令（nas 走 SSH 时复用 host 的 ssh collector）
+	if t.Type != "host" && t.Type != "nas" {
 		return CommandResult{}, fmt.Errorf("%w: %s/%s", ErrUnsupportedCommandTarget, t.Type, protocol)
 	}
-	c, ok := s.reg.CollectorFor(t.Type, protocol)
+	// nas 类型默认 protocol 是 api/snmp，但如果配置了 SSH 则用 ssh
+	collectorType := t.Type
+	if t.Type == "nas" && protocol != "ssh" {
+		// nas 有 host 地址时，尝试用 host/ssh collector 执行命令
+		if t.Host == "" {
+			return CommandResult{}, fmt.Errorf("%w: nas/%s (需配置 SSH 连接信息)", ErrUnsupportedCommandTarget, protocol)
+		}
+		collectorType = "host"
+		protocol = "ssh"
+	}
+	c, ok := s.reg.CollectorFor(collectorType, protocol)
 	if !ok {
 		return CommandResult{}, ErrUnsupported
 	}

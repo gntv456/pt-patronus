@@ -68,7 +68,8 @@ const memHistory = ref<Record<string, number[]>>({})
 let statsTimer: number | undefined
 const HISTORY_POINTS = 20
 
-const sshTargets = computed(() => targets.value.filter((t) => t.type === 'host'))
+// 远程模式支持 host 和 nas 类型（只要有 SSH 连接信息即可管理 Docker）
+const sshTargets = computed(() => targets.value.filter((t) => t.type === 'host' || t.type === 'nas'))
 const tabKeys = computed<(typeof activeTab.value)[]>(() =>
   mode.value === 'local' ? ['containers', 'projects', 'images', 'volumes', 'networks'] : ['containers', 'images', 'volumes', 'networks'])
 
@@ -223,7 +224,7 @@ function exitBatchMode() {
 }
 
 const selectedContainers = computed(() =>
-  data.value.containers.filter((c) => selectedIds.value.has(c.ID)),
+  (data.value.containers || []).filter((c) => selectedIds.value.has(c.ID)),
 )
 const isAllSelected = computed(() =>
   filteredContainers.value.length > 0 && filteredContainers.value.every((c) => selectedIds.value.has(c.ID)),
@@ -315,7 +316,7 @@ function openExec(c: DockerContainer) {
 
 const filteredContainers = computed(() => {
   const kw = searchText.value.trim().toLowerCase()
-  return data.value.containers.filter((c) => {
+  return (data.value.containers || []).filter((c) => {
     if (stateFilter.value === 'running' && c.State !== 'running') return false
     if (stateFilter.value === 'stopped' && c.State === 'running') return false
     if (!kw) return true
@@ -387,6 +388,12 @@ function onStoreTemplateSelected(tpl: DockerTemplate) {
   createDialog.value = true
 }
 
+function copyDockerSockHint() {
+  navigator.clipboard.writeText('- /var/run/docker.sock:/var/run/docker.sock').then(() => {
+    ElMessage.success('已复制，粘贴到 docker-compose.yml 的 volumes 中')
+  }).catch(() => {})
+}
+
 onMounted(async () => {
   await loadTargets()
   try {
@@ -428,7 +435,7 @@ function onModeSwitch() {
           🔗 SSH 远程
         </button>
       </div>
-      <el-select v-if="mode === 'remote'" v-model="selectedTarget" placeholder="选择 SSH 主机" @change="refresh" style="width: 200px">
+      <el-select v-if="mode === 'remote'" v-model="selectedTarget" placeholder="选择主机 / NAS" @change="refresh" style="width: 200px">
         <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
       </el-select>
       <el-button :loading="loading" @click="refresh">刷新</el-button>
@@ -441,7 +448,7 @@ function onModeSwitch() {
     <template v-if="!selectedTarget && sshTargets.length === 0 && !localAvailable">
       <div class="docker-empty glass">
         <GlassIcon name="server" from="#6c5ce7" to="#4285f4" :size="48" />
-        <p>请先在 NAS 页面添加 SSH 类型的主机监控目标</p>
+        <p>请先在 NAS 页面添加主机或 NAS 类型的监控目标（需支持 SSH 连接）</p>
       </div>
     </template>
 
@@ -450,7 +457,7 @@ function onModeSwitch() {
       <div class="docker-stats">
         <div class="stat-tile glass stat--running">
           <span class="stat-ic"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>
-          <div class="stat-meta"><strong>{{ data.containers.filter((c) => c.State === 'running').length }}</strong><span>运行中</span></div>
+          <div class="stat-meta"><strong>{{ (data.containers || []).filter((c) => c.State === 'running').length }}</strong><span>运行中</span></div>
         </div>
         <div class="stat-tile glass stat--container">
           <span class="stat-ic"><svg viewBox="0 0 24 24"><path d="M3 6h18v12H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 6v12M12 6v12M17 6v12" stroke="currentColor" stroke-width="1.5"/></svg></span>
@@ -490,10 +497,10 @@ function onModeSwitch() {
               全部 <span class="count">{{ data.containers.length }}</span>
             </button>
             <button class="state-tab" :class="{ active: stateFilter === 'running' }" @click="stateFilter = 'running'">
-              运行中 <span class="count">{{ data.containers.filter(c => c.State === 'running').length }}</span>
+              运行中 <span class="count">{{ (data.containers || []).filter(c => c.State === 'running').length }}</span>
             </button>
             <button class="state-tab" :class="{ active: stateFilter === 'stopped' }" @click="stateFilter = 'stopped'">
-              已停止 <span class="count">{{ data.containers.filter(c => c.State !== 'running').length }}</span>
+              已停止 <span class="count">{{ (data.containers || []).filter(c => c.State !== 'running').length }}</span>
             </button>
           </div>
           <!-- 视图切换 -->
@@ -730,4 +737,12 @@ function onModeSwitch() {
   </div>
 </template>
 
-<style scoped src="../../views/nas-shared/opsDocker.css"></style>
+<style scoped src="../../views/nas-shared/opsDocker.css">.docker-hint-box { padding: 12px 16px; margin: 8px 0; border-radius: 8px; background: rgba(108,92,231,.08); border: 1px solid rgba(108,92,231,.2); }
+.docker-hint-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+.docker-hint-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 6px; }
+.docker-hint-desc code { background: rgba(0,0,0,.1); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+.docker-hint-code { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,.15); border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: background .15s; }
+.docker-hint-code:hover { background: rgba(0,0,0,.25); }
+.docker-hint-code code { font-family: 'Cascadia Code', monospace; font-size: 13px; flex: 1; }
+.copy-btn { font-size: 12px; color: var(--pt-primary, #6c5ce7); white-space: nowrap; }
+</style>

@@ -52,7 +52,7 @@ const cronDesc = computed(() => {
   const parts = timer.value.trim().split(/\s+/)
   if (parts.length !== 5) return '格式应为 5 段：分 时 日 月 周'
   const [min, hour, dom, mon, dow] = parts
-  const every = (v) => v === '*'
+  const every = (v: string) => v === '*'
   if (every(min) && every(hour)) return '每分钟执行'
   if (min.startsWith('*/')) return `每 ${min.slice(2)} 分钟执行`
   if (every(hour) && !min.includes('*')) return `每天每小时的第 ${min} 分钟执行`

@@ -148,7 +148,7 @@ onBeforeUnmount(() => {
 })
 function onVisibilityChange() {
   if (document.hidden) {
-    if (timer) { window.clearInterval(timer); timer = null }
+    if (timer) { window.clearInterval(timer); timer = undefined }
   } else {
     loadAll()
     if (!timer) timer = window.setInterval(loadAll, 15000)

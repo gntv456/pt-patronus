@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- ATS 例外：与 iOS 端一致——自托管后端/PT 站常走 http://（WKWebView 站点登录提 cookie
+	     同样受 ATS 管辖），macOS 10.15+ WKWebView 默认禁明文，缺失则 http 页面加载被拦截。
+	     App 自身的 REST/WS 走 dart:io 裸 socket 不受 ATS 影响，此条主要为 WebView 登录兜底。 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleExecutable</key>

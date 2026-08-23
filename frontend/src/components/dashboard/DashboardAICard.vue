@@ -84,46 +84,46 @@ function fmtToken(n: number): string {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--sp-2);
   margin-bottom: 12px;
 }
 .dc-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-lg);
 }
 .dc-head p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 .ai-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: var(--sp-2);
 }
 .ai-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   padding: 11px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: var(--surface-muted);
 }
 .ac-label {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .ai-cell strong {
-  font-size: 20px;
+  font-size: var(--fs-title);
   font-weight: 700;
   letter-spacing: -0.3px;
   line-height: 1.2;
 }
 .ai-cell strong.danger {
-  color: #dc2626;
+  color: var(--pt-danger);
 }
 .ac-sub {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   opacity: 0.85;
 }
@@ -131,10 +131,10 @@ function fmtToken(n: number): string {
   margin-top: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .spark-label {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .dc-empty {
@@ -144,7 +144,7 @@ function fmtToken(n: number): string {
   justify-content: center;
   min-height: 90px;
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
 }
 @media (max-width: 560px) {
   .ai-grid {

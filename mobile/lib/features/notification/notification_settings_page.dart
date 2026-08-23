@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/notification.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 // 通知通道设置（对标 Web Settings→通知）：Telegram / 微信 ClawBot / QQ / Bark / Webhook。
@@ -218,9 +219,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                 errorBuilder: (_, _, _) => const Icon(Icons.qr_code, size: 120),
               ),
               const SizedBox(height: 10),
-              const Text(
+              Text(
                 '用微信扫码完成登录',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: context.dimText),
               ),
             ],
           ),
@@ -273,7 +274,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
       ],
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const PTLoadingView()
             : _error != null
             ? _errorView
             : _body,
@@ -307,10 +308,10 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
             padding: const EdgeInsets.all(14),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     '向已启用通道各发一条测试通知',
-                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                    style: TextStyle(fontSize: 13, color: context.dimText),
                   ),
                 ),
                 FilledButton.tonalIcon(
@@ -466,9 +467,9 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: context.dimText,
                         ),
                       ),
                     ],
@@ -559,7 +560,7 @@ class _NotificationSettingsPageState extends State<NotificationSettingsPage> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 help,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: context.dimText),
               ),
             ),
         ],

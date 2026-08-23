@@ -1,4 +1,4 @@
-﻿// Plugins 页面主状态与操作 —— 从 Plugins.vue 抽出的核心状态簇。
+// Plugins 页面主状态与操作 —— 从 Plugins.vue 抽出的核心状态簇。
 // 依赖: pluginApi + ElMessage/ElMessageBox + pluginsHelpers。
 import { computed, h, onMounted, ref, watch, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -248,19 +248,19 @@ onUnmounted(() => {
   max-height: min(70vh, 560px);
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: 0 24px 64px rgba(15, 23, 42, 0.28);
 }
 .cp-input-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2);
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(108, 92, 231, 0.12);
+  border-bottom: 1px solid var(--pt-primary-bg);
 }
 .cp-search-icon {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   opacity: 0.7;
 }
 .cp-input {
@@ -268,7 +268,7 @@ onUnmounted(() => {
   border: none;
   outline: none;
   background: transparent;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   color: var(--text-strong);
 }
 .cp-input::placeholder {
@@ -277,12 +277,12 @@ onUnmounted(() => {
 }
 .cp-kbd {
   font-family: inherit;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(108, 92, 231, 0.1);
+  border-radius: var(--radius-xs);
+  background: var(--pt-primary-bg);
   color: var(--text-muted);
-  border: 1px solid rgba(108, 92, 231, 0.15);
+  border: 1px solid var(--pt-primary-bg);
 }
 .cp-list {
   list-style: none;
@@ -295,14 +295,14 @@ onUnmounted(() => {
 .cp-item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   padding: 10px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   color: var(--text-strong);
 }
 .cp-item.active {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.22), rgba(66, 133, 244, 0.14));
+  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
 }
 .cp-icon {
   flex-shrink: 0;
@@ -320,10 +320,10 @@ onUnmounted(() => {
 }
 .cp-label {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .cp-sub {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   margin-top: 2px;
   white-space: nowrap;
@@ -332,29 +332,29 @@ onUnmounted(() => {
 }
 .cp-hint {
   opacity: 0.35;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .cp-empty {
   padding: 24px 12px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .cp-footer {
   display: flex;
-  gap: 14px;
+  gap: var(--sp-3);
   padding: 8px 14px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
-  border-top: 1px solid rgba(108, 92, 231, 0.1);
+  border-top: 1px solid var(--pt-primary-bg);
 }
 .cp-footer kbd {
   font-family: inherit;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   padding: 1px 4px;
-  border-radius: 4px;
-  background: rgba(108, 92, 231, 0.08);
-  border: 1px solid rgba(108, 92, 231, 0.12);
+  border-radius: var(--radius-2xs);
+  background: var(--pt-primary-bg);
+  border: 1px solid var(--pt-primary-bg);
 }
 .cp-foot-right {
   margin-left: auto;

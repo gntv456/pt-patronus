@@ -140,17 +140,17 @@ function onPTDUpload(f: UploadFile) {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; max-width: 760px; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 760px; }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
 .card { padding: 20px; }
-.brow { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.btitle { font-weight: 600; font-size: 15px; }
-.bdesc { margin-top: 4px; font-size: 13px; }
+.brow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); }
+.btitle { font-weight: 600; font-size: var(--fs-lg); }
+.bdesc { margin-top: 4px; font-size: var(--fs-body); }
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
 .page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
 .page.embedded > .sub { display: none; }
 
 </style>

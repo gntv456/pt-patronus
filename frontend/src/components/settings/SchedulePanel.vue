@@ -28,7 +28,7 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
             <el-input v-model="schedForm.snapshot_cron" class="mt8" placeholder="7 */4 * * *">
               <template #prepend>cron 表达式</template>
             </el-input>
-            <p v-if="schedCfg?.hint" class="text-muted mt8" style="font-size: 12px; line-height: 1.6">
+            <p v-if="schedCfg?.hint" class="text-muted mt8" style="font-size: var(--fs-xs); line-height: 1.6">
               {{ schedCfg.hint }}
             </p>
           </div>
@@ -42,8 +42,8 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
 </template>
 
 <style scoped>
-.oidc-wrap { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
-.oidc-help { font-size: 13px; line-height: 1.6; }
+.oidc-wrap { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 640px; }
+.oidc-help { font-size: var(--fs-body); line-height: 1.6; }
 .oidc-save { display: flex; justify-content: flex-end; }
 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mt8 { margin-top: 8px; }

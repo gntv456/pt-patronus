@@ -349,7 +349,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
             const SizedBox(height: 4),
             Text(
               r.message,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: context.dimText, fontSize: 12),
             ),
           ],
         ],

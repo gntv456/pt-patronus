@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { sshApi, type SshServiceStatus, type SshSessionRow, type SshLogRow } from '@/api/ssh_admin'
@@ -238,32 +238,32 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
 <style scoped>
 .ops-ssh { padding: 0 4px; }
 .ssh-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; margin-bottom: 16px; }
-.toolbar-left { display: flex; align-items: center; gap: 12px; }
-.target-label { font-size: 13px; color: var(--text-secondary, #888); white-space: nowrap; }
-.view-switch { display: flex; gap: 4px; margin-left: 8px; }
-.view-switch button { padding: 6px 16px; border: 1px solid var(--border, rgba(128,128,128,.25)); background: transparent; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-secondary,#888); }
+.toolbar-left { display: flex; align-items: center; gap: var(--sp-3); }
+.target-label { font-size: var(--fs-body); color: var(--text-secondary, #888); white-space: nowrap; }
+.view-switch { display: flex; gap: var(--sp-1); margin-left: 8px; }
+.view-switch button { padding: 6px 16px; border: 1px solid var(--border, rgba(128,128,128,.25)); background: transparent; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-body); color: var(--text-secondary,#888); }
 .view-switch button.active { background: var(--accent, #6c5ce7); color: #fff; border-color: transparent; }
-.ssh-error { color: #e74c3c; margin-bottom: 12px; padding: 8px 14px; background: rgba(231,76,60,.08); border-radius: 8px; }
+.ssh-error { color: var(--pt-danger); margin-bottom: 12px; padding: 8px 14px; background: var(--pt-danger-bg); border-radius: var(--radius-xs); }
 .ssh-empty { padding: 28px; text-align: center; color: var(--text-secondary, #888); }
 .ssh-panel { padding: 16px 18px; }
-.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
-.svc-card { padding: 14px 16px; border-radius: 8px; background: rgba(128,128,128,.06); }
-.svc-label { font-size: 12px; color: var(--text-secondary,#888); margin-bottom: 6px; }
-.svc-value { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); margin-bottom: 20px; }
+.svc-card { padding: 14px 16px; border-radius: var(--radius-xs); background: rgba(128,128,128,.06); }
+.svc-label { font-size: var(--fs-xs); color: var(--text-secondary,#888); margin-bottom: 6px; }
+.svc-value { font-size: var(--fs-lg); font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); }
 .svc-value.mono { font-family: monospace; }
-.svc-value.small { font-size: 12px; font-weight: 400; }
+.svc-value.small { font-size: var(--fs-xs); font-weight: 400; }
 .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .status-dot.on { background: #27ae60; box-shadow: 0 0 6px #27ae60; }
 .status-dot.off { background: #e74c3c; }
-.service-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.service-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 .table-scroll { overflow-x: auto; max-height: 65vh; overflow-y: auto; }
-.ssh-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ssh-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
 .ssh-table th { text-align: left; padding: 8px 10px; font-weight: 600; position: sticky; top: 0; background: var(--bg-th, rgba(0,0,0,.06)); white-space: nowrap; }
 .ssh-table td { padding: 6px 10px; border-bottom: 1px solid rgba(128,128,128,.1); white-space: nowrap; }
-.ssh-table tbody tr:hover { background: rgba(108,92,231,.06); }
-.mono { font-family: monospace; font-size: 12px; }
-.small { font-size: 11px; }
+.ssh-table tbody tr:hover { background: var(--pt-primary-bg); }
+.mono { font-family: monospace; font-size: var(--fs-xs); }
+.small { font-size: var(--fs-2xs); }
 .td-what { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .td-empty { text-align: center; padding: 24px; color: var(--text-tertiary, #aaa); }
-.log-type { font-weight: 600; font-family: monospace; font-size: 12px; }
+.log-type { font-weight: 600; font-family: monospace; font-size: var(--fs-xs); }
 </style>

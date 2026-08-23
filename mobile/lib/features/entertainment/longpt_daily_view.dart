@@ -115,7 +115,7 @@ class _LongPTDailyViewState extends State<LongPTDailyView> {
   Widget _prizesSection() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         _sectionTitle('今日奖品'),
         if (_prizes.isEmpty)
-          const Padding(padding: EdgeInsets.all(16), child: Text('暂无奖品配置', style: TextStyle(color: Colors.grey, fontSize: 13)))
+          Padding(padding: EdgeInsets.all(16), child: Text('暂无奖品配置', style: TextStyle(color: context.dimText, fontSize: 13)))
         else
           GridView.count(
             shrinkWrap: true,
@@ -198,10 +198,10 @@ class _LongPTDailyViewState extends State<LongPTDailyView> {
           ..._records.take(10).map((r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(children: [
-                  Text(r.prizeName, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: r.prizeName == '未中奖' ? Colors.grey : null)),
+                  Text(r.prizeName, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: r.prizeName == '未中奖' ? context.dimText : null)),
                   if (r.amount > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('×${r.amount.toStringAsFixed(0)}', style: const TextStyle(color: Colors.orange, fontSize: 13))),
                   const Spacer(),
-                  Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(r.createdAt, style: TextStyle(fontSize: 11, color: context.dimText)),
                 ]),
               )),
         ]),

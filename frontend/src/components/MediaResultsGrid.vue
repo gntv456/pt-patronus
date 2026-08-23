@@ -58,7 +58,7 @@ function sourceBadge(s: string) {
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
+  gap: var(--sp-4);
   min-height: 120px;
 }
 .mcard {
@@ -80,20 +80,20 @@ function sourceBadge(s: string) {
   top: 8px;
   right: 8px;
   padding: 2px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.5);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 .meta {
   padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .mtitle {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-md);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -103,23 +103,39 @@ function sourceBadge(s: string) {
 .sub {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
 }
 .badge {
   padding: 1px 7px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.3), rgba(66, 133, 244, 0.2));
+  border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
 }
 .rating {
   color: var(--pt-warn, #f39c12);
 }
 .overview {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* 影视卡 staggered 入场 + hover 水润反馈 */
+.grid > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
+.grid > *:nth-child(1) { animation-delay: 0ms; }
+.grid > *:nth-child(2) { animation-delay: 40ms; }
+.grid > *:nth-child(3) { animation-delay: 80ms; }
+.grid > *:nth-child(4) { animation-delay: 120ms; }
+.grid > *:nth-child(5) { animation-delay: 160ms; }
+.grid > *:nth-child(6) { animation-delay: 200ms; }
+.grid > *:nth-child(7) { animation-delay: 240ms; }
+.grid > *:nth-child(8) { animation-delay: 280ms; }
+.grid > *:nth-child(n+9) { animation-delay: 320ms; }
+.mcard { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
+.mcard:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.mcard .poster img { transition: transform var(--dur-slow) var(--ease-out-smooth); }
+.mcard:hover .poster img { transform: scale(1.06); }
 </style>

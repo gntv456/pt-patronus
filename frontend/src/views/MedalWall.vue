@@ -135,10 +135,10 @@ onUnmounted(() => abortCtrl?.abort())
     <div class="filter-bar glass">
       <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择勋章站点" />
       <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">全部 ({{ counts.total }})</button>
-      <button class="chip" :class="{ on: filter === 'owned' }" @click="filter = 'owned'" style="color:#2ecc71">已拥有 ({{ counts.owned }})</button>
-      <button class="chip" :class="{ on: filter === 'available' }" @click="filter = 'available'" style="color:#3498db">可购买 ({{ counts.available }})</button>
-      <button class="chip" :class="{ on: filter === 'out_of_stock' }" @click="filter = 'out_of_stock'" style="color:#f56c6c">缺货 ({{ counts.out_of_stock }})</button>
-      <button class="chip" :class="{ on: filter === 'wearing' }" @click="filter = 'wearing'" style="color:#f39c12">佩戴中 ({{ counts.wearing }})</button>
+      <button class="chip" :class="{ on: filter === 'owned' }" @click="filter = 'owned'" style="color:var(--pt-success)">已拥有 ({{ counts.owned }})</button>
+      <button class="chip" :class="{ on: filter === 'available' }" @click="filter = 'available'" style="color:var(--pt-primary-2)">可购买 ({{ counts.available }})</button>
+      <button class="chip" :class="{ on: filter === 'out_of_stock' }" @click="filter = 'out_of_stock'" style="color:var(--pt-danger)">缺货 ({{ counts.out_of_stock }})</button>
+      <button class="chip" :class="{ on: filter === 'wearing' }" @click="filter = 'wearing'" style="color:var(--pt-warn)">佩戴中 ({{ counts.wearing }})</button>
     </div>
 
     <details v-if="siteIssues.length" class="site-issues glass" :open="counts.total === 0">
@@ -236,45 +236,57 @@ onUnmounted(() => abortCtrl?.abort())
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
-.filter-bar { display: flex; gap: 8px; padding: 10px 14px; flex-wrap: wrap; }
-.chip { background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: 13px; color: var(--text-strong); }
-.chip.on { background: rgba(108,92,231,0.14); border-color: rgba(108,92,231,0.3); }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-.medal-card { padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; text-align: center; }
-.img-wrap { position: relative; width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: rgba(108,92,231,0.1); display: flex; align-items: center; justify-content: center; }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.filter-bar { display: flex; gap: var(--sp-2); padding: 10px 14px; flex-wrap: wrap; }
+.chip { background: transparent; border: 1px solid transparent; border-radius: var(--radius-pill); padding: 4px 12px; cursor: pointer; font-size: var(--fs-body); color: var(--text-strong); }
+.chip.on { background: var(--pt-primary-bg); border-color: var(--pt-primary-bg); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-3); }
+.medal-card { padding: 12px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); cursor: pointer; text-align: center; }
+.img-wrap { position: relative; width: 64px; height: 64px; border-radius: 50%; overflow: hidden; background: var(--pt-primary-bg); display: flex; align-items: center; justify-content: center; }
 .img-wrap img { width: 100%; height: 100%; object-fit: cover; }
-.placeholder { font-size: 26px; font-weight: 700; color: var(--pt-primary,#6c5ce7); }
-.badge { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-.badge.owned { background: #2ecc71; }
-.badge.stock { background: #f56c6c; font-size: 10px; }
-.m-name { font-size: 13px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.m-meta { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; font-size: 12px; }
+.placeholder { font-size: var(--fs-hero); font-weight: 700; color: var(--pt-primary,#6c5ce7); }
+.badge { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-xs); font-weight: 700; color: #fff; box-shadow: var(--shadow-sm); }
+.badge.owned { background:var(--pt-success); }
+.badge.stock { background:var(--pt-danger); font-size: var(--fs-2xs); }
+.m-name { font-size: var(--fs-body); font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-meta { display: flex; gap: var(--sp-1); flex-wrap: wrap; justify-content: center; font-size: var(--fs-xs); }
 .m-meta .price { color: var(--pt-warn,#f59e0b); font-weight: 600; }
 .price-orig { text-decoration: line-through; opacity: 0.5; font-weight: 400; }
 .price-premium { color: var(--pt-danger); font-weight: 700; }
 .m-meta .bonus { color: var(--pt-success,#2ecc71); }
-.m-site { font-size: 11px; }
-.m-err { font-size: 11px; color: var(--pt-danger); }
+.m-site { font-size: var(--fs-2xs); }
+.m-err { font-size: var(--fs-2xs); color: var(--pt-danger); }
 .site-issues { padding: 12px 14px; border-left: 3px solid var(--pt-warn,#f59e0b); }
-.issues-head { display: flex; align-items: baseline; gap: 10px; font-size: 13px; cursor: pointer; }
-.issues-head span { color: var(--text-muted); font-size: 12px; }
+.issues-head { display: flex; align-items: baseline; gap: var(--sp-2); font-size: var(--fs-body); cursor: pointer; }
+.issues-head span { color: var(--text-muted); font-size: var(--fs-xs); }
 .issue-list { margin-top: 8px; max-height: 320px; overflow: auto; }
-.issue-row { display: flex; gap: 12px; padding: 5px 0; border-top: 1px solid rgba(127,127,127,.14); font-size: 12px; color: var(--text-muted); }
+.issue-row { display: flex; gap: var(--sp-3); padding: 5px 0; border-top: 1px solid rgba(127,127,127,.14); font-size: var(--fs-xs); color: var(--text-muted); }
 .issue-site { flex: 0 0 96px; color: var(--text-strong); font-weight: 600; }
 .issue-message { min-width: 0; overflow-wrap: anywhere; }
 .empty { padding: 40px; text-align: center; }
-.empty-hint { margin-top: 8px; font-size: 12px; opacity: 0.7; line-height: 1.6; }
-.detail-img { width: 120px; height: 120px; margin: 0 auto 12px; border-radius: 50%; overflow: hidden; background: rgba(108,92,231,0.1); display: flex; align-items: center; justify-content: center; }
+.empty-hint { margin-top: 8px; font-size: var(--fs-xs); opacity: 0.7; line-height: 1.6; }
+.detail-img { width: 120px; height: 120px; margin: 0 auto 12px; border-radius: 50%; overflow: hidden; background: var(--pt-primary-bg); display: flex; align-items: center; justify-content: center; }
 .detail-img img { width: 100%; height: 100%; object-fit: cover; }
 .placeholder.lg { font-size: 48px; }
-.detail-name { text-align: center; font-size: 18px; font-weight: 700; }
-.detail-status { text-align: center; font-size: 13px; font-weight: 600; margin-top: 4px; }
-.detail-desc { font-size: 13px; color: var(--text-muted); margin-top: 12px; line-height: 1.5; }
-.info-rows { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-.info-rows .row { display: flex; justify-content: space-between; font-size: 13px; }
+.detail-name { text-align: center; font-size: var(--fs-xl); font-weight: 700; }
+.detail-status { text-align: center; font-size: var(--fs-body); font-weight: 600; margin-top: 4px; }
+.detail-desc { font-size: var(--fs-body); color: var(--text-muted); margin-top: 12px; line-height: 1.5; }
+.info-rows { margin-top: 16px; display: flex; flex-direction: column; gap: var(--sp-2); }
+.info-rows .row { display: flex; justify-content: space-between; font-size: var(--fs-body); }
 .info-rows .row span:first-child { color: var(--text-muted); }
-.drawer-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.drawer-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+/* 勋章卡 staggered 入场 */
+.cards > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-spring) both; }
+.cards > *:nth-child(1) { animation-delay: 0ms; }
+.cards > *:nth-child(2) { animation-delay: 40ms; }
+.cards > *:nth-child(3) { animation-delay: 80ms; }
+.cards > *:nth-child(4) { animation-delay: 120ms; }
+.cards > *:nth-child(5) { animation-delay: 160ms; }
+.cards > *:nth-child(6) { animation-delay: 200ms; }
+.cards > *:nth-child(7) { animation-delay: 240ms; }
+.cards > *:nth-child(8) { animation-delay: 280ms; }
+.cards > *:nth-child(n+9) { animation-delay: 320ms; }
+
 </style>

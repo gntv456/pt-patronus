@@ -260,7 +260,7 @@ class NavTile extends StatelessWidget {
                 ? null
                 : Text(
                     item.desc!,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    style: TextStyle(fontSize: 11, color: context.dimText),
                   ),
             trailing: onToggleFavorite == null
                 ? null
@@ -269,7 +269,7 @@ class NavTile extends StatelessWidget {
                     icon: Icon(
                       favorite ? Icons.star : Icons.star_border,
                       size: 18,
-                      color: favorite ? Colors.amber : Colors.grey,
+                      color: favorite ? Colors.amber : context.dimText,
                     ),
                     onPressed: onToggleFavorite,
                   ),

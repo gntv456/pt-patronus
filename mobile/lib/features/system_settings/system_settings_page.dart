@@ -7,6 +7,7 @@ import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import '../system/logs_page.dart';
 
@@ -109,7 +110,7 @@ class _SystemSettingsPageState extends State<SystemSettingsPage> {
 
   Widget _content() {
     if (_loading && _llm == null && _tg == null && _dir == null && _cc == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     if (_error != null && _llm == null && _tg == null && _dir == null && _cc == null) {
       return PTEmptyState(
@@ -275,10 +276,10 @@ class _LlmGatewayCardState extends State<_LlmGatewayCard> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '把内置 AI Agent 以 OpenAI / Anthropic 兼容协议对外暴露，'
             '供 Cursor / Claude Desktop / continue.dev 等客户端接入。',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
           const SizedBox(height: 12),
           _infoRow('OpenAI 端点', openaiEp),
@@ -343,7 +344,7 @@ class _LlmGatewayCardState extends State<_LlmGatewayCard> {
             SizedBox(
               width: 96,
               child: Text(label,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  style: TextStyle(fontSize: 12, color: context.dimText)),
             ),
             Expanded(
               child: SelectableText(
@@ -363,13 +364,13 @@ class _LlmGatewayCardState extends State<_LlmGatewayCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           if (hint != null)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(hint,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  style: TextStyle(fontSize: 11, color: context.dimText)),
             ),
           const SizedBox(height: 6),
           child,
@@ -491,9 +492,9 @@ class _TgBotCardState extends State<_TgBotCard> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '入站 bot：长轮询收消息 → 斜杠命令或自然语言 → 复用 AI Agent → 回帖。',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
           const SizedBox(height: 12),
           _field(
@@ -557,8 +558,8 @@ class _TgBotCardState extends State<_TgBotCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           const SizedBox(height: 6),
           child,
         ],
@@ -729,19 +730,19 @@ class _DirwatchCardState extends State<_DirwatchCard> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '实时监视本地目录，发现媒体文件即喂给整理流水线'
             '（补 DoneHook + cron 覆盖不到的手动投放 / 非托管来源）。',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 96,
                 child: Text('监视目录',
                     style: TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+                        fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
               ),
               const Spacer(),
               TextButton.icon(
@@ -789,10 +790,10 @@ class _DirwatchCardState extends State<_DirwatchCard> {
               ),
             ),
           if (_rows.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 8),
               child: Text('暂无监视目录，点「添加目录」新建',
-                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  style: TextStyle(fontSize: 12, color: context.dimText)),
             ),
           const SizedBox(height: 4),
           _field(
@@ -855,8 +856,8 @@ class _DirwatchCardState extends State<_DirwatchCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           const SizedBox(height: 6),
           child,
         ],
@@ -961,10 +962,10 @@ class _CookieCloudCardState extends State<_CookieCloudCard> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '浏览器装 CookieCloud 扩展并填服务器/UUID/密码后，定时拉取最新 cookie，'
             '按域名覆盖本地已失效站点 + 自动新增匹配内置定义的站点。',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
           if (widget.initial.lastError.isNotEmpty)
             Padding(
@@ -976,7 +977,7 @@ class _CookieCloudCardState extends State<_CookieCloudCard> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text('上次同步：${_fmtTime(widget.initial.lastSyncUnix)}',
-                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  style: TextStyle(fontSize: 11, color: context.dimText)),
             ),
           const SizedBox(height: 12),
           _field(
@@ -1059,13 +1060,13 @@ class _CookieCloudCardState extends State<_CookieCloudCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style: const TextStyle(
-                  fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+              style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           if (hint != null)
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child:
-                  Text(hint, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(hint, style: TextStyle(fontSize: 11, color: context.dimText)),
             ),
           const SizedBox(height: 6),
           child,

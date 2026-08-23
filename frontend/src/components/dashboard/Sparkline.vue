@@ -121,7 +121,7 @@ function fmtDay(d: string): string {
 <style scoped>
 .spark { position: relative; height: 38px; margin-top: 10px; }
 .spark-svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.spark-empty { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.spark-empty { height: 38px; display: flex; align-items: center; justify-content: center; font-size: var(--fs-md); }
 .hover-line { stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; stroke-dasharray: 3 3; }
 
 .hot { position: absolute; inset: 0; display: flex; }
@@ -131,8 +131,8 @@ function fmtDay(d: string): string {
   position: absolute; top: -4px; transform: translateX(-50%);
   z-index: 5; padding: 3px 7px; white-space: nowrap;
   background: rgba(20, 22, 38, 0.96); border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-  font-size: 11px; display: flex; align-items: center; gap: 5px;
+  border-radius: var(--radius-xs); box-shadow: var(--shadow-md);
+  font-size: var(--fs-2xs); display: flex; align-items: center; gap: var(--sp-1);
   pointer-events: none;
 }
 .tip.edge { transform: translateX(-90%); }

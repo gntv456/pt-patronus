@@ -68,7 +68,7 @@ const tabs: { key: Tab; label: string; icon: string }[] = [
 .ops-nav {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--sp-1);
   overflow-x: auto;
   scrollbar-width: thin;
   padding-bottom: 2px;
@@ -77,7 +77,7 @@ const tabs: { key: Tab; label: string; icon: string }[] = [
 .ops-tab {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
   padding: 6px 14px;
   border: 0;
   border-radius: var(--radius-pill);
@@ -86,7 +86,7 @@ const tabs: { key: Tab; label: string; icon: string }[] = [
   font-size: var(--fs-sm);
   color: var(--text-muted);
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
   flex-shrink: 0;
 }
 .ops-tab:hover {
@@ -97,7 +97,7 @@ const tabs: { key: Tab; label: string; icon: string }[] = [
   background: var(--pt-primary);
   color: #fff;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(108, 92, 231, 0.25);
+  box-shadow: 0 2px 8px var(--pt-primary-bg);
 }
 
 .ops-tab-ico {

@@ -104,56 +104,56 @@ function imdbUrl(id: string) {
   padding: 0 2px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-3);
 }
 .detail-head {
   display: flex;
-  gap: 16px;
+  gap: var(--sp-4);
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
 }
 .dposter {
   width: 120px;
   height: 170px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   flex: none;
   background: var(--surface-muted);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 }
 .detail-head .meta {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .dt-title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   line-height: 1.35;
   word-break: break-word;
 }
 .dt-sub {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 .specs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .specs .chip {
   margin: 0;
   font-weight: 600;
 }
 .specs .chip.cat {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.3), rgba(66, 133, 244, 0.2));
+  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
 }
 .specs .chip.res {
-  background: rgba(66, 133, 244, 0.18);
-  color: #4285f4;
+  background: var(--pt-primary-2-bg);
+  color: var(--pt-primary-2);
 }
 .specs .chip.codec {
   background: rgba(156, 39, 176, 0.16);
@@ -164,7 +164,7 @@ function imdbUrl(id: string) {
   color: #009688;
 }
 .specs .chip.seed {
-  background: rgba(46, 204, 113, 0.18);
+  background: var(--pt-success-bg);
   color: var(--pt-success, #2ecc71);
 }
 .specs .chip.imdb {
@@ -178,38 +178,38 @@ function imdbUrl(id: string) {
 }
 .dl-row {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-top: 4px;
 }
 .card {
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
 }
 .sec-title {
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
   margin-bottom: 10px;
   color: var(--text-strong);
 }
 .shots {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .shot {
   display: block;
   aspect-ratio: 16/9;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
   background: var(--surface-muted);
-  transition: transform 0.15s;
+  transition: transform var(--dur-fast) var(--ease-out-smooth);
 }
 .shot:hover {
   transform: scale(1.02);
 }
 .desc {
   line-height: 1.7;
-  font-size: 14px;
+  font-size: var(--fs-md);
   max-height: 520px;
   overflow: auto;
   padding-right: 4px;
@@ -218,7 +218,7 @@ function imdbUrl(id: string) {
 .desc :deep(img) {
   max-width: 100%;
   height: auto;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   margin: 4px 0;
 }
 .desc :deep(a) {
@@ -232,8 +232,8 @@ function imdbUrl(id: string) {
   background: rgba(0, 0, 0, 0.78);
   color: #d4d4d4;
   padding: 12px;
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-xs);
   line-height: 1.5;
   font-family: ui-monospace, 'Cascadia Code', monospace;
   white-space: pre-wrap;
@@ -244,16 +244,16 @@ function imdbUrl(id: string) {
 .file-list {
   max-height: 280px;
   overflow: auto;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-family: ui-monospace, monospace;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: var(--surface-muted);
 }
 .file-row {
   padding: 5px 10px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
-  gap: 6px;
+  gap: var(--sp-1);
   align-items: baseline;
   word-break: break-all;
 }

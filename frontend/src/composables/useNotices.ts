@@ -1,4 +1,4 @@
-﻿import { ref, computed, readonly } from 'vue'
+import { ref, computed, readonly } from 'vue'
 import { useWs } from '@/composables/useWs'
 import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'
 

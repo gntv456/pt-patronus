@@ -7,6 +7,7 @@ import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -281,7 +282,7 @@ class _ReseedPageState extends State<ReseedPage> {
     'added' => PTColors.success,
     'failed' => PTColors.danger,
     'pending' => PTColors.warn,
-    _ => Colors.grey,
+    _ => context.dimText,
   };
 
   String _statusLabel(String s) => switch (s) {
@@ -399,7 +400,7 @@ class _ReseedPageState extends State<ReseedPage> {
   // 任务区：宽屏表格 / 窄屏卡片，由 PTAdaptiveTable 统一收敛。
   Widget _tasksArea({required bool narrow}) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     if (_tasks.isEmpty) {
       return PTEmptyState(
@@ -431,9 +432,9 @@ class _ReseedPageState extends State<ReseedPage> {
           label: '下载链接',
           flex: 2,
           cell: (_, t) => t.candidateUrl.isEmpty
-              ? const Text(
+              ? Text(
                   '—',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 )
               : InkWell(
                   onTap: () => _copyLink(t.candidateUrl),
@@ -454,7 +455,7 @@ class _ReseedPageState extends State<ReseedPage> {
             t.savePath.isEmpty ? '-' : t.savePath,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
         ),
         PTColumn<ReseedTask>(
@@ -498,9 +499,9 @@ class _ReseedPageState extends State<ReseedPage> {
                     ),
                   ],
                 )
-              : const Text(
+              : Text(
                   '—',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
         ),
       ],
@@ -627,10 +628,10 @@ class _ReseedPageState extends State<ReseedPage> {
         ),
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '自动添加新候选',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: context.dimText),
               ),
             ),
             Switch(
@@ -643,10 +644,10 @@ class _ReseedPageState extends State<ReseedPage> {
         ),
         Row(
           children: [
-            const Expanded(
+            Expanded(
               child: Text(
                 '添加后暂停',
-                style: TextStyle(fontSize: 13, color: Colors.grey),
+                style: TextStyle(fontSize: 13, color: context.dimText),
               ),
             ),
             Switch(
@@ -675,9 +676,9 @@ class _ReseedPageState extends State<ReseedPage> {
             ),
           ],
         ),
-        const Text(
+        Text(
           '每天 3 点扫描（KEEPSEED_CRON 可改）',
-          style: TextStyle(color: Colors.grey, fontSize: 11),
+          style: TextStyle(color: context.dimText, fontSize: 11),
         ),
       ],
     );
@@ -745,7 +746,7 @@ class _ReseedPageState extends State<ReseedPage> {
           const SizedBox(height: 6),
           Text(
             '候选站点：${t.candidateSite}  ·  保存：${t.savePath.isEmpty ? '-' : t.savePath}',
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(color: context.dimText, fontSize: 12),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -868,7 +869,7 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
     if (_loadingSites) {
       return const Padding(
         padding: EdgeInsets.all(32),
-        child: Center(child: CircularProgressIndicator()),
+        child: PTLoadingView(),
       );
     }
     // 站点加载失败 / 无活跃站：compact 错误 + 重试（sheet 内不用 PTEmptyState 的 96px 留白）。
@@ -887,7 +888,7 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
             Text(
               _error ?? '暂无可用站点',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              style: TextStyle(fontSize: 13, color: context.dimText),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
@@ -912,7 +913,7 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
       children: [
         Text(
           '源下载器：${widget.downloaderName}',
-          style: const TextStyle(fontSize: 13, color: Colors.grey),
+          style: TextStyle(fontSize: 13, color: context.dimText),
         ),
         if (_result != null) ...[
           const SizedBox(height: 10),
@@ -1004,23 +1005,23 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
           const SizedBox(height: 14),
           Row(
             children: [
-              const Text(
+              Text(
                 '检查结果',
                 style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
               ),
               const SizedBox(width: 6),
               Text(
                 '（${_result!.missing.length} 站）',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: context.dimText),
               ),
             ],
           ),
           const SizedBox(height: 8),
           if (_result!.missing.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 12),
               child: Center(
-                child: Text('暂无数据', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                child: Text('暂无数据', style: TextStyle(color: context.dimText, fontSize: 13)),
               ),
             )
           else
@@ -1066,7 +1067,7 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
           ),
         ),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(label, style: TextStyle(fontSize: 12, color: context.dimText)),
       ],
     );
   }
@@ -1076,7 +1077,7 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
     final Color c;
     final String label;
     if (m.count < 0) {
-      c = Colors.grey;
+      c = context.dimText;
       label = '无法判定';
     } else if (m.count == 0) {
       c = PTColors.success;
@@ -1127,7 +1128,7 @@ class _MissingCheckSheetState extends State<_MissingCheckSheet> {
                   '· ${s.name.isEmpty ? s.hash : s.name}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: context.dimText),
                 ),
               ),
           ],

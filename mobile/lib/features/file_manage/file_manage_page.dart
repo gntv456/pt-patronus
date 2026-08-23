@@ -1,4 +1,4 @@
-import 'package:file_picker/file_picker.dart';
+import 'package:ptpatronus/core/platform/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:dio/dio.dart';
@@ -346,7 +346,7 @@ class _FileManagePageState extends State<FileManagePage> {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       '${(p * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: context.dimText),
                     ),
                   ),
               ],
@@ -395,11 +395,11 @@ class _FileManagePageState extends State<FileManagePage> {
     final id = b.id;
     setState(() => _busy = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await appFilePicker.pickFiles(
         withData: false,
       ); // 不读入内存：用 fromPath 流式上传
-      if (result == null || result.files.isEmpty) return;
-      final f = result.files.first;
+      if (result == null || result.isEmpty) return;
+      final f = result.first;
       http.MultipartFile mf;
       if (f.path != null) {
         mf = await http.MultipartFile.fromPath('file', f.path!);
@@ -580,11 +580,11 @@ class _FileManagePageState extends State<FileManagePage> {
     }
   }
 
-  Widget _backendDropdown() {
+  Widget _backendDropdown(BuildContext context) {
     if (_backends.isEmpty) {
-      return const Text(
+      return Text(
         '无存储后端',
-        style: TextStyle(color: Colors.grey, fontSize: 13),
+        style: TextStyle(color: context.dimText, fontSize: 13),
       );
     }
     return DropdownButton<_Backend>(
@@ -640,7 +640,7 @@ class _FileManagePageState extends State<FileManagePage> {
     );
   }
 
-  Widget _entryRow(FileEntry e) => Padding(
+  Widget _entryRow(BuildContext context, FileEntry e) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: GlassCard(
       padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
@@ -650,7 +650,7 @@ class _FileManagePageState extends State<FileManagePage> {
           Icon(
             e.isDir ? Icons.folder : Icons.insert_drive_file,
             size: 24,
-            color: e.isDir ? PTColors.primary2 : Colors.grey,
+            color: e.isDir ? PTColors.primary2 : context.dimText,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -669,7 +669,7 @@ class _FileManagePageState extends State<FileManagePage> {
                 const SizedBox(height: 2),
                 Text(
                   e.isDir ? '文件夹' : _fmtBytes(e.size),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
               ],
             ),
@@ -802,7 +802,7 @@ class _FileManagePageState extends State<FileManagePage> {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Row(
               children: [
-                _backendDropdown(),
+                _backendDropdown(context),
                 const Spacer(),
                 if (_busy)
                   const SizedBox(
@@ -817,10 +817,10 @@ class _FileManagePageState extends State<FileManagePage> {
           if (_loading) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _backends.isEmpty && !_loading
-                ? const Center(
+                ? Center(
                     child: Text(
                       '暂无存储后端，请点右上角更多添加 本机 / WebDAV / Alist / SMB / Agent（云盘在「云盘」页管理）',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: context.dimText),
                     ),
                   )
                 : !hasStorage
@@ -828,16 +828,16 @@ class _FileManagePageState extends State<FileManagePage> {
                 : (_error != null && _entries.isEmpty
                       ? _errorView()
                       : _entries.isEmpty && !_loading
-                      ? const Center(
+                      ? Center(
                           child: Text(
                             '空目录',
-                            style: TextStyle(color: Colors.grey),
+                            style: TextStyle(color: context.dimText),
                           ),
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(12, 4, 12, 80),
                           itemCount: _entries.length,
-                          itemBuilder: (_, i) => _entryRow(_entries[i]),
+                          itemBuilder: (ctx, i) => _entryRow(ctx, _entries[i]),
                         )),
           ),
         ],
@@ -1029,15 +1029,15 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
                   onChanged: (v) => setState(() => _agentId = v ?? 0),
                 ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '选择已部署 ptpatronus-agent 的设备（飞牛/绿联等），根路径填 agent 机器上的绝对路径。设备离线或版本过低（需 0.2.0+）时文件操作不可用。',
-            style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
+            style: TextStyle(fontSize: 11, color: context.dimText, height: 1.5),
           ),
         ] else if (_type == 'local') ...[
           const SizedBox(height: 12),
-          const Text(
+          Text(
             '直接读写 PTPatronus 服务所在机器的本地目录，无需开网络服务。根路径填本机绝对路径（如 Windows D:\\Media 或 Linux /mnt/nas）。后端进程拥有该目录完整权限，请仅配置可信目录。',
-            style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
+            style: TextStyle(fontSize: 11, color: context.dimText, height: 1.5),
           ),
         ] else if (_type == 'rclone') ...[
           const SizedBox(height: 12),
@@ -1068,9 +1068,9 @@ class _StorageFormSheetState extends State<_StorageFormSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             '通过 rclone CLI 访问远端（非挂载）。后端把 conf 临时写盘 + --config 调用；操作需服务端机器装有 rclone。根路径填 remote 内的子路径。',
-            style: TextStyle(fontSize: 11, color: Colors.grey, height: 1.5),
+            style: TextStyle(fontSize: 11, color: context.dimText, height: 1.5),
           ),
         ] else ...[
           const SizedBox(height: 12),
@@ -1201,8 +1201,8 @@ class _MoveCopyPickerState extends State<_MoveCopyPicker> {
         SizedBox(
           height: 320,
           child: _dirs.isEmpty && !_loading
-              ? const Center(
-                  child: Text('（无子文件夹）', style: TextStyle(color: Colors.grey)),
+              ? Center(
+                  child: Text('（无子文件夹）', style: TextStyle(color: context.dimText)),
                 )
               : ListView.builder(
                   itemCount: _dirs.length,
@@ -1267,7 +1267,7 @@ class _StrmSheetState extends State<_StrmSheet> {
           padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             '云盘目录：${widget.defaultDir}',
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
         ),
         TextField(

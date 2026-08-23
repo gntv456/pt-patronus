@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { Delete, Download, Plus, Refresh, Setting } from '@element-plus/icons-vue'
 import type { PluginMarketIndex } from '@/api/plugin'
 import {

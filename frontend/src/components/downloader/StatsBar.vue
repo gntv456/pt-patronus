@@ -45,10 +45,10 @@ defineProps<{
 </template>
 
 <style scoped>
-.statsbar { display: grid; grid-template-columns: 1.35fr 1.35fr repeat(5, 1fr); gap: 1px; overflow: hidden; margin-bottom: 10px; border: 1px solid var(--glass-border, rgba(127,127,127,.18)); border-radius: 8px; background: var(--glass-border, rgba(127,127,127,.18)); }
-.metric { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 2px; min-height: 48px; padding: 8px 12px; background: var(--surface, rgba(255,255,255,.04)); }
-.metric-label { color: var(--text-muted); font-size: 11px; }
-.metric strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 1.1; }
+.statsbar { display: grid; grid-template-columns: 1.35fr 1.35fr repeat(5, 1fr); gap: var(--sp-1); overflow: hidden; margin-bottom: 10px; border: 1px solid var(--glass-border, rgba(127,127,127,.18)); border-radius: var(--radius-xs); background: var(--glass-border, rgba(127,127,127,.18)); }
+.metric { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: var(--sp-1); min-height: 48px; padding: 8px 12px; background: var(--surface, rgba(255,255,255,.04)); }
+.metric-label { color: var(--text-muted); font-size: var(--fs-2xs); }
+.metric strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-lg); line-height: 1.1; }
 .metric-download strong { color: var(--pt-primary-2); }
 .metric-upload strong { color: var(--pt-success); }
 .metric-muted strong { color: var(--text-muted); }

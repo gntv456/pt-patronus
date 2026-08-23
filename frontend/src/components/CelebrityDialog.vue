@@ -49,26 +49,26 @@ const profile = defineModel<CelebrityProfile | null>('profile', { required: true
 
 <style scoped>
 .cel-body { min-height: 120px; }
-.cel-head { display: flex; gap: 16px; margin-bottom: 16px; }
+.cel-head { display: flex; gap: var(--sp-4); margin-bottom: 16px; }
 .cel-avatar { width: 96px; height: 96px; flex: none; border-radius: 50%; overflow: hidden; background: var(--surface-muted); }
 .cel-headinfo { flex: 1; min-width: 0; }
-.cel-name { font-size: 18px; font-weight: 700; }
-.cel-latin { font-size: 13px; margin-top: 2px; }
-.cel-short { font-size: 13px; line-height: 1.5; margin-top: 8px; }
-.cel-follow { font-size: 12px; margin-top: 6px; }
+.cel-name { font-size: var(--fs-xl); font-weight: 700; }
+.cel-latin { font-size: var(--fs-body); margin-top: 2px; }
+.cel-short { font-size: var(--fs-body); line-height: 1.5; margin-top: 8px; }
+.cel-follow { font-size: var(--fs-xs); margin-top: 6px; }
 .cel-info { padding: 12px 0; border-top: 1px solid var(--border, rgba(128,128,128,0.15)); border-bottom: 1px solid var(--border, rgba(128,128,128,0.15)); }
-.cel-inforow { font-size: 13px; line-height: 1.6; display: flex; gap: 12px; }
+.cel-inforow { font-size: var(--fs-body); line-height: 1.6; display: flex; gap: var(--sp-3); }
 .cel-label { flex: none; width: 5em; color: var(--text-muted); }
 .cel-val { flex: 1; min-width: 0; word-break: break-word; }
 .cel-section { margin-top: 16px; }
-.cel-stitle { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
-.cel-bio { font-size: 13px; line-height: 1.8; color: var(--text-muted); margin: 0 0 8px; }
-.cel-works { display: flex; flex-direction: column; gap: 2px; }
-.cel-work { display: flex; justify-content: space-between; gap: 12px; padding: 6px 8px; border-radius: 6px; font-size: 13px; text-decoration: none; color: inherit; }
+.cel-stitle { font-weight: 700; font-size: var(--fs-md); margin-bottom: 8px; }
+.cel-bio { font-size: var(--fs-body); line-height: 1.8; color: var(--text-muted); margin: 0 0 8px; }
+.cel-works { display: flex; flex-direction: column; gap: var(--sp-1); }
+.cel-work { display: flex; justify-content: space-between; gap: var(--sp-3); padding: 6px 8px; border-radius: var(--radius-xs); font-size: var(--fs-body); text-decoration: none; color: inherit; }
 .cel-work:hover { background: var(--surface-muted); }
 .cel-wtitle { font-weight: 600; }
-.cel-wrole { font-size: 12px; text-align: right; color: var(--text-muted); }
-.cel-footer { margin-top: 16px; text-align: right; font-size: 13px; }
+.cel-wrole { font-size: var(--fs-xs); text-align: right; color: var(--text-muted); }
+.cel-footer { margin-top: 16px; text-align: right; font-size: var(--fs-body); }
 .cel-footer a { text-decoration: none; }
 .cel-footer a:hover { text-decoration: underline; }
 </style>

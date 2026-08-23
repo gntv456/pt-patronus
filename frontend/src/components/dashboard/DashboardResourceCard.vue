@@ -87,18 +87,18 @@ const diskMore = computed(() => Math.max(0, disks.value.length - diskShown.value
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--sp-2);
   margin-bottom: 12px;
 }
 .dc-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1.35;
 }
 .dc-head p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -106,18 +106,18 @@ const diskMore = computed(() => Math.max(0, disks.value.length - diskShown.value
 .dc-body {
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: var(--sp-3);
   flex: 1;
 }
 .disk-more {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .load-row {
   margin-top: auto;
   padding-top: 8px;
   border-top: 1px solid var(--divider);
-  font-size: 11.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .dc-empty {
@@ -127,6 +127,6 @@ const diskMore = computed(() => Math.max(0, disks.value.length - diskShown.value
   justify-content: center;
   min-height: 90px;
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
 }
 </style>

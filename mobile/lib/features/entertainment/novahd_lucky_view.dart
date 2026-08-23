@@ -115,7 +115,7 @@ class _NovaHDLuckyViewState extends State<NovaHDLuckyView> {
         child: Column(children: [
           Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: Color(0xFF2563EB))),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 11, color: context.dimText)),
         ]),
       );
 
@@ -199,7 +199,7 @@ class _NovaHDLuckyViewState extends State<NovaHDLuckyView> {
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF16A34A))),
                   )).toList(),
             ),
-            if (_last!.success && !_last!.prizes.any((p) => p.isWin)) const Padding(padding: EdgeInsets.only(top: 4), child: Text('很遗憾，未中奖', style: TextStyle(color: Colors.grey, fontSize: 12))),
+            if (_last!.success && !_last!.prizes.any((p) => p.isWin)) Padding(padding: EdgeInsets.only(top: 4), child: Text('很遗憾，未中奖', style: TextStyle(color: context.dimText, fontSize: 12))),
           ] else if (_last!.message.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(_last!.message, style: const TextStyle(fontSize: 13)),
@@ -215,10 +215,10 @@ class _NovaHDLuckyViewState extends State<NovaHDLuckyView> {
           ..._records.take(10).map((r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(children: [
-                  Text(r.prizeName, style: TextStyle(fontSize: 13, color: r.prizeName == '未中奖' ? Colors.grey : null, fontWeight: FontWeight.w600)),
+                  Text(r.prizeName, style: TextStyle(fontSize: 13, color: r.prizeName == '未中奖' ? context.dimText : null, fontWeight: FontWeight.w600)),
                   if (r.amount > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('+${r.amount.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13))),
                   const Spacer(),
-                  Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(r.createdAt, style: TextStyle(fontSize: 11, color: context.dimText)),
                 ]),
               )),
         ]),

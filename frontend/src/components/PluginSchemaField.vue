@@ -95,7 +95,7 @@ if (props.field.options_source === 'sites') {
 .pt-field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 .pt-field-label {
@@ -105,13 +105,13 @@ if (props.field.options_source === 'sites') {
   line-height: 1.3;
 }
 .pt-field-req {
-  color: #ef4444;
+  color: var(--pt-danger);
   margin-left: 3px;
 }
 .pt-field-control {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2);
   min-width: 0;
 }
 .pt-field-control :deep(.el-input),

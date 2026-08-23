@@ -101,7 +101,7 @@ class _NovaHDScratchViewState extends State<NovaHDScratchView> {
           const Text('刮奖中心', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 6),
           Text('购买资格消耗 5000 魔力值 · 今日剩余 $_remaining/${_stats?.maxDaily ?? 5}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              style: TextStyle(fontSize: 12, color: context.dimText)),
           const SizedBox(height: 14),
           FilledButton(
             onPressed: _scratching ? null : _scratch,
@@ -134,7 +134,7 @@ class _NovaHDScratchViewState extends State<NovaHDScratchView> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(p.name, textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: miss ? Colors.grey : const Color(0xFFB45309))),
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: miss ? context.dimText : const Color(0xFFB45309))),
               );
             }).toList(),
           ),
@@ -165,10 +165,10 @@ class _NovaHDScratchViewState extends State<NovaHDScratchView> {
           ..._records.take(10).map((r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(children: [
-                  Text(r.prizeName, style: TextStyle(fontSize: 13, color: r.prizeName == '未中奖' ? Colors.grey : null, fontWeight: FontWeight.w600)),
+                  Text(r.prizeName, style: TextStyle(fontSize: 13, color: r.prizeName == '未中奖' ? context.dimText : null, fontWeight: FontWeight.w600)),
                   if (r.amount > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('+${r.amount.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13))),
                   const Spacer(),
-                  Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(r.createdAt, style: TextStyle(fontSize: 11, color: context.dimText)),
                 ]),
               )),
         ]),

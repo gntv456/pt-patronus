@@ -15,19 +15,19 @@
 
 /* 状态徽章 */
 .state-badge {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--sp-1);
   font-size: var(--fs-xs); font-weight: 600; padding: 3px 10px; border-radius: var(--radius-pill);
 }
 .state-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.state-badge--success { color: var(--pt-success); background: rgba(46, 204, 113, 0.12); }
+.state-badge--success { color: var(--pt-success); background: var(--pt-success-bg); }
 .state-badge--muted { color: var(--text-muted); background: var(--surface-muted); }
 
 /* 资源进度条 */
 .resource-bar { flex: 1; max-width: 300px; height: 20px; background: var(--surface-muted); border-radius: var(--radius-pill); position: relative; overflow: hidden; }
-.bar-fill { height: 100%; border-radius: var(--radius-pill); transition: width 0.3s ease; }
+.bar-fill { height: 100%; border-radius: var(--radius-pill); transition: width var(--dur-slow) var(--ease-out-smooth); }
 .bar--cpu { background: linear-gradient(90deg, #6c5ce7, #4285f4); }
 .bar--mem { background: linear-gradient(90deg, #11998e, #38ef7d); }
-.bar-val { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-family: monospace; font-size: 11px; color: var(--text-strong); white-space: nowrap; }
+.bar-val { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-family: monospace; font-size: var(--fs-2xs); color: var(--text-strong); white-space: nowrap; }
 
 /* 表格 */
 .detail-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
@@ -37,7 +37,7 @@
 .td-name { font-weight: 500; }
 .td-mono { font-family: monospace; font-size: var(--fs-xs); color: var(--text-muted); word-break: break-all; }
 .td-empty { text-align: center; color: var(--text-muted); padding: var(--sp-6); }
-.type-chip { font-size: 11px; padding: 2px 8px; border-radius: var(--radius-xs); background: rgba(108, 92, 231, 0.1); color: var(--pt-primary); }
+.type-chip { font-size: var(--fs-2xs); padding: 2px 8px; border-radius: var(--radius-xs); background: var(--pt-primary-bg); color: var(--pt-primary); }
 
 /* 日志 */
 .logs-toolbar { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }

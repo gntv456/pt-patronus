@@ -18,6 +18,13 @@
   --pt-success: #2ecc71;
   --pt-danger: #e74c3c;
   --pt-warn: #f39c12;
+  --pt-primary2: var(--pt-primary-2);
+  --pt-primary-dark: #5547b8;
+  --pt-success-dark: #1f9d55;
+  --pt-text-muted: var(--text-muted);
+  --pt-bg-soft: var(--surface-2);
+  --accent: var(--pt-primary);
+  --app-bg: transparent;
 
   /* 渐变（hero / 主操作按钮 / 品牌强调） */
   --grad-primary: linear-gradient(135deg, #6c5ce7, #4285f4);
@@ -79,6 +86,52 @@
   --fs-title: 22px;
   --fs-hero: 28px;
 
+
+  /* 别名：跨系统兼容（Element Plus / Tailwind 风格） */
+  --card: var(--glass-bg-strong);
+  --bg: transparent;
+  --bg-elev: var(--glass-bg);
+  --bg-soft: var(--surface-muted);
+  --bg-th: var(--surface-muted);
+  --border: var(--glass-border);
+  --border-soft: var(--divider);
+  --text: var(--text-strong);
+  --text-secondary: var(--text-muted);
+  --text-tertiary: var(--text-disabled);
+  --surface: var(--glass-bg-strong);
+  --glass-input: rgba(255, 255, 255, 0.6);
+  --glass-active: rgba(108, 92, 231, 0.10);
+  --glass-hover: var(--glass-hover-shadow);
+  --glass-bubble: var(--glass-bg-strong);
+  /* 动效 token：统一全站时长 / 曲线 */
+  --dur-fast: 0.16s;
+  --dur-base: 0.24s;
+  --dur-slow: 0.36s;
+  --ease-out-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 补充：细粒度圆角 / 字号 */
+  --radius-2xs: 4px;
+  --fs-2xs: 11px;
+
+  /* 语义软背景 tint（chip / badge 背景） */
+  --pt-success-bg: rgba(46, 204, 113, 0.15);
+  --pt-danger-bg: rgba(231, 76, 60, 0.15);
+  --pt-warn-bg: rgba(243, 156, 18, 0.15);
+  --pt-primary-bg: rgba(108, 92, 231, 0.15);
+  --pt-primary-2-bg: rgba(66, 133, 244, 0.15);
+
+  /* 阴影阶梯（elevation）：统一全站投影，替代散落的硬编码 rgba(0,0,0,...) */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.10), 0 4px 8px rgba(15, 23, 42, 0.05);
+  --shadow-xl: 0 12px 32px rgba(15, 23, 42, 0.12), 0 6px 12px rgba(15, 23, 42, 0.06);
+  --shadow-primary: 0 4px 14px rgba(108, 92, 231, 0.25);
+  --shadow-primary-lg: 0 8px 24px rgba(108, 92, 231, 0.30);
+  --shadow-inset: inset 0 1px 3px rgba(15, 23, 42, 0.08);
+
   /* 模糊 */
   --blur: 20px;
 }
@@ -103,6 +156,38 @@
   --surface-border-strong: rgba(108, 92, 231, 0.55);
   --surface-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.35);
   --surface-shadow-hover: 0 6px 18px rgba(0, 0, 0, 0.55), 0 14px 30px rgba(0, 0, 0, 0.45);
+
+  /* 暗色别名重映射 */
+  --glass-input: rgba(30, 32, 44, 0.6);
+  --glass-active: rgba(255, 255, 255, 0.14);
+  --card: var(--surface-1);
+  --bg: var(--surface-1);
+  --bg-elev: var(--surface-2);
+  --bg-soft: var(--surface-2);
+  --bg-th: var(--surface-2);
+
+  /* 暗色语义色：提高亮度保证对比 */
+  --pt-success: #3ddc7e;
+  --pt-danger: #ff6b6b;
+  --pt-warn: #ffb547;
+  --pt-primary: #8b7ff0;
+  --pt-primary-2: #5b9bf5;
+  /* 暗色软背景 tint 同步提亮 */
+  --pt-success-bg: rgba(61, 220, 126, 0.18);
+  --pt-danger-bg: rgba(255, 107, 107, 0.18);
+  --pt-warn-bg: rgba(255, 181, 71, 0.18);
+  --pt-primary-bg: rgba(139, 127, 240, 0.20);
+  --pt-primary-2-bg: rgba(91, 155, 245, 0.20);
+
+  /* 暗色阴影：加深以保证可见性 */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.35);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.55), 0 6px 12px rgba(0, 0, 0, 0.4);
+  --shadow-primary: 0 4px 14px rgba(139, 127, 240, 0.35);
+  --shadow-primary-lg: 0 8px 24px rgba(139, 127, 240, 0.40);
+  --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 html,
@@ -167,7 +252,7 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  transition: box-shadow var(--dur-base) var(--ease-out-smooth), transform var(--dur-base) var(--ease-out-smooth);
 }
 
 /* 玻璃 rim：顶部内高光，模拟液态玻璃边缘折射 */
@@ -195,7 +280,7 @@ body {
   box-shadow: var(--surface-shadow);
 }
 .solid-card-hover {
-  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  transition: box-shadow var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth), transform var(--dur-base) var(--ease-out-smooth);
 }
 .solid-card-hover:hover {
   border-color: var(--surface-border-strong);
@@ -293,7 +378,7 @@ body.glass-reduced .glass::before {
   cursor: pointer;
   text-decoration: none;
   white-space: nowrap;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  transition: transform var(--dur-fast) var(--ease-out-smooth), box-shadow var(--dur-fast) var(--ease-out-smooth), opacity var(--dur-fast) var(--ease-out-smooth);
 }
 .pt-btn:active {
   transform: translateY(1px);
@@ -344,10 +429,10 @@ body.glass-reduced .glass::before {
   white-space: nowrap;
 }
 /* 状态色变体：覆盖各页散落的 .chip.on/.off/.auto 等状态标签 */
-.pt-chip--success { background: rgba(46, 204, 113, 0.15); color: var(--pt-success); }
-.pt-chip--danger { background: rgba(231, 76, 60, 0.15); color: var(--pt-danger); }
-.pt-chip--warn { background: rgba(243, 156, 18, 0.15); color: var(--pt-warn); }
-.pt-chip--info { background: rgba(66, 133, 244, 0.15); color: var(--pt-primary-2); }
+.pt-chip--success { background: var(--pt-success-bg); color: var(--pt-success); }
+.pt-chip--danger { background: var(--pt-danger-bg); color: var(--pt-danger); }
+.pt-chip--warn { background: var(--pt-warn-bg); color: var(--pt-warn); }
+.pt-chip--info { background: var(--pt-primary-2-bg); color: var(--pt-primary-2); }
 .pt-chip--muted { background: var(--surface-muted); color: var(--text-muted); }
 
 /* 徽标：紧凑强色块，用于状态标记 */
@@ -453,4 +538,279 @@ body.glass-reduced .glass::before {
   max-height: calc(100dvh - 180px) !important;
   overflow-y: auto !important;
   min-height: 0 !important;
+}
+/* ════════════════════════════════════════════════════════════
+   动效工具：统一 keyframes + 原子类
+   ════════════════════════════════════════════════════════════ */
+@keyframes pt-spin { to { transform: rotate(360deg); } }
+@keyframes pt-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@keyframes pt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pt-fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pt-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.pt-spin { animation: pt-spin var(--dur-slow) linear infinite; }
+.pt-pulse { animation: pt-pulse 1.6s var(--ease-in-out) infinite; }
+.pt-fade-in { animation: pt-fade-in var(--dur-base) var(--ease-out-smooth) both; }
+.pt-fade-in-up { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
+.pt-scale-in { animation: pt-scale-in var(--dur-base) var(--ease-out-spring) both; }
+
+/* 路由切换动画 */
+.pt-page-enter-active,
+.pt-page-leave-active {
+  transition: opacity var(--dur-base) var(--ease-out-smooth),
+              transform var(--dur-base) var(--ease-out-smooth);
+}
+.pt-page-enter-from { opacity: 0; transform: translateY(6px); }
+.pt-page-leave-to { opacity: 0; transform: translateY(-6px); }
+
+/* 页面头部基线统一（零优先级兜底，不破坏各页微调） */
+:where(.head, .page-head, .header) {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+}
+:where(.title, .page-title) {
+  font-size: var(--fs-title); font-weight: 700; line-height: 1.3; margin: 0;
+}
+:where(.sub, .subtitle, .page-subtitle) {
+  font-size: var(--fs-sm); color: var(--text-muted); margin: 0;
+}
+
+/* ════════════════════════════════════════════════════════════
+   Element Plus 微调：贴合格璃风格 + 统一动效
+   ════════════════════════════════════════════════════════════ */
+.el-button {
+  transition: background-color var(--dur-base) var(--ease-out-smooth),
+              border-color var(--dur-base) var(--ease-out-smooth),
+              color var(--dur-base) var(--ease-out-smooth),
+              box-shadow var(--dur-base) var(--ease-out-smooth),
+              transform var(--dur-fast) var(--ease-out-spring) !important;
+}
+.el-button:active:not(.is-disabled) { transform: scale(0.97); }
+
+.el-switch__core {
+  transition: background-color var(--dur-base) var(--ease-out-smooth),
+              border-color var(--dur-base) var(--ease-out-smooth) !important;
+}
+.el-tabs__item {
+  transition: color var(--dur-base) var(--ease-out-smooth),
+              opacity var(--dur-base) var(--ease-out-smooth) !important;
+}
+/* tab 底部指示器：弹性滑动 */
+.el-tabs__active-bar {
+  transition: transform var(--dur-slow) var(--ease-out-spring), width var(--dur-slow) var(--ease-out-spring) !important;
+}
+/* switch 开关：核心变色 + 滑块弹性 */
+.el-switch__core {
+  transition: background-color var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth) !important;
+}
+.el-switch__action {
+  transition: transform var(--dur-slow) var(--ease-out-spring) !important;
+}
+/* checkbox/radio：勾选弹性 */
+.el-checkbox__inner,
+.el-radio__inner {
+  transition: border-color var(--dur-base) var(--ease-out-smooth), background-color var(--dur-base) var(--ease-out-smooth), box-shadow var(--dur-fast) var(--ease-out-smooth) !important;
+}
+.el-checkbox__input.is-checked .el-checkbox__inner::after {
+  transition: transform var(--dur-base) var(--ease-out-spring) !important;
+}
+/* 折叠面板：展开收起更顺滑 */
+.el-collapse-item__wrap {
+  transition: height var(--dur-base) var(--ease-out-smooth) !important;
+}
+.el-tag {
+  transition: transform var(--dur-fast) var(--ease-out-spring),
+              background-color var(--dur-base) var(--ease-out-smooth) !important;
+}
+.el-input__wrapper {
+  transition: box-shadow var(--dur-base) var(--ease-out-smooth) !important;
+}
+.el-select-dropdown,
+.el-picker-panel,
+.el-dropdown-menu {
+  transition: opacity var(--dur-base) var(--ease-out-smooth),
+              transform var(--dur-base) var(--ease-out-spring) !important;
+}
+
+/* 卡片 / 列表项通用 hover —— 水润过渡兜底 */
+.glass, [class*="glass"] {
+  transition: transform var(--dur-base) var(--ease-out-smooth),
+              box-shadow var(--dur-base) var(--ease-out-smooth),
+              border-color var(--dur-base) var(--ease-out-smooth);
+}
+
+/* 尊重用户「减少动效」偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  .pt-spin, .pt-pulse { animation: none; }
+  .pt-fade-in, .pt-fade-in-up, .pt-scale-in { animation: none; opacity: 1; transform: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   全局水润增强（滚动条 / 焦点环 / 骨架屏 / 选中态 / 微交互）
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── 滚动条：纤细、半透明、hover 加深，呼吸感 ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--divider) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--divider);
+  border-radius: var(--radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  transition: background var(--dur-base) var(--ease-out-smooth);
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-border);
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── 焦点环：统一键盘可达性，水润而非生硬的蓝框 ── */
+:focus-visible {
+  outline: 2px solid var(--pt-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+  transition: outline-offset var(--dur-fast) var(--ease-out-smooth);
+}
+
+/* ── 文本选中色：品牌主色调 ── */
+::selection {
+  background: var(--pt-primary-bg);
+  color: var(--text-strong);
+}
+
+/* ── 骨架屏 shimmer：加载态的水润占位 ── */
+.pt-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-muted);
+  border-radius: var(--radius-xs);
+}
+.pt-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  animation: pt-shimmer 1.6s var(--ease-in-out) infinite;
+}
+:root.dark .pt-skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+}
+@keyframes pt-shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* ── 列表 staggered 入场：配合 .pt-stagger 容器 + --i 索引 ── */
+.pt-stagger > * {
+  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* ── 卡片悬浮弹性：hover 微抬 + active 下压，模拟物理触感 ── */
+.pt-pressable {
+  transition: transform var(--dur-base) var(--ease-out-spring),
+              box-shadow var(--dur-base) var(--ease-out-smooth);
+}
+.pt-pressable:hover {
+  transform: translateY(-2px);
+}
+.pt-pressable:active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: var(--dur-fast);
+}
+
+/* ── 数字脉动：数据更新时的柔和闪烁 ── */
+@keyframes pt-num-pulse {
+  0% { color: var(--text-strong); }
+  40% { color: var(--pt-primary); }
+  100% { color: var(--text-strong); }
+}
+.pt-num-updated {
+  animation: pt-num-pulse var(--dur-slow) var(--ease-out-smooth);
+}
+
+/* ── 全局点击波纹（可选，给主要交互按钮） ── */
+.pt-ripple {
+  position: relative;
+  overflow: hidden;
+}
+.pt-ripple::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transform: translate(-50%, -50%);
+  transition: width var(--dur-base) var(--ease-out-smooth),
+              height var(--dur-base) var(--ease-out-smooth),
+              opacity var(--dur-base) var(--ease-out-smooth);
+  opacity: 0;
+  pointer-events: none;
+}
+.pt-ripple:active::before {
+  width: 300%;
+  height: 300%;
+  opacity: 1;
+  transition-duration: 0s;
+}
+
+/* ── 链接下划线：hover 从中心展开 ── */
+.pt-link-underline {
+  position: relative;
+  text-decoration: none;
+}
+.pt-link-underline::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 0;
+  height: 2px;
+  background: var(--pt-primary);
+  border-radius: var(--radius-pill);
+  transition: width var(--dur-base) var(--ease-out-spring), left var(--dur-base) var(--ease-out-spring);
+}
+.pt-link-underline:hover::after {
+  width: 100%;
+  left: 0;
 }

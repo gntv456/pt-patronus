@@ -141,42 +141,42 @@ const advOpen = ref(false)
 .param-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .lab {
-  font-size: 13px;
+  font-size: var(--fs-body);
   font-weight: 600;
 }
 .req {
-  color: #e74c3c;
+  color: var(--pt-danger);
   margin-left: 2px;
 }
 .small {
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .kv {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .kv-row {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .advanced {
   margin-top: 4px;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(0, 0, 0, 0.04);
 }
 .adv-head {
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--text-muted);
   user-select: none;
@@ -184,7 +184,7 @@ const advOpen = ref(false)
 .adv-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-top: 8px;
 }
 </style>

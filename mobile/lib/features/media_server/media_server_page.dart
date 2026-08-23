@@ -5,6 +5,7 @@ import 'package:ptpatronus/api/media_server.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 媒体服务器页（对齐 Web MediaServer.vue）：Emby/Jellyfin/Plex 多实例 +
@@ -226,7 +227,7 @@ class _MediaServerPageState extends State<MediaServerPage> {
 
   Widget _content() {
     if (_loading && _list.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     if (_error != null && _list.isEmpty) {
       return PTEmptyState(
@@ -291,7 +292,7 @@ class _MediaServerPageState extends State<MediaServerPage> {
                     const SizedBox(height: 2),
                     Text(
                       s.url,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: context.dimText, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -353,7 +354,7 @@ class _MediaServerPageState extends State<MediaServerPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: accent ? PTColors.success.withValues(alpha: 0.18) : Colors.grey.withValues(alpha: 0.16),
+        color: accent ? PTColors.success.withValues(alpha: 0.18) : context.dimText.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
@@ -449,7 +450,7 @@ class _LibrariesBodyState extends State<_LibrariesBody> {
         ),
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text('播放回调：$webhook', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          child: Text('播放回调：$webhook', style: TextStyle(fontSize: 11, color: context.dimText)),
         ),
         for (final lib in widget.libs)
           Padding(
@@ -462,7 +463,7 @@ class _LibrariesBodyState extends State<_LibrariesBody> {
                     children: [
                       Text(lib.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       Text(lib.type.isEmpty ? '库 #${lib.id}' : '${lib.type} · #${lib.id}',
-                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          style: TextStyle(fontSize: 11, color: context.dimText)),
                     ],
                   ),
                 ),
@@ -628,7 +629,7 @@ class _MediaServerFormState extends State<_MediaServerForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           const SizedBox(height: 6),
           child,
         ],
@@ -692,7 +693,7 @@ class _PlaybackReportBodyState extends State<_PlaybackReportBody> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const PTLoadingView();
     if (_error != null) {
       return PTEmptyState(text: '加载失败：$_error', onRetry: _load);
     }
@@ -702,12 +703,12 @@ class _PlaybackReportBodyState extends State<_PlaybackReportBody> {
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(12), children: [
         Text('近 $_days 天 · 共 ${r.totalPlays} 次播放',
-            style: const TextStyle(fontSize: 13, color: Colors.grey)),
+            style: TextStyle(fontSize: 13, color: context.dimText)),
         const SizedBox(height: 8),
         const Text('用户', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         if (r.users.isEmpty)
-          const Text('无用户数据', style: TextStyle(fontSize: 12, color: Colors.grey))
+          Text('无用户数据', style: TextStyle(fontSize: 12, color: context.dimText))
         else
           Wrap(
             spacing: 6,
@@ -724,7 +725,7 @@ class _PlaybackReportBodyState extends State<_PlaybackReportBody> {
               contentPadding: EdgeInsets.zero,
               title: Text(p.name, style: const TextStyle(fontSize: 13)),
               trailing: Text('${p.playCount} 次 · ${_fmtDur(p.duration)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  style: TextStyle(fontSize: 12, color: context.dimText)),
             )),
         const SizedBox(height: 8),
         const Text('最近播放', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
@@ -736,9 +737,9 @@ class _PlaybackReportBodyState extends State<_PlaybackReportBody> {
                 p.lastPlayed.isEmpty
                     ? p.userName
                     : '${p.userName} · ${DateTime.tryParse(p.lastPlayed)?.toLocal() ?? p.lastPlayed}',
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: context.dimText),
               ),
-              trailing: Text('${p.playCount} 次', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              trailing: Text('${p.playCount} 次', style: TextStyle(fontSize: 12, color: context.dimText)),
             )),
       ]),
     );
@@ -791,7 +792,7 @@ class _DuplicatesBodyState extends State<_DuplicatesBody> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const PTLoadingView();
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
         Expanded(
@@ -811,10 +812,10 @@ class _DuplicatesBodyState extends State<_DuplicatesBody> {
       const SizedBox(height: 8),
       Flexible(
         child: _checking
-            ? const Center(child: CircularProgressIndicator())
+            ? const PTLoadingView()
             : ListView(shrinkWrap: true, children: [
                 Text('共 ${_groups.length} 组疑似重复',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    style: TextStyle(fontSize: 12, color: context.dimText)),
                 ..._groups.map((g) => Card(
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: Padding(
@@ -829,7 +830,7 @@ class _DuplicatesBodyState extends State<_DuplicatesBody> {
                                 style: const TextStyle(fontSize: 12, color: Colors.orange)),
                           ]),
                           ...g.items.map((n) => Text('· $n',
-                              style: const TextStyle(fontSize: 11, color: Colors.grey))),
+                              style: TextStyle(fontSize: 11, color: context.dimText))),
                         ]),
                       ),
                     )),

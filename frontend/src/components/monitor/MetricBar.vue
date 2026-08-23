@@ -36,13 +36,13 @@ const level = computed(() => {
 .metric-bar {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .mb-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .mb-label {
   color: var(--text-muted, #9ca3af);
@@ -57,18 +57,18 @@ const level = computed(() => {
   color: #f7971e;
 }
 .mb-val.danger {
-  color: #e74c3c;
+  color: var(--pt-danger);
 }
 .mb-track {
   height: 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.14);
   overflow: hidden;
 }
 .mb-fill {
   height: 100%;
-  border-radius: 999px;
-  transition: width 0.4s ease;
+  border-radius: var(--radius-pill);
+  transition: width var(--dur-slow) var(--ease-out-smooth);
 }
 .mb-fill.ok {
   background: linear-gradient(90deg, #11998e, #38ef7d);
@@ -80,7 +80,7 @@ const level = computed(() => {
   background: linear-gradient(90deg, #ff5f6d, #ffc371);
 }
 .mb-detail {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted, #9ca3af);
 }
 </style>

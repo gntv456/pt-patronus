@@ -53,5 +53,5 @@ onBeforeUnmount(() => cleanup())
 </template>
 
 <style scoped>
-.exec-term-area { height: 100%; padding: 8px; background: #1e1e2e; border-radius: 4px; }
+.exec-term-area { height: 100%; padding: 8px; background: #1e1e2e; border-radius: var(--radius-2xs); }
 </style>

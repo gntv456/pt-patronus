@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
 
 // GlassIcon — iOS 26 液态玻璃风格应用图标：圆角 squircle 渐变色块 + 顶部玻璃高光 + 白色描边字形。

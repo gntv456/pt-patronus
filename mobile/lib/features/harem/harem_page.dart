@@ -5,6 +5,7 @@ import 'package:ptpatronus/api/harem.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 容错字节格式化（B/KB/MB/GB/TB/PB）；<=0 返回 '—'（替代原硬编码 G，大上传者不再显示 5120G——审计 P2）。
@@ -178,7 +179,7 @@ class _HaremPageState extends State<HaremPage> {
               options: _siteOptions,
             ),
       body: _loading && (_data?.prescriptions ?? []).isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? const PTLoadingView()
           : _error != null
           ? PTEmptyState(text: _error!, onRetry: _load)
           : _data == null
@@ -251,10 +252,10 @@ class _HaremPageState extends State<HaremPage> {
                           label: '操作',
                           flex: 2,
                           cell: (_, p) => p.invitees.isEmpty
-                              ? const Text(
+                              ? Text(
                                   '—',
                                   style: TextStyle(
-                                    color: Colors.grey,
+                                    color: context.dimText,
                                     fontSize: 12,
                                   ),
                                 )
@@ -337,7 +338,7 @@ class _HaremPageState extends State<HaremPage> {
           else
             Text(
               '后宫 ${p.haremCount} 人${p.deadCount > 0 ? "（禁用 ${p.deadCount}）" : ""}',
-              style: const TextStyle(color: Colors.grey, fontSize: 13),
+              style: TextStyle(color: context.dimText, fontSize: 13),
             ),
           if (p.invitees.isNotEmpty)
             Align(
@@ -382,7 +383,7 @@ class _HaremPageState extends State<HaremPage> {
               iv.status,
               style: TextStyle(
                 fontSize: 12,
-                color: iv.status == 'disabled' ? PTColors.danger : Colors.grey,
+                color: iv.status == 'disabled' ? PTColors.danger : context.dimText,
               ),
             ),
           ),
@@ -429,12 +430,12 @@ class _HaremPageState extends State<HaremPage> {
                 const SizedBox(height: 4),
                 Text(
                   '状态 ${iv.status} · 分享率 ${iv.ratio}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: context.dimText),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '↑ ${_fmtBytes(iv.uploaded)}   ↓ ${_fmtBytes(iv.downloaded)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: context.dimText),
                 ),
               ],
             ),

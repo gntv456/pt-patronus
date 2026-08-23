@@ -88,9 +88,9 @@ onUnmounted(() => abortCtrl?.abort())
       <div class="tile"><span class="num">{{ overview.total_invitees }}</span><span class="lbl">后宫成员</span></div>
       <div class="tile"><span class="num">{{ overview.total_perm_invites }}</span><span class="lbl">永久邀请</span></div>
       <div class="tile"><span class="num">{{ overview.total_temp_invites }}</span><span class="lbl">临时邀请</span></div>
-      <div class="tile"><span class="num" style="color:#f39c12">{{ overview.total_low_ratio }}</span><span class="lbl">低分享率</span></div>
-      <div class="tile"><span class="num" style="color:#f56c6c">{{ overview.total_banned }}</span><span class="lbl">已禁用</span></div>
-      <div class="tile"><span class="num" style="color:#95a5a6">{{ overview.total_no_data }}</span><span class="lbl">无数据</span></div>
+      <div class="tile"><span class="num" style="color:var(--pt-warn)">{{ overview.total_low_ratio }}</span><span class="lbl">低分享率</span></div>
+      <div class="tile"><span class="num" style="color:var(--pt-danger)">{{ overview.total_banned }}</span><span class="lbl">已禁用</span></div>
+      <div class="tile"><span class="num" style="color:var(--text-muted)">{{ overview.total_no_data }}</span><span class="lbl">无数据</span></div>
     </div>
 
     <div class="card glass">
@@ -112,7 +112,7 @@ onUnmounted(() => abortCtrl?.abort())
         </el-table-column>
         <el-table-column label="后宫数" width="90" align="right">
           <template #default="{ row }">
-            {{ row.harem_count }}<span v-if="row.dead_count" style="color:#f56c6c"> ({{ row.dead_count }})</span>
+            {{ row.harem_count }}<span v-if="row.dead_count" style="color:var(--pt-danger)"> ({{ row.dead_count }})</span>
           </template>
         </el-table-column>
         <el-table-column label="状态" min-width="140">
@@ -167,18 +167,18 @@ onUnmounted(() => abortCtrl?.abort())
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.head > div { display: flex; gap: 8px; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
-.summary { display: flex; gap: 6px; padding: 12px; flex-wrap: wrap; }
+.head > div { display: flex; gap: var(--sp-2); }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.summary { display: flex; gap: var(--sp-1); padding: 12px; flex-wrap: wrap; }
 .tile { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 76px; }
-.tile .num { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.tile .lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.tile .num { font-size: var(--fs-title); font-weight: 700; font-variant-numeric: tabular-nums; }
+.tile .lbl { font-size: var(--fs-2xs); color: var(--text-muted); margin-top: 2px; }
 .card { padding: 18px; min-height: 200px; }
-.site-tag { display: inline-block; padding: 2px 10px; border-radius: 999px; background: rgba(108,92,231,0.16); color: var(--pt-primary,#6c5ce7); font-size: 12px; }
-.err { color: var(--pt-danger); font-size: 13px; }
-.chip { padding: 1px 8px; border-radius: 999px; font-size: 11px; }
+.site-tag { display: inline-block; padding: 2px 10px; border-radius: var(--radius-pill); background: var(--pt-primary-bg); color: var(--pt-primary,#6c5ce7); font-size: var(--fs-xs); }
+.err { color: var(--pt-danger); font-size: var(--fs-body); }
+.chip { padding: 1px 8px; border-radius: var(--radius-pill); font-size: var(--fs-2xs); }
 .empty { padding: 40px; text-align: center; }
 :deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) { background-color: transparent !important; }
 </style>

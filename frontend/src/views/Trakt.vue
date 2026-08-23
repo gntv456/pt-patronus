@@ -204,27 +204,27 @@ onUnmounted(stopPolling)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 14px; }
-.head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.head .title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 22px; font-weight: 700; }
-.head-actions { display: flex; gap: 8px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-3); }
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.head .title { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-title); font-weight: 700; }
+.head-actions { display: flex; gap: var(--sp-2); }
 .sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.status-card { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-.status-row { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.status-card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-2); }
+.status-row { display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; }
 .status-dot { width: 10px; height: 10px; border-radius: 50%; }
-.status-dot.on { background: #16a34a; }
-.status-dot.off { background: #dc2626; }
-.badge { padding: 2px 8px; border-radius: 10px; background: rgba(108, 92, 231, 0.15); font-size: 12px; color: #6c5ce7; }
-.meta { font-size: 13px; color: var(--text-muted); }
-.err { color: #dc2626; font-size: 13px; }
+.status-dot.on { background:var(--pt-success); }
+.status-dot.off { background:var(--pt-danger); }
+.badge { padding: 2px 8px; border-radius: var(--radius-sm); background: var(--pt-primary-bg); font-size: var(--fs-xs); color:var(--pt-primary); }
+.meta { font-size: var(--fs-body); color: var(--text-muted); }
+.err { color:var(--pt-danger); font-size: var(--fs-body); }
 .device { padding-top: 8px; border-top: 1px solid var(--border); }
-.uc { font-size: 26px; font-weight: 700; letter-spacing: 3px; background: var(--card); padding: 6px 14px; border-radius: 8px; }
-.muted { font-size: 12px; color: var(--text-muted); }
+.uc { font-size: var(--fs-hero); font-weight: 700; letter-spacing: 3px; background: var(--card); padding: 6px 14px; border-radius: var(--radius-xs); }
+.muted { font-size: var(--fs-xs); color: var(--text-muted); }
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
 .page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
 .page.embedded > .sub { display: none; }
 
 </style>

@@ -3,6 +3,7 @@ import 'package:ptpatronus/api/announcement.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 公告页：按站点分组展示公告条目，每条可展开正文。
@@ -96,7 +97,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       body: RefreshIndicator(
         onRefresh: () => _load(refresh: true),
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const PTLoadingView()
             : _error != null
             ? PTEmptyState(text: _error!, onRetry: _load)
             : _results.isEmpty
@@ -110,7 +111,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
             : ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: _filteredResults.length,
-                itemBuilder: (_, i) => _group(_filteredResults[i]),
+                itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _group(_filteredResults[i])),
               ),
       ),
     );
@@ -168,9 +169,9 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                   ),
                 )
               else
-                const Text(
+                Text(
                   '暂无公告',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
               const Spacer(),
               if (_syncing == r.siteId)
@@ -219,8 +220,8 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                               padding: const EdgeInsets.only(right: 8),
                               child: Text(
                                 it.date,
-                                style: const TextStyle(
-                                  color: Colors.grey,
+                                style: TextStyle(
+                                  color: context.dimText,
                                   fontSize: 12,
                                 ),
                               ),
@@ -254,7 +255,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                 r.rawText.length > 300
                     ? '${r.rawText.substring(0, 300)}…'
                     : r.rawText,
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: context.dimText, fontSize: 13),
               ),
             ),
         ],

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import NotificationCenter from '@/components/NotificationCenter.vue'
 import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
@@ -57,7 +57,11 @@ const {
     <GlobalNoticeBar />
 
     <main class="content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="pt-page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
   </div>
 
@@ -66,34 +70,49 @@ const {
 </template>
 
 <style scoped>
-.layout { display: flex; height: 100vh; gap: 16px; padding: 16px; box-sizing: border-box; }
-.main { flex: 1; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-.topbar { position: relative; z-index: 100; display: flex; align-items: center; gap: 12px; padding: 10px 16px; }
+.layout { display: flex; height: 100vh; gap: var(--sp-4); padding: 16px; box-sizing: border-box; }
+.main { flex: 1; display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.topbar { position: relative; z-index: 100; display: flex; align-items: center; gap: var(--sp-3); padding: 10px 16px; }
 .spacer { flex: 1; }
-.icon-btn { background: transparent; border: none; cursor: pointer; font-size: 16px; color: var(--text-strong); padding: 6px 8px; border-radius: var(--radius-sm); }
-.icon-btn:hover { background: rgba(108, 92, 231, 0.12); }
-.search-trigger { display: inline-flex; align-items: center; gap: 8px; background: rgba(108, 92, 231, 0.06); border: 1px solid rgba(108, 92, 231, 0.12); cursor: pointer; color: var(--text-muted); padding: 6px 10px; border-radius: 999px; min-width: 0; font-size: 13px; }
-.search-trigger:hover { background: rgba(108, 92, 231, 0.12); color: var(--text-strong); }
+.icon-btn { background: transparent; border: none; cursor: pointer; font-size: var(--fs-lg); color: var(--text-strong); padding: 6px 8px; border-radius: var(--radius-sm); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.icon-btn:hover { background: var(--pt-primary-bg); }
+.search-trigger { display: inline-flex; align-items: center; gap: var(--sp-2); background: var(--pt-primary-bg); border: 1px solid var(--pt-primary-bg); cursor: pointer; color: var(--text-muted); padding: 6px 10px; border-radius: var(--radius-pill); min-width: 0; font-size: var(--fs-body); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.search-trigger:hover { background: var(--pt-primary-bg); color: var(--text-strong); }
 .search-placeholder { opacity: 0.75; }
-.search-kbd { font-family: inherit; font-size: 11px; padding: 1px 6px; border-radius: 6px; background: rgba(108, 92, 231, 0.1); border: 1px solid rgba(108, 92, 231, 0.14); color: var(--text-muted); margin-left: 4px; }
-.user-trigger { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 10px; border-radius: var(--radius-sm); outline: none; }
-.user-trigger:hover { background: rgba(108, 92, 231, 0.12); }
+.search-kbd { font-family: inherit; font-size: var(--fs-2xs); padding: 1px 6px; border-radius: var(--radius-xs); background: var(--pt-primary-bg); border: 1px solid var(--pt-primary-bg); color: var(--text-muted); margin-left: 4px; }
+.user-trigger { display: flex; align-items: center; gap: var(--sp-1); cursor: pointer; padding: 6px 10px; border-radius: var(--radius-sm); outline: none; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.user-trigger:hover { background: var(--pt-primary-bg); }
 .user-name { font-weight: 600; }
-.caret { font-size: 12px; opacity: 0.6; }
-.ai-btn { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text-strong); padding: 3px 10px 3px 5px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; }
-.ai-btn:hover { background: rgba(108, 92, 231, 0.12); }
-.ai-btn.router-link-active { background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(168, 85, 247, 0.18)); }
+.caret { font-size: var(--fs-xs); opacity: 0.6; }
+.ai-btn { display: inline-flex; align-items: center; gap: var(--sp-1); text-decoration: none; color: var(--text-strong); padding: 3px 10px 3px 5px; border-radius: var(--radius-sm); font-size: var(--fs-body); font-weight: 600; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.ai-btn:hover { background: var(--pt-primary-bg); }
+.ai-btn.router-link-active { background: linear-gradient(135deg, var(--pt-primary-bg), rgba(168, 85, 247, 0.18)); }
 .content { flex: 1; overflow: auto; }
 .mobile-nav-backdrop { display: none; }
 @media (max-width: 720px) {
   .layout { display: block; padding: 8px; height: 100dvh; }
   .mobile-nav-backdrop { display: block; position: fixed; inset: 0; z-index: 200; background: rgba(15, 23, 42, 0.32); backdrop-filter: blur(4px); }
-  .main { height: calc(100dvh - 16px); width: 100%; gap: 8px; }
+  .main { height: calc(100dvh - 16px); width: 100%; gap: var(--sp-2); }
   .topbar { padding: 8px 10px; min-height: 36px; }
   .search-trigger { padding: 6px 8px; }
   .user-trigger { padding: 5px 6px; }
   .user-name { max-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ai-label { display: none; }
   .content { min-width: 0; }
+}
+
+/* 路由切换：水润渐入渐出（全端生效） */
+.pt-page-enter-active,
+.pt-page-leave-active {
+  transition: opacity var(--dur-base) var(--ease-out-smooth),
+              transform var(--dur-base) var(--ease-out-smooth);
+}
+.pt-page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.pt-page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>

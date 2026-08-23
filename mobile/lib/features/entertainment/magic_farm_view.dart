@@ -120,7 +120,7 @@ class _MagicFarmViewState extends State<MagicFarmView> {
           Row(children: [
             Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(width: 6),
-            Text(sub, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            Text(sub, style: TextStyle(fontSize: 12, color: context.dimText)),
           ]),
           const SizedBox(height: 10),
           GridView.count(
@@ -145,7 +145,7 @@ class _MagicFarmViewState extends State<MagicFarmView> {
         Text(_emoji(it.name), style: const TextStyle(fontSize: 28)),
         const SizedBox(height: 2),
         Text(it.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-        Text('成长 ${it.growHours}h · 买 ${_fmt(it.price)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        Text('成长 ${it.growHours}h · 买 ${_fmt(it.price)}', style: TextStyle(fontSize: 11, color: context.dimText)),
         const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -154,7 +154,7 @@ class _MagicFarmViewState extends State<MagicFarmView> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(_statusText(it.status),
-              style: TextStyle(fontSize: 11, color: ready ? const Color(0xFF22C55E) : growing ? const Color(0xFFF59E0B) : Colors.grey)),
+              style: TextStyle(fontSize: 11, color: ready ? const Color(0xFF22C55E) : growing ? const Color(0xFFF59E0B) : context.dimText)),
         ),
         const SizedBox(height: 6),
         SizedBox(
@@ -182,7 +182,7 @@ class _MagicFarmViewState extends State<MagicFarmView> {
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(children: [
                   Text('${w.name} ×${w.count}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                  if (w.marketPrice > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('市价 ${_fmt(w.marketPrice)}', style: const TextStyle(fontSize: 11, color: Colors.grey))),
+                  if (w.marketPrice > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('市价 ${_fmt(w.marketPrice)}', style: TextStyle(fontSize: 11, color: context.dimText))),
                   const Spacer(),
                   SizedBox(
                     height: 26,
@@ -203,14 +203,14 @@ class _MagicFarmViewState extends State<MagicFarmView> {
           Row(children: [
             const Text('🛒 菜市场', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(width: 6),
-            const Text('每 24h 更新，±20%', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            Text('每 24h 更新，±20%', style: TextStyle(fontSize: 12, color: context.dimText)),
           ]),
           const SizedBox(height: 8),
           ..._farm!.market.map((m) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Row(children: [
                   Text(m.name, style: const TextStyle(fontSize: 13)),
-                  Padding(padding: const EdgeInsets.only(left: 6), child: Text(m.section == 'crop' ? '农作物' : '动物', style: const TextStyle(fontSize: 11, color: Colors.grey))),
+                  Padding(padding: const EdgeInsets.only(left: 6), child: Text(m.section == 'crop' ? '农作物' : '动物', style: TextStyle(fontSize: 11, color: context.dimText))),
                   const Spacer(),
                   Text(_fmt(m.marketPrice), style: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.w700, fontSize: 13)),
                 ]),

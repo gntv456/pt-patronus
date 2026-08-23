@@ -231,17 +231,17 @@ async function doExport(): Promise<void> {
 </template>
 
 <style scoped>
-.export-cfg { display: flex; flex-direction: column; gap: 16px; }
-.sec { display: flex; flex-direction: column; gap: 8px; }
-.sec-t { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px; }
-.hint { font-size: 12px; }
-.bg-row { display: flex; align-items: center; gap: 8px; }
-.bg-preview { width: 56px; height: 36px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.12); }
-.sliders { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-.slider-row { display: grid; grid-template-columns: 40px 48px 1fr; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.export-cfg { display: flex; flex-direction: column; gap: var(--sp-4); }
+.sec { display: flex; flex-direction: column; gap: var(--sp-2); }
+.sec-t { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: var(--fs-md); }
+.hint { font-size: var(--fs-xs); }
+.bg-row { display: flex; align-items: center; gap: var(--sp-2); }
+.bg-preview { width: 56px; height: 36px; object-fit: cover; border-radius: var(--radius-xs); border: 1px solid rgba(255, 255, 255, 0.12); }
+.sliders { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: 4px; }
+.slider-row { display: grid; grid-template-columns: 40px 48px 1fr; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--text-muted); }
 .slider-row b { color: #c7ccdb; font-weight: 600; }
-.fields-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 12px; }
-.site-row { display: flex; align-items: center; gap: 8px; }
-.num-hint { font-size: 12px; white-space: nowrap; }
-.switch-row { display: flex; gap: 18px; }
+.fields-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-1) var(--sp-3); }
+.site-row { display: flex; align-items: center; gap: var(--sp-2); }
+.num-hint { font-size: var(--fs-xs); white-space: nowrap; }
+.switch-row { display: flex; gap: var(--sp-4); }
 </style>

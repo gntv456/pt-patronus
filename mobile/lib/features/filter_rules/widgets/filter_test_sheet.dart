@@ -141,7 +141,7 @@ class _FilterTestSheetState extends State<FilterTestSheet> {
       _sectionHeader('命中 (${r.matched.length})', PTColors.success),
       const SizedBox(height: 4),
       if (r.matched.isEmpty)
-        const Padding(padding: EdgeInsets.only(top: 2), child: Text('无', style: TextStyle(fontSize: 12, color: Colors.grey)))
+        Padding(padding: const EdgeInsets.only(top: 2), child: Text('无', style: TextStyle(fontSize: 12, color: context.dimText)))
       else
         ...r.matched.map((m) => ListTile(
               dense: true,
@@ -152,13 +152,13 @@ class _FilterTestSheetState extends State<FilterTestSheet> {
                 child: Text('${m.priOrder}', style: const TextStyle(fontSize: 11, color: PTColors.success, fontWeight: FontWeight.w700)),
               ),
               title: Text(m.torrent.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-              subtitle: const Text('pri_order 越大越优', style: TextStyle(fontSize: 10, color: Colors.grey)),
+              subtitle: Text('pri_order 越大越优', style: TextStyle(fontSize: 10, color: context.dimText)),
             )),
       const SizedBox(height: 8),
       _sectionHeader('剔除 (${r.dropped.length})', PTColors.danger),
       const SizedBox(height: 4),
       if (r.dropped.isEmpty)
-        const Padding(padding: EdgeInsets.only(top: 2), child: Text('无', style: TextStyle(fontSize: 12, color: Colors.grey)))
+        Padding(padding: const EdgeInsets.only(top: 2), child: Text('无', style: TextStyle(fontSize: 12, color: context.dimText)))
       else
         ...r.dropped.map((t) => ListTile(
               dense: true,

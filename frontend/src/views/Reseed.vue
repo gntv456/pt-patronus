@@ -146,43 +146,43 @@ const {
 </template>
 
 <style scoped>
-.reseed { display: flex; flex-direction: column; gap: 14px; height: 100%; min-height: 0; }
-.page-head { display: flex; align-items: center; gap: 12px; flex: none; min-width: 0; }
-.page-title { margin: 0; font-size: 22px; font-weight: 700; flex: none; }
-.subtitle { margin: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.cfg-chip { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; flex: none; background: rgba(255, 255, 255, 0.5); }
+.reseed { display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; min-height: 0; }
+.page-head { display: flex; align-items: center; gap: var(--sp-3); flex: none; min-width: 0; }
+.page-title { margin: 0; font-size: var(--fs-title); font-weight: 700; flex: none; }
+.subtitle { margin: 0; font-size: var(--fs-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.cfg-chip { display: inline-flex; align-items: center; gap: var(--sp-1); margin-left: auto; padding: 5px 12px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; flex: none; background: rgba(255, 255, 255, 0.5); }
 :root.dark .cfg-chip { background: rgba(255, 255, 255, 0.06); }
 .cfg-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .cfg-chip.ok { color: var(--pt-success); }
 .cfg-chip.warn { color: var(--pt-warn); }
-.toolbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; flex-wrap: wrap; flex: none; }
+.toolbar { display: flex; align-items: center; gap: var(--sp-2); padding: 12px 16px; flex-wrap: wrap; flex: none; }
 .dl-select { width: 220px; }
 .btn-ico { margin-right: 5px; vertical-align: middle; }
 .spacer { flex: 1; }
 .table-card { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 14px 16px; }
-.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-weight: 600; font-size: 15px; flex: none; }
-.cnt { font-weight: 400; font-size: 13px; margin-left: 2px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-weight: 600; font-size: var(--fs-lg); flex: none; }
+.cnt { font-weight: 400; font-size: var(--fs-body); margin-left: 2px; }
 .table-wrap { flex: 1; min-height: 0; }
 :deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) { background-color: transparent !important; }
-.src-name { font-size: 13px; }
-.dl-link { color: #6ea8fe; font-size: 13px; }
-.row-actions { display: flex; gap: 6px; }
+.src-name { font-size: var(--fs-body); }
+.dl-link { color:var(--pt-primary-2); font-size: var(--fs-body); }
+.row-actions { display: flex; gap: var(--sp-1); }
 </style>
 
 <!-- 弹层（el-popover teleport 到 body，scoped 选不中，单独用 popper-class 命名空间） -->
 <style>
 .reseed-cfg-pop { --el-popover-padding: 16px; }
-.reseed-cfg-pop .cfg-sec-title { font-weight: 600; font-size: 13px; }
+.reseed-cfg-pop .cfg-sec-title { font-weight: 600; font-size: var(--fs-body); }
 .reseed-cfg-pop .cfg-sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.reseed-cfg-pop .cfg-state { font-size: 12px; font-weight: 600; }
+.reseed-cfg-pop .cfg-state { font-size: var(--fs-xs); font-weight: 600; }
 .reseed-cfg-pop .cfg-state.ok { color: var(--pt-success); }
-.reseed-cfg-pop .cfg-hint { margin: 0 0 8px; font-size: 12px; line-height: 1.4; }
+.reseed-cfg-pop .cfg-hint { margin: 0 0 8px; font-size: var(--fs-xs); line-height: 1.4; }
 .reseed-cfg-pop .cfg-state.warn { color: var(--pt-warn); }
-.reseed-cfg-pop .token-row { display: flex; gap: 8px; }
-.reseed-cfg-pop .cfg-link { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--pt-primary); text-decoration: none; }
+.reseed-cfg-pop .token-row { display: flex; gap: var(--sp-2); }
+.reseed-cfg-pop .cfg-link { display: inline-block; margin-top: 8px; font-size: var(--fs-xs); color: var(--pt-primary); text-decoration: none; }
 .reseed-cfg-pop .cfg-divider { height: 1px; background: rgba(128, 128, 128, 0.18); margin: 14px 0; }
-.reseed-cfg-pop .switch-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: 13px; }
+.reseed-cfg-pop .switch-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; font-size: var(--fs-body); }
 .reseed-cfg-pop .switch-row .sub-label { color: var(--text-muted); }
-.reseed-cfg-pop .cfg-cron { font-size: 12px; margin: 6px 0 0; }
-.reseed-cfg-pop .cfg-empty { font-size: 13px; margin: 0; }
+.reseed-cfg-pop .cfg-cron { font-size: var(--fs-xs); margin: 6px 0 0; }
+.reseed-cfg-pop .cfg-empty { font-size: var(--fs-body); margin: 0; }
 </style>

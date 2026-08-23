@@ -368,7 +368,7 @@ function onBatchCommand(command: string) {
 .action-group { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
 .action-group.first { padding-top: 0; margin-top: 0; border-top: 0; }
 .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.action-cell { display: flex; align-items: center; min-height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: background .15s; }
+.action-cell { display: flex; align-items: center; min-height: 36px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: background var(--dur-fast) var(--ease-out-smooth); }
 .action-cell:hover { background: var(--surface-muted, rgba(127,127,127,.1)); }
 .action-cell.danger { color: var(--pt-danger); }
 .action-cell.danger:hover { background: color-mix(in srgb, var(--pt-danger) 12%, transparent); }

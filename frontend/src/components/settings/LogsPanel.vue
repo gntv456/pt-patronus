@@ -31,17 +31,17 @@ const { logs, logLevel, logLoading, loadLogs, clearLogs, copyLogs, fmtTime, attr
 </template>
 
 <style scoped>
-.logs-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.log-count { font-size: 12px; }
+.logs-bar { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 10px; }
+.log-count { font-size: var(--fs-xs); }
 .logs-list {
   padding: 8px;
   max-height: 62vh;
   overflow-y: auto;
   font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
-.log-line { display: flex; gap: 8px; padding: 3px 6px; border-radius: 4px; align-items: baseline; }
-.log-line:hover { background: rgba(108, 92, 231, 0.06); }
+.log-line { display: flex; gap: var(--sp-2); padding: 3px 6px; border-radius: var(--radius-2xs); align-items: baseline; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.log-line:hover { background: var(--pt-primary-bg); }
 .log-line.error { color: var(--pt-danger); }
 .log-line.warn { color: var(--pt-warn, #f59e0b); }
 .log-line.debug { color: var(--text-muted); }

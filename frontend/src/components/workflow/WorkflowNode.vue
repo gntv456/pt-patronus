@@ -79,12 +79,21 @@ const outputs = computed<string[]>(() => {
 .wf-node {
   width: 160px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: var(--el-bg-color, #fff);
   border: 2px solid var(--c);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  font-size: 13px;
+  box-shadow: var(--shadow-md);
+  font-size: var(--fs-body);
   cursor: grab;
+  transition: transform var(--dur-fast) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth);
+}
+.wf-node:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+.wf-node:active {
+  cursor: grabbing;
+  transform: scale(0.98);
 }
 .wf-node.selected {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 40%, transparent), 0 4px 12px rgba(0, 0, 0, 0.18);
@@ -92,7 +101,7 @@ const outputs = computed<string[]>(() => {
 .head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   font-weight: 700;
 }
 .dot {
@@ -103,7 +112,7 @@ const outputs = computed<string[]>(() => {
 }
 .meta {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .branches {
@@ -112,12 +121,12 @@ const outputs = computed<string[]>(() => {
   margin-top: 6px;
 }
 .branch-tag {
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-weight: 700;
-  background: rgba(108, 92, 231, 0.18);
-  color: #6c5ce7;
+  background: var(--pt-primary-bg);
+  color: var(--pt-primary);
 }
 .handle {
   width: 11px;

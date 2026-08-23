@@ -7,6 +7,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// 字幕页（对齐 Web Subtitle.vue）：跨 ASSRT/OpenSubtitles/SubHD/字幕库 聚合搜索 + 下载 + 源配置。
@@ -199,7 +200,7 @@ class _SubtitlePageState extends State<SubtitlePage> {
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
       itemCount: _results.length,
       separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (_, i) => _resultTile(_results[i]),
+      itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _resultTile(_results[i])),
     );
   }
 
@@ -227,7 +228,7 @@ class _SubtitlePageState extends State<SubtitlePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: accent ? PTColors.success.withValues(alpha: 0.18) : Colors.grey.withValues(alpha: 0.16),
+        color: accent ? PTColors.success.withValues(alpha: 0.18) : context.dimText.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
@@ -328,7 +329,7 @@ class _ConfigFormState extends State<_ConfigForm> {
   Widget _field(String label, Widget child) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           const SizedBox(height: 6),
           child,
         ]),

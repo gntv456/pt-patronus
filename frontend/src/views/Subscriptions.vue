@@ -296,19 +296,19 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
-.head { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
-.head-left { display: flex; flex-direction: column; gap: 4px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.head { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
+.head-left { display: flex; flex-direction: column; gap: var(--sp-1); }
 .global-btn { flex: none; }
-.gd-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.gd-row { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 12px; flex-wrap: wrap; }
 .gd-label { width: 64px; flex: none; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
-.hint { font-size: 13px; }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.hint { font-size: var(--fs-body); }
 .card { padding: 18px; min-height: 160px; }
 .subs {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 410px), 450px));
-  gap: 14px;
+  gap: var(--sp-3);
   align-items: start;
 }
 .sub {
@@ -316,9 +316,9 @@ onMounted(() => {
   width: 100%;
   max-width: 450px;
   box-sizing: border-box;
-  gap: 14px;
+  gap: var(--sp-3);
   padding: 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: var(--surface-muted);
 }
 .poster {
@@ -326,29 +326,40 @@ onMounted(() => {
   aspect-ratio: 2 / 3;
   align-self: flex-start;
   flex: none;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
   background: var(--surface-muted);
 }
-.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.s-title { font-weight: 700; font-size: 16px; }
-.small { font-size: 12px; }
-.chip { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-.chip.subscribed { background: rgba(46,204,113,0.18); color: var(--pt-success, #2ecc71); }
-.chip.completed { background: rgba(108,92,231,0.18); color: #6c5ce7; }
-.chip.paused { background: rgba(243,156,18,0.18); color: var(--pt-warn, #f39c12); }
-.chip.res { background: rgba(66,133,244,0.18); color: #4285f4; }
-.res-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.row1 { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.s-title { font-weight: 700; font-size: var(--fs-lg); }
+.small { font-size: var(--fs-xs); }
+.chip { padding: 2px 10px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; }
+.chip.subscribed { background: var(--pt-success-bg); color: var(--pt-success, #2ecc71); }
+.chip.completed { background: var(--pt-primary-bg); color: var(--pt-primary); }
+.chip.paused { background: var(--pt-warn-bg); color: var(--pt-warn, #f39c12); }
+.chip.res { background: var(--pt-primary-2-bg); color: var(--pt-primary-2); }
+.res-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px; }
 .empty { padding: 40px; text-align: center; }
 
 @media (max-width: 640px) {
   .card { padding: 12px; }
-  .sub { gap: 12px; padding: 12px; }
+  .sub { gap: var(--sp-3); padding: 12px; }
   .poster { width: 76px; }
 }
 .page-tabs { margin-top: 4px; padding: 4px 10px 12px; } .global-subscribe-dialog :deep(.el-dialog__body) { max-height: 72vh; overflow-y: auto; padding-right: 8px; }
 .rss-embed :deep(.page) { padding: 0; }
-.rss-embed :deep(.title) { font-size: 16px; }
+.rss-embed :deep(.title) { font-size: var(--fs-lg); }
+
+/* 订阅卡 staggered 入场 + hover */
+.subs > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
+.subs > *:nth-child(1) { animation-delay: 0ms; }
+.subs > *:nth-child(2) { animation-delay: 50ms; }
+.subs > *:nth-child(3) { animation-delay: 100ms; }
+.subs > *:nth-child(4) { animation-delay: 150ms; }
+.subs > *:nth-child(5) { animation-delay: 200ms; }
+.subs > *:nth-child(n+6) { animation-delay: 250ms; }
+.sub { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
+.sub:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 </style>

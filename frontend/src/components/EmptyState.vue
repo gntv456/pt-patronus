@@ -35,6 +35,14 @@ withDefaults(
   font-size: 40px;
   line-height: 1;
   opacity: 0.7;
+  animation: es-float 3s var(--ease-in-out) infinite;
+}
+@keyframes es-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .es-icon { animation: none; }
 }
 .es-title {
   font-size: var(--fs-md);

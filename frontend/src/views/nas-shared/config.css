@@ -7,10 +7,10 @@
   overflow: auto;
   margin: 10px 0 0;
   padding: 9px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(15, 23, 42, 0.06);
   color: var(--text-strong);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -25,19 +25,19 @@
 }
 .history-list {
   display: grid;
-  gap: 10px;
+  gap: var(--sp-2);
 }
 .history-item {
   padding: 10px;
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
 }
 .history-top {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--sp-2);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .history-top b {
   color: var(--text-strong);

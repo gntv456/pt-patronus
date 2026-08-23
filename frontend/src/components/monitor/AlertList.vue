@@ -42,27 +42,27 @@ const levelColor: Record<string, string> = {
 .alert-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-1);
   height: 100%;
   overflow: auto;
   padding-right: 2px;
 }
 .empty {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-body);
   padding: 16px;
   text-align: center;
 }
 .alert-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--sp-2);
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: var(--glass-bg);
 }
 .alert-item.unread {
-  background: rgba(108, 92, 231, 0.1);
+  background: var(--pt-primary-bg);
 }
 .alert-item.resolved {
   opacity: 0.6;
@@ -79,11 +79,11 @@ const levelColor: Record<string, string> = {
   min-width: 0;
 }
 .al-msg {
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--text-strong);
 }
 .al-meta {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   margin-top: 2px;
 }
@@ -102,7 +102,7 @@ const levelColor: Record<string, string> = {
 .alert-actions {
   display: flex;
   flex: none;
-  gap: 2px;
+  gap: var(--sp-1);
   align-items: center;
 }
 @media (max-width: 520px) {

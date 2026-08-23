@@ -224,7 +224,7 @@ class _PTPageAppBarState extends State<PTPageAppBar> {
 
     // 5. 站点筛选按钮（单独按钮 + 紧凑弹窗，不与 filterDimensions 混）。
     if (widget.siteFilter != null) {
-      out.add(_siteButton(widget.siteFilter!));
+      out.add(_siteButton(context, widget.siteFilter!));
     }
 
     // 6. 通用筛选按钮（filterDimensions 非空才渲染）。
@@ -303,10 +303,11 @@ class _PTPageAppBarState extends State<PTPageAppBar> {
     );
   }
 
-  Widget _siteButton(PTSiteFilterConfig s) {
+  Widget _siteButton(BuildContext context, PTSiteFilterConfig s) {
     final c = PTColors.primary;
     final on = s.active;
-    final dim = on ? c : Colors.grey.shade600;
+    final subtle = Theme.of(context).colorScheme.onSurfaceVariant;
+    final dim = on ? c : subtle;
     return Tooltip(
       message: '${s.label}：${s.selectedLabel}',
       child: GestureDetector(
@@ -325,7 +326,7 @@ class _PTPageAppBarState extends State<PTPageAppBar> {
             border: Border.all(
               color: on
                   ? c.withValues(alpha: 0.5)
-                  : Colors.grey.withValues(alpha: 0.35),
+                  : context.dimText.withValues(alpha: 0.35),
             ),
             borderRadius: BorderRadius.circular(999),
           ),
@@ -342,7 +343,7 @@ class _PTPageAppBarState extends State<PTPageAppBar> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: on ? FontWeight.w700 : FontWeight.w500,
-                    color: on ? c : Colors.black87,
+                    color: on ? c : context.mainText,
                   ),
                 ),
               ),

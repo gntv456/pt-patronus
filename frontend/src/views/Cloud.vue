@@ -306,7 +306,7 @@ onMounted(async () => {
           </el-select>
         </el-form-item>
         <el-form-item label="云盘目录">
-          <div style="display: flex; gap: 6px; width: 100%">
+          <div style="display: flex; gap: var(--sp-1); width: 100%">
             <el-input v-model="ruleForm.cloud_path" placeholder="/电影" style="flex: 1" />
             <el-button @click="ruleBrowse">浏览</el-button>
           </div>
@@ -365,34 +365,34 @@ onMounted(async () => {
   padding: 0;
 }
 .page.embedded .embedded-title {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   margin: 0;
 }
 .page.embedded .embedded-sub {
   margin-top: 0;
   margin-bottom: 12px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
-.page { display: flex; flex-direction: column; gap: 14px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-3); }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.head-actions { display: flex; gap: 8px; }
-.title { margin: 0; font-size: 22px; font-weight: 700; }
+.head-actions { display: flex; gap: var(--sp-2); }
+.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
 .sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
 .tabs { margin-top: 4px; }
 .pane-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-.card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.card-head { display: flex; align-items: center; gap: 12px; }
-.card-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.name { font-weight: 600; font-size: var(--fs-body); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
+.card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-3); }
+.card-head { display: flex; align-items: center; gap: var(--sp-3); }
+.card-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
+.name { font-weight: 600; font-size: var(--fs-body); display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
 .meta { font-size: var(--fs-xs); color: var(--text-muted); word-break: break-all; }
-.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .hint { font-size: var(--fs-xs); color: var(--text-muted); display: block; margin-top: 4px; }
-.browse-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.browse-bar { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 10px; }
 .browse-path { font-size: var(--fs-sm); color: var(--text-strong); word-break: break-all; }
 .browse-list { display: flex; flex-direction: column; max-height: 50vh; overflow-y: auto; }
-.browse-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: var(--fs-sm); display: flex; justify-content: space-between; align-items: center; }
+.browse-item { padding: 8px 10px; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-sm); display: flex; justify-content: space-between; align-items: center; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
 .browse-item:hover { background: var(--bg-elev, rgba(255, 255, 255, 0.06)); }
 .browse-item.file { cursor: default; }
 </style>

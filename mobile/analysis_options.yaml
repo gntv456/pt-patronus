@@ -9,6 +9,15 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+# 鸿蒙专用源码排除：file_picker_ohos_impl.dart 依赖鸿蒙专用包
+# file_picker_ohos（由 pubspec_overrides.ohos.yaml 引入），日常（官方
+# SDK）pub get 不解析该包，analyzer 必然报 uri_does_not_exist。此文件只在
+# 鸿蒙构建时由 scripts/build_ohos.ps1 参与编译，鸿蒙侧用 ohos fork 的
+# flutter analyze 单独校验。
+analyzer:
+  exclude:
+    - lib/core/platform/file_picker_ohos_impl.dart
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

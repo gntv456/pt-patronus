@@ -124,14 +124,14 @@ function fmtTime(s: string | null): string {
   margin-bottom: 12px;
 }
 .am-hint {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .am-dot.on {
   color: #11998e;
 }
-.am-latest { font-size: 12px; color: var(--pt-primary); margin-left: 12px; }
+.am-latest { font-size: var(--fs-xs); color: var(--pt-primary); margin-left: 12px; }
 .am-dot.off {
-  color: #e74c3c;
+  color: var(--pt-danger);
 }
 </style>

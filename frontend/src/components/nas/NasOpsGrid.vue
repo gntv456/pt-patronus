@@ -66,7 +66,7 @@ const emit = defineEmits<{
 .ops-shortcuts {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--sp-1);
   overflow-x: auto;
   scrollbar-width: thin;
   padding: 4px 0;
@@ -75,7 +75,7 @@ const emit = defineEmits<{
 .sc-tab {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--sp-1);
   padding: 5px 12px;
   border: 0;
   border-radius: var(--radius-pill);
@@ -84,7 +84,7 @@ const emit = defineEmits<{
   font-size: var(--fs-sm);
   color: var(--text-muted);
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
   flex-shrink: 0;
 }
 .sc-tab:hover {
@@ -102,9 +102,9 @@ const emit = defineEmits<{
 }
 .sc-tab em {
   font-style: normal;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   padding: 0 5px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: var(--surface-muted);
   color: var(--text-muted);
   line-height: 1.4;
@@ -132,7 +132,7 @@ const emit = defineEmits<{
 
 @media (max-width: 760px) {
   .sc-tab span { font-size: 0; }
-  .sc-tab em { font-size: 11px; }
+  .sc-tab em { font-size: var(--fs-2xs); }
   .sc-tab { padding: 6px 8px; }
   .sc-ico { width: 18px; height: 18px; }
   .sc-divider { display: none; }

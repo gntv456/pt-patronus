@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 /// 好学 WebView 登录页：用户在内嵌浏览器手动登录好学，点「完成」提取全部 cookie
 /// （含 HttpOnly 的 c_secure_uid / c_secure_pass 等），以字符串返回给调用方
@@ -93,7 +94,7 @@ class _HxptWebLoginPageState extends State<HxptWebLoginPage> {
             if (_busy)
               Container(
                 color: Colors.black38,
-                child: const Center(child: CircularProgressIndicator()),
+                child: const PTLoadingView(),
               ),
           ],
         ),

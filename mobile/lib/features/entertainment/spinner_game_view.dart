@@ -242,12 +242,12 @@ class _SpinnerGameViewState extends State<SpinnerGameView>
                       borderRadius: BorderRadius.circular(8)),
                     child: Text('${g.name} ×${g.n}',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                            color: g.win ? const Color(0xFF16A34A) : Colors.grey)),
+                            color: g.win ? const Color(0xFF16A34A) : context.dimText)),
                   )).toList())
             else if (_last!.prize.isNotEmpty)
                 Text(_last!.prize, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
-            if (_last!.balance > 0) Text('余额 ${_last!.balance.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            if (_last!.message.isNotEmpty) Text(_last!.message, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            if (_last!.balance > 0) Text('余额 ${_last!.balance.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: context.dimText)),
+            if (_last!.message.isNotEmpty) Text(_last!.message, style: TextStyle(fontSize: 12, color: context.dimText)),
           ])),
         ]),
       );
@@ -273,10 +273,10 @@ class _SpinnerGameViewState extends State<SpinnerGameView>
           ..._records.take(10).map((r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(children: [
-                  Text(r.prizeName, style: TextStyle(fontSize: 13, color: r.prizeName == '未中奖' ? Colors.grey : null, fontWeight: FontWeight.w600)),
+                  Text(r.prizeName, style: TextStyle(fontSize: 13, color: r.prizeName == '未中奖' ? context.dimText : null, fontWeight: FontWeight.w600)),
                   if (r.amount > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('×${r.amount.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13))),
                   const Spacer(),
-                  Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(r.createdAt, style: TextStyle(fontSize: 11, color: context.dimText)),
                 ]),
               )),
         ]),

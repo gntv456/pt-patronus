@@ -102,9 +102,9 @@ onUnmounted(() => abortCtrl?.abort())
 
     <div class="filter-bar glass">
       <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">全部 ({{ cards.length }})</button>
-      <button class="chip" :class="{ on: filter === 'safe' }" @click="filter = 'safe'" style="color:#2ecc71">安全 ({{ counts.safe }})</button>
-      <button class="chip" :class="{ on: filter === 'progress' }" @click="filter = 'progress'" style="color:#3498db">进行中 ({{ counts.progress }})</button>
-      <button class="chip" :class="{ on: filter === 'danger' }" @click="filter = 'danger'" style="color:#f56c6c">危险 ({{ counts.danger }})</button>
+      <button class="chip" :class="{ on: filter === 'safe' }" @click="filter = 'safe'" style="color:var(--pt-success)">安全 ({{ counts.safe }})</button>
+      <button class="chip" :class="{ on: filter === 'progress' }" @click="filter = 'progress'" style="color:var(--pt-primary-2)">进行中 ({{ counts.progress }})</button>
+      <button class="chip" :class="{ on: filter === 'danger' }" @click="filter = 'danger'" style="color:var(--pt-danger)">危险 ({{ counts.danger }})</button>
     </div>
 
     <p v-if="loading && !cards.length" style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
@@ -161,28 +161,28 @@ onUnmounted(() => abortCtrl?.abort())
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.head-tools { display: flex; align-items: center; gap: 10px; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
-.filter-bar { display: flex; gap: 8px; padding: 10px 14px; flex-wrap: wrap; }
-.chip { background: transparent; border: 1px solid transparent; border-radius: 999px; padding: 4px 12px; cursor: pointer; font-size: 13px; color: var(--text-strong); }
-.chip.on { background: rgba(108,92,231,0.14); border-color: rgba(108,92,231,0.3); }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.head-tools { display: flex; align-items: center; gap: var(--sp-2); }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.filter-bar { display: flex; gap: var(--sp-2); padding: 10px 14px; flex-wrap: wrap; }
+.chip { background: transparent; border: 1px solid transparent; border-radius: var(--radius-pill); padding: 4px 12px; cursor: pointer; font-size: var(--fs-body); color: var(--text-strong); }
+.chip.on { background: var(--pt-primary-bg); border-color: var(--pt-primary-bg); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-3); }
 .assess-card { padding: 14px; border-left: 3px solid #95a5a6; }
-.card-top { display: flex; align-items: center; gap: 8px; }
+.card-top { display: flex; align-items: center; gap: var(--sp-2); }
 .site-name { font-weight: 600; }
-.status-tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
+.status-tag { font-size: var(--fs-2xs); padding: 1px 8px; border-radius: var(--radius-pill); font-weight: 600; }
 .spacer { flex: 1; }
-.remain { font-size: 12px; color: var(--text-muted); }
-.err { color: var(--pt-danger); font-size: 13px; margin-top: 8px; }
-.progress-bar { margin-top: 10px; height: 8px; border-radius: 4px; background: var(--surface-muted); overflow: hidden; }
-.progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-.progress-num { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-.task-name { font-size: 12px; color: var(--pt-primary,#6c5ce7); margin-top: 2px; }
-.note { font-size: 12px; color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
-.metrics { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
-.metric { display: flex; gap: 8px; font-size: 12px; align-items: center; }
+.remain { font-size: var(--fs-xs); color: var(--text-muted); }
+.err { color: var(--pt-danger); font-size: var(--fs-body); margin-top: 8px; }
+.progress-bar { margin-top: 10px; height: 8px; border-radius: var(--radius-2xs); background: var(--surface-muted); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: var(--radius-2xs); transition: width var(--dur-slow) var(--ease-out-smooth); }
+.progress-num { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 4px; }
+.task-name { font-size: var(--fs-xs); color: var(--pt-primary,#6c5ce7); margin-top: 2px; }
+.note { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 4px; line-height: 1.45; }
+.metrics { margin-top: 10px; display: flex; flex-direction: column; gap: var(--sp-1); }
+.metric { display: flex; gap: var(--sp-2); font-size: var(--fs-xs); align-items: center; }
 .m-label { flex: 1; color: var(--text-strong); }
 .m-val { color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .m-met { font-weight: 700; }

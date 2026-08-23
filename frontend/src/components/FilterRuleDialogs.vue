@@ -72,6 +72,6 @@ const emit = defineEmits<{ (e: 'saveCustom'): void; (e: 'saveGroup'): void }>()
 </template>
 
 <style scoped>
-.syntax { font-size: 12px; color: var(--text-muted); line-height: 1.6; margin: 0; }
-.syntax code { background: var(--surface-hover, rgba(127, 127, 127, 0.15)); padding: 1px 5px; border-radius: 4px; }
+.syntax { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; margin: 0; }
+.syntax code { background: var(--surface-hover, rgba(127, 127, 127, 0.15)); padding: 1px 5px; border-radius: var(--radius-2xs); }
 </style>

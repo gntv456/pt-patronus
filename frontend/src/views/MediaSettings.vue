@@ -132,7 +132,7 @@ onMounted(load)
 .page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-4);
 }
 .head {
   display: flex;
@@ -141,67 +141,67 @@ onMounted(load)
 }
 .title {
   margin: 4px 0;
-  font-size: 22px;
+  font-size: var(--fs-title);
   font-weight: 700;
 }
 .card {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--sp-4);
 }
 .hint {
-  font-size: 13px;
+  font-size: var(--fs-body);
   line-height: 1.7;
   color: var(--text-muted);
-  background: rgba(108, 92, 231, 0.06);
+  background: var(--pt-primary-bg);
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 }
 .hint code {
   background: var(--surface-muted);
   padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--radius-2xs);
+  font-size: var(--fs-xs);
 }
 .group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .group-title {
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 .muted {
   color: var(--text-muted);
   font-weight: 400;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .field {
   display: grid;
   grid-template-columns: 140px 1fr auto;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .field label {
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--text-strong);
 }
 .chip {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 2px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 .chip.ok {
-  background: rgba(46, 204, 113, 0.16);
+  background: var(--pt-success-bg);
   color: var(--pt-success, #2ecc71);
 }
 .chip.warn {
-  background: rgba(243, 156, 18, 0.16);
+  background: var(--pt-warn-bg);
   color: var(--pt-warn, #f39c12);
 }
 .actions {
@@ -217,8 +217,8 @@ onMounted(load)
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
 .page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
 .page.embedded > .sub { display: none; }
 
 </style>

@@ -224,14 +224,14 @@ function onSectionChange(sec: string | number) {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
 .tabs { padding: 8px 14px; }
 .card { padding: 16px 18px; margin-bottom: 12px; }
 .row-title { font-weight: 600; }
-.oidc-wrap { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
-.oidc-help { font-size: 13px; line-height: 1.6; }
-.oidc-help code { background: var(--card); padding: 2px 6px; border-radius: 4px; }
+.oidc-wrap { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 640px; }
+.oidc-help { font-size: var(--fs-body); line-height: 1.6; }
+.oidc-help code { background: var(--card); padding: 2px 6px; border-radius: var(--radius-2xs); }
 .oidc-save { display: flex; justify-content: flex-end; }
 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mt8 { margin-top: 8px; }

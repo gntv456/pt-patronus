@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
+import 'package:ptpatronus/theme/glass.dart';
 
 // 卡牌合成：目标卡 + 碎片库存网格 + 单抽/十连/百连/合成 + 记录（对齐 Web 卡牌合成面板）。
 class CardSynthView extends StatefulWidget {
@@ -113,7 +114,7 @@ class _CardSynthViewState extends State<CardSynthView> {
   @override
   Widget build(BuildContext context) {
     if (_targets.isEmpty) {
-      return Center(child: Padding(padding: const EdgeInsets.all(30), child: Text('未解析到合成目标（可能未登录或页面结构变化）', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey, fontSize: 13))));
+      return Center(child: Padding(padding: const EdgeInsets.all(30), child: Text('未解析到合成目标（可能未登录或页面结构变化）', textAlign: TextAlign.center, style: TextStyle(color: context.dimText, fontSize: 13))));
     }
     final sel = _selected;
     return ListView(
@@ -189,7 +190,7 @@ class _CardSynthViewState extends State<CardSynthView> {
       ]);
 
   Widget _fragGrid(SynthesisTarget t) => t.fragments.isEmpty
-      ? const Padding(padding: EdgeInsets.all(12), child: Text('无碎片数据', style: TextStyle(color: Colors.grey, fontSize: 12)))
+      ? Padding(padding: EdgeInsets.all(12), child: Text('无碎片数据', style: TextStyle(color: context.dimText, fontSize: 12)))
       : GridView.count(
           crossAxisCount: 4,
           shrinkWrap: true,
@@ -252,7 +253,7 @@ class _CardSynthViewState extends State<CardSynthView> {
                 Text('抽取记录（${_history.length}）', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF6A5ACD))),
                 const SizedBox(height: 4),
                 if (_history.isEmpty)
-                  const Text('暂无记录', style: TextStyle(color: Colors.grey, fontSize: 12))
+                  Text('暂无记录', style: TextStyle(color: context.dimText, fontSize: 12))
                 else
                   Column(children: _history.take(10).map((r) => Padding(
                     padding: const EdgeInsets.only(top: 3),
@@ -260,7 +261,7 @@ class _CardSynthViewState extends State<CardSynthView> {
                       Expanded(child: Text(r.prizeName.isNotEmpty ? r.prizeName : '—', style: const TextStyle(color: Color(0xFFFF69B4), fontSize: 11, fontWeight: FontWeight.w600))),
                       if (r.cost > 0) Text('-${_fmt(r.cost.round())}', style: const TextStyle(color: Color(0xFFE67E22), fontSize: 11)),
                       const SizedBox(width: 6),
-                      Text(r.createdAt, style: const TextStyle(color: Colors.grey, fontSize: 9)),
+                      Text(r.createdAt, style: TextStyle(color: context.dimText, fontSize: 9)),
                     ]),
                   )).toList()),
               ]),

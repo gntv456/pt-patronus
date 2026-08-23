@@ -20,15 +20,15 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASELINE="$DIR/scripts/file_length_baseline.txt"
 
 # 输出 "lines\tpath"(path 相对仓库根)。单次 wc 批量取行数,避免逐文件子进程。
+# git ls-files 只列被跟踪文件——本地未跟踪/被 ignore 的文件不参与门禁
+# (历史坑:曾被 gitignore 的 frontend/src/data/*.ts 本地存在时被 find 扫到,
+#  误报 NEW OFFENDER;未入库的文件门禁管不到也不该管)。
 scan() {
   ( cd "$DIR"
-    {
-      [[ -d backend ]] && find backend -type f -name '*.go' \
-        -not -path '*/vendor/*' -not -name '*_test.go' \
-        -not -name '*.pb.go' -not -name 'zz_*.go' -print 2>/dev/null || true
-      [[ -d frontend/src ]] && find frontend/src -type f \( -name '*.vue' -o -name '*.ts' \) \
-        -not -path '*/node_modules/*' -print 2>/dev/null || true
-    } | xargs wc -l 2>/dev/null | awk 'NF==2 && $2!="total"{print $1"\t"$2}'
+    git ls-files -- 'backend/*.go' 'frontend/src/*.vue' 'frontend/src/*.ts' \
+      | grep -vE '(_test\.go$|\.pb\.go$|/zz_[^/]*\.go$|backend/vendor/)' \
+      | tr '\n' '\0' | xargs -0 wc -l 2>/dev/null \
+      | awk 'NF==2 && $2!="total"{print $1"\t"$2}'
   )
 }
 

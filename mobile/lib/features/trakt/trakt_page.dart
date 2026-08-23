@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/trakt.dart';
+import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -150,10 +152,10 @@ class _TraktPageState extends State<TraktPage> {
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
         children: [
           Text('把 Trakt.tv 的 WatchList 自动同步为本地订阅。',
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              style: TextStyle(fontSize: 12, color: context.dimText)),
           const SizedBox(height: 12),
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+            const PTLoadingView()
           else if (cfg == null)
             const Padding(padding: EdgeInsets.all(40), child: Center(child: Text('无配置')))
           else ...[
@@ -194,7 +196,7 @@ class _TraktPageState extends State<TraktPage> {
               padding: const EdgeInsets.only(top: 8),
               child: Text(
                 '最近同步：${DateTime.fromMillisecondsSinceEpoch(cfg.lastSyncAt * 1000).toLocal()} · 新增 ${cfg.lastSyncCount} 条',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: context.dimText),
               ),
             ),
           if (cfg.lastError.isNotEmpty)
@@ -224,7 +226,7 @@ class _TraktPageState extends State<TraktPage> {
             child: Text(dc.userCode, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 3)),
           ),
           const SizedBox(height: 6),
-          const Text('授权完成后本页自动检测。', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          Text('授权完成后本页自动检测。', style: TextStyle(fontSize: 11, color: context.dimText)),
         ]),
       ),
     );
@@ -316,7 +318,7 @@ class _TraktConfigFormState extends State<_TraktConfigForm> {
   Widget _field(String label, Widget child) => Padding(
         padding: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           const SizedBox(height: 6),
           child,
         ]),

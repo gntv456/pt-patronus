@@ -158,7 +158,7 @@ function shortDay(day: string): string {
 }
 .axis-text {
   fill: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   letter-spacing: 0;
 }
 .hover-rule {
@@ -180,10 +180,10 @@ function shortDay(day: string): string {
   padding: 9px 10px;
   transform: translateX(-50%);
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: var(--glass-bg-strong);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   pointer-events: none;
 }
 .chart-tooltip > span {
@@ -195,7 +195,7 @@ function shortDay(day: string): string {
   display: grid;
   grid-template-columns: 8px 1fr auto;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
   margin-top: 4px;
 }
 .chart-tooltip i {
@@ -212,7 +212,7 @@ function shortDay(day: string): string {
   justify-content: center;
   height: 100%;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 @media (max-width: 720px) {
   .trend-chart {

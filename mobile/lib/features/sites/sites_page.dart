@@ -417,9 +417,9 @@ class _SitesPageState extends State<SitesPage> {
                         ),
                         Text(
                           _fmtRecordTime(r.createdAt),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: Colors.grey,
+                            color: context.dimText,
                           ),
                         ),
                       ],
@@ -820,7 +820,7 @@ class _SitesPageState extends State<SitesPage> {
             flex: 2,
             cell: (_, s) => Text(
               s.definition,
-              style: const TextStyle(fontSize: 13, color: Colors.grey),
+              style: TextStyle(fontSize: 13, color: context.dimText),
             ),
           ),
           PTColumn(
@@ -877,13 +877,13 @@ class _SitesPageState extends State<SitesPage> {
               const SizedBox(height: 2),
               Text(
                 s.baseUrl,
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: context.dimText, fontSize: 12),
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
                 '${s.definition} · ${s.platform.isNotEmpty ? s.platform : '-'}',
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: context.dimText, fontSize: 12),
               ),
               const SizedBox(height: 8),
               _rowActions(ctx, s),
@@ -928,11 +928,11 @@ class _SitesPageState extends State<SitesPage> {
         ? '已停用'
         : '未联通';
     final color = pending || status == null
-        ? Colors.grey
+        ? context.dimText
         : state == SiteConnectivityState.connected
         ? PTColors.success
         : state == SiteConnectivityState.disabled
-        ? Colors.grey
+        ? context.dimText
         : PTColors.danger;
     final child = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -1127,12 +1127,12 @@ class _DefPickerBodyState extends State<_DefPickerBody> {
           ),
         ),
         if (matches.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text(
                 '无匹配',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: context.dimText, fontSize: 13),
               ),
             ),
           )
@@ -1151,7 +1151,7 @@ class _DefPickerBodyState extends State<_DefPickerBody> {
                           _candidateSubtitle(d),
                           style: TextStyle(
                             fontSize: 11,
-                            color: d.dead ? Colors.grey : Colors.black54,
+                            color: d.dead ? context.dimText : context.mainText,
                           ),
                         )
                       : null,

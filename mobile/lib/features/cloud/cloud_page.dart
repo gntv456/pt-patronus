@@ -3,6 +3,7 @@ import 'package:ptpatronus/api/cloud.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 云盘 · STRM 页（对齐 Web Cloud.vue）：115/夸克/123 网盘 CRUD + 浏览 + STRM 规则 + 生成 + 订阅追更。
@@ -391,9 +392,9 @@ class _CloudPageState extends State<CloudPage> with SingleTickerProviderStateMix
                   if (d.isDefault) _tag('默认', accent: true),
                 ]),
                 const SizedBox(height: 2),
-                Text('根目录：${d.rootPath}', style: const TextStyle(color: Colors.grey, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text('根目录：${d.rootPath}', style: TextStyle(color: context.dimText, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
                 if (_quotas[d.id] != null)
-                  Text('容量：${_quotas[d.id]}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                  Text('容量：${_quotas[d.id]}', style: TextStyle(color: context.dimText, fontSize: 12)),
               ]),
             ),
           ]),
@@ -467,10 +468,10 @@ class _CloudPageState extends State<CloudPage> with SingleTickerProviderStateMix
             _tag(r.enabled ? '启用' : '停用', accent: r.enabled),
           ]),
           const SizedBox(height: 4),
-          Text('网盘：${_driveName(r.driveId)} · ${r.cloudPath}', style: const TextStyle(fontSize: 12, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
-          Text('输出：${r.outputDir}', style: const TextStyle(fontSize: 12, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text('网盘：${_driveName(r.driveId)} · ${r.cloudPath}', style: TextStyle(fontSize: 12, color: context.dimText), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text('输出：${r.outputDir}', style: TextStyle(fontSize: 12, color: context.dimText), maxLines: 1, overflow: TextOverflow.ellipsis),
           if (r.mountRoot.isNotEmpty)
-            Text('挂载：${r.mountRoot}', style: const TextStyle(fontSize: 12, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text('挂载：${r.mountRoot}', style: TextStyle(fontSize: 12, color: context.dimText), maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 8),
           Row(children: [
             TextButton.icon(icon: const Icon(Icons.play_arrow_outlined, size: 16), label: const Text('生成'), onPressed: () => _generate(r)),
@@ -493,9 +494,9 @@ class _CloudPageState extends State<CloudPage> with SingleTickerProviderStateMix
       itemBuilder: (_, i) {
         final r = _records[i];
         return ListTile(
-          leading: Icon(r.subscriptionId > 0 ? Icons.favorite : Icons.insert_drive_file_outlined, size: 22, color: Colors.grey),
+          leading: Icon(r.subscriptionId > 0 ? Icons.favorite : Icons.insert_drive_file_outlined, size: 22, color: context.dimText),
           title: Text(r.cloudPath, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Text('${_driveName(r.driveId)} · ${_fmtSize(r.size)}${r.subscriptionId > 0 ? ' · 追更' : ''}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          subtitle: Text('${_driveName(r.driveId)} · ${_fmtSize(r.size)}${r.subscriptionId > 0 ? ' · 追更' : ''}', style: TextStyle(fontSize: 11, color: context.dimText)),
           trailing: IconButton(
             icon: Icon(Icons.delete_outline, size: 18, color: PTColors.danger),
             onPressed: () => _deleteRecord(r),
@@ -509,7 +510,7 @@ class _CloudPageState extends State<CloudPage> with SingleTickerProviderStateMix
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: accent ? PTColors.success.withValues(alpha: 0.18) : Colors.grey.withValues(alpha: 0.16),
+        color: accent ? PTColors.success.withValues(alpha: 0.18) : context.dimText.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(text, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
@@ -588,16 +589,16 @@ class _BrowseBodyState extends State<_BrowseBody> {
           if (widget.onPick != null)
             FilledButton(onPressed: () => widget.onPick!(_path), child: const Text('使用此目录')),
         ]),
-        if (_loading) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
+        if (_loading) const Padding(padding: EdgeInsets.all(16), child: PTLoadingView()),
         if (!_loading)
           Flexible(
             child: ListView(shrinkWrap: true, children: [
               for (final d in dirs)
                 ListTile(dense: true, leading: const Icon(Icons.folder, size: 20, color: Color(0xFF4CC9F0)), title: Text(d.name, style: const TextStyle(fontSize: 13)), onTap: () => _enter(d)),
               for (final f in files)
-                ListTile(dense: true, leading: const Icon(Icons.movie_outlined, size: 20, color: Colors.grey), title: Text(f.name, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis), trailing: Text(_fmtSize(f.size), style: const TextStyle(fontSize: 11, color: Colors.grey))),
+                ListTile(dense: true, leading: Icon(Icons.movie_outlined, size: 20, color: context.dimText), title: Text(f.name, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis), trailing: Text(_fmtSize(f.size), style: TextStyle(fontSize: 11, color: context.dimText))),
               if (dirs.isEmpty && files.isEmpty)
-                const Padding(padding: EdgeInsets.all(20), child: Center(child: Text('（空目录）', style: TextStyle(color: Colors.grey)))),
+                Padding(padding: const EdgeInsets.all(20), child: Center(child: Text('（空目录）', style: TextStyle(color: context.dimText)))),
             ]),
           ),
       ],
@@ -697,7 +698,7 @@ class _DriveFormState extends State<_DriveForm> {
   Widget _field(String label, Widget child) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           const SizedBox(height: 6),
           child,
         ]),
@@ -813,7 +814,7 @@ class _RuleFormState extends State<_RuleForm> {
   Widget _field(String label, Widget child) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: context.dimText)),
           const SizedBox(height: 6),
           child,
         ]),

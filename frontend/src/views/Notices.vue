@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 // 通知中心（全页面）：按来源类型分组并折叠，点击展开查看每条详情。
 // 与 topbar 铃铛下拉（NotificationCenter.vue）共用 sourceMeta / 路由映射，体验一致。
 import { computed, onMounted, ref, watch } from 'vue'
@@ -284,47 +284,48 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
-.head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
-.title small { margin-left: 8px; color: var(--text-muted); font-weight: 500; font-size: 14px; }
-.head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.filter { display: inline-flex; padding: 4px; gap: 4px; border-radius: 10px; }
-.filter-btn { background: transparent; border: none; cursor: pointer; padding: 6px 14px; border-radius: 8px; font-size: 13px; color: var(--text-strong); display: inline-flex; align-items: center; gap: 6px; }
-.filter-btn.on { background: rgba(108,92,231,0.16); color: var(--pt-primary,#6c5ce7); font-weight: 600; }
-.filter-badge { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--pt-primary,#6c5ce7); color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
-.groups { display: flex; flex-direction: column; gap: 12px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-3); }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.title small { margin-left: 8px; color: var(--text-muted); font-weight: 500; font-size: var(--fs-md); }
+.head-tools { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.filter { display: inline-flex; padding: 4px; gap: var(--sp-1); border-radius: var(--radius-sm); }
+.filter-btn { background: transparent; border: none; cursor: pointer; padding: 6px 14px; border-radius: var(--radius-xs); font-size: var(--fs-body); color: var(--text-strong); display: inline-flex; align-items: center; gap: var(--sp-1); transition: all var(--dur-base) var(--ease-out-smooth); }
+.filter-btn:hover:not(.on) { background: var(--surface-muted); }
+.filter-btn.on { background: var(--pt-primary-bg); color: var(--pt-primary,#6c5ce7); font-weight: 600; }
+.filter-badge { min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--radius-pill); background: var(--pt-primary,#6c5ce7); color: #fff; font-size: var(--fs-2xs); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
+.groups { display: flex; flex-direction: column; gap: var(--sp-3); }
 .group { overflow: hidden; }
-.group-head { display: flex; align-items: center; gap: 14px; padding: 16px 18px; cursor: pointer; transition: background 0.15s; }
+.group-head { display: flex; align-items: center; gap: var(--sp-3); padding: 16px 18px; cursor: pointer; transition: background var(--dur-fast) var(--ease-out-smooth); }
 .group-head:hover { background: var(--surface-hover); }
-.group-head--unread { background: rgba(108,92,231,0.06); }
-.g-ic { flex: none; width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; }
+.group-head--unread { background: var(--pt-primary-bg); }
+.g-ic { flex: none; width: 38px; height: 38px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; }
 .g-info { flex: 1; min-width: 0; }
-.g-title { font-size: 15px; font-weight: 700; color: var(--text-strong); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.g-count { color: var(--text-muted); font-weight: 500; font-size: 12px; }
-.g-unread { color: var(--pt-primary,#6c5ce7); font-weight: 600; font-size: 12px; }
-.g-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.g-chevron { flex: none; color: var(--text-muted); transition: transform 0.2s ease; }
+.g-title { font-size: var(--fs-lg); font-weight: 700; color: var(--text-strong); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.g-count { color: var(--text-muted); font-weight: 500; font-size: var(--fs-xs); }
+.g-unread { color: var(--pt-primary,#6c5ce7); font-weight: 600; font-size: var(--fs-xs); }
+.g-sub { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.g-chevron { flex: none; color: var(--text-muted); transition: transform var(--dur-base) var(--ease-out-smooth); }
 .g-chevron--open { transform: rotate(180deg); }
 .group-items { border-top: 1px solid var(--divider); }
-.item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 18px 12px 50px; border-bottom: 1px solid var(--divider); transition: background 0.15s; }
+.item { display: flex; align-items: flex-start; gap: var(--sp-3); padding: 12px 18px 12px 50px; border-bottom: 1px solid var(--divider); transition: background var(--dur-fast) var(--ease-out-smooth); }
 .item:last-of-type { border-bottom: none; }
 .item:hover { background: var(--surface-hover); }
-.item--unread { background: rgba(108,92,231,0.04); }
+.item--unread { background: var(--pt-primary-bg); }
 .g-ic--sub { width: 28px; height: 28px; opacity: 0.85; }
 .item-body { flex: 1; min-width: 0; cursor: pointer; }
-.item-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.item-name { font-size: 14px; font-weight: 600; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.item-time { font-size: 12px; color: var(--text-muted); flex: none; }
-.item-text { font-size: 13px; color: var(--text-strong); opacity: 0.75; margin-top: 3px; line-height: 1.5; word-break: break-word; }
-.item-actions { flex: none; display: flex; gap: 4px; opacity: 0; transition: opacity 0.15s; }
+.item-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.item-name { font-size: var(--fs-md); font-weight: 600; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-time { font-size: var(--fs-xs); color: var(--text-muted); flex: none; }
+.item-text { font-size: var(--fs-body); color: var(--text-strong); opacity: 0.75; margin-top: 3px; line-height: 1.5; word-break: break-word; }
+.item-actions { flex: none; display: flex; gap: var(--sp-1); opacity: 0; transition: opacity var(--dur-fast) var(--ease-out-smooth); }
 .item:hover .item-actions { opacity: 1; }
-.item-act { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: 6px; display: inline-flex; }
-.item-act:hover { color: var(--pt-primary,#6c5ce7); background: rgba(108,92,231,0.1); }
-.item-act--del:hover { color: var(--pt-danger); background: rgba(231,76,60,0.1); }
-.group-footer { display: flex; gap: 8px; padding: 8px 18px 12px 50px; }
-.g-foot-btn { background: none; border: none; cursor: pointer; color: var(--pt-primary,#6c5ce7); font-size: 12px; padding: 4px 8px; border-radius: 6px; }
-.g-foot-btn:hover { background: rgba(108,92,231,0.1); }
+.item-act { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: var(--radius-xs); display: inline-flex; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.item-act:hover { color: var(--pt-primary,#6c5ce7); background: var(--pt-primary-bg); }
+.item-act--del:hover { color: var(--pt-danger); background: var(--pt-danger-bg); }
+.group-footer { display: flex; gap: var(--sp-2); padding: 8px 18px 12px 50px; }
+.g-foot-btn { background: none; border: none; cursor: pointer; color: var(--pt-primary,#6c5ce7); font-size: var(--fs-xs); padding: 4px 8px; border-radius: var(--radius-xs); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.g-foot-btn:hover { background: var(--pt-primary-bg); }
 .g-foot-btn--danger { color: var(--pt-danger); }
-.g-foot-btn--danger:hover { background: rgba(231,76,60,0.1); }
+.g-foot-btn--danger:hover { background: var(--pt-danger-bg); }
 </style>

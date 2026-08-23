@@ -80,13 +80,13 @@ function dismiss() {
 .gnb {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--sp-2);
   padding: 9px 14px;
   border-radius: var(--radius-md);
   background: linear-gradient(135deg, #e74c3c, #f39c12);
   color: #fff;
-  box-shadow: 0 4px 16px rgba(231, 76, 60, 0.28);
-  font-size: 13px;
+  box-shadow: 0 4px 16px var(--pt-danger-bg);
+  font-size: var(--fs-body);
   line-height: 1.5;
 }
 .gnb-icon {
@@ -102,15 +102,15 @@ function dismiss() {
 .gnb-summary {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 .gnb-tag {
   flex: none;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.25);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -119,10 +119,10 @@ function dismiss() {
   min-width: 18px;
   height: 18px;
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #fff;
-  color: #e74c3c;
-  font-size: 11px;
+  color: var(--pt-danger);
+  font-size: var(--fs-2xs);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -137,15 +137,15 @@ function dismiss() {
   margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
   padding-top: 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.25);
 }
 .gnb-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
   opacity: 0.95;
 }
 .gnb-btn {
@@ -155,26 +155,26 @@ function dismiss() {
   cursor: pointer;
   color: #fff;
   padding: 3px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   opacity: 0.85;
-  transition: opacity 0.2s, background 0.2s;
+  transition: opacity var(--dur-base) var(--ease-out-smooth), background var(--dur-base);
 }
 .gnb-btn:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.18);
 }
 .gnb-chevron {
-  transition: transform 0.2s ease;
+  transition: transform var(--dur-base) var(--ease-out-smooth);
 }
 .gnb-chevron--up {
   transform: rotate(180deg);
 }
 .gnb-slide-enter-active,
 .gnb-slide-leave-active {
-  transition: all 0.3s ease;
+  transition: all var(--dur-slow) var(--ease-out-smooth);
 }
 .gnb-slide-enter-from,
 .gnb-slide-leave-to {

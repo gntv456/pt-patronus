@@ -196,24 +196,24 @@ function removeFile(i: number) {
 }
 .urlrow {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .filerow {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   align-items: center;
 }
 .filelist {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .file-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--sp-2);
+  font-size: var(--fs-body);
 }
 .fname {
   flex: 1;
@@ -222,7 +222,7 @@ function removeFile(i: number) {
   white-space: nowrap;
 }
 .fsize {
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .advanced {
   margin-top: 12px;
@@ -230,7 +230,7 @@ function removeFile(i: number) {
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px 16px;
+  gap: var(--sp-1) var(--sp-4);
 }
 @media (max-width: 560px) {
   .grid2 { grid-template-columns: 1fr; }

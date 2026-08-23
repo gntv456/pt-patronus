@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { dockerApi } from '@/api/docker'
@@ -133,18 +133,18 @@ onMounted(() => refresh())
 .compose-projects { padding: 0 4px; }
 .not-available { padding: 24px; text-align: center; }
 .not-available p { margin: 6px 0; }
-.hint { font-size: 13px; color: var(--text-secondary, #888); }
-.hint code { background: rgba(0,0,0,.08); padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-.list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px; color: var(--text-secondary,#888); }
+.hint { font-size: var(--fs-body); color: var(--text-secondary, #888); }
+.hint code { background: rgba(0,0,0,.08); padding: 2px 6px; border-radius: var(--radius-2xs); font-size: var(--fs-xs); }
+.list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: var(--fs-body); color: var(--text-secondary,#888); }
 .project-card { padding: 14px 16px; margin-bottom: 12px; }
 .project-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.project-name { font-size: 15px; margin-right: 8px; }
-.project-file { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.08); font-family: monospace; margin-right: 8px; }
-.project-host { font-size: 11px; color: var(--text-tertiary,#aaa); font-family: monospace; }
-.project-actions { display: flex; gap: 4px; }
-.project-preview { font-size: 12px; font-family: monospace; color: var(--text-secondary,#888); max-height: 120px; overflow: auto; margin: 0; white-space: pre-wrap; background: rgba(0,0,0,.04); padding: 8px; border-radius: 4px; }
-.detail-toolbar { padding: 0 0 12px; display: flex; gap: 8px; }
-.detail-editor :deep(textarea) { font-family: monospace; font-size: 13px; }
-.detail-content, .output-content { font-size: 13px; font-family: monospace; white-space: pre-wrap; padding: 12px; }
+.project-name { font-size: var(--fs-lg); margin-right: 8px; }
+.project-file { font-size: var(--fs-2xs); padding: 1px 6px; border-radius: var(--radius-2xs); background: rgba(0,0,0,.08); font-family: monospace; margin-right: 8px; }
+.project-host { font-size: var(--fs-2xs); color: var(--text-tertiary,#aaa); font-family: monospace; }
+.project-actions { display: flex; gap: var(--sp-1); }
+.project-preview { font-size: var(--fs-xs); font-family: monospace; color: var(--text-secondary,#888); max-height: 120px; overflow: auto; margin: 0; white-space: pre-wrap; background: rgba(0,0,0,.04); padding: 8px; border-radius: var(--radius-2xs); }
+.detail-toolbar { padding: 0 0 12px; display: flex; gap: var(--sp-2); }
+.detail-editor :deep(textarea) { font-family: monospace; font-size: var(--fs-body); }
+.detail-content, .output-content { font-size: var(--fs-body); font-family: monospace; white-space: pre-wrap; padding: 12px; }
 .empty { text-align: center; padding: 32px; color: var(--text-tertiary, #aaa); }
 </style>

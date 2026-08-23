@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/notice.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/core/ws_client.dart';
 
 /// 通知中心列表页：初始拉取 + WS 实时追加；单条已读/删除 + 全部已读。
@@ -227,7 +228,7 @@ class _NoticePageState extends State<NoticePage> {
         body: RefreshIndicator(
           onRefresh: _load,
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
               : _items.isEmpty
               ? ListView(
                   children: [
@@ -235,7 +236,7 @@ class _NoticePageState extends State<NoticePage> {
                     Center(
                       child: Text(
                         _error.isNotEmpty ? _error : '暂无通知',
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(color: context.dimText),
                       ),
                     ),
                     if (_error.isNotEmpty) ...[
@@ -269,7 +270,9 @@ class _NoticePageState extends State<NoticePage> {
                         child: const Icon(Icons.delete, color: Colors.red),
                       ),
                       onDismissed: (_) => _delete(n),
-                      child: GlassCard(
+                      child: PTListItemEntrance(
+                        index: i,
+                        child: GlassCard(
                         onTap: () => _openNotice(n),
                         padding: const EdgeInsets.all(12),
                         child: Row(
@@ -333,9 +336,9 @@ class _NoticePageState extends State<NoticePage> {
                                       ),
                                       Text(
                                         _relTime(n.createdAt),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 11,
-                                          color: Colors.grey,
+                                          color: context.dimText,
                                         ),
                                       ),
                                     ],
@@ -345,9 +348,9 @@ class _NoticePageState extends State<NoticePage> {
                                       padding: const EdgeInsets.only(top: 3),
                                       child: Text(
                                         n.body,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey,
+                                          color: context.dimText,
                                           height: 1.4,
                                         ),
                                       ),
@@ -365,6 +368,7 @@ class _NoticePageState extends State<NoticePage> {
                               ),
                           ],
                         ),
+                      ),
                       ),
                     );
                   },

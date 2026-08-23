@@ -13,15 +13,15 @@
   display: flex; align-items: center; gap: var(--sp-3);
   padding: var(--sp-3); border-radius: var(--radius-md);
   border: 2px solid var(--divider); background: var(--surface-1);
-  cursor: pointer; transition: all 0.18s;
+  cursor: pointer; transition: all var(--dur-base) var(--ease-out-smooth);
 }
 .template-card:hover { border-color: var(--pt-primary); background: var(--surface-hover); transform: translateY(-1px); box-shadow: var(--surface-shadow-hover); }
-.template-card.selected { border-color: var(--pt-primary); background: rgba(108, 92, 231, 0.06); }
+.template-card.selected { border-color: var(--pt-primary); background: var(--pt-primary-bg); }
 .tpl-icon {
   flex: none; width: 42px; height: 42px; border-radius: var(--radius-sm);
-  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  display: flex; align-items: center; justify-content: center; font-size: var(--fs-title);
 }
-.tpl-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tpl-info { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
 .tpl-name { font-weight: 600; font-size: var(--fs-md); color: var(--text-strong); }
 .tpl-desc { font-size: var(--fs-xs); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -40,14 +40,14 @@
 .dyn-arrow { color: var(--text-muted); font-size: var(--fs-sm); flex-shrink: 0; }
 .dyn-remove {
   flex-shrink: 0; width: 28px; height: 28px; border: 1px solid var(--divider); background: var(--surface-1);
-  border-radius: var(--radius-xs); cursor: pointer; color: var(--text-muted); font-size: 12px;
-  display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  border-radius: var(--radius-xs); cursor: pointer; color: var(--text-muted); font-size: var(--fs-xs);
+  display: flex; align-items: center; justify-content: center; transition: all var(--dur-fast) var(--ease-out-smooth);
 }
-.dyn-remove:hover { color: var(--pt-danger); border-color: var(--pt-danger); background: rgba(231, 76, 60, 0.08); }
+.dyn-remove:hover { color: var(--pt-danger); border-color: var(--pt-danger); background: var(--pt-danger-bg); }
 .dyn-add {
   align-self: flex-start; padding: 6px 16px; border: 1px dashed var(--surface-border-strong);
   background: transparent; border-radius: var(--radius-sm); cursor: pointer;
-  color: var(--pt-primary); font-size: var(--fs-sm); transition: all 0.15s;
+  color: var(--pt-primary); font-size: var(--fs-sm); transition: all var(--dur-fast) var(--ease-out-smooth);
 }
 .dyn-add:hover { background: var(--surface-hover); border-style: solid; }
 

@@ -9,6 +9,7 @@ import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 
 import 'package:ptpatronus/widgets/media_poster.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 import '../search/search_page.dart';
 
@@ -226,7 +227,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
 
           child: _loading
 
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
 
               : _error != null
 
@@ -336,7 +337,7 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
 
               child: Text(_metaRow(m),
 
-                  style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.6)),
+                  style: TextStyle(color: context.dimText, fontSize: 13, height: 1.6)),
 
             ),
 
@@ -758,9 +759,9 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
 
                               textAlign: TextAlign.center,
 
-                              style: const TextStyle(
+                              style: TextStyle(
 
-                                  fontSize: 11, color: Colors.grey)),
+                                  fontSize: 11, color: context.dimText)),
 
                       ],
 

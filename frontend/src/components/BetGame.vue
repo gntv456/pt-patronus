@@ -102,33 +102,33 @@ onMounted(refreshStats)
 </template>
 
 <style scoped>
-.betgame { display: flex; flex-direction: column; gap: 16px; max-width: 640px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: 14px; background: linear-gradient(135deg, #db2777, #f59e0b); text-align: center; }
-.hero-title { font-size: 22px; font-weight: 800; color: #fff; }
-.balance { margin-top: 4px; font-size: 13px; color: rgba(255,255,255,0.92); }
-.balance b { color: #fde68a; font-size: 16px; }
+.betgame { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 640px; margin: 0 auto; }
+.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #db2777, #f59e0b); text-align: center; }
+.hero-title { font-size: var(--fs-title); font-weight: 800; color: #fff; }
+.balance { margin-top: 4px; font-size: var(--fs-body); color: rgba(255,255,255,0.92); }
+.balance b { color: #fde68a; font-size: var(--fs-lg); }
 
-.section { padding: 18px; border-radius: 14px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
-.sec-title { font-weight: 700; font-size: 15px; align-self: flex-start; }
-.amt-input { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; width: 160px; font-size: 15px; }
-.ops { display: flex; gap: 12px; }
-.op { padding: 11px 24px; border: 0; border-radius: 11px; cursor: pointer; font-weight: 700; font-size: 15px; color: #fff; }
+.section { padding: 18px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--sp-3); align-items: center; }
+.sec-title { font-weight: 700; font-size: var(--fs-lg); align-self: flex-start; }
+.amt-input { padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; width: 160px; font-size: var(--fs-lg); }
+.ops { display: flex; gap: var(--sp-3); }
+.op { padding: 11px 24px; border: 0; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; font-size: var(--fs-lg); color: #fff; }
 .op.big { background: linear-gradient(135deg, #dc2626, #ef4444); }
 .op.small { background: linear-gradient(135deg, #2563eb, #3b82f6); }
 .op.primary { background: linear-gradient(135deg, #db2777, #f59e0b); }
 .op:disabled { opacity: 0.6; cursor: wait; }
 
-.row { display: flex; align-items: center; gap: 10px; width: 100%; }
-.row span { width: 40px; font-size: 13px; color: var(--text-muted, #999); }
-.txt { flex: 1; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 14px; }
-.placeholder { font-size: 13px; }
+.row { display: flex; align-items: center; gap: var(--sp-2); width: 100%; }
+.row span { width: 40px; font-size: var(--fs-body); color: var(--text-muted, #999); }
+.txt { flex: 1; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: var(--fs-md); }
+.placeholder { font-size: var(--fs-body); }
 
-.result { padding: 12px; border-radius: 12px; display: flex; gap: 10px; align-items: flex-start; }
-.result.win { background: rgba(34, 197, 94, 0.12); }
-.result.lose { background: rgba(231, 76, 60, 0.1); }
+.result { padding: 12px; border-radius: var(--radius-sm); display: flex; gap: var(--sp-2); align-items: flex-start; }
+.result.win { background: var(--pt-success-bg); }
+.result.lose { background: var(--pt-danger-bg); }
 .badge { font-weight: 700; }
-.r-body { display: flex; flex-direction: column; gap: 2px; }
-.r-prize { font-weight: 700; color: #16a34a; }
-.r-bal { font-size: 12px; color: var(--text-muted, #999); }
-.r-msg { font-size: 12px; }
+.r-body { display: flex; flex-direction: column; gap: var(--sp-1); }
+.r-prize { font-weight: 700; color: var(--pt-success); }
+.r-bal { font-size: var(--fs-xs); color: var(--text-muted, #999); }
+.r-msg { font-size: var(--fs-xs); }
 </style>

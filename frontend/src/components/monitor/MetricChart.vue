@@ -30,8 +30,8 @@ const area = computed(() => (path.value ? `${path.value} L${W},${H.value} L0,${H
   <svg :viewBox="`0 0 ${W} ${H}`" class="metric-chart" preserveAspectRatio="none">
     <defs>
       <linearGradient id="mc-area" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="rgba(108, 92, 231, 0.35)" />
-        <stop offset="100%" stop-color="rgba(108, 92, 231, 0)" />
+        <stop offset="0%" stop-color="var(--pt-primary-bg)" />
+        <stop offset="100%" stop-color="var(--pt-primary-bg)" />
       </linearGradient>
       <linearGradient id="mc-line" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0%" stop-color="#4285f4" />
@@ -51,6 +51,6 @@ const area = computed(() => (path.value ? `${path.value} L${W},${H.value} L0,${H
 }
 .mc-empty {
   fill: var(--text-muted, #9ca3af);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 </style>

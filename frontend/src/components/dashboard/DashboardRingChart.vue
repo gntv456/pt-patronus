@@ -80,7 +80,7 @@ const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 
 .ring-chart {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: var(--sp-4);
 }
 .ring-wrap {
   position: relative;
@@ -96,16 +96,16 @@ const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: var(--sp-1);
   pointer-events: none;
 }
 .ring-center strong {
-  font-size: 20px;
+  font-size: var(--fs-title);
   font-weight: 700;
   color: var(--text-strong);
 }
 .ring-center small {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .ring-legend {
@@ -113,20 +113,20 @@ const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 7px;
+  gap: var(--sp-2);
   min-width: 0;
 }
 .ring-legend li {
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
 }
 .ring-legend i {
   width: 10px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: var(--radius-2xs);
 }
 .leg-label {
   overflow: hidden;
@@ -140,12 +140,12 @@ const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 
 }
 .leg-pct {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 @media (max-width: 640px) {
   .ring-chart {
     flex-direction: column;
-    gap: 12px;
+    gap: var(--sp-3);
   }
 }
 </style>

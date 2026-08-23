@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { diskApi, type DiskEntry } from '@/api/disk'
@@ -353,7 +353,7 @@ onMounted(async () => {
 .disk-serial { font-size: 11px; color: var(--text-tertiary, #999); margin-top: 1px; }
 .disk-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .disk-badge { display: inline-flex; align-items: center; color: #fff; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap; line-height: 1.6; }
-.disk-category { box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+.disk-category { box-shadow: var(--shadow-sm); }
 .disk-type-chip { background: rgba(0,0,0,.30); }
 .disk-type-chip.ssd { background: rgba(9,132,227,.85); }
 .disk-type-chip.hdd { background: rgba(108,92,231,.85); }
@@ -376,13 +376,13 @@ onMounted(async () => {
 /* 分区用量条 */
 .part-usage { display: flex; align-items: center; gap: 10px; width: 100%; padding-left: 2px; }
 .part-usage-bar { flex: 1; height: 8px; background: rgba(128,128,128,.18); border-radius: 4px; overflow: hidden; }
-.part-usage-fill { height: 100%; border-radius: 4px; transition: width .4s ease, background .3s ease; }
+.part-usage-fill { height: 100%; border-radius: 4px; transition: width var(--dur-slow) var(--ease-out-smooth), background var(--dur-base) var(--ease-out-smooth); }
 .part-usage-text { font-size: 11px; color: var(--text-tertiary,#9aa6b2); white-space: nowrap; min-width: 150px; text-align: right; }
 
 /* 整盘容量条（Windows 文件管理器风格） */
 .disk-capacity { margin: 12px 0 2px; }
-.capacity-bar { width: 100%; height: 14px; background: rgba(128,128,128,.18); border-radius: 7px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,.12); }
-.capacity-fill { height: 100%; border-radius: 7px; transition: width .5s ease, background .3s ease; box-shadow: 0 1px 4px rgba(0,0,0,.15); background-image: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 60%); }
+.capacity-bar { width: 100%; height: 14px; background: rgba(128,128,128,.18); border-radius: 7px; overflow: hidden; box-shadow: var(--shadow-inset); }
+.capacity-fill { height: 100%; border-radius: 7px; transition: width var(--dur-slow) var(--ease-out-smooth), background var(--dur-base) var(--ease-out-smooth); box-shadow: var(--shadow-xs); background-image: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 60%); }
 .capacity-text { font-size: 12px; color: var(--text-secondary,#9aa6b2); margin-top: 5px; }
 .capacity-text .cap-used { color: var(--text-strong,#1f2937); font-weight: 600; }
 .capacity-text .cap-pct { font-weight: 700; font-family: 'Consolas','Monaco',monospace; }

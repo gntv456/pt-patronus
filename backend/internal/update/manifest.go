@@ -36,6 +36,9 @@ type Target struct {
 const (
 	PlatformDocker          = "docker"            // 服务端自检：Web UI 提示 docker pull 升级命令
 	PlatformAndroid         = "android"           // 手机 APP：外链下载 APK
+	PlatformIOS             = "ios"               // iPhone/iPad：外链下载页(实际安装走 AltStore/TestFlight)
+	PlatformMacOS           = "macos"             // macOS 桌面：外链下载 zip，手动替换 .app
+	PlatformOHOS            = "ohos"              // 鸿蒙：外链下载 HAP 页
 	PlatformWindows         = "windows"           // Windows 桌面：外链下载 zip/exe
 	PlatformAgentLinuxAmd64 = "agent-linux-amd64" // 监控 Agent
 	PlatformAgentLinuxArm64 = "agent-linux-arm64"

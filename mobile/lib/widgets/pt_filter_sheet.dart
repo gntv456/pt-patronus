@@ -303,7 +303,7 @@ class _SitePickerBodyState extends State<_SitePickerBody> {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: n > 0 ? PTColors.primary : Colors.grey.shade500,
+              color: n > 0 ? PTColors.primary : context.dimText,
             ),
           ),
         ],

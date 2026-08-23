@@ -14,7 +14,7 @@ const emit = defineEmits<{ (e: 'check'): void }>()
 
 <template>
   <el-dialog v-model="visible" title="未辅种检查" width="640px" top="8vh">
-    <div style="display: flex; gap: 8px; margin-bottom: 12px">
+    <div style="display: flex; gap: var(--sp-2); margin-bottom: 12px">
       <el-select v-model="targets" multiple collapse-tags collapse-tags-tooltip filterable
         placeholder="选择目标站点（检查这些站是否已辅种）" style="flex: 1"
       >

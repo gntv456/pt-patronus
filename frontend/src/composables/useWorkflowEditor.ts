@@ -1,4 +1,4 @@
-﻿import { ref, computed, type Ref } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useVueFlow, type Edge, type Node, type Connection } from '@vue-flow/core'
 import { workflowApi, type NodeInfo, type GraphNode, type GraphEdge, type WorkflowRun, type WorkflowTemplate, type ParamField } from '@/api/workflow'

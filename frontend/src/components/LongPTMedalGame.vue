@@ -198,33 +198,33 @@ onMounted(refresh)
 </template>
 
 <style scoped>
-.lpt-medal { display: flex; flex-direction: column; gap: 16px; max-width: 720px; margin: 0 auto; }
-.banner { text-align: center; padding: 14px; border-radius: 14px; background: linear-gradient(135deg, #2d3436, #636e72); }
-.banner-title { display: block; font-size: 22px; font-weight: 800; color: #ffd76a; letter-spacing: 2px; }
-.banner-sub { display: block; margin-top: 3px; font-size: 12px; color: rgba(255, 255, 255, 0.7); }
+.lpt-medal { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 720px; margin: 0 auto; }
+.banner { text-align: center; padding: 14px; border-radius: var(--radius-md); background: linear-gradient(135deg, #2d3436, #636e72); }
+.banner-title { display: block; font-size: var(--fs-title); font-weight: 800; color: #ffd76a; letter-spacing: 2px; }
+.banner-sub { display: block; margin-top: 3px; font-size: var(--fs-xs); color: rgba(255, 255, 255, 0.7); }
 
-.shard-bar { display: flex; gap: 16px; padding: 14px; border-radius: 12px; align-items: center; flex-wrap: wrap; }
-.shard { display: flex; align-items: center; gap: 8px; }
-.shard-icon { font-size: 28px; color: var(--pt-primary, #6c5ce7); }
-.shard-val { font-size: 20px; font-weight: 800; }
-.shard-lbl { font-size: 11px; color: var(--text-muted, #999); }
-.convert-tip { width: 100%; font-size: 11px; margin-top: 4px; }
+.shard-bar { display: flex; gap: var(--sp-4); padding: 14px; border-radius: var(--radius-sm); align-items: center; flex-wrap: wrap; }
+.shard { display: flex; align-items: center; gap: var(--sp-2); }
+.shard-icon { font-size: var(--fs-hero); color: var(--pt-primary, #6c5ce7); }
+.shard-val { font-size: var(--fs-title); font-weight: 800; }
+.shard-lbl { font-size: var(--fs-2xs); color: var(--text-muted, #999); }
+.convert-tip { width: 100%; font-size: var(--fs-2xs); margin-top: 4px; }
 
-.level { display: flex; flex-direction: column; gap: 8px; }
-.level-title { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
-.level-count { font-size: 12px; font-weight: 400; }
-.node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.level { display: flex; flex-direction: column; gap: var(--sp-2); }
+.level-title { font-weight: 700; font-size: var(--fs-lg); display: flex; align-items: center; gap: var(--sp-2); }
+.level-count { font-size: var(--fs-xs); font-weight: 400; }
+.node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: var(--sp-2); }
 
-.node { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; border-radius: 12px; background: var(--glass-bg, rgba(255,255,255,0.06)); border: 1px solid var(--border-soft, rgba(255,255,255,0.08)); text-align: center; }
-.node.owned { border-color: rgba(46, 204, 113, 0.4); }
+.node { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: 12px 8px; border-radius: var(--radius-sm); background: var(--glass-bg, rgba(255,255,255,0.06)); border: 1px solid var(--border-soft, rgba(255,255,255,0.08)); text-align: center; }
+.node.owned { border-color: var(--pt-success-bg); }
 .node-img-wrap { position: relative; width: 56px; height: 56px; }
 .node-img { width: 100%; height: 100%; object-fit: contain; }
 .node-img.gray { filter: grayscale(1) opacity(0.5); }
 .node-placeholder { font-size: 40px; color: var(--text-muted, #999); }
-.owned-badge { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: #2ecc71; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-.node-name { font-size: 12px; font-weight: 600; }
-.node-cost { font-size: 10px; line-height: 1.3; min-height: 26px; }
-.owned-tag { font-size: 12px; color: #2ecc71; font-weight: 600; height: 24px; line-height: 24px; }
+.owned-badge { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: #2ecc71; color: #fff; font-size: var(--fs-xs); display: flex; align-items: center; justify-content: center; }
+.node-name { font-size: var(--fs-xs); font-weight: 600; }
+.node-cost { font-size: var(--fs-2xs); line-height: 1.3; min-height: 26px; }
+.owned-tag { font-size: var(--fs-xs); color: var(--pt-success); font-weight: 600; height: 24px; line-height: 24px; }
 .empty { padding: 40px; text-align: center; }
-.err { color: var(--pt-danger); font-size: 13px; word-break: break-all; }
+.err { color: var(--pt-danger); font-size: var(--fs-body); word-break: break-all; }
 </style>

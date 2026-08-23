@@ -48,3 +48,12 @@ app.*.map.json
 /android/key.properties
 *.jks
 *.keystore
+
+# 鸿蒙构建的临时切换产物（scripts/build_ohos.ps1 构建中生成、结束自动复原；
+# 若因中断残留，pubspec_overrides.yaml 与 *.bak 也不应入库）
+/pubspec_overrides.yaml
+/lib/core/platform/file_picker_default.dart.bak
+
+# 鸿蒙 vendored 插件（scripts/vendor_ohos_plugins.ps1 每次构建从 pub 缓存
+# 刷新到 ohos/plugins/<name>/ohos，构建产物不入库）
+/ohos/plugins/

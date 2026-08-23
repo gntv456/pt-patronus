@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { siteApi } from '@/api/site'
 import { useAuthStore } from '@/stores/auth'
@@ -239,19 +239,19 @@ onMounted(() => {
 
 
 <style scoped>
-.dashboard { display: flex; flex-direction: column; gap: 18px; }
-.dashboard { gap: 14px; letter-spacing: 0; }
-.page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dashboard { display: flex; flex-direction: column; gap: var(--sp-4); }
+.dashboard { gap: var(--sp-3); letter-spacing: 0; }
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
 .page-head { flex-wrap: wrap; }
-.head-actions { display: flex; gap: 8px; }
-.page-title { margin: 4px 0 6px; font-size: 22px; font-weight: 700; }
+.head-actions { display: flex; gap: var(--sp-2); }
+.page-title { margin: 4px 0 6px; font-size: var(--fs-title); font-weight: 700; }
 .page-title { margin: 0; }
-.page-heading { display: flex; flex-direction: column; gap: 2px; }
-.page-subtitle, .updated-at { font-size: 12px; color: var(--text-muted); }
+.page-heading { display: flex; flex-direction: column; gap: var(--sp-1); }
+.page-subtitle, .updated-at { font-size: var(--fs-xs); color: var(--text-muted); }
 .head-actions { flex-wrap: wrap; }
-.period-control { display: inline-flex; background: var(--surface-muted); border-radius: 8px; padding: 2px; }
-.period-control button { border: 0; background: transparent; padding: 4px 10px; border-radius: 6px; font-size: 12px; color: var(--text-muted); cursor: pointer; }
-.period-control button.active { background: var(--card); color: var(--text-strong); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.period-control { display: inline-flex; background: var(--surface-muted); border-radius: var(--radius-xs); padding: 2px; }
+.period-control button { border: 0; background: transparent; padding: 4px 10px; border-radius: var(--radius-xs); font-size: var(--fs-xs); color: var(--text-muted); cursor: pointer; transition: background var(--dur-base) var(--ease-out-smooth), color var(--dur-base) var(--ease-out-smooth); }
+.period-control button.active { background: var(--card); color: var(--text-strong); box-shadow: var(--shadow-xs); }
 .period-control button:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-ico { margin-right: 4px; vertical-align: middle; }
 .setup-card { padding: 6px; }
@@ -259,21 +259,22 @@ onMounted(() => {
 .ops-surface, .sync-card {
   background: var(--card);
   border: 1px solid var(--divider, rgba(0,0,0,0.08));
-  border-radius: 12px;
+  border-radius: var(--radius-md);
+  transition: box-shadow var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth);
 }
 .load-error { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-3); }
 .load-error .le-msg { color: var(--text-strong); }
 
 /* —— 仪表盘新增区布局 —— */
-.zone { display: grid; gap: 14px; }
+.zone { display: grid; gap: var(--sp-3); }
 .zone-3col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .zone-2col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .zone-card { padding: 16px 18px; }
 .zc-head { margin-bottom: 14px; }
-.zc-head h3 { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
-.zc-head p { margin: 0; font-size: 11px; color: var(--text-muted); }
-.health-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--divider); font-size: 12px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; }
-.health-foot b { color: var(--text-strong); font-size: 15px; }
+.zc-head h3 { margin: 0 0 2px; font-size: var(--fs-md); font-weight: 700; }
+.zc-head p { margin: 0; font-size: var(--fs-2xs); color: var(--text-muted); }
+.health-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--divider); font-size: var(--fs-xs); color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; }
+.health-foot b { color: var(--text-strong); font-size: var(--fs-lg); }
 
 @media (max-width: 1180px) {
   .zone-3col { grid-template-columns: 1fr 1fr; }
@@ -283,20 +284,31 @@ onMounted(() => {
   .zone-3col, .zone-2col { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .page-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
-  .head-actions { gap: 6px; }
+  .page-heading { align-items: flex-start; flex-direction: column; gap: var(--sp-1); }
+  .head-actions { gap: var(--sp-1); }
   .updated-at { width: 100%; }
   .period-control { order: 2; }
 }
 .onboarding-wizard { padding: 32px 28px; margin-bottom: 16px; text-align: center; }
-.ob-header h2 { margin: 0 0 6px; font-size: 22px; font-weight: 700; }
-.ob-header p { margin: 0 0 24px; color: var(--text-muted); font-size: 14px; }
-.ob-steps { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; max-width: 800px; margin: 0 auto; }
-.ob-step { flex: 1; min-width: 200px; max-width: 260px; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 20px 16px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.04); }
-.ob-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #6c5ce7, #4285f4); }
+.ob-header h2 { margin: 0 0 6px; font-size: var(--fs-title); font-weight: 700; }
+.ob-header p { margin: 0 0 24px; color: var(--text-muted); font-size: var(--fs-md); }
+.ob-steps { display: flex; gap: var(--sp-5); flex-wrap: wrap; justify-content: center; max-width: 800px; margin: 0 auto; }
+.ob-step { flex: 1; min-width: 200px; max-width: 260px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: 20px 16px; border-radius: var(--radius-sm); border: 1px solid var(--glass-border); background: rgba(255,255,255,0.04); }
+.ob-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: var(--fs-xl); font-weight: 700; color: #fff; background: linear-gradient(135deg, #6c5ce7, #4285f4); }
 .ob-body { text-align: center; }
-.ob-body h4 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
-.ob-body p { margin: 0 0 12px; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.ob-body h4 { margin: 0 0 4px; font-size: var(--fs-lg); font-weight: 600; }
+.ob-body p { margin: 0 0 12px; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.5; }
 @media (max-width: 768px) { .ob-steps { flex-direction: column; align-items: center; } .ob-step { max-width: 100%; } }
+/* 卡片水润 staggered 入场 */
+.zone > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
+.zone > *:nth-child(1) { animation-delay: 0ms; }
+.zone > *:nth-child(2) { animation-delay: 50ms; }
+.zone > *:nth-child(3) { animation-delay: 100ms; }
+.zone > *:nth-child(4) { animation-delay: 150ms; }
+.zone > *:nth-child(5) { animation-delay: 200ms; }
+.zone > *:nth-child(6) { animation-delay: 250ms; }
+.page-head { animation: pt-fade-in var(--dur-base) var(--ease-out-smooth) both; }
+.updated-at { transition: color var(--dur-base) var(--ease-out-smooth); }
+
 </style>
 

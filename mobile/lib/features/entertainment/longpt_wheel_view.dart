@@ -190,7 +190,7 @@ class _LongPTWheelViewState extends State<LongPTWheelView>
           child: Column(children: [
             Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF4D96FF))),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(label, style: TextStyle(fontSize: 11, color: context.dimText)),
           ]),
         ),
       );
@@ -287,10 +287,10 @@ class _LongPTWheelViewState extends State<LongPTWheelView>
           ..._records.take(8).map((r) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(children: [
-                  Text(r.prizeName, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: r.prizeName == '未中奖' ? Colors.grey : null)),
+                  Text(r.prizeName, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: r.prizeName == '未中奖' ? context.dimText : null)),
                   if (r.amount > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('×${r.amount.toStringAsFixed(0)}', style: const TextStyle(color: Colors.orange, fontSize: 13))),
                   const Spacer(),
-                  Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text(r.createdAt, style: TextStyle(fontSize: 11, color: context.dimText)),
                 ]),
               )),
         ]),

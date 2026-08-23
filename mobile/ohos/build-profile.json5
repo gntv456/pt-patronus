@@ -6,10 +6,10 @@
       {
         "name": "default",
         "signingConfig": "default",
-        "compileSdkVersion": 18,
-        "compatibleSdkVersion": 18,
-        "targetSdkVersion": 18,
-        "runtimeOS": "OpenHarmony",
+        "compileSdkVersion": "6.1.1(24)",
+        "compatibleSdkVersion": "6.1.1(24)",
+        "targetSdkVersion": "6.1.1(24)",
+        "runtimeOS": "HarmonyOS",
       }
     ],
     "buildModeSet": [
@@ -28,6 +28,114 @@
     {
       "name": "entry",
       "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "file_picker_ohos",
+      "srcPath": "./plugins/file_picker_ohos/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "flutter_inappwebview_ohos",
+      "srcPath": "./plugins/flutter_inappwebview_ohos/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "open_filex",
+      "srcPath": "./plugins/open_filex/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "package_info_plus",
+      "srcPath": "./plugins/package_info_plus/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "path_provider_ohos",
+      "srcPath": "./plugins/path_provider_ohos/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "share_plus",
+      "srcPath": "./plugins/share_plus/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "shared_preferences_ohos",
+      "srcPath": "./plugins/shared_preferences_ohos/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "url_launcher_ohos",
+      "srcPath": "./plugins/url_launcher_ohos/ohos",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "video_player_ohos",
+      "srcPath": "./plugins/video_player_ohos/ohos",
       "targets": [
         {
           "name": "default",

@@ -104,7 +104,7 @@ loadSites()
       </div>
     </div>
 
-    <div v-loading="loading">
+    <div v-loading="loading" :key="`${currentSite}-${currentGame}`" class="game-stage">
       <!-- 富 UI 玩法（每个游戏独立组件） -->
       <ScratchCardGame v-if="richGame === 'cspt_scratch' && currentSite" :site-id="currentSite" />
       <JggGameUi v-else-if="richGame === 'jgg' && currentSite" :site-id="currentSite" />
@@ -146,19 +146,19 @@ loadSites()
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
-.head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
-.selectors { display: flex; gap: 10px; }
-.opt-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.selectors { display: flex; gap: var(--sp-2); }
+.opt-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-4); width: 100%; }
 .opt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.opt-count { flex: none; min-width: 20px; padding: 0 6px; border-radius: 999px; font-size: 12px; font-weight: 600; text-align: center; color: var(--pt-primary, #6c5ce7); background: color-mix(in srgb, var(--pt-primary, #6c5ce7) 14%, transparent); }
+.opt-count { flex: none; min-width: 20px; padding: 0 6px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; text-align: center; color: var(--pt-primary, #6c5ce7); background: color-mix(in srgb, var(--pt-primary, #6c5ce7) 14%, transparent); }
 .opt-count.zero { color: var(--text-muted, #9aa0a6); background: rgba(120, 120, 120, 0.12); font-weight: 500; }
-.simple-card { padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 360px; margin: 0 auto; }
-.gname { font-size: 18px; font-weight: 600; }
-.result { width: 100%; padding: 10px; border-radius: var(--radius-md); font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.result.win { background: rgba(46, 204, 113, 0.12); }
-.result.lose { background: rgba(231, 76, 60, 0.1); }
+.simple-card { padding: 28px; display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); max-width: 360px; margin: 0 auto; }
+.gname { font-size: var(--fs-xl); font-weight: 600; }
+.result { width: 100%; padding: 10px; border-radius: var(--radius-md); font-size: var(--fs-body); display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.result.win { background: var(--pt-success-bg); }
+.result.lose { background: var(--pt-danger-bg); }
 .badge { font-weight: 700; }
 .prize { color: var(--pt-primary, #6c5ce7); font-weight: 600; }
 .amount { color: var(--pt-warn, #f59e0b); font-weight: 600; }
@@ -176,4 +176,8 @@ loadSites()
 .ent-site-dropdown .el-scrollbar__wrap {
   max-height: 60vh;
 }
+
+/* 游戏切换：水润淡入 */
+.game-stage > * { animation: pt-scale-in var(--dur-slow) var(--ease-out-spring) both; }
+.result { animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both; }
 </style>

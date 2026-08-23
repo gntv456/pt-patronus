@@ -226,23 +226,23 @@ onMounted(() => {})
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 14px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-3); }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 0; font-size: 22px; font-weight: 700; }
+.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
 .sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.search-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+.search-bar { display: flex; align-items: center; gap: var(--sp-2); padding: 12px 14px; }
 .search-input { flex: 1; }
 .lang-select { width: 110px; flex-shrink: 0; }
-.results { display: flex; flex-direction: column; gap: 8px; min-height: 200px; }
-.result { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.result-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.results { display: flex; flex-direction: column; gap: var(--sp-2); min-height: 200px; }
+.result { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.result-main { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; flex: 1; }
 .result-title { font-size: var(--fs-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hint { font-size: var(--fs-xs); color: var(--text-muted); display: block; margin-top: 4px; }
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
 .page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
 .page.embedded > .sub { display: none; }
 
 </style>

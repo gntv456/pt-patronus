@@ -181,17 +181,17 @@ const stateText = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
   margin-bottom: 14px;
   padding-bottom: 13px;
   border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18));
 }
-.detail-title { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; }
+.detail-title { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-width: 0; }
 .detail-title-copy { min-width: 0; }
-.detail-kicker { display: block; margin-bottom: 3px; color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
-.detail-title h2 { overflow: hidden; max-width: 470px; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
-.state-chip { display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto; font-size: 11px; font-weight: 600; }
+.detail-kicker { display: block; margin-bottom: 3px; color: var(--text-muted); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; }
+.detail-title h2 { overflow: hidden; max-width: 470px; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-lg); }
+.state-chip { display: inline-flex; align-items: center; gap: var(--sp-1); flex: 0 0 auto; font-size: var(--fs-2xs); font-weight: 600; }
 .state-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--pt-warn); }
 .state-chip.downloading { color: var(--pt-primary-2); }.state-chip.downloading i { background: var(--pt-primary-2); }
 .state-chip.seeding { color: var(--pt-success); }.state-chip.seeding i { background: var(--pt-success); }
@@ -200,23 +200,23 @@ const stateText = computed(() => {
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px 18px;
+  gap: var(--sp-2) var(--sp-4);
 }
 .cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 .cell.wide {
   grid-column: 1 / -1;
 }
 .k {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .v {
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,24 +224,24 @@ const stateText = computed(() => {
 }
 .flags {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
   margin: 16px 0 10px;
 }
 .flag {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 2px 8px;
-  border-radius: 4px;
-  background: rgba(127, 127, 127, 0.18);
+  border-radius: var(--radius-2xs);
+  background: var(--surface-hover);
   color: var(--text-muted);
 }
 .flag.on {
-  background: rgba(108, 92, 231, 0.22);
+  background: var(--pt-primary-bg);
   color: var(--pt-primary, #6c5ce7);
 }
 .flag-ops {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 .empty {

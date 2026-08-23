@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 // LongPT 六十四卦勋章：爻碎片合成 + 金字塔升级（太极→两仪→四象→八卦→六十四卦）。
 class LongPTMedalView extends StatefulWidget {
@@ -126,7 +127,7 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
+    if (_loading) return const PTLoadingView();
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       children: [
@@ -144,7 +145,7 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
             padding: const EdgeInsets.all(24),
             child: Text(
               _fetchError.isNotEmpty ? '加载失败：$_fetchError' : '暂无勋章数据',
-              style: TextStyle(color: _fetchError.isNotEmpty ? Colors.redAccent : Colors.grey, fontSize: 12),
+              style: TextStyle(color: _fetchError.isNotEmpty ? Colors.redAccent : context.dimText, fontSize: 12),
               textAlign: TextAlign.center,
             ),
           ),
@@ -175,7 +176,7 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
             _convertBtn(1, '阴→阳', _shards?.yinYao ?? 0),
           ]),
           const SizedBox(height: 8),
-          const Text('阴阳互转：10000 魔力 / 个', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          Text('阴阳互转：10000 魔力 / 个', style: TextStyle(fontSize: 11, color: context.dimText)),
         ]),
       );
 
@@ -184,7 +185,7 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
         const SizedBox(width: 6),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${val ?? '--'}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 11, color: context.dimText)),
         ]),
       ]);
 
@@ -230,8 +231,8 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
           child: Stack(clipBehavior: Clip.none, children: [
             Center(
               child: n.imageUrl.isNotEmpty
-                  ? Image.network(n.imageUrl, width: 48, height: 48, color: n.owned ? null : Colors.grey, errorBuilder: (_, _, _) => const Text('☯', style: TextStyle(fontSize: 32, color: Colors.grey)))
-                  : const Text('☯', style: TextStyle(fontSize: 32, color: Colors.grey)),
+                  ? Image.network(n.imageUrl, width: 48, height: 48, color: n.owned ? null : Colors.grey, errorBuilder: (_, _, _) => Text('☯', style: TextStyle(fontSize: 32, color: context.dimText)))
+                  : Text('☯', style: TextStyle(fontSize: 32, color: context.dimText)),
             ),
             if (n.owned)
               const Positioned(top: -4, right: -4, child: CircleAvatar(radius: 9, backgroundColor: Color(0xFF2ECC71), child: Icon(Icons.check, size: 12, color: Colors.white))),
@@ -240,7 +241,7 @@ class _LongPTMedalViewState extends State<LongPTMedalView> {
         const SizedBox(height: 4),
         Text(n.name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 2),
-        Text(_costText(n), textAlign: TextAlign.center, style: const TextStyle(fontSize: 9, color: Colors.grey), maxLines: 2),
+        Text(_costText(n), textAlign: TextAlign.center, style: TextStyle(fontSize: 9, color: context.dimText), maxLines: 2),
         const Spacer(),
         if (n.owned)
           const Text('已拥有', style: TextStyle(fontSize: 11, color: Color(0xFF2ECC71), fontWeight: FontWeight.w600))

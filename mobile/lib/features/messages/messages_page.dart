@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/message.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
@@ -75,7 +76,7 @@ class _MessagesPageState extends State<MessagesPage> {
       children: [
         Text(
           '${msg.sender} · ${msg.date} · ${msg.siteName}',
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
+          style: TextStyle(color: context.dimText, fontSize: 13),
         ),
         const SizedBox(height: 12),
         SelectableText(
@@ -217,14 +218,23 @@ class _MessagesPageState extends State<MessagesPage> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const PTLoadingView()
             : _error != null
             ? PTEmptyState(text: _error!, onRetry: _load)
             : _results.isEmpty
             ? PTEmptyState(icon: Icons.mail_outline, text: '暂无消息')
             : ListView(
                 padding: const EdgeInsets.all(12),
-                children: _filteredResults.map(_group).toList(),
+                children: _filteredResults
+                  .asMap()
+                  .entries
+                  .map(
+                    (e) => PTListItemEntrance(
+                      index: e.key,
+                      child: _group(e.value),
+                    ),
+                  )
+                  .toList(),
               ),
       ),
     );
@@ -282,9 +292,9 @@ class _MessagesPageState extends State<MessagesPage> {
                   ),
                 )
               else if (r.messages.isEmpty)
-                const Text(
+                Text(
                   '无消息',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
             ],
           ),

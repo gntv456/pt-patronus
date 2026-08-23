@@ -1,4 +1,4 @@
-﻿import { http } from './http'
+import { http } from './http'
 
 // === 数据库可视化管理（受限查询器）===
 

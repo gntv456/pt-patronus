@@ -5,6 +5,7 @@ import 'package:ptpatronus/core/config.dart';
 import 'package:ptpatronus/api/workflow.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'workflow_editor_page.dart';
 
@@ -128,25 +129,25 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
         'failed': '失败',
       }[s] ??
       s;
-  Color _stateColor(String s) =>
-      const {
-        'idle': Colors.grey,
+  Color _stateColor(BuildContext context, String s) =>
+      {
+        'idle': context.dimText,
         'running': Color(0xFF2980B9),
         'success': PTColors.success,
         'failed': PTColors.danger,
       }[s] ??
-      Colors.grey;
+      context.dimText;
   String _triggerText(String s) =>
       const {'manual': '手动', 'timer': '定时', 'event': '事件'}[s] ?? s;
 
-  Widget _statCell(String num, String lab, [Color? c]) => Column(
+  Widget _statCell(BuildContext context, String num, String lab, [Color? c]) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
       Text(
         num,
         style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: c),
       ),
-      Text(lab, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+      Text(lab, style: TextStyle(fontSize: 11, color: context.dimText)),
     ],
   );
 
@@ -164,17 +165,17 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
         PTBarAction(onPressed: () => _edit(null), icon: Icons.add, label: '新建'),
       ],
       body: _loading && _list.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? const PTLoadingView()
           : _list.isEmpty
-          ? const Center(
-              child: Text('暂无工作流，点右上角新建', style: TextStyle(color: Colors.grey)),
+          ? Center(
+              child: Text('暂无工作流，点右上角新建', style: TextStyle(color: context.dimText)),
             )
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.builder(
                 padding: const EdgeInsets.all(12),
                 itemCount: _list.length + (_stats != null ? 1 : 0),
-                itemBuilder: (_, i) {
+                itemBuilder: (context, i) {
                   if (_stats != null && i == 0) {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -183,15 +184,15 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _statCell('${_stats!.total}', '工作流'),
-                            _statCell('${_stats!.enabled}', '启用'),
-                            _statCell('${_stats!.runsTotal}', '运行'),
-                            _statCell(
+                            _statCell(context, '${_stats!.total}', '工作流'),
+                            _statCell(context, '${_stats!.enabled}', '启用'),
+                            _statCell(context, '${_stats!.runsTotal}', '运行'),
+                            _statCell(context,
                               '${_stats!.runsSuccess}',
                               '成功',
                               PTColors.success,
                             ),
-                            _statCell(
+                            _statCell(context,
                               '${_stats!.runsFailed}',
                               '失败',
                               PTColors.danger,
@@ -226,7 +227,7 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: _stateColor(
+                                  color: _stateColor(context, 
                                     w.state,
                                   ).withValues(alpha: 0.18),
                                   borderRadius: BorderRadius.circular(999),
@@ -234,7 +235,7 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
                                 child: Text(
                                   _stateText(w.state),
                                   style: TextStyle(
-                                    color: _stateColor(w.state),
+                                    color: _stateColor(context, w.state),
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -265,9 +266,9 @@ class _WorkflowListPageState extends State<WorkflowListPage> {
                           const SizedBox(height: 4),
                           Text(
                             '运行 ${w.runCount} 次 · ${w.description.isEmpty ? '—' : w.description}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: context.dimText,
                             ),
                           ),
                           if (w.lastResult.isNotEmpty)
@@ -450,7 +451,7 @@ class _WebhookManagerState extends State<_WebhookManager> {
           children: [
             Text(
               '${_list.length} 个 Webhook',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: context.dimText),
             ),
             const Spacer(),
             OutlinedButton.icon(
@@ -462,24 +463,21 @@ class _WebhookManagerState extends State<_WebhookManager> {
         ),
         const SizedBox(height: 10),
         if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: CircularProgressIndicator()),
-          )
+          const PTLoadingView()
         else if (_list.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: Text('暂无 Webhook', style: TextStyle(color: Colors.grey)),
+              child: Text('暂无 Webhook', style: TextStyle(color: context.dimText)),
             ),
           )
         else
-          ..._list.map(_card),
+          ..._list.map((w) => _card(context, w)),
       ],
     );
   }
 
-  Widget _card(Webhook w) {
+  Widget _card(BuildContext context, Webhook w) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GlassCard(
@@ -503,20 +501,20 @@ class _WebhookManagerState extends State<_WebhookManager> {
                 else
                   _chip(
                     w.enabled ? '启用' : '禁用',
-                    w.enabled ? PTColors.primary : Colors.grey,
+                    w.enabled ? PTColors.primary : context.dimText,
                   ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
               '触发 ${w.triggerCount} 次${w.lastTriggeredAt != null ? ' · ${_fmtTime(w.lastTriggeredAt!)}' : ''}',
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              style: TextStyle(fontSize: 11, color: context.dimText),
             ),
             const SizedBox(height: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.10),
+                color: context.dimText.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -524,7 +522,7 @@ class _WebhookManagerState extends State<_WebhookManager> {
                   Expanded(
                     child: SelectableText(
                       _url(w),
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      style: TextStyle(fontSize: 11, color: context.dimText),
                       maxLines: 1,
                     ),
                   ),

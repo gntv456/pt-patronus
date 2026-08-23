@@ -176,12 +176,12 @@ const serviceRows = computed(() => {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .dc-head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .dc-title {
   flex: 1;
@@ -189,24 +189,24 @@ const serviceRows = computed(() => {
 }
 .dc-name {
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   color: var(--text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .dc-sub {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .dc-status {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  font-size: 12px;
+  gap: var(--sp-1);
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 3px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 .dc-status .dot {
   width: 7px;
@@ -222,8 +222,8 @@ const serviceRows = computed(() => {
   box-shadow: 0 0 6px #11998e;
 }
 .dc-status.offline {
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.12);
+  color: var(--pt-danger);
+  background: var(--pt-danger-bg);
 }
 .dc-status.offline .dot {
   background: #e74c3c;
@@ -238,27 +238,27 @@ const serviceRows = computed(() => {
 .dc-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .dc-info {
   display: flex;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .dc-info span {
   color: var(--text-muted);
 }
 .dc-nodata {
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--text-muted);
   padding: 8px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 .dc-net {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .dc-foot {
@@ -269,12 +269,12 @@ const serviceRows = computed(() => {
   padding-top: 8px;
 }
 .dc-time {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .dc-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 </style>

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:ptpatronus/api/search.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/api/search.dart';
 
 /// 「在站点查找」结果抽屉：用媒体标题做 keyword 跨站搜索（复用既有 /api/v1/search），
 /// 展示每个命中站点的种子。按需联动（on-demand join）——不做可用性预过滤。
@@ -85,15 +85,15 @@ class _FindOnSitesSheetState extends State<FindOnSitesSheet> {
           if (s.error.isNotEmpty)
             Text(s.error, style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 12))
           else if (s.torrents.isEmpty)
-            const Text('未命中', style: TextStyle(color: Colors.grey, fontSize: 12))
+            Text('未命中', style: TextStyle(color: context.dimText, fontSize: 12))
           else
-            Text('${s.torrents.length} 条', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text('${s.torrents.length} 条', style: TextStyle(color: context.dimText, fontSize: 12)),
         ]),
         ...s.torrents.take(5).map((t) => Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Row(children: [
                 Expanded(child: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12))),
-                Text('${t.size} · ${t.seeders}种', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                Text('${t.size} · ${t.seeders}种', style: TextStyle(color: context.dimText, fontSize: 11)),
               ]),
             )),
       ]),

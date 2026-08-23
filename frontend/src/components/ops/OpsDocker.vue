@@ -741,7 +741,7 @@ function onModeSwitch() {
 .docker-hint-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
 .docker-hint-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 6px; }
 .docker-hint-desc code { background: rgba(0,0,0,.1); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
-.docker-hint-code { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,.15); border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: background .15s; }
+.docker-hint-code { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(0,0,0,.15); border-radius: 6px; cursor: pointer; margin-bottom: 6px; transition: background var(--dur-fast) var(--ease-out-smooth); }
 .docker-hint-code:hover { background: rgba(0,0,0,.25); }
 .docker-hint-code code { font-family: 'Cascadia Code', monospace; font-size: 13px; flex: 1; }
 .copy-btn { font-size: 12px; color: var(--pt-primary, #6c5ce7); white-space: nowrap; }

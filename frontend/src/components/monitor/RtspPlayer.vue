@@ -85,7 +85,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 13px;
+  font-size: var(--fs-body);
   text-align: center;
   padding: 16px;
   background: rgba(0, 0, 0, 0.6);

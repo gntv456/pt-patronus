@@ -4,6 +4,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'widgets/filter_test_sheet.dart';
 import 'widgets/group_form.dart';
 import 'widgets/rule_form.dart';
@@ -348,7 +349,7 @@ class _FilterRulesPageState extends State<FilterRulesPage> with SingleTickerProv
 
   // —— Tab: 内置规则（只读） ——
   Widget _builtinTab() {
-    if (_loadingRules && _builtin.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (_loadingRules && _builtin.isEmpty) return const PTLoadingView();
     if (_rulesError != null && _builtin.isEmpty) {
       return PTEmptyState(icon: Icons.error_outline, text: '加载失败', description: _rulesError, onRetry: _loadRules);
     }
@@ -361,14 +362,14 @@ class _FilterRulesPageState extends State<FilterRulesPage> with SingleTickerProv
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
         itemCount: _builtin.length,
         separatorBuilder: (_, _) => const SizedBox(height: 8),
-        itemBuilder: (_, i) => _ruleCard(_builtin[i], readonly: true),
+        itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _ruleCard(_builtin[i], readonly: true)),
       ),
     );
   }
 
   // —— Tab: 自定义规则 ——
   Widget _customTab() {
-    if (_loadingRules && _custom.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (_loadingRules && _custom.isEmpty) return const PTLoadingView();
     if (_rulesError != null && _custom.isEmpty) {
       return PTEmptyState(icon: Icons.error_outline, text: '加载失败', description: _rulesError, onRetry: _loadRules);
     }
@@ -414,10 +415,10 @@ class _FilterRulesPageState extends State<FilterRulesPage> with SingleTickerProv
           ...r.include.map((p) => _tag('含: $p', PTColors.success)),
           ...r.exclude.map((p) => _tag('排: $p', PTColors.danger)),
           if (r.sizeRange.isNotEmpty) _tag('体积 ${r.sizeRange}${_mbUnit(r.sizeRange)}', PTColors.warn),
-          if (r.seeders > 0) _tag('做种≥${r.seeders}', Colors.grey),
-          if (r.publishTime.isNotEmpty) _tag('发布 ${r.publishTime}分', Colors.grey),
-          ...r.match.map((m) => _tag('匹配:$m', Colors.grey)),
-          for (final entry in r.tmdb.entries) _tag('tmdb:${entry.key}=${entry.value}', Colors.grey),
+          if (r.seeders > 0) _tag('做种≥${r.seeders}', context.dimText),
+          if (r.publishTime.isNotEmpty) _tag('发布 ${r.publishTime}分', context.dimText),
+          ...r.match.map((m) => _tag('匹配:$m', context.dimText)),
+          for (final entry in r.tmdb.entries) _tag('tmdb:${entry.key}=${entry.value}', context.dimText),
         ]),
       ]),
     );
@@ -436,7 +437,7 @@ class _FilterRulesPageState extends State<FilterRulesPage> with SingleTickerProv
   // —— Tab: 规则组 + 全局绑定 ——
   Widget _groupsTab() {
     if (_loadingGroups && _groups.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     if (_groupsError != null && _groups.isEmpty) {
       return PTEmptyState(icon: Icons.error_outline, text: '加载失败', description: _groupsError, onRetry: _loadGroups);
@@ -448,7 +449,7 @@ class _FilterRulesPageState extends State<FilterRulesPage> with SingleTickerProv
         children: [
           const _SectionLabel('规则组'),
           if (_groups.isEmpty)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('暂无规则组，点右下角 + 新增', style: TextStyle(fontSize: 12, color: Colors.grey)))
+            Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('暂无规则组，点右下角 + 新增', style: TextStyle(fontSize: 12, color: context.dimText)))
           else
             ..._groups.map((g) => _groupCard(g)),
           const SizedBox(height: 16),
@@ -472,7 +473,7 @@ class _FilterRulesPageState extends State<FilterRulesPage> with SingleTickerProv
           if (g.mediaType.isNotEmpty) _tag(g.mediaType, PTColors.primary),
           if (g.category.isNotEmpty) ...[
             const SizedBox(width: 4),
-            _tag(g.category, Colors.grey),
+            _tag(g.category, context.dimText),
           ],
           IconButton(icon: const Icon(Icons.edit_outlined, size: 18), tooltip: '编辑', onPressed: () => _openEditGroup(g)),
           IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: '删除', onPressed: () => _deleteGroup(g)),
@@ -497,10 +498,10 @@ class _FilterRulesPageState extends State<FilterRulesPage> with SingleTickerProv
         const SizedBox(width: 8),
         Expanded(
           child: names.isEmpty
-              ? const Text('未绑定', style: TextStyle(fontSize: 12, color: Colors.grey))
+              ? Text('未绑定', style: TextStyle(fontSize: 12, color: context.dimText))
               : Wrap(spacing: 6, runSpacing: 4, children: names.map((n) => _tag(n, PTColors.primary)).toList()),
         ),
-        const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+        Icon(Icons.chevron_right, size: 18, color: context.dimText),
       ]),
     );
   }

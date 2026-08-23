@@ -7,6 +7,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 // 订阅列表（对标 Web Subscriptions）：展示订阅状态，支持手动检查 / 暂停-恢复 /
@@ -332,7 +333,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
 
   Widget _buildBody() {
     if (_loading && _subs.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     if (_error != null) {
       return PTEmptyState(text: _error!, onRetry: _load);
@@ -350,7 +351,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
       itemCount: _subs.length,
       separatorBuilder: (_, _) => const SizedBox(height: 12),
-      itemBuilder: (_, i) => _card(_subs[i]),
+      itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _card(_subs[i])),
     );
   }
 
@@ -394,8 +395,8 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
                           '(${s.year})',
-                          style: const TextStyle(
-                            color: Colors.grey,
+                          style: TextStyle(
+                            color: context.dimText,
                             fontSize: 13,
                           ),
                         ),
@@ -420,7 +421,7 @@ class _SubscriptionsPageState extends State<SubscriptionsPage> {
                 const SizedBox(height: 4),
                 Text(
                   '上次检查：${_fmtTime(s.lastCheckedAt)} · 类型 ${s.type == 'tv' ? '剧集' : '电影'} · 源 ${s.source}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -666,11 +667,11 @@ class _GlobalDefaultsDialogState extends State<_GlobalDefaultsDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 12),
                 child: Text(
                   '未单独设置某项的订阅将使用此处的默认值（改后立即对所有未自定义订阅生效）。',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
               ),
               TextField(

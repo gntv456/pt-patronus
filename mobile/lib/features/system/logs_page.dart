@@ -4,6 +4,7 @@ import 'package:ptpatronus/api/system_log.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 运行日志页（对齐 Web Settings 日志 tab）：展示后端环形缓冲日志，
@@ -88,7 +89,7 @@ class _LogsPageState extends State<LogsPage> {
   Color _levelColor(String lv) => switch (lv) {
     'ERROR' => const Color(0xFFF56C6C),
     'WARN' => const Color(0xFFE6A23C),
-    'DEBUG' => Colors.grey,
+    'DEBUG' => context.dimText,
     _ => const Color(0xFF6C5CE7),
   };
 
@@ -142,7 +143,7 @@ class _LogsPageState extends State<LogsPage> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const PTLoadingView()
             : _error != null
             ? PTEmptyState(text: _error!, onRetry: _load)
             : _entries.isEmpty
@@ -153,7 +154,7 @@ class _LogsPageState extends State<LogsPage> {
                   vertical: 4,
                 ),
                 itemCount: _entries.length,
-                itemBuilder: (_, i) => _row(_entries[i]),
+                itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _row(_entries[i])),
               ),
       ),
     );
@@ -172,7 +173,7 @@ class _LogsPageState extends State<LogsPage> {
             children: [
               Text(
                 _fmtTime(e.time),
-                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                style: TextStyle(color: context.dimText, fontSize: 12),
               ),
               const SizedBox(width: 8),
               Container(
@@ -209,8 +210,8 @@ class _LogsPageState extends State<LogsPage> {
                     .map(
                       (a) => Text(
                         '${a.key}=${a.value}',
-                        style: const TextStyle(
-                          color: Colors.grey,
+                        style: TextStyle(
+                          color: context.dimText,
                           fontSize: 11,
                         ),
                       ),

@@ -60,15 +60,15 @@ async function remove(url: string) {
 <style scoped>
 .addrow {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-bottom: 10px;
 }
 .trow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   padding: 4px 0;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .turl {
   flex: 1;

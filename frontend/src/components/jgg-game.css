@@ -1,20 +1,20 @@
 .jgg {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-4);
   max-width: 480px;
   margin: 0 auto;
 }
 .banner {
   text-align: center;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: linear-gradient(135deg, #6c5ce7, #8e44ad);
   border: 1px solid rgba(255, 215, 106, 0.4);
 }
 .banner-title {
   display: block;
-  font-size: 22px;
+  font-size: var(--fs-title);
   font-weight: 800;
   color: #ffd76a;
   letter-spacing: 3px;
@@ -22,49 +22,49 @@
 .banner-sub {
   display: block;
   margin-top: 3px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: rgba(255, 255, 255, 0.75);
 }
 .stat-bar {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  gap: var(--sp-2);
 }
 .stat-tile {
   padding: 10px 8px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   text-align: center;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 8px rgba(31, 38, 135, 0.08);
 }
 .stat-val {
-  font-size: 20px;
+  font-size: var(--fs-title);
   font-weight: 800;
   color: #ffd76a;
 }
 .stat-lbl {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: #4b5563;
 }
 /* 九宫格 */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .cell {
   aspect-ratio: 1 / 1;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: 6px;
   text-align: center;
-  transition: all 0.12s ease;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
 }
 .prize {
   background: rgba(255, 255, 255, 0.72);
@@ -87,10 +87,10 @@
   100% { transform: scale(1.06); }
 }
 .p-icon {
-  font-size: 26px;
+  font-size: var(--fs-hero);
 }
 .p-name {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: #fff;
   font-weight: 600;
   line-height: 1.2;
@@ -104,7 +104,7 @@
   cursor: pointer;
   background: linear-gradient(135deg, #6c5ce7, #4285f4);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(108, 92, 231, 0.4);
+  box-shadow: 0 4px 14px var(--pt-primary-bg);
 }
 .center:hover:not(:disabled) {
   filter: brightness(1.1);
@@ -113,10 +113,10 @@
   cursor: progress;
 }
 .center-icon {
-  font-size: 26px;
+  font-size: var(--fs-hero);
 }
 .center-text {
-  font-size: 13px;
+  font-size: var(--fs-body);
   font-weight: 800;
   letter-spacing: 1px;
 }
@@ -134,41 +134,41 @@
 /* 结果 */
 .result {
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--sp-2);
   align-items: center;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
-.result.win { background: rgba(46, 204, 113, 0.12); }
-.result.lose { background: rgba(231, 76, 60, 0.1); }
+.result.win { background: var(--pt-success-bg); }
+.result.lose { background: var(--pt-danger-bg); }
 .badge { font-weight: 800; }
 .r-prize { color: #ffd76a; font-weight: 700; }
-.r-amt { color: #f59e0b; font-weight: 700; }
+.r-amt { color: var(--pt-warn); font-weight: 700; }
 .r-msg { width: 100%; }
 
 /* 连抽按钮 */
 .multi {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .mbtn {
   padding: 10px 6px;
-  border-radius: 12px;
-  border: 1px solid rgba(108, 92, 231, 0.4);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--pt-primary-bg);
   background: rgba(255, 255, 255, 0.72);
   color: #4b5563;
-  font-size: 13px;
+  font-size: var(--fs-body);
   font-weight: 700;
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
   box-shadow: 0 2px 8px rgba(31, 38, 135, 0.08);
 }
 .mbtn span {
   margin-right: 4px;
-  font-size: 15px;
+  font-size: var(--fs-lg);
 }
 .mbtn:hover:not(:disabled) {
   background: linear-gradient(135deg, #6c5ce7, #4285f4);
@@ -184,42 +184,42 @@
 /* 连抽结果 */
 .bulk {
   padding: 12px;
-  border-radius: 12px;
-  background: rgba(46, 204, 113, 0.1);
-  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: var(--radius-sm);
+  background: var(--pt-success-bg);
+  border: 1px solid var(--pt-success-bg);
 }
-.bulk-head { font-weight: 800; font-size: 13px; margin-bottom: 8px; color: #2ecc71; }
+.bulk-head { font-weight: 800; font-size: var(--fs-body); margin-bottom: 8px; color: var(--pt-success); }
 .bulk-row {
   display: flex;
   justify-content: space-between;
   padding: 3px 2px;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .bulk-row.muted { color: #9aa5b1; }
 .bulk-cnt { font-weight: 800; color: #ffd76a; }
-.bulk-foot { margin-top: 8px; font-size: 11px; }
+.bulk-foot { margin-top: 8px; font-size: var(--fs-2xs); }
 
 /* 抽奖历史 */
 .history {
   padding: 12px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 8px rgba(31, 38, 135, 0.06);
 }
-.hist-title { font-weight: 800; font-size: 13px; margin-bottom: 8px; }
+.hist-title { font-weight: 800; font-size: var(--fs-body); margin-bottom: 8px; }
 .hist-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   padding: 5px 2px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
 }
 .hist-row:last-child { border-bottom: none; }
 .hist-row .muted { color: #9aa5b1; }
-.hist-cost { margin-left: auto; color: #e74c3c; font-weight: 700; }
-.hist-time { font-size: 11px; white-space: nowrap; }
+.hist-cost { margin-left: auto; color: var(--pt-danger); font-weight: 700; }
+.hist-time { font-size: var(--fs-2xs); white-space: nowrap; }
 
 /* 暗色主题：还原深色玻璃风格（亮色液态玻璃为默认基准） */
 :root.dark .stat-tile {
@@ -249,8 +249,8 @@
   box-shadow: none;
 }
 :root.dark .bulk {
-  background: rgba(46, 204, 113, 0.08);
-  border-color: rgba(46, 204, 113, 0.22);
+  background: var(--pt-success-bg);
+  border-color: var(--pt-success-bg);
 }
 :root.dark .history {
   background: rgba(255, 255, 255, 0.04);

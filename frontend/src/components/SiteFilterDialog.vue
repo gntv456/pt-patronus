@@ -96,13 +96,13 @@ function goManage() {
 .scope-filter-btn {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: var(--sp-1);
   background: transparent;
   border: none;
   cursor: pointer;
   padding: 0;
   color: var(--pt-primary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .scope-filter-btn:hover {
   text-decoration: underline;
@@ -110,9 +110,9 @@ function goManage() {
 .site-filter-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2);
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .site-filter-head .text-muted {
   flex: 1;
@@ -122,7 +122,7 @@ function goManage() {
   border: none;
   cursor: pointer;
   color: var(--pt-primary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 0;
 }
 .site-filter .link-btn:hover {
@@ -142,7 +142,7 @@ function goManage() {
 .site-filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0 6px;
+  gap: 0 var(--sp-1);
   max-height: 440px;
   overflow-y: auto;
   padding-top: 2px;
@@ -156,12 +156,12 @@ function goManage() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .site-filter-empty {
   padding: 24px 0;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 /* footer 内管理链接：margin-right:auto 推到左侧，与右侧「完成」分立两端 */
 .site-filter-manage {
@@ -171,7 +171,7 @@ function goManage() {
   cursor: pointer;
   font: inherit;
   color: var(--pt-primary);
-  font-size: 13px;
+  font-size: var(--fs-body);
   padding: 0;
   text-decoration: none;
 }

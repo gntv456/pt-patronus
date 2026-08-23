@@ -61,9 +61,9 @@ async function changePrio(f: TorrentFile, prio: number) {
 .frow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   padding: 4px 0;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .fname {
   flex: 1;
@@ -72,7 +72,7 @@ async function changePrio(f: TorrentFile, prio: number) {
   white-space: nowrap;
 }
 .fsize {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   width: 70px;
   text-align: right;
 }

@@ -344,26 +344,26 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 14px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-3); }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 0; font-size: 22px; font-weight: 700; }
+.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
 .sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-.card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.card-head { display: flex; align-items: center; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
+.card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-3); }
+.card-head { display: flex; align-items: center; gap: var(--sp-3); }
 .card-title { flex: 1; min-width: 0; }
-.name { font-weight: 600; font-size: var(--fs-body); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.name { font-weight: 600; font-size: var(--fs-body); display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
 .meta { font-size: var(--fs-xs); color: var(--text-muted); word-break: break-all; }
-.toggles { display: flex; flex-direction: column; gap: 6px; }
+.toggles { display: flex; flex-direction: column; gap: var(--sp-1); }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-sm); }
-.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .hint { font-size: var(--fs-xs); color: var(--text-muted); margin-left: 8px; }
-.libs-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.libs-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: 10px; }
 .cover-preview { margin-top: 14px; text-align: center; }
-.cover-preview img { max-width: 100%; border-radius: 8px; }
+.cover-preview img { max-width: 100%; border-radius: var(--radius-xs); }
 .report-block { margin-bottom: 16px; }
 .sub-title { font-size: var(--fs-sm); font-weight: 700; margin-bottom: 6px; }
-.user-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.user-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .dup-item { font-size: var(--fs-xs); line-height: 1.6; word-break: break-all; }
 .muted { color: var(--text-muted); }
 </style>

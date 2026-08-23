@@ -199,7 +199,7 @@ class _AccountPageState extends State<AccountPage> {
                       final isAdmin = u?['is_admin'] == true;
                       return Text(
                         isAdmin ? '管理员 · $name' : '已登录 · $name',
-                        style: const TextStyle(color: Colors.grey),
+                        style: TextStyle(color: context.dimText),
                       );
                     },
                   ),
@@ -208,8 +208,8 @@ class _AccountPageState extends State<AccountPage> {
                     children: [
                       Text(
                         '客户端 v$_clientVersion · 后端 v$_backendVersion',
-                        style: const TextStyle(
-                          color: Colors.grey,
+                        style: TextStyle(
+                          color: context.dimText,
                           fontSize: 12,
                         ),
                       ),

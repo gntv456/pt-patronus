@@ -175,23 +175,23 @@ onBeforeUnmount(() => window.removeEventListener('message', handleBridgeMessage)
   display: flex;
   min-height: calc(100vh - 128px);
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-3);
 }
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .title-block {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .title {
   margin: 0;
-  font-size: 22px;
+  font-size: var(--fs-title);
 }
 .meta {
   margin-top: 3px;
@@ -220,7 +220,7 @@ onBeforeUnmount(() => window.removeEventListener('message', handleBridgeMessage)
     flex-direction: column;
   }
   .title {
-    font-size: 18px;
+    font-size: var(--fs-xl);
   }
   .frame-shell,
   .plugin-frame {

@@ -84,12 +84,12 @@ function shortTime(s: string): string {
 }
 .dc-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-lg);
 }
 .dc-head p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 .timeline {
   flex: 1;
@@ -102,7 +102,7 @@ function shortTime(s: string): string {
   display: grid;
   grid-template-columns: 8px 22px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: var(--sp-2);
   padding: 7px 2px;
   border-bottom: 1px solid var(--divider);
 }
@@ -128,28 +128,28 @@ function shortTime(s: string): string {
   background: #2563eb;
 }
 .tl-icon {
-  font-size: 15px;
+  font-size: var(--fs-lg);
   text-align: center;
 }
 .tl-body {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 .tl-title {
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   color: var(--text-strong);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .tl-src {
-  font-size: 10.5px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
 }
 .tl-time {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -161,6 +161,6 @@ function shortTime(s: string): string {
   justify-content: center;
   min-height: 120px;
   color: var(--text-muted);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
 }
 </style>

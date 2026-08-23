@@ -213,7 +213,7 @@ class _JggGameViewState extends State<JggGameView> {
           child: Column(children: [
             Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFFFFD76A))),
             const SizedBox(height: 2),
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(label, style: TextStyle(fontSize: 11, color: context.dimText)),
           ]),
         ),
       );
@@ -296,7 +296,7 @@ class _JggGameViewState extends State<JggGameView> {
                           border: Border.all(color: const Color(0x386C5CE7)),
                         ),
                         child: Center(
-                          child: Text('${o.icon} ${o.count}连抽', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: busy ? Colors.grey : Colors.white)),
+                          child: Text('${o.icon} ${o.count}连抽', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: busy ? context.dimText : Colors.white)),
                         ),
                       ),
                     ))
@@ -324,13 +324,13 @@ class _JggGameViewState extends State<JggGameView> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Row(children: [
-              Text(e.key, style: TextStyle(fontSize: 13, color: e.key == '谢谢参与' ? Colors.grey : null)),
+              Text(e.key, style: TextStyle(fontSize: 13, color: e.key == '谢谢参与' ? context.dimText : null)),
               const Spacer(),
               Text('×${e.value}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFFFFD76A))),
             ]),
           ),
         const SizedBox(height: 6),
-        Text('消耗 $cost 火花 · 余额 ${_bulk!.balance.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        Text('消耗 $cost 火花 · 余额 ${_bulk!.balance.toStringAsFixed(0)}', style: TextStyle(fontSize: 11, color: context.dimText)),
       ]),
     );
   }
@@ -350,10 +350,10 @@ class _JggGameViewState extends State<JggGameView> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(children: [
-                Expanded(child: Text(r.prizeName, style: TextStyle(fontSize: 12, color: r.prizeName == '谢谢参与' ? Colors.grey : null))),
+                Expanded(child: Text(r.prizeName, style: TextStyle(fontSize: 12, color: r.prizeName == '谢谢参与' ? context.dimText : null))),
                 Text('-${r.cost.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.redAccent, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
-                Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(r.createdAt, style: TextStyle(fontSize: 11, color: context.dimText)),
               ]),
             ),
         ]),

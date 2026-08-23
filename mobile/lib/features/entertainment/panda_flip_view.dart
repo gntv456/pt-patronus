@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // PandaPT 翻面夺宝：10×10 卡片网格 + 奖项/规则侧栏 + 本局记录。
@@ -172,7 +173,7 @@ class _PandaFlipViewState extends State<PandaFlipView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
+    if (_loading) return const PTLoadingView();
     final s = _state;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -243,7 +244,7 @@ class _PandaFlipViewState extends State<PandaFlipView> {
           child: Column(children: [
             Text(val, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: c)),
             const SizedBox(height: 2),
-            Text(lbl, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(lbl, style: TextStyle(fontSize: 11, color: context.dimText)),
           ]),
         ),
       );
@@ -295,7 +296,7 @@ class _PandaFlipViewState extends State<PandaFlipView> {
           const Text('奖项详情', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 8),
           if (s == null || s.tiers.isEmpty)
-            const Text('加载中…', style: TextStyle(color: Colors.grey, fontSize: 13))
+            Text('加载中…', style: TextStyle(color: context.dimText, fontSize: 13))
           else
             ...s.tiers.asMap().entries.map((e) {
               final t = e.value;
@@ -309,7 +310,7 @@ class _PandaFlipViewState extends State<PandaFlipView> {
                   const SizedBox(width: 8),
                   Text(t.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                   const Spacer(),
-                  Text('${t.reward.toStringAsFixed(0)} 魔力 × ${t.count} 张', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                  Text('${t.reward.toStringAsFixed(0)} 魔力 × ${t.count} 张', style: TextStyle(color: context.dimText, fontSize: 11)),
                 ]),
               );
             }),
@@ -323,7 +324,7 @@ class _PandaFlipViewState extends State<PandaFlipView> {
           const SizedBox(height: 6),
           ..._rules.asMap().entries.map((e) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text('${e.key + 1}. ${e.value}', style: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.5)),
+                child: Text('${e.key + 1}. ${e.value}', style: TextStyle(fontSize: 12, color: context.dimText, height: 1.5)),
               )),
         ]),
       );
@@ -338,7 +339,7 @@ class _PandaFlipViewState extends State<PandaFlipView> {
                 child: Row(children: [
                   Expanded(child: Text(r.prizeName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
                   if (r.amount > 0) Padding(padding: const EdgeInsets.only(left: 6), child: Text('+${r.amount.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13))),
-                  if (r.createdAt.isNotEmpty) Text(r.createdAt, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  if (r.createdAt.isNotEmpty) Text(r.createdAt, style: TextStyle(fontSize: 11, color: context.dimText)),
                 ]),
               )),
         ]),

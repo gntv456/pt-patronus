@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/api/workflow.dart';
@@ -94,7 +95,7 @@ class _NodeParamFormState extends State<NodeParamForm> {
         Text(widget.info.name,
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         Text(widget.info.description,
-            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            style: TextStyle(fontSize: 12, color: context.dimText)),
         const SizedBox(height: 10),
         if (widget.showNameField) ...[
           TextField(

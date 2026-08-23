@@ -57,6 +57,17 @@ ThemeData buildAppTheme(Brightness brightness) {
     brightness: brightness,
     colorSchemeSeed: PTColors.primary,
     scaffoldBackgroundColor: Colors.transparent,
+    // 统一页面切换动效：淡入+上滑，替代默认 ZoomBuilder 的生硬缩放。
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _PTLiquidPageTransitionsBuilder(),
+        TargetPlatform.iOS: _PTLiquidPageTransitionsBuilder(),
+        TargetPlatform.macOS: _PTLiquidPageTransitionsBuilder(),
+        TargetPlatform.windows: _PTLiquidPageTransitionsBuilder(),
+        TargetPlatform.linux: _PTLiquidPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: _PTLiquidPageTransitionsBuilder(),
+      },
+    ),
     // AppBar 回退到可用红线：toolbarHeight 44（Material/Apple HIG 最小触摸高度）+ 图标 20 + 标题 17。
     // 此前压到 30 导致触摸目标 30×30 低于 44 红线（紧凑度治理过头 → 误触/难点中）。
     // 44 仍比默认 56 紧凑，但保证按钮命中区。注意：toolbarHeight<48 时 actions 里的裸
@@ -244,12 +255,119 @@ class GlassCard extends StatelessWidget {
         );
 
         if (onTap == null) return content;
-        return InkWell(
+        // 可点击卡片：InkWell 水波纹 + 轻微下沉缩放，呼应液态玻璃的触感。
+        return _GlassTapFeedback(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(radius),
+          radius: radius,
           child: content,
         );
       },
     );
   }
+}
+
+
+
+/// GlassCard 的触感反馈：InkWell 水波纹 + 按压时轻微下沉缩放（0.98）。
+/// 让可点击卡片有「按进液态玻璃」的弹性反馈，而非死板的平面。
+class _GlassTapFeedback extends StatefulWidget {
+  final VoidCallback? onTap;
+  final double radius;
+  final Widget child;
+  const _GlassTapFeedback({
+    required this.onTap,
+    required this.radius,
+    required this.child,
+  });
+  @override
+  State<_GlassTapFeedback> createState() => _GlassTapFeedbackState();
+}
+
+class _GlassTapFeedbackState extends State<_GlassTapFeedback>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 0.98).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap?.call();
+      },
+      onTapCancel: () => _ctrl.reverse(),
+      child: ScaleTransition(
+        scale: _scale,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(widget.radius),
+            child: widget.child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+/// 液态页面切换：淡入 + 轻微上滑（替代默认 ZoomBuilder）。
+/// 感受：像水波纹一样柔和地浮现，而非生硬的放大缩放。
+class _PTLiquidPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _PTLiquidPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutQuart,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: Tween<double>(begin: 0.0, end: 1.0).animate(curved),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.06),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      ),
+    );
+  }
+}
+/// Context extension — one-line theme-aware color accessors.
+/// Replaces scattered hardcoded Colors.grey / Colors.black87 across pages.
+extension PTContextColors on BuildContext {
+  /// Secondary/muted text color (replaces Colors.grey).
+  Color get dimText => Theme.of(this).colorScheme.onSurfaceVariant;
+  /// Primary text color (replaces Colors.black87).
+  Color get mainText => Theme.of(this).colorScheme.onSurface;
+  /// Faint decorative color for empty-state icons etc.
+  Color get faint => Theme.of(this).colorScheme.onSurfaceVariant.withValues(alpha: 0.4);
 }

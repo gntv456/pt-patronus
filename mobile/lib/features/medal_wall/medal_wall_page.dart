@@ -4,6 +4,7 @@ import 'package:ptpatronus/api/medal_wall.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
@@ -130,7 +131,7 @@ class _MedalWallPageState extends State<MedalWallPage> {
       body: RefreshIndicator(
         onRefresh: () => _load(refresh: true),
         child: _loading && _medals.isEmpty
-            ? const Center(child: CircularProgressIndicator())
+            ? const PTLoadingView()
             : _error != null
             ? PTEmptyState(text: _error!, onRetry: _load)
             : ListView(
@@ -367,7 +368,7 @@ class _MedalWallPageState extends State<MedalWallPage> {
               padding: const EdgeInsets.only(top: 10),
               child: Text(
                 m.description,
-                style: const TextStyle(color: Colors.grey, height: 1.4),
+                style: TextStyle(color: context.dimText, height: 1.4),
               ),
             ),
           const SizedBox(height: 12),
@@ -427,7 +428,7 @@ class _MedalWallPageState extends State<MedalWallPage> {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey)),
+        Text(label, style: TextStyle(color: context.dimText)),
         Text(value),
       ],
     ),

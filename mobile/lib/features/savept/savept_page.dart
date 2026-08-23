@@ -6,6 +6,7 @@ import 'package:ptpatronus/api/savept.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -258,7 +259,7 @@ class _SaveptPageState extends State<SaveptPage>
       body: RefreshIndicator(
         onRefresh: () => _load(refresh: true),
         child: _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const PTLoadingView()
             : _error != null
             ? _Empty(text: _error!, onRetry: _load)
             : _data == null
@@ -280,10 +281,10 @@ class _SaveptPageState extends State<SaveptPage>
                       padding: const EdgeInsets.symmetric(vertical: 48),
                       child: Column(
                         children: [
-                          const Center(
+                          Center(
                             child: Text(
                               '没有匹配的站点',
-                              style: TextStyle(color: Colors.grey),
+                              style: TextStyle(color: context.dimText),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -327,7 +328,7 @@ class _SaveptPageState extends State<SaveptPage>
               '站点运行状态实时监护',
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.grey.shade600,
+                color: context.dimText,
                 height: 1.1,
               ),
             ),
@@ -346,7 +347,7 @@ class _SaveptPageState extends State<SaveptPage>
       padding: const EdgeInsets.only(top: 8),
       child: Text(
         '显示 ${_filtered.length} / ${d.cards.length} 个站点${fetched.isNotEmpty ? ' · $fetched 更新' : ''}',
-        style: const TextStyle(fontSize: 11, color: Colors.grey),
+        style: TextStyle(fontSize: 11, color: context.dimText),
       ),
     );
   }
@@ -398,7 +399,7 @@ class _SaveptPageState extends State<SaveptPage>
                     const SizedBox(width: 8),
                     Text(
                       '${e.key == '未知' ? '' : '年'}建站 · ${e.value.length} 个',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: context.dimText),
                     ),
                   ],
                 ),
@@ -806,7 +807,7 @@ class _SiteCardState extends State<_SiteCard> {
                       style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
                     ));
                   }
-                  add(widget.siteTypeLabel(c.siteType), Colors.grey);
+                  add(widget.siteTypeLabel(c.siteType), context.dimText);
                   if (c.durationText.isNotEmpty) add(c.durationText, PTColors.primary);
                   if (c.anniversaryText.isNotEmpty) {
                     add(widget.annivDisplay(c.anniversaryText), const Color(0xFFF59E0B));
@@ -884,9 +885,9 @@ class _SiteCardState extends State<_SiteCard> {
                           const SizedBox(height: 4),
                           Text(
                             '开站 ${c.openTime.isNotEmpty ? c.openTime : '未知'}${c.closeTime.isNotEmpty && c.closeTime != '未知' ? ' · 关站 ${c.closeTime}' : ''}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey,
+                              color: context.dimText,
                             ),
                           ),
                           if (c.localSiteName.isNotEmpty)
@@ -940,8 +941,8 @@ class _SiteCardState extends State<_SiteCard> {
                       Expanded(
                         child: Text(
                           c.domain,
-                          style: const TextStyle(
-                            color: Colors.grey,
+                          style: TextStyle(
+                            color: context.dimText,
                             fontSize: 11,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -1011,7 +1012,7 @@ class _Empty extends StatelessWidget {
             child: Text(
               text,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: context.dimText),
             ),
           ),
         ),

@@ -9,6 +9,7 @@ import 'package:ptpatronus/widgets/media_poster.dart';
 import 'package:ptpatronus/widgets/find_on_sites_sheet.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import '../media/media_detail_page.dart';
 
 // 推荐页：多源热门信息流（豆瓣热映/TMDB trending/Bangumi 热门/寸光集短剧）。
@@ -177,7 +178,7 @@ class _RecommendPageState extends State<RecommendPage> {
     if (list.isEmpty) {
       // 首批未到：轻量转圈占位（非全屏遮罩，首批一到即切列表渐进显示）
       if (_loading) {
-        return const Center(child: CircularProgressIndicator());
+        return const PTLoadingView();
       }
       return RefreshIndicator(
         onRefresh: _refresh,
@@ -209,7 +210,9 @@ class _RecommendPageState extends State<RecommendPage> {
                   final end = start + cols > list.length
                       ? list.length
                       : start + cols;
-                  return Padding(
+                  return PTListItemEntrance(
+                    index: rowIdx,
+                    child: Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,6 +230,7 @@ class _RecommendPageState extends State<RecommendPage> {
                           const Expanded(child: SizedBox()), // 末行不足补空占位，保持等宽
                       ],
                     ),
+                  ),
                   );
                 }, childCount: rowCount),
               ),
@@ -251,13 +255,13 @@ class _RecommendPageState extends State<RecommendPage> {
                             child: const Text('加载更多'),
                           ),
                         )
-                      : const Center(
+                      : Center(
                           child: Padding(
                             padding: EdgeInsets.all(8),
                             child: Text(
                               '没有更多了',
                               style: TextStyle(
-                                color: Colors.grey,
+                                color: context.dimText,
                                 fontSize: 12,
                               ),
                             ),
@@ -348,7 +352,7 @@ class _RecommendPageState extends State<RecommendPage> {
                 const SizedBox(height: 2),
                 Text(
                   '${_sourceLabel(m.source)}${m.year > 0 ? " · ${m.year}" : ""}${m.rating > 0 ? " · ⭐ ${m.rating.toStringAsFixed(1)}" : ""}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
                 if (m.overview.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -356,7 +360,7 @@ class _RecommendPageState extends State<RecommendPage> {
                     m.overview,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(color: context.dimText, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 6),

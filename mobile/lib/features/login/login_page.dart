@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_logo.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../home/home_shell.dart';
 import 'server_config_page.dart';
@@ -257,7 +258,8 @@ class _LoginPageState extends State<LoginPage> {
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: GlassCard(
+            child: PTEntrance(
+              child: GlassCard(
               padding: const EdgeInsets.all(28),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 360),
@@ -279,9 +281,9 @@ class _LoginPageState extends State<LoginPage> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       'PT 守护神 · 好学 APP 专属',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: context.dimText),
                     ),
                     if (_oidcEnabled == false && _authSiteOn)
                       Padding(
@@ -289,7 +291,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: Text(
                           '本服务面向好学 (hxpt.org) APP 专属 VIP 用户；请先在好学获得 VIP 身份后再登录。首个通过验证的用户将成为管理员。',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 11, height: 1.4),
+                          style: TextStyle(color: context.dimText, fontSize: 11, height: 1.4),
                         ),
                       ),
                     const SizedBox(height: 20),
@@ -345,9 +347,9 @@ class _LoginPageState extends State<LoginPage> {
                         icon: const Icon(Icons.dns_outlined, size: 16),
                         label: Text(
                           '后端：${ApiClient().baseUrl}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey,
+                            color: context.dimText,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -356,6 +358,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
+            ),
             ),
           ),
         ),
@@ -416,11 +419,11 @@ class _LoginPageState extends State<LoginPage> {
             : const Text('登录'),
       ),
       if (_captcha?['challenge_mode'] == true)
-        const Padding(
-          padding: EdgeInsets.only(top: 8),
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
           child: Text(
             '好学已开启挑战响应认证，后端会自动处理，直接登录即可；如登录失败可改用 Cookie 登录',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
         ),
     ];
@@ -437,9 +440,9 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
       const SizedBox(height: 8),
-      const Text(
+      Text(
         '最稳路径，覆盖开了二级验证 / 挑战响应的好学账号',
-        style: TextStyle(fontSize: 12, color: Colors.grey),
+        style: TextStyle(fontSize: 12, color: context.dimText),
       ),
       Align(
         alignment: Alignment.centerLeft,

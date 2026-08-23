@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/system.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 /// 诊断面板：跑健康检查（对标 MP doctor）。SAFE_MODE 自救时主入口。
 class DoctorPage extends StatefulWidget {
@@ -64,7 +65,7 @@ class _DoctorPageState extends State<DoctorPage> {
         ],
       ),
       body: _loading && r == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const PTLoadingView()
           : r == null
               ? const Center(child: Text('无数据'))
               : ListView(children: [

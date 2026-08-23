@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 
 
@@ -171,7 +172,7 @@ class _CsptScratchViewState extends State<CsptScratchView> {
           child: Column(children: [
             Text(v, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFFFFD76A))),
             const SizedBox(height: 2),
-            Text(l, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(l, style: TextStyle(fontSize: 11, color: context.dimText)),
           ]),
         ),
       );
@@ -226,7 +227,7 @@ class _CsptScratchViewState extends State<CsptScratchView> {
           child: Column(children: [
             Text(o.giftCount > 0 ? '买${o.buyCount}送${o.giftCount}' : '${o.buyCount}张', style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFFFD76A), fontSize: 12)),
             const SizedBox(height: 2),
-            Text(_fmt(o.buyCount * o.unitPrice), style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(_fmt(o.buyCount * o.unitPrice), style: TextStyle(fontSize: 11, color: context.dimText)),
           ]),
         ),
       );

@@ -4,6 +4,7 @@ import 'package:ptpatronus/api/media_quality.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 媒体质量页：多评分订阅质量闸门配置 + 评分聚合预览。
@@ -132,7 +133,7 @@ class _MediaQualityPageState extends State<MediaQualityPage> {
         ),
       ],
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const PTLoadingView()
           : _error != null
               ? PTEmptyState(text: _error, onRetry: _load)
               : RefreshIndicator(
@@ -156,7 +157,7 @@ class _MediaQualityPageState extends State<MediaQualityPage> {
           _numRowInt('最低投票数', _cfg.minVotes.toDouble(), 0, 1000000, 50, (v) => setState(() => _cfg = _cfgCopyWith(minVotes: v.toInt()))),
           _numRowInt('上映满 N 天', _cfg.minReleaseDays.toDouble(), 0, 365, 1, (v) => setState(() => _cfg = _cfgCopyWith(minReleaseDays: v.toInt()))),
           const SizedBox(height: PTSp.s2),
-          const Text('参与聚合源', style: TextStyle(fontSize: PTFs.sm, color: Colors.grey, fontWeight: FontWeight.w600)),
+          Text('参与聚合源', style: TextStyle(fontSize: PTFs.sm, color: context.dimText, fontWeight: FontWeight.w600)),
           Wrap(
             spacing: 6,
             children: kRatingSources
@@ -269,7 +270,7 @@ class _MediaQualityPageState extends State<MediaQualityPage> {
                   style: const TextStyle(fontSize: PTFs.md, fontWeight: FontWeight.w700)),
               Text(
                 '综合 ${s.aggregated.toStringAsFixed(1)} · 共 ${s.votes} 票 · 上映 ${s.releaseDays > 0 ? s.releaseDays : '?'} 天',
-                style: const TextStyle(fontSize: PTFs.xs, color: Colors.grey),
+                style: TextStyle(fontSize: PTFs.xs, color: context.dimText),
               ),
             ]),
           ),

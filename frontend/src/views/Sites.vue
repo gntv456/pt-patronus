@@ -236,37 +236,37 @@ onMounted(load)
 .sites {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-4);
 }
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .head-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .page-title {
   margin: 4px 0;
-  font-size: 22px;
+  font-size: var(--fs-title);
   font-weight: 700;
 }
 .pill {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
 }
 .pill.on {
-  background: rgba(46, 204, 113, 0.2);
+  background: var(--pt-success-bg);
   color: var(--pt-success);
 }
 .pill.off {
-  background: rgba(231, 76, 60, 0.15);
+  background: var(--pt-danger-bg);
   color: var(--pt-danger);
 }
 .empty {
@@ -276,7 +276,7 @@ onMounted(load)
 .def-url {
   margin-left: 8px;
   color: var(--pt-text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 :deep(.el-table),
 :deep(.el-table tr),

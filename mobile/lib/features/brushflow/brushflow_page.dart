@@ -6,6 +6,7 @@ import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 刷流引擎页（对齐 Web BrushFlow.vue）：任务卡片列表 + 新建/编辑表单 +
@@ -208,10 +209,10 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
           );
         }
         if (seeds.isEmpty) {
-          return const Padding(
+          return Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: Text('暂无种子记录', style: TextStyle(color: Colors.grey)),
+              child: Text('暂无种子记录', style: TextStyle(color: context.dimText)),
             ),
           );
         }
@@ -231,7 +232,7 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
                 ),
                 subtitle: Text(
                   '${_fmtBytes(s.size)}  ·  加入 ${_fmtDate(s.addedAt)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(fontSize: 12, color: context.dimText),
                 ),
               ),
           ],
@@ -320,7 +321,7 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
 
   Widget _content() {
     if (_loading && _list.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     if (_error != null && _list.isEmpty) {
       return PTEmptyState(
@@ -378,7 +379,7 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
                     const SizedBox(height: 2),
                     Text(
                       '${_siteName(t.siteId)} → ${_dlName(t.downloaderId)}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: context.dimText, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -455,7 +456,7 @@ class _BrushFlowPageState extends State<BrushFlowPage> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(label, style: TextStyle(color: context.dimText, fontSize: 12)),
         ],
       ),
     );
@@ -742,8 +743,8 @@ class _BrushFlowFormState extends State<_BrushFlowForm> {
         _field(
           '过滤规则组（留空=不过滤）',
           widget.filterGroups.isEmpty
-              ? const Text('暂无可用规则组，可在「过滤规则」页创建',
-                  style: TextStyle(fontSize: 12, color: Colors.grey))
+              ? Text('暂无可用规则组，可在「过滤规则」页创建',
+                  style: TextStyle(fontSize: 12, color: context.dimText))
               : Wrap(
                   spacing: 8,
                   runSpacing: 4,
@@ -861,10 +862,10 @@ class _BrushFlowFormState extends State<_BrushFlowForm> {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Colors.grey,
+              color: context.dimText,
             ),
           ),
           const SizedBox(height: 6),

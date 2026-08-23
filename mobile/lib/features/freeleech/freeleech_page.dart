@@ -3,6 +3,7 @@ import 'package:ptpatronus/api/freeleech.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -150,7 +151,7 @@ class _FreeleechPageState extends State<FreeleechPage> {
         _selectedSiteIds = [];
       }),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const PTLoadingView()
           : _error != null
           ? PTEmptyState(text: _error!, onRetry: _load)
           : _results.isEmpty
@@ -281,11 +282,11 @@ class _FreeleechPageState extends State<FreeleechPage> {
               ),
             )
           else if (r.notices.isEmpty)
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
               child: Text(
                 '该站点未开启站免检测',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: context.dimText, fontSize: 13),
               ),
             )
           else ...[

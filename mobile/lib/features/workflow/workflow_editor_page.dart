@@ -4,6 +4,7 @@ import 'package:ptpatronus/api/workflow.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'node_config_sheet.dart';
 
 /// 工作流编辑器（自绘节点画布）：InteractiveViewer 缩放平移 + Stack/Positioned 可拖拽节点 +
@@ -349,7 +350,7 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
             ],
           ),
           body: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
               : wide
               ? _wideBody()
               : _narrowBody(),
@@ -572,9 +573,9 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Text(
                 entry.key,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.w700,
-                  color: Colors.grey,
+                  color: context.dimText,
                 ),
               ),
             ),
@@ -638,12 +639,12 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
               onChanged: () => setState(() {}),
             ),
           ] else
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
                   '点选画布节点查看/编辑参数',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
               ),
             ),
@@ -715,12 +716,12 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
               const SizedBox(height: 2),
               Text(
                 info?.category ?? '',
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: context.dimText),
               ),
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.south, size: 12, color: Colors.grey[600]),
+                  Icon(Icons.south, size: 12, color: context.dimText),
                   const SizedBox(width: 4),
                   GestureDetector(
                     onTap: () => _startConnect(n),
@@ -739,10 +740,10 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
                   const Spacer(),
                   GestureDetector(
                     onTap: () => _configNode(n),
-                    child: const Icon(
+                    child: Icon(
                       Icons.settings,
                       size: 15,
-                      color: Colors.grey,
+                      color: context.dimText,
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -840,9 +841,9 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Text(
                   entry.key,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: Colors.grey,
+                    color: context.dimText,
                   ),
                 ),
               ),

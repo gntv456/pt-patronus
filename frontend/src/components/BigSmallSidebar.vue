@@ -49,41 +49,6 @@ function top(i: number): string {
           <div v-if="!(state.rankings[rankTab]?.entries?.length)" class="empty">暂无数据</div>
         </div>
       </template>
-
-<style scoped>
-.side { display: flex; flex-direction: column; gap: 14px; }
-.panel { padding: 14px; border-radius: 14px; }
-.sec-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
-.empty { font-size: 13px; color: var(--text-muted, #999); padding: 8px 0; }
-/* 排行 */
-.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
-.tab { padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: transparent; color: var(--text-muted, #999); cursor: pointer; font-size: 12px; }
-.tab.on { background: var(--pt-primary, #6c5ce7); color: #fff; border-color: transparent; }
-.rank-list { display: flex; flex-direction: column; gap: 4px; }
-.rank-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 12px; border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
-.rank-no { width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; background: rgba(255,255,255,0.1); font-size: 10px; }
-.rank-no.gold { background: #f59e0b; color: #fff; }
-.rank-no.silver { background: #9ca3af; color: #fff; }
-.rank-no.bronze { background: #b45309; color: #fff; }
-.rank-name { flex: 1; font-weight: 600; }
-.rank-amt { color: #16a34a; font-weight: 600; }
-.rank-cnt { color: var(--text-muted, #999); font-size: 10px; }
-/* 任务/道具/红包 */
-.task-row, .prop-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
-.task-info { display: flex; flex-direction: column; }
-.task-title { font-weight: 600; }
-.task-prog { font-size: 10px; color: var(--text-muted, #999); }
-.task-st { font-size: 11px; color: var(--text-muted, #999); }
-.mini { padding: 4px 10px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.2)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; cursor: pointer; font-size: 11px; }
-.mini.ok { background: #16a34a; color: #fff; border-color: transparent; }
-.mini.warn { background: #f59e0b; color: #fff; border-color: transparent; }
-.mini.full { width: 100%; margin-top: 6px; padding: 7px; }
-.rp-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
-.rp-amt { width: 100%; min-width: 0; box-sizing: border-box; padding: 6px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 12px; }
-.rp-greet { width: 100%; padding: 6px; border-radius: 7px; border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: 12px; margin-bottom: 6px; box-sizing: border-box; }
-.rp-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-.rp-item { padding: 6px; border-radius: 7px; border: 1px solid #dc2626; background: rgba(220,38,38,0.1); color: inherit; cursor: pointer; font-size: 12px; }
-</style>
     </section>
 
     <!-- 任务 / 道具 -->
@@ -124,3 +89,38 @@ function top(i: number): string {
     </section>
   </aside>
 </template>
+
+<style scoped>
+.side { display: flex; flex-direction: column; gap: var(--sp-3); }
+.panel { padding: 14px; border-radius: var(--radius-md); }
+.sec-title { font-weight: 700; font-size: var(--fs-lg); margin-bottom: 10px; }
+.empty { font-size: var(--fs-body); color: var(--text-muted, #999); padding: 8px 0; }
+/* 排行 */
+.tabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-bottom: 8px; }
+.tab { padding: 4px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: transparent; color: var(--text-muted, #999); cursor: pointer; font-size: var(--fs-xs); }
+.tab.on { background: var(--pt-primary, #6c5ce7); color: #fff; border-color: transparent; }
+.rank-list { display: flex; flex-direction: column; gap: var(--sp-1); }
+.rank-row { display: flex; align-items: center; gap: var(--sp-1); padding: 4px 0; font-size: var(--fs-xs); border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
+.rank-no { width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 50%; background: rgba(255,255,255,0.1); font-size: var(--fs-2xs); }
+.rank-no.gold { background: #f59e0b; color: #fff; }
+.rank-no.silver { background: #9ca3af; color: #fff; }
+.rank-no.bronze { background: #b45309; color: #fff; }
+.rank-name { flex: 1; font-weight: 600; }
+.rank-amt { color: var(--pt-success); font-weight: 600; }
+.rank-cnt { color: var(--text-muted, #999); font-size: var(--fs-2xs); }
+/* 任务/道具/红包 */
+.task-row, .prop-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: 6px 0; font-size: var(--fs-xs); border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
+.task-info { display: flex; flex-direction: column; }
+.task-title { font-weight: 600; }
+.task-prog { font-size: var(--fs-2xs); color: var(--text-muted, #999); }
+.task-st { font-size: var(--fs-2xs); color: var(--text-muted, #999); }
+.mini { padding: 4px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.2)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; cursor: pointer; font-size: var(--fs-2xs); }
+.mini.ok { background: #16a34a; color: #fff; border-color: transparent; }
+.mini.warn { background: #f59e0b; color: #fff; border-color: transparent; }
+.mini.full { width: 100%; margin-top: 6px; padding: 7px; }
+.rp-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-1); margin-bottom: 6px; }
+.rp-amt { width: 100%; min-width: 0; box-sizing: border-box; padding: 6px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: var(--fs-xs); }
+.rp-greet { width: 100%; padding: 6px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: var(--fs-xs); margin-bottom: 6px; box-sizing: border-box; }
+.rp-list { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: 8px; }
+.rp-item { padding: 6px; border-radius: var(--radius-xs); border: 1px solid var(--pt-danger); background: var(--pt-danger-bg); color: inherit; cursor: pointer; font-size: var(--fs-xs); }
+</style>

@@ -1,6 +1,6 @@
 .help h4 {
   margin: 14px 0 6px;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-strong);
 }
 .help h4:first-child {
@@ -10,7 +10,7 @@
 .help ul,
 .help ol {
   margin: 4px 0;
-  font-size: 13px;
+  font-size: var(--fs-body);
   line-height: 1.7;
 }
 .help ul,
@@ -20,6 +20,6 @@
 .help code {
   background: var(--glass-bg);
   padding: 1px 5px;
-  border-radius: 4px;
-  font-size: 12px;
+  border-radius: var(--radius-2xs);
+  font-size: var(--fs-xs);
 }

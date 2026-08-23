@@ -94,7 +94,7 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
 .operations-grid {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(310px, 0.82fr);
-  gap: 14px;
+  gap: var(--sp-3);
   align-items: stretch;
 }
 .trend-panel,
@@ -106,17 +106,17 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: var(--sp-3);
 }
 .section-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--fs-lg);
   line-height: 1.35;
 }
 .section-head p {
   margin: 3px 0 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 .metric-switch {
   flex: 0 0 auto;
@@ -141,7 +141,7 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   left: 0;
   width: 3px;
   height: 28px;
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 var(--radius-2xs) var(--radius-2xs) 0;
   background: #64748b;
   content: '';
 }
@@ -154,7 +154,7 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   display: block;
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -162,7 +162,7 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   display: block;
   overflow: hidden;
   margin-top: 4px;
-  font-size: 18px;
+  font-size: var(--fs-xl);
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -172,20 +172,20 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   overflow: hidden;
   margin-top: 3px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .chart-legend {
   display: flex;
   justify-content: flex-end;
-  gap: 14px;
+  gap: var(--sp-3);
   min-height: 18px;
   margin: 10px 8px -4px 0;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
-.chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.chart-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); }
 .chart-legend i { width: 7px; height: 7px; border-radius: 50%; }
 
 .action-panel {
@@ -203,12 +203,12 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   border-radius: 50%;
   color: #b45309;
   background: rgba(217, 119, 6, 0.13);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
 }
 .issue-counter.empty {
-  color: #15803d;
-  background: rgba(22, 163, 74, 0.12);
+  color: var(--pt-success);
+  background: var(--pt-success-bg);
 }
 .action-list {
   flex: 1;
@@ -220,7 +220,7 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) 8px;
   align-items: center;
-  gap: 9px;
+  gap: var(--sp-2);
   width: 100%;
   padding: 9px 4px;
   border: 0;
@@ -241,9 +241,9 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.action-copy b { font-size: 12px; }
-.action-copy span { margin-top: 1px; font-size: 12px; }
-.action-copy small { margin-top: 2px; color: var(--text-muted); font-size: 10px; }
+.action-copy b { font-size: var(--fs-xs); }
+.action-copy span { margin-top: 1px; font-size: var(--fs-xs); }
+.action-copy small { margin-top: 2px; color: var(--text-muted); font-size: var(--fs-2xs); }
 .action-severity { width: 7px; height: 7px; border-radius: 50%; }
 .action-severity.tone-danger { background: #dc2626; }
 .action-severity.tone-warning { background: #d97706; }
@@ -266,17 +266,17 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   height: 34px;
   margin-bottom: 8px;
   border-radius: 50%;
-  color: #16a34a;
-  background: rgba(22, 163, 74, 0.12);
+  color: var(--pt-success);
+  background: var(--pt-success-bg);
   font-weight: 700;
 }
-.action-empty strong { color: var(--text-strong); font-size: 13px; }
-.action-empty p { margin: 4px 0 0; font-size: 11px; }
+.action-empty strong { color: var(--text-strong); font-size: var(--fs-body); }
+.action-empty p { margin: 4px 0 0; font-size: var(--fs-2xs); }
 .action-footer {
   display: block;
   margin-top: 10px;
-  color: #2563eb;
-  font-size: 12px;
+  color: var(--pt-primary-2);
+  font-size: var(--fs-xs);
   text-align: center;
   text-decoration: none;
 }
@@ -301,8 +301,8 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   .action-list { max-height: 330px; }
 }
 @media (max-width: 640px) {
-  .page-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
-  .head-actions { gap: 6px; }
+  .page-heading { align-items: flex-start; flex-direction: column; gap: var(--sp-1); }
+  .head-actions { gap: var(--sp-1); }
   .updated-at { width: 100%; }
   .period-control { order: 2; }
   .health-main,

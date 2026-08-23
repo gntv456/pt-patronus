@@ -97,14 +97,14 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
 .health-item {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: var(--sp-2);
   min-width: 0;
   padding: 12px 16px;
   border: 0;
   border-right: 1px solid var(--divider);
   color: var(--text-strong);
   background: transparent;
-  text-align: left;
+  text-align: left; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth)
 }
 .health-item:last-child {
   border-right: 0;
@@ -116,16 +116,16 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
 .health-main > span:last-child {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 .health-main small {
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 .health-main strong {
   overflow: hidden;
-  font-size: 16px;
+  font-size: var(--fs-lg);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -134,13 +134,13 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   width: 30px;
   height: 30px;
   flex: 0 0 30px;
-  border-radius: 6px;
-  background: rgba(22, 163, 74, 0.12);
+  border-radius: var(--radius-xs);
+  background: var(--pt-success-bg);
 }
 .health-icon i {
   position: absolute;
   inset: 8px;
-  border: 2px solid #16a34a;
+  border: 2px solid var(--pt-success);
   border-radius: 50%;
 }
 .health-icon i::after {
@@ -157,13 +157,13 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
 .health-item span:not(.status-dot) {
   overflow: hidden;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .health-item b {
   margin-left: auto;
-  font-size: 17px;
+  font-size: var(--fs-xl);
 }
 .status-dot {
   width: 8px;
@@ -172,7 +172,7 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   border-radius: 50%;
   background: #64748b;
 }
-.health-item.is-danger b { color: #dc2626; }
+.health-item.is-danger b { color: var(--pt-danger); }
 .health-item.is-danger .status-dot { background: #dc2626; }
 .health-item.is-warning b { color: #d97706; }
 
@@ -180,7 +180,7 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
 .nodata-alert {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--sp-3);
   padding: 14px 18px;
   margin-bottom: 16px;
   border-left: 3px solid #f59e0b;
@@ -192,26 +192,26 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
-  font-size: 18px;
+  background: var(--pt-warn-bg);
+  color: var(--pt-warn);
+  font-size: var(--fs-xl);
 }
 .nodata-body { flex: 1 1 auto; min-width: 0; }
-.nodata-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
-.nodata-hint { font-size: 12px; color: var(--text-muted); }
-.nodata-names { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.nodata-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); }
+.nodata-hint { font-size: var(--fs-xs); color: var(--text-muted); }
+.nodata-names { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: 8px; }
 .nodata-chip {
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid var(--pt-warn-bg);
+  background: var(--pt-warn-bg);
   color: var(--text);
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   padding: 2px 10px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
 }
-.nodata-chip:hover { background: rgba(245, 158, 11, 0.18); }
+.nodata-chip:hover { background: var(--pt-warn-bg); }
 .health-item.is-warning .status-dot { background: #d97706; }
-.health-item.is-success b { color: #16a34a; }
+.health-item.is-success b { color: var(--pt-success); }
 .health-item.is-success .status-dot { background: #16a34a; }
 .health-item.is-muted b { color: var(--text-muted); }
 </style>

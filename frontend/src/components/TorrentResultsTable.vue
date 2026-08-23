@@ -155,10 +155,10 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
 .site-tag {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 999px;
-  background: rgba(108, 92, 231, 0.16);
+  border-radius: var(--radius-pill);
+  background: var(--pt-primary-bg);
   color: var(--pt-primary, #6c5ce7);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   white-space: nowrap;
 }
 .t-title {
@@ -167,20 +167,20 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
 }
 .t-sub {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
 }
 .t-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: var(--sp-1);
   margin-top: 3px;
 }
 .ttag {
   display: inline-block;
   padding: 0 5px;
-  border-radius: 3px;
-  font-size: 10px;
+  border-radius: var(--radius-2xs);
+  font-size: var(--fs-2xs);
   font-weight: 600;
   color: #fff;
   line-height: 1.5;
@@ -205,13 +205,13 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
 .chip {
   display: inline-block;
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-muted);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   margin: 2px;
 }
 .chip.free {
-  background: rgba(46, 204, 113, 0.18);
+  background: var(--pt-success-bg);
   color: var(--pt-success, #2ecc71);
   font-weight: 600;
 }
@@ -226,7 +226,7 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
   background: transparent;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-strong);
 }
 .warn {
@@ -234,7 +234,7 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
   font-weight: 600;
 }
 .caret {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .fail-list {
@@ -243,18 +243,18 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .fail-list li {
-  font-size: 13px;
+  font-size: var(--fs-body);
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .row-cap { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); color: var(--text-muted); }
 
 .stream-progress {
   margin: 0 0 10px;
-  font-size: 13px;
+  font-size: var(--fs-body);
   line-height: 1.4;
 }
 :deep(.el-table),

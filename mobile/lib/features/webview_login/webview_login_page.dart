@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/api/site.dart';
 
 // WebView 登录页：用户在内嵌浏览器手动登录站点，点「完成」提取全部 cookie
@@ -95,7 +96,7 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
             if (_extracting)
               Container(
                 color: Colors.black38,
-                child: const Center(child: CircularProgressIndicator()),
+                child: const PTLoadingView(),
               ),
           ],
         ),

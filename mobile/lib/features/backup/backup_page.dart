@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:ptpatronus/core/platform/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ptpatronus/api/backup.dart';
@@ -49,13 +49,13 @@ class _BackupPageState extends State<BackupPage> {
   Future<void> _import(bool moviepilot) async {
     setState(() => _busy = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
+      final result = await appFilePicker.pickFiles(
+        type: 'custom',
         allowedExtensions: ['json'],
         withData: true,
       );
-      if (result == null || result.files.isEmpty) return;
-      final bytes = result.files.first.bytes;
+      if (result == null || result.isEmpty) return;
+      final bytes = result.first.bytes;
       if (bytes == null) {
         _toast('无法读取所选文件');
         return;
@@ -88,13 +88,13 @@ class _BackupPageState extends State<BackupPage> {
   Future<void> _importPTD() async {
     setState(() => _busy = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
+      final result = await appFilePicker.pickFiles(
+        type: 'custom',
         allowedExtensions: ['ptd'],
         withData: true,
       );
-      if (result == null || result.files.isEmpty) return;
-      final file = result.files.first;
+      if (result == null || result.isEmpty) return;
+      final file = result.first;
       final bytes = file.bytes;
       if (bytes == null) {
         _toast('无法读取所选文件');
@@ -138,7 +138,7 @@ class _BackupPageState extends State<BackupPage> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(desc, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(desc, style: TextStyle(color: context.dimText, fontSize: 13)),
           const SizedBox(height: 14),
           Align(
             alignment: Alignment.centerRight,

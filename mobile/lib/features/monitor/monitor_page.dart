@@ -6,6 +6,7 @@ import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import 'device_form_sheet.dart';
@@ -159,7 +160,7 @@ class _MonitorPageState extends State<MonitorPage>
       'host' => const Color(0xFF4285F4),
       'nas' => PTColors.primary,
       'camera' => const Color(0xFFFF5F6D),
-      _ => Colors.grey,
+      _ => context.dimText,
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -208,7 +209,7 @@ class _MonitorPageState extends State<MonitorPage>
                     const SizedBox(height: 2),
                     Text(
                       t.host.isEmpty ? '(本机)' : t.host,
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: context.dimText, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -236,7 +237,7 @@ class _MonitorPageState extends State<MonitorPage>
                     ? PTColors.success
                     : t.lastOnline == false
                     ? PTColors.danger
-                    : Colors.grey,
+                    : context.dimText,
               ),
             ],
           ),
@@ -255,9 +256,9 @@ class _MonitorPageState extends State<MonitorPage>
   Widget _metricBars(Metrics? m) {
     if (m == null) return const SizedBox.shrink();
     if (!m.online) {
-      return const Text(
+      return Text(
         '离线',
-        style: TextStyle(color: Colors.grey, fontSize: 11),
+        style: TextStyle(color: context.dimText, fontSize: 11),
       );
     }
     final cpu = m.cpuUsage ?? 0;
@@ -281,7 +282,7 @@ class _MonitorPageState extends State<MonitorPage>
       children: [
         Text(
           label,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+          style: TextStyle(color: context.dimText, fontSize: 11),
         ),
         const SizedBox(width: 4),
         SizedBox(
@@ -291,7 +292,7 @@ class _MonitorPageState extends State<MonitorPage>
             borderRadius: BorderRadius.circular(2),
             child: LinearProgressIndicator(
               value: p / 100,
-              backgroundColor: Colors.grey.withValues(alpha: 0.2),
+              backgroundColor: context.dimText.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(color),
             ),
           ),
@@ -311,12 +312,12 @@ class _MonitorPageState extends State<MonitorPage>
 
   Widget _listFor(String type, String emptyText) {
     if (_loading && _targets.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     final items = _targets.where((t) => t.type == type).toList();
     if (items.isEmpty) {
       return Center(
-        child: Text(emptyText, style: const TextStyle(color: Colors.grey)),
+        child: Text(emptyText, style: TextStyle(color: context.dimText)),
       );
     }
     return ListView(
@@ -401,9 +402,9 @@ class _MonitorPageState extends State<MonitorPage>
                         ),
                       ),
                     ),
-                    const Text(
+                    Text(
                       '查看',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                      style: TextStyle(color: context.dimText, fontSize: 13),
                     ),
                   ],
                 ),
@@ -641,16 +642,16 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               '请立即复制保存，用于 agent 上报鉴权。关闭后无法再查看（可重置）。',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: context.dimText, fontSize: 12),
             ),
             const SizedBox(height: 10),
             Container(
               width: double.maxFinite,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.12),
+                color: context.dimText.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SelectableText(
@@ -696,7 +697,7 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
           children: [
             Text(
               '${_agents.length} 个 Agent',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: context.dimText),
             ),
             const Spacer(),
             OutlinedButton.icon(
@@ -708,17 +709,14 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
         ),
         const SizedBox(height: 10),
         if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: CircularProgressIndicator()),
-          )
+          const PTLoadingView()
         else if (_agents.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
               child: Text(
                 '暂无 Agent，点「新建」创建',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: context.dimText),
               ),
             ),
           )
@@ -741,7 +739,7 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
                 Icon(
                   Icons.circle,
                   size: 10,
-                  color: a.online ? PTColors.success : Colors.grey,
+                  color: a.online ? PTColors.success : context.dimText,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -760,7 +758,7 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
                     padding: const EdgeInsets.only(right: 6),
                     child: Text(
                       'v${a.version}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      style: TextStyle(color: context.dimText, fontSize: 11),
                     ),
                   ),
                 PopupMenuButton<String>(
@@ -782,7 +780,7 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
             const SizedBox(height: 4),
             Text(
               '${a.hostname.isEmpty ? '—' : a.hostname}${a.ip.isNotEmpty ? ' · ${a.ip}' : ''}',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: context.dimText, fontSize: 12),
             ),
             const SizedBox(height: 2),
             Text(
@@ -790,7 +788,7 @@ class _AgentManagerSheetState extends State<_AgentManagerSheet> {
                   ? '在线 · 上报 ${_fmt(a.lastSeenAt)}'
                   : '离线 · 上次 ${a.lastSeenAt.isEmpty ? '—' : _fmt(a.lastSeenAt)}',
               style: TextStyle(
-                color: a.online ? PTColors.success : Colors.grey,
+                color: a.online ? PTColors.success : context.dimText,
                 fontSize: 11,
               ),
             ),

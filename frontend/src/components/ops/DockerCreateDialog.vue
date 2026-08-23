@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { dockerApi } from '@/api/docker'

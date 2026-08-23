@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 /**
  * 统一搜索页：[种子 | 影视] 分段切换，共享关键词。
  *  - 种子：跨站 SSE 流式聚合 + 前端筛选排序；结果表/失败容错见 TorrentResultsTable；
@@ -297,21 +297,21 @@ onUnmounted(() => {
 .page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-4);
 }
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .head-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .src-settings-link {
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--pt-primary, #6c5ce7);
   text-decoration: none;
   white-space: nowrap;
@@ -321,12 +321,12 @@ onUnmounted(() => {
 }
 .title {
   margin: 4px 0;
-  font-size: 22px;
+  font-size: var(--fs-title);
   font-weight: 700;
 }
 .search-bar {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding: 14px;
   align-items: center;
 }
@@ -337,10 +337,10 @@ onUnmounted(() => {
 .scope-line {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2);
   margin-top: 7px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .scope-line a {
   color: var(--pt-primary);
@@ -357,11 +357,11 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .err-text {
   color: var(--pt-danger);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 @media (max-width: 720px) {
   .head,

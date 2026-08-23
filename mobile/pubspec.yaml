@@ -46,7 +46,10 @@ dependencies:
   web_socket_channel: ^3.0.3
   # token 持久化（登录态跨重启）
   shared_preferences: ^2.3.3
-  # 文件选择（.torrent 文件上传；鸿蒙若无原生实现会被运行时 try-catch 兜底）
+  # 文件选择（.torrent/备份文件上传）。鸿蒙不用此包——适配版已改名
+  # file_picker_ohos 且 web 依赖与其它鸿蒙插件冲突，鸿蒙构建时由
+  # scripts/build_ohos.ps1 追加该依赖并切换实现，
+  # 见 lib/core/platform/file_picker.dart 与 docs/鸿蒙端完善.md。
   file_picker: ^8.1.4
   # 系统分享（备份导出存盘到「文件」/云盘/其它 app；并重导出 XFile）
   share_plus: ^10.0.0
@@ -70,6 +73,8 @@ dependencies:
   flutter_svg: ^2.0.10+1
   flutter_widget_from_html: ^0.17.2
 
+# OHOS-DEPS-ANCHOR：dev_dependencies 必须是顶级 key（鸿蒙构建脚本在此前空行处
+# 插入 file_picker_ohos 锚点块，见 scripts/build_ohos.ps1）。
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -85,10 +90,22 @@ dev_dependencies:
   # tool/render_icon.dart 渲染产出）一次性生成 Android/iOS/macOS/Windows 全平台图标。
   flutter_launcher_icons: ^0.14.3
 
-# 依赖覆盖：chewie 1.13.x 在 adaptive_controls.dart 硬编码 `case TargetPlatform.ohos:`，
-# 该枚举成员仅 OpenHarmony fork 的 flutter 才有，官方 stable flutter 编译期报 "Member not found: 'ohos'"。
-# 锁回 1.12.1（最后一个不含 ohos 引用的版本；fwfh_chewie 约束 ^1.3.0、chewie 1.12.x 要求 flutter ≥3.29 均满足）。
-# 鸿蒙构建走 OpenHarmony fork flutter，此 override 不影响（1.12.1 同样可在其上编译）。
+# 依赖覆盖分两层：
+#
+# 1) chewie 常驻 override（全平台生效）：
+#    1.13.x 在 adaptive_controls.dart 硬编码 `case TargetPlatform.ohos:`，
+#    该枚举成员仅 OpenHarmony fork 的 flutter 才有，官方 stable flutter
+#    编译期报 "Member not found: 'ohos'"。锁回 1.12.1（最后一个不含
+#    ohos 引用的版本；fwfh_chewie 约束 ^1.3.0、chewie 1.12.x 要求
+#    flutter ≥3.29 均满足），鸿蒙构建同样可用。
+#
+# 2) 鸿蒙插件适配（仅在鸿蒙构建时生效）：
+#    见 pubspec_overrides.ohos.yaml —— CPF-Flutter（原 openharmony-sig）
+#    官方社区维护的 ohos 适配分支，与 pub.dev 原版同版本、仅追加 ohos/
+#    原生实现。该文件由 scripts/build_ohos.ps1 构建时复制为
+#    pubspec_overrides.yaml（pub 官方机制），构建后自动删除，
+#    日常 Android/iOS/桌面/Web 构建完全不受影响。
+#    选型与版本考据见 docs/鸿蒙端完善.md。
 dependency_overrides:
   chewie: 1.12.1
 

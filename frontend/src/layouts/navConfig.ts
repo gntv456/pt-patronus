@@ -1,4 +1,4 @@
-﻿// 导航配置数据：侧栏分组、palette-only 项、描述、别名
+// 导航配置数据：侧栏分组、palette-only 项、描述、别名
 
 export interface NavItem {
   name: string

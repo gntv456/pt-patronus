@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Terminal } from '@xterm/xterm'
@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
 .term-error { color: #e74c3c; margin-bottom: 8px; padding: 6px 12px; background: rgba(231,76,60,.08); border-radius: 6px; font-size: 13px; }
 .term-empty { padding: 28px; text-align: center; color: var(--text-secondary, #888); }
 .quick-bar { display: flex; gap: 6px; padding: 8px 14px; margin-bottom: 8px; flex-wrap: wrap; }
-.quick-chip { padding: 4px 12px; border-radius: 14px; background: rgba(108,92,231,.12); color: var(--accent, #6c5ce7); font-size: 12px; cursor: pointer; white-space: nowrap; transition: all .15s; user-select: none; }
+.quick-chip { padding: 4px 12px; border-radius: 14px; background: rgba(108,92,231,.12); color: var(--accent, #6c5ce7); font-size: 12px; cursor: pointer; white-space: nowrap; transition: all var(--dur-fast) var(--ease-out-smooth); user-select: none; }
 .quick-chip:hover { background: rgba(108,92,231,.25); transform: translateY(-1px); }
 .term-container { flex: 1; min-height: 400px; padding: 8px; border-radius: 8px; overflow: hidden; }
 .cmd-list { max-height: 300px; overflow-y: auto; }

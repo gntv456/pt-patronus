@@ -355,14 +355,14 @@ const {
 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mt8 { margin-top: 8px; }
 .full-number { width: 100%; }
-.notif-save { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-.test-results { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-.test-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; background: rgba(108,92,231,0.08); }
+.notif-save { display: flex; align-items: center; gap: var(--sp-3); margin-top: 4px; }
+.test-results { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: 10px; }
+.test-tag { font-size: var(--fs-xs); padding: 2px 8px; border-radius: var(--radius-2xs); background: var(--pt-primary-bg); }
 .test-tag.ok { color: var(--pt-success, #67c23a); }
 .test-tag.fail { color: var(--pt-danger); }
 .wx-hint { margin-bottom: 8px; }
-.wx-actions { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.qr-box { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wx-actions { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 10px; }
+.qr-box { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
 .qr-img { width: 220px; height: 220px; object-fit: contain; }
 .card { padding: 16px 18px; margin-bottom: 12px; }
 </style>

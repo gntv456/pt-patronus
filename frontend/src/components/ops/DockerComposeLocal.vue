@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { dockerApi } from '@/api/docker'
@@ -121,7 +121,7 @@ async function action(act: 'up' | 'down' | 'validate') {
       <p class="source-hint">请选择 Compose 文件来源方式</p>
       <div class="source-cards">
         <div class="source-card" @click="selectSource('template')">
-          <div class="source-card-icon" style="background: rgba(108,92,231,.12); color: #6c5ce7">📋</div>
+          <div class="source-card-icon" style="background: var(--pt-primary-bg); color: var(--pt-primary)">📋</div>
           <div class="source-card-body">
             <div class="source-card-title">从模板创建</div>
             <div class="source-card-desc">选择预置的应用模板（WordPress、Jellyfin 套件等），一键填充后微调部署</div>
@@ -214,18 +214,18 @@ async function action(act: 'up' | 'down' | 'validate') {
 <style scoped>
 /* 来源选择 */
 .source-picker { padding: 8px 4px; }
-.source-hint { text-align: center; font-size: 15px; color: var(--text-muted); margin: 8px 0 24px; }
-.source-cards { display: flex; flex-direction: column; gap: 14px; max-width: 560px; margin: 0 auto; }
+.source-hint { text-align: center; font-size: var(--fs-lg); color: var(--text-muted); margin: 8px 0 24px; }
+.source-cards { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 560px; margin: 0 auto; }
 .source-card {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--sp-4);
   padding: 20px;
   border-radius: var(--radius-lg, 12px);
   border: 2px solid var(--divider);
   background: var(--surface-1);
   cursor: pointer;
-  transition: all 0.18s;
+  transition: all var(--dur-base) var(--ease-out-smooth);
 }
 .source-card:hover {
   border-color: var(--pt-primary);
@@ -237,26 +237,26 @@ async function action(act: 'up' | 'down' | 'validate') {
   width: 56px; height: 56px;
   border-radius: var(--radius-md, 10px);
   display: flex; align-items: center; justify-content: center;
-  font-size: 28px;
+  font-size: var(--fs-hero);
 }
 .source-card-body { flex: 1; }
-.source-card-title { font-size: 16px; font-weight: 700; color: var(--text-strong); margin-bottom: 4px; }
-.source-card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.source-card-title { font-size: var(--fs-lg); font-weight: 700; color: var(--text-strong); margin-bottom: 4px; }
+.source-card-desc { font-size: var(--fs-body); color: var(--text-muted); line-height: 1.5; }
 .source-arrow { width: 20px; height: 20px; flex: none; color: var(--text-muted); }
 
 /* URL 拉取 */
 .url-fetch-area { max-width: 600px; margin: 16px auto; }
-.url-tip { font-size: 12px; color: var(--text-muted); margin-top: 16px; line-height: 1.6; }
+.url-tip { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 16px; line-height: 1.6; }
 
 /* 编辑区 */
-.compose-editor-layout { display: flex; flex-direction: column; gap: 12px; }
-.editor-topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.compose-editor-layout { display: flex; flex-direction: column; gap: var(--sp-3); }
+.editor-topbar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
 .back-btn { color: var(--text-muted) !important; padding: 0 8px !important; }
 .back-btn:hover { color: var(--pt-primary) !important; }
-.field-label { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.field-label { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
 .source-tag {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 3px 10px;
   border-radius: var(--radius-pill, 999px);
   background: var(--surface-muted);
@@ -264,7 +264,7 @@ async function action(act: 'up' | 'down' | 'validate') {
 }
 .compose-yaml :deep(textarea) {
   font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
-  font-size: 13px;
+  font-size: var(--fs-body);
   line-height: 1.6;
 }
 .compose-output {
@@ -274,20 +274,20 @@ async function action(act: 'up' | 'down' | 'validate') {
   max-height: 200px;
   overflow: auto;
 }
-.compose-output pre { margin: 0; font-size: 12px; font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+.compose-output pre { margin: 0; font-size: var(--fs-xs); font-family: monospace; white-space: pre-wrap; word-break: break-all; }
 
 /* 模板抽屉 */
 .tpl-search-bar { margin-bottom: 12px; }
-.tpl-list { display: flex; flex-direction: column; gap: 10px; }
+.tpl-list { display: flex; flex-direction: column; gap: var(--sp-2); }
 .tpl-card {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   padding: 12px;
   border-radius: var(--radius-md, 8px);
   border: 1px solid var(--divider);
   background: var(--surface-1);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
 }
 .tpl-card:hover {
   border-color: var(--pt-primary);
@@ -299,19 +299,19 @@ async function action(act: 'up' | 'down' | 'validate') {
   width: 42px; height: 42px;
   border-radius: var(--radius-md, 8px);
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px;
+  font-size: var(--fs-title);
 }
 .tpl-body { flex: 1; min-width: 0; }
-.tpl-name { font-size: 14px; font-weight: 700; color: var(--text-strong); margin-bottom: 2px; }
-.tpl-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; margin-bottom: 6px; }
-.tpl-services { display: flex; flex-wrap: wrap; gap: 4px; }
+.tpl-name { font-size: var(--fs-md); font-weight: 700; color: var(--text-strong); margin-bottom: 2px; }
+.tpl-desc { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4; margin-bottom: 6px; }
+.tpl-services { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .tpl-svc-tag {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-family: monospace;
   padding: 1px 6px;
   border-radius: var(--radius-xs, 4px);
   background: var(--surface-muted);
   color: var(--text-muted);
 }
-.tpl-empty { text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px; }
+.tpl-empty { text-align: center; padding: 32px; color: var(--text-muted); font-size: var(--fs-body); }
 </style>

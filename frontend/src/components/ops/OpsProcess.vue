@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { procApi, type ProcRow, type NetConnRow } from '@/api/proc'
@@ -220,38 +220,38 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
 <style scoped>
 .ops-proc { padding: 0 4px; }
 .proc-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; margin-bottom: 16px; }
-.toolbar-left { display: flex; align-items: center; gap: 12px; }
-.target-label { font-size: 13px; color: var(--text-secondary, #888); white-space: nowrap; }
-.view-switch { display: flex; gap: 4px; margin-left: 8px; }
-.view-switch button { padding: 6px 16px; border: 1px solid var(--border, rgba(128,128,128,.25)); background: transparent; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--text-secondary,#888); }
+.toolbar-left { display: flex; align-items: center; gap: var(--sp-3); }
+.target-label { font-size: var(--fs-body); color: var(--text-secondary, #888); white-space: nowrap; }
+.view-switch { display: flex; gap: var(--sp-1); margin-left: 8px; }
+.view-switch button { padding: 6px 16px; border: 1px solid var(--border, rgba(128,128,128,.25)); background: transparent; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-body); color: var(--text-secondary,#888); }
 .view-switch button.active { background: var(--accent, #6c5ce7); color: #fff; border-color: transparent; }
-.proc-error { color: #e74c3c; margin-bottom: 12px; padding: 8px 14px; background: rgba(231,76,60,.08); border-radius: 8px; }
+.proc-error { color: var(--pt-danger); margin-bottom: 12px; padding: 8px 14px; background: var(--pt-danger-bg); border-radius: var(--radius-xs); }
 .proc-empty { padding: 28px; text-align: center; color: var(--text-secondary, #888); }
 .proc-table-wrap { padding: 12px 16px; }
-.filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
-.sort-group { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-.sort-label { font-size: 12px; color: var(--text-secondary,#888); }
-.sort-btn { padding: 4px 10px; border: 1px solid var(--border, rgba(128,128,128,.2)); background: transparent; border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--text-secondary,#888); }
+.filter-bar { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: 12px; }
+.sort-group { display: flex; align-items: center; gap: var(--sp-1); margin-left: auto; }
+.sort-label { font-size: var(--fs-xs); color: var(--text-secondary,#888); }
+.sort-btn { padding: 4px 10px; border: 1px solid var(--border, rgba(128,128,128,.2)); background: transparent; border-radius: var(--radius-2xs); cursor: pointer; font-size: var(--fs-xs); color: var(--text-secondary,#888); }
 .sort-btn.active { background: var(--accent, #6c5ce7); color: #fff; border-color: transparent; }
 .table-scroll { overflow-x: auto; max-height: 65vh; overflow-y: auto; }
-.proc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.proc-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
 .proc-table th { text-align: left; padding: 8px 10px; font-weight: 600; position: sticky; top: 0; background: var(--bg-th, rgba(0,0,0,.06)); backdrop-filter: blur(4px); white-space: nowrap; }
 .proc-table td { padding: 6px 10px; border-bottom: 1px solid rgba(128,128,128,.1); white-space: nowrap; }
-.proc-table tbody tr:hover { background: rgba(108,92,231,.06); }
-.td-mono { font-family: monospace; font-size: 12px; }
+.proc-table tbody tr:hover { background: var(--pt-primary-bg); }
+.td-mono { font-family: monospace; font-size: var(--fs-xs); }
 .td-name { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
-.td-hot { color: #e74c3c; font-weight: 600; }
+.td-hot { color: var(--pt-danger); font-weight: 600; }
 .td-actions { white-space: nowrap; }
 .td-empty { text-align: center; padding: 24px; color: var(--text-tertiary, #aaa); }
-.table-count { font-size: 12px; color: var(--text-secondary,#888); margin-top: 8px; padding: 4px 2px; }
-.state-chip { font-size: 11px; padding: 1px 7px; border-radius: 4px; }
-.state-chip.R { background: rgba(46,204,113,.18); color: #27ae60; }
-.state-chip.S { background: rgba(52,152,219,.18); color: #2980b9; }
-.state-chip.Z { background: rgba(231,76,60,.18); color: #c0392b; }
-.state-chip.D, .state-chip.T { background: rgba(243,156,18,.18); color: #e67e22; }
-.proto-chip { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: rgba(0,0,0,.08); font-family: monospace; }
-.conn-state { font-size: 11px; font-family: monospace; }
-.conn-state.ESTAB { color: #27ae60; }
-.conn-state.LISTEN { color: #2980b9; }
-.conn-state.TIME-WAIT, .conn-state.CLOSE-WAIT { color: #95a5a6; }
+.table-count { font-size: var(--fs-xs); color: var(--text-secondary,#888); margin-top: 8px; padding: 4px 2px; }
+.state-chip { font-size: var(--fs-2xs); padding: 1px 7px; border-radius: var(--radius-2xs); }
+.state-chip.R { background: var(--pt-success-bg); color: var(--pt-success); }
+.state-chip.S { background: rgba(52,152,219,.18); color: var(--pt-primary-2); }
+.state-chip.Z { background: var(--pt-danger-bg); color: var(--pt-danger); }
+.state-chip.D, .state-chip.T { background: var(--pt-warn-bg); color: var(--pt-warn); }
+.proto-chip { font-size: var(--fs-2xs); padding: 1px 6px; border-radius: var(--radius-2xs); background: rgba(0,0,0,.08); font-family: monospace; }
+.conn-state { font-size: var(--fs-2xs); font-family: monospace; }
+.conn-state.ESTAB { color: var(--pt-success); }
+.conn-state.LISTEN { color: var(--pt-primary-2); }
+.conn-state.TIME-WAIT, .conn-state.CLOSE-WAIT { color: var(--text-muted); }
 </style>

@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:ptpatronus/api/monitor.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'device_form_sheet.dart';
 
 /// 设备详情：探活/采集/编辑/删除；host/nas 指标卡+趋势；摄像头 media_kit 实时预览（鸿蒙降级）；告警。
@@ -240,7 +241,7 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        Text(label, style: TextStyle(color: context.dimText, fontSize: 12)),
         const SizedBox(height: 4),
         Text(
           value,
@@ -260,12 +261,12 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Icon(Icons.videocam_off, size: 36, color: Colors.grey),
+            Icon(Icons.videocam_off, size: 36, color: context.dimText),
             const SizedBox(height: 8),
             Text(
               _playerErr!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: context.dimText),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -282,10 +283,10 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
       );
     }
     if (_controller == null) {
-      return const AspectRatio(
+      return AspectRatio(
         aspectRatio: 16 / 9,
         child: ColoredBox(
-          color: Colors.black54,
+          color: context.mainText,
           child: Center(
             child: CircularProgressIndicator(
               strokeWidth: 2,
@@ -320,7 +321,7 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
           '$label 趋势：数据不足',
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
+          style: TextStyle(color: context.dimText, fontSize: 13),
         ),
       );
     }
@@ -377,7 +378,7 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
           width: 80,
           child: Text(
             k,
-            style: const TextStyle(color: Colors.grey, fontSize: 13),
+            style: TextStyle(color: context.dimText, fontSize: 13),
           ),
         ),
         Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
@@ -475,7 +476,7 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
                   const SizedBox(width: 12),
                   Text(
                     '${_protocolName(_resolvedProtocol)}${t.vendor.isNotEmpty ? ' · ${_vendorName(t.vendor)}' : ''}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 13),
+                    style: TextStyle(color: context.dimText, fontSize: 13),
                   ),
                 ],
               ),
@@ -600,17 +601,14 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
                   ),
                 ),
               ] else if (_loading)
-                const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                )
+                const PTLoadingView()
               else
                 GlassCard(
                   padding: const EdgeInsets.all(16),
                   child: Center(
                     child: Text(
                       t.lastError.isNotEmpty ? t.lastError : '点击右上角刷新采集数据',
-                      style: const TextStyle(color: Colors.grey),
+                      style: TextStyle(color: context.dimText),
                     ),
                   ),
                 ),

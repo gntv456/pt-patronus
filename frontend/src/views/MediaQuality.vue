@@ -152,32 +152,32 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 14px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-3); }
 .head { display: flex; justify-content: space-between; align-items: center; }
-.title { margin: 0; font-size: 22px; font-weight: 700; }
-.sub { margin: -6px 0 0; color: var(--text-muted); font-size: 13px; }
-.card { padding: 18px; display: flex; flex-direction: column; gap: 14px; border-radius: var(--radius-md); }
-.card-title { font-size: 15px; font-weight: 700; }
-.hint { margin-left: 10px; color: var(--text-muted); font-size: 12px; }
-.preview-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.summary { border-top: 1px solid var(--border-soft, rgba(255,255,255,0.08)); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
-.summary-head { display: flex; align-items: center; gap: 12px; }
+.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
+.sub { margin: -6px 0 0; color: var(--text-muted); font-size: var(--fs-body); }
+.card { padding: 18px; display: flex; flex-direction: column; gap: var(--sp-3); border-radius: var(--radius-md); }
+.card-title { font-size: var(--fs-lg); font-weight: 700; }
+.hint { margin-left: 10px; color: var(--text-muted); font-size: var(--fs-xs); }
+.preview-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.summary { border-top: 1px solid var(--border-soft, rgba(255,255,255,0.08)); padding-top: 14px; display: flex; flex-direction: column; gap: var(--sp-2); }
+.summary-head { display: flex; align-items: center; gap: var(--sp-3); }
 .summary-icon { flex: none; }
-.summary-title { font-size: 16px; font-weight: 700; }
+.summary-title { font-size: var(--fs-lg); font-weight: 700; }
 .summary-tag { margin-left: auto; }
 .muted { color: var(--text-muted); }
-.small { font-size: 12px; }
-.reason { color: var(--el-color-warning); font-size: 13px; }
-.sources { display: flex; flex-wrap: wrap; gap: 8px; }
-.source-pill { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--bg-soft, rgba(255,255,255,0.06)); font-size: 13px; }
+.small { font-size: var(--fs-xs); }
+.reason { color: var(--el-color-warning); font-size: var(--fs-body); }
+.sources { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.source-pill { display: inline-flex; align-items: baseline; gap: var(--sp-1); padding: 4px 10px; border-radius: var(--radius-pill); background: var(--bg-soft, rgba(255,255,255,0.06)); font-size: var(--fs-body); }
 .src-name { color: var(--text-muted); }
 .src-score { font-weight: 700; }
-.src-votes { color: var(--text-muted); font-size: 12px; }
+.src-votes { color: var(--text-muted); font-size: var(--fs-xs); }
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
 .page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: 15px; font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: 12px; }
+.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
+.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
 .page.embedded > .sub { display: none; }
 
 </style>

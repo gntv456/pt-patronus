@@ -3,6 +3,7 @@ import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/api/transfer.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 媒体整理页（对齐 Web Transfer.vue）：下载完成 → 识别 → 重命名 → 硬链/移动 → 刮削入库。
@@ -206,7 +207,7 @@ class _TransferPageState extends State<TransferPage> {
                 padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
                 itemCount: _list.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (_, i) => _historyCard(_list[i]),
+                itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _historyCard(_list[i])),
               ),
       ),
     );
@@ -424,7 +425,7 @@ class _TransferPageState extends State<TransferPage> {
               SizedBox(
                 height: 320,
                 child: loadingT
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const PTLoadingView()
                     : torrents.isEmpty
                         ? const Center(child: Text('无种子'))
                         : ListView.builder(

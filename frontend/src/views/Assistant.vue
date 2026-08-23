@@ -220,48 +220,54 @@ onMounted(loadConversations)
    不能写死 calc(100vh - Npx)：通知栏 v-if 条件渲染会改变下方可用高度，
    固定值会导致输入框被顶到视口外。box-sizing 让 padding 留在高度内。 */
 .page { padding: 12px; height: 100%; box-sizing: border-box; }
-.layout { display: flex; gap: 12px; height: 100%; }
-.sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; padding: 10px; border-radius: 14px; }
+.layout { display: flex; gap: var(--sp-3); height: 100%; }
+.sidebar { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; padding: 10px; border-radius: var(--radius-md); }
 .side-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; margin-bottom: 8px; }
-.side-actions { display: flex; gap: 6px; }
+.side-actions { display: flex; gap: var(--sp-1); }
 .conv-list { flex: 1; overflow-y: auto; }
-.conv-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
-.conv-item:hover { background: var(--glass-hover, rgba(127,127,127,0.12)); }
-.conv-item.active { background: var(--glass-active, rgba(108,92,231,0.2)); }
+.conv-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-body); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
+.conv-item:hover { background: var(--surface-hover); }
+.conv-item.active { background: var(--glass-active, var(--pt-primary-bg)); }
 .conv-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat { flex: 1; display: flex; flex-direction: column; padding: 12px; border-radius: 14px; min-width: 0; }
+.chat { flex: 1; display: flex; flex-direction: column; padding: 12px; border-radius: var(--radius-md); min-width: 0; }
 .msg-list { flex: 1; overflow-y: auto; padding: 4px; }
 .row { display: flex; margin-bottom: 12px; }
 .row.user { justify-content: flex-end; }
 .row.assistant { justify-content: flex-start; }
-.bubble { max-width: 78%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.bubble { max-width: 78%; padding: 10px 14px; border-radius: var(--radius-md); font-size: var(--fs-md); line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
 .user-bubble { background: linear-gradient(135deg, #6c5ce7, #4285f4); color: #fff; }
-.assistant-bubble { background: var(--glass-bubble, rgba(127,127,127,0.14)); }
-.reasoning { font-size: 12px; opacity: 0.75; margin-bottom: 6px; }
+.assistant-bubble { background: var(--surface-1); border: 1px solid var(--surface-border); }
+.reasoning { font-size: var(--fs-xs); opacity: 0.75; margin-bottom: 6px; }
 .reasoning summary { cursor: pointer; }
 .reasoning pre { white-space: pre-wrap; margin: 6px 0 0; max-height: 200px; overflow-y: auto; }
 .content:empty { display: none; }
 .tool-step { max-width: 78%; }
-.tool-step details { background: var(--glass-bubble, rgba(127,127,127,0.1)); border-radius: 10px; padding: 6px 10px; font-size: 12px; }
+.tool-step details { background: var(--glass-bubble, rgba(127,127,127,0.1)); border-radius: var(--radius-sm); padding: 6px 10px; font-size: var(--fs-xs); }
 .tool-step summary { cursor: pointer; opacity: 0.85; }
-.tool-item { border-top: 1px solid rgba(127,127,127,0.2); padding: 6px 0; }
-.tool-name { font-weight: 600; color: #4285f4; }
-.tool-args, .tool-result { white-space: pre-wrap; margin: 4px 0; font-size: 11px; max-height: 160px; overflow-y: auto; }
-.composer { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
-.input { flex: 1; resize: none; padding: 10px; border-radius: 10px; background: var(--glass-input, rgba(127,127,127,0.1)); border: 1px solid rgba(127,127,127,0.25); color: inherit; font-family: inherit; font-size: 14px; }
-.input:focus { outline: none; border-color: #6c5ce7; }
-.hint { margin-left: 10px; font-size: 12px; opacity: 0.6; }
+.tool-item { border-top: 1px solid var(--divider); padding: 6px 0; }
+.tool-name { font-weight: 600; color:var(--pt-primary-2); }
+.tool-args, .tool-result { white-space: pre-wrap; margin: 4px 0; font-size: var(--fs-2xs); max-height: 160px; overflow-y: auto; }
+.composer { display: flex; gap: var(--sp-2); align-items: flex-end; margin-top: 8px; }
+.input { flex: 1; resize: none; padding: 10px; border-radius: var(--radius-sm); background: var(--glass-input, rgba(127,127,127,0.1)); border: 1px solid rgba(127,127,127,0.25); color: inherit; font-family: inherit; font-size: var(--fs-md); }
+.input:focus { outline: none; border-color:var(--pt-primary); }
+.hint { margin-left: 10px; font-size: var(--fs-xs); opacity: 0.6; }
 .tool-perms { width: 100%; }
-.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: 100%; }
-.stat { display: flex; flex-direction: column; align-items: center; background: var(--glass-bubble, rgba(127,127,127,0.1)); border-radius: 8px; padding: 6px 2px; }
-.stat-num { font-size: 14px; font-weight: 700; }
-.stat-label { font-size: 11px; opacity: 0.6; }
-.tool-groups { margin-top: 8px; max-height: 220px; overflow-y: auto; border: 1px solid rgba(127,127,127,0.2); border-radius: 8px; padding: 4px 8px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-1); width: 100%; }
+.stat { display: flex; flex-direction: column; align-items: center; background: var(--glass-bubble, rgba(127,127,127,0.1)); border-radius: var(--radius-xs); padding: 6px 2px; }
+.stat-num { font-size: var(--fs-md); font-weight: 700; }
+.stat-label { font-size: var(--fs-2xs); opacity: 0.6; }
+.tool-groups { margin-top: 8px; max-height: 220px; overflow-y: auto; border: 1px solid var(--divider); border-radius: var(--radius-xs); padding: 4px 8px; }
 .tool-group { padding: 4px 0; }
-.tool-group + .tool-group { border-top: 1px solid rgba(127,127,127,0.15); margin-top: 4px; }
-.tool-group-title { font-size: 12px; font-weight: 600; opacity: 0.85; margin: 4px 0; }
-.tool-group-title.danger { color: #e8553a; }
+.tool-group + .tool-group { border-top: 1px solid var(--divider); margin-top: 4px; }
+.tool-group-title { font-size: var(--fs-xs); font-weight: 600; opacity: 0.85; margin: 4px 0; }
+.tool-group-title.danger { color:var(--pt-danger); }
 .tool-groups :deep(.el-checkbox) { display: flex; align-items: flex-start; margin: 2px 0; height: auto; }
-.tool-label { font-weight: 600; font-size: 12px; }
-.tool-desc { display: block; font-size: 11px; opacity: 0.55; margin-left: 24px; line-height: 1.3; }
+.tool-label { font-weight: 600; font-size: var(--fs-xs); }
+.tool-desc { display: block; font-size: var(--fs-2xs); opacity: 0.55; margin-left: 24px; line-height: 1.3; }
+
+/* 聊天气泡：水润入场 */
+.row { animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both; }
+.bubble { transition: transform var(--dur-fast) var(--ease-out-smooth); }
+.input { transition: border-color var(--dur-base) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth); }
+.input:focus { box-shadow: 0 0 0 3px var(--pt-primary-bg); }
 </style>

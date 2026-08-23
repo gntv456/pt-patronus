@@ -1,4 +1,6 @@
 // 发版后同步 OTA update-manifest.json：latestVersion + docker image tag + 本地产物 sha256。
+// android/windows/agent 的 sha256 从 SHA256SUMS.txt 自动读；ios/macos 需把 Mac 上
+// 构建的产物拷进 dist 目录（iOS 未签名 ipa / macOS zip）才会回填。
 // url 仍需手动填网盘直链（脚本只自动填版本号 + 本地算的 sha256），填完上传到
 // UPDATE_MANIFEST_URL 指向的公开地址（gist raw / 轻量仓库 raw / 静态站）。
 // 用法：node scripts/update-manifest.mjs <version> <distDir>
@@ -34,6 +36,11 @@ const fill = (key, file) => {
 }
 fill('android', 'android-arm64')
 fill('windows', 'windows-x64')
+// iOS/macOS 客户端在 Mac 上构建（release-local.sh 不含），产物名遵循
+// ptpatronus-<版本>-ios-unsigned.ipa / ptpatronus-<版本>-macos.zip，
+// 手动拷进 dist 目录后同样自动回填 sha256；没有产物则跳过（保持原值）。
+fill('ios', 'ios')
+fill('macos', 'macos')
 fill('agent-linux-amd64', 'agent-linux-amd64')
 fill('agent-linux-arm64', 'agent-linux-arm64')
 

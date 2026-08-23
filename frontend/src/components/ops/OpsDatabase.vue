@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { databaseApi, type DBTable, type DBColumn, type DBQueryResult } from '@/api/database'
@@ -125,8 +125,8 @@ onMounted(loadTables)
             <span v-for="col in columns" :key="col.name" class="db-col-chip" :title="col.type">
               <span class="db-col-name">{{ col.name }}</span>
               <span class="db-col-type">{{ col.type }}</span>
-              <span v-if="col.primary_key" class="pt-badge pt-badge--primary" style="font-size:9px;padding:1px 5px">PK</span>
-              <span v-if="col.not_null" class="pt-badge pt-badge--warn" style="font-size:9px;padding:1px 5px">NN</span>
+              <span v-if="col.primary_key" class="pt-badge pt-badge--primary" style="font-size: var(--fs-2xs);padding:1px 5px">PK</span>
+              <span v-if="col.not_null" class="pt-badge pt-badge--warn" style="font-size: var(--fs-2xs);padding:1px 5px">NN</span>
             </span>
           </div>
         </div>
@@ -169,7 +169,7 @@ onMounted(loadTables)
 .db-table-item {
   width: 100%; display: flex; justify-content: space-between; align-items: center;
   padding: var(--sp-2) var(--sp-3); border: 0; background: none; cursor: pointer; text-align: left;
-  border-bottom: 1px solid var(--divider);
+  border-bottom: 1px solid var(--divider); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth)
 }
 .db-table-item:hover { background: var(--surface-hover); }
 .db-table-item.active { background: var(--surface-hover); border-left: 3px solid var(--pt-primary); }
@@ -196,7 +196,7 @@ onMounted(loadTables)
 .db-section-title { font-size: var(--fs-sm); margin: 0 0 var(--sp-2); color: var(--text-strong); }
 .db-col-list { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .db-col-chip {
-  display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px;
+  display: inline-flex; align-items: center; gap: var(--sp-1); padding: 3px 8px;
   background: var(--surface-muted); border-radius: var(--radius-xs); font-size: var(--fs-xs);
 }
 .db-col-name { font-family: monospace; font-weight: 500; }

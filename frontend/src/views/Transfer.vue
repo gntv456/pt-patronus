@@ -247,7 +247,7 @@ const {
         </el-form-item>
         <el-form-item label="去抖(ms)"><el-input-number v-model="dwForm.debounce_ms" :min="0" :step="500" /></el-form-item>
         <el-form-item label="轮询间隔(秒)"><el-input-number v-model="dwForm.poll_interval_sec" :min="0" /></el-form-item>
-        <p class="text-muted" style="font-size: 12px">改动需重启进程生效。监视目录应避开下载器临时目录；与下载完成钩子按源路径去重，不重复硬链。</p>
+        <p class="text-muted" style="font-size: var(--fs-xs)">改动需重启进程生效。监视目录应避开下载器临时目录；与下载完成钩子按源路径去重，不重复硬链。</p>
       </el-form>
       <template #footer>
         <el-button @click="showDirwatch = false">取消</el-button>
@@ -280,30 +280,30 @@ const {
 
 <style scoped>
 .page { padding: 16px; }
-.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 12px; }
-.header h1 { font-size: 20px; margin: 0; }
-.sub { font-size: 12px; opacity: 0.7; margin: 4px 0 0; }
-.actions { display: flex; gap: 8px; align-items: center; }
-.glass.card { padding: 12px; border-radius: 14px; }
-.media-cell { display: flex; gap: 10px; align-items: center; }
-.poster { width: 38px; height: 54px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: var(--sp-3); }
+.header h1 { font-size: var(--fs-title); margin: 0; }
+.sub { font-size: var(--fs-xs); opacity: 0.7; margin: 4px 0 0; }
+.actions { display: flex; gap: var(--sp-2); align-items: center; }
+.glass.card { padding: 12px; border-radius: var(--radius-md); }
+.media-cell { display: flex; gap: var(--sp-2); align-items: center; }
+.poster { width: 38px; height: 54px; object-fit: cover; border-radius: var(--radius-2xs); flex-shrink: 0; }
 .title { font-weight: 600; }
 .year { font-weight: 400; opacity: 0.7; }
-.meta { display: flex; gap: 8px; align-items: center; margin-top: 3px; font-size: 11px; opacity: 0.7; }
-.organize-bar { display: flex; gap: 8px; margin-bottom: 10px; }
-.torrent-list { display: flex; flex-direction: column; gap: 4px; width: 100%; }
-.torrent-item { width: 100%; padding: 6px 8px; border-radius: 6px; }
+.meta { display: flex; gap: var(--sp-2); align-items: center; margin-top: 3px; font-size: var(--fs-2xs); opacity: 0.7; }
+.organize-bar { display: flex; gap: var(--sp-2); margin-bottom: 10px; }
+.torrent-list { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; }
+.torrent-item { width: 100%; padding: 6px 8px; border-radius: var(--radius-xs); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
 .torrent-item:hover { background: var(--glass-hover, rgba(255,255,255,0.06)); }
-.torrent-name { font-size: 13px; }
-.torrent-sub { font-size: 11px; opacity: 0.6; }
+.torrent-name { font-size: var(--fs-body); }
+.torrent-sub { font-size: var(--fs-2xs); opacity: 0.6; }
 .rename-editor { width: 100%; }
-.var-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-.rename-preview { font-size: 12px; opacity: 0.8; margin-top: 4px; }
-.rename-preview code { background: var(--glass-hover, rgba(127,127,127,0.15)); padding: 1px 6px; border-radius: 4px; }
-.form-hint { margin-left: 12px; font-size: 12px; opacity: 0.7; }
-.unit { margin-left: 8px; font-size: 12px; opacity: 0.7; }
-.path-mappings { display: flex; flex-direction: column; gap: 8px; width: 100%; }
-.path-mapping-row { display: grid; grid-template-columns: 130px minmax(140px, 1fr) 18px minmax(160px, 1fr) 32px; gap: 6px; align-items: center; }
+.var-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-bottom: 6px; }
+.rename-preview { font-size: var(--fs-xs); opacity: 0.8; margin-top: 4px; }
+.rename-preview code { background: var(--glass-hover, rgba(127,127,127,0.15)); padding: 1px 6px; border-radius: var(--radius-2xs); }
+.form-hint { margin-left: 12px; font-size: var(--fs-xs); opacity: 0.7; }
+.unit { margin-left: 8px; font-size: var(--fs-xs); opacity: 0.7; }
+.path-mappings { display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; }
+.path-mapping-row { display: grid; grid-template-columns: 130px minmax(140px, 1fr) 18px minmax(160px, 1fr) 32px; gap: var(--sp-1); align-items: center; }
 .mapping-arrow { text-align: center; opacity: 0.6; }
 .error-msg { color: var(--el-color-danger); }
 </style>

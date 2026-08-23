@@ -292,18 +292,18 @@ onUnmounted(() => {
 .extra-ops {
   margin: -4px 0 12px;
 }
-.workspace-head { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
-.ws-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
-.live-indicator { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; color: var(--pt-danger); font-size: 12px; font-weight: 600; }
+.workspace-head { display: flex; align-items: center; gap: var(--sp-2); padding: 6px 0; border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
+.ws-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); }
+.live-indicator { display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--sp-1); color: var(--pt-danger); font-size: var(--fs-xs); font-weight: 600; }
 .live-indicator.online { color: var(--pt-success); }
 .live-indicator.pending { color: var(--pt-warn); }
 .live-indicator :deep(svg) { width: 13px; }
-.workspace-actions { display: flex; flex: 0 0 auto; gap: 7px; }
+.workspace-actions { display: flex; flex: 0 0 auto; gap: var(--sp-2); }
 .connection-alert { margin: 10px 0 0; }
 .lim-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-bottom: 10px;
 }
 .lim-row span:first-child {
@@ -312,16 +312,16 @@ onUnmounted(() => {
 .sl-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-bottom: 12px;
 }
 .sl-label {
   width: 90px;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .cat-add {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-bottom: 12px;
 }
 .cat-row {
@@ -329,7 +329,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 6px 0;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .cname {
   overflow: hidden;
@@ -337,7 +337,7 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .hint {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   margin-top: 6px;
 }
 :deep(.el-drawer__body) {

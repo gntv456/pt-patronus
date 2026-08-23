@@ -192,20 +192,20 @@ function clearDim(key: ArrKey) {
 .sfb {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
   padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--surface-muted, rgba(108, 92, 231, 0.05));
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted, var(--pt-primary-bg));
   border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.08));
 }
 .sfb-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 .sfb-count {
-  font-size: 13px;
+  font-size: var(--fs-body);
   white-space: nowrap;
 }
 .sfb-count b {
@@ -215,9 +215,9 @@ function clearDim(key: ArrKey) {
 .sfb-order {
   background: transparent;
   border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.12));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 3px 12px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   color: var(--text-strong);
   white-space: nowrap;
@@ -234,28 +234,28 @@ function clearDim(key: ArrKey) {
 .sfb-pills {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
   flex-wrap: wrap;
 }
 .sfb-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
   background: transparent;
   border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.12));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 3px 12px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   color: var(--text-strong);
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: background var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth), color var(--dur-base) var(--ease-out-smooth);
 }
 .sfb-pill:hover {
   border-color: var(--pt-primary, #6c5ce7);
 }
 .sfb-pill.on {
-  background: rgba(108, 92, 231, 0.14);
+  background: var(--pt-primary-bg);
   border-color: var(--pt-primary, #6c5ce7);
   color: var(--pt-primary, #6c5ce7);
   font-weight: 600;
@@ -267,23 +267,23 @@ function clearDim(key: ArrKey) {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--pt-primary, #6c5ce7);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 .sfb-tags {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
   flex-wrap: wrap;
 }
 .sfb-clear {
   background: transparent;
   border: 0;
   color: var(--pt-primary, #6c5ce7);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   padding: 0;
 }
@@ -293,12 +293,12 @@ function clearDim(key: ArrKey) {
 .sfb-pop {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-2);
   max-height: 320px;
 }
 .sfb-pop-head {
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   border-bottom: 1px solid var(--divider, rgba(0, 0, 0, 0.06));
   padding-bottom: 6px;
 }
@@ -306,7 +306,7 @@ function clearDim(key: ArrKey) {
   background: transparent;
   border: 0;
   color: var(--pt-primary, #6c5ce7);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   padding: 0;
 }
@@ -323,28 +323,28 @@ function clearDim(key: ArrKey) {
   height: 26px;
 }
 .sfb-empty {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   padding: 8px 0;
   text-align: center;
 }
 .sfb-adv {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .adv-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .adv-row label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .adv-range {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .adv-range .el-input-number {
   flex: 1;
@@ -355,20 +355,20 @@ function clearDim(key: ArrKey) {
 }
 .adv-time {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-1);
   flex-wrap: wrap;
 }
 .time-chip {
   background: transparent;
   border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.12));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 3px 12px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   cursor: pointer;
   color: var(--text-strong);
 }
 .time-chip.on {
-  background: rgba(108, 92, 231, 0.14);
+  background: var(--pt-primary-bg);
   border-color: var(--pt-primary, #6c5ce7);
   color: var(--pt-primary, #6c5ce7);
   font-weight: 600;
@@ -379,7 +379,7 @@ function clearDim(key: ArrKey) {
 }
 @media (max-width: 720px) {
   .sfb-row {
-    gap: 6px;
+    gap: var(--sp-1);
   }
 }
 </style>

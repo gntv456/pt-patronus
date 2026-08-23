@@ -135,7 +135,7 @@ class _BetGameViewState extends State<BetGameView> {
       case 'redpacket':
         return [GlassCard(padding: const EdgeInsets.all(24), child: Center(child: _opBtn('🧧 领取红包', const Color(0xFFDB2777), () => _doBet(BetRequest(selection: 'claim', amount: 0)))))];
       case 'bet':
-        return [GlassCard(padding: const EdgeInsets.all(20), child: const Text('押注表单待补抓 bet_odds.php，暂未支持自动押注。', style: TextStyle(color: Colors.grey, fontSize: 13)))];
+        return [GlassCard(padding: const EdgeInsets.all(20), child: Text('押注表单待补抓 bet_odds.php，暂未支持自动押注。', style: TextStyle(color: context.dimText, fontSize: 13)))];
       default:
         return [GlassCard(padding: const EdgeInsets.all(20), child: Center(child: _opBtn('操作', const Color(0xFFDB2777), () => _doBet(BetRequest(selection: '', amount: _amount)))))];
     }
@@ -158,8 +158,8 @@ class _BetGameViewState extends State<BetGameView> {
           const SizedBox(width: 8),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (_last!.prize.isNotEmpty) Text(_last!.prize, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
-            if (_last!.balance > 0) Text('余额 ${_last!.balance.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            if (_last!.message.isNotEmpty) Text(_last!.message, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            if (_last!.balance > 0) Text('余额 ${_last!.balance.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: context.dimText)),
+            if (_last!.message.isNotEmpty) Text(_last!.message, style: TextStyle(fontSize: 12, color: context.dimText)),
           ])),
         ]),
       );

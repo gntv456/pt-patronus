@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
-/// 是否支持应用内 OTA（仅 Android 原生，非 Web）。
-/// 桌面 / iOS / Web 走外链兜底（无可靠的应用内安装机制）。
-bool supportsInAppOta() =>
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+// supportsInAppOta() 已收敛至 platform_caps.dart，此处 re-export 保持
+// 老调用点（update_checker.dart）import 不变。
+// 鸿蒙端返回 false：HarmonyOS NEXT 无应用内安装 API，走外链浏览器下载。
+export 'package:ptpatronus/core/platform/platform_caps.dart'
+    show supportsInAppOta;
 
 /// 下载 APK 到临时目录，校验 sha256（expectedSha256 非空时），返回本地路径。
 /// onProgress(received, total) 用于进度展示，total<=0 表示未知大小。

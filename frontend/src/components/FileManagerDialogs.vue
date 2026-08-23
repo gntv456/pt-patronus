@@ -172,11 +172,11 @@ async function testConnection() {
 </template>
 
 <style scoped>
-.hint { margin: -4px 0 8px; padding: 8px 12px; font-size: 12px; color: var(--text-muted, #909399); background: var(--pt-bg-soft, rgba(255, 255, 255, 0.04)); border-radius: 6px; line-height: 1.6; }
-.mc-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.mc-path { flex: 1; font-family: monospace; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mc-list { max-height: 320px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 8px; padding: 6px; }
-.mc-item { display: flex; align-items: center; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.hint { margin: -4px 0 8px; padding: 8px 12px; font-size: var(--fs-xs); color: var(--text-muted, #909399); background: var(--pt-bg-soft, rgba(255, 255, 255, 0.04)); border-radius: var(--radius-xs); line-height: 1.6; }
+.mc-bar { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 10px; }
+.mc-path { flex: 1; font-family: monospace; font-size: var(--fs-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-list { max-height: 320px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: var(--radius-xs); padding: 6px; }
+.mc-item { display: flex; align-items: center; padding: 7px 10px; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-body); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
 .mc-item:hover { background: color-mix(in srgb, var(--pt-primary, #4361ee) 10%, transparent); }
 .mc-empty { text-align: center; color: var(--text-muted, #909399); padding: 20px; }
 </style>

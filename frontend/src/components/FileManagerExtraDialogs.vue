@@ -98,9 +98,9 @@ function imgUrl(t: FileEntry | null, id: number): string {
 <style scoped>
 .edit-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .edit-file { font-weight: 600; color: var(--text-strong); }
-.edit-hint { font-size: 12px; color: var(--text-muted); }
-.edit-area :deep(textarea) { font-family: monospace; font-size: 13px; }
-.chmod-hint { margin-left: 8px; font-size: 12px; color: var(--text-muted); }
+.edit-hint { font-size: var(--fs-xs); color: var(--text-muted); }
+.edit-area :deep(textarea) { font-family: monospace; font-size: var(--fs-body); }
+.chmod-hint { margin-left: 8px; font-size: var(--fs-xs); color: var(--text-muted); }
 .preview-img { max-width: 100%; max-height: 70vh; display: block; margin: 0 auto; }
-.preview-text { font-family: monospace; font-size: 13px; white-space: pre-wrap; word-break: break-word; max-height: 70vh; overflow: auto; margin: 0; }
+.preview-text { font-family: monospace; font-size: var(--fs-body); white-space: pre-wrap; word-break: break-word; max-height: 70vh; overflow: auto; margin: 0; }
 </style>

@@ -276,34 +276,46 @@ watch(
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 14px; }
-.head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.page { display: flex; flex-direction: column; gap: var(--sp-3); }
+.head { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
 .back {
-  border: none; background: rgba(108, 92, 231, 0.1); color: var(--text-strong);
-  padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  border: none; background: var(--pt-primary-bg); color: var(--text-strong);
+  padding: 6px 12px; border-radius: var(--radius-pill); cursor: pointer; font-size: var(--fs-body); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth)
 }
-.back:hover { background: rgba(108, 92, 231, 0.18); }
-.title-wrap { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
-.title { margin: 0; font-size: 20px; }
-.sub { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--text-muted); }
+.back:hover { background: var(--pt-primary-bg); }
+.title-wrap { display: flex; align-items: center; gap: var(--sp-3); flex: 1; min-width: 0; }
+.title { margin: 0; font-size: var(--fs-title); }
+.sub { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; font-size: var(--fs-body); color: var(--text-muted); }
 .sub a { color: var(--text-muted); }
 .dot { opacity: 0.5; }
-.pill { padding: 1px 8px; border-radius: 999px; font-size: 12px; }
-.pill.on { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
-.pill.off { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
-.head-actions { display: flex; gap: 8px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-.metric { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
-.metric .k { font-size: 12px; color: var(--text-muted); }
-.metric .v { font-size: 18px; font-weight: 700; }
+.pill { padding: 1px 8px; border-radius: var(--radius-pill); font-size: var(--fs-xs); }
+.pill.on { background: var(--pt-success-bg); color:var(--pt-success); }
+.pill.off { background: var(--pt-danger-bg); color:var(--pt-danger); }
+.head-actions { display: flex; gap: var(--sp-2); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-2); }
+.metric { padding: 14px 16px; display: flex; flex-direction: column; gap: var(--sp-1); }
+.metric .k { font-size: var(--fs-xs); color: var(--text-muted); }
+.metric .v { font-size: var(--fs-xl); font-weight: 700; }
 .card { padding: 14px 16px; margin-bottom: 10px; }
 .tab-body { min-height: 120px; }
-.row-between { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-.row-between h3 { margin: 0; font-size: 15px; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: 8px; }
+.row-between h3 { margin: 0; font-size: var(--fs-lg); }
 .metrics { margin: 8px 0 0; padding-left: 18px; }
-.ok { color: #16a34a; margin-left: 4px; }
-.err { color: #dc2626; }
-.hint { margin-top: 8px; font-size: 13px; }
-.small { font-size: 12px; }
+.ok { color:var(--pt-success); margin-left: 4px; }
+.err { color:var(--pt-danger); }
+.hint { margin-top: 8px; font-size: var(--fs-body); }
+.small { font-size: var(--fs-xs); }
 .tabs { padding: 8px 12px 12px; }
+
+/* 指标卡 staggered 入场 */
+.grid > * { animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both; }
+.grid > *:nth-child(1) { animation-delay: 0ms; }
+.grid > *:nth-child(2) { animation-delay: 40ms; }
+.grid > *:nth-child(3) { animation-delay: 80ms; }
+.grid > *:nth-child(4) { animation-delay: 120ms; }
+.grid > *:nth-child(5) { animation-delay: 160ms; }
+.grid > *:nth-child(6) { animation-delay: 200ms; }
+.grid > *:nth-child(n+7) { animation-delay: 240ms; }
+.metric { transition: transform var(--dur-fast) var(--ease-out-spring); }
+.metric:hover { transform: translateY(-1px); }
 </style>

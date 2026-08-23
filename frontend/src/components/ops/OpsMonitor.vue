@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { systemApi, type SystemMetrics } from '@/api/system'
 import { humanTempName } from '@/components/monitor/useDeviceDetail'
@@ -244,7 +244,7 @@ onBeforeUnmount(() => {
   height: 100%;
   background: var(--grad-primary);
   border-radius: var(--radius-pill);
-  transition: width 0.5s ease;
+  transition: width var(--dur-slow) var(--ease-out-smooth);
 }
 .metric-bar-fill.green {
   background: var(--grad-success);
@@ -270,7 +270,7 @@ onBeforeUnmount(() => {
 .net-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 .net-arrow {
   font-weight: 700;
@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
 .disk-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
 }
 .disk-path {
   font-size: var(--fs-sm);
@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
   height: 100%;
   background: var(--grad-success);
   border-radius: var(--radius-pill);
-  transition: width 0.5s ease;
+  transition: width var(--dur-slow) var(--ease-out-smooth);
 }
 .disk-bar-fill.warn { background: var(--pt-warn); }
 .disk-bar-fill.danger { background: var(--pt-danger); }
@@ -346,11 +346,11 @@ onBeforeUnmount(() => {
   padding: 4px 12px;
   border-radius: var(--radius-pill);
   font-size: var(--fs-sm);
-  background: rgba(46, 204, 113, 0.15);
+  background: var(--pt-success-bg);
   color: var(--pt-success);
 }
-.temp-chip.warm { background: rgba(243, 156, 18, 0.15); color: var(--pt-warn); }
-.temp-chip.hot { background: rgba(231, 76, 60, 0.15); color: var(--pt-danger); }
+.temp-chip.warm { background: var(--pt-warn-bg); color: var(--pt-warn); }
+.temp-chip.hot { background: var(--pt-danger-bg); color: var(--pt-danger); }
 
 .monitor-error {
   color: var(--pt-danger);
@@ -364,7 +364,7 @@ onBeforeUnmount(() => {
   }
   .disk-bar { display: none; }
 }
-.monitor-scope { display: flex; align-items: center; gap: 8px; padding: 8px 14px; margin-bottom: 12px; border-radius: 8px; font-size: 13px; }
+.monitor-scope { display: flex; align-items: center; gap: var(--sp-2); padding: 8px 14px; margin-bottom: 12px; border-radius: var(--radius-xs); font-size: var(--fs-body); }
 .scope-dot { width: 8px; height: 8px; border-radius: 50%; background: #27ae60; box-shadow: 0 0 6px #27ae60; }
 .scope-label { font-weight: 700; }
 </style>

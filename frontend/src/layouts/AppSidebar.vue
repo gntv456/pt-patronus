@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { Star, StarFilled, ArrowRight } from '@element-plus/icons-vue'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { navDesc, type NavItem, type NavGroup } from '@/layouts/navConfig'
@@ -89,33 +89,34 @@ function noticeBadge(name: string): number {
 </template>
 
 <style scoped>
-.sidebar { width: 220px; display: flex; flex-direction: column; padding: 18px 14px; transition: width 0.25s ease, transform 0.25s ease; }
+.sidebar { width: 220px; display: flex; flex-direction: column; padding: 18px 14px; transition: width var(--dur-base) var(--ease-out-smooth), transform var(--dur-slow) var(--ease-out-smooth); }
 .sidebar.collapsed { width: 72px; }
 .sidebar.collapsed .brand { justify-content: center; padding: 6px 0 18px; }
 .sidebar.collapsed .nav-item { justify-content: center; padding: 9px 0; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; font-weight: 700; font-size: 18px; }
-.logo { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; }
-.nav { display: flex; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
-.nav-group { display: flex; flex-direction: column; gap: 4px; }
+.brand { display: flex; align-items: center; gap: var(--sp-2); padding: 6px 8px 18px; font-weight: 700; font-size: var(--fs-xl); }
+.logo { width: 34px; height: 34px; border-radius: var(--radius-sm); flex-shrink: 0; }
+.nav { display: flex; flex-direction: column; gap: var(--sp-2); flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 2px; }
+.nav-group { display: flex; flex-direction: column; gap: var(--sp-1); }
 .nav-group-title { padding: 0; font-size: var(--fs-xs); font-weight: 600; color: var(--text-muted); opacity: 0.6; }
 .nav-group-title.static { display: block; padding: 6px 14px 2px; }
-.nav-group-title-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 10px 2px 14px; width: 100%; border: none; background: transparent; color: inherit; font: inherit; text-align: left; }
+.nav-group-title-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-1); padding: 6px 10px 2px 14px; width: 100%; border: none; background: transparent; color: inherit; font: inherit; text-align: left; }
 .nav-group-title-row.clickable { cursor: pointer; border-radius: var(--radius-sm); }
-.nav-group-title-row.clickable:hover { background: rgba(108, 92, 231, 0.08); }
-.group-chevron { font-size: 12px; opacity: 0.45; transition: transform 0.15s ease; transform: rotate(90deg); }
+.nav-group-title-row.clickable:hover { background: var(--pt-primary-bg); }
+.group-chevron { font-size: var(--fs-xs); opacity: 0.45; transition: transform var(--dur-base) var(--ease-out-smooth); transform: rotate(90deg); }
 .group-chevron.collapsed { transform: rotate(0deg); }
-.group-action { border: none; background: transparent; color: var(--text-muted); font-size: 11px; cursor: pointer; opacity: 0.55; padding: 0 2px; }
+.group-action { border: none; background: transparent; color: var(--text-muted); font-size: var(--fs-2xs); cursor: pointer; opacity: 0.55; padding: 0 2px; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
 .group-action:hover { opacity: 1; color: var(--text-strong); }
-.nav-item { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-radius: var(--radius-md); text-decoration: none; color: var(--text-strong); font-size: 15px; position: relative; }
-.nav-item.router-link-active { background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(66, 133, 244, 0.18)); font-weight: 600; }
+.nav-item { display: flex; align-items: center; gap: var(--sp-3); padding: 9px 14px; border-radius: var(--radius-md); text-decoration: none; color: var(--text-strong); font-size: var(--fs-lg); position: relative; transition: background var(--dur-base) var(--ease-out-smooth), transform var(--dur-base) var(--ease-out-smooth); }
+.nav-item:hover { background: var(--pt-primary-bg); }
+.nav-item.router-link-active { background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg)); font-weight: 600; }
 .nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nav-icon { font-size: 18px; }
-.fav-btn { flex-shrink: 0; border: none; background: transparent; color: var(--text-muted); cursor: pointer; padding: 2px; border-radius: 6px; opacity: 0; transition: opacity 0.15s ease; display: inline-flex; align-items: center; }
+.nav-icon { font-size: var(--fs-xl); }
+.fav-btn { flex-shrink: 0; border: none; background: transparent; color: var(--text-muted); cursor: pointer; padding: 2px; border-radius: var(--radius-xs); opacity: 0; transition: opacity var(--dur-base) var(--ease-out-smooth); display: inline-flex; align-items: center; }
 .nav-item:hover .fav-btn, .fav-btn.on { opacity: 1; }
-.fav-btn.on { color: #f39c12; }
-.fav-btn:hover { background: rgba(108, 92, 231, 0.12); }
+.fav-btn.on { color: var(--pt-warn); }
+.fav-btn:hover { background: var(--pt-primary-bg); }
 .sidebar-footer { margin-top: auto; padding: 12px 8px; }
-.vip-badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: linear-gradient(135deg, #f39c12, #e74c3c); color: #fff; font-size: 12px; font-weight: 600; }
+.vip-badge { display: inline-block; padding: 4px 10px; border-radius: var(--radius-pill); background: linear-gradient(135deg, #f39c12, #e74c3c); color: #fff; font-size: var(--fs-xs); font-weight: 600; }
 @media (max-width: 720px) {
   .sidebar { position: fixed; inset: 8px auto 8px 8px; z-index: 210; width: min(260px, calc(100vw - 32px)); box-sizing: border-box; transform: translateX(calc(-100% - 16px)); box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22); }
   .sidebar.mobile-open { transform: translateX(0); }
@@ -128,10 +129,10 @@ function noticeBadge(name: string): number {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #e74c3c;
   color: #fff;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -142,15 +143,19 @@ function noticeBadge(name: string): number {
 }
 .nav-badge--urgent {
   background: #e74c3c;
-  animation: nav-badge-pulse 1.6s ease-in-out infinite;
+  animation: nav-badge-ripple 1.8s var(--ease-in-out) infinite;
 }
 .sidebar.collapsed .nav-badge {
   top: 2px;
   left: 38px;
 }
 .nav-icon--ring {
-  animation: bell-ring 1.6s ease-in-out infinite;
+  animation: bell-ring 1.6s var(--ease-in-out) infinite;
   transform-origin: top center;
+}
+@keyframes nav-badge-ripple {
+  0%, 100% { box-shadow: 0 0 0 2px var(--glass-bg-strong), 0 0 0 0 var(--pt-danger-bg); }
+  50%      { box-shadow: 0 0 0 2px var(--glass-bg-strong), 0 0 0 6px var(--pt-danger-bg); }
 }
 @keyframes bell-ring {
   0%, 100% { transform: rotate(0deg); }
@@ -162,8 +167,8 @@ function noticeBadge(name: string): number {
   60% { transform: rotate(0deg); }
 }
 @keyframes nav-badge-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.85)), 0 0 0 0 rgba(231, 76, 60, 0.5); }
-  50% { box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.85)), 0 0 0 6px rgba(231, 76, 60, 0); }
+  0%, 100% { box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.85)), 0 0 0 0 var(--pt-danger-bg); }
+  50% { box-shadow: 0 0 0 2px var(--glass-bg-strong, rgba(255, 255, 255, 0.85)), 0 0 0 6px var(--pt-danger-bg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -164,7 +164,7 @@ function doDemoLogin() { demoLogin(goDashboard) }
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .logo {
   width: 40px;
@@ -172,17 +172,17 @@ function doDemoLogin() { demoLogin(goDashboard) }
 }
 .brand h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--fs-title);
   letter-spacing: -0.5px;
 }
 .subtitle {
   margin: 4px 0 22px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .mode-tabs {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-bottom: 18px;
 }
 .mode-tabs button {
@@ -193,10 +193,10 @@ function doDemoLogin() { demoLogin(goDashboard) }
   background: transparent;
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .mode-tabs button.active {
-  background: linear-gradient(135deg, rgba(108, 92, 231, 0.25), rgba(66, 133, 244, 0.18));
+  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
   color: var(--text-strong);
   font-weight: 600;
 }
@@ -211,13 +211,13 @@ function doDemoLogin() { demoLogin(goDashboard) }
   background: rgba(255, 255, 255, 0.36);
 }
 .boot-panel.bad {
-  border-color: rgba(231, 76, 60, 0.28);
+  border-color: var(--pt-danger-bg);
 }
 .boot-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--sp-2);
+  font-size: var(--fs-body);
   color: var(--text-strong);
 }
 .dot {
@@ -227,10 +227,10 @@ function doDemoLogin() { demoLogin(goDashboard) }
   background: var(--text-muted);
 }
 .dot.ok {
-  background: #27ae60;
+  background:var(--pt-success);
 }
 .dot.warn {
-  background: #f39c12;
+  background:var(--pt-warn);
 }
 .dot.bad {
   background: var(--pt-danger);
@@ -238,12 +238,12 @@ function doDemoLogin() { demoLogin(goDashboard) }
 .boot-version {
   margin-left: auto;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .boot-desc {
   margin: 6px 0 0;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
 }
 .field {
@@ -260,12 +260,12 @@ function doDemoLogin() { demoLogin(goDashboard) }
 }
 .captcha-row {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   align-items: center;
 }
 .captcha-img {
   height: 40px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   cursor: pointer;
   border: 1px solid var(--glass-border);
 }
@@ -274,13 +274,13 @@ function doDemoLogin() { demoLogin(goDashboard) }
 }
 .hint {
   margin-top: 10px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   line-height: 1.5;
 }
 .err {
   margin-top: 12px;
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--pt-danger);
 }
 .deploy-hint {
@@ -288,7 +288,7 @@ function doDemoLogin() { demoLogin(goDashboard) }
   padding-top: 12px;
   border-top: 1px solid var(--glass-border);
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.55;
 }
 .deploy-hint code {
@@ -315,8 +315,8 @@ function doDemoLogin() { demoLogin(goDashboard) }
   height: 38px;
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
-  background: rgba(108, 92, 231, 0.16);
-  color: #6c5ce7;
+  background: var(--pt-primary-bg);
+  color:var(--pt-primary);
   font-weight: 600;
   cursor: pointer;
 }
@@ -334,7 +334,20 @@ function doDemoLogin() { demoLogin(goDashboard) }
     padding: 28px 22px;
   }
   .brand h1 {
-    font-size: 22px;
+    font-size: var(--fs-title);
   }
 }
+
+/* 水润动效增强 */
+.login-card { animation: pt-scale-in var(--dur-slow) var(--ease-out-spring) both; }
+.mode-tabs button { transition: all var(--dur-base) var(--ease-out-smooth); }
+.mode-tabs button:hover { transform: translateY(-1px); }
+.submit { transition: transform var(--dur-fast) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth), filter var(--dur-fast) var(--ease-out-smooth); box-shadow: var(--shadow-primary); }
+.submit:hover { transform: translateY(-1px); box-shadow: var(--shadow-primary-lg); filter: brightness(1.05); }
+.submit:active { transform: translateY(0) scale(0.985); }
+.demo-btn { transition: all var(--dur-base) var(--ease-out-smooth); }
+.demo-btn:hover { transform: translateY(-1px); background: var(--pt-primary-bg); }
+.captcha-img { transition: transform var(--dur-fast) var(--ease-out-spring), opacity var(--dur-fast) var(--ease-out-smooth); }
+.captcha-img:hover { transform: scale(1.04); }
+.dot { transition: background var(--dur-base) var(--ease-out-smooth); }
 </style>

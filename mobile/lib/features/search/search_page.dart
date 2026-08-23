@@ -11,6 +11,7 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/media_poster.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 import '../media/media_detail_page.dart';
 import '../media/media_settings_page.dart';
@@ -174,7 +175,7 @@ class _SearchPageState extends State<SearchPage> {
               '${t.title}${t.size.isNotEmpty ? " · ${t.size}" : ""}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: context.dimText),
             ),
           ),
           ...ds.map(
@@ -369,8 +370,8 @@ class _SearchPageState extends State<SearchPage> {
                           tr.t.subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.grey,
+                          style: TextStyle(
+                            color: context.dimText,
                             fontSize: 11,
                           ),
                         ),
@@ -393,7 +394,7 @@ class _SearchPageState extends State<SearchPage> {
                   '${tr.t.seeders}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: tr.t.seeders > 0 ? PTColors.success : Colors.grey,
+                    color: tr.t.seeders > 0 ? PTColors.success : context.dimText,
                   ),
                 ),
               ),
@@ -405,7 +406,7 @@ class _SearchPageState extends State<SearchPage> {
                   '${tr.t.leechers}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: tr.t.leechers > 0 ? PTColors.warn : Colors.grey,
+                    color: tr.t.leechers > 0 ? PTColors.warn : context.dimText,
                   ),
                 ),
               ),
@@ -431,9 +432,9 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                         ),
                       )
-                    : const Text(
+                    : Text(
                         '—',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        style: TextStyle(color: context.dimText, fontSize: 12),
                       ),
               ),
               PTColumn<_TR>(
@@ -477,8 +478,8 @@ class _SearchPageState extends State<SearchPage> {
                             tr.t.subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.grey,
+                            style: TextStyle(
+                              color: context.dimText,
                               fontSize: 12,
                             ),
                           ),
@@ -551,7 +552,7 @@ class _SearchPageState extends State<SearchPage> {
                   const Spacer(),
                   Icon(
                     _showFails ? Icons.expand_less : Icons.expand_more,
-                    color: Colors.grey,
+                    color: context.dimText,
                   ),
                 ],
               ),
@@ -670,12 +671,12 @@ class _SearchPageState extends State<SearchPage> {
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
       child: Row(
         children: [
-          Icon(Icons.travel_explore, size: 16, color: Colors.grey.shade600),
+          Icon(Icons.travel_explore, size: 16, color: context.dimText),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               '已搜索 $sites 个站点，$okSites 个成功，命中 $rows 条',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: context.dimText),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -731,7 +732,7 @@ class _SearchPageState extends State<SearchPage> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.black54,
+                          color: context.mainText,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -770,8 +771,8 @@ class _SearchPageState extends State<SearchPage> {
                           const SizedBox(width: 5),
                           Text(
                             '${m.year}',
-                            style: const TextStyle(
-                              color: Colors.grey,
+                            style: TextStyle(
+                              color: context.dimText,
                               fontSize: 11,
                             ),
                           ),
@@ -890,7 +891,7 @@ class _TorrentDetailContentState extends State<_TorrentDetailContent> {
     if (_loading) {
       return const Padding(
         padding: EdgeInsets.all(40),
-        child: Center(child: CircularProgressIndicator()),
+        child: PTLoadingView(),
       );
     }
     if (_err != null) {
@@ -912,7 +913,7 @@ class _TorrentDetailContentState extends State<_TorrentDetailContent> {
       children: [
         Text(
           widget.siteName,
-          style: const TextStyle(color: Colors.grey, fontSize: 12),
+          style: TextStyle(color: context.dimText, fontSize: 12),
         ),
         const SizedBox(height: 8),
         _header(d),
@@ -964,7 +965,7 @@ class _TorrentDetailContentState extends State<_TorrentDetailContent> {
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
                     d.subtitle,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(color: context.dimText, fontSize: 12),
                   ),
                 ),
               Wrap(

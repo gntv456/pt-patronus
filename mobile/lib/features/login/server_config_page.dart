@@ -176,16 +176,16 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    const Text(
+                    Text(
                       '配置后端服务器地址',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: context.dimText),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       '填入你部署的 docker 服务端地址（如 http://192.168.1.10:8088 或 https://你的域名），'
                       '客户端通过它连接后端。',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: context.dimText,
                         fontSize: 12,
                         height: 1.5,
                       ),
@@ -270,7 +270,7 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
                     const SizedBox(height: 16),
                     Text(
                       '编译期默认：${Config.baseUrl}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      style: TextStyle(color: context.dimText, fontSize: 11),
                     ),
                   ],
                 ),

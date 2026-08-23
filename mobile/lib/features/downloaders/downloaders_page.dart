@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:ptpatronus/core/platform/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -10,6 +10,7 @@ import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 // 下载器类型 → 品牌图标/配色/标签（与 Web Downloaders.vue 的 DL_META 1:1）。
@@ -310,7 +311,7 @@ class _DownloadersPageState extends State<DownloadersPage> {
                     ),
                     Text(
                       _typeLabel(d.type),
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: context.dimText, fontSize: 12),
                     ),
                   ],
                 ),
@@ -320,7 +321,7 @@ class _DownloadersPageState extends State<DownloadersPage> {
           const SizedBox(height: 12),
           Text(
             d.url,
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(color: context.dimText, fontSize: 12),
             softWrap: true,
           ),
           const SizedBox(height: 14),
@@ -801,11 +802,11 @@ class _TorrentSheetState extends State<_TorrentSheet> {
                     onChanged: (v) => seedInput = v,
                   ),
                 if (_type == 'tr')
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
                       'TR 做种时长为「空闲时长」语义',
-                      style: TextStyle(fontSize: 11, color: Colors.grey),
+                      style: TextStyle(fontSize: 11, color: context.dimText),
                     ),
                   ),
                 const SizedBox(height: 20),
@@ -913,7 +914,7 @@ class _TorrentSheetState extends State<_TorrentSheet> {
             ),
             SimpleDialogOption(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('（清除）', style: TextStyle(color: Colors.grey)),
+              child: Text('（清除）', style: TextStyle(color: context.dimText)),
             ),
           ],
         ),
@@ -990,13 +991,13 @@ class _TorrentSheetState extends State<_TorrentSheet> {
     final d = widget.downloader;
     Widget body;
     if (_connecting) {
-      body = const Center(
+      body = Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircularProgressIndicator(),
-            SizedBox(height: 12),
-            Text('连接实时推送…', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 12),
+            Text('连接实时推送…', style: TextStyle(color: context.dimText)),
           ],
         ),
       );
@@ -1004,12 +1005,12 @@ class _TorrentSheetState extends State<_TorrentSheet> {
       body = Center(
         child: Text(
           '拉取失败：$_error',
-          style: const TextStyle(color: Colors.redAccent),
+          style: TextStyle(color: Colors.redAccent),
         ),
       );
     } else if (_torrents.isEmpty) {
-      body = const Center(
-        child: Text('无任务', style: TextStyle(color: Colors.grey)),
+      body = Center(
+        child: Text('无任务', style: TextStyle(color: context.dimText)),
       );
     } else {
       body = ListView.separated(
@@ -1049,7 +1050,7 @@ class _TorrentSheetState extends State<_TorrentSheet> {
                 width: 8,
                 height: 8,
                 decoration: BoxDecoration(
-                  color: _ws.isConnected ? PTColors.success : Colors.grey,
+                  color: _ws.isConnected ? PTColors.success : context.dimText,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -1102,7 +1103,7 @@ class _TorrentSheetState extends State<_TorrentSheet> {
   Widget _count(String label, int n) {
     return Text(
       '$label $n',
-      style: const TextStyle(color: Colors.grey, fontSize: 12),
+      style: TextStyle(color: context.dimText, fontSize: 12),
     );
   }
 
@@ -1323,12 +1324,12 @@ class _AddTorrentSheetState extends State<_AddTorrentSheet> {
   Future<void> _pickFile() async {
     setState(() => _loading = true);
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
+      final result = await appFilePicker.pickFiles(
+        type: 'custom',
         allowedExtensions: ['torrent'],
       );
-      if (result == null || result.files.isEmpty) return;
-      final f = result.files.first;
+      if (result == null || result.isEmpty) return;
+      final f = result.first;
       http.MultipartFile mf;
       if (f.path != null) {
         mf = await http.MultipartFile.fromPath('file', f.path!);
@@ -1476,12 +1477,12 @@ class _FilesSheetState extends State<_FilesSheet> {
         const Divider(height: 1),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
               : _error.isNotEmpty
               ? _sheetErrorView(_error, _load)
               : _files.isEmpty
-              ? const Center(
-                  child: Text('无文件', style: TextStyle(color: Colors.grey)),
+              ? Center(
+                  child: Text('无文件', style: TextStyle(color: context.dimText)),
                 )
               : ListView.builder(
                   itemCount: _files.length,
@@ -1609,14 +1610,14 @@ class _TrackersSheetState extends State<_TrackersSheet> {
         const Divider(height: 16),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
               : _error.isNotEmpty
               ? _sheetErrorView(_error, _load)
               : _trackers.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
                     '无 Tracker',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: context.dimText),
                   ),
                 )
               : ListView.builder(
@@ -1684,7 +1685,7 @@ class _DetailSheet extends StatelessWidget {
     this.scrollController,
   });
 
-  Widget _kv(String k, String v) => Padding(
+  Widget _kv(BuildContext context, String k, String v) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1693,7 +1694,7 @@ class _DetailSheet extends StatelessWidget {
           width: 84,
           child: Text(
             k,
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(color: context.dimText, fontSize: 12),
           ),
         ),
         Expanded(child: Text(v, style: const TextStyle(fontSize: 13))),
@@ -1701,19 +1702,19 @@ class _DetailSheet extends StatelessWidget {
     ),
   );
 
-  Widget _flag(String label, bool on) => Container(
+  Widget _flag(BuildContext context, String label, bool on) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(6),
       color: on
           ? Colors.deepPurple.withValues(alpha: 0.18)
-          : Colors.grey.withValues(alpha: 0.15),
+          : context.dimText.withValues(alpha: 0.15),
     ),
     child: Text(
       label,
       style: TextStyle(
         fontSize: 11,
-        color: on ? Colors.deepPurple : Colors.grey,
+        color: on ? Colors.deepPurple : context.dimText,
       ),
     ),
   );
@@ -1749,35 +1750,35 @@ class _DetailSheet extends StatelessWidget {
             controller: scrollController,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             children: [
-              _kv('大小', _fmtBytes(t.size)),
-              _kv(
+              _kv(context, '大小', _fmtBytes(t.size)),
+              _kv(context,
                 '已下载/上传',
                 '${_fmtBytes(t.downloaded)} / ${_fmtBytes(t.uploaded)}',
               ),
-              _kv('分享率', t.ratio.toStringAsFixed(2)),
-              _kv('进度', '${(t.progress * 100).toStringAsFixed(1)}%'),
+              _kv(context, '分享率', t.ratio.toStringAsFixed(2)),
+              _kv(context, '进度', '${(t.progress * 100).toStringAsFixed(1)}%'),
               if (_dlCaps(type).swarm)
-                _kv(
+                _kv(context,
                   '可用性',
                   t.availability > 0 ? t.availability.toStringAsFixed(2) : '-',
                 ),
-              _kv('做种/下载', '${t.numSeeds} / ${t.numLeechs}'),
+              _kv(context, '做种/下载', '${t.numSeeds} / ${t.numLeechs}'),
               if (_dlCaps(type).swarm)
-                _kv('Swarm 做/下', '${t.numComplete} / ${t.numIncomplete}'),
-              if (_dlCaps(type).swarm) _kv('队列位置', '${t.priority}'),
-              if (t.addedAt.isNotEmpty) _kv('创建', _fmtIso(t.addedAt)),
+                _kv(context, 'Swarm 做/下', '${t.numComplete} / ${t.numIncomplete}'),
+              if (_dlCaps(type).swarm) _kv(context, '队列位置', '${t.priority}'),
+              if (t.addedAt.isNotEmpty) _kv(context, '创建', _fmtIso(t.addedAt)),
               if (_isCompleted(t.completedAt))
-                _kv('完成', _fmtIso(t.completedAt)),
+                _kv(context, '完成', _fmtIso(t.completedAt)),
               if (_dlCaps(type).forceStart || _dlCaps(type).sequential || _dlCaps(type).firstLast) ...[
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    _flag('强制开始', t.forceStart),
-                    _flag('顺序下载', t.sequential),
-                    _flag('首尾优先', t.firstLastPiece),
-                    _flag('自动管理', t.autoTmm),
+                    _flag(context, '强制开始', t.forceStart),
+                    _flag(context, '顺序下载', t.sequential),
+                    _flag(context, '首尾优先', t.firstLastPiece),
+                    _flag(context, '自动管理', t.autoTmm),
                   ],
                 ),
               ],
@@ -1839,14 +1840,14 @@ class _PeersSheetState extends State<_PeersSheet> {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              const Text(
+              Text(
                 'Peers',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const Spacer(),
               Text(
                 '${_peers.length}',
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: context.dimText, fontSize: 13),
               ),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
@@ -1858,12 +1859,12 @@ class _PeersSheetState extends State<_PeersSheet> {
         const Divider(height: 1),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
               : _error.isNotEmpty
               ? _sheetErrorView(_error, _load)
               : _peers.isEmpty
-              ? const Center(
-                  child: Text('无连接的对等体', style: TextStyle(color: Colors.grey)),
+              ? Center(
+                  child: Text('无连接的对等体', style: TextStyle(color: context.dimText)),
                 )
               : ListView.builder(
                   itemCount: _peers.length,
@@ -1878,9 +1879,9 @@ class _PeersSheetState extends State<_PeersSheet> {
                       ),
                       trailing: Text(
                         p.flags,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey,
+                          color: context.dimText,
                         ),
                       ),
                     );
@@ -2021,12 +2022,12 @@ class _CategorySheetState extends State<_CategorySheet> {
         const Divider(height: 16),
         Expanded(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
               : _error.isNotEmpty
               ? _sheetErrorView(_error, _load)
               : _cats.isEmpty
-              ? const Center(
-                  child: Text('无分类', style: TextStyle(color: Colors.grey)),
+              ? Center(
+                  child: Text('无分类', style: TextStyle(color: context.dimText)),
                 )
               : ListView.builder(
                   itemCount: _cats.length,

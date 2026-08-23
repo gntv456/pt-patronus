@@ -156,38 +156,38 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.task-cards { display: flex; flex-direction: column; gap: 12px; }
-.head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.head h3 { margin: 0; font-size: 15px; }
-.head p { margin: 0; color: var(--text-muted); font-size: 12px; flex: 1; }
+.task-cards { display: flex; flex-direction: column; gap: var(--sp-3); }
+.head { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
+.head h3 { margin: 0; font-size: var(--fs-lg); }
+.head p { margin: 0; color: var(--text-muted); font-size: var(--fs-xs); flex: 1; }
 .refresh {
-  border: none; background: rgba(108, 92, 231, 0.1); color: var(--text-strong);
-  border-radius: 999px; padding: 4px 10px; cursor: pointer; font-size: 12px;
+  border: none; background: var(--pt-primary-bg); color: var(--text-strong);
+  border-radius: var(--radius-pill); padding: 4px 10px; cursor: pointer; font-size: var(--fs-xs);
 }
-.refresh:hover { background: rgba(108, 92, 231, 0.18); }
+.refresh:hover { background: var(--pt-primary-bg); }
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 10px;
+  gap: var(--sp-2);
 }
 .card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
   text-align: left;
   padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(108, 92, 231, 0.12);
-  background: rgba(108, 92, 231, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--pt-primary-bg);
+  background: var(--pt-primary-bg);
   color: var(--text-strong);
-  cursor: pointer;
+  cursor: pointer; transition: transform var(--dur-base) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth), background var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth)
 }
-.card:hover { background: rgba(108, 92, 231, 0.12); }
-.card .title { font-size: 12px; color: var(--text-muted); }
-.card .value { font-size: 22px; font-weight: 700; line-height: 1.2; }
-.card .hint { font-size: 11px; color: var(--text-muted); }
-.tone-danger { border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.08); }
-.tone-warn { border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.08); }
-.tone-ok { border-color: rgba(34, 197, 94, 0.28); }
+.card:hover { background: var(--pt-primary-bg); }
+.card .title { font-size: var(--fs-xs); color: var(--text-muted); }
+.card .value { font-size: var(--fs-title); font-weight: 700; line-height: 1.2; }
+.card .hint { font-size: var(--fs-2xs); color: var(--text-muted); }
+.tone-danger { border-color: var(--pt-danger-bg); background: var(--pt-danger-bg); }
+.tone-warn { border-color: var(--pt-warn-bg); background: var(--pt-warn-bg); }
+.tone-ok { border-color: var(--pt-success-bg); }
 .tone-info { }
 </style>

@@ -23,7 +23,7 @@ const { schedCfg, schedForm, keepalivePresets } = useSchedule()
           
           <div class="card glass mt8">
             <div class="ch-head"><div class="row-title">Cookie 保活频率</div></div>
-            <p class="text-muted" style="font-size:12px;line-height:1.6;margin:0 0 8px">
+            <p class="text-muted" style="font-size: var(--fs-xs);line-height:1.6;margin:0 0 8px">
               独立于聚合快照：对启用站做认证 GET，刷新短寿 session 并回写轮换 cookie。建议不超过 1 小时。
             </p>
             <el-select
@@ -40,7 +40,7 @@ const { schedCfg, schedForm, keepalivePresets } = useSchedule()
             <el-input v-model="schedForm.keepalive_cron" class="mt8" placeholder="13 * * * *">
               <template #prepend>cron</template>
             </el-input>
-            <p v-if="schedCfg" class="text-muted mt8" style="font-size:12px">
+            <p v-if="schedCfg" class="text-muted mt8" style="font-size: var(--fs-xs)">
               内置默认：{{ schedCfg.keepalive_default }}
             </p>
           </div>
@@ -49,8 +49,8 @@ const { schedCfg, schedForm, keepalivePresets } = useSchedule()
 </template>
 
 <style scoped>
-.oidc-wrap { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
-.oidc-help { font-size: 13px; line-height: 1.6; }
+.oidc-wrap { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 640px; }
+.oidc-help { font-size: var(--fs-body); line-height: 1.6; }
 .oidc-save { display: flex; justify-content: flex-end; }
 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mt8 { margin-top: 8px; }

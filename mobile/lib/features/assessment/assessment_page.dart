@@ -4,6 +4,7 @@ import 'package:ptpatronus/api/assessment.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_filter_sheet.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 class AssessmentPage extends StatefulWidget {
@@ -116,7 +117,7 @@ class _AssessmentPageState extends State<AssessmentPage> {
         _selectedSiteIds = [];
       }),
       body: _loading && _cards.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? const PTLoadingView()
           : _error != null
           ? PTEmptyState(text: _error!, onRetry: _load)
           : _filtered.isEmpty
@@ -236,20 +237,20 @@ class _AssessmentPageState extends State<AssessmentPage> {
                 children: [
                   Text(
                     '${c.progressPercent.toStringAsFixed(0)}%',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                    style: TextStyle(color: context.dimText, fontSize: 12),
                   ),
                   const Spacer(),
                   if (c.endTime != null) ...[
                     Text(
                       '截止 ${_fmtDate(c.endTime)}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: context.dimText, fontSize: 12),
                     ),
                     const SizedBox(width: 8),
                   ],
                   if (c.remainingDays >= 0)
                     Text(
                       '剩 ${c.remainingDays} 天',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: context.dimText, fontSize: 12),
                     ),
                 ],
               ),
@@ -269,8 +270,8 @@ class _AssessmentPageState extends State<AssessmentPage> {
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(
                     c.description,
-                    style: const TextStyle(
-                      color: Colors.grey,
+                    style: TextStyle(
+                      color: context.dimText,
                       fontSize: 12,
                       height: 1.4,
                     ),
@@ -294,8 +295,8 @@ class _AssessmentPageState extends State<AssessmentPage> {
                                 ),
                                 Text(
                                   '${m.current.toStringAsFixed(1)}/${m.required.toStringAsFixed(1)} ${m.unit}',
-                                  style: const TextStyle(
-                                    color: Colors.grey,
+                                  style: TextStyle(
+                                    color: context.dimText,
                                     fontSize: 12,
                                   ),
                                 ),

@@ -9,7 +9,11 @@ dist/
 !backend/internal/web/dist/**
 !sdk/typescript/dist/
 !sdk/typescript/dist/**
-data/
+# /data/：只忽略仓库根目录的数据目录（后端运行时数据）。
+# 不写成 data/——无前导斜杠会匹配任意层级，曾把本地未跟踪的
+# frontend/src/data/*.ts 也忽略掉，行数门禁（check_file_length.sh
+# 扫工作区文件）漏扫误报 NEW OFFENDER。
+/data/
 node_modules/
 frontend/dist/
 mobile/.dart_tool/

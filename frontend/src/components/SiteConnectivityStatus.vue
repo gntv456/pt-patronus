@@ -76,13 +76,13 @@ function fullTitle(fallback: string): string {
 .connectivity-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
   min-height: 24px;
   padding: 2px 8px;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 18px;
   white-space: nowrap;
 }
@@ -101,11 +101,11 @@ function fullTitle(fallback: string): string {
 }
 .is-connected {
   color: var(--pt-success, #16a34a);
-  background: rgba(46, 204, 113, 0.16);
+  background: var(--pt-success-bg);
 }
 .is-disconnected {
   color: var(--pt-danger, #dc2626);
-  background: rgba(231, 76, 60, 0.14);
+  background: var(--pt-danger-bg);
 }
 .is-disabled {
   color: var(--text-muted, #94a3b8);

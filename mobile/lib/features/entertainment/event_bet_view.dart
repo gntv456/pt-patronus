@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 // OurBits 赛事押注（菠菜）：列表 → 盘口（选项+赔率，按赔率升序热门在前）→ 下单 → 结果。
 class EventBetView extends StatefulWidget {
@@ -130,11 +131,11 @@ class _EventBetViewState extends State<EventBetView> {
 
   List<Widget> _listView() {
     if (_loading && _events.isEmpty) {
-      return const [Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))];
+      return const [PTLoadingView()];
     }
     if (_events.isEmpty) {
       return [
-        GlassCard(padding: const EdgeInsets.all(36), child: const Center(child: Text('暂无进行中的竞猜', style: TextStyle(color: Colors.grey))))
+        GlassCard(padding: const EdgeInsets.all(36), child: Center(child: Text('暂无进行中的竞猜', style: TextStyle(color: context.dimText))))
       ];
     }
     return _events.map(_eventCard).toList();
@@ -158,15 +159,15 @@ class _EventBetViewState extends State<EventBetView> {
               ]),
               const SizedBox(height: 6),
               Wrap(spacing: 14, runSpacing: 4, children: [
-                Text('截止 ${ev.endTime}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                Text('截止 ${ev.endTime}', style: TextStyle(fontSize: 13, color: context.dimText)),
                 if (ev.remain.isNotEmpty)
                   Text('剩余 ${ev.remain}', style: const TextStyle(fontSize: 13, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600)),
               ]),
               const SizedBox(height: 4),
               Wrap(spacing: 12, runSpacing: 4, children: [
-                Text('庄家 ${ev.bookmaker.isEmpty ? '—' : ev.bookmaker}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                Text('${ev.betCount} 人下注', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                Text('投注 ${_fmt(ev.totalStake)} 魔力', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text('庄家 ${ev.bookmaker.isEmpty ? '—' : ev.bookmaker}', style: TextStyle(fontSize: 12, color: context.dimText)),
+                Text('${ev.betCount} 人下注', style: TextStyle(fontSize: 12, color: context.dimText)),
+                Text('投注 ${_fmt(ev.totalStake)} 魔力', style: TextStyle(fontSize: 12, color: context.dimText)),
               ]),
               const SizedBox(height: 4),
               const Text('查看盘口 ›', style: TextStyle(fontSize: 12, color: Color(0xFF6C5CE7), fontWeight: FontWeight.w600)),
@@ -187,7 +188,7 @@ class _EventBetViewState extends State<EventBetView> {
             TextButton(onPressed: _back, child: const Text('‹ 返回列表')),
           ]),
           Wrap(spacing: 14, children: [
-            Text('截止 ${d.event.endTime}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+            Text('截止 ${d.event.endTime}', style: TextStyle(fontSize: 13, color: context.dimText)),
             if (d.event.remain.isNotEmpty)
               Text('剩余 ${d.event.remain}', style: const TextStyle(fontSize: 13, color: Color(0xFFF59E0B), fontWeight: FontWeight.w600)),
           ]),
@@ -201,7 +202,7 @@ class _EventBetViewState extends State<EventBetView> {
       GlassCard(
         padding: const EdgeInsets.all(16),
         child: _detailLoading
-            ? const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+            ? const PTLoadingView()
             : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('选项（按赔率，热门在前）', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 10),
@@ -209,7 +210,7 @@ class _EventBetViewState extends State<EventBetView> {
                 if (d.myOption.isEmpty) ...[
                   const SizedBox(height: 14),
                   Row(children: [
-                    const Text('押注魔力', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                    Text('押注魔力', style: TextStyle(fontSize: 13, color: context.dimText)),
                     const SizedBox(width: 10),
                     SizedBox(
                       width: 130,
@@ -223,7 +224,7 @@ class _EventBetViewState extends State<EventBetView> {
                     _opBtn(_playing ? '提交中…' : '押注', const Color(0xFF059669), _doBet),
                   ]),
                   const SizedBox(height: 6),
-                  const Text('可获 = 押注 × 赔率（赛事结束后结算派彩）', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text('可获 = 押注 × 赔率（赛事结束后结算派彩）', style: TextStyle(fontSize: 12, color: context.dimText)),
                 ],
               ]),
       ),
@@ -259,8 +260,8 @@ class _EventBetViewState extends State<EventBetView> {
           const SizedBox(width: 8),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (_last!.prize.isNotEmpty) Text(_last!.prize, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF16A34A))),
-            if (_last!.balance > 0) Text('余额 ${_fmt(_last!.balance)}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            if (_last!.message.isNotEmpty) Text(_last!.message, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            if (_last!.balance > 0) Text('余额 ${_fmt(_last!.balance)}', style: TextStyle(fontSize: 12, color: context.dimText)),
+            if (_last!.message.isNotEmpty) Text(_last!.message, style: TextStyle(fontSize: 12, color: context.dimText)),
           ])),
         ]),
       );

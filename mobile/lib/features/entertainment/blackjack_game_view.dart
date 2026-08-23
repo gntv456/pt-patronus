@@ -98,15 +98,15 @@ class _BlackjackGameViewState extends State<BlackjackGameView> {
             const SizedBox(height: 12),
             Text(_resultText, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _state!.result == 'lose' ? Colors.redAccent : const Color(0xFF22C55E))),
           ],
-          if (_state!.message.isNotEmpty) ...[const SizedBox(height: 6), Text(_state!.message, style: const TextStyle(fontSize: 12, color: Colors.grey))],
+          if (_state!.message.isNotEmpty) ...[const SizedBox(height: 6), Text(_state!.message, style: TextStyle(fontSize: 12, color: context.dimText))],
         ]),
       );
 
   Widget _cardsRow(String label, List<String> cards) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(fontSize: 13, color: context.dimText, fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         if (cards.isEmpty)
-          const Text('—', style: TextStyle(color: Colors.grey))
+          Text('—', style: TextStyle(color: context.dimText))
         else
           Wrap(spacing: 6, runSpacing: 6, children: cards.map((c) => Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),

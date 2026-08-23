@@ -2,7 +2,7 @@
   padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-4);
 }
 .np-head {
   display: flex;
@@ -13,21 +13,21 @@
 .np-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .np-title h2 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--fs-xl);
 }
 .np-title span {
   display: block;
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .np-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   align-items: center;
 }
 .badge {
@@ -35,10 +35,10 @@
   margin-left: 4px;
   min-width: 18px;
   padding: 0 5px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: #fff;
-  color: #e74c3c;
-  font-size: 11px;
+  color: var(--pt-danger);
+  font-size: var(--fs-2xs);
   font-weight: 700;
 }
 .np-tabs {
@@ -47,19 +47,19 @@
 .tab-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .tab-count {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   background: var(--glass-bg);
   padding: 1px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
 }
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  gap: var(--sp-4);
   padding-top: 12px;
 }
 .empty-state {
@@ -68,7 +68,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .empty-state p {
   color: var(--text-muted);
@@ -80,11 +80,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .err-text {
   color: var(--pt-danger, #e74c3c);
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 
 @media (max-width: 760px) {
@@ -112,7 +112,7 @@
   border-bottom: 1px solid var(--divider, rgba(0, 0, 0, 0.08));
 }
 .alert-drawer-title {
-  font-size: 16px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--text-strong);
 }

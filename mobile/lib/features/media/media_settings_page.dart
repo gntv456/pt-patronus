@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/media.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 // 媒体源设置（对标 Web MediaSettings）：TMDB/豆瓣/Bangumi 凭据。
 // secret 回显脱敏 + configured 标记；提交时空字段=不修改（可只改部分）。保存即时 rebuild，无需重启。
@@ -102,7 +103,7 @@ class _MediaSettingsPageState extends State<MediaSettingsPage> {
         ),
         body: SafeArea(
           child: _loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const PTLoadingView()
               : _error != null
                   ? _errorView
                   : _body,
@@ -133,11 +134,11 @@ class _MediaSettingsPageState extends State<MediaSettingsPage> {
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
           child: GlassCard(
             padding: const EdgeInsets.all(14),
-            child: const Text(
+            child: Text(
               '影视搜索 / 推荐从这里取 TMDB、豆瓣、Bangumi 的凭据。留空 = 沿用默认（不修改）；'
               '国内访问 api.themoviedb.org 超时时，可在「TMDB 域名 / 镜像」填一个可达镜像。'
               '保存后即时生效，无需重启。',
-              style: TextStyle(fontSize: 13, height: 1.7, color: Colors.grey),
+              style: TextStyle(fontSize: 13, height: 1.7, color: context.dimText),
             ),
           ),
         ),
@@ -214,7 +215,7 @@ class _MediaSettingsPageState extends State<MediaSettingsPage> {
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
             const SizedBox(height: 2),
             Text(subtitle,
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                style: TextStyle(fontSize: 12, color: context.dimText)),
             const SizedBox(height: 14),
             ...children,
           ],
@@ -288,7 +289,7 @@ class _MediaSettingsPageState extends State<MediaSettingsPage> {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(help,
-                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                style: TextStyle(fontSize: 11, color: context.dimText)),
           ),
       ],
     );

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { VueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -268,18 +268,18 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 .editor {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
   height: calc(100vh - 32px);
 }
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-2);
   padding: 8px 14px;
 }
 .t-title {
   font-weight: 700;
-  font-size: 16px;
+  font-size: var(--fs-lg);
 }
 .spacer {
   flex: 1;
@@ -287,7 +287,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 .body {
   flex: 1;
   display: flex;
-  gap: 12px;
+  gap: var(--sp-3);
   min-height: 0;
 }
 .palette {
@@ -297,31 +297,31 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 }
 .p-title {
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
   margin-bottom: 10px;
 }
 .cats {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .cat-name {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-muted);
   margin-bottom: 4px;
 }
 .cat-item {
   padding: 7px 10px;
-  border-radius: 8px;
-  background: rgba(108, 92, 231, 0.1);
-  font-size: 13px;
+  border-radius: var(--radius-xs);
+  background: var(--pt-primary-bg);
+  font-size: var(--fs-body);
   margin-bottom: 4px;
   cursor: grab;
-  user-select: none;
+  user-select: none; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth)
 }
 .cat-item:hover {
-  background: rgba(108, 92, 231, 0.2);
+  background: var(--pt-primary-bg);
 }
 .canvas-wrap {
   flex: 1;
@@ -337,24 +337,24 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 .node-cfg {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-2);
 }
 .field {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: var(--sp-1);
 }
 .field.row {
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .field label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 .small {
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .divider {
   height: 1px;
@@ -365,18 +365,18 @@ onBeforeRouteLeave(async (_to, _from, next) => {
   padding: 8px 0;
 }
 .load-err {
-  font-size: 12px;
-  color: #c0392b;
+  font-size: var(--fs-xs);
+  color:var(--pt-danger);
   padding: 8px;
-  background: rgba(231, 76, 60, 0.08);
-  border-radius: 8px;
+  background: var(--pt-danger-bg);
+  border-radius: var(--radius-xs);
 }
 .import-btn {
   display: inline-flex;
   align-items: center;
   padding: 0 12px;
   height: 24px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   border-radius: var(--el-border-radius-base);
   background: var(--surface-muted);
   cursor: pointer;
@@ -388,27 +388,27 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 .tpl-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-2);
 }
 .tpl-item {
   padding: 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  cursor: pointer;
+  cursor: pointer; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth)
 }
 .tpl-item:hover {
-  background: rgba(108, 92, 231, 0.08);
-  border-color: #6c5ce7;
+  background: var(--pt-primary-bg);
+  border-color:var(--pt-primary);
 }
 .tpl-name {
   font-weight: 700;
 }
 .tpl-cat {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   padding: 1px 8px;
-  border-radius: 999px;
-  background: rgba(66, 133, 244, 0.15);
-  color: #4285f4;
+  border-radius: var(--radius-pill);
+  background: var(--pt-primary-2-bg);
+  color:var(--pt-primary-2);
   margin-left: 6px;
 }
 </style>

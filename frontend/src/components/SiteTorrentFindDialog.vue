@@ -198,15 +198,15 @@ watch(
 .sf-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--text-strong);
 }
 .sf-spinner {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(108, 92, 231, 0.25);
+  border: 2px solid var(--pt-primary-bg);
   border-top-color: var(--pt-primary, #6c5ce7);
   border-radius: 50%;
   animation: sf-spin 0.7s linear infinite;
@@ -218,31 +218,31 @@ watch(
 .sf-fail {
   margin-bottom: 12px;
   padding: 8px 12px;
-  border-radius: 10px;
-  background: rgba(231, 76, 60, 0.08);
-  border: 1px solid rgba(231, 76, 60, 0.18);
+  border-radius: var(--radius-sm);
+  background: var(--pt-danger-bg);
+  border: 1px solid var(--pt-danger-bg);
 }
 .sf-fail-toggle {
   display: flex;
   width: 100%;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--sp-2);
   background: transparent;
   border: 0;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--text-strong);
   padding: 0;
 }
 .sf-fail-list {
   margin: 8px 0 0;
   padding-left: 18px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .sf-fail-list li {
   margin: 2px 0;
   display: flex;
-  gap: 8px;
+  gap: var(--sp-2);
   flex-wrap: wrap;
 }
 .sf-empty {
@@ -252,6 +252,6 @@ watch(
 .sf-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 12px;
+  gap: var(--sp-3);
 }
 </style>

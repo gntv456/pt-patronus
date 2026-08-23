@@ -6,6 +6,7 @@ import 'package:ptpatronus/api/downloader.dart';
 import 'package:ptpatronus/api/filter_rules.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// RSS 订阅页：对齐 Web Rss.vue。订阅卡片列表 + 检查/条目/编辑/删除；
@@ -170,25 +171,25 @@ class _RssPageState extends State<RssPage> {
                 PTColumn(
                   label: '已下载',
                   flex: 1,
-                  cell: (_, it) => Text(
+                  cell: (ctx, it) => Text(
                     it.downloaded ? '是' : '否',
                     style: TextStyle(
                       fontSize: 12,
-                      color: it.downloaded ? PTColors.success : Colors.grey,
+                      color: it.downloaded ? PTColors.success : ctx.dimText,
                     ),
                   ),
                 ),
                 PTColumn(
                   label: '发现时间',
                   flex: 2,
-                  cell: (_, it) => Text(
+                  cell: (ctx, it) => Text(
                     _fmtTime(it.createdAt),
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: ctx.dimText),
                   ),
                 ),
               ],
               emptyText: '暂无条目',
-              narrowCard: (_, it) => GlassCard(
+              narrowCard: (ctx, it) => GlassCard(
                 padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +217,7 @@ class _RssPageState extends State<RssPage> {
                     const SizedBox(height: 4),
                     Text(
                       '${_fmtSize(it.size)} · ${it.downloaded ? "已下载" : "未下载"} · ${_fmtTime(it.createdAt)}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: ctx.dimText),
                     ),
                   ],
                 ),
@@ -260,7 +261,7 @@ class _RssPageState extends State<RssPage> {
         ),
       ],
       body: _loading && _list.isEmpty
-          ? const Center(child: CircularProgressIndicator())
+          ? const PTLoadingView()
           : _list.isEmpty
           ? RefreshIndicator(
               onRefresh: _load,
@@ -299,7 +300,7 @@ class _RssPageState extends State<RssPage> {
                               ),
                               _chip(
                                 r.enabled ? '启用' : '停用',
-                                r.enabled ? PTColors.success : Colors.grey,
+                                r.enabled ? PTColors.success : context.dimText,
                               ),
                               if (r.autoDownload) _chip('自动下载', PTColors.warn),
                               if (r.resolution.isNotEmpty)
@@ -311,16 +312,16 @@ class _RssPageState extends State<RssPage> {
                             r.url,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: context.dimText,
                             ),
                           ),
                           Text(
                             '间隔 ${r.intervalMin} 分钟 · 上次 ${_fmtTime(r.lastCheckedAt)}${r.titleInclude.isNotEmpty ? ' · 包含: ${r.titleInclude}' : ''}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: context.dimText,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -564,16 +565,16 @@ class _RssFormState extends State<_RssForm> {
               alignment: Alignment.centerLeft,
               child: Text(
                 '过滤规则组（留空=不过滤）',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: TextStyle(fontSize: 12, color: context.dimText),
               ),
             ),
             const SizedBox(height: 6),
             widget.filterGroups.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.only(bottom: 10),
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
                       '暂无可用规则组，可在「过滤规则」页创建',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 12, color: context.dimText),
                     ),
                   )
                 : Padding(
@@ -617,11 +618,11 @@ class _RssFormState extends State<_RssForm> {
                 ),
               ],
             ),
-            const Padding(
-              padding: EdgeInsets.only(top: 2, bottom: 8),
+            Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 8),
               child: Text(
                 '字节（0=不限）',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: context.dimText),
               ),
             ),
             SwitchListTile(

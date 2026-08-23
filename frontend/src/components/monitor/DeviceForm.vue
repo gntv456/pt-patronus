@@ -216,7 +216,7 @@ function submit() {
       <el-form-item v-if="isLocal && (form.type === 'host' || form.type === 'nas')" label="宿主磁盘路径">
         <el-input v-model="form.disk_paths" type="textarea" :rows="2"
           placeholder="每行一个容器内路径，如 /mnt/nas&#10;需先在 docker-compose 挂载该目录（-v /mnt:/mnt:ro）" />
-        <div style="font-size: 12px; color: var(--el-text-color-secondary); line-height: 1.5; margin-top: 4px">
+        <div style="font-size: var(--fs-xs); color: var(--el-text-color-secondary); line-height: 1.5; margin-top: 4px">
           Docker 部署时容器看不到宿主磁盘：把宿主目录挂进容器（compose 加 <code>-v /mnt:/mnt:ro</code>）再在此填对应路径，采集穿透 bind mount 读真实空间。
         </div>
       </el-form-item>
@@ -326,13 +326,13 @@ function submit() {
 <style scoped>
 .hint {
   margin-left: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 .cred-sub {
   float: right;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -342,7 +342,7 @@ function submit() {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   width: 100%;
 }
 .range-row :deep(.el-input-number) {

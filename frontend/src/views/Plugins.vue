@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { Delete, Document, MoreFilled, Refresh, Search, Setting, VideoPlay } from '@element-plus/icons-vue'
 import type { PluginInfo } from '@/api/plugin'
@@ -166,18 +166,18 @@ function pluginInitial(name: string): string {
     <el-dialog v-model="trustVisible" title="插件签名信任配置" width="560px">
       <div v-loading="trustLoading">
         <div style="margin-bottom: 14px;">
-          <div class="text-muted" style="font-size: 13px; margin-bottom: 4px;">官方公钥（只读，始终受信）</div>
+          <div class="text-muted" style="font-size: var(--fs-body); margin-bottom: 4px;">官方公钥（只读，始终受信）</div>
           <el-input :model-value="trustOfficialKey" readonly type="textarea" :rows="2" />
         </div>
         <div style="margin-bottom: 14px;">
-          <div class="text-muted" style="font-size: 13px; margin-bottom: 4px;">追加受信公钥（每行一个 base64 ed25519）</div>
+          <div class="text-muted" style="font-size: var(--fs-body); margin-bottom: 4px;">追加受信公钥（每行一个 base64 ed25519）</div>
           <el-input v-model="trustKeysText" type="textarea" :rows="4" placeholder="留空则仅信任官方公钥" />
         </div>
         <div style="margin-bottom: 8px;">
           <el-switch v-model="trustAllowUnsigned" />
           <span style="margin-left: 8px;">允许安装未签名插件（不推荐）</span>
         </div>
-        <div class="text-muted" style="font-size: 12px; margin-top: 8px;">
+        <div class="text-muted" style="font-size: var(--fs-xs); margin-top: 8px;">
           市场插件安装时按此处公钥校验签名；未签名插件仅在开启上方开关后允许安装。
         </div>
       </div>

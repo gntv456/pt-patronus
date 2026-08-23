@@ -246,25 +246,25 @@ function fmtTime(t?: string) {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 16px; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.title { margin: 4px 0; font-size: 22px; font-weight: 700; }
-.hint { font-size: 13px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-4); }
+.head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); }
+.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.hint { font-size: var(--fs-body); }
 .card { padding: 18px; min-height: 160px; }
-.subs { display: flex; flex-direction: column; gap: 12px; }
-.sub { padding: 14px; border-radius: 12px; background: var(--surface-muted); }
-.info { display: flex; flex-direction: column; gap: 6px; }
-.row1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.s-title { font-weight: 700; font-size: 15px; }
-.small { font-size: 12px; }
+.subs { display: flex; flex-direction: column; gap: var(--sp-3); }
+.sub { padding: 14px; border-radius: var(--radius-sm); background: var(--surface-muted); }
+.info { display: flex; flex-direction: column; gap: var(--sp-1); }
+.row1 { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.s-title { font-weight: 700; font-size: var(--fs-lg); }
+.small { font-size: var(--fs-xs); }
 .url { word-break: break-all; }
-.chip { padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-.chip.on { background: rgba(46,204,113,0.2); color: #27ae60; }
-.chip.off { background: rgba(149,165,166,0.2); color: #7f8c8d; }
-.chip.auto { background: rgba(243,156,18,0.2); color: #e67e22; }
-.chip.res { background: rgba(66,133,244,0.18); color: #4285f4; }
-.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
-.sz { display: flex; align-items: center; gap: 6px; }
+.chip { padding: 2px 10px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; }
+.chip.on { background: var(--pt-success-bg); color: var(--pt-success); }
+.chip.off { background: rgba(149,165,166,0.2); color: var(--text-muted); }
+.chip.auto { background: var(--pt-warn-bg); color: var(--pt-warn); }
+.chip.res { background: var(--pt-primary-2-bg); color: var(--pt-primary-2); }
+.actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px; }
+.sz { display: flex; align-items: center; gap: var(--sp-1); }
 .empty { padding: 40px; text-align: center; }
 .lnk { color: var(--el-color-primary); text-decoration: none; }
 </style>

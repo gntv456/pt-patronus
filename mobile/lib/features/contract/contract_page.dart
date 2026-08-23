@@ -4,6 +4,7 @@ import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/glass_icon.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
 /// 保种契约页（对齐 Web ContractView）：每站一条契约（分享率/做种/上传下限），
@@ -189,12 +190,12 @@ class _ContractPageState extends State<ContractPage> {
           ],
           if (res.breaches.isNotEmpty) ...[
             const SizedBox(height: 10),
-            const Text(
+            Text(
               '未达标项',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey,
+                color: context.dimText,
               ),
             ),
             const SizedBox(height: 4),
@@ -305,7 +306,7 @@ class _ContractPageState extends State<ContractPage> {
       case 'error':
         return PTColors.danger;
       default:
-        return Colors.grey;
+        return context.dimText;
     }
   }
 
@@ -368,7 +369,7 @@ class _ContractPageState extends State<ContractPage> {
 
   Widget _content() {
     if (_loading && _list.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const PTLoadingView();
     }
     if (_error != null && _list.isEmpty) {
       return PTEmptyState(
@@ -429,7 +430,7 @@ class _ContractPageState extends State<ContractPage> {
                       '${r.officialOnly ? " · 仅官种" : ""}'
                       '${r.minSeedingSizeGb > 0 ? " · 体积≥${r.minSeedingSizeGb}GiB" : ""}'
                       '${r.period == "weekly" ? " · 每周" : r.period == "monthly" ? " · 每月" : ""}',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(color: context.dimText, fontSize: 12),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -452,7 +453,7 @@ class _ContractPageState extends State<ContractPage> {
               Flexible(
                 child: Text(
                   '检查于 ${_fmtDate(r.lastCheckedAt)}',
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -509,7 +510,7 @@ class _ContractPageState extends State<ContractPage> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Text(label, style: TextStyle(color: context.dimText, fontSize: 12)),
         ],
       ),
     );
@@ -753,7 +754,7 @@ class _ContractFormState extends State<_ContractForm> {
                     ? '留空 = 立即生效'
                     : _fmtStartTime(_startTime!),
                 style: TextStyle(
-                  color: _startTime == null ? Colors.grey : null,
+                  color: _startTime == null ? context.dimText : null,
                 ),
               ),
             ),
@@ -784,10 +785,10 @@ class _ContractFormState extends State<_ContractForm> {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Colors.grey,
+              color: context.dimText,
             ),
           ),
           const SizedBox(height: 6),

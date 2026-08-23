@@ -18,7 +18,7 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--sp-1);
   background: var(--surface-muted);
 }
 .cat-item {
@@ -32,7 +32,7 @@
   border-radius: var(--radius-sm);
   font-size: var(--fs-sm);
   color: var(--text-muted);
-  transition: all 0.15s;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
   text-align: left;
   width: 100%;
 }
@@ -47,7 +47,7 @@
   box-shadow: var(--surface-shadow);
 }
 .cat-icon {
-  font-size: 18px;
+  font-size: var(--fs-xl);
   flex: none;
   width: 22px;
   text-align: center;
@@ -115,7 +115,7 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--divider);
   background: var(--surface-1);
-  transition: all 0.18s;
+  transition: all var(--dur-base) var(--ease-out-smooth);
 }
 .store-app-card:hover {
   border-color: var(--pt-primary);
@@ -135,7 +135,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: var(--fs-hero);
 }
 .app-info {
   flex: 1;
@@ -165,14 +165,14 @@
   flex-wrap: wrap;
 }
 .app-cat-tag {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   padding: 2px 8px;
   border-radius: var(--radius-xs);
   background: var(--surface-muted);
   color: var(--text-muted);
 }
 .app-port {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-family: monospace;
   color: var(--text-muted);
   overflow: hidden;
@@ -186,7 +186,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--sp-1);
   width: 100%;
   padding: 8px;
   border: 0;
@@ -196,7 +196,7 @@
   font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
 }
 .app-install-btn:hover {
   background: var(--pt-primary-dark, #5b4bc4);
@@ -242,7 +242,7 @@
 /* ===== 应用商店：模式切换 + Compose 卡片 ===== */
 .store-mode-switch {
   display: flex;
-  gap: 4px;
+  gap: var(--sp-1);
   padding: 6px;
   margin-bottom: 8px;
   background: var(--surface-1);
@@ -258,7 +258,7 @@
   font-size: var(--fs-xs);
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
   font-weight: 500;
 }
 .mode-tab:hover { color: var(--text-strong); }
@@ -271,9 +271,9 @@
 /* Compose 编排卡片 */
 .store-app-card--compose { border-color: var(--pt-primary); border-style: dashed; }
 .store-app-card--compose:hover { border-style: solid; }
-.compose-services { display: flex; flex-wrap: wrap; gap: 4px; }
+.compose-services { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
 .compose-svc-chip {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-family: monospace;
   padding: 2px 8px;
   border-radius: var(--radius-xs);

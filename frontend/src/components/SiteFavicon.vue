@@ -66,7 +66,7 @@ function onImgError() {
   justify-content: center;
   overflow: hidden;
   border: 1px solid var(--divider);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: var(--surface-muted);
 }
 .site-favicon img,
@@ -83,7 +83,7 @@ function onImgError() {
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   line-height: 1;
 }

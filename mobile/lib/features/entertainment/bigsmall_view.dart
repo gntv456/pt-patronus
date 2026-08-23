@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 // 猜大小（好学 hxpt_bigsmall + 熊猫 panda_bigsmall 共用）。
 // 时间：后端 BigSmallState 给权威 countdown/seal_countdown/status 快照；前端按 fetchedAt 本地每秒递减
@@ -268,7 +269,7 @@ class _BigSmallViewState extends State<BigSmallView> {
   @override
   Widget build(BuildContext context) {
     if (_loading && _state == null) {
-      return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
+      return const PTLoadingView();
     }
     final s = _state;
     return ListView(
@@ -331,7 +332,7 @@ class _BigSmallViewState extends State<BigSmallView> {
           child: Column(children: [
             Text(val, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
             const SizedBox(height: 2),
-            Text(lbl, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text(lbl, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: context.dimText)),
           ]),
         ),
       );
@@ -368,7 +369,7 @@ class _BigSmallViewState extends State<BigSmallView> {
       );
 
   Widget _trendBlock(String cap, BigSmallTrend? t, bool showHouse) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(cap, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        Text(cap, style: TextStyle(fontSize: 11, color: context.dimText)),
         const SizedBox(height: 3),
         Row(children: [
           Expanded(flex: t?.bigPct ?? 1, child: Container(height: 16, color: const Color(0xFFEF4444), alignment: Alignment.center, child: Text('大 ${t?.bigCount ?? 0}', style: const TextStyle(color: Colors.white, fontSize: 11)))),
@@ -381,12 +382,12 @@ class _BigSmallViewState extends State<BigSmallView> {
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('💰 下注', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          if (s?.myBet != null) ...[const SizedBox(height: 4), Text('本局已押 ${_label(s!.myBet!.betType)} ${_fmt(s.myBet!.amount)}', style: const TextStyle(fontSize: 12, color: Colors.grey))],
+          if (s?.myBet != null) ...[const SizedBox(height: 4), Text('本局已押 ${_label(s!.myBet!.betType)} ${_fmt(s.myBet!.amount)}', style: TextStyle(fontSize: 12, color: context.dimText))],
           const SizedBox(height: 8),
           Row(children: [
             SizedBox(width: 120, child: TextField(keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: '金额', isDense: true), onChanged: (v) => _amount = double.tryParse(v) ?? _amount)),
             const SizedBox(width: 8),
-            Text('最低 ${_fmt(s?.minBet)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            Text('最低 ${_fmt(s?.minBet)}', style: TextStyle(fontSize: 11, color: context.dimText)),
             const Spacer(),
             FilledButton(onPressed: _allIn, style: FilledButton.styleFrom(backgroundColor: PTColors.warn, padding: const EdgeInsets.symmetric(horizontal: 16)), child: const Text('梭哈')),
           ]),
@@ -422,8 +423,8 @@ class _BigSmallViewState extends State<BigSmallView> {
         decoration: BoxDecoration(color: c.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(cap, style: TextStyle(fontWeight: FontWeight.bold, color: c, fontSize: 12)),
-          if (list.isEmpty) const Text('暂无', style: TextStyle(fontSize: 11, color: Colors.grey))
-          else for (final b in list.take(6)) Text('${b.username} ${_fmt(b.amount)}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          if (list.isEmpty) Text('暂无', style: TextStyle(fontSize: 11, color: context.dimText))
+          else for (final b in list.take(6)) Text('${b.username} ${_fmt(b.amount)}', style: TextStyle(fontSize: 11, color: context.dimText)),
         ]),
       );
 
@@ -433,7 +434,7 @@ class _BigSmallViewState extends State<BigSmallView> {
           const Text('🏆 用户排行', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 8),
           if (s == null || s.rankings.isEmpty)
-            const Text('暂无排行', style: TextStyle(color: Colors.grey, fontSize: 13))
+            Text('暂无排行', style: TextStyle(color: context.dimText, fontSize: 13))
           else ...[
             Wrap(spacing: 4, runSpacing: 4, children: [
               for (var i = 0; i < s.rankings.length; i++)
@@ -456,7 +457,7 @@ class _BigSmallViewState extends State<BigSmallView> {
         const SizedBox(width: 6),
         Expanded(child: Text(e.username, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
         Text(_fmt(e.amount.abs()), style: const TextStyle(color: PTColors.success, fontWeight: FontWeight.w600, fontSize: 12)),
-        if (e.count > 0) Text(' ${e.count}次', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        if (e.count > 0) Text(' ${e.count}次', style: TextStyle(fontSize: 11, color: context.dimText)),
       ]),
     );
   }
@@ -477,14 +478,14 @@ class _BigSmallViewState extends State<BigSmallView> {
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(t.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
-                if (t.progressText.isNotEmpty) Text(t.progressText, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                if (t.progressText.isNotEmpty) Text(t.progressText, style: TextStyle(fontSize: 11, color: context.dimText)),
               ])),
               if (t.status == 'rewardable')
                 _mini('领奖', PTColors.success, () => _doTask(t, 'reward'))
               else if (t.status == 'idle')
                 _mini('接取', PTColors.primary, () => _doTask(t, 'claim'))
               else
-                Text(t.status == 'doing' ? '进行中' : '已完成', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(t.status == 'doing' ? '进行中' : '已完成', style: TextStyle(fontSize: 11, color: context.dimText)),
             ]),
           ),
         if (refundable) ...[const SizedBox(height: 6), SizedBox(width: double.infinity, child: _mini('💳 使用亏返卡', PTColors.warn, _useRefund))],
@@ -535,7 +536,7 @@ class _BigSmallViewState extends State<BigSmallView> {
         ]),
         const SizedBox(height: 8),
         if (list.isEmpty)
-          const Text('暂无记录', style: TextStyle(color: Colors.grey, fontSize: 13))
+          Text('暂无记录', style: TextStyle(color: context.dimText, fontSize: 13))
         else
           for (final r in list)
             Padding(
@@ -545,9 +546,9 @@ class _BigSmallViewState extends State<BigSmallView> {
                 const SizedBox(width: 8),
                 Text(_label(r.result), style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _dotColor(r.result))),
                 const Spacer(),
-                if (_recMy) Text('${_label(r.myBetType)} ${_fmt(r.myBet)} ', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                if (_recMy) Text('${_label(r.myBetType)} ${_fmt(r.myBet)} ', style: TextStyle(fontSize: 11, color: context.dimText)),
                 if (_recMy) Text('${r.myResult >= 0 ? '+' : ''}${_fmt(r.myResult)}', style: TextStyle(fontSize: 11, color: r.myResult >= 0 ? PTColors.success : PTColors.danger, fontWeight: FontWeight.bold)),
-                if (!_recMy && r.bets.isNotEmpty) Flexible(child: Text(r.bets, style: const TextStyle(fontSize: 11, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                if (!_recMy && r.bets.isNotEmpty) Flexible(child: Text(r.bets, style: TextStyle(fontSize: 11, color: context.dimText), overflow: TextOverflow.ellipsis)),
               ]),
             ),
       ]),

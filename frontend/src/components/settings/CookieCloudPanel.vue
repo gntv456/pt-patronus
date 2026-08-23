@@ -35,17 +35,17 @@ const { ccCfg, ccForm, ccLoading, ccSaving, ccSyncing, saveCookieCloud, syncCook
             <el-input v-model.number="ccForm.interval_min" type="number" class="mt8" placeholder="120">
               <template #prepend>间隔(分钟)</template>
             </el-input>
-            <div class="mt8" style="display:flex;align-items:center;gap:12px">
+            <div class="mt8" style="display:flex;align-items:center;gap:var(--sp-3)">
               <span class="text-muted" style="min-width:7em">更新策略</span>
               <el-select v-model="ccForm.update_mode" style="flex:1">
                 <el-option label="仅覆盖已失效站点（推荐）" value="disconnected" />
                 <el-option label="总是用浏览器 cookie 覆盖" value="always" />
               </el-select>
             </div>
-            <p class="text-muted" style="margin:6px 0 0;font-size:12px">
+            <p class="text-muted" style="margin:6px 0 0;font-size: var(--fs-xs)">
               「仅失效」对齐 MoviePilot，保护本地手填有效 cookie；「总是覆盖」更接近浏览器 CookieCloud 实时同步，适合 session 短寿站。
             </p>
-            <div class="mt8" style="display:flex;align-items:center;gap:12px">
+            <div class="mt8" style="display:flex;align-items:center;gap:var(--sp-3)">
               <span class="text-muted" style="min-width:7em">同步方向</span>
               <el-select v-model="ccForm.direction" style="flex:1">
                 <el-option label="双向：先拉后推（推荐）" value="both" />
@@ -53,7 +53,7 @@ const { ccCfg, ccForm, ccLoading, ccSaving, ccSyncing, saveCookieCloud, syncCook
                 <el-option label="仅推送（本地 → 云端）" value="push" />
               </el-select>
             </div>
-            <p class="text-muted" style="margin:6px 0 0;font-size:12px">
+            <p class="text-muted" style="margin:6px 0 0;font-size: var(--fs-xs)">
               推送会把本端启用站 cookie 合并进 CookieCloud（保留云端其它 host），供浏览器/其它实例同步。
             </p>
           </div>
@@ -72,8 +72,8 @@ const { ccCfg, ccForm, ccLoading, ccSaving, ccSyncing, saveCookieCloud, syncCook
 </template>
 
 <style scoped>
-.oidc-wrap { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
-.oidc-help { font-size: 13px; line-height: 1.6; }
+.oidc-wrap { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 640px; }
+.oidc-help { font-size: var(--fs-body); line-height: 1.6; }
 .oidc-save { display: flex; justify-content: flex-end; }
 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mt8 { margin-top: 8px; }

@@ -338,22 +338,33 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: 14px; }
+.page { display: flex; flex-direction: column; gap: var(--sp-3); }
 .head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 0; font-size: 22px; font-weight: 700; }
+.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
 .sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-.card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.card-head { display: flex; align-items: center; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
+.card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-3); }
+.card-head { display: flex; align-items: center; gap: var(--sp-3); }
 .card-title { flex: 1; min-width: 0; }
 .name { font-weight: 600; font-size: var(--fs-body); }
 .meta { font-size: var(--fs-xs); color: var(--text-muted); }
-.stats { display: flex; gap: 8px; }
-.stat { flex: 1; background: rgba(127, 127, 127, 0.12); border-radius: 10px; padding: 8px; text-align: center; }
+.stats { display: flex; gap: var(--sp-2); }
+.stat { flex: 1; background: var(--surface-muted); border-radius: var(--radius-sm); padding: 8px; text-align: center; }
 .sv { display: block; font-weight: 700; font-size: var(--fs-body); }
 .sl { font-size: var(--fs-xs); color: var(--text-muted); }
-.err { font-size: var(--fs-xs); color: #ef4444; }
-.actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.range { display: flex; align-items: center; gap: 8px; }
+.err { font-size: var(--fs-xs); color: var(--pt-danger); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.range { display: flex; align-items: center; gap: var(--sp-2); }
 .hint { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* 刷流卡 staggered 入场 + hover */
+.grid > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
+.grid > *:nth-child(1) { animation-delay: 0ms; }
+.grid > *:nth-child(2) { animation-delay: 50ms; }
+.grid > *:nth-child(3) { animation-delay: 100ms; }
+.grid > *:nth-child(4) { animation-delay: 150ms; }
+.grid > *:nth-child(5) { animation-delay: 200ms; }
+.grid > *:nth-child(n+6) { animation-delay: 250ms; }
+.card { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 </style>

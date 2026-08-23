@@ -1,26 +1,19 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/theme/glass.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ptpatronus/api/system.dart';
 import 'package:ptpatronus/core/version.dart';
+import 'package:ptpatronus/core/platform/platform_caps.dart' as caps;
 import 'apk_downloader.dart';
 
-/// 当前客户端对应的更新清单 platform key：docker(android 兜底) / android / ios / macos / windows。
-/// 桌面端（windows/macos）与 iOS 走外链兜底（无应用内安装），android 走应用内 OTA。
-String currentUpdatePlatform() {
-  if (kIsWeb) return 'android';
-  switch (defaultTargetPlatform) {
-    case TargetPlatform.windows:
-      return 'windows';
-    case TargetPlatform.iOS:
-      return 'ios';
-    case TargetPlatform.macOS:
-      return 'macos';
-    default:
-      return 'android';
-  }
-}
+/// 当前客户端对应的更新清单 platform key（platform_caps 统一实现）：
+/// docker / android / ios / macos / windows / ohos。
+/// 鸿蒙走 'ohos'（manifest.targets.ohos.url 指向 HAP 下载页），
+/// 不再落 'android' 默认分支——历史上该 bug 会让鸿蒙端拿到 APK 直链
+/// 尝试应用内安装，HarmonyOS NEXT 不兼容 APK 必然失败。
+String currentUpdatePlatform() => caps.currentUpdatePlatform();
 
 /// 检查在线更新（客户端 + 后端双端状态）。
 ///   - 客户端：发本机版本号，按客户端平台对比清单；有新版则：
@@ -134,7 +127,7 @@ void _showExternalDialog(BuildContext context, UpdateCheckResult r) {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('当前 v${r.currentVersion} → 最新 v${r.latestVersion}',
-                style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                style: TextStyle(color: ctx.dimText, fontSize: 13)),
             if (r.releaseName.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -158,7 +151,7 @@ void _showExternalDialog(BuildContext context, UpdateCheckResult r) {
               defaultTargetPlatform == TargetPlatform.iOS
                   ? 'iOS 暂不支持应用内安装，请通过 TestFlight 或官方分发渠道获取更新。'
                   : '当前平台不支持应用内安装，请在浏览器下载安装包后手动安装。',
-              style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              style: TextStyle(fontSize: 12, color: ctx.dimText)),
           ],
         ),
       ),
@@ -287,8 +280,8 @@ class _OtaUpdateDialogState extends State<_OtaUpdateDialog> {
                     style: const TextStyle(fontSize: 13, height: 1.5)),
               ),
             if (!_started)
-              const Text('点击「立即下载」开始下载，完成后将自动校验完整性并打开安装界面。',
-                  style: TextStyle(fontSize: 12, color: Colors.grey))
+              Text('点击「立即下载」开始下载，完成后将自动校验完整性并打开安装界面。',
+                  style: TextStyle(fontSize: 12, color: context.dimText))
             else if (_error != null)
               Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13))
             else ...[
@@ -299,7 +292,7 @@ class _OtaUpdateDialogState extends State<_OtaUpdateDialog> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text('${(_progress * 100).toStringAsFixed(0)}%',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      style: TextStyle(fontSize: 12, color: context.dimText)),
                 ),
             ],
           ],

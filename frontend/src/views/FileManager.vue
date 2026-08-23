@@ -231,7 +231,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
 .fm-sidebar { flex: 0 0 220px; display: flex; flex-direction: column; gap: 10px; }
 .sb-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 14px; padding: 0 4px; }
 .sb-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 6px; border: 1px solid var(--glass-border); border-radius: 10px; background: color-mix(in srgb, var(--glass-bg) 86%, transparent); }
-.sb-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+.sb-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; transition: background var(--dur-fast) var(--ease-out-smooth); }
 .sb-item:hover { background: color-mix(in srgb, var(--pt-primary, #4361ee) 10%, transparent); }
 .sb-item.active { background: linear-gradient(135deg, color-mix(in srgb, var(--pt-primary, #6366f1) 22%, transparent), color-mix(in srgb, var(--pt-primary2, #4361ee) 16%, transparent)); }
 .sb-icon { font-size: 20px; }
@@ -262,10 +262,10 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
 .link { color: var(--pt-primary, #4361ee); cursor: pointer; }
 :deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) { background-color: transparent !important; }
 .grid-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; padding: 6px 0; }
-.grid-card { position: relative; padding: 14px 10px; border-radius: 10px; cursor: pointer; text-align: center; transition: transform 0.12s, box-shadow 0.12s; }
+.grid-card { position: relative; padding: 14px 10px; border-radius: 10px; cursor: pointer; text-align: center; transition: transform var(--dur-fast) var(--ease-out-smooth), box-shadow var(--dur-fast) var(--ease-out-smooth); }
 .grid-card:hover { transform: translateY(-2px); }
 .grid-card.sel { border-color: var(--pt-primary, #4361ee); box-shadow: 0 0 0 2px color-mix(in srgb, var(--pt-primary, #4361ee) 40%, transparent); }
-.grid-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(128,128,128,.4); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; opacity: 0; transition: opacity .12s; }
+.grid-check { position: absolute; top: 6px; left: 6px; width: 20px; height: 20px; border-radius: 50%; border: 2px solid rgba(128,128,128,.4); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; opacity: 0; transition: opacity var(--dur-fast) var(--ease-out-smooth); }
 .grid-card:hover .grid-check { opacity: 1; }
 .grid-check.on { opacity: 1; background: var(--pt-primary, #4361ee); border-color: var(--pt-primary, #4361ee); }
 .grid-icon { font-size: 34px; }
@@ -274,7 +274,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
 .grid-strm { margin-top: 6px; }
 .grid-empty { grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted, #909399); }
 .fm-empty { flex: 1; display: grid; place-items: center; }
-.fade-enter-active, .fade-leave-active { transition: opacity 0.18s; }
+.fade-enter-active, .fade-leave-active { transition: opacity var(--dur-base) var(--ease-out-smooth); }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 @media (max-width: 760px) {
   .fm-page { flex-direction: column; height: auto; }

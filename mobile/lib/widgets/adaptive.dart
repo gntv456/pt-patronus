@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ptpatronus/core/responsive.dart';
 import 'package:ptpatronus/theme/glass.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
 // 自适应布局原子组件：让 Flutter 在宽屏呈现 Web 范式（表格 / 对话框 / 多列网格），
@@ -62,7 +63,10 @@ class PTAutoGrid extends StatelessWidget {
             childAspectRatio: childAspectRatio,
           ),
           itemCount: itemCount,
-          itemBuilder: itemBuilder,
+          itemBuilder: (ctx, i) => PTListItemEntrance(
+            index: i,
+            child: itemBuilder(ctx, i),
+          ),
         );
       },
     );
@@ -113,9 +117,16 @@ class PTMasonry<T> extends StatelessWidget {
             spacing: spacing,
             runSpacing: spacing,
             children: items
+                .asMap()
+                .entries
                 .map(
-                  (it) =>
-                      SizedBox(width: itemW, child: itemBuilder(context, it)),
+                  (e) => PTListItemEntrance(
+                    index: e.key,
+                    child: SizedBox(
+                      width: itemW,
+                      child: itemBuilder(context, e.value),
+                    ),
+                  ),
                 )
                 .toList(),
           ),
@@ -178,9 +189,12 @@ class PTAdaptiveTable<T> extends StatelessWidget {
               physics: embedded ? const NeverScrollableScrollPhysics() : null,
               padding: embedded ? EdgeInsets.zero : const EdgeInsets.all(12),
               itemCount: items.length,
-              itemBuilder: (ctx, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: narrowCard(ctx, items[i]),
+              itemBuilder: (ctx, i) => PTListItemEntrance(
+                index: i,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: narrowCard(ctx, items[i]),
+                ),
               ),
             );
     }
@@ -342,18 +356,17 @@ class PTEmptyState extends StatelessWidget {
       children: [
         const SizedBox(height: 96),
         Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 56,
-                  color: (isDark ? Colors.white : Colors.black54).withValues(
-                    alpha: 0.35,
+          child: PTEntrance(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PTBreathIcon(
+                    icon: icon,
+                    size: 56,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                   ),
-                ),
                 const SizedBox(height: 14),
                 Text(
                   main,
@@ -361,7 +374,7 @@ class PTEmptyState extends StatelessWidget {
                   style: TextStyle(
                     fontSize: PTFs.lg,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : Colors.black54,
+                    color: isDark ? Colors.white70 : context.dimText,
                   ),
                 ),
                 if (description != null && description!.isNotEmpty) ...[
@@ -388,6 +401,7 @@ class PTEmptyState extends StatelessWidget {
                 ],
               ],
             ),
+          ),
           ),
         ),
       ],
@@ -687,7 +701,7 @@ class PTChipBar<T> extends StatelessWidget {
                   border: Border.all(
                     color: on
                         ? c.withValues(alpha: 0.4)
-                        : Colors.grey.withValues(alpha: 0.3),
+                        : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.35),
                   ),
                   borderRadius: BorderRadius.circular(999),
                 ),
@@ -696,7 +710,7 @@ class PTChipBar<T> extends StatelessWidget {
                   style: TextStyle(
                     fontSize: PTFs.body,
                     fontWeight: on ? FontWeight.w600 : FontWeight.w500,
-                    color: on ? c : Colors.grey,
+                    color: on ? c : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -744,9 +758,9 @@ class PTStatStrip extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(horizontal: 4),
   });
 
-  Widget _cell(PTStat s) {
+  Widget _cell(BuildContext context, PTStat s) {
     final valueColor = s.selected ? PTColors.primary : s.color;
-    final labelColor = s.selected ? PTColors.primary : Colors.grey;
+    final labelColor = s.selected ? PTColors.primary : Theme.of(context).colorScheme.onSurfaceVariant;
     Widget cell = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
@@ -803,7 +817,7 @@ class PTStatStrip extends StatelessWidget {
           ),
         );
       }
-      cells.add(_cell(items[i]));
+      cells.add(_cell(context, items[i]));
     }
     // 宽屏：Row 均匀分布（填满宽度）+ 可选竖分隔；窄屏：横向滚动不折行。
     if (isWideScreen(context)) {
@@ -857,7 +871,7 @@ class PTFilterPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = PTColors.primary;
-    final dim = active ? c : Colors.grey.shade600;
+    final dim = active ? c : Theme.of(context).colorScheme.onSurfaceVariant;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -868,7 +882,7 @@ class PTFilterPill extends StatelessWidget {
           border: Border.all(
             color: active
                 ? c.withValues(alpha: 0.5)
-                : Colors.grey.withValues(alpha: 0.35),
+                : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
           ),
           borderRadius: BorderRadius.circular(999),
         ),
@@ -888,7 +902,7 @@ class PTFilterPill extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                color: active ? c : Colors.black87,
+                color: active ? c : Theme.of(context).colorScheme.onSurface,
               ),
             ),
             Icon(Icons.arrow_drop_down, size: 18, color: dim),
@@ -939,7 +953,7 @@ void showFilterSheet<T>(
                 if (o.count != null)
                   Text(
                     '${o.count}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.dimText),
                   ),
                 if (o.value == selected) ...[
                   if (o.count != null) const SizedBox(width: 8),

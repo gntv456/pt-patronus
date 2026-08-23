@@ -1,4 +1,4 @@
-﻿import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { fileApi, type FileStorage, type FileEntry } from '@/api/filemanager'
 import { cloudApi, type CloudDrive, type CloudFile } from '@/api/cloud'

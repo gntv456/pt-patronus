@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import DeviceCard from '@/components/monitor/DeviceCard.vue'
@@ -204,7 +204,7 @@ function onVisibilityChange() {
             @edit="openEdit" @detail="onDetail" @probe="onProbe" @remove="onRemove" @preview="onPreview" @terminal="openTerminal" />
         </div>
         <div v-else class="empty-state glass">
-          <p style="font-size:32px;margin-bottom:8px">ð¦</p>
+          <p style="font-size: var(--fs-hero);margin-bottom:8px">ð¦</p>
           <p>暂无{{ tab.label }}{{ activeWorkspace === 'monitor' ? '监控项' : '设备' }}</p>
           <el-button type="primary" @click="activeWorkspace === 'monitor' ? openAddMonitorItem(tab.name) : openAddAsset()">
             {{ activeWorkspace === 'monitor' ? '添加监控项' : '添加第一台' }}

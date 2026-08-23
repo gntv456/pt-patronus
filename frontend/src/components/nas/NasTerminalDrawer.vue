@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Terminal } from '@xterm/xterm'
@@ -250,15 +250,15 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 0 12px;
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
-.terminal-head .on { color: #27ae60; font-weight: 600; }
-.terminal-head .mid { color: #f39c12; font-weight: 600; }
+.terminal-head .on { color: var(--pt-success); font-weight: 600; }
+.terminal-head .mid { color: var(--pt-warn); font-weight: 600; }
 .terminal-xterm {
   flex: 1;
   min-height: 420px;
   background: #1e1e2e;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   padding: 8px;
   overflow: hidden;
 }

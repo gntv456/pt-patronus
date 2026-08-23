@@ -4,10 +4,11 @@ import 'dart:io' show File, Platform;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:ptpatronus/core/platform/file_picker.dart';
+import 'package:ptpatronus/core/platform/platform_caps.dart';
 import 'package:ptpatronus/features/home/home_controller.dart';
 import 'package:ptpatronus/features/home/home_nav_items.dart';
 import 'package:flutter/rendering.dart' show RenderRepaintBoundary;
@@ -26,6 +27,7 @@ import 'package:ptpatronus/core/ws_client.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
+import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -640,7 +642,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   bool _filePickerSaveWritesBytes() {
     return defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS;
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        isOhosPlatform; // 鸿蒙走移动端同款 save 通道：bytes 直接落盘
   }
 
   Future<String> _writeImageToDocuments(Uint8List png, String fileName) async {
@@ -658,10 +661,10 @@ class _DashboardPageState extends State<DashboardPage> {
       final fileName = _dashboardImageFileName();
 
       try {
-        final path = await FilePicker.platform.saveFile(
+        final path = await appFilePicker.saveFile(
           dialogTitle: '保存总仪表盘图片',
           fileName: fileName,
-          type: FileType.custom,
+          type: 'custom',
           allowedExtensions: const ['png'],
           bytes: png,
         );
@@ -1397,9 +1400,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _body(BuildContext context) {
-    if (_loading && _overview == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
+   if (_loading && _overview == null) {
+      return const PTLoadingView();
+   }
     if (_overview == null) {
       return PTEmptyState(
         icon: Icons.error_outline,
@@ -1464,10 +1467,10 @@ class _DashboardPageState extends State<DashboardPage> {
         ]),
         const SizedBox(height: 8),
         Text('下载中 $downloading · 做种 $seeding · ${_snapshots.length} 个下载器',
-            style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            style: TextStyle(fontSize: 12, color: context.dimText)),
         const Divider(height: 24),
         if (_metrics == null)
-          const Text('系统资源采集中…', style: TextStyle(fontSize: 12, color: Colors.grey))
+          Text('系统资源采集中…', style: TextStyle(fontSize: 12, color: context.dimText))
         else ...[
           _resBar('CPU', _metrics!.cpuUsage, '${_metrics!.cpuCores} 核'),
           const SizedBox(height: 8),
@@ -1526,13 +1529,13 @@ class _DashboardPageState extends State<DashboardPage> {
     return GlassCard(
       padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('最近活动', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+        Text('最近活动', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         if (_recentNotices.isEmpty)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(
-                child: Text('暂无最近活动', style: TextStyle(fontSize: 12, color: Colors.grey))),
+                child: Text('暂无最近活动', style: TextStyle(fontSize: 12, color: context.dimText))),
           )
         else
           ..._recentNotices.take(12).map((n) {
@@ -1556,12 +1559,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(width: 9),
                 Expanded(
                     child: Text(n.title,
-                        style: const TextStyle(fontSize: 12.5),
+                        style: TextStyle(fontSize: 12.5),
                         overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: 8),
-                Text(label, style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+                Text(label, style: TextStyle(fontSize: 10.5, color: context.dimText)),
                 const SizedBox(width: 8),
-                Text(t, style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+                Text(t, style: TextStyle(fontSize: 10.5, color: context.dimText)),
               ]),
             );
           }),
@@ -1572,11 +1575,11 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _kvCell(String label, String value, Color color) => Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.08),
+          color: context.dimText.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          Text(label, style: TextStyle(fontSize: 11, color: context.dimText)),
           const SizedBox(height: 3),
           Text(value,
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: color)),
@@ -1592,7 +1595,7 @@ class _DashboardPageState extends State<DashboardPage> {
             : const Color(0xff16a34a);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Text(label, style: TextStyle(fontSize: 12, color: context.dimText)),
         Text('${p.toStringAsFixed(0)}%',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
       ]),
@@ -1602,11 +1605,11 @@ class _DashboardPageState extends State<DashboardPage> {
         child: LinearProgressIndicator(
           value: p / 100,
           minHeight: 7,
-          backgroundColor: Colors.grey.withValues(alpha: 0.15),
+          backgroundColor: context.dimText.withValues(alpha: 0.15),
           valueColor: AlwaysStoppedAnimation<Color>(color),
         ),
       ),
-      Text(detail, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      Text(detail, style: TextStyle(fontSize: 10, color: context.dimText)),
     ]);
   }
 
@@ -1615,13 +1618,13 @@ class _DashboardPageState extends State<DashboardPage> {
         child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           SizedBox(
               width: 76,
-              child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey))),
+              child: Text(label, style: TextStyle(fontSize: 12, color: context.dimText))),
           const SizedBox(width: 8),
-          Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(width: 8),
           Expanded(
               child: Text(sub,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: TextStyle(fontSize: 11, color: context.dimText),
                   overflow: TextOverflow.ellipsis)),
         ]),
       );
@@ -1659,9 +1662,9 @@ class _DashboardPageState extends State<DashboardPage> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             '跟着 3 步，开启账号保号自动化：',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+            style: TextStyle(fontSize: 12, color: context.dimText),
           ),
           const SizedBox(height: 10),
           _onboardStep(
@@ -1717,7 +1720,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               const SizedBox(width: 10),
-              Icon(icon, size: 18, color: Colors.grey),
+              Icon(icon, size: 18, color: context.dimText),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -1725,16 +1728,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
                       desc,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      style: TextStyle(fontSize: 11, color: context.dimText),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+              Icon(Icons.chevron_right, color: context.dimText, size: 18),
             ],
           ),
         ),
@@ -1834,7 +1837,7 @@ class _DashboardPageState extends State<DashboardPage> {
         Expanded(
           child: Text(
             '$label：',
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(color: context.dimText, fontSize: 12),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1912,9 +1915,9 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
     ].whereType<Widget>().toList();
     if (rows.isEmpty) {
-      return const Text(
+      return Text(
         '暂无排行',
-        style: TextStyle(color: Colors.grey, fontSize: 12),
+        style: TextStyle(color: context.dimText, fontSize: 12),
       );
     }
     return Column(
@@ -1941,7 +1944,7 @@ class _DashboardPageState extends State<DashboardPage> {
           width: compact ? 42 : 52,
           child: Text(
             label,
-            style: TextStyle(color: Colors.grey, fontSize: compact ? 11 : 12),
+            style: TextStyle(color: context.dimText, fontSize: compact ? 11 : 12),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1962,7 +1965,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Flexible(
             child: Text(
               _displaySiteName(site),
-              style: TextStyle(color: Colors.grey, fontSize: compact ? 10 : 11),
+              style: TextStyle(color: context.dimText, fontSize: compact ? 10 : 11),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -2126,11 +2129,11 @@ class _DashboardPageState extends State<DashboardPage> {
         ? '已停用'
         : '未联通';
     final color = pending || status == null
-        ? Colors.grey
+        ? context.dimText
         : state == SiteConnectivityState.connected
         ? PTColors.success
         : state == SiteConnectivityState.disabled
-        ? Colors.grey
+        ? context.dimText
         : PTColors.danger;
     final child = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -2229,7 +2232,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+        Text(label, style: TextStyle(color: context.dimText, fontSize: 11)),
         const SizedBox(height: 2),
         Text(
           value,
@@ -2324,7 +2327,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   '加入 ${s.joinDate.isNotEmpty ? s.joinDate : '-'} · 更新 ${_fmtDate(s.updatedAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  style: TextStyle(color: context.dimText, fontSize: 11),
                 ),
               ),
               const SizedBox(width: 8),
@@ -2375,9 +2378,9 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 6),
               if (isCookie) ...[
-                const Text(
+                Text(
                   '以下站点 cookie 已失效，签到/统计/H&R 自动化已停摆，请尽快重新登录：',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                  style: TextStyle(color: context.dimText, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -2432,8 +2435,8 @@ class _DashboardPageState extends State<DashboardPage> {
                                   ),
                                   Text(
                                     '${a.site} · ${a.status}${a.deadline.isNotEmpty ? ' · 剩 ${a.deadline}' : ''}',
-                                    style: const TextStyle(
-                                      color: Colors.grey,
+                                    style: TextStyle(
+                                      color: context.dimText,
                                       fontSize: 11,
                                     ),
                                   ),
@@ -2449,7 +2452,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       '…及其它 ${_hrAlerts.length - 5} 条',
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      style: TextStyle(color: context.dimText, fontSize: 11),
                     ),
                   ),
               ],
@@ -2864,12 +2867,12 @@ class _HistoryBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 40),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
+   if (loading) {
+     return const Padding(
+       padding: EdgeInsets.symmetric(vertical: 40),
+        child: PTLoadingView(),
+     );
+   }
     if (points.isEmpty) {
       return const PTEmptyState(text: '暂无历史快照');
     }
@@ -2962,27 +2965,27 @@ class _HistoryBody extends StatelessWidget {
                 children: [
                   Text(
                     '等级 ${p.level.isNotEmpty ? p.level : '-'}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.dimText),
                   ),
                   Text(
                     '上传 ${fmtBytes(p.uploaded)}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.dimText),
                   ),
                   Text(
                     '下载 ${fmtBytes(p.downloaded)}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.dimText),
                   ),
                   Text(
                     '分享率 ${p.ratio > 0 ? p.ratio.toStringAsFixed(2) : '-'}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.dimText),
                   ),
                   Text(
                     '做种 ${p.seeding}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.dimText),
                   ),
                   Text(
                     '魔力 ${p.bonus > 0 ? p.bonus.toStringAsFixed(0) : '-'}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: TextStyle(fontSize: 12, color: context.dimText),
                   ),
                 ],
               ),

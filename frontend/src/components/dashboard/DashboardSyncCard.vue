@@ -50,35 +50,35 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
   border-left: 3px solid #11998e;
 }
 .sync-card.has-error {
-  border-left-color: #e74c3c;
+  border-left-color: var(--pt-danger);
 }
 .sync-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--sp-4);
   margin-bottom: 10px;
 }
 .sync-title {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
+  gap: var(--sp-2);
   min-width: 0;
 }
 .sync-title strong {
   display: block;
-  font-size: 14px;
+  font-size: var(--fs-md);
   color: var(--text-strong);
 }
 .sync-title p {
   margin: 4px 0 0;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   overflow-wrap: anywhere;
 }
 .sync-percent {
   flex: 0 0 auto;
-  font-size: 13px;
+  font-size: var(--fs-body);
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -87,7 +87,7 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
 }
 .sync-log-title {
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-muted);
 }
@@ -98,22 +98,22 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
   max-height: 220px;
   overflow: auto;
   display: grid;
-  gap: 5px;
+  gap: var(--sp-1);
 }
 .sync-logs li {
   display: grid;
   grid-template-columns: 72px minmax(92px, 150px) minmax(0, 1fr);
   align-items: start;
-  gap: 8px;
+  gap: var(--sp-2);
   padding: 7px 9px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   background: rgba(148, 163, 184, 0.08);
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
 }
 .sync-logs .log-time {
   color: var(--text-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .sync-logs b {
   overflow: hidden;
@@ -125,10 +125,10 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
   overflow-wrap: anywhere;
 }
 .sync-logs .log-running {
-  background: rgba(66, 133, 244, 0.1);
+  background: var(--pt-primary-2-bg);
 }
 .sync-logs .log-running b {
-  color: #4285f4;
+  color: var(--pt-primary-2);
 }
 .sync-logs .log-success {
   background: rgba(17, 153, 142, 0.1);
@@ -137,29 +137,29 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
   color: #11998e;
 }
 .sync-logs .log-error {
-  background: rgba(231, 76, 60, 0.1);
+  background: var(--pt-danger-bg);
 }
 .sync-logs .log-error b {
-  color: #e74c3c;
+  color: var(--pt-danger);
 }
 .sync-errors {
   list-style: none;
   margin: 10px 0 0;
   padding: 0;
   display: grid;
-  gap: 6px;
+  gap: var(--sp-1);
 }
 .sync-errors li {
   display: grid;
   grid-template-columns: minmax(90px, 160px) minmax(0, 1fr);
-  gap: 10px;
+  gap: var(--sp-2);
   padding: 7px 9px;
-  border-radius: 8px;
-  background: rgba(231, 76, 60, 0.08);
-  font-size: 12.5px;
+  border-radius: var(--radius-xs);
+  background: var(--pt-danger-bg);
+  font-size: var(--fs-xs);
 }
 .sync-errors b {
-  color: #e74c3c;
+  color: var(--pt-danger);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

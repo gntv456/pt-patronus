@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 // NotificationCenter — 全局通知中心铃铛（topbar 内）。
 // 通知数据由 useNotices 共享单例管理（与 Notices 全页面 / AppSidebar 同源）；下拉列表分组折叠。
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -147,7 +147,7 @@ function onGroupEnter(el: Element) {
   e.style.height = "0"
   e.style.overflow = "hidden"
   void e.offsetHeight
-  e.style.transition = "height 0.22s ease, opacity 0.22s ease"
+  e.style.transition = "height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)"
   e.style.height = e.scrollHeight ? e.scrollHeight + "px" : "auto"
   e.style.opacity = "1"
 }
@@ -162,7 +162,7 @@ function onGroupLeave(el: Element) {
   e.style.height = e.scrollHeight + "px"
   e.style.overflow = "hidden"
   void e.offsetHeight
-  e.style.transition = "height 0.2s ease, opacity 0.2s ease"
+  e.style.transition = "height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)"
   e.style.height = "0"
   e.style.opacity = "0"
 }
@@ -269,10 +269,10 @@ function onGroupLeave(el: Element) {
   border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
-  transition: background 0.2s;
+  transition: background var(--dur-base) var(--ease-out-smooth);
 }
 .nc-bell:hover {
-  background: rgba(108, 92, 231, 0.12);
+  background: var(--pt-primary-bg);
 }
 .nc-bell--has {
   color: var(--text-strong);
@@ -287,10 +287,10 @@ function onGroupLeave(el: Element) {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--text-muted);
   color: #fff;
-  font-size: 10px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -314,7 +314,7 @@ function onGroupLeave(el: Element) {
   z-index: 300;
   /* 磨砂玻璃（与命令面板同体系）。下拉面板无全屏遮罩打底，背景要比命令面板更实，
      否则背后复杂图文透出会压低文字对比、看不清字。 */
-  border-radius: 16px;
+  border-radius: var(--radius-md);
   background: var(--glass-bg-strong);
   backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
   -webkit-backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
@@ -330,7 +330,7 @@ function onGroupLeave(el: Element) {
 }
 .nc-title {
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-md);
 }
 .nc-title small {
   margin-left: 6px;
@@ -342,7 +342,7 @@ function onGroupLeave(el: Element) {
   border: none;
   cursor: pointer;
   color: var(--pt-primary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .nc-action:hover {
   text-decoration: underline;
@@ -350,7 +350,7 @@ function onGroupLeave(el: Element) {
 .nc-actions {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .nc-action--danger {
   color: var(--pt-danger);
@@ -363,27 +363,27 @@ function onGroupLeave(el: Element) {
   padding: 36px;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: var(--fs-body);
 }
 .nc-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--sp-2);
   padding: 10px 14px;
   border-bottom: 1px solid var(--divider);
-  transition: background 0.15s;
+  transition: background var(--dur-fast) var(--ease-out-smooth);
 }
 .nc-item:hover {
   background: var(--surface-hover);
 }
 .nc-item--unread {
-  background: rgba(108, 92, 231, 0.08);
+  background: var(--pt-primary-bg);
 }
 .nc-ic {
   flex: none;
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -397,10 +397,10 @@ function onGroupLeave(el: Element) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--sp-2);
 }
 .nc-name {
-  font-size: 13px;
+  font-size: var(--fs-body);
   font-weight: 600;
   color: var(--text-strong);
   overflow: hidden;
@@ -408,12 +408,12 @@ function onGroupLeave(el: Element) {
   white-space: nowrap;
 }
 .nc-time {
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--text-muted);
   flex: none;
 }
 .nc-text {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--text-strong);
   opacity: 0.82;
   margin-top: 2px;
@@ -428,7 +428,7 @@ function onGroupLeave(el: Element) {
   color: var(--text-muted);
   padding: 2px;
   opacity: 0.5;
-  transition: opacity 0.15s, color 0.15s;
+  transition: opacity var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast);
 }
 .nc-del:hover {
   opacity: 1;
@@ -436,7 +436,7 @@ function onGroupLeave(el: Element) {
 }
 .nc-slide-enter-active,
 .nc-slide-leave-active {
-  transition: all 0.2s ease;
+  transition: all var(--dur-base) var(--ease-out-smooth);
 }
 .nc-slide-enter-from,
 .nc-slide-leave-to {
@@ -449,34 +449,34 @@ function onGroupLeave(el: Element) {
 .nc-group {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
   padding: 12px 14px;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--dur-fast) var(--ease-out-smooth);
 }
 .nc-group:hover { background: var(--surface-hover); }
-.nc-group--unread { background: rgba(108, 92, 231, 0.07); }
+.nc-group--unread { background: var(--pt-primary-bg); }
 .nc-group-body { flex: 1; min-width: 0; }
 .nc-group-ic {
   flex: none;
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
 }
-.nc-group-name { font-size: 14px; font-weight: 700; color: var(--text-strong); }
-.nc-group-time { margin-top: 2px; font-size: 11px; }
+.nc-group-name { font-size: var(--fs-md); font-weight: 700; color: var(--text-strong); }
+.nc-group-time { margin-top: 2px; font-size: var(--fs-2xs); }
 .nc-unread-pill {
   flex: none;
   min-width: 20px;
   height: 20px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
@@ -484,13 +484,13 @@ function onGroupLeave(el: Element) {
   line-height: 1;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
 }
-.nc-count { color: var(--text-muted); font-weight: 600; font-size: 12px; }
+.nc-count { color: var(--text-muted); font-weight: 600; font-size: var(--fs-xs); }
 .nc-chevron {
   flex: none;
   color: var(--text-muted);
   display: inline-flex;
   align-items: center;
-  transition: transform 0.2s ease;
+  transition: transform var(--dur-base) var(--ease-out-smooth);
   margin-top: 6px;
 }
 .nc-chevron--open { transform: rotate(180deg); }

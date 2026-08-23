@@ -69,7 +69,8 @@ func (h *SystemHandler) Metrics(c *gin.Context) {
 	c.JSON(http.StatusOK, sysinfo.CollectSystemMetrics())
 }
 
-// UpdateCheck 在线更新检查。?platform=docker|android|windows|agent-linux-* 决定返回哪个
+// UpdateCheck 在线更新检查。?platform 取 update 包 Platform 常量
+// (docker|android|ios|macos|ohos|windows|agent-linux-*)，决定返回哪个
 // 平台的产物信息；?version= 透传客户端版本（客户端自检：按客户端版本对比清单），
 // 留空则取内置 version.Version（服务端自检场景）。需登录。
 func (h *SystemHandler) UpdateCheck(c *gin.Context) {

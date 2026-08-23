@@ -46,9 +46,9 @@ const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC } = us
 </template>
 
 <style scoped>
-.oidc-wrap { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
-.oidc-help { font-size: 13px; line-height: 1.6; }
-.oidc-help code { background: var(--card); padding: 2px 6px; border-radius: 4px; }
+.oidc-wrap { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 640px; }
+.oidc-help { font-size: var(--fs-body); line-height: 1.6; }
+.oidc-help code { background: var(--card); padding: 2px 6px; border-radius: var(--radius-2xs); }
 .oidc-save { display: flex; justify-content: flex-end; }
 .ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mt8 { margin-top: 8px; }

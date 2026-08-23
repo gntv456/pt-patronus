@@ -1,4 +1,7 @@
 527	frontend/src/components/NotificationCenter.vue
 414	frontend/src/components/monitor/useDeviceDetail.ts
-483	frontend/src/components/ops/OpsDocker.vue
-627	frontend/src/views/usePlugins.ts
+748	frontend/src/components/ops/OpsDocker.vue
+541	frontend/src/data/composeTemplates.ts
+1395	frontend/src/data/dockerTemplates.ts
+414	frontend/src/views/WorkflowEditor.vue
+641	frontend/src/views/usePlugins.ts

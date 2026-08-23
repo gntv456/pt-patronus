@@ -1,0 +1,95 @@
+# 鸿蒙（ohos）构建专用依赖覆盖（pub 官方的 pubspec_overrides.yaml 机制）。
+#
+# 使用方式：scripts/build_ohos.ps1 构建鸿蒙产物时把本文件复制为
+# mobile/pubspec_overrides.yaml（构建后删除），日常 Android/iOS/桌面/Web
+# 构建不读取本文件、完全不受影响。选型考据见 docs/鸿蒙端完善.md。
+#
+# 约束：pubspec_overrides.yaml 只允许 dependency_overrides / resolution /
+# workspace 三个字段——所以 file_picker_ohos 等鸿蒙专用「新增依赖」不能放
+# 这里，由构建脚本在构建期间直接追加进主 pubspec.yaml 的 dependencies 段
+# （构建后复原）。原则同下：只放「pub.dev 原版同版本 + ohos/ 原生实现」的
+# CPF-Flutter（原 openharmony-sig）官方社区包，不混入版本升级。
+dependency_overrides:
+  # 视频播放器控制条（fwfh_chewie 的传递依赖）：ohos fork SDK 的
+  # TargetPlatform 枚举多了 ohos 成员，chewie 官方版的 switch 不穷尽
+  # → 编译期报错。CPF-Flutter 的 br_v1.11.3_ohos 补了 case ohos 且满足
+  # fwfh_chewie ^1.3.0 约束（与主 pubspec 锁的 1.12.1 一样是过渡版本，
+  # API 兼容）。
+  # 注意：该分支 example/ 里有远端缺失的 LFS 大文件，pub 的完整克隆会失败；
+  # 因此构建脚本在 override 生效前把 D:\SDK\chewie_ohos（sparse checkout，
+  # 仅 lib+pubspec）作成本地路径 override 兜底。video_player 同理
+  # （其 2.10+ ohos 分支同样有 LFS 断链，锁 2.9.2 无 LFS 版本）。
+  chewie:
+    path: D:/SDK/chewie_ohos
+  video_player:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/video_player/video_player
+      ref: br_video_player-v2.9.2_ohos
+  # 登录态持久化（SharedPreferences → 鸿蒙首选项）
+  shared_preferences:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/shared_preferences/shared_preferences
+      ref: br_shared_preferences-v2.3.2_ohos
+  # 临时目录（OTA 下载/导出落盘）
+  path_provider:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/path_provider/path_provider
+      ref: br_path_provider-v2.1.4_ohos
+  # 外链浏览器打开（更新页/帮助链接兜底）
+  url_launcher:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_packages.git
+      path: packages/url_launcher/url_launcher
+      ref: br_url_launcher-v6.3.0_ohos
+  # 内嵌 WebView：站点登录后提取 cookie（含 HttpOnly）上传后端（鸿蒙核心链路）
+  # 锁 a525f4f（2026-04-20）而非分支头：头部的 2026-05-18 起引入 getPageOffset()
+  # 调用，该 API 仅 API24 SDK 的 webview 存在（本机 5.1.0/API18 SDK 没有）→
+  # ArkTS 编译期报 "Property 'getPageOffset' does not exist"。
+  # a525f4f 有 ohos 平台声明、无 getPageOffset。example/ 里的 LFS 指针文件
+  # （icudtl.dat）远端缺对象，pub 克隆会失败——已全局配置 git-lfs skip-smudge
+  # 规避（见 docs/鸿蒙端完善.md 踩坑 #8）。
+  flutter_inappwebview:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_inappwebview.git
+      path: flutter_inappwebview
+      ref: a525f4f
+  # ↑ 分支 bug：app-facing 包声明了 windows: default_package 指向此子包但
+  # 没挂进依赖表，不显式引入会在 pub 校验阶段直接失败。
+  flutter_inappwebview_windows:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_inappwebview.git
+      path: flutter_inappwebview_windows
+      ref: a525f4f
+  # 分享/导出（备份 JSON 存盘到「文件」/云盘/其它 app）
+  share_plus:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins.git
+      path: packages/share_plus/share_plus
+      ref: br_share_plus-v10.1.1_ohos
+  # 客户端版本号读取（更新检查用）
+  package_info_plus:
+    git:
+      url: https://gitcode.com/CPF-Flutter/flutter_plus_plugins.git
+      path: packages/package_info_plus/package_info_plus
+      ref: br_package_info_plus-v9.0.0_ohos
+  # 打开本地文件（Android OTA 拉起安装器；鸿蒙端不启用应用内安装，仅保留依赖）
+  open_filex:
+    git:
+      url: https://gitcode.com/CPF-Flutter/fluttertpc_open_filex.git
+      ref: br_v4.5.0_ohos
+
+# 鸿蒙专用「新增依赖」（非 override）由 scripts/build_ohos.ps1 构建期间追加
+# 到主 pubspec.yaml 的 dependencies 段：
+#
+#   file_picker_ohos:
+#     git:
+#       url: https://gitcode.com/CPF-Flutter/fluttertpc_file_picker.git
+#       ref: br_v10.3.8_ohos
+#
+# 背景鸿蒙适配版 10.3.8 已改名 file_picker_ohos，无法以 override 替换
+# file_picker（其 8.x ohos 分支锁 web ^0.5.1，与上面 share_plus 分支要求的
+# web ^1.0.0 冲突，pub 无法求解）。业务代码经 lib/core/platform/file_picker.dart
+# 门面统一访问，鸿蒙构建时脚本切换实现文件。

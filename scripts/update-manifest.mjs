@@ -41,6 +41,8 @@ fill('windows', 'windows-x64')
 // 手动拷进 dist 目录后同样自动回填 sha256；没有产物则跳过（保持原值）。
 fill('ios', 'ios')
 fill('macos', 'macos')
+// 鸿蒙 hap 本地构建（scripts/build_ohos.ps1）+ 自签后拷进 dist 目录
+fill('ohos', 'ohos-arm64')
 fill('agent-linux-amd64', 'agent-linux-amd64')
 fill('agent-linux-arm64', 'agent-linux-arm64')
 

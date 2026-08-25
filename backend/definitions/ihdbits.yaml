@@ -9,6 +9,7 @@ name: iHDBits
 schema: nexusphp
 tags:
     - 影视
+legacy_urls:
+    - https://pt.newworld.plus/
 urls:
     - http://ihdbits.me/
-    - https://pt.newworld.plus/

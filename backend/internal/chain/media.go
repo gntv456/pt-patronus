@@ -13,8 +13,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/media"
 
-	"golang.org/x/sync/singleflight"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"golang.org/x/sync/singleflight"
 )
 
 // mediaCacheTTL 搜索/元数据缓存有效期。影视元数据相对稳定，但过期重查可避免

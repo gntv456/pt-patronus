@@ -161,6 +161,7 @@ class _EntertainmentPageState extends State<EntertainmentPage> {
       'march_wheel',
       'tangpt_lottery',
       'hxpt_redpacket',
+      'hhan_lucky_wheel',
     ];
     if (_gameId != null && spinnerIds.contains(_gameId)) {
       final g = _games.firstWhere(

@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hxpt/ptpatronus/internal/media"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/media"
 )
 
 // cfgKeyMediaQuality 多评分订阅质量配置（JSON blob 存 SystemConfig）。

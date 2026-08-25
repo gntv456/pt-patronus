@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/notice"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // SubscribeChain 编排媒体订阅：跨站搜种子 → 分辨率过滤 → 去重 → 推送下载器 + 通知。

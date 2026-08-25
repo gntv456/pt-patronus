@@ -85,8 +85,9 @@ name: NexusHD
 schema: nexusphp
 tags:
     - 教育网
-urls:
+legacy_urls:
     - https://v6.nexushd.org/
+urls:
     - https://www.nexushd.org/
 user_info:
     path: index.php

@@ -11,9 +11,11 @@ import (
 )
 
 // maxToolResult 工具结果送入上下文的最大字符数（rune 计），超出截断。
-// 对齐中文 token 密度：中文 1 字≈1 token，1200 rune 约占 1200 token（英文场景仅 ~300 token），
-// 比旧值 2000 更紧凑，避免单条工具结果吞掉过多上下文预算（Qwen/GLM 32k 窗口下尤为关键）。
-const maxToolResult = 1200
+// 对齐中文 token 密度：中文 1 字≈1 token。列表类工具（sites.list 78 站精简后 ~6k、
+// dashboard/seed 列表）在旧值 1200 下必然被拦腰截断——模型只见前几条就得出
+// 「结果被截断」的结论（曾致站点重复检查答不出）。12000 在 32k 窗口下可容纳
+// 一次全量列表 + 对话历史，仍防单条结果吞掉全部预算。
+const maxToolResult = 12000
 
 // toolExecTimeout 单工具执行超时。
 const toolExecTimeout = 30 * time.Second

@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/cookiecloud"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/site"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // applyPull 把云端 cookie 写入本地失效站 + 自动新增匹配定义站。
@@ -106,7 +106,8 @@ func (c *CookieCloudChain) applyPull(ctx context.Context, s CookieCloudSettings,
 	return nil
 }
 
-// pushLocal 把本地启用站 cookie 合并进 base payload 后 POST /update。
+// pushLocal 把本地启用站 cookie 合并进 base payload 后写回云端。
+// builtin 模式：直接写内置 store；external 模式：POST /update。
 // 返回成功写入云端的 host 数。base 可为 nil。
 func (c *CookieCloudChain) pushLocal(ctx context.Context, s CookieCloudSettings, password string, base map[string][]cookiecloud.CookieEntry) (int, error) {
 	sites, err := c.siteOp.ListActive()
@@ -137,6 +138,12 @@ func (c *CookieCloudChain) pushLocal(ctx context.Context, s CookieCloudSettings,
 	enc, err := cookiecloud.EncryptPayload(merged, s.UUID, password)
 	if err != nil {
 		return 0, fmt.Errorf("加密推送数据失败: %w", err)
+	}
+	if normalizeCookieCloudMode(s.Mode) == CookieCloudModeBuiltin {
+		c.serverStore().Put(s.UUID, cookiecloud.ServerEnvelope{
+			Encrypted: enc, CryptoType: "aes-128-cbc-fixed",
+		})
+		return len(local), nil
 	}
 	body, err := cookiecloud.EncodeUpdateRequest(s.UUID, enc)
 	if err != nil {

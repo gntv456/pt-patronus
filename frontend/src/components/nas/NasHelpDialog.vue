@@ -27,6 +27,14 @@ defineEmits<{ (e: 'update:visible', v: boolean): void }>()
       <li>点错误旁的「如何修复」→ 复制一条命令到服务器执行（放开 root 密码）</li>
       <li>或改用 <b>Agent 上报</b>，完全绕开 SSH</li>
     </ul>
+    <p>报 <code>ssh: handshake failed: EOF</code> = 端口能连通，但对方不是正常工作的 SSH 服务（连接后未返回 SSH 标识即断开）。按顺序排查：</p>
+    <ol>
+      <li><b>确认端口是 SSH 端口</b>（最常见）：在服务器执行 <code>ss -tlnp | grep sshd</code> 看实际监听端口；填成 Web 面板 / 宝塔等其它服务端口就是这个报错。Docker / 端口映射环境要填映射出来的外部端口</li>
+      <li><b>确认 sshd 在运行</b>：<code>systemctl status sshd</code>（Debian/Ubuntu 部分系统服务名是 <code>ssh</code>）；挂了就 <code>systemctl restart sshd</code></li>
+      <li><b>检查 fail2ban 封禁</b>：反复点添加 / 探活可能触发。<code>fail2ban-client status sshd</code> 看列表，<code>fail2ban-client set sshd unbanip PTPatronus机器IP</code> 解封</li>
+      <li><b>端口转发 / 反代场景</b>：前端端口活着但转发到的 SSH 后端已死也会 EOF，确认后端在线</li>
+      <li><b>换个角度验证</b>：从 PTPatronus 所在机器（Docker 部署先进容器：<code>docker exec -it 容器名 sh</code>）执行 <code>ssh -v -p 端口 用户名@服务器IP</code>，能交互登录再来添加；<code>-v</code> 输出能直接看出卡在哪一步</li>
+    </ol>
 
     <h4>装 Agent（最省事）</h4>
     <ol>

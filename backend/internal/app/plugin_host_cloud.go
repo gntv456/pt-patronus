@@ -11,7 +11,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/plugins"
 )
 
-
 func registerCloudTools(reg *plugins.HostToolRegistry, cl *chain.CloudChain) {
 	reg.Register(plugins.HostTool{
 		Name: "cloud_list", Category: "cloud", Permission: "cloud:read",
@@ -254,4 +253,3 @@ func registerBrushFlowTools(reg *plugins.HostToolRegistry, bf *chain.BrushFlowCh
 }
 
 // ===== RSS =====
-

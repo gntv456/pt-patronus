@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"encoding/json"
@@ -92,10 +92,10 @@ func (h *ProcHandler) Connections(c *gin.Context) {
 
 	// 优先尝试 JSON 解析（ss --json）
 	var ssJSON []struct {
-		Family  string `json:"family"`
-		Type    string `json:"type"`
-		State   string `json:"state"`
-		Laddr   struct {
+		Family string `json:"family"`
+		Type   string `json:"type"`
+		State  string `json:"state"`
+		Laddr  struct {
 			IP   string `json:"ip"`
 			Port int    `json:"port"`
 		} `json:"local_address"`

@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 // procRow 对应 ps 输出的一行进程（对齐 1Panel 进程列表）。
 type procRow struct {
@@ -26,7 +26,7 @@ type netConnRow struct {
 	State     string `json:"state"`      // ESTAB / LISTEN / TIME-WAIT ...
 	LocalAddr string `json:"local_addr"` // 本地地址:端口
 	LocalPort string `json:"local_port"`
-	PeerAddr  string `json:"peer_addr,omitempty"`  // 对端地址:端口
+	PeerAddr  string `json:"peer_addr,omitempty"` // 对端地址:端口
 	PeerPort  string `json:"peer_port,omitempty"`
 	PID       uint32 `json:"pid"`
 	Process   string `json:"process,omitempty"` // 进程名
@@ -40,6 +40,6 @@ type netConnListResp struct {
 // procKillRequest 结束进程请求体。
 type procKillRequest struct {
 	PID     uint `json:"pid" binding:"required"`
-	Force   bool `json:"force"`        // true=SIGKILL(false=SIGTERM)
-	Confirm bool `json:"confirm"`      // 显式确认
+	Force   bool `json:"force"`   // true=SIGKILL(false=SIGTERM)
+	Confirm bool `json:"confirm"` // 显式确认
 }

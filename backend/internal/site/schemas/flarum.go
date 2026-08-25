@@ -116,7 +116,7 @@ func (f *Flarum) FetchUserInfo(ctx context.Context, def *site.SiteMetadata, base
 		return nil, err
 	}
 	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		return nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站）", baseURL)
 	}
 	var forum flarumForumDoc
 	if err := json.Unmarshal(resp.Body, &forum); err != nil {
@@ -134,7 +134,7 @@ func (f *Flarum) FetchUserInfo(ctx context.Context, def *site.SiteMetadata, base
 		return nil, err
 	}
 	if resp2.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		return nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站）", baseURL)
 	}
 	if resp2.StatusCode == 401 || resp2.StatusCode == 403 {
 		return nil, site.ErrNotLoggedIn
@@ -198,7 +198,7 @@ func (f *Flarum) KeepAlive(ctx context.Context, def *site.SiteMetadata, baseURL,
 		return nil, err
 	}
 	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		return nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站）", baseURL)
 	}
 	loggedIn := false
 	var forum flarumForumDoc
@@ -297,7 +297,7 @@ func (f *Flarum) checkinPost(ctx context.Context, def *site.SiteMetadata, baseUR
 		return nil, err
 	}
 	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		return nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站）", baseURL)
 	}
 	return f.parseCheckinResponse(resp), nil
 }
@@ -325,7 +325,7 @@ func (f *Flarum) checkinPatchUser(ctx context.Context, baseURL, cookie, tok stri
 		return nil, err
 	}
 	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		return nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站）", baseURL)
 	}
 	return f.parseCheckinResponse(resp), nil
 }

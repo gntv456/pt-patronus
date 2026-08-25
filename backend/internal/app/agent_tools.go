@@ -47,9 +47,9 @@ func registerAgentTools(
 	}})
 
 	// —— 站点 ——
-	reg(mcp.Tool{Name: "sites.list", Description: "List configured PT sites (id, name, platform, base_url).", InputSchema: noArgs, Handler: func(_ context.Context, _ map[string]any) (string, error) {
-		s, err := siteOp.List()
-		return mcpJSON(s), err
+	reg(mcp.Tool{Name: "sites.list", Description: "List configured PT sites (id, name, platform, base_url). Includes 'total' and a 'duplicates' map of sites sharing the same registered domain (same site added twice).", InputSchema: noArgs, Handler: func(_ context.Context, _ map[string]any) (string, error) {
+		payload, err := sitesListPayload(siteOp)
+		return mcpJSON(payload), err
 	}})
 	reg(mcp.Tool{Name: "site_messages", Description: "Read recent PT site inbox messages across all sites.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"mailbox": map[string]any{"type": "string", "description": "inbox | sent | system (default inbox)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		mb := argString(a, "mailbox", "inbox")

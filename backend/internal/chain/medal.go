@@ -17,8 +17,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/site/medalwall"
 
-	"golang.org/x/sync/singleflight"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"golang.org/x/sync/singleflight"
 )
 
 // 勋章墙缓存参数（对齐旧版：内存 24h、DB 48h）。

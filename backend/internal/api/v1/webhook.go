@@ -17,10 +17,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/event"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/notice"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // WebhookHandler 处理进站 Webhook（公开接收）+ 管理端 CRUD。

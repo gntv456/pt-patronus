@@ -257,6 +257,14 @@ const serviceRows = computed(() => {
   gap: var(--sp-2);
   flex-wrap: wrap;
 }
+/* last_error 含多行排查指引（enrichSSHDialError 生成）：卡片上折叠为单行摘要（首行），
+   完整内容在详情抽屉（.d-error 已按换行展示） */
+.dc-nodata > span:first-child {
+  flex: 1 1 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .dc-net {
   font-size: var(--fs-xs);
   color: var(--text-muted);

@@ -1,6 +1,5 @@
 package chain
 
-
 import (
 	"context"
 	"fmt"
@@ -319,4 +318,3 @@ func bfFormatBytes(n int64) string {
 // ---- 布尔表达式（阶梯策略）----
 // 语法：ratio / seed_hours / upload_mb / up_rate_kb / inactive_hours 与数字比较，支持 && || () >= <= > < ==
 // 例：(ratio>=1 && seed_hours>=24) || ratio>=3 || upload_mb>=5000
-

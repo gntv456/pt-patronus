@@ -10,25 +10,24 @@ import (
 
 func TestNexusPHPFetchHDUHhanClubHTPTILoliconUserInfoFromMigratedDefinitions(t *testing.T) {
 	tests := []struct {
-		id                 string
-		uid                string
-		name               string
-		level              string
-		joinDate           string
-		uploadedTiB        int64
-		downloadGiB        int64
-		ratio              float64
-		bonusLabel         string
-		bonus              float64
-		bonusPerHour       float64
-		rescueBonusPerHour float64
-		numericUserID      int
-		seeding            int
-		seedingTiB         float64
-		uploads            int
-		bonusPath          string
-		useUUID            bool
-		hhanClubLayout     bool
+		id             string
+		uid            string
+		name           string
+		level          string
+		joinDate       string
+		uploadedTiB    int64
+		downloadGiB    int64
+		ratio          float64
+		bonusLabel     string
+		bonus          float64
+		bonusPerHour   float64
+		numericUserID  int
+		seeding        int
+		seedingTiB     float64
+		uploads        int
+		bonusPath      string
+		useUUID        bool
+		hhanClubLayout bool
 	}{
 		{
 			id:           "hdupt",
@@ -48,23 +47,22 @@ func TestNexusPHPFetchHDUHhanClubHTPTILoliconUserInfoFromMigratedDefinitions(t *
 			bonusPath:    "/mybonus.php",
 		},
 		{
-			id:                 "hhanclub",
-			uid:                "802",
-			name:               "hhan-user",
-			level:              "PowerUser",
-			joinDate:           "2023-03-04",
-			uploadedTiB:        3,
-			downloadGiB:        768,
-			ratio:              4.5,
-			bonusLabel:         "憨豆",
-			bonus:              23456.75,
-			bonusPerHour:       32.25,
-			rescueBonusPerHour: 10,
-			seeding:            9,
-			seedingTiB:         3.5,
-			uploads:            4,
-			bonusPath:          "/mybonus.php",
-			hhanClubLayout:     true,
+			id:             "hhanclub",
+			uid:            "802",
+			name:           "hhan-user",
+			level:          "PowerUser",
+			joinDate:       "2023-03-04",
+			uploadedTiB:    3,
+			downloadGiB:    768,
+			ratio:          4.5,
+			bonusLabel:     "憨豆",
+			bonus:          23456.75,
+			bonusPerHour:   32.25,
+			seeding:        9,
+			seedingTiB:     3.5,
+			uploads:        4,
+			bonusPath:      "/mybonus.php",
+			hhanClubLayout: true,
 		},
 		{
 			id:           "htpt",
@@ -134,7 +132,11 @@ func TestNexusPHPFetchHDUHhanClubHTPTILoliconUserInfoFromMigratedDefinitions(t *
 						return
 					}
 					_, _ = w.Write([]byte(detailHTML(tc.level, tc.joinDate, tc.uploadedTiB, tc.downloadGiB, tc.ratio, tc.bonusLabel, tc.bonus)))
-				case tc.bonusPath:
+				case "/mybonus.php", "/mybonus_new.php":
+					if tc.bonusPath != r.URL.Path {
+						http.NotFound(w, r)
+						return
+					}
 					if tc.hhanClubLayout {
 						_, _ = w.Write([]byte(fmt.Sprintf(`<div class="grid"><div class="row-span-4">%.2f</div></div>`, tc.bonusPerHour)))
 						return
@@ -144,16 +146,6 @@ func TestNexusPHPFetchHDUHhanClubHTPTILoliconUserInfoFromMigratedDefinitions(t *
 						return
 					}
 					_, _ = w.Write([]byte(fmt.Sprintf(`<div>你当前每小时能获取 %.2f 个%s</div>`, tc.bonusPerHour, tc.bonusLabel)))
-				case "/rescuesettleinfo.php":
-					if !tc.hhanClubLayout {
-						http.NotFound(w, r)
-						return
-					}
-					_, _ = w.Write([]byte(`<table>
-<tr><td><a href="userdetails.php?id=old">old</a></td><td>a</td><td>b</td><td>c</td><td>d</td><td>120</td></tr>
-<tr><td>no user link</td><td>a</td><td>b</td><td>c</td><td>d</td><td>999</td></tr>
-<tr><td><a href="userdetails.php?id=802">hhan-user</a></td><td>a</td><td>b</td><td>c</td><td>d</td><td>240</td></tr>
-</table>`))
 				case "/getusertorrentlistajax.php":
 					if tc.useUUID {
 						if r.URL.Query().Get("useruuid") != tc.uid {
@@ -189,9 +181,6 @@ func TestNexusPHPFetchHDUHhanClubHTPTILoliconUserInfoFromMigratedDefinitions(t *
 			}
 			if tc.numericUserID > 0 && u.NumericUserID != tc.numericUserID {
 				t.Fatalf("numeric_user_id = %d, want %d", u.NumericUserID, tc.numericUserID)
-			}
-			if tc.rescueBonusPerHour > 0 && u.RescueSeedingBonusPerHour != tc.rescueBonusPerHour {
-				t.Fatalf("rescue_seeding_bonus_per_hour = %g, want %g", u.RescueSeedingBonusPerHour, tc.rescueBonusPerHour)
 			}
 		})
 	}

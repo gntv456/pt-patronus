@@ -9,17 +9,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 
 	"golang.org/x/sync/singleflight"
 )
-
 
 // 考核缓存参数（对齐原版：内存 30min、DB 6h）。
 const (

@@ -52,7 +52,6 @@ func (h *NotificationHandler) Channels(c *gin.Context) {
 
 // —— 通道配置（GET 任意 VIP / PUT admin）——
 
-
 // GetConfig 返回当前通知通道配置（secret 脱敏 + configured 标记）。供「设置→通知」回显。
 func (h *NotificationHandler) GetConfig(c *gin.Context) {
 	s := h.provider.LoadSettings()

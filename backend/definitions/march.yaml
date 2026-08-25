@@ -117,9 +117,10 @@ tags:
     - WEB
     - 综合
 timezone_offset: "+0800"
+legacy_urls:
+    - https://marchcms.org/
 urls:
     - https://duckboobee.org/
-    - https://marchcms.org/
 user_info:
     path: index.php
     user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"

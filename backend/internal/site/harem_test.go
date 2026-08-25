@@ -129,6 +129,66 @@ func TestParseInvitees_Dedup(t *testing.T) {
 	}
 }
 
+// TestParseInvitees_EmptyState 空邀请页（用户实报结构）：「当前没有…」空态行嵌在内层
+// 表格里，外层 wrapper 行只有 1 个直接 td 但含全部后代 td。旧实现用 Find("td") 数到
+// 嵌套 td（≥3）且整行文本 >10 字符，把 wrapper 行当数据行，再拿首格整页文本作用户名，
+// 产出一条假"disabled"成员（页面含"禁用"字样即命中 disabled 正则）。
+func TestParseInvitees_EmptyState(t *testing.T) {
+	html := `<html><body>
+	<h1>gntv的邀请系统</h1>
+	<table class="outer"><tr><td>
+		<table class="embedded">
+		<tr><td colspan="5">被邀者当前状态 (0)</td></tr>
+		<tr><td colspan="5">没有被邀者</td></tr>
+		</table>
+	</td></tr></table>
+	<table class="outer"><tr><td>
+		<table class="embedded">
+		<tr><td colspan="5">已发邀请状态 (0)</td></tr>
+		<tr><td colspan="5">当前没有已发邀请</td></tr>
+		</table>
+	</td></tr></table>
+	</body></html>`
+	got := ParseInvitees(docFromHTML(t, html))
+	if len(got) != 0 {
+		t.Fatalf("empty-state page: got %d invitees, want 0 (got %+v)", len(got), got)
+	}
+}
+
+// TestParseInvitees_EmbeddedRealRows 真数据嵌在内层表格：wrapper 行须跳过、
+// 内层真行（直接子 td ≥3 + userdetails 链接）正常解析。
+func TestParseInvitees_EmbeddedRealRows(t *testing.T) {
+	html := `<html><body><table class="outer"><tr><td>
+		<table class="embedded">
+		<tr><td>用户名</td><td>上传</td><td>下载</td><td>分享率</td><td>状态</td></tr>
+		<tr><td><a href="userdetails.php?id=30">carol</a></td><td>10 GB</td><td>5 GB</td><td>2.0</td><td>正常</td></tr>
+		</table>
+	</td></tr></table></body></html>`
+	got := ParseInvitees(docFromHTML(t, html))
+	if len(got) != 1 {
+		t.Fatalf("embedded rows: got %d want 1 (got %+v)", len(got), got)
+	}
+	if got[0].Username != "carol" || got[0].UserID != "30" || got[0].Status != "confirmed" {
+		t.Errorf("carol: got %+v", got[0])
+	}
+}
+
+// TestParseInvitees_PendingEmailRow 待确认行无用户链接、首格是纯邮箱：保留、判 pending。
+// （Enabled=true 是现状语义：pending 只标记 Status，不置 Enabled=false——被邀请人账号存在但未确认。）
+func TestParseInvitees_PendingEmailRow(t *testing.T) {
+	html := `<html><body><table>
+		<tr><td>用户名</td><td>上传</td><td>下载</td><td>分享率</td><td>状态</td></tr>
+		<tr><td>a@b.com</td><td>0</td><td>0</td><td>—</td><td>待确认</td></tr>
+	</table></body></html>`
+	got := ParseInvitees(docFromHTML(t, html))
+	if len(got) != 1 {
+		t.Fatalf("pending email row: got %d want 1 (got %+v)", len(got), got)
+	}
+	if got[0].Email != "a@b.com" || got[0].Status != "pending" {
+		t.Errorf("pending row: got %+v", got[0])
+	}
+}
+
 func b64(s string) string {
 	return base64.StdEncoding.EncodeToString([]byte(s))
 }

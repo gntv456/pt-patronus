@@ -36,16 +36,14 @@ func registerHostMCPTools(srv *mcp.Server, siteOp *oper.SiteOper, siteCh *chain.
 	})
 
 	// sites.list：列出已配置站点（不含密钥；cookie/token 在 model 里 json:"-"）。
+	// 载荷与 agent 工具共用 sitesListPayload：精简行 + total + duplicates（同注册域多站点）。
 	srv.RegisterTool(mcp.Tool{
 		Name:        "sites.list",
-		Description: "List configured PT sites (id, name, platform, base_url, username).",
+		Description: "List configured PT sites (id, name, platform, base_url, username). Includes 'total' and a 'duplicates' map of sites sharing the same registered domain (same site added twice).",
 		InputSchema: map[string]any{"type": "object", "properties": map[string]any{}},
 		Handler: func(ctx context.Context, _ map[string]any) (string, error) {
-			sites, err := siteOp.List()
-			if err != nil {
-				return "", err
-			}
-			return mcpJSON(sites), nil
+			payload, err := sitesListPayload(siteOp)
+			return mcpJSON(payload), err
 		},
 	})
 

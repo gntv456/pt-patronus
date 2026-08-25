@@ -12,7 +12,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/plugins"
 )
 
-
 // 本文件把宿主全部 chain 能力批量注册成 plugins.HostTool，经统一 Tool RPC（GET /tools、
 // POST /tools/{name}、Bridge tool.list/tool.call）暴露给外部插件。两条来源：
 //  (1) adopt registerAgentTools 已构建的 35 个 mcp.Tool——零 handler 重复，仅补
@@ -221,4 +220,3 @@ func decodeToolInput[T any](input map[string]any, out *T) error {
 	}
 	return nil
 }
-

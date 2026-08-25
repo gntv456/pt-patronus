@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"fmt"
@@ -21,8 +21,8 @@ func NewSshAdminHandler(svc DockerCommandRunner) *SshAdminHandler {
 	return &SshAdminHandler{runner: svc}
 }
 
-var portRe = regexp.MustCompile(`^[1-9][0-9]{1,4}$`)       // 1-65535
-var listenRe = regexp.MustCompile(`^[0-9.*]+$`)            // IP 或 *
+var portRe = regexp.MustCompile(`^[1-9][0-9]{1,4}$`) // 1-65535
+var listenRe = regexp.MustCompile(`^[0-9.*]+$`)      // IP 或 *
 
 // detectServiceName 探测目标主机的 SSH 服务名（sshd 或 ssh）。
 func (h *SshAdminHandler) detectServiceName(c *gin.Context, id uint) string {

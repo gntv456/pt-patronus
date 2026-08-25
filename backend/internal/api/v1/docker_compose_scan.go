@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"context"
@@ -24,19 +24,19 @@ func composeScanDir() string {
 
 // composeProject 是扫描到的一个 compose 项目。
 type composeProject struct {
-	Name      string `json:"name"`       // 项目名（目录名）
-	Path      string `json:"path"`       // compose 文件完整路径
-	Dir       string `json:"dir"`        // 项目目录
-	File      string `json:"file"`       // 文件名（docker-compose.yml / compose.yml）
-	Content   string `json:"content"`    // 文件内容（列表时截断，详情时完整）
-	HostDir   string `json:"host_dir"`   // 宿主机对应路径（供用户参考）
+	Name    string `json:"name"`     // 项目名（目录名）
+	Path    string `json:"path"`     // compose 文件完整路径
+	Dir     string `json:"dir"`      // 项目目录
+	File    string `json:"file"`     // 文件名（docker-compose.yml / compose.yml）
+	Content string `json:"content"`  // 文件内容（列表时截断，详情时完整）
+	HostDir string `json:"host_dir"` // 宿主机对应路径（供用户参考）
 }
 
 // composeProjectListResp 项目列表响应。
 type composeProjectListResp struct {
-	Projects []composeProject `json:"projects"`
-	ScanDir  string           `json:"scan_dir"`
-	Available bool            `json:"available"` // 扫描目录是否可访问
+	Projects  []composeProject `json:"projects"`
+	ScanDir   string           `json:"scan_dir"`
+	Available bool             `json:"available"` // 扫描目录是否可访问
 }
 
 // composeFileNames 按优先级查找 compose 文件名。
@@ -194,7 +194,6 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 
 // ensure exec is used（runComposeCLIWithFlags 在 docker_compose_local.go 定义）
 var _ = exec.Command
-
 
 // projectSaveRequest 保存 compose 文件内容。
 type projectSaveRequest struct {

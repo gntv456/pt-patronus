@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"context"
@@ -28,8 +28,8 @@ func NewLocalComposeHandler() *LocalComposeHandler {
 // composeContentRequest 粘贴内容模式的请求体。
 type composeContentRequest struct {
 	Content string `json:"content" binding:"required"` // docker-compose.yml 内容
-	Name    string `json:"name"`                        // 项目名（可选）
-	Action  string `json:"action"`                      // up | down | config | ps
+	Name    string `json:"name"`                       // 项目名（可选）
+	Action  string `json:"action"`                     // up | down | config | ps
 }
 
 // localComposeDir 存放临时 compose 文件的目录。

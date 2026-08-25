@@ -5,3 +5,4 @@
 1395	frontend/src/data/dockerTemplates.ts
 414	frontend/src/views/WorkflowEditor.vue
 641	frontend/src/views/usePlugins.ts
+525	backend/internal/site/schemas/rousi.go

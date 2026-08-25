@@ -1,8 +1,13 @@
 // Package cookiecloud 实现 CookieCloud 协议解密与 host 匹配。
 //
-// 标准 CookieCloud 协议（easychen/CookieCloud 官方浏览器扩展，与 MoviePilot servcookie
-// 一致）：AES-128-CBC，key = IV = md5(uuid + "-" + password) 的 hex 前 16 字符（即 16 字节
-// ASCII），PKCS7 填充，无 OpenSSL "Salted__" 头。解密后 JSON 形如
+// CookieCloud 官方浏览器扩展存在两代加密格式（扩展设置「加密方式」可选，默认 legacy）：
+//   - legacy：CryptoJS 兼容 OpenSSL 格式，base64("Salted__" + 8 字节盐 + AES-256-CBC 密文)，
+//     key/IV 由 EVP_BytesToKey(MD5, 1 轮) 从 the_key = md5(uuid+"-"+password) hex 前 16
+//     字节派生（32 字节 key + 16 字节 IV）。
+//   - aes-128-cbc-fixed：AES-128-CBC，key = IV = md5(uuid + "-" + password) 的 hex 前 16
+//     字符（即 16 字节 ASCII），PKCS7 填充。部分第三方客户端（如本项目早期版本）用此格式。
+//
+// 解密按密文前缀自动识别格式，用户无需关心。解密后 JSON 形如
 // {"cookie_data": {host: [CookieEntry]}, "update_time": ...}（标准扩展带 cookie_data 包裹）。
 //
 // 本包只负责「解密 + 解析」纯逻辑，不持有 HTTP 客户端：生产拉取由 chain 层用项目的
@@ -147,8 +152,36 @@ func MergeCookieData(dst, src map[string][]CookieEntry) map[string][]CookieEntry
 	return dst
 }
 
-// Decrypt 用 AES-128-CBC（IV=密钥）解密 base64 密文并去 PKCS7 填充。
-// key 需为 DeriveKey 派生的 16 字节。
+// CookieCloud 加密格式（官方扩展 crypto_type）：
+//   - aes-128-cbc-fixed：key = IV = md5(uuid+"-"+password) hex 前 16 字节，PKCS7。子项目自研
+//     客户端按此实现；新扩展亦可选此格式（当前 UI 默认仍为 legacy）。
+//   - legacy：CryptoJS OpenSSL 兼容格式（"Salted__" + 8 字节盐 + AES-256-CBC），key/IV 由
+//     EvpKDF(MD5, 1 轮) 从 the_key 派生。解密侧按前缀自动识别，无需用户选择。
+type CryptoType string
+
+const (
+	CryptoTypeLegacy    CryptoType = "legacy"
+	CryptoTypeAES128CBC CryptoType = "aes-128-cbc-fixed"
+)
+
+// evpBytesToKey 是 OpenSSL EVP_BytesToKey（MD5、1 轮迭代）：
+// D1=MD5(password‖salt)，Dn=MD5(D(n-1)‖password‖salt)，串联取前 size 字节。
+// 与 CryptoJS EvpKDF 默认参数一致（crypto-js/evpkdf.js）。
+func evpBytesToKey(password, salt []byte, size int) []byte {
+	var out []byte
+	var prev []byte
+	for len(out) < size {
+		h := md5.Sum(append(append(prev, password...), salt...))
+		// md5.Sum 的入参 slice 可能复用底层数组，h 是值拷贝可安全 append
+		prev = h[:]
+		out = append(out, h[:]...)
+	}
+	return out[:size]
+}
+
+// Decrypt 解密 CookieCloud 密文。ciphertext 以 "Salted__" 开头时按 legacy CryptoJS
+// OpenSSL 兼容格式处理（Salted__ + 8 字节盐 + AES-256-CBC，EvpKDF 派生 key/IV）；
+// 否则按本端标准格式 AES-128-CBC（IV=key）处理。两者均 PKCS7 去填充。
 func Decrypt(b64 string, key []byte) ([]byte, error) {
 	if len(key) < aes.BlockSize {
 		return nil, fmt.Errorf("key too short")
@@ -157,7 +190,15 @@ func Decrypt(b64 string, key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("base64: %w", err)
 	}
-	if len(raw) == 0 || len(raw)%aes.BlockSize != 0 {
+	if len(raw) == 0 {
+		return nil, fmt.Errorf("ciphertext length invalid")
+	}
+	// saltedHdrLen 是 "Salted__" + 8 字节盐的长度；legacy 密文 = 头 + AES-256-CBC 块
+	const saltedHdrLen = 8 + 8
+	if len(raw) > saltedHdrLen && string(raw[:8]) == "Salted__" {
+		return decryptSalted(raw, key[:aes.BlockSize])
+	}
+	if len(raw)%aes.BlockSize != 0 {
 		return nil, fmt.Errorf("ciphertext length invalid")
 	}
 	block, err := aes.NewCipher(key[:aes.BlockSize])
@@ -167,12 +208,37 @@ func Decrypt(b64 string, key []byte) ([]byte, error) {
 	iv := key[:aes.BlockSize]
 	pt := make([]byte, len(raw))
 	cipher.NewCBCDecrypter(block, iv).CryptBlocks(pt, raw)
-	// PKCS7 去填充
+	return unpadPKCS7(pt)
+}
+
+// decryptSalted 解密 legacy 格式："Salted__" + 8 字节盐 + AES-256-CBC 密文。
+// key 为 DeriveKey 的 16 字节，作 EvpKDF 的 password；派生 32 字节 key + 16 字节 IV。
+func decryptSalted(raw, key []byte) ([]byte, error) {
+	const hdr = 8 + 8 // "Salted__" + 盐
+	if len(raw) <= hdr || (len(raw)-hdr)%aes.BlockSize != 0 {
+		return nil, fmt.Errorf("ciphertext length invalid")
+	}
+	salt := raw[8:hdr]
+	dk := evpBytesToKey(key, salt, 32+aes.BlockSize)
+	block, err := aes.NewCipher(dk[:32])
+	if err != nil {
+		return nil, err
+	}
+	body := raw[hdr:]
+	pt := make([]byte, len(body))
+	cipher.NewCBCDecrypter(block, dk[32:32+aes.BlockSize]).CryptBlocks(pt, body)
+	return unpadPKCS7(pt)
+}
+
+// unpadPKCS7 校验并去除 PKCS7 填充。
+func unpadPKCS7(pt []byte) ([]byte, error) {
+	if len(pt) == 0 {
+		return nil, fmt.Errorf("bad pkcs7 padding")
+	}
 	pad := int(pt[len(pt)-1])
 	if pad < 1 || pad > aes.BlockSize || pad > len(pt) {
 		return nil, fmt.Errorf("bad pkcs7 padding")
 	}
-	// 校验填充字节
 	for i := len(pt) - pad; i < len(pt); i++ {
 		if int(pt[i]) != pad {
 			return nil, fmt.Errorf("bad pkcs7 padding")
@@ -204,12 +270,18 @@ func DecryptPayload(encryptedB64, uuid, password string) (map[string][]CookieEnt
 	return payload, nil
 }
 
-// DecodeEnvelope 解析服务器响应 {"encrypted": "..."} 并解密为 {host: []CookieEntry}。
+// Envelope 是 GET /get/{uuid} 的响应；crypto_type 标记加密格式（老服务端无此字段）。
+type Envelope struct {
+	Encrypted  string `json:"encrypted"`
+	CryptoType string `json:"crypto_type"`
+}
+
+// DecodeEnvelope 解析服务器响应并解密为 {host: []CookieEntry}。
+// crypto_type=aes-128-cbc-fixed 时按标准 fixed-IV 格式解；legacy 时限制为 legacy
+// OpenSSL 格式（Salted__）。两者实际上按密文前缀自动识别，crypto_type 仅影响报错语义。
 // 生产路径：chain 层用项目的 httpclient（SSRF 防护）GET 拿到 body 后调用本函数。
 func DecodeEnvelope(rawBody []byte, uuid, password string) (map[string][]CookieEntry, error) {
-	var envelope struct {
-		Encrypted string `json:"encrypted"`
-	}
+	var envelope Envelope
 	if err := json.Unmarshal(rawBody, &envelope); err != nil {
 		return nil, fmt.Errorf("parse envelope: %w", err)
 	}

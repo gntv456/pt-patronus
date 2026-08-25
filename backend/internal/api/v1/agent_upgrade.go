@@ -12,7 +12,9 @@ import (
 
 // agent_upgrade.go — agent 自更新 handler。
 // AGENT_DOWNLOAD_URL：agent 二进制下载基址（含 {arch} 占位，agent 端替换为 GOARCH）。
-//   默认 GitHub Release latest：https://github.com/gntv456/pt-patronus/releases/latest/download/ptpatronus-agent-linux-{arch}
+//
+//	默认 GitHub Release latest：https://github.com/gntv456/pt-patronus/releases/latest/download/ptpatronus-agent-linux-{arch}
+//
 // AGENT_LATEST_VERSION：最新 agent 版本号（前端展示+判断是否需升级）；默认读 AGENT_DOWNLOAD_URL 推断。
 const defaultAgentDownloadURL = "https://github.com/gntv456/pt-patronus/releases/latest/download/ptpatronus-agent-linux-{arch}"
 

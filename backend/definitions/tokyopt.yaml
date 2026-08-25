@@ -1,7 +1,8 @@
 # tokyopt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+# 2026-08 域名更换：tokyopt.xyz → www.tokyo-manga.top（同站 NexusPHP，实测可达）；复活。
 
-dead: true
+dead: false
 id: tokyopt
 level_requirements:
     - name: User
@@ -63,6 +64,7 @@ tags:
     - 综合
     - 影视
 urls:
+    - https://www.tokyo-manga.top/
     - https://www.tokyopt.xyz/
 user_info:
     path: index.php

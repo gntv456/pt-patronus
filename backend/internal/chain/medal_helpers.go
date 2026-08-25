@@ -1,6 +1,5 @@
 package chain
 
-
 import (
 	"bytes"
 	"context"

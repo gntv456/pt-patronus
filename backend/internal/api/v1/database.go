@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"database/sql"
@@ -97,10 +97,10 @@ func (h *DatabaseHandler) describeTable(table string) ([]dbColumn, error) {
 	switch h.db.Dialector.Name() {
 	case "postgres":
 		type pgCol struct {
-			Name      string `gorm:"column:column_name"`
-			Type      string `gorm:"column:data_type"`
-			NotNull   bool   `gorm:"column:is_nullable"`
-			IsPK      string `gorm:"column:column_default"`
+			Name    string `gorm:"column:column_name"`
+			Type    string `gorm:"column:data_type"`
+			NotNull bool   `gorm:"column:is_nullable"`
+			IsPK    string `gorm:"column:column_default"`
 		}
 		var rows []pgCol
 		err := h.db.Raw(`SELECT column_name, data_type,
@@ -143,12 +143,12 @@ type dbQueryRequest struct {
 
 // dbQueryResult 查询结果。
 type dbQueryResult struct {
-	Columns []string        `json:"columns"`
-	Rows    [][]any         `json:"rows"`
-	Affected int64          `json:"affected,omitempty"`
-	Limit      int            `json:"limit,omitempty"`
-	Took     string         `json:"took"`
-	IsWrite  bool           `json:"is_write"`
+	Columns  []string `json:"columns"`
+	Rows     [][]any  `json:"rows"`
+	Affected int64    `json:"affected,omitempty"`
+	Limit    int      `json:"limit,omitempty"`
+	Took     string   `json:"took"`
+	IsWrite  bool     `json:"is_write"`
 }
 
 var (

@@ -111,18 +111,21 @@ var (
 )
 
 // ParseInvitees 从 invite.php?menu=invitee 单页解析被邀请人列表。
+// 行匹配用「直接子 td」（ChildrenFiltered）而非后代 td（Find）：空态/提示行的 wrapper
+// <tr><td><table>…</table></td></tr> 会让 Find 数到嵌套表格的 td 而被误判为数据行
+// （用户曾报空邀请页解析出整页文本作用户名的假行）。
 func ParseInvitees(doc *goquery.Document) []InviteeInfo {
 	if doc == nil {
 		return nil
 	}
 	var out []InviteeInfo
 	rows := doc.Find("table tr").FilterFunction(func(_ int, tr *goquery.Selection) bool {
-		return tr.Find("td").Length() >= 3 && len([]rune(strings.TrimSpace(tr.Text()))) > 10
+		return tr.ChildrenFiltered("td").Length() >= 3 && len([]rune(strings.TrimSpace(tr.Text()))) > 10
 	})
 	if rows.Length() == 0 {
 		rows = doc.Find("table.bittable tr, table.main tr, table td.tableborder tr, div#outer tr").
 			FilterFunction(func(_ int, tr *goquery.Selection) bool {
-				return tr.Find("td").Length() >= 3 && len([]rune(strings.TrimSpace(tr.Text()))) > 10
+				return tr.ChildrenFiltered("td").Length() >= 3 && len([]rune(strings.TrimSpace(tr.Text()))) > 10
 			})
 	}
 	rows.Each(func(_ int, tr *goquery.Selection) {
@@ -130,15 +133,22 @@ func ParseInvitees(doc *goquery.Document) []InviteeInfo {
 		if inviteeHeaderRe.MatchString(text) && len([]rune(text)) < 40 {
 			return // 表头
 		}
-		cells := tr.Find("td")
+		cells := tr.ChildrenFiltered("td")
 		if cells.Length() < 3 {
 			return
 		}
 		// username + user_id（id 用于排除"自己"——邀请人页不该含邀请人自己）
 		link := tr.Find(`a[href*="userdetails"]`).First()
 		name := strings.TrimSpace(link.Text())
+		firstCell := strings.TrimSpace(cells.First().Text())
 		if name == "" {
-			name = strings.TrimSpace(cells.First().Text())
+			name = firstCell
+		}
+		// 空态/提示行防御：无 userdetails 链接且首格不是纯邮箱时，首格文本可能是
+		// 整页提示文案（如「当前没有已发邀请」外围行），不作用户名。
+		_, hasLink := link.Attr("href")
+		if !hasLink && emailRe.FindString(firstCell) == "" {
+			return
 		}
 		if len([]rune(name)) < 2 || len([]rune(name)) > 50 {
 			return

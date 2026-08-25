@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 // dockerListContainer 单个容器的精简视图（docker ps --format '{{json .}}' 对齐）。
 type dockerListContainer struct {

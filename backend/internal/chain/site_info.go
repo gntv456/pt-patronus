@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 站免/公告抓取的并发与缓存参数（对齐原版：站免 30min、公告 60s）。

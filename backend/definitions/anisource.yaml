@@ -1,6 +1,7 @@
 # anisource — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: 。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
 
+dead: true
 description: Download anime for free. High quality HD raws from Raws-4U, スカーRaws team (4U-Project) and Leopard-Raws.
 id: anisource
 name: AniSource

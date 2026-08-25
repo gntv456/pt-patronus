@@ -43,7 +43,7 @@ func mergeAssessmentLines(lines []string) []string {
 }
 
 func isMetricStartLine(ln string) bool {
-	return strings.Contains(ln, "指标") && regexp.MustCompile(`指标\s*\d+[：:]`).MatchString(ln) &&
+	return strings.Contains(ln, "指标") && regexp.MustCompile(`(?:考核)?指标\s*\d+[：:]`).MatchString(ln) &&
 		!strings.Contains(ln, "要求") && !strings.Contains(ln, "结果")
 }
 
@@ -71,7 +71,10 @@ func parseMetricsMerged(lines []string) []Metric {
 			!strings.Contains(ln, "当前") || !strings.Contains(ln, "结果") {
 			continue
 		}
-		m := metricRe.FindStringSubmatch(ln)
+		m := metricHhanRe.FindStringSubmatch(ln)
+		if len(m) < 6 {
+			m = metricRe.FindStringSubmatch(ln)
+		}
 		if len(m) < 6 {
 			continue
 		}
@@ -197,6 +200,8 @@ func inferUnit(name string) string {
 		return "小时"
 	case strings.Contains(name, "做种数"):
 		return "个"
+	case strings.Contains(name, "憨豆") || strings.Contains(name, "魔力") || strings.Contains(name, "积分"):
+		return ""
 	}
 	return ""
 }

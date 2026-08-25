@@ -1,4 +1,4 @@
-﻿package monitor
+package monitor
 
 import (
 	"bytes"
@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"golang.org/x/crypto/ssh"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // sshExecutor 抽象「在一个 SSH 会话里执行命令」，便于测试注入 fake（解析逻辑单测无需真实连接）。
@@ -147,9 +147,54 @@ func dialSSH(store HostKeyStore, t *models.MonitorTarget, creds Credentials, tim
 	}
 	client, err := ssh.Dial("tcp", net.JoinHostPort(t.Host, strconv.Itoa(port)), cfg)
 	if err != nil {
-		return nil, err
+		return nil, enrichSSHDialError(err, t.Host, port)
 	}
 	return &sshExec{client: client}, nil
+}
+
+// enrichSSHDialError 给 SSH 连接类错误补「含义 + 具体问题清单 + 排查命令」三层提示，
+// 让用户不看文档就能定位。各错误形态的语义：
+//   - handshake failed: EOF —— TCP 连接被接受，但对端在返回 SSH 版本标识（SSH-2.0-…）前
+//     就关闭了。端口后面不是正常工作的 SSH 服务。具体问题：
+//     ① 端口填成了 Web 面板/宝塔等其它服务端口（最常见）；② sshd 挂了或换了端口；
+//     ③ fail2ban / sshd MaxStartUps 丢弃未认证连接（直接关闭不报错，反复重试会触发）；
+//     ④ 端口转发/反向代理的后端已死。
+//   - i/o timeout —— TCP 都连不上：地址/端口不可达或防火墙丢包。
+//   - connection refused —— 端口上无进程监听：sshd 没起或端口填错。
+//   - unable to authenticate / no supported methods remain —— 网络与 SSH 服务都正常，
+//     认证被拒：密码错、用户名错、root 被 PermitRootLogin prohibit-password 禁密码登录。
+func enrichSSHDialError(err error, host string, port int) error {
+	if err == nil {
+		return nil
+	}
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "handshake failed: EOF"):
+		return fmt.Errorf(`%w
+├─ 含义：%d 端口能连通（TCP 已建立），但对方没返回 SSH 标识就断开——端口后面不是正常工作的 SSH 服务
+├─ 具体问题（按概率排序）：
+│   1. 端口填错：填成了 Web 面板 / 宝塔等其它服务端口（SSH 默认 22，改过端口的站要填实际端口）
+│   2. sshd 挂了或正在重启
+│   3. fail2ban / sshd MaxStartUps 拦截：反复点添加/探活会触发，封禁时直接关闭不报错
+│   4. 端口转发/反向代理的后端已死（前端端口活着，转到的 SSH 后端不在）
+└─ 排查：服务器上执行 ss -tlnp | grep sshd 确认监听端口；fail2ban-client status sshd 看封禁列表`, err, port)
+	case strings.Contains(msg, "i/o timeout"):
+		return fmt.Errorf(`%w
+├─ 含义：连 %s:%d 超时——TCP 都建立不了，地址/端口不可达或防火墙丢包
+├─ 具体问题：IP/端口填错、目标机器关机/断网、中间有防火墙丢包（不拒绝也不通）
+└─ 排查：从 PTPatronus 所在机器 ping %s；能 ping 通再试 nc -zv %s %d`, err, host, port, host, host, port)
+	case strings.Contains(msg, "connection refused"):
+		return fmt.Errorf(`%w
+├─ 含义：%s:%d 上没有进程在监听（对方明确拒绝）
+├─ 具体问题：sshd 没启动、端口填错（对方 SSH 在别的端口）
+└─ 排查：服务器上执行 systemctl status sshd 和 ss -tlnp | grep sshd`, err, host, port)
+	case strings.Contains(msg, "unable to authenticate"), strings.Contains(msg, "no supported methods remain"):
+		return fmt.Errorf(`%w
+├─ 含义：网络和 SSH 服务都正常，但认证被拒
+├─ 具体问题：密码错误、用户名错误、或服务器禁止该用户密码登录（root 常见：PermitRootLogin prohibit-password 只允许密钥）
+└─ 排查：核对账号密码；root 用户可改用私钥，或在服务器放开 PermitRootLogin yes 后重启 sshd`, err)
+	}
+	return err
 }
 
 // sshAuthMethods 构造认证方法集。
@@ -241,7 +286,7 @@ func (e *sshExec) RunOutput(ctx context.Context, cmd string) (string, string, er
 		<-done // 等 sess.Run 收尾，确保 defer sess.Close 不与 Run 竞争
 		return stdout.String(), stderr.String(), ctx.Err()
 	}
-	}
+}
 
 func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, cols, rows int) error {
 	sess, err := e.client.NewSession()
@@ -283,5 +328,5 @@ func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, 
 		return ctx.Err()
 	}
 
-	}
+}
 func (e *sshExec) Close() error { return e.client.Close() }

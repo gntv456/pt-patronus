@@ -185,7 +185,6 @@ func (h *DockerHandler) LocalRemoveImage(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-
 // LocalPull 拉取镜像（本机模式）。
 func (h *DockerHandler) LocalPull(c *gin.Context) {
 	if h.local == nil {

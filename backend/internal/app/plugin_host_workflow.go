@@ -10,7 +10,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/plugins"
 )
 
-
 func registerRssTools(reg *plugins.HostToolRegistry, rss *chain.RssChain) {
 	reg.Register(plugins.HostTool{
 		Name: "rss_list", Category: "rss", Permission: "rss:read",
@@ -205,4 +204,3 @@ func registerWorkflowTools(reg *plugins.HostToolRegistry, wf *chain.WorkflowChai
 		return wf.Run(ctx, uint(argInt(a, "id")), argString(a, "trigger", "api"), data)
 	})
 }
-

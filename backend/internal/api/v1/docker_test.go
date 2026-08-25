@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"context"
@@ -17,9 +17,9 @@ import (
 
 type mockRunner struct {
 	// captured 记录最后一次调用的参数
-	capturedCmd    string
-	capturedID     uint
-	capturedExp    int
+	capturedCmd string
+	capturedID  uint
+	capturedExp int
 	// result 返回值
 	result monitor.CommandResult
 	err    error
@@ -176,9 +176,9 @@ func TestDockerStatsRemoteFailReturnsEmpty(t *testing.T) {
 
 func TestDockerStartStopRestart(t *testing.T) {
 	cases := []struct {
-		path     string
-		verb     string
-		wantCmd  string
+		path    string
+		verb    string
+		wantCmd string
 	}{
 		{"/start/1/nginx", "POST", "docker start 'nginx'"},
 		{"/stop/1/nginx", "POST", "docker stop 'nginx'"},
@@ -360,10 +360,10 @@ func TestShellQuote(t *testing.T) {
 		in, want string
 	}{
 		{"nginx", "'nginx'"},
-		{"nginx; rm -rf /", "'nginx; rm -rf /'"},         // 分号在引号内安全
-		{"it's", "'it'\\''s'"},                             // 单引号转义
-		{"$(whoami)", "'$(whoami)'"},                       // 命令替换在引号内安全
-		{"`id`", "'`id`'"},                                   // 反引号
+		{"nginx; rm -rf /", "'nginx; rm -rf /'"}, // 分号在引号内安全
+		{"it's", "'it'\\''s'"},                   // 单引号转义
+		{"$(whoami)", "'$(whoami)'"},             // 命令替换在引号内安全
+		{"`id`", "'`id`'"},                       // 反引号
 		{"", "''"},
 	}
 	for _, tc := range cases {

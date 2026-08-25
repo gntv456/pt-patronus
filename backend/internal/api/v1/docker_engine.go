@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"context"
@@ -110,7 +110,7 @@ func (c *DockerLocalClient) LocalStats(ctx context.Context) ([]dockerStatsRow, e
 	// /stats?stream=false 一次返回所有容器统计
 	// Docker API v1.24+ 的 /stats 需要 per-container。这里先 list 再逐个取。
 	var containers []struct {
-		ID    string `json:"Id"`
+		ID    string   `json:"Id"`
 		Names []string `json:"Names"`
 	}
 	if _, err := c.get(ctx, "/containers/json", &containers); err != nil {
@@ -123,8 +123,8 @@ func (c *DockerLocalClient) LocalStats(ctx context.Context) ([]dockerStatsRow, e
 			name = strings.TrimPrefix(ct.Names[0], "/")
 		}
 		var stats struct {
-			Name       string `json:"name"`
-			CPUStats   struct {
+			Name     string `json:"name"`
+			CPUStats struct {
 				CPUUsage struct {
 					TotalUsage float64 `json:"total_usage"`
 				} `json:"cpu_usage"`
@@ -220,7 +220,6 @@ func (c *DockerLocalClient) LocalRemoveImage(ctx context.Context, ref string) er
 	}
 	return nil
 }
-
 
 // LocalPull 拉取镜像（流式返回进度，Docker API 的 /images/create 返回 JSON 流）。
 func (c *DockerLocalClient) LocalPull(ctx context.Context, ref string) (string, error) {
@@ -338,9 +337,9 @@ func parsePullProgress(raw []byte) string {
 			continue
 		}
 		var entry struct {
-			Status   string `json:"status"`
-			ID       string `json:"id"`
-			Error    string `json:"error"`
+			Status string `json:"status"`
+			ID     string `json:"id"`
+			Error  string `json:"error"`
 		}
 		if err := json.Unmarshal([]byte(line), &entry); err != nil {
 			continue

@@ -10,6 +10,7 @@ import {
   type MatrixFilter, type MatrixLayout,
 } from '@/composables/useSiteMatrixData'
 import { useInactiveSiteVisit } from '@/composables/useInactiveSiteVisit'
+import { alertBox } from '@/utils/alertBox'
 
 const props = withDefaults(
   defineProps<{
@@ -77,7 +78,10 @@ function showConnectivityReason(row: SiteStatItem) {
   const status = props.connectivity[row.site_id]
   if (!status || status.status === 'connected') return
   const title = status.status === 'disabled' ? `${row.site_name} 已停用` : `${row.site_name} 未联通`
-  ElMessageBox.alert(status.error || '站点未返回具体失败原因', title, {
+  const site = siteConfig(row.site_id)
+  const detail = status.error || '站点未返回具体失败原因'
+  const url = site?.base_url ? `\n\n站点地址：${site.base_url}` : ''
+  alertBox(detail + url, title, {
     type: status.status === 'disabled' ? 'warning' : 'error',
     confirmButtonText: '知道了',
   })

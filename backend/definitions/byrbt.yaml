@@ -1,5 +1,6 @@
 # byrbt — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: nexusphp。selectors/user_info 若未列出则由 EnsureDefaults 自填校准默认。
+dead: true
 categories:
     - id: "408"
       name: 电影

@@ -144,3 +144,58 @@ func TestMergeCookieData(t *testing.T) {
 		t.Fatalf("merge=%v", got)
 	}
 }
+
+// TestDecryptLegacyCryptoJSVector 用 CryptoJS（官方扩展 legacy 算法）生成的真实密文做交叉验证：
+// CryptoJS.AES.encrypt(data, the_key) → "U2FsdGVkX1..."（OpenSSL 兼容格式，Salted__ + 盐 +
+// AES-256-CBC，EvpKDF(MD5,1轮) 从 the_key 派生 32B key + 16B IV）。向量由 Node crypto-js 4.x
+// 独立生成钉死，防实现自洽。
+func TestDecryptLegacyCryptoJSVector(t *testing.T) {
+	const (
+		vecUUID   = "legacy-uuid"
+		vecPass   = "legacy-pass"
+		vecCipher = "U2FsdGVkX1/qFh/VdGNhvZGWlZ1LL45JXemK4n1nyiJxDN085/9wO+F6hMxZdo7Ukt+a/Lw9FHY0HSs6TwB7FnzwPXN/hQS9RUipleJk6Qml6eWNxdBj11c7qXiCKyuUHLwx9Dt2PfKx9mlH6BXIgOpQwk2WxvKYkZX9yxYZgCYFlWVSaw7YXYI8Suk1RRlZpHVDuR7nDm5o5Hjpm3CZF3YvYtoT3epY2BGNZNxIMfU="
+	)
+	// the_key 独立按公式重算（与 DeriveKey 相同公式），密文本身来自 CryptoJS
+	key := DeriveKey(vecUUID, vecPass)
+	plain, err := Decrypt(vecCipher, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(plain)
+	if !strings.Contains(s, `"demo.pt"`) || !strings.Contains(s, `"sess"`) || !strings.Contains(s, `"abc"`) {
+		t.Fatalf("legacy decrypt content mismatch: %.120s", s)
+	}
+}
+
+// TestDecryptLegacyFullPayload 走 DecryptPayload 全链路（含 JSON 解析）验证 legacy 向量。
+func TestDecryptLegacyFullPayload(t *testing.T) {
+	cipher := "U2FsdGVkX1+5t9sK+9sxHaT11/GVUe5FSh+XloHEJmtP1wUI28GVZsV7vk0qU747" +
+		"DvjbuEB0BlEY9G6TiOuzEwjI9uKLx7GGG5QJRXDirK+3ARb+LRaytTIyL2JELA/N" +
+		"Lc6sEJmys+zI7S9EboWZX4Mxf58C2tGH/EyVUVZklicuF9KtkPVScIIhDHSNdfMM"
+	payload, err := DecryptPayload(cipher, "fixed-iv-uuid", "p2-secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := CookieStringForHost(payload, "www.a.pt"); !strings.Contains(got, "uid=1") {
+		t.Errorf("www.a.pt cookies = %q", got)
+	}
+	if got := CookieStringForHost(payload, "b.org"); !strings.Contains(got, "sess=xyz") {
+		t.Errorf("b.org cookies = %q", got)
+	}
+}
+
+// TestDecodeEnvelope_CryptoTypeField 服务端响应带 crypto_type=legacy 标记（新 api/app.js）时
+// 同样能解（按密文前缀自动识别，字段仅作元信息）。
+func TestDecodeEnvelope_CryptoTypeField(t *testing.T) {
+	plain := `{"cookie_data":{"host.io":[{"name":"t","value":"v","domain":"host.io","path":"/"}]}}`
+	enc := encryptForTest(t, plain, DeriveKey("u", "p"))
+	body := []byte(`{"encrypted":"` + enc + `","crypto_type":"legacy"}`)
+
+	payload, err := DecodeEnvelope(body, "u", "p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := CookieStringForHost(payload, "host.io"); !strings.Contains(got, "t=v") {
+		t.Errorf("got %q", got)
+	}
+}

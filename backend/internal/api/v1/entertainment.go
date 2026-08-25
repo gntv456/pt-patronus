@@ -1,6 +1,5 @@
 package v1
 
-
 import (
 	"errors"
 	"net/http"
@@ -10,7 +9,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
-
 
 // EntertainmentHandler 处理娱乐游戏。
 type EntertainmentHandler struct {
@@ -204,4 +202,3 @@ func (h *EntertainmentHandler) History(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"records": res})
 }
-

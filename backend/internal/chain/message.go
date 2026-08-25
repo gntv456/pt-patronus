@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // 消息缓存 TTL（平衡档：私信时效 vs 体验；过期走 SWR 后台刷新，故可较短）。

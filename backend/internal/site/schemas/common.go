@@ -32,7 +32,7 @@ func (a *BaseHTMLAdapter) fetchDoc(ctx context.Context, baseURL, path, cookie st
 		return nil, nil, err
 	}
 	if resp.IsCloudflare() {
-		return nil, nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		return nil, nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站；cf_clearance cookie 需一并包含）", baseURL)
 	}
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
 	if err != nil {

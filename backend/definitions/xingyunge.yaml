@@ -6,6 +6,7 @@ aka:
 description: 三十年河东，三十年河西！莫欺少年穷！
 id: xingyunge
 legacy_urls:
+    - https://pt.xingyungept.cn/
     - https://xingyunge.top/
 level_requirements:
     - name: User
@@ -93,7 +94,6 @@ tags:
     - 国漫
 urls:
     - https://pt.xingyungept.org/
-    - https://pt.xingyungept.cn/
 user_info:
     path: index.php
     user_torrent_list_api: "/getusertorrentlistajax.php?userid={id}&type={type}"

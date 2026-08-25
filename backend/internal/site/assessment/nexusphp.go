@@ -1,14 +1,11 @@
 package assessment
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/PuerkitoBio/goquery"
 
 	"github.com/hxpt/ptpatronus/internal/site"
 )
@@ -52,11 +49,9 @@ func (NexusPHPAdapter) FetchAssessments(ctx context.Context, hc HTTPDoer, def De
 		strings.Contains(bodyLow, "请登录") || len(resp.Body) < 500 {
 		return nil, site.ErrNotLoggedIn
 	}
-	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(resp.Body))
-	if err != nil {
-		return nil, nil
-	}
-	return parseNexusPHPAssessment(doc.Text()), nil
+	// 喂原始 HTML 而非 doc.Text()：normalizeHTML 靠块级闭合标签（</div>/</tr>）切行，
+	// doc.Text() 已剥标签且部分皮肤源码单行压缩（憨憨考核块整块一行），指标会粘连错位。
+	return parseNexusPHPAssessment(string(resp.Body)), nil
 }
 
 var (
@@ -67,10 +62,14 @@ var (
 	htmlTagRe   = regexp.MustCompile(`<[^>]+>`)
 	// header：名称：X 时间：YYYY-MM-DD HH:MM ~ YYYY-MM-DD HH:MM
 	headerRe = regexp.MustCompile(`名称[：:]\s*(.+?)\s+时间[：:]\s*(\d{4}[./-]\d{1,2}[./-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\s*[~～\-]\s*(\d{4}[./-]\d{1,2}[./-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)`)
+	// 憨憨式 header：标题行「新手考核:」+ 独立行「考核时间：YYYY-MM-DD HH:MM:SS ~ …」（无名称段）
+	headerTimeRe = regexp.MustCompile(`考核时间[：:]\s*(\d{4}[./-]\d{1,2}[./-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)\s*[~～\-]\s*(\d{4}[./-]\d{1,2}[./-]\d{1,2}\s+\d{1,2}:\d{2}(?::\d{2})?)`)
 	// 单行完整指标：指标N：名称, 要求:X, 当前:Y, 结果:Z
 	metricRe = regexp.MustCompile(`指标\s*(\d+)[：:]\s*([^,，]+?)[,，]\s*要求[：:]\s*(.+?)[,，]\s*当前[：:]\s*(.+?)[,，]\s*结果[：:]\s*(.+)`)
+	// 憨憨式单行指标：考核指标N：名称, 要求:X, 当前:Y, 结果:Z（前缀多个「考核」二字）
+	metricHhanRe = regexp.MustCompile(`(?:考核)?指标\s*(\d+)[：:]\s*(.+?)\s*[,，]\s*要求[：:]\s*(.+?)\s*[,，]\s*当前[：:]\s*(.+?)\s*[,，]\s*结果[：:]\s*(.+)`)
 	// 指标行起始（拆行回退用）
-	metricStartRe = regexp.MustCompile(`指标\s*(\d+)[：:]\s*(.*)`)
+	metricStartRe = regexp.MustCompile(`(?:考核)?指标\s*(\d+)[：:]\s*(.*)`)
 	requireRe     = regexp.MustCompile(`要求[：:]\s*(.+)`)
 	currentRe     = regexp.MustCompile(`当前[：:]\s*(.+)`)
 	resultRe      = regexp.MustCompile(`结果[：:]\s*(.+)`)
@@ -119,10 +118,29 @@ func parseNexusPHPAssessment(text string) []Task {
 		}
 	}
 	if headerIdx < 0 {
+		// C：憨憨式——独立「考核时间：A ~ B」行，名称取其前最近的短标题行（如「新手考核:」）
+		for i, ln := range merged {
+			m := headerTimeRe.FindStringSubmatch(ln)
+			if len(m) < 3 {
+				continue
+			}
+			startStr, endStr = m[1], m[2]
+			headerIdx = i
+			for j := i - 1; j >= 0 && i-j <= 3; j-- {
+				t := strings.TrimSpace(strings.Trim(merged[j], "：: "))
+				if t != "" && !strings.Contains(merged[j], "时间") && len([]rune(t)) <= 20 {
+					name = t
+					break
+				}
+			}
+			break
+		}
+	}
+	if headerIdx < 0 {
 		return nil
 	}
 	if name == "" {
-		name = "绩效考核"
+		name = "新手考核"
 	}
 
 	// 指标解析（Phase 1：merged 全行；Phase 2：原始逐行回退）
@@ -163,4 +181,3 @@ func parseNexusPHPAssessment(text string) []Task {
 		FetchedAt: time.Now(),
 	}}
 }
-

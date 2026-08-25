@@ -11,8 +11,8 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/media"
 
-	"golang.org/x/sync/singleflight"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"golang.org/x/sync/singleflight"
 )
 
 // 推荐信息流（热门/趋势）：并发扇出 + 内存缓存。

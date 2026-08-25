@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/cookiecloud"
@@ -31,14 +32,29 @@ type ccStore interface {
 // 并按域名覆盖本地失效站的 cookie，根治 Laravel qw_session 等 session 短寿站的掉 cookie 问题。
 type CookieCloudSettings struct {
 	Enabled      bool   `json:"enabled"`
-	Server       string `json:"server"`       // CookieCloud 服务器 URL，如 https://cc.example.com
-	UUID         string `json:"uuid"`         // 用户 UUID/key
+	Mode         string `json:"mode"`         // external=外部服务器（默认）；builtin=内置服务端（PTPatronus 自身充当）
+	Server       string `json:"server"`       // external 模式：CookieCloud 服务器 URL；builtin 模式忽略
+	UUID         string `json:"uuid"`         // 用户 UUID/key（builtin 模式自动生成）
 	PasswordEnc  string `json:"password_enc"` // AES-GCM 加密的端到端密码（security.Crypto.Encrypt）
 	IntervalMin  int    `json:"interval_min"` // 同步间隔（分钟），软间隔
 	UpdateMode   string `json:"update_mode"`  // disconnected=仅失效站（默认）；always=总是用云端覆盖同名 cookie
 	Direction    string `json:"direction"`    // pull=仅拉取；push=仅推送；both=双向（默认）
 	LastSyncUnix int64  `json:"last_sync_unix"`
 	LastError    string `json:"last_error"`
+}
+
+// CookieCloudMode 常量。
+const (
+	CookieCloudModeExternal = "external"
+	CookieCloudModeBuiltin  = "builtin"
+)
+
+// normalizeCookieCloudMode 归一化模式（空=external）。
+func normalizeCookieCloudMode(mode string) string {
+	if strings.EqualFold(strings.TrimSpace(mode), CookieCloudModeBuiltin) {
+		return CookieCloudModeBuiltin
+	}
+	return CookieCloudModeExternal
 }
 
 // defaultCookieCloudSettings 填充合理默认值（间隔 2 小时）。
@@ -49,9 +65,11 @@ func defaultCookieCloudSettings() CookieCloudSettings {
 // CookieCloudSettingsInput 是 handler 传入的输入（密码明文，空=保留旧密码）。
 type CookieCloudSettingsInput struct {
 	Enabled     bool   `json:"enabled"`
-	Server      string `json:"server"`
-	UUID        string `json:"uuid"`
-	Password    string `json:"password"` // 明文；空=保留旧密码
+	Mode        string `json:"mode"`       // external | builtin
+	Server      string `json:"server"`     // external 模式用
+	UUID        string `json:"uuid"`       // builtin 模式留空=自动生成；也可显式指定
+	Password    string `json:"password"`   // 明文；空=保留旧密码（builtin 首次保存自动生成）
+	Regenerate  bool   `json:"regenerate"` // builtin 模式：重新生成 UUID+密码（旧数据作废）
 	IntervalMin int    `json:"interval_min"`
 	UpdateMode  string `json:"update_mode"` // disconnected | always
 	Direction   string `json:"direction"`   // pull | push | both
@@ -69,6 +87,7 @@ type CookieCloudSyncReport struct {
 
 // CookieCloudChain 编排 CookieCloud 同步：拉取加密 payload → 解密 → 按 eTLD+1 匹配本地站 →
 // 仅更新已失效站的 cookie + 自动新增匹配内置定义的站。设置落 SystemConfig，密码加密。
+// builtin 模式下本链同时充当服务端（srv store + ServerUpdate 推送入口）。
 type CookieCloudChain struct {
 	store     ccStore
 	crypto    *security.Crypto
@@ -76,6 +95,9 @@ type CookieCloudChain struct {
 	registry  *site.Registry
 	siteChain *SiteChain
 	hc        *httpclient.Client
+
+	srvMu sync.Mutex
+	srv   cookiecloud.ServerStore
 }
 
 // NewCookieCloudChain 构造。
@@ -125,10 +147,13 @@ func (c *CookieCloudChain) decryptedPassword(s CookieCloudSettings) (string, err
 func (c *CookieCloudChain) passwordConfigured() bool { return c.GetSettings().PasswordEnc != "" }
 
 // SaveSettings 保存配置：密码非空则加密存，空则保留旧密文。返回保存后的配置。
+// builtin 模式：UUID/密码留空时自动生成（返回值含新 UUID；密码不回传明文，
+// 由 handler 在响应里一次性给前端展示）。
 func (c *CookieCloudChain) SaveSettings(in CookieCloudSettingsInput) (CookieCloudSettings, error) {
 	cur := c.GetSettings()
 	s := cur
 	s.Enabled = in.Enabled
+	s.Mode = normalizeCookieCloudMode(in.Mode)
 	s.Server = strings.TrimRight(strings.TrimSpace(in.Server), "/")
 	s.UUID = strings.TrimSpace(in.UUID)
 	if in.IntervalMin > 0 {
@@ -150,6 +175,20 @@ func (c *CookieCloudChain) SaveSettings(in CookieCloudSettingsInput) (CookieClou
 			return cur, fmt.Errorf("加密密码失败: %w", err)
 		}
 		s.PasswordEnc = enc
+	}
+	// builtin：自动生成缺失凭证；regenerate 强制重生成（旧推送数据作废——uuid 变了，
+	// 旧 envelope 不再匹配，天然隔离，无需显式清 store）。
+	if s.Mode == CookieCloudModeBuiltin && (in.Regenerate || s.UUID == "" || s.PasswordEnc == "") {
+		if in.Regenerate || s.UUID == "" {
+			s.UUID = genCookieCloudToken(22)
+		}
+		if in.Regenerate || s.PasswordEnc == "" {
+			enc, err := c.crypto.Encrypt(genCookieCloudToken(22))
+			if err != nil {
+				return cur, fmt.Errorf("生成密码失败: %w", err)
+			}
+			s.PasswordEnc = enc
+		}
 	}
 	if err := c.saveSettings(s); err != nil {
 		return cur, err
@@ -204,7 +243,12 @@ func (c *CookieCloudChain) recordSyncResult(s CookieCloudSettings, report Cookie
 //   - push：本地启用站 cookie → 合并进云端 cookie_data 后 POST /update
 //   - both：先 pull 再 push（推送用最新本地态，含刚 pull 的结果）
 func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (CookieCloudSyncReport, error) {
-	if s.Server == "" || s.UUID == "" || s.PasswordEnc == "" {
+	builtin := normalizeCookieCloudMode(s.Mode) == CookieCloudModeBuiltin
+	if builtin {
+		if s.UUID == "" || s.PasswordEnc == "" {
+			return CookieCloudSyncReport{}, errors.New("内置服务端未生成凭证（保存配置自动生成）")
+		}
+	} else if s.Server == "" || s.UUID == "" || s.PasswordEnc == "" {
 		return CookieCloudSyncReport{}, errors.New("CookieCloud 未配置完整（server/uuid/password）")
 	}
 	password, err := c.decryptedPassword(s)
@@ -223,13 +267,18 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 	if dir == "pull" || dir == "push" || dir == "both" {
 		p, ferr := c.fetchPayload(ctx, s, password)
 		if ferr != nil {
-			if dir == "pull" {
+			if dir == "pull" && !builtin {
 				return report, ferr
 			}
-			// push/both：拉取失败时从空 map 推送，至少上传本端站点
-			slog.Warn("cookiecloud fetch before push failed; pushing from empty base", "err", ferr)
-			payload = map[string][]cookiecloud.CookieEntry{}
-			report.Errors = append(report.Errors, "拉取云端失败，将仅推送本地: "+ferr.Error())
+			if dir == "pull" && builtin {
+				// builtin：store 无数据=浏览器还没推过，不算错误，报空报告
+				slog.Info("cookiecloud builtin store empty, skip pull", "err", ferr)
+			} else {
+				// push/both：拉取失败时从空 map 推送，至少上传本端站点
+				slog.Warn("cookiecloud fetch before push failed; pushing from empty base", "err", ferr)
+				payload = map[string][]cookiecloud.CookieEntry{}
+				report.Errors = append(report.Errors, "拉取云端失败，将仅推送本地: "+ferr.Error())
+			}
 		} else {
 			payload = p
 		}
@@ -251,10 +300,31 @@ func (c *CookieCloudChain) doSync(ctx context.Context, s CookieCloudSettings) (C
 	return report, nil
 }
 
-// fetchPayload GET /get/{uuid} 并解密。
+// fetchPayload 拉取并解密。builtin 模式直读内置 store（无数据时返回「未推送」错误
+// 供调用方区分）；external 模式 GET /get/{uuid}。
 func (c *CookieCloudChain) fetchPayload(ctx context.Context, s CookieCloudSettings, password string) (map[string][]cookiecloud.CookieEntry, error) {
+	if normalizeCookieCloudMode(s.Mode) == CookieCloudModeBuiltin {
+		env, ok := c.serverStore().Get(s.UUID)
+		if !ok {
+			return nil, fmt.Errorf("内置服务端暂无数据（浏览器扩展推送后自动同步）")
+		}
+		body, err := cookiecloud.MarshalEnvelope(env)
+		if err != nil {
+			return nil, err
+		}
+		payload, err := cookiecloud.DecodeEnvelope(body, s.UUID, password)
+		if err != nil {
+			return nil, fmt.Errorf("解密 CookieCloud 数据失败: %w", err)
+		}
+		if payload == nil {
+			payload = map[string][]cookiecloud.CookieEntry{}
+		}
+		return payload, nil
+	}
 	// server 是管理员在设置页配的可信 URL（常含内网自建 CookieCloud），ssrf=false 放行内网。
-	fetchURL := strings.TrimRight(s.Server, "/") + "/get/" + url.PathEscape(s.UUID)
+	// 带 crypto_type=aes-128-cbc-fixed：若服务端支持该参数会按 fixed-IV 格式返回密文；
+	// 不支持的服务端（老版本）忽略参数返回 legacy 密文，解密侧按前缀自动识别两种格式。
+	fetchURL := strings.TrimRight(s.Server, "/") + "/get/" + url.PathEscape(s.UUID) + "?crypto_type=aes-128-cbc-fixed"
 	resp, err := c.hc.Get(ctx, fetchURL, "", false)
 	if err != nil {
 		return nil, fmt.Errorf("拉取 CookieCloud 失败: %w", err)

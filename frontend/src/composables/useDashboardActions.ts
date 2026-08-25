@@ -6,6 +6,7 @@ import { useWs } from '@/composables/useWs'
 import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
 import { useDashboardSync } from '@/composables/useDashboardSync'
 import { useDashboardData } from '@/composables/useDashboardData'
+import { alertBox } from '@/utils/alertBox'
 import type { SiteStatItem } from '@/api/dashboard'
 import type { RingSegment } from '@/components/dashboard/DashboardRingChart.vue'
 
@@ -67,7 +68,7 @@ export function useDashboardActions() {
     const status = connectivity.value[row.site_id]
     if (!status || status.status === 'connected') return
     const title = status.status === 'disabled' ? `${row.site_name} 已停用` : `${row.site_name} 未联通`
-    ElMessageBox.alert(status.error || '站点未返回具体失败原因', title, {
+    alertBox(status.error || '站点未返回具体失败原因', title, {
       type: 'error',
       confirmButtonText: '知道了',
     })
@@ -81,7 +82,7 @@ export function useDashboardActions() {
         return
       }
     }
-    ElMessageBox.alert(action.detail, `${action.site} · ${action.title}`, {
+    alertBox(action.detail, `${action.site} · ${action.title}`, {
       type: action.tone === 'danger' ? 'error' : action.tone === 'warning' ? 'warning' : 'info',
       confirmButtonText: '知道了',
     })

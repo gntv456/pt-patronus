@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/subtitle"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // SubtitleSettings 字幕源凭据 + 转换偏好。空 token/key → 该源跳过（ErrNotConfigured）。

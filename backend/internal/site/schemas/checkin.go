@@ -170,7 +170,7 @@ func (n *NexusPHP) Checkin(ctx context.Context, def *site.SiteMetadata, baseURL,
 		return nil, err
 	}
 	if resp.IsCloudflare() {
-		return nil, fmt.Errorf("blocked by cloudflare on %s", baseURL)
+		return nil, fmt.Errorf("blocked by cloudflare on %s（站点开了 CF 人机验证：用浏览器访问该站通过验证后，重新导出完整 cookie 再更新到本站）", baseURL)
 	}
 	return parseCheckinResponse(resp, def), nil
 }

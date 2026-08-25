@@ -1,6 +1,8 @@
 # rousipro — 自动生成自 PT-depiler（tools/convert-definitions.go）。
-# schema: rousi。Rousi Pro API 由 backend/internal/site/schemas/rousi.go 适配。
-# 搜索/用户资料 API 已按 PT-depiler + MoviePilot 契约实现；真站 live_smoke 仍建议定期跑。
+# schema: rousi。2026-08 站点已重构为 PeerGo（rousi.pro 同域）：适配器先走 PeerGo
+# /api/v1/torrents（query/category/limit/offset，匿名可搜）+ /api/v1/me/profile|economy
+# （会话 cookie 认证），旧版 Bearer passkey /api/v1/search|profile 端点 404 时自动回退。
+# 下方 selectors 为旧版 JSON 字段映射，仅供 legacy 分支使用。
 
 aka:
     - Rousi

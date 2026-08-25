@@ -1,6 +1,5 @@
 package chain
 
-
 import (
 	"context"
 	"errors"
@@ -110,4 +109,3 @@ func (c *MedalChain) formAction(ctx context.Context, s *models.Site, medalID, ac
 	}
 	return res, nil
 }
-

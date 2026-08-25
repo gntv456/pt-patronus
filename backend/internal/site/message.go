@@ -54,6 +54,12 @@ func ParseMessages(doc *goquery.Document, mailbox MailboxType) []Message {
 			return tr.Find("td").Length() >= 3 && tr.Find(`a[href*="viewmessage"]`).Length() > 0
 		})
 	}
+	if rows.Length() == 0 {
+		// 现代 div 布局（憨憨 HHan 皮肤）：无 table，行为
+		// div.grid > [checkbox 行为][已读图标][<a href="messages.php?action=viewmessage&id=N">主题</a>][发讯者][<span title="时间">时间</span>]。
+		// 复用下方 tr 解析需 td/cells 结构，这里独立解析（cells 无 td 可取）。
+		return parseMessagesDivRows(doc, mailbox, now)
+	}
 	rows.Each(func(idx int, tr *goquery.Selection) {
 		cells := tr.Find("td")
 		if cells.Length() < 3 {
@@ -116,6 +122,65 @@ func ParseMessages(doc *goquery.Document, mailbox MailboxType) []Message {
 			Mailbox:      mailbox,
 			FetchedAt:    now,
 			AdminActions: &AdminActions{DeleteURL: deleteURL, ItemID: itemID},
+		})
+	})
+	return out
+}
+
+// parseMessagesDivRows 解析现代 div 布局的消息行（憨憨 HHan 皮肤）。
+// 行容器是 #mail-table-display 的直接子 div（表头/分页不带 viewmessage 链接，天然过滤）。
+// 结构：<div class="grid ..."><div>checkbox name="messages[]" value=ID</div><div>已读图标</div>
+//
+//	<div><a href="messages.php?action=viewmessage&id=ID">主题</a></div><div>发讯者</div>
+//	<div><span title="YYYY-MM-DD HH:MM:SS">相对时间</span></div></div>
+//
+// sender 无 userdetails 链接时取主题链接所在格的下一格文本（系统消息为「系统」）。
+func parseMessagesDivRows(doc *goquery.Document, mailbox MailboxType, now time.Time) []Message {
+	var out []Message
+	doc.Find(`div a[href*="viewmessage"]`).Each(func(idx int, a *goquery.Selection) {
+		title := strings.TrimSpace(a.Text())
+		if title == "" || title == "No Subject" {
+			return
+		}
+		row := a.Closest("div.grid")
+		if row.Length() == 0 {
+			row = a.Parent()
+		}
+		href, _ := a.Attr("href")
+		sender := ""
+		row.Find(`a[href*="userdetails.php"]`).Each(func(_ int, u *goquery.Selection) {
+			if t := strings.TrimSpace(u.Text()); t != "" && !pureDigitRe.MatchString(t) {
+				sender = t
+			}
+		})
+		if sender == "" {
+			// 主题链接父格的下一个兄弟格为发讯者列
+			if cell := a.Parent(); cell.Length() > 0 {
+				sender = strings.TrimSpace(cell.Next().Text())
+			}
+		}
+		if sender == "" {
+			sender = "未知"
+		}
+		date := ""
+		if sp := row.Find(`span[title]`).First(); sp.Length() > 0 {
+			date = strings.TrimSpace(sp.AttrOr("title", ""))
+		}
+		itemID := ""
+		if iv, ok := row.Find(`input[name="messages[]"], input[name="id[]"], input[type="checkbox"]`).First().Attr("value"); ok {
+			itemID = iv
+		}
+		unread := row.Find("img.unreadpm, img.newpm").Length() > 0
+		out = append(out, Message{
+			ID:           0,
+			Sender:       sender,
+			Title:        title,
+			Date:         date,
+			URL:          href,
+			IsRead:       !unread,
+			Mailbox:      mailbox,
+			FetchedAt:    now,
+			AdminActions: &AdminActions{ItemID: itemID},
 		})
 	})
 	return out

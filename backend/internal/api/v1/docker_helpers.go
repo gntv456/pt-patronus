@@ -1,8 +1,8 @@
-﻿package v1
+package v1
 
 import (
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"strings"
 )
 

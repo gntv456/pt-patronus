@@ -1,6 +1,5 @@
 package v1
 
-
 import (
 	"net/http"
 
@@ -254,4 +253,3 @@ func (h *EntertainmentHandler) Sell(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
-

@@ -13,6 +13,11 @@ import (
 
 func TestRousiSearch(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 旧版站无 PeerGo torrents 端点 → 先探测 404 再走 legacy search
+		if r.URL.Path == "/api/v1/torrents" {
+			http.NotFound(w, r)
+			return
+		}
 		if r.Header.Get("Authorization") != "Bearer pk" {
 			t.Fatalf("authorization = %q", r.Header.Get("Authorization"))
 		}
@@ -71,6 +76,11 @@ func TestRousiSearch(t *testing.T) {
 
 func TestRousiFetchUserInfo(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 旧版站无 PeerGo me 端点 → 404 回退 legacy
+		if r.URL.Path == "/api/v1/me/profile" || r.URL.Path == "/api/v1/me/economy" {
+			http.NotFound(w, r)
+			return
+		}
 		if r.Header.Get("Authorization") != "Bearer pk" {
 			t.Fatalf("authorization = %q", r.Header.Get("Authorization"))
 		}
@@ -128,5 +138,78 @@ func TestRousiFetchUserInfo(t *testing.T) {
 		got.Seeding != 7 || got.Leeching != 1 || got.SeedingSize != 4096 ||
 		got.SeedingTime != 3661 || got.Bonus != 1234.5 || got.BonusPerHour != 12.5 {
 		t.Fatalf("stats = %+v", got)
+	}
+}
+
+func TestRousiSearchPeerGo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/torrents" {
+			t.Fatalf("path = %s", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("query"); got != "matrix" {
+			t.Fatalf("query = %q", got)
+		}
+		if got := r.URL.Query().Get("category"); got != "movies" {
+			t.Fatalf("category = %q", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"items":[
+			{"id":8448,"name":"Monogatari S05","subtitle":"物语系列","size_bytes":1073741824,
+			 "seeders":2,"leechers":4,"completed":2,"uploaded_at":"2026-07-05T12:34:56Z",
+			 "promotion":"double_upload_free","category":{"id":"anime","name":"动漫"}}
+		],"limit":100,"offset":0,"total":1}`))
+	}))
+	defer srv.Close()
+
+	hc, err := httpclient.New(httpclient.Options{AllowPrivate: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := NewRousi(hc).Search(context.Background(), &site.SiteMetadata{}, srv.URL, "", "matrix", "movie", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("len = %d", len(got))
+	}
+	tor := got[0]
+	if tor.ID != "8448" || tor.Title != "Monogatari S05" || tor.Seeders != 2 || tor.Completed != 2 {
+		t.Fatalf("torrent = %+v", tor)
+	}
+	if !tor.Free || tor.DownloadVolumeFactor != 0 || tor.UploadVolumeFactor != 2 {
+		t.Fatalf("promotion not parsed: %+v", tor)
+	}
+	if tor.Category != "动漫" || tor.Size == "" {
+		t.Fatalf("category/size = %q/%q", tor.Category, tor.Size)
+	}
+}
+
+func TestRousiFetchUserInfoPeerGo(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/me/profile":
+			_, _ = w.Write([]byte(`{"username":"gntv","registered_at":"2026-01-02T03:04:05Z","level":{"id":3,"name":"Power User"}}`))
+		case "/api/v1/me/economy":
+			_, _ = w.Write([]byte(`{"uploaded":"2048","downloaded":"1024","ratio":2.0,"bonus":8888.5,"seed_points":12.3}`))
+		default:
+			t.Fatalf("path = %s", r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	hc, err := httpclient.New(httpclient.Options{AllowPrivate: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := NewRousi(hc).FetchUserInfo(context.Background(), &site.SiteMetadata{}, srv.URL, "session=abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Name != "gntv" || got.Level != "Power User" || got.JoinDate != "2026-01-02 03:04:05" {
+		t.Fatalf("user = %+v", got)
+	}
+	if got.Uploaded != 2048 || got.Downloaded != 1024 || got.Ratio != 2 || got.Bonus != 8888.5 {
+		t.Fatalf("economy = %+v", got)
 	}
 }

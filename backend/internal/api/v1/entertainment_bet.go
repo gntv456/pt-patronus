@@ -1,6 +1,5 @@
 package v1
 
-
 import (
 	"context"
 	"net/http"
@@ -8,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/hxpt/ptpatronus/internal/entertainment"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/entertainment"
 )
 
 type betReq struct {
@@ -281,4 +280,3 @@ func (h *EntertainmentHandler) BigSmallRedpacket(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
-

@@ -1,4 +1,4 @@
-﻿package v1
+package v1
 
 import (
 	"context"
@@ -100,7 +100,7 @@ type simpleCreateReq struct {
 	Env           map[string]string `json:"env"`
 	Ports         []portMapping     `json:"ports"`
 	Binds         []string          `json:"binds"`
-	RestartPolicy string            `json:"restart_policy"`  // no|always|unless-stopped|on-failure
+	RestartPolicy string            `json:"restart_policy"` // no|always|unless-stopped|on-failure
 	AutoStart     bool              `json:"auto_start"`
 	CPULimit      float64           `json:"cpu_limit"`       // CPU 核数限制，如 1.5 表示 1.5 核；0 为不限制
 	MemoryLimitMB int64             `json:"memory_limit_mb"` // 内存上限 MB；0 为不限制

@@ -1,4 +1,5 @@
 # gtorg — 搜索 selector 与 user_info.pages 已按 PT-depiler 结构迁移，并由 GenericHTML mock 覆盖；真实站点仍建议 live smoke。
+dead: true
 id: gtorg
 level_requirements:
     - id: 1

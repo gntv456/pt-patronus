@@ -25,7 +25,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 // newSiteInfra 构造站点基础设施：注册全部 schema 适配器到 registry，挂载到 module 总线，
 // 返回 registry / event bus / chain.Base / mteam 适配器。hc 为站点抓取 HTTP 客户端。
 func newSiteInfra(hc *httpclient.Client) (*site.Registry, *event.Bus, chain.Base, *schemas.MTeam) {
@@ -119,6 +118,8 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("ubits.club", entertainment.UbWheelGame{})
 	entReg.Register("pandapt.net", entertainment.LuckyDrawWheelGame{})
 	entReg.Register("crabpt.vip", entertainment.LuckyDrawWheelGame{})
+	// 憨憨：幸运大转盘（lucky.php + POST /plugin/lucky-draw，纯 Cookie，货币=憨豆）
+	entReg.Register("hhanclub.net", entertainment.HhanLuckyWheelGame{})
 	entReg.Register("duckboobee.org", entertainment.MarchWheelGame{})
 	entReg.Register("www.tangpt.top", entertainment.TangptLotteryGame{})
 	// 下注/选号（批2，Bettable）：猜大小/骰宝/双色球/翻面/赛事押注/红包
@@ -154,7 +155,6 @@ func newMedalRegistry() *medalwall.Registry {
 	medalReg.Register(medalwall.Unit3DAdapter{})
 	return medalReg
 }
-
 
 func defaultDefinitionsDir() string {
 	for _, dir := range []string{"./definitions", "./backend/definitions"} {

@@ -1,5 +1,6 @@
 # morethantv — 自动生成自 PT-depiler（tools/convert-definitions.go）。
 # schema: luminance。已接入通用/专用适配器，待真实站点校准。
+dead: true
 aka:
     - MTV
 description: MoreThanTV is a Private Torrent Tracker for TV / MOVIES

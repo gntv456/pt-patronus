@@ -6,6 +6,11 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// normText 压缩空白为单个空格（medalwall 包内等价 site.normalizeSpace）。
+func normText(s string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(s)), " ")
+}
+
 func parseShopDoc(doc *goquery.Document, baseURL string) []Item {
 	if items := parseShopCards(doc, baseURL); len(items) >= 2 {
 		return items
@@ -13,11 +18,162 @@ func parseShopDoc(doc *goquery.Document, baseURL string) []Item {
 	if items := parseShopTable(doc, baseURL); len(items) > 0 {
 		return items
 	}
+	if items := parseShopMedalGrid(doc, baseURL); len(items) > 0 {
+		return items
+	}
 	// 卡片不足 2 也作 best-effort 返回
 	if items := parseShopCards(doc, baseURL); len(items) > 0 {
 		return items
 	}
 	return nil
+}
+
+// parseShopMedalGrid div 网格布局（憨憨 HHan 皮肤）：无 table 无 data-*，
+// 每行 div.medal-table 的子 div 按表头列序摆放：
+//
+//	[图片][说明(名称+描述)][购买价格][库存][限购][憨豆加成百分比][加成天数][购买类型 input][操作 input]
+//
+// 前提：页面存在 medal-table 表头行（列名含「购买价格」+「加成」），按列头建索引后逐行取格，
+// 跨列序变动鲁棒。购买/操作列 input 的 value/disabled 推断状态（需要更多魔力值/已过可购买时间/购买）。
+func parseShopMedalGrid(doc *goquery.Document, baseURL string) []Item {
+	// 表头：div.medal-table 含「说明」与「购买价格」的行（背景表头行）
+	var headers []string
+	headerHit := false
+	doc.Find("div.medal-table").Each(func(_ int, row *goquery.Selection) {
+		if headerHit {
+			return
+		}
+		var cols []string
+		row.Children().Each(func(_ int, cell *goquery.Selection) {
+			cols = append(cols, normText(cell.Text()))
+		})
+		if sliceContains(cols, "说明") && sliceContainsSome(cols, "购买价格", "价格") {
+			headers = cols
+			headerHit = true
+		}
+	})
+	if !headerHit {
+		return nil
+	}
+	col := func(name ...string) int {
+		for _, want := range name {
+			for i, h := range headers {
+				if strings.Contains(h, want) {
+					return i
+				}
+			}
+		}
+		return -1
+	}
+	idxDesc := col("说明")
+	idxPrice := col("购买价格", "价格")
+	idxStock := col("库存", "庫存")
+	idxBonus := col("加成")
+	idxDays := col("天数", "天數")
+	if idxPrice < 0 || idxDesc < 0 {
+		return nil
+	}
+
+	var out []Item
+	doc.Find("div.medal-table").Each(func(_ int, row *goquery.Selection) {
+		cells := row.Children()
+		if cells.Length() != len(headers) || cells.Length() < 4 {
+			return // 表头行/其他网格元素
+		}
+		// 名称+描述格：嵌套 div，首行名称、次行灰色描述
+		descCell := cells.Eq(idxDesc)
+		nameDiv := descCell.Find("div").First()
+		name := normText(nameDiv.Text())
+		img := resolveImg(row.Find("img"), baseURL)
+		if name == "" {
+			name = normText(row.Find("img").AttrOr("alt", ""))
+		}
+		if name == "" {
+			return
+		}
+		description := ""
+		if subs := descCell.Find("div"); subs.Length() > 1 {
+			description = normText(subs.Eq(1).Text())
+		}
+		cellText := func(i int) string {
+			if i < 0 || i >= cells.Length() {
+				return ""
+			}
+			return normText(cells.Eq(i).Text())
+		}
+		// 状态：购买类型/操作列的 input value（disabled 与否不影响：憨憨未拥有时 value=购买）
+		status := StatusAvailable
+		medalID := ""
+		row.Find("input[type='button']").Each(func(_ int, inp *goquery.Selection) {
+			if id := inp.AttrOr("data-id", ""); id != "" && medalID == "" {
+				medalID = id
+			}
+			v := inp.AttrOr("value", "")
+			switch {
+			case strings.Contains(v, "已拥有") || strings.Contains(v, "已擁有") || strings.Contains(v, "已购"):
+				status = StatusOwned
+			case strings.Contains(v, "售罄") || strings.Contains(v, "库存不足"):
+				status = StatusOutOfStock
+			case strings.Contains(v, "需要更多") || strings.Contains(v, "余额不足"):
+				status = StatusAvailable // 买得起时会变「购买」；余额不足仍可展示为可购
+			case strings.Contains(v, "已过") || strings.Contains(v, "未开售") || strings.Contains(v, "不可"):
+				status = StatusDiscontinued
+			}
+		})
+		it := Item{
+			MedalID:        medalID,
+			Name:           name,
+			Description:    description,
+			ImageSmall:     img,
+			Price:          parsePrice(cellText(idxPrice)),
+			OriginalPrice:  parsePrice(cellText(idxPrice)),
+			Validity:       cellText(idxDays),
+			BonusRate:      cellText(idxBonus),
+			Currency:       detectGridCurrency(headers),
+			PurchaseStatus: status,
+			Stock:          parseStock(cellText(idxStock)),
+		}
+		it.MedalID = resolveMedalID(it.MedalID, row)
+		applySaleWindow(&it)
+		out = append(out, it)
+	})
+	return out
+}
+
+// detectGridCurrency 从表头列名推断货币：憨憨「憨豆加成百分比」→憨豆，其余回落 detectCurrency 逻辑。
+func detectGridCurrency(headers []string) string {
+	joined := strings.Join(headers, " ")
+	switch {
+	case strings.Contains(joined, "憨豆"):
+		return "憨豆"
+	case strings.Contains(joined, "爆米花"):
+		return "爆米花"
+	case strings.Contains(joined, "U币"):
+		return "U币"
+	case strings.Contains(joined, "金币") || strings.Contains(joined, "金幣"):
+		return "金币"
+	case strings.Contains(joined, "魔力"):
+		return "魔力"
+	}
+	return "魔力"
+}
+
+func sliceContains(ss []string, want string) bool {
+	for _, s := range ss {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
+
+func sliceContainsSome(ss []string, wants ...string) bool {
+	for _, w := range wants {
+		if sliceContains(ss, w) {
+			return true
+		}
+	}
+	return false
 }
 
 // parseShopCards 卡片式布局（好学 .medal-card + view-detail 按钮 data-* / Audiences article.medal-item）。

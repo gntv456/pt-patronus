@@ -1,8 +1,10 @@
 package entertainment
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -68,11 +70,10 @@ func (LuckyDrawWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, 
 	return luckyDrawResult(m), nil
 }
 
-// Prizes 抠 luckywheel.php 页面内嵌的奖品 JSON（{"id","typeText","amountText"}）作为转盘扇区。
+// Prizes 抠转盘页内嵌的奖品 JSON（{"id","typeText","amountText"}）作为转盘扇区。
 // 供通用 SpinnerGame 画真转盘用；解析失败返回空（前端降级为装饰扇区）。
 func (LuckyDrawWheelGame) Prizes(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) ([]PrizeDef, error) {
-	page := joinPath(baseURL, "luckywheel.php")
-	resp, err := hc.GetWithHeaders(ctx, page, cr.Cookie, map[string]string{"Referer": page}, true)
+	body, err := luckyDrawWheelPage(ctx, hc, baseURL, cr.Cookie)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +81,7 @@ func (LuckyDrawWheelGame) Prizes(ctx context.Context, hc *httpclient.Client, bas
 	// 避免页面里其它 "id": 干扰配对。
 	objRe := compileRegex(`\{[^{}]*"typeText":"([^"]*)"[^{}]*"amountText":"([^"]*)"[^{}]*\}`)
 	idRe := compileRegex(`"id":(\d+)`)
-	matches := objRe.FindAllSubmatch(resp.Body, -1)
+	matches := objRe.FindAllSubmatch(body, -1)
 	out := make([]PrizeDef, 0, len(matches))
 	for i, m := range matches {
 		typeText := string(m[1])
@@ -95,23 +96,42 @@ func (LuckyDrawWheelGame) Prizes(ctx context.Context, hc *httpclient.Client, bas
 	return out, nil
 }
 
-// luckyDrawWheelPage GET luckywheel.php（取余额/奖品共用）。
+// luckyDrawPagePath 转盘页路径：站点插件升级后从 luckywheel.php 迁到 /plugin/lucky-draw
+// （2026-08 实测 PANDA/蟹黄堡 luckywheel.php 均 404，余额/奖品 JSON 都在新页）。
+// 取页时先试新路径，404/空回退旧路径（老版本插件站仍用 luckywheel.php）。
+const (
+	luckyDrawNewPage = "plugin/lucky-draw"
+	luckyDrawOldPage = "luckywheel.php"
+)
+
+// luckyDrawWheelPage GET 转盘页（取余额/奖品共用）。新路径 200 优先；否则回退旧路径。
 func luckyDrawWheelPage(ctx context.Context, hc *httpclient.Client, baseURL, cookie string) ([]byte, error) {
-	page := joinPath(baseURL, "luckywheel.php")
-	resp, err := hc.GetWithHeaders(ctx, page, cookie, map[string]string{"Referer": page}, true)
-	if err != nil {
-		return nil, err
+	for _, p := range []string{luckyDrawNewPage, luckyDrawOldPage} {
+		page := joinPath(baseURL, p)
+		resp, err := hc.GetWithHeaders(ctx, page, cookie, map[string]string{"Referer": page}, true)
+		if err != nil {
+			continue
+		}
+		// 有效转盘页判定：200 且含转盘特征（奖品 JSON typeText / 余额行）；短页面（测试桩/
+		// 精简皮肤）也认，避免误回退。404 页（站点无此路径）特征都不含 → 落到下一候选。
+		if resp.StatusCode == 200 && (bytes.Contains(resp.Body, []byte("typeText")) ||
+			bytes.Contains(resp.Body, []byte("当前用户拥有")) || len(resp.Body) > 1000) {
+			return resp.Body, nil
+		}
 	}
-	return resp.Body, nil
+	return nil, fmt.Errorf("luckydraw page unreachable")
 }
 
-// Stats 余额：抠 luckywheel.php「当前用户拥有魔力：N」（与奖品金额的「魔力：N」区分，带「当前用户拥有」前缀唯一）。
+// Stats 余额：抠转盘页「当前用户拥有<货币>：N」（PANDA=魔力、蟹黄堡=蟹币——货币名随站不同，
+// 用「当前用户拥有」前缀区分奖品金额；消耗同理「每次抽奖需要<货币>：N」）。
 func (LuckyDrawWheelGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*StatsResult, error) {
 	body, err := luckyDrawWheelPage(ctx, hc, baseURL, cr.Cookie)
 	if err != nil {
 		return &StatsResult{}, nil
 	}
-	return &StatsResult{Balance: novaHDNum(firstGroup(body, `当前用户拥有魔力[：:]\s*([\d,.]+)`))}, nil
+	st := &StatsResult{Balance: novaHDNum(firstGroup(body, `当前用户拥有[^：:\d]{0,6}[：:]\s*([\d,.]+)`))}
+	st.CostPerPlay = novaHDNum(firstGroup(body, `每次抽奖需要[^：:\d]{0,6}[：:]\s*([\d,.]+)`))
+	return st, nil
 }
 
 // History 抽奖记录：GET /plugin/lucky-draw/winning-records（layui data-table）→ {data:[{created_at,result}]}。
@@ -167,4 +187,3 @@ func recordItems(m map[string]any) []map[string]any {
 	}
 	return nil
 }
-

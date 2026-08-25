@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // assessDef 把 site.SiteMetadata 投影为 assessment.Def。

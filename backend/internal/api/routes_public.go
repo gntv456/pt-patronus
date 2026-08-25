@@ -64,4 +64,11 @@ func registerPublicRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler, 
 	}
 	// Trakt OAuth Device 授权页（公开：授权时用户尚未登录，浏览器直接打开）。
 	api.GET("/trakt/device", v1.NewTraktHandler(d.Trakt).DevicePage)
+
+	// 内置 CookieCloud 服务端（公开：浏览器扩展无登录会话；uuid+密码即鉴权，数据端到端
+	// 加密服务端只存密文）。与 guarded 组 /cookiecloud/{config,sync,push} 并存不冲突：
+	// gin 按方法+完整路径精确匹配，公开组只挂 get/:uuid 与 update 两个子路径。
+	ccSrvH := v1.NewCookieCloudServerHandler(d.CookieCloud)
+	api.GET("/cookiecloud/get/:uuid", ccSrvH.Get)
+	api.POST("/cookiecloud/update", ccSrvH.Update)
 }

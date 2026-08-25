@@ -73,7 +73,7 @@ const selectedGame = computed(() => games.value.find((g) => g.id === currentGame
 // 走富 UI 的玩法（其余走通用卡）
 const richGame = computed(() => currentGame.value)
 // 通用抽奖组件覆盖的 game.id（批1：多站转盘/老虎机/抽奖；红包雨 hxpt_redpacket 用 Play 封装触发）
-const spinnerIds = ['cbg_wheel', 'cbg_slot', 'ub_wheel', 'luckydraw_wheel', 'march_wheel', 'tangpt_lottery', 'hxpt_redpacket']
+const spinnerIds = ['cbg_wheel', 'cbg_slot', 'ub_wheel', 'luckydraw_wheel', 'march_wheel', 'tangpt_lottery', 'hxpt_redpacket', 'hhan_lucky_wheel']
 // 通用下注组件覆盖的 game.id（批2：骰宝/双色球/Betting/红包；猜大小走专属 BigSmallGame；翻面走 PandaFlipGame）
 const betIds = ['cbg_sicbo', 'crab_unionlotto', 'ubits_redpacket']
 // 猜大小（批2.5：好学 hxpt_bigsmall + 熊猫 panda_bigsmall，富 UI：走势/排行/记录/倒计时/任务/聊天/红包）

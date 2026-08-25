@@ -1,6 +1,5 @@
 package chain
 
-
 import (
 	"fmt"
 	"math"
@@ -228,4 +227,3 @@ func (p *bfExprParser) readNumber() (float64, error) {
 	}
 	return strconv.ParseFloat(p.s[start:p.pos], 64)
 }
-

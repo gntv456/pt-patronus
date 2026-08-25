@@ -28,6 +28,11 @@ func ParseAnnouncements(doc *goquery.Document) *SiteAnnouncement {
 		a.RawText = joinItems(items)
 		return a
 	}
+	if items := parseAnnNewsList(doc); len(items) > 0 {
+		a.Items = items
+		a.RawText = joinItems(items)
+		return a
+	}
 	if items := parseAnnClassic(doc); len(items) > 0 {
 		a.Items = items
 		a.RawText = joinItems(items)
@@ -95,6 +100,37 @@ func parseAnnModern(doc *goquery.Document) []AnnouncementItem {
 		}
 		out = append(out, AnnouncementItem{
 			Title: annTitle(title, body), Date: annDate(date), Content: body,
+		})
+	})
+	return out
+}
+
+// 新闻列表皮肤（憨憨 HHan）：首页「重要公告」区 + #news-content 弹层，每条为
+// 图标 + 竖线 + <div>标题</div><div>正文</div>。标题形如「2026.08.15 - 四周年站庆活动公告」，
+// 自带日期前缀；弹层与侧栏同构会重复，按标题去重。
+func parseAnnNewsList(doc *goquery.Document) []AnnouncementItem {
+	news := doc.Find("#news-content")
+	if news.Length() == 0 {
+		return nil
+	}
+	var out []AnnouncementItem
+	seen := map[string]bool{}
+	// 条目容器：含标题 <p class="truncate"> 的最近块（flex 行）
+	news.Find(`p.truncate`).Each(func(_ int, p *goquery.Selection) {
+		title := normalizeSpace(p.Text())
+		if title == "" || seen[title] {
+			return
+		}
+		seen[title] = true
+		// 正文：标题 <div> 的下一兄弟 div（class mt-2）内嵌正文 <p>
+		body := ""
+		if titleDiv := p.Closest("div"); titleDiv.Length() > 0 {
+			if bodyDiv := titleDiv.Next(); bodyDiv.Length() > 0 {
+				body = htmlText(bodyDiv)
+			}
+		}
+		out = append(out, AnnouncementItem{
+			Title: annTitle(title, body), Date: annDate(title), Content: body,
 		})
 	})
 	return out

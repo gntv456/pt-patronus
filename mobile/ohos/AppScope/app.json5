@@ -3,7 +3,7 @@
     "bundleName": "com.hxpt.ptpatronus",
     "vendor": "example",
     "versionCode": 30,
-    "versionName": "1.03.17",
+    "versionName": "1.03.18",
     "icon": "$media:app_icon",
     "label": "$string:app_name"
   }

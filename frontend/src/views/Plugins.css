@@ -562,7 +562,7 @@
 .plugin-grid > *:nth-child(n+7),
 .market-grid > *:nth-child(n+7) { animation-delay: 240ms; }
 
-/* ---- 市场运营层：风云榜 / 梦萦阁 / 分身 ---- */
+/* ---- 市场运营层：百鸟朝凤 / 百宝袋 / 分身 ---- */
 .charts-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 10px; }
 .chart-col { padding: 14px 16px; }
 .chart-title { font-weight: 700; margin-bottom: 10px; }

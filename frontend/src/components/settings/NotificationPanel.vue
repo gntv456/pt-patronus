@@ -299,6 +299,17 @@ const {
             </el-input>
           </div>
 
+          <!-- Slack -->
+          <div class="card glass">
+            <div class="ch-head">
+              <div class="row-title">Slack</div>
+              <el-switch v-model="notif.slack.enabled" />
+            </div>
+            <el-input v-model="notif.slack.url" placeholder="https://hooks.slack.com/services/T…/B…/XXX">
+              <template #prepend>Webhook</template>
+            </el-input>
+          </div>
+
           <!-- MQTT -->
           <div class="card glass">
             <div class="ch-head">

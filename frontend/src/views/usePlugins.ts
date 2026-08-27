@@ -208,7 +208,7 @@ export function usePlugins(options: UsePluginsOptions) {
     }
   }
 
-  // ---- 市场运营层：风云榜（弟子/新晋）与梦萦阁（收藏） ----
+  // ---- 市场运营层：百鸟朝凤（老树洞/蹦蹦新窝）与百宝袋（收藏） ----
   const marketCharts = ref<{ disciples: ChartRow[]; newcomers: ChartRow[] } | null>(null)
   const favoritePlugins = ref<PluginMarketItem[]>([])
   async function loadMarketCharts() {
@@ -236,7 +236,7 @@ export function usePlugins(options: UsePluginsOptions) {
         await pluginApi.favorite(item.id)
         item.favorited = true
         favoritePlugins.value = [item, ...favoritePlugins.value]
-        ElMessage.success('已收藏（梦萦阁）')
+        ElMessage.success('已收藏（百宝袋）')
       }
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '收藏操作失败')
@@ -316,7 +316,7 @@ export function usePlugins(options: UsePluginsOptions) {
   })
 
   // 首次切到「插件市场」tab 即自动加载（空配置时后端回退本地 plugin-market.json）；
-  // 风云榜与收藏懒加载一次（此后收藏切换本地同步，榜单在安装后由刷新按钮重载）。
+  // 百鸟朝凤与收藏懒加载一次（此后收藏切换本地同步，榜单在安装后由刷新按钮重载）。
   watch(activeTab, (tab) => {
     if (tab === 'market') {
       if (!market.value) loadMarket()

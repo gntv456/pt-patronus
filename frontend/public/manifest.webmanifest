@@ -1,0 +1,24 @@
+{
+  "name": "PTPatronus",
+  "short_name": "PTPatronus",
+  "description": "PT 守护神 —— PT 站 7×24 自动化管理",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#6c5ce7",
+  "icons": [
+    {
+      "src": "/pwa-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

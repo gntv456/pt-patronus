@@ -206,7 +206,7 @@ export interface PluginMarketItem {
   installed: boolean
   installed_version?: string
   update_available: boolean
-  /** 运营层附加：本站累计安装次数（弟子榜）与当前用户收藏态（梦萦阁） */
+  /** 运营层附加：本站累计安装次数（老树洞）与当前用户收藏态（百宝袋） */
   install_count: number
   favorited: boolean
 }
@@ -220,7 +220,7 @@ export interface PluginMarketIndex {
   plugins: PluginMarketItem[]
 }
 
-// 风云榜行（弟子榜/新晋榜共用）。
+// 百鸟朝凤行（老树洞/蹦蹦新窝共用）。
 export interface ChartRow {
   plugin_id: string
   installs: number
@@ -287,7 +287,7 @@ export const pluginApi = {
     http.post('/plugins/events', { type, data }).then((r) => r.data),
   market: (source = '') =>
     http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
-  // ---- 市场运营层（对标 MSaber：风云榜/梦萦阁/分神/天序） ----
+  // ---- 市场运营层（对标 MSaber：百鸟朝凤/百宝袋/分神/天序） ----
   marketCharts: () =>
     http.get<{ disciples: ChartRow[]; newcomers: ChartRow[] }>('/plugins/market/charts').then((r) => r.data),
   marketFavorites: () =>

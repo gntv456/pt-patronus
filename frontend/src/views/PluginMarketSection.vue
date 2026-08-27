@@ -24,7 +24,7 @@ defineProps<{
   filteredMarketPlugins: PluginMarketIndex['plugins']
   avatarColor: (name: string) => string
   pluginInitial: (name: string) => string
-  // 运营层（风云榜/梦萦阁/分神/天序）
+  // 运营层（百鸟朝凤/百宝袋/分神/天序）
   marketView: 'all' | 'favorites' | 'charts'
   marketCharts: { disciples: ChartRow[]; newcomers: ChartRow[] } | null
   favoritePlugins: PluginMarketItem[]
@@ -66,17 +66,17 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
       <span v-if="marketSources.length" class="market-src-count">· 已配置 {{ marketSources.length }} 个市场源</span>
     </div>
 
-    <!-- 视图切换：万灵阁(全部) / 梦萦阁(收藏) / 风云榜(弟子/新晋) -->
+    <!-- 视图切换：万灵阁(全部) / 百宝袋(收藏) / 百鸟朝凤(老树洞/蹦蹦新窝) -->
     <div class="cat-bar">
       <button class="cat-pill" :class="{ active: marketView === 'all' }" @click="emit('update:marketView', 'all')">全部</button>
-      <button class="cat-pill" :class="{ active: marketView === 'favorites' }" @click="emit('update:marketView', 'favorites')">⭐ 梦萦阁</button>
-      <button class="cat-pill" :class="{ active: marketView === 'charts' }" @click="emit('update:marketView', 'charts')">🔥 风云榜</button>
+      <button class="cat-pill" :class="{ active: marketView === 'favorites' }" @click="emit('update:marketView', 'favorites')">⭐ 百宝袋</button>
+      <button class="cat-pill" :class="{ active: marketView === 'charts' }" @click="emit('update:marketView', 'charts')">🔥 百鸟朝凤</button>
     </div>
 
-    <!-- 风云榜视图 -->
+    <!-- 百鸟朝凤视图 -->
     <div v-if="marketView === 'charts'" class="charts-wrap">
       <div class="chart-col solid-card">
-        <div class="chart-title">🥇 弟子榜 · 累计安装 Top30</div>
+        <div class="chart-title">🥇 老树洞 · 累计安装 Top30</div>
         <div v-for="(row, i) in marketCharts?.disciples ?? []" :key="row.plugin_id" class="chart-row">
           <span class="chart-rank" :class="['gold', 'silver', 'bronze'][i] ?? ''">{{ i + 1 }}</span>
           <span class="chart-name">{{ row.plugin_id }}</span>
@@ -85,7 +85,7 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
         <el-empty v-if="!(marketCharts?.disciples ?? []).length" description="暂无安装数据（安装插件后生成榜单）" :image-size="60" />
       </div>
       <div class="chart-col solid-card">
-        <div class="chart-title">🌱 新晋榜 · 最近安装 Top30</div>
+        <div class="chart-title">🌱 蹦蹦新窝 · 最近安装 Top30</div>
         <div v-for="(row, i) in marketCharts?.newcomers ?? []" :key="row.plugin_id" class="chart-row">
           <span class="chart-rank">{{ i + 1 }}</span>
           <span class="chart-name">{{ row.plugin_id }}</span>
@@ -95,7 +95,7 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
       </div>
     </div>
 
-    <!-- 梦萦阁（收藏）视图 -->
+    <!-- 百宝袋（收藏）视图 -->
     <div v-else-if="marketView === 'favorites'" v-loading="loading" class="market-grid">
       <div v-for="item in favoritePlugins" :key="item.id" class="market-card solid-card solid-card-hover">
         <div class="mc-top">
@@ -113,7 +113,7 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
           </el-button>
         </div>
       </div>
-      <el-empty v-if="!loading && !favoritePlugins.length" description="梦萦阁空空如也——在「全部」里点收藏（Star）收插件" />
+      <el-empty v-if="!loading && !favoritePlugins.length" description="百宝袋空空如也——在「全部」里点收藏（Star）收插件" />
     </div>
 
     <!-- 万灵阁（全部）视图 -->

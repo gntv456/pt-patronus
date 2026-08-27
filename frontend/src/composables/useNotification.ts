@@ -39,6 +39,7 @@ function emptyNotifForm(): NotifyConfigInput {
     wxpusher: { enabled: false, app_token: '', uid: '', topic_id: '' },
     lark: { enabled: false, url: '' },
     discord: { enabled: false, url: '' },
+    slack: { enabled: false, url: '' },
     mqtt: { enabled: false, broker: '', topic: '', username: '', password: '', client_id: '' },
     serverchan: { enabled: false, key: '' },
   }
@@ -76,6 +77,7 @@ async function loadNotif() {
       wxpusher: { enabled: c.wxpusher.enabled, app_token: '', uid: c.wxpusher.uid, topic_id: c.wxpusher.topic_id },
       lark: { enabled: c.lark.enabled, url: c.lark.url },
       discord: { enabled: c.discord.enabled, url: c.discord.url },
+      slack: { enabled: c.slack.enabled, url: c.slack.url },
       mqtt: { enabled: c.mqtt.enabled, broker: c.mqtt.broker, topic: c.mqtt.topic, username: c.mqtt.username, password: '', client_id: c.mqtt.client_id },
       serverchan: { enabled: c.serverchan.enabled, key: '' },
     }
@@ -138,6 +140,7 @@ function validateNotif(): string {
   }
   if (n.lark.enabled && !n.lark.url?.trim()) return 'Lark 已启用，但机器人 Webhook 为空'
   if (n.discord.enabled && !n.discord.url?.trim()) return 'Discord 已启用，但 Webhook 为空'
+  if (n.slack.enabled && !n.slack.url?.trim()) return 'Slack 已启用，但 Webhook 为空'
   if (n.mqtt.enabled) {
     if (!n.mqtt.broker?.trim()) return 'MQTT 已启用，但 Broker 为空'
     if (!n.mqtt.topic?.trim()) return 'MQTT 已启用，但 Topic 为空'

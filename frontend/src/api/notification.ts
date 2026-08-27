@@ -33,6 +33,7 @@ export interface NotifyConfig {
   wxpusher: { enabled: boolean; uid: string; topic_id: string; app_token: string; app_token_configured: boolean }
   lark: { enabled: boolean; url: string }
   discord: { enabled: boolean; url: string }
+  slack: { enabled: boolean; url: string }
   mqtt: { enabled: boolean; broker: string; topic: string; username: string; password: string; password_configured: boolean; client_id: string }
   serverchan: { enabled: boolean; key: string; key_configured: boolean }
 }
@@ -59,6 +60,7 @@ export interface NotifyConfigInput {
   wxpusher: { enabled: boolean; app_token: string; uid: string; topic_id: string }
   lark: { enabled: boolean; url: string }
   discord: { enabled: boolean; url: string }
+  slack: { enabled: boolean; url: string }
   mqtt: { enabled: boolean; broker: string; topic: string; username: string; password: string; client_id: string }
   serverchan: { enabled: boolean; key: string }
 }

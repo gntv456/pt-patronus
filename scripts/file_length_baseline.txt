@@ -1,6 +1,6 @@
 493	backend/internal/api/v1/cloud.go
 410	backend/internal/api/v1/media.go
-428	backend/internal/app/app.go
+434	backend/internal/app/app.go
 693	backend/internal/chain/cloud.go
 448	backend/internal/cloud/client_115_open.go
 492	backend/internal/cloud/client_aliyun_open.go

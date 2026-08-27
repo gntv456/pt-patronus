@@ -23,13 +23,13 @@ import (
 	"github.com/hxpt/ptpatronus/internal/iyuu"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/notice"
-	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/notification"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/site"
 	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
+	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/workflow"
 	"github.com/hxpt/ptpatronus/internal/ws"
@@ -97,26 +97,7 @@ func New(cfg *config.Config) (*App, error) {
 	// 通知：通道凭据走 SystemConfig（UI「设置→通知」热改，回退 env 引导默认），由 provider 统一构建/重建；
 	// NotificationChain 与 notice.Service 共用同一 *Manager，provider rebuild→Replace 全局即时生效。
 	notifMgr := notification.NewManager()
-	notifDefaults := chain.NotificationSettings{}
-	notifDefaults.Bark.Enabled = cfg.BarkKey != ""
-	notifDefaults.Bark.Server = cfg.BarkServer
-	notifDefaults.Bark.Key = cfg.BarkKey
-	notifDefaults.Telegram.Enabled = cfg.TGToken != "" && cfg.TGChatID != ""
-	notifDefaults.Telegram.Token = cfg.TGToken
-	notifDefaults.Telegram.ChatID = cfg.TGChatID
-	notifDefaults.Telegram.APIURL = cfg.TGAPIURL
-	notifDefaults.QQ.Enabled = cfg.QQAppID != "" && cfg.QQAppSecret != ""
-	notifDefaults.QQ.AppID = cfg.QQAppID
-	notifDefaults.QQ.AppSecret = cfg.QQAppSecret
-	notifDefaults.QQ.OpenID = cfg.QQOpenID
-	notifDefaults.QQ.GroupOpenID = cfg.QQGroupOpenID
-	notifDefaults.WeChat.Enabled = cfg.WXClawBotToken != ""
-	notifDefaults.WeChat.BotToken = cfg.WXClawBotToken
-	notifDefaults.WeChat.AccountID = cfg.WXClawBotAccountID
-	notifDefaults.WeChat.Target = cfg.WXClawBotTarget
-	notifDefaults.WeChat.BaseURL = cfg.WXClawBotBaseURL
-	notifDefaults.Webhook.Enabled = cfg.WebhookURL != ""
-	notifDefaults.Webhook.URL = cfg.WebhookURL
+	notifDefaults := wireNotificationDefaults(cfg)
 	notifProvider := chain.NewNotificationSettingsProvider(cfgOp, notifDefaults, notifMgr)
 	notifCh := chain.NewNotificationChain(base, notifMgr)
 
@@ -126,9 +107,9 @@ func New(cfg *config.Config) (*App, error) {
 	wsBC.SetNotice(noticeSvc) // 下载器种子完成 diff → 通知中心
 
 	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
-	pluginMgr.SetCfgOp(cfgOp)             // 插件市场源等 UI 持久化配置（SystemConfig）
+	pluginMgr.SetCfgOp(cfgOp)                                   // 插件市场源等 UI 持久化配置（SystemConfig）
 	pluginMgr.SetMarketOper(oper.NewPluginMarketOper(database)) // 市场运营层：百鸟朝凤/收藏/分神/天序
-	pluginMgr.EnsureDefaultMarketSource() // 首次启动种子化官方市场仓库（纯 DB 写，无网络/插件活动；安全模式也执行）
+	pluginMgr.EnsureDefaultMarketSource()                       // 首次启动种子化官方市场仓库（纯 DB 写，无网络/插件活动；安全模式也执行）
 	if !cfg.SafeMode {
 		if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
 			slog.Warn("load external plugins failed", "err", err)
@@ -148,22 +129,7 @@ func New(cfg *config.Config) (*App, error) {
 	// 媒体元数据（TMDB 主源 + 豆瓣 + Bangumi + MusicBrainz）。
 	// 凭据走 SystemConfig（UI 可热改，回退环境变量默认），由 provider 统一构建/重建，
 	// 搜索(MediaChain)与推荐(RecommendChain)共用，UI 改 key/域名/镜像即时生效。
-	mediaProvider := chain.NewMediaSourceProvider(cfgOp, chain.MediaSettings{
-		TMDBAPIKey:     cfg.TMDBAPIKey,
-		TMDBAPIDomain:  cfg.TMDBAPIDomain,
-		DoubanSecret:   cfg.DoubanSecret,
-		DoubanAppKey:   cfg.DoubanAppKey,
-		BangumiToken:   cfg.BangumiToken,
-		CunguangjiBase: cfg.CunguangjiBase,
-		OMDbAPIKey:     cfg.OMDbAPIKey,
-	})
-	posterCache := oper.NewPosterCacheOper(database)
-	mediaCh := chain.NewMediaChain(base, mediaProvider, posterCache, cfgOp)
-	// 把 MediaChain 暴露给插件的 Host API（/media/search），刮削类插件复用宿主元数据源。
-	pluginMgr.SetMediaSearcher(mediaSearchAdapter{mediaCh})
-	// 推荐信息流：复用同一份 provider（豆瓣热映 / TMDB trending / Bangumi 热门）
-	recommendCh := chain.NewRecommendChain(base, mediaProvider)
-
+	mediaCh, recommendCh := wireMediaStack(cfg, cfgOp, base, pluginMgr, database)
 	// 文件管理（WebDAV / Alist）
 	fileOp := oper.NewFileStorageOper(database, crypto)
 	fileMgr := filemanager.NewManager(fileOp)

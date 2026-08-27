@@ -42,7 +42,8 @@ func (h *SiteHandler) Inspect(c *gin.Context) {
 	}
 	res, err := site.Inspect(c.Request.Context(), h.hc, req.URL, req.Cookie, req.Fields, req.NoLogin)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		// 502：目标站点抓取失败，非客户端参数错误。
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, res)

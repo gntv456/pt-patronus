@@ -71,7 +71,8 @@ func (h *SiteHandler) TorrentDetail(c *gin.Context) {
 	}
 	d, err := h.siteCh.TorrentDetail(c.Request.Context(), s, detailURL)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		// 502：目标站点详情页抓取/解析失败，非客户端参数错误。
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": d})

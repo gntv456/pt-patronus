@@ -376,7 +376,8 @@ func (h *DownloaderHandler) Stats(c *gin.Context) {
 	}
 	st, err := h.dl.Stats(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"error": err.Error()})
+		// 502：下载器协议层故障（不可达/版本不支持），非客户端参数错误。
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, st)

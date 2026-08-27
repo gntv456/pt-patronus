@@ -2,24 +2,18 @@
 // 数据在 chrome.storage.local（本机，不同步）。
 import { getFavorites, removeFavorite, getHistory } from './collection.js'
 import { getConfig, isConfigured } from './api.js'
-import { findReseed, fmtBytes } from './downloads.js'
-
-const $ = (id) => document.getElementById(id)
-
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
-
-function fmtTime(ts) {
-  const d = new Date(ts || 0)
-  return Number.isNaN(d.getTime()) ? '—' : `${d.getMonth() + 1}-${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
+import { findReseed } from './downloads.js'
+import { esc, $, fmtTime } from './util.js'
 
 // —— 跨站找同种（辅种最小版）：调服务端 /keepseed/find（名称+大小指纹评分 ≥60）——
 // 结果以覆盖层展示，每条候选可一键推送到下载器（实现「在其它站把同种也做上」）。
 async function showReseed(name) {
   const cfg = await getConfig()
-  if (!isConfigured(cfg)) { alert('请先在选项页配置服务器'); return }
+  if (!isConfigured(cfg)) {
+    // 未配置：内联引导（不用系统 alert，保持页面内一致的错误展示）。
+    $('list').insertAdjacentHTML('afterbegin', '<p class="empty err">请先在选项页配置服务器，再使用跨站找同种</p>')
+    return
+  }
   const layer = $('reseedLayer')
   layer.style.display = ''
   layer.innerHTML = '<p class="empty">跨站搜索同种中…（逐站评分，约 10-30s）</p>'

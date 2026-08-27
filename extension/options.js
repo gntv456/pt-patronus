@@ -7,8 +7,7 @@ import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
   pushCookieCloud, pullCookieCloud,
 } from './backup.js'
-
-const $ = (id) => document.getElementById(id)
+import { $ } from './util.js'
 
 document.addEventListener('DOMContentLoaded', async () => {
   const cfg = await getConfig()
@@ -33,6 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       $('msg').className = 'ok'
     } catch (e) {
       $('msg').textContent = `失败：${e.message}`
+      $('msg').className = 'err'
     }
   }
 

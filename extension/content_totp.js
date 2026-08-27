@@ -1,14 +1,15 @@
 // content script：TOTP 自动填充（对标 MoviePilot-Tools）。
-// 登录页检测到「验证码/2FA 输入框」时向后台请求当期码自动填入——
+// 登录页检测到「2FA/动态码输入框」时向后台请求当期码自动填入——
 // Secret 只存在验证器页/后台，绝不注入页面脚本（页面只拿到 6 位数字本身）。
-// 识别启发式：input 紧邻文本含 二步/两步/2FA/OTP/验证码/totp/authenticator，
+// 识别启发式：input 紧邻文本含 二步/两步/2FA/OTP/动态码/totp/authenticator，
 // 且输入框为短文本（maxlength ≤ 8 或宽度窄），排除密码框/搜索框/用户名。
+// 注意：不含「验证码」——图形验证码归 content_ocr.js 管，两脚本不争抢同一输入框。
 
 (() => {
   if (window.__ptpTotpInjected) return
   window.__ptpTotpInjected = true
 
-  const HINT_RE = /(二步|两步|2fa|otp|totp|authenticator|动态码|动态密码|验证码)/i
+  const HINT_RE = /(二步|两步|2fa|otp|totp|authenticator|动态码|动态密码|两步验证|时间同步)/i
   const EXCLUDE_RE = /(captcha|图片验证|图形验证|找回|注册邮箱|邮箱验证)/i
 
   function isTotpInput(input) {

@@ -1,9 +1,8 @@
 // popup 主逻辑：选中词搜索 → 流式逐站渲染（SSE，搜出一个显示一个）→ 一键订阅；
 // 底部站点数据快捷块（总上传/做种/魔力）+ 一键签到入口。
-import { getConfig, isConfigured, searchTorrentsStream, searchMedia, createSubscription, openWebSearch } from './api.js'
-import { overview, fmtBytes, fmtBonus } from './dashboard.js'
-
-const $ = (id) => document.getElementById(id)
+import { getConfig, isConfigured, api, searchTorrentsStream, searchMedia, createSubscription, openWebSearch, baseUrl } from './api.js'
+import { overview, fmtBonus } from './dashboard.js'
+import { esc, $, fmtBytes } from './util.js'
 
 async function currentSelection() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
@@ -19,24 +18,9 @@ async function currentSelection() {
   }
 }
 
+// fmtSize 种子大小展示：与 fmtBytes 口径一致（无值显示 —）。
 function fmtSize(bytes) {
-  if (!bytes) return '-'
-  const units = ['B', 'KB', 'MB', 'GB', 'TB']
-  let i = 0
-  let n = bytes
-  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++ }
-  return `${n.toFixed(1)} ${units[i]}`
-}
-
-// resultsOf 兼容聚合/扁平两种形态（流式帧是聚合，历史调用方可能传扁平）。
-function resultsOf(data) {
-  if (!Array.isArray(data)) return []
-  return data[0] && data[0].torrents ? data : [{ site_name: '', torrents: data }]
-}
-
-// esc HTML 转义：错误消息可能携带服务端回显文本，注入前转义。
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  return bytes ? fmtBytes(bytes) : '—'
 }
 
 // renderItem 单条种子卡片（DOM API 构建，无注入面）。
@@ -168,8 +152,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     fn()
   }
   $('goSearch').onclick = guard(() => openWebSearch(cfg, $('keyword').value))
-  $('goSubs').onclick = guard(() => chrome.tabs.create({ url: cfg.server.replace(/\/$/, '') + '/subscriptions' }))
-  $('goDash').onclick = guard(() => chrome.tabs.create({ url: cfg.server.replace(/\/$/, '') + '/dashboard' }))
+  $('goSubs').onclick = guard(() => chrome.tabs.create({ url: `${baseUrl(cfg)}/subscriptions` }))
+  $('goDash').onclick = guard(() => chrome.tabs.create({ url: `${baseUrl(cfg)}/dashboard` }))
   $('goStats').onclick = guard(() => chrome.runtime.openOptionsPage())
   // 一键签到：POST /sites/checkin（手动触发，逐站并发；不做自动刷签到——行业共识视为作弊）。
   // 注：checkin 是 <a>，无 disabled 语义——用 lock 标志防重入 + class 切换视觉禁用态。
@@ -180,11 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('checkin').classList.add('busy')
     $('checkinTxt').textContent = '签到中…'
     try {
-      const resp = await fetch(`${cfg.server.replace(/\/$/, '')}/api/v1/sites/checkin`, {
-        method: 'POST',
-        headers: { 'X-API-Key': cfg.apiKey },
-      })
-      const body = await resp.json()
+      const body = await api(cfg, '/api/v1/sites/checkin', { method: 'POST' })
       const rs = body.results || []
       const ok = rs.filter((r) => r.ok || r.success).length
       $('checkinTxt').textContent = `✅ ${ok}/${rs.length}`

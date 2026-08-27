@@ -182,9 +182,17 @@
   }
 
   function ensureAll() {
+    // 非 PT 种子页短路：无下载链接特征时不跑任何轮询工作（性能友好）。
+    if (!looksLikeTorrentPage()) return
     ensureDetailButton()
     ensureListBar()
     highlightPromos()
+  }
+  // looksLikeTorrentPage URL 特征粗判：NexusPHP/UNIT3D 列表与详情页、magnet 页面。
+  function looksLikeTorrentPage() {
+    const us = location.pathname + location.search
+    return /\/(torrents|browse|details)\.php|\/torrents(\/|$|\?)|\/download\.php\?|magnet:/i.test(us) ||
+      !!document.querySelector('a[href*="download.php?id="], a[href^="magnet:"], a[href^="ed2k://"]')
   }
   // 拖放捕获：拖动磁力/种子/eD2k 链接时上报 URL（popup 打开后一键推送，替代无法实现的图标 drop）。
   document.addEventListener('dragstart', (ev) => {

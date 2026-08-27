@@ -1,7 +1,8 @@
 // PTPatronus 助手 —— 配置与 API 封装（popup/options/background 共用）。
 // 鉴权：X-API-Key 头（服务端 API_KEY env；命中即授予管理员身份，与 Servarr 兼容层同源）。
+import { baseUrl } from './util.js'
 
-const DEFAULTS = { server: '', apiKey: '' }
+const DEFAULTS = { server: '', apiKey: '', downloaderId: 0 }
 
 export async function getConfig() {
   const cfg = await chrome.storage.sync.get(DEFAULTS)
@@ -16,9 +17,11 @@ export function isConfigured(cfg) {
   return !!(cfg && cfg.server && cfg.apiKey)
 }
 
+export { baseUrl }
+
 // api 统一请求封装：拼 base URL + API Key 头；非 2xx 抛错（message 取后端 error 字段）。
 export async function api(cfg, path, options = {}) {
-  const base = cfg.server.replace(/\/$/, '')
+  const base = baseUrl(cfg)
   const headers = { 'X-API-Key': cfg.apiKey, 'Content-Type': 'application/json', ...(options.headers || {}) }
   const resp = await fetch(base + path, { ...options, headers })
   if (!resp.ok) {
@@ -48,7 +51,7 @@ export function searchTorrentsStream(cfg, keyword, onBatch, category = '') {
   return new Promise((resolve) => {
     const q = new URLSearchParams({ keyword })
     if (category) q.set('category', category)
-    const base = cfg.server.replace(/\/$/, '')
+    const base = baseUrl(cfg)
     // fetch + ReadableStream 解析 SSE（EventSource 不支持自定义 X-API-Key 头）。
     fetch(`${base}/api/v1/search/stream?${q}`, { headers: { 'X-API-Key': cfg.apiKey } }).then(async (resp) => {
       if (!resp.ok || !resp.body) {
@@ -111,7 +114,7 @@ export async function createSubscription(cfg, item) {
 
 // 打开 Web UI 搜索页（站点快捷入口/查看更多结果）。
 export function openWebSearch(cfg, keyword) {
-  const base = cfg.server.replace(/\/$/, '')
+  const base = baseUrl(cfg)
   const url = keyword ? `${base}/search?keyword=${encodeURIComponent(keyword)}` : `${base}/search`
   chrome.tabs.create({ url })
 }

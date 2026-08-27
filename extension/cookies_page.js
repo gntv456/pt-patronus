@@ -3,8 +3,7 @@
 import { getConfig, isConfigured } from './api.js'
 import { serverCookies, browserCookieHeader, pushBrowserToServer, pullServerToBrowser } from './cookies.js'
 import { privacyOn, maskSecret, maskDomain } from './privacy.js'
-
-const $ = (id) => document.getElementById(id)
+import { esc, $ } from './util.js'
 
 async function fpOf(baseURL) {
   const header = await browserCookieHeader(baseURL)
@@ -12,11 +11,6 @@ async function fpOf(baseURL) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(header))
   const fp = [...new Uint8Array(buf)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('')
   return { header, fp }
-}
-
-// esc HTML 转义：站点名/域名/指纹均来自服务端数据，注入表格前统一转义防 XSS。
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 
 async function render() {
@@ -106,8 +100,10 @@ document.addEventListener('click', async (ev) => {
       btn.textContent = `✅ 写回 ${n} 条`
     }
   } catch (e) {
-    btn.textContent = `失败`
+    btn.textContent = '失败'
     btn.title = e.message
+    // 失败不止藏 hover title——页面顶部错误区同步展示，避免不可发现。
+    $('msg').innerHTML = `<span class="err">${esc(e.message)}</span>`
   }
   setTimeout(render, 1200)
 })

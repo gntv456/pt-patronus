@@ -2,10 +2,9 @@
 // 5s 自动刷新（对标竞品任务面板节奏）；操作按钮即时生效后立即重拉。
 import { getConfig, isConfigured } from './api.js'
 import {
-  listDownloaders, listTorrents, pauseTorrent, resumeTorrent, removeTorrent, addByUrl, globalStats, fmtBytes, fmtSpeed,
+  listDownloaders, listTorrents, pauseTorrent, resumeTorrent, removeTorrent, addByUrl, globalStats,
 } from './downloads.js'
-
-const $ = (id) => document.getElementById(id)
+import { esc, $, fmtBytes, fmtSpeed } from './util.js'
 
 let cfg = null
 let dls = []
@@ -76,10 +75,6 @@ async function render() {
   }).join('')
 }
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
-
 async function refresh() {
   try { await render() } catch (e) { $('stats').innerHTML = `<span class="err">${esc(e.message)}</span>` }
 }
@@ -99,7 +94,9 @@ document.addEventListener('click', async (ev) => {
     } else {
       await resumeTorrent(cfg, curId, h)
     }
-  } catch (e) { alert(e.message) }
+  } catch (e) {
+    $('stats').innerHTML = `<span class="err">操作失败：${esc(e.message)}</span>`
+  }
   await refresh()
 })
 
@@ -124,14 +121,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const { torrents } = await listTorrents(cfg, curId)
     const hs = torrents.filter((t) => !/paused|stopped/.test(t.state || '')).map((t) => t.hash)
     if (!hs.length) return
-    try { for (const h of hs) await pauseTorrent(cfg, curId, h) } catch (e) { alert(e.message) }
+    try {
+      for (const h of hs) await pauseTorrent(cfg, curId, h)
+    } catch (e) {
+      $('stats').innerHTML = `<span class="err">全部暂停失败：${esc(e.message)}</span>`
+    }
     await refresh()
   }
   $('resumeAll').onclick = async () => {
     const { torrents } = await listTorrents(cfg, curId)
     const hs = torrents.filter((t) => /paused|stopped/.test(t.state || '')).map((t) => t.hash)
     if (!hs.length) return
-    try { for (const h of hs) await resumeTorrent(cfg, curId, h) } catch (e) { alert(e.message) }
+    try {
+      for (const h of hs) await resumeTorrent(cfg, curId, h)
+    } catch (e) {
+      $('stats').innerHTML = `<span class="err">全部继续失败：${esc(e.message)}</span>`
+    }
     await refresh()
   }
   $('add').onclick = async () => {
@@ -141,7 +146,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await addByUrl(cfg, curId, url)
       $('addurl').value = ''
-    } catch (e) { alert(`添加失败：${e.message}`) }
+    } catch (e) {
+      $('stats').innerHTML = `<span class="err">添加失败：${esc(e.message)}</span>`
+    }
     $('add').disabled = false
     await refresh()
   }

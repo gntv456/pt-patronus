@@ -1,7 +1,8 @@
 // 验证器页面：PIN 解锁 → 条目列表（30s 刷新倒计时）→ 点击复制 → 增删 → 导入/导出。
 import { parseOTPAuth, totpNow, saveVault, loadVault } from './totp.js'
+import { packBackup, unpackBackup } from './backup.js'
+import { esc, $ } from './util.js'
 
-const $ = (id) => document.getElementById(id)
 let entries = []
 let unlocked = false
 let pinCache = '' // 内存短持：锁定/关闭页面即丢弃，避免重输；锁定按钮可主动清。
@@ -11,8 +12,15 @@ function setMsg(text, cls = 'ok') {
   $('msg').className = cls
 }
 
+// syncSession 解锁/增删后同步明文条目到 storage.session（background 自动填充用）。
+// 明文只进 session（内存态，浏览器退出即清）；PIN 本身绝不落盘；锁定时 remove。
+async function syncSession() {
+  try { await chrome.storage.session.set({ ptp_vault_entries: entries }) } catch { /* 老版本无 session API */ }
+}
+
 async function persist() {
   await saveVault(pinCache, entries)
+  await syncSession()
 }
 
 async function tryUnlock(pin) {
@@ -20,8 +28,7 @@ async function tryUnlock(pin) {
   unlocked = true
   pinCache = pin
   // 会话级解锁缓存：TOTP 自动填充（background）在本浏览器关闭前可按站点匹配填码。
-  // 明文条目只进 storage.session（内存态，浏览器退出即清），PIN 本身绝不落盘。
-  try { await chrome.storage.session.set({ ptp_vault_entries: entries }) } catch { /* 老版本无 session API */ }
+  await syncSession()
   $('gate').style.display = 'none'
   $('main').style.display = ''
   $('lock').style.display = ''
@@ -64,7 +71,6 @@ $('addForm').addEventListener('submit', async (ev) => {
   if (!parsed || !parsed.secret) return setMsg('无法解析秘钥', 'err')
   entries.push({ ...parsed, label: parsed.label || $('label').value || `条目 ${entries.length + 1}` })
   await persist()
-  try { await chrome.storage.session.set({ ptp_vault_entries: entries }) } catch { /* noop */ }
   $('secret').value = ''
   $('label').value = ''
   setMsg('已添加')
@@ -79,7 +85,6 @@ document.addEventListener('click', async (ev) => {
   if (ev.target.dataset?.del !== undefined) {
     entries.splice(Number(ev.target.dataset.del), 1)
     await persist()
-    try { await chrome.storage.session.set({ ptp_vault_entries: entries }) } catch { /* noop */ }
     render()
     return
   }
@@ -107,11 +112,6 @@ async function tick() {
   timer = setTimeout(tick, 1000)
 }
 
-// esc HTML 转义：标签是用户输入，注入前转义防自 XSS。
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
-
 function render() {
   $('list').innerHTML = entries.length
     ? entries.map((e, i) => `
@@ -127,24 +127,14 @@ function render() {
 }
 
 // —— 加密 JSON 导入/导出（对标 MoviePilot-Tools 备份）——
-// 导出：PBKDF2(备份口令) ×310k → AES-256-GCM 加密全库 JSON，下载 .json 文件。
-//       无口令导出（口令留空）= 明文 JSON（方便迁移到其它验证器，提示确认）。
-// 导入：识别加密结构（salt/iv/data）先解密再合并；明文直接解析；按 secret 去重。
+// 加密打包复用 backup.js 的 packBackup/unpackBackup（PBKDF2 310k + AES-256-GCM，
+// 与 WebDAV 全量备份同一套实现）；无口令导出 = 明文 JSON（方便迁移，提示确认）。
 
 async function exportVault() {
   const pass = prompt('设置备份口令（留空 = 明文导出，任何人可读——仅建议本地迁移用）') ?? ''
-  let payload
-  if (pass) {
-    const salt = crypto.getRandomValues(new Uint8Array(16))
-    const iv = crypto.getRandomValues(new Uint8Array(12))
-    const keyMat = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey'])
-    const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 310000, hash: 'SHA-256' }, keyMat, { name: 'AES-GCM', length: 256 }, false, ['encrypt'])
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(entries)))
-    const b64 = (u8) => btoa(String.fromCharCode(...new Uint8Array(u8)))
-    payload = { ptp_backup: 1, salt: b64(salt), iv: b64(iv), data: b64(ct) }
-  } else {
-    payload = { ptp_backup: 1, plain: JSON.stringify(entries) }
-  }
+  const payload = pass
+    ? { ptp_backup: 1, ...(await packBackup(entries, pass)) }
+    : { ptp_backup: 1, plain: JSON.stringify(entries) }
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
@@ -169,18 +159,13 @@ async function importVault() {
         imported = JSON.parse(parsed.plain)
       } else {
         const pass = prompt('备份口令') || ''
-        const u8 = (b) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0))
-        const keyMat = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey'])
-        const key = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: u8(parsed.salt), iterations: 310000, hash: 'SHA-256' }, keyMat, { name: 'AES-GCM', length: 256 }, false, ['decrypt'])
-        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: u8(parsed.iv) }, key, u8(parsed.data))
-        imported = JSON.parse(new TextDecoder().decode(pt))
+        imported = await unpackBackup(parsed, pass)
       }
       // 按 secret 去重合并（已有同 secret 跳过）。
       const have = new Set(entries.map((e) => e.secret))
       const add = (imported || []).filter((e) => e && e.secret && !have.has(e.secret))
       entries.push(...add)
       await persist()
-      try { await chrome.storage.session.set({ ptp_vault_entries: entries }) } catch { /* noop */ }
       setMsg(`导入 ${add.length} 条（重复跳过）`)
       render()
     } catch (e) {

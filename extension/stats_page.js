@@ -3,14 +3,9 @@
 import { getConfig, isConfigured } from './api.js'
 import { overview, syncAll, fmtBytes, fmtBonus, fmtRatio } from './dashboard.js'
 import { privacyOn as privacyOn2, maskDomain } from './privacy.js'
-
-const $ = (id) => document.getElementById(id)
+import { esc, $ } from './util.js'
 
 let cfg = null
-
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-}
 
 let lastData = null // 导出用最近一次渲染数据
 let privacyOn = false // 隐私模式（DOMContentLoaded 时读取）
@@ -98,7 +93,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('sync').textContent = '抓取中…（站均 1-3s）'
     try {
       render(await syncAll(cfg))
-    } catch (e) { alert(e.message) }
+    } catch (e) {
+      $('totals').innerHTML = `<div class="err">抓取失败：${esc(e.message)}</div>`
+    }
     $('sync').disabled = false
     $('sync').textContent = '⟳ 即时抓取全部站点'
   }

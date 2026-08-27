@@ -1,6 +1,24 @@
 // background service worker（module 型——manifest 声明 "type": "module"）：
 // 右键菜单「搜索选中词」、omnibox、TOTP 自动填充、种子推送下载 + 下载历史、跨站收藏。
+// 服务端请求统一走 api.js 的 api() 封装（鉴权头 + 非 2xx 抛错），配置统一 getConfig()。
 import { addHistory, addFavorite } from './collection.js'
+import { api, getConfig, baseUrl } from './api.js'
+
+// openSearch 打开 Web 搜索页（右键菜单/快捷键/omnibox/媒体页注入共用路径）。
+async function openSearch(keyword) {
+  const cfg = await getConfig()
+  if (!cfg.server) {
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
+      title: 'PTPatronus 助手',
+      message: '请先在扩展选项页配置服务器地址与 API Key',
+    })
+    chrome.runtime.openOptionsPage()
+    return
+  }
+  chrome.tabs.create({ url: `${baseUrl(cfg)}/search?keyword=${encodeURIComponent(String(keyword).slice(0, 200))}` })
+}
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -12,19 +30,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId !== 'ptp-search-selection' || !info.selectionText) return
-  const { server = '' } = await chrome.storage.sync.get({ server: '' })
-  if (!server) {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-      title: 'PTPatronus 助手',
-      message: '请先在扩展选项页配置服务器地址与 API Key',
-    })
-    chrome.runtime.openOptionsPage()
-    return
-  }
-  const base = server.replace(/\/$/, '')
-  chrome.tabs.create({ url: `${base}/search?keyword=${encodeURIComponent(info.selectionText.slice(0, 200))}` })
+  openSearch(info.selectionText)
 })
 
 // 键盘快捷键：与右键菜单同路径（读取当前 tab 选中词）。
@@ -38,79 +44,58 @@ chrome.commands.onCommand.addListener(async (command) => {
       func: () => window.getSelection().toString(),
     })
     const sel = ((results && results[0] && results[0].result) || '').trim()
-    const { server = '' } = await chrome.storage.sync.get({ server: '' })
-    if (sel && server) {
-      chrome.tabs.create({ url: `${server.replace(/\/$/, '')}/search?keyword=${encodeURIComponent(sel.slice(0, 200))}` })
-    }
+    if (sel) openSearch(sel)
   } catch { /* 无权限页面忽略 */ }
 })
 
-// —— 种子详情页浮钮 → 推送下载 ——
-// content script 解析出的 download URL 直传过来；这里补鉴权头并调
-// POST /downloaders/:id/torrents（id 省略时用默认下载器）。
+// —— 统一消息路由：content/popup → background ——
+// 消息类型即契约（ptp-push-download 等）；异步处理统一 return true 保活 sendResponse。
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg && msg.type === 'ptp-push-download') {
-    pushDownload(msg.url).then(sendResponse)
-    return true // 异步 sendResponse
-  }
-  // TOTP 自动填充：content_totp.js 按 hostname 匹配验证器条目，回当期 6 位码。
-  // Secret 不出后台——页面只能拿到数字本身。仅当验证器页本轮会话已解锁
-  // （解锁时把明文条目缓存进 storage.session）或库未设 PIN 时可用；
-  // PIN 锁定态保持锁定语义，不后台解密。
-  if (msg && msg.type === 'ptp-totp-autofill') {
-    totpAutofill(msg.host).then(sendResponse)
-    return true
-  }
-  // 豆瓣/IMDb 页面注入按钮 → 打开 Web 搜索页带关键词（与右键菜单同路径）。
-  if (msg && msg.type === 'ptp-media-search' && msg.keyword) {
-    chrome.storage.sync.get({ server: '' }).then(({ server }) => {
-      if (!server) { chrome.runtime.openOptionsPage(); return }
-      chrome.tabs.create({ url: `${server.replace(/\/$/, '')}/search?keyword=${encodeURIComponent(String(msg.keyword).slice(0, 200))}` })
-    })
-    sendResponse({ ok: true })
-    return false
-  }
-  // 验证码 OCR：content_ocr.js 截取站点登录验证码图 → 调服务端 /system/ocr/recognize
-  // （管理员 Key；服务端配置 PaddleOCR/simple/ddddoc 端点后生效，未配置静默回退人工输入）。
-  if (msg && msg.type === 'ptp-ocr-captcha' && msg.image) {
-    ocrCaptcha(msg.image).then(sendResponse)
-    return true
-  }
-  // 跨站收藏：详情页浮钮长按/右键或批量栏收藏按钮写入本机收藏夹。
-  if (msg && msg.type === 'ptp-favorite') {
-    addFavorite({ url: msg.url, title: msg.title || '', site: msg.site || '' })
-      .then(() => sendResponse({ ok: true }))
-    return true
+  if (!msg || !msg.type) return false
+  switch (msg.type) {
+    // 种子详情页浮钮 → 推送下载：content 解析出的 download URL 直传，
+    // 这里调 POST /downloaders/:id/torrents（id 省略时用默认下载器）。
+    case 'ptp-push-download':
+      pushDownload(msg.url).then(sendResponse)
+      return true
+    // TOTP 自动填充：content_totp.js 按 hostname 匹配验证器条目，回当期 6 位码。
+    // Secret 不出后台——页面只能拿到数字本身。仅当验证器页本轮会话已解锁
+    // （解锁时把明文条目缓存进 storage.session）或库未设 PIN 时可用；
+    // PIN 锁定态保持锁定语义，不后台解密。
+    case 'ptp-totp-autofill':
+      totpAutofill(msg.host).then(sendResponse)
+      return true
+    // 豆瓣/IMDb 页面注入按钮 → 打开 Web 搜索页带关键词（与右键菜单同路径）。
+    case 'ptp-media-search':
+      if (msg.keyword) openSearch(msg.keyword)
+      sendResponse({ ok: true })
+      return false
+    // 验证码 OCR：content_ocr.js 截取站点登录验证码图 → 调服务端 /system/ocr/recognize
+    // （管理员 Key；服务端配置 PaddleOCR/simple/ddddoc 端点后生效，未配置静默回退人工输入）。
+    case 'ptp-ocr-captcha':
+      if (msg.image) ocrCaptcha(msg.image).then(sendResponse)
+      else sendResponse({ ok: false, error: 'no-image' })
+      return true
+    // 跨站收藏：详情页浮钮长按/右键或批量栏收藏按钮写入本机收藏夹。
+    case 'ptp-favorite':
+      addFavorite({ url: msg.url, title: msg.title || '', site: msg.site || '' })
+        .then(() => sendResponse({ ok: true }))
+      return true
+    // content_torrent.js 在 dragstart 时上报；仅记录最近一次拖放 URL 供 popup 快捷用。
+    case 'ptp-drag-capture':
+      chrome.storage.session.set({ ptp_last_drag_url: msg.url }).catch(() => {})
+      return false
+    default:
+      return false
   }
 })
 
 // —— omnibox：地址栏输 ptp + Tab 直达跨站搜索（对标 PT-depiler 的 ptd）——
-chrome.omnibox.onInputEntered.addListener((text) => {
-  chrome.storage.sync.get({ server: '' }).then(({ server }) => {
-    if (!server) { chrome.runtime.openOptionsPage(); return }
-    chrome.tabs.create({ url: `${server.replace(/\/$/, '')}/search?keyword=${encodeURIComponent(text.slice(0, 200))}` })
-  })
-})
+chrome.omnibox.onInputEntered.addListener((text) => openSearch(text))
 chrome.omnibox.setDefaultSuggestion({ description: '在 PTPatronus 跨站搜索「%s」' })
 
-// —— 拖放链接下载：拖磁力/eD2k/种子链接到扩展图标 → 推送默认下载器（对标竞品拖放手势）——
-chrome.runtime.onInstalled.addListener(() => {
-  // 把本扩展注册为链接拖放目标（系统级； MV3 唯一途径，无需额外权限）。
-  if (chrome.runtime.setDropAndOpenHandler) {
-    chrome.runtime.setDropAndOpenHandler()
-  }
-})
-chrome.app?.runtime?.onLaunched?.addListener(() => {}) // 占位防 app API 误用（无 app 权限时 undefined）
-// 实际入口：content 层监听 dragstart 把 URL 交给图标 drop —— Chrome 对扩展图标的 drop
-// 走 onStartedViaDrop 不可行，改用右键菜单兜底 + popup 粘贴添加（下载面板已支持）。
-// 这里保留 dragstart→剪贴板中转：任何页面拖动磁力/种子链接时自动复制 URL，
-// 用户随后点扩展图标粘贴即推送（两步但无需额外权限）。
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg && msg.type === 'ptp-drag-capture') {
-    // content_torrent.js 在 dragstart 时上报；这里仅记录最近一次拖放 URL 供 popup 快捷用。
-    chrome.storage.session.set({ ptp_last_drag_url: msg.url }).catch(() => {})
-  }
-})
+// 拖放链接下载：content 层监听 dragstart 上报 URL（见消息路由 ptp-drag-capture），
+// popup 读取 ptp_last_drag_url 展示快捷推送条——无需额外权限的两步方案。
 
 // totpAutofill 按站点主机名首标签匹配条目标签/issuer，回当期码。
 // 生成逻辑不在此复刻——把匹配到的明文条目交回验证器库模块计算（见 totp_autofill_lib.js）。
@@ -144,15 +129,12 @@ async function totpAutofill(host) {
 // ocrCaptcha 调服务端识别验证码图（base64 data URL 直传）。失败静默——content 层保持人工输入兜底。
 async function ocrCaptcha(image) {
   try {
-    const cfg = await chrome.storage.sync.get(['server', 'apiKey'])
+    const cfg = await getConfig()
     if (!cfg.server || !cfg.apiKey) return { ok: false, error: 'unconfigured' }
-    const resp = await fetch(`${cfg.server.replace(/\/$/, '')}/api/v1/system/ocr/recognize`, {
+    const body = await api(cfg, '/api/v1/system/ocr/recognize', {
       method: 'POST',
-      headers: { 'X-API-Key': cfg.apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: String(image).slice(0, 4 * 1024 * 1024) }),
     })
-    const body = await resp.json().catch(() => ({}))
-    if (!resp.ok || body.error) return { ok: false, error: body.error || `HTTP ${resp.status}` }
     return { ok: true, text: body.text || '' }
   } catch (e) {
     return { ok: false, error: e.message }
@@ -161,14 +143,12 @@ async function ocrCaptcha(image) {
 
 async function pushDownload(url) {
   try {
-    const cfg = await chrome.storage.sync.get(['server', 'apiKey', 'downloaderId'])
+    const cfg = await getConfig()
     if (!cfg.server || !cfg.apiKey) return { ok: false, error: '请先配置服务器与 API Key' }
-    const base = cfg.server.replace(/\/$/, '')
     let dlId = cfg.downloaderId ? Number(cfg.downloaderId) : 0
     if (!dlId) {
       // 未固定下载器（下载任务面板的选择会写回 downloaderId）→ 取默认；再不行取第一个。
-      const res = await fetch(`${base}/api/v1/downloaders`, { headers: { 'X-API-Key': cfg.apiKey } })
-      const body = await res.json()
+      const body = await api(cfg, '/api/v1/downloaders')
       const list = body.downloaders || []
       const def = list.find((d) => d.is_default) || list[0]
       if (!def) return { ok: false, error: '服务器无可用下载器' }
@@ -176,17 +156,13 @@ async function pushDownload(url) {
     }
     // PT 站种子常需站点 cookie：服务端按 URL 注册域反查站点凭据下载 .torrent，
     // 此处无需额外参数（Add 处理器 FindByDownloadURL 自动处理）。
-    const headers = { 'X-API-Key': cfg.apiKey, 'Content-Type': 'application/json' }
-    const resp = await fetch(`${base}/api/v1/downloaders/${dlId}/torrents`, {
+    await api(cfg, `/api/v1/downloaders/${dlId}/torrents`, {
       method: 'POST',
-      headers,
       body: JSON.stringify({
         url,
         tags: ['ptpatronus-extension'],
       }),
     })
-    const out = await resp.json().catch(() => ({}))
-    if (!resp.ok || out.ok === false) return { ok: false, error: out.error || `HTTP ${resp.status}` }
     // 下载历史：成功即记（仅本机 chrome.storage.local，上限 300 条 FIFO）。
     addHistory({ url, downloader_id: dlId }).catch(() => {})
     return { ok: true }

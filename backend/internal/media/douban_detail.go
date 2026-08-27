@@ -1,18 +1,16 @@
 package media
 
-
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
-
 
 // Trending 实现 TrendingCapable：豆瓣 frodo 趣味影集/热门榜 + 榜单聚合。
 //
@@ -80,6 +78,10 @@ func (d *Douban) Trending(ctx context.Context, category string, page int) ([]Med
 // 端点（tv_top250 等 slug 实测 404），而网页版接口公开无签名，tag=热门 全量翻页后过滤
 // rate≥8.5 按 rate 排序取前 20——与「高分经典剧集」语义一致。每页 50 条、最多取 5 页，
 // 单页失败跳过；全部失败才返回错误（由 RecommendChain 标记源不可用）。
+//
+// 该接口每条只有 id/title/rate/cover——缺年份/类型/产地，卡片比其他推荐源少一整行
+// 字段（对标电影 Top250 的 card_subtitle）。故入围前 20 后并发调 frodo Detail 富化
+// （带 6s 条目超时 + 整体上限，单条失败保留裸数据不拖垮整页）。
 func (d *Douban) trendingTopTv(ctx context.Context, page int) ([]MediaInfo, error) {
 	const perPage, maxPages = 50, 5
 	type webItem struct {
@@ -132,14 +134,36 @@ func (d *Douban) trendingTopTv(ctx context.Context, page int) ([]MediaInfo, erro
 	if len(rs) > 20 {
 		rs = rs[:20]
 	}
-	out := make([]MediaInfo, 0, len(rs))
-	for _, r := range rs {
-		out = append(out, MediaInfo{
-			Source: "douban", SourceID: string(TypeTV) + ":" + r.it.ID,
-			Title: r.it.Title, Type: TypeTV,
-			Rating: r.rate, PosterURL: doubanPosterURL(r.it.Cover),
-		})
+	// 并发 Detail 富化（限流 5 路）：单条 6s 超时；失败则该条仅少富字段，仍上榜。
+	out := make([]MediaInfo, len(rs))
+	wg := sync.WaitGroup{}
+	sem := make(chan struct{}, 5)
+	for i := range rs {
+		out[i] = MediaInfo{
+			Source: "douban", SourceID: string(TypeTV) + ":" + rs[i].it.ID,
+			Title: rs[i].it.Title, Type: TypeTV,
+			Rating: rs[i].rate, PosterURL: doubanPosterURL(rs[i].it.Cover),
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			mctx, cancel := context.WithTimeout(ctx, 6*time.Second)
+			defer cancel()
+			if mi, err := d.Detail(mctx, out[i].SourceID); err == nil && mi != nil {
+				keepRating, keepPoster := out[i].Rating, out[i].PosterURL // 榜单值为准（Detail 未回评分/海报差异）
+				if mi.Rating == 0 {
+					mi.Rating = keepRating
+				}
+				if mi.PosterURL == "" {
+					mi.PosterURL = keepPoster
+				}
+				out[i] = *mi
+			}
+		}(i)
 	}
+	wg.Wait()
 	return out, nil
 }
 
@@ -361,36 +385,6 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 	}
 
 	return mi, nil
-}
-
-// parseMinutes 从 durations（如 "110分钟" / "110 min"）解析分钟数；取第一条有效值。
-func parseMinutes(ds []string) int {
-	for _, d := range ds {
-		n := 0
-		for _, r := range d {
-			if r >= '0' && r <= '9' {
-				n = n*10 + int(r-'0')
-			} else if n > 0 {
-				return n
-			}
-		}
-		if n > 0 {
-			return n
-		}
-	}
-	return 0
-}
-
-// doubanSubjectIDRe 匹配 celebrities actor.uri 里的 personage subject_id。
-var doubanSubjectIDRe = regexp.MustCompile(`subject_id=(\d+)`)
-
-// doubanSubjectID 从 celebrities actor 的 uri（douban://douban.com/celebrity/{cid}?subject_id={pid}）
-// 提取 personage subject_id，用于调 /elessar/subject 拉演员简介。无则空。
-func doubanSubjectID(uri string) string {
-	if m := doubanSubjectIDRe.FindStringSubmatch(uri); m != nil {
-		return m[1]
-	}
-	return ""
 }
 
 // Celebrity 拉演员简介（点头像用）：调 /elessar/subject/{personageID}，返回生平/结构化/作品。

@@ -117,6 +117,64 @@ func TestDoubanTrendingTopTvAggregatesWebSearch(t *testing.T) {
 	}
 }
 
+// trendingTopTv 入围条目会并发调 frodo Detail 富化——卡片才有 年份/类型/产地/简介 等
+// 字段（此前只有 title/rate/cover，比电影 Top250 少一整行）。Detail 失败的条目保留
+// 裸数据仍在榜。Base 同时覆盖 /j/search_subjects（web）与 /tv/{id}（frodo），用同一个
+// httptest.Server + 双 base 覆盖（d.base / d.webBase）。
+func TestDoubanTrendingTopTvEnrichesFromDetail(t *testing.T) {
+	mux := http.NewServeMux()
+	detailHits := map[string]int{}
+	mux.HandleFunc("/j/search_subjects", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"subjects":[
+			{"id":"t1","title":"富化成功剧","rate":"9.2","cover":"https://img9.doubanio.com/view/photo/m_ratio_poster/public/p1.jpg"},
+			{"id":"t2","title":"富化失败剧","rate":"8.8","cover":"https://img1.doubanio.com/view/photo/s_ratio_poster/public/p2.jpg"}
+		]}`))
+	})
+	mux.HandleFunc("/tv/t1", func(w http.ResponseWriter, r *http.Request) {
+		detailHits["t1"]++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"title":"富化成功剧","year":2005,"summary":"经典神作简介","rating":{"value":9.5,"count":100},
+			"genres":["剧情","悬疑"],"countries":["中国大陆"],"directors":[{"name":"某导演"}],
+			"pubdate":["2005-01-01"],"pic":{"large":"https://img9.doubanio.com/view/photo/m_ratio_poster/public/p9.jpg"}}`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	d := NewDouban("", "")
+	d.base, d.webBase = srv.URL, srv.URL
+
+	res, err := d.Trending(context.Background(), "topTv", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res) != 2 {
+		t.Fatalf("count = %d, want 2", len(res))
+	}
+	// 按 rate 排序：t1(9.2) 在前
+	first := res[0]
+	if first.Title != "富化成功剧" {
+		t.Fatalf("first = %+v", first)
+	}
+	if detailHits["t1"] != 1 {
+		t.Errorf("detail called %d times for t1, want 1", detailHits["t1"])
+	}
+	if first.Year != 2005 || first.Overview == "" || first.ReleaseDate == "" ||
+		len(first.Genres) != 2 || len(first.Countries) != 1 || len(first.Directors) != 1 {
+		t.Errorf("enriched fields missing: year=%d overview=%q release=%q genres=%v countries=%v directors=%v",
+			first.Year, first.Overview, first.ReleaseDate, first.Genres, first.Countries, first.Directors)
+	}
+	if first.Rating < 9.2 { // Detail 的 9.5 可用；榜单兜底 9.2 至少保留一个
+		t.Errorf("rating lost: %v", first.Rating)
+	}
+	// 失败条目仍以裸数据上榜（海报经 doubanPosterURL 规整、评分/标题保留榜单值）
+	second := res[1]
+	if second.Title != "富化失败剧" || second.Year != 0 || second.Rating != 8.8 ||
+		second.PosterURL != "https://img9.doubanio.com/view/photo/m_ratio_poster/public/p2.jpg" {
+		t.Errorf("fallback item wrong: %+v", second)
+	}
+}
+
 // 订阅日历需带作品海报（缺失时退 next_episode_to_air.still_path），前端日历行展示缩略图。
 func TestTMDBCalendarForSubscriptionsIncludesPoster(t *testing.T) {
 	dayA := time.Now().UTC().AddDate(0, 0, 3).Format("2006-01-02")

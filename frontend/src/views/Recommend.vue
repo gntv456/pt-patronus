@@ -115,6 +115,15 @@ function refresh() {
 
 const sourceLabel = (key: string) => recommendSources.find((s) => s.key === key)?.label ?? key
 
+// 与搜索页 MediaResultsGrid 同款徽标：类型/来源统一中文展示。
+const TYPE_LABELS: Record<string, string> = { movie: '电影', tv: '剧集', music: '音乐' }
+function typeBadge(t: string) {
+  return TYPE_LABELS[t] ?? ''
+}
+function genreText(m: MediaInfo) {
+  return (m.genres?.length ?? 0) > 0 || (m.countries?.length ?? 0) > 0
+}
+
 // 寸光集↔短剧互斥联动：寸光集只产短剧、短剧只在寸光集。选其一时自动校正另一筛选，
 // 避免「寸光集 + 热映电影」「豆瓣 + 短剧」这类必然空态组合。后端 CategoryCapable 亦会兜底
 // 跳过不支持当前分类的源，但这里联动让选中态始终自洽。
@@ -237,9 +246,15 @@ onUnmounted(() => {
         <div class="info">
           <div class="t-title">{{ m.title }}</div>
           <div class="t-meta">
+            <span v-if="typeBadge(m.type)" class="badge">{{ typeBadge(m.type) }}</span>
             <span class="src" :data-src="m.source">{{ sourceLabel(m.source) }}</span>
             <span v-if="m.year">· {{ m.year }}</span>
             <span v-if="m.rating">· ⭐ {{ m.rating.toFixed(1) }}</span>
+          </div>
+          <!-- 类型/产地：豆瓣榜单自 card_subtitle 结构化，TMDB/寸光集自带；有则展示，与详情页一致 -->
+          <div v-if="genreText(m)" class="t-tags">
+            <el-tag v-for="g in (m.genres || []).slice(0, 3)" :key="g" size="small" effect="plain">{{ g }}</el-tag>
+            <span v-for="cA in (m.countries || []).slice(0, 1)" :key="cA" class="t-country">{{ cA }}</span>
           </div>
           <div v-if="m.overview" class="t-overview">{{ m.overview }}</div>
           <el-button size="small" type="primary" plain class="find-btn" @click.stop="findOnSites(m)">在站点查找</el-button>
@@ -307,6 +322,9 @@ onUnmounted(() => {
 .src { color: var(--pt-primary,#6c5ce7); font-weight: 600; }
 .t-overview { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .find-btn { margin-top: 8px; align-self: flex-start; }
+/* 类型/产地行：与详情页一致的小标签；统一卡片信息层级 */
+.t-tags { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.t-country { font-size: var(--fs-xs); color: var(--text-muted); }
 .empty { padding: 40px; text-align: center; }
 .pager { display: flex; align-items: center; justify-content: center; gap: var(--sp-3); padding: 8px 0 4px; }
 .pager .page-info { font-size: var(--fs-xs); }

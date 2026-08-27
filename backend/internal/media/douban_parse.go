@@ -2,6 +2,7 @@ package media
 
 import (
 	"regexp"
+	"strings"
 )
 
 // parseMinutes 从 durations（如 "110分钟" / "110 min"）解析分钟数；取第一条有效值。
@@ -32,4 +33,26 @@ func doubanSubjectID(uri string) string {
 		return m[1]
 	}
 	return ""
+}
+
+// parseCardSubtitle 拆豆瓣榜单 card_subtitle 的「年 / 产地 / 类型 [ / 导演 [ / 主演] ]」
+// 斜杠分段。类型段按空格拆为多个 genre；段数不足时按位置尽力解析。全不匹配返回空。
+func parseCardSubtitle(s string) (genres, countries []string, names []string) {
+	parts := strings.Split(s, "/")
+	if len(parts) < 3 {
+		return nil, nil, nil // 至少 年/产地/类型 三段才可结构化
+	}
+	trim := func(i int) string { return strings.TrimSpace(parts[i]) }
+	for _, g := range strings.Fields(trim(2)) {
+		if g != "" {
+			genres = append(genres, g)
+		}
+	}
+	if trim(1) != "" {
+		countries = append(countries, trim(1))
+	}
+	if len(parts) > 3 && trim(3) != "" {
+		names = append(names, trim(3))
+	}
+	return genres, countries, names
 }

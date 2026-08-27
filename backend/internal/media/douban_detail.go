@@ -69,6 +69,16 @@ func (d *Douban) Trending(ctx context.Context, category string, page int) ([]Med
 			ReleaseDate: it.Year, PosterURL: doubanPosterURL(poster),
 		}
 		mi.Year = yearFromDate(it.Year)
+		// card_subtitle 形如 "2026 / 中国大陆 / 剧情 古装 / 邓科 / 丁禹兮 邓恩熙"
+		// （年份/产地/类型/导演/主演 五段）。结构化拆出 类型/产地 进 Genres/Countries，
+		// 卡片与详情页字段统一（Overview 保留原文兜底无简介场景）。
+		if gs, cs, ds := parseCardSubtitle(it.CardSubtitle); len(gs) > 0 {
+			mi.Genres = gs
+			mi.Countries = cs
+			for _, n := range ds {
+				mi.Directors = append(mi.Directors, n)
+			}
+		}
 		out = append(out, mi)
 	}
 	return out, nil
@@ -386,6 +396,3 @@ func (d *Douban) Detail(ctx context.Context, id string) (*MediaInfo, error) {
 
 	return mi, nil
 }
-
-// Celebrity 拉演员简介（点头像用）：调 /elessar/subject/{personageID}，返回生平/结构化/作品。
-// desc 是 HTML 多段 <p>，用 goquery 提纯文本段落（避免前端 v-html XSS）。

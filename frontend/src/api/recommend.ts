@@ -15,6 +15,7 @@ export interface MediaInfo {
   release_date?: string
   rating?: number
   genres?: string[]
+  countries?: string[]
 }
 
 // 推荐源/分类筛选项。

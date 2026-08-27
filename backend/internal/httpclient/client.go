@@ -14,6 +14,7 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/html/charset"
@@ -115,6 +116,11 @@ type Client struct {
 	retries      int
 	allowPrivate bool
 	maxBody      int64
+
+	// per-host 最小请求间隔限流（站点礼貌抓取，对标 MP 站点流控）。
+	limMu   sync.Mutex
+	limNext map[string]time.Time // host → 下一次允许请求的时间
+	lims    map[string]time.Duration
 }
 
 // New 构造一个 Client。
@@ -162,13 +168,67 @@ func New(opts Options) (*Client, error) {
 	if maxBody <= 0 {
 		maxBody = defaultMaxBodyBytes
 	}
-	return &Client{hc: hc, ua: opts.UserAgent, retries: opts.MaxRetries, allowPrivate: opts.AllowPrivate, maxBody: maxBody}, nil
+	return &Client{hc: hc, ua: opts.UserAgent, retries: opts.MaxRetries, allowPrivate: opts.AllowPrivate, maxBody: maxBody,
+		limNext: map[string]time.Time{}, lims: map[string]time.Duration{}}, nil
+}
+
+// SetHostInterval 设置某 host 的最小请求间隔（站点抓取限流，LimitInterval 秒 → 此处）。
+// host 传 URL 或纯域名均可（内部经 url.Parse 归一到 u.Host）。interval<=0 清除限流。
+// 线程安全；未知 host 不受影响（默认不限）。
+func (c *Client) SetHostInterval(host string, interval time.Duration) {
+	if u, err := url.Parse(host); err == nil && u.Host != "" {
+		host = u.Host
+	}
+	if host == "" {
+		return
+	}
+	c.limMu.Lock()
+	defer c.limMu.Unlock()
+	if interval <= 0 {
+		delete(c.lims, host)
+		return
+	}
+	c.lims[host] = interval
+}
+
+// throttle 按 host 限流等待：距该 host 上次放行不足 interval 则补足睡眠。
+func (c *Client) throttle(ctx context.Context, rawURL string) {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return
+	}
+	c.limMu.Lock()
+	interval, ok := c.lims[u.Host]
+	if !ok {
+		c.limMu.Unlock()
+		return
+	}
+	now := time.Now()
+	next := c.limNext[u.Host]
+	var wait time.Duration
+	if next.After(now) {
+		wait = next.Sub(now)
+		c.limNext[u.Host] = next.Add(interval)
+	} else {
+		c.limNext[u.Host] = now.Add(interval)
+	}
+	c.limMu.Unlock()
+	if wait <= 0 {
+		return
+	}
+	timer := time.NewTimer(wait)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
 }
 
 // Do 发起请求。ssrf=true 时阻止内网目标（站点抓取用）；cookieStr 形如 "k=v; k2=v2"。
 func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 	headers map[string]string, cookieStr string, ssrf bool) (*Response, error) {
 
+	c.throttle(ctx, rawURL)
 	if ssrf && !c.allowPrivate {
 		if err := c.assertPublicWithRetry(rawURL); err != nil {
 			// 区分两类失败：ErrBlocked=确定的 SSRF 策略拦截（私网/环回等）；其余为 DNS 解析失败/
@@ -255,6 +315,7 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, body []byte,
 // 守卫与连接池），并把 cookie 写入请求头；不带重试、不读写 jar。凭据校验目标始终是
 // 公网站点，故默认启用 SSRF 守卫（AllowPrivate 的 client 例外，用于测试）。
 func (c *Client) PostWithCookie(ctx context.Context, rawURL, cookieStr string) (*Response, error) {
+	c.throttle(ctx, rawURL)
 	if !c.allowPrivate {
 		if err := c.assertPublicWithRetry(rawURL); err != nil {
 			if errors.Is(err, ErrBlocked) {

@@ -49,7 +49,7 @@ func (m *Manager) fetchRawMarket(ctx context.Context, source string) (*MarketInd
 }
 
 // finalizeIndex 对市场索引做兼容性评估、依赖/安装计划等后处理（原地修改）。
-// 运营层字段（InstallCount/Favorited）一并填充：弟子数进索引、收藏态标记当前用户。
+// 运营层字段（InstallCount/Favorited）一并填充：老树洞计数进索引、收藏态标记当前用户。
 func (m *Manager) finalizeIndex(idx *MarketIndex) {
 	m.mu.RLock()
 	mop := m.marketOp

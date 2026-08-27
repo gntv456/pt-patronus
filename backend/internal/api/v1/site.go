@@ -84,6 +84,10 @@ func (h *SiteHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// 站点限流热生效：新建站点（或改了 LimitInterval）后把 per-host 间隔同步到抓取客户端。
+	if all, err := h.oper.List(); err == nil {
+		h.siteCh.SyncHostLimits(all, h.hc)
+	}
 	c.JSON(http.StatusOK, s)
 }
 
@@ -102,6 +106,10 @@ func (h *SiteHandler) Update(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+	// 站点限流热生效：LimitInterval 改动即时同步到抓取客户端（无需重启）。
+	if all, err := h.oper.List(); err == nil {
+		h.siteCh.SyncHostLimits(all, h.hc)
 	}
 	c.JSON(http.StatusOK, s)
 }

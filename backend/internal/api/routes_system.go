@@ -36,6 +36,7 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 		guarded.GET("/system/ocr", ocrH.GetConfig)
 		guarded.PUT("/system/ocr", middleware.RequireAdmin(), ocrH.SetConfig)
 		guarded.POST("/system/ocr/test", middleware.RequireAdmin(), ocrH.Test)
+		guarded.POST("/system/ocr/recognize", middleware.RequireAdmin(), ocrH.Recognize)
 	}
 
 	regH := v1.NewRegistrationHandler(d.RegOp, d.RegCh)
@@ -102,7 +103,7 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 		plugins.GET("/trust-config", middleware.RequireAdmin(), pluginH.TrustConfig)
 		plugins.PUT("/trust-config", middleware.RequireAdmin(), pluginH.SetTrustConfig)
 		plugins.POST("/market/install", middleware.RequireAdmin(), pluginH.Install)
-		// 市场运营层（对标 MSaber）：风云榜 / 梦萦阁收藏 / 分神实例 / 天序排序。
+		// 市场运营层（对标 MSaber）：百鸟朝凤 / 百宝袋收藏 / 分神实例 / 天序排序。
 		// 静态段 charts/favorites 置于 /:id 参数路由之前（Gin radix 区分静态与参数，顺序无碍但集中放置可读）。
 		plugins.GET("/market/charts", pluginH.MarketCharts)
 		plugins.GET("/market/favorites", pluginH.MarketFavorites)

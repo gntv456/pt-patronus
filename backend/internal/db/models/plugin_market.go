@@ -4,8 +4,8 @@ import "time"
 
 // ---- 插件市场运营层（对标 MSaber 秘术宝阁/修仙秘籍） ----
 
-// PluginInstall 安装事件（风云榜"弟子榜"= 累计安装量 Top30；"新晋榜"= 最近上架/新安装）。
-// 每次 Install 成功记一条；弟子数 = 该插件累计安装事件数（跨用户社区榜在中心仓库侧，
+// PluginInstall 安装事件（百鸟朝凤"老树洞"= 累计安装量 Top30；"蹦蹦新窝"= 最近上架/新安装）。
+// 每次 Install 成功记一条；老树洞计数 = 该插件累计安装事件数（跨用户社区榜在中心仓库侧，
 // 本地表支持单机多装/重装计数与"本站安装量"榜）。
 type PluginInstall struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
@@ -15,7 +15,7 @@ type PluginInstall struct {
 	CreatedAt time.Time `gorm:"index:idx_plugin_install,priority:2" json:"created_at"`
 }
 
-// PluginFavorite 插件收藏（梦萦阁）。UserID=0 视为单用户模式（当前部署形态）。
+// PluginFavorite 插件收藏（百宝袋）。UserID=0 视为单用户模式（当前部署形态）。
 type PluginFavorite struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	PluginID  string    `gorm:"size:96;index:idx_plugin_fav,priority:2;not null" json:"plugin_id"`
@@ -37,23 +37,23 @@ type PluginInstance struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// PluginInstallCountRow 风云榜行（弟子榜/新晋榜共用）。
+// PluginInstallCountRow 百鸟朝凤行（老树洞/蹦蹦新窝共用）。
 // FirstInstalled 以字符串承载（SQLite MIN(created_at) 聚合返回字符串，避免驱动 Scan 时间类型差异）。
 type PluginInstallCountRow struct {
 	PluginID       string `json:"plugin_id"`
 	Installs       int64  `json:"installs"`
-	FirstInstalled string `json:"first_installed"` // 弟子榜=最早安装；新晋榜=最近一次安装（ISO 文本）
+	FirstInstalled string `json:"first_installed"` // 老树洞=最早安装；蹦蹦新窝=最近一次安装（ISO 文本）
 }
 
-// ChartRow 风云榜 API 行。
+// ChartRow 百鸟朝凤 API 行。
 type ChartRow struct {
 	PluginID      string    `json:"plugin_id"`
 	Installs      int64     `json:"installs"`
 	LastInstalled time.Time `json:"last_installed,omitempty"`
 }
 
-// MarketChartsView 风云榜视图（弟子榜 + 新晋榜）。
+// MarketChartsView 百鸟朝凤视图（老树洞 + 蹦蹦新窝）。
 type MarketChartsView struct {
-	Disciples []ChartRow `json:"disciples"` // 弟子榜：累计安装量 Top30
-	Newcomers []ChartRow `json:"newcomers"` // 新晋榜：最近安装 Top30
+	Disciples []ChartRow `json:"disciples"` // 老树洞：累计安装量 Top30
+	Newcomers []ChartRow `json:"newcomers"` // 蹦蹦新窝：最近安装 Top30
 }

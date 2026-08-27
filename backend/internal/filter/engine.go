@@ -65,7 +65,14 @@ func (e *Engine) Filter(ctx context.Context, groupNames []string, torrents []sit
 			return nil, nil
 		}
 	}
-	sort.SliceStable(cur, func(i, j int) bool { return cur[i].PriOrder > cur[j].PriOrder })
+	sort.SliceStable(cur, func(i, j int) bool {
+		if cur[i].PriOrder != cur[j].PriOrder {
+			return cur[i].PriOrder > cur[j].PriOrder
+		}
+		// 同层并列时来源站优先级高者在前（MP 站点优先级参与择优；PriOrder 相同才生效，
+		// 不改变规则层语义）。SitePriority 未填充（=0）不影响排序。
+		return cur[i].Torrent.SitePriority > cur[j].Torrent.SitePriority
+	})
 	return cur, nil
 }
 
@@ -90,7 +97,12 @@ func (e *Engine) ApplyGroupForTest(ctx context.Context, ruleString string, torre
 			dropped = append(dropped, t)
 		}
 	}
-	sort.SliceStable(matched, func(i, j int) bool { return matched[i].PriOrder > matched[j].PriOrder })
+	sort.SliceStable(matched, func(i, j int) bool {
+		if matched[i].PriOrder != matched[j].PriOrder {
+			return matched[i].PriOrder > matched[j].PriOrder
+		}
+		return matched[i].Torrent.SitePriority > matched[j].Torrent.SitePriority
+	})
 	return matched, dropped, levels, nil
 }
 

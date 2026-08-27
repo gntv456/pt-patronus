@@ -355,9 +355,9 @@ type MarketPlugin struct {
 	// ResourceAccess / Requirements 透传到市场浏览/安装确认页，向管理员声明资源访问与依赖。
 	ResourceAccess *ResourceAccessSpec `json:"resource_access,omitempty"`
 	Requirements   []string            `json:"requirements,omitempty"`
-	// MarketPlugin 运营层附加字段（风云榜/梦萦阁；finalizeIndex 填充，索引原文不含）。
-	InstallCount int64 `json:"install_count"` // 本站累计安装次数（弟子榜）
-	Favorited    bool  `json:"favorited"`     // 当前用户已收藏（梦萦阁）
+	// MarketPlugin 运营层附加字段（百鸟朝凤/百宝袋；finalizeIndex 填充，索引原文不含）。
+	InstallCount int64 `json:"install_count"` // 本站累计安装次数（老树洞）
+	Favorited    bool  `json:"favorited"`     // 当前用户已收藏（百宝袋）
 }
 
 type InstallResult struct {

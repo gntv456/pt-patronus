@@ -28,6 +28,10 @@ func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
 		sites.POST("/:id/search", siteH.Search)
 		sites.GET("/:id/torrent/detail", siteH.TorrentDetail)
 		sites.POST("/:id/cookie", siteH.UpdateCookie)
+		// 站点 Cookie 台账（浏览器扩展对比/同步用）：指纹全员可读（脱敏），
+		// 明文（reveal=1，覆盖到浏览器侧用）与写入同级收敛 admin。
+		sites.GET("/cookies", siteH.GetCookies)
+		sites.GET("/cookies/reveal", middleware.RequireAdmin(), siteH.GetCookiesReveal)
 	}
 	guarded.POST("/search", siteH.SearchAll)
 	guarded.GET("/search/stream", siteH.SearchAllStream)

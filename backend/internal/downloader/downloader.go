@@ -50,6 +50,8 @@ type GlobalStats struct {
 	DLSpeedRaw int64 `json:"-"`
 	UPSpeedRaw int64 `json:"-"`
 	TotalSize  int64 `json:"total_size"`
+	// FreeSpace 默认保存路径剩余空间（字节；协议不暴露时为 0，前端按 — 展示）。
+	FreeSpace int64 `json:"free_space"`
 }
 
 // Limits 是限速设置（统一单位 bytes/s；0 表示不限）。

@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -95,6 +97,52 @@ func (h *SiteHandler) UpdateCookie(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// GetCookies 站点 Cookie 台账（浏览器扩展对比视图用）：
+// 返回全部站点的 cookie 指纹（sha256 前 12 位 + 长度 + 更新时间可辨异同，不泄露明文）。
+// 带 ?reveal=1 时返回明文（把服务器 cookie 覆盖到浏览器用）；完整明文属敏感操作，
+// 与 backup/export 同级——仅在路由层挂 RequireAdmin 的端点上开放。
+func (h *SiteHandler) GetCookies(c *gin.Context) {
+	sites, err := h.oper.List()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	reveal := c.Query("reveal") == "1"
+	out := make([]gin.H, 0, len(sites))
+	for _, s := range sites {
+		item := gin.H{
+			"id": s.ID, "name": s.Name, "base_url": s.BaseURL,
+			"is_active": s.IsActive, "has_cookie": s.CookieEnc != "",
+		}
+		if s.CookieEnc != "" {
+			ck, err := h.oper.Cookie(&s)
+			if err != nil {
+				// 解密失败（如库里是旧 SECRET_KEY 时代加密的数据）：如实标记为
+				// 「密文不可用」而非冒充有效指纹——扩展台账据此显示该站需重新录入。
+				item["has_cookie"] = false
+				item["stale"] = true
+			} else {
+				sum := sha256.Sum256([]byte(ck))
+				fp := hex.EncodeToString(sum[:])[:12]
+				item["fingerprint"] = fp
+				item["length"] = len(ck)
+				if reveal {
+					item["cookie"] = ck
+				}
+			}
+		}
+		out = append(out, item)
+	}
+	c.JSON(http.StatusOK, gin.H{"sites": out})
+}
+
+// GetCookiesReveal 是 GetCookies 的明文版（?reveal=1）；路由层 RequireAdmin 收敛，
+// 使「把服务器 cookie 拉到浏览器」与 backup/export 同为管理员能力。
+func (h *SiteHandler) GetCookiesReveal(c *gin.Context) {
+	c.Request.URL.RawQuery = "reveal=1"
+	h.GetCookies(c)
 }
 
 // Definitions 列出可用站点定义（供 UI 选站点模板）。

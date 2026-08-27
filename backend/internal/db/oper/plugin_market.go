@@ -8,14 +8,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// PluginMarketOper 插件市场运营层：安装量榜（风云榜）/收藏（梦萦阁）/多实例（分神）/排序（天序）。
+// PluginMarketOper 插件市场运营层：安装量榜（百鸟朝凤）/收藏（百宝袋）/多实例（分神）/排序（天序）。
 type PluginMarketOper struct{ db *gorm.DB }
 
 func NewPluginMarketOper(db *gorm.DB) *PluginMarketOper { return &PluginMarketOper{db: db} }
 
-// ---- 安装量（弟子榜） ----
+// ---- 安装量（老树洞） ----
 
-// RecordInstall 记一次安装事件（风云榜数据源）。
+// RecordInstall 记一次安装事件（百鸟朝凤数据源）。
 func (o *PluginMarketOper) RecordInstall(pluginID, version, source string) error {
 	if pluginID == "" {
 		return errors.New("plugin id required")
@@ -30,7 +30,7 @@ func (o *PluginMarketOper) InstallCount(pluginID string) (int64, error) {
 	return n, err
 }
 
-// TopInstalled 弟子榜：按累计安装次数降序 Top N（并列按最早安装在前）。
+// TopInstalled 老树洞：按累计安装次数降序 Top N（并列按最早安装在前）。
 func (o *PluginMarketOper) TopInstalled(n int) ([]models.PluginInstallCountRow, error) {
 	if n <= 0 || n > 100 {
 		n = 30
@@ -43,8 +43,8 @@ func (o *PluginMarketOper) TopInstalled(n int) ([]models.PluginInstallCountRow, 
 	return rows, err
 }
 
-// RecentInstalls 新晋榜：最近安装事件（去重插件）按时间倒序 Top N。
-// 与弟子榜互补——新上架/刚被发现的插件即使总量低也能露脸。
+// RecentInstalls 蹦蹦新窝：最近安装事件（去重插件）按时间倒序 Top N。
+// 与老树洞互补——新上架/刚被发现的插件即使总量低也能露脸。
 // 两步查询：先取每插件最新事件（GROUP BY 取 MAX(id)），再回表 JOIN 出计数（SQLite 窗口函数支持不稳）。
 func (o *PluginMarketOper) RecentInstalls(n int) ([]models.PluginInstallCountRow, error) {
 	if n <= 0 || n > 100 {
@@ -83,7 +83,7 @@ func (o *PluginMarketOper) RecentInstalls(n int) ([]models.PluginInstallCountRow
 	return rows, nil
 }
 
-// ---- 收藏（梦萦阁） ----
+// ---- 收藏（百宝袋） ----
 
 // Favorite 收藏插件（幂等；已收藏返回 nil）。
 func (o *PluginMarketOper) Favorite(userID uint, pluginID string) error {

@@ -102,6 +102,10 @@ type notifyDiscordConfig struct {
 	Enabled bool   `json:"enabled"`
 	URL     string `json:"url"`
 }
+type notifySlackConfig struct {
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+}
 type notifyMQTTConfig struct {
 	Enabled            bool   `json:"enabled"`
 	Broker             string `json:"broker"`
@@ -134,6 +138,7 @@ type notifyConfigResp struct {
 	WxPusher   notifyWxPusherConfig   `json:"wxpusher"`
 	Lark       notifyLarkConfig       `json:"lark"`
 	Discord    notifyDiscordConfig    `json:"discord"`
+	Slack      notifySlackConfig      `json:"slack"`
 	MQTT       notifyMQTTConfig       `json:"mqtt"`
 	ServerChan notifyServerChanConfig `json:"serverchan"`
 }

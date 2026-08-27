@@ -253,6 +253,8 @@ func TestNotifyProviderApplyEnablesNewChannels(t *testing.T) {
 	in.ServerChan.Key = "sc"
 	in.Discord.Enabled = true
 	in.Discord.URL = "https://discord/webhook"
+	in.Slack.Enabled = true
+	in.Slack.URL = "https://hooks.slack.com/services/T/B/X"
 	in.MQTT.Enabled = true
 	in.MQTT.Broker = "broker:1883"
 	in.MQTT.Topic = "t"
@@ -260,7 +262,7 @@ func TestNotifyProviderApplyEnablesNewChannels(t *testing.T) {
 		t.Fatal(err)
 	}
 	chs := mgr.Channels()
-	want := map[string]bool{"pushplus": false, "serverchan": false, "discord": false, "mqtt": false}
+	want := map[string]bool{"pushplus": false, "serverchan": false, "discord": false, "slack": false, "mqtt": false}
 	for _, n := range chs {
 		if _, ok := want[n]; ok {
 			want[n] = true

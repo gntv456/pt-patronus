@@ -92,3 +92,30 @@ func (h *OCRHandler) Test(c *gin.Context) {
 
 // png1x1Base64 1x1 红色像素 PNG。
 const png1x1Base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+// ocrRecognizeReq POST /system/ocr/recognize 请求体（浏览器扩展验证码识别用）。
+type ocrRecognizeReq struct {
+	Image string `json:"image" binding:"required,max=4194304"` // data URL 或裸 base64；4MB 上限
+}
+
+// Recognize POST /system/ocr/recognize —— 识别任意 base64 图片（扩展 content script 截取站点
+// 登录验证码后经 background 上传）。复用 ocr.Client（paddle/simple/ddddoc 三模式）；
+// 未配置端点返回 400 供扩展静默回退人工输入。RequireAdmin：识别能力不开放给普通登录态。
+func (h *OCRHandler) Recognize(c *gin.Context) {
+	cli := ocr.New(h.config())
+	if !cli.Enabled() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "未配置 OCR 端点（系统设置 → OCR）"})
+		return
+	}
+	var req ocrRecognizeReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	text, err := cli.Recognize(c.Request.Context(), req.Image)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"text": text})
+}

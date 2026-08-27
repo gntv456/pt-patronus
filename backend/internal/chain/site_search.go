@@ -76,6 +76,7 @@ func (c *SiteChain) SearchSites(ctx context.Context, keyword, category string, s
 			ts, e := c.Search(siteCtx, &s, keyword, category, 1)
 			for i := range ts {
 				ts[i].SiteID = s.ID
+				ts[i].SitePriority = s.Priority
 			}
 			r := SiteResult{SiteID: s.ID, SiteName: s.Name, Torrents: ts}
 			if e != nil {
@@ -128,6 +129,7 @@ func (c *SiteChain) SearchSitesStream(ctx context.Context, keyword, category str
 			ts, e := c.Search(siteCtx, &s, keyword, category, 1)
 			for i := range ts {
 				ts[i].SiteID = s.ID
+				ts[i].SitePriority = s.Priority
 			}
 			r := SiteResult{SiteID: s.ID, SiteName: s.Name, Torrents: ts}
 			if e != nil {

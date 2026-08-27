@@ -75,6 +75,12 @@ func New(cfg *config.Config) (*App, error) {
 	checkinRecordOp := oper.NewCheckinRecordOper(database)
 	siteCh.SetRecordOper(checkinRecordOp)
 
+	// 站点限流同步：LimitInterval>0 的站点按 host 下发 per-host 最小请求间隔
+	// （对标 MP 站点流控；启动时全量同步一次，站点增改后由 API 层再次同步）。
+	if allSites, err := siteOp.List(); err == nil {
+		siteCh.SyncHostLimits(allSites, hc)
+	}
+
 	dlOp := oper.NewDownloaderOper(database, crypto)
 	dlMgr := manager.NewManager(dlOp)
 	dlCh := chain.NewDownloadChain(base, dlMgr, dlOp, siteCh)
@@ -121,7 +127,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
 	pluginMgr.SetCfgOp(cfgOp)             // 插件市场源等 UI 持久化配置（SystemConfig）
-	pluginMgr.SetMarketOper(oper.NewPluginMarketOper(database)) // 市场运营层：风云榜/收藏/分神/天序
+	pluginMgr.SetMarketOper(oper.NewPluginMarketOper(database)) // 市场运营层：百鸟朝凤/收藏/分神/天序
 	pluginMgr.EnsureDefaultMarketSource() // 首次启动种子化官方市场仓库（纯 DB 写，无网络/插件活动；安全模式也执行）
 	if !cfg.SafeMode {
 		if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {

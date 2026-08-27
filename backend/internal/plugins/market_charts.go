@@ -18,12 +18,12 @@ func MarshalConfigMap(cfg map[string]any) (string, error) {
 	return string(b), nil
 }
 
-// ---- 插件市场运营层（对标 MSaber 秘术宝阁：风云榜/梦萦阁/分神/天序） ----
+// ---- 插件市场运营层（对标 MSaber 秘术宝阁：百鸟朝凤/百宝袋/分神/天序） ----
 
 // currentMarketUserID 收藏归属用户（当前单管理员部署形态恒 0；多用户后接 auth uid）。
 func currentMarketUserID() uint { return 0 }
 
-// MarketCharts 风云榜（弟子榜=累计安装 Top30；新晋榜=最近安装 Top30）。
+// MarketCharts 百鸟朝凤（老树洞=累计安装 Top30；蹦蹦新窝=最近安装 Top30）。
 func (m *Manager) MarketCharts(ctx context.Context) (*models.MarketChartsView, error) {
 	m.mu.RLock()
 	mop := m.marketOp
@@ -56,7 +56,7 @@ func (m *Manager) MarketCharts(ctx context.Context) (*models.MarketChartsView, e
 	return out, nil
 }
 
-// MarketFavorites 梦萦阁：收藏插件的市场详情（拉市场索引后按收藏集过滤）。
+// MarketFavorites 百宝袋：收藏插件的市场详情（拉市场索引后按收藏集过滤）。
 // 返回 MarketPlugin 列表（与市场浏览同构）；收藏了但市场已下架的插件以占位行返回（id+标记）。
 func (m *Manager) MarketFavorites(ctx context.Context) ([]MarketPlugin, error) {
 	m.mu.RLock()

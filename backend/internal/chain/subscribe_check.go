@@ -125,7 +125,16 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 			if iPack != jPack {
 				return iPack // 整季包排前
 			}
-			return ranked[i].pri > ranked[j].pri // 同类内 PriOrder 降序
+			if ranked[i].pri != ranked[j].pri {
+				return ranked[i].pri > ranked[j].pri // 同类内 PriOrder 降序
+			}
+			return ranked[i].t.SitePriority > ranked[j].t.SitePriority // 同层站优先级高者在前
+		})
+	} else if len(ranked) > 1 {
+		// 非整季包路径：PriOrder 已由规则引擎按站优先级并列排序；此处兜底无规则场景
+		// （ranked 全部 PriOrder=0）也能享受站点优先级择优。
+		sort.SliceStable(ranked, func(i, j int) bool {
+			return ranked[i].t.SitePriority > ranked[j].t.SitePriority
 		})
 	}
 

@@ -105,6 +105,10 @@ type NotificationSettings struct {
 		Enabled bool   `json:"enabled"`
 		URL     string `json:"url"`
 	} `json:"discord"`
+	Slack struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"` // Incoming Webhook（https://hooks.slack.com/services/...）
+	} `json:"slack"`
 	MQTT struct {
 		Enabled  bool   `json:"enabled"`
 		Broker   string `json:"broker"`
@@ -253,6 +257,9 @@ func (p *NotificationSettingsProvider) rebuildLocked(s NotificationSettings) {
 	if s.Discord.Enabled && s.Discord.URL != "" {
 		chs = append(chs, notification.NewDiscord(s.Discord.URL))
 	}
+	if s.Slack.Enabled && s.Slack.URL != "" {
+		chs = append(chs, notification.NewSlack(s.Slack.URL))
+	}
 	if s.MQTT.Enabled && s.MQTT.Broker != "" && s.MQTT.Topic != "" {
 		chs = append(chs, notification.NewMQTT(s.MQTT.Broker, s.MQTT.Topic, s.MQTT.Username, s.MQTT.Password, s.MQTT.ClientID))
 	}
@@ -357,6 +364,9 @@ func mergeNotifySettings(cur, in NotificationSettings) NotificationSettings {
 	// Discord：URL 非秘密
 	out.Discord.Enabled = in.Discord.Enabled
 	out.Discord.URL = in.Discord.URL
+	// Slack：URL 非秘密（Incoming Webhook 整串）
+	out.Slack.Enabled = in.Slack.Enabled
+	out.Slack.URL = in.Slack.URL
 	// MQTT：Password 秘密，其余非敏感
 	out.MQTT.Enabled = in.MQTT.Enabled
 	out.MQTT.Broker = in.MQTT.Broker

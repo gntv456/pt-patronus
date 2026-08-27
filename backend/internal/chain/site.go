@@ -124,6 +124,26 @@ func (c *SiteChain) siteLock(siteID uint) *sync.Mutex {
 // 用 setter 而非改 NewSiteChain 签名，避免波及现有测试构造。
 func (c *SiteChain) SetHTTPClient(hc *httpclient.Client) { c.hc = hc }
 
+// SyncHostLimits 把每个站点的 LimitInterval（抓取限流秒数）同步到站点 HTTP 客户端的
+// per-host 最小请求间隔（对标 MP 站点流控）。启动与站点增改后调用；client 为 nil（测试）跳过。
+// host 取 BaseURL 的域名部分——同域多实例（主站/镜像）共享同一限速桶。
+func (c *SiteChain) SyncHostLimits(sites []models.Site, hc *httpclient.Client) {
+	if hc == nil {
+		return
+	}
+	for _, s := range sites {
+		host := hostOf(s.BaseURL)
+		if host == "" {
+			continue
+		}
+		if s.LimitInterval > 0 {
+			hc.SetHostInterval(host, time.Duration(s.LimitInterval)*time.Second)
+		} else {
+			hc.SetHostInterval(host, 0)
+		}
+	}
+}
+
 // defFor 返回站点对应的定义；无则回退为仅含 schema 的最小定义。
 func (c *SiteChain) defFor(s *models.Site) *site.SiteMetadata {
 	// 统一经 EnsureDefaults：站点 YAML 省略的 capability（announcement/messages/freeleech/

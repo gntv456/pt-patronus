@@ -33,8 +33,9 @@ func (c *Client) GlobalStats(ctx context.Context) (*downloader.GlobalStats, erro
 	c.stateMu.RLock()
 	defer c.stateMu.RUnlock()
 	return &downloader.GlobalStats{
-		DLRate: num(c.state.ServerState["dl_info_speed"]),
-		UPRate: num(c.state.ServerState["up_info_speed"]),
+		DLRate:     num(c.state.ServerState["dl_info_speed"]),
+		UPRate:     num(c.state.ServerState["up_info_speed"]),
+		FreeSpace:  num(c.state.ServerState["free_space_on_disk"]),
 	}, nil
 }
 
@@ -78,22 +79,36 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 	return nil
 }
 
-// Pause 暂停（qB5 用 stop）。
+// Pause 暂停（qB5 用 stop）。版本未知时 ge5 默认 true，若目标实为 qB4.x 会 404——
+// 此时回退旧端点 pause 再试一次（版本探测只在 TestConnection 时做过，运行中可能从未探测）。
 func (c *Client) Pause(ctx context.Context, hashes []string) error {
 	path := "/api/v2/torrents/pause"
 	if c.ge5() {
 		path = "/api/v2/torrents/stop"
 	}
-	return c.postHashes(ctx, path, hashes)
+	err := c.postHashes(ctx, path, hashes)
+	if err != nil && path == "/api/v2/torrents/stop" && is404(err) {
+		return c.postHashes(ctx, "/api/v2/torrents/pause", hashes)
+	}
+	return err
 }
 
-// Resume 恢复（qB5 用 start）。
+// Resume 恢复（qB5 用 start）。同 Pause 的 404 回退。
 func (c *Client) Resume(ctx context.Context, hashes []string) error {
 	path := "/api/v2/torrents/resume"
 	if c.ge5() {
 		path = "/api/v2/torrents/start"
 	}
-	return c.postHashes(ctx, path, hashes)
+	err := c.postHashes(ctx, path, hashes)
+	if err != nil && path == "/api/v2/torrents/start" && is404(err) {
+		return c.postHashes(ctx, "/api/v2/torrents/resume", hashes)
+	}
+	return err
+}
+
+// is404 从 postHashes 的 "xxx status 404" 错误文本里识别 404（qB 端点不存在的标志）。
+func is404(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "404")
 }
 
 // Delete 删除任务。

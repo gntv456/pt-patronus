@@ -106,6 +106,7 @@ func (h *NotificationHandler) GetConfig(c *gin.Context) {
 		},
 		Lark:    notifyLarkConfig{Enabled: s.Lark.Enabled, URL: s.Lark.URL},
 		Discord: notifyDiscordConfig{Enabled: s.Discord.Enabled, URL: s.Discord.URL},
+		Slack:   notifySlackConfig{Enabled: s.Slack.Enabled, URL: s.Slack.URL},
 		MQTT: notifyMQTTConfig{
 			Enabled: s.MQTT.Enabled, Broker: s.MQTT.Broker, Topic: s.MQTT.Topic, Username: s.MQTT.Username,
 			Password: maskSecret(s.MQTT.Password), PasswordConfigured: s.MQTT.Password != "",
@@ -207,6 +208,10 @@ type notifyConfigReq struct {
 		Enabled bool   `json:"enabled"`
 		URL     string `json:"url" binding:"max=1024"`
 	} `json:"discord"`
+	Slack struct {
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url" binding:"max=1024"`
+	} `json:"slack"`
 	MQTT struct {
 		Enabled  bool   `json:"enabled"`
 		Broker   string `json:"broker" binding:"max=512"`
@@ -246,6 +251,7 @@ func (h *NotificationHandler) SetConfig(c *gin.Context) {
 	in.WxPusher.Enabled, in.WxPusher.AppToken, in.WxPusher.UID, in.WxPusher.TopicID = req.WxPusher.Enabled, req.WxPusher.AppToken, req.WxPusher.UID, req.WxPusher.TopicID
 	in.Lark.Enabled, in.Lark.URL = req.Lark.Enabled, req.Lark.URL
 	in.Discord.Enabled, in.Discord.URL = req.Discord.Enabled, req.Discord.URL
+	in.Slack.Enabled, in.Slack.URL = req.Slack.Enabled, req.Slack.URL
 	in.MQTT.Enabled, in.MQTT.Broker, in.MQTT.Topic, in.MQTT.Username, in.MQTT.Password, in.MQTT.ClientID = req.MQTT.Enabled, req.MQTT.Broker, req.MQTT.Topic, req.MQTT.Username, req.MQTT.Password, req.MQTT.ClientID
 	in.ServerChan.Enabled, in.ServerChan.Key = req.ServerChan.Enabled, req.ServerChan.Key
 	if err := h.provider.ApplySettings(in); err != nil {

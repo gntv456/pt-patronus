@@ -7,9 +7,9 @@ import (
 	"github.com/hxpt/ptpatronus/internal/plugins"
 )
 
-// ---- 插件市场运营层（对标 MSaber：风云榜/梦萦阁/分神/天序） ----
+// ---- 插件市场运营层（对标 MSaber：百鸟朝凤/百宝袋/分神/天序） ----
 
-// MarketCharts GET /plugins/market/charts —— 风云榜（弟子榜 + 新晋榜）。
+// MarketCharts GET /plugins/market/charts —— 百鸟朝凤（老树洞 + 蹦蹦新窝）。
 func (h *PluginHandler) MarketCharts(c *gin.Context) {
 	out, err := h.manager.MarketCharts(c.Request.Context())
 	if err != nil {
@@ -19,7 +19,7 @@ func (h *PluginHandler) MarketCharts(c *gin.Context) {
 	c.JSON(http.StatusOK, out)
 }
 
-// MarketFavorites GET /plugins/market/favorites —— 梦萦阁（收藏列表，市场详情级）。
+// MarketFavorites GET /plugins/market/favorites —— 百宝袋（收藏列表，市场详情级）。
 func (h *PluginHandler) MarketFavorites(c *gin.Context) {
 	out, err := h.manager.MarketFavorites(c.Request.Context())
 	if err != nil {

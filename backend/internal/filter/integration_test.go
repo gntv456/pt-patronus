@@ -164,3 +164,32 @@ func contains(s []string, v string) bool {
 	}
 	return false
 }
+
+// TestSitePriorityTieBreak 站点优先级参与择优：同层（PriOrder 相同）候选按来源站
+// Priority 降序稳定排序（对齐 MP 站点优先级择优）；不同层仍以 PriOrder 为准。
+func TestSitePriorityTieBreak(t *testing.T) {
+	store := setupTestStore(t)
+	eng := NewEngine(store)
+	ctx := context.Background()
+
+	if _, err := store.AddGroup(RuleGroupInput{Name: "P组", RuleString: "1080P"}); err != nil {
+		t.Fatalf("AddGroup: %v", err)
+	}
+	torrents := []site.Torrent{
+		{Title: "B.1080p.WEB", SitePriority: 10},
+		{Title: "A.1080p.WEB", SitePriority: 30},
+		{Title: "C.1080p.WEB", SitePriority: 20},
+	}
+	matched, err := eng.Filter(ctx, []string{"P组"}, torrents, nil)
+	if err != nil {
+		t.Fatalf("Filter: %v", err)
+	}
+	if len(matched) != 3 {
+		t.Fatalf("应全部命中，实际 %d", len(matched))
+	}
+	for i, want := range []string{"A", "C", "B"} {
+		if !strings.HasPrefix(matched[i].Torrent.Title, want) {
+			t.Fatalf("第 %d 位应为站优先级 30/20/10 排序（%s…），实际 %s", i+1, want, matched[i].Torrent.Title)
+		}
+	}
+}

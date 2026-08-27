@@ -72,6 +72,7 @@ type Torrent struct {
 	Free        bool     `json:"free,omitempty"`
 	SiteName    string   `json:"site_name,omitempty"` // 来源站（工作流/RSS 保留；SearchSites 已按站聚合但 Torrent 单条无站名）
 	SiteID      uint     `json:"site_id,omitempty"`   // 来源站 ID（推种时按站取 cookie 下载 .torrent 用；SearchSites/订阅/工作流聚合时填充）
+	SitePriority int     `json:"site_priority,omitempty"` // 来源站优先级（Site.Priority；跨站择优同分时高优先级站在前。聚合层填充，适配器不填）
 	// 规则引擎结构化字段（publish_time / downloadvolumefactor 规则用）。
 	// 未填充时引擎降级：Free 近似 factor、PubDate 零值时 publish_time 规则放行。
 	PubDate              time.Time `json:"pub_date,omitempty"`

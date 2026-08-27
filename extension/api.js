@@ -32,12 +32,61 @@ export async function api(cfg, path, options = {}) {
   return resp.json()
 }
 
-// 跨站搜索种子：GET /api/v1/search?keyword=&category=
+// 跨站搜索种子：POST /api/v1/search?keyword=&category=（后端为 POST，避免关键词长时 URL 超限）。
+// 返回按站聚合的 [{site_name, site_id, torrents:[…], error}]（失败站也占位，error 载明原因）。
 export async function searchTorrents(cfg, keyword, category = '') {
   const q = new URLSearchParams({ keyword })
   if (category) q.set('category', category)
-  const data = await api(cfg, `/api/v1/search?${q}`)
+  const data = await api(cfg, `/api/v1/search?${q}`, { method: 'POST' })
   return data.results || []
+}
+
+// searchTorrentsStream 流式跨站搜索：GET /api/v1/search/stream（SSE）。
+// 每站完成推一帧 event:batch {results:[{site_name, torrents, error}]}，结束推 event:done。
+// onBatch 逐站回调（搜出一个显示一个），返回 promise 在 done/错误时 resolve。
+export function searchTorrentsStream(cfg, keyword, onBatch, category = '') {
+  return new Promise((resolve) => {
+    const q = new URLSearchParams({ keyword })
+    if (category) q.set('category', category)
+    const base = cfg.server.replace(/\/$/, '')
+    // fetch + ReadableStream 解析 SSE（EventSource 不支持自定义 X-API-Key 头）。
+    fetch(`${base}/api/v1/search/stream?${q}`, { headers: { 'X-API-Key': cfg.apiKey } }).then(async (resp) => {
+      if (!resp.ok || !resp.body) {
+        resolve({ error: `HTTP ${resp.status}` })
+        return
+      }
+      const reader = resp.body.getReader()
+      const dec = new TextDecoder()
+      let buf = ''
+      let done = false
+      while (!done) {
+        const { value, done: rDone } = await reader.read()
+        if (rDone) break
+        buf += dec.decode(value, { stream: true })
+        // SSE 帧以空行分隔；每帧形如 "event: xxx\ndata: {json}"。
+        let idx
+        while ((idx = buf.indexOf('\n\n')) !== -1) {
+          const frame = buf.slice(0, idx)
+          buf = buf.slice(idx + 2)
+          let event = 'message'
+          let data = ''
+          for (const line of frame.split('\n')) {
+            if (line.startsWith('event:')) event = line.slice(6).trim()
+            else if (line.startsWith('data:')) data += line.slice(5).trim()
+          }
+          if (!data) continue
+          let parsed
+          try { parsed = JSON.parse(data) } catch { continue }
+          if (event === 'batch' && parsed.results) {
+            for (const g of parsed.results) onBatch(g)
+          } else if (event === 'done') {
+            done = true
+          }
+        }
+      }
+      resolve({})
+    }).catch((e) => resolve({ error: e.message }))
+  })
 }
 
 // 影视搜索（找 TMDB/豆瓣条目 → 一键订阅用）：GET /api/v1/media/search?keyword=

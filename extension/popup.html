@@ -2,51 +2,137 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
+  <link rel="stylesheet" href="theme.css" />
   <style>
-    body { width: 340px; margin: 0; font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #e8eaf0; background: #1b1e28; }
-    .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px 8px; }
-    .head h1 { font-size: 14px; margin: 0; }
-    .gear { cursor: pointer; opacity: .7; background: none; border: none; color: inherit; font-size: 14px; }
-    .gear:hover { opacity: 1; }
-    .body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; }
-    .search-row { display: flex; gap: 6px; }
-    .search-row input { flex: 1; padding: 7px 9px; border-radius: 6px; border: 1px solid #3a3f4f; background: #242836; color: inherit; }
-    .search-row button { padding: 7px 12px; border-radius: 6px; border: none; background: #4f7cff; color: #fff; cursor: pointer; }
-    .tip { color: #8b93a7; font-size: 12px; }
-    .results { max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-    .item { padding: 8px; border-radius: 6px; background: #242836; display: flex; flex-direction: column; gap: 4px; }
-    .item .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .item .meta { color: #8b93a7; font-size: 12px; display: flex; gap: 8px; align-items: center; }
-    .item .actions { display: flex; gap: 6px; margin-top: 2px; }
-    .item .actions button { flex: none; padding: 3px 8px; font-size: 12px; border-radius: 4px; border: 1px solid #3a3f4f; background: #2c3145; color: inherit; cursor: pointer; }
-    .item .actions button.primary { background: #4f7cff; border-color: #4f7cff; color: #fff; }
-    .item .actions button:disabled { opacity: .5; cursor: default; }
-    .empty { text-align: center; color: #8b93a7; padding: 18px 0; }
-    .warn { color: #f5a623; padding: 4px 0; }
-    .links { display: flex; gap: 6px; flex-wrap: wrap; }
-    .links a { color: #7ea3ff; text-decoration: none; padding: 3px 8px; border-radius: 4px; background: #242836; }
-    .spin { display: inline-block; width: 12px; height: 12px; border: 2px solid #4f7cff; border-top-color: transparent; border-radius: 50%; animation: r 0.8s linear infinite; }
+    body { width: 392px; }
+
+    /* —— 顶部：品牌 + 撞色名牌 —— */
+    .hero {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 14px 10px;
+    }
+
+    /* —— 主面板 —— */
+    .panel { margin: 0 10px 10px; padding: 12px; }
+
+    /* 搜索排 */
+    .search-row { display: flex; gap: 8px; }
+    .search-row input { flex: 1; }
+
+    /* 状态行 */
+    #status { font-size: 11px; color: var(--ink-dim); padding: 7px 2px 0; letter-spacing: 0.04em; }
+
+    /* —— 数据芯片矩阵（密集信息）—— */
+    .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 10px 10px; }
+    .chips .chip { padding: 8px 10px; }
+    .chips .chip .v { font-size: 14px; }
+
+    /* —— 玻璃导航排 —— */
+    .nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 0 10px 10px; }
+    .nav a {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 9px 2px 7px;
+      text-decoration: none;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--ink-dim);
+      background: var(--glass);
+      border: 1px solid var(--glass-border-dim);
+      border-radius: var(--r-md);
+      backdrop-filter: blur(10px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      cursor: pointer;
+      transition: transform 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .nav a:hover { transform: translateY(-2px); color: var(--lime); border-color: var(--glass-border); }
+    .nav a .ico { font-size: 15px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
+    .nav a.busy { pointer-events: none; opacity: 0.55; }
+
+    /* —— 结果流 —— */
+    #results { display: flex; flex-direction: column; gap: 7px; max-height: 330px; overflow-y: auto; margin: 0 10px 12px; }
+    .item {
+      padding: 9px 11px;
+      border-radius: var(--r-md);
+      background: linear-gradient(155deg, rgba(20,48,42,0.55), rgba(10,24,20,0.45));
+      border: 1px solid rgba(168,196,180,0.1);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .item:hover { border-color: rgba(200,255,61,0.35); transform: translateX(2px); }
+    .item .title {
+      font-weight: 600;
+      font-size: 12.5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--ink);
+    }
+    .item .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 10px;
+      margin-top: 3px;
+      font: 500 10.5px var(--mono);
+      color: var(--ink-faint);
+    }
+    .item .meta .free { color: var(--coral); font-weight: 700; }
+    .item .meta .seed { color: var(--lime); }
+    .item .actions { display: flex; gap: 6px; margin-top: 7px; }
+    .item .actions button { padding: 4px 12px; font-size: 11px; }
+
+    .spin {
+      display: inline-block;
+      width: 11px; height: 11px;
+      border: 2px solid var(--lime);
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: r 0.8s linear infinite;
+      vertical-align: -1px;
+    }
     @keyframes r { to { transform: rotate(360deg) } }
   </style>
 </head>
 <body>
-  <div class="head">
-    <h1>PTPatronus 助手</h1>
-    <button class="gear" id="openOptions" title="设置服务器与 API Key">⚙</button>
-  </div>
-  <div class="body">
+  <div class="blob" style="width:220px;height:180px;background:rgba(124,92,255,.55);top:-60px;right:-70px;"></div>
+  <div class="blob" style="width:180px;height:150px;background:rgba(61,223,255,.35);bottom:-50px;left:-60px;"></div>
+
+  <header class="hero">
+    <div class="brand">
+      <div class="logo">P</div>
+      <h1>PTPatronus</h1>
+    </div>
+    <button class="btn-ghost" id="openOptions" title="设置服务器与 API Key" style="padding:5px 12px;">⚙</button>
+  </header>
+
+  <div class="glass panel">
     <div class="search-row">
-      <input id="keyword" placeholder="输入关键词跨站搜索…" />
-      <button id="search">搜索</button>
+      <input id="keyword" placeholder="输入关键词，跨站搜索全部 PT 站…" />
+      <button class="btn-lime" id="search">搜索</button>
     </div>
-    <div id="status" class="tip">选中网页文字后点扩展，或直接输入关键词。</div>
-    <div class="links">
-      <a href="#" id="goSearch">Web 搜索页</a>
-      <a href="#" id="goSubs">订阅管理</a>
-      <a href="#" id="goDash">仪表盘</a>
-    </div>
-    <div id="results" class="results"></div>
+    <div id="status">选中网页文字后点扩展，或直接输入关键词。</div>
   </div>
+
+  <div class="nav">
+    <a href="#" id="goSearch"><span class="ico">🔍</span>搜索页</a>
+    <a href="#" id="goSubs"><span class="ico">📚</span>订阅</a>
+    <a href="#" id="goDash"><span class="ico">📡</span>仪表盘</a>
+    <a href="#" id="goStats"><span class="ico">📊</span>站点数据</a>
+    <a href="#" id="checkin"><span class="ico">📅</span><span id="checkinTxt">一键签到</span></a>
+  </div>
+
+  <div class="chips" id="statsBox" style="display:none">
+    <div class="chip"><span class="v" id="statUp">—</span><span class="k">总上传</span></div>
+    <div class="chip violet"><span class="v" id="statSeed">—</span><span class="k">做种</span></div>
+    <div class="chip coral"><span class="v" id="statBonus">—</span><span class="k">魔力值</span></div>
+  </div>
+
+  <div id="results"></div>
+
   <script type="module" src="popup.js"></script>
 </body>
 </html>

@@ -1,5 +1,7 @@
-// popup 主逻辑：选中词搜索 → 种子结果展示（做种/大小/站点）→ 一键订阅（经媒体源匹配）。
-import { getConfig, isConfigured, searchTorrents, searchMedia, createSubscription, openWebSearch } from './api.js'
+// popup 主逻辑：选中词搜索 → 流式逐站渲染（SSE，搜出一个显示一个）→ 一键订阅；
+// 底部站点数据快捷块（总上传/做种/魔力）+ 一键签到入口。
+import { getConfig, isConfigured, searchTorrentsStream, searchMedia, createSubscription, openWebSearch } from './api.js'
+import { overview, fmtBytes, fmtBonus } from './dashboard.js'
 
 const $ = (id) => document.getElementById(id)
 
@@ -26,49 +28,77 @@ function fmtSize(bytes) {
   return `${n.toFixed(1)} ${units[i]}`
 }
 
+// resultsOf 兼容聚合/扁平两种形态（流式帧是聚合，历史调用方可能传扁平）。
+function resultsOf(data) {
+  if (!Array.isArray(data)) return []
+  return data[0] && data[0].torrents ? data : [{ site_name: '', torrents: data }]
+}
+
+// esc HTML 转义：错误消息可能携带服务端回显文本，注入前转义。
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+
+// renderItem 单条种子卡片（DOM API 构建，无注入面）。
+function renderItem(cfg, keyword, t, box) {
+  const div = document.createElement('div')
+  div.className = 'item'
+  const title = document.createElement('div')
+  title.className = 'title'
+  title.textContent = t.title || t.name || '(无标题)'
+  title.title = title.textContent
+  const meta = document.createElement('div')
+  meta.className = 'meta'
+  meta.textContent = [
+    t.site_name || t.site || '',
+    t.size && !Number.isFinite(+t.size) ? t.size : (t.size ? fmtSize(+t.size) : ''),
+    t.seeders != null ? `做种 ${t.seeders}` : '',
+    t.free ? '免费' : '',
+  ].filter(Boolean).join(' · ')
+  const actions = document.createElement('div')
+  actions.className = 'actions'
+  const subBtn = document.createElement('button')
+  subBtn.className = 'primary'
+  subBtn.textContent = '一键订阅'
+  subBtn.onclick = () => subscribe(cfg, keyword, t, subBtn)
+  const webBtn = document.createElement('button')
+  webBtn.textContent = 'Web 查看'
+  webBtn.onclick = () => openWebSearch(cfg, keyword)
+  actions.append(subBtn, webBtn)
+  div.append(title, meta, actions)
+  box.appendChild(div)
+}
+
 async function runSearch(keyword) {
   const cfg = await getConfig()
   if (!isConfigured(cfg)) {
     $('status').innerHTML = '<span class="warn">未配置：点右上角 ⚙ 填服务器地址与 API Key</span>'
     return
   }
-  $('status').innerHTML = '<span class="spin"></span> 跨站搜索中…'
+  $('status').innerHTML = '<span class="spin"></span> 跨站搜索中…（逐站显示）'
   $('results').innerHTML = ''
-  try {
-    const results = await searchTorrents(cfg, keyword)
-    $('status').textContent = results.length ? `${results.length} 条结果` : '无结果（换个关键词试试）'
-    const box = $('results')
-    for (const t of results.slice(0, 30)) {
-      const div = document.createElement('div')
-      div.className = 'item'
-      const title = document.createElement('div')
-      title.className = 'title'
-      title.textContent = t.title || t.name || '(无标题)'
-      title.title = title.textContent
-      const meta = document.createElement('div')
-      meta.className = 'meta'
-      meta.textContent = [
-        t.site_name || t.site || '',
-        t.size ? fmtSize(t.size) : '',
-        t.seeders != null ? `做种 ${t.seeders}` : '',
-        t.free ? '免费' : '',
-      ].filter(Boolean).join(' · ')
-      const actions = document.createElement('div')
-      actions.className = 'actions'
-      const subBtn = document.createElement('button')
-      subBtn.className = 'primary'
-      subBtn.textContent = '一键订阅'
-      subBtn.onclick = () => subscribe(cfg, keyword, t, subBtn)
-      const webBtn = document.createElement('button')
-      webBtn.textContent = 'Web 查看'
-      webBtn.onclick = () => openWebSearch(cfg, keyword)
-      actions.append(subBtn, webBtn)
-      div.append(title, meta, actions)
-      box.appendChild(div)
+  const box = $('results')
+  let total = 0
+  let sitesDone = 0
+  let sitesErr = 0
+  // 流式：每站完成即回调渲染（对标 Web 搜索页「搜出一个显示一个」）。
+  const res = await searchTorrentsStream(cfg, keyword, (g) => {
+    sitesDone++
+    if (g.error) { sitesErr++; return }
+    for (const t of g.torrents || []) {
+      if (total >= 30) return // popup 只展示前 30 条，后续站点仅计数
+      renderItem(cfg, keyword, { ...t, site_name: t.site_name || g.site_name, site_id: t.site_id || g.site_id }, box)
+      total++
     }
-  } catch (e) {
-    $('status').innerHTML = `<span class="warn">搜索失败：${e.message}</span>`
+  })
+  if (res && res.error) {
+    $('status').innerHTML = `<span class="warn">搜索失败：${esc(res.error)}</span>`
+    return
   }
+  const errNote = sitesErr ? ` · ${sitesErr} 站失败` : ''
+  $('status').textContent = total
+    ? `${total} 条结果 · ${sitesDone} 站${errNote}（仅显示前 30）`
+    : `无结果 · ${sitesDone} 站${errNote}（换个关键词试试）`
 }
 
 // 一键订阅：拿关键词到媒体源匹配首个条目 → 建订阅（后台 cron 会自动追更）。
@@ -90,12 +120,79 @@ async function subscribe(cfg, keyword, torrent, btn) {
   }
 }
 
+// 站点数据快捷块：总上传/做种/魔力（失败静默，不打扰搜索主流程）。
+async function loadStats(cfg) {
+  try {
+    const d = await overview(cfg)
+    const t = d.totals || {}
+    $('statUp').textContent = fmtBytes(t.uploaded)
+    $('statSeed').textContent = `${t.seeding ?? 0} / ${fmtBytes(t.seeding_size)}`
+    $('statBonus').textContent = fmtBonus(t.bonus)
+    $('statsBox').style.display = ''
+  } catch { /* 服务器忙/离线：留隐藏 */ }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   $('openOptions').onclick = () => chrome.runtime.openOptionsPage()
   const cfg = await getConfig()
-  $('goSearch').onclick = (ev) => { ev.preventDefault(); openWebSearch(cfg, $('keyword').value) }
-  $('goSubs').onclick = (ev) => { ev.preventDefault(); chrome.tabs.create({ url: cfg.server.replace(/\/$/, '') + '/subscriptions' }) }
-  $('goDash').onclick = (ev) => { ev.preventDefault(); chrome.tabs.create({ url: cfg.server.replace(/\/$/, '') + '/dashboard' }) }
+  // 拖放衔接：最近一次在站点页拖动的种子链接 → 显示快捷推送条。
+  try {
+    const sess = await chrome.storage.session.get(['ptp_last_drag_url'])
+    if (sess && sess.ptp_last_drag_url) {
+      const bar = document.createElement('div')
+      bar.className = 'glass panel'
+      bar.style.cssText = 'margin:0 10px 6px;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:11px'
+      const span = document.createElement('span')
+      span.style.flex = '1'
+      span.style.overflow = 'hidden'
+      span.style.textOverflow = 'ellipsis'
+      span.style.whiteSpace = 'nowrap'
+      span.textContent = `拖放的链接：${sess.ptp_last_drag_url.slice(0, 60)}`
+      const push = document.createElement('button')
+      push.className = 'btn-lime'
+      push.textContent = '⬇ 推送'
+      push.onclick = async () => {
+        push.disabled = true; push.textContent = '推送中…'
+        const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: sess.ptp_last_drag_url })
+        push.textContent = r && r.ok ? '✅ 已推送' : `⚠ ${String(r.error || '').slice(0, 14)}`
+        setTimeout(() => bar.remove(), 2200)
+      }
+      bar.append(span, push)
+      document.body.insertBefore(bar, document.querySelector('.nav'))
+    }
+  } catch { /* session API 不可用忽略 */ }
+  // 未配置时快捷入口直接引导去选项页，避免打开无服务器的空白 Web 页。
+  const guard = (fn) => (ev) => {
+    ev.preventDefault()
+    if (!isConfigured(cfg)) { chrome.runtime.openOptionsPage(); return }
+    fn()
+  }
+  $('goSearch').onclick = guard(() => openWebSearch(cfg, $('keyword').value))
+  $('goSubs').onclick = guard(() => chrome.tabs.create({ url: cfg.server.replace(/\/$/, '') + '/subscriptions' }))
+  $('goDash').onclick = guard(() => chrome.tabs.create({ url: cfg.server.replace(/\/$/, '') + '/dashboard' }))
+  $('goStats').onclick = guard(() => chrome.runtime.openOptionsPage())
+  // 一键签到：POST /sites/checkin（手动触发，逐站并发；不做自动刷签到——行业共识视为作弊）。
+  // 注：checkin 是 <a>，无 disabled 语义——用 lock 标志防重入 + class 切换视觉禁用态。
+  let checkinBusy = false
+  $('checkin').onclick = guard(async () => {
+    if (checkinBusy) return
+    checkinBusy = true
+    $('checkin').classList.add('busy')
+    $('checkinTxt').textContent = '签到中…'
+    try {
+      const resp = await fetch(`${cfg.server.replace(/\/$/, '')}/api/v1/sites/checkin`, {
+        method: 'POST',
+        headers: { 'X-API-Key': cfg.apiKey },
+      })
+      const body = await resp.json()
+      const rs = body.results || []
+      const ok = rs.filter((r) => r.ok || r.success).length
+      $('checkinTxt').textContent = `✅ ${ok}/${rs.length}`
+    } catch (e) {
+      $('checkinTxt').textContent = `⚠ ${String(e.message).slice(0, 12)}`
+    }
+    setTimeout(() => { $('checkinTxt').textContent = '一键签到'; $('checkin').classList.remove('busy'); checkinBusy = false }, 3500)
+  })
   $('search').onclick = () => runSearch($('keyword').value.trim())
   $('keyword').onkeydown = (ev) => { if (ev.key === 'Enter') runSearch($('keyword').value.trim()) }
   // 启动时带入当前选中词（对标 MSaber「快速搜索当前选中关键词」）。
@@ -103,5 +200,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (sel) {
     $('keyword').value = sel.slice(0, 200)
     runSearch($('keyword').value)
+  } else if (isConfigured(cfg)) {
+    loadStats(cfg)
   }
 })

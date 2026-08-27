@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "PTPatronus 助手",
-  "version": "1.0.0",
-  "description": "快速搜索选中关键词到 PTPatronus 跨站搜索、站点快捷入口、搜索结果一键订阅。",
-  "permissions": ["storage", "contextMenus", "notifications", "scripting", "activeTab"],
+  "version": "2.5.0",
+  "description": "跨站流式搜索/订阅、站点数据仪表、下载任务管理、Cookie 台账+CookieCloud 备份、TOTP 自动填充、验证码 OCR、跨站找同种（辅种）、WebDAV 备份、收藏与历史、隐私模式、豆瓣/IMDb 注入、omnibox。",
+  "permissions": ["storage", "contextMenus", "notifications", "scripting", "activeTab", "cookies", "omnibox"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "action": {
     "default_popup": "popup.html",
@@ -12,9 +12,33 @@
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content_torrent.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content_totp.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content_ocr.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.douban.com/*", "*://*.imdb.com/*"],
+      "js": ["content_media.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "options_page": "options.html",
+  "omnibox": { "keyword": "ptp" },
   "commands": {
     "search-selection": {
       "suggested_key": { "default": "Alt+Shift+S" },

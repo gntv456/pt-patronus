@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cookie 台账 · PTPatronus</title>
+  <link rel="stylesheet" href="theme.css" />
+  <style>
+    .topbar {
+      position: sticky; top: 0; z-index: 5;
+      display: flex; gap: 10px; align-items: center;
+      padding: 12px 14px;
+      background: rgba(7, 16, 14, 0.72);
+      backdrop-filter: blur(24px) saturate(160%);
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .topbar h1 { margin: 0; font-size: 14px; flex: 1; }
+    #msg { font-size: 12px; }
+
+    .lede { padding: 12px 16px 10px; max-width: 860px; }
+
+    .tblwrap { margin: 0 14px 18px; padding: 4px; overflow: auto; max-height: calc(100vh - 170px); }
+    td.name { font-weight: 700; white-space: nowrap; }
+    td code {
+      font: 500 10.5px var(--mono);
+      color: var(--aqua);
+      background: rgba(61, 223, 255, 0.08);
+      border: 1px solid rgba(61, 223, 255, 0.2);
+      padding: 1px 6px;
+      border-radius: 6px;
+    }
+    /* 行状态染色：撞色语义（一致青柠/差异珊瑚/缺失暗淡） */
+    tr.okmark td.brow { box-shadow: inset 3px 0 0 var(--lime); }
+    tr.diff td.brow, tr.diff td.srv { box-shadow: inset 3px 0 0 var(--coral); }
+    tr.miss td.brow, tr.no-srv td.brow { box-shadow: inset 3px 0 0 var(--ink-faint); }
+    td.ops button { padding: 4px 11px; font-size: 10.5px; margin-right: 4px; }
+    td.ops .act-up   { background: rgba(200,255,61,0.14); border-color: rgba(200,255,61,0.4); color: var(--lime); }
+    td.ops .act-down { background: rgba(124,92,255,0.18); border-color: rgba(124,92,255,0.45); color: #c9bcff; }
+    td.ops .act-open { background: rgba(61,223,255,0.12); border-color: rgba(61,223,255,0.35); color: var(--aqua); }
+  </style>
+</head>
+<body>
+  <div class="blob" style="width:300px;height:260px;background:rgba(255,107,74,.25);top:-100px;left:-110px;"></div>
+  <div class="blob" style="width:260px;height:230px;background:rgba(61,223,255,.3);bottom:-80px;right:-90px;"></div>
+
+  <div class="topbar">
+    <div class="brand"><div class="logo" style="width:26px;height:26px;font-size:12px">P</div><h1>站点 Cookie 台账</h1></div>
+    <span id="msg"></span>
+    <button class="btn-lime" id="refresh">刷新对比</button>
+  </div>
+
+  <p class="hint lede">
+    每行一个服务器站点。「浏览器」列读取本机浏览器中该站注册域下的会话 cookie，指纹 = sha256 前 12 位；
+    「→ 覆盖服务器」把浏览器 cookie 上传为该站点凭据（WebView/插件登录后的顺手同步）；
+    「← 覆盖浏览器」把服务器 cookie 写回浏览器（明文拉取需 API Key 为管理员钥）。两个方向都只在你主动点击时发生。
+  </p>
+
+  <div class="glass tblwrap">
+    <table>
+      <thead><tr><th>站点</th><th>域名</th><th>启用</th><th>服务器</th><th>浏览器</th><th>状态</th><th style="width:230px">操作</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <script type="module" src="cookies_page.js"></script>
+</body>
+</html>

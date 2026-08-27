@@ -20,6 +20,10 @@ import (
 const (
 	doubanAPIBase = "https://frodo.douban.com/api/v2"
 
+	// 网页版 JSON 接口（无 apiKey/_sig）。/j/search_subjects 只在这个 host 上有，
+	// frodo.douban.com 同路径 404（实测），故 getWeb 固定走这里。
+	doubanWebBase = "https://movie.douban.com"
+
 	// —— 微信免签策略（零配置主路径）——
 	// 公开 apiKey：豆瓣微信小程序凭据。frodo 对微信流量免 _sig 签名校验，
 	// 因此只需 apiKey + 微信 UA + servicewechat Referer 即可调用（参考 douban-showcase 在用实现）。
@@ -51,7 +55,9 @@ type Douban struct {
 	apiKey string
 	secret string // DOUBAN_SECRET：自定义签名密钥；空则用公开默认。非空同时把签名切为主策略
 	base   string
-	hc     *http.Client
+	// webBase 网页版接口 host（getWeb 用）；空用 doubanWebBase，测试可覆盖。
+	webBase string
+	hc      *http.Client
 }
 
 // doubanStringList accepts both legacy arrays and current Frodo scalar strings.
@@ -116,8 +122,11 @@ func (d *Douban) Name() string { return "douban" }
 // Types 实现 TypedSource：豆瓣只产 movie/tv（book/music 已在 doubanType 过滤）。
 func (d *Douban) Types() []MediaType { return []MediaType{TypeMovie, TypeTV} }
 
-// Categories 实现 CategoryCapable：豆瓣 Trending 支持热映/即将上映/剧集。
-func (d *Douban) Categories() []string { return []string{"movie", "coming", "tv"} }
+// Categories 实现 CategoryCapable：豆瓣 Trending 支持热映/即将/剧集/榜单聚合。
+// 榜单聚合（topMovie/topTv/weekly，对标 MSaber 剧榜风云）实现见 douban_detail.go Trending。
+func (d *Douban) Categories() []string {
+	return []string{"movie", "coming", "tv", "topMovie", "topTv", "weekly"}
+}
 
 // get 发 GET 并解码到 out。鉴权双策略 + 自动 fallback：
 //   - 主策略：secret 配了(DOUBAN_SECRET)走「安卓 HMAC-SHA1 签名」；否则走「微信免签」(零配置默认)。
@@ -130,6 +139,42 @@ func (d *Douban) get(ctx context.Context, path string, params map[string]string,
 		return err
 	}
 	return d.doRequest(ctx, !signed, path, params, out) // 鉴权失败 → 换另一策略重试
+}
+
+// getWeb 发网页版 GET（movie.douban.com 的 JSON 接口，无 apiKey/_sig）：桌面 Chrome UA +
+// movie.douban.com Referer。供 frodo 不存在的榜单端点（如剧集 Top250 聚合）兜底。
+// base 可被测试覆盖：d.webBase 为空用 doubanWebBase。
+func (d *Douban) getWeb(ctx context.Context, path string, params map[string]string, out any) error {
+	base := d.webBase
+	if base == "" {
+		base = doubanWebBase
+	}
+	u, err := url.Parse(base + path)
+	if err != nil {
+		return err
+	}
+	q := u.Query()
+	for k, v := range params {
+		q.Set(k, v)
+	}
+	u.RawQuery = q.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+	req.Header.Set("Referer", "https://movie.douban.com/tv/")
+	req.Header.Set("Accept", "application/json, text/plain, */*")
+	resp, err := d.hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return &doubanStatusError{path: path, status: resp.StatusCode, body: string(body)}
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
 }
 
 // doRequest 按策略构造并发起一次请求。

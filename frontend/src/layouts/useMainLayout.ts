@@ -10,6 +10,7 @@ import {
 import type { PaletteItem } from '@/components/CommandPalette.vue'
 import { navGroups, paletteOnly, navDesc, navAliases, type NavItem } from '@/layouts/navConfig'
 import { useNotices } from '@/composables/useNotices'
+import { useUiPrefs } from '@/composables/useUiPrefs'
 
 export function useMainLayout() {
   const router = useRouter()
@@ -22,6 +23,9 @@ export function useMainLayout() {
   const mobileNavOpen = ref(false)
   const sidebarCollapsed = computed(() => collapsed.value && !isMobile.value)
   const paletteOpen = ref(false)
+  // 侧栏默认态偏好（跨浏览器同步）：服务端偏好到达/变化时应用到 collapsed；
+  // 用户手动折叠/展开只改运行态（下次进入仍按默认态），符合「默认态」语义。
+  const { prefs: uiPrefs } = useUiPrefs()
 
   function syncCollapsed() {
     isMobile.value = window.innerWidth <= 720
@@ -31,6 +35,13 @@ export function useMainLayout() {
     }
     if (window.innerWidth < 900 && !collapsed.value) collapsed.value = true
   }
+  watch(
+    () => (uiPrefs.value as Record<string, unknown> | null)?.sidebarCollapsed,
+    (v) => {
+      if (typeof v === 'boolean' && !isMobile.value) collapsed.value = v
+    },
+    { immediate: true },
+  )
   onMounted(() => {
     connect()
     loadNotices()

@@ -21,6 +21,7 @@ import (
 // client 按需构建（媒体服务器通常个位数，构造廉价；HTTP 调用才是开销），无需 manager 缓存。
 // 复用一个 AllowPrivate 的内网 HTTP 客户端（同下载器范式，媒体服务器多为内网部署）。
 type MediaServerChain struct {
+	subtitleFixer SubtitleFixer // 字幕库级补齐（nil=未启用）
 	Base
 	op     *oper.MediaServerOper
 	hc     *httpclient.Client
@@ -260,4 +261,30 @@ func firstNonEmpty(vs ...string) string {
 		}
 	}
 	return ""
+}
+
+// Get 取媒体服务器配置（媒体代理用）。
+func (c *MediaServerChain) Get(id uint) (*models.MediaServer, error) {
+	if c == nil || c.op == nil {
+		return nil, fmt.Errorf("media server chain not initialized")
+	}
+	return c.op.Get(id)
+}
+
+// MediaPath 查询条目媒体文件路径（媒体代理 302 直链用；仅 Emby/JF 支持）。
+func (c *MediaServerChain) MediaPath(ctx context.Context, id uint, itemID string) (string, error) {
+	cli, m, err := c.client(id)
+	if err != nil {
+		return "", err
+	}
+	pc, ok := cli.(mediaPathClient)
+	if !ok {
+		return "", fmt.Errorf("媒体服务器类型 %s 不支持路径查询", m.Type)
+	}
+	return pc.MediaPath(ctx, itemID)
+}
+
+// mediaPathClient PlaybackInfo 路径查询能力（embyJellyfinClient 实现）。
+type mediaPathClient interface {
+	MediaPath(ctx context.Context, itemID string) (string, error)
 }

@@ -99,7 +99,7 @@ func (e *Engine) Process(ctx context.Context, in ProcessInput) *Result {
 	// 2. 识别
 	mi := e.recognizeMedia(ctx, in, videos)
 	if mi == nil {
-		res.ErrMsg = "media not recognized: " + searchKeyword(in, videos)
+		res.ErrMsg = "media not recognized: " + searchKeyword(in, videos, LoadIdentifyWords(e.kv))
 		return res
 	}
 	res.Media = mi
@@ -147,7 +147,7 @@ func (e *Engine) recognizeMedia(ctx context.Context, in ProcessInput, videos []F
 	results, err := e.recognize.Search(ctx, meta.Title, meta.Year, filter)
 	if err != nil || len(results) == 0 {
 		// 回退：用种子名再搜一次（文件名可能是乱码/英文片名）。
-		results, err = e.recognize.Search(ctx, searchKeyword(in, videos), 0, filter)
+		results, err = e.recognize.Search(ctx, searchKeyword(in, videos, LoadIdentifyWords(e.kv)), 0, filter)
 		if err != nil || len(results) == 0 {
 			return nil
 		}
@@ -357,15 +357,25 @@ func firstVideoName(videos []FileInput) string {
 }
 
 // searchKeyword 无 link 时的搜索关键字：优先清洗后的种子名。
-func searchKeyword(in ProcessInput, videos []FileInput) string {
+// ws 为识别词表（可 nil）：应用后规整无法识别的命名（发布组前缀/自定义别名）。
+func searchKeyword(in ProcessInput, videos []FileInput, ws ...[]IdentifyWord) string {
+	apply := func(s string) string {
+		for _, w := range ws {
+			s = ApplyIdentifyWords(w, s)
+		}
+		return s
+	}
 	if in.Name != "" {
-		return ParseMeta(in.Name).Title
+		return ParseMeta(apply(in.Name)).Title
 	}
 	if len(videos) > 0 {
-		return ParseMeta(filepath.Base(videos[0].Path)).Title
+		return ParseMeta(apply(filepath.Base(videos[0].Path))).Title
 	}
 	return ""
 }
+
+// SearchKeyword 导出版（chain/测试用）。
+func SearchKeyword(in ProcessInput, videos []FileInput) string { return searchKeyword(in, videos) }
 
 // seasonOf 从 "S01E02" 集合里取首个季号展示 "S01"。
 func seasonOf(eps []string) string {

@@ -57,12 +57,24 @@ type Client interface {
 // NewClient 按 Drive.Type 构建对应客户端。type 不在白名单内返回错误。
 func NewClient(d Drive, hc *httpclient.Client) (Client, error) {
 	switch d.Type {
+	case "115_open":
+		return &client115Open{drive: d, hc: hc}, nil
+	case "aliyun_open":
+		return &clientAliyunOpen{drive: d, hc: hc}, nil
 	case "115":
 		return &client115{drive: d, hc: hc}, nil
 	case "quark":
 		return &clientQuark{drive: d, hc: hc}, nil
 	case "123":
 		return &client123{drive: d, hc: hc}, nil
+	case "onedrive":
+		return &clientOneDrive{drive: d, hc: hc}, nil
+	case "baidu":
+		return &clientBaidu{drive: d, hc: hc}, nil
+	case "tianyi":
+		return &clientTianyi{drive: d, hc: hc}, nil
+	case "mobile":
+		return &clientMobile{drive: d, hc: hc}, nil
 	}
 	return nil, fmt.Errorf("不支持的网盘类型: %s", d.Type)
 }
@@ -73,8 +85,8 @@ type httpDoer interface {
 		headers map[string]string, cookieStr string, ssrf bool) (*httpclient.Response, error)
 }
 
-// cleanCloudPath 规范化云盘路径：统一正斜杠、清理 .. 与多余分隔，以 / 开头，无尾斜杠（根="/"）。
-func cleanCloudPath(p string) string {
+// CleanPath 规范化云盘路径：统一正斜杠、清理 .. 与多余分隔，以 / 开头，无尾斜杠（根="/"）。
+func CleanPath(p string) string {
 	p = strings.ReplaceAll(p, "\\", "/")
 	if !strings.HasPrefix(p, "/") {
 		p = "/" + p
@@ -94,7 +106,7 @@ const maxPathSegments = 32
 
 // splitSegments 把云盘路径拆为非空段（用于逐级 resolvePath）。
 func splitSegments(p string) []string {
-	p = cleanCloudPath(p)
+	p = CleanPath(p)
 	if p == "/" {
 		return nil
 	}
@@ -107,7 +119,7 @@ func splitSegments(p string) []string {
 
 // joinCloud 拼接云盘路径段为标准路径。
 func joinCloud(parent, name string) string {
-	parent = cleanCloudPath(parent)
+	parent = CleanPath(parent)
 	if parent == "/" {
 		return "/" + name
 	}

@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"net/http"
 	"strconv"
 
@@ -94,4 +95,32 @@ func (h *DashboardHandler) Trend(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, trend)
+}
+
+// WorkbenchHandler 工作台聚合（媒体库态势需 MediaServerChain 枚举库计数）。
+type WorkbenchHandler struct {
+	dash *chain.DashboardChain
+	ms   *chain.MediaServerChain // nil=跳过媒体库态势
+}
+
+// NewDashboardHandler2 构造（Workbench 专用）。
+func NewDashboardHandler2(d *chain.DashboardChain, ms *chain.MediaServerChain) *WorkbenchHandler {
+	return &WorkbenchHandler{dash: d, ms: ms}
+}
+
+// Workbench GET /dashboard/workbench：一次返回今日流转节点/待办/动态/摘要/媒体库态势/体检分。
+func (h *WorkbenchHandler) Workbench(c *gin.Context) {
+	var msLib func(ctx context.Context) chain.WorkbenchMediaLibrary
+	if h.ms != nil {
+		msCh := h.ms
+		msLib = func(ctx context.Context) chain.WorkbenchMediaLibrary {
+			return msCh.MediaLibraryOverview(ctx)
+		}
+	}
+	wb, err := h.dash.Workbench(c.Request.Context(), msLib)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, wb)
 }

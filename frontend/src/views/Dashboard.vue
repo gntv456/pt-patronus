@@ -18,6 +18,8 @@ import DashboardRingChart, { type RingSegment } from '@/components/dashboard/Das
 import DashboardSyncCard from '@/components/dashboard/DashboardSyncCard.vue'
 import DashboardTrendSection from '@/components/dashboard/DashboardTrendSection.vue'
 import DashboardHealthStrip from '@/components/dashboard/DashboardHealthStrip.vue'
+import DashboardWorkbench from '@/components/dashboard/DashboardWorkbench.vue'
+import DashboardWidgets from '@/components/dashboard/DashboardWidgets.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { overview, trendDays, trendLoading, changeTrendDays, latestUpdatedText, loading, loadError, load, allSites } = useDashboardData()
@@ -136,6 +138,12 @@ onMounted(() => {
             </el-button>
           </div>
         </div>
+
+    <!-- 工作台（对标 MSaber 天序工作台）：问候/体检分/今日流转/待办/动态/摘要/媒体库态势 -->
+    <DashboardWorkbench />
+
+    <!-- 自定义部件区（对标 MSaber 首页定制）：快捷工具等，可增删/拖拽排序/尺寸预设 -->
+    <DashboardWidgets />
 
     <!-- 新用户引导向导：无站点且无下载器时首屏展示 -->
     <div v-if="!loading && overview && overview.site_count === 0 && overview.downloader_count === 0" class="onboarding-wizard ops-surface">

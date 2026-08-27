@@ -1,6 +1,6 @@
 import { http } from './http'
 
-export type MediaServerType = 'emby' | 'jellyfin' | 'plex'
+export type MediaServerType = 'emby' | 'jellyfin' | 'plex' | 'ugos' | 'fnos' | 'zspace'
 
 export interface MediaServer {
   id: number
@@ -116,4 +116,38 @@ export const mediaServerApi = {
         params: { library_id: libraryId },
       })
       .then((r) => r.data.groups ?? []),
+  // 媒体健康中心：全服务器巡检（未匹配/缺集/缺字幕/可升级洗版）；
+  // subtitles=1 开启本地字幕扫描，upgradeable=1 开启洗版检测（同 TMDB 高低版本）
+  health: (subtitles = false, upgradeable = false) =>
+    http
+      .get<HealthReport>('/mediaserver/health', {
+        params: { ...(subtitles ? { subtitles: '1' } : {}), ...(upgradeable ? { upgradeable: '1' } : {}) },
+        timeout: 0,
+      })
+      .then((r) => r.data),
+  // 一键补齐缺失字幕（body 传健康报告；空 body 服务端现算全库）
+  fixSubtitles: (report?: HealthReport, lang = 'chs') =>
+    http
+      .post('/mediaserver/fix-subtitles', report ?? {}, { params: { lang }, timeout: 0 })
+      .then((r) => r.data),
+}
+
+// 媒体健康报告（对齐后端 chain.HealthReport）。
+export interface HealthIssue {
+  server_id: number
+  library: string
+  item_id: string
+  title: string
+  type: 'unmatched' | 'missing_episodes' | 'missing_subtitle' | 'upgradeable'
+  path?: string
+  detail: string
+}
+
+export interface HealthReport {
+  issues: HealthIssue[]
+  unmatched: number
+  missing_episodes: number
+  missing_subtitle: number
+  upgradeable: number
+  checked_at: string
 }

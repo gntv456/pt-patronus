@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -196,6 +197,99 @@ func (h *SubscribeHandler) Check(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true, "pushed": n})
 }
 
+// ---- 批量操作（对标 MSaber 订阅批量操作：批量编辑 / 重新搜索 / 取消） ----
+
+// batchReq 批量操作请求。ids 必填；op ∈ update | check | delete。
+// update 的 patch 里仅显式提供的字段会被应用（与单个 Update 语义一致：nil/空=不改）。
+type batchReq struct {
+	IDs   []uint  `json:"ids" binding:"required,min=1,max=200"`
+	Op    string  `json:"op" binding:"required,oneof=update check delete"`
+	Patch *subReq `json:"patch"`
+}
+
+// Batch 批量操作订阅（POST /subscribe/batch）。逐条执行、单条失败不影响其余，
+// 汇总返回成功/失败计数与失败明细（对标 MSaber「逐条执行显示进度，结束后汇总」）。
+func (h *SubscribeHandler) Batch(c *gin.Context) {
+	var in batchReq
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if in.Op == "update" && in.Patch == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "update 操作需提供 patch"})
+		return
+	}
+	type failure struct {
+		ID    uint   `json:"id"`
+		Error string `json:"error"`
+	}
+	var failed []failure
+	succeeded := 0
+	for _, id := range in.IDs {
+		var err error
+		switch in.Op {
+		case "update":
+			err = h.applyPatch(c.Request.Context(), id, in.Patch)
+		case "check":
+			var s *models.Subscription
+			if s, err = h.subCh.Get(id); err == nil {
+				_, err = h.subCh.Check(c.Request.Context(), s)
+			}
+		case "delete":
+			err = h.subCh.Delete(id)
+		}
+		if err != nil {
+			failed = append(failed, failure{ID: id, Error: err.Error()})
+		} else {
+			succeeded++
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"total": len(in.IDs), "succeeded": succeeded,
+		"failed": len(failed), "failures": failed})
+}
+
+// applyPatch 把 subReq 补丁应用到单个订阅（复用 Update 的字段语义；抽出避免复制粘贴）。
+func (h *SubscribeHandler) applyPatch(ctx context.Context, id uint, in *subReq) error {
+	s, err := h.subCh.Get(id)
+	if err != nil {
+		return err
+	}
+	if in.EnableRatingGuard != nil {
+		s.EnableRatingGuard = in.EnableRatingGuard
+	}
+	if in.FilterGroups != nil {
+		s.FilterGroups = *in.FilterGroups
+	}
+	if in.BestVersion != nil {
+		s.BestVersion = in.BestVersion
+	}
+	if in.OfficialOnly != nil {
+		s.OfficialOnly = in.OfficialOnly
+	}
+	if in.BestVersionFull != nil {
+		s.BestVersionFull = *in.BestVersionFull
+	}
+	if in.PromoTypes != nil {
+		s.PromoTypes = models.StringSlice(in.PromoTypes)
+	}
+	if in.SiteIDs != nil {
+		s.SiteIDs = models.IntSlice(in.SiteIDs)
+	}
+	if in.Resolution != nil {
+		s.Resolution = *in.Resolution
+	}
+	if in.Status != "" {
+		s.Status = in.Status
+	}
+	if in.DownloaderID != nil {
+		s.DownloaderID = *in.DownloaderID
+	}
+	if in.SavePath != nil {
+		s.SavePath = *in.SavePath
+	}
+	return h.subCh.Update(s)
+}
+
 // GetGlobalSettings 读全局订阅默认设置（未单独设置的订阅回退到此）。
 func (h *SubscribeHandler) GetGlobalSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, h.subCh.LoadGlobalDefaults())
@@ -212,7 +306,10 @@ func (h *SubscribeHandler) UpdateGlobalSettings(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gd)
+	// 回读而非回显入参：loadGlobalDefaults 会把 nil 切片归一为 []。直接回显 gd 时
+	// promo_types=null 会原样返回，前端 globalDefaults.promo_types.length 立即崩溃
+	// （PUT 响应直接赋给 globalDefaults.value）。
+	c.JSON(http.StatusOK, h.subCh.LoadGlobalDefaults())
 }
 
 // ResetFields 清空订阅指定字段使其回退到全局默认。

@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import { showErrorOverlay } from './utils/errorOverlay'
+import { useUiPrefs } from './composables/useUiPrefs'
 import './styles/glass.css'
 import './styles/dialog.css'
 
@@ -46,6 +47,13 @@ window.addEventListener('unhandledrejection', (e) => {
   if (lowEnd || localStorage.getItem('perf-glass-flat') === '1') {
     document.body.classList.add('glass-reduced')
   }
+}
+
+// 界面偏好（主题色/风格/壁纸/遮罩/卡片样式）：挂载前应用到 body，避免首帧闪烁。
+// useUiPrefs 内部 watch immediate 应用 + 经用户偏好服务端同步跨浏览器保留。
+{
+  const { apply } = useUiPrefs()
+  apply()
 }
 
 app.mount('#app')

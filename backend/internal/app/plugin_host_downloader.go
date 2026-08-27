@@ -119,6 +119,22 @@ func registerDownloaderTools(reg *plugins.HostToolRegistry, dl *chain.DownloadCh
 		err := dl.SetForceStart(ctx, uint(argInt(a, "downloader_id")), argStrSlice(a, "hashes"), argBool(a, "enable"))
 		return okCount("updated", len(argStrSlice(a, "hashes")), err)
 	})
+	// Tracker 追加（Tracker 替换/补源）：单 hash + urls 列表。
+	reg.Register(plugins.HostTool{
+		Name: "torrents_add_trackers", Category: "downloader", Permission: "downloader:write",
+		Description: "Append tracker URLs to a torrent (tracker replace/top-up scenarios).",
+		InputSchema: objSchema(map[string]any{
+			"downloader_id": intProp(""),
+			"hash":          strProp("torrent hash"),
+			"urls":          map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+		}, []string{"downloader_id", "hash", "urls"}),
+	}, func(ctx context.Context, a map[string]any) (any, error) {
+		err := dl.AddTrackers(ctx, uint(argInt(a, "downloader_id")), argString(a, "hash", ""), argStrSlice(a, "urls"))
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"added": len(argStrSlice(a, "urls"))}, nil
+	})
 }
 
 // okCount 把一个仅返回 error 的写操作包装为 {<key>: n} 结果，便于插件确认影响条数。

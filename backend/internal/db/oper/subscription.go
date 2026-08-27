@@ -21,7 +21,21 @@ func NewSubscriptionOper(db *gorm.DB) *SubscriptionOper {
 func (o *SubscriptionOper) List() ([]models.Subscription, error) {
 	var ss []models.Subscription
 	err := o.db.Order("created_at DESC").Find(&ss).Error
+	normalizeSubSlices(ss)
 	return ss, err
+}
+
+// normalizeSubSlices 把 nil 切片归一为空：DB NULL 文本经 Scan 得 nil；MarshalJSON
+// 虽已把 nil 输出 []，但序列化前统一归一（含 Get/ListActive 同源数据），防 null 外漏。
+func normalizeSubSlices(ss []models.Subscription) {
+	for i := range ss {
+		if ss[i].PromoTypes == nil {
+			ss[i].PromoTypes = models.StringSlice{}
+		}
+		if ss[i].SiteIDs == nil {
+			ss[i].SiteIDs = models.IntSlice{}
+		}
+	}
 }
 
 // ListActive 仅订阅中（status=subscribed）的订阅，供 cron 遍历。
@@ -37,6 +51,7 @@ func (o *SubscriptionOper) Get(id uint) (*models.Subscription, error) {
 	if err := o.db.First(&s, id).Error; err != nil {
 		return nil, err
 	}
+	normalizeSubSlices([]models.Subscription{s})
 	return &s, nil
 }
 

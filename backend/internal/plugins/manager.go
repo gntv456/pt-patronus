@@ -102,6 +102,7 @@ type Manager struct {
 	plugins       map[string]Plugin
 	subscribed    map[string]map[string]int // eventType → bus handle（Unsubscribe 用，治 reload/卸载泄漏）
 	op            *oper.PluginOper
+	marketOp      *oper.PluginMarketOper // 市场运营层（安装量/收藏/多实例/天序）；nil 时相关 API 空转
 	kv            *oper.PluginKVOper
 	sites         *oper.SiteOper
 	bus           *event.Bus

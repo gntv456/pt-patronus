@@ -42,6 +42,7 @@ export interface DoctorReport {
   findings: DoctorFinding[]
   status: 'healthy' | 'degraded' | 'failed'
   summary: { total: number; info: number; warn: number; error: number; fixed: number }
+  score: number // 健康评分 0-100（error -15/项，degraded -5/项，skipped 不计）
 }
 
 // 本机系统资源快照（对齐后端 sysinfo.Metrics；仪表盘「系统资源」卡用）。

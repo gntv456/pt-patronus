@@ -71,8 +71,8 @@ func registerAgentTools(
 		mi, err := mediaCh.Detail(ctx, argString(a, "source", ""), argString(a, "source_id", ""))
 		return mcpJSON(mi), err
 	}})
-	reg(mcp.Tool{Name: "recommend_feeds", Description: "Trending/hot media feeds (Douban now-playing / TMDB trending / Bangumi hot).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"category": map[string]any{"type": "string", "description": "movie | tv | anime (optional)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
-		return mcpJSON(recommend.RecommendFeeds(ctx, "", argString(a, "category", ""), 1, false)), nil
+	reg(mcp.Tool{Name: "recommend_feeds", Description: "Trending/hot media feeds (Douban now-playing / TMDB trending / Bangumi hot / Douban charts topMovie|topTv|weekly).", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"source": map[string]any{"type": "string", "description": "douban | tmdb | bangumi (optional, empty=all)"}, "category": map[string]any{"type": "string", "description": "movie | tv | anime | coming | topMovie | topTv | weekly (optional)"}}, "required": []string{}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
+		return mcpJSON(recommend.RecommendFeeds(ctx, argString(a, "source", ""), argString(a, "category", ""), 1, false)), nil
 	}})
 	reg(mcp.Tool{Name: "torrent_search", Description: "Search torrents across PT sites by keyword (read-only, does not download). Returns title/size/seeders/download_url.", InputSchema: map[string]any{"type": "object", "properties": map[string]any{"keyword": map[string]any{"type": "string"}, "category": map[string]any{"type": "string"}}, "required": []string{"keyword"}}, Handler: func(ctx context.Context, a map[string]any) (string, error) {
 		return mcpJSON(siteCh.SearchSites(ctx, argString(a, "keyword", ""), argString(a, "category", ""), nil)), nil

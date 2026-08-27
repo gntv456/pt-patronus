@@ -223,6 +223,12 @@ type Runtime interface {
 	SetRuntimeConfig(key string, val any) error
 }
 
+// HostCaller 可选的宿主工具直调能力（Runtime 附加接口，经类型断言使用：
+// pluginRuntime 实现；外部/测试桩可不实现）。
+type HostCaller interface {
+	CallHostTool(ctx context.Context, name string, input map[string]any) (any, error)
+}
+
 type Plugin interface {
 	Manifest() Manifest
 	DefaultConfig() map[string]any
@@ -349,6 +355,9 @@ type MarketPlugin struct {
 	// ResourceAccess / Requirements 透传到市场浏览/安装确认页，向管理员声明资源访问与依赖。
 	ResourceAccess *ResourceAccessSpec `json:"resource_access,omitempty"`
 	Requirements   []string            `json:"requirements,omitempty"`
+	// MarketPlugin 运营层附加字段（风云榜/梦萦阁；finalizeIndex 填充，索引原文不含）。
+	InstallCount int64 `json:"install_count"` // 本站累计安装次数（弟子榜）
+	Favorited    bool  `json:"favorited"`     // 当前用户已收藏（梦萦阁）
 }
 
 type InstallResult struct {

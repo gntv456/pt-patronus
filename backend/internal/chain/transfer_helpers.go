@@ -73,6 +73,8 @@ func (c *TransferChain) record(ctx context.Context, dlID uint, hash string, res 
 		if cfg := transfer.Load(c.cfg); cfg.RefreshLibrary && c.mediaMS != nil {
 			c.mediaMS.OnDownloadCompleted(ctx, title) // best-effort 扫库
 		}
+		// 整理成功 → 自动上传网盘 + STRM（配置开启时；异步不阻塞）。
+		c.afterTransferCloudUpload(ctx, res, transfer.Load(c.cfg))
 		return
 	}
 	if err := c.hist.AddFail(h, res.ErrMsg); err != nil {
@@ -113,9 +115,9 @@ func (c *TransferChain) noticeOnce(ctx context.Context, source, title, body, lev
 	}
 	_ = c.notice.Notice(ctx, notice.Input{
 		Source: source,
-		Key:    source + ":" + title + ":" + time.Now().Format("20060102-150405"),
+		Key:    source + ":" + title,
 		Title:  title, Body: body, Level: level,
-	}, false)
+	}, true)
 }
 
 // toFileInputs 把下载器文件列表解析为整理入参（相对 SavePath 的补成绝对路径）。
@@ -266,6 +268,9 @@ func (c *TransferChain) ClearFailed() (int64, error) { return c.hist.DeleteBySta
 
 // Config 读整理配置。
 func (c *TransferChain) Config() transfer.Config { return transfer.Load(c.cfg) }
+
+// KV 暴露 SystemConfig 读取（识别词等扩展配置存取用）。
+func (c *TransferChain) KV() transfer.KVStore { return c.cfg }
 
 // SetConfig 写整理配置（即时生效，引擎每次 Process 现取）。
 func (c *TransferChain) SetConfig(cfg transfer.Config) error { return transfer.Save(c.cfg, cfg) }

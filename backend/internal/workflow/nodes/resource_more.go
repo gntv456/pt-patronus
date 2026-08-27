@@ -10,6 +10,10 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/workflow"
+
+	"github.com/hxpt/ptpatronus/internal/transfer"
+	"strconv"
+	"time"
 )
 
 // 本文件新增资源类节点：跨站搜索、种子详情，以及对 ecx.Torrents 的排序/去重/择优。
@@ -225,22 +229,39 @@ func (n *PickBestNode) Description() string {
 }
 func (n *PickBestNode) Icon() string { return "best" }
 func (n *PickBestNode) DefaultParams() map[string]any {
-	return map[string]any{"count": float64(1)}
+	return map[string]any{"count": float64(1), "use_rules": false}
 }
 func (n *PickBestNode) ParamSchema() []workflow.ParamField {
 	return []workflow.ParamField{
 		{Name: "count", Label: "取前 N 条", Type: "number", Default: float64(1)},
+		{Name: "use_rules", Label: "用排序规则", Type: "switch", Default: false,
+			Help: "按「整理设置→种子排序规则」的权重打分（分辨率/制作组/体积/做种/免费可配），否则用内置 免费>分辨率>做种"},
 	}
 }
 
-func (n *PickBestNode) Execute(_ context.Context, params map[string]any, ecx *workflow.Context) error {
+func (n *PickBestNode) Execute(ctx context.Context, params map[string]any, ecx *workflow.Context) error {
 	count := workflow.ParamInt(params, "count")
 	if count <= 0 {
 		count = 1
 	}
-	sort.SliceStable(ecx.Torrents, func(i, j int) bool {
-		return torrentScore(ecx.Torrents[i]) > torrentScore(ecx.Torrents[j])
-	})
+	if workflow.ParamBool(params, "use_rules") {
+		var rules transfer.SortRules
+		if ecx.KV != nil {
+			rules = transfer.LoadSortRules(kvAdapterWF{ecx.KV})
+		} else {
+			rules = transfer.DefaultSortRules()
+		}
+		scored := transfer.ScoreTorrents(rules, torrentCandidates(ecx.Torrents))
+		sorted := make([]site.Torrent, len(scored))
+		for i, sc := range scored {
+			sorted[i] = ecx.Torrents[sc.Index]
+		}
+		copy(ecx.Torrents, sorted)
+	} else {
+		sort.SliceStable(ecx.Torrents, func(i, j int) bool {
+			return torrentScore(ecx.Torrents[i]) > torrentScore(ecx.Torrents[j])
+		})
+	}
 	if len(ecx.Torrents) > count {
 		ecx.Torrents = ecx.Torrents[:count]
 	}
@@ -301,3 +322,42 @@ func orderWord(desc bool) string {
 	}
 	return "升序"
 }
+
+// torrentCandidates site.Torrent → transfer.TorrentCandidate（排序规则打分入参）。
+// parseSizeGBWF "1.5 GB"/"700 MB" 字符串 → GB（site.Torrent.Size 是字符串）。
+func parseSizeGBWF(s string) float64 {
+	s = strings.TrimSpace(strings.ToUpper(s))
+	if strings.HasSuffix(s, "GB") {
+		if v, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(s, "GB")), 64); err == nil {
+			return v
+		}
+	}
+	if strings.HasSuffix(s, "MB") {
+		if v, err := strconv.ParseFloat(strings.TrimSpace(strings.TrimSuffix(s, "MB")), 64); err == nil {
+			return v / 1024
+		}
+	}
+	return 0
+}
+
+func torrentCandidates(ts []site.Torrent) []transfer.TorrentCandidate {
+	out := make([]transfer.TorrentCandidate, len(ts))
+	for i, t := range ts {
+		days := -1
+		if !t.PubDate.IsZero() {
+			days = int(time.Since(t.PubDate).Hours() / 24)
+		}
+		out[i] = transfer.TorrentCandidate{
+			Title: t.Title, SizeGB: parseSizeGBWF(t.Size), Seeders: t.Seeders,
+			Free: t.Free, Free2x: t.Free && strings.Contains(strings.ToUpper(t.Title), "2X"),
+			PubDaysAgo: days,
+		}
+	}
+	return out
+}
+
+// kvAdapterWF workflow.KVGetter → transfer.KVStore（Get 同形；Set 不支持）。
+type kvAdapterWF struct{ g workflow.KVGetter }
+
+func (a kvAdapterWF) Get(key string) (string, error) { return a.g.Get(key) }
+func (a kvAdapterWF) Set(key, val string) error      { return fmt.Errorf("只读适配") }

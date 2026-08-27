@@ -95,6 +95,9 @@ const GLYPHS: Record<string, string> = {
   // 公告：喇叭
   announcement:
     '<path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M14 8a3 3 0 0 1 0 8"/>',
+  // 求种：祈祷手势（requests 专区）
+  seed:
+    '<path d="M12 22c4-1 7-4 7-9V6l-7-3-7 3v7c0 5 3 8 7 9z"/><path d="M9 12l2 2 4-4"/>',
   // PT监护室：心电心跳（站点健康监护）
   savept:
     '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/><path d="M3.5 12.5h4l2-4 3 7 2-3h6"/>',

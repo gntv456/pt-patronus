@@ -7,6 +7,8 @@ import "github.com/hxpt/ptpatronus/internal/site"
 type Context struct {
 	// Torrents 资源集合（搜索/RSS 产出，过滤/下载消费）。复用 site.Torrent。
 	Torrents []site.Torrent
+	// KV SystemConfig 读取（可选；pick_best 等节点读用户配置用。nil=节点走内置默认）。
+	KV KVGetter
 	// Messages 累积的可读消息（send_message 可读取展示）。
 	Messages []string
 	// Content 通用文本载荷（http_request 响应体、RSS 原始 XML 等），extract_fields 消费。
@@ -31,4 +33,9 @@ type LogEntry struct {
 	Message    string `json:"message"`
 	DurationMS int64  `json:"duration_ms"`
 	At         string `json:"at"` // RFC3339
+}
+
+// KVGetter SystemConfigOper 最小接口（节点读配置用；避免 workflow→oper 依赖）。
+type KVGetter interface {
+	Get(key string) (string, error)
 }

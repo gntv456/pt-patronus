@@ -51,6 +51,9 @@ func (c *MediaChain) MediaConfig() MediaSettings {
 	return c.provider.LoadSettings()
 }
 
+// Provider 暴露媒体源 provider（日历等直接取 TMDB 源能力用；调用方只读）。
+func (c *MediaChain) Provider() *MediaSourceProvider { return c.provider }
+
 // SetMediaConfig 应用新设置（空字段不修改）并 rebuild 源，即时生效；
 // 同时清空搜索缓存——旧结果集（可能源自失效凭据/被墙域名）不应再被命中。
 func (c *MediaChain) SetMediaConfig(s MediaSettings) error {

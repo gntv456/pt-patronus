@@ -142,3 +142,90 @@ describe('tokenizeNoticeText', () => {
     expect(tokens).toEqual([{ type: 'text', text: 'a | b' }])
   })
 })
+
+// ── 站庆日历 ──
+import { parseAnnivCountdownDays, parseOpenDate, buildAnniversaryMap, hasKnownAnniversaryDate } from './savept'
+
+function annivCard(overrides: Partial<SaveptSiteCard> = {}): SaveptSiteCard {
+  return {
+    name: '站点A', url: 'https://a.pt', domain: 'a.pt', year: '2020', status: 'healthy',
+    site_type: 'internal', match_type: 'none', ...overrides,
+  }
+}
+
+describe('parseAnnivCountdownDays', () => {
+  it('今天站庆/0天 → 0', () => {
+    expect(parseAnnivCountdownDays('今天站庆')).toBe(0)
+    expect(parseAnnivCountdownDays('0天')).toBe(0)
+  })
+  it('N天 → N（含站庆前缀）', () => {
+    expect(parseAnnivCountdownDays('5天')).toBe(5)
+    expect(parseAnnivCountdownDays('站庆 12天')).toBe(12)
+  })
+  it('非倒计时文案/空 → null', () => {
+    expect(parseAnnivCountdownDays('建站 7 周年')).toBeNull()
+    expect(parseAnnivCountdownDays('')).toBeNull()
+    expect(parseAnnivCountdownDays(undefined)).toBeNull()
+  })
+})
+
+describe('parseOpenDate', () => {
+  it('合法 YYYY-MM-DD → 年月日', () => {
+    expect(parseOpenDate('2020-03-15')).toEqual({ year: 2020, month: 3, day: 15 })
+    expect(parseOpenDate('2020-3-5 10:00')).toEqual({ year: 2020, month: 3, day: 5 })
+  })
+  it('非法/越界日期 → null', () => {
+    expect(parseOpenDate('')).toBeNull()
+    expect(parseOpenDate('2020-13-01')).toBeNull()
+    expect(parseOpenDate('2020-02-30')).toBeNull()
+    expect(parseOpenDate('about 2020')).toBeNull()
+  })
+})
+
+describe('buildAnniversaryMap', () => {
+  const now = new Date(2026, 7, 25) // 2026-08-25
+  it('开站日期 → 每年同月日站庆，周年数 = 查看年 - 建站年', () => {
+    const map = buildAnniversaryMap([annivCard({ name: 'A站', open_time: '2020-03-15', year: '2020' })], 2026, now)
+    expect(map.get('3-15')).toEqual([{ card: expect.objectContaining({ name: 'A站' }), years: 6, source: 'open_time' }])
+  })
+  it('无 open_time 时倒计时补位（今天+N 天），且只落在查看当年', () => {
+    const map = buildAnniversaryMap([annivCard({ name: 'B站', anniversary_text: '5天' })], 2026, now)
+    expect(map.get('8-30')?.[0].card.name).toBe('B站')
+    expect(buildAnniversaryMap([annivCard({ name: 'B站', anniversary_text: '5天' })], 2027, now).size).toBe(0)
+  })
+  it('今天站庆文案 → 当天；已关站不进日历', () => {
+    const map = buildAnniversaryMap([
+      annivCard({ name: 'C站', anniversary_text: '今天站庆' }),
+      annivCard({ name: 'D站', open_time: '2020-08-25', status: 'closed' }),
+    ], 2026, now)
+    expect(map.get('8-25')?.map((e) => e.card.name)).toEqual(['C站'])
+  })
+  it('查看年早于开站年 → 不出现；建站年未知 → 周年数 0', () => {
+    expect(buildAnniversaryMap([annivCard({ name: 'E站', open_time: '2020-03-15' })], 2019, now).size).toBe(0)
+    const map = buildAnniversaryMap([annivCard({ name: 'F站', open_time: '2020-03-15', year: '未知' })], 2026, now)
+    expect(map.get('3-15')?.[0].years).toBe(0)
+  })
+  it('2/29 建站平年落 2/28，闰年落 2/29', () => {
+    const cards = [annivCard({ name: 'G站', open_time: '2020-02-29' })]
+    expect(buildAnniversaryMap(cards, 2026, now).get('2-28')?.length).toBe(1) // 2026 平年
+    expect(buildAnniversaryMap(cards, 2028, now).get('2-29')?.length).toBe(1) // 2028 闰年
+  })
+  it('同名站点去重', () => {
+    const map = buildAnniversaryMap([
+      annivCard({ name: 'H站', open_time: '2020-03-15' }),
+      annivCard({ name: 'H站', open_time: '2020-03-15', year: '2021' }),
+    ], 2026, now)
+    expect(map.get('3-15')?.length).toBe(1)
+  })
+})
+
+describe('hasKnownAnniversaryDate', () => {
+  it('有开站日期或倒计时文案 → true', () => {
+    expect(hasKnownAnniversaryDate(annivCard({ open_time: '2020-03-15' }))).toBe(true)
+    expect(hasKnownAnniversaryDate(annivCard({ anniversary_text: '5天' }))).toBe(true)
+  })
+  it('周年文案/空 → false', () => {
+    expect(hasKnownAnniversaryDate(annivCard({ anniversary_text: '建站 7 周年' }))).toBe(false)
+    expect(hasKnownAnniversaryDate(annivCard())).toBe(false)
+  })
+})

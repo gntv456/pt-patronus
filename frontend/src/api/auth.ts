@@ -32,6 +32,7 @@ export interface CaptchaChallenge {
   need_captcha: boolean
   challenge_mode: boolean // true=好学开了挑战响应认证，后端复刻挑战算法自动处理；失败可改 cookie 登录
   extra_form?: Record<string, string>
+  ocr_text?: string // OCR 自动识别结果（配置了 OCR 服务才有；预填验证码框，识别错可手改）
 }
 
 export interface VIPStatus {
@@ -80,4 +81,10 @@ export const authApi = {
   // legacy 激活码（保留兼容）
   activate: (code: string, deviceId = 'default') =>
     http.post('/auth/activate', { code, device_id: deviceId }),
+
+  // 用户界面偏好（跨浏览器同步，服务端按域存储；value 为 JSON 串）
+  getPreferences: (key: string) =>
+    http.get<{ key: string; value: string }>(`/auth/preferences/${key}`).then((r) => r.data),
+  setPreferences: (key: string, value: unknown) =>
+    http.put(`/auth/preferences/${key}`, { value: JSON.stringify(value ?? {}) }).then((r) => r.data),
 }

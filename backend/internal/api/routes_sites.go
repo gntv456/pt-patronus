@@ -48,6 +48,10 @@ func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
 		ann.POST("/sync/:id", annH.SyncOne)
 	}
 
+	// 站点求种请求（viewsrequests.php；NexusPHP 系，对标 MSaber「站点请求」）
+	reqH := v1.NewSiteRequestHandler(d.SiteCh)
+	guarded.GET("/site-requests", reqH.All)
+
 	// 后宫：邀请库存 + 被邀请人花名册
 	haremH := v1.NewHaremHandler(d.SiteCh, d.SiteOp)
 	harem := guarded.Group("/harem")

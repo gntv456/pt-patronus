@@ -103,6 +103,64 @@ export interface NoDataSite {
   platform: string
 }
 
+// ---- 工作台聚合（对标 MSaber 天序工作台）----
+
+export interface WorkbenchNode {
+  key: 'site' | 'subscribe' | 'download' | 'organize' | 'library' | 'watch'
+  label: string
+  count: number
+  hint: string
+}
+
+export interface WorkbenchTodo {
+  kind: 'transfer_failed' | 'no_data_site' | 'hr_risk' | string
+  title: string
+  detail?: string
+  link?: string
+  level: 'info' | 'warning' | 'danger' | string
+}
+
+export interface WorkbenchEvent {
+  source: string
+  title: string
+  level: string
+  created_at: string
+  progress?: number
+}
+
+export interface MediaLibraryStat {
+  server_id: number
+  server_name: string
+  type: string
+  movies: number
+  series: number
+  library_count: number
+  synced_at: string
+}
+
+export interface Workbench {
+  nodes: WorkbenchNode[]
+  todos: WorkbenchTodo[]
+  events: WorkbenchEvent[]
+  summary: {
+    sites_active: number
+    sites_no_data: number
+    subscriptions_new: number
+    subscription_hits: number
+    downloads_done: number
+    organize_failed: number
+    cloud_tasks_done: number
+    cloud_tasks_pending: number
+    uploaded_delta: number
+    downloaded_delta: number
+    played_today: number
+    strm_generated: number
+  }
+  media_library: { configured: boolean; servers: MediaLibraryStat[] }
+  health_score: number
+  generated_at: string
+}
+
 export const dashboardApi = {
   overview: () => http.get<DashboardOverview>('/dashboard').then((r) => r.data),
   // 立即抓取所有启用站点统计并返回最新总览（回填新加入站点的 0 数据）。
@@ -118,4 +176,6 @@ export const dashboardApi = {
     http
       .get<{ points: DashboardTrendPoint[] }>('/dashboard/trend', { params: { days } })
       .then((r) => r.data.points ?? []),
+  // 工作台聚合：今日流转/待办/动态/摘要 + 媒体库态势 + 体检分。
+  workbench: () => http.get<Workbench>('/dashboard/workbench').then((r) => r.data),
 }

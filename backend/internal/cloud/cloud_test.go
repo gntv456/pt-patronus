@@ -15,8 +15,8 @@ func TestCleanCloudPath(t *testing.T) {
 		"//a///b//": "/a/b",
 	}
 	for in, want := range cases {
-		if got := cleanCloudPath(in); got != want {
-			t.Errorf("cleanCloudPath(%q)=%q want %q", in, got, want)
+		if got := CleanPath(in); got != want {
+			t.Errorf("CleanPath(%q)=%q want %q", in, got, want)
 		}
 	}
 }

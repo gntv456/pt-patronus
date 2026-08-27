@@ -28,6 +28,26 @@ const (
 	ScrapeSkip        ScrapePolicy = "skip"         // 不刮削
 )
 
+// CloudUpload 整理后自动上传网盘配置：整理成功的媒体文件按 DestDir 相对路径
+// 上传到网盘 CloudBase 下，随后（可选）生成指向直链端点的 .strm。
+type CloudUpload struct {
+	Enabled       bool   `json:"enabled"`
+	DriveID       uint   `json:"drive_id"`        // 目标网盘（cloud drives 表 id）
+	CloudBase     string `json:"cloud_base"`      // 网盘目标根目录（如 /media）
+	UploadVideos  bool   `json:"upload_videos"`   // 上传视频本体（默认 true）
+	StrmOutputDir string `json:"strm_output_dir"` // 非空=在本地该目录生成 .strm（内容指向直链端点）
+	StrmTemplate  string `json:"strm_template"`   // .strm 内容模板，默认 {direct}{cloudpath}
+	DeleteLocal   bool   `json:"delete_local"`    // 上传成功后删除本地整理文件（危险，默认 false）
+
+	// 运行时填充（不入 JSON）：整理配置的库根目录，供云盘路径映射保留「标题/季」结构
+	// （cloudPathFor 需要从文件绝对路径剥掉库前缀；为空则不参与匹配）。
+	MovieDir string `json:"-"`
+	TVDir    string `json:"-"`
+}
+
+// directPlaceholder 直链端点占位模板默认值。
+const DefaultStrmDirectTemplate = "{direct}{cloudpath}"
+
 // Config 媒体整理配置（存 SystemConfig key "transfer.config"，JSON）。
 type Config struct {
 	Enabled            bool          `json:"enabled"`
@@ -47,6 +67,7 @@ type Config struct {
 	RefreshLibrary     bool          `json:"refresh_library"` // 整理后触发媒体服务器扫库
 	OverwriteFiles     bool          `json:"overwrite_files"` // 目标已存在时是否覆盖文件本体（默认 false）
 	BestVersion        bool          `json:"best_version"`    // 洗版：目标库已有旧版本时，新版画质更高则删旧链新
+	CloudUpload        CloudUpload   `json:"cloud_upload"`    // 整理后自动上传网盘 + STRM（默认关）
 }
 
 // PathMapping 将下载器返回的远程路径前缀映射到后端所在主机可访问的目录。
@@ -146,6 +167,12 @@ func (c Config) withDefaults() Config {
 	}
 	if out.TVRename == "" {
 		out.TVRename = DefaultConfig().TVRename
+	}
+	if out.CloudUpload.StrmTemplate == "" {
+		out.CloudUpload.StrmTemplate = DefaultStrmDirectTemplate
+	}
+	if out.CloudUpload.StrmOutputDir != "" && out.CloudUpload.CloudBase == "" {
+		out.CloudUpload.CloudBase = "/"
 	}
 	return out
 }

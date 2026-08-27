@@ -814,3 +814,121 @@ body.glass-reduced .glass::before {
   width: 100%;
   left: 0;
 }
+
+/* ───────────────────────────────────────────────────────────
+   界面定制（对标 MSaber 界面自定义面板）：
+   ① 主题色预设 —— body[data-theme-accent="..."] 重映射 --pt-primary 族 + 派生 tint/shadow；
+   ② 风格 —— body[data-ui-style="modern"] 关闭磨砂改实体面（玻璃=默认）；
+   ③ 壁纸 —— body[data-wallpaper] 设置背景图 + --wallpaper-mask 遮罩浓度；
+   ④ 卡片风格 —— body[data-card-style="border"] 实体卡去阴影改边框。
+   状态由 useUiPrefs 应用并经用户偏好同步跨浏览器保留。
+   ─────────────────────────────────────────────────────────── */
+
+/* 主题色预设：重映射主色族（tint 用 color-mix 从主色派生，免为每套色手写 rgba） */
+body[data-theme-accent='azure'] {
+  --pt-primary: #2f80ed;
+  --pt-primary-2: #00b8d9;
+  --pt-primary-dark: #1c5fb0;
+  --grad-primary: linear-gradient(135deg, #2f80ed, #00b8d9);
+  --pt-primary-bg: rgba(47, 128, 237, 0.15);
+  --pt-primary-2-bg: rgba(0, 184, 217, 0.15);
+  --shadow-primary: 0 4px 14px rgba(47, 128, 237, 0.25);
+  --shadow-primary-lg: 0 8px 24px rgba(47, 128, 237, 0.3);
+}
+:root.dark body[data-theme-accent='azure'] {
+  --pt-primary: #5aa2f7;
+  --pt-primary-2: #4dd8e8;
+}
+body[data-theme-accent='rose'] {
+  --pt-primary: #e84393;
+  --pt-primary-2: #fd79a8;
+  --pt-primary-dark: #b0306f;
+  --grad-primary: linear-gradient(135deg, #e84393, #fd79a8);
+  --pt-primary-bg: rgba(232, 67, 147, 0.15);
+  --pt-primary-2-bg: rgba(253, 121, 168, 0.15);
+  --shadow-primary: 0 4px 14px rgba(232, 67, 147, 0.25);
+  --shadow-primary-lg: 0 8px 24px rgba(232, 67, 147, 0.3);
+}
+:root.dark body[data-theme-accent='rose'] {
+  --pt-primary: #f27bb1;
+  --pt-primary-2: #fe9ac0;
+}
+body[data-theme-accent='green'] {
+  --pt-primary: #00b894;
+  --pt-primary-2: #55efc4;
+  --pt-primary-dark: #00947a;
+  --grad-primary: linear-gradient(135deg, #00b894, #55efc4);
+  --pt-primary-bg: rgba(0, 184, 148, 0.15);
+  --pt-primary-2-bg: rgba(85, 239, 196, 0.15);
+  --shadow-primary: 0 4px 14px rgba(0, 184, 148, 0.25);
+  --shadow-primary-lg: 0 8px 24px rgba(0, 184, 148, 0.3);
+}
+:root.dark body[data-theme-accent='green'] {
+  --pt-primary: #38dfb8;
+  --pt-primary-2: #7cf5d4;
+}
+body[data-theme-accent='amber'] {
+  --pt-primary: #e17055;
+  --pt-primary-2: #fab1a0;
+  --pt-primary-dark: #b04f38;
+  --grad-primary: linear-gradient(135deg, #e17055, #fab1a0);
+  --pt-primary-bg: rgba(225, 112, 85, 0.15);
+  --pt-primary-2-bg: rgba(250, 177, 160, 0.15);
+  --shadow-primary: 0 4px 14px rgba(225, 112, 85, 0.25);
+  --shadow-primary-lg: 0 8px 24px rgba(225, 112, 85, 0.3);
+}
+:root.dark body[data-theme-accent='amber'] {
+  --pt-primary: #f08e75;
+  --pt-primary-2: #fbc2b5;
+}
+
+/* 风格：现代（关闭磨砂/rim 高光，实体面为主；玻璃=默认不设该属性） */
+body[data-ui-style='modern'] .glass,
+body[data-ui-style='modern'] .glass-bar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--surface-1);
+  border-color: var(--surface-border);
+}
+body[data-ui-style='modern'] .glass::before {
+  display: none;
+}
+
+/* 壁纸：网络图片 / 必应每日 / 本地文件（base64/URL 均填 wallpaper url）。仅装饰层，
+   不改变内容对比度（遮罩层保证文字可读）。 */
+body[data-wallpaper] {
+  background-image: var(--wallpaper-image), var(--app-bg);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+body[data-wallpaper]::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--wallpaper-mask, rgba(240, 242, 248, 0.55));
+  pointer-events: none;
+}
+:root.dark body[data-wallpaper]::before {
+  background: var(--wallpaper-mask-dark, rgba(16, 18, 26, 0.62));
+}
+
+/* 遮罩浓度预设（轻/标准/浓）：改写 --wallpaper-mask */
+body[data-wallpaper-mask='light'] {
+  --wallpaper-mask: rgba(240, 242, 248, 0.35);
+  --wallpaper-mask-dark: rgba(16, 18, 26, 0.42);
+}
+body[data-wallpaper-mask='strong'] {
+  --wallpaper-mask: rgba(240, 242, 248, 0.78);
+  --wallpaper-mask-dark: rgba(16, 18, 26, 0.82);
+}
+
+/* 卡片风格：边框（去投影强调描边；阴影=默认） */
+body[data-card-style='border'] .solid-card {
+  box-shadow: none;
+  border-color: var(--surface-border-strong);
+}
+body[data-card-style='border'] .solid-card-hover:hover {
+  transform: none;
+}

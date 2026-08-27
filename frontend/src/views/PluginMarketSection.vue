@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Delete, Download, Plus, Refresh, Setting } from '@element-plus/icons-vue'
-import type { PluginMarketIndex } from '@/api/plugin'
+import { Delete, Download, Plus, Refresh, Setting, Star, StarFilled, Top, Bottom } from '@element-plus/icons-vue'
+import type { PluginMarketIndex, PluginMarketItem, ChartRow, PluginInstance } from '@/api/plugin'
 import {
   shortSource,
   canInstallMarketItem,
@@ -24,6 +24,14 @@ defineProps<{
   filteredMarketPlugins: PluginMarketIndex['plugins']
   avatarColor: (name: string) => string
   pluginInitial: (name: string) => string
+  // 运营层（风云榜/梦萦阁/分神/天序）
+  marketView: 'all' | 'favorites' | 'charts'
+  marketCharts: { disciples: ChartRow[]; newcomers: ChartRow[] } | null
+  favoritePlugins: PluginMarketItem[]
+  instancesVisible: boolean
+  instancePluginId: string
+  instances: PluginInstance[]
+  singleInstance: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,7 +45,18 @@ const emit = defineEmits<{
   (e: 'removeSourceRow', index: number): void
   (e: 'restoreOfficial'): void
   (e: 'saveSources'): void
+  (e: 'update:marketView', v: 'all' | 'favorites' | 'charts'): void
+  (e: 'toggleFavorite', item: PluginMarketItem): void
+  (e: 'openInstances', id: string): void
+  (e: 'update:instancesVisible', v: boolean): void
+  (e: 'createInstance', key: string): void
+  (e: 'toggleInstance', inst: PluginInstance): void
+  (e: 'removeInstance', inst: PluginInstance): void
+  (e: 'moveInstance', index: number, delta: -1 | 1): void
 }>()
+
+// 新分身名输入（分神对话框）。
+const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
 </script>
 
 <template>
@@ -47,6 +66,58 @@ const emit = defineEmits<{
       <span v-if="marketSources.length" class="market-src-count">· 已配置 {{ marketSources.length }} 个市场源</span>
     </div>
 
+    <!-- 视图切换：万灵阁(全部) / 梦萦阁(收藏) / 风云榜(弟子/新晋) -->
+    <div class="cat-bar">
+      <button class="cat-pill" :class="{ active: marketView === 'all' }" @click="emit('update:marketView', 'all')">全部</button>
+      <button class="cat-pill" :class="{ active: marketView === 'favorites' }" @click="emit('update:marketView', 'favorites')">⭐ 梦萦阁</button>
+      <button class="cat-pill" :class="{ active: marketView === 'charts' }" @click="emit('update:marketView', 'charts')">🔥 风云榜</button>
+    </div>
+
+    <!-- 风云榜视图 -->
+    <div v-if="marketView === 'charts'" class="charts-wrap">
+      <div class="chart-col solid-card">
+        <div class="chart-title">🥇 弟子榜 · 累计安装 Top30</div>
+        <div v-for="(row, i) in marketCharts?.disciples ?? []" :key="row.plugin_id" class="chart-row">
+          <span class="chart-rank" :class="['gold', 'silver', 'bronze'][i] ?? ''">{{ i + 1 }}</span>
+          <span class="chart-name">{{ row.plugin_id }}</span>
+          <span class="chart-num">{{ row.installs }} 次安装</span>
+        </div>
+        <el-empty v-if="!(marketCharts?.disciples ?? []).length" description="暂无安装数据（安装插件后生成榜单）" :image-size="60" />
+      </div>
+      <div class="chart-col solid-card">
+        <div class="chart-title">🌱 新晋榜 · 最近安装 Top30</div>
+        <div v-for="(row, i) in marketCharts?.newcomers ?? []" :key="row.plugin_id" class="chart-row">
+          <span class="chart-rank">{{ i + 1 }}</span>
+          <span class="chart-name">{{ row.plugin_id }}</span>
+          <span class="chart-num">{{ row.installs }} 次安装</span>
+        </div>
+        <el-empty v-if="!(marketCharts?.newcomers ?? []).length" description="暂无数据" :image-size="60" />
+      </div>
+    </div>
+
+    <!-- 梦萦阁（收藏）视图 -->
+    <div v-else-if="marketView === 'favorites'" v-loading="loading" class="market-grid">
+      <div v-for="item in favoritePlugins" :key="item.id" class="market-card solid-card solid-card-hover">
+        <div class="mc-top">
+          <div class="mc-avatar" :style="{ background: avatarColor(item.name) }">{{ pluginInitial(item.name) }}</div>
+          <div class="mc-info">
+            <div class="mc-name">{{ item.name }}</div>
+            <div class="mc-publisher">{{ item.publisher?.name || item.author || '未知' }}</div>
+          </div>
+          <el-tag size="small" effect="plain">{{ item.installed ? '已安装' : '未安装' }}</el-tag>
+        </div>
+        <div class="mc-desc">{{ item.description || '暂无描述' }}</div>
+        <div class="mc-foot">
+          <el-button size="small" :icon="item.favorited ? StarFilled : Star" @click="emit('toggleFavorite', item)">
+            {{ item.favorited ? '断缘' : '收藏' }}
+          </el-button>
+        </div>
+      </div>
+      <el-empty v-if="!loading && !favoritePlugins.length" description="梦萦阁空空如也——在「全部」里点收藏（Star）收插件" />
+    </div>
+
+    <!-- 万灵阁（全部）视图 -->
+    <template v-else>
     <div v-if="marketCategories.length" class="cat-bar">
       <button
         class="cat-pill"
@@ -83,6 +154,7 @@ const emit = defineEmits<{
           <el-tag size="small" :type="trustType(item.trust_level)">{{ trustLabel(item.trust_level) }}</el-tag>
           <el-tag v-if="item.category" size="small" effect="plain">{{ item.category }}</el-tag>
           <el-tag size="small" :type="compatibilityType(item)" effect="plain">{{ compatibilityLabel(item) }}</el-tag>
+          <el-tag v-if="item.install_count" size="small" type="info" effect="plain">{{ item.install_count }} 次安装</el-tag>
         </div>
 
         <div class="mc-foot">
@@ -96,11 +168,53 @@ const emit = defineEmits<{
           >
             {{ marketInstallLabel(item) }}
           </el-button>
+          <el-button size="small" :icon="item.favorited ? StarFilled : Star" @click="emit('toggleFavorite', item)" />
+          <el-button v-if="item.installed" size="small" :icon="Setting" @click="emit('openInstances', item.id)">分身</el-button>
         </div>
       </div>
       <el-empty v-if="!loading && !filteredMarketPlugins.length" description="暂无市场数据" />
     </div>
+    </template>
   </div>
+
+  <!-- 分神实例管理（天序：上移/下移持久化到服务端跨端同步） -->
+  <el-dialog
+    :model-value="instancesVisible"
+    :title="`分身管理 · ${instancePluginId}`"
+    width="560px"
+    @update:model-value="emit('update:instancesVisible', $event)"
+  >
+    <el-alert v-if="singleInstance" type="info" :closable="false" show-icon
+      title="单实例插件"
+      description="该插件由宿主单点管理，不支持分身。" style="margin-bottom: 12px" />
+    <template v-else>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px">
+        <el-input v-model="newInstanceKey" placeholder="新分身名称（如 刷流-账号2）" size="small" />
+        <el-button size="small" type="primary" @click="emit('createInstance', newInstanceKey); newInstanceKey = ''">分神</el-button>
+      </div>
+      <el-table :data="instances" size="small" empty-text="暂无分身（主配置在插件配置页）">
+        <el-table-column label="分身" min-width="120">
+          <template #default="{ row }">{{ (row as PluginInstance).instance_key }}</template>
+        </el-table-column>
+        <el-table-column label="启停" width="70">
+          <template #default="{ row }">
+            <el-switch size="small" :model-value="(row as PluginInstance).enabled" @change="emit('toggleInstance', row as PluginInstance)" />
+          </template>
+        </el-table-column>
+        <el-table-column label="天序" width="110">
+          <template #default="{ $index }">
+            <el-button size="small" :icon="Top" circle plain :disabled="$index === 0" @click="emit('moveInstance', $index, -1)" />
+            <el-button size="small" :icon="Bottom" circle plain :disabled="$index === instances.length - 1" @click="emit('moveInstance', $index, 1)" />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="70">
+          <template #default="{ row }">
+            <el-button size="small" link type="danger" @click="emit('removeInstance', row as PluginInstance)">归墟</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </template>
+  </el-dialog>
 
   <el-dialog
     :model-value="marketSourceVisible"

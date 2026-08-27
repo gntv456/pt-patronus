@@ -185,4 +185,3 @@ func TestClient115RawListPaginationCap(t *testing.T) {
 		t.Fatalf("got %d items, cap is %d", len(items), wantMax)
 	}
 }
-

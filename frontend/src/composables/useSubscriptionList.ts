@@ -13,7 +13,9 @@ export function useSubscriptionList() {
   async function load() {
     loading.value = true
     try {
-      list.value = await subscribeApi.list()
+      const items = await subscribeApi.list()
+      // 归一列表项切片字段：旧订阅/异常数据可能回 null，模板直接读 .length 会崩整个页面。
+      list.value = items.map((s) => ({ ...s, promo_types: s.promo_types ?? [], site_ids: s.site_ids ?? [] }))
       void fillMissingPosters(list.value)
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '加载失败')

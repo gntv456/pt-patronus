@@ -29,6 +29,9 @@ const {
   actionVisible, actionSpec, actionInputForm, actionInputText, actionOutput, actionRunning,
   auditVisible, auditTarget, auditLogs, auditReleases, auditLoading, rollbacking,
   marketCategory,
+  marketCharts, favoritePlugins, marketView, toggleFavorite,
+  instancesVisible, instancePluginId, instances, singleInstance,
+  openInstances, createInstance, toggleInstance, removeInstance, moveInstance,
   pluginSearch, marketSearch,
   filteredPlugins, enabledCount, actionHasSchema,
   marketCategories, filteredMarketPlugins,
@@ -151,6 +154,13 @@ function pluginInitial(name: string): string {
       :filtered-market-plugins="filteredMarketPlugins"
       :avatar-color="avatarColor"
       :plugin-initial="pluginInitial"
+      :market-view="marketView"
+      :market-charts="marketCharts"
+      :favorite-plugins="favoritePlugins"
+      :instances-visible="instancesVisible"
+      :instance-plugin-id="instancePluginId"
+      :instances="instances"
+      :single-instance="singleInstance"
       @refresh="loadMarket"
       @install="installMarketPlugin"
       @open-source="openMarketSource"
@@ -161,6 +171,14 @@ function pluginInitial(name: string): string {
       @remove-source-row="removeMarketSourceRow"
       @restore-official="restoreOfficialSource"
       @save-sources="saveMarketSources"
+      @update:market-view="marketView = $event"
+      @toggle-favorite="toggleFavorite"
+      @open-instances="openInstances"
+      @update:instances-visible="instancesVisible = $event"
+      @create-instance="createInstance"
+      @toggle-instance="toggleInstance"
+      @remove-instance="removeInstance"
+      @move-instance="moveInstance"
     />
 
     <el-dialog v-model="trustVisible" title="插件签名信任配置" width="560px">

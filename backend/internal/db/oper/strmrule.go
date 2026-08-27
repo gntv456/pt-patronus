@@ -19,15 +19,21 @@ func NewStrmRuleOper(db *gorm.DB) *StrmRuleOper {
 
 // StrmRuleInput 创建/更新规则入参。
 type StrmRuleInput struct {
-	Name      string `json:"name" binding:"max=64"`
-	DriveID   uint   `json:"drive_id"`
-	CloudPath string `json:"cloud_path" binding:"max=255"`
-	OutputDir string `json:"output_dir" binding:"max=255"`
-	MountRoot string `json:"mount_root" binding:"max=255"`
-	Template  string `json:"template" binding:"max=255"`
-	Recursive *bool  `json:"recursive"` // 指针：空=不改（更新时保留），显式 false=关闭递归
-	KeepExt   *bool  `json:"keep_ext"`
-	Enabled   *bool  `json:"enabled"`
+	Name            string `json:"name" binding:"max=64"`
+	DriveID         uint   `json:"drive_id"`
+	CloudPath       string `json:"cloud_path" binding:"max=255"`
+	OutputDir       string `json:"output_dir" binding:"max=255"`
+	MountRoot       string `json:"mount_root" binding:"max=255"`
+	Template        string `json:"template" binding:"max=255"`
+	Recursive       *bool  `json:"recursive"` // 指针：空=不改（更新时保留），显式 false=关闭递归
+	KeepExt         *bool  `json:"keep_ext"`
+	Incremental     *bool  `json:"incremental"` // 增量生成：本地 .strm 已存在即跳过（大库定期生成）
+	Enabled         *bool  `json:"enabled"`
+	OutputTag       string `json:"output_tag" binding:"max=64"`        // 输出目录绑定目录标签（优先于 OutputDir）
+	IncludeExts     string `json:"include_exts" binding:"max=255"`     // 扩展名白名单（逗号分隔；空=全部媒体）
+	ExcludeKeywords string `json:"exclude_keywords" binding:"max=512"` // 文件名排除关键词（逗号分隔）
+	LocalBaseURL    string `json:"local_base_url" binding:"max=255"`   // 内网基址（{direct} 渲染优先用）
+	PublicBaseURL   string `json:"public_base_url" binding:"max=255"`  // 外网基址（{directPublic} 渲染用）
 }
 
 func (o *StrmRuleOper) Create(in StrmRuleInput) (*models.StrmRule, error) {
@@ -40,7 +46,9 @@ func (o *StrmRuleOper) Create(in StrmRuleInput) (*models.StrmRule, error) {
 	row := map[string]any{
 		"name": in.Name, "drive_id": in.DriveID, "cloud_path": in.CloudPath, "output_dir": in.OutputDir,
 		"mount_root": in.MountRoot, "template": in.Template,
-		"recursive": derefBool(in.Recursive, true), "keep_ext": derefBool(in.KeepExt, true), "enabled": derefBool(in.Enabled, true),
+		"recursive": derefBool(in.Recursive, true), "keep_ext": derefBool(in.KeepExt, true), "incremental": derefBool(in.Incremental, false), "enabled": derefBool(in.Enabled, true),
+		"output_tag": in.OutputTag, "include_exts": in.IncludeExts, "exclude_keywords": in.ExcludeKeywords,
+		"local_base_url": in.LocalBaseURL, "public_base_url": in.PublicBaseURL,
 	}
 	if err := o.db.Model(&models.StrmRule{}).Create(row).Error; err != nil {
 		return nil, err
@@ -94,9 +102,20 @@ func (o *StrmRuleOper) Update(id uint, in StrmRuleInput) (*models.StrmRule, erro
 	if in.KeepExt != nil {
 		m.KeepExt = *in.KeepExt
 	}
+	if in.Incremental != nil {
+		m.Incremental = *in.Incremental
+	}
 	if in.Enabled != nil {
 		m.Enabled = *in.Enabled
 	}
+	// 字符串字段允许显式清空（除唯一键字段外用指针语义太啰嗦，这里以「入参非 nil 即覆盖」
+	// 不适用——binding 零值无法区分未传/清空，采用与旧字段一致的「非空才改」，标签/过滤的
+	// 清空通过传空格 hack 不可取，故增 tag:Update 总是覆盖这几个新字段（传 "" 即清空）。
+	m.OutputTag = in.OutputTag
+	m.IncludeExts = in.IncludeExts
+	m.ExcludeKeywords = in.ExcludeKeywords
+	m.LocalBaseURL = in.LocalBaseURL
+	m.PublicBaseURL = in.PublicBaseURL
 	if err := o.db.Save(m).Error; err != nil {
 		return nil, err
 	}
@@ -171,6 +190,16 @@ func (o *StrmRuleOper) ListRecords(driveID uint) ([]models.StrmRecord, error) {
 		return nil, err
 	}
 	return rs, nil
+}
+
+// GetRecordByCloudPath 按 DriveID+CloudPath 精确取单条记录（302 直链端点用）。
+func (o *StrmRuleOper) GetRecordByCloudPath(driveID uint, cloudPath string) (*models.StrmRecord, error) {
+	var rec models.StrmRecord
+	if err := o.db.Where("drive_id = ? AND cloud_path = ?", driveID, cloudPath).
+		First(&rec).Error; err != nil {
+		return nil, err
+	}
+	return &rec, nil
 }
 
 // DeleteRecordsByDrive 删除某网盘全部记录（删网盘时级联）。

@@ -41,7 +41,7 @@ type Subscription struct {
 	//     (Season Pack) 置顶，配合洗版门控优先用整季包提升整季进度；单集作为回退（整季包未改善时才考虑）。
 	//     电影订阅与 false 时行为不变。
 	// *bool 三态：nil=未设置（Check 时回退全局订阅默认 SubscribeGlobalDefaults）；true/false=订阅自定义。
-	BestVersion     *bool      `json:"best_version"`
+	BestVersion *bool `json:"best_version"`
 	// OfficialOnly 仅官种：*bool 三态(nil 回退全局默认)；true=只留 site.IsOfficial 命中者。复刻 BestVersion 模式。
 	OfficialOnly    *bool      `json:"official_only"`
 	BestVersionFull bool       `gorm:"default:false" json:"best_version_full"`
@@ -211,18 +211,31 @@ type CloudDrive struct {
 // StrmRule — STRM 生成规则：从某网盘的 CloudPath 扫描媒体文件，按模板生成本地 .strm。
 // 一条规则 = 一个 CloudDrive + 云盘源目录 + 本地输出目录 + 路径模板。GenerateAll 遍历 enabled 规则。
 type StrmRule struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Name      string    `gorm:"size:64;not null" json:"name"`
-	DriveID   uint      `gorm:"index;not null" json:"drive_id"`
-	CloudPath string    `gorm:"size:255;not null" json:"cloud_path"` // 云盘源目录（扫描起点）
-	OutputDir string    `gorm:"size:255;not null" json:"output_dir"` // 本地输出目录（.strm 落地根）
-	MountRoot string    `gorm:"size:255" json:"mount_root"`          // 挂载根（模板 {mount} 替换，如 /CloudDrive2/115）
-	Template  string    `gorm:"size:255" json:"template"`            // 路径模板，默认 {mount}{cloudpath}
-	Recursive bool      `gorm:"default:true" json:"recursive"`       // 递归扫描子目录
-	KeepExt   bool      `gorm:"default:true" json:"keep_ext"`        // .strm 文件名保留源扩展名（a.mkv→a.mkv.strm）否则 a.strm
-	Enabled   bool      `gorm:"default:true" json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	Name        string `gorm:"size:64;not null" json:"name"`
+	DriveID     uint   `gorm:"index;not null" json:"drive_id"`
+	CloudPath   string `gorm:"size:255;not null" json:"cloud_path"` // 云盘源目录（扫描起点）
+	OutputDir   string `gorm:"size:255;not null" json:"output_dir"` // 本地输出目录（.strm 落地根）
+	MountRoot   string `gorm:"size:255" json:"mount_root"`          // 挂载根（模板 {mount} 替换，如 /CloudDrive2/115）
+	Template    string `gorm:"size:255" json:"template"`            // 路径模板，默认 {mount}{cloudpath}
+	Recursive   bool   `gorm:"default:true" json:"recursive"`       // 递归扫描子目录
+	KeepExt     bool   `gorm:"default:true" json:"keep_ext"`        // .strm 文件名保留源扩展名（a.mkv→a.mkv.strm）否则 a.strm
+	Incremental bool   `gorm:"default:false" json:"incremental"`    // 增量模式：本地 .strm 已存在即跳过（大库定期生成）
+	Enabled     bool   `gorm:"default:true" json:"enabled"`
+	// 输出目录绑定目录标签（transfer.dir_tags，local 型）：填 OutputTag 时解析标签路径为
+	// 实际输出目录并覆盖 OutputDir——对标 MSaber「STRM 目录绑定目录分类」，改标签映射全局生效。
+	OutputTag string `gorm:"size:64;default:''" json:"output_tag"`
+	// 过滤：IncludeExts 命中才生成（空=全部媒体扩展名）；ExcludeKeywords 命中文件名即跳过
+	// （排除 sample/预告/广告等）。逗号分隔存一列，避免加两张关联表。
+	IncludeExts     string `gorm:"size:255;default:''" json:"include_exts"`     // 如 mkv,mp4；空=不过滤
+	ExcludeKeywords string `gorm:"size:512;default:''" json:"exclude_keywords"` // 如 sample,trailer；空=不过滤
+	// LocalBaseURL/PublicBaseURL 内外网双地址：模板 {direct} 渲染为 LocalBaseURL 优先、
+	// 空 则回退全局 AppBaseURL；PublicBaseURL 非空时模板可用 {directPublic}（外网直链，
+	// 供外网播放场景）。均空=保持相对路径（同机播放器场景）。
+	LocalBaseURL  string    `gorm:"size:255;default:''" json:"local_base_url"`
+	PublicBaseURL string    `gorm:"size:255;default:''" json:"public_base_url"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 // StrmRecord — 已生成的 STRM 记录（去重 + 展示 + 订阅追更 linkage）。同 DriveID+CloudPath 唯一。
@@ -234,4 +247,22 @@ type StrmRecord struct {
 	Size           int64     `json:"size"`
 	SubscriptionID uint      `gorm:"index" json:"subscription_id"` // 0=规则生成；>0=订阅追更生成
 	CreatedAt      time.Time `json:"created_at"`
+}
+
+// CloudTask — 云端任务队列（上传/STRM 生成/目录树导入）：进度可视 + 失败重试 + 历史回看。
+// 由自动上传链路与手动操作入队；executor 串行消费（per-drive 顺序、跨 drive 并行）。
+type CloudTask struct {
+	ID        uint      `gorm:"primaryKey" json:"id"`
+	DriveID   uint      `gorm:"index" json:"drive_id"`
+	Kind      string    `gorm:"size:16;index" json:"kind"`   // upload | strm | import_tree
+	Status    string    `gorm:"size:16;index" json:"status"` // pending | running | success | failed
+	CloudPath string    `gorm:"size:512" json:"cloud_path"`  // 目标云盘路径（upload/strm）
+	LocalPath string    `gorm:"size:512" json:"local_path"`  // 源本地文件（upload）
+	Size      int64     `json:"size"`                        // 字节数（upload 源大小）
+	Progress  int       `json:"progress"`                    // 0-100（阶段粗粒度）
+	Error     string    `gorm:"type:text" json:"error,omitempty"`
+	Attempts  int       `json:"attempts"`                           // 重试次数（executor 失败自动重入队 ≤3）
+	Payload   string    `gorm:"type:text" json:"payload,omitempty"` // kind 附加 JSON（如 import_tree 的规则参数）
+	CreatedAt time.Time `gorm:"index" json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

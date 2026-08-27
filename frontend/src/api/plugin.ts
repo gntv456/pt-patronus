@@ -206,6 +206,9 @@ export interface PluginMarketItem {
   installed: boolean
   installed_version?: string
   update_available: boolean
+  /** 运营层附加：本站累计安装次数（弟子榜）与当前用户收藏态（梦萦阁） */
+  install_count: number
+  favorited: boolean
 }
 
 export interface PluginMarketIndex {
@@ -215,6 +218,24 @@ export interface PluginMarketIndex {
   app_version?: string
   host_capabilities?: string[]
   plugins: PluginMarketItem[]
+}
+
+// 风云榜行（弟子榜/新晋榜共用）。
+export interface ChartRow {
+  plugin_id: string
+  installs: number
+  last_installed?: string
+}
+
+// 插件分身实例（多实例「分神」；SortOrder 为天序拖拽顺序）。
+export interface PluginInstance {
+  id: number
+  plugin_id: string
+  instance_key: string
+  enabled: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
 }
 
 export interface PluginInstallResult {
@@ -266,6 +287,28 @@ export const pluginApi = {
     http.post('/plugins/events', { type, data }).then((r) => r.data),
   market: (source = '') =>
     http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
+  // ---- 市场运营层（对标 MSaber：风云榜/梦萦阁/分神/天序） ----
+  marketCharts: () =>
+    http.get<{ disciples: ChartRow[]; newcomers: ChartRow[] }>('/plugins/market/charts').then((r) => r.data),
+  marketFavorites: () =>
+    http.get<{ plugins: PluginMarketItem[] }>('/plugins/market/favorites').then((r) => r.data.plugins ?? []),
+  favorite: (id: string) =>
+    http.post(`/plugins/market/favorites/${encodeURIComponent(id)}`).then((r) => r.data),
+  unfavorite: (id: string) =>
+    http.delete(`/plugins/market/favorites/${encodeURIComponent(id)}`).then((r) => r.data),
+  instances: (id: string) =>
+    http.get<{ instances: PluginInstance[]; single_instance: boolean }>(`/plugins/${encodeURIComponent(id)}/instances`)
+      .then((r) => r.data),
+  createInstance: (id: string, instanceKey: string, config: Record<string, unknown> = {}) =>
+    http.post<PluginInstance>(`/plugins/${encodeURIComponent(id)}/instances`, { instance_key: instanceKey, config })
+      .then((r) => r.data),
+  saveInstance: (id: string, key: string, config: Record<string, unknown>, enable: boolean) =>
+    http.put(`/plugins/${encodeURIComponent(id)}/instances/${encodeURIComponent(key)}`, { config, enable })
+      .then((r) => r.data),
+  deleteInstance: (id: string, key: string) =>
+    http.delete(`/plugins/${encodeURIComponent(id)}/instances/${encodeURIComponent(key)}`).then((r) => r.data),
+  reorderInstances: (id: string, ids: number[]) =>
+    http.put(`/plugins/${encodeURIComponent(id)}/instances/reorder`, { ids }).then((r) => r.data),
   getMarketSources: () =>
     http
       .get<{ sources: string[]; official?: string }>('/plugins/market-sources')

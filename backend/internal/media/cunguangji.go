@@ -102,9 +102,7 @@ type xgDetailItem struct {
 	} `json:"casts"`
 }
 
-// resolveURL 把站点返回的相对路径（如 /api/img?url=…）补成绝对地址（拼 x.base）；
-// 已是绝对 http(s) URL 或空则原样返回。站点端点故意只回站内相对路径（nginx 反代下
-// req.nextUrl.origin 不可靠），由本端用配置的 base 兜成绝对地址。
+// resolveURL 把站点返回的相对路径补成绝对地址（拼 x.base）；已是绝对 URL 或空则原样返回。
 func (x *Cunguangji) resolveURL(u string) string {
 	if u == "" {
 		return ""
@@ -118,6 +116,31 @@ func (x *Cunguangji) resolveURL(u string) string {
 	return u
 }
 
+// resolvePoster 把站点封面规整为可直连展示的绝对地址。
+// 站点返回 /api/img?url=<上游图直链> 反代形式——站点反代较慢（实测单图 1.4~4.3s）且部分
+// 上游经它反代直接 502；而上游 CDN 本身大多可直连（zqkanshu/byteimg/letvimg/ykimg 均
+// <0.5s、不防盗链）。故优先解包 url 参数直连上游；解不出（站内静态图）回退站内绝对路径。
+// 例外：上游为 doubanio.com 时保留反代形式——豆瓣防盗链+JA3 指纹反爬，直连拿不到真图
+// （前端 MediaPoster 亦会把 doubanio 图转走后端 /media/image，双通道兜底）。
+func (x *Cunguangji) resolvePoster(u string) string {
+	abs := x.resolveURL(u)
+	i := strings.Index(abs, "/api/img?url=")
+	if i < 0 {
+		return abs
+	}
+	raw := abs[i+len("/api/img?url="):]
+	// 站点把上游整链 percent-encode 进 url 参数；上游自身 query 也在编码内，整段解包
+	if inner, err := url.QueryUnescape(raw); err == nil {
+		if pu, err2 := url.Parse(inner); err2 == nil && (pu.Scheme == "http" || pu.Scheme == "https") && pu.Host != "" {
+			if strings.HasSuffix(pu.Host, "doubanio.com") {
+				return abs // 豆瓣：保留反代
+			}
+			return inner
+		}
+	}
+	return abs
+}
+
 // itemToMedia 把一条短剧映射到 MediaInfo（封面相对路径补绝对）。
 func (x *Cunguangji) itemToMedia(it xgItem) MediaInfo {
 	mi := MediaInfo{
@@ -127,7 +150,7 @@ func (x *Cunguangji) itemToMedia(it xgItem) MediaInfo {
 		OriginalTitle: it.AltTitle,
 		Type:          TypeTV,
 		Overview:      it.Description,
-		PosterURL:     x.resolveURL(it.Cover),
+		PosterURL:     x.resolvePoster(it.Cover),
 		Year:          it.ReleaseYear,
 		Rating:        it.Rating,
 		Genres:        splitTags(it.Tags),
@@ -216,7 +239,7 @@ func (x *Cunguangji) Detail(ctx context.Context, id string) (*MediaInfo, error) 
 		if c.Name == "" {
 			continue
 		}
-		mi.Cast = append(mi.Cast, CreditPerson{Name: c.Name, Role: c.Role, Avatar: x.resolveURL(c.Avatar)})
+		mi.Cast = append(mi.Cast, CreditPerson{Name: c.Name, Role: c.Role, Avatar: x.resolvePoster(c.Avatar)})
 	}
 	return &mi, nil
 }

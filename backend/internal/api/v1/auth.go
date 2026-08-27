@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"gorm.io/gorm"
 )
@@ -46,6 +48,7 @@ type AuthHandler struct {
 	tickets  *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
 	demoMode bool                    // 显式开启演示登录（默认关闭）
 	oidc     *auth.OIDCService       // OIDC/SSO（可空：未装配时 OIDC 端点返 503）
+	ocrCfg   func() ocr.Config       // OCR 服务配置读取（可空：无 OCR，验证码人工输入）
 }
 
 // NewAuthHandler 构造。
@@ -54,6 +57,9 @@ func NewAuthHandler(db *gorm.DB, jwt *security.JWT, act *auth.Activation,
 	tickets *auth.TicketStore, demoMode bool, oidc *auth.OIDCService) *AuthHandler {
 	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets, demoMode: demoMode, oidc: oidc}
 }
+
+// SetOCRConfig 注入 OCR 配置读取器（app 装配期；nil=OCR 未启用）。
+func (h *AuthHandler) SetOCRConfig(f func() ocr.Config) { h.ocrCfg = f }
 
 // WsTicket 签发一次性 WS/RTSP ticket（guarded 内：header JWT 已校验，含 TokenVersion 失效校验）。
 // 客户端用返回的 ticket 以 ?ticket= 连 WS/RTSP，避免 JWT 落 URL。
@@ -73,7 +79,8 @@ func (h *AuthHandler) WsTicket(c *gin.Context) {
 
 // ===== 好学账号登录（验证码两步） =====
 
-// HxptCaptcha 账号登录 Step A：取登录页验证码 / 探测模式。
+// HxptCaptcha 账号登录 Step A：取登录页验证码 / 探测模式。OCR 已配置时附带自动识别结果
+//（前端可预填，识别失败/未配置仍走人工输入——不 block 登录链路）。
 func (h *AuthHandler) HxptCaptcha(c *gin.Context) {
 	if h.hxptAuth == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "登录服务未启用"})
@@ -85,13 +92,23 @@ func (h *AuthHandler) HxptCaptcha(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "取验证码失败：" + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
+	resp := gin.H{
 		"imagehash":      ch.ImageHash,
 		"image":          ch.ImageB64,
 		"need_captcha":   ch.NeedCaptcha,
 		"challenge_mode": ch.ChallengeMode,
 		"extra_form":     ch.ExtraForm,
-	})
+	}
+	if ch.NeedCaptcha && h.ocrCfg != nil {
+		if cli := ocr.New(h.ocrCfg()); cli.Enabled() {
+			if text, err := cli.Recognize(c.Request.Context(), ch.ImageB64); err == nil && text != "" {
+				resp["ocr_text"] = text
+			} else if err != nil {
+				slog.Debug("captcha ocr failed", "err", err)
+			}
+		}
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 type hxptLoginReq struct {
@@ -278,4 +295,75 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 	}
 	audit(c, "hxpt_login", "ok", slog.String("hxpt_uid", hxptUID))
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
+}
+
+// ---- 用户偏好（跨浏览器同步，对标 MSaber 界面偏好随账号同步） ----
+
+const userPrefMaxValue = 64 * 1024 // 64KB：偏好 JSON 上限（防滥用）
+
+// GetPreferences GET /auth/preferences/{key}：读单域偏好（无则空对象）。
+func (h *AuthHandler) GetPreferences(c *gin.Context) {
+	uid := c.GetUint("uid")
+	key := c.Param("key")
+	if key == "" || len(key) > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "key 非法"})
+		return
+	}
+	var p models.UserPreference
+	err := h.db.Where("user_id = ? AND key = ?", uid, key).First(&p).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusOK, gin.H{"key": key, "value": "{}"})
+		return
+	}
+	if err != nil {
+		dbFail(c, "user_pref_get", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"key": key, "value": p.Value})
+}
+
+// SetPreferences PUT /auth/preferences/{key}：整域覆盖保存。
+func (h *AuthHandler) SetPreferences(c *gin.Context) {
+	uid := c.GetUint("uid")
+	key := c.Param("key")
+	if key == "" || len(key) > 64 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "key 非法"})
+		return
+	}
+	var in struct {
+		Value string `json:"value" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if len(in.Value) > userPrefMaxValue {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "value 超过 64KB 上限"})
+		return
+	}
+	// 校验为合法 JSON（前端存 JSON 串；脏数据会在端上解析失败）
+	if !json.Valid([]byte(in.Value)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "value 必须为合法 JSON"})
+		return
+	}
+	var p models.UserPreference
+	err := h.db.Where("user_id = ? AND key = ?", uid, key).First(&p).Error
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		p = models.UserPreference{UserID: uid, Key: key, Value: in.Value}
+		if err := h.db.Create(&p).Error; err != nil {
+			dbFail(c, "user_pref_create", err)
+			return
+		}
+	case err != nil:
+		dbFail(c, "user_pref_lookup", err)
+		return
+	default:
+		p.Value = in.Value
+		if err := h.db.Save(&p).Error; err != nil {
+			dbFail(c, "user_pref_save", err)
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

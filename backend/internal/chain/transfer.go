@@ -21,14 +21,16 @@ import (
 // 对标 MoviePilot TransferChain，复用 PTPatronus 既有 MediaChain 识别 / media.NFO / 媒体服务器。
 type TransferChain struct {
 	Base
-	engine  *transfer.Engine
-	dlMgr   *manager.Manager
-	dlOp    *oper.DownloaderOper
-	hist    *oper.TransferHistoryOper
-	links   *oper.DownloadMediaLinkOper
-	cfg     *oper.SystemConfigOper
-	mediaMS *MediaServerChain // 整理后触发媒体库刷新（nil 跳过）
-	notice  *notice.Service
+	engine   *transfer.Engine
+	dlMgr    *manager.Manager
+	dlOp     *oper.DownloaderOper
+	hist     *oper.TransferHistoryOper
+	links    *oper.DownloadMediaLinkOper
+	cfg      *oper.SystemConfigOper
+	mediaMS  *MediaServerChain // 整理后触发媒体库刷新（nil 跳过）
+	notice   *notice.Service
+	cloudUp  CloudUploader // 整理后自动上传网盘（nil 跳过；*CloudChain 注入）
+	mediaRec *MediaChain   // 名称识别测试用（Search；构造时保存）
 
 	// per-hash 互斥锁：防止 DoneHook / Sweep / Manual 同时整理同一 hash 造成硬链覆盖/历史重写。
 	hashMu sync.Map // map[string]*sync.Mutex
@@ -39,8 +41,24 @@ func NewTransferChain(b Base, mediaCh *MediaChain, dlMgr *manager.Manager, dlOp 
 	hist *oper.TransferHistoryOper, links *oper.DownloadMediaLinkOper, cfg *oper.SystemConfigOper,
 	ms *MediaServerChain, ns *notice.Service, fetch transfer.ImageFetcher) *TransferChain {
 	engine := transfer.NewEngine(mediaCh, linkStoreAdapter{op: links}, cfg, fetch, nil)
-	return &TransferChain{Base: b, engine: engine, dlMgr: dlMgr, dlOp: dlOp, hist: hist, links: links, cfg: cfg, mediaMS: ms, notice: ns}
+	return &TransferChain{Base: b, engine: engine, dlMgr: dlMgr, dlOp: dlOp, hist: hist, links: links, cfg: cfg, mediaMS: ms, notice: ns, mediaRec: mediaCh}
 }
+
+// SearchMedia 名称识别测试的媒体源匹配（title/year → 首个结果；nil chain 返回 nil）。
+func (c *TransferChain) SearchMedia(ctx context.Context, title string, year int, filter string) (*MediaSearchItem, error) {
+	if c.mediaRec == nil || title == "" {
+		return nil, nil
+	}
+	res, err := c.mediaRec.Search(ctx, title, year, filter)
+	if err != nil || len(res) == 0 {
+		return nil, err
+	}
+	m := res[0]
+	return &MediaSearchItem{Title: m.Title, Year: m.Year, Type: string(m.Type)}, nil
+}
+
+// SetCloudUploader 注入云盘上传能力（app 装配期调用；cloudCh 构建晚于 transferCh）。
+func (c *TransferChain) SetCloudUploader(up CloudUploader) { c.cloudUp = up }
 
 // linkStoreAdapter 把 oper.DownloadMediaLinkOper 适配为 transfer.LinkStore（破 transfer→oper 依赖）。
 type linkStoreAdapter struct{ op *oper.DownloadMediaLinkOper }

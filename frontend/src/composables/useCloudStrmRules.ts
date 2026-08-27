@@ -7,11 +7,17 @@ function defaultRule() {
     drive_id: 0,
     cloud_path: '/',
     output_dir: '',
+    output_tag: '',
     mount_root: '',
     template: '',
     recursive: true,
     keep_ext: true,
     enabled: true,
+    incremental: false,
+    include_exts: '',
+    exclude_keywords: '',
+    local_base_url: '',
+    public_base_url: '',
   }
 }
 
@@ -48,7 +54,16 @@ export function useCloudStrmRules(drives: Ref<CloudDrive[]>, openBrowse: (d: Clo
   }
   function openEditRule(r: StrmRule) {
     editingRule.value = r
-    ruleForm.value = { ...r }
+    ruleForm.value = {
+      ...defaultRule(),
+      ...r,
+      output_tag: r.output_tag ?? '',
+      include_exts: r.include_exts ?? '',
+      exclude_keywords: r.exclude_keywords ?? '',
+      local_base_url: r.local_base_url ?? '',
+      public_base_url: r.public_base_url ?? '',
+      incremental: r.incremental ?? false,
+    }
     showRuleForm.value = true
   }
   function ruleBrowse() {
@@ -61,8 +76,9 @@ export function useCloudStrmRules(drives: Ref<CloudDrive[]>, openBrowse: (d: Clo
   }
   async function saveRule() {
     const f = ruleForm.value
-    if (!f.name || !f.drive_id || !f.cloud_path || !f.output_dir) {
-      ElMessage.warning('名称/网盘/云盘目录/输出目录必填')
+    // 目录标签优先：填了 output_tag 时 output_dir 可留空（后端解析标签路径）。
+    if (!f.name || !f.drive_id || !f.cloud_path || (!f.output_dir && !f.output_tag)) {
+      ElMessage.warning('名称/网盘/云盘目录必填，输出目录与目录标签至少填一项')
       return
     }
     try {

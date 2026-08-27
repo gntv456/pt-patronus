@@ -16,11 +16,85 @@ import (
 type MediaHandler struct {
 	mediaCh   *chain.MediaChain
 	recommend *chain.RecommendChain
+	subCh     *chain.SubscribeChain // 订阅日历用（可选；nil 时该端点 503）
 }
 
 // NewMediaHandler 构造。
 func NewMediaHandler(mediaCh *chain.MediaChain, recommend *chain.RecommendChain) *MediaHandler {
 	return &MediaHandler{mediaCh: mediaCh, recommend: recommend}
+}
+
+// SetSubscribeChain 注入订阅链（订阅日历需要；构造期 subCh 晚于 mediaH 构建时后注入）。
+func (h *MediaHandler) SetSubscribeChain(subCh *chain.SubscribeChain) { h.subCh = subCh }
+
+// tmdbSource 从当前源列表取出 TMDB（未启用/未配置返回 nil）。
+func (h *MediaHandler) tmdbSource() *media.TMDB {
+	for _, s := range h.mediaCh.Provider().Sources() {
+		if t, ok := s.(*media.TMDB); ok {
+			return t
+		}
+	}
+	return nil
+}
+
+// Calendar 开播日历（GET /media/calendar?kind=tv|movie&days=14，对标 MSaber 开播日历）。
+// 返回 {date: [{tmdb_id,title,air_date,...}]} 按日期分组；数据源 TMDB discover（作品级首播/上映）。
+func (h *MediaHandler) Calendar(c *gin.Context) {
+	kind := c.DefaultQuery("kind", "tv")
+	if kind != "tv" && kind != "movie" {
+		kind = "tv"
+	}
+	days := atoiDefault(c.Query("days"), 14)
+	tm := h.tmdbSource()
+	if tm == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "TMDB 未配置"})
+		return
+	}
+	cal, err := tm.Calendar(c.Request.Context(), kind, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"kind": kind, "days": days, "calendar": cal})
+}
+
+// SubscriptionCalendar 订阅日历（GET /media/calendar/subscriptions?days=30）。
+// 取当前全部订阅中的 tv TMDB id，返回未来 N 天单集开播日程（单集粒度，next_episode_to_air）。
+func (h *MediaHandler) SubscriptionCalendar(c *gin.Context) {
+	if h.subCh == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "订阅链未注入"})
+		return
+	}
+	tm := h.tmdbSource()
+	if tm == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "TMDB 未配置"})
+		return
+	}
+	days := atoiDefault(c.Query("days"), 30)
+	subs, err := h.subCh.ListWithPosters(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	var ids []string
+	for _, s := range subs {
+		if s.Type != "tv" || s.Source != "tmdb" {
+			continue
+		}
+		if _, id, ok := strings.Cut(s.SourceID, ":"); ok && id != "" {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		c.JSON(http.StatusOK, gin.H{"days": days, "calendar": map[string][]media.CalendarEpisode{}})
+		return
+	}
+	cal, err := tm.CalendarForSubscriptions(c.Request.Context(), ids, days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"days": days, "calendar": cal})
 }
 
 // Search 跨源搜索媒体。「影视」端点默认只返回 movie+tv（排除音乐），
@@ -278,6 +352,7 @@ var mediaImageHosts = map[string]string{
 	"image.tmdb.org": "", // TMDB 不防盗链，无需 Referer
 	"lain.bgm.tv":    "", // Bangumi CDN，不防盗链
 	"bgm.tv":         "", // Bangumi 回退 host
+	"hq.dyjzydj.com": "", // 短剧源封面 CDN（dj.hxpt.org 的 api/img 实际上游之一）
 }
 
 // mediaImageReferer 按 host 匹配白名单，命中返回需要注入的 Referer。

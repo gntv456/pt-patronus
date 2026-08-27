@@ -123,6 +123,11 @@ const router = createRouter({
           component: () => import('@/views/Announcements.vue'),
         },
         {
+          path: 'site-requests',
+          name: 'site-requests',
+          component: () => import('@/views/SiteRequests.vue'),
+        },
+        {
           path: 'savept',
           name: 'savept',
           component: () => import('@/views/Savept.vue'),

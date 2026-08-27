@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 40px auto; color: #222; }
+    label { display: block; margin: 14px 0 4px; font-weight: 600; }
+    input { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 6px; border: 1px solid #ccc; }
+    button { margin-top: 16px; padding: 8px 18px; border: none; border-radius: 6px; background: #4f7cff; color: #fff; cursor: pointer; }
+    .ok { color: #2e7d32; margin-left: 10px; }
+    .hint { color: #777; font-size: 12px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h2>PTPatronus 助手 · 设置</h2>
+  <label for="server">服务器地址</label>
+  <input id="server" placeholder="http://192.168.1.10:8088" />
+  <label for="apiKey">API Key</label>
+  <input id="apiKey" type="password" placeholder="服务端 API_KEY 环境变量" />
+  <div class="hint">API Key 即服务端 API_KEY 环境变量（与 Servarr/Overseerr 接入同一把密钥）。仅在本地存储，用于扩展直连你的 PTPatronus。</div>
+  <button id="save">保存</button>
+  <button id="test" style="background:#666">测试连接</button>
+  <span id="msg"></span>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

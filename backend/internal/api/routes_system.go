@@ -15,6 +15,8 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 	guarded.POST("/dashboard/sync/:id", dashH.SyncOne)
 	guarded.GET("/dashboard/history/:id", dashH.History)
 	guarded.GET("/dashboard/trend", dashH.Trend)
+	// 工作台聚合（对标 MSaber 天序工作台）：今日流转/待办/动态/摘要 + 媒体库态势 + 体检分
+	guarded.GET("/dashboard/workbench", v1.NewDashboardHandler2(d.Dashboard, d.MediaServer).Workbench)
 
 	// 运行日志（环形缓冲；级别筛选，排查用）
 	guarded.GET("/system/logs", middleware.RequireAdmin(), sysH.Logs)
@@ -27,6 +29,15 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 		guarded.GET("/system/doctor", middleware.RequireAdmin(), d.Doctor.Run)
 		guarded.POST("/system/doctor/fix", middleware.RequireAdmin(), d.Doctor.Fix)
 	}
+
+	// OCR 服务配置（登录验证码自动识别；未配置=人工输入）。
+	if d.CfgOp != nil {
+		ocrH := v1.NewOCRHandler(d.CfgOp)
+		guarded.GET("/system/ocr", ocrH.GetConfig)
+		guarded.PUT("/system/ocr", middleware.RequireAdmin(), ocrH.SetConfig)
+		guarded.POST("/system/ocr/test", middleware.RequireAdmin(), ocrH.Test)
+	}
+
 	regH := v1.NewRegistrationHandler(d.RegOp, d.RegCh)
 	regs := guarded.Group("/registrations")
 	{
@@ -46,6 +57,9 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 		subs.DELETE("/:id", subH.Delete)
 		subs.POST("/:id/check", subH.Check)
 		subs.POST("/:id/reset", subH.ResetFields) // 清空指定字段回退全局默认
+		// 批量操作：update（patch 字段级编辑）/ check（重新搜索）/ delete（取消订阅）。
+		// 静态段 batch 须置于 /:id 参数路由之前注册顺序无关（Gin radix 自动区分静态与参数）。
+		subs.POST("/batch", subH.Batch)
 	}
 	// 全局订阅默认设置：独立前缀避 /subscriptions/:id 参数位冲突（Gin radix 静态+参数同层会 panic）。
 	// 未单独设置的订阅在 Check 时回退到此。
@@ -88,6 +102,17 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 		plugins.GET("/trust-config", middleware.RequireAdmin(), pluginH.TrustConfig)
 		plugins.PUT("/trust-config", middleware.RequireAdmin(), pluginH.SetTrustConfig)
 		plugins.POST("/market/install", middleware.RequireAdmin(), pluginH.Install)
+		// 市场运营层（对标 MSaber）：风云榜 / 梦萦阁收藏 / 分神实例 / 天序排序。
+		// 静态段 charts/favorites 置于 /:id 参数路由之前（Gin radix 区分静态与参数，顺序无碍但集中放置可读）。
+		plugins.GET("/market/charts", pluginH.MarketCharts)
+		plugins.GET("/market/favorites", pluginH.MarketFavorites)
+		plugins.POST("/market/favorites/:id", middleware.RequireAdmin(), pluginH.FavoritePlugin)
+		plugins.DELETE("/market/favorites/:id", middleware.RequireAdmin(), pluginH.UnfavoritePlugin)
+		plugins.GET("/:id/instances", pluginH.PluginInstances)
+		plugins.POST("/:id/instances", middleware.RequireAdmin(), pluginH.CreatePluginInstance)
+		plugins.PUT("/:id/instances/reorder", middleware.RequireAdmin(), pluginH.ReorderPluginInstances)
+		plugins.PUT("/:id/instances/:key", middleware.RequireAdmin(), pluginH.SavePluginInstanceConfig)
+		plugins.DELETE("/:id/instances/:key", middleware.RequireAdmin(), pluginH.DeletePluginInstance)
 		plugins.POST("/:id/assets/ticket", middleware.RequireAdmin(), pluginH.AssetTicket)
 		plugins.GET("/:id/releases", pluginH.Releases)
 		plugins.POST("/:id/bridge", middleware.RequireAdmin(), pluginH.Bridge)

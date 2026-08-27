@@ -230,6 +230,26 @@ func (c *plexClient) LibraryItems(ctx context.Context, libraryID string) ([]Deta
 // plexAccountKey 把数字账户 id 转字符串（统一 ID 类型为 string）。
 func plexAccountKey(id int) string { return strconv.Itoa(id) }
 
+// EpisodeCount 剧集已入库集数（健康中心缺集判定用）。
+// GET /library/metadata/<ratingkey>/allChildren → leafCount 即全部集数；
+// 兜底再拉 children 计数（leafCount 缺失的旧版本）。
+func (c *plexClient) EpisodeCount(ctx context.Context, seriesID string) (int, error) {
+	u := fmt.Sprintf("%s/library/metadata/%s/allChildren?includeChildren=1", c.apiRoot, esc(seriesID))
+	var res struct {
+		MediaContainer struct {
+			LeafCount int `json:"leafCount"`
+			Size      int `json:"size"`
+		} `json:"MediaContainer"`
+	}
+	if err := jsonGet(ctx, c.hc, u, c.headers(), &res); err != nil {
+		return 0, err
+	}
+	if res.MediaContainer.LeafCount > 0 {
+		return res.MediaContainer.LeafCount, nil
+	}
+	return res.MediaContainer.Size, nil
+}
+
 // plexItemType 把 Plex metadata type（movie/show/episode）归一。
 func plexItemType(t string) string {
 	switch t {

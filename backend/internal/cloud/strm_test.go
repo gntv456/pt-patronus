@@ -18,7 +18,7 @@ func (f *fakeClient) Type() string                          { return "fake" }
 func (f *fakeClient) Test(context.Context) (string, error)  { return "fake", nil }
 func (f *fakeClient) Quota(context.Context) (*Quota, error) { return &Quota{}, nil }
 func (f *fakeClient) List(_ context.Context, dir string) ([]File, error) {
-	return f.tree[cleanCloudPath(dir)], nil
+	return f.tree[CleanPath(dir)], nil
 }
 
 func newFakeTree() *fakeClient {
@@ -148,5 +148,108 @@ func TestValidateStrmOutputDirWindowsCaseInsensitive(t *testing.T) {
 	path := strings.ToLower(`C:\Windows\Temp\ptpatronus`)
 	if err := validateStrmOutputDir(path); err == nil {
 		t.Fatalf("case-variant sensitive path %q should be rejected", path)
+	}
+}
+
+// ---- 规则级过滤 + 内外网双地址（对标 MSaber STRM 规则） ----
+
+func TestGenerateStrmIncludeExtsFilter(t *testing.T) {
+	dir := t.TempDir()
+	cli := &fakeClient{tree: map[string][]File{"/movie": {
+		{Name: "a.mkv", Path: "/movie/a.mkv", Size: 1},
+		{Name: "b.mp4", Path: "/movie/b.mp4", Size: 2},
+		{Name: "c.ts", Path: "/movie/c.ts", Size: 3},
+	}}}
+	res, err := Generate(context.Background(), cli, GenerateOptions{
+		CloudPath: "/movie", OutputDir: filepath.Join(dir, "strm"), KeepExt: true,
+		IncludeExts: []string{"mkv", ".MP4"}, // 带点+大写：应规整为 mp4
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Generated != 2 {
+		t.Fatalf("expect 2 generated, got %d", res.Generated)
+	}
+	for _, name := range []string{"a.mkv.strm", "b.mp4.strm"} {
+		if _, err := os.Stat(filepath.Join(dir, "strm", name)); err != nil {
+			t.Errorf("missing %s: %v", name, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "strm", "c.ts.strm")); err == nil {
+		t.Error("c.ts.strm should be filtered out by include_exts")
+	}
+}
+
+func TestGenerateStrmExcludeKeywords(t *testing.T) {
+	dir := t.TempDir()
+	cli := &fakeClient{tree: map[string][]File{"/movie": {
+		{Name: "Movie.2023.mkv", Path: "/movie/Movie.2023.mkv"},
+		{Name: "Movie.2023.sample.mkv", Path: "/movie/Movie.2023.sample.mkv"},
+		{Name: "trailer.mp4", Path: "/movie/trailer.mp4"},
+	}}}
+	res, err := Generate(context.Background(), cli, GenerateOptions{
+		CloudPath: "/movie", OutputDir: filepath.Join(dir, "strm"), KeepExt: true,
+		ExcludeKeywords: []string{"Sample", "TRAILER"}, // 大写输入：匹配应小写化
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Generated != 1 {
+		t.Fatalf("expect 1 generated, got %d", res.Generated)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "strm", "Movie.2023.mkv.strm")); err != nil {
+		t.Errorf("main file missing: %v", err)
+	}
+}
+
+func TestGenerateStrmDirectDualBaseURL(t *testing.T) {
+	dir := t.TempDir()
+	cli := &fakeClient{tree: map[string][]File{"/movie": {{Name: "a.mkv", Path: "/movie/a.mkv"}}}}
+	// LocalBaseURL 优先于 FallbackBaseURL；{directPublic} 用 PublicBaseURL。
+	res, err := Generate(context.Background(), cli, GenerateOptions{
+		DriveID: 7, CloudPath: "/movie", OutputDir: filepath.Join(dir, "strm"), KeepExt: true,
+		Template:        "{direct}{cloudpath}",
+		LocalBaseURL:    "http://192.168.1.10:8080/",
+		FallbackBaseURL: "http://fallback:9999",
+		PublicBaseURL:   "https://ms.example.com",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Generated != 1 {
+		t.Fatalf("expect 1 generated, got %d", res.Generated)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "strm", "a.mkv.strm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "http://192.168.1.10:8080/api/v1/cloud/direct/7/movie/a.mkv\n"
+	if string(b) != want {
+		t.Fatalf("content = %q, want %q", b, want)
+	}
+}
+
+func TestGenerateStrmDirectPublicFallback(t *testing.T) {
+	dir := t.TempDir()
+	cli := &fakeClient{tree: map[string][]File{"/movie": {{Name: "a.mkv", Path: "/movie/a.mkv"}}}}
+	// 无 Local/自定义：{direct} 回退全局 Fallback；{directPublic} 无 Public 时同 {direct}。
+	res, err := Generate(context.Background(), cli, GenerateOptions{
+		DriveID: 3, CloudPath: "/movie", OutputDir: filepath.Join(dir, "strm"), KeepExt: true,
+		Template:        "{directPublic}{cloudpath}",
+		FallbackBaseURL: "http://nas.local:9000/",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Generated != 1 {
+		t.Fatalf("expect 1 generated, got %d (errors=%v)", res.Generated, res.Errors)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "strm", "a.mkv.strm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "http://nas.local:9000/api/v1/cloud/direct/3/movie/a.mkv\n"
+	if string(b) != want {
+		t.Fatalf("content = %q, want %q", b, want)
 	}
 }

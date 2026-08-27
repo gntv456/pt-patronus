@@ -21,7 +21,7 @@ const props = defineProps<{
   filteredCount: number
 }>()
 
-const emit = defineEmits<{ (e: 'refresh'): void; (e: 'clearFilters'): void }>()
+const emit = defineEmits<{ (e: 'refresh'): void; (e: 'clearFilters'): void; (e: 'openAnnivCalendar'): void }>()
 
 const statusOptions = [
   { label: '全部', value: '全部' },
@@ -134,6 +134,10 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
           <SptIcon name="globe" :size="14" />
           {{ summary?.internal ?? 0 }}/{{ summary?.external ?? 0 }} 内外站
         </span>
+        <button class="spt-calendar-btn" title="查看全年站庆日历" @click="emit('openAnnivCalendar')">
+          <SptIcon name="calendar" :size="16" />
+          <span>站庆日历</span>
+        </button>
         <button class="spt-refresh-btn" :disabled="loading" @click="emit('refresh')">
           <SptIcon v-if="loading" name="refresh" :size="16" class="spt-spin" />
           <SptIcon v-else name="refresh" :size="18" />
@@ -312,6 +316,16 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
 }
 .spt-refresh-btn:hover:not(:disabled) { background: rgba(var(--spt-primary), 0.16); border-color: rgba(var(--spt-primary), 0.5); }
 .spt-refresh-btn:disabled { opacity: 0.6; cursor: wait; }
+.spt-calendar-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
+  min-height: 32px; padding: 5px 14px; border-radius: var(--spt-radius-pill);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--spt-color-anniv);
+  font-size: 0.8rem; font-weight: 500; cursor: pointer;
+  transition: all var(--spt-transition); white-space: nowrap;
+}
+.spt-calendar-btn:hover { background: rgba(245, 158, 11, 0.18); border-color: rgba(245, 158, 11, 0.55); }
 .spt-spin { animation: spt-spin 1s linear infinite; }
 @keyframes spt-spin { to { transform: rotate(360deg); } }
 

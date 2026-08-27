@@ -36,6 +36,11 @@ async function loadGlobalDefaults() {
   }
 }
 
+// 归一全局设置切片字段（PUT 响应/表单兜底共用；null → [] 防 .length 崩溃）。
+function normalizeGlobal(g: GlobalDefaults): GlobalDefaults {
+  return { ...g, promo_types: g.promo_types ?? [], site_ids: g.site_ids ?? [] }
+}
+
 function openGlobal() {
   const g = globalDefaults.value
   globalForm.value = { ...g, promo_types: [...(g.promo_types ?? [])], site_ids: [...(g.site_ids ?? [])] }
@@ -45,7 +50,7 @@ function openGlobal() {
 async function saveGlobal() {
   savingGlobal.value = true
   try {
-    globalDefaults.value = await subscribeApi.updateGlobalDefaults(globalForm.value)
+    globalDefaults.value = normalizeGlobal(await subscribeApi.updateGlobalDefaults(globalForm.value))
     globalOpen.value = false
     ElMessage.success('全局默认已保存')
   } catch (e: unknown) {
@@ -84,6 +89,60 @@ function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '—'
 }
 
+// ---- 批量操作（对标 MSaber：卡片勾选 → 批量编辑 / 重新搜索 / 取消订阅） ----
+const batchMode = ref(false)
+const selectedIds = ref<number[]>([])
+const batchRunning = ref(false)
+// 批量编辑表单：开关开启的字段才应用到所选订阅，未开启保持原值。
+const batchForm = ref({ resolutionOn: false, resolution: '', statusOn: false, status: 'subscribed', ratingGuardOn: false, ratingGuard: false, bestVersionOn: false, bestVersion: false })
+const allSelected = () => list.value.length > 0 && selectedIds.value.length === list.value.length
+function toggleSelectAll() {
+  selectedIds.value = allSelected() ? [] : list.value.map((s) => s.id)
+}
+function toggleSelect(id: number) {
+  const i = selectedIds.value.indexOf(id)
+  if (i >= 0) selectedIds.value.splice(i, 1)
+  else selectedIds.value.push(id)
+}
+function enterBatch() {
+  batchMode.value = true
+  selectedIds.value = []
+}
+function exitBatch() {
+  batchMode.value = false
+  selectedIds.value = []
+}
+async function runBatch(op: 'update' | 'check' | 'delete') {
+  if (!selectedIds.value.length) {
+    ElMessage.warning('请先勾选订阅')
+    return
+  }
+  if (op === 'delete' && !confirm(`确认取消订阅 ${selectedIds.value.length} 项？取消后无法恢复`)) return
+  let patch: Record<string, unknown> | undefined
+  if (op === 'update') {
+    patch = {}
+    if (batchForm.value.resolutionOn) patch.resolution = batchForm.value.resolution
+    if (batchForm.value.statusOn) patch.status = batchForm.value.status
+    if (batchForm.value.ratingGuardOn) patch.enable_rating_guard = batchForm.value.ratingGuard
+    if (batchForm.value.bestVersionOn) patch.best_version = batchForm.value.bestVersion
+    if (!Object.keys(patch).length) {
+      ElMessage.warning('请至少开启一个要修改的字段开关')
+      return
+    }
+  }
+  batchRunning.value = true
+  try {
+    const res = await subscribeApi.batch(selectedIds.value, op, patch as never)
+    ElMessage.success(`批量操作完成：成功 ${res.succeeded}/${res.total}${res.failed ? `，失败 ${res.failed}（${res.failures[0]?.error || ''}）` : ''}`)
+    if (op === 'delete') exitBatch()
+    await load()
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '批量操作失败')
+  } finally {
+    batchRunning.value = false
+  }
+}
+
 watch(
   () => route.query.tab,
   (v) => {
@@ -110,7 +169,10 @@ onMounted(() => {
         <h2 class="title">订阅</h2>
         <span class="text-muted hint">cron 自动跨站搜索，命中即推送到默认下载器并通知。点此 <router-link to="/search">搜索</router-link> → 影视详情页订阅。</span>
       </div>
-      <el-button class="global-btn" @click="openGlobal">⚙ 全局订阅设置</el-button>
+      <div style="display:flex;gap:8px;">
+        <el-button v-if="!batchMode && list.length" class="global-btn" @click="enterBatch">批量操作</el-button>
+        <el-button class="global-btn" @click="openGlobal">⚙ 全局订阅设置</el-button>
+      </div>
     </div>
 
     
@@ -166,9 +228,36 @@ onMounted(() => {
     </el-dialog>
 
     <div v-loading="loading" class="card glass">
+      <!-- 批量操作条：进入后卡片显示勾选框；编辑用字段开关控制只改所选字段 -->
+      <div v-if="batchMode" class="batch-bar">
+        <el-checkbox :model-value="allSelected()" @change="toggleSelectAll">全选</el-checkbox>
+        <span class="small text-muted">已选 {{ selectedIds.length }} 项</span>
+        <el-button size="small" @click="exitBatch">✕ 退出批量</el-button>
+        <el-button size="small" type="primary" :loading="batchRunning" @click="runBatch('update')">应用编辑</el-button>
+        <el-button size="small" :loading="batchRunning" @click="runBatch('check')">重新搜索</el-button>
+        <el-button size="small" type="danger" plain :loading="batchRunning" @click="runBatch('delete')">取消订阅</el-button>
+        <div class="batch-edit gd-row" style="width:100%;margin-top:6px;">
+          <el-checkbox v-model="batchForm.resolutionOn">分辨率</el-checkbox>
+          <el-input v-model="batchForm.resolution" size="small" style="width: 110px" placeholder="如 1080p" :disabled="!batchForm.resolutionOn" />
+          <el-checkbox v-model="batchForm.statusOn">状态</el-checkbox>
+          <el-select v-model="batchForm.status" size="small" style="width: 100px" :disabled="!batchForm.statusOn">
+            <el-option label="订阅中" value="subscribed" />
+            <el-option label="已暂停" value="paused" />
+            <el-option label="已完成" value="completed" />
+          </el-select>
+          <el-checkbox v-model="batchForm.ratingGuardOn">评分保护</el-checkbox>
+          <el-switch v-model="batchForm.ratingGuard" size="small" :disabled="!batchForm.ratingGuardOn" />
+          <el-checkbox v-model="batchForm.bestVersionOn">洗版</el-checkbox>
+          <el-switch v-model="batchForm.bestVersion" size="small" :disabled="!batchForm.bestVersionOn" />
+          <span class="small text-muted">勾选的字段才会被修改，未勾选保持原值</span>
+        </div>
+      </div>
       <div v-if="list.length" class="subs">
-        <div v-for="s in list" :key="s.id" class="sub glass-hover">
-          <div class="poster"><MediaPoster :url="s.poster_url" :kind="s.type" /></div>
+        <div v-for="s in list" :key="s.id" class="sub glass-hover" :class="{ selected: batchMode && selectedIds.includes(s.id) }">
+          <div class="poster">
+            <el-checkbox v-if="batchMode" :model-value="selectedIds.includes(s.id)" class="batch-check" @change="toggleSelect(s.id)" />
+            <MediaPoster :url="s.poster_url" :kind="s.type" />
+          </div>
           <div class="info">
             <div class="row1">
               <span class="s-title">{{ s.title }}</span>
@@ -329,6 +418,7 @@ onMounted(() => {
   border-radius: var(--radius-xs);
   overflow: hidden;
   background: var(--surface-muted);
+  position: relative;
 }
 .info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
 .row1 { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
@@ -349,6 +439,9 @@ onMounted(() => {
   .poster { width: 76px; }
 }
 .page-tabs { margin-top: 4px; padding: 4px 10px 12px; } .global-subscribe-dialog :deep(.el-dialog__body) { max-height: 72vh; overflow-y: auto; padding-right: 8px; }
+.batch-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0 14px; border-bottom: 1px solid var(--border-color, #eee); margin-bottom: 12px; }
+.batch-check { position: absolute; top: 4px; left: 4px; z-index: 2; background: rgba(0,0,0,.35); border-radius: 4px; padding: 0 4px; }
+.sub.selected { outline: 2px solid var(--pt-primary); }
 .rss-embed :deep(.page) { padding: 0; }
 .rss-embed :deep(.title) { font-size: var(--fs-lg); }
 

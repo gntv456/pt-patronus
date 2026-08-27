@@ -51,6 +51,7 @@ type Deps struct {
 	Notif              *chain.NotificationChain
 	NotifMgr           *notification.Manager
 	NotifProvider      *chain.NotificationSettingsProvider
+	CfgOp              *oper.SystemConfigOper
 	MediaCh            *chain.MediaChain
 	Recommend          *chain.RecommendChain
 	FileOp             *oper.FileStorageOper

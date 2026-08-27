@@ -31,7 +31,7 @@ type CloudDriveInput struct {
 // validCloudDriveType 收紧网盘类型白名单（binding max 不够，需显式枚举校验）。
 func validCloudDriveType(t string) bool {
 	switch t {
-	case "115", "quark", "123":
+	case "115", "115_open", "quark", "123", "aliyun_open":
 		return true
 	}
 	return false
@@ -108,6 +108,16 @@ func (o *CloudDriveOper) Delete(id uint) error {
 // Token 解密返回凭据（cookie/accessToken）。
 func (o *CloudDriveOper) Token(m *models.CloudDrive) (string, error) {
 	return o.c.Decrypt(m.TokenEnc)
+}
+
+// SetToken 加密回写凭据（token 刷新轮换用；不触碰其它字段）。
+func (o *CloudDriveOper) SetToken(id uint, token string) error {
+	enc, err := o.c.Encrypt(token)
+	if err != nil {
+		return err
+	}
+	return o.db.Model(&models.CloudDrive{}).Where("id = ?", id).
+		Update("token_enc", enc).Error
 }
 
 // errInvalidCloudType 网盘类型不在 115/quark/123 白名单内（包 ErrInvalidInput 供 handler errors.Is 判 400）。

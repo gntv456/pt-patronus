@@ -88,6 +88,27 @@ export interface CheckinRecord {
   created_at: string
 }
 
+// 站点求种请求（对标 MSaber「站点请求」；NexusPHP viewsrequests.php）。
+export interface SiteRequestItem {
+  id: string
+  title: string
+  category?: string
+  comments: number
+  votes: number
+  filled: boolean
+  created_by?: string
+  time_added?: string
+  detail_url?: string
+  fetched_at: string
+}
+
+export interface SiteRequestResult {
+  site_id: number
+  site_name: string
+  requests: SiteRequestItem[]
+  error?: string
+}
+
 export const siteApi = {
   list: () => http.get<{ sites: Site[] }>('/sites').then((r) => r.data.sites ?? []),
   definitions: () =>
@@ -118,6 +139,14 @@ export const siteApi = {
     ),
   checkin: (id: number) =>
     http.post<CheckinResult>(`/sites/${id}/checkin`, undefined, { timeout: checkinTimeout }).then((r) => r.data),
+  // 站点求种请求列表（filled=1 已满足段；siteId 指定单站，空=全部活跃站）
+  siteRequests: (filled = false, siteId?: number) =>
+    http
+      .get<{ sites: SiteRequestResult[] }>('/site-requests', {
+        params: { ...(filled ? { filled: '1' } : {}), ...(siteId ? { site_id: siteId } : {}) },
+        timeout: 0,
+      })
+      .then((r) => r.data.sites ?? []),
   checkinAll: () =>
     http
       .post<{ results: CheckinResult[] }>('/sites/checkin', undefined, { timeout: checkinAllTimeout })

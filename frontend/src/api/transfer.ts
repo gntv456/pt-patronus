@@ -42,6 +42,18 @@ export interface TransferConfig {
   refresh_library: boolean
   overwrite_files: boolean
   best_version: boolean
+  cloud_upload: CloudUploadConfig
+}
+
+// 整理后自动上传网盘（对齐后端 transfer.CloudUpload）。
+export interface CloudUploadConfig {
+  enabled: boolean
+  drive_id: number
+  cloud_base: string
+  upload_videos: boolean
+  strm_output_dir: string
+  strm_template: string
+  delete_local: boolean
 }
 
 export interface TransferPathMapping {
@@ -138,4 +150,96 @@ export const transferApi = {
   // 自动分类规则（即时生效）。
   getCategoriesConfig: () => http.get<CategoryConfig>('/transfer/categories').then((r) => r.data),
   setCategoriesConfig: (cfg: CategoryConfig) => http.put('/transfer/categories', cfg).then((r) => r.data),
+  // 识别词：整理识别前规整名称（发布组前缀/自定义别名），热生效。
+  getIdentifyWords: () =>
+    http.get<{ words: IdentifyWord[] }>('/transfer/identify-words').then((r) => r.data.words ?? []),
+  setIdentifyWords: (words: IdentifyWord[]) =>
+    http.put('/transfer/identify-words', { words }).then((r) => r.data),
+  // 目录标签（跨模块目录引用）
+  getDirTags: () => http.get<{ tags: DirTag[] }>('/transfer/dir-tags').then((r) => r.data.tags ?? []),
+  setDirTags: (tags: DirTag[]) => http.put('/transfer/dir-tags', { tags }).then((r) => r.data),
+  // 种子排序规则（订阅/搜索择优权重）
+  getSortRules: () => http.get<SortRules>('/transfer/sort-rules').then((r) => r.data),
+  setSortRules: (r: SortRules) => http.put('/transfer/sort-rules', r).then((x) => x.data),
+  // 目录同步任务（本地目录间 硬链/软链/复制/移动/STRM）
+  getDirSync: () => http.get<{ tasks: DirSyncTask[] }>('/transfer/dir-sync').then((r) => r.data.tasks ?? []),
+  setDirSync: (tasks: DirSyncTask[]) => http.put('/transfer/dir-sync', { tasks }).then((r) => r.data),
+  runDirSync: (name: string) =>
+    http.post('/transfer/dir-sync/run', { name }, { timeout: 0 }).then((r) => r.data),
+  testIdentifyWords: (name: string) =>
+    http.post<{ normalized: string; title: string; season: string; episode: string }>(
+      '/transfer/identify-words/test', { name }).then((r) => r.data),
+  // 名称识别测试（对标 MSaber）：本地 ParseMeta + 可选媒体源匹配，验证文件名可识别性。
+  testRecognize: (name: string, year = 0, media = false) =>
+    http.post<{
+      normalized: string
+      title: string
+      year: number
+      season: number
+      episode: number
+      resolution: string
+      group: string
+      is_tv: boolean
+      matched?: { title: string; year: number; type: string } | null
+    }>('/transfer/recognize/test', { name, year, media }).then((r) => r.data),
+  // ---- 识别词云端共享（仓库 CRUD + 拉取预览 + 一键合并导入；本地优先不覆盖） ----
+  getSharedRepos: () =>
+    http.get<{ repos: SharedRepo[] }>('/transfer/identify-words/repos').then((r) => r.data.repos ?? []),
+  setSharedRepos: (repos: SharedRepo[]) =>
+    http.put('/transfer/identify-words/repos', { repos }).then((r) => r.data),
+  previewSharedRepo: (url: string) =>
+    http
+      .post<{ words: IdentifyWord[]; total: number; new: number }>('/transfer/identify-words/repos/preview', { url })
+      .then((r) => r.data),
+  importSharedRepo: (url: string) =>
+    http
+      .post<{ total: number; added: number }>('/transfer/identify-words/repos/import', { url })
+      .then((r) => r.data),
+}
+
+// 共享词库仓库（对标 MSaber 识别词云端协作共享）。
+export interface SharedRepo {
+  name: string
+  url: string
+}
+
+// 识别词（对齐后端 transfer.IdentifyWord）。
+export interface IdentifyWord {
+  kind: 'replace' | 'trim'
+  from: string
+  to: string
+  note?: string
+}
+
+// 目录标签（对齐后端 transfer.DirTag）。
+export interface DirTag {
+  name: string
+  kind: 'local' | 'cloud'
+  drive_id?: number
+  path: string
+  note?: string
+}
+
+// 种子排序规则（对齐后端 transfer.SortRules）。
+export interface SortRules {
+  resolution: Record<string, number>
+  group_bonus: Record<string, number>
+  target_size_gb: number
+  seeders_weight: number
+  free_bonus: number
+  free2x_bonus: number
+  recent_days: number
+  recent_bonus: number
+}
+
+// 目录同步任务（对齐后端 transfer.DirSyncTask）。
+export interface DirSyncTask {
+  name: string
+  src_dir: string
+  dst_dir: string
+  mode: 'link' | 'softlink' | 'copy' | 'move' | 'strm'
+  exts?: string[]
+  recursive: boolean
+  delete_src?: boolean
+  enabled: boolean
 }

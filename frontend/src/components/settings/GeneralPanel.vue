@@ -1,12 +1,31 @@
 <script setup lang="ts">
 // 通用分区内容：主题切换、版本/更新检查、帮助/反馈/更新日志入口与弹窗。
 // 状态与逻辑来自 useGeneralSettings 组合式函数（与 Settings.vue 共享单例）。
+import { ref } from 'vue'
 import { useGeneralSettings } from '@/composables/useGeneralSettings'
+import { useUiPrefs, ACCENT_PRESETS } from '@/composables/useUiPrefs'
 
 const {
   dark, version, updateChecking, updateInfo, updateDlgVisible, helpVisible,
   checkUpdate, copyUpgradeCmd, toggleTheme, openIssues, openChangelog,
 } = useGeneralSettings()
+
+// 界面定制（对标 MSaber 界面自定义面板）：主题色/风格/壁纸/遮罩/卡片风格，偏好随账号同步。
+const { normalized, set, fetchBingDaily } = useUiPrefs()
+const wallpaperFile = ref<File | null>(null)
+
+function onWallpaperFile(f: File | null) {
+  wallpaperFile.value = f
+  if (!f) return
+  // 本地文件转 base64 存偏好（64KB 服务端上限：超大图直接读会超，提示用网络地址）
+  if (f.size > 48 * 1024) {
+    ElMessage.warning('本地壁纸过大（>48KB），建议使用网络图片地址')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = () => set({ wallpaperKind: 'local', wallpaperUrl: String(reader.result) })
+  reader.readAsDataURL(f)
+}
 </script>
 
 <template>
@@ -17,6 +36,96 @@ const {
         <span class="text-muted row-hint">切换界面明暗</span>
       </div>
       <el-switch :model-value="dark" @change="toggleTheme" />
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <span class="row-title">主题配色</span>
+        <span class="text-muted row-hint">主色 / 渐变 / 强调色一键切换</span>
+      </div>
+      <div class="accent-picker">
+        <button
+          v-for="p in ACCENT_PRESETS"
+          :key="p.value"
+          class="accent-dot"
+          :class="{ active: normalized().accent === p.value }"
+          :style="{ background: p.color }"
+          :title="p.label"
+          @click="set({ accent: p.value })"
+        />
+      </div>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <span class="row-title">界面风格</span>
+        <span class="text-muted row-hint">玻璃（磨砂通透）/ 现代（实体扁平）</span>
+      </div>
+      <el-select :model-value="normalized().uiStyle" style="width: 120px" @change="(v: string) => set({ uiStyle: v })">
+        <el-option label="玻璃" value="glass" />
+        <el-option label="现代" value="modern" />
+      </el-select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <span class="row-title">背景壁纸</span>
+        <span class="text-muted row-hint">默认渐变 / 必应每日 / 网络图片 / 本地文件</span>
+      </div>
+      <el-select
+        :model-value="normalized().wallpaperKind"
+        style="width: 130px"
+        @change="(v: string) => { if (v === 'bing') fetchBingDaily(); set({ wallpaperKind: v }) }"
+      >
+        <el-option label="默认渐变" value="none" />
+        <el-option label="必应每日" value="bing" />
+        <el-option label="网络图片" value="url" />
+        <el-option label="本地文件" value="local" />
+      </el-select>
+    </div>
+    <div v-if="normalized().wallpaperKind === 'url'" class="row">
+      <div class="row-label">
+        <span class="row-title">壁纸地址</span>
+        <span class="text-muted row-hint">https:// 开头的图片直链</span>
+      </div>
+      <el-input
+        :model-value="normalized().wallpaperUrl"
+        placeholder="https://example.com/bg.jpg"
+        style="width: 320px"
+        @change="(v: string) => set({ wallpaperUrl: v.trim() })"
+      />
+    </div>
+    <div v-else-if="normalized().wallpaperKind === 'local'" class="row">
+      <div class="row-label">
+        <span class="row-title">选择文件</span>
+        <span class="text-muted row-hint">小图（≤48KB）内嵌保存；大图用网络地址</span>
+      </div>
+      <input type="file" accept="image/*" @change="(e: Event) => onWallpaperFile((e.target as HTMLInputElement).files?.[0] ?? null)" />
+    </div>
+    <div v-if="normalized().wallpaperKind !== 'none'" class="row">
+      <div class="row-label">
+        <span class="row-title">遮罩浓度</span>
+        <span class="text-muted row-hint">壁纸上的蒙层，保证文字可读</span>
+      </div>
+      <el-select :model-value="normalized().mask" style="width: 120px" @change="(v: string) => set({ mask: v })">
+        <el-option label="轻" value="light" />
+        <el-option label="标准" value="standard" />
+        <el-option label="浓" value="strong" />
+      </el-select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <span class="row-title">卡片样式</span>
+        <span class="text-muted row-hint">阴影（默认）/ 边框</span>
+      </div>
+      <el-select :model-value="normalized().cardStyle" style="width: 120px" @change="(v: string) => set({ cardStyle: v })">
+        <el-option label="阴影" value="shadow" />
+        <el-option label="边框" value="border" />
+      </el-select>
+    </div>
+    <div class="row">
+      <div class="row-label">
+        <span class="row-title">侧栏默认折叠</span>
+        <span class="text-muted row-hint">进入页面时侧边栏收起为图标栏</span>
+      </div>
+      <el-switch :model-value="normalized().sidebarCollapsed" @change="(v: string | number | boolean) => set({ sidebarCollapsed: !!v })" />
     </div>
   </div>
   <div class="card glass">
@@ -108,6 +217,14 @@ const {
 .row-label { display: flex; flex-direction: column; gap: var(--sp-1); }
 .row-title { font-weight: 600; }
 .row-hint { font-size: var(--fs-xs); }
+.accent-picker { display: flex; gap: var(--sp-2); }
+.accent-dot {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer; padding: 0;
+  transition: transform var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth);
+}
+.accent-dot:hover { transform: scale(1.15); }
+.accent-dot.active { border-color: var(--text-strong); transform: scale(1.15); }
 .about-actions { display: flex; align-items: center; gap: var(--sp-2); }
 
 .help-card { padding: 4px 18px; }

@@ -13,7 +13,10 @@ function wait(duration: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, duration))
 }
 
-export function useInactiveSiteVisit(inactiveSites: ComputedRef<InactiveTarget[]>) {
+export function useInactiveSiteVisit(
+  inactiveSites: ComputedRef<InactiveTarget[]>,
+  onVisited?: (target: InactiveTarget) => void,
+) {
   let visitPopup: Window | null = null
   let visitCancelled = false
 
@@ -49,6 +52,7 @@ export function useInactiveSiteVisit(inactiveSites: ComputedRef<InactiveTarget[]
         popup.focus()
         await wait(8_000)
         visited++
+        onVisited?.(targets[index])
         if (!popup.closed) popup.location.href = 'about:blank'
         await wait(250)
       } catch {

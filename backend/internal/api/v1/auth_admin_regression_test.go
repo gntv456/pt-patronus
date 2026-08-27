@@ -2,6 +2,7 @@ package v1
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -104,5 +105,70 @@ func TestFirstHxptUser(t *testing.T) {
 	db.Create(&models.User{Username: "hxpt-user-001", HxptUID: "hxpt-001"})
 	if h.firstHxptUser() {
 		t.Fatal("已有 HXPT 用户后不应再报首用户")
+	}
+}
+
+// ---- 用户偏好（跨浏览器同步）回归 ----
+
+// setupPrefEnv 构造带偏好路由的测试服务器 + 登录上下文。
+func setupPrefEnv(t *testing.T) (*gin.Engine, *gorm.DB) {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	db := setupAuthDB(t)
+	if err := db.AutoMigrate(&models.UserPreference{}); err != nil {
+		t.Fatal(err)
+	}
+	db.Create(&models.User{Username: "u1", HxptUID: "hxpt-001"})
+	h := &AuthHandler{db: db}
+	r := gin.New()
+	r.GET("/auth/preferences/:key", func(c *gin.Context) {
+		c.Set("uid", uint(1))
+		h.GetPreferences(c)
+	})
+	r.PUT("/auth/preferences/:key", func(c *gin.Context) {
+		c.Set("uid", uint(1))
+		h.SetPreferences(c)
+	})
+	return r, db
+}
+
+func TestUserPreferencesRoundTrip(t *testing.T) {
+	r, db := setupPrefEnv(t)
+
+	// 未保存过：返回空对象
+	rec := doReq(t, r, http.MethodGet, "/auth/preferences/ui", "")
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"value":"{}"`) {
+		t.Fatalf("empty get: code=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	// 保存（合法 JSON 域内覆盖）
+	rec = doReq(t, r, http.MethodPut, "/auth/preferences/ui", `{"value":"{\"accent\":\"azure\"}"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("put: code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	rec = doReq(t, r, http.MethodGet, "/auth/preferences/ui", "")
+	if !strings.Contains(rec.Body.String(), "azure") {
+		t.Fatalf("round trip lost value: %s", rec.Body.String())
+	}
+
+	// 再保存覆盖为 rose
+	doReq(t, r, http.MethodPut, "/auth/preferences/ui", `{"value":"{\"accent\":\"rose\"}"}`)
+	rec = doReq(t, r, http.MethodGet, "/auth/preferences/ui", "")
+	if !strings.Contains(rec.Body.String(), "rose") || strings.Contains(rec.Body.String(), "azure") {
+		t.Fatalf("overwrite failed: %s", rec.Body.String())
+	}
+	_ = db
+}
+
+func TestUserPreferencesRejectsInvalid(t *testing.T) {
+	r, _ := setupPrefEnv(t)
+	// 非 JSON 值拒绝
+	if rec := doReq(t, r, http.MethodPut, "/auth/preferences/ui", `{"value":"not-json"}`); rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid json should 400, got %d", rec.Code)
+	}
+	// 超 64KB 拒绝
+	big := strings.Repeat("a", 70*1024)
+	if rec := doReq(t, r, http.MethodPut, "/auth/preferences/ui", `{"value":"`+big+`"}`); rec.Code != http.StatusBadRequest {
+		t.Fatalf("oversized value should 400, got %d", rec.Code)
 	}
 }

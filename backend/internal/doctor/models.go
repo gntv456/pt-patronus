@@ -63,4 +63,29 @@ type Report struct {
 	Findings    []Finding      `json:"findings"`
 	Status      ReportStatus   `json:"status"`
 	Summary     Summary        `json:"summary"`
+	Score       int            `json:"score"`
+}
+
+// Score 健康评分（0-100）：error 项每项 -15、degraded/failed 项每项 -5，下限 0。
+// skipped 项不参与计分（未配置的目标不算扣分）。Report 落地时由 runner 调用填充。
+func (r *Report) computeScore() {
+	if r == nil {
+		return
+	}
+	score := 100
+	for _, f := range r.Findings {
+		if f.Status == StatusSkipped || f.Status == StatusFixed {
+			continue
+		}
+		switch {
+		case f.Severity == SevError && f.Status != StatusOK:
+			score -= 15
+		case f.Status == StatusDegraded || f.Status == StatusFailed:
+			score -= 5
+		}
+	}
+	if score < 0 {
+		score = 0
+	}
+	r.Score = score
 }

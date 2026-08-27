@@ -561,3 +561,16 @@
 .market-grid > *:nth-child(6) { animation-delay: 200ms; }
 .plugin-grid > *:nth-child(n+7),
 .market-grid > *:nth-child(n+7) { animation-delay: 240ms; }
+
+/* ---- 市场运营层：风云榜 / 梦萦阁 / 分身 ---- */
+.charts-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 10px; }
+.chart-col { padding: 14px 16px; }
+.chart-title { font-weight: 700; margin-bottom: 10px; }
+.chart-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--border-color, rgba(128,128,128,.18)); }
+.chart-row:last-child { border-bottom: none; }
+.chart-rank { width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--surface-muted); flex: none; }
+.chart-rank.gold { background: #ffd700; color: #7a5c00; }
+.chart-rank.silver { background: #c0c0c0; color: #444; }
+.chart-rank.bronze { background: #cd7f32; color: #fff; }
+.chart-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-num { font-size: var(--fs-xs); color: var(--text-muted, #999); flex: none; }

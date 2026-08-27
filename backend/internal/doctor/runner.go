@@ -57,6 +57,7 @@ func Run(ctx context.Context, checks []Check, env map[string]any) *Report {
 	default:
 		r.Status = ReportHealthy
 	}
+	r.computeScore()
 	return r
 }
 

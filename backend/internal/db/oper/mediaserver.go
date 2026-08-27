@@ -22,7 +22,7 @@ func NewMediaServerOper(db *gorm.DB, c *security.Crypto) *MediaServerOper {
 // MediaServerInput 创建/更新媒体服务器入参（Token 明文，由 Oper 加密）。
 type MediaServerInput struct {
 	Name              string `json:"name" binding:"max=64"`
-	Type              string `json:"type" binding:"max=16"` // emby | jellyfin | plex
+	Type              string `json:"type" binding:"max=16"` // emby | jellyfin | plex | ugos | fnos | zspace
 	URL               string `json:"url" binding:"max=255"`
 	Username          string `json:"username" binding:"max=64"`
 	Token             string `json:"token" binding:"max=512"` // API Key(Emby/JF) 或 X-Plex-Token
@@ -34,9 +34,10 @@ type MediaServerInput struct {
 }
 
 // validMediaServerType 收紧服务端类型白名单（inspectReq 复查 + binding max 不够）。
+// ugos/fnos/zspace 走 Emby 兼容层（mediaserver.compatAPIRoot）。
 func validMediaServerType(t string) bool {
 	switch t {
-	case "emby", "jellyfin", "plex":
+	case "emby", "jellyfin", "plex", "ugos", "fnos", "zspace":
 		return true
 	}
 	return false
@@ -147,4 +148,4 @@ func (o *MediaServerOper) Token(m *models.MediaServer) (string, error) {
 }
 
 // errInvalidServerType 媒体服务器类型不在 emby/jellyfin/plex 白名单内（包 ErrInvalidInput 供 handler errors.Is 判 400）。
-var errInvalidServerType = fmt.Errorf("无效的媒体服务器类型（仅支持 emby/jellyfin/plex）: %w", ErrInvalidInput)
+var errInvalidServerType = fmt.Errorf("无效的媒体服务器类型（仅支持 emby/jellyfin/plex/ugos/fnos/zspace）: %w", ErrInvalidInput)

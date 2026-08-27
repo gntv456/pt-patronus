@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "PTPatronus 助手",
+  "version": "1.0.0",
+  "description": "快速搜索选中关键词到 PTPatronus 跨站搜索、站点快捷入口、搜索结果一键订阅。",
+  "permissions": ["storage", "contextMenus", "notifications", "scripting", "activeTab"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "options_page": "options.html",
+  "commands": {
+    "search-selection": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "搜索选中关键词（PTPatronus 跨站搜索）"
+    }
+  },
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

@@ -80,6 +80,7 @@ type runtimeDeps struct {
 	mediaCh        *chain.MediaChain
 	mediaServerCh  *chain.MediaServerChain
 	cloudCh        *chain.CloudChain
+	cloudTaskOp    *oper.CloudTaskOper
 	noticeOp       *oper.NoticeOper
 	noticeSvc      *notice.Service
 	notifCh        *chain.NotificationChain
@@ -249,7 +250,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	agentSvc := aiagent.New(llm.New, agentTools, agentMsgOp, agentConvOp, cfgOp, crypto)
 	agentChatH := v1.NewAgentChatHandler(agentSvc, agentConvOp.List, agentConvOp.Create, agentConvOp.Delete, agentMsgOp.ListByConv, cfgOp, crypto)
 	llmGatewayH := v1.NewLLMGatewayHandler(agentSvc, agentConvOp.Create, cfgOp, crypto)
-	doctorH := v1.NewDoctorHandler(cfg, database, nil)
+	doctorH := v1.NewDoctorHandler(cfg, database, buildDoctorBusinessChecks(d))
 	tgBotH := v1.NewTgBotHandler(cfgOp, crypto)
 	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。
 	servarrH := v1.NewServarrHandler(subCh, mediaCh, transferHistOp.HasSuccessByMedia, cfg.APIKey)
@@ -310,7 +311,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 		OIDC:    oidcSvc,
 		SiteOp:  siteOp, SiteCh: siteCh, Reg: registry, SiteHC: hc,
 		DLOp: dlOp, DLCh: dlCh, DLMgr: dlMgr,
-		Notif: notifCh, NotifMgr: notifMgr, NotifProvider: notifProvider,
+		Notif: notifCh, NotifMgr: notifMgr, NotifProvider: notifProvider, CfgOp: cfgOp,
 		MediaCh: mediaCh, FileOp: fileOp, FileCh: fileCh, FileMgr: fileMgr,
 		Recommend: recommendCh,
 		KeepSeed:  keepSeedCh, Backup: backupSvc,

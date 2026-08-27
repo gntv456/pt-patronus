@@ -5,6 +5,7 @@ import {
   type MediaServer,
   type MediaServerType,
   type MediaLibrary,
+  type HealthReport,
 } from '@/api/mediaServer'
 import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -23,6 +24,39 @@ async function load() {
     ElMessage.error(e?.message || '加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+// ---- 媒体健康中心 ----
+const showHealth = ref(false)
+const healthLoading = ref(false)
+const healthReport = ref<HealthReport | null>(null)
+const healthSubtitles = ref(true)
+const healthUpgradeable = ref(false)
+const fixingSubtitles = ref(false)
+
+async function runHealth() {
+  healthLoading.value = true
+  try {
+    healthReport.value = await mediaServerApi.health(healthSubtitles.value, healthUpgradeable.value)
+    showHealth.value = true
+  } catch (e: any) {
+    ElMessage.error(e?.message || '巡检失败')
+  } finally {
+    healthLoading.value = false
+  }
+}
+
+async function fixSubtitles() {
+  if (!healthReport.value) return
+  fixingSubtitles.value = true
+  try {
+    await mediaServerApi.fixSubtitles(healthReport.value)
+    ElMessage.success('字幕补齐任务已受理（后台执行，稍后刷新巡检查看结果）')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '补齐失败')
+  } finally {
+    fixingSubtitles.value = false
   }
 }
 
@@ -130,6 +164,9 @@ const TYPE_LABEL: Record<MediaServerType, string> = {
   emby: 'Emby',
   jellyfin: 'Jellyfin',
   plex: 'Plex',
+  ugos: '绿影视',
+  fnos: '飞牛影视',
+  zspace: '极影视',
 }
 
 onMounted(load)
@@ -140,6 +177,7 @@ onMounted(load)
     <div class="head">
       <h2 class="title">媒体服务器</h2>
       <el-button type="primary" @click="openCreate">+ 添加服务器</el-button>
+      <el-button :loading="healthLoading" @click="runHealth">健康巡检</el-button>
     </div>
     <p class="sub">
       统一管理 Emby / Jellyfin / Plex：库扫描、元数据刷新、管理员通知、海报墙封面生成；
@@ -197,6 +235,37 @@ onMounted(load)
     </div>
 
     <!-- CRUD dialog -->
+    <!-- 媒体健康中心 -->
+    <el-dialog v-model="showHealth" title="媒体健康中心" width="860px" top="6vh">
+      <div class="libs-bar">
+        <el-checkbox v-model="healthSubtitles" size="small">本地字幕扫描（需后端可访问媒体路径）</el-checkbox>
+        <el-checkbox v-model="healthUpgradeable" size="small">可升级检测（同 TMDB 存在更高版本）</el-checkbox>
+        <el-button size="small" :loading="healthLoading" @click="runHealth">重新巡检</el-button>
+        <el-button size="small" type="primary" :loading="fixingSubtitles"
+          :disabled="!healthReport?.missing_subtitle" @click="fixSubtitles">
+          补齐缺失字幕（{{ healthReport?.missing_subtitle ?? 0 }}）
+        </el-button>
+      </div>
+      <div v-loading="healthLoading">
+        <div class="hint" style="margin-bottom: 8px" v-if="healthReport">
+          未匹配 {{ healthReport.unmatched }} · 缺集 {{ healthReport.missing_episodes }} · 缺字幕 {{ healthReport.missing_subtitle }} · 可升级 {{ healthReport.upgradeable ?? 0 }}
+        </div>
+        <el-table :data="healthReport?.issues ?? []" size="small" empty-text="库很健康，未发现问题">
+          <el-table-column label="类型" width="100">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.type === 'unmatched' ? 'danger' : row.type === 'missing_episodes' ? 'warning' : row.type === 'upgradeable' ? 'success' : 'info'">
+                {{ row.type === 'unmatched' ? '未匹配' : row.type === 'missing_episodes' ? '缺集' : row.type === 'upgradeable' ? '可升级' : '缺字幕' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="library" label="库" width="110" show-overflow-tooltip />
+          <el-table-column prop="detail" label="说明" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="path" label="路径" min-width="200" show-overflow-tooltip />
+        </el-table>
+      </div>
+    </el-dialog>
+
     <el-dialog v-model="showForm" :title="editing ? '编辑服务器' : '添加服务器'" width="560px" top="8vh">
       <el-form :model="form" label-width="120px" label-position="right">
         <el-form-item label="名称"><el-input v-model="form.name" placeholder="如：客厅 Emby" /></el-form-item>
@@ -205,6 +274,9 @@ onMounted(load)
             <el-option label="Emby" value="emby" />
             <el-option label="Jellyfin" value="jellyfin" />
             <el-option label="Plex" value="plex" />
+            <el-option label="绿影视（UGOS）" value="ugos" />
+            <el-option label="飞牛影视（fnOS）" value="fnos" />
+            <el-option label="极空间极影视" value="zspace" />
           </el-select>
         </el-form-item>
         <el-form-item label="地址">

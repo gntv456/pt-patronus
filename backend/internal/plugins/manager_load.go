@@ -90,6 +90,13 @@ func (m *Manager) SetCfgOp(cfgOp *oper.SystemConfigOper) {
 	m.cfgOp = cfgOp
 }
 
+// SetMarketOper 注入市场运营层（安装量榜/收藏/多实例/天序）。应在 Start 前调用。
+func (m *Manager) SetMarketOper(op *oper.PluginMarketOper) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.marketOp = op
+}
+
 func (m *Manager) Register(p Plugin) error {
 	return m.register(p, false)
 }

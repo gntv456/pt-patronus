@@ -23,6 +23,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/iyuu"
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/notification"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
@@ -120,6 +121,7 @@ func New(cfg *config.Config) (*App, error) {
 
 	pluginMgr := plugins.NewManager(database, bus, noticeSvc, siteOp, oper.NewPluginKVOper(database))
 	pluginMgr.SetCfgOp(cfgOp)             // 插件市场源等 UI 持久化配置（SystemConfig）
+	pluginMgr.SetMarketOper(oper.NewPluginMarketOper(database)) // 市场运营层：风云榜/收藏/分神/天序
 	pluginMgr.EnsureDefaultMarketSource() // 首次启动种子化官方市场仓库（纯 DB 写，无网络/插件活动；安全模式也执行）
 	if !cfg.SafeMode {
 		if err := pluginMgr.LoadExternal(filepath.Join(cfg.DataDir, "plugins")); err != nil {
@@ -254,6 +256,33 @@ func New(cfg *config.Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 整理链注入云盘上传能力：整理成功 → 自动上传网盘 + 生成 .strm（transfer.config.cloud_upload）。
+	transferCh.SetCloudUploader(cloudCh)
+	// 云端任务队列（上传/STRM/目录树导入：进度可视 + 自动重试）+ transfer 配置读取注入。
+	// AppBaseURL：strm 内容渲染绝对 URL（Emby 把 strm 交给远端播放器，相对路径解析不了）。
+	cloudTaskOp := oper.NewCloudTaskOper(database)
+	cloudCh.SetTransferConfigGetter(cfgOp)
+	cloudCh.SetAppBaseURL(cfg.AppBaseURL)
+	cloudCh.SetCloudTaskOper(cloudTaskOp)
+	// 云端上传任务落地 .strm 后自动扫库（整理链的 OnDownloadCompleted 复用：
+	// 整理瞬间扫库时 strm 尚未生成，此处补一次，云端条目才能进媒体库）。
+	transferCfg := cfgOp
+	cloudCh.SetLibraryRefresher(func(name string) {
+		if c := transfer.Load(transferCfg); c.RefreshLibrary {
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
+			mediaServerCh.OnDownloadCompleted(ctx, name)
+		}
+	})
+	// 云端整理识别：复用 MediaChain.Search（取首个结果；ParseMeta 在适配器内先洗词）。
+	cloudCh.SetMediaSearcher(func(ctx context.Context, keyword string, year int, filter string) (*chain.MediaSearchItem, error) {
+		res, err := mediaCh.Search(ctx, keyword, year, filter)
+		if err != nil || len(res) == 0 {
+			return nil, err
+		}
+		m := res[0]
+		return &chain.MediaSearchItem{Title: m.Title, Year: m.Year, Type: string(m.Type)}, nil
+	})
 
 	// 字幕搜索/下载：多源（ASSRT/OpenSubtitles API + SubHD/Zimuku 抓取）聚合 + 解 zip + 繁简。
 	// 源凭据走 SystemConfig（回退 env ASSRT_TOKEN/OPENSUBTITLES_KEY），UI 改动即时 rebuild。
@@ -265,6 +294,8 @@ func New(cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 	subtitleCh := chain.NewSubtitleChain(base, subtitleProvider)
+	// 媒体健康中心联动：missing_subtitle 一键补齐（复用字幕搜索/下载源）。
+	mediaServerCh.SetSubtitleFixer(chain.SubtitleChainAdapter{Ch: subtitleCh})
 
 	// 字幕自动化：监听 transfer_done → 按语言/provider 优先级自动搜字幕落盘到媒体同目录（Bazarr /
 	// ChineseSubFinder 模式）。复用 subtitleCh 搜/下载（结构化实现 subauto.Searcher）；配置走 cfgOp，
@@ -285,6 +316,14 @@ func New(cfg *config.Config) (*App, error) {
 	})
 	if err := pluginMgr.Register(plugins.NewMCPServerPlugin(mcpSrv)); err != nil {
 		slog.Warn("register mcp plugin", "err", err)
+	}
+	// 宿主级内置工具插件（WOL 唤醒 / 豆瓣榜单订阅）：与 MCP 插件同为主机进程内注册，
+	// market 生态插件不受影响（Builtin=true 不可被替换）。
+	if err := pluginMgr.Register(plugins.NewWOLPlugin()); err != nil {
+		slog.Warn("register wol plugin", "err", err)
+	}
+	if err := pluginMgr.Register(plugins.NewDoubanChartPlugin()); err != nil {
+		slog.Warn("register douban chart plugin", "err", err)
 	}
 
 	// Trakt 同步：WatchList → 本地订阅（device OAuth 授权 + 定时同步）。复用 subCh 建订阅、
@@ -355,6 +394,7 @@ func New(cfg *config.Config) (*App, error) {
 		mediaCh:        mediaCh,
 		mediaServerCh:  mediaServerCh,
 		cloudCh:        cloudCh,
+		cloudTaskOp:    cloudTaskOp,
 		noticeOp:       noticeOp,
 		noticeSvc:      noticeSvc,
 		notifCh:        notifCh,

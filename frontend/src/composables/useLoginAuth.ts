@@ -18,6 +18,10 @@ export function useLoginAuth() {
   async function fetchCaptcha() {
     try {
       captcha.value = await authApi.hxptCaptcha()
+      // OCR 服务端自动识别成功 → 预填验证码（用户可改；识别失败保持空人工输入）。
+      if (captcha.value?.need_captcha && captcha.value.ocr_text && !acc.value.imagestring) {
+        acc.value.imagestring = captcha.value.ocr_text
+      }
     } catch (e: unknown) {
       err.value = msg(e) || '取验证码失败（可改用 Cookie 登录）'
     }

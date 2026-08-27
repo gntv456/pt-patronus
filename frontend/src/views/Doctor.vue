@@ -41,6 +41,7 @@ onMounted(() => run(false))
           <el-tag :type="report.status === 'healthy' ? 'success' : report.status === 'degraded' ? 'warning' : 'danger'">
             {{ report.status }}
           </el-tag>
+          · 健康评分 <b>{{ report.score ?? '-' }}</b>/100
           · 共 {{ report.summary.total }} 项（info {{ report.summary.info }} / warn {{ report.summary.warn }} / error {{ report.summary.error }}）
         </p>
       </div>

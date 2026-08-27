@@ -9,7 +9,10 @@ import {
   type PluginInstallPermissionAccept,
   type PluginLog,
   type PluginMarketIndex,
+  type PluginMarketItem,
   type PluginRelease,
+  type ChartRow,
+  type PluginInstance,
 } from '@/api/plugin'
 import {
   shortSource,
@@ -205,6 +208,102 @@ export function usePlugins(options: UsePluginsOptions) {
     }
   }
 
+  // ---- 市场运营层：风云榜（弟子/新晋）与梦萦阁（收藏） ----
+  const marketCharts = ref<{ disciples: ChartRow[]; newcomers: ChartRow[] } | null>(null)
+  const favoritePlugins = ref<PluginMarketItem[]>([])
+  async function loadMarketCharts() {
+    try {
+      marketCharts.value = await pluginApi.marketCharts()
+    } catch {
+      marketCharts.value = { disciples: [], newcomers: [] }
+    }
+  }
+  async function loadFavorites() {
+    try {
+      favoritePlugins.value = await pluginApi.marketFavorites()
+    } catch {
+      favoritePlugins.value = []
+    }
+  }
+  async function toggleFavorite(item: PluginMarketItem) {
+    try {
+      if (item.favorited) {
+        await pluginApi.unfavorite(item.id)
+        item.favorited = false
+        favoritePlugins.value = favoritePlugins.value.filter((p) => p.id !== item.id)
+        ElMessage.success('已取消收藏')
+      } else {
+        await pluginApi.favorite(item.id)
+        item.favorited = true
+        favoritePlugins.value = [item, ...favoritePlugins.value]
+        ElMessage.success('已收藏（梦萦阁）')
+      }
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '收藏操作失败')
+    }
+  }
+  const marketView = ref<'all' | 'favorites' | 'charts'>('all')
+
+  // ---- 分神实例 + 天序拖拽 ----
+  const instancePluginId = ref('')
+  const instances = ref<PluginInstance[]>([])
+  const singleInstance = ref(false)
+  const instancesVisible = ref(false)
+  async function openInstances(id: string) {
+    instancePluginId.value = id
+    instancesVisible.value = true
+    try {
+      const r = await pluginApi.instances(id)
+      instances.value = r.instances ?? []
+      singleInstance.value = r.single_instance
+    } catch (e: unknown) {
+      instances.value = []
+      singleInstance.value = false
+      ElMessage.error((e as Error).message || '实例加载失败')
+    }
+  }
+  async function createInstance(key: string) {
+    if (!key.trim()) return
+    try {
+      await pluginApi.createInstance(instancePluginId.value, key.trim())
+      ElMessage.success('分身已创建')
+      await openInstances(instancePluginId.value)
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '创建失败')
+    }
+  }
+  async function toggleInstance(inst: PluginInstance) {
+    try {
+      await pluginApi.saveInstance(inst.plugin_id, inst.instance_key, {}, !inst.enabled)
+      inst.enabled = !inst.enabled
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '操作失败')
+    }
+  }
+  async function removeInstance(inst: PluginInstance) {
+    if (!confirm(`确认删除分身「${inst.instance_key}」？不可恢复`)) return
+    try {
+      await pluginApi.deleteInstance(inst.plugin_id, inst.instance_key)
+      instances.value = instances.value.filter((i) => i.id !== inst.id)
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '删除失败')
+    }
+  }
+  // 天序：上移/下移按钮（触屏友好替代拖拽），顺序持久化到服务端跨端同步。
+  async function moveInstance(index: number, delta: -1 | 1) {
+    const arr = [...instances.value]
+    const j = index + delta
+    if (j < 0 || j >= arr.length) return
+    ;[arr[index], arr[j]] = [arr[j], arr[index]]
+    instances.value = arr
+    try {
+      await pluginApi.reorderInstances(instancePluginId.value, arr.map((i) => i.id))
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '排序保存失败')
+      await openInstances(instancePluginId.value)
+    }
+  }
+
   // 预读持久化的插件市场源列表（UI 设置），用于弹窗回填与计数显示。
   onMounted(async () => {
     try {
@@ -216,9 +315,14 @@ export function usePlugins(options: UsePluginsOptions) {
     }
   })
 
-  // 首次切到「插件市场」tab 即自动加载（空配置时后端回退本地 plugin-market.json）。
+  // 首次切到「插件市场」tab 即自动加载（空配置时后端回退本地 plugin-market.json）；
+  // 风云榜与收藏懒加载一次（此后收藏切换本地同步，榜单在安装后由刷新按钮重载）。
   watch(activeTab, (tab) => {
-    if (tab === 'market' && !market.value) loadMarket()
+    if (tab === 'market') {
+      if (!market.value) loadMarket()
+      if (!marketCharts.value) loadMarketCharts()
+      if (!favoritePlugins.value.length) loadFavorites()
+    }
   })
 
   // 打开市场源管理弹窗：用当前持久化列表拷贝成草稿，增删后统一保存。
@@ -607,6 +711,9 @@ export function usePlugins(options: UsePluginsOptions) {
     auditLoading,
     rollbacking,
     marketCategory,
+    marketCharts, favoritePlugins, marketView, loadMarketCharts, loadFavorites, toggleFavorite,
+    instancePluginId, instances, singleInstance, instancesVisible,
+    openInstances, createInstance, toggleInstance, removeInstance, moveInstance,
     pluginSearch,
     marketSearch,
     filteredPlugins,

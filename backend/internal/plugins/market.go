@@ -49,7 +49,25 @@ func (m *Manager) fetchRawMarket(ctx context.Context, source string) (*MarketInd
 }
 
 // finalizeIndex 对市场索引做兼容性评估、依赖/安装计划等后处理（原地修改）。
+// 运营层字段（InstallCount/Favorited）一并填充：弟子数进索引、收藏态标记当前用户。
 func (m *Manager) finalizeIndex(idx *MarketIndex) {
+	m.mu.RLock()
+	mop := m.marketOp
+	m.mu.RUnlock()
+	installCounts := map[string]int64{}
+	favSet := map[string]bool{}
+	if mop != nil {
+		if rows, err := mop.TopInstalled(100); err == nil {
+			for _, r := range rows {
+				installCounts[r.PluginID] = r.Installs
+			}
+		}
+		if favs, err := mop.Favorites(currentMarketUserID()); err == nil {
+			for _, id := range favs {
+				favSet[id] = true
+			}
+		}
+	}
 	for i := range idx.Plugins {
 		if idx.Plugins[i].APIVersion == "" {
 			idx.Plugins[i].APIVersion = CurrentPluginAPIVersion
@@ -65,6 +83,8 @@ func (m *Manager) finalizeIndex(idx *MarketIndex) {
 		idx.Plugins[i].Installed = m.hasInstalled(idx.Plugins[i].ID)
 		idx.Plugins[i].InstalledVersion = m.installedVersion(idx.Plugins[i].ID)
 		idx.Plugins[i].UpdateAvailable = idx.Plugins[i].Installed && idx.Plugins[i].InstalledVersion != "" && idx.Plugins[i].InstalledVersion != idx.Plugins[i].Version
+		idx.Plugins[i].InstallCount = installCounts[idx.Plugins[i].ID]
+		idx.Plugins[i].Favorited = favSet[idx.Plugins[i].ID]
 	}
 	planner := newMarketInstallPlanner(m, idx)
 	for i := range idx.Plugins {

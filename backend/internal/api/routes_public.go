@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/middleware"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
+	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
 // registerPublicRoutes 注册无需登录的公开路由（系统健康、鉴权登录、WebSocket、流媒体、MCP 等）。
@@ -53,6 +54,13 @@ func registerPublicRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler, 
 	// Emby 302 直链反代（公开：播放器不能带 JWT）。读取服务器 DirectLinkBase 配置静态改写，
 	// 不泄露 Token；未开启直链的服务器返 404。
 	api.GET("/mediaserver/:id/direct/*path", v1.NewMediaServerHandler(d.MediaServer).Direct)
+	// STRM 302 直链（公开：.strm 内容指向本端，播放器不能带 JWT）。按网盘+云盘路径
+	// 实时解析限时直链后 302；路径经 RootPath 钳制，不泄露凭据。
+	api.GET("/cloud/direct/:driveId/*path", v1.NewCloudHandler(d.Cloud).Direct)
+	// 媒体代理（公开：Emby 客户端把服务器地址指向本端）。播放请求拦截→云盘直链 302，
+	// 其余透明反代回源服务器；直链失败自动回退转发（播放器无感）。
+	mpH := v1.NewMediaProxyHandler(chain.NewMediaProxyService(d.MediaServer, d.Cloud))
+	api.Any("/mediaproxy/:id/*rest", mpH.Handle)
 	// MCP 服务端（公开：MCP 客户端不能走 JWT。由 mcp.Server 自身校验 enable + Bearer token）。
 	api.GET("/mcp", gin.WrapH(d.MCP))
 	api.POST("/mcp", gin.WrapH(d.MCP))

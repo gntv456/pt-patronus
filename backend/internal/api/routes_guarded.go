@@ -19,6 +19,9 @@ func registerGuardedRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler,
 	guarded.Use(auth.RequireVIP(d.DB, vipGrace))
 	guarded.POST("/auth/logout", authH.Logout)
 	guarded.POST("/auth/ws-ticket", authH.WsTicket)
+	// 用户界面偏好（跨浏览器同步）：ui/dashboard 等域，登录即拉取
+	guarded.GET("/auth/preferences/:key", authH.GetPreferences)
+	guarded.PUT("/auth/preferences/:key", authH.SetPreferences)
 	// OIDC/SSO 配置（管理员；start/callback 在公开区）
 	guarded.GET("/auth/oidc/config", middleware.RequireAdmin(), authH.GetOIDCConfig)
 	guarded.PUT("/auth/oidc/config", middleware.RequireAdmin(), authH.SetOIDCConfig)

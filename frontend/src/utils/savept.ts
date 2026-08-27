@@ -62,6 +62,80 @@ export function isTodayAnniversaryText(text?: string) {
   return getAnniversaryDisplayText(text) === '🎉 今天站庆！'
 }
 
+// ── 站庆日历 ──
+export interface AnniversaryEntry {
+  card: SaveptSiteCard
+  years: number // 站庆周年数（查看年 - 建站年）；建站年未知为 0
+  source: 'open_time' | 'countdown' // 开站日期推算 / 站庆倒计时文案补位
+}
+
+// key 为 '月-日'（无前导零，如 "3-15"）→ 当日站庆的站点列表。
+export type AnniversaryMap = Map<string, AnniversaryEntry[]>
+
+// 解析站庆倒计时文案：'今天站庆'/'0天' → 0，'5天'/'站庆5天'/'距站庆 12 天' → 天数；非倒计时文案返回 null。
+export function parseAnnivCountdownDays(text?: string): number | null {
+  const display = getAnniversaryDisplayText(text)
+  if (!display) return null
+  if (display === '🎉 今天站庆！') return 0
+  const match = display.match(/(\d+)\s*天/)
+  return match ? Number(match[1]) : null
+}
+
+// 解析开站日期（data-opentime，'YYYY-MM-DD'），无效返回 null。
+export function parseOpenDate(value?: string): { year: number; month: number; day: number } | null {
+  const match = `${value || ''}`.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (!match) return null
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(year, month - 1, day)
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
+  return { year, month, day }
+}
+
+function isLeapYear(year: number): boolean {
+  return new Date(year, 1, 29).getMonth() === 1
+}
+
+/**
+ * 构建某年的站庆日历（key '月-日'）。优先用开站日期（每年同月日站庆）；
+ * 无开站日期但站庆文案是倒计时的，用「今天 + N 天」补位（仅当年有效）。
+ * 已关站站点不进日历；建站之前的年份不出现；2/29 建站平年落在 2/28；同名站点去重。
+ */
+export function buildAnniversaryMap(cards: SaveptSiteCard[], year: number, now = new Date()): AnniversaryMap {
+  const map: AnniversaryMap = new Map()
+  const put = (key: string, entry: AnniversaryEntry) => {
+    const list = map.get(key) ?? []
+    if (!list.some((e) => e.card.name === entry.card.name)) list.push(entry)
+    map.set(key, list)
+  }
+  for (const card of cards) {
+    if (card.status === 'closed') continue
+    const buildYear = Number(card.year)
+    const years = Number.isInteger(buildYear) && buildYear >= 1900 && buildYear <= year ? year - buildYear : 0
+    const open = parseOpenDate(card.open_time)
+    if (open) {
+      if (year < open.year) continue
+      const day = open.month === 2 && open.day === 29 && !isLeapYear(year) ? 28 : open.day
+      put(`${open.month}-${day}`, { card, years, source: 'open_time' })
+      continue
+    }
+    const days = parseAnnivCountdownDays(card.anniversary_text)
+    if (days !== null) {
+      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days)
+      if (date.getFullYear() === year) {
+        put(`${date.getMonth() + 1}-${date.getDate()}`, { card, years, source: 'countdown' })
+      }
+    }
+  }
+  return map
+}
+
+// 站点是否具备可进日历的站庆日期（开站日期或倒计时文案）——用于统计「建站日期未知」的站点数。
+export function hasKnownAnniversaryDate(card: SaveptSiteCard): boolean {
+  return parseOpenDate(card.open_time) !== null || parseAnnivCountdownDays(card.anniversary_text) !== null
+}
+
 // ── 公告分区 ──
 type NoticeLevel = 'critical' | 'success' | 'info' | 'error'
 

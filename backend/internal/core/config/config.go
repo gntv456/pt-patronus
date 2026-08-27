@@ -23,6 +23,11 @@ type Config struct {
 	PluginDevWatch           bool
 	PluginDevWatchIntervalMS int
 
+	// AppBaseURL 本服务对外访问基址（含协议+主机+端口；含路径前缀亦可）。
+	// strm 内容渲染为该基址下的绝对 URL——Emby 把 strm 内容直接交给播放器，
+	// 相对路径无法解析。空=保留相对路径（同机播放器场景）。
+	AppBaseURL string
+
 	// Security
 	SecretKey        string // JWT signing + AES key derivation seed
 	ActivationSecret string // HMAC secret for activation codes
@@ -140,6 +145,7 @@ func Load() (*Config, error) {
 		WXClawBotAccountID:      getenv("WECHAT_CLAWBOT_ACCOUNT_ID", ""),
 		WXClawBotTarget:         getenv("WECHAT_CLAWBOT_TARGET", ""),
 		WXClawBotBaseURL:        getenv("WECHAT_CLAWBOT_BASE_URL", ""),
+		AppBaseURL:              strings.TrimRight(getenv("APP_BASE_URL", ""), "/"),
 		WebhookURL:              getenv("WEBHOOK_URL", ""),
 		StatsSyncCron:           getenv("STATS_SYNC_CRON", "*/30 * * * *"),
 		CookieKeepAliveCron:     getenv("COOKIE_KEEPALIVE_CRON", "13 * * * *"),

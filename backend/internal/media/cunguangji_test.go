@@ -55,8 +55,8 @@ func TestCunguangjiTrendingAndMapping(t *testing.T) {
 	if first.Year != 2025 || first.Rating != 8.2 {
 		t.Errorf("year/rating: %d %.1f", first.Year, first.Rating)
 	}
-	// 相对封面应拼上 base 成绝对地址
-	if want := srv.URL + "/api/img?url=http%3A%2F%2Fi1.letvimg.com%2Fa.jpg"; first.PosterURL != want {
+	// 反代封面应解包为上游直链（resolvePoster 提速；非豆瓣上游不再走站点 /api/img）
+	if want := "http://i1.letvimg.com/a.jpg"; first.PosterURL != want {
 		t.Errorf("poster: got %q want %q", first.PosterURL, want)
 	}
 	if len(first.Genres) != 2 || first.Genres[0] != "逆袭" {
@@ -168,5 +168,27 @@ func TestCunguangjiCapabilities(t *testing.T) {
 	// 便捷：JSON 编码不报错（结构体可序列化）
 	if _, err := json.Marshal(xgItem{ID: 1, Title: "x"}); err != nil {
 		t.Errorf("marshal xgItem: %v", err)
+	}
+}
+
+// resolvePoster：解包站点 /api/img 反代为上游直链（提速）；doubanio 保留反代；静态图原样。
+func TestCunguangjiResolvePoster(t *testing.T) {
+	x := NewCunguangji("")
+	cases := []struct{ in, want string }{
+		// 站内相对反代 → 解包上游直链
+		{"/api/img?url=https%3A%2F%2Fp6-novel.byteimg.com%2Fnovel-pic%2Fa.jpg", "https://p6-novel.byteimg.com/novel-pic/a.jpg"},
+		// doubanio 保留反代（防盗链）
+		{"/api/img?url=https%3A%2F%2Fimg2.doubanio.com%2Fview%2Fphoto%2Fp.jpg", "https://dj.hxpt.org/api/img?url=https%3A%2F%2Fimg2.doubanio.com%2Fview%2Fphoto%2Fp.jpg"},
+		// 站内静态图（无 url 参数）→ 拼 base
+		{"/_nuxt/img/cover.png", "https://dj.hxpt.org/_nuxt/img/cover.png"},
+		// 绝对 URL 原样
+		{"https://example.com/a.jpg", "https://example.com/a.jpg"},
+		// 空
+		{"", ""},
+	}
+	for _, c := range cases {
+		if got := x.resolvePoster(c.in); got != c.want {
+			t.Errorf("resolvePoster(%q) = %q, want %q", c.in, got, c.want)
+		}
 	}
 }

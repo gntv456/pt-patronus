@@ -80,6 +80,7 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		&models.User{}, &models.Site{}, &models.SiteStat{}, &models.SiteConnectivity{},
 		&models.Downloader{}, &models.ActivationCode{}, &models.SystemConfig{},
 		&models.PluginState{}, &models.PluginLog{}, &models.PluginKV{}, &models.PluginRelease{},
+		&models.PluginInstall{}, &models.PluginFavorite{}, &models.PluginInstance{},
 		&models.PosterCache{}, &models.CrossSeedSetting{}, &models.CrossSeedTask{},
 		&models.FileStorage{}, &models.OpsCredential{}, &models.OpsConfig{}, &models.OpsConfigHistory{}, &models.RegistrationWatch{},
 		&models.MonitorTarget{}, &models.MetricSnapshot{}, &models.MonitorAlert{},
@@ -92,9 +93,10 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		&models.BrushFlowTask{}, &models.BrushFlowSeed{},
 		&models.ContractRule{},
 		&models.MediaServer{},
-		&models.CloudDrive{}, &models.StrmRule{}, &models.StrmRecord{},
+		&models.CloudDrive{}, &models.StrmRule{}, &models.StrmRecord{}, &models.CloudTask{},
 		&models.TransferHistory{}, &models.DownloadMediaLink{},
 		&models.AgentConversation{}, &models.AgentMessage{},
+		&models.UserPreference{},
 	); err != nil {
 		return nil, fmt.Errorf("automigrate: %w", err)
 	}

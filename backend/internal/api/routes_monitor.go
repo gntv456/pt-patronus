@@ -25,6 +25,8 @@ func registerMonitorRoutes(guarded *gin.RouterGroup, d *Deps) {
 		ms.GET("/:id/cover", msH.Cover)
 		ms.GET("/:id/playback-report", msH.PlaybackReport)
 		ms.GET("/:id/duplicates", msH.Duplicates)
+		ms.GET("/health", msH.Health)
+		ms.POST("/fix-subtitles", middleware.RequireAdmin(), msH.FixSubtitles)
 	}
 
 	// 网盘 + STRM（115/夸克/123）：网盘 CRUD/探活/配额/浏览 + STRM 规则 + 生成 + 订阅追更
@@ -55,6 +57,32 @@ func registerMonitorRoutes(guarded *gin.RouterGroup, d *Deps) {
 			rc.GET("", cloudH.ListRecords)
 			rc.DELETE("/:id", middleware.RequireAdmin(), cloudH.DeleteRecord)
 		}
+		// 云端文件管理器：mkdir/move/copy/rename/delete + 离线下载 + 分享转存
+		fm := cl.Group("/files")
+		{
+			fm.POST("/mkdir", cloudH.CloudMkdir)
+			fm.POST("/move", cloudH.CloudMove)
+			fm.POST("/copy", cloudH.CloudCopy)
+			fm.POST("/rename", cloudH.CloudRename)
+			fm.POST("/delete", middleware.RequireAdmin(), cloudH.CloudDelete)
+			fm.POST("/offline", cloudH.CloudOffline)
+			fm.POST("/share-save", cloudH.CloudShare)
+			// 云端整理（识别→归位分类目录）
+			cl.POST("/organize", middleware.RequireAdmin(), cloudH.OrganizeCloud)
+			// STRM 修复：按当前配置批量重写失效 .strm
+			cl.POST("/strm-repair", middleware.RequireAdmin(), cloudH.RepairStrm)
+		}
+		// 云端任务队列：列表（进度/历史）+ 重试 + 删除 + 目录树批量导入
+		tk := cl.Group("/tasks")
+		{
+			tk.GET("", cloudH.ListTasks)
+			tk.POST("/:id/retry", middleware.RequireAdmin(), cloudH.RetryTask)
+			tk.DELETE("/:id", middleware.RequireAdmin(), cloudH.DeleteTask)
+		}
+		cl.POST("/import-tree", middleware.RequireAdmin(), cloudH.ImportTree)
+		// 115 开放平台设备码授权（扫码 → 轮询 → 建盘）
+		cl.POST("/115open/auth", middleware.RequireAdmin(), cloudH.Start115OpenAuth)
+		cl.POST("/115open/poll", cloudH.Poll115OpenAuth)
 		cl.POST("/generate", cloudH.Generate)
 		cl.POST("/generate-all", cloudH.GenerateAll)
 		cl.POST("/sync-subscriptions", cloudH.SyncSubscriptions)
@@ -125,6 +153,27 @@ func registerMonitorRoutes(guarded *gin.RouterGroup, d *Deps) {
 		tr.POST("/organize", middleware.RequireAdmin(), trH.Organize)
 		tr.POST("/redo/:id", middleware.RequireAdmin(), trH.Redo)
 		tr.POST("/sweep", middleware.RequireAdmin(), trH.Sweep)
+		// 识别词：本地自定义词表（整理识别前规整名称）+ 效果测试
+		tr.GET("/identify-words", trH.GetIdentifyWords)
+		tr.PUT("/identify-words", middleware.RequireAdmin(), trH.SetIdentifyWords)
+		tr.POST("/identify-words/test", trH.TestIdentifyWords)
+		// 识别词云端共享：仓库 CRUD + 拉取预览 + 一键合并导入（本地优先，云端不覆盖）
+		tr.GET("/identify-words/repos", trH.GetSharedRepos)
+		tr.PUT("/identify-words/repos", middleware.RequireAdmin(), trH.SetSharedRepos)
+		tr.POST("/identify-words/repos/preview", trH.FetchSharedRepo)
+		tr.POST("/identify-words/repos/import", middleware.RequireAdmin(), trH.ImportSharedRepo)
+		// 名称识别测试（本地 ParseMeta + 可选媒体源匹配，验证文件名可识别性）
+		tr.POST("/recognize/test", trH.TestRecognize)
+		// 目录标签：跨模块目录引用（订阅保存路径/STRM 目录/云端整理目标）
+		tr.GET("/dir-tags", trH.GetDirTags)
+		tr.PUT("/dir-tags", middleware.RequireAdmin(), trH.SetDirTags)
+		// 种子排序规则（订阅/搜索择优权重）
+		tr.GET("/sort-rules", trH.GetSortRules)
+		tr.PUT("/sort-rules", middleware.RequireAdmin(), trH.SetSortRules)
+		// 目录同步任务（本地目录间 硬链/软链/复制/移动/STRM）
+		tr.GET("/dir-sync", trH.GetDirSync)
+		tr.PUT("/dir-sync", middleware.RequireAdmin(), trH.SetDirSync)
+		tr.POST("/dir-sync/run", middleware.RequireAdmin(), trH.RunDirSync)
 	}
 
 	// 资源过滤规则（对标 MP-2 filter module）：内置/自定义规则 + 规则组 + 全局绑定 + 规则测试。

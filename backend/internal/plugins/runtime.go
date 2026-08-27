@@ -16,6 +16,30 @@ type pluginRuntime struct {
 	config   map[string]any
 }
 
+// CallHostTool 内置插件直调宿主工具（与外部插件 POST /tools/{name} 同一 Dispatch 路径，
+// 含权限校验与审计）。返回原始结果（多为 map/[]map）。
+func (r *pluginRuntime) CallHostTool(ctx context.Context, name string, input map[string]any) (any, error) {
+	if r.manager == nil || r.manager.hostTools == nil {
+		return nil, fmt.Errorf("host tools unavailable")
+	}
+	p, err := r.manager.plugin(r.pluginID)
+	if err != nil {
+		return nil, err
+	}
+	out, perm, notFound, derr := r.manager.hostTools.Dispatch(ctx, p.Manifest().Permissions, name, input)
+	if notFound {
+		return nil, fmt.Errorf("tool %q not found", name)
+	}
+	if derr != nil {
+		r.manager.log(r.pluginID, logWarning, "host.tool", fmt.Sprintf("%s failed: %v", name, derr), map[string]any{"input": input})
+		return nil, derr
+	}
+	if isWritePermission(perm) {
+		r.manager.log(r.pluginID, logInfo, "host.tool", "tool called: "+name, map[string]any{"input": input})
+	}
+	return out, nil
+}
+
 func (r *pluginRuntime) Config() map[string]any {
 	out := make(map[string]any, len(r.config))
 	for k, v := range r.config {

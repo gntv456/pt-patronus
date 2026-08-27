@@ -15,6 +15,7 @@ import SptIcon from '@/components/SptIcon.vue'
 import SaveptHeader from '@/components/savept/SaveptHeader.vue'
 import SaveptNotices from '@/components/savept/SaveptNotices.vue'
 import SaveptSiteCard from '@/components/savept/SaveptSiteCard.vue'
+import SaveptAnnivCalendarDialog from '@/components/savept/SaveptAnnivCalendarDialog.vue'
 import { useSaveptCelebration } from '@/composables/useSaveptCelebration'
 
 const route = useRoute()
@@ -122,6 +123,9 @@ function scrollToTop() {
   else (scrollTarget as HTMLElement)?.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+// ── 站庆日历弹窗 ──
+const annivCalendarVisible = ref(false)
+
 // ── 站庆彩带（canvas-confetti 动态加载）──
 const { setCelebrationRef } = useSaveptCelebration(groupedSites.value, isYearGroupCollapsed)
 // groupedSites 是 computed，需用 getter 形式让组合式函数拿到实时值。
@@ -171,7 +175,10 @@ onBeforeUnmount(() => {
       :fetched-at="fetchedAt"
       :filtered-count="filteredSites.length"
       @refresh="refresh"
+      @open-anniv-calendar="annivCalendarVisible = true"
     />
+
+    <SaveptAnnivCalendarDialog v-model:visible="annivCalendarVisible" :sites="sites" />
 
     <SaveptNotices :alerts="data?.alerts ?? []" :sites="sites" />
 

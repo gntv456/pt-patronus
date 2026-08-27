@@ -205,3 +205,161 @@ func (h *TransferHandler) Sweep(c *gin.Context) {
 func transferSweepContext(ctx context.Context) context.Context {
 	return context.WithoutCancel(ctx)
 }
+
+// GetIdentifyWords 识别词表（GET /transfer/identify-words）。
+func (h *TransferHandler) GetIdentifyWords(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"words": transfer.LoadIdentifyWords(h.ch.KV())})
+}
+
+// SetIdentifyWords 保存识别词表（PUT /transfer/identify-words）。
+func (h *TransferHandler) SetIdentifyWords(c *gin.Context) {
+	var in struct {
+		Words []transfer.IdentifyWord `json:"words" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := transfer.SaveIdentifyWords(h.ch.KV(), in.Words); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"saved": len(in.Words)})
+}
+
+// TestIdentifyWords 识别词效果测试（POST：{name} → 规整后名称 + 识别元数据）。
+func (h *TransferHandler) TestIdentifyWords(c *gin.Context) {
+	var in struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ws := transfer.LoadIdentifyWords(h.ch.KV())
+	norm := transfer.ApplyIdentifyWords(ws, in.Name)
+	meta := transfer.ParseMeta(norm)
+	c.JSON(http.StatusOK, gin.H{"normalized": norm, "title": meta.Title, "season": meta.Season, "episode": meta.Episode})
+}
+
+// TestRecognize 名称识别测试（POST：{name, year?, media?} → 本地识别元数据 + 媒体源匹配结果）。
+// 对标 MSaber「名称识别测试」：先本地 ParseMeta（含识别词规整），再可选调媒体源确认能否匹配，
+// 用于验证文件名可识别性与识别词效果。media=true 走媒体源查询（默认仅本地）。
+func (h *TransferHandler) TestRecognize(c *gin.Context) {
+	var in struct {
+		Name  string `json:"name" binding:"required"`
+		Year  int    `json:"year"`
+		Media bool   `json:"media"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ws := transfer.LoadIdentifyWords(h.ch.KV())
+	norm := transfer.ApplyIdentifyWords(ws, in.Name)
+	meta := transfer.ParseMeta(norm)
+	out := gin.H{
+		"normalized": norm,
+		"title":      meta.Title,
+		"year":       meta.Year,
+		"season":     meta.Season,
+		"episode":    meta.Episode,
+		"resolution": meta.Resolution,
+		"group":      meta.ReleaseGroup,
+		"is_tv":      meta.IsTV,
+	}
+	if in.Media && meta.Title != "" {
+		if m, err := h.ch.SearchMedia(c.Request.Context(), meta.Title, in.Year, ""); err == nil && m != nil {
+			out["matched"] = gin.H{"title": m.Title, "year": m.Year, "type": m.Type}
+		} else {
+			out["matched"] = nil
+		}
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+// ---- 目录标签（跨模块目录引用：订阅/STRM/云端整理用标签而非重复填路径） ----
+
+// GetDirTags GET /transfer/dir-tags。
+func (h *TransferHandler) GetDirTags(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"tags": transfer.LoadDirTags(h.ch.KV())})
+}
+
+// SetDirTags PUT /transfer/dir-tags（全量保存，name 查重）。
+func (h *TransferHandler) SetDirTags(c *gin.Context) {
+	var in struct {
+		Tags []transfer.DirTag `json:"tags" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := transfer.SaveDirTags(h.ch.KV(), in.Tags); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"saved": len(in.Tags)})
+}
+
+// ---- 种子排序规则（订阅/搜索择优的权重配置） ----
+
+// GetSortRules GET /transfer/sort-rules。
+func (h *TransferHandler) GetSortRules(c *gin.Context) {
+	c.JSON(http.StatusOK, transfer.LoadSortRules(h.ch.KV()))
+}
+
+// SetSortRules PUT /transfer/sort-rules。
+func (h *TransferHandler) SetSortRules(c *gin.Context) {
+	var r transfer.SortRules
+	if err := c.ShouldBindJSON(&r); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := transfer.SaveSortRules(h.ch.KV(), r); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"saved": true})
+}
+
+// ---- 目录同步任务（本地目录间 硬链/软链/复制/移动/STRM） ----
+
+// GetDirSync GET /transfer/dir-sync。
+func (h *TransferHandler) GetDirSync(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"tasks": transfer.LoadDirSyncTasks(h.ch.KV())})
+}
+
+// SetDirSync PUT /transfer/dir-sync（全量保存）。
+func (h *TransferHandler) SetDirSync(c *gin.Context) {
+	var in struct {
+		Tasks []transfer.DirSyncTask `json:"tasks" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := transfer.SaveDirSyncTasks(h.ch.KV(), in.Tasks); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"saved": len(in.Tasks)})
+}
+
+// RunDirSync POST /transfer/dir-sync/run {name}：立即执行一个任务。
+func (h *TransferHandler) RunDirSync(c *gin.Context) {
+	var in struct {
+		Name string `json:"name" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	for _, t := range transfer.LoadDirSyncTasks(h.ch.KV()) {
+		if t.Name == in.Name {
+			res := transfer.RunDirSync(t)
+			c.JSON(http.StatusOK, res)
+			return
+		}
+	}
+	c.JSON(http.StatusNotFound, gin.H{"error": "任务不存在"})
+}

@@ -30,8 +30,9 @@ export default defineConfig({
     proxy: {
       // ws:true：开发期转发 /api/v1/ws 的 WebSocket 升级（生产同源 go:embed 不受影响）。
       // timeout 拉长：跨站搜索 SSE 最长可达多站×15s，默认代理超时会掐流。
+      // 目标可用 VITE_DEV_PROXY_TARGET 覆盖（8088 被宿主其他服务占用时本地起 8098 验证）。
       '/api': {
-        target: 'http://localhost:8088',
+        target: process.env.VITE_DEV_PROXY_TARGET || 'http://localhost:8088',
         changeOrigin: true,
         ws: true,
         timeout: 120_000,

@@ -265,6 +265,13 @@ func (m *Manager) installMarketItem(ctx context.Context, source string, idx *Mar
 	if _, err := m.persistReleaseSnapshot(manifest.ID, manifest.Version, installAction, source, archiveSource, item.SHA256, dst, true); err != nil {
 		return nil, err
 	}
+	// 风云榜数据源：安装成功记一次事件（弟子榜累计/新晋榜最近）。best-effort 不阻塞安装结果。
+	m.mu.RLock()
+	mop := m.marketOp
+	m.mu.RUnlock()
+	if mop != nil {
+		_ = mop.RecordInstall(manifest.ID, manifest.Version, source)
+	}
 	return &InstallResult{
 		ID:            manifest.ID,
 		Name:          manifest.Name,

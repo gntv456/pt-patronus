@@ -247,6 +247,28 @@ func (h *MediaServerHandler) PlaybackReport(c *gin.Context) {
 	c.JSON(http.StatusOK, rep)
 }
 
+// Health 媒体健康中心巡检（GET /mediaserver/health?subtitles=1&upgradeable=1）。全服务器扫描：
+// 未匹配 / 缺集 / 缺字幕 / 可升级 四类问题（subtitles=1 开启本地字幕扫描，需后端可访问媒体路径；
+// upgradeable=1 开启洗版检测，库内同 TMDB 存在更高分辨率版本时低版本条目记 upgradeable）。
+func (h *MediaServerHandler) Health(c *gin.Context) {
+	rep := h.svc.HealthCheck(c.Request.Context(), c.Query("subtitles") == "1", c.Query("upgradeable") == "1")
+	c.JSON(http.StatusOK, rep)
+}
+
+// FixSubtitles 字幕补齐（POST /mediaserver/fix-subtitles，body=健康报告或复用现算）。
+func (h *MediaServerHandler) FixSubtitles(c *gin.Context) {
+	var rep chain.HealthReport
+	if err := c.ShouldBindJSON(&rep); err != nil || len(rep.Issues) == 0 {
+		rep = *h.svc.HealthCheck(c.Request.Context(), true, false) // body 空 → 现算全库
+	}
+	result, err := h.svc.FixMissingSubtitles(c.Request.Context(), &rep, c.Query("lang"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusAccepted, result)
+}
+
 // Duplicates 重复媒体检测（GET /mediaserver/:id/duplicates?library_id=）。
 func (h *MediaServerHandler) Duplicates(c *gin.Context) {
 	id, ok := parseID(c)

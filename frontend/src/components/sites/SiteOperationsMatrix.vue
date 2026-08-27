@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { Site, SiteConnectivityStatus } from '@/api/site'
 import type { SiteStatItem } from '@/api/dashboard'
+import { dashboardApi } from '@/api/dashboard'
 import SiteMatrixTable from './SiteMatrixTable.vue'
 import SiteMatrixHistoryDialog from './SiteMatrixHistoryDialog.vue'
 import {
@@ -56,7 +57,7 @@ let resizeObserver: ResizeObserver | null = null
 const {
   siteQuery, matrixFilter, sortKey, sortDir, currentPage, pageSize,
   historyVisible, historyLoading, historySiteName, history,
-  selectedSites,
+  selectedSites, rows,
   siteBaseUrl, siteConfig,
   allRows, inactiveSiteCount,
   siteHasIssue, onSortChange, matrixRows, pagedRows, pageRange,
@@ -72,6 +73,12 @@ const { visitInactiveSites } = useInactiveSiteVisit(
       const lastAccess = new Date(row.last_access_at).getTime()
       return Number.isFinite(lastAccess) && lastAccess > 0 && lastAccess < Date.now() - 30 * 24 * 60 * 60 * 1000
     })),
+  // 每访问完一个站点就重新抓取其统计（「最近访问」由站点侧记录，需同步才能取回新值），
+  // 否则矩阵里该站的最后访问时间要等用户手动刷新才会更新。
+  ({ row, site }) => {
+    if (!site) return
+    void refreshSiteStat(site.id, row.site_name)
+  },
 )
 
 function showConnectivityReason(row: SiteStatItem) {
@@ -107,6 +114,18 @@ function handleRowCommand(command: string, row: SiteStatItem) {
 
 function routeFilter(value: unknown): MatrixFilter {
   return ['issues', 'connected', 'disabled'].includes(String(value)) ? (String(value) as MatrixFilter) : 'all'
+}
+
+// 静默刷新单个站点统计：只更新 rows，不弹成功提示（访问流程中逐站调用，提示会刷屏）。
+async function refreshSiteStat(siteId: number, siteName: string) {
+  refreshing.value.add(siteId)
+  try {
+    rows.value = (await dashboardApi.syncOne(siteId)).sites ?? []
+  } catch {
+    // 访问后的统计回捞失败不打断流程，用户仍可手动「刷新统计」。
+  } finally {
+    refreshing.value.delete(siteId)
+  }
 }
 
 watch(() => route.query.matrix, (value) => { matrixFilter.value = routeFilter(value) }, { immediate: true })

@@ -148,6 +148,9 @@ function onSectionChange(sec: string | number) {
           <el-tab-pane label="CookieCloud" name="cookiecloud">
             <CookieCloudPanel />
           </el-tab-pane>
+          <el-tab-pane label="OCR 识别" name="ocr" lazy>
+            <OcrPanel />
+          </el-tab-pane>
           <el-tab-pane label="Servarr 兼容" name="servarr">
 
         <div class="oidc-wrap">

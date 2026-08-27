@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -96,14 +97,38 @@ type Client interface {
 }
 
 // NewClient 按 Server.Type 构建对应客户端。type 不在白名单内返回错误。
+// ugos（绿影视）/ fnos（飞牛影视）/ zspace（极空间极影视）均为 Emby/Jellyfin 兼容内核
+// 或提供 Emby 兼容网关，复用 embyJellyfinClient（apiRoot 已含各家的 /emby 前缀差异处理）。
 func NewClient(s Server, hc *httpclient.Client) (Client, error) {
 	switch s.Type {
 	case "emby", "jellyfin":
 		return &embyJellyfinClient{server: s, hc: hc, apiRoot: apiRoot(s)}, nil
 	case "plex":
 		return &plexClient{server: s, hc: hc, apiRoot: apiRoot(s)}, nil
+	case "ugos", "fnos", "zspace":
+		return &embyCompatClient{embyJellyfinClient{server: s, hc: hc, apiRoot: compatAPIRoot(s)}}, nil
 	}
 	return nil, fmt.Errorf("不支持的媒体服务器类型: %s", s.Type)
+}
+
+// compatAPIRoot 国产 NAS 影视服务的 Emby 兼容层前缀：
+//   - 绿影视（UGOS）：{url}/index.php/emby （Emby 兼容插件路径）
+//   - 飞牛影视（FNOS）：{url}/index.php/emby （fnOS 官方 Emby 兼容网关）
+//   - 极空间极影视：{url}/emby （极影视内建 Emby 兼容 API）
+// 用户在 UI 填服务根 URL 即可，此处自动补兼容前缀（已带前缀则不重复补）。
+func compatAPIRoot(s Server) string {
+	u := apiRoot(s)
+	switch s.Type {
+	case "ugos", "fnos":
+		if !strings.Contains(u, "/emby") {
+			return u + "/index.php/emby"
+		}
+	case "zspace":
+		if !strings.Contains(u, "/emby") {
+			return u + "/emby"
+		}
+	}
+	return u
 }
 
 // apiRoot 规范化服务器根 URL（去尾斜杠）。

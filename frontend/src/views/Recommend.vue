@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { recommendApi, recommendSources, recommendCategories, type MediaInfo } from '@/api/recommend'
+import { recommendApi, recommendSources, recommendCategories, type MediaInfo, type CalendarEpisode } from '@/api/recommend'
 import { discoverApi } from '@/api/discover'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteTorrentFindDialog from '@/components/SiteTorrentFindDialog.vue'
@@ -143,6 +143,37 @@ function openMediaDetail(m: MediaInfo) {
   router.push({ path: '/media-detail', query: { source: m.source, id: m.source_id } })
 }
 
+// ---- 开播日历 / 订阅日历（对标 MSaber 开播日历；第三视图，与信息流/搜索并列） ----
+const calMode = ref<'' | 'tv' | 'movie' | 'mine'>('')
+const calLoading = ref(false)
+const calData = ref<Record<string, CalendarEpisode[]>>({})
+const calDays = ref(14)
+const calDates = computed(() => Object.keys(calData.value).sort())
+function fmtDateLabel(d: string) {
+  const dt = new Date(d + 'T00:00:00')
+  const weekday = ['日', '一', '二', '三', '四', '五', '六'][dt.getDay()]
+  return `${dt.getMonth() + 1}/${dt.getDate()} 周${weekday}`
+}
+async function selectCalendar(mode: '' | 'tv' | 'movie' | 'mine') {
+  calMode.value = mode
+  calData.value = {}
+  if (mode === '') return
+  calLoading.value = true
+  try {
+    calData.value = mode === 'mine' ? await recommendApi.subscriptionCalendar(30) : await recommendApi.calendar(mode, calDays.value)
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || '日历加载失败（需配置 TMDB）')
+  } finally {
+    calLoading.value = false
+  }
+}
+function openCalendarDetail(ep: CalendarEpisode) {
+  // tmdb_id 形如 "tv:123"/"movie:456"（tmdb 命名空间下的类型前缀）；source 必须是
+  // "tmdb"——把前缀当 source 传给 /media/detail 会报 unknown media source。
+  const [ns, id] = ep.tmdb_id.split(':')
+  if (ns && id) router.push({ path: '/media-detail', query: { source: 'tmdb', id: `${ns}:${id}` } })
+}
+
 onMounted(() => load())
 onUnmounted(() => {
   abortCtrl?.abort()
@@ -164,9 +195,15 @@ onUnmounted(() => {
         </button>
       </div>
       <div class="filter-group">
-        <button v-for="c in recommendCategories" :key="c.key" class="chip" :class="{ on: category === c.key }" @click="selectCategory(c.key)">
+        <button v-for="c in recommendCategories" :key="c.key" class="chip" :class="{ on: category === c.key && !calMode }" @click="selectCategory(c.key)">
           {{ c.label }}
         </button>
+      </div>
+      <!-- 开播日历视图：剧集/电影日历 + 我的订阅日历（单集粒度） -->
+      <div class="filter-group">
+        <button class="chip" :class="{ on: calMode === 'tv' }" @click="selectCalendar(calMode === 'tv' ? '' : 'tv')">📅 剧集日历</button>
+        <button class="chip" :class="{ on: calMode === 'movie' }" @click="selectCalendar(calMode === 'movie' ? '' : 'movie')">📅 电影日历</button>
+        <button class="chip" :class="{ on: calMode === 'mine' }" @click="selectCalendar(calMode === 'mine' ? '' : 'mine')">🔖 我的订阅日历</button>
       </div>
       <!-- 搜索框：置于分类筛选右侧，原「探索」并入。回车/点按钮触发，清空回到信息流。 -->
       <div class="search-group">
@@ -175,9 +212,26 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <p v-if="loading && !items.length && !searchMode" class="sub">加载中…</p>
+    <p v-if="loading && !items.length && !searchMode && !calMode" class="sub">加载中…</p>
 
-    <div class="cards">
+    <!-- 日历视图：按日期分组的开播/上映条目 -->
+    <div v-if="calMode" v-loading="calLoading" class="calendar-view">
+      <template v-if="calDates.length">
+        <div v-for="d in calDates" :key="d" class="cal-day card glass">
+          <div class="cal-date">{{ fmtDateLabel(d) }}<span class="text-muted small">（{{ d }}）</span></div>
+          <div v-for="(ep, i) in calData[d]" :key="i" class="cal-ep clickable" @click="openCalendarDetail(ep)">
+            <span v-if="ep.poster_url" class="cal-poster"><MediaPoster :url="ep.poster_url" kind="movie" /></span>
+            <span v-if="ep.season" class="chip res">S{{ String(ep.season).padStart(2, '0') }}E{{ String(ep.episode ?? 0).padStart(2, '0') }}</span>
+            <span class="cal-title">{{ ep.title }}</span>
+            <span v-if="ep.overview" class="text-muted small cal-overview">{{ ep.overview.slice(0, 60) }}</span>
+          </div>
+        </div>
+      </template>
+      <EmptyState v-else-if="!calLoading" icon="📅" :title="calMode === 'mine' ? '订阅日历暂无排期' : '近期无开播/上映安排'"
+        :description="calMode === 'mine' ? '添加 TMDB 剧集订阅后，未来 30 天的单集开播会显示在这里' : '换个日期范围或稍后再试'" />
+    </div>
+
+    <div v-else class="cards">
       <div v-for="(m, i) in items" :key="m.source_id || i" class="rec-card glass clickable" @click="openMediaDetail(m)">
         <div class="poster"><MediaPoster :url="m.poster_url" :kind="m.type === 'music' ? 'music' : 'movie'" /></div>
         <div class="info">
@@ -194,7 +248,7 @@ onUnmounted(() => {
     </div>
 
     <EmptyState
-      v-if="!items.length && !loading && !searchLoading"
+      v-if="!items.length && !loading && !searchLoading && !calMode"
       icon="🎬"
       :title="searchMode ? '无搜索结果' : '暂无推荐，点击刷新或切换源/分类'"
       :description="searchMode ? '换个关键词，或清空搜索框回到推荐信息流' : '点击右上角刷新重试，或在上方切换推荐源与分类'"
@@ -204,7 +258,7 @@ onUnmounted(() => {
     </EmptyState>
 
     <!-- 分页：加载更多（仅信息流；搜索结果一次性返回） -->
-    <div v-if="items.length && !searchMode" class="pager">
+    <div v-if="items.length && !searchMode && !calMode" class="pager">
       <span class="page-info text-muted">第 {{ page }} 页 · 共 {{ items.length }} 条</span>
       <el-button v-if="hasMore" :loading="loadingMore" @click="loadMore">加载更多</el-button>
       <span v-else class="text-muted no-more">没有更多了</span>
@@ -225,6 +279,15 @@ onUnmounted(() => {
 .page { display: flex; flex-direction: column; gap: var(--sp-4); }
 .head { display: flex; align-items: center; justify-content: space-between; }
 .title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+/* 开播日历视图：按日期分组展示 */
+.calendar-view { display: flex; flex-direction: column; gap: var(--sp-3); }
+.cal-day { padding: 14px 18px; }
+.cal-date { font-weight: 700; margin-bottom: 8px; }
+.cal-ep { display: flex; align-items: center; gap: var(--sp-2); padding: 6px 0; border-bottom: 1px dashed var(--border-color, rgba(128,128,128,.2)); flex-wrap: wrap; }
+.cal-ep:last-child { border-bottom: none; }
+.cal-poster { width: 34px; height: 48px; border-radius: 4px; overflow: hidden; flex: none; background: var(--surface-muted); }
+.cal-title { font-weight: 600; }
+.cal-overview { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .filter-bar { display: flex; gap: var(--sp-6); padding: 10px 14px; flex-wrap: wrap; align-items: center; }
 .filter-group { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
 /* 搜索框：靠最右，与分类 chip 同行；窄屏自动换行 */

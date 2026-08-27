@@ -9,12 +9,16 @@ import (
 // registerMediaRoutes 注册媒体搜索/推荐与保种查找路由。
 func registerMediaRoutes(guarded *gin.RouterGroup, d *Deps) {
 	mediaH := v1.NewMediaHandler(d.MediaCh, d.Recommend)
+	mediaH.SetSubscribeChain(d.Subscribe)
 	md := guarded.Group("/media")
 	{
 		md.GET("/search", mediaH.Search)
 		md.GET("/recommend", mediaH.Recommend)
 		md.GET("/recommend/stream", mediaH.RecommendStream)
 		md.GET("/discover", mediaH.Discover)
+		// 开播日历（全量 discover）+ 订阅日历（我的订阅单集粒度）
+		md.GET("/calendar", mediaH.Calendar)
+		md.GET("/calendar/subscriptions", mediaH.SubscriptionCalendar)
 		md.GET("/poster", mediaH.Poster)
 		md.GET("/detail", mediaH.Detail)
 		md.GET("/celebrity", mediaH.Celebrity)

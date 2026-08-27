@@ -131,12 +131,7 @@ async function openTorrentDetail(row: { site_id: number; detail_url?: string }) 
   detailLoading.value = true
   try {
     const r = await seedbrowseApi.detail(row.site_id, row.detail_url)
-    if (r.error) {
-      ElMessage.error(r.error)
-      detailVisible.value = false
-    } else {
-      detail.value = r.detail ?? null
-    }
+    detail.value = r.detail ?? null
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '加载详情失败')
     detailVisible.value = false

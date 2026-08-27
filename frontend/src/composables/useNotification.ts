@@ -18,7 +18,10 @@ const testResults = ref<NotifySendResult[]>([])
 const wxQrVisible = ref(false)
 const wxQrUrl = ref('')
 const wxQrcode = ref('')
+// wxTimer 模块级可变单例的风险：两处同时扫码会互相覆盖句柄 → 前一个轮询泄漏。
+// 用持有者令牌守卫：仅当前持有者可启动/停止，旧轮询被新登录自动终止。
 let wxTimer: ReturnType<typeof setInterval> | undefined
+let wxTimerOwner = 0
 
 function emptyNotifForm(): NotifyConfigInput {
   return {
@@ -189,7 +192,9 @@ async function wxLogin() {
     wxQrUrl.value = r.qrcode_url
     wxQrVisible.value = true
     stopWxPoll()
+    const owner = ++wxTimerOwner
     wxTimer = setInterval(async () => {
+      if (owner !== wxTimerOwner) { stopWxPoll(); return } // 已被新一轮登录取代：自杀退出
       try {
         const s = await notificationApi.wechatQrcodeStatus(wxQrcode.value)
         if (s.logged_in) {
@@ -205,6 +210,7 @@ async function wxLogin() {
   }
 }
 function stopWxPoll() {
+  wxTimerOwner++ // 使任何在飞轮询失效
   if (wxTimer) { clearInterval(wxTimer); wxTimer = undefined }
 }
 onBeforeUnmount(stopWxPoll)

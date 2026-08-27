@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { dockerApi, type DockerInspect, type DockerStatsRow } from '@/api/docker'
+import { dockerApi, dockerRemoteActions, type DockerInspect, type DockerRemoteAction, type DockerStatsRow } from '@/api/docker'
 import DockerExecTerminal from './DockerExecTerminal.vue'
 
 const props = defineProps<{
@@ -89,7 +89,7 @@ const envList = computed(() => {
 async function doAction(action: string, label: string) {
   try {
     if (props.mode === 'local') await dockerApi.localAction(props.container, action)
-    else await (dockerApi as any)[action](props.targetId, props.container)
+    else await dockerRemoteActions[action as DockerRemoteAction](props.targetId, props.container)
     ElMessage.success(label + '成功')
     emit('refresh')
     await loadInspect()

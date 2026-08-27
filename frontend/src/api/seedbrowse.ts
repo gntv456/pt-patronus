@@ -25,9 +25,10 @@ export interface TorrentDetail {
 
 export const seedbrowseApi = {
   // 抓取并解析单条种子详情页：GET /sites/:id/torrent/detail?url=...
+  // 抓取失败由 HTTP 层抛错（502 + error 字段），成功才带 detail。
   detail: (siteId: number, url: string) =>
     http
-      .get<{ detail?: TorrentDetail; error?: string }>(
+      .get<{ detail?: TorrentDetail }>(
         `/sites/${siteId}/torrent/detail?url=${encodeURIComponent(url)}`,
       )
       .then((r) => r.data),

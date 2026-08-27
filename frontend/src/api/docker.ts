@@ -61,6 +61,24 @@ export interface DockerInspect {
   [key: string]: any
 }
 
+// DockerOpsAck 容器操作类端点的统一应答（成功 ok=true；失败由拦截器抛错）。
+export interface DockerOpsAck {
+  ok: boolean
+  error?: string
+  output?: string
+}
+
+// dockerRemoteActions SSH 模式容器操作映射（显式表取代 (dockerApi as any)[action] 动态调用；
+// OpsDocker.vue 与 DockerDetailDrawer.vue 共用，action 名拼错在编译期暴露）。
+export const dockerRemoteActions = {
+  start: (id: number, name: string) => dockerApi.start(id, name),
+  stop: (id: number, name: string) => dockerApi.stop(id, name),
+  restart: (id: number, name: string) => dockerApi.restart(id, name),
+  pause: (id: number, name: string) => dockerApi.pause(id, name),
+  unpause: (id: number, name: string) => dockerApi.unpause(id, name),
+} as const
+export type DockerRemoteAction = keyof typeof dockerRemoteActions
+
 export const dockerApi = {
   list: (targetId: number) =>
     http.get<DockerListResp>(`/ops/docker/${targetId}/list`).then((r) => r.data),
@@ -71,19 +89,19 @@ export const dockerApi = {
   logs: (targetId: number, name: string, tail = 100) =>
     http.get<{ logs: string }>(`/ops/docker/${targetId}/containers/${name}/logs`, { params: { tail } }).then((r) => r.data),
   start: (targetId: number, name: string) =>
-    http.post(`/ops/docker/${targetId}/containers/${name}/start`).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/${targetId}/containers/${name}/start`).then((r) => r.data),
   stop: (targetId: number, name: string) =>
-    http.post(`/ops/docker/${targetId}/containers/${name}/stop`).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/${targetId}/containers/${name}/stop`).then((r) => r.data),
   restart: (targetId: number, name: string) =>
-    http.post(`/ops/docker/${targetId}/containers/${name}/restart`).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/${targetId}/containers/${name}/restart`).then((r) => r.data),
   pause: (targetId: number, name: string) =>
-    http.post(`/ops/docker/${targetId}/containers/${name}/pause`).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/${targetId}/containers/${name}/pause`).then((r) => r.data),
   unpause: (targetId: number, name: string) =>
-    http.post(`/ops/docker/${targetId}/containers/${name}/unpause`).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/${targetId}/containers/${name}/unpause`).then((r) => r.data),
   remove: (targetId: number, name: string, force = false, confirmRisk = false) =>
-    http.post(`/ops/docker/${targetId}/containers/${name}/remove`, { confirm_risk: confirmRisk }, { params: { force: force ? 1 : 0 } }).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/${targetId}/containers/${name}/remove`, { confirm_risk: confirmRisk }, { params: { force: force ? 1 : 0 } }).then((r) => r.data),
   removeImage: (targetId: number, ref: string, confirmRisk = false) =>
-    http.post(`/ops/docker/${targetId}/images/${ref}/remove`, { confirm_risk: confirmRisk }).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/${targetId}/images/${ref}/remove`, { confirm_risk: confirmRisk }).then((r) => r.data),
   composeUp: (targetId: number, path: string) =>
     http.post<{ ok: boolean; output: string }>(`/ops/docker/${targetId}/compose/up`, { path }).then((r) => r.data),
   composeDown: (targetId: number, path: string, confirmRisk = false) =>
@@ -101,25 +119,25 @@ export const dockerApi = {
   localLogs: (name: string, tail = 100) =>
     http.get<{ logs: string }>(`/ops/docker/local/containers/${name}/logs`, { params: { tail } }).then((r) => r.data),
   localAction: (name: string, action: string) =>
-    http.post(`/ops/docker/local/containers/${name}/${action}`).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/local/containers/${name}/${action}`).then((r) => r.data),
   localRemove: (name: string, force = false, confirmRisk = false) =>
-    http.post(`/ops/docker/local/containers/${name}/remove`, { confirm_risk: confirmRisk }, { params: { force: force ? 1 : 0 } }).then((r) => r.data),
+    http.post<DockerOpsAck>(`/ops/docker/local/containers/${name}/remove`, { confirm_risk: confirmRisk }, { params: { force: force ? 1 : 0 } }).then((r) => r.data),
   localRemoveImage: (ref: string, confirmRisk = false) =>
-    http.delete(`/ops/docker/local/images/${ref}`, { data: { confirm_risk: confirmRisk } }).then((r) => r.data),
+    http.delete<DockerOpsAck>(`/ops/docker/local/images/${ref}`, { data: { confirm_risk: confirmRisk } }).then((r) => r.data),
 
   // === 本机扩展：拉取镜像 / 清理 / 卷网络管理 ===
   localPull: (ref: string) =>
     http.post<{ ok: boolean; progress?: string; error?: string }>('/ops/docker/local/images/pull', null, { params: { ref } }).then((r) => r.data),
   localPrune: (type: 'container' | 'image' | 'volume' | 'network') =>
-    http.post<{ ok: boolean; result?: Record<string, any> }>('/ops/docker/local/prune', null, { params: { type } }).then((r) => r.data),
+    http.post<{ ok: boolean; result?: Record<string, unknown> }>('/ops/docker/local/prune', null, { params: { type } }).then((r) => r.data),
   localVolumeCreate: (name: string, driver?: string) =>
-    http.post('/ops/docker/local/volumes', { name, driver }).then((r) => r.data),
+    http.post<DockerOpsAck>('/ops/docker/local/volumes', { name, driver }).then((r) => r.data),
   localVolumeRemove: (name: string) =>
-    http.delete(`/ops/docker/local/volumes/${name}`).then((r) => r.data),
+    http.delete<DockerOpsAck>(`/ops/docker/local/volumes/${name}`).then((r) => r.data),
   localNetworkCreate: (name: string, driver?: string) =>
-    http.post('/ops/docker/local/networks', { name, driver }).then((r) => r.data),
+    http.post<DockerOpsAck>('/ops/docker/local/networks', { name, driver }).then((r) => r.data),
   localNetworkRemove: (name: string) =>
-    http.delete(`/ops/docker/local/networks/${name}`).then((r) => r.data),
+    http.delete<DockerOpsAck>(`/ops/docker/local/networks/${name}`).then((r) => r.data),
 
   // === 本机 Compose（容器内 CLI + socket）===
   localComposeCheck: () =>

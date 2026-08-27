@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { dockerApi, type DockerContainer, type DockerImage, type DockerListResp, type DockerStatsRow } from '@/api/docker'
+import { dockerApi, dockerRemoteActions, type DockerContainer, type DockerImage, type DockerListResp, type DockerRemoteAction, type DockerStatsRow } from '@/api/docker'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 import GlassIcon from '@/components/GlassIcon.vue'
 import Sparkline from '@/components/dashboard/Sparkline.vue'
@@ -164,7 +164,7 @@ async function doAction(container: DockerContainer, action: string, label: strin
     if (mode.value === 'local') {
       await dockerApi.localAction(name, action)
     } else {
-      await (dockerApi as any)[action](selectedTarget.value, name)
+      await dockerRemoteActions[action as DockerRemoteAction](selectedTarget.value, name)
     }
     ElMessage.success(label + '成功')
     refresh()
@@ -257,7 +257,7 @@ async function batchAction(action: 'start' | 'stop' | 'restart' | 'remove') {
         else await dockerApi.remove(selectedTarget.value, name, true, true)
       } else {
         if (mode.value === 'local') await dockerApi.localAction(name, action)
-        else await (dockerApi as any)[action](selectedTarget.value, name)
+        else await dockerRemoteActions[action as DockerRemoteAction](selectedTarget.value, name)
       }
       ok++
     } catch { fail++ }

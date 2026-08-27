@@ -89,9 +89,9 @@ async function onBodyClick(n: Notice) {
   }
 }
 
-// 鍒嗙粍鎶樺彔锛氭寜 source 鑱氬悎锛屾瘡缁勬樉绀篶鏂板浘鏍?+ 绫诲瀷鍚?+ 鏁伴噺寰芥爣 + 鏈€鏂版椂闂粹€傜偣鍑荤粍澶村睍寮€/鏀剁缉銆?
-const collapsed = ref(true) // 榛樿鍏ㄩ儴鎶樺彔锛堝彧鏄剧ず姹囨€昏锛?
-const expandedGroups = ref<Set<string>>(new Set()) // 灞曞紑鐨勭粍 key锛堜互 source 涓 key锛?
+// 分组折叠：按 source 聚合，每组显示新图标 + 类型名 + 数量徽标 + 最新时间。点击组头展开/收起。
+const collapsed = ref(true) // 默认全部折叠（只显示汇总）
+const expandedGroups = ref<Set<string>>(new Set()) // 展开的组 key（以 source 为 key）
 
 interface Group {
   source: NoticeSource
@@ -107,7 +107,7 @@ const grouped = computed<Group[]>(() => {
   }
   const out: Group[] = []
   for (const [source, items] of map) {
-    // 鍚屫粍鍐呮寜鏃堕棿鍊掑簭锛宭atest 涓烘渶鏂颁竴鏉?
+    // 同组内按时间倒序，latest 为最新一条
     items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     out.push({
       source,
@@ -116,7 +116,7 @@ const grouped = computed<Group[]>(() => {
       unreadCount: items.filter((n) => !n.read).length,
     })
   }
-  // 缁勪箣闂翠篃鎸塺atest 鏃堕棿鍊掑簭
+  // 组之间也按 latest 时间倒序
   out.sort((a, b) => new Date(b.latest.created_at).getTime() - new Date(a.latest.created_at).getTime())
   return out
 })

@@ -11,7 +11,7 @@ async function showReseed(name) {
   const cfg = await getConfig()
   if (!isConfigured(cfg)) {
     // 未配置：内联引导（不用系统 alert，保持页面内一致的错误展示）。
-    $('list').insertAdjacentHTML('afterbegin', '<p class="empty err">请先在选项页配置服务器，再使用跨站找同种</p>')
+    $('list').insertAdjacentHTML('afterbegin', '<p class="empty err">请先在选项页登录好学账号，再使用跨站找同种</p>')
     return
   }
   const layer = $('reseedLayer')

@@ -102,15 +102,16 @@
 
 1. 打开 `chrome://extensions`，右上角开「开发者模式」
 2. 「加载已解压的扩展程序」→ 选择本 `extension/` 目录
-3. 点扩展图标 ⚙ → 填 PTPatronus 地址（如 `http://192.168.1.10:8088`）与 API Key（服务端 `API_KEY` 环境变量，与 Servarr/Overseerr 接入同一把密钥）→ 测试连接 ✅
+3. 点扩展图标 ⚙ → 填 PTPatronus 地址（如 `http://192.168.1.10:8088`）→ 粘贴好学 Cookie 登录（浏览器登录好学后 F12 复制请求 Cookie 整串；服务端校验 VIP 后签发访问令牌）→ 显示「已登录 ✅」
 4. 工具入口都在选项页底部：「📊 站点数据」「⬇ 下载任务」「🔑 站点 Cookie 台账」「🔐 两步验证器」
 
 ## 鉴权与安全
 
-- 全部请求带 `X-API-Key` 头直连你自己的服务器，不经过任何第三方
-- 配置存 `chrome.storage.sync`（随 Chrome 账号同步），密钥不明文出现在 URL
-- **TOTP 库与 PIN 不同步**：存 `chrome.storage.local` 仅本机；cookie 明文仅在两个显式动作瞬间流转
-- 服务端新增端点：`GET /api/v1/sites/cookies`（脱敏指纹，登录可用）、`GET /api/v1/sites/cookies/reveal`（明文，RequireAdmin）
+- 与 Web/移动端同一套好学账号体系：`POST /api/v1/auth/hxpt/cookie-login` 换 JWT，之后全部请求带 `Authorization: Bearer` 直连你自己的服务器，不经过任何第三方
+- JWT 过期自动**滑动续期**（`POST /api/v1/auth/refresh`，服务端自签自验，不打扰好学站）；仅当续期失效（登出/吊销）才用本地好学 Cookie 重新兑换；Cookie 也失效时提示重新登录
+- 好学 Cookie、JWT、登录用户信息只存 `chrome.storage.local`（仅本机，不随 Chrome 账号同步）；服务器地址存 `chrome.storage.sync` 跨设备同步
+- 按登录身份（`user.is_admin`）自动降级：非管理员看不到「← 覆盖浏览器」（cookie 明文回写）与验证码 OCR 识别，CookieCloud 明文推送同样仅管理员
+- 服务端相关端点：`GET /api/v1/sites/cookies`（脱敏指纹，登录可用）、`GET /api/v1/sites/cookies/reveal`（明文，RequireAdmin）、`POST /api/v1/auth/hxpt/cookie-login`（公开，限流）、`POST /api/v1/auth/refresh`（需有效 Bearer）
 
 ## 文件
 
@@ -128,4 +129,4 @@
 - `cookies.js` + `cookies_page.html/js` 站点 Cookie 台账（注册域提取 / 会话读取 / 双向覆盖）
 - `totp.js` + `totp_page.html/js` TOTP 生成器（base32/RFC6238/加密库/导入导出）；`totp_autofill_lib.js` SW 复用桥
 - `options.html/js` 服务器与 API Key 配置 + 连接测试 + 撞色工具马赛克入口
-- `api.js` 请求封装 + SSE 流式搜索解析（全组件共用）
+- `api.js` 请求封装（好学账号登录/JWT Bearer/401 自动重登）+ SSE 流式搜索解析（全组件共用）

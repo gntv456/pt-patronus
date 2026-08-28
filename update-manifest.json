@@ -1,18 +1,18 @@
 {
-  "latestVersion": "1.03.18",
+  "latestVersion": "1.03.19",
   "minVersion": "0.60.00",
-  "releaseName": "1.03.17：iOS 打包版 + macOS ATS 放行 + TS 修复",
-  "releaseNotes": "1.03.18：CookieCloud 内置服务端（免单独部署，浏览器扩展直推+推送即同步）；修复官方扩展默认加密格式解密失败(bad pkcs7 padding)；SSH 连接错误详细诊断指引；AI 助手站点列表附带重复检测+结果截断修复；修复关闭弹窗误报全局错误；Tokyo 站复活(新域名 tokyo-manga.top)；空邀请页假成员解析修复",
+  "releaseName": "1.03.19：浏览器扩展好学账号登录（JWT+滑动续期 refresh）",
+  "releaseNotes": "1.03.19：浏览器扩展改为好学账号登录（与 Web/移动端同一账号体系，移除 API-Key 配置；JWT Bearer + /auth/refresh 滑动续期，不再打扰好学站）；后端新增 POST /api/v1/auth/refresh；非管理员自动降级（cookie 明文回写/OCR 仅管理员）",
   "isForced": false,
-  "publishedAt": "2026-08-23T03:16:48.913Z",
+  "publishedAt": "2026-08-28T02:17:35.633Z",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.18",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.19",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
-      "sha256": "68b4e71ee049e3a96b3d7d5502d03f760ff8591d2f12a826aba7d2c0fbe8a04f"
+      "sha256": "aba4b3393a1f78bd05682c384aef549d179a18302655346115fe69d41b446422"
     },
     "ios": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
@@ -20,7 +20,7 @@
     },
     "ohos": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
-      "sha256": "ad531e6ecaf6a3408a6e7c7ee24128e1cb5c126812a48717088401c78b3bfae3"
+      "sha256": "c3acf90b5cef20c27167e590d61ef81a5142118e27c71863f641127811d50e06"
     },
     "macos": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
@@ -28,15 +28,15 @@
     },
     "windows": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
-      "sha256": "4512ce262346ded12c292e2c786c16fc0e6df7009cdb90e125b35dae34c10d9d"
+      "sha256": "365df412db447639494e24a402b84bcdc79b71a1f22d33d0ef609fc3f33824c4"
     },
     "agent-linux-amd64": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
-      "sha256": "538fac66eb8393450e5dd0686d06bf0326048d3de01143ec16289d99f6191567"
+      "sha256": "92e703f53e6043e518dc57232a9c95d0da8c0fdf37927d3bb524997625641efe"
     },
     "agent-linux-arm64": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
-      "sha256": "dbfecec909245df45f22bb0b5efc7aeda37dc7d15b615d8a1cf1f7bf4ad57cbc"
+      "sha256": "eea9d168151f5e9a6f3ebecf96cbf724ca581446674d6694c733efe026132fed"
     }
   }
 }

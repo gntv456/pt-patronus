@@ -297,6 +297,36 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
 }
 
+// Refresh 滑动续期：拿仍有效的 Bearer JWT 换新 token（再延一个完整过期窗口）。
+// 供长时客户端（浏览器扩展等）免好学 cookie 静默续期——JWTAuth 已验签 + TokenVersion
+// 校验通过才到这；此处以 User 表真值重发 claims（admin 被收回/VIP 状态变化即时生效，
+// 不沿用旧 token 快照）。不进 guarded 组：RequireVIP 不该拦续期（宽限期内的用户
+// 仍应能续，过期与否由登录后的业务端点裁决）。
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	uid, _ := c.Get("uid")
+	id, _ := uid.(uint)
+	if id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "API-Key 旁路无需续期"})
+		return
+	}
+	var u models.User
+	if err := h.db.First(&u, id).Error; err != nil {
+		dbFail(c, "refresh_user_lookup", err)
+		return
+	}
+	vipAt := time.Time{}
+	if u.VipVerifiedAt != nil {
+		vipAt = *u.VipVerifiedAt
+	}
+	token, err := h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, vipAt)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "token failed"})
+		return
+	}
+	audit(c, "refresh", "ok")
+	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
+}
+
 // ---- 用户偏好（跨浏览器同步，对标 MSaber 界面偏好随账号同步） ----
 
 const userPrefMaxValue = 64 * 1024 // 64KB：偏好 JSON 上限（防滥用）

@@ -1,39 +1,64 @@
-// 选项页：服务器地址 + API Key 保存（chrome.storage.sync 跨设备同步）；
-// 测试连接打 GET /api/v1/sites（任意轻量鉴权端点验证 key）；
+// 选项页：服务器地址保存（chrome.storage.sync）+ 好学 Cookie 登录（换 JWT 存 local）；
+// 登录即测试（cookie-login 本身就是鉴权验证），并按 user.is_admin 标注身份；
 // 备份与同步：WebDAV 推/拉（全量扩展数据加密包）、CookieCloud 协议推/拉（cookie 台账）、隐私模式开关。
-import { getConfig, saveConfig, api } from './api.js'
+import { getConfig, saveConfig, api, login, clearSession } from './api.js'
 import { serverCookies, pullServerToBrowser } from './cookies.js'
 import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
   pushCookieCloud, pullCookieCloud,
 } from './backup.js'
-import { $ } from './util.js'
+import { esc, $ } from './util.js'
 
 document.addEventListener('DOMContentLoaded', async () => {
   const cfg = await getConfig()
   $('server').value = cfg.server || ''
-  $('apiKey').value = cfg.apiKey || ''
+
+  // 回显登录态（whoami 行 + 退出按钮）；cookie 不回填明文，只提示已存。
+  const showSession = (user, hasCookie) => {
+    if (user) {
+      const who = user.username || user.hxpt_username || '已登录'
+      const admin = user.is_admin ? ' · 管理员' : ''
+      $('whoami').innerHTML = `已登录：<b>${esc(who)}</b>${admin}${hasCookie ? ' · 令牌自动滑动续期' : ''}`
+      $('logout').style.display = ''
+    } else {
+      $('whoami').textContent = ''
+      $('logout').style.display = 'none'
+    }
+  }
+  showSession(cfg.user, !!cfg.hxptCookie)
 
   $('save').onclick = async () => {
-    await saveConfig({ server: $('server').value.trim(), apiKey: $('apiKey').value.trim() })
+    await saveConfig({ server: $('server').value.trim() })
     $('msg').textContent = '已保存'
     $('msg').className = 'ok'
   }
 
+  // 登录即测试：cookie-login 成功 = 服务器可达 + 好学 VIP 校验通过。
   $('test').onclick = async () => {
-    $('msg').textContent = '测试中…'
+    const server = $('server').value.trim()
+    const cookie = $('hxptCookie').value.trim()
+    if (!server) { $('msg').textContent = '请先填服务器地址'; $('msg').className = 'err'; return }
+    if (!cookie) { $('msg').textContent = '请粘贴好学 Cookie'; $('msg').className = 'err'; return }
+    $('msg').textContent = '登录中…'
     $('msg').className = ''
     try {
-      await saveConfig({ server: $('server').value.trim(), apiKey: $('apiKey').value.trim() })
-      const cfg2 = await getConfig()
-      // 任意轻量鉴权端点验证 key：sites 列表（admin 可见）。
-      await api(cfg2, '/api/v1/sites')
-      $('msg').textContent = '连接成功 ✅'
+      await saveConfig({ server })
+      const { user } = await login(server, cookie)
+      $('msg').textContent = '登录成功 ✅'
       $('msg').className = 'ok'
+      $('hxptCookie').value = ''
+      showSession(user, true)
     } catch (e) {
       $('msg').textContent = `失败：${e.message}`
       $('msg').className = 'err'
     }
+  }
+
+  $('logout').onclick = async () => {
+    await clearSession()
+    showSession(null, false)
+    $('msg').textContent = '已退出登录'
+    $('msg').className = 'ok'
   }
 
   // 工具入口：站点数据 / 下载任务 / Cookie 台账 / TOTP 验证器 / 收藏与历史。
@@ -93,10 +118,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // —— CookieCloud 推/拉（协议兼容：与官方扩展互为备份源）——
   $('ccPush').onclick = async () => {
     const cfg = await getConfig()
-    if (!cfg.server || !cfg.apiKey) { $('msg').textContent = '请先配置服务器'; $('msg').className = 'err'; return }
+    if (!cfg.server || !cfg.token) { $('msg').textContent = '请先登录'; $('msg').className = 'err'; return }
+    if (!(cfg.user && cfg.user.is_admin)) { $('msg').textContent = '推送明文 Cookie 需管理员账号'; $('msg').className = 'err'; return }
     $('ccPush').disabled = true; $('ccPush').textContent = '推送中…'
     try {
-      // 明文 cookie 需管理员钥；脱敏指纹不推。
+      // 明文 cookie 需管理员；脱敏指纹不推。
       const sites = await serverCookies(cfg, true)
       const cookieData = {}
       for (const s of sites) {
@@ -116,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   $('ccPull').onclick = async () => {
     const cfg = await getConfig()
-    if (!cfg.server || !cfg.apiKey) { $('msg').textContent = '请先配置服务器'; $('msg').className = 'err'; return }
+    if (!cfg.server || !cfg.token) { $('msg').textContent = '请先登录'; $('msg').className = 'err'; return }
     $('ccPull').disabled = true; $('ccPull').textContent = '拉取中…'
     try {
       const data = await pullCookieCloud($('ccUrl').value, $('ccUuid').value, $('ccPass').value)

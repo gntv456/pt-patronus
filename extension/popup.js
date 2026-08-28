@@ -56,7 +56,7 @@ function renderItem(cfg, keyword, t, box) {
 async function runSearch(keyword) {
   const cfg = await getConfig()
   if (!isConfigured(cfg)) {
-    $('status').innerHTML = '<span class="warn">未配置：点右上角 ⚙ 填服务器地址与 API Key</span>'
+    $('status').innerHTML = '<span class="warn">未登录：点右上角 ⚙ 登录好学账号</span>'
     return
   }
   $('status').innerHTML = '<span class="spin"></span> 跨站搜索中…（逐站显示）'

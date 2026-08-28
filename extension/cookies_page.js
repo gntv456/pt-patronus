@@ -16,7 +16,7 @@ async function fpOf(baseURL) {
 async function render() {
   const cfg = await getConfig()
   if (!isConfigured(cfg)) {
-    $('msg').innerHTML = '<span class="err">请先在选项页配置服务器</span>'
+    $('msg').innerHTML = '<span class="err">请先在选项页登录好学账号</span>'
     return
   }
   $('rows').innerHTML = '<tr><td colspan="7">加载中…</td></tr>'
@@ -30,6 +30,7 @@ async function render() {
   }
   const rows = []
   const privacy = await privacyOn()
+  const isAdmin = !!(cfg.user && cfg.user.is_admin)
   for (const s of sites) {
     const brow = await fpOf(s.base_url)
     let state = 'noSrv', tag = '<span class="tag-pill pill-dim">—</span>'
@@ -67,7 +68,7 @@ async function render() {
       <td>${tag}</td>
       <td class="ops">
         <button class="act-up" data-act="up" data-id="${s.id}" ${brow.fp ? '' : 'disabled'} title="把浏览器 cookie 上传为服务器凭据">→ 覆盖服务器</button>
-        <button class="act-down" data-act="down" data-id="${s.id}" ${s.has_cookie ? '' : 'disabled'} title="把服务器 cookie 写回浏览器（需管理员 Key）">← 覆盖浏览器</button>
+        <button class="act-down" data-act="down" data-id="${s.id}" ${s.has_cookie && isAdmin ? '' : 'disabled'} title="${isAdmin ? '把服务器 cookie 写回浏览器（需管理员）' : '仅管理员可写回'}">← 覆盖浏览器</button>
         <button class="act-open" data-act="open" data-url="${esc(s.base_url)}" title="打开站点首页登录/检查">打开站点</button>
       </td>
     </tr>`
@@ -95,7 +96,7 @@ document.addEventListener('click', async (ev) => {
       btn.textContent = '✅ 已上传'
     } else {
       const detailed = (await serverCookies(cfg, true)).find((x) => x.id == row.s.id)
-      if (!detailed || !detailed.cookie) throw new Error('未取到明文（Key 需为管理员钥）')
+      if (!detailed || !detailed.cookie) throw new Error('未取到明文（该操作需管理员账号）')
       const n = await pullServerToBrowser(row.s, detailed.cookie)
       btn.textContent = `✅ 写回 ${n} 条`
     }

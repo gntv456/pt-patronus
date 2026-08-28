@@ -84,7 +84,7 @@ async function load() {
 document.addEventListener('DOMContentLoaded', async () => {
   cfg = await getConfig()
   if (!isConfigured(cfg)) {
-    $('rows').innerHTML = '<tr><td colspan="9" class="empty err">请先在选项页配置服务器</td></tr>'
+    $('rows').innerHTML = '<tr><td colspan="9" class="empty err">请先在选项页登录好学账号</td></tr>'
     return
   }
   $('refresh').onclick = load

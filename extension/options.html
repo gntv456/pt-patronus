@@ -71,14 +71,19 @@
       <div class="eyebrow">连接 · CONNECTION</div>
       <label for="server">服务器地址</label>
       <input id="server" placeholder="http://192.168.1.10:8088" />
-      <label for="apiKey">API Key</label>
-      <input id="apiKey" type="password" placeholder="服务端 API_KEY 环境变量" />
-      <div class="hint" style="margin-top:6px">API Key 即服务端 API_KEY 环境变量（与 Servarr/Overseerr 接入同一把密钥）。仅在本地存储，用于扩展直连你的 PTPatronus。</div>
+      <label for="hxptCookie">好学 Cookie 登录</label>
+      <input id="hxptCookie" type="password" placeholder="粘贴好学站点 Cookie（c_secure_uid=…）" />
+      <div class="hint" style="margin-top:6px">
+        浏览器登录好学后按 F12 → 网络/应用 → 复制请求 Cookie 整串粘贴。扩展用它调服务端登录接口换取
+        访问令牌（仅本机存储）；令牌过期自动滑动续期（不再打扰好学站），续期失效时才用该 Cookie 重新兑换。
+      </div>
       <div class="actions">
-        <button class="btn-lime" id="save">保存</button>
-        <button class="btn-ghost" id="test">测试连接</button>
+        <button class="btn-lime" id="save">保存地址</button>
+        <button class="btn-ghost" id="test">登录</button>
+        <button class="btn-ghost" id="logout" style="display:none">退出登录</button>
         <span id="msg"></span>
       </div>
+      <div class="hint" id="whoami" style="margin-top:8px"></div>
     </section>
 
     <div class="eyebrow" style="margin:20px 2px 0">工具 · TOOLKIT</div>
@@ -136,7 +141,7 @@
         </div>
       </div>
       <div class="hint" style="margin-top:8px">
-        WebDAV 备份内容 = 服务器配置 + API Key + TOTP 库 + 收藏（口令 AES-GCM 加密后上传单文件）。
+        WebDAV 备份内容 = 服务器地址 + 好学 Cookie + TOTP 库 + 收藏（口令 AES-GCM 加密后上传单文件）。
         CookieCloud 为协议兼容推送/拉取：可与官方扩展互为备份源；密码不出本机（本地加解密）。
       </div>
       <div class="actions" style="margin-top:6px">

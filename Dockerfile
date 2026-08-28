@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker.m.daocloud.io/docker/dockerfile:1
 # PTPatronus 单镜像：前端(Vue3)构建 → go:embed 内嵌 → 后端(Go) → 运行时(alpine)
 # 产物：一个镜像同时提供 API（:8088）与 Web UI。
 

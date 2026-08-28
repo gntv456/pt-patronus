@@ -12,7 +12,7 @@ async function openSearch(keyword) {
       type: 'basic',
       iconUrl: chrome.runtime.getURL('icons/icon128.png'),
       title: 'PTPatronus 助手',
-      message: '请先在扩展选项页配置服务器地址与 API Key',
+      message: '请先在扩展选项页配置服务器并登录好学账号',
     })
     chrome.runtime.openOptionsPage()
     return
@@ -127,10 +127,11 @@ async function totpAutofill(host) {
 }
 
 // ocrCaptcha 调服务端识别验证码图（base64 data URL 直传）。失败静默——content 层保持人工输入兜底。
+// 端点为 RequireAdmin：非管理员登录（403）同样静默回退人工输入。
 async function ocrCaptcha(image) {
   try {
     const cfg = await getConfig()
-    if (!cfg.server || !cfg.apiKey) return { ok: false, error: 'unconfigured' }
+    if (!cfg.server || !cfg.token) return { ok: false, error: 'unconfigured' }
     const body = await api(cfg, '/api/v1/system/ocr/recognize', {
       method: 'POST',
       body: JSON.stringify({ image: String(image).slice(0, 4 * 1024 * 1024) }),
@@ -144,7 +145,7 @@ async function ocrCaptcha(image) {
 async function pushDownload(url) {
   try {
     const cfg = await getConfig()
-    if (!cfg.server || !cfg.apiKey) return { ok: false, error: '请先配置服务器与 API Key' }
+    if (!cfg.server || !cfg.token) return { ok: false, error: '请先在选项页登录好学账号' }
     let dlId = cfg.downloaderId ? Number(cfg.downloaderId) : 0
     if (!dlId) {
       // 未固定下载器（下载任务面板的选择会写回 downloaderId）→ 取默认；再不行取第一个。

@@ -24,10 +24,10 @@ export async function unpackBackup(blob, pass) {
   return JSON.parse(new TextDecoder().decode(pt))
 }
 
-// collectLocal 聚合本机可备份数据（配置在 sync、TOTP/收藏在 local）。
+// collectLocal 聚合本机可备份数据（服务器地址在 sync；登录 cookie/token 与 TOTP/收藏在 local）。
 export async function collectLocal() {
-  const cfg = await chrome.storage.sync.get({ server: '', apiKey: '', downloaderId: 0 })
-  const loc = await chrome.storage.local.get({ ptp_vault: null, ptp_favorites: [] })
+  const cfg = await chrome.storage.sync.get({ server: '', downloaderId: 0 })
+  const loc = await chrome.storage.local.get({ ptp_vault: null, ptp_favorites: [], hxptCookie: '', token: '', user: null })
   return { at: Date.now(), sync: cfg, local: loc }
 }
 

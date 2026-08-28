@@ -22,6 +22,8 @@ func registerPublicRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler, 
 		authRoutes.POST("/hxpt/captcha", authH.HxptCaptcha)
 		authRoutes.POST("/hxpt/login", authH.HxptLogin)
 		authRoutes.POST("/hxpt/cookie-login", authH.HxptCookieLogin)
+		// JWT 滑动续期：JWTAuth 已验签（过期 token 到不了这），无需再进 guarded/限流收紧。
+		authRoutes.POST("/refresh", authH.Refresh)
 		authRoutes.POST("/demo-login", authH.DemoLogin)
 		authRoutes.POST("/activate", authH.Activate)
 		authRoutes.GET("/status", authH.Status)

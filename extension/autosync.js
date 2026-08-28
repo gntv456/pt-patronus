@@ -27,13 +27,19 @@ export async function setAutosyncState(patch) {
 }
 
 // syncAlarm 按开关注册/清除定时器（periodInMinutes 最小 1，业务用小时级）。
+// 闹钟操作全程容错：alarms 异常（权限/平台限制）只记日志，绝不影响同步主流程——
+// 状态落库（setAutosyncState）是同步链路的一环，它抛错会顶掉整个同步结果。
 export async function syncAlarm(state) {
-  const st = state || (await getAutosyncState())
-  if (st.enabled) {
-    const minutes = Math.max(1, Math.round((st.intervalHours || 4) * 60))
-    await chrome.alarms.create(ALARM_NAME, { periodInMinutes: minutes, delayInMinutes: minutes })
-  } else {
-    await chrome.alarms.clear(ALARM_NAME)
+  try {
+    const st = state || (await getAutosyncState())
+    if (st.enabled) {
+      const minutes = Math.max(1, Math.round((st.intervalHours || 4) * 60))
+      await chrome.alarms.create(ALARM_NAME, { periodInMinutes: minutes, delayInMinutes: minutes })
+    } else {
+      await chrome.alarms.clear(ALARM_NAME)
+    }
+  } catch (e) {
+    console.warn('[ptp] autosync alarm op failed:', e && e.message)
   }
 }
 

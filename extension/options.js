@@ -3,7 +3,7 @@
 // 备份与同步：WebDAV 推/拉（全量扩展数据加密包）、CookieCloud 协议推/拉（cookie 台账）、隐私模式开关。
 import { getConfig, saveConfig, api, login, loginByPassword, fetchCaptcha, clearSession } from './api.js'
 import { serverCookies, pullServerToBrowser } from './cookies.js'
-import { getAutosyncState, setAutosyncState } from './autosync.js'
+import { getAutosyncState, setAutosyncState, syncNow } from './autosync.js'
 import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
   pushCookieCloud, pullCookieCloud,
@@ -188,10 +188,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('autosyncRun').disabled = true
     $('autosyncStatus').textContent = '同步中…'
     try {
-      const r = await chrome.runtime.sendMessage({ type: 'ptp-autosync-run' })
+      // 优先走 SW（与定时任务同一执行体）；SW 无响应（undefined）时回退本页直接执行——
+      // 同步逻辑是纯 storage/fetch，不依赖 SW 专属 API，本地跑语义一致。
+      let r = await chrome.runtime.sendMessage({ type: 'ptp-autosync-run' })
+      if (!r) r = await syncNow()
       const st = await getAutosyncState()
       renderAutosync(st)
-      feedback(r && !r.error ? `✅ 同步完成：推送 ${r.pushed} · 回写 ${r.pulled}` : `同步失败：${(r && r.error) || '未知错误'}`)
+      feedback(!r.error ? `✅ 同步完成：推送 ${r.pushed} · 回写 ${r.pulled}${r.dead && r.dead.length ? ` · ${r.dead.length} 站需重登` : ''}` : `同步失败：${r.error}`)
     } catch (e) {
       feedback(`同步失败：${e.message}`)
       renderAutosync(await getAutosyncState())

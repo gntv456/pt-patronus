@@ -90,8 +90,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       chrome.storage.session.set({ ptp_last_drag_url: msg.url }).catch(() => {})
       return false
     // options 页「立即同步」按钮：手动触发一轮 Cookie 双向同步（结果由调用方读状态展示）。
+    // .catch 兜底：syncNow 内部已全量转 result.error，但 setAutosyncState（尾部落库+闹钟）
+    // 若抛错会让 sendResponse 永不被调用 → options 侧收到 undefined 显示「未知错误」。
     case 'ptp-autosync-run':
-      syncNow().then(sendResponse)
+      syncNow()
+        .then(sendResponse)
+        .catch((e) => sendResponse({ error: e && e.message ? e.message : String(e) }))
       return true
     default:
       maybeSyncOnWake().catch(() => {})

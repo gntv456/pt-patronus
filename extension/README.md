@@ -102,12 +102,12 @@
 
 1. 打开 `chrome://extensions`，右上角开「开发者模式」
 2. 「加载已解压的扩展程序」→ 选择本 `extension/` 目录
-3. 点扩展图标 ⚙ → 填 PTPatronus 地址（如 `http://192.168.1.10:8088`）→ 粘贴好学 Cookie 登录（浏览器登录好学后 F12 复制请求 Cookie 整串；服务端校验 VIP 后签发访问令牌）→ 显示「已登录 ✅」
+3. 点扩展图标 ⚙ → 填 PTPatronus 地址（如 `http://192.168.1.10:8088`）→「好学账号」tab 输好学用户名/密码（2FA/验证码按需）登录，或切「Cookie 登录」粘贴好学 Cookie（覆盖挑战响应账号）→ 显示「已登录 ✅」
 4. 工具入口都在选项页底部：「📊 站点数据」「⬇ 下载任务」「🔑 站点 Cookie 台账」「🔐 两步验证器」
 
 ## 鉴权与安全
 
-- 与 Web/移动端同一套好学账号体系：`POST /api/v1/auth/hxpt/cookie-login` 换 JWT，之后全部请求带 `Authorization: Bearer` 直连你自己的服务器，不经过任何第三方
+- 与 Web/移动端同一套好学账号体系：「好学账号」tab 走 `POST /api/v1/auth/hxpt/captcha` + `/auth/hxpt/login` 两步（服务端代理验证码/挑战响应），「Cookie 登录」走 `/auth/hxpt/cookie-login`（最稳，覆盖 2FA/挑战响应）；成功后全部请求带 `Authorization: Bearer` 直连你自己的服务器，不经过任何第三方
 - JWT 过期自动**滑动续期**（`POST /api/v1/auth/refresh`，服务端自签自验，不打扰好学站）；仅当续期失效（登出/吊销）才用本地好学 Cookie 重新兑换；Cookie 也失效时提示重新登录
 - 好学 Cookie、JWT、登录用户信息只存 `chrome.storage.local`（仅本机，不随 Chrome 账号同步）；服务器地址存 `chrome.storage.sync` 跨设备同步
 - 按登录身份（`user.is_admin`）自动降级：非管理员看不到「← 覆盖浏览器」（cookie 明文回写）与验证码 OCR 识别，CookieCloud 明文推送同样仅管理员

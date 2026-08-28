@@ -71,12 +71,38 @@
       <div class="eyebrow">连接 · CONNECTION</div>
       <label for="server">服务器地址</label>
       <input id="server" placeholder="http://192.168.1.10:8088" />
-      <label for="hxptCookie">好学 Cookie 登录</label>
-      <input id="hxptCookie" type="password" placeholder="粘贴好学站点 Cookie（c_secure_uid=…）" />
-      <div class="hint" style="margin-top:6px">
-        浏览器登录好学后按 F12 → 网络/应用 → 复制请求 Cookie 整串粘贴。扩展用它调服务端登录接口换取
-        访问令牌（仅本机存储）；令牌过期自动滑动续期（不再打扰好学站），续期失效时才用该 Cookie 重新兑换。
+
+      <div class="mode-tabs" style="display:flex; gap:8px; margin:14px 0 10px">
+        <button class="btn-lime" id="tabAccount" style="flex:1">好学账号</button>
+        <button class="btn-ghost" id="tabCookie" style="flex:1">Cookie 登录</button>
       </div>
+
+      <div id="paneAccount">
+        <label for="accUser">好学用户名</label>
+        <input id="accUser" autocomplete="username" placeholder="好学用户名" />
+        <label for="accPass">好学密码</label>
+        <input id="accPass" type="password" autocomplete="current-password" placeholder="好学密码" />
+        <label for="acc2fa">二级验证码（开了 2FA 才填，6 位）</label>
+        <input id="acc2fa" autocomplete="one-time-code" placeholder="留空表示未开 2FA" />
+        <div id="captchaRow" style="display:none; gap:8px; align-items:center; margin-top:10px">
+          <img id="captchaImg" alt="验证码" title="点击刷新" style="height:38px; border-radius:8px; cursor:pointer" />
+          <input id="captchaText" placeholder="验证码" style="flex:1" />
+        </div>
+        <div class="hint" style="margin-top:6px">
+          与 Web 端同一套登录：服务端代理好学验证（含验证码/挑战响应），凭据仅存本机
+          chrome.storage.local，令牌过期自动续期。若账号开了挑战响应或登录屡败，请改用 Cookie 登录。
+        </div>
+      </div>
+
+      <div id="paneCookie" style="display:none">
+        <label for="hxptCookie">好学 Cookie</label>
+        <input id="hxptCookie" type="password" placeholder="粘贴好学站点 Cookie（c_secure_uid=…）" />
+        <div class="hint" style="margin-top:6px">
+          浏览器登录好学后按 F12 → 网络/应用 → 复制请求 Cookie 整串粘贴（覆盖 2FA/挑战响应账号）。
+          扩展用它调服务端登录接口换访问令牌；续期失效时才用该 Cookie 重新兑换。
+        </div>
+      </div>
+
       <div class="actions">
         <button class="btn-lime" id="save">保存地址</button>
         <button class="btn-ghost" id="test">登录</button>

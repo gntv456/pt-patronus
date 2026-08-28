@@ -1,7 +1,7 @@
-// 选项页：服务器地址保存（chrome.storage.sync）+ 好学 Cookie 登录（换 JWT 存 local）；
-// 登录即测试（cookie-login 本身就是鉴权验证），并按 user.is_admin 标注身份；
+// 选项页：服务器地址保存（chrome.storage.sync）+ 好学登录（账号密码/Cookie 双 tab，换 JWT 存 local）；
+// 登录即测试（登录端点本身就是鉴权验证），并按 user.is_admin 标注身份；
 // 备份与同步：WebDAV 推/拉（全量扩展数据加密包）、CookieCloud 协议推/拉（cookie 台账）、隐私模式开关。
-import { getConfig, saveConfig, api, login, clearSession } from './api.js'
+import { getConfig, saveConfig, api, login, loginByPassword, fetchCaptcha, clearSession } from './api.js'
 import { serverCookies, pullServerToBrowser } from './cookies.js'
 import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
@@ -13,19 +13,52 @@ document.addEventListener('DOMContentLoaded', async () => {
   const cfg = await getConfig()
   $('server').value = cfg.server || ''
 
-  // 回显登录态（whoami 行 + 退出按钮）；cookie 不回填明文，只提示已存。
-  const showSession = (user, hasCookie) => {
+  // —— 登录方式 tab（好学账号 / Cookie，与 Web 端 Login.vue 同两种形态）——
+  let mode = 'account'
+  const setTab = (m) => {
+    mode = m
+    $('paneAccount').style.display = m === 'account' ? '' : 'none'
+    $('paneCookie').style.display = m === 'cookie' ? '' : 'none'
+    $('tabAccount').className = m === 'account' ? 'btn-lime' : 'btn-ghost'
+    $('tabCookie').className = m === 'cookie' ? 'btn-lime' : 'btn-ghost'
+    if (m === 'account') loadCaptcha()
+  }
+  $('tabAccount').onclick = () => setTab('account')
+  $('tabCookie').onclick = () => setTab('cookie')
+  setTab('account') // 默认账号登录 tab（与 Web 端一致）；初始 loadCaptcha 因 server 未填自然跳过
+
+  // —— 账号登录 Step A：取验证码（need_captcha 才展示；OCR 预填由服务端 ocr_text 提供）。
+  let captcha = null
+  async function loadCaptcha() {
+    const server = $('server').value.trim()
+    if (!server) return
+    try {
+      captcha = await fetchCaptcha(server)
+      if (captcha && captcha.need_captcha) {
+        $('captchaRow').style.display = 'flex'
+        $('captchaImg').src = captcha.image || ''
+        if (captcha.ocr_text && !$('captchaText').value) $('captchaText').value = captcha.ocr_text
+      } else {
+        $('captchaRow').style.display = 'none'
+      }
+    } catch { /* 取验证码失败不 block 表单——提交时后端会给明确错误 */ }
+  }
+  $('captchaImg').onclick = () => { $('captchaText').value = ''; loadCaptcha() }
+  $('server').onchange = () => { if (mode === 'account') loadCaptcha() }
+
+  // 回显登录态（whoami 行 + 退出按钮）；凭据不回填明文，只提示已存。
+  const showSession = (user, renewable) => {
     if (user) {
       const who = user.username || user.hxpt_username || '已登录'
       const admin = user.is_admin ? ' · 管理员' : ''
-      $('whoami').innerHTML = `已登录：<b>${esc(who)}</b>${admin}${hasCookie ? ' · 令牌自动滑动续期' : ''}`
+      $('whoami').innerHTML = `已登录：<b>${esc(who)}</b>${admin}${renewable ? ' · 令牌自动续期' : ''}`
       $('logout').style.display = ''
     } else {
       $('whoami').textContent = ''
       $('logout').style.display = 'none'
     }
   }
-  showSession(cfg.user, !!cfg.hxptCookie)
+  showSession(cfg.user, !!(cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)))
 
   $('save').onclick = async () => {
     await saveConfig({ server: $('server').value.trim() })
@@ -33,24 +66,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('msg').className = 'ok'
   }
 
-  // 登录即测试：cookie-login 成功 = 服务器可达 + 好学 VIP 校验通过。
+  // 登录即测试：登录端点成功 = 服务器可达 + 好学 VIP 校验通过。
   $('test').onclick = async () => {
     const server = $('server').value.trim()
-    const cookie = $('hxptCookie').value.trim()
     if (!server) { $('msg').textContent = '请先填服务器地址'; $('msg').className = 'err'; return }
-    if (!cookie) { $('msg').textContent = '请粘贴好学 Cookie'; $('msg').className = 'err'; return }
     $('msg').textContent = '登录中…'
     $('msg').className = ''
     try {
       await saveConfig({ server })
-      const { user } = await login(server, cookie)
+      let user
+      if (mode === 'cookie') {
+        const cookie = $('hxptCookie').value.trim()
+        if (!cookie) { $('msg').textContent = '请粘贴好学 Cookie'; $('msg').className = 'err'; return }
+        ;({ user } = await login(server, cookie))
+        $('hxptCookie').value = ''
+      } else {
+        const username = $('accUser').value.trim()
+        const password = $('accPass').value
+        if (!username || !password) { $('msg').textContent = '请填写好学账号和密码'; $('msg').className = 'err'; return }
+        ;({ user } = await loginByPassword(server, {
+          username,
+          password,
+          imagehash: captcha && captcha.need_captcha ? captcha.imagehash : '',
+          imagestring: $('captchaText').value.trim(),
+          twoStepCode: $('acc2fa').value.trim(),
+          extraForm: (captcha && captcha.extra_form) || {},
+          challengeMode: !!(captcha && captcha.challenge_mode),
+        }))
+        $('accPass').value = ''
+        $('acc2fa').value = ''
+        $('captchaText').value = ''
+      }
       $('msg').textContent = '登录成功 ✅'
       $('msg').className = 'ok'
-      $('hxptCookie').value = ''
       showSession(user, true)
     } catch (e) {
       $('msg').textContent = `失败：${e.message}`
       $('msg').className = 'err'
+      // 账号登录凭据/验证码错（401）→ 刷新验证码重试。
+      if (e.needCaptchaRefresh && mode === 'account') {
+        $('captchaText').value = ''
+        loadCaptcha()
+      }
     }
   }
 

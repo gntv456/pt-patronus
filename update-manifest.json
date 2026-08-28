@@ -37,6 +37,9 @@
     "agent-linux-arm64": {
       "url": "https://wwazg.lanzoub.com/b03anmtyxg",
       "sha256": "eea9d168151f5e9a6f3ebecf96cbf724ca581446674d6694c733efe026132fed"
+    },
+    "extension": {
+      "sha256": "6e8d25934ebd582c817bd57a56f3b45c12d9425da20f4daee997ef9a9aa5d957"
     }
   }
 }

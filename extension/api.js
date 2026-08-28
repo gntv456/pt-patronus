@@ -6,8 +6,9 @@
 import { baseUrl } from './util.js'
 
 const DEFAULTS = { server: '', downloaderId: 0 }
-// 会话字段（local）：hxptCookie=好学登录 cookie；token=JWT；user=登录用户（含 is_admin）。
-const SESSION_DEFAULTS = { hxptCookie: '', token: '', user: null }
+// 会话字段（local）：hxptCookie=好学登录 cookie；token=JWT；user=登录用户（含 is_admin）；
+// hxptCreds=账号密码登录的凭据（供续期失效时静默重登，与 cookie 同等地位）。
+const SESSION_DEFAULTS = { hxptCookie: '', token: '', user: null, hxptCreds: null }
 
 export async function getConfig() {
   const cfg = await chrome.storage.sync.get(DEFAULTS)
@@ -20,39 +21,91 @@ export async function saveConfig(patch) {
   await chrome.storage.sync.set({ ...(server !== undefined ? { server } : {}), ...(downloaderId !== undefined ? { downloaderId } : {}) })
 }
 
-// 已登录判定：有 token 或有 cookie（后者首请求时会自动换 token）。
+// 已登录判定：有 token 或有可用重登凭据（cookie/账号密码，首请求时会自动换 token）。
 export function isConfigured(cfg) {
-  return !!(cfg && cfg.server && (cfg.token || cfg.hxptCookie))
+  return !!(cfg && cfg.server && (cfg.token || cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)))
 }
 
 // saveSession / clearSession 登录态写入/登出清除（好学 cookie 与 JWT 同生命周期）。
-export async function saveSession({ hxptCookie, token, user }) {
+export async function saveSession({ hxptCookie, token, user, hxptCreds }) {
   const patch = {}
   if (hxptCookie !== undefined) patch.hxptCookie = hxptCookie
   if (token !== undefined) patch.token = token
   if (user !== undefined) patch.user = user
+  if (hxptCreds !== undefined) patch.hxptCreds = hxptCreds
   await chrome.storage.local.set(patch)
 }
 
 export async function clearSession() {
-  await chrome.storage.local.remove(['hxptCookie', 'token', 'user'])
+  await chrome.storage.local.remove(['hxptCookie', 'token', 'user', 'hxptCreds'])
 }
 
 export { baseUrl }
 
+// fetchJson 带网络错误语义化：Failed to fetch → 服务器不可达排查提示。
+async function fetchJson(url, options) {
+  let resp
+  try {
+    resp = await fetch(url, options)
+  } catch {
+    throw new Error('服务器不可达：检查地址/端口是否正确、后端是否启动、防火墙是否放行')
+  }
+  const body = await resp.json().catch(() => ({}))
+  return { resp, body }
+}
+
 // login 好学 Cookie 登录：POST /auth/hxpt/cookie-login → {token, user}，并落库会话。
 export async function login(server, hxptCookie) {
-  const resp = await fetch(`${baseUrl({ server })}/api/v1/auth/hxpt/cookie-login`, {
+  const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/hxpt/cookie-login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ cookie: hxptCookie }),
   })
-  const body = await resp.json().catch(() => ({}))
   if (!resp.ok) {
     throw new Error(body.message || body.error || `HTTP ${resp.status}`)
   }
   const user = body.user || {}
-  await saveSession({ hxptCookie, token: body.token, user })
+  await saveSession({ hxptCookie, token: body.token, user, hxptCreds: null })
+  return { token: body.token, user }
+}
+
+// fetchCaptcha 账号登录 Step A：POST /auth/hxpt/captcha（取验证码图/探测挑战模式）。
+export async function fetchCaptcha(server) {
+  const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/hxpt/captcha`, { method: 'POST' })
+  if (!resp.ok) {
+    throw new Error(body.error || body.message || `HTTP ${resp.status}`)
+  }
+  return body
+}
+
+// loginByPassword 好学账号密码登录 Step B：POST /auth/hxpt/login（服务端代理好学验证）。
+// challenge 由 Step A 的返回回传（extra_form/challenge_mode 驱动后端挑战分支）。
+export async function loginByPassword(server, { username, password, imagehash, imagestring, twoStepCode, extraForm, challengeMode }) {
+  const { resp, body } = await fetchJson(`${baseUrl({ server })}/api/v1/auth/hxpt/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username,
+      password,
+      imagehash: imagehash || '',
+      imagestring: imagestring || '',
+      two_step_code: twoStepCode || '',
+      extra_form: extraForm || {},
+      challenge_mode: !!challengeMode,
+    }),
+  })
+  if (resp.status === 409) {
+    throw new Error(body.message || '好学已开启挑战响应认证，请改用 Cookie 登录')
+  }
+  if (!resp.ok) {
+    const err = new Error(body.message || body.error || `HTTP ${resp.status}`)
+    err.status = resp.status
+    err.needCaptchaRefresh = resp.status === 401
+    throw err
+  }
+  const user = body.user || {}
+  // 凭据存本机供续期失效时静默重登（与 Web 端「记住登录」同语义）。
+  await saveSession({ hxptCookie: '', token: body.token, user, hxptCreds: { username, password } })
   return { token: body.token, user }
 }
 
@@ -75,17 +128,20 @@ async function renew(server) {
       }
     } catch { /* 网络错误走 cookie 兜底 */ }
   }
-  // 2) 好学 cookie 兑换（refresh 失败：token 已过期/吊销）。
-  if (!sess.hxptCookie) {
-    await clearSession()
-    throw new Error('登录已失效，请重新登录')
+  // 2) 兜底重登：优先好学 cookie 兑换；没有 cookie 用账号密码静默重登
+  //    （密码登录含验证码状态机，服务端无验证码时可行；失败即要求重新登录）。
+  if (sess.hxptCookie) {
+    try {
+      return await login(server, sess.hxptCookie)
+    } catch { /* cookie 也失效，继续看有无账号凭据 */ }
   }
-  try {
-    return await login(server, sess.hxptCookie)
-  } catch (e) {
-    await clearSession()
-    throw new Error('登录已失效，请重新登录')
+  if (sess.hxptCreds && sess.hxptCreds.username) {
+    try {
+      return await loginByPassword(server, sess.hxptCreds)
+    } catch { /* 密码路径失败（验证码/挑战模式）→ 要求重新登录 */ }
   }
+  await clearSession()
+  throw new Error('登录已失效，请重新登录')
 }
 
 // rawFetch 单次请求（Bearer 头）；返回原始 Response。
@@ -102,7 +158,7 @@ function rawFetch(cfg, path, options = {}) {
 // 401 时自动续期一次（refresh → cookie 兑换）再重放；全失败则抛「请重新登录」。
 export async function api(cfg, path, options = {}) {
   let resp = await rawFetch(cfg, path, options)
-  if (resp.status === 401 && (cfg.token || cfg.hxptCookie)) {
+  if (resp.status === 401 && (cfg.token || cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username))) {
     const renewed = await renew(cfg.server)
     resp = await rawFetch({ ...cfg, token: renewed.token }, path, options)
   }
@@ -144,7 +200,7 @@ export function searchTorrentsStream(cfgIn, keyword, onBatch, category = '') {
         resolve({ error: e.message })
         return
       }
-      if (resp.status === 401 && (cfg.token || cfg.hxptCookie) && !retried) {
+      if (resp.status === 401 && (cfg.token || cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)) && !retried) {
         try {
           const renewed = await renew(cfg.server)
           await run({ ...cfg, token: renewed.token }, true)

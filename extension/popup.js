@@ -60,7 +60,9 @@ async function runSearch(keyword) {
     return
   }
   $('status').innerHTML = '<span class="spin"></span> 跨站搜索中…（逐站显示）'
-  $('results').innerHTML = ''
+  // 骨架屏占位：流式首帧到达前给「内容将至」的视觉锚点（感知性能优化）。
+  $('results').innerHTML = Array.from({ length: 3 }, () =>
+    '<div class="sk-item"><div class="ln skeleton" style="width:88%"></div><div class="ln skeleton" style="width:45%"></div></div>').join('')
   const box = $('results')
   let total = 0
   let sitesDone = 0
@@ -69,6 +71,8 @@ async function runSearch(keyword) {
   const res = await searchTorrentsStream(cfg, keyword, (g) => {
     sitesDone++
     if (g.error) { sitesErr++; return }
+    // 首帧清掉骨架。
+    if (box.querySelector('.sk-item')) box.innerHTML = ''
     for (const t of g.torrents || []) {
       if (total >= 30) return // popup 只展示前 30 条，后续站点仅计数
       renderItem(cfg, keyword, { ...t, site_name: t.site_name || g.site_name, site_id: t.site_id || g.site_id }, box)
@@ -77,6 +81,7 @@ async function runSearch(keyword) {
   })
   if (res && res.error) {
     $('status').innerHTML = `<span class="warn">搜索失败：${esc(res.error)}</span>`
+    $('results').innerHTML = ''
     return
   }
   const errNote = sitesErr ? ` · ${sitesErr} 站失败` : ''
@@ -119,6 +124,15 @@ async function loadStats(cfg) {
 document.addEventListener('DOMContentLoaded', async () => {
   $('openOptions').onclick = () => chrome.runtime.openOptionsPage()
   const cfg = await getConfig()
+
+  // 用户态：已登录在顶栏显示首字母头像（大厂扩展的「一行搞定位」）。
+  if (cfg.user && (cfg.user.username || cfg.user.hxpt_username)) {
+    const name = cfg.user.username || cfg.user.hxpt_username
+    const av = $('userAvatar')
+    av.textContent = name.slice(0, 1).toUpperCase()
+    av.title = `${name}${cfg.user.is_admin ? ' · 管理员' : ''}`
+    av.style.display = ''
+  }
   // 拖放衔接：最近一次在站点页拖动的种子链接 → 显示快捷推送条。
   try {
     const sess = await chrome.storage.session.get(['ptp_last_drag_url'])

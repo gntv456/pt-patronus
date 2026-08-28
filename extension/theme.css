@@ -10,6 +10,12 @@
    · 有机曲线：squircle 超椭圆半径 + 不对称 blob 装饰
    · 水润：多层柔和光晕、湿润渐变（湿润 = 高光点 + 低对比深色底）
    · 密集信息：紧凑行高 + 等宽数字 + 微型大写标签，专业终端感
+   · v2.6 交互升级（对齐一线扩展的体感规范）：
+     · segmented 分段控制（iOS 风格滑块选中态）
+     · toast 轻反馈（右上角进出场动画，替代行内 msg 闪烁）
+     · skeleton 骨架屏（加载态占位，感知性能）
+     · focus-visible 键盘焦点环（无障碍）
+     · 动效曲线统一 cubic-bezier(.2,.8,.2,1)（快速响应+柔和收尾）
    ============================================================ */
 
 :root {
@@ -46,6 +52,11 @@
   --r-sm: 12px;
   --r-blob: 62% 38% 55% 45% / 45% 55% 45% 55%; /* 不对称 blob */
 
+  /* —— 动效：统一「快响应、柔收尾」曲线（大厂体感的底层）—— */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-fast: 0.15s;
+  --t-mid: 0.28s;
+
   --mono: "SF Mono", "Cascadia Code", ui-monospace, Consolas, monospace;
 }
 
@@ -68,6 +79,17 @@ body {
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+}
+
+/* —— 键盘焦点环（无障碍：Tab 导航可见，鼠标点击不打扰）—— */
+:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
 /* —— 玻璃面板：iOS27 磨砂 + 顶部高光 —— */
@@ -194,10 +216,10 @@ button, .btn {
   color: var(--ink);
   background: rgba(20, 48, 42, 0.5);
   backdrop-filter: blur(8px);
-  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition: transform var(--t-fast) var(--ease), box-shadow var(--t-mid) var(--ease), filter var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
 }
 button:hover { transform: translateY(-1px); filter: brightness(1.12); }
-button:active { transform: translateY(0) scale(0.98); }
+button:active { transform: translateY(0) scale(0.97); }
 button:disabled { opacity: 0.38; cursor: default; transform: none; }
 
 .btn-lime {   /* 主操作：青柠果汁 */
@@ -223,6 +245,96 @@ button:disabled { opacity: 0.38; cursor: default; transform: none; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
 }
 
+/* ============================================================
+   v2.6 新增组件（大厂交互体感）
+   ============================================================ */
+
+/* —— segmented 分段控制：iOS 风格（滑块选中态 + 一次性滑动动画）—— */
+.segmented {
+  position: relative;
+  display: flex;
+  padding: 3px;
+  background: rgba(5, 16, 12, 0.55);
+  border: 1px solid var(--glass-border-dim);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.segmented .seg-indicator {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 2);           /* 双 tab 基准；多段由内联样式覆盖 */
+  border-radius: 999px;
+  background: linear-gradient(160deg, #e2ff8a, var(--lime) 55%, var(--lime-deep));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 4px 14px rgba(200,255,61,0.4);
+  transition: transform var(--t-mid) var(--ease);
+  will-change: transform;
+}
+.segmented button {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+  padding: 7px 10px;
+  font-size: 12px;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--ink-faint);
+  border-radius: 999px;
+  backdrop-filter: none;
+}
+.segmented button:hover { transform: none; filter: none; }
+.segmented button.on { color: #0a1610; font-weight: 700; }
+.segmented[data-active="1"] .seg-indicator { transform: translateX(100%); }
+
+/* —— toast 轻反馈：右上角进出场（不打断操作流，自动消退）—— */
+.toast {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 99;
+  max-width: min(340px, calc(100vw - 28px));
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: rgba(14, 31, 27, 0.92);
+  backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border-dim);
+  box-shadow: 0 14px 38px rgba(2, 8, 6, 0.6), inset 0 1px 0 rgba(255,255,255,0.12);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink);
+  animation: toast-in var(--t-mid) var(--ease);
+}
+.toast.out { animation: toast-out var(--t-fast) var(--ease) forwards; }
+.toast .t-ico { flex: none; font-size: 14px; line-height: 1.3; }
+.toast.ok   { border-color: rgba(200,255,61,0.4); }
+.toast.ok .t-ico { color: var(--lime); }
+.toast.err  { border-color: rgba(255,107,74,0.45); }
+.toast.err .t-ico { color: var(--coral); }
+.toast.info .t-ico { color: var(--aqua); }
+@keyframes toast-in  { from { opacity: 0; transform: translateY(-8px) scale(0.97); } }
+@keyframes toast-out { to   { opacity: 0; transform: translateY(-6px) scale(0.97); } }
+
+/* —— skeleton 骨架屏：加载态占位（呼吸微光，替代文字「加载中」）—— */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(168, 196, 180, 0.08);
+  border-radius: 8px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(200, 255, 61, 0.10) 50%, transparent 70%);
+  animation: shimmer 1.4s infinite;
+}
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
 /* —— 输入框：水下玻璃井 —— */
 input, select, textarea {
   font: inherit;
@@ -234,7 +346,7 @@ input, select, textarea {
   backdrop-filter: blur(10px);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-mid) var(--ease);
 }
 input::placeholder { color: var(--ink-faint); }
 input:focus, select:focus {
@@ -242,6 +354,43 @@ input:focus, select:focus {
   box-shadow: inset 0 2px 8px rgba(0,0,0,0.45), 0 0 0 3px rgba(200, 255, 61, 0.18), 0 0 24px rgba(200,255,61,0.15);
 }
 select option { background: var(--deep); color: var(--ink); }
+
+/* —— 开关：iOS 拨杆（checkbox 语义 + 拨杆视觉，动效跟手）—— */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  flex: none;
+  cursor: pointer;
+}
+.switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.switch .knob {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(5, 16, 12, 0.7);
+  border: 1px solid var(--glass-border-dim);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.5);
+  transition: background var(--t-mid) var(--ease), border-color var(--t-mid) var(--ease);
+}
+.switch .knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #fff, #c9d8cf);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  transition: transform var(--t-mid) var(--ease);
+}
+.switch input:checked + .knob {
+  background: linear-gradient(160deg, #d4ff70, var(--lime-deep));
+  border-color: var(--lime);
+}
+.switch input:checked + .knob::after { transform: translateX(16px); }
 
 /* —— 表格：密集信息流 —— */
 table { width: 100%; border-collapse: collapse; }
@@ -266,7 +415,7 @@ td {
   font-size: 12.5px;
   vertical-align: middle;
 }
-tbody tr { transition: background 0.15s; }
+tbody tr { transition: background var(--t-fast) var(--ease); }
 tbody tr:hover { background: rgba(200, 255, 61, 0.05); }
 
 /* —— 状态徽标：撞色胶囊 —— */

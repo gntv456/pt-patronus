@@ -6,12 +6,33 @@
   <style>
     body { width: 392px; }
 
-    /* —— 顶部：品牌 + 撞色名牌 —— */
+    /* —— 顶部：品牌行 + 用户态（大厂扩展式「一行搞定位」）—— */
     .hero {
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 14px 14px 10px;
+    }
+    .hero .who {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hero .who .avatar {
+      width: 26px; height: 26px;
+      border-radius: var(--r-blob);
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 800; color: #061310;
+      background: linear-gradient(160deg, #e2ff8a, var(--lime-deep));
+      box-shadow: 0 4px 12px rgba(200,255,61,0.35);
+    }
+    .icon-btn {
+      width: 30px; height: 30px;
+      display: grid; place-items: center;
+      padding: 0;
+      font-size: 14px;
+      border-radius: 10px;
     }
 
     /* —— 主面板 —— */
@@ -20,17 +41,25 @@
     /* 搜索排 */
     .search-row { display: flex; gap: 8px; }
     .search-row input { flex: 1; }
+    kbd {
+      font: 600 9px var(--mono);
+      color: var(--ink-faint);
+      border: 1px solid var(--glass-border-dim);
+      border-radius: 4px;
+      padding: 1px 4px;
+      background: rgba(5,16,12,0.6);
+    }
 
     /* 状态行 */
-    #status { font-size: 11px; color: var(--ink-dim); padding: 7px 2px 0; letter-spacing: 0.04em; }
+    #status { font-size: 11px; color: var(--ink-dim); padding: 7px 2px 0; letter-spacing: 0.04em; min-height: 18px; }
 
     /* —— 数据芯片矩阵（密集信息）—— */
-    .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 10px 10px; }
+    .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 0 10px; }
     .chips .chip { padding: 8px 10px; }
     .chips .chip .v { font-size: 14px; }
 
     /* —— 玻璃导航排 —— */
-    .nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 0 10px 10px; }
+    .nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 10px; }
     .nav a {
       display: flex;
       flex-direction: column;
@@ -47,7 +76,7 @@
       backdrop-filter: blur(10px);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
       cursor: pointer;
-      transition: transform 0.15s, color 0.15s, border-color 0.15s;
+      transition: transform var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
     }
     .nav a:hover { transform: translateY(-2px); color: var(--lime); border-color: var(--glass-border); }
     .nav a .ico { font-size: 15px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
@@ -61,8 +90,10 @@
       background: linear-gradient(155deg, rgba(20,48,42,0.55), rgba(10,24,20,0.45));
       border: 1px solid rgba(168,196,180,0.1);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-      transition: border-color 0.15s, transform 0.15s;
+      transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
+      animation: item-in var(--t-mid) var(--ease);
     }
+    @keyframes item-in { from { opacity: 0; transform: translateY(6px); } }
     .item:hover { border-color: rgba(200,255,61,0.35); transform: translateX(2px); }
     .item .title {
       font-weight: 600;
@@ -85,6 +116,11 @@
     .item .actions { display: flex; gap: 6px; margin-top: 7px; }
     .item .actions button { padding: 4px 12px; font-size: 11px; }
 
+    /* 骨架占位（搜索加载态） */
+    .sk-item { padding: 10px 11px; border-radius: var(--r-md); border: 1px solid rgba(168,196,180,0.06); }
+    .sk-item .ln { height: 11px; margin-bottom: 7px; }
+    .sk-item .ln:last-child { width: 55%; margin-bottom: 0; }
+
     .spin {
       display: inline-block;
       width: 11px; height: 11px;
@@ -106,15 +142,18 @@
       <div class="logo">P</div>
       <h1>PTPatronus</h1>
     </div>
-    <button class="btn-ghost" id="openOptions" title="服务器与账号登录" style="padding:5px 12px;">⚙</button>
+    <div class="who">
+      <div class="avatar" id="userAvatar" style="display:none" title=""></div>
+      <button class="btn-ghost icon-btn" id="openOptions" title="服务器与账号登录（设置）" aria-label="设置">⚙</button>
+    </div>
   </header>
 
   <div class="glass panel">
     <div class="search-row">
-      <input id="keyword" placeholder="输入关键词，跨站搜索全部 PT 站…" />
+      <input id="keyword" placeholder="跨站搜索全部 PT 站…" aria-label="搜索关键词" />
       <button class="btn-lime" id="search">搜索</button>
     </div>
-    <div id="status">选中网页文字后点扩展，或直接输入关键词。</div>
+    <div id="status">输入关键词回车搜索；选中网页文字后打开本弹窗自动带入。</div>
   </div>
 
   <div class="nav">

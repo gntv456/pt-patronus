@@ -1,8 +1,12 @@
 // background service worker（module 型——manifest 声明 "type": "module"）：
-// 右键菜单「搜索选中词」、omnibox、TOTP 自动填充、种子推送下载 + 下载历史、跨站收藏。
+// 右键菜单「搜索选中词」、omnibox、TOTP 自动填充、种子推送下载 + 下载历史、跨站收藏、
+// Cookie 自动同步（autosync.js：启动+定时双向同步，服务器接管保活）。
 // 服务端请求统一走 api.js 的 api() 封装（鉴权头 + 非 2xx 抛错），配置统一 getConfig()。
 import { addHistory, addFavorite } from './collection.js'
 import { api, getConfig, baseUrl } from './api.js'
+import { initAutosync, maybeSyncOnWake, syncNow } from './autosync.js'
+
+initAutosync()
 
 // openSearch 打开 Web 搜索页（右键菜单/快捷键/omnibox/媒体页注入共用路径）。
 async function openSearch(keyword) {
@@ -85,7 +89,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     case 'ptp-drag-capture':
       chrome.storage.session.set({ ptp_last_drag_url: msg.url }).catch(() => {})
       return false
+    // options 页「立即同步」按钮：手动触发一轮 Cookie 双向同步（结果由调用方读状态展示）。
+    case 'ptp-autosync-run':
+      syncNow().then(sendResponse)
+      return true
     default:
+      maybeSyncOnWake().catch(() => {})
       return false
   }
 })

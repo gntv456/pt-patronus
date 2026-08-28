@@ -2,7 +2,7 @@
   "latestVersion": "1.03.19",
   "minVersion": "0.60.00",
   "releaseName": "1.03.19：浏览器扩展好学账号登录（JWT+滑动续期 refresh）",
-  "releaseNotes": "1.03.19：浏览器扩展改为好学账号登录（与 Web/移动端同一账号体系，移除 API-Key 配置；JWT Bearer + /auth/refresh 滑动续期，不再打扰好学站）；后端新增 POST /api/v1/auth/refresh；非管理员自动降级（cookie 明文回写/OCR 仅管理员）",
+  "releaseNotes": "1.03.19：浏览器扩展改为好学账号登录（与 Web/移动端同一账号体系，移除 API-Key 配置；JWT Bearer + /auth/refresh 滑动续期，不再打扰好学站）；后端新增 POST /api/v1/auth/refresh；非管理员自动降级（cookie 明文回写/OCR 仅管理员）；插件 2.6.0：Cookie 自动同步保活闭环（启动+定时双向同步，替代 CookieCloud 扩展日常使用）",
   "isForced": false,
   "publishedAt": "2026-08-28T02:17:35.633Z",
   "targets": {
@@ -39,7 +39,7 @@
       "sha256": "eea9d168151f5e9a6f3ebecf96cbf724ca581446674d6694c733efe026132fed"
     },
     "extension": {
-      "sha256": "6e8d25934ebd582c817bd57a56f3b45c12d9425da20f4daee997ef9a9aa5d957"
+      "sha256": "545f5b8b41d5cb0dca1e5a779d8c49e6c90ad829fbc698745f6d90db01769b4f"
     }
   }
 }

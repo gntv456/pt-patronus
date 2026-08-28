@@ -3,6 +3,7 @@
 // 备份与同步：WebDAV 推/拉（全量扩展数据加密包）、CookieCloud 协议推/拉（cookie 台账）、隐私模式开关。
 import { getConfig, saveConfig, api, login, loginByPassword, fetchCaptcha, clearSession } from './api.js'
 import { serverCookies, pullServerToBrowser } from './cookies.js'
+import { getAutosyncState, setAutosyncState } from './autosync.js'
 import {
   packBackup, unpackBackup, collectLocal, putWebDAV, getWebDAV,
   pushCookieCloud, pullCookieCloud,
@@ -116,6 +117,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     showSession(null, false)
     $('msg').textContent = '已退出登录'
     $('msg').className = 'ok'
+  }
+
+  // —— Cookie 自动同步（开关 + 最近同步状态 + 手动触发）——
+  const fmtSyncTime = (ts) => {
+    if (!ts) return '从未'
+    const d = new Date(ts)
+    const mins = Math.floor((Date.now() - ts) / 60000)
+    const ago = mins < 1 ? '刚刚' : mins < 60 ? `${mins} 分钟前` : `${Math.floor(mins / 60)} 小时前`
+    return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}（${ago}）`
+  }
+  const renderAutosync = (st) => {
+    $('autosyncEnabled').checked = !!st.enabled
+    const r = st.lastResult
+    let txt = `最近同步：${fmtSyncTime(st.lastRun)}`
+    if (r && r.error) txt += ` · ⚠ ${r.error}`
+    else if (r) txt += ` · ↑推送 ${r.pushed} 站 · ↓回写 ${r.pulled} 站${r.dead && r.dead.length ? ` · ⚠ ${r.dead.length} 站两侧均无 cookie` : ''}`
+    else if (st.enabled) txt += ' · 等待首轮'
+    $('autosyncStatus').textContent = txt
+  }
+  const st0 = await getAutosyncState()
+  renderAutosync(st0)
+  $('autosyncEnabled').onchange = async () => {
+    await setAutosyncState({ enabled: $('autosyncEnabled').checked })
+    const st = await getAutosyncState()
+    renderAutosync(st)
+    if (st.enabled) $('msg').textContent = '自动同步已开启（每 4 小时 + 浏览器启动时）'
+    else $('msg').textContent = '自动同步已关闭'
+    $('msg').className = 'ok'
+  }
+  $('autosyncRun').onclick = async () => {
+    $('autosyncRun').disabled = true
+    $('autosyncStatus').textContent = '同步中…'
+    try {
+      const r = await chrome.runtime.sendMessage({ type: 'ptp-autosync-run' })
+      const st = await getAutosyncState()
+      renderAutosync(st)
+      $('msg').textContent = r && !r.error ? `✅ 同步完成：推送 ${r.pushed} · 回写 ${r.pulled}` : `同步失败：${(r && r.error) || '未知错误'}`
+      $('msg').className = r && !r.error ? 'ok' : 'err'
+    } catch (e) {
+      $('msg').textContent = `同步失败：${e.message}`
+      $('msg').className = 'err'
+      renderAutosync(await getAutosyncState())
+    }
+    $('autosyncRun').disabled = false
   }
 
   // 工具入口：站点数据 / 下载任务 / Cookie 台账 / TOTP 验证器 / 收藏与历史。

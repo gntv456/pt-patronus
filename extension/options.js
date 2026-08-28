@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const packed = await packBackup(await collectLocal(), pass)
       await putWebDAV({ url: $('wdUrl').value, username: $('wdUser').value, password: $('wdPass').value }, backupFile, JSON.stringify(packed))
       feedback('✅ 备份已推送 WebDAV')
-    } catch (e) { feedback(`推送失败：${e.message}`, 'err' })
+    } catch (e) { feedback(`推送失败：${e.message}`, 'err') }
     $('wdPush').disabled = false; $('wdPush').textContent = '☁ 推送备份'
   }
   $('wdPull').onclick = async () => {
@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (data.sync) await chrome.storage.sync.set(data.sync)
       if (data.local) await chrome.storage.local.set(data.local)
       feedback('✅ 已恢复（刷新各页面生效）')
-    } catch (e) { feedback(`恢复失败：${e.message.includes('operation failed') ? '口令错误' : e.message}`, 'err' })
+    } catch (e) { feedback(`恢复失败：${e.message.includes('operation failed') ? '口令错误' : e.message}`, 'err') }
     $('wdPull').disabled = false; $('wdPull').textContent = '⤓ 拉取恢复'
   }
 
@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         cookie_data: cookieData, local_storage_data: {},
       })
       feedback(`✅ 已推送 ${Object.keys(cookieData).length} 站 cookie`)
-    } catch (e) { feedback(`推送失败：${e.message}`, 'err' })
+    } catch (e) { feedback(`推送失败：${e.message}`, 'err') }
     $('ccPush').disabled = false; $('ccPush').textContent = '☁ 推送 Cookie'
   }
   $('ccPull').onclick = async () => {
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         n++
       }
       feedback(`✅ 已写回 ${n} 站 cookie 到浏览器`)
-    } catch (e) { feedback(`拉取失败：${e.message}`, 'err' })
+    } catch (e) { feedback(`拉取失败：${e.message}`, 'err') }
     $('ccPull').disabled = false; $('ccPull').textContent = '⤓ 拉取 Cookie'
   }
 })

@@ -111,5 +111,76 @@ document.addEventListener('click', async (ev) => {
 
 document.addEventListener('DOMContentLoaded', () => {
   $('refresh').onclick = render
+
+  // —— 一键覆盖服务器：所有「浏览器有 cookie」的站点批量上传（含指纹一致的——
+  // 语义是「以浏览器为准」，不做差异过滤；服务器保活随后接管）。串行逐站，
+  // 避免对自家服务器瞬时并发。中途失败计数继续，结束统一汇报。 ——
+  $('pushAll').onclick = async () => {
+    const rows = Object.values(window.__rowsMap || {})
+    const targets = rows.filter((r) => r.brow && r.brow.header)
+    if (!targets.length) { $('msg').innerHTML = '<span class="err">浏览器侧没有任何站点 cookie</span>'; return }
+    if (!confirm(`把 ${targets.length} 个站点的浏览器 cookie 批量覆盖到服务器？`)) return
+    const btn = $('pushAll')
+    btn.disabled = true
+    let ok = 0
+    const fails = []
+    for (let i = 0; i < targets.length; i++) {
+      const r = targets[i]
+      btn.textContent = `⇈ 上传中 ${i + 1}/${targets.length}…`
+      try {
+        const cfg = await getConfig()
+        await pushBrowserToServer(cfg, r.s, r.brow.header)
+        ok++
+      } catch { fails.push(r.s.name) }
+    }
+    btn.disabled = false
+    btn.textContent = '⇈ 一键覆盖服务器'
+    $('msg').innerHTML = ok && !fails.length
+      ? `<span class="ok">✅ 已覆盖 ${ok} 站到服务器</span>`
+      : ok
+        ? `<span class="err">覆盖 ${ok} 站，失败 ${fails.length} 站：${esc(fails.slice(0, 5).join('、'))}${fails.length > 5 ? ' 等' : ''}</span>`
+        : '<span class="err">全部失败：请检查服务器连接</span>'
+    setTimeout(render, 800)
+  }
+
+  // —— 一键覆盖浏览器：所有「服务器有 cookie」的站点明文批量写回（需管理员；
+  // reveal 一次拉全量，逐站 chrome.cookies.set）。会覆盖浏览器现有值——同名
+  // cookie 以服务器为准，与单站「← 覆盖浏览器」同语义。 ——
+  $('pullAll').onclick = async () => {
+    const cfg = await getConfig()
+    if (!(cfg.user && cfg.user.is_admin)) {
+      $('msg').innerHTML = '<span class="err">一键写回浏览器需管理员账号（明文 cookie 拉取受 RequireAdmin 保护）</span>'
+      return
+    }
+    const rows = Object.values(window.__rowsMap || {})
+    const targets = rows.filter((r) => r.s.has_cookie)
+    if (!targets.length) { $('msg').innerHTML = '<span class="err">服务器侧没有任何站点 cookie</span>'; return }
+    if (!confirm(`把 ${targets.length} 个站点的服务器 cookie 批量写回本浏览器？\n（同名 cookie 将被服务器值覆盖）`)) return
+    const btn = $('pullAll')
+    btn.disabled = true
+    btn.textContent = '⇊ 写回中…'
+    try {
+      const detailed = await serverCookies(cfg, true)
+      let ok = 0
+      const fails = []
+      for (const r of targets) {
+        const d = detailed.find((x) => x.id === r.s.id)
+        if (!d || !d.cookie) { fails.push(r.s.name); continue }
+        try {
+          await pullServerToBrowser(r.s, d.cookie)
+          ok++
+        } catch { fails.push(r.s.name) }
+      }
+      $('msg').innerHTML = ok && !fails.length
+        ? `<span class="ok">✅ 已写回 ${ok} 站到浏览器</span>`
+        : `<span class="err">写回 ${ok} 站，失败 ${fails.length} 站：${esc(fails.slice(0, 5).join('、'))}${fails.length > 5 ? ' 等' : ''}</span>`
+    } catch (e) {
+      $('msg').innerHTML = `<span class="err">${esc(e.message)}</span>`
+    }
+    btn.disabled = false
+    btn.textContent = '⇊ 一键覆盖浏览器'
+    setTimeout(render, 800)
+  }
+
   render()
 })

@@ -69,6 +69,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     case 'ptp-totp-autofill':
       totpAutofill(msg.host).then(sendResponse)
       return true
+    // 凭据自动填充：content_creds.js 按 hostname 匹配本地凭据库，回单条凭据。
+    // 同 TOTP 语义：仅当凭据页本轮会话已解锁（明文缓存 storage.session）或
+    // 未设 PIN 时可用；只回匹配的那一条，页面拿不到整库。
+    case 'ptp-cred-autofill':
+      credAutofill(msg.host).then(sendResponse)
+      return true
     // 豆瓣/IMDb 页面注入按钮 → 打开 Web 搜索页带关键词（与右键菜单同路径）。
     case 'ptp-media-search':
       if (msg.keyword) openSearch(msg.keyword)
@@ -134,6 +140,32 @@ async function totpAutofill(host) {
     if (!hit) return { ok: false, error: 'no-match' }
     const { code } = await lib.totpNow(hit)
     return { ok: true, code }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
+
+// credAutofill 按站点主机名匹配本地凭据库（credentials.js 的 matchCred 同口径）。
+// 明文来源：未设 PIN 的明文库，或凭据页解锁后缓存的 storage.session——
+// PIN 锁定态不后台解密（与 TOTP 锁定语义一致）。只回匹配条目的填充字段。
+async function credAutofill(host) {
+  try {
+    const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
+    let entries = null
+    if (v && v.plain !== undefined) {
+      entries = JSON.parse(v.plain)
+    } else if (v) {
+      const sess = await chrome.storage.session.get(['ptp_cred_entries'])
+      entries = sess && sess.ptp_cred_entries
+    }
+    if (!entries || !entries.length) return { ok: false, error: 'no-vault' }
+    const h = String(host || '').replace(/^www\./, '')
+    const hit = (await import(chrome.runtime.getURL('credentials.js'))).matchCred(entries, h)
+    if (!hit) return { ok: false, error: 'no-match' }
+    return {
+      ok: true,
+      cred: { username: hit.username || '', password: hit.password || '' },
+    }
   } catch (e) {
     return { ok: false, error: e.message }
   }

@@ -3,6 +3,7 @@
  * 种子模式结果区：失败站折叠提示 + 流式进度 + 筛选条 + 结果表 + 渲染上限 + 空态。
  * 数据/筛选/状态均由父组件传入；下载与详情通过事件交还父组件处理。
  */
+import { useI18n } from 'vue-i18n'
 import SearchFilterBar from '@/components/SearchFilterBar.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { useSearchFilter, type SearchFilterHandle } from '@/composables/useSearchFilter'
@@ -22,6 +23,8 @@ const props = defineProps<{
   searched: boolean
   scopeSiteCount: number
 }>()
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   startPush: [row: SearchRow]
@@ -52,8 +55,8 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
     <!-- 单站失败折叠提示（聚合容错：失败不影响已返回的结果） -->
     <div v-if="failedSites.length" class="fail-bar glass">
       <button class="fail-toggle" @click="showFailed = !showFailed">
-        <span class="warn">⚠ {{ failedSites.length }} 个站点搜索失败</span>
-        <span class="caret">{{ showFailed ? '收起' : '展开' }}</span>
+        <span class="warn">⚠ {{ t('trt.failedSites', { n: failedSites.length }) }}</span>
+        <span class="caret">{{ showFailed ? t('trt.collapse') : t('trt.expand') }}</span>
       </button>
       <ul v-if="showFailed" class="fail-list">
         <li v-for="f in failedSites" :key="f.site_id">
@@ -66,8 +69,8 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
     <!-- 种子结果表 -->
     <!-- 流式：有结果即显；仅空结果时全卡 loading，避免遮罩挡住「搜出即显」 -->
     <p v-if="loading" class="stream-progress text-muted">
-      搜索中… 已返回 {{ streamDoneSites }} / {{ scopeSiteCount }} 站
-      <template v-if="enrichedRows.length"> · 命中 {{ enrichedRows.length }} 条</template>
+      {{ t('trt.streaming', { done: streamDoneSites, total: scopeSiteCount }) }}
+      <template v-if="enrichedRows.length"> · {{ t('trt.hits', { n: enrichedRows.length }) }}</template>
     </p>
     <SearchFilterBar
       v-if="enrichedRows.length"
@@ -88,12 +91,12 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
         style="width: 100%"
         :row-style="{ background: 'transparent' }"
       >
-        <el-table-column label="站点" width="120">
+        <el-table-column :label="t('trt.site')" width="120">
           <template #default="{ row }">
             <span class="site-tag">{{ row.site_name }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="标题" min-width="280" show-overflow-tooltip>
+        <el-table-column :label="t('trt.title')" min-width="280" show-overflow-tooltip>
           <template #default="{ row }">
             <div class="t-title">{{ row.title }}</div>
             <div v-if="row.subtitle" class="t-sub text-muted">{{ row.subtitle }}</div>
@@ -103,13 +106,13 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="size" label="大小" width="90" />
-        <el-table-column prop="seeders" label="做种" width="90" align="right">
+        <el-table-column prop="size" :label="t('trt.size')" width="90" />
+        <el-table-column prop="seeders" :label="t('trt.seeders')" width="90" align="right">
           <template #default="{ row }">
             <span class="num up">↑ {{ row.seeders }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="leechers" label="吸血" width="90" align="right">
+        <el-table-column prop="leechers" :label="t('trt.leechers')" width="90" align="right">
           <template #default="{ row }">
             <span class="num">↓ {{ row.leechers }}</span>
           </template>
@@ -120,28 +123,28 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
             <span v-else class="text-muted">—</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" fixed="right">
+        <el-table-column :label="t('common.action')" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="emit('startPush', row as SearchRow)">下载</el-button>
-            <el-button size="small" @click="emit('openDetail', row as SearchRow)">详情</el-button>
+            <el-button size="small" type="primary" @click="emit('startPush', row as SearchRow)">{{ t('trt.download') }}</el-button>
+            <el-button size="small" @click="emit('openDetail', row as SearchRow)">{{ t('dc.detail') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
       <div v-if="filter.filtered.value.length > visibleRows.length" class="row-cap">
-        已显示前 {{ visibleRows.length }} 条 · 筛选后 {{ filter.filtered.value.length }} 条（共 {{ enrichedRows.length }} 条） ·
-        <el-button link type="primary" @click="showAll = true">显示全部</el-button>
+        {{ t('trt.showingTop', { shown: visibleRows.length, filtered: filter.filtered.value.length, total: enrichedRows.length }) }} ·
+        <el-button link type="primary" @click="showAll = true">{{ t('trt.showAll') }}</el-button>
       </div>
       <div v-else-if="showAll && filter.filtered.value.length > MAX_ROWS" class="row-cap">
-        筛选后 {{ filter.filtered.value.length }} 条（共 {{ enrichedRows.length }} 条） ·
-        <el-button link type="primary" @click="showAll = false">收起</el-button>
+        {{ t('trt.filteredN', { filtered: filter.filtered.value.length, total: enrichedRows.length }) }} ·
+        <el-button link type="primary" @click="showAll = false">{{ t('trt.collapse') }}</el-button>
       </div>
 
       <!-- 空态：区分「未搜」/「搜了无果」/「筛选无结果」 -->
       <EmptyState
         v-else-if="!loading"
         :icon="searched ? (filter.hasActive.value ? '🔎' : '🔍') : '🌱'"
-        :title="searched ? (filter.hasActive.value ? '筛选后无结果' : '没有找到相关种子') : '跨站搜索种子'"
-        :description="searched ? (filter.hasActive.value ? '当前筛选条件太严格，试试清除部分筛选' : '试试更换关键词，或切换上方的分类筛选') : '输入关键词，聚合所有已登录站点的资源'"
+        :title="searched ? (filter.hasActive.value ? t('trt.emptyFiltered') : t('trt.emptyNoResult')) : t('trt.emptyIdle')"
+        :description="searched ? (filter.hasActive.value ? t('trt.emptyFilteredDesc') : t('trt.emptyNoResultDesc')) : t('trt.emptyIdleDesc')"
       />
     </div>
   </div>

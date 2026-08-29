@@ -6,6 +6,9 @@
 // 延续项目零依赖画图哲学，不引入 ECharts。
 import { ref, computed } from 'vue'
 import { fmtBytes } from '@/utils/format'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 type Unit = 'bytes' | 'count' | 'ratio'
 
@@ -66,7 +69,7 @@ function fmtDay(d: string): string {
 
 <template>
   <div class="spark" @mouseleave="hoverIdx = null">
-    <svg v-if="geom" :viewBox="`0 0 ${VB_W} ${VB_H}`" preserveAspectRatio="none" class="spark-svg" role="img" aria-label="近期趋势">
+    <svg v-if="geom" :viewBox="`0 0 ${VB_W} ${VB_H}`" preserveAspectRatio="none" class="spark-svg" role="img" :aria-label="t('spark.trend')">
       <defs>
         <linearGradient :id="gradId" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" :stop-color="color" stop-opacity="0.32" />

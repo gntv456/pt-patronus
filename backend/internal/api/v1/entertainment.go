@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"strings"
 
@@ -44,17 +45,17 @@ func (h *EntertainmentHandler) checkOrigin(r *http.Request) bool {
 // 重复提交（in-flight 守卫拦截）→ 429，避免双击/重放重复扣站点游戏币；其余 → 400。
 func spendErr(c *gin.Context, err error) {
 	if errors.Is(err, chain.ErrDuplicateSpend) {
-		c.JSON(http.StatusTooManyRequests, gin.H{"error": err.Error(), "code": "duplicate_spend"})
+		c.JSON(http.StatusTooManyRequests, gin.H{"code": errcode.DuplicateSpend.Code, "message": err.Error(), "error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 }
 
 // Sites 列出全部站点及其已适配的娱乐项目数（娱乐页站点筛选用，GET /entertainment）。
 func (h *EntertainmentHandler) Sites(c *gin.Context) {
 	sites, err := h.ent.Sites()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"sites": sites})
@@ -68,7 +69,7 @@ func (h *EntertainmentHandler) Games(c *gin.Context) {
 	}
 	games, err := h.ent.Games(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	out := make([]gin.H, 0, len(games))
@@ -90,7 +91,7 @@ func (h *EntertainmentHandler) Play(c *gin.Context) {
 	}
 	var req playReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.Play(c.Request.Context(), id, req.Game)
@@ -109,7 +110,7 @@ func (h *EntertainmentHandler) Stats(c *gin.Context) {
 	}
 	res, err := h.ent.Stats(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -123,7 +124,7 @@ func (h *EntertainmentHandler) BuyOptions(c *gin.Context) {
 	}
 	opts, err := h.ent.BuyOptions(id, c.Param("game"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"options": opts})
@@ -141,7 +142,7 @@ func (h *EntertainmentHandler) Buy(c *gin.Context) {
 	}
 	var req buyReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.Buy(c.Request.Context(), id, c.Param("game"), req.OptionType)
@@ -164,7 +165,7 @@ func (h *EntertainmentHandler) PlayMulti(c *gin.Context) {
 	}
 	var req playMultiReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.PlayMulti(c.Request.Context(), id, c.Param("game"), req.Count)
@@ -183,7 +184,7 @@ func (h *EntertainmentHandler) Prizes(c *gin.Context) {
 	}
 	res, err := h.ent.Prizes(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"prizes": res})
@@ -197,7 +198,7 @@ func (h *EntertainmentHandler) History(c *gin.Context) {
 	}
 	res, err := h.ent.History(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"records": res})

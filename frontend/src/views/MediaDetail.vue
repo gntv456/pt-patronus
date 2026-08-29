@@ -1,12 +1,16 @@
 <script setup lang="ts">
 // 媒体详情页（对标 MoviePilot 详情）：点搜索结果卡片进入，展示海报/背景/简介/演职/推荐，
 // 并提供「搜索资源」一键跨到种子搜索（按标题在站点找片）。route: /media-detail?source=&id=
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { MediaInfo } from '@/api/media'
 import MediaPoster from '@/components/MediaPoster.vue'
 import SptIcon from '@/components/SptIcon.vue'
 import CelebrityDialog from '@/components/CelebrityDialog.vue'
 import { useMediaDetail } from '@/composables/useMediaDetail'
+
+const { t } = useI18n()
 
 const {
   route, router, detail, loading, error, subscribing, moreKind,
@@ -16,21 +20,23 @@ const {
   load, searchResources, subscribe, openRec, openMore, openCelebrity,
 } = useMediaDetail()
 
-function typeBadge(t: string) {
-  return ({ movie: '电影', tv: '剧集', music: '音乐' } as Record<string, string>)[t] || t
+const TYPE_LABELS = computed<Record<string, string>>(() => ({ movie: t('search.catMovie'), tv: t('search.catTv'), music: t('search.catMusic') }))
+function typeBadge(k: string) {
+  return TYPE_LABELS.value[k] || k
 }
+const SOURCE_LABELS = computed<Record<string, string>>(() => ({ tmdb: 'TMDB', douban: t('search.srcDouban'), bangumi: 'Bangumi', musicbrainz: 'MB', cunguangji: t('search.srcCunguangji'), xingguangji: t('search.srcCunguangji') }))
 function sourceBadge(s: string) {
-  return ({ tmdb: 'TMDB', douban: '豆瓣', bangumi: 'Bangumi', musicbrainz: 'MB', cunguangji: '寸光集', xingguangji: '寸光集' } as Record<string, string>)[s] || s
+  return SOURCE_LABELS.value[s] || s
 }
 function genreText(m: MediaInfo) {
-  return [m.genres?.join(' / '), m.runtime ? `${m.runtime} 分钟` : '', m.countries?.join(' / ')]
+  return [m.genres?.join(' / '), m.runtime ? t('mediadetail.runtimeMin', { n: m.runtime }) : '', m.countries?.join(' / ')]
     .filter(Boolean).join('  |  ')
 }
 function factText(m: MediaInfo) {
   const sourceID = m.source_id.replace(/^(movie|tv|music):/, '')
   return [
-    m.release_date ? `上映 ${m.release_date}` : '',
-    m.vote_count ? `${m.vote_count.toLocaleString('zh-CN')} 人评分` : '',
+    m.release_date ? t('mediadetail.released', { date: m.release_date }) : '',
+    m.vote_count ? t('mediadetail.voters', { n: m.vote_count.toLocaleString() }) : '',
     sourceID ? `${sourceBadge(m.source)} ID ${sourceID}` : '',
   ].filter(Boolean).join('  ·  ')
 }
@@ -39,12 +45,12 @@ function factText(m: MediaInfo) {
 <template>
   <div class="page">
     <div class="back-row">
-      <el-button size="small" @click="router.back()">← 返回</el-button>
+      <el-button size="small" @click="router.back()">← {{ t('mediadetail.back') }}</el-button>
     </div>
 
     <div v-if="error" class="empty glass error-state">
       <div class="err-text">⚠ {{ error }}</div>
-      <el-button size="small" @click="load">重试</el-button>
+      <el-button size="small" @click="load">{{ t('common.retry') }}</el-button>
     </div>
 
     <div v-loading="loading">
@@ -76,11 +82,11 @@ function factText(m: MediaInfo) {
                 <span class="badge src">{{ sourceBadge(detail.source) }}</span>
               </div>
               <div v-if="genreText(detail)" class="genre-row text-muted">{{ genreText(detail) }}</div>
-              <div v-if="detail.directors?.length" class="genre-row text-muted">导演：{{ detail.directors.join('、') }}</div>
+              <div v-if="detail.directors?.length" class="genre-row text-muted">{{ t('mediadetail.directors', { names: detail.directors.join(', ') }) }}</div>
               <div v-if="factText(detail)" class="fact-row text-muted">{{ factText(detail) }}</div>
               <div class="actions">
-                <el-button type="primary" @click="searchResources">🔍 搜索资源</el-button>
-                <el-button :loading="subscribing" @click="subscribe">❤ 订阅</el-button>
+                <el-button type="primary" @click="searchResources">🔍 {{ t('mediadetail.searchRes') }}</el-button>
+                <el-button :loading="subscribing" @click="subscribe">❤ {{ t('mediadetail.subscribe') }}</el-button>
               </div>
             </div>
           </div>
@@ -88,20 +94,20 @@ function factText(m: MediaInfo) {
 
         <!-- 简介 -->
         <div v-if="detail.overview" class="card glass section">
-          <div class="sec-title">简介</div>
+          <div class="sec-title">{{ t('mediadetail.overview') }}</div>
           <div class="overview">{{ detail.overview }}</div>
         </div>
 
         <!-- 演员 -->
         <div v-if="detail.cast?.length" class="card glass section">
           <div class="section-head">
-            <div class="sec-title">演员阵容 <span class="sec-count">{{ detail.cast.length }}</span></div>
+            <div class="sec-title">{{ t('mediadetail.cast') }} <span class="sec-count">{{ detail.cast.length }}</span></div>
             <el-button
               v-if="detail.cast.length > CAST_PREVIEW_LIMIT"
               link class="section-more" aria-haspopup="dialog"
               @click="openMore('cast')"
             >
-              更多
+              {{ t('mediadetail.more') }}
               <SptIcon name="chevron-right" :size="15" />
             </el-button>
           </div>
@@ -117,13 +123,13 @@ function factText(m: MediaInfo) {
         <!-- 推荐 -->
         <div v-if="detail.recommendations?.length" class="card glass section">
           <div class="section-head">
-            <div class="sec-title">推荐 <span class="sec-count">{{ detail.recommendations.length }}</span></div>
+            <div class="sec-title">{{ t('mediadetail.recommendations') }} <span class="sec-count">{{ detail.recommendations.length }}</span></div>
             <el-button
               v-if="detail.recommendations.length > RECOMMENDATIONS_PREVIEW_LIMIT"
               link class="section-more" aria-haspopup="dialog"
               @click="openMore('recommendations')"
             >
-              更多
+              {{ t('mediadetail.more') }}
               <SptIcon name="chevron-right" :size="15" />
             </el-button>
           </div>

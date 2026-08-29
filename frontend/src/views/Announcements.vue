@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { announcementApi, type AnnouncementResult } from '@/api/announcement'
 import { friendlySiteError } from '@/utils/siteError'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
+const { t } = useI18n()
 const results = ref<AnnouncementResult[]>([])
 const loading = ref(false)
 const syncingId = ref<number | null>(null)
@@ -41,7 +43,7 @@ async function load(refresh = false) {
       else results.value.push(r)
     }, ctrl.signal)
   } catch (e: unknown) {
-    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载公告失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('announcements.loadFailed'))
   } finally {
     if (abortCtrl === ctrl) {
       loading.value = false
@@ -57,7 +59,7 @@ async function syncOne(r: AnnouncementResult) {
     const idx = results.value.findIndex((x) => x.site_id === r.site_id)
     if (idx >= 0) results.value[idx] = one
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '刷新失败')
+    ElMessage.error((e as Error).message || t('announcements.refreshFailed'))
   } finally {
     syncingId.value = null
   }
@@ -70,29 +72,29 @@ onUnmounted(() => abortCtrl?.abort())
 <template>
   <div class="page" v-loading="loading && !filtered.length">
     <div class="head">
-      <h2 class="title">公告</h2>
+      <h2 class="title">{{ t('announcements.title') }}</h2>
       <div class="head-tools">
-        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择公告站点" />
-        <el-button :loading="loading" @click="load(true)">刷新全部</el-button>
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('announcements.siteFilterTitle')" />
+        <el-button :loading="loading" @click="load(true)">{{ t('announcements.refreshAll') }}</el-button>
       </div>
     </div>
 
     <EmptyState
       v-if="!filtered.length && !loading"
       icon="📢"
-      :title="selectedSiteIds.length === 0 ? '暂无数据，请先在「站点」添加并登录站点' : '该站点暂无公告'"
-      :description="selectedSiteIds.length === 0 ? '添加并启用 PT 站点后，这里会聚合展示各站公告' : '该站点当前没有公告，可尝试点击该站刷新'"
+      :title="selectedSiteIds.length === 0 ? t('announcements.emptyTitle') : t('announcements.emptySiteTitle')"
+      :description="selectedSiteIds.length === 0 ? t('announcements.emptyDesc') : t('announcements.emptySiteDesc')"
     />
 
     <div class="groups">
       <div v-for="r in filtered" :key="r.site_id" class="site-group glass">
         <div class="group-head">
           <span class="site-name">{{ r.site_name }}</span>
-          <span v-if="r.items.length" class="count">{{ r.items.length }} 条</span>
+          <span v-if="r.items.length" class="count">{{ t('announcements.count', { n: r.items.length }) }}</span>
           <span v-else-if="r.error" class="err-tag" :title="r.error">{{ friendlySiteError(r.error) }}</span>
-          <span v-else class="text-muted">暂无公告</span>
+          <span v-else class="text-muted">{{ t('announcements.none') }}</span>
           <span class="spacer"></span>
-          <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">刷新</el-button>
+          <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">{{ t('common.refresh') }}</el-button>
         </div>
 
         <div v-if="r.items.length" class="items">
@@ -103,9 +105,9 @@ onUnmounted(() => abortCtrl?.abort())
             :class="{ open: openItem[r.site_id + '-' + i] }"
           >
             <div class="item-head" @click="openItem[r.site_id + '-' + i] = !openItem[r.site_id + '-' + i]">
-              <span class="item-title">{{ it.title || '（无标题）' }}</span>
+              <span class="item-title">{{ it.title || t('announcements.noTitle') }}</span>
               <span v-if="it.date" class="item-date">{{ it.date }}</span>
-              <span class="caret">{{ openItem[r.site_id + '-' + i] ? '收起' : '展开' }}</span>
+              <span class="caret">{{ openItem[r.site_id + '-' + i] ? t('announcements.collapse') : t('announcements.expand') }}</span>
             </div>
             <div v-if="openItem[r.site_id + '-' + i]" class="item-body">{{ it.content }}</div>
           </div>

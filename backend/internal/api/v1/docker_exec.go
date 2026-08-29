@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // DockerExecHandler 通过 Docker Engine API 在容器内打开交互式终端（exec）。
@@ -35,7 +36,7 @@ var execUpgrader = websocket.Upgrader{
 func (h *DockerExecHandler) Handle(c *gin.Context) {
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	cmd := c.DefaultQuery("cmd", "/bin/sh")

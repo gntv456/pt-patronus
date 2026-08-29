@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/ocr"
 )
 
@@ -34,11 +35,11 @@ func (h *OCRHandler) config() ocr.Config {
 func (h *OCRHandler) GetConfig(c *gin.Context) {
 	cfg := h.config()
 	c.JSON(http.StatusOK, gin.H{
-		"endpoint":        cfg.Endpoint,
-		"api_key":         maskSecret(cfg.APIKey),
-		"api_key_set":     cfg.APIKey != "",
-		"mode":            cfg.Mode,
-		"enabled":         cfg.Endpoint != "",
+		"endpoint":    cfg.Endpoint,
+		"api_key":     maskSecret(cfg.APIKey),
+		"api_key_set": cfg.APIKey != "",
+		"mode":        cfg.Mode,
+		"enabled":     cfg.Endpoint != "",
 	})
 }
 
@@ -52,12 +53,12 @@ type ocrConfigReq struct {
 // SetConfig PUT /system/ocr —— 保存配置（即时生效；登录验证码下发时现读）。
 func (h *OCRHandler) SetConfig(c *gin.Context) {
 	if h.cfgOp == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "配置存储不可用"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	var req ocrConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	setIf := func(key, val string) {
@@ -78,7 +79,7 @@ func (h *OCRHandler) SetConfig(c *gin.Context) {
 func (h *OCRHandler) Test(c *gin.Context) {
 	cli := ocr.New(h.config())
 	if !cli.Enabled() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "未配置 OCR 端点"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	// 1x1 红色 PNG：无论识别结果如何，能返回 200 且可解析即视为服务可用。
@@ -104,17 +105,17 @@ type ocrRecognizeReq struct {
 func (h *OCRHandler) Recognize(c *gin.Context) {
 	cli := ocr.New(h.config())
 	if !cli.Enabled() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "未配置 OCR 端点（系统设置 → OCR）"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	var req ocrRecognizeReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	text, err := cli.Recognize(c.Request.Context(), req.Image)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"text": text})

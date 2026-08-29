@@ -6,6 +6,9 @@ import { copyText } from '@/utils/clipboard'
 import FilesDialog from './FilesDialog.vue'
 import TrackersDialog from './TrackersDialog.vue'
 import { dlCaps } from './caps'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{ downloaderId: number; type: string; torrent: Torrent; visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
@@ -45,16 +48,16 @@ const magnet = computed(
 )
 
 async function copy(text: string, label: string) {
-  await copyText(text, `${label}已复制`, '复制失败，请手动选择')
+  await copyText(text, t('tt.copied', { label }), t('tt.copyFailed'))
 }
 
 async function op(fn: () => Promise<DownloaderResult>, ok: string) {
   try {
     const r = await fn()
     if (r.ok) ElMessage.success(ok)
-    else ElMessage.warning(r.error || '失败')
+    else ElMessage.warning(r.error || t('td.failed'))
   } catch {
-    ElMessage.error('请求失败')
+    ElMessage.error(t('common.requestFailed'))
   }
 }
 
@@ -69,11 +72,11 @@ const isPaused = computed(() => stateGroup(props.torrent.state) === 'paused')
 const caps = computed(() => dlCaps(props.type))
 const stateText = computed(() => {
   const map: Record<string, string> = {
-    error: '错误', uploading: '做种中', forcedUP: '强制做种', stalledUP: '等待做种', pausedUP: '暂停做种',
-    downloading: '下载中', forcedDL: '强制下载', stalledDL: '等待下载', pausedDL: '暂停下载', checkingDL: '校验中',
-    checkingUP: '校验中', moving: '移动中', stopped: '已停止', paused: '已暂停', seeding: '做种中',
+    error: t('tt.st.error'), uploading: t('tt.st.seeding'), forcedUP: t('tt.st.forcedUP'), stalledUP: t('tt.st.stalledUP'), pausedUP: t('tt.st.pausedUP'),
+    downloading: t('tt.st.downloading'), forcedDL: t('tt.st.forcedDL'), stalledDL: t('tt.st.stalledDL'), pausedDL: t('tt.st.pausedDL'), checkingDL: t('tt.st.checking'),
+    checkingUP: t('tt.st.checking'), moving: t('tt.st.moving'), stopped: t('tt.st.stopped'), paused: t('tt.st.paused'), seeding: t('tt.st.seeding'),
   }
-  return map[props.torrent.state] || props.torrent.state || '未知'
+  return map[props.torrent.state] || props.torrent.state || t('tt.st.unknown')
 })
 </script>
 
@@ -86,7 +89,7 @@ const stateText = computed(() => {
     <template #header>
       <div class="detail-title">
         <div class="detail-title-copy">
-          <span class="detail-kicker">任务详情</span>
+          <span class="detail-kicker">{{ t('td.kicker') }}</span>
           <h2 :title="torrent.name">{{ torrent.name }}</h2>
         </div>
         <span class="state-chip" :class="stateGroup(torrent.state)"><i />{{ stateText }}</span>
@@ -94,63 +97,63 @@ const stateText = computed(() => {
     </template>
     <div class="detail-head">
       <el-button-group>
-        <el-button size="small" @click="op(() => downloaderApi.pause(downloaderId, [torrent.hash]), '已暂停')">
-          {{ isPaused ? '恢复' : '暂停' }}
+        <el-button size="small" @click="op(() => downloaderApi.pause(downloaderId, [torrent.hash]), t('tt.msg.paused'))">
+          {{ isPaused ? t('tt.resume') : t('tt.pause') }}
         </el-button>
         <el-button
           v-if="caps.forceStart"
           size="small"
           :type="torrent.force_start ? 'warning' : 'default'"
-          @click="op(() => downloaderApi.setForceStart(downloaderId, [torrent.hash], !torrent.force_start), '已切换')"
+          @click="op(() => downloaderApi.setForceStart(downloaderId, [torrent.hash], !torrent.force_start), t('td.switched'))"
         >
-          {{ torrent.force_start ? '取消强制' : '强制开始' }}
+          {{ torrent.force_start ? t('td.unforce') : t('tt.act.forceStart') }}
         </el-button>
       </el-button-group>
-      <el-button size="small" @click="copy(magnet, '磁力链')">复制磁力链</el-button>
-      <el-button size="small" @click="copy(torrent.hash, '哈希')">复制哈希</el-button>
+      <el-button size="small" @click="copy(magnet, t('tt.magnet'))">{{ t('tt.act.copyMagnet') }}</el-button>
+      <el-button size="small" @click="copy(torrent.hash, t('tt.hash'))">{{ t('tt.act.copyHash') }}</el-button>
     </div>
 
     <el-tabs v-model="tab">
-      <el-tab-pane label="概览" name="overview">
+      <el-tab-pane :label="t('td.overview')" name="overview">
         <div class="grid">
-          <div class="cell"><span class="k">大小</span><span class="v">{{ fmtBytes(torrent.size) }}</span></div>
-          <div class="cell"><span class="k">已下载</span><span class="v">{{ fmtBytes(torrent.downloaded ?? 0) }}</span></div>
-          <div class="cell"><span class="k">已上传</span><span class="v">{{ fmtBytes(torrent.uploaded ?? 0) }}</span></div>
-          <div class="cell"><span class="k">分享率</span><span class="v">{{ torrent.ratio.toFixed(2) }}</span></div>
-          <div class="cell"><span class="k">进度</span><span class="v">{{ (torrent.progress * 100).toFixed(1) }}%</span></div>
-          <div class="cell"><span class="k">可用性</span><span class="v">{{ torrent.availability ? torrent.availability.toFixed(2) : '-' }}</span></div>
-          <div class="cell"><span class="k">做种/下载</span><span class="v">{{ torrent.num_seeds }} / {{ torrent.num_leechs }}</span></div>
-          <div class="cell" v-if="caps.swarm"><span class="k">Swarm 做/下</span><span class="v">{{ torrent.num_complete }} / {{ torrent.num_incomplete }}</span></div>
-          <div class="cell"><span class="k">↓ 速度</span><span class="v" style="color: var(--pt-primary-2)">{{ fmtSpeed(torrent.dl_rate) }}</span></div>
-          <div class="cell"><span class="k">↑ 速度</span><span class="v" style="color: var(--pt-success)">{{ fmtSpeed(torrent.up_rate) }}</span></div>
-          <div class="cell" v-if="caps.swarm"><span class="k">队列位置</span><span class="v">{{ torrent.priority }}</span></div>
-          <div class="cell"><span class="k">创建时间</span><span class="v">{{ fmtTime(torrent.added_at as unknown as string) }}</span></div>
-          <div class="cell"><span class="k">完成时间</span><span class="v">{{ fmtTime(torrent.completed_at) }}</span></div>
-          <div class="cell wide"><span class="k">保存路径</span><span class="v" :title="torrent.save_path">{{ torrent.save_path || '-' }}</span></div>
+          <div class="cell"><span class="k">{{ t('cloud.size') }}</span><span class="v">{{ fmtBytes(torrent.size) }}</span></div>
+          <div class="cell"><span class="k">{{ t('td.downloaded') }}</span><span class="v">{{ fmtBytes(torrent.downloaded ?? 0) }}</span></div>
+          <div class="cell"><span class="k">{{ t('td.uploaded') }}</span><span class="v">{{ fmtBytes(torrent.uploaded ?? 0) }}</span></div>
+          <div class="cell"><span class="k">{{ t('sitedetail.ratio') }}</span><span class="v">{{ torrent.ratio.toFixed(2) }}</span></div>
+          <div class="cell"><span class="k">{{ t('cloud.progress') }}</span><span class="v">{{ (torrent.progress * 100).toFixed(1) }}%</span></div>
+          <div class="cell"><span class="k">{{ t('td.availability') }}</span><span class="v">{{ torrent.availability ? torrent.availability.toFixed(2) : '-' }}</span></div>
+          <div class="cell"><span class="k">{{ t('td.seedDl') }}</span><span class="v">{{ torrent.num_seeds }} / {{ torrent.num_leechs }}</span></div>
+          <div class="cell" v-if="caps.swarm"><span class="k">{{ t('td.swarm') }}</span><span class="v">{{ torrent.num_complete }} / {{ torrent.num_incomplete }}</span></div>
+          <div class="cell"><span class="k">↓ {{ t('tt.speed') }}</span><span class="v" style="color: var(--pt-primary-2)">{{ fmtSpeed(torrent.dl_rate) }}</span></div>
+          <div class="cell"><span class="k">↑ {{ t('tt.speed') }}</span><span class="v" style="color: var(--pt-success)">{{ fmtSpeed(torrent.up_rate) }}</span></div>
+          <div class="cell" v-if="caps.swarm"><span class="k">{{ t('td.queuePos') }}</span><span class="v">{{ torrent.priority }}</span></div>
+          <div class="cell"><span class="k">{{ t('td.createdAt') }}</span><span class="v">{{ fmtTime(torrent.added_at as unknown as string) }}</span></div>
+          <div class="cell"><span class="k">{{ t('td.completedAt') }}</span><span class="v">{{ fmtTime(torrent.completed_at) }}</span></div>
+          <div class="cell wide"><span class="k">{{ t('td.savePath') }}</span><span class="v" :title="torrent.save_path">{{ torrent.save_path || '-' }}</span></div>
         </div>
 
         <div v-if="caps.forceStart || caps.sequential || caps.firstLast" class="flags">
-          <span class="flag" :class="{ on: torrent.force_start }">强制开始</span>
-          <span class="flag" :class="{ on: torrent.sequential }">顺序下载</span>
-          <span class="flag" :class="{ on: torrent.first_last_piece }">首尾优先</span>
-          <span class="flag" :class="{ on: torrent.auto_tmm }">自动管理</span>
+          <span class="flag" :class="{ on: torrent.force_start }">{{ t('tt.act.forceStart') }}</span>
+          <span class="flag" :class="{ on: torrent.sequential }">{{ t('tt.act.seq') }}</span>
+          <span class="flag" :class="{ on: torrent.first_last_piece }">{{ t('tt.act.firstLast') }}</span>
+          <span class="flag" :class="{ on: torrent.auto_tmm }">{{ t('td.autoTmm') }}</span>
         </div>
 
         <div v-if="caps.sequential" class="flag-ops">
-          <el-button size="small" @click="op(() => downloaderApi.toggleSequential(downloaderId, [torrent.hash]), '已切换顺序下载')">
-            {{ torrent.sequential ? '取消' : '开启' }}顺序下载
+          <el-button size="small" @click="op(() => downloaderApi.toggleSequential(downloaderId, [torrent.hash]), t('tt.msg.seq'))">
+            {{ t('td.toggleSeq', { s: torrent.sequential ? t('td.off') : t('td.on') }) }}
           </el-button>
-          <el-button size="small" @click="op(() => downloaderApi.toggleFirstLast(downloaderId, [torrent.hash]), '已切换首尾优先')">
-            {{ torrent.first_last_piece ? '取消' : '开启' }}首尾优先
+          <el-button size="small" @click="op(() => downloaderApi.toggleFirstLast(downloaderId, [torrent.hash]), t('tt.msg.firstLast'))">
+            {{ t('td.toggleFl', { s: torrent.first_last_piece ? t('td.off') : t('td.on') }) }}
           </el-button>
         </div>
       </el-tab-pane>
 
       <el-tab-pane v-if="caps.peers" :label="`Peers (${peers.length})`" name="peers">
         <el-table v-loading="peersLoading" :data="peers" size="small" max-height="420">
-          <el-table-column prop="ip" label="地址" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="client" label="客户端" min-width="140" show-overflow-tooltip />
-          <el-table-column label="进度" width="90">
+          <el-table-column prop="ip" :label="t('deviceform.address')" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="client" :label="t('td.client')" min-width="140" show-overflow-tooltip />
+          <el-table-column :label="t('cloud.progress')" width="90">
             <template #default="{ row }">{{ (row.progress * 100).toFixed(0) }}%</template>
           </el-table-column>
           <el-table-column label="↓" width="85">
@@ -159,13 +162,13 @@ const stateText = computed(() => {
           <el-table-column label="↑" width="85">
             <template #default="{ row }">{{ fmtSpeed(row.up_rate) }}</template>
           </el-table-column>
-          <el-table-column prop="flags" label="标志" width="90" show-overflow-tooltip />
-          <template #empty><div class="empty text-muted">无连接的对等体</div></template>
+          <el-table-column prop="flags" :label="t('td.flags')" width="90" show-overflow-tooltip />
+          <template #empty><div class="empty text-muted">{{ t('td.noPeers') }}</div></template>
         </el-table>
-        <el-button size="small" text @click="loadPeers" style="margin-top: 8px">刷新</el-button>
+        <el-button size="small" text @click="loadPeers" style="margin-top: 8px">{{ t('common.refresh') }}</el-button>
       </el-tab-pane>
 
-      <el-tab-pane v-if="caps.files" label="文件" name="files">
+      <el-tab-pane v-if="caps.files" :label="t('td.files')" name="files">
         <FilesDialog :downloader-id="downloaderId" :hash="torrent.hash" :type="type" />
       </el-tab-pane>
 

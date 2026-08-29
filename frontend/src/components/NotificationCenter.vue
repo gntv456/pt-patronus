@@ -6,6 +6,9 @@ import { useRouter } from 'vue-router'
 import { useNotices } from '@/composables/useNotices'
 import type { Notice, NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const { notices, unread, urgentUnread, load, syncFromWs, readOne: readOneApi, readAll: readAllApi, removeOne: removeOneApi, clearAll: clearAllApi } = useNotices()
@@ -13,22 +16,22 @@ const open = ref(false)
 const boxRef = ref<HTMLElement | null>(null)
 
 const sourceMeta: Record<NoticeSource, { icon: string; color: string; label: string }> = {
-  site_anniv: { icon: 'party-popper', color: '#f59e0b', label: '站点纪念日' },
-  new_mail: { icon: 'mail', color: '#3b82f6', label: '新消息' },
-  assess_pass: { icon: 'check-circle', color: '#22c55e', label: '考核通过' },
-  assess_fail: { icon: 'alert-circle', color: '#ef4444', label: '考核失败' },
-  announce: { icon: 'megaphone', color: '#3b82f6', label: '公告' },
-  host_offline: { icon: 'alert-triangle', color: '#ef4444', label: '主机离线' },
-  nas_offline: { icon: 'alert-triangle', color: '#ef4444', label: 'NAS 离线' },
-  reseed_done: { icon: 'check-circle', color: '#22c55e', label: '辅种完成' },
-  dl_done: { icon: 'download', color: '#22c55e', label: '下载完成' },
-  site_offline: { icon: 'alert-triangle', color: '#ef4444', label: '站点离线' },
-  backup_done: { icon: 'check-circle', color: '#22c55e', label: '备份完成' },
-  backup_import: { icon: 'check-circle', color: '#22c55e', label: '备份导入' },
+  site_anniv: { icon: 'party-popper', color: '#f59e0b', label: t('notices.source.site_anniv') },
+  new_mail: { icon: 'mail', color: '#3b82f6', label: t('notices.source.new_mail') },
+  assess_pass: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.assess_pass') },
+  assess_fail: { icon: 'alert-circle', color: '#ef4444', label: t('notices.source.assess_fail') },
+  announce: { icon: 'megaphone', color: '#3b82f6', label: t('notices.source.announce') },
+  host_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.host_offline') },
+  nas_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.nas_offline') },
+  reseed_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.reseed_done') },
+  dl_done: { icon: 'download', color: '#22c55e', label: t('notices.source.dl_done') },
+  site_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.site_offline') },
+  backup_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_done') },
+  backup_import: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_import') },
   freeleech: { icon: 'party-popper', color: '#f59e0b', label: 'Freeleech' },
 }
 function meta(s: NoticeSource) {
-  return sourceMeta[s] ?? { ...sourceMeta.announce, label: '通知' }
+  return sourceMeta[s] ?? { ...sourceMeta.announce, label: t('notices.source.fallback') }
 }
 const badgeText = computed(() => {
   const n = urgentUnread.value || unread.value
@@ -68,10 +71,10 @@ async function readAll() { await readAllApi() }
 async function removeOne(n: Notice) { await removeOneApi(n.id) }
 async function clearAll() {
   try {
-    await ElMessageBox.confirm('确定清空全部通知？（此操作不可恢复）', '清空通知', {
+    await ElMessageBox.confirm(t('nc.clearConfirm'), t('nc.clearTitle'), {
       type: 'warning',
-      confirmButtonText: '清空',
-      cancelButtonText: '取消',
+      confirmButtonText: t('nc.clearGo'),
+      cancelButtonText: t('common.cancel'),
     })
   } catch {
     return // 用户取消
@@ -135,10 +138,10 @@ function relTime(iso: string): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
   const diff = (Date.now() - d.getTime()) / 1000
-  if (diff < 60) return '刚刚'
-  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
-  return `${Math.floor(diff / 86400)} 天前`
+  if (diff < 60) return t('notices.relTime.justNow')
+  if (diff < 3600) return t('notices.relTime.minutesAgo', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('notices.relTime.hoursAgo', { n: Math.floor(diff / 3600) })
+  return t('notices.relTime.daysAgo', { n: Math.floor(diff / 86400) })
 }
 
 // 折叠展开高度过渡（Vue <Transition> JS hooks）
@@ -173,7 +176,7 @@ function onGroupLeave(el: Element) {
     <button
       class="nc-bell"
       :class="{ 'nc-bell--has': unread > 0, 'nc-bell--urgent': urgentUnread > 0 }"
-      :title="urgentUnread ? `${urgentUnread} 条高风险通知` : unread ? `${unread} 条未读通知` : '通知中心'"
+      :title="urgentUnread ? t('nc.urgentN', { n: urgentUnread }) : unread ? t('nc.unreadN', { n: unread }) : t('nc.title')"
       @click.stop="open = !open"
     >
       <span class="nc-bell-ic" :class="{ 'nc-bell-ic--ring': unread > 0 }">
@@ -185,15 +188,15 @@ function onGroupLeave(el: Element) {
     <Transition name="nc-slide">
       <div v-if="open" class="nc-panel glass">
         <div class="nc-head">
-          <span class="nc-title">通知中心 <small v-if="unread">未读 {{ unread }}<template v-if="urgentUnread"> · 高风险 {{ urgentUnread }}</template></small></span>
+          <span class="nc-title">{{ t('nc.title') }} <small v-if="unread">{{ t('nc.unread') }} {{ unread }}<template v-if="urgentUnread"> · {{ t('nc.urgent') }} {{ urgentUnread }}</template></small></span>
           <div class="nc-actions">
-            <router-link :to="{ name: 'notices' }" class="nc-action" @click="open = false">查看全部</router-link>
-            <button v-if="unread > 0" class="nc-action" @click="readAll">全部已读</button>
-            <button v-if="notices.length" class="nc-action nc-action--danger" @click="clearAll">清空</button>
+            <router-link :to="{ name: 'notices' }" class="nc-action" @click="open = false">{{ t('nc.viewAll') }}</router-link>
+            <button v-if="unread > 0" class="nc-action" @click="readAll">{{ t('nc.readAll') }}</button>
+            <button v-if="notices.length" class="nc-action nc-action--danger" @click="clearAll">{{ t('nc.clearGo') }}</button>
           </div>
         </div>
         <div class="nc-list">
-          <div v-if="!notices.length" class="nc-empty">暂无通知</div>
+          <div v-if="!notices.length" class="nc-empty">{{ t('nc.empty') }}</div>
           <div v-for="g in grouped" :key="g.source" class="nc-group-wrap">
             <!-- 组头：折叠时显示彩色图标 + 类型名 + 未读 pill 徽标 + 最新时间 -->
             <div
@@ -209,7 +212,7 @@ function onGroupLeave(el: Element) {
                   <span class="nc-group-name">{{ meta(g.source).label }}<span class="nc-count"> · {{ g.items.length }}</span></span>
                   <span v-if="g.unreadCount > 0" class="nc-unread-pill" :style="{ background: meta(g.source).color }">{{ g.unreadCount }}</span>
                 </div>
-                <div class="nc-text">{{ g.unreadCount > 0 ? g.unreadCount + ' 条未读 · ' : '' }}{{ g.latest.title }}</div>
+                <div class="nc-text">{{ g.unreadCount > 0 ? t('nc.nUnread', { n: g.unreadCount }) : '' }}{{ g.latest.title }}</div>
                 <div class="nc-time nc-group-time">{{ relTime(g.latest.created_at) }}</div>
               </div>
               <span class="nc-chevron" :class="{ 'nc-chevron--open': isGroupExpanded(g.source) }">
@@ -241,7 +244,7 @@ function onGroupLeave(el: Element) {
                     </div>
                     <div v-if="n.body" class="nc-text">{{ n.body }}</div>
                   </div>
-                  <button class="nc-del" title="删除" @click.stop="removeOne(n)">
+                  <button class="nc-del" :title="t('common.delete')" @click.stop="removeOne(n)">
                     <SptIcon name="trash" :size="14" />
                   </button>
                 </div>

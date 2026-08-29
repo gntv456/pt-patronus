@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { toRef } from 'vue'
 import { useScratchCardGame, fmt } from '@/composables/useScratchCardGame'
 
+const { t } = useI18n()
 const props = defineProps<{ siteId: number }>()
 
 const {
@@ -15,29 +17,29 @@ const {
   <div class="scratch">
     <!-- 标题 -->
     <div class="banner">
-      <span class="banner-title">富豪刮刮乐</span>
-      <span class="banner-sub">每次消耗 1 张刮刮卡 · 单卡 {{ fmt(stats?.cost_per_play ?? 2000) }} 金元宝</span>
+      <span class="banner-title">{{ t('sc.title') }}</span>
+      <span class="banner-sub">{{ t('sc.sub', { n: fmt(stats?.cost_per_play ?? 2000) }) }}</span>
     </div>
 
     <!-- 统计栏 -->
     <div class="stat-bar">
       <div class="stat-tile">
         <div class="stat-val">{{ stats?.card_number ?? '--' }}</div>
-        <div class="stat-lbl">剩余刮刮卡</div>
+        <div class="stat-lbl">{{ t('sc.left') }}</div>
       </div>
       <div class="stat-tile">
         <div class="stat-val">{{ stats ? fmt(stats.balance) : '--' }}</div>
-        <div class="stat-lbl">金元宝余额</div>
+        <div class="stat-lbl">{{ t('sc.ingot') }}</div>
       </div>
       <div class="stat-tile">
         <div class="stat-val">{{ autoPlaying ? autoCount : (history.length || 0) }}</div>
-        <div class="stat-lbl">{{ autoPlaying ? '本轮已刮' : '近期记录' }}</div>
+        <div class="stat-lbl">{{ autoPlaying ? t('sc.roundDone') : t('sc.recent') }}</div>
       </div>
     </div>
 
     <!-- 奖品展示 -->
     <div v-if="prizes.length" class="prizes">
-      <div class="section-label">奖品展示</div>
+      <div class="section-label">{{ t('sc.prizes') }}</div>
       <div class="prize-row">
         <div v-for="p in prizes" :key="p.id" class="prize-chip">
           <span class="prize-icon">{{ p.name.slice(0, 1) }}</span>
@@ -50,12 +52,12 @@ const {
     <div class="card-zone">
       <div class="scratch-card" :class="{ revealed: reveal, win: reveal?.success && (reveal?.amount ?? 0) > 0 }">
         <div v-if="!reveal" class="cover">
-          <span class="cover-text">刮奖区</span>
-          <span class="cover-hint">点击下方按钮刮开</span>
+          <span class="cover-text">{{ t('msg1.area') }}</span>
+          <span class="cover-hint">{{ t('msg1.hint') }}</span>
         </div>
         <div v-else class="prize-reveal">
           <div class="reveal-icon">{{ reveal.amount && reveal.amount > 0 ? '🎊' : '·' }}</div>
-          <div class="reveal-name">{{ reveal.prize || (reveal.success ? '谢谢参与' : '未中奖') }}</div>
+          <div class="reveal-name">{{ reveal.prize || (reveal.success ? t('sp.thanks') : t('msg1.noWin')) }}</div>
           <div v-if="reveal.amount && reveal.amount > 0" class="reveal-amount">×{{ fmt(reveal.amount) }}</div>
           <div v-if="reveal.message" class="reveal-msg">{{ reveal.message }}</div>
         </div>
@@ -65,16 +67,16 @@ const {
     <!-- 操作按钮 -->
     <div class="actions">
       <button class="btn btn-gold" :disabled="playing || buying || (stats?.card_number ?? 0) <= 0" @click="play">
-        {{ playing ? '刮卡中…' : '刮一张' }}
+        {{ playing ? t('msg1.scratching') : t('msg1.scratchOne') }}
       </button>
       <button class="btn btn-auto" :class="{ active: autoPlaying }" @click="toggleAuto">
-        {{ autoPlaying ? `停止 (${autoCount})` : '自动刮卡' }}
+        {{ autoPlaying ? t('sc.stopN', { n: autoCount }) : t('sc.auto') }}
       </button>
     </div>
 
     <!-- 购卡 -->
     <div v-if="options.length" class="buy">
-      <div class="section-label">购买刮刮卡</div>
+      <div class="section-label">{{ t('sc.buy') }}</div>
       <div class="buy-row">
         <button
           v-for="opt in options"
@@ -83,18 +85,18 @@ const {
           :disabled="buying"
           @click="buy(opt)"
         >
-          <span class="buy-title">{{ opt.gift_count > 0 ? `买${opt.buy_count}送${opt.gift_count}` : `${opt.buy_count}张` }}</span>
-          <span class="buy-price">{{ fmt(opt.buy_count * opt.unit_price) }} 元宝</span>
+          <span class="buy-title">{{ opt.gift_count > 0 ? t('sc.buyGift', { b: opt.buy_count, g: opt.gift_count }) : t('sc.buyN', { n: opt.buy_count }) }}</span>
+          <span class="buy-price">{{ t('sc.ingotN', { n: fmt(opt.buy_count * opt.unit_price) }) }}</span>
         </button>
       </div>
     </div>
 
     <!-- 抽奖记录 -->
     <div v-if="history.length" class="history">
-      <div class="section-label">抽奖记录</div>
+      <div class="section-label">{{ t('sc.history') }}</div>
       <div class="hist-list">
         <div v-for="(r, i) in history.slice(0, 12)" :key="i" class="hist-item">
-          <span class="hist-prize" :class="{ miss: !r.amount }">{{ r.prize_name || '谢谢参与' }}</span>
+          <span class="hist-prize" :class="{ miss: !r.amount }">{{ r.prize_name || t('sp.thanks') }}</span>
           <span v-if="r.amount > 0" class="hist-amt">×{{ fmt(r.amount) }}</span>
           <span class="hist-time">{{ r.created_at }}</span>
         </div>

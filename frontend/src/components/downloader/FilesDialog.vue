@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch, computed } from 'vue'
 import { downloaderApi, type TorrentFile } from '@/api/downloader'
 import { fmtBytes } from '@/utils/format'
 import { dlCaps } from './caps'
 
+const { t } = useI18n()
 const props = defineProps<{ downloaderId: number; hash: string; type: string }>()
 const files = ref<TorrentFile[]>([])
 const loading = ref(false)
@@ -17,7 +19,7 @@ async function load() {
     const r = await downloaderApi.files(props.downloaderId, props.hash)
     files.value = r.files ?? []
   } catch {
-    ElMessage.warning('加载失败')
+    ElMessage.warning(t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -28,9 +30,9 @@ async function changePrio(f: TorrentFile, prio: number) {
   const r = await downloaderApi.setFilePriority(props.downloaderId, props.hash, [f.index], prio)
   if (r.ok) {
     f.priority = prio
-    ElMessage.success('已更新')
+    ElMessage.success(t('common.updated'))
   } else {
-    ElMessage.warning(r.error || '失败')
+    ElMessage.warning(r.error || t('common.failed'))
   }
 }
 </script>
@@ -49,7 +51,7 @@ async function changePrio(f: TorrentFile, prio: number) {
         <el-option v-for="o in prioOptions" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
     </div>
-    <div v-if="!files.length && !loading" class="empty text-muted">无文件</div>
+    <div v-if="!files.length && !loading" class="empty text-muted">{{ t('common.noFiles') }}</div>
   </div>
 </template>
 

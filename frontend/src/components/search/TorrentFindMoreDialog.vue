@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { formatTorrentSize, volumeFactorLabel } from '@/utils/torrentMeta'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import type { FindRow } from '@/components/SiteTorrentFindDialog.vue'
+
+const { t } = useI18n()
 
 const visible = defineModel<boolean>('visible', { required: true })
 
@@ -26,7 +29,7 @@ function openDetail(row: FindRow) {
 <template>
   <el-dialog
     v-model="visible"
-    title="其他来源"
+    :title="t('tfd.otherSources')"
     width="min(420px, 92vw)"
     append-to-body
     align-center
@@ -56,7 +59,7 @@ function openDetail(row: FindRow) {
           <span
             v-if="item.detail_url"
             class="sf-ext"
-            title="详情"
+            :title="t('tfd.detail')"
             @click.stop="openDetail(item)"
           >↗</span>
         </div>

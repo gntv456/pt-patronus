@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
@@ -62,12 +63,12 @@ func (h *FreeleechHandler) AllStream(c *gin.Context) {
 func (h *FreeleechHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	notices, e := h.ch.Freeleech(c.Request.Context(), s)
@@ -128,12 +129,12 @@ func (h *AnnouncementHandler) AllStream(c *gin.Context) {
 func (h *AnnouncementHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	ann, e := h.ch.Announcements(c.Request.Context(), s)

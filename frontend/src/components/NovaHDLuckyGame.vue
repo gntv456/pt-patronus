@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
 
+const { t } = useI18n()
+// 服务端奖品名占位值（比较用，非文案）
+const NOWIN_SENTINEL = '\u672a\u4e2d\u5956'
 const props = defineProps<{ siteId: number }>()
 const GAME = 'novahd_lucky'
 
@@ -28,24 +32,24 @@ async function draw(count: number) {
     last.value = res
     if (res.success) {
       const wins = (res.prizes || []).filter((p) => p.is_win)
-      ElMessage.success(wins.length ? `🎉 中奖 ${wins.length} 次` : (res.message || '完成'))
+      ElMessage.success(wins.length ? t('nlg.wonN', { n: wins.length }) : (res.message || t('bg.done')))
     } else {
-      ElMessage.warning(res.message || '抽奖失败')
+      ElMessage.warning(res.message || t('nlg.drawFailed'))
     }
     await Promise.all([refreshStats(), refreshHistory()])
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     spinning.value = false
   }
 }
 
 function emoji(name: string) {
-  if (/VIP|会员/.test(name)) return '👑'
-  if (/彩虹/.test(name)) return '🌈'
-  if (/邀请/.test(name)) return '✉️'
-  if (/魔力/.test(name)) return '🪙'
+  if (/VIP|\u4f1a\u5458/.test(name)) return '👑'
+  if (/\u5f69\u8679/.test(name)) return '🌈'
+  if (/\u9080\u8bf7/.test(name)) return '✉️'
+  if (/\u9b54\u529b/.test(name)) return '🪙'
   return '🎁'
 }
 
@@ -58,27 +62,27 @@ onMounted(async () => {
 <template>
   <div class="lucky">
     <div class="hero">
-      <div class="hero-title">🎡 幸运抽奖</div>
+      <div class="hero-title">🎡 {{ t('nlg.title') }}</div>
     </div>
 
     <!-- 抽奖信息 -->
     <section class="glass section">
       <div class="info-grid">
         <div class="info-card">
-          <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b><small>当前魔力</small>
+          <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b><small>{{ t('nlg.magicNow') }}</small>
         </div>
         <div class="info-card">
-          <b>{{ stats?.cost_per_play?.toLocaleString() ?? '—' }}</b><small>每次消耗</small>
+          <b>{{ stats?.cost_per_play?.toLocaleString() ?? '—' }}</b><small>{{ t('nlg.costEach') }}</small>
         </div>
         <div class="info-card">
-          <b>{{ stats?.today_spins ?? 0 }}/{{ stats?.max_daily || '?' }}</b><small>今日已抽</small>
+          <b>{{ stats?.today_spins ?? 0 }}/{{ stats?.max_daily || '?' }}</b><small>{{ t('nlg.todayDrawn') }}</small>
         </div>
       </div>
     </section>
 
     <!-- 奖品列表 -->
     <section v-if="prizes.length" class="glass section">
-      <div class="sec-title">奖品列表</div>
+      <div class="sec-title">{{ t('nlg.prizes') }}</div>
       <div class="prize-strip">
         <div v-for="p in prizes" :key="p.id" class="prize-card">
           <span class="p-emoji">{{ emoji(p.name) }}</span>
@@ -90,11 +94,11 @@ onMounted(async () => {
     <!-- 抽奖操作 -->
     <section class="glass section ops">
       <button class="op-btn primary" :disabled="spinning" @click="draw(1)">
-        {{ spinning ? '抽奖中…' : '立即抽奖' }}
+        {{ spinning ? t('nlg.drawing') : t('nlg.drawNow') }}
       </button>
-      <button class="op-btn" :disabled="spinning" @click="draw(10)">连抽 10 次</button>
-      <button class="op-btn" :disabled="spinning" @click="draw(20)">连抽 20 次</button>
-      <button class="op-btn" :disabled="spinning" @click="draw(50)">连抽 50 次</button>
+      <button class="op-btn" :disabled="spinning" @click="draw(10)">{{ t('sp.multi', { n: 10 }) }}</button>
+      <button class="op-btn" :disabled="spinning" @click="draw(20)">{{ t('sp.multi', { n: 20 }) }}</button>
+      <button class="op-btn" :disabled="spinning" @click="draw(50)">{{ t('sp.multi', { n: 50 }) }}</button>
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
@@ -104,7 +108,7 @@ onMounted(async () => {
           <span v-for="(p, i) in last.prizes.filter((x) => x.is_win).slice(0, 8)" :key="i" class="r-pill">
             {{ p.prize_name }}<template v-if="p.amount"> ×{{ p.amount }}</template>
           </span>
-          <span v-if="!last.prizes.some((x) => x.is_win)" class="text-muted">很遗憾，未中奖</span>
+          <span v-if="!last.prizes.some((x) => x.is_win)" class="text-muted">{{ t('nlg.sorryNoWin') }}</span>
         </div>
         <span v-else-if="last.message" class="r-msg">{{ last.message }}</span>
       </div>
@@ -112,9 +116,9 @@ onMounted(async () => {
 
     <!-- 记录 -->
     <section v-if="records.length" class="glass section">
-      <div class="sec-title">抽奖记录</div>
+      <div class="sec-title">{{ t('sc.history') }}</div>
       <div v-for="(r, i) in records.slice(0, 10)" :key="i" class="rec-row">
-        <span :class="{ muted: r.prize_name === '未中奖' }">{{ r.prize_name }}</span>
+        <span :class="{ muted: r.prize_name === NOWIN_SENTINEL }">{{ r.prize_name }}</span>
         <span v-if="r.amount" class="rec-amt">+{{ r.amount }}</span>
         <span class="text-muted rec-time">{{ r.created_at }}</span>
       </div>

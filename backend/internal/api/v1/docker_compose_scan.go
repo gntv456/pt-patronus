@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // composeScanDir 从环境变量读取 compose 项目扫描根。
@@ -129,17 +131,17 @@ func scanOneLevel(dir string, out *[]composeProject) {
 func (h *LocalComposeHandler) ProjectDetail(c *gin.Context) {
 	dir := c.Query("dir")
 	if dir == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "dir is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	name := findComposeFile(dir)
 	if name == "" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no compose file found"})
+		errcode.Respond(c, errcode.ComposeFileNotFound)
 		return
 	}
 	content, err := os.ReadFile(filepath.Join(dir, name))
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"content": string(content), "file": name, "dir": dir})
@@ -153,18 +155,18 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 		Action string `json:"action" binding:"required"` // up | down | restart | pull
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	// 安全校验：dir 必须在扫描目录下（防目录穿越）
 	root := composeScanDir()
 	if !strings.HasPrefix(in.Dir, root) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "dir must be under scan root"})
+		errcode.Respond(c, errcode.ComposeDirInvalid)
 		return
 	}
 	name := findComposeFile(in.Dir)
 	if name == "" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no compose file found in dir"})
+		errcode.Respond(c, errcode.ComposeFileNotFound)
 		return
 	}
 	// 白名单 action
@@ -179,7 +181,7 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 	case "pull":
 		subArgs = []string{"pull"}
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid action"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Minute)
@@ -205,25 +207,25 @@ type projectSaveRequest struct {
 func (h *LocalComposeHandler) ProjectSave(c *gin.Context) {
 	var in projectSaveRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	// 安全校验：dir 必须在扫描目录下（防目录穿越写任意文件）
 	root := composeScanDir()
 	if !strings.HasPrefix(in.Dir, root) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "dir must be under scan root"})
+		errcode.Respond(c, errcode.ComposeDirInvalid)
 		return
 	}
 	name := findComposeFile(in.Dir)
 	if name == "" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no compose file found in dir"})
+		errcode.Respond(c, errcode.ComposeFileNotFound)
 		return
 	}
 	fullPath := filepath.Join(in.Dir, name)
 	// 写前先验证语法：写到临时文件，用 compose config 验证，通过才覆盖。
 	tmpPath := fullPath + ".tmp"
 	if err := os.WriteFile(tmpPath, []byte(in.Content), 0644); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "write temp file: " + err.Error()})
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
 		return
 	}
 	// 验证语法
@@ -235,13 +237,13 @@ func (h *LocalComposeHandler) ProjectSave(c *gin.Context) {
 	if validateErr != nil {
 		// 语法错误：删临时文件，返回验证错误（不覆盖原文件）
 		os.Remove(tmpPath)
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "compose 语法验证失败，未保存", "output": string(validateOut)})
+		errcode.Respond(c, errcode.InvalidRequest.WithErr(errors.New(string(validateOut))))
 		return
 	}
 	// 验证通过：原子替换（rename 是原子的）
 	os.Remove(tmpPath)
 	if err := os.WriteFile(fullPath, []byte(in.Content), 0644); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "file": name})

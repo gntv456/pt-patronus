@@ -2,6 +2,7 @@ package v1
 
 import (
 	"database/sql"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"regexp"
 	"strings"
@@ -39,7 +40,7 @@ type dbColumn struct {
 func (h *DatabaseHandler) Tables(c *gin.Context) {
 	tables, err := h.listTables()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"tables": tables})
@@ -77,16 +78,16 @@ func (h *DatabaseHandler) countRows(table string) (int64, error) {
 func (h *DatabaseHandler) Schema(c *gin.Context) {
 	table := c.Param("table")
 	if table == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "table is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if !isValidIdent(table) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid table name"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	cols, err := h.describeTable(table)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"columns": cols})
@@ -162,39 +163,36 @@ var (
 func (h *DatabaseHandler) Query(c *gin.Context) {
 	var in dbQueryRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	sqlText := strings.TrimSpace(in.SQL)
 	if sqlText == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "sql is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if dbForbiddenPattern.MatchString(sqlText) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "forbidden operation: this SQL pattern is blocked", "code": "forbidden_sql"})
+		errcode.Respond(c, errcode.ForbiddenSQL)
 		return
 	}
 	isWrite := dbWritePattern.MatchString(sqlText)
 
 	// 写操作需要二次确认。
 	if isWrite && !in.ConfirmRisk {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "write operation requires confirmation",
-			"code":  "risk_confirmation_required",
-		})
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	// 阻止多语句注入：写操作只允许单条语句（不含分号结尾或多条用分号拼接）。
 	trimmedSemi := strings.TrimRight(strings.TrimSpace(sqlText), ";")
 	if strings.Contains(trimmedSemi, ";") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "multi-statement SQL is not allowed", "code": "multi_statement_blocked"})
+		errcode.Respond(c, errcode.MultiStatement)
 		return
 	}
 
 	if isWrite {
 		res := h.db.Exec(trimmedSemi)
 		if res.Error != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": res.Error.Error()})
+			errcode.Respond(c, errcode.InvalidInput.WithErr(res.Error))
 			return
 		}
 		affected := res.RowsAffected
@@ -212,13 +210,13 @@ func (h *DatabaseHandler) Query(c *gin.Context) {
 	wrapped := "SELECT * FROM (" + trimmedSemi + ") AS _q LIMIT " + itoa(limit)
 	rows, err := h.db.Raw(wrapped).Rows()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	defer rows.Close()
 	result, err := scanRows(rows)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	result.IsWrite = false

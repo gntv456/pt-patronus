@@ -50,7 +50,7 @@ class _FindOnSitesSheetState extends State<FindOnSitesSheet> {
         AppBar(
           title: Text('在站点查找：${widget.title}', overflow: TextOverflow.ellipsis),
           automaticallyImplyLeading: false,
-          actions: [IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))],
+          actions: [IconButton(tooltip: '关闭', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))],
         ),
         if (_error != null)
           Padding(padding: const EdgeInsets.all(12), child: Text('查找失败：$_error', style: const TextStyle(color: Color(0xFFF56C6C), fontSize: 13)))

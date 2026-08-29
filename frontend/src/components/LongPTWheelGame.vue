@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult, type PrizeDef, type GameRecord } from '@/api/entertainment'
 
@@ -17,6 +18,7 @@ const prizes = ref<PrizeDef[]>([])
 const records = ref<GameRecord[]>([])
 const spinning = ref(false)
 const result = ref<PlayResult | null>(null)
+const { t } = useI18n()
 const rotation = ref(0) // 转盘累计旋转角度（deg）
 const lastMode = ref<1 | typeof MULTI>(1)
 
@@ -31,7 +33,7 @@ const multiSummary = computed(() => {
   const ps = result.value?.prizes ?? []
   const m = new Map<string, { name: string; n: number; type: string; win: boolean }>()
   for (const p of ps) {
-    const key = p.prize_name || '未知'
+    const key = p.prize_name || t('sp.unknown')
     const e = m.get(key) ?? { name: key, n: 0, type: p.prize_type, win: p.is_win }
     e.n++
     m.set(key, e)
@@ -85,23 +87,23 @@ async function spin(count: 1 | typeof MULTI) {
       if (count === 1) {
         await animateToIndex(idToIndex.value.get(res.prize_id ?? 0) ?? 0)
         result.value = res
-        const win = res.prize && res.prize !== '未中奖'
+        const win = res.prize && res.prize !== t('sp.noWin')
         if (win) ElMessage.success(`🎉 ${res.prize}`)
-        else ElMessage.info(res.message || '未中奖')
+        else ElMessage.info(res.message || t('sp.noWin'))
       } else {
         await animateSpins(3)
         result.value = res
         const won = (res.prizes ?? []).filter((p) => p.is_win).length
-        ElMessage.success(won > 0 ? `${count} 连抽中奖 ${won} 次` : `${count} 连抽未中奖`)
+        ElMessage.success(won > 0 ? t('sp.multiWon', { count, won }) : t('sp.multiNoWin', { count }))
       }
     } else {
       result.value = res
-      ElMessage.warning(res.message || '抽奖失败')
+      ElMessage.warning(res.message || t('sp.drawFailed'))
     }
     await Promise.all([refreshStats(), refreshHistory()])
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     spinning.value = false
   }
@@ -162,18 +164,18 @@ onMounted(async () => {
 <template>
   <div class="lpt-wheel">
     <div class="banner">
-      <span class="banner-title">🎰 幸运大转盘</span>
-      <span class="banner-sub">单次消耗 {{ Math.round(stats?.cost_per_play ?? 0) }} 魔力{{ stats?.discount ? ` · 连抽${stats.discount / 10}折` : '' }}</span>
+      <span class="banner-title">🎰 {{ t('wh.title') }}</span>
+      <span class="banner-sub">{{ t('wh.costLine', { n: Math.round(stats?.cost_per_play ?? 0) }) }}{{ stats?.discount ? t('wh.discount', { d: stats.discount / 10 }) : '' }}</span>
     </div>
 
     <div class="stat-bar">
       <div class="stat-tile">
         <div class="stat-val">{{ stats ? Math.round(stats.balance) : '--' }}</div>
-        <div class="stat-lbl">魔力余额</div>
+        <div class="stat-lbl">{{ t('wh.balance') }}</div>
       </div>
       <div class="stat-tile">
         <div class="stat-val">{{ stats?.discount ? stats.discount / 10 : '—' }}</div>
-        <div class="stat-lbl">连抽折扣</div>
+        <div class="stat-lbl">{{ t('wh.discountLbl') }}</div>
       </div>
     </div>
 
@@ -186,26 +188,26 @@ onMounted(async () => {
         <span v-if="spinning" class="spinner" />
         <template v-else>
           <span class="hub-icon">🎲</span>
-          <span class="hub-text">开始<br />抽奖</span>
+          <span class="hub-text">{{ t('sp.hub') }}</span>
         </template>
       </button>
     </div>
 
     <div class="actions">
-      <el-button type="primary" :loading="spinning && lastMode === 1" @click="spin(1)">单抽（消耗{{ Math.round(stats?.cost_per_play ?? 0) }}魔力）</el-button>
-      <el-button type="warning" :loading="spinning && lastMode === MULTI" @click="spin(MULTI)">{{ MULTI }} 连抽</el-button>
+      <el-button type="primary" :loading="spinning && lastMode === 1" @click="spin(1)">{{ t('wh.single', { n: Math.round(stats?.cost_per_play ?? 0) }) }}</el-button>
+      <el-button type="warning" :loading="spinning && lastMode === MULTI" @click="spin(MULTI)">{{ t('wh.multiN', { n: MULTI }) }}</el-button>
     </div>
 
     <!-- 结果 -->
     <div v-if="result" class="result" :class="result.success ? 'win' : 'lose'">
       <template v-if="lastMode === 1">
-        <span class="badge">{{ result.prize && result.prize !== '未中奖' ? '🎉 中奖' : '💫 未中奖' }}</span>
+        <span class="badge">{{ result.prize && result.prize !== t('sp.noWin') ? '🎉 ' + t('wh.win') : '💫 ' + t('sp.noWin') }}</span>
         <span v-if="result.prize" class="r-prize">{{ result.prize }}</span>
         <span v-if="result.amount" class="r-amt">×{{ result.amount }}</span>
         <div v-if="result.message" class="r-msg text-muted">{{ result.message }}</div>
       </template>
       <template v-else>
-        <span class="badge">{{ MULTI }} 连抽结果</span>
+        <span class="badge">{{ t('wh.multiResult', { n: MULTI }) }}</span>
         <div class="multi-list">
           <span v-for="it in multiSummary" :key="it.name" class="multi-item" :class="{ nowin: !it.win }">
             {{ it.name }} ×{{ it.n }}
@@ -216,9 +218,9 @@ onMounted(async () => {
 
     <!-- 抽奖记录 -->
     <div v-if="records.length" class="glass records">
-      <div class="rec-title">抽奖记录</div>
+      <div class="rec-title">{{ t('sp.records') }}</div>
       <div v-for="(r, i) in records.slice(0, 8)" :key="i" class="rec-row">
-        <span class="rec-prize" :class="{ muted: r.prize_name === '未中奖' }">{{ r.prize_name }}</span>
+        <span class="rec-prize" :class="{ muted: r.prize_name === t('sp.noWin') }">{{ r.prize_name }}</span>
         <span v-if="r.amount" class="rec-amt">×{{ r.amount }}</span>
         <span class="rec-time text-muted">{{ r.created_at }}</span>
       </div>

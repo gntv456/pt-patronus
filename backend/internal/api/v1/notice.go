@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"strconv"
 
@@ -24,7 +25,7 @@ func (h *NoticeHandler) List(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	ns, err := h.svc.List(unread, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"notices": ns})
@@ -37,7 +38,7 @@ func (h *NoticeHandler) Read(c *gin.Context) {
 		return
 	}
 	if err := h.svc.MarkRead(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"read": id})
@@ -46,7 +47,7 @@ func (h *NoticeHandler) Read(c *gin.Context) {
 // ReadAll 全部已读。
 func (h *NoticeHandler) ReadAll(c *gin.Context) {
 	if err := h.svc.MarkAllRead(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"read_all": true})
@@ -59,7 +60,7 @@ func (h *NoticeHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.svc.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -69,7 +70,7 @@ func (h *NoticeHandler) Delete(c *gin.Context) {
 func (h *NoticeHandler) Clear(c *gin.Context) {
 	n, err := h.svc.ClearAll()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"cleared": n})

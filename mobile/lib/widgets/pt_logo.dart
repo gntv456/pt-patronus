@@ -22,11 +22,16 @@ class PTLogo extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: size,
-        height: size,
-        child: CustomPaint(
-          painter: _PTLogoPainter(detailed: detailed, background: background),
+  Widget build(BuildContext context) => Semantics(
+        label: 'PTPatronus Logo',
+        image: true,
+        excludeSemantics: true,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: CustomPaint(
+            painter: _PTLogoPainter(detailed: detailed, background: background),
+          ),
         ),
       );
 }// —— logo-mark.svg 路径（1024² 坐标），手写 ui.Path（路径仅 M/L/C/Q/Z，无需 SVG 解析器）。

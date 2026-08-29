@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { safeUrl } from '@/utils/safeUrl'
 import { rssApi, type RssSubscription, type RssItem, type RssInput } from '@/api/rss'
 import { siteApi, type Site } from '@/api/site'
@@ -7,6 +8,7 @@ import { downloaderApi, type Downloader } from '@/api/downloader'
 import { filterApi } from '@/api/filter'
 import EmptyState from '@/components/EmptyState.vue'
 
+const { t } = useI18n()
 const list = ref<RssSubscription[]>([])
 const sites = ref<Site[]>([])
 const downloaders = ref<Downloader[]>([])
@@ -19,7 +21,7 @@ async function load() {
   try {
     list.value = await rssApi.list()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载失败')
+    ElMessage.error((e as Error).message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -69,7 +71,7 @@ const filterGroupArray = computed<string[]>({
 
 async function save() {
   if (!form.value.name || !form.value.url) {
-    ElMessage.warning('名称和 URL 必填')
+    ElMessage.warning(t('rss.nameUrlRequired'))
     return
   }
   try {
@@ -77,34 +79,34 @@ async function save() {
     else await rssApi.create(form.value)
     showForm.value = false
     await load()
-    ElMessage.success('已保存')
+    ElMessage.success(t('common.saved'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
+    ElMessage.error((e as Error).message || t('common.saveFailed'))
   }
 }
 async function remove(r: RssSubscription) {
   try {
-    await ElMessageBox.confirm(`确定删除 RSS「${r.name}」？`, '确认', { type: 'warning' })
+    await ElMessageBox.confirm(t('rss.confirmDelete', { name: r.name }), t('common.confirm'), { type: 'warning' })
   } catch {
     return
   }
   try {
     await rssApi.remove(r.id)
     await load()
-    ElMessage.success('已删除')
+    ElMessage.success(t('common.deleted'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '删除失败')
+    ElMessage.error((e as Error).message || t('common.deleteFailed'))
   }
 }
 async function check(r: RssSubscription) {
   checking.value = r.id
   try {
     const res = await rssApi.check(r.id)
-    if (res.ok) ElMessage.success(`新增 ${res.new_count} 条`)
-    else ElMessage.warning(res.error || '检查失败')
+    if (res.ok) ElMessage.success(t('rss.newItems', { n: res.new_count }))
+    else ElMessage.warning(res.error || t('rss.checkFailed'))
     await load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '检查失败')
+    ElMessage.error((e as Error).message || t('rss.checkFailed'))
   } finally {
     checking.value = null
   }
@@ -135,10 +137,10 @@ function fmtTime(t?: string) {
   <div class="page">
     <div class="head">
       <div>
-        <h2 class="title">RSS 订阅</h2>
-        <span class="text-muted hint">订阅 RSS/Atom 源 → 按关键词/大小/分辨率过滤 → 自动下载 + 通知。cron 按 interval 定时扫描。</span>
+        <h2 class="title">{{ t('rss.title') }}</h2>
+        <span class="text-muted hint">{{ t('rss.subtitle') }}</span>
       </div>
-      <el-button type="primary" @click="openCreate">+ 添加订阅</el-button>
+      <el-button type="primary" @click="openCreate">{{ t('rss.add') }}</el-button>
     </div>
 
     <div v-loading="loading" class="card glass">
@@ -147,20 +149,20 @@ function fmtTime(t?: string) {
           <div class="info">
             <div class="row1">
               <span class="s-title">{{ r.name }}</span>
-              <span class="chip" :class="r.enabled ? 'on' : 'off'">{{ r.enabled ? '启用' : '停用' }}</span>
-              <span v-if="r.auto_download" class="chip auto">自动下载</span>
+              <span class="chip" :class="r.enabled ? 'on' : 'off'">{{ r.enabled ? t('rss.enabled') : t('rss.disabled') }}</span>
+              <span v-if="r.auto_download" class="chip auto">{{ t('rss.autoDownload') }}</span>
               <span v-if="r.resolution" class="chip res">{{ r.resolution }}</span>
             </div>
             <div class="text-muted small url">{{ r.url }}</div>
             <div class="text-muted small">
-              间隔 {{ r.interval_min }} 分钟 · 上次检查 {{ fmtTime(r.last_checked_at) }}
-              <span v-if="r.title_include"> · 包含: {{ r.title_include }}</span>
+              {{ t('rss.interval', { n: r.interval_min }) }} · {{ t('rss.lastChecked') }} {{ fmtTime(r.last_checked_at) }}
+              <span v-if="r.title_include"> · {{ t('rss.includes') }} {{ r.title_include }}</span>
             </div>
             <div class="actions">
-              <el-button size="small" type="primary" :loading="checking === r.id" @click="check(r)">检查</el-button>
-              <el-button size="small" @click="openItems(r)">条目</el-button>
-              <el-button size="small" @click="openEdit(r)">编辑</el-button>
-              <el-button size="small" type="danger" plain @click="remove(r)">删除</el-button>
+              <el-button size="small" type="primary" :loading="checking === r.id" @click="check(r)">{{ t('rss.check') }}</el-button>
+              <el-button size="small" @click="openItems(r)">{{ t('rss.items') }}</el-button>
+              <el-button size="small" @click="openEdit(r)">{{ t('common.edit') }}</el-button>
+              <el-button size="small" type="danger" plain @click="remove(r)">{{ t('common.delete') }}</el-button>
             </div>
           </div>
         </div>
@@ -168,78 +170,78 @@ function fmtTime(t?: string) {
       <EmptyState
         v-else-if="!loading"
         icon="📡"
-        title="暂无 RSS 订阅"
-        description="订阅 RSS/Atom 源，按关键词/大小/分辨率过滤后自动下载"
+        :title="t('rss.emptyTitle')"
+        :description="t('rss.emptyDesc')"
       >
-        <el-button type="primary" @click="openCreate">+ 添加订阅</el-button>
+        <el-button type="primary" @click="openCreate">{{ t('rss.add') }}</el-button>
       </EmptyState>
     </div>
 
     <!-- 表单 -->
-    <el-dialog v-model="showForm" :title="editingId ? '编辑订阅' : '添加订阅'" width="560px" append-to-body>
+    <el-dialog v-model="showForm" :title="editingId ? t('rss.editTitle') : t('rss.addTitle')" width="560px" append-to-body>
       <el-form label-width="100px" size="small">
-        <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item label="URL"><el-input v-model="form.url" placeholder="https://site.com/rss.xml" /></el-form-item>
-        <el-form-item label="关联站点">
+        <el-form-item :label="t('rss.f.name')"><el-input v-model="form.name" /></el-form-item>
+        <el-form-item :label="t('rss.f.url')"><el-input v-model="form.url" placeholder="https://site.com/rss.xml" /></el-form-item>
+        <el-form-item :label="t('rss.f.site')">
           <el-select v-model="form.site_id" filterable style="width: 100%">
-            <el-option label="不关联（匿名 RSS）" :value="0" />
+            <el-option :label="t('rss.f.noSite')" :value="0" />
             <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="间隔(分钟)"><el-input-number v-model="form.interval_min" :min="5" /></el-form-item>
-        <el-form-item label="标题包含"><el-input v-model="form.title_include" placeholder="| 分隔多个关键词" /></el-form-item>
-        <el-form-item label="标题排除"><el-input v-model="form.title_exclude" placeholder="| 分隔" /></el-form-item>
-        <el-form-item label="分辨率">
+        <el-form-item :label="t('rss.f.interval')"><el-input-number v-model="form.interval_min" :min="5" /></el-form-item>
+        <el-form-item :label="t('rss.f.titleInclude')"><el-input v-model="form.title_include" :placeholder="t('rss.f.kwHint')" /></el-form-item>
+        <el-form-item :label="t('rss.f.titleExclude')"><el-input v-model="form.title_exclude" :placeholder="t('rss.f.kwHintShort')" /></el-form-item>
+        <el-form-item :label="t('subscriptions.resolution')">
           <el-select v-model="form.resolution" style="width: 100%">
-            <el-option label="不限" value="" />
+            <el-option :label="t('subscriptions.unlimited')" value="" />
             <el-option label="1080p" value="1080p" />
             <el-option label="2160p" value="2160p" />
           </el-select>
         </el-form-item>
-        <el-form-item label="过滤规则组">
-          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip placeholder="留空=不过滤" style="width: 100%">
+        <el-form-item :label="t('rss.f.filterGroups')">
+          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip :placeholder="t('rss.f.filterGroupsHint')" style="width: 100%">
             <el-option v-for="g in filterGroups" :key="g" :label="g" :value="g" />
           </el-select>
         </el-form-item>
-        <el-form-item label="体积范围">
+        <el-form-item :label="t('rss.f.sizeRange')">
           <div class="sz">
             <el-input-number v-model="form.min_size" :step="1024 * 1024 * 1024" /> ~
             <el-input-number v-model="form.max_size" :step="1024 * 1024 * 1024" />
-            <span class="text-muted small">字节</span>
+            <span class="text-muted small">{{ t('rss.f.bytes') }}</span>
           </div>
         </el-form-item>
-        <el-form-item label="启用"><el-switch v-model="form.enabled" /></el-form-item>
-        <el-form-item label="自动下载"><el-switch v-model="form.auto_download" /></el-form-item>
+        <el-form-item :label="t('rss.f.enabled')"><el-switch v-model="form.enabled" /></el-form-item>
+        <el-form-item :label="t('rss.autoDownload')"><el-switch v-model="form.auto_download" /></el-form-item>
         <template v-if="form.auto_download">
-          <el-form-item label="下载器">
+          <el-form-item :label="t('downloaders.title')">
             <el-select v-model="form.downloader_id" style="width: 100%">
-              <el-option label="默认下载器" :value="0" />
+              <el-option :label="t('rss.f.defaultDownloader')" :value="0" />
               <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
             </el-select>
           </el-form-item>
-          <el-form-item label="保存路径"><el-input v-model="form.save_path" /></el-form-item>
-          <el-form-item label="分类"><el-input v-model="form.category" /></el-form-item>
-          <el-form-item label="标签"><el-input v-model="form.tags" placeholder="逗号分隔" /></el-form-item>
+          <el-form-item :label="t('rss.f.savePath')"><el-input v-model="form.save_path" /></el-form-item>
+          <el-form-item :label="t('rss.f.category')"><el-input v-model="form.category" /></el-form-item>
+          <el-form-item :label="t('rss.f.tags')"><el-input v-model="form.tags" :placeholder="t('rss.f.tagsHint')" /></el-form-item>
         </template>
       </el-form>
       <template #footer>
-        <el-button @click="showForm = false">取消</el-button>
-        <el-button type="primary" @click="save">保存</el-button>
+        <el-button @click="showForm = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 条目 -->
-    <el-drawer v-model="showItems" :title="`条目：${itemsTitle}`" size="50%" append-to-body>
+    <el-drawer v-model="showItems" :title="t('rss.itemsTitle', { name: itemsTitle })" size="50%" append-to-body>
       <el-table :data="items" size="small">
-        <el-table-column label="标题" min-width="240">
+        <el-table-column :label="t('rss.col.title')" min-width="240">
           <template #default="{ row }">
             <a v-if="row.link" :href="safeUrl(row.link)" target="_blank" class="lnk">{{ row.title }}</a>
             <span v-else>{{ row.title }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="大小" width="90"><template #default="{ row }">{{ fmtSize(row.size) }}</template></el-table-column>
-        <el-table-column label="已下载" width="80"><template #default="{ row }">{{ row.downloaded ? '是' : '否' }}</template></el-table-column>
-        <el-table-column label="发现时间" width="160"><template #default="{ row }">{{ fmtTime(row.created_at) }}</template></el-table-column>
+        <el-table-column :label="t('rss.col.size')" width="90"><template #default="{ row }">{{ fmtSize(row.size) }}</template></el-table-column>
+        <el-table-column :label="t('rss.col.downloaded')" width="80"><template #default="{ row }">{{ row.downloaded ? t('common.yes') : t('common.no') }}</template></el-table-column>
+        <el-table-column :label="t('rss.col.foundAt')" width="160"><template #default="{ row }">{{ fmtTime(row.created_at) }}</template></el-table-column>
       </el-table>
     </el-drawer>
   </div>

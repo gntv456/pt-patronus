@@ -8,10 +8,17 @@ if [[ -z "$version" ]]; then
 fi
 shift
 
-DEPLOY_HOST="${DEPLOY_HOST:-152.53.91.46}"
+# 部署目标只来自环境（CI secrets 注入）——不设 fallback，避免仓库泄漏部署信息。
+DEPLOY_HOST="${DEPLOY_HOST:-}"
+DEPLOY_PORT="${DEPLOY_PORT:-}"
+DEPLOY_USER="${DEPLOY_USER:-}"
+DEPLOY_DIR="${DEPLOY_DIR:-}"
+
+if [[ -z "$DEPLOY_HOST" || -z "$DEPLOY_USER" || -z "$DEPLOY_DIR" ]]; then
+  echo "::error::DEPLOY_HOST / DEPLOY_USER / DEPLOY_DIR must be set (repo secrets); refusing to guess"
+  exit 2
+fi
 DEPLOY_PORT="${DEPLOY_PORT:-22}"
-DEPLOY_USER="${DEPLOY_USER:-root}"
-DEPLOY_DIR="${DEPLOY_DIR:-/root/ptpatronus-releases}"
 
 if [[ -z "${DEPLOY_KEY:-}" ]]; then
   echo "::warning::DEPLOY_KEY is not set; skipping upload to private release server"

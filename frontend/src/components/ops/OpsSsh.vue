@@ -3,6 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { sshApi, type SshServiceStatus, type SshSessionRow, type SshLogRow } from '@/api/ssh_admin'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
@@ -50,14 +53,14 @@ async function switchView(v: 'service' | 'sessions' | 'logs') {
 }
 
 async function doAction(action: 'start' | 'stop' | 'restart' | 'reload', label: string) {
-  const warn = action === 'stop' ? '\n\n⚠️ 停止 SSH 服务可能导致当前连接中断，你将无法远程访问该主机！' : ''
+  const warn = action === 'stop' ? '\n\n⚠️ ' + t('ssh.stopWarn') : ''
   try {
-    await ElMessageBox.confirm(`确定要${label} SSH 服务吗？${warn}`, '确认', {
+    await ElMessageBox.confirm(t('ssh.actionConfirm', { label }), t('common.confirm'), {
       type: action === 'stop' ? 'error' : 'warning',
     })
     const res = await sshApi.action(selectedTarget.value, action)
-    if (res.ok) { ElMessage.success(`${label}成功`); refresh() }
-    else ElMessage.error(res.error || `${label}失败`)
+    if (res.ok) { ElMessage.success(t('ssh.actionOk', { label })); refresh() }
+    else ElMessage.error(res.error || t('ssh.actionFailed', { label }))
   } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
 }
 
@@ -65,8 +68,8 @@ async function toggleEnable(val: string | number | boolean) {
   const enable = val === true
   try {
     const res = await sshApi.toggleEnable(selectedTarget.value, enable)
-    if (res.ok) { ElMessage.success(enable ? '已开启开机自启' : '已关闭开机自启'); refresh() }
-    else ElMessage.error(res.error || '操作失败')
+    if (res.ok) { ElMessage.success(enable ? t('ssh.autoStartOn') : t('ssh.autoStartOff')); refresh() }
+    else ElMessage.error(res.error || t('common.actionFailed'))
   } catch (e: any) { ElMessage.error(e.message) }
 }
 
@@ -78,24 +81,24 @@ function openConfig() {
 
 async function saveConfig() {
   const port = parseInt(configForm.value.port)
-  if (isNaN(port) || port < 1 || port > 65535) { ElMessage.warning('端口范围 1-65535'); return }
+  if (isNaN(port) || port < 1 || port > 65535) { ElMessage.warning(t('ssh.portRange')); return }
   try {
     const res = await sshApi.config(selectedTarget.value, {
       port: configForm.value.port,
       listen_addr: configForm.value.listen_addr,
       confirm: true,
     })
-    if (res.ok) { ElMessage.success('配置已更新并 reload'); configVisible.value = false; refresh() }
-    else ElMessage.error(res.error || '配置失败')
+    if (res.ok) { ElMessage.success(t('ssh.cfgUpdated')); configVisible.value = false; refresh() }
+    else ElMessage.error(res.error || t('ssh.cfgFailed'))
   } catch (e: any) { ElMessage.error(e.message) }
 }
 
 async function killSession(s: SshSessionRow) {
   try {
-    await ElMessageBox.confirm(`确定要断开会话「${s.user}@${s.tty}」(PID: ${s.pid}) 吗？`, '断开会话', { type: 'warning' })
+    await ElMessageBox.confirm(t('ssh.killConfirm', { user: s.user, tty: s.tty, pid: s.pid }), t('ssh.killTitle'), { type: 'warning' })
     const res = await sshApi.killSession(selectedTarget.value, s.pid)
-    if (res.ok) { ElMessage.success('会话已断开'); refresh() }
-    else ElMessage.error(res.error || '断开失败')
+    if (res.ok) { ElMessage.success(t('ssh.killed')); refresh() }
+    else ElMessage.error(res.error || t('ssh.killFailed'))
   } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
 }
 
@@ -112,61 +115,61 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
   <div class="ops-ssh">
     <div class="ssh-toolbar glass">
       <div class="toolbar-left">
-        <label class="target-label">目标主机</label>
-        <el-select v-model="selectedTarget" placeholder="选择 SSH 主机" style="width: 200px" @change="refresh">
+        <label class="target-label">{{ t('ssh.targetHost') }}</label>
+        <el-select v-model="selectedTarget" :placeholder="t('ssh.pickHost')" style="width: 200px" @change="refresh">
           <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <div class="view-switch">
-          <button :class="{ active: view === 'service' }" @click="switchView('service')">服务</button>
-          <button :class="{ active: view === 'sessions' }" @click="switchView('sessions')">会话</button>
-          <button :class="{ active: view === 'logs' }" @click="switchView('logs')">登录日志</button>
+          <button :class="{ active: view === 'service' }" @click="switchView('service')">{{ t('ssh.viewService') }}</button>
+          <button :class="{ active: view === 'sessions' }" @click="switchView('sessions')">{{ t('ssh.viewSessions') }}</button>
+          <button :class="{ active: view === 'logs' }" @click="switchView('logs')">{{ t('ssh.viewLogs') }}</button>
         </div>
       </div>
-      <el-button type="primary" :loading="loading" @click="refresh">刷新</el-button>
+      <el-button type="primary" :loading="loading" @click="refresh">{{ t('common.refresh') }}</el-button>
     </div>
 
     <div v-if="error" class="ssh-error">{{ error }}</div>
-    <div v-if="!sshTargets.length" class="ssh-empty glass">尚未添加 SSH 主机。请在 NAS → 监控目标 中添加。</div>
+    <div v-if="!sshTargets.length" class="ssh-empty glass">{{ t('ssh.emptyHosts') }}</div>
 
     <!-- 服务配置 -->
     <div v-if="view === 'service' && sshTargets.length" v-loading="loading" class="ssh-panel glass">
       <div v-if="status" class="service-grid">
         <div class="svc-card">
-          <div class="svc-label">运行状态</div>
+          <div class="svc-label">{{ t('opsdocker.runtime') }}</div>
           <div class="svc-value">
             <span class="status-dot" :class="status.active ? 'on' : 'off'"></span>
-            {{ status.active ? '运行中' : '已停止' }} ({{ status.state }})
+            {{ status.active ? t('opsdocker.st.running') : t('opsdocker.st.exited') }} ({{ status.state }})
           </div>
         </div>
         <div class="svc-card">
-          <div class="svc-label">开机自启</div>
+          <div class="svc-label">{{ t('ssh.autoStart') }}</div>
           <div class="svc-value">
             <el-switch :model-value="status.enabled" @change="toggleEnable" />
           </div>
         </div>
         <div class="svc-card">
-          <div class="svc-label">服务名</div>
+          <div class="svc-label">{{ t('ssh.svcName') }}</div>
           <div class="svc-value mono">{{ status.service_name }}</div>
         </div>
         <div class="svc-card">
-          <div class="svc-label">监听端口</div>
+          <div class="svc-label">{{ t('ssh.listenPort') }}</div>
           <div class="svc-value mono">{{ status.port }}</div>
         </div>
         <div class="svc-card">
-          <div class="svc-label">监听地址</div>
+          <div class="svc-label">{{ t('ssh.listenAddr') }}</div>
           <div class="svc-value mono">{{ status.listen_addr }}</div>
         </div>
         <div class="svc-card">
-          <div class="svc-label">版本</div>
+          <div class="svc-label">{{ t('ssh.version') }}</div>
           <div class="svc-value mono small">{{ status.version }}</div>
         </div>
       </div>
       <div class="service-actions">
-        <el-button type="success" @click="doAction('start', '启动')">启动</el-button>
-        <el-button type="danger" @click="doAction('stop', '停止')">停止</el-button>
-        <el-button type="warning" @click="doAction('restart', '重启')">重启</el-button>
-        <el-button @click="doAction('reload', '重载配置')">重载</el-button>
-        <el-button type="primary" @click="openConfig">修改配置</el-button>
+        <el-button type="success" @click="doAction('start', t('ssh.act.start'))">{{ t('ssh.act.start') }}</el-button>
+        <el-button type="danger" @click="doAction('stop', t('ssh.act.stop'))">{{ t('ssh.act.stop') }}</el-button>
+        <el-button type="warning" @click="doAction('restart', t('ssh.act.restart'))">{{ t('ssh.act.restart') }}</el-button>
+        <el-button @click="doAction('reload', t('ssh.act.reload'))">{{ t('ssh.act.reloadShort') }}</el-button>
+        <el-button type="primary" @click="openConfig">{{ t('ssh.modifyCfg') }}</el-button>
       </div>
     </div>
 
@@ -174,7 +177,7 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
     <div v-if="view === 'sessions' && sshTargets.length" class="ssh-panel glass">
       <div class="table-scroll">
         <table class="ssh-table">
-          <thead><tr><th>用户</th><th>终端</th><th>来源</th><th>登录时间</th><th>空闲</th><th>当前</th><th>操作</th></tr></thead>
+          <thead><tr><th>{{ t('smt.user') }}</th><th>{{ t('ssh.tty') }}</th><th>{{ t('ssh.source') }}</th><th>{{ t('ssh.loginAt') }}</th><th>{{ t('ssh.idle') }}</th><th>{{ t('ssh.current') }}</th><th>{{ t('common.action') }}</th></tr></thead>
           <tbody>
             <tr v-for="s in sessions" :key="s.pid || s.tty">
               <td>{{ s.user }}</td>
@@ -183,9 +186,9 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
               <td class="mono">{{ s.login }}</td>
               <td>{{ s.idle }}</td>
               <td class="td-what" :title="s.what">{{ s.what || '-' }}</td>
-              <td><el-button v-if="s.pid" size="small" type="danger" link @click="killSession(s)">断开</el-button></td>
+              <td><el-button v-if="s.pid" size="small" type="danger" link @click="killSession(s)">{{ t('ssh.kill') }}</el-button></td>
             </tr>
-            <tr v-if="!sessions.length"><td colspan="7" class="td-empty">无活跃会话</td></tr>
+            <tr v-if="!sessions.length"><td colspan="7" class="td-empty">{{ t('ssh.noSessions') }}</td></tr>
           </tbody>
         </table>
       </div>
@@ -195,7 +198,7 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
     <div v-if="view === 'logs' && sshTargets.length" class="ssh-panel glass">
       <div class="table-scroll">
         <table class="ssh-table">
-          <thead><tr><th>时间</th><th>类型</th><th>用户</th><th>来源 IP</th><th>端口</th><th>认证方式</th></tr></thead>
+          <thead><tr><th>{{ t('pad.time') }}</th><th>{{ t('cloud.kind') }}</th><th>{{ t('smt.user') }}</th><th>{{ t('ssh.srcIp') }}</th><th>{{ t('deviceform.port') }}</th><th>{{ t('ssh.authMethod') }}</th></tr></thead>
           <tbody>
             <tr v-for="(l, i) in logs" :key="i">
               <td class="mono small">{{ l.time }}</td>
@@ -205,31 +208,31 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
               <td class="mono">{{ l.port || '-' }}</td>
               <td>{{ l.method || '-' }}</td>
             </tr>
-            <tr v-if="!logs.length"><td colspan="6" class="td-empty">无登录日志</td></tr>
+            <tr v-if="!logs.length"><td colspan="6" class="td-empty">{{ t('ssh.noLogs') }}</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
     <!-- 修改配置对话框 -->
-    <el-dialog v-model="configVisible" title="修改 SSH 配置" width="440px">
+    <el-dialog v-model="configVisible" :title="t('ssh.cfgTitle')" width="440px">
       <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 16px">
-        修改后会自动备份原配置并 reload。改端口后需用新端口重连。
+        {{ t('ssh.cfgTip') }}
       </el-alert>
       <el-form label-width="90px">
-        <el-form-item label="监听端口">
+        <el-form-item :label="t('ssh.listenPort')">
           <el-input v-model="configForm.port" placeholder="22" />
         </el-form-item>
-        <el-form-item label="监听地址">
+        <el-form-item :label="t('ssh.listenAddr')">
           <el-select v-model="configForm.listen_addr" style="width: 100%">
-            <el-option value="0.0.0.0" label="0.0.0.0（所有地址）" />
-            <el-option value="127.0.0.1" label="127.0.0.1（仅本地）" />
+            <el-option value="0.0.0.0" :label="t('ssh.allAddrs')" />
+            <el-option value="127.0.0.1" :label="t('ssh.localOnly')" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="configVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveConfig">保存并重载</el-button>
+        <el-button @click="configVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveConfig">{{ t('ssh.saveReload') }}</el-button>
       </template>
     </el-dialog>
   </div>

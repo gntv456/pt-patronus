@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { systemApi, type DoctorReport } from '@/api/system'
 
+const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const report = ref<DoctorReport | null>(null)
@@ -20,7 +22,7 @@ async function run(fix: boolean) {
   try {
     report.value = fix ? await systemApi.fixDoctor() : await systemApi.runDoctor()
   } catch {
-    ElMessage.error('诊断失败')
+    ElMessage.error(t('doctor.runFailed'))
   } finally {
     loading.value = false
     fixing.value = false
@@ -34,20 +36,20 @@ onMounted(() => run(false))
   <div class="doctor-wrap" :class="{ embedded: props.embedded }">
     <div class="doctor-head">
       <div>
-        <h2 v-if="!props.embedded">诊断</h2>
-        <h3 v-else class="title embedded-title">诊断</h3>
+        <h2 v-if="!props.embedded">{{ t('doctor.title') }}</h2>
+        <h3 v-else class="title embedded-title">{{ t('doctor.title') }}</h3>
         <p v-if="report" class="text-muted">
-          状态：
+          {{ t('doctor.statusLabel') }}
           <el-tag :type="report.status === 'healthy' ? 'success' : report.status === 'degraded' ? 'warning' : 'danger'">
             {{ report.status }}
           </el-tag>
-          · 健康评分 <b>{{ report.score ?? '-' }}</b>/100
-          · 共 {{ report.summary.total }} 项（info {{ report.summary.info }} / warn {{ report.summary.warn }} / error {{ report.summary.error }}）
+          · {{ t('doctor.score') }} <b>{{ report.score ?? '-' }}</b>/100
+          · {{ t('doctor.itemsCount', { n: report.summary.total, info: report.summary.info, warn: report.summary.warn, error: report.summary.error }) }}
         </p>
       </div>
       <div class="doctor-actions">
-        <el-button :loading="loading" @click="run(false)">重新诊断</el-button>
-        <el-button type="primary" :loading="fixing" @click="run(true)">尝试修复</el-button>
+        <el-button :loading="loading" @click="run(false)">{{ t('doctor.rerun') }}</el-button>
+        <el-button type="primary" :loading="fixing" @click="run(true)">{{ t('doctor.fix') }}</el-button>
       </div>
     </div>
 
@@ -55,8 +57,8 @@ onMounted(() => run(false))
       v-if="report?.environment?.safe_mode"
       type="warning"
       :closable="false"
-      title="SAFE_MODE 已启用"
-      description="插件 / 调度 / 监控未激活，仅核心 HTTP + 诊断可达。修复后取消 SAFE_MODE 重启恢复。"
+      :title="t('doctor.safeModeTitle')"
+      :description="t('doctor.safeModeDesc')"
     />
 
     <div v-loading="loading" class="findings">
@@ -68,7 +70,7 @@ onMounted(() => run(false))
           <span class="f-id text-muted">{{ f.id }}</span>
         </div>
         <div v-if="f.detail" class="f-detail">{{ f.detail }}</div>
-        <div v-if="f.recommendation" class="f-rec">建议：{{ f.recommendation }}</div>
+        <div v-if="f.recommendation" class="f-rec">{{ t('doctor.recommendation') }}{{ f.recommendation }}</div>
       </div>
     </div>
   </div>

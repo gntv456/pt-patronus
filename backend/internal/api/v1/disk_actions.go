@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"regexp"
 	"strings"
@@ -38,24 +39,24 @@ func (h *DiskHandler) Partition(c *gin.Context) {
 	}
 	var in diskPartitionRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if !in.ConfirmRisk {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "destructive action requires confirmation", "code": "risk_confirmation_required"})
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	// 只允许整盘设备（无分区后缀），且校验 fstype。
 	if !blockDeviceRe.MatchString(in.Device) || strings.Contains(in.Device, "p") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid device: must be a whole disk like /dev/sdb"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	if in.FSType != "ext4" && in.FSType != "xfs" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported filesystem: only ext4 and xfs are supported"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	if !validateMountpoint(in.Mountpoint) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid mountpoint"})
+		errcode.Respond(c, errcode.DiskInvalidMountpoint)
 		return
 	}
 
@@ -85,7 +86,7 @@ func (h *DiskHandler) Partition(c *gin.Context) {
 	script := strings.Join(steps, " && ")
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 60)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -136,15 +137,15 @@ func (h *DiskHandler) Mount(c *gin.Context) {
 	}
 	var in diskMountRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if !validateDevice(in.Device) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid device"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	if !validateMountpoint(in.Mountpoint) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid mountpoint"})
+		errcode.Respond(c, errcode.DiskInvalidMountpoint)
 		return
 	}
 	// 先检测分区是否已有文件系统；没有则拒绝（应走 Partition）。
@@ -152,13 +153,13 @@ func (h *DiskHandler) Mount(c *gin.Context) {
 	chk, _ := h.runner.RunCommandNow(c.Request.Context(), id, checkCmd, 10)
 	fstype := strings.TrimSpace(chk.Stdout)
 	if fstype == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "device has no filesystem; use partition instead"})
+		errcode.Respond(c, errcode.ResourceStateInvalid)
 		return
 	}
 	script := fmt.Sprintf(`mkdir -p %s && mount %s %s`, in.Mountpoint, in.Device, in.Mountpoint)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 30)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -181,17 +182,17 @@ func (h *DiskHandler) Umount(c *gin.Context) {
 	}
 	var in diskUmountRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if !validateMountpoint(in.Mountpoint) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid mountpoint"})
+		errcode.Respond(c, errcode.DiskInvalidMountpoint)
 		return
 	}
 	script := fmt.Sprintf(`umount %s`, in.Mountpoint)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 30)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {

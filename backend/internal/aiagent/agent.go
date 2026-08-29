@@ -7,10 +7,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
+	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/llm"
 	"github.com/hxpt/ptpatronus/internal/mcp"
-	"github.com/hxpt/ptpatronus/internal/core/safego"
 )
 
 // MessageStore 抽象 oper.AgentMessageOper（破 aiagent→oper 依赖）。
@@ -29,7 +30,9 @@ type ConversationStore interface {
 type ProviderFactory func(llm.Config) llm.Provider
 
 // Agent 是 ReAct 智能体。Run 返回事件流通道（text/reasoning/tool_call/tool_result/confirm_request/done/error）。
+// source 标记调用入口（协议端点 / 内置助手聊天），用于业务指标 ptpatronus_llm_requests_total 的来源标签。
 type Agent struct {
+	source      string
 	newProvider ProviderFactory
 	tools       *ToolRegistry
 	msgs        MessageStore
@@ -40,12 +43,12 @@ type Agent struct {
 	stats       *statsCollector
 }
 
-// New 构造。tools 为全部可用工具（含 handler）。
-func New(f ProviderFactory, tools []mcp.Tool, msgs MessageStore, convs ConversationStore, kv KVStore, crypto Crypto) *Agent {
+// New 构造。source 见 Agent 注释；tools 为全部可用工具（含 handler）。
+func New(source string, f ProviderFactory, tools []mcp.Tool, msgs MessageStore, convs ConversationStore, kv KVStore, crypto Crypto) *Agent {
 	if f == nil {
 		f = llm.New
 	}
-	return &Agent{newProvider: f, tools: NewToolRegistry(tools), msgs: msgs, convs: convs, kv: kv, crypto: crypto, confirms: newConfirmRegistry(), stats: newStatsCollector()}
+	return &Agent{source: source, newProvider: f, tools: NewToolRegistry(tools), msgs: msgs, convs: convs, kv: kv, crypto: crypto, confirms: newConfirmRegistry(), stats: newStatsCollector()}
 }
 
 // Resolve 送达一次危险工具确认决断（由 POST /agent/conversations/:id/confirm 调用）。
@@ -87,6 +90,13 @@ func (a *Agent) Run(ctx context.Context, convID uint, userText string) <-chan ll
 				ToolErrors:     toolErrors,
 				Timestamp:      start,
 			})
+			// Prometheus 口径与 stats 同源同刻：ok=正常收尾，error=其余（error/cancelled/ratelimit/maxiter）
+			if status == "ok" {
+				bizmetrics.LLMRequestInc(a.source, bizmetrics.LLMResultOK)
+			} else {
+				bizmetrics.LLMRequestInc(a.source, bizmetrics.LLMResultError)
+			}
+			bizmetrics.LLMTokensAdd(inTok, outTok)
 		}()
 		if !ac.Enabled {
 			emit(out, llm.Event{Type: llm.EventError, Error: "AI 助手未启用，请先在「设置 → AI 助手」配置 LLM provider 与 API key"})

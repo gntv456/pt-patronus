@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { assessmentApi, type AssessmentCard } from '@/api/assessment'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
+const { t } = useI18n()
 const cards = ref<AssessmentCard[]>([])
 const loading = ref(false)
 const filter = ref<string>('all')
@@ -22,7 +24,7 @@ async function load(refresh = false) {
       cards.value.push(card)
     }, ctrl.signal)
   } catch (e: unknown) {
-    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载考核失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('assessment.loadFailed'))
   } finally {
     if (abortCtrl === ctrl) {
       loading.value = false
@@ -79,13 +81,11 @@ const statusColor: Record<string, string> = {
 }
 
 // 状态英文 → 中文映射（筛选项已是中文，状态标签保持一致）
-const statusLabel: Record<string, string> = {
-  SAFE: '安全', PROGRESS: '进行中', DANGER: '危险', EXEMPT: '免考', UNKNOWN: '未知',
-}
-function statusText(s: string): string {
-  return statusLabel[s] || s
-}
-
+const statusLabel = computed<Record<string, string>>(() => ({
+  SAFE: t('assessment.status.safe'), PROGRESS: t('assessment.status.progress'),
+  DANGER: t('assessment.status.danger'), EXEMPT: t('assessment.status.exempt'),
+  UNKNOWN: t('assessment.status.unknown'),
+}))
 onMounted(() => load())
 onUnmounted(() => abortCtrl?.abort())
 </script>
@@ -93,21 +93,21 @@ onUnmounted(() => abortCtrl?.abort())
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">站点考核</h2>
+      <h2 class="title">{{ t('assessment.title') }}</h2>
       <div class="head-tools">
-        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择考核站点" />
-        <el-button :loading="loading" @click="load(true)">刷新</el-button>
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('assessment.siteFilterTitle')" />
+        <el-button :loading="loading" @click="load(true)">{{ t('common.refresh') }}</el-button>
       </div>
     </div>
 
     <div class="filter-bar glass">
-      <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">全部 ({{ cards.length }})</button>
-      <button class="chip" :class="{ on: filter === 'safe' }" @click="filter = 'safe'" style="color:var(--pt-success)">安全 ({{ counts.safe }})</button>
-      <button class="chip" :class="{ on: filter === 'progress' }" @click="filter = 'progress'" style="color:var(--pt-primary-2)">进行中 ({{ counts.progress }})</button>
-      <button class="chip" :class="{ on: filter === 'danger' }" @click="filter = 'danger'" style="color:var(--pt-danger)">危险 ({{ counts.danger }})</button>
+      <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">{{ t('assessment.filter.all') }} ({{ cards.length }})</button>
+      <button class="chip" :class="{ on: filter === 'safe' }" @click="filter = 'safe'" style="color:var(--pt-success)">{{ t('assessment.status.safe') }} ({{ counts.safe }})</button>
+      <button class="chip" :class="{ on: filter === 'progress' }" @click="filter = 'progress'" style="color:var(--pt-primary-2)">{{ t('assessment.status.progress') }} ({{ counts.progress }})</button>
+      <button class="chip" :class="{ on: filter === 'danger' }" @click="filter = 'danger'" style="color:var(--pt-danger)">{{ t('assessment.status.danger') }} ({{ counts.danger }})</button>
     </div>
 
-    <p v-if="loading && !cards.length" style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
+    <p v-if="loading && !cards.length" style="text-align:center;color:var(--text-muted);padding:40px 0">{{ t('common.loading') }}</p>
 
     <el-alert
       v-if="focusFromQuery && !loading"
@@ -115,17 +115,17 @@ onUnmounted(() => abortCtrl?.abort())
       :closable="false"
       show-icon
       style="margin-bottom: 12px"
-      :title="`已按站点详情筛选：${focusLabel}`"
+      :title="t('assessment.focusTitle', { name: focusLabel })"
     />
 
     <div class="cards">
       <div v-for="c in filtered" :key="c.site_id" class="assess-card glass" :style="{ borderLeftColor: statusColor[c.status] }">
         <div class="card-top">
           <span class="site-name">{{ c.site_name }}</span>
-          <span class="status-tag" :style="{ background: statusColor[c.status] + '22', color: statusColor[c.status] }">{{ statusText(c.status) }}</span>
+          <span class="status-tag" :style="{ background: statusColor[c.status] + '22', color: statusColor[c.status] }">{{ statusLabel[c.status] || c.status }}</span>
           <span class="spacer"></span>
-          <span v-if="c.remaining_days >= 0" class="remain">剩 {{ c.remaining_days }} 天</span>
-          <span v-if="fmtDate(c.end_time)" class="remain">截止 {{ fmtDate(c.end_time) }}</span>
+          <span v-if="c.remaining_days >= 0" class="remain">{{ t('assessment.remainingDays', { n: c.remaining_days }) }}</span>
+          <span v-if="fmtDate(c.end_time)" class="remain">{{ t('assessment.deadline') }} {{ fmtDate(c.end_time) }}</span>
         </div>
         <div v-if="c.error" class="err">{{ c.error }}</div>
         <template v-else>
@@ -148,14 +148,14 @@ onUnmounted(() => abortCtrl?.abort())
     <EmptyState
       v-if="!cards.length && !loading"
       icon="📋"
-      title="暂无考核数据"
-      description="添加并登录 PT 站点后，这里会展示各站的考核进度、剩余天数与达标情况"
+      :title="t('assessment.emptyTitle')"
+      :description="t('assessment.emptyDesc')"
     />
     <EmptyState
       v-else-if="!filtered.length && !loading"
       icon="🔎"
-      title="当前筛选下无站点"
-      description="可切换状态筛选或清空站点筛选"
+      :title="t('assessment.emptyFilterTitle')"
+      :description="t('assessment.emptyFilterDesc')"
     />
   </div>
 </template>

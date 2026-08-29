@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subscribe'
 import { siteApi } from '@/api/site'
@@ -11,6 +12,7 @@ import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 import RssView from '@/views/Rss.vue'
 
 // 订阅列表：展示订阅状态，支持手动检查 / 暂停-恢复 / 改分辨率 / 删除。
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const mainTab = ref(String(route.query.tab || 'media'))
@@ -52,9 +54,9 @@ async function saveGlobal() {
   try {
     globalDefaults.value = normalizeGlobal(await subscribeApi.updateGlobalDefaults(globalForm.value))
     globalOpen.value = false
-    ElMessage.success('全局默认已保存')
+    ElMessage.success(t('subscriptions.globalSaved'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
+    ElMessage.error((e as Error).message || t('common.saveFailed'))
   } finally {
     savingGlobal.value = false
   }
@@ -75,15 +77,15 @@ async function loadSites() {
 
 // 促销类型选项（与后端 site.PromoType 对齐；空=不限，任何促销都接受）。
 const PROMO_OPTIONS = [
-  { value: 'free', label: '免费' },
-  { value: '2xfree', label: '2X免费' },
-  { value: '2x', label: '双倍上传' },
-  { value: 'discount', label: '折扣下载' },
-  { value: '2xdiscount', label: '2X+折扣' },
+  { value: 'free', label: t('subscriptions.promo.free') },
+  { value: '2xfree', label: t('subscriptions.promo.2xfree') },
+  { value: '2x', label: t('subscriptions.promo.2x') },
+  { value: 'discount', label: t('subscriptions.promo.discount') },
+  { value: '2xdiscount', label: t('subscriptions.promo.2xdiscount') },
 ]
 
 function statusText(s: string) {
-  return ({ subscribed: '订阅中', completed: '已完成', paused: '已暂停' } as Record<string, string>)[s] || s
+  return ({ subscribed: t('subscriptions.status.subscribed'), completed: t('subscriptions.status.completed'), paused: t('subscriptions.status.paused') } as Record<string, string>)[s] || s
 }
 function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '—'
@@ -114,10 +116,10 @@ function exitBatch() {
 }
 async function runBatch(op: 'update' | 'check' | 'delete') {
   if (!selectedIds.value.length) {
-    ElMessage.warning('请先勾选订阅')
+    ElMessage.warning(t('subscriptions.batch.selectFirst'))
     return
   }
-  if (op === 'delete' && !confirm(`确认取消订阅 ${selectedIds.value.length} 项？取消后无法恢复`)) return
+  if (op === 'delete' && !confirm(t('subscriptions.batch.confirmDelete', { n: selectedIds.value.length }))) return
   let patch: Record<string, unknown> | undefined
   if (op === 'update') {
     patch = {}
@@ -126,18 +128,18 @@ async function runBatch(op: 'update' | 'check' | 'delete') {
     if (batchForm.value.ratingGuardOn) patch.enable_rating_guard = batchForm.value.ratingGuard
     if (batchForm.value.bestVersionOn) patch.best_version = batchForm.value.bestVersion
     if (!Object.keys(patch).length) {
-      ElMessage.warning('请至少开启一个要修改的字段开关')
+      ElMessage.warning(t('subscriptions.batch.noFieldSelected'))
       return
     }
   }
   batchRunning.value = true
   try {
     const res = await subscribeApi.batch(selectedIds.value, op, patch as never)
-    ElMessage.success(`批量操作完成：成功 ${res.succeeded}/${res.total}${res.failed ? `，失败 ${res.failed}（${res.failures[0]?.error || ''}）` : ''}`)
+    ElMessage.success(t('subscriptions.batch.done', { ok: res.succeeded, total: res.total, failPart: res.failed ? t('subscriptions.batch.failPart', { n: res.failed, err: res.failures[0]?.error || '' }) : '' }))
     if (op === 'delete') exitBatch()
     await load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '批量操作失败')
+    ElMessage.error((e as Error).message || t('subscriptions.batch.failed'))
   } finally {
     batchRunning.value = false
   }
@@ -166,90 +168,90 @@ onMounted(() => {
   <div class="page">
     <div class="head">
       <div class="head-left">
-        <h2 class="title">订阅</h2>
-        <span class="text-muted hint">cron 自动跨站搜索，命中即推送到默认下载器并通知。点此 <router-link to="/search">搜索</router-link> → 影视详情页订阅。</span>
+        <h2 class="title">{{ t('subscriptions.title') }}</h2>
+        <span class="text-muted hint">{{ t('subscriptions.subtitle') }}<router-link to="/search">{{ t('subscriptions.subtitleSearch') }}</router-link>{{ t('subscriptions.subtitleTail') }}</span>
       </div>
       <div style="display:flex;gap:8px;">
-        <el-button v-if="!batchMode && list.length" class="global-btn" @click="enterBatch">批量操作</el-button>
-        <el-button class="global-btn" @click="openGlobal">⚙ 全局订阅设置</el-button>
+        <el-button v-if="!batchMode && list.length" class="global-btn" @click="enterBatch">{{ t('subscriptions.batch.button') }}</el-button>
+        <el-button class="global-btn" @click="openGlobal">{{ t('subscriptions.globalSettings') }}</el-button>
       </div>
     </div>
 
     
     <el-tabs v-model="mainTab" class="page-tabs glass" @tab-change="onMainTab">
-      <el-tab-pane label="追剧订阅" name="media">
-<el-dialog v-model="globalOpen" title="全局订阅默认设置" width="540px" append-to-body top="6vh" class="global-subscribe-dialog">
+      <el-tab-pane :label="t('subscriptions.tabMedia')" name="media">
+<el-dialog v-model="globalOpen" :title="t('subscriptions.globalTitle')" width="540px" append-to-body top="6vh" class="global-subscribe-dialog">
       <div class="text-muted small" style="margin-bottom: 12px;">
-        未单独设置某项的订阅将使用此处的默认值（改后立即对所有未自定义订阅生效）。
+        {{ t('subscriptions.globalDesc') }}
       </div>
       <div class="gd-row">
-        <span class="small gd-label">分辨率</span>
-        <el-input v-model="globalForm.resolution" size="small" style="width: 160px" placeholder="不限" />
-        <span class="small text-muted">如 1080p/2160p，空=不限</span>
+        <span class="small gd-label">{{ t('subscriptions.resolution') }}</span>
+        <el-input v-model="globalForm.resolution" size="small" style="width: 160px" :placeholder="t('subscriptions.unlimited')" />
+        <span class="small text-muted">{{ t('subscriptions.globalResHint') }}</span>
       </div>
       <div class="gd-row">
-        <span class="small gd-label">评分保护</span>
+        <span class="small gd-label">{{ t('subscriptions.ratingGuard') }}</span>
         <el-switch v-model="globalForm.enable_rating_guard" size="small" />
-        <span class="small text-muted">开启后低分命中跳过推送</span>
+        <span class="small text-muted">{{ t('subscriptions.globalRatingHint') }}</span>
       </div>
       <div class="gd-row">
-        <span class="small gd-label">洗版</span>
+        <span class="small gd-label">{{ t('subscriptions.bestVersion') }}</span>
         <el-switch v-model="globalForm.best_version" size="small" />
-        <span class="small text-muted">持续寻找更高画质版本</span>
+        <span class="small text-muted">{{ t('subscriptions.globalBestHint') }}</span>
       </div>
       <div class="gd-row">
-        <span class="small gd-label">仅官种</span>
+        <span class="small gd-label">{{ t('subscriptions.officialOnly') }}</span>
         <el-switch v-model="globalForm.official_only" size="small" />
-        <span class="small text-muted">只推送官方/官组发布的资源</span>
+        <span class="small text-muted">{{ t('subscriptions.globalOfficialHint') }}</span>
       </div>
       <div class="gd-row">
-        <span class="small gd-label">促销类型</span>
-        <el-select v-model="globalForm.promo_types" multiple collapse-tags collapse-tags-tooltip size="small" style="width: 240px" placeholder="不限">
+        <span class="small gd-label">{{ t('subscriptions.promoTypes') }}</span>
+        <el-select v-model="globalForm.promo_types" multiple collapse-tags collapse-tags-tooltip size="small" style="width: 240px" :placeholder="t('subscriptions.unlimited')">
           <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
         </el-select>
-        <span class="small text-muted">空=不限</span>
+        <span class="small text-muted">{{ t('subscriptions.emptyUnlimited') }}</span>
       </div>
       <div class="gd-row">
-        <span class="small gd-label">参与站点</span>
+        <span class="small gd-label">{{ t('subscriptions.sites') }}</span>
         <SiteFilterDialog
           :model-value="globalForm.site_ids"
           :sites="sites"
-          title="全局默认参与站点"
+          :title="t('subscriptions.globalSitesTitle')"
           @update:model-value="(ids: number[]) => (globalForm.site_ids = ids)"
         >
-          <span class="small">{{ globalForm.site_ids.length ? `${globalForm.site_ids.length} 个站点` : '全部站点' }}</span>
+          <span class="small">{{ globalForm.site_ids.length ? t('subscriptions.nSites', { n: globalForm.site_ids.length }) : t('subscriptions.allSites') }}</span>
         </SiteFilterDialog>
-        <span class="small text-muted">空=全部活跃站点</span>
+        <span class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
       </div>
       <template #footer>
-        <el-button @click="globalOpen = false">取消</el-button>
-        <el-button type="primary" :loading="savingGlobal" @click="saveGlobal">保存</el-button>
+        <el-button @click="globalOpen = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="savingGlobal" @click="saveGlobal">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <div v-loading="loading" class="card glass">
       <!-- 批量操作条：进入后卡片显示勾选框；编辑用字段开关控制只改所选字段 -->
       <div v-if="batchMode" class="batch-bar">
-        <el-checkbox :model-value="allSelected()" @change="toggleSelectAll">全选</el-checkbox>
-        <span class="small text-muted">已选 {{ selectedIds.length }} 项</span>
-        <el-button size="small" @click="exitBatch">✕ 退出批量</el-button>
-        <el-button size="small" type="primary" :loading="batchRunning" @click="runBatch('update')">应用编辑</el-button>
-        <el-button size="small" :loading="batchRunning" @click="runBatch('check')">重新搜索</el-button>
-        <el-button size="small" type="danger" plain :loading="batchRunning" @click="runBatch('delete')">取消订阅</el-button>
+        <el-checkbox :model-value="allSelected()" @change="toggleSelectAll">{{ t('subscriptions.batch.selectAll') }}</el-checkbox>
+        <span class="small text-muted">{{ t('subscriptions.batch.selected', { n: selectedIds.length }) }}</span>
+        <el-button size="small" @click="exitBatch">{{ t('subscriptions.batch.exit') }}</el-button>
+        <el-button size="small" type="primary" :loading="batchRunning" @click="runBatch('update')">{{ t('subscriptions.batch.apply') }}</el-button>
+        <el-button size="small" :loading="batchRunning" @click="runBatch('check')">{{ t('subscriptions.batch.recheck') }}</el-button>
+        <el-button size="small" type="danger" plain :loading="batchRunning" @click="runBatch('delete')">{{ t('subscriptions.batch.unsubscribe') }}</el-button>
         <div class="batch-edit gd-row" style="width:100%;margin-top:6px;">
-          <el-checkbox v-model="batchForm.resolutionOn">分辨率</el-checkbox>
-          <el-input v-model="batchForm.resolution" size="small" style="width: 110px" placeholder="如 1080p" :disabled="!batchForm.resolutionOn" />
-          <el-checkbox v-model="batchForm.statusOn">状态</el-checkbox>
+          <el-checkbox v-model="batchForm.resolutionOn">{{ t('subscriptions.resolution') }}</el-checkbox>
+          <el-input v-model="batchForm.resolution" size="small" style="width: 110px" :placeholder="t('subscriptions.resPlaceholder')" :disabled="!batchForm.resolutionOn" />
+          <el-checkbox v-model="batchForm.statusOn">{{ t('subscriptions.batch.status') }}</el-checkbox>
           <el-select v-model="batchForm.status" size="small" style="width: 100px" :disabled="!batchForm.statusOn">
-            <el-option label="订阅中" value="subscribed" />
-            <el-option label="已暂停" value="paused" />
-            <el-option label="已完成" value="completed" />
+            <el-option :label="t('subscriptions.status.subscribed')" value="subscribed" />
+            <el-option :label="t('subscriptions.status.paused')" value="paused" />
+            <el-option :label="t('subscriptions.status.completed')" value="completed" />
           </el-select>
-          <el-checkbox v-model="batchForm.ratingGuardOn">评分保护</el-checkbox>
+          <el-checkbox v-model="batchForm.ratingGuardOn">{{ t('subscriptions.ratingGuard') }}</el-checkbox>
           <el-switch v-model="batchForm.ratingGuard" size="small" :disabled="!batchForm.ratingGuardOn" />
-          <el-checkbox v-model="batchForm.bestVersionOn">洗版</el-checkbox>
+          <el-checkbox v-model="batchForm.bestVersionOn">{{ t('subscriptions.bestVersion') }}</el-checkbox>
           <el-switch v-model="batchForm.bestVersion" size="small" :disabled="!batchForm.bestVersionOn" />
-          <span class="small text-muted">勾选的字段才会被修改，未勾选保持原值</span>
+          <span class="small text-muted">{{ t('subscriptions.batch.fieldHint') }}</span>
         </div>
       </div>
       <div v-if="list.length" class="subs">
@@ -266,67 +268,67 @@ onMounted(() => {
               <span v-if="s.resolution" class="chip res">{{ s.resolution }}</span>
             </div>
             <div class="text-muted small">
-              上次检查：{{ fmtTime(s.last_checked_at) }} · 类型 {{ s.type === 'tv' ? '剧集' : '电影' }} · 源 {{ s.source }}
+              {{ t('subscriptions.lastChecked', { time: fmtTime(s.last_checked_at) }) }} · {{ t('subscriptions.typeLabel') }} {{ s.type === 'tv' ? t('subscriptions.type.tv') : t('subscriptions.type.movie') }} · {{ t('subscriptions.sourceLabel') }} {{ s.source }}
             </div>
             <div class="res-row">
-              <span class="small">分辨率过滤：</span>
+              <span class="small">{{ t('subscriptions.resFilter') }}</span>
               <el-input
                 v-model="s.resolution"
                 size="small"
                 style="width: 120px"
-                placeholder="不限"
+                :placeholder="t('subscriptions.unlimited')"
                 @change="setResolution(s)"
               />
-              <span v-if="!s.resolution && globalDefaults.resolution" class="small text-muted">（跟随全局：{{ globalDefaults.resolution }}）</span>
-              <span v-else class="small text-muted">（如 1080p / 2160p，留空=不限）</span>
+              <span v-if="!s.resolution && globalDefaults.resolution" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.resolution }) }}</span>
+              <span v-else class="small text-muted">{{ t('subscriptions.resHint') }}</span>
             </div>
             <div class="res-row">
-              <span class="small">评分保护：</span>
+              <span class="small">{{ t('subscriptions.ratingGuardColon') }}</span>
               <el-switch
                 :model-value="effRatingGuard(s)"
                 :disabled="s.enable_rating_guard === null"
                 size="small"
                 @update:model-value="(v: any) => setRatingGuard(s, !!v)"
               />
-              <span v-if="s.enable_rating_guard === null" class="small text-muted">（跟随全局：{{ globalDefaults.enable_rating_guard ? '开' : '关' }}）</span>
+              <span v-if="s.enable_rating_guard === null" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.enable_rating_guard ? t('common.on') : t('common.off') }) }}</span>
               <template v-else>
-                <el-button link type="primary" class="small" @click="resetRatingGuard(s)">恢复全局</el-button>
-                <span class="small text-muted">（阈值见「媒体质量」页）</span>
+                <el-button link type="primary" class="small" @click="resetRatingGuard(s)">{{ t('subscriptions.resetGlobal') }}</el-button>
+                <span class="small text-muted">{{ t('subscriptions.ratingThresholdHint') }}</span>
               </template>
             </div>
             <div class="res-row">
-              <span class="small">洗版：</span>
+              <span class="small">{{ t('subscriptions.bestVersionColon') }}</span>
               <el-switch
                 :model-value="effBestVersion(s)"
                 :disabled="s.best_version === null"
                 size="small"
                 @update:model-value="(v: any) => setBestVersion(s, !!v)"
               />
-              <span v-if="s.best_version === null" class="small text-muted">（跟随全局：{{ globalDefaults.best_version ? '开' : '关' }}）</span>
+              <span v-if="s.best_version === null" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.best_version ? t('common.on') : t('common.off') }) }}</span>
               <template v-else>
-                <el-button link type="primary" class="small" @click="resetBestVersion(s)">恢复全局</el-button>
-                <span class="small text-muted">（持续寻找更高画质版本替换旧版）</span>
+                <el-button link type="primary" class="small" @click="resetBestVersion(s)">{{ t('subscriptions.resetGlobal') }}</el-button>
+                <span class="small text-muted">{{ t('subscriptions.bestHint') }}</span>
               </template>
               <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="chip res">
                 Pri {{ s.current_priority }}
               </span>
             </div>
             <div class="res-row">
-              <span class="small">仅官种：</span>
+              <span class="small">{{ t('subscriptions.officialOnlyColon') }}</span>
               <el-switch
                 :model-value="effOfficialOnly(s)"
                 :disabled="s.official_only === null"
                 size="small"
                 @update:model-value="(v: any) => setOfficialOnly(s, !!v)"
               />
-              <span v-if="s.official_only === null" class="small text-muted">（跟随全局：{{ globalDefaults.official_only ? '开' : '关' }}）</span>
+              <span v-if="s.official_only === null" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.official_only ? t('common.on') : t('common.off') }) }}</span>
               <template v-else>
-                <el-button link type="primary" class="small" @click="resetOfficialOnly(s)">恢复全局</el-button>
-                <span class="small text-muted">（只推标题/标签含「官方/官种/官组」的资源）</span>
+                <el-button link type="primary" class="small" @click="resetOfficialOnly(s)">{{ t('subscriptions.resetGlobal') }}</el-button>
+                <span class="small text-muted">{{ t('subscriptions.officialHint') }}</span>
               </template>
             </div>
             <div class="res-row">
-              <span class="small">促销类型：</span>
+              <span class="small">{{ t('subscriptions.promoTypesColon') }}</span>
               <el-select
                 :model-value="s.promo_types"
                 multiple
@@ -334,31 +336,31 @@ onMounted(() => {
                 collapse-tags-tooltip
                 size="small"
                 style="width: 240px"
-                placeholder="不限"
+                :placeholder="t('subscriptions.unlimited')"
                 @change="(v: any) => setPromoTypes(s, v as string[])"
               >
                 <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
               </el-select>
-              <span v-if="!s.promo_types.length && globalDefaults.promo_types.length" class="small text-muted">（跟随全局：{{ globalDefaults.promo_types.map(promoLabel).join('、') }}）</span>
-              <span v-else class="small text-muted">（空=不限；只推送所选促销类型）</span>
+              <span v-if="!s.promo_types.length && globalDefaults.promo_types.length" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.promo_types.map(promoLabel).join('、') }) }}</span>
+              <span v-else class="small text-muted">{{ t('subscriptions.promoEmptyHint') }}</span>
             </div>
             <div class="res-row">
-              <span class="small">参与站点：</span>
+              <span class="small">{{ t('subscriptions.sitesColon') }}</span>
               <SiteFilterDialog
                 :model-value="s.site_ids"
                 :sites="sites"
-                title="参与订阅的站点"
+                :title="t('subscriptions.sitesDialogTitle')"
                 @update:model-value="(ids: number[]) => setSiteIds(s, ids)"
               >
-                <span class="small">{{ s.site_ids.length ? `${s.site_ids.length} 个站点` : (globalDefaults.site_ids.length ? `跟随全局 ${globalDefaults.site_ids.length} 站` : '全部站点') }}</span>
+                <span class="small">{{ s.site_ids.length ? t('subscriptions.nSites', { n: s.site_ids.length }) : (globalDefaults.site_ids.length ? t('subscriptions.followGlobalNSites', { n: globalDefaults.site_ids.length }) : t('subscriptions.allSites')) }}</span>
               </SiteFilterDialog>
-              <span v-if="!s.site_ids.length && globalDefaults.site_ids.length" class="small text-muted">（空=用全局默认站点）</span>
-              <span v-else class="small text-muted">（空=全部活跃站点）</span>
+              <span v-if="!s.site_ids.length && globalDefaults.site_ids.length" class="small text-muted">{{ t('subscriptions.sitesFollowGlobalHint') }}</span>
+              <span v-else class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
             </div>
             <div class="actions">
-              <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">立即检查</el-button>
-              <el-button size="small" @click="toggleStatus(s)">{{ s.status === 'paused' ? '恢复' : '暂停' }}</el-button>
-              <el-button size="small" type="danger" plain @click="remove(s)">删除</el-button>
+              <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">{{ t('subscriptions.checkNow') }}</el-button>
+              <el-button size="small" @click="toggleStatus(s)">{{ s.status === 'paused' ? t('subscriptions.resume') : t('subscriptions.pause') }}</el-button>
+              <el-button size="small" type="danger" plain @click="remove(s)">{{ t('common.delete') }}</el-button>
             </div>
           </div>
         </div>
@@ -366,11 +368,11 @@ onMounted(() => {
       <EmptyState
         v-else-if="!loading"
         icon="🔖"
-        title="暂无订阅"
-        description="去「搜索」切到「影视」，点结果进详情页即可订阅；cron 会自动跨站搜索并推送"
+        :title="t('subscriptions.emptyTitle')"
+        :description="t('subscriptions.emptyDesc')"
       >
         <router-link to="/search">
-          <el-button type="primary">去搜索影视</el-button>
+          <el-button type="primary">{{ t('subscriptions.goSearch') }}</el-button>
         </router-link>
       </EmptyState>
     </div>
@@ -455,4 +457,4 @@ onMounted(() => {
 .subs > *:nth-child(n+6) { animation-delay: 250ms; }
 .sub { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
 .sub:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-</style>
+</style>

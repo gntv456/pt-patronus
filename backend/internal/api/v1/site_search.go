@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
@@ -19,7 +20,7 @@ func (h *SiteHandler) Search(c *gin.Context) {
 	page := atoiDefault(c.Query("page"), 1)
 	s, err := h.oper.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	ts, err := h.siteCh.Search(c.Request.Context(), s, keyword, category, page)
@@ -61,18 +62,18 @@ func (h *SiteHandler) TorrentDetail(c *gin.Context) {
 	}
 	detailURL := c.Query("url")
 	if detailURL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "url required"})
+		errcode.Respond(c, errcode.UrlRequired)
 		return
 	}
 	s, err := h.oper.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	d, err := h.siteCh.TorrentDetail(c.Request.Context(), s, detailURL)
 	if err != nil {
 		// 502：目标站点详情页抓取/解析失败，非客户端参数错误。
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": d})
@@ -90,11 +91,11 @@ func (h *SiteHandler) UpdateCookie(c *gin.Context) {
 	}
 	var req cookieReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.oper.UpdateCookie(id, req.Cookie); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -107,7 +108,7 @@ func (h *SiteHandler) UpdateCookie(c *gin.Context) {
 func (h *SiteHandler) GetCookies(c *gin.Context) {
 	sites, err := h.oper.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	reveal := c.Query("reveal") == "1"

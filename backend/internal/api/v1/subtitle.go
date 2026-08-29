@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/subtitle"
@@ -26,12 +27,12 @@ func NewSubtitleHandler(svc *chain.SubtitleChain, auto *subauto.Service) *Subtit
 func (h *SubtitleHandler) Search(c *gin.Context) {
 	q := strings.TrimSpace(c.Query("q"))
 	if q == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "q 必填"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	res, err := h.svc.Search(c.Request.Context(), q, c.Query("language"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if res == nil {
@@ -55,11 +56,11 @@ type downloadReq struct {
 func (h *SubtitleHandler) Download(c *gin.Context) {
 	var req downloadReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if req.Source == "" || req.SourceID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "source/source_id 必填"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	sub := subtitle.Subtitle{
@@ -69,10 +70,10 @@ func (h *SubtitleHandler) Download(c *gin.Context) {
 	data, name, err := h.svc.Download(c.Request.Context(), sub)
 	if err != nil {
 		if errors.Is(err, oper.ErrInvalidInput) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 			return
 		}
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	contentType := "application/octet-stream"
@@ -124,12 +125,12 @@ type subtitleConfigReq struct {
 func (h *SubtitleHandler) SetConfig(c *gin.Context) {
 	var req subtitleConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	tl := strings.TrimSpace(req.TargetLang)
 	if tl != "" && tl != "chs" && tl != "cht" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "target_lang 仅支持 chs/cht"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	if err := h.svc.SetConfig(chain.SubtitleSettings{
@@ -139,7 +140,7 @@ func (h *SubtitleHandler) SetConfig(c *gin.Context) {
 		ZimukuCookie:     strings.TrimSpace(req.ZimukuCookie),
 		TargetLang:       tl,
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -168,16 +169,16 @@ func (h *SubtitleHandler) GetAutomationConfig(c *gin.Context) {
 // SetAutomationConfig 写字幕自动化配置（即时生效：下次 transfer_done 现取）。
 func (h *SubtitleHandler) SetAutomationConfig(c *gin.Context) {
 	if h.auto == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "字幕自动化服务未初始化"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	var cfg subauto.Config
 	if err := c.ShouldBindJSON(&cfg); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.auto.SetConfig(cfg); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

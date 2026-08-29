@@ -15,13 +15,23 @@ jobs:
     permissions:
       contents: read
     env:
-      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST || '152.53.91.46' }}
-      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'root' }}
-      DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/root/ptpatronus-releases' }}
+      # 生产服务器信息只允许来自 secrets——不设任何 fallback，避免仓库
+      # 泄漏部署目标；缺 secret 时直接 fail（见下方 guard step）。
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
       DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Guard required deploy secrets
+        run: |
+          missing=0
+          for v in DEPLOY_HOST DEPLOY_PORT DEPLOY_USER DEPLOY_DIR DEPLOY_KEY; do
+            if [ -z "${!v}" ]; then echo "::error::secret $v is not configured"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ] || exit 1
 
       - name: Download Release assets inside GitHub runner
         env:

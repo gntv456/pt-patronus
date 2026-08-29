@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { formatTorrentSize } from '@/utils/torrentMeta'
 import { dlTypeLabel } from '@/composables/useSearchPush'
 import type { Downloader } from '@/api/downloader'
@@ -6,6 +7,8 @@ import MediaPoster from '@/components/MediaPoster.vue'
 
 // 确认下载弹窗（对齐 MoviePilot）：种子预览 + 下载器/分类选择 + 高级选项 + 推送成功态。
 // 受控弹窗：v-model:visible 控制显隐，业务状态由父组件管理。
+const { t } = useI18n()
+
 const visible = defineModel<boolean>('visible', { required: true })
 
 defineProps<{
@@ -52,17 +55,17 @@ const emit = defineEmits<{
     <template #header>
       <div class="sf-push-header">
         <div class="sf-push-header-text">
-          <div class="sf-push-title-main">确认下载</div>
+          <div class="sf-push-title-main">{{ t('spd.title') }}</div>
           <div v-if="subtitle" class="sf-push-title-sub text-muted">{{ subtitle }}</div>
         </div>
       </div>
     </template>
 
     <div v-if="pushedDlName" class="sf-push-ok">
-      <p>已推送到 <b>{{ pushedDlName }}</b></p>
+      <p>{{ t('spd.pushedTo') }} <b>{{ pushedDlName }}</b></p>
       <div class="sf-push-actions">
-        <el-button type="primary" @click="emit('gotoDownloaderTasks')">查看任务</el-button>
-        <el-button @click="emit('close')">关闭</el-button>
+        <el-button type="primary" @click="emit('gotoDownloaderTasks')">{{ t('spd.viewTasks') }}</el-button>
+        <el-button @click="emit('close')">{{ t('common.close') }}</el-button>
       </div>
     </div>
 
@@ -91,43 +94,43 @@ const emit = defineEmits<{
 
       <div class="sf-push-fields">
         <div class="sf-push-field">
-          <label>下载器</label>
-          <el-select v-model="selectedDl" placeholder="选择下载器" style="width: 100%">
+          <label>{{ t('spd.downloader') }}</label>
+          <el-select v-model="selectedDl" :placeholder="t('spd.dlPh')" style="width: 100%">
             <el-option
               v-for="d in downloaders"
               :key="d.id"
-              :label="d.name + (d.is_default ? '（默认）' : '') + ' · ' + (dlTypeLabel[d.type] || d.type)"
+              :label="d.name + (d.is_default ? t('spd.defaultSuffix') : '') + ' · ' + (dlTypeLabel[d.type] || d.type)"
               :value="d.id"
             />
           </el-select>
         </div>
         <div class="sf-push-field">
-          <label>保存目录</label>
+          <label>{{ t('spd.saveDir') }}</label>
           <el-select
             v-model="selectedCategory"
             clearable
             filterable
             allow-create
             default-first-option
-            placeholder="自动（下载器默认）"
+            :placeholder="t('spd.autoDir')"
             style="width: 100%"
           >
-            <el-option label="自动（下载器默认）" value="" />
+            <el-option :label="t('spd.autoDir')" value="" />
             <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
           </el-select>
         </div>
       </div>
 
       <button type="button" class="sf-adv-toggle" @click="showAdvanced = !showAdvanced">
-        {{ showAdvanced ? '▾ 收起高级选项' : '▸ 显示高级选项' }}
+        {{ showAdvanced ? t('spd.hideAdv') : t('spd.showAdv') }}
       </button>
       <div v-if="showAdvanced" class="sf-push-advanced">
         <div class="sf-push-field">
-          <label>自定义保存路径</label>
-          <el-input v-model="savePath" placeholder="留空则用分类/下载器默认路径" clearable />
+          <label>{{ t('spd.customPath') }}</label>
+          <el-input v-model="savePath" :placeholder="t('spd.pathPh')" clearable />
         </div>
         <div class="sf-push-field row">
-          <label>添加后暂停</label>
+          <label>{{ t('spd.paused') }}</label>
           <el-switch v-model="paused" />
         </div>
       </div>
@@ -141,7 +144,7 @@ const emit = defineEmits<{
           :loading="loading"
           @click="emit('confirm')"
         >
-          ⬇ 开始下载
+          ⬇ {{ t('spd.startDownload') }}
         </el-button>
       </div>
     </div>

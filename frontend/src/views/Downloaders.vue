@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref } from 'vue'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import TorrentDrawer from '@/components/downloader/TorrentDrawer.vue'
@@ -6,6 +7,7 @@ import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
 import { ArrowDown, Check, CircleCheck, CircleClose, Delete, Edit, Link, MoreFilled, Plus, VideoPlay } from '@element-plus/icons-vue'
 
+const { t } = useI18n()
 const auth = useAuthStore()
 
 const list = ref<Downloader[]>([])
@@ -15,7 +17,7 @@ const dialogVisible = ref(false)
 const form = ref({ name: '', type: 'qb', url: '', username: '', password: '', is_default: false })
 const editingId = ref<number | null>(null)
 const isEdit = computed(() => editingId.value !== null)
-const dialogTitle = computed(() => (isEdit.value ? '编辑下载器' : '添加下载器'))
+const dialogTitle = computed(() => (isEdit.value ? t('downloaders.edit') : t('downloaders.add')))
 const connectionState = ref<Record<number, 'idle' | 'connected' | 'failed'>>({})
 const connectedCount = computed(() => Object.values(connectionState.value).filter((s) => s === 'connected').length)
 const defaultDownloader = computed(() => list.value.find((dl) => dl.is_default))
@@ -31,7 +33,7 @@ const DL_META: Record<string, { glyph: string; from: string; to: string; label: 
   fl: { glyph: 'flood', from: '#5B8DEF', to: '#2F5FCC', label: 'Flood' },
 }
 const dlMeta = (type: string) =>
-  DL_META[type] ?? { glyph: 'downloaders', from: '#536976', to: '#2c3e50', label: type || '下载器' }
+  DL_META[type] ?? { glyph: 'downloaders', from: '#536976', to: '#2c3e50', label: type || t('downloaders.genericLabel') }
 const typeOptions = Object.entries(DL_META).map(([value, meta]) => ({ value, ...meta }))
 
 const drawerDl = ref<Downloader | null>(null)
@@ -47,7 +49,7 @@ async function load() {
       list.value.map((dl) => [dl.id, connectionState.value[dl.id] ?? 'idle']),
     )
   } catch (e: unknown) {
-    error.value = (e as Error).message || '加载失败'
+    error.value = (e as Error).message || t('downloaders.loadFailed')
   } finally {
     loading.value = false
   }
@@ -76,25 +78,25 @@ async function submit() {
   form.value.name = form.value.name.trim()
   form.value.url = form.value.url.trim()
   if (!form.value.name || !form.value.url) {
-    ElMessage.warning('名称与地址必填')
+    ElMessage.warning(t('downloaders.nameUrlRequired'))
     return
   }
   if (!/^https?:\/\/.+/i.test(form.value.url)) {
-    ElMessage.warning('地址需以 http:// 或 https:// 开头')
+    ElMessage.warning(t('downloaders.urlScheme'))
     return
   }
   try {
     if (isEdit.value) {
       await downloaderApi.update(editingId.value!, form.value)
-      ElMessage.success('下载器配置已更新')
+      ElMessage.success(t('downloaders.updated'))
     } else {
       await downloaderApi.create(form.value)
-      ElMessage.success('下载器已添加')
+      ElMessage.success(t('downloaders.added'))
     }
     dialogVisible.value = false
     await load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
+    ElMessage.error((e as Error).message || t('downloaders.saveFailed'))
   }
 }
 
@@ -110,29 +112,29 @@ async function setDefault(id: number) {
       username: dl.username,
       is_default: true,
     })
-    ElMessage.success(`已将「${dl.name}」设为默认下载器`)
+    ElMessage.success(t('downloaders.setDefaultOk', { name: dl.name }))
     await load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '设置失败')
+    ElMessage.error((e as Error).message || t('downloaders.setDefaultFailed'))
   }
 }
 
 async function removeDownloader(dl: Downloader) {
   try {
-    await ElMessageBox.confirm(`确认删除下载器「${dl.name}」？`, '删除下载器', {
+    await ElMessageBox.confirm(t('downloaders.confirmDelete', { name: dl.name }), t('downloaders.deleteTitle'), {
       type: 'warning',
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
+      confirmButtonText: t('common.delete'),
+      cancelButtonText: t('common.cancel'),
     })
   } catch {
     return
   }
   try {
     await downloaderApi.remove(dl.id)
-    ElMessage.success('下载器已删除')
+    ElMessage.success(t('downloaders.deleteOk'))
     await load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '删除失败')
+    ElMessage.error((e as Error).message || t('downloaders.deleteFailed'))
   }
 }
 
@@ -141,10 +143,10 @@ async function test(dl: Downloader) {
   try {
     const result = await downloaderApi.test(dl.id)
     connectionState.value = { ...connectionState.value, [dl.id]: result.ok ? 'connected' : 'failed' }
-    result.ok ? ElMessage.success(`${dl.name} 连接正常`) : ElMessage.warning(result.error || '连接失败')
+    result.ok ? ElMessage.success(t('downloaders.connOk', { name: dl.name })) : ElMessage.warning(result.error || t('downloaders.connFailed'))
   } catch (e: unknown) {
     connectionState.value = { ...connectionState.value, [dl.id]: 'failed' }
-    ElMessage.error((e as Error).message || '请求失败')
+    ElMessage.error((e as Error).message || t('downloaders.requestFailed'))
   } finally {
     testing.value = null
   }
@@ -152,7 +154,8 @@ async function test(dl: Downloader) {
 
 function connectionLabel(dl: Downloader): string {
   const state = connectionState.value[dl.id] ?? 'idle'
-  return state === 'connected' ? '连接正常' : state === 'failed' ? '连接异常' : '尚未测试'
+  const map: Record<string, string> = { connected: t('downloaders.connState.connected'), failed: t('downloaders.connState.failed'), idle: t('downloaders.connState.idle') }
+  return map[state] ?? map.idle
 }
 
 function onCardCommand(command: string, dl: Downloader) {
@@ -172,33 +175,33 @@ onMounted(load)
   <div class="page">
     <header class="head">
       <div class="head-copy">
-        <h1 class="title">下载器</h1>
-        <p class="subtitle">统一管理连接、任务和实时传输状态</p>
+        <h1 class="title">{{ t('downloaders.title') }}</h1>
+        <p class="subtitle">{{ t('downloaders.subtitle') }}</p>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openCreate">添加下载器</el-button>
+      <el-button type="primary" :icon="Plus" @click="openCreate">{{ t('downloaders.add') }}</el-button>
     </header>
 
-    <section class="overview-strip" aria-label="下载器概览">
+    <section class="overview-strip" :aria-label="t('downloaders.overview.label')">
       <div class="overview-item">
-        <span class="overview-label">已配置</span>
+        <span class="overview-label">{{ t('downloaders.overview.configured') }}</span>
         <strong>{{ list.length }}</strong>
-        <span class="overview-caption">个下载器</span>
+        <span class="overview-caption">{{ t('downloaders.overview.configuredUnit') }}</span>
       </div>
       <div class="overview-item status-overview">
-        <span class="overview-label">已测试连接</span>
+        <span class="overview-label">{{ t('downloaders.overview.tested') }}</span>
         <strong>{{ connectedCount }}</strong>
-        <span class="overview-caption">个正常</span>
+        <span class="overview-caption">{{ t('downloaders.overview.testedUnit') }}</span>
       </div>
       <div class="overview-item">
-        <span class="overview-label">类型覆盖</span>
+        <span class="overview-label">{{ t('downloaders.overview.types') }}</span>
         <strong>{{ typeCount }}</strong>
-        <span class="overview-caption">种客户端</span>
+        <span class="overview-caption">{{ t('downloaders.overview.typesUnit') }}</span>
       </div>
       <div class="overview-note">
-        <span class="overview-label">默认下载器</span>
+        <span class="overview-label">{{ t('downloaders.overview.defaultDl') }}</span>
         <el-dropdown trigger="click" :disabled="!list.length" class="default-dropdown" @command="setDefault">
-          <el-button size="small" :title="list.length ? '点击选择默认下载器' : '请先添加下载器'">
-            <span class="default-name">{{ defaultDownloader?.name || '未设置' }}</span>
+          <el-button size="small" :title="list.length ? t('downloaders.overview.pickDefault') : t('downloaders.overview.addFirst')">
+            <span class="default-name">{{ defaultDownloader?.name || t('downloaders.overview.unset') }}</span>
             <el-icon class="el-icon--right"><ArrowDown /></el-icon>
           </el-button>
           <template #dropdown>
@@ -210,7 +213,7 @@ onMounted(load)
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <span class="overview-caption">搜索、订阅和工作流会优先使用</span>
+        <span class="overview-caption">{{ t('downloaders.overview.defaultHint') }}</span>
       </div>
     </section>
 
@@ -218,7 +221,7 @@ onMounted(load)
       <div v-if="error" class="empty error-state">
         <CircleClose class="state-icon" />
         <div class="err-text">{{ error }}</div>
-        <el-button size="small" @click="load">重试</el-button>
+        <el-button size="small" @click="load">{{ t('downloaders.retry') }}</el-button>
       </div>
       <template v-else>
         <article v-for="dl in list" :key="dl.id" class="glass glass-hover card">
@@ -233,17 +236,17 @@ onMounted(load)
             <div class="identity">
               <div class="identity-title">
                 <span class="dname">{{ dl.name }}</span>
-                <span v-if="dl.is_default" class="default-chip">默认</span>
+                <span v-if="dl.is_default" class="default-chip">{{ t('downloaders.card.defaultChip') }}</span>
               </div>
               <span class="dtype-tag text-muted">{{ dlMeta(dl.type).label }}</span>
             </div>
             <el-dropdown trigger="click" @command="(command: string) => onCardCommand(command, dl)">
-              <el-button text circle :icon="MoreFilled" title="更多设置" aria-label="更多设置" />
+              <el-button text circle :icon="MoreFilled" :title="t('downloaders.card.more')" :aria-label="t('downloaders.card.more')" />
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>编辑配置</el-dropdown-item>
+                  <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>{{ t('downloaders.card.editConfig') }}</el-dropdown-item>
                   <el-dropdown-item v-if="auth.isAdmin" command="delete" divided>
-                    <el-icon><Delete /></el-icon>删除下载器
+                    <el-icon><Delete /></el-icon>{{ t('downloaders.card.delete') }}
                   </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
@@ -263,14 +266,14 @@ onMounted(load)
           </div>
 
           <div class="card-actions">
-            <el-button type="primary" :icon="VideoPlay" @click="openTorrents(dl)">打开任务</el-button>
-            <el-button :loading="testing === dl.id" :icon="Link" @click="test(dl)">测试连接</el-button>
+            <el-button type="primary" :icon="VideoPlay" @click="openTorrents(dl)">{{ t('downloaders.card.openTasks') }}</el-button>
+            <el-button :loading="testing === dl.id" :icon="Link" @click="test(dl)">{{ t('downloaders.card.testConn') }}</el-button>
           </div>
         </article>
 
         <div v-if="!list.length && !loading" class="empty">
-          <EmptyState icon="downloaders" title="还没有下载器" description="添加下载器后即可统一查看实时任务和传输状态。">
-            <el-button type="primary" :icon="Plus" @click="openCreate">添加下载器</el-button>
+          <EmptyState icon="downloaders" :title="t('downloaders.card.emptyTitle')" :description="t('downloaders.card.emptyDesc')">
+            <el-button type="primary" :icon="Plus" @click="openCreate">{{ t('downloaders.add') }}</el-button>
           </EmptyState>
         </div>
       </template>
@@ -278,19 +281,19 @@ onMounted(load)
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="680px" class="downloader-dialog">
       <div class="dialog-intro">
-        <span class="dialog-kicker">连接配置</span>
-        <p>保存后可立即测试连接；编辑时密码留空会沿用现有凭据。</p>
+        <span class="dialog-kicker">{{ t('downloaders.form.kicker') }}</span>
+        <p>{{ t('downloaders.form.hint') }}</p>
       </div>
       <el-form :model="form" label-position="top" class="config-form">
         <div class="form-grid">
-          <el-form-item label="显示名称" required>
-            <el-input v-model="form.name" placeholder="例如：家庭 qB" />
+          <el-form-item :label="t('downloaders.form.name')" required>
+            <el-input v-model="form.name" :placeholder="t('downloaders.form.namePlaceholder')" />
           </el-form-item>
-          <el-form-item label="设为默认">
-            <el-switch v-model="form.is_default" inline-prompt active-text="是" inactive-text="否" />
+          <el-form-item :label="t('downloaders.form.isDefault')">
+            <el-switch v-model="form.is_default" inline-prompt :active-text="t('downloaders.form.on')" :inactive-text="t('downloaders.form.off')" />
           </el-form-item>
         </div>
-        <el-form-item label="客户端类型" required>
+        <el-form-item :label="t('downloaders.form.type')" required>
           <el-radio-group v-model="form.type" class="type-grid">
             <el-radio v-for="option in typeOptions" :key="option.value" :value="option.value" class="type-option">
               <GlassIcon :name="option.glyph" :from="option.from" :to="option.to" :size="28" />
@@ -298,28 +301,28 @@ onMounted(load)
             </el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="服务地址" required>
+        <el-form-item :label="t('downloaders.form.url')" required>
           <el-input v-model="form.url" placeholder="http://127.0.0.1:8080" autocomplete="url" />
-          <span class="field-hint">填写下载器 Web API 地址，不要带具体接口路径。</span>
+          <span class="field-hint">{{ t('downloaders.form.urlHint') }}</span>
         </el-form-item>
         <div class="form-grid">
-          <el-form-item label="用户名">
+          <el-form-item :label="t('downloaders.form.username')">
             <el-input v-model="form.username" autocomplete="username" />
           </el-form-item>
-          <el-form-item label="密码">
+          <el-form-item :label="t('downloaders.form.password')">
             <el-input
               v-model="form.password"
               type="password"
               show-password
               autocomplete="new-password"
-              :placeholder="isEdit ? '留空则不修改' : '请输入密码'"
+              :placeholder="isEdit ? t('downloaders.form.passwordEdit') : t('downloaders.form.passwordNew')"
             />
           </el-form-item>
         </div>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submit">{{ isEdit ? '保存配置' : '添加下载器' }}</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="submit">{{ isEdit ? t('downloaders.form.save') : t('downloaders.add') }}</el-button>
       </template>
     </el-dialog>
 

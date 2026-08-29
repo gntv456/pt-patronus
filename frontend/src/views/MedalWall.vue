@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { medalWallApi, type Medal } from '@/api/medal-wall'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
+const { t } = useI18n()
 const medals = ref<Medal[]>([])
 const loading = ref(false)
 const filter = ref<string>('all') // all/owned/available/out_of_stock/wearing
@@ -24,7 +26,7 @@ async function load(refresh = false) {
       medals.value.push(...cards)
     }, ctrl.signal)
   } catch (e: unknown) {
-    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载勋章墙失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('medalwall.loadFailed'))
   } finally {
     if (abortCtrl === ctrl) {
       loading.value = false
@@ -67,11 +69,12 @@ const counts = computed(() => {
   return c
 })
 
-const statusLabel: Record<string, string> = {
-  OWNED: '已拥有', AVAILABLE: '可购买', OUT_OF_STOCK: '缺货',
-  NOT_ON_SALE: '未开售', GRANT_ONLY: '仅授予', SYNTHESIS: '仅合成',
-  DISCONTINUED: '已下架', UNKNOWN: '未知',
-}
+const statusLabel = computed<Record<string, string>>(() => ({
+  OWNED: t('medalwall.status.owned'), AVAILABLE: t('medalwall.status.available'),
+  OUT_OF_STOCK: t('medalwall.status.outOfStock'), NOT_ON_SALE: t('medalwall.status.notOnSale'),
+  GRANT_ONLY: t('medalwall.status.grantOnly'), SYNTHESIS: t('medalwall.status.synthesis'),
+  DISCONTINUED: t('medalwall.status.discontinued'), UNKNOWN: t('medalwall.status.unknown'),
+}))
 const statusColor: Record<string, string> = {
   OWNED: '#2ecc71', AVAILABLE: '#3498db', OUT_OF_STOCK: '#f56c6c',
   NOT_ON_SALE: '#95a5a6', GRANT_ONLY: '#95a5a6', SYNTHESIS: '#9b59b6',
@@ -95,10 +98,10 @@ async function doAction(action: 'buy' | 'wear' | 'takeOff') {
   if (action === 'buy') {
     const d = detail.value
     try {
-      await ElMessageBox.confirm(`确认消耗 ${d.price} ${d.currency} 购买「${d.name}」？`, '购买勋章', {
+      await ElMessageBox.confirm(t('medalwall.confirmBuy', { price: d.price, currency: d.currency, name: d.name }), t('medalwall.buyTitle'), {
         type: 'warning',
-        confirmButtonText: '购买',
-        cancelButtonText: '取消',
+        confirmButtonText: t('medalwall.buy'),
+        cancelButtonText: t('common.cancel'),
       })
     } catch {
       return // 用户取消
@@ -108,14 +111,14 @@ async function doAction(action: 'buy' | 'wear' | 'takeOff') {
   try {
     const res = await medalWallApi[action](detail.value.site_id, detail.value.medal_id)
     if (res.success) {
-      ElMessage.success(res.message || '操作成功')
+      ElMessage.success(res.message || t('common.actionOk'))
       drawer.value = false
       await load()
     } else {
-      ElMessage.warning(res.message || '操作失败')
+      ElMessage.warning(res.message || t('common.actionFailed'))
     }
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '请求失败')
+    ElMessage.error((e as Error).message || t('common.requestFailed'))
   } finally {
     acting.value = false
   }
@@ -128,23 +131,23 @@ onUnmounted(() => abortCtrl?.abort())
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">勋章墙</h2>
-      <el-button :loading="loading" @click="load(true)">刷新</el-button>
+      <h2 class="title">{{ t('medalwall.title') }}</h2>
+      <el-button :loading="loading" @click="load(true)">{{ t('common.refresh') }}</el-button>
     </div>
 
     <div class="filter-bar glass">
-      <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择勋章站点" />
-      <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">全部 ({{ counts.total }})</button>
-      <button class="chip" :class="{ on: filter === 'owned' }" @click="filter = 'owned'" style="color:var(--pt-success)">已拥有 ({{ counts.owned }})</button>
-      <button class="chip" :class="{ on: filter === 'available' }" @click="filter = 'available'" style="color:var(--pt-primary-2)">可购买 ({{ counts.available }})</button>
-      <button class="chip" :class="{ on: filter === 'out_of_stock' }" @click="filter = 'out_of_stock'" style="color:var(--pt-danger)">缺货 ({{ counts.out_of_stock }})</button>
-      <button class="chip" :class="{ on: filter === 'wearing' }" @click="filter = 'wearing'" style="color:var(--pt-warn)">佩戴中 ({{ counts.wearing }})</button>
+      <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('medalwall.siteFilterTitle')" />
+      <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">{{ t('assessment.filter.all') }} ({{ counts.total }})</button>
+      <button class="chip" :class="{ on: filter === 'owned' }" @click="filter = 'owned'" style="color:var(--pt-success)">{{ t('medalwall.status.owned') }} ({{ counts.owned }})</button>
+      <button class="chip" :class="{ on: filter === 'available' }" @click="filter = 'available'" style="color:var(--pt-primary-2)">{{ t('medalwall.status.available') }} ({{ counts.available }})</button>
+      <button class="chip" :class="{ on: filter === 'out_of_stock' }" @click="filter = 'out_of_stock'" style="color:var(--pt-danger)">{{ t('medalwall.status.outOfStock') }} ({{ counts.out_of_stock }})</button>
+      <button class="chip" :class="{ on: filter === 'wearing' }" @click="filter = 'wearing'" style="color:var(--pt-warn)">{{ t('medalwall.wearing') }} ({{ counts.wearing }})</button>
     </div>
 
     <details v-if="siteIssues.length" class="site-issues glass" :open="counts.total === 0">
       <summary class="issues-head">
-        <strong>站点检查</strong>
-        <span>{{ siteIssues.length }} 个站点需要关注</span>
+        <strong>{{ t('medalwall.siteCheck') }}</strong>
+        <span>{{ t('medalwall.issuesCount', { n: siteIssues.length }) }}</span>
       </summary>
       <div class="issue-list">
         <div v-for="issue in siteIssues" :key="`issue-${issue.site_id}`" class="issue-row">
@@ -154,7 +157,7 @@ onUnmounted(() => abortCtrl?.abort())
       </div>
     </details>
 
-    <p v-if="loading && !medals.length" style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
+    <p v-if="loading && !medals.length" style="text-align:center;color:var(--text-muted);padding:40px 0">{{ t('common.loading') }}</p>
 
     <div class="cards">
       <div
@@ -167,9 +170,9 @@ onUnmounted(() => abortCtrl?.abort())
           <img v-if="m.image_small" :src="m.image_small" :alt="m.name" referrerpolicy="no-referrer" />
           <span v-else class="placeholder">{{ m.name?.slice(0, 1) || '?' }}</span>
           <span v-if="m.is_owned" class="badge owned">✓</span>
-          <span v-else-if="m.purchase_status === 'OUT_OF_STOCK'" class="badge stock">缺</span>
+          <span v-else-if="m.purchase_status === 'OUT_OF_STOCK'" class="badge stock">{{ t('medalwall.shortStockMark') }}</span>
         </div>
-        <div class="m-name" :title="m.name">{{ m.name || '未命名' }}</div>
+        <div class="m-name" :title="m.name">{{ m.name || t('medalwall.unnamed') }}</div>
         <div class="m-meta">
           <span v-if="m.price > 0" class="price">💰<span v-if="m.original_price && m.original_price < m.price" class="price-orig">{{ m.original_price }}</span><span :class="m.original_price && m.original_price < m.price ? 'price-premium' : ''">{{ m.price }}</span> {{ m.currency }}</span>
           <span v-if="m.bonus_rate" class="bonus">{{ m.bonus_rate }}</span>
@@ -181,11 +184,11 @@ onUnmounted(() => abortCtrl?.abort())
     <EmptyState
       v-if="!medals.some((m) => !m.error) && !loading && !siteIssues.length"
       icon="🎖️"
-      title="暂无勋章数据"
-      description="NexusPHP 系站点默认自动抓取（无需手动开启）；馒头等平台无勋章页。若你的站点有勋章却显示为空，可能是站点未登录，或该站勋章页结构待校准"
+      :title="t('medalwall.emptyTitle')"
+      :description="t('medalwall.emptyDesc')"
     />
 
-    <el-drawer v-model="drawer" :title="detail?.name || '勋章详情'" size="380px" direction="rtl">
+    <el-drawer v-model="drawer" :title="detail?.name || t('medalwall.detailTitle')" size="380px" direction="rtl">
       <template v-if="detail">
         <div class="detail-img">
           <img
@@ -199,24 +202,24 @@ onUnmounted(() => abortCtrl?.abort())
         <div class="detail-name">{{ detail.name }}</div>
         <div class="detail-status" :style="{ color: statusColor[detail.purchase_status] }">
           {{ statusLabel[detail.purchase_status] || detail.purchase_status }}
-          <span v-if="detail.wear_status"> · 佩戴中</span>
+          <span v-if="detail.wear_status"> · {{ t('medalwall.wearing') }}</span>
         </div>
         <p v-if="detail.description" class="detail-desc">{{ detail.description }}</p>
         <div class="info-rows">
           <div v-if="detail.price > 0" class="row">
-            <span>价格</span>
+            <span>{{ t('medalwall.price') }}</span>
             <span v-if="detail.original_price && detail.original_price < detail.price">
-              <span class="price-orig">{{ detail.original_price }}</span><span class="price-premium"> → {{ detail.price }} {{ detail.currency }}（溢价）</span>
+              <span class="price-orig">{{ detail.original_price }}</span><span class="price-premium"> → {{ detail.price }} {{ detail.currency }}{{ t('medalwall.premium') }}</span>
             </span>
             <span v-else>{{ detail.price }} {{ detail.currency }}</span>
           </div>
-          <div v-if="detail.bonus_rate" class="row"><span>加成</span><span>{{ detail.bonus_rate }}</span></div>
-          <div v-if="detail.validity" class="row"><span>有效期</span><span>{{ detail.validity }}</span></div>
-          <div v-if="detail.stock >= 0" class="row"><span>库存</span><span>{{ detail.stock === 0 ? '缺货' : detail.stock }}</span></div>
-          <div v-if="detail.group" class="row"><span>分组</span><span>{{ detail.group }}</span></div>
-          <div v-if="fmtDate(detail.sale_begin_time)" class="row"><span>开售</span><span>{{ fmtDate(detail.sale_begin_time) }}</span></div>
-          <div v-if="fmtDate(detail.sale_end_time)" class="row"><span>截止</span><span>{{ fmtDate(detail.sale_end_time) }}</span></div>
-          <div class="row"><span>来源站</span><span>{{ detail.site_name }}</span></div>
+          <div v-if="detail.bonus_rate" class="row"><span>{{ t('medalwall.bonus') }}</span><span>{{ detail.bonus_rate }}</span></div>
+          <div v-if="detail.validity" class="row"><span>{{ t('medalwall.validity') }}</span><span>{{ detail.validity }}</span></div>
+          <div v-if="detail.stock >= 0" class="row"><span>{{ t('medalwall.stock') }}</span><span>{{ detail.stock === 0 ? t('medalwall.status.outOfStock') : detail.stock }}</span></div>
+          <div v-if="detail.group" class="row"><span>{{ t('medalwall.group') }}</span><span>{{ detail.group }}</span></div>
+          <div v-if="fmtDate(detail.sale_begin_time)" class="row"><span>{{ t('medalwall.saleBegin') }}</span><span>{{ fmtDate(detail.sale_begin_time) }}</span></div>
+          <div v-if="fmtDate(detail.sale_end_time)" class="row"><span>{{ t('medalwall.saleEnd') }}</span><span>{{ fmtDate(detail.sale_end_time) }}</span></div>
+          <div class="row"><span>{{ t('medalwall.sourceSite') }}</span><span>{{ detail.site_name }}</span></div>
         </div>
       </template>
       <template #footer>
@@ -226,9 +229,9 @@ onUnmounted(() => abortCtrl?.abort())
             type="primary"
             :loading="acting"
             @click="doAction('buy')"
-          >购买</el-button>
-          <el-button v-if="detail?.actionable !== false && detail?.is_owned && !detail?.wear_status" :loading="acting" @click="doAction('wear')">佩戴</el-button>
-          <el-button v-if="detail?.actionable !== false && detail?.wear_status" :loading="acting" @click="doAction('takeOff')">摘下</el-button>
+          >{{ t('medalwall.buy') }}</el-button>
+          <el-button v-if="detail?.actionable !== false && detail?.is_owned && !detail?.wear_status" :loading="acting" @click="doAction('wear')">{{ t('medalwall.wear') }}</el-button>
+          <el-button v-if="detail?.actionable !== false && detail?.wear_status" :loading="acting" @click="doAction('takeOff')">{{ t('medalwall.takeOff') }}</el-button>
         </div>
       </template>
     </el-drawer>

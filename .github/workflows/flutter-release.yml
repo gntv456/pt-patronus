@@ -169,10 +169,10 @@ jobs:
           fail_on_unmatched_files: false   # ios 可能缺失（best-effort）
       - name: Upload clients to ptang
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST || '152.53.91.46' }}
-          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || '22' }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'root' }}
-          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR || '/root/ptpatronus-releases' }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
           DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
           shopt -s nullglob

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
@@ -22,17 +23,17 @@ func (h *RequestHandler) All(c *gin.Context) {
 	if raw := c.Query("site_id"); raw != "" {
 		sid, err := strconv.ParseUint(raw, 10, 64)
 		if err != nil || sid == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site_id"})
+			errcode.Respond(c, errcode.InvalidID)
 			return
 		}
 		s, err := h.ch.SiteOper().Get(uint(sid))
 		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+			errcode.Respond(c, errcode.SiteNotFound)
 			return
 		}
 		r, err := h.ch.Requests(c.Request.Context(), s, filled)
 		if err != nil && r == nil {
-			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.BadGateway.WithErr(err))
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"sites": []*chain.RequestResult{r}})

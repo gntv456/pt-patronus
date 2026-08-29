@@ -4,9 +4,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { authApi, type AuthStatus } from '@/api/auth'
 import { APP_VERSION, systemApi, type SystemInfo } from '@/api/system'
 import { useLoginAuth } from '@/composables/useLoginAuth'
+import { useI18n } from 'vue-i18n'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 type Tab = 'account' | 'cookie'
 const tab = ref<Tab>('account')
@@ -48,7 +50,7 @@ async function loadBootStatus() {
     systemInfo.value = info
     authStatus.value = status
   } catch {
-    serviceErr.value = '无法连接后端服务，请确认 Docker/后端已启动'
+    serviceErr.value = t('login.boot.serviceErr')
   } finally {
     bootLoading.value = false
   }
@@ -68,32 +70,32 @@ function doDemoLogin() { demoLogin(goDashboard) }
         <img src="/logo-mark.svg" alt="PTPatronus" class="logo" />
         <h1>PTPatronus</h1>
       </div>
-      <p class="subtitle">PT 守护神 · 好学 APP 专属</p>
+      <p class="subtitle">{{ t('login.subtitle') }}</p>
 
       <div class="mode-tabs">
-        <button :class="{ active: tab === 'account' }" @click="tab = 'account'">好学账号</button>
-        <button :class="{ active: tab === 'cookie' }" @click="tab = 'cookie'">Cookie 登录</button>
+        <button :class="{ active: tab === 'account' }" @click="tab = 'account'">{{ t('login.tabs.account') }}</button>
+        <button :class="{ active: tab === 'cookie' }" @click="tab = 'cookie'">{{ t('login.tabs.cookie') }}</button>
       </div>
 
       <div class="boot-panel" :class="{ bad: serviceErr }">
         <div class="boot-row">
           <span class="dot" :class="{ ok: !serviceErr && !bootLoading, warn: bootLoading, bad: serviceErr }"></span>
-          <span>{{ bootLoading ? '正在检查后端服务' : serviceErr ? '后端不可用' : '后端已连接' }}</span>
+          <span>{{ bootLoading ? t('login.boot.checking') : serviceErr ? t('login.boot.unreachable') : t('login.boot.connected') }}</span>
           <span class="boot-version">{{ systemInfo?.version || APP_VERSION }}</span>
         </div>
         <p v-if="serviceErr" class="boot-desc">{{ serviceErr }}</p>
         <p v-else class="boot-desc">
-          {{ authStatus?.auth_site_on ? '当前实例使用好学 VIP 准入，首个通过验证的用户会成为管理员。' : '当前实例未开启好学准入限制。' }}
+          {{ authStatus?.auth_site_on ? t('login.boot.vipOn') : t('login.boot.vipOff') }}
         </p>
       </div>
 
       <!-- 好学账号登录 -->
       <form v-if="tab === 'account'" class="form" @submit.prevent="doAccountLogin">
-        <el-input v-model="acc.username" placeholder="好学用户名" size="large" autocomplete="username" class="field" />
+        <el-input v-model="acc.username" :placeholder="t('login.form.username')" size="large" autocomplete="username" class="field" />
         <el-input
           v-model="acc.password"
           type="password"
-          placeholder="好学密码"
+          :placeholder="t('login.form.password')"
           size="large"
           show-password
           autocomplete="current-password"
@@ -101,19 +103,19 @@ function doDemoLogin() { demoLogin(goDashboard) }
         />
         <el-input
           v-model="acc.twoStep"
-          placeholder="二级验证码（开了 2FA 才填，6 位）"
+          :placeholder="t('login.form.twoStep')"
           size="large"
           autocomplete="one-time-code"
           class="field"
         />
         <div v-if="captcha?.need_captcha" class="captcha-row field">
-          <img v-if="captcha?.image" :src="captcha.image" class="captcha-img" alt="验证码" @click="fetchCaptcha" title="点击刷新" />
-          <el-input v-model="acc.imagestring" placeholder="验证码" size="large" autocomplete="off" class="captcha-input" />
+          <img v-if="captcha?.image" :src="captcha.image" class="captcha-img" :alt="t('login.form.captcha')" @click="fetchCaptcha" :title="t('login.clickRefresh')" />
+          <el-input v-model="acc.imagestring" :placeholder="t('login.form.captcha')" size="large" autocomplete="off" class="captcha-input" />
         </div>
         <el-button type="primary" size="large" native-type="submit" class="submit" :loading="loading">
-          登录
+          {{ t('login.submit') }}
         </el-button>
-        <p v-if="captcha?.challenge_mode" class="hint">好学已开启挑战响应认证，后端会自动处理，直接登录即可；如登录失败可改用 Cookie 登录</p>
+        <p v-if="captcha?.challenge_mode" class="hint">{{ t('login.form.challengeHint') }}</p>
       </form>
 
       <!-- Cookie 登录 -->
@@ -122,25 +124,25 @@ function doDemoLogin() { demoLogin(goDashboard) }
           v-model="cookieStr"
           type="textarea"
           :rows="5"
-          placeholder="粘贴好学 cookie（如 c_secure_uid=...; c_secure_pass=...），浏览器登录好学后 F12 复制"
+          :placeholder="t('login.form.cookiePlaceholder')"
           autocomplete="off"
           class="field"
         />
         <el-button type="primary" size="large" native-type="submit" class="submit" :loading="loading">
-          登录
+          {{ t('login.submit') }}
         </el-button>
-        <p class="hint">最稳路径，覆盖开了二级验证 / 挑战响应的好学账号</p>
+        <p class="hint">{{ t('login.form.cookieHint') }}</p>
       </form>
 
       <p v-if="err" class="err">{{ err }}</p>
       <button v-if="authStatus?.demo_mode" class="demo-btn" type="button" :disabled="loading" @click="doDemoLogin">
-        浏览演示环境
+        {{ t('login.demo') }}
       </button>
       <button v-if="authStatus?.oidc_enabled" class="oidc-btn" type="button" :disabled="loading" @click="oidcLogin">
-        {{ authStatus?.oidc_display_name || 'OIDC / SSO' }} 登录
+        {{ authStatus?.oidc_display_name || 'OIDC / SSO' }} {{ t('login.oidcSuffix') }}
       </button>
       <div class="deploy-hint">
-        Web 端跟随后端同源访问 API。若移动端首次连接，请在客户端填写你的 Docker/后端地址，例如
+        {{ t('login.deployHint') }}
         <code>http://192.168.1.10:8088</code>。
       </div>
     </div>

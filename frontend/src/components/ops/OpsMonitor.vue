@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { systemApi, type SystemMetrics } from '@/api/system'
 import { humanTempName } from '@/components/monitor/useDeviceDetail'
 import GlassIcon from '@/components/GlassIcon.vue'
 
+const { t } = useI18n()
 const metrics = ref<SystemMetrics>({})
 const loading = ref(false)
 const error = ref('')
@@ -28,9 +30,9 @@ function fmtUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  if (d > 0) return `${d}天 ${h}小时`
-  if (h > 0) return `${h}小时 ${m}分钟`
-  return `${m}分钟`
+  if (d > 0) return t('opsmonitor.uptimeDH', { d, h })
+  if (h > 0) return t('opsmonitor.uptimeHM', { h, m })
+  return t('opsmonitor.uptimeM', { m })
 }
 
 async function refresh() {
@@ -42,7 +44,7 @@ async function refresh() {
     if (history.value.length > maxHistory) history.value.shift()
     error.value = ''
   } catch (e: any) {
-    error.value = e.message || '采集失败'
+    error.value = e.message || t('opsmonitor.collectFailed')
   } finally {
     loading.value = false
   }
@@ -76,8 +78,8 @@ onBeforeUnmount(() => {
   <div class="ops-monitor">
     <div class="monitor-scope glass">
       <span class="scope-dot"></span>
-      <span class="scope-label">本机监控</span>
-      <span class="text-muted small">（采集后端服务器所在主机的实时指标）</span>
+      <span class="scope-label">{{ t('opsmonitor.localScope') }}</span>
+      <span class="text-muted small">{{ t('opsmonitor.localScopeDesc') }}</span>
     </div>
     <!-- 顶部指标卡片 -->
     <div class="metric-grid">
@@ -94,14 +96,14 @@ onBeforeUnmount(() => {
         <svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
           <path :d="sparkline(cpuHistory)" fill="none" stroke="#6c5ce7" stroke-width="1.5" />
         </svg>
-        <div class="metric-sub">{{ metrics.cpu_cores ?? '-' }} 核心</div>
+        <div class="metric-sub">{{ metrics.cpu_cores ?? '-' }} {{ t('opsmonitor.cores') }}</div>
       </div>
 
       <!-- 内存 -->
       <div class="metric-card glass">
         <div class="metric-header">
           <GlassIcon name="dashboard" from="#11998e" to="#38ef7d" :size="28" />
-          <span class="metric-label">内存</span>
+          <span class="metric-label">{{ t('opsmonitor.mem') }}</span>
           <span class="metric-value">{{ (metrics.mem_usage ?? 0).toFixed(1) }}%</span>
         </div>
         <div class="metric-bar">
@@ -117,7 +119,7 @@ onBeforeUnmount(() => {
       <div class="metric-card glass">
         <div class="metric-header">
           <GlassIcon name="dashboard" from="#f7971e" to="#ff6a00" :size="28" />
-          <span class="metric-label">负载</span>
+          <span class="metric-label">{{ t('opsmonitor.load') }}</span>
           <span class="metric-value">{{ (metrics.load1 ?? 0).toFixed(2) }}</span>
         </div>
         <div class="load-row">
@@ -125,14 +127,14 @@ onBeforeUnmount(() => {
           <span class="pt-chip">5m: {{ (metrics.load5 ?? 0).toFixed(2) }}</span>
           <span class="pt-chip">15m: {{ (metrics.load15 ?? 0).toFixed(2) }}</span>
         </div>
-        <div class="metric-sub">进程数: {{ metrics.process_count ?? '-' }}</div>
+        <div class="metric-sub">{{ t('opsmonitor.procs') }}: {{ metrics.process_count ?? '-' }}</div>
       </div>
 
       <!-- 网络 -->
       <div class="metric-card glass">
         <div class="metric-header">
           <GlassIcon name="dashboard" from="#4cc9f0" to="#4361ee" :size="28" />
-          <span class="metric-label">网络</span>
+          <span class="metric-label">{{ t('opsmonitor.net') }}</span>
         </div>
         <div class="net-row">
           <div class="net-item">
@@ -154,7 +156,7 @@ onBeforeUnmount(() => {
       <div class="metric-card glass">
         <div class="metric-header">
           <GlassIcon name="dashboard" from="#8e44ad" to="#3498db" :size="28" />
-          <span class="metric-label">运行</span>
+          <span class="metric-label">{{ t('opsmonitor.uptime') }}</span>
           <span class="metric-value small">{{ fmtUptime(metrics.uptime ?? 0) }}</span>
         </div>
         <div class="metric-sub">{{ metrics.hostname ?? '-' }}</div>
@@ -164,7 +166,7 @@ onBeforeUnmount(() => {
 
     <!-- 磁盘 -->
     <div v-if="metrics.disks?.length" class="disk-section glass">
-      <h3 class="section-title">磁盘</h3>
+      <h3 class="section-title">{{ t('opsmonitor.disk') }}</h3>
       <div class="disk-list">
         <div v-for="disk in metrics.disks" :key="disk.device" class="disk-item">
           <div class="disk-info">
@@ -185,7 +187,7 @@ onBeforeUnmount(() => {
 
     <!-- 温度 -->
     <div v-if="metrics.temps?.length" class="temp-section glass">
-      <h3 class="section-title">温度</h3>
+      <h3 class="section-title">{{ t('opsmonitor.temp') }}</h3>
       <div class="temp-list">
         <span v-for="t in metrics.temps" :key="t.name" class="temp-chip" :class="{ hot: t.temp > 70, warm: t.temp > 50 && t.temp <= 70 }">
           {{ humanTempName(t.name) }}: {{ t.temp.toFixed(0) }}°C

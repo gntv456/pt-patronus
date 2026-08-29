@@ -4,14 +4,22 @@
  * pill 多选（站点/促销/分辨率/编码/来源/特效）+ 中字开关 + 高级面板（大小范围/做种下限/发布时间）+ 排序。
  * filter/sort 是父组件 composable 的 reactive 对象（传引用，直接改嵌套属性即可响应）；removeFilter/clearAll 透传。
  */
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import type { ActiveTag, ArrKey, FilterOptions, FilterState, SortField } from '@/composables/useSearchFilter'
 import { SEARCH_DIMS, TIME_OPTS, SORT_FIELDS } from './searchFilterConstants'
 
+// filter/sort 用 defineModel 双向绑定：筛选/排序修改经 update:filter / update:sort 回传，
+// 消除对 prop 的直接突变（父级 v-model 接收；对象整体替换，嵌套字段由本组件内聚修改）。
+const { t } = useI18n()
+
+const filter = defineModel<FilterState>('filter', { required: true })
+const sort = defineModel<{ field: SortField; order: 'asc' | 'desc' }>('sort', { required: true })
+// 注：父链（Search → TorrentResultsTable）传入的是 useSearchFilter 的 reactive 句柄字段，
+// 共享可变状态为既定架构；defineModel 在此的语义是「父授权的双向绑定」。
+
 const props = withDefaults(
   defineProps<{
-    filter: FilterState
-    sort: { field: SortField; order: 'asc' | 'desc' }
     options: FilterOptions
     activeTags: ActiveTag[]
     hasActive: boolean
@@ -25,20 +33,20 @@ const props = withDefaults(
 )
 
 const sortLabel = computed(
-  () => SORT_FIELDS.find((f) => f.key === props.sort.field)?.label || '做种数',
+  () => t(SORT_FIELDS.find((f) => f.key === sort.value.field)?.labelKey || 'sfc.seeders'),
 )
 
 function onSortField(key: SortField) {
-  props.sort.field = key
+  sort.value.field = key
 }
 function toggleOrder() {
-  props.sort.order = props.sort.order === 'desc' ? 'asc' : 'desc'
+  sort.value.order = sort.value.order === 'desc' ? 'asc' : 'desc'
 }
 function selectAll(key: ArrKey) {
-  props.filter[key] = [...props.options[key]]
+  filter.value[key] = [...props.options[key]]
 }
 function clearDim(key: ArrKey) {
-  props.filter[key] = []
+  filter.value[key] = []
 }
 </script>
 
@@ -52,7 +60,7 @@ function clearDim(key: ArrKey) {
 
       <template v-if="sortable">
         <el-dropdown trigger="click" @command="onSortField">
-          <button type="button" class="sfb-sort">排序: {{ sortLabel }} ▾</button>
+          <button type="button" class="sfb-sort">{{ t('sfb.sortBy') }}: {{ sortLabel }} ▾</button>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item
@@ -60,14 +68,14 @@ function clearDim(key: ArrKey) {
                 :key="f.key"
                 :command="f.key"
                 :class="{ 'is-active': sort.field === f.key }"
-              >{{ f.label }}</el-dropdown-item>
+              >{{ t(f.labelKey) }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
         <button
           type="button"
           class="sfb-order"
-          :title="sort.order === 'desc' ? '降序' : '升序'"
+          :title="sort.order === 'desc' ? t('sfb.desc') : t('sfb.asc')"
           @click="toggleOrder"
         >{{ sort.order === 'desc' ? '↓' : '↑' }}</button>
       </template>
@@ -83,14 +91,14 @@ function clearDim(key: ArrKey) {
         >
           <template #reference>
             <button type="button" class="sfb-pill" :class="{ on: filter[d.key].length }">
-              {{ d.icon }} {{ d.label }}
+              {{ d.icon }} {{ t(d.labelKey) }}
               <span v-if="filter[d.key].length" class="sfb-badge">{{ filter[d.key].length }}</span>
             </button>
           </template>
           <div class="sfb-pop">
             <div class="sfb-pop-head">
-              <button type="button" @click="selectAll(d.key)">全选</button>
-              <button type="button" @click="clearDim(d.key)">清除</button>
+              <button type="button" @click="selectAll(d.key)">{{ t('sfb.selectAll') }}</button>
+              <button type="button" @click="clearDim(d.key)">{{ t('sfb.clear') }}</button>
             </div>
             <div v-if="options[d.key].length" class="sfb-checks">
               <el-checkbox-group v-model="filter[d.key]">
@@ -101,7 +109,7 @@ function clearDim(key: ArrKey) {
                 >{{ opt }}</el-checkbox>
               </el-checkbox-group>
             </div>
-            <div v-else class="sfb-empty text-muted">无可用选项</div>
+            <div v-else class="sfb-empty text-muted">{{ t('sfb.noOptions') }}</div>
           </div>
         </el-popover>
 
@@ -110,17 +118,17 @@ function clearDim(key: ArrKey) {
           class="sfb-pill"
           :class="{ on: filter.onlyCnSub }"
           @click="filter.onlyCnSub = !filter.onlyCnSub"
-        >🔤 中字</button>
+        >🔤 {{ t('sfb.cnSub') }}</button>
 
         <el-popover trigger="click" placement="bottom-end" :width="280" popper-class="sfb-popper">
           <template #reference>
             <button type="button" class="sfb-pill" :class="{ on: hasActive && (filter.sizeMinGB || filter.sizeMaxGB || filter.seedersMin || filter.timePreset) }">
-              ⚙ 高级
+              ⚙ {{ t('sfb.advanced') }}
             </button>
           </template>
           <div class="sfb-adv">
             <div class="adv-row">
-              <label>大小 (GB)</label>
+              <label>{{ t('sfb.sizeGB') }}</label>
               <div class="adv-range">
                 <el-input-number
                   v-model="filter.sizeMinGB"
@@ -142,7 +150,7 @@ function clearDim(key: ArrKey) {
               </div>
             </div>
             <div class="adv-row">
-              <label>做种 ≥</label>
+              <label>{{ t('sfb.seedersMin') }}</label>
               <el-input-number
                 v-model="filter.seedersMin"
                 :min="0"
@@ -152,22 +160,22 @@ function clearDim(key: ArrKey) {
               />
             </div>
             <div class="adv-row">
-              <label>发布时间</label>
+              <label>{{ t('sfb.time') }}</label>
               <div class="adv-time">
                 <button
                   type="button"
                   class="time-chip"
                   :class="{ on: !filter.timePreset }"
                   @click="filter.timePreset = ''"
-                >不限</button>
+                >{{ t('sfb.anyTime') }}</button>
                 <button
-                  v-for="t in TIME_OPTS"
-                  :key="t.key"
+                  v-for="topt in TIME_OPTS"
+                  :key="topt.key"
                   type="button"
                   class="time-chip"
-                  :class="{ on: filter.timePreset === t.key }"
-                  @click="filter.timePreset = t.key"
-                >{{ t.label }}</button>
+                  :class="{ on: filter.timePreset === topt.key }"
+                  @click="filter.timePreset = topt.key"
+                >{{ t(topt.labelKey) }}</button>
               </div>
             </div>
           </div>
@@ -183,7 +191,7 @@ function clearDim(key: ArrKey) {
         size="small"
         @close="removeFilter(tag)"
       >{{ tag.label }}</el-tag>
-      <button type="button" class="sfb-clear" @click="clearAll">清除全部</button>
+      <button type="button" class="sfb-clear" @click="clearAll">{{ t('sfb.clearAll') }}</button>
     </div>
   </div>
 </template>

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { haremApi, type HaremResult, type HaremOverview, type PrescriptionItem } from '@/api/harem'
 import { copyText } from '@/utils/clipboard'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
+const { t } = useI18n()
 const data = ref<HaremResult | null>(null)
 const loading = ref(false)
 const detail = ref<PrescriptionItem | null>(null)
@@ -31,7 +33,7 @@ async function load(refresh = false) {
       ctrl.signal,
     )
   } catch (e: unknown) {
-    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载后宫失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('harem.loadFailed'))
   } finally {
     if (abortCtrl === ctrl) {
       loading.value = false
@@ -46,12 +48,12 @@ async function doExport() {
     exportText.value = r.text
     exportVisible.value = true
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '导出失败')
+    ElMessage.error((e as Error).message || t('harem.exportFailed'))
   }
 }
 
 async function copyExport() {
-  await copyText(exportText.value, '已复制药单')
+  await copyText(exportText.value, t('harem.copied'))
 }
 
 const overview = computed(() => data.value?.overview)
@@ -75,93 +77,93 @@ onUnmounted(() => abortCtrl?.abort())
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">后宫</h2>
+      <h2 class="title">{{ t('harem.title') }}</h2>
       <div class="head-tools">
-        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择后宫站点" />
-        <el-button @click="doExport">导出药单</el-button>
-        <el-button :loading="loading" @click="load(true)">刷新</el-button>
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('harem.siteFilterTitle')" />
+        <el-button @click="doExport">{{ t('harem.exportRx') }}</el-button>
+        <el-button :loading="loading" @click="load(true)">{{ t('common.refresh') }}</el-button>
       </div>
     </div>
 
     <div v-if="overview" class="summary glass">
-      <div class="tile"><span class="num">{{ overview.total_sites }}</span><span class="lbl">站点</span></div>
-      <div class="tile"><span class="num">{{ overview.total_invitees }}</span><span class="lbl">后宫成员</span></div>
-      <div class="tile"><span class="num">{{ overview.total_perm_invites }}</span><span class="lbl">永久邀请</span></div>
-      <div class="tile"><span class="num">{{ overview.total_temp_invites }}</span><span class="lbl">临时邀请</span></div>
-      <div class="tile"><span class="num" style="color:var(--pt-warn)">{{ overview.total_low_ratio }}</span><span class="lbl">低分享率</span></div>
-      <div class="tile"><span class="num" style="color:var(--pt-danger)">{{ overview.total_banned }}</span><span class="lbl">已禁用</span></div>
-      <div class="tile"><span class="num" style="color:var(--text-muted)">{{ overview.total_no_data }}</span><span class="lbl">无数据</span></div>
+      <div class="tile"><span class="num">{{ overview.total_sites }}</span><span class="lbl">{{ t('freeleech.tile.sites') }}</span></div>
+      <div class="tile"><span class="num">{{ overview.total_invitees }}</span><span class="lbl">{{ t('harem.members') }}</span></div>
+      <div class="tile"><span class="num">{{ overview.total_perm_invites }}</span><span class="lbl">{{ t('harem.permInvites') }}</span></div>
+      <div class="tile"><span class="num">{{ overview.total_temp_invites }}</span><span class="lbl">{{ t('harem.tempInvites') }}</span></div>
+      <div class="tile"><span class="num" style="color:var(--pt-warn)">{{ overview.total_low_ratio }}</span><span class="lbl">{{ t('harem.lowRatio') }}</span></div>
+      <div class="tile"><span class="num" style="color:var(--pt-danger)">{{ overview.total_banned }}</span><span class="lbl">{{ t('harem.banned') }}</span></div>
+      <div class="tile"><span class="num" style="color:var(--text-muted)">{{ overview.total_no_data }}</span><span class="lbl">{{ t('mediaserver.noData') }}</span></div>
     </div>
 
     <div class="card glass">
       <el-table v-if="filteredPrescriptions.length" :data="filteredPrescriptions" style="width:100%" :row-style="{ background: 'transparent' }">
-        <el-table-column label="站点" width="120">
+        <el-table-column :label="t('contract.f.site')" width="120">
           <template #default="{ row }"><span class="site-tag">{{ row.site_name }}</span></template>
         </el-table-column>
-        <el-table-column prop="permanent_count" label="永久" width="80" sortable align="right" />
-        <el-table-column prop="temporary_count" label="临时" width="70" sortable align="right">
+        <el-table-column prop="permanent_count" :label="t('harem.perm')" width="80" sortable align="right" />
+        <el-table-column prop="temporary_count" :label="t('harem.temp')" width="70" sortable align="right">
           <template #default="{ row }">
             <span :style="{ color: row.temporary_count ? '#f39c12' : 'inherit' }">{{ row.temporary_count }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="can_buy" label="可购买" width="90" sortable align="right" />
-        <el-table-column label="权限" width="70" align="center">
+        <el-table-column prop="can_buy" :label="t('medalwall.status.available')" width="90" sortable align="right" />
+        <el-table-column :label="t('harem.permission')" width="70" align="center">
           <template #default="{ row }">
             <span :style="{ color: row.can_invite ? '#2ecc71' : '#f56c6c' }">{{ row.can_invite ? '✓' : '✗' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="后宫数" width="90" align="right">
+        <el-table-column :label="t('harem.count')" width="90" align="right">
           <template #default="{ row }">
             {{ row.harem_count }}<span v-if="row.dead_count" style="color:var(--pt-danger)"> ({{ row.dead_count }})</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" min-width="140">
+        <el-table-column :label="t('reseed.col.status')" min-width="140">
           <template #default="{ row }">
             <span v-if="row.error" class="err">{{ row.error }}</span>
-            <span v-else-if="!row.invitees?.length" class="text-muted">无被邀请人</span>
-            <span v-else class="text-muted">点击查看花名册</span>
+            <span v-else-if="!row.invitees?.length" class="text-muted">{{ t('harem.noInvitees') }}</span>
+            <span v-else class="text-muted">{{ t('harem.viewRoster') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column :label="t('reseed.col.actions')" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" :disabled="!row.invitees?.length" @click="detail = row as PrescriptionItem">详情</el-button>
+            <el-button size="small" :disabled="!row.invitees?.length" @click="detail = row as PrescriptionItem">{{ t('harem.detail') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
       <EmptyState
         v-else-if="!loading"
         icon="💗"
-        title="暂无数据，请先添加并登录站点"
-        description="添加并启用 PT 站点后，这里会聚合展示各站后宫成员与可购买邀请名额"
+        :title="t('announcements.emptyTitle')"
+        :description="t('harem.emptyDesc')"
       />
-      <p v-else style="text-align:center;color:var(--text-muted);padding:40px 0">加载中…</p>
+      <p v-else style="text-align:center;color:var(--text-muted);padding:40px 0">{{ t('common.loading') }}</p>
     </div>
 
-    <el-dialog v-model="exportVisible" title="药单" width="560">
+    <el-dialog v-model="exportVisible" :title="t('harem.rxTitle')" width="560">
       <el-input v-model="exportText" type="textarea" :rows="12" readonly />
       <template #footer>
-        <el-button @click="exportVisible = false">关闭</el-button>
-        <el-button type="primary" @click="copyExport">复制</el-button>
+        <el-button @click="exportVisible = false">{{ t('common.close') }}</el-button>
+        <el-button type="primary" @click="copyExport">{{ t('harem.copy') }}</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog :model-value="!!detail" @update:model-value="(v: boolean) => { if (!v) detail = null }" :title="detail ? detail.site_name + ' 后宫成员' : ''" width="640">
+    <el-dialog :model-value="!!detail" @update:model-value="(v: boolean) => { if (!v) detail = null }" :title="detail ? detail.site_name + ' ' + t('harem.members') : ''" width="640">
       <el-table v-if="detail" :data="detail.invitees || []" style="width:100%" :row-style="{ background: 'transparent' }">
-        <el-table-column label="用户" min-width="120">
+        <el-table-column :label="t('mediaserver.col.user')" min-width="120">
           <template #default="{ row }">
             <span :style="{ color: row.status === 'disabled' ? '#f56c6c' : 'inherit' }">{{ row.username }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="90">
+        <el-table-column prop="status" :label="t('reseed.col.status')" width="90">
           <template #default="{ row }">
             <span class="chip" :style="{ background: row.status === 'disabled' ? '#f56c6c22' : row.status === 'pending' ? '#f39c1222' : '#2ecc7122', color: row.status === 'disabled' ? '#f56c6c' : row.status === 'pending' ? '#f39c12' : '#2ecc71' }">{{ row.status }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="上传" width="80" align="right"><template #default="{ row }">{{ row.uploaded ? (row.uploaded/1073741824).toFixed(1)+'G' : '—' }}</template></el-table-column>
-        <el-table-column label="下载" width="80" align="right"><template #default="{ row }">{{ row.downloaded ? (row.downloaded/1073741824).toFixed(1)+'G' : '—' }}</template></el-table-column>
-        <el-table-column prop="ratio" label="分享率" width="80" align="right" />
+        <el-table-column :label="t('contract.uploadShort')" width="80" align="right"><template #default="{ row }">{{ row.uploaded ? (row.uploaded/1073741824).toFixed(1)+'G' : '—' }}</template></el-table-column>
+        <el-table-column :label="t('harem.down')" width="80" align="right"><template #default="{ row }">{{ row.downloaded ? (row.downloaded/1073741824).toFixed(1)+'G' : '—' }}</template></el-table-column>
+        <el-table-column prop="ratio" :label="t('harem.ratio')" width="80" align="right" />
       </el-table>
-      <template #footer><el-button @click="detail = null">关闭</el-button></template>
+      <template #footer><el-button @click="detail = null">{{ t('common.close') }}</el-button></template>
     </el-dialog>
   </div>
 </template>

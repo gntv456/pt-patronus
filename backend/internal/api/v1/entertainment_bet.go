@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
 	"github.com/hxpt/ptpatronus/internal/entertainment"
 )
@@ -25,7 +26,7 @@ func (h *EntertainmentHandler) Bet(c *gin.Context) {
 	}
 	var req betReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.Bet(c.Request.Context(), id, c.Param("game"), entertainment.BetRequest{
@@ -46,7 +47,7 @@ func (h *EntertainmentHandler) Events(c *gin.Context) {
 	}
 	res, err := h.ent.Events(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"events": res})
@@ -60,12 +61,12 @@ func (h *EntertainmentHandler) EventDetail(c *gin.Context) {
 	}
 	eventID, err := strconv.Atoi(c.Param("eventID"))
 	if err != nil || eventID <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid event id"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	res, err := h.ent.EventDetail(c.Request.Context(), id, c.Param("game"), eventID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -83,7 +84,7 @@ func (h *EntertainmentHandler) Blackjack(c *gin.Context) {
 	}
 	var req blackjackReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.Blackjack(c.Request.Context(), id, c.Param("game"), req.Action)
@@ -102,7 +103,7 @@ func (h *EntertainmentHandler) FlipState(c *gin.Context) {
 	}
 	res, err := h.ent.FlipState(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -113,7 +114,7 @@ func (h *EntertainmentHandler) FlipState(c *gin.Context) {
 // 客户端断开 → 关上游；每客户端连接 = 一条上游 WS（正常用量，非攻击）。
 func (h *EntertainmentHandler) FlipWS(c *gin.Context) {
 	if _, ok := h.tickets.Consume(c.Query("ticket")); !ok {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired ticket"})
+		errcode.Respond(c, errcode.TicketInvalidOrExpired)
 		return
 	}
 	id, ok := parseID(c)
@@ -166,7 +167,7 @@ func (h *EntertainmentHandler) BigSmallState(c *gin.Context) {
 	}
 	res, err := h.ent.BigSmallState(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -181,7 +182,7 @@ func (h *EntertainmentHandler) BigSmallChat(c *gin.Context) {
 	since, _ := strconv.Atoi(c.DefaultQuery("since", "0"))
 	res, err := h.ent.BigSmallChat(c.Request.Context(), id, c.Param("game"), since)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"chat": res})
@@ -199,7 +200,7 @@ func (h *EntertainmentHandler) BigSmallSendChat(c *gin.Context) {
 	}
 	var req bsSendChatReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.BigSmallSendChat(c.Request.Context(), id, c.Param("game"), req.Message)
@@ -223,7 +224,7 @@ func (h *EntertainmentHandler) BigSmallTaskAction(c *gin.Context) {
 	}
 	var req bsTaskReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.BigSmallTaskAction(c.Request.Context(), id, c.Param("game"), req.Action, req.TaskID)
@@ -246,7 +247,7 @@ func (h *EntertainmentHandler) BigSmallUseItem(c *gin.Context) {
 	}
 	var req bsItemReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.BigSmallUseItem(c.Request.Context(), id, c.Param("game"), req.Tag)
@@ -270,7 +271,7 @@ func (h *EntertainmentHandler) BigSmallRedpacket(c *gin.Context) {
 	}
 	var req bsRedpacketReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.ent.BigSmallRedpacket(c.Request.Context(), id, c.Param("game"), req.Action, req.Extra)

@@ -34,6 +34,13 @@ mobile/.dart_tool/
 .DS_Store
 Thumbs.db
 
+# Playwright E2E：后端临时库 + 测试报告
+frontend/e2e/.data/
+frontend/e2e/.auth/
+frontend/.auth/
+frontend/test-results/
+frontend/playwright-report/
+
 # 调试产物
 mobile/_dbg_*
 

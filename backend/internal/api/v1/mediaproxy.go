@@ -1,11 +1,11 @@
 package v1
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
@@ -24,7 +24,7 @@ func NewMediaProxyHandler(svc *chain.MediaProxyService) *MediaProxyHandler {
 func (h *MediaProxyHandler) Handle(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid server id"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	rest := c.Param("rest")
@@ -32,7 +32,7 @@ func (h *MediaProxyHandler) Handle(c *gin.Context) {
 		rest += "?" + q
 	}
 	if strings.Contains(rest, "..") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad path"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	h.svc.Handle(c.Writer, c.Request, uint(id), rest)

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
@@ -47,12 +48,12 @@ func (h *AssessmentHandler) AllStream(c *gin.Context) {
 func (h *AssessmentHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, h.ch.AssessOne(c.Request.Context(), s))

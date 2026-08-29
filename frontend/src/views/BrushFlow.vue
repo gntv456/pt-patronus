@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { brushflowApi, type BrushFlowTask, type BrushFlowSeed } from '@/api/brushflow'
 import { siteApi } from '@/api/site'
@@ -9,6 +10,7 @@ import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
+const { t } = useI18n()
 const route = useRoute()
 const tasks = ref<BrushFlowTask[]>([])
 /** 站点详情深链：?site_id= 仅显示该站任务 */
@@ -38,7 +40,7 @@ async function load() {
     sites.value = ss.map((s) => ({ id: s.id, name: s.name }))
     downloaders.value = ds.map((d) => ({ id: d.id, name: d.name }))
   } catch (e: any) {
-    ElMessage.error(e?.userMessage || e?.message || '加载失败')
+    ElMessage.error(e?.userMessage || e?.message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -89,28 +91,28 @@ const filterGroupArray = computed<string[]>({
 
 async function save() {
   if (!form.value.name || !form.value.site_id || !form.value.downloader_id) {
-    ElMessage.warning('名称、站点、下载器必填')
+    ElMessage.warning(t('brushflow.nameSiteDlRequired'))
     return
   }
   try {
     if (editing.value) {
       await brushflowApi.update(editing.value.id, form.value)
-      ElMessage.success('已更新')
+      ElMessage.success(t('common.updated'))
     } else {
       await brushflowApi.create(form.value)
-      ElMessage.success('已创建')
+      ElMessage.success(t('common.created'))
     }
     showForm.value = false
     await load()
   } catch (e: any) {
-    ElMessage.error(e?.userMessage || e?.message || '保存失败')
+    ElMessage.error(e?.userMessage || e?.message || t('common.saveFailed'))
   }
 }
 
-async function remove(t: BrushFlowTask) {
-  await ElMessageBox.confirm(`确定删除刷流任务「${t.name}」？`, '提示', { type: 'warning' })
-  await brushflowApi.remove(t.id)
-  ElMessage.success('已删除')
+async function remove(task: BrushFlowTask) {
+  await ElMessageBox.confirm(t('brushflow.confirmDelete', { name: task.name }), t('messages.tip'), { type: 'warning' })
+  await brushflowApi.remove(task.id)
+  ElMessage.success(t('common.deleted'))
   await load()
 }
 
@@ -119,14 +121,14 @@ async function toggle(t: BrushFlowTask, val: boolean) {
   t.enabled = val
 }
 
-async function runAction(t: BrushFlowTask, kind: 'select' | 'sweep') {
+async function runAction(task: BrushFlowTask, kind: 'select' | 'sweep') {
   try {
     const fn = kind === 'select' ? brushflowApi.select : brushflowApi.sweep
-    await fn(t.id)
-    ElMessage.success(kind === 'select' ? '选种完成' : '扫删完成')
+    await fn(task.id)
+    ElMessage.success(kind === 'select' ? t('brushflow.selectDone') : t('brushflow.sweepDone'))
     await load()
   } catch (e: any) {
-    ElMessage.error(e?.userMessage || e?.message || '执行失败')
+    ElMessage.error(e?.userMessage || e?.message || t('common.actionFailed'))
   }
 }
 
@@ -175,10 +177,10 @@ onMounted(() => {
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">刷流</h2>
-      <el-button type="primary" @click="openCreate">+ 新建任务</el-button>
+      <h2 class="title">{{ t('brushflow.title') }}</h2>
+      <el-button type="primary" @click="openCreate">{{ t('brushflow.create') }}</el-button>
     </div>
-    <p class="sub">按规则自动选种做种，达到删除规则（分享率 / 保种时长 / 上传量）后自动删种，循环刷上传量与分享率。</p>
+    <p class="sub">{{ t('brushflow.subtitle') }}</p>
 
     <el-alert
       v-if="focusSiteId"
@@ -186,149 +188,149 @@ onMounted(() => {
       :closable="false"
       show-icon
       style="margin-bottom: 12px"
-      :title="`仅显示站点「${focusSiteName}」的刷流任务（${displayTasks.length}）`"
+      :title="t('brushflow.focusTitle', { site: focusSiteName, n: displayTasks.length })"
     />
 
     <div v-loading="loading" class="grid">
-      <div v-for="t in displayTasks" :key="t.id" class="glass glass-hover card">
+      <div v-for="task in displayTasks" :key="task.id" class="glass glass-hover card">
         <div class="card-head">
           <GlassIcon name="brushflow" :size="34" from="#f7971e" to="#ff6a00" />
           <div class="card-title">
-            <div class="name">{{ t.name }}</div>
-            <div class="meta">{{ siteName(t.site_id) }} → {{ dlName(t.downloader_id) }}</div>
+            <div class="name">{{ task.name }}</div>
+            <div class="meta">{{ siteName(task.site_id) }} → {{ dlName(task.downloader_id) }}</div>
           </div>
-          <el-switch :model-value="t.enabled" @update:model-value="(v: any) => toggle(t, !!v)" />
+          <el-switch :model-value="task.enabled" @update:model-value="(v: any) => toggle(task, !!v)" />
         </div>
 
         <div class="stats">
-          <div class="stat"><span class="sv">{{ t.total_added }}</span><span class="sl">加入</span></div>
-          <div class="stat"><span class="sv">{{ t.total_deleted }}</span><span class="sl">删除</span></div>
-          <div class="stat"><span class="sv">{{ fmtBytes(t.total_upload) }}</span><span class="sl">上传</span></div>
+          <div class="stat"><span class="sv">{{ task.total_added }}</span><span class="sl">{{ t('brushflow.statAdded') }}</span></div>
+          <div class="stat"><span class="sv">{{ task.total_deleted }}</span><span class="sl">{{ t('common.delete') }}</span></div>
+          <div class="stat"><span class="sv">{{ fmtBytes(task.total_upload) }}</span><span class="sl">{{ t('contract.uploadShort') }}</span></div>
         </div>
 
-        <div v-if="t.last_error" class="err">⚠ {{ t.last_error }}</div>
+        <div v-if="task.last_error" class="err">⚠ {{ task.last_error }}</div>
 
         <div class="actions">
-          <el-button size="small" @click="runAction(t, 'select')">选种</el-button>
-          <el-button size="small" @click="runAction(t, 'sweep')">扫删</el-button>
-          <el-button size="small" @click="openSeeds(t)">历史</el-button>
-          <el-button size="small" @click="openEdit(t)">编辑</el-button>
-          <el-button size="small" type="danger" plain @click="remove(t)">删除</el-button>
+          <el-button size="small" @click="runAction(task, 'select')">{{ t('brushflow.select') }}</el-button>
+          <el-button size="small" @click="runAction(task, 'sweep')">{{ t('brushflow.sweep') }}</el-button>
+          <el-button size="small" @click="openSeeds(task)">{{ t('brushflow.history') }}</el-button>
+          <el-button size="small" @click="openEdit(task)">{{ t('common.edit') }}</el-button>
+          <el-button size="small" type="danger" plain @click="remove(task)">{{ t('common.delete') }}</el-button>
         </div>
       </div>
       <EmptyState
         v-if="!displayTasks.length && !loading"
         icon="🚀"
-        :title="focusSiteId ? '该站点暂无刷流任务' : '暂无刷流任务'"
-        :description="focusSiteId ? '可为该站新建刷流任务' : '新建任务开始自动刷上传量与分享率'"
+        :title="focusSiteId ? t('brushflow.emptySiteTitle') : t('brushflow.emptyTitle')"
+        :description="focusSiteId ? t('brushflow.emptySiteDesc') : t('brushflow.emptyDesc')"
       >
-        <el-button type="primary" @click="openCreate">新建任务</el-button>
+        <el-button type="primary" @click="openCreate">{{ t('brushflow.newRule') }}</el-button>
       </EmptyState>
     </div>
 
-    <el-dialog v-model="showForm" :title="editing ? '编辑任务' : '新建任务'" width="640px" top="6vh">
+    <el-dialog v-model="showForm" :title="editing ? t('brushflow.editTitle') : t('brushflow.newTitle')" width="640px" top="6vh">
       <el-form :model="form" label-width="110px" label-position="right">
-        <el-form-item label="名称"><el-input v-model="form.name" placeholder="如：HDHome 刷流" /></el-form-item>
-        <el-form-item label="站点">
+        <el-form-item :label="t('rss.f.name')"><el-input v-model="form.name" :placeholder="t('brushflow.f.nameHint')" /></el-form-item>
+        <el-form-item :label="t('contract.f.site')">
           <el-select v-model="form.site_id">
             <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="下载器">
+        <el-form-item :label="t('downloaders.title')">
           <el-select v-model="form.downloader_id">
             <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="启用"><el-switch v-model="form.enabled" /></el-form-item>
-        <el-form-item label="关键字"><el-input v-model="form.keyword" placeholder="留空=综合" /></el-form-item>
-        <el-form-item label="分类">
+        <el-form-item :label="t('rss.f.enabled')"><el-switch v-model="form.enabled" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.keyword')"><el-input v-model="form.keyword" :placeholder="t('brushflow.f.kwHint')" /></el-form-item>
+        <el-form-item :label="t('rss.f.category')">
           <el-select v-model="form.category" clearable>
-            <el-option label="综合" value="" />
-            <el-option label="电影" value="movie" />
-            <el-option label="电视剧" value="tv" />
-            <el-option label="音乐" value="music" />
+            <el-option :label="t('brushflow.cat.all')" value="" />
+            <el-option :label="t('search.catMovie')" value="movie" />
+            <el-option :label="t('search.catTv')" value="tv" />
+            <el-option :label="t('search.catMusic')" value="music" />
           </el-select>
         </el-form-item>
-        <el-form-item label="大小(MB)">
+        <el-form-item :label="t('brushflow.f.sizeMB')">
           <div class="range">
             <el-input-number v-model="form.min_size_mb" :min="0" controls-position="right" />
             <span>~</span>
             <el-input-number v-model="form.max_size_mb" :min="0" controls-position="right" />
-            <span class="hint">0=不限</span>
+            <span class="hint">{{ t('brushflow.f.zeroAny') }}</span>
           </div>
         </el-form-item>
-        <el-form-item label="做种人数">
+        <el-form-item :label="t('brushflow.f.seeders')">
           <div class="range">
             <el-input-number v-model="form.min_seeders" :min="0" controls-position="right" />
             <span>~</span>
             <el-input-number v-model="form.max_seeders" :min="0" controls-position="right" />
           </div>
         </el-form-item>
-        <el-form-item label="仅免费"><el-switch v-model="form.free_only" /></el-form-item>
-        <el-form-item label="过滤规则组">
-          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip placeholder="留空=不过滤" style="width: 100%">
+        <el-form-item :label="t('brushflow.f.freeOnly')"><el-switch v-model="form.free_only" /></el-form-item>
+        <el-form-item :label="t('rss.f.filterGroups')">
+          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip :placeholder="t('rss.f.filterGroupsHint')" style="width: 100%">
             <el-option v-for="g in filterGroups" :key="g" :label="g" :value="g" />
           </el-select>
         </el-form-item>
-        <el-divider content-position="left">删除规则（全 0 / 空表达式 = 永不因规则删）</el-divider>
-        <el-form-item label="组合逻辑">
+        <el-divider content-position="left">{{ t('brushflow.f.delRules') }}</el-divider>
+        <el-form-item :label="t('brushflow.f.logic')">
           <el-radio-group v-model="form.delete_logic">
-            <el-radio-button label="or">任一命中</el-radio-button>
-            <el-radio-button label="and">全部命中</el-radio-button>
+            <el-radio-button label="or">{{ t('brushflow.f.logicOr') }}</el-radio-button>
+            <el-radio-button label="and">{{ t('brushflow.f.logicAnd') }}</el-radio-button>
           </el-radio-group>
-          <span class="hint">有「阶梯表达式」时以表达式为准</span>
+          <span class="hint">{{ t('brushflow.f.exprWins') }}</span>
         </el-form-item>
-        <el-form-item label="分享率 ≥"><el-input-number v-model="form.delete_ratio" :min="0" :step="0.1" controls-position="right" /></el-form-item>
-        <el-form-item label="保种(小时) ≥"><el-input-number v-model="form.delete_seed_hours" :min="0" :step="0.5" controls-position="right" /></el-form-item>
-        <el-form-item label="上传(MB) ≥"><el-input-number v-model="form.delete_upload_mb" :min="0" controls-position="right" /></el-form-item>
-        <el-form-item label="最低上传(KB/s)">
+        <el-form-item :label="t('brushflow.f.delRatio')"><el-input-number v-model="form.delete_ratio" :min="0" :step="0.1" controls-position="right" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.delSeedHours')"><el-input-number v-model="form.delete_seed_hours" :min="0" :step="0.5" controls-position="right" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.delUpload')"><el-input-number v-model="form.delete_upload_mb" :min="0" controls-position="right" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.delMinRate')">
           <el-input-number v-model="form.delete_min_up_rate_kb" :min="0" controls-position="right" />
-          <span class="hint">仅对已完成做种；上传速度低于此值则删</span>
+          <span class="hint">{{ t('brushflow.f.delMinRateHint') }}</span>
         </el-form-item>
-        <el-form-item label="不活跃(小时)">
+        <el-form-item :label="t('brushflow.f.delInactive')">
           <el-input-number v-model="form.delete_inactive_hours" :min="0" :step="0.5" controls-position="right" />
-          <span class="hint">最后活跃超过此时长则删</span>
+          <span class="hint">{{ t('brushflow.f.delInactiveHint') }}</span>
         </el-form-item>
-        <el-form-item label="阶梯表达式">
-          <el-input v-model="form.delete_rule_expr" type="textarea" :rows="2" placeholder="例：swarm_seeders>50 || (ratio>=1 && seed_hours>=24)" />
-          <span class="hint">变量：ratio / seed_hours / upload_mb / up_rate_kb / inactive_hours；支持 &amp;&amp; || () &gt;= &lt;= &gt; &lt; ==</span>
+        <el-form-item :label="t('brushflow.f.expr')">
+          <el-input v-model="form.delete_rule_expr" type="textarea" :rows="2" :placeholder="t('brushflow.f.exprPlaceholder')" />
+          <span class="hint">{{ t('brushflow.f.exprHint') }}</span>
         </el-form-item>
-        <el-form-item label="总体积上限(GB)">
+        <el-form-item :label="t('brushflow.f.maxTotalSize')">
           <el-input-number v-model="form.max_total_size_gb" :min="0" :step="1" controls-position="right" />
-          <span class="hint">超限按最慢上传淘汰；0=不限</span>
+          <span class="hint">{{ t('brushflow.f.maxTotalSizeHint') }}</span>
         </el-form-item>
-        <el-form-item label="全网做种上限">
+        <el-form-item :label="t('brushflow.f.maxSwarmSeeders')">
           <el-input-number v-model="form.delete_max_swarm_seeders" :min="0" controls-position="right" />
-          <span class="hint">全网做种总数超过则删，0=不限</span>
+          <span class="hint">{{ t('brushflow.f.maxSwarmSeedersHint') }}</span>
         </el-form-item>
-        <el-form-item label="全网下载下限">
+        <el-form-item :label="t('brushflow.f.minSwarmLeechers')">
           <el-input-number v-model="form.delete_min_swarm_leechers" :min="0" controls-position="right" />
-          <span class="hint">做种中全网下载总数低于则删，0=不限</span>
+          <span class="hint">{{ t('brushflow.f.minSwarmLeechersHint') }}</span>
         </el-form-item>
-        <el-form-item label="删种删文件"><el-switch v-model="form.delete_files" /></el-form-item>
-        <el-form-item label="原生停种">
+        <el-form-item :label="t('brushflow.f.delFiles')"><el-switch v-model="form.delete_files" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.nativeStop')">
           <el-switch v-model="form.use_share_limit" />
-          <span class="hint">开启：下载器达标即暂停（不必等扫删），扫删仍会清理删种</span>
+          <span class="hint">{{ t('brushflow.f.nativeStopHint') }}</span>
         </el-form-item>
-        <el-divider content-position="left">并发与路径</el-divider>
-        <el-form-item label="最大做种数"><el-input-number v-model="form.max_seeds" :min="1" controls-position="right" /></el-form-item>
-        <el-form-item label="保存路径"><el-input v-model="form.save_path" placeholder="留空=下载器默认" /></el-form-item>
-        <el-form-item label="下载器分类"><el-input v-model="form.category_dl" /></el-form-item>
+        <el-divider content-position="left">{{ t('brushflow.f.concurrency') }}</el-divider>
+        <el-form-item :label="t('brushflow.f.maxSeeds')"><el-input-number v-model="form.max_seeds" :min="1" controls-position="right" /></el-form-item>
+        <el-form-item :label="t('rss.f.savePath')"><el-input v-model="form.save_path" :placeholder="t('brushflow.f.savePathHint')" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.dlCategory')"><el-input v-model="form.category_dl" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showForm = false">取消</el-button>
-        <el-button type="primary" @click="save">保存</el-button>
+        <el-button @click="showForm = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showSeeds" :title="`种子历史 · ${seedsTask}`" width="640px" top="8vh">
+    <el-dialog v-model="showSeeds" :title="t('brushflow.seedsTitle', { name: seedsTask })" width="640px" top="8vh">
       <div v-loading="seedsLoading">
-        <el-table :data="seeds" size="small" max-height="420" empty-text="暂无记录">
-          <el-table-column prop="title" label="标题" show-overflow-tooltip />
-          <el-table-column label="大小" width="90">
+        <el-table :data="seeds" size="small" max-height="420" :empty-text="t('brushflow.noRecords')">
+          <el-table-column prop="title" :label="t('rss.col.title')" show-overflow-tooltip />
+          <el-table-column :label="t('rss.col.size')" width="90">
             <template #default="{ row }">{{ fmtBytes(row.size) }}</template>
           </el-table-column>
-          <el-table-column label="加入时间" width="160">
+          <el-table-column :label="t('brushflow.col.addedAt')" width="160">
             <template #default="{ row }">{{ new Date(row.added_at).toLocaleString() }}</template>
           </el-table-column>
         </el-table>

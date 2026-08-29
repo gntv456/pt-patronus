@@ -4,17 +4,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // LocalCreateContainer 创建容器（本机模式，简化表单）。
 func (h *DockerHandler) LocalCreateContainer(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	var in simpleCreateReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.RestartPolicy == "" {
@@ -22,7 +23,7 @@ func (h *DockerHandler) LocalCreateContainer(c *gin.Context) {
 	}
 	id, err := h.local.LocalCreateFromSimple(c.Request.Context(), in)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	// 自动启动

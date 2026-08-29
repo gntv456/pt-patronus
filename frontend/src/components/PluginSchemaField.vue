@@ -5,6 +5,9 @@
 import { ref, computed } from 'vue'
 import type { PluginConfigField, PluginOption } from '@/api/plugin'
 import { siteApi } from '@/api/site'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{ field: PluginConfigField; modelValue: any }>()
 const emit = defineEmits<{ (e: 'update:modelValue', value: any): void }>()
@@ -53,7 +56,7 @@ if (props.field.options_source === 'sites') {
         collapse-tags-tooltip
         filterable
         :loading="dynLoading"
-        placeholder="选择站点"
+        :placeholder="t('psf.pickSite')"
         @update:model-value="update"
       >
         <el-option v-for="opt in options" :key="String(opt.value)" :label="opt.label" :value="opt.value" />

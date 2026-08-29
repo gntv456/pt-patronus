@@ -3,6 +3,7 @@
  * MoviePilot-style "find on sites" dialog.
  * Card grid + "更多来源" grouping, progressive results while parent streams.
  */
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import type { SiteSearchResult, SiteTorrent } from '@/api/search'
 import { siteApi, type Site } from '@/api/site'
@@ -19,6 +20,7 @@ export type FindRow = SiteTorrent & {
   base_url?: string
 }
 
+const { t } = useI18n()
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
@@ -85,7 +87,7 @@ watch(
 <template>
   <el-dialog
     v-model="visible"
-    :title="`在站点查找：${title}`"
+    :title="t('stfd.title', { name: title })"
     width="min(1560px, 98vw)"
     class="site-find-dialog"
     append-to-body
@@ -98,17 +100,17 @@ watch(
         <template v-if="loading">
           <span class="sf-spinner" aria-hidden="true" />
           <span>
-            正在跨站搜索…
+            {{ t('stfd.searching') }}
             <template v-if="results.length">
-              已返回 <b>{{ results.length }}</b> 站
-              <template v-if="hitTotal"> · 命中 <b>{{ hitTotal }}</b> 条</template>
+              {{ t('stfd.returned', { n: results.length }) }}
+              <template v-if="hitTotal"> · {{ t('stfd.hits', { n: hitTotal }) }}</template>
             </template>
           </span>
         </template>
         <template v-else>
-          命中 <b>{{ hitSites }}</b> 个站点，共 <b>{{ hitTotal }}</b> 条种子
-          <template v-if="hasActive"> · 筛选后 <b>{{ filtered.length }}</b> 条</template>
-          <span v-if="results.length" class="text-muted">（共查询 {{ results.length }} 站 · 展示 {{ cards.length }} 组）</span>
+          {{ t('stfd.hitSummary', { sites: hitSites, n: hitTotal }) }}
+          <template v-if="hasActive"> · {{ t('stfd.filteredN', { n: filtered.length }) }}</template>
+          <span v-if="results.length" class="text-muted">{{ t('stfd.queried', { q: results.length, shown: cards.length }) }}</span>
         </template>
       </div>
 
@@ -128,8 +130,8 @@ watch(
 
       <div v-if="failedSites.length" class="sf-fail">
         <button type="button" class="sf-fail-toggle" @click="showFailed = !showFailed">
-          <span>⚠ {{ failedSites.length }} 个站点搜索失败</span>
-          <span class="text-muted">{{ showFailed ? '收起' : '展开' }}</span>
+          <span>⚠ {{ t('trt.failedSites', { n: failedSites.length }) }}</span>
+          <span class="text-muted">{{ showFailed ? t('trt.collapse') : t('trt.expand') }}</span>
         </button>
         <ul v-if="showFailed" class="sf-fail-list">
           <li v-for="f in failedSites" :key="f.site_id">
@@ -140,10 +142,10 @@ watch(
       </div>
 
       <div v-if="!loading && !flatRows.length" class="sf-empty text-muted">
-        未从任何站点返回结果
+          {{ t('stfd.noResults') }}
       </div>
       <div v-else-if="hasActive && !cards.length" class="sf-empty text-muted">
-        当前筛选无结果，试试清除筛选
+        {{ t('stfd.noFilteredResults') }}
       </div>
 
       <div v-else class="sf-grid">
@@ -161,8 +163,8 @@ watch(
     </div>
 
     <template #footer>
-      <el-button v-if="loading" @click="close">取消</el-button>
-      <el-button v-else type="primary" @click="close">关闭</el-button>
+      <el-button v-if="loading" @click="close">{{ t('common.cancel') }}</el-button>
+      <el-button v-else type="primary" @click="close">{{ t('common.close') }}</el-button>
     </template>
   </el-dialog>
 

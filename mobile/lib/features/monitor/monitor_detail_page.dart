@@ -408,7 +408,7 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
             onPressed: _probing ? null : _probe,
             tooltip: '探活',
           ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          IconButton(icon: const Icon(Icons.refresh), tooltip: '刷新', onPressed: _load),
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'edit') _edit();

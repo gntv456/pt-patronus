@@ -1,7 +1,10 @@
 <script setup lang="ts">
 // 聚合快照调度配置面板。
 // 状态与逻辑来自 useSchedule 组合式函数。
+import { useI18n } from 'vue-i18n'
 import { useSchedule } from '@/composables/useSchedule'
+
+const { t } = useI18n()
 
 const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedule } = useSchedule()
 </script>
@@ -9,15 +12,15 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
 <template>
         <div v-loading="schedLoading" class="oidc-wrap">
           <p class="text-muted oidc-help">
-            聚合站点快照：合并 <b>统计 / 站免 / 公告 / 消息 / Cookie 保活 / 考核</b> 为一次串行抓取（H&amp;R 与小时级 cookie-keepalive 仍独立调度）。
-            间隔越大越隐蔽（对站点越友好，不易触发风控），但仪表盘数据与 H&amp;R/站免/新邮件告警延迟越高。
+            {{ t('schp.intro1') }}
+            {{ t('schp.intro2') }}
           </p>
           <div class="card glass">
             <div class="ch-head">
-              <div class="row-title">聚合快照频率</div>
+              <div class="row-title">{{ t('schp.title') }}</div>
               <el-select
                 v-model="schedForm.snapshot_cron"
-                placeholder="选择预设或自定义"
+                :placeholder="t('schp.cronPh')"
                 style="width: 240px"
                 filterable
                 allow-create
@@ -26,7 +29,7 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
               </el-select>
             </div>
             <el-input v-model="schedForm.snapshot_cron" class="mt8" placeholder="7 */4 * * *">
-              <template #prepend>cron 表达式</template>
+              <template #prepend>{{ t('schp.cronLabel') }}</template>
             </el-input>
             <p v-if="schedCfg?.hint" class="text-muted mt8" style="font-size: var(--fs-xs); line-height: 1.6">
               {{ schedCfg.hint }}
@@ -34,9 +37,9 @@ const { schedCfg, schedForm, schedLoading, schedSaving, schedPresets, saveSchedu
           </div>
           <div class="oidc-save">
             <span v-if="schedCfg" class="text-muted" style="margin-right: 12px">
-              快照默认：{{ schedCfg.snapshot_default }}
+              {{ t('schp.builtinDefault') }}{{ schedCfg.snapshot_default }}
             </span>
-            <el-button type="primary" :loading="schedSaving" @click="saveSchedule">保存</el-button>
+            <el-button type="primary" :loading="schedSaving" @click="saveSchedule">{{ t('common.save') }}</el-button>
           </div>
         </div>
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { toRef } from 'vue'
 import DeviceServiceDetail from './DeviceServiceDetail.vue'
 import DeviceHostDetail from './DeviceHostDetail.vue'
@@ -7,6 +8,8 @@ import { useDeviceDetail, type PowerAction } from './useDeviceDetail'
 import { isSSHAuthError, showSSHAuthFix } from '@/utils/ssh-fix'
 import type { MonitorTarget } from '@/api/monitor'
 import './device-detail.css'
+
+const { t } = useI18n()
 
 const visible = defineModel<boolean>('visible', { default: false })
 const props = defineProps<{ target?: MonitorTarget | null }>()
@@ -34,7 +37,7 @@ function onPower(action: PowerAction) {
     <template #header>
       <div class="detail-header">
         <div class="dh-main">
-          <div class="dh-title">{{ target?.name || '设备详情' }}</div>
+          <div class="dh-title">{{ target?.name || t('dd.fallbackTitle') }}</div>
           <div class="dh-sub">{{ targetSubtitle }}</div>
         </div>
         <div class="dh-actions">
@@ -81,8 +84,8 @@ function onPower(action: PowerAction) {
       />
 
       <div v-if="target?.last_error" class="d-error">
-        <span>最近错误：{{ target.last_error }}</span>
-        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">如何修复？</el-button>
+        <span>{{ t('dd.lastError') }}{{ target.last_error }}</span>
+        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">{{ t('dd.howToFix') }}</el-button>
       </div>
     </div>
   </el-drawer>

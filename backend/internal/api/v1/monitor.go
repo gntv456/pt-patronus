@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/monitor"
 )
@@ -26,7 +27,7 @@ func NewMonitorHandler(op *oper.MonitorOper, svc *monitor.Service, sshKeys *oper
 func (h *MonitorHandler) List(c *gin.Context) {
 	ts, err := h.op.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"targets": ts})
@@ -36,16 +37,16 @@ func (h *MonitorHandler) List(c *gin.Context) {
 func (h *MonitorHandler) Create(c *gin.Context) {
 	var in oper.TargetInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Name == "" || in.Type == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name and type are required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	t, err := h.op.Create(in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, t)
@@ -59,12 +60,12 @@ func (h *MonitorHandler) Update(c *gin.Context) {
 	}
 	var in oper.TargetInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	t, err := h.op.Update(id, in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, t)
@@ -77,7 +78,7 @@ func (h *MonitorHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -128,7 +129,7 @@ func (h *MonitorHandler) Power(c *gin.Context) {
 	}
 	var in powerRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.svc.PowerNow(c.Request.Context(), id, in.Action); err != nil {
@@ -146,7 +147,7 @@ func (h *MonitorHandler) Exec(c *gin.Context) {
 	}
 	var in execRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	result, err := h.svc.RunCommandNow(c.Request.Context(), id, in.Command, in.TimeoutSec)
@@ -172,7 +173,7 @@ func (h *MonitorHandler) Metrics(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	snaps, err := h.op.ListSnapshots(id, since, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"snapshots": snaps})
@@ -186,7 +187,7 @@ func (h *MonitorHandler) AcceptHostKey(c *gin.Context) {
 	}
 	t, err := h.op.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "监控目标不存在"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	port := t.Port
@@ -194,7 +195,7 @@ func (h *MonitorHandler) AcceptHostKey(c *gin.Context) {
 		port = 22
 	}
 	if err := h.sshKeys.Delete(t.Host, port); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

@@ -14,6 +14,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/backup"
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/config"
 	"github.com/hxpt/ptpatronus/internal/core/event"
@@ -247,7 +248,9 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	// 把全部 chain 能力批量暴露给插件 Host API（GET /tools、POST /tools/{name}、Bridge tool.*）。
 	// 必须在所有 chain 构造之后调用（闭包捕获 chain 指针）。
 	registerPluginHostTools(pluginMgr, agentTools, dlCh, subCh, mediaServerCh, cloudCh, brushCh, rssCh, subtitleCh, transferCh, keepSeedCh, fileCh, wfCh)
-	agentSvc := aiagent.New(llm.New, agentTools, agentMsgOp, agentConvOp, cfgOp, crypto)
+	// 单 Agent 实例同时服务内置助手聊天 / LLM 网关两协议端点 / TG bot；Prometheus 来源
+	// 标签统一记 assistant（细分入口留后续按 handler 各自实例化时再拆）。
+	agentSvc := aiagent.New(bizmetrics.LLMSourceAssistant, llm.New, agentTools, agentMsgOp, agentConvOp, cfgOp, crypto)
 	agentChatH := v1.NewAgentChatHandler(agentSvc, agentConvOp.List, agentConvOp.Create, agentConvOp.Delete, agentMsgOp.ListByConv, cfgOp, crypto)
 	llmGatewayH := v1.NewLLMGatewayHandler(agentSvc, agentConvOp.Create, cfgOp, crypto)
 	doctorH := v1.NewDoctorHandler(cfg, database, buildDoctorBusinessChecks(d))

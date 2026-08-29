@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -48,7 +49,7 @@ func (h *SshAdminHandler) Status(c *gin.Context) {
 	cmd := fmt.Sprintf(`systemctl is-active %s 2>/dev/null; echo "---"; systemctl is-enabled %s 2>/dev/null`, svcName, svcName)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	parts := strings.SplitN(r.Stdout, "---", 2)
@@ -91,14 +92,14 @@ func (h *SshAdminHandler) Action(c *gin.Context) {
 	}
 	var in sshActionRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	// 白名单校验
 	switch in.Action {
 	case "start", "stop", "restart", "reload":
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid action: " + in.Action})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	svcName := h.detectServiceName(c, id)
@@ -106,7 +107,7 @@ func (h *SshAdminHandler) Action(c *gin.Context) {
 	cmd := fmt.Sprintf(`systemctl %s %s 2>&1`, in.Action, svcName)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 20)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !r.Success {
@@ -131,7 +132,7 @@ func (h *SshAdminHandler) ToggleEnable(c *gin.Context) {
 	cmd := fmt.Sprintf(`systemctl %s %s 2>&1`, op, svcName)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !r.Success {
@@ -149,19 +150,19 @@ func (h *SshAdminHandler) Config(c *gin.Context) {
 	}
 	var in sshConfigRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if !in.Confirm {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "config change requires confirmation", "code": "confirm_required"})
+		errcode.Respond(c, errcode.ConfirmRequired)
 		return
 	}
 	if in.Port != "" && !portRe.MatchString(in.Port) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid port"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	if in.ListenAddr != "" && !listenRe.MatchString(in.ListenAddr) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid listen address"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	// 用 sed 改 sshd_config，备份原文件
@@ -180,7 +181,7 @@ func (h *SshAdminHandler) Config(c *gin.Context) {
 	script := strings.Join(steps, " && ")
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 20)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !r.Success {

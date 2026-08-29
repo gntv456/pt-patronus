@@ -3,6 +3,7 @@ package v1
 import (
 	"errors"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -21,7 +22,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	uid, _ := c.Get("uid")
 	id, _ := uid.(uint)
 	if id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "API-Key 旁路无需登出"})
+		errcode.Respond(c, errcode.APIKeyNoLogout)
 		return
 	}
 	if err := h.db.Model(&models.User{}).Where("id = ?", id).
@@ -40,12 +41,12 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 // Setup 本地初始化已停用（改好学登录），保留路由返回 410 引导。
 func (h *AuthHandler) Setup(c *gin.Context) {
-	c.JSON(http.StatusGone, gin.H{"code": "deprecated", "message": "本地初始化已停用，请使用好学账号/Cookie 登录"})
+	errcode.Respond(c, errcode.OIDCDeprecated)
 }
 
 // Login 本地登录已停用（改好学登录），保留路由返回 410 引导。
 func (h *AuthHandler) Login(c *gin.Context) {
-	c.JSON(http.StatusGone, gin.H{"code": "deprecated", "message": "本地登录已停用，请使用好学账号/Cookie 登录"})
+	errcode.Respond(c, errcode.OIDCDeprecated)
 }
 
 type activateReq struct {
@@ -57,7 +58,7 @@ type activateReq struct {
 func (h *AuthHandler) Activate(c *gin.Context) {
 	var req activateReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if req.DeviceID == "" {
@@ -66,7 +67,7 @@ func (h *AuthHandler) Activate(c *gin.Context) {
 	level, err := h.act.Activate(req.Code, req.DeviceID)
 	if err != nil {
 		audit(c, "activate", "fail", slog.String("reason", err.Error()))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	audit(c, "activate", "ok", slog.Int("vip_level", level))
@@ -119,12 +120,12 @@ type verifyVIPReq struct {
 // VerifyVIP 用好学 cookie 校验 APP 专属 VIP 身份（复用 HxptAuthenticator.Verify）。
 func (h *AuthHandler) VerifyVIP(c *gin.Context) {
 	if h.hxptAuth == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "VIP 校验未启用"})
+		errcode.Respond(c, errcode.VIPCheckDisabled)
 		return
 	}
 	var req verifyVIPReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	status := h.hxptAuth.Verify(c.Request.Context(), req.Cookie)
@@ -154,13 +155,13 @@ func oidcRedirectURI(c *gin.Context) string {
 // OIDCStart 发起 OIDC 授权：写 state/verifier cookie 并 302 跳转到 Provider 授权端点。
 func (h *AuthHandler) OIDCStart(c *gin.Context) {
 	if h.oidc == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		errcode.Respond(c, errcode.OIDCNotConfigured)
 		return
 	}
 	flow, err := h.oidc.StartFlow(c.Request.Context(), oidcRedirectURI(c))
 	if err != nil {
 		audit(c, "oidc_start", "fail", slog.String("err", err.Error()))
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	http.SetCookie(c.Writer, &flow.StateCookie)
@@ -171,7 +172,7 @@ func (h *AuthHandler) OIDCStart(c *gin.Context) {
 // OIDCCallback 处理 Provider 回调：校验 state + 换令牌 + 取 userinfo + 签发本地 JWT + 302 回前端。
 func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	if h.oidc == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		errcode.Respond(c, errcode.OIDCNotConfigured)
 		return
 	}
 	stateCookie, err := c.Cookie("ptp_oidc_state")
@@ -180,7 +181,7 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	state := c.Query("state")
 	if err != nil || code == "" || state == "" || state != stateCookie {
 		audit(c, "oidc_callback", "fail", slog.String("reason", "state_mismatch"))
-		c.JSON(http.StatusForbidden, gin.H{"error": "OIDC state 校验失败"})
+		errcode.Respond(c, errcode.OIDCStateMismatch)
 		return
 	}
 	ui, err := h.oidc.CompleteFlow(c.Request.Context(), code, state, verifier, oidcRedirectURI(c))
@@ -189,7 +190,7 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	clearOIDCCookie(c, "ptp_oidc_verifier")
 	if err != nil {
 		audit(c, "oidc_callback", "fail", slog.String("err", err.Error()))
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	// 映射用户名：preferred_username → name → email 前缀 → sub。
@@ -205,7 +206,7 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	}
 	token, err := h.issueForOIDC("oidc:"+ui.Sub, username)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "token failed"})
+		errcode.Respond(c, errcode.AuthTokenFailed)
 		return
 	}
 	audit(c, "oidc_callback", "ok", slog.String("sub", ui.Sub), slog.String("user", username))
@@ -287,7 +288,7 @@ type oidcConfigResp struct {
 // GetOIDCConfig 返回脱敏配置。
 func (h *AuthHandler) GetOIDCConfig(c *gin.Context) {
 	if h.oidc == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		errcode.Respond(c, errcode.OIDCNotConfigured)
 		return
 	}
 	s := h.oidc.LoadSettings()
@@ -312,12 +313,12 @@ type oidcConfigReq struct {
 // SetOIDCConfig 保存配置（client_secret 空串保留）。
 func (h *AuthHandler) SetOIDCConfig(c *gin.Context) {
 	if h.oidc == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "OIDC 未装配"})
+		errcode.Respond(c, errcode.OIDCNotConfigured)
 		return
 	}
 	var req oidcConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	cur := h.oidc.LoadSettings()
@@ -338,7 +339,7 @@ func (h *AuthHandler) SetOIDCConfig(c *gin.Context) {
 		next.FrontendRedirect = req.FrontendRedirect
 	}
 	if err := h.oidc.SaveSettings(next); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
+		errcode.Respond(c, errcode.SaveFailed)
 		return
 	}
 	audit(c, "oidc_config", "ok", slog.Bool("enabled", next.Enabled))

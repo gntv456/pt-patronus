@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Terminal } from '@xterm/xterm'
@@ -8,6 +9,7 @@ import { authApi } from '@/api/auth'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 import '@xterm/xterm/css/xterm.css'
 
+const { t } = useI18n()
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
 const connected = ref(false)
@@ -16,14 +18,14 @@ const error = ref('')
 
 // 快速命令
 const quickCmds = ref<{ name: string; cmd: string }[]>([
-  { name: '系统信息', cmd: 'uname -a' },
-  { name: '磁盘', cmd: 'df -h' },
-  { name: '内存', cmd: 'free -h' },
+  { name: t('ot.qcSysinfo'), cmd: 'uname -a' },
+  { name: t('ot.qcDisk'), cmd: 'df -h' },
+  { name: t('ot.qcMem'), cmd: 'free -h' },
   { name: 'CPU', cmd: 'top -bn1 | head -5' },
-  { name: '网络', cmd: 'ip addr' },
-  { name: '监听端口', cmd: 'ss -tlnp' },
+  { name: t('ot.qcNet'), cmd: 'ip addr' },
+  { name: t('ot.qcPorts'), cmd: 'ss -tlnp' },
   { name: 'Docker', cmd: 'docker ps' },
-  { name: '日志', cmd: 'journalctl -u sshd -n 50 --no-pager' },
+  { name: t('ot.qcLogs'), cmd: 'journalctl -u sshd -n 50 --no-pager' },
 ])
 const newCmdName = ref('')
 const newCmdText = ref('')
@@ -112,7 +114,7 @@ function sendResize() {
 
 async function connect() {
   if (!selectedTarget.value) {
-    ElMessage.warning('请先选择主机')
+    ElMessage.warning(t('ot.pickHostFirst'))
     return
   }
   if (connecting.value || connected.value) return
@@ -137,13 +139,13 @@ async function connect() {
       term?.write(typeof ev.data === 'string' ? ev.data : new Uint8Array(ev.data))
     }
     ws.onerror = () => {
-      error.value = '终端连接错误'
+      error.value = t('ot.connError')
       connecting.value = false
     }
     ws.onclose = () => {
       connected.value = false
       connecting.value = false
-      term?.write('\r\n\x1b[33m[连接已关闭]\x1b[0m\r\n')
+      term?.write('\r\n\x1b[33m[' + t('det.closed') + ']\x1b[0m\r\n')
     }
   } catch (e: any) {
     connecting.value = false
@@ -159,7 +161,7 @@ function disconnect() {
 
 function sendCmd(cmd: string) {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
-    ElMessage.warning('终端未连接')
+    ElMessage.warning(t('ot.notConnected'))
     return
   }
   ws.send(cmd + '\r')
@@ -172,14 +174,14 @@ function sendCtrlC() {
 
 function addQuickCmd() {
   if (!newCmdName.value || !newCmdText.value) {
-    ElMessage.warning('请填写名称和命令')
+    ElMessage.warning(t('ot.cmdRequired'))
     return
   }
   quickCmds.value.push({ name: newCmdName.value, cmd: newCmdText.value })
   saveQuickCmds()
   newCmdName.value = ''
   newCmdText.value = ''
-  ElMessage.success('已添加')
+  ElMessage.success(t('common.added'))
 }
 
 function removeQuickCmd(i: number) {
@@ -220,26 +222,26 @@ onBeforeUnmount(() => {
     <!-- 工具栏 -->
     <div class="term-toolbar glass">
       <div class="toolbar-left">
-        <label class="target-label">主机</label>
-        <el-select v-model="selectedTarget" placeholder="选择 SSH 主机" style="width: 200px" @change="onTargetChange">
+        <label class="target-label">{{ t('ot.host') }}</label>
+        <el-select v-model="selectedTarget" :placeholder="t('ot.hostPh')" style="width: 200px" @change="onTargetChange">
           <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <span class="conn-status" :class="{ on: connected, connecting }">
-          {{ connected ? '● 已连接' : connecting ? '○ 连接中' : '○ 未连接' }}
+          {{ connected ? '● ' + t('ot.connected') : connecting ? '○ ' + t('tw.connecting') : '○ ' + t('ot.disconnected') }}
         </span>
       </div>
       <div class="toolbar-right">
         <el-button size="small" @click="sendCtrlC" :disabled="!connected">Ctrl+C</el-button>
-        <el-button size="small" @click="configVisible = true">配置</el-button>
-        <el-button size="small" @click="cmdDialogVisible = true">快速命令</el-button>
-        <el-button v-if="!connected" type="primary" size="small" :loading="connecting" @click="connect">连接</el-button>
-        <el-button v-else type="danger" size="small" @click="disconnect">断开</el-button>
+        <el-button size="small" @click="configVisible = true">{{ t('ot.config') }}</el-button>
+        <el-button size="small" @click="cmdDialogVisible = true">{{ t('ot.quickCmds') }}</el-button>
+        <el-button v-if="!connected" type="primary" size="small" :loading="connecting" @click="connect">{{ t('ot.connect') }}</el-button>
+        <el-button v-else type="danger" size="small" @click="disconnect">{{ t('ot.disconnect') }}</el-button>
       </div>
     </div>
 
     <div v-if="error" class="term-error">{{ error }}</div>
     <div v-if="!sshTargets.length" class="term-empty glass">
-      尚未添加 SSH 主机。请在 NAS → 监控目标 中添加一台 SSH 主机。
+      {{ t('ot.noHosts') }}
     </div>
 
     <!-- 快速命令条 -->
@@ -255,36 +257,36 @@ onBeforeUnmount(() => {
     <div v-if="sshTargets.length" class="term-container glass" ref="termContainer"></div>
 
     <!-- 快速命令管理 -->
-    <el-dialog v-model="cmdDialogVisible" title="快速命令" width="500px">
+    <el-dialog v-model="cmdDialogVisible" :title="t('ot.quickCmds')" width="500px">
       <div class="cmd-list">
         <div v-for="(c, i) in quickCmds" :key="i" class="cmd-item">
           <span class="cmd-item-name">{{ c.name }}</span>
           <code class="cmd-item-text">{{ c.cmd }}</code>
-          <el-button size="small" type="danger" link @click="removeQuickCmd(i)">删除</el-button>
+          <el-button size="small" type="danger" link @click="removeQuickCmd(i)">{{ t('common.delete') }}</el-button>
         </div>
       </div>
       <el-divider />
       <div class="cmd-add">
-        <el-input v-model="newCmdName" placeholder="名称" style="width: 120px" />
-        <el-input v-model="newCmdText" placeholder="命令" style="flex: 1" @keyup.enter="addQuickCmd" />
-        <el-button type="primary" @click="addQuickCmd">添加</el-button>
+        <el-input v-model="newCmdName" :placeholder="t('common.name')" style="width: 120px" />
+        <el-input v-model="newCmdText" :placeholder="t('ot.cmdPh')" style="flex: 1" @keyup.enter="addQuickCmd" />
+        <el-button type="primary" @click="addQuickCmd">{{ t('common.add') }}</el-button>
       </div>
     </el-dialog>
 
     <!-- 配置对话框 -->
-    <el-dialog v-model="configVisible" title="终端配置" width="400px">
+    <el-dialog v-model="configVisible" :title="t('ot.termConfig')" width="400px">
       <el-form label-width="80px">
-        <el-form-item label="字号">
+        <el-form-item :label="t('ot.fontSize')">
           <el-slider v-model="termConfig.fontSize" :min="10" :max="24" @change="saveConfig" />
         </el-form-item>
-        <el-form-item label="主题">
+        <el-form-item :label="t('ot.theme')">
           <el-radio-group v-model="termConfig.theme" @change="saveConfig">
-            <el-radio value="dark">深色</el-radio>
-            <el-radio value="light">浅色</el-radio>
+            <el-radio value="dark">{{ t('ot.dark') }}</el-radio>
+            <el-radio value="light">{{ t('ot.light') }}</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
-      <div class="config-hint">配置保存在浏览器本地。</div>
+      <div class="config-hint">{{ t('ot.configHint') }}</div>
     </el-dialog>
   </div>
 </template>

@@ -17,7 +17,9 @@ import SaveptNotices from '@/components/savept/SaveptNotices.vue'
 import SaveptSiteCard from '@/components/savept/SaveptSiteCard.vue'
 import SaveptAnnivCalendarDialog from '@/components/savept/SaveptAnnivCalendarDialog.vue'
 import { useSaveptCelebration } from '@/composables/useSaveptCelebration'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const route = useRoute()
 const data = ref<SaveptResult | null>(null)
 const loading = ref(false)
@@ -63,7 +65,7 @@ async function load() {
     fetchedAt.value = formatFetchedAt(data.value.fetched_at)
     warning.value = data.value.stale ? data.value.notice || '' : ''
   } catch (e: unknown) {
-    pushMessage((e as Error).message || '加载监护室失败', 'error')
+    pushMessage((e as Error).message || t('savept.loadFailed'), 'error')
   } finally {
     loading.value = false
   }
@@ -76,12 +78,12 @@ async function refresh() {
     fetchedAt.value = formatFetchedAt(data.value.fetched_at)
     warning.value = data.value.stale ? data.value.notice || '' : ''
     if (data.value.stale) {
-      pushMessage('刷新失败：源站可能被拦截，仍显示缓存数据', 'error')
+      pushMessage(t('savept.refreshBlocked'), 'error')
     } else {
-      pushMessage('数据已刷新', 'success')
+      pushMessage(t('savept.refreshed'), 'success')
     }
   } catch (e: unknown) {
-    pushMessage((e as Error).message || '刷新失败', 'error')
+    pushMessage((e as Error).message || t('savept.refreshFailed'), 'error')
   } finally {
     loading.value = false
   }
@@ -170,7 +172,7 @@ onBeforeUnmount(() => {
     <SaveptHeader
       :summary="summary"
       :loading="loading"
-      :filters="filters"
+      v-model:filters="filters"
       :sites="sites"
       :fetched-at="fetchedAt"
       :filtered-count="filteredSites.length"
@@ -206,14 +208,14 @@ onBeforeUnmount(() => {
           @click="toggleYearGroup(group.year)"
         >
           <div class="spt-year-group__badge">{{ formatYearLabel(group.year) }}</div>
-          <span class="spt-year-group__suffix">{{ isUnknownYear(group.year) ? '年份建站' : '年建站' }}</span>
-          <span class="spt-year-group__count">{{ group.items.length }} 个站点</span>
+          <span class="spt-year-group__suffix">{{ isUnknownYear(group.year) ? t('savept.yearFounded') : t('savept.yearFoundedSuffix') }}</span>
+          <span class="spt-year-group__count">{{ t('subscriptions.nSites', { n: group.items.length }) }}</span>
         </button>
         <button
           type="button"
           class="spt-year-group__chevron-btn"
           :class="{ 'spt-year-group__chevron-btn--collapsed': isYearGroupCollapsed(group.year) }"
-          :aria-label="isYearGroupCollapsed(group.year) ? `展开 ${formatYearLabel(group.year)} 年分组` : `收起 ${formatYearLabel(group.year)} 年分组`"
+          :aria-label="isYearGroupCollapsed(group.year) ? t('savept.expandGroup', { y: formatYearLabel(group.year) }) : t('savept.collapseGroup', { y: formatYearLabel(group.year) })"
           @click="toggleYearGroup(group.year)"
         >
           <SptIcon name="chevron-down" :size="18" class="spt-year-group__chevron" :class="{ 'spt-year-group__chevron--collapsed': isYearGroupCollapsed(group.year) }" />
@@ -234,13 +236,13 @@ onBeforeUnmount(() => {
     <!-- 空状态 -->
     <div v-if="!loading && !filteredSites.length" class="spt-empty">
       <SptIcon name="eye" :size="48" />
-      <p>{{ sites.length ? '没有匹配的站点' : '暂无监护数据' }}</p>
-      <button v-if="sites.length" class="spt-pill" @click="clearFilters">清除筛选</button>
+      <p>{{ sites.length ? t('savept.noMatch') : t('savept.empty') }}</p>
+      <button v-if="sites.length" class="spt-pill" @click="clearFilters">{{ t('savept.clearFilters') }}</button>
     </div>
 
     <Teleport to="body">
       <Transition name="spt-fab">
-        <button v-if="showBackToTop" class="spt-back-top" :style="backTopStyle" aria-label="返回顶部" @click="scrollToTop">
+        <button v-if="showBackToTop" class="spt-back-top" :style="backTopStyle" :aria-label="t('savept.backToTop')" @click="scrollToTop">
           <SptIcon name="chevron-up" :size="20" />
         </button>
       </Transition>

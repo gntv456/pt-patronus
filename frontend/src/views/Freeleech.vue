@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { safeUrl } from '@/utils/safeUrl'
 import { ElMessage } from 'element-plus'
 import { freeleechApi, type FreeleechResult, type FreeleechStatus } from '@/api/freeleech'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
+const { t } = useI18n()
 const results = ref<FreeleechResult[]>([])
 const loading = ref(false)
 const syncingId = ref<number | null>(null)
@@ -80,11 +82,11 @@ function toggleFilter(key: FilterKey) {
 }
 // 汇总条 5 个 tile（站点=全部 + 4 状态），模板 v-for 渲染。color 走 statusColor（懒引用）。
 const tiles = computed(() => [
-  { key: 'all' as FilterKey, label: '站点', value: summary.value.total, color: '' },
-  { key: 'active' as FilterKey, label: '正在站免', value: summary.value.active, color: statusColor.active },
-  { key: 'upcoming' as FilterKey, label: '即将站免', value: summary.value.upcoming, color: statusColor.upcoming },
-  { key: 'none' as FilterKey, label: '暂无', value: summary.value.none, color: statusColor.none },
-  { key: 'failed' as FilterKey, label: '失败', value: summary.value.failed, color: statusColor.failed },
+  { key: 'all' as FilterKey, label: t('freeleech.tile.sites'), value: summary.value.total, color: '' },
+  { key: 'active' as FilterKey, label: t('freeleech.status.active'), value: summary.value.active, color: statusColor.active },
+  { key: 'upcoming' as FilterKey, label: t('freeleech.status.upcoming'), value: summary.value.upcoming, color: statusColor.upcoming },
+  { key: 'none' as FilterKey, label: t('freeleech.tile.none'), value: summary.value.none, color: statusColor.none },
+  { key: 'failed' as FilterKey, label: t('freeleech.tile.failed'), value: summary.value.failed, color: statusColor.failed },
 ])
 
 // 展开每站全部公告（可能多条横幅）
@@ -112,7 +114,7 @@ async function load(refresh = false) {
     )
   } catch (e: unknown) {
     if (ac.signal.aborted) return // 切页/重载中断，静默
-    ElMessage.error((e as Error).message || '加载站免失败')
+    ElMessage.error((e as Error).message || t('freeleech.loadFailed'))
   } finally {
     if (abortCtrl === ac) {
       loading.value = false
@@ -128,7 +130,7 @@ async function syncOne(r: FreeleechResult) {
     const idx = results.value.findIndex((x) => x.site_id === r.site_id)
     if (idx >= 0) results.value[idx] = one
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '刷新失败')
+    ElMessage.error((e as Error).message || t('freeleech.refreshFailed'))
   } finally {
     syncingId.value = null
   }
@@ -140,12 +142,12 @@ const statusColor: Record<FreeleechStatus, string> = {
   none: '#95a5a6',
   failed: '#f56c6c',
 }
-const statusLabel: Record<FreeleechStatus, string> = {
-  active: '正在站免',
-  upcoming: '即将站免',
-  none: '暂无站免',
-  failed: '读取失败',
-}
+const statusLabel = computed<Record<FreeleechStatus, string>>(() => ({
+  active: t('freeleech.status.active'),
+  upcoming: t('freeleech.status.upcoming'),
+  none: t('freeleech.status.none'),
+  failed: t('freeleech.status.failed'),
+}))
 
 onMounted(() => load())
 onUnmounted(() => abortCtrl?.abort())
@@ -154,25 +156,25 @@ onUnmounted(() => abortCtrl?.abort())
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">站免</h2>
+      <h2 class="title">{{ t('freeleech.title') }}</h2>
       <div class="head-tools">
-        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择站免站点" />
-        <el-button :loading="loading" @click="load(true)">刷新全部</el-button>
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('freeleech.siteFilterTitle')" />
+        <el-button :loading="loading" @click="load(true)">{{ t('announcements.refreshAll') }}</el-button>
       </div>
     </div>
 
     <!-- 汇总筛选条（点 tile 按状态过滤；再点取消）-->
     <div class="summary glass">
       <div
-        v-for="t in tiles"
-        :key="t.key"
+        v-for="tile in tiles"
+        :key="tile.key"
         class="tile"
-        :class="{ active: filter === t.key }"
-        :title="filter === t.key ? '点击取消筛选' : '点击按此状态筛选'"
-        @click="toggleFilter(t.key)"
+        :class="{ active: filter === tile.key }"
+        :title="filter === tile.key ? t('freeleech.filterOff') : t('freeleech.filterOn')"
+        @click="toggleFilter(tile.key)"
       >
-        <span class="num" :style="t.color ? { color: t.color } : undefined">{{ t.value }}</span>
-        <span class="lbl">{{ t.label }}</span>
+        <span class="num" :style="tile.color ? { color: tile.color } : undefined">{{ tile.value }}</span>
+        <span class="lbl">{{ tile.label }}</span>
       </div>
     </div>
 
@@ -182,22 +184,22 @@ onUnmounted(() => abortCtrl?.abort())
       :closable="false"
       show-icon
       style="margin-bottom: 12px"
-      :title="`已按站点详情筛选：${focusLabel}`"
+      :title="t('assessment.focusTitle', { name: focusLabel })"
     />
 
     <EmptyState
       v-if="!results.length && !loading"
       icon="🎉"
-      title="暂无数据，请先在「站点」添加并登录站点"
-      description="添加并启用 PT 站点后，这里会自动汇总各站正在/即将开始的免费活动"
+      :title="t('announcements.emptyTitle')"
+      :description="t('freeleech.emptyDesc')"
     />
     <EmptyState
       v-else-if="!filteredResults.length"
       icon="🔍"
-      title="当前筛选下无站点"
-      description="切换或取消上方的状态筛选，显示全部站点"
+      :title="t('assessment.emptyFilterTitle')"
+      :description="t('freeleech.emptyFilterDesc')"
     >
-      <el-button @click="filter = 'all'">显示全部</el-button>
+      <el-button @click="filter = 'all'">{{ t('freeleech.showAll') }}</el-button>
     </EmptyState>
 
     <div class="cards">
@@ -212,10 +214,10 @@ onUnmounted(() => abortCtrl?.abort())
             {{ statusLabel[r.notices[0].status] }}
           </span>
           <span class="spacer"></span>
-          <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">刷新</el-button>
+          <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">{{ t('common.refresh') }}</el-button>
         </div>
         <div v-if="r.error" class="err">{{ r.error }}</div>
-        <div v-else-if="!r.notices.length" class="text-muted">该站点未开启站免检测</div>
+        <div v-else-if="!r.notices.length" class="text-muted">{{ t('freeleech.notEnabled') }}</div>
         <div v-else class="notices">
           <div
             v-for="(n, i) in expanded[r.site_id] ? r.notices : r.notices.slice(0, 1)"
@@ -224,14 +226,14 @@ onUnmounted(() => abortCtrl?.abort())
           >
             <div class="notice-title">{{ n.title }}</div>
             <div class="notice-content">{{ n.content || (n.error ?? '—') }}</div>
-            <a v-if="n.link" :href="safeUrl(n.link)" target="_blank" rel="noopener" class="notice-link">前往 →</a>
+            <a v-if="n.link" :href="safeUrl(n.link)" target="_blank" rel="noopener" class="notice-link">{{ t('freeleech.goTo') }}</a>
           </div>
           <button
             v-if="r.notices.length > 1"
             class="expand"
             @click="expanded[r.site_id] = !expanded[r.site_id]"
           >
-            {{ expanded[r.site_id] ? '收起' : `展开全部（${r.notices.length}）` }}
+            {{ expanded[r.site_id] ? t('announcements.collapse') : t('freeleech.expandAll', { n: r.notices.length }) }}
           </button>
         </div>
       </div>

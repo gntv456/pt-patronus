@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { entertainmentApi, type BetEvent, type BetEventDetail, type PlayResult } from '@/api/entertainment'
 
@@ -9,6 +10,7 @@ const game = props.game ?? 'ourbits_bet'
 const balance = ref<number | null>(null)
 const events = ref<BetEvent[]>([])
 const loading = ref(false)
+const { t } = useI18n()
 const detail = ref<BetEventDetail | null>(null) // 非 null = 详情视图
 const detailLoading = ref(false)
 const selectedOpt = ref<string>('')
@@ -44,7 +46,7 @@ async function openEvent(ev: BetEvent) {
     detail.value = await entertainmentApi.eventDetail(props.siteId, game, ev.id)
     if (detail.value.my_option) selectedOpt.value = ''
   } catch {
-    ElMessage.error('加载盘口失败')
+    ElMessage.error(t('eb.loadFailed'))
   } finally {
     detailLoading.value = false
   }
@@ -58,7 +60,7 @@ function backToList() {
 
 async function doBet() {
   if (!selectedOpt.value || amount.value <= 0) {
-    ElMessage.warning('请选择选项并输入押注金额')
+    ElMessage.warning(t('eb.needInput'))
     return
   }
   if (playing.value) return
@@ -67,10 +69,10 @@ async function doBet() {
     const res = await entertainmentApi.bet(props.siteId, game, { selection: selectedOpt.value, amount: amount.value })
     last.value = res
     if (res.success) {
-      ElMessage.success(res.message || '押注成功')
+      ElMessage.success(res.message || t('eb.betOk'))
       if (res.balance) balance.value = res.balance
     } else {
-      ElMessage.warning(res.message || '押注失败')
+      ElMessage.warning(res.message || t('eb.betFailed'))
     }
     await refresh()
     if (detail.value) {
@@ -79,7 +81,7 @@ async function doBet() {
     }
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     playing.value = false
   }
@@ -93,8 +95,8 @@ onMounted(refresh)
 <template>
   <div class="eventbet" v-loading="loading">
     <div class="hero">
-      <div class="hero-title">⚽ 赛事押注</div>
-      <div class="balance">余额 <b>{{ balance != null ? fmt(Math.floor(balance)) : '—' }}</b> 魔力</div>
+      <div class="hero-title">⚽ {{ t('eb.title') }}</div>
+      <div class="balance">{{ t('bs.balance') }} <b>{{ balance != null ? fmt(Math.floor(balance)) : '—' }}</b> {{ t('eb.magic') }}</div>
     </div>
 
     <!-- 盘口详情视图 -->
@@ -102,17 +104,17 @@ onMounted(refresh)
       <div class="glass section">
         <div class="ev-head">
           <span class="ev-title">{{ detail.event.title }}</span>
-          <button class="link-btn" @click="backToList">‹ 返回列表</button>
+          <button class="link-btn" @click="backToList">‹ {{ t('eb.backList') }}</button>
         </div>
         <div class="ev-meta">
-          <span>截止 {{ detail.event.end_time }}</span>
-          <span v-if="detail.event.remain" class="remain">剩余 {{ detail.event.remain }}</span>
+          <span>{{ t('eb.deadline', { v: detail.event.end_time }) }}</span>
+          <span v-if="detail.event.remain" class="remain">{{ t('eb.remain', { v: detail.event.remain }) }}</span>
         </div>
-        <p v-if="detail.my_option" class="my-bet">已押：{{ detail.my_option }}</p>
+        <p v-if="detail.my_option" class="my-bet">{{ t('eb.myBet', { v: detail.my_option }) }}</p>
       </div>
 
       <div class="glass section" v-loading="detailLoading">
-        <div class="sec-title">选项（按赔率，热门在前）</div>
+        <div class="sec-title">{{ t('eb.options') }}</div>
         <div class="opts">
           <label
             v-for="o in sortedOptions"
@@ -128,36 +130,36 @@ onMounted(refresh)
 
         <template v-if="!detail.my_option">
           <div class="bet-row">
-            <span class="lbl">押注魔力</span>
+            <span class="lbl">{{ t('eb.stakeMagic') }}</span>
             <input v-model.number="amount" type="number" class="amt" min="1" />
             <button class="op primary" :disabled="playing || !selectedOpt" @click="doBet">
-              {{ playing ? '提交中…' : '押注' }}
+              {{ playing ? t('eb.submitting') : t('eb.betGo') }}
             </button>
           </div>
-          <p class="hint">可获 = 押注 × 赔率（赛事结束后结算派彩）</p>
+          <p class="hint">{{ t('eb.payoutHint') }}</p>
         </template>
       </div>
     </template>
 
     <!-- 列表视图 -->
     <template v-else>
-      <div v-if="!events.length && !loading" class="glass empty">暂无进行中的竞猜</div>
+      <div v-if="!events.length && !loading" class="glass empty">{{ t('eb.noEvents') }}</div>
       <div v-for="ev in events" :key="ev.id" class="glass ev-card" @click="openEvent(ev)">
         <div class="ev-card-title">
           <span>{{ ev.title }}</span>
-          <span class="status" :class="ev.status">{{ ev.status === 'open' ? '进行中' : ev.status }}</span>
+          <span class="status" :class="ev.status">{{ ev.status === 'open' ? t('eb.open') : ev.status }}</span>
         </div>
         <div class="ev-card-meta">
-          <span>截止 {{ ev.end_time }}</span>
-          <span v-if="ev.remain" class="remain">剩余 {{ ev.remain }}</span>
+          <span>{{ t('eb.deadline', { v: ev.end_time }) }}</span>
+          <span v-if="ev.remain" class="remain">{{ t('eb.remain', { v: ev.remain }) }}</span>
         </div>
         <div class="ev-card-stats">
-          <span>庄家 {{ ev.bookmaker || '—' }}</span>
-          <span>{{ ev.bet_count }} 人下注</span>
-          <span>投注 {{ fmt(Math.floor(ev.total_stake)) }} 魔力</span>
-          <span :class="{ mine: ev.my_stake !== '-' && ev.my_stake !== '' }">我 {{ ev.my_stake }}</span>
+          <span>{{ t('eb.bookmaker', { v: ev.bookmaker || '—' }) }}</span>
+          <span>{{ t('eb.bettors', { n: ev.bet_count }) }}</span>
+          <span>{{ t('eb.totalStake', { v: fmt(Math.floor(ev.total_stake)) }) }}</span>
+          <span :class="{ mine: ev.my_stake !== '-' && ev.my_stake !== '' }">{{ t('eb.me', { v: ev.my_stake }) }}</span>
         </div>
-        <div class="ev-card-go">查看盘口 ›</div>
+        <div class="ev-card-go">{{ t('eb.viewOdds') }} ›</div>
       </div>
     </template>
 
@@ -165,7 +167,7 @@ onMounted(refresh)
       <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
-        <span v-if="last.balance" class="r-bal">余额 {{ fmt(Math.floor(last.balance)) }}</span>
+        <span v-if="last.balance" class="r-bal">{{ t('bs.balance') }} {{ fmt(Math.floor(last.balance)) }}</span>
         <div v-if="last.message" class="r-msg text-muted">{{ last.message }}</div>
       </div>
     </div>

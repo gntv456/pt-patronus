@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { fileApi, type FileEntry } from '@/api/filemanager'
 import {
   Folder, Document, Top, Plus, Refresh, Upload, FolderAdd,
@@ -12,6 +13,7 @@ import { useFileManager, type StorageItem } from '@/composables/useFileManager'
 import { useFileOps } from '@/composables/useFileOps'
 import { useFileExtraOps } from '@/composables/useFileExtraOps'
 
+const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const fm = useFileManager()
@@ -69,7 +71,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
     <!-- 左栏 -->
     <aside class="fm-sidebar">
       <div class="sb-head">
-        <span>存储</span>
+        <span>{{ t('filemanager.storages') }}</span>
         <el-button size="small" :icon="Refresh" circle :loading="loading" @click="loadStorages" />
       </div>
       <div v-loading="loading" class="sb-list">
@@ -83,29 +85,29 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
           <span class="sb-icon">{{ itemIcon(it) }}</span>
           <div class="sb-main">
             <div class="sb-name">{{ it.kind === 'fs' ? it.fs.name : it.drive.name }}</div>
-            <div class="sb-type">{{ itemLabel(it) }}<span v-if="it.kind === 'cloud'" class="ro">·只读</span></div>
+            <div class="sb-type">{{ itemLabel(it) }}<span v-if="it.kind === 'cloud'" class="ro">·{{ t('filemanager.readonly') }}</span></div>
           </div>
-          <span class="dot" :class="statusOf(it)" :title="statusOf(it) === 'fail' ? '连接失败' : statusOf(it) === 'ok' ? '连接正常' : '检测中…'" @click.stop="testOne(it)"></span>
+          <span class="dot" :class="statusOf(it)" :title="statusOf(it) === 'fail' ? t('mediaserver.connFailed') : statusOf(it) === 'ok' ? t('mediaserver.connOk') : t('filemanager.checking')" @click.stop="testOne(it)"></span>
           <el-dropdown trigger="click" placement="bottom-end" @command="(c) => onStorageMenu(c as string, it)">
             <span class="sb-more" @click.stop>⋯</span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="test">测试连接</el-dropdown-item>
+                <el-dropdown-item command="test">{{ t('mediaserver.testConn') }}</el-dropdown-item>
                 <template v-if="it.kind === 'fs'">
-                  <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>删除存储</el-dropdown-item>
+                  <el-dropdown-item command="edit">{{ t('common.edit') }}</el-dropdown-item>
+                  <el-dropdown-item command="delete" divided>{{ t('filemanager.deleteStorage') }}</el-dropdown-item>
                 </template>
-                <el-dropdown-item v-else disabled>云盘请在「云盘」页管理</el-dropdown-item>
+                <el-dropdown-item v-else disabled>{{ t('filemanager.manageInCloudPage') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
         </div>
         <div v-if="!list.length && !loading" class="sb-empty">
-          <EmptyState icon="📁" title="还没有存储" description="接入本机、WebDAV、SMB、Agent 或云盘后即可浏览文件。" />
+          <EmptyState icon="📁" :title="t('filemanager.noStorageTitle')" :description="t('filemanager.noStorageDesc')" />
         </div>
       </div>
       <div class="sb-actions">
-        <el-button :icon="Plus" @click="openCreate">添加存储</el-button>
+        <el-button :icon="Plus" @click="openCreate">{{ t('filemanager.addStorage') }}</el-button>
       </div>
     </aside>
 
@@ -113,7 +115,7 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
     <section class="fm-main">
       <template v-if="current">
         <div class="fm-toolbar">
-          <el-button size="small" :icon="Top" :disabled="path === '/'" @click="up">上级</el-button>
+          <el-button size="small" :icon="Top" :disabled="path === '/'" @click="up">{{ t('filemanager.up') }}</el-button>
           <div class="crumbs">
             <template v-for="(c, i) in crumbs" :key="i">
               <span class="crumb" @click="jump(c.path)">{{ c.name }}</span>
@@ -121,11 +123,11 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
             </template>
           </div>
           <div class="tb-actions">
-            <el-button v-if="!curReadOnly" size="small" :icon="FolderAdd" @click="mkdirVisible = true">新建文件夹</el-button>
+            <el-button v-if="!curReadOnly" size="small" :icon="FolderAdd" @click="mkdirVisible = true">{{ t('filemanager.newFolder') }}</el-button>
             <el-upload v-if="!curReadOnly" :show-file-list="false" :http-request="handleUpload">
-              <el-button size="small" type="primary" :icon="Upload" :disabled="uploadProgress >= 0">上传</el-button>
+              <el-button size="small" type="primary" :icon="Upload" :disabled="uploadProgress >= 0">{{ t('filemanager.upload') }}</el-button>
             </el-upload>
-            <el-button size="small" @click="toggleView" :title="viewMode === 'list' ? '网格' : '列表'">{{ viewMode === 'list' ? '▤' : '☰' }}</el-button>
+            <el-button size="small" @click="toggleView" :title="viewMode === 'list' ? t('filemanager.grid') : t('filemanager.list')">{{ viewMode === 'list' ? '▤' : '☰' }}</el-button>
             <el-button size="small" :icon="Refresh" circle @click="refresh" />
           </div>
         </div>
@@ -133,55 +135,55 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
 
         <transition name="fade">
           <div v-if="selected.length && !curReadOnly" class="batch-bar glass">
-            <span>已选 {{ selected.length }} 项</span>
-            <el-button size="small" :icon="MoveIcon" @click="openMoveCopy('move', selected)">移动</el-button>
-            <el-button size="small" :icon="CopyDocument" @click="openMoveCopy('copy', selected)">复制</el-button>
-            <el-button size="small" type="danger" plain :icon="Delete" @click="delBatch">删除</el-button>
-            <el-button size="small" text @click="selected = []">取消</el-button>
+            <span>{{ t('subscriptions.batch.selected', { n: selected.length }) }}</span>
+            <el-button size="small" :icon="MoveIcon" @click="openMoveCopy('move', selected)">{{ t('filemanager.move') }}</el-button>
+            <el-button size="small" :icon="CopyDocument" @click="openMoveCopy('copy', selected)">{{ t('filemanager.copy') }}</el-button>
+            <el-button size="small" type="danger" plain :icon="Delete" @click="delBatch">{{ t('common.delete') }}</el-button>
+            <el-button size="small" text @click="selected = []">{{ t('common.cancel') }}</el-button>
           </div>
         </transition>
 
         <!-- 批量删除进度 -->
         <transition name="fade">
           <div v-if="batchDelProgress" class="batch-del-progress glass">
-            <span>删除中 {{ batchDelProgress.done }}/{{ batchDelProgress.total }}</span>
+            <span>{{ t('filemanager.deleting') }} {{ batchDelProgress.done }}/{{ batchDelProgress.total }}</span>
             <el-progress
               :percentage="Math.round((batchDelProgress.done / batchDelProgress.total) * 100)"
               :stroke-width="14"
               style="flex: 1; margin: 0 12px"
             />
-            <el-button size="small" type="warning" plain @click="cancelBatchDel">停止</el-button>
+            <el-button size="small" type="warning" plain @click="cancelBatchDel">{{ t('assistant.stop') }}</el-button>
           </div>
         </transition>
 
         <div v-loading="bloading" class="fm-files">
-          <el-table v-if="viewMode === 'list'" :data="entries" empty-text="该目录为空" @selection-change="onSelectionChange" style="width: 100%">
+          <el-table v-if="viewMode === 'list'" :data="entries" :empty-text="t('filemanager.dirEmpty')" @selection-change="onSelectionChange" style="width: 100%">
             <el-table-column v-if="!curReadOnly" type="selection" width="40" />
-            <el-table-column label="名称" min-width="220">
+            <el-table-column :label="t('filemanager.col.name')" min-width="220">
               <template #default="{ row }">
                 <a v-if="row.is_dir" class="link" @click="enter(row as FileEntry)"><el-icon><Folder /></el-icon>&nbsp;{{ row.name }}</a>
                 <span v-else><el-icon><Document /></el-icon>&nbsp;{{ row.name }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="大小" width="120"><template #default="{ row }"><span v-if="row.is_dir">{{ dirSizeMap[row.path] || '-' }}</span><span v-else>{{ fmtBytes(row.size) }}</span></template></el-table-column>
-            <el-table-column :label="curReadOnly ? '操作' : ''" :width="curReadOnly ? 130 : 280">
+            <el-table-column :label="t('rss.col.size')" width="120"><template #default="{ row }"><span v-if="row.is_dir">{{ dirSizeMap[row.path] || '-' }}</span><span v-else>{{ fmtBytes(row.size) }}</span></template></el-table-column>
+            <el-table-column :label="curReadOnly ? t('reseed.col.actions') : ''" :width="curReadOnly ? 130 : 280">
               <template #default="{ row }">
-                <el-button v-if="row.is_dir && curReadOnly" size="small" link :icon="Link" @click="openStrm(row as FileEntry)">生成 STRM</el-button>
+                <el-button v-if="row.is_dir && curReadOnly" size="small" link :icon="Link" @click="openStrm(row as FileEntry)">{{ t('filemanager.genStrm') }}</el-button>
                 <template v-else-if="!curReadOnly">
-                  <el-button v-if="!row.is_dir" size="small" link :icon="Download" tag="a" :href="dlUrl(row as FileEntry)" target="_blank">下载</el-button>
-                  <el-button size="small" link :icon="Edit" @click="openRename(row as FileEntry)">重命名</el-button>
-                  <el-button size="small" link :icon="MoveIcon" @click="openMoveCopy('move', [row as FileEntry])">移动</el-button>
-                  <el-button size="small" link :icon="CopyDocument" @click="openMoveCopy('copy', [row as FileEntry])">复制</el-button>
-                  <el-button size="small" link type="danger" :icon="Delete" @click="delOne(row as FileEntry)">删除</el-button>
+                  <el-button v-if="!row.is_dir" size="small" link :icon="Download" tag="a" :href="dlUrl(row as FileEntry)" target="_blank">{{ t('harem.down') }}</el-button>
+                  <el-button size="small" link :icon="Edit" @click="openRename(row as FileEntry)">{{ t('filemanager.rename') }}</el-button>
+                  <el-button size="small" link :icon="MoveIcon" @click="openMoveCopy('move', [row as FileEntry])">{{ t('filemanager.move') }}</el-button>
+                  <el-button size="small" link :icon="CopyDocument" @click="openMoveCopy('copy', [row as FileEntry])">{{ t('filemanager.copy') }}</el-button>
+                  <el-button size="small" link type="danger" :icon="Delete" @click="delOne(row as FileEntry)">{{ t('common.delete') }}</el-button>
                   <el-dropdown v-if="curFs" trigger="click" @command="(cmd) => onFileExtra(cmd, row as FileEntry)">
-                    <el-button size="small" link>更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+                    <el-button size="small" link>{{ t('filemanager.more') }}<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
                     <template #dropdown><el-dropdown-menu>
-                      <el-dropdown-item v-if="!row.is_dir" command="preview">预览</el-dropdown-item>
-                      <el-dropdown-item v-if="!row.is_dir" command="edit">编辑</el-dropdown-item>
-                      <el-dropdown-item v-if="supportsFsCmds()" command="archive">压缩</el-dropdown-item>
-                      <el-dropdown-item v-if="isArchive(row as FileEntry)" command="extract">解压</el-dropdown-item>
-                      <el-dropdown-item v-if="supportsFsCmds()" command="chmod">权限</el-dropdown-item>
-                      <el-dropdown-item v-if="row.is_dir" command="dirsize">计算大小</el-dropdown-item>
+                      <el-dropdown-item v-if="!row.is_dir" command="preview">{{ t('filemanager.preview') }}</el-dropdown-item>
+                      <el-dropdown-item v-if="!row.is_dir" command="edit">{{ t('common.edit') }}</el-dropdown-item>
+                      <el-dropdown-item v-if="supportsFsCmds()" command="archive">{{ t('filemanager.archive') }}</el-dropdown-item>
+                      <el-dropdown-item v-if="isArchive(row as FileEntry)" command="extract">{{ t('filemanager.extract') }}</el-dropdown-item>
+                      <el-dropdown-item v-if="supportsFsCmds()" command="chmod">{{ t('harem.permission') }}</el-dropdown-item>
+                      <el-dropdown-item v-if="row.is_dir" command="dirsize">{{ t('filemanager.calcSize') }}</el-dropdown-item>
                     </el-dropdown-menu></template>
                   </el-dropdown>
                 </template>
@@ -194,16 +196,16 @@ watch(() => storageDialog.value, (v) => { if (v) fm.loadAgents() })
               <div v-if="!curReadOnly && !e.is_dir" class="grid-check" :class="{ on: isSelected(e) }">{{ isSelected(e) ? '✓' : '' }}</div>
               <div class="grid-icon">{{ e.is_dir ? '📁' : '🎬' }}</div>
               <div class="grid-name" :title="e.name">{{ e.name }}</div>
-              <div class="grid-meta">{{ e.is_dir ? '文件夹' : fmtBytes(e.size) }}</div>
+              <div class="grid-meta">{{ e.is_dir ? t('filemanager.folder') : fmtBytes(e.size) }}</div>
               <el-button v-if="e.is_dir && curReadOnly" size="small" link class="grid-strm" :icon="Link" @click.stop="openStrm(e)">STRM</el-button>
             </div>
-            <div v-if="!entries.length" class="grid-empty">该目录为空</div>
+            <div v-if="!entries.length" class="grid-empty">{{ t('filemanager.dirEmpty') }}</div>
           </div>
         </div>
       </template>
 
       <div v-else class="fm-empty">
-        <EmptyState icon="📂" :title="list.length ? '请选择左侧存储' : '还没有接入存储'" :description="list.length ? '点击左侧任一存储开始浏览。' : '点击左下角「添加存储」接入。'" />
+        <EmptyState icon="📂" :title="list.length ? t('filemanager.selectStorageTitle') : t('filemanager.noStorageTitle2')" :description="list.length ? t('filemanager.selectStorageDesc') : t('filemanager.noStorageDesc2')" />
       </div>
     </section>
 

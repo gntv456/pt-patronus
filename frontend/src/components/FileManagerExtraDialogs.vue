@@ -2,6 +2,9 @@
 // FileManagerExtraDialogs — 文件扩展操作对话框（在线编辑/压缩/权限/预览）。
 // 从 FileManager.vue 抽出，避免主文件超 400 行。状态由父级 fm 双向绑定。
 import type { FileEntry } from '@/api/filemanager'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 defineProps<{
   editVisible: boolean; editTarget: FileEntry | null; editContent: string; editLoading: boolean
@@ -30,66 +33,66 @@ function imgUrl(t: FileEntry | null, id: number): string {
 
 <template>
   <!-- 在线编辑 -->
-  <el-dialog :model-value="editVisible" @update:model-value="emit('update:editVisible', $event)" title="编辑文件" width="70%" top="5vh" destroy-on-close>
+  <el-dialog :model-value="editVisible" @update:model-value="emit('update:editVisible', $event)" :title="t('fme.editTitle')" width="70%" top="5vh" destroy-on-close>
     <div v-loading="editLoading" style="min-height: 200px">
       <div class="edit-head">
         <span class="edit-file">{{ editTarget?.name }}</span>
-        <span class="edit-hint">提示：保存将覆盖原文件</span>
+        <span class="edit-hint">{{ t('fme.editHint') }}</span>
       </div>
       <el-input :model-value="editContent" @update:model-value="emit('update:editContent', $event)" type="textarea" :autosize="{ minRows: 18, maxRows: 30 }" class="edit-area" />
     </div>
     <template #footer>
-      <el-button @click="emit('update:editVisible', false)">取消</el-button>
-      <el-button type="primary" :loading="editLoading" @click="emit('save')">保存</el-button>
+      <el-button @click="emit('update:editVisible', false)">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="editLoading" @click="emit('save')">{{ t('common.save') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- 压缩 -->
-  <el-dialog :model-value="archiveVisible" @update:model-value="emit('update:archiveVisible', $event)" title="压缩" width="420px">
+  <el-dialog :model-value="archiveVisible" @update:model-value="emit('update:archiveVisible', $event)" :title="t('fme.archiveTitle')" width="420px">
     <el-form label-width="80px">
-      <el-form-item label="源">
+      <el-form-item :label="t('fme.src')">
         <span>{{ archiveTarget?.name }}</span>
       </el-form-item>
-      <el-form-item label="格式">
+      <el-form-item :label="t('fme.fmt')">
         <el-radio-group :model-value="archiveFmt" @update:model-value="emit('update:archiveFmt', $event as 'zip' | 'targz')">
           <el-radio value="targz">.tar.gz</el-radio>
           <el-radio value="zip">.zip</el-radio>
         </el-radio-group>
       </el-form-item>
-      <el-form-item label="压缩包名">
+      <el-form-item :label="t('fme.archiveName')">
         <el-input :model-value="archiveName" @update:model-value="emit('update:archiveName', $event)" placeholder="archive.tar.gz" />
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="emit('update:archiveVisible', false)">取消</el-button>
-      <el-button type="primary" :loading="archiveLoading" @click="emit('archive')">压缩</el-button>
+      <el-button @click="emit('update:archiveVisible', false)">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="archiveLoading" @click="emit('archive')">{{ t('fme.archiveGo') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- 权限 -->
-  <el-dialog :model-value="chmodVisible" @update:model-value="emit('update:chmodVisible', $event)" title="修改权限" width="400px">
+  <el-dialog :model-value="chmodVisible" @update:model-value="emit('update:chmodVisible', $event)" :title="t('fme.chmodTitle')" width="400px">
     <el-form label-width="80px">
-      <el-form-item label="文件">
+      <el-form-item :label="t('fme.file')">
         <span>{{ chmodTarget?.name }}</span>
       </el-form-item>
-      <el-form-item label="权限">
-        <el-input :model-value="chmodMode" @update:model-value="emit('update:chmodMode', $event)" placeholder="如 755、644" style="width: 120px" />
-        <span class="chmod-hint">八进制（0-777）</span>
+      <el-form-item :label="t('fme.mode')">
+        <el-input :model-value="chmodMode" @update:model-value="emit('update:chmodMode', $event)" :placeholder="t('fme.modePh')" style="width: 120px" />
+        <span class="chmod-hint">{{ t('fme.octalHint') }}</span>
       </el-form-item>
-      <el-form-item v-if="chmodTarget?.is_dir" label="递归">
-        <el-checkbox :model-value="chmodRecursive" @update:model-value="emit('update:chmodRecursive', $event as boolean)">应用到子目录和文件</el-checkbox>
+      <el-form-item v-if="chmodTarget?.is_dir" :label="t('cloud.recursive')">
+        <el-checkbox :model-value="chmodRecursive" @update:model-value="emit('update:chmodRecursive', $event as boolean)">{{ t('fme.applyRecursive') }}</el-checkbox>
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="emit('update:chmodVisible', false)">取消</el-button>
-      <el-button type="primary" :loading="chmodLoading" @click="emit('chmod')">修改</el-button>
+      <el-button @click="emit('update:chmodVisible', false)">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="chmodLoading" @click="emit('chmod')">{{ t('fme.modify') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- 预览 -->
-  <el-dialog :model-value="previewVisible" @update:model-value="emit('update:previewVisible', $event)" :title="'预览：' + (previewTarget?.name ?? '')" width="70%" top="5vh" destroy-on-close>
+  <el-dialog :model-value="previewVisible" @update:model-value="emit('update:previewVisible', $event)" :title="t('fme.previewTitle', { name: previewTarget?.name ?? '' })" width="70%" top="5vh" destroy-on-close>
     <div v-loading="previewLoading" style="min-height: 200px">
-      <img v-if="previewTarget && isImage(previewTarget.name)" :src="imgUrl(previewTarget, storageId)" class="preview-img" />
+      <img v-if="previewTarget && isImage(previewTarget.name)" :src="imgUrl(previewTarget, storageId)" :alt="previewTarget.name" class="preview-img" />
       <pre v-else class="preview-text">{{ previewContent }}</pre>
     </div>
   </el-dialog>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 // 运行日志面板：级别筛选、刷新、复制、清空。
 // 状态与逻辑来自 useLogs 组合式函数。
+import { useI18n } from 'vue-i18n'
 import { useLogs } from '@/composables/useLogs'
+
+const { t } = useI18n()
 
 const { logs, logLevel, logLoading, loadLogs, clearLogs, copyLogs, fmtTime, attrText } = useLogs()
 </script>
@@ -9,15 +12,15 @@ const { logs, logLevel, logLoading, loadLogs, clearLogs, copyLogs, fmtTime, attr
 <template>
         <div class="logs-bar">
           <el-select v-model="logLevel" @change="loadLogs" style="width: 140px">
-            <el-option label="全部 (Info+)" value="" />
+            <el-option :label="t('lp.allLevels')" value="" />
             <el-option label="Debug+" value="debug" />
             <el-option label="Warn+" value="warn" />
             <el-option label="Error" value="error" />
           </el-select>
-          <el-button :loading="logLoading" @click="loadLogs">刷新</el-button>
-          <el-button :disabled="!logs.length" @click="copyLogs">复制</el-button>
-          <el-button type="danger" plain :disabled="!logs.length" @click="clearLogs">清空</el-button>
-          <span class="text-muted log-count">{{ logs.length }} 条（最新在前）</span>
+          <el-button :loading="logLoading" @click="loadLogs">{{ t('common.refresh') }}</el-button>
+          <el-button :disabled="!logs.length" @click="copyLogs">{{ t('lp.copy') }}</el-button>
+          <el-button type="danger" plain :disabled="!logs.length" @click="clearLogs">{{ t('common.clear') }}</el-button>
+          <span class="text-muted log-count">{{ t('lp.count', { n: logs.length }) }}</span>
         </div>
         <div class="logs-list glass" v-loading="logLoading">
           <div v-for="(e, i) in logs" :key="i" class="log-line" :class="e.level.toLowerCase()">
@@ -26,7 +29,7 @@ const { logs, logLevel, logLoading, loadLogs, clearLogs, copyLogs, fmtTime, attr
             <span class="log-msg">{{ e.message }}</span>
             <span v-if="attrText(e.attrs)" class="log-attrs">{{ attrText(e.attrs) }}</span>
           </div>
-          <div v-if="!logs.length && !logLoading" class="log-empty text-muted">暂无日志</div>
+          <div v-if="!logs.length && !logLoading" class="log-empty text-muted">{{ t('lp.empty') }}</div>
         </div>
 </template>
 

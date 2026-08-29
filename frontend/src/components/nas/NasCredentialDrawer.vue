@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import type { OpsCredential, OpsCredentialInput } from '@/api/monitor'
+import { useI18n } from 'vue-i18n'
 import { credentialTypeText } from '@/views/nasServerHelpers'
 
-// form 是父级 composable 持有的响应式对象，子组件直接绑定其字段。
-// credentialUsage 是父级传入的计算函数（依赖 targets）。
+// form 用 defineModel 双向绑定（父级 v-model:form）：表单控件改字段经 update:form 回传，
+// 消除对 prop 的直接突变。credentialUsage 是父级传入的计算函数（依赖 targets）。
+const { t } = useI18n()
+
+const form = defineModel<OpsCredentialInput>('form', { required: true })
+
 defineProps<{
   drawerVisible: boolean
   credentials: OpsCredential[]
   formVisible: boolean
   editing: OpsCredential | null
-  form: OpsCredentialInput
   credentialUsage: (id: number) => number
 }>()
 
@@ -26,89 +30,89 @@ const emit = defineEmits<{
 <template>
   <el-drawer
     :model-value="drawerVisible"
-    title="凭据中心"
+    :title="t('ncd.title')"
     size="520px"
     @update:model-value="emit('update:drawerVisible', $event)"
   >
     <div class="cred-toolbar">
-      <span>统一管理 SSH/NAS 凭据，设备绑定后改一次全局生效。</span>
-      <el-button type="primary" size="small" @click="emit('add')">新增凭据</el-button>
+      <span>{{ t('ncd.subtitle') }}</span>
+      <el-button type="primary" size="small" @click="emit('add')">{{ t('ncd.add') }}</el-button>
     </div>
     <div v-if="credentials.length" class="cred-list">
       <div v-for="c in credentials" :key="c.id" class="cred-card">
         <div class="cred-main">
           <div>
             <b>{{ c.name }}</b>
-            <span>{{ credentialTypeText(c.type) }} · {{ c.username || '无用户名' }}</span>
+            <span>{{ credentialTypeText(c.type) }} · {{ c.username || t('ncd.noUser') }}</span>
           </div>
-          <el-tag size="small" type="info">{{ credentialUsage(c.id) }} 台设备</el-tag>
+          <el-tag size="small" type="info">{{ t('ncd.devices', { n: credentialUsage(c.id) }) }}</el-tag>
         </div>
         <div class="cred-flags">
-          <span v-if="c.has_password">密码</span>
-          <span v-if="c.has_private_key">私钥</span>
+          <span v-if="c.has_password">{{ t('ncd.password') }}</span>
+          <span v-if="c.has_private_key">{{ t('ncd.privateKey') }}</span>
           <span v-if="c.tags">{{ c.tags }}</span>
         </div>
         <p v-if="c.note">{{ c.note }}</p>
         <div class="cred-actions">
-          <el-button size="small" @click="emit('edit', c)">编辑</el-button>
-          <el-button size="small" type="danger" plain @click="emit('remove', c)">删除</el-button>
+          <el-button size="small" @click="emit('edit', c)">{{ t('common.edit') }}</el-button>
+          <el-button size="small" type="danger" plain @click="emit('remove', c)">{{ t('common.delete') }}</el-button>
         </div>
       </div>
     </div>
     <div v-else class="cred-empty">
-      暂无统一凭据
-      <el-button type="primary" size="small" @click="emit('add')">新增第一条</el-button>
+      {{ t('ncd.empty') }}
+      <el-button type="primary" size="small" @click="emit('add')">{{ t('ncd.addFirst') }}</el-button>
     </div>
   </el-drawer>
 
   <el-dialog
     :model-value="formVisible"
-    :title="editing ? '编辑凭据' : '新增凭据'"
+    :title="editing ? t('ncd.editTitle') : t('ncd.add')"
     width="520px"
     destroy-on-close
     @update:model-value="emit('update:formVisible', $event)"
   >
     <el-form label-width="82px">
-      <el-form-item label="名称" required>
-        <el-input v-model="form.name" placeholder="如：生产 root / NAS 管理员" />
+      <el-form-item :label="t('common.name')" required>
+        <el-input v-model="form.name" :placeholder="t('ncd.namePh')" />
       </el-form-item>
-      <el-form-item label="类型">
+      <el-form-item :label="t('ncd.type')">
         <el-select v-model="form.type" style="width: 100%">
           <el-option label="SSH" value="ssh" />
           <el-option label="NAS" value="nas" />
-          <el-option label="通用" value="generic" />
+          <el-option :label="t('ncd.generic')" value="generic" />
         </el-select>
       </el-form-item>
-      <el-form-item label="用户名">
+      <el-form-item :label="t('ncd.username')">
         <el-input v-model="form.username" placeholder="root / admin" />
       </el-form-item>
-      <el-form-item label="密码">
+      <el-form-item :label="t('ncd.password')">
         <el-input
           v-model="form.password"
           type="password"
           show-password
-          :placeholder="editing ? '留空不改' : '密码 / Token / API Key'"
+          :placeholder="editing ? t('ncd.keepIfEmpty') : t('ncd.secretPh')"
         />
       </el-form-item>
-      <el-form-item label="私钥">
+      <el-form-item :label="t('ncd.privateKey')">
         <el-input
           v-model="form.private_key"
           type="textarea"
           :rows="6"
           resize="vertical"
-          :placeholder="editing?.has_private_key ? '已配置私钥，留空不改' : 'SSH 私钥，可留空'"
+          :placeholder="editing?.has_private_key ? t('ncd.keySetKeep') : t('ncd.keyPh')"
         />
       </el-form-item>
-      <el-form-item label="标签">
-        <el-input v-model="form.tags" placeholder="生产环境, root" />
+      <el-form-item :label="t('ncd.tags')">
+        <el-input v-model="form.tags" :placeholder="t('ncd.tagsPh')" />
       </el-form-item>
-      <el-form-item label="备注">
+      <el-form-item :label="t('ncd.note')">
         <el-input v-model="form.note" type="textarea" :rows="3" resize="vertical" />
       </el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="emit('update:formVisible', false)">取消</el-button>
-      <el-button type="primary" @click="emit('save')">保存</el-button>
+      <el-button @click="emit('update:formVisible', false)">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" @click="emit('save')">{{ t('common.save') }}</el-button>
     </template>
   </el-dialog>
 </template>

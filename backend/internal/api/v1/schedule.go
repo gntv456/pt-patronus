@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/robfig/cron/v3"
 )
@@ -43,32 +44,32 @@ func (h *ScheduleHandler) SetConfig(c *gin.Context) {
 		KeepAliveCron string `json:"keepalive_cron"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	req.SnapshotCron = strings.TrimSpace(req.SnapshotCron)
 	req.KeepAliveCron = strings.TrimSpace(req.KeepAliveCron)
 	if req.SnapshotCron == "" && req.KeepAliveCron == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请至少提供 snapshot_cron 或 keepalive_cron"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if req.SnapshotCron != "" {
 		if _, err := cron.ParseStandard(req.SnapshotCron); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "snapshot cron 表达式非法：" + err.Error()})
+			errcode.Respond(c, errcode.InvalidRequest.WithErr(err))
 			return
 		}
 		if err := h.auto.ReloadSnapshot(req.SnapshotCron); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 	}
 	if req.KeepAliveCron != "" {
 		if _, err := cron.ParseStandard(req.KeepAliveCron); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "keepalive cron 表达式非法：" + err.Error()})
+			errcode.Respond(c, errcode.InvalidRequest.WithErr(err))
 			return
 		}
 		if err := h.auto.ReloadKeepAlive(req.KeepAliveCron); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 	}

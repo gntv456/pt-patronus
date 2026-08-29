@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/monitor"
@@ -48,17 +49,17 @@ func (h *MonitorTerminalHandler) checkOrigin(r *http.Request) bool {
 func (h *MonitorTerminalHandler) Handle(c *gin.Context) {
 	uid, ok := h.tickets.Consume(c.Query("ticket"))
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired ticket"})
+		errcode.Respond(c, errcode.TicketInvalidOrExpired)
 		return
 	}
 	var user models.User
 	if err := h.db.First(&user, uid).Error; err != nil || !user.IsAdmin {
-		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin required"})
+		errcode.Respond(c, errcode.UnauthorizedOp)
 		return
 	}
 	id64, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil || id64 == 0 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	upgrader := websocket.Upgrader{

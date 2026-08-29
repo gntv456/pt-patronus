@@ -202,9 +202,13 @@ class _LongPTWheelViewState extends State<LongPTWheelView>
         width: size,
         height: size,
         child: Stack(alignment: Alignment.center, children: [
-          Transform.rotate(
-            angle: _displayRotation,
-            child: CustomPaint(size: Size(size, size), painter: _WheelPainter(_prizes)),
+          Semantics(
+            label: _spinning ? '转盘旋转中' : (_result != null && _result!.success && _result!.prize.isNotEmpty ? '大转盘，上次结果：${_result!.prize}' : '幸运大转盘，含 ${_prizes.length} 个奖品'),
+            excludeSemantics: true,
+            child: Transform.rotate(
+              angle: _displayRotation,
+              child: CustomPaint(size: Size(size, size), painter: _WheelPainter(_prizes)),
+            ),
           ),
           // 顶部红指针
           Positioned(

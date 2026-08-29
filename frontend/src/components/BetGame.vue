@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult, type BetRequest } from '@/api/entertainment'
 
 // 通用下注组件（批2）：按 game.id 后缀渲染不同玩法（押大小/双色球选号/翻面/红包/赛事押注）。
+const { t } = useI18n()
 const props = defineProps<{ siteId: number; game: string; name: string }>()
 
 const stats = ref<GameStats | null>(null)
@@ -31,12 +33,12 @@ async function doBet(req: BetRequest) {
   try {
     const res = await entertainmentApi.bet(props.siteId, props.game, req)
     last.value = res
-    if (res.success) ElMessage.success(res.prize || res.message || '完成')
-    else ElMessage.warning(res.message || '操作失败')
+    if (res.success) ElMessage.success(res.prize || res.message || t('bg.done'))
+    else ElMessage.warning(res.message || t('common.actionFailed'))
     await refreshStats()
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     playing.value = false
   }
@@ -54,39 +56,39 @@ onMounted(refreshStats)
   <div class="betgame">
     <div class="hero">
       <div class="hero-title">🎲 {{ name }}</div>
-      <div class="balance">余额 <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b></div>
+      <div class="balance">{{ t('bj.balance') }} <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b></div>
     </div>
 
     <section class="glass section">
       <template v-if="mode === 'bigsmall'">
-        <div class="sec-title">押注金额</div>
+        <div class="sec-title">{{ t('bg.stake') }}</div>
         <input v-model.number="amount" type="number" class="amt-input" min="1" />
         <div class="ops">
-          <button class="op big" :disabled="playing" @click="betBS('big')">押 大</button>
-          <button class="op small" :disabled="playing" @click="betBS('small')">押 小</button>
+          <button class="op big" :disabled="playing" @click="betBS('big')">{{ t('bg.big') }}</button>
+          <button class="op small" :disabled="playing" @click="betBS('small')">{{ t('bg.small') }}</button>
         </div>
       </template>
 
       <template v-else-if="mode === 'lotto'">
-        <div class="sec-title">选号（6 红 1 蓝，每注 166）</div>
-        <div class="row"><span>红球</span><input v-model="reds" class="txt" placeholder="1,2,3,4,5,6" /></div>
-        <div class="row"><span>蓝球</span><input v-model="blue" class="txt" placeholder="7" /></div>
-        <button class="op primary" :disabled="playing" @click="betLotto">{{ playing ? '投注中…' : '投注' }}</button>
+        <div class="sec-title">{{ t('bg.lottoTitle') }}</div>
+        <div class="row"><span>{{ t('bg.red') }}</span><input v-model="reds" class="txt" placeholder="1,2,3,4,5,6" /></div>
+        <div class="row"><span>{{ t('bg.blue') }}</span><input v-model="blue" class="txt" placeholder="7" /></div>
+        <button class="op primary" :disabled="playing" @click="betLotto">{{ playing ? t('bg.betting') : t('bg.bet') }}</button>
       </template>
 
       <template v-else-if="mode === 'flip'">
-        <div class="sec-title">翻面夺宝</div>
-        <button class="op primary" :disabled="playing" @click="betFlip">{{ playing ? '翻面中…' : '🃏 翻一张' }}</button>
+        <div class="sec-title">{{ t('bg.flipTitle') }}</div>
+        <button class="op primary" :disabled="playing" @click="betFlip">{{ playing ? t('bg.flipping') : t('bg.flip') }}</button>
       </template>
 
       <template v-else-if="mode === 'redpacket'">
-        <div class="sec-title">红包</div>
-        <button class="op primary" :disabled="playing" @click="betClaim">{{ playing ? '处理中…' : '🧧 领取红包' }}</button>
+        <div class="sec-title">{{ t('bg.redpack') }}</div>
+        <button class="op primary" :disabled="playing" @click="betClaim">{{ playing ? t('bg.working') : t('bg.claim') }}</button>
       </template>
 
       <template v-else-if="mode === 'bet'">
-        <div class="sec-title">赛事押注</div>
-        <p class="text-muted placeholder">押注表单待补抓 bet_odds.php，暂未支持自动押注。</p>
+        <div class="sec-title">{{ t('bg.matchTitle') }}</div>
+        <p class="text-muted placeholder">{{ t('bg.matchPlaceholder') }}</p>
       </template>
     </section>
 
@@ -94,7 +96,7 @@ onMounted(refreshStats)
       <span class="badge">{{ last.success ? '✓' : '✗' }}</span>
       <div class="r-body">
         <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
-        <span v-if="last.balance" class="r-bal">余额 {{ last.balance.toLocaleString() }}</span>
+        <span v-if="last.balance" class="r-bal">{{ t('bj.balance') }} {{ last.balance.toLocaleString() }}</span>
         <div v-if="last.message" class="r-msg text-muted">{{ last.message }}</div>
       </div>
     </div>

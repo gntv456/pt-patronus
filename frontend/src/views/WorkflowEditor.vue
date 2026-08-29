@@ -14,7 +14,9 @@ import { useWorkflowEditor } from '@/composables/useWorkflowEditor'
 import type { NodeInfo } from '@/api/workflow'
 
 const FLOW_ID = 'wf-editor'
+const { t } = useI18n()
 import { onMounted, onUnmounted, ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 
@@ -50,19 +52,19 @@ const filteredCategories = computed(() => {
 const cronDesc = computed(() => {
   if (triggerType.value !== 'timer') return ''
   const parts = timer.value.trim().split(/\s+/)
-  if (parts.length !== 5) return '格式应为 5 段：分 时 日 月 周'
+  if (parts.length !== 5) return t('wfe.cronBad')
   const [min, hour, dom, mon, dow] = parts
   const every = (v: string) => v === '*'
-  if (every(min) && every(hour)) return '每分钟执行'
-  if (min.startsWith('*/')) return `每 ${min.slice(2)} 分钟执行`
-  if (every(hour) && !min.includes('*')) return `每天每小时的第 ${min} 分钟执行`
-  if (hour.startsWith('*/')) return `每 ${hour.slice(2)} 小时的第 ${min || 0} 分钟执行`
-  if (every(dom) && every(mon) && every(dow) && !min.includes('*') && !hour.includes('*')) return `每天 ${hour.padStart(2,'0')}:${min.padStart(2,'0')} 执行`
+  if (every(min) && every(hour)) return t('wfe.cronEveryMin')
+  if (min.startsWith('*/')) return t('wfe.cronEveryNMin', { n: min.slice(2) })
+  if (every(hour) && !min.includes('*')) return t('wfe.cronHourlyAt', { min })
+  if (hour.startsWith('*/')) return t('wfe.cronEveryNHourAt', { h: hour.slice(2), min: min || 0 })
+  if (every(dom) && every(mon) && every(dow) && !min.includes('*') && !hour.includes('*')) return t('wfe.cronDailyAt', { time: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}` })
   if (dow !== '*' && !dow.includes('*')) {
-    const days = ['周日','周一','周二','周三','周四','周五','周六']
-    return `${days[+dow] || dow} ${hour.padStart(2,'0')}:${min.padStart(2,'0')} 执行`
+    const time = `${hour.padStart(2,'0')}:${min.padStart(2,'0')}`
+    return `${t(`wfe.dow.${+dow >= 0 && +dow <= 6 ? +dow : 'n'}`)} ${time} ${t('wfe.cronAtSuffix')}`
   }
-  return `自定义：${timer.value}`
+  return t('wfe.cronCustom', { expr: timer.value })
 })
 
 onMounted(load)
@@ -99,9 +101,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 onBeforeRouteLeave(async (_to, _from, next) => {
   if (!dirty.value) return next()
   try {
-    await ElMessageBox.confirm('有未保存的修改，确定离开吗？', '离开确认', {
-      confirmButtonText: '离开',
-      cancelButtonText: '继续编辑',
+    await ElMessageBox.confirm(t('wfe.dirtyLeaveMsg'), t('wfe.dirtyLeaveTitle'), {
+      confirmButtonText: t('wfe.leave'),
+      cancelButtonText: t('wfe.keepEditing'),
       type: 'warning',
     })
     next()
@@ -115,25 +117,25 @@ onBeforeRouteLeave(async (_to, _from, next) => {
   <div class="editor">
     <!-- 顶栏 -->
     <div class="toolbar glass-bar">
-      <el-button size="small" @click="router.push({ name: 'workflow' })">← 返回</el-button>
-      <span class="t-title">{{ wfId ? '编辑工作流' : '新建工作流' }}</span>
+      <el-button size="small" @click="router.push({ name: 'workflow' })">← {{ t('wfe.back') }}</el-button>
+      <span class="t-title">{{ wfId ? t('wfe.editWf') : t('wfe.newWf') }}</span>
       <div class="spacer"></div>
-      <el-button size="small" @click="openTemplates">📋 模板</el-button>
-      <el-button size="small" @click="exportJSON">⬆ 导出</el-button>
+      <el-button size="small" @click="openTemplates">📋 {{ t('wfe.templates') }}</el-button>
+      <el-button size="small" @click="exportJSON">⬆ {{ t('wfe.export') }}</el-button>
       <label class="import-btn">
-        ⬇ 导入
+        ⬇ {{ t('wfe.import') }}
         <input type="file" accept="application/json" hidden @change="onImportFile" />
       </label>
-      <el-button size="small" :loading="running" type="primary" @click="run">▶ 运行</el-button>
-      <el-button v-if="wfId" size="small" @click="openHistory">历史</el-button>
-      <el-button size="small" type="success" :loading="saving" @click="save">💾 保存</el-button>
+      <el-button size="small" :loading="running" type="primary" @click="run">▶ {{ t('wfe.run') }}</el-button>
+      <el-button v-if="wfId" size="small" @click="openHistory">{{ t('wfe.history') }}</el-button>
+      <el-button size="small" type="success" :loading="saving" @click="save">💾 {{ t('common.save') }}</el-button>
     </div>
 
     <div class="body">
       <!-- 左：节点库 -->
       <aside class="palette glass">
-        <div class="p-title">节点库（拖入画布）</div>
-        <el-input v-model="paletteSearch" size="small" placeholder="搜索节点…" clearable style="margin-bottom: 8px" />
+        <div class="p-title">{{ t('wfe.palette') }}</div>
+        <el-input v-model="paletteSearch" size="small" :placeholder="t('wfe.searchNode')" clearable style="margin-bottom: 8px" />
         <div v-if="loadError" class="load-err">{{ loadError }}</div>
         <div v-else-if="Object.keys(filteredCategories).length" class="cats">
           <div v-for="(items, cat) in filteredCategories" :key="cat" class="cat">
@@ -150,7 +152,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
             </div>
           </div>
         </div>
-        <div v-else-if="!loadError" class="text-muted small" style="padding: 12px; text-align: center">未找到匹配的节点</div>
+        <div v-else-if="!loadError" class="text-muted small" style="padding: 12px; text-align: center">{{ t('wfe.noNodeMatch') }}</div>
       </aside>
 
       <!-- 中：画布 -->
@@ -167,63 +169,63 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 
       <!-- 右：配置面板 -->
       <aside class="config glass">
-        <div class="p-title">工作流设置</div>
+        <div class="p-title">{{ t('wfe.wfSettings') }}</div>
         <div class="wf-form">
           <div class="field">
-            <label>名称</label>
-            <el-input v-model="name" size="small" placeholder="如：自动追剧" />
+            <label>{{ t('common.name') }}</label>
+            <el-input v-model="name" size="small" :placeholder="t('wfe.namePh')" />
           </div>
           <div class="field">
-            <label>说明</label>
+            <label>{{ t('wfe.desc') }}</label>
             <el-input v-model="description" size="small" />
           </div>
           <div class="field">
-            <label>触发方式</label>
+            <label>{{ t('wfe.trigger') }}</label>
             <el-select v-model="triggerType" size="small" style="width: 100%">
-              <el-option label="手动" value="manual" />
-              <el-option label="定时 (cron)" value="timer" />
-              <el-option label="事件" value="event" />
+              <el-option :label="t('wfe.trigManual')" value="manual" />
+              <el-option :label="t('wfe.trigTimer')" value="timer" />
+              <el-option :label="t('wfe.trigEvent')" value="event" />
             </el-select>
           </div>
           <div v-if="triggerType === 'timer'" class="field">
-            <label>Cron 表达式</label>
+            <label>{{ t('wfe.cronExpr') }}</label>
             <el-input v-model="timer" size="small" placeholder="*/30 * * * *" />
-            <div class="text-muted small">5 段式：分 时 日 月 周 · <b>{{ cronDesc }}</b></div>
+            <div class="text-muted small">{{ t('wfe.cron5') }} · <b>{{ cronDesc }}</b></div>
           </div>
           <div v-if="triggerType === 'event'" class="field">
-            <label>事件类型</label>
-            <el-input v-model="eventType" size="small" placeholder="如 download.completed" />
+            <label>{{ t('wfe.eventType') }}</label>
+            <el-input v-model="eventType" size="small" :placeholder="t('wfe.eventPh')" />
           </div>
           <div class="field row">
             <el-switch v-model="enabled" />
-            <span class="small">启用（注册触发器）</span>
+            <span class="small">{{ t('wfe.enableReg') }}</span>
           </div>
         </div>
 
         <div class="divider"></div>
 
         <div v-if="selected" class="node-cfg">
-          <div class="p-title">节点配置</div>
+          <div class="p-title">{{ t('wfe.nodeCfg') }}</div>
           <div class="field">
-            <label>节点名称</label>
+            <label>{{ t('wfe.nodeName') }}</label>
             <el-input v-model="(selected.data as any).name" size="small" />
           </div>
           <NodeParamForm
             v-if="(selected.data as any).info"
             :schema="(selected.data as any).info.param_schema"
-            :params="(selected.data as any).params"
+            v-model:params="(selected.data as any).params"
           />
-          <el-button size="small" type="danger" plain style="margin-top: 12px" @click="deleteSelected">删除节点</el-button>
+          <el-button size="small" type="danger" plain style="margin-top: 12px" @click="deleteSelected">{{ t('wfe.deleteNode') }}</el-button>
         </div>
-        <div v-else class="text-muted small pad">选中画布上的节点以配置参数。</div>
+        <div v-else class="text-muted small pad">{{ t('wfe.selectNodeHint') }}</div>
       </aside>
     </div>
 
     <!-- 运行结果 / 历史详情 -->
-    <el-dialog v-model="showResult" title="执行结果" width="640px">
+    <el-dialog v-model="showResult" :title="t('wfe.resultTitle')" width="640px">
       <div v-if="runResult">
         <div class="text-muted small" style="margin-bottom: 8px">
-          状态：{{ runResult.state }} · 耗时 {{ runResult.duration_ms }}ms · {{ runResult.result }}
+          {{ t('wfe.resultMeta', { state: runResult.state, ms: runResult.duration_ms, result: runResult.result }) }}
         </div>
         <el-timeline>
           <el-timeline-item
@@ -241,19 +243,19 @@ onBeforeRouteLeave(async (_to, _from, next) => {
     </el-dialog>
 
     <!-- 历史 -->
-    <el-dialog v-model="showHistory" title="运行历史" width="560px">
+    <el-dialog v-model="showHistory" :title="t('wfe.historyTitle')" width="560px">
       <el-table :data="history" size="small" @row-click="(r: WorkflowRun) => viewRun(r.id)">
         <el-table-column prop="id" label="#" width="60" />
-        <el-table-column prop="state" label="状态" width="90" />
-        <el-table-column prop="trigger" label="触发" width="90" />
-        <el-table-column label="时间">
+        <el-table-column prop="state" :label="t('cloud.status')" width="90" />
+        <el-table-column prop="trigger" :label="t('wfe.triggerCol')" width="90" />
+        <el-table-column :label="t('wfe.time')">
           <template #default="{ row }">{{ new Date(row.started_at).toLocaleString('zh-CN', { hour12: false }) }}</template>
         </el-table-column>
       </el-table>
     </el-dialog>
 
     <!-- 模板 -->
-    <el-dialog v-model="showTemplates" title="从模板创建" width="560px">
+    <el-dialog v-model="showTemplates" :title="t('wfe.tplTitle')" width="560px">
       <div class="tpl-list">
         <div v-for="t in templates" :key="t.key" class="tpl-item" @click="applyTemplate(t)">
           <div class="tpl-name">{{ t.name }} <span class="tpl-cat">{{ t.category }}</span></div>

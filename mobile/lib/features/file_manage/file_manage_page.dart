@@ -792,6 +792,7 @@ class _FileManagePageState extends State<FileManagePage> {
       floatingActionButton: (!hasStorage || readOnly)
           ? null
           : FloatingActionButton(
+              tooltip: '上传文件',
               onPressed: _busy ? null : _upload,
               child: const Icon(Icons.upload_file),
             ),

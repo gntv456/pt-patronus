@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import DeviceCard from '@/components/monitor/DeviceCard.vue'
@@ -28,6 +29,7 @@ import { useDeploy } from './useDeploy'
 import { useDeviceCrud } from './useDeviceCrud'
 // 在线终端抽屉已自管理 WebSocket（useTerminal 不再需要）
 
+const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
 type MonitorTab = 'host' | 'nas' | 'camera' | 'http' | 'tcp' | 'process' | 'script'
@@ -99,7 +101,7 @@ async function loadAll() {
     }))
     error.value = ''
   } catch (e) {
-    if (firstLoad.value) error.value = (e as Error).message || '加载失败'
+    if (firstLoad.value) error.value = (e as Error).message || t('common.loadFailed')
   } finally {
     firstLoad.value = false
   }
@@ -159,23 +161,23 @@ function onVisibilityChange() {
 <template>
   <div class="nas-page">
     <header class="np-head glass-bar">
-      <div class="np-title"><h2>NAS 运维控制台</h2></div>
+      <div class="np-title"><h2>{{ t('nas.title') }}</h2></div>
       <div class="np-actions">
-        <el-button @click="helpVisible = true">使用说明</el-button>
+        <el-button @click="helpVisible = true">{{ t('nas.help') }}</el-button>
         <el-button :type="unreadCount ? 'danger' : 'default'" @click="alertVisible = true">
-          告警<span v-if="unreadCount" class="badge">{{ unreadCount }}</span>
+          {{ t('nas.alerts') }}<span v-if="unreadCount" class="badge">{{ unreadCount }}</span>
         </el-button>
-        <el-button v-if="auth.isAdmin" @click="openCredentialCenter">凭据</el-button>
-        <el-button v-if="auth.isAdmin" @click="openConfigCenter">配置</el-button>
+        <el-button v-if="auth.isAdmin" @click="openCredentialCenter">{{ t('nas.credentials') }}</el-button>
+        <el-button v-if="auth.isAdmin" @click="openConfigCenter">{{ t('trakt.config') }}</el-button>
         <el-button v-if="auth.isAdmin" @click="agentVisible = true">Agent</el-button>
-        <el-button @click="openAddMonitorItem()">+ 添加监控项</el-button>
-        <el-button type="primary" @click="openAddAsset">+ 添加设备</el-button>
+        <el-button @click="openAddMonitorItem()">{{ t('nas.addMonitorItem') }}</el-button>
+        <el-button type="primary" @click="openAddAsset">{{ t('nas.addAsset') }}</el-button>
       </div>
     </header>
 
     <div v-if="error" class="empty glass error-state">
       <div class="err-text">⚠ {{ error }}</div>
-      <el-button size="small" @click="retry">重试</el-button>
+      <el-button size="small" @click="retry">{{ t('common.retry') }}</el-button>
     </div>
 
     <NasOpsGrid v-if="!error" :active-workspace="activeWorkspace" :host-count="hostCount" :monitor-count="monitorCount"
@@ -204,10 +206,10 @@ function onVisibilityChange() {
             @edit="openEdit" @detail="onDetail" @probe="onProbe" @remove="onRemove" @preview="onPreview" @terminal="openTerminal" />
         </div>
         <div v-else class="empty-state glass">
-          <p style="font-size: var(--fs-hero);margin-bottom:8px">ð¦</p>
-          <p>暂无{{ tab.label }}{{ activeWorkspace === 'monitor' ? '监控项' : '设备' }}</p>
+          <p style="font-size: var(--fs-hero);margin-bottom:8px">📦</p>
+          <p>{{ t('transfer.noRecords') }}{{ tab.label }}{{ activeWorkspace === 'monitor' ? t('nas.monitorItem') : t('nas.device') }}</p>
           <el-button type="primary" @click="activeWorkspace === 'monitor' ? openAddMonitorItem(tab.name) : openAddAsset()">
-            {{ activeWorkspace === 'monitor' ? '添加监控项' : '添加第一台' }}
+            {{ activeWorkspace === 'monitor' ? t('nas.addMonitorItemAction') : t('nas.addFirst') }}
           </el-button>
         </div>
       </el-tab-pane>
@@ -220,7 +222,7 @@ function onVisibilityChange() {
     <AgentManager v-model:visible="agentVisible" @changed="loadAll" />
     <DeviceDetail v-model:visible="detailVisible" :target="detailTarget" />
 
-    <NasDeployDrawer :visible="deployVisible" :config-id="deployConfigId" :form="deployForm" :profiles="deployProfiles"
+    <NasDeployDrawer :visible="deployVisible" :config-id="deployConfigId" v-model:form="deployForm" :profiles="deployProfiles"
       :runs="deployRuns" :steps="deploySteps" :ssh-targets="sshTargets" :deploy-command="buildDeployCommand()"
       @update:visible="deployVisible = $event" @update:config-id="deployConfigId = $event"
       @load-profile="() => loadDeployProfile(deployConfigId)" @save-profile="saveDeployProfile" @run="runDeployCommand" />
@@ -229,26 +231,26 @@ function onVisibilityChange() {
       @update:visible="terminalVisible = $event" @closed="terminalVisible = false" />
 
     <NasCredentialDrawer :drawer-visible="credentialVisible" :credentials="credentials" :form-visible="credentialFormVisible"
-      :editing="editingCredential" :form="credentialForm" :credential-usage="credentialUsage"
+      :editing="editingCredential" v-model:form="credentialForm" :credential-usage="credentialUsage"
       @update:drawer-visible="credentialVisible = $event" @update:form-visible="credentialFormVisible = $event"
       @add="openCredentialAdd" @edit="openCredentialEdit" @remove="removeCredential" @save="saveCredential" />
 
     <NasConfigDrawer :drawer-visible="configVisible" :configs="opsConfigs" :history="configHistory" :history-target="configHistoryTarget"
-      :form-visible="configFormVisible" :editing="editingConfig" :form="configForm"
+      :form-visible="configFormVisible" :editing="editingConfig" v-model:form="configForm"
       @update:drawer-visible="configVisible = $event" @update:form-visible="configFormVisible = $event"
       @add="openConfigAdd" @edit="openConfigEdit" @remove="removeConfig" @show-history="showConfigHistory" @save="saveConfig" />
 
     <NasHelpDialog v-model:visible="helpVisible" />
 
-    <el-dialog v-model="previewVisible" :title="previewTarget?.name + ' · 实时画面'" width="640px" destroy-on-close>
+    <el-dialog v-model="previewVisible" :title="previewTarget?.name + ' · ' + t('nas.liveView')" width="640px" destroy-on-close>
       <RtspPlayer v-if="previewTarget" :target="previewTarget" />
     </el-dialog>
 
     <el-drawer v-model="alertVisible" size="420px" :with-header="false" :body-style="{ padding: '0', display: 'flex', flexDirection: 'column' }">
       <div class="alert-drawer">
         <div class="alert-drawer-head">
-          <span class="alert-drawer-title">告警记录</span>
-          <el-button size="small" type="danger" plain :disabled="!alerts.length" @click="onClearAlerts">清空记录</el-button>
+          <span class="alert-drawer-title">{{ t('nas.alertHistory') }}</span>
+          <el-button size="small" type="danger" plain :disabled="!alerts.length" @click="onClearAlerts">{{ t('nas.clearHistory') }}</el-button>
         </div>
         <div class="alert-drawer-body">
           <AlertList :alerts="alerts" @read="onReadAlert" @ack="onAckAlert" @silence="onSilenceAlert" @del="onDeleteAlert" />

@@ -362,8 +362,8 @@ class _AssistantPageState extends State<AssistantPage> {
           ),
           const SizedBox(width: 8),
           _sending
-              ? FloatingActionButton.small(onPressed: _api.cancel, backgroundColor: PTColors.danger, child: const Icon(Icons.stop, color: Colors.white))
-              : FloatingActionButton.small(onPressed: _send, child: const Icon(Icons.send)),
+              ? FloatingActionButton.small(tooltip: '停止生成', onPressed: _api.cancel, backgroundColor: PTColors.danger, child: const Icon(Icons.stop, color: Colors.white))
+              : FloatingActionButton.small(tooltip: '发送消息', onPressed: _send, child: const Icon(Icons.send)),
         ]),
       ),
     );

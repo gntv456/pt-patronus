@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // PT监护室单张站点卡片：状态徽标、图标、站庆彩带 canvas。
+import { useI18n } from 'vue-i18n'
 import { safeUrl } from '@/utils/safeUrl'
 import {
   getAnniversaryDisplayText,
@@ -11,6 +12,9 @@ import {
 import SptIcon from '@/components/SptIcon.vue'
 import type { SaveptSiteCard as SiteCard } from '@/api/savept'
 
+const { t } = useI18n()
+// 服务端 open/close_time 缺失时下发的占位值（savept.ts 同款），判断时须比对原始值而非本地化文案
+const sscUnknownSentinel = '\u672a\u77e5' // 未知：服务端占位值，须比对原始值而非本地化文案
 const props = defineProps<{ card: SiteCard; year: string }>()
 const emit = defineEmits<{ (e: 'celebrationRef', key: string, el: Element | null): void }>()
 
@@ -59,8 +63,8 @@ function mpMeta(card: SiteCard) {
                       <span class="spt-card__name-dot" :style="{ backgroundColor: statusMeta(card).color }" />
                       <div class="spt-card__name">{{ card.name }}</div>
                     </div>
-                    <div class="spt-card__sub">开站 {{ card.open_time || '未知' }}<template v-if="card.close_time && card.close_time !== '未知'"> · 关站 {{ card.close_time }}</template></div>
-                    <div v-if="card.fault_duration" class="spt-card__sub spt-card__fault">⏱ 抢救 {{ card.fault_duration }}</div>
+                    <div class="spt-card__sub">{{ t('ssc.open', { v: card.open_time || t('ssc.unknown') }) }}<template v-if="card.close_time && card.close_time !== sscUnknownSentinel"> {{ t('ssc.close', { v: card.close_time }) }}</template></div>
+                    <div v-if="card.fault_duration" class="spt-card__sub spt-card__fault">⏱ {{ t('ssc.rescue', { v: card.fault_duration }) }}</div>
                     <div class="spt-card__sub spt-card__sub--mp">
                       <span v-if="card.local_site_name" class="spt-card__mp-text">{{ card.local_site_name }}</span>
                       <span class="spt-tag spt-tag--mp" :class="`spt-tag--mp-${mpMeta(card).chipClass}`">

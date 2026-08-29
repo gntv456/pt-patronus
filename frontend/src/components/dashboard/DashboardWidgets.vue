@@ -2,12 +2,12 @@
 // 部件目录导出（script setup 不允许值导出，放普通 script 块）。
 export interface WidgetDef {
   key: string
-  label: string
-  desc: string
+  labelKey: string
+  descKey: string
   defaultSize: 'compact' | 'wide' | 'focus'
 }
 export const WIDGET_CATALOG: WidgetDef[] = [
-  { key: 'quick_tools', label: '快捷工具', desc: 'TOTP 验证码 / AES 密钥 / 网络测试 / 种子识别', defaultSize: 'wide' },
+  { key: 'quick_tools', labelKey: 'dwg.wQuickTools', descKey: 'dwg.wQuickToolsDesc', defaultSize: 'wide' },
 ]
 </script>
 
@@ -16,6 +16,7 @@ export const WIDGET_CATALOG: WidgetDef[] = [
 // 移动端用默认顺序兜底）、尺寸预设（紧凑/横向/焦点）、显示/隐藏。
 // 布局存用户偏好域 dashboard（useUserPrefs → localStorage + 服务端跨浏览器同步）。
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUserPrefs } from '@/composables/useUserPrefs'
 import DashboardQuickTools from './DashboardQuickTools.vue'
 
@@ -88,19 +89,20 @@ function sizeClass(s: string) {
   return `w-${s}`
 }
 
-const sizeLabel: Record<string, string> = { compact: '紧凑', wide: '横向', focus: '焦点' }
+const { t } = useI18n()
+const sizeLabel = computed<Record<string, string>>(() => ({ compact: t('dwg.sizeCompact'), wide: t('dwg.sizeWide'), focus: t('dwg.sizeFocus') }))
 </script>
 
 <template>
   <div class="widgets-zone">
     <!-- 部件区标题栏：常驻「部件定制」入口（对标 MSaber 右下角首页定制），空态另有引导 -->
     <div class="widgets-bar">
-      <span class="widgets-bar-title">自定义部件</span>
-      <el-button size="small" @click="customizeOpen = true">部件定制</el-button>
+      <span class="widgets-bar-title">{{ t('dwg.barTitle') }}</span>
+      <el-button size="small" @click="customizeOpen = true">{{ t('dwg.customize') }}</el-button>
     </div>
     <div v-if="!visible.length" class="widgets-empty glass">
-      首页部件区为空，
-      <el-button link type="primary" @click="customizeOpen = true">添加部件</el-button>
+      {{ t('dwg.emptyPre') }}
+      <el-button link type="primary" @click="customizeOpen = true">{{ t('dwg.addWidget') }}</el-button>
     </div>
     <div class="widgets-grid">
       <div
@@ -118,12 +120,12 @@ const sizeLabel: Record<string, string> = { compact: '紧凑', wide: '横向', f
     </div>
 
     <!-- 部件定制弹窗 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="customizeOpen" title="首页部件定制" width="480px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="customizeOpen" :title="t('dwg.customizeTitle')" width="480px">
       <div class="cat-list">
         <div v-for="c in catalog" :key="c.key" class="cat-row">
           <div class="cat-info">
-            <span class="cat-name">{{ c.label }}</span>
-            <span class="cat-desc">{{ c.desc }}</span>
+            <span class="cat-name">{{ t(c.labelKey) }}</span>
+            <span class="cat-desc">{{ t(c.descKey) }}</span>
           </div>
           <div class="cat-ops">
             <el-button
@@ -133,13 +135,13 @@ const sizeLabel: Record<string, string> = { compact: '紧凑', wide: '横向', f
               @click="cycleSize(c.key)"
             >{{ sizeLabel[w.size] }}</el-button>
             <el-button size="small" :type="c.on ? 'danger' : 'primary'" plain @click="toggleWidget(c.key)">
-              {{ c.on ? '移除' : '添加' }}
+              {{ c.on ? t('common.remove') : t('common.add') }}
             </el-button>
           </div>
         </div>
       </div>
       <div class="cat-hint">
-        拖拽部件卡片可排序（移动端在弹窗内暂用默认顺序）；布局随账号同步到所有浏览器。
+        {{ t('dwg.dragHint') }}
       </div>
     </el-dialog>
   </div>

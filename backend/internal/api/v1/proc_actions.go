@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"strconv"
 
@@ -20,11 +21,11 @@ func (h *ProcHandler) Kill(c *gin.Context) {
 	}
 	var in procKillRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if !in.Confirm {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "action requires confirmation", "code": "confirm_required"})
+		errcode.Respond(c, errcode.ConfirmRequired)
 		return
 	}
 	if protectedPIDs[in.PID] {
@@ -40,7 +41,7 @@ func (h *ProcHandler) Kill(c *gin.Context) {
 	cmd := fmt.Sprintf("kill -%s %s", sig, strconv.FormatUint(uint64(in.PID), 10))
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {

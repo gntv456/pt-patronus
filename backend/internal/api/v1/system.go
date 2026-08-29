@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/core/log"
 	"github.com/hxpt/ptpatronus/internal/sysinfo"
 	"github.com/hxpt/ptpatronus/internal/update"
@@ -84,7 +85,7 @@ func (h *SystemHandler) UpdateCheck(c *gin.Context) {
 	defer cancel()
 	res, err := h.update.Check(ctx, platform, clientVer)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "检查更新失败", "detail": err.Error()})
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -94,12 +95,12 @@ func (h *SystemHandler) UpdateCheck(c *gin.Context) {
 // 请求体即 Manifest；latestVersion 为空表示清除自托管清单、回退官方源。
 func (h *SystemHandler) SetManifest(c *gin.Context) {
 	if h.update == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "更新服务未启用"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	var m update.Manifest
 	if err := c.ShouldBindJSON(&m); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请求体格式错误", "detail": err.Error()})
+		errcode.Respond(c, errcode.InvalidRequest.WithErr(err))
 		return
 	}
 	var overlay *update.Manifest
@@ -107,7 +108,7 @@ func (h *SystemHandler) SetManifest(c *gin.Context) {
 		overlay = &m
 	}
 	if err := h.update.SetOverlay(overlay); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "写入失败", "detail": err.Error()})
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "cleared": overlay == nil})

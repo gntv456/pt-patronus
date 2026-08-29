@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"log/slog"
 	"time"
 
@@ -268,9 +269,11 @@ func (c *DashboardChain) SyncAll(ctx context.Context) (*DashboardOverview, error
 		st := &sites[i]
 		ui, e := c.siteCh.UserInfo(ctx, st)
 		if e != nil {
+			bizmetrics.SiteSyncInc(bizmetrics.SyncFail)
 			slog.Warn("dashboard sync site failed", "site", st.Name, "err", e)
 			continue
 		}
+		bizmetrics.SiteSyncInc(bizmetrics.SyncSuccess)
 		c.recordStat(st, ui)
 		slog.Info("dashboard synced", "site", st.Name, "uploaded", ui.Uploaded, "ratio", ui.Ratio)
 	}
@@ -285,8 +288,10 @@ func (c *DashboardChain) SyncOne(ctx context.Context, siteID uint) (*DashboardOv
 	}
 	ui, e := c.siteCh.UserInfo(ctx, st)
 	if e != nil {
+		bizmetrics.SiteSyncInc(bizmetrics.SyncFail)
 		return nil, e
 	}
+	bizmetrics.SiteSyncInc(bizmetrics.SyncSuccess)
 	c.recordStat(st, ui)
 	slog.Info("dashboard synced one", "site", st.Name, "uploaded", ui.Uploaded, "ratio", ui.Ratio)
 	return c.Overview(ctx)

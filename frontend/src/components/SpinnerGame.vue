@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
 
@@ -14,6 +15,7 @@ const decorSegments = ['🎁', '🪙', '✨', '🎫', '🍀', '💎', '👑', '�
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const stats = ref<GameStats | null>(null)
+const { t } = useI18n()
 const prizes = ref<PrizeDef[]>([])
 const records = ref<GameRecord[]>([])
 const playing = ref(false)
@@ -23,7 +25,7 @@ const rotation = ref(0)
 // 转盘扇区：有真奖品用奖品名，否则用装饰 emoji
 const segments = computed(() =>
   prizes.value.length
-    ? prizes.value.map((p) => p.name || '奖品')
+    ? prizes.value.map((p) => p.name || t('sp.prize'))
     : decorSegments.slice(),
 )
 
@@ -33,7 +35,7 @@ const groupedPrizes = computed(() => {
   if (!ps.length) return []
   const m = new Map<string, { name: string; n: number; win: boolean }>()
   for (const p of ps) {
-    const key = p.prize_name || '未知'
+    const key = p.prize_name || t('sp.unknown')
     const e = m.get(key) ?? { name: key, n: 0, win: p.is_win }
     e.n++
     if (p.is_win) e.win = true
@@ -74,15 +76,15 @@ async function draw(count: number) {
         const summary = groups.map((g) => `${g.name} ×${g.n}`).join('，')
         ElMessage.success(wins.length ? `🎉 ${summary}` : summary)
       } else {
-        ElMessage.success(res.prize ? `🎉 ${res.prize}` : (res.message || '完成'))
+        ElMessage.success(res.prize ? `🎉 ${res.prize}` : (res.message || t('sp.done')))
       }
     } else {
-      ElMessage.warning(res.message || '抽奖失败')
+      ElMessage.warning(res.message || t('sp.drawFailed'))
     }
     await Promise.all([refreshStats(), refreshHistory()])
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     playing.value = false
   }
@@ -151,7 +153,7 @@ onMounted(async () => {
   <div class="spinner">
     <div class="hero">
       <div class="hero-title">🎰 {{ name }}</div>
-      <div class="balance">余额 <b>{{ heroBalance }}</b></div>
+      <div class="balance">{{ t('bs.balance') }} <b>{{ heroBalance }}</b></div>
     </div>
 
     <div class="wheel-wrap">
@@ -163,16 +165,16 @@ onMounted(async () => {
         <span v-if="playing" class="spin-icon" />
         <template v-else>
           <span class="hub-emoji">🎲</span>
-          <span class="hub-text">开始<br />抽奖</span>
+          <span class="hub-text">{{ t('sp.hub') }}</span>
         </template>
       </button>
     </div>
 
     <section class="glass section ops">
-      <button class="op primary" :disabled="playing" @click="draw(1)">{{ playing ? '抽奖中…' : '立即抽奖' }}</button>
-      <button class="op" :disabled="playing" @click="draw(10)">连抽 10 次</button>
-      <button class="op" :disabled="playing" @click="draw(20)">连抽 20 次</button>
-      <button class="op" :disabled="playing" @click="draw(50)">连抽 50 次</button>
+      <button class="op primary" :disabled="playing" @click="draw(1)">{{ playing ? t('sp.drawing') : t('sp.drawNow') }}</button>
+      <button class="op" :disabled="playing" @click="draw(10)">{{ t('sp.multi', { n: 10 }) }}</button>
+      <button class="op" :disabled="playing" @click="draw(20)">{{ t('sp.multi', { n: 20 }) }}</button>
+      <button class="op" :disabled="playing" @click="draw(50)">{{ t('sp.multi', { n: 50 }) }}</button>
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
@@ -188,22 +190,22 @@ onMounted(async () => {
         <template v-else>
           <span v-if="last.prize" class="r-prize">{{ last.prize }}</span>
         </template>
-        <span v-if="last.balance" class="r-bal">余额 {{ last.balance.toLocaleString() }}</span>
+        <span v-if="last.balance" class="r-bal">{{ t('bs.balance') }} {{ last.balance.toLocaleString() }}</span>
         <div v-if="last.message" class="r-msg text-muted">{{ last.message }}</div>
       </div>
     </div>
 
     <section v-if="prizes.length" class="glass section">
-      <div class="sec-title">奖品</div>
+      <div class="sec-title">{{ t('sp.prizes') }}</div>
       <div class="prize-strip">
         <div v-for="p in prizes" :key="p.id" class="prize-card">{{ p.name }}</div>
       </div>
     </section>
 
     <section v-if="records.length" class="glass section">
-      <div class="sec-title">抽奖记录</div>
+      <div class="sec-title">{{ t('sp.records') }}</div>
       <div v-for="(r, i) in records.slice(0, 10)" :key="i" class="rec-row">
-        <span :class="{ muted: r.prize_name === '未中奖' }">{{ r.prize_name }}</span>
+        <span :class="{ muted: r.prize_name === t('sp.noWin') }">{{ r.prize_name }}</span>
         <span v-if="r.amount" class="rec-amt">×{{ r.amount }}</span>
         <span class="text-muted rec-time">{{ r.created_at }}</span>
       </div>

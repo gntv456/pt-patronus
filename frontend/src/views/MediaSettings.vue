@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { mediaConfigApi, type MediaSourceConfig } from '@/api/media'
 
+const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 // 媒体源设置：TMDB/豆瓣/Bangumi 凭据。secret 回显脱敏；提交时空字段=不修改（可只改部分）。
@@ -25,7 +27,7 @@ async function load() {
     config.value = await mediaConfigApi.get()
     tmdbDomain.value = config.value.tmdb_api_domain || ''
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载失败')
+    ElMessage.error((e as Error).message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -41,14 +43,14 @@ async function save() {
       douban_app_key: doubanAppKey.value.trim(),
       bangumi_token: bangumiToken.value.trim(),
     })
-    ElMessage.success('已保存，即时生效')
+    ElMessage.success(t('mediasettings.savedNow'))
     tmdbKey.value = ''
     doubanSecret.value = ''
     doubanAppKey.value = ''
     bangumiToken.value = ''
     await load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
+    ElMessage.error((e as Error).message || t('common.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -56,7 +58,7 @@ async function save() {
 
 // 配置态文案：secret 已配置时显脱敏值，否则「未配置」。
 function statusText(masked: string, configured: boolean) {
-  return configured ? `已配置 ${masked}` : '未配置'
+  return configured ? t('reseed.configuredAs', { v: masked }) : t('reseed.notConfigured')
 }
 
 onMounted(load)
@@ -65,64 +67,62 @@ onMounted(load)
 <template>
   <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 v-if="!props.embedded" class="title">媒体源设置</h2>
-      <h3 v-else class="title embedded-title">媒体源设置</h3>
-      <el-button v-if="!props.embedded" size="small" @click="router.push('/search')">返回搜索</el-button>
+      <h2 v-if="!props.embedded" class="title">{{ t('mediasettings.title') }}</h2>
+      <h3 v-else class="title embedded-title">{{ t('mediasettings.title') }}</h3>
+      <el-button v-if="!props.embedded" size="small" @click="router.push('/search')">{{ t('mediasettings.backToSearch') }}</el-button>
     </div>
 
     <div v-loading="loading" class="card glass">
       <div class="hint">
-        影视搜索 / 推荐从这里取 TMDB、豆瓣、Bangumi 的凭据。留空 = 沿用默认（不修改）；
-        国内访问 <code>api.themoviedb.org</code> 超时时，可在「TMDB 域名 / 镜像」填一个可达镜像。
-        保存后即时生效，无需重启。
+        {{ t('mediasettings.hint1') }}<code>api.themoviedb.org</code>{{ t('mediasettings.hint2') }}{{ t('mediasettings.hint3') }}
       </div>
 
       <!-- TMDB -->
       <div class="group">
-        <div class="group-title">TMDB <span class="muted">影视主源 · 国际片元数据</span></div>
+        <div class="group-title">TMDB <span class="muted">{{ t('mediasettings.tmdbDesc') }}</span></div>
         <div class="field">
           <label>API Key</label>
-          <el-input v-model="tmdbKey" type="password" show-password clearable placeholder="留空不修改" />
+          <el-input v-model="tmdbKey" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyKeep')" />
           <span class="chip ok" v-if="config?.tmdb_api_key_configured">{{ statusText(config.tmdb_api_key, true) }}</span>
-          <span class="chip warn" v-else>未配置</span>
+          <span class="chip warn" v-else>{{ t('reseed.notConfigured') }}</span>
         </div>
         <div class="field">
-          <label>域名 / 镜像</label>
+          <label>{{ t('mediasettings.f.tmdbDomain') }}</label>
           <el-input v-model="tmdbDomain" clearable placeholder="api.themoviedb.org" />
-          <span class="muted">官方 api.themoviedb.org 国内常被墙；可换镜像</span>
+          <span class="muted">{{ t('mediasettings.f.tmdbDomainHint') }}</span>
         </div>
       </div>
 
       <!-- 豆瓣 -->
       <div class="group">
-        <div class="group-title">豆瓣 <span class="muted">国产影视 · 零配置可用（公开默认凭据）</span></div>
+        <div class="group-title">{{ t('mediasettings.douban') }} <span class="muted">{{ t('mediasettings.doubanDesc') }}</span></div>
         <div class="field">
-          <label>Secret（签名密钥）</label>
-          <el-input v-model="doubanSecret" type="password" show-password clearable placeholder="留空用公开默认" />
+          <label>{{ t('mediasettings.f.doubanSecret') }}</label>
+          <el-input v-model="doubanSecret" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyDefault')" />
           <span class="chip ok" v-if="config?.douban_secret_configured">{{ statusText(config.douban_secret, true) }}</span>
-          <span class="chip warn" v-else>未配置（用公开默认）</span>
+          <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
         </div>
         <div class="field">
-          <label>AppKey</label>
-          <el-input v-model="doubanAppKey" type="password" show-password clearable placeholder="留空用公开默认" />
+          <label>{{ t('mediasettings.f.doubanAppKey') }}</label>
+          <el-input v-model="doubanAppKey" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyDefault')" />
           <span class="chip ok" v-if="config?.douban_app_key_configured">{{ statusText(config.douban_app_key, true) }}</span>
-          <span class="chip warn" v-else>未配置（用公开默认）</span>
+          <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
         </div>
       </div>
 
       <!-- Bangumi -->
       <div class="group">
-        <div class="group-title">Bangumi <span class="muted">动漫 · 匿名可用（可选 token 提速）</span></div>
+        <div class="group-title">Bangumi <span class="muted">{{ t('mediasettings.bangumiDesc') }}</span></div>
         <div class="field">
-          <label>Token（可选）</label>
-          <el-input v-model="bangumiToken" type="password" show-password clearable placeholder="留空走匿名配额" />
+          <label>{{ t('mediasettings.f.bangumiToken') }}</label>
+          <el-input v-model="bangumiToken" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyAnonymous')" />
           <span class="chip ok" v-if="config?.bangumi_token_configured">{{ statusText(config.bangumi_token, true) }}</span>
-          <span class="chip warn" v-else>未配置（匿名）</span>
+          <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredAnonymous') }}</span>
         </div>
       </div>
 
       <div class="actions">
-        <el-button type="primary" size="large" :loading="saving" @click="save">保存（即时生效）</el-button>
+        <el-button type="primary" size="large" :loading="saving" @click="save">{{ t('mediasettings.saveNow') }}</el-button>
       </div>
     </div>
   </div>

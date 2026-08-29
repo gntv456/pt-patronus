@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, watch, onUnmounted, toRef } from 'vue'
 import { downloaderApi, type Stats } from '@/api/downloader'
 import { useWs } from '@/composables/useWs'
@@ -12,6 +13,7 @@ import { dlCaps } from './caps'
 import { useTorrentDialog, useCategoryManage } from './useTorrentDrawer'
 import { CircleCheck, CircleClose, Connection, Plus, Refresh, Setting } from '@element-plus/icons-vue'
 
+const { t } = useI18n()
 const props = defineProps<{ downloader: import('@/api/downloader').Downloader; visible: boolean }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
 
@@ -121,7 +123,7 @@ onUnmounted(() => {
 <template>
   <el-drawer
     :model-value="visible"
-    :title="downloader.name + ' · 任务工作台'"
+    :title="downloader.name + ' · ' + t('tw.title')"
     size="min(1280px, 92vw)"
     @update:model-value="(v: boolean) => emit('update:visible', v)"
   >
@@ -130,14 +132,14 @@ onUnmounted(() => {
         <CircleCheck v-if="isLive" />
         <CircleClose v-else-if="connectionError" />
         <Connection v-else />
-        {{ connectionError ? '连接异常' : isLive ? '实时同步' : '连接中' }}
+        {{ connectionError ? t('tw.connErr') : isLive ? t('tw.live') : t('tw.connecting') }}
       </span>
       <span class="ws-url text-muted" :title="downloader.url">
         {{ downloader.url }}<span v-if="lastUpdated"> · {{ lastUpdated.toLocaleTimeString() }}</span>
       </span>
       <div class="workspace-actions">
-        <el-button size="small" :icon="Refresh" @click="refresh">刷新</el-button>
-        <el-button v-if="caps.categoryCRUD" size="small" :icon="Setting" @click="catManageVisible = true">分类管理</el-button>
+        <el-button size="small" :icon="Refresh" @click="refresh">{{ t('common.refresh') }}</el-button>
+        <el-button v-if="caps.categoryCRUD" size="small" :icon="Setting" @click="catManageVisible = true">{{ t('tw.catManage') }}</el-button>
       </div>
     </header>
 
@@ -164,7 +166,7 @@ onUnmounted(() => {
       <template #toolbar-extra>
         <el-popover placement="bottom-end" :width="440" trigger="click">
           <template #reference>
-            <el-button type="primary" size="small" :icon="Plus">添加任务</el-button>
+            <el-button type="primary" size="small" :icon="Plus">{{ t('tw.addTask') }}</el-button>
           </template>
           <AddTorrentPanel :downloader="downloader" @added="refresh" />
         </el-popover>
@@ -173,11 +175,11 @@ onUnmounted(() => {
 
     <el-dialog v-model="dialogOpen" :title="dialogTitle" width="480" align-center append-to-body>
       <div v-if="activeDialog?.kind === 'remove'">
-        <p>确认删除 {{ activeDialog.hashes.length }} 个任务？</p>
-        <el-checkbox v-model="removeFiles">同时删除已下载的文件</el-checkbox>
+        <p>{{ t('tw.removeConfirm', { n: activeDialog.hashes.length }) }}</p>
+        <el-checkbox v-model="removeFiles">{{ t('tw.removeFiles') }}</el-checkbox>
       </div>
       <div v-else-if="activeDialog?.kind === 'category'">
-        <el-select v-model="dlgCategory" filterable allow-create clearable placeholder="选择或输入分类" style="width: 100%">
+        <el-select v-model="dlgCategory" filterable allow-create clearable :placeholder="t('tw.catPh')" style="width: 100%">
           <el-option v-for="c in cats" :key="c" :label="c" :value="c" />
         </el-select>
       </div>
@@ -188,33 +190,33 @@ onUnmounted(() => {
           filterable
           allow-create
           default-first-option
-          placeholder="输入标签（覆盖现有）"
+          :placeholder="t('tw.tagsPh')"
           style="width: 100%"
         >
           <el-option v-for="t in tagOpts" :key="t" :label="t" :value="t" />
         </el-select>
-        <p class="hint text-muted">将覆盖这些任务的现有标签</p>
+        <p class="hint text-muted">{{ t('tw.tagsHint') }}</p>
       </div>
       <div v-else-if="activeDialog?.kind === 'limits'">
         <div class="lim-row">
-          <span>↑ 上传</span>
+          <span>↑ {{ t('tw.upload') }}</span>
           <el-input-number v-model="dlgUpLimit" :min="0" controls-position="right" />
           <span class="text-muted">KB/s</span>
         </div>
         <div class="lim-row">
-          <span>↓ 下载</span>
+          <span>↓ {{ t('tw.download') }}</span>
           <el-input-number v-model="dlgDlLimit" :min="0" controls-position="right" />
           <span class="text-muted">KB/s</span>
         </div>
-        <p class="hint text-muted">0 = 不限</p>
+        <p class="hint text-muted">{{ t('tw.zeroUnlimited') }}</p>
       </div>
       <div v-else-if="activeDialog?.kind === 'share-limits'">
         <div class="sl-row">
-          <span class="sl-label">分享比率</span>
+          <span class="sl-label">{{ t('tw.ratio') }}</span>
           <el-select v-model="dlgRatioMode" size="small" style="width: 130px">
-            <el-option label="全局默认" value="global" />
-            <el-option label="无限" value="unlimited" />
-            <el-option label="自定义" value="custom" />
+            <el-option :label="t('tw.modeGlobal')" value="global" />
+            <el-option :label="t('tw.modeUnlimited')" value="unlimited" />
+            <el-option :label="t('tw.modeCustom')" value="custom" />
           </el-select>
           <el-input-number
             v-if="dlgRatioMode === 'custom'"
@@ -226,11 +228,11 @@ onUnmounted(() => {
           />
         </div>
         <div class="sl-row">
-          <span class="sl-label">做种时长{{ downloader.type === 'tr' ? '（空闲）' : '' }}</span>
+          <span class="sl-label">{{ t('tw.seedTime') }}{{ downloader.type === 'tr' ? t('tw.seedIdleSuffix') : '' }}</span>
           <el-select v-model="dlgSeedMode" size="small" style="width: 130px">
-            <el-option label="全局默认" value="global" />
-            <el-option label="无限" value="unlimited" />
-            <el-option label="自定义" value="custom" />
+            <el-option :label="t('tw.modeGlobal')" value="global" />
+            <el-option :label="t('tw.modeUnlimited')" value="unlimited" />
+            <el-option :label="t('tw.modeCustom')" value="custom" />
           </el-select>
           <el-input-number
             v-if="dlgSeedMode === 'custom'"
@@ -239,12 +241,12 @@ onUnmounted(() => {
             :step="15"
             size="small"
           />
-          <span v-if="dlgSeedMode === 'custom'" class="text-muted">分钟</span>
+          <span v-if="dlgSeedMode === 'custom'" class="text-muted">{{ t('tw.minutes') }}</span>
         </div>
-        <p v-if="downloader.type === 'tr'" class="hint text-muted">TR 的做种时长为「空闲时长」语义（空闲达到后停止做种）</p>
+        <p v-if="downloader.type === 'tr'" class="hint text-muted">{{ t('tw.trSeedNote') }}</p>
       </div>
       <div v-else-if="activeDialog?.kind === 'location'">
-        <el-input v-model="dlgLocation" placeholder="新的保存路径" />
+        <el-input v-model="dlgLocation" :placeholder="t('tw.newLocationPh')" />
       </div>
       <FilesDialog
         v-else-if="activeDialog?.kind === 'files'"
@@ -258,23 +260,23 @@ onUnmounted(() => {
         :hash="activeDialog.hashes[0]"
       />
       <template v-if="hasFooter" #footer>
-        <el-button @click="activeDialog = null">取消</el-button>
-        <el-button type="primary" :loading="dlgLoading" @click="submitDialog">确定</el-button>
+        <el-button @click="activeDialog = null">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="dlgLoading" @click="submitDialog">{{ t('common.confirm') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 分类管理 -->
-    <el-dialog v-model="catManageVisible" title="分类管理" width="480" align-center append-to-body>
+    <el-dialog v-model="catManageVisible" :title="t('tw.catManage')" width="480" align-center append-to-body>
       <div class="cat-add">
-        <el-input v-model="newCatName" placeholder="新分类名" size="small" />
-        <el-input v-model="newCatPath" placeholder="保存路径（可空）" size="small" />
-        <el-button size="small" type="primary" @click="addCat">添加</el-button>
+        <el-input v-model="newCatName" :placeholder="t('tw.newCatPh')" size="small" />
+        <el-input v-model="newCatPath" :placeholder="t('tw.catPathPh')" size="small" />
+        <el-button size="small" type="primary" @click="addCat">{{ t('common.add') }}</el-button>
       </div>
       <div v-for="c in cats" :key="c" class="cat-row">
         <span class="cname" :title="c">{{ c }}</span>
-        <el-button text size="small" type="danger" @click="delCat(c)">删除</el-button>
+        <el-button text size="small" type="danger" @click="delCat(c)">{{ t('common.delete') }}</el-button>
       </div>
-      <div v-if="!cats.length" class="empty text-muted">无分类</div>
+      <div v-if="!cats.length" class="empty text-muted">{{ t('tw.noCats') }}</div>
     </el-dialog>
 
     <!-- 任务详情 -->

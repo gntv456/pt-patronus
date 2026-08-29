@@ -1,41 +1,44 @@
 <template>
   <div class="ocr-wrap">
     <p class="text-muted">
-      配置 OCR 服务后，登录验证码将自动识别并预填（识别错误仍可手改）；未配置时保持人工输入。
-      支持自建 PaddleOCR / ddddoc 或任意兼容 HTTP 服务（POST base64 图片返回识别文本）。
+      {{ t('ocrp.intro1') }}
+      {{ t('ocrp.intro2') }}
     </p>
     <div class="card glass">
-      <div class="ch-head"><div class="row-title">OCR 服务</div>
-        <el-tag v-if="cfg.enabled" type="success" size="small">已启用</el-tag>
-        <el-tag v-else type="info" size="small">未配置（人工输入验证码）</el-tag>
+      <div class="ch-head"><div class="row-title">{{ t('ocrp.service') }}</div>
+        <el-tag v-if="cfg.enabled" type="success" size="small">{{ t('common.enabled') }}</el-tag>
+        <el-tag v-else type="info" size="small">{{ t('ocrp.notConfigured') }}</el-tag>
       </div>
       <el-form label-width="90px" class="mt8">
-        <el-form-item label="端点 URL">
-          <el-input v-model="form.endpoint" placeholder="如 http://192.168.1.10:9876/ocr" />
+        <el-form-item :label="t('ocrp.endpoint')">
+          <el-input v-model="form.endpoint" :placeholder="t('ocrp.endpointPh')" />
         </el-form-item>
         <el-form-item label="API Key">
-          <el-input v-model="form.api_key" :placeholder="cfg.api_key_set ? '已配置（留空=不修改）' : '可选，服务需要鉴权时填'" />
+          <el-input v-model="form.api_key" :placeholder="cfg.api_key_set ? t('ocrp.keySet') : t('ocrp.keyPh')" />
         </el-form-item>
-        <el-form-item label="响应格式">
+        <el-form-item :label="t('ocrp.fmt')">
           <el-select v-model="form.mode">
-            <el-option label="PaddleOCR（默认 {results:[[...]]}）" value="paddle" />
+            <el-option :label="t('ocrp.fmtPaddle')" value="paddle" />
             <el-option label="simple（{text}）" value="simple" />
             <el-option label="ddddoc（{data:{data}}）" value="ddddoc" />
           </el-select>
         </el-form-item>
       </el-form>
       <div class="actions">
-        <el-button :loading="saving" type="primary" @click="save">保存</el-button>
-        <el-button :loading="testing" @click="test">测试连通</el-button>
+        <el-button :loading="saving" type="primary" @click="save">{{ t('common.save') }}</el-button>
+        <el-button :loading="testing" @click="test">{{ t('ocrp.testConn') }}</el-button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { http } from '@/api/http'
+
+const { t } = useI18n()
 
 interface OcrConfig {
   endpoint: string
@@ -66,9 +69,9 @@ async function save() {
     const c = await http.put<OcrConfig>('/system/ocr', form.value).then((r) => r.data)
     cfg.value = c
     form.value.api_key = ''
-    ElMessage.success('OCR 配置已保存')
+    ElMessage.success(t('ocrp.saved'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '保存失败')
+    ElMessage.error((e as Error).message || t('common.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -78,10 +81,10 @@ async function test() {
   testing.value = true
   try {
     const r = await http.post<{ ok: boolean; error?: string }>('/system/ocr/test').then((x) => x.data)
-    if (r.ok) ElMessage.success('OCR 服务连通正常')
-    else ElMessage.error(r.error || '测试失败')
+    if (r.ok) ElMessage.success(t('ocrp.connOk'))
+    else ElMessage.error(r.error || t('ocrp.testFailed'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '测试失败')
+    ElMessage.error((e as Error).message || t('ocrp.testFailed'))
   } finally {
     testing.value = false
   }

@@ -471,6 +471,8 @@ class _MediaDetailPageState extends State<MediaDetailPage> {
 
             child: IconButton(
 
+              tooltip: '返回',
+
               icon: const Icon(Icons.arrow_back, color: Colors.white),
 
               onPressed: () => Navigator.maybePop(context),

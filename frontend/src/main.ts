@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { i18n } from './i18n'
 import { showErrorOverlay } from './utils/errorOverlay'
 import { useUiPrefs } from './composables/useUiPrefs'
 import './styles/glass.css'
@@ -20,6 +21,7 @@ import 'element-plus/es/components/loading/style/css'
 
 const app = createApp(App)
 app.use(createPinia())
+app.use(i18n)
 app.use(router)
 
 // 全局错误兜底：Vue 渲染错误默认会卸载出错组件树 → 整页白屏（终端用户零信息）。

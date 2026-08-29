@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { entertainmentApi, type BlackjackResult } from '@/api/entertainment'
 
 // 二十一点状态机（批3）：new/hit/stand/double，渲染牌面与结果。
+const { t } = useI18n()
 const props = defineProps<{ siteId: number; game: string; name: string }>()
 
 const state = ref<BlackjackResult | null>(null)
@@ -23,7 +25,7 @@ async function act(action: string) {
     }
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     acting.value = false
   }
@@ -32,13 +34,13 @@ async function act(action: string) {
 const resultText = computed(() => {
   switch (state.value?.result) {
     case 'win':
-      return '🎉 赢'
+      return t('bj.win')
     case 'blackjack':
       return '🎉 Blackjack!'
     case 'lose':
-      return '✗ 输'
+      return t('bj.lose')
     case 'push':
-      return '平局'
+      return t('bj.draw')
     default:
       return ''
   }
@@ -51,19 +53,19 @@ onMounted(() => act('new'))
   <div class="bj">
     <div class="hero">
       <div class="hero-title">🃏 {{ name }}</div>
-      <div class="balance">余额 <b>{{ state?.balance?.toLocaleString() ?? '—' }}</b></div>
+      <div class="balance">{{ t('bj.balance') }} <b>{{ state?.balance?.toLocaleString() ?? '—' }}</b></div>
     </div>
 
     <section v-if="state" class="glass section">
       <div class="dealer">
-        <div class="who">庄家</div>
+        <div class="who">{{ t('bj.dealer') }}</div>
         <div class="cards">
           <span v-for="(c, i) in state.dealer_cards" :key="'d' + i" class="card">{{ c }}</span>
           <span v-if="!state.dealer_cards?.length" class="text-muted">—</span>
         </div>
       </div>
       <div class="player">
-        <div class="who">玩家</div>
+        <div class="who">{{ t('bj.player') }}</div>
         <div class="cards">
           <span v-for="(c, i) in state.player_cards" :key="'p' + i" class="card">{{ c }}</span>
           <span v-if="!state.player_cards?.length" class="text-muted">—</span>
@@ -74,10 +76,10 @@ onMounted(() => act('new'))
     </section>
 
     <section class="glass section ops">
-      <button class="op" :disabled="acting || !finished" @click="act('new')">新一局</button>
-      <button class="op hit" :disabled="acting || finished" @click="act('hit')">要牌 (Hit)</button>
-      <button class="op stand" :disabled="acting || finished" @click="act('stand')">停牌 (Stand)</button>
-      <button class="op double" :disabled="acting || finished" @click="act('double')">加倍 (Double)</button>
+      <button class="op" :disabled="acting || !finished" @click="act('new')">{{ t('bj.newRound') }}</button>
+      <button class="op hit" :disabled="acting || finished" @click="act('hit')">{{ t('bj.hit') }}</button>
+      <button class="op stand" :disabled="acting || finished" @click="act('stand')">{{ t('bj.stand') }}</button>
+      <button class="op double" :disabled="acting || finished" @click="act('double')">{{ t('bj.double') }}</button>
     </section>
   </div>
 </template>

@@ -9,10 +9,21 @@ import {
 } from '@/composables/useNavPrefs'
 import type { PaletteItem } from '@/components/CommandPalette.vue'
 import { navGroups, paletteOnly, navDesc, navAliases, type NavItem } from '@/layouts/navConfig'
+import { useI18n } from 'vue-i18n'
 import { useNotices } from '@/composables/useNotices'
 import { useUiPrefs } from '@/composables/useUiPrefs'
 
+// paletteOnly 分组的中文标题 → locale key 映射（navConfig 数据保持纯数据，不 import i18n）
+const PALETTE_GROUP_KEYS: Record<string, string> = {
+  内容获取: 'content',
+  基础设施: 'infra',
+}
+function groupKeyOf(rawGroup: string): string {
+  return PALETTE_GROUP_KEYS[rawGroup] ?? ''
+}
+
 export function useMainLayout() {
+  const { t } = useI18n()
   const router = useRouter()
   const route = useRoute()
   const auth = useAuthStore()
@@ -97,13 +108,14 @@ export function useMainLayout() {
   // 命令面板：空查询默认只列侧栏之外的入口；输入查询时全量 fuzzy（含侧栏项）。
   const paletteItems = computed<PaletteItem[]>(() => {
     const base: PaletteItem[] = flatNav.value.map((it) => ({
-      name: it.name, label: it.label, icon: it.icon, from: it.from, to: it.to,
-      group: it.group, desc: navDesc[it.name], aliases: navAliases[it.name], sidebar: it.sidebar === true,
+      name: it.name, label: t('nav.items.' + it.name, it.label), icon: it.icon, from: it.from, to: it.to,
+      group: t('nav.groups.' + groupKeyOf(it.group), it.group),
+      desc: t('nav.desc.' + it.name, navDesc[it.name] ?? ''), aliases: navAliases[it.name], sidebar: it.sidebar === true,
     }))
     base.push(
-      { name: 'search', label: '搜索工作台', icon: 'search', from: '#a18cd1', to: '#fbc2eb', group: '顶栏', desc: '种子 / 影视聚合搜索', aliases: navAliases.search },
-      { name: 'assistant', label: 'AI 助手', icon: 'bot', from: '#6c5ce7', to: '#a855f7', group: '顶栏', desc: '自然语言控制全平台', aliases: navAliases.assistant },
-      { name: 'settings', label: '系统设置', icon: 'settings', from: '#485563', to: '#29323c', group: '底部', desc: '通用 / 通知 / OIDC / AI 网关', aliases: navAliases.settings },
+      { name: 'search', label: t('nav.top.searchWorkspace'), icon: 'search', from: '#a18cd1', to: '#fbc2eb', group: t('nav.groups.topbar'), desc: t('nav.top.searchWorkspaceDesc'), aliases: navAliases.search },
+      { name: 'assistant', label: t('nav.top.assistant'), icon: 'bot', from: '#6c5ce7', to: '#a855f7', group: t('nav.groups.topbar'), desc: t('nav.top.assistantDesc'), aliases: navAliases.assistant },
+      { name: 'settings', label: t('nav.top.settings'), icon: 'settings', from: '#485563', to: '#29323c', group: t('nav.groups.bottom'), desc: t('nav.top.settingsDesc'), aliases: navAliases.settings },
     )
     return base
   })

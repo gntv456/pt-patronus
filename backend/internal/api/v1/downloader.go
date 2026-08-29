@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"sort"
 	"strings"
@@ -36,7 +37,7 @@ func (h *DownloaderHandler) Caps(c *gin.Context) {
 func (h *DownloaderHandler) List(c *gin.Context) {
 	ds, err := h.op.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"downloaders": ds})
@@ -50,7 +51,7 @@ func (h *DownloaderHandler) Get(c *gin.Context) {
 	}
 	d, err := h.op.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.DownloaderNotFound.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"downloader": d})
@@ -60,15 +61,15 @@ func (h *DownloaderHandler) Get(c *gin.Context) {
 func (h *DownloaderHandler) Create(c *gin.Context) {
 	var in oper.DownloaderInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	d, err := h.op.Create(in)
 	if err != nil {
 		if errors.Is(err, oper.ErrInvalidInput) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.DownloaderInvalidInput.WithErr(err))
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 		}
 		return
 	}
@@ -83,15 +84,15 @@ func (h *DownloaderHandler) Update(c *gin.Context) {
 	}
 	var in oper.DownloaderInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	d, err := h.op.Update(id, in)
 	if err != nil {
 		if errors.Is(err, oper.ErrInvalidInput) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.DownloaderInvalidInput.WithErr(err))
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 		}
 		return
 	}
@@ -106,7 +107,7 @@ func (h *DownloaderHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	h.mgr.Invalidate(id)
@@ -288,7 +289,7 @@ func (h *DownloaderHandler) Add(c *gin.Context) {
 	}
 	var req addReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opts := downloader.AddOptions{
@@ -322,7 +323,7 @@ func (h *DownloaderHandler) Pause(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.dl.Pause(c.Request.Context(), id, req.Hashes); err != nil {
@@ -340,7 +341,7 @@ func (h *DownloaderHandler) Resume(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.dl.Resume(c.Request.Context(), id, req.Hashes); err != nil {
@@ -358,7 +359,7 @@ func (h *DownloaderHandler) Remove(c *gin.Context) {
 	}
 	var req hashesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.dl.Delete(c.Request.Context(), id, req.Hashes, req.DeleteFiles); err != nil {
@@ -377,7 +378,7 @@ func (h *DownloaderHandler) Stats(c *gin.Context) {
 	st, err := h.dl.Stats(c.Request.Context(), id)
 	if err != nil {
 		// 502：下载器协议层故障（不可达/版本不支持），非客户端参数错误。
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.DownloaderConnFailed.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, st)

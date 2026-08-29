@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { CommandRun } from '@/api/monitor'
+import { useI18n } from 'vue-i18n'
 import { runDateText, runStatusText, runStatusType } from '@/views/nasServerHelpers'
+
+const { t } = useI18n()
 
 defineProps<{
   steps: { title: string; desc: string }[]
@@ -18,12 +21,12 @@ const emit = defineEmits<{
   <section class="deploy-workspace glass">
     <div class="exec-head">
       <div>
-        <h3>发布部署</h3>
-        <span>模板、备份、灰度、回滚和执行审计统一管理</span>
+        <h3>{{ t('ndd.title') }}</h3>
+        <span>{{ t('ndw.sub') }}</span>
       </div>
       <div class="exec-head-actions">
-        <el-button @click="emit('configs')">模板配置</el-button>
-        <el-button type="primary" @click="emit('openPanel')">配置发布流程</el-button>
+        <el-button @click="emit('configs')">{{ t('ndw.profileCfg') }}</el-button>
+        <el-button type="primary" @click="emit('openPanel')">{{ t('ndw.cfgFlow') }}</el-button>
       </div>
     </div>
     <div class="deploy-step-list">
@@ -36,20 +39,20 @@ const emit = defineEmits<{
       </div>
     </div>
     <div v-if="runs.length" class="run-history deploy-history">
-      <div class="section-title">发布历史</div>
+      <div class="section-title">{{ t('ndw.history') }}</div>
       <div class="run-history-list">
         <button v-for="run in runs" :key="run.id" type="button" class="run-card" @click="emit('showRun', run)">
           <span>
-            <b>#{{ run.id }} · {{ run.note || '发布部署' }}</b>
-            <small>{{ runDateText(run.started_at) }} · {{ run.success_count }}/{{ run.total_count }} 成功</small>
+            <b>#{{ run.id }} · {{ run.note || t('ndd.title') }}</b>
+            <small>{{ runDateText(run.started_at) }} · {{ t('nep.okCount', { ok: run.success_count, total: run.total_count }) }}</small>
           </span>
           <el-tag size="small" :type="runStatusType(run.status)">{{ runStatusText(run.status) }}</el-tag>
         </button>
       </div>
     </div>
     <div v-else class="exec-empty">
-      暂无发布记录
-      <el-button size="small" type="primary" @click="emit('openPanel')">开始第一次发布</el-button>
+      {{ t('ndw.empty') }}
+      <el-button size="small" type="primary" @click="emit('openPanel')">{{ t('ndw.firstRelease') }}</el-button>
     </div>
   </section>
 </template>

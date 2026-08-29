@@ -1603,7 +1603,7 @@ class _TrackersSheetState extends State<_TrackersSheet> {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filled(icon: const Icon(Icons.add), onPressed: _add),
+              IconButton.filled(tooltip: '添加 Tracker', icon: const Icon(Icons.add), onPressed: _add),
             ],
           ),
         ),
@@ -1633,6 +1633,7 @@ class _TrackersSheetState extends State<_TrackersSheet> {
                         style: const TextStyle(fontSize: 13),
                       ),
                       trailing: IconButton(
+                        tooltip: '删除该 Tracker',
                         icon: const Icon(Icons.delete_outline, size: 20),
                         onPressed: () => _remove(t.url),
                       ),
@@ -1850,6 +1851,7 @@ class _PeersSheetState extends State<_PeersSheet> {
                 style: TextStyle(color: context.dimText, fontSize: 13),
               ),
               IconButton(
+                tooltip: '刷新 Peers 列表',
                 icon: const Icon(Icons.refresh, size: 20),
                 onPressed: _load,
               ),
@@ -2015,7 +2017,7 @@ class _CategorySheetState extends State<_CategorySheet> {
                 ),
               ),
               const SizedBox(width: 8),
-              IconButton.filled(icon: const Icon(Icons.add), onPressed: _add),
+              IconButton.filled(tooltip: '添加分类', icon: const Icon(Icons.add), onPressed: _add),
             ],
           ),
         ),
@@ -2037,6 +2039,7 @@ class _CategorySheetState extends State<_CategorySheet> {
                       dense: true,
                       title: Text(c, style: const TextStyle(fontSize: 13)),
                       trailing: IconButton(
+                        tooltip: '删除该分类',
                         icon: const Icon(Icons.delete_outline, size: 20),
                         onPressed: () => _del(c),
                       ),

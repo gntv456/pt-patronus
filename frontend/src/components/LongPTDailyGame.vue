@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
 
 const props = defineProps<{ siteId: number }>()
 
+const { t } = useI18n()
 const GAME = 'longpt_daily'
 
 const stats = ref<GameStats | null>(null)
@@ -14,12 +16,12 @@ const joined = ref<PlayResult | null>(null)
 
 // 每日奖品图标按名称关键词推断（奖品名来自站点 desc 字段，如"333333魔力"）
 function emoji(name: string) {
-  if (/魔力|火花/.test(name)) return '🪙'
-  if (/上传/.test(name)) return '📤'
-  if (/VIP|会员/.test(name)) return '👑'
-  if (/邀请/.test(name)) return '✉️'
-  if (/勋章/.test(name)) return '🎖️'
-  if (/彩虹/.test(name)) return '🌈'
+  if (/\u9b54\u529b|\u706b\u82b1/.test(name)) return '🪙'
+  if (/\u4e0a\u4f20/.test(name)) return '📤'
+  if (/VIP|\u4f1a\u5458/.test(name)) return '👑'
+  if (/\u9080\u8bf7/.test(name)) return '✉️'
+  if (/\u52cb\u7ae0/.test(name)) return '🎖️'
+  if (/\u5f69\u8679/.test(name)) return '🌈'
   return '🎁'
 }
 
@@ -36,12 +38,12 @@ async function join() {
   try {
     const res = await entertainmentApi.play(props.siteId, GAME)
     joined.value = res
-    if (res.success) ElMessage.success(res.message || '参与成功，等待开奖')
-    else ElMessage.warning(res.message || '参与失败')
+    if (res.success) ElMessage.success(res.message || t('dl.joinedOk'))
+    else ElMessage.warning(res.message || t('dl.joinFailed'))
     await Promise.all([refreshStats(), refreshHistory()])
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     joining.value = false
   }
@@ -56,44 +58,44 @@ onMounted(async () => {
 <template>
   <div class="lpt-daily">
     <div class="hero">
-      <div class="hero-title">🎊 每日抽奖</div>
-      <div class="hero-sub">每人每天仅限参与一次，{{ stats?.open_time ? `${stats.open_time} 统一开奖` : '当日开奖' }}</div>
+      <div class="hero-title">🎊 {{ t('dl.title') }}</div>
+      <div class="hero-sub">{{ t('dl.sub', { time: stats?.open_time ? t('dl.openAt', { v: stats.open_time }) : t('dl.sameDay') }) }}</div>
     </div>
 
     <div class="board">
       <!-- 今日奖品 -->
       <div class="prizes">
-        <div class="section-title">今日奖品</div>
+        <div class="section-title">{{ t('dl.todayPrizes') }}</div>
         <div class="prize-grid">
           <div v-for="p in prizes" :key="p.id" class="prize-card">
             <span class="p-emoji">{{ emoji(p.name) }}</span>
             <span class="p-name">{{ p.name }}</span>
           </div>
-          <div v-if="!prizes.length" class="text-muted empty-tip">暂无奖品配置</div>
+          <div v-if="!prizes.length" class="text-muted empty-tip">{{ t('dl.noPrizes') }}</div>
         </div>
       </div>
 
       <!-- 立即参与 -->
       <div class="join">
-        <div class="section-title">立即参与</div>
+        <div class="section-title">{{ t('dl.joinNow') }}</div>
         <div class="join-circle-wrap">
           <button class="join-circle" :disabled="joining" @click="join">
             <span v-if="joining" class="spinner" />
             <template v-else>
               <span class="jc-icon">🎁</span>
-              <span class="jc-text">{{ joined && joined.success ? '已参与' : '立即参与' }}</span>
+              <span class="jc-text">{{ joined && joined.success ? t('dl.joined') : t('dl.joinNow2') }}</span>
             </template>
           </button>
         </div>
         <div class="join-meta">
           <div v-if="stats?.participants !== undefined" class="meta-row">
-            <span>👥</span><span>已参与 {{ stats.participants }} 人</span>
+            <span>👥</span><span>{{ t('dl.participants', { n: stats.participants }) }}</span>
           </div>
           <div v-if="stats?.start_time" class="meta-row">
-            <span>🕒</span><span>参与时间 {{ stats.start_time }}-{{ stats.end_time }}</span>
+            <span>🕒</span><span>{{ t('dl.joinWindow', { s: stats.start_time, e: stats.end_time }) }}</span>
           </div>
           <div v-if="stats?.open_time" class="meta-row">
-            <span>🔔</span><span>开奖时间 {{ stats.open_time }}</span>
+            <span>🔔</span><span>{{ t('dl.openTime', { v: stats.open_time }) }}</span>
           </div>
         </div>
       </div>
@@ -101,15 +103,15 @@ onMounted(async () => {
 
     <!-- 参与提示 -->
     <div v-if="joined" class="result" :class="joined.success ? 'win' : 'lose'">
-      <span class="badge">{{ joined.success ? '✓ 已参与' : '✗ 失败' }}</span>
+      <span class="badge">{{ joined.success ? '✓ ' + t('dl.joined') : '✗ ' + t('dl.fail') }}</span>
       <span v-if="joined.message" class="r-msg">{{ joined.message }}</span>
     </div>
 
     <!-- 获奖记录 -->
     <div v-if="records.length" class="glass records">
-      <div class="rec-title">获奖记录</div>
+      <div class="rec-title">{{ t('dl.winRecords') }}</div>
       <div v-for="(r, i) in records.slice(0, 10)" :key="i" class="rec-row">
-        <span class="rec-prize" :class="{ muted: r.prize_name === '未中奖' }">{{ r.prize_name }}</span>
+        <span class="rec-prize" :class="{ muted: r.prize_name === t('sp.noWin') }">{{ r.prize_name }}</span>
         <span v-if="r.amount" class="rec-amt">×{{ r.amount }}</span>
         <span class="rec-time text-muted">{{ r.created_at }}</span>
       </div>

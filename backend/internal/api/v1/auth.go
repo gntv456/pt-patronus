@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"errors"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"log/slog"
 	"net/http"
 	"os"
@@ -34,7 +35,7 @@ func audit(c *gin.Context, action, result string, extra ...any) {
 // 避免把 gorm 错误（表名/约束/SQL 片段）经 err.Error() 泄露给调用方。
 func dbFail(c *gin.Context, action string, err error) {
 	slog.Error("auth db error", "action", action, "err", err, "ip", c.ClientIP())
-	c.JSON(http.StatusInternalServerError, gin.H{"error": "服务暂不可用，请稍后重试"})
+	errcode.Respond(c, errcode.AuthServerBusy)
 }
 
 // AuthHandler 处理好学账号/Cookie 登录、登出与（legacy）激活码。
@@ -67,7 +68,7 @@ func (h *AuthHandler) WsTicket(c *gin.Context) {
 	tk, exp, err := h.tickets.Issue(c.GetUint("uid"))
 	if err != nil {
 		audit(c, "ws_ticket", "fail", slog.String("err", err.Error()))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "签发 ticket 失败"})
+		errcode.Respond(c, errcode.AuthTicketFailed)
 		return
 	}
 	audit(c, "ws_ticket", "ok")
@@ -80,16 +81,16 @@ func (h *AuthHandler) WsTicket(c *gin.Context) {
 // ===== 好学账号登录（验证码两步） =====
 
 // HxptCaptcha 账号登录 Step A：取登录页验证码 / 探测模式。OCR 已配置时附带自动识别结果
-//（前端可预填，识别失败/未配置仍走人工输入——不 block 登录链路）。
+// （前端可预填，识别失败/未配置仍走人工输入——不 block 登录链路）。
 func (h *AuthHandler) HxptCaptcha(c *gin.Context) {
 	if h.hxptAuth == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "登录服务未启用"})
+		errcode.Respond(c, errcode.AuthServiceUnavailable)
 		return
 	}
 	ch, err := h.hxptAuth.FetchCaptcha(c.Request.Context())
 	if err != nil {
 		audit(c, "hxpt_captcha", "fail", slog.String("err", err.Error()))
-		c.JSON(http.StatusBadGateway, gin.H{"error": "取验证码失败：" + err.Error()})
+		errcode.Respond(c, errcode.AuthCaptchaFailed.WithErr(err))
 		return
 	}
 	resp := gin.H{
@@ -124,12 +125,12 @@ type hxptLoginReq struct {
 // HxptLogin 账号登录 Step B：POST takelogin.php + VIP 校验。
 func (h *AuthHandler) HxptLogin(c *gin.Context) {
 	if h.hxptAuth == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "登录服务未启用"})
+		errcode.Respond(c, errcode.AuthServiceUnavailable)
 		return
 	}
 	var req hxptLoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	// 应急兜底：好学 POST 链路坏掉时，运维设 HXPT_EMERGENCY_ADMIN=<username> 临时放行
@@ -153,19 +154,19 @@ func (h *AuthHandler) HxptLogin(c *gin.Context) {
 	if err != nil {
 		switch {
 		case errors.Is(err, site.ErrChallengeMode):
-			c.JSON(http.StatusConflict, gin.H{"code": "challenge_mode", "message": "好学已开启挑战响应认证，请改用 Cookie 登录"})
+			errcode.Respond(c, errcode.ChallengeMode)
 		case errors.Is(err, site.ErrLoginFailed):
 			audit(c, "hxpt_login", "fail", slog.String("user", req.Username), slog.String("reason", "creds/captcha/2fa"))
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名/密码/验证码错误"})
+			errcode.Respond(c, errcode.AuthBadCredentials)
 		default:
 			audit(c, "hxpt_login", "fail", slog.String("err", err.Error()))
-			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		}
 		return
 	}
 	if !out.VIP.Verified {
 		audit(c, "hxpt_login", "fail", slog.String("reason", "not_vip"))
-		c.JSON(http.StatusForbidden, gin.H{"code": "not_vip", "message": "非好学 APP 专属 VIP", "vip": out.VIP})
+		c.JSON(http.StatusForbidden, gin.H{"code": errcode.NotVIP.Code, "message": errcode.NotVIP.Message, "error": errcode.NotVIP.Message, "vip": out.VIP})
 		return
 	}
 	h.issueForHxpt(c, out.HxptUID, out.VIP.Username, out.Cookie)
@@ -180,22 +181,22 @@ type hxptCookieLoginReq struct {
 // HxptCookieLogin 直接用好学 cookie 校验 VIP 并登录（最稳路径，覆盖 2FA/挑战响应账号）。
 func (h *AuthHandler) HxptCookieLogin(c *gin.Context) {
 	if h.hxptAuth == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "登录服务未启用"})
+		errcode.Respond(c, errcode.AuthServiceUnavailable)
 		return
 	}
 	var req hxptCookieLoginReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if req.Cookie == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cookie 必填"})
+		errcode.Respond(c, errcode.AuthCookieRequired)
 		return
 	}
 	status := h.hxptAuth.Verify(c.Request.Context(), req.Cookie)
 	audit(c, "hxpt_cookie_login", boolStr(status.Verified), slog.String("level", status.Level))
 	if !status.Verified {
-		c.JSON(http.StatusForbidden, gin.H{"code": "not_vip", "message": status.Message, "vip": status})
+		c.JSON(http.StatusForbidden, gin.H{"code": errcode.NotVIP.Code, "message": status.Message, "error": status.Message, "vip": status})
 		return
 	}
 	uid := status.ID
@@ -209,7 +210,7 @@ func (h *AuthHandler) HxptCookieLogin(c *gin.Context) {
 // 演示用户是普通 VIP 用户而非管理员，避免误触高破坏操作；生产实例不应开启。
 func (h *AuthHandler) DemoLogin(c *gin.Context) {
 	if !h.demoMode {
-		c.JSON(http.StatusNotFound, gin.H{"error": "演示登录未启用"})
+		errcode.Respond(c, errcode.DemoDisabled)
 		return
 	}
 	now := time.Now()
@@ -240,7 +241,7 @@ func (h *AuthHandler) DemoLogin(c *gin.Context) {
 	}
 	token, err := h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, now)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "token failed"})
+		errcode.Respond(c, errcode.AuthTokenFailed)
 		return
 	}
 	audit(c, "demo_login", "ok")
@@ -290,7 +291,7 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 	}
 	token, err := h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, now)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "token failed"})
+		errcode.Respond(c, errcode.AuthTokenFailed)
 		return
 	}
 	audit(c, "hxpt_login", "ok", slog.String("hxpt_uid", hxptUID))
@@ -306,7 +307,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	uid, _ := c.Get("uid")
 	id, _ := uid.(uint)
 	if id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "API-Key 旁路无需续期"})
+		errcode.Respond(c, errcode.APIKeyNoRefresh)
 		return
 	}
 	var u models.User
@@ -320,7 +321,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 	token, err := h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, vipAt)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "token failed"})
+		errcode.Respond(c, errcode.AuthTokenFailed)
 		return
 	}
 	audit(c, "refresh", "ok")
@@ -336,7 +337,7 @@ func (h *AuthHandler) GetPreferences(c *gin.Context) {
 	uid := c.GetUint("uid")
 	key := c.Param("key")
 	if key == "" || len(key) > 64 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "key 非法"})
+		errcode.Respond(c, errcode.InvalidKey)
 		return
 	}
 	var p models.UserPreference
@@ -357,23 +358,23 @@ func (h *AuthHandler) SetPreferences(c *gin.Context) {
 	uid := c.GetUint("uid")
 	key := c.Param("key")
 	if key == "" || len(key) > 64 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "key 非法"})
+		errcode.Respond(c, errcode.InvalidKey)
 		return
 	}
 	var in struct {
 		Value string `json:"value" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if len(in.Value) > userPrefMaxValue {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "value 超过 64KB 上限"})
+		errcode.Respond(c, errcode.ValueTooLarge)
 		return
 	}
 	// 校验为合法 JSON（前端存 JSON 串；脏数据会在端上解析失败）
 	if !json.Valid([]byte(in.Value)) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "value 必须为合法 JSON"})
+		errcode.Respond(c, errcode.ValueInvalidJSON)
 		return
 	}
 	var p models.UserPreference

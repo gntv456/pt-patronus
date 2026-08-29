@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/ws"
 )
@@ -47,7 +48,7 @@ func (h *WSHandler) checkOrigin(r *http.Request) bool {
 // Handle 升级为 WebSocket：校验 query ticket（单次消费）→ Upgrade → 注册并单推首帧。
 func (h *WSHandler) Handle(c *gin.Context) {
 	if _, ok := h.tickets.Consume(c.Query("ticket")); !ok {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired ticket"})
+		errcode.Respond(c, errcode.TicketInvalidOrExpired)
 		return
 	}
 	upgrader := websocket.Upgrader{

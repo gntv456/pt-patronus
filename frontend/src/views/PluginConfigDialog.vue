@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Tickets } from '@element-plus/icons-vue'
 import PluginSchemaField from '@/components/PluginSchemaField.vue'
 import type { PluginInfo, PluginConfigField } from '@/api/plugin'
+
+const { t } = useI18n()
 
 defineProps<{
   visible: boolean
@@ -25,7 +28,7 @@ const emit = defineEmits<{
 <template>
   <el-dialog
     :model-value="visible"
-    :title="`配置：${target?.name || ''}`"
+    :title="t('pcd.title', { name: target?.name || '' })"
     width="680px"
     class="plugin-cfg-dialog"
     @update:model-value="emit('update:visible', $event)"
@@ -61,8 +64,8 @@ const emit = defineEmits<{
       </el-collapse>
     </div>
     <template #footer>
-      <el-button @click="emit('update:visible', false)">取消</el-button>
-      <el-button type="primary" :icon="Tickets" :loading="saving" @click="emit('save')">保存</el-button>
+      <el-button @click="emit('update:visible', false)">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :icon="Tickets" :loading="saving" @click="emit('save')">{{ t('common.save') }}</el-button>
     </template>
   </el-dialog>
 </template>

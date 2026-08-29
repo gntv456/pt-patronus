@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/aiagent"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/llm"
 )
@@ -43,18 +44,18 @@ type agentChatReq struct {
 func (h *AgentChatHandler) Chat(c *gin.Context) {
 	var in agentChatReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if strings.TrimSpace(in.Message) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "message required"})
+		errcode.Respond(c, errcode.AgentMsgRequired)
 		return
 	}
 	convID := in.ConversationID
 	if convID == 0 {
 		conv := &models.AgentConversation{}
 		if err := h.convCreate(conv); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 		convID = conv.ID
@@ -127,7 +128,7 @@ func writeSSE(w http.ResponseWriter, event string, data any) bool {
 func (h *AgentChatHandler) Conversations(c *gin.Context) {
 	cs, err := h.convList()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"conversations": cs})
@@ -141,7 +142,7 @@ func (h *AgentChatHandler) Messages(c *gin.Context) {
 	}
 	ms, err := h.msgList(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"messages": ms})
@@ -154,7 +155,7 @@ func (h *AgentChatHandler) DeleteConversation(c *gin.Context) {
 		return
 	}
 	if err := h.convDelete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -175,12 +176,12 @@ func (h *AgentChatHandler) Confirm(c *gin.Context) {
 	}
 	var in agentConfirmReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	token := fmt.Sprintf("%d:%s", convID, in.ToolCallID)
 	if !h.agent.Resolve(token, in.Approved) {
-		c.JSON(http.StatusNotFound, gin.H{"error": "无在途确认（已过期、已取消或已处理）"})
+		errcode.Respond(c, errcode.AgentConfirmGone)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"resolved": true, "approved": in.Approved})
@@ -221,7 +222,7 @@ func (h *AgentChatHandler) GetConfig(c *gin.Context) {
 func (h *AgentChatHandler) SetConfig(c *gin.Context) {
 	var in agentConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	existing, _ := aiagent.Load(h.kv, h.crypto)
@@ -239,13 +240,13 @@ func (h *AgentChatHandler) SetConfig(c *gin.Context) {
 	if strings.TrimSpace(in.APIKey) != "" {
 		enc, err := h.crypto.Encrypt(strings.TrimSpace(in.APIKey))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 		cfg.APIKeyEnc = enc
 	}
 	if err := aiagent.SaveConfig(h.kv, cfg); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, aiagent.Redacted(cfg))

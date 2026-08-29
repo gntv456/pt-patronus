@@ -105,6 +105,30 @@ describe('响应拦截器：错误文案中文化', () => {
   })
 })
 
+describe('PR-4：机器可读 code 通道', () => {
+  it('后端统一信封的 code 透传到 err.code', async () => {
+    rejectWith(axiosErr({ status: 400, data: { code: 'risk_confirmation_required', message: '高危操作，需要先确认风险', error: '高危操作，需要先确认风险' } }))
+    await expect(http.get('/x')).rejects.toMatchObject({ code: 'risk_confirmation_required' })
+  })
+
+  it('code 透传不改变文案优先级（error 字段仍优先进 message）', async () => {
+    rejectWith(axiosErr({ status: 409, data: { code: 'duplicate_spend', message: '后端消息', error: '后端错误' } }))
+    await expect(http.get('/x')).rejects.toMatchObject({ code: 'duplicate_spend', message: '后端错误' })
+  })
+
+  it('无 code 的响应不写入 err.code（axios 原生 code 如 ECONNABORTED 保留）', async () => {
+    rejectWith(axiosErr({ code: 'ECONNABORTED', message: 'timeout' }))
+    await expect(http.get('/x')).rejects.toMatchObject({ code: 'ECONNABORTED', message: '请求超时，请稍后重试' })
+  })
+
+  it('code 非字符串时忽略（防脏数据）', async () => {
+    rejectWith(axiosErr({ status: 400, data: { code: 12345 } }))
+    const err = await http.get('/x').catch((e) => e)
+    expect(err.code).toBeUndefined()
+    expect(err.message).toBe('请求参数有误，请检查后重试')
+  })
+})
+
 describe('鉴权失效：清 token + 回登录', () => {
   it('401 清 token 并跳 /login', async () => {
     localStorage.setItem('token', 'stale')

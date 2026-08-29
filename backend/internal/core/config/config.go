@@ -112,6 +112,12 @@ type Config struct {
 
 	// 安全模式（SAFE_MODE）：跳过插件/调度/监控激活，仅启动核心 HTTP + 诊断端点（出问题时自救）
 	SafeMode bool
+
+	// 娱乐游戏自动化总开关（ENTERTAINMENT_ENABLED，默认 false）：
+	// 转盘/下注/红包等属站点游戏玩法的自动化，可能违反站规（封号风险由使用者自担）。
+	// 默认关闭：关闸状态下整个 /entertainment 路由组不注册（404），
+	// 用户在配置或环境变量显式开启才暴露——风险告知见 config.example 注释。
+	EntertainmentEnabled bool
 }
 
 // Load reads configuration from the environment.
@@ -185,6 +191,7 @@ func Load() (*Config, error) {
 		UpdateManifestURL:  getenv("UPDATE_MANIFEST_URL", ""),
 		UpdateManifestPubKey: getenv("UPDATE_MANIFEST_PUBKEY", ""),
 		SafeMode:           getenvBool("SAFE_MODE", false),
+		EntertainmentEnabled: getenvBool("ENTERTAINMENT_ENABLED", false),
 	}
 	cfg.PluginDevWatch = getenvBool("PLUGIN_DEV_WATCH", cfg.Env == "debug")
 	cfg.PluginDevWatchIntervalMS = getenvInt("PLUGIN_DEV_WATCH_INTERVAL_MS", 1000)

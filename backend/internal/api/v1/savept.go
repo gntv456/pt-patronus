@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/savept"
 )
 
@@ -22,7 +23,7 @@ func (h *SaveptHandler) Get(c *gin.Context) {
 	force := c.Query("refresh") == "1"
 	res, err := h.svc.Fetch(c.Request.Context(), force)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "抓取 savept.icu 失败：" + err.Error()})
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)

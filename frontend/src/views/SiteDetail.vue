@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { siteApi, type Site, type SiteConnectivityStatus } from '@/api/site'
 import { dashboardApi, type SiteStatItem } from '@/api/dashboard'
 import { useSiteDetailTabs } from '@/composables/useSiteDetailTabs'
 
+const { t } = useI18n()
 const props = defineProps<{ id: string }>()
 const route = useRoute()
 const router = useRouter()
@@ -44,7 +46,7 @@ async function loadSite() {
   conn.value = null
   stat.value = null
   if (!siteId.value) {
-    loadError.value = '无效的站点 ID'
+    loadError.value = t('sitedetail.badId')
     loading.value = false
     return
   }
@@ -52,7 +54,7 @@ async function loadSite() {
     const list = await siteApi.list()
     site.value = list.find((s) => s.id === siteId.value) || null
     if (!site.value) {
-      loadError.value = '站点不存在或已删除'
+      loadError.value = t('sitedetail.notFound')
       return
     }
     const [statuses, overview] = await Promise.all([
@@ -62,7 +64,7 @@ async function loadSite() {
     conn.value = statuses.find((s) => s.site_id === siteId.value) || null
     stat.value = overview?.sites?.find((s) => s.site_id === siteId.value) || null
   } catch (e: unknown) {
-    loadError.value = (e as Error).message || '加载失败'
+    loadError.value = (e as Error).message || t('common.loadFailed')
   } finally {
     loading.value = false
   }
@@ -133,7 +135,7 @@ watch(
 <template>
   <div class="page" v-loading="loading">
     <div class="head">
-      <button type="button" class="back" @click="router.push({ name: 'sites' })">← 站点</button>
+      <button type="button" class="back" @click="router.push({ name: 'sites' })">← {{ t('sitedetail.backSites') }}</button>
       <div v-if="site" class="title-wrap">
         <SiteFavicon :name="site.name" :base-url="site.base_url" :size="36" />
         <div>
@@ -141,19 +143,19 @@ watch(
           <div class="sub">
             <a :href="site.base_url" target="_blank" rel="noopener">{{ site.base_url }}</a>
             <span class="dot">·</span>
-            <span :class="['pill', site.is_active ? 'on' : 'off']">{{ site.is_active ? '启用' : '停用' }}</span>
+            <span :class="['pill', site.is_active ? 'on' : 'off']">{{ site.is_active ? t('common.enabled') : t('sitedetail.disabled') }}</span>
             <template v-if="conn">
               <span class="dot">·</span>
               <span :class="['pill', conn.status === 'connected' ? 'on' : 'off']">
-                {{ conn.status === 'connected' ? `在线 ${conn.level || ''}` : conn.error || '离线' }}
+                {{ conn.status === 'connected' ? t('sitedetail.online', { level: conn.level || '' }) : conn.error || t('sitedetail.offline') }}
               </span>
             </template>
           </div>
         </div>
       </div>
       <div v-if="site" class="head-actions">
-        <el-button size="small" @click="goGlobal('assessment')">全局考核</el-button>
-        <el-button size="small" type="primary" plain @click="router.push({ name: 'sites' })">返回列表</el-button>
+        <el-button size="small" @click="goGlobal('assessment')">{{ t('sitedetail.globalAssess') }}</el-button>
+        <el-button size="small" type="primary" plain @click="router.push({ name: 'sites' })">{{ t('sitedetail.backList') }}</el-button>
       </div>
     </div>
 
@@ -161,27 +163,27 @@ watch(
 
     <template v-if="site && !loadError">
       <el-tabs v-model="tab" class="glass tabs" @tab-change="onTab">
-        <el-tab-pane label="概览" name="overview">
+        <el-tab-pane :label="t('sitedetail.tabOverview')" name="overview">
           <div class="grid">
-            <div class="card glass metric"><span class="k">等级</span><span class="v">{{ stat?.level || conn?.level || '—' }}</span></div>
-            <div class="card glass metric"><span class="k">上传</span><span class="v">{{ fmtBytes(stat?.uploaded || 0) }}</span></div>
-            <div class="card glass metric"><span class="k">下载</span><span class="v">{{ fmtBytes(stat?.downloaded || 0) }}</span></div>
-            <div class="card glass metric"><span class="k">分享率</span><span class="v">{{ stat ? (stat.ratio || 0).toFixed(2) : '—' }}</span></div>
-            <div class="card glass metric"><span class="k">做种</span><span class="v">{{ stat?.seeding ?? '—' }}</span></div>
-            <div class="card glass metric"><span class="k">魔力</span><span class="v">{{ stat?.bonus != null ? Math.round(stat.bonus) : '—' }}</span></div>
+            <div class="card glass metric"><span class="k">{{ t('sitedetail.level') }}</span><span class="v">{{ stat?.level || conn?.level || '—' }}</span></div>
+            <div class="card glass metric"><span class="k">{{ t('sitedetail.uploaded') }}</span><span class="v">{{ fmtBytes(stat?.uploaded || 0) }}</span></div>
+            <div class="card glass metric"><span class="k">{{ t('sitedetail.downloaded') }}</span><span class="v">{{ fmtBytes(stat?.downloaded || 0) }}</span></div>
+            <div class="card glass metric"><span class="k">{{ t('sitedetail.ratio') }}</span><span class="v">{{ stat ? (stat.ratio || 0).toFixed(2) : '—' }}</span></div>
+            <div class="card glass metric"><span class="k">{{ t('sitedetail.seeding') }}</span><span class="v">{{ stat?.seeding ?? '—' }}</span></div>
+            <div class="card glass metric"><span class="k">{{ t('sitedetail.bonus') }}</span><span class="v">{{ stat?.bonus != null ? Math.round(stat.bonus) : '—' }}</span></div>
           </div>
-          <p class="hint text-muted">站点下钻入口（§5.1）。跨站总览在各全局页与仪表盘任务卡片；⌘K 可直达。</p>
+          <p class="hint text-muted">{{ t('sitedetail.drillHint') }}</p>
         </el-tab-pane>
 
-        <el-tab-pane label="考核·契约" name="assessment" lazy>
+        <el-tab-pane :label="t('sitedetail.tabAssessment')" name="assessment" lazy>
           <div v-loading="assessLoading || contractLoading" class="tab-body">
             <div v-if="assess" class="card glass">
               <div class="row-between">
-                <h3>考核</h3>
+                <h3>{{ t('sitedetail.assess') }}</h3>
                 <el-tag :color="statusColor[assess.status]" effect="dark" style="border: 0">{{ assess.status }}</el-tag>
               </div>
               <p class="text-muted">
-                进度 {{ Number(assess.progress_percent || 0).toFixed(0) }}% · 剩余 {{ assess.remaining_days }} 天
+                {{ t('sitedetail.assessProgress', { pct: Number(assess.progress_percent || 0).toFixed(0), days: assess.remaining_days }) }}
                 <template v-if="assess.assessment_type"> · {{ assess.assessment_type }}</template>
               </p>
               <ul v-if="assess.metrics?.length" class="metrics">
@@ -192,74 +194,73 @@ watch(
               </ul>
               <p v-if="assess.error" class="err">{{ assess.error }}</p>
             </div>
-            <div v-else class="card glass text-muted">暂无考核数据</div>
+            <div v-else class="card glass text-muted">{{ t('sitedetail.noAssess') }}</div>
 
             <div class="card glass">
               <div class="row-between">
-                <h3>保种契约</h3>
-                <el-button size="small" text type="primary" @click="goGlobal('contract')">管理</el-button>
+                <h3>{{ t('sitedetail.contract') }}</h3>
+                <el-button size="small" text type="primary" @click="goGlobal('contract')">{{ t('sitedetail.manage') }}</el-button>
               </div>
               <template v-if="contract">
                 <p>
-                  分享率 ≥ {{ contract.min_ratio || '不限' }} · 做种数 ≥ {{ contract.min_seeding || '不限' }} · 上传 ≥
-                  {{ contract.min_upload_gb || 0 }} GB
+                  {{ t('sitedetail.contractReq', { ratio: contract.min_ratio || t('sitedetail.unlimited'), seeds: contract.min_seeding || t('sitedetail.unlimited'), gb: contract.min_upload_gb || 0 }) }}
                 </p>
                 <p v-if="contractCheck">
-                  最近检查：<b>{{ contractCheck.status }}</b> {{ contractCheck.detail || '' }}
+                  {{ t('sitedetail.lastCheck') }}：<b>{{ contractCheck.status }}</b> {{ contractCheck.detail || '' }}
                 </p>
               </template>
-              <p v-else class="text-muted">未配置契约 · 可在全局契约页为本站添加</p>
+              <p v-else class="text-muted">{{ t('sitedetail.noContract') }}</p>
             </div>
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="刷流" name="brushflow" lazy>
+        <el-tab-pane :label="t('sitedetail.tabBrushflow')" name="brushflow" lazy>
           <div v-loading="bfLoading" class="tab-body">
             <div class="row-between">
-              <h3>本站刷流任务</h3>
-              <el-button size="small" type="primary" @click="goGlobal('brushflow')">全局刷流</el-button>
+              <h3>{{ t('sitedetail.bfTasks') }}</h3>
+              <el-button size="small" type="primary" @click="goGlobal('brushflow')">{{ t('sitedetail.globalBf') }}</el-button>
             </div>
-            <div v-if="!bfTasks.length" class="card glass text-muted">暂无绑定本站的刷流任务</div>
-            <div v-for="t in bfTasks" :key="t.id" class="card glass">
+            <div v-if="!bfTasks.length" class="card glass text-muted">{{ t('sitedetail.noBf') }}</div>
+            <div v-for="task in bfTasks" :key="task.id" class="card glass">
               <div class="row-between">
-                <b>{{ t.name }}</b>
-                <el-tag size="small" :type="t.enabled ? 'success' : 'info'">{{ t.enabled ? '启用' : '停用' }}</el-tag>
+                <b>{{ task.name }}</b>
+                <el-tag size="small" :type="task.enabled ? 'success' : 'info'">{{ task.enabled ? t('common.enabled') : t('sitedetail.disabled') }}</el-tag>
               </div>
-              <p class="text-muted small">加入 {{ t.total_added }} · 删除 {{ t.total_deleted }} · 最大做种 {{ t.max_seeds }}</p>
+              <p class="text-muted small">{{ t('sitedetail.bfMeta', { added: task.total_added, deleted: task.total_deleted, seeds: task.max_seeds }) }}</p>
             </div>
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="辅种" name="reseed" lazy>
+        <el-tab-pane :label="t('sitedetail.tabReseed')" name="reseed" lazy>
           <div v-loading="reseedLoading" class="card glass tab-body">
-            <p>{{ reseedHint || '加载中…' }}</p>
-            <el-button type="primary" @click="goGlobal('reseed')">打开辅种</el-button>
+            <p>{{ reseedHint || t('common.loading') }}</p>
+            <el-button type="primary" @click="goGlobal('reseed')">{{ t('sitedetail.openReseed') }}</el-button>
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="站免" name="freeleech" lazy>
+        <el-tab-pane :label="t('sitedetail.tabFreeleech')" name="freeleech" lazy>
           <div v-loading="flLoading" class="tab-body">
             <div class="row-between">
-              <h3>站免状态</h3>
-              <el-button size="small" @click="goGlobal('freeleech')">全局站免</el-button>
+              <h3>{{ t('sitedetail.flStatus') }}</h3>
+              <el-button size="small" @click="goGlobal('freeleech')">{{ t('sitedetail.globalFl') }}</el-button>
             </div>
-            <div v-if="!fl?.notices?.length" class="card glass text-muted">{{ fl?.error || '暂无站免公告' }}</div>
+            <div v-if="!fl?.notices?.length" class="card glass text-muted">{{ fl?.error || t('sitedetail.noFl') }}</div>
             <div v-for="(n, i) in fl?.notices || []" :key="i" class="card glass">
               <div class="row-between">
                 <b>{{ n.title || n.status }}</b>
                 <el-tag size="small">{{ n.status }}</el-tag>
               </div>
               <p class="text-muted">{{ n.content }}</p>
-              <a v-if="n.link" :href="n.link" target="_blank" rel="noopener">查看原文</a>
+              <a v-if="n.link" :href="n.link" target="_blank" rel="noopener">{{ t('sitedetail.viewSource') }}</a>
             </div>
           </div>
         </el-tab-pane>
 
-        <el-tab-pane label="监护" name="savept" lazy>
+        <el-tab-pane :label="t('sitedetail.tabSavept')" name="savept" lazy>
           <div v-loading="saveptLoading" class="tab-body">
             <div class="row-between">
-              <h3>监护室</h3>
-              <el-button size="small" @click="goGlobal('savept')">全局监护</el-button>
+              <h3>{{ t('sitedetail.saveptRoom') }}</h3>
+              <el-button size="small" @click="goGlobal('savept')">{{ t('sitedetail.globalSavept') }}</el-button>
             </div>
             <div v-if="saveptCard" class="card glass">
               <p>
@@ -267,7 +268,7 @@ watch(
               </p>
               <p class="text-muted">{{ saveptCard.duration_text || saveptCard.year }}</p>
             </div>
-            <div v-else class="card glass text-muted">未匹配到监护室卡片（可能尚未绑定或源站无数据）</div>
+            <div v-else class="card glass text-muted">{{ t('sitedetail.noSavept') }}</div>
           </div>
         </el-tab-pane>
       </el-tabs>

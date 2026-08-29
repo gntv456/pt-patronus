@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { procApi, type ProcRow, type NetConnRow } from '@/api/proc'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 
+const { t } = useI18n()
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
 const loading = ref(false)
@@ -24,7 +26,7 @@ const netFilter = ref({ pid: '', name: '', port: '', state: '' })
 const sshTargets = computed(() => targets.value.filter((t) => t.type === 'host'))
 
 const stateLabel: Record<string, string> = {
-  R: '运行', S: '睡眠', D: '等待', Z: '僵尸', T: '停止', I: '空闲',
+  R: t('opsproc.st.R'), S: t('opsproc.st.S'), D: t('opsproc.st.D'), Z: t('opsproc.st.Z'), T: t('opsproc.st.T'), I: t('opsproc.st.I'),
 }
 
 const filteredProcesses = computed(() => {
@@ -92,13 +94,13 @@ function fmtMem(kb: number): string {
 async function killProc(p: ProcRow) {
   try {
     await ElMessageBox.confirm(
-      `确定要结束进程「${p.name}」(PID: ${p.pid}, 用户: ${p.user}) 吗？`,
-      '结束进程确认',
-      { type: 'warning', confirmButtonText: '结束', cancelButtonText: '取消' },
+      t('opsproc.confirmKill', { name: p.name, pid: p.pid, user: p.user }),
+      t('opsproc.confirmKillTitle'),
+      { type: 'warning', confirmButtonText: t('opsproc.kill'), cancelButtonText: t('common.cancel') },
     )
     const res = await procApi.kill(selectedTarget.value, { pid: p.pid, confirm: true })
-    if (res.ok) { ElMessage.success(`进程 ${p.pid} 已发送终止信号`); refresh() }
-    else ElMessage.error(res.error || '结束失败')
+    if (res.ok) { ElMessage.success(t('opsproc.killSignalSent', { pid: p.pid })); refresh() }
+    else ElMessage.error(res.error || t('opsproc.killFailed'))
   } catch (e: any) {
     if (e !== 'cancel') ElMessage.error(e.message)
   }
@@ -107,13 +109,13 @@ async function killProc(p: ProcRow) {
 async function forceKill(p: ProcRow) {
   try {
     await ElMessageBox.confirm(
-      `⚠️ 强制结束（SIGKILL）进程「${p.name}」(PID: ${p.pid})？可能导致数据丢失。`,
-      '强制结束',
-      { type: 'error', confirmButtonText: '强制结束', cancelButtonText: '取消' },
+      t('opsproc.confirmForceKill', { name: p.name, pid: p.pid }),
+      t('opsproc.forceKill'),
+      { type: 'error', confirmButtonText: t('opsproc.forceKill'), cancelButtonText: t('common.cancel') },
     )
     const res = await procApi.kill(selectedTarget.value, { pid: p.pid, force: true, confirm: true })
-    if (res.ok) { ElMessage.success(`进程 ${p.pid} 已强制结束`); refresh() }
-    else ElMessage.error(res.error || '结束失败')
+    if (res.ok) { ElMessage.success(t('opsproc.forceKilled', { pid: p.pid })); refresh() }
+    else ElMessage.error(res.error || t('opsproc.killFailed'))
   } catch (e: any) {
     if (e !== 'cancel') ElMessage.error(e.message)
   }
@@ -127,42 +129,42 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
     <!-- 工具栏 -->
     <div class="proc-toolbar glass">
       <div class="toolbar-left">
-        <label class="target-label">目标主机</label>
-        <el-select v-model="selectedTarget" placeholder="选择 SSH 主机" style="width: 200px" @change="refresh">
+        <label class="target-label">{{ t('opsproc.targetHost') }}</label>
+        <el-select v-model="selectedTarget" :placeholder="t('opsproc.selectHost')" style="width: 200px" @change="refresh">
           <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <div class="view-switch">
-          <button :class="{ active: view === 'process' }" @click="switchView('process')">进程</button>
-          <button :class="{ active: view === 'network' }" @click="switchView('network')">网络</button>
+          <button :class="{ active: view === 'process' }" @click="switchView('process')">{{ t('ops.tab.process') }}</button>
+          <button :class="{ active: view === 'network' }" @click="switchView('network')">{{ t('opsproc.network') }}</button>
         </div>
       </div>
-      <el-button type="primary" :loading="loading" @click="refresh">刷新</el-button>
+      <el-button type="primary" :loading="loading" @click="refresh">{{ t('common.refresh') }}</el-button>
     </div>
 
     <div v-if="error" class="proc-error">{{ error }}</div>
     <div v-if="!sshTargets.length" class="proc-empty glass">
-      尚未添加 SSH 主机。请在 NAS → 监控目标 中添加一台 SSH 主机才能查看进程。
+      {{ t('opsproc.noHostHint') }}
     </div>
 
     <!-- 进程列表 -->
     <div v-if="view === 'process' && sshTargets.length" class="proc-table-wrap glass">
       <div class="filter-bar">
         <el-input v-model="procFilter.pid" placeholder="PID" style="width: 90px" clearable />
-        <el-input v-model="procFilter.name" placeholder="进程名" style="width: 160px" clearable />
-        <el-input v-model="procFilter.user" placeholder="用户" style="width: 120px" clearable />
-        <el-input v-model="procFilter.state" placeholder="状态" style="width: 80px" clearable />
+        <el-input v-model="procFilter.name" :placeholder="t('opsproc.procName')" style="width: 160px" clearable />
+        <el-input v-model="procFilter.user" :placeholder="t('mediaserver.col.user')" style="width: 120px" clearable />
+        <el-input v-model="procFilter.state" :placeholder="t('reseed.col.status')" style="width: 80px" clearable />
         <div class="sort-group">
-          <span class="sort-label">排序</span>
+          <span class="sort-label">{{ t('opsproc.sort') }}</span>
           <button v-for="k in (['cpu', 'mem', 'pid', 'ppid'] as const)" :key="k"
             class="sort-btn" :class="{ active: sortKey === k }" @click="sortKey = k">
-            {{ k === 'cpu' ? 'CPU' : k === 'mem' ? '内存' : k.toUpperCase() }}
+            {{ k === 'cpu' ? 'CPU' : k === 'mem' ? t('opsmonitor.mem') : k.toUpperCase() }}
           </button>
         </div>
       </div>
       <div class="table-scroll">
         <table class="proc-table">
-          <thead><tr><th>PID</th><th>进程名</th><th>用户</th><th>状态</th>
-            <th>CPU%</th><th>内存%</th><th>RSS</th><th>累计时间</th><th>操作</th></tr></thead>
+          <thead><tr><th>PID</th><th>{{ t('opsproc.procNameCol') }}</th><th>{{ t('mediaserver.col.user') }}</th><th>{{ t('reseed.col.status') }}</th>
+            <th>CPU%</th><th>{{ t('opsmonitor.mem') }}%</th><th>RSS</th><th>{{ t('opsproc.totalTime') }}</th><th>{{ t('reseed.col.actions') }}</th></tr></thead>
           <tbody>
             <tr v-for="p in filteredProcesses" :key="p.pid">
               <td class="td-mono">{{ p.pid }}</td>
@@ -174,29 +176,29 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
               <td>{{ fmtMem(p.rss) }}</td>
               <td class="td-mono">{{ p.time || '-' }}</td>
               <td class="td-actions">
-                <el-button size="small" type="danger" link @click="killProc(p)">结束</el-button>
-                <el-button size="small" type="danger" link @click="forceKill(p)">强制</el-button>
+                <el-button size="small" type="danger" link @click="killProc(p)">{{ t('opsproc.kill') }}</el-button>
+                <el-button size="small" type="danger" link @click="forceKill(p)">{{ t('opsproc.force') }}</el-button>
               </td>
             </tr>
-            <tr v-if="!filteredProcesses.length"><td colspan="9" class="td-empty">无匹配进程</td></tr>
+            <tr v-if="!filteredProcesses.length"><td colspan="9" class="td-empty">{{ t('opsproc.noMatchProc') }}</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="table-count">共 {{ filteredProcesses.length }} 个进程</div>
+      <div class="table-count">{{ t('opsproc.procCount', { n: filteredProcesses.length }) }}</div>
     </div>
 
     <!-- 网络连接列表 -->
     <div v-if="view === 'network' && sshTargets.length" class="proc-table-wrap glass">
       <div class="filter-bar">
         <el-input v-model="netFilter.pid" placeholder="PID" style="width: 90px" clearable />
-        <el-input v-model="netFilter.name" placeholder="进程名" style="width: 160px" clearable />
-        <el-input v-model="netFilter.port" placeholder="端口" style="width: 100px" clearable />
-        <el-input v-model="netFilter.state" placeholder="状态" style="width: 120px" clearable />
+        <el-input v-model="netFilter.name" :placeholder="t('opsproc.procName')" style="width: 160px" clearable />
+        <el-input v-model="netFilter.port" :placeholder="t('opsproc.port')" style="width: 100px" clearable />
+        <el-input v-model="netFilter.state" :placeholder="t('reseed.col.status')" style="width: 120px" clearable />
       </div>
       <div class="table-scroll">
         <table class="proc-table">
-          <thead><tr><th>协议</th><th>状态</th><th>本地地址</th><th>本地端口</th>
-            <th>对端地址</th><th>对端端口</th><th>PID</th><th>进程</th></tr></thead>
+          <thead><tr><th>{{ t('opsproc.proto') }}</th><th>{{ t('reseed.col.status') }}</th><th>{{ t('opsproc.localAddr') }}</th><th>{{ t('opsproc.localPort') }}</th>
+            <th>{{ t('opsproc.peerAddr') }}</th><th>{{ t('opsproc.peerPort') }}</th><th>PID</th><th>{{ t('ops.tab.process') }}</th></tr></thead>
           <tbody>
             <tr v-for="(c, i) in filteredConnections" :key="i">
               <td><span class="proto-chip">{{ c.proto }}</span></td>
@@ -208,11 +210,11 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
               <td class="td-mono">{{ c.pid || '-' }}</td>
               <td>{{ c.process || '-' }}</td>
             </tr>
-            <tr v-if="!filteredConnections.length"><td colspan="8" class="td-empty">无连接</td></tr>
+            <tr v-if="!filteredConnections.length"><td colspan="8" class="td-empty">{{ t('opsproc.noConns') }}</td></tr>
           </tbody>
         </table>
       </div>
-      <div class="table-count">共 {{ filteredConnections.length }} 条连接</div>
+      <div class="table-count">{{ t('opsproc.connCount', { n: filteredConnections.length }) }}</div>
     </div>
   </div>
 </template>

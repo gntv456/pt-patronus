@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { SiteConnectivityStatus as SiteConnectivityStatusData } from '@/api/site'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   status?: SiteConnectivityStatusData
@@ -11,11 +14,11 @@ const emit = defineEmits<{
 }>()
 
 function label() {
-  if (props.loading) return '检测中'
-  if (!props.status) return '未检测'
-  if (props.status.status === 'connected') return '已联通'
-  if (props.status.status === 'disabled') return '已停用'
-  return '未联通'
+  if (props.loading) return t('scs.checking')
+  if (!props.status) return t('scs.notChecked')
+  if (props.status.status === 'connected') return t('scs.connected')
+  if (props.status.status === 'disabled') return t('scs.disabled')
+  return t('scs.disconnected')
 }
 
 function canOpenReason() {
@@ -24,16 +27,16 @@ function canOpenReason() {
 
 // 上次检测相对时间（鼠标悬停 title 用，让用户感知缓存新旧而非误以为是实时）；无 checked_at 返回空串。
 function lastCheckedLabel(): string {
-  const t = props.status?.checked_at
-  if (!t) return ''
-  const ms = Date.now() - new Date(t).getTime()
+  const checkedAt = props.status?.checked_at
+  if (!checkedAt) return ''
+  const ms = Date.now() - new Date(checkedAt).getTime()
   if (Number.isNaN(ms) || ms < 0) return ''
   const min = Math.floor(ms / 60000)
-  if (min < 1) return '上次检测：刚刚'
-  if (min < 60) return `上次检测：${min} 分钟前`
+  if (min < 1) return t('scs.lastJustNow')
+  if (min < 60) return t('scs.lastMin', { n: min })
   const hr = Math.floor(min / 60)
-  if (hr < 24) return `上次检测：${hr} 小时前`
-  return `上次检测：${Math.floor(hr / 24)} 天前`
+  if (hr < 24) return t('scs.lastHr', { n: hr })
+  return t('scs.lastDay', { n: Math.floor(hr / 24) })
 }
 
 // 站点稳定性统计（成功率 + 平均耗时，对标 MP SiteStatistic）；无累计数据返回空串。
@@ -43,8 +46,8 @@ function statsLabel(): string {
   if (s + f === 0) return ''
   const rate = Math.round((s / (s + f)) * 100)
   const avg = props.status?.avg_seconds ?? 0
-  const avgStr = avg > 0 ? ` · 平均 ${avg < 1 ? Math.round(avg * 1000) + 'ms' : avg.toFixed(1) + 's'}` : ''
-  return `成功率 ${rate}%（${s}/${s + f}）${avgStr}`
+  const avgStr = avg > 0 ? t('scs.avg', { v: avg < 1 ? Math.round(avg * 1000) + 'ms' : avg.toFixed(1) + 's' }) : ''
+  return t('scs.rate', { rate, s, total: s + f }) + avgStr
 }
 
 // badge title：优先显示统计 + 上次检测；都无则用 fallback。
@@ -60,7 +63,7 @@ function fullTitle(fallback: string): string {
     type="button"
     class="connectivity-status is-clickable"
     :class="`is-${status?.status}`"
-    :title="fullTitle('点击查看状态原因')"
+    :title="fullTitle(t('scs.viewReason'))"
     @click="emit('reason')"
   >
     <span class="connectivity-dot" aria-hidden="true" />

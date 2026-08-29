@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { useWs } from '@/composables/useWs'
 import { fmtSpeed } from '@/utils/format'
 
 // DashboardRealtimeCard — 区②下载器实时速率：直接消费 WS torrents 单例（DeepReadonly），
 // 跨下载器汇总速率与任务状态。WS 自动更新，无需轮询。
+const { t } = useI18n()
 const { torrents } = useWs()
 
 const count = computed(() => torrents.value.length)
@@ -32,29 +34,29 @@ const errored = computed(() => snaps.value.filter((t) => t.error).length)
   <div class="dash-card">
     <div class="dc-head">
       <div>
-        <h3>实时下载</h3>
-        <p>{{ count ? `${count} 个下载器 · WS 实时` : '跨下载器聚合' }}</p>
+        <h3>{{ t('drc.title') }}</h3>
+        <p>{{ count ? t('drc.subLive', { n: count }) : t('drc.subAgg') }}</p>
       </div>
-      <span v-if="errored" class="dc-tag warn">{{ errored }} 离线</span>
+      <span v-if="errored" class="dc-tag warn">{{ t('drc.offlineN', { n: errored }) }}</span>
     </div>
     <div v-if="count" class="dc-body">
       <div class="speed-row">
         <div class="speed-cell dl">
-          <span class="lbl">↓ 总下载</span>
+          <span class="lbl">↓ {{ t('drc.totalDl') }}</span>
           <strong>{{ fmtSpeed(dlRate) }}</strong>
         </div>
         <div class="speed-cell up">
-          <span class="lbl">↑ 总上传</span>
+          <span class="lbl">↑ {{ t('drc.totalUp') }}</span>
           <strong>{{ fmtSpeed(upRate) }}</strong>
         </div>
       </div>
       <div class="mini-row">
-        <span><b>{{ downloading }}</b> 下载中</span>
-        <span><b>{{ seeding }}</b> 做种</span>
-        <span><b>{{ total }}</b> 任务</span>
+        <span><b>{{ downloading }}</b> {{ t('drc.downloading') }}</span>
+        <span><b>{{ seeding }}</b> {{ t('drc.seeding') }}</span>
+        <span><b>{{ total }}</b> {{ t('drc.tasks') }}</span>
       </div>
     </div>
-    <div v-else class="dc-empty">暂无下载器实时数据</div>
+    <div v-else class="dc-empty">{{ t('drc.empty') }}</div>
   </div>
 </template>
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/aiagent"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/llmgateway"
 )
@@ -301,7 +302,7 @@ func (h *LLMGatewayHandler) GetConfig(c *gin.Context) {
 func (h *LLMGatewayHandler) SetConfig(c *gin.Context) {
 	var in llmGatewayConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	cfg := llmgateway.Load(h.kv)
@@ -311,13 +312,13 @@ func (h *LLMGatewayHandler) SetConfig(c *gin.Context) {
 	if strings.TrimSpace(in.AccessToken) != "" {
 		enc, err := h.crypto.Encrypt(strings.TrimSpace(in.AccessToken))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 		cfg.AccessTokenEnc = enc
 	}
 	if err := llmgateway.Save(h.kv, cfg); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, llmgateway.Redacted(cfg))

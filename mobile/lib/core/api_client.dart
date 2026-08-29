@@ -185,13 +185,15 @@ class ApiClient {
       if (r.statusCode >= 400) {
         if (r.statusCode == 401) _handle401();
         var msg = '请求失败';
+        String? errCode;
         try {
           final b = jsonDecode(r.body);
           if (b is Map<String, dynamic>) {
             msg = (b['error'] as String?) ?? (b['message'] as String?) ?? msg;
+            errCode = b['code'] as String?;
           }
         } catch (_) {}
-        throw ApiException(r.statusCode, msg);
+        throw ApiException(r.statusCode, msg, code: errCode);
       }
       final body = r.body.isEmpty ? <dynamic>[] : jsonDecode(r.body);
       if (body is List) return body;
@@ -217,13 +219,15 @@ class ApiClient {
       if (r.statusCode >= 400) {
         if (r.statusCode == 401) _handle401();
         var msg = '请求失败';
+        String? errCode;
         try {
           final b = jsonDecode(r.body);
           if (b is Map<String, dynamic>) {
             msg = (b['error'] as String?) ?? (b['message'] as String?) ?? msg;
+            errCode = b['code'] as String?;
           }
         } catch (_) {}
-        throw ApiException(r.statusCode, msg);
+        throw ApiException(r.statusCode, msg, code: errCode);
       }
       return r.bodyBytes;
     } on ApiException {
@@ -240,13 +244,15 @@ class ApiClient {
       if (r.statusCode >= 400) {
         if (r.statusCode == 401) _handle401();
         var msg = '请求失败';
+        String? errCode;
         try {
           final b = jsonDecode(r.body);
           if (b is Map<String, dynamic>) {
             msg = (b['error'] as String?) ?? (b['message'] as String?) ?? msg;
+            errCode = b['code'] as String?;
           }
         } catch (_) {}
-        throw ApiException(r.statusCode, msg);
+        throw ApiException(r.statusCode, msg, code: errCode);
       }
       return r.bodyBytes;
     } on ApiException {
@@ -282,11 +288,13 @@ class ApiClient {
       if (code == 401) _handle401();
       if (code >= 400) {
         var msg = '下载失败';
+        String? errCode;
         try {
           final b = jsonDecode(e.response?.data ?? '') as Map<String, dynamic>;
           msg = (b['error'] as String?) ?? (b['message'] as String?) ?? msg;
+          errCode = b['code'] as String?;
         } catch (_) {}
-        throw ApiException(code, msg);
+        throw ApiException(code, msg, code: errCode);
       }
       throw ApiException(0, '${e.message}', userMessage: '网络连接失败，请检查网络或后端地址');
     } catch (e) {
@@ -315,7 +323,8 @@ class ApiClient {
         if (resp.statusCode != 200) {
           final body = await resp.stream.bytesToString();
           if (resp.statusCode == 401) _handle401();
-          throw ApiException(resp.statusCode, _sseErrMsg(body));
+          throw ApiException(resp.statusCode, _sseErrMsg(body),
+              code: sseErrCode(body));
         }
         String buf = '';
         await for (final chunk in resp.stream.transform(utf8.decoder)) {
@@ -386,8 +395,9 @@ class ApiClient {
     if (r.statusCode >= 400) {
       // 401：token 失效/已登出 → 全局清洗（清 token+user、断 WS、回登录页）
       if (r.statusCode == 401) _handle401();
-      throw ApiException(
-          r.statusCode, (body['error'] as String?) ?? (body['message'] as String?) ?? '请求失败');
+      throw ApiException(r.statusCode,
+          (body['error'] as String?) ?? (body['message'] as String?) ?? '请求失败',
+          code: body['code'] as String?);
     }
     return body;
   }
@@ -397,8 +407,12 @@ class ApiException implements Exception {
   final int status;
   final String message; // 原始后端消息（日志/调试用）
   final String userMessage; // 给用户看的友好文案
-  ApiException(this.status, this.message, {String? userMessage})
-      : userMessage = userMessage ?? friendlyMessage(status, message);
+  /// 机器可读错误码（后端统一信封 {code, message, error}）。空串 = 后端未码化。
+  /// 仅作编程分支（如 risk_confirmation_required 弹风险确认），不影响文案展示。
+  final String code;
+  ApiException(this.status, this.message, {String? userMessage, String? code})
+      : userMessage = userMessage ?? friendlyMessage(status, message),
+        code = code ?? '';
   @override
   String toString() => userMessage;
 }
@@ -440,4 +454,14 @@ String _sseErrMsg(String body) {
   } catch (_) {
     return '请求失败';
   }
+}
+
+
+/// 从 SSE 错误 body 提取机器可读错误码（统一信封 {code, message, error}）。公开供测试。
+String? sseErrCode(String body) {
+  try {
+    final b = jsonDecode(body);
+    if (b is Map<String, dynamic>) return b['code'] as String?;
+  } catch (_) {}
+  return null;
 }

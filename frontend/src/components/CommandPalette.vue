@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+
+const { t } = useI18n()
 
 export interface PaletteItem {
   name: string
@@ -173,7 +176,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div v-if="open" class="cp-backdrop" @click.self="close">
-      <div class="cp-panel glass" role="dialog" aria-modal="true" aria-label="命令面板" @click.stop>
+      <div class="cp-panel glass" role="dialog" aria-modal="true" :aria-label="t('cpa.aria')" @click.stop>
         <div class="cp-input-row">
           <span class="cp-search-icon">🔍</span>
           <input
@@ -181,7 +184,7 @@ onUnmounted(() => {
             v-model="query"
             class="cp-input"
             type="search"
-            placeholder="跳转到… 菜单 / 设置 / PT 黑话（刷流·保级·H&R）"
+            :placeholder="t('cpa.placeholder')"
             autocomplete="off"
             spellcheck="false"
           />
@@ -218,14 +221,14 @@ onUnmounted(() => {
             <span class="cp-hint">↵</span>
           </li>
           <li v-if="!filtered.length" class="cp-empty">
-            无匹配菜单 · Enter 搜索「{{ query }}」
+            {{ t('cpa.noMatchPre') }}{{ query }}{{ t('cpa.noMatchPost') }}
           </li>
         </ul>
         <div class="cp-footer">
-          <span><kbd>↑↓</kbd> 选择</span>
-          <span><kbd>↵</kbd> 打开</span>
-          <span><kbd>Esc</kbd> 关闭</span>
-          <span class="cp-foot-right"><kbd>⌘K</kbd> 切换</span>
+          <span><kbd>↑↓</kbd> {{ t('cpa.select') }}</span>
+          <span><kbd>↵</kbd> {{ t('cpa.open') }}</span>
+          <span><kbd>Esc</kbd> {{ t('common.close') }}</span>
+          <span class="cp-foot-right"><kbd>⌘K</kbd> {{ t('cpa.toggle') }}</span>
         </div>
       </div>
     </div>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 // OIDC/SSO 配置面板。
 // 状态与逻辑来自 useOidc 组合式函数。
+import { useI18n } from 'vue-i18n'
 import { useOidc } from '@/composables/useOidc'
+
+const { t } = useI18n()
 
 const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC } = useOidc()
 </script>
@@ -9,8 +12,8 @@ const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC } = us
 <template>
         <div v-loading="oidcLoading" class="oidc-wrap">
           <p class="text-muted oidc-help">
-            配置标准 OIDC Provider（Authelia/Keycloak/Casdoor 等）后，登录页出现 SSO 入口。
-            回调地址需在 Provider 端登记为 <code>{{ callbackURL }}</code>。
+            {{ t('oidc.intro1') }}
+            {{ t('oidc.intro2Pre') }}<code>{{ callbackURL }}</code>{{ t('oidc.intro2Post') }}
           </p>
           <div class="card glass">
             <div class="ch-head">
@@ -28,7 +31,7 @@ const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC } = us
               type="password"
               show-password
               class="mt8"
-              :placeholder="oidcCfg?.client_secret_configured ? '已配置（留空=不修改）' : 'Client Secret'"
+              :placeholder="oidcCfg?.client_secret_configured ? t('lgp.tokenSet') : 'Client Secret'"
             >
               <template #prepend>Client Secret</template>
             </el-input>
@@ -36,11 +39,11 @@ const { callbackURL, oidcCfg, oidcForm, oidcLoading, oidcSaving, saveOIDC } = us
               <template #prepend>Scopes</template>
             </el-input>
             <el-input v-model="oidcForm.display_name" class="mt8">
-              <template #prepend>按钮文案</template>
+              <template #prepend>{{ t('oidc.btnText') }}</template>
             </el-input>
           </div>
           <div class="oidc-save">
-            <el-button type="primary" :loading="oidcSaving" @click="saveOIDC">保存</el-button>
+            <el-button type="primary" :loading="oidcSaving" @click="saveOIDC">{{ t('common.save') }}</el-button>
           </div>
         </div>
 </template>

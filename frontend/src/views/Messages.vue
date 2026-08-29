@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { messageApi, type MessageResult, type Message, type Mailbox } from '@/api/message'
 import { friendlySiteError } from '@/utils/siteError'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
+const { t } = useI18n()
 const mailbox = ref<Mailbox>('inbox')
 const results = ref<MessageResult[]>([])
 const loading = ref(false)
@@ -29,12 +31,12 @@ const filtered = computed(() =>
 )
 
 const mailboxes: { key: Mailbox; label: string }[] = [
-  { key: 'inbox', label: '收件箱' },
-  { key: 'system', label: '系统' },
-  { key: 'sent', label: '发件箱' },
-  { key: 'cheater', label: '作弊者' },
-  { key: 'reports', label: '举报信箱' },
-  { key: 'staff', label: '管理组信箱' },
+  { key: 'inbox', label: t('messages.box.inbox') },
+  { key: 'system', label: t('messages.box.system') },
+  { key: 'sent', label: t('messages.box.sent') },
+  { key: 'cheater', label: t('messages.box.cheater') },
+  { key: 'reports', label: t('messages.box.reports') },
+  { key: 'staff', label: t('messages.box.staff') },
 ]
 
 // 站点错误友好化：统一用 @/utils/siteError（Messages / Announcements 共用）。
@@ -58,7 +60,7 @@ async function load(refresh = false) {
       else results.value.push(r)
     }, ctrl.signal)
   } catch (e: unknown) {
-    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || '加载消息失败')
+    if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('messages.loadFailed'))
   } finally {
     if (abortCtrl === ctrl) {
       loading.value = false
@@ -83,7 +85,7 @@ async function openDetail(msg: Message) {
       messageApi.markRead(msg.site_id, [msg.admin_actions.item_id]).then(() => load())
     }
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载正文失败')
+    ElMessage.error((e as Error).message || t('messages.loadContentFailed'))
   } finally {
     detailLoading.value = false
   }
@@ -105,25 +107,25 @@ async function sendReply() {
       ElMessage.warning(r.message)
     }
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '回复失败')
+    ElMessage.error((e as Error).message || t('messages.replyFailed'))
   }
 }
 
 async function removeMsg() {
   if (!detail.value) return
   try {
-    await ElMessageBox.confirm('确定删除该消息？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('messages.confirmDelete'), t('messages.tip'), { type: 'warning' })
   } catch {
     return
   }
   const msg = detail.value
   try {
     await messageApi.remove(msg.site_id, msg.admin_actions?.delete_url || msg.url)
-    ElMessage.success('已删除')
+    ElMessage.success(t('common.deleted'))
     detail.value = null
     load()
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '删除失败')
+    ElMessage.error((e as Error).message || t('common.deleteFailed'))
   }
 }
 
@@ -134,10 +136,10 @@ onUnmounted(() => abortCtrl?.abort())
 <template>
   <div class="page" v-loading="loading && !filtered.length">
     <div class="head">
-      <h2 class="title">消息</h2>
+      <h2 class="title">{{ t('messages.title') }}</h2>
       <div class="head-tools">
-        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" title="选择消息站点" />
-        <el-button :loading="loading" @click="load(true)">刷新</el-button>
+        <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('messages.siteFilterTitle')" />
+        <el-button :loading="loading" @click="load(true)">{{ t('common.refresh') }}</el-button>
       </div>
     </div>
 
@@ -152,7 +154,7 @@ onUnmounted(() => abortCtrl?.abort())
         <div class="group-head">
           <span class="site-name">{{ r.site_name }}</span>
           <span v-if="r.error" class="err-tag" :title="r.error">{{ friendlyError(r.error) }}</span>
-          <span v-else-if="!r.messages.length" class="text-muted">无消息</span>
+          <span v-else-if="!r.messages.length" class="text-muted">{{ t('messages.noMessages') }}</span>
         </div>
         <div class="msg-list">
           <div v-for="m in r.messages" :key="m.id" class="msg" :class="{ unread: !m.is_read }" @click="openDetail(m)">
@@ -168,8 +170,8 @@ onUnmounted(() => abortCtrl?.abort())
     <EmptyState
       v-if="!filtered.length && !loading"
       icon="✉️"
-      :title="selectedSiteIds.length === 0 ? '暂无消息' : '该站点暂无消息'"
-      :description="selectedSiteIds.length === 0 ? '各站收件箱为空，或站点尚未登录' : '该站点当前信箱无消息'"
+      :title="selectedSiteIds.length === 0 ? t('messages.emptyTitle') : t('messages.emptySiteTitle')"
+      :description="selectedSiteIds.length === 0 ? t('messages.emptyDesc') : t('messages.emptySiteDesc')"
     />
 
     <el-drawer :model-value="!!detail" @update:model-value="(v: boolean) => { if (!v) detail = null }" :title="detail?.title || ''" size="45%">
@@ -177,19 +179,19 @@ onUnmounted(() => abortCtrl?.abort())
         <div class="detail-meta">
           <span>{{ detail.sender }}</span> · <span>{{ detail.date }}</span> · <span class="text-muted">{{ detail.site_name }}</span>
         </div>
-        <div class="detail-body">{{ detailContent || '（无正文）' }}</div>
+        <div class="detail-body">{{ detailContent || t('messages.noContent') }}</div>
         <div class="detail-actions">
-          <el-button @click="startReply">回复</el-button>
-          <el-button type="danger" @click="removeMsg">删除</el-button>
+          <el-button @click="startReply">{{ t('messages.reply') }}</el-button>
+          <el-button type="danger" @click="removeMsg">{{ t('common.delete') }}</el-button>
         </div>
       </div>
     </el-drawer>
 
-    <el-dialog v-model="replyVisible" title="回复消息" width="500">
-      <el-input v-model="replyText" type="textarea" :rows="6" placeholder="输入回复内容…" />
+    <el-dialog v-model="replyVisible" :title="t('messages.replyTitle')" width="500">
+      <el-input v-model="replyText" type="textarea" :rows="6" :placeholder="t('messages.replyPlaceholder')" />
       <template #footer>
-        <el-button @click="replyVisible = false">取消</el-button>
-        <el-button type="primary" @click="sendReply">发送</el-button>
+        <el-button @click="replyVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="sendReply">{{ t('messages.send') }}</el-button>
       </template>
     </el-dialog>
   </div>

@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -35,12 +36,12 @@ func (h *DockerHandler) LocalStatus(c *gin.Context) {
 // LocalList 列出本机所有容器/镜像/卷/网络。
 func (h *DockerHandler) LocalList(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	resp, err := h.local.LocalList(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, resp)
@@ -49,7 +50,7 @@ func (h *DockerHandler) LocalList(c *gin.Context) {
 // LocalStats 返回本机所有容器的实时资源占用。
 func (h *DockerHandler) LocalStats(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	rows, err := h.local.LocalStats(c.Request.Context())
@@ -63,17 +64,17 @@ func (h *DockerHandler) LocalStats(c *gin.Context) {
 // LocalInspect 查看本机某容器的详情。
 func (h *DockerHandler) LocalInspect(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	ct, err := h.local.LocalInspect(c.Request.Context(), name)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, ct)
@@ -82,12 +83,12 @@ func (h *DockerHandler) LocalInspect(c *gin.Context) {
 // LocalLogs 获取本机某容器日志。
 func (h *DockerHandler) LocalLogs(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	tailStr := c.DefaultQuery("tail", "200")
@@ -97,7 +98,7 @@ func (h *DockerHandler) LocalLogs(c *gin.Context) {
 	}
 	logs, err := h.local.LocalLogs(c.Request.Context(), name, tail)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": logs})
@@ -106,24 +107,24 @@ func (h *DockerHandler) LocalLogs(c *gin.Context) {
 // LocalContainerAction 执行本机容器生命周期操作（start/stop/restart/pause/unpause）。
 func (h *DockerHandler) LocalContainerAction(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	name := c.Param("name")
 	action := c.Param("action")
 	if name == "" || action == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name and action are required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	// 白名单校验，防止任意 action 注入。
 	switch action {
 	case "start", "stop", "restart", "pause", "unpause":
 	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported action: " + action})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	if err := h.local.LocalContainerAction(c.Request.Context(), name, action); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -134,25 +135,22 @@ func (h *DockerHandler) LocalContainerAction(c *gin.Context) {
 // 这里保留方法以备前端 local 模式删除容器所需。
 func (h *DockerHandler) LocalRemove(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	var in dockerActionRequest
 	_ = c.ShouldBindJSON(&in)
 	if !in.ConfirmRisk {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "destructive action requires confirmation",
-			"code":  "risk_confirmation_required",
-		})
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	if err := h.local.LocalRemove(c.Request.Context(), name, true); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -161,25 +159,22 @@ func (h *DockerHandler) LocalRemove(c *gin.Context) {
 // LocalRemoveImage 删除本机镜像。
 func (h *DockerHandler) LocalRemoveImage(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	ref := c.Param("ref")
 	if ref == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "image reference is required"})
+		errcode.Respond(c, errcode.DockerImageRefRequired)
 		return
 	}
 	var in dockerActionRequest
 	_ = c.ShouldBindJSON(&in)
 	if !in.ConfirmRisk {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "destructive action requires confirmation",
-			"code":  "risk_confirmation_required",
-		})
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	if err := h.local.LocalRemoveImage(c.Request.Context(), ref); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -188,17 +183,17 @@ func (h *DockerHandler) LocalRemoveImage(c *gin.Context) {
 // LocalPull 拉取镜像（本机模式）。
 func (h *DockerHandler) LocalPull(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	ref := c.Query("ref")
 	if ref == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "image reference is required (?ref=nginx)"})
+		errcode.Respond(c, errcode.DockerImageRefRequired)
 		return
 	}
 	progress, err := h.local.LocalPull(c.Request.Context(), ref)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "progress": progress})
@@ -207,13 +202,13 @@ func (h *DockerHandler) LocalPull(c *gin.Context) {
 // LocalPrune 清理无用资源（本机模式）。?type=container|image|volume|network。
 func (h *DockerHandler) LocalPrune(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	typ := c.DefaultQuery("type", "image")
 	result, err := h.local.LocalPruneResult(c.Request.Context(), typ)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "result": result})
@@ -222,7 +217,7 @@ func (h *DockerHandler) LocalPrune(c *gin.Context) {
 // LocalVolumeCreate 创建卷（本机模式）。
 func (h *DockerHandler) LocalVolumeCreate(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	var in struct {
@@ -230,11 +225,11 @@ func (h *DockerHandler) LocalVolumeCreate(c *gin.Context) {
 		Driver string `json:"driver"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.local.LocalVolumeCreate(c.Request.Context(), in.Name, in.Driver); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -243,16 +238,16 @@ func (h *DockerHandler) LocalVolumeCreate(c *gin.Context) {
 // LocalVolumeRemove 删除卷（本机模式）。
 func (h *DockerHandler) LocalVolumeRemove(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "volume name is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if err := h.local.LocalVolumeRemove(c.Request.Context(), name, true); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -261,7 +256,7 @@ func (h *DockerHandler) LocalVolumeRemove(c *gin.Context) {
 // LocalNetworkCreate 创建网络（本机模式）。
 func (h *DockerHandler) LocalNetworkCreate(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	var in struct {
@@ -269,11 +264,11 @@ func (h *DockerHandler) LocalNetworkCreate(c *gin.Context) {
 		Driver string `json:"driver"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.local.LocalNetworkCreate(c.Request.Context(), in.Name, in.Driver); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -282,16 +277,16 @@ func (h *DockerHandler) LocalNetworkCreate(c *gin.Context) {
 // LocalNetworkRemove 删除网络（本机模式）。
 func (h *DockerHandler) LocalNetworkRemove(c *gin.Context) {
 	if h.local == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "local docker client not initialized"})
+		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "network name is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if err := h.local.LocalNetworkRemove(c.Request.Context(), name); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

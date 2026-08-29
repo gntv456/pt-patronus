@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
@@ -70,7 +71,7 @@ type cookieCloudConfigReq struct {
 func (h *CookieCloudHandler) SetConfig(c *gin.Context) {
 	var req cookieCloudConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	prev := h.ch.GetSettings()
@@ -86,7 +87,7 @@ func (h *CookieCloudHandler) SetConfig(c *gin.Context) {
 		Direction:   req.Direction,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	resp := gin.H{"ok": true, "uuid": s.UUID}

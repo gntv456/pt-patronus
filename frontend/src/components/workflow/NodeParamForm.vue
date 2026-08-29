@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import type { ParamField } from '@/api/workflow'
 import { siteApi, type Site } from '@/api/site'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 
-// NodeParamForm 按 ParamSchema 动态渲染节点配置表单。直接双向绑定 params 对象（引用透传）。
-const props = defineProps<{ schema: ParamField[]; params: Record<string, any> }>()
+// NodeParamForm 按 ParamSchema 动态渲染节点配置表单。params 用 defineModel 双向绑定
+// （父级 v-model:params）：表单字段修改经 update:params 回传，消除对 prop 的直接突变。
+const { t } = useI18n()
+const params = defineModel<Record<string, any>>('params', { required: true })
+
+const props = defineProps<{ schema: ParamField[] }>()
 
 const sites = ref<Site[]>([])
 const downloaders = ref<Downloader[]>([])
@@ -25,10 +30,10 @@ watch(
 )
 
 // kv 字段新增一行（用 window.prompt，绕开模板内 prompt 严格校验）。
-function addKvRow(params: Record<string, any>, field: string) {
-  if (!params[field]) params[field] = {}
-  const k = window.prompt('键名')
-  if (k) params[field][k] = ''
+function addKvRow(target: Record<string, any>, field: string) {
+  if (!target[field]) target[field] = {}
+  const k = window.prompt(t('npf.keyName'))
+  if (k) target[field][k] = ''
 }
 
 const advOpen = ref(false)
@@ -45,7 +50,7 @@ const advOpen = ref(false)
         <!-- 文本 -->
         <el-input
           v-if="f.type === 'text'"
-          v-model="props.params[f.name]"
+          v-model="params[f.name]"
           size="small"
           :placeholder="f.help || ''"
         />
@@ -53,21 +58,21 @@ const advOpen = ref(false)
         <!-- 数字 -->
         <el-input-number
           v-else-if="f.type === 'number'"
-          v-model="props.params[f.name]"
+          v-model="params[f.name]"
           size="small"
           controls-position="right"
           style="width: 100%"
         />
 
         <!-- 选择 -->
-        <el-select v-else-if="f.type === 'select'" v-model="props.params[f.name]" size="small" style="width: 100%">
+        <el-select v-else-if="f.type === 'select'" v-model="params[f.name]" size="small" style="width: 100%">
           <el-option v-for="o in f.options || []" :key="String(o.value)" :label="o.label" :value="o.value" />
         </el-select>
 
         <!-- 多行 -->
         <el-input
           v-else-if="f.type === 'textarea'"
-          v-model="props.params[f.name]"
+          v-model="params[f.name]"
           type="textarea"
           size="small"
           :rows="3"
@@ -75,38 +80,38 @@ const advOpen = ref(false)
         />
 
         <!-- 开关 -->
-        <el-switch v-else-if="f.type === 'switch'" v-model="props.params[f.name]" />
+        <el-switch v-else-if="f.type === 'switch'" v-model="params[f.name]" />
 
         <!-- 键值对 -->
         <div v-else-if="f.type === 'kv'" class="kv">
-          <div v-for="(row, idx) in Object.keys(props.params[f.name] || {})" :key="idx" class="kv-row">
-            <el-input v-model="props.params[f.name][row]" size="small" style="flex: 1" />
-            <el-button size="small" type="danger" plain @click="delete props.params[f.name][row]">✕</el-button>
+          <div v-for="(row, idx) in Object.keys(params[f.name] || {})" :key="idx" class="kv-row">
+            <el-input v-model="params[f.name][row]" size="small" style="flex: 1" />
+            <el-button size="small" type="danger" plain @click="delete params[f.name][row]">✕</el-button>
           </div>
-          <el-button size="small" @click="addKvRow(props.params, f.name)">+ 添加</el-button>
+          <el-button size="small" @click="addKvRow(params, f.name)">+ {{ t('common.add') }}</el-button>
         </div>
 
         <!-- 站点选择 -->
         <el-select
           v-else-if="f.type === 'site_select'"
-          v-model="props.params[f.name]"
+          v-model="params[f.name]"
           size="small"
           filterable
           style="width: 100%"
         >
-          <el-option label="不关联（匿名 RSS）" :value="0" />
+          <el-option :label="t('npf.noSite')" :value="0" />
           <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
         </el-select>
 
         <!-- 下载器选择 -->
         <el-select
           v-else-if="f.type === 'downloader_select'"
-          v-model="props.params[f.name]"
+          v-model="params[f.name]"
           size="small"
           filterable
           style="width: 100%"
         >
-          <el-option label="默认下载器" :value="0" />
+          <el-option :label="t('npf.defaultDl')" :value="0" />
           <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
         </el-select>
 
@@ -117,20 +122,20 @@ const advOpen = ref(false)
     <!-- 高级：循环重试（所有节点通用，参考 MoviePilot loop/loop_interval） -->
     <div class="advanced">
       <div class="adv-head" @click="advOpen = !advOpen">
-        <span>{{ advOpen ? '▼' : '▶' }} 高级：循环重试</span>
+        <span>{{ advOpen ? '▼' : '▶' }} {{ t('npf.advRetry') }}</span>
       </div>
       <div v-if="advOpen" class="adv-body">
         <div class="field row">
-          <el-switch v-model="props.params['loop']" />
-          <span class="small">启用（失败时重试直到成功）</span>
+          <el-switch v-model="params['loop']" />
+          <span class="small">{{ t('npf.retryEnable') }}</span>
         </div>
         <div class="field">
-          <label>重试次数</label>
-          <el-input-number v-model="props.params['loop_times']" size="small" :min="1" :max="20" style="width: 100%" />
+          <label>{{ t('npf.retryTimes') }}</label>
+          <el-input-number v-model="params['loop_times']" size="small" :min="1" :max="20" style="width: 100%" />
         </div>
         <div class="field">
-          <label>间隔(秒)</label>
-          <el-input-number v-model="props.params['loop_interval_sec']" size="small" :min="0" :max="60" style="width: 100%" />
+          <label>{{ t('npf.retryInterval') }}</label>
+          <el-input-number v-model="params['loop_interval_sec']" size="small" :min="0" :max="60" style="width: 100%" />
         </div>
       </div>
     </div>

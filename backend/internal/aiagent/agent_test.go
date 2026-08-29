@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/llm"
 	"github.com/hxpt/ptpatronus/internal/mcp"
@@ -85,7 +86,7 @@ func TestAgent_ReActLoop(t *testing.T) {
 	store := &fakeMsgStore{}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, Provider: "openai", APIKeyEnc: "enc:k", MaxIterations: 5, SystemPrompt: "sys"})
 	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
-	a := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plan} }, testTools(), store, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+	a := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plan} }, testTools(), store, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
 
 	var texts, reasoning string
 	var toolCalls, toolResults []string
@@ -143,7 +144,7 @@ func TestAgent_ToolErrorFedBack(t *testing.T) {
 	store := &fakeMsgStore{}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 5, SystemPrompt: "s"})
 	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
-	a := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plan} }, testTools(), store, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+	a := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plan} }, testTools(), store, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
 
 	var toolResults []string
 	var sawDone bool
@@ -173,7 +174,7 @@ func TestAgent_MaxIterations(t *testing.T) {
 	}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
 	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
-	a := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, testTools(), &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+	a := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, testTools(), &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
 	var sawErr bool
 	for ev := range a.Run(context.Background(), 1, "go") {
 		if ev.Type == llm.EventError {
@@ -196,7 +197,7 @@ func TestAgent_StreamErrorPreservesUsage(t *testing.T) {
 	}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
 	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
-	a := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, testTools(), &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+	a := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, testTools(), &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
 
 	for range a.Run(context.Background(), 1, "go") {
 	}

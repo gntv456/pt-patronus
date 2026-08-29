@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, ref } from 'vue'
 import { fmtBytes } from '@/utils/format'
 
@@ -8,6 +9,8 @@ type ChartSeries = {
   color: string
   values: number[]
 }
+
+const { t } = useI18n()
 
 const props = withDefaults(
   defineProps<{
@@ -89,7 +92,7 @@ function shortDay(day: string): string {
       :viewBox="`0 0 ${VB_W} ${VB_H}`"
       preserveAspectRatio="none"
       role="img"
-      aria-label="账号趋势图"
+      :aria-label="t('dtc.aria')"
     >
       <g v-for="tick in geometry.yTicks" :key="tick.y">
         <line :x1="PAD.left" :x2="VB_W - PAD.right" :y1="tick.y" :y2="tick.y" class="grid-line" />
@@ -125,7 +128,7 @@ function shortDay(day: string): string {
         />
       </g>
     </svg>
-    <div v-else class="chart-empty">暂无趋势数据</div>
+    <div v-else class="chart-empty">{{ t('dtc.empty') }}</div>
 
     <div v-if="hoverIndex !== null && geometry" class="chart-tooltip" :style="tooltipStyle">
       <span>{{ days[hoverIndex] || '-' }}</span>

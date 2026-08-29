@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, toRef } from 'vue'
 import { useMedalSynthesis, fmtNum as fmt } from '@/composables/useMedalSynthesis'
 
+const { t } = useI18n()
 const props = defineProps<{ siteId: number }>()
 
 const {
@@ -18,12 +20,12 @@ onMounted(loadAll)
   <div class="card-synth">
     <!-- 顶部栏 -->
     <div class="topbar">
-      <span class="title">卡牌合成</span>
-      <span class="balance">当前火花：{{ stats ? fmt(stats.balance) : '--' }}</span>
+      <span class="title">{{ t('msg2.title') }}</span>
+      <span class="balance">{{ t('msg2.balance', { v: stats ? fmt(stats.balance) : '--' }) }}</span>
     </div>
 
     <div v-if="!targets.length" class="empty text-muted">
-      未解析到合成目标（可能未登录或页面结构变化，见后端日志 <code>entertainment raw response</code>）
+      {{ t('msg2.noTargetsPre') }}<code>entertainment raw response</code>{{ t('msg2.noTargetsPost') }}
     </div>
 
     <template v-else>
@@ -50,7 +52,7 @@ onMounted(loadAll)
             <div class="bar"><div class="fill" :style="{ width: progressPct + '%' }" /></div>
             <span class="pct">{{ selected.got }}/{{ selected.need }} · {{ progressPct }}%</span>
           </div>
-          <div v-if="selected.pity" class="t-pity">保底 {{ selected.pity }}</div>
+          <div v-if="selected.pity" class="t-pity">{{ t('msg2.pity') }} {{ selected.pity }}</div>
         </div>
 
         <!-- 右：碎片网格 + 操作 -->
@@ -62,48 +64,48 @@ onMounted(loadAll)
               class="frag"
               :class="{ collected: f.current >= f.required && f.required > 0, rare: f.is_rare }"
             >
-              <img v-if="f.image" :src="f.image" class="frag-img" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+              <img v-if="f.image" :src="f.image" :alt="f.name || t('msg2.fragAlt')" class="frag-img" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
               <div v-else class="frag-img placeholder">💠</div>
-              <div class="frag-name">{{ f.name || '碎片' }}</div>
+              <div class="frag-name">{{ f.name || t('msg2.frag') }}</div>
               <div class="frag-count">
                 <span class="cur">{{ f.current }}</span>/<span class="req">{{ f.required }}</span>
               </div>
             </div>
-            <div v-if="!(selected?.fragments?.length)" class="text-muted frag-empty">无碎片数据</div>
+            <div v-if="!(selected?.fragments?.length)" class="text-muted frag-empty">{{ t('msg2.noFrags') }}</div>
           </div>
 
           <!-- 操作按钮 -->
           <div class="ops">
             <button class="op draw1" :disabled="!!drawing" @click="draw(1)">
-              {{ drawing === 1 ? '…' : '单抽' }}<small>{{ fmt(selected.draw_price) }}</small>
+              {{ drawing === 1 ? '…' : t('msg2.draw1') }}<small>{{ fmt(selected.draw_price) }}</small>
             </button>
             <button class="op draw10" :disabled="!!drawing" @click="draw(10)">
-              {{ drawing === 10 ? '…' : '十连' }}<small>{{ fmt(selected.ten_price) }}</small>
+              {{ drawing === 10 ? '…' : t('msg2.draw10') }}<small>{{ fmt(selected.ten_price) }}</small>
             </button>
             <button class="op draw100" :disabled="!!drawing" @click="draw(100)">
-              {{ drawing === 100 ? '…' : '百连' }}<small>{{ fmt(selected.hundred_price) }}</small>
+              {{ drawing === 100 ? '…' : t('msg2.draw100') }}<small>{{ fmt(selected.hundred_price) }}</small>
             </button>
             <button
               class="op synth"
               :disabled="synthesizing || !selected.can_synthesize"
               @click="synthesize"
             >
-              {{ synthesizing ? '…' : '合成' }}
+              {{ synthesizing ? '…' : t('msg2.synth') }}
             </button>
-            <button class="op hist" :class="{ active: showHistory }" @click="toggleHistory">记录</button>
+            <button class="op hist" :class="{ active: showHistory }" @click="toggleHistory">{{ t('msg2.history') }}</button>
           </div>
 
           <!-- 上次抽取结果 -->
           <div v-if="lastDraw" class="last-draw">
-            <span class="ld-label">{{ lastDraw.count }} 连抽结果：</span>
+            <span class="ld-label">{{ t('msg2.drawResult', { n: lastDraw.count }) }}</span>
             <span v-for="(f, i) in lastDraw.frags" :key="i" class="ld-frag">{{ f.name }}×{{ f.count }}</span>
-            <span v-if="!lastDraw.frags.length" class="text-muted">{{ lastDraw.msg || '完成' }}</span>
+            <span v-if="!lastDraw.frags.length" class="text-muted">{{ lastDraw.msg || t('bg.done') }}</span>
           </div>
 
           <!-- 抽取记录 -->
           <div v-if="showHistory" class="history" v-loading="historyLoading">
-            <div class="hd-label">抽取记录（{{ history.length }}）</div>
-            <div v-if="!history.length" class="text-muted hist-empty">暂无记录</div>
+            <div class="hd-label">{{ t('msg2.histN', { n: history.length }) }}</div>
+            <div v-if="!history.length" class="text-muted hist-empty">{{ t('msg2.noHistory') }}</div>
             <div v-else class="hist-list">
               <div v-for="(r, i) in history" :key="i" class="hist-row">
                 <span class="h-frag">{{ r.prize_name || '—' }}</span>

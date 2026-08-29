@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
@@ -23,7 +24,7 @@ func NewDashboardHandler(d *chain.DashboardChain) *DashboardHandler {
 func (h *DashboardHandler) Overview(c *gin.Context) {
 	overview, err := h.dash.Overview(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, overview)
@@ -33,7 +34,7 @@ func (h *DashboardHandler) Overview(c *gin.Context) {
 func (h *DashboardHandler) Sync(c *gin.Context) {
 	overview, err := h.dash.SyncAll(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, overview)
@@ -43,12 +44,12 @@ func (h *DashboardHandler) Sync(c *gin.Context) {
 func (h *DashboardHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	overview, err := h.dash.SyncOne(c.Request.Context(), uint(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, overview)
@@ -74,13 +75,13 @@ func clampDays(q string, def, min, max int) int {
 func (h *DashboardHandler) History(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	days := clampDays(c.Query("days"), 30, 1, 365)
 	pts, err := h.dash.History(c.Request.Context(), uint(id), days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, pts)
@@ -91,7 +92,7 @@ func (h *DashboardHandler) Trend(c *gin.Context) {
 	days := clampDays(c.Query("days"), 7, 1, 90)
 	trend, err := h.dash.Trend(c.Request.Context(), days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, trend)
@@ -119,7 +120,7 @@ func (h *WorkbenchHandler) Workbench(c *gin.Context) {
 	}
 	wb, err := h.dash.Workbench(c.Request.Context(), msLib)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, wb)

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 /**
  * 统一搜索页：[种子 | 影视] 分段切换，共享关键词。
  *  - 种子：跨站 SSE 流式聚合 + 前端筛选排序；结果表/失败容错见 TorrentResultsTable；
@@ -22,6 +23,7 @@ import MediaResultsGrid from '@/components/MediaResultsGrid.vue'
 import SearchPushDialog from '@/components/SearchPushDialog.vue'
 import TorrentDetailDrawer from '@/components/TorrentDetailDrawer.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -59,7 +61,7 @@ let torrentAbort: AbortController | null = null
 async function search() {
   const kw = keyword.value.trim()
   if (!kw) {
-    ElMessage.warning('请输入关键词')
+    ElMessage.warning(t('search.emptyKeyword'))
     return
   }
   if (mode.value === 'torrent') {
@@ -84,7 +86,7 @@ async function search() {
       )
     } catch (e: unknown) {
       if ((e as Error).name !== 'AbortError') {
-        error.value = (e as Error).message || '搜索失败'
+        error.value = (e as Error).message || t('search.searchFailed')
       }
     } finally {
       if (torrentAbort === ctrl) {
@@ -100,7 +102,7 @@ async function search() {
     mediaResults.value = await mediaApi.search(kw, year.value || 0)
     searched.value = true
   } catch (e: unknown) {
-    error.value = (e as Error).message || '搜索失败'
+    error.value = (e as Error).message || t('search.searchFailed')
   } finally {
     loading.value = false
   }
@@ -123,7 +125,7 @@ const resultsTable = ref<InstanceType<typeof TorrentResultsTable> | null>(null)
 
 async function openTorrentDetail(row: { site_id: number; detail_url?: string }) {
   if (!row.detail_url) {
-    ElMessage.warning('该种子无详情页链接')
+    ElMessage.warning(t('search.noDetail'))
     return
   }
   detailVisible.value = true
@@ -133,7 +135,7 @@ async function openTorrentDetail(row: { site_id: number; detail_url?: string }) 
     const r = await seedbrowseApi.detail(row.site_id, row.detail_url)
     detail.value = r.detail ?? null
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '加载详情失败')
+    ElMessage.error((e as Error).message || t('search.loadDetailFailed'))
     detailVisible.value = false
   } finally {
     detailLoading.value = false
@@ -186,13 +188,13 @@ onUnmounted(() => {
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">搜索</h2>
+      <h2 class="title">{{ t('search.title') }}</h2>
       <div class="head-right">
         <el-segmented v-model="mode" :options="[
-          { label: '种子', value: 'torrent' },
-          { label: '影视', value: 'media' },
+          { label: t('search.modeTorrent'), value: 'torrent' },
+          { label: t('search.modeMedia'), value: 'media' },
         ]" />
-        <router-link v-if="mode === 'media'" to="/media-settings" class="src-settings-link">⚙ 媒体源设置</router-link>
+        <router-link v-if="mode === 'media'" to="/media-settings" class="src-settings-link">{{ t('search.mediaSettingsLink') }}</router-link>
       </div>
     </div>
 
@@ -201,15 +203,15 @@ onUnmounted(() => {
         <el-input
           v-model="keyword"
           :placeholder="mode === 'torrent'
-            ? '输入电影/剧集名或关键词，跨启用站点搜索…'
-            : '搜索影视（电影 / 剧集标题）'"
+            ? t('search.torrentPlaceholder')
+            : t('search.mediaPlaceholder')"
           clearable
           size="large"
           @keyup.enter="search"
         />
         <div v-if="mode === 'torrent'" class="scope-line">
-          <span>将搜索 {{ scopeSiteCount }} 个站点</span>
-          <SiteFilterDialog v-model="selectedSiteIds" :sites="activeSites" title="选择搜索站点" />
+          <span>{{ t('search.scope', { n: scopeSiteCount }) }}</span>
+          <SiteFilterDialog v-model="selectedSiteIds" :sites="activeSites" :title="t('search.siteFilterTitle')" />
         </div>
       </div>
       <el-input-number
@@ -217,27 +219,27 @@ onUnmounted(() => {
         v-model="year"
         :min="1900"
         :max="2099"
-        placeholder="年份"
+        :placeholder="t('search.year')"
         controls-position="right"
       />
       <el-select
         v-if="mode === 'torrent'"
         v-model="category"
-        placeholder="分类"
+        :placeholder="t('search.category')"
         style="width: 110px"
       >
-        <el-option label="全部" value="" />
-        <el-option label="电影" value="movie" />
-        <el-option label="剧集" value="tv" />
-        <el-option label="音乐" value="music" />
+        <el-option :label="t('search.catAll')" value="" />
+        <el-option :label="t('search.catMovie')" value="movie" />
+        <el-option :label="t('search.catTv')" value="tv" />
+        <el-option :label="t('search.catMusic')" value="music" />
       </el-select>
-      <el-button type="primary" size="large" :loading="loading" @click="search">搜索</el-button>
+      <el-button type="primary" size="large" :loading="loading" @click="search">{{ t('search.submit') }}</el-button>
     </div>
 
     <!-- 顶层请求失败 -->
     <div v-if="error" class="empty glass error-state">
       <div class="err-text">⚠ {{ error }}</div>
-      <el-button size="small" @click="search">重试</el-button>
+      <el-button size="small" @click="search">{{ t('search.retry') }}</el-button>
     </div>
 
     <TorrentResultsTable

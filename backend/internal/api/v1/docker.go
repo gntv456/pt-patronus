@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"reflect"
 
@@ -63,7 +64,7 @@ func (h *DockerHandler) List(c *gin.Context) {
 		`echo "---END---"`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, script, 30)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -94,13 +95,13 @@ func (h *DockerHandler) Inspect(c *gin.Context) {
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	cmd := "docker inspect --type container " + shellQuote(name)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -109,11 +110,11 @@ func (h *DockerHandler) Inspect(c *gin.Context) {
 	}
 	var arr []dockerInspectContainer
 	if err := json.Unmarshal([]byte(result.Stdout), &arr); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "parse inspect output failed", "detail": err.Error()})
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
 		return
 	}
 	if len(arr) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "container not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, arr[0])
@@ -128,7 +129,7 @@ func (h *DockerHandler) Stats(c *gin.Context) {
 	cmd := `docker stats --no-stream --format '{{json .}}' 2>/dev/null`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -146,14 +147,14 @@ func (h *DockerHandler) Logs(c *gin.Context) {
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	tail := c.DefaultQuery("tail", "100")
 	cmd := "docker logs --tail " + shellQuote(tail) + " " + shellQuote(name) + " 2>&1"
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": result.Stdout})
@@ -167,24 +168,21 @@ func (h *DockerHandler) act(c *gin.Context, subcmd string, needConfirm bool) {
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	if needConfirm {
 		var in dockerActionRequest
 		_ = c.ShouldBindJSON(&in)
 		if !in.ConfirmRisk {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "destructive action requires confirmation",
-				"code":  "risk_confirmation_required",
-			})
+			errcode.Respond(c, errcode.RiskConfirmationRequired)
 			return
 		}
 	}
 	cmd := "docker " + subcmd + " " + shellQuote(name)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -208,16 +206,13 @@ func (h *DockerHandler) Remove(c *gin.Context) {
 	}
 	name := c.Param("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "container name is required"})
+		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
 	var in dockerActionRequest
 	_ = c.ShouldBindJSON(&in)
 	if !in.ConfirmRisk {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "destructive action requires confirmation",
-			"code":  "risk_confirmation_required",
-		})
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	force := c.Query("force") == "1"
@@ -228,7 +223,7 @@ func (h *DockerHandler) Remove(c *gin.Context) {
 	cmd := "docker rm " + flag + shellQuote(name)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -246,22 +241,19 @@ func (h *DockerHandler) ImageRemove(c *gin.Context) {
 	}
 	ref := c.Param("ref")
 	if ref == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "image reference is required"})
+		errcode.Respond(c, errcode.DockerImageRefRequired)
 		return
 	}
 	var in dockerActionRequest
 	_ = c.ShouldBindJSON(&in)
 	if !in.ConfirmRisk {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "destructive action requires confirmation",
-			"code":  "risk_confirmation_required",
-		})
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	cmd := "docker rmi " + shellQuote(ref)
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 30)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -279,13 +271,13 @@ func (h *DockerHandler) ComposeUp(c *gin.Context) {
 	}
 	var in composeRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	cmd := "cd " + shellQuote(in.Path) + " && docker compose up -d 2>&1"
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 120)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": result.Success, "output": result.Stdout + result.Stderr})
@@ -299,20 +291,17 @@ func (h *DockerHandler) ComposeDown(c *gin.Context) {
 	}
 	var in composeRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if !in.ConfirmRisk {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "destructive action requires confirmation",
-			"code":  "risk_confirmation_required",
-		})
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	cmd := "cd " + shellQuote(in.Path) + " && docker compose down 2>&1"
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 120)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": result.Success, "output": result.Stdout + result.Stderr})

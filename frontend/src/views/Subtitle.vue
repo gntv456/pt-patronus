@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
 
   subtitleApi,
@@ -13,6 +14,7 @@ import GlassIcon from '@/components/GlassIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 
+const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 
@@ -26,7 +28,7 @@ const error = ref('')
 
 async function search() {
   if (!q.value.trim()) {
-    ElMessage.warning('请输入搜索词')
+    ElMessage.warning(t('subtitle.keywordRequired'))
     return
   }
   loading.value = true
@@ -34,10 +36,10 @@ async function search() {
   searched.value = true
   try {
     results.value = await subtitleApi.search(q.value.trim(), language.value)
-    if (!results.value.length) ElMessage.info('未找到字幕')
+    if (!results.value.length) ElMessage.info(t('subtitle.notFound'))
   } catch (e: any) {
-    ElMessage.error(e?.message || '搜索失败')
-    error.value = e?.message || '搜索失败'
+    ElMessage.error(e?.message || t('subtitle.searchFailed'))
+    error.value = e?.message || t('subtitle.searchFailed')
     results.value = []
     searched.value = false // 出错时不显示「未找到」，由 error 态承接，避免误导
   } finally {
@@ -58,10 +60,10 @@ async function download(sub: SubtitleResult) {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    ElMessage.success(`已下载：${filename}`)
+    ElMessage.success(t('subtitle.downloadedAs', { name: filename }))
   } catch (e: any) {
     // blob 错误体需手动解析（axios 拦截器对 blob 不解析 JSON）
-    ElMessage.error(e?.message || '下载失败')
+    ElMessage.error(e?.message || t('subtitle.downloadFailed'))
   } finally {
     downloading.value = null
   }
@@ -91,7 +93,7 @@ async function openConfig() {
     }
     showConfig.value = true
   } catch (e: any) {
-    ElMessage.error(e?.message || '加载配置失败')
+    ElMessage.error(e?.message || t('subtitle.loadCfgFailed'))
   }
 }
 
@@ -105,10 +107,10 @@ async function saveConfig() {
       zimuku_cookie: cfgForm.value.zimuku_cookie,
       target_lang: cfgForm.value.target_lang,
     })
-    ElMessage.success('已保存')
+    ElMessage.success(t('common.saved'))
     showConfig.value = false
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    ElMessage.error(e?.message || t('common.saveFailed'))
   } finally {
     cfgSaving.value = false
   }
@@ -127,28 +129,28 @@ onMounted(() => {})
 <template>
   <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 v-if="!props.embedded" class="title">字幕</h2>
-      <h3 v-else class="title embedded-title">字幕源</h3>
-      <el-button @click="openConfig">字幕源设置</el-button>
+      <h2 v-if="!props.embedded" class="title">{{ t('subtitle.title') }}</h2>
+      <h3 v-else class="title embedded-title">{{ t('subtitle.sourcesTitle') }}</h3>
+      <el-button @click="openConfig">{{ t('subtitle.sourcesCfg') }}</el-button>
     </div>
     <p class="sub">
-      聚合 ASSRT / OpenSubtitles / SubHD / 字幕库 搜索下载；自动解 zip、转 UTF-8、可选繁简转换。
+      {{ t('subtitle.subtitle') }}
     </p>
 
     <div class="search-bar glass">
       <GlassIcon name="subtitle" :size="28" from="#4cc9f0" to="#4361ee" />
       <el-input
         v-model="q"
-        placeholder="搜索电影 / 剧集名（中英文均可）"
+        :placeholder="t('subtitle.searchPlaceholder')"
         class="search-input"
         @keyup.enter="search"
       />
-      <el-select v-model="language" placeholder="语言" class="lang-select" clearable>
-        <el-option label="简体" value="chs" />
-        <el-option label="繁体" value="cht" />
-        <el-option label="英文" value="eng" />
+      <el-select v-model="language" :placeholder="t('subtitle.langPlaceholder')" class="lang-select" clearable>
+        <el-option :label="t('subtitle.lang.chs')" value="chs" />
+        <el-option :label="t('subtitle.lang.cht')" value="cht" />
+        <el-option :label="t('subtitle.lang.eng')" value="eng" />
       </el-select>
-      <el-button type="primary" :loading="loading" @click="search">搜索</el-button>
+      <el-button type="primary" :loading="loading" @click="search">{{ t('common.search') }}</el-button>
     </div>
 
     <div v-loading="loading" class="results">
@@ -157,7 +159,7 @@ onMounted(() => {})
           <el-tag size="small" :style="{ backgroundColor: sourceColor[s.source] + '22', color: sourceColor[s.source], border: 'none' }">
             {{ SOURCE_LABEL[s.source] }}
           </el-tag>
-          <el-tag size="small" effect="plain">{{ LANG_LABEL[s.lang_code] || s.language || '未知' }}</el-tag>
+          <el-tag size="small" effect="plain">{{ LANG_LABEL[s.lang_code] || s.language || t('medalwall.status.unknown') }}</el-tag>
           <span class="result-title" :title="s.title">{{ s.title }}</span>
         </div>
         <el-button
@@ -165,61 +167,61 @@ onMounted(() => {})
           type="primary"
           :loading="downloading === `${s.source}:${s.source_id}`"
           @click="download(s)"
-        >下载</el-button>
+        >{{ t('harem.down') }}</el-button>
       </div>
       <EmptyState
         v-if="error && !loading"
         icon="⚠️"
-        title="搜索失败"
+        :title="t('subtitle.searchFailed')"
         :description="error"
       >
-        <el-button @click="search">重试</el-button>
+        <el-button @click="search">{{ t('common.retry') }}</el-button>
       </EmptyState>
       <EmptyState
         v-if="searched && !results.length && !loading"
         icon="💬"
-        title="未找到字幕"
-        description="试试更换关键词或语言筛选；部分源需在「字幕源设置」配置 token/cookie"
+        :title="t('subtitle.notFound')"
+        :description="t('subtitle.notFoundDesc')"
       />
       <EmptyState
         v-if="!searched && !loading"
         icon="💬"
-        title="搜索字幕"
-        description="输入电影/剧集名，跨 ASSRT / OpenSubtitles / SubHD / 字幕库 聚合搜索"
+        :title="t('subtitle.searchTitle')"
+        :description="t('subtitle.searchDesc')"
       />
     </div>
 
     <!-- 字幕源配置 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" title="字幕源设置" width="560px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" :title="t('subtitle.sourcesCfg')" width="560px">
       <el-form :model="cfgForm" label-width="150px" label-position="right">
         <el-form-item label="ASSRT Token">
           <el-input v-model="cfgForm.assrt_token" type="password" show-password
-            :placeholder="cfg?.assrt_token_configured ? '已配置（留空=不修改）' : 'assrt.net API token'" />
+            :placeholder="cfg?.assrt_token_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.assrtToken')" />
         </el-form-item>
         <el-form-item label="OpenSubtitles Key">
           <el-input v-model="cfgForm.opensubtitles_key" type="password" show-password
-            :placeholder="cfg?.opensubtitles_key_configured ? '已配置（留空=不修改）' : 'opensubtitles.com Api-Key'" />
+            :placeholder="cfg?.opensubtitles_key_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.osKey')" />
         </el-form-item>
         <el-form-item label="SubHD Cookie">
           <el-input v-model="cfgForm.subhd_cookie" type="textarea" :rows="2"
-            :placeholder="cfg?.subhd_cookie_configured ? '已配置（留空=不修改）' : '可选，绕过反爬'" />
+            :placeholder="cfg?.subhd_cookie_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.optionalAntiCrawl')" />
         </el-form-item>
-        <el-form-item label="字幕库 Cookie">
+        <el-form-item :label="t('subtitle.f.zimukuCookie')">
           <el-input v-model="cfgForm.zimuku_cookie" type="textarea" :rows="2"
-            :placeholder="cfg?.zimuku_cookie_configured ? '已配置（留空=不修改）' : '可选，绕过反爬'" />
+            :placeholder="cfg?.zimuku_cookie_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.optionalAntiCrawl')" />
         </el-form-item>
-        <el-form-item label="繁简转换">
-          <el-select v-model="cfgForm.target_lang" placeholder="不转换" clearable>
-            <el-option label="不转换" value="" />
-            <el-option label="转为简体" value="chs" />
-            <el-option label="转为繁体" value="cht" />
+        <el-form-item :label="t('subtitle.f.langConvert')">
+          <el-select v-model="cfgForm.target_lang" :placeholder="t('subtitle.f.noConvert')" clearable>
+            <el-option :label="t('subtitle.f.noConvert')" value="" />
+            <el-option :label="t('subtitle.f.toChs')" value="chs" />
+            <el-option :label="t('subtitle.f.toCht')" value="cht" />
           </el-select>
-          <span class="hint">下载时自动把文本字幕转为简体/繁体（双语/英文不转）</span>
+          <span class="hint">{{ t('subtitle.f.langConvertHint') }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showConfig = false">取消</el-button>
-        <el-button type="primary" :loading="cfgSaving" @click="saveConfig">保存</el-button>
+        <el-button @click="showConfig = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="cfgSaving" @click="saveConfig">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

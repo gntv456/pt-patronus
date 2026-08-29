@@ -2,20 +2,33 @@
 // PT监护室融合头部：品牌 + 生命体征 + 刷新 + 筛选栏。
 // 筛选下拉菜单状态自管理；通过 v-model:filters 与父级双向同步筛选条件。
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import SptIcon from '@/components/SptIcon.vue'
 import type { SaveptResult, SaveptSiteCard } from '@/api/savept'
+
+// filters 用 defineModel 双向绑定：本地菜单/筛选控件的修改经 update:filters 回传父级，
+// 消除对 prop 的直接突变（父级 v-model:filters 接收）。
+const { t } = useI18n()
+
+// 筛选 value 为跨层中文哨兵（与 useSaveptFilters/savept.ts 的 label 比对耦合），
+// 不可本地化为枚举；常量集中定义以区分「数据」与「文案」。
+const ALL = '\u5168\u90e8'
+const UNKNOWN_YEAR = '\u672a\u77e5'
+const STATUS_HEALTHY = '\u5065\u5eb7'
+const STATUS_CRITICAL = '\u75c5\u5371'
+const STATUS_CLOSED = '\u6b7b\u4ea1'
+const filters = defineModel<{
+  keyword: string
+  year: string
+  mpStatus: string
+  status: string
+  type: string
+  anniversaryOnly: boolean
+}>('filters', { required: true })
 
 const props = defineProps<{
   summary: SaveptResult['summary'] | undefined
   loading: boolean
-  filters: {
-    keyword: string
-    year: string
-    mpStatus: string
-    status: string
-    type: string
-    anniversaryOnly: boolean
-  }
   sites: SaveptSiteCard[]
   fetchedAt: string
   filteredCount: number
@@ -24,21 +37,21 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'refresh'): void; (e: 'clearFilters'): void; (e: 'openAnnivCalendar'): void }>()
 
 const statusOptions = [
-  { label: '全部', value: '全部' },
-  { label: '健康', value: '健康' },
-  { label: '病危', value: '病危' },
-  { label: '死亡', value: '死亡' },
+  { label: t('sh.all'), value: '\u5168\u90e8' },
+  { label: t('sh.healthy'), value: '\u5065\u5eb7' },
+  { label: t('sh.critical'), value: '\u75c5\u5371' },
+  { label: t('sh.dead'), value: '\u6b7b\u4ea1' },
 ]
 const typeOptions = [
-  { label: '全部', value: '全部' },
-  { label: '内站', value: '内站' },
-  { label: '外站', value: '外站' },
+  { label: t('sh.all'), value: '\u5168\u90e8' },
+  { label: t('sh.internal'), value: '\u5185\u7ad9' },
+  { label: t('sh.external'), value: '\u5916\u7ad9' },
 ]
 const mpFilterOptions = [
-  { label: '全部', value: '全部' },
-  { label: '已拥有', value: 'owned' },
-  { label: '可添加', value: 'available' },
-  { label: '未收录', value: 'unsupported' },
+  { label: t('sh.all'), value: '\u5168\u90e8' },
+  { label: t('sh.owned'), value: 'owned' },
+  { label: t('sh.available'), value: 'available' },
+  { label: t('sh.unsupported'), value: 'unsupported' },
 ]
 
 const yearMenuOpen = ref(false)
@@ -47,34 +60,34 @@ const mpStatusMenuOpen = ref(false)
 const mpStatusMenuRef = ref<HTMLElement | null>(null)
 
 const yearOptions = computed(() => {
-  const years = Array.from(new Set(props.sites.map((s) => s.year).filter((y) => y && y !== '未知')))
+  const years = Array.from(new Set(props.sites.map((s) => s.year).filter((y) => y && y !== UNKNOWN_YEAR)))
   years.sort()
-  const opts = ['全部', ...years]
-  if (props.sites.some((s) => !s.year || s.year === '未知') && !opts.includes('未知')) {
-    opts.push('未知')
+  const opts = [ALL, ...years]
+  if (props.sites.some((s) => !s.year || s.year === UNKNOWN_YEAR) && !opts.includes(UNKNOWN_YEAR)) {
+    opts.push(UNKNOWN_YEAR)
   }
   return opts
 })
 
 function mpStatusOptionLabel(value: string) {
-  return mpFilterOptions.find((o) => o.value === value)?.label ?? '全部'
+  return mpFilterOptions.find((o) => o.value === value)?.label ?? t('sh.all')
 }
 function yearOptionLabel(year: string) {
-  if (year === '全部') return '全部年份'
-  return year === '未知' ? '未知年份' : `${year} 年`
+  if (year === ALL) return t('sh.allYears')
+  return year === UNKNOWN_YEAR ? t('sh.unknownYears') : t('sh.yearN', { y: year })
 }
 function toggleYearMenu() {
   yearMenuOpen.value = !yearMenuOpen.value
 }
 function selectYear(year: string) {
-  props.filters.year = year
+  filters.value.year = year
   yearMenuOpen.value = false
 }
 function toggleMpStatusMenu() {
   mpStatusMenuOpen.value = !mpStatusMenuOpen.value
 }
 function selectMpStatus(value: string) {
-  props.filters.mpStatus = value
+  filters.value.mpStatus = value
   mpStatusMenuOpen.value = false
 }
 function handleDocumentClick(e: MouseEvent) {
@@ -92,56 +105,56 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
       <div class="spt-header__brand">
         <div class="spt-pulse-icon"><SptIcon name="heart-pulse" :size="22" /></div>
         <div>
-          <h1 class="spt-header__title">PT 监护室</h1>
-          <p class="spt-header__desc">站点运行状态实时监护</p>
+          <h1 class="spt-header__title">{{ t('sh.title') }}</h1>
+          <p class="spt-header__desc">{{ t('sh.desc') }}</p>
         </div>
       </div>
 
       <div class="spt-vitals">
         <div class="spt-vital spt-vital--total">
           <span class="spt-vital__value">{{ summary?.total ?? 0 }}</span>
-          <span class="spt-vital__label">监护中</span>
+          <span class="spt-vital__label">{{ t('sh.watching') }}</span>
         </div>
         <div class="spt-vital__divider" />
         <div class="spt-vital spt-vital--healthy">
           <span class="spt-vital__value">{{ summary?.healthy ?? 0 }}</span>
-          <span class="spt-vital__label">健康</span>
+          <span class="spt-vital__label">{{ t('sh.healthy') }}</span>
         </div>
         <div class="spt-vital__divider" />
         <div class="spt-vital spt-vital--owned">
           <span class="spt-vital__value">{{ summary?.mp_owned ?? 0 }}</span>
-          <span class="spt-vital__label">已拥有</span>
+          <span class="spt-vital__label">{{ t('sh.owned') }}</span>
         </div>
         <div class="spt-vital__divider" />
         <div class="spt-vital spt-vital--critical">
           <span class="spt-vital__value">{{ summary?.critical ?? 0 }}</span>
-          <span class="spt-vital__label">病危</span>
+          <span class="spt-vital__label">{{ t('sh.critical') }}</span>
         </div>
         <div class="spt-vital__divider" />
         <div class="spt-vital spt-vital--closed">
           <span class="spt-vital__value">{{ summary?.closed ?? 0 }}</span>
-          <span class="spt-vital__label">已关站</span>
+          <span class="spt-vital__label">{{ t('sh.closed') }}</span>
         </div>
         <div class="spt-vital__divider" />
         <div class="spt-vital spt-vital--anniv">
           <span class="spt-vital__value">{{ summary?.today_anniv ?? 0 }}</span>
-          <span class="spt-vital__label">站庆</span>
+          <span class="spt-vital__label">{{ t('sh.anniv') }}</span>
         </div>
       </div>
 
       <div class="spt-header__actions">
         <span class="spt-meta-pill">
           <SptIcon name="globe" :size="14" />
-          {{ summary?.internal ?? 0 }}/{{ summary?.external ?? 0 }} 内外站
+          {{ summary?.internal ?? 0 }}/{{ summary?.external ?? 0 }} {{ t('sh.intExt') }}
         </span>
-        <button class="spt-calendar-btn" title="查看全年站庆日历" @click="emit('openAnnivCalendar')">
+        <button class="spt-calendar-btn" :title="t('sh.calendarTitle')" @click="emit('openAnnivCalendar')">
           <SptIcon name="calendar" :size="16" />
-          <span>站庆日历</span>
+          <span>{{ t('sh.calendar') }}</span>
         </button>
         <button class="spt-refresh-btn" :disabled="loading" @click="emit('refresh')">
           <SptIcon v-if="loading" name="refresh" :size="16" class="spt-spin" />
           <SptIcon v-else name="refresh" :size="18" />
-          <span>刷新数据</span>
+          <span>{{ t('sh.refresh') }}</span>
         </button>
       </div>
     </div>
@@ -150,7 +163,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
     <div class="spt-header__filters">
       <div class="spt-filters__search">
         <SptIcon name="search" :size="18" class="spt-filters__search-icon" />
-        <input v-model="filters.keyword" type="text" placeholder="搜索站点名称..." class="spt-filters__input" />
+        <input v-model="filters.keyword" type="text" :placeholder="t('savept.searchPlaceholder')" class="spt-filters__input" />
         <button v-if="filters.keyword" class="spt-filters__clear" @click="filters.keyword = ''">
           <SptIcon name="x" :size="16" />
         </button>
@@ -207,9 +220,9 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
           class="spt-pill"
           :class="{
             'spt-pill--active': filters.status === opt.value,
-            'spt-pill--healthy': filters.status === '健康',
-            'spt-pill--critical': filters.status === '病危',
-            'spt-pill--closed': filters.status === '死亡',
+            'spt-pill--healthy': filters.status === STATUS_HEALTHY,
+            'spt-pill--critical': filters.status === STATUS_CRITICAL,
+            'spt-pill--closed': filters.status === STATUS_CLOSED,
           }"
           @click="filters.status = opt.value"
         >
@@ -235,7 +248,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
           @click="filters.anniversaryOnly = !filters.anniversaryOnly"
         >
           <SptIcon name="party-popper" :size="14" />
-          近期站庆
+          {{ t('sh.recentAnniv') }}
         </button>
       </div>
 
@@ -246,7 +259,7 @@ onBeforeUnmount(() => document.removeEventListener('click', handleDocumentClick)
           <SptIcon name="clock" :size="14" />
           {{ fetchedAt }}
         </span>
-        <span class="spt-filters__meta-count">显示 <b>{{ filteredCount }}</b> / {{ sites.length }} 个站点</span>
+        <span class="spt-filters__meta-count">{{ t('sh.showing', { shown: filteredCount, total: sites.length }) }}</span>
       </div>
     </div>
   </div>

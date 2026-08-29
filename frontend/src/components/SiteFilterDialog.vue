@@ -2,9 +2,12 @@
 // 站点筛选公共组件：紧凑多列 checkbox 网格 + 搜索 + 全选/清空，适配一两百站点。
 // 各页（搜索/公告/消息/勋章墙/站免/考核/后宫）复用，统一多选体验。
 // modelValue 空 = 全部站点；非空 = 仅选中站点。el-dialog teleport 到 body（玻璃化用非 scoped 样式）。
+import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, CaretBottom } from '@element-plus/icons-vue'
+
+const { t } = useI18n()
 
 interface SiteItem {
   id: number
@@ -18,7 +21,8 @@ const props = withDefaults(
     title?: string
     managePath?: string
   }>(),
-  { title: '选择站点', managePath: '/sites' },
+  // title 缺省时模板兜底 t('sfd.title')；managePath 缺省走 /sites
+  { managePath: '/sites' },
 )
 
 const emit = defineEmits<{ 'update:modelValue': [number[]] }>()
@@ -53,21 +57,21 @@ function goManage() {
 
 <template>
   <button type="button" class="scope-filter-btn" @click="visible = true">
-    <slot>筛选站点<el-icon><CaretBottom /></el-icon></slot>
+    <slot>{{ t('sfd.trigger') }}<el-icon><CaretBottom /></el-icon></slot>
   </button>
   <el-dialog
     v-model="visible"
-    :title="title"
+    :title="title || t('sfd.title')"
     width="760px"
     append-to-body
     class="site-filter-dialog"
   >
     <div class="site-filter">
       <div class="site-filter-head">
-        <span class="text-muted">已选 {{ modelValue.length || '全部' }} / 共 {{ count }}</span>
-        <button type="button" class="link-btn" @click="toggleAll(false)">清空</button>
+        <span class="text-muted">{{ t('sfd.selected', { n: modelValue.length || t('sh.all'), total: count }) }}</span>
+        <button type="button" class="link-btn" @click="toggleAll(false)">{{ t('common.clear') }}</button>
       </div>
-      <el-input v-model="query" placeholder="搜索站点名" clearable class="site-filter-search">
+      <el-input v-model="query" :placeholder="t('sfd.searchPh')" clearable class="site-filter-search">
         <template #prefix><el-icon><Search /></el-icon></template>
       </el-input>
       <el-checkbox
@@ -75,7 +79,7 @@ function goManage() {
         :model-value="isAllSelected"
         :indeterminate="isIndeterminate"
         @change="toggleAll"
-      >全选 {{ count }} 个站点</el-checkbox>
+      >{{ t('sfd.selectAll', { n: count }) }}</el-checkbox>
       <el-checkbox-group
         :model-value="modelValue"
         class="site-filter-grid"
@@ -83,11 +87,11 @@ function goManage() {
       >
         <el-checkbox v-for="s in filteredSites" :key="s.id" :value="s.id" class="site-filter-cell">{{ s.name }}</el-checkbox>
       </el-checkbox-group>
-      <div v-if="!filteredSites.length" class="site-filter-empty text-muted">无匹配站点</div>
+      <div v-if="!filteredSites.length" class="site-filter-empty text-muted">{{ t('sfd.noMatch') }}</div>
     </div>
     <template #footer>
-      <button type="button" class="site-filter-manage" @click="goManage">前往站点管理页 →</button>
-      <el-button type="primary" @click="visible = false">完成</el-button>
+      <button type="button" class="site-filter-manage" @click="goManage">{{ t('sfd.goManage') }} →</button>
+      <el-button type="primary" @click="visible = false">{{ t('sfd.done') }}</el-button>
     </template>
   </el-dialog>
 </template>

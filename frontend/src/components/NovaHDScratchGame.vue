@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
 
+const { t } = useI18n()
+// 服务端奖品名占位值（比较用，非文案）
+const NOWIN_SENTINEL = '\u672a\u4e2d\u5956'
 const props = defineProps<{ siteId: number }>()
 const GAME = 'novahd_scratch'
 
@@ -29,12 +33,12 @@ async function scratch() {
   try {
     const res = await entertainmentApi.play(props.siteId, GAME)
     last.value = res
-    if (res.success) ElMessage.success(res.prize ? `${res.prize}：+${res.amount} 魔力值` : '完成')
-    else ElMessage.warning(res.message || '刮奖失败')
+    if (res.success) ElMessage.success(res.prize ? t('nsg.won', { prize: res.prize, n: res.amount }) : t('bg.done'))
+    else ElMessage.warning(res.message || t('msg1.scratchFailed'))
     await Promise.all([refreshStats(), refreshHistory()])
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     scratching.value = false
   }
@@ -49,26 +53,26 @@ onMounted(async () => {
 <template>
   <div class="scratch">
     <div class="hero">
-      <div class="hero-title">🎫 魔力值刮刮乐</div>
-      <div class="balance">余额 <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b> 魔力值</div>
+      <div class="hero-title">🎫 {{ t('nsg.title') }}</div>
+      <div class="balance">{{ t('bj.balance') }} <b>{{ stats?.balance?.toLocaleString() ?? '—' }}</b> {{ t('nsg.magic') }}</div>
     </div>
 
     <section class="glass section buy">
-      <div class="sec-title">刮奖中心</div>
-      <div class="buy-info">购买资格消耗 5000 魔力值 · 今日剩余 {{ remaining }}/{{ stats?.max_daily ?? 5 }}</div>
+      <div class="sec-title">{{ t('nsg.center') }}</div>
+      <div class="buy-info">{{ t('nsg.buyInfo') }} {{ remaining }}/{{ stats?.max_daily ?? 5 }}</div>
       <button class="buy-btn" :disabled="scratching" @click="scratch">
         <span v-if="scratching" class="spinner" />
-        {{ scratching ? '刮奖中…' : '购买刮奖资格（消耗 5000 魔力值）' }}
+        {{ scratching ? t('nsg.scratching') : t('nsg.buyQual') }}
       </button>
     </section>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
       <span class="badge">{{ last.success ? '🎉' : '✗' }}</span>
-      <span class="r-msg">{{ last.success ? `${last.prize} · 获得 ${last.amount} 魔力值` : last.message }}</span>
+      <span class="r-msg">{{ last.success ? t('nsg.got', { prize: last.prize, n: last.amount }) : last.message }}</span>
     </div>
 
     <section class="glass section">
-      <div class="sec-title">中奖规则</div>
+      <div class="sec-title">{{ t('nsg.rules') }}</div>
       <div class="rule-grid">
         <div v-for="p in prizes" :key="p.id" class="rule-card" :class="{ miss: p.type === '99' }">
           {{ p.name }}
@@ -77,9 +81,9 @@ onMounted(async () => {
     </section>
 
     <section v-if="records.length" class="glass section">
-      <div class="sec-title">我的刮奖记录</div>
+      <div class="sec-title">{{ t('nsg.myHistory') }}</div>
       <div v-for="(r, i) in records.slice(0, 10)" :key="i" class="rec-row">
-        <span :class="{ muted: r.prize_name === '未中奖' }">{{ r.prize_name }}</span>
+        <span :class="{ muted: r.prize_name === NOWIN_SENTINEL }">{{ r.prize_name }}</span>
         <span v-if="r.amount" class="rec-amt">+{{ r.amount }}</span>
         <span class="text-muted rec-time">{{ r.created_at }}</span>
       </div>

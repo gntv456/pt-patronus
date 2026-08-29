@@ -5,6 +5,9 @@ import { fmtBytes, fmtSpeed } from '@/utils/format'
 import { copyText } from '@/utils/clipboard'
 import { Delete, MoreFilled, Search, VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import { dlCaps } from './caps'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 export type DialogKind =
   | 'remove'
@@ -49,11 +52,11 @@ function stateGroup(s: string): string {
 
 function stateLabel(s: string): string {
   const map: Record<string, string> = {
-    error: '错误', missingFiles: '缺失文件', uploading: '做种中', forcedUP: '强制做种', stalledUP: '等待做种',
-    queuedUP: '排队做种', pausedUP: '暂停做种', checkingUP: '校验中', downloading: '下载中', forcedDL: '强制下载',
-    stalledDL: '等待下载', queuedDL: '排队下载', pausedDL: '暂停下载', checkingDL: '校验中', metaDL: '获取信息',
-    allocating: '分配空间', checkingResumeData: '校验中', moving: '移动中', stopped: '已停止', paused: '已暂停',
-    queued: '排队中', seeding: '做种中', unknown: '未知',
+    error: t('tt.st.error'), missingFiles: t('tt.st.missingFiles'), uploading: t('tt.st.seeding'), forcedUP: t('tt.st.forcedUP'), stalledUP: t('tt.st.stalledUP'),
+    queuedUP: t('tt.st.queuedUP'), pausedUP: t('tt.st.pausedUP'), checkingUP: t('tt.st.checking'), downloading: t('tt.st.downloading'), forcedDL: t('tt.st.forcedDL'),
+    stalledDL: t('tt.st.stalledDL'), queuedDL: t('tt.st.queuedDL'), pausedDL: t('tt.st.pausedDL'), checkingDL: t('tt.st.checking'), metaDL: t('tt.st.metaDL'),
+    allocating: t('tt.st.allocating'), checkingResumeData: t('tt.st.checking'), moving: t('tt.st.moving'), stopped: t('tt.st.stopped'), paused: t('tt.st.paused'),
+    queued: t('tt.st.queued'), seeding: t('tt.st.seeding'), unknown: t('tt.st.unknown'),
   }
   return map[s] || s
 }
@@ -106,15 +109,15 @@ async function op(fn: () => Promise<DownloaderResult>, msg: string) {
   try {
     const result = await fn()
     if (result.ok) ElMessage.success(msg)
-    else ElMessage.warning(result.error || '操作失败')
+    else ElMessage.warning(result.error || t('common.actionFailed'))
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '请求失败')
+    ElMessage.error((e as Error).message || t('common.requestFailed'))
   }
   emit('refresh')
 }
 
 async function copy(text: string, label: string) {
-  await copyText(text, `${label}已复制`, '复制失败，请手动选择')
+  await copyText(text, t('tt.copied', { label }), t('tt.copyFailed'))
 }
 
 function magnetOf(t: Torrent) {
@@ -125,19 +128,19 @@ function onCommand(command: string, torrent: Torrent) {
   const id = props.downloaderId
   const hashes = [torrent.hash]
   switch (command) {
-    case 'pause': op(() => downloaderApi.pause(id, hashes), '已暂停'); break
-    case 'resume': op(() => downloaderApi.resume(id, hashes), '已恢复'); break
-    case 'recheck': op(() => downloaderApi.recheck(id, hashes), '已发起校验'); break
-    case 'reannounce': op(() => downloaderApi.reannounce(id, hashes), '已重新汇报'); break
-    case 'forceStart': op(() => downloaderApi.setForceStart(id, hashes, !torrent.force_start), '已切换强制开始'); break
-    case 'top': op(() => downloaderApi.setQueuePriority(id, hashes, 'top'), '已置顶'); break
-    case 'up': op(() => downloaderApi.setQueuePriority(id, hashes, 'up'), '已上移'); break
-    case 'down': op(() => downloaderApi.setQueuePriority(id, hashes, 'down'), '已下移'); break
-    case 'bottom': op(() => downloaderApi.setQueuePriority(id, hashes, 'bottom'), '已置底'); break
-    case 'seq': op(() => downloaderApi.toggleSequential(id, hashes), '已切换顺序下载'); break
-    case 'firstlast': op(() => downloaderApi.toggleFirstLast(id, hashes), '已切换首尾优先'); break
-    case 'copyMagnet': copy(magnetOf(torrent), '磁力链'); break
-    case 'copyHash': copy(torrent.info_hash || torrent.hash, '哈希'); break
+    case 'pause': op(() => downloaderApi.pause(id, hashes), t('tt.msg.paused')); break
+    case 'resume': op(() => downloaderApi.resume(id, hashes), t('tt.msg.resumed')); break
+    case 'recheck': op(() => downloaderApi.recheck(id, hashes), t('tt.msg.recheck')); break
+    case 'reannounce': op(() => downloaderApi.reannounce(id, hashes), t('tt.msg.reannounce')); break
+    case 'forceStart': op(() => downloaderApi.setForceStart(id, hashes, !torrent.force_start), t('tt.msg.forceStart')); break
+    case 'top': op(() => downloaderApi.setQueuePriority(id, hashes, 'top'), t('tt.msg.top')); break
+    case 'up': op(() => downloaderApi.setQueuePriority(id, hashes, 'up'), t('tt.msg.up')); break
+    case 'down': op(() => downloaderApi.setQueuePriority(id, hashes, 'down'), t('tt.msg.down')); break
+    case 'bottom': op(() => downloaderApi.setQueuePriority(id, hashes, 'bottom'), t('tt.msg.bottom')); break
+    case 'seq': op(() => downloaderApi.toggleSequential(id, hashes), t('tt.msg.seq')); break
+    case 'firstlast': op(() => downloaderApi.toggleFirstLast(id, hashes), t('tt.msg.firstLast')); break
+    case 'copyMagnet': copy(magnetOf(torrent), t('tt.magnet')); break
+    case 'copyHash': copy(torrent.info_hash || torrent.hash, t('tt.hash')); break
     case 'remove': emit('dialog', { kind: 'remove', hashes }); break
     default: emit('dialog', { kind: command as DialogKind, hashes })
   }
@@ -161,28 +164,28 @@ const actionGroups = computed<{ items: ActionItem[] }[]>(() => {
   const row = actionRow.value
   if (!row) return []
   const ctrl: ActionItem[] = [
-    { command: 'recheck', label: '重新校验' },
-    { command: 'reannounce', label: '重新汇报' },
+    { command: 'recheck', label: t('tt.act.recheck') },
+    { command: 'reannounce', label: t('tt.act.reannounce') },
   ]
-  if (caps.value.forceStart) ctrl.push({ command: 'forceStart', label: row.force_start ? '取消强制开始' : '强制开始' })
+  if (caps.value.forceStart) ctrl.push({ command: 'forceStart', label: row.force_start ? t('tt.act.unforceStart') : t('tt.act.forceStart') })
   if (caps.value.queueFull) {
-    ctrl.push({ command: 'top', label: '队列置顶' })
-    ctrl.push({ command: 'bottom', label: '队列置底' })
+    ctrl.push({ command: 'top', label: t('tt.act.top') })
+    ctrl.push({ command: 'bottom', label: t('tt.act.bottom') })
   }
-  if (caps.value.sequential) ctrl.push({ command: 'seq', label: row.sequential ? '取消顺序下载' : '顺序下载' })
-  if (caps.value.firstLast) ctrl.push({ command: 'firstlast', label: row.first_last_piece ? '取消首尾优先' : '首尾优先' })
+  if (caps.value.sequential) ctrl.push({ command: 'seq', label: row.sequential ? t('tt.act.unseq') : t('tt.act.seq') })
+  if (caps.value.firstLast) ctrl.push({ command: 'firstlast', label: row.first_last_piece ? t('tt.act.unfirstLast') : t('tt.act.firstLast') })
   const manage: ActionItem[] = []
-  if (caps.value.category) manage.push({ command: 'category', label: '设置分类' })
-  if (caps.value.tags) manage.push({ command: 'tags', label: '设置标签' })
-  manage.push({ command: 'limits', label: '设置限速' })
-  manage.push({ command: 'share-limits', label: '做种限制' })
-  if (caps.value.location) manage.push({ command: 'location', label: '移动保存路径' })
-  if (caps.value.files) manage.push({ command: 'files', label: '文件优先级' })
-  if (caps.value.trackers) manage.push({ command: 'trackers', label: 'Tracker 管理' })
+  if (caps.value.category) manage.push({ command: 'category', label: t('tt.act.category') })
+  if (caps.value.tags) manage.push({ command: 'tags', label: t('tt.act.tags') })
+  manage.push({ command: 'limits', label: t('tt.act.limits') })
+  manage.push({ command: 'share-limits', label: t('tt.act.shareLimits') })
+  if (caps.value.location) manage.push({ command: 'location', label: t('tt.act.location') })
+  if (caps.value.files) manage.push({ command: 'files', label: t('tt.act.files') })
+  if (caps.value.trackers) manage.push({ command: 'trackers', label: t('tt.act.trackers') })
   const groups: { items: ActionItem[] }[] = [{ items: ctrl }]
   if (manage.length) groups.push({ items: manage })
-  groups.push({ items: [{ command: 'copyMagnet', label: '复制磁力链' }, { command: 'copyHash', label: '复制哈希' }] })
-  groups.push({ items: [{ command: 'remove', label: '删除任务', danger: true }] })
+  groups.push({ items: [{ command: 'copyMagnet', label: t('tt.act.copyMagnet') }, { command: 'copyHash', label: t('tt.act.copyHash') }] })
+  groups.push({ items: [{ command: 'remove', label: t('tt.act.remove'), danger: true }] })
   return groups
 })
 
@@ -196,7 +199,7 @@ function batchCmd(command: 'pause' | 'resume' | 'recheck' | 'reannounce' | 'forc
     forceStart: () => downloaderApi.setForceStart(id, hashes, true), top: () => downloaderApi.setQueuePriority(id, hashes, 'top'),
     bottom: () => downloaderApi.setQueuePriority(id, hashes, 'bottom'),
   }
-  const labels: Record<string, string> = { pause: '已暂停', resume: '已恢复', recheck: '已发起校验', reannounce: '已重新汇报', forceStart: '已强制开始', top: '已置顶', bottom: '已置底' }
+  const labels: Record<string, string> = { pause: t('tt.msg.paused'), resume: t('tt.msg.resumed'), recheck: t('tt.msg.recheck'), reannounce: t('tt.msg.reannounce'), forceStart: t('tt.msg.forcedOn'), top: t('tt.msg.top'), bottom: t('tt.msg.bottom') }
   op(actions[command], labels[command])
 }
 
@@ -212,52 +215,52 @@ function onBatchCommand(command: string) {
     <div class="toolbar">
       <div class="search-wrap">
         <el-icon><Search /></el-icon>
-        <el-input v-model="search" placeholder="搜索任务名称、哈希或分类" clearable size="small" />
+        <el-input v-model="search" :placeholder="t('tt.searchPh')" clearable size="small" />
       </div>
-      <el-select v-model="stateFilter" size="small" class="filter" aria-label="状态筛选">
-        <el-option label="全部状态" value="all" />
-        <el-option label="下载中" value="downloading" />
-        <el-option label="做种中" value="seeding" />
-        <el-option label="暂停" value="paused" />
-        <el-option label="错误" value="error" />
+      <el-select v-model="stateFilter" size="small" class="filter" :aria-label="t('tt.stateFilter')">
+        <el-option :label="t('tt.allStates')" value="all" />
+        <el-option :label="t('tt.st.downloading')" value="downloading" />
+        <el-option :label="t('tt.st.seeding')" value="seeding" />
+        <el-option :label="t('tt.st.paused')" value="paused" />
+        <el-option :label="t('tt.st.error')" value="error" />
       </el-select>
-      <el-select v-if="categories.length" v-model="categoryFilter" size="small" class="filter" placeholder="全部分类" clearable aria-label="分类筛选">
+      <el-select v-if="categories.length" v-model="categoryFilter" size="small" class="filter" :placeholder="t('tt.allCategories')" clearable :aria-label="t('tt.categoryFilter')">
         <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
       </el-select>
-      <el-button v-if="hasFilters" text size="small" @click="clearFilters">清除筛选</el-button>
-      <span class="result-count">{{ filtered.length }} / {{ props.torrents.length }} 个任务</span>
+      <el-button v-if="hasFilters" text size="small" @click="clearFilters">{{ t('tt.clearFilters') }}</el-button>
+      <span class="result-count">{{ t('tt.taskCount', { shown: filtered.length, total: props.torrents.length }) }}</span>
       <slot name="toolbar-extra" />
     </div>
 
     <div v-if="selected.length" class="batchbar">
-      <div class="selection-summary"><strong>{{ selected.length }}</strong><span>项已选择</span></div>
+      <div class="selection-summary"><strong>{{ selected.length }}</strong><span>{{ t('tt.selectedN') }}</span></div>
       <div class="batch-actions">
-        <el-button text size="small" :icon="VideoPause" @click="batchCmd('pause')">暂停</el-button>
-        <el-button text size="small" :icon="VideoPlay" @click="batchCmd('resume')">恢复</el-button>
+        <el-button text size="small" :icon="VideoPause" @click="batchCmd('pause')">{{ t('tt.pause') }}</el-button>
+        <el-button text size="small" :icon="VideoPlay" @click="batchCmd('resume')">{{ t('tt.resume') }}</el-button>
         <el-dropdown trigger="click" @command="onBatchCommand">
-          <el-button text size="small">更多操作 <el-icon><MoreFilled /></el-icon></el-button>
+          <el-button text size="small">{{ t('tt.moreActions') }} <el-icon><MoreFilled /></el-icon></el-button>
           <template #dropdown>
             <el-dropdown-menu style="max-height: calc(100vh - 32px); overflow-y: auto">
-              <el-dropdown-item command="recheck">重新校验</el-dropdown-item>
-              <el-dropdown-item command="reannounce">重新汇报</el-dropdown-item>
-              <el-dropdown-item v-if="caps.forceStart" command="forceStart">强制开始</el-dropdown-item>
-              <el-dropdown-item v-if="caps.queueFull" command="top">队列置顶</el-dropdown-item>
-              <el-dropdown-item v-if="caps.queueFull" command="bottom">队列置底</el-dropdown-item>
-              <el-dropdown-item v-if="caps.category" command="category" divided>设置分类</el-dropdown-item>
-              <el-dropdown-item v-if="caps.tags" command="tags">设置标签</el-dropdown-item>
-              <el-dropdown-item command="limits">设置限速</el-dropdown-item>
-              <el-dropdown-item command="share-limits">设置做种限制</el-dropdown-item>
-              <el-dropdown-item command="remove" divided>删除任务</el-dropdown-item>
+              <el-dropdown-item command="recheck">{{ t('tt.act.recheck') }}</el-dropdown-item>
+              <el-dropdown-item command="reannounce">{{ t('tt.act.reannounce') }}</el-dropdown-item>
+              <el-dropdown-item v-if="caps.forceStart" command="forceStart">{{ t('tt.act.forceStart') }}</el-dropdown-item>
+              <el-dropdown-item v-if="caps.queueFull" command="top">{{ t('tt.act.top') }}</el-dropdown-item>
+              <el-dropdown-item v-if="caps.queueFull" command="bottom">{{ t('tt.act.bottom') }}</el-dropdown-item>
+              <el-dropdown-item v-if="caps.category" command="category" divided>{{ t('tt.act.category') }}</el-dropdown-item>
+              <el-dropdown-item v-if="caps.tags" command="tags">{{ t('tt.act.tags') }}</el-dropdown-item>
+              <el-dropdown-item command="limits">{{ t('tt.act.limits') }}</el-dropdown-item>
+              <el-dropdown-item command="share-limits">{{ t('tt.act.shareLimits') }}</el-dropdown-item>
+              <el-dropdown-item command="remove" divided>{{ t('tt.act.remove') }}</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
-        <el-button text type="danger" size="small" :icon="Delete" @click="onBatchCommand('remove')">删除</el-button>
+        <el-button text type="danger" size="small" :icon="Delete" @click="onBatchCommand('remove')">{{ t('common.delete') }}</el-button>
       </div>
     </div>
 
     <el-table :data="paged" style="width: 100%" row-key="hash" @selection-change="onSelectionChange" @sort-change="onSortChange">
       <el-table-column type="selection" width="42" :reserve-selection="true" />
-      <el-table-column label="任务" min-width="300" prop="name" sortable="custom" show-overflow-tooltip>
+      <el-table-column :label="t('tt.task')" min-width="300" prop="name" sortable="custom" show-overflow-tooltip>
         <template #default="{ row }">
           <button class="name-cell" type="button" @click="emit('detail', row.hash)">
             <span class="tname">{{ row.name }}</span>
@@ -265,46 +268,46 @@ function onBatchCommand(command: string) {
           </button>
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="112">
+      <el-table-column :label="t('cloud.status')" width="112">
         <template #default="{ row }">
           <span class="state-chip" :class="stateGroup(row.state)"><i />{{ stateLabel(row.state) }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="进度" min-width="150" prop="progress" sortable="custom">
+      <el-table-column :label="t('cloud.progress')" min-width="150" prop="progress" sortable="custom">
         <template #default="{ row }">
           <div class="progress-cell"><el-progress :percentage="Math.round(row.progress * 100)" :stroke-width="7" :show-text="false" /><span>{{ Math.round(row.progress * 100) }}%</span></div>
         </template>
       </el-table-column>
-      <el-table-column label="速度" width="120">
+      <el-table-column :label="t('tt.speed')" width="120">
         <template #default="{ row }">
           <div class="speed-cell"><span class="down">↓ {{ fmtSpeed(row.dl_rate) }}</span><span class="up">↑ {{ fmtSpeed(row.up_rate) }}</span></div>
         </template>
       </el-table-column>
-      <el-table-column label="比率" width="74" prop="ratio" sortable="custom">
+      <el-table-column :label="t('tt.ratio')" width="74" prop="ratio" sortable="custom">
         <template #default="{ row }">{{ row.ratio.toFixed(2) }}</template>
       </el-table-column>
-      <el-table-column label="连接" width="72">
+      <el-table-column :label="t('tt.peers')" width="72">
         <template #default="{ row }"><span class="peers"><b>{{ row.num_seeds }}</b><span>/</span>{{ row.num_leechs }}</span></template>
       </el-table-column>
-      <el-table-column v-if="caps.category" label="分类" width="100">
-        <template #default="{ row }"><span v-if="row.category" class="category-chip">{{ row.category }}</span><span v-else class="text-muted">未分类</span></template>
+      <el-table-column v-if="caps.category" :label="t('tt.category')" width="100">
+        <template #default="{ row }"><span v-if="row.category" class="category-chip">{{ row.category }}</span><span v-else class="text-muted">{{ t('tt.uncategorized') }}</span></template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right">
+      <el-table-column :label="t('common.action')" width="150" fixed="right">
         <template #default="{ row }">
           <el-button text size="small" :icon="stateGroup(row.state) === 'paused' ? VideoPlay : VideoPause" @click="onCommand(stateGroup(row.state) === 'paused' ? 'resume' : 'pause', row as Torrent)">
-            {{ stateGroup(row.state) === 'paused' ? '恢复' : '暂停' }}
+            {{ stateGroup(row.state) === 'paused' ? t('tt.resume') : t('tt.pause') }}
           </el-button>
-          <el-button text circle :icon="MoreFilled" title="更多操作" aria-label="更多操作" @click="openActions(row as Torrent)" />
+          <el-button text circle :icon="MoreFilled" :title="t('tt.moreActions')" :aria-label="t('tt.moreActions')" @click="openActions(row as Torrent)" />
         </template>
       </el-table-column>
     </el-table>
-    <div v-if="!filtered.length" class="empty">无匹配任务</div>
+    <div v-if="!filtered.length" class="empty">{{ t('tt.noMatch') }}</div>
     <div v-else class="pager-row">
       <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="filtered.length" :page-sizes="[50, 100, 200]" layout="total, sizes, prev, pager, next" background small />
     </div>
 
     <!-- 单行「更多操作」居中弹窗 -->
-    <el-dialog v-model="actionVisible" title="更多操作" width="420" align-center append-to-body>
+    <el-dialog v-model="actionVisible" :title="t('tt.moreActions')" width="420" align-center append-to-body>
       <div v-for="(group, gi) in actionGroups" :key="gi" class="action-group" :class="{ first: gi === 0 }">
         <div class="action-grid">
           <button

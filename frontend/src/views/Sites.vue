@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import { siteApi, type Site, type SiteDef } from '@/api/site'
@@ -53,7 +54,7 @@ async function load() {
     sites.value = nextSites
     defs.value = nextDefs
   } catch (e) {
-    ElMessage.error('加载失败')
+    ElMessage.error(t('sites.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -80,28 +81,29 @@ async function visitStaleSites() {
   }
 }
 
+const { t } = useI18n()
 onMounted(load)
 </script>
 
 <template>
   <div class="sites">
     <div class="head">
-      <h2 class="page-title">站点</h2>
+      <h2 class="page-title">{{ t('sites.title') }}</h2>
       <div class="head-actions">
-        <el-button @click="openRecords()">签到记录</el-button>
-        <el-button :loading="checkinAllLoading" @click="checkinAll">一键签到</el-button>
-        <el-button :loading="refreshing" title="强制重新逐站检测连通状态" @click="refreshConnectivity(true)">刷新状态</el-button>
+        <el-button @click="openRecords()">{{ t('sites.records') }}</el-button>
+        <el-button :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
+        <el-button :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{ t('sites.refreshStatus') }}</el-button>
         <el-button
           :loading="staleVisitLoading"
           :disabled="!inactiveSiteCount || staleVisitLoading"
-          title="依次访问最后访问时间超过 30 天的启用站点，每站停留 8 秒后自动切换并关闭"
+          :title="t('sites.staleVisitTitle')"
           @click="visitStaleSites"
         >
           {{ staleVisitLoading && staleVisitProgress
-            ? `访问中 ${staleVisitProgress}`
-            : `一键访问超30天站点${inactiveSiteCount ? ` (${inactiveSiteCount})` : ''}` }}
+            ? t('sites.visiting', { n: staleVisitProgress })
+            : t('sites.visitStale', { count: inactiveSiteCount ? ` (${inactiveSiteCount})` : '' }) }}
         </el-button>
-        <el-button type="primary" @click="openCreate">+ 添加站点</el-button>
+        <el-button type="primary" @click="openCreate">{{ t('sites.addSite') }}</el-button>
       </div>
     </div>
 
@@ -126,13 +128,13 @@ onMounted(load)
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="480">
       <el-form label-width="80">
-        <el-form-item label="名称">
-          <el-input v-model="form.name" placeholder="如：好学" />
+        <el-form-item :label="t('sites.name')">
+          <el-input v-model="form.name" :placeholder="t('sites.namePlaceholder')" />
         </el-form-item>
-        <el-form-item label="定义">
+        <el-form-item :label="t('sites.definition')">
           <el-select
             v-model="form.definition"
-            placeholder="搜索名称 / 域名 / 别名"
+            :placeholder="t('sites.defPlaceholder')"
             style="width: 100%"
             filterable
             :filter-method="filterDefinitionOptions"
@@ -141,21 +143,21 @@ onMounted(load)
             <el-option
               v-for="d in filteredDefs"
               :key="d.id"
-              :label="`${d.name}（${d.schema || '通用'}）${d.aka?.length ? ' · ' + d.aka.join(' / ') : ''}${d.dead ? ' · 已关站' : ''}`"
+              :label="`${d.name}（${d.schema || t('sites.genericSchema')}）${d.aka?.length ? ' · ' + d.aka.join(' / ') : ''}${d.dead ? ' · ' + t('sites.deadSite') : ''}`"
               :value="d.id"
             >
-              <span>{{ d.name }}（{{ d.schema || '通用' }}）</span>
+              <span>{{ d.name }}（{{ d.schema || t('sites.genericSchema') }}）</span>
               <span v-if="defUrls(d).length" class="def-url">{{ defUrls(d).join(' / ') }}</span>
               <el-tag v-if="d.aka?.length" size="small" type="primary" effect="plain" style="margin-left: 8px">
                 {{ d.aka.join(' / ') }}
               </el-tag>
               <el-tag v-if="d.dead" size="small" type="info" effect="plain" style="margin-left: 8px">
-                已关站
+                {{ t('sites.deadSite') }}
               </el-tag>
             </el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="地址">
+        <el-form-item :label="t('sites.address')">
           <el-select
             v-if="baseUrlOptions.length > 1"
             v-model="form.base_url"
@@ -183,50 +185,50 @@ onMounted(load)
             v-model="form.cookie"
             type="textarea"
             :rows="3"
-            :placeholder="isEdit ? '留空则不修改' : '粘贴站点 cookie（k=v; k2=v2），加密存储'"
+            :placeholder="isEdit ? t('sites.keepIfEdit') : t('sites.cookiePlaceholder')"
           />
         </el-form-item>
-        <el-form-item v-if="!needsApiKey" label="账号">
-          <el-input v-model="form.username" placeholder="站点用户名（财神刮刮乐 API 登录用）" />
+        <el-form-item v-if="!needsApiKey" :label="t('sites.account')">
+          <el-input v-model="form.username" :placeholder="t('sites.accountPlaceholder')" />
         </el-form-item>
-        <el-form-item v-if="!needsApiKey" label="密码">
+        <el-form-item v-if="!needsApiKey" :label="t('sites.password')">
           <el-input
             v-model="form.password"
             type="password"
             show-password
-            :placeholder="isEdit ? '留空则不修改' : '站点密码（加密存储）'"
+            :placeholder="isEdit ? t('sites.keepIfEdit') : t('sites.passwordPlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="启用">
+        <el-form-item :label="t('sites.enabled')">
           <el-switch v-model="form.is_active" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submit">{{ isEdit ? '保存' : '添加' }}</el-button>
+        <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="submit">{{ isEdit ? t('common.save') : t('common.add') }}</el-button>
       </template>
     </el-dialog>
 
-    <el-drawer v-model="recordsDrawer" title="签到记录" size="600">
+    <el-drawer v-model="recordsDrawer" :title="t('sites.records')" size="600">
       <div v-loading="recordsLoading">
         <el-table :data="records" style="width: 100%" max-height="100%">
-          <el-table-column label="时间" width="150">
+          <el-table-column :label="t('sites.rec.time')" width="150">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column prop="site_name" label="站点" min-width="100" />
-          <el-table-column label="结果" min-width="160">
+          <el-table-column prop="site_name" :label="t('sites.rec.site')" min-width="100" />
+          <el-table-column :label="t('sites.rec.result')" min-width="160">
             <template #default="{ row }">
               <span v-if="row.success" class="pill on">
-                {{ row.bonus > 0 ? `+${row.bonus} 魔力` : row.message || '成功' }}
+                {{ row.bonus > 0 ? t('sites.rec.bonus', { n: row.bonus }) : row.message || t('sites.rec.success') }}
               </span>
-              <span v-else class="pill off">{{ row.error || row.message || '失败' }}</span>
+              <span v-else class="pill off">{{ row.error || row.message || t('sites.rec.failed') }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="来源" width="80">
-            <template #default="{ row }">{{ row.source === 'cron' ? '自动' : '手动' }}</template>
+          <el-table-column :label="t('sites.rec.source')" width="80">
+            <template #default="{ row }">{{ row.source === 'cron' ? t('sites.rec.auto') : t('sites.rec.manual') }}</template>
           </el-table-column>
         </el-table>
-        <div v-if="!records.length && !recordsLoading" class="empty text-muted">暂无签到记录</div>
+        <div v-if="!records.length && !recordsLoading" class="empty text-muted">{{ t('sites.rec.empty') }}</div>
       </div>
     </el-drawer>
   </div>

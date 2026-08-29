@@ -3,6 +3,9 @@ import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { dockerApi, dockerRemoteActions, type DockerInspect, type DockerRemoteAction, type DockerStatsRow } from '@/api/docker'
 import DockerExecTerminal from './DockerExecTerminal.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   visible: boolean
@@ -44,8 +47,8 @@ async function loadLogs() {
     const res = props.mode === 'local'
       ? await dockerApi.localLogs(props.container, logsTail.value)
       : await dockerApi.logs(props.targetId, props.container, logsTail.value)
-    logs.value = res.logs || '(无日志)'
-  } catch (e: any) { logs.value = '获取日志失败: ' + e.message }
+    logs.value = res.logs || '(' + t('opsdocker.noLogs') + ')'
+  } catch (e: any) { logs.value = t('opsdocker.logFailed') + ': ' + e.message }
   finally { logsLoading.value = false }
 }
 
@@ -90,7 +93,7 @@ async function doAction(action: string, label: string) {
   try {
     if (props.mode === 'local') await dockerApi.localAction(props.container, action)
     else await dockerRemoteActions[action as DockerRemoteAction](props.targetId, props.container)
-    ElMessage.success(label + '成功')
+    ElMessage.success(t('opsdocker.actionOk', { label }))
     emit('refresh')
     await loadInspect()
   } catch (e: any) { ElMessage.error(e.message) }
@@ -101,98 +104,98 @@ onBeforeUnmount(() => { inspect.value = null; logs.value = '' })
 
 <template>
   <el-drawer :model-value="visible" @update:model-value="emit('update:visible', $event)"
-    :title="'容器详情: ' + container.replace(/^\//, '')" size="60%" direction="rtl">
+    :title="t('ddd.title', { name: container.replace(/^\//, '') })" size="60%" direction="rtl">
     <div v-loading="loading" class="detail-wrap">
       <!-- 快捷操作条 -->
       <div class="detail-actions-bar">
-        <el-button size="small" type="success" @click="doAction('start', '启动')">启动</el-button>
-        <el-button size="small" type="warning" @click="doAction('stop', '停止')">停止</el-button>
-        <el-button size="small" @click="doAction('restart', '重启')">重启</el-button>
-        <el-button size="small" @click="doAction('pause', '暂停')" v-if="mode === 'local'">暂停</el-button>
+        <el-button size="small" type="success" @click="doAction('start', t('opsdocker.act.start'))">{{ t('opsdocker.act.start') }}</el-button>
+        <el-button size="small" type="warning" @click="doAction('stop', t('opsdocker.act.stop'))">{{ t('opsdocker.act.stop') }}</el-button>
+        <el-button size="small" @click="doAction('restart', t('opsdocker.act.restart'))">{{ t('opsdocker.act.restart') }}</el-button>
+        <el-button size="small" @click="doAction('pause', t('tt.pause'))" v-if="mode === 'local'">{{ t('tt.pause') }}</el-button>
       </div>
 
       <el-tabs v-model="activeTab" class="detail-tabs">
         <!-- 基本信息 -->
-        <el-tab-pane label="基本信息" name="info">
+        <el-tab-pane :label="t('ddd.info')" name="info">
           <div v-if="inspect" class="info-grid">
-            <div class="info-row"><span class="ik">容器ID</span><code class="iv mono">{{ inspect.Id?.slice(0, 12) }}</code></div>
-            <div class="info-row"><span class="ik">镜像</span><code class="iv mono">{{ inspect.Config?.Image }}</code></div>
-            <div class="info-row"><span class="ik">状态</span>
+            <div class="info-row"><span class="ik">{{ t('ddd.containerId') }}</span><code class="iv mono">{{ inspect.Id?.slice(0, 12) }}</code></div>
+            <div class="info-row"><span class="ik">{{ t('opsdocker.images') }}</span><code class="iv mono">{{ inspect.Config?.Image }}</code></div>
+            <div class="info-row"><span class="ik">{{ t('cloud.status') }}</span>
               <span class="state-badge" :class="'state-badge--' + (inspect.State?.Running ? 'success' : 'muted')">
                 <span class="state-dot"></span>{{ inspect.State?.Status || 'unknown' }}
               </span>
             </div>
-            <div class="info-row"><span class="ik">创建时间</span><span class="iv">{{ inspect.Created }}</span></div>
-            <div class="info-row"><span class="ik">重启策略</span><span class="iv">{{ inspect.HostConfig?.RestartPolicy?.Name || '-' }}</span></div>
-            <div class="info-row" v-if="inspect.Config?.Cmd"><span class="ik">命令</span><code class="iv mono">{{ inspect.Config.Cmd.join(' ') }}</code></div>
+            <div class="info-row"><span class="ik">{{ t('td.createdAt') }}</span><span class="iv">{{ inspect.Created }}</span></div>
+            <div class="info-row"><span class="ik">{{ t('dw.restartPolicy') }}</span><span class="iv">{{ inspect.HostConfig?.RestartPolicy?.Name || '-' }}</span></div>
+            <div class="info-row" v-if="inspect.Config?.Cmd"><span class="ik">{{ t('dw.cmd') }}</span><code class="iv mono">{{ inspect.Config.Cmd.join(' ') }}</code></div>
             <div class="info-row" v-if="stat"><span class="ik">CPU</span>
               <div class="resource-bar"><div class="bar-fill bar--cpu" :style="{ width: Math.min(cpuPct(stat), 100) + '%' }"></div><span class="bar-val">{{ stat.CPUPerc }}</span></div>
             </div>
-            <div class="info-row" v-if="stat"><span class="ik">内存</span>
+            <div class="info-row" v-if="stat"><span class="ik">{{ t('opsdocker.mem') }}</span>
               <div class="resource-bar"><div class="bar-fill bar--mem" :style="{ width: Math.min(memPct(stat), 100) + '%' }"></div><span class="bar-val">{{ stat.MemUsage }} ({{ stat.MemPerc }})</span></div>
             </div>
-            <div class="info-row" v-if="stat"><span class="ik">网络IO</span><span class="iv mono">{{ stat.NetIO }}</span></div>
-            <div class="info-row" v-if="stat"><span class="ik">磁盘IO</span><span class="iv mono">{{ stat.BlockIO }}</span></div>
-            <div class="info-row" v-if="stat"><span class="ik">进程数</span><span class="iv mono">{{ stat.PIDs }}</span></div>
+            <div class="info-row" v-if="stat"><span class="ik">{{ t('ddd.netIo') }}</span><span class="iv mono">{{ stat.NetIO }}</span></div>
+            <div class="info-row" v-if="stat"><span class="ik">{{ t('ddd.diskIo') }}</span><span class="iv mono">{{ stat.BlockIO }}</span></div>
+            <div class="info-row" v-if="stat"><span class="ik">{{ t('dhd.procs') }}</span><span class="iv mono">{{ stat.PIDs }}</span></div>
           </div>
         </el-tab-pane>
 
         <!-- 网络 -->
-        <el-tab-pane :label="'网络 (' + networkList.length + ')'" name="network">
+        <el-tab-pane :label="t('ddd.netTab', { n: networkList.length })" name="network">
           <table class="detail-table">
-            <thead><tr><th>网络名称</th><th>IP 地址</th><th>网关</th><th>MAC 地址</th></tr></thead>
+            <thead><tr><th>{{ t('ddd.netName') }}</th><th>{{ t('ddd.ipAddr') }}</th><th>{{ t('ddd.gateway') }}</th><th>{{ t('ddd.mac') }}</th></tr></thead>
             <tbody>
               <tr v-for="n in networkList" :key="n.name">
                 <td class="td-name">{{ n.name }}</td><td class="td-mono">{{ n.ip }}</td><td class="td-mono">{{ n.gateway }}</td><td class="td-mono">{{ n.mac }}</td>
               </tr>
-              <tr v-if="!networkList.length"><td colspan="4" class="td-empty">无网络信息</td></tr>
+              <tr v-if="!networkList.length"><td colspan="4" class="td-empty">{{ t('ddd.noNet') }}</td></tr>
             </tbody>
           </table>
         </el-tab-pane>
 
         <!-- 存储 -->
-        <el-tab-pane :label="'存储 (' + mountList.length + ')'" name="storage">
+        <el-tab-pane :label="t('ddd.storageTab', { n: mountList.length })" name="storage">
           <table class="detail-table">
-            <thead><tr><th>类型</th><th>宿主机路径</th><th>容器路径</th><th>模式</th></tr></thead>
+            <thead><tr><th>{{ t('cloud.type') }}</th><th>{{ t('dw.hostPathPh') }}</th><th>{{ t('dw.containerPathPh') }}</th><th>{{ t('cloud.kind') }}</th></tr></thead>
             <tbody>
               <tr v-for="(m, i) in mountList" :key="i">
                 <td><span class="type-chip">{{ m.type }}</span></td><td class="td-mono">{{ m.source }}</td><td class="td-mono">{{ m.dest }}</td><td>{{ m.mode }}</td>
               </tr>
-              <tr v-if="!mountList.length"><td colspan="4" class="td-empty">无挂载</td></tr>
+              <tr v-if="!mountList.length"><td colspan="4" class="td-empty">{{ t('ddd.noMounts') }}</td></tr>
             </tbody>
           </table>
         </el-tab-pane>
 
         <!-- 环境变量 -->
-        <el-tab-pane :label="'环境 (' + envList.length + ')'" name="env">
+        <el-tab-pane :label="t('ddd.envTab', { n: envList.length })" name="env">
           <table class="detail-table">
-            <thead><tr><th>变量名</th><th>值</th></tr></thead>
+            <thead><tr><th>{{ t('dw.keyPh') }}</th><th>{{ t('dw.valuePh') }}</th></tr></thead>
             <tbody>
               <tr v-for="(e, i) in envList" :key="i"><td class="td-mono">{{ e.key }}</td><td class="td-mono">{{ e.value }}</td></tr>
-              <tr v-if="!envList.length"><td colspan="2" class="td-empty">无环境变量</td></tr>
+              <tr v-if="!envList.length"><td colspan="2" class="td-empty">{{ t('ddd.noEnv') }}</td></tr>
             </tbody>
           </table>
         </el-tab-pane>
 
         <!-- 日志 -->
-        <el-tab-pane label="日志" name="logs">
+        <el-tab-pane :label="t('opsdocker.logsBtn')" name="logs">
           <div class="logs-toolbar">
             <el-input-number v-model="logsTail" :min="50" :max="5000" :step="100" size="small" />
-            <el-button size="small" @click="loadLogs" :loading="logsLoading">刷新</el-button>
+            <el-button size="small" @click="loadLogs" :loading="logsLoading">{{ t('common.refresh') }}</el-button>
           </div>
-          <pre class="log-viewer">{{ logs || '点击刷新查看日志' }}</pre>
+          <pre class="log-viewer">{{ logs || t('ddd.clickRefresh') }}</pre>
         </el-tab-pane>
 
         <!-- 终端 -->
-        <el-tab-pane label="终端" name="terminal" v-if="mode === 'local'">
+        <el-tab-pane :label="t('opsdocker.terminal')" name="terminal" v-if="mode === 'local'">
           <div class="terminal-hint">
-            <el-button type="primary" @click="execVisible = true">打开终端</el-button>
-            <span class="field-hint">在容器内执行命令（需要容器正在运行）</span>
+            <el-button type="primary" @click="execVisible = true">{{ t('ddd.openTerminal') }}</el-button>
+            <span class="field-hint">{{ t('ddd.execHint') }}</span>
           </div>
         </el-tab-pane>
 
         <!-- 原始 JSON -->
-        <el-tab-pane label="原始配置" name="raw">
+        <el-tab-pane :label="t('ddd.rawTab')" name="raw">
           <pre class="raw-viewer">{{ JSON.stringify(inspect, null, 2) }}</pre>
         </el-tab-pane>
       </el-tabs>

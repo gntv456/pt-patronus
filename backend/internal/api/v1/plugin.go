@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"strconv"
 	"time"
@@ -69,7 +70,7 @@ func pluginAssetScope(id string) string {
 func (h *PluginHandler) List(c *gin.Context) {
 	ps, err := h.manager.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"plugins": ps})
@@ -89,11 +90,11 @@ type pluginMarketSourcesReq struct {
 func (h *PluginHandler) SetMarketSources(c *gin.Context) {
 	var req pluginMarketSourcesReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.manager.SetMarketSources(req.Sources); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"sources": h.manager.GetMarketSources(), "official": plugins.OfficialMarketSource})
@@ -113,11 +114,11 @@ type pluginTrustConfigReq struct {
 func (h *PluginHandler) SetTrustConfig(c *gin.Context) {
 	var req pluginTrustConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.manager.SetTrustConfig(req.TrustedPublicKeys, req.AllowUnsigned); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, h.manager.GetTrustConfig())
@@ -126,7 +127,7 @@ func (h *PluginHandler) SetTrustConfig(c *gin.Context) {
 func (h *PluginHandler) Get(c *gin.Context) {
 	p, err := h.manager.Get(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.NotFound.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, p)
@@ -134,11 +135,11 @@ func (h *PluginHandler) Get(c *gin.Context) {
 
 func (h *PluginHandler) Enable(c *gin.Context) {
 	if err := h.validateAcceptedPermissions(c); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.manager.SetEnabled(c.Param("id"), true); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enabled": true})
@@ -146,7 +147,7 @@ func (h *PluginHandler) Enable(c *gin.Context) {
 
 func (h *PluginHandler) Disable(c *gin.Context) {
 	if err := h.manager.SetEnabled(c.Param("id"), false); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enabled": false})
@@ -155,7 +156,7 @@ func (h *PluginHandler) Disable(c *gin.Context) {
 func (h *PluginHandler) SaveConfig(c *gin.Context) {
 	var in pluginConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Config == nil {
@@ -163,7 +164,7 @@ func (h *PluginHandler) SaveConfig(c *gin.Context) {
 	}
 	p, err := h.manager.SaveConfig(c.Param("id"), in.Config)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, p)
@@ -172,7 +173,7 @@ func (h *PluginHandler) SaveConfig(c *gin.Context) {
 func (h *PluginHandler) Action(c *gin.Context) {
 	var in pluginActionReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Input == nil {
@@ -180,7 +181,7 @@ func (h *PluginHandler) Action(c *gin.Context) {
 	}
 	out, err := h.manager.ExecuteAction(c.Request.Context(), c.Param("id"), in.Action, in.Input)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "output": out})
@@ -190,7 +191,7 @@ func (h *PluginHandler) Logs(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
 	logs, err := h.manager.Logs(c.Query("plugin_id"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"logs": logs})
@@ -199,7 +200,7 @@ func (h *PluginHandler) Logs(c *gin.Context) {
 func (h *PluginHandler) Asset(c *gin.Context) {
 	if _, ok := c.Get("uid"); !ok {
 		if h.tickets == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+			errcode.Respond(c, errcode.UnauthorizedOp)
 			return
 		}
 		ticket := c.Query("ticket")
@@ -209,13 +210,13 @@ func (h *PluginHandler) Asset(c *gin.Context) {
 			}
 		}
 		if _, ok := h.tickets.Validate(ticket, pluginAssetScope(c.Param("id"))); !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired ticket"})
+			errcode.Respond(c, errcode.TicketInvalidOrExpired)
 			return
 		}
 	}
 	asset, err := h.manager.ReadAsset(c.Param("id"), c.Param("path"))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.NotFound.WithErr(err))
 		return
 	}
 	c.Data(http.StatusOK, asset.ContentType, asset.Data)
@@ -223,12 +224,12 @@ func (h *PluginHandler) Asset(c *gin.Context) {
 
 func (h *PluginHandler) AssetTicket(c *gin.Context) {
 	if h.tickets == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "ticket store is not configured"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	tk, exp, err := h.tickets.IssueScoped(c.GetUint("uid"), pluginAssetScope(c.Param("id")), pluginAssetTicketTTL)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "issue asset ticket failed"})
+		errcode.Respond(c, errcode.UpstreamFailed)
 		return
 	}
 	c.SetSameSite(http.SameSiteLaxMode)
@@ -251,7 +252,7 @@ func (h *PluginHandler) AssetTicket(c *gin.Context) {
 func (h *PluginHandler) Releases(c *gin.Context) {
 	releases, err := h.manager.ListReleases(c.Param("id"), 50)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"releases": releases})
@@ -260,12 +261,12 @@ func (h *PluginHandler) Releases(c *gin.Context) {
 func (h *PluginHandler) Bridge(c *gin.Context) {
 	var in pluginBridgeReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	out, err := h.manager.Bridge(c.Request.Context(), c.Param("id"), in.Method, in.Params)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "result": out})
@@ -274,12 +275,12 @@ func (h *PluginHandler) Bridge(c *gin.Context) {
 func (h *PluginHandler) Rollback(c *gin.Context) {
 	var in pluginRollbackReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	out, err := h.manager.Rollback(c.Request.Context(), c.Param("id"), in.ReleaseID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -288,7 +289,7 @@ func (h *PluginHandler) Rollback(c *gin.Context) {
 func (h *PluginHandler) PublishEvent(c *gin.Context) {
 	var in pluginEventReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Type == "" {
@@ -314,7 +315,7 @@ func (h *PluginHandler) Market(c *gin.Context) {
 		idx, err = h.manager.FetchMarketMulti(c.Request.Context(), nil)
 	}
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, idx)
@@ -323,7 +324,7 @@ func (h *PluginHandler) Market(c *gin.Context) {
 func (h *PluginHandler) Install(c *gin.Context) {
 	var in pluginInstallReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	options := plugins.MarketInstallOptions{
@@ -341,7 +342,7 @@ func (h *PluginHandler) Install(c *gin.Context) {
 	}
 	out, err := h.manager.InstallFromMarketWithOptions(c.Request.Context(), in.Source, in.ID, options)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -350,7 +351,7 @@ func (h *PluginHandler) Install(c *gin.Context) {
 func (h *PluginHandler) Reload(c *gin.Context) {
 	out, err := h.manager.ReloadExternal(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -358,7 +359,7 @@ func (h *PluginHandler) Reload(c *gin.Context) {
 
 func (h *PluginHandler) Uninstall(c *gin.Context) {
 	if err := h.manager.Uninstall(c.Param("id")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"uninstalled": c.Param("id")})

@@ -3,6 +3,9 @@
 // 状态与逻辑来自 useGeneralSettings 组合式函数（与 Settings.vue 共享单例）。
 import { ref } from 'vue'
 import { useGeneralSettings } from '@/composables/useGeneralSettings'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 import { useUiPrefs, ACCENT_PRESETS } from '@/composables/useUiPrefs'
 
 const {
@@ -19,7 +22,7 @@ function onWallpaperFile(f: File | null) {
   if (!f) return
   // 本地文件转 base64 存偏好（64KB 服务端上限：超大图直接读会超，提示用网络地址）
   if (f.size > 48 * 1024) {
-    ElMessage.warning('本地壁纸过大（>48KB），建议使用网络图片地址')
+    ElMessage.warning(t('gp.wallpaperTooLarge'))
     return
   }
   const reader = new FileReader()
@@ -32,15 +35,15 @@ function onWallpaperFile(f: File | null) {
   <div class="card glass">
     <div class="row">
       <div class="row-label">
-        <span class="row-title">深色主题</span>
-        <span class="text-muted row-hint">切换界面明暗</span>
+        <span class="row-title">{{ t('gp.darkTheme') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.darkHint') }}</span>
       </div>
       <el-switch :model-value="dark" @change="toggleTheme" />
     </div>
     <div class="row">
       <div class="row-label">
-        <span class="row-title">主题配色</span>
-        <span class="text-muted row-hint">主色 / 渐变 / 强调色一键切换</span>
+        <span class="row-title">{{ t('gp.accent') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.accentHint') }}</span>
       </div>
       <div class="accent-picker">
         <button
@@ -56,34 +59,34 @@ function onWallpaperFile(f: File | null) {
     </div>
     <div class="row">
       <div class="row-label">
-        <span class="row-title">界面风格</span>
-        <span class="text-muted row-hint">玻璃（磨砂通透）/ 现代（实体扁平）</span>
+        <span class="row-title">{{ t('gp.uiStyle') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.uiStyleHint') }}</span>
       </div>
       <el-select :model-value="normalized().uiStyle" style="width: 120px" @change="(v: string) => set({ uiStyle: v })">
-        <el-option label="玻璃" value="glass" />
-        <el-option label="现代" value="modern" />
+        <el-option :label="t('gp.styleGlass')" value="glass" />
+        <el-option :label="t('gp.styleModern')" value="modern" />
       </el-select>
     </div>
     <div class="row">
       <div class="row-label">
-        <span class="row-title">背景壁纸</span>
-        <span class="text-muted row-hint">默认渐变 / 必应每日 / 网络图片 / 本地文件</span>
+        <span class="row-title">{{ t('gp.wallpaper') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.wallpaperHint') }}</span>
       </div>
       <el-select
         :model-value="normalized().wallpaperKind"
         style="width: 130px"
         @change="(v: string) => { if (v === 'bing') fetchBingDaily(); set({ wallpaperKind: v }) }"
       >
-        <el-option label="默认渐变" value="none" />
-        <el-option label="必应每日" value="bing" />
-        <el-option label="网络图片" value="url" />
-        <el-option label="本地文件" value="local" />
+        <el-option :label="t('gp.wpNone')" value="none" />
+        <el-option :label="t('gp.wpBing')" value="bing" />
+        <el-option :label="t('gp.wpUrl')" value="url" />
+        <el-option :label="t('gp.wpLocal')" value="local" />
       </el-select>
     </div>
     <div v-if="normalized().wallpaperKind === 'url'" class="row">
       <div class="row-label">
-        <span class="row-title">壁纸地址</span>
-        <span class="text-muted row-hint">https:// 开头的图片直链</span>
+        <span class="row-title">{{ t('gp.wallpaperUrl') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.wallpaperUrlHint') }}</span>
       </div>
       <el-input
         :model-value="normalized().wallpaperUrl"
@@ -94,36 +97,36 @@ function onWallpaperFile(f: File | null) {
     </div>
     <div v-else-if="normalized().wallpaperKind === 'local'" class="row">
       <div class="row-label">
-        <span class="row-title">选择文件</span>
-        <span class="text-muted row-hint">小图（≤48KB）内嵌保存；大图用网络地址</span>
+        <span class="row-title">{{ t('gp.pickFile') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.pickFileHint') }}</span>
       </div>
       <input type="file" accept="image/*" @change="(e: Event) => onWallpaperFile((e.target as HTMLInputElement).files?.[0] ?? null)" />
     </div>
     <div v-if="normalized().wallpaperKind !== 'none'" class="row">
       <div class="row-label">
-        <span class="row-title">遮罩浓度</span>
-        <span class="text-muted row-hint">壁纸上的蒙层，保证文字可读</span>
+        <span class="row-title">{{ t('gp.mask') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.maskHint') }}</span>
       </div>
       <el-select :model-value="normalized().mask" style="width: 120px" @change="(v: string) => set({ mask: v })">
-        <el-option label="轻" value="light" />
-        <el-option label="标准" value="standard" />
-        <el-option label="浓" value="strong" />
+        <el-option :label="t('gp.maskLight')" value="light" />
+        <el-option :label="t('gp.maskStandard')" value="standard" />
+        <el-option :label="t('gp.maskStrong')" value="strong" />
       </el-select>
     </div>
     <div class="row">
       <div class="row-label">
-        <span class="row-title">卡片样式</span>
-        <span class="text-muted row-hint">阴影（默认）/ 边框</span>
+        <span class="row-title">{{ t('gp.cardStyle') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.cardStyleHint') }}</span>
       </div>
       <el-select :model-value="normalized().cardStyle" style="width: 120px" @change="(v: string) => set({ cardStyle: v })">
-        <el-option label="阴影" value="shadow" />
-        <el-option label="边框" value="border" />
+        <el-option :label="t('gp.cardShadow')" value="shadow" />
+        <el-option :label="t('gp.cardBorder')" value="border" />
       </el-select>
     </div>
     <div class="row">
       <div class="row-label">
-        <span class="row-title">侧栏默认折叠</span>
-        <span class="text-muted row-hint">进入页面时侧边栏收起为图标栏</span>
+        <span class="row-title">{{ t('gp.sidebarCollapsed') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.sidebarHint') }}</span>
       </div>
       <el-switch :model-value="normalized().sidebarCollapsed" @change="(v: string | number | boolean) => set({ sidebarCollapsed: !!v })" />
     </div>
@@ -132,11 +135,11 @@ function onWallpaperFile(f: File | null) {
     <div class="row about">
       <div class="row-label">
         <span class="row-title">PTPatronus</span>
-        <span class="text-muted row-hint">PT 守护神 · Go + Vue3 + Flutter</span>
+        <span class="text-muted row-hint">{{ t('gp.aboutHint') }}</span>
       </div>
       <div class="about-actions">
         <el-tag size="small" type="info" effect="plain">v{{ version }}</el-tag>
-        <el-button size="small" :loading="updateChecking" @click="checkUpdate">检查更新</el-button>
+        <el-button size="small" :loading="updateChecking" @click="checkUpdate">{{ t('gp.checkUpdate') }}</el-button>
       </div>
     </div>
   </div>
@@ -145,68 +148,68 @@ function onWallpaperFile(f: File | null) {
   <div class="card glass help-card">
     <div class="help-row" @click="helpVisible = true">
       <div class="row-label">
-        <span class="row-title">使用帮助</span>
-        <span class="text-muted row-hint">新手引导 · PT 黑话释义</span>
+        <span class="row-title">{{ t('gp.help') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.helpHint') }}</span>
       </div>
       <span class="help-arrow">›</span>
     </div>
     <div class="help-row" @click="openIssues">
       <div class="row-label">
-        <span class="row-title">问题反馈</span>
-        <span class="text-muted row-hint">提 Issue / 建议与缺陷</span>
+        <span class="row-title">{{ t('gp.feedback') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.feedbackHint') }}</span>
       </div>
       <span class="help-arrow">›</span>
     </div>
     <div class="help-row" @click="openChangelog">
       <div class="row-label">
-        <span class="row-title">更新日志</span>
-        <span class="text-muted row-hint">查看版本变更记录</span>
+        <span class="row-title">{{ t('gp.changelog') }}</span>
+        <span class="text-muted row-hint">{{ t('gp.changelogHint') }}</span>
       </div>
       <span class="help-arrow">›</span>
     </div>
   </div>
 
   <!-- 在线更新检查弹窗 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="updateDlgVisible" :title="`发现新版本 v${updateInfo?.latestVersion ?? ''}`" width="560px">
+  <el-dialog class="pt-dialog" append-to-body align-center v-model="updateDlgVisible" :title="t('gp.newVersion', { v: updateInfo?.latestVersion ?? '' })" width="560px">
     <div v-if="updateInfo" class="update-body">
-      <p class="update-ver">当前 v{{ updateInfo.currentVersion }} → 最新 v{{ updateInfo.latestVersion }}<span v-if="updateInfo.isBelowMin" class="update-forced">（版本过低，建议立即升级）</span></p>
+      <p class="update-ver">{{ t('gp.versionLine', { cur: updateInfo.currentVersion, latest: updateInfo.latestVersion }) }}<span v-if="updateInfo.isBelowMin" class="update-forced">{{ t('gp.versionTooLow') }}</span></p>
       <div v-if="updateInfo.releaseName" class="update-name">{{ updateInfo.releaseName }}</div>
       <div v-if="updateInfo.releaseNotes" class="update-notes">{{ updateInfo.releaseNotes }}</div>
       <template v-if="updateInfo.instructions">
-        <div class="update-cmd-label">升级命令（在宿主机执行）</div>
+        <div class="update-cmd-label">{{ t('gp.upgradeCmd') }}</div>
         <pre class="update-cmd">{{ updateInfo.instructions }}</pre>
-        <el-button size="small" @click="copyUpgradeCmd">复制命令</el-button>
+        <el-button size="small" @click="copyUpgradeCmd">{{ t('gp.copyCmd') }}</el-button>
       </template>
-      <el-link v-else-if="updateInfo.downloadUrl" type="primary" :href="updateInfo.downloadUrl" target="_blank">下载更新</el-link>
+      <el-link v-else-if="updateInfo.downloadUrl" type="primary" :href="updateInfo.downloadUrl" target="_blank">{{ t('gp.downloadUpdate') }}</el-link>
     </div>
     <template #footer>
-      <el-button @click="updateDlgVisible = false">{{ updateInfo?.isForced ? '我已知悉' : '稍后再说' }}</el-button>
+      <el-button @click="updateDlgVisible = false">{{ updateInfo?.isForced ? t('gp.acknowledged') : t('gp.later') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- 使用帮助 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="helpVisible" title="使用帮助" width="560px">
+  <el-dialog class="pt-dialog" append-to-body align-center v-model="helpVisible" :title="t('gp.help')" width="560px">
     <div class="help-body">
-      <h4>核心价值</h4>
-      <p>PTPatronus 是 PT 站点保号防封利器。推荐上手路径：</p>
+      <h4>{{ t('gp.coreValue') }}</h4>
+      <p>{{ t('gp.intro') }}</p>
       <ol>
-        <li>在「站点」添加并登录你的 PT 站点（填 Cookie / 账号）</li>
-        <li>在「下载器」添加 qBittorrent / Transmission / uTorrent / Deluge</li>
-        <li>开启「辅种」「考核」「签到」等自动化，让工具替你保级</li>
+        <li>{{ t('gp.step1') }}</li>
+        <li>{{ t('gp.step2') }}</li>
+        <li>{{ t('gp.step3') }}</li>
       </ol>
 
-      <h4>PT 黑话释义</h4>
+      <h4>{{ t('gp.jargonTitle') }}</h4>
       <ul class="jargon">
-        <li><b>辅种</b>：跨站辅助种子 —— 同一资源在不同站点间自动补种，提升分享率</li>
-        <li><b>监护室</b>：站点健康监控 —— 实时跟踪 Cookie / H&R / 在线状态</li>
-        <li><b>后宫</b>：邀请管理 —— 跟踪站内邀请与被邀请人</li>
-        <li><b>站免</b>：全站免费促销 —— 聚合各站限时 Free 资源</li>
-        <li><b>考核</b>：保级 / 升级条件 —— 跟踪站点对用户的硬性指标要求</li>
-        <li><b>H&amp;R</b>：Hit and Run —— 站点强制的做种时长 / 比例要求，未达标会扣分</li>
+        <li><b>{{ t('gp.j.reseed') }}</b>{{ t('gp.jd.reseed') }}</li>
+        <li><b>{{ t('gp.j.icu') }}</b>{{ t('gp.jd.icu') }}</li>
+        <li><b>{{ t('gp.j.harem') }}</b>{{ t('gp.jd.harem') }}</li>
+        <li><b>{{ t('gp.j.free') }}</b>{{ t('gp.jd.free') }}</li>
+        <li><b>{{ t('gp.j.assess') }}</b>{{ t('gp.jd.assess') }}</li>
+        <li><b>H&amp;R</b>{{ t('gp.jd.hr') }}</li>
       </ul>
     </div>
     <template #footer>
-      <el-button @click="helpVisible = false">知道了</el-button>
+      <el-button @click="helpVisible = false">{{ t('gp.gotIt') }}</el-button>
     </template>
   </el-dialog>
 </template>

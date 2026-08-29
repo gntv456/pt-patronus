@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, watch } from 'vue'
 import { dockerTemplates, dockerTemplateCategories, type DockerTemplate, type DockerTemplateCategory } from '@/data/dockerTemplates'
 import { composeTemplates, composeTemplateCategories, type ComposeTemplate, type ComposeTemplateCategory } from '@/data/composeTemplates'
 
+const { t } = useI18n()
 const props = defineProps<{ visible: boolean }>()
 const emit = defineEmits<{
   'update:visible': [val: boolean]
@@ -11,15 +13,15 @@ const emit = defineEmits<{
 }>()
 
 const storeMode = ref<'single' | 'compose'>('single')
-const activeCategory = ref<DockerTemplateCategory | '全部'>('全部')
-const activeComposeCategory = ref<ComposeTemplateCategory | '全部'>('全部')
+const activeCategory = ref<DockerTemplateCategory | '\u5168\u90e8'>('\u5168\u90e8')
+const activeComposeCategory = ref<ComposeTemplateCategory | '\u5168\u90e8'>('\u5168\u90e8')
 const searchText = ref('')
 
 watch(() => props.visible, (v) => {
   if (v) {
     storeMode.value = 'single'
-    activeCategory.value = '全部'
-    activeComposeCategory.value = '全部'
+    activeCategory.value = '\u5168\u90e8'
+    activeComposeCategory.value = '\u5168\u90e8'
     searchText.value = ''
   }
 })
@@ -27,7 +29,7 @@ watch(() => props.visible, (v) => {
 // 单容器模板过滤
 const filteredTemplates = computed(() => {
   let list = dockerTemplates
-  if (activeCategory.value !== '全部') {
+  if (activeCategory.value !== '\u5168\u90e8') {
     list = list.filter((t) => t.category === activeCategory.value)
   }
   if (searchText.value.trim()) {
@@ -44,7 +46,7 @@ const filteredTemplates = computed(() => {
 // Compose 模板过滤
 const filteredCompose = computed(() => {
   let list = composeTemplates
-  if (activeComposeCategory.value !== '全部') {
+  if (activeComposeCategory.value !== '\u5168\u90e8') {
     list = list.filter((t) => t.category === activeComposeCategory.value)
   }
   if (searchText.value.trim()) {
@@ -57,13 +59,13 @@ const filteredCompose = computed(() => {
   return list
 })
 
-function countForCategory(cat: DockerTemplateCategory | '全部'): number {
-  if (cat === '全部') return dockerTemplates.length
+function countForCategory(cat: DockerTemplateCategory | '\u5168\u90e8'): number {
+  if (cat === '\u5168\u90e8') return dockerTemplates.length
   return dockerTemplates.filter((t) => t.category === cat).length
 }
 
-function countForComposeCategory(cat: ComposeTemplateCategory | '全部'): number {
-  if (cat === '全部') return composeTemplates.length
+function countForComposeCategory(cat: ComposeTemplateCategory | '\u5168\u90e8'): number {
+  if (cat === '\u5168\u90e8') return composeTemplates.length
   return composeTemplates.filter((t) => t.category === cat).length
 }
 
@@ -78,7 +80,7 @@ function selectComposeTemplate(tpl: ComposeTemplate) {
 }
 
 function portSummary(tpl: DockerTemplate): string {
-  if (!tpl.ports.length) return '无端口'
+  if (!tpl.ports.length) return t('das.noPorts')
   return tpl.ports.map((p) => p.host + ':' + p.container).join(', ')
 }
 
@@ -87,17 +89,17 @@ const resultCount = computed(() => storeMode.value === 'single' ? filteredTempla
 
 <template>
   <el-dialog :model-value="visible" @update:model-value="emit('update:visible', $event)"
-    title="应用商店" width="940px" top="3vh" class="app-store-dialog" destroy-on-close>
+    :title="t('das.title')" width="940px" top="3vh" class="app-store-dialog" destroy-on-close>
     <div class="app-store-layout">
       <!-- 左侧分类栏 -->
       <aside class="app-store-sidebar">
         <!-- 模式切换 -->
         <div class="store-mode-switch">
-          <button class="mode-tab" :class="{ active: storeMode === 'single' }" @click="storeMode = 'single'; activeCategory = '全部'">
-            📦 单容器
+          <button class="mode-tab" :class="{ active: storeMode === 'single' }" @click="storeMode = 'single'; activeCategory = '\u5168\u90e8'">
+            📦 {{ t('das.modeSingle') }}
           </button>
-          <button class="mode-tab" :class="{ active: storeMode === 'compose' }" @click="storeMode = 'compose'; activeComposeCategory = '全部'">
-            🗂️ Compose 编排
+          <button class="mode-tab" :class="{ active: storeMode === 'compose' }" @click="storeMode = 'compose'; activeComposeCategory = '\u5168\u90e8'">
+            🗂️ {{ t('das.modeCompose') }}
           </button>
         </div>
 
@@ -136,12 +138,12 @@ const resultCount = computed(() => storeMode.value === 'single' ? filteredTempla
       <div class="app-store-main">
         <!-- 搜索栏 -->
         <div class="store-search-bar">
-          <el-input v-model="searchText" placeholder="搜索应用名称或描述…" clearable size="large" class="store-search-input">
+          <el-input v-model="searchText" :placeholder="t('das.searchPh')" clearable size="large" class="store-search-input">
             <template #prefix>
               <svg viewBox="0 0 24 24" class="store-search-ico"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
             </template>
           </el-input>
-          <span class="store-result-count">{{ resultCount }} 个应用</span>
+          <span class="store-result-count">{{ t('das.appCount', { n: resultCount }) }}</span>
         </div>
 
         <!-- 单容器应用卡片网格 -->
@@ -162,7 +164,7 @@ const resultCount = computed(() => storeMode.value === 'single' ? filteredTempla
             </div>
             <button class="app-install-btn" @click="selectTemplate(tpl)">
               <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-              安装
+              {{ t('das.install') }}
             </button>
           </div>
         </div>
@@ -186,7 +188,7 @@ const resultCount = computed(() => storeMode.value === 'single' ? filteredTempla
             </div>
             <button class="app-install-btn app-install-btn--compose" @click="selectComposeTemplate(tpl)">
               <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-              部署编排
+              {{ t('das.deployCompose') }}
             </button>
           </div>
         </div>
@@ -194,8 +196,8 @@ const resultCount = computed(() => storeMode.value === 'single' ? filteredTempla
         <!-- 空状态 -->
         <div v-if="!resultCount" class="store-empty">
           <div class="store-empty-icon">🔍</div>
-          <p>未找到匹配的应用</p>
-          <span>试试其他关键词或切换分类</span>
+          <p>{{ t('das.emptyTitle') }}</p>
+          <span>{{ t('das.emptyHint') }}</span>
         </div>
       </div>
     </div>

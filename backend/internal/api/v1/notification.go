@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/notification"
 )
@@ -30,7 +31,7 @@ type notifyReq struct {
 func (h *NotificationHandler) Test(c *gin.Context) {
 	var req notifyReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if req.Level == "" {
@@ -230,7 +231,7 @@ type notifyConfigReq struct {
 func (h *NotificationHandler) SetConfig(c *gin.Context) {
 	var req notifyConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	in := chain.NotificationSettings{}
@@ -255,7 +256,7 @@ func (h *NotificationHandler) SetConfig(c *gin.Context) {
 	in.MQTT.Enabled, in.MQTT.Broker, in.MQTT.Topic, in.MQTT.Username, in.MQTT.Password, in.MQTT.ClientID = req.MQTT.Enabled, req.MQTT.Broker, req.MQTT.Topic, req.MQTT.Username, req.MQTT.Password, req.MQTT.ClientID
 	in.ServerChan.Enabled, in.ServerChan.Key = req.ServerChan.Enabled, req.ServerChan.Key
 	if err := h.provider.ApplySettings(in); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -268,7 +269,7 @@ func (h *NotificationHandler) WeChatQRCode(c *gin.Context) {
 	baseURL := h.provider.LoadSettings().WeChat.BaseURL
 	qrcode, qrcodeURL, err := notification.RequestQRCode(c.Request.Context(), baseURL)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"qrcode": qrcode, "qrcode_url": qrcodeURL})
@@ -278,13 +279,13 @@ func (h *NotificationHandler) WeChatQRCode(c *gin.Context) {
 func (h *NotificationHandler) WeChatQRStatus(c *gin.Context) {
 	qrcode := c.Query("qrcode")
 	if qrcode == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing qrcode"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	baseURL := h.provider.LoadSettings().WeChat.BaseURL
 	r, err := notification.PollQRStatus(c.Request.Context(), baseURL, qrcode)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	loggedIn := false

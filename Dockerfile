@@ -1,6 +1,12 @@
-# syntax=docker.m.daocloud.io/docker/dockerfile:1
+# syntax=docker/dockerfile:1
 # PTPatronus 单镜像：前端(Vue3)构建 → go:embed 内嵌 → 后端(Go) → 运行时(alpine)
 # 产物：一个镜像同时提供 API（:8088）与 Web UI。
+#
+# 可调 build args（国内网络按需覆盖，海外/CI 保持默认即可）：
+#   --build-arg GOPROXY_MIRROR=https://goproxy.cn,direct
+#   --build-arg ALPINE_MIRROR=mirrors.ustc.edu.cn  （运行时 apk 源，默认 dl-cdn.alpinelinux.org）
+# syntax 前端镜像国内也可换：docker build 用 DOCKER_BUILDKIT + 国内 registry mirror 即可，
+# 不在此硬编码 daocloud（海外构建曾因第三方 syntax 镜像不可达而失败）。
 
 # ---- 前端构建 ----
 # 前端固定 amd64 build（JS 产物平台无关），避免 arm64 走 QEMU 跑 npm install 触发
@@ -18,7 +24,9 @@ RUN npm run build
 # ---- 后端构建（内嵌前端 dist）----
 FROM golang:1.26-alpine AS backend
 WORKDIR /src
-ENV CGO_ENABLED=0 GOOS=linux GOPROXY=https://goproxy.cn,direct
+# Go 模块代理默认官方；国内网络用 --build-arg GOPROXY_MIRROR=https://goproxy.cn,direct 覆盖
+ARG GOPROXY_MIRROR=https://proxy.golang.org,direct
+ENV CGO_ENABLED=0 GOOS=linux GOPROXY=${GOPROXY_MIRROR}
 COPY backend/go.mod backend/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY backend/ ./
@@ -32,7 +40,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 # ---- 运行时 ----
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata wget su-exec docker-cli docker-cli-compose && \
+# apk 源默认官方；国内用 --build-arg ALPINE_MIRROR=mirrors.ustc.edu.cn 覆盖
+ARG ALPINE_MIRROR=""
+RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s|dl-cdn.alpinelinux.org|$ALPINE_MIRROR|g" /etc/apk/repositories; fi && \
+    apk add --no-cache ca-certificates tzdata wget su-exec docker-cli docker-cli-compose && \
     addgroup -S app && adduser -S app -G app
 WORKDIR /app
 # --chown 在 COPY 时设定属主，避免随后 `chown -R` 把 50MB 二进制重写进新层（省 ~50MB 镜像体积）。

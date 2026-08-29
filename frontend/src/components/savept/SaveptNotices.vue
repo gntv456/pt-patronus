@@ -3,6 +3,9 @@
 import { computed } from 'vue'
 import { buildNoticeSections, tokenizeNoticeText } from '@/utils/savept'
 import type { SaveptResult, SaveptSiteCard } from '@/api/savept'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   alerts: SaveptResult['alerts']
@@ -24,7 +27,7 @@ const noticeSections = computed(() => buildNoticeSections(props.alerts ?? []))
               </template>
             </div>
           </div>
-          <div v-else class="spt-notice-card__empty">暂无公告</div>
+          <div v-else class="spt-notice-card__empty">{{ t('sn.noNotices') }}</div>
         </div>
       </div>
 </template>

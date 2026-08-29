@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 )
 
@@ -13,7 +14,7 @@ import (
 func (h *PluginHandler) MarketCharts(c *gin.Context) {
 	out, err := h.manager.MarketCharts(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -23,7 +24,7 @@ func (h *PluginHandler) MarketCharts(c *gin.Context) {
 func (h *PluginHandler) MarketFavorites(c *gin.Context) {
 	out, err := h.manager.MarketFavorites(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"plugins": out})
@@ -33,7 +34,7 @@ func (h *PluginHandler) MarketFavorites(c *gin.Context) {
 func (h *PluginHandler) FavoritePlugin(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.manager.FavoritePlugin(id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"favorited": id})
@@ -43,7 +44,7 @@ func (h *PluginHandler) FavoritePlugin(c *gin.Context) {
 func (h *PluginHandler) UnfavoritePlugin(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.manager.UnfavoritePlugin(id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"unfavorited": id})
@@ -54,7 +55,7 @@ func (h *PluginHandler) PluginInstances(c *gin.Context) {
 	id := c.Param("id")
 	insts, err := h.manager.PluginInstances(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"instances": insts, "single_instance": h.manager.SingleInstance(id)})
@@ -68,12 +69,12 @@ func (h *PluginHandler) CreatePluginInstance(c *gin.Context) {
 		Config      map[string]any `json:"config"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	inst, err := h.manager.CreatePluginInstance(id, in.InstanceKey, marshalConfig(in.Config))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, inst)
@@ -87,11 +88,11 @@ func (h *PluginHandler) SavePluginInstanceConfig(c *gin.Context) {
 		Enable *bool          `json:"enable" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.manager.SavePluginInstanceConfig(id, key, marshalConfig(in.Config), *in.Enable); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": key})
@@ -101,7 +102,7 @@ func (h *PluginHandler) SavePluginInstanceConfig(c *gin.Context) {
 func (h *PluginHandler) DeletePluginInstance(c *gin.Context) {
 	id, key := c.Param("id"), c.Param("key")
 	if err := h.manager.DeletePluginInstance(id, key); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": key})
@@ -115,11 +116,11 @@ func (h *PluginHandler) ReorderPluginInstances(c *gin.Context) {
 		IDs []uint `json:"ids" binding:"required,min=1,max=200"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.manager.ReorderPluginInstances(id, in.IDs); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"reordered": len(in.IDs)})

@@ -8,6 +8,8 @@ export interface NavItem {
   to: string
 }
 export interface NavGroup {
+  /** locale 查找键（nav.groups.<key>）；title 仍是折叠状态的持久化键（稳定不随 locale 变） */
+  key?: string
   title: string
   items: NavItem[]
 }
@@ -15,6 +17,7 @@ export interface NavGroup {
 // P2: 侧栏收敛到定稿主菜单；移出项保留在 paletteOnly（⌘K/收藏/深链）。
 export const navGroups: NavGroup[] = [
   {
+    key: 'overview',
     title: '概览',
     items: [
       { name: 'dashboard', label: '仪表盘', icon: 'dashboard', from: '#6c5ce7', to: '#4285f4' },
@@ -25,6 +28,7 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'activity',
     title: '动态',
     items: [
       { name: 'notices', label: '通知中心', icon: 'bell', from: '#6c5ce7', to: '#a18cd1' },
@@ -34,6 +38,7 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'site',
     title: '站点活动',
     items: [
       { name: 'entertainment', label: '娱乐', icon: 'entertainment', from: '#7f00ff', to: '#e100ff' },
@@ -48,6 +53,7 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'infra',
     title: '基础设施',
     items: [
       { name: 'downloaders', label: '下载器', icon: 'downloaders', from: '#11998e', to: '#38ef7d' },
@@ -58,6 +64,7 @@ export const navGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'automation',
     title: '自动化',
     items: [
       { name: 'workflow', label: '工作流', icon: 'workflow', from: '#6c5ce7', to: '#00b894' },

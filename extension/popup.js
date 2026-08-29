@@ -43,7 +43,7 @@ function renderItem(cfg, keyword, t, box) {
   actions.className = 'actions'
   const subBtn = document.createElement('button')
   subBtn.className = 'primary'
-  subBtn.textContent = '一键订阅'
+  subBtn.textContent = '订阅'
   subBtn.onclick = () => subscribe(cfg, keyword, t, subBtn)
   const webBtn = document.createElement('button')
   webBtn.textContent = 'Web 查看'
@@ -138,8 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sess = await chrome.storage.session.get(['ptp_last_drag_url'])
     if (sess && sess.ptp_last_drag_url) {
       const bar = document.createElement('div')
-      bar.className = 'glass panel'
-      bar.style.cssText = 'margin:0 10px 6px;padding:8px 12px;display:flex;gap:8px;align-items:center;font-size:11px'
+      bar.className = 'glass dragbar'
       const span = document.createElement('span')
       span.style.flex = '1'
       span.style.overflow = 'hidden'
@@ -147,7 +146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       span.style.whiteSpace = 'nowrap'
       span.textContent = `拖放的链接：${sess.ptp_last_drag_url.slice(0, 60)}`
       const push = document.createElement('button')
-      push.className = 'btn-lime'
+      push.className = 'btn-primary'
       push.textContent = '⬇ 推送'
       push.onclick = async () => {
         push.disabled = true; push.textContent = '推送中…'
@@ -168,7 +167,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('goSearch').onclick = guard(() => openWebSearch(cfg, $('keyword').value))
   $('goSubs').onclick = guard(() => chrome.tabs.create({ url: `${baseUrl(cfg)}/subscriptions` }))
   $('goDash').onclick = guard(() => chrome.tabs.create({ url: `${baseUrl(cfg)}/dashboard` }))
-  $('goStats').onclick = guard(() => chrome.runtime.openOptionsPage())
   // 一键签到：POST /sites/checkin（手动触发，逐站并发；不做自动刷签到——行业共识视为作弊）。
   // 注：checkin 是 <a>，无 disabled 语义——用 lock 标志防重入 + class 切换视觉禁用态。
   let checkinBusy = false
@@ -185,7 +183,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (e) {
       $('checkinTxt').textContent = `⚠ ${String(e.message).slice(0, 12)}`
     }
-    setTimeout(() => { $('checkinTxt').textContent = '一键签到'; $('checkin').classList.remove('busy'); checkinBusy = false }, 3500)
+    setTimeout(() => { $('checkinTxt').textContent = '签到'; $('checkin').classList.remove('busy'); checkinBusy = false }, 3500)
   })
   $('search').onclick = () => runSearch($('keyword').value.trim())
   $('keyword').onkeydown = (ev) => { if (ev.key === 'Enter') runSearch($('keyword').value.trim()) }
@@ -195,6 +193,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     $('keyword').value = sel.slice(0, 200)
     runSearch($('keyword').value)
   } else if (isConfigured(cfg)) {
-    loadStats(cfg)
+    loadStats(cfg) // 已登录且无选中词：静默拉数据卡
   }
 })

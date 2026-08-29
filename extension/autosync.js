@@ -44,7 +44,6 @@ export async function syncAlarm(state) {
 }
 
 // browserFingerprint 与后端同口径：cookie 头 sha256 前 12 位 hex。
-// 注意：cookies_page.js 有一份相同实现（fpOf），这里独立导出供自动同步复用。
 export async function browserFingerprint(baseURL) {
   const header = await browserCookieHeader(baseURL)
   if (!header) return { header: '', fp: '' }

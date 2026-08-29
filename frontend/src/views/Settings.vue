@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 // 设置分区内嵌的 9 个重组件改为按需异步加载：进任意 tab 只下载该 tab 代码，
 // 避免首屏一次性解析全部（FileManager/FilterRules 等共 3000+ 行）。
 const Cloud = defineAsyncComponent(() => import('@/views/Cloud.vue'))
@@ -31,8 +32,10 @@ const { schedCfg, loadSchedule } = useSchedule()
 const { tgCfg, loadTgBot } = useTgBot()
 const { logs, loadLogs } = useLogs()
 
+const { t } = useI18n()
+
 // Servarr 兼容：API Key = 服务端 API_KEY env（密钥不在前端回显）。
-const apiKeyHint = '（即服务端 API_KEY 环境变量；出于安全不在前端回显）'
+const apiKeyHint = computed(() => t('settings.servarr.apiKeyHint'))
 
 onMounted(() => { initThemeVersion() })
 
@@ -121,50 +124,50 @@ function onSectionChange(sec: string | number) {
 
 <template>
   <div class="page">
-    <h2 class="title">设置</h2>
+    <h2 class="title">{{ t('settings.title') }}</h2>
 
         <el-tabs v-model="settingsSection" @tab-change="onSectionChange" class="glass tabs settings-sections">
-      <el-tab-pane label="通用" name="general">
+      <el-tab-pane :label="t('settings.sections.general')" name="general">
         <GeneralPanel />
       </el-tab-pane>
 
-      <el-tab-pane label="连接" name="connect">
+      <el-tab-pane :label="t('settings.sections.connect')" name="connect">
         <el-tabs v-model="connectTab" @tab-change="onTabChange" class="nested-tabs">
-          <el-tab-pane label="云盘" name="cloud" lazy>
+          <el-tab-pane :label="t('settings.connect.cloud')" name="cloud" lazy>
             <Cloud :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane label="Trakt" name="trakt" lazy>
+          <el-tab-pane :label="t('settings.connect.trakt')" name="trakt" lazy>
             <Trakt :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane label="文件 · STRM" name="files" lazy>
+          <el-tab-pane :label="t('settings.connect.files')" name="files" lazy>
             <FileManager :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane label="OIDC / SSO" name="oidc">
+          <el-tab-pane :label="t('settings.connect.oidc')" name="oidc">
             <OidcPanel />
           </el-tab-pane>
-          <el-tab-pane label="AI 网关" name="llmgateway">
+          <el-tab-pane :label="t('settings.connect.llmgateway')" name="llmgateway">
             <LlmGatewayPanel />
           </el-tab-pane>
-          <el-tab-pane label="CookieCloud" name="cookiecloud">
+          <el-tab-pane :label="t('settings.connect.cookiecloud')" name="cookiecloud">
             <CookieCloudPanel />
           </el-tab-pane>
-          <el-tab-pane label="OCR 识别" name="ocr" lazy>
+          <el-tab-pane :label="t('settings.connect.ocr')" name="ocr" lazy>
             <OcrPanel />
           </el-tab-pane>
-          <el-tab-pane label="Servarr 兼容" name="servarr">
+          <el-tab-pane :label="t('settings.connect.servarr')" name="servarr">
 
         <div class="oidc-wrap">
           <p class="text-muted oidc-help">
-            PTPatronus 订阅已以 Sonarr/Radarr v3 API 对外暴露，供 Overseerr / Jellyseerr 直接接入。无需额外配置——使用全局 <code>API_KEY</code> 作为 *arr 服务的 API Key。
+            {{ t('settings.servarr.help', { code: 'API_KEY' }) }}
           </p>
           <div class="card glass">
-            <div class="ch-head"><div class="row-title">接入信息</div></div>
+            <div class="ch-head"><div class="row-title">{{ t('settings.servarr.accessInfo') }}</div></div>
             <el-input class="mt8" readonly model-value="Radarr: http://<host>:8088/api/v3"><template #prepend>Radarr URL</template></el-input>
             <el-input class="mt8" readonly model-value="Sonarr: http://<host>:8088/api/v3"><template #prepend>Sonarr URL</template></el-input>
             <el-input class="mt8" readonly :model-value="apiKeyHint"><template #prepend>API Key</template></el-input>
             <p class="text-muted small mt8">
-              映射：电影订阅 ↔ Radarr Movie，剧集订阅 ↔ Sonarr Series；<code>hasFile</code> 取整理历史。<br/>
-              支持端点：<code>/system/status</code>、<code>/movie</code>(GET/POST/DELETE)、<code>/series</code>(GET/POST/PUT/DELETE)、<code>/*/lookup</code>、<code>/rootfolder</code>、<code>/qualityProfile</code>、<code>/tag</code>。
+              {{ t('settings.servarr.mapping', { code2: 'hasFile' }) }}<br/>
+              {{ t('settings.servarr.endpoints') }}<code>/system/status</code>、<code>/movie</code>(GET/POST/DELETE)、<code>/series</code>(GET/POST/PUT/DELETE)、<code>/*/lookup</code>、<code>/rootfolder</code>、<code>/qualityProfile</code>、<code>/tag</code>。
             </p>
           </div>
         </div>
@@ -172,51 +175,51 @@ function onSectionChange(sec: string | number) {
           </el-tab-pane>
         </el-tabs>
       </el-tab-pane>
-      <el-tab-pane label="媒体" name="media">
+      <el-tab-pane :label="t('settings.sections.media')" name="media">
         <el-tabs v-model="mediaTab" @tab-change="onTabChange" class="nested-tabs">
-          <el-tab-pane label="媒体质量" name="mediaquality" lazy>
+          <el-tab-pane :label="t('settings.media.mediaquality')" name="mediaquality" lazy>
             <MediaQuality :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane label="字幕源" name="subtitle" lazy>
+          <el-tab-pane :label="t('settings.media.subtitle')" name="subtitle" lazy>
             <Subtitle :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane label="媒体设置" name="media-settings" lazy>
+          <el-tab-pane :label="t('settings.media.mediaSettings')" name="media-settings" lazy>
             <MediaSettings :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane label="过滤规则" name="filter-rules" lazy>
+          <el-tab-pane :label="t('settings.media.filterRules')" name="filter-rules" lazy>
             <FilterRules :embedded="true" />
           </el-tab-pane>
         </el-tabs>
       </el-tab-pane>
 
-      <el-tab-pane label="自动化" name="automation">
+      <el-tab-pane :label="t('settings.sections.automation')" name="automation">
 
           <SchedulePanel />
       </el-tab-pane>
 
-      <el-tab-pane label="通知" name="notify">
+      <el-tab-pane :label="t('settings.sections.notify')" name="notify">
         <el-tabs v-model="notifyTab" @tab-change="onTabChange" class="nested-tabs">
-          <el-tab-pane label="通知通道" name="notification">
+          <el-tab-pane :label="t('settings.notify.channels')" name="notification">
 
         <NotificationPanel />
 
       
           </el-tab-pane>
-          <el-tab-pane label="Telegram Bot" name="tgbot">
+          <el-tab-pane :label="t('settings.notify.tgbot')" name="tgbot">
             <TgBotPanel />
           </el-tab-pane>
         </el-tabs>
       </el-tab-pane>
 
-      <el-tab-pane label="维护" name="maintain">
+      <el-tab-pane :label="t('settings.sections.maintain')" name="maintain">
         <el-tabs v-model="maintainTab" @tab-change="onTabChange" class="nested-tabs">
-          <el-tab-pane label="运行日志" name="logs">
+          <el-tab-pane :label="t('settings.maintain.logs')" name="logs">
             <LogsPanel />
           </el-tab-pane>
-          <el-tab-pane label="备份" name="backup" lazy>
+          <el-tab-pane :label="t('settings.maintain.backup')" name="backup" lazy>
             <Backup :embedded="true" />
           </el-tab-pane>
-          <el-tab-pane label="诊断" name="doctor" lazy>
+          <el-tab-pane :label="t('settings.maintain.doctor')" name="doctor" lazy>
             <Doctor :embedded="true" />
           </el-tab-pane>
         </el-tabs>

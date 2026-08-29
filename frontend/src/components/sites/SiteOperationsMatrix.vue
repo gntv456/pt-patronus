@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { Site, SiteConnectivityStatus } from '@/api/site'
@@ -54,6 +55,7 @@ const matrixLayout = computed<MatrixLayout>(() => {
 })
 let resizeObserver: ResizeObserver | null = null
 
+const { t } = useI18n()
 const {
   siteQuery, matrixFilter, sortKey, sortDir, currentPage, pageSize,
   historyVisible, historyLoading, historySiteName, history,
@@ -84,19 +86,19 @@ const { visitInactiveSites } = useInactiveSiteVisit(
 function showConnectivityReason(row: SiteStatItem) {
   const status = props.connectivity[row.site_id]
   if (!status || status.status === 'connected') return
-  const title = status.status === 'disabled' ? `${row.site_name} 已停用` : `${row.site_name} 未联通`
+  const title = status.status === 'disabled' ? t('som.disabledTitle', { name: row.site_name }) : t('som.offlineTitle', { name: row.site_name })
   const site = siteConfig(row.site_id)
-  const detail = status.error || '站点未返回具体失败原因'
-  const url = site?.base_url ? `\n\n站点地址：${site.base_url}` : ''
+  const detail = status.error || t('som.noErrDetail')
+  const url = site?.base_url ? t('som.siteUrl', { url: site.base_url }) : ''
   alertBox(detail + url, title, {
     type: status.status === 'disabled' ? 'warning' : 'error',
-    confirmButtonText: '知道了',
+    confirmButtonText: t('som.gotIt'),
   })
 }
 
 function openDetail(row: SiteStatItem) {
   const site = siteConfig(row.site_id)
-  if (!site) { ElMessage.warning('该统计记录没有对应的站点配置'); return }
+  if (!site) { ElMessage.warning(t('som.noSiteCfg')); return }
   emit('detail', site)
 }
 
@@ -104,7 +106,7 @@ function handleRowCommand(command: string, row: SiteStatItem) {
   if (command === 'refresh') { void syncOne(row); return }
   if (command === 'history') { void viewHistory(row); return }
   const site = siteConfig(row.site_id)
-  if (!site) { ElMessage.warning('该统计记录没有对应的站点配置'); return }
+  if (!site) { ElMessage.warning(t('som.noSiteCfg')); return }
   if (command === 'detail') emit('detail', site)
   else if (command === 'checkin') emit('checkin', site)
   else if (command === 'test') emit('test', site)
@@ -151,18 +153,18 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
   <section ref="panelRef" class="operations-matrix glass">
     <div class="matrix-head">
       <div>
-        <h3>站点运营矩阵</h3>
-        <p>当前 {{ pageRange }} / {{ matrixRows.length }} 个匹配站点 · 共 {{ allRows.length }} 个站点</p>
+        <h3>{{ t('som.title') }}</h3>
+        <p>{{ t('som.rangeInfo', { shown: pageRange, matched: matrixRows.length, total: allRows.length }) }}</p>
       </div>
       <div class="matrix-tools">
-        <el-input v-model="siteQuery" clearable placeholder="搜索站点、用户、等级" class="matrix-search" />
-        <div class="matrix-filter" aria-label="站点状态筛选">
-          <button type="button" :class="{ active: matrixFilter === 'all' }" @click="matrixFilter = 'all'">全部</button>
-          <button type="button" :class="{ active: matrixFilter === 'issues' }" @click="matrixFilter = 'issues'">异常</button>
-          <button type="button" :class="{ active: matrixFilter === 'connected' }" @click="matrixFilter = 'connected'">已联通</button>
-          <button type="button" :class="{ active: matrixFilter === 'disabled' }" @click="matrixFilter = 'disabled'">已停用</button>
+        <el-input v-model="siteQuery" clearable :placeholder="t('som.searchPh')" class="matrix-search" />
+        <div class="matrix-filter" :aria-label="t('som.filterAria')">
+          <button type="button" :class="{ active: matrixFilter === 'all' }" @click="matrixFilter = 'all'">{{ t('sh.all') }}</button>
+          <button type="button" :class="{ active: matrixFilter === 'issues' }" @click="matrixFilter = 'issues'">{{ t('som.issues') }}</button>
+          <button type="button" :class="{ active: matrixFilter === 'connected' }" @click="matrixFilter = 'connected'">{{ t('som.connected') }}</button>
+          <button type="button" :class="{ active: matrixFilter === 'disabled' }" @click="matrixFilter = 'disabled'">{{ t('som.disabled') }}</button>
         </div>
-        <el-button size="small" :loading="syncing" @click="syncAll">刷新统计</el-button>
+        <el-button size="small" :loading="syncing" @click="syncAll">{{ t('som.syncAll') }}</el-button>
         <el-button
           v-if="canDelete"
           size="small"
@@ -171,14 +173,14 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
           :disabled="!selectedSites.length"
           @click="emit('batchRemove', selectedSites)"
         >
-          批量删除{{ selectedSites.length ? `(${selectedSites.length})` : '' }}
+          {{ t('som.batchDelete') }}{{ selectedSites.length ? `(${selectedSites.length})` : '' }}
         </el-button>
       </div>
     </div>
 
     <div v-if="loadError" class="matrix-error">
       <span>{{ loadError }}</span>
-      <button type="button" @click="reload">重试</button>
+      <button type="button" @click="reload">{{ t('common.retry') }}</button>
     </div>
 
     <SiteMatrixTable

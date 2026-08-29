@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/tgbot"
 )
 
@@ -37,7 +38,7 @@ func (h *TgBotHandler) GetConfig(c *gin.Context) {
 func (h *TgBotHandler) SetConfig(c *gin.Context) {
 	var in tgBotConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	cfg := tgbot.Load(h.kv)
@@ -48,13 +49,13 @@ func (h *TgBotHandler) SetConfig(c *gin.Context) {
 	if strings.TrimSpace(in.BotToken) != "" {
 		enc, err := h.crypto.Encrypt(strings.TrimSpace(in.BotToken))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 		cfg.BotTokenEnc = enc
 	}
 	if err := tgbot.Save(h.kv, cfg); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, tgbot.Redacted(cfg))

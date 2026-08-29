@@ -1,16 +1,21 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { VideoPlay } from '@element-plus/icons-vue'
 import PluginSchemaField from '@/components/PluginSchemaField.vue'
 import { schemaFields } from '@/views/pluginsHelpers'
 import type { PluginActionSpec } from '@/api/plugin'
 
+const { t } = useI18n()
+
 const visible = defineModel<boolean>('visible', { required: true })
 const inputText = defineModel<string>('inputText', { default: '{}' })
+// inputForm 用 defineModel 双向绑定：v-model="inputForm[f.key]" 合法修改本地 model，
+// 经 update:inputForm 事件回传父级（父组件已监听），消除 prop 直接突变。
+const inputForm = defineModel<Record<string, any>>('inputForm', { required: true })
 
 defineProps<{
   spec: PluginActionSpec | null
   hasSchema: boolean
-  inputForm: Record<string, any>
   output: string
   running: boolean
 }>()
@@ -21,7 +26,7 @@ const emit = defineEmits<{ (e: 'run'): void }>()
 <template>
   <el-dialog
     v-model="visible"
-    :title="`动作：${spec?.label || ''}`"
+    :title="t('pa2.title', { name: spec?.label || '' })"
     width="640px"
     class="plugin-cfg-dialog"
   >
@@ -36,12 +41,12 @@ const emit = defineEmits<{ (e: 'run'): void }>()
     </div>
     <el-input v-else v-model="inputText" type="textarea" :rows="8" class="mono-input" />
     <div v-if="output" class="action-output">
-      <div class="output-title">输出</div>
+      <div class="output-title">{{ t('pa2.output') }}</div>
       <pre>{{ output }}</pre>
     </div>
     <template #footer>
-      <el-button @click="visible = false">关闭</el-button>
-      <el-button type="primary" :icon="VideoPlay" :loading="running" @click="emit('run')">执行</el-button>
+      <el-button @click="visible = false">{{ t('common.close') }}</el-button>
+      <el-button type="primary" :icon="VideoPlay" :loading="running" @click="emit('run')">{{ t('pa2.run') }}</el-button>
     </template>
   </el-dialog>
 </template>

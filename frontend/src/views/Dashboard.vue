@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
 import { siteApi } from '@/api/site'
 import { useAuthStore } from '@/stores/auth'
@@ -56,7 +57,7 @@ async function openExport() {
     try {
       allSites.value = await siteApi.list()
     } catch {
-      ElMessage.warning('站点列表加载失败')
+      ElMessage.warning(t('dashboard.loadSitesFailed'))
     }
   }
   exportVisible.value = true
@@ -100,6 +101,7 @@ const exportData = computed<DashboardShareData | null>(() => {
   }
 })
 
+const { t } = useI18n()
 onMounted(() => {
   load()
   void loadCached().then(() => refreshConnectivity())
@@ -111,12 +113,12 @@ onMounted(() => {
   <div class="dashboard">
         <div class="page-head">
           <div class="page-heading">
-            <h2 class="page-title">仪表盘</h2>
-            <span class="page-subtitle">站点运行与账号增长</span>
+            <h2 class="page-title">{{ t('dashboard.title') }}</h2>
+            <span class="page-subtitle">{{ t('dashboard.subtitle') }}</span>
           </div>
           <div class="head-actions">
             <span class="updated-at">{{ latestUpdatedText }}</span>
-            <div class="period-control" aria-label="趋势周期">
+            <div class="period-control" :aria-label="t('dashboard.trendPeriod')">
               <button
                 v-for="days in ([7, 30, 90] as const)"
                 :key="days"
@@ -125,16 +127,16 @@ onMounted(() => {
                 :disabled="trendLoading"
                 @click="changeTrendDays(days)"
               >
-                {{ days }}天
+                {{ days }}{{ t('dashboard.daysUnit') }}
               </button>
             </div>
             <el-button :disabled="!overview" @click="openExport">
               <GlassIcon name="download" from="#2563eb" to="#0f766e" :size="16" class="btn-ico" />
-              <span>导出图片</span>
+              <span>{{ t('dashboard.exportImage') }}</span>
             </el-button>
             <el-button type="primary" :loading="syncing" @click="() => syncStats()">
               <GlassIcon name="refresh" from="#ffffff" to="#dbeafe" :size="16" class="btn-ico" />
-              <span>{{ syncing ? (syncTotal ? `刷新中 ${syncDone}/${syncTotal}` : '准备刷新') : '刷新数据' }}</span>
+              <span>{{ syncing ? (syncTotal ? t('dashboard.refreshing', { done: syncDone, total: syncTotal }) : t('dashboard.preparing')) : t('dashboard.refresh') }}</span>
             </el-button>
           </div>
         </div>
@@ -148,32 +150,32 @@ onMounted(() => {
     <!-- 新用户引导向导：无站点且无下载器时首屏展示 -->
     <div v-if="!loading && overview && overview.site_count === 0 && overview.downloader_count === 0" class="onboarding-wizard ops-surface">
       <div class="ob-header">
-        <h2>🚀 欢迎使用 PTPatronus</h2>
-        <p>完成以下 3 步，即可开始自动追剧、辅种、刷流等全功能体验</p>
+        <h2>{{ t('dashboard.welcome.title') }}</h2>
+        <p>{{ t('dashboard.welcome.subtitle') }}</p>
       </div>
       <div class="ob-steps">
         <div class="ob-step">
           <div class="ob-num">1</div>
           <div class="ob-body">
-            <h4>添加 PT 站点</h4>
-            <p>填入站点地址与 Cookie，系统会自动获取用户数据</p>
-            <router-link to="/sites"><el-button type="primary" size="small">添加站点</el-button></router-link>
+            <h4>{{ t('dashboard.welcome.step1Title') }}</h4>
+            <p>{{ t('dashboard.welcome.step1Desc') }}</p>
+            <router-link to="/sites"><el-button type="primary" size="small">{{ t('dashboard.addSite') }}</el-button></router-link>
           </div>
         </div>
         <div class="ob-step">
           <div class="ob-num">2</div>
           <div class="ob-body">
-            <h4>配置下载器</h4>
-            <p>支持 qBittorrent / Transmission / Deluge / Aria2</p>
-            <router-link to="/downloaders"><el-button type="primary" size="small">添加下载器</el-button></router-link>
+            <h4>{{ t('dashboard.welcome.step2Title') }}</h4>
+            <p>{{ t('dashboard.welcome.step2Desc') }}</p>
+            <router-link to="/downloaders"><el-button type="primary" size="small">{{ t('dashboard.addDownloader') }}</el-button></router-link>
           </div>
         </div>
         <div class="ob-step">
           <div class="ob-num">3</div>
           <div class="ob-body">
-            <h4>刷新统计数据</h4>
-            <p>添加完成后点击右上角「刷新数据」，仪表盘将汇总站点信息</p>
-            <el-button type="primary" size="small" :loading="syncing" @click="() => syncStats()">立即刷新</el-button>
+            <h4>{{ t('dashboard.welcome.step3Title') }}</h4>
+            <p>{{ t('dashboard.welcome.step3Desc') }}</p>
+            <el-button type="primary" size="small" :loading="syncing" @click="() => syncStats()">{{ t('dashboard.welcome.refreshNow') }}</el-button>
           </div>
         </div>
       </div>
@@ -185,8 +187,8 @@ onMounted(() => {
 
     <!-- 加载失败：overview 为空且出错时显示带重试的错误条 -->
     <div v-if="loadError && !overview && !loading" class="ops-surface load-error">
-      <span class="le-msg">仪表盘加载失败：{{ loadError }}</span>
-      <el-button size="small" @click="load">重试</el-button>
+      <span class="le-msg">{{ t('dashboard.loadFailed', { err: loadError }) }}</span>
+      <el-button size="small" @click="load">{{ t('dashboard.retry') }}</el-button>
     </div>
 
     <DashboardTrendSection />
@@ -194,15 +196,15 @@ onMounted(() => {
     <!-- 区② 实时运维：站点健康分布 · 下载器实时速率 · 系统资源 -->
     <div class="zone zone-3col">
       <section class="ops-surface zone-card">
-        <div class="zc-head"><h3>站点健康</h3><p>联通状态分布</p></div>
+        <div class="zc-head"><h3>{{ t('dashboard.siteHealth') }}</h3><p>{{ t('dashboard.connectivityDist') }}</p></div>
         <DashboardRingChart
           :items="healthSegments"
           :size="116"
           :thickness="13"
           :center-value="String(connectedCount)"
-          center-label="在线"
+          :center-label="t('dashboard.online')"
         />
-        <div class="health-foot">未读通知<b>{{ unreadCount }}</b></div>
+        <div class="health-foot">{{ t('dashboard.unreadNotices') }}<b>{{ unreadCount }}</b></div>
       </section>
       <section class="ops-surface zone-card"><DashboardRealtimeCard /></section>
       <section class="ops-surface zone-card"><DashboardResourceCard /></section>
@@ -229,11 +231,11 @@ onMounted(() => {
     <div v-if="!loading && overview && !(overview.sites?.length)" class="setup-card ops-surface">
       <EmptyState
         icon="🧭"
-        title="还没有可展示的站点数据"
-        description="先添加 PT 站点并配置下载器，再刷新统计。之后这里会汇总上传、下载、魔力、做种和 H&R 风险。"
+        :title="t('dashboard.emptyTitle')"
+        :description="t('dashboard.emptyDesc')"
       >
-        <router-link to="/sites"><el-button type="primary">添加站点</el-button></router-link>
-        <router-link to="/downloaders"><el-button>添加下载器</el-button></router-link>
+        <router-link to="/sites"><el-button type="primary">{{ t('dashboard.addSite') }}</el-button></router-link>
+        <router-link to="/downloaders"><el-button>{{ t('dashboard.addDownloader') }}</el-button></router-link>
       </EmptyState>
     </div>
 

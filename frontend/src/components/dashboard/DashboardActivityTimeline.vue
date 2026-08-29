@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { noticeApi, type Notice } from '@/api/notice'
 import { fmtTime } from '@/utils/format'
 
 // DashboardActivityTimeline — 区⑥最近活动：聚合通知中心（notice 表已覆盖整理/下载/订阅/契约/工作流等
 // 23 类事件源）。source→emoji 映射常见来源，未匹配用通用铃铛。
+const { t } = useI18n()
 const items = ref<Notice[]>([])
 async function load() {
   const all = await noticeApi.list().catch(() => [] as Notice[])
@@ -53,8 +55,8 @@ function shortTime(s: string): string {
   <div class="dash-card">
     <div class="dc-head">
       <div>
-        <h3>最近活动</h3>
-        <p>整理 · 下载 · 订阅 · 契约 · 工作流等事件流</p>
+        <h3>{{ t('dat.title') }}</h3>
+        <p>{{ t('dat.sub') }}</p>
       </div>
     </div>
 
@@ -69,7 +71,7 @@ function shortTime(s: string): string {
         <span class="tl-time">{{ shortTime(it.created_at) }}</span>
       </div>
     </div>
-    <div v-else class="dc-empty">暂无最近活动</div>
+    <div v-else class="dc-empty">{{ t('dat.empty') }}</div>
   </div>
 </template>
 

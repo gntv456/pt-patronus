@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import {
   cloudApi,
@@ -20,42 +21,44 @@ import { useCloudStrmRules } from '@/composables/useCloudStrmRules'
 import { useCloud115Auth } from '@/composables/useCloud115Auth'
 
 // ---- 云端文件管理器操作 ----
+const { t } = useI18n()
+
 const curDrive = computed(() => browseDrive.value)
 async function fileOp(op: 'mkdir' | 'delete' | 'move' | 'copy' | 'rename', extra: Record<string, string> = {}) {
   if (!curDrive.value || !browsePath.value) {
-    ElMessage.warning('请先选择网盘并进入目录')
+    ElMessage.warning(t('cloud.pickDriveFirst'))
     return
   }
   try {
     if (op === 'delete') {
-      await ElMessageBox.confirm(`确认删除 ${extra.path ?? ''}？此操作不可恢复。`, '删除', { type: 'warning' })
+      await ElMessageBox.confirm(t('cloud.confirmDeletePath', { path: extra.path ?? '' }), t('common.delete'), { type: 'warning' })
     }
     await cloudApi.fileOp(op, { drive_id: curDrive.value.id, path: browsePath.value, ...extra })
-    ElMessage.success('操作成功')
+    ElMessage.success(t('common.actionOk'))
     await fetchBrowse()
   } catch (e) {
-    if ((e as string) !== 'cancel') ElMessage.error((e as Error).message || '操作失败')
+    if ((e as string) !== 'cancel') ElMessage.error((e as Error).message || t('common.actionFailed'))
   }
 }
 async function doMkdir() {
   try {
-    const { value } = await ElMessageBox.prompt('新建文件夹名称', '新建', { inputPattern: /^[^/\\]+$/, inputErrorMessage: '名称非法' })
+    const { value } = await ElMessageBox.prompt(t('cloud.mkdirPrompt'), t('filemanager.newFolder'), { inputPattern: /^[^/\\]+$/, inputErrorMessage: t('cloud.invalidName') })
     await fileOp('mkdir', { new_name: value.trim() })
   } catch { /* cancel */ }
 }
 async function doOffline() {
   try {
-    const { value } = await ElMessageBox.prompt('磁力或 HTTP 下载链接（任务提交到网盘离线）', '离线下载到当前目录')
+    const { value } = await ElMessageBox.prompt(t('cloud.offlinePrompt'), t('cloud.offlineTitle'))
     await cloudApi.fileOp('offline', { drive_id: curDrive.value!.id, path: browsePath.value, url: value.trim() })
-    ElMessage.success('离线任务已提交（在网盘 App 查看进度）')
+    ElMessage.success(t('cloud.offlineSubmitted'))
   } catch { /* cancel */ }
 }
 async function doShareSave() {
   try {
-    const { value } = await ElMessageBox.prompt('分享链接（115/夸克）', '转存到当前目录')
-    const pwd = (await ElMessageBox.prompt('提取码（无则留空）', '提取码').catch(() => ({ value: '' }))).value
+    const { value } = await ElMessageBox.prompt(t('cloud.sharePrompt'), t('cloud.shareTitle'))
+    const pwd = (await ElMessageBox.prompt(t('cloud.pwdPrompt'), t('cloud.pwdTitle')).catch(() => ({ value: '' }))).value
     await cloudApi.fileOp('share-save', { drive_id: curDrive.value!.id, path: browsePath.value, url: value.trim(), pwd })
-    ElMessage.success('转存已提交')
+    ElMessage.success(t('cloud.shareSubmitted'))
   } catch { /* cancel */ }
 }
 const repairing = ref(false)
@@ -63,9 +66,9 @@ async function doStrmRepair() {
   repairing.value = true
   try {
     const r = await cloudApi.strmRepair()
-    ElMessage.success(`STRM 修复完成：重写 ${r.repaired} 个，跳过 ${r.skipped} 个`)
+    ElMessage.success(t('cloud.strmRepaired', { repaired: r.repaired, skipped: r.skipped }))
   } catch (e) {
-    ElMessage.error((e as Error).message || '修复失败')
+    ElMessage.error((e as Error).message || t('cloud.repairFailed'))
   } finally {
     repairing.value = false
   }
@@ -73,7 +76,7 @@ async function doStrmRepair() {
 const organizing = ref(false)
 async function doOrganize() {
   if (!curDrive.value) {
-    ElMessage.warning('请先选择网盘')
+    ElMessage.warning(t('cloud.pickDriveOnly'))
     return
   }
   try {
@@ -82,9 +85,9 @@ async function doOrganize() {
       src_dir: browsePath.value || '/',
       rename: true,
     })
-    ElMessage.success(`云端整理完成：移动 ${r.moved ?? r.Moved ?? 0}，跳过 ${r.skipped ?? r.Skipped ?? 0}`)
+    ElMessage.success(t('cloud.organizeDone', { moved: r.moved ?? r.Moved ?? 0, skipped: r.skipped ?? r.Skipped ?? 0 }))
   } catch (e) {
-    ElMessage.error((e as Error).message || '整理失败')
+    ElMessage.error((e as Error).message || t('cloud.organizeFailed'))
   } finally {
     organizing.value = false
   }
@@ -105,19 +108,19 @@ async function loadTasks() {
     tasks.value = await cloudApi.listTasks(taskStatusFilter.value)
   } catch { /* 静默 */ }
 }
-async function retryTask(t: CloudTask) {
+async function retryTask(task: CloudTask) {
   try {
-    await cloudApi.retryTask(t.id)
-    ElMessage.success('已重新入队')
+    await cloudApi.retryTask(task.id)
+    ElMessage.success(t('cloud.requeued'))
     await loadTasks()
-  } catch (e) { ElMessage.error((e as Error).message || '重试失败') }
+  } catch (e) { ElMessage.error((e as Error).message || t('cloud.retryFailed')) }
 }
-async function removeTask(t: CloudTask) {
-  try { await cloudApi.removeTask(t.id); await loadTasks() } catch { /* ignore */ }
+async function removeTask(task: CloudTask) {
+  try { await cloudApi.removeTask(task.id); await loadTasks() } catch { /* ignore */ }
 }
 async function doImportTree() {
   if (!treeForm.value.drive_id || !treeForm.value.output_dir.trim() || !treeForm.value.tree.trim()) {
-    ElMessage.warning('请填目标网盘、输出目录与目录树文本')
+    ElMessage.warning(t('cloud.treeFormRequired'))
     return
   }
   importing.value = true
@@ -128,13 +131,13 @@ async function doImportTree() {
       output_dir: treeForm.value.output_dir.trim(),
       tree: treeForm.value.tree,
     })
-    ElMessage.success('已入队导入任务（在任务队列查看进度）')
+    ElMessage.success(t('cloud.treeQueued'))
     showImportTree.value = false
     treeForm.value = { drive_id: 0, base: '', output_dir: '', tree: '' }
     activeTab.value = 'tasks'
     await loadTasks()
   } catch (e) {
-    ElMessage.error((e as Error).message || '导入失败')
+    ElMessage.error((e as Error).message || t('cloud.importFailed'))
   } finally {
     importing.value = false
   }
@@ -151,7 +154,7 @@ async function loadDrives() {
   try {
     drives.value = await cloudApi.listDrives()
   } catch (e: any) {
-    ElMessage.error(e?.message || '加载网盘失败')
+    ElMessage.error(e?.message || t('cloud.loadDrivesFailed'))
   } finally {
     loading.value = false
   }
@@ -177,35 +180,35 @@ function openEditDrive(d: CloudDrive) {
 }
 async function saveDrive() {
   if (!driveForm.value.name || !driveForm.value.type) {
-    ElMessage.warning('名称、类型必填')
+    ElMessage.warning(t('cloud.nameTypeRequired'))
     return
   }
   try {
     if (editingDrive.value) {
       await cloudApi.updateDrive(editingDrive.value.id, driveForm.value)
-      ElMessage.success('已更新')
+      ElMessage.success(t('common.updated'))
     } else {
       if (!driveForm.value.token) {
-        ElMessage.warning('新建需填写 Cookie / Token')
+        ElMessage.warning(t('cloud.tokenRequired'))
         return
       }
       await cloudApi.createDrive(driveForm.value)
-      ElMessage.success('已创建')
+      ElMessage.success(t('common.created'))
     }
     showDriveForm.value = false
     await loadDrives()
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    ElMessage.error(e?.message || t('common.saveFailed'))
   }
 }
 async function removeDrive(d: CloudDrive) {
   await ElMessageBox.confirm(
-    `确定删除网盘「${d.name}」？其下 STRM 规则与记录将一并清除。`,
-    '提示',
+    t('cloud.confirmDeleteDrive', { name: d.name }),
+    t('messages.tip'),
     { type: 'warning' },
   )
   await cloudApi.removeDrive(d.id)
-  ElMessage.success('已删除')
+  ElMessage.success(t('common.deleted'))
   await loadDrives()
 }
 
@@ -215,9 +218,9 @@ async function testDrive(d: CloudDrive) {
   testing.value = d.id
   try {
     const r = await cloudApi.test(d.id)
-    r.ok ? ElMessage.success(`${d.name}：${r.info || '连接正常'}`) : ElMessage.warning(r.error || '连接失败')
+    r.ok ? ElMessage.success(`${d.name}：${r.info || t('mediaserver.connOk')}`) : ElMessage.warning(r.error || t('mediaserver.connFailed'))
   } catch (e: any) {
-    ElMessage.error(e?.message || '请求失败')
+    ElMessage.error(e?.message || t('common.requestFailed'))
   } finally {
     testing.value = null
   }
@@ -227,7 +230,7 @@ async function loadQuota(d: CloudDrive) {
   try {
     quotas.value[d.id] = await cloudApi.quota(d.id)
   } catch (e: any) {
-    ElMessage.error(e?.message || '获取容量失败')
+    ElMessage.error(e?.message || t('cloud.quotaFailed'))
   }
 }
 
@@ -243,23 +246,23 @@ const {
 const tokenLabel = computed(() => {
   switch (driveForm.value.type) {
     case '123':
-      return 'AccessToken（123开放平台 token）'
+      return t('cloud.tokenLabel.123')
     case 'quark':
-      return 'Cookie（夸克网页登录后的 cookie）'
+      return t('cloud.tokenLabel.quark')
     case 'aliyun_open':
-      return 'AccessToken（阿里云盘开放平台 token）'
+      return t('cloud.tokenLabel.aliyunOpen')
     case '115_open':
-      return 'AccessToken（115开放平台授权后自动写入）'
+      return t('cloud.tokenLabel.115Open')
     case 'onedrive':
-      return 'AccessToken（MS Graph 访问令牌）'
+      return t('cloud.tokenLabel.onedrive')
     case 'baidu':
-      return 'AccessToken（百度网盘开放平台授权 token）'
+      return t('cloud.tokenLabel.baidu')
     case 'tianyi':
-      return 'AccessToken（天翼云盘开放平台 token）'
+      return t('cloud.tokenLabel.tianyi')
     case 'mobile':
-      return 'AccessToken（移动云盘开放平台 token）'
+      return t('cloud.tokenLabel.mobile')
     default:
-      return 'Cookie（115网页登录后的 cookie）'
+      return t('cloud.tokenLabel.115Cookie')
   }
 })
 
@@ -272,25 +275,20 @@ onMounted(async () => {
 <template>
   <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 v-if="!props.embedded" class="title">云盘 · STRM</h2>
-      <h3 v-else class="title embedded-title">云盘账号 / STRM 规则</h3>
+      <h2 v-if="!props.embedded" class="title">{{ t('cloud.title') }}</h2>
+      <h3 v-else class="title embedded-title">{{ t('cloud.titleEmbedded') }}</h3>
       <div class="head-actions">
-        <el-button @click="syncSubs">订阅追更</el-button>
-        <el-button @click="generateAll">生成全部 STRM</el-button>
-        <el-button type="primary" @click="openCreateDrive">+ 添加网盘</el-button>
+        <el-button @click="syncSubs">{{ t('cloud.syncSubs') }}</el-button>
+        <el-button @click="generateAll">{{ t('cloud.generateAll') }}</el-button>
+        <el-button type="primary" @click="openCreateDrive">{{ t('cloud.addDrive') }}</el-button>
       </div>
     </div>
-    <p v-if="!props.embedded" class="sub">
-      115 / 夸克 / 123云盘原生接入：浏览云盘资源、按规则批量生成 .strm 直链文件供媒体服务器播放；
-      订阅追更自动把已生成的 STRM 链接到媒体订阅并提醒。
-    </p>
-    <p v-else class="sub embedded-sub">
-      账号与规则配置；文件浏览/STRM 生成请用「文件」页。
-    </p>
+    <p v-if="!props.embedded" class="sub">{{ t('cloud.sub') }}</p>
+    <p v-else class="sub embedded-sub">{{ t('cloud.subEmbedded') }}</p>
 
     <el-tabs v-model="activeTab" class="tabs">
       <!-- 网盘 -->
-      <el-tab-pane label="网盘" name="drives">
+      <el-tab-pane :label="t('cloud.tabDrives')" name="drives">
         <div v-loading="loading" class="grid">
           <div v-for="d in drives" :key="d.id" class="glass glass-hover card">
             <div class="card-head">
@@ -299,65 +297,63 @@ onMounted(async () => {
                 <div class="name">
                   {{ d.name }}
                   <el-tag size="small" effect="plain">{{ TYPE_LABEL[d.type] }}</el-tag>
-                  <el-tag v-if="d.is_default" size="small" type="success">默认</el-tag>
+                  <el-tag v-if="d.is_default" size="small" type="success">{{ t('cloud.defaultTag') }}</el-tag>
                 </div>
-                <div class="meta">根目录：{{ d.root_path || '/' }}</div>
-                <div v-if="quotas[d.id]" class="meta">
-                  容量：{{ fmtSize(quotas[d.id].used) }} / {{ fmtSize(quotas[d.id].total) }}
-                </div>
+                <div class="meta">{{ t('cloud.rootPath') }}：{{ d.root_path || '/' }}</div>
+                <div v-if="quotas[d.id]" class="meta">{{ t('cloud.quota') }}：{{ fmtSize(quotas[d.id].used) }} / {{ fmtSize(quotas[d.id].total) }}</div>
               </div>
             </div>
             <div class="actions">
-              <el-button size="small" :loading="testing === d.id" @click="testDrive(d)">连接测试</el-button>
-              <el-button size="small" @click="loadQuota(d)">查看容量</el-button>
-              <el-button size="small" @click="openBrowse(d, () => {})">浏览</el-button>
-              <el-button size="small" @click="openEditDrive(d)">编辑</el-button>
-              <el-button size="small" type="danger" plain @click="removeDrive(d)">删除</el-button>
+              <el-button size="small" :loading="testing === d.id" @click="testDrive(d)">{{ t('cloud.testConn') }}</el-button>
+              <el-button size="small" @click="loadQuota(d)">{{ t('cloud.viewQuota') }}</el-button>
+              <el-button size="small" @click="openBrowse(d, () => {})">{{ t('cloud.browse') }}</el-button>
+              <el-button size="small" @click="openEditDrive(d)">{{ t('common.edit') }}</el-button>
+              <el-button size="small" type="danger" plain @click="removeDrive(d)">{{ t('common.delete') }}</el-button>
             </div>
           </div>
           <EmptyState
             v-if="!drives.length && !loading"
             icon="☁️"
-            title="尚未添加网盘"
-            description="添加 115 / 夸克 / 123 网盘以浏览资源并生成 STRM"
+            :title="t('cloud.emptyTitle')"
+            :description="t('cloud.emptyDesc')"
           >
-            <el-button type="primary" @click="openCreateDrive">添加网盘</el-button>
-            <el-button @click="openAuth115">扫码授权 115</el-button>
-            <el-button @click="doOrganize" :loading="organizing">云端整理</el-button>
-            <el-button @click="doStrmRepair" :loading="repairing">STRM 修复</el-button>
+            <el-button type="primary" @click="openCreateDrive">{{ t('cloud.addDrive2') }}</el-button>
+            <el-button @click="openAuth115">{{ t('cloud.qrAuth115') }}</el-button>
+            <el-button @click="doOrganize" :loading="organizing">{{ t('cloud.organize') }}</el-button>
+            <el-button @click="doStrmRepair" :loading="repairing">{{ t('cloud.strmRepair') }}</el-button>
           </EmptyState>
         </div>
       </el-tab-pane>
 
       <!-- STRM 规则 -->
-      <el-tab-pane label="STRM 规则" name="rules">
+      <el-tab-pane :label="t('cloud.tabRules')" name="rules">
         <div class="pane-bar">
-          <span class="hint">每条规则 = 一个网盘源目录 → 本地输出目录，扫描媒体文件生成 .strm</span>
-          <el-button type="primary" size="small" @click="openCreateRule">+ 添加规则</el-button>
+          <span class="hint">{{ t('cloud.rulesHint') }}</span>
+          <el-button type="primary" size="small" @click="openCreateRule">{{ t('cloud.addRule') }}</el-button>
         </div>
-        <el-table :data="rules" size="small" empty-text="尚未配置 STRM 规则">
-          <el-table-column prop="name" label="名称" min-width="110" show-overflow-tooltip />
-          <el-table-column label="网盘" width="110">
+        <el-table :data="rules" size="small" :empty-text="t('cloud.rulesEmpty')">
+          <el-table-column prop="name" :label="t('common.name')" min-width="110" show-overflow-tooltip />
+          <el-table-column :label="t('cloud.drive')" width="110">
             <template #default="{ row }">{{ driveName((row as StrmRule).drive_id) }}</template>
           </el-table-column>
-          <el-table-column label="云盘目录" min-width="130" show-overflow-tooltip>
+          <el-table-column :label="t('cloud.cloudDir')" min-width="130" show-overflow-tooltip>
             <template #default="{ row }">{{ (row as StrmRule).cloud_path }}</template>
           </el-table-column>
-          <el-table-column label="输出目录" min-width="130" show-overflow-tooltip>
+          <el-table-column :label="t('cloud.outputDir')" min-width="130" show-overflow-tooltip>
             <template #default="{ row }">
               {{ (row as StrmRule).output_tag ? `#${(row as StrmRule).output_tag}` : (row as StrmRule).output_dir }}
             </template>
           </el-table-column>
-          <el-table-column label="挂载根" min-width="110" show-overflow-tooltip>
+          <el-table-column :label="t('cloud.mountRoot')" min-width="110" show-overflow-tooltip>
             <template #default="{ row }">{{ (row as StrmRule).mount_root || '-' }}</template>
           </el-table-column>
-          <el-table-column label="递归" width="60">
-            <template #default="{ row }">{{ (row as StrmRule).recursive ? '是' : '否' }}</template>
+          <el-table-column :label="t('cloud.recursive')" width="60">
+            <template #default="{ row }">{{ (row as StrmRule).recursive ? t('common.yes') : t('common.no') }}</template>
           </el-table-column>
-          <el-table-column label="启用" width="60">
-            <template #default="{ row }">{{ (row as StrmRule).enabled ? '是' : '否' }}</template>
+          <el-table-column :label="t('cloud.enabled')" width="60">
+            <template #default="{ row }">{{ (row as StrmRule).enabled ? t('common.yes') : t('common.no') }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="220">
+          <el-table-column :label="t('common.action')" width="220">
             <template #default="{ row }">
               <el-button
                 size="small"
@@ -365,87 +361,87 @@ onMounted(async () => {
                 type="primary"
                 :loading="generating === (row as StrmRule).id"
                 @click="generateOne(row as StrmRule)"
-              >生成</el-button>
-              <el-button size="small" link @click="openEditRule(row as StrmRule)">编辑</el-button>
-              <el-button size="small" link type="danger" @click="removeRule(row as StrmRule)">删除</el-button>
+              >{{ t('cloud.generate') }}</el-button>
+              <el-button size="small" link @click="openEditRule(row as StrmRule)">{{ t('common.edit') }}</el-button>
+              <el-button size="small" link type="danger" @click="removeRule(row as StrmRule)">{{ t('common.delete') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
       </el-tab-pane>
 
       <!-- STRM 记录 -->
-      <el-tab-pane label="STRM 记录" name="records">
-        <el-table :data="records" size="small" empty-text="暂无已生成的 STRM 记录">
-          <el-table-column label="网盘" width="110">
+      <el-tab-pane :label="t('cloud.tabRecords')" name="records">
+        <el-table :data="records" size="small" :empty-text="t('cloud.recordsEmpty')">
+          <el-table-column :label="t('cloud.drive')" width="110">
             <template #default="{ row }">{{ driveName((row as StrmRecord).drive_id) }}</template>
           </el-table-column>
-          <el-table-column label="云盘文件" min-width="200" show-overflow-tooltip>
+          <el-table-column :label="t('cloud.cloudFile')" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">{{ (row as StrmRecord).cloud_path }}</template>
           </el-table-column>
-          <el-table-column label="本地 STRM" min-width="200" show-overflow-tooltip>
+          <el-table-column :label="t('cloud.localStrm')" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">{{ (row as StrmRecord).strm_path }}</template>
           </el-table-column>
-          <el-table-column label="大小" width="90">
+          <el-table-column :label="t('cloud.size')" width="90">
             <template #default="{ row }">{{ fmtSize((row as StrmRecord).size) }}</template>
           </el-table-column>
-          <el-table-column label="来源" width="90">
+          <el-table-column :label="t('cloud.source')" width="90">
             <template #default="{ row }">
-              <el-tag v-if="(row as StrmRecord).subscription_id" size="small" type="success">追更</el-tag>
-              <el-tag v-else size="small" effect="plain">规则</el-tag>
+              <el-tag v-if="(row as StrmRecord).subscription_id" size="small" type="success">{{ t('cloud.srcSub') }}</el-tag>
+              <el-tag v-else size="small" effect="plain">{{ t('cloud.srcRule') }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="80">
+          <el-table-column :label="t('common.action')" width="80">
             <template #default="{ row }">
-              <el-button size="small" link type="danger" @click="removeRecord(row as StrmRecord)">删除</el-button>
+              <el-button size="small" link type="danger" @click="removeRecord(row as StrmRecord)">{{ t('common.delete') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
       </el-tab-pane>
 
       <!-- 云端任务队列 -->
-      <el-tab-pane label="任务队列" name="tasks">
+      <el-tab-pane :label="t('cloud.tabTasks')" name="tasks">
         <div class="tab-toolbar">
           <el-select v-model="taskStatusFilter" size="small" style="width: 120px" @change="loadTasks">
-            <el-option label="全部" value="" />
-            <el-option label="排队中" value="pending" />
-            <el-option label="执行中" value="running" />
-            <el-option label="成功" value="success" />
-            <el-option label="失败" value="failed" />
+            <el-option :label="t('cloud.all')" value="" />
+            <el-option :label="t('cloud.stPending')" value="pending" />
+            <el-option :label="t('cloud.stRunning')" value="running" />
+            <el-option :label="t('cloud.stSuccess')" value="success" />
+            <el-option :label="t('cloud.stFailed')" value="failed" />
           </el-select>
-          <el-button size="small" :icon="Refresh" @click="loadTasks">刷新</el-button>
-          <el-button size="small" type="primary" @click="showImportTree = true">目录树导入</el-button>
+          <el-button size="small" :icon="Refresh" @click="loadTasks">{{ t('common.refresh') }}</el-button>
+          <el-button size="small" type="primary" @click="showImportTree = true">{{ t('cloud.importTree') }}</el-button>
         </div>
-        <el-table :data="tasks" size="small" empty-text="暂无任务（整理自动上传 / 目录树导入会在此排队执行）">
-          <el-table-column label="类型" width="100">
+        <el-table :data="tasks" size="small" :empty-text="t('cloud.tasksEmpty')">
+          <el-table-column :label="t('cloud.kind')" width="100">
             <template #default="{ row }">{{ TASK_KIND_LABEL[(row as CloudTask).kind] || row.kind }}</template>
           </el-table-column>
-          <el-table-column label="网盘" width="110">
+          <el-table-column :label="t('cloud.drive')" width="110">
             <template #default="{ row }">{{ driveName((row as CloudTask).drive_id) }}</template>
           </el-table-column>
-          <el-table-column label="目标 / 源" min-width="220" show-overflow-tooltip>
+          <el-table-column :label="t('cloud.targetSrc')" min-width="220" show-overflow-tooltip>
             <template #default="{ row }">{{ (row as CloudTask).cloud_path || (row as CloudTask).local_path }}</template>
           </el-table-column>
-          <el-table-column label="进度" width="140">
+          <el-table-column :label="t('cloud.progress')" width="140">
             <template #default="{ row }">
               <el-progress :percentage="(row as CloudTask).progress || 0" :stroke-width="8"
                 :status="(row as CloudTask).status === 'success' ? 'success' : (row as CloudTask).status === 'failed' ? 'exception' : undefined" />
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="90">
+          <el-table-column :label="t('cloud.status')" width="90">
             <template #default="{ row }">
               <el-tag size="small" :type="(row as CloudTask).status === 'success' ? 'success' : (row as CloudTask).status === 'failed' ? 'danger' : (row as CloudTask).status === 'running' ? 'warning' : 'info'">
                 {{ TASK_STATUS_LABEL[(row as CloudTask).status] || row.status }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="错误" min-width="160" show-overflow-tooltip>
+          <el-table-column :label="t('cloud.error')" min-width="160" show-overflow-tooltip>
             <template #default="{ row }">{{ (row as CloudTask).error || '-' }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="130" fixed="right">
+          <el-table-column :label="t('common.action')" width="130" fixed="right">
             <template #default="{ row }">
               <el-button v-if="(row as CloudTask).status === 'failed'" size="small" link type="primary"
-                @click="retryTask(row as CloudTask)">重试</el-button>
-              <el-button size="small" link type="danger" @click="removeTask(row as CloudTask)">删除</el-button>
+                @click="retryTask(row as CloudTask)">{{ t('common.retry') }}</el-button>
+              <el-button size="small" link type="danger" @click="removeTask(row as CloudTask)">{{ t('common.delete') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -453,68 +449,68 @@ onMounted(async () => {
     </el-tabs>
 
     <!-- 115 开放平台扫码授权 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showAuth115" title="115 开放平台授权" width="480px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showAuth115" :title="t('cloud.authTitle')" width="480px">
       <el-form label-width="90px">
         <el-form-item label="AppID">
-          <el-input v-model="authAppId" placeholder="115 开放平台应用的 client_id" :disabled="!!authState" />
+          <el-input v-model="authAppId" :placeholder="t('cloud.authAppIdPh')" :disabled="!!authState" />
         </el-form-item>
       </el-form>
       <div v-if="authQR" class="auth-qr">
-        <img :src="qrImage(authQR)" alt="扫码授权" style="width: 220px; height: 220px" />
+        <img :src="qrImage(authQR)" :alt="t('cloud.qrAuth')" style="width: 220px; height: 220px" />
         <p class="hint">{{ authStatusText }}</p>
       </div>
       <template #footer>
-        <el-button @click="showAuth115 = false">关闭</el-button>
+        <el-button @click="showAuth115 = false">{{ t('common.close') }}</el-button>
         <el-button type="primary" :loading="authStarting || authPolling" :disabled="!!authState" @click="startAuth115">
-          {{ authState ? '轮询中…' : '生成二维码' }}
+          {{ authState ? t('cloud.polling') : t('cloud.genQr') }}
         </el-button>
       </template>
     </el-dialog>
 
     <!-- 115 目录树批量导入 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showImportTree" title="115 目录树批量生成 STRM" width="640px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showImportTree" :title="t('cloud.importTitle')" width="640px">
       <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
-        在 115 网盘端导出目录树文本（每行一个路径），粘贴到下方。媒体文件行将批量生成 .strm 并登记记录，非媒体行自动跳过。
+        {{ t('cloud.importTip') }}
       </el-alert>
       <el-form label-width="110px">
-        <el-form-item label="目标网盘">
+        <el-form-item :label="t('cloud.targetDrive')">
           <el-select v-model="treeForm.drive_id" style="width: 100%">
             <el-option v-for="d in drives" :key="d.id" :label="`${d.name}（${TYPE_LABEL[d.type] || d.type}）`" :value="d.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="目录树根">
-          <el-input v-model="treeForm.base" placeholder="/媒体库（树路径相对的云盘根）" />
+        <el-form-item :label="t('cloud.treeRoot')">
+          <el-input v-model="treeForm.base" :placeholder="t('cloud.treeRootPh')" />
         </el-form-item>
-        <el-form-item label="STRM 输出目录">
+        <el-form-item :label="t('cloud.strmOutputDir')">
           <el-input v-model="treeForm.output_dir" placeholder="/media/strm" />
         </el-form-item>
-        <el-form-item label="目录树文本">
-          <el-input v-model="treeForm.tree" type="textarea" :rows="10" placeholder="电影/Inception (2010)/Inception.2010.1080p.mkv&#10;剧集/庆余年/S02E01.mp4" />
+        <el-form-item :label="t('cloud.treeText')">
+          <el-input v-model="treeForm.tree" type="textarea" :rows="10" :placeholder="t('cloud.treePh')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showImportTree = false">取消</el-button>
-        <el-button type="primary" :loading="importing" @click="doImportTree">导入生成</el-button>
+        <el-button @click="showImportTree = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="importing" @click="doImportTree">{{ t('cloud.importGo') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 网盘表单 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showDriveForm" :title="editingDrive ? '编辑网盘' : '添加网盘'" width="560px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showDriveForm" :title="editingDrive ? t('cloud.editDrive') : t('cloud.addDrive')" width="560px">
       <el-form :model="driveForm" label-width="120px" label-position="right">
-        <el-form-item label="名称">
-          <el-input v-model="driveForm.name" placeholder="如：我的 115" />
+        <el-form-item :label="t('common.name')">
+          <el-input v-model="driveForm.name" :placeholder="t('cloud.namePh')" />
         </el-form-item>
-        <el-form-item label="类型">
+        <el-form-item :label="t('cloud.type')">
           <el-select v-model="driveForm.type">
-            <el-option label="115网盘（开放平台）" value="115_open" />
-            <el-option label="115网盘（Cookie）" value="115" />
-            <el-option label="阿里云盘（开放平台）" value="aliyun_open" />
-            <el-option label="夸克网盘" value="quark" />
-            <el-option label="123云盘" value="123" />
+            <el-option :label="t('cloud.type.115Open')" value="115_open" />
+            <el-option :label="t('cloud.type.115')" value="115" />
+            <el-option :label="t('cloud.type.aliyunOpen')" value="aliyun_open" />
+            <el-option :label="t('cloud.type.quark')" value="quark" />
+            <el-option :label="t('cloud.type.123')" value="123" />
             <el-option label="OneDrive" value="onedrive" />
-            <el-option label="百度网盘" value="baidu" />
-            <el-option label="天翼云盘" value="tianyi" />
-            <el-option label="移动云盘" value="mobile" />
+            <el-option :label="t('cloud.type.baidu')" value="baidu" />
+            <el-option :label="t('cloud.type.tianyi')" value="tianyi" />
+            <el-option :label="t('cloud.type.mobile')" value="mobile" />
           </el-select>
         </el-form-item>
         <el-form-item label="Cookie / Token">
@@ -522,90 +518,90 @@ onMounted(async () => {
             v-model="driveForm.token"
             type="textarea"
             :rows="3"
-            :placeholder="editingDrive ? '留空=保留原凭据' : tokenLabel"
+            :placeholder="editingDrive ? t('cloud.tokenKeepPh') : tokenLabel"
           />
-          <span class="hint">115_open/aliyun_open 填 accessToken；115(Cookie)/夸克复制整段 cookie；123 填 accessToken</span>
+          <span class="hint">{{ t('cloud.tokenHint') }}</span>
         </el-form-item>
-        <el-form-item label="根目录">
-          <el-input v-model="driveForm.root_path" placeholder="/（网盘根）" />
-          <span class="hint">浏览/扫描默认起点</span>
+        <el-form-item :label="t('cloud.rootDir')">
+          <el-input v-model="driveForm.root_path" :placeholder="t('cloud.rootPh')" />
+          <span class="hint">{{ t('cloud.rootHint') }}</span>
         </el-form-item>
-        <el-form-item label="设为默认"><el-switch v-model="driveForm.is_default" /></el-form-item>
+        <el-form-item :label="t('cloud.setDefault')"><el-switch v-model="driveForm.is_default" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showDriveForm = false">取消</el-button>
-        <el-button type="primary" @click="saveDrive">保存</el-button>
+        <el-button @click="showDriveForm = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveDrive">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 规则表单 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showRuleForm" :title="editingRule ? '编辑规则' : '添加规则'" width="600px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showRuleForm" :title="editingRule ? t('cloud.editRule') : t('cloud.addRule')" width="600px">
       <el-form :model="ruleForm" label-width="110px" label-position="right">
-        <el-form-item label="名称">
-          <el-input v-model="ruleForm.name" placeholder="如：电影 STRM" />
+        <el-form-item :label="t('common.name')">
+          <el-input v-model="ruleForm.name" :placeholder="t('cloud.ruleNamePh')" />
         </el-form-item>
-        <el-form-item label="网盘">
+        <el-form-item :label="t('cloud.drive')">
           <el-select v-model="ruleForm.drive_id" :disabled="!drives.length">
             <el-option v-for="d in drives" :key="d.id" :label="d.name" :value="d.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="云盘目录">
+        <el-form-item :label="t('cloud.cloudDir')">
           <div style="display: flex; gap: var(--sp-1); width: 100%">
-            <el-input v-model="ruleForm.cloud_path" placeholder="/电影" style="flex: 1" />
-            <el-button @click="ruleBrowse">浏览</el-button>
+            <el-input v-model="ruleForm.cloud_path" :placeholder="t('cloud.cloudPathPh')" style="flex: 1" />
+            <el-button @click="ruleBrowse">{{ t('cloud.browse') }}</el-button>
           </div>
         </el-form-item>
-        <el-form-item label="输出目录">
-          <el-input v-model="ruleForm.output_dir" placeholder="/strm/电影（本地 .strm 落地根）" />
+        <el-form-item :label="t('cloud.outputDir')">
+          <el-input v-model="ruleForm.output_dir" :placeholder="t('cloud.outputDirPh')" />
         </el-form-item>
-        <el-form-item label="目录标签">
-          <el-input v-model="ruleForm.output_tag" placeholder="如 strm-movie（整理设置里定义的 local 型标签，优先于输出目录）" />
+        <el-form-item :label="t('cloud.outputTag')">
+          <el-input v-model="ruleForm.output_tag" :placeholder="t('cloud.outputTagPh')" />
         </el-form-item>
-        <el-form-item label="挂载根">
-          <el-input v-model="ruleForm.mount_root" placeholder="如 /CloudDrive2/115（模板 {mount} 替换）" />
+        <el-form-item :label="t('cloud.mountRoot')">
+          <el-input v-model="ruleForm.mount_root" :placeholder="t('cloud.mountRootPh')" />
         </el-form-item>
-        <el-form-item label="路径模板">
-          <el-input v-model="ruleForm.template" placeholder="留空=默认 {mount}{cloudpath}" />
-          <span class="hint">可用：{mount} {cloudpath} {relpath} {filename} {direct} {directPublic}</span>
+        <el-form-item :label="t('cloud.template')">
+          <el-input v-model="ruleForm.template" :placeholder="t('cloud.templatePh')" />
+          <span class="hint">{{ t('cloud.templateHint') }}</span>
         </el-form-item>
-        <el-form-item label="内网地址">
-          <el-input v-model="ruleForm.local_base_url" placeholder="如 http://192.168.1.10:8080（{direct} 优先用；空=全局 APP_BASE_URL）" />
+        <el-form-item :label="t('cloud.localUrl')">
+          <el-input v-model="ruleForm.local_base_url" :placeholder="t('cloud.localUrlPh')" />
         </el-form-item>
-        <el-form-item label="外网地址">
-          <el-input v-model="ruleForm.public_base_url" placeholder="如 https://ms.example.com（{directPublic} 用；空=同内网）" />
+        <el-form-item :label="t('cloud.publicUrl')">
+          <el-input v-model="ruleForm.public_base_url" :placeholder="t('cloud.publicUrlPh')" />
         </el-form-item>
-        <el-form-item label="扩展名白名单">
-          <el-input v-model="ruleForm.include_exts" placeholder="如 mkv,mp4（逗号分隔；空=全部媒体格式）" />
+        <el-form-item :label="t('cloud.extWhitelist')">
+          <el-input v-model="ruleForm.include_exts" :placeholder="t('cloud.extWhitelistPh')" />
         </el-form-item>
-        <el-form-item label="排除关键词">
-          <el-input v-model="ruleForm.exclude_keywords" placeholder="如 sample,trailer,预告（逗号分隔；命中文件名即跳过）" />
+        <el-form-item :label="t('cloud.excludeKw')">
+          <el-input v-model="ruleForm.exclude_keywords" :placeholder="t('cloud.excludeKwPh')" />
         </el-form-item>
-        <el-form-item label="递归扫描"><el-switch v-model="ruleForm.recursive" /></el-form-item>
-        <el-form-item label="增量模式">
+        <el-form-item :label="t('cloud.recursiveScan')"><el-switch v-model="ruleForm.recursive" /></el-form-item>
+        <el-form-item :label="t('cloud.incremental')">
           <el-switch v-model="ruleForm.incremental" />
-          <span class="hint">本地 .strm 已存在即跳过（大库定期生成省读盘）</span>
+          <span class="hint">{{ t('cloud.incrementalHint') }}</span>
         </el-form-item>
-        <el-form-item label="保留扩展名">
+        <el-form-item :label="t('cloud.keepExt')">
           <el-switch v-model="ruleForm.keep_ext" />
-          <span class="hint">a.mkv→a.mkv.strm（关：a.strm）</span>
+          <span class="hint">{{ t('cloud.keepExtHint') }}</span>
         </el-form-item>
-        <el-form-item label="启用"><el-switch v-model="ruleForm.enabled" /></el-form-item>
+        <el-form-item :label="t('cloud.enabled')"><el-switch v-model="ruleForm.enabled" /></el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showRuleForm = false">取消</el-button>
-        <el-button type="primary" @click="saveRule">保存</el-button>
+        <el-button @click="showRuleForm = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="saveRule">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 浏览 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showBrowse" :title="`浏览 · ${browseDrive?.name ?? ''}`" width="640px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showBrowse" :title="t('cloud.browseTitle', { name: browseDrive?.name ?? '' })" width="640px">
       <div class="tab-toolbar" style="margin-bottom: 8px">
-        <el-button size="small" @click="doMkdir">新建文件夹</el-button>
-        <el-button size="small" @click="doOffline">离线下载</el-button>
-        <el-button size="small" @click="doShareSave">分享转存</el-button>
+        <el-button size="small" @click="doMkdir">{{ t('filemanager.newFolder') }}</el-button>
+        <el-button size="small" @click="doOffline">{{ t('cloud.offline') }}</el-button>
+        <el-button size="small" @click="doShareSave">{{ t('cloud.shareSave') }}</el-button>
       </div>
       <div class="browse-bar">
-        <el-button size="small" :disabled="browsePath === '/'" @click="browseUp">↑ 上级</el-button>
+        <el-button size="small" :disabled="browsePath === '/'" @click="browseUp">{{ t('cloud.up') }}</el-button>
         <span class="browse-path">{{ browsePath }}</span>
       </div>
       <div v-loading="browseLoading" class="browse-list">
@@ -617,12 +613,12 @@ onMounted(async () => {
           <span class="meta">{{ fmtSize(f.size) }}</span>
         </div>
         <div v-if="!browseFiles.length && !browseLoading" class="meta" style="padding: 20px; text-align: center">
-          （空目录）
+          {{ t('cloud.emptyDir') }}
         </div>
       </div>
       <template #footer>
-        <el-button @click="showBrowse = false">取消</el-button>
-        <el-button type="primary" @click="pickDir">使用此目录</el-button>
+        <el-button @click="showBrowse = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="pickDir">{{ t('cloud.useThisDir') }}</el-button>
       </template>
     </el-dialog>
   </div>

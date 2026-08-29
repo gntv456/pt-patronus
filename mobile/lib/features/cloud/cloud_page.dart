@@ -498,6 +498,7 @@ class _CloudPageState extends State<CloudPage> with SingleTickerProviderStateMix
           title: Text(r.cloudPath, style: const TextStyle(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text('${_driveName(r.driveId)} · ${_fmtSize(r.size)}${r.subscriptionId > 0 ? ' · 追更' : ''}', style: TextStyle(fontSize: 11, color: context.dimText)),
           trailing: IconButton(
+            tooltip: '删除该 STRM 记录',
             icon: Icon(Icons.delete_outline, size: 18, color: PTColors.danger),
             onPressed: () => _deleteRecord(r),
           ),

@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { diskApi, type DiskEntry } from '@/api/disk'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 import GlassIcon from '@/components/GlassIcon.vue'
 
+const { t } = useI18n()
 const targets = ref<MonitorTarget[]>([])
 const selectedTarget = ref<number>(0)
 const disks = ref<DiskEntry[]>([])
@@ -51,9 +53,9 @@ async function refresh() {
 }
 
 function categoryLabel(d: DiskEntry): string {
-  if (d.is_system) return '系统盘'
-  if (d.category === 'unpartitioned') return '未分区'
-  return '普通磁盘'
+  if (d.is_system) return t('opsdisk.sysDisk')
+  if (d.category === 'unpartitioned') return t('opsdisk.unpartitioned')
+  return t('opsdisk.normalDisk')
 }
 function categoryColor(d: DiskEntry): string {
   if (d.is_system) return '#e74c3c'
@@ -80,22 +82,22 @@ function openPartDialog(d: DiskEntry) {
 
 async function doPartition() {
   if (!partForm.value.mountpoint) {
-    ElMessage.warning('请填写挂载点')
+    ElMessage.warning(t('opsdisk.mountpointRequired'))
     return
   }
   try {
     const devName = partDevice.value.replace(/^\/dev\//, '')
     await ElMessageBox.prompt(
-      `⚠️ 即将对 ${partDevice.value} 执行分区和格式化（${partForm.value.fstype}）。\n` +
-      `这会清除该磁盘上的【所有数据】，操作不可撤销！\n` +
-      `请输入设备名 "${devName}" 以确认：`,
-      '危险操作确认',
+      t('opsdisk.confirmPart1', { dev: partDevice.value, fs: partForm.value.fstype }) +
+      t('opsdisk.confirmPart2') +
+      t('opsdisk.confirmPart3', { dev: devName }),
+      t('opsdisk.confirmPartTitle'),
       {
         type: 'error',
-        confirmButtonText: '确认执行',
-        cancelButtonText: '取消',
+        confirmButtonText: t('opsdisk.confirmRun'),
+        cancelButtonText: t('common.cancel'),
         inputPattern: new RegExp('^' + devName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'),
-        inputErrorMessage: `请输入：${devName}`,
+        inputErrorMessage: t('opsdisk.inputErr', { dev: devName }),
       },
     )
     actionLoading.value = true
@@ -108,11 +110,11 @@ async function doPartition() {
       confirm_risk: true,
     })
     if (res.ok) {
-      ElMessage.success(`分区成功：${res.partition || partDevice.value} 已挂载到 ${partForm.value.mountpoint}`)
+      ElMessage.success(t('opsdisk.partOk', { part: res.partition || partDevice.value, mount: partForm.value.mountpoint }))
       partDialog.value = false
       refresh()
     } else {
-      ElMessage.error(res.error || '分区失败')
+      ElMessage.error(res.error || t('opsdisk.partFailed'))
     }
   } catch (e: any) {
     if (e !== 'cancel') ElMessage.error(e.message || String(e))
@@ -129,7 +131,7 @@ function openMountDialog(partName: string) {
 
 async function doMount() {
   if (!mountForm.value.mountpoint) {
-    ElMessage.warning('请填写挂载点')
+    ElMessage.warning(t('opsdisk.mountpointRequired'))
     return
   }
   actionLoading.value = true
@@ -141,11 +143,11 @@ async function doMount() {
       nofail: mountForm.value.nofail,
     })
     if (res.ok) {
-      ElMessage.success('挂载成功')
+      ElMessage.success(t('opsdisk.mountOk'))
       mountDialog.value = false
       refresh()
     } else {
-      ElMessage.error(res.error || '挂载失败')
+      ElMessage.error(res.error || t('opsdisk.mountFailed'))
     }
   } catch (e: any) {
     ElMessage.error(e.message)
@@ -157,17 +159,17 @@ async function doMount() {
 async function doUmount(mountpoint: string) {
   try {
     await ElMessageBox.confirm(
-      `确定要卸载 ${mountpoint} 吗？请先停止正在读写该挂载点的应用、容器和进程。`,
-      '卸载确认',
+      t('opsdisk.confirmUmount', { mount: mountpoint }),
+      t('opsdisk.confirmUmountTitle'),
       { type: 'warning' },
     )
     actionLoading.value = true
     const res = await diskApi.umount(selectedTarget.value, { mountpoint, remove_fstab: true })
     if (res.ok) {
-      ElMessage.success('已卸载')
+      ElMessage.success(t('opsdisk.umountOk'))
       refresh()
     } else {
-      ElMessage.error(res.error || '卸载失败（可能挂载点正忙）')
+      ElMessage.error(res.error || t('opsdisk.umountFailed'))
     }
   } catch (e: any) {
     if (e !== 'cancel') ElMessage.error(e.message)
@@ -186,17 +188,17 @@ onMounted(async () => {
     <!-- 工具栏 -->
     <div class="disk-toolbar glass">
       <div class="toolbar-left">
-        <label class="target-label">目标主机</label>
-        <el-select v-model="selectedTarget" placeholder="选择 SSH 主机" style="width: 220px" @change="refresh">
+        <label class="target-label">{{ t('opsproc.targetHost') }}</label>
+        <el-select v-model="selectedTarget" :placeholder="t('opsproc.selectHost')" style="width: 220px" @change="refresh">
           <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
       </div>
-      <el-button type="primary" :icon="'Refresh'" :loading="loading" @click="refresh">刷新</el-button>
+      <el-button type="primary" :icon="'Refresh'" :loading="loading" @click="refresh">{{ t('common.refresh') }}</el-button>
     </div>
 
     <div v-if="error" class="disk-error">{{ error }}</div>
     <div v-if="!sshTargets.length" class="disk-empty glass">
-      尚未添加 SSH 类型主机。请在 NAS → 监控目标 中添加一台 SSH 主机（即本机或目标 NAS 的 SSH 凭据），才能进行磁盘管理。
+      {{ t('opsdisk.noHostHint') }}
     </div>
 
     <div v-loading="loading" class="disk-grid">
@@ -211,7 +213,7 @@ onMounted(async () => {
               <span class="disk-name">{{ d.name }}</span>
               <span class="disk-size-big">{{ d.size_human }}</span>
             </div>
-            <div class="disk-model">{{ d.model || d.vendor || '未知型号' }}</div>
+            <div class="disk-model">{{ d.model || d.vendor || t('opsdisk.unknownModel') }}</div>
             <div v-if="d.serial" class="disk-serial">SN: {{ d.serial }}</div>
             <div class="disk-badges">
               <span class="disk-badge disk-category" :style="{ background: categoryColor(d) }">{{ categoryLabel(d) }}</span>
@@ -225,20 +227,20 @@ onMounted(async () => {
           <div class="capacity-bar">
             <div class="capacity-fill" :style="{ width: Math.min(d.usage_percent || 0, 100) + '%', background: usageColor(d.usage_percent) }"></div>
           </div>
-          <div class="capacity-text"><span class="cap-used">已用 {{ d.used_human }}</span> / 共 {{ d.total_human }} · <span class="cap-pct" :style="{ color: usageColor(d.usage_percent) }">{{ (d.usage_percent || 0).toFixed(1) }}%</span></div>
+          <div class="capacity-text"><span class="cap-used">{{ t('opsdisk.used') }} {{ d.used_human }}</span> / {{ t('opsdisk.total') }} {{ d.total_human }} · <span class="cap-pct" :style="{ color: usageColor(d.usage_percent) }">{{ (d.usage_percent || 0).toFixed(1) }}%</span></div>
         </div>
         <div class="disk-divider"></div>
 
         <!-- 系统盘：只读展示分区 -->
         <div v-if="d.is_system" class="disk-partitions">
-          <div class="part-section-title">分区信息</div>
-          <div class="part-hint">系统盘，仅展示信息，不可操作</div>
+          <div class="part-section-title">{{ t('opsdisk.partInfo') }}</div>
+          <div class="part-hint">{{ t('opsdisk.sysDiskHint') }}</div>
           <div v-for="p in d.partitions" :key="p.name" class="part-row">
             <div class="part-row-main">
               <span class="part-name">{{ p.name }}</span>
               <span class="part-size">{{ p.size_human }}</span>
               <span class="part-fs">{{ p.fstype || '-' }}</span>
-              <span class="part-mount">{{ p.mountpoint || '未挂载' }}</span>
+              <span class="part-mount">{{ p.mountpoint || t('opsdisk.notMounted') }}</span>
             </div>
             <div v-if="p.usage_percent" class="part-usage">
               <div class="part-usage-bar">
@@ -247,27 +249,27 @@ onMounted(async () => {
               <span class="part-usage-text">{{ p.used_human }} / {{ p.size_human }}（{{ p.usage_percent.toFixed(0) }}%）</span>
             </div>
           </div>
-          <div v-if="!d.partitions?.length" class="part-hint">无分区</div>
+          <div v-if="!d.partitions?.length" class="part-hint">{{ t('opsdisk.noPartitions') }}</div>
         </div>
 
         <!-- 未分区磁盘：可分区 -->
         <div v-else-if="d.category === 'unpartitioned'" class="disk-actions-area">
-          <p class="disk-warn">该磁盘未分区。分区并格式化将清除其上所有数据。</p>
-          <el-button type="warning" @click="openPartDialog(d)">分区并挂载</el-button>
+          <p class="disk-warn">{{ t('opsdisk.unpartWarn') }}</p>
+          <el-button type="warning" @click="openPartDialog(d)">{{ t('opsdisk.partAndMount') }}</el-button>
         </div>
 
         <!-- 普通磁盘：展示分区，可挂载/卸载 -->
         <div v-else class="disk-partitions">
-          <div class="part-section-title">分区列表</div>
+          <div class="part-section-title">{{ t('opsdisk.partList') }}</div>
           <div v-for="p in d.partitions" :key="p.name" class="part-row">
             <div class="part-row-main">
               <span class="part-name">{{ p.name }}</span>
               <span class="part-size">{{ p.size_human }}</span>
               <span class="part-fs">{{ p.fstype || '-' }}</span>
-              <span class="part-mount" :title="p.mountpoint">{{ p.mountpoint || '未挂载' }}</span>
+              <span class="part-mount" :title="p.mountpoint">{{ p.mountpoint || t('opsdisk.notMounted') }}</span>
               <span class="part-ops">
-                <el-button v-if="!p.mountpoint" size="small" type="primary" link @click="openMountDialog(p.name)">挂载</el-button>
-                <el-button v-else size="small" type="danger" link @click="doUmount(p.mountpoint!)">卸载</el-button>
+                <el-button v-if="!p.mountpoint" size="small" type="primary" link @click="openMountDialog(p.name)">{{ t('opsdisk.mount') }}</el-button>
+                <el-button v-else size="small" type="danger" link @click="doUmount(p.mountpoint!)">{{ t('opsdisk.umount') }}</el-button>
               </span>
             </div>
             <div v-if="p.usage_percent" class="part-usage">
@@ -277,56 +279,56 @@ onMounted(async () => {
               <span class="part-usage-text">{{ p.used_human }} / {{ p.size_human }}（{{ p.usage_percent.toFixed(0) }}%）</span>
             </div>
           </div>
-          <div v-if="!d.partitions?.length" class="part-hint">无分区</div>
+          <div v-if="!d.partitions?.length" class="part-hint">{{ t('opsdisk.noPartitions') }}</div>
         </div>
       </div>
     </div>
 
     <!-- 分区对话框 -->
-    <el-dialog v-model="partDialog" title="分区并挂载" width="480px">
+    <el-dialog v-model="partDialog" :title="t('opsdisk.partAndMount')" width="480px">
       <el-alert type="error" :closable="false" show-icon style="margin-bottom: 16px">
-        将对 {{ partDevice }} 创建 GPT 分区表并格式化，原有数据将被清除。
+        {{ t('opsdisk.partDialogDesc', { dev: partDevice }) }}
       </el-alert>
       <el-form label-width="90px">
-        <el-form-item label="设备">{{ partDevice }}</el-form-item>
-        <el-form-item label="文件系统">
+        <el-form-item :label="t('opsdisk.device')">{{ partDevice }}</el-form-item>
+        <el-form-item :label="t('opsdisk.fstype')">
           <el-radio-group v-model="partForm.fstype">
             <el-radio value="ext4">ext4</el-radio>
             <el-radio value="xfs">xfs</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="挂载点">
+        <el-form-item :label="t('opsdisk.mountpoint')">
           <el-input v-model="partForm.mountpoint" placeholder="/mnt/data" />
         </el-form-item>
-        <el-form-item label="自动挂载">
+        <el-form-item :label="t('opsdisk.autoMount')">
           <el-switch v-model="partForm.auto_mount" />
-          <span class="form-hint">写入 /etc/fstab，重启后自动挂载</span>
+          <span class="form-hint">{{ t('opsdisk.fstabHint') }}</span>
         </el-form-item>
         <el-form-item v-if="partForm.auto_mount" label="nofail">
           <el-switch v-model="partForm.nofail" />
-          <span class="form-hint">磁盘不可用时不阻塞启动</span>
+          <span class="form-hint">{{ t('opsdisk.nofailHint') }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="partDialog = false">取消</el-button>
-        <el-button type="danger" :loading="actionLoading" @click="doPartition">确认分区</el-button>
+        <el-button @click="partDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="danger" :loading="actionLoading" @click="doPartition">{{ t('opsdisk.confirmPartBtn') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 挂载对话框 -->
-    <el-dialog v-model="mountDialog" title="挂载分区" width="420px">
+    <el-dialog v-model="mountDialog" :title="t('opsdisk.mountTitle')" width="420px">
       <el-form label-width="90px">
-        <el-form-item label="设备">{{ mountDevice }}</el-form-item>
-        <el-form-item label="挂载点">
+        <el-form-item :label="t('opsdisk.device')">{{ mountDevice }}</el-form-item>
+        <el-form-item :label="t('opsdisk.mountpoint')">
           <el-input v-model="mountForm.mountpoint" placeholder="/mnt/data" />
         </el-form-item>
-        <el-form-item label="自动挂载">
+        <el-form-item :label="t('opsdisk.autoMount')">
           <el-switch v-model="mountForm.auto_mount" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="mountDialog = false">取消</el-button>
-        <el-button type="primary" :loading="actionLoading" @click="doMount">挂载</el-button>
+        <el-button @click="mountDialog = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="actionLoading" @click="doMount">{{ t('opsdisk.mount') }}</el-button>
       </template>
     </el-dialog>
   </div>

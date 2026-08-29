@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,13 +38,13 @@ type inspectReq struct {
 func (h *SiteHandler) Inspect(c *gin.Context) {
 	var req inspectReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := site.Inspect(c.Request.Context(), h.hc, req.URL, req.Cookie, req.Fields, req.NoLogin)
 	if err != nil {
 		// 502：目标站点抓取失败，非客户端参数错误。
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -53,7 +54,7 @@ func (h *SiteHandler) Inspect(c *gin.Context) {
 func (h *SiteHandler) List(c *gin.Context) {
 	sites, err := h.oper.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"sites": sites})
@@ -67,7 +68,7 @@ func (h *SiteHandler) Get(c *gin.Context) {
 	}
 	s, err := h.oper.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, s)
@@ -77,12 +78,12 @@ func (h *SiteHandler) Get(c *gin.Context) {
 func (h *SiteHandler) Create(c *gin.Context) {
 	var in oper.SiteInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	s, err := h.oper.Create(in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	// 站点限流热生效：新建站点（或改了 LimitInterval）后把 per-host 间隔同步到抓取客户端。
@@ -100,12 +101,12 @@ func (h *SiteHandler) Update(c *gin.Context) {
 	}
 	var in oper.SiteInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	s, err := h.oper.Update(id, in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	// 站点限流热生效：LimitInterval 改动即时同步到抓取客户端（无需重启）。
@@ -122,7 +123,7 @@ func (h *SiteHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.oper.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -134,12 +135,12 @@ func (h *SiteHandler) BatchDelete(c *gin.Context) {
 		IDs []uint `json:"ids" binding:"required,min=1,max=200,dive"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	failed, err := h.oper.DeleteMany(body.IDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if failed == nil {
@@ -156,7 +157,7 @@ func (h *SiteHandler) Test(c *gin.Context) {
 	}
 	s, err := h.oper.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	level, err := h.siteCh.TestConnection(c.Request.Context(), s)
@@ -172,7 +173,7 @@ func (h *SiteHandler) Test(c *gin.Context) {
 func (h *SiteHandler) Status(c *gin.Context) {
 	list, err := h.oper.ListConnectivity()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"statuses": list})
@@ -198,7 +199,7 @@ func (h *SiteHandler) Checkin(c *gin.Context) {
 	}
 	s, err := h.oper.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	r := chain.CheckinSiteResult{SiteID: s.ID, SiteName: s.Name}
@@ -225,7 +226,7 @@ func (h *SiteHandler) CheckinRecords(c *gin.Context) {
 	offset := atoiDefault(c.Query("offset"), 0)
 	records, err := h.siteCh.ListCheckinRecords(uint(siteID), limit, offset)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"records": records})
@@ -236,7 +237,7 @@ func (h *SiteHandler) CheckinRecords(c *gin.Context) {
 func parseID(c *gin.Context) (uint, bool) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return 0, false
 	}
 	return uint(id), true

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"encoding/json"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"strconv"
 
@@ -79,7 +80,7 @@ func (h *WorkflowHandler) Templates(c *gin.Context) {
 func (h *WorkflowHandler) Stats(c *gin.Context) {
 	st, err := h.ch.Stats()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	// RecentFailures 走 runResponse：把 NodeExecutions(text) 反序列化为数组，
@@ -100,7 +101,7 @@ func (h *WorkflowHandler) Stats(c *gin.Context) {
 func (h *WorkflowHandler) List(c *gin.Context) {
 	wfs, err := h.ch.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	out := make([]gin.H, 0, len(wfs))
@@ -118,7 +119,7 @@ func (h *WorkflowHandler) Get(c *gin.Context) {
 	}
 	wf, err := h.ch.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "工作流不存在"})
+		errcode.Respond(c, errcode.WorkflowNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, workflowResponse(wf))
@@ -128,11 +129,11 @@ func (h *WorkflowHandler) Get(c *gin.Context) {
 func (h *WorkflowHandler) Create(c *gin.Context) {
 	var in wfReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "名称必填"})
+		errcode.Respond(c, errcode.NameRequired)
 		return
 	}
 	wf := &models.Workflow{
@@ -142,7 +143,7 @@ func (h *WorkflowHandler) Create(c *gin.Context) {
 	}
 	out, err := h.ch.Create(wf)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, workflowResponse(out))
@@ -156,12 +157,12 @@ func (h *WorkflowHandler) Update(c *gin.Context) {
 	}
 	wf, err := h.ch.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "工作流不存在"})
+		errcode.Respond(c, errcode.WorkflowNotFound)
 		return
 	}
 	var in wfReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Name != "" {
@@ -182,7 +183,7 @@ func (h *WorkflowHandler) Update(c *gin.Context) {
 		wf.EventConditions = string(in.EventConditions)
 	}
 	if err := h.ch.Update(wf); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, workflowResponse(wf))
@@ -195,7 +196,7 @@ func (h *WorkflowHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.ch.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -222,7 +223,7 @@ func (h *WorkflowHandler) Enable(c *gin.Context) {
 		return
 	}
 	if err := h.ch.SetEnabled(id, true); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enabled": true})
@@ -235,7 +236,7 @@ func (h *WorkflowHandler) Disable(c *gin.Context) {
 		return
 	}
 	if err := h.ch.SetEnabled(id, false); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enabled": false})
@@ -248,7 +249,7 @@ func (h *WorkflowHandler) Reset(c *gin.Context) {
 		return
 	}
 	if err := h.ch.Reset(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"reset": id})
@@ -266,7 +267,7 @@ func (h *WorkflowHandler) ListRuns(c *gin.Context) {
 	}
 	runs, err := h.ch.ListRuns(uint(wfID), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	out := make([]gin.H, 0, len(runs))
@@ -280,12 +281,12 @@ func (h *WorkflowHandler) ListRuns(c *gin.Context) {
 func (h *WorkflowHandler) RunDetail(c *gin.Context) {
 	rid, err := strconv.ParseUint(c.Param("rid"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	r, err := h.ch.GetRun(uint(rid))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "运行记录不存在"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, runResponse(r))

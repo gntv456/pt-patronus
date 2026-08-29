@@ -47,5 +47,23 @@ fill('agent-linux-amd64', 'agent-linux-amd64')
 fill('agent-linux-arm64', 'agent-linux-arm64')
 
 writeFileSync('update-manifest.json', JSON.stringify(manifest, null, 2) + '\n')
+
+// 发布前完整性校验：url 声明了下载渠道的 target 必须带 64 位 hex sha256
+// （macos 等桌面端走外链手动安装，但校验不可省——OTA 客户端拿 sha256 做
+// 防篡改依据，缺失即静默降级为无校验下载）。校验失败直接非零退出，
+// 拦住"链接已发布但哈希未回填"的半成品 manifest。
+const errors = []
+for (const [key, t] of Object.entries(manifest.targets)) {
+  if (key === 'docker') continue // 镜像完整性由 registry digest 保证，不走 sha256 字段
+  const url = (t && t.url) || ''
+  const sha = (t && t.sha256) || ''
+  if (!url && !sha) continue // 未发布的 target 允许留空整体
+  if (!/^[0-9a-f]{64}$/.test(sha)) errors.push(`targets.${key}: url 已填而 sha256 缺失/格式非法（len=${sha.length}）`)
+}
+if (errors.length) {
+  console.error('✗ update-manifest.json 完整性校验未通过：')
+  for (const e of errors) console.error('  - ' + e)
+  process.exit(1)
+}
 console.log(`✓ update-manifest.json: latestVersion=${version}, docker.image=:${version}, sha256 已填`)
 console.log('  注意：targets.*.url 仍需手动填网盘直链，然后上传 manifest 到 UPDATE_MANIFEST_URL 公开地址')

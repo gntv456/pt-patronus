@@ -3,6 +3,7 @@ package middleware
 
 import (
 	"crypto/subtle"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 	"strings"
 
@@ -43,7 +44,7 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache) gi
 		if tvCache != nil {
 			cur, err := tvCache.Get(claims.UserID)
 			if err != nil || cur != claims.TokenVersion {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token revoked", "code": "token_version_mismatch"})
+				errcode.Respond(c, errcode.TokenMismatch)
 				return
 			}
 		}
@@ -77,7 +78,7 @@ func RequireAdmin() gin.HandlerFunc {
 		v, ok := c.Get("is_admin")
 		isAdmin, _ := v.(bool)
 		if !ok || !isAdmin {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "需要管理员权限", "code": "admin_required"})
+			errcode.Respond(c, errcode.AdminRequired)
 			return
 		}
 		c.Next()

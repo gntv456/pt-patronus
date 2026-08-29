@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import { downloaderApi, type Tracker } from '@/api/downloader'
 
+const { t } = useI18n()
 const props = defineProps<{ downloaderId: number; hash: string }>()
 const trackers = ref<Tracker[]>([])
 const newUrl = ref('')
@@ -13,7 +15,7 @@ async function load() {
     const r = await downloaderApi.trackers(props.downloaderId, props.hash)
     trackers.value = r.trackers ?? []
   } catch {
-    ElMessage.warning('加载失败')
+    ElMessage.warning(t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -24,21 +26,21 @@ async function add() {
   if (!newUrl.value.trim()) return
   const r = await downloaderApi.addTrackers(props.downloaderId, props.hash, [newUrl.value.trim()])
   if (r.ok) {
-    ElMessage.success('已添加')
+    ElMessage.success(t('common.added'))
     newUrl.value = ''
     load()
   } else {
-    ElMessage.warning(r.error || '失败')
+    ElMessage.warning(r.error || t('common.failed'))
   }
 }
 
 async function remove(url: string) {
   const r = await downloaderApi.removeTrackers(props.downloaderId, props.hash, [url])
   if (r.ok) {
-    ElMessage.success('已移除')
+    ElMessage.success(t('common.removed'))
     load()
   } else {
-    ElMessage.warning(r.error || '失败')
+    ElMessage.warning(r.error || t('common.failed'))
   }
 }
 </script>
@@ -47,13 +49,13 @@ async function remove(url: string) {
   <div v-loading="loading" class="trackers">
     <div class="addrow">
       <el-input v-model="newUrl" placeholder="https://tracker.example.com/announce" @keyup.enter="add" />
-      <el-button type="primary" @click="add">添加</el-button>
+      <el-button type="primary" @click="add">{{ t('common.add') }}</el-button>
     </div>
-    <div v-for="(t, i) in trackers" :key="t.url + i" class="trow">
-      <span class="turl" :title="t.url">{{ t.url }}</span>
-      <el-button text size="small" type="danger" @click="remove(t.url)">移除</el-button>
+    <div v-for="(tr, i) in trackers" :key="tr.url + i" class="trow">
+      <span class="turl" :title="tr.url">{{ tr.url }}</span>
+      <el-button text size="small" type="danger" @click="remove(tr.url)">{{ t('common.remove') }}</el-button>
     </div>
-    <div v-if="!trackers.length && !loading" class="empty text-muted">无 Tracker</div>
+    <div v-if="!trackers.length && !loading" class="empty text-muted">{{ t('td.noTrackers') }}</div>
   </div>
 </template>
 

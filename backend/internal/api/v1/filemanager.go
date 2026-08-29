@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
 	"net/http"
 	"path"
@@ -29,7 +30,7 @@ func NewFileStorageHandler(op *oper.FileStorageOper, fileCh *chain.FileManagerCh
 func (h *FileStorageHandler) List(c *gin.Context) {
 	fs, err := h.op.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"storages": fs})
@@ -39,15 +40,15 @@ func (h *FileStorageHandler) List(c *gin.Context) {
 func (h *FileStorageHandler) Create(c *gin.Context) {
 	var in oper.FileStorageInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	f, err := h.op.Create(in)
 	if err != nil {
 		if errors.Is(err, oper.ErrInvalidInput) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 		}
 		return
 	}
@@ -62,15 +63,15 @@ func (h *FileStorageHandler) Update(c *gin.Context) {
 	}
 	var in oper.FileStorageInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	f, err := h.op.Update(id, in)
 	if err != nil {
 		if errors.Is(err, oper.ErrInvalidInput) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 		}
 		return
 	}
@@ -85,7 +86,7 @@ func (h *FileStorageHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	h.mgr.Invalidate(id)
@@ -119,7 +120,7 @@ func (h *FileStorageHandler) Upload(c *gin.Context) {
 	path := c.PostForm("path")
 	file, _, err := c.Request.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	defer file.Close()
@@ -140,7 +141,7 @@ func (h *FileStorageHandler) Download(c *gin.Context) {
 	rc, err := h.fileCh.Download(c.Request.Context(), id, path)
 	if err != nil {
 		// 下载出错返 500（而非 200+JSON）：客户端按字节流读 body，200 会把错误 JSON 当成文件内容。
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	defer rc.Close()
@@ -183,7 +184,7 @@ func (h *FileStorageHandler) DeleteFile(c *gin.Context) {
 	}
 	path := c.Query("path")
 	if isRootPath(path) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许操作存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	if err := h.fileCh.Delete(c.Request.Context(), id, path); err != nil {
@@ -201,12 +202,12 @@ func (h *FileStorageHandler) Rename(c *gin.Context) {
 	}
 	name := c.Query("name")
 	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name 必填"})
+		errcode.Respond(c, errcode.NameRequired)
 		return
 	}
 	renamePath := c.Query("path")
 	if isRootPath(renamePath) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许操作存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	if err := h.fileCh.Rename(c.Request.Context(), id, renamePath, name); err != nil {
@@ -224,7 +225,7 @@ func (h *FileStorageHandler) Move(c *gin.Context) {
 	}
 	from := c.Query("from")
 	if isRootPath(from) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许移动存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	if err := h.fileCh.Move(c.Request.Context(), id, from, c.Query("to")); err != nil {
@@ -242,7 +243,7 @@ func (h *FileStorageHandler) Copy(c *gin.Context) {
 	}
 	from := c.Query("from")
 	if isRootPath(from) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许复制存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	if err := h.fileCh.Copy(c.Request.Context(), id, from, c.Query("to")); err != nil {

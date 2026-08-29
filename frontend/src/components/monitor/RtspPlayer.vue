@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { monitorApi, type MonitorTarget } from '@/api/monitor'
 import { authApi } from '@/api/auth'
 
 // RtspPlayer — jessibuca(wasm) 播放器封装：动态加载 public/jessibuca/ 资源，连后端 RTSP→WS 代理播放。
+const { t } = useI18n()
 const props = defineProps<{ target: MonitorTarget }>()
 const containerRef = ref<HTMLDivElement>()
 const err = ref('')
@@ -17,26 +19,26 @@ function loadScript(src: string): Promise<void> {
     const s = document.createElement('script')
     s.src = src
     s.onload = () => resolve()
-    s.onerror = () => reject(new Error('jessibuca 资源加载失败，请确认 public/jessibuca/ 已部署'))
+    s.onerror = () => reject(new Error(t('rp.loadFailed')))
     document.head.appendChild(s)
   })
 }
 
 async function start() {
   if (!props.target.rtsp_url) {
-    err.value = '该摄像头未配置 RTSP 地址'
+    err.value = t('rp.noRtsp')
     return
   }
   try {
     await loadScript('/jessibuca/jessibuca.js')
     const w = window as unknown as { Jessibuca?: new (o: object) => JessibucaPlayer; JessibucaPro?: new (o: object) => JessibucaPlayer }
     const Ctor = w.JessibucaPro || w.Jessibuca
-    if (!Ctor) throw new Error('jessibuca 未就绪')
+    if (!Ctor) throw new Error(t('rp.notReady'))
     const p = new Ctor({
       container: containerRef.value,
       videoBuffer: 0.2,
       isResize: true,
-      loadingText: '连接摄像头中...',
+      loadingText: t('rp.connecting'),
       decoder: '/jessibuca/decoder.js',
     })
     player = p

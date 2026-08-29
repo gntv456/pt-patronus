@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // LocalCompose 在本机通过容器内 docker compose CLI 执行编排。
@@ -55,12 +56,12 @@ func (h *LocalComposeHandler) runComposeCLI(ctx context.Context, action, workDir
 func (h *LocalComposeHandler) ComposeUp(c *gin.Context) {
 	var in composeContentRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	workDir, cleanup, err := writeComposeFile(in.Content, in.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "write compose file: " + err.Error()})
+		errcode.Respond(c, errcode.ComposeWriteFailed.WithErr(err))
 		return
 	}
 	defer cleanup()
@@ -80,12 +81,12 @@ func (h *LocalComposeHandler) ComposeUp(c *gin.Context) {
 func (h *LocalComposeHandler) ComposeDown(c *gin.Context) {
 	var in composeContentRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	workDir, cleanup, err := writeComposeFile(in.Content, in.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "write compose file: " + err.Error()})
+		errcode.Respond(c, errcode.ComposeWriteFailed.WithErr(err))
 		return
 	}
 	defer cleanup()
@@ -104,12 +105,12 @@ func (h *LocalComposeHandler) ComposeDown(c *gin.Context) {
 func (h *LocalComposeHandler) ComposeValidate(c *gin.Context) {
 	var in composeContentRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	workDir, cleanup, err := writeComposeFile(in.Content, in.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	defer cleanup()

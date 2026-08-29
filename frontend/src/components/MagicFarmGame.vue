@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { entertainmentApi, type FarmState, type FarmItem, type PlayResult } from '@/api/entertainment'
 
 const props = defineProps<{ siteId: number }>()
+const { t } = useI18n()
 const GAME = 'magic_farm'
 
 const farm = ref<FarmState | null>(null)
@@ -19,12 +21,12 @@ async function doAct(fn: () => Promise<PlayResult>) {
   try {
     const res = await fn()
     last.value = res
-    if (res.success) ElMessage.success(res.message || '完成')
-    else ElMessage.warning(res.message || '操作失败')
+    if (res.success) ElMessage.success(res.message || t('sp.done'))
+    else ElMessage.warning(res.message || t('common.actionFailed'))
     await refresh()
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     busy.value = false
   }
@@ -36,18 +38,18 @@ const harvestAll = () => doAct(() => entertainmentApi.harvestAll(props.siteId, G
 const sell = (key: string) => doAct(() => entertainmentApi.sell(props.siteId, GAME, key))
 
 function emoji(name: string) {
-  if (/鸡/.test(name)) return '🐔'
-  if (/猪/.test(name)) return '🐷'
-  if (/羊/.test(name)) return '🐑'
-  if (/牛/.test(name)) return '🐮'
-  if (/麦/.test(name)) return '🌾'
-  if (/玉米/.test(name)) return '🌽'
-  if (/花生/.test(name)) return '🥜'
-  if (/土豆/.test(name)) return '🥔'
+  if (/\u9e21/.test(name)) return '🐔'
+  if (/\u732a/.test(name)) return '🐷'
+  if (/\u7f8a/.test(name)) return '🐑'
+  if (/\u725b/.test(name)) return '🐮'
+  if (/\u9ea6/.test(name)) return '🌾'
+  if (/\u7389\u7c73/.test(name)) return '🌽'
+  if (/\u82b1\u751f/.test(name)) return '🥜'
+  if (/\u571f\u8c46/.test(name)) return '🥔'
   return '🌱'
 }
 function statusText(s: string) {
-  return s === 'ready' ? '可收获' : s === 'growing' ? '生长中' : '未种植'
+  return s === 'ready' ? t('mf.ready') : s === 'growing' ? t('mf.growing') : t('mf.empty')
 }
 
 onMounted(refresh)
@@ -56,9 +58,9 @@ onMounted(refresh)
 <template>
   <div class="farm">
     <div class="hero">
-      <div class="hero-title">🚜 {{ farm?.farm_name || '魔力农场' }}</div>
-      <div class="hero-sub">当前魔力值: <b>{{ farm?.balance?.toLocaleString() ?? '—' }}</b></div>
-      <button class="harvest-all" :disabled="busy" @click="harvestAll">{{ busy ? '处理中…' : '一键收获 🧺' }}</button>
+      <div class="hero-title">🚜 {{ farm?.farm_name || t('mf.title') }}</div>
+      <div class="hero-sub">{{ t('mf.curMagic') }}: <b>{{ farm?.balance?.toLocaleString() ?? '—' }}</b></div>
+      <button class="harvest-all" :disabled="busy" @click="harvestAll">{{ busy ? t('mf.busy') : t('mf.harvestAll') }}</button>
     </div>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
@@ -67,51 +69,51 @@ onMounted(refresh)
     </div>
 
     <section v-if="farm" class="glass section">
-      <div class="sec-title">🌾 农作物种植区 <small>有效期 2 天</small></div>
+      <div class="sec-title">🌾 {{ t('mf.crops') }} <small>{{ t('mf.valid2d') }}</small></div>
       <div class="grid">
         <div v-for="c in farm.crops" :key="'c' + c.id" class="item">
           <div class="i-emoji">{{ emoji(c.name) }}</div>
           <div class="i-name">{{ c.name }}</div>
-          <div class="i-meta">成长 {{ c.grow_hours }}h · 买入 {{ c.price }}</div>
+          <div class="i-meta">{{ t('mf.meta', { h: c.grow_hours, p: c.price }) }}</div>
           <div class="i-status" :class="c.status">{{ statusText(c.status) }}</div>
           <button class="i-btn" :disabled="busy || c.status === 'growing'" @click="c.status === 'ready' ? harvest(c) : plant(c)">
-            {{ c.status === 'ready' ? '收获' : c.status === 'growing' ? '生长中' : '种植' }}
+            {{ c.status === 'ready' ? t('mf.harvest') : c.status === 'growing' ? t('mf.growing') : t('mf.plant') }}
           </button>
         </div>
       </div>
     </section>
 
     <section v-if="farm" class="glass section">
-      <div class="sec-title">🐔 动物养殖区 <small>有效期 5 天</small></div>
+      <div class="sec-title">🐔 {{ t('mf.animals') }} <small>{{ t('mf.valid5d') }}</small></div>
       <div class="grid">
         <div v-for="a in farm.animals" :key="'a' + a.id" class="item">
           <div class="i-emoji">{{ emoji(a.name) }}</div>
           <div class="i-name">{{ a.name }}</div>
-          <div class="i-meta">成长 {{ a.grow_hours }}h · 买入 {{ a.price }}</div>
+          <div class="i-meta">{{ t('mf.meta', { h: a.grow_hours, p: a.price }) }}</div>
           <div class="i-status" :class="a.status">{{ statusText(a.status) }}</div>
           <button class="i-btn" :disabled="busy || a.status === 'growing'" @click="a.status === 'ready' ? harvest(a) : plant(a)">
-            {{ a.status === 'ready' ? '收获' : a.status === 'growing' ? '生长中' : '养殖' }}
+            {{ a.status === 'ready' ? t('mf.harvest') : a.status === 'growing' ? t('mf.growing') : t('mf.raise') }}
           </button>
         </div>
       </div>
     </section>
 
     <section v-if="farm?.warehouse?.length" class="glass section">
-      <div class="sec-title">📦 仓库</div>
+      <div class="sec-title">📦 {{ t('mf.barn') }}</div>
       <div class="list">
         <div v-for="(w, i) in farm.warehouse" :key="i" class="row">
           <span class="row-name">{{ w.name }} ×{{ w.count }}</span>
-          <span v-if="w.market_price" class="text-muted">市价 {{ w.market_price }}</span>
-          <button class="sell-btn" :disabled="busy" @click="sell(w.key)">出售</button>
+          <span v-if="w.market_price" class="text-muted">{{ t('mf.marketPrice', { v: w.market_price }) }}</span>
+          <button class="sell-btn" :disabled="busy" @click="sell(w.key)">{{ t('mf.sell') }}</button>
         </div>
       </div>
     </section>
 
     <section v-if="farm?.market?.length" class="glass section">
-      <div class="sec-title">🛒 菜市场 <small>每 24h 更新，波动 ±20%</small></div>
+      <div class="sec-title">🛒 {{ t('mf.market') }} <small>{{ t('mf.marketHint') }}</small></div>
       <div class="list">
         <div v-for="(m, i) in farm.market" :key="i" class="row">
-          <span class="row-name">{{ m.name }} <small class="text-muted">{{ m.section === 'crop' ? '农作物' : '动物' }}</small></span>
+          <span class="row-name">{{ m.name }} <small class="text-muted">{{ m.section === 'crop' ? t('mf.cropKind') : t('mf.animalKind') }}</small></span>
           <b class="mkt-price">{{ m.market_price.toLocaleString() }}</b>
         </div>
       </div>

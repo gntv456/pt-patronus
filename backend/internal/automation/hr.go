@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"log/slog"
 	"strings"
 	"time"
@@ -49,9 +50,12 @@ func (s *Service) runHRCheck() {
 	}
 
 	if len(dangers) == 0 {
+		bizmetrics.HRCheckInc(bizmetrics.HRCheckClean)
 		slog.Debug("hr-check clean, no dangerous torrents")
 		return
 	}
+	bizmetrics.HRCheckInc(bizmetrics.HRCheckDangerous)
+	bizmetrics.HRAlertsAdd(len(dangers))
 
 	const maxShow = 20
 	var sb strings.Builder

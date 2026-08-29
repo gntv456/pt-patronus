@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 // DashboardRingChart — 手撸 SVG 多段环形图（零依赖，对齐项目画图哲学）。
 // 仪表盘「站点健康分布」「契约状态分布」复用。全 0 时显示空底环 + 占位。
@@ -62,7 +65,7 @@ const legPct = (v: number) => (total.value > 0 ? Math.round((v / total.value) * 
       <div class="ring-center">
         <strong v-if="centerValue">{{ centerValue }}</strong>
         <small v-if="centerLabel">{{ centerLabel }}</small>
-        <small v-else-if="total === 0">暂无数据</small>
+        <small v-else-if="total === 0">{{ t('common.noData') }}</small>
       </div>
     </div>
     <ul v-if="legend" class="ring-legend">

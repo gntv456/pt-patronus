@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/downloader"
 )
 
@@ -50,22 +51,22 @@ func (h *DownloaderHandler) UploadTorrent(c *gin.Context) {
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file required: " + err.Error()})
+		errcode.Respond(c, errcode.FieldRequired.WithErr(err))
 		return
 	}
 	if file.Size > 8<<20 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "file too large (max 8MB)"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	src, err := file.Open()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	defer src.Close()
 	data, err := io.ReadAll(src)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	opts := downloader.AddOptions{
@@ -79,13 +80,13 @@ func (h *DownloaderHandler) UploadTorrent(c *gin.Context) {
 		opts.Tags = splitCSV(t)
 	}
 	if n, err := parseLimit(c.PostForm("upload_limit")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "upload_limit: " + err.Error()})
+		errcode.Respond(c, errcode.InvalidRequest.WithErr(err))
 		return
 	} else {
 		opts.UploadLimit = n
 	}
 	if n, err := parseLimit(c.PostForm("download_limit")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "download_limit: " + err.Error()})
+		errcode.Respond(c, errcode.InvalidRequest.WithErr(err))
 		return
 	} else {
 		opts.DownloadLimit = n

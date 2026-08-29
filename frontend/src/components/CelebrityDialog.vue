@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { CelebrityProfile } from '@/api/media'
 import MediaPoster from '@/components/MediaPoster.vue'
+
+const { t } = useI18n()
 
 const visible = defineModel<boolean>('visible', { required: true })
 const loading = defineModel<boolean>('loading', { required: true })
@@ -8,7 +11,7 @@ const profile = defineModel<CelebrityProfile | null>('profile', { required: true
 </script>
 
 <template>
-  <el-dialog v-model="visible" :title="profile?.name || '演员简介'" width="560px" class="cel-dialog" align-center append-to-body>
+  <el-dialog v-model="visible" :title="profile?.name || t('cel.title')" width="560px" class="cel-dialog" align-center append-to-body>
     <div v-loading="loading" class="cel-body">
       <template v-if="profile">
         <div class="cel-head">
@@ -17,7 +20,7 @@ const profile = defineModel<CelebrityProfile | null>('profile', { required: true
             <div class="cel-name">{{ profile.name }}</div>
             <div v-if="profile.latin_name" class="cel-latin text-muted">{{ profile.latin_name }}</div>
             <div v-if="profile.short_info" class="cel-short text-muted">{{ profile.short_info }}</div>
-            <div v-if="profile.followed_count" class="cel-follow text-muted">{{ profile.followed_count.toLocaleString('zh-CN') }} 人关注</div>
+            <div v-if="profile.followed_count" class="cel-follow text-muted">{{ profile.followed_count.toLocaleString('zh-CN') }} {{ t('cel.followers') }}</div>
           </div>
         </div>
         <div v-if="profile.info?.length" class="cel-info">
@@ -27,11 +30,11 @@ const profile = defineModel<CelebrityProfile | null>('profile', { required: true
           </div>
         </div>
         <div v-if="profile.bio?.length" class="cel-section">
-          <div class="cel-stitle">生平</div>
+          <div class="cel-stitle">{{ t('cel.bio') }}</div>
           <p v-for="(para, i) in profile.bio" :key="i" class="cel-bio">{{ para }}</p>
         </div>
         <div v-if="profile.works?.length" class="cel-section">
-          <div class="cel-stitle">参演作品</div>
+          <div class="cel-stitle">{{ t('cel.works') }}</div>
           <div class="cel-works">
             <a v-for="(w, i) in profile.works" :key="i" :href="w.url" target="_blank" rel="noopener" class="cel-work">
               <span class="cel-wtitle">{{ w.title }}</span>
@@ -40,7 +43,7 @@ const profile = defineModel<CelebrityProfile | null>('profile', { required: true
           </div>
         </div>
         <div v-if="profile.douban_url" class="cel-footer">
-          <a :href="profile.douban_url" target="_blank" rel="noopener" class="text-muted">查看豆瓣页面 ↗</a>
+          <a :href="profile.douban_url" target="_blank" rel="noopener" class="text-muted">{{ t('cel.douban') }} ↗</a>
         </div>
       </template>
     </div>

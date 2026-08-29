@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/transfer"
 )
 
@@ -20,29 +21,29 @@ func (h *TransferHandler) SetSharedRepos(c *gin.Context) {
 		Repos []transfer.SharedRepo `json:"repos" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := transfer.SaveSharedRepos(h.ch.KV(), in.Repos); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"repos": in.Repos})
 }
 
 // FetchSharedRepo POST /transfer/identify-words/repos/preview —— 拉取仓库词表预览
-//（不落库：先看会合并进哪些新词，确认后再导入；与 MSaber「云端协作共享」同流程）。
+// （不落库：先看会合并进哪些新词，确认后再导入；与 MSaber「云端协作共享」同流程）。
 func (h *TransferHandler) FetchSharedRepo(c *gin.Context) {
 	var in struct {
 		URL string `json:"url" binding:"required,url"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	words, err := transfer.FetchSharedRepo(c.Request.Context(), in.URL)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	local := transfer.LoadIdentifyWords(h.ch.KV())
@@ -57,18 +58,18 @@ func (h *TransferHandler) ImportSharedRepo(c *gin.Context) {
 		URL string `json:"url" binding:"required,url"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	words, err := transfer.FetchSharedRepo(c.Request.Context(), in.URL)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	local := transfer.LoadIdentifyWords(h.ch.KV())
 	merged, added := transfer.MergeWords(local, words)
 	if err := transfer.SaveIdentifyWords(h.ch.KV(), merged); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"total": len(merged), "added": added})

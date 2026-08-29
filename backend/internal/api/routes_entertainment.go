@@ -6,7 +6,12 @@ import (
 )
 
 // registerEntertainmentRoutes 注册娱乐游戏路由（翻面夺宝 WS 桥接注册在 api 上绕过 header 鉴权）。
+// ENTERTAINMENT_ENABLED=false（默认）时整组不注册——游戏自动化可能违反站规，
+// 用户显式开启才暴露（风险自担，见 config.example.yaml 告知）。
 func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
+	if !d.Cfg.EntertainmentEnabled {
+		return
+	}
 	entH := v1.NewEntertainmentHandler(d.Entertainment, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins))
 	ent := guarded.Group("/entertainment")
 	{

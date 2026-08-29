@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/site"
@@ -30,7 +31,7 @@ type findReq struct {
 func (h *KeepSeedHandler) Find(c *gin.Context) {
 	var req findReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	cands := h.ks.FindCandidates(c.Request.Context(), req.Name, req.Size)
@@ -65,7 +66,7 @@ func toTorrentJSON(t site.Torrent) gin.H {
 func (h *KeepSeedHandler) GetConfig(c *gin.Context) {
 	token, err := h.ks.GetToken()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	masked := ""
@@ -106,18 +107,18 @@ type configReq struct {
 func (h *KeepSeedHandler) SetConfig(c *gin.Context) {
 	var req configReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if tok := strings.TrimSpace(req.IYUUToken); tok != "" {
 		if err := h.ks.SetToken(tok); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 	}
 	if req.SetTorznab {
 		if err := h.ks.SetTorznab(req.TorznabURL, req.TorznabKey); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 	}
@@ -132,12 +133,12 @@ type reseedReq struct {
 func (h *KeepSeedHandler) Reseed(c *gin.Context) {
 	var req reseedReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	created, err := h.ks.Reseed(c.Request.Context(), req.DownloaderID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"tasks": created, "count": len(created)})
@@ -152,12 +153,12 @@ type missingReq struct {
 func (h *KeepSeedHandler) Missing(c *gin.Context) {
 	var req missingReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	summary, err := h.ks.FindMissing(c.Request.Context(), req.DownloaderID, req.TargetSiteIDs)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, summary)
@@ -173,7 +174,7 @@ func (h *KeepSeedHandler) Tasks(c *gin.Context) {
 	}
 	tasks, err := h.ks.ListTasks(c.Query("status"), siteID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
@@ -187,16 +188,16 @@ type resolveReq struct {
 func (h *KeepSeedHandler) Resolve(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	var req resolveReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.ks.Resolve(c.Request.Context(), uint(id), req.Action); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -206,12 +207,12 @@ func (h *KeepSeedHandler) Resolve(c *gin.Context) {
 func (h *KeepSeedHandler) GetSetting(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Query("downloader_id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid downloader_id"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	s, err := h.ks.Setting(uint(id))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, s)
@@ -229,7 +230,7 @@ type settingReq struct {
 func (h *KeepSeedHandler) SetSetting(c *gin.Context) {
 	var req settingReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	s := models.CrossSeedSetting{
@@ -240,7 +241,7 @@ func (h *KeepSeedHandler) SetSetting(c *gin.Context) {
 		AutoReseedAdd: req.AutoReseedAdd,
 	}
 	if err := h.ks.SaveSetting(s); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})

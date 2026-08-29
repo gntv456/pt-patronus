@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { assessmentApi } from '@/api/assessment'
@@ -6,6 +7,7 @@ import { brushflowApi } from '@/api/brushflow'
 import { saveptApi } from '@/api/savept'
 import { reseedApi } from '@/api/reseed'
 
+const { t } = useI18n()
 const router = useRouter()
 
 interface TaskCard {
@@ -19,12 +21,12 @@ interface TaskCard {
 }
 
 const cards = ref<TaskCard[]>([
-  { key: 'assess', title: '保级风险', value: '—', hint: '考核 DANGER/PROGRESS', tone: 'info', route: 'assessment' },
-  { key: 'transfer', title: '待整理', value: '—', hint: '待入库 + 失败', tone: 'info', route: 'transfer' },
-  { key: 'brush', title: '刷流中', value: '—', hint: '启用中的刷流任务', tone: 'info', route: 'brushflow' },
-  { key: 'health', title: '站点健康', value: '—', hint: '监护室 critical', tone: 'info', route: 'savept' },
-  { key: 'reseed', title: '辅种建议', value: '—', hint: '待处理候选', tone: 'info', route: 'reseed' },
-  { key: 'doctor', title: '健康自检', value: '→', hint: '打开诊断页', tone: 'info', route: 'doctor' },
+  { key: 'assess', title: t('dt2.assess'), value: '—', hint: t('dt2.assessHint'), tone: 'info', route: 'assessment' },
+  { key: 'transfer', title: t('dt2.transfer'), value: '—', hint: t('dt2.transferHint'), tone: 'info', route: 'transfer' },
+  { key: 'brush', title: t('dt2.brush'), value: '—', hint: t('dt2.brushHint'), tone: 'info', route: 'brushflow' },
+  { key: 'health', title: t('dt2.health'), value: '—', hint: t('dt2.healthHint'), tone: 'info', route: 'savept' },
+  { key: 'reseed', title: t('dt2.reseed'), value: '—', hint: t('dt2.reseedHint'), tone: 'info', route: 'reseed' },
+  { key: 'doctor', title: t('dt2.doctor'), value: '→', hint: t('dt2.doctorHint'), tone: 'info', route: 'doctor' },
 ])
 const loading = ref(false)
 
@@ -53,47 +55,47 @@ async function refresh() {
       setCard('assess', {
         value: String(danger + progress),
         hint: danger
-          ? `${danger} 站危急 · ${progress} 进行中`
+          ? t('dt2.assessDanger', { danger, progress })
           : progress
-            ? `${progress} 站进行中`
-            : '考核状态平稳',
+            ? t('dt2.assessProgress', { progress })
+            : t('dt2.assessStable'),
         tone: danger ? 'danger' : progress ? 'warn' : 'ok',
       })
     } else {
-      setCard('assess', { value: '—', hint: '考核数据加载失败', tone: 'info' })
+      setCard('assess', { value: '—', hint: t('dt2.assessLoadFailed'), tone: 'info' })
     }
 
     if (bfR.status === 'fulfilled') {
       const enabledBf = bfR.value.filter((t) => t.enabled).length
       setCard('brush', {
         value: String(enabledBf),
-        hint: enabledBf ? `${enabledBf} 个任务启用` : '暂无启用任务',
+        hint: enabledBf ? t('dt2.brushN', { n: enabledBf }) : t('dt2.brushNone'),
         tone: enabledBf ? 'warn' : 'ok',
       })
     } else {
-      setCard('brush', { value: '—', hint: '刷流数据加载失败', tone: 'info' })
+      setCard('brush', { value: '—', hint: t('dt2.brushLoadFailed'), tone: 'info' })
     }
 
     if (saveptR.status === 'fulfilled' && saveptR.value) {
       const critical = saveptR.value.summary?.critical ?? 0
       setCard('health', {
         value: String(critical),
-        hint: critical ? `${critical} 站异常` : '监护站健康',
+        hint: critical ? t('dt2.healthN', { n: critical }) : t('dt2.healthOk'),
         tone: critical ? 'danger' : 'ok',
       })
     } else {
-      setCard('health', { value: '—', hint: '监护数据加载失败', tone: 'info' })
+      setCard('health', { value: '—', hint: t('dt2.healthLoadFailed'), tone: 'info' })
     }
 
     if (reseedR.status === 'fulfilled') {
       const n = reseedR.value.length
       setCard('reseed', {
         value: String(n),
-        hint: n ? `${n} 待处理候选` : '无待处理辅种',
+        hint: n ? t('dt2.reseedN', { n }) : t('dt2.reseedNone'),
         tone: n ? 'warn' : 'ok',
       })
     } else {
-      setCard('reseed', { value: '—', hint: '辅种数据加载失败', tone: 'info' })
+      setCard('reseed', { value: '—', hint: t('dt2.reseedLoadFailed'), tone: 'info' })
     }
 
     // 真实待入库（扫下载器）+ 失败历史
@@ -103,18 +105,18 @@ async function refresh() {
       const failed = s.failed || 0
       const total = pending + failed
       const hints: string[] = []
-      if (pending) hints.push(`${pending} 待入库`)
-      if (failed) hints.push(`${failed} 失败`)
-      if (s.scan_partial) hints.push('扫描部分失败')
-      if (!s.enabled) hints.push('整理未启用')
+      if (pending) hints.push(t('dt2.pendingN', { n: pending }))
+      if (failed) hints.push(t('dt2.failedN', { n: failed }))
+      if (s.scan_partial) hints.push(t('dt2.scanPartial'))
+      if (!s.enabled) hints.push(t('dt2.transferDisabled'))
       setCard('transfer', {
         value: total ? String(total) : s.enabled ? '0' : '→',
-        hint: hints.length ? hints.join(' · ') : '无待办',
+        hint: hints.length ? hints.join(' · ') : t('dt2.noTodo'),
         tone: failed ? 'danger' : pending ? 'warn' : s.enabled ? 'ok' : 'info',
         query: failed && !pending ? { status: 'failed' } : pending ? { view: 'pending' } : undefined,
       })
     } else {
-      setCard('transfer', { value: '—', hint: '整理汇总加载失败', tone: 'info' })
+      setCard('transfer', { value: '—', hint: t('dt2.transferLoadFailed'), tone: 'info' })
     }
   } finally {
     loading.value = false
@@ -134,9 +136,9 @@ onMounted(() => {
 <template>
   <div class="task-cards" v-loading="loading">
     <div class="head">
-      <h3>任务卡片</h3>
-      <p>跨站总览入口 · 点卡片下钻</p>
-      <button type="button" class="refresh" @click="refresh">刷新</button>
+      <h3>{{ t('dt2.title') }}</h3>
+      <p>{{ t('dt2.sub') }}</p>
+      <button type="button" class="refresh" @click="refresh">{{ t('common.refresh') }}</button>
     </div>
     <div class="grid">
       <button

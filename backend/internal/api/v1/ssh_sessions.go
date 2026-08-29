@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // Sessions 返回目标主机的活跃 SSH 会话列表（who 输出解析）。
@@ -18,7 +19,7 @@ func (h *SshAdminHandler) Sessions(c *gin.Context) {
 	cmd := `w -h 2>/dev/null`
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	resp := sshSessionListResp{Sessions: []sshSessionRow{}}
@@ -69,13 +70,13 @@ func (h *SshAdminHandler) KillSession(c *gin.Context) {
 	pidStr := c.Param("pid")
 	pid, err := strconv.ParseUint(pidStr, 10, 32)
 	if err != nil || pid <= 2 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid pid"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	cmd := "kill -TERM " + pidStr + " 2>&1"
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 10)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !r.Success {
@@ -101,7 +102,7 @@ func (h *SshAdminHandler) Logs(c *gin.Context) {
 	cmd := "journalctl -u sshd -u ssh --no-pager -n " + strconv.Itoa(n) + ` 2>/dev/null | grep -E 'Accepted|Failed|Disconnected' || last -n ` + strconv.Itoa(n)
 	r, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	resp := sshLogListResp{Logs: []sshLogRow{}}

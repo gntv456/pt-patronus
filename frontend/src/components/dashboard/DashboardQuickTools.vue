@@ -2,6 +2,7 @@
 // 快捷工具（对标 MSaber 快捷工具面板）：TOTP 两步验证码、AES-128/256 密钥、
 // 网络连通性测试（多目标 ping）、种子名称识别（转 /transfer 识别测试已有入口）。
 // 全部纯前端实现（TOTP 用 WebCrypto HMAC；AES 密钥 crypto.getRandomValues；连通性 fetch HEAD 计时）。
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -54,8 +55,8 @@ async function refreshTotp() {
   const [cur, next] = await Promise.all([totpAt(secret, counter), totpAt(secret, counter + 1)])
   const second = 30 - (Math.floor(Date.now() / 1000) % 30)
   totpCodes.value = [
-    { account: '当前', code: cur, second },
-    { account: '下一组', code: next, second },
+    { account: t('dqt.current'), code: cur, second },
+    { account: t('dqt.next'), code: next, second },
   ]
 }
 
@@ -80,9 +81,11 @@ function genAes() {
   aesKey.value = btoa(String.fromCharCode(...key))
   aesIv.value = btoa(String.fromCharCode(...iv))
 }
-function copyText(t: string) {
-  if (!t) return
-  navigator.clipboard.writeText(t).then(() => ElMessage.success('已复制'))
+const { t } = useI18n()
+
+function copyText(text: string) {
+  if (!text) return
+  navigator.clipboard.writeText(text).then(() => ElMessage.success(t('dqt.copied')))
 }
 
 // ---- 网络连通性测试 ----
@@ -97,7 +100,7 @@ async function probe(url: string): Promise<{ url: string; ok: boolean; ms: numbe
     await fetch(url, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(8000) })
     return { url, ok: true, ms: Math.round(performance.now() - t0) }
   } catch (e: any) {
-    return { url, ok: false, ms: Math.round(performance.now() - t0), err: e?.name === 'TimeoutError' ? '超时' : '失败' }
+    return { url, ok: false, ms: Math.round(performance.now() - t0), err: e?.name === 'TimeoutError' ? t('dqt.timeout') : t('common.failed') }
   }
 }
 
@@ -112,13 +115,13 @@ async function runNet() {
 
 <template>
   <div class="quick-tools glass">
-    <div class="qt-title">快捷工具</div>
+    <div class="qt-title">{{ t('dqt.title') }}</div>
     <div class="qt-grid">
       <!-- TOTP -->
       <div class="qt-card">
-        <div class="qt-head">🔐 两步验证码</div>
+        <div class="qt-head">🔐 {{ t('dqt.totp') }}</div>
         <div class="qt-body">
-          <el-input v-model="totpSecret" placeholder="Base32 密钥（如 JBSWY3DPEHPK3PXP）" size="small" @change="startTotp" />
+          <el-input v-model="totpSecret" :placeholder="t('dqt.totpPh')" size="small" @change="startTotp" />
           <template v-if="totpCodes.length">
             <div v-for="c in totpCodes" :key="c.account" class="totp-row">
               <span class="totp-account">{{ c.account }}</span>
@@ -126,34 +129,34 @@ async function runNet() {
               <span class="totp-sec">{{ c.second }}s</span>
             </div>
           </template>
-          <span v-else class="qt-hint">填入站点 TOTP 密钥实时生成 6 位验证码</span>
+          <span v-else class="qt-hint">{{ t('dqt.totpHint') }}</span>
         </div>
       </div>
 
       <!-- AES -->
       <div class="qt-card">
-        <div class="qt-head">🗝️ AES 密钥生成</div>
+        <div class="qt-head">🗝️ {{ t('dqt.aes') }}</div>
         <div class="qt-body">
           <el-radio-group v-model="aesBits" size="small">
             <el-radio-button :value="128">AES-128</el-radio-button>
             <el-radio-button :value="256">AES-256</el-radio-button>
           </el-radio-group>
-          <el-button size="small" type="primary" @click="genAes">生成</el-button>
+          <el-button size="small" type="primary" @click="genAes">{{ t('dqt.generate') }}</el-button>
           <div v-if="aesKey" class="aes-out">
             <div class="aes-row"><span>Key</span><code @click="copyText(aesKey)">{{ aesKey }}</code></div>
             <div class="aes-row"><span>IV</span><code @click="copyText(aesIv)">{{ aesIv }}</code></div>
           </div>
-          <span v-else class="qt-hint">生成随机 Key/IV（Base64，点击复制）</span>
+          <span v-else class="qt-hint">{{ t('dqt.aesHint') }}</span>
         </div>
       </div>
 
       <!-- 网络测试 -->
       <div class="qt-card">
-        <div class="qt-head">📡 网络连通测试</div>
+        <div class="qt-head">📡 {{ t('dqt.net') }}</div>
         <div class="qt-body">
           <div style="display:flex;gap:8px;width:100%">
-            <el-input v-model="netTarget" placeholder="自定义 URL（可选）" size="small" style="flex:1" />
-            <el-button size="small" type="primary" :loading="netTesting" @click="runNet">测试</el-button>
+            <el-input v-model="netTarget" :placeholder="t('dqt.netPh')" size="small" style="flex:1" />
+            <el-button size="small" type="primary" :loading="netTesting" @click="runNet">{{ t('dqt.test') }}</el-button>
           </div>
           <div v-if="netResults.length" class="net-list">
             <div v-for="(r, i) in netResults" :key="i" class="net-row">
@@ -161,16 +164,16 @@ async function runNet() {
               <span class="net-ms" :class="{ ok: r.ok, bad: !r.ok }">{{ r.ok ? `${r.ms}ms` : r.err }}</span>
             </div>
           </div>
-          <span v-else class="qt-hint">测试常用站点/媒体源连通性与延迟</span>
+          <span v-else class="qt-hint">{{ t('dqt.netHint') }}</span>
         </div>
       </div>
 
       <!-- 种子识别：跳转整理设置的识别测试 -->
       <div class="qt-card">
-        <div class="qt-head">🎞️ 种子名称识别</div>
+        <div class="qt-head">🎞️ {{ t('dqt.parse') }}</div>
         <div class="qt-body">
-          <el-button size="small" @click="router.push('/transfer')">打开识别测试</el-button>
-          <span class="qt-hint">整理设置 → 识别词 → 识别测试</span>
+          <el-button size="small" @click="router.push('/transfer')">{{ t('dqt.openParse') }}</el-button>
+          <span class="qt-hint">{{ t('dqt.parseHint') }}</span>
         </div>
       </div>
     </div>

@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { dockerApi } from '@/api/docker'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface Project {
   name: string; path: string; dir: string; file: string; content: string; host_dir: string
@@ -43,17 +46,17 @@ async function showDetail(p: Project) {
 }
 
 async function doAction(p: Project, action: 'up' | 'down' | 'restart' | 'pull') {
-  const labels = { up: '部署', down: '停止', restart: '重启', pull: '拉取镜像' }
+  const labels = { up: t('cp.actUp'), down: t('cp.actDown'), restart: t('cp.actRestart'), pull: t('cp.actPull') }
   try {
     if (action === 'down') {
-      await ElMessageBox.confirm(`确定要停止项目「${p.name}」吗？`, '确认', { type: 'warning' })
+      await ElMessageBox.confirm(t('cp.stopConfirm', { name: p.name }), t('common.confirm'), { type: 'warning' })
     }
     actionLoading.value = true
     outputText.value = ''
     outputVisible.value = true
     const res = await dockerApi.localProjectAction(p.dir, action)
-    outputText.value = res.output || (res.ok ? '成功' : '失败')
-    if (res.ok) ElMessage.success(labels[action] + '成功')
+    outputText.value = res.output || (res.ok ? t('dcl.ok') : t('dcl.ko'))
+    if (res.ok) ElMessage.success(t('cp.actionOk', { name: labels[action] }))
   } catch (e: any) {
     if (e !== 'cancel') { outputText.value = e.message; outputVisible.value = true }
   } finally { actionLoading.value = false }
@@ -65,11 +68,11 @@ async function saveProject() {
   try {
     const res = await dockerApi.localProjectSave(detailDir.value, detailContent.value)
     if (res.ok) {
-      ElMessage.success('已保存')
+      ElMessage.success(t('common.saved'))
       editing.value = false
       refresh()
     } else {
-      ElMessage.error('保存失败：' + (res.error || '语法错误'))
+      ElMessage.error(t('cp.saveFailed', { err: res.error || t('cp.syntaxErr') }))
       if (res.output) { outputText.value = res.output; outputVisible.value = true }
     }
   } catch (e: any) {
@@ -83,14 +86,14 @@ onMounted(() => refresh())
 <template>
   <div class="compose-projects">
     <div v-if="!available" class="not-available glass">
-      <p>未挂载宿主 compose 目录。</p>
-      <p class="hint">在 docker-compose.yml 添加：<code>- ${'$'}{COMPOSE_ROOT:-/opt}:/host/compose:ro</code></p>
-      <p class="hint">然后设置环境变量 <code>COMPOSE_ROOT</code> 指向你的 compose 项目根目录。</p>
+      <p>{{ t('cp.noMount') }}</p>
+      <p class="hint">{{ t('cp.hint1') }}<code>- ${'$'}{COMPOSE_ROOT:-/opt}:/host/compose:ro</code></p>
+      <p class="hint">{{ t('cp.hint2Pre') }}<code>COMPOSE_ROOT</code>{{ t('cp.hint2Post') }}</p>
     </div>
     <div v-else v-loading="loading" class="project-list">
       <div class="list-head">
-        <span>扫描目录：{{ scanDir }}（{{ projects.length }} 个项目）</span>
-        <el-button size="small" @click="refresh">刷新</el-button>
+        <span>{{ t('cp.scanDir', { dir: scanDir, n: projects.length }) }}</span>
+        <el-button size="small" @click="refresh">{{ t('common.refresh') }}</el-button>
       </div>
       <div v-for="p in projects" :key="p.dir" class="project-card glass">
         <div class="project-head">
@@ -100,30 +103,30 @@ onMounted(() => refresh())
             <span class="project-host" :title="p.host_dir">{{ p.host_dir }}</span>
           </div>
           <div class="project-actions">
-            <el-button size="small" link @click="showDetail(p)">查看</el-button>
-            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'pull')">拉取</el-button>
-            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'restart')">重启</el-button>
-            <el-button size="small" type="danger" link :disabled="actionLoading" @click="doAction(p, 'down')">停止</el-button>
-            <el-button size="small" type="primary" link :disabled="actionLoading" @click="doAction(p, 'up')">部署</el-button>
+            <el-button size="small" link @click="showDetail(p)">{{ t('cp.view') }}</el-button>
+            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'pull')">{{ t('cp.pull') }}</el-button>
+            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'restart')">{{ t('cp.actRestart') }}</el-button>
+            <el-button size="small" type="danger" link :disabled="actionLoading" @click="doAction(p, 'down')">{{ t('cp.actDown') }}</el-button>
+            <el-button size="small" type="primary" link :disabled="actionLoading" @click="doAction(p, 'up')">{{ t('cp.actUp') }}</el-button>
           </div>
         </div>
         <pre class="project-preview">{{ p.content }}</pre>
       </div>
-      <div v-if="!projects.length" class="empty">未找到 compose 项目。将项目放在扫描目录下（含 docker-compose.yml）。</div>
+      <div v-if="!projects.length" class="empty">{{ t('cp.empty') }}</div>
     </div>
 
-    <el-drawer v-model="detailVisible" :title="`项目: ${detailName}`" size="60%" direction="rtl">
+    <el-drawer v-model="detailVisible" :title="t('cp.projectTitle', { name: detailName })" size="60%" direction="rtl">
       <div class="detail-toolbar">
-        <el-button v-if="!editing" size="small" type="primary" @click="editing = true">编辑</el-button>
+        <el-button v-if="!editing" size="small" type="primary" @click="editing = true">{{ t('common.edit') }}</el-button>
         <template v-else>
-          <el-button size="small" type="success" :loading="saveLoading" @click="saveProject">保存</el-button>
-          <el-button size="small" @click="editing = false">取消</el-button>
+          <el-button size="small" type="success" :loading="saveLoading" @click="saveProject">{{ t('common.save') }}</el-button>
+          <el-button size="small" @click="editing = false">{{ t('common.cancel') }}</el-button>
         </template>
       </div>
       <pre v-if="!editing" class="detail-content">{{ detailContent }}</pre>
       <el-input v-else v-model="detailContent" type="textarea" :autosize="{ minRows: 20 }" class="detail-editor" />
     </el-drawer>
-    <el-drawer v-model="outputVisible" title="命令输出" size="50%" direction="rtl">
+    <el-drawer v-model="outputVisible" :title="t('cp.outputTitle')" size="50%" direction="rtl">
       <pre class="output-content">{{ outputText }}</pre>
     </el-drawer>
   </div>

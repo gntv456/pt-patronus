@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, toRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { entertainmentApi, type BigSmallState } from '@/api/entertainment'
 import { useBigSmallChat, useBigSmallItems, fmt } from '@/composables/useBigSmallGame'
 import BigSmallSidebar from '@/components/BigSmallSidebar.vue'
@@ -24,14 +25,15 @@ const roundStatus = computed(() => state.value?.round.status ?? '')
 const betting = ref(false)
 const canBet = computed(() => roundStatus.value === 'betting' && sealRemaining.value > 0 && !betting.value && !!state.value)
 const statusText = computed(() => {
-  if (roundStatus.value === 'sealed') return '已封盘，即将开奖…'
-  if (roundStatus.value === 'finished') return '本局已结束，下一局即将开始'
-  if (roundStatus.value === 'betting' && sealRemaining.value <= 3) return `即将封盘（${sealRemaining.value}s）`
-  return `下注中 · 剩余 ${remaining.value}s`
+  if (roundStatus.value === 'sealed') return t('bs.waitSealed')
+  if (roundStatus.value === 'finished') return t('bs.waitFinished')
+  if (roundStatus.value === 'betting' && sealRemaining.value <= 3) return t('bs.waitSealing', { s: sealRemaining.value })
+  return t('bs.waitBetting', { s: remaining.value })
 })
 
 // ── 下注 ──
 const amount = ref(1000)
+const { t } = useI18n()
 const propId = ref('0') // 好学道具随注
 const quickAmounts = [1000, 5000, 10000, 50000, 100000]
 function allIn() {
@@ -49,9 +51,9 @@ async function doBet(type: 'big' | 'small') {
     // 好学验证码：code=3 → 收 code 带 hash 重下
     if (!res.success && (res.raw as { captcha_required?: boolean })?.captcha_required) {
       try {
-        const { value } = await ElMessageBox.prompt('请输入图中字符', '安全验证', {
+        const { value } = await ElMessageBox.prompt(t('bs.captchaPrompt'), t('bs.captchaTitle'), {
           inputPattern: /\S+/,
-          inputErrorMessage: '不能为空',
+          inputErrorMessage: t('bs.notEmpty'),
         })
         extra.captcha_hash = (res.raw as { imagehash?: string })?.imagehash ?? ''
         extra.captcha_code = value
@@ -60,11 +62,11 @@ async function doBet(type: 'big' | 'small') {
         /* 用户取消 */
       }
     }
-    if (res.success) ElMessage.success(res.prize || res.message || '下注成功')
-    else ElMessage.warning(res.message || '下注失败')
+    if (res.success) ElMessage.success(res.prize || res.message || t('bs.betOk'))
+    else ElMessage.warning(res.message || t('bs.betFailed'))
     await load(true)
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '请求失败')
+    ElMessage.error((e as Error).message || t('common.requestFailed'))
   } finally {
     betting.value = false
   }
@@ -82,9 +84,9 @@ async function load(silent = false) {
     if (s.min_bet && amount.value < s.min_bet) amount.value = Math.floor(s.min_bet)
     // 聊天用 state 首播 + 后续轮询增量
     initChatFromState(s)
-    if (!silent) ElMessage.success('已刷新')
+    if (!silent) ElMessage.success(t('bs.refreshed'))
   } catch (e: unknown) {
-    if (!silent) ElMessage.error((e as Error).message || '加载失败')
+    if (!silent) ElMessage.error((e as Error).message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -102,7 +104,7 @@ const rankTab = ref(0)
 const recTab = ref<'my' | 'all'>('my')
 
 const dotColor = (r: string) => (r === 'big' ? '#ef4444' : r === 'house' ? '#22c55e' : '#3b82f6')
-const dotLabel = (r: string) => (r === 'big' ? '大' : r === 'house' ? '庄' : '小')
+const dotLabel = (r: string) => (r === 'big' ? t('bs.big') : r === 'house' ? t('bs.house') : t('bs.small'))
 
 // 排名配色类名（1/2/3 名）
 const topCls = ['gold', 'silver', 'bronze']
@@ -149,9 +151,9 @@ onBeforeUnmount(stopTimers)
     <div class="hero">
       <div class="hero-title">🎲 {{ name }}</div>
       <div class="balance">
-        余额 <b>{{ fmt(state?.balance) }}</b>
+        {{ t('bs.balance') }} <b>{{ fmt(state?.balance) }}</b>
         <span v-if="state?.currency" class="cur">{{ state.currency }}</span>
-        <span v-if="state?.payout" class="payout">· 赔率 {{ state.payout }}×</span>
+        <span v-if="state?.payout" class="payout">· {{ t('bs.payout', { n: state.payout }) }}</span>
       </div>
     </div>
 
@@ -159,23 +161,22 @@ onBeforeUnmount(stopTimers)
     <div class="stat-bar">
       <div class="stat-tile">
         <div class="stat-val" :class="{ warn: roundStatus !== 'betting' }">{{ remaining }}s</div>
-        <div class="stat-lbl">倒计时</div>
+        <div class="stat-lbl">{{ t('bs.countdown') }}</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-val">{{ roundStatus === 'betting' ? '可下注' : roundStatus === 'sealed' ? '封盘' : '已结束' }}</div>
+        <div class="stat-val">{{ roundStatus === 'betting' ? t('bs.canBet') : roundStatus === 'sealed' ? t('bs.sealed') : t('bs.ended') }}</div>
         <div class="stat-lbl">{{ statusText }}</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-val">第 {{ state?.round.game_no || '?' }} 局</div>
-        <div class="stat-lbl">{{ state?.round.player_count ?? 0 }} 人 · 总注 {{ fmt(state?.round.total_bet) }}</div>
+        <div class="stat-val">{{ t('bs.roundN', { n: state?.round.game_no || '?' }) }}</div>
+        <div class="stat-lbl">{{ t('bs.roundMeta', { players: state?.round.player_count ?? 0, total: fmt(state?.round.total_bet) }) }}</div>
       </div>
-      <button class="refresh-btn" :disabled="loading" @click="load(false)">⟳</button>
+      <button class="refresh-btn" :disabled="loading" :aria-label="t('bs.refreshRound')" @click="load(false)">⟳</button>
     </div>
 
     <!-- 上局结果 -->
     <div v-if="state?.last_result" class="last-res" :class="(state.last_result.net_result ?? -1) >= 0 ? 'win' : 'lose'">
-      上局 #{{ state.last_result.game_no }} 开 <b>{{ dotLabel(state.last_result.result || '') }}</b>，
-      你押 {{ dotLabel(state.last_result.bet_type) }} {{ fmt(state.last_result.amount) }} →
+      {{ t('bs.lastResult', { no: state.last_result.game_no, result: dotLabel(state.last_result.result || ''), bet: dotLabel(state.last_result.bet_type), amount: fmt(state.last_result.amount) }) }} →
       <b>{{ (state.last_result.net_result ?? 0) >= 0 ? '+' : '' }}{{ fmt(state.last_result.net_result ?? 0) }}</b>
     </div>
 
@@ -183,18 +184,18 @@ onBeforeUnmount(stopTimers)
       <!-- 左：走势 + 下注 -->
       <div class="left">
         <section class="glass panel">
-          <div class="sec-title">📊 走势分析</div>
+          <div class="sec-title">📊 {{ t('bs.trend') }}</div>
           <div class="trend-row">
             <div class="trend-block">
-              <div class="trend-cap">40场</div>
-              <div class="bar-row"><span class="bar big" :style="{ width: state?.trend40.big_pct + '%' }">大 {{ state?.trend40.big_count }}</span></div>
-              <div class="bar-row"><span class="bar small" :style="{ width: state?.trend40.small_pct + '%' }">小 {{ state?.trend40.small_count }}</span></div>
-              <div v-if="state?.has_house" class="trend-house">通杀 {{ state?.trend40.house_count }}</div>
+              <div class="trend-cap">{{ t('bs.last40') }}</div>
+              <div class="bar-row"><span class="bar big" :style="{ width: state?.trend40.big_pct + '%' }">{{ t('bs.big') }} {{ state?.trend40.big_count }}</span></div>
+              <div class="bar-row"><span class="bar small" :style="{ width: state?.trend40.small_pct + '%' }">{{ t('bs.small') }} {{ state?.trend40.small_count }}</span></div>
+              <div v-if="state?.has_house" class="trend-house">{{ t('bs.houseKill', { n: state?.trend40.house_count }) }}</div>
             </div>
             <div class="trend-block">
-              <div class="trend-cap">最近10场</div>
-              <div class="bar-row"><span class="bar big" :style="{ width: state?.trend10.big_pct + '%' }">大 {{ state?.trend10.big_count }}</span></div>
-              <div class="bar-row"><span class="bar small" :style="{ width: state?.trend10.small_pct + '%' }">小 {{ state?.trend10.small_count }}</span></div>
+              <div class="trend-cap">{{ t('bs.last10') }}</div>
+              <div class="bar-row"><span class="bar big" :style="{ width: state?.trend10.big_pct + '%' }">{{ t('bs.big') }} {{ state?.trend10.big_count }}</span></div>
+              <div class="bar-row"><span class="bar small" :style="{ width: state?.trend10.small_pct + '%' }">{{ t('bs.small') }} {{ state?.trend10.small_count }}</span></div>
             </div>
           </div>
           <div v-if="state?.recent_results?.length" class="dots">
@@ -204,31 +205,31 @@ onBeforeUnmount(stopTimers)
         </section>
 
         <section class="glass panel">
-          <div class="sec-title">💰 下注</div>
-          <div class="my-bet" v-if="state?.my_bet">本局已押 <b>{{ dotLabel(state.my_bet.bet_type) }}</b> {{ fmt(state.my_bet.amount) }}</div>
+          <div class="sec-title">💰 {{ t('bs.placeBet') }}</div>
+          <div class="my-bet" v-if="state?.my_bet">{{ t('bs.myBet', { side: dotLabel(state.my_bet.bet_type), amount: fmt(state.my_bet.amount) }) }}</div>
           <div class="bet-amount">
             <input v-model.number="amount" type="number" class="amt" :min="state?.min_bet ?? 1" />
-            <span class="hint">最低 {{ state?.min_bet ?? 0 }}</span>
-            <button class="quick allin" @click="allIn">梭哈</button>
+            <span class="hint">{{ t('bs.minBet', { n: state?.min_bet ?? 0 }) }}</span>
+            <button class="quick allin" @click="allIn">{{ t('bs.allIn') }}</button>
           </div>
           <div class="quicks">
             <button v-for="q in quickAmounts" :key="q" class="quick" @click="amount = q">{{ q.toLocaleString() }}</button>
           </div>
           <select v-if="isHxpt && state?.props?.length" v-model="propId" class="prop-sel">
-            <option value="0">不使用道具</option>
+            <option value="0">{{ t('bs.noProp') }}</option>
             <option v-for="p in state.props.filter((p) => p.usable)" :key="p.id" :value="p.id">{{ p.name }} ×{{ p.quantity }}</option>
           </select>
           <div class="ops">
-            <button class="op big" :disabled="!canBet" @click="doBet('big')">押 大</button>
-            <button class="op small" :disabled="!canBet" @click="doBet('small')">押 小</button>
+            <button class="op big" :disabled="!canBet" @click="doBet('big')">{{ t('bs.betBig') }}</button>
+            <button class="op small" :disabled="!canBet" @click="doBet('small')">{{ t('bs.betSmall') }}</button>
           </div>
           <div class="betters">
-            <div class="bet-col big"><span class="bet-col-cap">押大</span>
-              <span v-if="!state?.big_bets?.length" class="empty">暂无</span>
+            <div class="bet-col big"><span class="bet-col-cap">{{ t('bs.bigSide') }}</span>
+              <span v-if="!state?.big_bets?.length" class="empty">{{ t('bs.none') }}</span>
               <span v-else v-for="(b, i) in state.big_bets.slice(0, 8)" :key="i" class="bet-name">{{ b.username }} {{ fmt(b.amount) }}</span>
             </div>
-            <div class="bet-col small"><span class="bet-col-cap">押小</span>
-              <span v-if="!state?.small_bets?.length" class="empty">暂无</span>
+            <div class="bet-col small"><span class="bet-col-cap">{{ t('bs.smallSide') }}</span>
+              <span v-if="!state?.small_bets?.length" class="empty">{{ t('bs.none') }}</span>
               <span v-else v-for="(b, i) in state.small_bets.slice(0, 8)" :key="i" class="bet-name">{{ b.username }} {{ fmt(b.amount) }}</span>
             </div>
           </div>
@@ -255,17 +256,17 @@ onBeforeUnmount(stopTimers)
     <!-- 游戏记录 -->
     <section class="glass panel">
       <div class="sec-title-row">
-        <div class="sec-title">📋 游戏记录</div>
+        <div class="sec-title">📋 {{ t('bs.records') }}</div>
         <div class="tabs sm">
-          <button class="tab" :class="{ on: recTab === 'my' }" @click="recTab = 'my'">我的(近10场)</button>
-          <button class="tab" :class="{ on: recTab === 'all' }" @click="recTab = 'all'">所有人(近20场)</button>
+          <button class="tab" :class="{ on: recTab === 'my' }" @click="recTab = 'my'">{{ t('bs.myRec') }}</button>
+          <button class="tab" :class="{ on: recTab === 'all' }" @click="recTab = 'all'">{{ t('bs.allRec') }}</button>
         </div>
       </div>
       <div class="rec-table">
         <div class="rec-head">
-          <span>编号</span><span>开始</span><span>结束</span><span>人数</span><span>总注</span><span>结果</span>
-          <template v-if="recTab === 'my'"><span>我的下注</span><span>参与结果</span></template>
-          <span v-else>下注用户</span>
+          <span>{{ t('bs.no') }}</span><span>{{ t('bs.start') }}</span><span>{{ t('bs.end') }}</span><span>{{ t('bs.players') }}</span><span>{{ t('bs.total') }}</span><span>{{ t('bs.result') }}</span>
+          <template v-if="recTab === 'my'"><span>{{ t('bs.myBetCol') }}</span><span>{{ t('bs.myResult') }}</span></template>
+          <span v-else>{{ t('bs.betUsers') }}</span>
         </div>
         <div v-for="(r, i) in (recTab === 'my' ? state?.my_records : state?.all_records) ?? []" :key="i" class="rec-row">
           <span>{{ r.game_no }}</span>
@@ -280,23 +281,23 @@ onBeforeUnmount(stopTimers)
           </template>
           <span v-else class="muted bets-cell">{{ r.bets || '—' }}</span>
         </div>
-        <div v-if="!((recTab === 'my' ? state?.my_records : state?.all_records)?.length)" class="empty">暂无记录</div>
+        <div v-if="!((recTab === 'my' ? state?.my_records : state?.all_records)?.length)" class="empty">{{ t('bs.noRecords') }}</div>
       </div>
     </section>
 
     <!-- 聊天 -->
     <section class="glass panel chat-panel">
-      <div class="sec-title">💬 聊天</div>
+      <div class="sec-title">💬 {{ t('bs.chat') }}</div>
       <div class="chat-list">
         <div v-for="m in chat" :key="m.id" class="chat-msg">
           <span class="chat-user">{{ m.username }}</span>
           <span class="chat-text">{{ m.message }}</span>
         </div>
-        <div v-if="!chat.length" class="empty">暂无消息</div>
+        <div v-if="!chat.length" class="empty">{{ t('bs.noMessages') }}</div>
       </div>
       <div class="chat-input">
-        <input v-model="chatInput" placeholder="发条消息…" @keyup.enter="sendChat" />
-        <button :disabled="sending" @click="sendChat">发送</button>
+        <input v-model="chatInput" :placeholder="t('bs.chatPh')" @keyup.enter="sendChat" />
+        <button :disabled="sending" @click="sendChat">{{ t('bs.send') }}</button>
       </div>
     </section>
   </div>

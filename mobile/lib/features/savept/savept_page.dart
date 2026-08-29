@@ -252,6 +252,7 @@ class _SaveptPageState extends State<SaveptPage>
       floatingActionButton: _showBackToTop
           ? FloatingActionButton(
               mini: true,
+              tooltip: '回到顶部',
               onPressed: _scrollToTop,
               child: const Icon(Icons.arrow_upward),
             )

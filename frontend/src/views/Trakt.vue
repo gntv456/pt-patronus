@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { traktApi, type TraktConfig } from '@/api/trakt'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { ElMessage } from 'element-plus'
 
+const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const cfg = ref<TraktConfig | null>(null)
@@ -41,7 +43,7 @@ async function load() {
       startPolling()
     }
   } catch (e: unknown) {
-    ElMessage.error('加载配置失败')
+    ElMessage.error(t('trakt.loadCfgFailed'))
   } finally {
     loading.value = false
   }
@@ -67,11 +69,11 @@ async function saveConfig() {
   saving.value = true
   try {
     await traktApi.setConfig(form.value)
-    ElMessage.success('已保存')
+    ElMessage.success(t('common.saved'))
     showConfig.value = false
     await load()
   } catch (e: unknown) {
-    ElMessage.error('保存失败')
+    ElMessage.error(t('common.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -82,11 +84,11 @@ async function startDeviceAuth() {
   try {
     const dc = await traktApi.deviceCode()
     device.value = { user_code: dc.user_code, verification_url: dc.verification_url }
-    ElMessage.success('请在打开的页面输入授权码')
+    ElMessage.success(t('trakt.enterCodePrompt'))
     window.open(dc.verification_url, '_blank')
     startPolling()
   } catch (e: unknown) {
-    ElMessage.error('发起授权失败，请先在配置填写 client_id/client_secret')
+    ElMessage.error(t('trakt.authStartFailed'))
   } finally {
     authBusy.value = false
   }
@@ -100,7 +102,7 @@ function startPolling() {
       if (st.authorized) {
         stopPolling()
         device.value = null
-        ElMessage.success('Trakt 授权成功')
+        ElMessage.success(t('trakt.authOk'))
         await load()
       }
     } catch {
@@ -120,10 +122,10 @@ async function syncNow() {
   syncing.value = true
   try {
     const r = await traktApi.sync()
-    ElMessage.success(`同步完成，新增 ${r.created} 条订阅`)
+    ElMessage.success(t('trakt.syncDone', { n: r.created }))
     await load()
   } catch (e: unknown) {
-    ElMessage.error('同步失败，请先完成授权')
+    ElMessage.error(t('trakt.syncFailed'))
   } finally {
     syncing.value = false
   }
@@ -136,68 +138,68 @@ onUnmounted(stopPolling)
 <template>
   <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 v-if="!props.embedded" class="title"><GlassIcon name="trakt" :size="26" /> Trakt 同步</h2>
-      <h3 v-else class="title embedded-title">Trakt 同步</h3>
+      <h2 v-if="!props.embedded" class="title"><GlassIcon name="trakt" :size="26" /> {{ t('trakt.title') }}</h2>
+      <h3 v-else class="title embedded-title">{{ t('trakt.title') }}</h3>
       <div class="head-actions">
-        <el-button @click="openConfig">配置</el-button>
-        <el-button v-if="cfg?.authorized" type="primary" :loading="syncing" @click="syncNow">立即同步</el-button>
-        <el-button v-else type="primary" :loading="authBusy" @click="startDeviceAuth">授权 Trakt</el-button>
+        <el-button @click="openConfig">{{ t('trakt.config') }}</el-button>
+        <el-button v-if="cfg?.authorized" type="primary" :loading="syncing" @click="syncNow">{{ t('trakt.syncNow') }}</el-button>
+        <el-button v-else type="primary" :loading="authBusy" @click="startDeviceAuth">{{ t('trakt.authorize') }}</el-button>
       </div>
     </div>
-    <p class="sub">把 Trakt.tv 的 WatchList（电影/剧集）自动同步为本地订阅，跨站搜种下载。</p>
+    <p class="sub">{{ t('trakt.subtitle') }}</p>
 
     <div v-loading="loading" class="glass status-card">
       <div class="status-row">
         <span class="status-dot" :class="cfg?.authorized ? 'on' : 'off'"></span>
-        <span>{{ cfg?.authorized ? '已授权' : '未授权' }}</span>
-        <span v-if="cfg?.enabled" class="badge">同步已开启</span>
+        <span>{{ cfg?.authorized ? t('trakt.authorized') : t('trakt.unauthorized') }}</span>
+        <span v-if="cfg?.enabled" class="badge">{{ t('trakt.syncEnabled') }}</span>
       </div>
       <div v-if="cfg?.last_sync_at" class="meta">
-        最近同步：{{ new Date(cfg.last_sync_at * 1000).toLocaleString() }} · 新增 {{ cfg.last_sync_count }} 条
+        {{ t('trakt.lastSync') }}{{ new Date(cfg.last_sync_at * 1000).toLocaleString() }} · {{ t('trakt.lastSyncCount', { n: cfg.last_sync_count }) }}
       </div>
       <div v-if="cfg?.last_error" class="err">{{ cfg.last_error }}</div>
 
       <!-- 设备授权引导 -->
       <div v-if="device" class="device">
-        <p>1. 打开：<a :href="device.verification_url" target="_blank">{{ device.verification_url }}</a></p>
-        <p>2. 输入授权码：</p>
+        <p>1. {{ t('trakt.step1Open') }}<a :href="device.verification_url" target="_blank">{{ device.verification_url }}</a></p>
+        <p>2. {{ t('trakt.step2Enter') }}</p>
         <code class="uc">{{ device.user_code }}</code>
-        <p class="muted">授权完成后本页自动检测，无需刷新。</p>
+        <p class="muted">{{ t('trakt.autoDetectNote') }}</p>
       </div>
     </div>
 
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" title="Trakt 配置" width="520px">
+    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" :title="t('trakt.configTitle')" width="520px">
       <el-form :model="form" label-width="150px" label-position="right">
-        <el-form-item label="启用定时同步">
+        <el-form-item :label="t('trakt.f.enableSync')">
           <el-switch v-model="form.enabled" />
         </el-form-item>
         <el-form-item label="Client ID">
-          <el-input v-model="form.client_id" placeholder="trakt.tv 创建应用所得" />
+          <el-input v-model="form.client_id" :placeholder="t('trakt.f.appHint')" />
         </el-form-item>
         <el-form-item label="Client Secret">
           <el-input
             v-model="form.client_secret"
             type="password"
             show-password
-            :placeholder="cfg?.client_secret_configured ? '已配置（留空=不修改）' : 'trakt.tv 创建应用所得'"
+            :placeholder="cfg?.client_secret_configured ? t('subtitle.f.configuredKeep') : t('trakt.f.appHint')"
           />
         </el-form-item>
         <el-form-item label="Redirect URI">
-          <el-input v-model="form.redirect_uri" placeholder="device 流用 urn:ietf:wg:oauth:2.0:oob" />
+          <el-input v-model="form.redirect_uri" :placeholder="t('trakt.f.redirectHint')" />
         </el-form-item>
-        <el-form-item label="同步电影">
+        <el-form-item :label="t('trakt.f.syncMovies')">
           <el-switch v-model="form.sync_movies" />
         </el-form-item>
-        <el-form-item label="同步剧集">
+        <el-form-item :label="t('trakt.f.syncShows')">
           <el-switch v-model="form.sync_shows" />
         </el-form-item>
-        <el-form-item label="默认分辨率">
-          <el-input v-model="form.resolution" placeholder="如 1080p（留空不过滤）" />
+        <el-form-item :label="t('trakt.f.defaultRes')">
+          <el-input v-model="form.resolution" :placeholder="t('trakt.f.resHint')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showConfig = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="saveConfig">保存</el-button>
+        <el-button @click="showConfig = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="saveConfig">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

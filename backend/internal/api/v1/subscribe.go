@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -52,7 +53,7 @@ type subReq struct {
 func (h *SubscribeHandler) List(c *gin.Context) {
 	ss, err := h.subCh.ListWithPosters(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"subscriptions": ss})
@@ -62,11 +63,11 @@ func (h *SubscribeHandler) List(c *gin.Context) {
 func (h *SubscribeHandler) Create(c *gin.Context) {
 	var in subReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Title == "" || in.Source == "" || in.SourceID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "title/source/source_id required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	s := &models.Subscription{
@@ -101,7 +102,7 @@ func (h *SubscribeHandler) Create(c *gin.Context) {
 	}
 	out, err := h.subCh.Create(c.Request.Context(), s)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -115,12 +116,12 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 	}
 	s, err := h.subCh.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
+		errcode.Respond(c, errcode.SubscriptionNotFound)
 		return
 	}
 	var in subReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	// *bool：nil=不改，非 nil=设订阅自定义值；清空回全局默认走 reset 端点。
@@ -159,7 +160,7 @@ func (h *SubscribeHandler) Update(c *gin.Context) {
 		s.SavePath = *in.SavePath
 	}
 	if err := h.subCh.Update(s); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, s)
@@ -172,7 +173,7 @@ func (h *SubscribeHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.subCh.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -186,7 +187,7 @@ func (h *SubscribeHandler) Check(c *gin.Context) {
 	}
 	s, err := h.subCh.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
+		errcode.Respond(c, errcode.SubscriptionNotFound)
 		return
 	}
 	n, err := h.subCh.Check(c.Request.Context(), s)
@@ -212,11 +213,11 @@ type batchReq struct {
 func (h *SubscribeHandler) Batch(c *gin.Context) {
 	var in batchReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Op == "update" && in.Patch == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "update 操作需提供 patch"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	type failure struct {
@@ -299,11 +300,11 @@ func (h *SubscribeHandler) GetGlobalSettings(c *gin.Context) {
 func (h *SubscribeHandler) UpdateGlobalSettings(c *gin.Context) {
 	var gd chain.GlobalDefaults
 	if err := c.ShouldBindJSON(&gd); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.subCh.SaveGlobalDefaults(gd); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	// 回读而非回显入参：loadGlobalDefaults 会把 nil 切片归一为 []。直接回显 gd 时
@@ -322,14 +323,14 @@ func (h *SubscribeHandler) ResetFields(c *gin.Context) {
 	}
 	s, err := h.subCh.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "subscription not found"})
+		errcode.Respond(c, errcode.SubscriptionNotFound)
 		return
 	}
 	var req struct {
 		Fields []string `json:"fields"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	for _, f := range req.Fields {
@@ -347,12 +348,12 @@ func (h *SubscribeHandler) ResetFields(c *gin.Context) {
 		case "site_ids":
 			s.SiteIDs = nil
 		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": "unknown field: " + f})
+			errcode.Respond(c, errcode.InvalidRequest)
 			return
 		}
 	}
 	if err := h.subCh.Update(s); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, s)

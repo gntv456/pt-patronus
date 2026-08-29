@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import type { MonitorTarget } from '@/api/monitor'
 import type { ExecLog } from '@/views/nasServerHelpers'
 import type { CommandRun } from '@/api/monitor'
 import { quickCommands } from '@/views/nasServerHelpers'
 import { targetAddr, targetState, runSourceText, runDateText, runStatusText, runStatusType } from '@/views/nasServerHelpers'
+
+const { t: ti } = useI18n()
 
 defineProps<{
   execTargetIds: number[]
@@ -46,16 +49,16 @@ function onPickScriptFile() {
   <section class="exec-panel glass">
     <div class="exec-head">
       <div>
-        <h3>批量执行</h3>
+        <h3>{{ ti('nep.title') }}</h3>
         <span>
-          {{ selectedExecTargets.length }}/{{ sshTargets.length }} 台 SSH 主机
-          <template v-if="selectedCommandRun"> · 当前记录 #{{ selectedCommandRun.id }}</template>
+          {{ ti('nep.hostsN', { sel: selectedExecTargets.length, total: sshTargets.length }) }}
+          <template v-if="selectedCommandRun"> · {{ ti('nep.currentRun') }} #{{ selectedCommandRun.id }}</template>
         </span>
       </div>
       <div class="exec-head-actions">
-        <el-button size="small" @click="emit('selectOnline')">选择在线</el-button>
-        <el-button size="small" @click="emit('selectAll')">全选</el-button>
-        <el-button size="small" @click="emit('clearTargets')">清空</el-button>
+        <el-button size="small" @click="emit('selectOnline')">{{ ti('nep.selectOnline') }}</el-button>
+        <el-button size="small" @click="emit('selectAll')">{{ ti('nep.selectAll') }}</el-button>
+        <el-button size="small" @click="emit('clearTargets')">{{ ti('common.clear') }}</el-button>
       </div>
     </div>
     <div class="exec-layout">
@@ -73,12 +76,12 @@ function onPickScriptFile() {
               <span class="target-state" :class="{ online: t.last_online === true, offline: t.last_online === false }">
                 {{ targetState(t) }}
               </span>
-              <button class="target-terminal" type="button" @click.stop.prevent="emit('terminal', t)">终端</button>
+              <button class="target-terminal" type="button" @click.stop.prevent="emit('terminal', t)">{{ ti('dc.terminal') }}</button>
             </el-checkbox>
           </el-checkbox-group>
         </div>
         <div v-else class="exec-empty">
-          暂无 SSH 主机
+          {{ ti('nep.noHosts') }}
         </div>
       </div>
       <div class="exec-command">
@@ -86,7 +89,7 @@ function onPickScriptFile() {
           <button v-for="q in quickCommands" :key="q.label" type="button" @click="emit('applyCommand', q.command)">
             {{ q.label }}
           </button>
-          <button type="button" @click="onPickScriptFile">导入脚本</button>
+          <button type="button" @click="onPickScriptFile">{{ ti('nep.importScript') }}</button>
           <input
             ref="scriptFileInputRef"
             class="hidden-file"
@@ -100,7 +103,7 @@ function onPickScriptFile() {
           type="textarea"
           :rows="5"
           resize="none"
-          placeholder="输入要执行的命令"
+          :placeholder="ti('nep.cmdPh')"
           @update:model-value="emit('update:execCommand', $event)"
         />
         <div v-if="commandHistory.length" class="history-row">
@@ -117,20 +120,20 @@ function onPickScriptFile() {
             size="small"
             @update:model-value="emit('update:execTimeout', Number($event))"
           />
-          <span>秒超时</span>
+          <span>{{ ti('nep.timeoutSec') }}</span>
           <el-button type="primary" :loading="execRunning" :disabled="!isAdmin" @click="emit('runBatch')">
-            一键执行
+            {{ ti('nep.runAll') }}
           </el-button>
         </div>
       </div>
     </div>
     <div v-if="commandRuns.length" class="run-history">
-      <div class="section-title">执行历史</div>
+      <div class="section-title">{{ ti('nep.history') }}</div>
       <div class="run-history-list">
         <button v-for="run in commandRuns" :key="run.id" type="button" class="run-card" @click="emit('showCommandRun', run)">
           <span>
             <b>#{{ run.id }} · {{ runSourceText(run.source) }}</b>
-            <small>{{ runDateText(run.started_at) }} · {{ run.success_count }}/{{ run.total_count }} 成功</small>
+            <small>{{ runDateText(run.started_at) }} · {{ ti('nep.okCount', { ok: run.success_count, total: run.total_count }) }}</small>
           </span>
           <el-tag size="small" :type="runStatusType(run.status)">{{ runStatusText(run.status) }}</el-tag>
         </button>
@@ -145,7 +148,7 @@ function onPickScriptFile() {
             <em v-if="log.durationMs">{{ (log.durationMs / 1000).toFixed(1) }}s</em>
           </div>
           <el-tag size="small" :type="log.status === 'success' ? 'success' : log.status === 'running' ? 'info' : 'danger'">
-            {{ log.status === 'running' ? '运行中' : log.status === 'success' ? '成功' : '失败' }}
+            {{ log.status === 'running' ? ti('nep.running') : log.status === 'success' ? ti('dcl.ok') : ti('dcl.ko') }}
           </el-tag>
         </div>
         <code>{{ log.command }}</code>

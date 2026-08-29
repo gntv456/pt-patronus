@@ -3,6 +3,9 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { dockerApi } from '@/api/docker'
 import { dockerTemplates, type DockerTemplate } from '@/data/dockerTemplates'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{ visible: boolean; images?: { Repository: string; Tag: string }[]; initialTemplate?: DockerTemplate | null }>()
 const emit = defineEmits<{ 'update:visible': [val: boolean]; created: [] }>()
@@ -31,17 +34,17 @@ const form = ref({
   env: [] as EnvRow[],
 })
 
-const steps = ['选择镜像', '基础配置', '网络端口', '存储卷', '环境变量', '确认创建']
+const steps = computed(() => [t('dw.step.image'), t('dw.step.basic'), t('dw.step.net'), t('dw.step.vol'), t('dw.step.env'), t('dw.step.confirm')])
 const networkOptions = [
-  { value: 'bridge', label: 'Bridge（默认桥接）' },
-  { value: 'host', label: 'Host（主机网络）' },
-  { value: 'none', label: 'None（无网络）' },
+  { value: 'bridge', label: t('dw.net.bridge') },
+  { value: 'host', label: t('dw.net.host') },
+  { value: 'none', label: t('dw.net.none') },
 ]
 const restartOptions = [
-  { value: 'no', label: '不自动重启' },
-  { value: 'always', label: '总是重启' },
-  { value: 'unless-stopped', label: '除非手动停止（推荐）' },
-  { value: 'on-failure', label: '仅失败时重启' },
+  { value: 'no', label: t('dw.restart.no') },
+  { value: 'always', label: t('dw.restart.always') },
+  { value: 'unless-stopped', label: t('dw.restart.unless') },
+  { value: 'on-failure', label: t('dw.restart.onFailure') },
 ]
 
 const imageSuggestions = computed(() => {
@@ -95,13 +98,13 @@ function removeVolume(i: number) { form.value.volumes.splice(i, 1) }
 function addEnv() { form.value.env.push({ key: '', value: '' }) }
 function removeEnv(i: number) { form.value.env.splice(i, 1) }
 
-function next() { if (activeStep.value < steps.length - 1) activeStep.value++ }
+function next() { if (activeStep.value < steps.value.length - 1) activeStep.value++ }
 function prev() { if (activeStep.value > 0) activeStep.value-- }
 
 const canNextImage = computed(() => form.value.image.trim().length > 0)
 
 async function submit() {
-  if (!form.value.image.trim()) { ElMessage.warning('请输入镜像名'); return }
+  if (!form.value.image.trim()) { ElMessage.warning(t('dw.imageRequired')); return }
   loading.value = true
   try {
     const env: Record<string, string> = {}
@@ -131,8 +134,8 @@ async function submit() {
       privileged: form.value.privileged || undefined,
       network_mode: form.value.networkMode !== 'bridge' ? form.value.networkMode : undefined,
     })
-    if (res.ok) { ElMessage.success('容器已创建'); emit('update:visible', false); emit('created') }
-    else ElMessage.error(res.error || '创建失败')
+    if (res.ok) { ElMessage.success(t('dw.created')); emit('update:visible', false); emit('created') }
+    else ElMessage.error(res.error || t('dw.createFailed'))
   } catch (e: any) { ElMessage.error(e.message) }
   finally { loading.value = false }
 }
@@ -140,7 +143,7 @@ async function submit() {
 
 <template>
   <el-dialog :model-value="visible" @update:model-value="emit('update:visible', $event)"
-    title="创建容器" width="720px" top="5vh" class="create-wizard-dialog">
+    :title="t('dw.title')" width="720px" top="5vh" class="create-wizard-dialog">
     <!-- 步骤指示器 -->
     <el-steps :active="activeStep" finish-status="success" align-center class="wizard-steps">
       <el-step v-for="(s, i) in steps" :key="i" :title="s" />
@@ -150,7 +153,7 @@ async function submit() {
       <!-- 步骤 0：选择镜像 -->
       <div v-if="activeStep === 0" class="step-panel">
         <div v-if="showTemplates" class="template-section">
-          <div class="section-title">从应用模板创建 <span class="section-hint">（推荐小白用户）</span></div>
+          <div class="section-title">{{ t('dw.fromTemplate') }} <span class="section-hint">{{ t('dw.templateHint') }}</span></div>
           <div class="template-grid">
             <div v-for="tpl in dockerTemplates" :key="tpl.id" class="template-card"
               :class="{ selected: selectedTemplate === tpl.id }" @click="applyTemplate(tpl)">
@@ -161,16 +164,16 @@ async function submit() {
               </div>
             </div>
           </div>
-          <el-divider>或手动输入</el-divider>
+          <el-divider>{{ t('dw.orManual') }}</el-divider>
         </div>
 
         <el-form label-width="90px">
-          <el-form-item label="镜像名" required>
+          <el-form-item :label="t('dw.imageName')" required>
             <el-autocomplete v-model="form.image" :fetch-suggestions="(q: string, cb: any) => cb(imageSuggestions.filter(s => s.includes(q)).map(v => ({ value: v })))"
-              placeholder="nginx:latest 或 linuxserver/qbittorrent:latest" style="width: 100%" />
+              :placeholder="t('dw.imagePh')" style="width: 100%" />
           </el-form-item>
-          <el-form-item label="容器名称">
-            <el-input v-model="form.name" placeholder="my-container（可选，留空自动生成）" />
+          <el-form-item :label="t('dw.containerName')">
+            <el-input v-model="form.name" :placeholder="t('dw.namePh')" />
           </el-form-item>
         </el-form>
       </div>
@@ -178,27 +181,27 @@ async function submit() {
       <!-- 步骤 1：基础配置 -->
       <div v-if="activeStep === 1" class="step-panel">
         <el-form label-width="110px">
-          <el-form-item label="启动命令">
-            <el-input v-model="form.cmd" placeholder="覆盖默认命令（可选，如 nginx -g 'daemon off;'）" />
+          <el-form-item :label="t('dw.cmd')">
+            <el-input v-model="form.cmd" :placeholder="t('dw.cmdPh')" />
           </el-form-item>
-          <el-form-item label="CPU 限制">
+          <el-form-item :label="t('dw.cpuLimit')">
             <el-input-number v-model="form.cpuLimit" :min="0" :max="64" :step="0.5" :precision="1" />
-            <span class="field-hint">核数，0 = 不限制</span>
+            <span class="field-hint">{{ t('dw.cpuHint') }}</span>
           </el-form-item>
-          <el-form-item label="内存限制">
+          <el-form-item :label="t('dw.memLimit')">
             <el-input-number v-model="form.memoryLimitMB" :min="0" :step="256" />
-            <span class="field-hint">MB，0 = 不限制</span>
+            <span class="field-hint">{{ t('dw.memHint') }}</span>
           </el-form-item>
-          <el-form-item label="重启策略">
+          <el-form-item :label="t('dw.restartPolicy')">
             <el-select v-model="form.restartPolicy" style="width: 280px">
               <el-option v-for="o in restartOptions" :key="o.value" :value="o.value" :label="o.label" />
             </el-select>
           </el-form-item>
-          <el-form-item label="特权模式">
+          <el-form-item :label="t('dw.privileged')">
             <el-switch v-model="form.privileged" />
-            <span class="field-hint field-warn">⚠ 特权模式赋予容器 root 权限，请谨慎使用</span>
+            <span class="field-hint field-warn">⚠ {{ t('dw.privWarn') }}</span>
           </el-form-item>
-          <el-form-item label="创建后启动">
+          <el-form-item :label="t('dw.autoStart')">
             <el-switch v-model="form.autoStart" />
           </el-form-item>
         </el-form>
@@ -207,25 +210,25 @@ async function submit() {
       <!-- 步骤 2：网络端口 -->
       <div v-if="activeStep === 2" class="step-panel">
         <el-form label-width="110px">
-          <el-form-item label="网络模式">
+          <el-form-item :label="t('dw.netMode')">
             <el-select v-model="form.networkMode" style="width: 280px">
               <el-option v-for="o in networkOptions" :key="o.value" :value="o.value" :label="o.label" />
             </el-select>
-            <span v-if="form.networkMode === 'host'" class="field-hint">⚠ Host 模式下端口映射无效</span>
+            <span v-if="form.networkMode === 'host'" class="field-hint">⚠ {{ t('dw.hostPortWarn') }}</span>
           </el-form-item>
-          <el-form-item v-if="form.networkMode !== 'host'" label="端口映射">
+          <el-form-item v-if="form.networkMode !== 'host'" :label="t('dw.portMap')">
             <div class="dynamic-rows">
               <div v-for="(p, i) in form.ports" :key="i" class="dyn-row">
-                <el-input v-model="p.host" placeholder="主机端口" class="dyn-input-sm" />
+                <el-input v-model="p.host" :placeholder="t('dw.hostPort')" class="dyn-input-sm" />
                 <span class="dyn-arrow">→</span>
-                <el-input v-model="p.container" placeholder="容器端口" class="dyn-input-sm" />
+                <el-input v-model="p.container" :placeholder="t('dw.containerPort')" class="dyn-input-sm" />
                 <el-select v-model="p.protocol" class="dyn-input-proto">
                   <el-option value="tcp" label="TCP" />
                   <el-option value="udp" label="UDP" />
                 </el-select>
-                <button class="dyn-remove" @click="removePort(i)">✕</button>
+                <button class="dyn-remove" :aria-label="t('dw.removePort')" @click="removePort(i)">✕</button>
               </div>
-              <button class="dyn-add" @click="addPort">+ 添加端口映射</button>
+              <button class="dyn-add" @click="addPort">+ {{ t('dw.addPort') }}</button>
             </div>
           </el-form-item>
         </el-form>
@@ -234,19 +237,19 @@ async function submit() {
       <!-- 步骤 3：存储卷 -->
       <div v-if="activeStep === 3" class="step-panel">
         <el-form label-width="110px">
-          <el-form-item label="卷挂载">
+          <el-form-item :label="t('dw.volMount')">
             <div class="dynamic-rows">
               <div v-for="(v, i) in form.volumes" :key="i" class="dyn-row">
-                <el-input v-model="v.host" placeholder="宿主机路径 /opt/app/config" class="dyn-input-lg" />
+                <el-input v-model="v.host" :placeholder="t('dw.hostPathPh')" class="dyn-input-lg" />
                 <span class="dyn-arrow">→</span>
-                <el-input v-model="v.container" placeholder="容器路径 /config" class="dyn-input-md" />
+                <el-input v-model="v.container" :placeholder="t('dw.containerPathPh')" class="dyn-input-md" />
                 <el-select v-model="v.mode" class="dyn-input-mode">
-                  <el-option value="rw" label="读写" />
-                  <el-option value="ro" label="只读" />
+                  <el-option value="rw" :label="t('dw.rw')" />
+                  <el-option value="ro" :label="t('dw.ro')" />
                 </el-select>
-                <button class="dyn-remove" @click="removeVolume(i)">✕</button>
+                <button class="dyn-remove" :aria-label="t('dw.removeVol')" @click="removeVolume(i)">✕</button>
               </div>
-              <button class="dyn-add" @click="addVolume">+ 添加卷挂载</button>
+              <button class="dyn-add" @click="addVolume">+ {{ t('dw.addVol') }}</button>
             </div>
           </el-form-item>
         </el-form>
@@ -255,15 +258,15 @@ async function submit() {
       <!-- 步骤 4：环境变量 -->
       <div v-if="activeStep === 4" class="step-panel">
         <el-form label-width="110px">
-          <el-form-item label="环境变量">
+          <el-form-item :label="t('dw.envVars')">
             <div class="dynamic-rows">
               <div v-for="(e, i) in form.env" :key="i" class="dyn-row">
-                <el-input v-model="e.key" placeholder="变量名 KEY" class="dyn-input-md" />
+                <el-input v-model="e.key" :placeholder="t('dw.keyPh')" class="dyn-input-md" />
                 <span class="dyn-arrow">=</span>
-                <el-input v-model="e.value" placeholder="值 value" class="dyn-input-lg" />
-                <button class="dyn-remove" @click="removeEnv(i)">✕</button>
+                <el-input v-model="e.value" :placeholder="t('dw.valuePh')" class="dyn-input-lg" />
+                <button class="dyn-remove" :aria-label="t('dw.removeEnv')" @click="removeEnv(i)">✕</button>
               </div>
-              <button class="dyn-add" @click="addEnv">+ 添加环境变量</button>
+              <button class="dyn-add" @click="addEnv">+ {{ t('dw.addEnv') }}</button>
             </div>
           </el-form-item>
         </el-form>
@@ -272,21 +275,21 @@ async function submit() {
       <!-- 步骤 5：确认创建 -->
       <div v-if="activeStep === 5" class="step-panel">
         <div class="confirm-section">
-          <div class="confirm-row"><span class="ck">镜像</span><code>{{ form.image }}</code></div>
-          <div class="confirm-row"><span class="ck">名称</span><span>{{ form.name || '(自动)' }}</span></div>
-          <div class="confirm-row"><span class="ck">CPU</span><span>{{ form.cpuLimit ? form.cpuLimit + ' 核' : '不限制' }}</span></div>
-          <div class="confirm-row"><span class="ck">内存</span><span>{{ form.memoryLimitMB ? form.memoryLimitMB + ' MB' : '不限制' }}</span></div>
-          <div class="confirm-row"><span class="ck">网络</span><span>{{ form.networkMode }}</span></div>
-          <div class="confirm-row"><span class="ck">重启策略</span><span>{{ restartOptions.find(o => o.value === form.restartPolicy)?.label }}</span></div>
-          <div class="confirm-row"><span class="ck">特权</span><span>{{ form.privileged ? '⚠ 是' : '否' }}</span></div>
-          <div v-if="form.cmd" class="confirm-row"><span class="ck">命令</span><code>{{ form.cmd }}</code></div>
-          <div v-if="form.ports.length" class="confirm-row"><span class="ck">端口</span>
+          <div class="confirm-row"><span class="ck">{{ t('opsdocker.images') }}</span><code>{{ form.image }}</code></div>
+          <div class="confirm-row"><span class="ck">{{ t('common.name') }}</span><span>{{ form.name || t('dw.auto') }}</span></div>
+          <div class="confirm-row"><span class="ck">CPU</span><span>{{ form.cpuLimit ? t('dw.cores', { n: form.cpuLimit }) : t('dw.unlimited') }}</span></div>
+          <div class="confirm-row"><span class="ck">{{ t('opsdocker.mem') }}</span><span>{{ form.memoryLimitMB ? form.memoryLimitMB + ' MB' : t('dw.unlimited') }}</span></div>
+          <div class="confirm-row"><span class="ck">{{ t('opsdocker.networks') }}</span><span>{{ form.networkMode }}</span></div>
+          <div class="confirm-row"><span class="ck">{{ t('dw.restartPolicy') }}</span><span>{{ restartOptions.find(o => o.value === form.restartPolicy)?.label }}</span></div>
+          <div class="confirm-row"><span class="ck">{{ t('dw.privileged') }}</span><span>{{ form.privileged ? '⚠ ' + t('common.yes') : t('common.no') }}</span></div>
+          <div v-if="form.cmd" class="confirm-row"><span class="ck">{{ t('dw.cmd') }}</span><code>{{ form.cmd }}</code></div>
+          <div v-if="form.ports.length" class="confirm-row"><span class="ck">{{ t('opsdocker.ports') }}</span>
             <span v-for="(p, i) in form.ports" :key="i" class="confirm-chip">{{ p.host }}→{{ p.container }}/{{ p.protocol }}</span>
           </div>
-          <div v-if="form.volumes.length" class="confirm-row"><span class="ck">卷</span>
+          <div v-if="form.volumes.length" class="confirm-row"><span class="ck">{{ t('opsdocker.volumes') }}</span>
             <span v-for="(v, i) in form.volumes" :key="i" class="confirm-chip">{{ v.host }}→{{ v.container }}:{{ v.mode }}</span>
           </div>
-          <div v-if="form.env.length" class="confirm-row"><span class="ck">环境</span>
+          <div v-if="form.env.length" class="confirm-row"><span class="ck">{{ t('dw.envVars') }}</span>
             <span v-for="(e, i) in form.env" :key="i" class="confirm-chip">{{ e.key }}={{ e.value }}</span>
           </div>
         </div>
@@ -294,10 +297,10 @@ async function submit() {
     </div>
 
     <template #footer>
-      <el-button @click="emit('update:visible', false)">取消</el-button>
-      <el-button v-if="activeStep > 0" @click="prev">上一步</el-button>
-      <el-button v-if="activeStep < steps.length - 1" type="primary" :disabled="activeStep === 0 && !canNextImage" @click="next">下一步</el-button>
-      <el-button v-if="activeStep === steps.length - 1" type="primary" :loading="loading" @click="submit">创建容器</el-button>
+      <el-button @click="emit('update:visible', false)">{{ t('common.cancel') }}</el-button>
+      <el-button v-if="activeStep > 0" @click="prev">{{ t('dw.prev') }}</el-button>
+      <el-button v-if="activeStep < steps.length - 1" type="primary" :disabled="activeStep === 0 && !canNextImage" @click="next">{{ t('dw.next') }}</el-button>
+      <el-button v-if="activeStep === steps.length - 1" type="primary" :loading="loading" @click="submit">{{ t('dw.createGo') }}</el-button>
     </template>
   </el-dialog>
 </template>

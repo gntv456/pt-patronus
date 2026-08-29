@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import type { NodeInfo } from '@/api/workflow'
 
 // WorkflowNode — Vue Flow 自定义节点（统一 type:'wf'，按 data 渲染）。
 // 条件节点渲染两个输出桩（true/false）；其余节点单输出桩。
+const { t } = useI18n()
+
 const props = defineProps<{
   id: string
   data: {
@@ -19,16 +22,16 @@ const props = defineProps<{
 
 // 类别配色
 const catColor: Record<string, string> = {
-  资源: '#4285f4',
-  过滤: '#f39c12',
-  下载: '#2ecc71',
-  通知: '#e100ff',
-  数据: '#6c5ce7',
-  站点: '#00b894',
-  逻辑: '#e74c3c',
-  流程: '#0f9b0f',
-  媒体: '#e84393',
-  文件: '#0984e3',
+  '\u8d44\u6e90': '#4285f4',
+  '\u8fc7\u6ee4': '#f39c12',
+  '\u4e0b\u8f7d': '#2ecc71',
+  '\u901a\u77e5': '#e100ff',
+  '\u6570\u636e': '#6c5ce7',
+  '\u7ad9\u70b9': '#00b894',
+  '\u903b\u8f91': '#e74c3c',
+  '\u6d41\u7a0b': '#0f9b0f',
+  '\u5a92\u4f53': '#e84393',
+  '\u6587\u4ef6': '#0984e3',
 }
 const color = computed(
   () => (props.data.info && catColor[props.data.info.category]) || '#6c5ce7',
@@ -57,7 +60,7 @@ const outputs = computed<string[]>(() => {
     <!-- 多输出桩（condition=真/假；switch=branches 标签） -->
     <template v-if="outputs.length">
       <div class="branches">
-        <span v-for="o in outputs" :key="o" class="branch-tag">{{ o === 'true' ? '真' : o === 'false' ? '假' : o }}</span>
+        <span v-for="o in outputs" :key="o" class="branch-tag">{{ o === 'true' ? t('wn.true') : o === 'false' ? t('wn.false') : o }}</span>
       </div>
       <Handle
         v-for="(o, i) in outputs"

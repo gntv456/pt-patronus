@@ -4,11 +4,15 @@ package log
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
+
+	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
 // LogEntry 一条日志的结构化快照（供 API 返回）。
@@ -161,8 +165,16 @@ func valToString(v slog.Value) string {
 	return ""
 }
 
-// Init configures the global slog logger (stdout + 环形缓冲) and returns it.
+// Init configures the global slog logger (stdout 或轮转文件 + 环形缓冲) and returns it.
 // level: "debug" | "info" | "warn" | "error".
+// env=release 时走 JSONHandler（机器可读，供采集器如 Loki/ELK 消费）；
+// debug 保持 TextHandler（人读，本地开发友好）。环形缓冲两侧同构不受影响。
+//
+// LOG_FILE 非空时输出改落 lumberjack 轮转文件（替代 stdout）：
+//   - LOG_MAX_SIZE_MB（默认 100）、LOG_MAX_BACKUPS（默认 3，0=不删旧文件）、
+//     LOG_MAX_AGE_DAYS（默认 0=不按天数删）、LOG_COMPRESS（默认 false，gz 压缩备份）
+//   - 生产容器里通常由 docker log driver / journald 管轮转，stdout 即可；
+//     裸机/ systemd 部署设 LOG_FILE 后由应用自管轮转。
 func Init(env, level string) *slog.Logger {
 	var lvl slog.Level
 	switch level {
@@ -175,7 +187,13 @@ func Init(env, level string) *slog.Logger {
 	default:
 		lvl = slog.LevelInfo
 	}
-	inner := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: lvl})
+	out := chooseOutput(env)
+	var inner slog.Handler
+	if env == "release" {
+		inner = slog.NewJSONHandler(out, &slog.HandlerOptions{Level: lvl})
+	} else {
+		inner = slog.NewTextHandler(out, &slog.HandlerOptions{Level: lvl})
+	}
 	handler := &ringHandler{inner: inner, ring: Ring}
 	logger := slog.New(handler).With(
 		slog.String("app", "ptpatronus"),
@@ -183,4 +201,31 @@ func Init(env, level string) *slog.Logger {
 	)
 	slog.SetDefault(logger)
 	return logger
+}
+
+// chooseOutput 按 LOG_FILE 决定日志落点：空=stdout（默认，容器友好）；
+// 非空=lumberjack 轮转 writer。首次写入即建文件；目录不存在时由
+// lumberjack 父目录 MkdirAll 语义保证（其 Open 自动创建）。
+func chooseOutput(env string) io.Writer {
+	file := strings.TrimSpace(os.Getenv("LOG_FILE"))
+	if file == "" {
+		return os.Stdout
+	}
+	return &lumberjack.Logger{
+		Filename:   file,
+		MaxSize:    getenvIntDefault("LOG_MAX_SIZE_MB", 100),
+		MaxBackups: getenvIntDefault("LOG_MAX_BACKUPS", 3),
+		MaxAge:     getenvIntDefault("LOG_MAX_AGE_DAYS", 0),
+		Compress:   os.Getenv("LOG_COMPRESS") == "true",
+	}
+}
+
+// getenvIntDefault 环境变量整数读取（非法/缺失回默认）。
+func getenvIntDefault(key string, def int) int {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+	}
+	return def
 }

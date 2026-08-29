@@ -2,6 +2,7 @@ package automation
 
 import (
 	"context"
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"log/slog"
 	"math/rand"
 	"time"
@@ -31,10 +32,12 @@ func (s *Service) runCookieKeepAlive() {
 		res, err := s.siteCh.KeepAlive(ctx, st)
 		if err != nil {
 			failed++
+			bizmetrics.KeepAliveInc(bizmetrics.KeepAliveFail)
 			slog.Debug("cookie-keepalive failed", "site", st.Name, "err", err)
 		} else if res != nil {
 			if !res.LoggedIn {
 				loggedOut++
+				bizmetrics.KeepAliveInc(bizmetrics.KeepAliveLoggedOut)
 				if s.notice != nil {
 					_ = s.notice.Notice(ctx, notice.Input{
 						Source: notice.SourceSiteOffline,
@@ -45,8 +48,10 @@ func (s *Service) runCookieKeepAlive() {
 					}, true)
 				}
 			} else if res.RefreshedCookie != "" {
+				bizmetrics.KeepAliveInc(bizmetrics.KeepAliveRefreshed)
 				if err := s.siteOp.UpdateCookie(st.ID, res.RefreshedCookie); err != nil {
 					failed++
+					bizmetrics.KeepAliveInc(bizmetrics.KeepAliveFail)
 					slog.Warn("cookie-keepalive persist failed", "site", st.Name, "err", err)
 				} else {
 					refreshed++

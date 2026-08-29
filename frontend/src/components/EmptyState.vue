@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 // 统一空态：图标 + 主文案 + 副文案 + 引导操作（插槽）。
 // 替代各页干瘪的「暂无数据」纯文字，给用户清晰的「为什么空 + 下一步做什么」。
 withDefaults(
@@ -7,14 +10,14 @@ withDefaults(
     title?: string
     description?: string
   }>(),
-  { icon: '📭', title: '暂无数据', description: '' },
+  { icon: '📭', title: undefined, description: '' },
 )
 </script>
 
 <template>
   <div class="empty-state">
     <div class="es-icon">{{ icon }}</div>
-    <div v-if="title" class="es-title">{{ title }}</div>
+    <div v-if="title ?? true" class="es-title">{{ title ?? t('common.noData') }}</div>
     <div v-if="description" class="es-desc">{{ description }}</div>
     <div v-if="$slots.default" class="es-actions">
       <slot />

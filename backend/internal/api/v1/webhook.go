@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
 	"log/slog"
 	"net/http"
@@ -56,14 +57,14 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 	token := c.Param("token")
 	wh, err := h.op.GetByToken(token)
 	if err != nil || wh == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "无效的 webhook"})
+		errcode.Respond(c, errcode.WebhookInvalid)
 		return
 	}
 
 	// 读原始 body（上限 1MB，防滥用）
 	raw, err := io.ReadAll(io.LimitReader(c.Request.Body, 1<<20))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "读取请求体失败"})
+		errcode.Respond(c, errcode.WebhookBadPayload)
 		return
 	}
 
@@ -77,7 +78,7 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 		mac.Write(raw)
 		want := hex.EncodeToString(mac.Sum(nil))
 		if sig == "" || !hmac.Equal([]byte(sig), []byte(want)) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "签名校验失败"})
+			errcode.Respond(c, errcode.WebhookBadSignature)
 			return
 		}
 	}
@@ -136,7 +137,7 @@ func (h *WebhookHandler) Receive(c *gin.Context) {
 func (h *WebhookHandler) List(c *gin.Context) {
 	ws, err := h.op.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"webhooks": ws})
@@ -146,18 +147,18 @@ func (h *WebhookHandler) List(c *gin.Context) {
 func (h *WebhookHandler) Create(c *gin.Context) {
 	var in webhookReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "名称必填"})
+		errcode.Respond(c, errcode.WebhookNameRequired)
 		return
 	}
 	w := &models.Webhook{
 		Name: in.Name, Token: genToken(), TargetWorkflowID: in.TargetWorkflowID, Enabled: true,
 	}
 	if err := h.op.Create(w, in.Secret); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	out, err := h.op.Get(w.ID)
@@ -175,12 +176,12 @@ func (h *WebhookHandler) Update(c *gin.Context) {
 	}
 	w, err := h.op.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "webhook 不存在"})
+		errcode.Respond(c, errcode.WebhookNotFound)
 		return
 	}
 	var in webhookReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Name != "" {
@@ -189,7 +190,7 @@ func (h *WebhookHandler) Update(c *gin.Context) {
 	w.TargetWorkflowID = in.TargetWorkflowID
 	w.Enabled = in.Enabled
 	if err := h.op.Update(w, in.Secret); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	out, err := h.op.Get(id)
@@ -207,12 +208,12 @@ func (h *WebhookHandler) Rotate(c *gin.Context) {
 	}
 	w, err := h.op.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "webhook 不存在"})
+		errcode.Respond(c, errcode.WebhookNotFound)
 		return
 	}
 	w.Token = genToken()
 	if err := h.op.Update(w, ""); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": w.Token})
@@ -225,7 +226,7 @@ func (h *WebhookHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})

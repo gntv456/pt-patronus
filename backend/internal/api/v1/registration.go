@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
@@ -23,7 +24,7 @@ func NewRegistrationHandler(op *oper.RegistrationOper, regCh *chain.Registration
 func (h *RegistrationHandler) List(c *gin.Context) {
 	ws, err := h.op.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"registrations": ws})
@@ -33,11 +34,11 @@ func (h *RegistrationHandler) List(c *gin.Context) {
 func (h *RegistrationHandler) Create(c *gin.Context) {
 	var in oper.RegistrationInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.URL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "url is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if in.Name == "" {
@@ -45,7 +46,7 @@ func (h *RegistrationHandler) Create(c *gin.Context) {
 	}
 	w, err := h.op.Create(in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, w)
@@ -59,12 +60,12 @@ func (h *RegistrationHandler) Update(c *gin.Context) {
 	}
 	var in oper.RegistrationInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	w, err := h.op.Update(id, in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, w)
@@ -77,7 +78,7 @@ func (h *RegistrationHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -91,7 +92,7 @@ func (h *RegistrationHandler) Check(c *gin.Context) {
 	}
 	w, err := h.op.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "registration watch not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	open, err := h.regCh.CheckOne(c.Request.Context(), w)
@@ -100,7 +101,7 @@ func (h *RegistrationHandler) Check(c *gin.Context) {
 		return
 	}
 	if _, err := h.op.UpdateStatus(id, open); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "open": open})

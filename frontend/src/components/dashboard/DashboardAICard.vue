@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { agentApi, type AgentStats } from '@/api/agent'
 import Sparkline from './Sparkline.vue'
 
 // DashboardAICard — 区④AI 助手用量与成本：消费 GET /agent/stats（13 维度，进程内内存，重启清零）。
+const { t } = useI18n()
 const stats = ref<AgentStats | null>(null)
 async function load() {
   stats.value = await agentApi.stats().catch(() => null)
@@ -35,18 +37,18 @@ function fmtToken(n: number): string {
   <div class="dash-card">
     <div class="dc-head">
       <div>
-        <h3>AI 助手用量</h3>
-        <p>Token · 费用 · 调用质量（进程内统计）</p>
+        <h3>{{ t('daic.title') }}</h3>
+        <p>{{ t('daic.sub') }}</p>
       </div>
     </div>
 
-    <div v-if="!stats" class="dc-empty">暂无用量数据</div>
+    <div v-if="!stats" class="dc-empty">{{ t('daic.empty') }}</div>
     <template v-else>
       <div class="ai-grid">
         <div class="ai-cell">
-          <span class="ac-label">总请求</span>
+          <span class="ac-label">{{ t('daic.totalReq') }}</span>
           <strong>{{ stats.total_requests }}</strong>
-          <small class="ac-sub">成功 {{ stats.ok_count }} · 工具 {{ stats.tool_calls }}</small>
+          <small class="ac-sub">{{ t('daic.okTools', { ok: stats.ok_count, tools: stats.tool_calls }) }}</small>
         </div>
         <div class="ai-cell">
           <span class="ac-label">Token</span>
@@ -56,18 +58,18 @@ function fmtToken(n: number): string {
           }}</small>
         </div>
         <div class="ai-cell">
-          <span class="ac-label">成本</span>
+          <span class="ac-label">{{ t('daic.cost') }}</span>
           <strong>${{ stats.total_cost_usd.toFixed(4) }}</strong>
-          <small class="ac-sub">均延 {{ Math.round((stats.avg_latency_ms ?? 0) / 1000) }}s</small>
+          <small class="ac-sub">{{ t('daic.avgLatency', { s: Math.round((stats.avg_latency_ms ?? 0) / 1000) }) }}</small>
         </div>
         <div class="ai-cell">
-          <span class="ac-label">错误率</span>
+          <span class="ac-label">{{ t('daic.errRate') }}</span>
           <strong :class="{ danger: (errRate ?? 0) > 0 }">{{ errRate === null ? '-' : errRate + '%' }}</strong>
-          <small class="ac-sub">错误 {{ stats.error_count }} · 限流 {{ stats.rate_limit_count }}</small>
+          <small class="ac-sub">{{ t('daic.errRateDetail', { err: stats.error_count, rl: stats.rate_limit_count }) }}</small>
         </div>
       </div>
       <div v-if="sparkValues.length >= 2" class="ai-spark">
-        <span class="spark-label">近 {{ sparkValues.length }} 次用量</span>
+        <span class="spark-label">{{ t('daic.recentN', { n: sparkValues.length }) }}</span>
         <Sparkline :values="sparkValues" color="#8b5cf6" unit="count" />
       </div>
     </template>

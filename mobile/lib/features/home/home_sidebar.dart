@@ -55,14 +55,18 @@ class HomeSidebarReveal extends StatelessWidget {
       child: Material(
         color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.85),
         borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-        child: InkWell(
-          customBorder: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.horizontal(right: Radius.circular(12)),
-          ),
-          onTap: () => c.setSidebarVisible(true),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 18, horizontal: 2),
-            child: Icon(Icons.chevron_right, color: Colors.white, size: 20),
+        child: Semantics(
+          tooltip: '展开侧栏',
+          button: true,
+          child: InkWell(
+            customBorder: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.horizontal(right: Radius.circular(12)),
+            ),
+            onTap: () => c.setSidebarVisible(true),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 18, horizontal: 2),
+              child: Icon(Icons.chevron_right, color: Colors.white, size: 20),
+            ),
           ),
         ),
       ),

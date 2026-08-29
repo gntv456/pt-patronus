@@ -4,8 +4,11 @@ import {
   type EnrichedMeta,
   type TorrentTag,
 } from '@/utils/torrentMeta'
+import { useI18n } from 'vue-i18n'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import MediaPoster from '@/components/MediaPoster.vue'
+
+const { t } = useI18n()
 
 export type FindRow = import('@/components/SiteTorrentFindDialog.vue').FindRow
 type EnrichedFindRow = FindRow & EnrichedMeta
@@ -88,7 +91,7 @@ const emit = defineEmits<{
         class="sf-more"
         @click.stop="emit('more', group)"
       >
-        ▾ 更多来源 ({{ group.more.length }})
+        ▾ {{ t('tc.moreSources', { n: group.more.length }) }}
       </button>
       <span v-else />
       <div class="sf-foot-right">
@@ -97,7 +100,8 @@ const emit = defineEmits<{
           v-if="group.primary.detail_url"
           type="button"
           class="sf-info"
-          title="打开详情"
+          :title="t('tc.openDetail')"
+          :aria-label="t('tc.openDetailAria')"
           @click.stop="emit('detail', group.primary)"
         >ⓘ</button>
       </div>

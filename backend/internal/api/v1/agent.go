@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/agentrpc"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"gorm.io/gorm"
 )
@@ -28,7 +29,7 @@ func NewAgentHandler(op *oper.AgentOper, monOp *oper.MonitorOper, db *gorm.DB, h
 func (h *AgentHandler) List(c *gin.Context) {
 	as, err := h.op.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"agents": as})
@@ -42,12 +43,12 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		Type string `json:"type" binding:"max=16"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil || in.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		errcode.Respond(c, errcode.AgentNameRequired)
 		return
 	}
 	targetType, ok := normalizeAgentTargetType(in.Type)
 	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "type must be host or nas"})
+		errcode.Respond(c, errcode.AgentTypeInvalid)
 		return
 	}
 	var res oper.AgentSecretResult
@@ -67,7 +68,7 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		return nil
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"agent": res.Agent, "plain_secret": res.PlainSecret})
@@ -92,11 +93,11 @@ func (h *AgentHandler) Delete(c *gin.Context) {
 	}
 	a, err := h.op.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "agent 不存在"})
+		errcode.Respond(c, errcode.AgentNotFound)
 		return
 	}
 	if err := h.op.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if e := h.monOp.Delete(a.TargetID); e != nil {
@@ -114,7 +115,7 @@ func (h *AgentHandler) Rotate(c *gin.Context) {
 	}
 	secret, err := h.op.ResetSecret(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"plain_secret": secret})

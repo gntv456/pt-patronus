@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { agentApi, type AgentConfig, type ToolCatalogEntry, type AgentStats } from '@/api/agent'
 import { useAgentChat, type Unit } from '@/composables/useAgentChat'
 import EmptyState from '@/components/EmptyState.vue'
 
+const { t } = useI18n()
 const scroller = ref<HTMLElement | null>(null)
 // 会话与流式聊天逻辑抽出为 composable（useAgentChat）。
 const {
@@ -38,9 +40,9 @@ const toolSections = computed(() => {
     else write.push(t)
   }
   return [
-    { title: '⚠️ 危险操作（执行前仍需二次确认）', cls: 'danger', items: destructive },
-    { title: '写入（变更可逆状态）', cls: '', items: write },
-    { title: '只读查询', cls: '', items: read },
+    { title: t('assistant.tools.destructive'), cls: 'danger', items: destructive },
+    { title: t('assistant.tools.write'), cls: '', items: write },
+    { title: t('assistant.tools.read'), cls: '', items: read },
   ].filter((s) => s.items.length > 0)
 })
 function toggleTool(name: string, checked: boolean) {
@@ -78,9 +80,9 @@ async function saveConfig() {
     const payload: any = { ...cfg.value, enabled_tools: toolAllowAll.value ? [] : [...enabledSet.value] }
     if (apiKeyInput.value.trim()) payload.api_key = apiKeyInput.value.trim()
     await agentApi.setConfig(payload)
-    ElMessage.success('配置已保存')
+    ElMessage.success(t('assistant.configSaved'))
     showConfig.value = false
-  } catch (e: unknown) { ElMessage.error((e as Error).message || '保存失败') } finally { savingCfg.value = false }
+  } catch (e: unknown) { ElMessage.error((e as Error).message || t('common.saveFailed')) } finally { savingCfg.value = false }
 }
 
 onMounted(loadConversations)
@@ -93,18 +95,18 @@ onMounted(loadConversations)
       <!-- 会话侧栏 -->
       <aside class="glass sidebar">
         <div class="side-head">
-          <span>会话</span>
+          <span>{{ t('assistant.conversations') }}</span>
           <div class="side-actions">
-            <el-button size="small" type="primary" @click="newConversation">✨ 新对话</el-button>
+            <el-button size="small" type="primary" @click="newConversation">{{ t('assistant.newChat') }}</el-button>
             <el-button size="small" @click="openConfig">⚙</el-button>
           </div>
         </div>
         <div class="conv-list">
           <div v-for="c in conversations" :key="c.id" class="conv-item" :class="{ active: c.id === activeId }" @click="selectConversation(c.id)">
-            <span class="conv-title">{{ c.title || '(新对话)' }}</span>
+            <span class="conv-title">{{ c.title || t('assistant.untitledChat') }}</span>
             <el-button class="conv-del" size="small" link @click.stop="deleteConversation(c.id)">🗑</el-button>
           </div>
-          <EmptyState v-if="!conversations.length" icon="message" title="暂无会话" />
+          <EmptyState v-if="!conversations.length" icon="message" :title="t('assistant.noConversations')" />
         </div>
       </aside>
 
@@ -112,7 +114,7 @@ onMounted(loadConversations)
       <section class="glass chat">
         <div ref="scroller" class="msg-list">
           <template v-if="!units.length && !pending">
-            <EmptyState icon="message" title="和 PTPatronus 助手对话" sub="问站点统计、搜影视、订阅、整理下载…自然语言即可" />
+            <EmptyState icon="message" :title="t('assistant.chatTitle')" :sub="t('assistant.chatSub')" />
           </template>
           <template v-for="u in units" :key="u.id">
             <!-- 用户 -->
@@ -120,7 +122,7 @@ onMounted(loadConversations)
             <!-- 助手 -->
             <div v-else-if="u.data.kind === 'assistant'" class="row assistant">
               <div class="bubble assistant-bubble">
-                <details v-if="u.data.reasoning" class="reasoning"><summary>🧠 思考过程</summary><pre>{{ u.data.reasoning }}</pre></details>
+                <details v-if="u.data.reasoning" class="reasoning"><summary>🧠 {{ t('assistant.reasoning') }}</summary><pre>{{ u.data.reasoning }}</pre></details>
                 <div class="content">{{ u.data.content }}</div>
               </div>
             </div>
@@ -128,7 +130,7 @@ onMounted(loadConversations)
             <div v-else class="row assistant">
               <div class="tool-step">
                 <details>
-                  <summary>🔧 调用 {{ (u.data as any).calls.length }} 个工具</summary>
+                  <summary>🔧 {{ t('assistant.toolCalls', { n: (u.data as any).calls.length }) }}</summary>
                   <div v-for="(t, i) in (u.data as any).calls" :key="i" class="tool-item">
                     <div class="tool-name">{{ t.name }}</div>
                     <pre class="tool-args">{{ t.arguments }}</pre>
@@ -141,55 +143,55 @@ onMounted(loadConversations)
           <!-- 实时 -->
           <div v-if="pending" class="row assistant">
             <div class="bubble assistant-bubble">
-              <details v-if="(pending.data as any).reasoning" class="reasoning"><summary>🧠 思考过程</summary><pre>{{ (pending.data as any).reasoning }}</pre></details>
+              <details v-if="(pending.data as any).reasoning" class="reasoning"><summary>🧠 {{ t('assistant.reasoning') }}</summary><pre>{{ (pending.data as any).reasoning }}</pre></details>
               <div class="content">{{ (pending.data as any).content || '…' }}</div>
             </div>
           </div>
         </div>
         <div class="composer">
-          <textarea v-model="input" class="input" rows="2" placeholder="输入指令…（Enter 发送，Shift+Enter 换行）" @keydown="onKey" :disabled="sending" />
-          <el-button v-if="!sending" type="primary" @click="send" :disabled="!input.trim()">发送</el-button>
-          <el-button v-else type="danger" @click="stop">停止</el-button>
+          <textarea v-model="input" class="input" rows="2" :placeholder="t('assistant.inputPlaceholder')" @keydown="onKey" :disabled="sending" />
+          <el-button v-if="!sending" type="primary" @click="send" :disabled="!input.trim()">{{ t('assistant.send') }}</el-button>
+          <el-button v-else type="danger" @click="stop">{{ t('assistant.stop') }}</el-button>
         </div>
       </section>
     </div>
 
     <!-- 配置 -->
-    <el-dialog v-model="showConfig" title="AI 助手设置" width="560px">
+    <el-dialog v-model="showConfig" :title="t('assistant.configTitle')" width="560px">
       <el-form :model="cfg" label-width="120px" size="small">
-        <el-form-item v-if="stats" label="用量统计">
+        <el-form-item v-if="stats" :label="t('assistant.stats.usage')">
           <div class="stats-grid">
-            <div class="stat"><span class="stat-num">{{ stats.total_requests }}</span><span class="stat-label">请求</span></div>
+            <div class="stat"><span class="stat-num">{{ stats.total_requests }}</span><span class="stat-label">{{ t('assistant.stats.requests') }}</span></div>
             <div class="stat"><span class="stat-num">{{ stats.total_input_tokens + stats.total_output_tokens }}</span><span class="stat-label">Token</span></div>
-            <div class="stat"><span class="stat-num">${{ stats.total_cost_usd.toFixed(4) }}</span><span class="stat-label">费用</span></div>
-            <div class="stat"><span class="stat-num">{{ stats.avg_latency_ms }}ms</span><span class="stat-label">均延迟</span></div>
-            <div class="stat"><span class="stat-num">{{ stats.error_count }}</span><span class="stat-label">错误</span></div>
-            <div class="stat"><span class="stat-num">{{ stats.rate_limit_count }}</span><span class="stat-label">限流</span></div>
-            <div class="stat"><span class="stat-num">{{ stats.tool_calls }}</span><span class="stat-label">工具调用</span></div>
-            <div class="stat"><span class="stat-num">{{ toolSuccessRate }}%</span><span class="stat-label">工具成功率</span></div>
+            <div class="stat"><span class="stat-num">${{ stats.total_cost_usd.toFixed(4) }}</span><span class="stat-label">{{ t('assistant.stats.cost') }}</span></div>
+            <div class="stat"><span class="stat-num">{{ stats.avg_latency_ms }}ms</span><span class="stat-label">{{ t('assistant.stats.avgLatency') }}</span></div>
+            <div class="stat"><span class="stat-num">{{ stats.error_count }}</span><span class="stat-label">{{ t('assistant.stats.errors') }}</span></div>
+            <div class="stat"><span class="stat-num">{{ stats.rate_limit_count }}</span><span class="stat-label">{{ t('assistant.stats.rateLimited') }}</span></div>
+            <div class="stat"><span class="stat-num">{{ stats.tool_calls }}</span><span class="stat-label">{{ t('assistant.stats.toolCalls') }}</span></div>
+            <div class="stat"><span class="stat-num">{{ toolSuccessRate }}%</span><span class="stat-label">{{ t('assistant.stats.toolSuccess') }}</span></div>
           </div>
         </el-form-item>
-        <el-form-item label="启用"><el-switch v-model="cfg.enabled" /></el-form-item>
+        <el-form-item :label="t('rss.f.enabled')"><el-switch v-model="cfg.enabled" /></el-form-item>
         <el-form-item label="Provider">
           <el-select v-model="cfg.provider" style="width:100%">
-            <el-option label="OpenAI 兼容（OpenAI/DeepSeek/Qwen/Ollama/中转）" value="openai" />
-            <el-option label="Anthropic Claude（原生）" value="anthropic" />
+            <el-option :label="t('assistant.providerOpenAI')" value="openai" />
+            <el-option :label="t('assistant.providerAnthropic')" value="anthropic" />
           </el-select>
         </el-form-item>
         <el-form-item label="API Key">
-          <el-input v-model="apiKeyInput" type="password" show-password :placeholder="cfg.api_key_configured ? '已配置（不修改请留空）' : '请输入 API key'" />
+          <el-input v-model="apiKeyInput" type="password" show-password :placeholder="cfg.api_key_configured ? t('assistant.apiKeySet') : t('assistant.apiKeyPrompt')" />
         </el-form-item>
         <el-form-item label="Base URL"><el-input v-model="cfg.base_url" placeholder="https://api.openai.com/v1" /></el-form-item>
-        <el-form-item label="模型"><el-input v-model="cfg.model" placeholder="gpt-4o-mini / deepseek-chat / claude-sonnet-5" /></el-form-item>
-        <el-form-item label="深度思考"><el-switch v-model="cfg.enable_thinking" /><span class="hint">推理模型显示思考过程</span></el-form-item>
+        <el-form-item :label="t('assistant.model')"><el-input v-model="cfg.model" placeholder="gpt-4o-mini / deepseek-chat / claude-sonnet-5" /></el-form-item>
+        <el-form-item :label="t('assistant.deepThinking')"><el-switch v-model="cfg.enable_thinking" /><span class="hint">{{ t('assistant.deepThinkingHint') }}</span></el-form-item>
         <el-form-item label="Temperature"><el-input-number v-model="cfg.temperature" :min="0" :max="2" :step="0.1" /></el-form-item>
         <el-form-item label="Max Tokens"><el-input-number v-model="cfg.max_tokens" :min="256" :step="256" /></el-form-item>
-        <el-form-item label="最大思考轮数"><el-input-number v-model="cfg.max_iterations" :min="1" :max="30" /></el-form-item>
-        <el-form-item label="系统提示词"><el-input v-model="cfg.system_prompt" type="textarea" :rows="4" /></el-form-item>
-        <el-form-item label="工具权限">
+        <el-form-item :label="t('assistant.maxIterations')"><el-input-number v-model="cfg.max_iterations" :min="1" :max="30" /></el-form-item>
+        <el-form-item :label="t('assistant.systemPrompt')"><el-input v-model="cfg.system_prompt" type="textarea" :rows="4" /></el-form-item>
+        <el-form-item :label="t('assistant.toolPerms')">
           <div class="tool-perms">
             <el-switch :model-value="toolAllowAll" @update:model-value="(v) => onToggleAllowAll(v as boolean)" />
-            <span class="hint">启用全部工具（不限制；新增工具自动可用）</span>
+            <span class="hint">{{ t('assistant.allToolsHint') }}</span>
             <div v-if="!toolAllowAll" class="tool-groups">
               <div v-for="(sec, i) in toolSections" :key="i" class="tool-group">
                 <div class="tool-group-title" :class="sec.cls">{{ sec.title }}</div>
@@ -208,8 +210,8 @@ onMounted(loadConversations)
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showConfig = false">取消</el-button>
-        <el-button type="primary" :loading="savingCfg" @click="saveConfig">保存</el-button>
+        <el-button @click="showConfig = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="savingCfg" @click="saveConfig">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

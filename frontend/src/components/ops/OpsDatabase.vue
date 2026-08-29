@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { databaseApi, type DBTable, type DBColumn, type DBQueryResult } from '@/api/database'
 import GlassIcon from '@/components/GlassIcon.vue'
 
+const { t } = useI18n()
 const tables = ref<DBTable[]>([])
 const selectedTable = ref('')
 const columns = ref<DBColumn[]>([])
@@ -51,7 +53,7 @@ async function runQuery() {
   } catch (e: any) {
     if (e?.response?.data?.code === 'risk_confirmation_required') {
       try {
-        await ElMessageBox.confirm('这是一个写操作（UPDATE/DELETE/INSERT），确认执行？', '写操作确认', { type: 'warning' })
+        await ElMessageBox.confirm(t('opsdb.confirmWrite'), t('opsdb.confirmWriteTitle'), { type: 'warning' })
         queryResult.value = await databaseApi.query(sqlInput.value, queryLimit.value, true)
       } catch { /* cancelled */ }
     } else {
@@ -76,7 +78,7 @@ onMounted(loadTables)
       <!-- 左侧：表列表 -->
       <div class="db-sidebar glass">
         <div class="db-sidebar-header">
-          <input v-model="searchTable" class="db-search" placeholder="搜索表名…" />
+          <input v-model="searchTable" class="db-search" :placeholder="t('opsdb.searchTables')" />
         </div>
         <div class="db-table-list" v-loading="loading">
           <button
@@ -89,7 +91,7 @@ onMounted(loadTables)
             <span class="db-table-name">{{ t.name }}</span>
             <span class="db-table-count">{{ fmtNum(t.row_count) }}</span>
           </button>
-          <div v-if="!filteredTables.length" class="db-empty">无匹配表</div>
+          <div v-if="!filteredTables.length" class="db-empty">{{ t('opsdb.noMatch') }}</div>
         </div>
       </div>
 
@@ -98,21 +100,21 @@ onMounted(loadTables)
         <!-- SQL 编辑器 -->
         <div class="db-editor glass">
           <div class="db-editor-toolbar">
-            <span class="db-editor-label">SQL 查询</span>
+            <span class="db-editor-label">{{ t('opsdb.sqlQuery') }}</span>
             <select v-model="queryLimit" class="db-limit-select">
-              <option :value="50">50 行</option>
-              <option :value="100">100 行</option>
-              <option :value="200">200 行</option>
-              <option :value="500">500 行</option>
+              <option :value="50">{{ t('opsdb.rowsN', { n: 50 }) }}</option>
+              <option :value="100">{{ t('opsdb.rowsN', { n: 100 }) }}</option>
+              <option :value="200">{{ t('opsdb.rowsN', { n: 200 }) }}</option>
+              <option :value="500">{{ t('opsdb.rowsN', { n: 500 }) }}</option>
             </select>
             <button class="pt-btn pt-btn--primary db-run-btn" :disabled="querying" @click="runQuery">
-              {{ querying ? '执行中…' : '▶ 执行' }}
+              {{ querying ? t('common.loading') : '▶ ' + t('opsdb.execute') }}
             </button>
           </div>
           <textarea
             v-model="sqlInput"
             class="db-textarea"
-            placeholder="输入 SQL 查询…（只读查询自动加 LIMIT，写操作需二次确认）"
+            :placeholder="t('opsdb.sqlPlaceholder')"
             @keydown.ctrl.enter="runQuery"
             @keydown.meta.enter="runQuery"
           />
@@ -120,7 +122,7 @@ onMounted(loadTables)
 
         <!-- 列定义 -->
         <div v-if="columns.length" class="db-schema glass">
-          <h4 class="db-section-title">表结构: {{ selectedTable }}</h4>
+          <h4 class="db-section-title">{{ t('opsdb.schema') }}: {{ selectedTable }}</h4>
           <div class="db-col-list">
             <span v-for="col in columns" :key="col.name" class="db-col-chip" :title="col.type">
               <span class="db-col-name">{{ col.name }}</span>
@@ -134,8 +136,8 @@ onMounted(loadTables)
         <!-- 查询结果 -->
         <div v-if="queryResult" class="db-result glass">
           <div class="db-result-header">
-            <span v-if="queryResult.is_write" class="pt-chip pt-chip--success">影响 {{ queryResult.affected }} 行</span>
-            <span v-else class="pt-chip pt-chip--info">{{ queryResult.rows.length }} 行</span>
+            <span v-if="queryResult.is_write" class="pt-chip pt-chip--success">{{ t('opsdb.affectedRows', { n: queryResult.affected }) }}</span>
+            <span v-else class="pt-chip pt-chip--info">{{ t('opsdb.rowsCount', { n: queryResult.rows.length }) }}</span>
           </div>
           <div v-if="!queryResult.is_write && queryResult.columns.length" class="db-result-table">
             <table>
@@ -146,7 +148,7 @@ onMounted(loadTables)
                 <tr v-for="(row, i) in queryResult.rows" :key="i">
                   <td v-for="(cell, j) in row" :key="j">{{ cell === null ? 'NULL' : String(cell) }}</td>
                 </tr>
-                <tr v-if="!queryResult.rows.length"><td :colspan="queryResult.columns.length" class="td-empty">无数据</td></tr>
+                <tr v-if="!queryResult.rows.length"><td :colspan="queryResult.columns.length" class="td-empty">{{ t('mediaserver.noData') }}</td></tr>
               </tbody>
             </table>
           </div>

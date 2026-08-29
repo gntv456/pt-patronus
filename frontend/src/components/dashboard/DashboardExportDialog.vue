@@ -2,6 +2,9 @@
 // 仪表盘导出图片配置弹窗：主题 / 背景图(压缩后存 localStorage) / 总览字段开关 / 冠军7类选择
 // / 每站明细开关+站点白名单+数量 / 脱敏。配置持久化，点「导出图片」按当前配置绘制下载。
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 import { ElMessage } from 'element-plus'
 import { exportDashboardImage, type DashboardShareData } from '@/utils/dashboardImage'
 import {
@@ -20,35 +23,35 @@ const config = ref<DashboardExportConfig>(loadConfig())
 const exporting = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
-const RANK_LABELS: Record<RankMetric, string> = {
-  uploaded: '上传',
-  downloaded: '下载',
-  uploads: '发布',
-  seeding: '做种',
-  ratio: '分享率',
-  bonus: '魔力',
-  bonus_per_hour: '时魔/h',
-}
+const RANK_LABELS = computed<Record<RankMetric, string>>(() => ({
+  uploaded: t('sitedetail.uploaded'),
+  downloaded: t('sitedetail.downloaded'),
+  uploads: t('smt.uploads'),
+  seeding: t('sitedetail.seeding'),
+  ratio: t('sitedetail.ratio'),
+  bonus: t('sitedetail.bonus'),
+  bonus_per_hour: t('smt.bonusH'),
+}))
 
-const FIELD_DEFS: { key: keyof DashboardExportConfig['fields']; label: string }[] = [
-  { key: 'uploaded', label: '总上传' },
-  { key: 'downloaded', label: '总下载' },
-  { key: 'seeding', label: '总做种' },
-  { key: 'seedingSize', label: '做种体积' },
-  { key: 'bonus', label: '总魔力' },
-  { key: 'ratio', label: '总分享率' },
-  { key: 'uploadCount', label: '总发布数' },
-  { key: 'bonusPerHour', label: '总时魔/h' },
-  { key: 'earliestJoin', label: '最早入站' },
-  { key: 'ptAge', label: 'PT 龄' },
-]
+const FIELD_DEFS = computed<{ key: keyof DashboardExportConfig['fields']; label: string }[]>(() => [
+  { key: 'uploaded', label: t('ded.f.totalUploaded') },
+  { key: 'downloaded', label: t('ded.f.totalDownloaded') },
+  { key: 'seeding', label: t('ded.f.totalSeeding') },
+  { key: 'seedingSize', label: t('ded.f.seedingSize') },
+  { key: 'bonus', label: t('ded.f.totalBonus') },
+  { key: 'ratio', label: t('ded.f.totalRatio') },
+  { key: 'uploadCount', label: t('ded.f.totalUploads') },
+  { key: 'bonusPerHour', label: t('ded.f.totalBonusH') },
+  { key: 'earliestJoin', label: t('ded.f.earliestJoin') },
+  { key: 'ptAge', label: t('ded.f.ptAge') },
+])
 
 const siteOptions = computed(() =>
   (props.data?.sites ?? []).map((s) => ({ value: s.site_id, label: s.site_name })),
 )
 
 function persist(): void {
-  if (!saveConfig(config.value)) ElMessage.warning('配置保存失败：背景图可能过大，本次配置仅临时生效')
+  if (!saveConfig(config.value)) ElMessage.warning(t('ded.saveCfgFailed'))
 }
 
 watch(config, () => persist(), { deep: true })
@@ -60,7 +63,7 @@ function resetConfig(): void {
     rankMetrics: [...defaultConfig.rankMetrics],
     selectedSiteIds: [],
   }
-  ElMessage.success('已恢复默认配置')
+  ElMessage.success(t('ded.resetOk'))
 }
 
 function loadImage(dataUrl: string): Promise<HTMLImageElement> {
@@ -100,7 +103,7 @@ async function onPickBg(e: Event): Promise<void> {
   try {
     config.value.backgroundImage = await compressImage(f)
   } catch {
-    ElMessage.warning('背景图读取失败')
+    ElMessage.warning(t('ded.bgReadFailed'))
   }
   ;(e.target as HTMLInputElement).value = ''
 }
@@ -116,7 +119,7 @@ async function doExport(): Promise<void> {
     await exportDashboardImage(props.data, config.value)
     emit('update:modelValue', false)
   } catch {
-    ElMessage.warning('导出失败')
+    ElMessage.warning(t('ded.exportFailed'))
   } finally {
     exporting.value = false
   }
@@ -126,7 +129,7 @@ async function doExport(): Promise<void> {
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="导出仪表盘图片"
+    :title="t('ded.title')"
     width="560px"
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
@@ -134,31 +137,31 @@ async function doExport(): Promise<void> {
     <div class="export-cfg" v-loading="exporting">
       <!-- 主题 -->
       <div class="sec">
-        <div class="sec-t">主题</div>
+        <div class="sec-t">{{ t('ded.theme') }}</div>
         <el-radio-group v-model="config.theme">
-          <el-radio value="dark" label="dark">深色</el-radio>
-          <el-radio value="light" label="light">浅色</el-radio>
-          <el-radio value="glass" label="glass">玻璃</el-radio>
+          <el-radio value="dark" label="dark">{{ t('ded.themeDark') }}</el-radio>
+          <el-radio value="light" label="light">{{ t('ded.themeLight') }}</el-radio>
+          <el-radio value="glass" label="glass">{{ t('ded.themeGlass') }}</el-radio>
         </el-radio-group>
-        <div class="hint text-muted">「玻璃」建议搭配背景图；有背景图时自动白字 + 暗遮罩。</div>
+        <div class="hint text-muted">{{ t('ded.glassHint') }}</div>
       </div>
 
       <!-- 背景图 -->
       <div class="sec">
-        <div class="sec-t">背景图</div>
+        <div class="sec-t">{{ t('ded.bg') }}</div>
         <div class="bg-row">
           <input ref="fileInput" type="file" accept="image/*" hidden @change="onPickBg" />
-          <el-button size="small" @click="fileInput?.click()">选择图片</el-button>
-          <el-button v-if="config.backgroundImage" size="small" @click="clearBg">清除</el-button>
-          <img v-if="config.backgroundImage" :src="config.backgroundImage" class="bg-preview" alt="背景预览" />
+          <el-button size="small" @click="fileInput?.click()">{{ t('ded.pickImage') }}</el-button>
+          <el-button v-if="config.backgroundImage" size="small" @click="clearBg">{{ t('ded.clear') }}</el-button>
+          <img v-if="config.backgroundImage" :src="config.backgroundImage" class="bg-preview" :alt="t('ded.bgAlt')" />
         </div>
         <div v-if="config.backgroundImage" class="sliders">
           <div class="slider-row">
-            <span>模糊</span><b>{{ config.backgroundBlur }}px</b>
+            <span>{{ t('ded.blur') }}</span><b>{{ config.backgroundBlur }}px</b>
             <el-slider v-model="config.backgroundBlur" :min="0" :max="20" :step="1" />
           </div>
           <div class="slider-row">
-            <span>遮罩</span><b>{{ Math.round(config.backgroundDim * 100) }}%</b>
+            <span>{{ t('gp.mask') }}</span><b>{{ Math.round(config.backgroundDim * 100) }}%</b>
             <el-slider v-model="config.backgroundDim" :min="0" :max="0.8" :step="0.05" />
           </div>
         </div>
@@ -166,7 +169,7 @@ async function doExport(): Promise<void> {
 
       <!-- 总览字段 -->
       <div class="sec">
-        <div class="sec-t">总览字段</div>
+        <div class="sec-t">{{ t('ded.fields') }}</div>
         <div class="fields-grid">
           <el-checkbox v-for="f in FIELD_DEFS" :key="f.key" v-model="config.fields[f.key]">{{ f.label }}</el-checkbox>
         </div>
@@ -175,18 +178,18 @@ async function doExport(): Promise<void> {
       <!-- 冠军排行 -->
       <div class="sec">
         <div class="sec-t">
-          <span>各项冠军</span>
+          <span>{{ t('ded.champions') }}</span>
           <el-switch v-model="config.showRank" size="small" />
         </div>
         <el-checkbox-group v-model="config.rankMetrics" :disabled="!config.showRank">
-          <el-checkbox v-for="m in ALL_RANK_METRICS" :key="m" :value="m" :label="m">{{ RANK_LABELS[m] }}冠军</el-checkbox>
+          <el-checkbox v-for="m in ALL_RANK_METRICS" :key="m" :value="m" :label="m">{{ t('ded.champOf', { metric: RANK_LABELS[m] }) }}</el-checkbox>
         </el-checkbox-group>
       </div>
 
       <!-- 每站明细 -->
       <div class="sec">
         <div class="sec-t">
-          <span>每站明细</span>
+          <span>{{ t('ded.perSite') }}</span>
           <el-switch v-model="config.showSites" size="small" />
         </div>
         <div class="site-row">
@@ -195,7 +198,7 @@ async function doExport(): Promise<void> {
             multiple
             collapse-tags
             collapse-tags-tooltip
-            placeholder="全部站点"
+            :placeholder="t('ded.allSites')"
             :disabled="!config.showSites"
             style="flex: 1"
           >
@@ -208,24 +211,24 @@ async function doExport(): Promise<void> {
             size="small"
             controls-position="right"
           />
-          <span class="text-muted num-hint">数量(0=全部)</span>
+          <span class="text-muted num-hint">{{ t('ded.countHint') }}</span>
         </div>
-        <el-checkbox v-model="config.showIdentity" :disabled="!config.showSites">显示用户名 / ID / 邮箱</el-checkbox>
+        <el-checkbox v-model="config.showIdentity" :disabled="!config.showSites">{{ t('ded.showIdentity') }}</el-checkbox>
       </div>
 
       <!-- 脱敏 -->
       <div class="sec">
-        <div class="sec-t">脱敏</div>
+        <div class="sec-t">{{ t('ded.masking') }}</div>
         <div class="switch-row">
-          <el-checkbox v-model="config.blurSite">站点名脱敏</el-checkbox>
-          <el-checkbox v-model="config.blurUser">用户名脱敏</el-checkbox>
+          <el-checkbox v-model="config.blurSite">{{ t('ded.blurSite') }}</el-checkbox>
+          <el-checkbox v-model="config.blurUser">{{ t('ded.blurUser') }}</el-checkbox>
         </div>
       </div>
     </div>
 
     <template #footer>
-      <el-button @click="resetConfig">恢复默认</el-button>
-      <el-button type="primary" :loading="exporting" :disabled="!data" @click="doExport">导出图片</el-button>
+      <el-button @click="resetConfig">{{ t('ded.reset') }}</el-button>
+      <el-button type="primary" :loading="exporting" :disabled="!data" @click="doExport">{{ t('ded.exportGo') }}</el-button>
     </template>
   </el-dialog>
 </template>

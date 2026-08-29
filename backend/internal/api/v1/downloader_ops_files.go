@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 func (h *DownloaderHandler) Files(c *gin.Context) {
@@ -13,7 +14,7 @@ func (h *DownloaderHandler) Files(c *gin.Context) {
 	}
 	hash := c.Query("hash")
 	if hash == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "hash required"})
+		errcode.Respond(c, errcode.TorrentHashRequired)
 		return
 	}
 	files, err := h.dl.ListFiles(c.Request.Context(), id, hash)
@@ -38,7 +39,7 @@ func (h *DownloaderHandler) SetFilePriority(c *gin.Context) {
 	}
 	var req filePrioReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.dl.SetFilePriority(c.Request.Context(), id, req.Hash, req.Indices, req.Priority))
@@ -54,7 +55,7 @@ func (h *DownloaderHandler) Trackers(c *gin.Context) {
 	}
 	hash := c.Query("hash")
 	if hash == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "hash required"})
+		errcode.Respond(c, errcode.TorrentHashRequired)
 		return
 	}
 	trk, err := h.dl.ListTrackers(c.Request.Context(), id, hash)
@@ -78,7 +79,7 @@ func (h *DownloaderHandler) AddTrackers(c *gin.Context) {
 	}
 	var req trackersReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.dl.AddTrackers(c.Request.Context(), id, req.Hash, req.URLs))
@@ -92,7 +93,7 @@ func (h *DownloaderHandler) RemoveTrackers(c *gin.Context) {
 	}
 	var req trackersReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.dl.RemoveTrackers(c.Request.Context(), id, req.Hash, req.URLs))

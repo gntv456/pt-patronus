@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 // MetricChart — 零依赖 SVG 折线趋势图（与 Dashboard CSS 柱状图同思路，不引图表库）。
 const props = defineProps<{
@@ -40,7 +43,7 @@ const area = computed(() => (path.value ? `${path.value} L${W},${H.value} L0,${H
     </defs>
     <path v-if="area" :d="area" fill="url(#mc-area)" />
     <path v-if="path" :d="path" fill="none" stroke="url(#mc-line)" stroke-width="2" stroke-linejoin="round" />
-    <text v-if="!path" x="50%" y="50%" text-anchor="middle" dy=".3em" class="mc-empty">暂无数据</text>
+    <text v-if="!path" x="50%" y="50%" text-anchor="middle" dy=".3em" class="mc-empty">{{ t('common.noData') }}</text>
   </svg>
 </template>
 

@@ -2,11 +2,13 @@
 // PT监护室站庆日历弹窗：按月历展示各站点的站庆日（琥珀色块），hover 气泡 / 点击在日历下方
 // 查看当日站庆的站点列表。日期来源：开站日期（data-opentime，每年同月日）优先；
 // 无开站日期但站庆文案是倒计时的，按「今天 + N 天」补位（仅当年有效）。
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import SptIcon from '@/components/SptIcon.vue'
 import type { SaveptSiteCard } from '@/api/savept'
 import { buildAnniversaryMap, hasKnownAnniversaryDate, type AnniversaryEntry } from '@/utils/savept'
 
+const { t } = useI18n()
 const props = defineProps<{ sites: SaveptSiteCard[] }>()
 const visible = defineModel<boolean>('visible', { required: true })
 
@@ -15,7 +17,7 @@ const year = ref(now.getFullYear())
 const month = ref(now.getMonth()) // 0-11
 const selectedKey = ref('') // '月-日'，点击的日历格
 
-const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
+const WEEKDAYS = computed(() => [t('sac.wd1'), t('sac.wd2'), t('sac.wd3'), t('sac.wd4'), t('sac.wd5'), t('sac.wd6'), t('sac.wd7')])
 
 const annivMap = computed(() => buildAnniversaryMap(props.sites, year.value, now))
 
@@ -71,11 +73,11 @@ const selectedEntries = computed(() => (selectedKey.value ? annivMap.value.get(s
 const selectedLabel = computed(() => {
   if (!selectedKey.value) return ''
   const [m, d] = selectedKey.value.split('-')
-  return `${year.value} 年 ${m} 月 ${d} 日`
+  return t('sac.dateFull', { y: year.value, m, d })
 })
 
 function tooltipLine(entry: AnniversaryEntry): string {
-  return entry.years > 0 ? `${entry.card.name} · ${entry.years} 周年` : entry.card.name
+  return entry.years > 0 ? t('sac.nameYears', { name: entry.card.name, n: entry.years }) : entry.card.name
 }
 function openSite(card: SaveptSiteCard) {
   if (card.url) window.open(card.url, '_blank', 'noopener')
@@ -85,17 +87,17 @@ watch(visible, (v) => { if (v) goToday() })
 </script>
 
 <template>
-  <el-dialog v-model="visible" title="站庆日历" width="620px" append-to-body class="spt-anniv-dialog">
+  <el-dialog v-model="visible" :title="t('sac.title')" width="620px" append-to-body class="spt-anniv-dialog">
     <div class="anniv">
       <div class="anniv__nav">
-        <button type="button" class="anniv__nav-btn" aria-label="上个月" @click="shiftMonth(-1)">
+        <button type="button" class="anniv__nav-btn" :aria-label="t('sac.prevMonth')" @click="shiftMonth(-1)">
           <SptIcon name="chevron-right" :size="16" class="anniv__nav-icon--prev" />
         </button>
-        <div class="anniv__nav-title">{{ year }} 年 {{ month + 1 }} 月</div>
-        <button type="button" class="anniv__nav-btn" aria-label="下个月" @click="shiftMonth(1)">
+        <div class="anniv__nav-title">{{ t('sac.yearMonth', { y: year, m: month + 1 }) }}</div>
+        <button type="button" class="anniv__nav-btn" :aria-label="t('sac.nextMonth')" @click="shiftMonth(1)">
           <SptIcon name="chevron-right" :size="16" />
         </button>
-        <button type="button" class="anniv__nav-today" @click="goToday">回到今天</button>
+        <button type="button" class="anniv__nav-today" @click="goToday">{{ t('sac.today') }}</button>
       </div>
 
       <div class="anniv__grid anniv__grid--head">
@@ -122,7 +124,7 @@ watch(visible, (v) => { if (v) goToday() })
       </div>
 
       <div v-if="selectedEntries.length" class="anniv__detail">
-        <div class="anniv__detail-title">🎉 {{ selectedLabel }} 站庆</div>
+        <div class="anniv__detail-title">🎉 {{ t('sac.annivOf', { name: selectedLabel }) }}</div>
         <div class="anniv__detail-list">
           <button
             v-for="entry in selectedEntries"
@@ -133,18 +135,18 @@ watch(visible, (v) => { if (v) goToday() })
           >
             <span class="anniv__site-status" :data-status="entry.card.status" />
             <span class="anniv__site-name">{{ entry.card.name }}</span>
-            <span v-if="entry.years > 0" class="anniv__site-years">{{ entry.years }} 周年</span>
-            <span v-if="entry.card.local_site_id" class="anniv__site-owned">已拥有</span>
+            <span v-if="entry.years > 0" class="anniv__site-years">{{ t('sac.yearsN', { n: entry.years }) }}</span>
+            <span v-if="entry.card.local_site_id" class="anniv__site-owned">{{ t('sh.owned') }}</span>
             <SptIcon name="chevron-right" :size="14" class="anniv__site-arrow" />
           </button>
         </div>
       </div>
 
       <div class="anniv__legend">
-        <span class="anniv__legend-item"><i class="anniv__legend-swatch anniv__legend-swatch--anniv" />站庆日</span>
-        <span class="anniv__legend-item"><i class="anniv__legend-swatch anniv__legend-swatch--today" />今天</span>
+        <span class="anniv__legend-item"><i class="anniv__legend-swatch anniv__legend-swatch--anniv" />{{ t('sac.annivDay') }}</span>
+        <span class="anniv__legend-item"><i class="anniv__legend-swatch anniv__legend-swatch--today" />{{ t('sac.today') }}</span>
         <span class="anniv__legend-note">
-          按开站日期推算；{{ year }} 年{{ year === now.getFullYear() ? '还剩' : '共' }} {{ annivDayCount }} 个站庆日<template v-if="noDateCount">，{{ noDateCount }} 个站点未提供日期</template>
+          {{ t('sac.summaryPre') }}{{ t('sac.summary', { year, w: year === now.getFullYear() ? t('sac.left') : t('sac.totalW'), n: annivDayCount }) }}<template v-if="noDateCount">{{ t('sac.noDateN', { n: noDateCount }) }}</template>
         </span>
       </div>
     </div>

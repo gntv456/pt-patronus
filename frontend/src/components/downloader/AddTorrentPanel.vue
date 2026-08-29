@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
 import type { UploadFile } from 'element-plus'
 import { downloaderApi, type Downloader, type DownloaderResult } from '@/api/downloader'
 
+const { t } = useI18n()
 const props = defineProps<{ downloader: Downloader }>()
 const emit = defineEmits<{ added: [] }>()
 
@@ -40,7 +42,7 @@ function ok(r: DownloaderResult, msg: string): boolean {
     ElMessage.success(msg)
     return true
   }
-  ElMessage.warning(r.error || '失败')
+  ElMessage.warning(r.error || t('common.failed'))
   return false
 }
 
@@ -52,7 +54,7 @@ async function submit() {
   try {
     if (mode.value === 'url') {
       if (!url.value) {
-        ElMessage.warning('请输入链接')
+        ElMessage.warning(t('atp.urlRequired'))
         return
       }
       const r = await downloaderApi.add(props.downloader.id, url.value, {
@@ -60,13 +62,13 @@ async function submit() {
         upload_limit: ul,
         download_limit: dl,
       })
-      if (ok(r, '已添加')) {
+      if (ok(r, t('common.added'))) {
         url.value = ''
         emit('added')
       }
     } else {
       if (!files.value.length) {
-        ElMessage.warning('请选择 .torrent 文件')
+        ElMessage.warning(t('atp.pickFile'))
         return
       }
       let n = 0
@@ -82,18 +84,18 @@ async function submit() {
         const r = await downloaderApi.upload(props.downloader.id, form)
         if (r.ok) n++
         else {
-          ElMessage.warning(r.error || '失败')
+          ElMessage.warning(r.error || t('common.failed'))
           break
         }
       }
       if (n) {
-        ElMessage.success(`已添加 ${n} 个`)
+        ElMessage.success(t('atp.addedN', { n }))
         files.value = []
         emit('added')
       }
     }
   } catch (e: unknown) {
-    ElMessage.error((e as Error).message || '请求失败')
+    ElMessage.error((e as Error).message || t('common.requestFailed'))
   } finally {
     loading.value = false
   }
@@ -111,17 +113,17 @@ function removeFile(i: number) {
   <div class="addpanel">
     <div class="top">
       <el-radio-group v-model="mode" size="small">
-        <el-radio-button value="url">链接 / 磁力</el-radio-button>
-        <el-radio-button value="file">种子文件</el-radio-button>
+        <el-radio-button value="url">{{ t('atp.urlMode') }}</el-radio-button>
+        <el-radio-button value="file">{{ t('atp.fileMode') }}</el-radio-button>
       </el-radio-group>
       <el-button text size="small" @click="showAdvanced = !showAdvanced">
-        {{ showAdvanced ? '收起选项' : '高级选项' }}
+        {{ showAdvanced ? t('atp.hideAdvanced') : t('atp.advanced') }}
       </el-button>
     </div>
 
     <div v-if="mode === 'url'" class="urlrow">
-      <el-input v-model="url" placeholder="magnet:?xt=... 或 .torrent 下载链接" @keyup.enter="submit" />
-      <el-button type="primary" :loading="loading" @click="submit">添加</el-button>
+      <el-input v-model="url" :placeholder="t('atp.urlPh')" @keyup.enter="submit" />
+      <el-button type="primary" :loading="loading" @click="submit">{{ t('common.add') }}</el-button>
     </div>
     <div v-else class="filerow">
       <el-upload
@@ -131,10 +133,10 @@ function removeFile(i: number) {
         multiple
         :on-change="onUploadChange"
       >
-        <el-button :loading="loading">选择 .torrent 文件</el-button>
+        <el-button :loading="loading">{{ t('atp.pickFile') }}</el-button>
       </el-upload>
       <el-button type="primary" :loading="loading" :disabled="!files.length" @click="submit">
-        上传 ({{ files.length }})
+        {{ t('atp.uploadN', { n: files.length }) }}
       </el-button>
     </div>
 
@@ -142,41 +144,41 @@ function removeFile(i: number) {
       <div v-for="(f, i) in files" :key="f.name + i" class="file-item">
         <span class="fname">{{ f.name }}</span>
         <span class="fsize text-muted">{{ (f.size / 1024).toFixed(0) }} KB</span>
-        <el-button text size="small" @click="removeFile(i)">移除</el-button>
+        <el-button text size="small" @click="removeFile(i)">{{ t('common.remove') }}</el-button>
       </div>
     </div>
 
     <el-collapse-transition>
       <div v-show="showAdvanced" class="advanced">
         <div class="grid2">
-          <el-form-item label="分类">
-            <el-select v-model="category" placeholder="无" clearable filterable allow-create>
+          <el-form-item :label="t('tw.catPh')">
+            <el-select v-model="category" :placeholder="t('atp.none')" clearable filterable allow-create>
               <el-option v-for="c in cats" :key="c" :label="c" :value="c" />
             </el-select>
           </el-form-item>
-          <el-form-item label="标签">
+          <el-form-item :label="t('ncd.tags')">
             <el-select
               v-model="tags"
               multiple
               filterable
               allow-create
               default-first-option
-              placeholder="无"
+              :placeholder="t('atp.none')"
             >
               <el-option v-for="t in tagOpts" :key="t" :label="t" :value="t" />
             </el-select>
           </el-form-item>
-          <el-form-item label="保存路径">
-            <el-input v-model="savePath" placeholder="默认" />
+          <el-form-item :label="t('atp.savePath')">
+            <el-input v-model="savePath" :placeholder="t('atp.defaultPath')" />
           </el-form-item>
-          <el-form-item label="暂停添加">
+          <el-form-item :label="t('atp.paused')">
             <el-switch v-model="paused" />
           </el-form-item>
-          <el-form-item label="↑限速 KB/s">
-            <el-input-number v-model="upLimit" :min="0" controls-position="right" placeholder="不限" />
+          <el-form-item :label="t('atp.upLimit')">
+            <el-input-number v-model="upLimit" :min="0" controls-position="right" :placeholder="t('atp.unlimited')" />
           </el-form-item>
-          <el-form-item label="↓限速 KB/s">
-            <el-input-number v-model="dlLimit" :min="0" controls-position="right" placeholder="不限" />
+          <el-form-item :label="t('atp.dlLimit')">
+            <el-input-number v-model="dlLimit" :min="0" controls-position="right" :placeholder="t('atp.unlimited')" />
           </el-form-item>
         </div>
       </div>

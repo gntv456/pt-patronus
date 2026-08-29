@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/monitor"
 )
 
@@ -32,7 +33,7 @@ func (h *DiskHandler) List(c *gin.Context) {
 	cmd := `lsblk -b -o NAME,PATH,TYPE,SIZE,MODEL,VENDOR,SERIAL,ROTA,RO,FSTYPE,PARTLABEL,MOUNTPOINT --json`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -42,7 +43,7 @@ func (h *DiskHandler) List(c *gin.Context) {
 
 	var tree diskTreeResp
 	if err := json.Unmarshal([]byte(result.Stdout), &tree); err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to parse lsblk output: " + err.Error()})
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
 		return
 	}
 

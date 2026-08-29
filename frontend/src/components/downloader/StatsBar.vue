@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { fmtSpeed } from '@/utils/format'
+
+const { t } = useI18n()
 
 defineProps<{
   stats?: { dl_rate: number; up_rate: number } | null
@@ -12,33 +15,33 @@ defineProps<{
 </script>
 
 <template>
-  <section class="statsbar" aria-label="下载器实时统计">
+  <section class="statsbar" :aria-label="t('sb.aria')">
     <div class="metric metric-download">
-      <span class="metric-label">下载速度</span>
+      <span class="metric-label">{{ t('sb.dlRate') }}</span>
       <strong>{{ fmtSpeed(stats?.dl_rate ?? 0) }}</strong>
     </div>
     <div class="metric metric-upload">
-      <span class="metric-label">上传速度</span>
+      <span class="metric-label">{{ t('sb.upRate') }}</span>
       <strong>{{ fmtSpeed(stats?.up_rate ?? 0) }}</strong>
     </div>
     <div class="metric">
-      <span class="metric-label">下载中</span>
+      <span class="metric-label">{{ t('drc.downloading') }}</span>
       <strong>{{ active }}</strong>
     </div>
     <div class="metric">
-      <span class="metric-label">做种中</span>
+      <span class="metric-label">{{ t('sb.seedingNow') }}</span>
       <strong>{{ seeding }}</strong>
     </div>
     <div class="metric metric-muted">
-      <span class="metric-label">暂停</span>
+      <span class="metric-label">{{ t('sb.paused') }}</span>
       <strong>{{ paused }}</strong>
     </div>
     <div class="metric metric-error">
-      <span class="metric-label">异常</span>
+      <span class="metric-label">{{ t('sb.errors') }}</span>
       <strong>{{ errors }}</strong>
     </div>
     <div class="metric metric-total">
-      <span class="metric-label">任务总数</span>
+      <span class="metric-label">{{ t('sb.total') }}</span>
       <strong>{{ total }}</strong>
     </div>
   </section>

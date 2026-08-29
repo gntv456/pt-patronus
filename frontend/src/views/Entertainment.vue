@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { entertainmentApi, type Game, type PlayResult, type Site } from '@/api/entertainment'
 import ScratchCardGame from '@/components/ScratchCardGame.vue'
 import JggGameUi from '@/components/JggGameUi.vue'
@@ -19,6 +20,7 @@ import PandaFlipGame from '@/components/PandaFlipGame.vue'
 import BigSmallGame from '@/components/BigSmallGame.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
+const { t } = useI18n()
 const sites = ref<Site[]>([])
 const currentSite = ref<number | undefined>()
 const games = ref<Game[]>([])
@@ -35,11 +37,11 @@ async function play() {
   try {
     const res = await entertainmentApi.play(currentSite.value, currentGame.value)
     result.value = res
-    if (res.success) ElMessage.success(res.prize ? `获得 ${res.prize}` : '完成')
-    else ElMessage.warning(res.message || '失败')
+    if (res.success) ElMessage.success(res.prize ? t('entertainment.prizeWon', { p: res.prize }) : t('entertainment.done'))
+    else ElMessage.warning(res.message || t('entertainment.failed'))
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     playing.value = false
   }
@@ -50,7 +52,7 @@ async function loadSites() {
     sites.value = await entertainmentApi.sites()
     if (sites.value.length && currentSite.value === undefined) currentSite.value = sites.value[0].id
   } catch {
-    ElMessage.error('加载站点失败')
+    ElMessage.error(t('entertainment.loadSitesFailed'))
   }
 }
 
@@ -63,7 +65,7 @@ async function loadGames() {
     games.value = await entertainmentApi.games(currentSite.value)
     currentGame.value = games.value[0]?.id
   } catch {
-    ElMessage.error('加载游戏失败')
+    ElMessage.error(t('entertainment.loadGamesFailed'))
   } finally {
     loading.value = false
   }
@@ -88,9 +90,9 @@ loadSites()
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">娱乐</h2>
+      <h2 class="title">{{ t('entertainment.title') }}</h2>
       <div class="selectors">
-        <el-select v-model="currentSite" placeholder="选择站点" style="width: 200px" popper-class="ent-site-dropdown" @change="loadGames">
+        <el-select v-model="currentSite" :placeholder="t('entertainment.selectSite')" style="width: 200px" popper-class="ent-site-dropdown" @change="loadGames">
           <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id">
             <div class="opt-row">
               <span class="opt-name">{{ s.name }}</span>
@@ -98,7 +100,7 @@ loadSites()
             </div>
           </el-option>
         </el-select>
-        <el-select v-if="games.length > 1" v-model="currentGame" placeholder="选择玩法" style="width: 160px">
+        <el-select v-if="games.length > 1" v-model="currentGame" :placeholder="t('entertainment.selectGame')" style="width: 160px">
           <el-option v-for="g in games" :key="g.id" :label="g.name" :value="g.id" />
         </el-select>
       </div>
@@ -126,9 +128,9 @@ loadSites()
       <!-- 通用玩法兜底 -->
       <div v-else-if="selectedGame" class="glass glass-hover simple-card">
         <div class="gname">{{ selectedGame.name }}</div>
-        <el-button type="primary" :loading="playing" @click="play">玩一次</el-button>
+        <el-button type="primary" :loading="playing" @click="play">{{ t('entertainment.playOnce') }}</el-button>
         <div v-if="result" class="result" :class="result.success ? 'win' : 'lose'">
-          <span class="badge">{{ result.success ? '✓ 成功' : '✗ 失败' }}</span>
+          <span class="badge">{{ result.success ? t('entertainment.winMark') : t('entertainment.loseMark') }}</span>
           <span v-if="result.prize" class="prize">{{ result.prize }}</span>
           <span v-if="result.amount" class="amount">×{{ result.amount }}</span>
           <div v-if="result.message" class="msg text-muted">{{ result.message }}</div>
@@ -138,8 +140,8 @@ loadSites()
       <EmptyState
         v-else-if="!loading"
         icon="🎮"
-        :title="currentSite ? '该站点暂无游戏' : '请先选择站点'"
-        :description="currentSite ? '该站点尚未开放娱乐玩法，可切换其他站点试试' : '在右上角下拉选择一个 PT 站点，开始每日抽奖、刮刮乐等小游戏'"
+        :title="currentSite ? t('entertainment.emptySiteTitle') : t('entertainment.emptyTitle')"
+        :description="currentSite ? t('entertainment.emptySiteDesc') : t('entertainment.emptyDesc')"
       />
     </div>
   </div>

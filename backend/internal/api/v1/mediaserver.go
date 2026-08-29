@@ -2,6 +2,7 @@ package v1
 
 import (
 	"errors"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
 	"net/http"
 	"strconv"
@@ -26,7 +27,7 @@ func NewMediaServerHandler(svc *chain.MediaServerChain) *MediaServerHandler {
 func (h *MediaServerHandler) List(c *gin.Context) {
 	ms, err := h.svc.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if ms == nil {
@@ -39,7 +40,7 @@ func (h *MediaServerHandler) List(c *gin.Context) {
 func (h *MediaServerHandler) Create(c *gin.Context) {
 	var in oper.MediaServerInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	m, err := h.svc.Create(in)
@@ -58,7 +59,7 @@ func (h *MediaServerHandler) Update(c *gin.Context) {
 	}
 	var in oper.MediaServerInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	m, err := h.svc.Update(id, in)
@@ -100,7 +101,7 @@ func (h *MediaServerHandler) Libraries(c *gin.Context) {
 	}
 	libs, err := h.svc.Libraries(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"libraries": libs})
@@ -118,7 +119,7 @@ func (h *MediaServerHandler) Scan(c *gin.Context) {
 	// 空 body（io.EOF）= 扫全部库（合法用法）；仅非法 JSON（非 EOF）才拒绝，
 	// 避免坏请求因 LibraryID 零值静默落入"全库扫描"分支。
 	if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if body.LibraryID != "" {
@@ -128,7 +129,7 @@ func (h *MediaServerHandler) Scan(c *gin.Context) {
 	// 空 library_id：扫该服务器全部库。
 	libs, err := h.svc.Libraries(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	for _, lib := range libs {
@@ -150,7 +151,7 @@ func (h *MediaServerHandler) Refresh(c *gin.Context) {
 		LibraryID string `json:"library_id"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil || body.LibraryID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "library_id 必填"})
+		errcode.Respond(c, errcode.MediaLibraryRequired)
 		return
 	}
 	opResult(c, h.svc.Refresh(c.Request.Context(), id, body.LibraryID))
@@ -164,7 +165,7 @@ func (h *MediaServerHandler) Cover(c *gin.Context) {
 	}
 	libID := c.Query("library_id")
 	if libID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "library_id 必填"})
+		errcode.Respond(c, errcode.MediaLibraryRequired)
 		return
 	}
 	opt := mediaserver.DefaultCoverOptions()
@@ -182,7 +183,7 @@ func (h *MediaServerHandler) Cover(c *gin.Context) {
 	}
 	data, err := h.svc.Cover(c.Request.Context(), id, libID, opt)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.Header("Cache-Control", "no-store")
@@ -200,7 +201,7 @@ func (h *MediaServerHandler) Notify(c *gin.Context) {
 		Body  string `json:"body"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil && !errors.Is(err, io.EOF) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if body.Title == "" {
@@ -212,10 +213,10 @@ func (h *MediaServerHandler) Notify(c *gin.Context) {
 // respondMediaErr 把 oper 错误映射到状态码：输入校验（类型/URL 非法）→ 400，其余 → 500。
 func respondMediaErr(c *gin.Context, err error) {
 	if errors.Is(err, oper.ErrInvalidInput) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	errcode.Respond(c, errcode.Internal.WithErr(err))
 }
 
 // Webhook 公开接收媒体服务器播放/事件回调（媒体服务器无法带 JWT，故公开；按 :id 路由）。
@@ -241,7 +242,7 @@ func (h *MediaServerHandler) PlaybackReport(c *gin.Context) {
 	days := atoiDefault(c.Query("days"), 30)
 	rep, err := h.svc.PlaybackReport(c.Request.Context(), id, days)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, rep)
@@ -263,7 +264,7 @@ func (h *MediaServerHandler) FixSubtitles(c *gin.Context) {
 	}
 	result, err := h.svc.FixMissingSubtitles(c.Request.Context(), &rep, c.Query("lang"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusAccepted, result)
@@ -277,12 +278,12 @@ func (h *MediaServerHandler) Duplicates(c *gin.Context) {
 	}
 	libID := c.Query("library_id")
 	if libID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "library_id 必填"})
+		errcode.Respond(c, errcode.MediaLibraryRequired)
 		return
 	}
 	groups, err := h.svc.DetectDuplicates(c.Request.Context(), id, libID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"groups": groups})
@@ -294,13 +295,13 @@ func (h *MediaServerHandler) Duplicates(c *gin.Context) {
 func (h *MediaServerHandler) Direct(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	target, _, err := h.svc.DirectLink(c.Request.Context(), id, c.Param("path"))
 	if err != nil {
 		// 统一返 404 + 通用文案：不区分「服务器不存在」与「未开启直链」，避免未授权枚举服务器 id。
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.Redirect(http.StatusFound, target)

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
 	"net/http"
 	"net/url"
@@ -47,12 +48,12 @@ func (h *MediaHandler) Calendar(c *gin.Context) {
 	days := atoiDefault(c.Query("days"), 14)
 	tm := h.tmdbSource()
 	if tm == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "TMDB 未配置"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	cal, err := tm.Calendar(c.Request.Context(), kind, days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"kind": kind, "days": days, "calendar": cal})
@@ -62,18 +63,18 @@ func (h *MediaHandler) Calendar(c *gin.Context) {
 // 取当前全部订阅中的 tv TMDB id，返回未来 N 天单集开播日程（单集粒度，next_episode_to_air）。
 func (h *MediaHandler) SubscriptionCalendar(c *gin.Context) {
 	if h.subCh == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "订阅链未注入"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	tm := h.tmdbSource()
 	if tm == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "TMDB 未配置"})
+		errcode.Respond(c, errcode.DependencyMissing)
 		return
 	}
 	days := atoiDefault(c.Query("days"), 30)
 	subs, err := h.subCh.ListWithPosters(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	var ids []string
@@ -91,7 +92,7 @@ func (h *MediaHandler) SubscriptionCalendar(c *gin.Context) {
 	}
 	cal, err := tm.CalendarForSubscriptions(c.Request.Context(), ids, days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"days": days, "calendar": cal})
@@ -103,13 +104,13 @@ func (h *MediaHandler) Search(c *gin.Context) {
 	keyword := c.Query("keyword")
 	year := atoiDefault(c.Query("year"), 0)
 	if keyword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "keyword required"})
+		errcode.Respond(c, errcode.MediaKeywordRequired)
 		return
 	}
 	filter := c.DefaultQuery("type", "video")
 	res, err := h.mediaCh.Search(c.Request.Context(), keyword, year, filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"results": res})
@@ -153,14 +154,14 @@ func (h *MediaHandler) RecommendStream(c *gin.Context) {
 func (h *MediaHandler) Discover(c *gin.Context) {
 	keyword := c.Query("keyword")
 	if keyword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "keyword required"})
+		errcode.Respond(c, errcode.MediaKeywordRequired)
 		return
 	}
 	year := atoiDefault(c.Query("year"), 0)
 	filter := c.DefaultQuery("type", "video")
 	res, err := h.mediaCh.Search(c.Request.Context(), keyword, year, filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if src := c.Query("source"); src != "" {
@@ -179,7 +180,7 @@ func (h *MediaHandler) Poster(c *gin.Context) {
 	year := atoiDefault(c.Query("year"), 0)
 	url, err := h.mediaCh.MatchPoster(c.Request.Context(), keyword, year)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"poster_url": url})
@@ -249,7 +250,7 @@ type mediaConfigReq struct {
 func (h *MediaHandler) SetConfig(c *gin.Context) {
 	var req mediaConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.mediaCh.SetMediaConfig(chain.MediaSettings{
@@ -260,7 +261,7 @@ func (h *MediaHandler) SetConfig(c *gin.Context) {
 		BangumiToken:  strings.TrimSpace(req.BangumiToken),
 		OMDbAPIKey:    strings.TrimSpace(req.OMDbAPIKey),
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -272,12 +273,12 @@ func (h *MediaHandler) Detail(c *gin.Context) {
 	source := c.Query("source")
 	id := c.Query("id")
 	if source == "" || id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "source and id required"})
+		errcode.Respond(c, errcode.MediaSourceIDRequired)
 		return
 	}
 	res, err := h.mediaCh.Detail(c.Request.Context(), source, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
@@ -288,12 +289,12 @@ func (h *MediaHandler) Celebrity(c *gin.Context) {
 	source := c.Query("source")
 	id := c.Query("id")
 	if source == "" || id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "source and id required"})
+		errcode.Respond(c, errcode.MediaSourceIDRequired)
 		return
 	}
 	res, err := h.mediaCh.Celebrity(c.Request.Context(), source, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
@@ -303,7 +304,7 @@ func (h *MediaHandler) Celebrity(c *gin.Context) {
 func (h *MediaHandler) NFO(c *gin.Context) {
 	var req nfoReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"nfo": h.mediaCh.NFO(&req.Info)})
@@ -318,11 +319,11 @@ func (h *MediaHandler) GetQuality(c *gin.Context) {
 func (h *MediaHandler) SetQuality(c *gin.Context) {
 	var q chain.MediaQualityConfig
 	if err := c.ShouldBindJSON(&q); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.mediaCh.SaveQuality(q); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -333,13 +334,13 @@ func (h *MediaHandler) SetQuality(c *gin.Context) {
 func (h *MediaHandler) Rating(c *gin.Context) {
 	title := strings.TrimSpace(c.Query("title"))
 	if title == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "title required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	year := atoiDefault(c.Query("year"), 0)
 	summary, err := h.mediaCh.AggregatedRating(c.Request.Context(), title, year, c.Query("type"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, summary)
@@ -371,22 +372,22 @@ func mediaImageReferer(host string) (string, bool) {
 func (h *MediaHandler) Image(c *gin.Context) {
 	raw := c.Query("url")
 	if raw == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "url required"})
+		errcode.Respond(c, errcode.UrlRequired)
 		return
 	}
 	u, err := url.Parse(raw)
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid url"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	referer, ok := mediaImageReferer(u.Host)
 	if !ok {
-		c.JSON(http.StatusForbidden, gin.H{"error": "host not allowed"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, u.String(), nil)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
@@ -395,7 +396,7 @@ func (h *MediaHandler) Image(c *gin.Context) {
 	}
 	resp, err := mediaClient.Do(req)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	defer resp.Body.Close()

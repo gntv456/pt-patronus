@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { entertainmentApi, type FlipState, type FlipTier } from '@/api/entertainment'
 import { authApi } from '@/api/auth'
 
@@ -10,6 +11,8 @@ const props = defineProps<{ siteId: number }>()
 const GAME = 'panda_flip'
 
 const state = ref<FlipState | null>(null)
+const { t } = useI18n()
+const pfTileN = (n: number) => t('pf.tileN', { n })
 const playing = ref<number | null>(null) // 正在翻的格子 index
 const lastTier = ref<string>('') // 最近翻出的奖项（高亮提示）
 
@@ -48,7 +51,7 @@ async function load(silent = false) {
   } catch (e: unknown) {
     if (!silent) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-      ElMessage.error(msg || '加载翻面夺宝失败')
+      ElMessage.error(msg || t('pf.loadFailed'))
     }
   }
 }
@@ -90,7 +93,7 @@ async function connectFlipWs() {
       return
     }
     if (ev.type === 'tileFlip' && ev.tile_index) applyTileFlip(ev.tile_index, ev.tier_id ?? '', ev.tier_name ?? '', ev.player ?? '')
-    else if (ev.type === 'special') ElMessage.warning('🎉 特等奖出现，新局即将开始')
+    else if (ev.type === 'special') ElMessage.warning(t('pf.special'))
   }
   flipWs.onclose = () => {
     // 下游偶发断开 → 几秒后重连（上游在后端自愈）；卸载后不重连
@@ -105,7 +108,7 @@ function applyTileFlip(index: number, tierId: string, tierName: string, player: 
   if (state.value.tiles.some((t) => t.index === index)) return
   state.value.tiles.push({ index, flipped: true, tier_id: tierId, by_user: player })
   state.value.flipped_count = (state.value.flipped_count ?? 0) + 1
-  const label = `${player || '?'} 翻了 #${index}` + (tierName ? ` · ${tierName}` : '')
+  const label = t('pf.othersFlip', { player: player || '?', index }) + (tierName ? ` · ${tierName}` : '')
   state.value.history = [{ prize_name: label, prize_type: tierId, amount: 0, cost: 0, created_at: '' }, ...(state.value.history ?? [])].slice(0, 50)
 }
 
@@ -131,56 +134,50 @@ async function flip(index: number) {
       extra: { round_number: String(state.value.round_number || 1) },
     })
     if (res.success) {
-      if (res.prize && !res.prize.includes('未中奖')) {
+      if (res.prize && !res.prize.includes(t('pf.noWinShort'))) {
         lastTier.value = res.prize
         ElMessage.success(`🎉 ${res.prize}`)
       } else {
-        ElMessage.info(res.message || '未中奖，继续加油')
+        ElMessage.info(res.message || t('pf.noWin'))
       }
     } else {
-      ElMessage.warning(res.message || '翻牌失败')
+      ElMessage.warning(res.message || t('pf.flipFailed'))
     }
     await load()
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     playing.value = null
   }
 }
 
-const RULES = [
-  '点击任意卡片翻面',
-  '每次翻面消耗对应魔力',
-  '翻中对应奖项即获奖励',
-  '特等奖/全翻完开启新一轮',
-  '奖项随机分布',
-  '翻面过快可能卡顿（非 bug）',
-  '最终解释权归站点所有',
-]
+const RULES = computed(() => [
+  t('pf.r1'), t('pf.r2'), t('pf.r3'), t('pf.r4'), t('pf.r5'), t('pf.r6'), t('pf.r7'),
+])
 </script>
 
 <template>
   <div class="flip">
     <div class="hero">
-      <div class="hero-title">🃏 翻面夺宝</div>
-      <div class="balance">余额 <b>{{ state?.balance?.toLocaleString() ?? '—' }}</b></div>
+      <div class="hero-title">🃏 {{ t('pf.title') }}</div>
+      <div class="balance">{{ t('bs.balance') }} <b>{{ state?.balance?.toLocaleString() ?? '—' }}</b></div>
     </div>
 
     <div class="stat-bar">
       <div class="stat-tile">
         <div class="stat-val">{{ state?.flipped_count ?? 0 }}/{{ state?.total_tiles ?? 100 }}</div>
-        <div class="stat-lbl">游戏状态</div>
+        <div class="stat-lbl">{{ t('pf.gameState') }}</div>
       </div>
       <div class="stat-tile">
         <div class="stat-val warn">{{ state?.cost_per_flip ? Math.round(state.cost_per_flip) : '—' }}</div>
-        <div class="stat-lbl">翻牌成本 / 次</div>
+        <div class="stat-lbl">{{ t('pf.costPer') }}</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-val">第 {{ state?.round_number ?? '?' }} 局</div>
-        <div class="stat-lbl">当前轮次</div>
+        <div class="stat-val">{{ t('bs.roundN', { n: state?.round_number ?? '?' }) }}</div>
+        <div class="stat-lbl">{{ t('pf.curRound') }}</div>
       </div>
-      <button class="refresh-btn" :disabled="refreshing" @click="manualRefresh" title="刷新他人翻的格子">
+      <button class="refresh-btn" :disabled="refreshing" @click="manualRefresh" :title="t('pf.refreshTiles')">
         {{ refreshing ? '…' : '🔄' }}
       </button>
     </div>
@@ -195,7 +192,7 @@ const RULES = [
           :class="{ flipped: t.flipped, active: playing === t.index }"
           :style="t.flipped && t.tierId ? { background: tierColorOf(t.tierId) } : {}"
           :disabled="playing !== null || t.flipped"
-          :title="t.flipped && t.tierId ? tierNameOf(t.tierId) : `第 ${t.index} 格`"
+          :title="t.flipped && t.tierId ? tierNameOf(t.tierId) : pfTileN(t.index)"
           @click="flip(t.index)"
         >
           <template v-if="t.flipped && t.tierId">
@@ -214,17 +211,17 @@ const RULES = [
       <!-- 侧栏：奖项详情 + 规则 -->
       <aside class="side">
         <section class="glass panel">
-          <div class="sec-title">奖项详情</div>
-          <div v-if="!tiers.length" class="text-muted empty">加载中…</div>
-          <div v-for="(t, i) in tiers" :key="t.id" class="tier-row">
-            <span class="tier-bar" :style="{ background: t.color || tierPalette[i % tierPalette.length] }" />
-            <span class="tier-name">{{ t.name }}</span>
-            <span class="tier-reward">{{ Math.round(t.reward) }} 魔力 × {{ t.count }} 张</span>
+          <div class="sec-title">{{ t('pf.tiers') }}</div>
+          <div v-if="!tiers.length" class="text-muted empty">{{ t('common.loading') }}</div>
+          <div v-for="(tier, i) in tiers" :key="tier.id" class="tier-row">
+            <span class="tier-bar" :style="{ background: tier.color || tierPalette[i % tierPalette.length] }" />
+            <span class="tier-name">{{ tier.name }}</span>
+            <span class="tier-reward">{{ t('pf.magicN', { n: Math.round(tier.reward) }) }} × {{ t('pf.cardsN', { n: tier.count }) }}</span>
           </div>
         </section>
 
         <section class="glass panel">
-          <div class="sec-title">游戏规则</div>
+          <div class="sec-title">{{ t('pf.rules') }}</div>
           <ol class="rules">
             <li v-for="(r, i) in RULES" :key="i">{{ r }}</li>
           </ol>
@@ -234,7 +231,7 @@ const RULES = [
 
     <!-- 本局翻牌记录 -->
     <section v-if="state?.history?.length" class="glass section">
-      <div class="sec-title">本局翻牌记录</div>
+      <div class="sec-title">{{ t('pf.history') }}</div>
       <div v-for="(r, i) in state.history.slice(0, 12)" :key="i" class="rec-row">
         <span class="rec-prize">{{ r.prize_name }}</span>
         <span v-if="r.amount" class="rec-amt">+{{ Math.round(r.amount) }}</span>

@@ -268,6 +268,7 @@ class _FreeleechPageState extends State<FreeleechPage> {
               else
                 IconButton(
                   icon: const Icon(Icons.refresh, size: 18),
+                  tooltip: '同步该站',
                   onPressed: () => _syncOne(r),
                   visualDensity: VisualDensity.compact,
                 ),

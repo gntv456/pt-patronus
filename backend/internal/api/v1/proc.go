@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // ProcHandler 通过 SSH 远程通道在被控机上查询进程与网络连接。
@@ -30,7 +31,7 @@ func (h *ProcHandler) List(c *gin.Context) {
 	cmd := `ps -eo pid,ppid,user,stat,pcpu,pmem,rss,tty,etime,comm --no-headers`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	if !result.Success {
@@ -85,7 +86,7 @@ func (h *ProcHandler) Connections(c *gin.Context) {
 	cmd := `ss -tunapH --json 2>/dev/null || ss -tunapH`
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}
 	resp := netConnListResp{Connections: []netConnRow{}}

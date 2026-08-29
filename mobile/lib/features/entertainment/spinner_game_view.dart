@@ -166,8 +166,11 @@ class _SpinnerGameViewState extends State<SpinnerGameView>
             top: 0,
             child: CustomPaint(size: const Size(32, 30), painter: _PointerPainter()),
           ),
-          // 转盘（AnimatedBuilder 驱动旋转；静态时停在累计角度）
-          AnimatedBuilder(
+          // 转盘（AnimatedBuilder 驱动旋转；静态时停在累计角度）；Semantics 播报转盘状态
+          Semantics(
+            label: _playing ? '转盘旋转中' : (_grouped.isNotEmpty ? '转盘，上次结果：${_grouped.map((g) => '${g.name}×${g.n}').join('、')}' : '幸运转盘，含 ${_segments.length} 个奖区'),
+            excludeSemantics: true,
+            child: AnimatedBuilder(
             animation: _ctrl,
             builder: (context, child) {
               final t = _playing ? _ctrl.value : 0;
@@ -176,6 +179,7 @@ class _SpinnerGameViewState extends State<SpinnerGameView>
               return Transform.rotate(angle: (turns + eased * 2) * 2 * math.pi, child: child);
             },
             child: CustomPaint(size: const Size(280, 280), painter: _WheelPainter(_segments, _colors)),
+          ),
           ),
           // 中心 hub 按钮
           GestureDetector(

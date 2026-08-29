@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -41,7 +42,7 @@ func (h *TransferHandler) History(c *gin.Context) {
 	}
 	hs, err := h.ch.History(status, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"history": hs}) // oper 保证非 nil
@@ -57,7 +58,7 @@ func (h *TransferHandler) Summary(c *gin.Context) {
 	}
 	sum, err := h.ch.Summary(c.Request.Context(), withItems, itemLimit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, sum)
@@ -72,11 +73,11 @@ func (h *TransferHandler) GetConfig(c *gin.Context) {
 func (h *TransferHandler) SetConfig(c *gin.Context) {
 	var in transferConfigReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.ch.SetConfig(in); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, h.ch.Config())
@@ -91,11 +92,11 @@ func (h *TransferHandler) GetDirwatchConfig(c *gin.Context) {
 func (h *TransferHandler) SetDirwatchConfig(c *gin.Context) {
 	var in dirwatch.Config
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.ch.SetDirwatchConfig(in); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, dirwatch.Redacted(in))
@@ -110,11 +111,11 @@ func (h *TransferHandler) GetCategoriesConfig(c *gin.Context) {
 func (h *TransferHandler) SetCategoriesConfig(c *gin.Context) {
 	var in transfer.CategoryConfig
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.ch.SetCategoriesConfig(in); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, h.ch.CategoriesConfig())
@@ -124,16 +125,16 @@ func (h *TransferHandler) SetCategoriesConfig(c *gin.Context) {
 func (h *TransferHandler) Organize(c *gin.Context) {
 	var in organizeReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.DownloaderID == 0 || in.Hash == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "downloader_id and hash required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	res, err := h.ch.ManualOrganize(c.Request.Context(), in.DownloaderID, in.Hash)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.NotFound.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
@@ -147,7 +148,7 @@ func (h *TransferHandler) Redo(c *gin.Context) {
 	}
 	res, err := h.ch.Redo(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.NotFound.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"result": res})
@@ -160,7 +161,7 @@ func (h *TransferHandler) DeleteHistory(c *gin.Context) {
 		return
 	}
 	if err := h.ch.DeleteHistory(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -172,12 +173,12 @@ func (h *TransferHandler) BatchDeleteHistory(c *gin.Context) {
 		IDs []uint `json:"ids" binding:"required,min=1,max=200,dive"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	failed, err := h.ch.DeleteHistories(body.IDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if failed == nil {
@@ -190,7 +191,7 @@ func (h *TransferHandler) BatchDeleteHistory(c *gin.Context) {
 func (h *TransferHandler) ClearFailedHistory(c *gin.Context) {
 	n, err := h.ch.ClearFailed()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": n})
@@ -217,11 +218,11 @@ func (h *TransferHandler) SetIdentifyWords(c *gin.Context) {
 		Words []transfer.IdentifyWord `json:"words" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := transfer.SaveIdentifyWords(h.ch.KV(), in.Words); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": len(in.Words)})
@@ -233,7 +234,7 @@ func (h *TransferHandler) TestIdentifyWords(c *gin.Context) {
 		Name string `json:"name" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	ws := transfer.LoadIdentifyWords(h.ch.KV())
@@ -252,7 +253,7 @@ func (h *TransferHandler) TestRecognize(c *gin.Context) {
 		Media bool   `json:"media"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	ws := transfer.LoadIdentifyWords(h.ch.KV())
@@ -291,11 +292,11 @@ func (h *TransferHandler) SetDirTags(c *gin.Context) {
 		Tags []transfer.DirTag `json:"tags" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := transfer.SaveDirTags(h.ch.KV(), in.Tags); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": len(in.Tags)})
@@ -312,11 +313,11 @@ func (h *TransferHandler) GetSortRules(c *gin.Context) {
 func (h *TransferHandler) SetSortRules(c *gin.Context) {
 	var r transfer.SortRules
 	if err := c.ShouldBindJSON(&r); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := transfer.SaveSortRules(h.ch.KV(), r); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": true})
@@ -335,11 +336,11 @@ func (h *TransferHandler) SetDirSync(c *gin.Context) {
 		Tasks []transfer.DirSyncTask `json:"tasks" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := transfer.SaveDirSyncTasks(h.ch.KV(), in.Tasks); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"saved": len(in.Tasks)})
@@ -351,7 +352,7 @@ func (h *TransferHandler) RunDirSync(c *gin.Context) {
 		Name string `json:"name" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	for _, t := range transfer.LoadDirSyncTasks(h.ch.KV()) {
@@ -361,5 +362,5 @@ func (h *TransferHandler) RunDirSync(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusNotFound, gin.H{"error": "任务不存在"})
+	errcode.Respond(c, errcode.BrushflowTaskNotFound)
 }

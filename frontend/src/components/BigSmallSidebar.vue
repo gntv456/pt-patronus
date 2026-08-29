@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { BigSmallState, BigSmallTask, BigSmallProp, BigSmallRedpacket } from '@/api/entertainment'
 import { fmt } from '@/composables/useBigSmallGame'
 
@@ -24,6 +25,8 @@ const emit = defineEmits<{
   (e: 'sendRed'): void
 }>()
 
+const { t: tr } = useI18n()
+
 const topCls = ['gold', 'silver', 'bronze']
 function top(i: number): string {
   return topCls[i] ?? ''
@@ -33,8 +36,8 @@ function top(i: number): string {
 <template>
   <aside class="side">
     <section class="glass panel">
-      <div class="sec-title">🏆 用户排行</div>
-      <div v-if="!state?.rankings?.length" class="empty">暂无排行</div>
+      <div class="sec-title">🏆 {{ tr('bss.rank') }}</div>
+      <div v-if="!state?.rankings?.length" class="empty">{{ tr('bss.noRank') }}</div>
       <template v-else>
         <div class="tabs">
           <button v-for="(r, i) in state.rankings" :key="r.key" class="tab" :class="{ on: rankTab === i }" @click="emit('update:rankTab', i)">{{ r.title }}</button>
@@ -44,46 +47,46 @@ function top(i: number): string {
             <span class="rank-no" :class="top(i)">{{ i + 1 }}</span>
             <span class="rank-name">{{ e.username }}</span>
             <span class="rank-amt">{{ fmt(Math.abs(e.amount)) }}</span>
-            <span v-if="e.count" class="rank-cnt">{{ e.count }}次</span>
+            <span v-if="e.count" class="rank-cnt">{{ tr('bss.times', { n: e.count }) }}</span>
           </div>
-          <div v-if="!(state.rankings[rankTab]?.entries?.length)" class="empty">暂无数据</div>
+          <div v-if="!(state.rankings[rankTab]?.entries?.length)" class="empty">{{ tr('common.noData') }}</div>
         </div>
       </template>
     </section>
 
     <!-- 任务 / 道具 -->
     <section v-if="state?.tasks?.length || state?.props?.length" class="glass panel">
-      <div class="sec-title">🎯 任务 / 道具</div>
+      <div class="sec-title">🎯 {{ tr('bss.tasksProps') }}</div>
       <div v-for="t in state?.tasks ?? []" :key="t.id" class="task-row">
         <div class="task-info">
           <span class="task-title">{{ t.title }}</span>
           <span v-if="t.progress_text" class="task-prog">{{ t.progress_text }}</span>
         </div>
-        <button v-if="t.status === 'rewardable'" class="mini ok" @click="emit('doTask', t, 'reward')">领奖</button>
-        <button v-else-if="t.status === 'idle'" class="mini" @click="emit('doTask', t, 'claim')">接取</button>
-        <span v-else class="task-st">{{ t.status === 'doing' ? '进行中' : '已完成' }}</span>
+        <button v-if="t.status === 'rewardable'" class="mini ok" @click="emit('doTask', t, 'reward')">{{ tr('bss.claim') }}</button>
+        <button v-else-if="t.status === 'idle'" class="mini" @click="emit('doTask', t, 'claim')">{{ tr('bss.accept') }}</button>
+        <span v-else class="task-st">{{ t.status === 'doing' ? tr('bss.doing') : tr('bss.done') }}</span>
       </div>
       <!-- 好学亏返卡 -->
-      <button v-if="isHxpt && state?.props?.some((p) => p.usable === false)" class="mini warn full" @click="emit('useRefund')">💳 使用亏返卡</button>
+      <button v-if="isHxpt && state?.props?.some((p) => p.usable === false)" class="mini warn full" @click="emit('useRefund')">💳 {{ tr('bss.refundCard') }}</button>
       <!-- 熊猫道具独立使用 -->
       <div v-for="p in isHxpt ? [] : state?.props ?? []" :key="p.id" class="prop-row">
         <span class="prop-name">{{ p.name }} ×{{ p.quantity }}</span>
-        <button class="mini" @click="emit('useProp', p)">使用</button>
+        <button class="mini" @click="emit('useProp', p)">{{ tr('bss.use') }}</button>
       </div>
     </section>
 
     <!-- 红包 -->
     <section class="glass panel">
-      <div class="sec-title">🧧 红包</div>
+      <div class="sec-title">🧧 {{ tr('bg.redpack') }}</div>
       <div class="rp-form">
-        <input :value="rpAmount" @input="emit('update:rpAmount', Number(($event.target as HTMLInputElement).value))" type="number" class="rp-amt" placeholder="总额" />
-        <input :value="rpCount" @input="emit('update:rpCount', Number(($event.target as HTMLInputElement).value))" type="number" class="rp-amt" placeholder="个数" />
+        <input :value="rpAmount" @input="emit('update:rpAmount', Number(($event.target as HTMLInputElement).value))" type="number" class="rp-amt" :placeholder="tr('bss.total')" />
+        <input :value="rpCount" @input="emit('update:rpCount', Number(($event.target as HTMLInputElement).value))" type="number" class="rp-amt" :placeholder="tr('bss.count')" />
       </div>
-      <input :value="rpGreeting" @input="emit('update:rpGreeting', ($event.target as HTMLInputElement).value)" class="rp-greet" placeholder="祝福语" />
-      <button class="mini ok full" :disabled="rpSending" @click="emit('sendRed')">{{ rpSending ? '发送中…' : '发红包' }}</button>
+      <input :value="rpGreeting" @input="emit('update:rpGreeting', ($event.target as HTMLInputElement).value)" class="rp-greet" :placeholder="tr('bss.greeting')" />
+      <button class="mini ok full" :disabled="rpSending" @click="emit('sendRed')">{{ rpSending ? tr('bss.sending') : tr('bss.sendRed') }}</button>
       <div v-if="state?.redpackets?.length" class="rp-list">
         <button v-for="r in state.redpackets" :key="r.id" class="rp-item" @click="emit('claimRed', r)">
-          🧧 {{ r.count }}个 / {{ fmt(r.total) }}
+          🧧 {{ tr('bss.redN', { n: r.count, v: fmt(r.total) }) }}
         </button>
       </div>
     </section>

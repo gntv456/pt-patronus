@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { systemApi, type SystemMetrics } from '@/api/system'
 import { fmtBytes } from '@/utils/format'
@@ -7,6 +8,7 @@ import MetricBar from '@/components/monitor/MetricBar.vue'
 // DashboardResourceCard — 区②系统资源：即时采集本机 CPU/内存/磁盘/负载，30s 轮询。
 // /system/metrics 需管理员；非 admin 得 403（http.ts 仅对 vip_* 跳登录，普通 403 不跳），
 // 组件 catch 后优雅降级提示，不轮询。
+const { t } = useI18n()
 const metrics = ref<SystemMetrics | null>(null)
 const forbidden = ref(false)
 const errorMsg = ref('')
@@ -23,7 +25,7 @@ async function load() {
       forbidden.value = true
       if (timer) clearInterval(timer) // 非管理员不再轮询
     } else {
-      errorMsg.value = (e as Error).message || '采集失败'
+      errorMsg.value = (e as Error).message || t('drsc.collectFailed')
     }
   }
 }
@@ -45,19 +47,19 @@ const diskMore = computed(() => Math.max(0, disks.value.length - diskShown.value
   <div class="dash-card">
     <div class="dc-head">
       <div>
-        <h3>系统资源</h3>
+        <h3>{{ t('drsc.title') }}</h3>
         <p v-if="metrics?.hostname">{{ metrics.hostname }} · {{ metrics.os }}</p>
-        <p v-else>本机即时采集 · 30s 刷新</p>
+        <p v-else>{{ t('drsc.sub') }}</p>
       </div>
     </div>
 
-    <div v-if="forbidden" class="dc-empty">需要管理员权限查看系统资源</div>
+    <div v-if="forbidden" class="dc-empty">{{ t('drsc.forbidden') }}</div>
     <div v-else-if="errorMsg" class="dc-empty">{{ errorMsg }}</div>
-    <div v-else-if="!metrics" class="dc-empty">采集中…</div>
+    <div v-else-if="!metrics" class="dc-empty">{{ t('drsc.collecting') }}</div>
     <div v-else class="dc-body">
-      <MetricBar label="CPU" :value="metrics.cpu_usage" :detail="`${metrics.cpu_cores ?? '-'} 核`" />
+      <MetricBar label="CPU" :value="metrics.cpu_usage" :detail="t('drsc.cores', { n: metrics.cpu_cores ?? '-' })" />
       <MetricBar
-        label="内存"
+        :label="t('dc.memory')"
         :value="metrics.mem_usage"
         :detail="`${fmtBytes(metrics.mem_used ?? 0)} / ${fmtBytes(metrics.mem_total ?? 0)}`"
       />
@@ -68,9 +70,9 @@ const diskMore = computed(() => Math.max(0, disks.value.length - diskShown.value
         :value="d.usage"
         :detail="`${fmtBytes(d.used)} / ${fmtBytes(d.total)}`"
       />
-      <div v-if="diskMore" class="disk-more">还有 {{ diskMore }} 个分区未显示</div>
+      <div v-if="diskMore" class="disk-more">{{ t('drsc.moreDisks', { n: diskMore }) }}</div>
       <div v-if="metrics.load1" class="load-row">
-        负载 {{ metrics.load1.toFixed(2) }} / {{ (metrics.load5 ?? 0).toFixed(2) }} /
+        {{ t('drsc.load') }} {{ metrics.load1.toFixed(2) }} / {{ (metrics.load5 ?? 0).toFixed(2) }} /
         {{ (metrics.load15 ?? 0).toFixed(2) }}
       </div>
     </div>

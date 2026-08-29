@@ -481,6 +481,7 @@ class _PTWideDialog extends StatelessWidget {
                     ),
                     IconButton(
                       visualDensity: VisualDensity.compact,
+                      tooltip: '关闭',
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),

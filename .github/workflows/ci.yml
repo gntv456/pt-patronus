@@ -46,7 +46,7 @@ jobs:
               printf "coverage %.1f%% meets %.1f%% floor\n", actual, minimum
             }'
           }
-          check_coverage ./internal/api/v1 10
+          check_coverage ./internal/api/v1 30
           check_coverage ./internal/workflow/nodes 20
           check_coverage ./internal/downloader/manager 90
       - run: go build ./...
@@ -65,6 +65,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run typecheck   # vue-tsc 严格类型检查（vite build 用 esbuild 擦除类型，单独跑 typecheck 才能抓类型错误）
+      - run: npx eslint src      # i18n 防回潮门禁：已迁移页面禁止硬编码中文（eslint.config.mjs 的 I18N_DONE 列表）
       - run: npm run build
 
   backend-windows:
@@ -134,3 +135,76 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter build windows --debug
+
+  release-manifest:
+    name: Release Manifest Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: node scripts/validate-update-manifest.mjs
+
+  extension:
+    name: Browser Extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      # 安全基线：manifest 声明面 + innerHTML 拼接审计（XSS 静态门禁）+ 纯函数行为
+      # （显式列测试文件——node --test 传目录在部分平台会当模块解析而失败）
+      - run: node --test extension/test/security.test.mjs
+
+  e2e:
+    name: E2E (Playwright core flow)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      # HXPT_EMERGENCY_ADMIN：登录链路离线化（仅测试进程注入，生产不受影响）
+      - name: Run core flow E2E
+        working-directory: frontend
+        run: npx playwright test
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+      # govulncheck 只报"实际可达"的漏洞（比盲扫误报率低）；发现即 fail
+      - name: govulncheck (backend)
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - run: cd backend && govulncheck ./...
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      # audit 级别 >=high 只告警不阻断（历史依赖积压逐步还）
+      - name: npm audit (frontend)
+        working-directory: frontend
+        run: npm audit --audit-level=high || echo "::warning::frontend has high/critical vulnerable deps, see log above"

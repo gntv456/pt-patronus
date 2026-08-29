@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Terminal } from '@xterm/xterm'
@@ -7,6 +8,7 @@ import { authApi } from '@/api/auth'
 import { dockerApi } from '@/api/docker'
 import '@xterm/xterm/css/xterm.css'
 
+const { t } = useI18n()
 const props = defineProps<{ visible: boolean; container: string }>()
 const emit = defineEmits<{ 'update:visible': [val: boolean] }>()
 const termContainer = ref<HTMLElement | null>(null)
@@ -31,10 +33,10 @@ watch(() => props.visible, async (v) => {
     const { ticket } = await authApi.wsTicket()
     const url = dockerApi.localExecURL(props.container) + '&ticket=' + encodeURIComponent(ticket)
     ws = new WebSocket(url)
-    ws.onopen = () => term?.write('\x1b[32m[已连接]\x1b[0m\r\n')
+    ws.onopen = () => term?.write('\x1b[32m[' + t('det.connected') + ']\x1b[0m\r\n')
     ws.onmessage = (ev) => term?.write(typeof ev.data === 'string' ? ev.data : new Uint8Array(ev.data))
-    ws.onclose = () => term?.write('\r\n\x1b[33m[连接已关闭]\x1b[0m\r\n')
-    ws.onerror = () => term?.write('\r\n\x1b[31m[连接错误]\x1b[0m\r\n')
+    ws.onclose = () => term?.write('\r\n\x1b[33m[' + t('det.closed') + ']\x1b[0m\r\n')
+    ws.onerror = () => term?.write('\r\n\x1b[31m[' + t('det.error') + ']\x1b[0m\r\n')
   } catch (e: any) { ElMessage.error(e.message) }
 })
 
@@ -47,7 +49,7 @@ onBeforeUnmount(() => cleanup())
 
 <template>
   <el-drawer :model-value="visible" @update:model-value="emit('update:visible', $event)"
-    :title="`终端: ${container}`" size="70%" direction="rtl" @close="cleanup">
+    :title="t('det.title', { name: container })" size="70%" direction="rtl" @close="cleanup">
     <div ref="termContainer" class="exec-term-area"></div>
   </el-drawer>
 </template>

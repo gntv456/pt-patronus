@@ -1,7 +1,10 @@
 <script setup lang="ts">
 // 仪表盘逐站同步进度卡片：进度条、当前站点、同步日志与失败列表。
 // 状态来自 useDashboardSync 组合式函数。
+import { useI18n } from 'vue-i18n'
 import { useDashboardSync } from '@/composables/useDashboardSync'
+
+const { t } = useI18n()
 
 const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, syncLogs, syncPercent } = useDashboardSync()
 </script>
@@ -12,10 +15,10 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
         <div class="sync-title">
           <GlassIcon name="refresh" from="#11998e" to="#38ef7d" :size="22" />
           <div>
-            <strong v-if="syncing">正在刷新统计 {{ syncDone }}/{{ syncTotal || '—' }}</strong>
-            <strong v-else>刷新完成：成功 {{ syncSuccess }} 个，失败 {{ syncErrors.length }} 个</strong>
-            <p v-if="syncing">{{ syncCurrent ? `当前：${syncCurrent}` : '正在准备同步任务' }}</p>
-            <p v-else>失败原因已列出，可单独刷新对应站点或检查 Cookie / 站点适配。</p>
+            <strong v-if="syncing">{{ t('dsync.running', { done: syncDone, total: syncTotal || '—' }) }}</strong>
+            <strong v-else>{{ t('dsync.done', { ok: syncSuccess, fail: syncErrors.length }) }}</strong>
+            <p v-if="syncing">{{ syncCurrent ? t('dsync.current', { name: syncCurrent }) : t('dsync.preparing') }}</p>
+            <p v-else>{{ t('dsync.failedHint') }}</p>
           </div>
         </div>
         <span class="sync-percent">{{ syncPercent }}%</span>
@@ -26,7 +29,7 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
         :stroke-width="8"
       />
       <div v-if="syncLogs.length" class="sync-log-box">
-        <div class="sync-log-title">同步日志</div>
+        <div class="sync-log-title">{{ t('dsync.logTitle') }}</div>
         <ul class="sync-logs">
           <li v-for="log in syncLogs" :key="log.id" :class="`log-${log.status}`">
             <span class="log-time">{{ log.time }}</span>

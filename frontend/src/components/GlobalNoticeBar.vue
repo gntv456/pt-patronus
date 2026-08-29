@@ -2,10 +2,12 @@
 // GlobalNoticeBar — 全局消息提醒横幅（所有页面 topbar 下方）。
 // 聚合 useWs 实时告警（Cookie 失效站点 + H&R 危险种子），红色告警色醒目提示。
 // 有告警才显示，可展开详情、可关闭；新告警到达自动重显。无告警时不占位。
+import { useI18n } from 'vue-i18n'
 import { computed, ref, watch } from 'vue'
 import { useWs } from '@/composables/useWs'
 import SptIcon from '@/components/SptIcon.vue'
 
+const { t } = useI18n()
 const { hrAlerts, cookieAlerts } = useWs()
 
 const expanded = ref(false)
@@ -21,13 +23,13 @@ interface Notice {
 const notices = computed<Notice[]>(() => {
   const items: Notice[] = []
   for (const site of cookieAlerts.value) {
-    items.push({ key: `cookie-${site}`, icon: 'alert-triangle', text: `Cookie 失效：${site}` })
+    items.push({ key: `cookie-${site}`, icon: 'alert-triangle', text: t('gnb.cookieExpired', { site }) })
   }
   for (const hr of hrAlerts.value) {
     items.push({
       key: `hr-${hr.site}-${hr.title}`,
       icon: 'clock',
-      text: `H&R 危险：${hr.site} · ${hr.title}${hr.deadline ? `（截止 ${hr.deadline}）` : ''}`,
+      text: t('gnb.hrDanger', { site: hr.site, title: hr.title, dl: hr.deadline ? t('gnb.deadline', { d: hr.deadline }) : '' }),
     })
   }
   return items
@@ -53,10 +55,10 @@ function dismiss() {
       <SptIcon name="alert-triangle" :size="18" class="gnb-icon" />
       <div class="gnb-body" @click="notices.length > 1 && (expanded = !expanded)">
         <div class="gnb-summary">
-          <span class="gnb-tag">系统通知</span>
+          <span class="gnb-tag">{{ t('gnb.tag') }}</span>
           <span class="gnb-count">{{ notices.length }}</span>
           <span class="gnb-text">
-            {{ notices[0].text }}<template v-if="notices.length > 1"> 等 {{ notices.length }} 条提醒</template>
+            {{ notices[0].text }}<template v-if="notices.length > 1"> {{ t('gnb.moreN', { n: notices.length }) }}</template>
           </span>
         </div>
         <div v-if="expanded" class="gnb-detail">
@@ -66,10 +68,10 @@ function dismiss() {
           </div>
         </div>
       </div>
-      <button v-if="notices.length > 1" class="gnb-btn" :aria-label="expanded ? '收起' : '展开'" @click.stop="expanded = !expanded">
+      <button v-if="notices.length > 1" class="gnb-btn" :aria-label="expanded ? t('trt.collapse') : t('trt.expand')" @click.stop="expanded = !expanded">
         <SptIcon name="chevron-down" :size="16" class="gnb-chevron" :class="{ 'gnb-chevron--up': expanded }" />
       </button>
-      <button class="gnb-btn" aria-label="关闭提醒" @click.stop="dismiss">
+      <button class="gnb-btn" :aria-label="t('gnb.dismiss')" @click.stop="dismiss">
         <SptIcon name="x" :size="16" />
       </button>
     </div>

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/media"
@@ -33,7 +34,7 @@ func NewServarrHandler(subCh *chain.SubscribeChain, mediaCh *chain.MediaChain, h
 // authorize 校验 ?apikey= 或 X-Api-Key 头（Servarr 惯例）；未配置 API Key 时一律拒。
 func (h *ServarrHandler) authorize(c *gin.Context) bool {
 	if strings.TrimSpace(h.apiKey) == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "PTPatronus API key not configured"})
+		errcode.Respond(c, errcode.UnauthorizedOp)
 		return false
 	}
 	key := c.Query("apikey")
@@ -41,7 +42,7 @@ func (h *ServarrHandler) authorize(c *gin.Context) bool {
 		key = c.GetHeader("X-Api-Key")
 	}
 	if key == "" || subtleEqual(key, h.apiKey) != 1 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid apikey"})
+		errcode.Respond(c, errcode.UnauthorizedOp)
 		return false
 	}
 	return true
@@ -121,7 +122,7 @@ func (h *ServarrHandler) GetMovie(c *gin.Context) {
 	}
 	sub, err := h.subCh.Get(parseIDSafe(c.Param("id")))
 	if err != nil || sub == nil || sub.Type != "movie" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, h.toRadarrMovie(sub))
@@ -138,13 +139,13 @@ func (h *ServarrHandler) AddMovie(c *gin.Context) {
 		Year   int    `json:"year"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil || in.TmdbID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tmdbid required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	sub := &models.Subscription{Source: "tmdb", SourceID: strconv.Itoa(in.TmdbID), Title: in.Title, Year: in.Year, Type: "movie", Category: "movie"}
 	created, err := h.subCh.Create(c.Request.Context(), sub)
 	if err != nil || created == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "create failed"})
+		errcode.Respond(c, errcode.ServarrCreateFailed)
 		return
 	}
 	c.JSON(http.StatusOK, h.toRadarrMovie(created))
@@ -156,7 +157,7 @@ func (h *ServarrHandler) RemoveMovie(c *gin.Context) {
 		return
 	}
 	if err := h.subCh.Delete(parseIDSafe(c.Param("id"))); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.Status(http.StatusOK)
@@ -201,7 +202,7 @@ func (h *ServarrHandler) GetSeries(c *gin.Context) {
 	}
 	sub, err := h.subCh.Get(parseIDSafe(c.Param("id")))
 	if err != nil || sub == nil || sub.Type != "tv" {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, h.toSonarrSeries(sub))
@@ -218,7 +219,7 @@ func (h *ServarrHandler) AddSeries(c *gin.Context) {
 		Year   int    `json:"year"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	source, sourceID := "tmdb", ""
@@ -228,13 +229,13 @@ func (h *ServarrHandler) AddSeries(c *gin.Context) {
 		source, sourceID = "tvdb", strconv.Itoa(in.TvdbID)
 	}
 	if sourceID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "tmdbid or tvdbid required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	sub := &models.Subscription{Source: source, SourceID: sourceID, Title: in.Title, Year: in.Year, Type: "tv", Category: "tv"}
 	created, err := h.subCh.Create(c.Request.Context(), sub)
 	if err != nil || created == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "create failed"})
+		errcode.Respond(c, errcode.ServarrCreateFailed)
 		return
 	}
 	c.JSON(http.StatusOK, h.toSonarrSeries(created))
@@ -248,7 +249,7 @@ func (h *ServarrHandler) RemoveSeries(c *gin.Context) {
 		return
 	}
 	if err := h.subCh.Delete(parseIDSafe(c.Param("id"))); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.Status(http.StatusOK)

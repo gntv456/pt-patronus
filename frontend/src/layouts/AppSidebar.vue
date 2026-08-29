@@ -2,6 +2,9 @@
 import { Star, StarFilled, ArrowRight } from '@element-plus/icons-vue'
 import GlassIcon from '@/components/GlassIcon.vue'
 import { navDesc, type NavItem, type NavGroup } from '@/layouts/navConfig'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   navGroups: NavGroup[]
@@ -23,6 +26,10 @@ const emit = defineEmits<{
 }>()
 
 function isGroupCollapsed(title: string) { return !!props.collapsedGroups[title] }
+// 分组显示文案：key 查 locale，缺失回落配置里的原始标题（同时是折叠状态的持久化键）
+function groupTitle(group: NavGroup): string {
+  return t('nav.groups.' + group.key, group.title)
+}
 function isFav(name: string) { return props.favorites.includes(name) }
 // 通知中心项的未读计数（用于红点 / 角标）
 function noticeBadge(name: string): number {
@@ -40,16 +47,16 @@ function noticeBadge(name: string): number {
     <nav class="nav">
       <div v-if="!sidebarCollapsed && favoriteItems.length" class="nav-group fav-group">
         <div class="nav-group-title-row">
-          <span class="nav-group-title">收藏</span>
-          <button type="button" class="group-action" title="清空收藏" @click="emit('clearFavorites')">清空</button>
+          <span class="nav-group-title">{{ t('nav.favorites') }}</span>
+          <button type="button" class="group-action" :title="t('nav.clearFavorites')" @click="emit('clearFavorites')">{{ t('common.clear') }}</button>
         </div>
         <router-link
           v-for="item in favoriteItems" :key="'fav-' + item.name" :to="{ name: item.name }"
-          class="nav-item glass-hover" :title="navDesc[item.name] || item.label" @click="emit('closeMobileNav')"
+          class="nav-item glass-hover" :title="t('nav.desc.' + item.name, navDesc[item.name] || item.label)" @click="emit('closeMobileNav')"
         >
           <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" />
-          <span class="nav-label">{{ item.label }}</span>
-          <button type="button" class="fav-btn on" title="取消收藏" @click="emit('onToggleFav', item.name, $event)">
+          <span class="nav-label">{{ t('nav.items.' + item.name, item.label) }}</span>
+          <button type="button" class="fav-btn on" :title="t('nav.unfavorite')" @click="emit('onToggleFav', item.name, $event)">
             <el-icon><StarFilled /></el-icon>
           </button>
         </router-link>
@@ -59,19 +66,19 @@ function noticeBadge(name: string): number {
         <button v-if="!sidebarCollapsed" type="button" class="nav-group-title-row clickable"
           :aria-expanded="!isGroupCollapsed(group.title)" @click="emit('toggleGroup', group.title)"
         >
-          <span class="nav-group-title">{{ group.title }}</span>
+          <span class="nav-group-title">{{ groupTitle(group) }}</span>
           <el-icon class="group-chevron" :class="{ collapsed: isGroupCollapsed(group.title) }"><ArrowRight /></el-icon>
         </button>
         <template v-if="sidebarCollapsed || !isGroupCollapsed(group.title)">
           <router-link
             v-for="item in group.items" :key="item.name" :to="{ name: item.name }"
-            class="nav-item glass-hover" :title="navDesc[item.name] || item.label" @click="emit('closeMobileNav')"
+            class="nav-item glass-hover" :title="t('nav.desc.' + item.name, navDesc[item.name] || item.label)" @click="emit('closeMobileNav')"
           >
             <GlassIcon :name="item.icon" :from="item.from" :to="item.to" :size="30" class="nav-icon" :class="{ 'nav-icon--ring': noticeBadge(item.name) > 0 }" />
             <span v-if="noticeBadge(item.name) > 0" class="nav-badge" :class="{ 'nav-badge--urgent': noticeUnread && noticeUrgent }">{{ noticeBadge(item.name) > 99 ? '99+' : noticeBadge(item.name) }}</span>
             <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
             <button v-if="!sidebarCollapsed" type="button" class="fav-btn" :class="{ on: isFav(item.name) }"
-            :title="isFav(item.name) ? '取消收藏' : '收藏'" @click="emit('onToggleFav', item.name, $event)"
+            :title="isFav(item.name) ? t('nav.unfavorite') : t('nav.favorite')" @click="emit('onToggleFav', item.name, $event)"
           >
               <el-icon>
                 <StarFilled v-if="isFav(item.name)" />
@@ -83,7 +90,7 @@ function noticeBadge(name: string): number {
       </div>
     </nav>
     <div class="sidebar-footer">
-      <span v-if="!sidebarCollapsed" class="vip-badge">好学 VIP</span>
+      <span v-if="!sidebarCollapsed" class="vip-badge">{{ t('asb.vipBadge') }}</span>
     </div>
   </aside>
 </template>

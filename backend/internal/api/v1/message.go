@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/site"
@@ -79,12 +80,12 @@ func (h *MessageHandler) Stream(c *gin.Context) {
 func (h *MessageHandler) SyncOne(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	mb := parseMailbox(c.DefaultQuery("mailbox", "inbox"))
@@ -100,17 +101,17 @@ func (h *MessageHandler) SyncOne(c *gin.Context) {
 func (h *MessageHandler) Content(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	content, e := h.ch.MessageContent(c.Request.Context(), s, c.Query("url"))
 	if e != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": e.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(e))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"content": content})
@@ -120,7 +121,7 @@ func (h *MessageHandler) Content(c *gin.Context) {
 func (h *MessageHandler) Reply(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	var body struct {
@@ -128,17 +129,17 @@ func (h *MessageHandler) Reply(c *gin.Context) {
 		Content string `json:"content" binding:"max=65536"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数有误"})
+		errcode.Respond(c, errcode.InvalidInput)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	r, e := h.ch.ReplyMessage(c.Request.Context(), s, body.URL, body.Content)
 	if e != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": e.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(e))
 		return
 	}
 	c.JSON(http.StatusOK, r)
@@ -148,23 +149,23 @@ func (h *MessageHandler) Reply(c *gin.Context) {
 func (h *MessageHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	var body struct {
 		URL string `json:"url" binding:"max=512"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数有误"})
+		errcode.Respond(c, errcode.InvalidInput)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	if e := h.ch.DeleteMessage(c.Request.Context(), s, body.URL); e != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": e.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(e))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -174,24 +175,24 @@ func (h *MessageHandler) Delete(c *gin.Context) {
 func (h *MessageHandler) MarkRead(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		errcode.Respond(c, errcode.SiteInvalidID)
 		return
 	}
 	var body struct {
 		IDs []string `json:"ids" binding:"dive,max=128"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "参数有误"})
+		errcode.Respond(c, errcode.InvalidInput)
 		return
 	}
 	s, err := h.siteOp.Get(uint(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	r, e := h.ch.MarkRead(c.Request.Context(), s, body.IDs)
 	if e != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": e.Error()})
+		errcode.Respond(c, errcode.BadGateway.WithErr(e))
 		return
 	}
 	c.JSON(http.StatusOK, r)

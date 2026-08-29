@@ -1,13 +1,16 @@
 {
   "manifest_version": 3,
   "name": "PTPatronus 助手",
-  "version": "2.6.0",
-  "description": "跨站流式搜索/订阅、站点数据仪表、下载任务管理、Cookie 台账+CookieCloud 备份、TOTP 自动填充、验证码 OCR、跨站找同种（辅种）、WebDAV 备份、收藏与历史、隐私模式、豆瓣/IMDb 注入、omnibox。",
+  "version": "1.03.19",
+  "description": "跨站流式搜索/订阅、站点数据仪表、下载任务管理、Cookie 台账+自动保活、TOTP 验证器、本地凭据库（Bitwarden 导入+登录页自动填充）、验证码 OCR、跨站找同种（辅种）、插件管理、AI 助手（LLM 网关流式对话）、WebDAV/CookieCloud 备份、收藏与历史、隐私模式、豆瓣/IMDb 注入、omnibox。",
   "permissions": ["storage", "contextMenus", "notifications", "scripting", "activeTab", "cookies", "omnibox", "alarms"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
   },
@@ -32,6 +35,11 @@
       "run_at": "document_idle"
     },
     {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content_creds.js"],
+      "run_at": "document_idle"
+    },
+    {
       "matches": ["*://*.douban.com/*", "*://*.imdb.com/*"],
       "js": ["content_media.js"],
       "run_at": "document_idle"
@@ -46,6 +54,9 @@
     }
   },
   "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   }
 }

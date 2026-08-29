@@ -155,7 +155,7 @@ func TestCommandRunHandlerCreateGates(t *testing.T) {
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("code = %d, want 400", rec.Code)
 		}
-		if !strings.Contains(rec.Body.String(), "command is required") {
+		if !strings.Contains(rec.Body.String(), "field_required") {
 			t.Errorf("body = %q", rec.Body.String())
 		}
 	})
@@ -185,7 +185,7 @@ func TestCommandRunHandlerCreateGates(t *testing.T) {
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("code = %d, want 400", rec.Code)
 		}
-		if !strings.Contains(rec.Body.String(), "max 50") {
+		if !strings.Contains(rec.Body.String(), "invalid_request") {
 			t.Errorf("body = %q", rec.Body.String())
 		}
 	})

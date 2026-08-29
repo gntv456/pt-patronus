@@ -537,14 +537,18 @@ class _WorkflowEditorPageState extends State<WorkflowEditorPage> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          CustomPaint(
-            size: _canvas,
-            painter: _EdgePainter(
+          Semantics(
+            // 连线为纯视觉装饰（节点/把手自身有语义），对读屏隐藏
+            excludeSemantics: true,
+            child: CustomPaint(
+              size: _canvas,
+              painter: _EdgePainter(
               edges: _edges,
               nodes: {for (final n in _nodes) n.id: n},
               nodeSize: const Size(_nodeW, _nodeH),
               color: Theme.of(context).colorScheme.primary,
             ),
+          ),
           ),
           for (final n in _nodes) _nodeWidget(n),
         ],

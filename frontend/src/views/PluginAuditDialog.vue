@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Refresh } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import type { PluginInfo, PluginLog, PluginRelease } from '@/api/plugin'
 import {
   runtimeState, runtimeType, runtimeLabel,
@@ -8,6 +9,8 @@ import {
   fmtTime,
 } from './pluginsHelpers'
 import { hostCapabilityLabel } from './pluginsLabels'
+
+const { t } = useI18n()
 
 defineProps<{
   visible: boolean
@@ -33,32 +36,32 @@ function permissionRiskType(perm: string) {
 <template>
   <el-dialog
     :model-value="visible"
-    :title="`插件审计：${target?.name || ''}`"
+    :title="t('pad.title', { name: target?.name || '' })"
     width="980px"
     @update:model-value="emit('update:visible', $event)"
   >
     <div v-if="target" class="audit-body">
       <div class="audit-grid">
         <div class="audit-panel">
-          <div class="audit-title">运行状态</div>
+          <div class="audit-title">{{ t('pad.runtime') }}</div>
           <div class="audit-row">
-            <span>状态</span>
+            <span>{{ t('pad.state') }}</span>
             <el-tag size="small" :type="runtimeType(runtimeState(target))">
               {{ runtimeLabel(runtimeState(target)) }}
             </el-tag>
           </div>
-          <div class="audit-row"><span>运行时</span><strong>{{ target.runtime }}</strong></div>
-          <div class="audit-row"><span>进程</span><strong>{{ target.runtime_status?.pid || '-' }}</strong></div>
-          <div class="audit-row"><span>托管进程</span><strong>{{ target.runtime_status?.managed ? '是' : '否' }}</strong></div>
-          <div class="audit-row"><span>重启次数</span><strong>{{ target.runtime_status?.restart_count || 0 }}</strong></div>
-          <div class="audit-row"><span>启动时间</span><strong>{{ fmtTime(target.runtime_status?.started_at) }}</strong></div>
-          <div class="audit-row"><span>最近重启</span><strong>{{ fmtTime(target.runtime_status?.last_restart_at) }}</strong></div>
-          <div class="audit-row"><span>下次重启</span><strong>{{ fmtTime(target.runtime_status?.next_restart_at) }}</strong></div>
-          <div class="audit-row"><span>健康检查</span><strong>{{ fmtTime(target.runtime_status?.last_health_at) }}</strong></div>
-          <div class="audit-row"><span>最近退出</span><strong>{{ target.runtime_status?.last_exit || '-' }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.rt') }}</span><strong>{{ target.runtime }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.pid') }}</span><strong>{{ target.runtime_status?.pid || '-' }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.managed') }}</span><strong>{{ target.runtime_status?.managed ? t('common.yes') : t('common.no') }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.restarts') }}</span><strong>{{ target.runtime_status?.restart_count || 0 }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.startedAt') }}</span><strong>{{ fmtTime(target.runtime_status?.started_at) }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.lastRestart') }}</span><strong>{{ fmtTime(target.runtime_status?.last_restart_at) }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.nextRestart') }}</span><strong>{{ fmtTime(target.runtime_status?.next_restart_at) }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.health') }}</span><strong>{{ fmtTime(target.runtime_status?.last_health_at) }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.lastExit') }}</span><strong>{{ target.runtime_status?.last_exit || '-' }}</strong></div>
         </div>
         <div class="audit-panel">
-          <div class="audit-title">权限</div>
+          <div class="audit-title">{{ t('pad.perms') }}</div>
           <div class="chips">
             <el-tag
               v-for="perm in target.permissions || []"
@@ -72,7 +75,7 @@ function permissionRiskType(perm: string) {
           </div>
         </div>
         <div class="audit-panel">
-          <div class="audit-title">宿主能力</div>
+          <div class="audit-title">{{ t('pad.hostCaps') }}</div>
           <div class="chips">
             <el-tag v-for="capability in target.host_capabilities || []" :key="capability" size="small" effect="plain">
               {{ hostCapabilityLabel(capability) }}
@@ -80,7 +83,7 @@ function permissionRiskType(perm: string) {
           </div>
         </div>
         <div class="audit-panel">
-          <div class="audit-title">可选能力</div>
+          <div class="audit-title">{{ t('pad.optCaps') }}</div>
           <div class="chips">
             <el-tag
               v-for="capability in target.available_optional_host_capabilities || []"
@@ -103,7 +106,7 @@ function permissionRiskType(perm: string) {
           </div>
         </div>
         <div class="audit-panel">
-          <div class="audit-title">依赖</div>
+          <div class="audit-title">{{ t('pad.deps') }}</div>
           <div class="chips">
             <el-tag
               v-for="dependency in target.dependencies_status || []"
@@ -122,40 +125,40 @@ function permissionRiskType(perm: string) {
           </div>
         </div>
         <div class="audit-panel">
-          <div class="audit-title">扩展点</div>
-          <div class="audit-row"><span>动作</span><strong>{{ (target.actions || []).length }}</strong></div>
-          <div class="audit-row"><span>事件</span><strong>{{ (target.events || []).length }}</strong></div>
-          <div class="audit-row"><span>视图</span><strong>{{ (target.contributes?.views || []).length }}</strong></div>
-          <div class="audit-row"><span>配置项</span><strong>{{ (target.config_schema || []).length }}</strong></div>
+          <div class="audit-title">{{ t('pad.extPoints') }}</div>
+          <div class="audit-row"><span>{{ t('pad.actions') }}</span><strong>{{ (target.actions || []).length }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.events') }}</span><strong>{{ (target.events || []).length }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.views') }}</span><strong>{{ (target.contributes?.views || []).length }}</strong></div>
+          <div class="audit-row"><span>{{ t('pad.configs') }}</span><strong>{{ (target.config_schema || []).length }}</strong></div>
         </div>
       </div>
       <div class="audit-panel">
         <div class="logs-head">
-          <div class="audit-title">最近日志</div>
-          <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">刷新</el-button>
+          <div class="audit-title">{{ t('pad.logs') }}</div>
+          <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{ t('common.refresh') }}</el-button>
         </div>
-        <el-table v-loading="loading" :data="logs" size="small" empty-text="暂无日志" max-height="320">
-          <el-table-column label="时间" width="170">
+        <el-table v-loading="loading" :data="logs" size="small" :empty-text="t('pad.noLogs')" max-height="320">
+          <el-table-column :label="t('pad.time')" width="170">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column prop="level" label="级别" width="90" />
-          <el-table-column prop="event" label="事件/动作" min-width="130" />
-          <el-table-column prop="message" label="消息" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="level" :label="t('pad.level')" width="90" />
+          <el-table-column prop="event" :label="t('pad.event')" min-width="130" />
+          <el-table-column prop="message" :label="t('pad.msg')" min-width="200" show-overflow-tooltip />
         </el-table>
       </div>
       <div class="audit-panel">
-        <div class="audit-title">版本记录</div>
-        <el-table :data="releases" size="small" empty-text="暂无版本记录" max-height="320">
-          <el-table-column prop="version" label="版本" width="120" />
-          <el-table-column label="发布时间" width="170">
+        <div class="audit-title">{{ t('pad.releases') }}</div>
+        <el-table :data="releases" size="small" :empty-text="t('pad.noReleases')" max-height="320">
+          <el-table-column prop="version" :label="t('pad.version')" width="120" />
+          <el-table-column :label="t('pad.releasedAt')" width="170">
             <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column prop="active" label="当前" width="80">
+          <el-table-column prop="active" :label="t('pad.current')" width="80">
             <template #default="{ row }">
-              <el-tag v-if="row.active" size="small" type="success">当前</el-tag>
+              <el-tag v-if="row.active" size="small" type="success">{{ t('pad.current') }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="100">
+          <el-table-column :label="t('common.action')" width="100">
             <template #default="{ row }">
               <el-button
                 size="small"
@@ -163,7 +166,7 @@ function permissionRiskType(perm: string) {
                 :loading="rollbacking === row.id"
                 @click="emit('rollback', row)"
               >
-                回滚
+                {{ t('pad.rollback') }}
               </el-button>
             </template>
           </el-table-column>

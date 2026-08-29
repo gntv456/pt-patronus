@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Refresh } from '@element-plus/icons-vue'
 import type { PluginInfo, PluginLog } from '@/api/plugin'
 import { fmtTime, jsonText } from './pluginsHelpers'
+
+const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'update:visible', v: boolean): void
@@ -28,7 +31,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
 <template>
   <el-dialog
     :model-value="visible"
-    title="插件日志"
+    :title="t('pld.title')"
     width="900px"
     @update:model-value="emit('update:visible', $event)"
   >
@@ -36,7 +39,7 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       <el-select
         :model-value="logPlugin"
         clearable
-        placeholder="全部插件"
+        :placeholder="t('pld.allPlugins')"
         size="small"
         style="width: 200px"
         @update:model-value="emit('update:logPlugin', $event as string)"
@@ -44,20 +47,20 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       >
         <el-option v-for="p in plugins" :key="p.id" :label="p.name" :value="p.id" />
       </el-select>
-      <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">刷新</el-button>
-      <el-tooltip content="开启后每 5 秒自动刷新日志" placement="top">
-        <el-switch v-model="autoRefresh" inline-prompt active-text="自动" inactive-text="手动" />
+      <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{ t('common.refresh') }}</el-button>
+      <el-tooltip :content="t('pld.autoTip')" placement="top">
+        <el-switch v-model="autoRefresh" inline-prompt :active-text="t('pld.auto')" :inactive-text="t('pld.manual')" />
       </el-tooltip>
     </div>
-    <el-table v-loading="loading" :data="logs" size="small" class="log-table" empty-text="暂无日志" max-height="520">
-      <el-table-column label="时间" width="170">
+    <el-table v-loading="loading" :data="logs" size="small" class="log-table" :empty-text="t('pad.noLogs')" max-height="520">
+      <el-table-column :label="t('pad.time')" width="170">
         <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
       </el-table-column>
-      <el-table-column prop="plugin_id" label="插件" min-width="140" />
-      <el-table-column prop="level" label="级别" width="90" />
-      <el-table-column prop="event" label="事件/动作" min-width="130" />
-      <el-table-column prop="message" label="消息" min-width="180" />
-      <el-table-column label="数据" min-width="220">
+      <el-table-column prop="plugin_id" :label="t('pld.plugin')" min-width="140" />
+      <el-table-column prop="level" :label="t('pad.level')" width="90" />
+      <el-table-column prop="event" :label="t('pad.event')" min-width="130" />
+      <el-table-column prop="message" :label="t('pad.msg')" min-width="180" />
+      <el-table-column :label="t('pld.data')" min-width="220">
         <template #default="{ row }">
           <span class="mono">{{ jsonText(row.data) }}</span>
         </template>

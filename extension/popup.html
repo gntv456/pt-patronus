@@ -4,100 +4,69 @@
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="theme.css" />
   <style>
-    body { width: 392px; }
+    body { width: 360px; }
 
-    /* —— 顶部：品牌行 + 用户态（大厂扩展式「一行搞定位」）—— */
+    /* 顶栏：紧凑单行 */
     .hero {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 14px 14px 10px;
-    }
-    .hero .who {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
       gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-raised);
     }
+    .hero .who { margin-left: auto; display: flex; align-items: center; gap: 6px; }
     .hero .who .avatar {
-      width: 26px; height: 26px;
-      border-radius: var(--r-blob);
+      width: 22px; height: 22px;
+      border-radius: 4px;
       display: grid; place-items: center;
-      font-size: 12px; font-weight: 800; color: #061310;
-      background: linear-gradient(160deg, #e2ff8a, var(--lime-deep));
-      box-shadow: 0 4px 12px rgba(200,255,61,0.35);
+      font-size: 11px; font-weight: 700; color: #fff;
+      background: var(--accent);
     }
-    .icon-btn {
-      width: 30px; height: 30px;
-      display: grid; place-items: center;
-      padding: 0;
-      font-size: 14px;
-      border-radius: 10px;
-    }
-
-    /* —— 主面板 —— */
-    .panel { margin: 0 10px 10px; padding: 12px; }
+    .icon-btn { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; font-size: 13px; }
 
     /* 搜索排 */
-    .search-row { display: flex; gap: 8px; }
+    .search-row { display: flex; gap: 6px; padding: 8px 10px 0; }
     .search-row input { flex: 1; }
-    kbd {
-      font: 600 9px var(--mono);
-      color: var(--ink-faint);
-      border: 1px solid var(--glass-border-dim);
-      border-radius: 4px;
-      padding: 1px 4px;
-      background: rgba(5,16,12,0.6);
-    }
+    #status { font-size: 11px; color: var(--ink-3); padding: 5px 12px 2px; min-height: 16px; }
 
-    /* 状态行 */
-    #status { font-size: 11px; color: var(--ink-dim); padding: 7px 2px 0; letter-spacing: 0.04em; min-height: 18px; }
+    /* 数据芯片行 */
+    .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 10px; }
 
-    /* —— 数据芯片矩阵（密集信息）—— */
-    .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin: 0 10px; }
-    .chips .chip { padding: 8px 10px; }
-    .chips .chip .v { font-size: 14px; }
-
-    /* —— 玻璃导航排 —— */
-    .nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 10px; }
+    /* 导航行 */
+    .nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 10px; }
     .nav a {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 4px;
-      padding: 9px 2px 7px;
+      justify-content: center;
+      gap: 5px;
+      padding: 6px 4px;
       text-decoration: none;
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--ink-dim);
-      background: var(--glass);
-      border: 1px solid var(--glass-border-dim);
-      border-radius: var(--r-md);
-      backdrop-filter: blur(10px);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      font-size: 11.5px;
+      color: var(--ink-2);
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
       cursor: pointer;
-      transition: transform var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+      transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
     }
-    .nav a:hover { transform: translateY(-2px); color: var(--lime); border-color: var(--glass-border); }
-    .nav a .ico { font-size: 15px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.4)); }
+    .nav a:hover { background: var(--bg-hover); color: var(--ink); }
+    .nav a .ico { font-size: 12px; }
     .nav a.busy { pointer-events: none; opacity: 0.55; }
 
-    /* —— 结果流 —— */
-    #results { display: flex; flex-direction: column; gap: 7px; max-height: 330px; overflow-y: auto; margin: 0 10px 12px; }
+    /* 结果列表 */
+    #results { display: flex; flex-direction: column; max-height: 318px; overflow-y: auto; margin: 0 10px 10px; }
     .item {
-      padding: 9px 11px;
-      border-radius: var(--r-md);
-      background: linear-gradient(155deg, rgba(20,48,42,0.55), rgba(10,24,20,0.45));
-      border: 1px solid rgba(168,196,180,0.1);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
-      transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease);
-      animation: item-in var(--t-mid) var(--ease);
+      padding: 7px 9px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-raised);
     }
-    @keyframes item-in { from { opacity: 0; transform: translateY(6px); } }
-    .item:hover { border-color: rgba(200,255,61,0.35); transform: translateX(2px); }
+    .item:first-child { border-top-left-radius: var(--r-md); border-top-right-radius: var(--r-md); }
+    .item:last-child { border-bottom-left-radius: var(--r-md); border-bottom-right-radius: var(--r-md); border-bottom: none; }
+    .item:hover { background: var(--bg-hover); }
     .item .title {
       font-weight: 600;
-      font-size: 12.5px;
+      font-size: 12px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -106,68 +75,62 @@
     .item .meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 4px 10px;
-      margin-top: 3px;
-      font: 500 10.5px var(--mono);
-      color: var(--ink-faint);
+      gap: 3px 8px;
+      margin-top: 2px;
+      font: 400 10.5px var(--mono);
+      color: var(--ink-3);
     }
-    .item .meta .free { color: var(--coral); font-weight: 700; }
-    .item .meta .seed { color: var(--lime); }
-    .item .actions { display: flex; gap: 6px; margin-top: 7px; }
-    .item .actions button { padding: 4px 12px; font-size: 11px; }
+    .item .meta .free { color: var(--ok); font-weight: 600; }
+    .item .meta .seed { color: var(--ink-2); }
+    .item .actions { display: flex; gap: 6px; margin-top: 5px; }
+    .item .actions button { padding: 3px 10px; font-size: 11px; }
+    .item .actions .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .item .actions .primary:hover { background: var(--accent-strong); }
 
-    /* 骨架占位（搜索加载态） */
-    .sk-item { padding: 10px 11px; border-radius: var(--r-md); border: 1px solid rgba(168,196,180,0.06); }
-    .sk-item .ln { height: 11px; margin-bottom: 7px; }
+    /* 骨架占位 */
+    .sk-item { padding: 8px 9px; border-bottom: 1px solid var(--border); }
+    .sk-item .ln { height: 10px; margin-bottom: 6px; }
     .sk-item .ln:last-child { width: 55%; margin-bottom: 0; }
 
-    .spin {
-      display: inline-block;
-      width: 11px; height: 11px;
-      border: 2px solid var(--lime);
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: r 0.8s linear infinite;
-      vertical-align: -1px;
+    /* 拖放快捷条 */
+    .dragbar {
+      margin: 6px 10px 0;
+      padding: 6px 9px;
+      display: flex; gap: 8px; align-items: center;
+      font-size: 11px;
+      border-color: var(--accent);
     }
-    @keyframes r { to { transform: rotate(360deg) } }
   </style>
 </head>
 <body>
-  <div class="blob" style="width:220px;height:180px;background:rgba(124,92,255,.55);top:-60px;right:-70px;"></div>
-  <div class="blob" style="width:180px;height:150px;background:rgba(61,223,255,.35);bottom:-50px;left:-60px;"></div>
-
   <header class="hero">
     <div class="brand">
-      <div class="logo">P</div>
+      <div class="logo" aria-hidden="true"></div>
       <h1>PTPatronus</h1>
     </div>
     <div class="who">
       <div class="avatar" id="userAvatar" style="display:none" title=""></div>
-      <button class="btn-ghost icon-btn" id="openOptions" title="服务器与账号登录（设置）" aria-label="设置">⚙</button>
+      <button class="btn-ghost icon-btn" id="openOptions" title="设置与登录" aria-label="设置">⚙</button>
     </div>
   </header>
 
-  <div class="glass panel">
-    <div class="search-row">
-      <input id="keyword" placeholder="跨站搜索全部 PT 站…" aria-label="搜索关键词" />
-      <button class="btn-lime" id="search">搜索</button>
-    </div>
-    <div id="status">输入关键词回车搜索；选中网页文字后打开本弹窗自动带入。</div>
+  <div class="search-row">
+    <input id="keyword" placeholder="跨站搜索全部 PT 站…" aria-label="搜索关键词" />
+    <button class="btn-primary" id="search">搜索</button>
+  </div>
+  <div id="status">选中网页文字后打开本弹窗自动带入。</div>
+
+  <div class="chips" id="statsBox" style="display:none">
+    <div class="chip"><span class="v" id="statUp">—</span><span class="k">总上传</span></div>
+    <div class="chip"><span class="v" id="statSeed">—</span><span class="k">做种</span></div>
+    <div class="chip"><span class="v" id="statBonus">—</span><span class="k">魔力值</span></div>
   </div>
 
   <div class="nav">
     <a href="#" id="goSearch"><span class="ico">🔍</span>搜索页</a>
     <a href="#" id="goSubs"><span class="ico">📚</span>订阅</a>
     <a href="#" id="goDash"><span class="ico">📡</span>仪表盘</a>
-    <a href="#" id="goStats"><span class="ico">📊</span>站点数据</a>
-    <a href="#" id="checkin"><span class="ico">📅</span><span id="checkinTxt">一键签到</span></a>
-  </div>
-
-  <div class="chips" id="statsBox" style="display:none">
-    <div class="chip"><span class="v" id="statUp">—</span><span class="k">总上传</span></div>
-    <div class="chip violet"><span class="v" id="statSeed">—</span><span class="k">做种</span></div>
-    <div class="chip coral"><span class="v" id="statBonus">—</span><span class="k">魔力值</span></div>
+    <a href="#" id="checkin"><span class="ico">📅</span><span id="checkinTxt">签到</span></a>
   </div>
 
   <div id="results"></div>

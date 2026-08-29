@@ -3,11 +3,14 @@
  * 种子详情抽屉：抓取并解析单条种子详情页（简介/截图/MediaInfo/文件列表）。
  * 受控显隐（v-model:visible）；详情数据与加载态由父组件传入。
  */
+import { useI18n } from 'vue-i18n'
 import { safeUrl } from '@/utils/safeUrl'
 import { copyText } from '@/utils/clipboard'
 import DOMPurify from 'dompurify'
 import MediaPoster from '@/components/MediaPoster.vue'
 import type { TorrentDetail } from '@/api/seedbrowse'
+
+const { t } = useI18n()
 
 const visible = defineModel<boolean>('visible', { required: true })
 defineProps<{
@@ -24,7 +27,7 @@ function openDl(d: TorrentDetail | null) {
 }
 async function copyDl(d: TorrentDetail | null) {
   if (!d?.download_url) return
-  await copyText(d.download_url, '已复制下载链接', '复制失败，请手动复制')
+  await copyText(d.download_url, t('tddr.linkCopied'), t('tddr.copyFailed'))
 }
 function imdbUrl(id: string) {
   return id ? `https://www.imdb.com/title/${id}/` : ''
@@ -32,7 +35,7 @@ function imdbUrl(id: string) {
 </script>
 
 <template>
-  <el-drawer v-model="visible" title="种子详情" size="50%" direction="rtl">
+  <el-drawer v-model="visible" :title="t('tddr.title')" size="50%" direction="rtl">
     <div v-loading="loading" class="detail-body">
       <template v-if="detail">
         <!-- 头部：海报 + 标题/副标题 + 规格彩签 + 下载操作 -->
@@ -57,14 +60,14 @@ function imdbUrl(id: string) {
               >{{ detail.imdb_id }}</a>
             </div>
             <div v-if="detail.download_url" class="dl-row">
-              <el-button type="primary" @click="openDl(detail)">⬇ 下载</el-button>
-              <el-button @click="copyDl(detail)">复制链接</el-button>
+              <el-button type="primary" @click="openDl(detail)">⬇ {{ t('trt.download') }}</el-button>
+              <el-button @click="copyDl(detail)">{{ t('tddr.copyLink') }}</el-button>
             </div>
           </div>
         </div>
 
         <div v-if="detail.screenshots?.length" class="card glass">
-          <div class="sec-title">截图 <span class="text-muted">({{ detail.screenshots.length }})</span></div>
+          <div class="sec-title">{{ t('tddr.screenshots') }} <span class="text-muted">({{ detail.screenshots.length }})</span></div>
           <div class="shots">
             <a
               v-for="(s, i) in detail.screenshots"
@@ -78,7 +81,7 @@ function imdbUrl(id: string) {
         </div>
 
         <div v-if="detail.description" class="card glass">
-          <div class="sec-title">简介</div>
+          <div class="sec-title">{{ t('tddr.desc') }}</div>
           <div class="desc" v-html="sanitizeHtml(detail.description)"></div>
         </div>
 
@@ -88,7 +91,7 @@ function imdbUrl(id: string) {
         </div>
 
         <div v-if="detail.file_list?.length" class="card glass">
-          <div class="sec-title">文件列表 <span class="text-muted">({{ detail.file_list.length }})</span></div>
+          <div class="sec-title">{{ t('tddr.files') }} <span class="text-muted">({{ detail.file_list.length }})</span></div>
           <div class="file-list">
             <div v-for="(f, i) in detail.file_list" :key="i" class="file-row"><span class="file-ic">📄</span>{{ f }}</div>
           </div>

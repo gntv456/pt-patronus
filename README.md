@@ -2,7 +2,7 @@
 
 PT 守护神 —— **干净起点重写**：Go 后端为核心（Docker 部署）+ Vue3 Web UI（Docker 端本体）+ Flutter 客户端（Android/iOS/macOS/Windows/鸿蒙）。
 
-> **当前版本：`0.00.02`（开发版）**。版本号单一真源为后端 `backend/internal/version`，经 `GET /api/v1/system/info` 暴露；前端（设置·关于）与移动端（账户页）**运行时读取后端版本显示**，各自仅保留离线兜底常量。**日常升版只需改后端一处**（`version.go`），重启后端后三端立即生效；`pubspec.yaml` 的 `version:` 是发布构建元数据（Android versionCode / iOS build），与显示版本解耦，仅发布时更新。后端构建可用 `-ldflags "-X .../version.Version=x.y.z"` 覆盖。
+> **版本号单一真源**：后端 `backend/internal/version/version.go`，经 `GET /api/v1/system/info` 暴露（构建时可用 `-ldflags "-X .../version.Version=x.y.z"` 覆盖）；前端（设置·关于）与移动端（账户页）**运行时读取后端版本显示**，各自仅保留离线兜底常量，本 README 不手抄具体版本号（历史上曾滞后）。`pubspec.yaml` 的 `version:` 是发布构建元数据（Android versionCode / iOS build），与显示版本解耦，仅发布时更新。**日常升版只需改后端一处**（`version.go`），重启后端后三端立即生效。
 
 > 架构借鉴 MoviePilot（Chain/Module/Event + Oper）、PT-depiler（站点 Schema/Definition 两层 + 286 站 YAML）、pt_mate（SiteAdapter 接口 + CookieCloud）、qBitController（rid 增量同步）。保留「好学 APP 专属 VIP」准入验证。
 

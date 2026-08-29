@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // 账号增长趋势面板 + 待处理事项面板。
 // 数据来自 useDashboardData（趋势/指标）与 useDashboardActions（待办）。
+import { useI18n } from 'vue-i18n'
 import DashboardTrendChart from '@/components/dashboard/DashboardTrendChart.vue'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import { useDashboardData } from '@/composables/useDashboardData'
 import { useDashboardActions } from '@/composables/useDashboardActions'
 
+const { t } = useI18n()
 const {
   trendLoading, trendDays, trendMode, initialLoading,
   metricItems, trendSeries, trendUnit, trendDaysAxis, siteConfigByName,
@@ -18,14 +20,14 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
       <section class="trend-panel ops-surface" v-loading="trendLoading">
         <div class="section-head">
           <div>
-            <h3>账号增长趋势</h3>
-            <p>跨站聚合数据 · 最近 {{ trendDays }} 天</p>
+            <h3>{{ t('dts.title') }}</h3>
+            <p>{{ t('dts.sub', { n: trendDays }) }}</p>
           </div>
-          <div class="metric-switch" aria-label="趋势指标">
-            <button type="button" :class="{ active: trendMode === 'traffic' }" @click="trendMode = 'traffic'">上传/下载</button>
-            <button type="button" :class="{ active: trendMode === 'seeding' }" @click="trendMode = 'seeding'">做种数</button>
-            <button type="button" :class="{ active: trendMode === 'size' }" @click="trendMode = 'size'">做种体积</button>
-            <button type="button" :class="{ active: trendMode === 'bonus' }" @click="trendMode = 'bonus'">魔力</button>
+          <div class="metric-switch" :aria-label="t('dts.metricAria')">
+            <button type="button" :class="{ active: trendMode === 'traffic' }" @click="trendMode = 'traffic'">{{ t('dts.mTraffic') }}</button>
+            <button type="button" :class="{ active: trendMode === 'seeding' }" @click="trendMode = 'seeding'">{{ t('dts.mSeeding') }}</button>
+            <button type="button" :class="{ active: trendMode === 'size' }" @click="trendMode = 'size'">{{ t('dts.mSize') }}</button>
+            <button type="button" :class="{ active: trendMode === 'bonus' }" @click="trendMode = 'bonus'">{{ t('dts.mBonus') }}</button>
           </div>
         </div>
 
@@ -54,8 +56,8 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
       <aside class="action-panel ops-surface">
         <div class="section-head action-heading">
           <div>
-            <h3>待处理事项</h3>
-            <p>{{ totalIssueCount ? `${totalIssueCount} 项需要关注` : '当前运行正常' }}</p>
+            <h3>{{ t('dts.issuesTitle') }}</h3>
+            <p>{{ totalIssueCount ? t('dts.issuesN', { n: totalIssueCount }) : t('dts.allOk') }}</p>
           </div>
           <span class="issue-counter" :class="{ empty: !totalIssueCount }">{{ totalIssueCount }}</span>
         </div>
@@ -82,10 +84,10 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
         </div>
         <div v-else class="action-empty">
           <span class="empty-check">✓</span>
-          <strong>暂无待处理事项</strong>
-          <p>站点连接、Cookie 和 H&amp;R 状态正常</p>
+          <strong>{{ t('dts.noIssues') }}</strong>
+          <p>{{ t('dts.noIssuesHint') }}</p>
         </div>
-        <router-link to="/sites" class="action-footer">前往站点管理</router-link>
+        <router-link to="/sites" class="action-footer">{{ t('dts.goSites') }}</router-link>
       </aside>
     </div>
 </template>

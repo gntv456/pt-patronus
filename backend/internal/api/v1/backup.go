@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
 	"net/http"
 
@@ -27,7 +28,7 @@ func NewBackupHandler(svc *backup.Service, ns *notice.Service) *BackupHandler {
 func (h *BackupHandler) Export(c *gin.Context) {
 	data, err := h.svc.Export(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.Header("Content-Disposition", `attachment; filename="ptpatronus-backup.json"`)
@@ -48,12 +49,12 @@ func (h *BackupHandler) Export(c *gin.Context) {
 func (h *BackupHandler) Import(c *gin.Context) {
 	data, err := readBody(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	sites, dls, err := h.svc.Import(c.Request.Context(), data)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if h.notice != nil {
@@ -71,12 +72,12 @@ func (h *BackupHandler) Import(c *gin.Context) {
 func (h *BackupHandler) ImportMoviePilot(c *gin.Context) {
 	data, err := readBody(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	n, err := h.svc.ImportMoviePilot(c.Request.Context(), data)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"imported_sites": n})
@@ -87,27 +88,27 @@ func (h *BackupHandler) ImportMoviePilot(c *gin.Context) {
 func (h *BackupHandler) ImportPTD(c *gin.Context) {
 	fh, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "请上传 .ptd 备份文件"})
+		errcode.Respond(c, errcode.BackupFileInvalid)
 		return
 	}
 	if fh.Size > maxBackupSize {
-		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "文件过大（上限 64MB）"})
+		errcode.Respond(c, errcode.BackupFileTooLarge)
 		return
 	}
 	f, err := fh.Open()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "读取文件失败"})
+		errcode.Respond(c, errcode.BackupReadFailed)
 		return
 	}
 	defer f.Close()
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, f); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "读取文件失败"})
+		errcode.Respond(c, errcode.BackupReadFailed)
 		return
 	}
 	n, err := h.svc.ImportPTD(c.Request.Context(), buf.Bytes())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if h.notice != nil {

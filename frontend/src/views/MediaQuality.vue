@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
 
   mediaQualityApi,
@@ -11,6 +12,7 @@ import {
 import GlassIcon from '@/components/GlassIcon.vue'
 import { ElMessage } from 'element-plus'
 
+const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 
@@ -31,7 +33,7 @@ async function load() {
     cfg.value = { ...cfg.value, ...c }
     if (!c.sources || c.sources.length === 0) cfg.value.sources = ['tmdb', 'douban', 'imdb', 'bangumi']
   } catch (e: any) {
-    ElMessage.error(e?.message || '加载失败')
+    ElMessage.error(e?.message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -41,9 +43,9 @@ async function save() {
   saving.value = true
   try {
     await mediaQualityApi.setConfig(cfg.value)
-    ElMessage.success('已保存')
+    ElMessage.success(t('common.saved'))
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    ElMessage.error(e?.message || t('common.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -58,7 +60,7 @@ const previewing = ref(false)
 
 async function preview() {
   if (!qTitle.value.trim()) {
-    ElMessage.warning('请输入标题')
+    ElMessage.warning(t('mediaquality.titleRequired'))
     return
   }
   previewing.value = true
@@ -66,7 +68,7 @@ async function preview() {
   try {
     summary.value = await mediaQualityApi.rating(qTitle.value.trim(), qYear.value ?? 0, qType.value)
   } catch (e: any) {
-    ElMessage.error(e?.message || '查询失败')
+    ElMessage.error(e?.message || t('mediaquality.queryFailed'))
   } finally {
     previewing.value = false
   }
@@ -78,34 +80,34 @@ onMounted(load)
 <template>
   <div class="page" :class="{ embedded: props.embedded }">
     <div class="head">
-      <h2 v-if="!props.embedded" class="title">媒体质量</h2>
-      <h3 v-else class="title embedded-title">媒体质量</h3>
-      <el-button type="primary" :loading="saving" @click="save">保存配置</el-button>
+      <h2 v-if="!props.embedded" class="title">{{ t('mediaquality.title') }}</h2>
+      <h3 v-else class="title embedded-title">{{ t('mediaquality.title') }}</h3>
+      <el-button type="primary" :loading="saving" @click="save">{{ t('mediaquality.saveCfg') }}</el-button>
     </div>
-    <p class="sub">聚合豆瓣 / TMDB / IMDb / Bangumi 多源评分，对订阅做低分保护：评分、投票数、上映天数三道闸门任一不达标即跳过推送。评分查询失败 fail-open（不阻断下载）。</p>
+    <p class="sub">{{ t('mediaquality.subtitle') }}</p>
 
     <!-- 配置 -->
     <div v-loading="loading" class="glass card">
-      <div class="card-title">质量闸门</div>
+      <div class="card-title">{{ t('mediaquality.gateTitle') }}</div>
       <el-form label-width="140px" label-position="right">
-        <el-form-item label="启用订阅闸门">
+        <el-form-item :label="t('mediaquality.f.enableGate')">
           <el-switch v-model="cfg.enabled" />
-          <span class="hint">开启后所有订阅命中前查评分；可在各订阅单独开关覆盖</span>
+          <span class="hint">{{ t('mediaquality.f.enableGateHint') }}</span>
         </el-form-item>
-        <el-form-item label="最低综合评分">
+        <el-form-item :label="t('mediaquality.f.minScore')">
           <el-input-number v-model="cfg.min_score" :min="0" :max="10" :step="0.1" :precision="1" />
-          <span class="hint">低于此分不下载（默认 6.0）</span>
+          <span class="hint">{{ t('mediaquality.f.minScoreHint') }}</span>
         </el-form-item>
-        <el-form-item label="最低投票数">
+        <el-form-item :label="t('mediaquality.f.minVotes')">
           <el-input-number v-model="cfg.min_votes" :min="0" :step="50" />
-          <span class="hint">样本无统计意义则不放行（默认 100）</span>
+          <span class="hint">{{ t('mediaquality.f.minVotesHint') }}</span>
         </el-form-item>
-        <el-form-item label="上映满 N 天">
+        <el-form-item :label="t('mediaquality.f.minDays')">
           <el-input-number v-model="cfg.min_release_days" :min="0" :step="1" />
-          <span class="hint">评分稳定前的作品暂缓（默认 7；0=不校验）</span>
+          <span class="hint">{{ t('mediaquality.f.minDaysHint') }}</span>
         </el-form-item>
-        <el-form-item label="参与聚合源">
-          <el-select v-model="cfg.sources" multiple placeholder="空=全部源" style="width: 100%">
+        <el-form-item :label="t('mediaquality.f.sources')">
+          <el-select v-model="cfg.sources" multiple :placeholder="t('mediaquality.f.sourcesHint')" style="width: 100%">
             <el-option v-for="o in sourceOptions" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
         </el-form-item>
@@ -114,16 +116,16 @@ onMounted(load)
 
     <!-- 评分预览 -->
     <div class="glass card">
-      <div class="card-title">评分预览</div>
+      <div class="card-title">{{ t('mediaquality.previewTitle') }}</div>
       <div class="preview-row">
-        <el-input v-model="qTitle" placeholder="影视标题" style="max-width: 240px" @keyup.enter="preview" />
-        <el-input-number v-model="qYear" :min="1900" :max="2099" placeholder="年份" controls-position="right" style="max-width: 130px" />
-        <el-select v-model="qType" placeholder="类型" style="width: 110px">
-          <el-option label="全部" value="" />
-          <el-option label="电影" value="movie" />
-          <el-option label="剧集" value="tv" />
+        <el-input v-model="qTitle" :placeholder="t('mediaquality.f.qTitle')" style="max-width: 240px" @keyup.enter="preview" />
+        <el-input-number v-model="qYear" :min="1900" :max="2099" :placeholder="t('mediaquality.f.qYear')" controls-position="right" style="max-width: 130px" />
+        <el-select v-model="qType" :placeholder="t('mediaquality.f.qType')" style="width: 110px">
+          <el-option :label="t('assessment.filter.all')" value="" />
+          <el-option :label="t('search.catMovie')" value="movie" />
+          <el-option :label="t('search.catTv')" value="tv" />
         </el-select>
-        <el-button type="primary" :loading="previewing" @click="preview">查询</el-button>
+        <el-button type="primary" :loading="previewing" @click="preview">{{ t('mediaquality.query') }}</el-button>
       </div>
 
       <div v-if="summary" class="summary">
@@ -131,20 +133,20 @@ onMounted(load)
           <GlassIcon name="mediaquality" :size="34" class="summary-icon" />
           <div>
             <div class="summary-title">{{ summary.title }}<span v-if="summary.year" class="muted"> ({{ summary.year }})</span></div>
-            <div class="muted small">综合 {{ summary.aggregated.toFixed(1) }} · 共 {{ summary.votes }} 票 · 上映 {{ summary.release_days || '?' }} 天</div>
+            <div class="muted small">{{ t('mediaquality.aggScore') }} {{ summary.aggregated.toFixed(1) }} · {{ t('mediaquality.votesCount', { n: summary.votes }) }} · {{ t('mediaquality.releasedDays', { n: summary.release_days || '?' }) }}</div>
           </div>
           <el-tag :type="summary.passed ? 'success' : 'warning'" class="summary-tag">
-            {{ summary.passed ? '通过' : '未通过' }}
+            {{ summary.passed ? t('mediaquality.passed') : t('mediaquality.notPassed') }}
           </el-tag>
         </div>
-        <div v-if="summary.reason" class="reason">原因：{{ summary.reason }}</div>
+        <div v-if="summary.reason" class="reason">{{ t('mediaquality.reasonPrefix') }}{{ summary.reason }}</div>
         <div class="sources">
           <span v-for="s in summary.sources" :key="s.source" class="source-pill">
             <span class="src-name">{{ sourceLabel(s.source) }}</span>
             <span class="src-score">{{ s.score.toFixed(1) }}</span>
-            <span class="src-votes">{{ s.votes }} 票</span>
+            <span class="src-votes">{{ t('mediaquality.votesUnit', { n: s.votes }) }}</span>
           </span>
-          <span v-if="!summary.sources.length" class="muted small">未找到任何评分数据</span>
+          <span v-if="!summary.sources.length" class="muted small">{{ t('mediaquality.noRatingData') }}</span>
         </div>
       </div>
     </div>

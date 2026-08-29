@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -40,7 +41,7 @@ func (h *CommandRunHandler) List(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	runs, err := h.runs.List(c.Query("source"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"runs": runs})
@@ -53,7 +54,7 @@ func (h *CommandRunHandler) Get(c *gin.Context) {
 	}
 	run, err := h.runs.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "command run not found"})
+		errcode.Respond(c, errcode.ResourceNotFound)
 		return
 	}
 	c.JSON(http.StatusOK, run)
@@ -62,28 +63,29 @@ func (h *CommandRunHandler) Get(c *gin.Context) {
 func (h *CommandRunHandler) Create(c *gin.Context) {
 	var in commandRunRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	in.Command = strings.TrimRight(in.Command, "\r\n")
 	if strings.TrimSpace(in.Command) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "command is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	targetIDs := uniqueTargetIDs(in.TargetIDs)
 	if len(targetIDs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "target_ids is required"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if len(targetIDs) > 50 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "too many targets, max 50"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	riskLevel, riskReason := classifyCommandRisk(in.Command)
 	if riskLevel == "high" && !in.ConfirmRisk {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":       "dangerous command requires confirmation",
-			"code":        "risk_confirmation_required",
+			"message":     errcode.RiskConfirmationRequired.Message,
+			"error":       errcode.RiskConfirmationRequired.Message,
+			"code":        errcode.RiskConfirmationRequired.Code,
 			"risk_level":  riskLevel,
 			"risk_reason": riskReason,
 		})
@@ -104,7 +106,7 @@ func (h *CommandRunHandler) Create(c *gin.Context) {
 		StartedAt:  started,
 	}
 	if err := h.runs.Create(run); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 
@@ -155,12 +157,12 @@ func (h *CommandRunHandler) Create(c *gin.Context) {
 	finished := time.Now()
 	status := commandRunStatus(successCount, failureCount)
 	if err := h.runs.Finish(run.ID, status, successCount, failureCount, finished, finished.Sub(started).Milliseconds()); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	out, err := h.runs.Get(run.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)

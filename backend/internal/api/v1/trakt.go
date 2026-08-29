@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 )
 
@@ -73,7 +74,7 @@ type traktConfigReq struct {
 func (h *TraktHandler) SetConfig(c *gin.Context) {
 	var req traktConfigReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	cur := h.ch.GetSettings()
@@ -102,7 +103,7 @@ func (h *TraktHandler) SetConfig(c *gin.Context) {
 		}
 	}
 	if err := h.ch.SaveSettings(next); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存失败"})
+		errcode.Respond(c, errcode.SaveFailed)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true})
@@ -112,7 +113,7 @@ func (h *TraktHandler) SetConfig(c *gin.Context) {
 func (h *TraktHandler) DeviceCode(c *gin.Context) {
 	s, err := h.ch.StartDeviceAuth(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -143,7 +144,7 @@ func (h *TraktHandler) DeviceStatus(c *gin.Context) {
 func (h *TraktHandler) Sync(c *gin.Context) {
 	n, err := h.ch.SyncNow(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"ok": true, "created": n})

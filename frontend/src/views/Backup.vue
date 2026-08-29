@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { backupApi } from '@/api/backup'
 import { useAuthStore } from '@/stores/auth'
 import type { UploadFile } from 'element-plus'
 
+const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const auth = useAuthStore()
@@ -13,10 +15,10 @@ const exporting = ref(false)
 async function doExport() {
   // 导出含明文 Cookie / API Key / 密码，需二次确认
   try {
-    await ElMessageBox.confirm('将导出含明文 Cookie / API Key / 密码的配置，请妥善保管。', '确认导出', {
+    await ElMessageBox.confirm(t('backup.exportConfirmMsg'), t('backup.exportConfirmTitle'), {
       type: 'warning',
-      confirmButtonText: '导出',
-      cancelButtonText: '取消',
+      confirmButtonText: t('backup.exportAction'),
+      cancelButtonText: t('common.cancel'),
     })
   } catch {
     return // 用户取消
@@ -33,9 +35,9 @@ async function doExport() {
       a.download = 'ptpatronus-backup.json'
       a.click()
       URL.revokeObjectURL(url)
-      ElMessage.success('已导出')
+      ElMessage.success(t('backup.exported'))
     })
-    .catch(() => ElMessage.error('导出失败'))
+    .catch(() => ElMessage.error(t('backup.exportFailed')))
     .finally(() => {
       exporting.value = false
     })
@@ -50,9 +52,9 @@ function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
       const data = JSON.parse(String(reader.result))
       const fn = kind === 'own' ? backupApi.importOwn : backupApi.importMoviePilot
       const res = await fn(data)
-      ElMessage.success(`导入完成：站点 ${res.imported_sites ?? 0}${res.imported_downloaders != null ? ' / 下载器 ' + res.imported_downloaders : ''}`)
+      ElMessage.success(t('backup.importDone', { sites: res.imported_sites ?? 0, dlPart: res.imported_downloaders != null ? ' ' + t('backup.dlPart', { n: res.imported_downloaders }) : '' }))
     } catch (err) {
-      ElMessage.error('导入失败：' + (err as Error).message)
+      ElMessage.error(t('backup.importFailed') + (err as Error).message)
     } finally {
       importing.value = false
     }
@@ -66,8 +68,8 @@ function onPTDFile(file: File | undefined) {
   importing.value = true
   backupApi
     .importPTD(file)
-    .then((res) => ElMessage.success(`导入完成：站点 ${res.imported_sites ?? 0}`))
-    .catch((err) => ElMessage.error('导入失败：' + (err as Error).message))
+    .then((res) => ElMessage.success(t('backup.importDoneSimple', { sites: res.imported_sites ?? 0 })))
+    .catch((err) => ElMessage.error(t('backup.importFailed') + (err as Error).message))
     .finally(() => {
       importing.value = false
     })
@@ -88,27 +90,27 @@ function onPTDUpload(f: UploadFile) {
 
 <template>
   <div class="page" :class="{ embedded: props.embedded }">
-    <h2 v-if="!props.embedded" class="title">备份</h2>
-    <h3 v-else class="title embedded-title">备份</h3>
+    <h2 v-if="!props.embedded" class="title">{{ t('backup.title') }}</h2>
+    <h3 v-else class="title embedded-title">{{ t('backup.title') }}</h3>
 
     <div class="glass card">
       <div class="brow">
         <div>
-          <div class="btitle">导出配置</div>
-          <div class="bdesc text-muted">导出全部站点与下载器配置（含明文密钥，请妥善保管）为 JSON 文件。</div>
+          <div class="btitle">{{ t('backup.exportTitle') }}</div>
+          <div class="bdesc text-muted">{{ t('backup.exportDesc') }}</div>
         </div>
-        <el-button type="primary" :loading="exporting" :disabled="exporting" @click="doExport">导出</el-button>
+        <el-button type="primary" :loading="exporting" :disabled="exporting" @click="doExport">{{ t('backup.exportAction') }}</el-button>
       </div>
     </div>
 
     <div v-if="auth.isAdmin" class="glass card">
       <div class="brow">
         <div>
-          <div class="btitle">导入（PTPatronus 格式）</div>
-          <div class="bdesc text-muted">从 PTPatronus 备份 JSON 恢复站点与下载器。重复项自动跳过。</div>
+          <div class="btitle">{{ t('backup.importOwnTitle') }}</div>
+          <div class="bdesc text-muted">{{ t('backup.importOwnDesc') }}</div>
         </div>
         <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="onOwnUpload">
-          <el-button :loading="importing">选择文件</el-button>
+          <el-button :loading="importing">{{ t('backup.chooseFile') }}</el-button>
         </el-upload>
       </div>
     </div>
@@ -116,11 +118,11 @@ function onPTDUpload(f: UploadFile) {
     <div v-if="auth.isAdmin" class="glass card">
       <div class="brow">
         <div>
-          <div class="btitle">从 MoviePilot 导入站点</div>
-          <div class="bdesc text-muted">导入 MoviePilot 站点 JSON 数组，自动创建为 NexusPHP 站点。</div>
+          <div class="btitle">{{ t('backup.importMPTitle') }}</div>
+          <div class="bdesc text-muted">{{ t('backup.importMPDesc') }}</div>
         </div>
         <el-upload :show-file-list="false" :auto-upload="false" accept=".json" :on-change="onMoviePilotUpload">
-          <el-button :loading="importing">选择文件</el-button>
+          <el-button :loading="importing">{{ t('backup.chooseFile') }}</el-button>
         </el-upload>
       </div>
     </div>
@@ -128,11 +130,11 @@ function onPTDUpload(f: UploadFile) {
     <div v-if="auth.isAdmin" class="glass card">
       <div class="brow">
         <div>
-          <div class="btitle">从 PT-Depiler (.ptd) 导入站点</div>
-          <div class="bdesc text-muted">导入 PT-Depiler 浏览器扩展导出的 .ptd 备份，自动恢复站点 URL/Cookie/Passkey/账号。加密备份需先在 PT-Depiler 导出未加密版本。重复项自动跳过。</div>
+          <div class="btitle">{{ t('backup.importPTDTitle') }}</div>
+          <div class="bdesc text-muted">{{ t('backup.importPTDDesc') }}</div>
         </div>
         <el-upload :show-file-list="false" :auto-upload="false" accept=".ptd" :on-change="onPTDUpload">
-          <el-button :loading="importing">选择文件</el-button>
+          <el-button :loading="importing">{{ t('backup.chooseFile') }}</el-button>
         </el-upload>
       </div>
     </div>

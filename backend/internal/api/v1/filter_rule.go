@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
@@ -29,7 +30,7 @@ func (h *FilterRuleHandler) ListBuiltins(c *gin.Context) {
 func (h *FilterRuleHandler) ListCustom(c *gin.Context) {
 	rs, err := h.store.GetCustomRules()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"rules": strSliceSafe(rs)})
@@ -39,12 +40,12 @@ func (h *FilterRuleHandler) ListCustom(c *gin.Context) {
 func (h *FilterRuleHandler) CreateCustom(c *gin.Context) {
 	var in filter.CustomRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	r, err := h.store.AddCustomRule(in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"rule": r})
@@ -55,12 +56,12 @@ func (h *FilterRuleHandler) UpdateCustom(c *gin.Context) {
 	id := c.Param("id")
 	var in filter.CustomRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	r, err := h.store.UpdateCustomRule(id, in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"rule": r})
@@ -70,7 +71,7 @@ func (h *FilterRuleHandler) UpdateCustom(c *gin.Context) {
 func (h *FilterRuleHandler) DeleteCustom(c *gin.Context) {
 	id := c.Param("id")
 	if err := h.store.DeleteCustomRule(id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -80,7 +81,7 @@ func (h *FilterRuleHandler) DeleteCustom(c *gin.Context) {
 func (h *FilterRuleHandler) ListGroups(c *gin.Context) {
 	gs, err := h.store.GetGroups()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"groups": grpSliceSafe(gs)})
@@ -90,12 +91,12 @@ func (h *FilterRuleHandler) ListGroups(c *gin.Context) {
 func (h *FilterRuleHandler) CreateGroup(c *gin.Context) {
 	var in filter.RuleGroupInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	g, err := h.store.AddGroup(in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"group": g})
@@ -106,12 +107,12 @@ func (h *FilterRuleHandler) UpdateGroup(c *gin.Context) {
 	name := c.Param("name")
 	var in filter.RuleGroupInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	g, err := h.store.UpdateGroup(name, in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"group": g})
@@ -121,7 +122,7 @@ func (h *FilterRuleHandler) UpdateGroup(c *gin.Context) {
 func (h *FilterRuleHandler) DeleteGroup(c *gin.Context) {
 	name := c.Param("name")
 	if err := h.store.DeleteGroup(name); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": name})
@@ -148,7 +149,7 @@ func (h *FilterRuleHandler) ListBindings(c *gin.Context) {
 func (h *FilterRuleHandler) SetBindings(c *gin.Context) {
 	var b filterBindings
 	if err := c.ShouldBindJSON(&b); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	pairs := map[string][]string{
@@ -158,7 +159,7 @@ func (h *FilterRuleHandler) SetBindings(c *gin.Context) {
 	}
 	for key, names := range pairs {
 		if err := h.store.SetBindings(key, names); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errcode.Respond(c, errcode.Internal.WithErr(err))
 			return
 		}
 	}
@@ -176,7 +177,7 @@ type filterTestReq struct {
 func (h *FilterRuleHandler) Test(c *gin.Context) {
 	var req filterTestReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if req.Torrents == nil {
@@ -184,7 +185,7 @@ func (h *FilterRuleHandler) Test(c *gin.Context) {
 	}
 	matched, dropped, levels, err := h.eng.ApplyGroupForTest(c.Request.Context(), req.RuleString, req.Torrents, req.Media)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"matched": matched, "dropped": dropped, "levels": levels})

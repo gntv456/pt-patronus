@@ -1,11 +1,13 @@
 <script setup lang="ts">
 // 站点健康状态条 + 无采集数据告警卡。
 // 数据来自 useDashboardData（overview/站点数）与 useDashboardActions（联通计数/待办）。
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDashboardData } from '@/composables/useDashboardData'
 import { useDashboardActions } from '@/composables/useDashboardActions'
 
+const { t } = useI18n()
 const router = useRouter()
 const { overview, allSites } = useDashboardData()
 const { refreshing, connectedCount, disconnectedCount, disabledCount, totalIssueCount } = useDashboardActions()
@@ -22,14 +24,14 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
       <button type="button" class="health-main" @click="openSiteMatrix('all')">
         <span class="health-icon health-ok"><i /></span>
         <span>
-          <small>站点健康</small>
-          <strong v-if="refreshing">刷新中…</strong>
-          <strong v-else>{{ connectedCount }} / {{ configuredSiteCount }} 联通</strong>
+          <small>{{ t('dhs.siteHealth') }}</small>
+          <strong v-if="refreshing">{{ t('dhs.refreshing') }}</strong>
+          <strong v-else>{{ t('dhs.connectedN', { ok: connectedCount, total: configuredSiteCount }) }}</strong>
         </span>
       </button>
       <button type="button" class="health-item is-danger" @click="openSiteMatrix('issues')">
         <span class="status-dot" />
-        <span>未联通</span>
+        <span>{{ t('som.issues') }}</span>
         <b>{{ disconnectedCount }}</b>
       </button>
       <button
@@ -39,22 +41,22 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
         @click="openSiteMatrix('issues')"
       >
         <span class="status-dot" />
-        <span>无数据</span>
+        <span>{{ t('common.noData') }}</span>
         <b>{{ overview?.no_data_sites?.length }}</b>
       </button>
       <button type="button" class="health-item is-muted" @click="openSiteMatrix('disabled')">
         <span class="status-dot" />
-        <span>已停用</span>
+        <span>{{ t('som.disabled') }}</span>
         <b>{{ disabledCount }}</b>
       </button>
       <div class="health-item is-success">
         <span class="status-dot" />
-        <span>下载器配置</span>
+        <span>{{ t('dhs.dlConfig') }}</span>
         <b>{{ overview?.downloader_count ?? 0 }}</b>
       </div>
       <div class="health-item" :class="totalIssueCount ? 'is-warning' : 'is-success'">
         <span class="status-dot" />
-        <span>待处理</span>
+        <span>{{ t('dhs.todo') }}</span>
         <b>{{ totalIssueCount }}</b>
       </div>
     </div>
@@ -63,8 +65,8 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
       <span class="nodata-badge">⚠</span>
       <div class="nodata-body">
         <div class="nodata-title">
-          <strong>{{ overview?.no_data_sites?.length }} 个站点无采集数据</strong>
-          <span class="nodata-hint">疑似 Cookie 失效或未采集，签到 / 统计 / H&amp;R 自动化可能已停摆</span>
+          <strong>{{ t('dhs.nodataN', { n: overview?.no_data_sites?.length }) }}</strong>
+          <span class="nodata-hint">{{ t('dhs.nodataHint') }}</span>
         </div>
         <div class="nodata-names">
           <button
@@ -78,7 +80,7 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
           </button>
         </div>
       </div>
-      <el-button text type="warning" @click="openSiteMatrix('issues')">查看站点</el-button>
+      <el-button text type="warning" @click="openSiteMatrix('issues')">{{ t('dhs.viewSites') }}</el-button>
     </div>
 </template>
 

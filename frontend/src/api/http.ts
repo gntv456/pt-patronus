@@ -16,7 +16,10 @@ http.interceptors.response.use(
   (r) => r,
   (err) => {
     const status = err.response?.status
+    // 机器可读错误码（后端统一信封 {code, message, error}）：透传到 err.code 供业务分支。
+    // 不改变下方文案优先级——code 只做编程判断，message 仍走 error/message 双字段回退。
     const code = err.response?.data?.code
+    if (typeof code === 'string' && code) err.code = code
     // 401：token 无效/过期/已登出（token_version_mismatch）
     if (status === 401) {
       localStorage.removeItem('token')

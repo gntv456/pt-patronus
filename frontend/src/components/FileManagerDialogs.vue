@@ -5,6 +5,9 @@ import { ElMessage } from 'element-plus'
 import { fileApi } from '@/api/filemanager'
 import type { Agent } from '@/api/monitor'
 import type { FileEntry } from '@/api/filemanager'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const storageDialog = defineModel<boolean>('storageDialog', { required: true })
 const editingId = defineModel<number | null>('editingId', { required: true })
@@ -54,16 +57,16 @@ watch(
 const testingConn = ref(false)
 async function testConnection() {
   if (!editingId.value) {
-    ElMessage.info('请先保存存储后再测试连接')
+    ElMessage.info(t('fmd.saveFirst'))
     return
   }
   testingConn.value = true
   try {
     const r = await fileApi.test(editingId.value)
-    if (r.ok) ElMessage.success('连接成功')
-    else ElMessage.error('连接失败')
+    if (r.ok) ElMessage.success(t('mediaserver.connOk2'))
+    else ElMessage.error(t('mediaserver.connFailed'))
   } catch (e) {
-    ElMessage.error((e as Error).message || '连接失败')
+    ElMessage.error((e as Error).message || t('mediaserver.connFailed'))
   } finally {
     testingConn.value = false
   }
@@ -72,101 +75,101 @@ async function testConnection() {
 
 <template>
   <!-- 存储添加/编辑 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="storageDialog" :title="editingId ? '编辑存储' : '添加存储'" width="460">
+  <el-dialog class="pt-dialog" append-to-body align-center v-model="storageDialog" :title="editingId ? t('fmd.editStorage') : t('fmd.addStorage')" width="460">
     <el-form label-width="80">
-      <el-form-item label="名称"><el-input v-model="form.name" /></el-form-item>
-      <el-form-item label="类型">
+      <el-form-item :label="t('common.name')"><el-input v-model="form.name" /></el-form-item>
+      <el-form-item :label="t('cloud.type')">
         <el-radio-group v-model="form.type">
-          <el-radio value="local">本机</el-radio>
+          <el-radio value="local">{{ t('fmd.local') }}</el-radio>
           <el-radio value="webdav">WebDAV</el-radio>
           <el-radio value="alist">Alist</el-radio>
           <el-radio value="smb">SMB</el-radio>
           <el-radio value="rclone">Rclone</el-radio>
           <el-radio value="agent">Agent</el-radio>
         </el-radio-group>
-        <div v-if="form.type === 'local'" class="hint">本机：直接读写服务所在机器的本地目录。根路径填绝对路径（如 <code>D:\Media</code> 或 <code>/mnt/nas</code>）。⚠️ 仅配置可信目录。</div>
-        <div v-else-if="form.type === 'webdav'" class="hint">WebDAV：地址填完整 URL（如 http://host:5005）。</div>
-        <div v-else-if="form.type === 'alist'" class="hint">Alist：地址填服务地址（如 http://host:5244），账密默认可留空。</div>
-        <div v-else-if="form.type === 'rclone'" class="hint">Rclone：二进制路径填 url，remote 名填 username，密码框粘 rclone.conf 全文。</div>
+        <div v-if="form.type === 'local'" class="hint">{{ t('fmd.localHint') }}</div>
+        <div v-else-if="form.type === 'webdav'" class="hint">{{ t('fmd.webdavHint') }}</div>
+        <div v-else-if="form.type === 'alist'" class="hint">{{ t('fmd.alistHint') }}</div>
+        <div v-else-if="form.type === 'rclone'" class="hint">{{ t('fmd.rcloneHint') }}</div>
       </el-form-item>
       <template v-if="form.type === 'agent'">
         <el-form-item label="Agent">
-          <el-select v-model="form.agent_id" placeholder="选择 Agent" style="width: 100%">
-            <el-option v-for="a in agents" :key="a.id" :label="`${a.name}${a.online ? '' : '（离线）'}`" :value="a.id" />
+          <el-select v-model="form.agent_id" :placeholder="t('fmd.pickAgent')" style="width: 100%">
+            <el-option v-for="a in agents" :key="a.id" :label="`${a.name}${a.online ? '' : t('fmd.offline')}`" :value="a.id" />
           </el-select>
         </el-form-item>
-        <div class="hint">Agent：选择已部署 agent 的设备，根路径填 agent 机器上的绝对路径。</div>
+        <div class="hint">{{ t('fmd.agentHint') }}</div>
       </template>
       <template v-else-if="form.type === 'rclone'">
-        <el-form-item label="二进制"><el-input v-model="form.url" placeholder="rclone（留空用 PATH）" /></el-form-item>
-        <el-form-item label="remote"><el-input v-model="form.username" placeholder="如 myremote" /></el-form-item>
-        <el-form-item label="conf"><el-input v-model="form.password" type="textarea" :rows="5" :placeholder="editingId ? '留空不修改' : '粘贴 rclone.conf'" /></el-form-item>
+        <el-form-item :label="t('fmd.binary')"><el-input v-model="form.url" :placeholder="t('fmd.binaryPh')" /></el-form-item>
+        <el-form-item label="remote"><el-input v-model="form.username" :placeholder="t('fmd.remotePh')" /></el-form-item>
+        <el-form-item label="conf"><el-input v-model="form.password" type="textarea" :rows="5" :placeholder="editingId ? t('fmd.keepPh') : t('fmd.pasteConf')" /></el-form-item>
       </template>
       <template v-else-if="form.type !== 'local'">
-        <el-form-item label="地址"><el-input v-model="form.url" /></el-form-item>
-        <el-form-item label="用户名"><el-input v-model="form.username" /></el-form-item>
-        <el-form-item label="密码"><el-input v-model="form.password" type="password" show-password :placeholder="editingId ? '留空不修改' : ''" /></el-form-item>
-        <div v-if="form.type === 'smb'" class="hint">SMB：地址填 smb://主机[:端口]，根路径填 /共享名/子目录。</div>
+        <el-form-item :label="t('deviceform.address')"><el-input v-model="form.url" /></el-form-item>
+        <el-form-item :label="t('deviceform.username')"><el-input v-model="form.username" /></el-form-item>
+        <el-form-item :label="t('deviceform.password')"><el-input v-model="form.password" type="password" show-password :placeholder="editingId ? t('fmd.keepPh') : ''" /></el-form-item>
+        <div v-if="form.type === 'smb'" class="hint">{{ t('fmd.smbHint') }}</div>
       </template>
-      <el-form-item label="根路径"><el-input v-model="form.base_path" /></el-form-item>
+      <el-form-item :label="t('fmd.rootPath')"><el-input v-model="form.base_path" /></el-form-item>
     </el-form>
     <template #footer>
-      <el-button v-if="editingId" type="danger" plain @click="emit('delEditingStorage')">删除该存储</el-button>
-      <el-button @click="storageDialog = false">取消</el-button>
-      <el-button v-if="editingId" :loading="testingConn" @click="testConnection">测试连接</el-button>
-      <el-button type="primary" :loading="submitting" @click="emit('submit')">{{ editingId ? '保存' : '添加' }}</el-button>
+      <el-button v-if="editingId" type="danger" plain @click="emit('delEditingStorage')">{{ t('fmd.deleteStorage') }}</el-button>
+      <el-button @click="storageDialog = false">{{ t('common.cancel') }}</el-button>
+      <el-button v-if="editingId" :loading="testingConn" @click="testConnection">{{ t('fmd.testConn') }}</el-button>
+      <el-button type="primary" :loading="submitting" @click="emit('submit')">{{ editingId ? t('common.save') : t('common.add') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- 新建文件夹 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="mkdirVisible" title="新建文件夹" width="360">
-    <el-input v-model="mkdirName" placeholder="文件夹名称" @keyup.enter="emit('doMkdir')" />
+  <el-dialog class="pt-dialog" append-to-body align-center v-model="mkdirVisible" :title="t('filemanager.newFolder')" width="360">
+    <el-input v-model="mkdirName" :placeholder="t('fmd.folderNamePh')" @keyup.enter="emit('doMkdir')" />
     <template #footer>
-      <el-button @click="mkdirVisible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="emit('doMkdir')">新建</el-button>
+      <el-button @click="mkdirVisible = false">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="submitting" @click="emit('doMkdir')">{{ t('fmd.create') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- 重命名 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="renameVisible" title="重命名" width="360">
+  <el-dialog class="pt-dialog" append-to-body align-center v-model="renameVisible" :title="t('fmd.rename')" width="360">
     <el-input v-model="renameNewName" @keyup.enter="emit('doRename')" />
     <template #footer>
-      <el-button @click="renameVisible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="emit('doRename')">确认</el-button>
+      <el-button @click="renameVisible = false">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="submitting" @click="emit('doRename')">{{ t('common.confirm') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- 移动/复制 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="moveCopyVisible" :title="moveCopyMode === 'move' ? '移动到…' : '复制到…'" width="560">
+  <el-dialog class="pt-dialog" append-to-body align-center v-model="moveCopyVisible" :title="moveCopyMode === 'move' ? t('fmd.moveTo') : t('fmd.copyTo')" width="560">
     <div class="mc-bar">
-      <el-button size="small" :icon="Top" :disabled="moveCopyPath === '/'" @click="emit('moveCopyUp')">上级</el-button>
+      <el-button size="small" :icon="Top" :disabled="moveCopyPath === '/'" @click="emit('moveCopyUp')">{{ t('fmd.up') }}</el-button>
       <span class="mc-path">{{ moveCopyPath }}</span>
     </div>
     <div v-loading="moveCopyLoading" class="mc-list">
       <div v-for="d in moveCopyEntries" :key="d.path" class="mc-item" @click="emit('moveCopyEnter', d)">
         <el-icon><Folder /></el-icon>&nbsp;{{ d.name }}
       </div>
-      <div v-if="!moveCopyEntries.length && !moveCopyLoading" class="mc-empty">（无子文件夹）</div>
+      <div v-if="!moveCopyEntries.length && !moveCopyLoading" class="mc-empty">{{ t('fmd.noSubfolders') }}</div>
     </div>
     <template #footer>
-      <el-button @click="moveCopyVisible = false">取消</el-button>
-      <el-button type="primary" :loading="submitting" @click="emit('doMoveCopy')">{{ moveCopyMode === 'move' ? '移动到此处' : '复制到此处' }}</el-button>
+      <el-button @click="moveCopyVisible = false">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="submitting" @click="emit('doMoveCopy')">{{ moveCopyMode === 'move' ? t('fmd.moveHere') : t('fmd.copyHere') }}</el-button>
     </template>
   </el-dialog>
 
   <!-- STRM 即时生成 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="strmVisible" title="生成 STRM" width="480">
-    <div class="hint">为云盘目录「{{ strmDir?.name }}」下的媒体文件生成本地 .strm（媒体服务器读取后直链播放云盘资源，无需落地）。</div>
+  <el-dialog class="pt-dialog" append-to-body align-center v-model="strmVisible" :title="t('fmd.genStrm')" width="480">
+    <div class="hint">{{ t('fmd.strmHint', { name: strmDir?.name }) }}</div>
     <el-form label-width="88" style="margin-top: 8px">
-      <el-form-item label="输出目录"><el-input v-model="strmForm.output_dir" placeholder="本地 .strm 输出根目录，如 /Media/STRM" /></el-form-item>
-      <el-form-item label="挂载根"><el-input v-model="strmForm.mount_root" placeholder="如 /CloudDrive2/115（模板 {mount}）" /></el-form-item>
-      <el-form-item label="模板"><el-input v-model="strmForm.template" placeholder="留空用默认 {mount}{cloudpath}" /></el-form-item>
-      <el-form-item label="递归"><el-switch v-model="strmForm.recursive" /></el-form-item>
-      <el-form-item label="保留扩展名"><el-switch v-model="strmForm.keep_ext" /></el-form-item>
+      <el-form-item :label="t('cloud.outputDir')"><el-input v-model="strmForm.output_dir" :placeholder="t('fmd.strmOutPh')" /></el-form-item>
+      <el-form-item :label="t('cloud.mountRoot')"><el-input v-model="strmForm.mount_root" :placeholder="t('cloud.mountRootPh')" /></el-form-item>
+      <el-form-item :label="t('cloud.template')"><el-input v-model="strmForm.template" :placeholder="t('fmd.tplPh')" /></el-form-item>
+      <el-form-item :label="t('cloud.recursive')"><el-switch v-model="strmForm.recursive" /></el-form-item>
+      <el-form-item :label="t('cloud.keepExt')"><el-switch v-model="strmForm.keep_ext" /></el-form-item>
     </el-form>
     <template #footer>
-      <el-button @click="strmVisible = false">取消</el-button>
-      <el-button type="primary" :loading="strmLoading" @click="emit('doStrm')">生成</el-button>
+      <el-button @click="strmVisible = false">{{ t('common.cancel') }}</el-button>
+      <el-button type="primary" :loading="strmLoading" @click="emit('doStrm')">{{ t('cloud.generate') }}</el-button>
     </template>
   </el-dialog>
 </template>

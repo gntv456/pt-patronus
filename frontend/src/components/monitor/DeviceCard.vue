@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import GlassIcon from '@/components/GlassIcon.vue'
 import MetricBar from './MetricBar.vue'
@@ -7,6 +8,7 @@ import { isSSHAuthError, showSSHAuthFix } from '@/utils/ssh-fix'
 import type { MonitorTarget, Metrics } from '@/api/monitor'
 
 // DeviceCard — 单设备玻璃卡片：状态灯 + 关键指标 + 操作。
+const { t } = useI18n()
 const props = defineProps<{
   target: MonitorTarget
   metrics?: Metrics | null
@@ -41,9 +43,9 @@ const color = computed<[string, string]>(() =>
               : ['#0f2027', '#2c5364'],
 )
 const status = computed(() => {
-  if (props.target.last_online === null) return { cls: 'unknown', text: '未检测' }
-  if (props.target.last_online) return { cls: 'online', text: '在线' }
-  return { cls: 'offline', text: '离线' }
+  if (props.target.last_online === null) return { cls: 'unknown', text: t('dc.notChecked') }
+  if (props.target.last_online) return { cls: 'online', text: t('dc.online') }
+  return { cls: 'offline', text: t('dc.offline') }
 })
 // 磁盘总量须去重后再累加（btrfs子卷/ZFS dataset 报相同整盘容量会乘N倍）。
 const diskStats = computed(() => {
@@ -55,14 +57,14 @@ const diskStats = computed(() => {
   return { total: t, used: u, usage: t ? (u / t) * 100 : undefined, empty: !t }
 })
 const diskUsage = computed(() => diskStats.value.usage)
-const diskDetail = computed(() => { const s = diskStats.value; return s.empty ? "" : `已用 ${fmtBytes(s.used)} / 共 ${fmtBytes(s.total)}` })
+const diskDetail = computed(() => { const s = diskStats.value; return s.empty ? "" : t('dc.diskDetail', { used: fmtBytes(s.used), total: fmtBytes(s.total) }) })
 const lastCheck = computed(() =>
   props.target.last_checked_at ? new Date(props.target.last_checked_at).toLocaleTimeString() : '-',
 )
 const vendorLabel = computed(() => {
   switch (props.target.vendor) {
     case 'synology':
-      return '群晖'
+      return t('dc.synology')
     case 'truenas':
     case 'freenas':
       return 'TrueNAS'
@@ -89,27 +91,27 @@ function extraMs(key = 'response_ms'): string {
 const serviceRows = computed(() => {
   if (props.target.type === 'http') {
     return [
-      { label: '状态码', value: extraText('status_code') },
-      { label: '响应', value: extraMs() },
-      { label: '方法', value: extraText('method', 'GET') },
+      { label: t('dc.statusCode'), value: extraText('status_code') },
+      { label: t('dc.response'), value: extraMs() },
+      { label: t('dc.method'), value: extraText('method', 'GET') },
     ]
   }
   if (props.target.type === 'tcp') {
     return [
-      { label: '地址', value: `${extraText('host', props.target.host)}:${extraText('port', String(props.target.port || '-'))}` },
-      { label: '响应', value: extraMs() },
+      { label: t('dc.address'), value: `${extraText('host', props.target.host)}:${extraText('port', String(props.target.port || '-'))}` },
+      { label: t('dc.response'), value: extraMs() },
     ]
   }
   if (props.target.type === 'process') {
     return [
-      { label: '进程', value: extraText('process_name') },
-      { label: '数量', value: extraText('count', '0') },
+      { label: t('dc.process'), value: extraText('process_name') },
+      { label: t('dc.count'), value: extraText('count', '0') },
     ]
   }
   if (props.target.type === 'script') {
     return [
-      { label: '耗时', value: extraMs('duration_ms') },
-      { label: '输出', value: extraText('stdout', '无输出').slice(0, 36) },
+      { label: t('dc.elapsed'), value: extraMs('duration_ms') },
+      { label: t('dc.output'), value: extraText('stdout', t('dc.noOutput')).slice(0, 36) },
     ]
   }
   return []
@@ -123,7 +125,7 @@ const serviceRows = computed(() => {
       <div class="dc-title">
         <div class="dc-name">{{ target.name }}</div>
         <div class="dc-sub">
-          {{ target.host || '本机' }}<span v-if="vendorLabel"> · {{ vendorLabel }}</span>
+          {{ target.host || t('dc.localhost') }}<span v-if="vendorLabel"> · {{ vendorLabel }}</span>
         </div>
       </div>
       <span class="dc-status" :class="status.cls"><i class="dot"></i>{{ status.text }}</span>
@@ -136,20 +138,20 @@ const serviceRows = computed(() => {
       <template v-else-if="target.type !== 'camera' && metrics">
         <MetricBar label="CPU" :value="metrics.cpu_usage" />
         <MetricBar
-          label="内存"
+          :label="t('dc.memory')"
           :value="metrics.mem_usage"
           :detail="metrics.mem_total ? `${fmtBytes(metrics.mem_used ?? 0)} / ${fmtBytes(metrics.mem_total)}` : ''"
         />
-        <MetricBar v-if="diskUsage !== undefined" label="磁盘" :value="diskUsage" :detail="diskDetail" />
+        <MetricBar v-if="diskUsage !== undefined" :label="t('dc.disk')" :value="diskUsage" :detail="diskDetail" />
       </template>
       <template v-else-if="target.type === 'camera' && metrics?.device_info">
-        <div class="dc-info"><span>厂商</span>{{ metrics.device_info.manufacturer || '-' }}</div>
-        <div class="dc-info"><span>型号</span>{{ metrics.device_info.model || '-' }}</div>
-        <div class="dc-info"><span>固件</span>{{ metrics.device_info.firmware || '-' }}</div>
+        <div class="dc-info"><span>{{ t('dc.vendor') }}</span>{{ metrics.device_info.manufacturer || '-' }}</div>
+        <div class="dc-info"><span>{{ t('dc.model') }}</span>{{ metrics.device_info.model || '-' }}</div>
+        <div class="dc-info"><span>{{ t('dc.firmware') }}</span>{{ metrics.device_info.firmware || '-' }}</div>
       </template>
       <div v-else class="dc-nodata">
-        <span>{{ target.last_error || '点击探活/详情采集数据' }}</span>
-        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">如何修复？</el-button>
+        <span>{{ target.last_error || t('dc.noDataHint') }}</span>
+        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">{{ t('dd.howToFix') }}</el-button>
       </div>
 
       <div v-if="metrics?.net_rx_rate !== undefined && target.type !== 'camera'" class="dc-net">
@@ -160,12 +162,12 @@ const serviceRows = computed(() => {
     <div class="dc-foot">
       <span class="dc-time">{{ lastCheck }}</span>
       <div class="dc-actions">
-        <el-button size="small" text @click="emit('probe', target)">探活</el-button>
-        <el-button v-if="canTerminal" size="small" text @click="emit('terminal', target)">终端</el-button>
-        <el-button v-if="target.type === 'camera'" size="small" text @click="emit('preview', target)">预览</el-button>
-        <el-button size="small" text @click="emit('detail', target)">详情</el-button>
-        <el-button size="small" text @click="emit('edit', target)">编辑</el-button>
-        <el-button size="small" text type="danger" @click="emit('remove', target)">删除</el-button>
+        <el-button size="small" text @click="emit('probe', target)">{{ t('dc.probe') }}</el-button>
+        <el-button v-if="canTerminal" size="small" text @click="emit('terminal', target)">{{ t('dc.terminal') }}</el-button>
+        <el-button v-if="target.type === 'camera'" size="small" text @click="emit('preview', target)">{{ t('dc.preview') }}</el-button>
+        <el-button size="small" text @click="emit('detail', target)">{{ t('dc.detail') }}</el-button>
+        <el-button size="small" text @click="emit('edit', target)">{{ t('common.edit') }}</el-button>
+        <el-button size="small" text type="danger" @click="emit('remove', target)">{{ t('common.delete') }}</el-button>
       </div>
     </div>
   </div>

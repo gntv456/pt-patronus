@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 )
@@ -59,7 +60,7 @@ func applyRssReq(r *models.RssSubscription, in rssReq) {
 func (h *RssHandler) List(c *gin.Context) {
 	rs, err := h.ch.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"subscriptions": rs})
@@ -69,11 +70,11 @@ func (h *RssHandler) List(c *gin.Context) {
 func (h *RssHandler) Create(c *gin.Context) {
 	var in rssReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if in.Name == "" || in.URL == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "名称和 URL 必填"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if in.IntervalMin <= 0 {
@@ -83,7 +84,7 @@ func (h *RssHandler) Create(c *gin.Context) {
 	applyRssReq(r, in)
 	out, err := h.ch.Create(r)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -97,17 +98,17 @@ func (h *RssHandler) Update(c *gin.Context) {
 	}
 	r, err := h.ch.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "订阅不存在"})
+		errcode.Respond(c, errcode.RssSubscriptionGone)
 		return
 	}
 	var in rssReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	applyRssReq(r, in)
 	if err := h.ch.Update(r); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, r)
@@ -120,7 +121,7 @@ func (h *RssHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := h.ch.Delete(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -134,7 +135,7 @@ func (h *RssHandler) Check(c *gin.Context) {
 	}
 	r, err := h.ch.Get(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "订阅不存在"})
+		errcode.Respond(c, errcode.RssSubscriptionGone)
 		return
 	}
 	n, err := h.ch.Check(c.Request.Context(), r)
@@ -160,7 +161,7 @@ func (h *RssHandler) ListItems(c *gin.Context) {
 	}
 	its, err := h.ch.ListItems(id, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"items": its})

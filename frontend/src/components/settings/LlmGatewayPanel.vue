@@ -1,7 +1,10 @@
 <script setup lang="ts">
 // AI 网关配置面板。
 // 状态与逻辑来自 useLlmGateway 组合式函数。
+import { useI18n } from 'vue-i18n'
 import { useLlmGateway } from '@/composables/useLlmGateway'
+
+const { t } = useI18n()
 
 const { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, saveLLMGateway } = useLlmGateway()
 </script>
@@ -9,12 +12,12 @@ const { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, saveLLMGateway } = useLlm
 <template>
         <div v-loading="gwLoading" class="oidc-wrap">
           <p class="text-muted oidc-help">
-            启用后，外部客户端（Cursor / Claude Desktop / continue.dev 等）可经 OpenAI / Anthropic 兼容协议驱动 PTPatronus 的 AI 助手与工具。
-            OpenAI Base URL：<code>{{ gwBaseURL }}</code>，model 填 <code>ptpatronus-agent</code>。
+            {{ t('lgp.intro1') }}
+            {{ t('lgp.intro2Pre') }}<code>{{ gwBaseURL }}</code>{{ t('lgp.intro2Mid') }}<code>ptpatronus-agent</code>{{ t('lgp.intro2Post') }}
           </p>
           <div class="card glass">
             <div class="ch-head">
-              <div class="row-title">启用 AI 网关</div>
+              <div class="row-title">{{ t('lgp.enableTitle') }}</div>
               <el-switch v-model="gwForm.enabled" />
             </div>
             <el-input
@@ -22,17 +25,17 @@ const { gwCfg, gwForm, gwLoading, gwSaving, gwBaseURL, saveLLMGateway } = useLlm
               type="password"
               show-password
               class="mt8"
-              :placeholder="gwCfg?.access_token_configured ? '已配置（留空=不修改）' : '访问令牌'"
+              :placeholder="gwCfg?.access_token_configured ? t('lgp.tokenSet') : t('lgp.tokenPh')"
             >
-              <template #prepend>访问令牌</template>
+              <template #prepend>{{ t('lgp.tokenPh') }}</template>
             </el-input>
-            <el-input v-model="gwForm.allowed_models" class="mt8" placeholder="留空=接受任意 model；逗号分隔">
-              <template #prepend>允许的 Model</template>
+            <el-input v-model="gwForm.allowed_models" class="mt8" :placeholder="t('lgp.modelsPh')">
+              <template #prepend>{{ t('lgp.allowedModels') }}</template>
             </el-input>
             <el-input-number v-model="gwForm.max_concurrency" :min="0" :max="64" class="mt8" />
           </div>
           <div class="oidc-save">
-            <el-button type="primary" :loading="gwSaving" @click="saveLLMGateway">保存</el-button>
+            <el-button type="primary" :loading="gwSaving" @click="saveLLMGateway">{{ t('common.save') }}</el-button>
           </div>
         </div>
 </template>

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
 
 // ListAlerts 列告警（?target_id=&unread=true）。
@@ -17,7 +18,7 @@ func (h *MonitorHandler) ListAlerts(c *gin.Context) {
 	unread := c.Query("unread") == "true"
 	alerts, err := h.op.ListAlerts(uint(targetID), unread)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"alerts": alerts})
@@ -30,7 +31,7 @@ func (h *MonitorHandler) ReadAlert(c *gin.Context) {
 		return
 	}
 	if err := h.op.MarkAlertRead(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"read": id})
@@ -43,7 +44,7 @@ func (h *MonitorHandler) AckAlert(c *gin.Context) {
 		return
 	}
 	if err := h.op.AckAlert(id, currentUsername(c)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"acknowledged": id})
@@ -62,14 +63,14 @@ func (h *MonitorHandler) SilenceAlert(c *gin.Context) {
 	}
 	var in silenceAlertRequest
 	if err := c.ShouldBindJSON(&in); err != nil && !errors.Is(err, io.EOF) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	until := time.Time{}
 	if strings.TrimSpace(in.Until) != "" {
 		t, err := time.Parse(time.RFC3339, strings.TrimSpace(in.Until))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid until, expected RFC3339"})
+			errcode.Respond(c, errcode.InvalidRequest)
 			return
 		}
 		until = t
@@ -85,11 +86,11 @@ func (h *MonitorHandler) SilenceAlert(c *gin.Context) {
 		until = time.Now().Add(time.Duration(minutes) * time.Minute)
 	}
 	if !until.After(time.Now()) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "silence time must be in the future"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	if err := h.op.SilenceAlert(id, until, currentUsername(c)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"silenced": id, "until": until})
@@ -102,7 +103,7 @@ func (h *MonitorHandler) DeleteAlert(c *gin.Context) {
 		return
 	}
 	if err := h.op.DeleteAlert(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
@@ -113,7 +114,7 @@ func (h *MonitorHandler) ClearAlerts(c *gin.Context) {
 	keepOpen := c.Query("keep_open") == "true"
 	n, err := h.op.ClearAlerts(keepOpen)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"cleared": n})

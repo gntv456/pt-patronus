@@ -8,8 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
+    "lint": "eslint src",
     "test": "vitest run",
     "test:watch": "vitest",
+    "e2e": "playwright test",
     "postinstall": "node scripts/patch-deps.mjs"
   },
   "dependencies": {
@@ -27,12 +29,17 @@
     "element-plus": "^2.8.8",
     "pinia": "^2.2.6",
     "vue": "^3.5.13",
+    "vue-i18n": "^11.4.10",
     "vue-router": "^4.4.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/canvas-confetti": "^1.6.4",
+    "@typescript-eslint/parser": "^8.68.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.4",
+    "eslint-plugin-vue": "^9.33.0",
     "jsdom": "^25.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
@@ -41,6 +48,7 @@
     "unplugin-vue-components": "^0.27.5",
     "vite": "^5.4.11",
     "vitest": "^2.1.9",
+    "vue-eslint-parser": "^9.4.3",
     "vue-tsc": "^2.1.10"
   }
 }

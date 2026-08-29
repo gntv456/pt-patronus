@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"net/http"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,10 +19,7 @@ func Guard(act *Activation, requireActivation bool) gin.HandlerFunc {
 			return
 		}
 		if !act.AnyActivated() {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
-				"code":    "not_activated",
-				"message": "APP 未激活，请先使用 好学 APP 专属 VIP 激活码",
-			})
+			errcode.Respond(c, errcode.NotActivated)
 			return
 		}
 		c.Next()
@@ -48,20 +45,20 @@ func RequireVIP(db *gorm.DB, graceDays int) gin.HandlerFunc {
 		uid, _ := c.Get("uid")
 		id, _ := uid.(uint)
 		if id == 0 {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": "vip_not_verified", "message": "未验证好学 VIP，请用好学账号/Cookie 登录"})
+			errcode.Respond(c, errcode.VIPNotVerified)
 			return
 		}
 		var u models.User
 		if err := db.Select("vip_verified_at").First(&u, id).Error; err != nil {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": "vip_unknown", "message": "VIP 状态未知，请重新登录"})
+			errcode.Respond(c, errcode.VIPUnknown)
 			return
 		}
 		if u.VipVerifiedAt == nil {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": "vip_not_verified", "message": "未验证好学 VIP"})
+			errcode.Respond(c, errcode.VIPNotVerified)
 			return
 		}
 		if time.Since(*u.VipVerifiedAt) > grace {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": "vip_expired", "message": "好学 VIP 已过期，请重新登录验证"})
+			errcode.Respond(c, errcode.VIPExpired)
 			return
 		}
 		c.Next()

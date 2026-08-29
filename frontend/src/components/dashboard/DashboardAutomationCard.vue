@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed, onMounted } from 'vue'
 import { workflowApi, type WorkflowStats } from '@/api/workflow'
 import { brushflowApi, type BrushFlowTask } from '@/api/brushflow'
@@ -9,6 +10,7 @@ import DashboardRingChart, { type RingSegment } from './DashboardRingChart.vue'
 
 // DashboardAutomationCard — 区③自动化运行：并发聚合工作流/刷流/契约/整理四源 + 契约状态分布环形图。
 // 各源 allSettled，单项失败不阻断（.catch→空），对齐 Dashboard 现有并发范式。
+const { t } = useI18n()
 const wf = ref<WorkflowStats | null>(null)
 const brush = ref<BrushFlowTask[]>([])
 const contract = ref<ContractRule[]>([])
@@ -37,10 +39,10 @@ const contractSegments = computed<RingSegment[]>(() => {
   const en = contract.value.filter((r) => r.enabled)
   const cnt = (s: string) => en.filter((r) => r.last_status === s).length
   return [
-    { label: '达标', value: cnt('ok'), color: '#16a34a' },
-    { label: '违约', value: cnt('breach'), color: '#dc2626' },
-    { label: '异常', value: cnt('error'), color: '#d97706' },
-    { label: '未检', value: en.filter((r) => !r.last_status).length, color: '#94a3b8' },
+    { label: t('dac.ok'), value: cnt('ok'), color: '#16a34a' },
+    { label: t('dac.breach'), value: cnt('breach'), color: '#dc2626' },
+    { label: t('dac.error'), value: cnt('error'), color: '#d97706' },
+    { label: t('dac.unchecked'), value: en.filter((r) => !r.last_status).length, color: '#94a3b8' },
   ]
 })
 const breachCount = computed(() => contractSegments.value[1]?.value ?? 0)
@@ -61,42 +63,42 @@ const tToday = computed(
   <div class="dash-card">
     <div class="dc-head">
       <div>
-        <h3>自动化运行</h3>
-        <p>工作流 · 刷流 · 保种契约 · 媒体整理</p>
+        <h3>{{ t('dac.title') }}</h3>
+        <p>{{ t('dac.sub') }}</p>
       </div>
-      <span v-if="breachCount" class="dc-tag danger">{{ breachCount }} 契约违约</span>
+      <span v-if="breachCount" class="dc-tag danger">{{ t('dac.breachTag', { n: breachCount }) }}</span>
     </div>
 
     <div class="auto-body">
       <div class="auto-grid">
         <div class="auto-cell">
-          <span class="ac-label">工作流</span>
+          <span class="ac-label">{{ t('dac.wf') }}</span>
           <strong>{{ wf?.enabled ?? '-' }}<small>/{{ wf?.total ?? 0 }}</small></strong>
-          <small class="ac-sub">启用/总数</small>
-          <small class="ac-sub2">成功 {{ wf?.runs_success ?? 0 }} · 失败 {{ wf?.runs_failed ?? 0 }}</small>
+          <small class="ac-sub">{{ t('dac.enabledTotal') }}</small>
+          <small class="ac-sub2">{{ t('dac.wfRuns', { ok: wf?.runs_success ?? 0, fail: wf?.runs_failed ?? 0 }) }}</small>
         </div>
         <div class="auto-cell">
-          <span class="ac-label">刷流</span>
+          <span class="ac-label">{{ t('dac.brush') }}</span>
           <strong>{{ brushEnabled }}</strong>
-          <small class="ac-sub">启用任务</small>
-          <small class="ac-sub2">累计 ↑{{ fmtBytes(brushUpload) }} · {{ brushAdded }} 种</small>
+          <small class="ac-sub">{{ t('dac.enabledTasks') }}</small>
+          <small class="ac-sub2">{{ t('dac.brushStats', { up: fmtBytes(brushUpload), n: brushAdded }) }}</small>
         </div>
         <div class="auto-cell">
-          <span class="ac-label">整理</span>
+          <span class="ac-label">{{ t('dac.transfer') }}</span>
           <strong>{{ tRate === null ? '-' : tRate + '%' }}</strong>
-          <small class="ac-sub">成功率</small>
-          <small class="ac-sub2">今日 {{ tToday }} · 失败 {{ tFailed }}</small>
+          <small class="ac-sub">{{ t('dac.successRate') }}</small>
+          <small class="ac-sub2">{{ t('dac.transferStats', { today: tToday, fail: tFailed }) }}</small>
         </div>
         <div class="auto-cell">
-          <span class="ac-label">契约违约</span>
+          <span class="ac-label">{{ t('dac.breachLabel') }}</span>
           <strong :class="{ danger: breachCount }">{{ breachCount }}</strong>
-          <small class="ac-sub">需关注</small>
-          <small class="ac-sub2">共 {{ contract.filter((r) => r.enabled).length }} 条契约</small>
+          <small class="ac-sub">{{ t('dac.needsAttn') }}</small>
+          <small class="ac-sub2">{{ t('dac.contractsN', { n: contract.filter((r) => r.enabled).length }) }}</small>
         </div>
       </div>
 
       <div class="auto-ring">
-        <div class="ar-title">契约状态分布</div>
+        <div class="ar-title">{{ t('dac.distTitle') }}</div>
         <DashboardRingChart :items="contractSegments" :size="116" :thickness="13" legend />
       </div>
     </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   mediaServerApi,
   type MediaServer,
@@ -12,6 +13,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useMediaServerOps, fmtDuration } from '@/composables/useMediaServerOps'
 
+const { t } = useI18n()
 const servers = ref<MediaServer[]>([])
 const loading = ref(false)
 const testing = ref<number | null>(null)
@@ -21,7 +23,7 @@ async function load() {
   try {
     servers.value = await mediaServerApi.list()
   } catch (e: any) {
-    ElMessage.error(e?.message || '加载失败')
+    ElMessage.error(e?.message || t('common.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -41,7 +43,7 @@ async function runHealth() {
     healthReport.value = await mediaServerApi.health(healthSubtitles.value, healthUpgradeable.value)
     showHealth.value = true
   } catch (e: any) {
-    ElMessage.error(e?.message || '巡检失败')
+    ElMessage.error(e?.message || t('mediaserver.healthFailed'))
   } finally {
     healthLoading.value = false
   }
@@ -52,9 +54,9 @@ async function fixSubtitles() {
   fixingSubtitles.value = true
   try {
     await mediaServerApi.fixSubtitles(healthReport.value)
-    ElMessage.success('字幕补齐任务已受理（后台执行，稍后刷新巡检查看结果）')
+    ElMessage.success(t('mediaserver.subtitleFixAccepted'))
   } catch (e: any) {
-    ElMessage.error(e?.message || '补齐失败')
+    ElMessage.error(e?.message || t('mediaserver.subtitleFixFailed'))
   } finally {
     fixingSubtitles.value = false
   }
@@ -94,40 +96,40 @@ function openEdit(s: MediaServer) {
 
 async function save() {
   if (!form.value.name || !form.value.url || !form.value.type) {
-    ElMessage.warning('名称、类型、地址必填')
+    ElMessage.warning(t('mediaserver.nameTypeUrlRequired'))
     return
   }
   try {
     if (editing.value) {
       await mediaServerApi.update(editing.value.id, form.value)
-      ElMessage.success('已更新')
+      ElMessage.success(t('common.updated'))
     } else {
       if (!form.value.token) {
-        ElMessage.warning('新建需填写 API Key / Token')
+        ElMessage.warning(t('mediaserver.tokenRequired'))
         return
       }
       await mediaServerApi.create(form.value)
-      ElMessage.success('已创建')
+      ElMessage.success(t('common.created'))
     }
     showForm.value = false
     await load()
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    ElMessage.error(e?.message || t('common.saveFailed'))
   }
 }
 
 async function remove(s: MediaServer) {
   try {
-    await ElMessageBox.confirm(`确定删除媒体服务器「${s.name}」？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('mediaserver.confirmDelete', { name: s.name }), t('messages.tip'), { type: 'warning' })
   } catch {
     return // 用户取消
   }
   try {
     await mediaServerApi.remove(s.id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('common.deleted'))
     await load()
   } catch (e: any) {
-    ElMessage.error(e?.message || '删除失败')
+    ElMessage.error(e?.message || t('common.deleteFailed'))
   }
 }
 
@@ -135,9 +137,9 @@ async function test(s: MediaServer) {
   testing.value = s.id
   try {
     const r = await mediaServerApi.test(s.id)
-    r.ok ? ElMessage.success(`${s.name}：${r.info || '连接正常'}`) : ElMessage.warning(r.error || '连接失败')
+    r.ok ? ElMessage.success(`${s.name}：${r.info || t('mediaserver.connOk')}`) : ElMessage.warning(r.error || t('mediaserver.connFailed'))
   } catch (e: any) {
-    ElMessage.error(e?.message || '请求失败')
+    ElMessage.error(e?.message || t('common.requestFailed'))
   } finally {
     testing.value = null
   }
@@ -148,7 +150,7 @@ async function toggle(s: MediaServer, field: 'refresh_on_download' | 'notify_on_
     await mediaServerApi.update(s.id, { [field]: val })
     ;(s as any)[field] = val
   } catch (e: any) {
-    ElMessage.error(e?.message || '更新失败')
+    ElMessage.error(e?.message || t('mediaserver.updateFailed'))
   }
 }
 
@@ -164,9 +166,9 @@ const TYPE_LABEL: Record<MediaServerType, string> = {
   emby: 'Emby',
   jellyfin: 'Jellyfin',
   plex: 'Plex',
-  ugos: '绿影视',
-  fnos: '飞牛影视',
-  zspace: '极影视',
+  ugos: t('mediaserver.type.ugos'),
+  fnos: t('mediaserver.type.fnos'),
+  zspace: t('mediaserver.type.zspace'),
 }
 
 onMounted(load)
@@ -175,13 +177,12 @@ onMounted(load)
 <template>
   <div class="page">
     <div class="head">
-      <h2 class="title">媒体服务器</h2>
-      <el-button type="primary" @click="openCreate">+ 添加服务器</el-button>
-      <el-button :loading="healthLoading" @click="runHealth">健康巡检</el-button>
+      <h2 class="title">{{ t('mediaserver.title') }}</h2>
+      <el-button type="primary" @click="openCreate">{{ t('mediaserver.add') }}</el-button>
+      <el-button :loading="healthLoading" @click="runHealth">{{ t('mediaserver.healthCheck') }}</el-button>
     </div>
     <p class="sub">
-      统一管理 Emby / Jellyfin / Plex：库扫描、元数据刷新、管理员通知、海报墙封面生成；
-      开启「下载刷新」后种子下载完成自动触发该服务器扫库。
+      {{ t('mediaserver.subtitle') }}
     </p>
 
     <div v-loading="loading" class="grid">
@@ -192,7 +193,7 @@ onMounted(load)
             <div class="name">
               {{ s.name }}
               <el-tag size="small" effect="plain">{{ TYPE_LABEL[s.type] }}</el-tag>
-              <el-tag v-if="s.is_default" size="small" type="success">默认</el-tag>
+              <el-tag v-if="s.is_default" size="small" type="success">{{ t('mediaserver.defaultTag') }}</el-tag>
             </div>
             <div class="meta">{{ s.url }}</div>
           </div>
@@ -200,14 +201,14 @@ onMounted(load)
 
         <div class="toggles">
           <div class="toggle-row">
-            <span>下载完成刷新</span>
+            <span>{{ t('mediaserver.refreshOnDownload') }}</span>
             <el-switch
               :model-value="s.refresh_on_download"
               @update:model-value="(v: any) => toggle(s, 'refresh_on_download', !!v)"
             />
           </div>
           <div class="toggle-row">
-            <span>播放通知</span>
+            <span>{{ t('mediaserver.notifyOnPlay') }}</span>
             <el-switch
               :model-value="s.notify_on_play"
               @update:model-value="(v: any) => toggle(s, 'notify_on_play', !!v)"
@@ -216,70 +217,70 @@ onMounted(load)
         </div>
 
         <div class="actions">
-          <el-button size="small" :loading="testing === s.id" @click="test(s)">连接测试</el-button>
-          <el-button size="small" @click="openLibs(s)">媒体库</el-button>
-          <el-button size="small" @click="openReport(s)">观影报告</el-button>
-          <el-button size="small" @click="openDup(s)">查重</el-button>
-          <el-button size="small" @click="openEdit(s)">编辑</el-button>
-          <el-button size="small" type="danger" plain @click="remove(s)">删除</el-button>
+          <el-button size="small" :loading="testing === s.id" @click="test(s)">{{ t('mediaserver.testConn') }}</el-button>
+          <el-button size="small" @click="openLibs(s)">{{ t('mediaserver.libs') }}</el-button>
+          <el-button size="small" @click="openReport(s)">{{ t('mediaserver.report') }}</el-button>
+          <el-button size="small" @click="openDup(s)">{{ t('mediaserver.dup') }}</el-button>
+          <el-button size="small" @click="openEdit(s)">{{ t('common.edit') }}</el-button>
+          <el-button size="small" type="danger" plain @click="remove(s)">{{ t('common.delete') }}</el-button>
         </div>
       </div>
       <EmptyState
         v-if="!servers.length && !loading"
         icon="🎬"
-        title="尚未添加媒体服务器"
-        description="添加 Emby / Jellyfin / Plex 服务器以启用库扫描与封面生成"
+        :title="t('mediaserver.emptyTitle')"
+        :description="t('mediaserver.emptyDesc')"
       >
-        <el-button type="primary" @click="openCreate">添加服务器</el-button>
+        <el-button type="primary" @click="openCreate">{{ t('mediaserver.addServer') }}</el-button>
       </EmptyState>
     </div>
 
     <!-- CRUD dialog -->
     <!-- 媒体健康中心 -->
-    <el-dialog v-model="showHealth" title="媒体健康中心" width="860px" top="6vh">
+    <el-dialog v-model="showHealth" :title="t('mediaserver.healthTitle')" width="860px" top="6vh">
       <div class="libs-bar">
-        <el-checkbox v-model="healthSubtitles" size="small">本地字幕扫描（需后端可访问媒体路径）</el-checkbox>
-        <el-checkbox v-model="healthUpgradeable" size="small">可升级检测（同 TMDB 存在更高版本）</el-checkbox>
-        <el-button size="small" :loading="healthLoading" @click="runHealth">重新巡检</el-button>
+        <el-checkbox v-model="healthSubtitles" size="small">{{ t('mediaserver.scanSubtitles') }}</el-checkbox>
+        <el-checkbox v-model="healthUpgradeable" size="small">{{ t('mediaserver.scanUpgradeable') }}</el-checkbox>
+        <el-button size="small" :loading="healthLoading" @click="runHealth">{{ t('mediaserver.recheck') }}</el-button>
         <el-button size="small" type="primary" :loading="fixingSubtitles"
           :disabled="!healthReport?.missing_subtitle" @click="fixSubtitles">
-          补齐缺失字幕（{{ healthReport?.missing_subtitle ?? 0 }}）
+          {{ t('mediaserver.fixMissing', { n: healthReport?.missing_subtitle ?? 0 }) }}
         </el-button>
       </div>
       <div v-loading="healthLoading">
         <div class="hint" style="margin-bottom: 8px" v-if="healthReport">
-          未匹配 {{ healthReport.unmatched }} · 缺集 {{ healthReport.missing_episodes }} · 缺字幕 {{ healthReport.missing_subtitle }} · 可升级 {{ healthReport.upgradeable ?? 0 }}
+          {{ t('mediaserver.unmatched') }} {{ healthReport.unmatched }} · {{ t('mediaserver.missingEps') }} {{ healthReport.missing_episodes }} · {{ t('mediaserver.missingSubs') }} {{ healthReport.missing_subtitle }} · {{ t('mediaserver.upgradeable') }} {{ healthReport.upgradeable ?? 0 }}
         </div>
-        <el-table :data="healthReport?.issues ?? []" size="small" empty-text="库很健康，未发现问题">
-          <el-table-column label="类型" width="100">
+        <el-table :data="healthReport?.issues ?? []" size="small" :empty-text="t('mediaserver.healthyEmpty')">
+          <el-table-column :label="t('mediaserver.col.type')" width="100">
             <template #default="{ row }">
               <el-tag size="small" :type="row.type === 'unmatched' ? 'danger' : row.type === 'missing_episodes' ? 'warning' : row.type === 'upgradeable' ? 'success' : 'info'">
-                {{ row.type === 'unmatched' ? '未匹配' : row.type === 'missing_episodes' ? '缺集' : row.type === 'upgradeable' ? '可升级' : '缺字幕' }}
+                {{ row.type === 'unmatched' ? t('mediaserver.unmatched') : row.type === 'missing_episodes' ? t('mediaserver.missingEps') : row.type === 'upgradeable' ? t('mediaserver.upgradeable') : t('mediaserver.missingSubs') }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="library" label="库" width="110" show-overflow-tooltip />
-          <el-table-column prop="detail" label="说明" min-width="160" show-overflow-tooltip />
-          <el-table-column prop="path" label="路径" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="title" :label="t('rss.col.title')" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="library" :label="t('mediaserver.col.library')" width="110" show-overflow-tooltip />
+          <el-table-column prop="detail" :label="t('mediaserver.col.detail')" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="path" :label="t('mediaserver.col.path')" min-width="200" show-overflow-tooltip />
         </el-table>
       </div>
     </el-dialog>
 
-    <el-dialog v-model="showForm" :title="editing ? '编辑服务器' : '添加服务器'" width="560px" top="8vh">
+    <el-dialog v-model="showForm" :title="editing ? t('mediaserver.editTitle') : t('mediaserver.addTitle')" width="560px" top="8vh">
       <el-form :model="form" label-width="120px" label-position="right">
-        <el-form-item label="名称"><el-input v-model="form.name" placeholder="如：客厅 Emby" /></el-form-item>
-        <el-form-item label="类型">
+        <el-form-item :label="t('rss.f.name')"><el-input v-model="form.name" :placeholder="t('mediaserver.f.nameHint')" /></el-form-item>
+        <el-form-item :label="t('mediaserver.col.type')">
           <el-select v-model="form.type">
             <el-option label="Emby" value="emby" />
             <el-option label="Jellyfin" value="jellyfin" />
             <el-option label="Plex" value="plex" />
-            <el-option label="绿影视（UGOS）" value="ugos" />
-            <el-option label="飞牛影视（fnOS）" value="fnos" />
-            <el-option label="极空间极影视" value="zspace" />
+            <el-option :label="t('mediaserver.type.ugosFull')" value="ugos" />
+            <el-option :label="t('mediaserver.type.fnosFull')" value="fnos" />
+            <el-option :label="t('mediaserver.type.zspaceFull')" value="zspace" />
           </el-select>
         </el-form-item>
-        <el-form-item label="地址">
+        <el-form-item :label="t('mediaserver.f.url')">
           <el-input v-model="form.url" placeholder="http://192.168.1.10:8096" />
         </el-form-item>
         <el-form-item label="API Key / Token">
@@ -287,98 +288,98 @@ onMounted(load)
             v-model="form.token"
             type="password"
             show-password
-            :placeholder="editing ? '留空=保留原凭据' : 'Emby/JF API Key 或 Plex X-Plex-Token'"
+            :placeholder="editing ? t('mediaserver.f.tokenKeep') : t('mediaserver.f.tokenNew')"
           />
         </el-form-item>
-        <el-form-item label="用户名（可选）">
-          <el-input v-model="form.username" placeholder="Emby/JF 管理员（通知目标）" />
+        <el-form-item :label="t('mediaserver.f.usernameOptional')">
+          <el-input v-model="form.username" :placeholder="t('mediaserver.f.usernameHint')" />
         </el-form-item>
-        <el-form-item label="设为默认"><el-switch v-model="form.is_default" /></el-form-item>
-        <el-form-item label="下载完成刷新">
+        <el-form-item :label="t('mediaserver.f.setDefault')"><el-switch v-model="form.is_default" /></el-form-item>
+        <el-form-item :label="t('mediaserver.refreshOnDownload')">
           <el-switch v-model="form.refresh_on_download" />
-          <span class="hint">种子下载完成自动扫库</span>
+          <span class="hint">{{ t('mediaserver.f.refreshHint') }}</span>
         </el-form-item>
-        <el-form-item label="播放通知">
+        <el-form-item :label="t('mediaserver.notifyOnPlay')">
           <el-switch v-model="form.notify_on_play" />
-          <span class="hint">收到 webhook 播放事件通知</span>
+          <span class="hint">{{ t('mediaserver.f.notifyHint') }}</span>
         </el-form-item>
-        <el-divider content-position="left">302 直链反代</el-divider>
-        <el-form-item label="启用直链">
+        <el-divider content-position="left">{{ t('mediaserver.f.directLink') }}</el-divider>
+        <el-form-item :label="t('mediaserver.f.enableDirect')">
           <el-switch v-model="form.direct_link_enabled" />
-          <span class="hint">把 Emby 文件路径改写到 CDN 直链</span>
+          <span class="hint">{{ t('mediaserver.f.directHint') }}</span>
         </el-form-item>
-        <el-form-item label="直链基址">
+        <el-form-item :label="t('mediaserver.f.directBase')">
           <el-input v-model="form.direct_link_base" placeholder="https://cdn.example.com/library" />
-          <span class="hint">/mediaserver/:id/direct/&lt;path&gt; → {基址}/{path} 302</span>
+          <span class="hint">{{ t('mediaserver.f.directBaseHint') }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showForm = false">取消</el-button>
-        <el-button type="primary" @click="save">保存</el-button>
+        <el-button @click="showForm = false">{{ t('common.cancel') }}</el-button>
+        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 媒体库 + 封面预览 -->
-    <el-dialog v-model="showLibs" :title="`媒体库 · ${libsServer?.name ?? ''}`" width="720px" top="6vh">
+    <el-dialog v-model="showLibs" :title="t('mediaserver.libsTitle', { name: libsServer?.name ?? '' })" width="720px" top="6vh">
       <div class="libs-bar">
-        <el-button size="small" @click="scanLib(null)">全库扫描</el-button>
-        <span class="hint">播放回调地址：{{ libsServer ? `POST /api/v1/mediaserver/${libsServer.id}/webhook` : '' }}</span>
+        <el-button size="small" @click="scanLib(null)">{{ t('mediaserver.scanAll') }}</el-button>
+        <span class="hint">{{ t('mediaserver.webhookUrl') }}{{ libsServer ? `POST /api/v1/mediaserver/${libsServer.id}/webhook` : '' }}</span>
       </div>
       <div v-loading="libsLoading">
-        <el-table :data="libs" size="small" empty-text="未获取到媒体库">
-          <el-table-column prop="name" label="库名" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="type" label="类型" width="100" />
-          <el-table-column label="操作" width="280">
+        <el-table :data="libs" size="small" :empty-text="t('mediaserver.noLibs')">
+          <el-table-column prop="name" :label="t('mediaserver.col.libName')" min-width="120" show-overflow-tooltip />
+          <el-table-column prop="type" :label="t('mediaserver.col.type')" width="100" />
+          <el-table-column :label="t('reseed.col.actions')" width="280">
             <template #default="{ row }">
-              <el-button size="small" link @click="scanLib(row as MediaLibrary)">扫描</el-button>
-              <el-button size="small" link @click="refreshLib(row as MediaLibrary)">刷新</el-button>
-              <el-button size="small" link type="primary" @click="genCover(row as MediaLibrary)">生成封面</el-button>
+              <el-button size="small" link @click="scanLib(row as MediaLibrary)">{{ t('mediaserver.scan') }}</el-button>
+              <el-button size="small" link @click="refreshLib(row as MediaLibrary)">{{ t('common.refresh') }}</el-button>
+              <el-button size="small" link type="primary" @click="genCover(row as MediaLibrary)">{{ t('mediaserver.genCover') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
       </div>
       <div v-if="coverLoading || coverURL" class="cover-preview" v-loading="coverLoading">
-        <img v-if="coverURL" :src="coverURL" alt="封面拼图" />
+        <img v-if="coverURL" :src="coverURL" :alt="t('mediaserver.coverAlt')" />
       </div>
     </el-dialog>
 
     <!-- 观影报告 -->
-    <el-dialog v-model="showReport" :title="`观影报告 · ${libsServer?.name ?? ''}`" width="820px" top="6vh">
+    <el-dialog v-model="showReport" :title="t('mediaserver.reportTitle', { name: libsServer?.name ?? '' })" width="820px" top="6vh">
       <div class="libs-bar">
         <div>
-          近
+          {{ t('mediaserver.lastDays1') }}
           <el-input-number v-model="reportDays" :min="1" :max="365" size="small" controls-position="right" style="width: 90px" />
-          天 · 共 {{ report?.total_plays ?? 0 }} 次播放
+          {{ t('mediaserver.playsCount', { n: report?.total_plays ?? 0 }) }}
         </div>
-        <el-button size="small" :loading="reportLoading" @click="reloadReport">刷新</el-button>
+        <el-button size="small" :loading="reportLoading" @click="reloadReport">{{ t('common.refresh') }}</el-button>
       </div>
       <div v-loading="reportLoading">
         <div v-if="report" class="report-block">
-          <div class="sub-title">用户 ({{ report.users.length }})</div>
+          <div class="sub-title">{{ t('mediaserver.users') }} ({{ report.users.length }})</div>
           <div class="user-chips">
             <el-tag v-for="u in report.users" :key="u.id" size="small">
-              {{ u.name }} · {{ u.play_count }} 次
+              {{ u.name }} · {{ t('mediaserver.times', { n: u.play_count }) }}
             </el-tag>
-            <span v-if="!report.users.length" class="hint">无用户数据</span>
+            <span v-if="!report.users.length" class="hint">{{ t('mediaserver.noUserData') }}</span>
           </div>
         </div>
         <div v-if="report" class="report-block">
-          <div class="sub-title">热门条目</div>
-          <el-table :data="report.top_items" size="small" empty-text="暂无数据">
-            <el-table-column prop="name" label="标题" min-width="160" show-overflow-tooltip />
-            <el-table-column prop="play_count" label="播放次数" width="100" />
-            <el-table-column label="时长" width="100">
+          <div class="sub-title">{{ t('mediaserver.topItems') }}</div>
+          <el-table :data="report.top_items" size="small" :empty-text="t('mediaserver.noData')">
+            <el-table-column prop="name" :label="t('rss.col.title')" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="play_count" :label="t('mediaserver.col.playCount')" width="100" />
+            <el-table-column :label="t('mediaserver.col.duration')" width="100">
               <template #default="{ row }">{{ fmtDuration(row.duration) }}</template>
             </el-table-column>
           </el-table>
         </div>
         <div v-if="report" class="report-block">
-          <div class="sub-title">最近播放</div>
-          <el-table :data="report.recent_plays" size="small" empty-text="暂无数据">
-            <el-table-column prop="name" label="标题" min-width="140" show-overflow-tooltip />
-            <el-table-column prop="user_name" label="用户" width="100" />
-            <el-table-column prop="play_count" label="次数" width="70" />
-            <el-table-column label="最近播放" width="170">
+          <div class="sub-title">{{ t('mediaserver.recentPlays') }}</div>
+          <el-table :data="report.recent_plays" size="small" :empty-text="t('mediaserver.noData')">
+            <el-table-column prop="name" :label="t('rss.col.title')" min-width="140" show-overflow-tooltip />
+            <el-table-column prop="user_name" :label="t('mediaserver.col.user')" width="100" />
+            <el-table-column prop="play_count" :label="t('mediaserver.col.count')" width="70" />
+            <el-table-column :label="t('mediaserver.recentPlays')" width="170">
               <template #default="{ row }">{{ row.last_played ? new Date(row.last_played).toLocaleString() : '-' }}</template>
             </el-table-column>
           </el-table>
@@ -387,22 +388,22 @@ onMounted(load)
     </el-dialog>
 
     <!-- 重复检测 -->
-    <el-dialog v-model="showDup" :title="`重复检测 · ${libsServer?.name ?? ''}`" width="820px" top="6vh">
+    <el-dialog v-model="showDup" :title="t('mediaserver.dupTitle', { name: libsServer?.name ?? '' })" width="820px" top="6vh">
       <div class="libs-bar">
-        <el-select v-model="dupLib" placeholder="选择媒体库" size="small" style="width: 220px">
+        <el-select v-model="dupLib" :placeholder="t('mediaserver.selectLib')" size="small" style="width: 220px">
           <el-option v-for="l in libs" :key="l.id" :label="l.name" :value="l.id" />
         </el-select>
-        <el-button size="small" type="primary" :loading="dupLoading" @click="runDup">检测</el-button>
+        <el-button size="small" type="primary" :loading="dupLoading" @click="runDup">{{ t('mediaserver.detect') }}</el-button>
       </div>
       <div v-loading="dupLoading">
         <div class="hint" style="margin-bottom: 8px">
-          按 TMDB/IMDb ID（优先）或归一化标题+年份归并；共 {{ dupGroups.length }} 组疑似重复。
+          {{ t('mediaserver.dupDesc') }}{{ t('mediaserver.dupGroups', { n: dupGroups.length }) }}
         </div>
-        <el-table :data="dupGroups" size="small" empty-text="无重复（或未检测）">
-          <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip />
-          <el-table-column prop="year" label="年份" width="80" />
-          <el-table-column prop="count" label="份数" width="70" />
-          <el-table-column label="条目" min-width="220">
+        <el-table :data="dupGroups" size="small" :empty-text="t('mediaserver.noDup')">
+          <el-table-column prop="title" :label="t('rss.col.title')" min-width="140" show-overflow-tooltip />
+          <el-table-column prop="year" :label="t('mediaserver.col.year')" width="80" />
+          <el-table-column prop="count" :label="t('mediaserver.col.copies')" width="70" />
+          <el-table-column :label="t('mediaserver.col.items')" min-width="220">
             <template #default="{ row }">
               <div v-for="(it, i) in row.items" :key="i" class="dup-item">
                 {{ it.name }}<span v-if="it.path" class="muted"> · {{ it.path }}</span>

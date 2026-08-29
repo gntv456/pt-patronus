@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult } from '@/api/entertainment'
 
+const { t } = useI18n()
 const props = defineProps<{ siteId: number }>()
 
 const stats = ref<GameStats | null>(null)
@@ -19,13 +21,13 @@ async function scratch() {
   try {
     const res = await entertainmentApi.play(props.siteId, 'magic_scratch')
     reveal.value = res
-    if (res.success && (res.amount ?? 0) > 0) ElMessage.success(`获得 ${res.prize || ''} ${res.amount}`)
-    else if (res.success) ElMessage.info(res.message || '未中奖')
-    else ElMessage.warning(res.message || '刮奖失败')
+    if (res.success && (res.amount ?? 0) > 0) ElMessage.success(t('msg1.won', { prize: res.prize || '', n: res.amount }))
+    else if (res.success) ElMessage.info(res.message || t('msg1.noWin'))
+    else ElMessage.warning(res.message || t('msg1.scratchFailed'))
     await refreshStats()
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || '请求失败')
+    ElMessage.error(msg || t('common.requestFailed'))
   } finally {
     playing.value = false
   }
@@ -41,19 +43,19 @@ onMounted(refreshStats)
 <template>
   <div class="ms">
     <div class="banner">
-      <span class="banner-title">魔力刮刮乐</span>
-      <span class="banner-sub">消耗 {{ fmt(stats?.cost_per_play ?? 5000) }} 火花购买并刮开一张</span>
+      <span class="banner-title">{{ t('msg1.title') }}</span>
+      <span class="banner-sub">{{ t('msg1.sub', { n: fmt(stats?.cost_per_play ?? 5000) }) }}</span>
     </div>
 
     <!-- 统计栏 -->
     <div class="stat-bar">
       <div class="stat-tile">
         <div class="stat-val">{{ stats ? fmt(stats.balance) : '--' }}</div>
-        <div class="stat-lbl">火花余额</div>
+        <div class="stat-lbl">{{ t('msg1.balance') }}</div>
       </div>
       <div class="stat-tile">
         <div class="stat-val">{{ stats ? `${stats.today_spins}/${stats.max_daily || '∞'}` : '--' }}</div>
-        <div class="stat-lbl">今日次数</div>
+        <div class="stat-lbl">{{ t('msg1.todayCount') }}</div>
       </div>
     </div>
 
@@ -61,13 +63,13 @@ onMounted(refreshStats)
     <div class="card-zone">
       <div class="scratch-card" :class="{ revealed: reveal, win: reveal?.success && (reveal?.amount ?? 0) > 0 }">
         <div v-if="!reveal" class="cover">
-          <span class="cover-text">刮奖区</span>
-          <span class="cover-hint">点击下方按钮刮开</span>
+          <span class="cover-text">{{ t('msg1.area') }}</span>
+          <span class="cover-hint">{{ t('msg1.hint') }}</span>
         </div>
         <div v-else class="prize-reveal">
           <div class="reveal-icon">{{ reveal.amount && reveal.amount > 0 ? '✨' : '·' }}</div>
-          <div class="reveal-name">{{ reveal.prize || (reveal.success ? '未中奖' : '失败') }}</div>
-          <div v-if="reveal.amount && reveal.amount > 0" class="reveal-amount">+{{ fmt(reveal.amount) }} 火花</div>
+          <div class="reveal-name">{{ reveal.prize || (reveal.success ? t('msg1.noWin') : t('common.failed')) }}</div>
+          <div v-if="reveal.amount && reveal.amount > 0" class="reveal-amount">+{{ t('msg1.sparkN', { n: fmt(reveal.amount) }) }}</div>
           <div v-if="reveal.message" class="reveal-msg">{{ reveal.message }}</div>
         </div>
       </div>
@@ -75,7 +77,7 @@ onMounted(refreshStats)
 
     <div class="actions">
       <button class="btn" :disabled="playing" @click="scratch">
-        {{ playing ? '刮卡中…' : '刮一张' }}
+        {{ playing ? t('msg1.scratching') : t('msg1.scratchOne') }}
       </button>
     </div>
   </div>

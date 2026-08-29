@@ -2,6 +2,7 @@
 // 通知中心（全页面）：按来源类型分组并折叠，点击展开查看每条详情。
 // 与 topbar 铃铛下拉（NotificationCenter.vue）共用 sourceMeta / 路由映射，体验一致。
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWs } from '@/composables/useWs'
@@ -9,6 +10,7 @@ import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const { notices: wsNotices } = useWs()
 const notices = ref<Notice[]>([])
@@ -16,22 +18,22 @@ const loading = ref(false)
 
 // 来源类型元信息（图标 / 配色 / 中文名）
 const sourceMeta: Record<NoticeSource, { icon: string; color: string; label: string }> = {
-  site_anniv: { icon: 'party-popper', color: '#f59e0b', label: '站点纪念日' },
-  new_mail: { icon: 'mail', color: '#3b82f6', label: '新消息' },
-  assess_pass: { icon: 'check-circle', color: '#22c55e', label: '考核通过' },
-  assess_fail: { icon: 'alert-circle', color: '#ef4444', label: '考核失败' },
-  announce: { icon: 'megaphone', color: '#3b82f6', label: '公告' },
-  host_offline: { icon: 'alert-triangle', color: '#ef4444', label: '主机离线' },
-  nas_offline: { icon: 'alert-triangle', color: '#ef4444', label: 'NAS 离线' },
-  reseed_done: { icon: 'check-circle', color: '#22c55e', label: '辅种完成' },
-  dl_done: { icon: 'download', color: '#22c55e', label: '下载完成' },
-  site_offline: { icon: 'alert-triangle', color: '#ef4444', label: '站点离线' },
-  backup_done: { icon: 'check-circle', color: '#22c55e', label: '备份完成' },
-  backup_import: { icon: 'check-circle', color: '#22c55e', label: '备份导入' },
+  site_anniv: { icon: 'party-popper', color: '#f59e0b', label: t('notices.source.site_anniv') },
+  new_mail: { icon: 'mail', color: '#3b82f6', label: t('notices.source.new_mail') },
+  assess_pass: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.assess_pass') },
+  assess_fail: { icon: 'alert-circle', color: '#ef4444', label: t('notices.source.assess_fail') },
+  announce: { icon: 'megaphone', color: '#3b82f6', label: t('notices.source.announce') },
+  host_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.host_offline') },
+  nas_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.nas_offline') },
+  reseed_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.reseed_done') },
+  dl_done: { icon: 'download', color: '#22c55e', label: t('notices.source.dl_done') },
+  site_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.site_offline') },
+  backup_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_done') },
+  backup_import: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_import') },
   freeleech: { icon: 'party-popper', color: '#f59e0b', label: 'Freeleech' },
 }
 function meta(s: NoticeSource) {
-  return sourceMeta[s] ?? { ...sourceMeta.announce, label: '通知' }
+  return sourceMeta[s] ?? { ...sourceMeta.announce, label: t('notices.source.fallback') }
 }
 
 // 点击通知体后跳转的目标路由（按来源分类）
@@ -101,7 +103,7 @@ async function load() {
   try {
     notices.value = await noticeApi.list()
   } catch {
-    ElMessage.warning('通知加载失败')
+    ElMessage.warning(t('notices.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -137,9 +139,9 @@ async function readAll() {
   try {
     await noticeApi.readAll()
     notices.value.forEach((n) => (n.read = true))
-    ElMessage.success('已全部标为已读')
+    ElMessage.success(t('notices.allReadOk'))
   } catch {
-    ElMessage.warning('操作失败')
+    ElMessage.warning(t('notices.actionFailed'))
   }
 }
 async function removeOne(n: Notice) {
@@ -161,10 +163,10 @@ async function removeGroup(g: Group) {
 }
 async function clearAll() {
   try {
-    await ElMessageBox.confirm('确定清空全部通知？（此操作不可恢复）', '清空通知', {
+    await ElMessageBox.confirm(t('notices.clearConfirm'), t('notices.clearTitle'), {
       type: 'warning',
-      confirmButtonText: '清空',
-      cancelButtonText: '取消',
+      confirmButtonText: t('common.clear'),
+      cancelButtonText: t('common.cancel'),
     })
   } catch {
     return
@@ -172,9 +174,9 @@ async function clearAll() {
   try {
     await noticeApi.clear()
     notices.value = []
-    ElMessage.success('已清空')
+    ElMessage.success(t('notices.cleared'))
   } catch {
-    ElMessage.warning('清空失败')
+    ElMessage.warning(t('notices.clearFailed'))
   }
 }
 
@@ -189,10 +191,10 @@ function relTime(iso: string): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
   const diff = (Date.now() - d.getTime()) / 1000
-  if (diff < 60) return '刚刚'
-  if (diff < 3600) return `${Math.floor(diff / 60)} 分钟前`
-  if (diff < 86400) return `${Math.floor(diff / 3600)} 小时前`
-  return `${Math.floor(diff / 86400)} 天前`
+  if (diff < 60) return t('notices.relTime.justNow')
+  if (diff < 3600) return t('notices.relTime.minutesAgo', { n: Math.floor(diff / 60) })
+  if (diff < 86400) return t('notices.relTime.hoursAgo', { n: Math.floor(diff / 3600) })
+  return t('notices.relTime.daysAgo', { n: Math.floor(diff / 86400) })
 }
 
 onMounted(load)
@@ -202,19 +204,19 @@ onMounted(load)
   <div class="page" v-loading="loading && !notices.length">
     <div class="head">
       <h2 class="title">
-        通知中心
-        <small v-if="unreadCount">未读 {{ unreadCount }}<template v-if="urgentUnread"> · 高风险 {{ urgentUnread }}</template></small>
+        {{ t('notices.title') }}
+        <small v-if="unreadCount">{{ t('notices.unread', { n: unreadCount }) }}<template v-if="urgentUnread"> · {{ t('notices.urgent', { n: urgentUnread }) }}</template></small>
       </h2>
       <div class="head-tools">
         <div class="filter glass">
-          <button class="filter-btn" :class="{ on: filter === 'all' }" @click="filter = 'all'">全部</button>
+          <button class="filter-btn" :class="{ on: filter === 'all' }" @click="filter = 'all'">{{ t('notices.filter.all') }}</button>
           <button class="filter-btn" :class="{ on: filter === 'unread' }" @click="filter = 'unread'">
-            未读<span v-if="unreadCount" class="filter-badge">{{ unreadCount }}</span>
+            {{ t('notices.filter.unread') }}<span v-if="unreadCount" class="filter-badge">{{ unreadCount }}</span>
           </button>
         </div>
-        <el-button :loading="loading" @click="load">刷新</el-button>
-        <el-button v-if="unreadCount" @click="readAll">全部已读</el-button>
-        <el-button v-if="notices.length" type="danger" plain @click="clearAll">清空</el-button>
+        <el-button :loading="loading" @click="load">{{ t('common.refresh') }}</el-button>
+        <el-button v-if="unreadCount" @click="readAll">{{ t('notices.markAllRead') }}</el-button>
+        <el-button v-if="notices.length" type="danger" plain @click="clearAll">{{ t('common.clear') }}</el-button>
       </div>
     </div>
 
@@ -231,10 +233,10 @@ onMounted(load)
           <div class="g-info">
             <div class="g-title">
               {{ meta(g.source).label }}
-              <span class="g-count">{{ g.items.length }} 条</span>
-              <span v-if="g.unreadCount" class="g-unread">{{ g.unreadCount }} 条未读</span>
+              <span class="g-count">{{ t('notices.count', { n: g.items.length }) }}</span>
+              <span v-if="g.unreadCount" class="g-unread">{{ t('notices.unreadCount', { n: g.unreadCount }) }}</span>
             </div>
-            <div class="g-sub">最新：{{ g.latest.title }} · {{ relTime(g.latest.created_at) }}</div>
+            <div class="g-sub">{{ t('notices.latest') }}{{ g.latest.title }} · {{ relTime(g.latest.created_at) }}</div>
           </div>
           <span class="g-chevron" :class="{ 'g-chevron--open': isGroupExpanded(g.source) }">
             <SptIcon name="chevron-down" :size="18" />
@@ -258,17 +260,17 @@ onMounted(load)
               <div v-if="n.body" class="item-text">{{ n.body }}</div>
             </div>
             <div class="item-actions">
-              <button v-if="!n.read" class="item-act" title="标为已读" @click.stop="readOne(n)">
+              <button v-if="!n.read" class="item-act" :title="t('notices.markRead')" @click.stop="readOne(n)">
                 <SptIcon name="check-circle" :size="15" />
               </button>
-              <button class="item-act item-act--del" title="删除" @click.stop="removeOne(n)">
+              <button class="item-act item-act--del" :title="t('common.delete')" @click.stop="removeOne(n)">
                 <SptIcon name="trash" :size="15" />
               </button>
             </div>
           </div>
           <div class="group-footer">
-            <button v-if="g.unreadCount" class="g-foot-btn" @click="readGroup(g)">本组标为已读</button>
-            <button class="g-foot-btn g-foot-btn--danger" @click="removeGroup(g)">删除本组</button>
+            <button v-if="g.unreadCount" class="g-foot-btn" @click="readGroup(g)">{{ t('notices.markGroupRead') }}</button>
+            <button class="g-foot-btn g-foot-btn--danger" @click="removeGroup(g)">{{ t('notices.deleteGroup') }}</button>
           </div>
         </div>
       </div>
@@ -277,8 +279,8 @@ onMounted(load)
     <EmptyState
       v-if="!grouped.length && !loading"
       icon="🔔"
-      :title="onlyUnread ? '没有未读通知' : '暂无通知'"
-      description="新的通知会实时出现在这里"
+      :title="onlyUnread ? t('notices.emptyUnreadTitle') : t('notices.emptyTitle')"
+      :description="t('notices.emptyDesc')"
     />
   </div>
 </template>

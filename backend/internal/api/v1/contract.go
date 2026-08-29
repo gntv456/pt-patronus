@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 )
@@ -21,7 +22,7 @@ func NewContractHandler(svc *chain.ContractChain) *ContractHandler {
 func (h *ContractHandler) List(c *gin.Context) {
 	rs, err := h.svc.List()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if rs == nil {
@@ -34,15 +35,15 @@ func (h *ContractHandler) List(c *gin.Context) {
 func (h *ContractHandler) Upsert(c *gin.Context) {
 	var r models.ContractRule
 	if err := c.ShouldBindJSON(&r); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if r.SiteID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "站点不能为空"})
+		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
 	if err := h.svc.Upsert(&r); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, r)
@@ -58,7 +59,7 @@ func (h *ContractHandler) Check(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 	res, err := h.svc.Check(c.Request.Context(), uint(id))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)

@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { safeUrl } from '@/utils/safeUrl'
 import type { ReseedTask } from '@/api/reseed'
 import ReseedMissingDialog from '@/components/ReseedMissingDialog.vue'
 import { useReseed } from '@/views/useReseed'
+
+const { t } = useI18n()
 
 const {
   config, tokenInput, savingToken, torznabUrl, torznabKey, savingTorznab,
@@ -18,117 +21,117 @@ const {
   <div class="reseed">
     <!-- 标题行 -->
     <div class="page-head">
-      <h2 class="page-title">辅种</h2>
-      <span class="subtitle text-muted">IYUU 精确匹配 / Torznab 候选 / 本地名称+大小 · 一键添加辅种</span>
-      <span class="cfg-chip" :class="config.configured ? 'ok' : 'warn'"><span class="dot"></span>{{ config.configured ? 'IYUU 已配置' : 'IYUU 未配置' }}</span>
-      <span class="cfg-chip" :class="config.torznab_configured ? 'ok' : 'warn'"><span class="dot"></span>{{ config.torznab_configured ? 'Torznab 已配置' : 'Torznab 未配置' }}</span>
+      <h2 class="page-title">{{ t('reseed.title') }}</h2>
+      <span class="subtitle text-muted">{{ t('reseed.subtitle') }}</span>
+      <span class="cfg-chip" :class="config.configured ? 'ok' : 'warn'"><span class="dot"></span>{{ config.configured ? t('reseed.configured') : t('reseed.notConfigured') }}</span>
+      <span class="cfg-chip" :class="config.torznab_configured ? 'ok' : 'warn'"><span class="dot"></span>{{ config.torznab_configured ? t('reseed.configured') : t('reseed.notConfigured') }}</span>
     </div>
 
     <!-- 工具栏 -->
     <div class="toolbar card glass">
-      <el-select v-model="selectedDl" placeholder="选择下载器" class="dl-select">
+      <el-select v-model="selectedDl" :placeholder="t('reseed.selectDownloader')" class="dl-select">
         <el-option v-for="d in downloaders" :key="d.id" :label="d.name" :value="d.id" />
       </el-select>
-      <el-alert v-if="!config.configured" type="info" :closable="false" show-icon title="未配置 IYUU：触发辅种将使用本地名称+大小跨站匹配（去 IYUU 单点兜底）" style="margin-bottom: 12px" />
+      <el-alert v-if="!config.configured" type="info" :closable="false" show-icon :title="t('reseed.noIyuuHint')" style="margin-bottom: 12px" />
       <el-button type="primary" :loading="reseeding" @click="startReseed">
         <GlassIcon name="seeding" from="#11998e" to="#38ef7d" :size="16" class="btn-ico" />
-        <span>开始辅种</span>
+        <span>{{ t('reseed.start') }}</span>
       </el-button>
       <el-button @click="openMissing">
         <GlassIcon name="history" from="#6c5ce7" to="#4285f4" :size="16" class="btn-ico" />
-        <span>未辅种检查</span>
+        <span>{{ t('reseed.missingCheck') }}</span>
       </el-button>
       <div class="spacer"></div>
       <el-popover trigger="click" placement="bottom-end" :width="380" popper-class="reseed-cfg-pop">
         <template #reference>
           <el-button class="cfg-btn">
             <GlassIcon name="settings" from="#6c5ce7" to="#4285f4" :size="16" class="btn-ico" />
-            <span>设置</span>
+            <span>{{ t('settings.tab') }}</span>
           </el-button>
         </template>
         <div class="cfg-pop">
           <div class="cfg-sec">
             <div class="cfg-sec-head">
               <span class="cfg-sec-title">IYUU Token</span>
-              <span class="cfg-state" :class="config.configured ? 'ok' : 'warn'">{{ config.configured ? `已配置 ${config.masked}` : '未配置' }}</span>
+              <span class="cfg-state" :class="config.configured ? 'ok' : 'warn'">{{ config.configured ? t('reseed.configuredAs', { v: config.masked }) : t('reseed.notConfigured') }}</span>
             </div>
             <div class="token-row">
-              <el-input v-model="tokenInput" :placeholder="config.configured ? '输入新值覆盖' : '粘贴 IYUU token'" type="password" show-password clearable />
-              <el-button type="primary" :loading="savingToken" @click="saveToken">保存</el-button>
+              <el-input v-model="tokenInput" :placeholder="config.configured ? t('reseed.tokenOverwrite') : t('reseed.tokenPaste')" type="password" show-password clearable />
+              <el-button type="primary" :loading="savingToken" @click="saveToken">{{ t('common.save') }}</el-button>
             </div>
-            <a class="cfg-link" href="https://iyuu.cn" target="_blank" rel="noopener">前往 iyuu.cn 获取 token 并绑定站点 →</a>
+            <a class="cfg-link" href="https://iyuu.cn" target="_blank" rel="noopener">{{ t('reseed.iyuuLink') }}</a>
           </div>
           <div class="cfg-divider"></div>
           <div class="cfg-sec">
             <div class="cfg-sec-head">
               <span class="cfg-sec-title">Torznab</span>
-              <span class="cfg-state" :class="config.torznab_configured ? 'ok' : 'warn'">{{ config.torznab_configured ? '已配置' : '未配置' }}</span>
+              <span class="cfg-state" :class="config.torznab_configured ? 'ok' : 'warn'">{{ config.torznab_configured ? t('reseed.configured') : t('reseed.notConfigured') }}</span>
             </div>
-            <p class="cfg-hint text-muted">Jackett/Prowlarr 端点，作辅种候选源（可与 IYUU 并存）</p>
+            <p class="cfg-hint text-muted">{{ t('reseed.torznabHint') }}</p>
             <div class="token-row">
               <el-input v-model="torznabUrl" placeholder="https://jackett/api/v2.0/indexers/all/results/torznab" clearable size="small" />
             </div>
             <div class="token-row" style="margin-top: 6px">
-              <el-input v-model="torznabKey" :placeholder="config.torznab_key_masked ? `API Key（已配置 ${config.torznab_key_masked}，留空保留）` : 'API Key（可选）'" show-password clearable size="small" @keyup.enter="saveTorznab" />
-              <el-button type="primary" :loading="savingTorznab" @click="saveTorznab">保存</el-button>
+              <el-input v-model="torznabKey" :placeholder="config.torznab_key_masked ? t('reseed.apiKeySet', { v: config.torznab_key_masked }) : t('reseed.apiKeyOptional')" show-password clearable size="small" @keyup.enter="saveTorznab" />
+              <el-button type="primary" :loading="savingTorznab" @click="saveTorznab">{{ t('common.save') }}</el-button>
             </div>
           </div>
           <div class="cfg-divider"></div>
           <div class="cfg-sec" v-if="selectedDl !== null">
-            <div class="cfg-sec-title">自动辅种</div>
+            <div class="cfg-sec-title">{{ t('reseed.autoReseed') }}</div>
             <div class="switch-row">
-              <span>定时自动辅种</span>
+              <span>{{ t('reseed.scheduledReseed') }}</span>
               <el-switch v-model="setting.auto_reseed" :loading="savingSetting" @change="saveSettingField" />
             </div>
             <div class="switch-row">
-              <span class="sub-label">自动添加新候选</span>
+              <span class="sub-label">{{ t('reseed.autoAddCandidates') }}</span>
               <el-switch v-model="setting.auto_reseed_add" :disabled="!setting.auto_reseed" :loading="savingSetting" @change="saveSettingField" />
             </div>
-            <p class="cfg-cron text-muted">每天 3 点扫描（KEEPSEED_CRON 可改）</p>
+            <p class="cfg-cron text-muted">{{ t('reseed.cronHint') }}</p>
           </div>
-          <p v-else class="cfg-empty text-muted">请先选择下载器以配置自动辅种</p>
+          <p v-else class="cfg-empty text-muted">{{ t('reseed.selectDlFirst') }}</p>
         </div>
       </el-popover>
     </div>
 
-    <el-alert v-if="focusSiteId" type="info" :closable="false" show-icon style="margin-bottom: 12px" :title="`仅显示候选站「${focusSiteName}」的辅种任务（${tasks.length}）`" />
+    <el-alert v-if="focusSiteId" type="info" :closable="false" show-icon style="margin-bottom: 12px" :title="t('reseed.focusTitle', { site: focusSiteName, n: tasks.length })" />
 
     <!-- 候选任务表 -->
     <div class="card glass table-card">
       <div class="card-head">
-        <span>候选任务<span class="cnt text-muted">（{{ tasks.length }}）</span></span>
+        <span>{{ t('reseed.tasks') }}<span class="cnt text-muted">（{{ tasks.length }}）</span></span>
         <el-radio-group v-model="statusFilter" size="small" @change="loadTasks">
-          <el-radio-button label="pending">待处理</el-radio-button>
-          <el-radio-button label="added">已添加</el-radio-button>
-          <el-radio-button label="skipped">已跳过</el-radio-button>
-          <el-radio-button label="failed">失败</el-radio-button>
-          <el-radio-button label="">全部</el-radio-button>
+          <el-radio-button label="pending">{{ t('reseed.st.pending') }}</el-radio-button>
+          <el-radio-button label="added">{{ t('reseed.st.added') }}</el-radio-button>
+          <el-radio-button label="skipped">{{ t('reseed.st.skipped') }}</el-radio-button>
+          <el-radio-button label="failed">{{ t('reseed.st.failed') }}</el-radio-button>
+          <el-radio-button label="">{{ t('assessment.filter.all') }}</el-radio-button>
         </el-radio-group>
       </div>
       <div class="table-wrap">
-        <el-table :data="tasks" v-loading="loadingTasks" height="100%" empty-text="暂无候选，点「开始辅种」">
-          <el-table-column label="源种子" min-width="200" show-overflow-tooltip>
+        <el-table :data="tasks" v-loading="loadingTasks" height="100%" :empty-text="t('reseed.emptyTasks')">
+          <el-table-column :label="t('reseed.col.source')" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">
               <span class="src-name">{{ row.source_name || row.info_hash }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="candidate_site" label="候选站点" width="110" />
-          <el-table-column label="候选链接" min-width="160" show-overflow-tooltip>
+          <el-table-column prop="candidate_site" :label="t('reseed.col.candidateSite')" width="110" />
+          <el-table-column :label="t('reseed.col.candidateLink')" min-width="160" show-overflow-tooltip>
             <template #default="{ row }">
-              <a :href="safeUrl(row.candidate_url)" target="_blank" rel="noopener" class="dl-link">下载链接</a>
+              <a :href="safeUrl(row.candidate_url)" target="_blank" rel="noopener" class="dl-link">{{ t('reseed.col.downloadLink') }}</a>
             </template>
           </el-table-column>
-          <el-table-column label="保存路径" min-width="160" show-overflow-tooltip>
+          <el-table-column :label="t('reseed.col.savePath')" min-width="160" show-overflow-tooltip>
             <template #default="{ row }"><span class="text-muted">{{ row.save_path || '-' }}</span></template>
           </el-table-column>
-          <el-table-column label="状态" width="90">
+          <el-table-column :label="t('reseed.col.status')" width="90">
             <template #default="{ row }"><el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag></template>
           </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+          <el-table-column :label="t('reseed.col.actions')" width="150" fixed="right">
             <template #default="{ row }">
               <div v-if="row.status === 'pending'" class="row-actions">
-                <el-button size="small" type="primary" :loading="resolving.has(row.id)" @click="resolve(row as ReseedTask, 'add')">添加辅种</el-button>
-                <el-button size="small" :loading="resolving.has(row.id)" @click="resolve(row as ReseedTask, 'skip')">跳过</el-button>
+                <el-button size="small" type="primary" :loading="resolving.has(row.id)" @click="resolve(row as ReseedTask, 'add')">{{ t('reseed.addReseed') }}</el-button>
+                <el-button size="small" :loading="resolving.has(row.id)" @click="resolve(row as ReseedTask, 'skip')">{{ t('reseed.skip') }}</el-button>
               </div>
               <span v-else class="text-muted">-</span>
             </template>

@@ -3,6 +3,7 @@ package automation
 import (
 	"context"
 	"fmt"
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"log/slog"
 	"math/rand"
 	"strconv"
@@ -88,7 +89,10 @@ func (s *Service) dispatchSnapshotSite(ctx context.Context, st *models.Site, res
 
 	// 1. stats 落库（UserInfo 成功且无错误才记录，避免部分结果写脏统计行）
 	if res.UserInfo != nil && res.UserErr == "" {
+		bizmetrics.SiteSyncInc(bizmetrics.SyncSuccess)
 		s.recordStat(st, res.UserInfo)
+	} else {
+		bizmetrics.SiteSyncInc(bizmetrics.SyncFail)
 	}
 
 	// 2. cookie 掉线告警（per-site notice 当天去重）+ 轮换回写

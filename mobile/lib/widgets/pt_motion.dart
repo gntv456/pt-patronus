@@ -366,16 +366,19 @@ class _PTLoadingViewState extends State<PTLoadingView>
   @override
   Widget build(BuildContext context) {
     final c = widget.color ?? Theme.of(context).colorScheme.primary;
-    return FadeTransition(
-      opacity: _fade,
-      child: Center(
-        child: SizedBox(
-          width: widget.size,
-          height: widget.size,
-          child: AnimatedBuilder(
-            animation: _spin,
-            builder: (context, _) {
-              return CustomPaint(
+    return Semantics(
+      label: '加载中',
+      excludeSemantics: true,
+      child: FadeTransition(
+        opacity: _fade,
+        child: Center(
+          child: SizedBox(
+            width: widget.size,
+            height: widget.size,
+            child: AnimatedBuilder(
+              animation: _spin,
+              builder: (context, _) {
+                return CustomPaint(
                 painter: _LiquidSpinnerPainter(
                   progress: _spin.value,
                   color: c,
@@ -384,6 +387,7 @@ class _PTLoadingViewState extends State<PTLoadingView>
             },
           ),
         ),
+      ),
       ),
     );
   }

@@ -3,9 +3,12 @@
  * 影视搜索结果海报卡片网格（原 Search.vue 影视模式区块）。
  * 卡片点击 → 进入媒体详情页（对标 MoviePilot），由父组件处理跳转。
  */
+import { useI18n } from 'vue-i18n'
 import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import type { MediaInfo } from '@/api/media'
+
+const { t } = useI18n()
 
 defineProps<{
   results: MediaInfo[]
@@ -14,11 +17,11 @@ defineProps<{
 
 const emit = defineEmits<{ open: [m: MediaInfo] }>()
 
-function typeBadge(t: string) {
-  return ({ movie: '电影', tv: '剧集', music: '音乐' } as Record<string, string>)[t] || t
+function typeBadge(v: string) {
+  return ({ movie: t('mrg.movie'), tv: t('mrg.tv'), music: t('mrg.music') } as Record<string, string>)[v] || v
 }
-function sourceBadge(s: string) {
-  return ({ tmdb: 'TMDB', douban: '豆瓣', musicbrainz: 'MB' } as Record<string, string>)[s] || s
+function sourceBadge(v: string) {
+  return ({ tmdb: 'TMDB', douban: t('mrg.douban'), musicbrainz: 'MB' } as Record<string, string>)[v] || v
 }
 </script>
 
@@ -48,8 +51,8 @@ function sourceBadge(s: string) {
   <EmptyState
     v-if="!results.length && !loading"
     icon="🎬"
-    title="搜索影视"
-    description="输入关键字查找影视元数据、海报与评分"
+    :title="t('mrg.title')"
+    :description="t('mrg.desc')"
   />
 </template>
 

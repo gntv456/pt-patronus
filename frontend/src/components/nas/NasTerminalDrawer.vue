@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Terminal } from '@xterm/xterm'
@@ -9,6 +10,8 @@ import { useAuthStore } from '@/stores/auth'
 import type { MonitorTarget } from '@/api/monitor'
 import { isSSHHost, targetAddr } from '@/views/nasServerHelpers'
 import '@xterm/xterm/css/xterm.css'
+
+const { t: ti } = useI18n()
 
 const props = defineProps<{
   visible: boolean
@@ -92,14 +95,14 @@ function stopHeartbeat() {
 function scheduleReconnect() {
   if (intentionalClose || !props.visible || !props.target) return
   if (reconnectAttempts >= 5) {
-    term?.write(`\r\n\x1b[31m[${nowTag()}] 重连次数过多，已停止。请手动"重连"。\x1b[0m\r\n`)
+    term?.write(`\r\n\x1b[31m[${nowTag()}] {ti('ntd.tooManyReconnects')}\x1b[0m\r\n`)
     reconnecting.value = false
     return
   }
   reconnecting.value = true
   reconnectAttempts++
   const delay = Math.min(1000 * 2 ** reconnectAttempts, 16000)
-  term?.write(`\r\n\x1b[33m[${nowTag()}] ${Math.round(delay / 1000)}s 后重连 (${reconnectAttempts}/5)...\x1b[0m\r\n`)
+  term?.write(`\r\n\x1b[33m[${nowTag()}] ${ti('ntd.reconnectIn', { s: Math.round(delay / 1000), n: reconnectAttempts })}...\x1b[0m\r\n`)
   reconnectTimer = window.setTimeout(() => connect(true), delay)
 }
 
@@ -117,7 +120,7 @@ async function connect(isReconnect = false) {
   ensureTerm()
   if (!isReconnect) {
     term?.clear()
-    term?.write(`\x1b[36m[${nowTag()}] 正在连接 ${t.name} (${targetAddr(t)})...\x1b[0m\r\n`)
+    term?.write(`\x1b[36m[${nowTag()}] ${ti('ntd.connectingTo', { name: t.name, addr: targetAddr(t) })}...\x1b[0m\r\n`)
   }
   try {
     const { ticket } = await authApi.wsTicket()
@@ -128,7 +131,7 @@ async function connect(isReconnect = false) {
       reconnecting.value = false
       reconnectAttempts = 0
       startHeartbeat()
-      term?.write(`\x1b[32m[${nowTag()}] 已连接，直接输入命令即可执行。\x1b[0m\r\n\r\n`)
+      term?.write(`\x1b[32m[${nowTag()}] {ti('ntd.connectedHint')}\x1b[0m\r\n\r\n`)
       term?.focus()
       fitAddon?.fit()
     }
@@ -136,22 +139,22 @@ async function connect(isReconnect = false) {
       term?.write(typeof ev.data === 'string' ? ev.data : new Uint8Array(ev.data))
     }
     ws.onerror = () => {
-      term?.write(`\r\n\x1b[31m[${nowTag()}] 终端连接错误\x1b[0m\r\n`)
+      term?.write(`\r\n\x1b[31m[${nowTag()}] {ti('ot.connError')}\x1b[0m\r\n`)
     }
     ws.onclose = () => {
       connected.value = false
       connecting.value = false
       stopHeartbeat()
       if (!intentionalClose) {
-        term?.write(`\r\n\x1b[33m[${nowTag()}] 连接已断开\x1b[0m\r\n`)
+        term?.write(`\r\n\x1b[33m[${nowTag()}] {ti('ntd.disconnected')}\x1b[0m\r\n`)
         scheduleReconnect()
       } else {
-        term?.write(`\r\n\x1b[33m[${nowTag()}] 连接已关闭\x1b[0m\r\n`)
+        term?.write(`\r\n\x1b[33m[${nowTag()}] {ti('det.closed')}\x1b[0m\r\n`)
       }
     }
   } catch (e: unknown) {
     connecting.value = false
-    term?.write(`\r\n\x1b[31m[${nowTag()}] 连接失败：${(e as Error).message || '未知错误'}\x1b[0m\r\n`)
+    term?.write(`\r\n\x1b[31m[${nowTag()}] ${ti('ntd.connectFailed', { err: (e as Error).message || ti('ntd.unknownErr') })}\x1b[0m\r\n`)
   }
 }
 
@@ -181,12 +184,12 @@ watch(
     const t = props.target
     if (!t) return
     if (!auth.isAdmin) {
-      ElMessage.warning('只有管理员可以打开终端')
+      ElMessage.warning(ti('ntd.adminOnly'))
       emit('update:visible', false)
       return
     }
     if (!isSSHHost(t)) {
-      ElMessage.warning('目前仅 SSH 主机支持在线终端')
+      ElMessage.warning(ti('ntd.sshOnly'))
       emit('update:visible', false)
       return
     }
@@ -218,7 +221,7 @@ onBeforeUnmount(() => {
 <template>
   <el-drawer
     :model-value="visible"
-    :title="target ? `${target.name} · 在线终端` : '在线终端'"
+    :title="target ? ti('ntd.titleWith', { name: target.name }) : ti('ntd.title')"
     size="min(860px, 96vw)"
     @update:model-value="emit('update:visible', $event)"
     @closed="emit('closed')"
@@ -226,11 +229,11 @@ onBeforeUnmount(() => {
     <div class="terminal-wrap">
       <div class="terminal-head">
         <span :class="{ on: connected, mid: connecting || reconnecting }">
-          {{ connected ? '● 已连接' : connecting ? '○ 连接中…' : reconnecting ? '↻ 重连中…' : '○ 未连接' }}
+          {{ connected ? '● ' + ti('ot.connected') : connecting ? '○ ' + ti('tw.connecting') + '…' : reconnecting ? '↻ ' + ti('ntd.reconnecting') + '…' : '○ ' + ti('ot.disconnected') }}
         </span>
         <div>
-          <el-button size="small" :loading="connecting" @click="connect(false)">重连</el-button>
-          <el-button v-if="connected" size="small" type="danger" plain @click="disconnect">断开</el-button>
+          <el-button size="small" :loading="connecting" @click="connect(false)">{{ ti('ntd.reconnect') }}</el-button>
+          <el-button v-if="connected" size="small" type="danger" plain @click="disconnect">{{ ti('ot.disconnect') }}</el-button>
           <el-button size="small" type="warning" plain :disabled="!connected" @click="sendCtrlC">Ctrl+C</el-button>
         </div>
       </div>

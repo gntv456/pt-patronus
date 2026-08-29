@@ -4,8 +4,11 @@
  * 受控弹窗：v-model 控制显隐，业务状态由父组件/composable 管理。
  */
 import { formatTorrentSize } from '@/utils/torrentMeta'
+import { useI18n } from 'vue-i18n'
 import { dlTypeLabel } from '@/composables/useSearchPush'
 import type { Downloader } from '@/api/downloader'
+
+const { t } = useI18n()
 
 const visible = defineModel<boolean>({ required: true })
 
@@ -44,17 +47,17 @@ const emit = defineEmits<{
   >
     <template #header>
       <div class="sp-header">
-        <div class="sp-title-main">确认下载</div>
+        <div class="sp-title-main">{{ t('spd.title') }}</div>
         <div v-if="subtitle" class="sp-title-sub text-muted">{{ subtitle }}</div>
       </div>
     </template>
 
     <div v-if="pushedDlName" class="sp-ok">
-      <p>已推送到 <b>{{ pushedDlName }}</b></p>
-      <div class="text-muted small">可前往下载器查看任务进度。</div>
+      <p>{{ t('spd.pushedTo') }} <b>{{ pushedDlName }}</b></p>
+      <div class="text-muted small">{{ t('spd.pushedHint') }}</div>
       <div class="sp-actions">
-        <el-button type="primary" @click="emit('gotoDownloaderTasks')">查看任务</el-button>
-        <el-button @click="emit('close')">关闭</el-button>
+        <el-button type="primary" @click="emit('gotoDownloaderTasks')">{{ t('spd.viewTasks') }}</el-button>
+        <el-button @click="emit('close')">{{ t('common.close') }}</el-button>
       </div>
     </div>
 
@@ -77,52 +80,52 @@ const emit = defineEmits<{
 
       <div class="sp-fields">
         <div class="sp-field">
-          <label>下载器</label>
-          <el-select v-model="selectedDl" placeholder="选择下载器" style="width: 100%">
+          <label>{{ t('spd.downloader') }}</label>
+          <el-select v-model="selectedDl" :placeholder="t('spd.dlPh')" style="width: 100%">
             <el-option
               v-for="d in downloaders"
               :key="d.id"
-              :label="d.name + (d.is_default ? '（默认）' : '') + ' · ' + (dlTypeLabel[d.type] ?? d.type)"
+              :label="d.name + (d.is_default ? t('spd.defaultSuffix') : '') + ' · ' + (dlTypeLabel[d.type] ?? d.type)"
               :value="d.id"
             />
           </el-select>
         </div>
         <div class="sp-field">
-          <label>保存目录</label>
+          <label>{{ t('spd.saveDir') }}</label>
           <el-select
             v-model="selectedCategory"
             clearable
             filterable
             allow-create
             default-first-option
-            placeholder="自动（下载器默认）"
+            :placeholder="t('spd.autoDir')"
             style="width: 100%"
           >
-            <el-option label="自动（下载器默认）" value="" />
+            <el-option :label="t('spd.autoDir')" value="" />
             <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
           </el-select>
         </div>
       </div>
 
       <button type="button" class="sp-adv-toggle" @click="showAdvanced = !showAdvanced">
-        {{ showAdvanced ? '▾ 收起高级选项' : '▸ 显示高级选项' }}
+        {{ showAdvanced ? t('spd.hideAdv') : t('spd.showAdv') }}
       </button>
       <div v-if="showAdvanced" class="sp-advanced">
         <div class="sp-field">
-          <label>自定义保存路径</label>
-          <el-input v-model="savePath" placeholder="留空则用分类/下载器默认路径" clearable />
+          <label>{{ t('spd.customPath') }}</label>
+          <el-input v-model="savePath" :placeholder="t('spd.pathPh')" clearable />
         </div>
         <div class="sp-field row">
-          <label>添加后暂停</label>
+          <label>{{ t('spd.paused') }}</label>
           <el-switch v-model="paused" />
         </div>
       </div>
 
       <div v-if="!downloaders.length && !loading" class="sp-empty">
-        <div class="sp-empty-text">尚未配置任何下载器</div>
-        <div class="text-muted small">需要先添加一个下载器才能开始下载</div>
+        <div class="sp-empty-text">{{ t('spd.noDl') }}</div>
+        <div class="text-muted small">{{ t('spd.noDlHint') }}</div>
         <el-button type="primary" plain size="small" style="margin-top: 10px" @click="emit('gotoDownloaderConfig')">
-          前往配置下载器
+          {{ t('spd.goConfig') }}
         </el-button>
       </div>
 
@@ -134,7 +137,7 @@ const emit = defineEmits<{
         :disabled="!downloaders.length || selectedDl == null"
         @click="emit('confirm')"
       >
-        ⬇ 开始下载
+        ⬇ {{ t('spd.startDownload') }}
       </el-button>
     </div>
   </el-dialog>

@@ -97,6 +97,7 @@ class _MediaSettingsPageState extends State<MediaSettingsPage> {
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
+              tooltip: '刷新',
               onPressed: _loading ? null : _load,
             ),
           ],

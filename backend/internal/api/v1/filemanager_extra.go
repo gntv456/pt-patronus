@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/filemanager"
 )
 
@@ -39,12 +40,12 @@ func (h *FileStorageHandler) WriteFile(c *gin.Context) {
 	}
 	p := c.Query("path")
 	if isRootPath(p) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许操作存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	var in writeFileRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.fileCh.WriteFile(c.Request.Context(), id, p, []byte(in.Content)); err != nil {
@@ -63,7 +64,7 @@ func (h *FileStorageHandler) Archive(c *gin.Context) {
 	src := c.Query("src")
 	dst := c.Query("dst")
 	if isRootPath(src) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许压缩存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	if err := h.fileCh.Archive(c.Request.Context(), id, src, dst); err != nil {
@@ -82,7 +83,7 @@ func (h *FileStorageHandler) Extract(c *gin.Context) {
 	src := c.Query("src")
 	dst := c.Query("dst")
 	if isRootPath(src) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许操作存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	if err := h.fileCh.Extract(c.Request.Context(), id, src, dst); err != nil {
@@ -105,12 +106,12 @@ func (h *FileStorageHandler) Chmod(c *gin.Context) {
 	}
 	p := c.Query("path")
 	if isRootPath(p) {
-		c.JSON(http.StatusOK, gin.H{"ok": false, "error": "不允许操作存储根目录"})
+		errcode.Respond(c, errcode.OperationForbidden)
 		return
 	}
 	var in chmodRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	if err := h.fileCh.Chmod(c.Request.Context(), id, p, in.Mode, in.Recursive); err != nil {
@@ -130,7 +131,7 @@ func (h *FileStorageHandler) DirSize(c *gin.Context) {
 	size, err := h.fileCh.DirSize(c.Request.Context(), id, p)
 	if err != nil {
 		if errors.Is(err, filemanager.ErrUnsupported) {
-			c.JSON(http.StatusOK, gin.H{"ok": false, "error": "该后端不支持计算目录大小"})
+			errcode.Respond(c, errcode.ResourceStateInvalid)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"ok": false, "error": err.Error()})

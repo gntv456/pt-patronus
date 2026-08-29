@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/llm"
 	"github.com/hxpt/ptpatronus/internal/mcp"
@@ -31,7 +32,7 @@ func TestAgentToolWhitelistBlocksUnadvertisedCall(t *testing.T) {
 		{{Type: llm.EventText, Text: "blocked"}, {Type: llm.EventDone}},
 	}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s", EnabledTools: []string{"safe"}})
-	agent := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}, fakeCrypto{})
+	agent := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}, fakeCrypto{})
 
 	var result string
 	for event := range agent.Run(context.Background(), 1, "run danger") {
@@ -58,7 +59,7 @@ func TestAgentMalformedArgumentsDoNotExecuteTool(t *testing.T) {
 		{{Type: llm.EventText, Text: "fixed"}, {Type: llm.EventDone}},
 	}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
-	agent := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}, fakeCrypto{})
+	agent := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}, fakeCrypto{})
 	for range agent.Run(context.Background(), 1, "write") {
 	}
 	if executed {
@@ -86,7 +87,7 @@ func TestTrimMessagesDropsOrphanedToolPrefix(t *testing.T) {
 func TestAgentStopsWhenUserMessageCannotBePersisted(t *testing.T) {
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
 	providerCalled := false
-	agent := New(func(llm.Config) llm.Provider {
+	agent := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider {
 		providerCalled = true
 		return &fakeProvider{}
 	}, nil, failingMessageStore{}, &fakeConvStore{titles: map[uint]string{}}, &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}, fakeCrypto{})
@@ -152,7 +153,7 @@ func newConfirmTestAgent(t *testing.T, plans [][]llm.Event, executed *bool) *Age
 	}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
 	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
-	return New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+	return New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, &fakeMsgStore{}, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
 }
 
 // TestAgent_DestructiveApprovedExecutes 用户批准 → 工具执行。
@@ -288,7 +289,7 @@ func TestAgent_DestructiveCancelledEmitsToolResult(t *testing.T) {
 	}
 	cfgJSON, _ := json.Marshal(Config{Enabled: true, APIKeyEnc: "enc:k", MaxIterations: 3, SystemPrompt: "s"})
 	kv := &fakeKV{m: map[string]string{configKey: string(cfgJSON)}}
-	a := New(func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, store, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
+	a := New(bizmetrics.LLMSourceAssistant, func(llm.Config) llm.Provider { return &fakeProvider{plans: plans} }, tools, store, &fakeConvStore{titles: map[uint]string{}}, kv, fakeCrypto{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

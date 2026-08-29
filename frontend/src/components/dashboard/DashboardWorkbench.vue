@@ -6,6 +6,9 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { dashboardApi, type Workbench, type WorkbenchNode } from '@/api/dashboard'
 import { useAuthStore } from '@/stores/auth'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 import { fmtBytes } from '@/utils/format'
 
 const router = useRouter()
@@ -23,7 +26,7 @@ async function load() {
   try {
     wb.value = await dashboardApi.workbench()
   } catch (e: any) {
-    loadError.value = e?.message || '工作台数据加载失败'
+    loadError.value = e?.message || t('wb.loadFailed')
   } finally {
     loading.value = false
   }
@@ -39,23 +42,23 @@ onUnmounted(() => {
 
 const greeting = computed(() => {
   const h = new Date().getHours()
-  if (h < 5) return '夜深了'
-  if (h < 9) return '早上好'
-  if (h < 12) return '上午好'
-  if (h < 14) return '中午好'
-  if (h < 18) return '下午好'
-  if (h < 23) return '晚上好'
-  return '夜深了'
+  if (h < 5) return t('wb.g.night')
+  if (h < 9) return t('wb.g.morning')
+  if (h < 12) return t('wb.g.am')
+  if (h < 14) return t('wb.g.noon')
+  if (h < 18) return t('wb.g.pm')
+  if (h < 23) return t('wb.g.evening')
+  return t('wb.g.night')
 })
 
 const todayInsight = computed(() => {
   if (!wb.value) return ''
   const s = wb.value.summary
   const parts: string[] = []
-  if (s.uploaded_delta > 0) parts.push(`今日上传 ${fmtBytes(s.uploaded_delta)}`)
-  if (s.downloads_done > 0) parts.push(`整理入库 ${s.downloads_done} 部`)
-  if (s.organize_failed > 0) parts.push(`${s.organize_failed} 项待处理`)
-  if (!parts.length) return '今天暂无动态，去订阅一部新片吧'
+  if (s.uploaded_delta > 0) parts.push(t('wb.i.uploaded', { v: fmtBytes(s.uploaded_delta) }))
+  if (s.downloads_done > 0) parts.push(t('wb.i.organized', { n: s.downloads_done }))
+  if (s.organize_failed > 0) parts.push(t('wb.i.pending', { n: s.organize_failed }))
+  if (!parts.length) return t('wb.i.quiet')
   return parts.join(' · ')
 })
 
@@ -87,27 +90,27 @@ const summaryRows = computed(() => {
   if (!wb.value) return []
   const s = wb.value.summary
   const all = [
-    { node: 'site', label: '启用站点', value: `${s.sites_active}` },
-    { node: 'site', label: '无数据站点', value: `${s.sites_no_data}`, danger: s.sites_no_data > 0 },
-    { node: 'subscribe', label: '新增订阅', value: `${s.subscriptions_new}` },
-    { node: 'subscribe', label: '订阅命中', value: `${s.subscription_hits}` },
-    { node: 'download', label: '整理入库', value: `${s.downloads_done}` },
-    { node: 'organize', label: '整理失败', value: `${s.organize_failed}`, danger: s.organize_failed > 0 },
-    { node: 'organize', label: '云端任务完成', value: `${s.cloud_tasks_done}` },
-    { node: 'organize', label: '云端任务排队', value: `${s.cloud_tasks_pending}`, danger: s.cloud_tasks_pending > 10 },
-    { node: 'organize', label: 'STRM 生成', value: `${s.strm_generated}` },
-    { node: 'watch', label: '今日播放', value: `${s.played_today}` },
-    { node: 'site', label: '今日上传', value: fmtBytes(Math.max(0, s.uploaded_delta)) },
-    { node: 'site', label: '今日下载', value: fmtBytes(Math.max(0, s.downloaded_delta)) },
+    { node: 'site', label: t('wb.s.sitesActive'), value: `${s.sites_active}` },
+    { node: 'site', label: t('wb.s.sitesNoData'), value: `${s.sites_no_data}`, danger: s.sites_no_data > 0 },
+    { node: 'subscribe', label: t('wb.s.subsNew'), value: `${s.subscriptions_new}` },
+    { node: 'subscribe', label: t('wb.s.subHits'), value: `${s.subscription_hits}` },
+    { node: 'download', label: t('wb.s.organized'), value: `${s.downloads_done}` },
+    { node: 'organize', label: t('wb.s.orgFailed'), value: `${s.organize_failed}`, danger: s.organize_failed > 0 },
+    { node: 'organize', label: t('wb.s.cloudDone'), value: `${s.cloud_tasks_done}` },
+    { node: 'organize', label: t('wb.s.cloudPending'), value: `${s.cloud_tasks_pending}`, danger: s.cloud_tasks_pending > 10 },
+    { node: 'organize', label: t('wb.s.strm'), value: `${s.strm_generated}` },
+    { node: 'watch', label: t('wb.s.played'), value: `${s.played_today}` },
+    { node: 'site', label: t('wb.s.upToday'), value: fmtBytes(Math.max(0, s.uploaded_delta)) },
+    { node: 'site', label: t('wb.s.dlToday'), value: fmtBytes(Math.max(0, s.downloaded_delta)) },
   ]
   return activeNode.value ? all.filter((r) => r.node === activeNode.value) : all
 })
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
-  if (diff < 60_000) return '刚刚'
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`
+  if (diff < 60_000) return t('wb.ago.now')
+  if (diff < 3_600_000) return t('wb.ago.min', { n: Math.floor(diff / 60_000) })
+  if (diff < 86_400_000) return t('wb.ago.hour', { n: Math.floor(diff / 3_600_000) })
   return new Date(iso).toLocaleDateString('zh-CN')
 }
 </script>
@@ -117,10 +120,10 @@ function timeAgo(iso: string): string {
     <!-- 顶栏：问候 + 体检分 -->
     <div class="wb-top">
       <div class="wb-hello">
-        <h3>{{ greeting }}，{{ auth.username || '朋友' }}</h3>
+        <h3>{{ greeting }}，{{ auth.username || t('wb.friend') }}</h3>
         <p class="wb-insight">{{ todayInsight }}</p>
       </div>
-      <button class="wb-score" title="轻量体检分（完整诊断见设置→维护→诊断）" @click="router.push({ name: 'settings', query: { section: '维护' } })">
+      <button class="wb-score" :title="t('wb.scoreTip')" @click="router.push({ name: 'settings', query: { section: 'maintain' } })">
         <svg viewBox="0 0 36 36" class="score-ring">
           <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--divider)" stroke-width="4" />
           <circle
@@ -130,19 +133,19 @@ function timeAgo(iso: string): string {
           />
           <text x="18" y="21.5" text-anchor="middle" class="score-num">{{ wb?.health_score ?? '--' }}</text>
         </svg>
-        <span class="score-label">体检分</span>
+        <span class="score-label">{{ t('wb.score') }}</span>
       </button>
     </div>
 
     <!-- 今日流转节点 -->
     <div class="wb-flow" v-if="wb?.nodes?.length">
-      <div class="wb-flow-label">今日流转</div>
+      <div class="wb-flow-label">{{ t('wb.flow') }}</div>
       <div class="wb-flow-nodes">
         <template v-for="(n, i) in wb.nodes" :key="n.key">
           <button
             class="wb-node"
             :class="{ active: activeNode === n.key }"
-            :title="`${n.hint}：${n.count}，点击查看 ${n.label} 域摘要`"
+            :title="t('wb.nodeTip', { hint: n.hint, count: n.count, label: n.label })"
             @click="pickNode(n)"
             @dblclick="goNode(n)"
           >
@@ -152,15 +155,15 @@ function timeAgo(iso: string): string {
           </button>
           <span v-if="i < wb.nodes.length - 1" class="wb-flow-arrow">→</span>
         </template>
-        <button v-if="activeNode" class="wb-node overview" @click="activeNode = ''">总览</button>
+        <button v-if="activeNode" class="wb-node overview" @click="activeNode = ''">{{ t('wb.overview') }}</button>
       </div>
     </div>
 
     <!-- 待办 / 动态 -->
     <div class="wb-mid">
       <div class="wb-todos">
-        <div class="wb-sec-title">今日待办</div>
-        <div v-if="!wb?.todos?.length" class="wb-empty">暂无待办事项 🎉</div>
+        <div class="wb-sec-title">{{ t('wb.todos') }}</div>
+        <div v-if="!wb?.todos?.length" class="wb-empty">{{ t('wb.noTodos') }}</div>
         <button
           v-for="(t, i) in wb?.todos ?? []"
           :key="i"
@@ -173,8 +176,8 @@ function timeAgo(iso: string): string {
         </button>
       </div>
       <div class="wb-events">
-        <div class="wb-sec-title">今日动态</div>
-        <div v-if="!wb?.events?.length" class="wb-empty">今天还没有事件记录</div>
+        <div class="wb-sec-title">{{ t('wb.events') }}</div>
+        <div v-if="!wb?.events?.length" class="wb-empty">{{ t('wb.noEvents') }}</div>
         <div v-for="(e, i) in wb?.events ?? []" :key="i" class="wb-event" :class="`lv-${e.level}`">
           <div class="event-line">
             <span class="event-title">{{ e.title }}</span>
@@ -192,7 +195,7 @@ function timeAgo(iso: string): string {
     <!-- 今日摘要 + 媒体库态势 -->
     <div class="wb-bottom">
       <div class="wb-summary">
-        <div class="wb-sec-title">今日摘要<template v-if="activeNode"> · {{ wb?.nodes.find(n => n.key === activeNode)?.label }}</template></div>
+        <div class="wb-sec-title">{{ t('wb.summary') }}<template v-if="activeNode"> · {{ wb?.nodes.find(n => n.key === activeNode)?.label }}</template></div>
         <div class="wb-summary-grid">
           <div v-for="(r, i) in summaryRows" :key="i" class="wb-stat">
             <span class="stat-value" :class="{ danger: r.danger }">{{ r.value }}</span>
@@ -201,17 +204,17 @@ function timeAgo(iso: string): string {
         </div>
       </div>
       <div class="wb-library">
-        <div class="wb-sec-title">媒体库态势</div>
+        <div class="wb-sec-title">{{ t('wb.library') }}</div>
         <template v-if="wb?.media_library?.configured">
           <div v-for="s in wb.media_library.servers" :key="s.server_id" class="wb-lib-row">
             <span class="lib-name">{{ s.server_name }}</span>
-            <span class="lib-counts">🎬 {{ s.movies }} 电影 · 📺 {{ s.series }} 剧集</span>
+            <span class="lib-counts">🎬 {{ t('wb.libCounts', { m: s.movies, s: s.series }) }}</span>
             <span class="lib-time">{{ timeAgo(s.synced_at) }}</span>
           </div>
         </template>
         <div v-else class="wb-empty">
-          未配置媒体服务器，
-          <router-link to="/mediaserver">去添加</router-link>
+          {{ t('wb.noLibrary') }}
+          <router-link to="/mediaserver">{{ t('wb.goAdd') }}</router-link>
         </div>
       </div>
     </div>

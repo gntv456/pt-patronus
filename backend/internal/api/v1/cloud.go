@@ -2,6 +2,7 @@ package v1
 
 import (
 	"encoding/json"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 
 	"errors"
 	"github.com/hxpt/ptpatronus/internal/cloud"
@@ -28,7 +29,7 @@ func NewCloudHandler(svc *chain.CloudChain) *CloudHandler {
 func (h *CloudHandler) List(c *gin.Context) {
 	ds, err := h.svc.List()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if ds == nil {
@@ -40,7 +41,7 @@ func (h *CloudHandler) List(c *gin.Context) {
 func (h *CloudHandler) Create(c *gin.Context) {
 	var in oper.CloudDriveInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	m, err := h.svc.Create(in)
@@ -58,7 +59,7 @@ func (h *CloudHandler) Update(c *gin.Context) {
 	}
 	var in oper.CloudDriveInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	m, err := h.svc.Update(id, in)
@@ -99,7 +100,7 @@ func (h *CloudHandler) Quota(c *gin.Context) {
 	}
 	q, err := h.svc.Quota(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"quota": q})
@@ -113,7 +114,7 @@ func (h *CloudHandler) Browse(c *gin.Context) {
 	}
 	files, err := h.svc.Browse(c.Request.Context(), id, c.Query("path"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"files": files})
@@ -124,7 +125,7 @@ func (h *CloudHandler) Browse(c *gin.Context) {
 func (h *CloudHandler) ListRules(c *gin.Context) {
 	rs, err := h.svc.ListRules()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if rs == nil {
@@ -136,12 +137,12 @@ func (h *CloudHandler) ListRules(c *gin.Context) {
 func (h *CloudHandler) CreateRule(c *gin.Context) {
 	var in oper.StrmRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	r, err := h.svc.CreateRule(in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, r)
@@ -154,12 +155,12 @@ func (h *CloudHandler) UpdateRule(c *gin.Context) {
 	}
 	var in oper.StrmRuleInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	r, err := h.svc.UpdateRule(id, in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, r)
@@ -181,7 +182,7 @@ func (h *CloudHandler) GenerateRule(c *gin.Context) {
 	}
 	res, err := h.svc.GenerateStrm(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -191,12 +192,12 @@ func (h *CloudHandler) GenerateRule(c *gin.Context) {
 func (h *CloudHandler) Generate(c *gin.Context) {
 	var in chain.GenerateInput
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.svc.GenerateInstant(c.Request.Context(), in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -230,7 +231,7 @@ type fileOpReq struct {
 func (h *CloudHandler) CloudMkdir(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.svc.CloudMkdir(c.Request.Context(), in.DriveID, in.Path, in.NewName))
@@ -240,7 +241,7 @@ func (h *CloudHandler) CloudMkdir(c *gin.Context) {
 func (h *CloudHandler) CloudMove(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.svc.CloudMove(c.Request.Context(), in.DriveID, in.Path, in.DstDir))
@@ -250,7 +251,7 @@ func (h *CloudHandler) CloudMove(c *gin.Context) {
 func (h *CloudHandler) CloudCopy(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.svc.CloudCopy(c.Request.Context(), in.DriveID, in.Path, in.DstDir))
@@ -260,7 +261,7 @@ func (h *CloudHandler) CloudCopy(c *gin.Context) {
 func (h *CloudHandler) CloudRename(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.svc.CloudRename(c.Request.Context(), in.DriveID, in.Path, in.NewName))
@@ -270,7 +271,7 @@ func (h *CloudHandler) CloudRename(c *gin.Context) {
 func (h *CloudHandler) CloudDelete(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.svc.CloudDelete(c.Request.Context(), in.DriveID, in.Path))
@@ -280,7 +281,7 @@ func (h *CloudHandler) CloudDelete(c *gin.Context) {
 func (h *CloudHandler) CloudOffline(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.svc.CloudOfflineAdd(c.Request.Context(), in.DriveID, in.Path, in.URL))
@@ -290,7 +291,7 @@ func (h *CloudHandler) CloudOffline(c *gin.Context) {
 func (h *CloudHandler) CloudShare(c *gin.Context) {
 	var in fileOpReq
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	opResult(c, h.svc.CloudSaveShare(c.Request.Context(), in.DriveID, in.Path, in.URL, in.Pwd))
@@ -301,12 +302,12 @@ func (h *CloudHandler) CloudShare(c *gin.Context) {
 func (h *CloudHandler) OrganizeCloud(c *gin.Context) {
 	var in cloud.OrganizeOptions
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	res, err := h.svc.OrganizeCloud(c.Request.Context(), in)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -320,7 +321,7 @@ func (h *CloudHandler) RepairStrm(c *gin.Context) {
 	_ = c.ShouldBindJSON(&in)
 	repaired, skipped, err := h.svc.RepairStrm(c.Request.Context(), in.DriveID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"repaired": repaired, "skipped": skipped})
@@ -335,12 +336,12 @@ func (h *CloudHandler) Start115OpenAuth(c *gin.Context) {
 		AppID string `json:"app_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	code, verifier, err := h.svc.Start115OpenAuth(c.Request.Context(), in.AppID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -359,7 +360,7 @@ func (h *CloudHandler) Poll115OpenAuth(c *gin.Context) {
 		Verifier string `json:"verifier" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	code := &cloud.DeviceCode115{
@@ -367,7 +368,7 @@ func (h *CloudHandler) Poll115OpenAuth(c *gin.Context) {
 	}
 	confirmed, status, tokenJSON, err := h.svc.Poll115OpenAuth(c.Request.Context(), code, in.Verifier)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"confirmed": confirmed, "status": status, "token": tokenJSON})
@@ -385,7 +386,7 @@ func (h *CloudHandler) ListTasks(c *gin.Context) {
 	}
 	ts, err := h.svc.CloudTasks(c.Query("status"), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if ts == nil {
@@ -422,7 +423,7 @@ func (h *CloudHandler) ImportTree(c *gin.Context) {
 		Template  string `json:"template"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	payload, _ := json.Marshal(map[string]string{
@@ -431,7 +432,7 @@ func (h *CloudHandler) ImportTree(c *gin.Context) {
 	if err := h.svc.EnqueueCloudTask(&models.CloudTask{
 		DriveID: in.DriveID, Kind: "import_tree", Payload: string(payload),
 	}); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"enqueued": true})
@@ -443,13 +444,13 @@ func (h *CloudHandler) ImportTree(c *gin.Context) {
 func (h *CloudHandler) Direct(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("driveId"), 10, 64)
 	if err != nil || id == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid drive id"})
+		errcode.Respond(c, errcode.InvalidID)
 		return
 	}
 	link, err := h.svc.ResolveDirectLink(c.Request.Context(), uint(id), c.Param("path"), c.Request.UserAgent())
 	if err != nil {
 		// 记录不存在/解析失败统一 404：公开端点不泄露内部细节。
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.NotFound.WithErr(err))
 		return
 	}
 	c.Redirect(http.StatusFound, link.URL)
@@ -466,7 +467,7 @@ func (h *CloudHandler) ListRecords(c *gin.Context) {
 	}
 	rs, err := h.svc.ListRecords(driveID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
 	if rs == nil {
@@ -486,8 +487,8 @@ func (h *CloudHandler) DeleteRecord(c *gin.Context) {
 // respondCloudErr 把 oper 错误映射到状态码：输入校验（类型非法）→ 400，其余 → 500。
 func respondCloudErr(c *gin.Context, err error) {
 	if errors.Is(err, oper.ErrInvalidInput) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	errcode.Respond(c, errcode.Internal.WithErr(err))
 }

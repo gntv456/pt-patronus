@@ -3,9 +3,11 @@ import NotificationCenter from '@/components/NotificationCenter.vue'
 import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import AppSidebar from '@/layouts/AppSidebar.vue'
+import { useI18n } from 'vue-i18n'
 import { useMainLayout } from '@/layouts/useMainLayout'
 import { Menu, Moon, Search, Setting, SwitchButton } from '@element-plus/icons-vue'
 
+const { t } = useI18n()
 const {
   router, auth, isMobile, mobileNavOpen, sidebarCollapsed, paletteOpen, noticeUnread, noticeUrgent,
   navGroups, favoriteItems, paletteItems, recent, collapsedGroups, favorites,
@@ -25,17 +27,17 @@ const {
     />
     <div class="main">
       <header class="topbar glass-bar">
-      <button class="icon-btn" :title="isMobile ? '打开导航' : '折叠导航'" aria-label="打开导航" @click="toggleNav">
+      <button class="icon-btn" :title="isMobile ? t('ml.openNav') : t('ml.collapseNav')" :aria-label="t('ml.openNav')" @click="toggleNav">
         <el-icon><Menu /></el-icon>
       </button>
-      <button class="search-trigger" type="button" title="跳转到… (Ctrl+K)" aria-label="打开命令面板" @click="openPalette">
+      <button class="search-trigger" type="button" :title="t('ml.searchTitle')" :aria-label="t('ml.openPalette')" @click="openPalette">
         <el-icon><Search /></el-icon>
-        <span v-if="!isMobile" class="search-placeholder">跳转到…</span>
+        <span v-if="!isMobile" class="search-placeholder">{{ t('ml.jumpTo') }}</span>
         <kbd v-if="!isMobile" class="search-kbd">⌘K</kbd>
       </button>
       <div class="spacer"></div>
       <NotificationCenter />
-      <router-link :to="{ name: 'assistant' }" class="ai-btn" title="AI 助手" aria-label="AI 助手">
+      <router-link :to="{ name: 'assistant' }" class="ai-btn" :title="t('ml.aiAssistant')" :aria-label="t('ml.aiAssistant')">
         <GlassIcon name="bot" from="#6c5ce7" to="#a855f7" :size="24" />
         <span class="ai-label">AI</span>
       </router-link>
@@ -46,9 +48,9 @@ const {
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="theme"><el-icon><Moon /></el-icon>&nbsp;切换主题</el-dropdown-item>
-            <el-dropdown-item command="settings"><el-icon><Setting /></el-icon>&nbsp;设置</el-dropdown-item>
-            <el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>&nbsp;退出登录</el-dropdown-item>
+            <el-dropdown-item command="theme"><el-icon><Moon /></el-icon>&nbsp;{{ t('ml.switchTheme') }}</el-dropdown-item>
+            <el-dropdown-item command="settings"><el-icon><Setting /></el-icon>&nbsp;{{ t('ml.settings') }}</el-dropdown-item>
+            <el-dropdown-item command="logout" divided><el-icon><SwitchButton /></el-icon>&nbsp;{{ t('ml.logout') }}</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>

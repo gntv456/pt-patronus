@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 )
@@ -60,12 +61,12 @@ func (h *MedalHandler) TakeOff(c *gin.Context) { h.doAction(c, "takeoff") }
 func (h *MedalHandler) doAction(c *gin.Context, action string) {
 	var body medalActionBody
 	if err := c.ShouldBindJSON(&body); err != nil || body.MedalID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	s, err := h.siteOp.Get(body.SiteID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		errcode.Respond(c, errcode.SiteNotFound)
 		return
 	}
 	ctx := c.Request.Context()

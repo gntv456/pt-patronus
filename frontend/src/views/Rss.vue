@@ -39,9 +39,21 @@ const editingId = ref(0)
 const form = ref<RssInput>(emptyForm())
 function emptyForm(): RssInput {
   return {
-    name: '', url: '', site_id: 0, enabled: true, interval_min: 30,
-    title_include: '', title_exclude: '', min_size: 0, max_size: 0, resolution: '',
-    auto_download: false, downloader_id: 0, save_path: '', category: 'rss', tags: '',
+    name: '',
+    url: '',
+    site_id: 0,
+    enabled: true,
+    interval_min: 30,
+    title_include: '',
+    title_exclude: '',
+    min_size: 0,
+    max_size: 0,
+    resolution: '',
+    auto_download: false,
+    downloader_id: 0,
+    save_path: '',
+    category: 'rss',
+    tags: '',
     filter_groups: '',
   }
 }
@@ -53,17 +65,33 @@ function openCreate() {
 function openEdit(r: RssSubscription) {
   editingId.value = r.id
   form.value = {
-    name: r.name, url: r.url, site_id: r.site_id, enabled: r.enabled, interval_min: r.interval_min,
-    title_include: r.title_include, title_exclude: r.title_exclude, min_size: r.min_size, max_size: r.max_size,
-    resolution: r.resolution, auto_download: r.auto_download, downloader_id: r.downloader_id,
-    save_path: r.save_path, category: r.category, tags: r.tags, filter_groups: r.filter_groups || '',
+    name: r.name,
+    url: r.url,
+    site_id: r.site_id,
+    enabled: r.enabled,
+    interval_min: r.interval_min,
+    title_include: r.title_include,
+    title_exclude: r.title_exclude,
+    min_size: r.min_size,
+    max_size: r.max_size,
+    resolution: r.resolution,
+    auto_download: r.auto_download,
+    downloader_id: r.downloader_id,
+    save_path: r.save_path,
+    category: r.category,
+    tags: r.tags,
+    filter_groups: r.filter_groups || '',
   }
   showForm.value = true
 }
 
 // 过滤规则组：表单以 | 分隔字符串提交，UI 用多选拆分回填。
 const filterGroupArray = computed<string[]>({
-  get: () => (form.value.filter_groups || '').split('|').map((s) => s.trim()).filter(Boolean),
+  get: () =>
+    (form.value.filter_groups || '')
+      .split('|')
+      .map((s) => s.trim())
+      .filter(Boolean),
   set: (v: string[]) => {
     form.value.filter_groups = v.join('|')
   },
@@ -149,17 +177,22 @@ function fmtTime(t?: string) {
           <div class="info">
             <div class="row1">
               <span class="s-title">{{ r.name }}</span>
-              <span class="chip" :class="r.enabled ? 'on' : 'off'">{{ r.enabled ? t('rss.enabled') : t('rss.disabled') }}</span>
+              <span class="chip" :class="r.enabled ? 'on' : 'off'">{{
+                r.enabled ? t('rss.enabled') : t('rss.disabled')
+              }}</span>
               <span v-if="r.auto_download" class="chip auto">{{ t('rss.autoDownload') }}</span>
               <span v-if="r.resolution" class="chip res">{{ r.resolution }}</span>
             </div>
             <div class="text-muted small url">{{ r.url }}</div>
             <div class="text-muted small">
-              {{ t('rss.interval', { n: r.interval_min }) }} · {{ t('rss.lastChecked') }} {{ fmtTime(r.last_checked_at) }}
+              {{ t('rss.interval', { n: r.interval_min }) }} · {{ t('rss.lastChecked') }}
+              {{ fmtTime(r.last_checked_at) }}
               <span v-if="r.title_include"> · {{ t('rss.includes') }} {{ r.title_include }}</span>
             </div>
             <div class="actions">
-              <el-button size="small" type="primary" :loading="checking === r.id" @click="check(r)">{{ t('rss.check') }}</el-button>
+              <el-button size="small" type="primary" :loading="checking === r.id" @click="check(r)">{{
+                t('rss.check')
+              }}</el-button>
               <el-button size="small" @click="openItems(r)">{{ t('rss.items') }}</el-button>
               <el-button size="small" @click="openEdit(r)">{{ t('common.edit') }}</el-button>
               <el-button size="small" type="danger" plain @click="remove(r)">{{ t('common.delete') }}</el-button>
@@ -167,30 +200,38 @@ function fmtTime(t?: string) {
           </div>
         </div>
       </div>
-      <EmptyState
-        v-else-if="!loading"
-        icon="📡"
-        :title="t('rss.emptyTitle')"
-        :description="t('rss.emptyDesc')"
-      >
+      <EmptyState v-else-if="!loading" icon="📡" :title="t('rss.emptyTitle')" :description="t('rss.emptyDesc')">
         <el-button type="primary" @click="openCreate">{{ t('rss.add') }}</el-button>
       </EmptyState>
     </div>
 
     <!-- 表单 -->
-    <el-dialog v-model="showForm" :title="editingId ? t('rss.editTitle') : t('rss.addTitle')" width="560px" append-to-body>
+    <el-dialog
+      v-model="showForm"
+      :title="editingId ? t('rss.editTitle') : t('rss.addTitle')"
+      width="560px"
+      append-to-body
+    >
       <el-form label-width="100px" size="small">
         <el-form-item :label="t('rss.f.name')"><el-input v-model="form.name" /></el-form-item>
-        <el-form-item :label="t('rss.f.url')"><el-input v-model="form.url" placeholder="https://site.com/rss.xml" /></el-form-item>
+        <el-form-item :label="t('rss.f.url')"
+          ><el-input v-model="form.url" placeholder="https://site.com/rss.xml"
+        /></el-form-item>
         <el-form-item :label="t('rss.f.site')">
           <el-select v-model="form.site_id" filterable style="width: 100%">
             <el-option :label="t('rss.f.noSite')" :value="0" />
             <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="t('rss.f.interval')"><el-input-number v-model="form.interval_min" :min="5" /></el-form-item>
-        <el-form-item :label="t('rss.f.titleInclude')"><el-input v-model="form.title_include" :placeholder="t('rss.f.kwHint')" /></el-form-item>
-        <el-form-item :label="t('rss.f.titleExclude')"><el-input v-model="form.title_exclude" :placeholder="t('rss.f.kwHintShort')" /></el-form-item>
+        <el-form-item :label="t('rss.f.interval')"
+          ><el-input-number v-model="form.interval_min" :min="5"
+        /></el-form-item>
+        <el-form-item :label="t('rss.f.titleInclude')"
+          ><el-input v-model="form.title_include" :placeholder="t('rss.f.kwHint')"
+        /></el-form-item>
+        <el-form-item :label="t('rss.f.titleExclude')"
+          ><el-input v-model="form.title_exclude" :placeholder="t('rss.f.kwHintShort')"
+        /></el-form-item>
         <el-form-item :label="t('subscriptions.resolution')">
           <el-select v-model="form.resolution" style="width: 100%">
             <el-option :label="t('subscriptions.unlimited')" value="" />
@@ -199,7 +240,14 @@ function fmtTime(t?: string) {
           </el-select>
         </el-form-item>
         <el-form-item :label="t('rss.f.filterGroups')">
-          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip :placeholder="t('rss.f.filterGroupsHint')" style="width: 100%">
+          <el-select
+            v-model="filterGroupArray"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            :placeholder="t('rss.f.filterGroupsHint')"
+            style="width: 100%"
+          >
             <el-option v-for="g in filterGroups" :key="g" :label="g" :value="g" />
           </el-select>
         </el-form-item>
@@ -221,7 +269,9 @@ function fmtTime(t?: string) {
           </el-form-item>
           <el-form-item :label="t('rss.f.savePath')"><el-input v-model="form.save_path" /></el-form-item>
           <el-form-item :label="t('rss.f.category')"><el-input v-model="form.category" /></el-form-item>
-          <el-form-item :label="t('rss.f.tags')"><el-input v-model="form.tags" :placeholder="t('rss.f.tagsHint')" /></el-form-item>
+          <el-form-item :label="t('rss.f.tags')"
+            ><el-input v-model="form.tags" :placeholder="t('rss.f.tagsHint')"
+          /></el-form-item>
         </template>
       </el-form>
       <template #footer>
@@ -239,34 +289,116 @@ function fmtTime(t?: string) {
             <span v-else>{{ row.title }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('rss.col.size')" width="90"><template #default="{ row }">{{ fmtSize(row.size) }}</template></el-table-column>
-        <el-table-column :label="t('rss.col.downloaded')" width="80"><template #default="{ row }">{{ row.downloaded ? t('common.yes') : t('common.no') }}</template></el-table-column>
-        <el-table-column :label="t('rss.col.foundAt')" width="160"><template #default="{ row }">{{ fmtTime(row.created_at) }}</template></el-table-column>
+        <el-table-column :label="t('rss.col.size')" width="90"
+          ><template #default="{ row }">{{ fmtSize(row.size) }}</template></el-table-column
+        >
+        <el-table-column :label="t('rss.col.downloaded')" width="80"
+          ><template #default="{ row }">{{
+            row.downloaded ? t('common.yes') : t('common.no')
+          }}</template></el-table-column
+        >
+        <el-table-column :label="t('rss.col.foundAt')" width="160"
+          ><template #default="{ row }">{{ fmtTime(row.created_at) }}</template></el-table-column
+        >
       </el-table>
     </el-drawer>
   </div>
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.hint { font-size: var(--fs-body); }
-.card { padding: 18px; min-height: 160px; }
-.subs { display: flex; flex-direction: column; gap: var(--sp-3); }
-.sub { padding: 14px; border-radius: var(--radius-sm); background: var(--surface-muted); }
-.info { display: flex; flex-direction: column; gap: var(--sp-1); }
-.row1 { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.s-title { font-weight: 700; font-size: var(--fs-lg); }
-.small { font-size: var(--fs-xs); }
-.url { word-break: break-all; }
-.chip { padding: 2px 10px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; }
-.chip.on { background: var(--pt-success-bg); color: var(--pt-success); }
-.chip.off { background: rgba(149,165,166,0.2); color: var(--text-muted); }
-.chip.auto { background: var(--pt-warn-bg); color: var(--pt-warn); }
-.chip.res { background: var(--pt-primary-2-bg); color: var(--pt-primary-2); }
-.actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px; }
-.sz { display: flex; align-items: center; gap: var(--sp-1); }
-.empty { padding: 40px; text-align: center; }
-.lnk { color: var(--el-color-primary); text-decoration: none; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-3);
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.hint {
+  font-size: var(--fs-body);
+}
+.card {
+  padding: 18px;
+  min-height: 160px;
+}
+.subs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.sub {
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.row1 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.s-title {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+}
+.small {
+  font-size: var(--fs-xs);
+}
+.url {
+  word-break: break-all;
+}
+.chip {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.chip.on {
+  background: var(--pt-success-bg);
+  color: var(--pt-success);
+}
+.chip.off {
+  background: rgba(149, 165, 166, 0.2);
+  color: var(--text-muted);
+}
+.chip.auto {
+  background: var(--pt-warn-bg);
+  color: var(--pt-warn);
+}
+.chip.res {
+  background: var(--pt-primary-2-bg);
+  color: var(--pt-primary-2);
+}
+.actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.sz {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
+.lnk {
+  color: var(--el-color-primary);
+  text-decoration: none;
+}
 </style>

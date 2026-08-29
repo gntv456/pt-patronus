@@ -18,6 +18,10 @@ import 'package:ptpatronus/api/agent.dart';
 import 'package:ptpatronus/api/brushflow.dart';
 import 'package:ptpatronus/api/contract.dart';
 import 'package:ptpatronus/api/dashboard.dart';
+import 'package:ptpatronus/features/dashboard/dashboard_history_body.dart';
+import 'package:ptpatronus/features/dashboard/dashboard_settings_sheet.dart';
+import 'package:ptpatronus/features/dashboard/dashboard_share_models.dart';
+import 'package:ptpatronus/features/dashboard/total_dashboard_config.dart';
 import 'package:ptpatronus/api/notice.dart';
 import 'package:ptpatronus/api/site.dart';
 import 'package:ptpatronus/api/system.dart';
@@ -33,146 +37,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 const _totalDashboardConfigKey = 'total_dashboard_config_v1';
 
-class TotalDashboardConfig {
-  final bool showTotalSites;
-  final bool showUploadCount;
-  final bool showUpload;
-  final bool showDownload;
-  final bool showSeedingCount;
-  final bool showSeedingVolume;
-  final bool showBonus;
-  final bool showBonusPerHour;
-  final bool showRatio;
-  final bool showRankPanel;
-  final bool showSiteList;
-  final bool showSiteName;
-  final bool showUsername;
-  final bool blurSensitiveInfo;
-  final bool blurUserInfo;
-  final bool compactMode;
-  final int siteDataLimit;
-  final List<int> selectedSiteIds;
-
-  const TotalDashboardConfig({
-    this.showTotalSites = true,
-    this.showUploadCount = true,
-    this.showUpload = true,
-    this.showDownload = true,
-    this.showSeedingCount = true,
-    this.showSeedingVolume = true,
-    this.showBonus = true,
-    this.showBonusPerHour = true,
-    this.showRatio = true,
-    this.showRankPanel = true,
-    this.showSiteList = true,
-    this.showSiteName = true,
-    this.showUsername = true,
-    this.blurSensitiveInfo = false,
-    this.blurUserInfo = false,
-    this.compactMode = true,
-    this.siteDataLimit = 0,
-    this.selectedSiteIds = const [],
-  });
-
-  static const defaults = TotalDashboardConfig();
-
-  bool isSiteSelected(int siteId) =>
-      selectedSiteIds.isEmpty || selectedSiteIds.contains(siteId);
-
-  TotalDashboardConfig copyWith({
-    bool? showTotalSites,
-    bool? showUploadCount,
-    bool? showUpload,
-    bool? showDownload,
-    bool? showSeedingCount,
-    bool? showSeedingVolume,
-    bool? showBonus,
-    bool? showBonusPerHour,
-    bool? showRatio,
-    bool? showRankPanel,
-    bool? showSiteList,
-    bool? showSiteName,
-    bool? showUsername,
-    bool? blurSensitiveInfo,
-    bool? blurUserInfo,
-    bool? compactMode,
-    int? siteDataLimit,
-    List<int>? selectedSiteIds,
-  }) {
-    return TotalDashboardConfig(
-      showTotalSites: showTotalSites ?? this.showTotalSites,
-      showUploadCount: showUploadCount ?? this.showUploadCount,
-      showUpload: showUpload ?? this.showUpload,
-      showDownload: showDownload ?? this.showDownload,
-      showSeedingCount: showSeedingCount ?? this.showSeedingCount,
-      showSeedingVolume: showSeedingVolume ?? this.showSeedingVolume,
-      showBonus: showBonus ?? this.showBonus,
-      showBonusPerHour: showBonusPerHour ?? this.showBonusPerHour,
-      showRatio: showRatio ?? this.showRatio,
-      showRankPanel: showRankPanel ?? this.showRankPanel,
-      showSiteList: showSiteList ?? this.showSiteList,
-      showSiteName: showSiteName ?? this.showSiteName,
-      showUsername: showUsername ?? this.showUsername,
-      blurSensitiveInfo: blurSensitiveInfo ?? this.blurSensitiveInfo,
-      blurUserInfo: blurUserInfo ?? this.blurUserInfo,
-      compactMode: compactMode ?? this.compactMode,
-      siteDataLimit: siteDataLimit ?? this.siteDataLimit,
-      selectedSiteIds: selectedSiteIds ?? this.selectedSiteIds,
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'show_total_sites': showTotalSites,
-    'show_upload_count': showUploadCount,
-    'show_upload': showUpload,
-    'show_download': showDownload,
-    'show_seeding_count': showSeedingCount,
-    'show_seeding_volume': showSeedingVolume,
-    'show_bonus': showBonus,
-    'show_bonus_per_hour': showBonusPerHour,
-    'show_ratio': showRatio,
-    'show_rank_panel': showRankPanel,
-    'show_site_list': showSiteList,
-    'show_site_name': showSiteName,
-    'show_username': showUsername,
-    'blur_sensitive_info': blurSensitiveInfo,
-    'blur_user_info': blurUserInfo,
-    'compact_mode': compactMode,
-    'site_data_limit': siteDataLimit,
-    'selected_site_ids': selectedSiteIds,
-  };
-
-  factory TotalDashboardConfig.fromJson(Map<String, dynamic> json) {
-    bool b(String key, bool fallback) =>
-        json[key] is bool ? json[key] as bool : fallback;
-    int i(String key, int fallback) =>
-        json[key] is num ? (json[key] as num).toInt() : fallback;
-    final ids = ((json['selected_site_ids'] as List?) ?? const [])
-        .map((e) => e is num ? e.toInt() : int.tryParse('$e'))
-        .whereType<int>()
-        .toList();
-    return TotalDashboardConfig(
-      showTotalSites: b('show_total_sites', true),
-      showUploadCount: b('show_upload_count', true),
-      showUpload: b('show_upload', true),
-      showDownload: b('show_download', true),
-      showSeedingCount: b('show_seeding_count', true),
-      showSeedingVolume: b('show_seeding_volume', true),
-      showBonus: b('show_bonus', true),
-      showBonusPerHour: b('show_bonus_per_hour', true),
-      showRatio: b('show_ratio', true),
-      showRankPanel: b('show_rank_panel', true),
-      showSiteList: b('show_site_list', true),
-      showSiteName: b('show_site_name', true),
-      showUsername: b('show_username', true),
-      blurSensitiveInfo: b('blur_sensitive_info', false),
-      blurUserInfo: b('blur_user_info', false),
-      compactMode: b('compact_mode', true),
-      siteDataLimit: i('site_data_limit', 0),
-      selectedSiteIds: ids,
-    );
-  }
-}
 
 extension _ChunkedList<T> on List<T> {
   List<List<T>> chunked(int size) {
@@ -183,6 +47,8 @@ extension _ChunkedList<T> on List<T> {
     return out;
   }
 }
+
+enum AlertKind { cookie, hr }
 
 // 仪表盘：跨站统计汇总（指标卡墙，含 sparkline）+ 站点明细（宽屏表格 / 窄屏卡片）。
 // 对齐 Web Dashboard.vue：5 张指标卡（上传/下载/做种/做种体积/魔力）+ 近 14 天 sparkline +
@@ -429,7 +295,7 @@ class _DashboardPageState extends State<DashboardPage> {
       context,
       title: '${s.siteName} · 历史数据',
       wideWidth: 820,
-      builder: (_) => _HistoryBody(
+      builder: (_) => DashboardHistoryBody(
         points: history,
         loading: loading,
         fmtBytes: _fmtBytes,
@@ -497,7 +363,7 @@ class _DashboardPageState extends State<DashboardPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _TotalDashboardSettingsSheet(
+      builder: (_) => DashboardSettingsSheet(
         initial: _config,
         sites: sites,
         onSave: _saveConfig,
@@ -738,37 +604,37 @@ class _DashboardPageState extends State<DashboardPage> {
     final shownSites = _config.showSiteList
         ? sites.take(8).toList()
         : <SiteStatItem>[];
-    final summaryMetrics = <_ShareMetric>[
+    final summaryMetrics = <ShareMetric>[
       if (_config.showTotalSites)
-        _ShareMetric('总站点数', '${sites.length}', const Color(0xFF45C4F0)),
+        ShareMetric('总站点数', '${sites.length}', const Color(0xFF45C4F0)),
       if (_config.showUploadCount)
-        _ShareMetric('总发布数', '$totalUploads', const Color(0xFFFFC857)),
+        ShareMetric('总发布数', '$totalUploads', const Color(0xFFFFC857)),
       if (_config.showUpload)
-        _ShareMetric('总上传量', _fmtBytes(totalUploaded), const Color(0xFF62D48E)),
+        ShareMetric('总上传量', _fmtBytes(totalUploaded), const Color(0xFF62D48E)),
       if (_config.showDownload)
-        _ShareMetric(
+        ShareMetric(
           '总下载量',
           _fmtBytes(totalDownloaded),
           const Color(0xFFFF6B6B),
         ),
       if (_config.showSeedingCount)
-        _ShareMetric('总做种数', '$totalSeeding', const Color(0xFF45C4F0)),
+        ShareMetric('总做种数', '$totalSeeding', const Color(0xFF45C4F0)),
       if (_config.showSeedingVolume)
-        _ShareMetric(
+        ShareMetric(
           '总做种量',
           _fmtBytes(totalSeedingSize),
           const Color(0xFF62D48E),
         ),
       if (_config.showBonus)
-        _ShareMetric('总积分值', _fmtCompact(totalBonus), const Color(0xFFFFC857)),
+        ShareMetric('总积分值', _fmtCompact(totalBonus), const Color(0xFFFFC857)),
       if (_config.showBonusPerHour)
-        _ShareMetric(
+        ShareMetric(
           '每小时积分',
           _fmtCompact(totalBonusPerHour),
           const Color(0xFFFF9F43),
         ),
       if (_config.showRatio)
-        _ShareMetric('总分享率', _fmtRatio(ratio), const Color(0xFF45C4F0)),
+        ShareMetric('总分享率', _fmtRatio(ratio), const Color(0xFF45C4F0)),
     ];
 
     return Container(
@@ -934,7 +800,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _shareMetricGrid(List<_ShareMetric> metrics, {required int columns}) {
+  Widget _shareMetricGrid(List<ShareMetric> metrics, {required int columns}) {
     if (metrics.isEmpty) {
       return const Text(
         '暂无可导出字段',
@@ -963,7 +829,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _shareMetric(_ShareMetric metric) {
+  Widget _shareMetric(ShareMetric metric) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: Column(
@@ -992,7 +858,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _shareRankPanel() {
-    final ranks = <_ShareRank?>[
+    final ranks = <ShareRank?>[
       if (_config.showUpload)
         _shareRank(
           '上传',
@@ -1042,7 +908,7 @@ class _DashboardPageState extends State<DashboardPage> {
           (s) => s.bonusPerHour,
           (s) => _fmtCompact(s.bonusPerHour),
         ),
-    ].whereType<_ShareRank>().take(6).toList();
+    ].whereType<ShareRank>().take(6).toList();
     if (ranks.isEmpty) return const SizedBox.shrink();
     return _sharePanel(
       color: const Color(0xFF263238),
@@ -1064,7 +930,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _shareRankGrid(List<_ShareRank> ranks) {
+  Widget _shareRankGrid(List<ShareRank> ranks) {
     final rows = ranks.chunked(3);
     return Column(
       children: [
@@ -1087,7 +953,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  _ShareRank? _shareRank(
+  ShareRank? _shareRank(
     String label,
     Color color,
     num Function(SiteStatItem) score,
@@ -1095,10 +961,10 @@ class _DashboardPageState extends State<DashboardPage> {
   ) {
     final site = _topSiteBy(score);
     if (site == null) return null;
-    return _ShareRank(label, value(site), _shareDisplaySiteName(site), color);
+    return ShareRank(label, value(site), _shareDisplaySiteName(site), color);
   }
 
-  Widget _shareRankCell(_ShareRank rank) {
+  Widget _shareRankCell(ShareRank rank) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Column(
@@ -1209,9 +1075,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _shareSiteCard(SiteStatItem s, int index) {
-    final metrics = <_ShareMetric>[
+    final metrics = <ShareMetric>[
       if (_config.showUsername)
-        _ShareMetric(
+        ShareMetric(
           '用户名',
           _config.blurUserInfo
               ? '***'
@@ -1219,45 +1085,45 @@ class _DashboardPageState extends State<DashboardPage> {
           const Color(0xFFF8FAFC),
         ),
       if (_config.showUsername)
-        _ShareMetric(
+        ShareMetric(
           'UID',
           _config.blurUserInfo ? '***' : (s.userId.isEmpty ? '--' : s.userId),
           const Color(0xFFF8FAFC),
         ),
       if (_config.showUsername)
-        _ShareMetric(
+        ShareMetric(
           '等级',
           _config.blurUserInfo ? '***' : (s.level.isEmpty ? '--' : s.level),
           const Color(0xFFF8FAFC),
         ),
       if (_config.showUploadCount)
-        _ShareMetric(
+        ShareMetric(
           '发布',
           s.uploads > 0 ? '${s.uploads}' : '--',
           const Color(0xFFFFC857),
         ),
       if (_config.showSeedingCount)
-        _ShareMetric('做种', '${s.seeding}', const Color(0xFF45C4F0)),
+        ShareMetric('做种', '${s.seeding}', const Color(0xFF45C4F0)),
       if (_config.showUpload)
-        _ShareMetric('上传', _fmtBytes(s.uploaded), const Color(0xFF62D48E)),
+        ShareMetric('上传', _fmtBytes(s.uploaded), const Color(0xFF62D48E)),
       if (_config.showDownload)
-        _ShareMetric('下载', _fmtBytes(s.downloaded), const Color(0xFFFF6B6B)),
+        ShareMetric('下载', _fmtBytes(s.downloaded), const Color(0xFFFF6B6B)),
       if (_config.showRatio)
-        _ShareMetric('分享率', _fmtRatio(s.ratio), const Color(0xFF45C4F0)),
+        ShareMetric('分享率', _fmtRatio(s.ratio), const Color(0xFF45C4F0)),
       if (_config.showSeedingVolume)
-        _ShareMetric(
+        ShareMetric(
           '做种量',
           s.seedingSize > 0 ? _fmtBytes(s.seedingSize) : '--',
           const Color(0xFF62D48E),
         ),
       if (_config.showBonus)
-        _ShareMetric(
+        ShareMetric(
           '积分',
           s.bonus > 0 ? _fmtCompact(s.bonus) : '--',
           const Color(0xFFFFC857),
         ),
       if (_config.showBonusPerHour)
-        _ShareMetric(
+        ShareMetric(
           '每小时积分',
           s.bonusPerHour > 0 ? _fmtCompact(s.bonusPerHour) : '--',
           const Color(0xFFFF9F43),
@@ -2456,539 +2322,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                   ),
               ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TotalDashboardSettingsSheet extends StatefulWidget {
-  final TotalDashboardConfig initial;
-  final List<SiteStatItem> sites;
-  final Future<void> Function(TotalDashboardConfig) onSave;
-
-  const _TotalDashboardSettingsSheet({
-    required this.initial,
-    required this.sites,
-    required this.onSave,
-  });
-
-  @override
-  State<_TotalDashboardSettingsSheet> createState() =>
-      _TotalDashboardSettingsSheetState();
-}
-
-class _TotalDashboardSettingsSheetState
-    extends State<_TotalDashboardSettingsSheet> {
-  late TotalDashboardConfig _config = widget.initial;
-
-  @override
-  Widget build(BuildContext context) {
-    final maxSites = widget.sites.isEmpty ? 1 : widget.sites.length;
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          10,
-          16,
-          16 + MediaQuery.viewInsetsOf(context).bottom,
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.86,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.tune, color: PTColors.primary, size: 20),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      '总仪表盘设置',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: '关闭',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: ListView(
-                  children: [
-                    _section('显示内容'),
-                    _switch(
-                      '总站点数',
-                      _config.showTotalSites,
-                      (v) => _set(_config.copyWith(showTotalSites: v)),
-                    ),
-                    _switch(
-                      '发布数',
-                      _config.showUploadCount,
-                      (v) => _set(_config.copyWith(showUploadCount: v)),
-                    ),
-                    _switch(
-                      '上传量',
-                      _config.showUpload,
-                      (v) => _set(_config.copyWith(showUpload: v)),
-                    ),
-                    _switch(
-                      '下载量',
-                      _config.showDownload,
-                      (v) => _set(_config.copyWith(showDownload: v)),
-                    ),
-                    _switch(
-                      '做种数',
-                      _config.showSeedingCount,
-                      (v) => _set(_config.copyWith(showSeedingCount: v)),
-                    ),
-                    _switch(
-                      '做种体积',
-                      _config.showSeedingVolume,
-                      (v) => _set(_config.copyWith(showSeedingVolume: v)),
-                    ),
-                    _switch(
-                      '积分值/魔力值',
-                      _config.showBonus,
-                      (v) => _set(_config.copyWith(showBonus: v)),
-                    ),
-                    _switch(
-                      '每小时积分',
-                      _config.showBonusPerHour,
-                      (v) => _set(_config.copyWith(showBonusPerHour: v)),
-                    ),
-                    _switch(
-                      '分享率',
-                      _config.showRatio,
-                      (v) => _set(_config.copyWith(showRatio: v)),
-                    ),
-                    _section('排行榜'),
-                    _switch(
-                      '显示冠军排行',
-                      _config.showRankPanel,
-                      (v) => _set(_config.copyWith(showRankPanel: v)),
-                    ),
-                    _section('站点列表'),
-                    _switch(
-                      '显示站点详情列表',
-                      _config.showSiteList,
-                      (v) => _set(_config.copyWith(showSiteList: v)),
-                    ),
-                    _countSlider(maxSites),
-                    _switch(
-                      '显示站点名称',
-                      _config.showSiteName,
-                      (v) => _set(_config.copyWith(showSiteName: v)),
-                    ),
-                    _switch(
-                      '显示用户名',
-                      _config.showUsername,
-                      (v) => _set(_config.copyWith(showUsername: v)),
-                    ),
-                    _switch(
-                      '模糊站点信息（站名/Logo）',
-                      _config.blurSensitiveInfo,
-                      (v) => _set(_config.copyWith(blurSensitiveInfo: v)),
-                    ),
-                    _switch(
-                      '模糊用户信息（用户名/UID/等级）',
-                      _config.blurUserInfo,
-                      (v) => _set(_config.copyWith(blurUserInfo: v)),
-                    ),
-                    _section('样式'),
-                    _switch(
-                      '紧凑模式',
-                      _config.compactMode,
-                      (v) => _set(_config.copyWith(compactMode: v)),
-                    ),
-                    if (widget.sites.isNotEmpty) ...[
-                      _section('显示站点'),
-                      _sitePickerSummary(),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () => _set(TotalDashboardConfig.defaults),
-                    child: const Text('恢复默认'),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('取消'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: () async {
-                      final navigator = Navigator.of(context);
-                      await widget.onSave(_config);
-                      if (mounted) navigator.pop();
-                    },
-                    child: const Text('确定'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _set(TotalDashboardConfig config) {
-    setState(() => _config = config);
-  }
-
-  Widget _section(String title) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 10, 4, 2),
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: PTColors.primary,
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
-        ),
-      ),
-    );
-  }
-
-  Widget _switch(String label, bool value, ValueChanged<bool> onChanged) {
-    return SwitchListTile(
-      value: value,
-      onChanged: onChanged,
-      title: Text(label, style: const TextStyle(fontSize: 14)),
-      dense: true,
-      visualDensity: VisualDensity.compact,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-    );
-  }
-
-  Widget _countSlider(int maxSites) {
-    final value = _config.siteDataLimit.clamp(0, maxSites).toInt();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text('各站点数据数量', style: TextStyle(fontSize: 14)),
-              ),
-              Text(
-                value == 0 ? '全部' : '$value',
-                style: const TextStyle(
-                  color: PTColors.primary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          Slider(
-            value: value.toDouble(),
-            min: 0,
-            max: maxSites.toDouble(),
-            divisions: maxSites,
-            onChanged: _config.showSiteList
-                ? (v) => _set(_config.copyWith(siteDataLimit: v.round()))
-                : null,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _sitePickerSummary() {
-    final selected = _config.selectedSiteIds;
-    final label = selected.contains(-1)
-        ? '全不选'
-        : selected.isEmpty
-        ? '全部站点'
-        : '已选择 ${selected.length} 个站点';
-    return ListTile(
-      dense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-      title: const Text('显示站点', style: TextStyle(fontSize: 14)),
-      subtitle: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: _openSitePicker,
-    );
-  }
-
-  void _openSitePicker() {
-    final selected = _config.selectedSiteIds.toSet();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setSheetState) {
-          return SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-              child: SizedBox(
-                height: MediaQuery.sizeOf(context).height * 0.72,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            '选择显示站点',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            selected.clear();
-                            setSheetState(() {});
-                          },
-                          child: const Text('全选'),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            selected
-                              ..clear()
-                              ..add(-1);
-                            setSheetState(() {});
-                          },
-                          child: const Text('全不选'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: widget.sites.length,
-                        itemBuilder: (_, i) {
-                          final site = widget.sites[i];
-                          final none = selected.contains(-1);
-                          final checked =
-                              !none &&
-                              (selected.isEmpty ||
-                                  selected.contains(site.siteId));
-                          return CheckboxListTile(
-                            dense: true,
-                            visualDensity: VisualDensity.compact,
-                            contentPadding: EdgeInsets.zero,
-                            value: checked,
-                            title: Text(
-                              site.siteName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onChanged: (v) {
-                              if (selected.contains(-1)) selected.clear();
-                              if (selected.isEmpty) {
-                                selected.addAll(
-                                  widget.sites.map((s) => s.siteId),
-                                );
-                              }
-                              if (v == true) {
-                                selected.add(site.siteId);
-                              } else {
-                                selected.remove(site.siteId);
-                              }
-                              setSheetState(() {});
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    FilledButton(
-                      onPressed: () {
-                        final ids = selected.contains(-1)
-                            ? <int>[-1]
-                            : selected.length == widget.sites.length
-                            ? <int>[]
-                            : (selected.toList()..sort());
-                        _set(_config.copyWith(selectedSiteIds: ids));
-                        Navigator.pop(context);
-                      },
-                      child: const Text('确定'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _ShareMetric {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _ShareMetric(this.label, this.value, this.color);
-}
-
-class _ShareRank {
-  final String label;
-  final String value;
-  final String siteName;
-  final Color color;
-
-  const _ShareRank(this.label, this.value, this.siteName, this.color);
-}
-
-enum AlertKind { cookie, hr }
-
-// 历史数据浮层内容：宽屏表格 / 窄屏卡片（自适应，对齐 Web 用户历史数据弹窗的 el-table）。
-class _HistoryBody extends StatelessWidget {
-  final List<SiteHistoryPoint> points;
-  final bool loading;
-  final String Function(int) fmtBytes;
-  final String Function(String) fmtTime;
-  const _HistoryBody({
-    required this.points,
-    required this.loading,
-    required this.fmtBytes,
-    required this.fmtTime,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-   if (loading) {
-     return const Padding(
-       padding: EdgeInsets.symmetric(vertical: 40),
-        child: PTLoadingView(),
-     );
-   }
-    if (points.isEmpty) {
-      return const PTEmptyState(text: '暂无历史快照');
-    }
-    final columns = <PTColumn<SiteHistoryPoint>>[
-      PTColumn(
-        label: '时间',
-        flex: 2,
-        cell: (_, p) =>
-            Text(fmtTime(p.snapAt), style: const TextStyle(fontSize: 12)),
-      ),
-      PTColumn(
-        label: '等级',
-        flex: 1,
-        cell: (_, p) => Text(
-          p.level.isNotEmpty ? p.level : '-',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
-      PTColumn(
-        label: '上传',
-        flex: 1,
-        numeric: true,
-        cell: (_, p) =>
-            Text(fmtBytes(p.uploaded), style: const TextStyle(fontSize: 12)),
-      ),
-      PTColumn(
-        label: '下载',
-        flex: 1,
-        numeric: true,
-        cell: (_, p) =>
-            Text(fmtBytes(p.downloaded), style: const TextStyle(fontSize: 12)),
-      ),
-      PTColumn(
-        label: '分享率',
-        flex: 1,
-        numeric: true,
-        cell: (_, p) => Text(
-          p.ratio > 0 ? p.ratio.toStringAsFixed(2) : '-',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
-      PTColumn(
-        label: '做种',
-        flex: 1,
-        numeric: true,
-        cell: (_, p) =>
-            Text('${p.seeding}', style: const TextStyle(fontSize: 12)),
-      ),
-      PTColumn(
-        label: '发布',
-        flex: 1,
-        numeric: true,
-        cell: (_, p) => Text(
-          p.uploads > 0 ? '${p.uploads}' : '-',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
-      PTColumn(
-        label: '魔力',
-        flex: 1,
-        numeric: true,
-        cell: (_, p) => Text(
-          p.bonus > 0 ? p.bonus.toStringAsFixed(0) : '-',
-          style: const TextStyle(fontSize: 12),
-        ),
-      ),
-    ];
-    return SizedBox(
-      width: double.infinity,
-      child: PTAdaptiveTable<SiteHistoryPoint>(
-        items: points,
-        columns: columns,
-        emptyText: '暂无历史快照',
-        narrowCard: (_, p) => GlassCard(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                fmtTime(p.snapAt),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 12,
-                runSpacing: 4,
-                children: [
-                  Text(
-                    '等级 ${p.level.isNotEmpty ? p.level : '-'}',
-                    style: TextStyle(fontSize: 12, color: context.dimText),
-                  ),
-                  Text(
-                    '上传 ${fmtBytes(p.uploaded)}',
-                    style: TextStyle(fontSize: 12, color: context.dimText),
-                  ),
-                  Text(
-                    '下载 ${fmtBytes(p.downloaded)}',
-                    style: TextStyle(fontSize: 12, color: context.dimText),
-                  ),
-                  Text(
-                    '分享率 ${p.ratio > 0 ? p.ratio.toStringAsFixed(2) : '-'}',
-                    style: TextStyle(fontSize: 12, color: context.dimText),
-                  ),
-                  Text(
-                    '做种 ${p.seeding}',
-                    style: TextStyle(fontSize: 12, color: context.dimText),
-                  ),
-                  Text(
-                    '魔力 ${p.bonus > 0 ? p.bonus.toStringAsFixed(0) : '-'}',
-                    style: TextStyle(fontSize: 12, color: context.dimText),
-                  ),
-                ],
-              ),
             ],
           ),
         ),

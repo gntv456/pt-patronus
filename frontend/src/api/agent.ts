@@ -1,4 +1,5 @@
 import { http } from './http'
+import { streamErr } from './sse'
 
 // 对话会话（对齐后端 models.AgentConversation）。
 export interface AgentConversation {
@@ -81,7 +82,10 @@ export type AgentEvent =
   | { event: 'reasoning'; data: { content: string } }
   | { event: 'tool_call'; data: { id: string; name: string; arguments: string } }
   | { event: 'tool_result'; data: { id: string; name: string; result: string } }
-  | { event: 'confirm_request'; data: { id: string; name: string; arguments: string; token: string; risk: string; summary: string } }
+  | {
+      event: 'confirm_request'
+      data: { id: string; name: string; arguments: string; token: string; risk: string; summary: string }
+    }
   | { event: 'done'; data: Record<string, never> }
   | { event: 'error'; data: { message: string } }
 
@@ -92,8 +96,7 @@ export const agentApi = {
     http.get<{ messages: AgentMessage[] }>(`/agent/conversations/${id}/messages`).then((r) => r.data.messages ?? []),
   deleteConversation: (id: number) => http.delete(`/agent/conversations/${id}`).then((r) => r.data),
   // 工具目录（含风险等级），供白名单 UI 分组勾选。
-  tools: () =>
-    http.get<{ tools: ToolCatalogEntry[] }>('/agent/tools').then((r) => r.data.tools ?? []),
+  tools: () => http.get<{ tools: ToolCatalogEntry[] }>('/agent/tools').then((r) => r.data.tools ?? []),
   // 用量统计快照（请求数/Token/费用/延迟/错误/工具成功率）。
   stats: () => http.get<AgentStats>('/agent/stats').then((r) => r.data),
   // 危险工具二次确认决断：convId 走 URL，tool_call_id（= confirm_request.data.id）走 body。
@@ -119,8 +122,7 @@ export async function streamAgentChat(
     signal,
   })
   if (!resp.ok || !resp.body) {
-    const txt = await resp.text().catch(() => '')
-    throw new Error(`HTTP ${resp.status}: ${txt.slice(0, 200)}`)
+    throw new Error(await streamErr(resp))
   }
   const reader = resp.body.getReader()
   const dec = new TextDecoder()

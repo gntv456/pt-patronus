@@ -20,13 +20,28 @@ const mainTab = ref(String(route.query.tab || 'media'))
 const sites = ref<{ id: number; name: string }[]>([])
 
 // 全局订阅默认设置：未单独设置某项的订阅回退到此（运行时回退）。
-const globalDefaults = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false, official_only: false })
+const globalDefaults = ref<GlobalDefaults>({
+  resolution: '',
+  promo_types: [],
+  site_ids: [],
+  enable_rating_guard: false,
+  best_version: false,
+  official_only: false,
+})
 const globalOpen = ref(false)
-const globalForm = ref<GlobalDefaults>({ resolution: '', promo_types: [], site_ids: [], enable_rating_guard: false, best_version: false, official_only: false })
+const globalForm = ref<GlobalDefaults>({
+  resolution: '',
+  promo_types: [],
+  site_ids: [],
+  enable_rating_guard: false,
+  best_version: false,
+  official_only: false,
+})
 const savingGlobal = ref(false)
 
 // 列表加载与逐条操作抽出为 composable（useSubscriptionList）。
-const { list, loading, checking, load, checkNow, toggleStatus, setResolution, setPromoTypes, setSiteIds, remove } = useSubscriptionList()
+const { list, loading, checking, load, checkNow, toggleStatus, setResolution, setPromoTypes, setSiteIds, remove } =
+  useSubscriptionList()
 
 async function loadGlobalDefaults() {
   try {
@@ -63,8 +78,20 @@ async function saveGlobal() {
 }
 
 // 三态开关簇（评分保护/洗版/仅官种）抽出为 composable：订阅自定义优先，null 回退全局默认。
-const { effRatingGuard, effBestVersion, effOfficialOnly, setRatingGuard, resetRatingGuard, setBestVersion, resetBestVersion, setOfficialOnly, resetOfficialOnly } = useSubscriptionToggles(globalDefaults)
-function promoLabel(v: string) { return PROMO_OPTIONS.find((o) => o.value === v)?.label || v }
+const {
+  effRatingGuard,
+  effBestVersion,
+  effOfficialOnly,
+  setRatingGuard,
+  resetRatingGuard,
+  setBestVersion,
+  resetBestVersion,
+  setOfficialOnly,
+  resetOfficialOnly,
+} = useSubscriptionToggles(globalDefaults)
+function promoLabel(v: string) {
+  return PROMO_OPTIONS.find((o) => o.value === v)?.label || v
+}
 
 async function loadSites() {
   try {
@@ -85,7 +112,15 @@ const PROMO_OPTIONS = [
 ]
 
 function statusText(s: string) {
-  return ({ subscribed: t('subscriptions.status.subscribed'), completed: t('subscriptions.status.completed'), paused: t('subscriptions.status.paused') } as Record<string, string>)[s] || s
+  return (
+    (
+      {
+        subscribed: t('subscriptions.status.subscribed'),
+        completed: t('subscriptions.status.completed'),
+        paused: t('subscriptions.status.paused'),
+      } as Record<string, string>
+    )[s] || s
+  )
 }
 function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '—'
@@ -96,7 +131,16 @@ const batchMode = ref(false)
 const selectedIds = ref<number[]>([])
 const batchRunning = ref(false)
 // 批量编辑表单：开关开启的字段才应用到所选订阅，未开启保持原值。
-const batchForm = ref({ resolutionOn: false, resolution: '', statusOn: false, status: 'subscribed', ratingGuardOn: false, ratingGuard: false, bestVersionOn: false, bestVersion: false })
+const batchForm = ref({
+  resolutionOn: false,
+  resolution: '',
+  statusOn: false,
+  status: 'subscribed',
+  ratingGuardOn: false,
+  ratingGuard: false,
+  bestVersionOn: false,
+  bestVersion: false,
+})
 const allSelected = () => list.value.length > 0 && selectedIds.value.length === list.value.length
 function toggleSelectAll() {
   selectedIds.value = allSelected() ? [] : list.value.map((s) => s.id)
@@ -135,7 +179,15 @@ async function runBatch(op: 'update' | 'check' | 'delete') {
   batchRunning.value = true
   try {
     const res = await subscribeApi.batch(selectedIds.value, op, patch as never)
-    ElMessage.success(t('subscriptions.batch.done', { ok: res.succeeded, total: res.total, failPart: res.failed ? t('subscriptions.batch.failPart', { n: res.failed, err: res.failures[0]?.error || '' }) : '' }))
+    ElMessage.success(
+      t('subscriptions.batch.done', {
+        ok: res.succeeded,
+        total: res.total,
+        failPart: res.failed
+          ? t('subscriptions.batch.failPart', { n: res.failed, err: res.failures[0]?.error || '' })
+          : '',
+      }),
+    )
     if (op === 'delete') exitBatch()
     await load()
   } catch (e: unknown) {
@@ -169,213 +221,303 @@ onMounted(() => {
     <div class="head">
       <div class="head-left">
         <h2 class="title">{{ t('subscriptions.title') }}</h2>
-        <span class="text-muted hint">{{ t('subscriptions.subtitle') }}<router-link to="/search">{{ t('subscriptions.subtitleSearch') }}</router-link>{{ t('subscriptions.subtitleTail') }}</span>
+        <span class="text-muted hint"
+          >{{ t('subscriptions.subtitle')
+          }}<router-link to="/search">{{ t('subscriptions.subtitleSearch') }}</router-link
+          >{{ t('subscriptions.subtitleTail') }}</span
+        >
       </div>
-      <div style="display:flex;gap:8px;">
-        <el-button v-if="!batchMode && list.length" class="global-btn" @click="enterBatch">{{ t('subscriptions.batch.button') }}</el-button>
+      <div style="display: flex; gap: 8px">
+        <el-button v-if="!batchMode && list.length" class="global-btn" @click="enterBatch">{{
+          t('subscriptions.batch.button')
+        }}</el-button>
         <el-button class="global-btn" @click="openGlobal">{{ t('subscriptions.globalSettings') }}</el-button>
       </div>
     </div>
 
-    
     <el-tabs v-model="mainTab" class="page-tabs glass" @tab-change="onMainTab">
       <el-tab-pane :label="t('subscriptions.tabMedia')" name="media">
-<el-dialog v-model="globalOpen" :title="t('subscriptions.globalTitle')" width="540px" append-to-body top="6vh" class="global-subscribe-dialog">
-      <div class="text-muted small" style="margin-bottom: 12px;">
-        {{ t('subscriptions.globalDesc') }}
-      </div>
-      <div class="gd-row">
-        <span class="small gd-label">{{ t('subscriptions.resolution') }}</span>
-        <el-input v-model="globalForm.resolution" size="small" style="width: 160px" :placeholder="t('subscriptions.unlimited')" />
-        <span class="small text-muted">{{ t('subscriptions.globalResHint') }}</span>
-      </div>
-      <div class="gd-row">
-        <span class="small gd-label">{{ t('subscriptions.ratingGuard') }}</span>
-        <el-switch v-model="globalForm.enable_rating_guard" size="small" />
-        <span class="small text-muted">{{ t('subscriptions.globalRatingHint') }}</span>
-      </div>
-      <div class="gd-row">
-        <span class="small gd-label">{{ t('subscriptions.bestVersion') }}</span>
-        <el-switch v-model="globalForm.best_version" size="small" />
-        <span class="small text-muted">{{ t('subscriptions.globalBestHint') }}</span>
-      </div>
-      <div class="gd-row">
-        <span class="small gd-label">{{ t('subscriptions.officialOnly') }}</span>
-        <el-switch v-model="globalForm.official_only" size="small" />
-        <span class="small text-muted">{{ t('subscriptions.globalOfficialHint') }}</span>
-      </div>
-      <div class="gd-row">
-        <span class="small gd-label">{{ t('subscriptions.promoTypes') }}</span>
-        <el-select v-model="globalForm.promo_types" multiple collapse-tags collapse-tags-tooltip size="small" style="width: 240px" :placeholder="t('subscriptions.unlimited')">
-          <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-        <span class="small text-muted">{{ t('subscriptions.emptyUnlimited') }}</span>
-      </div>
-      <div class="gd-row">
-        <span class="small gd-label">{{ t('subscriptions.sites') }}</span>
-        <SiteFilterDialog
-          :model-value="globalForm.site_ids"
-          :sites="sites"
-          :title="t('subscriptions.globalSitesTitle')"
-          @update:model-value="(ids: number[]) => (globalForm.site_ids = ids)"
+        <el-dialog
+          v-model="globalOpen"
+          :title="t('subscriptions.globalTitle')"
+          width="540px"
+          append-to-body
+          top="6vh"
+          class="global-subscribe-dialog"
         >
-          <span class="small">{{ globalForm.site_ids.length ? t('subscriptions.nSites', { n: globalForm.site_ids.length }) : t('subscriptions.allSites') }}</span>
-        </SiteFilterDialog>
-        <span class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
-      </div>
-      <template #footer>
-        <el-button @click="globalOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" :loading="savingGlobal" @click="saveGlobal">{{ t('common.save') }}</el-button>
-      </template>
-    </el-dialog>
+          <div class="text-muted small" style="margin-bottom: 12px">
+            {{ t('subscriptions.globalDesc') }}
+          </div>
+          <div class="gd-row">
+            <span class="small gd-label">{{ t('subscriptions.resolution') }}</span>
+            <el-input
+              v-model="globalForm.resolution"
+              size="small"
+              style="width: 160px"
+              :placeholder="t('subscriptions.unlimited')"
+            />
+            <span class="small text-muted">{{ t('subscriptions.globalResHint') }}</span>
+          </div>
+          <div class="gd-row">
+            <span class="small gd-label">{{ t('subscriptions.ratingGuard') }}</span>
+            <el-switch v-model="globalForm.enable_rating_guard" size="small" />
+            <span class="small text-muted">{{ t('subscriptions.globalRatingHint') }}</span>
+          </div>
+          <div class="gd-row">
+            <span class="small gd-label">{{ t('subscriptions.bestVersion') }}</span>
+            <el-switch v-model="globalForm.best_version" size="small" />
+            <span class="small text-muted">{{ t('subscriptions.globalBestHint') }}</span>
+          </div>
+          <div class="gd-row">
+            <span class="small gd-label">{{ t('subscriptions.officialOnly') }}</span>
+            <el-switch v-model="globalForm.official_only" size="small" />
+            <span class="small text-muted">{{ t('subscriptions.globalOfficialHint') }}</span>
+          </div>
+          <div class="gd-row">
+            <span class="small gd-label">{{ t('subscriptions.promoTypes') }}</span>
+            <el-select
+              v-model="globalForm.promo_types"
+              multiple
+              collapse-tags
+              collapse-tags-tooltip
+              size="small"
+              style="width: 240px"
+              :placeholder="t('subscriptions.unlimited')"
+            >
+              <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+            </el-select>
+            <span class="small text-muted">{{ t('subscriptions.emptyUnlimited') }}</span>
+          </div>
+          <div class="gd-row">
+            <span class="small gd-label">{{ t('subscriptions.sites') }}</span>
+            <SiteFilterDialog
+              :model-value="globalForm.site_ids"
+              :sites="sites"
+              :title="t('subscriptions.globalSitesTitle')"
+              @update:model-value="(ids: number[]) => (globalForm.site_ids = ids)"
+            >
+              <span class="small">{{
+                globalForm.site_ids.length
+                  ? t('subscriptions.nSites', { n: globalForm.site_ids.length })
+                  : t('subscriptions.allSites')
+              }}</span>
+            </SiteFilterDialog>
+            <span class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
+          </div>
+          <template #footer>
+            <el-button @click="globalOpen = false">{{ t('common.cancel') }}</el-button>
+            <el-button type="primary" :loading="savingGlobal" @click="saveGlobal">{{ t('common.save') }}</el-button>
+          </template>
+        </el-dialog>
 
-    <div v-loading="loading" class="card glass">
-      <!-- 批量操作条：进入后卡片显示勾选框；编辑用字段开关控制只改所选字段 -->
-      <div v-if="batchMode" class="batch-bar">
-        <el-checkbox :model-value="allSelected()" @change="toggleSelectAll">{{ t('subscriptions.batch.selectAll') }}</el-checkbox>
-        <span class="small text-muted">{{ t('subscriptions.batch.selected', { n: selectedIds.length }) }}</span>
-        <el-button size="small" @click="exitBatch">{{ t('subscriptions.batch.exit') }}</el-button>
-        <el-button size="small" type="primary" :loading="batchRunning" @click="runBatch('update')">{{ t('subscriptions.batch.apply') }}</el-button>
-        <el-button size="small" :loading="batchRunning" @click="runBatch('check')">{{ t('subscriptions.batch.recheck') }}</el-button>
-        <el-button size="small" type="danger" plain :loading="batchRunning" @click="runBatch('delete')">{{ t('subscriptions.batch.unsubscribe') }}</el-button>
-        <div class="batch-edit gd-row" style="width:100%;margin-top:6px;">
-          <el-checkbox v-model="batchForm.resolutionOn">{{ t('subscriptions.resolution') }}</el-checkbox>
-          <el-input v-model="batchForm.resolution" size="small" style="width: 110px" :placeholder="t('subscriptions.resPlaceholder')" :disabled="!batchForm.resolutionOn" />
-          <el-checkbox v-model="batchForm.statusOn">{{ t('subscriptions.batch.status') }}</el-checkbox>
-          <el-select v-model="batchForm.status" size="small" style="width: 100px" :disabled="!batchForm.statusOn">
-            <el-option :label="t('subscriptions.status.subscribed')" value="subscribed" />
-            <el-option :label="t('subscriptions.status.paused')" value="paused" />
-            <el-option :label="t('subscriptions.status.completed')" value="completed" />
-          </el-select>
-          <el-checkbox v-model="batchForm.ratingGuardOn">{{ t('subscriptions.ratingGuard') }}</el-checkbox>
-          <el-switch v-model="batchForm.ratingGuard" size="small" :disabled="!batchForm.ratingGuardOn" />
-          <el-checkbox v-model="batchForm.bestVersionOn">{{ t('subscriptions.bestVersion') }}</el-checkbox>
-          <el-switch v-model="batchForm.bestVersion" size="small" :disabled="!batchForm.bestVersionOn" />
-          <span class="small text-muted">{{ t('subscriptions.batch.fieldHint') }}</span>
-        </div>
-      </div>
-      <div v-if="list.length" class="subs">
-        <div v-for="s in list" :key="s.id" class="sub glass-hover" :class="{ selected: batchMode && selectedIds.includes(s.id) }">
-          <div class="poster">
-            <el-checkbox v-if="batchMode" :model-value="selectedIds.includes(s.id)" class="batch-check" @change="toggleSelect(s.id)" />
-            <MediaPoster :url="s.poster_url" :kind="s.type" />
-          </div>
-          <div class="info">
-            <div class="row1">
-              <span class="s-title">{{ s.title }}</span>
-              <span v-if="s.year" class="text-muted">({{ s.year }})</span>
-              <span class="chip" :class="s.status">{{ statusText(s.status) }}</span>
-              <span v-if="s.resolution" class="chip res">{{ s.resolution }}</span>
-            </div>
-            <div class="text-muted small">
-              {{ t('subscriptions.lastChecked', { time: fmtTime(s.last_checked_at) }) }} · {{ t('subscriptions.typeLabel') }} {{ s.type === 'tv' ? t('subscriptions.type.tv') : t('subscriptions.type.movie') }} · {{ t('subscriptions.sourceLabel') }} {{ s.source }}
-            </div>
-            <div class="res-row">
-              <span class="small">{{ t('subscriptions.resFilter') }}</span>
+        <div v-loading="loading" class="card glass">
+          <!-- 批量操作条：进入后卡片显示勾选框；编辑用字段开关控制只改所选字段 -->
+          <div v-if="batchMode" class="batch-bar">
+            <el-checkbox :model-value="allSelected()" @change="toggleSelectAll">{{
+              t('subscriptions.batch.selectAll')
+            }}</el-checkbox>
+            <span class="small text-muted">{{ t('subscriptions.batch.selected', { n: selectedIds.length }) }}</span>
+            <el-button size="small" @click="exitBatch">{{ t('subscriptions.batch.exit') }}</el-button>
+            <el-button size="small" type="primary" :loading="batchRunning" @click="runBatch('update')">{{
+              t('subscriptions.batch.apply')
+            }}</el-button>
+            <el-button size="small" :loading="batchRunning" @click="runBatch('check')">{{
+              t('subscriptions.batch.recheck')
+            }}</el-button>
+            <el-button size="small" type="danger" plain :loading="batchRunning" @click="runBatch('delete')">{{
+              t('subscriptions.batch.unsubscribe')
+            }}</el-button>
+            <div class="batch-edit gd-row" style="width: 100%; margin-top: 6px">
+              <el-checkbox v-model="batchForm.resolutionOn">{{ t('subscriptions.resolution') }}</el-checkbox>
               <el-input
-                v-model="s.resolution"
+                v-model="batchForm.resolution"
                 size="small"
-                style="width: 120px"
-                :placeholder="t('subscriptions.unlimited')"
-                @change="setResolution(s)"
+                style="width: 110px"
+                :placeholder="t('subscriptions.resPlaceholder')"
+                :disabled="!batchForm.resolutionOn"
               />
-              <span v-if="!s.resolution && globalDefaults.resolution" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.resolution }) }}</span>
-              <span v-else class="small text-muted">{{ t('subscriptions.resHint') }}</span>
-            </div>
-            <div class="res-row">
-              <span class="small">{{ t('subscriptions.ratingGuardColon') }}</span>
-              <el-switch
-                :model-value="effRatingGuard(s)"
-                :disabled="s.enable_rating_guard === null"
-                size="small"
-                @update:model-value="(v: any) => setRatingGuard(s, !!v)"
-              />
-              <span v-if="s.enable_rating_guard === null" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.enable_rating_guard ? t('common.on') : t('common.off') }) }}</span>
-              <template v-else>
-                <el-button link type="primary" class="small" @click="resetRatingGuard(s)">{{ t('subscriptions.resetGlobal') }}</el-button>
-                <span class="small text-muted">{{ t('subscriptions.ratingThresholdHint') }}</span>
-              </template>
-            </div>
-            <div class="res-row">
-              <span class="small">{{ t('subscriptions.bestVersionColon') }}</span>
-              <el-switch
-                :model-value="effBestVersion(s)"
-                :disabled="s.best_version === null"
-                size="small"
-                @update:model-value="(v: any) => setBestVersion(s, !!v)"
-              />
-              <span v-if="s.best_version === null" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.best_version ? t('common.on') : t('common.off') }) }}</span>
-              <template v-else>
-                <el-button link type="primary" class="small" @click="resetBestVersion(s)">{{ t('subscriptions.resetGlobal') }}</el-button>
-                <span class="small text-muted">{{ t('subscriptions.bestHint') }}</span>
-              </template>
-              <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="chip res">
-                Pri {{ s.current_priority }}
-              </span>
-            </div>
-            <div class="res-row">
-              <span class="small">{{ t('subscriptions.officialOnlyColon') }}</span>
-              <el-switch
-                :model-value="effOfficialOnly(s)"
-                :disabled="s.official_only === null"
-                size="small"
-                @update:model-value="(v: any) => setOfficialOnly(s, !!v)"
-              />
-              <span v-if="s.official_only === null" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.official_only ? t('common.on') : t('common.off') }) }}</span>
-              <template v-else>
-                <el-button link type="primary" class="small" @click="resetOfficialOnly(s)">{{ t('subscriptions.resetGlobal') }}</el-button>
-                <span class="small text-muted">{{ t('subscriptions.officialHint') }}</span>
-              </template>
-            </div>
-            <div class="res-row">
-              <span class="small">{{ t('subscriptions.promoTypesColon') }}</span>
-              <el-select
-                :model-value="s.promo_types"
-                multiple
-                collapse-tags
-                collapse-tags-tooltip
-                size="small"
-                style="width: 240px"
-                :placeholder="t('subscriptions.unlimited')"
-                @change="(v: any) => setPromoTypes(s, v as string[])"
-              >
-                <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+              <el-checkbox v-model="batchForm.statusOn">{{ t('subscriptions.batch.status') }}</el-checkbox>
+              <el-select v-model="batchForm.status" size="small" style="width: 100px" :disabled="!batchForm.statusOn">
+                <el-option :label="t('subscriptions.status.subscribed')" value="subscribed" />
+                <el-option :label="t('subscriptions.status.paused')" value="paused" />
+                <el-option :label="t('subscriptions.status.completed')" value="completed" />
               </el-select>
-              <span v-if="!s.promo_types.length && globalDefaults.promo_types.length" class="small text-muted">{{ t('subscriptions.followGlobal', { v: globalDefaults.promo_types.map(promoLabel).join('、') }) }}</span>
-              <span v-else class="small text-muted">{{ t('subscriptions.promoEmptyHint') }}</span>
-            </div>
-            <div class="res-row">
-              <span class="small">{{ t('subscriptions.sitesColon') }}</span>
-              <SiteFilterDialog
-                :model-value="s.site_ids"
-                :sites="sites"
-                :title="t('subscriptions.sitesDialogTitle')"
-                @update:model-value="(ids: number[]) => setSiteIds(s, ids)"
-              >
-                <span class="small">{{ s.site_ids.length ? t('subscriptions.nSites', { n: s.site_ids.length }) : (globalDefaults.site_ids.length ? t('subscriptions.followGlobalNSites', { n: globalDefaults.site_ids.length }) : t('subscriptions.allSites')) }}</span>
-              </SiteFilterDialog>
-              <span v-if="!s.site_ids.length && globalDefaults.site_ids.length" class="small text-muted">{{ t('subscriptions.sitesFollowGlobalHint') }}</span>
-              <span v-else class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
-            </div>
-            <div class="actions">
-              <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">{{ t('subscriptions.checkNow') }}</el-button>
-              <el-button size="small" @click="toggleStatus(s)">{{ s.status === 'paused' ? t('subscriptions.resume') : t('subscriptions.pause') }}</el-button>
-              <el-button size="small" type="danger" plain @click="remove(s)">{{ t('common.delete') }}</el-button>
+              <el-checkbox v-model="batchForm.ratingGuardOn">{{ t('subscriptions.ratingGuard') }}</el-checkbox>
+              <el-switch v-model="batchForm.ratingGuard" size="small" :disabled="!batchForm.ratingGuardOn" />
+              <el-checkbox v-model="batchForm.bestVersionOn">{{ t('subscriptions.bestVersion') }}</el-checkbox>
+              <el-switch v-model="batchForm.bestVersion" size="small" :disabled="!batchForm.bestVersionOn" />
+              <span class="small text-muted">{{ t('subscriptions.batch.fieldHint') }}</span>
             </div>
           </div>
+          <div v-if="list.length" class="subs">
+            <div
+              v-for="s in list"
+              :key="s.id"
+              class="sub glass-hover"
+              :class="{ selected: batchMode && selectedIds.includes(s.id) }"
+            >
+              <div class="poster">
+                <el-checkbox
+                  v-if="batchMode"
+                  :model-value="selectedIds.includes(s.id)"
+                  class="batch-check"
+                  @change="toggleSelect(s.id)"
+                />
+                <MediaPoster :url="s.poster_url" :kind="s.type" />
+              </div>
+              <div class="info">
+                <div class="row1">
+                  <span class="s-title">{{ s.title }}</span>
+                  <span v-if="s.year" class="text-muted">({{ s.year }})</span>
+                  <span class="chip" :class="s.status">{{ statusText(s.status) }}</span>
+                  <span v-if="s.resolution" class="chip res">{{ s.resolution }}</span>
+                </div>
+                <div class="text-muted small">
+                  {{ t('subscriptions.lastChecked', { time: fmtTime(s.last_checked_at) }) }} ·
+                  {{ t('subscriptions.typeLabel') }}
+                  {{ s.type === 'tv' ? t('subscriptions.type.tv') : t('subscriptions.type.movie') }} ·
+                  {{ t('subscriptions.sourceLabel') }} {{ s.source }}
+                </div>
+                <div class="res-row">
+                  <span class="small">{{ t('subscriptions.resFilter') }}</span>
+                  <el-input
+                    v-model="s.resolution"
+                    size="small"
+                    style="width: 120px"
+                    :placeholder="t('subscriptions.unlimited')"
+                    @change="setResolution(s)"
+                  />
+                  <span v-if="!s.resolution && globalDefaults.resolution" class="small text-muted">{{
+                    t('subscriptions.followGlobal', { v: globalDefaults.resolution })
+                  }}</span>
+                  <span v-else class="small text-muted">{{ t('subscriptions.resHint') }}</span>
+                </div>
+                <div class="res-row">
+                  <span class="small">{{ t('subscriptions.ratingGuardColon') }}</span>
+                  <el-switch
+                    :model-value="effRatingGuard(s)"
+                    :disabled="s.enable_rating_guard === null"
+                    size="small"
+                    @update:model-value="(v: any) => setRatingGuard(s, !!v)"
+                  />
+                  <span v-if="s.enable_rating_guard === null" class="small text-muted">{{
+                    t('subscriptions.followGlobal', {
+                      v: globalDefaults.enable_rating_guard ? t('common.on') : t('common.off'),
+                    })
+                  }}</span>
+                  <template v-else>
+                    <el-button link type="primary" class="small" @click="resetRatingGuard(s)">{{
+                      t('subscriptions.resetGlobal')
+                    }}</el-button>
+                    <span class="small text-muted">{{ t('subscriptions.ratingThresholdHint') }}</span>
+                  </template>
+                </div>
+                <div class="res-row">
+                  <span class="small">{{ t('subscriptions.bestVersionColon') }}</span>
+                  <el-switch
+                    :model-value="effBestVersion(s)"
+                    :disabled="s.best_version === null"
+                    size="small"
+                    @update:model-value="(v: any) => setBestVersion(s, !!v)"
+                  />
+                  <span v-if="s.best_version === null" class="small text-muted">{{
+                    t('subscriptions.followGlobal', {
+                      v: globalDefaults.best_version ? t('common.on') : t('common.off'),
+                    })
+                  }}</span>
+                  <template v-else>
+                    <el-button link type="primary" class="small" @click="resetBestVersion(s)">{{
+                      t('subscriptions.resetGlobal')
+                    }}</el-button>
+                    <span class="small text-muted">{{ t('subscriptions.bestHint') }}</span>
+                  </template>
+                  <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="chip res">
+                    Pri {{ s.current_priority }}
+                  </span>
+                </div>
+                <div class="res-row">
+                  <span class="small">{{ t('subscriptions.officialOnlyColon') }}</span>
+                  <el-switch
+                    :model-value="effOfficialOnly(s)"
+                    :disabled="s.official_only === null"
+                    size="small"
+                    @update:model-value="(v: any) => setOfficialOnly(s, !!v)"
+                  />
+                  <span v-if="s.official_only === null" class="small text-muted">{{
+                    t('subscriptions.followGlobal', {
+                      v: globalDefaults.official_only ? t('common.on') : t('common.off'),
+                    })
+                  }}</span>
+                  <template v-else>
+                    <el-button link type="primary" class="small" @click="resetOfficialOnly(s)">{{
+                      t('subscriptions.resetGlobal')
+                    }}</el-button>
+                    <span class="small text-muted">{{ t('subscriptions.officialHint') }}</span>
+                  </template>
+                </div>
+                <div class="res-row">
+                  <span class="small">{{ t('subscriptions.promoTypesColon') }}</span>
+                  <el-select
+                    :model-value="s.promo_types"
+                    multiple
+                    collapse-tags
+                    collapse-tags-tooltip
+                    size="small"
+                    style="width: 240px"
+                    :placeholder="t('subscriptions.unlimited')"
+                    @change="(v: any) => setPromoTypes(s, v as string[])"
+                  >
+                    <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+                  </el-select>
+                  <span v-if="!s.promo_types.length && globalDefaults.promo_types.length" class="small text-muted">{{
+                    t('subscriptions.followGlobal', { v: globalDefaults.promo_types.map(promoLabel).join('、') })
+                  }}</span>
+                  <span v-else class="small text-muted">{{ t('subscriptions.promoEmptyHint') }}</span>
+                </div>
+                <div class="res-row">
+                  <span class="small">{{ t('subscriptions.sitesColon') }}</span>
+                  <SiteFilterDialog
+                    :model-value="s.site_ids"
+                    :sites="sites"
+                    :title="t('subscriptions.sitesDialogTitle')"
+                    @update:model-value="(ids: number[]) => setSiteIds(s, ids)"
+                  >
+                    <span class="small">{{
+                      s.site_ids.length
+                        ? t('subscriptions.nSites', { n: s.site_ids.length })
+                        : globalDefaults.site_ids.length
+                          ? t('subscriptions.followGlobalNSites', { n: globalDefaults.site_ids.length })
+                          : t('subscriptions.allSites')
+                    }}</span>
+                  </SiteFilterDialog>
+                  <span v-if="!s.site_ids.length && globalDefaults.site_ids.length" class="small text-muted">{{
+                    t('subscriptions.sitesFollowGlobalHint')
+                  }}</span>
+                  <span v-else class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
+                </div>
+                <div class="actions">
+                  <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">{{
+                    t('subscriptions.checkNow')
+                  }}</el-button>
+                  <el-button size="small" @click="toggleStatus(s)">{{
+                    s.status === 'paused' ? t('subscriptions.resume') : t('subscriptions.pause')
+                  }}</el-button>
+                  <el-button size="small" type="danger" plain @click="remove(s)">{{ t('common.delete') }}</el-button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <EmptyState
+            v-else-if="!loading"
+            icon="🔖"
+            :title="t('subscriptions.emptyTitle')"
+            :description="t('subscriptions.emptyDesc')"
+          >
+            <router-link to="/search">
+              <el-button type="primary">{{ t('subscriptions.goSearch') }}</el-button>
+            </router-link>
+          </EmptyState>
         </div>
-      </div>
-      <EmptyState
-        v-else-if="!loading"
-        icon="🔖"
-        :title="t('subscriptions.emptyTitle')"
-        :description="t('subscriptions.emptyDesc')"
-      >
-        <router-link to="/search">
-          <el-button type="primary">{{ t('subscriptions.goSearch') }}</el-button>
-        </router-link>
-      </EmptyState>
-    </div>
       </el-tab-pane>
       <el-tab-pane label="RSS" name="rss" lazy>
         <div class="rss-embed">
@@ -387,15 +529,50 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
-.head-left { display: flex; flex-direction: column; gap: var(--sp-1); }
-.global-btn { flex: none; }
-.gd-row { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 12px; flex-wrap: wrap; }
-.gd-label { width: 64px; flex: none; }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.hint { font-size: var(--fs-body); }
-.card { padding: 18px; min-height: 160px; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.head-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.global-btn {
+  flex: none;
+}
+.gd-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.gd-label {
+  width: 64px;
+  flex: none;
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.hint {
+  font-size: var(--fs-body);
+}
+.card {
+  padding: 18px;
+  min-height: 160px;
+}
 .subs {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 410px), 450px));
@@ -422,39 +599,143 @@ onMounted(() => {
   background: var(--surface-muted);
   position: relative;
 }
-.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
-.row1 { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.s-title { font-weight: 700; font-size: var(--fs-lg); }
-.small { font-size: var(--fs-xs); }
-.chip { padding: 2px 10px; border-radius: var(--radius-pill); font-size: var(--fs-xs); font-weight: 600; }
-.chip.subscribed { background: var(--pt-success-bg); color: var(--pt-success, #2ecc71); }
-.chip.completed { background: var(--pt-primary-bg); color: var(--pt-primary); }
-.chip.paused { background: var(--pt-warn-bg); color: var(--pt-warn, #f39c12); }
-.chip.res { background: var(--pt-primary-2-bg); color: var(--pt-primary-2); }
-.res-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: 2px; }
-.empty { padding: 40px; text-align: center; }
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.row1 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.s-title {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+}
+.small {
+  font-size: var(--fs-xs);
+}
+.chip {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.chip.subscribed {
+  background: var(--pt-success-bg);
+  color: var(--pt-success, #2ecc71);
+}
+.chip.completed {
+  background: var(--pt-primary-bg);
+  color: var(--pt-primary);
+}
+.chip.paused {
+  background: var(--pt-warn-bg);
+  color: var(--pt-warn, #f39c12);
+}
+.chip.res {
+  background: var(--pt-primary-2-bg);
+  color: var(--pt-primary-2);
+}
+.res-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
 
 @media (max-width: 640px) {
-  .card { padding: 12px; }
-  .sub { gap: var(--sp-3); padding: 12px; }
-  .poster { width: 76px; }
+  .card {
+    padding: 12px;
+  }
+  .sub {
+    gap: var(--sp-3);
+    padding: 12px;
+  }
+  .poster {
+    width: 76px;
+  }
 }
-.page-tabs { margin-top: 4px; padding: 4px 10px 12px; } .global-subscribe-dialog :deep(.el-dialog__body) { max-height: 72vh; overflow-y: auto; padding-right: 8px; }
-.batch-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 0 14px; border-bottom: 1px solid var(--border-color, #eee); margin-bottom: 12px; }
-.batch-check { position: absolute; top: 4px; left: 4px; z-index: 2; background: rgba(0,0,0,.35); border-radius: 4px; padding: 0 4px; }
-.sub.selected { outline: 2px solid var(--pt-primary); }
-.rss-embed :deep(.page) { padding: 0; }
-.rss-embed :deep(.title) { font-size: var(--fs-lg); }
+.page-tabs {
+  margin-top: 4px;
+  padding: 4px 10px 12px;
+}
+.global-subscribe-dialog :deep(.el-dialog__body) {
+  max-height: 72vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 0 14px;
+  border-bottom: 1px solid var(--border-color, #eee);
+  margin-bottom: 12px;
+}
+.batch-check {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.sub.selected {
+  outline: 2px solid var(--pt-primary);
+}
+.rss-embed :deep(.page) {
+  padding: 0;
+}
+.rss-embed :deep(.title) {
+  font-size: var(--fs-lg);
+}
 
 /* 订阅卡 staggered 入场 + hover */
-.subs > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
-.subs > *:nth-child(1) { animation-delay: 0ms; }
-.subs > *:nth-child(2) { animation-delay: 50ms; }
-.subs > *:nth-child(3) { animation-delay: 100ms; }
-.subs > *:nth-child(4) { animation-delay: 150ms; }
-.subs > *:nth-child(5) { animation-delay: 200ms; }
-.subs > *:nth-child(n+6) { animation-delay: 250ms; }
-.sub { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
-.sub:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.subs > * {
+  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
+}
+.subs > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.subs > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.subs > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.subs > *:nth-child(4) {
+  animation-delay: 150ms;
+}
+.subs > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+.subs > *:nth-child(n + 6) {
+  animation-delay: 250ms;
+}
+.sub {
+  transition:
+    transform var(--dur-base) var(--ease-out-spring),
+    box-shadow var(--dur-base) var(--ease-out-smooth);
+}
+.sub:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
 </style>

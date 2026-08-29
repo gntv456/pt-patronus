@@ -43,9 +43,7 @@ watch(
   },
 )
 
-const magnet = computed(
-  () => `magnet:?xt=urn:btih:${props.torrent.hash}&dn=${encodeURIComponent(props.torrent.name)}`,
-)
+const magnet = computed(() => `magnet:?xt=urn:btih:${props.torrent.hash}&dn=${encodeURIComponent(props.torrent.name)}`)
 
 async function copy(text: string, label: string) {
   await copyText(text, t('tt.copied', { label }), t('tt.copyFailed'))
@@ -72,9 +70,21 @@ const isPaused = computed(() => stateGroup(props.torrent.state) === 'paused')
 const caps = computed(() => dlCaps(props.type))
 const stateText = computed(() => {
   const map: Record<string, string> = {
-    error: t('tt.st.error'), uploading: t('tt.st.seeding'), forcedUP: t('tt.st.forcedUP'), stalledUP: t('tt.st.stalledUP'), pausedUP: t('tt.st.pausedUP'),
-    downloading: t('tt.st.downloading'), forcedDL: t('tt.st.forcedDL'), stalledDL: t('tt.st.stalledDL'), pausedDL: t('tt.st.pausedDL'), checkingDL: t('tt.st.checking'),
-    checkingUP: t('tt.st.checking'), moving: t('tt.st.moving'), stopped: t('tt.st.stopped'), paused: t('tt.st.paused'), seeding: t('tt.st.seeding'),
+    error: t('tt.st.error'),
+    uploading: t('tt.st.seeding'),
+    forcedUP: t('tt.st.forcedUP'),
+    stalledUP: t('tt.st.stalledUP'),
+    pausedUP: t('tt.st.pausedUP'),
+    downloading: t('tt.st.downloading'),
+    forcedDL: t('tt.st.forcedDL'),
+    stalledDL: t('tt.st.stalledDL'),
+    pausedDL: t('tt.st.pausedDL'),
+    checkingDL: t('tt.st.checking'),
+    checkingUP: t('tt.st.checking'),
+    moving: t('tt.st.moving'),
+    stopped: t('tt.st.stopped'),
+    paused: t('tt.st.paused'),
+    seeding: t('tt.st.seeding'),
   }
   return map[props.torrent.state] || props.torrent.state || t('tt.st.unknown')
 })
@@ -97,14 +107,19 @@ const stateText = computed(() => {
     </template>
     <div class="detail-head">
       <el-button-group>
-        <el-button size="small" @click="op(() => downloaderApi.pause(downloaderId, [torrent.hash]), t('tt.msg.paused'))">
+        <el-button
+          size="small"
+          @click="op(() => downloaderApi.pause(downloaderId, [torrent.hash]), t('tt.msg.paused'))"
+        >
           {{ isPaused ? t('tt.resume') : t('tt.pause') }}
         </el-button>
         <el-button
           v-if="caps.forceStart"
           size="small"
           :type="torrent.force_start ? 'warning' : 'default'"
-          @click="op(() => downloaderApi.setForceStart(downloaderId, [torrent.hash], !torrent.force_start), t('td.switched'))"
+          @click="
+            op(() => downloaderApi.setForceStart(downloaderId, [torrent.hash], !torrent.force_start), t('td.switched'))
+          "
         >
           {{ torrent.force_start ? t('td.unforce') : t('tt.act.forceStart') }}
         </el-button>
@@ -116,20 +131,62 @@ const stateText = computed(() => {
     <el-tabs v-model="tab">
       <el-tab-pane :label="t('td.overview')" name="overview">
         <div class="grid">
-          <div class="cell"><span class="k">{{ t('cloud.size') }}</span><span class="v">{{ fmtBytes(torrent.size) }}</span></div>
-          <div class="cell"><span class="k">{{ t('td.downloaded') }}</span><span class="v">{{ fmtBytes(torrent.downloaded ?? 0) }}</span></div>
-          <div class="cell"><span class="k">{{ t('td.uploaded') }}</span><span class="v">{{ fmtBytes(torrent.uploaded ?? 0) }}</span></div>
-          <div class="cell"><span class="k">{{ t('sitedetail.ratio') }}</span><span class="v">{{ torrent.ratio.toFixed(2) }}</span></div>
-          <div class="cell"><span class="k">{{ t('cloud.progress') }}</span><span class="v">{{ (torrent.progress * 100).toFixed(1) }}%</span></div>
-          <div class="cell"><span class="k">{{ t('td.availability') }}</span><span class="v">{{ torrent.availability ? torrent.availability.toFixed(2) : '-' }}</span></div>
-          <div class="cell"><span class="k">{{ t('td.seedDl') }}</span><span class="v">{{ torrent.num_seeds }} / {{ torrent.num_leechs }}</span></div>
-          <div class="cell" v-if="caps.swarm"><span class="k">{{ t('td.swarm') }}</span><span class="v">{{ torrent.num_complete }} / {{ torrent.num_incomplete }}</span></div>
-          <div class="cell"><span class="k">↓ {{ t('tt.speed') }}</span><span class="v" style="color: var(--pt-primary-2)">{{ fmtSpeed(torrent.dl_rate) }}</span></div>
-          <div class="cell"><span class="k">↑ {{ t('tt.speed') }}</span><span class="v" style="color: var(--pt-success)">{{ fmtSpeed(torrent.up_rate) }}</span></div>
-          <div class="cell" v-if="caps.swarm"><span class="k">{{ t('td.queuePos') }}</span><span class="v">{{ torrent.priority }}</span></div>
-          <div class="cell"><span class="k">{{ t('td.createdAt') }}</span><span class="v">{{ fmtTime(torrent.added_at as unknown as string) }}</span></div>
-          <div class="cell"><span class="k">{{ t('td.completedAt') }}</span><span class="v">{{ fmtTime(torrent.completed_at) }}</span></div>
-          <div class="cell wide"><span class="k">{{ t('td.savePath') }}</span><span class="v" :title="torrent.save_path">{{ torrent.save_path || '-' }}</span></div>
+          <div class="cell">
+            <span class="k">{{ t('cloud.size') }}</span
+            ><span class="v">{{ fmtBytes(torrent.size) }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('td.downloaded') }}</span
+            ><span class="v">{{ fmtBytes(torrent.downloaded ?? 0) }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('td.uploaded') }}</span
+            ><span class="v">{{ fmtBytes(torrent.uploaded ?? 0) }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('sitedetail.ratio') }}</span
+            ><span class="v">{{ torrent.ratio.toFixed(2) }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('cloud.progress') }}</span
+            ><span class="v">{{ (torrent.progress * 100).toFixed(1) }}%</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('td.availability') }}</span
+            ><span class="v">{{ torrent.availability ? torrent.availability.toFixed(2) : '-' }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('td.seedDl') }}</span
+            ><span class="v">{{ torrent.num_seeds }} / {{ torrent.num_leechs }}</span>
+          </div>
+          <div class="cell" v-if="caps.swarm">
+            <span class="k">{{ t('td.swarm') }}</span
+            ><span class="v">{{ torrent.num_complete }} / {{ torrent.num_incomplete }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">↓ {{ t('tt.speed') }}</span
+            ><span class="v" style="color: var(--pt-primary-2)">{{ fmtSpeed(torrent.dl_rate) }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">↑ {{ t('tt.speed') }}</span
+            ><span class="v" style="color: var(--pt-success)">{{ fmtSpeed(torrent.up_rate) }}</span>
+          </div>
+          <div class="cell" v-if="caps.swarm">
+            <span class="k">{{ t('td.queuePos') }}</span
+            ><span class="v">{{ torrent.priority }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('td.createdAt') }}</span
+            ><span class="v">{{ fmtTime(torrent.added_at as unknown as string) }}</span>
+          </div>
+          <div class="cell">
+            <span class="k">{{ t('td.completedAt') }}</span
+            ><span class="v">{{ fmtTime(torrent.completed_at) }}</span>
+          </div>
+          <div class="cell wide">
+            <span class="k">{{ t('td.savePath') }}</span
+            ><span class="v" :title="torrent.save_path">{{ torrent.save_path || '-' }}</span>
+          </div>
         </div>
 
         <div v-if="caps.forceStart || caps.sequential || caps.firstLast" class="flags">
@@ -140,10 +197,16 @@ const stateText = computed(() => {
         </div>
 
         <div v-if="caps.sequential" class="flag-ops">
-          <el-button size="small" @click="op(() => downloaderApi.toggleSequential(downloaderId, [torrent.hash]), t('tt.msg.seq'))">
+          <el-button
+            size="small"
+            @click="op(() => downloaderApi.toggleSequential(downloaderId, [torrent.hash]), t('tt.msg.seq'))"
+          >
             {{ t('td.toggleSeq', { s: torrent.sequential ? t('td.off') : t('td.on') }) }}
           </el-button>
-          <el-button size="small" @click="op(() => downloaderApi.toggleFirstLast(downloaderId, [torrent.hash]), t('tt.msg.firstLast'))">
+          <el-button
+            size="small"
+            @click="op(() => downloaderApi.toggleFirstLast(downloaderId, [torrent.hash]), t('tt.msg.firstLast'))"
+          >
             {{ t('td.toggleFl', { s: torrent.first_last_piece ? t('td.off') : t('td.on') }) }}
           </el-button>
         </div>
@@ -163,7 +226,9 @@ const stateText = computed(() => {
             <template #default="{ row }">{{ fmtSpeed(row.up_rate) }}</template>
           </el-table-column>
           <el-table-column prop="flags" :label="t('td.flags')" width="90" show-overflow-tooltip />
-          <template #empty><div class="empty text-muted">{{ t('td.noPeers') }}</div></template>
+          <template #empty
+            ><div class="empty text-muted">{{ t('td.noPeers') }}</div></template
+          >
         </el-table>
         <el-button size="small" text @click="loadPeers" style="margin-top: 8px">{{ t('common.refresh') }}</el-button>
       </el-tab-pane>
@@ -188,18 +253,74 @@ const stateText = computed(() => {
   flex-wrap: wrap;
   margin-bottom: 14px;
   padding-bottom: 13px;
-  border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18));
+  border-bottom: 1px solid var(--glass-border, rgba(127, 127, 127, 0.18));
 }
-.detail-title { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-width: 0; }
-.detail-title-copy { min-width: 0; }
-.detail-kicker { display: block; margin-bottom: 3px; color: var(--text-muted); font-size: var(--fs-2xs); font-weight: 700; letter-spacing: .08em; }
-.detail-title h2 { overflow: hidden; max-width: 470px; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-lg); }
-.state-chip { display: inline-flex; align-items: center; gap: var(--sp-1); flex: 0 0 auto; font-size: var(--fs-2xs); font-weight: 600; }
-.state-chip i { width: 6px; height: 6px; border-radius: 50%; background: var(--pt-warn); }
-.state-chip.downloading { color: var(--pt-primary-2); }.state-chip.downloading i { background: var(--pt-primary-2); }
-.state-chip.seeding { color: var(--pt-success); }.state-chip.seeding i { background: var(--pt-success); }
-.state-chip.paused, .state-chip.other { color: var(--text-muted); }.state-chip.paused i, .state-chip.other i { background: var(--text-muted); }
-.state-chip.error { color: var(--pt-danger); }.state-chip.error i { background: var(--pt-danger); }
+.detail-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.detail-title-copy {
+  min-width: 0;
+}
+.detail-kicker {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.detail-title h2 {
+  overflow: hidden;
+  max-width: 470px;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-lg);
+}
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 0 0 auto;
+  font-size: var(--fs-2xs);
+  font-weight: 600;
+}
+.state-chip i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pt-warn);
+}
+.state-chip.downloading {
+  color: var(--pt-primary-2);
+}
+.state-chip.downloading i {
+  background: var(--pt-primary-2);
+}
+.state-chip.seeding {
+  color: var(--pt-success);
+}
+.state-chip.seeding i {
+  background: var(--pt-success);
+}
+.state-chip.paused,
+.state-chip.other {
+  color: var(--text-muted);
+}
+.state-chip.paused i,
+.state-chip.other i {
+  background: var(--text-muted);
+}
+.state-chip.error {
+  color: var(--pt-danger);
+}
+.state-chip.error i {
+  background: var(--pt-danger);
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

@@ -34,7 +34,9 @@ export function useTorrentDialog(downloader: Ref<Downloader>, refresh: () => voi
   })
   const hasFooter = computed(() => {
     const k = activeDialog.value?.kind
-    return k === 'remove' || k === 'category' || k === 'tags' || k === 'limits' || k === 'share-limits' || k === 'location'
+    return (
+      k === 'remove' || k === 'category' || k === 'tags' || k === 'limits' || k === 'share-limits' || k === 'location'
+    )
   })
 
   // 对话框表单状态
@@ -126,10 +128,24 @@ export function useTorrentDialog(downloader: Ref<Downloader>, refresh: () => voi
   }
 
   return {
-    activeDialog, dialogOpen, dialogTitle, hasFooter,
-    removeFiles, dlgCategory, dlgTags, dlgUpLimit, dlgDlLimit, dlgLocation,
-    dlgRatioMode, dlgRatio, dlgSeedMode, dlgSeedTime, dlgLoading, tagOpts,
-    openDialog, submitDialog,
+    activeDialog,
+    dialogOpen,
+    dialogTitle,
+    hasFooter,
+    removeFiles,
+    dlgCategory,
+    dlgTags,
+    dlgUpLimit,
+    dlgDlLimit,
+    dlgLocation,
+    dlgRatioMode,
+    dlgRatio,
+    dlgSeedMode,
+    dlgSeedTime,
+    dlgLoading,
+    tagOpts,
+    openDialog,
+    submitDialog,
   }
 }
 

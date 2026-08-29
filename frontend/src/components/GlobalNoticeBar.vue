@@ -29,7 +29,11 @@ const notices = computed<Notice[]>(() => {
     items.push({
       key: `hr-${hr.site}-${hr.title}`,
       icon: 'clock',
-      text: t('gnb.hrDanger', { site: hr.site, title: hr.title, dl: hr.deadline ? t('gnb.deadline', { d: hr.deadline }) : '' }),
+      text: t('gnb.hrDanger', {
+        site: hr.site,
+        title: hr.title,
+        dl: hr.deadline ? t('gnb.deadline', { d: hr.deadline }) : '',
+      }),
     })
   }
   return items
@@ -53,12 +57,13 @@ function dismiss() {
   <Transition name="gnb-slide">
     <div v-if="visible" class="gnb" role="status">
       <SptIcon name="alert-triangle" :size="18" class="gnb-icon" />
-      <div class="gnb-body" @click="notices.length > 1 && (expanded = !expanded)">
+      <div v-a11y-button class="gnb-body" @click="notices.length > 1 && (expanded = !expanded)">
         <div class="gnb-summary">
           <span class="gnb-tag">{{ t('gnb.tag') }}</span>
           <span class="gnb-count">{{ notices.length }}</span>
           <span class="gnb-text">
-            {{ notices[0].text }}<template v-if="notices.length > 1"> {{ t('gnb.moreN', { n: notices.length }) }}</template>
+            {{ notices[0].text
+            }}<template v-if="notices.length > 1"> {{ t('gnb.moreN', { n: notices.length }) }}</template>
           </span>
         </div>
         <div v-if="expanded" class="gnb-detail">
@@ -68,7 +73,12 @@ function dismiss() {
           </div>
         </div>
       </div>
-      <button v-if="notices.length > 1" class="gnb-btn" :aria-label="expanded ? t('trt.collapse') : t('trt.expand')" @click.stop="expanded = !expanded">
+      <button
+        v-if="notices.length > 1"
+        class="gnb-btn"
+        :aria-label="expanded ? t('trt.collapse') : t('trt.expand')"
+        @click.stop="expanded = !expanded"
+      >
         <SptIcon name="chevron-down" :size="16" class="gnb-chevron" :class="{ 'gnb-chevron--up': expanded }" />
       </button>
       <button class="gnb-btn" :aria-label="t('gnb.dismiss')" @click.stop="dismiss">
@@ -162,7 +172,9 @@ function dismiss() {
   align-items: center;
   justify-content: center;
   opacity: 0.85;
-  transition: opacity var(--dur-base) var(--ease-out-smooth), background var(--dur-base);
+  transition:
+    opacity var(--dur-base) var(--ease-out-smooth),
+    background var(--dur-base);
 }
 .gnb-btn:hover {
   opacity: 1;

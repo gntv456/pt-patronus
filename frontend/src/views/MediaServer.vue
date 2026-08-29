@@ -137,7 +137,9 @@ async function test(s: MediaServer) {
   testing.value = s.id
   try {
     const r = await mediaServerApi.test(s.id)
-    r.ok ? ElMessage.success(`${s.name}：${r.info || t('mediaserver.connOk')}`) : ElMessage.warning(r.error || t('mediaserver.connFailed'))
+    r.ok
+      ? ElMessage.success(`${s.name}：${r.info || t('mediaserver.connOk')}`)
+      : ElMessage.warning(r.error || t('mediaserver.connFailed'))
   } catch (e: any) {
     ElMessage.error(e?.message || t('common.requestFailed'))
   } finally {
@@ -156,10 +158,28 @@ async function toggle(s: MediaServer, field: 'refresh_on_download' | 'notify_on_
 
 // ---- 库 / 报告 / 查重（composable） ----
 const {
-  showLibs, libs, libsLoading, libsServer, coverURL, coverLoading,
-  openLibs, scanLib, refreshLib, genCover,
-  showReport, report, reportLoading, reportDays, openReport, reloadReport,
-  showDup, dupGroups, dupLoading, dupLib, openDup, runDup,
+  showLibs,
+  libs,
+  libsLoading,
+  libsServer,
+  coverURL,
+  coverLoading,
+  openLibs,
+  scanLib,
+  refreshLib,
+  genCover,
+  showReport,
+  report,
+  reportLoading,
+  reportDays,
+  openReport,
+  reloadReport,
+  showDup,
+  dupGroups,
+  dupLoading,
+  dupLib,
+  openDup,
+  runDup,
 } = useMediaServerOps()
 
 const TYPE_LABEL: Record<MediaServerType, string> = {
@@ -217,7 +237,9 @@ onMounted(load)
         </div>
 
         <div class="actions">
-          <el-button size="small" :loading="testing === s.id" @click="test(s)">{{ t('mediaserver.testConn') }}</el-button>
+          <el-button size="small" :loading="testing === s.id" @click="test(s)">{{
+            t('mediaserver.testConn')
+          }}</el-button>
           <el-button size="small" @click="openLibs(s)">{{ t('mediaserver.libs') }}</el-button>
           <el-button size="small" @click="openReport(s)">{{ t('mediaserver.report') }}</el-button>
           <el-button size="small" @click="openDup(s)">{{ t('mediaserver.dup') }}</el-button>
@@ -242,20 +264,46 @@ onMounted(load)
         <el-checkbox v-model="healthSubtitles" size="small">{{ t('mediaserver.scanSubtitles') }}</el-checkbox>
         <el-checkbox v-model="healthUpgradeable" size="small">{{ t('mediaserver.scanUpgradeable') }}</el-checkbox>
         <el-button size="small" :loading="healthLoading" @click="runHealth">{{ t('mediaserver.recheck') }}</el-button>
-        <el-button size="small" type="primary" :loading="fixingSubtitles"
-          :disabled="!healthReport?.missing_subtitle" @click="fixSubtitles">
+        <el-button
+          size="small"
+          type="primary"
+          :loading="fixingSubtitles"
+          :disabled="!healthReport?.missing_subtitle"
+          @click="fixSubtitles"
+        >
           {{ t('mediaserver.fixMissing', { n: healthReport?.missing_subtitle ?? 0 }) }}
         </el-button>
       </div>
       <div v-loading="healthLoading">
         <div class="hint" style="margin-bottom: 8px" v-if="healthReport">
-          {{ t('mediaserver.unmatched') }} {{ healthReport.unmatched }} · {{ t('mediaserver.missingEps') }} {{ healthReport.missing_episodes }} · {{ t('mediaserver.missingSubs') }} {{ healthReport.missing_subtitle }} · {{ t('mediaserver.upgradeable') }} {{ healthReport.upgradeable ?? 0 }}
+          {{ t('mediaserver.unmatched') }} {{ healthReport.unmatched }} · {{ t('mediaserver.missingEps') }}
+          {{ healthReport.missing_episodes }} · {{ t('mediaserver.missingSubs') }} {{ healthReport.missing_subtitle }} ·
+          {{ t('mediaserver.upgradeable') }} {{ healthReport.upgradeable ?? 0 }}
         </div>
         <el-table :data="healthReport?.issues ?? []" size="small" :empty-text="t('mediaserver.healthyEmpty')">
           <el-table-column :label="t('mediaserver.col.type')" width="100">
             <template #default="{ row }">
-              <el-tag size="small" :type="row.type === 'unmatched' ? 'danger' : row.type === 'missing_episodes' ? 'warning' : row.type === 'upgradeable' ? 'success' : 'info'">
-                {{ row.type === 'unmatched' ? t('mediaserver.unmatched') : row.type === 'missing_episodes' ? t('mediaserver.missingEps') : row.type === 'upgradeable' ? t('mediaserver.upgradeable') : t('mediaserver.missingSubs') }}
+              <el-tag
+                size="small"
+                :type="
+                  row.type === 'unmatched'
+                    ? 'danger'
+                    : row.type === 'missing_episodes'
+                      ? 'warning'
+                      : row.type === 'upgradeable'
+                        ? 'success'
+                        : 'info'
+                "
+              >
+                {{
+                  row.type === 'unmatched'
+                    ? t('mediaserver.unmatched')
+                    : row.type === 'missing_episodes'
+                      ? t('mediaserver.missingEps')
+                      : row.type === 'upgradeable'
+                        ? t('mediaserver.upgradeable')
+                        : t('mediaserver.missingSubs')
+                }}
               </el-tag>
             </template>
           </el-table-column>
@@ -267,9 +315,16 @@ onMounted(load)
       </div>
     </el-dialog>
 
-    <el-dialog v-model="showForm" :title="editing ? t('mediaserver.editTitle') : t('mediaserver.addTitle')" width="560px" top="8vh">
+    <el-dialog
+      v-model="showForm"
+      :title="editing ? t('mediaserver.editTitle') : t('mediaserver.addTitle')"
+      width="560px"
+      top="8vh"
+    >
       <el-form :model="form" label-width="120px" label-position="right">
-        <el-form-item :label="t('rss.f.name')"><el-input v-model="form.name" :placeholder="t('mediaserver.f.nameHint')" /></el-form-item>
+        <el-form-item :label="t('rss.f.name')"
+          ><el-input v-model="form.name" :placeholder="t('mediaserver.f.nameHint')"
+        /></el-form-item>
         <el-form-item :label="t('mediaserver.col.type')">
           <el-select v-model="form.type">
             <el-option label="Emby" value="emby" />
@@ -320,10 +375,18 @@ onMounted(load)
     </el-dialog>
 
     <!-- 媒体库 + 封面预览 -->
-    <el-dialog v-model="showLibs" :title="t('mediaserver.libsTitle', { name: libsServer?.name ?? '' })" width="720px" top="6vh">
+    <el-dialog
+      v-model="showLibs"
+      :title="t('mediaserver.libsTitle', { name: libsServer?.name ?? '' })"
+      width="720px"
+      top="6vh"
+    >
       <div class="libs-bar">
         <el-button size="small" @click="scanLib(null)">{{ t('mediaserver.scanAll') }}</el-button>
-        <span class="hint">{{ t('mediaserver.webhookUrl') }}{{ libsServer ? `POST /api/v1/mediaserver/${libsServer.id}/webhook` : '' }}</span>
+        <span class="hint"
+          >{{ t('mediaserver.webhookUrl')
+          }}{{ libsServer ? `POST /api/v1/mediaserver/${libsServer.id}/webhook` : '' }}</span
+        >
       </div>
       <div v-loading="libsLoading">
         <el-table :data="libs" size="small" :empty-text="t('mediaserver.noLibs')">
@@ -332,8 +395,12 @@ onMounted(load)
           <el-table-column :label="t('reseed.col.actions')" width="280">
             <template #default="{ row }">
               <el-button size="small" link @click="scanLib(row as MediaLibrary)">{{ t('mediaserver.scan') }}</el-button>
-              <el-button size="small" link @click="refreshLib(row as MediaLibrary)">{{ t('common.refresh') }}</el-button>
-              <el-button size="small" link type="primary" @click="genCover(row as MediaLibrary)">{{ t('mediaserver.genCover') }}</el-button>
+              <el-button size="small" link @click="refreshLib(row as MediaLibrary)">{{
+                t('common.refresh')
+              }}</el-button>
+              <el-button size="small" link type="primary" @click="genCover(row as MediaLibrary)">{{
+                t('mediaserver.genCover')
+              }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -344,11 +411,23 @@ onMounted(load)
     </el-dialog>
 
     <!-- 观影报告 -->
-    <el-dialog v-model="showReport" :title="t('mediaserver.reportTitle', { name: libsServer?.name ?? '' })" width="820px" top="6vh">
+    <el-dialog
+      v-model="showReport"
+      :title="t('mediaserver.reportTitle', { name: libsServer?.name ?? '' })"
+      width="820px"
+      top="6vh"
+    >
       <div class="libs-bar">
         <div>
           {{ t('mediaserver.lastDays1') }}
-          <el-input-number v-model="reportDays" :min="1" :max="365" size="small" controls-position="right" style="width: 90px" />
+          <el-input-number
+            v-model="reportDays"
+            :min="1"
+            :max="365"
+            size="small"
+            controls-position="right"
+            style="width: 90px"
+          />
           {{ t('mediaserver.playsCount', { n: report?.total_plays ?? 0 }) }}
         </div>
         <el-button size="small" :loading="reportLoading" @click="reloadReport">{{ t('common.refresh') }}</el-button>
@@ -380,7 +459,9 @@ onMounted(load)
             <el-table-column prop="user_name" :label="t('mediaserver.col.user')" width="100" />
             <el-table-column prop="play_count" :label="t('mediaserver.col.count')" width="70" />
             <el-table-column :label="t('mediaserver.recentPlays')" width="170">
-              <template #default="{ row }">{{ row.last_played ? new Date(row.last_played).toLocaleString() : '-' }}</template>
+              <template #default="{ row }">{{
+                row.last_played ? new Date(row.last_played).toLocaleString() : '-'
+              }}</template>
             </el-table-column>
           </el-table>
         </div>
@@ -388,12 +469,19 @@ onMounted(load)
     </el-dialog>
 
     <!-- 重复检测 -->
-    <el-dialog v-model="showDup" :title="t('mediaserver.dupTitle', { name: libsServer?.name ?? '' })" width="820px" top="6vh">
+    <el-dialog
+      v-model="showDup"
+      :title="t('mediaserver.dupTitle', { name: libsServer?.name ?? '' })"
+      width="820px"
+      top="6vh"
+    >
       <div class="libs-bar">
         <el-select v-model="dupLib" :placeholder="t('mediaserver.selectLib')" size="small" style="width: 220px">
           <el-option v-for="l in libs" :key="l.id" :label="l.name" :value="l.id" />
         </el-select>
-        <el-button size="small" type="primary" :loading="dupLoading" @click="runDup">{{ t('mediaserver.detect') }}</el-button>
+        <el-button size="small" type="primary" :loading="dupLoading" @click="runDup">{{
+          t('mediaserver.detect')
+        }}</el-button>
       </div>
       <div v-loading="dupLoading">
         <div class="hint" style="margin-bottom: 8px">
@@ -417,26 +505,114 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
-.card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-3); }
-.card-head { display: flex; align-items: center; gap: var(--sp-3); }
-.card-title { flex: 1; min-width: 0; }
-.name { font-weight: 600; font-size: var(--fs-body); display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
-.meta { font-size: var(--fs-xs); color: var(--text-muted); word-break: break-all; }
-.toggles { display: flex; flex-direction: column; gap: var(--sp-1); }
-.toggle-row { display: flex; align-items: center; justify-content: space-between; font-size: var(--fs-sm); }
-.actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
-.hint { font-size: var(--fs-xs); color: var(--text-muted); margin-left: 8px; }
-.libs-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: 10px; }
-.cover-preview { margin-top: 14px; text-align: center; }
-.cover-preview img { max-width: 100%; border-radius: var(--radius-xs); }
-.report-block { margin-bottom: 16px; }
-.sub-title { font-size: var(--fs-sm); font-weight: 700; margin-bottom: 6px; }
-.user-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
-.dup-item { font-size: var(--fs-xs); line-height: 1.6; word-break: break-all; }
-.muted { color: var(--text-muted); }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.sub {
+  margin: -8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-3);
+}
+.card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.card-title {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-weight: 600;
+  font-size: var(--fs-body);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  word-break: break-all;
+}
+.toggles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+.libs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: 10px;
+}
+.cover-preview {
+  margin-top: 14px;
+  text-align: center;
+}
+.cover-preview img {
+  max-width: 100%;
+  border-radius: var(--radius-xs);
+}
+.report-block {
+  margin-bottom: 16px;
+}
+.sub-title {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.user-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.dup-item {
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+  word-break: break-all;
+}
+.muted {
+  color: var(--text-muted);
+}
 </style>

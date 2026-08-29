@@ -1,6 +1,8 @@
 import { http } from './http'
+import { terr } from './i18nErr'
 
-export type CloudDriveType = '115' | '115_open' | 'quark' | '123' | 'aliyun_open' | 'onedrive' | 'baidu' | 'tianyi' | 'mobile'
+export type CloudDriveType =
+  '115' | '115_open' | 'quark' | '123' | 'aliyun_open' | 'onedrive' | 'baidu' | 'tianyi' | 'mobile'
 
 export interface CloudDrive {
   id: number
@@ -81,24 +83,18 @@ export type RuleInput = Partial<StrmRule> & { token?: never }
 
 export const cloudApi = {
   // ---- 网盘 ----
-  listDrives: () =>
-    http.get<{ drives: CloudDrive[] }>('/cloud/drives').then((r) => r.data.drives ?? []),
+  listDrives: () => http.get<{ drives: CloudDrive[] }>('/cloud/drives').then((r) => r.data.drives ?? []),
   createDrive: (d: DriveInput) => http.post<CloudDrive>('/cloud/drives', d).then((r) => r.data),
-  updateDrive: (id: number, d: DriveInput) =>
-    http.put<CloudDrive>(`/cloud/drives/${id}`, d).then((r) => r.data),
+  updateDrive: (id: number, d: DriveInput) => http.put<CloudDrive>(`/cloud/drives/${id}`, d).then((r) => r.data),
   removeDrive: (id: number) => http.delete(`/cloud/drives/${id}`).then((r) => r.data),
   test: (id: number) => http.post<TestResult>(`/cloud/drives/${id}/test`).then((r) => r.data),
-  quota: (id: number) =>
-    http.get<{ quota: CloudQuota }>(`/cloud/drives/${id}/quota`).then((r) => r.data.quota),
+  quota: (id: number) => http.get<{ quota: CloudQuota }>(`/cloud/drives/${id}/quota`).then((r) => r.data.quota),
   browse: (id: number, path: string) =>
-    http
-      .get<{ files: CloudFile[] }>(`/cloud/drives/${id}/list`, { params: { path } })
-      .then((r) => r.data.files ?? []),
+    http.get<{ files: CloudFile[] }>(`/cloud/drives/${id}/list`, { params: { path } }).then((r) => r.data.files ?? []),
   // ---- STRM 规则 ----
   listRules: () => http.get<{ rules: StrmRule[] }>('/cloud/rules').then((r) => r.data.rules ?? []),
   createRule: (r: RuleInput) => http.post<StrmRule>('/cloud/rules', r).then((res) => res.data),
-  updateRule: (id: number, r: RuleInput) =>
-    http.put<StrmRule>(`/cloud/rules/${id}`, r).then((res) => res.data),
+  updateRule: (id: number, r: RuleInput) => http.put<StrmRule>(`/cloud/rules/${id}`, r).then((res) => res.data),
   removeRule: (id: number) => http.delete(`/cloud/rules/${id}`).then((r) => r.data),
   generateRule: (id: number) =>
     // 递归生成 STRM 可能很久：不限时，覆盖 http 实例默认 15s。
@@ -141,23 +137,33 @@ export const cloudApi = {
   importTree: (opts: { drive_id: number; tree: string; base?: string; output_dir: string; template?: string }) =>
     http.post('/cloud/import-tree', opts, { timeout: 0 }).then((r) => r.data),
   // ---- 云端文件管理器 ----
-  fileOp: (op: 'mkdir' | 'move' | 'copy' | 'rename' | 'delete' | 'offline' | 'share-save',
-    body: { drive_id: number; path: string; dst_dir?: string; new_name?: string; url?: string; pwd?: string }) =>
-    http.post(`/cloud/files/${op}`, body).then((r) => r.data),
+  fileOp: (
+    op: 'mkdir' | 'move' | 'copy' | 'rename' | 'delete' | 'offline' | 'share-save',
+    body: { drive_id: number; path: string; dst_dir?: string; new_name?: string; url?: string; pwd?: string },
+  ) => http.post(`/cloud/files/${op}`, body).then((r) => r.data),
   // 云端整理（识别→归位分类目录）
-  organize: (opts: { drive_id: number; src_dir: string; dst_movie_dir?: string; dst_tv_dir?: string; rename?: boolean }) =>
-    http.post('/cloud/organize', opts, { timeout: 0 }).then((r) => r.data),
+  organize: (opts: {
+    drive_id: number
+    src_dir: string
+    dst_movie_dir?: string
+    dst_tv_dir?: string
+    rename?: boolean
+  }) => http.post('/cloud/organize', opts, { timeout: 0 }).then((r) => r.data),
   // STRM 修复（按当前配置批量重写）
   strmRepair: (driveId?: number) =>
-    http.post<{ repaired: number; skipped: number }>('/cloud/strm-repair', { drive_id: driveId ?? 0 }, { timeout: 0 }).then((r) => r.data),
+    http
+      .post<{ repaired: number; skipped: number }>('/cloud/strm-repair', { drive_id: driveId ?? 0 }, { timeout: 0 })
+      .then((r) => r.data),
 
   // 115 开放平台设备码授权：发起（返回扫码 URL）→ 轮询 → token 直接建盘
   start115Auth: (appId: string) =>
-    http.post<{ uid: string; time: string; qrcode: string; sign: string; verifier: string }>(
-      '/cloud/115open/auth', { app_id: appId }).then((r) => r.data),
+    http
+      .post<{ uid: string; time: string; qrcode: string; sign: string; verifier: string }>('/cloud/115open/auth', {
+        app_id: appId,
+      })
+      .then((r) => r.data),
   poll115Auth: (p: { uid: string; time: string; sign: string; verifier: string }) =>
-    http.post<{ confirmed: boolean; status: number; token: string }>(
-      '/cloud/115open/poll', p).then((r) => r.data),
+    http.post<{ confirmed: boolean; status: number; token: string }>('/cloud/115open/poll', p).then((r) => r.data),
 }
 
 // 云端任务（对齐后端 models.CloudTask）。
@@ -176,27 +182,28 @@ export interface CloudTask {
   updated_at: string
 }
 
+// 标签 map 的值经 terr() 解析（i18n key，中文兜底）——英文界面下不再是中文标签。
 export const TYPE_LABEL: Record<CloudDriveType, string> = {
-  '115_open': '115网盘（开放平台）',
-  '115': '115网盘（Cookie）',
-  aliyun_open: '阿里云盘（开放平台）',
-  quark: '夸克网盘',
-  '123': '123云盘',
-  onedrive: 'OneDrive',
-  baidu: '百度网盘',
-  tianyi: '天翼云盘',
-  mobile: '移动云盘',
+  '115_open': terr('cloud.type115Open', '115网盘（开放平台）'),
+  '115': terr('cloud.type115Cookie', '115网盘（Cookie）'),
+  aliyun_open: terr('cloud.typeAliyunOpen', '阿里云盘（开放平台）'),
+  quark: terr('cloud.typeQuark', '夸克网盘'),
+  '123': terr('cloud.type123', '123云盘'),
+  onedrive: terr('cloud.typeOnedrive', 'OneDrive'),
+  baidu: terr('cloud.typeBaidu', '百度网盘'),
+  tianyi: terr('cloud.typeTianyi', '天翼云盘'),
+  mobile: terr('cloud.typeMobile', '移动云盘'),
 }
 
 export const TASK_KIND_LABEL: Record<string, string> = {
-  upload: '上传',
-  strm: 'STRM',
-  import_tree: '目录树导入',
+  upload: terr('cloud.taskUpload', '上传'),
+  strm: terr('cloud.taskStrm', 'STRM'),
+  import_tree: terr('cloud.taskImportTree', '目录树导入'),
 }
 
 export const TASK_STATUS_LABEL: Record<string, string> = {
-  pending: '排队中',
-  running: '执行中',
-  success: '成功',
-  failed: '失败',
+  pending: terr('cloud.statusPending', '排队中'),
+  running: terr('cloud.statusRunning', '执行中'),
+  success: terr('cloud.statusSuccess', '成功'),
+  failed: terr('cloud.statusFailed', '失败'),
 }

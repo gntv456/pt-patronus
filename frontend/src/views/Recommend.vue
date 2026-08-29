@@ -3,7 +3,13 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { recommendApi, recommendSources, recommendCategories, type MediaInfo, type CalendarEpisode } from '@/api/recommend'
+import {
+  recommendApi,
+  recommendSources,
+  recommendCategories,
+  type MediaInfo,
+  type CalendarEpisode,
+} from '@/api/recommend'
 import { discoverApi } from '@/api/discover'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteTorrentFindDialog from '@/components/SiteTorrentFindDialog.vue'
@@ -33,7 +39,8 @@ const hasMore = ref(true)
 const PAGE_MIN_HINT = 8
 
 // find-on-sites 弹窗（composable 封装）
-const { findVisible, findLoading, findTitle, findPoster, findResults, findOnSites, closeFindDialog, abortFind } = useFindOnSites()
+const { findVisible, findLoading, findTitle, findPoster, findResults, findOnSites, closeFindDialog, abortFind } =
+  useFindOnSites()
 
 let abortCtrl: AbortController | null = null
 
@@ -47,9 +54,16 @@ async function load(refresh = false) {
   hasMore.value = true
   feedItems.value = []
   try {
-    await recommendApi.feedStream(source.value, category.value, 1, refresh, (items) => {
-      feedItems.value.push(...items)
-    }, ctrl.signal)
+    await recommendApi.feedStream(
+      source.value,
+      category.value,
+      1,
+      refresh,
+      (items) => {
+        feedItems.value.push(...items)
+      },
+      ctrl.signal,
+    )
     if (feedItems.value.length < PAGE_MIN_HINT) hasMore.value = false
   } catch (e: unknown) {
     // 切换筛选时 abort 上一次流，AbortError 是预期，不报错
@@ -118,7 +132,11 @@ function refresh() {
 const sourceLabel = (key: string) => recommendSources.find((s) => s.key === key)?.label ?? key
 
 // 与搜索页 MediaResultsGrid 同款徽标：类型/来源统一中文展示。
-const TYPE_LABELS = computed<Record<string, string>>(() => ({ movie: t('search.catMovie'), tv: t('search.catTv'), music: t('search.catMusic') }))
+const TYPE_LABELS = computed<Record<string, string>>(() => ({
+  movie: t('search.catMovie'),
+  tv: t('search.catTv'),
+  music: t('search.catMusic'),
+}))
 function typeBadge(t: string) {
   return TYPE_LABELS.value[t] ?? ''
 }
@@ -171,7 +189,8 @@ async function selectCalendar(mode: '' | 'tv' | 'movie' | 'mine') {
   if (mode === '') return
   calLoading.value = true
   try {
-    calData.value = mode === 'mine' ? await recommendApi.subscriptionCalendar(30) : await recommendApi.calendar(mode, calDays.value)
+    calData.value =
+      mode === 'mine' ? await recommendApi.subscriptionCalendar(30) : await recommendApi.calendar(mode, calDays.value)
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('recommend.calendarLoadFailed'))
   } finally {
@@ -201,25 +220,60 @@ onUnmounted(() => {
 
     <div class="filter-bar glass">
       <div class="filter-group">
-        <button v-for="s in recommendSources" :key="s.key" class="chip" :class="{ on: source === s.key }" @click="selectSource(s.key)">
+        <button
+          v-for="s in recommendSources"
+          :key="s.key"
+          class="chip"
+          :class="{ on: source === s.key }"
+          @click="selectSource(s.key)"
+        >
           {{ s.label }}
         </button>
       </div>
       <div class="filter-group">
-        <button v-for="c in recommendCategories" :key="c.key" class="chip" :class="{ on: category === c.key && !calMode }" @click="selectCategory(c.key)">
+        <button
+          v-for="c in recommendCategories"
+          :key="c.key"
+          class="chip"
+          :class="{ on: category === c.key && !calMode }"
+          @click="selectCategory(c.key)"
+        >
           {{ c.label }}
         </button>
       </div>
       <!-- 开播日历视图：剧集/电影日历 + 我的订阅日历（单集粒度） -->
       <div class="filter-group">
-        <button class="chip" :class="{ on: calMode === 'tv' }" @click="selectCalendar(calMode === 'tv' ? '' : 'tv')">📅 {{ t('recommend.tvCalendar') }}</button>
-        <button class="chip" :class="{ on: calMode === 'movie' }" @click="selectCalendar(calMode === 'movie' ? '' : 'movie')">📅 {{ t('recommend.movieCalendar') }}</button>
-        <button class="chip" :class="{ on: calMode === 'mine' }" @click="selectCalendar(calMode === 'mine' ? '' : 'mine')">🔖 {{ t('recommend.myCalendar') }}</button>
+        <button class="chip" :class="{ on: calMode === 'tv' }" @click="selectCalendar(calMode === 'tv' ? '' : 'tv')">
+          📅 {{ t('recommend.tvCalendar') }}
+        </button>
+        <button
+          class="chip"
+          :class="{ on: calMode === 'movie' }"
+          @click="selectCalendar(calMode === 'movie' ? '' : 'movie')"
+        >
+          📅 {{ t('recommend.movieCalendar') }}
+        </button>
+        <button
+          class="chip"
+          :class="{ on: calMode === 'mine' }"
+          @click="selectCalendar(calMode === 'mine' ? '' : 'mine')"
+        >
+          🔖 {{ t('recommend.myCalendar') }}
+        </button>
       </div>
       <!-- 搜索框：置于分类筛选右侧，原「探索」并入。回车/点按钮触发，清空回到信息流。 -->
       <div class="search-group">
-        <el-input v-model="keyword" :placeholder="t('recommend.searchPlaceholder')" clearable size="small" @keyup.enter="doSearch" @clear="clearSearch" />
-        <el-button size="small" type="primary" :loading="searchLoading" @click="doSearch">{{ t('common.search') }}</el-button>
+        <el-input
+          v-model="keyword"
+          :placeholder="t('recommend.searchPlaceholder')"
+          clearable
+          size="small"
+          @keyup.enter="doSearch"
+          @clear="clearSearch"
+        />
+        <el-button size="small" type="primary" :loading="searchLoading" @click="doSearch">{{
+          t('common.search')
+        }}</el-button>
       </div>
     </div>
 
@@ -229,21 +283,41 @@ onUnmounted(() => {
     <div v-if="calMode" v-loading="calLoading" class="calendar-view">
       <template v-if="calDates.length">
         <div v-for="d in calDates" :key="d" class="cal-day card glass">
-          <div class="cal-date">{{ fmtDateLabel(d) }}<span class="text-muted small">（{{ d }}）</span></div>
-          <div v-for="(ep, i) in calData[d]" :key="i" class="cal-ep clickable" @click="openCalendarDetail(ep)">
+          <div class="cal-date">
+            {{ fmtDateLabel(d) }}<span class="text-muted small">（{{ d }}）</span>
+          </div>
+          <div
+            v-a11y-button
+            v-for="(ep, i) in calData[d]"
+            :key="i"
+            class="cal-ep clickable"
+            @click="openCalendarDetail(ep)"
+          >
             <span v-if="ep.poster_url" class="cal-poster"><MediaPoster :url="ep.poster_url" kind="movie" /></span>
-            <span v-if="ep.season" class="chip res">S{{ String(ep.season).padStart(2, '0') }}E{{ String(ep.episode ?? 0).padStart(2, '0') }}</span>
+            <span v-if="ep.season" class="chip res"
+              >S{{ String(ep.season).padStart(2, '0') }}E{{ String(ep.episode ?? 0).padStart(2, '0') }}</span
+            >
             <span class="cal-title">{{ ep.title }}</span>
             <span v-if="ep.overview" class="text-muted small cal-overview">{{ ep.overview.slice(0, 60) }}</span>
           </div>
         </div>
       </template>
-      <EmptyState v-else-if="!calLoading" icon="📅" :title="calMode === 'mine' ? t('recommend.calEmptyMine') : t('recommend.calEmpty')"
-        :description="calMode === 'mine' ? t('recommend.calEmptyMineDesc') : t('recommend.calEmptyDesc')" />
+      <EmptyState
+        v-else-if="!calLoading"
+        icon="📅"
+        :title="calMode === 'mine' ? t('recommend.calEmptyMine') : t('recommend.calEmpty')"
+        :description="calMode === 'mine' ? t('recommend.calEmptyMineDesc') : t('recommend.calEmptyDesc')"
+      />
     </div>
 
     <div v-else class="cards">
-      <div v-for="(m, i) in items" :key="m.source_id || i" class="rec-card glass clickable" @click="openMediaDetail(m)">
+      <div
+        v-a11y-button
+        v-for="(m, i) in items"
+        :key="m.source_id || i"
+        class="rec-card glass clickable"
+        @click="openMediaDetail(m)"
+      >
         <div class="poster"><MediaPoster :url="m.poster_url" :kind="m.type === 'music' ? 'music' : 'movie'" /></div>
         <div class="info">
           <div class="t-title">{{ m.title }}</div>
@@ -259,7 +333,9 @@ onUnmounted(() => {
             <span v-for="cA in (m.countries || []).slice(0, 1)" :key="cA" class="t-country">{{ cA }}</span>
           </div>
           <div v-if="m.overview" class="t-overview">{{ m.overview }}</div>
-          <el-button size="small" type="primary" plain class="find-btn" @click.stop="findOnSites(m)">{{ t('recommend.findOnSites') }}</el-button>
+          <el-button size="small" type="primary" plain class="find-btn" @click.stop="findOnSites(m)">{{
+            t('recommend.findOnSites')
+          }}</el-button>
         </div>
       </div>
     </div>
@@ -293,42 +369,193 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
 /* 开播日历视图：按日期分组展示 */
-.calendar-view { display: flex; flex-direction: column; gap: var(--sp-3); }
-.cal-day { padding: 14px 18px; }
-.cal-date { font-weight: 700; margin-bottom: 8px; }
-.cal-ep { display: flex; align-items: center; gap: var(--sp-2); padding: 6px 0; border-bottom: 1px dashed var(--border-color, rgba(128,128,128,.2)); flex-wrap: wrap; }
-.cal-ep:last-child { border-bottom: none; }
-.cal-poster { width: 34px; height: 48px; border-radius: 4px; overflow: hidden; flex: none; background: var(--surface-muted); }
-.cal-title { font-weight: 600; }
-.cal-overview { max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.filter-bar { display: flex; gap: var(--sp-6); padding: 10px 14px; flex-wrap: wrap; align-items: center; }
-.filter-group { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.calendar-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.cal-day {
+  padding: 14px 18px;
+}
+.cal-date {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.cal-ep {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-color, rgba(128, 128, 128, 0.2));
+  flex-wrap: wrap;
+}
+.cal-ep:last-child {
+  border-bottom: none;
+}
+.cal-poster {
+  width: 34px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-muted);
+}
+.cal-title {
+  font-weight: 600;
+}
+.cal-overview {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.filter-bar {
+  display: flex;
+  gap: var(--sp-6);
+  padding: 10px 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-group {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
 /* 搜索框：靠最右，与分类 chip 同行；窄屏自动换行 */
-.search-group { display: flex; gap: var(--sp-1); align-items: center; margin-left: auto; }
-.search-group :deep(.el-input) { width: 220px; }
-.chip { background: transparent; border: 1px solid transparent; border-radius: var(--radius-pill); padding: 4px 12px; cursor: pointer; font-size: var(--fs-body); color: var(--text-strong); transition: background var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth), color var(--dur-base) var(--ease-out-smooth); }
-.chip:hover { background: var(--surface-hover); }
-.chip.on { background: var(--pt-primary-bg); border-color: var(--pt-primary-bg); }
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--sp-3); }
-.rec-card { display: flex; gap: var(--sp-3); padding: 12px; }
-.clickable { cursor: pointer; transition: transform var(--dur-base) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth); }
-.clickable:hover { transform: translateY(-3px); box-shadow: var(--surface-shadow-hover); }
-.poster { width: 92px; height: 132px; border-radius: var(--radius-xs); overflow: hidden; flex: none; background: var(--surface-muted); }
-.info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.t-title { font-weight: 600; font-size: var(--fs-lg); }
-.t-meta { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px; }
-.src { color: var(--pt-primary,#6c5ce7); font-weight: 600; }
-.t-overview { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; flex: 1; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.find-btn { margin-top: 8px; align-self: flex-start; }
+.search-group {
+  display: flex;
+  gap: var(--sp-1);
+  align-items: center;
+  margin-left: auto;
+}
+.search-group :deep(.el-input) {
+  width: 220px;
+}
+.chip {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--fs-body);
+  color: var(--text-strong);
+  transition:
+    background var(--dur-base) var(--ease-out-smooth),
+    border-color var(--dur-base) var(--ease-out-smooth),
+    color var(--dur-base) var(--ease-out-smooth);
+}
+.chip:hover {
+  background: var(--surface-hover);
+}
+.chip.on {
+  background: var(--pt-primary-bg);
+  border-color: var(--pt-primary-bg);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-3);
+}
+.rec-card {
+  display: flex;
+  gap: var(--sp-3);
+  padding: 12px;
+}
+.clickable {
+  cursor: pointer;
+  transition:
+    transform var(--dur-base) var(--ease-out-smooth),
+    box-shadow var(--dur-base) var(--ease-out-smooth),
+    border-color var(--dur-base) var(--ease-out-smooth);
+}
+.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--surface-shadow-hover);
+}
+.poster {
+  width: 92px;
+  height: 132px;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-muted);
+}
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.t-title {
+  font-weight: 600;
+  font-size: var(--fs-lg);
+}
+.t-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.src {
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+}
+.t-overview {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 6px;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.find-btn {
+  margin-top: 8px;
+  align-self: flex-start;
+}
 /* 类型/产地行：与详情页一致的小标签；统一卡片信息层级 */
-.t-tags { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
-.t-country { font-size: var(--fs-xs); color: var(--text-muted); }
-.empty { padding: 40px; text-align: center; }
-.pager { display: flex; align-items: center; justify-content: center; gap: var(--sp-3); padding: 8px 0 4px; }
-.pager .page-info { font-size: var(--fs-xs); }
-.pager .no-more { font-size: var(--fs-xs); }
+.t-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.t-country {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: 8px 0 4px;
+}
+.pager .page-info {
+  font-size: var(--fs-xs);
+}
+.pager .no-more {
+  font-size: var(--fs-xs);
+}
 </style>

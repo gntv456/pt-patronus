@@ -7,7 +7,12 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 interface Project {
-  name: string; path: string; dir: string; file: string; content: string; host_dir: string
+  name: string
+  path: string
+  dir: string
+  file: string
+  content: string
+  host_dir: string
 }
 const projects = ref<Project[]>([])
 const loading = ref(false)
@@ -30,8 +35,11 @@ async function refresh() {
     projects.value = r.projects || []
     scanDir.value = r.scan_dir
     available.value = r.available
-  } catch (e: any) { ElMessage.error(e.message) }
-  finally { loading.value = false }
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function showDetail(p: Project) {
@@ -42,7 +50,9 @@ async function showDetail(p: Project) {
     detailDir.value = p.dir
     editing.value = false
     detailVisible.value = true
-  } catch (e: any) { ElMessage.error(e.message) }
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
 }
 
 async function doAction(p: Project, action: 'up' | 'down' | 'restart' | 'pull') {
@@ -58,10 +68,14 @@ async function doAction(p: Project, action: 'up' | 'down' | 'restart' | 'pull') 
     outputText.value = res.output || (res.ok ? t('dcl.ok') : t('dcl.ko'))
     if (res.ok) ElMessage.success(t('cp.actionOk', { name: labels[action] }))
   } catch (e: any) {
-    if (e !== 'cancel') { outputText.value = e.message; outputVisible.value = true }
-  } finally { actionLoading.value = false }
+    if (e !== 'cancel') {
+      outputText.value = e.message
+      outputVisible.value = true
+    }
+  } finally {
+    actionLoading.value = false
+  }
 }
-
 
 async function saveProject() {
   saveLoading.value = true
@@ -73,11 +87,16 @@ async function saveProject() {
       refresh()
     } else {
       ElMessage.error(t('cp.saveFailed', { err: res.error || t('cp.syntaxErr') }))
-      if (res.output) { outputText.value = res.output; outputVisible.value = true }
+      if (res.output) {
+        outputText.value = res.output
+        outputVisible.value = true
+      }
     }
   } catch (e: any) {
     ElMessage.error(e.message)
-  } finally { saveLoading.value = false }
+  } finally {
+    saveLoading.value = false
+  }
 }
 
 onMounted(() => refresh())
@@ -104,10 +123,18 @@ onMounted(() => refresh())
           </div>
           <div class="project-actions">
             <el-button size="small" link @click="showDetail(p)">{{ t('cp.view') }}</el-button>
-            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'pull')">{{ t('cp.pull') }}</el-button>
-            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'restart')">{{ t('cp.actRestart') }}</el-button>
-            <el-button size="small" type="danger" link :disabled="actionLoading" @click="doAction(p, 'down')">{{ t('cp.actDown') }}</el-button>
-            <el-button size="small" type="primary" link :disabled="actionLoading" @click="doAction(p, 'up')">{{ t('cp.actUp') }}</el-button>
+            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'pull')">{{
+              t('cp.pull')
+            }}</el-button>
+            <el-button size="small" type="warning" link :disabled="actionLoading" @click="doAction(p, 'restart')">{{
+              t('cp.actRestart')
+            }}</el-button>
+            <el-button size="small" type="danger" link :disabled="actionLoading" @click="doAction(p, 'down')">{{
+              t('cp.actDown')
+            }}</el-button>
+            <el-button size="small" type="primary" link :disabled="actionLoading" @click="doAction(p, 'up')">{{
+              t('cp.actUp')
+            }}</el-button>
           </div>
         </div>
         <pre class="project-preview">{{ p.content }}</pre>
@@ -117,9 +144,13 @@ onMounted(() => refresh())
 
     <el-drawer v-model="detailVisible" :title="t('cp.projectTitle', { name: detailName })" size="60%" direction="rtl">
       <div class="detail-toolbar">
-        <el-button v-if="!editing" size="small" type="primary" @click="editing = true">{{ t('common.edit') }}</el-button>
+        <el-button v-if="!editing" size="small" type="primary" @click="editing = true">{{
+          t('common.edit')
+        }}</el-button>
         <template v-else>
-          <el-button size="small" type="success" :loading="saveLoading" @click="saveProject">{{ t('common.save') }}</el-button>
+          <el-button size="small" type="success" :loading="saveLoading" @click="saveProject">{{
+            t('common.save')
+          }}</el-button>
           <el-button size="small" @click="editing = false">{{ t('common.cancel') }}</el-button>
         </template>
       </div>
@@ -133,21 +164,96 @@ onMounted(() => refresh())
 </template>
 
 <style scoped>
-.compose-projects { padding: 0 4px; }
-.not-available { padding: 24px; text-align: center; }
-.not-available p { margin: 6px 0; }
-.hint { font-size: var(--fs-body); color: var(--text-secondary, #888); }
-.hint code { background: rgba(0,0,0,.08); padding: 2px 6px; border-radius: var(--radius-2xs); font-size: var(--fs-xs); }
-.list-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: var(--fs-body); color: var(--text-secondary,#888); }
-.project-card { padding: 14px 16px; margin-bottom: 12px; }
-.project-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.project-name { font-size: var(--fs-lg); margin-right: 8px; }
-.project-file { font-size: var(--fs-2xs); padding: 1px 6px; border-radius: var(--radius-2xs); background: rgba(0,0,0,.08); font-family: monospace; margin-right: 8px; }
-.project-host { font-size: var(--fs-2xs); color: var(--text-tertiary,#aaa); font-family: monospace; }
-.project-actions { display: flex; gap: var(--sp-1); }
-.project-preview { font-size: var(--fs-xs); font-family: monospace; color: var(--text-secondary,#888); max-height: 120px; overflow: auto; margin: 0; white-space: pre-wrap; background: rgba(0,0,0,.04); padding: 8px; border-radius: var(--radius-2xs); }
-.detail-toolbar { padding: 0 0 12px; display: flex; gap: var(--sp-2); }
-.detail-editor :deep(textarea) { font-family: monospace; font-size: var(--fs-body); }
-.detail-content, .output-content { font-size: var(--fs-body); font-family: monospace; white-space: pre-wrap; padding: 12px; }
-.empty { text-align: center; padding: 32px; color: var(--text-tertiary, #aaa); }
+.compose-projects {
+  padding: 0 4px;
+}
+.not-available {
+  padding: 24px;
+  text-align: center;
+}
+.not-available p {
+  margin: 6px 0;
+}
+.hint {
+  font-size: var(--fs-body);
+  color: var(--text-secondary, #888);
+}
+.hint code {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 2px 6px;
+  border-radius: var(--radius-2xs);
+  font-size: var(--fs-xs);
+}
+.list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  font-size: var(--fs-body);
+  color: var(--text-secondary, #888);
+}
+.project-card {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.project-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.project-name {
+  font-size: var(--fs-lg);
+  margin-right: 8px;
+}
+.project-file {
+  font-size: var(--fs-2xs);
+  padding: 1px 6px;
+  border-radius: var(--radius-2xs);
+  background: rgba(0, 0, 0, 0.08);
+  font-family: monospace;
+  margin-right: 8px;
+}
+.project-host {
+  font-size: var(--fs-2xs);
+  color: var(--text-tertiary, #aaa);
+  font-family: monospace;
+}
+.project-actions {
+  display: flex;
+  gap: var(--sp-1);
+}
+.project-preview {
+  font-size: var(--fs-xs);
+  font-family: monospace;
+  color: var(--text-secondary, #888);
+  max-height: 120px;
+  overflow: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 8px;
+  border-radius: var(--radius-2xs);
+}
+.detail-toolbar {
+  padding: 0 0 12px;
+  display: flex;
+  gap: var(--sp-2);
+}
+.detail-editor :deep(textarea) {
+  font-family: monospace;
+  font-size: var(--fs-body);
+}
+.detail-content,
+.output-content {
+  font-size: var(--fs-body);
+  font-family: monospace;
+  white-space: pre-wrap;
+  padding: 12px;
+}
+.empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-tertiary, #aaa);
+}
 </style>

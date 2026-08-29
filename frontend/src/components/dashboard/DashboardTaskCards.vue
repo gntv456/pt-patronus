@@ -22,7 +22,14 @@ interface TaskCard {
 
 const cards = ref<TaskCard[]>([
   { key: 'assess', title: t('dt2.assess'), value: '—', hint: t('dt2.assessHint'), tone: 'info', route: 'assessment' },
-  { key: 'transfer', title: t('dt2.transfer'), value: '—', hint: t('dt2.transferHint'), tone: 'info', route: 'transfer' },
+  {
+    key: 'transfer',
+    title: t('dt2.transfer'),
+    value: '—',
+    hint: t('dt2.transferHint'),
+    tone: 'info',
+    route: 'transfer',
+  },
   { key: 'brush', title: t('dt2.brush'), value: '—', hint: t('dt2.brushHint'), tone: 'info', route: 'brushflow' },
   { key: 'health', title: t('dt2.health'), value: '—', hint: t('dt2.healthHint'), tone: 'info', route: 'savept' },
   { key: 'reseed', title: t('dt2.reseed'), value: '—', hint: t('dt2.reseedHint'), tone: 'info', route: 'reseed' },
@@ -141,14 +148,7 @@ onMounted(() => {
       <button type="button" class="refresh" @click="refresh">{{ t('common.refresh') }}</button>
     </div>
     <div class="grid">
-      <button
-        v-for="c in cards"
-        :key="c.key"
-        type="button"
-        class="card"
-        :class="'tone-' + c.tone"
-        @click="open(c)"
-      >
+      <button v-for="c in cards" :key="c.key" type="button" class="card" :class="'tone-' + c.tone" @click="open(c)">
         <span class="title">{{ c.title }}</span>
         <span class="value">{{ c.value }}</span>
         <span class="hint">{{ c.hint }}</span>
@@ -158,15 +158,39 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.task-cards { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: baseline; gap: var(--sp-2); flex-wrap: wrap; }
-.head h3 { margin: 0; font-size: var(--fs-lg); }
-.head p { margin: 0; color: var(--text-muted); font-size: var(--fs-xs); flex: 1; }
-.refresh {
-  border: none; background: var(--pt-primary-bg); color: var(--text-strong);
-  border-radius: var(--radius-pill); padding: 4px 10px; cursor: pointer; font-size: var(--fs-xs);
+.task-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
-.refresh:hover { background: var(--pt-primary-bg); }
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.head h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.head p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  flex: 1;
+}
+.refresh {
+  border: none;
+  background: var(--pt-primary-bg);
+  color: var(--text-strong);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+.refresh:hover {
+  background: var(--pt-primary-bg);
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -182,14 +206,40 @@ onMounted(() => {
   border: 1px solid var(--pt-primary-bg);
   background: var(--pt-primary-bg);
   color: var(--text-strong);
-  cursor: pointer; transition: transform var(--dur-base) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth), background var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth)
+  cursor: pointer;
+  transition:
+    transform var(--dur-base) var(--ease-out-smooth),
+    box-shadow var(--dur-base) var(--ease-out-smooth),
+    background var(--dur-base) var(--ease-out-smooth),
+    border-color var(--dur-base) var(--ease-out-smooth);
 }
-.card:hover { background: var(--pt-primary-bg); }
-.card .title { font-size: var(--fs-xs); color: var(--text-muted); }
-.card .value { font-size: var(--fs-title); font-weight: 700; line-height: 1.2; }
-.card .hint { font-size: var(--fs-2xs); color: var(--text-muted); }
-.tone-danger { border-color: var(--pt-danger-bg); background: var(--pt-danger-bg); }
-.tone-warn { border-color: var(--pt-warn-bg); background: var(--pt-warn-bg); }
-.tone-ok { border-color: var(--pt-success-bg); }
-.tone-info { }
+.card:hover {
+  background: var(--pt-primary-bg);
+}
+.card .title {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.card .value {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.card .hint {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted);
+}
+.tone-danger {
+  border-color: var(--pt-danger-bg);
+  background: var(--pt-danger-bg);
+}
+.tone-warn {
+  border-color: var(--pt-warn-bg);
+  background: var(--pt-warn-bg);
+}
+.tone-ok {
+  border-color: var(--pt-success-bg);
+}
+.tone-info {
+}
 </style>

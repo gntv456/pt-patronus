@@ -143,15 +143,11 @@ export interface WorkflowStats {
 }
 
 export const workflowApi = {
-  list: () =>
-    http.get<{ workflows: Workflow[] }>('/workflows').then((r) => r.data.workflows ?? []),
+  list: () => http.get<{ workflows: Workflow[] }>('/workflows').then((r) => r.data.workflows ?? []),
   get: (id: number) => http.get<Workflow>(`/workflows/${id}`).then((r) => r.data),
-  actions: () =>
-    http.get<{ actions: NodeInfo[] }>('/workflows/actions').then((r) => r.data.actions ?? []),
+  actions: () => http.get<{ actions: NodeInfo[] }>('/workflows/actions').then((r) => r.data.actions ?? []),
   templates: () =>
-    http
-      .get<{ templates: WorkflowTemplate[] }>('/workflows/templates')
-      .then((r) => r.data.templates ?? []),
+    http.get<{ templates: WorkflowTemplate[] }>('/workflows/templates').then((r) => r.data.templates ?? []),
   stats: () => http.get<WorkflowStats>('/workflows/stats').then((r) => r.data),
   create: (data: WorkflowInput) => http.post<Workflow>('/workflows', data).then((r) => r.data),
   update: (id: number, data: WorkflowInput) => http.put<Workflow>(`/workflows/${id}`, data).then((r) => r.data),
@@ -162,8 +158,8 @@ export const workflowApi = {
   disable: (id: number) => http.post(`/workflows/${id}/disable`).then((r) => r.data),
   reset: (id: number) => http.post(`/workflows/${id}/reset`).then((r) => r.data),
   runs: (workflowId: number, limit = 20) =>
-    http.get<{ runs: WorkflowRun[] }>('/workflow-runs', { params: { workflow_id: workflowId, limit } }).then(
-      (r) => r.data.runs ?? [],
-    ),
+    http
+      .get<{ runs: WorkflowRun[] }>('/workflow-runs', { params: { workflow_id: workflowId, limit } })
+      .then((r) => r.data.runs ?? []),
   runDetail: (rid: number) => http.get<WorkflowRun>(`/workflow-runs/${rid}`).then((r) => r.data),
 }

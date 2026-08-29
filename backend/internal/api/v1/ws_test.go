@@ -15,7 +15,7 @@ import (
 
 func TestWSHandlerRejectsMissingTicket(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewWSHandler(nil, auth.NewTicketStore(), nil) // bc=nil：拒绝分支不触达
+	h := NewWSHandler(nil, auth.NewTicketStore(), nil, false) // bc=nil：拒绝分支不触达
 	r := gin.New()
 	r.GET("/ws", h.Handle)
 	srv := httptest.NewServer(r)
@@ -35,7 +35,7 @@ func TestWSHandlerRejectsMissingTicket(t *testing.T) {
 
 func TestWSHandlerRejectsBadTicket(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewWSHandler(nil, auth.NewTicketStore(), nil)
+	h := NewWSHandler(nil, auth.NewTicketStore(), nil, false)
 	r := gin.New()
 	r.GET("/ws", h.Handle)
 	srv := httptest.NewServer(r)
@@ -50,5 +50,20 @@ func TestWSHandlerRejectsBadTicket(t *testing.T) {
 	}
 	if resp != nil {
 		resp.Body.Close()
+	}
+}
+
+// TestWS_OriginFailClosedRelease release 模式下未配置白名单：带 Origin 的浏览器
+// 连接必须被拒（CSWSH fail-closed）；无 Origin 的非浏览器客户端照常放行。
+func TestWS_OriginFailClosedRelease(t *testing.T) {
+	h := NewWSHandler(nil, auth.NewTicketStore(), nil, true)
+	req := httptest.NewRequest("GET", "/ws?ticket=x", nil)
+	req.Header.Set("Origin", "https://evil.example")
+	if h.checkOrigin(req) {
+		t.Fatal("release + empty whitelist: browser Origin must be rejected")
+	}
+	req2 := httptest.NewRequest("GET", "/ws?ticket=x", nil)
+	if !h.checkOrigin(req2) {
+		t.Fatal("non-browser (no Origin) must always pass")
 	}
 }

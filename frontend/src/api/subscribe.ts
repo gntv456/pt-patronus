@@ -52,11 +52,26 @@ export interface GlobalDefaults {
 }
 
 export const subscribeApi = {
-  list: () =>
-    http.get<{ subscriptions: Subscription[] }>('/subscriptions').then((r) => r.data.subscriptions ?? []),
+  list: () => http.get<{ subscriptions: Subscription[] }>('/subscriptions').then((r) => r.data.subscriptions ?? []),
   create: (data: SubInput) => http.post<Subscription>('/subscriptions', data).then((r) => r.data),
-  update: (id: number, patch: Partial<Pick<Subscription, 'resolution' | 'status' | 'downloader_id' | 'save_path' | 'enable_rating_guard' | 'best_version' | 'best_version_full' | 'official_only' | 'promo_types' | 'site_ids'>>) =>
-    http.put<Subscription>(`/subscriptions/${id}`, patch).then((r) => r.data),
+  update: (
+    id: number,
+    patch: Partial<
+      Pick<
+        Subscription,
+        | 'resolution'
+        | 'status'
+        | 'downloader_id'
+        | 'save_path'
+        | 'enable_rating_guard'
+        | 'best_version'
+        | 'best_version_full'
+        | 'official_only'
+        | 'promo_types'
+        | 'site_ids'
+      >
+    >,
+  ) => http.put<Subscription>(`/subscriptions/${id}`, patch).then((r) => r.data),
   remove: (id: number) => http.delete(`/subscriptions/${id}`).then((r) => r.data),
   check: (id: number) =>
     http.post<{ ok: boolean; pushed: number; error?: string }>(`/subscriptions/${id}/check`).then((r) => r.data),
@@ -69,7 +84,10 @@ export const subscribeApi = {
   // 批量操作（对标 MSaber）：op=update(patch 字段级编辑)/check(重新搜索)/delete(取消)。
   // 逐条执行单条失败不影响其余，返回成功/失败汇总与失败明细。
   batch: (ids: number[], op: 'update' | 'check' | 'delete', patch?: SubInput) =>
-    http.post<{ total: number; succeeded: number; failed: number; failures: { id: number; error: string }[] }>(
-      '/subscriptions/batch', { ids, op, patch },
-    ).then((r) => r.data),
+    http
+      .post<{ total: number; succeeded: number; failed: number; failures: { id: number; error: string }[] }>(
+        '/subscriptions/batch',
+        { ids, op, patch },
+      )
+      .then((r) => r.data),
 }

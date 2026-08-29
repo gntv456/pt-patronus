@@ -33,8 +33,12 @@ const levelColor: Record<string, string> = {
       </div>
       <div class="alert-actions">
         <el-button v-if="!a.read" size="small" text @click="emit('read', a)">{{ t('al.markRead') }}</el-button>
-        <el-button v-if="!a.acknowledged_at" size="small" text type="primary" @click="emit('ack', a)">{{ t('common.confirm') }}</el-button>
-        <el-button v-if="!a.resolved_at" size="small" text type="warning" @click="emit('silence', a)">{{ t('al.silence') }}</el-button>
+        <el-button v-if="!a.acknowledged_at" size="small" text type="primary" @click="emit('ack', a)">{{
+          t('common.confirm')
+        }}</el-button>
+        <el-button v-if="!a.resolved_at" size="small" text type="warning" @click="emit('silence', a)">{{
+          t('al.silence')
+        }}</el-button>
         <el-button size="small" text type="danger" @click="emit('del', a)">{{ t('common.delete') }}</el-button>
       </div>
     </div>

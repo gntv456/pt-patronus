@@ -63,7 +63,12 @@ export function shQuote(v: string) {
 
 // basenameOf 取路径末段（默认 app）。
 export function basenameOf(path: string) {
-  return (path || '/opt/app').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || 'app'
+  return (
+    (path || '/opt/app')
+      .replace(/[\\/]+$/, '')
+      .split(/[\\/]/)
+      .pop() || 'app'
+  )
 }
 
 export function nowTime() {

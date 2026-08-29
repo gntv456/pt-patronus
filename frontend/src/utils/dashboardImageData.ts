@@ -13,7 +13,12 @@ export function buildNumericFields(d: DashboardShareData, config: DashboardExpor
     { key: 'bonus', label: '总魔力', color: '#f7971e', value: `${Math.round(d.totals.bonus)}` },
     { key: 'ratio', label: '总分享率', color: '#e74c3c', value: totalRatio.toFixed(2) },
     { key: 'uploadCount', label: '总发布数', color: '#9b59b6', value: `${sum(d.sites, (s) => s.uploads)}` },
-    { key: 'bonusPerHour', label: '总时魔/h', color: '#e67e22', value: sum(d.sites, (s) => s.bonus_per_hour).toFixed(1) },
+    {
+      key: 'bonusPerHour',
+      label: '总时魔/h',
+      color: '#e67e22',
+      value: sum(d.sites, (s) => s.bonus_per_hour).toFixed(1),
+    },
   ]
   const f = config.fields as Record<string, boolean>
   return all.filter((m) => f[m.key])
@@ -116,10 +121,24 @@ export function layout(d: DashboardShareData, config: DashboardExportConfig) {
   const footerY = totalH - 30
 
   return {
-    numeric, gridRowH, gridY,
-    champions, rankRowH, rankDividerY, rankTitleY, rankGridY,
-    earliest, earliestY, siteRowY,
-    viewSites, SITE_ROW_H, siteDividerY, siteTitleY, siteGridY,
-    headDividerY, totalH, footerY,
+    numeric,
+    gridRowH,
+    gridY,
+    champions,
+    rankRowH,
+    rankDividerY,
+    rankTitleY,
+    rankGridY,
+    earliest,
+    earliestY,
+    siteRowY,
+    viewSites,
+    SITE_ROW_H,
+    siteDividerY,
+    siteTitleY,
+    siteGridY,
+    headDividerY,
+    totalH,
+    footerY,
   }
 }

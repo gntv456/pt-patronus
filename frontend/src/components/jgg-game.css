@@ -82,9 +82,15 @@
   animation: winpop 0.5s ease;
 }
 @keyframes winpop {
-  0% { transform: scale(1.04); }
-  50% { transform: scale(1.12); }
-  100% { transform: scale(1.06); }
+  0% {
+    transform: scale(1.04);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1.06);
+  }
 }
 .p-icon {
   font-size: var(--fs-hero);
@@ -129,7 +135,9 @@
   animation: rot 0.8s linear infinite;
 }
 @keyframes rot {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 /* 结果 */
 .result {
@@ -141,12 +149,26 @@
   align-items: center;
   font-size: var(--fs-body);
 }
-.result.win { background: var(--pt-success-bg); }
-.result.lose { background: var(--pt-danger-bg); }
-.badge { font-weight: 800; }
-.r-prize { color: #ffd76a; font-weight: 700; }
-.r-amt { color: var(--pt-warn); font-weight: 700; }
-.r-msg { width: 100%; }
+.result.win {
+  background: var(--pt-success-bg);
+}
+.result.lose {
+  background: var(--pt-danger-bg);
+}
+.badge {
+  font-weight: 800;
+}
+.r-prize {
+  color: #ffd76a;
+  font-weight: 700;
+}
+.r-amt {
+  color: var(--pt-warn);
+  font-weight: 700;
+}
+.r-msg {
+  width: 100%;
+}
 
 /* 连抽按钮 */
 .multi {
@@ -188,16 +210,29 @@
   background: var(--pt-success-bg);
   border: 1px solid var(--pt-success-bg);
 }
-.bulk-head { font-weight: 800; font-size: var(--fs-body); margin-bottom: 8px; color: var(--pt-success); }
+.bulk-head {
+  font-weight: 800;
+  font-size: var(--fs-body);
+  margin-bottom: 8px;
+  color: var(--pt-success);
+}
 .bulk-row {
   display: flex;
   justify-content: space-between;
   padding: 3px 2px;
   font-size: var(--fs-body);
 }
-.bulk-row.muted { color: #9aa5b1; }
-.bulk-cnt { font-weight: 800; color: #ffd76a; }
-.bulk-foot { margin-top: 8px; font-size: var(--fs-2xs); }
+.bulk-row.muted {
+  color: #9aa5b1;
+}
+.bulk-cnt {
+  font-weight: 800;
+  color: #ffd76a;
+}
+.bulk-foot {
+  margin-top: 8px;
+  font-size: var(--fs-2xs);
+}
 
 /* 抽奖历史 */
 .history {
@@ -207,7 +242,11 @@
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 2px 8px rgba(31, 38, 135, 0.06);
 }
-.hist-title { font-weight: 800; font-size: var(--fs-body); margin-bottom: 8px; }
+.hist-title {
+  font-weight: 800;
+  font-size: var(--fs-body);
+  margin-bottom: 8px;
+}
 .hist-row {
   display: flex;
   align-items: center;
@@ -216,10 +255,21 @@
   font-size: var(--fs-xs);
   border-bottom: 1px dashed rgba(0, 0, 0, 0.06);
 }
-.hist-row:last-child { border-bottom: none; }
-.hist-row .muted { color: #9aa5b1; }
-.hist-cost { margin-left: auto; color: var(--pt-danger); font-weight: 700; }
-.hist-time { font-size: var(--fs-2xs); white-space: nowrap; }
+.hist-row:last-child {
+  border-bottom: none;
+}
+.hist-row .muted {
+  color: #9aa5b1;
+}
+.hist-cost {
+  margin-left: auto;
+  color: var(--pt-danger);
+  font-weight: 700;
+}
+.hist-time {
+  font-size: var(--fs-2xs);
+  white-space: nowrap;
+}
 
 /* 暗色主题：还原深色玻璃风格（亮色液态玻璃为默认基准） */
 :root.dark .stat-tile {

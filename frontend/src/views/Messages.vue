@@ -25,9 +25,7 @@ const sites = computed(() => {
   return [...m].map(([id, name]) => ({ id, name }))
 })
 const filtered = computed(() =>
-  selectedSiteIds.value.length
-    ? results.value.filter((r) => selectedSiteIds.value.includes(r.site_id))
-    : results.value,
+  selectedSiteIds.value.length ? results.value.filter((r) => selectedSiteIds.value.includes(r.site_id)) : results.value,
 )
 
 const mailboxes: { key: Mailbox; label: string }[] = [
@@ -53,12 +51,17 @@ async function load(refresh = false) {
   loading.value = true
   results.value = []
   try {
-    await messageApi.streamAll(mailbox.value, refresh, (r) => {
-      // 流式逐站追加：同 site_id 覆盖（刷新），否则追加。Vue 响应式即时渲染"加载一个显示一个"。
-      const idx = results.value.findIndex((x) => x.site_id === r.site_id)
-      if (idx >= 0) results.value[idx] = r
-      else results.value.push(r)
-    }, ctrl.signal)
+    await messageApi.streamAll(
+      mailbox.value,
+      refresh,
+      (r) => {
+        // 流式逐站追加：同 site_id 覆盖（刷新），否则追加。Vue 响应式即时渲染"加载一个显示一个"。
+        const idx = results.value.findIndex((x) => x.site_id === r.site_id)
+        if (idx >= 0) results.value[idx] = r
+        else results.value.push(r)
+      },
+      ctrl.signal,
+    )
   } catch (e: unknown) {
     if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('messages.loadFailed'))
   } finally {
@@ -144,7 +147,13 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
 
     <div class="tabs glass">
-      <button v-for="mb in mailboxes" :key="mb.key" class="tab" :class="{ on: mailbox === mb.key }" @click="switchMailbox(mb.key)">
+      <button
+        v-for="mb in mailboxes"
+        :key="mb.key"
+        class="tab"
+        :class="{ on: mailbox === mb.key }"
+        @click="switchMailbox(mb.key)"
+      >
         {{ mb.label }}
       </button>
     </div>
@@ -157,10 +166,19 @@ onUnmounted(() => abortCtrl?.abort())
           <span v-else-if="!r.messages.length" class="text-muted">{{ t('messages.noMessages') }}</span>
         </div>
         <div class="msg-list">
-          <div v-for="m in r.messages" :key="m.id" class="msg" :class="{ unread: !m.is_read }" @click="openDetail(m)">
+          <div
+            v-a11y-button
+            v-for="m in r.messages"
+            :key="m.id"
+            class="msg"
+            :class="{ unread: !m.is_read }"
+            @click="openDetail(m)"
+          >
             <span class="dot" v-if="!m.is_read"></span>
             <div class="msg-main">
-              <div class="msg-title">{{ m.title }}<span v-if="m.subtitle" class="sub"> - {{ m.subtitle }}</span></div>
+              <div class="msg-title">
+                {{ m.title }}<span v-if="m.subtitle" class="sub"> - {{ m.subtitle }}</span>
+              </div>
               <div class="msg-meta">{{ m.sender }} · {{ m.date }}</div>
             </div>
           </div>
@@ -174,10 +192,20 @@ onUnmounted(() => abortCtrl?.abort())
       :description="selectedSiteIds.length === 0 ? t('messages.emptyDesc') : t('messages.emptySiteDesc')"
     />
 
-    <el-drawer :model-value="!!detail" @update:model-value="(v: boolean) => { if (!v) detail = null }" :title="detail?.title || ''" size="45%">
+    <el-drawer
+      :model-value="!!detail"
+      @update:model-value="
+        (v: boolean) => {
+          if (!v) detail = null
+        }
+      "
+      :title="detail?.title || ''"
+      size="45%"
+    >
       <div v-if="detail" v-loading="detailLoading">
         <div class="detail-meta">
-          <span>{{ detail.sender }}</span> · <span>{{ detail.date }}</span> · <span class="text-muted">{{ detail.site_name }}</span>
+          <span>{{ detail.sender }}</span> · <span>{{ detail.date }}</span> ·
+          <span class="text-muted">{{ detail.site_name }}</span>
         </div>
         <div class="detail-body">{{ detailContent || t('messages.noContent') }}</div>
         <div class="detail-actions">
@@ -198,30 +226,138 @@ onUnmounted(() => abortCtrl?.abort())
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.head-tools { display: flex; align-items: center; gap: var(--sp-2); }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.tabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); padding: 8px; }
-.tab { background: transparent; border: 1px solid transparent; border-radius: var(--radius-xs); padding: 6px 16px; cursor: pointer; font-size: var(--fs-md); color: var(--text-strong); transition: all var(--dur-base) var(--ease-out-smooth); }
-.tab:hover { background: var(--surface-muted); }
-.tab.on { background: var(--pt-primary-bg); color: var(--pt-primary,#6c5ce7); font-weight: 600; }
-.groups { display: flex; flex-direction: column; gap: var(--sp-3); }
-.group { padding: 14px; }
-.group-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 8px; }
-.site-name { font-weight: 600; }
-.err-tag { font-size: var(--fs-xs); color: var(--pt-danger); }
-.msg-list { display: flex; flex-direction: column; gap: var(--sp-1); }
-.msg { display: flex; align-items: center; gap: var(--sp-2); padding: 8px 10px; border-radius: var(--radius-xs); cursor: pointer; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
-.msg:hover { background: var(--pt-primary-bg); }
-.msg.unread { background: var(--pt-primary-bg); font-weight: 600; }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pt-primary,#6c5ce7); flex: none; }
-.msg-main { flex: 1; min-width: 0; }
-.msg-title { font-size: var(--fs-md); }
-.msg-title .sub { font-weight: 400; color: var(--text-muted); font-size: var(--fs-xs); }
-.msg-meta { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px; }
-.detail-meta { font-size: var(--fs-body); color: var(--text-muted); margin-bottom: 12px; }
-.detail-body { font-size: var(--fs-md); line-height: 1.7; white-space: pre-wrap; word-break: break-word; min-height: 120px; }
-.detail-actions { margin-top: 20px; display: flex; gap: var(--sp-2); }
-.empty { padding: 40px; text-align: center; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.head-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  padding: 8px;
+}
+.tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-xs);
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: var(--fs-md);
+  color: var(--text-strong);
+  transition: all var(--dur-base) var(--ease-out-smooth);
+}
+.tab:hover {
+  background: var(--surface-muted);
+}
+.tab.on {
+  background: var(--pt-primary-bg);
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+}
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.group {
+  padding: 14px;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: 8px;
+}
+.site-name {
+  font-weight: 600;
+}
+.err-tag {
+  font-size: var(--fs-xs);
+  color: var(--pt-danger);
+}
+.msg-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.msg {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth);
+}
+.msg:hover {
+  background: var(--pt-primary-bg);
+}
+.msg.unread {
+  background: var(--pt-primary-bg);
+  font-weight: 600;
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pt-primary, #6c5ce7);
+  flex: none;
+}
+.msg-main {
+  flex: 1;
+  min-width: 0;
+}
+.msg-title {
+  font-size: var(--fs-md);
+}
+.msg-title .sub {
+  font-weight: 400;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.msg-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.detail-meta {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.detail-body {
+  font-size: var(--fs-md);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 120px;
+}
+.detail-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: var(--sp-2);
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
 </style>

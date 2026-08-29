@@ -52,11 +52,34 @@ const form = ref<Partial<BrushFlowTask>>(defaultForm())
 
 function defaultForm(): Partial<BrushFlowTask> {
   return {
-    name: '', site_id: 0, downloader_id: 0, enabled: true,
-    keyword: '', category: '', min_size_mb: 0, max_size_mb: 0,
-    min_seeders: 0, max_seeders: 0, free_only: false, paused: false,
-    delete_ratio: 0, delete_seed_hours: 0, delete_upload_mb: 0, delete_files: false, use_share_limit: false, delete_min_up_rate_kb: 0, delete_inactive_hours: 0, delete_logic: 'or', delete_rule_expr: '', max_total_size_gb: 0, delete_max_swarm_seeders: 0, delete_min_swarm_leechers: 0,
-    max_seeds: 10, save_path: '', category_dl: '', filter_groups: '',
+    name: '',
+    site_id: 0,
+    downloader_id: 0,
+    enabled: true,
+    keyword: '',
+    category: '',
+    min_size_mb: 0,
+    max_size_mb: 0,
+    min_seeders: 0,
+    max_seeders: 0,
+    free_only: false,
+    paused: false,
+    delete_ratio: 0,
+    delete_seed_hours: 0,
+    delete_upload_mb: 0,
+    delete_files: false,
+    use_share_limit: false,
+    delete_min_up_rate_kb: 0,
+    delete_inactive_hours: 0,
+    delete_logic: 'or',
+    delete_rule_expr: '',
+    max_total_size_gb: 0,
+    delete_max_swarm_seeders: 0,
+    delete_min_swarm_leechers: 0,
+    max_seeds: 10,
+    save_path: '',
+    category_dl: '',
+    filter_groups: '',
   }
 }
 
@@ -83,7 +106,11 @@ function openEdit(t: BrushFlowTask) {
 
 // 过滤规则组：表单以 | 分隔字符串提交，UI 用多选拆分回填。
 const filterGroupArray = computed<string[]>({
-  get: () => (form.value.filter_groups || '').split('|').map((s) => s.trim()).filter(Boolean),
+  get: () =>
+    (form.value.filter_groups || '')
+      .split('|')
+      .map((s) => s.trim())
+      .filter(Boolean),
   set: (v: string[]) => {
     form.value.filter_groups = v.join('|')
   },
@@ -168,9 +195,12 @@ function fmtBytes(n: number) {
 
 onMounted(() => {
   load()
-  filterApi.groups().then((gs) => {
-    filterGroups.value = gs.map((g) => g.name)
-  }).catch(() => [])
+  filterApi
+    .groups()
+    .then((gs) => {
+      filterGroups.value = gs.map((g) => g.name)
+    })
+    .catch(() => [])
 })
 </script>
 
@@ -203,9 +233,18 @@ onMounted(() => {
         </div>
 
         <div class="stats">
-          <div class="stat"><span class="sv">{{ task.total_added }}</span><span class="sl">{{ t('brushflow.statAdded') }}</span></div>
-          <div class="stat"><span class="sv">{{ task.total_deleted }}</span><span class="sl">{{ t('common.delete') }}</span></div>
-          <div class="stat"><span class="sv">{{ fmtBytes(task.total_upload) }}</span><span class="sl">{{ t('contract.uploadShort') }}</span></div>
+          <div class="stat">
+            <span class="sv">{{ task.total_added }}</span
+            ><span class="sl">{{ t('brushflow.statAdded') }}</span>
+          </div>
+          <div class="stat">
+            <span class="sv">{{ task.total_deleted }}</span
+            ><span class="sl">{{ t('common.delete') }}</span>
+          </div>
+          <div class="stat">
+            <span class="sv">{{ fmtBytes(task.total_upload) }}</span
+            ><span class="sl">{{ t('contract.uploadShort') }}</span>
+          </div>
         </div>
 
         <div v-if="task.last_error" class="err">⚠ {{ task.last_error }}</div>
@@ -228,9 +267,16 @@ onMounted(() => {
       </EmptyState>
     </div>
 
-    <el-dialog v-model="showForm" :title="editing ? t('brushflow.editTitle') : t('brushflow.newTitle')" width="640px" top="6vh">
+    <el-dialog
+      v-model="showForm"
+      :title="editing ? t('brushflow.editTitle') : t('brushflow.newTitle')"
+      width="640px"
+      top="6vh"
+    >
       <el-form :model="form" label-width="110px" label-position="right">
-        <el-form-item :label="t('rss.f.name')"><el-input v-model="form.name" :placeholder="t('brushflow.f.nameHint')" /></el-form-item>
+        <el-form-item :label="t('rss.f.name')"
+          ><el-input v-model="form.name" :placeholder="t('brushflow.f.nameHint')"
+        /></el-form-item>
         <el-form-item :label="t('contract.f.site')">
           <el-select v-model="form.site_id">
             <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
@@ -242,7 +288,9 @@ onMounted(() => {
           </el-select>
         </el-form-item>
         <el-form-item :label="t('rss.f.enabled')"><el-switch v-model="form.enabled" /></el-form-item>
-        <el-form-item :label="t('brushflow.f.keyword')"><el-input v-model="form.keyword" :placeholder="t('brushflow.f.kwHint')" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.keyword')"
+          ><el-input v-model="form.keyword" :placeholder="t('brushflow.f.kwHint')"
+        /></el-form-item>
         <el-form-item :label="t('rss.f.category')">
           <el-select v-model="form.category" clearable>
             <el-option :label="t('brushflow.cat.all')" value="" />
@@ -268,7 +316,14 @@ onMounted(() => {
         </el-form-item>
         <el-form-item :label="t('brushflow.f.freeOnly')"><el-switch v-model="form.free_only" /></el-form-item>
         <el-form-item :label="t('rss.f.filterGroups')">
-          <el-select v-model="filterGroupArray" multiple collapse-tags collapse-tags-tooltip :placeholder="t('rss.f.filterGroupsHint')" style="width: 100%">
+          <el-select
+            v-model="filterGroupArray"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            :placeholder="t('rss.f.filterGroupsHint')"
+            style="width: 100%"
+          >
             <el-option v-for="g in filterGroups" :key="g" :label="g" :value="g" />
           </el-select>
         </el-form-item>
@@ -280,9 +335,15 @@ onMounted(() => {
           </el-radio-group>
           <span class="hint">{{ t('brushflow.f.exprWins') }}</span>
         </el-form-item>
-        <el-form-item :label="t('brushflow.f.delRatio')"><el-input-number v-model="form.delete_ratio" :min="0" :step="0.1" controls-position="right" /></el-form-item>
-        <el-form-item :label="t('brushflow.f.delSeedHours')"><el-input-number v-model="form.delete_seed_hours" :min="0" :step="0.5" controls-position="right" /></el-form-item>
-        <el-form-item :label="t('brushflow.f.delUpload')"><el-input-number v-model="form.delete_upload_mb" :min="0" controls-position="right" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.delRatio')"
+          ><el-input-number v-model="form.delete_ratio" :min="0" :step="0.1" controls-position="right"
+        /></el-form-item>
+        <el-form-item :label="t('brushflow.f.delSeedHours')"
+          ><el-input-number v-model="form.delete_seed_hours" :min="0" :step="0.5" controls-position="right"
+        /></el-form-item>
+        <el-form-item :label="t('brushflow.f.delUpload')"
+          ><el-input-number v-model="form.delete_upload_mb" :min="0" controls-position="right"
+        /></el-form-item>
         <el-form-item :label="t('brushflow.f.delMinRate')">
           <el-input-number v-model="form.delete_min_up_rate_kb" :min="0" controls-position="right" />
           <span class="hint">{{ t('brushflow.f.delMinRateHint') }}</span>
@@ -292,7 +353,12 @@ onMounted(() => {
           <span class="hint">{{ t('brushflow.f.delInactiveHint') }}</span>
         </el-form-item>
         <el-form-item :label="t('brushflow.f.expr')">
-          <el-input v-model="form.delete_rule_expr" type="textarea" :rows="2" :placeholder="t('brushflow.f.exprPlaceholder')" />
+          <el-input
+            v-model="form.delete_rule_expr"
+            type="textarea"
+            :rows="2"
+            :placeholder="t('brushflow.f.exprPlaceholder')"
+          />
           <span class="hint">{{ t('brushflow.f.exprHint') }}</span>
         </el-form-item>
         <el-form-item :label="t('brushflow.f.maxTotalSize')">
@@ -313,8 +379,12 @@ onMounted(() => {
           <span class="hint">{{ t('brushflow.f.nativeStopHint') }}</span>
         </el-form-item>
         <el-divider content-position="left">{{ t('brushflow.f.concurrency') }}</el-divider>
-        <el-form-item :label="t('brushflow.f.maxSeeds')"><el-input-number v-model="form.max_seeds" :min="1" controls-position="right" /></el-form-item>
-        <el-form-item :label="t('rss.f.savePath')"><el-input v-model="form.save_path" :placeholder="t('brushflow.f.savePathHint')" /></el-form-item>
+        <el-form-item :label="t('brushflow.f.maxSeeds')"
+          ><el-input-number v-model="form.max_seeds" :min="1" controls-position="right"
+        /></el-form-item>
+        <el-form-item :label="t('rss.f.savePath')"
+          ><el-input v-model="form.save_path" :placeholder="t('brushflow.f.savePathHint')"
+        /></el-form-item>
         <el-form-item :label="t('brushflow.f.dlCategory')"><el-input v-model="form.category_dl" /></el-form-item>
       </el-form>
       <template #footer>
@@ -340,33 +410,122 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
-.card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-3); }
-.card-head { display: flex; align-items: center; gap: var(--sp-3); }
-.card-title { flex: 1; min-width: 0; }
-.name { font-weight: 600; font-size: var(--fs-body); }
-.meta { font-size: var(--fs-xs); color: var(--text-muted); }
-.stats { display: flex; gap: var(--sp-2); }
-.stat { flex: 1; background: var(--surface-muted); border-radius: var(--radius-sm); padding: 8px; text-align: center; }
-.sv { display: block; font-weight: 700; font-size: var(--fs-body); }
-.sl { font-size: var(--fs-xs); color: var(--text-muted); }
-.err { font-size: var(--fs-xs); color: var(--pt-danger); }
-.actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
-.range { display: flex; align-items: center; gap: var(--sp-2); }
-.hint { font-size: var(--fs-xs); color: var(--text-muted); }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.sub {
+  margin: -8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-3);
+}
+.card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.card-title {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-weight: 600;
+  font-size: var(--fs-body);
+}
+.meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.stats {
+  display: flex;
+  gap: var(--sp-2);
+}
+.stat {
+  flex: 1;
+  background: var(--surface-muted);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  text-align: center;
+}
+.sv {
+  display: block;
+  font-weight: 700;
+  font-size: var(--fs-body);
+}
+.sl {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.err {
+  font-size: var(--fs-xs);
+  color: var(--pt-danger);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.range {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
 
 /* 刷流卡 staggered 入场 + hover */
-.grid > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
-.grid > *:nth-child(1) { animation-delay: 0ms; }
-.grid > *:nth-child(2) { animation-delay: 50ms; }
-.grid > *:nth-child(3) { animation-delay: 100ms; }
-.grid > *:nth-child(4) { animation-delay: 150ms; }
-.grid > *:nth-child(5) { animation-delay: 200ms; }
-.grid > *:nth-child(n+6) { animation-delay: 250ms; }
-.card { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
-.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.grid > * {
+  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
+}
+.grid > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.grid > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.grid > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.grid > *:nth-child(4) {
+  animation-delay: 150ms;
+}
+.grid > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+.grid > *:nth-child(n + 6) {
+  animation-delay: 250ms;
+}
+.card {
+  transition:
+    transform var(--dur-base) var(--ease-out-spring),
+    box-shadow var(--dur-base) var(--ease-out-smooth);
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
 </style>

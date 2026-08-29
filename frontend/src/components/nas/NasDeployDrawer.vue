@@ -61,24 +61,14 @@ const emit = defineEmits<{
               @update:model-value="emit('update:configId', $event)"
               @change="emit('loadProfile')"
             >
-              <el-option
-                v-for="p in profiles"
-                :key="p.id"
-                :label="`${p.name} · ${p.env || 'default'}`"
-                :value="p.id"
-              />
+              <el-option v-for="p in profiles" :key="p.id" :label="`${p.name} · ${p.env || 'default'}`" :value="p.id" />
             </el-select>
             <el-button @click="emit('saveProfile')">{{ t('ndd.saveProfile') }}</el-button>
           </div>
         </el-form-item>
         <el-form-item :label="t('ndd.servers')" required>
           <el-select v-model="form.targetIds" multiple collapse-tags collapse-tags-tooltip style="width: 100%">
-            <el-option
-              v-for="t in sshTargets"
-              :key="t.id"
-              :label="`${t.name} · ${targetAddr(t)}`"
-              :value="t.id"
-            />
+            <el-option v-for="t in sshTargets" :key="t.id" :label="`${t.name} · ${targetAddr(t)}`" :value="t.id" />
           </el-select>
         </el-form-item>
         <el-form-item :label="t('ndd.repo')" required>
@@ -91,7 +81,13 @@ const emit = defineEmits<{
           <el-input v-model="form.projectDir" placeholder="/opt/app" />
         </el-form-item>
         <el-form-item :label="t('ndd.buildCmd')">
-          <el-input v-model="form.buildCmd" type="textarea" :rows="3" resize="vertical" placeholder="npm install && npm run build" />
+          <el-input
+            v-model="form.buildCmd"
+            type="textarea"
+            :rows="3"
+            resize="vertical"
+            placeholder="npm install && npm run build"
+          />
         </el-form-item>
         <el-form-item :label="t('ndd.serviceName')">
           <el-input v-model="form.serviceName" :placeholder="t('ndd.svcPh')" />

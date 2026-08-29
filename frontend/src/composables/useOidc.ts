@@ -8,8 +8,13 @@ import { oidcApi, type OIDCConfig, type OIDCConfigInput } from '@/api/oidc'
 const callbackURL = `${window.location.origin}/api/v1/auth/oidc/callback`
 const oidcCfg = ref<OIDCConfig | null>(null)
 const oidcForm = ref<OIDCConfigInput>({
-  enabled: false, issuer: '', client_id: '', client_secret: '',
-  scopes: 'openid profile email', display_name: 'OIDC / SSO', frontend_redirect: '/login',
+  enabled: false,
+  issuer: '',
+  client_id: '',
+  client_secret: '',
+  scopes: 'openid profile email',
+  display_name: 'OIDC / SSO',
+  frontend_redirect: '/login',
 })
 const oidcLoading = ref(false)
 const oidcSaving = ref(false)

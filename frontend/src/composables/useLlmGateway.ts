@@ -6,7 +6,10 @@ import { llmGatewayApi, type LLMGatewayConfig } from '@/api/llmGateway'
 
 const gwCfg = ref<LLMGatewayConfig | null>(null)
 const gwForm = ref<{ enabled: boolean; access_token: string; allowed_models: string; max_concurrency: number }>({
-  enabled: false, access_token: '', allowed_models: '', max_concurrency: 4,
+  enabled: false,
+  access_token: '',
+  allowed_models: '',
+  max_concurrency: 4,
 })
 const gwLoading = ref(false)
 const gwSaving = ref(false)
@@ -32,7 +35,10 @@ async function loadLLMGateway() {
 async function saveLLMGateway() {
   gwSaving.value = true
   try {
-    const models = gwForm.value.allowed_models.split(',').map((s) => s.trim()).filter(Boolean)
+    const models = gwForm.value.allowed_models
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
     await llmGatewayApi.setConfig({
       enabled: gwForm.value.enabled,
       access_token: gwForm.value.access_token,

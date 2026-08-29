@@ -113,9 +113,15 @@
   animation: pulse 0.6s ease;
 }
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.04); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 .cover {
   position: absolute;

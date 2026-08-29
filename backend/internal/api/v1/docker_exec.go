@@ -18,17 +18,41 @@ import (
 // DockerExecHandler 通过 Docker Engine API 在容器内打开交互式终端（exec）。
 // 浏览器 WS <-> 后端 <-> docker.sock 的 /exec/{id}/start (hijack raw-stream)。
 type DockerExecHandler struct {
-	local *DockerLocalClient
+	local          *DockerLocalClient
+	allowedOrigins map[string]bool
+	release        bool
 }
 
-func NewDockerExecHandler() *DockerExecHandler {
-	return &DockerExecHandler{local: NewDockerLocalClient()}
+func NewDockerExecHandler(allowedOrigins []string, release bool) *DockerExecHandler {
+	set := make(map[string]bool, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		if o = strings.TrimSpace(o); o != "" && o != "*" {
+			set[o] = true
+		}
+	}
+	return &DockerExecHandler{local: NewDockerLocalClient(), allowedOrigins: set, release: release}
 }
 
 var execUpgrader = websocket.Upgrader{
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	// CheckOrigin 由 handler 实例注入（checkExecOrigin）——exec 是命令执行级能力，
+	// 曾为 `return true` 全放行，HTTP 部署 + 管理员被种恶意页面时可被 CSWSH 开 shell
+	// （安全审计 P2）。release 未配置白名单时 fail-closed，与 ws.go 一致。
+}
+
+// checkExecOrigin 与 ws.go/monitor_terminal.go 同口径：非浏览器（无 Origin）放行；
+// 配置白名单则必须命中；release 未配置白名单时 fail-closed（exec 是命令执行级
+// 能力，CSWSH 借管理员浏览器开 shell 的面必须关掉）。
+func (h *DockerExecHandler) checkExecOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return true
+	}
+	if len(h.allowedOrigins) == 0 {
+		return !h.release
+	}
+	return h.allowedOrigins[origin]
 }
 
 // Handle 是 exec 终端的 WebSocket 入口。
@@ -43,8 +67,10 @@ func (h *DockerExecHandler) Handle(c *gin.Context) {
 	cols := parseIntDefault(c.DefaultQuery("cols", "120"), 120)
 	rows := parseIntDefault(c.DefaultQuery("rows", "32"), 32)
 
-	// 1. 浏览器 WS 升级
-	browserWS, err := execUpgrader.Upgrade(c.Writer, c.Request, nil)
+	// 1. 浏览器 WS 升级（带 Origin 收敛检查）
+	upgrader := execUpgrader
+	upgrader.CheckOrigin = func(r *http.Request) bool { return h.checkExecOrigin(r) }
+	browserWS, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}

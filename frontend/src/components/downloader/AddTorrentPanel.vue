@@ -126,13 +126,7 @@ function removeFile(i: number) {
       <el-button type="primary" :loading="loading" @click="submit">{{ t('common.add') }}</el-button>
     </div>
     <div v-else class="filerow">
-      <el-upload
-        :auto-upload="false"
-        :show-file-list="false"
-        accept=".torrent"
-        multiple
-        :on-change="onUploadChange"
-      >
+      <el-upload :auto-upload="false" :show-file-list="false" accept=".torrent" multiple :on-change="onUploadChange">
         <el-button :loading="loading">{{ t('atp.pickFile') }}</el-button>
       </el-upload>
       <el-button type="primary" :loading="loading" :disabled="!files.length" @click="submit">
@@ -235,8 +229,14 @@ function removeFile(i: number) {
   gap: var(--sp-1) var(--sp-4);
 }
 @media (max-width: 560px) {
-  .grid2 { grid-template-columns: 1fr; }
-  .urlrow, .filerow { align-items: stretch; flex-direction: column; }
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .urlrow,
+  .filerow {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 .grid2 :deep(.el-form-item) {
   margin-bottom: 8px;

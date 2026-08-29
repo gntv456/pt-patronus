@@ -31,7 +31,10 @@ async function start() {
   }
   try {
     await loadScript('/jessibuca/jessibuca.js')
-    const w = window as unknown as { Jessibuca?: new (o: object) => JessibucaPlayer; JessibucaPro?: new (o: object) => JessibucaPlayer }
+    const w = window as unknown as {
+      Jessibuca?: new (o: object) => JessibucaPlayer
+      JessibucaPro?: new (o: object) => JessibucaPlayer
+    }
     const Ctor = w.JessibucaPro || w.Jessibuca
     if (!Ctor) throw new Error(t('rp.notReady'))
     const p = new Ctor({

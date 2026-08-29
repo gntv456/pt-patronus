@@ -11,17 +11,34 @@ export interface NotifySendResult {
 export interface NotifyConfig {
   bark: { enabled: boolean; server: string; key: string; key_configured: boolean }
   telegram: { enabled: boolean; chat_id: string; api_url: string; token: string; token_configured: boolean }
-  qq: { enabled: boolean; app_id: string; openid: string; group_openid: string; app_secret: string; app_secret_configured: boolean }
+  qq: {
+    enabled: boolean
+    app_id: string
+    openid: string
+    group_openid: string
+    app_secret: string
+    app_secret_configured: boolean
+  }
   wechat: {
-    enabled: boolean; account_id: string; target: string; base_url: string
-    bot_token: string; bot_token_configured: boolean
+    enabled: boolean
+    account_id: string
+    target: string
+    base_url: string
+    bot_token: string
+    bot_token_configured: boolean
   }
   webhook: { enabled: boolean; url: string }
   dingtalk: { enabled: boolean; url: string }
   feishu: { enabled: boolean; url: string }
   email: {
-    enabled: boolean; host: string; port: number; username: string
-    password: string; password_configured: boolean; from: string; to: string
+    enabled: boolean
+    host: string
+    port: number
+    username: string
+    password: string
+    password_configured: boolean
+    from: string
+    to: string
   }
   // 批次6 补全渠道（11 个）。
   pushplus: { enabled: boolean; token: string; token_configured: boolean }
@@ -34,7 +51,15 @@ export interface NotifyConfig {
   lark: { enabled: boolean; url: string }
   discord: { enabled: boolean; url: string }
   slack: { enabled: boolean; url: string }
-  mqtt: { enabled: boolean; broker: string; topic: string; username: string; password: string; password_configured: boolean; client_id: string }
+  mqtt: {
+    enabled: boolean
+    broker: string
+    topic: string
+    username: string
+    password: string
+    password_configured: boolean
+    client_id: string
+  }
   serverchan: { enabled: boolean; key: string; key_configured: boolean }
 }
 
@@ -48,8 +73,13 @@ export interface NotifyConfigInput {
   dingtalk: { enabled: boolean; url: string }
   feishu: { enabled: boolean; url: string }
   email: {
-    enabled: boolean; host: string; port: number; username: string
-    password: string; from: string; to: string
+    enabled: boolean
+    host: string
+    port: number
+    username: string
+    password: string
+    from: string
+    to: string
   }
   pushplus: { enabled: boolean; token: string }
   pushdeer: { enabled: boolean; server: string; pushkey: string }
@@ -85,7 +115,5 @@ export const notificationApi = {
   wechatQrcode: () =>
     http.post<{ qrcode: string; qrcode_url: string }>('/notification/wechat/qrcode').then((r) => r.data),
   wechatQrcodeStatus: (qrcode: string) =>
-    http
-      .get<WechatQRStatus>('/notification/wechat/qrcode/status', { params: { qrcode } })
-      .then((r) => r.data),
+    http.get<WechatQRStatus>('/notification/wechat/qrcode/status', { params: { qrcode } }).then((r) => r.data),
 }

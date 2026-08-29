@@ -28,6 +28,7 @@ function sourceBadge(v: string) {
 <template>
   <div v-loading="loading" class="grid">
     <div
+      v-a11y-button
       v-for="(m, i) in results"
       :key="i"
       class="glass glass-hover mcard clickable"
@@ -48,12 +49,7 @@ function sourceBadge(v: string) {
       </div>
     </div>
   </div>
-  <EmptyState
-    v-if="!results.length && !loading"
-    icon="🎬"
-    :title="t('mrg.title')"
-    :description="t('mrg.desc')"
-  />
+  <EmptyState v-if="!results.length && !loading" icon="🎬" :title="t('mrg.title')" :description="t('mrg.desc')" />
 </template>
 
 <style scoped>
@@ -127,18 +123,49 @@ function sourceBadge(v: string) {
 }
 
 /* 影视卡 staggered 入场 + hover 水润反馈 */
-.grid > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
-.grid > *:nth-child(1) { animation-delay: 0ms; }
-.grid > *:nth-child(2) { animation-delay: 40ms; }
-.grid > *:nth-child(3) { animation-delay: 80ms; }
-.grid > *:nth-child(4) { animation-delay: 120ms; }
-.grid > *:nth-child(5) { animation-delay: 160ms; }
-.grid > *:nth-child(6) { animation-delay: 200ms; }
-.grid > *:nth-child(7) { animation-delay: 240ms; }
-.grid > *:nth-child(8) { animation-delay: 280ms; }
-.grid > *:nth-child(n+9) { animation-delay: 320ms; }
-.mcard { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
-.mcard:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-.mcard .poster img { transition: transform var(--dur-slow) var(--ease-out-smooth); }
-.mcard:hover .poster img { transform: scale(1.06); }
+.grid > * {
+  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
+}
+.grid > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.grid > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.grid > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.grid > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.grid > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.grid > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.grid > *:nth-child(7) {
+  animation-delay: 240ms;
+}
+.grid > *:nth-child(8) {
+  animation-delay: 280ms;
+}
+.grid > *:nth-child(n + 9) {
+  animation-delay: 320ms;
+}
+.mcard {
+  transition:
+    transform var(--dur-base) var(--ease-out-spring),
+    box-shadow var(--dur-base) var(--ease-out-smooth);
+}
+.mcard:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+.mcard .poster img {
+  transition: transform var(--dur-slow) var(--ease-out-smooth);
+}
+.mcard:hover .poster img {
+  transform: scale(1.06);
+}
 </style>

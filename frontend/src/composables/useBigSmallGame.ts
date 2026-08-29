@@ -63,11 +63,7 @@ export function useBigSmallChat(
   return { chat, chatInput, sending, refreshChat, sendChat, initChatFromState }
 }
 
-export function useBigSmallItems(
-  siteId: Ref<number>,
-  game: Ref<string>,
-  load: (silent?: boolean) => Promise<void>,
-) {
+export function useBigSmallItems(siteId: Ref<number>, game: Ref<string>, load: (silent?: boolean) => Promise<void>) {
   async function doTask(t: BigSmallTask, action: 'claim' | 'reward') {
     try {
       const res = await entertainmentApi.bigsmallTask(siteId.value, game.value, action, t.id)
@@ -129,8 +125,15 @@ export function useBigSmallItems(
   }
 
   return {
-    doTask, useRefund, useProp, claimRed,
-    rpAmount, rpCount, rpGreeting, rpSending, sendRed,
+    doTask,
+    useRefund,
+    useProp,
+    claimRed,
+    rpAmount,
+    rpCount,
+    rpGreeting,
+    rpSending,
+    sendRed,
   }
 }
 

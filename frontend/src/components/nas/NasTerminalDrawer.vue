@@ -102,7 +102,9 @@ function scheduleReconnect() {
   reconnecting.value = true
   reconnectAttempts++
   const delay = Math.min(1000 * 2 ** reconnectAttempts, 16000)
-  term?.write(`\r\n\x1b[33m[${nowTag()}] ${ti('ntd.reconnectIn', { s: Math.round(delay / 1000), n: reconnectAttempts })}...\x1b[0m\r\n`)
+  term?.write(
+    `\r\n\x1b[33m[${nowTag()}] ${ti('ntd.reconnectIn', { s: Math.round(delay / 1000), n: reconnectAttempts })}...\x1b[0m\r\n`,
+  )
   reconnectTimer = window.setTimeout(() => connect(true), delay)
 }
 
@@ -154,7 +156,9 @@ async function connect(isReconnect = false) {
     }
   } catch (e: unknown) {
     connecting.value = false
-    term?.write(`\r\n\x1b[31m[${nowTag()}] ${ti('ntd.connectFailed', { err: (e as Error).message || ti('ntd.unknownErr') })}\x1b[0m\r\n`)
+    term?.write(
+      `\r\n\x1b[31m[${nowTag()}] ${ti('ntd.connectFailed', { err: (e as Error).message || ti('ntd.unknownErr') })}\x1b[0m\r\n`,
+    )
   }
 }
 
@@ -229,11 +233,21 @@ onBeforeUnmount(() => {
     <div class="terminal-wrap">
       <div class="terminal-head">
         <span :class="{ on: connected, mid: connecting || reconnecting }">
-          {{ connected ? '● ' + ti('ot.connected') : connecting ? '○ ' + ti('tw.connecting') + '…' : reconnecting ? '↻ ' + ti('ntd.reconnecting') + '…' : '○ ' + ti('ot.disconnected') }}
+          {{
+            connected
+              ? '● ' + ti('ot.connected')
+              : connecting
+                ? '○ ' + ti('tw.connecting') + '…'
+                : reconnecting
+                  ? '↻ ' + ti('ntd.reconnecting') + '…'
+                  : '○ ' + ti('ot.disconnected')
+          }}
         </span>
         <div>
           <el-button size="small" :loading="connecting" @click="connect(false)">{{ ti('ntd.reconnect') }}</el-button>
-          <el-button v-if="connected" size="small" type="danger" plain @click="disconnect">{{ ti('ot.disconnect') }}</el-button>
+          <el-button v-if="connected" size="small" type="danger" plain @click="disconnect">{{
+            ti('ot.disconnect')
+          }}</el-button>
           <el-button size="small" type="warning" plain :disabled="!connected" @click="sendCtrlC">Ctrl+C</el-button>
         </div>
       </div>
@@ -255,8 +269,14 @@ onBeforeUnmount(() => {
   padding: 8px 0 12px;
   font-size: var(--fs-body);
 }
-.terminal-head .on { color: var(--pt-success); font-weight: 600; }
-.terminal-head .mid { color: var(--pt-warn); font-weight: 600; }
+.terminal-head .on {
+  color: var(--pt-success);
+  font-weight: 600;
+}
+.terminal-head .mid {
+  color: var(--pt-warn);
+  font-weight: 600;
+}
 .terminal-xterm {
   flex: 1;
   min-height: 420px;

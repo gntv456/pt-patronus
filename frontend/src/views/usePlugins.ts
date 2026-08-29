@@ -98,7 +98,13 @@ export function usePlugins(options: UsePluginsOptions) {
     if (filter.value === 'enabled') list = list.filter((p) => p.enabled)
     else if (filter.value === 'available') list = list.filter((p) => !p.enabled)
     const q = pluginSearch.value.trim().toLowerCase()
-    if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q))
+    if (q)
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.id.toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q),
+      )
     return list
   })
 
@@ -114,14 +120,19 @@ export function usePlugins(options: UsePluginsOptions) {
     let all = market.value?.plugins || []
     if (marketCategory.value) all = all.filter((p) => p.category === marketCategory.value)
     const q = marketSearch.value.trim().toLowerCase()
-    if (q) all = all.filter((p) => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q) || (p.author || '').toLowerCase().includes(q))
+    if (q)
+      all = all.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.id.toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q) ||
+          (p.author || '').toLowerCase().includes(q),
+      )
     return all
   })
 
   // 有标题分组 → 折叠面板;无标题字段(通常核心必填项)→ 顶部平铺,不套折叠面板。
-  const configTitledGroups = computed(() =>
-    configGroups(configTarget.value?.config_schema).filter((g) => g.name),
-  )
+  const configTitledGroups = computed(() => configGroups(configTarget.value?.config_schema).filter((g) => g.name))
   const configUntitledFields = computed(() => {
     const untitled = configGroups(configTarget.value?.config_schema).find((g) => !g.name)
     return untitled ? untitled.fields : []
@@ -297,7 +308,10 @@ export function usePlugins(options: UsePluginsOptions) {
     ;[arr[index], arr[j]] = [arr[j], arr[index]]
     instances.value = arr
     try {
-      await pluginApi.reorderInstances(instancePluginId.value, arr.map((i) => i.id))
+      await pluginApi.reorderInstances(
+        instancePluginId.value,
+        arr.map((i) => i.id),
+      )
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '排序保存失败')
       await openInstances(instancePluginId.value)
@@ -363,7 +377,9 @@ export function usePlugins(options: UsePluginsOptions) {
     }
   }
 
-  async function confirmMarketInstall(item: PluginMarketIndex['plugins'][number]): Promise<PluginInstallPermissionAccept[] | null> {
+  async function confirmMarketInstall(
+    item: PluginMarketIndex['plugins'][number],
+  ): Promise<PluginInstallPermissionAccept[] | null> {
     const installPlan = normalizeInstallPlan(item.install_plan)
     const permissionAccepts = installPlanPermissionAccepts(item)
     const planPermissions = permissionAccepts.flatMap((step) => step.accepted_permissions || [])
@@ -379,7 +395,10 @@ export function usePlugins(options: UsePluginsOptions) {
       h('div', { style: 'display:grid;gap:6px;border:1px solid #e5e7eb;border-radius:8px;padding:10px;' }, [
         h('div', `发布者：${item.publisher?.name || item.author || '未知'}`),
         h('div', `信任：${trustLabel(item.trust_level)}`),
-        h('div', item.installed ? `版本：${item.installed_version || '未知'} → ${item.version}` : `版本：${item.version}`),
+        h(
+          'div',
+          item.installed ? `版本：${item.installed_version || '未知'} → ${item.version}` : `版本：${item.version}`,
+        ),
         h('div', `发布时间：${item.published_at ? fmtTime(item.published_at) : '-'}`),
       ]),
       h('div', { style: 'display:grid;gap:6px;border:1px solid #e5e7eb;border-radius:8px;padding:10px;' }, [
@@ -423,7 +442,11 @@ export function usePlugins(options: UsePluginsOptions) {
               hostCapabilities.map((capability) =>
                 h('div', { style: 'border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;' }, [
                   h('div', { style: 'font-weight:700;color:#0f172a;' }, hostCapabilityLabel(capability)),
-                  h('div', { style: 'color:#64748b;font-size:13px;margin-top:2px;' }, hostCapabilityDescription(capability)),
+                  h(
+                    'div',
+                    { style: 'color:#64748b;font-size:13px;margin-top:2px;' },
+                    hostCapabilityDescription(capability),
+                  ),
                 ]),
               ),
             ),
@@ -439,13 +462,17 @@ export function usePlugins(options: UsePluginsOptions) {
                 h('div', { style: 'border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;' }, [
                   h(
                     'div',
-                    { style: `font-weight:700;color:${dependency.satisfied ? '#059669' : dependency.optional ? '#d97706' : '#dc2626'};` },
+                    {
+                      style: `font-weight:700;color:${dependency.satisfied ? '#059669' : dependency.optional ? '#d97706' : '#dc2626'};`,
+                    },
                     `${dependency.id} · ${dependencyStatusLabel(dependency)}`,
                   ),
                   h(
                     'div',
                     { style: 'color:#64748b;font-size:13px;margin-top:2px;' },
-                    dependency.message || dependency.reason || (dependency.installed_version ? `已安装 ${dependency.installed_version}` : '已满足'),
+                    dependency.message ||
+                      dependency.reason ||
+                      (dependency.installed_version ? `已安装 ${dependency.installed_version}` : '已满足'),
                   ),
                 ]),
               ),
@@ -469,14 +496,14 @@ export function usePlugins(options: UsePluginsOptions) {
         { style: 'display:grid;gap:8px;' },
         permissionAccepts.map((step) =>
           h('div', { style: 'display:grid;gap:8px;border:1px solid #e5e7eb;border-radius:8px;padding:10px;' }, [
-            h(
-              'div',
-              { style: 'display:flex;justify-content:space-between;gap:12px;align-items:center;' },
-              [
-                h('div', { style: 'font-weight:700;' }, `${step.id}`),
-                h('div', { style: 'color:#64748b;font-size:13px;' }, installPlanActionLabel(installPlan.find((itemStep) => itemStep.id === step.id)?.action || 'install')),
-              ],
-            ),
+            h('div', { style: 'display:flex;justify-content:space-between;gap:12px;align-items:center;' }, [
+              h('div', { style: 'font-weight:700;' }, `${step.id}`),
+              h(
+                'div',
+                { style: 'color:#64748b;font-size:13px;' },
+                installPlanActionLabel(installPlan.find((itemStep) => itemStep.id === step.id)?.action || 'install'),
+              ),
+            ]),
             step.accepted_permissions.length
               ? h(
                   'div',
@@ -590,7 +617,9 @@ export function usePlugins(options: UsePluginsOptions) {
     configTarget.value = p
     configForm.value = { ...defaultsFromSchema(p.config_schema), ...(p.config || {}) }
     // 默认展开所有有标题分组(对标 MP:全部可见、可手动收起)。
-    configExpanded.value = configGroups(p.config_schema).filter((g) => g.name).map((g) => g.name)
+    configExpanded.value = configGroups(p.config_schema)
+      .filter((g) => g.name)
+      .map((g) => g.name)
     configVisible.value = true
   }
 
@@ -607,7 +636,7 @@ export function usePlugins(options: UsePluginsOptions) {
       }
     }
     if (missing.length) {
-      ElMessage.warning(`请填写必填项：${missing.join("、")}`)
+      ElMessage.warning(`请填写必填项：${missing.join('、')}`)
       return
     }
     savingConfig.value = true
@@ -711,9 +740,21 @@ export function usePlugins(options: UsePluginsOptions) {
     auditLoading,
     rollbacking,
     marketCategory,
-    marketCharts, favoritePlugins, marketView, loadMarketCharts, loadFavorites, toggleFavorite,
-    instancePluginId, instances, singleInstance, instancesVisible,
-    openInstances, createInstance, toggleInstance, removeInstance, moveInstance,
+    marketCharts,
+    favoritePlugins,
+    marketView,
+    loadMarketCharts,
+    loadFavorites,
+    toggleFavorite,
+    instancePluginId,
+    instances,
+    singleInstance,
+    instancesVisible,
+    openInstances,
+    createInstance,
+    toggleInstance,
+    removeInstance,
+    moveInstance,
     pluginSearch,
     marketSearch,
     filteredPlugins,

@@ -62,9 +62,12 @@ var (
 
 	// —— 运维风险操作 ——
 	RiskConfirmationRequired = New("risk_confirmation_required", "高危操作，需要先确认风险", http.StatusBadRequest)
+	BackupPasswordRequired   = New("backup_password_required", "该备份文件已加密，请输入导出时设置的口令", http.StatusBadRequest)
+	BackupPasswordIncorrect  = New("backup_password_incorrect", "备份口令错误", http.StatusBadRequest)
 
 	// —— 娱乐（保号积分）——
 	ForbiddenSQL   = New("forbidden_sql", "包含禁止的 SQL 语句", http.StatusBadRequest)
+	WriteSQLForbidden = New("write_sql_forbidden", "数据库控制台仅允许只读 SELECT 查询（写操作请走对应功能或 SQL 客户端）", http.StatusForbidden)
 	MultiStatement = New("multi_statement_blocked", "仅允许单条语句", http.StatusBadRequest)
 	DuplicateSpend = New("duplicate_spend", "重复支出，请刷新后重试", http.StatusConflict)
 

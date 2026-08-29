@@ -40,9 +40,7 @@ const searched = ref(false)
 
 // 扁平表行：种子字段 + 来源站点名（跨站合并到一张表）。
 const rows = computed(() =>
-  results.value.flatMap((r) =>
-    (r.torrents ?? []).map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name })),
-  ),
+  results.value.flatMap((r) => (r.torrents ?? []).map((t) => ({ ...t, site_id: r.site_id, site_name: r.site_name }))),
 )
 // 派生筛选 meta + 前端过滤/排序 composable。
 const enrichedRows = computed(() => rows.value.map((r) => enrichTorrent(r)))
@@ -110,10 +108,23 @@ async function search() {
 
 // —— 确认下载：逻辑在 composable（解构后 ref 在模板自动解包）——
 const {
-  visible: pushVisible, row: pushRow, subtitle: pushSubtitle, downloaders: pushDownloaders,
-  selectedDl, categories: pushCategories, selectedCategory, savePath, showAdvanced, paused,
-  loading: pushLoading, pushedDlName,
-  start: startPush, confirm: confirmPush, gotoDownloaderTasks, gotoDownloaderConfig, close: closePush,
+  visible: pushVisible,
+  row: pushRow,
+  subtitle: pushSubtitle,
+  downloaders: pushDownloaders,
+  selectedDl,
+  categories: pushCategories,
+  selectedCategory,
+  savePath,
+  showAdvanced,
+  paused,
+  loading: pushLoading,
+  pushedDlName,
+  start: startPush,
+  confirm: confirmPush,
+  gotoDownloaderTasks,
+  gotoDownloaderConfig,
+  close: closePush,
 } = useSearchPush()
 
 // —— 种子详情抽屉：抓取并解析单条种子详情页 ——
@@ -153,7 +164,12 @@ function openMediaDetail(m: MediaInfo) {
 
 // 接受跨页跳转带来的 keyword / mode（如详情页「搜索资源」按钮回跳）。
 onMounted(() => {
-  siteApi.list().then((l) => { sites.value = l }).catch(() => {})
+  siteApi
+    .list()
+    .then((l) => {
+      sites.value = l
+    })
+    .catch(() => {})
   // 兼容详情页 keyword 与命令面板 q
   const q = route.query.keyword ?? route.query.q
   if (typeof q === 'string' && q) {
@@ -170,7 +186,7 @@ onMounted(() => {
 watch(
   () => [route.query.keyword, route.query.q, route.query.mode] as const,
   ([kw, q, md]) => {
-    const next = (typeof kw === 'string' && kw) ? kw : (typeof q === 'string' ? q : '')
+    const next = typeof kw === 'string' && kw ? kw : typeof q === 'string' ? q : ''
     if (next && next !== keyword.value) {
       keyword.value = next
       search()
@@ -190,11 +206,16 @@ onUnmounted(() => {
     <div class="head">
       <h2 class="title">{{ t('search.title') }}</h2>
       <div class="head-right">
-        <el-segmented v-model="mode" :options="[
-          { label: t('search.modeTorrent'), value: 'torrent' },
-          { label: t('search.modeMedia'), value: 'media' },
-        ]" />
-        <router-link v-if="mode === 'media'" to="/media-settings" class="src-settings-link">{{ t('search.mediaSettingsLink') }}</router-link>
+        <el-segmented
+          v-model="mode"
+          :options="[
+            { label: t('search.modeTorrent'), value: 'torrent' },
+            { label: t('search.modeMedia'), value: 'media' },
+          ]"
+        />
+        <router-link v-if="mode === 'media'" to="/media-settings" class="src-settings-link">{{
+          t('search.mediaSettingsLink')
+        }}</router-link>
       </div>
     </div>
 
@@ -202,9 +223,7 @@ onUnmounted(() => {
       <div class="search-main">
         <el-input
           v-model="keyword"
-          :placeholder="mode === 'torrent'
-            ? t('search.torrentPlaceholder')
-            : t('search.mediaPlaceholder')"
+          :placeholder="mode === 'torrent' ? t('search.torrentPlaceholder') : t('search.mediaPlaceholder')"
           clearable
           size="large"
           @keyup.enter="search"
@@ -222,12 +241,7 @@ onUnmounted(() => {
         :placeholder="t('search.year')"
         controls-position="right"
       />
-      <el-select
-        v-if="mode === 'torrent'"
-        v-model="category"
-        :placeholder="t('search.category')"
-        style="width: 110px"
-      >
+      <el-select v-if="mode === 'torrent'" v-model="category" :placeholder="t('search.category')" style="width: 110px">
         <el-option :label="t('search.catAll')" value="" />
         <el-option :label="t('search.catMovie')" value="movie" />
         <el-option :label="t('search.catTv')" value="tv" />
@@ -256,12 +270,7 @@ onUnmounted(() => {
     />
 
     <!-- 影视模式：海报卡片 -->
-    <MediaResultsGrid
-      v-else
-      :results="mediaResults"
-      :loading="loading"
-      @open="openMediaDetail"
-    />
+    <MediaResultsGrid v-else :results="mediaResults" :loading="loading" @open="openMediaDetail" />
 
     <SearchPushDialog
       v-model="pushVisible"
@@ -282,11 +291,7 @@ onUnmounted(() => {
       @close="closePush"
     />
 
-    <TorrentDetailDrawer
-      v-model:visible="detailVisible"
-      :detail="detail"
-      :loading="detailLoading"
-    />
+    <TorrentDetailDrawer v-model:visible="detailVisible" :detail="detail" :loading="detailLoading" />
   </div>
 </template>
 

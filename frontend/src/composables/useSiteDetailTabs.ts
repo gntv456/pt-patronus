@@ -114,8 +114,20 @@ export function useSiteDetailTabs(getSiteId: () => number, getSiteName: () => st
   }
 
   return {
-    assess, assessLoading, fl, flLoading, contract, contractCheck, contractLoading,
-    bfTasks, bfLoading, saveptCard, saveptLoading, reseedHint, reseedLoading,
-    clearTabState, loadTab,
+    assess,
+    assessLoading,
+    fl,
+    flLoading,
+    contract,
+    contractCheck,
+    contractLoading,
+    bfTasks,
+    bfLoading,
+    saveptCard,
+    saveptLoading,
+    reseedHint,
+    reseedLoading,
+    clearTabState,
+    loadTab,
   }
 }

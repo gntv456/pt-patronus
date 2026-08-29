@@ -20,68 +20,68 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
 </script>
 
 <template>
-    <div class="health-strip ops-surface">
-      <button type="button" class="health-main" @click="openSiteMatrix('all')">
-        <span class="health-icon health-ok"><i /></span>
-        <span>
-          <small>{{ t('dhs.siteHealth') }}</small>
-          <strong v-if="refreshing">{{ t('dhs.refreshing') }}</strong>
-          <strong v-else>{{ t('dhs.connectedN', { ok: connectedCount, total: configuredSiteCount }) }}</strong>
-        </span>
-      </button>
-      <button type="button" class="health-item is-danger" @click="openSiteMatrix('issues')">
-        <span class="status-dot" />
-        <span>{{ t('som.issues') }}</span>
-        <b>{{ disconnectedCount }}</b>
-      </button>
-      <button
-        v-if="(overview?.no_data_sites?.length ?? 0) > 0"
-        type="button"
-        class="health-item is-warning"
-        @click="openSiteMatrix('issues')"
-      >
-        <span class="status-dot" />
-        <span>{{ t('common.noData') }}</span>
-        <b>{{ overview?.no_data_sites?.length }}</b>
-      </button>
-      <button type="button" class="health-item is-muted" @click="openSiteMatrix('disabled')">
-        <span class="status-dot" />
-        <span>{{ t('som.disabled') }}</span>
-        <b>{{ disabledCount }}</b>
-      </button>
-      <div class="health-item is-success">
-        <span class="status-dot" />
-        <span>{{ t('dhs.dlConfig') }}</span>
-        <b>{{ overview?.downloader_count ?? 0 }}</b>
-      </div>
-      <div class="health-item" :class="totalIssueCount ? 'is-warning' : 'is-success'">
-        <span class="status-dot" />
-        <span>{{ t('dhs.todo') }}</span>
-        <b>{{ totalIssueCount }}</b>
-      </div>
+  <div class="health-strip ops-surface">
+    <button type="button" class="health-main" @click="openSiteMatrix('all')">
+      <span class="health-icon health-ok"><i /></span>
+      <span>
+        <small>{{ t('dhs.siteHealth') }}</small>
+        <strong v-if="refreshing">{{ t('dhs.refreshing') }}</strong>
+        <strong v-else>{{ t('dhs.connectedN', { ok: connectedCount, total: configuredSiteCount }) }}</strong>
+      </span>
+    </button>
+    <button type="button" class="health-item is-danger" @click="openSiteMatrix('issues')">
+      <span class="status-dot" />
+      <span>{{ t('som.issues') }}</span>
+      <b>{{ disconnectedCount }}</b>
+    </button>
+    <button
+      v-if="(overview?.no_data_sites?.length ?? 0) > 0"
+      type="button"
+      class="health-item is-warning"
+      @click="openSiteMatrix('issues')"
+    >
+      <span class="status-dot" />
+      <span>{{ t('common.noData') }}</span>
+      <b>{{ overview?.no_data_sites?.length }}</b>
+    </button>
+    <button type="button" class="health-item is-muted" @click="openSiteMatrix('disabled')">
+      <span class="status-dot" />
+      <span>{{ t('som.disabled') }}</span>
+      <b>{{ disabledCount }}</b>
+    </button>
+    <div class="health-item is-success">
+      <span class="status-dot" />
+      <span>{{ t('dhs.dlConfig') }}</span>
+      <b>{{ overview?.downloader_count ?? 0 }}</b>
     </div>
+    <div class="health-item" :class="totalIssueCount ? 'is-warning' : 'is-success'">
+      <span class="status-dot" />
+      <span>{{ t('dhs.todo') }}</span>
+      <b>{{ totalIssueCount }}</b>
+    </div>
+  </div>
 
-    <div v-if="(overview?.no_data_sites?.length ?? 0) > 0" class="nodata-alert glass">
-      <span class="nodata-badge">⚠</span>
-      <div class="nodata-body">
-        <div class="nodata-title">
-          <strong>{{ t('dhs.nodataN', { n: overview?.no_data_sites?.length }) }}</strong>
-          <span class="nodata-hint">{{ t('dhs.nodataHint') }}</span>
-        </div>
-        <div class="nodata-names">
-          <button
-            v-for="s in overview?.no_data_sites"
-            :key="s.site_id"
-            type="button"
-            class="nodata-chip"
-            @click="openSiteMatrix('issues')"
-          >
-            {{ s.site_name }}
-          </button>
-        </div>
+  <div v-if="(overview?.no_data_sites?.length ?? 0) > 0" class="nodata-alert glass">
+    <span class="nodata-badge">⚠</span>
+    <div class="nodata-body">
+      <div class="nodata-title">
+        <strong>{{ t('dhs.nodataN', { n: overview?.no_data_sites?.length }) }}</strong>
+        <span class="nodata-hint">{{ t('dhs.nodataHint') }}</span>
       </div>
-      <el-button text type="warning" @click="openSiteMatrix('issues')">{{ t('dhs.viewSites') }}</el-button>
+      <div class="nodata-names">
+        <button
+          v-for="s in overview?.no_data_sites"
+          :key="s.site_id"
+          type="button"
+          class="nodata-chip"
+          @click="openSiteMatrix('issues')"
+        >
+          {{ s.site_name }}
+        </button>
+      </div>
     </div>
+    <el-button text type="warning" @click="openSiteMatrix('issues')">{{ t('dhs.viewSites') }}</el-button>
+  </div>
 </template>
 
 <style scoped>
@@ -106,7 +106,11 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   border-right: 1px solid var(--divider);
   color: var(--text-strong);
   background: transparent;
-  text-align: left; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth)
+  text-align: left;
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth);
 }
 .health-item:last-child {
   border-right: 0;
@@ -174,9 +178,15 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   border-radius: 50%;
   background: #64748b;
 }
-.health-item.is-danger b { color: var(--pt-danger); }
-.health-item.is-danger .status-dot { background: #dc2626; }
-.health-item.is-warning b { color: #d97706; }
+.health-item.is-danger b {
+  color: var(--pt-danger);
+}
+.health-item.is-danger .status-dot {
+  background: #dc2626;
+}
+.health-item.is-warning b {
+  color: #d97706;
+}
 
 /* 无采集数据站点告警卡（保号可观测性：疑似 cookie 失效/未采集的 PT 站首屏红字汇总） */
 .nodata-alert {
@@ -198,10 +208,26 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   color: var(--pt-warn);
   font-size: var(--fs-xl);
 }
-.nodata-body { flex: 1 1 auto; min-width: 0; }
-.nodata-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-2); }
-.nodata-hint { font-size: var(--fs-xs); color: var(--text-muted); }
-.nodata-names { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: 8px; }
+.nodata-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.nodata-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.nodata-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.nodata-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: 8px;
+}
 .nodata-chip {
   border: 1px solid var(--pt-warn-bg);
   background: var(--pt-warn-bg);
@@ -211,9 +237,19 @@ function openSiteMatrix(filter: 'all' | 'issues' | 'disabled') {
   font-size: var(--fs-xs);
   cursor: pointer;
 }
-.nodata-chip:hover { background: var(--pt-warn-bg); }
-.health-item.is-warning .status-dot { background: #d97706; }
-.health-item.is-success b { color: var(--pt-success); }
-.health-item.is-success .status-dot { background: #16a34a; }
-.health-item.is-muted b { color: var(--text-muted); }
+.nodata-chip:hover {
+  background: var(--pt-warn-bg);
+}
+.health-item.is-warning .status-dot {
+  background: #d97706;
+}
+.health-item.is-success b {
+  color: var(--pt-success);
+}
+.health-item.is-success .status-dot {
+  background: #16a34a;
+}
+.health-item.is-muted b {
+  color: var(--text-muted);
+}
 </style>

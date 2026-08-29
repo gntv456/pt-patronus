@@ -2,7 +2,6 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-
   subtitleApi,
   SOURCE_LABEL,
   LANG_LABEL,
@@ -16,7 +15,6 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 
 const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
-
 
 const q = ref('')
 const language = ref('')
@@ -139,12 +137,7 @@ onMounted(() => {})
 
     <div class="search-bar glass">
       <GlassIcon name="subtitle" :size="28" from="#4cc9f0" to="#4361ee" />
-      <el-input
-        v-model="q"
-        :placeholder="t('subtitle.searchPlaceholder')"
-        class="search-input"
-        @keyup.enter="search"
-      />
+      <el-input v-model="q" :placeholder="t('subtitle.searchPlaceholder')" class="search-input" @keyup.enter="search" />
       <el-select v-model="language" :placeholder="t('subtitle.langPlaceholder')" class="lang-select" clearable>
         <el-option :label="t('subtitle.lang.chs')" value="chs" />
         <el-option :label="t('subtitle.lang.cht')" value="cht" />
@@ -156,10 +149,15 @@ onMounted(() => {})
     <div v-loading="loading" class="results">
       <div v-for="(s, i) in results" :key="`${s.source}:${s.source_id}:${i}`" class="glass glass-hover result">
         <div class="result-main">
-          <el-tag size="small" :style="{ backgroundColor: sourceColor[s.source] + '22', color: sourceColor[s.source], border: 'none' }">
+          <el-tag
+            size="small"
+            :style="{ backgroundColor: sourceColor[s.source] + '22', color: sourceColor[s.source], border: 'none' }"
+          >
             {{ SOURCE_LABEL[s.source] }}
           </el-tag>
-          <el-tag size="small" effect="plain">{{ LANG_LABEL[s.lang_code] || s.language || t('medalwall.status.unknown') }}</el-tag>
+          <el-tag size="small" effect="plain">{{
+            LANG_LABEL[s.lang_code] || s.language || t('medalwall.status.unknown')
+          }}</el-tag>
           <span class="result-title" :title="s.title">{{ s.title }}</span>
         </div>
         <el-button
@@ -167,14 +165,10 @@ onMounted(() => {})
           type="primary"
           :loading="downloading === `${s.source}:${s.source_id}`"
           @click="download(s)"
-        >{{ t('harem.down') }}</el-button>
+          >{{ t('harem.down') }}</el-button
+        >
       </div>
-      <EmptyState
-        v-if="error && !loading"
-        icon="⚠️"
-        :title="t('subtitle.searchFailed')"
-        :description="error"
-      >
+      <EmptyState v-if="error && !loading" icon="⚠️" :title="t('subtitle.searchFailed')" :description="error">
         <el-button @click="search">{{ t('common.retry') }}</el-button>
       </EmptyState>
       <EmptyState
@@ -192,23 +186,50 @@ onMounted(() => {})
     </div>
 
     <!-- 字幕源配置 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" :title="t('subtitle.sourcesCfg')" width="560px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="showConfig"
+      :title="t('subtitle.sourcesCfg')"
+      width="560px"
+    >
       <el-form :model="cfgForm" label-width="150px" label-position="right">
         <el-form-item label="ASSRT Token">
-          <el-input v-model="cfgForm.assrt_token" type="password" show-password
-            :placeholder="cfg?.assrt_token_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.assrtToken')" />
+          <el-input
+            v-model="cfgForm.assrt_token"
+            type="password"
+            show-password
+            :placeholder="cfg?.assrt_token_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.assrtToken')"
+          />
         </el-form-item>
         <el-form-item label="OpenSubtitles Key">
-          <el-input v-model="cfgForm.opensubtitles_key" type="password" show-password
-            :placeholder="cfg?.opensubtitles_key_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.osKey')" />
+          <el-input
+            v-model="cfgForm.opensubtitles_key"
+            type="password"
+            show-password
+            :placeholder="cfg?.opensubtitles_key_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.osKey')"
+          />
         </el-form-item>
         <el-form-item label="SubHD Cookie">
-          <el-input v-model="cfgForm.subhd_cookie" type="textarea" :rows="2"
-            :placeholder="cfg?.subhd_cookie_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.optionalAntiCrawl')" />
+          <el-input
+            v-model="cfgForm.subhd_cookie"
+            type="textarea"
+            :rows="2"
+            :placeholder="
+              cfg?.subhd_cookie_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.optionalAntiCrawl')
+            "
+          />
         </el-form-item>
         <el-form-item :label="t('subtitle.f.zimukuCookie')">
-          <el-input v-model="cfgForm.zimuku_cookie" type="textarea" :rows="2"
-            :placeholder="cfg?.zimuku_cookie_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.optionalAntiCrawl')" />
+          <el-input
+            v-model="cfgForm.zimuku_cookie"
+            type="textarea"
+            :rows="2"
+            :placeholder="
+              cfg?.zimuku_cookie_configured ? t('subtitle.f.configuredKeep') : t('subtitle.f.optionalAntiCrawl')
+            "
+          />
         </el-form-item>
         <el-form-item :label="t('subtitle.f.langConvert')">
           <el-select v-model="cfgForm.target_lang" :placeholder="t('subtitle.f.noConvert')" clearable>
@@ -228,23 +249,88 @@ onMounted(() => {})
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.search-bar { display: flex; align-items: center; gap: var(--sp-2); padding: 12px 14px; }
-.search-input { flex: 1; }
-.lang-select { width: 110px; flex-shrink: 0; }
-.results { display: flex; flex-direction: column; gap: var(--sp-2); min-height: 200px; }
-.result { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
-.result-main { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; flex: 1; }
-.result-title { font-size: var(--fs-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hint { font-size: var(--fs-xs); color: var(--text-muted); display: block; margin-top: 4px; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.sub {
+  margin: -8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 12px 14px;
+}
+.search-input {
+  flex: 1;
+}
+.lang-select {
+  width: 110px;
+  flex-shrink: 0;
+}
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 200px;
+}
+.result {
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.result-main {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  flex: 1;
+}
+.result-title {
+  font-size: var(--fs-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
+}
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
-.page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
-.page.embedded > .sub { display: none; }
-
+.page.embedded {
+  padding: 0;
+  max-width: none;
+}
+.page.embedded .embedded-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  margin: 0;
+}
+.page.embedded .embedded-sub {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: var(--fs-xs);
+}
+.page.embedded > .sub {
+  display: none;
+}
 </style>

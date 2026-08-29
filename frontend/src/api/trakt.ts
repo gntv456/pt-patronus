@@ -22,7 +22,14 @@ export interface TraktConfig {
 // 管理员提交的配置（client_secret 空串=保留旧值）。
 export type TraktConfigInput = Omit<
   Partial<TraktConfig>,
-  'client_secret_configured' | 'authorized' | 'last_sync_at' | 'last_sync_count' | 'last_error' | 'pending_user_code' | 'pending_verification_url' | 'pending_expires_at'
+  | 'client_secret_configured'
+  | 'authorized'
+  | 'last_sync_at'
+  | 'last_sync_count'
+  | 'last_error'
+  | 'pending_user_code'
+  | 'pending_verification_url'
+  | 'pending_expires_at'
 > & { client_secret?: string }
 
 export interface TraktDeviceCode {

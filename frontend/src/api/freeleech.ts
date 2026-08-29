@@ -1,4 +1,6 @@
 import { http } from './http'
+import { terr } from './i18nErr'
+import { streamErr } from './sse'
 
 // 站免状态（对齐后端 site.FreeleechStatus）
 export type FreeleechStatus = 'active' | 'upcoming' | 'none' | 'failed'
@@ -31,15 +33,11 @@ export const freeleechApi = {
   // 流式：每站抓完即推一行 NDJSON，前端逐站追加渲染，不等全部抓完（加载一个显示一个）。
   // 治首次进页面阻塞等全量超过默认 15s timeout 而显示失败的问题（与公告 streamAll 同范式）。
   // fetch 无 axios 整体 timeout（逐站 flush 保活）；signal 用于切页/重载中断。
-  streamAll: (
-    refresh = false,
-    onResult: (r: FreeleechResult) => void,
-    signal?: AbortSignal,
-  ): Promise<void> => {
+  streamAll: (refresh = false, onResult: (r: FreeleechResult) => void, signal?: AbortSignal): Promise<void> => {
     const token = localStorage.getItem('token')
     const url = `/api/v1/freeleech/stream${refresh ? '?refresh=1' : ''}`
     return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal }).then(async (res) => {
-      if (!res.ok) throw new Error(`加载失败 (HTTP ${res.status})`)
+      if (!res.ok) throw new Error(await streamErr(res))
       const reader = res.body!.getReader()
       const dec = new TextDecoder()
       let buf = ''

@@ -1,5 +1,12 @@
 import { ref, watch, onMounted, onUnmounted, type Ref } from 'vue'
-import { entertainmentApi, type GameStats, type BuyOption, type PrizeDef, type GameRecord, type PlayResult } from '@/api/entertainment'
+import {
+  entertainmentApi,
+  type GameStats,
+  type BuyOption,
+  type PrizeDef,
+  type GameRecord,
+  type PlayResult,
+} from '@/api/entertainment'
 
 export function useScratchCardGame(siteId: Ref<number>) {
   const stats = ref<GameStats | null>(null)
@@ -98,9 +105,22 @@ export function useScratchCardGame(siteId: Ref<number>) {
   watch(siteId, loadAll)
 
   return {
-    stats, options, prizes, history,
-    playing, buying, autoPlaying, autoCount, reveal,
-    loadAll, refreshStats, play, toggleAuto, startAuto, stopAuto, buy,
+    stats,
+    options,
+    prizes,
+    history,
+    playing,
+    buying,
+    autoPlaying,
+    autoCount,
+    reveal,
+    loadAll,
+    refreshStats,
+    play,
+    toggleAuto,
+    startAuto,
+    stopAuto,
+    buy,
   }
 }
 

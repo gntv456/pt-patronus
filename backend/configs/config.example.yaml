@@ -12,6 +12,8 @@ APP_ENV=debug              # debug | release
 
 HTTP_ADDR=:8088
 
+LOG_LEVEL=                 # 可选：debug | info | warn | error（未设置时 debug 环境=debug、release=info）
+
 DATA_DIR=./data            # SQLite 文件 & 资源目录
 
 
@@ -31,6 +33,8 @@ CORS_ALLOWED_ORIGINS=      # 逗号分隔的具体前端域名，如 https://pt.
 TRUSTED_PROXIES=           # 反向代理 CIDR，如 172.16.0.0/12；空=不信任任何代理，ClientIP 取直连对端（防 XFF 伪造绕过限流）
 
 API_KEY=                   # 程序化访问密钥（X-API-Key 头，等同管理员）；为空禁用
+
+METRICS_TOKEN=             # Prometheus /metrics 抓取令牌（Authorization: Bearer 或 X-API-Key）；未设回退 API_KEY；release 下两者皆空则端点禁用(404)
 
 
 

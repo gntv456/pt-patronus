@@ -1,6 +1,7 @@
 package oper
 
 import (
+	"errors"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -190,7 +191,7 @@ func (o *DownloadMediaLinkOper) GetByHash(hash string) (*models.DownloadMediaLin
 	var l models.DownloadMediaLink
 	err := o.db.Where("download_hash = ?", hash).First(&l).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err

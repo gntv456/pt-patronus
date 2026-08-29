@@ -6,11 +6,8 @@ import { useScratchCardGame, fmt } from '@/composables/useScratchCardGame'
 const { t } = useI18n()
 const props = defineProps<{ siteId: number }>()
 
-const {
-  stats, options, prizes, history,
-  playing, buying, autoPlaying, autoCount, reveal,
-  play, toggleAuto, buy,
-} = useScratchCardGame(toRef(props, 'siteId'))
+const { stats, options, prizes, history, playing, buying, autoPlaying, autoCount, reveal, play, toggleAuto, buy } =
+  useScratchCardGame(toRef(props, 'siteId'))
 </script>
 
 <template>
@@ -32,7 +29,7 @@ const {
         <div class="stat-lbl">{{ t('sc.ingot') }}</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-val">{{ autoPlaying ? autoCount : (history.length || 0) }}</div>
+        <div class="stat-val">{{ autoPlaying ? autoCount : history.length || 0 }}</div>
         <div class="stat-lbl">{{ autoPlaying ? t('sc.roundDone') : t('sc.recent') }}</div>
       </div>
     </div>
@@ -78,14 +75,12 @@ const {
     <div v-if="options.length" class="buy">
       <div class="section-label">{{ t('sc.buy') }}</div>
       <div class="buy-row">
-        <button
-          v-for="opt in options"
-          :key="opt.type"
-          class="buy-btn"
-          :disabled="buying"
-          @click="buy(opt)"
-        >
-          <span class="buy-title">{{ opt.gift_count > 0 ? t('sc.buyGift', { b: opt.buy_count, g: opt.gift_count }) : t('sc.buyN', { n: opt.buy_count }) }}</span>
+        <button v-for="opt in options" :key="opt.type" class="buy-btn" :disabled="buying" @click="buy(opt)">
+          <span class="buy-title">{{
+            opt.gift_count > 0
+              ? t('sc.buyGift', { b: opt.buy_count, g: opt.gift_count })
+              : t('sc.buyN', { n: opt.buy_count })
+          }}</span>
           <span class="buy-price">{{ t('sc.ingotN', { n: fmt(opt.buy_count * opt.unit_price) }) }}</span>
         </button>
       </div>

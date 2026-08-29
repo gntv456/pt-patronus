@@ -30,16 +30,18 @@ services:
       COMPOSE_SCAN_DIR: ${COMPOSE_SCAN_DIR:-/host/compose}
     volumes:
       - ./data:/app/data
-      # Docker 管理：挂载 docker.sock 让本机容器管理可用（运维中心 → Docker → 本机模式）
-      - /var/run/docker.sock:/var/run/docker.sock
-      # Compose 项目管理：挂载宿主 compose 目录（扫描已有项目）
-      # 默认 /opt，按需改为你的 compose 项目根（如 /root /home 等）
-      - ${COMPOSE_ROOT:-/opt}:/host/compose
-      # 文件管理器「本机」存储：挂载宿主存储空间到容器，否则容器内只能看到自己的根文件系统，
-      # 看不到 NAS 上的 /vol1、/video 等目录。飞牛(fnOS)存储空间默认在 /vol1、/vol2 …
-      # 在本机存储根路径里填 /host/fs 即可浏览整个宿主文件系统（含 /host/fs/vol1/1000/）。
-      # 如只暴露单块盘，改为 - /vol1:/host/fs/vol1，并把根路径填 /host/fs/vol1
-      - ${HOST_FS_ROOT:-/}:/host/fs
+      # ⚠ 安全提示（收权加固）：以下两行默认注释掉。挂载 docker.sock = 容器内
+      # RCE 即宿主 root；HOST_FS_ROOT=/ = 文件管理器可写整个宿主文件系统。
+      # 需要运维中心 Docker 管理时手动取消注释；文件管理器请只挂需要的目录
+      # （如 - /vol1:/host/fs/vol1），并在本机存储根路径填对应子路径。
+      # - /var/run/docker.sock:/var/run/docker.sock
+      # Compose 项目管理：挂载宿主 compose 目录（扫描已有项目）。
+      # 按需改为你的 compose 项目根并取消注释（如 /opt 或 /root）。
+      # - ${COMPOSE_ROOT:-/opt}:/host/compose
+      # 文件管理器「本机」存储：默认不挂宿主根。需要浏览 NAS 目录时改为
+      # 具体盘（如 - /vol1:/host/fs/vol1），根路径填 /host/fs/vol1——
+      # 挂载 / 会把整个宿主文件系统暴露给 admin 文件管理器。
+      # - ${HOST_FS_ROOT:-/}:/host/fs
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s
@@ -53,7 +55,9 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ptpatronus
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      # 收权加固：去掉默认弱密码 changeme——未设 POSTGRES_PASSWORD 时启动即失败并提示，
+      # 避免带默认口令的 PG 实例悄悄跑起来（且 5432 还映射到了宿主）。
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在环境变量设置 POSTGRES_PASSWORD（openssl rand -base64 24），不要使用弱密码}
       POSTGRES_DB: ptpatronus
     volumes:
       - pgdata:/var/lib/postgresql/data

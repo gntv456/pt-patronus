@@ -44,13 +44,11 @@ export function fmtRatio(value: number): string {
   return value > 0 ? value.toFixed(2) : '-'
 }
 
-export function useSiteMatrixData(
-  props: {
-    sites: Site[]
-    connectivity: Record<number, SiteConnectivityStatus>
-    cookieAlerts: readonly string[]
-  },
-) {
+export function useSiteMatrixData(props: {
+  sites: Site[]
+  connectivity: Record<number, SiteConnectivityStatus>
+  cookieAlerts: readonly string[]
+}) {
   const rows = ref<SiteStatItem[]>([])
   const loading = ref(false)
   const syncing = ref(false)
@@ -151,8 +149,7 @@ export function useSiteMatrixData(
   function compareRow(a: SiteStatItem, b: SiteStatItem): number {
     const va = sortValue(a, sortKey.value)
     const vb = sortValue(b, sortKey.value)
-    const r =
-      typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb))
+    const r = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb))
     return sortDir.value === 'asc' ? r : -r
   }
   // el-table 列头排序（sortable="custom"）：点击列头触发，更新 sortKey/sortDir 并回首页；取消排序回默认。
@@ -269,13 +266,39 @@ export function useSiteMatrixData(
   }
 
   return {
-    rows, loading, syncing, loadError, refreshing,
-    siteQuery, matrixFilter, sortKey, sortDir, currentPage, pageSize,
-    historyVisible, historyLoading, historySiteName, history,
+    rows,
+    loading,
+    syncing,
+    loadError,
+    refreshing,
+    siteQuery,
+    matrixFilter,
+    sortKey,
+    sortDir,
+    currentPage,
+    pageSize,
+    historyVisible,
+    historyLoading,
+    historySiteName,
+    history,
     selectedSites,
-    siteConfigs, siteBaseUrls, siteBaseUrl, siteConfig,
-    allRows, inactiveSites, inactiveSiteCount,
-    siteHasIssue, onSortChange, matrixRows, pagedRows, pageRange,
-    reload, syncAll, syncOne, viewHistory, matrixRowClassName, handleSelectionChange,
+    siteConfigs,
+    siteBaseUrls,
+    siteBaseUrl,
+    siteConfig,
+    allRows,
+    inactiveSites,
+    inactiveSiteCount,
+    siteHasIssue,
+    onSortChange,
+    matrixRows,
+    pagedRows,
+    pageRange,
+    reload,
+    syncAll,
+    syncOne,
+    viewHistory,
+    matrixRowClassName,
+    handleSelectionChange,
   }
 }

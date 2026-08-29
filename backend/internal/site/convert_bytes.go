@@ -2,6 +2,7 @@ package site
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +42,11 @@ func ParseBytes(s string) int64 {
 		mult = 1 << 50
 	case "E", "EB":
 		mult = 1 << 60
+	}
+	// 溢出钳制：超大数值（如 "999… TB"）经 float64×mult 转 int64 会翻转为负数，
+	// 统一钳到 MaxInt64，调用方（做差/展示）不会拿到负体积。
+	if product := val * mult; product >= math.MaxInt64 {
+		return math.MaxInt64
 	}
 	return int64(val * mult)
 }

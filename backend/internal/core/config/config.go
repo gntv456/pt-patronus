@@ -102,6 +102,7 @@ type Config struct {
 	// 安全 / 限流
 	CORSAllowedOrigins string // 逗号分隔；"*" 或空=开发全开，生产应收敛为具体域名
 	APIKey             string // 程序化访问密钥（X-API-Key 头）；为空禁用
+	MetricsToken       string // /metrics 抓取令牌（METRICS_TOKEN，缺省回退 API_KEY）；release 下未配置则端点禁用
 	TrustedProxies     string // 逗号分隔 CIDR/IP；空=不信任任何代理（ClientIP 取直连对端），防 XFF 伪造绕过限流
 	LoginRatePerMin    int    // 登录/激活端点每 IP 每分钟上限，默认 10
 	GlobalRatePerSec   int    // 全局每 IP 每秒上限，默认 20
@@ -185,6 +186,7 @@ func Load() (*Config, error) {
 		OpenSubtitlesKey:   getenv("OPENSUBTITLES_KEY", ""),
 		CORSAllowedOrigins: getenv("CORS_ALLOWED_ORIGINS", ""),
 		APIKey:             getenv("API_KEY", ""),
+		MetricsToken:       getenvFallback("METRICS_TOKEN", "API_KEY", ""),
 		TrustedProxies:     getenv("TRUSTED_PROXIES", ""),
 		LoginRatePerMin:    getenvInt("LOGIN_RATE_PER_MIN", 10),
 		GlobalRatePerSec:   getenvInt("GLOBAL_RATE_PER_SEC", 20),

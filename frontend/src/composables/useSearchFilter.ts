@@ -143,15 +143,24 @@ export function useSearchFilter<T extends EnrichedMeta & { site_name?: string; s
 
   const activeTags = computed<ActiveTag[]>(() => {
     const out: ActiveTag[] = []
-    const push = (key: ArrKey) =>
-      filter[key].forEach((v) => out.push({ key, value: v, label: v }))
-    push('site'); push('promo'); push('res'); push('codec'); push('src'); push('hdr')
+    const push = (key: ArrKey) => filter[key].forEach((v) => out.push({ key, value: v, label: v }))
+    push('site')
+    push('promo')
+    push('res')
+    push('codec')
+    push('src')
+    push('hdr')
     if (filter.onlyCnSub) out.push({ key: 'onlyCnSub', value: '1', label: '中字' })
     if (filter.sizeMinGB > 0 || filter.sizeMaxGB > 0) {
       const max = filter.sizeMaxGB || options.value.maxSizeGB
-      out.push({ key: 'sizeMinGB', value: `${filter.sizeMinGB}-${filter.sizeMaxGB}`, label: `大小 ${filter.sizeMinGB}-${max}G` })
+      out.push({
+        key: 'sizeMinGB',
+        value: `${filter.sizeMinGB}-${filter.sizeMaxGB}`,
+        label: `大小 ${filter.sizeMinGB}-${max}G`,
+      })
     }
-    if (filter.seedersMin > 0) out.push({ key: 'seedersMin', value: String(filter.seedersMin), label: `做种≥${filter.seedersMin}` })
+    if (filter.seedersMin > 0)
+      out.push({ key: 'seedersMin', value: String(filter.seedersMin), label: `做种≥${filter.seedersMin}` })
     if (filter.timePreset) {
       const map: Record<Exclude<TimePreset, ''>, string> = { today: '今天', week: '本周', month: '本月' }
       out.push({ key: 'timePreset', value: filter.timePreset, label: map[filter.timePreset] })

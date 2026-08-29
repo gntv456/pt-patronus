@@ -19,6 +19,13 @@ import (
 const (
 	initialBackoff = 1 * time.Second
 	maxBackoff     = 60 * time.Second
+	// writeDeadline 单帧写超时：半开 TCP（NAT 超时/拔线）时内核缓冲写满会永久阻塞，
+	// 必须设 deadline 让写失败触发重连，否则 agent 假死直到 OS 级 TCP 超时（15min+）。
+	writeDeadline = 15 * time.Second
+	// readDeadline 读超时：远超正常 ticker 间隔，只为兜底半开连接；超时即重连。
+	readDeadline = 3 * time.Minute
+	// pingInterval 应用层保活：间隔须小于 readDeadline 且大于上报周期常见值。
+	pingInterval = 60 * time.Second
 )
 
 // Run 运行 agent：外层指数退避重连，连上后定时采集上报。阻塞至 ctx 取消。
@@ -58,6 +65,7 @@ type agentConn struct {
 }
 
 // writeJSON 串行化写（readLoop 的命令响应与 ticker 的上报共用一把 writeMu）。
+// 每帧设写超时：对端不读时 WriteMessage 会在 writeDeadline 内失败而非永久阻塞。
 func (a *agentConn) writeJSON(v any) error {
 	b, err := json.Marshal(v)
 	if err != nil {
@@ -65,6 +73,7 @@ func (a *agentConn) writeJSON(v any) error {
 	}
 	a.writeMu.Lock()
 	defer a.writeMu.Unlock()
+	_ = a.conn.SetWriteDeadline(time.Now().Add(writeDeadline))
 	return a.conn.WriteMessage(websocket.TextMessage, b)
 }
 
@@ -89,8 +98,13 @@ func dialAndServe(ctx context.Context, cfg Config) (connected bool, err error) {
 
 	ctx2, cancel := context.WithCancel(ctx)
 	defer cancel()
+	// 读超时兜底 + 应用层 ping 保活：服务端正常不会主动发 ping，
+	// readDeadline 到期或 write 失败都会触发重连，消除半开连接假死。
+	_ = conn.SetReadDeadline(time.Now().Add(readDeadline))
 	go a.readLoop(cancel) // 读泵：解析服务端消息并分发；出错即 cancel → 上报循环退出
 
+	ping := time.NewTicker(pingInterval)
+	defer ping.Stop()
 	ticker := time.NewTicker(cfg.ReportInterval)
 	defer ticker.Stop()
 	for {
@@ -101,12 +115,16 @@ func dialAndServe(ctx context.Context, cfg Config) (connected bool, err error) {
 			if e := a.sendReport(); e != nil {
 				return true, e
 			}
+		case <-ping.C:
+			if e := a.writeJSON(Envelope{Type: TypePing}); e != nil {
+				return true, e
+			}
 		}
 	}
 }
 
 // readLoop 读服务端消息并分发（命令/取消）；出错即 cancel 触发重连。
-// 与上报循环并发写 conn，均经 writeMu 串行化。
+// 与上报循环并发写 conn，均经 writeMu 串行化。任一消息到达即续读超时。
 func (a *agentConn) readLoop(cancel context.CancelFunc) {
 	defer cancel()
 	// 断连/退出时清理所有 pending upload：关闭文件句柄 + 删半成品，防 FD 与磁盘泄漏
@@ -117,6 +135,7 @@ func (a *agentConn) readLoop(cancel context.CancelFunc) {
 		if err != nil {
 			return
 		}
+		_ = a.conn.SetReadDeadline(time.Now().Add(readDeadline))
 		var env Envelope
 		if json.Unmarshal(payload, &env) != nil {
 			continue
@@ -151,7 +170,9 @@ func (a *agentConn) dispatch(env Envelope) {
 }
 
 func (a *agentConn) sendHello() error {
-	return a.writeJSON(Envelope{Type: TypeHello, Version: AgentVersion, Caps: []string{CapabilityFile}})
+	// secret 只走消息体（0.3.2+ 服务端已就绪）。曾同时在 URL query 双发，
+	// ws:// 明文部署下会进反代/访问日志，已移除 query 通道。
+	return a.writeJSON(Envelope{Type: TypeHello, Version: AgentVersion, Caps: []string{CapabilityFile}, Secret: a.cfg.Secret})
 }
 
 func (a *agentConn) sendReport() error {
@@ -162,11 +183,11 @@ func (a *agentConn) sendReport() error {
 	return a.writeJSON(Envelope{Type: TypeReport, Version: AgentVersion, Metrics: metrics})
 }
 
-// buildURL 拼 WS 上报地址：serverURL + /api/v1/monitor/agents/ws?agent_id=&secret=。
+// buildURL 拼 WS 上报地址：serverURL + /api/v1/monitor/agents/ws?agent_id=。
+// secret 不再放 query（明文 ws 下会泄漏进反代/访问日志），鉴权走 hello 消息体。
 func buildURL(serverURL string, agentID uint, secret string) string {
 	q := url.Values{}
 	q.Set("agent_id", strconv.FormatUint(uint64(agentID), 10))
-	q.Set("secret", secret)
 	sep := "/"
 	if strings.HasSuffix(serverURL, "/") {
 		sep = ""

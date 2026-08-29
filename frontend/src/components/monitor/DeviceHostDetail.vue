@@ -9,8 +9,15 @@ import type { MonitorTarget, Metrics } from '@/api/monitor'
 import { fmtBytes, fmtSpeed } from '@/utils/format'
 import {
   type PowerAction,
-  formatSwap, fmtUptime, pct, temp,
-  humanTempName, protocolName, diskTypeName, usageColor, donutStyle,
+  formatSwap,
+  fmtUptime,
+  pct,
+  temp,
+  humanTempName,
+  protocolName,
+  diskTypeName,
+  usageColor,
+  donutStyle,
 } from './useDeviceDetail'
 
 defineProps<{
@@ -99,7 +106,9 @@ const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
     <section class="stat-card">
       <span>{{ t('opsdocker.mem') }}</span>
       <strong>{{ pct(latest?.mem_usage) }}</strong>
-      <small>{{ latest?.mem_total ? `${fmtBytes(latest.mem_used ?? 0)} / ${fmtBytes(latest.mem_total)}` : t('dhd.capUnknown') }}</small>
+      <small>{{
+        latest?.mem_total ? `${fmtBytes(latest.mem_used ?? 0)} / ${fmtBytes(latest.mem_total)}` : t('dhd.capUnknown')
+      }}</small>
     </section>
     <section class="stat-card">
       <span>{{ t('dhd.storage') }}</span>
@@ -133,7 +142,12 @@ const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
         <b>{{ pct(latest?.cpu_usage) }}</b>
       </div>
       <MetricChart :data="cpuSeries" :height="74" />
-      <MetricBar v-if="latest" :label="t('dhd.curCpu')" :value="latest.cpu_usage" :detail="latest.cpu_cores ? t('dhd.cores', { n: latest.cpu_cores }) : ''" />
+      <MetricBar
+        v-if="latest"
+        :label="t('dhd.curCpu')"
+        :value="latest.cpu_usage"
+        :detail="latest.cpu_cores ? t('dhd.cores', { n: latest.cpu_cores }) : ''"
+      />
     </section>
 
     <section class="panel">
@@ -153,7 +167,12 @@ const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
     <section v-if="latest?.disks?.length" class="panel span-2">
       <div class="panel-title">
         <span>{{ t('dhd.storageSpace') }}</span>
-        <b>{{ t('dhd.items', { n: latest.disks.length, kind: target.type === 'nas' ? t('dhd.storageItem') : t('dhd.partition') }) }}</b>
+        <b>{{
+          t('dhd.items', {
+            n: latest.disks.length,
+            kind: target.type === 'nas' ? t('dhd.storageItem') : t('dhd.partition'),
+          })
+        }}</b>
       </div>
       <div class="storage-list">
         <div v-for="(d, i) in latest.disks" :key="i" class="storage-row">
@@ -167,7 +186,9 @@ const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
               <span>{{ fmtBytes(d.used) }} / {{ fmtBytes(d.total) }}</span>
             </div>
             <div class="storage-track">
-              <i :style="{ width: `${Math.min(100, Math.max(0, d.usage || 0))}%`, background: usageColor(d.usage) }"></i>
+              <i
+                :style="{ width: `${Math.min(100, Math.max(0, d.usage || 0))}%`, background: usageColor(d.usage) }"
+              ></i>
             </div>
           </div>
         </div>
@@ -175,26 +196,69 @@ const emit = defineEmits<{ (e: 'power', action: PowerAction): void }>()
     </section>
 
     <section class="panel">
-      <div class="panel-title"><span>{{ t('dhd.hwInfo') }}</span></div>
+      <div class="panel-title">
+        <span>{{ t('dhd.hwInfo') }}</span>
+      </div>
       <div class="info-list">
-        <div class="info-row"><span>{{ t('dhd.cpuCores') }}</span><b>{{ latest?.cpu_cores ? t('dhd.coreN', { n: latest.cpu_cores }) : '-' }}</b></div>
-        <div class="info-row"><span>{{ t('dhd.physMem') }}</span><b>{{ latest?.mem_total ? fmtBytes(latest.mem_total) : '-' }}</b></div>
-        <div class="info-row"><span>Swap</span><b>{{ formatSwap(latest) }}</b></div>
-        <div class="info-row"><span>{{ t('dhd.procs') }}</span><b>{{ latest?.process_count || '-' }}</b></div>
-        <div class="info-row"><span>{{ t('dhd.hostname') }}</span><b>{{ latest?.hostname || '-' }}</b></div>
-        <div class="info-row"><span>{{ t('dhd.kernel') }}</span><b>{{ latest?.kernel_version || '-' }}</b></div>
+        <div class="info-row">
+          <span>{{ t('dhd.cpuCores') }}</span
+          ><b>{{ latest?.cpu_cores ? t('dhd.coreN', { n: latest.cpu_cores }) : '-' }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('dhd.physMem') }}</span
+          ><b>{{ latest?.mem_total ? fmtBytes(latest.mem_total) : '-' }}</b>
+        </div>
+        <div class="info-row">
+          <span>Swap</span><b>{{ formatSwap(latest) }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('dhd.procs') }}</span
+          ><b>{{ latest?.process_count || '-' }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('dhd.hostname') }}</span
+          ><b>{{ latest?.hostname || '-' }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('dhd.kernel') }}</span
+          ><b>{{ latest?.kernel_version || '-' }}</b>
+        </div>
       </div>
     </section>
 
     <section class="panel">
-      <div class="panel-title"><span>{{ t('dhd.netStatus') }}</span></div>
+      <div class="panel-title">
+        <span>{{ t('dhd.netStatus') }}</span>
+      </div>
       <div class="info-list">
-        <div class="info-row"><span>{{ t('dhd.rxRate') }}</span><b>↓ {{ fmtSpeed(latest?.net_rx_rate ?? 0) }}</b></div>
-        <div class="info-row"><span>{{ t('dhd.txRate') }}</span><b>↑ {{ fmtSpeed(latest?.net_tx_rate ?? 0) }}</b></div>
-        <div class="info-row"><span>{{ t('dhd.load') }}</span><b>{{ latest?.load1 !== undefined ? `${latest.load1.toFixed(2)} / ${latest.load5?.toFixed(2) ?? '-'} / ${latest.load15?.toFixed(2) ?? '-'}` : '-' }}</b></div>
-        <div class="info-row"><span>{{ t('deviceform.address') }}</span><b>{{ target.host || t('dhd.localHost') }}</b></div>
-        <div class="info-row"><span>{{ t('deviceform.port') }}</span><b>{{ target.port || '-' }}</b></div>
-        <div class="info-row"><span>{{ t('deviceform.protocol') }}</span><b>{{ protocolName(resolvedProtocol) }}</b></div>
+        <div class="info-row">
+          <span>{{ t('dhd.rxRate') }}</span
+          ><b>↓ {{ fmtSpeed(latest?.net_rx_rate ?? 0) }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('dhd.txRate') }}</span
+          ><b>↑ {{ fmtSpeed(latest?.net_tx_rate ?? 0) }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('dhd.load') }}</span
+          ><b>{{
+            latest?.load1 !== undefined
+              ? `${latest.load1.toFixed(2)} / ${latest.load5?.toFixed(2) ?? '-'} / ${latest.load15?.toFixed(2) ?? '-'}`
+              : '-'
+          }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('deviceform.address') }}</span
+          ><b>{{ target.host || t('dhd.localHost') }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('deviceform.port') }}</span
+          ><b>{{ target.port || '-' }}</b>
+        </div>
+        <div class="info-row">
+          <span>{{ t('deviceform.protocol') }}</span
+          ><b>{{ protocolName(resolvedProtocol) }}</b>
+        </div>
       </div>
     </section>
   </div>

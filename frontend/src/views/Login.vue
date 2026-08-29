@@ -18,7 +18,8 @@ const authStatus = ref<AuthStatus | null>(null)
 const serviceErr = ref('')
 
 // 登录表单与各登录方式抽出为 composable（useLoginAuth）。
-const { auth, loading, err, captcha, acc, cookieStr, fetchCaptcha, accountLogin, cookieLogin, demoLogin, oidcLogin } = useLoginAuth()
+const { auth, loading, err, captcha, acc, cookieStr, fetchCaptcha, accountLogin, cookieLogin, demoLogin, oidcLogin } =
+  useLoginAuth()
 
 function goDashboard() {
   router.push({ name: 'dashboard' })
@@ -33,7 +34,8 @@ onMounted(async () => {
   // fragment 不进服务器日志/Referrer/浏览器历史，比 query 安全（仍建议生产走 HTTPS）。
   // 兜底读 query，兼容旧后端可能仍签发的 query 跳转。
   const oidcHash = new URLSearchParams((route.hash || '').replace(/^#/, ''))
-  const oidcToken = oidcHash.get('oidc_token') ?? (typeof route.query.oidc_token === 'string' ? route.query.oidc_token : '')
+  const oidcToken =
+    oidcHash.get('oidc_token') ?? (typeof route.query.oidc_token === 'string' ? route.query.oidc_token : '')
   if (oidcToken) {
     await auth.loginByToken(oidcToken)
     router.replace({ name: 'dashboard' })
@@ -57,11 +59,16 @@ async function loadBootStatus() {
 }
 
 // 包装登录成功回调：跳转首页。
-function doAccountLogin() { accountLogin(goDashboard) }
-function doCookieLogin() { cookieLogin(goDashboard) }
-function doDemoLogin() { demoLogin(goDashboard) }
+function doAccountLogin() {
+  accountLogin(goDashboard)
+}
+function doCookieLogin() {
+  cookieLogin(goDashboard)
+}
+function doDemoLogin() {
+  demoLogin(goDashboard)
+}
 </script>
-
 
 <template>
   <div class="login-wrap">
@@ -80,7 +87,13 @@ function doDemoLogin() { demoLogin(goDashboard) }
       <div class="boot-panel" :class="{ bad: serviceErr }">
         <div class="boot-row">
           <span class="dot" :class="{ ok: !serviceErr && !bootLoading, warn: bootLoading, bad: serviceErr }"></span>
-          <span>{{ bootLoading ? t('login.boot.checking') : serviceErr ? t('login.boot.unreachable') : t('login.boot.connected') }}</span>
+          <span>{{
+            bootLoading
+              ? t('login.boot.checking')
+              : serviceErr
+                ? t('login.boot.unreachable')
+                : t('login.boot.connected')
+          }}</span>
           <span class="boot-version">{{ systemInfo?.version || APP_VERSION }}</span>
         </div>
         <p v-if="serviceErr" class="boot-desc">{{ serviceErr }}</p>
@@ -91,7 +104,13 @@ function doDemoLogin() { demoLogin(goDashboard) }
 
       <!-- 好学账号登录 -->
       <form v-if="tab === 'account'" class="form" @submit.prevent="doAccountLogin">
-        <el-input v-model="acc.username" :placeholder="t('login.form.username')" size="large" autocomplete="username" class="field" />
+        <el-input
+          v-model="acc.username"
+          :placeholder="t('login.form.username')"
+          size="large"
+          autocomplete="username"
+          class="field"
+        />
         <el-input
           v-model="acc.password"
           type="password"
@@ -109,8 +128,21 @@ function doDemoLogin() { demoLogin(goDashboard) }
           class="field"
         />
         <div v-if="captcha?.need_captcha" class="captcha-row field">
-          <img v-if="captcha?.image" :src="captcha.image" class="captcha-img" :alt="t('login.form.captcha')" @click="fetchCaptcha" :title="t('login.clickRefresh')" />
-          <el-input v-model="acc.imagestring" :placeholder="t('login.form.captcha')" size="large" autocomplete="off" class="captcha-input" />
+          <img
+            v-if="captcha?.image"
+            :src="captcha.image"
+            class="captcha-img"
+            :alt="t('login.form.captcha')"
+            @click="fetchCaptcha"
+            :title="t('login.clickRefresh')"
+          />
+          <el-input
+            v-model="acc.imagestring"
+            :placeholder="t('login.form.captcha')"
+            size="large"
+            autocomplete="off"
+            class="captcha-input"
+          />
         </div>
         <el-button type="primary" size="large" native-type="submit" class="submit" :loading="loading">
           {{ t('login.submit') }}
@@ -229,10 +261,10 @@ function doDemoLogin() { demoLogin(goDashboard) }
   background: var(--text-muted);
 }
 .dot.ok {
-  background:var(--pt-success);
+  background: var(--pt-success);
 }
 .dot.warn {
-  background:var(--pt-warn);
+  background: var(--pt-warn);
 }
 .dot.bad {
   background: var(--pt-danger);
@@ -318,7 +350,7 @@ function doDemoLogin() { demoLogin(goDashboard) }
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   background: var(--pt-primary-bg);
-  color:var(--pt-primary);
+  color: var(--pt-primary);
   font-weight: 600;
   cursor: pointer;
 }
@@ -341,15 +373,46 @@ function doDemoLogin() { demoLogin(goDashboard) }
 }
 
 /* 水润动效增强 */
-.login-card { animation: pt-scale-in var(--dur-slow) var(--ease-out-spring) both; }
-.mode-tabs button { transition: all var(--dur-base) var(--ease-out-smooth); }
-.mode-tabs button:hover { transform: translateY(-1px); }
-.submit { transition: transform var(--dur-fast) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth), filter var(--dur-fast) var(--ease-out-smooth); box-shadow: var(--shadow-primary); }
-.submit:hover { transform: translateY(-1px); box-shadow: var(--shadow-primary-lg); filter: brightness(1.05); }
-.submit:active { transform: translateY(0) scale(0.985); }
-.demo-btn { transition: all var(--dur-base) var(--ease-out-smooth); }
-.demo-btn:hover { transform: translateY(-1px); background: var(--pt-primary-bg); }
-.captcha-img { transition: transform var(--dur-fast) var(--ease-out-spring), opacity var(--dur-fast) var(--ease-out-smooth); }
-.captcha-img:hover { transform: scale(1.04); }
-.dot { transition: background var(--dur-base) var(--ease-out-smooth); }
+.login-card {
+  animation: pt-scale-in var(--dur-slow) var(--ease-out-spring) both;
+}
+.mode-tabs button {
+  transition: all var(--dur-base) var(--ease-out-smooth);
+}
+.mode-tabs button:hover {
+  transform: translateY(-1px);
+}
+.submit {
+  transition:
+    transform var(--dur-fast) var(--ease-out-smooth),
+    box-shadow var(--dur-base) var(--ease-out-smooth),
+    filter var(--dur-fast) var(--ease-out-smooth);
+  box-shadow: var(--shadow-primary);
+}
+.submit:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-primary-lg);
+  filter: brightness(1.05);
+}
+.submit:active {
+  transform: translateY(0) scale(0.985);
+}
+.demo-btn {
+  transition: all var(--dur-base) var(--ease-out-smooth);
+}
+.demo-btn:hover {
+  transform: translateY(-1px);
+  background: var(--pt-primary-bg);
+}
+.captcha-img {
+  transition:
+    transform var(--dur-fast) var(--ease-out-spring),
+    opacity var(--dur-fast) var(--ease-out-smooth);
+}
+.captcha-img:hover {
+  transform: scale(1.04);
+}
+.dot {
+  transition: background var(--dur-base) var(--ease-out-smooth);
+}
 </style>

@@ -6,7 +6,9 @@ PT 守护神 —— **干净起点重写**：Go 后端为核心（Docker 部署�
 
 > 架构借鉴 MoviePilot（Chain/Module/Event + Oper）、PT-depiler（站点 Schema/Definition 两层 + 286 站 YAML）、pt_mate（SiteAdapter 接口 + CookieCloud）、qBitController（rid 增量同步）。保留「好学 APP 专属 VIP」准入验证。
 
-完整方案见 `C:\Users\52sy\.claude\plans\docker-ios-mac-curious-raven.md`。
+架构与各模块设计见 [README/00-项目总览.md](README/00-项目总览.md) 与 [README/01-架构设计.md](README/01-架构设计.md)。
+
+> **新用户从这里开始**：[快速开始（用户指南）](README/快速开始.md)——部署、登录、加站点、加下载器五步走。版本变更与升级注意事项见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 仓库结构
 

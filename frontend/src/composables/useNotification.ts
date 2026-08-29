@@ -57,8 +57,20 @@ async function loadNotif() {
     notif.value = {
       bark: { enabled: c.bark.enabled, server: c.bark.server, key: '' },
       telegram: { enabled: c.telegram.enabled, token: '', chat_id: c.telegram.chat_id, api_url: c.telegram.api_url },
-      qq: { enabled: c.qq.enabled, app_id: c.qq.app_id, app_secret: '', openid: c.qq.openid, group_openid: c.qq.group_openid },
-      wechat: { enabled: c.wechat.enabled, bot_token: '', account_id: c.wechat.account_id, target: c.wechat.target, base_url: c.wechat.base_url },
+      qq: {
+        enabled: c.qq.enabled,
+        app_id: c.qq.app_id,
+        app_secret: '',
+        openid: c.qq.openid,
+        group_openid: c.qq.group_openid,
+      },
+      wechat: {
+        enabled: c.wechat.enabled,
+        bot_token: '',
+        account_id: c.wechat.account_id,
+        target: c.wechat.target,
+        base_url: c.wechat.base_url,
+      },
       webhook: { enabled: c.webhook.enabled, url: c.webhook.url },
       dingtalk: { enabled: c.dingtalk.enabled, url: c.dingtalk.url },
       feishu: { enabled: c.feishu.enabled, url: c.feishu.url },
@@ -81,7 +93,14 @@ async function loadNotif() {
       lark: { enabled: c.lark.enabled, url: c.lark.url },
       discord: { enabled: c.discord.enabled, url: c.discord.url },
       slack: { enabled: c.slack.enabled, url: c.slack.url },
-      mqtt: { enabled: c.mqtt.enabled, broker: c.mqtt.broker, topic: c.mqtt.topic, username: c.mqtt.username, password: '', client_id: c.mqtt.client_id },
+      mqtt: {
+        enabled: c.mqtt.enabled,
+        broker: c.mqtt.broker,
+        topic: c.mqtt.topic,
+        username: c.mqtt.username,
+        password: '',
+        client_id: c.mqtt.client_id,
+      },
       serverchan: { enabled: c.serverchan.enabled, key: '' },
     }
     testResults.value = []
@@ -126,19 +145,23 @@ function validateNotif(): string {
     if (!n.email.to?.trim()) return '邮件已启用，但收件人为空'
     if (!n.email.password?.trim() && !notifCfg.value?.email.password_configured) return '邮件已启用，但 SMTP 密码为空'
   }
-  if (n.pushplus.enabled && !n.pushplus.token?.trim() && !notifCfg.value?.pushplus.token_configured) return 'PushPlus 已启用，但 Token 为空'
+  if (n.pushplus.enabled && !n.pushplus.token?.trim() && !notifCfg.value?.pushplus.token_configured)
+    return 'PushPlus 已启用，但 Token 为空'
   if (n.pushdeer.enabled) {
-    if (!n.pushdeer.pushkey?.trim() && !notifCfg.value?.pushdeer.pushkey_configured) return 'PushDeer 已启用，但 PushKey 为空'
+    if (!n.pushdeer.pushkey?.trim() && !notifCfg.value?.pushdeer.pushkey_configured)
+      return 'PushDeer 已启用，但 PushKey 为空'
   }
   if (n.ntfy.enabled && !n.ntfy.topic?.trim()) return 'ntfy 已启用，但 Topic 为空'
   if (n.gotify.enabled) {
     if (!n.gotify.server?.trim()) return 'Gotify 已启用，但 Server 为空'
     if (!n.gotify.token?.trim() && !notifCfg.value?.gotify.token_configured) return 'Gotify 已启用，但 Token 为空'
   }
-  if (n.apprise.enabled && !n.apprise.apikey?.trim() && !notifCfg.value?.apprise.apikey_configured) return 'Apprise 已启用，但 API Key 为空'
+  if (n.apprise.enabled && !n.apprise.apikey?.trim() && !notifCfg.value?.apprise.apikey_configured)
+    return 'Apprise 已启用，但 API Key 为空'
   if (n.workwechat.enabled && !n.workwechat.url?.trim()) return '企业微信已启用，但机器人 Webhook 为空'
   if (n.wxpusher.enabled) {
-    if (!n.wxpusher.app_token?.trim() && !notifCfg.value?.wxpusher.app_token_configured) return 'WxPusher 已启用，但 APP Token 为空'
+    if (!n.wxpusher.app_token?.trim() && !notifCfg.value?.wxpusher.app_token_configured)
+      return 'WxPusher 已启用，但 APP Token 为空'
     if (!n.wxpusher.uid?.trim() && !n.wxpusher.topic_id?.trim()) return 'WxPusher 已启用，但 UID 与 Topic ID 至少填一个'
   }
   if (n.lark.enabled && !n.lark.url?.trim()) return 'Lark 已启用，但机器人 Webhook 为空'
@@ -147,9 +170,11 @@ function validateNotif(): string {
   if (n.mqtt.enabled) {
     if (!n.mqtt.broker?.trim()) return 'MQTT 已启用，但 Broker 为空'
     if (!n.mqtt.topic?.trim()) return 'MQTT 已启用，但 Topic 为空'
-    if (!n.mqtt.password?.trim() && !notifCfg.value?.mqtt.password_configured && n.mqtt.username?.trim()) return 'MQTT 已启用，但 Password 为空'
+    if (!n.mqtt.password?.trim() && !notifCfg.value?.mqtt.password_configured && n.mqtt.username?.trim())
+      return 'MQTT 已启用，但 Password 为空'
   }
-  if (n.serverchan.enabled && !n.serverchan.key?.trim() && !notifCfg.value?.serverchan.key_configured) return 'Server酱 已启用，但 SendKey 为空'
+  if (n.serverchan.enabled && !n.serverchan.key?.trim() && !notifCfg.value?.serverchan.key_configured)
+    return 'Server酱 已启用，但 SendKey 为空'
   return ''
 }
 
@@ -194,7 +219,10 @@ async function wxLogin() {
     stopWxPoll()
     const owner = ++wxTimerOwner
     wxTimer = setInterval(async () => {
-      if (owner !== wxTimerOwner) { stopWxPoll(); return } // 已被新一轮登录取代：自杀退出
+      if (owner !== wxTimerOwner) {
+        stopWxPoll()
+        return
+      } // 已被新一轮登录取代：自杀退出
       try {
         const s = await notificationApi.wechatQrcodeStatus(wxQrcode.value)
         if (s.logged_in) {
@@ -203,7 +231,9 @@ async function wxLogin() {
           ElMessage.success('微信登录成功，已自动绑定')
           await loadNotif()
         }
-      } catch { /* 轮询期间错误忽略 */ }
+      } catch {
+        /* 轮询期间错误忽略 */
+      }
     }, 2000)
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || '获取二维码失败')
@@ -211,7 +241,10 @@ async function wxLogin() {
 }
 function stopWxPoll() {
   wxTimerOwner++ // 使任何在飞轮询失效
-  if (wxTimer) { clearInterval(wxTimer); wxTimer = undefined }
+  if (wxTimer) {
+    clearInterval(wxTimer)
+    wxTimer = undefined
+  }
 }
 onBeforeUnmount(stopWxPoll)
 

@@ -23,8 +23,9 @@ async function deriveKey(pin, saltB64) {
 export async function saveCredVault(pin, entries) {
   const data = JSON.stringify(entries)
   if (!pin) {
-    await chrome.storage.local.set({ [KEY]: { plain: data } })
-    return
+    // 收权改造：不再支持明文落盘——空 PIN 一律拒绝。存量明文库由 options 页
+    // 首次解锁流程强制迁移重加密；loadCredVault 保留明文读取仅服务于该迁移路径。
+    throw new Error('PIN required (plaintext vault no longer supported)')
   }
   const salt = crypto.getRandomValues(new Uint8Array(16))
   const iv = crypto.getRandomValues(new Uint8Array(12))

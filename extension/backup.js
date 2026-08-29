@@ -25,10 +25,14 @@ export async function unpackBackup(blob, pass) {
 }
 
 // collectLocal 聚合本机可备份数据（服务器地址在 sync；登录凭据/令牌与 TOTP/收藏在 local）。
+// 密封形态的凭据（hxptCreds={salt,iv,data}）不进备份——备份已有独立的口令加密
+// （packBackup），而密封密钥绑定本机设备密钥/PIN，导出到别的机器也解不开。
 export async function collectLocal() {
   const cfg = await chrome.storage.sync.get({ server: '', downloaderId: 0 })
   const loc = await chrome.storage.local.get({ ptp_vault: null, ptp_favorites: [], hxptCookie: '', token: '', user: null, hxptCreds: null })
-  return { at: Date.now(), sync: cfg, local: loc }
+  const out = { at: Date.now(), sync: cfg, local: loc }
+  if (loc.hxptCreds && loc.hxptCreds.salt && loc.hxptCreds.iv) delete out.local.hxptCreds
+  return out
 }
 
 // —— WebDAV ——

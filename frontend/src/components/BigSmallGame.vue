@@ -23,11 +23,14 @@ const remaining = computed(() => Math.max(0, (state.value?.round.countdown ?? 0)
 const sealRemaining = computed(() => Math.max(0, (state.value?.round.seal_countdown ?? 0) - elapsed.value))
 const roundStatus = computed(() => state.value?.round.status ?? '')
 const betting = ref(false)
-const canBet = computed(() => roundStatus.value === 'betting' && sealRemaining.value > 0 && !betting.value && !!state.value)
+const canBet = computed(
+  () => roundStatus.value === 'betting' && sealRemaining.value > 0 && !betting.value && !!state.value,
+)
 const statusText = computed(() => {
   if (roundStatus.value === 'sealed') return t('bs.waitSealed')
   if (roundStatus.value === 'finished') return t('bs.waitFinished')
-  if (roundStatus.value === 'betting' && sealRemaining.value <= 3) return t('bs.waitSealing', { s: sealRemaining.value })
+  if (roundStatus.value === 'betting' && sealRemaining.value <= 3)
+    return t('bs.waitSealing', { s: sealRemaining.value })
   return t('bs.waitBetting', { s: remaining.value })
 })
 
@@ -93,11 +96,17 @@ async function load(silent = false) {
 }
 
 // ── 聊天 / 任务 / 道具 / 红包（composable） ──
-const { chat, chatInput, sending, refreshChat, sendChat, initChatFromState } = useBigSmallChat(siteIdRef, gameRef, load, state)
-const {
-  doTask, useRefund, useProp, claimRed,
-  rpAmount, rpCount, rpGreeting, rpSending, sendRed,
-} = useBigSmallItems(siteIdRef, gameRef, load)
+const { chat, chatInput, sending, refreshChat, sendChat, initChatFromState } = useBigSmallChat(
+  siteIdRef,
+  gameRef,
+  load,
+  state,
+)
+const { doTask, useRefund, useProp, claimRed, rpAmount, rpCount, rpGreeting, rpSending, sendRed } = useBigSmallItems(
+  siteIdRef,
+  gameRef,
+  load,
+)
 
 // ── 排行 / 记录 tab ──
 const rankTab = ref(0)
@@ -164,19 +173,31 @@ onBeforeUnmount(stopTimers)
         <div class="stat-lbl">{{ t('bs.countdown') }}</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-val">{{ roundStatus === 'betting' ? t('bs.canBet') : roundStatus === 'sealed' ? t('bs.sealed') : t('bs.ended') }}</div>
+        <div class="stat-val">
+          {{ roundStatus === 'betting' ? t('bs.canBet') : roundStatus === 'sealed' ? t('bs.sealed') : t('bs.ended') }}
+        </div>
         <div class="stat-lbl">{{ statusText }}</div>
       </div>
       <div class="stat-tile">
         <div class="stat-val">{{ t('bs.roundN', { n: state?.round.game_no || '?' }) }}</div>
-        <div class="stat-lbl">{{ t('bs.roundMeta', { players: state?.round.player_count ?? 0, total: fmt(state?.round.total_bet) }) }}</div>
+        <div class="stat-lbl">
+          {{ t('bs.roundMeta', { players: state?.round.player_count ?? 0, total: fmt(state?.round.total_bet) }) }}
+        </div>
       </div>
       <button class="refresh-btn" :disabled="loading" :aria-label="t('bs.refreshRound')" @click="load(false)">⟳</button>
     </div>
 
     <!-- 上局结果 -->
     <div v-if="state?.last_result" class="last-res" :class="(state.last_result.net_result ?? -1) >= 0 ? 'win' : 'lose'">
-      {{ t('bs.lastResult', { no: state.last_result.game_no, result: dotLabel(state.last_result.result || ''), bet: dotLabel(state.last_result.bet_type), amount: fmt(state.last_result.amount) }) }} →
+      {{
+        t('bs.lastResult', {
+          no: state.last_result.game_no,
+          result: dotLabel(state.last_result.result || ''),
+          bet: dotLabel(state.last_result.bet_type),
+          amount: fmt(state.last_result.amount),
+        })
+      }}
+      →
       <b>{{ (state.last_result.net_result ?? 0) >= 0 ? '+' : '' }}{{ fmt(state.last_result.net_result ?? 0) }}</b>
     </div>
 
@@ -188,49 +209,86 @@ onBeforeUnmount(stopTimers)
           <div class="trend-row">
             <div class="trend-block">
               <div class="trend-cap">{{ t('bs.last40') }}</div>
-              <div class="bar-row"><span class="bar big" :style="{ width: state?.trend40.big_pct + '%' }">{{ t('bs.big') }} {{ state?.trend40.big_count }}</span></div>
-              <div class="bar-row"><span class="bar small" :style="{ width: state?.trend40.small_pct + '%' }">{{ t('bs.small') }} {{ state?.trend40.small_count }}</span></div>
-              <div v-if="state?.has_house" class="trend-house">{{ t('bs.houseKill', { n: state?.trend40.house_count }) }}</div>
+              <div class="bar-row">
+                <span class="bar big" :style="{ width: state?.trend40.big_pct + '%' }"
+                  >{{ t('bs.big') }} {{ state?.trend40.big_count }}</span
+                >
+              </div>
+              <div class="bar-row">
+                <span class="bar small" :style="{ width: state?.trend40.small_pct + '%' }"
+                  >{{ t('bs.small') }} {{ state?.trend40.small_count }}</span
+                >
+              </div>
+              <div v-if="state?.has_house" class="trend-house">
+                {{ t('bs.houseKill', { n: state?.trend40.house_count }) }}
+              </div>
             </div>
             <div class="trend-block">
               <div class="trend-cap">{{ t('bs.last10') }}</div>
-              <div class="bar-row"><span class="bar big" :style="{ width: state?.trend10.big_pct + '%' }">{{ t('bs.big') }} {{ state?.trend10.big_count }}</span></div>
-              <div class="bar-row"><span class="bar small" :style="{ width: state?.trend10.small_pct + '%' }">{{ t('bs.small') }} {{ state?.trend10.small_count }}</span></div>
+              <div class="bar-row">
+                <span class="bar big" :style="{ width: state?.trend10.big_pct + '%' }"
+                  >{{ t('bs.big') }} {{ state?.trend10.big_count }}</span
+                >
+              </div>
+              <div class="bar-row">
+                <span class="bar small" :style="{ width: state?.trend10.small_pct + '%' }"
+                  >{{ t('bs.small') }} {{ state?.trend10.small_count }}</span
+                >
+              </div>
             </div>
           </div>
           <div v-if="state?.recent_results?.length" class="dots">
-            <span v-for="(r, i) in state.recent_results" :key="i" class="dot" :style="{ background: dotColor(r) }" :title="dotLabel(r)">{{ dotLabel(r) }}</span>
+            <span
+              v-for="(r, i) in state.recent_results"
+              :key="i"
+              class="dot"
+              :style="{ background: dotColor(r) }"
+              :title="dotLabel(r)"
+              >{{ dotLabel(r) }}</span
+            >
           </div>
           <div v-if="state?.trend_text" class="trend-text">{{ state.trend_text }}</div>
         </section>
 
         <section class="glass panel">
           <div class="sec-title">💰 {{ t('bs.placeBet') }}</div>
-          <div class="my-bet" v-if="state?.my_bet">{{ t('bs.myBet', { side: dotLabel(state.my_bet.bet_type), amount: fmt(state.my_bet.amount) }) }}</div>
+          <div class="my-bet" v-if="state?.my_bet">
+            {{ t('bs.myBet', { side: dotLabel(state.my_bet.bet_type), amount: fmt(state.my_bet.amount) }) }}
+          </div>
           <div class="bet-amount">
             <input v-model.number="amount" type="number" class="amt" :min="state?.min_bet ?? 1" />
             <span class="hint">{{ t('bs.minBet', { n: state?.min_bet ?? 0 }) }}</span>
             <button class="quick allin" @click="allIn">{{ t('bs.allIn') }}</button>
           </div>
           <div class="quicks">
-            <button v-for="q in quickAmounts" :key="q" class="quick" @click="amount = q">{{ q.toLocaleString() }}</button>
+            <button v-for="q in quickAmounts" :key="q" class="quick" @click="amount = q">
+              {{ q.toLocaleString() }}
+            </button>
           </div>
           <select v-if="isHxpt && state?.props?.length" v-model="propId" class="prop-sel">
             <option value="0">{{ t('bs.noProp') }}</option>
-            <option v-for="p in state.props.filter((p) => p.usable)" :key="p.id" :value="p.id">{{ p.name }} ×{{ p.quantity }}</option>
+            <option v-for="p in state.props.filter((p) => p.usable)" :key="p.id" :value="p.id">
+              {{ p.name }} ×{{ p.quantity }}
+            </option>
           </select>
           <div class="ops">
             <button class="op big" :disabled="!canBet" @click="doBet('big')">{{ t('bs.betBig') }}</button>
             <button class="op small" :disabled="!canBet" @click="doBet('small')">{{ t('bs.betSmall') }}</button>
           </div>
           <div class="betters">
-            <div class="bet-col big"><span class="bet-col-cap">{{ t('bs.bigSide') }}</span>
+            <div class="bet-col big">
+              <span class="bet-col-cap">{{ t('bs.bigSide') }}</span>
               <span v-if="!state?.big_bets?.length" class="empty">{{ t('bs.none') }}</span>
-              <span v-else v-for="(b, i) in state.big_bets.slice(0, 8)" :key="i" class="bet-name">{{ b.username }} {{ fmt(b.amount) }}</span>
+              <span v-else v-for="(b, i) in state.big_bets.slice(0, 8)" :key="i" class="bet-name"
+                >{{ b.username }} {{ fmt(b.amount) }}</span
+              >
             </div>
-            <div class="bet-col small"><span class="bet-col-cap">{{ t('bs.smallSide') }}</span>
+            <div class="bet-col small">
+              <span class="bet-col-cap">{{ t('bs.smallSide') }}</span>
               <span v-if="!state?.small_bets?.length" class="empty">{{ t('bs.none') }}</span>
-              <span v-else v-for="(b, i) in state.small_bets.slice(0, 8)" :key="i" class="bet-name">{{ b.username }} {{ fmt(b.amount) }}</span>
+              <span v-else v-for="(b, i) in state.small_bets.slice(0, 8)" :key="i" class="bet-name"
+                >{{ b.username }} {{ fmt(b.amount) }}</span
+              >
             </div>
           </div>
         </section>
@@ -264,11 +322,23 @@ onBeforeUnmount(stopTimers)
       </div>
       <div class="rec-table">
         <div class="rec-head">
-          <span>{{ t('bs.no') }}</span><span>{{ t('bs.start') }}</span><span>{{ t('bs.end') }}</span><span>{{ t('bs.players') }}</span><span>{{ t('bs.total') }}</span><span>{{ t('bs.result') }}</span>
-          <template v-if="recTab === 'my'"><span>{{ t('bs.myBetCol') }}</span><span>{{ t('bs.myResult') }}</span></template>
+          <span>{{ t('bs.no') }}</span
+          ><span>{{ t('bs.start') }}</span
+          ><span>{{ t('bs.end') }}</span
+          ><span>{{ t('bs.players') }}</span
+          ><span>{{ t('bs.total') }}</span
+          ><span>{{ t('bs.result') }}</span>
+          <template v-if="recTab === 'my'"
+            ><span>{{ t('bs.myBetCol') }}</span
+            ><span>{{ t('bs.myResult') }}</span></template
+          >
           <span v-else>{{ t('bs.betUsers') }}</span>
         </div>
-        <div v-for="(r, i) in (recTab === 'my' ? state?.my_records : state?.all_records) ?? []" :key="i" class="rec-row">
+        <div
+          v-for="(r, i) in (recTab === 'my' ? state?.my_records : state?.all_records) ?? []"
+          :key="i"
+          class="rec-row"
+        >
           <span>{{ r.game_no }}</span>
           <span class="muted">{{ r.start_time }}</span>
           <span class="muted">{{ r.end_time }}</span>
@@ -277,11 +347,15 @@ onBeforeUnmount(stopTimers)
           <span :class="r.result">{{ dotLabel(r.result) }}</span>
           <template v-if="recTab === 'my'">
             <span>{{ r.my_bet_type ? dotLabel(r.my_bet_type) + ' ' + fmt(r.my_bet) : '—' }}</span>
-            <span :class="(r.my_result ?? 0) >= 0 ? 'big' : 'small'">{{ (r.my_result ?? 0) >= 0 ? '+' : '' }}{{ fmt(r.my_result) }}</span>
+            <span :class="(r.my_result ?? 0) >= 0 ? 'big' : 'small'"
+              >{{ (r.my_result ?? 0) >= 0 ? '+' : '' }}{{ fmt(r.my_result) }}</span
+            >
           </template>
           <span v-else class="muted bets-cell">{{ r.bets || '—' }}</span>
         </div>
-        <div v-if="!((recTab === 'my' ? state?.my_records : state?.all_records)?.length)" class="empty">{{ t('bs.noRecords') }}</div>
+        <div v-if="!(recTab === 'my' ? state?.my_records : state?.all_records)?.length" class="empty">
+          {{ t('bs.noRecords') }}
+        </div>
       </div>
     </section>
 
@@ -304,93 +378,411 @@ onBeforeUnmount(stopTimers)
 </template>
 
 <style scoped>
-.bs { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 860px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #db2777, #f59e0b); text-align: center; }
-.hero-title { font-size: var(--fs-title); font-weight: 800; color: #fff; }
-.balance { margin-top: 4px; font-size: var(--fs-body); color: rgba(255,255,255,0.92); }
-.balance b { color: #fde68a; font-size: var(--fs-lg); }
-.cur { margin-left: 4px; }
-.payout { margin-left: 8px; opacity: 0.85; }
+.bs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-width: 860px;
+  margin: 0 auto;
+}
+.hero {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #db2777, #f59e0b);
+  text-align: center;
+}
+.hero-title {
+  font-size: var(--fs-title);
+  font-weight: 800;
+  color: #fff;
+}
+.balance {
+  margin-top: 4px;
+  font-size: var(--fs-body);
+  color: rgba(255, 255, 255, 0.92);
+}
+.balance b {
+  color: #fde68a;
+  font-size: var(--fs-lg);
+}
+.cur {
+  margin-left: 4px;
+}
+.payout {
+  margin-left: 8px;
+  opacity: 0.85;
+}
 
-.stat-bar { display: flex; gap: var(--sp-2); align-items: stretch; }
-.stat-tile { flex: 1; text-align: center; padding: 10px 4px; border-radius: var(--radius-sm); background: var(--glass-bg, rgba(255,255,255,0.06)); border: 1px solid var(--border-soft, rgba(255,255,255,0.08)); }
-.stat-val { font-size: var(--fs-xl); font-weight: 800; color: var(--pt-primary, #6c5ce7); }
-.stat-val.warn { color: var(--pt-warn, #f59e0b); }
-.stat-lbl { font-size: var(--fs-2xs); color: var(--text-muted, #999); margin-top: 2px; }
-.refresh-btn { width: 40px; border: 0; border-radius: var(--radius-sm); background: var(--glass-bg, rgba(255,255,255,0.06)); border: 1px solid var(--border-soft, rgba(255,255,255,0.08)); color: inherit; cursor: pointer; font-size: var(--fs-xl); }
-.refresh-btn:disabled { opacity: 0.5; cursor: wait; }
+.stat-bar {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: stretch;
+}
+.stat-tile {
+  flex: 1;
+  text-align: center;
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+}
+.stat-val {
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  color: var(--pt-primary, #6c5ce7);
+}
+.stat-val.warn {
+  color: var(--pt-warn, #f59e0b);
+}
+.stat-lbl {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted, #999);
+  margin-top: 2px;
+}
+.refresh-btn {
+  width: 40px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--fs-xl);
+}
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
 
-.last-res { padding: 10px 14px; border-radius: var(--radius-sm); font-size: var(--fs-body); }
-.last-res.win { background: var(--pt-success-bg); }
-.last-res.lose { background: var(--pt-danger-bg); }
+.last-res {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-body);
+}
+.last-res.win {
+  background: var(--pt-success-bg);
+}
+.last-res.lose {
+  background: var(--pt-danger-bg);
+}
 
-.main { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); }
-@media (min-width: 720px) { .main { grid-template-columns: 1fr 280px; } }
-.left, .side { display: flex; flex-direction: column; gap: var(--sp-3); }
-.panel { padding: 14px; border-radius: var(--radius-md); }
-.sec-title { font-weight: 700; font-size: var(--fs-lg); margin-bottom: 10px; }
-.sec-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.sec-title-row .sec-title { margin-bottom: 0; }
-.empty { font-size: var(--fs-body); color: var(--text-muted, #999); padding: 8px 0; }
+.main {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-3);
+}
+@media (min-width: 720px) {
+  .main {
+    grid-template-columns: 1fr 280px;
+  }
+}
+.left,
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.panel {
+  padding: 14px;
+  border-radius: var(--radius-md);
+}
+.sec-title {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  margin-bottom: 10px;
+}
+.sec-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.sec-title-row .sec-title {
+  margin-bottom: 0;
+}
+.empty {
+  font-size: var(--fs-body);
+  color: var(--text-muted, #999);
+  padding: 8px 0;
+}
 
 /* 走势 */
-.trend-row { display: flex; gap: var(--sp-3); }
-.trend-block { flex: 1; }
-.trend-cap { font-size: var(--fs-2xs); color: var(--text-muted, #999); margin-bottom: 4px; }
-.bar-row { height: 18px; margin: 3px 0; }
-.bar { display: inline-block; height: 18px; line-height: 18px; color: #fff; font-size: var(--fs-2xs); border-radius: var(--radius-2xs); padding: 0 6px; white-space: nowrap; }
-.bar.big { background: #ef4444; }
-.bar.small { background: #3b82f6; }
-.trend-house { font-size: var(--fs-2xs); color: var(--pt-success); margin-top: 2px; }
-.dots { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: 10px; }
-.dot { width: 20px; height: 20px; border-radius: 50%; color: #fff; font-size: var(--fs-2xs); line-height: 20px; text-align: center; font-weight: 700; }
-.trend-text { margin-top: 8px; text-align: center; font-size: var(--fs-xs); color: var(--pt-primary, #6c5ce7); }
+.trend-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+.trend-block {
+  flex: 1;
+}
+.trend-cap {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted, #999);
+  margin-bottom: 4px;
+}
+.bar-row {
+  height: 18px;
+  margin: 3px 0;
+}
+.bar {
+  display: inline-block;
+  height: 18px;
+  line-height: 18px;
+  color: #fff;
+  font-size: var(--fs-2xs);
+  border-radius: var(--radius-2xs);
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.bar.big {
+  background: #ef4444;
+}
+.bar.small {
+  background: #3b82f6;
+}
+.trend-house {
+  font-size: var(--fs-2xs);
+  color: var(--pt-success);
+  margin-top: 2px;
+}
+.dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: 10px;
+}
+.dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: var(--fs-2xs);
+  line-height: 20px;
+  text-align: center;
+  font-weight: 700;
+}
+.trend-text {
+  margin-top: 8px;
+  text-align: center;
+  font-size: var(--fs-xs);
+  color: var(--pt-primary, #6c5ce7);
+}
 
 /* 下注 */
-.my-bet { font-size: var(--fs-xs); color: var(--text-muted, #999); margin-bottom: 8px; }
-.bet-amount { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 8px; }
-.amt { flex: 1; padding: 8px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: var(--fs-lg); }
-.hint { font-size: var(--fs-2xs); color: var(--text-muted, #999); }
-.quicks { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-bottom: 8px; }
-.quick { padding: 5px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; cursor: pointer; font-size: var(--fs-xs); }
-.quick.allin { background: linear-gradient(135deg, #f59e0b, #db2777); color: #fff; border: 0; font-weight: 700; }
-.prop-sel { width: 100%; padding: 7px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: var(--fs-body); margin-bottom: 8px; }
-.ops { display: flex; gap: var(--sp-2); margin-bottom: 10px; }
-.op { flex: 1; padding: 12px; border: 0; border-radius: var(--radius-sm); cursor: pointer; font-weight: 800; font-size: var(--fs-lg); color: #fff; }
-.op.big { background: linear-gradient(135deg, #dc2626, #ef4444); }
-.op.small { background: linear-gradient(135deg, #2563eb, #3b82f6); }
-.op:disabled { opacity: 0.45; cursor: not-allowed; }
-.betters { display: flex; gap: var(--sp-2); font-size: var(--fs-2xs); }
-.bet-col { flex: 1; padding: 8px; border-radius: var(--radius-xs); min-height: 40px; }
-.bet-col.big { background: var(--pt-danger-bg); }
-.bet-col.small { background: var(--pt-primary-2-bg); }
-.bet-col-cap { font-weight: 700; display: block; margin-bottom: 2px; }
-.bet-name { display: block; color: var(--text-muted, #aaa); }
+.my-bet {
+  font-size: var(--fs-xs);
+  color: var(--text-muted, #999);
+  margin-bottom: 8px;
+}
+.bet-amount {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: 8px;
+}
+.amt {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  color: inherit;
+  font-size: var(--fs-lg);
+}
+.hint {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted, #999);
+}
+.quicks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-bottom: 8px;
+}
+.quick {
+  padding: 5px 10px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  color: inherit;
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+.quick.allin {
+  background: linear-gradient(135deg, #f59e0b, #db2777);
+  color: #fff;
+  border: 0;
+  font-weight: 700;
+}
+.prop-sel {
+  width: 100%;
+  padding: 7px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  color: inherit;
+  font-size: var(--fs-body);
+  margin-bottom: 8px;
+}
+.ops {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: 10px;
+}
+.op {
+  flex: 1;
+  padding: 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 800;
+  font-size: var(--fs-lg);
+  color: #fff;
+}
+.op.big {
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+.op.small {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+}
+.op:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.betters {
+  display: flex;
+  gap: var(--sp-2);
+  font-size: var(--fs-2xs);
+}
+.bet-col {
+  flex: 1;
+  padding: 8px;
+  border-radius: var(--radius-xs);
+  min-height: 40px;
+}
+.bet-col.big {
+  background: var(--pt-danger-bg);
+}
+.bet-col.small {
+  background: var(--pt-primary-2-bg);
+}
+.bet-col-cap {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 2px;
+}
+.bet-name {
+  display: block;
+  color: var(--text-muted, #aaa);
+}
 
 /* 排行 */
-.tabs { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-bottom: 8px; }
-.tabs.sm .tab { font-size: var(--fs-2xs); padding: 3px 8px; }
-.tab { padding: 4px 10px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: transparent; color: var(--text-muted, #999); cursor: pointer; font-size: var(--fs-xs); }
-.tab.on { background: var(--pt-primary, #6c5ce7); color: #fff; border-color: transparent; }
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-bottom: 8px;
+}
+.tabs.sm .tab {
+  font-size: var(--fs-2xs);
+  padding: 3px 8px;
+}
+.tab {
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+  background: transparent;
+  color: var(--text-muted, #999);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+}
+.tab.on {
+  background: var(--pt-primary, #6c5ce7);
+  color: #fff;
+  border-color: transparent;
+}
 
 /* 记录 */
-.rec-table { font-size: var(--fs-xs); }
-.rec-head, .rec-row { display: grid; grid-template-columns: 1.2fr 1.4fr 1.4fr 0.5fr 1fr 0.6fr 1.4fr; gap: var(--sp-1); padding: 5px 0; border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
-.rec-head { color: var(--text-muted, #999); font-weight: 600; }
-.rec-row .big { color: var(--pt-danger); font-weight: 700; }
-.rec-row .small { color: var(--pt-primary-2); font-weight: 700; }
-.rec-row .house { color: var(--pt-success); font-weight: 700; }
-.muted { color: var(--text-muted, #999); }
-.bets-cell { font-size: var(--fs-2xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec-table {
+  font-size: var(--fs-xs);
+}
+.rec-head,
+.rec-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.4fr 1.4fr 0.5fr 1fr 0.6fr 1.4fr;
+  gap: var(--sp-1);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+}
+.rec-head {
+  color: var(--text-muted, #999);
+  font-weight: 600;
+}
+.rec-row .big {
+  color: var(--pt-danger);
+  font-weight: 700;
+}
+.rec-row .small {
+  color: var(--pt-primary-2);
+  font-weight: 700;
+}
+.rec-row .house {
+  color: var(--pt-success);
+  font-weight: 700;
+}
+.muted {
+  color: var(--text-muted, #999);
+}
+.bets-cell {
+  font-size: var(--fs-2xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* 聊天 */
-.chat-panel { display: flex; flex-direction: column; }
-.chat-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-1); margin-bottom: 8px; }
-.chat-msg { font-size: var(--fs-xs); }
-.chat-user { font-weight: 700; color: var(--pt-primary, #6c5ce7); margin-right: 6px; }
-.chat-input { display: flex; gap: var(--sp-1); }
-.chat-input input { flex: 1; padding: 7px; border-radius: var(--radius-xs); border: 1px solid var(--border-soft, rgba(255,255,255,0.15)); background: var(--glass-bg, rgba(255,255,255,0.06)); color: inherit; font-size: var(--fs-body); }
-.chat-input button { padding: 0 16px; border: 0; border-radius: var(--radius-xs); background: var(--pt-primary, #6c5ce7); color: #fff; cursor: pointer; font-size: var(--fs-body); }
-.chat-input button:disabled { opacity: 0.5; }
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+}
+.chat-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-bottom: 8px;
+}
+.chat-msg {
+  font-size: var(--fs-xs);
+}
+.chat-user {
+  font-weight: 700;
+  color: var(--pt-primary, #6c5ce7);
+  margin-right: 6px;
+}
+.chat-input {
+  display: flex;
+  gap: var(--sp-1);
+}
+.chat-input input {
+  flex: 1;
+  padding: 7px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.15));
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  color: inherit;
+  font-size: var(--fs-body);
+}
+.chat-input button {
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--pt-primary, #6c5ce7);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--fs-body);
+}
+.chat-input button:disabled {
+  opacity: 0.5;
+}
 </style>
-

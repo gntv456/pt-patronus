@@ -18,8 +18,14 @@ const emit = defineEmits<{ (e: 'check'): void }>()
 <template>
   <el-dialog v-model="visible" :title="t('rmd.title')" width="640px" top="8vh">
     <div style="display: flex; gap: var(--sp-2); margin-bottom: 12px">
-      <el-select v-model="targets" multiple collapse-tags collapse-tags-tooltip filterable
-        :placeholder="t('rmd.targetsPh')" style="flex: 1"
+      <el-select
+        v-model="targets"
+        multiple
+        collapse-tags
+        collapse-tags-tooltip
+        filterable
+        :placeholder="t('rmd.targetsPh')"
+        style="flex: 1"
       >
         <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id" />
       </el-select>
@@ -40,7 +46,12 @@ const emit = defineEmits<{ (e: 'check'): void }>()
         </el-table-column>
         <el-table-column :label="t('rmd.samples')" show-overflow-tooltip>
           <template #default="{ row }">
-            <span class="text-muted">{{ (row.samples || []).map((x: MissingSample) => x.name).slice(0, 3).join(' / ') }}</span>
+            <span class="text-muted">{{
+              (row.samples || [])
+                .map((x: MissingSample) => x.name)
+                .slice(0, 3)
+                .join(' / ')
+            }}</span>
           </template>
         </el-table-column>
       </el-table>

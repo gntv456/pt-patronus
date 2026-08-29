@@ -1,8 +1,18 @@
 name: Docker
 
-# 镜像改为本地 docker build（scripts/release-local.sh），CI 不再构建。保留备用（workflow_dispatch）。
+# 版本 tag 触发正式构建（多架构镜像 → GHCR）；也支持手动触发（dev-<sha> 标签）。
+# 曾因 Actions 额度停用（改本地 release-local.sh），现恢复：发布制品必须出自 CI
+# （可复现、可审计、防投毒）；额度紧张时可临时改回 dispatch-only，但需同步更新
+# README/发布与在线更新.md 与 update-manifest 校验口径。
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
+
+# 同一 tag/分支连推只跑最后一次，省额度
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-push:
@@ -11,16 +21,16 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
@@ -36,7 +46,7 @@ jobs:
             v="dev-${GITHUB_SHA::7}"
           fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: ./Dockerfile
@@ -47,11 +57,36 @@ jobs:
           build-args: VERSION=${{ steps.ver.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: 扫描镜像漏洞（Trivy）
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: aquasecurity/trivy-action@0.24.0
+          # 供应链元数据（审计 P2-3）：SBOM + SLSA provenance 附到镜像（ghcr 查看器/
+          #   cosign verify-attestation 可校验）。provenance=mode=max 含完整构建参数。
+          sbom: true
+          provenance: mode=max
+      # 版本号 → 镜像 digest 输出（签名步骤用；tags 可能是 latest/tag 双标签，取第一个）
+      - name: Resolve image digest
+        id: digest
+        run: |
+          # metadata 输出第一个 tag 即本次推送的镜像引用
+          TAG="$(echo "${{ steps.meta.outputs.tags }}" | head -1)"
+          DIGEST="${{ fromJSON(steps.meta.outputs.json).containerImageDigest }}"
+          if [ -z "$DIGEST" ] || [ "$DIGEST" = "null" ]; then
+            # 兜底：从 registry 查询 digest（metadata 偶发缺 json 字段时）
+            DIGEST="$(docker buildx imagetools inspect "$TAG" --format '{{json .Manifest.Digest}}' | tr -d '"')"
+          fi
+          echo "image=${TAG%%:*}@${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+      # cosign keyless 签名（审计 P2-3）：OIDC 身份签名镜像 digest，验签命令：
+      #   cosign verify ghcr.io/gntv456/pt-patronus --certificate-identity-regexp \
+      #     '^https://github.com/gntv456/pt-patronus/\.github/workflows/docker\.yml@refs/.+' \
+      #     --certificate-oidc-issuer https://token.actions.githubusercontent.com
+      - uses: sigstore/cosign-installer@1aa8e0f2454b781fbf0fbf306a4c9533a0c57409 # v3.7.0
+      - name: Sign image (cosign keyless)
+        run: cosign sign --yes "${{ steps.digest.outputs.image }}"
+      # 扫描实际推送的镜像（tag 与 dev-<sha> 都扫——dev 镜像同样会被人拉去试用，
+      # 漏洞只在发版日暴露就晚了），CRITICAL 门禁红灯，HIGH 报告不阻断（基线收敛后再升级）。
+      - name: 扫描镜像漏洞（Trivy，CRITICAL 门禁）
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
-          image-ref: ghcr.io/${{ github.repository }}:latest
+          image-ref: ${{ steps.digest.outputs.image }}
           format: table
           severity: CRITICAL,HIGH
-        continue-on-error: true  # 渐进：首次确认基线，后续可移除此行转门禁
+          exit-code: '1'

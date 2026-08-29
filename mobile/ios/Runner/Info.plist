@@ -11,7 +11,10 @@
 	     否则真机首次 API 调用即被 -1022 App Transport Security 拦截（模拟器 debug 默认放宽，故开发期不易发现）。 -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<!-- 收权加固：去掉全局 NSAllowsArbitraryLoads，改 ATS 例外白名单。
+		     NSAllowsLocalNetworking 覆盖局域网自托管后端主场景（http://192.168.x.x 等），
+		     公网域名恢复系统默认强制 TLS；RTSP/HLS 明文流同样仅限局域网。 -->
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>CFBundleDevelopmentRegion</key>

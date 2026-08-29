@@ -105,3 +105,11 @@ func (o *RssItemOper) ListBySubscription(subID uint, limit int) ([]models.RssIte
 	err := q.Find(&its).Error
 	return its, err
 }
+
+// Prune 清理 before 之前创建的条目（保留已下载记录，供历史追溯）。
+// RSS items 每 5 分钟抓取即落行，无 TTL 会无限膨胀（数据审计 P2）。
+func (o *RssItemOper) Prune(before time.Time) (int64, error) {
+	res := o.db.Where("created_at < ? AND downloaded = ?", before, false).
+		Delete(&models.RssItem{})
+	return res.RowsAffected, res.Error
+}

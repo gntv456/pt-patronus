@@ -1,0 +1,44 @@
+# 依赖自动更新（安全审计 P1-3：全仓无依赖更新机制，Actions 引用全部浮动 tag）。
+# 频率保守（每周），PR 自动创建、人工合并——配合 CI 全量验证。
+version: 2
+updates:
+  # Go 后端
+  - package-ecosystem: gomod
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Vue 前端
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Flutter 移动端
+  - package-ecosystem: pub
+    directory: /mobile
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+
+  # Docker 镜像（CI 基础镜像）
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+
+  # GitHub Actions 版本（含 actions/checkout 等——优先补 SHA pin）
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

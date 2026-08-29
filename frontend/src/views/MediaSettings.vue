@@ -69,21 +69,34 @@ onMounted(load)
     <div class="head">
       <h2 v-if="!props.embedded" class="title">{{ t('mediasettings.title') }}</h2>
       <h3 v-else class="title embedded-title">{{ t('mediasettings.title') }}</h3>
-      <el-button v-if="!props.embedded" size="small" @click="router.push('/search')">{{ t('mediasettings.backToSearch') }}</el-button>
+      <el-button v-if="!props.embedded" size="small" @click="router.push('/search')">{{
+        t('mediasettings.backToSearch')
+      }}</el-button>
     </div>
 
     <div v-loading="loading" class="card glass">
       <div class="hint">
-        {{ t('mediasettings.hint1') }}<code>api.themoviedb.org</code>{{ t('mediasettings.hint2') }}{{ t('mediasettings.hint3') }}
+        {{ t('mediasettings.hint1') }}<code>api.themoviedb.org</code>{{ t('mediasettings.hint2')
+        }}{{ t('mediasettings.hint3') }}
       </div>
 
       <!-- TMDB -->
       <div class="group">
-        <div class="group-title">TMDB <span class="muted">{{ t('mediasettings.tmdbDesc') }}</span></div>
+        <div class="group-title">
+          TMDB <span class="muted">{{ t('mediasettings.tmdbDesc') }}</span>
+        </div>
         <div class="field">
           <label>API Key</label>
-          <el-input v-model="tmdbKey" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyKeep')" />
-          <span class="chip ok" v-if="config?.tmdb_api_key_configured">{{ statusText(config.tmdb_api_key, true) }}</span>
+          <el-input
+            v-model="tmdbKey"
+            type="password"
+            show-password
+            clearable
+            :placeholder="t('mediasettings.f.emptyKeep')"
+          />
+          <span class="chip ok" v-if="config?.tmdb_api_key_configured">{{
+            statusText(config.tmdb_api_key, true)
+          }}</span>
           <span class="chip warn" v-else>{{ t('reseed.notConfigured') }}</span>
         </div>
         <div class="field">
@@ -95,34 +108,64 @@ onMounted(load)
 
       <!-- 豆瓣 -->
       <div class="group">
-        <div class="group-title">{{ t('mediasettings.douban') }} <span class="muted">{{ t('mediasettings.doubanDesc') }}</span></div>
+        <div class="group-title">
+          {{ t('mediasettings.douban') }} <span class="muted">{{ t('mediasettings.doubanDesc') }}</span>
+        </div>
         <div class="field">
           <label>{{ t('mediasettings.f.doubanSecret') }}</label>
-          <el-input v-model="doubanSecret" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyDefault')" />
-          <span class="chip ok" v-if="config?.douban_secret_configured">{{ statusText(config.douban_secret, true) }}</span>
+          <el-input
+            v-model="doubanSecret"
+            type="password"
+            show-password
+            clearable
+            :placeholder="t('mediasettings.f.emptyDefault')"
+          />
+          <span class="chip ok" v-if="config?.douban_secret_configured">{{
+            statusText(config.douban_secret, true)
+          }}</span>
           <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
         </div>
         <div class="field">
           <label>{{ t('mediasettings.f.doubanAppKey') }}</label>
-          <el-input v-model="doubanAppKey" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyDefault')" />
-          <span class="chip ok" v-if="config?.douban_app_key_configured">{{ statusText(config.douban_app_key, true) }}</span>
+          <el-input
+            v-model="doubanAppKey"
+            type="password"
+            show-password
+            clearable
+            :placeholder="t('mediasettings.f.emptyDefault')"
+          />
+          <span class="chip ok" v-if="config?.douban_app_key_configured">{{
+            statusText(config.douban_app_key, true)
+          }}</span>
           <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
         </div>
       </div>
 
       <!-- Bangumi -->
       <div class="group">
-        <div class="group-title">Bangumi <span class="muted">{{ t('mediasettings.bangumiDesc') }}</span></div>
+        <div class="group-title">
+          Bangumi <span class="muted">{{ t('mediasettings.bangumiDesc') }}</span>
+        </div>
         <div class="field">
           <label>{{ t('mediasettings.f.bangumiToken') }}</label>
-          <el-input v-model="bangumiToken" type="password" show-password clearable :placeholder="t('mediasettings.f.emptyAnonymous')" />
-          <span class="chip ok" v-if="config?.bangumi_token_configured">{{ statusText(config.bangumi_token, true) }}</span>
+          <el-input
+            v-model="bangumiToken"
+            type="password"
+            show-password
+            clearable
+            :placeholder="t('mediasettings.f.emptyAnonymous')"
+          />
+          <span class="chip ok" v-if="config?.bangumi_token_configured">{{
+            statusText(config.bangumi_token, true)
+          }}</span>
           <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredAnonymous') }}</span>
         </div>
       </div>
 
       <div class="actions">
-        <el-button type="primary" size="large" :loading="saving" @click="save">{{ t('mediasettings.saveNow') }}</el-button>
+        <el-button type="primary" size="large" :loading="saving" @click="save">{{
+          t('mediasettings.saveNow')
+        }}</el-button>
       </div>
     </div>
   </div>
@@ -216,9 +259,21 @@ onMounted(load)
 }
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
-.page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
-.page.embedded > .sub { display: none; }
-
+.page.embedded {
+  padding: 0;
+  max-width: none;
+}
+.page.embedded .embedded-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  margin: 0;
+}
+.page.embedded .embedded-sub {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: var(--fs-xs);
+}
+.page.embedded > .sub {
+  display: none;
+}
 </style>

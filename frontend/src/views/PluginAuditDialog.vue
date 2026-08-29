@@ -3,9 +3,12 @@ import { Refresh } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import type { PluginInfo, PluginLog, PluginRelease } from '@/api/plugin'
 import {
-  runtimeState, runtimeType, runtimeLabel,
+  runtimeState,
+  runtimeType,
+  runtimeLabel,
   permissionRisk,
-  dependencyStatusType, dependencyStatusLabel,
+  dependencyStatusType,
+  dependencyStatusLabel,
   fmtTime,
 } from './pluginsHelpers'
 import { hostCapabilityLabel } from './pluginsLabels'
@@ -50,15 +53,42 @@ function permissionRiskType(perm: string) {
               {{ runtimeLabel(runtimeState(target)) }}
             </el-tag>
           </div>
-          <div class="audit-row"><span>{{ t('pad.rt') }}</span><strong>{{ target.runtime }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.pid') }}</span><strong>{{ target.runtime_status?.pid || '-' }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.managed') }}</span><strong>{{ target.runtime_status?.managed ? t('common.yes') : t('common.no') }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.restarts') }}</span><strong>{{ target.runtime_status?.restart_count || 0 }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.startedAt') }}</span><strong>{{ fmtTime(target.runtime_status?.started_at) }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.lastRestart') }}</span><strong>{{ fmtTime(target.runtime_status?.last_restart_at) }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.nextRestart') }}</span><strong>{{ fmtTime(target.runtime_status?.next_restart_at) }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.health') }}</span><strong>{{ fmtTime(target.runtime_status?.last_health_at) }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.lastExit') }}</span><strong>{{ target.runtime_status?.last_exit || '-' }}</strong></div>
+          <div class="audit-row">
+            <span>{{ t('pad.rt') }}</span
+            ><strong>{{ target.runtime }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.pid') }}</span
+            ><strong>{{ target.runtime_status?.pid || '-' }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.managed') }}</span
+            ><strong>{{ target.runtime_status?.managed ? t('common.yes') : t('common.no') }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.restarts') }}</span
+            ><strong>{{ target.runtime_status?.restart_count || 0 }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.startedAt') }}</span
+            ><strong>{{ fmtTime(target.runtime_status?.started_at) }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.lastRestart') }}</span
+            ><strong>{{ fmtTime(target.runtime_status?.last_restart_at) }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.nextRestart') }}</span
+            ><strong>{{ fmtTime(target.runtime_status?.next_restart_at) }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.health') }}</span
+            ><strong>{{ fmtTime(target.runtime_status?.last_health_at) }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.lastExit') }}</span
+            ><strong>{{ target.runtime_status?.last_exit || '-' }}</strong>
+          </div>
         </div>
         <div class="audit-panel">
           <div class="audit-title">{{ t('pad.perms') }}</div>
@@ -119,23 +149,42 @@ function permissionRiskType(perm: string) {
             </el-tag>
           </div>
           <div v-if="(target.dependencies_status || []).length" class="audit-notes">
-            <div v-for="dependency in target.dependencies_status || []" :key="`${dependency.id}-note`" class="audit-note">
-              {{ dependency.id }}{{ dependency.installed_version ? ` v${dependency.installed_version}` : '' }}{{ dependency.message ? `：${dependency.message}` : '' }}
+            <div
+              v-for="dependency in target.dependencies_status || []"
+              :key="`${dependency.id}-note`"
+              class="audit-note"
+            >
+              {{ dependency.id }}{{ dependency.installed_version ? ` v${dependency.installed_version}` : ''
+              }}{{ dependency.message ? `：${dependency.message}` : '' }}
             </div>
           </div>
         </div>
         <div class="audit-panel">
           <div class="audit-title">{{ t('pad.extPoints') }}</div>
-          <div class="audit-row"><span>{{ t('pad.actions') }}</span><strong>{{ (target.actions || []).length }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.events') }}</span><strong>{{ (target.events || []).length }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.views') }}</span><strong>{{ (target.contributes?.views || []).length }}</strong></div>
-          <div class="audit-row"><span>{{ t('pad.configs') }}</span><strong>{{ (target.config_schema || []).length }}</strong></div>
+          <div class="audit-row">
+            <span>{{ t('pad.actions') }}</span
+            ><strong>{{ (target.actions || []).length }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.events') }}</span
+            ><strong>{{ (target.events || []).length }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.views') }}</span
+            ><strong>{{ (target.contributes?.views || []).length }}</strong>
+          </div>
+          <div class="audit-row">
+            <span>{{ t('pad.configs') }}</span
+            ><strong>{{ (target.config_schema || []).length }}</strong>
+          </div>
         </div>
       </div>
       <div class="audit-panel">
         <div class="logs-head">
           <div class="audit-title">{{ t('pad.logs') }}</div>
-          <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{ t('common.refresh') }}</el-button>
+          <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{
+            t('common.refresh')
+          }}</el-button>
         </div>
         <el-table v-loading="loading" :data="logs" size="small" :empty-text="t('pad.noLogs')" max-height="320">
           <el-table-column :label="t('pad.time')" width="170">

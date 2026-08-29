@@ -10,41 +10,45 @@ const { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, sync
 </script>
 
 <template>
-    <div v-if="syncing || syncErrors.length" class="sync-card glass" :class="{ 'has-error': syncErrors.length && !syncing }">
-      <div class="sync-head">
-        <div class="sync-title">
-          <GlassIcon name="refresh" from="#11998e" to="#38ef7d" :size="22" />
-          <div>
-            <strong v-if="syncing">{{ t('dsync.running', { done: syncDone, total: syncTotal || '—' }) }}</strong>
-            <strong v-else>{{ t('dsync.done', { ok: syncSuccess, fail: syncErrors.length }) }}</strong>
-            <p v-if="syncing">{{ syncCurrent ? t('dsync.current', { name: syncCurrent }) : t('dsync.preparing') }}</p>
-            <p v-else>{{ t('dsync.failedHint') }}</p>
-          </div>
+  <div
+    v-if="syncing || syncErrors.length"
+    class="sync-card glass"
+    :class="{ 'has-error': syncErrors.length && !syncing }"
+  >
+    <div class="sync-head">
+      <div class="sync-title">
+        <GlassIcon name="refresh" from="#11998e" to="#38ef7d" :size="22" />
+        <div>
+          <strong v-if="syncing">{{ t('dsync.running', { done: syncDone, total: syncTotal || '—' }) }}</strong>
+          <strong v-else>{{ t('dsync.done', { ok: syncSuccess, fail: syncErrors.length }) }}</strong>
+          <p v-if="syncing">{{ syncCurrent ? t('dsync.current', { name: syncCurrent }) : t('dsync.preparing') }}</p>
+          <p v-else>{{ t('dsync.failedHint') }}</p>
         </div>
-        <span class="sync-percent">{{ syncPercent }}%</span>
       </div>
-      <el-progress
-        :percentage="syncPercent"
-        :status="syncErrors.length && !syncing ? 'exception' : undefined"
-        :stroke-width="8"
-      />
-      <div v-if="syncLogs.length" class="sync-log-box">
-        <div class="sync-log-title">{{ t('dsync.logTitle') }}</div>
-        <ul class="sync-logs">
-          <li v-for="log in syncLogs" :key="log.id" :class="`log-${log.status}`">
-            <span class="log-time">{{ log.time }}</span>
-            <b>{{ log.site }}</b>
-            <span>{{ log.message }}</span>
-          </li>
-        </ul>
-      </div>
-      <ul v-if="syncErrors.length" class="sync-errors">
-        <li v-for="err in syncErrors" :key="err.site">
-          <b>{{ err.site }}</b>
-          <span>{{ err.error }}</span>
+      <span class="sync-percent">{{ syncPercent }}%</span>
+    </div>
+    <el-progress
+      :percentage="syncPercent"
+      :status="syncErrors.length && !syncing ? 'exception' : undefined"
+      :stroke-width="8"
+    />
+    <div v-if="syncLogs.length" class="sync-log-box">
+      <div class="sync-log-title">{{ t('dsync.logTitle') }}</div>
+      <ul class="sync-logs">
+        <li v-for="log in syncLogs" :key="log.id" :class="`log-${log.status}`">
+          <span class="log-time">{{ log.time }}</span>
+          <b>{{ log.site }}</b>
+          <span>{{ log.message }}</span>
         </li>
       </ul>
     </div>
+    <ul v-if="syncErrors.length" class="sync-errors">
+      <li v-for="err in syncErrors" :key="err.site">
+        <b>{{ err.site }}</b>
+        <span>{{ err.error }}</span>
+      </li>
+    </ul>
+  </div>
 </template>
 
 <style scoped>

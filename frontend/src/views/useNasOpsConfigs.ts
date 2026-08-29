@@ -29,7 +29,13 @@ export function useNasOpsConfigs() {
 
   function openConfigCenter() {
     configVisible.value = true
-    if (auth.isAdmin) opsConfigApi.list().then((items) => { opsConfigs.value = items }).catch(() => {})
+    if (auth.isAdmin)
+      opsConfigApi
+        .list()
+        .then((items) => {
+          opsConfigs.value = items
+        })
+        .catch(() => {})
   }
 
   function openConfigAdd() {
@@ -61,7 +67,8 @@ export function useNasOpsConfigs() {
     if ((f.format === 'kv' || f.format === 'json') && f.value.trim()) {
       try {
         const parsed = JSON.parse(f.value)
-        if (f.format === 'kv' && (!parsed || Array.isArray(parsed) || typeof parsed !== 'object')) return 'KV 格式必须是 JSON 对象'
+        if (f.format === 'kv' && (!parsed || Array.isArray(parsed) || typeof parsed !== 'object'))
+          return 'KV 格式必须是 JSON 对象'
       } catch {
         return `${f.format.toUpperCase()} 格式必须是合法 JSON`
       }

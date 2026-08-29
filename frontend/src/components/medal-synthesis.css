@@ -60,7 +60,9 @@
   gap: var(--sp-3);
 }
 @media (max-width: 520px) {
-  .panel { grid-template-columns: 1fr; }
+  .panel {
+    grid-template-columns: 1fr;
+  }
 }
 .target-card {
   background: linear-gradient(135deg, #6a5acd, #8e6fd0);
@@ -212,12 +214,27 @@
 .op:hover:not(:disabled) {
   filter: brightness(1.08);
 }
-.draw1 { background: #ff69b4; }
-.draw10 { background: #ffc107; color: #4a2f00; }
-.draw100 { background: #f44336; }
-.synth { background: #ffebee; color: #ff69b4; border: 1px solid #ff69b4; }
-.hist { background: #2196f3; }
-.hist.active { background: #6a5acd; }
+.draw1 {
+  background: #ff69b4;
+}
+.draw10 {
+  background: #ffc107;
+  color: #4a2f00;
+}
+.draw100 {
+  background: #f44336;
+}
+.synth {
+  background: #ffebee;
+  color: #ff69b4;
+  border: 1px solid #ff69b4;
+}
+.hist {
+  background: #2196f3;
+}
+.hist.active {
+  background: #6a5acd;
+}
 /* 上次结果 */
 .last-draw {
   padding: 8px 10px;

@@ -2,8 +2,16 @@ import { ref, computed, nextTick, onUnmounted } from 'vue'
 import { agentApi, streamAgentChat, type AgentConversation, type AgentMessage } from '@/api/agent'
 
 // 渲染分组类型：把 user/assistant/tool 还原成展示单元。
-export interface ToolStep { kind: 'tool'; calls: { name: string; arguments: string; result?: string }[]; reasoning?: string }
-export interface Bubble { kind: 'user' | 'assistant'; content: string; reasoning?: string }
+export interface ToolStep {
+  kind: 'tool'
+  calls: { name: string; arguments: string; result?: string }[]
+  reasoning?: string
+}
+export interface Bubble {
+  kind: 'user' | 'assistant'
+  content: string
+  reasoning?: string
+}
 export type Unit = { id: string; data: Bubble | ToolStep }
 
 // AI 助手会话与流式聊天逻辑：会话列表、消息加载、渲染分组、流式发送/停止、危险工具二次确认。
@@ -16,7 +24,10 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
   const messages = ref<AgentMessage[]>([])
   const loadingMsgs = ref(false)
 
-  function scrollToBottom() { const el = getScroller(); if (el) el.scrollTop = el.scrollHeight }
+  function scrollToBottom() {
+    const el = getScroller()
+    if (el) el.scrollTop = el.scrollHeight
+  }
 
   async function loadConversations() {
     try {
@@ -56,7 +67,13 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
   }
 
   // —— 渲染分组：把 user/assistant/tool 还原成展示单元 ——
-  function safeParse(s: string) { try { return JSON.parse(s) } catch { return [] } }
+  function safeParse(s: string) {
+    try {
+      return JSON.parse(s)
+    } catch {
+      return []
+    }
+  }
   const units = computed<Unit[]>(() => {
     const out: Unit[] = []
     let curTool: ToolStep | null = null
@@ -70,7 +87,11 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
           curTool = null
           out.push({ id: 'a' + m.id, data: { kind: 'assistant', content: m.content, reasoning: m.reasoning } })
         } else if (tcs.length) {
-          const step: ToolStep = { kind: 'tool', calls: tcs.map((t: any) => ({ name: t.name, arguments: t.arguments })), reasoning: m.reasoning }
+          const step: ToolStep = {
+            kind: 'tool',
+            calls: tcs.map((t: any) => ({ name: t.name, arguments: t.arguments })),
+            reasoning: m.reasoning,
+          }
           out.push({ id: 't' + m.id, data: step })
           curTool = step
         }
@@ -101,16 +122,30 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
     let liveReasoning = ''
     const liveTools: { name: string; arguments: string; result?: string }[] = []
     try {
-      const convId = await streamAgentChat(text, activeId.value, (ev) => {
-        if (ev.event === 'conversation') activeId.value = ev.data.id
-        else if (ev.event === 'token') { liveContent += ev.data.content; updatePending(liveContent, liveReasoning, liveTools) }
-        else if (ev.event === 'reasoning') { liveReasoning += ev.data.content; updatePending(liveContent, liveReasoning, liveTools) }
-        else if (ev.event === 'tool_call') { liveTools.push({ name: ev.data.name, arguments: ev.data.arguments }); updatePending(liveContent, liveReasoning, liveTools) }
-        else if (ev.event === 'tool_result') { const t = liveTools.find((x) => x.name === ev.data.name && !x.result); if (t) t.result = ev.data.result; updatePending(liveContent, liveReasoning, liveTools) }
-        else if (ev.event === 'confirm_request') handleConfirm(ev.data)
-        else if (ev.event === 'error') ElMessage.error(ev.data.message)
-        nextTick(scrollToBottom)
-      }, abortCtrl.signal)
+      const convId = await streamAgentChat(
+        text,
+        activeId.value,
+        (ev) => {
+          if (ev.event === 'conversation') activeId.value = ev.data.id
+          else if (ev.event === 'token') {
+            liveContent += ev.data.content
+            updatePending(liveContent, liveReasoning, liveTools)
+          } else if (ev.event === 'reasoning') {
+            liveReasoning += ev.data.content
+            updatePending(liveContent, liveReasoning, liveTools)
+          } else if (ev.event === 'tool_call') {
+            liveTools.push({ name: ev.data.name, arguments: ev.data.arguments })
+            updatePending(liveContent, liveReasoning, liveTools)
+          } else if (ev.event === 'tool_result') {
+            const t = liveTools.find((x) => x.name === ev.data.name && !x.result)
+            if (t) t.result = ev.data.result
+            updatePending(liveContent, liveReasoning, liveTools)
+          } else if (ev.event === 'confirm_request') handleConfirm(ev.data)
+          else if (ev.event === 'error') ElMessage.error(ev.data.message)
+          nextTick(scrollToBottom)
+        },
+        abortCtrl.signal,
+      )
       if (convId) activeId.value = convId
       pending.value = null
       if (activeId.value) await selectConversation(activeId.value) // 用 DB 规范化视图替换实时块
@@ -122,7 +157,11 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
       abortCtrl = null
     }
   }
-  function updatePending(content: string, reasoning: string, tools: { name: string; arguments: string; result?: string }[]) {
+  function updatePending(
+    content: string,
+    reasoning: string,
+    tools: { name: string; arguments: string; result?: string }[],
+  ) {
     if (!pending.value) return
     const d = pending.value.data as Bubble
     d.content = content
@@ -161,7 +200,19 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
   onUnmounted(() => abortCtrl?.abort())
 
   return {
-    conversations, activeId, messages, loadingMsgs, units, input, sending, pending,
-    loadConversations, selectConversation, newConversation, deleteConversation, send, stop,
+    conversations,
+    activeId,
+    messages,
+    loadingMsgs,
+    units,
+    input,
+    sending,
+    pending,
+    loadConversations,
+    selectConversation,
+    newConversation,
+    deleteConversation,
+    send,
+    stop,
   }
 }

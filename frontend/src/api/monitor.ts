@@ -240,15 +240,12 @@ export function parseMetrics(s: MetricSnapshot): Metrics | null {
 export const monitorApi = {
   list: () => http.get<{ targets: MonitorTarget[] }>('/monitors').then((r) => r.data.targets ?? []),
   create: (input: TargetInput) => http.post<MonitorTarget>('/monitors', input).then((r) => r.data),
-  update: (id: number, input: TargetInput) =>
-    http.put<MonitorTarget>(`/monitors/${id}`, input).then((r) => r.data),
+  update: (id: number, input: TargetInput) => http.put<MonitorTarget>(`/monitors/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/monitors/${id}`).then((r) => r.data),
   probe: (id: number) =>
     http.post<{ ok: boolean; online: boolean; error?: string }>(`/monitors/${id}/probe`).then((r) => r.data),
   collect: (id: number) =>
-    http
-      .post<{ ok: boolean; metrics?: Metrics; error?: string }>(`/monitors/${id}/collect`)
-      .then((r) => r.data),
+    http.post<{ ok: boolean; metrics?: Metrics; error?: string }>(`/monitors/${id}/collect`).then((r) => r.data),
   power: (id: number, action: 'reboot' | 'shutdown') =>
     http.post<{ ok: boolean; error?: string }>(`/monitors/${id}/power`, { action }).then((r) => r.data),
   exec: (id: number, command: string, timeoutSec = 30) =>
@@ -286,9 +283,7 @@ export const monitorApi = {
 
 export const commandRunApi = {
   list: (limit = 20, source?: string) =>
-    http
-      .get<{ runs: CommandRun[] }>('/ops/command-runs', { params: { limit, source } })
-      .then((r) => r.data.runs ?? []),
+    http.get<{ runs: CommandRun[] }>('/ops/command-runs', { params: { limit, source } }).then((r) => r.data.runs ?? []),
   get: (id: number) => http.get<CommandRun>(`/ops/command-runs/${id}`).then((r) => r.data),
   create: (input: CommandRunInput) =>
     http
@@ -309,8 +304,7 @@ export const credentialApi = {
 export const opsConfigApi = {
   list: () => http.get<{ configs: OpsConfig[] }>('/ops/configs').then((r) => r.data.configs ?? []),
   create: (input: OpsConfigInput) => http.post<OpsConfig>('/ops/configs', input).then((r) => r.data),
-  update: (id: number, input: OpsConfigInput) =>
-    http.put<OpsConfig>(`/ops/configs/${id}`, input).then((r) => r.data),
+  update: (id: number, input: OpsConfigInput) => http.put<OpsConfig>(`/ops/configs/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/ops/configs/${id}`).then((r) => r.data),
   history: (id: number) =>
     http.get<{ history: OpsConfigHistory[] }>(`/ops/configs/${id}/history`).then((r) => r.data.history ?? []),
@@ -336,8 +330,7 @@ export const agentApi = {
   create: (name: string, type: 'host' | 'nas' = 'host') =>
     http.post<{ agent: Agent; plain_secret: string }>('/monitors/agents', { name, type }).then((r) => r.data),
   remove: (id: number) => http.delete(`/monitors/agents/${id}`).then((r) => r.data),
-  rotate: (id: number) =>
-    http.post<{ plain_secret: string }>(`/monitors/agents/${id}/rotate`).then((r) => r.data),
+  rotate: (id: number) => http.post<{ plain_secret: string }>(`/monitors/agents/${id}/rotate`).then((r) => r.data),
   upgrade: (id: number) =>
     http.post<{ ok: boolean; error?: string }>(`/monitors/agents/${id}/upgrade`).then((r) => r.data),
   latestAgentVersion: () =>

@@ -3,23 +3,31 @@ name: Release
 # 打 tag (v*) 时构建并发布监控 agent 二进制到 GitHub Release，
 # 供 install.sh 的 `releases/latest/download/ptpatronus-agent-linux-<arch>` 下载。
 # （Docker 镜像由 docker.yml 负责；这里只发 agent 独立二进制。）
-# 监控 Agent 二进制改为本地打包，CI 不再构建。此 workflow 保留备用（workflow_dispatch）。
+# 供应链审计修复：agent 二进制重新回到 CI 构建（ubuntu 单架构约 2 分钟，额度成本可忽略）
+# ——本机构建 + 第三方镜像无校验下载曾是供应链最薄弱一环。
 on:
+  push:
+    tags: ['v*']
   workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # 创建 GitHub Release
 
 jobs:
   agent:
     name: Agent binaries
-    if: false   # 临时关闭（账号 Actions 计费/额度限制）；恢复时删除此行
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # 创建 GitHub Release
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.26'
           cache-dependency-path: backend/go.sum
@@ -43,7 +51,7 @@ jobs:
         run: sha256sum ptpatronus-agent-linux-amd64 ptpatronus-agent-linux-arm64 > SHA256SUMS-agent.txt
 
       # 仅 tag 触发时发 Release（workflow_dispatch 只验证构建）。
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |

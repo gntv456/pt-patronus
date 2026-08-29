@@ -1,4 +1,6 @@
 import { http } from './http'
+import { terr } from './i18nErr'
+import { streamErr } from './sse'
 
 export interface AnnouncementItem {
   title?: string
@@ -26,7 +28,7 @@ export const announcementApi = {
     const token = localStorage.getItem('token')
     const url = `/api/v1/announcements/stream${refresh ? '?refresh=1' : ''}`
     return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {}, signal }).then(async (res) => {
-      if (!res.ok) throw new Error(`加载失败 (HTTP ${res.status})`)
+      if (!res.ok) throw new Error(await streamErr(res))
       const reader = res.body!.getReader()
       const dec = new TextDecoder()
       let buf = ''

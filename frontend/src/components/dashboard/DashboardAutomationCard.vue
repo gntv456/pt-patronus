@@ -54,9 +54,7 @@ const tRate = computed(() => {
   return tot > 0 ? Math.round((tSuccess.value / tot) * 100) : null
 })
 const todayStr = new Date().toISOString().slice(0, 10)
-const tToday = computed(
-  () => transfer.value.filter((h) => (h.created_at || '').slice(0, 10) === todayStr).length,
-)
+const tToday = computed(() => transfer.value.filter((h) => (h.created_at || '').slice(0, 10) === todayStr).length)
 </script>
 
 <template>
@@ -73,9 +71,13 @@ const tToday = computed(
       <div class="auto-grid">
         <div class="auto-cell">
           <span class="ac-label">{{ t('dac.wf') }}</span>
-          <strong>{{ wf?.enabled ?? '-' }}<small>/{{ wf?.total ?? 0 }}</small></strong>
+          <strong
+            >{{ wf?.enabled ?? '-' }}<small>/{{ wf?.total ?? 0 }}</small></strong
+          >
           <small class="ac-sub">{{ t('dac.enabledTotal') }}</small>
-          <small class="ac-sub2">{{ t('dac.wfRuns', { ok: wf?.runs_success ?? 0, fail: wf?.runs_failed ?? 0 }) }}</small>
+          <small class="ac-sub2">{{
+            t('dac.wfRuns', { ok: wf?.runs_success ?? 0, fail: wf?.runs_failed ?? 0 })
+          }}</small>
         </div>
         <div class="auto-cell">
           <span class="ac-label">{{ t('dac.brush') }}</span>

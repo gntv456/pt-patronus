@@ -125,8 +125,22 @@ export function useTorrentFindPush(title: () => string) {
   }
 
   return {
-    visible, row, downloaders, selectedDl, categories, selectedCategory,
-    savePath, showAdvanced, paused, loading, pushedDlName, pushedDlId,
-    subtitle, start, confirm, gotoDownloaderTasks, close,
+    visible,
+    row,
+    downloaders,
+    selectedDl,
+    categories,
+    selectedCategory,
+    savePath,
+    showAdvanced,
+    paused,
+    loading,
+    pushedDlName,
+    pushedDlId,
+    subtitle,
+    start,
+    confirm,
+    gotoDownloaderTasks,
+    close,
   }
 }

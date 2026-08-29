@@ -59,8 +59,12 @@ onMounted(refresh)
   <div class="farm">
     <div class="hero">
       <div class="hero-title">🚜 {{ farm?.farm_name || t('mf.title') }}</div>
-      <div class="hero-sub">{{ t('mf.curMagic') }}: <b>{{ farm?.balance?.toLocaleString() ?? '—' }}</b></div>
-      <button class="harvest-all" :disabled="busy" @click="harvestAll">{{ busy ? t('mf.busy') : t('mf.harvestAll') }}</button>
+      <div class="hero-sub">
+        {{ t('mf.curMagic') }}: <b>{{ farm?.balance?.toLocaleString() ?? '—' }}</b>
+      </div>
+      <button class="harvest-all" :disabled="busy" @click="harvestAll">
+        {{ busy ? t('mf.busy') : t('mf.harvestAll') }}
+      </button>
     </div>
 
     <div v-if="last" class="result" :class="last.success ? 'win' : 'lose'">
@@ -69,14 +73,20 @@ onMounted(refresh)
     </div>
 
     <section v-if="farm" class="glass section">
-      <div class="sec-title">🌾 {{ t('mf.crops') }} <small>{{ t('mf.valid2d') }}</small></div>
+      <div class="sec-title">
+        🌾 {{ t('mf.crops') }} <small>{{ t('mf.valid2d') }}</small>
+      </div>
       <div class="grid">
         <div v-for="c in farm.crops" :key="'c' + c.id" class="item">
           <div class="i-emoji">{{ emoji(c.name) }}</div>
           <div class="i-name">{{ c.name }}</div>
           <div class="i-meta">{{ t('mf.meta', { h: c.grow_hours, p: c.price }) }}</div>
           <div class="i-status" :class="c.status">{{ statusText(c.status) }}</div>
-          <button class="i-btn" :disabled="busy || c.status === 'growing'" @click="c.status === 'ready' ? harvest(c) : plant(c)">
+          <button
+            class="i-btn"
+            :disabled="busy || c.status === 'growing'"
+            @click="c.status === 'ready' ? harvest(c) : plant(c)"
+          >
             {{ c.status === 'ready' ? t('mf.harvest') : c.status === 'growing' ? t('mf.growing') : t('mf.plant') }}
           </button>
         </div>
@@ -84,14 +94,20 @@ onMounted(refresh)
     </section>
 
     <section v-if="farm" class="glass section">
-      <div class="sec-title">🐔 {{ t('mf.animals') }} <small>{{ t('mf.valid5d') }}</small></div>
+      <div class="sec-title">
+        🐔 {{ t('mf.animals') }} <small>{{ t('mf.valid5d') }}</small>
+      </div>
       <div class="grid">
         <div v-for="a in farm.animals" :key="'a' + a.id" class="item">
           <div class="i-emoji">{{ emoji(a.name) }}</div>
           <div class="i-name">{{ a.name }}</div>
           <div class="i-meta">{{ t('mf.meta', { h: a.grow_hours, p: a.price }) }}</div>
           <div class="i-status" :class="a.status">{{ statusText(a.status) }}</div>
-          <button class="i-btn" :disabled="busy || a.status === 'growing'" @click="a.status === 'ready' ? harvest(a) : plant(a)">
+          <button
+            class="i-btn"
+            :disabled="busy || a.status === 'growing'"
+            @click="a.status === 'ready' ? harvest(a) : plant(a)"
+          >
             {{ a.status === 'ready' ? t('mf.harvest') : a.status === 'growing' ? t('mf.growing') : t('mf.raise') }}
           </button>
         </div>
@@ -110,10 +126,15 @@ onMounted(refresh)
     </section>
 
     <section v-if="farm?.market?.length" class="glass section">
-      <div class="sec-title">🛒 {{ t('mf.market') }} <small>{{ t('mf.marketHint') }}</small></div>
+      <div class="sec-title">
+        🛒 {{ t('mf.market') }} <small>{{ t('mf.marketHint') }}</small>
+      </div>
       <div class="list">
         <div v-for="(m, i) in farm.market" :key="i" class="row">
-          <span class="row-name">{{ m.name }} <small class="text-muted">{{ m.section === 'crop' ? t('mf.cropKind') : t('mf.animalKind') }}</small></span>
+          <span class="row-name"
+            >{{ m.name }}
+            <small class="text-muted">{{ m.section === 'crop' ? t('mf.cropKind') : t('mf.animalKind') }}</small></span
+          >
           <b class="mkt-price">{{ m.market_price.toLocaleString() }}</b>
         </div>
       </div>
@@ -122,41 +143,180 @@ onMounted(refresh)
 </template>
 
 <style scoped>
-.farm { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 720px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #166534, #16a34a); text-align: center; }
-.hero-title { font-size: var(--fs-title); font-weight: 800; color: #fff; }
-.hero-sub { margin-top: 4px; font-size: var(--fs-body); color: rgba(255, 255, 255, 0.9); }
-.hero-sub b { color: #fef08a; font-size: var(--fs-lg); }
-.harvest-all { margin-top: 12px; padding: 9px 22px; border: 0; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700; color: #166534; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-.harvest-all:disabled { opacity: 0.7; cursor: wait; }
+.farm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: 720px;
+  margin: 0 auto;
+}
+.hero {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #166534, #16a34a);
+  text-align: center;
+}
+.hero-title {
+  font-size: var(--fs-title);
+  font-weight: 800;
+  color: #fff;
+}
+.hero-sub {
+  margin-top: 4px;
+  font-size: var(--fs-body);
+  color: rgba(255, 255, 255, 0.9);
+}
+.hero-sub b {
+  color: #fef08a;
+  font-size: var(--fs-lg);
+}
+.harvest-all {
+  margin-top: 12px;
+  padding: 9px 22px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 700;
+  color: #166534;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+.harvest-all:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
 
-.section { padding: 16px; border-radius: var(--radius-md); }
-.sec-title { font-weight: 700; margin-bottom: 12px; font-size: var(--fs-lg); }
-.sec-title small { font-weight: 400; color: var(--text-muted, #999); font-size: var(--fs-xs); margin-left: 6px; }
+.section {
+  padding: 16px;
+  border-radius: var(--radius-md);
+}
+.sec-title {
+  font-weight: 700;
+  margin-bottom: 12px;
+  font-size: var(--fs-lg);
+}
+.sec-title small {
+  font-weight: 400;
+  color: var(--text-muted, #999);
+  font-size: var(--fs-xs);
+  margin-left: 6px;
+}
 
-.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
-@media (max-width: 560px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-.item { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: 12px 8px; border-radius: var(--radius-sm); background: var(--glass-bg, rgba(255,255,255,0.06)); border: 1px solid var(--border-soft, rgba(255,255,255,0.08)); }
-.i-emoji { font-size: var(--fs-hero); }
-.i-name { font-weight: 700; }
-.i-meta { font-size: var(--fs-2xs); color: var(--text-muted, #999); }
-.i-status { font-size: var(--fs-2xs); padding: 2px 8px; border-radius: var(--radius-xs); }
-.i-status.ready { background: var(--pt-success-bg); color: var(--pt-success); }
-.i-status.growing { background: var(--pt-warn-bg); color: var(--pt-warn); }
-.i-status.idle { background: rgba(148,163,184,0.18); color: #94a3b8; }
-.i-btn { margin-top: 6px; padding: 5px 14px; border: 0; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-xs); font-weight: 600; color: #fff; background: #16a34a; }
-.i-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+}
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 12px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+}
+.i-emoji {
+  font-size: var(--fs-hero);
+}
+.i-name {
+  font-weight: 700;
+}
+.i-meta {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted, #999);
+}
+.i-status {
+  font-size: var(--fs-2xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+}
+.i-status.ready {
+  background: var(--pt-success-bg);
+  color: var(--pt-success);
+}
+.i-status.growing {
+  background: var(--pt-warn-bg);
+  color: var(--pt-warn);
+}
+.i-status.idle {
+  background: rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+}
+.i-btn {
+  margin-top: 6px;
+  padding: 5px 14px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: #fff;
+  background: #16a34a;
+}
+.i-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
 
-.list { display: flex; flex-direction: column; gap: var(--sp-1); }
-.row { display: flex; align-items: center; gap: var(--sp-3); padding: 7px 4px; font-size: var(--fs-body); border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
-.row-name { font-weight: 600; }
-.mkt-price { margin-left: auto; color: var(--pt-warn); }
-.sell-btn { margin-left: auto; padding: 3px 12px; border: 0; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-xs); color: #fff; background: #3b82f6; }
-.sell-btn:disabled { opacity: 0.6; cursor: wait; }
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 7px 4px;
+  font-size: var(--fs-body);
+  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+}
+.row-name {
+  font-weight: 600;
+}
+.mkt-price {
+  margin-left: auto;
+  color: var(--pt-warn);
+}
+.sell-btn {
+  margin-left: auto;
+  padding: 3px 12px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  color: #fff;
+  background: #3b82f6;
+}
+.sell-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 
-.result { padding: 12px; border-radius: var(--radius-sm); display: flex; gap: var(--sp-2); align-items: center; }
-.result.win { background: var(--pt-success-bg); }
-.result.lose { background: var(--pt-danger-bg); }
-.badge { font-weight: 700; }
-.r-msg { font-size: var(--fs-body); }
+.result {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+}
+.result.win {
+  background: var(--pt-success-bg);
+}
+.result.lose {
+  background: var(--pt-danger-bg);
+}
+.badge {
+  font-weight: 700;
+}
+.r-msg {
+  font-size: var(--fs-body);
+}
 </style>

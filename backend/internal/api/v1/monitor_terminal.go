@@ -36,12 +36,14 @@ func NewMonitorTerminalHandler(svc *monitor.Service, tickets *auth.TicketStore, 
 }
 
 func (h *MonitorTerminalHandler) checkOrigin(r *http.Request) bool {
-	if len(h.allowedOrigins) == 0 {
-		return true
-	}
 	origin := r.Header.Get("Origin")
 	if origin == "" {
-		return true
+		return true // 非浏览器客户端无 Origin，不适用 CSWSH
+	}
+	if len(h.allowedOrigins) == 0 {
+		// 未配置白名单：debug 保持旧行为（全放行）；release fail-closed——
+		// 与 ws.go checkOrigin 一致（终端是命令执行级能力，不能默认敞开）。
+		return gin.Mode() != gin.ReleaseMode
 	}
 	return h.allowedOrigins[origin]
 }

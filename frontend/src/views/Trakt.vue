@@ -142,8 +142,12 @@ onUnmounted(stopPolling)
       <h3 v-else class="title embedded-title">{{ t('trakt.title') }}</h3>
       <div class="head-actions">
         <el-button @click="openConfig">{{ t('trakt.config') }}</el-button>
-        <el-button v-if="cfg?.authorized" type="primary" :loading="syncing" @click="syncNow">{{ t('trakt.syncNow') }}</el-button>
-        <el-button v-else type="primary" :loading="authBusy" @click="startDeviceAuth">{{ t('trakt.authorize') }}</el-button>
+        <el-button v-if="cfg?.authorized" type="primary" :loading="syncing" @click="syncNow">{{
+          t('trakt.syncNow')
+        }}</el-button>
+        <el-button v-else type="primary" :loading="authBusy" @click="startDeviceAuth">{{
+          t('trakt.authorize')
+        }}</el-button>
       </div>
     </div>
     <p class="sub">{{ t('trakt.subtitle') }}</p>
@@ -155,20 +159,31 @@ onUnmounted(stopPolling)
         <span v-if="cfg?.enabled" class="badge">{{ t('trakt.syncEnabled') }}</span>
       </div>
       <div v-if="cfg?.last_sync_at" class="meta">
-        {{ t('trakt.lastSync') }}{{ new Date(cfg.last_sync_at * 1000).toLocaleString() }} · {{ t('trakt.lastSyncCount', { n: cfg.last_sync_count }) }}
+        {{ t('trakt.lastSync') }}{{ new Date(cfg.last_sync_at * 1000).toLocaleString() }} ·
+        {{ t('trakt.lastSyncCount', { n: cfg.last_sync_count }) }}
       </div>
       <div v-if="cfg?.last_error" class="err">{{ cfg.last_error }}</div>
 
       <!-- 设备授权引导 -->
       <div v-if="device" class="device">
-        <p>1. {{ t('trakt.step1Open') }}<a :href="device.verification_url" target="_blank">{{ device.verification_url }}</a></p>
+        <p>
+          1. {{ t('trakt.step1Open')
+          }}<a :href="device.verification_url" target="_blank">{{ device.verification_url }}</a>
+        </p>
         <p>2. {{ t('trakt.step2Enter') }}</p>
         <code class="uc">{{ device.user_code }}</code>
         <p class="muted">{{ t('trakt.autoDetectNote') }}</p>
       </div>
     </div>
 
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showConfig" :title="t('trakt.configTitle')" width="520px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="showConfig"
+      :title="t('trakt.configTitle')"
+      width="520px"
+    >
       <el-form :model="form" label-width="150px" label-position="right">
         <el-form-item :label="t('trakt.f.enableSync')">
           <el-switch v-model="form.enabled" />
@@ -206,27 +221,105 @@ onUnmounted(stopPolling)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
-.head .title { display: flex; align-items: center; gap: var(--sp-2); margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.head-actions { display: flex; gap: var(--sp-2); }
-.sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.status-card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-2); }
-.status-row { display: flex; align-items: center; gap: var(--sp-2); font-weight: 600; }
-.status-dot { width: 10px; height: 10px; border-radius: 50%; }
-.status-dot.on { background:var(--pt-success); }
-.status-dot.off { background:var(--pt-danger); }
-.badge { padding: 2px 8px; border-radius: var(--radius-sm); background: var(--pt-primary-bg); font-size: var(--fs-xs); color:var(--pt-primary); }
-.meta { font-size: var(--fs-body); color: var(--text-muted); }
-.err { color:var(--pt-danger); font-size: var(--fs-body); }
-.device { padding-top: 8px; border-top: 1px solid var(--border); }
-.uc { font-size: var(--fs-hero); font-weight: 700; letter-spacing: 3px; background: var(--card); padding: 6px 14px; border-radius: var(--radius-xs); }
-.muted { font-size: var(--fs-xs); color: var(--text-muted); }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.head .title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.head-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.sub {
+  margin: -8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.status-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: 600;
+}
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.status-dot.on {
+  background: var(--pt-success);
+}
+.status-dot.off {
+  background: var(--pt-danger);
+}
+.badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--pt-primary-bg);
+  font-size: var(--fs-xs);
+  color: var(--pt-primary);
+}
+.meta {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+}
+.err {
+  color: var(--pt-danger);
+  font-size: var(--fs-body);
+}
+.device {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.uc {
+  font-size: var(--fs-hero);
+  font-weight: 700;
+  letter-spacing: 3px;
+  background: var(--card);
+  padding: 6px 14px;
+  border-radius: var(--radius-xs);
+}
+.muted {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
-.page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
-.page.embedded > .sub { display: none; }
-
+.page.embedded {
+  padding: 0;
+  max-width: none;
+}
+.page.embedded .embedded-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  margin: 0;
+}
+.page.embedded .embedded-sub {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: var(--fs-xs);
+}
+.page.embedded > .sub {
+  display: none;
+}
 </style>

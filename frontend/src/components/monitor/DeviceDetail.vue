@@ -17,13 +17,25 @@ const props = defineProps<{ target?: MonitorTarget | null }>()
 const targetRef = toRef(props, 'target')
 
 const {
-  latest, loading, powerLoading,
-  cpuSeries, memSeries,
-  diskUsage, diskTotal, diskUsed,
-  hottestTemp, tempEmptyHint,
-  isServiceMonitor, resolvedProtocol, canPower,
-  status, deviceID, collectTime, targetSubtitle,
-  serviceRows, serviceOutput,
+  latest,
+  loading,
+  powerLoading,
+  cpuSeries,
+  memSeries,
+  diskUsage,
+  diskTotal,
+  diskUsed,
+  hottestTemp,
+  tempEmptyHint,
+  isServiceMonitor,
+  resolvedProtocol,
+  canPower,
+  status,
+  deviceID,
+  collectTime,
+  targetSubtitle,
+  serviceRows,
+  serviceOutput,
   runPower,
 } = useDeviceDetail(visible, targetRef)
 
@@ -77,15 +89,13 @@ function onPower(action: PowerAction) {
         @power="onPower"
       />
 
-      <DeviceCameraDetail
-        v-else-if="target"
-        :target="target"
-        :latest="latest"
-      />
+      <DeviceCameraDetail v-else-if="target" :target="target" :latest="latest" />
 
       <div v-if="target?.last_error" class="d-error">
         <span>{{ t('dd.lastError') }}{{ target.last_error }}</span>
-        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">{{ t('dd.howToFix') }}</el-button>
+        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">{{
+          t('dd.howToFix')
+        }}</el-button>
       </div>
     </div>
   </el-drawer>

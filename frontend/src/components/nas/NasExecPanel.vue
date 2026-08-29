@@ -5,7 +5,14 @@ import type { MonitorTarget } from '@/api/monitor'
 import type { ExecLog } from '@/views/nasServerHelpers'
 import type { CommandRun } from '@/api/monitor'
 import { quickCommands } from '@/views/nasServerHelpers'
-import { targetAddr, targetState, runSourceText, runDateText, runStatusText, runStatusType } from '@/views/nasServerHelpers'
+import {
+  targetAddr,
+  targetState,
+  runSourceText,
+  runDateText,
+  runStatusText,
+  runStatusType,
+} from '@/views/nasServerHelpers'
 
 const { t: ti } = useI18n()
 
@@ -76,7 +83,9 @@ function onPickScriptFile() {
               <span class="target-state" :class="{ online: t.last_online === true, offline: t.last_online === false }">
                 {{ targetState(t) }}
               </span>
-              <button class="target-terminal" type="button" @click.stop.prevent="emit('terminal', t)">{{ ti('dc.terminal') }}</button>
+              <button class="target-terminal" type="button" @click.stop.prevent="emit('terminal', t)">
+                {{ ti('dc.terminal') }}
+              </button>
             </el-checkbox>
           </el-checkbox-group>
         </div>
@@ -130,10 +139,19 @@ function onPickScriptFile() {
     <div v-if="commandRuns.length" class="run-history">
       <div class="section-title">{{ ti('nep.history') }}</div>
       <div class="run-history-list">
-        <button v-for="run in commandRuns" :key="run.id" type="button" class="run-card" @click="emit('showCommandRun', run)">
+        <button
+          v-for="run in commandRuns"
+          :key="run.id"
+          type="button"
+          class="run-card"
+          @click="emit('showCommandRun', run)"
+        >
           <span>
             <b>#{{ run.id }} · {{ runSourceText(run.source) }}</b>
-            <small>{{ runDateText(run.started_at) }} · {{ ti('nep.okCount', { ok: run.success_count, total: run.total_count }) }}</small>
+            <small
+              >{{ runDateText(run.started_at) }} ·
+              {{ ti('nep.okCount', { ok: run.success_count, total: run.total_count }) }}</small
+            >
           </span>
           <el-tag size="small" :type="runStatusType(run.status)">{{ runStatusText(run.status) }}</el-tag>
         </button>
@@ -147,7 +165,10 @@ function onPickScriptFile() {
             <span>{{ log.time }}</span>
             <em v-if="log.durationMs">{{ (log.durationMs / 1000).toFixed(1) }}s</em>
           </div>
-          <el-tag size="small" :type="log.status === 'success' ? 'success' : log.status === 'running' ? 'info' : 'danger'">
+          <el-tag
+            size="small"
+            :type="log.status === 'success' ? 'success' : log.status === 'running' ? 'info' : 'danger'"
+          >
             {{ log.status === 'running' ? ti('nep.running') : log.status === 'success' ? ti('dcl.ok') : ti('dcl.ko') }}
           </el-tag>
         </div>

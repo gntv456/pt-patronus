@@ -27,31 +27,32 @@ const blankTpl = `services:
       - "8080:80"
     restart: unless-stopped`
 
-watch(() => props.visible, (v) => {
-  if (v) {
-    // 如果从应用商店带了模板进来，直接进入编辑
-    if (props.initialContent) {
-      sourceType.value = 'template'
-      content.value = props.initialContent
-      name.value = props.initialName || ''
-    } else {
-      sourceType.value = ''
-      content.value = ''
-      name.value = ''
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) {
+      // 如果从应用商店带了模板进来，直接进入编辑
+      if (props.initialContent) {
+        sourceType.value = 'template'
+        content.value = props.initialContent
+        name.value = props.initialName || ''
+      } else {
+        sourceType.value = ''
+        content.value = ''
+        name.value = ''
+      }
+      output.value = ''
+      templateDrawer.value = false
+      tplSearch.value = ''
+      urlInput.value = ''
     }
-    output.value = ''
-    templateDrawer.value = false
-    tplSearch.value = ''
-    urlInput.value = ''
-  }
-})
+  },
+)
 
 const filteredTpls = computed(() => {
   if (!tplSearch.value.trim()) return composeTemplates
   const q = tplSearch.value.toLowerCase()
-  return composeTemplates.filter((t) =>
-    t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q),
-  )
+  return composeTemplates.filter((t) => t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q))
 })
 
 function selectSource(type: SourceType) {
@@ -80,7 +81,10 @@ function applyTemplate(tpl: ComposeTemplate) {
 }
 
 async function fetchFromUrl() {
-  if (!urlInput.value.trim()) { ElMessage.warning(t('dcl.urlRequired')); return }
+  if (!urlInput.value.trim()) {
+    ElMessage.warning(t('dcl.urlRequired'))
+    return
+  }
   urlLoading.value = true
   try {
     const resp = await fetch(urlInput.value.trim())
@@ -100,53 +104,83 @@ async function fetchFromUrl() {
 }
 
 async function action(act: 'up' | 'down' | 'validate') {
-  if (!content.value.trim()) { ElMessage.warning(t('dcl.contentRequired')); return }
+  if (!content.value.trim()) {
+    ElMessage.warning(t('dcl.contentRequired'))
+    return
+  }
   loading.value = true
   output.value = ''
   try {
-    const fn = act === 'up' ? dockerApi.localComposeUp : act === 'down' ? dockerApi.localComposeDown : dockerApi.localComposeValidate
+    const fn =
+      act === 'up'
+        ? dockerApi.localComposeUp
+        : act === 'down'
+          ? dockerApi.localComposeDown
+          : dockerApi.localComposeValidate
     const res = await fn(content.value, name.value.trim() || undefined)
     output.value = res.output || (res.ok ? t('dcl.ok') : t('dcl.ko'))
-    if (res.ok && act === 'up') { ElMessage.success(t('dcl.deployed')); emit('done') }
-    if (res.ok && act === 'down') { ElMessage.success(t('dcl.stopped')); emit('done') }
+    if (res.ok && act === 'up') {
+      ElMessage.success(t('dcl.deployed'))
+      emit('done')
+    }
+    if (res.ok && act === 'down') {
+      ElMessage.success(t('dcl.stopped'))
+      emit('done')
+    }
     if (res.ok && act === 'validate') ElMessage.success(t('dcl.validated'))
-  } catch (e: any) { output.value = e.message }
-  finally { loading.value = false }
+  } catch (e: any) {
+    output.value = e.message
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
 <template>
-  <el-dialog :model-value="visible" @update:model-value="emit('update:visible', $event)"
-    :title="t('dcl.title')" width="820px" top="5vh" destroy-on-close class="compose-create-dialog">
+  <el-dialog
+    :model-value="visible"
+    @update:model-value="emit('update:visible', $event)"
+    :title="t('dcl.title')"
+    width="820px"
+    top="5vh"
+    destroy-on-close
+    class="compose-create-dialog"
+  >
     <!-- 步骤一：选择来源 -->
     <div v-if="!sourceType" class="source-picker">
       <p class="source-hint">{{ t('dcl.sourceHint') }}</p>
       <div class="source-cards">
-        <div class="source-card" @click="selectSource('template')">
+        <div v-a11y-button class="source-card" @click="selectSource('template')">
           <div class="source-card-icon" style="background: var(--pt-primary-bg); color: var(--pt-primary)">📋</div>
           <div class="source-card-body">
             <div class="source-card-title">{{ t('dcl.srcTemplate') }}</div>
             <div class="source-card-desc">{{ t('dcl.srcTemplateDesc') }}</div>
           </div>
-          <svg class="source-arrow" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <svg class="source-arrow" viewBox="0 0 24 24">
+            <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
         </div>
 
-        <div class="source-card" @click="selectSource('manual')">
-          <div class="source-card-icon" style="background: rgba(24,160,88,.12); color: #18a058">✏️</div>
+        <div v-a11y-button class="source-card" @click="selectSource('manual')">
+          <div class="source-card-icon" style="background: rgba(24, 160, 88, 0.12); color: #18a058">✏️</div>
           <div class="source-card-body">
             <div class="source-card-title">{{ t('dcl.srcManual') }}</div>
             <div class="source-card-desc">{{ t('dcl.srcManualDesc') }}</div>
           </div>
-          <svg class="source-arrow" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <svg class="source-arrow" viewBox="0 0 24 24">
+            <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
         </div>
 
-        <div class="source-card" @click="selectSource('url')">
-          <div class="source-card-icon" style="background: rgba(0,150,57,.12); color: #009639">🌐</div>
+        <div v-a11y-button class="source-card" @click="selectSource('url')">
+          <div class="source-card-icon" style="background: rgba(0, 150, 57, 0.12); color: #009639">🌐</div>
           <div class="source-card-body">
             <div class="source-card-title">{{ t('dcl.srcUrl') }}</div>
             <div class="source-card-desc">{{ t('dcl.srcUrlDesc') }}</div>
           </div>
-          <svg class="source-arrow" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          <svg class="source-arrow" viewBox="0 0 24 24">
+            <path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" />
+          </svg>
         </div>
       </div>
     </div>
@@ -157,7 +191,9 @@ async function action(act: 'up' | 'down' | 'validate') {
       <el-input v-model="urlInput" placeholder="https://raw.githubusercontent.com/.../docker-compose.yml" size="large">
         <template #prepend>URL</template>
       </el-input>
-      <el-button type="primary" size="large" :loading="urlLoading" @click="fetchFromUrl" style="margin-top: 12px">{{ t('dcl.fetchBtn') }}</el-button>
+      <el-button type="primary" size="large" :loading="urlLoading" @click="fetchFromUrl" style="margin-top: 12px">{{
+        t('dcl.fetchBtn')
+      }}</el-button>
       <p class="url-tip">💡 {{ t('dcl.urlTip') }}</p>
     </div>
 
@@ -166,15 +202,25 @@ async function action(act: 'up' | 'down' | 'validate') {
       <div class="editor-topbar">
         <el-button text @click="backToSource" class="back-btn">← {{ t('common.back') }}</el-button>
         <el-input v-model="name" :placeholder="t('dcl.namePh')" style="width: 220px" clearable size="small">
-          <template #prefix><span class="field-label">{{ t('dcl.nameLabel') }}</span></template>
+          <template #prefix
+            ><span class="field-label">{{ t('dcl.nameLabel') }}</span></template
+          >
         </el-input>
         <el-button size="small" @click="templateDrawer = true">{{ t('dcl.changeTpl') }}</el-button>
-        <span class="source-tag">{{ sourceType === 'template' ? '📦 ' + t('dcl.srcTemplate') : sourceType === 'url' ? '🌐 ' + t('dcl.srcUrl') : '✏️ ' + t('dcl.srcManual') }}</span>
+        <span class="source-tag">{{
+          sourceType === 'template'
+            ? '📦 ' + t('dcl.srcTemplate')
+            : sourceType === 'url'
+              ? '🌐 ' + t('dcl.srcUrl')
+              : '✏️ ' + t('dcl.srcManual')
+        }}</span>
       </div>
 
       <el-input v-model="content" type="textarea" :rows="18" class="compose-yaml" />
 
-      <div v-if="output" class="compose-output"><pre>{{ output }}</pre></div>
+      <div v-if="output" class="compose-output">
+        <pre>{{ output }}</pre>
+      </div>
     </div>
 
     <template #footer>
@@ -192,12 +238,16 @@ async function action(act: 'up' | 'down' | 'validate') {
       <div class="tpl-search-bar">
         <el-input v-model="tplSearch" :placeholder="t('dcl.tplSearchPh')" clearable size="default">
           <template #prefix>
-            <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--text-muted)"><path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: var(--text-muted)">
+              <path
+                d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"
+              />
+            </svg>
           </template>
         </el-input>
       </div>
       <div class="tpl-list">
-        <div v-for="tpl in filteredTpls" :key="tpl.id" class="tpl-card" @click="applyTemplate(tpl)">
+        <div v-a11y-button v-for="tpl in filteredTpls" :key="tpl.id" class="tpl-card" @click="applyTemplate(tpl)">
           <div class="tpl-icon" :style="{ background: tpl.color + '22', color: tpl.color }">{{ tpl.icon }}</div>
           <div class="tpl-body">
             <div class="tpl-name">{{ tpl.name }}</div>
@@ -215,9 +265,22 @@ async function action(act: 'up' | 'down' | 'validate') {
 
 <style scoped>
 /* 来源选择 */
-.source-picker { padding: 8px 4px; }
-.source-hint { text-align: center; font-size: var(--fs-lg); color: var(--text-muted); margin: 8px 0 24px; }
-.source-cards { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 560px; margin: 0 auto; }
+.source-picker {
+  padding: 8px 4px;
+}
+.source-hint {
+  text-align: center;
+  font-size: var(--fs-lg);
+  color: var(--text-muted);
+  margin: 8px 0 24px;
+}
+.source-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-width: 560px;
+  margin: 0 auto;
+}
 .source-card {
   display: flex;
   align-items: center;
@@ -231,31 +294,76 @@ async function action(act: 'up' | 'down' | 'validate') {
 }
 .source-card:hover {
   border-color: var(--pt-primary);
-  box-shadow: var(--surface-shadow-hover, 0 4px 16px rgba(0,0,0,.08));
+  box-shadow: var(--surface-shadow-hover, 0 4px 16px rgba(0, 0, 0, 0.08));
   transform: translateY(-2px);
 }
 .source-card-icon {
   flex: none;
-  width: 56px; height: 56px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--radius-md, 10px);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--fs-hero);
 }
-.source-card-body { flex: 1; }
-.source-card-title { font-size: var(--fs-lg); font-weight: 700; color: var(--text-strong); margin-bottom: 4px; }
-.source-card-desc { font-size: var(--fs-body); color: var(--text-muted); line-height: 1.5; }
-.source-arrow { width: 20px; height: 20px; flex: none; color: var(--text-muted); }
+.source-card-body {
+  flex: 1;
+}
+.source-card-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+}
+.source-card-desc {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.source-arrow {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: var(--text-muted);
+}
 
 /* URL 拉取 */
-.url-fetch-area { max-width: 600px; margin: 16px auto; }
-.url-tip { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 16px; line-height: 1.6; }
+.url-fetch-area {
+  max-width: 600px;
+  margin: 16px auto;
+}
+.url-tip {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 16px;
+  line-height: 1.6;
+}
 
 /* 编辑区 */
-.compose-editor-layout { display: flex; flex-direction: column; gap: var(--sp-3); }
-.editor-topbar { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.back-btn { color: var(--text-muted) !important; padding: 0 8px !important; }
-.back-btn:hover { color: var(--pt-primary) !important; }
-.field-label { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+.compose-editor-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.editor-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.back-btn {
+  color: var(--text-muted) !important;
+  padding: 0 8px !important;
+}
+.back-btn:hover {
+  color: var(--pt-primary) !important;
+}
+.field-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
 .source-tag {
   margin-left: auto;
   font-size: var(--fs-xs);
@@ -276,11 +384,23 @@ async function action(act: 'up' | 'down' | 'validate') {
   max-height: 200px;
   overflow: auto;
 }
-.compose-output pre { margin: 0; font-size: var(--fs-xs); font-family: monospace; white-space: pre-wrap; word-break: break-all; }
+.compose-output pre {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-family: monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 
 /* 模板抽屉 */
-.tpl-search-bar { margin-bottom: 12px; }
-.tpl-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.tpl-search-bar {
+  margin-bottom: 12px;
+}
+.tpl-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
 .tpl-card {
   display: flex;
   gap: var(--sp-3);
@@ -298,15 +418,35 @@ async function action(act: 'up' | 'down' | 'validate') {
 }
 .tpl-icon {
   flex: none;
-  width: 42px; height: 42px;
+  width: 42px;
+  height: 42px;
   border-radius: var(--radius-md, 8px);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: var(--fs-title);
 }
-.tpl-body { flex: 1; min-width: 0; }
-.tpl-name { font-size: var(--fs-md); font-weight: 700; color: var(--text-strong); margin-bottom: 2px; }
-.tpl-desc { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4; margin-bottom: 6px; }
-.tpl-services { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.tpl-body {
+  flex: 1;
+  min-width: 0;
+}
+.tpl-name {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-strong);
+  margin-bottom: 2px;
+}
+.tpl-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+.tpl-services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
 .tpl-svc-tag {
   font-size: var(--fs-2xs);
   font-family: monospace;
@@ -315,5 +455,10 @@ async function action(act: 'up' | 'down' | 'validate') {
   background: var(--surface-muted);
   color: var(--text-muted);
 }
-.tpl-empty { text-align: center; padding: 32px; color: var(--text-muted); font-size: var(--fs-body); }
+.tpl-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+}
 </style>

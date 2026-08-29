@@ -1,0 +1,63 @@
+name: CodeQL
+
+# 静态安全分析（SAST）：Go 后端 + JS/TS（前端与扩展）。
+# 每周扫描 + 主干 push 扫描；结果进 GitHub Security → Code scanning alerts。
+# 审查指认缺失项（此前仅 govulncheck 依赖审计，无代码级 SAST）。
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 4 * * 1' # 每周一 04:23 UTC（错开整点高峰）
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write # 上传 SARIF 结果必需
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            paths: backend
+          - language: javascript-typescript
+            paths: frontend/src,extension
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        if: matrix.language == 'go'
+        with:
+          go-version: '1.26'
+          cache-dependency-path: backend/go.sum
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        if: matrix.language == 'javascript-typescript'
+        with:
+          node-version: '20'
+      - uses: github/codeql-action/init@5ba2889ada762081db2c4f32a729827dce632c7b # v3
+        with:
+          languages: ${{ matrix.language }}
+          # 只扫业务代码目录（构建产物/生成文件排除）
+          paths: ${{ matrix.paths }}
+      # Go 需要 build 提取；JS/TS 纯解析即可（npm ci 仅为依赖图，失败不阻断）
+      - if: matrix.language == 'go'
+        working-directory: backend
+        run: go build ./...
+      - if: matrix.language == 'javascript-typescript'
+        working-directory: frontend
+        run: npm install --no-audit --no-fund || echo '::warning::npm install failed, analyzing without dep graph'
+      - uses: github/codeql-action/analyze@5ba2889ada762081db2c4f32a729827dce632c7b # v3
+        with:
+          category: '/language:${{ matrix.language }}'

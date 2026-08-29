@@ -17,11 +17,24 @@ const year = ref(now.getFullYear())
 const month = ref(now.getMonth()) // 0-11
 const selectedKey = ref('') // '月-日'，点击的日历格
 
-const WEEKDAYS = computed(() => [t('sac.wd1'), t('sac.wd2'), t('sac.wd3'), t('sac.wd4'), t('sac.wd5'), t('sac.wd6'), t('sac.wd7')])
+const WEEKDAYS = computed(() => [
+  t('sac.wd1'),
+  t('sac.wd2'),
+  t('sac.wd3'),
+  t('sac.wd4'),
+  t('sac.wd5'),
+  t('sac.wd6'),
+  t('sac.wd7'),
+])
 
 const annivMap = computed(() => buildAnniversaryMap(props.sites, year.value, now))
 
-interface CalendarCell { key: string; day: number; inMonth: boolean; entries: AnniversaryEntry[] }
+interface CalendarCell {
+  key: string
+  day: number
+  inMonth: boolean
+  entries: AnniversaryEntry[]
+}
 const cells = computed<CalendarCell[]>(() => {
   const lead = (new Date(year.value, month.value, 1).getDay() + 6) % 7 // 周一为一周起点
   const daysInMonth = new Date(year.value, month.value + 1, 0).getDate()
@@ -69,7 +82,7 @@ function selectCell(cell: CalendarCell) {
   selectedKey.value = selectedKey.value === cell.key ? '' : cell.key
 }
 
-const selectedEntries = computed(() => (selectedKey.value ? annivMap.value.get(selectedKey.value) ?? [] : []))
+const selectedEntries = computed(() => (selectedKey.value ? (annivMap.value.get(selectedKey.value) ?? []) : []))
 const selectedLabel = computed(() => {
   if (!selectedKey.value) return ''
   const [m, d] = selectedKey.value.split('-')
@@ -83,7 +96,9 @@ function openSite(card: SaveptSiteCard) {
   if (card.url) window.open(card.url, '_blank', 'noopener')
 }
 
-watch(visible, (v) => { if (v) goToday() })
+watch(visible, (v) => {
+  if (v) goToday()
+})
 </script>
 
 <template>
@@ -143,10 +158,21 @@ watch(visible, (v) => { if (v) goToday() })
       </div>
 
       <div class="anniv__legend">
-        <span class="anniv__legend-item"><i class="anniv__legend-swatch anniv__legend-swatch--anniv" />{{ t('sac.annivDay') }}</span>
-        <span class="anniv__legend-item"><i class="anniv__legend-swatch anniv__legend-swatch--today" />{{ t('sac.today') }}</span>
+        <span class="anniv__legend-item"
+          ><i class="anniv__legend-swatch anniv__legend-swatch--anniv" />{{ t('sac.annivDay') }}</span
+        >
+        <span class="anniv__legend-item"
+          ><i class="anniv__legend-swatch anniv__legend-swatch--today" />{{ t('sac.today') }}</span
+        >
         <span class="anniv__legend-note">
-          {{ t('sac.summaryPre') }}{{ t('sac.summary', { year, w: year === now.getFullYear() ? t('sac.left') : t('sac.totalW'), n: annivDayCount }) }}<template v-if="noDateCount">{{ t('sac.noDateN', { n: noDateCount }) }}</template>
+          {{ t('sac.summaryPre')
+          }}{{
+            t('sac.summary', {
+              year,
+              w: year === now.getFullYear() ? t('sac.left') : t('sac.totalW'),
+              n: annivDayCount,
+            })
+          }}<template v-if="noDateCount">{{ t('sac.noDateN', { n: noDateCount }) }}</template>
         </span>
       </div>
     </div>
@@ -168,72 +194,222 @@ watch(visible, (v) => { if (v) goToday() })
   --anniv-border: rgba(226, 232, 240, 0.14);
 }
 
-.anniv__nav { display: flex; align-items: center; gap: 8px; }
-.anniv__nav-title { min-width: 110px; text-align: center; font-size: 0.95rem; font-weight: 700; color: rgba(var(--anniv-on-surface), 0.9); }
+.anniv__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.anniv__nav-title {
+  min-width: 110px;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(var(--anniv-on-surface), 0.9);
+}
 .anniv__nav-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 28px; height: 28px; border: 1px solid var(--anniv-border); border-radius: 6px;
-  background: transparent; color: rgba(var(--anniv-on-surface), 0.55); cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--anniv-border);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(var(--anniv-on-surface), 0.55);
+  cursor: pointer;
   transition: all 0.15s ease;
 }
-.anniv__nav-btn:hover { background: rgba(var(--anniv-on-surface), 0.06); color: rgba(var(--anniv-on-surface), 0.85); }
-.anniv__nav-icon--prev { transform: rotate(180deg); }
-.anniv__nav-today {
-  margin-left: auto; min-height: 28px; padding: 3px 10px; border: 1px solid var(--anniv-border);
-  border-radius: 999px; background: transparent; color: rgba(var(--anniv-on-surface), 0.55);
-  font-size: 0.75rem; cursor: pointer; transition: all 0.15s ease;
+.anniv__nav-btn:hover {
+  background: rgba(var(--anniv-on-surface), 0.06);
+  color: rgba(var(--anniv-on-surface), 0.85);
 }
-.anniv__nav-today:hover { color: rgba(var(--anniv-on-surface), 0.85); background: rgba(var(--anniv-on-surface), 0.06); }
+.anniv__nav-icon--prev {
+  transform: rotate(180deg);
+}
+.anniv__nav-today {
+  margin-left: auto;
+  min-height: 28px;
+  padding: 3px 10px;
+  border: 1px solid var(--anniv-border);
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(var(--anniv-on-surface), 0.55);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.anniv__nav-today:hover {
+  color: rgba(var(--anniv-on-surface), 0.85);
+  background: rgba(var(--anniv-on-surface), 0.06);
+}
 
-.anniv__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.anniv__grid--head { margin-top: 2px; }
-.anniv__weekday { text-align: center; font-size: 0.72rem; color: rgba(var(--anniv-on-surface), 0.4); padding: 2px 0; }
+.anniv__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.anniv__grid--head {
+  margin-top: 2px;
+}
+.anniv__weekday {
+  text-align: center;
+  font-size: 0.72rem;
+  color: rgba(var(--anniv-on-surface), 0.4);
+  padding: 2px 0;
+}
 
 .anniv__day {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 38px; border-radius: 8px; font-size: 0.82rem;
-  color: rgba(var(--anniv-on-surface), 0.75); border: 1px solid transparent; box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: rgba(var(--anniv-on-surface), 0.75);
+  border: 1px solid transparent;
+  box-sizing: border-box;
 }
-.anniv__day--blank { pointer-events: none; }
-.anniv__day--today-plain { border-color: rgba(var(--anniv-on-surface), 0.35); font-weight: 700; }
+.anniv__day--blank {
+  pointer-events: none;
+}
+.anniv__day--today-plain {
+  border-color: rgba(var(--anniv-on-surface), 0.35);
+  font-weight: 700;
+}
 .anniv__day--anniv {
-  position: relative; border: none; cursor: pointer; font-weight: 600;
-  background: rgba(245, 158, 11, 0.16); color: var(--anniv-color);
-  transition: background 0.15s ease, transform 0.15s ease;
+  position: relative;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  background: rgba(245, 158, 11, 0.16);
+  color: var(--anniv-color);
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 .anniv__day--anniv::after {
-  content: ''; position: absolute; bottom: 5px; width: 4px; height: 4px; border-radius: 50%;
-  background: var(--anniv-color); opacity: 0.8;
+  content: '';
+  position: absolute;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--anniv-color);
+  opacity: 0.8;
 }
-.anniv__day--anniv:hover { background: rgba(245, 158, 11, 0.28); transform: translateY(-1px); }
-.anniv__day--today { box-shadow: inset 0 0 0 2px rgba(var(--anniv-on-surface), 0.4); }
-.anniv__day--selected { background: rgba(245, 158, 11, 0.42); }
+.anniv__day--anniv:hover {
+  background: rgba(245, 158, 11, 0.28);
+  transform: translateY(-1px);
+}
+.anniv__day--today {
+  box-shadow: inset 0 0 0 2px rgba(var(--anniv-on-surface), 0.4);
+}
+.anniv__day--selected {
+  background: rgba(245, 158, 11, 0.42);
+}
 
-.anniv__detail { border: 1px solid var(--anniv-border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-.anniv__detail-title { font-size: 0.85rem; font-weight: 700; color: rgba(var(--anniv-on-surface), 0.85); }
-.anniv__detail-list { display: flex; flex-direction: column; gap: 2px; }
+.anniv__detail {
+  border: 1px solid var(--anniv-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.anniv__detail-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(var(--anniv-on-surface), 0.85);
+}
+.anniv__detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .anniv__site {
-  display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
-  border: none; border-radius: 6px; background: transparent; cursor: pointer;
-  transition: background 0.15s ease; text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  text-align: left;
 }
-.anniv__site:hover { background: rgba(var(--anniv-on-surface), 0.06); }
-.anniv__site-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: #94a3b8; }
-.anniv__site-status[data-status='healthy'] { background: #22c55e; }
-.anniv__site-status[data-status='critical'] { background: #ef4444; }
-.anniv__site-name { font-size: 0.85rem; color: rgba(var(--anniv-on-surface), 0.9); font-weight: 500; }
-.anniv__site-years { font-size: 0.75rem; color: var(--anniv-color); }
+.anniv__site:hover {
+  background: rgba(var(--anniv-on-surface), 0.06);
+}
+.anniv__site-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #94a3b8;
+}
+.anniv__site-status[data-status='healthy'] {
+  background: #22c55e;
+}
+.anniv__site-status[data-status='critical'] {
+  background: #ef4444;
+}
+.anniv__site-name {
+  font-size: 0.85rem;
+  color: rgba(var(--anniv-on-surface), 0.9);
+  font-weight: 500;
+}
+.anniv__site-years {
+  font-size: 0.75rem;
+  color: var(--anniv-color);
+}
 .anniv__site-owned {
-  font-size: 0.68rem; padding: 1px 8px; border-radius: 999px;
-  background: rgba(34, 197, 94, 0.12); color: #16a34a;
+  font-size: 0.68rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
 }
-.anniv__site-arrow { margin-left: auto; color: rgba(var(--anniv-on-surface), 0.3); }
+.anniv__site-arrow {
+  margin-left: auto;
+  color: rgba(var(--anniv-on-surface), 0.3);
+}
 
-.anniv__legend { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.75rem; color: rgba(var(--anniv-on-surface), 0.45); }
-.anniv__legend-item { display: inline-flex; align-items: center; gap: 5px; }
-.anniv__legend-swatch { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
-.anniv__legend-swatch--anniv { background: rgba(245, 158, 11, 0.28); box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.5); }
-.anniv__legend-swatch--today { background: transparent; box-shadow: inset 0 0 0 2px rgba(var(--anniv-on-surface), 0.4); }
-.anniv__legend-note { margin-left: auto; }
-@media (max-width: 560px) { .anniv__legend-note { margin-left: 0; width: 100%; } }
+.anniv__legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: rgba(var(--anniv-on-surface), 0.45);
+}
+.anniv__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.anniv__legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.anniv__legend-swatch--anniv {
+  background: rgba(245, 158, 11, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.5);
+}
+.anniv__legend-swatch--today {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px rgba(var(--anniv-on-surface), 0.4);
+}
+.anniv__legend-note {
+  margin-left: auto;
+}
+@media (max-width: 560px) {
+  .anniv__legend-note {
+    margin-left: 0;
+    width: 100%;
+  }
+}
 </style>

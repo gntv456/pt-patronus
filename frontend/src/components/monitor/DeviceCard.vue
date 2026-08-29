@@ -34,12 +34,18 @@ const icon = computed(() => {
   return 'server'
 })
 const color = computed<[string, string]>(() =>
-  props.target.type === 'camera' ? ['#ff5f6d', '#ffc371']
-    : props.target.type === 'nas' ? ['#f7971e', '#ffd200']
-      : props.target.type === 'http' ? ['#00b894', '#0984e3']
-        : props.target.type === 'tcp' ? ['#34495e', '#16a085']
-          : props.target.type === 'process' ? ['#8e44ad', '#3498db']
-            : props.target.type === 'script' ? ['#d35400', '#f1c40f']
+  props.target.type === 'camera'
+    ? ['#ff5f6d', '#ffc371']
+    : props.target.type === 'nas'
+      ? ['#f7971e', '#ffd200']
+      : props.target.type === 'http'
+        ? ['#00b894', '#0984e3']
+        : props.target.type === 'tcp'
+          ? ['#34495e', '#16a085']
+          : props.target.type === 'process'
+            ? ['#8e44ad', '#3498db']
+            : props.target.type === 'script'
+              ? ['#d35400', '#f1c40f']
               : ['#0f2027', '#2c5364'],
 )
 const status = computed(() => {
@@ -49,15 +55,24 @@ const status = computed(() => {
 })
 // 磁盘总量须去重后再累加（btrfs子卷/ZFS dataset 报相同整盘容量会乘N倍）。
 const diskStats = computed(() => {
-  const seen = new Set<number>(); const devs = new Set<string>(); let t = 0, u = 0
+  const seen = new Set<number>()
+  const devs = new Set<string>()
+  let t = 0,
+    u = 0
   for (const d of props.metrics?.disks ?? []) {
-    if (d.total <= 0 || devs.has(d.device || "") || seen.has(d.total)) continue
-    devs.add(d.device || ""); seen.add(d.total); t += d.total; u += d.used || 0
+    if (d.total <= 0 || devs.has(d.device || '') || seen.has(d.total)) continue
+    devs.add(d.device || '')
+    seen.add(d.total)
+    t += d.total
+    u += d.used || 0
   }
   return { total: t, used: u, usage: t ? (u / t) * 100 : undefined, empty: !t }
 })
 const diskUsage = computed(() => diskStats.value.usage)
-const diskDetail = computed(() => { const s = diskStats.value; return s.empty ? "" : t('dc.diskDetail', { used: fmtBytes(s.used), total: fmtBytes(s.total) }) })
+const diskDetail = computed(() => {
+  const s = diskStats.value
+  return s.empty ? '' : t('dc.diskDetail', { used: fmtBytes(s.used), total: fmtBytes(s.total) })
+})
 const lastCheck = computed(() =>
   props.target.last_checked_at ? new Date(props.target.last_checked_at).toLocaleTimeString() : '-',
 )
@@ -74,7 +89,11 @@ const vendorLabel = computed(() => {
       return props.target.vendor
   }
 })
-const canTerminal = computed(() => props.target.type === 'host' && (props.target.protocol === 'ssh' || (!props.target.protocol && !!props.target.host)))
+const canTerminal = computed(
+  () =>
+    props.target.type === 'host' &&
+    (props.target.protocol === 'ssh' || (!props.target.protocol && !!props.target.host)),
+)
 const extra = computed<Record<string, unknown>>(() => props.metrics?.extra || {})
 
 function extraText(key: string, fallback = '-'): string {
@@ -98,7 +117,10 @@ const serviceRows = computed(() => {
   }
   if (props.target.type === 'tcp') {
     return [
-      { label: t('dc.address'), value: `${extraText('host', props.target.host)}:${extraText('port', String(props.target.port || '-'))}` },
+      {
+        label: t('dc.address'),
+        value: `${extraText('host', props.target.host)}:${extraText('port', String(props.target.port || '-'))}`,
+      },
       { label: t('dc.response'), value: extraMs() },
     ]
   }
@@ -133,7 +155,10 @@ const serviceRows = computed(() => {
 
     <div class="dc-body">
       <template v-if="isServiceMonitor && metrics">
-        <div v-for="row in serviceRows" :key="row.label" class="dc-info"><span>{{ row.label }}</span>{{ row.value }}</div>
+        <div v-for="row in serviceRows" :key="row.label" class="dc-info">
+          <span>{{ row.label }}</span
+          >{{ row.value }}
+        </div>
       </template>
       <template v-else-if="target.type !== 'camera' && metrics">
         <MetricBar label="CPU" :value="metrics.cpu_usage" />
@@ -145,13 +170,24 @@ const serviceRows = computed(() => {
         <MetricBar v-if="diskUsage !== undefined" :label="t('dc.disk')" :value="diskUsage" :detail="diskDetail" />
       </template>
       <template v-else-if="target.type === 'camera' && metrics?.device_info">
-        <div class="dc-info"><span>{{ t('dc.vendor') }}</span>{{ metrics.device_info.manufacturer || '-' }}</div>
-        <div class="dc-info"><span>{{ t('dc.model') }}</span>{{ metrics.device_info.model || '-' }}</div>
-        <div class="dc-info"><span>{{ t('dc.firmware') }}</span>{{ metrics.device_info.firmware || '-' }}</div>
+        <div class="dc-info">
+          <span>{{ t('dc.vendor') }}</span
+          >{{ metrics.device_info.manufacturer || '-' }}
+        </div>
+        <div class="dc-info">
+          <span>{{ t('dc.model') }}</span
+          >{{ metrics.device_info.model || '-' }}
+        </div>
+        <div class="dc-info">
+          <span>{{ t('dc.firmware') }}</span
+          >{{ metrics.device_info.firmware || '-' }}
+        </div>
       </template>
       <div v-else class="dc-nodata">
         <span>{{ target.last_error || t('dc.noDataHint') }}</span>
-        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">{{ t('dd.howToFix') }}</el-button>
+        <el-button v-if="isSSHAuthError(target.last_error)" size="small" text type="primary" @click="showSSHAuthFix">{{
+          t('dd.howToFix')
+        }}</el-button>
       </div>
 
       <div v-if="metrics?.net_rx_rate !== undefined && target.type !== 'camera'" class="dc-net">
@@ -163,8 +199,12 @@ const serviceRows = computed(() => {
       <span class="dc-time">{{ lastCheck }}</span>
       <div class="dc-actions">
         <el-button size="small" text @click="emit('probe', target)">{{ t('dc.probe') }}</el-button>
-        <el-button v-if="canTerminal" size="small" text @click="emit('terminal', target)">{{ t('dc.terminal') }}</el-button>
-        <el-button v-if="target.type === 'camera'" size="small" text @click="emit('preview', target)">{{ t('dc.preview') }}</el-button>
+        <el-button v-if="canTerminal" size="small" text @click="emit('terminal', target)">{{
+          t('dc.terminal')
+        }}</el-button>
+        <el-button v-if="target.type === 'camera'" size="small" text @click="emit('preview', target)">{{
+          t('dc.preview')
+        }}</el-button>
         <el-button size="small" text @click="emit('detail', target)">{{ t('dc.detail') }}</el-button>
         <el-button size="small" text @click="emit('edit', target)">{{ t('common.edit') }}</el-button>
         <el-button size="small" text type="danger" @click="emit('remove', target)">{{ t('common.delete') }}</el-button>

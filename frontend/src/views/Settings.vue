@@ -37,7 +37,9 @@ const { t } = useI18n()
 // Servarr 兼容：API Key = 服务端 API_KEY env（密钥不在前端回显）。
 const apiKeyHint = computed(() => t('settings.servarr.apiKeyHint'))
 
-onMounted(() => { initThemeVersion() })
+onMounted(() => {
+  initThemeVersion()
+})
 
 // P1 六分区：外层 section → 内层 activeTab（连接/媒体/通知/维护等嵌套）
 const settingsSection = ref('general')
@@ -80,13 +82,19 @@ function applySettingsQuery() {
   const tab = typeof q.tab === 'string' ? q.tab : ''
   if (sec) settingsSection.value = sec
   if (tab) {
-    if (sec === 'connect' || (!sec && ['cloud','trakt','files','oidc','llmgateway','cookiecloud','servarr'].includes(tab))) {
+    if (
+      sec === 'connect' ||
+      (!sec && ['cloud', 'trakt', 'files', 'oidc', 'llmgateway', 'cookiecloud', 'servarr'].includes(tab))
+    ) {
       if (!sec) settingsSection.value = 'connect'
       connectTab.value = tab
-    } else if (sec === 'media' || (!sec && ['mediaquality','subtitle','media-settings','filter-rules'].includes(tab))) {
+    } else if (
+      sec === 'media' ||
+      (!sec && ['mediaquality', 'subtitle', 'media-settings', 'filter-rules'].includes(tab))
+    ) {
       if (!sec) settingsSection.value = 'media'
       mediaTab.value = tab
-    } else if (sec === 'maintain' || (!sec && ['logs','backup','doctor'].includes(tab))) {
+    } else if (sec === 'maintain' || (!sec && ['logs', 'backup', 'doctor'].includes(tab))) {
       if (!sec) settingsSection.value = 'maintain'
       maintainTab.value = tab
     } else if (sec === 'notify') {
@@ -97,7 +105,9 @@ function applySettingsQuery() {
     onSectionChange(sec)
   }
 }
-onMounted(() => { applySettingsQuery() })
+onMounted(() => {
+  applySettingsQuery()
+})
 
 function onTabChange(tab: string | number) {
   const name = String(tab)
@@ -121,12 +131,11 @@ function onSectionChange(sec: string | number) {
 }
 </script>
 
-
 <template>
   <div class="page">
     <h2 class="title">{{ t('settings.title') }}</h2>
 
-        <el-tabs v-model="settingsSection" @tab-change="onSectionChange" class="glass tabs settings-sections">
+    <el-tabs v-model="settingsSection" @tab-change="onSectionChange" class="glass tabs settings-sections">
       <el-tab-pane :label="t('settings.sections.general')" name="general">
         <GeneralPanel />
       </el-tab-pane>
@@ -155,23 +164,31 @@ function onSectionChange(sec: string | number) {
             <OcrPanel />
           </el-tab-pane>
           <el-tab-pane :label="t('settings.connect.servarr')" name="servarr">
-
-        <div class="oidc-wrap">
-          <p class="text-muted oidc-help">
-            {{ t('settings.servarr.help', { code: 'API_KEY' }) }}
-          </p>
-          <div class="card glass">
-            <div class="ch-head"><div class="row-title">{{ t('settings.servarr.accessInfo') }}</div></div>
-            <el-input class="mt8" readonly model-value="Radarr: http://<host>:8088/api/v3"><template #prepend>Radarr URL</template></el-input>
-            <el-input class="mt8" readonly model-value="Sonarr: http://<host>:8088/api/v3"><template #prepend>Sonarr URL</template></el-input>
-            <el-input class="mt8" readonly :model-value="apiKeyHint"><template #prepend>API Key</template></el-input>
-            <p class="text-muted small mt8">
-              {{ t('settings.servarr.mapping', { code2: 'hasFile' }) }}<br/>
-              {{ t('settings.servarr.endpoints') }}<code>/system/status</code>、<code>/movie</code>(GET/POST/DELETE)、<code>/series</code>(GET/POST/PUT/DELETE)、<code>/*/lookup</code>、<code>/rootfolder</code>、<code>/qualityProfile</code>、<code>/tag</code>。
-            </p>
-          </div>
-        </div>
-      
+            <div class="oidc-wrap">
+              <p class="text-muted oidc-help">
+                {{ t('settings.servarr.help', { code: 'API_KEY' }) }}
+              </p>
+              <div class="card glass">
+                <div class="ch-head">
+                  <div class="row-title">{{ t('settings.servarr.accessInfo') }}</div>
+                </div>
+                <el-input class="mt8" readonly model-value="Radarr: http://<host>:8088/api/v3"
+                  ><template #prepend>Radarr URL</template></el-input
+                >
+                <el-input class="mt8" readonly model-value="Sonarr: http://<host>:8088/api/v3"
+                  ><template #prepend>Sonarr URL</template></el-input
+                >
+                <el-input class="mt8" readonly :model-value="apiKeyHint"
+                  ><template #prepend>API Key</template></el-input
+                >
+                <p class="text-muted small mt8">
+                  {{ t('settings.servarr.mapping', { code2: 'hasFile' }) }}<br />
+                  {{ t('settings.servarr.endpoints')
+                  }}<code>/system/status</code
+                  >、<code>/movie</code>(GET/POST/DELETE)、<code>/series</code>(GET/POST/PUT/DELETE)、<code>/*/lookup</code>、<code>/rootfolder</code>、<code>/qualityProfile</code>、<code>/tag</code>。
+                </p>
+              </div>
+            </div>
           </el-tab-pane>
         </el-tabs>
       </el-tab-pane>
@@ -193,17 +210,13 @@ function onSectionChange(sec: string | number) {
       </el-tab-pane>
 
       <el-tab-pane :label="t('settings.sections.automation')" name="automation">
-
-          <SchedulePanel />
+        <SchedulePanel />
       </el-tab-pane>
 
       <el-tab-pane :label="t('settings.sections.notify')" name="notify">
         <el-tabs v-model="notifyTab" @tab-change="onTabChange" class="nested-tabs">
           <el-tab-pane :label="t('settings.notify.channels')" name="notification">
-
-        <NotificationPanel />
-
-      
+            <NotificationPanel />
           </el-tab-pane>
           <el-tab-pane :label="t('settings.notify.tgbot')" name="tgbot">
             <TgBotPanel />
@@ -225,21 +238,59 @@ function onSectionChange(sec: string | number) {
         </el-tabs>
       </el-tab-pane>
     </el-tabs>
-
   </div>
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.tabs { padding: 8px 14px; }
-.card { padding: 16px 18px; margin-bottom: 12px; }
-.row-title { font-weight: 600; }
-.oidc-wrap { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 640px; }
-.oidc-help { font-size: var(--fs-body); line-height: 1.6; }
-.oidc-help code { background: var(--card); padding: 2px 6px; border-radius: var(--radius-2xs); }
-.oidc-save { display: flex; justify-content: flex-end; }
-.ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.mt8 { margin-top: 8px; }
-.nested-tabs { margin-top: 8px; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.tabs {
+  padding: 8px 14px;
+}
+.card {
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.row-title {
+  font-weight: 600;
+}
+.oidc-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-width: 640px;
+}
+.oidc-help {
+  font-size: var(--fs-body);
+  line-height: 1.6;
+}
+.oidc-help code {
+  background: var(--card);
+  padding: 2px 6px;
+  border-radius: var(--radius-2xs);
+}
+.oidc-save {
+  display: flex;
+  justify-content: flex-end;
+}
+.ch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.mt8 {
+  margin-top: 8px;
+}
+.nested-tabs {
+  margin-top: 8px;
+}
 </style>

@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { dockerApi, dockerRemoteActions, type DockerInspect, type DockerRemoteAction, type DockerStatsRow } from '@/api/docker'
+import {
+  dockerApi,
+  dockerRemoteActions,
+  type DockerInspect,
+  type DockerRemoteAction,
+  type DockerStatsRow,
+} from '@/api/docker'
 import DockerExecTerminal from './DockerExecTerminal.vue'
 import { useI18n } from 'vue-i18n'
 
@@ -33,32 +39,51 @@ async function loadInspect() {
   if (!props.container) return
   loading.value = true
   try {
-    inspect.value = props.mode === 'local'
-      ? await dockerApi.localInspect(props.container)
-      : await dockerApi.inspect(props.targetId, props.container)
-  } catch (e: any) { ElMessage.error(e.message) }
-  finally { loading.value = false }
+    inspect.value =
+      props.mode === 'local'
+        ? await dockerApi.localInspect(props.container)
+        : await dockerApi.inspect(props.targetId, props.container)
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  } finally {
+    loading.value = false
+  }
 }
 
 async function loadLogs() {
   if (!props.container) return
   logsLoading.value = true
   try {
-    const res = props.mode === 'local'
-      ? await dockerApi.localLogs(props.container, logsTail.value)
-      : await dockerApi.logs(props.targetId, props.container, logsTail.value)
+    const res =
+      props.mode === 'local'
+        ? await dockerApi.localLogs(props.container, logsTail.value)
+        : await dockerApi.logs(props.targetId, props.container, logsTail.value)
     logs.value = res.logs || '(' + t('opsdocker.noLogs') + ')'
-  } catch (e: any) { logs.value = t('opsdocker.logFailed') + ': ' + e.message }
-  finally { logsLoading.value = false }
+  } catch (e: any) {
+    logs.value = t('opsdocker.logFailed') + ': ' + e.message
+  } finally {
+    logsLoading.value = false
+  }
 }
 
-watch(() => props.visible, async (v) => {
-  if (v) { activeTab.value = 'info'; await loadInspect() }
-  else { logs.value = ''; inspect.value = null }
-})
-watch(() => activeTab.value, (t) => {
-  if (t === 'logs' && !logs.value) loadLogs()
-})
+watch(
+  () => props.visible,
+  async (v) => {
+    if (v) {
+      activeTab.value = 'info'
+      await loadInspect()
+    } else {
+      logs.value = ''
+      inspect.value = null
+    }
+  },
+)
+watch(
+  () => activeTab.value,
+  (t) => {
+    if (t === 'logs' && !logs.value) loadLogs()
+  },
+)
 
 function cpuPct(s?: DockerStatsRow): number {
   if (!s?.CPUPerc) return 0
@@ -72,13 +97,19 @@ function memPct(s?: DockerStatsRow): number {
 const networkList = computed(() => {
   if (!inspect.value?.NetworkSettings?.Networks) return []
   return Object.entries(inspect.value.NetworkSettings.Networks).map(([name, net]: [string, any]) => ({
-    name, ip: net.IPAddress || '-', gateway: net.Gateway || '-', mac: net.MacAddress || '-',
+    name,
+    ip: net.IPAddress || '-',
+    gateway: net.Gateway || '-',
+    mac: net.MacAddress || '-',
   }))
 })
 const mountList = computed(() => {
   if (!inspect.value?.Mounts) return []
   return inspect.value.Mounts.map((m: any) => ({
-    type: m.Type || '-', source: m.Source || '-', dest: m.Destination || '-', mode: (m.Mode || (m.RW ? 'rw' : 'ro')),
+    type: m.Type || '-',
+    source: m.Source || '-',
+    dest: m.Destination || '-',
+    mode: m.Mode || (m.RW ? 'rw' : 'ro'),
   }))
 })
 const envList = computed(() => {
@@ -96,59 +127,122 @@ async function doAction(action: string, label: string) {
     ElMessage.success(t('opsdocker.actionOk', { label }))
     emit('refresh')
     await loadInspect()
-  } catch (e: any) { ElMessage.error(e.message) }
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
 }
 
-onBeforeUnmount(() => { inspect.value = null; logs.value = '' })
+onBeforeUnmount(() => {
+  inspect.value = null
+  logs.value = ''
+})
 </script>
 
 <template>
-  <el-drawer :model-value="visible" @update:model-value="emit('update:visible', $event)"
-    :title="t('ddd.title', { name: container.replace(/^\//, '') })" size="60%" direction="rtl">
+  <el-drawer
+    :model-value="visible"
+    @update:model-value="emit('update:visible', $event)"
+    :title="t('ddd.title', { name: container.replace(/^\//, '') })"
+    size="60%"
+    direction="rtl"
+  >
     <div v-loading="loading" class="detail-wrap">
       <!-- 快捷操作条 -->
       <div class="detail-actions-bar">
-        <el-button size="small" type="success" @click="doAction('start', t('opsdocker.act.start'))">{{ t('opsdocker.act.start') }}</el-button>
-        <el-button size="small" type="warning" @click="doAction('stop', t('opsdocker.act.stop'))">{{ t('opsdocker.act.stop') }}</el-button>
-        <el-button size="small" @click="doAction('restart', t('opsdocker.act.restart'))">{{ t('opsdocker.act.restart') }}</el-button>
-        <el-button size="small" @click="doAction('pause', t('tt.pause'))" v-if="mode === 'local'">{{ t('tt.pause') }}</el-button>
+        <el-button size="small" type="success" @click="doAction('start', t('opsdocker.act.start'))">{{
+          t('opsdocker.act.start')
+        }}</el-button>
+        <el-button size="small" type="warning" @click="doAction('stop', t('opsdocker.act.stop'))">{{
+          t('opsdocker.act.stop')
+        }}</el-button>
+        <el-button size="small" @click="doAction('restart', t('opsdocker.act.restart'))">{{
+          t('opsdocker.act.restart')
+        }}</el-button>
+        <el-button size="small" @click="doAction('pause', t('tt.pause'))" v-if="mode === 'local'">{{
+          t('tt.pause')
+        }}</el-button>
       </div>
 
       <el-tabs v-model="activeTab" class="detail-tabs">
         <!-- 基本信息 -->
         <el-tab-pane :label="t('ddd.info')" name="info">
           <div v-if="inspect" class="info-grid">
-            <div class="info-row"><span class="ik">{{ t('ddd.containerId') }}</span><code class="iv mono">{{ inspect.Id?.slice(0, 12) }}</code></div>
-            <div class="info-row"><span class="ik">{{ t('opsdocker.images') }}</span><code class="iv mono">{{ inspect.Config?.Image }}</code></div>
-            <div class="info-row"><span class="ik">{{ t('cloud.status') }}</span>
+            <div class="info-row">
+              <span class="ik">{{ t('ddd.containerId') }}</span
+              ><code class="iv mono">{{ inspect.Id?.slice(0, 12) }}</code>
+            </div>
+            <div class="info-row">
+              <span class="ik">{{ t('opsdocker.images') }}</span
+              ><code class="iv mono">{{ inspect.Config?.Image }}</code>
+            </div>
+            <div class="info-row">
+              <span class="ik">{{ t('cloud.status') }}</span>
               <span class="state-badge" :class="'state-badge--' + (inspect.State?.Running ? 'success' : 'muted')">
                 <span class="state-dot"></span>{{ inspect.State?.Status || 'unknown' }}
               </span>
             </div>
-            <div class="info-row"><span class="ik">{{ t('td.createdAt') }}</span><span class="iv">{{ inspect.Created }}</span></div>
-            <div class="info-row"><span class="ik">{{ t('dw.restartPolicy') }}</span><span class="iv">{{ inspect.HostConfig?.RestartPolicy?.Name || '-' }}</span></div>
-            <div class="info-row" v-if="inspect.Config?.Cmd"><span class="ik">{{ t('dw.cmd') }}</span><code class="iv mono">{{ inspect.Config.Cmd.join(' ') }}</code></div>
-            <div class="info-row" v-if="stat"><span class="ik">CPU</span>
-              <div class="resource-bar"><div class="bar-fill bar--cpu" :style="{ width: Math.min(cpuPct(stat), 100) + '%' }"></div><span class="bar-val">{{ stat.CPUPerc }}</span></div>
+            <div class="info-row">
+              <span class="ik">{{ t('td.createdAt') }}</span
+              ><span class="iv">{{ inspect.Created }}</span>
             </div>
-            <div class="info-row" v-if="stat"><span class="ik">{{ t('opsdocker.mem') }}</span>
-              <div class="resource-bar"><div class="bar-fill bar--mem" :style="{ width: Math.min(memPct(stat), 100) + '%' }"></div><span class="bar-val">{{ stat.MemUsage }} ({{ stat.MemPerc }})</span></div>
+            <div class="info-row">
+              <span class="ik">{{ t('dw.restartPolicy') }}</span
+              ><span class="iv">{{ inspect.HostConfig?.RestartPolicy?.Name || '-' }}</span>
             </div>
-            <div class="info-row" v-if="stat"><span class="ik">{{ t('ddd.netIo') }}</span><span class="iv mono">{{ stat.NetIO }}</span></div>
-            <div class="info-row" v-if="stat"><span class="ik">{{ t('ddd.diskIo') }}</span><span class="iv mono">{{ stat.BlockIO }}</span></div>
-            <div class="info-row" v-if="stat"><span class="ik">{{ t('dhd.procs') }}</span><span class="iv mono">{{ stat.PIDs }}</span></div>
+            <div class="info-row" v-if="inspect.Config?.Cmd">
+              <span class="ik">{{ t('dw.cmd') }}</span
+              ><code class="iv mono">{{ inspect.Config.Cmd.join(' ') }}</code>
+            </div>
+            <div class="info-row" v-if="stat">
+              <span class="ik">CPU</span>
+              <div class="resource-bar">
+                <div class="bar-fill bar--cpu" :style="{ width: Math.min(cpuPct(stat), 100) + '%' }"></div>
+                <span class="bar-val">{{ stat.CPUPerc }}</span>
+              </div>
+            </div>
+            <div class="info-row" v-if="stat">
+              <span class="ik">{{ t('opsdocker.mem') }}</span>
+              <div class="resource-bar">
+                <div class="bar-fill bar--mem" :style="{ width: Math.min(memPct(stat), 100) + '%' }"></div>
+                <span class="bar-val">{{ stat.MemUsage }} ({{ stat.MemPerc }})</span>
+              </div>
+            </div>
+            <div class="info-row" v-if="stat">
+              <span class="ik">{{ t('ddd.netIo') }}</span
+              ><span class="iv mono">{{ stat.NetIO }}</span>
+            </div>
+            <div class="info-row" v-if="stat">
+              <span class="ik">{{ t('ddd.diskIo') }}</span
+              ><span class="iv mono">{{ stat.BlockIO }}</span>
+            </div>
+            <div class="info-row" v-if="stat">
+              <span class="ik">{{ t('dhd.procs') }}</span
+              ><span class="iv mono">{{ stat.PIDs }}</span>
+            </div>
           </div>
         </el-tab-pane>
 
         <!-- 网络 -->
         <el-tab-pane :label="t('ddd.netTab', { n: networkList.length })" name="network">
           <table class="detail-table">
-            <thead><tr><th>{{ t('ddd.netName') }}</th><th>{{ t('ddd.ipAddr') }}</th><th>{{ t('ddd.gateway') }}</th><th>{{ t('ddd.mac') }}</th></tr></thead>
+            <thead>
+              <tr>
+                <th>{{ t('ddd.netName') }}</th>
+                <th>{{ t('ddd.ipAddr') }}</th>
+                <th>{{ t('ddd.gateway') }}</th>
+                <th>{{ t('ddd.mac') }}</th>
+              </tr>
+            </thead>
             <tbody>
               <tr v-for="n in networkList" :key="n.name">
-                <td class="td-name">{{ n.name }}</td><td class="td-mono">{{ n.ip }}</td><td class="td-mono">{{ n.gateway }}</td><td class="td-mono">{{ n.mac }}</td>
+                <td class="td-name">{{ n.name }}</td>
+                <td class="td-mono">{{ n.ip }}</td>
+                <td class="td-mono">{{ n.gateway }}</td>
+                <td class="td-mono">{{ n.mac }}</td>
               </tr>
-              <tr v-if="!networkList.length"><td colspan="4" class="td-empty">{{ t('ddd.noNet') }}</td></tr>
+              <tr v-if="!networkList.length">
+                <td colspan="4" class="td-empty">{{ t('ddd.noNet') }}</td>
+              </tr>
             </tbody>
           </table>
         </el-tab-pane>
@@ -156,12 +250,26 @@ onBeforeUnmount(() => { inspect.value = null; logs.value = '' })
         <!-- 存储 -->
         <el-tab-pane :label="t('ddd.storageTab', { n: mountList.length })" name="storage">
           <table class="detail-table">
-            <thead><tr><th>{{ t('cloud.type') }}</th><th>{{ t('dw.hostPathPh') }}</th><th>{{ t('dw.containerPathPh') }}</th><th>{{ t('cloud.kind') }}</th></tr></thead>
+            <thead>
+              <tr>
+                <th>{{ t('cloud.type') }}</th>
+                <th>{{ t('dw.hostPathPh') }}</th>
+                <th>{{ t('dw.containerPathPh') }}</th>
+                <th>{{ t('cloud.kind') }}</th>
+              </tr>
+            </thead>
             <tbody>
               <tr v-for="(m, i) in mountList" :key="i">
-                <td><span class="type-chip">{{ m.type }}</span></td><td class="td-mono">{{ m.source }}</td><td class="td-mono">{{ m.dest }}</td><td>{{ m.mode }}</td>
+                <td>
+                  <span class="type-chip">{{ m.type }}</span>
+                </td>
+                <td class="td-mono">{{ m.source }}</td>
+                <td class="td-mono">{{ m.dest }}</td>
+                <td>{{ m.mode }}</td>
               </tr>
-              <tr v-if="!mountList.length"><td colspan="4" class="td-empty">{{ t('ddd.noMounts') }}</td></tr>
+              <tr v-if="!mountList.length">
+                <td colspan="4" class="td-empty">{{ t('ddd.noMounts') }}</td>
+              </tr>
             </tbody>
           </table>
         </el-tab-pane>
@@ -169,10 +277,20 @@ onBeforeUnmount(() => { inspect.value = null; logs.value = '' })
         <!-- 环境变量 -->
         <el-tab-pane :label="t('ddd.envTab', { n: envList.length })" name="env">
           <table class="detail-table">
-            <thead><tr><th>{{ t('dw.keyPh') }}</th><th>{{ t('dw.valuePh') }}</th></tr></thead>
+            <thead>
+              <tr>
+                <th>{{ t('dw.keyPh') }}</th>
+                <th>{{ t('dw.valuePh') }}</th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="(e, i) in envList" :key="i"><td class="td-mono">{{ e.key }}</td><td class="td-mono">{{ e.value }}</td></tr>
-              <tr v-if="!envList.length"><td colspan="2" class="td-empty">{{ t('ddd.noEnv') }}</td></tr>
+              <tr v-for="(e, i) in envList" :key="i">
+                <td class="td-mono">{{ e.key }}</td>
+                <td class="td-mono">{{ e.value }}</td>
+              </tr>
+              <tr v-if="!envList.length">
+                <td colspan="2" class="td-empty">{{ t('ddd.noEnv') }}</td>
+              </tr>
             </tbody>
           </table>
         </el-tab-pane>

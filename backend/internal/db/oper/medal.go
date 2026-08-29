@@ -1,6 +1,7 @@
 package oper
 
 import (
+	"errors"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -26,7 +27,7 @@ func (o *MedalOper) LatestFetchedAt(siteID uint) (time.Time, error) {
 	var m models.Medal
 	err := o.db.Where("site_id = ?", siteID).Order("fetched_at DESC").First(&m).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return time.Time{}, nil
 		}
 		return time.Time{}, err

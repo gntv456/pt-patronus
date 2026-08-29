@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  明文流量收窄（安全审计 P0-2）：
+  - base-config cleartextTrafficPermitted="true"：仅因本产品核心场景是
+    http://<局域网IP>:8088 直连自托管后端，而 domain-config 只匹配域名、
+    不支持 IP 字面量/网段，无法按网段白名单化——退而求其次：
+  - 所有已知公网域名（PT 站 WebView / 豆瓣图 / TMDB 图 / 媒体流）显式
+    cleartextTrafficPermitted="false"，覆盖高频明文暴露面；
+  - 公网未知域名的应用层防线仍在 ApiClient（未勾选「我知风险」一律拒绝）。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+    <domain-config cleartextTrafficPermitted="false">
+        <!-- 媒体元数据图床（https 已全量可用） -->
+        <domain includeSubdomains="true">doubanio.com</domain>
+        <domain includeSubdomains="true">douban.com</domain>
+        <domain includeSubdomains="true">themoviedb.org</domain>
+        <domain includeSubdomains="true">tmdb.org</domain>
+        <!-- 更新与清单 -->
+        <domain includeSubdomains="true">github.com</domain>
+        <domain includeSubdomains="true">githubusercontent.com</domain>
+        <domain includeSubdomains="true">lanzoub.com</domain>
+    </domain-config>
+</network-security-config>

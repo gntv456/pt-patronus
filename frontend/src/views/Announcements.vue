@@ -23,9 +23,7 @@ const sites = computed(() => {
   return [...m].map(([id, name]) => ({ id, name }))
 })
 const filtered = computed(() =>
-  selectedSiteIds.value.length
-    ? results.value.filter((r) => selectedSiteIds.value.includes(r.site_id))
-    : results.value,
+  selectedSiteIds.value.length ? results.value.filter((r) => selectedSiteIds.value.includes(r.site_id)) : results.value,
 )
 
 let abortCtrl: AbortController | null = null
@@ -36,12 +34,16 @@ async function load(refresh = false) {
   loading.value = true
   results.value = []
   try {
-    await announcementApi.streamAll(refresh, (r) => {
-      // 流式逐站追加：同 site_id 覆盖（刷新），否则追加。Vue 响应式即时渲染"加载一个显示一个"。
-      const idx = results.value.findIndex((x) => x.site_id === r.site_id)
-      if (idx >= 0) results.value[idx] = r
-      else results.value.push(r)
-    }, ctrl.signal)
+    await announcementApi.streamAll(
+      refresh,
+      (r) => {
+        // 流式逐站追加：同 site_id 覆盖（刷新），否则追加。Vue 响应式即时渲染"加载一个显示一个"。
+        const idx = results.value.findIndex((x) => x.site_id === r.site_id)
+        if (idx >= 0) results.value[idx] = r
+        else results.value.push(r)
+      },
+      ctrl.signal,
+    )
   } catch (e: unknown) {
     if ((e as Error).name !== 'AbortError') ElMessage.error((e as Error).message || t('announcements.loadFailed'))
   } finally {
@@ -94,20 +96,23 @@ onUnmounted(() => abortCtrl?.abort())
           <span v-else-if="r.error" class="err-tag" :title="r.error">{{ friendlySiteError(r.error) }}</span>
           <span v-else class="text-muted">{{ t('announcements.none') }}</span>
           <span class="spacer"></span>
-          <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">{{ t('common.refresh') }}</el-button>
+          <el-button size="small" :loading="syncingId === r.site_id" @click="syncOne(r)">{{
+            t('common.refresh')
+          }}</el-button>
         </div>
 
         <div v-if="r.items.length" class="items">
-          <div
-            v-for="(it, i) in r.items"
-            :key="i"
-            class="item"
-            :class="{ open: openItem[r.site_id + '-' + i] }"
-          >
-            <div class="item-head" @click="openItem[r.site_id + '-' + i] = !openItem[r.site_id + '-' + i]">
+          <div v-for="(it, i) in r.items" :key="i" class="item" :class="{ open: openItem[r.site_id + '-' + i] }">
+            <div
+              v-a11y-button
+              class="item-head"
+              @click="openItem[r.site_id + '-' + i] = !openItem[r.site_id + '-' + i]"
+            >
               <span class="item-title">{{ it.title || t('announcements.noTitle') }}</span>
               <span v-if="it.date" class="item-date">{{ it.date }}</span>
-              <span class="caret">{{ openItem[r.site_id + '-' + i] ? t('announcements.collapse') : t('announcements.expand') }}</span>
+              <span class="caret">{{
+                openItem[r.site_id + '-' + i] ? t('announcements.collapse') : t('announcements.expand')
+              }}</span>
             </div>
             <div v-if="openItem[r.site_id + '-' + i]" class="item-body">{{ it.content }}</div>
           </div>
@@ -121,26 +126,111 @@ onUnmounted(() => abortCtrl?.abort())
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.head-tools { display: flex; align-items: center; gap: var(--sp-2); }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.groups { display: flex; flex-direction: column; gap: var(--sp-3); }
-.site-group { padding: 16px; }
-.group-head { display: flex; align-items: center; gap: var(--sp-2); }
-.site-name { font-weight: 600; font-size: var(--fs-lg); }
-.count { font-size: var(--fs-xs); padding: 1px 8px; border-radius: var(--radius-pill); background: var(--pt-primary-bg); color: var(--pt-primary, #6c5ce7); }
-.err-tag { font-size: var(--fs-xs); color: var(--pt-danger); }
-.spacer { flex: 1; }
-.items { margin-top: 12px; display: flex; flex-direction: column; gap: var(--sp-2); }
-.item { border-left: 3px solid var(--pt-primary-bg); padding: 6px 12px; border-radius: var(--radius-2xs); background: var(--pt-primary-bg); }
-.item-head { display: flex; align-items: center; gap: var(--sp-2); cursor: pointer; transition: opacity var(--dur-fast) var(--ease-out-smooth); }
-.item-head:hover { opacity: 0.78; }
-.item-title { font-weight: 600; font-size: var(--fs-md); flex: 1; }
-.item-date { font-size: var(--fs-xs); color: var(--text-muted); }
-.caret { font-size: var(--fs-xs); color: var(--pt-primary, #6c5ce7); transition: color var(--dur-fast) var(--ease-out-smooth); }
-.item-body { margin-top: 8px; font-size: var(--fs-body); line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--text-strong); }
-.raw { margin-top: 10px; }
-.raw-text { font-size: var(--fs-body); color: var(--text-muted); line-height: 1.5; }
-.empty { padding: 40px; text-align: center; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.head-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.site-group {
+  padding: 16px;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.site-name {
+  font-weight: 600;
+  font-size: var(--fs-lg);
+}
+.count {
+  font-size: var(--fs-xs);
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--pt-primary-bg);
+  color: var(--pt-primary, #6c5ce7);
+}
+.err-tag {
+  font-size: var(--fs-xs);
+  color: var(--pt-danger);
+}
+.spacer {
+  flex: 1;
+}
+.items {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.item {
+  border-left: 3px solid var(--pt-primary-bg);
+  padding: 6px 12px;
+  border-radius: var(--radius-2xs);
+  background: var(--pt-primary-bg);
+}
+.item-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease-out-smooth);
+}
+.item-head:hover {
+  opacity: 0.78;
+}
+.item-title {
+  font-weight: 600;
+  font-size: var(--fs-md);
+  flex: 1;
+}
+.item-date {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.caret {
+  font-size: var(--fs-xs);
+  color: var(--pt-primary, #6c5ce7);
+  transition: color var(--dur-fast) var(--ease-out-smooth);
+}
+.item-body {
+  margin-top: 8px;
+  font-size: var(--fs-body);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-strong);
+}
+.raw {
+  margin-top: 10px;
+}
+.raw-text {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
 </style>

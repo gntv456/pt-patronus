@@ -17,8 +17,13 @@ const { t } = useI18n()
 
 function targetTypeName(type: string) {
   const map: Record<string, string> = {
-    host: t('dsd.tHost'), nas: 'NAS', camera: t('dsd.tCamera'),
-    http: t('dsd.tHttp'), tcp: t('dsd.tTcp'), process: t('dsd.tProcess'), script: t('dsd.tScript'),
+    host: t('dsd.tHost'),
+    nas: 'NAS',
+    camera: t('dsd.tCamera'),
+    http: t('dsd.tHttp'),
+    tcp: t('dsd.tTcp'),
+    process: t('dsd.tProcess'),
+    script: t('dsd.tScript'),
   }
   return map[type] ?? type ?? t('dsd.tDevice')
 }
@@ -45,7 +50,11 @@ function targetTypeName(type: string) {
         </div>
         <div>
           <span>{{ t('dc.elapsed') }}</span>
-          <b>{{ extraMs(latest?.extra || {}, 'response_ms') !== '-' ? extraMs(latest?.extra || {}, 'response_ms') : extraMs(latest?.extra || {}, 'duration_ms') }}</b>
+          <b>{{
+            extraMs(latest?.extra || {}, 'response_ms') !== '-'
+              ? extraMs(latest?.extra || {}, 'response_ms')
+              : extraMs(latest?.extra || {}, 'duration_ms')
+          }}</b>
         </div>
       </div>
     </section>
@@ -58,14 +67,20 @@ function targetTypeName(type: string) {
     </div>
     <div class="info-list">
       <div v-for="row in serviceRows" :key="row.label" class="info-row">
-        <span>{{ row.label }}</span><b>{{ row.value }}</b>
+        <span>{{ row.label }}</span
+        ><b>{{ row.value }}</b>
       </div>
-      <div class="info-row"><span>{{ t('dsd.lastError') }}</span><b>{{ target.last_error || '-' }}</b></div>
+      <div class="info-row">
+        <span>{{ t('dsd.lastError') }}</span
+        ><b>{{ target.last_error || '-' }}</b>
+      </div>
     </div>
   </section>
 
   <section v-if="serviceOutput.stdout || serviceOutput.stderr || serviceOutput.exitError" class="panel span-2">
-    <div class="panel-title"><span>{{ t('dsd.cmdOutput') }}</span></div>
+    <div class="panel-title">
+      <span>{{ t('dsd.cmdOutput') }}</span>
+    </div>
     <pre v-if="serviceOutput.stdout" class="service-output">{{ serviceOutput.stdout }}</pre>
     <pre v-if="serviceOutput.stderr" class="service-output err">{{ serviceOutput.stderr }}</pre>
     <p v-if="serviceOutput.exitError" class="cmd-error">{{ serviceOutput.exitError }}</p>

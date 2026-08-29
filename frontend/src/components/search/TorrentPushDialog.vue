@@ -62,7 +62,9 @@ const emit = defineEmits<{
     </template>
 
     <div v-if="pushedDlName" class="sf-push-ok">
-      <p>{{ t('spd.pushedTo') }} <b>{{ pushedDlName }}</b></p>
+      <p>
+        {{ t('spd.pushedTo') }} <b>{{ pushedDlName }}</b>
+      </p>
       <div class="sf-push-actions">
         <el-button type="primary" @click="emit('gotoDownloaderTasks')">{{ t('spd.viewTasks') }}</el-button>
         <el-button @click="emit('close')">{{ t('common.close') }}</el-button>
@@ -80,11 +82,7 @@ const emit = defineEmits<{
             <span class="up">↑{{ row.seeders ?? 0 }}</span>
             <span class="down">↓{{ row.leechers ?? 0 }}</span>
           </div>
-          <div
-            v-if="row?.subtitle"
-            class="sf-push-t-sub text-muted"
-            :title="row.subtitle"
-          >{{ row.subtitle }}</div>
+          <div v-if="row?.subtitle" class="sf-push-t-sub text-muted" :title="row.subtitle">{{ row.subtitle }}</div>
           <div v-if="row?.size" class="sf-push-size-row">
             <span v-if="formatTorrentSize(row.size)" class="sf-size">{{ formatTorrentSize(row.size) }}</span>
             <span v-if="row.category" class="sf-push-cat text-muted">{{ row.category }}</span>

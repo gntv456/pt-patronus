@@ -11,7 +11,17 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 const router = useRouter()
-const { notices, unread, urgentUnread, load, syncFromWs, readOne: readOneApi, readAll: readAllApi, removeOne: removeOneApi, clearAll: clearAllApi } = useNotices()
+const {
+  notices,
+  unread,
+  urgentUnread,
+  load,
+  syncFromWs,
+  readOne: readOneApi,
+  readAll: readAllApi,
+  removeOne: removeOneApi,
+  clearAll: clearAllApi,
+} = useNotices()
 const open = ref(false)
 const boxRef = ref<HTMLElement | null>(null)
 
@@ -65,10 +75,19 @@ function onDocClick(e: MouseEvent) {
 }
 
 // WS 实时推送：新通知由共享单例合并
-watch(() => notices.value[0]?.id, () => syncFromWs())
-async function readOne(n: Notice) { await readOneApi(n.id) }
-async function readAll() { await readAllApi() }
-async function removeOne(n: Notice) { await removeOneApi(n.id) }
+watch(
+  () => notices.value[0]?.id,
+  () => syncFromWs(),
+)
+async function readOne(n: Notice) {
+  await readOneApi(n.id)
+}
+async function readAll() {
+  await readAllApi()
+}
+async function removeOne(n: Notice) {
+  await removeOneApi(n.id)
+}
 async function clearAll() {
   try {
     await ElMessageBox.confirm(t('nc.clearConfirm'), t('nc.clearTitle'), {
@@ -147,27 +166,27 @@ function relTime(iso: string): string {
 // 折叠展开高度过渡（Vue <Transition> JS hooks）
 function onGroupEnter(el: Element) {
   const e = el as HTMLElement
-  e.style.height = "0"
-  e.style.overflow = "hidden"
+  e.style.height = '0'
+  e.style.overflow = 'hidden'
   void e.offsetHeight
-  e.style.transition = "height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)"
-  e.style.height = e.scrollHeight ? e.scrollHeight + "px" : "auto"
-  e.style.opacity = "1"
+  e.style.transition = 'height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)'
+  e.style.height = e.scrollHeight ? e.scrollHeight + 'px' : 'auto'
+  e.style.opacity = '1'
 }
 function onGroupAfterEnter(el: Element) {
   const e = el as HTMLElement
-  e.style.height = ""
-  e.style.overflow = ""
-  e.style.transition = ""
+  e.style.height = ''
+  e.style.overflow = ''
+  e.style.transition = ''
 }
 function onGroupLeave(el: Element) {
   const e = el as HTMLElement
-  e.style.height = e.scrollHeight + "px"
-  e.style.overflow = "hidden"
+  e.style.height = e.scrollHeight + 'px'
+  e.style.overflow = 'hidden'
   void e.offsetHeight
-  e.style.transition = "height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)"
-  e.style.height = "0"
-  e.style.opacity = "0"
+  e.style.transition = 'height var(--dur-base) var(--ease-out-smooth), opacity var(--dur-base) var(--ease-out-smooth)'
+  e.style.height = '0'
+  e.style.opacity = '0'
 }
 </script>
 
@@ -176,7 +195,9 @@ function onGroupLeave(el: Element) {
     <button
       class="nc-bell"
       :class="{ 'nc-bell--has': unread > 0, 'nc-bell--urgent': urgentUnread > 0 }"
-      :title="urgentUnread ? t('nc.urgentN', { n: urgentUnread }) : unread ? t('nc.unreadN', { n: unread }) : t('nc.title')"
+      :title="
+        urgentUnread ? t('nc.urgentN', { n: urgentUnread }) : unread ? t('nc.unreadN', { n: unread }) : t('nc.title')
+      "
       @click.stop="open = !open"
     >
       <span class="nc-bell-ic" :class="{ 'nc-bell-ic--ring': unread > 0 }">
@@ -188,11 +209,21 @@ function onGroupLeave(el: Element) {
     <Transition name="nc-slide">
       <div v-if="open" class="nc-panel glass">
         <div class="nc-head">
-          <span class="nc-title">{{ t('nc.title') }} <small v-if="unread">{{ t('nc.unread') }} {{ unread }}<template v-if="urgentUnread"> · {{ t('nc.urgent') }} {{ urgentUnread }}</template></small></span>
+          <span class="nc-title"
+            >{{ t('nc.title') }}
+            <small v-if="unread"
+              >{{ t('nc.unread') }} {{ unread
+              }}<template v-if="urgentUnread"> · {{ t('nc.urgent') }} {{ urgentUnread }}</template></small
+            ></span
+          >
           <div class="nc-actions">
-            <router-link :to="{ name: 'notices' }" class="nc-action" @click="open = false">{{ t('nc.viewAll') }}</router-link>
+            <router-link :to="{ name: 'notices' }" class="nc-action" @click="open = false">{{
+              t('nc.viewAll')
+            }}</router-link>
             <button v-if="unread > 0" class="nc-action" @click="readAll">{{ t('nc.readAll') }}</button>
-            <button v-if="notices.length" class="nc-action nc-action--danger" @click="clearAll">{{ t('nc.clearGo') }}</button>
+            <button v-if="notices.length" class="nc-action nc-action--danger" @click="clearAll">
+              {{ t('nc.clearGo') }}
+            </button>
           </div>
         </div>
         <div class="nc-list">
@@ -200,6 +231,7 @@ function onGroupLeave(el: Element) {
           <div v-for="g in grouped" :key="g.source" class="nc-group-wrap">
             <!-- 组头：折叠时显示彩色图标 + 类型名 + 未读 pill 徽标 + 最新时间 -->
             <div
+              v-a11y-button
               class="nc-group"
               :class="{ 'nc-group--unread': g.unreadCount > 0 }"
               @click="toggleGroup(g.source)"
@@ -209,10 +241,16 @@ function onGroupLeave(el: Element) {
               </span>
               <div class="nc-group-body">
                 <div class="nc-row">
-                  <span class="nc-group-name">{{ meta(g.source).label }}<span class="nc-count"> · {{ g.items.length }}</span></span>
-                  <span v-if="g.unreadCount > 0" class="nc-unread-pill" :style="{ background: meta(g.source).color }">{{ g.unreadCount }}</span>
+                  <span class="nc-group-name"
+                    >{{ meta(g.source).label }}<span class="nc-count"> · {{ g.items.length }}</span></span
+                  >
+                  <span v-if="g.unreadCount > 0" class="nc-unread-pill" :style="{ background: meta(g.source).color }">{{
+                    g.unreadCount
+                  }}</span>
                 </div>
-                <div class="nc-text">{{ g.unreadCount > 0 ? t('nc.nUnread', { n: g.unreadCount }) : '' }}{{ g.latest.title }}</div>
+                <div class="nc-text">
+                  {{ g.unreadCount > 0 ? t('nc.nUnread', { n: g.unreadCount }) : '' }}{{ g.latest.title }}
+                </div>
                 <div class="nc-time nc-group-time">{{ relTime(g.latest.created_at) }}</div>
               </div>
               <span class="nc-chevron" :class="{ 'nc-chevron--open': isGroupExpanded(g.source) }">
@@ -228,16 +266,14 @@ function onGroupLeave(el: Element) {
               @leave="onGroupLeave"
             >
               <div class="nc-group-items">
-                <div
-                  v-for="n in g.items"
-                  :key="n.id"
-                  class="nc-item"
-                  :class="{ 'nc-item--unread': !n.read }"
-                >
-                  <span class="nc-ic nc-ic--sub" :style="{ color: meta(n.source).color, background: meta(n.source).color + '1f' }">
+                <div v-for="n in g.items" :key="n.id" class="nc-item" :class="{ 'nc-item--unread': !n.read }">
+                  <span
+                    class="nc-ic nc-ic--sub"
+                    :style="{ color: meta(n.source).color, background: meta(n.source).color + '1f' }"
+                  >
                     <SptIcon :name="meta(n.source).icon" :size="14" />
                   </span>
-                  <div class="nc-body" @click="onBodyClick(n)">
+                  <div v-a11y-button class="nc-body" @click="onBodyClick(n)">
                     <div class="nc-row">
                       <span class="nc-name">{{ n.title }}</span>
                       <span class="nc-time">{{ relTime(n.created_at) }}</span>
@@ -321,7 +357,9 @@ function onGroupLeave(el: Element) {
   background: var(--glass-bg-strong);
   backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
   -webkit-backdrop-filter: blur(calc(var(--blur) + 8px)) saturate(180%);
-  box-shadow: var(--glass-hover-shadow), 0 18px 40px rgba(15, 23, 42, 0.18);
+  box-shadow:
+    var(--glass-hover-shadow),
+    0 18px 40px rgba(15, 23, 42, 0.18);
 }
 .nc-head {
   display: flex;
@@ -431,7 +469,9 @@ function onGroupLeave(el: Element) {
   color: var(--text-muted);
   padding: 2px;
   opacity: 0.5;
-  transition: opacity var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast);
+  transition:
+    opacity var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast);
 }
 .nc-del:hover {
   opacity: 1;
@@ -448,7 +488,9 @@ function onGroupLeave(el: Element) {
 }
 
 /* 分组折叠样式 */
-.nc-group-wrap { border-bottom: 1px solid var(--divider); }
+.nc-group-wrap {
+  border-bottom: 1px solid var(--divider);
+}
 .nc-group {
   display: flex;
   align-items: center;
@@ -457,9 +499,16 @@ function onGroupLeave(el: Element) {
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out-smooth);
 }
-.nc-group:hover { background: var(--surface-hover); }
-.nc-group--unread { background: var(--pt-primary-bg); }
-.nc-group-body { flex: 1; min-width: 0; }
+.nc-group:hover {
+  background: var(--surface-hover);
+}
+.nc-group--unread {
+  background: var(--pt-primary-bg);
+}
+.nc-group-body {
+  flex: 1;
+  min-width: 0;
+}
 .nc-group-ic {
   flex: none;
   width: 36px;
@@ -470,8 +519,15 @@ function onGroupLeave(el: Element) {
   justify-content: center;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
 }
-.nc-group-name { font-size: var(--fs-md); font-weight: 700; color: var(--text-strong); }
-.nc-group-time { margin-top: 2px; font-size: var(--fs-2xs); }
+.nc-group-name {
+  font-size: var(--fs-md);
+  font-weight: 700;
+  color: var(--text-strong);
+}
+.nc-group-time {
+  margin-top: 2px;
+  font-size: var(--fs-2xs);
+}
 .nc-unread-pill {
   flex: none;
   min-width: 20px;
@@ -487,7 +543,11 @@ function onGroupLeave(el: Element) {
   line-height: 1;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
 }
-.nc-count { color: var(--text-muted); font-weight: 600; font-size: var(--fs-xs); }
+.nc-count {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: var(--fs-xs);
+}
 .nc-chevron {
   flex: none;
   color: var(--text-muted);
@@ -496,12 +556,20 @@ function onGroupLeave(el: Element) {
   transition: transform var(--dur-base) var(--ease-out-smooth);
   margin-top: 6px;
 }
-.nc-chevron--open { transform: rotate(180deg); }
-.nc-group-items {
-  background: var(--surface-muted, rgba(0,0,0,0.02));
+.nc-chevron--open {
+  transform: rotate(180deg);
 }
-.nc-group-items .nc-item { padding-left: 50px; }
-.nc-ic--sub { width: 26px; height: 26px; opacity: 0.85; }
+.nc-group-items {
+  background: var(--surface-muted, rgba(0, 0, 0, 0.02));
+}
+.nc-group-items .nc-item {
+  padding-left: 50px;
+}
+.nc-ic--sub {
+  width: 26px;
+  height: 26px;
+  opacity: 0.85;
+}
 
 /* 铃铛图标摇晃动画（有未读时） */
 .nc-bell-ic {
@@ -517,14 +585,30 @@ function onGroupLeave(el: Element) {
   animation-duration: 1.2s;
 }
 @keyframes nc-bell-ring {
-  0%, 65%, 100% { transform: rotate(0deg); }
-  70% { transform: rotate(14deg); }
-  76% { transform: rotate(-14deg); }
-  82% { transform: rotate(10deg); }
-  88% { transform: rotate(-10deg); }
-  94% { transform: rotate(4deg); }
+  0%,
+  65%,
+  100% {
+    transform: rotate(0deg);
+  }
+  70% {
+    transform: rotate(14deg);
+  }
+  76% {
+    transform: rotate(-14deg);
+  }
+  82% {
+    transform: rotate(10deg);
+  }
+  88% {
+    transform: rotate(-10deg);
+  }
+  94% {
+    transform: rotate(4deg);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .nc-bell-ic--ring { animation: none; }
+  .nc-bell-ic--ring {
+    animation: none;
+  }
 }
 </style>

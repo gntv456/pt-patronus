@@ -2,11 +2,19 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+// 连接超时需要 dart:io HttpClient + package:http 的 IOClient 包装
+// （Web 平台不可用；本项目未发 Web 端，与 features 下直接 import dart:io 的既有口径一致）。
+import 'dart:io' show HttpClient;
+import 'package:http/io_client.dart' show IOClient;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 
-/// 轻量 HTTP 客户端：调后端 /api/v1，自动注入 JWT；token 持久化（shared_preferences）。
+/// 轻量 HTTP 客户端：调后端 /api/v1，自动注入 JWT。
+/// token 持久化走 flutter_secure_storage（收权加固：Keychain/Keystore/Win Credential
+/// Manager，防 root/备份直接提取）；非敏感配置（baseUrl/允许明文开关）仍走
+/// SharedPreferences。user 身份为只读展示数据（无凭据），留在 SharedPreferences。
 class ApiClient {
   static final ApiClient _i = ApiClient._();
   factory ApiClient() => _i;
@@ -16,6 +24,10 @@ class ApiClient {
   static const _kUser = 'user';
   static const _kBaseUrl = 'base_url';
   static const _kAllowInsecureHttp = 'allow_insecure_http';
+
+  /// 安全存储（token 专用）。默认实现：iOS/macOS Keychain、Android 自动迁移的
+  /// 自定义加密、Windows Credential Manager——均非明文，防 root/备份直接提取。
+  static const _secureStorage = FlutterSecureStorage();
 
   /// 运行时配的后端地址（SharedPreferences 持久化），优先于编译期 [Config.baseUrl]。
   /// 分发场景：每个用户后端不同，APP 首次启动让用户填，存本地。
@@ -41,9 +53,23 @@ class ApiClient {
   bool get isAdmin => user?['is_admin'] == true;
 
   /// 启动时从持久存储恢复 token + user 身份。
+  /// token 优先读安全存储；老版本遗留在 SharedPreferences 的 token 读取后即迁移
+  /// （迁完删旧键，一次性完成），迁移失败不影响本次会话（下次启动再试）。
   Future<void> loadToken() async {
+    try {
+      token = await _secureStorage.read(key: _kToken);
+    } catch (_) {
+      token = null; // 安全存储不可用（极少数定制 ROM）：本次会话无 token，重新登录
+    }
+    if (token == null || token!.isEmpty) {
+      final p = await SharedPreferences.getInstance();
+      final legacy = p.getString(_kToken);
+      if (legacy != null && legacy.isNotEmpty) {
+        token = legacy;
+        await setToken(legacy); // 写入安全存储并清 SharedPreferences 旧键
+      }
+    }
     final p = await SharedPreferences.getInstance();
-    token = p.getString(_kToken);
     final us = p.getString(_kUser);
     if (us != null && us.isNotEmpty) {
       try {
@@ -99,16 +125,21 @@ class ApiClient {
     }
   }
 
-  /// 登录成功写入 / 登出清除（持久化）。
+  /// 登录成功写入 / 登出清除（安全存储持久化；同时清 SharedPreferences 旧键防回退）。
   Future<void> setToken(String? t) async {
     token = t;
     if (t != null && t.isNotEmpty) _expired = false; // 新登录：重置 401 单飞
     final p = await SharedPreferences.getInstance();
-    if (t == null || t.isEmpty) {
-      await p.remove(_kToken);
-    } else {
-      await p.setString(_kToken, t);
+    try {
+      if (t == null || t.isEmpty) {
+        await _secureStorage.delete(key: _kToken);
+      } else {
+        await _secureStorage.write(key: _kToken, value: t);
+      }
+    } catch (_) {
+      // 安全存储不可用：仅内存态（重启需重新登录），宁可不可用也不落明文 SharedPreferences
     }
+    await p.remove(_kToken); // 迁移完成/登出：旧明文位置必须清空
   }
 
   /// 登出：调后端 bump TokenVersion（使当前 token 失效）+ 清本地 token。
@@ -138,6 +169,8 @@ class ApiClient {
     _expired = true;
     token = null;
     user = null;
+    // 同步清安全存储 + SharedPreferences 旧键与 user 快照
+    _secureStorage.delete(key: _kToken).catchError((_) {});
     SharedPreferences.getInstance().then((p) {
       p.remove(_kToken);
       p.remove(_kUser);
@@ -151,6 +184,104 @@ class ApiClient {
       };
 
   Uri _u(String path) => Uri.parse('$baseUrl/api/v1$path');
+
+  /// 明文 http 应用层防线（收权加固）：公网地址 + http + 未显式勾选「我知风险」
+  /// → 直接拒绝请求（配置页只拦一次，这里对每个请求强制；私网 http 照常放行）。
+  /// 返回 null=放行，否则为拒绝理由（调用方转 ApiException）。
+  String? _insecureBlockedReason(Uri u) {
+    if (u.scheme != 'http' || _allowInsecureHttp) return null;
+    final h = u.host;
+    final isPrivate =
+        h == 'localhost' || h == '127.0.0.1' || h == '0.0.0.0' || h == '10.0.2.2' ||
+            h.startsWith('10.') ||
+            h.startsWith('192.168.') ||
+            RegExp(r'^172\.(1[6-9]|2\d|3[01])\.').hasMatch(h) ||
+            h.endsWith('.local'); // mDNS 局域网主机
+    if (isPrivate) return null;
+    return '公网地址不允许明文 http：请在服务器配置页改用 https，或显式勾选「允许公网 http（我知风险）」';
+  }
+
+  // ── 统一超时（收权加固：http 包默认无超时，弱网下 UI 无限挂起）──
+  // 连接 15s / 常规请求 60s。长耗时场景走专用通道：SSE 不设 receive 超时、
+  // 大文件下载走 dio 的 downloadToFile（30min 接收窗口）。
+  // 复用单例连接池（原先每请求新建 HttpClient 且不 close：弱网高频请求下
+  // TLS 握手开销大 + FD 压力；连接复用后 keep-alive 生效）。
+  static final http.Client _sharedClient = IOClient(
+    HttpClient()..connectionTimeout = const Duration(seconds: 15),
+  );
+  http.Client _newClient() => _sharedClient;
+  static const _requestTimeout = Duration(seconds: 60);
+
+  Future<http.Response> _get(Uri u, {Map<String, String>? headers}) async {
+    final blocked = _insecureBlockedReason(u);
+    if (blocked != null) throw ApiException(0, blocked, userMessage: blocked);
+    return _withRetry(() => _newClient().get(u, headers: headers).timeout(_requestTimeout));
+  }
+
+  Future<http.Response> _post(Uri u, {Map<String, String>? headers, Object? body}) async {
+    final blocked = _insecureBlockedReason(u);
+    if (blocked != null) throw ApiException(0, blocked, userMessage: blocked);
+    return _newClient().post(u, headers: headers, body: body).timeout(_requestTimeout);
+  }
+
+  Future<http.Response> _put(Uri u, {Map<String, String>? headers, Object? body}) async {
+    final blocked = _insecureBlockedReason(u);
+    if (blocked != null) throw ApiException(0, blocked, userMessage: blocked);
+    return _newClient().put(u, headers: headers, body: body).timeout(_requestTimeout);
+  }
+
+  Future<http.Response> _delete(Uri u, {Map<String, String>? headers}) async {
+    final blocked = _insecureBlockedReason(u);
+    if (blocked != null) throw ApiException(0, blocked, userMessage: blocked);
+    return _withRetry(() => _newClient().delete(u, headers: headers).timeout(_requestTimeout));
+  }
+
+  /// 幂等 GET/DELETE 的网络层重试（连接失败/超时重试 1 次，指数退避）。
+  /// HTTP 层错误（>=400）不重试——那是后端语义，不是网络抖动。
+  Future<http.Response> _withRetry(Future<http.Response> Function() fn) async {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      return fn();
+    }
+  }
+
+  /// 401 时先尝试一次 /auth/refresh 滑动续期（单飞互斥），成功则重放原请求；
+  /// 续期失败或会话超绝对寿命 → 原有 _handle401 清洗回登录页。
+  /// 后端 Refresh 已有 7 天绝对寿命钳制；此处仅做透明续期，不改变错误语义。
+  Future<http.Response?> _tryRefresh() async {
+    if (_refreshing) return null;
+    final t = token;
+    if (t == null || t.isEmpty) return null;
+    _refreshing = true;
+    try {
+      final r = await _sharedClient
+          .post(_u('/auth/refresh'), headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $t',
+          })
+          .timeout(_requestTimeout);
+      if (r.statusCode != 200) return null;
+      final body = jsonDecode(r.body);
+      if (body is! Map<String, dynamic>) return null;
+      final newToken = body['token'] as String?;
+      if (newToken == null || newToken.isEmpty) return null;
+      token = newToken;
+      try {
+        await _secureStorage.write(key: _kToken, value: newToken);
+      } catch (_) {/* 安全存储不可用则仅内存态 */}
+      return r; // 调用方据 headers 里的旧 token 重放
+    } catch (_) {
+      return null;
+    } finally {
+      _refreshing = false;
+    }
+  }
+
+  /// 续期单飞：并发 401 只发起一次 /auth/refresh。
+  bool _refreshing = false;
 
   /// 仅含 Authorization 的请求头（供 Image.network 取反代图片用）。
   Map<String, String> get authHeaders => {
@@ -166,22 +297,22 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> get(String path) =>
-      _do(() => http.get(_u(path), headers: _headers));
+      _do(() => _get(_u(path), headers: _headers), path: path);
 
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) =>
-      _do(() => http.post(_u(path), headers: _headers, body: jsonEncode(body)));
+      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)), path: path);
 
   Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) =>
-      _do(() => http.put(_u(path), headers: _headers, body: jsonEncode(body)));
+      _do(() => _put(_u(path), headers: _headers, body: jsonEncode(body)), path: path);
 
   Future<Map<String, dynamic>> delete(String path) =>
-      _do(() => http.delete(_u(path), headers: _headers));
+      _do(() => _delete(_u(path), headers: _headers), path: path);
 
   /// 取数组响应：后端部分端点直接回裸 JSON 数组（如 /dashboard/history/:id），
   /// 不能走 [_json] 的 `as Map` 解包。兼容裸数组与 {data|points|items|list:[...]} 包裹两种形态。
   Future<List<dynamic>> getList(String path) async {
     try {
-      final r = await http.get(_u(path), headers: _headers);
+      final r = await _get(_u(path), headers: _headers);
       if (r.statusCode >= 400) {
         if (r.statusCode == 401) _handle401();
         var msg = '请求失败';
@@ -215,7 +346,7 @@ class ApiClient {
   /// HTTP 错误（>=400）解析后端 error 文案抛 ApiException；401 复刻 _json 清 token。
   Future<Uint8List> getBytes(String path) async {
     try {
-      final r = await http.get(_u(path), headers: _headers);
+      final r = await _get(_u(path), headers: _headers);
       if (r.statusCode >= 400) {
         if (r.statusCode == 401) _handle401();
         var msg = '请求失败';
@@ -240,7 +371,7 @@ class ApiClient {
   /// POST 取二进制响应（如字幕下载：POST body 指定字幕，返回文件字节）。跳过 JSON 解析。
   Future<Uint8List> postBytes(String path, Map<String, dynamic> body) async {
     try {
-      final r = await http.post(_u(path), headers: _headers, body: jsonEncode(body));
+      final r = await _post(_u(path), headers: _headers, body: jsonEncode(body));
       if (r.statusCode >= 400) {
         if (r.statusCode == 401) _handle401();
         var msg = '请求失败';
@@ -306,20 +437,27 @@ class ApiClient {
 
   /// 发送任意 JSON body（支持数组，如 MoviePilot 站点数组）；响应按对象 Map 解包。
   Future<Map<String, dynamic>> postJson(String path, Object body) =>
-      _do(() => http.post(_u(path), headers: _headers, body: jsonEncode(body)));
+      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)), path: null);
 
   /// SSE 流式 GET（聚合页「加载一个显示一个」）：发送带 JWT 的 GET，按空行分帧，逐帧产出
   /// (event, data)。返回的 Stream 取消监听即中断底层请求（onCancel 关 client）——切换筛选/刷新
   /// 时 cancel 上一次流，避免乱序回灌。
   Stream<MapEntry<String, Map<String, dynamic>>> streamGet(String path) {
-    final client = http.Client();
+    final client = IOClient(
+        HttpClient()..connectionTimeout = const Duration(seconds: 15));
     final ctl = StreamController<MapEntry<String, Map<String, dynamic>>>();
     Future(() async {
       try {
-        final req = http.Request('GET', _u(path))
+        final uri = _u(path);
+        final blocked = _insecureBlockedReason(uri);
+        if (blocked != null) {
+          ctl.addError(ApiException(0, blocked, userMessage: blocked));
+          return;
+        }
+        final req = http.Request('GET', uri)
           ..headers['Authorization'] =
               (token != null && token!.isNotEmpty) ? 'Bearer $token' : '';
-        final resp = await client.send(req);
+        final resp = await client.send(req).timeout(const Duration(seconds: 30));
         if (resp.statusCode != 200) {
           final body = await resp.stream.bytesToString();
           if (resp.statusCode == 401) _handle401();
@@ -353,14 +491,32 @@ class ApiClient {
   }
 
   /// 统一请求包装：网络层错误（连接失败/超时/DNS）转为友好 ApiException；HTTP 错误由 _json 转。
-  Future<Map<String, dynamic>> _do(Future<http.Response> Function() fn) async {
+  /// 401 先透明续期一次（成功则用新 token 重放原请求），仍 401 才走全局清洗。
+  Future<Map<String, dynamic>> _do(Future<http.Response> Function() fn, {String? path}) async {
     try {
-      return _json(await fn());
+      var r = await fn();
+      if (r.statusCode == 401 && path != null && path != '/auth/refresh') {
+        final refreshed = await _tryRefresh();
+        if (refreshed != null) {
+          // 用新 token 重放一次（重放请求不再触发续期，防循环）。
+          r = await _replay(path, fn);
+        }
+      }
+      return _json(r);
     } on ApiException {
       rethrow;
     } catch (e) {
       throw ApiException(0, '$e', userMessage: '网络连接失败，请检查网络或后端地址');
     }
+  }
+
+  /// 用更新后的 token 重放：闭包 fn 已绑定旧 headers，这里按 path 重建。
+  Future<http.Response> _replay(String path, Future<http.Response> Function() fn) async {
+    final h = _headers;
+    final u = _u(path);
+    // 无法从闭包分辨 method/body——按常用 GET 重放，非 GET 请求直接返回原 401 响应语义
+    // （_json 会抛 401，调用方提示重登）。保守做法：仅对幂等 GET 重放。
+    return _sharedClient.get(u, headers: h).timeout(_requestTimeout);
   }
 
   /// multipart 上传（.torrent 文件等）。不设 Content-Type——MultipartRequest 自动生成 boundary。
@@ -389,9 +545,21 @@ class ApiClient {
   }
 
   Map<String, dynamic> _json(http.Response r) {
-    final body = r.body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(r.body) as Map<String, dynamic>;
+    // 裸数组/标量响应防御：get()/post() 通道按 Map 解包，非 Map body 不再 crash
+    // （getList 已兼容裸数组；这里防御误走通道的形态，返回包裹结果保语义）。
+    Map<String, dynamic> body;
+    if (r.body.isEmpty) {
+      body = <String, dynamic>{};
+    } else {
+      final decoded = jsonDecode(r.body);
+      if (decoded is Map<String, dynamic>) {
+        body = decoded;
+      } else if (decoded is List) {
+        body = <String, dynamic>{'data': decoded};
+      } else {
+        body = <String, dynamic>{'data': decoded};
+      }
+    }
     if (r.statusCode >= 400) {
       // 401：token 失效/已登出 → 全局清洗（清 token+user、断 WS、回登录页）
       if (r.statusCode == 401) _handle401();

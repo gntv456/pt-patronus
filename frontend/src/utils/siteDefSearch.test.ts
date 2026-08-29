@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SiteDef } from '@/api/site'
-import {
-  siteDefSearchQueries,
-  siteDefSearchText,
-  sortSiteDefsBySearchRelevance,
-} from './siteDefSearch'
+import { siteDefSearchQueries, siteDefSearchText, sortSiteDefsBySearchRelevance } from './siteDefSearch'
 
 const pthome: SiteDef = {
   id: 'pthome',

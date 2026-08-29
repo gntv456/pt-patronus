@@ -62,8 +62,12 @@ export const searchApi = {
     const params = new URLSearchParams({ keyword })
     if (category) params.set('category', category)
     if (siteIds.length) params.set('site_ids', siteIds.join(','))
-    return streamSSE(`/api/v1/search/stream?${params}`, (event, data) => {
-      if (event === 'batch' && data?.results?.length) onSite((data.results as SiteSearchResult[])[0])
-    }, signal)
+    return streamSSE(
+      `/api/v1/search/stream?${params}`,
+      (event, data) => {
+        if (event === 'batch' && data?.results?.length) onSite((data.results as SiteSearchResult[])[0])
+      },
+      signal,
+    )
   },
 }

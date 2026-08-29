@@ -7,8 +7,19 @@ const { t } = useI18n()
 const props = defineProps<{ siteId: number }>()
 
 const {
-  stats, spinning, highlight, result, bulk, bulkCount, bulkSpinning, records, bulkStats,
-  refreshStats, refreshHistory, spin, drawMulti,
+  stats,
+  spinning,
+  highlight,
+  result,
+  bulk,
+  bulkCount,
+  bulkSpinning,
+  records,
+  bulkStats,
+  refreshStats,
+  refreshHistory,
+  spin,
+  drawMulti,
 } = useJggGame(toRef(props, 'siteId'))
 
 onMounted(() => {
@@ -32,7 +43,7 @@ onMounted(() => {
         <div class="stat-lbl">{{ t('jgg.todayCount') }}</div>
       </div>
       <div class="stat-tile">
-        <div class="stat-val">{{ result ? Math.round(result.balance ?? 0) : (stats ? '—' : '--') }}</div>
+        <div class="stat-val">{{ result ? Math.round(result.balance ?? 0) : stats ? '—' : '--' }}</div>
         <div class="stat-lbl">{{ result ? t('jgg.curSpark') : t('jgg.sparkBalance') }}</div>
       </div>
     </div>
@@ -42,12 +53,7 @@ onMounted(() => {
       <template v-for="(row, ri) in layout" :key="ri">
         <template v-for="(pos, ci) in row" :key="ri + '-' + ci">
           <!-- 中心按钮 -->
-          <button
-            v-if="pos === -1"
-            class="cell center"
-            :disabled="spinning || bulkSpinning"
-            @click="spin"
-          >
+          <button v-if="pos === -1" class="cell center" :disabled="spinning || bulkSpinning" @click="spin">
             <span v-if="spinning || bulkSpinning" class="spinner" />
             <template v-else>
               <span class="center-icon">⚡</span>
@@ -78,21 +84,36 @@ onMounted(() => {
 
     <!-- 连抽（站点 /jgg/magic_grid_bulk.php 仅接受 10/20/50/100） -->
     <div class="multi">
-      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(10)"><span>🎀</span> {{ t('jgg.multi', { n: 10 }) }}</button>
-      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(20)"><span>💖</span> {{ t('jgg.multi', { n: 20 }) }}</button>
-      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(50)"><span>✨</span> {{ t('jgg.multi', { n: 50 }) }}</button>
-      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(100)"><span>🌸</span> {{ t('jgg.multi', { n: 100 }) }}</button>
+      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(10)">
+        <span>🎀</span> {{ t('jgg.multi', { n: 10 }) }}
+      </button>
+      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(20)">
+        <span>💖</span> {{ t('jgg.multi', { n: 20 }) }}
+      </button>
+      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(50)">
+        <span>✨</span> {{ t('jgg.multi', { n: 50 }) }}
+      </button>
+      <button class="mbtn" :disabled="spinning || bulkSpinning" @click="drawMulti(100)">
+        <span>🌸</span> {{ t('jgg.multi', { n: 100 }) }}
+      </button>
     </div>
 
     <!-- 连抽结果（按奖品名分组统计） -->
     <div v-if="bulk" class="bulk">
-      <div class="bulk-head">🎉 {{ t('jgg.bulkDone', { n: bulkCount, won: (bulk.prizes || []).filter((p) => p.is_win).length }) }}</div>
+      <div class="bulk-head">
+        🎉 {{ t('jgg.bulkDone', { n: bulkCount, won: (bulk.prizes || []).filter((p) => p.is_win).length }) }}
+      </div>
       <div v-for="(s, i) in bulkStats" :key="i" class="bulk-row" :class="{ muted: s.name === t('jgg.thanks') }">
         <span>{{ s.name }}</span>
         <span class="bulk-cnt">×{{ s.count }}</span>
       </div>
       <div class="bulk-foot text-muted">
-        {{ t('jgg.bulkFoot', { cost: bulkCount * Math.round(stats?.cost_per_play ?? 3000), balance: Math.round(bulk.balance ?? 0) }) }}
+        {{
+          t('jgg.bulkFoot', {
+            cost: bulkCount * Math.round(stats?.cost_per_play ?? 3000),
+            balance: Math.round(bulk.balance ?? 0),
+          })
+        }}
       </div>
     </div>
 

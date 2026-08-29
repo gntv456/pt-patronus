@@ -16,7 +16,9 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
   // 轮询取消标志：组件卸载/重新发起授权时停止，避免离开页面仍持续打接口。
   let authPollAborted = false
 
-  onUnmounted(() => { authPollAborted = true })
+  onUnmounted(() => {
+    authPollAborted = true
+  })
 
   // 授权二维码：无前端 qrcode 依赖，用 115 下发的 qrcode URL（多为短链/参数串）。
   // 可直接点击跳转手机端拉起；桌面端可配合浏览器二维码插件扫。
@@ -62,7 +64,12 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
         const r = await cloudApi.poll115Auth(authState.value)
         if (r.confirmed && r.token) {
           authStatusText.value = '授权成功，正在创建网盘…'
-          await cloudApi.createDrive({ name: `115开放·${new Date().toLocaleDateString()}`, type: '115_open', token: r.token, root_path: '/' })
+          await cloudApi.createDrive({
+            name: `115开放·${new Date().toLocaleDateString()}`,
+            type: '115_open',
+            token: r.token,
+            root_path: '/',
+          })
           ElMessage.success('115 开放平台已授权并添加网盘')
           showAuth115.value = false
           await onDrivesChanged()
@@ -83,7 +90,15 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
   }
 
   return {
-    showAuth115, authAppId, authStarting, authPolling, authQR, authState, authStatusText,
-    qrImage, openAuth115, startAuth115,
+    showAuth115,
+    authAppId,
+    authStarting,
+    authPolling,
+    authQR,
+    authState,
+    authStatusText,
+    qrImage,
+    openAuth115,
+    startAuth115,
   }
 }

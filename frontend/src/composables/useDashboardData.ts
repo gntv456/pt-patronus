@@ -68,7 +68,10 @@ function fmtBytes(n: number) {
   if (!n) return '0 B'
   const u = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
   let i = 0
-  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++ }
+  while (n >= 1024 && i < u.length - 1) {
+    n /= 1024
+    i++
+  }
   return `${n.toFixed(2)} ${u[i]}`
 }
 
@@ -82,10 +85,30 @@ const dlPct = computed(() => pctOf((p) => p.downloaded))
 
 const metricItems = computed(() => [
   { label: '总上传', value: fmtBytes(overview.value?.totals.uploaded ?? 0), change: fmtPct(upPct.value), tone: 'teal' },
-  { label: '总下载', value: fmtBytes(overview.value?.totals.downloaded ?? 0), change: fmtPct(dlPct.value), tone: 'blue' },
-  { label: '真实分享率', value: (overview.value?.totals.true_ratio ?? 0) > 0 ? overview.value!.totals.true_ratio.toFixed(2) : '-', change: '', tone: 'indigo' },
-  { label: '总做种', value: (overview.value?.totals.seeding ?? 0).toLocaleString('zh-CN'), change: fmtBytes(overview.value?.totals.seeding_size ?? 0), tone: 'green' },
-  { label: '总魔力', value: Math.round(overview.value?.totals.bonus ?? 0).toLocaleString('zh-CN'), change: `${(overview.value?.totals.bonus_per_hour ?? 0).toFixed(1)}/h`, tone: 'amber' },
+  {
+    label: '总下载',
+    value: fmtBytes(overview.value?.totals.downloaded ?? 0),
+    change: fmtPct(dlPct.value),
+    tone: 'blue',
+  },
+  {
+    label: '真实分享率',
+    value: (overview.value?.totals.true_ratio ?? 0) > 0 ? overview.value!.totals.true_ratio.toFixed(2) : '-',
+    change: '',
+    tone: 'indigo',
+  },
+  {
+    label: '总做种',
+    value: (overview.value?.totals.seeding ?? 0).toLocaleString('zh-CN'),
+    change: fmtBytes(overview.value?.totals.seeding_size ?? 0),
+    tone: 'green',
+  },
+  {
+    label: '总魔力',
+    value: Math.round(overview.value?.totals.bonus ?? 0).toLocaleString('zh-CN'),
+    change: `${(overview.value?.totals.bonus_per_hour ?? 0).toFixed(1)}/h`,
+    tone: 'amber',
+  },
 ])
 
 const trendSeries = computed(() => {
@@ -141,8 +164,26 @@ function siteConfigByName(name: string): Site | undefined {
 
 export function useDashboardData() {
   return {
-    overview, trend, trendDays, trendMode, trendLoading, loading, loadError, allSites,
-    initialLoading, load, loadSites, changeTrendDays, metricItems, trendSeries, trendUnit,
-    trendDaysAxis, fmtBytes, fmtTime, latestUpdatedText, siteBaseUrl, siteConfigByName,
+    overview,
+    trend,
+    trendDays,
+    trendMode,
+    trendLoading,
+    loading,
+    loadError,
+    allSites,
+    initialLoading,
+    load,
+    loadSites,
+    changeTrendDays,
+    metricItems,
+    trendSeries,
+    trendUnit,
+    trendDaysAxis,
+    fmtBytes,
+    fmtTime,
+    latestUpdatedText,
+    siteBaseUrl,
+    siteConfigByName,
   }
 }

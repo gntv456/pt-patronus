@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"crypto/subtle"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -89,6 +90,8 @@ func (h *ServarrHandler) ListMovies(c *gin.Context) {
 	}
 	subs, err := h.subCh.List()
 	if err != nil {
+		// Servarr 客户端只认数组形态，失败回空数组 + 服务端日志（不静默吞错）。
+		slog.Warn("servarr radarr list failed", "err", err)
 		c.JSON(http.StatusInternalServerError, []radarrMovie{})
 		return
 	}
@@ -107,7 +110,7 @@ func (h *ServarrHandler) LookupMovies(c *gin.Context) {
 	if !h.authorize(c) {
 		return
 	}
-	mi := h.lookupByTerm(c.Query("term"), "movie")
+	mi := h.lookupByTerm(c.Request.Context(), c.Query("term"), "movie")
 	if mi == nil {
 		c.JSON(http.StatusOK, []radarrMovie{})
 		return
@@ -171,6 +174,8 @@ func (h *ServarrHandler) ListSeries(c *gin.Context) {
 	}
 	subs, err := h.subCh.List()
 	if err != nil {
+		// Servarr 客户端只认数组形态，失败回空数组 + 服务端日志（不静默吞错）。
+		slog.Warn("servarr sonarr list failed", "err", err)
 		c.JSON(http.StatusInternalServerError, []sonarrSeries{})
 		return
 	}
@@ -188,7 +193,7 @@ func (h *ServarrHandler) LookupSeries(c *gin.Context) {
 	if !h.authorize(c) {
 		return
 	}
-	mi := h.lookupByTerm(c.Query("term"), "tv")
+	mi := h.lookupByTerm(c.Request.Context(), c.Query("term"), "tv")
 	if mi == nil {
 		c.JSON(http.StatusOK, []sonarrSeries{})
 		return
@@ -332,7 +337,8 @@ func (h *ServarrHandler) mediaExists(s *models.Subscription) bool {
 }
 
 // lookupByTerm 解析 "tmdb:123"/"tvdb:456" 并查 MediaChain.Detail 富化（失败返 nil）。
-func (h *ServarrHandler) lookupByTerm(term, typ string) *media.MediaInfo {
+// ctx 传请求级 context：客户端断开即取消外呼，不占满上游配额。
+func (h *ServarrHandler) lookupByTerm(ctx context.Context, term, typ string) *media.MediaInfo {
 	if h.mediaCh == nil || strings.TrimSpace(term) == "" {
 		return nil
 	}
@@ -340,7 +346,7 @@ func (h *ServarrHandler) lookupByTerm(term, typ string) *media.MediaInfo {
 	if source == "" || id == "" {
 		return nil
 	}
-	mi, err := h.mediaCh.Detail(context.Background(), source, id)
+	mi, err := h.mediaCh.Detail(ctx, source, id)
 	if err != nil || mi == nil {
 		return nil
 	}

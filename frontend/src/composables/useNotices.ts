@@ -13,9 +13,7 @@ export function useNotices() {
   const { notices: wsNotices } = useWs()
 
   const unread = computed(() => notices.value.filter((n) => !n.read).length)
-  const urgentUnread = computed(() =>
-    notices.value.filter((n) => !n.read && urgentSources.has(n.source)).length,
-  )
+  const urgentUnread = computed(() => notices.value.filter((n) => !n.read && urgentSources.has(n.source)).length)
 
   async function load() {
     try {

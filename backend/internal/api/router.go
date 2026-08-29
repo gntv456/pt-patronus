@@ -35,9 +35,14 @@ func Build(d *Deps) *gin.Engine {
 	// Prometheus 指标（/metrics 端点注册见下；此处采集全部业务请求）
 	engine.Use(middleware.Prometheus())
 	// 标准 /metrics 端点：Prometheus 抓取格式（go_*/process_*/ptpatronus_http_*）。
-	// 注册在 api 根（非 guarded）：抓取器带 Authorization 成本高，实例级网络隔离
-	// 即可防护；若需鉴权可前置反代 basic auth（业内通行做法）。
-	engine.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	// 鉴权（收权改造）：Bearer METRICS_TOKEN（缺省回退 API_KEY）。抓取器配置
+	//   - Authorization: Bearer <token>（或 X-API-Key: <token>）
+	// release 模式下未配置任何令牌 → 端点整体禁用（404）：指标含路径/延迟分布，
+	// 不应匿名公开；debug 模式保持无鉴权便于本地开发。
+	metricsToken := d.Cfg.MetricsToken
+	if !d.Cfg.IsRelease() || metricsToken != "" {
+		engine.GET("/metrics", middleware.MetricsAuth(metricsToken), gin.WrapH(promhttp.Handler()))
+	}
 	engine.Use(middleware.JWTAuth(d.JWT, d.Cfg.APIKey, d.TVCache))
 	// 全局限流（每 IP 每秒）
 	globalRPS := d.Cfg.GlobalRatePerSec
@@ -46,7 +51,8 @@ func Build(d *Deps) *gin.Engine {
 	}
 	engine.Use(middleware.NewRateLimiter(float64(globalRPS), globalRPS).Middleware())
 
-	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC)
+	authH := v1.NewAuthHandler(d.DB, d.JWT, d.Act, d.HxptAuth, d.Crypto, d.TVCache, d.Tickets, d.Cfg.DemoMode, d.OIDC,
+		strings.HasPrefix(d.Cfg.AppBaseURL, "https://"))
 	// OCR 验证码自动识别（SystemConfig 热更；未配置 = 人工输入，不影响登录链路）。
 	if d.CfgOp != nil {
 		cfgOp := d.CfgOp
@@ -55,7 +61,7 @@ func Build(d *Deps) *gin.Engine {
 			return ocr.Config{Endpoint: get("ocr.endpoint"), APIKey: get("ocr.api_key"), Mode: get("ocr.mode")}
 		})
 	}
-	sysH := v1.NewSystemHandler(d.Update)
+	sysH := v1.NewSystemHandler(d.Update, d.DB)
 	schedH := v1.NewScheduleHandler(d.Automation, d.Cfg.SnapshotCron, d.Cfg.CookieKeepAliveCron)
 
 	api := engine.Group("/api/v1")

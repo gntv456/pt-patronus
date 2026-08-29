@@ -1,5 +1,7 @@
 /* 确认下载弹窗（sf-push-* 系列，从 SiteTorrentFindDialog 抽出保持一致） */
-.sf-push-header-text { min-width: 0; }
+.sf-push-header-text {
+  min-width: 0;
+}
 .sf-push-title-main {
   font-size: var(--fs-lg);
   font-weight: 700;
@@ -12,7 +14,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sf-push-body { display: flex; flex-direction: column; gap: var(--sp-3); }
+.sf-push-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
 .sf-push-media {
   display: flex;
   gap: var(--sp-3);
@@ -25,7 +31,7 @@
   overflow: hidden;
   flex: none;
   background: var(--surface-muted, #f0f0f0);
-  border: 1px solid var(--divider, rgba(0,0,0,0.06));
+  border: 1px solid var(--divider, rgba(0, 0, 0, 0.06));
 }
 .sf-push-meta {
   flex: 1;
@@ -62,14 +68,18 @@
   gap: var(--sp-2);
   flex-wrap: wrap;
 }
-.sf-push-cat { font-size: var(--fs-xs); }
+.sf-push-cat {
+  font-size: var(--fs-xs);
+}
 .sf-push-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--sp-2);
 }
 @media (max-width: 520px) {
-  .sf-push-fields { grid-template-columns: 1fr; }
+  .sf-push-fields {
+    grid-template-columns: 1fr;
+  }
 }
 .sf-push-field label {
   display: block;
@@ -83,7 +93,9 @@
   justify-content: space-between;
   gap: var(--sp-3);
 }
-.sf-push-field.row label { margin: 0; }
+.sf-push-field.row label {
+  margin: 0;
+}
 .sf-adv-toggle {
   align-self: flex-start;
   background: transparent;
@@ -100,9 +112,11 @@
   gap: var(--sp-2);
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  background: var(--surface-muted, rgba(0,0,0,0.03));
+  background: var(--surface-muted, rgba(0, 0, 0, 0.03));
 }
-.sf-push-ok p { margin: 0 0 14px; }
+.sf-push-ok p {
+  margin: 0 0 14px;
+}
 .sf-push-actions {
   display: flex;
   justify-content: flex-end;

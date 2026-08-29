@@ -147,8 +147,18 @@ onBeforeUnmount(() => {
           </div>
         </div>
         <svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
-          <path :d="sparkline(netRxHistory, Math.max(...netRxHistory, 1))" fill="none" stroke="#4cc9f0" stroke-width="1.5" />
-          <path :d="sparkline(netTxHistory, Math.max(...netTxHistory, 1))" fill="none" stroke="#4361ee" stroke-width="1.5" />
+          <path
+            :d="sparkline(netRxHistory, Math.max(...netRxHistory, 1))"
+            fill="none"
+            stroke="#4cc9f0"
+            stroke-width="1.5"
+          />
+          <path
+            :d="sparkline(netTxHistory, Math.max(...netTxHistory, 1))"
+            fill="none"
+            stroke="#4361ee"
+            stroke-width="1.5"
+          />
         </svg>
       </div>
 
@@ -189,7 +199,12 @@ onBeforeUnmount(() => {
     <div v-if="metrics.temps?.length" class="temp-section glass">
       <h3 class="section-title">{{ t('opsmonitor.temp') }}</h3>
       <div class="temp-list">
-        <span v-for="t in metrics.temps" :key="t.name" class="temp-chip" :class="{ hot: t.temp > 70, warm: t.temp > 50 && t.temp <= 70 }">
+        <span
+          v-for="t in metrics.temps"
+          :key="t.name"
+          class="temp-chip"
+          :class="{ hot: t.temp > 70, warm: t.temp > 50 && t.temp <= 70 }"
+        >
           {{ humanTempName(t.name) }}: {{ t.temp.toFixed(0) }}°C
         </span>
       </div>
@@ -260,7 +275,8 @@ onBeforeUnmount(() => {
   font-size: var(--fs-xs);
   color: var(--text-muted);
 }
-.load-row, .net-row {
+.load-row,
+.net-row {
   display: flex;
   gap: var(--sp-1);
   flex-wrap: wrap;
@@ -277,10 +293,15 @@ onBeforeUnmount(() => {
 .net-arrow {
   font-weight: 700;
 }
-.net-arrow.down { color: #4cc9f0; }
-.net-arrow.up { color: #4361ee; }
+.net-arrow.down {
+  color: #4cc9f0;
+}
+.net-arrow.up {
+  color: #4361ee;
+}
 
-.disk-section, .temp-section {
+.disk-section,
+.temp-section {
   padding: var(--sp-4);
   border-radius: var(--radius-md);
 }
@@ -329,15 +350,21 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-pill);
   transition: width var(--dur-slow) var(--ease-out-smooth);
 }
-.disk-bar-fill.warn { background: var(--pt-warn); }
-.disk-bar-fill.danger { background: var(--pt-danger); }
+.disk-bar-fill.warn {
+  background: var(--pt-warn);
+}
+.disk-bar-fill.danger {
+  background: var(--pt-danger);
+}
 .disk-pct {
   font-size: var(--fs-sm);
   font-weight: 600;
   text-align: right;
   color: var(--text-strong);
 }
-.disk-pct.danger { color: var(--pt-danger); }
+.disk-pct.danger {
+  color: var(--pt-danger);
+}
 
 .temp-list {
   display: flex;
@@ -351,8 +378,14 @@ onBeforeUnmount(() => {
   background: var(--pt-success-bg);
   color: var(--pt-success);
 }
-.temp-chip.warm { background: var(--pt-warn-bg); color: var(--pt-warn); }
-.temp-chip.hot { background: var(--pt-danger-bg); color: var(--pt-danger); }
+.temp-chip.warm {
+  background: var(--pt-warn-bg);
+  color: var(--pt-warn);
+}
+.temp-chip.hot {
+  background: var(--pt-danger-bg);
+  color: var(--pt-danger);
+}
 
 .monitor-error {
   color: var(--pt-danger);
@@ -364,9 +397,27 @@ onBeforeUnmount(() => {
   .disk-item {
     grid-template-columns: 1fr 40px;
   }
-  .disk-bar { display: none; }
+  .disk-bar {
+    display: none;
+  }
 }
-.monitor-scope { display: flex; align-items: center; gap: var(--sp-2); padding: 8px 14px; margin-bottom: 12px; border-radius: var(--radius-xs); font-size: var(--fs-body); }
-.scope-dot { width: 8px; height: 8px; border-radius: 50%; background: #27ae60; box-shadow: 0 0 6px #27ae60; }
-.scope-label { font-weight: 700; }
+.monitor-scope {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-body);
+}
+.scope-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #27ae60;
+  box-shadow: 0 0 6px #27ae60;
+}
+.scope-label {
+  font-weight: 700;
+}
 </style>

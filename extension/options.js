@@ -2,6 +2,7 @@
 // 收藏与历史 / TOTP 验证器 / 同步备份），账号登录与配置沿用原逻辑。
 // 各工具页逻辑就地实现（复用 dashboard/cookies/downloads/collection/totp 模块）。
 import { getConfig, saveConfig, api, login, loginByPassword, fetchCaptcha, clearSession, isConfigured } from './api.js'
+import { readSecret, writeSecret, setSealsPin } from './secrets.js'
 import { serverCookies, pullServerToBrowser, pushBrowserToServer, browserCookieHeader } from './cookies.js'
 import { getAutosyncState, setAutosyncState, syncNow } from './autosync.js'
 import {
@@ -17,6 +18,9 @@ import { parseOTPAuth, totpNow, saveVault, loadVault } from './totp.js'
 import { loadCredVault, saveCredVault, newCredId, parseBitwarden } from './credentials.js'
 import { privacyOn as privacyOnFn, maskSecret, maskDomain } from './privacy.js'
 import { esc, $, fmtTime, baseUrl } from './util.js'
+import { initStatsPage } from './options_stats.js'
+import { initDownloadsPage } from './options_downloads.js'
+import { initTotpPage } from './options_totp.js'
 
 // —— 通用轻反馈 ——
 let toastTimer = null
@@ -56,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         loadOnce[key] = true
         if (key === 'stats') loadStatsPage()
         else if (key === 'cookies') renderCookies()
-        else if (key === 'downloads') initDownloadsPage()
+        else if (key === 'downloads') downloadsPage.initDownloadsPage()
         else if (key === 'collection') renderFav()
         else if (key === 'plugins') loadPlugins()
         else if (key === 'creds') initCredsPage()
@@ -69,6 +73,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 与 TOTP 同套加密：PIN → PBKDF2×310k → AES-256-GCM，存 chrome.storage.local.ptp_credentials。
   // 会话缓存：解锁后明文条目写 storage.session.cred_entries，供 content 自动填充
   // （经 background 消息取——页面不直接触碰 storage；锁定即清，语义与 TOTP 一致）。
+  // 自动锁定（安全审计 P2）：解锁后每次活动向 background 发 ptp-vault-activity，
+  // 由 chrome.alarms 在 10 分钟无活动后统一清空 storage.session 明文缓存；
+  // background 清除后会广播 ptp-vault-locked，页面内存态同步回锁定 UI。
+  function armVaultAutolock() {
+    try { chrome.runtime.sendMessage({ type: 'ptp-vault-activity' }).catch(() => {}) } catch { /* noop */ }
+  }
   let credEntries = []
   let credPin = ''
   let credEditingId = null
@@ -87,6 +97,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     credUnlocked = true
     credPin = pin
     await syncCredSession()
+    armVaultAutolock() // 解锁即重置自动锁定倒计时
     $('credGate').style.display = 'none'
     $('credMain').style.display = ''
     renderCreds()
@@ -95,7 +106,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('credUnlockForm').addEventListener('submit', async (ev) => {
     ev.preventDefault()
     const pin = $('credPin').value
+    // 收权改造：空 PIN 不再解锁任何库——新库用输入的 PIN 创建，明文存量库借此迁移重加密。
+    if (!pin) {
+      $('credUnlockBtn').textContent = '请设置 PIN'
+      setTimeout(() => { $('credUnlockBtn').textContent = '解锁 / 设定' }, 1500)
+      return
+    }
     try {
+      const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
+      // 明文库存量迁移：空 PIN 语义只在「库里还是明文」这一次迁移时成立。
+      if (v && v.plain !== undefined) {
+        credEntries = JSON.parse(v.plain)
+        credUnlocked = true
+        credPin = pin
+        await persistCreds() // 立即用新 PIN 重加密落盘
+        // 同步把 secrets（好学密码/WebDAV/CookieCloud）换到同一 PIN 密封。
+        try { await setSealsPin(pin) } catch { /* 密封换口令失败不阻断 */ }
+        const hint = $('credPlainHint')
+        if (hint) hint.style.display = 'none'
+        $('credGate').style.display = 'none'
+        $('credMain').style.display = ''
+        $('credPin').value = ''
+        renderCreds()
+        feedback('已用新 PIN 加密整库（明文已清除）')
+        return
+      }
       await credTryUnlock(pin)
       $('credPin').value = ''
     } catch {
@@ -147,19 +182,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (idx >= 0) credEntries[idx] = entry
     else credEntries.unshift(entry)
     await persistCreds()
+    armVaultAutolock() // 编辑保存也算活动，重置自动锁定倒计时
     $('credEditor').style.display = 'none'
     feedback('已保存')
     renderCreds()
   }
 
   async function initCredsPage() {
-    // 无 PIN 明文库直接解锁；PIN 库等输入。
+    // 收权改造：不再自动解锁明文库（明文密码落盘默认不可接受）。
+    // 存量明文库 → gate 上展示迁移提示；用户输入新 PIN 提交时
+    // credTryUnlock('') 先读明文 → persistCreds 用新 PIN 重加密，一次性完成迁移。
     try {
       const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
-      if (v && v.plain !== undefined) await credTryUnlock('')
-      else if (!v) {
-        // 空库：也直接进入（首次保存时按输入框状态定 PIN——此处保持 gate，让用户显式设定）
-      }
+      const hint = $('credPlainHint')
+      if (hint) hint.style.display = (v && v.plain !== undefined) ? '' : 'none'
     } catch { /* noop */ }
     renderCreds()
   }
@@ -466,6 +502,54 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   showSession(cfg.user, !!(cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)))
 
+  // ================= 站点白名单管理（收权：内容脚本注入范围） =================
+  const renderHosts = async () => {
+    const { getSiteHosts, removeSiteHost } = await import('./sitelist.js')
+    const hosts = await getSiteHosts()
+    const box = $('hostList')
+    if (!hosts.length) {
+      box.innerHTML = '<span class="hint">白名单为空——页面增强不会注入任何站点。登录后自动同步，或点上方按钮手动同步。</span>'
+      return
+    }
+    box.innerHTML = hosts.map((h) =>
+      `<span class="tag-pill pill-dim" data-host="${esc(h)}" style="cursor:pointer" title="点击移除">${esc(h)} ✕</span>`).join('')
+    for (const el of box.querySelectorAll('[data-host]')) {
+      el.onclick = async () => {
+        await removeSiteHost(el.dataset.host)
+        renderHosts()
+      }
+    }
+  }
+  renderHosts()
+
+  $('syncHosts').onclick = async () => {
+    try {
+      const cfgNow = await getConfig()
+      if (!isConfigured(cfgNow)) { feedback('请先登录再同步站点白名单', 'err'); return }
+      const { syncFromServer, requestCookieOrigins } = await import('./sitelist.js')
+      const hosts = await syncFromServer(cfgNow, api)
+      // 显式申请 host 权限（syncFromServer 内部已随新增域请求过；此处兜底
+      // 已存在白名单但未授权的场景——未授权域 cookies 读取返回空）。
+      const granted = await requestCookieOrigins(hosts)
+      feedback(`站点白名单已同步（共 ${hosts.length} 站，host 权限${granted.length ? `已授权 ${granted.length} 条` : '未授予——Cookie 台账可能读不到站点 Cookie'}）`)
+      renderHosts()
+    } catch (e) {
+      feedback(`同步失败：${esc(e.message)}`, 'err')
+    }
+  }
+
+  $('addHostForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault()
+    const raw = $('addHostInput').value.trim()
+    if (!raw) return
+    const { addSiteHosts, requestCookieOrigins } = await import('./sitelist.js')
+    const hosts = await addSiteHosts([raw])
+    await requestCookieOrigins([raw]) // 手动加站也要授权（用户手势内）
+    $('addHostInput').value = ''
+    feedback(`已添加，白名单共 ${hosts.length} 站`)
+    renderHosts()
+  })
+
   $('save').onclick = async () => {
     await saveConfig({ server: $('server').value.trim() })
     feedback('已保存')
@@ -505,6 +589,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       feedback('登录成功')
       btn.disabled = false; btn.textContent = '登 录'
       showSession(user, true)
+      // 登录即同步站点白名单（收权核心：内容脚本只注入服务器已登记的站点）。
+      // 静默失败——白名单可随时在「站点白名单」卡片手动同步/增删。
+      try {
+        const cfgNow = await getConfig()
+        const { syncFromServer } = await import('./sitelist.js')
+        const hosts = await syncFromServer(cfgNow, api)
+        feedback(`站点白名单已同步（${hosts.length} 站）`)
+      } catch { /* 白名单同步失败不阻断登录 */ }
       // 登录态变化后重置懒加载标记，允许各工具页重新拉数据
       for (const k of Object.keys(loadOnce)) delete loadOnce[k]
     } catch (e) {
@@ -524,162 +616,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     feedback('已退出登录')
   }
 
-  // ================= 站点数据 =================
-  let statsData = null
-  let statsCfg = null
-
-  function renderStats(data) {
-    statsData = data
-    const t = data.totals || {}
-    const cards = [
-      ['总上传', fmtBytes(t.uploaded)],
-      ['总下载', fmtBytes(t.downloaded)],
-      ['分享率', fmtRatio(t.uploaded, t.downloaded)],
-      ['做种数', t.seeding ?? 0],
-      ['做种体积', fmtBytes(t.seeding_size)],
-      ['魔力值', fmtBonus(t.bonus)],
-      ['魔力/时', fmtBonus(t.bonus_per_hour)],
-      ['站点', `${data.site_count ?? 0}`],
-    ]
-    $('totals').innerHTML = cards.map(([k, v]) => `<div class="chip"><span class="v">${v}</span><span class="k">${k}</span></div>`).join('')
-
-    const noData = new Set((data.no_data_sites || []).map((x) => x.site_id))
-    const sites = (data.sites || []).slice().sort((a, b) => (b.uploaded || 0) - (a.uploaded || 0))
-    if (!sites.length) {
-      $('rows').innerHTML = '<tr><td colspan="9" class="empty">暂无数据——点「⟳ 即时抓取」</td></tr>'
-      return
-    }
-    $('rows').innerHTML = sites.map((s) => `
-      <tr${noData.has(s.site_id) ? ' style="color:var(--danger)"' : ''}>
-        <td style="font-weight:600; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap" title="${esc(s.site_name)}${noData.has(s.site_id) ? '（无数据，疑似 cookie 失效）' : ''}">${statsPrivacy ? maskDomain(esc(s.site_name)) : esc(s.site_name)}${noData.has(s.site_id) ? ' ⚠' : ''}</td>
-        <td style="color:var(--ink-2); font-size:11px">${esc(s.level || '—')}</td>
-        <td class="num">${fmtBytes(s.uploaded)}</td>
-        <td class="num">${fmtBytes(s.downloaded)}</td>
-        <td class="num">${fmtRatio(s.uploaded, s.downloaded)}</td>
-        <td class="num">${s.seeding ?? 0}</td>
-        <td class="num">${fmtBytes(s.seeding_size)}</td>
-        <td class="num">${fmtBonus(s.bonus)}</td>
-        <td class="num">${fmtBonus(s.bonus_per_hour)}</td>
-      </tr>`).join('')
-  }
-
-  // exportPng 把汇总卡 + 表格渲染到离屏 canvas 导出 PNG（对标竞品图片导出）。
-  async function exportPng() {
-    if (!statsData) return
-    const W = 1080
-    const rows = statsData.sites || []
-    const head = ['站点', '等级', '上传', '下载', '分享率', '做种', '魔力/时']
-    const H = 96 + 64 + 34 + rows.length * 26 + 24
-    const c = document.createElement('canvas')
-    c.width = W
-    c.height = Math.min(H, 8192)
-    const g = c.getContext('2d')
-    g.fillStyle = '#0f1115'
-    g.fillRect(0, 0, W, c.height)
-    g.fillStyle = '#e6e9ef'
-    g.font = '600 22px "Segoe UI","Microsoft YaHei",sans-serif'
-    g.fillText('PTPatronus · 站点数据', 32, 44)
-    g.fillStyle = '#636d7c'
-    g.font = '13px "Segoe UI","Microsoft YaHei",sans-serif'
-    g.fillText(new Date().toLocaleString(), 32, 68)
-
-    // 汇总行
-    const t = statsData.totals || {}
-    const sums = [
-      `上传 ${fmtBytes(t.uploaded)}`, `下载 ${fmtBytes(t.downloaded)}`,
-      `分享率 ${fmtRatio(t.uploaded, t.downloaded)}`, `做种 ${t.seeding ?? 0}`,
-      `做种体积 ${fmtBytes(t.seeding_size)}`, `魔力 ${fmtBonus(t.bonus)}`, `魔力/时 ${fmtBonus(t.bonus_per_hour)}`,
-    ]
-    g.font = '600 14px Consolas,monospace'
-    g.fillStyle = '#9aa4b2'
-    sums.forEach((s, i) => g.fillText(s, 32 + (i % 4) * 260, 104 + Math.floor(i / 4) * 24))
-
-    // 表头
-    let y = 168
-    g.fillStyle = '#161a21'
-    g.fillRect(24, y - 18, W - 48, 26)
-    g.fillStyle = '#9aa4b2'
-    g.font = '600 12px "Segoe UI","Microsoft YaHei",sans-serif'
-    const xs = [32, 300, 420, 540, 640, 730, 840]
-    head.forEach((h, i) => g.fillText(h, xs[i], y))
-    y += 26
-
-    const sorted = rows.slice().sort((a, b) => (b.uploaded || 0) - (a.uploaded || 0))
-    g.font = '12px Consolas,monospace'
-    for (const s of sorted) {
-      if (y > c.height - 16) break
-      const vals = [
-        String(s.site_name || ''), String(s.level || '—'), fmtBytes(s.uploaded), fmtBytes(s.downloaded),
-        fmtRatio(s.uploaded, s.downloaded), String(s.seeding ?? 0), fmtBonus(s.bonus_per_hour),
-      ]
-      vals.forEach((v, i) => {
-        g.fillStyle = i === 0 ? '#e6e9ef' : '#9aa4b2'
-        if (i === 0) g.font = '600 12px "Segoe UI","Microsoft YaHei",sans-serif'
-        else g.font = '12px Consolas,monospace'
-        g.fillText(statsPrivacy ? maskDomain(v) : v, xs[i], y)
-      })
-      y += 26
-    }
-    const a = document.createElement('a')
-    a.href = c.toDataURL('image/png')
-    a.download = `ptpatronus-stats-${new Date().toISOString().slice(0, 10)}.png`
-    a.click()
-  }
-
-  function exportStats(fmt) {
-    if (!statsData) return
-    let blob
-    if (fmt === 'csv') {
-      const head = ['站点', '等级', '上传', '下载', '分享率', '做种', '做种体积', '魔力', '魔力/时']
-      const lines = [head.join(',')]
-      for (const s of statsData.sites || []) {
-        lines.push([
-          `"${(s.site_name || '').replace(/"/g, '""')}"`, s.level || '', s.uploaded || 0, s.downloaded || 0,
-          s.downloaded ? (s.uploaded / s.downloaded).toFixed(2) : '∞', s.seeding ?? 0, s.seeding_size || 0,
-          s.bonus ?? 0, s.bonus_per_hour ?? 0,
-        ].join(','))
-      }
-      blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv' })
-    } else {
-      blob = new Blob([JSON.stringify(statsData, null, 2)], { type: 'application/json' })
-    }
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `ptpatronus-stats-${new Date().toISOString().slice(0, 10)}.${fmt}`
-    a.click()
-    URL.revokeObjectURL(a.href)
-  }
-
-  async function loadStatsPage() {
-    statsCfg = await getConfig()
-    if (!isConfigured(statsCfg)) {
-      $('rows').innerHTML = '<tr><td colspan="9" class="empty err">请先在「账号与登录」页登录</td></tr>'
-      return
-    }
-    statsPrivacy = await privacyOnFn()
-    $('refresh').onclick = loadStatsPage
-    $('sync').onclick = async () => {
-      $('sync').disabled = true
-      $('sync').textContent = '抓取中…（站均 1-3s）'
-      try {
-        renderStats(await syncAll(statsCfg))
-      } catch (e) {
-        $('totals').innerHTML = `<div class="err" style="grid-column:1/-1; padding:8px">${esc(e.message)}</div>`
-      }
-      $('sync').disabled = false
-      $('sync').textContent = '⟳ 即时抓取'
-    }
-    $('expJson').onclick = () => exportStats('json')
-    $('expCsv').onclick = () => exportStats('csv')
-    $('expPng').onclick = exportPng
-    try {
-      renderStats(await overview(statsCfg))
-    } catch (e) {
-      $('rows').innerHTML = ''
-      $('totals').innerHTML = `<div class="err" style="grid-column:1/-1; padding:8px">${esc(e.message)}</div>`
-    }
-  }
+  // ================= 站点数据（实现在 options_stats.js） =================
+  // 隐私初值：异步读，模块内部每次渲染也会经 privacyOnFn() 复读（与原行为一致）。
   let statsPrivacy = false
+  privacyOnFn().then((v) => { statsPrivacy = v })
+  const { loadStatsPage } = initStatsPage($, feedback, () => statsPrivacy)
 
   // ================= Cookie 台账 =================
   let ckRowsMap = {}
@@ -873,158 +814,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(renderCookies, 800)
   }
 
-  // ================= 下载任务 =================
-  let dlTimer = null
-  let dlCurId = 0
-
-  async function renderDownloads() {
-    if (!dlCurId) return
-    let data
-    try {
-      data = await listTorrents(await getConfig(), dlCurId)
-    } catch (e) {
-      $('dlRows').innerHTML = ''
-      $('dlStats').innerHTML = `<span class="err">${esc(e.message)}</span>`
-      return
-    }
-    if (data.error) {
-      $('dlRows').innerHTML = `<tr><td colspan="8" class="empty">${esc(data.error)}（下载器不可达？）</td></tr>`
-      $('dlStats').textContent = ''
-      return
-    }
-    const ts = data.torrents || []
-    const dlSum = ts.reduce((a, t) => a + (t.dl_rate || 0), 0)
-    const upSum = ts.reduce((a, t) => a + (t.up_rate || 0), 0)
-    const active = ts.filter((t) => /downloading|uploading/.test(t.state || '')).length
-    $('dlStats').innerHTML = `<b style="color:var(--ink)">${data.total}</b> 任务 · ${active} 活动 · ↓ <b style="color:var(--accent-strong)">${fmtSpeedLocal(dlSum)}</b> · ↑ <b style="color:var(--ok)">${fmtSpeedLocal(upSum)}</b> <span id="freespace" style="color:var(--ink-3)"></span>`
-    globalStats(await getConfig(), dlCurId).then((st) => {
-      const el = document.getElementById('freespace')
-      if (el) el.textContent = st.free_space > 0 ? `· 余 ${fmtBytes(st.free_space)}` : ''
-    }).catch(() => { const el = document.getElementById('freespace'); if (el) el.textContent = '' })
-    if (!ts.length) {
-      $('dlRows').innerHTML = '<tr><td colspan="8" class="empty">无任务</td></tr>'
-      return
-    }
-    $('dlRows').innerHTML = ts.map((t) => {
-      const pct = Math.round((t.progress || 0) * 100)
-      const st = t.state || 'unknown'
-      return `<tr>
-        <td style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600" title="${esc(t.name)}">${esc(t.name)}</td>
-        <td class="num">${fmtBytes(t.size)}</td>
-        <td><div style="display:flex; align-items:center; gap:6px"><div style="width:80px; height:4px; border-radius:2px; background:var(--bg); overflow:hidden"><i style="display:block; height:100%; width:${pct}%; background:${pct >= 100 ? 'var(--ok)' : 'var(--accent)'}"></i></div><span class="num" style="color:var(--ink-3); font-size:10.5px">${pct}%</span></div></td>
-        <td class="num" style="color:${/error|missingFiles/.test(st) ? 'var(--danger)' : /downloading/.test(st) ? 'var(--accent-strong)' : /upload|UP/.test(st) ? 'var(--ok)' : 'var(--ink-3)'}">${esc(st)}</td>
-        <td class="num">${fmtSpeedLocal(t.dl_rate)}</td>
-        <td class="num">${fmtSpeedLocal(t.up_rate)}</td>
-        <td class="num">${t.ratio != null ? t.ratio.toFixed(2) : '—'}</td>
-        <td style="white-space:nowrap">
-          <button class="subtle warn" data-dlop="pause" data-h="${esc(t.hash)}" ${/paused|stopped/.test(st) ? 'disabled' : ''}>⏸</button>
-          <button class="subtle ok" data-dlop="resume" data-h="${esc(t.hash)}" ${/paused|stopped/.test(st) ? '' : 'disabled'}>▶</button>
-          <button class="subtle danger" data-dlop="remove" data-h="${esc(t.hash)}" data-n="${esc(t.name)}">✕</button>
-        </td>
-      </tr>`
-    }).join('')
-  }
-
-  function fmtSpeedLocal(n) {
-    return `${fmtBytes(n)}/s`
-  }
-
-  async function refreshDownloads() {
-    try { await renderDownloads() } catch (e) { $('dlStats').innerHTML = `<span class="err">${esc(e.message)}</span>` }
-  }
-
-  document.addEventListener('click', async (ev) => {
-    const btn = ev.target.closest('#page-downloads button[data-dlop]')
-    if (!btn) return
-    const cfgDl = await getConfig()
-    const h = btn.dataset.h
-    btn.disabled = true
-    try {
-      if (btn.dataset.dlop === 'remove') {
-        if (!confirm(`删除任务「${btn.dataset.n}」？（不删除文件）`)) { btn.disabled = false; return }
-        await removeTorrent(cfgDl, dlCurId, h)
-      } else if (btn.dataset.dlop === 'pause') {
-        await pauseTorrent(cfgDl, dlCurId, h)
-      } else {
-        await resumeTorrent(cfgDl, dlCurId, h)
-      }
-    } catch (e) {
-      $('dlStats').innerHTML = `<span class="err">操作失败：${esc(e.message)}</span>`
-    }
-    await refreshDownloads()
-  })
-
-  async function initDownloadsPage() {
-    const cfgDl = await getConfig()
-    if (!isConfigured(cfgDl)) {
-      $('dlRows').innerHTML = '<tr><td colspan="8" class="empty err">请先在「账号与登录」页登录</td></tr>'
-      $('dlStats').textContent = ''
-      return
-    }
-    let dls
-    try {
-      dls = await listDownloaders(cfgDl)
-    } catch (e) {
-      $('dlStats').innerHTML = `<span class="err">${esc(e.message)}</span>`
-      return
-    }
-    if (!dls.length) {
-      $('dl').innerHTML = ''
-      $('dlRows').innerHTML = '<tr><td colspan="8" class="empty">服务器未配置下载器</td></tr>'
-      $('dlStats').textContent = ''
-      return
-    }
-    $('dl').innerHTML = dls.map((d) => `<option value="${d.id}">${esc(d.name)}${d.is_default ? '（默认）' : ''}</option>`).join('')
-    const saved = Number((await chrome.storage.sync.get({ downloaderId: 0 })).downloaderId)
-    dlCurId = dls.some((d) => d.id === saved) ? saved : (dls.find((d) => d.is_default) || dls[0]).id
-    $('dl').value = dlCurId
-
-    $('dl').onchange = async () => {
-      dlCurId = Number($('dl').value)
-      await chrome.storage.sync.set({ downloaderId: dlCurId })
-      await refreshDownloads()
-    }
-    $('refreshDl').onclick = refreshDownloads
-    $('pauseAll').onclick = async () => {
-      const { torrents } = await listTorrents(await getConfig(), dlCurId)
-      const hs = torrents.filter((t) => !/paused|stopped/.test(t.state || '')).map((t) => t.hash)
-      if (!hs.length) return
-      try {
-        for (const h of hs) await pauseTorrent(await getConfig(), dlCurId, h)
-      } catch (e) {
-        $('dlStats').innerHTML = `<span class="err">全部暂停失败：${esc(e.message)}</span>`
-      }
-      await refreshDownloads()
-    }
-    $('resumeAll').onclick = async () => {
-      const { torrents } = await listTorrents(await getConfig(), dlCurId)
-      const hs = torrents.filter((t) => /paused|stopped/.test(t.state || '')).map((t) => t.hash)
-      if (!hs.length) return
-      try {
-        for (const h of hs) await resumeTorrent(await getConfig(), dlCurId, h)
-      } catch (e) {
-        $('dlStats').innerHTML = `<span class="err">全部继续失败：${esc(e.message)}</span>`
-      }
-      await refreshDownloads()
-    }
-    $('add').onclick = async () => {
-      const url = $('addurl').value.trim()
-      if (!url) return
-      $('add').disabled = true
-      try {
-        await addByUrl(await getConfig(), dlCurId, url)
-        $('addurl').value = ''
-        feedback('已添加下载任务')
-      } catch (e) {
-        feedback(`添加失败：${e.message}`, 'err')
-      }
-      $('add').disabled = false
-      await refreshDownloads()
-    }
-    await refreshDownloads()
-    dlTimer = setInterval(refreshDownloads, 5000)
-    window.addEventListener('beforeunload', () => clearInterval(dlTimer))
-  }
+  // ================= 下载任务（实现在 options_downloads.js） =================
+  const downloadsPage = initDownloadsPage($, feedback)
 
   // ================= 收藏与历史 =================
   let colTab = 'fav'
@@ -1145,162 +936,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // ================= 两步验证器 =================
-  let totpEntries = []
-  let totpUnlocked = false
-  let pinCache = ''
-  let totpTimer = null
-
-  async function syncVaultSession() {
-    try { await chrome.storage.session.set({ ptp_vault_entries: totpEntries }) } catch { /* 老版本无 session API */ }
-  }
-  async function persistVault() {
-    await saveVault(pinCache, totpEntries)
-    await syncVaultSession()
-  }
-
-  async function tryUnlock(pin) {
-    totpEntries = await loadVault(pin)
-    totpUnlocked = true
-    pinCache = pin
-    await syncVaultSession()
-    $('gate').style.display = 'none'
-    $('main').style.display = ''
-    $('lock').style.display = ''
-    renderTotp()
-    tickTotp()
-  }
-
-  $('unlockForm').addEventListener('submit', async (ev) => {
-    ev.preventDefault()
-    const pin = $('pin').value
-    try {
-      await tryUnlock(pin)
-    } catch {
-      $('unlockBtn').textContent = 'PIN 错误'
-      setTimeout(() => { $('unlockBtn').textContent = '解锁 / 设定' }, 1500)
-      return
-    }
-    $('pin').value = ''
-  })
-
-  $('lock').onclick = () => {
-    totpUnlocked = false
-    pinCache = ''
-    try { chrome.storage.session.remove('ptp_vault_entries') } catch { /* noop */ }
-    $('main').style.display = 'none'
-    $('lock').style.display = 'none'
-    $('gate').style.display = ''
-    $('pin').value = ''
-  }
-
-  $('addForm').addEventListener('submit', async (ev) => {
-    ev.preventDefault()
-    const parsed = parseOTPAuth($('secret').value)
-    if (!parsed || !parsed.secret) { feedback('无法解析秘钥', 'err'); return }
-    totpEntries.push({ ...parsed, label: parsed.label || $('label').value || `条目 ${totpEntries.length + 1}` })
-    await persistVault()
-    $('secret').value = ''
-    $('label').value = ''
-    feedback('已添加')
-    renderTotp()
-  })
-
-  async function tickTotp() {
-    clearTimeout(totpTimer)
-    if (!totpUnlocked) return
-    for (const el of document.querySelectorAll('[data-entry]')) {
-      const e = totpEntries[Number(el.dataset.entry)]
-      if (!e) continue
-      try {
-        const { code, remain } = await totpNow(e)
-        el.querySelector('.code').textContent = code
-        const bar = el.querySelector('.bar')
-        bar.querySelector('div').style.width = `${(remain / (e.period || 30)) * 100}%`
-        bar.classList.toggle('warn', remain <= 5)
-      } catch { /* 单条坏数据不连累整页 */ }
-    }
-    totpTimer = setTimeout(tickTotp, 1000)
-  }
-
-  function renderTotp() {
-    $('list').innerHTML = totpEntries.length
-      ? totpEntries.map((e, i) => `
-          <div data-entry="${i}" style="display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--border)">
-            <div class="code mono" title="点击复制" style="font:700 22px/1 var(--mono); letter-spacing:3px; cursor:pointer; user-select:all; color:var(--ink)">------</div>
-            <div style="flex:1; min-width:0">
-              <div style="font-weight:600; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(e.label)}</div>
-              <div class="bar" style="height:3px; border-radius:2px; background:var(--bg); margin-top:6px; overflow:hidden"><div style="height:100%; width:0%; background:var(--accent)"></div></div>
-            </div>
-            <button class="subtle danger" data-del="${i}" title="删除">✕</button>
-          </div>`).join('')
-      : '<p class="hint empty">暂无条目。到站点「账号安全」里拿 otpauth:// 链接或 base32 秘钥粘贴添加。</p>'
-  }
-
-  document.addEventListener('click', async (ev) => {
-    if (ev.target.dataset?.del !== undefined && ev.target.closest('#page-totp')) {
-      totpEntries.splice(Number(ev.target.dataset.del), 1)
-      await persistVault()
-      renderTotp()
-      return
-    }
-    if (ev.target.classList?.contains('code') && ev.target.closest('#page-totp')) {
-      await navigator.clipboard.writeText(ev.target.textContent)
-      feedback('已复制验证码')
-    }
-  })
-
-  async function exportVault() {
-    const pass = prompt('设置备份口令（留空 = 明文导出，任何人可读——仅建议本地迁移用）') ?? ''
-    const payload = pass
-      ? { ptp_backup: 1, ...(await packBackup(totpEntries, pass)) }
-      : { ptp_backup: 1, plain: JSON.stringify(totpEntries) }
-    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `ptpatronus-totp-backup-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(a.href)
-    feedback('已导出')
-  }
-
-  async function importVault() {
-    const inp = document.createElement('input')
-    inp.type = 'file'
-    inp.accept = '.json,application/json'
-    inp.onchange = async () => {
-      try {
-        const file = inp.files[0]
-        if (!file) return
-        const parsed = JSON.parse(await file.text())
-        if (!parsed || parsed.ptp_backup !== 1) throw new Error('不是 PTPatronus 备份文件')
-        let imported
-        if (parsed.plain !== undefined) {
-          imported = JSON.parse(parsed.plain)
-        } else {
-          const pass = prompt('备份口令') || ''
-          imported = await unpackBackup(parsed, pass)
-        }
-        const have = new Set(totpEntries.map((e) => e.secret))
-        const add = (imported || []).filter((e) => e && e.secret && !have.has(e.secret))
-        totpEntries.push(...add)
-        await persistVault()
-        feedback(`导入 ${add.length} 条（重复跳过）`)
-        renderTotp()
-      } catch (e) {
-        feedback(`导入失败：${e.message.includes('operation failed') ? '口令错误' : e.message}`, 'err')
-      }
-    }
-    inp.click()
-  }
-  $('btnExport').onclick = exportVault
-  $('btnImport').onclick = importVault
-
-  // 自动尝试无 PIN 库直接解锁（有 PIN 则等用户输入）
-  try {
-    const { ptp_vault } = await chrome.storage.local.get('ptp_vault')
-    if (ptp_vault && ptp_vault.plain !== undefined) await tryUnlock('')
-  } catch { /* noop */ }
+  // ================= 两步验证器（实现在 options_totp.js） =================
+  initTotpPage($, feedback, armVaultAutolock)
 
   // ================= 同步与备份 =================
   const fmtSyncTime = (ts) => {
@@ -1345,17 +982,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   const saved = await chrome.storage.local.get({ webdav: {}, cookiecloud: {}, privacyMode: false })
+  // backupSecrets：WebDAV/CookieCloud 密码密封存储（secrets.js，PBKDF2+AES-GCM）。
+  // 旧版明文存在 webdav.password / cookiecloud.password 下——读取时兼容，
+  // 首次保存即迁移到密封形态（原明文字段清除）。
+  const sealed = await readSecret('backupSecrets')
+  const backupSecrets = sealed.ok ? (sealed.value || {}) : {}
+  const wdPassSaved = backupSecrets.webdav || saved.webdav.password || ''
+  const ccPassSaved = backupSecrets.cookiecloud || saved.cookiecloud.password || ''
   $('wdUrl').value = saved.webdav.url || ''
   $('wdUser').value = saved.webdav.username || ''
-  $('wdPass').value = saved.webdav.password || ''
+  $('wdPass').value = wdPassSaved
   $('ccUrl').value = saved.cookiecloud.url || ''
   $('ccUuid').value = saved.cookiecloud.uuid || ''
-  $('ccPass').value = saved.cookiecloud.password || ''
+  $('ccPass').value = ccPassSaved
   $('privacyMode').checked = !!saved.privacyMode
-  const saveBackupCfg = () => chrome.storage.local.set({
-    webdav: { url: $('wdUrl').value.trim(), username: $('wdUser').value.trim(), password: $('wdPass').value },
-    cookiecloud: { url: $('ccUrl').value.trim(), uuid: $('ccUuid').value.trim(), password: $('ccPass').value },
-  })
+  const saveBackupCfg = async () => {
+    await chrome.storage.local.set({
+      webdav: { url: $('wdUrl').value.trim(), username: $('wdUser').value.trim() },
+      cookiecloud: { url: $('ccUrl').value.trim(), uuid: $('ccUuid').value.trim() },
+    })
+    await writeSecret('backupSecrets', { webdav: $('wdPass').value, cookiecloud: $('ccPass').value })
+  }
   for (const id of ['wdUrl', 'wdUser', 'wdPass', 'ccUrl', 'ccUuid', 'ccPass']) {
     $(id).onchange = saveBackupCfg
   }

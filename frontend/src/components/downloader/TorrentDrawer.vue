@@ -22,9 +22,27 @@ const downloaderRef = toRef(props, 'downloader')
 
 const { torrents, connected, connect, disconnect } = useWs()
 
-// 实时种子（WS 按 downloader_id 过滤）
+// 实时种子（WS 按 downloader_id 过滤）。WS 不可达/丢帧重同步窗口内用 REST 兜底
+// （lastWsHit 超 10s 未更新则拉一次 /torrents，避免抽屉空转到 WS 恢复）。
 const snapshot = computed(() => torrents.value.find((s) => s.downloader_id === props.downloader.id))
-const list = computed(() => snapshot.value?.torrents ?? [])
+const restList = ref<import('@/api/downloader').Torrent[]>([])
+let lastWsHit = 0
+watch(
+  torrents,
+  () => {
+    lastWsHit = Date.now()
+  },
+  { immediate: true },
+)
+async function restFallback() {
+  if (Date.now() - lastWsHit < 10_000) return
+  try {
+    restList.value = await downloaderApi.torrents(props.downloader.id)
+  } catch {
+    /* REST 失败静默：WS 恢复后自然接管 */
+  }
+}
+const list = computed(() => snapshot.value?.torrents ?? (Date.now() - lastWsHit < 10_000 ? [] : restList.value))
 const wsStats = computed(() => snapshot.value?.stats ?? null)
 
 // TR 的 WS 不带 stats → 兜底轮询 GET /stats
@@ -74,6 +92,7 @@ async function loadCats() {
 function refresh() {
   loadCats()
   lastUpdated.value = new Date()
+  restFallback()
 }
 
 // —— 任务详情抽屉（实时 torrent 引用，随 WS 自动更新）——
@@ -87,10 +106,24 @@ function openDetail(hash: string) {
 
 // —— 对话框 + 分类管理（composable） ——
 const {
-  activeDialog, dialogOpen, dialogTitle, hasFooter,
-  removeFiles, dlgCategory, dlgTags, dlgUpLimit, dlgDlLimit, dlgLocation,
-  dlgRatioMode, dlgRatio, dlgSeedMode, dlgSeedTime, dlgLoading, tagOpts,
-  openDialog, submitDialog,
+  activeDialog,
+  dialogOpen,
+  dialogTitle,
+  hasFooter,
+  removeFiles,
+  dlgCategory,
+  dlgTags,
+  dlgUpLimit,
+  dlgDlLimit,
+  dlgLocation,
+  dlgRatioMode,
+  dlgRatio,
+  dlgSeedMode,
+  dlgSeedTime,
+  dlgLoading,
+  tagOpts,
+  openDialog,
+  submitDialog,
 } = useTorrentDialog(downloaderRef, refresh)
 
 const { catManageVisible, newCatName, newCatPath, addCat, delCat } = useCategoryManage(downloaderRef, loadCats)
@@ -111,6 +144,10 @@ watch(
       clearInterval(statsTimer)
       statsTimer = undefined
     }
+    if (v) {
+      lastWsHit = 0
+      restFallback()
+    } // 打开即拉一次 REST 兜底（幂等；WS 活跃时随后被覆盖）
   },
   { immediate: true }, // 首次打开时 visible 已为 true，无 immediate 则回调不触发、分类/TR 轮询不加载
 )
@@ -139,7 +176,9 @@ onUnmounted(() => {
       </span>
       <div class="workspace-actions">
         <el-button size="small" :icon="Refresh" @click="refresh">{{ t('common.refresh') }}</el-button>
-        <el-button v-if="caps.categoryCRUD" size="small" :icon="Setting" @click="catManageVisible = true">{{ t('tw.catManage') }}</el-button>
+        <el-button v-if="caps.categoryCRUD" size="small" :icon="Setting" @click="catManageVisible = true">{{
+          t('tw.catManage')
+        }}</el-button>
       </div>
     </header>
 
@@ -179,7 +218,14 @@ onUnmounted(() => {
         <el-checkbox v-model="removeFiles">{{ t('tw.removeFiles') }}</el-checkbox>
       </div>
       <div v-else-if="activeDialog?.kind === 'category'">
-        <el-select v-model="dlgCategory" filterable allow-create clearable :placeholder="t('tw.catPh')" style="width: 100%">
+        <el-select
+          v-model="dlgCategory"
+          filterable
+          allow-create
+          clearable
+          :placeholder="t('tw.catPh')"
+          style="width: 100%"
+        >
           <el-option v-for="c in cats" :key="c" :label="c" :value="c" />
         </el-select>
       </div>
@@ -228,19 +274,15 @@ onUnmounted(() => {
           />
         </div>
         <div class="sl-row">
-          <span class="sl-label">{{ t('tw.seedTime') }}{{ downloader.type === 'tr' ? t('tw.seedIdleSuffix') : '' }}</span>
+          <span class="sl-label"
+            >{{ t('tw.seedTime') }}{{ downloader.type === 'tr' ? t('tw.seedIdleSuffix') : '' }}</span
+          >
           <el-select v-model="dlgSeedMode" size="small" style="width: 130px">
             <el-option :label="t('tw.modeGlobal')" value="global" />
             <el-option :label="t('tw.modeUnlimited')" value="unlimited" />
             <el-option :label="t('tw.modeCustom')" value="custom" />
           </el-select>
-          <el-input-number
-            v-if="dlgSeedMode === 'custom'"
-            v-model="dlgSeedTime"
-            :min="0"
-            :step="15"
-            size="small"
-          />
+          <el-input-number v-if="dlgSeedMode === 'custom'" v-model="dlgSeedTime" :min="0" :step="15" size="small" />
           <span v-if="dlgSeedMode === 'custom'" class="text-muted">{{ t('tw.minutes') }}</span>
         </div>
         <p v-if="downloader.type === 'tr'" class="hint text-muted">{{ t('tw.trSeedNote') }}</p>
@@ -294,14 +336,46 @@ onUnmounted(() => {
 .extra-ops {
   margin: -4px 0 12px;
 }
-.workspace-head { display: flex; align-items: center; gap: var(--sp-2); padding: 6px 0; border-bottom: 1px solid var(--glass-border, rgba(127,127,127,.18)); }
-.ws-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); }
-.live-indicator { display: inline-flex; flex: 0 0 auto; align-items: center; gap: var(--sp-1); color: var(--pt-danger); font-size: var(--fs-xs); font-weight: 600; }
-.live-indicator.online { color: var(--pt-success); }
-.live-indicator.pending { color: var(--pt-warn); }
-.live-indicator :deep(svg) { width: 13px; }
-.workspace-actions { display: flex; flex: 0 0 auto; gap: var(--sp-2); }
-.connection-alert { margin: 10px 0 0; }
+.workspace-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--glass-border, rgba(127, 127, 127, 0.18));
+}
+.ws-url {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+}
+.live-indicator {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--pt-danger);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.live-indicator.online {
+  color: var(--pt-success);
+}
+.live-indicator.pending {
+  color: var(--pt-warn);
+}
+.live-indicator :deep(svg) {
+  width: 13px;
+}
+.workspace-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--sp-2);
+}
+.connection-alert {
+  margin: 10px 0 0;
+}
 .lim-row {
   display: flex;
   align-items: center;
@@ -346,8 +420,15 @@ onUnmounted(() => {
   background: transparent;
 }
 @media (max-width: 760px) {
-  .workspace-head { align-items: flex-start; flex-direction: column; }
-  .workspace-actions { width: 100%; }
-  .workspace-actions :deep(.el-button) { flex: 1; }
+  .workspace-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .workspace-actions {
+    width: 100%;
+  }
+  .workspace-actions :deep(.el-button) {
+    flex: 1;
+  }
 }
 </style>

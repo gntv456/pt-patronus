@@ -21,18 +21,41 @@ import { onBeforeRouteLeave } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 
 const {
-  router, wfId,
+  router,
+  wfId,
   categories,
-  name, description, triggerType, timer, eventType, enabled,
-  saving, running, selected, selectedEdge,
-  loadError, load,
-  onDragStart, onDrop, onDragOver,
-  save, run, runResult, showResult,
-  history, showHistory, openHistory, viewRun,
-  deleteSelected, deleteSelectedEdge,
+  name,
+  description,
+  triggerType,
+  timer,
+  eventType,
+  enabled,
+  saving,
+  running,
+  selected,
+  selectedEdge,
+  loadError,
+  load,
+  onDragStart,
+  onDrop,
+  onDragOver,
+  save,
+  run,
+  runResult,
+  showResult,
+  history,
+  showHistory,
+  openHistory,
+  viewRun,
+  deleteSelected,
+  deleteSelectedEdge,
   dirty,
-  templates, showTemplates, openTemplates, applyTemplate,
-  exportJSON, onImportFile,
+  templates,
+  showTemplates,
+  openTemplates,
+  applyTemplate,
+  exportJSON,
+  onImportFile,
 } = useWorkflowEditor(FLOW_ID)
 
 // P3: 节点库搜索
@@ -42,7 +65,12 @@ const filteredCategories = computed(() => {
   if (!q) return categories.value
   const m: Record<string, NodeInfo[]> = {}
   for (const [cat, items] of Object.entries(categories.value)) {
-    const f = items.filter((a) => a.name.toLowerCase().includes(q) || a.type.toLowerCase().includes(q) || (a.description || "").toLowerCase().includes(q))
+    const f = items.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.type.toLowerCase().includes(q) ||
+        (a.description || '').toLowerCase().includes(q),
+    )
     if (f.length) m[cat] = f
   }
   return m
@@ -59,9 +87,10 @@ const cronDesc = computed(() => {
   if (min.startsWith('*/')) return t('wfe.cronEveryNMin', { n: min.slice(2) })
   if (every(hour) && !min.includes('*')) return t('wfe.cronHourlyAt', { min })
   if (hour.startsWith('*/')) return t('wfe.cronEveryNHourAt', { h: hour.slice(2), min: min || 0 })
-  if (every(dom) && every(mon) && every(dow) && !min.includes('*') && !hour.includes('*')) return t('wfe.cronDailyAt', { time: `${hour.padStart(2,'0')}:${min.padStart(2,'0')}` })
+  if (every(dom) && every(mon) && every(dow) && !min.includes('*') && !hour.includes('*'))
+    return t('wfe.cronDailyAt', { time: `${hour.padStart(2, '0')}:${min.padStart(2, '0')}` })
   if (dow !== '*' && !dow.includes('*')) {
-    const time = `${hour.padStart(2,'0')}:${min.padStart(2,'0')}`
+    const time = `${hour.padStart(2, '0')}:${min.padStart(2, '0')}`
     return `${t(`wfe.dow.${+dow >= 0 && +dow <= 6 ? +dow : 'n'}`)} ${time} ${t('wfe.cronAtSuffix')}`
   }
   return t('wfe.cronCustom', { expr: timer.value })
@@ -135,7 +164,13 @@ onBeforeRouteLeave(async (_to, _from, next) => {
       <!-- 左：节点库 -->
       <aside class="palette glass">
         <div class="p-title">{{ t('wfe.palette') }}</div>
-        <el-input v-model="paletteSearch" size="small" :placeholder="t('wfe.searchNode')" clearable style="margin-bottom: 8px" />
+        <el-input
+          v-model="paletteSearch"
+          size="small"
+          :placeholder="t('wfe.searchNode')"
+          clearable
+          style="margin-bottom: 8px"
+        />
         <div v-if="loadError" class="load-err">{{ loadError }}</div>
         <div v-else-if="Object.keys(filteredCategories).length" class="cats">
           <div v-for="(items, cat) in filteredCategories" :key="cat" class="cat">
@@ -152,7 +187,9 @@ onBeforeRouteLeave(async (_to, _from, next) => {
             </div>
           </div>
         </div>
-        <div v-else-if="!loadError" class="text-muted small" style="padding: 12px; text-align: center">{{ t('wfe.noNodeMatch') }}</div>
+        <div v-else-if="!loadError" class="text-muted small" style="padding: 12px; text-align: center">
+          {{ t('wfe.noNodeMatch') }}
+        </div>
       </aside>
 
       <!-- 中：画布 -->
@@ -190,7 +227,9 @@ onBeforeRouteLeave(async (_to, _from, next) => {
           <div v-if="triggerType === 'timer'" class="field">
             <label>{{ t('wfe.cronExpr') }}</label>
             <el-input v-model="timer" size="small" placeholder="*/30 * * * *" />
-            <div class="text-muted small">{{ t('wfe.cron5') }} · <b>{{ cronDesc }}</b></div>
+            <div class="text-muted small">
+              {{ t('wfe.cron5') }} · <b>{{ cronDesc }}</b>
+            </div>
           </div>
           <div v-if="triggerType === 'event'" class="field">
             <label>{{ t('wfe.eventType') }}</label>
@@ -215,7 +254,9 @@ onBeforeRouteLeave(async (_to, _from, next) => {
             :schema="(selected.data as any).info.param_schema"
             v-model:params="(selected.data as any).params"
           />
-          <el-button size="small" type="danger" plain style="margin-top: 12px" @click="deleteSelected">{{ t('wfe.deleteNode') }}</el-button>
+          <el-button size="small" type="danger" plain style="margin-top: 12px" @click="deleteSelected">{{
+            t('wfe.deleteNode')
+          }}</el-button>
         </div>
         <div v-else class="text-muted small pad">{{ t('wfe.selectNodeHint') }}</div>
       </aside>
@@ -249,7 +290,9 @@ onBeforeRouteLeave(async (_to, _from, next) => {
         <el-table-column prop="state" :label="t('cloud.status')" width="90" />
         <el-table-column prop="trigger" :label="t('wfe.triggerCol')" width="90" />
         <el-table-column :label="t('wfe.time')">
-          <template #default="{ row }">{{ new Date(row.started_at).toLocaleString('zh-CN', { hour12: false }) }}</template>
+          <template #default="{ row }">{{
+            new Date(row.started_at).toLocaleString('zh-CN', { hour12: false })
+          }}</template>
         </el-table-column>
       </el-table>
     </el-dialog>
@@ -257,8 +300,10 @@ onBeforeRouteLeave(async (_to, _from, next) => {
     <!-- 模板 -->
     <el-dialog v-model="showTemplates" :title="t('wfe.tplTitle')" width="560px">
       <div class="tpl-list">
-        <div v-for="t in templates" :key="t.key" class="tpl-item" @click="applyTemplate(t)">
-          <div class="tpl-name">{{ t.name }} <span class="tpl-cat">{{ t.category }}</span></div>
+        <div v-a11y-button v-for="t in templates" :key="t.key" class="tpl-item" @click="applyTemplate(t)">
+          <div class="tpl-name">
+            {{ t.name }} <span class="tpl-cat">{{ t.category }}</span>
+          </div>
           <div class="text-muted small">{{ t.description }}</div>
         </div>
       </div>
@@ -320,7 +365,11 @@ onBeforeRouteLeave(async (_to, _from, next) => {
   font-size: var(--fs-body);
   margin-bottom: 4px;
   cursor: grab;
-  user-select: none; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth)
+  user-select: none;
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth);
 }
 .cat-item:hover {
   background: var(--pt-primary-bg);
@@ -368,7 +417,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 }
 .load-err {
   font-size: var(--fs-xs);
-  color:var(--pt-danger);
+  color: var(--pt-danger);
   padding: 8px;
   background: var(--pt-danger-bg);
   border-radius: var(--radius-xs);
@@ -396,11 +445,16 @@ onBeforeRouteLeave(async (_to, _from, next) => {
   padding: 12px;
   border-radius: var(--radius-sm);
   border: 1px solid rgba(0, 0, 0, 0.1);
-  cursor: pointer; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth), box-shadow var(--dur-base) var(--ease-out-smooth)
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth),
+    box-shadow var(--dur-base) var(--ease-out-smooth);
 }
 .tpl-item:hover {
   background: var(--pt-primary-bg);
-  border-color:var(--pt-primary);
+  border-color: var(--pt-primary);
 }
 .tpl-name {
   font-weight: 700;
@@ -410,7 +464,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
   padding: 1px 8px;
   border-radius: var(--radius-pill);
   background: var(--pt-primary-2-bg);
-  color:var(--pt-primary-2);
+  color: var(--pt-primary-2);
   margin-left: 6px;
 }
 </style>

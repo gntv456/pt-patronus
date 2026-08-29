@@ -11,6 +11,8 @@
 #   AGENT_REPO    （可选）GitHub 仓库，默认 gntv456/pt-patronus（fork 时改）
 #   AGENT_DOWNLOAD_BASE （可选，闭源分发用）网盘直链基址，如 https://网盘/path/agent；
 #                        设了则从 ${AGENT_DOWNLOAD_BASE}/ptpatronus-agent-linux-<arch> 下载，不走 GitHub
+#   AGENT_SHA256_BASE   （可选）sha256 直链基址；未设时对 GitHub 源取 ${URL}.sha256，
+#                        对网盘源必须显式提供——任一源校验失败即中止安装（供应链加固）
 set -e
 
 AGENT_ID="${AGENT_ID:-}"
@@ -18,6 +20,7 @@ AGENT_SECRET="${AGENT_SECRET:-}"
 DASHBOARD_URL="${DASHBOARD_URL:-}"
 AGENT_REPO="${AGENT_REPO:-gntv456/pt-patronus}"
 AGENT_DOWNLOAD_BASE="${AGENT_DOWNLOAD_BASE:-}"
+AGENT_SHA256_BASE="${AGENT_SHA256_BASE:-}"
 INSTALL_DIR="/opt/ptpatronus-agent"
 ENV_FILE="/etc/ptpatronus-agent.env"
 SERVICE="ptpatronus-agent"
@@ -50,11 +53,35 @@ else
 fi
 echo "[install] 下载 agent（linux-${GOARCH}）..."
 ok=0
+DL_URL=""
 for u in "${URLS[@]}"; do
-  if curl -fsSL "$u" -o "$INSTALL_DIR/agent"; then ok=1; break; fi
+  if curl -fsSL "$u" -o "$INSTALL_DIR/agent"; then ok=1; DL_URL="$u"; break; fi
   echo "[install] 源失败，换下一个：$u"
 done
 [ "$ok" = "1" ] || err "下载失败，请检查网络或手动下载 ${ASSET} 到 ${INSTALL_DIR}/agent"
+
+# sha256 强制校验（供应链加固）：镜像/网盘任一被劫持时拒绝安装 root 级 systemd 服务。
+# 校验值来源：AGENT_SHA256_BASE 直链 > GitHub Release 同名 .sha256 附件 > AGENT_SHA256 环境变量。
+EXPECT_SHA="${AGENT_SHA256:-}"
+if [ -z "$EXPECT_SHA" ]; then
+  SHA_URL=""
+  if [ -n "$AGENT_SHA256_BASE" ]; then
+    SHA_URL="${AGENT_SHA256_BASE%/}/${ASSET}.sha256"
+  elif [ -z "$AGENT_DOWNLOAD_BASE" ]; then
+    SHA_URL="https://github.com/${AGENT_REPO}/releases/latest/download/${ASSET}.sha256"
+  fi
+  if [ -n "$SHA_URL" ]; then
+    EXPECT_SHA="$(curl -fsSL "$SHA_URL" 2>/dev/null | tr -d ' \n' | cut -d' ' -f1 || true)"
+  fi
+fi
+if [ -z "$EXPECT_SHA" ]; then
+  err "缺少 agent sha256 校验值（网盘源必须设 AGENT_SHA256_BASE 或 AGENT_SHA256）——拒绝无校验安装"
+fi
+GOT_SHA="$(sha256sum "$INSTALL_DIR/agent" | cut -d' ' -f1)"
+if [ "$GOT_SHA" != "$EXPECT_SHA" ]; then
+  rm -f "$INSTALL_DIR/agent"
+  err "sha256 校验失败：期望 ${EXPECT_SHA}，实际 ${GOT_SHA}（下载源可能被篡改，已删除文件）"
+fi
 chmod +x "$INSTALL_DIR/agent"
 
 # secret 写独立 env 文件（umask 077 即时 600，避免进 systemd unit 明文被 systemctl show 泄露）

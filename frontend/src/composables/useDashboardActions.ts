@@ -28,17 +28,32 @@ export function useDashboardActions() {
 
   const connectivityValues = computed(() => Object.values(connectivity.value))
   const connectedCount = computed(() => connectivityValues.value.filter((item) => item.status === 'connected').length)
-  const disconnectedCount = computed(() => connectivityValues.value.filter((item) => item.status === 'disconnected').length)
+  const disconnectedCount = computed(
+    () => connectivityValues.value.filter((item) => item.status === 'disconnected').length,
+  )
   const disabledCount = computed(() => connectivityValues.value.filter((item) => item.status === 'disabled').length)
 
   const dashboardActions = computed<DashboardAction[]>(() => {
     const actions: DashboardAction[] = []
     for (const site of cookieAlerts.value) {
-      actions.push({ key: `cookie-${site}`, tone: 'danger', site, title: 'Cookie 已失效', detail: '登录态失效，统计与自动化已暂停' })
+      actions.push({
+        key: `cookie-${site}`,
+        tone: 'danger',
+        site,
+        title: 'Cookie 已失效',
+        detail: '登录态失效，统计与自动化已暂停',
+      })
     }
     for (const status of connectivityValues.value) {
       if (status.status !== 'disconnected' || cookieAlerts.value.includes(status.site_name)) continue
-      actions.push({ key: `connect-${status.site_id}`, tone: 'danger', site: status.site_name, title: '站点未联通', detail: status.error || '未返回具体原因', siteId: status.site_id })
+      actions.push({
+        key: `connect-${status.site_id}`,
+        tone: 'danger',
+        site: status.site_name,
+        title: '站点未联通',
+        detail: status.error || '未返回具体原因',
+        siteId: status.site_id,
+      })
     }
     hrAlerts.value.forEach((alert, index) => {
       actions.push({
@@ -50,7 +65,13 @@ export function useDashboardActions() {
       })
     })
     for (const item of syncErrors.value) {
-      actions.push({ key: `sync-${item.site}`, tone: 'info', site: item.site, title: '统计同步失败', detail: item.error })
+      actions.push({
+        key: `sync-${item.site}`,
+        tone: 'info',
+        site: item.site,
+        title: '统计同步失败',
+        detail: item.error,
+      })
     }
     return actions
   })
@@ -89,8 +110,21 @@ export function useDashboardActions() {
   }
 
   return {
-    hrAlerts, cookieAlerts, connectivity, refreshing, loadCached, refreshConnectivity,
-    connectivityValues, connectedCount, disconnectedCount, disabledCount,
-    dashboardActions, totalIssueCount, unreadCount, healthSegments, showAction, showConnectivityReason,
+    hrAlerts,
+    cookieAlerts,
+    connectivity,
+    refreshing,
+    loadCached,
+    refreshConnectivity,
+    connectivityValues,
+    connectedCount,
+    disconnectedCount,
+    disabledCount,
+    dashboardActions,
+    totalIssueCount,
+    unreadCount,
+    healthSegments,
+    showAction,
+    showConnectivityReason,
   }
 }

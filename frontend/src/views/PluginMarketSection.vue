@@ -11,7 +11,6 @@ import {
   trustType,
   trustLabel,
 } from './pluginsHelpers'
-
 const { t } = useI18n()
 
 defineProps<{
@@ -37,6 +36,8 @@ defineProps<{
   singleInstance: boolean
 }>()
 
+
+
 const emit = defineEmits<{
   (e: 'refresh'): void
   (e: 'install', id: string): void
@@ -58,22 +59,48 @@ const emit = defineEmits<{
   (e: 'moveInstance', index: number, delta: -1 | 1): void
 }>()
 
-// 新分身名输入（分神对话框）。
 const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
+
+function createInstance() {
+  emit('createInstance', newInstanceKey.value)
+  newInstanceKey.value = ''
+}
 </script>
 
 <template>
   <div class="market-section">
     <div v-if="market" class="market-meta-bar">
-      <span>{{ t('pms.meta', { app: market.app_version || '-', api: market.api_version || '-', n: (market.host_capabilities || []).length }) }}</span>
-      <span v-if="marketSources.length" class="market-src-count">{{ t('pms.srcCount', { n: marketSources.length }) }}</span>
+      <span>{{
+        t('pms.meta', {
+          app: market.app_version || '-',
+          api: market.api_version || '-',
+          n: (market.host_capabilities || []).length,
+        })
+      }}</span>
+      <span v-if="marketSources.length" class="market-src-count">{{
+        t('pms.srcCount', { n: marketSources.length })
+      }}</span>
     </div>
 
     <!-- 视图切换：万灵阁(全部) / 百宝袋(收藏) / 百鸟朝凤(老树洞/蹦蹦新窝) -->
     <div class="cat-bar">
-      <button class="cat-pill" :class="{ active: marketView === 'all' }" @click="emit('update:marketView', 'all')">{{ t('pms.viewAll') }}</button>
-      <button class="cat-pill" :class="{ active: marketView === 'favorites' }" @click="emit('update:marketView', 'favorites')">⭐ {{ t('pms.viewFav') }}</button>
-      <button class="cat-pill" :class="{ active: marketView === 'charts' }" @click="emit('update:marketView', 'charts')">🔥 {{ t('pms.viewCharts') }}</button>
+      <button class="cat-pill" :class="{ active: marketView === 'all' }" @click="emit('update:marketView', 'all')">
+        {{ t('pms.viewAll') }}
+      </button>
+      <button
+        class="cat-pill"
+        :class="{ active: marketView === 'favorites' }"
+        @click="emit('update:marketView', 'favorites')"
+      >
+        ⭐ {{ t('pms.viewFav') }}
+      </button>
+      <button
+        class="cat-pill"
+        :class="{ active: marketView === 'charts' }"
+        @click="emit('update:marketView', 'charts')"
+      >
+        🔥 {{ t('pms.viewCharts') }}
+      </button>
     </div>
 
     <!-- 百鸟朝凤视图 -->
@@ -85,7 +112,11 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
           <span class="chart-name">{{ row.plugin_id }}</span>
           <span class="chart-num">{{ t('pms.installs', { n: row.installs }) }}</span>
         </div>
-        <el-empty v-if="!(marketCharts?.disciples ?? []).length" :description="t('pms.noInstallData')" :image-size="60" />
+        <el-empty
+          v-if="!(marketCharts?.disciples ?? []).length"
+          :description="t('pms.noInstallData')"
+          :image-size="60"
+        />
       </div>
       <div class="chart-col solid-card">
         <div class="chart-title">🌱 {{ t('pms.chartNew') }}</div>
@@ -121,62 +152,64 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
 
     <!-- 万灵阁（全部）视图 -->
     <template v-else>
-    <div v-if="marketCategories.length" class="cat-bar">
-      <button
-        class="cat-pill"
-        :class="{ active: marketCategory === '' }"
-        @click="emit('update:marketCategory', '')"
-      >{{ t('pms.viewAll') }} {{ (market?.plugins || []).length }}</button>
-      <button
-        v-for="c in marketCategories"
-        :key="c"
-        class="cat-pill"
-        :class="{ active: marketCategory === c }"
-        @click="emit('update:marketCategory', c)"
-      >{{ c }}</button>
-    </div>
-
-    <div v-loading="loading" class="market-grid">
-      <div
-        v-for="item in filteredMarketPlugins"
-        :key="item.id"
-        class="market-card solid-card solid-card-hover"
-      >
-        <div class="mc-top">
-          <div class="mc-avatar" :style="{ background: avatarColor(item.name) }">{{ pluginInitial(item.name) }}</div>
-          <div class="mc-info">
-            <div class="mc-name">{{ item.name }}</div>
-            <div class="mc-publisher">{{ item.publisher?.name || item.author || shortSource(item.source) || t('pms.unknown') }}</div>
-          </div>
-          <el-tag size="small" effect="plain">v{{ item.version }}</el-tag>
-        </div>
-
-        <div class="mc-desc">{{ item.description || t('pms.noDesc') }}</div>
-
-        <div class="mc-tags">
-          <el-tag size="small" :type="trustType(item.trust_level)">{{ trustLabel(item.trust_level) }}</el-tag>
-          <el-tag v-if="item.category" size="small" effect="plain">{{ item.category }}</el-tag>
-          <el-tag size="small" :type="compatibilityType(item)" effect="plain">{{ compatibilityLabel(item) }}</el-tag>
-          <el-tag v-if="item.install_count" size="small" type="info" effect="plain">{{ t('pms.installs', { n: item.install_count }) }}</el-tag>
-        </div>
-
-        <div class="mc-foot">
-          <el-button
-            size="small"
-            type="primary"
-            :icon="Download"
-            :disabled="!canInstallMarketItem(item)"
-            :loading="installing === item.id"
-            @click="emit('install', item.id)"
-          >
-            {{ marketInstallLabel(item) }}
-          </el-button>
-          <el-button size="small" :icon="item.favorited ? StarFilled : Star" @click="emit('toggleFavorite', item)" />
-          <el-button v-if="item.installed" size="small" :icon="Setting" @click="emit('openInstances', item.id)">{{ t('pms.instances') }}</el-button>
-        </div>
+      <div v-if="marketCategories.length" class="cat-bar">
+        <button class="cat-pill" :class="{ active: marketCategory === '' }" @click="emit('update:marketCategory', '')">
+          {{ t('pms.viewAll') }} {{ (market?.plugins || []).length }}
+        </button>
+        <button
+          v-for="c in marketCategories"
+          :key="c"
+          class="cat-pill"
+          :class="{ active: marketCategory === c }"
+          @click="emit('update:marketCategory', c)"
+        >
+          {{ c }}
+        </button>
       </div>
-      <el-empty v-if="!loading && !filteredMarketPlugins.length" :description="t('pms.noMarket')" />
-    </div>
+
+      <div v-loading="loading" class="market-grid">
+        <div v-for="item in filteredMarketPlugins" :key="item.id" class="market-card solid-card solid-card-hover">
+          <div class="mc-top">
+            <div class="mc-avatar" :style="{ background: avatarColor(item.name) }">{{ pluginInitial(item.name) }}</div>
+            <div class="mc-info">
+              <div class="mc-name">{{ item.name }}</div>
+              <div class="mc-publisher">
+                {{ item.publisher?.name || item.author || shortSource(item.source) || t('pms.unknown') }}
+              </div>
+            </div>
+            <el-tag size="small" effect="plain">v{{ item.version }}</el-tag>
+          </div>
+
+          <div class="mc-desc">{{ item.description || t('pms.noDesc') }}</div>
+
+          <div class="mc-tags">
+            <el-tag size="small" :type="trustType(item.trust_level)">{{ trustLabel(item.trust_level) }}</el-tag>
+            <el-tag v-if="item.category" size="small" effect="plain">{{ item.category }}</el-tag>
+            <el-tag size="small" :type="compatibilityType(item)" effect="plain">{{ compatibilityLabel(item) }}</el-tag>
+            <el-tag v-if="item.install_count" size="small" type="info" effect="plain">{{
+              t('pms.installs', { n: item.install_count })
+            }}</el-tag>
+          </div>
+
+          <div class="mc-foot">
+            <el-button
+              size="small"
+              type="primary"
+              :icon="Download"
+              :disabled="!canInstallMarketItem(item)"
+              :loading="installing === item.id"
+              @click="emit('install', item.id)"
+            >
+              {{ marketInstallLabel(item) }}
+            </el-button>
+            <el-button size="small" :icon="item.favorited ? StarFilled : Star" @click="emit('toggleFavorite', item)" />
+            <el-button v-if="item.installed" size="small" :icon="Setting" @click="emit('openInstances', item.id)">{{
+              t('pms.instances')
+            }}</el-button>
+          </div>
+        </div>
+        <el-empty v-if="!loading && !filteredMarketPlugins.length" :description="t('pms.noMarket')" />
+      </div>
     </template>
   </div>
 
@@ -187,13 +220,19 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
     width="560px"
     @update:model-value="emit('update:instancesVisible', $event)"
   >
-    <el-alert v-if="singleInstance" type="info" :closable="false" show-icon
+    <el-alert
+      v-if="singleInstance"
+      type="info"
+      :closable="false"
+      show-icon
       :title="t('pms.singleTitle')"
-      :description="t('pms.singleDesc')" style="margin-bottom: 12px" />
+      :description="t('pms.singleDesc')"
+      style="margin-bottom: 12px"
+    />
     <template v-else>
       <div style="display: flex; gap: 8px; margin-bottom: 12px">
         <el-input v-model="newInstanceKey" :placeholder="t('pms.newInstPh')" size="small" />
-        <el-button size="small" type="primary" @click="emit('createInstance', newInstanceKey); newInstanceKey = ''">{{ t('pms.fork') }}</el-button>
+        <el-button size="small" type="primary" @click="createInstance()">{{ t('pms.fork') }}</el-button>
       </div>
       <el-table :data="instances" size="small" :empty-text="t('pms.noInst')">
         <el-table-column :label="t('pms.colInst')" min-width="120">
@@ -201,18 +240,38 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
         </el-table-column>
         <el-table-column :label="t('pms.colOnOff')" width="70">
           <template #default="{ row }">
-            <el-switch size="small" :model-value="(row as PluginInstance).enabled" @change="emit('toggleInstance', row as PluginInstance)" />
+            <el-switch
+              size="small"
+              :model-value="(row as PluginInstance).enabled"
+              @change="emit('toggleInstance', row as PluginInstance)"
+            />
           </template>
         </el-table-column>
         <el-table-column :label="t('pms.colOrder')" width="110">
           <template #default="{ $index }">
-            <el-button size="small" :icon="Top" circle plain :disabled="$index === 0" @click="emit('moveInstance', $index, -1)" />
-            <el-button size="small" :icon="Bottom" circle plain :disabled="$index === instances.length - 1" @click="emit('moveInstance', $index, 1)" />
+            <el-button
+              size="small"
+              :icon="Top"
+              circle
+              plain
+              :disabled="$index === 0"
+              @click="emit('moveInstance', $index, -1)"
+            />
+            <el-button
+              size="small"
+              :icon="Bottom"
+              circle
+              plain
+              :disabled="$index === instances.length - 1"
+              @click="emit('moveInstance', $index, 1)"
+            />
           </template>
         </el-table-column>
         <el-table-column :label="t('common.action')" width="70">
           <template #default="{ row }">
-            <el-button size="small" link type="danger" @click="emit('removeInstance', row as PluginInstance)">{{ t('pms.removeInst') }}</el-button>
+            <el-button size="small" link type="danger" @click="emit('removeInstance', row as PluginInstance)">{{
+              t('pms.removeInst')
+            }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -228,19 +287,31 @@ const newInstanceKey = defineModel<string>('newInstanceKey', { default: '' })
     <div class="market-source-tip">{{ t('pms.srcTip') }}</div>
     <div class="market-source-list">
       <div v-for="(_, i) in marketSourceDraft" :key="i" class="market-source-row">
-        <el-tag v-if="marketSourceDraft[i] === marketSourceOfficial" type="warning" size="small" effect="light">{{ t('pms.official') }}</el-tag>
+        <el-tag v-if="marketSourceDraft[i] === marketSourceOfficial" type="warning" size="small" effect="light">{{
+          t('pms.official')
+        }}</el-tag>
         <el-input
           :model-value="marketSourceDraft[i]"
           clearable
           :placeholder="i === 0 ? 'https://github.com/owner/repo' : 'https://github.com/owner/repo'"
-          @update:model-value="emit('update:marketSourceDraft', marketSourceDraft.map((s, idx) => idx === i ? $event : s))"
+          @update:model-value="
+            emit(
+              'update:marketSourceDraft',
+              marketSourceDraft.map((s, idx) => (idx === i ? $event : s)),
+            )
+          "
         />
         <el-button :icon="Delete" circle plain @click="emit('removeSourceRow', i)" />
       </div>
     </div>
     <div class="market-source-add">
       <el-button :icon="Plus" plain @click="emit('addSourceRow')">{{ t('pms.addSource') }}</el-button>
-      <el-button v-if="marketSourceOfficial && !marketSourceDraft.includes(marketSourceOfficial)" plain @click="emit('restoreOfficial')">{{ t('pms.restoreOfficial') }}</el-button>
+      <el-button
+        v-if="marketSourceOfficial && !marketSourceDraft.includes(marketSourceOfficial)"
+        plain
+        @click="emit('restoreOfficial')"
+        >{{ t('pms.restoreOfficial') }}</el-button
+      >
     </div>
     <template #footer>
       <el-button @click="emit('update:marketSourceVisible', false)">{{ t('common.cancel') }}</el-button>

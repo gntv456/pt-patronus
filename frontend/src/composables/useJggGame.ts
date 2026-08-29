@@ -2,7 +2,12 @@ import { ref, computed, type Ref } from 'vue'
 import { entertainmentApi, type GameStats, type PlayResult, type GameRecord } from '@/api/entertainment'
 
 // 9 个奖品（源码 jgg/magic_grid_config.php 固定配置；id 1-8 占外圈，id9 归到 VIP1天格）。
-export interface Prize { id: number; name: string; icon: string; color: string }
+export interface Prize {
+  id: number
+  name: string
+  icon: string
+  color: string
+}
 
 export const prizes: Prize[] = [
   { id: 1, name: '勋章', icon: '🎊', color: '#4CAF50' },
@@ -50,9 +55,7 @@ export function useJggGame(siteId: Ref<number>) {
     for (const p of bulk.value?.prizes ?? []) {
       map.set(p.prize_name, (map.get(p.prize_name) ?? 0) + 1)
     }
-    return [...map.entries()]
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
+    return [...map.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
   })
 
   async function refreshStats() {
@@ -131,7 +134,18 @@ export function useJggGame(siteId: Ref<number>) {
   }
 
   return {
-    stats, spinning, highlight, result, bulk, bulkCount, bulkSpinning, records, bulkStats,
-    refreshStats, refreshHistory, spin, drawMulti,
+    stats,
+    spinning,
+    highlight,
+    result,
+    bulk,
+    bulkCount,
+    bulkSpinning,
+    records,
+    bulkStats,
+    refreshStats,
+    refreshHistory,
+    spin,
+    drawMulti,
   }
 }

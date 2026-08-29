@@ -70,7 +70,12 @@ const scoreColor = computed(() => {
 })
 
 const nodeIcon: Record<string, string> = {
-  site: '🌐', subscribe: '🔔', download: '⬇️', organize: '🗂️', library: '🎬', watch: '📺',
+  site: '🌐',
+  subscribe: '🔔',
+  download: '⬇️',
+  organize: '🗂️',
+  library: '🎬',
+  watch: '📺',
 }
 
 function pickNode(n: WorkbenchNode) {
@@ -78,8 +83,12 @@ function pickNode(n: WorkbenchNode) {
 }
 
 const NODE_ROUTES: Record<string, string> = {
-  site: '/sites', subscribe: '/subscriptions', download: '/downloaders',
-  organize: '/transfer', library: '/mediaserver', watch: '/mediaserver',
+  site: '/sites',
+  subscribe: '/subscriptions',
+  download: '/downloaders',
+  organize: '/transfer',
+  library: '/mediaserver',
+  watch: '/mediaserver',
 }
 
 function goNode(n: WorkbenchNode) {
@@ -97,7 +106,12 @@ const summaryRows = computed(() => {
     { node: 'download', label: t('wb.s.organized'), value: `${s.downloads_done}` },
     { node: 'organize', label: t('wb.s.orgFailed'), value: `${s.organize_failed}`, danger: s.organize_failed > 0 },
     { node: 'organize', label: t('wb.s.cloudDone'), value: `${s.cloud_tasks_done}` },
-    { node: 'organize', label: t('wb.s.cloudPending'), value: `${s.cloud_tasks_pending}`, danger: s.cloud_tasks_pending > 10 },
+    {
+      node: 'organize',
+      label: t('wb.s.cloudPending'),
+      value: `${s.cloud_tasks_pending}`,
+      danger: s.cloud_tasks_pending > 10,
+    },
     { node: 'organize', label: t('wb.s.strm'), value: `${s.strm_generated}` },
     { node: 'watch', label: t('wb.s.played'), value: `${s.played_today}` },
     { node: 'site', label: t('wb.s.upToday'), value: fmtBytes(Math.max(0, s.uploaded_delta)) },
@@ -123,12 +137,22 @@ function timeAgo(iso: string): string {
         <h3>{{ greeting }}，{{ auth.username || t('wb.friend') }}</h3>
         <p class="wb-insight">{{ todayInsight }}</p>
       </div>
-      <button class="wb-score" :title="t('wb.scoreTip')" @click="router.push({ name: 'settings', query: { section: 'maintain' } })">
+      <button
+        class="wb-score"
+        :title="t('wb.scoreTip')"
+        @click="router.push({ name: 'settings', query: { section: 'maintain' } })"
+      >
         <svg viewBox="0 0 36 36" class="score-ring">
           <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--divider)" stroke-width="4" />
           <circle
-            cx="18" cy="18" r="15.5" fill="none" :stroke="scoreColor" stroke-width="4"
-            stroke-linecap="round" :stroke-dasharray="`${((wb?.health_score ?? 100) / 100) * 97.4} 97.4`"
+            cx="18"
+            cy="18"
+            r="15.5"
+            fill="none"
+            :stroke="scoreColor"
+            stroke-width="4"
+            stroke-linecap="round"
+            :stroke-dasharray="`${((wb?.health_score ?? 100) / 100) * 97.4} 97.4`"
             transform="rotate(-90 18 18)"
           />
           <text x="18" y="21.5" text-anchor="middle" class="score-num">{{ wb?.health_score ?? '--' }}</text>
@@ -185,7 +209,9 @@ function timeAgo(iso: string): string {
           </div>
           <el-progress
             v-if="e.progress != null"
-            :percentage="e.progress" :stroke-width="6" :show-text="false"
+            :percentage="e.progress"
+            :stroke-width="6"
+            :show-text="false"
             :status="e.progress >= 100 ? 'success' : undefined"
           />
         </div>
@@ -195,7 +221,10 @@ function timeAgo(iso: string): string {
     <!-- 今日摘要 + 媒体库态势 -->
     <div class="wb-bottom">
       <div class="wb-summary">
-        <div class="wb-sec-title">{{ t('wb.summary') }}<template v-if="activeNode"> · {{ wb?.nodes.find(n => n.key === activeNode)?.label }}</template></div>
+        <div class="wb-sec-title">
+          {{ t('wb.summary')
+          }}<template v-if="activeNode"> · {{ wb?.nodes.find((n) => n.key === activeNode)?.label }}</template>
+        </div>
         <div class="wb-summary-grid">
           <div v-for="(r, i) in summaryRows" :key="i" class="wb-stat">
             <span class="stat-value" :class="{ danger: r.danger }">{{ r.value }}</span>
@@ -222,62 +251,220 @@ function timeAgo(iso: string): string {
 </template>
 
 <style scoped>
-.workbench { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-4); }
-.wb-top { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-4); }
-.wb-hello h3 { margin: 0; font-size: var(--fs-title); }
-.wb-insight { margin: var(--sp-1) 0 0; color: var(--text-muted); font-size: var(--fs-sm); }
-.wb-score { display: flex; align-items: center; gap: var(--sp-2); background: none; border: none; cursor: pointer; padding: 0; }
-.score-ring { width: 52px; height: 52px; }
-.score-num { font-size: 13px; font-weight: 700; fill: var(--text-strong); }
-.score-label { font-size: var(--fs-xs); color: var(--text-muted); }
+.workbench {
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.wb-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.wb-hello h3 {
+  margin: 0;
+  font-size: var(--fs-title);
+}
+.wb-insight {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.wb-score {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.score-ring {
+  width: 52px;
+  height: 52px;
+}
+.score-num {
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--text-strong);
+}
+.score-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
 
-.wb-flow { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-.wb-flow-label { font-size: var(--fs-xs); color: var(--text-muted); }
-.wb-flow-nodes { display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
+.wb-flow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.wb-flow-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.wb-flow-nodes {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
 .wb-node {
-  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
-  border-radius: var(--radius-pill); border: 1px solid var(--divider);
-  background: var(--surface-muted); cursor: pointer; transition: all var(--dur-fast) var(--ease-out-smooth);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--divider);
+  background: var(--surface-muted);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
 }
-.wb-node:hover { border-color: var(--pt-primary); }
-.wb-node.active { background: var(--pt-primary-bg); border-color: var(--pt-primary); }
-.wb-node.overview { font-size: var(--fs-xs); }
-.wb-node-count { font-weight: 700; }
-.wb-flow-arrow { color: var(--text-disabled); }
+.wb-node:hover {
+  border-color: var(--pt-primary);
+}
+.wb-node.active {
+  background: var(--pt-primary-bg);
+  border-color: var(--pt-primary);
+}
+.wb-node.overview {
+  font-size: var(--fs-xs);
+}
+.wb-node-count {
+  font-weight: 700;
+}
+.wb-flow-arrow {
+  color: var(--text-disabled);
+}
 
-.wb-mid { display: grid; grid-template-columns: 1fr 1.4fr; gap: var(--sp-4); }
-.wb-sec-title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-muted); margin-bottom: var(--sp-2); }
-.wb-empty { font-size: var(--fs-sm); color: var(--text-disabled); padding: var(--sp-3) 0; }
+.wb-mid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: var(--sp-4);
+}
+.wb-sec-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+.wb-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-disabled);
+  padding: var(--sp-3) 0;
+}
 .wb-todo {
-  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left;
-  padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-1); border-radius: var(--radius-sm);
-  border: 1px solid var(--divider); background: var(--surface-muted); cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--divider);
+  background: var(--surface-muted);
+  cursor: pointer;
 }
-.wb-todo:hover { border-color: var(--pt-primary); }
-.wb-todo.lv-danger { border-left: 3px solid var(--pt-danger); }
-.wb-todo.lv-warning { border-left: 3px solid var(--pt-warn); }
-.todo-title { font-weight: 600; font-size: var(--fs-body); }
-.todo-detail { font-size: var(--fs-xs); color: var(--text-muted); }
+.wb-todo:hover {
+  border-color: var(--pt-primary);
+}
+.wb-todo.lv-danger {
+  border-left: 3px solid var(--pt-danger);
+}
+.wb-todo.lv-warning {
+  border-left: 3px solid var(--pt-warn);
+}
+.todo-title {
+  font-weight: 600;
+  font-size: var(--fs-body);
+}
+.todo-detail {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
 
-.wb-event { padding: var(--sp-2) 0; border-bottom: 1px solid var(--divider); }
-.wb-event:last-child { border-bottom: none; }
-.event-line { display: flex; justify-content: space-between; gap: var(--sp-2); }
-.event-title { font-size: var(--fs-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.event-time { font-size: var(--fs-xs); color: var(--text-disabled); flex-shrink: 0; }
+.wb-event {
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--divider);
+}
+.wb-event:last-child {
+  border-bottom: none;
+}
+.event-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.event-title {
+  font-size: var(--fs-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-time {
+  font-size: var(--fs-xs);
+  color: var(--text-disabled);
+  flex-shrink: 0;
+}
 
-.wb-bottom { display: grid; grid-template-columns: 1.6fr 1fr; gap: var(--sp-4); }
-.wb-summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--sp-2); }
-.wb-stat { display: flex; flex-direction: column; padding: var(--sp-2); border-radius: var(--radius-xs); background: var(--surface-muted); }
-.stat-value { font-weight: 700; font-size: var(--fs-lg); }
-.stat-value.danger { color: var(--pt-danger); }
-.stat-label { font-size: var(--fs-xs); color: var(--text-muted); }
-.wb-lib-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) 0; border-bottom: 1px solid var(--divider); }
-.wb-lib-row:last-child { border-bottom: none; }
-.lib-name { font-weight: 600; }
-.lib-counts { font-size: var(--fs-sm); color: var(--text-muted); }
-.lib-time { font-size: var(--fs-xs); color: var(--text-disabled); }
+.wb-bottom {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--sp-4);
+}
+.wb-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--sp-2);
+}
+.wb-stat {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-2);
+  border-radius: var(--radius-xs);
+  background: var(--surface-muted);
+}
+.stat-value {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+}
+.stat-value.danger {
+  color: var(--pt-danger);
+}
+.stat-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.wb-lib-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--divider);
+}
+.wb-lib-row:last-child {
+  border-bottom: none;
+}
+.lib-name {
+  font-weight: 600;
+}
+.lib-counts {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.lib-time {
+  font-size: var(--fs-xs);
+  color: var(--text-disabled);
+}
 
 @media (max-width: 900px) {
-  .wb-mid, .wb-bottom { grid-template-columns: 1fr; }
+  .wb-mid,
+  .wb-bottom {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

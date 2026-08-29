@@ -1,12 +1,14 @@
 package v1
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -40,23 +42,52 @@ func dbFail(c *gin.Context, action string, err error) {
 
 // AuthHandler 处理好学账号/Cookie 登录、登出与（legacy）激活码。
 type AuthHandler struct {
-	db       *gorm.DB
-	jwt      *security.JWT
-	act      *auth.Activation        // legacy 激活码（不再作准入 gate，保留 Activate 端点）
-	hxptAuth auth.HxptAuthenticator  // 好学登录 + VIP 校验
-	crypto   *security.Crypto        // 加密 HxptCookieEnc
-	tvCache  *auth.TokenVersionCache // 登出 invalidate
-	tickets  *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
-	demoMode bool                    // 显式开启演示登录（默认关闭）
-	oidc     *auth.OIDCService       // OIDC/SSO（可空：未装配时 OIDC 端点返 503）
-	ocrCfg   func() ocr.Config       // OCR 服务配置读取（可空：无 OCR，验证码人工输入）
+	db         *gorm.DB
+	jwt        *security.JWT
+	act        *auth.Activation        // legacy 激活码（不再作准入 gate，保留 Activate 端点）
+	hxptAuth   auth.HxptAuthenticator  // 好学登录 + VIP 校验
+	crypto     *security.Crypto        // 加密 HxptCookieEnc
+	tvCache    *auth.TokenVersionCache // 登出 invalidate
+	tickets    *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
+	demoMode   bool                    // 显式开启演示登录（默认关闭）
+	oidc       *auth.OIDCService       // OIDC/SSO（可空：未装配时 OIDC 端点返 503）
+	ocrCfg     func() ocr.Config       // OCR 服务配置读取（可空：无 OCR，验证码人工输入）
+	secureCookie bool                  // 反代 TLS / APP_BASE_URL 为 https 时 cookie 加 Secure
 }
 
-// NewAuthHandler 构造。
+// NewAuthHandler 构造。secureCookie 决定登录 cookie 是否带 Secure 属性。
 func NewAuthHandler(db *gorm.DB, jwt *security.JWT, act *auth.Activation,
 	hxptAuth auth.HxptAuthenticator, crypto *security.Crypto, tvCache *auth.TokenVersionCache,
-	tickets *auth.TicketStore, demoMode bool, oidc *auth.OIDCService) *AuthHandler {
-	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets, demoMode: demoMode, oidc: oidc}
+	tickets *auth.TicketStore, demoMode bool, oidc *auth.OIDCService, secureCookie bool) *AuthHandler {
+	return &AuthHandler{db: db, jwt: jwt, act: act, hxptAuth: hxptAuth, crypto: crypto, tvCache: tvCache, tickets: tickets, demoMode: demoMode, oidc: oidc, secureCookie: secureCookie}
+}
+
+// setAuthCookie 登录成功时把 JWT 同时种进 httpOnly cookie（收权加固：
+// Web 端 XSS 无法读取 token，配合前端「cookie 优先 + Bearer 兜底」双通道）。
+// Lax + Path=/api/v1：跨站 POST 不携带，只服务同源 API；非 TLS 部署由 secureCookie 控制。
+func (h *AuthHandler) setAuthCookie(c *gin.Context, token string) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "ptp_token",
+		Value:    token,
+		Path:     "/api/v1",
+		HttpOnly: true,
+		Secure:   h.secureCookie,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(h.jwt.Expires().Seconds()),
+	})
+}
+
+// clearAuthCookie 登出/失效时清 cookie。
+func (h *AuthHandler) clearAuthCookie(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "ptp_token",
+		Value:    "",
+		Path:     "/api/v1",
+		HttpOnly: true,
+		Secure:   h.secureCookie,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 }
 
 // SetOCRConfig 注入 OCR 配置读取器（app 装配期；nil=OCR 未启用）。
@@ -122,6 +153,30 @@ type hxptLoginReq struct {
 	ChallengeMode bool              `json:"challenge_mode"` // 由 captcha 步探得，回传以驱动挑战响应分支
 }
 
+// validateEmergencyAdmin 校验应急登录：env 形如 "<username>:<口令>"，口令为
+// HMAC-SHA256(SECRET_KEY, username) 的前 8 字节 hex（运维可用
+// `openssl dgst -sha256 -hmac "$SECRET_KEY"` 自行生成）。用户名与口令都对上才放行；
+// 返回 (username, true)。错配仍落审计日志，便于发现探测。
+func (h *AuthHandler) validateEmergencyAdmin(c *gin.Context, env, username, password string) (string, bool) {
+	user, pass, ok := strings.Cut(env, ":")
+	if !ok || user == "" || pass == "" || username == "" || password == "" {
+		return "", false
+	}
+	if !constEqStr(user, username) {
+		return "", false
+	}
+	if !constEqStr(pass, password) {
+		audit(c, "hxpt_login", "fail", slog.String("via", "emergency"), slog.String("reason", "bad emergency passcode"))
+		return "", false
+	}
+	return user, true
+}
+
+// constEqStr 恒定时间字符串比较（应急口令校验防时序侧信道）。
+func constEqStr(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
 // HxptLogin 账号登录 Step B：POST takelogin.php + VIP 校验。
 func (h *AuthHandler) HxptLogin(c *gin.Context) {
 	if h.hxptAuth == nil {
@@ -133,13 +188,17 @@ func (h *AuthHandler) HxptLogin(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	// 应急兜底：好学 POST 链路坏掉时，运维设 HXPT_EMERGENCY_ADMIN=<username> 临时放行
-	// （以 env 为信用的引导登录，不恢复本地密码语义；仅应急、可审计）。
-	if emerg := os.Getenv("HXPT_EMERGENCY_ADMIN"); emerg != "" && emerg == req.Username {
-		slog.Warn("SECURITY: emergency admin bypass — disable HXPT_EMERGENCY_ADMIN now", slog.String("user", req.Username), slog.String("ip", c.ClientIP()))
-		audit(c, "hxpt_login", "ok", slog.String("via", "emergency"), slog.String("user", req.Username))
-		h.issueForHxpt(c, "emergency:"+req.Username, req.Username, "")
-		return
+	// 应急兜底：好学 POST 链路坏掉时，运维设 HXPT_EMERGENCY_ADMIN 临时放行。
+	// 值不再是裸用户名，而是 "<username>:<hex(hmac_sha256(secret, username)[0:8])>"：
+	// 知道用户名不够，必须持有 SECRET_KEY 派生的口令段才能登录（防 env 值仅作
+	// 用户名列表泄露时被冒用）；issued token 仍走 issueForHxpt 全量签发并审计。
+	if emerg := os.Getenv("HXPT_EMERGENCY_ADMIN"); emerg != "" {
+		if user, ok := h.validateEmergencyAdmin(c, emerg, req.Username, req.Password); ok {
+			slog.Warn("SECURITY: emergency admin bypass — disable HXPT_EMERGENCY_ADMIN now", slog.String("user", user), slog.String("ip", c.ClientIP()))
+			audit(c, "hxpt_login", "ok", slog.String("via", "emergency"), slog.String("user", user))
+			h.issueForHxpt(c, "emergency:"+user, user, "")
+			return
+		}
 	}
 	// 重组 challenge：imagehash + 前端回带的 extra_form（secret 等）+ challenge_mode
 	// （challenge_mode 必须回传，否则 PostLogin 挑战响应分支不触发，退回普通密码路径被好学拒）
@@ -245,6 +304,7 @@ func (h *AuthHandler) DemoLogin(c *gin.Context) {
 		return
 	}
 	audit(c, "demo_login", "ok")
+	h.setAuthCookie(c, token)
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
 }
 
@@ -295,10 +355,12 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 		return
 	}
 	audit(c, "hxpt_login", "ok", slog.String("hxpt_uid", hxptUID))
+	h.setAuthCookie(c, token) // Web 端 httpOnly cookie（XSS 不可读）；扩展/移动端仍用 body token
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
 }
 
-// Refresh 滑动续期：拿仍有效的 Bearer JWT 换新 token（再延一个完整过期窗口）。
+// Refresh 滑动续期：拿仍有效的 Bearer JWT 换新 token（再延一个完整过期窗口，
+// 但受 7 天绝对寿命钳制——超限返回 session_expired，客户端须重新登录）。
 // 供长时客户端（浏览器扩展等）免好学 cookie 静默续期——JWTAuth 已验签 + TokenVersion
 // 校验通过才到这；此处以 User 表真值重发 claims（admin 被收回/VIP 状态变化即时生效，
 // 不沿用旧 token 快照）。不进 guarded 组：RequireVIP 不该拦续期（宽限期内的用户
@@ -319,12 +381,30 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	if u.VipVerifiedAt != nil {
 		vipAt = *u.VipVerifiedAt
 	}
-	token, err := h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, vipAt)
+	// 保留旧 token 的首次签发时间，滑动续期不突破绝对寿命上限。
+	var oldClaims *security.Claims
+	if raw, ok := c.Get("claims"); ok {
+		oldClaims, _ = raw.(*security.Claims)
+	}
+	var token string
+	var err error
+	if oldClaims != nil {
+		// 滑动续期：沿用旧 token 首次签发时间（绝对寿命钳制），admin/VIP 以 User 表真值重发。
+		token, err = h.jwt.IssueSliding(&security.Claims{
+			UserID:        u.ID,
+			Username:      u.Username,
+			IsAdmin:       u.IsAdmin,
+			FirstIssuedAt: oldClaims.FirstIssuedAt,
+		}, u.TokenVersion, u.VipLevel, vipAt)
+	} else {
+		token, err = h.jwt.Issue(u.ID, u.Username, u.IsAdmin, u.TokenVersion, u.VipLevel, vipAt)
+	}
 	if err != nil {
 		errcode.Respond(c, errcode.AuthTokenFailed)
 		return
 	}
 	audit(c, "refresh", "ok")
+	h.setAuthCookie(c, token) // 滑动续期同步刷新 cookie MaxAge
 	c.JSON(http.StatusOK, gin.H{"token": token, "user": u})
 }
 

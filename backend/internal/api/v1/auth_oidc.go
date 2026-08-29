@@ -34,6 +34,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		h.tvCache.Invalidate(id)
 	}
 	audit(c, "logout", "ok")
+	h.clearAuthCookie(c) // 登出清 httpOnly cookie（TokenVersion bump 已使 JWT 本身失效）
 	c.JSON(http.StatusOK, gin.H{"revoked": true})
 }
 

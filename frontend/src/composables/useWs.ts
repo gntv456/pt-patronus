@@ -106,11 +106,16 @@ function onMessage(raw: MessageEvent) {
         lastSeq = j.seq ?? 0
         dirty = false
         break
-      case 'torrents_diff': { // inc 稳态增量
+      case 'torrents_diff': {
+        // inc 稳态增量
         if (dirty) break // 丢帧中：等下个 full 重同步
         const seq = j.seq ?? 0
         if (seq !== lastSeq + 1) {
-          dirty = true // 不连号=丢帧
+          // 不连号=丢帧（慢消费者丢一帧 diff 即触发）。后端 full 重同步间隔 30 帧
+          // （≈60s）太长——丢帧后主动请求重同步：携带 lastSeq 重连一次即可拿到
+          // 带当前 seq 的 torrents_full 首帧（Serve 语义），把卡死窗口从 60s 收敛到一次 RTT。
+          dirty = true
+          requestResync()
           break
         }
         lastSeq = seq
@@ -132,6 +137,19 @@ function onMessage(raw: MessageEvent) {
   }
 }
 
+// requestResync 丢帧后的主动重同步：断开当前连接并立即重连（跳过退避）——
+// Serve 会推携带当前 seq 的 torrents_full 首帧，比等 30 帧周期 full 快一个数量级。
+// 防抖：1s 内多次丢帧只触发一次（丢帧风暴时不疯狂断连）。
+let resyncTimer: ReturnType<typeof setTimeout> | null = null
+function requestResync() {
+  if (resyncTimer || !ws) return
+  resyncTimer = setTimeout(() => {
+    resyncTimer = null
+    retry = 0 // 跳过指数退避：这是主动重同步而非网络故障
+    ws?.close()
+  }, 1000)
+}
+
 function scheduleReconnect() {
   if (stopped) return
   retry++
@@ -142,6 +160,10 @@ function scheduleReconnect() {
 function onClose() {
   ws = null
   connected.value = false
+  // 断线即弃增量状态：重连后 Serve 会推 torrents_full 首帧重新对齐 seq，
+  // 若沿用旧 lastSeq/dirty，重连首帧到达前的窗口里 diff 判定会用过期基准。
+  lastSeq = 0
+  dirty = false
   scheduleReconnect()
 }
 

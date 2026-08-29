@@ -17,16 +17,14 @@ export interface DBColumn {
 export interface DBQueryResult {
   columns: string[]
   rows: any[][]
-  affected?: number
   limit?: number
   is_write: boolean
 }
 
 export const databaseApi = {
-  tables: () =>
-    http.get<{ tables: DBTable[] }>('/ops/database/tables').then((r) => r.data),
+  tables: () => http.get<{ tables: DBTable[] }>('/ops/database/tables').then((r) => r.data),
   schema: (table: string) =>
     http.get<{ columns: DBColumn[] }>(`/ops/database/tables/${table}/schema`).then((r) => r.data),
-  query: (sql: string, limit = 200, confirmRisk = false) =>
-    http.post<DBQueryResult>('/ops/database/query', { sql, limit, confirm_risk: confirmRisk }).then((r) => r.data),
+  query: (sql: string, limit = 200) =>
+    http.post<DBQueryResult>('/ops/database/query', { sql, limit }).then((r) => r.data),
 }

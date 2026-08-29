@@ -22,13 +22,22 @@
           <el-table :data="g.requests" size="small" :empty-text="t('siterequests.emptySite')">
             <el-table-column :label="t('siterequests.colTitle')" min-width="260">
               <template #default="{ row }">
-                <a v-if="row.detail_url" :href="absUrl(g, row.detail_url)" target="_blank" rel="noopener" class="req-link">{{ row.title }}</a>
+                <a
+                  v-if="row.detail_url"
+                  :href="absUrl(g, row.detail_url)"
+                  target="_blank"
+                  rel="noopener"
+                  class="req-link"
+                  >{{ row.title }}</a
+                >
                 <span v-else>{{ row.title }}</span>
               </template>
             </el-table-column>
             <el-table-column :label="t('cloud.status')" width="90">
               <template #default="{ row }">
-                <el-tag size="small" :type="row.filled ? 'success' : 'warning'">{{ row.filled ? t('siterequests.filled') : t('siterequests.open') }}</el-tag>
+                <el-tag size="small" :type="row.filled ? 'success' : 'warning'">{{
+                  row.filled ? t('siterequests.filled') : t('siterequests.open')
+                }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="votes" :label="t('siterequests.votes')" width="70" />
@@ -36,8 +45,12 @@
           </el-table>
         </div>
       </template>
-      <EmptyState v-else-if="!loading" icon="🙏" :title="t('siterequests.emptyTitle')"
-        :description="t('siterequests.emptyDesc')" />
+      <EmptyState
+        v-else-if="!loading"
+        icon="🙏"
+        :title="t('siterequests.emptyTitle')"
+        :description="t('siterequests.emptyDesc')"
+      />
     </div>
   </div>
 </template>
@@ -69,10 +82,7 @@ function absUrl(g: SiteRequestResult, href: string) {
 async function load() {
   loading.value = true
   try {
-    const [rs, sites] = await Promise.all([
-      siteApi.siteRequests(filled.value),
-      siteApi.list().catch(() => []),
-    ])
+    const [rs, sites] = await Promise.all([siteApi.siteRequests(filled.value), siteApi.list().catch(() => [])])
     for (const s of sites) baseURLs.value[s.id] = s.base_url
     results.value = rs
   } catch (e: unknown) {
@@ -86,14 +96,49 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-3); flex-wrap: wrap; }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.hint { font-size: var(--fs-body); }
-.list-card { padding: 12px 16px; display: flex; flex-direction: column; gap: 16px; }
-.site-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-.site-name { font-weight: 700; }
-.err { color: var(--pt-warn, #f39c12); }
-.req-link { color: var(--pt-primary); text-decoration: none; }
-.req-link:hover { text-decoration: underline; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.hint {
+  font-size: var(--fs-body);
+}
+.list-card {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.site-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.site-name {
+  font-weight: 700;
+}
+.err {
+  color: var(--pt-warn, #f39c12);
+}
+.req-link {
+  color: var(--pt-primary);
+  text-decoration: none;
+}
+.req-link:hover {
+  text-decoration: underline;
+}
 </style>

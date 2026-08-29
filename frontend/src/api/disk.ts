@@ -59,10 +59,14 @@ export interface UmountRequest {
 }
 
 export const diskApi = {
-  list: (targetId: number) =>
-    http.get<DiskListResp>(`/ops/disk/${targetId}/list`).then((r) => r.data),
+  list: (targetId: number) => http.get<DiskListResp>(`/ops/disk/${targetId}/list`).then((r) => r.data),
   partition: (targetId: number, data: PartitionRequest) =>
-    http.post<{ ok: boolean; error?: string; partition?: string; fstab?: string }>(`/ops/disk/${targetId}/partition`, data).then((r) => r.data),
+    http
+      .post<{ ok: boolean; error?: string; partition?: string; fstab?: string }>(
+        `/ops/disk/${targetId}/partition`,
+        data,
+      )
+      .then((r) => r.data),
   mount: (targetId: number, data: MountRequest) =>
     http.post<{ ok: boolean; error?: string; fstab?: string }>(`/ops/disk/${targetId}/mount`, data).then((r) => r.data),
   umount: (targetId: number, data: UmountRequest) =>

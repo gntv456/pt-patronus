@@ -47,6 +47,8 @@ export function showSSHAuthFix() {
       ),
     ]),
   })
-    .then(() => copyText(SSH_ROOT_LOGIN_FIX_CMD, '命令已复制，去服务器粘贴执行后重试', '复制失败，请手动选中上方命令复制'))
+    .then(() =>
+      copyText(SSH_ROOT_LOGIN_FIX_CMD, '命令已复制，去服务器粘贴执行后重试', '复制失败，请手动选中上方命令复制'),
+    )
     .catch(() => {})
 }

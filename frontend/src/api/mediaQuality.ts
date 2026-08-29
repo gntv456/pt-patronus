@@ -37,17 +37,12 @@ export const sourceOptions = [
   { value: 'bangumi', label: 'Bangumi' },
 ]
 
-export const sourceLabel = (s: string): string =>
-  sourceOptions.find((o) => o.value === s)?.label ?? s
+export const sourceLabel = (s: string): string => sourceOptions.find((o) => o.value === s)?.label ?? s
 
 export const mediaQualityApi = {
-  getConfig: () =>
-    http.get<MediaQualityConfig>('/media/quality').then((r) => r.data),
-  setConfig: (cfg: MediaQualityConfig) =>
-    http.put('/media/quality', cfg).then((r) => r.data),
+  getConfig: () => http.get<MediaQualityConfig>('/media/quality').then((r) => r.data),
+  setConfig: (cfg: MediaQualityConfig) => http.put('/media/quality', cfg).then((r) => r.data),
   // 多源评分聚合预览
   rating: (title: string, year = 0, type = '') =>
-    http
-      .get<RatingSummary>('/media/rating', { params: { title, year, type } })
-      .then((r) => r.data),
+    http.get<RatingSummary>('/media/rating', { params: { title, year, type } }).then((r) => r.data),
 }

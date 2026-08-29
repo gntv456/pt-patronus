@@ -32,7 +32,8 @@ hooks:
 	@echo "✓ core.hooksPath=.githooks（pre-push 生效）"
 
 test-frontend:
-	cd frontend && npm run build
+	# 实跑单测 + 严格类型检查（曾只跑 build——名为测试实为构建，测试审计 P3-2）
+	cd frontend && npm test && npm run typecheck
 
 test-mobile:
 	cd mobile && flutter analyze && flutter test

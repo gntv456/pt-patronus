@@ -1,5 +1,12 @@
 import { ref, computed, type Ref } from 'vue'
-import { siteApi, type Site, type TestResult, type CheckinResult, type CheckinRecord, type SiteConnectivityStatus } from '@/api/site'
+import {
+  siteApi,
+  type Site,
+  type TestResult,
+  type CheckinResult,
+  type CheckinRecord,
+  type SiteConnectivityStatus,
+} from '@/api/site'
 
 function errResp(e: unknown): string | undefined {
   return (e as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -135,11 +142,9 @@ export function useSitesActions(
     if (!selected.length) return
     const names = selected.map((s) => s.name).join('、')
     try {
-      await ElMessageBox.confirm(
-        `确认删除选中的 ${selected.length} 个站点？\n${names}`,
-        '批量删除',
-        { type: 'warning' },
-      )
+      await ElMessageBox.confirm(`确认删除选中的 ${selected.length} 个站点？\n${names}`, '批量删除', {
+        type: 'warning',
+      })
     } catch {
       return // 用户取消
     }
@@ -158,8 +163,17 @@ export function useSitesActions(
   }
 
   return {
-    testing, checkining, checkinAllLoading,
-    recordsDrawer, records, recordsLoading,
-    testSite, checkinSite, checkinAll, openRecords, removeSite, batchRemoveSites,
+    testing,
+    checkining,
+    checkinAllLoading,
+    recordsDrawer,
+    records,
+    recordsLoading,
+    testSite,
+    checkinSite,
+    checkinAll,
+    openRecords,
+    removeSite,
+    batchRemoveSites,
   }
 }

@@ -18,12 +18,21 @@ const emit = defineEmits<{ (e: 'saveCustom'): void; (e: 'saveGroup'): void }>()
 
 <template>
   <!-- 自定义规则表单 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="showCustomForm" :title="editingCustom ? t('frd.editCustom') : t('frd.newCustom')" width="560px">
+  <el-dialog
+    class="pt-dialog"
+    append-to-body
+    align-center
+    v-model="showCustomForm"
+    :title="editingCustom ? t('frd.editCustom') : t('frd.newCustom')"
+    width="560px"
+  >
     <el-form :model="customForm" label-width="110px" size="small">
       <el-form-item :label="t('frd.ruleId')" required>
         <el-input v-model="customForm.id" :placeholder="t('frd.idPh')" :disabled="!!editingCustom" />
       </el-form-item>
-      <el-form-item :label="t('common.name')"><el-input v-model="customForm.name" :placeholder="t('frd.namePh')" /></el-form-item>
+      <el-form-item :label="t('common.name')"
+        ><el-input v-model="customForm.name" :placeholder="t('frd.namePh')"
+      /></el-form-item>
       <el-form-item :label="t('frd.include')">
         <el-input v-model="customForm.include" :placeholder="t('frd.includePh')" />
       </el-form-item>
@@ -47,7 +56,14 @@ const emit = defineEmits<{ (e: 'saveCustom'): void; (e: 'saveGroup'): void }>()
   </el-dialog>
 
   <!-- 规则组表单 -->
-  <el-dialog class="pt-dialog" append-to-body align-center v-model="showGroupForm" :title="editingGroup ? t('frd.editGroup') : t('frd.newGroup')" width="560px">
+  <el-dialog
+    class="pt-dialog"
+    append-to-body
+    align-center
+    v-model="showGroupForm"
+    :title="editingGroup ? t('frd.editGroup') : t('frd.newGroup')"
+    width="560px"
+  >
     <el-form :model="groupForm" label-width="110px" size="small">
       <el-form-item :label="t('frd.groupName')" required>
         <el-input v-model="groupForm.name" :placeholder="t('frd.groupPh')" :disabled="!!editingGroup" />
@@ -62,7 +78,9 @@ const emit = defineEmits<{ (e: 'saveCustom'): void; (e: 'saveGroup'): void }>()
           <el-option :label="t('frd.mtTv')" value="\u7535\u89c6\u5267" />
         </el-select>
       </el-form-item>
-      <el-form-item :label="t('frd.category')"><el-input v-model="groupForm.category" :placeholder="t('frd.categoryPh')" /></el-form-item>
+      <el-form-item :label="t('frd.category')"
+        ><el-input v-model="groupForm.category" :placeholder="t('frd.categoryPh')"
+      /></el-form-item>
     </el-form>
     <p class="syntax">
       {{ t('frd.syntax') }}
@@ -75,6 +93,15 @@ const emit = defineEmits<{ (e: 'saveCustom'): void; (e: 'saveGroup'): void }>()
 </template>
 
 <style scoped>
-.syntax { font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.6; margin: 0; }
-.syntax code { background: var(--surface-hover, rgba(127, 127, 127, 0.15)); padding: 1px 5px; border-radius: var(--radius-2xs); }
+.syntax {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+.syntax code {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.15));
+  padding: 1px 5px;
+  border-radius: var(--radius-2xs);
+}
 </style>

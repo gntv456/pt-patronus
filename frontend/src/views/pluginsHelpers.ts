@@ -2,7 +2,13 @@
 // 信任等级的展示与归一化,以及 normalizePlugin/normalizeMarket/schema/configGroups/defaultsFromSchema 等。
 import { h } from 'vue'
 import { ElMessageBox } from 'element-plus'
-import type { PluginConfigField, PluginInfo, PluginInstallPermissionAccept, PluginInstallPlanStep, PluginMarketIndex } from '@/api/plugin'
+import type {
+  PluginConfigField,
+  PluginInfo,
+  PluginInstallPermissionAccept,
+  PluginInstallPlanStep,
+  PluginMarketIndex,
+} from '@/api/plugin'
 
 export type MarketItem = PluginMarketIndex['plugins'][number]
 export type MarketItemLike = Partial<MarketItem> & Record<string, any>
@@ -21,7 +27,13 @@ export function shortSource(source?: string): string {
 export function permissionRisk(permission: string): 'high' | 'medium' | 'low' {
   if (['*', 'host:*', 'plugin:*'].includes(permission)) return 'high'
   if (permission.includes('cookie') || permission.endsWith(':delete') || permission === 'config:write') return 'high'
-  if (permission.endsWith(':write') || permission === 'event:publish' || permission === 'notice:write' || permission === 'site:read') return 'medium'
+  if (
+    permission.endsWith(':write') ||
+    permission === 'event:publish' ||
+    permission === 'notice:write' ||
+    permission === 'site:read'
+  )
+    return 'medium'
   return 'low'
 }
 
@@ -46,7 +58,9 @@ export function normalizeHostCapabilities(capabilities?: string[] | null) {
   return Array.from(new Set((capabilities || []).map((item) => String(item || '').trim()).filter(Boolean)))
 }
 
-export function normalizeDependencies(dependencies?: PluginInfo['dependencies'] | PluginMarketIndex['plugins'][number]['dependencies']) {
+export function normalizeDependencies(
+  dependencies?: PluginInfo['dependencies'] | PluginMarketIndex['plugins'][number]['dependencies'],
+) {
   return Array.isArray(dependencies)
     ? dependencies
         .map((item) => ({
@@ -59,7 +73,9 @@ export function normalizeDependencies(dependencies?: PluginInfo['dependencies'] 
     : []
 }
 
-export function normalizeDependencyStatus(statuses?: PluginInfo['dependencies_status'] | PluginMarketIndex['plugins'][number]['dependencies_status']) {
+export function normalizeDependencyStatus(
+  statuses?: PluginInfo['dependencies_status'] | PluginMarketIndex['plugins'][number]['dependencies_status'],
+) {
   return Array.isArray(statuses)
     ? statuses
         .map((item) => ({
@@ -84,11 +100,15 @@ export function normalizeInstallPlan(steps?: PluginInstallPlanStep[] | null) {
           id: String(step?.id || '').trim(),
           name: String(step?.name || '').trim() || String(step?.id || '').trim(),
           version: String(step?.version || '').trim(),
-          action: ['reuse', 'install', 'upgrade'].includes(String(step?.action || '')) ? (step.action as PluginInstallPlanStep['action']) : 'install',
+          action: ['reuse', 'install', 'upgrade'].includes(String(step?.action || ''))
+            ? (step.action as PluginInstallPlanStep['action'])
+            : 'install',
           installed: Boolean(step?.installed),
           enabled: Boolean(step?.enabled),
           installed_version: String(step?.installed_version || '').trim() || undefined,
-          permissions: Array.isArray(step?.permissions) ? Array.from(new Set(step.permissions.map((perm) => String(perm || '').trim()).filter(Boolean))).sort() : [],
+          permissions: Array.isArray(step?.permissions)
+            ? Array.from(new Set(step.permissions.map((perm) => String(perm || '').trim()).filter(Boolean))).sort()
+            : [],
         }))
         .filter((step) => step.id)
     : []
@@ -108,11 +128,15 @@ export function unmetDependencyCount(statuses?: Array<{ satisfied?: boolean; opt
   return (statuses || []).filter((item) => !item.satisfied && !item.optional).length
 }
 
-export function dependencySummary(statuses?: Array<{ id: string; satisfied?: boolean; optional?: boolean; message?: string }>) {
+export function dependencySummary(
+  statuses?: Array<{ id: string; satisfied?: boolean; optional?: boolean; message?: string }>,
+) {
   const blocking = (statuses || []).filter((item) => !item.satisfied && !item.optional)
   if (!blocking.length) return '依赖已满足'
   const first = blocking[0]
-  return blocking.length === 1 ? `${first.id}：${first.message || '未满足'}` : `${first.id} 等 ${blocking.length} 项依赖未满足`
+  return blocking.length === 1
+    ? `${first.id}：${first.message || '未满足'}`
+    : `${first.id} 等 ${blocking.length} 项依赖未满足`
 }
 
 export function optionalCapabilitySummary(item: {
@@ -187,12 +211,18 @@ export function installPlanSummary(steps?: PluginInstallPlanStep[] | null) {
   const changes = plan.filter((step) => step.action !== 'reuse')
   if (!changes.length) return '当前版本已安装'
   const dependencyChanges = Math.max(changes.length - 1, 0)
-  return dependencyChanges ? `将处理 ${changes.length} 个插件（依赖 ${dependencyChanges} 个）` : `将处理 ${changes.length} 个插件`
+  return dependencyChanges
+    ? `将处理 ${changes.length} 个插件（依赖 ${dependencyChanges} 个）`
+    : `将处理 ${changes.length} 个插件`
 }
 
-export function installPlanPermissionAccepts(item: PluginMarketIndex['plugins'][number]): PluginInstallPermissionAccept[] {
+export function installPlanPermissionAccepts(
+  item: PluginMarketIndex['plugins'][number],
+): PluginInstallPermissionAccept[] {
   const plan = normalizeInstallPlan(item.install_plan)
-  const steps = plan.length ? plan.filter((step) => step.action !== 'reuse') : [{ id: item.id, permissions: item.permissions || [] }]
+  const steps = plan.length
+    ? plan.filter((step) => step.action !== 'reuse')
+    : [{ id: item.id, permissions: item.permissions || [] }]
   return steps.map((step) => ({
     id: step.id,
     accepted_permissions: Array.isArray(step.permissions) ? Array.from(new Set(step.permissions)).sort() : [],
@@ -275,7 +305,8 @@ export async function confirmPermissions(title: string, permissions: string[]) {
 // 资源访问声明（fs/exec/net）+ pip 依赖：external-http 插件是宿主子进程无系统沙箱，
 // 这里把开发者自报的访问面在安装确认页亮出来（声明·非强制）。
 export function resourceAccessSection(item: PluginMarketIndex['plugins'][number]) {
-  const ra = (item as { resource_access?: { fs_paths?: string[]; exec_binaries?: string[]; net_hosts?: string[] } }).resource_access
+  const ra = (item as { resource_access?: { fs_paths?: string[]; exec_binaries?: string[]; net_hosts?: string[] } })
+    .resource_access
   const reqs = (item as { requirements?: string[] }).requirements || []
   const fs = ra?.fs_paths || []
   const exec = ra?.exec_binaries || []
@@ -286,11 +317,19 @@ export function resourceAccessSection(item: PluginMarketIndex['plugins'][number]
   if (exec.length) rows.push(h('div', { style: 'color:#475569;' }, `程序：${exec.join('，')}`))
   if (net.length) rows.push(h('div', { style: 'color:#475569;' }, `主机：${net.join('，')}`))
   if (reqs.length) rows.push(h('div', { style: 'color:#475569;' }, `依赖：${reqs.join('，')}`))
-  return h('div', { style: 'display:grid;gap:6px;border:1px solid #fcd34d;border-radius:8px;padding:10px;background:#fffbeb;' }, [
-    h('div', { style: 'font-weight:700;color:#b45309;' }, '资源访问声明（声明·非强制）'),
-    ...rows,
-    h('div', { style: 'color:#92400e;font-size:12px;' }, 'external-http 插件为宿主子进程、无系统级沙箱；以上为开发者自报，安装前请知悉。'),
-  ])
+  return h(
+    'div',
+    { style: 'display:grid;gap:6px;border:1px solid #fcd34d;border-radius:8px;padding:10px;background:#fffbeb;' },
+    [
+      h('div', { style: 'font-weight:700;color:#b45309;' }, '资源访问声明（声明·非强制）'),
+      ...rows,
+      h(
+        'div',
+        { style: 'color:#92400e;font-size:12px;' },
+        'external-http 插件为宿主子进程、无系统级沙箱；以上为开发者自报，安装前请知悉。',
+      ),
+    ],
+  )
 }
 export function normalizePlugin(p: PluginInfo): PluginInfo {
   return {

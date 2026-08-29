@@ -62,18 +62,9 @@ if (props.field.options_source === 'sites') {
         <el-option v-for="opt in options" :key="String(opt.value)" :label="opt.label" :value="opt.value" />
       </el-select>
       <el-select v-else-if="field.type === 'select'" :model-value="modelValue" @update:model-value="update">
-        <el-option
-          v-for="opt in field.options || []"
-          :key="String(opt.value)"
-          :label="opt.label"
-          :value="opt.value"
-        />
+        <el-option v-for="opt in field.options || []" :key="String(opt.value)" :label="opt.label" :value="opt.value" />
       </el-select>
-      <el-input-number
-        v-else-if="field.type === 'number'"
-        :model-value="modelValue"
-        @update:model-value="update"
-      />
+      <el-input-number v-else-if="field.type === 'number'" :model-value="modelValue" @update:model-value="update" />
       <el-input
         v-else-if="field.type === 'password'"
         :model-value="modelValue"

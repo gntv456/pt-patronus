@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:ptpatronus/core/api_client.dart';
 import 'package:ptpatronus/core/ws_client.dart';
@@ -72,6 +73,16 @@ class _PTPatronusAppState extends State<PTPatronusApp> {
       builder: (context, mode, _) => MaterialApp(
         title: 'PTPatronus',
         debugShowCheckedModeBanner: false,
+        // i18n：业务文案为中文硬编码（产品定位中文用户），这里固定 zh locale 让
+        // Material/日期选择器等框架组件文案与业务文案语言一致——否则非中文系统
+        // 下日期控件是英文、页面是中文的混杂体验（移动端审查 P1-4）。
+        locale: const Locale('zh', 'CN'),
+        supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: buildAppTheme(Brightness.light),
         darkTheme: buildAppTheme(Brightness.dark),
         themeMode: mode,

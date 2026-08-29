@@ -53,12 +53,21 @@ writeFileSync('update-manifest.json', JSON.stringify(manifest, null, 2) + '\n')
 // 防篡改依据，缺失即静默降级为无校验下载）。校验失败直接非零退出，
 // 拦住"链接已发布但哈希未回填"的半成品 manifest。
 const errors = []
+let seenUrls = new Map() // url → target key（多端同链接检测）
 for (const [key, t] of Object.entries(manifest.targets)) {
   if (key === 'docker') continue // 镜像完整性由 registry digest 保证，不走 sha256 字段
   const url = (t && t.url) || ''
   const sha = (t && t.sha256) || ''
   if (!url && !sha) continue // 未发布的 target 允许留空整体
   if (!/^[0-9a-f]{64}$/.test(sha)) errors.push(`targets.${key}: url 已填而 sha256 缺失/格式非法（len=${sha.length}）`)
+  if (url.startsWith('PENDING_')) errors.push(`targets.${key}: url 仍是占位符（${url}）——发版前必须替换为产物直链`)
+  if (url) {
+    if (seenUrls.has(url)) {
+      errors.push(`targets.${key} 与 targets.${seenUrls.get(url)} 使用同一 url（${url}）——网盘文件夹页会使 Android 应用内 OTA 判定（.apk 直链）失效，且无法按端独立回滚`)
+    } else {
+      seenUrls.set(url, key)
+    }
+  }
 }
 if (errors.length) {
   console.error('✗ update-manifest.json 完整性校验未通过：')

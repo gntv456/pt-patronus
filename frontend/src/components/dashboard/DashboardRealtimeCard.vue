@@ -15,16 +15,10 @@ const snaps = computed(() => torrents.value.map((t) => ({ ...t, torrents: t.torr
 const dlRate = computed(() => snaps.value.reduce((s, t) => s + (t.stats?.dl_rate ?? 0), 0))
 const upRate = computed(() => snaps.value.reduce((s, t) => s + (t.stats?.up_rate ?? 0), 0))
 const downloading = computed(() =>
-  snaps.value.reduce(
-    (s, t) => s + t.torrents.filter((x) => /download|leech/i.test(x.state)).length,
-    0,
-  ),
+  snaps.value.reduce((s, t) => s + t.torrents.filter((x) => /download|leech/i.test(x.state)).length, 0),
 )
 const seeding = computed(() =>
-  snaps.value.reduce(
-    (s, t) => s + t.torrents.filter((x) => /upload|seed/i.test(x.state)).length,
-    0,
-  ),
+  snaps.value.reduce((s, t) => s + t.torrents.filter((x) => /upload|seed/i.test(x.state)).length, 0),
 )
 const total = computed(() => snaps.value.reduce((s, t) => s + t.torrents.length, 0))
 const errored = computed(() => snaps.value.filter((t) => t.error).length)
@@ -51,9 +45,15 @@ const errored = computed(() => snaps.value.filter((t) => t.error).length)
         </div>
       </div>
       <div class="mini-row">
-        <span><b>{{ downloading }}</b> {{ t('drc.downloading') }}</span>
-        <span><b>{{ seeding }}</b> {{ t('drc.seeding') }}</span>
-        <span><b>{{ total }}</b> {{ t('drc.tasks') }}</span>
+        <span
+          ><b>{{ downloading }}</b> {{ t('drc.downloading') }}</span
+        >
+        <span
+          ><b>{{ seeding }}</b> {{ t('drc.seeding') }}</span
+        >
+        <span
+          ><b>{{ total }}</b> {{ t('drc.tasks') }}</span
+        >
       </div>
     </div>
     <div v-else class="dc-empty">{{ t('drc.empty') }}</div>

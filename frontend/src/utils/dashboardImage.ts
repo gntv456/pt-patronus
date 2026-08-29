@@ -4,8 +4,15 @@ import type { DashboardExportConfig } from './dashboardExportConfig'
 import { FONT, W, PAD, type DashboardShareData } from './dashboardImageTypes'
 export type { DashboardShareData, DashboardShareSite } from './dashboardImageTypes'
 import {
-  fmtBytes, fmtShort, nowStamp, roundRect, divider, ptYears,
-  loadFavicon, loadImage, drawAvatar,
+  fmtBytes,
+  fmtShort,
+  nowStamp,
+  roundRect,
+  divider,
+  ptYears,
+  loadFavicon,
+  loadImage,
+  drawAvatar,
 } from './dashboardImageHelpers'
 import { themeColors, drawBackground } from './dashboardImageTheme'
 import { layout } from './dashboardImageData'
@@ -176,10 +183,22 @@ export async function exportDashboardImage(d: DashboardShareData, config: Dashbo
       }
       ctx.fillStyle = th.sub
       ctx.font = `400 12px ${FONT}`
-      ctx.fillText(`↑${fmtBytes(s.uploaded)}   ↓${fmtBytes(s.downloaded)}   分享 ${s.ratio > 0 ? s.ratio.toFixed(2) : '-'}`, tx, cy + 34 + identityH)
-      ctx.fillText(`做种 ${s.seeding || 0}   下载中 ${s.leeching || 0}   体积 ${fmtBytes(s.seeding_size)}`, tx, cy + 52 + identityH)
+      ctx.fillText(
+        `↑${fmtBytes(s.uploaded)}   ↓${fmtBytes(s.downloaded)}   分享 ${s.ratio > 0 ? s.ratio.toFixed(2) : '-'}`,
+        tx,
+        cy + 34 + identityH,
+      )
+      ctx.fillText(
+        `做种 ${s.seeding || 0}   下载中 ${s.leeching || 0}   体积 ${fmtBytes(s.seeding_size)}`,
+        tx,
+        cy + 52 + identityH,
+      )
       const bh = s.bonus_per_hour > 0 ? `   时魔 ${s.bonus_per_hour.toFixed(1)}/h` : ''
-      ctx.fillText(`发布 ${s.uploads > 0 ? s.uploads : '-'}   魔力 ${s.bonus > 0 ? Math.round(s.bonus) : 0}${bh}`, tx, cy + 70 + identityH)
+      ctx.fillText(
+        `发布 ${s.uploads > 0 ? s.uploads : '-'}   魔力 ${s.bonus > 0 ? Math.round(s.bonus) : 0}${bh}`,
+        tx,
+        cy + 70 + identityH,
+      )
       const joinStr = s.join_date ? `加入 ${s.join_date}` : ''
       const updStr = s.updated_at ? `更新 ${fmtShort(s.updated_at)}` : ''
       const meta = [joinStr, updStr].filter(Boolean).join('   ')

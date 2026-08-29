@@ -34,8 +34,7 @@ export interface KillRequest {
 }
 
 export const procApi = {
-  list: (targetId: number) =>
-    http.get<{ processes: ProcRow[] }>(`/ops/proc/${targetId}/list`).then((r) => r.data),
+  list: (targetId: number) => http.get<{ processes: ProcRow[] }>(`/ops/proc/${targetId}/list`).then((r) => r.data),
   connections: (targetId: number) =>
     http.get<{ connections: NetConnRow[] }>(`/ops/proc/${targetId}/connections`).then((r) => r.data),
   kill: (targetId: number, data: KillRequest) =>

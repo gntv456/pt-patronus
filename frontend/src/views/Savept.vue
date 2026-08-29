@@ -5,12 +5,7 @@ import { computed, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { saveptApi, type SaveptResult } from '@/api/savept'
 import type { SaveptSiteCard as SiteCardData } from '@/api/savept'
-import {
-  buildSiteKeywords,
-  getMpStatusMeta,
-  getStatusMeta,
-  siteTypeLabel,
-} from '@/utils/savept'
+import { buildSiteKeywords, getMpStatusMeta, getStatusMeta, siteTypeLabel } from '@/utils/savept'
 import SptIcon from '@/components/SptIcon.vue'
 import SaveptHeader from '@/components/savept/SaveptHeader.vue'
 import SaveptNotices from '@/components/savept/SaveptNotices.vue'
@@ -30,10 +25,20 @@ const fetchedAt = ref('')
 const sites = computed<SiteCardData[]>(() => data.value?.cards ?? [])
 const summary = computed(() => data.value?.summary)
 
-
 // 筛选逻辑抽到 composable
-import { useSaveptFilters } from "@/composables/useSaveptFilters"
-const { filters, collapsedYears, filteredSites, groupedSites, isYearGroupCollapsed, toggleYearGroup, clearFilters, formatYearLabel, isUnknownYear, formatFetchedAt } = useSaveptFilters(sites as any)
+import { useSaveptFilters } from '@/composables/useSaveptFilters'
+const {
+  filters,
+  collapsedYears,
+  filteredSites,
+  groupedSites,
+  isYearGroupCollapsed,
+  toggleYearGroup,
+  clearFilters,
+  formatYearLabel,
+  isUnknownYear,
+  formatFetchedAt,
+} = useSaveptFilters(sites as any)
 
 const rootRef = ref<HTMLElement | null>(null)
 let scrollTarget: Window | HTMLElement = window
@@ -52,10 +57,13 @@ function pushMessage(text: string, type: 'info' | 'success' | 'error' = 'info') 
   message.type = type
   message.show = true
   clearMessageTimer()
-  messageTimer = setTimeout(() => {
-    message.show = false
-    messageTimer = null
-  }, type === 'error' ? 5000 : 3000)
+  messageTimer = setTimeout(
+    () => {
+      message.show = false
+      messageTimer = null
+    },
+    type === 'error' ? 5000 : 3000,
+  )
 }
 
 async function load() {
@@ -94,10 +102,7 @@ function findScrollParent(el: Element | null): Window | HTMLElement {
   let cur: Element | ParentNode | null = el?.parentElement ?? null
   while (cur && cur instanceof HTMLElement) {
     const style = window.getComputedStyle(cur)
-    if (
-      (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
-      cur.scrollHeight > cur.clientHeight
-    ) {
+    if ((style.overflowY === 'auto' || style.overflowY === 'scroll') && cur.scrollHeight > cur.clientHeight) {
       return cur
     }
     cur = cur.parentElement
@@ -129,7 +134,7 @@ function scrollToTop() {
 const annivCalendarVisible = ref(false)
 
 // ── 站庆彩带（canvas-confetti 动态加载）──
-const { setCelebrationRef } = useSaveptCelebration(groupedSites.value, isYearGroupCollapsed)
+const { setCelebrationRef } = useSaveptCelebration(() => groupedSites.value, isYearGroupCollapsed)
 // groupedSites 是 computed，需用 getter 形式让组合式函数拿到实时值。
 // useSaveptCelebration 内部 watch 的是它自己基于传入快照重建的 activeAnniversaryKeys；
 // 为保证实时性，这里在分组变化时重新同步（composable 已监听）。
@@ -147,7 +152,13 @@ function applySiteFocusFromQuery() {
   if (name) filters.keyword = name
 }
 
-watch(data, (d) => { if (d) applySiteFocusFromQuery() }, { once: true })
+watch(
+  data,
+  (d) => {
+    if (d) applySiteFocusFromQuery()
+  },
+  { once: true },
+)
 
 onMounted(() => {
   scrollTarget = findScrollParent(rootRef.value)
@@ -165,7 +176,6 @@ onBeforeUnmount(() => {
   else (scrollTarget as HTMLElement).removeEventListener('scroll', handleScroll)
 })
 </script>
-
 
 <template>
   <div ref="rootRef" class="spt-root" v-loading="loading">
@@ -187,7 +197,10 @@ onBeforeUnmount(() => {
     <!-- ═══ toast & 降级提示 ═══ -->
     <Transition name="spt-slide">
       <div v-if="message.show" class="spt-toast" :class="`spt-toast--${message.type}`">
-        <SptIcon :name="message.type === 'success' ? 'check-circle' : message.type === 'error' ? 'alert-circle' : 'info'" :size="18" />
+        <SptIcon
+          :name="message.type === 'success' ? 'check-circle' : message.type === 'error' ? 'alert-circle' : 'info'"
+          :size="18"
+        />
         <span>{{ message.text }}</span>
         <button class="spt-toast__close" @click="message.show = false"><SptIcon name="x" :size="16" /></button>
       </div>
@@ -208,17 +221,28 @@ onBeforeUnmount(() => {
           @click="toggleYearGroup(group.year)"
         >
           <div class="spt-year-group__badge">{{ formatYearLabel(group.year) }}</div>
-          <span class="spt-year-group__suffix">{{ isUnknownYear(group.year) ? t('savept.yearFounded') : t('savept.yearFoundedSuffix') }}</span>
+          <span class="spt-year-group__suffix">{{
+            isUnknownYear(group.year) ? t('savept.yearFounded') : t('savept.yearFoundedSuffix')
+          }}</span>
           <span class="spt-year-group__count">{{ t('subscriptions.nSites', { n: group.items.length }) }}</span>
         </button>
         <button
           type="button"
           class="spt-year-group__chevron-btn"
           :class="{ 'spt-year-group__chevron-btn--collapsed': isYearGroupCollapsed(group.year) }"
-          :aria-label="isYearGroupCollapsed(group.year) ? t('savept.expandGroup', { y: formatYearLabel(group.year) }) : t('savept.collapseGroup', { y: formatYearLabel(group.year) })"
+          :aria-label="
+            isYearGroupCollapsed(group.year)
+              ? t('savept.expandGroup', { y: formatYearLabel(group.year) })
+              : t('savept.collapseGroup', { y: formatYearLabel(group.year) })
+          "
           @click="toggleYearGroup(group.year)"
         >
-          <SptIcon name="chevron-down" :size="18" class="spt-year-group__chevron" :class="{ 'spt-year-group__chevron--collapsed': isYearGroupCollapsed(group.year) }" />
+          <SptIcon
+            name="chevron-down"
+            :size="18"
+            class="spt-year-group__chevron"
+            :class="{ 'spt-year-group__chevron--collapsed': isYearGroupCollapsed(group.year) }"
+          />
         </button>
       </div>
 
@@ -242,14 +266,19 @@ onBeforeUnmount(() => {
 
     <Teleport to="body">
       <Transition name="spt-fab">
-        <button v-if="showBackToTop" class="spt-back-top" :style="backTopStyle" :aria-label="t('savept.backToTop')" @click="scrollToTop">
+        <button
+          v-if="showBackToTop"
+          class="spt-back-top"
+          :style="backTopStyle"
+          :aria-label="t('savept.backToTop')"
+          @click="scrollToTop"
+        >
           <SptIcon name="chevron-up" :size="20" />
         </button>
       </Transition>
     </Teleport>
   </div>
 </template>
-
 
 <style scoped>
 .spt-root {
@@ -283,86 +312,350 @@ onBeforeUnmount(() => {
 }
 
 /* ═══ toast / 警告 ═══ */
-.spt-toast { display: flex; align-items: center; gap: var(--sp-2); padding: 10px 14px; border-radius: var(--spt-radius-sm); font-size: 0.82rem; }
-.spt-toast--success { background: var(--pt-success-bg); color: var(--spt-color-healthy); border: 1px solid var(--pt-success-bg); }
-.spt-toast--error { background: var(--pt-danger-bg); color: var(--spt-color-critical); border: 1px solid var(--pt-danger-bg); }
-.spt-toast--info { background: rgba(var(--spt-info), 0.08); color: rgb(var(--spt-info)); border: 1px solid rgba(var(--spt-info), 0.15); }
-.spt-toast__close { margin-left: auto; background: none; border: none; cursor: pointer; color: inherit; opacity: 0.6; display: flex; transition: opacity var(--spt-transition); }
-.spt-toast__close:hover { opacity: 1; }
-.spt-slide-enter-active, .spt-slide-leave-active { transition: all var(--dur-slow) var(--ease-out-smooth); }
-.spt-slide-enter-from, .spt-slide-leave-to { opacity: 0; transform: translateY(-8px); }
-.spt-warning { display: flex; align-items: center; gap: var(--sp-2); padding: 10px 14px; border-radius: var(--spt-radius-sm); background: var(--pt-warn-bg); color: var(--spt-color-anniv); border: 1px solid var(--pt-warn-bg); font-size: 0.82rem; }
+.spt-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 10px 14px;
+  border-radius: var(--spt-radius-sm);
+  font-size: 0.82rem;
+}
+.spt-toast--success {
+  background: var(--pt-success-bg);
+  color: var(--spt-color-healthy);
+  border: 1px solid var(--pt-success-bg);
+}
+.spt-toast--error {
+  background: var(--pt-danger-bg);
+  color: var(--spt-color-critical);
+  border: 1px solid var(--pt-danger-bg);
+}
+.spt-toast--info {
+  background: rgba(var(--spt-info), 0.08);
+  color: rgb(var(--spt-info));
+  border: 1px solid rgba(var(--spt-info), 0.15);
+}
+.spt-toast__close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  display: flex;
+  transition: opacity var(--spt-transition);
+}
+.spt-toast__close:hover {
+  opacity: 1;
+}
+.spt-slide-enter-active,
+.spt-slide-leave-active {
+  transition: all var(--dur-slow) var(--ease-out-smooth);
+}
+.spt-slide-enter-from,
+.spt-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.spt-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 10px 14px;
+  border-radius: var(--spt-radius-sm);
+  background: var(--pt-warn-bg);
+  color: var(--spt-color-anniv);
+  border: 1px solid var(--pt-warn-bg);
+  font-size: 0.82rem;
+}
 
 /* ═══ 年份分组 ═══ */
-.spt-year-group { display: flex; flex-direction: column; gap: var(--spt-gap-sm); }
-.spt-year-group__header { display: flex; align-items: center; gap: var(--sp-2); padding: 8px 0; width: 100%; }
-.spt-year-group__toggle, .spt-year-group__chevron-btn { background: none; border: none; color: inherit; cursor: pointer; padding: 0; margin: 0; }
-.spt-year-group__toggle { display: inline-flex; align-items: center; gap: var(--sp-1); text-align: left; }
-.spt-year-group__toggle:hover .spt-year-group__badge, .spt-year-group__toggle:focus-visible .spt-year-group__badge { background: rgba(var(--spt-primary), 0.12); }
-.spt-year-group__toggle:focus-visible, .spt-year-group__chevron-btn:focus-visible { outline: 2px solid rgba(var(--spt-primary), 0.45); outline-offset: 4px; border-radius: var(--radius-sm); }
-.spt-year-group__badge { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; padding: 2px 10px; border-radius: var(--spt-radius-pill); background: rgba(var(--spt-primary), 0.08); color: rgb(var(--spt-primary)); font-size: 0.82rem; font-weight: 700; transition: background var(--spt-transition); }
-.spt-year-group__suffix { font-size: 0.8rem; color: rgba(var(--spt-on-surface), 0.45); }
-.spt-year-group__count { font-size: 0.75rem; color: rgba(var(--spt-on-surface), 0.4); }
-.spt-year-group__chevron-btn { margin-left: auto; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--radius-pill); transition: background var(--spt-transition); }
-.spt-year-group__chevron-btn:hover, .spt-year-group__chevron-btn:focus-visible { background: rgba(var(--spt-on-surface), 0.05); }
-.spt-year-group__chevron { color: rgba(var(--spt-on-surface), 0.35); transition: transform var(--spt-transition), color var(--spt-transition); }
-.spt-year-group__chevron--collapsed { transform: rotate(-90deg); }
+.spt-year-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spt-gap-sm);
+}
+.spt-year-group__header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 0;
+  width: 100%;
+}
+.spt-year-group__toggle,
+.spt-year-group__chevron-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+.spt-year-group__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  text-align: left;
+}
+.spt-year-group__toggle:hover .spt-year-group__badge,
+.spt-year-group__toggle:focus-visible .spt-year-group__badge {
+  background: rgba(var(--spt-primary), 0.12);
+}
+.spt-year-group__toggle:focus-visible,
+.spt-year-group__chevron-btn:focus-visible {
+  outline: 2px solid rgba(var(--spt-primary), 0.45);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+.spt-year-group__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 2px 10px;
+  border-radius: var(--spt-radius-pill);
+  background: rgba(var(--spt-primary), 0.08);
+  color: rgb(var(--spt-primary));
+  font-size: 0.82rem;
+  font-weight: 700;
+  transition: background var(--spt-transition);
+}
+.spt-year-group__suffix {
+  font-size: 0.8rem;
+  color: rgba(var(--spt-on-surface), 0.45);
+}
+.spt-year-group__count {
+  font-size: 0.75rem;
+  color: rgba(var(--spt-on-surface), 0.4);
+}
+.spt-year-group__chevron-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pill);
+  transition: background var(--spt-transition);
+}
+.spt-year-group__chevron-btn:hover,
+.spt-year-group__chevron-btn:focus-visible {
+  background: rgba(var(--spt-on-surface), 0.05);
+}
+.spt-year-group__chevron {
+  color: rgba(var(--spt-on-surface), 0.35);
+  transition:
+    transform var(--spt-transition),
+    color var(--spt-transition);
+}
+.spt-year-group__chevron--collapsed {
+  transform: rotate(-90deg);
+}
 
-.spt-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--spt-gap-sm); }
-.spt-empty { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); padding: 48px 20px; color: rgba(var(--spt-on-surface), 0.4); font-size: 0.9rem; }
+.spt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spt-gap-sm);
+}
+.spt-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 48px 20px;
+  color: rgba(var(--spt-on-surface), 0.4);
+  font-size: 0.9rem;
+}
 /* ═══ 响应式 ═══ */
-@media (max-width: 1200px) { .spt-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1200px) {
+  .spt-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 @media (max-width: 900px) {
-  .spt-grid { grid-template-columns: repeat(2, 1fr); }
-  .spt-filters__meta { margin-left: 0; width: 100%; flex: 0 0 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+  .spt-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .spt-filters__meta {
+    margin-left: 0;
+    width: 100%;
+    flex: 0 0 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+  }
 }
 @media (max-width: 768px) {
-  .spt-header__top { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'brand actions' 'vitals actions'; align-items: center; gap: var(--sp-3) var(--sp-3); }
-  .spt-header__brand { grid-area: brand; min-width: 0; }
-  .spt-header__title, .spt-header__desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .spt-vitals { grid-area: vitals; width: 100%; overflow-x: hidden; justify-content: space-between; }
-  .spt-vital { flex: 1 1 0; min-width: 0; padding: 0 8px; }
-  .spt-vital__value { font-size: 1rem; }
-  .spt-vital__label { font-size: 0.62rem; }
-  .spt-vital__divider { height: 22px; }
-  .spt-header__actions { grid-area: actions; display: grid; grid-auto-rows: min-content; justify-items: end; align-content: space-between; gap: var(--sp-2); align-self: stretch; min-width: max-content; }
-  .spt-header__filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
-  .spt-filters__divider, .spt-filters__spacer { display: none; }
-  .spt-filters__search { width: 100%; min-width: 0; grid-column: 1 / -1; }
-  .spt-filters__group { min-width: 0; }
-  .spt-filters__input, .spt-filters__select-btn { width: 100%; }
-  .spt-filters__pills, .spt-filters__meta { grid-column: 1 / -1; }
-  .spt-filters__pills { flex-wrap: wrap; }
-  .spt-notices { grid-template-columns: 1fr; }
-  .spt-grid { grid-template-columns: 1fr; }
-  .spt-card__body { padding: 10px 36px 10px 12px; gap: var(--sp-1); }
-  .spt-card__icon { width: 32px; height: 32px; }
-  .spt-card__name { font-size: 0.84rem; }
-  .spt-card__sub { font-size: 0.72rem; }
-  .spt-card__status-icon { top: 11px; right: 10px; width: 18px; height: 18px; min-width: 18px; opacity: 0.82; }
+  .spt-header__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'brand actions' 'vitals actions';
+    align-items: center;
+    gap: var(--sp-3) var(--sp-3);
+  }
+  .spt-header__brand {
+    grid-area: brand;
+    min-width: 0;
+  }
+  .spt-header__title,
+  .spt-header__desc {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .spt-vitals {
+    grid-area: vitals;
+    width: 100%;
+    overflow-x: hidden;
+    justify-content: space-between;
+  }
+  .spt-vital {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0 8px;
+  }
+  .spt-vital__value {
+    font-size: 1rem;
+  }
+  .spt-vital__label {
+    font-size: 0.62rem;
+  }
+  .spt-vital__divider {
+    height: 22px;
+  }
+  .spt-header__actions {
+    grid-area: actions;
+    display: grid;
+    grid-auto-rows: min-content;
+    justify-items: end;
+    align-content: space-between;
+    gap: var(--sp-2);
+    align-self: stretch;
+    min-width: max-content;
+  }
+  .spt-header__filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .spt-filters__divider,
+  .spt-filters__spacer {
+    display: none;
+  }
+  .spt-filters__search {
+    width: 100%;
+    min-width: 0;
+    grid-column: 1 / -1;
+  }
+  .spt-filters__group {
+    min-width: 0;
+  }
+  .spt-filters__input,
+  .spt-filters__select-btn {
+    width: 100%;
+  }
+  .spt-filters__pills,
+  .spt-filters__meta {
+    grid-column: 1 / -1;
+  }
+  .spt-filters__pills {
+    flex-wrap: wrap;
+  }
+  .spt-notices {
+    grid-template-columns: 1fr;
+  }
+  .spt-grid {
+    grid-template-columns: 1fr;
+  }
+  .spt-card__body {
+    padding: 10px 36px 10px 12px;
+    gap: var(--sp-1);
+  }
+  .spt-card__icon {
+    width: 32px;
+    height: 32px;
+  }
+  .spt-card__name {
+    font-size: 0.84rem;
+  }
+  .spt-card__sub {
+    font-size: 0.72rem;
+  }
+  .spt-card__status-icon {
+    top: 11px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    opacity: 0.82;
+  }
 }
 @media (max-width: 480px) {
-  .spt-vital { padding: 0 5px; }
-  .spt-vital__value { font-size: 0.92rem; }
-  .spt-vital__label { font-size: 0.56rem; }
-  .spt-vital__divider { height: 18px; }
+  .spt-vital {
+    padding: 0 5px;
+  }
+  .spt-vital__value {
+    font-size: 0.92rem;
+  }
+  .spt-vital__label {
+    font-size: 0.56rem;
+  }
+  .spt-vital__divider {
+    height: 18px;
+  }
 }
 </style>
 
 <style>
 .spt-back-top {
-  position: fixed; right: 24px; bottom: 24px; width: 42px; height: 42px;
-  border: none; border-radius: 50%;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: #6c5ce7; color: #fff; opacity: 0.56; cursor: pointer;
-  transition: transform var(--dur-base) var(--ease-in-out), opacity var(--dur-base) var(--ease-in-out);
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #6c5ce7;
+  color: #fff;
+  opacity: 0.56;
+  cursor: pointer;
+  transition:
+    transform var(--dur-base) var(--ease-in-out),
+    opacity var(--dur-base) var(--ease-in-out);
   z-index: 9999;
 }
-.spt-back-top:hover, .spt-back-top:focus-visible, .spt-back-top:active { opacity: 1; }
-.spt-back-top:hover { transform: translateY(-2px); }
-.spt-back-top:active { transform: translateY(0); }
-@media (max-width: 480px) { .spt-back-top { right: 16px; bottom: 16px; width: 40px; height: 40px; } }
-.spt-fab-enter-active, .spt-fab-leave-active { transition: opacity var(--dur-base) var(--ease-out-smooth), transform var(--dur-base) var(--ease-out-smooth); }
-.spt-fab-enter-from, .spt-fab-leave-to { opacity: 0; transform: translateY(8px) scale(0.92); }
-
+.spt-back-top:hover,
+.spt-back-top:focus-visible,
+.spt-back-top:active {
+  opacity: 1;
+}
+.spt-back-top:hover {
+  transform: translateY(-2px);
+}
+.spt-back-top:active {
+  transform: translateY(0);
+}
+@media (max-width: 480px) {
+  .spt-back-top {
+    right: 16px;
+    bottom: 16px;
+    width: 40px;
+    height: 40px;
+  }
+}
+.spt-fab-enter-active,
+.spt-fab-leave-active {
+  transition:
+    opacity var(--dur-base) var(--ease-out-smooth),
+    transform var(--dur-base) var(--ease-out-smooth);
+}
+.spt-fab-enter-from,
+.spt-fab-leave-to {
+  opacity: 0;
+  transform: translateY(8px) scale(0.92);
+}
 </style>

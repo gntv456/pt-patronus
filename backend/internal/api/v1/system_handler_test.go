@@ -15,7 +15,7 @@ import (
 func setupSystemServer(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	h := NewSystemHandler(nil)
+	h := NewSystemHandler(nil, nil)
 	r := gin.New()
 	r.GET("/health", h.Health)
 	r.GET("/info", h.Info)
@@ -64,7 +64,7 @@ func TestSystem_InfoVersionGating(t *testing.T) {
 	// 已认证（uid 注入）：带 version
 	gin.SetMode(gin.TestMode)
 	rr := gin.New()
-	h := NewSystemHandler(nil)
+	h := NewSystemHandler(nil, nil)
 	rr.GET("/info", func(c *gin.Context) { c.Set("uid", uint(1)); c.Next() }, h.Info)
 	rec2 := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/info", nil)
@@ -111,7 +111,7 @@ func TestSystem_LogsReadWriteClear(t *testing.T) {
 // TestSystem_UpdateCheckDisabled update 服务未装配 → hasUpdate=false（不 500）。
 func TestSystem_UpdateCheckDisabled(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	h := NewSystemHandler(nil)
+	h := NewSystemHandler(nil, nil)
 	r := gin.New()
 	r.GET("/update/check", h.UpdateCheck)
 	rec := httptest.NewRecorder()

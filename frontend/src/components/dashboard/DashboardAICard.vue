@@ -13,18 +13,14 @@ async function load() {
 onMounted(load)
 defineExpose({ refresh: load })
 
-const totalTokens = computed(
-  () => (stats.value?.total_input_tokens ?? 0) + (stats.value?.total_output_tokens ?? 0),
-)
+const totalTokens = computed(() => (stats.value?.total_input_tokens ?? 0) + (stats.value?.total_output_tokens ?? 0))
 const errRate = computed(() => {
   const t = stats.value?.total_requests ?? 0
   const e = stats.value?.error_count ?? 0
   return t > 0 ? Math.round((e / t) * 100) : null
 })
 const sparkValues = computed(() =>
-  (stats.value?.recent ?? [])
-    .slice(-20)
-    .map((r) => (r.input_tokens || 0) + (r.output_tokens || 0)),
+  (stats.value?.recent ?? []).slice(-20).map((r) => (r.input_tokens || 0) + (r.output_tokens || 0)),
 )
 function fmtToken(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
@@ -53,19 +49,23 @@ function fmtToken(n: number): string {
         <div class="ai-cell">
           <span class="ac-label">Token</span>
           <strong>{{ fmtToken(totalTokens) }}</strong>
-          <small class="ac-sub">↑{{ fmtToken(stats.total_input_tokens) }} ↓{{
-            fmtToken(stats.total_output_tokens)
-          }}</small>
+          <small class="ac-sub"
+            >↑{{ fmtToken(stats.total_input_tokens) }} ↓{{ fmtToken(stats.total_output_tokens) }}</small
+          >
         </div>
         <div class="ai-cell">
           <span class="ac-label">{{ t('daic.cost') }}</span>
           <strong>${{ stats.total_cost_usd.toFixed(4) }}</strong>
-          <small class="ac-sub">{{ t('daic.avgLatency', { s: Math.round((stats.avg_latency_ms ?? 0) / 1000) }) }}</small>
+          <small class="ac-sub">{{
+            t('daic.avgLatency', { s: Math.round((stats.avg_latency_ms ?? 0) / 1000) })
+          }}</small>
         </div>
         <div class="ai-cell">
           <span class="ac-label">{{ t('daic.errRate') }}</span>
           <strong :class="{ danger: (errRate ?? 0) > 0 }">{{ errRate === null ? '-' : errRate + '%' }}</strong>
-          <small class="ac-sub">{{ t('daic.errRateDetail', { err: stats.error_count, rl: stats.rate_limit_count }) }}</small>
+          <small class="ac-sub">{{
+            t('daic.errRateDetail', { err: stats.error_count, rl: stats.rate_limit_count })
+          }}</small>
         </div>
       </div>
       <div v-if="sparkValues.length >= 2" class="ai-spark">

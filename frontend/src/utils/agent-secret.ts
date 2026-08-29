@@ -26,13 +26,19 @@ export function showAgentSecret(agent: Agent, plainSecret: string) {
       h('p', { style: 'margin-top:10px' }, 'Secret：'),
       h(
         'pre',
-        { style: 'background:var(--glass-bg);padding:8px;border-radius:6px;font-size:12px;word-break:break-all;white-space:pre-wrap' },
+        {
+          style:
+            'background:var(--glass-bg);padding:8px;border-radius:6px;font-size:12px;word-break:break-all;white-space:pre-wrap',
+        },
         plainSecret,
       ),
       h('p', { style: 'margin-top:10px' }, '一键安装命令（在被监控机 Linux / root 执行）：'),
       h(
         'pre',
-        { style: 'background:var(--glass-bg);padding:8px;border-radius:6px;font-size:12px;word-break:break-all;white-space:pre-wrap' },
+        {
+          style:
+            'background:var(--glass-bg);padding:8px;border-radius:6px;font-size:12px;word-break:break-all;white-space:pre-wrap',
+        },
         cmd,
       ),
       h(

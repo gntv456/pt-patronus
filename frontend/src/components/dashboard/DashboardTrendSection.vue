@@ -9,87 +9,98 @@ import { useDashboardActions } from '@/composables/useDashboardActions'
 
 const { t } = useI18n()
 const {
-  trendLoading, trendDays, trendMode, initialLoading,
-  metricItems, trendSeries, trendUnit, trendDaysAxis, siteConfigByName,
+  trendLoading,
+  trendDays,
+  trendMode,
+  initialLoading,
+  metricItems,
+  trendSeries,
+  trendUnit,
+  trendDaysAxis,
+  siteConfigByName,
 } = useDashboardData()
 const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
 </script>
 
 <template>
-    <div class="operations-grid">
-      <section class="trend-panel ops-surface" v-loading="trendLoading">
-        <div class="section-head">
-          <div>
-            <h3>{{ t('dts.title') }}</h3>
-            <p>{{ t('dts.sub', { n: trendDays }) }}</p>
-          </div>
-          <div class="metric-switch" :aria-label="t('dts.metricAria')">
-            <button type="button" :class="{ active: trendMode === 'traffic' }" @click="trendMode = 'traffic'">{{ t('dts.mTraffic') }}</button>
-            <button type="button" :class="{ active: trendMode === 'seeding' }" @click="trendMode = 'seeding'">{{ t('dts.mSeeding') }}</button>
-            <button type="button" :class="{ active: trendMode === 'size' }" @click="trendMode = 'size'">{{ t('dts.mSize') }}</button>
-            <button type="button" :class="{ active: trendMode === 'bonus' }" @click="trendMode = 'bonus'">{{ t('dts.mBonus') }}</button>
-          </div>
+  <div class="operations-grid">
+    <section class="trend-panel ops-surface" v-loading="trendLoading">
+      <div class="section-head">
+        <div>
+          <h3>{{ t('dts.title') }}</h3>
+          <p>{{ t('dts.sub', { n: trendDays }) }}</p>
         </div>
-
-        <div v-if="initialLoading" class="metric-strip">
-          <div v-for="i in 5" :key="i" class="metric-item">
-            <el-skeleton-item variant="text" style="width: 52%" />
-            <el-skeleton-item variant="h1" style="width: 74%; margin-top: 8px" />
-          </div>
-        </div>
-        <div v-else class="metric-strip">
-          <div v-for="item in metricItems" :key="item.label" class="metric-item" :class="`tone-${item.tone}`">
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-            <small v-if="item.change">{{ item.change }}</small>
-          </div>
-        </div>
-
-        <div class="chart-legend">
-          <span v-for="item in trendSeries" :key="item.label">
-            <i :style="{ backgroundColor: item.color }" />{{ item.label }}
-          </span>
-        </div>
-        <DashboardTrendChart :days="trendDaysAxis" :series="trendSeries" :unit="trendUnit" />
-      </section>
-
-      <aside class="action-panel ops-surface">
-        <div class="section-head action-heading">
-          <div>
-            <h3>{{ t('dts.issuesTitle') }}</h3>
-            <p>{{ totalIssueCount ? t('dts.issuesN', { n: totalIssueCount }) : t('dts.allOk') }}</p>
-          </div>
-          <span class="issue-counter" :class="{ empty: !totalIssueCount }">{{ totalIssueCount }}</span>
-        </div>
-        <div v-if="dashboardActions.length" class="action-list">
-          <button
-            v-for="action in dashboardActions.slice(0, 6)"
-            :key="action.key"
-            type="button"
-            class="action-row"
-            @click="showAction(action)"
-          >
-            <SiteFavicon
-              :name="action.site"
-              :base-url="siteConfigByName(action.site)?.base_url"
-              :size="30"
-            />
-            <span class="action-copy">
-              <b>{{ action.site }}</b>
-              <span>{{ action.title }}</span>
-              <small>{{ action.detail }}</small>
-            </span>
-            <i class="action-severity" :class="`tone-${action.tone}`" />
+        <div class="metric-switch" :aria-label="t('dts.metricAria')">
+          <button type="button" :class="{ active: trendMode === 'traffic' }" @click="trendMode = 'traffic'">
+            {{ t('dts.mTraffic') }}
+          </button>
+          <button type="button" :class="{ active: trendMode === 'seeding' }" @click="trendMode = 'seeding'">
+            {{ t('dts.mSeeding') }}
+          </button>
+          <button type="button" :class="{ active: trendMode === 'size' }" @click="trendMode = 'size'">
+            {{ t('dts.mSize') }}
+          </button>
+          <button type="button" :class="{ active: trendMode === 'bonus' }" @click="trendMode = 'bonus'">
+            {{ t('dts.mBonus') }}
           </button>
         </div>
-        <div v-else class="action-empty">
-          <span class="empty-check">✓</span>
-          <strong>{{ t('dts.noIssues') }}</strong>
-          <p>{{ t('dts.noIssuesHint') }}</p>
+      </div>
+
+      <div v-if="initialLoading" class="metric-strip">
+        <div v-for="i in 5" :key="i" class="metric-item">
+          <el-skeleton-item variant="text" style="width: 52%" />
+          <el-skeleton-item variant="h1" style="width: 74%; margin-top: 8px" />
         </div>
-        <router-link to="/sites" class="action-footer">{{ t('dts.goSites') }}</router-link>
-      </aside>
-    </div>
+      </div>
+      <div v-else class="metric-strip">
+        <div v-for="item in metricItems" :key="item.label" class="metric-item" :class="`tone-${item.tone}`">
+          <span>{{ item.label }}</span>
+          <strong>{{ item.value }}</strong>
+          <small v-if="item.change">{{ item.change }}</small>
+        </div>
+      </div>
+
+      <div class="chart-legend">
+        <span v-for="item in trendSeries" :key="item.label">
+          <i :style="{ backgroundColor: item.color }" />{{ item.label }}
+        </span>
+      </div>
+      <DashboardTrendChart :days="trendDaysAxis" :series="trendSeries" :unit="trendUnit" />
+    </section>
+
+    <aside class="action-panel ops-surface">
+      <div class="section-head action-heading">
+        <div>
+          <h3>{{ t('dts.issuesTitle') }}</h3>
+          <p>{{ totalIssueCount ? t('dts.issuesN', { n: totalIssueCount }) : t('dts.allOk') }}</p>
+        </div>
+        <span class="issue-counter" :class="{ empty: !totalIssueCount }">{{ totalIssueCount }}</span>
+      </div>
+      <div v-if="dashboardActions.length" class="action-list">
+        <button
+          v-for="action in dashboardActions.slice(0, 6)"
+          :key="action.key"
+          type="button"
+          class="action-row"
+          @click="showAction(action)"
+        >
+          <SiteFavicon :name="action.site" :base-url="siteConfigByName(action.site)?.base_url" :size="30" />
+          <span class="action-copy">
+            <b>{{ action.site }}</b>
+            <span>{{ action.title }}</span>
+            <small>{{ action.detail }}</small>
+          </span>
+          <i class="action-severity" :class="`tone-${action.tone}`" />
+        </button>
+      </div>
+      <div v-else class="action-empty">
+        <span class="empty-check">✓</span>
+        <strong>{{ t('dts.noIssues') }}</strong>
+        <p>{{ t('dts.noIssuesHint') }}</p>
+      </div>
+      <router-link to="/sites" class="action-footer">{{ t('dts.goSites') }}</router-link>
+    </aside>
+  </div>
 </template>
 
 <style scoped>
@@ -136,7 +147,9 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   padding: 12px 12px 11px;
   border-right: 1px solid var(--divider);
 }
-.metric-item:last-child { border-right: 0; }
+.metric-item:last-child {
+  border-right: 0;
+}
 .metric-item::before {
   position: absolute;
   top: 13px;
@@ -147,11 +160,21 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   background: #64748b;
   content: '';
 }
-.metric-item.tone-teal::before { background: #0f766e; }
-.metric-item.tone-blue::before { background: #2563eb; }
-.metric-item.tone-indigo::before { background: #4f46e5; }
-.metric-item.tone-green::before { background: #16a34a; }
-.metric-item.tone-amber::before { background: #d97706; }
+.metric-item.tone-teal::before {
+  background: #0f766e;
+}
+.metric-item.tone-blue::before {
+  background: #2563eb;
+}
+.metric-item.tone-indigo::before {
+  background: #4f46e5;
+}
+.metric-item.tone-green::before {
+  background: #16a34a;
+}
+.metric-item.tone-amber::before {
+  background: #d97706;
+}
 .metric-item > span {
   display: block;
   overflow: hidden;
@@ -187,15 +210,25 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   color: var(--text-muted);
   font-size: var(--fs-2xs);
 }
-.chart-legend span { display: inline-flex; align-items: center; gap: var(--sp-1); }
-.chart-legend i { width: 7px; height: 7px; border-radius: 50%; }
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.chart-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
 
 .action-panel {
   display: flex;
   flex-direction: column;
   max-height: 430px;
 }
-.action-heading { align-items: center; }
+.action-heading {
+  align-items: center;
+}
 .issue-counter {
   display: inline-flex;
   align-items: center;
@@ -233,8 +266,12 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   text-align: left;
   cursor: pointer;
 }
-.action-row:hover { background: var(--surface-muted); }
-.action-copy { min-width: 0; }
+.action-row:hover {
+  background: var(--surface-muted);
+}
+.action-copy {
+  min-width: 0;
+}
 .action-copy b,
 .action-copy span,
 .action-copy small {
@@ -243,13 +280,32 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.action-copy b { font-size: var(--fs-xs); }
-.action-copy span { margin-top: 1px; font-size: var(--fs-xs); }
-.action-copy small { margin-top: 2px; color: var(--text-muted); font-size: var(--fs-2xs); }
-.action-severity { width: 7px; height: 7px; border-radius: 50%; }
-.action-severity.tone-danger { background: #dc2626; }
-.action-severity.tone-warning { background: #d97706; }
-.action-severity.tone-info { background: #2563eb; }
+.action-copy b {
+  font-size: var(--fs-xs);
+}
+.action-copy span {
+  margin-top: 1px;
+  font-size: var(--fs-xs);
+}
+.action-copy small {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+}
+.action-severity {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.action-severity.tone-danger {
+  background: #dc2626;
+}
+.action-severity.tone-warning {
+  background: #d97706;
+}
+.action-severity.tone-info {
+  background: #2563eb;
+}
 .action-empty {
   display: flex;
   flex: 1;
@@ -272,8 +328,14 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   background: var(--pt-success-bg);
   font-weight: 700;
 }
-.action-empty strong { color: var(--text-strong); font-size: var(--fs-body); }
-.action-empty p { margin: 4px 0 0; font-size: var(--fs-2xs); }
+.action-empty strong {
+  color: var(--text-strong);
+  font-size: var(--fs-body);
+}
+.action-empty p {
+  margin: 4px 0 0;
+  font-size: var(--fs-2xs);
+}
 .action-footer {
   display: block;
   margin-top: 10px;
@@ -283,40 +345,102 @@ const { dashboardActions, totalIssueCount, showAction } = useDashboardActions()
   text-decoration: none;
 }
 
-.setup-card { padding: 6px; }
+.setup-card {
+  padding: 6px;
+}
 @media (max-width: 1180px) {
-  .health-strip { grid-template-columns: minmax(200px, 1.25fr) repeat(4, minmax(108px, 1fr)); }
-  .operations-grid { grid-template-columns: minmax(0, 1fr) 290px; }
-  .metric-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .metric-item:nth-child(3) { border-right: 0; }
-  .metric-item:nth-child(n + 4) { border-top: 1px solid var(--divider); }
+  .health-strip {
+    grid-template-columns: minmax(200px, 1.25fr) repeat(4, minmax(108px, 1fr));
+  }
+  .operations-grid {
+    grid-template-columns: minmax(0, 1fr) 290px;
+  }
+  .metric-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .metric-item:nth-child(3) {
+    border-right: 0;
+  }
+  .metric-item:nth-child(n + 4) {
+    border-top: 1px solid var(--divider);
+  }
 }
 @media (max-width: 900px) {
-  .page-head { align-items: flex-start; flex-direction: column; }
-  .head-actions { width: 100%; justify-content: flex-start; }
-  .updated-at { margin-right: auto; }
-  .health-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .health-main { grid-column: 1 / -1; }
-  .health-item:nth-child(3) { border-right: 0; }
-  .operations-grid { grid-template-columns: 1fr; }
-  .action-panel { max-height: none; }
-  .action-list { max-height: 330px; }
+  .page-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .head-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .updated-at {
+    margin-right: auto;
+  }
+  .health-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .health-main {
+    grid-column: 1 / -1;
+  }
+  .health-item:nth-child(3) {
+    border-right: 0;
+  }
+  .operations-grid {
+    grid-template-columns: 1fr;
+  }
+  .action-panel {
+    max-height: none;
+  }
+  .action-list {
+    max-height: 330px;
+  }
 }
 @media (max-width: 640px) {
-  .page-heading { align-items: flex-start; flex-direction: column; gap: var(--sp-1); }
-  .head-actions { gap: var(--sp-1); }
-  .updated-at { width: 100%; }
-  .period-control { order: 2; }
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+  .head-actions {
+    gap: var(--sp-1);
+  }
+  .updated-at {
+    width: 100%;
+  }
+  .period-control {
+    order: 2;
+  }
   .health-main,
-  .health-item { padding: 10px 12px; }
-  .section-head { align-items: flex-start; flex-direction: column; }
-  .metric-switch { width: 100%; overflow-x: auto; }
-  .metric-switch button { flex: 1 0 auto; }
-  .metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .metric-item:nth-child(2n) { border-right: 0; }
-  .metric-item:nth-child(3) { border-right: 1px solid var(--divider); }
-  .metric-item:nth-child(n + 3) { border-top: 1px solid var(--divider); }
-  .metric-item:last-child { grid-column: 1 / -1; border-right: 0; }
+  .health-item {
+    padding: 10px 12px;
+  }
+  .section-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .metric-switch {
+    width: 100%;
+    overflow-x: auto;
+  }
+  .metric-switch button {
+    flex: 1 0 auto;
+  }
+  .metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .metric-item:nth-child(2n) {
+    border-right: 0;
+  }
+  .metric-item:nth-child(3) {
+    border-right: 1px solid var(--divider);
+  }
+  .metric-item:nth-child(n + 3) {
+    border-top: 1px solid var(--divider);
+  }
+  .metric-item:last-child {
+    grid-column: 1 / -1;
+    border-right: 0;
+  }
 }
-
 </style>

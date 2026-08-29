@@ -291,7 +291,7 @@ func (h *NotificationHandler) WeChatQRStatus(c *gin.Context) {
 	loggedIn := false
 	if r.Success && r.Token != "" {
 		if err := h.provider.SetWeChatCredentials(r.Token, r.AccountID); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "status": r.Status})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "credential update failed", "status": r.Status})
 			return
 		}
 		loggedIn = true

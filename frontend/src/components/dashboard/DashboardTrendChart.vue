@@ -61,7 +61,9 @@ const geometry = computed(() => {
     const ratio = index / 4
     return { y: PAD.top + ratio * plotH, value: max - ratio * span }
   })
-  const labelIndexes = Array.from(new Set([0, Math.floor((length - 1) / 3), Math.floor(((length - 1) * 2) / 3), length - 1]))
+  const labelIndexes = Array.from(
+    new Set([0, Math.floor((length - 1) / 3), Math.floor(((length - 1) * 2) / 3), length - 1]),
+  )
   return { length, xOf, yOf, lines, yTicks, labelIndexes }
 })
 

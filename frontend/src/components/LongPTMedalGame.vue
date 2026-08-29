@@ -67,7 +67,8 @@ async function refresh() {
   try {
     const [treeData, shardData] = await Promise.all([
       entertainmentApi.medalTree(props.siteId, GAME).catch((e: unknown) => {
-        fetchError.value = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || t('mg.loadFailed')
+        fetchError.value =
+          (e as { response?: { data?: { error?: string } } })?.response?.data?.error || t('mg.loadFailed')
         return [] as MedalNode[]
       }),
       entertainmentApi.medalShards(props.siteId, GAME).catch(() => null),
@@ -86,11 +87,15 @@ async function compose(node: MedalNode) {
     return
   }
   try {
-    await ElMessageBox.confirm(t('mg.composeConfirm', { cost: costText(node), name: node.name }), t('mg.composeTitle'), {
-      type: 'warning',
-      confirmButtonText: t('mg.confirmCompose'),
-      cancelButtonText: t('common.cancel'),
-    })
+    await ElMessageBox.confirm(
+      t('mg.composeConfirm', { cost: costText(node), name: node.name }),
+      t('mg.composeTitle'),
+      {
+        type: 'warning',
+        confirmButtonText: t('mg.confirmCompose'),
+        cancelButtonText: t('common.cancel'),
+      },
+    )
   } catch {
     return
   }
@@ -113,7 +118,10 @@ async function compose(node: MedalNode) {
 async function convert(yiYang: number) {
   try {
     await ElMessageBox.confirm(
-      t('mg.convertConfirm', { from: yiYang < 0 ? t('mg.yang') : t('mg.yin'), to: yiYang < 0 ? t('mg.yin') : t('mg.yang') }),
+      t('mg.convertConfirm', {
+        from: yiYang < 0 ? t('mg.yang') : t('mg.yin'),
+        to: yiYang < 0 ? t('mg.yin') : t('mg.yang'),
+      }),
       t('mg.convertTitle'),
       { type: 'warning', confirmButtonText: t('mg.confirmConvert'), cancelButtonText: t('common.cancel') },
     )
@@ -152,8 +160,13 @@ onMounted(refresh)
           <div class="shard-val">{{ shards?.yang_yao ?? '--' }}</div>
           <div class="shard-lbl">{{ t('mg.yang') }}</div>
         </div>
-        <el-button size="small" :disabled="!shards || shards.yang_yao < 1 || converting === -1"
-          :loading="converting === -1" @click="convert(-1)">→{{ t('mg.yin') }}</el-button>
+        <el-button
+          size="small"
+          :disabled="!shards || shards.yang_yao < 1 || converting === -1"
+          :loading="converting === -1"
+          @click="convert(-1)"
+          >→{{ t('mg.yin') }}</el-button
+        >
       </div>
       <div class="shard">
         <span class="shard-icon">⚋</span>
@@ -161,8 +174,13 @@ onMounted(refresh)
           <div class="shard-val">{{ shards?.yin_yao ?? '--' }}</div>
           <div class="shard-lbl">{{ t('mg.yin') }}</div>
         </div>
-        <el-button size="small" :disabled="!shards || shards.yin_yao < 1 || converting === 1"
-          :loading="converting === 1" @click="convert(1)">→{{ t('mg.yang') }}</el-button>
+        <el-button
+          size="small"
+          :disabled="!shards || shards.yin_yao < 1 || converting === 1"
+          :loading="converting === 1"
+          @click="convert(1)"
+          >→{{ t('mg.yang') }}</el-button
+        >
       </div>
       <div class="convert-tip text-muted">{{ t('mg.convertTip') }}</div>
     </div>
@@ -176,16 +194,35 @@ onMounted(refresh)
       <div class="node-grid">
         <div v-for="node in lvl.nodes" :key="node.medal_id" class="node" :class="{ owned: node.owned }">
           <div class="node-img-wrap">
-            <img v-if="node.image_url" :src="node.image_url" :alt="node.name" class="node-img" :class="{ gray: !node.owned }" />
+            <img
+              v-if="node.image_url"
+              :src="node.image_url"
+              :alt="node.name"
+              class="node-img"
+              :class="{ gray: !node.owned }"
+            />
             <span v-else class="node-placeholder">☯</span>
             <span v-if="node.owned" class="owned-badge">✓</span>
           </div>
           <div class="node-name">{{ node.name }}</div>
           <div class="node-cost text-muted">{{ costText(node) }}</div>
-          <el-button v-if="!node.owned" size="small" :type="canCompose(node) ? 'primary' : 'info'"
+          <el-button
+            v-if="!node.owned"
+            size="small"
+            :type="canCompose(node) ? 'primary' : 'info'"
             :disabled="!!composing || !canCompose(node)"
-            :loading="composing === node.medal_id" @click="compose(node)">
-            {{ canCompose(node) ? (isBigType(node.type) ? t('mg.bigCompose') : t('mg.compose')) : (isBigType(node.type) ? t('mg.childrenMissing') : t('mg.shardsMissing')) }}
+            :loading="composing === node.medal_id"
+            @click="compose(node)"
+          >
+            {{
+              canCompose(node)
+                ? isBigType(node.type)
+                  ? t('mg.bigCompose')
+                  : t('mg.compose')
+                : isBigType(node.type)
+                  ? t('mg.childrenMissing')
+                  : t('mg.shardsMissing')
+            }}
           </el-button>
           <div v-else class="owned-tag">{{ t('mg.owned') }}</div>
         </div>
@@ -200,33 +237,154 @@ onMounted(refresh)
 </template>
 
 <style scoped>
-.lpt-medal { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 720px; margin: 0 auto; }
-.banner { text-align: center; padding: 14px; border-radius: var(--radius-md); background: linear-gradient(135deg, #2d3436, #636e72); }
-.banner-title { display: block; font-size: var(--fs-title); font-weight: 800; color: #ffd76a; letter-spacing: 2px; }
-.banner-sub { display: block; margin-top: 3px; font-size: var(--fs-xs); color: rgba(255, 255, 255, 0.7); }
+.lpt-medal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: 720px;
+  margin: 0 auto;
+}
+.banner {
+  text-align: center;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #2d3436, #636e72);
+}
+.banner-title {
+  display: block;
+  font-size: var(--fs-title);
+  font-weight: 800;
+  color: #ffd76a;
+  letter-spacing: 2px;
+}
+.banner-sub {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  color: rgba(255, 255, 255, 0.7);
+}
 
-.shard-bar { display: flex; gap: var(--sp-4); padding: 14px; border-radius: var(--radius-sm); align-items: center; flex-wrap: wrap; }
-.shard { display: flex; align-items: center; gap: var(--sp-2); }
-.shard-icon { font-size: var(--fs-hero); color: var(--pt-primary, #6c5ce7); }
-.shard-val { font-size: var(--fs-title); font-weight: 800; }
-.shard-lbl { font-size: var(--fs-2xs); color: var(--text-muted, #999); }
-.convert-tip { width: 100%; font-size: var(--fs-2xs); margin-top: 4px; }
+.shard-bar {
+  display: flex;
+  gap: var(--sp-4);
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.shard {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.shard-icon {
+  font-size: var(--fs-hero);
+  color: var(--pt-primary, #6c5ce7);
+}
+.shard-val {
+  font-size: var(--fs-title);
+  font-weight: 800;
+}
+.shard-lbl {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted, #999);
+}
+.convert-tip {
+  width: 100%;
+  font-size: var(--fs-2xs);
+  margin-top: 4px;
+}
 
-.level { display: flex; flex-direction: column; gap: var(--sp-2); }
-.level-title { font-weight: 700; font-size: var(--fs-lg); display: flex; align-items: center; gap: var(--sp-2); }
-.level-count { font-size: var(--fs-xs); font-weight: 400; }
-.node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: var(--sp-2); }
+.level {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.level-title {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.level-count {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+.node-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: var(--sp-2);
+}
 
-.node { display: flex; flex-direction: column; align-items: center; gap: var(--sp-1); padding: 12px 8px; border-radius: var(--radius-sm); background: var(--glass-bg, rgba(255,255,255,0.06)); border: 1px solid var(--border-soft, rgba(255,255,255,0.08)); text-align: center; }
-.node.owned { border-color: var(--pt-success-bg); }
-.node-img-wrap { position: relative; width: 56px; height: 56px; }
-.node-img { width: 100%; height: 100%; object-fit: contain; }
-.node-img.gray { filter: grayscale(1) opacity(0.5); }
-.node-placeholder { font-size: 40px; color: var(--text-muted, #999); }
-.owned-badge { position: absolute; top: -4px; right: -4px; width: 20px; height: 20px; border-radius: 50%; background: #2ecc71; color: #fff; font-size: var(--fs-xs); display: flex; align-items: center; justify-content: center; }
-.node-name { font-size: var(--fs-xs); font-weight: 600; }
-.node-cost { font-size: var(--fs-2xs); line-height: 1.3; min-height: 26px; }
-.owned-tag { font-size: var(--fs-xs); color: var(--pt-success); font-weight: 600; height: 24px; line-height: 24px; }
-.empty { padding: 40px; text-align: center; }
-.err { color: var(--pt-danger); font-size: var(--fs-body); word-break: break-all; }
+.node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 12px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  text-align: center;
+}
+.node.owned {
+  border-color: var(--pt-success-bg);
+}
+.node-img-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+}
+.node-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.node-img.gray {
+  filter: grayscale(1) opacity(0.5);
+}
+.node-placeholder {
+  font-size: 40px;
+  color: var(--text-muted, #999);
+}
+.owned-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #2ecc71;
+  color: #fff;
+  font-size: var(--fs-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.node-name {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.node-cost {
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+  min-height: 26px;
+}
+.owned-tag {
+  font-size: var(--fs-xs);
+  color: var(--pt-success);
+  font-weight: 600;
+  height: 24px;
+  line-height: 24px;
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
+.err {
+  color: var(--pt-danger);
+  font-size: var(--fs-body);
+  word-break: break-all;
+}
 </style>

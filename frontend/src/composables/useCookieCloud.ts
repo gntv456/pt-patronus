@@ -4,17 +4,20 @@
 // 充当服务器，浏览器扩展直接推到 PTPatronus，免单独部署容器）。
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  cookieCloudApi,
-  type CookieCloudConfig,
-  type CookieCloudConfigInput,
-} from '@/api/cookiecloud'
+import { cookieCloudApi, type CookieCloudConfig, type CookieCloudConfigInput } from '@/api/cookiecloud'
 import { copyText } from '@/utils/clipboard'
 import { alertBox } from '@/utils/alertBox'
 
 const ccCfg = ref<CookieCloudConfig | null>(null)
 const ccForm = ref<CookieCloudConfigInput>({
-  enabled: false, mode: 'external', server: '', uuid: '', password: '', interval_min: 120, update_mode: 'disconnected', direction: 'both',
+  enabled: false,
+  mode: 'external',
+  server: '',
+  uuid: '',
+  password: '',
+  interval_min: 120,
+  update_mode: 'disconnected',
+  direction: 'both',
 })
 const ccLoading = ref(false)
 const ccSaving = ref(false)
@@ -50,11 +53,9 @@ async function loadCookieCloud() {
 function maybeShowGenerated(resp: { uuid?: string; password?: string }) {
   if (!resp?.password) return
   ccGeneratedPassword.value = resp.password
-  alertBox(
-    `新密码仅显示这一次，请立即复制并填入浏览器扩展：\n${resp.password}`,
-    'CookieCloud 密码已生成',
-    { confirmButtonText: '复制密码' },
-  )
+  alertBox(`新密码仅显示这一次，请立即复制并填入浏览器扩展：\n${resp.password}`, 'CookieCloud 密码已生成', {
+    confirmButtonText: '复制密码',
+  })
 }
 
 async function saveCookieCloud() {
@@ -75,11 +76,11 @@ async function saveCookieCloud() {
 // 重新生成 builtin 凭证（确认后随保存提交；旧数据作废）
 async function regenerateBuiltinCreds() {
   try {
-    await ElMessageBox.confirm(
-      '重新生成 UUID 和密码？浏览器扩展需要改用新凭证，旧推送数据将作废。',
-      '重新生成凭证',
-      { type: 'warning', confirmButtonText: '重新生成', cancelButtonText: '取消' },
-    )
+    await ElMessageBox.confirm('重新生成 UUID 和密码？浏览器扩展需要改用新凭证，旧推送数据将作废。', '重新生成凭证', {
+      type: 'warning',
+      confirmButtonText: '重新生成',
+      cancelButtonText: '取消',
+    })
   } catch {
     return
   }
@@ -120,8 +121,17 @@ async function pushCookieCloud() {
 
 export function useCookieCloud() {
   return {
-    ccCfg, ccForm, ccLoading, ccSaving, ccSyncing,
-    ccGeneratedPassword, ccBuiltinEndpoint,
-    loadCookieCloud, saveCookieCloud, regenerateBuiltinCreds, syncCookieCloud, pushCookieCloud,
+    ccCfg,
+    ccForm,
+    ccLoading,
+    ccSaving,
+    ccSyncing,
+    ccGeneratedPassword,
+    ccBuiltinEndpoint,
+    loadCookieCloud,
+    saveCookieCloud,
+    regenerateBuiltinCreds,
+    syncCookieCloud,
+    pushCookieCloud,
   }
 }

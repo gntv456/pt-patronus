@@ -40,13 +40,32 @@ class _WebViewLoginPageState extends State<WebViewLoginPage> {
         return;
       }
       await SiteApi().uploadCookie(widget.site.id, cookieStr);
+      // 上传成功后清理 WebView 会话痕迹（审计 P1-6）：共用设备上
+      // HttpOnly 的登录 cookie 原先会长期残留 WebView 存储。
+      await _clearWebViewSession();
       if (!mounted) return;
-      _toast('Cookie 已上传（${cookies.length} 条）');
+      _toast('Cookie 已上传（${cookies.length} 条），WebView 登录痕迹已清除');
       Navigator.of(context).pop(true);
     } catch (e) {
       _toast('上传失败：$e');
     } finally {
       if (mounted) setState(() => _extracting = false);
+    }
+  }
+
+  // 清理 WebView 存储的站点 cookie 与缓存（不含 localStorage 等，保留站点 UI 状态）。
+  // 单页退出即清：下次进入登录页需要重新登录——这正是隐私语义（不留登录态）。
+  Future<void> _clearWebViewSession() async {
+    try {
+      final cm = CookieManager.instance();
+      final uri = WebUri(widget.site.baseUrl);
+      await cm.deleteCookies(url: uri);
+      final c = _ctrl;
+      if (c != null) {
+        await InAppWebViewController.clearAllCache();
+      }
+    } catch (_) {
+      // 清理失败不上抛：cookie 已上传成功，残留属降级而非失败。
     }
   }
 

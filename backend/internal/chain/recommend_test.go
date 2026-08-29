@@ -214,10 +214,15 @@ func TestRecommendFeedsStream(t *testing.T) {
 	s2 := &fakeSrc{name: "s2", items: []media.MediaInfo{{Source: "s2", Title: "B"}}}
 	rc := NewRecommendChain(b, &MediaSourceProvider{sources: []media.MediaSource{s1, s2}})
 
-	// ① 多源：emit 累计应等于两源合并（流式不排序，顺序不定）
+	// ① 多源：emit 累计应等于两源合并（流式不排序，顺序不定）。
+	// emit 会被多个源 goroutine 并发调用（RecommendFeedsStream 契约：调用方须
+	// 自行串行化）——无锁 append 是数据竞争，曾间歇性丢一个源的 emit。
+	var mu sync.Mutex
 	var got []media.MediaInfo
 	rc.RecommendFeedsStream(context.Background(), "", "movie", 1, true, func(items []media.MediaInfo) {
+		mu.Lock()
 		got = append(got, items...)
+		mu.Unlock()
 	})
 	if len(got) != 2 {
 		t.Fatalf("stream: expected 2 items across emits, got %d", len(got))

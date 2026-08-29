@@ -69,18 +69,26 @@ export const recommendApi = {
   ) => {
     const params = new URLSearchParams({ source, category, page: String(page) })
     if (refresh) params.set('refresh', '1')
-    return streamSSE(`/api/v1/media/recommend/stream?${params}`, (event, data) => {
-      if (event === 'batch' && data?.results) onBatch(data.results as MediaInfo[])
-    }, signal)
+    return streamSSE(
+      `/api/v1/media/recommend/stream?${params}`,
+      (event, data) => {
+        if (event === 'batch' && data?.results) onBatch(data.results as MediaInfo[])
+      },
+      signal,
+    )
   },
   // 开播日历（全量 discover，按日期分组）：GET /media/calendar?kind=tv|movie&days=
   calendar: (kind: 'tv' | 'movie' = 'tv', days = 14) =>
     http
-      .get<{ kind: string; days: number; calendar: Record<string, CalendarEpisode[]> }>('/media/calendar', { params: { kind, days } })
+      .get<{ kind: string; days: number; calendar: Record<string, CalendarEpisode[]> }>('/media/calendar', {
+        params: { kind, days },
+      })
       .then((r) => r.data.calendar ?? {}),
   // 订阅日历（我的订阅的单集开播日程）：GET /media/calendar/subscriptions?days=
   subscriptionCalendar: (days = 30) =>
     http
-      .get<{ days: number; calendar: Record<string, CalendarEpisode[]> }>('/media/calendar/subscriptions', { params: { days } })
+      .get<{ days: number; calendar: Record<string, CalendarEpisode[]> }>('/media/calendar/subscriptions', {
+        params: { days },
+      })
       .then((r) => r.data.calendar ?? {}),
 }

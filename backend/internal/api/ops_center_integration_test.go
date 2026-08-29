@@ -58,21 +58,21 @@ func TestOpsCenterRoutesAuth(t *testing.T) {
 		}
 	})
 
-	t.Run("authed database write needs confirm", func(t *testing.T) {
+	t.Run("authed database write always forbidden", func(t *testing.T) {
 		code, body := do(t, srv, "POST", "/api/v1/ops/database/query",
-			map[string]any{"sql": "CREATE TABLE t (id int)"}, token)
-		if code != 400 {
-			t.Errorf("write without confirm: code=%d, want 400", code)
+			map[string]any{"sql": "CREATE TABLE t (id int)", "confirm_risk": true}, token)
+		if code != 403 {
+			t.Errorf("write with confirm: code=%d, want 403", code)
 		}
 		errCode, _ := body["code"].(string)
-		if errCode != "risk_confirmation_required" {
-			t.Errorf("error code=%q, want risk_confirmation_required", errCode)
+		if errCode != "write_sql_forbidden" {
+			t.Errorf("error code=%q, want write_sql_forbidden", errCode)
 		}
 	})
 
 	t.Run("authed database forbidden sql", func(t *testing.T) {
 		code, _ := do(t, srv, "POST", "/api/v1/ops/database/query",
-			map[string]any{"sql": "DROP DATABASE x", "confirm_risk": true}, token)
+			map[string]any{"sql": "SELECT * FROM (DELETE FROM x) y", "confirm_risk": true}, token)
 		if code != 400 {
 			t.Errorf("forbidden sql: code=%d, want 400", code)
 		}
@@ -87,16 +87,14 @@ func TestOpsCenterRoutesAuth(t *testing.T) {
 	})
 
 	t.Run("authed database schema valid table", func(t *testing.T) {
-		// 先创建一个表，再查 schema
-		do(t, srv, "POST", "/api/v1/ops/database/query",
-			map[string]any{"sql": "CREATE TABLE test_ops (id INTEGER PRIMARY KEY, name TEXT NOT NULL)", "confirm_risk": true}, token)
-		code, body := do(t, srv, "GET", "/api/v1/ops/database/tables/test_ops/schema", nil, token)
+		// 直接查既有业务表的 schema（写 SQL 已被禁用，无法经 query 建表）
+		code, body := do(t, srv, "GET", "/api/v1/ops/database/tables/users/schema", nil, token)
 		if code != 200 {
 			t.Fatalf("schema: code=%d body=%v", code, body)
 		}
 		cols, _ := body["columns"].([]any)
-		if len(cols) != 2 {
-			t.Errorf("schema columns: got %d, want 2", len(cols))
+		if len(cols) == 0 {
+			t.Error("schema columns: got 0, want >0")
 		}
 	})
 

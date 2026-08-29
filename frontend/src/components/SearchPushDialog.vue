@@ -13,7 +13,15 @@ const { t } = useI18n()
 const visible = defineModel<boolean>({ required: true })
 
 defineProps<{
-  row: { title: string; subtitle?: string; size?: string; seeders?: number; leechers?: number; free?: boolean; site_name?: string } | null
+  row: {
+    title: string
+    subtitle?: string
+    size?: string
+    seeders?: number
+    leechers?: number
+    free?: boolean
+    site_name?: string
+  } | null
   subtitle: string
   downloaders: Downloader[]
   categories: string[]
@@ -53,7 +61,9 @@ const emit = defineEmits<{
     </template>
 
     <div v-if="pushedDlName" class="sp-ok">
-      <p>{{ t('spd.pushedTo') }} <b>{{ pushedDlName }}</b></p>
+      <p>
+        {{ t('spd.pushedTo') }} <b>{{ pushedDlName }}</b>
+      </p>
       <div class="text-muted small">{{ t('spd.pushedHint') }}</div>
       <div class="sp-actions">
         <el-button type="primary" @click="emit('gotoDownloaderTasks')">{{ t('spd.viewTasks') }}</el-button>
@@ -145,44 +155,151 @@ const emit = defineEmits<{
 
 <style scoped>
 /* 搜索页确认下载弹窗 */
-.sp-header { min-width: 0; }
-.sp-title-main { font-size: var(--fs-lg); font-weight: 700; line-height: 1.3; }
-.sp-title-sub { margin-top: 2px; font-size: var(--fs-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sp-body { display: flex; flex-direction: column; gap: var(--sp-3); }
-.sp-meta { display: flex; flex-direction: column; gap: var(--sp-1); }
-.sp-t-title { font-size: var(--fs-body); font-weight: 600; line-height: 1.45; word-break: break-word; }
-.sp-t-title .up { color: var(--pt-success, #2ecc71); margin-left: 8px; font-size: var(--fs-xs); font-weight: 700; }
-.sp-t-title .down { color: var(--pt-warn); margin-left: 6px; font-size: var(--fs-xs); font-weight: 700; }
-.sp-t-sub {
-  font-size: var(--fs-xs); line-height: 1.45; color: var(--text-muted);
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;
+.sp-header {
+  min-width: 0;
 }
-.sp-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.sp-title-main {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.sp-title-sub {
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.sp-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.sp-t-title {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.sp-t-title .up {
+  color: var(--pt-success, #2ecc71);
+  margin-left: 8px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.sp-t-title .down {
+  color: var(--pt-warn);
+  margin-left: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.sp-t-sub {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.sp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
 .sp-size {
-  display: inline-block; padding: 1px 8px; border-radius: var(--radius-2xs);
-  background: var(--pt-primary-bg); color: var(--pt-primary, #6c5ce7); font-size: var(--fs-2xs); font-weight: 700;
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--radius-2xs);
+  background: var(--pt-primary-bg);
+  color: var(--pt-primary, #6c5ce7);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
 }
 .sp-free {
-  display: inline-block; padding: 1px 8px; border-radius: var(--radius-pill);
-  background: var(--pt-success-bg); color: var(--pt-success, #2ecc71); font-size: var(--fs-2xs); font-weight: 700;
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--pt-success-bg);
+  color: var(--pt-success, #2ecc71);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
 }
-.sp-site { font-size: var(--fs-xs); }
-.sp-fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
-@media (max-width: 520px) { .sp-fields { grid-template-columns: 1fr; } }
-.sp-field label { display: block; font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: 4px; }
-.sp-field.row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
-.sp-field.row label { margin: 0; }
+.sp-site {
+  font-size: var(--fs-xs);
+}
+.sp-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+}
+@media (max-width: 520px) {
+  .sp-fields {
+    grid-template-columns: 1fr;
+  }
+}
+.sp-field label {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.sp-field.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.sp-field.row label {
+  margin: 0;
+}
 .sp-adv-toggle {
-  align-self: flex-start; background: transparent; border: 0;
-  color: var(--pt-primary, #6c5ce7); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; padding: 0;
+  align-self: flex-start;
+  background: transparent;
+  border: 0;
+  color: var(--pt-primary, #6c5ce7);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
 }
 .sp-advanced {
-  display: flex; flex-direction: column; gap: var(--sp-2); padding: 10px 12px; border-radius: var(--radius-sm);
-  background: var(--surface-muted, rgba(0,0,0,0.03));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted, rgba(0, 0, 0, 0.03));
 }
-.sp-start { width: 100%; font-weight: 700; }
-.sp-empty { text-align: center; padding: 16px 12px; border-radius: var(--radius-sm); background: var(--surface-muted, rgba(0,0,0,0.03)); }
-.sp-empty-text { font-size: var(--fs-md); font-weight: 600; margin-bottom: 4px; }
-.sp-ok p { margin: 0 0 8px; }
-.sp-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: 14px; }
+.sp-start {
+  width: 100%;
+  font-weight: 700;
+}
+.sp-empty {
+  text-align: center;
+  padding: 16px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted, rgba(0, 0, 0, 0.03));
+}
+.sp-empty-text {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.sp-ok p {
+  margin: 0 0 8px;
+}
+.sp-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-top: 14px;
+}
 </style>

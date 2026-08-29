@@ -45,7 +45,12 @@ const siteMap = computed(() => {
 })
 
 onMounted(() => {
-  siteApi.list().then((list) => { sites.value = list }).catch(() => {})
+  siteApi
+    .list()
+    .then((list) => {
+      sites.value = list
+    })
+    .catch(() => {})
 })
 
 const visible = computed({
@@ -57,14 +62,44 @@ const visible = computed({
 })
 
 const resultsComputed = computed(() => props.results)
-const { flatRows, filter, sort, options, filtered, hasActive, activeTags, removeFilter, clearAll,
-  hitSites, hitTotal, failedSites, showFailed, cards, moreVisible, moreItems,
-  openMore, openDetail,
+const {
+  flatRows,
+  filter,
+  sort,
+  options,
+  filtered,
+  hasActive,
+  activeTags,
+  removeFilter,
+  clearAll,
+  hitSites,
+  hitTotal,
+  failedSites,
+  showFailed,
+  cards,
+  moreVisible,
+  moreItems,
+  openMore,
+  openDetail,
 } = useTorrentFindCards(resultsComputed, siteMap)
 
-const { visible: pushVisible, row: pushRow, downloaders, selectedDl, categories, selectedCategory,
-  savePath, showAdvanced, paused, loading: pushLoading, pushedDlName, subtitle: pushSubtitle,
-  start: startPush, confirm: confirmPush, gotoDownloaderTasks, close: closePush,
+const {
+  visible: pushVisible,
+  row: pushRow,
+  downloaders,
+  selectedDl,
+  categories,
+  selectedCategory,
+  savePath,
+  showAdvanced,
+  paused,
+  loading: pushLoading,
+  pushedDlName,
+  subtitle: pushSubtitle,
+  start: startPush,
+  confirm: confirmPush,
+  gotoDownloaderTasks,
+  close: closePush,
 } = useTorrentFindPush(() => props.title)
 
 function close() {
@@ -110,7 +145,9 @@ watch(
         <template v-else>
           {{ t('stfd.hitSummary', { sites: hitSites, n: hitTotal }) }}
           <template v-if="hasActive"> · {{ t('stfd.filteredN', { n: filtered.length }) }}</template>
-          <span v-if="results.length" class="text-muted">{{ t('stfd.queried', { q: results.length, shown: cards.length }) }}</span>
+          <span v-if="results.length" class="text-muted">{{
+            t('stfd.queried', { q: results.length, shown: cards.length })
+          }}</span>
         </template>
       </div>
 
@@ -142,7 +179,7 @@ watch(
       </div>
 
       <div v-if="!loading && !flatRows.length" class="sf-empty text-muted">
-          {{ t('stfd.noResults') }}
+        {{ t('stfd.noResults') }}
       </div>
       <div v-else-if="hasActive && !cards.length" class="sf-empty text-muted">
         {{ t('stfd.noFilteredResults') }}
@@ -215,7 +252,9 @@ watch(
   flex: none;
 }
 @keyframes sf-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .sf-fail {
   margin-bottom: 12px;

@@ -38,6 +38,9 @@ class _HxptWebLoginPageState extends State<HxptWebLoginPage> {
         _toast('未取到 cookie，请先在页面完成登录');
         return;
       }
+      // 回填后清理 WebView 会话痕迹（审计 P1-6）：含 HttpOnly 的
+      // c_secure_uid / c_secure_pass 不在共用设备上残留。
+      await _clearWebViewSession();
       if (!mounted) return;
       Navigator.of(context).pop(cookieStr); // 回填给登录页
     } catch (e) {
@@ -45,6 +48,15 @@ class _HxptWebLoginPageState extends State<HxptWebLoginPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  // 清理 WebView 存储的好学 cookie 与缓存。失败不上抛：回填流程不受影响。
+  Future<void> _clearWebViewSession() async {
+    try {
+      await CookieManager.instance().deleteCookies(url: WebUri(widget.initialUrl));
+      final c = _ctrl;
+      if (c != null) await InAppWebViewController.clearAllCache();
+    } catch (_) {}
   }
 
   void _toast(String m) {

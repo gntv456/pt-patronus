@@ -18,22 +18,34 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
   }
 
   async function doPull() {
-    if (!pullRef.value.trim()) { ElMessage.warning('请输入镜像名'); return }
+    if (!pullRef.value.trim()) {
+      ElMessage.warning('请输入镜像名')
+      return
+    }
     pullLoading.value = true
     pullResult.value = ''
     try {
       const res = await dockerApi.localPull(pullRef.value.trim())
       pullResult.value = res.progress || (res.ok ? '拉取成功' : '拉取失败')
-      if (res.ok) { ElMessage.success('镜像拉取完成'); refresh() }
-      else ElMessage.error(res.error || '拉取失败')
-    } catch (e: any) { pullResult.value = e.message; ElMessage.error(e.message) }
-    finally { pullLoading.value = false }
+      if (res.ok) {
+        ElMessage.success('镜像拉取完成')
+        refresh()
+      } else ElMessage.error(res.error || '拉取失败')
+    } catch (e: any) {
+      pullResult.value = e.message
+      ElMessage.error(e.message)
+    } finally {
+      pullLoading.value = false
+    }
   }
 
   // 清理（Prune）
   async function doPrune(type: 'container' | 'image' | 'volume' | 'network') {
     const labels: Record<string, string> = {
-      container: '已停止的容器', image: '悬空镜像', volume: '无用卷', network: '无用网络',
+      container: '已停止的容器',
+      image: '悬空镜像',
+      volume: '无用卷',
+      network: '无用网络',
     }
     try {
       await ElMessageBox.confirm(`确定要清理${labels[type]}吗？此操作不可撤销。`, '清理确认', { type: 'warning' })
@@ -42,7 +54,9 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
       const msg = space ? `已清理，释放 ${(Number(space) / 1073741824).toFixed(2)} GB` : '清理完成'
       ElMessage.success(msg)
       refresh()
-    } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
+    } catch (e: any) {
+      if (e !== 'cancel') ElMessage.error(e.message)
+    }
   }
 
   // 卷操作
@@ -53,7 +67,9 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
       await dockerApi.localVolumeCreate(value)
       ElMessage.success('卷已创建')
       refresh()
-    } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
+    } catch (e: any) {
+      if (e !== 'cancel') ElMessage.error(e.message)
+    }
   }
 
   async function removeVolume(v: DockerVolume) {
@@ -62,7 +78,9 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
       await dockerApi.localVolumeRemove(v.Name)
       ElMessage.success('卷已删除')
       refresh()
-    } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
+    } catch (e: any) {
+      if (e !== 'cancel') ElMessage.error(e.message)
+    }
   }
 
   // 网络操作
@@ -73,7 +91,9 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
       await dockerApi.localNetworkCreate(value)
       ElMessage.success('网络已创建')
       refresh()
-    } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
+    } catch (e: any) {
+      if (e !== 'cancel') ElMessage.error(e.message)
+    }
   }
 
   async function removeNetwork(n: DockerNetwork) {
@@ -82,9 +102,10 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
       await dockerApi.localNetworkRemove(n.Name)
       ElMessage.success('网络已删除')
       refresh()
-    } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
+    } catch (e: any) {
+      if (e !== 'cancel') ElMessage.error(e.message)
+    }
   }
-
 
   // Compose 部署
   const composeVisible = ref(false)
@@ -99,7 +120,10 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
   }
 
   async function composeAction(action: 'up' | 'down') {
-    if (!composePath.value.trim()) { ElMessage.warning('请输入 compose 文件所在目录'); return }
+    if (!composePath.value.trim()) {
+      ElMessage.warning('请输入 compose 文件所在目录')
+      return
+    }
     composeLoading.value = true
     composeOutput.value = ''
     try {
@@ -113,17 +137,31 @@ export function useDockerOps(refresh: () => void, mode: () => 'local' | 'remote'
     }
   }
 
-
-
   // 本机 Compose 对话框可见性（实际逻辑在 DockerComposeLocal 组件内）
   const localComposeVisible = ref(false)
-  function openLocalCompose() { localComposeVisible.value = true }
+  function openLocalCompose() {
+    localComposeVisible.value = true
+  }
 
   return {
-    pullDialog, pullRef, pullLoading, pullResult,
-    openPull, doPull, doPrune,
-    createVolume, removeVolume, createNetwork, removeNetwork,
-    composeVisible, composePath, composeOutput, composeLoading, openCompose, composeAction,
-    localComposeVisible, openLocalCompose,
+    pullDialog,
+    pullRef,
+    pullLoading,
+    pullResult,
+    openPull,
+    doPull,
+    doPrune,
+    createVolume,
+    removeVolume,
+    createNetwork,
+    removeNetwork,
+    composeVisible,
+    composePath,
+    composeOutput,
+    composeLoading,
+    openCompose,
+    composeAction,
+    localComposeVisible,
+    openLocalCompose,
   }
 }

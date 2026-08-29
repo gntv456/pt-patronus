@@ -19,15 +19,7 @@ export interface DockerTemplateEnv {
 }
 
 export type DockerTemplateCategory =
-  | '下载工具'
-  | '媒体影音'
-  | '文件管理'
-  | '图片相册'
-  | '笔记知识'
-  | '开发工具'
-  | '系统工具'
-  | '容器管理'
-  | '智能家居'
+  '下载工具' | '媒体影音' | '文件管理' | '图片相册' | '笔记知识' | '开发工具' | '系统工具' | '容器管理' | '智能家居'
 
 export interface DockerTemplate {
   id: string
@@ -365,8 +357,10 @@ export const dockerTemplates: DockerTemplate[] = [
     description: '私有云盘系统，文件同步/共享/日历/办公',
     image: 'linuxserver/nextcloud:latest',
     ports: [{ host: 443, container: 443, protocol: 'tcp' }],
-    volumes: [{ host: D('nextcloud/config'), container: '/config', mode: 'rw' },
-              { host: D('nextcloud/data'), container: '/data', mode: 'rw' }],
+    volumes: [
+      { host: D('nextcloud/config'), container: '/config', mode: 'rw' },
+      { host: D('nextcloud/data'), container: '/data', mode: 'rw' },
+    ],
     env: [{ key: 'TZ', value: 'Asia/Shanghai' }],
     networkMode: 'bridge',
     privileged: false,
@@ -1384,7 +1378,10 @@ export const dockerTemplates: DockerTemplate[] = [
       { key: 'PORT', value: '8787' },
       { key: 'TANQU_DATA_DIR', value: '/data' },
       { key: 'TANQU_AUTH_DISABLED', value: '0' },
-      { key: 'TANQU_MEDIA_MOUNTS', value: 'movies=/media/movies,tv=/media/tv,shorts=/media/shorts,drama=/media/drama,video=/video' },
+      {
+        key: 'TANQU_MEDIA_MOUNTS',
+        value: 'movies=/media/movies,tv=/media/tv,shorts=/media/shorts,drama=/media/drama,video=/video',
+      },
     ],
     networkMode: 'bridge',
     privileged: false,
@@ -1392,5 +1389,4 @@ export const dockerTemplates: DockerTemplate[] = [
     cpuLimit: 0,
     memoryLimitMB: 1024,
   },
-
 ]

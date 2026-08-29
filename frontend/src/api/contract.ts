@@ -37,6 +37,5 @@ export const contractApi = {
   list: () => http.get<{ rules: ContractRule[] }>('/contract/rules').then((r) => r.data.rules ?? []),
   upsert: (r: Partial<ContractRule>) => http.post<ContractRule>('/contract/rules', r).then((r) => r.data),
   remove: (id: number) => http.delete(`/contract/rules/${id}`).then((r) => r.data),
-  check: (id: number) =>
-    http.post<ContractCheckResult>(`/contract/rules/${id}/check`).then((r) => r.data),
+  check: (id: number) => http.post<ContractCheckResult>(`/contract/rules/${id}/check`).then((r) => r.data),
 }

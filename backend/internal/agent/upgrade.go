@@ -73,8 +73,13 @@ func (a *agentConn) cmdUpgrade(env Envelope) {
 	}()
 }
 
-// downloadToFile 下载 URL 到 path，若 checksum 非空则校验 sha256。
+// downloadToFile 下载 URL 到 path 并强制 sha256 校验。
+// checksum 为空一律拒绝执行（安全审计 P1-5：空校验 + 第三方网盘/镜像直链
+// 等于把 agent 自更新的执行权交给下载源）。
 func downloadToFile(url, path, checksum string) error {
+	if checksum == "" {
+		return fmt.Errorf("拒绝下载：缺少 sha256 校验值（更新清单损坏或配置错误）")
+	}
 	hc := &http.Client{Timeout: 5 * time.Minute}
 	resp, err := hc.Get(url)
 	if err != nil {
@@ -88,21 +93,15 @@ func downloadToFile(url, path, checksum string) error {
 	if err != nil {
 		return err
 	}
-	var w io.Writer = f
 	h := sha256.New()
-	if checksum != "" {
-		w = io.MultiWriter(f, h)
-	}
-	if _, err := io.Copy(w, resp.Body); err != nil {
+	if _, err := io.Copy(io.MultiWriter(f, h), resp.Body); err != nil {
 		f.Close()
 		return err
 	}
 	f.Close()
-	if checksum != "" {
-		got := hex.EncodeToString(h.Sum(nil))
-		if got != checksum {
-			return fmt.Errorf("sha256 校验失败: 期望 %s，实际 %s", checksum, got)
-		}
+	got := hex.EncodeToString(h.Sum(nil))
+	if got != checksum {
+		return fmt.Errorf("sha256 校验失败: 期望 %s，实际 %s", checksum, got)
 	}
 	return nil
 }

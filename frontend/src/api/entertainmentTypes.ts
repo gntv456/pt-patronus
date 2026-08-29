@@ -168,7 +168,10 @@ export interface BigSmallRound {
   player_count: number
   total_bet: number
 }
-export interface BigSmallBetSpot { username: string; amount: number }
+export interface BigSmallBetSpot {
+  username: string
+  amount: number
+}
 export interface BigSmallMyBet {
   game_no?: string
   bet_type: string
@@ -183,8 +186,16 @@ export interface BigSmallTrend {
   big_pct: number
   small_pct: number
 }
-export interface BigSmallRankEntry { username: string; amount: number; count: number }
-export interface BigSmallRank { key: string; title: string; entries: BigSmallRankEntry[] }
+export interface BigSmallRankEntry {
+  username: string
+  amount: number
+  count: number
+}
+export interface BigSmallRank {
+  key: string
+  title: string
+  entries: BigSmallRankEntry[]
+}
 export interface BigSmallRecord {
   game_no: string
   start_time?: string
@@ -217,7 +228,12 @@ export interface BigSmallProp {
   quantity: number
   usable: boolean
 }
-export interface BigSmallChat { id: number; username: string; message: string; time?: string }
+export interface BigSmallChat {
+  id: number
+  username: string
+  message: string
+  time?: string
+}
 export interface BigSmallRedpacket {
   id: string
   sender?: string

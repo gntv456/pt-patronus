@@ -3,17 +3,29 @@
 // Authorization: Bearer；令牌过期（401）时优先 POST /auth/refresh 滑动续期
 // （不再打扰好学站），refresh 也失败才退回好学 cookie 兑换。
 // cookie 与 token 只存 chrome.storage.local（本机），不进 sync。
+// hxptCreds（账号密码）经 secrets.js 密封存储（PBKDF2+AES-GCM）——
+// 本机任何能读 profile 的进程不再能直读明文密码（安全审计 P2）。
 import { baseUrl } from './util.js'
+import { readSecret, writeSecret, migratePlaintextSecrets } from './secrets.js'
 
 const DEFAULTS = { server: '', downloaderId: 0 }
 // 会话字段（local）：hxptCookie=好学登录 cookie；token=JWT；user=登录用户（含 is_admin）；
-// hxptCreds=账号密码登录的凭据（供续期失效时静默重登，与 cookie 同等地位）。
+// hxptCreds=账号密码登录的凭据（密封存储，供续期失效时静默重登）。
 const SESSION_DEFAULTS = { hxptCookie: '', token: '', user: null, hxptCreds: null }
+
+// 启动迁移：把旧版明文 hxptCreds 密封（失败静默——不阻断正常流程）。
+migratePlaintextSecrets().catch(() => {})
 
 export async function getConfig() {
   const cfg = await chrome.storage.sync.get(DEFAULTS)
   const sess = await chrome.storage.local.get(SESSION_DEFAULTS)
-  return { ...cfg, ...sess }
+  // hxptCreds 可能是密封形态 {salt,iv,data}：解封后供 isConfigured/renew 使用。
+  let creds = sess.hxptCreds
+  if (creds && creds.salt && creds.iv && creds.data) {
+    const r = await readSecret('hxptCreds')
+    creds = r.ok ? r.value : null
+  }
+  return { ...cfg, ...sess, hxptCreds: creds }
 }
 
 export async function saveConfig(patch) {
@@ -27,13 +39,17 @@ export function isConfigured(cfg) {
 }
 
 // saveSession / clearSession 登录态写入/登出清除（好学 cookie 与 JWT 同生命周期）。
+// hxptCreds 走密封存储（secrets.js）；其余字段明文本地存储（token 短时效、cookie 同会话）。
 export async function saveSession({ hxptCookie, token, user, hxptCreds }) {
   const patch = {}
   if (hxptCookie !== undefined) patch.hxptCookie = hxptCookie
   if (token !== undefined) patch.token = token
   if (user !== undefined) patch.user = user
-  if (hxptCreds !== undefined) patch.hxptCreds = hxptCreds
-  await chrome.storage.local.set(patch)
+  if (Object.keys(patch).length) await chrome.storage.local.set(patch)
+  if (hxptCreds !== undefined) {
+    if (hxptCreds === null) await chrome.storage.local.remove('hxptCreds')
+    else await writeSecret('hxptCreds', hxptCreds)
+  }
 }
 
 export async function clearSession() {
@@ -135,9 +151,15 @@ async function renew(server) {
       return await login(server, sess.hxptCookie)
     } catch { /* cookie 也失效，继续看有无账号凭据 */ }
   }
-  if (sess.hxptCreds && sess.hxptCreds.username) {
+  // hxptCreds 密封存储：解封后使用（readSecret 失败 = 无凭据）。
+  let creds = sess.hxptCreds
+  if (creds && creds.salt && creds.iv && creds.data) {
+    const r = await readSecret('hxptCreds')
+    creds = r.ok ? r.value : null
+  }
+  if (creds && creds.username) {
     try {
-      return await loginByPassword(server, sess.hxptCreds)
+      return await loginByPassword(server, creds)
     } catch { /* 密码路径失败（验证码/挑战模式）→ 要求重新登录 */ }
   }
   await clearSession()

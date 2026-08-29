@@ -3,7 +3,8 @@ package middleware
 import "github.com/gin-gonic/gin"
 
 // CORS 按允许的来源列表设置跨域头。
-//   - 无参或含 "*"：开发模式全开（Access-Control-Allow-Origin: *）
+//   - 无参或含 "*"：开发模式全开（Access-Control-Allow-Origin: *）；
+//     release 模式下未配置白名单 fail-closed（不发 ACAO，与 ws.go checkOrigin 哲学一致）
 //   - 否则：仅当请求 Origin 命中列表时回显该 Origin（生产收敛）
 func CORS(allowed ...string) gin.HandlerFunc {
 	allowAll := len(allowed) == 0
@@ -14,7 +15,17 @@ func CORS(allowed ...string) gin.HandlerFunc {
 		}
 		set[o] = true
 	}
+	release := gin.Mode() == gin.ReleaseMode
 	return func(c *gin.Context) {
+		// release 且未显式配置白名单：拒绝所有跨域（同源请求不受影响）。
+		if allowAll && release {
+			if c.Request.Method == "OPTIONS" {
+				c.AbortWithStatus(403)
+				return
+			}
+			c.Next()
+			return
+		}
 		origin := c.GetHeader("Origin")
 		credentialed := false
 		switch {

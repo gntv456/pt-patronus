@@ -213,10 +213,20 @@ export function withNetRate(snapsList: MetricSnapshot[], m: Metrics | null): Met
   const dt = (t1 - t0) / 1000
   if (dt <= 0) return m
   const out = { ...m }
-  if (m.net_rx_rate === undefined && b.net_rx_bytes !== undefined && a.net_rx_bytes !== undefined && b.net_rx_bytes >= a.net_rx_bytes) {
+  if (
+    m.net_rx_rate === undefined &&
+    b.net_rx_bytes !== undefined &&
+    a.net_rx_bytes !== undefined &&
+    b.net_rx_bytes >= a.net_rx_bytes
+  ) {
     out.net_rx_rate = Math.round((b.net_rx_bytes - a.net_rx_bytes) / dt)
   }
-  if (m.net_tx_rate === undefined && b.net_tx_bytes !== undefined && a.net_tx_bytes !== undefined && b.net_tx_bytes >= a.net_tx_bytes) {
+  if (
+    m.net_tx_rate === undefined &&
+    b.net_tx_bytes !== undefined &&
+    a.net_tx_bytes !== undefined &&
+    b.net_tx_bytes >= a.net_tx_bytes
+  ) {
     out.net_tx_rate = Math.round((b.net_tx_bytes - a.net_tx_bytes) / dt)
   }
   return out
@@ -266,11 +276,16 @@ export function useDeviceDetail(
   const memSeries = computed(() => seriesOf((m) => m.mem_usage))
   // 磁盘总量须去重后再累加（btrfs子卷/ZFS dataset 报相同整盘容量会乘N倍）。
   const diskStats = computed(() => {
-    const seen = new Set<number>(); const devs = new Set<string>()
-    let t = 0, u = 0
+    const seen = new Set<number>()
+    const devs = new Set<string>()
+    let t = 0,
+      u = 0
     for (const d of latest.value?.disks ?? []) {
-      if (d.total <= 0 || devs.has(d.device || "") || seen.has(d.total)) continue
-      devs.add(d.device || ""); seen.add(d.total); t += d.total; u += d.used || 0
+      if (d.total <= 0 || devs.has(d.device || '') || seen.has(d.total)) continue
+      devs.add(d.device || '')
+      seen.add(d.total)
+      t += d.total
+      u += d.used || 0
     }
     return { total: t, used: u, usage: t ? (u / t) * 100 : undefined }
   })
@@ -312,7 +327,9 @@ export function useDeviceDetail(
   })
   const deviceID = computed(() => (target.value ? `#${target.value.id.toString().padStart(4, '0')}` : '-'))
   const collectTime = computed(() =>
-    target.value?.last_checked_at ? new Date(target.value.last_checked_at).toLocaleString('zh-CN', { hour12: false }) : '-',
+    target.value?.last_checked_at
+      ? new Date(target.value.last_checked_at).toLocaleString('zh-CN', { hour12: false })
+      : '-',
   )
   const targetSubtitle = computed(() => {
     const t = target.value
@@ -352,7 +369,9 @@ export function useDeviceDetail(
     if (!t) return
     const isShutdown = action === 'shutdown'
     const title = isShutdown ? '确认关机' : '确认重启'
-    const detail = isShutdown ? '关机后可能需要手动开机，或通过 NAS/云厂商控制台恢复。' : '设备会短暂离线，稍后可回到本页刷新状态。'
+    const detail = isShutdown
+      ? '关机后可能需要手动开机，或通过 NAS/云厂商控制台恢复。'
+      : '设备会短暂离线，稍后可回到本页刷新状态。'
     try {
       await ElMessageBox.confirm(`确定要${isShutdown ? '关闭' : '重启'}「${t.name}」吗？${detail}`, title, {
         type: 'warning',

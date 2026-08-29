@@ -14,9 +14,22 @@ const emit = defineEmits<{ submit: [TargetInput] }>()
 
 function blank(): TargetInput {
   return {
-    name: '', type: 'host', protocol: 'local', enabled: true,
-    interval_sec: 60, timeout_sec: 15, vendor: '', host: '', port: 0,
-    credential_id: 0, username: '', password: '', private_key: '', rtsp_url: '', thresholds: '', disk_paths: '',
+    name: '',
+    type: 'host',
+    protocol: 'local',
+    enabled: true,
+    interval_sec: 60,
+    timeout_sec: 15,
+    vendor: '',
+    host: '',
+    port: 0,
+    credential_id: 0,
+    username: '',
+    password: '',
+    private_key: '',
+    rtsp_url: '',
+    thresholds: '',
+    disk_paths: '',
   }
 }
 const form = ref<TargetInput>(blank())
@@ -57,13 +70,22 @@ watch(visible, (v) => {
   if (!v) return
   if (props.target) {
     form.value = {
-      name: props.target.name, type: props.target.type, protocol: inferredProtocol(props.target),
-      vendor: props.target.vendor, host: props.target.host, port: props.target.port,
-      rtsp_url: props.target.rtsp_url, interval_sec: props.target.interval_sec,
-      timeout_sec: props.target.timeout_sec, enabled: props.target.enabled,
-      thresholds: props.target.thresholds, credential_id: props.target.credential_id || 0,
+      name: props.target.name,
+      type: props.target.type,
+      protocol: inferredProtocol(props.target),
+      vendor: props.target.vendor,
+      host: props.target.host,
+      port: props.target.port,
+      rtsp_url: props.target.rtsp_url,
+      interval_sec: props.target.interval_sec,
+      timeout_sec: props.target.timeout_sec,
+      enabled: props.target.enabled,
+      thresholds: props.target.thresholds,
+      credential_id: props.target.credential_id || 0,
       disk_paths: props.target.disk_paths || '',
-      username: props.target.username || '', password: '', private_key: '',
+      username: props.target.username || '',
+      password: '',
+      private_key: '',
     }
     loadOpsConfig(props.target.thresholds)
     if (form.value.type === 'nas' && form.value.vendor === 'snmp' && form.value.protocol !== 'local') {
@@ -82,18 +104,27 @@ watch(visible, (v) => {
 })
 
 // 切换类型时重置协议默认值
-watch(() => form.value.type, (t) => {
-  if (isEdit.value) return
-  form.value.protocol = defaultProtocol(t)
-  form.value.vendor = ''
-  normalizeNasFields()
-  loadOpsConfig(form.value.thresholds)
-})
+watch(
+  () => form.value.type,
+  (t) => {
+    if (isEdit.value) return
+    form.value.protocol = defaultProtocol(t)
+    form.value.vendor = ''
+    normalizeNasFields()
+    loadOpsConfig(form.value.thresholds)
+  },
+)
 
-watch(() => form.value.protocol, () => normalizeNasFields())
-watch(() => [form.value.type, form.value.protocol], () => {
-  if (!canUseCredential.value) form.value.credential_id = 0
-})
+watch(
+  () => form.value.protocol,
+  () => normalizeNasFields(),
+)
+watch(
+  () => [form.value.type, form.value.protocol],
+  () => {
+    if (!canUseCredential.value) form.value.credential_id = 0
+  },
+)
 
 const isLocal = computed(() => form.value.protocol === 'local')
 const isAgent = computed(() => form.value.protocol === 'agent')
@@ -108,15 +139,26 @@ const canUseCredential = computed(() => {
 const usingCredential = computed(() => canUseCredential.value && !!form.value.credential_id)
 const credentialOptions = computed(() => {
   const all = props.credentials || []
-  if ((form.value.type === 'host' && form.value.protocol === 'ssh') || form.value.type === 'process' || form.value.type === 'script') return all.filter((c) => c.type === 'ssh' || c.type === 'generic')
+  if (
+    (form.value.type === 'host' && form.value.protocol === 'ssh') ||
+    form.value.type === 'process' ||
+    form.value.type === 'script'
+  )
+    return all.filter((c) => c.type === 'ssh' || c.type === 'generic')
   if (form.value.type === 'nas') return all.filter((c) => c.type === 'nas' || c.type === 'generic')
   return all.filter((c) => c.type === 'generic')
 })
 // 仅 SSH 远程主机需要私钥（其它协议走密码/token/SNMP）
-const showPrivateKey = computed(() => !usingCredential.value && ((form.value.type === 'host' && form.value.protocol === 'ssh') || form.value.type === 'process' || form.value.type === 'script'))
+const showPrivateKey = computed(
+  () =>
+    !usingCredential.value &&
+    ((form.value.type === 'host' && form.value.protocol === 'ssh') ||
+      form.value.type === 'process' ||
+      form.value.type === 'script'),
+)
 const hasPrivateKey = computed(() => !!props.target?.has_private_key)
 const showInlineCredential = computed(() => !usingCredential.value && canUseCredential.value)
-const hostLabel = computed(() => form.value.type === 'http' ? 'URL' : t('deviceform.address'))
+const hostLabel = computed(() => (form.value.type === 'http' ? 'URL' : t('deviceform.address')))
 const hostPlaceholder = computed(() => {
   if (form.value.type === 'http') return 'https://example.com/health'
   if (form.value.type === 'tcp') return '192.168.1.10'
@@ -162,7 +204,6 @@ function submit() {
   visible.value = false
 }
 </script>
-
 
 <template>
   <el-dialog v-model="visible" :title="isEdit ? t('deviceform.edit') : t('deviceform.add')" width="480px">
@@ -216,9 +257,11 @@ function submit() {
         </el-form-item>
       </template>
 
-      <el-form-item v-if="isLocal && (form.type === 'host' || form.type === 'nas')" :label="t('deviceform.hostDiskPaths')">
-        <el-input v-model="form.disk_paths" type="textarea" :rows="2"
-          :placeholder="t('deviceform.hostDiskPh')" />
+      <el-form-item
+        v-if="isLocal && (form.type === 'host' || form.type === 'nas')"
+        :label="t('deviceform.hostDiskPaths')"
+      >
+        <el-input v-model="form.disk_paths" type="textarea" :rows="2" :placeholder="t('deviceform.hostDiskPh')" />
         <div style="font-size: var(--fs-xs); color: var(--el-text-color-secondary); line-height: 1.5; margin-top: 4px">
           {{ t('deviceform.hostDiskHint') }}
         </div>
@@ -236,20 +279,37 @@ function submit() {
       </el-form-item>
 
       <el-form-item v-if="canUseCredential" :label="t('deviceform.credential')">
-        <el-select v-model="form.credential_id" clearable :placeholder="t('deviceform.noCredential')" style="width: 100%">
+        <el-select
+          v-model="form.credential_id"
+          clearable
+          :placeholder="t('deviceform.noCredential')"
+          style="width: 100%"
+        >
           <el-option :value="0" :label="t('deviceform.noCredential')" />
           <el-option v-for="c in credentialOptions" :key="c.id" :label="c.name" :value="c.id">
             <span>{{ c.name }}</span>
-            <span class="cred-sub">{{ c.username || t('deviceform.noUsername') }}{{ c.has_private_key ? ' · ' + t('deviceform.privateKey') : '' }}{{ c.has_password ? ' · ' + t('deviceform.password') : '' }}</span>
+            <span class="cred-sub"
+              >{{ c.username || t('deviceform.noUsername')
+              }}{{ c.has_private_key ? ' · ' + t('deviceform.privateKey') : ''
+              }}{{ c.has_password ? ' · ' + t('deviceform.password') : '' }}</span
+            >
           </el-option>
         </el-select>
       </el-form-item>
 
       <el-form-item v-if="showInlineCredential" :label="t('deviceform.username')">
-        <el-input v-model="form.username" :placeholder="form.type === 'nas' && form.vendor === 'snmp' ? 'SNMP community' : t('deviceform.account')" />
+        <el-input
+          v-model="form.username"
+          :placeholder="form.type === 'nas' && form.vendor === 'snmp' ? 'SNMP community' : t('deviceform.account')"
+        />
       </el-form-item>
       <el-form-item v-if="showInlineCredential" :label="t('deviceform.password')">
-        <el-input v-model="form.password" type="password" show-password :placeholder="isEdit ? t('deviceform.keepIfEmpty') : t('deviceform.secretPh')" />
+        <el-input
+          v-model="form.password"
+          type="password"
+          show-password
+          :placeholder="isEdit ? t('deviceform.keepIfEmpty') : t('deviceform.secretPh')"
+        />
       </el-form-item>
       <el-form-item v-if="showPrivateKey" :label="t('deviceform.privateKey')">
         <el-input
@@ -276,14 +336,26 @@ function submit() {
           </div>
         </el-form-item>
         <el-form-item :label="t('deviceform.respThreshold')">
-          <el-input-number v-model="opsConfig.response_ms" :min="0" :step="100" controls-position="right" style="width: 100%" />
+          <el-input-number
+            v-model="opsConfig.response_ms"
+            :min="0"
+            :step="100"
+            controls-position="right"
+            style="width: 100%"
+          />
           <span class="hint">{{ t('deviceform.msHint') }}</span>
         </el-form-item>
       </template>
 
       <template v-if="form.type === 'tcp'">
         <el-form-item :label="t('deviceform.respThreshold')">
-          <el-input-number v-model="opsConfig.response_ms" :min="0" :step="100" controls-position="right" style="width: 100%" />
+          <el-input-number
+            v-model="opsConfig.response_ms"
+            :min="0"
+            :step="100"
+            controls-position="right"
+            style="width: 100%"
+          />
           <span class="hint">{{ t('deviceform.msHint') }}</span>
         </el-form-item>
       </template>
@@ -293,22 +365,45 @@ function submit() {
           <el-input v-model="opsConfig.process_name" placeholder="nginx / qbittorrent-nox / ptpatronus" />
         </el-form-item>
         <el-form-item :label="t('deviceform.minCount')">
-          <el-input-number v-model="opsConfig.process_min_count" :min="1" controls-position="right" style="width: 100%" />
+          <el-input-number
+            v-model="opsConfig.process_min_count"
+            :min="1"
+            controls-position="right"
+            style="width: 100%"
+          />
         </el-form-item>
       </template>
 
       <template v-if="form.type === 'script'">
         <el-form-item :label="t('deviceform.scriptCmd')" required>
-          <el-input v-model="opsConfig.script_command" type="textarea" :rows="4" resize="vertical" placeholder="curl -fsS http://127.0.0.1:8080/health" />
+          <el-input
+            v-model="opsConfig.script_command"
+            type="textarea"
+            :rows="4"
+            resize="vertical"
+            placeholder="curl -fsS http://127.0.0.1:8080/health"
+          />
         </el-form-item>
         <el-form-item :label="t('deviceform.timeThreshold')">
-          <el-input-number v-model="opsConfig.response_ms" :min="0" :step="100" controls-position="right" style="width: 100%" />
+          <el-input-number
+            v-model="opsConfig.response_ms"
+            :min="0"
+            :step="100"
+            controls-position="right"
+            style="width: 100%"
+          />
           <span class="hint">{{ t('deviceform.msHint') }}</span>
         </el-form-item>
       </template>
 
       <el-form-item :label="t('deviceform.interval')">
-        <el-input-number v-model="form.interval_sec" :min="10" :step="10" controls-position="right" style="width: 100%" />
+        <el-input-number
+          v-model="form.interval_sec"
+          :min="10"
+          :step="10"
+          controls-position="right"
+          style="width: 100%"
+        />
         <span class="hint">{{ t('deviceform.sec') }}</span>
       </el-form-item>
       <el-form-item :label="t('deviceform.timeout')">

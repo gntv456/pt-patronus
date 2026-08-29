@@ -26,10 +26,7 @@ export type CardGroup = {
   timeText: string
 }
 
-export function useTorrentFindCards(
-  results: ComputedRef<SiteSearchResult[]>,
-  siteMap: ComputedRef<Map<number, Site>>,
-) {
+export function useTorrentFindCards(results: ComputedRef<SiteSearchResult[]>, siteMap: ComputedRef<Map<number, Site>>) {
   const flatRows = computed<FindRow[]>(() =>
     results.value.flatMap((r) =>
       (r.torrents ?? []).map((t) => ({
@@ -43,11 +40,10 @@ export function useTorrentFindCards(
 
   // 派生筛选 meta + 前端过滤 composable（筛后聚合分组，保留 promo+seeders 卡片排序）。
   const enrichedRows = computed<EnrichedFindRow[]>(() => flatRows.value.map((r) => enrichTorrent(r)))
-  const { filter, sort, options, filtered, hasActive, activeTags, removeFilter, clearAll } = useSearchFilter(enrichedRows)
+  const { filter, sort, options, filtered, hasActive, activeTags, removeFilter, clearAll } =
+    useSearchFilter(enrichedRows)
 
-  const hitSites = computed(() =>
-    results.value.filter((r) => !r.error && (r.torrents?.length ?? 0) > 0).length,
-  )
+  const hitSites = computed(() => results.value.filter((r) => !r.error && (r.torrents?.length ?? 0) > 0).length)
   const hitTotal = computed(() => flatRows.value.length)
   const failedSites = computed(() => results.value.filter((r) => r.error))
   const showFailed = ref(false)
@@ -97,12 +93,10 @@ export function useTorrentFindCards(
   }
 
   function promoOf(row: FindRow) {
-    return volumeFactorLabel(
-      row.uploadvolumefactor,
-      row.downloadvolumefactor,
-      row.free,
-      [...(row.tags || []), ...(row.labels || [])],
-    )
+    return volumeFactorLabel(row.uploadvolumefactor, row.downloadvolumefactor, row.free, [
+      ...(row.tags || []),
+      ...(row.labels || []),
+    ])
   }
 
   function openDetail(row: FindRow) {

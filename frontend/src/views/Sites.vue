@@ -35,16 +35,36 @@ async function reload() {
 }
 
 const {
-  dialogVisible, editingId, isEdit, dialogTitle, form,
-  needsApiKey, apiKeyPlaceholder, baseUrlPlaceholder, baseUrlOptions,
-  filteredDefs, filterDefinitionOptions,
-  onDefChange, openCreate, openEdit, submit,
+  dialogVisible,
+  editingId,
+  isEdit,
+  dialogTitle,
+  form,
+  needsApiKey,
+  apiKeyPlaceholder,
+  baseUrlPlaceholder,
+  baseUrlOptions,
+  filteredDefs,
+  filterDefinitionOptions,
+  onDefChange,
+  openCreate,
+  openEdit,
+  submit,
 } = useSitesForm(defs, matrixReload, reload)
 
 const {
-  testing, checkining, checkinAllLoading,
-  recordsDrawer, records, recordsLoading,
-  testSite, checkinSite, checkinAll, openRecords, removeSite, batchRemoveSites,
+  testing,
+  checkining,
+  checkinAllLoading,
+  recordsDrawer,
+  records,
+  recordsLoading,
+  testSite,
+  checkinSite,
+  checkinAll,
+  openRecords,
+  removeSite,
+  batchRemoveSites,
 } = useSitesActions(sites, connectivity, reload, matrixReload)
 
 async function load() {
@@ -92,16 +112,20 @@ onMounted(load)
       <div class="head-actions">
         <el-button @click="openRecords()">{{ t('sites.records') }}</el-button>
         <el-button :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
-        <el-button :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{ t('sites.refreshStatus') }}</el-button>
+        <el-button :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{
+          t('sites.refreshStatus')
+        }}</el-button>
         <el-button
           :loading="staleVisitLoading"
           :disabled="!inactiveSiteCount || staleVisitLoading"
           :title="t('sites.staleVisitTitle')"
           @click="visitStaleSites"
         >
-          {{ staleVisitLoading && staleVisitProgress
-            ? t('sites.visiting', { n: staleVisitProgress })
-            : t('sites.visitStale', { count: inactiveSiteCount ? ` (${inactiveSiteCount})` : '' }) }}
+          {{
+            staleVisitLoading && staleVisitProgress
+              ? t('sites.visiting', { n: staleVisitProgress })
+              : t('sites.visitStale', { count: inactiveSiteCount ? ` (${inactiveSiteCount})` : '' })
+          }}
         </el-button>
         <el-button type="primary" @click="openCreate">{{ t('sites.addSite') }}</el-button>
       </div>
@@ -173,12 +197,7 @@ onMounted(load)
         </el-form-item>
         <!-- API 型站点（M-Team/YemaPT 等）走 token 鉴权，无 cookie/账密概念 -->
         <el-form-item v-if="needsApiKey" label="API Key">
-          <el-input
-            v-model="form.api_key"
-            type="password"
-            show-password
-            :placeholder="apiKeyPlaceholder"
-          />
+          <el-input v-model="form.api_key" type="password" show-password :placeholder="apiKeyPlaceholder" />
         </el-form-item>
         <el-form-item v-if="!needsApiKey" label="Cookie">
           <el-input
@@ -225,7 +244,9 @@ onMounted(load)
             </template>
           </el-table-column>
           <el-table-column :label="t('sites.rec.source')" width="80">
-            <template #default="{ row }">{{ row.source === 'cron' ? t('sites.rec.auto') : t('sites.rec.manual') }}</template>
+            <template #default="{ row }">{{
+              row.source === 'cron' ? t('sites.rec.auto') : t('sites.rec.manual')
+            }}</template>
           </el-table-column>
         </el-table>
         <div v-if="!records.length && !recordsLoading" class="empty text-muted">{{ t('sites.rec.empty') }}</div>

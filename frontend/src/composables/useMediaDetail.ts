@@ -16,7 +16,9 @@ export function useMediaDetail() {
   const CAST_PREVIEW_LIMIT = 12
   const RECOMMENDATIONS_PREVIEW_LIMIT = 8
   const visibleCast = computed(() => (detail.value?.cast || []).slice(0, CAST_PREVIEW_LIMIT))
-  const visibleRecommendations = computed(() => (detail.value?.recommendations || []).slice(0, RECOMMENDATIONS_PREVIEW_LIMIT))
+  const visibleRecommendations = computed(() =>
+    (detail.value?.recommendations || []).slice(0, RECOMMENDATIONS_PREVIEW_LIMIT),
+  )
   const moreVisible = computed({
     get: () => moreKind.value !== null,
     set: (visible: boolean) => {
@@ -105,10 +107,27 @@ export function useMediaDetail() {
   watch(() => [route.query.source, route.query.id], load, { immediate: true })
 
   return {
-    route, router, detail, loading, error, subscribing, moreKind,
-    CAST_PREVIEW_LIMIT, RECOMMENDATIONS_PREVIEW_LIMIT,
-    visibleCast, visibleRecommendations, moreVisible, moreTitle,
-    celVisible, celLoading, celProfile,
-    load, searchResources, subscribe, openRec, openMore, openCelebrity,
+    route,
+    router,
+    detail,
+    loading,
+    error,
+    subscribing,
+    moreKind,
+    CAST_PREVIEW_LIMIT,
+    RECOMMENDATIONS_PREVIEW_LIMIT,
+    visibleCast,
+    visibleRecommendations,
+    moreVisible,
+    moreTitle,
+    celVisible,
+    celLoading,
+    celProfile,
+    load,
+    searchResources,
+    subscribe,
+    openRec,
+    openMore,
+    openCelebrity,
   }
 }

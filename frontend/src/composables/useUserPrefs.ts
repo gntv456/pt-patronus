@@ -7,7 +7,9 @@ import { useAuthStore } from '@/stores/auth'
 // 本地新于服务端则推，服务端新于本地则拉（简单策略：登录时拉一次覆盖本地缺失域，
 // 之后每次变更 debounce 推送；单账号多浏览器以后写为准）。
 
-interface SyncState { syncedAt: number }
+interface SyncState {
+  syncedAt: number
+}
 
 const prefCache: Record<string, Ref<Record<string, any> | null>> = {}
 const syncState: Record<string, SyncState> = {}
@@ -25,7 +27,9 @@ function readLocal(key: string): Record<string, any> | null {
 function writeLocal(key: string, value: Record<string, any>) {
   try {
     localStorage.setItem(`pref.${key}`, JSON.stringify(value))
-  } catch { /* 配额满静默 */ }
+  } catch {
+    /* 配额满静默 */
+  }
 }
 
 export function useUserPrefs(key: string) {
@@ -46,13 +50,17 @@ export function useUserPrefs(key: string) {
       prefs.value = merged
       writeLocal(key, merged)
       syncState[key].syncedAt = Date.now()
-    } catch { /* 未登录/网络失败：沿用本地 */ }
+    } catch {
+      /* 未登录/网络失败：沿用本地 */
+    }
   }
 
   function pushToServer() {
     const auth = useAuthStore()
     if (!auth.token || !prefs.value) return
-    authApi.setPreferences(key, prefs.value).catch(() => { /* 静默：下次变更重推 */ })
+    authApi.setPreferences(key, prefs.value).catch(() => {
+      /* 静默：下次变更重推 */
+    })
     syncState[key].syncedAt = Date.now()
   }
 

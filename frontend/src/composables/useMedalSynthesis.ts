@@ -56,12 +56,7 @@ export function useMedalSynthesis(siteId: Ref<number>) {
     drawing.value = count
     lastDraw.value = null
     try {
-      const res: PlayResult = await entertainmentApi.draw(
-        siteId.value,
-        'medal_synthesis',
-        selected.value.id,
-        count,
-      )
+      const res: PlayResult = await entertainmentApi.draw(siteId.value, 'medal_synthesis', selected.value.id, count)
       if (res.success) {
         lastDraw.value = { count, frags: parseFrags(res.prize), msg: res.message || '' }
         ElMessage.success(res.message || `${count} 连抽取完成`)
@@ -70,7 +65,10 @@ export function useMedalSynthesis(siteId: Ref<number>) {
       }
       await loadAll() // 刷新碎片库存 + 火花
       if (showHistory.value) {
-        entertainmentApi.history(siteId.value, 'medal_synthesis').then((h) => (history.value = h)).catch(() => {})
+        entertainmentApi
+          .history(siteId.value, 'medal_synthesis')
+          .then((h) => (history.value = h))
+          .catch(() => {})
       }
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
@@ -111,10 +109,21 @@ export function useMedalSynthesis(siteId: Ref<number>) {
   }
 
   return {
-    targets, stats, selectedId, drawing, synthesizing, lastDraw,
-    showHistory, history, historyLoading,
-    selected, progressPct,
-    loadAll, draw, synthesize, toggleHistory,
+    targets,
+    stats,
+    selectedId,
+    drawing,
+    synthesizing,
+    lastDraw,
+    showHistory,
+    history,
+    historyLoading,
+    selected,
+    progressPct,
+    loadAll,
+    draw,
+    synthesize,
+    toggleHistory,
   }
 }
 

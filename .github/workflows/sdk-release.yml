@@ -18,8 +18,8 @@ jobs:
   python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with: { python-version: '3.11' }
       - name: Install build tools
         run: pip install -U build twine
@@ -36,8 +36,8 @@ jobs:
   typescript:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with: { node-version: '20', registry-url: 'https://registry.npmjs.org' }
       - name: Build + publish
         env:
@@ -45,5 +45,6 @@ jobs:
         run: |
           cd sdk/typescript
           npm install
+          npm test                 # 发布前跑测试（测试审计 P3：此前构建+直发，坏包直接进 registry）
           npm run build
           npm publish --access public   # scoped package needs --access public on first publish

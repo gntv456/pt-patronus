@@ -30,16 +30,17 @@ export const assessmentApi = {
       // 后端 nil 切片序列化为 JSON null（EXEMPT/未配置时 metrics 为 null），归一为 [] 防模板 .length 崩溃
       .then((r) => (r.data.sites || []).map((c) => ({ ...c, metrics: c.metrics || [] }))),
   // 流式首屏：GET /assessment/stream（SSE），每站完成推一帧 batch（单元素数组），逐站 push。
-  allStream: (
-    refresh = false,
-    onCard: (card: AssessmentCard) => void,
-    signal?: AbortSignal,
-  ) =>
-    streamSSE(`/api/v1/assessment/stream${refresh ? '?refresh=1' : ''}`, (event, data) => {
-      if (event === 'batch' && data?.results?.length) {
-        const card = (data.results as AssessmentCard[])[0]
-        onCard({ ...card, metrics: card.metrics || [] })
-      }
-    }, signal),
-  syncOne: (id: number) => http.post<AssessmentCard>(`/assessment/sync/${id}`).then((r) => ({ ...r.data, metrics: r.data.metrics || [] })),
+  allStream: (refresh = false, onCard: (card: AssessmentCard) => void, signal?: AbortSignal) =>
+    streamSSE(
+      `/api/v1/assessment/stream${refresh ? '?refresh=1' : ''}`,
+      (event, data) => {
+        if (event === 'batch' && data?.results?.length) {
+          const card = (data.results as AssessmentCard[])[0]
+          onCard({ ...card, metrics: card.metrics || [] })
+        }
+      },
+      signal,
+    ),
+  syncOne: (id: number) =>
+    http.post<AssessmentCard>(`/assessment/sync/${id}`).then((r) => ({ ...r.data, metrics: r.data.metrics || [] })),
 }

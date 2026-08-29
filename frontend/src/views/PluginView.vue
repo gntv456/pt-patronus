@@ -37,12 +37,18 @@ function assetBaseURL(path?: string) {
 }
 
 function bridgeScript() {
-  return `<script>
+  // 桥接脚本运行在 sandbox iframe（无 allow-same-origin）里，其 origin 是 "null"——
+  // 因此插件侧的 result 监听只能放行 event.origin === 'null'（宿主回帖本就带该 origin）。
+  // 不校验 origin 的话，任何被注入到宿主页面的脚本都能伪造 plugin-host-result
+  // 应答，污染/劫持插件的桥调用结果。
+  return (
+    `<script>
 (function () {
   if (window.PTPatronus) return;
   var seq = 0;
   var pending = {};
   window.addEventListener('message', function (event) {
+    if (event.origin !== 'null') return;
     var data = event.data || {};
     if (data.ptp !== 'plugin-host-result' || !data.id || !pending[data.id]) return;
     var task = pending[data.id];
@@ -83,6 +89,7 @@ function bridgeScript() {
   };
 })();
 </` + `script>`
+  )
 }
 
 function injectIntoHead(source: string, tag: string) {
@@ -101,7 +108,13 @@ function injectBridge(source: string, baseURL: string) {
 }
 
 async function handleBridgeMessage(event: MessageEvent) {
+  // 双重校验（收权加固）：
+  //  1. event.source 必须是插件 iframe 的 contentWindow（原有校验）
+  //  2. event.origin 必须是 'null'——sandbox 无 allow-same-origin 的 srcdoc iframe
+  //     的 origin 恒为 "null"；任何其它 origin（宿主页面被注入的脚本伪造成别的窗口）
+  //     一律拒绝，防止第三方页面/窗口伪造 plugin-host 调用桥 API。
   if (!frame.value?.contentWindow || event.source !== frame.value.contentWindow) return
+  if (event.origin !== 'null') return
   const data = event.data || {}
   if (data.ptp !== 'plugin-host' || !data.id) return
   const target = event.source as Window
@@ -109,7 +122,10 @@ async function handleBridgeMessage(event: MessageEvent) {
     const result = await pluginApi.bridge(pluginId.value, String(data.method || ''), data.params || {})
     target.postMessage({ ptp: 'plugin-host-result', id: data.id, ok: true, result }, event.origin)
   } catch (e: unknown) {
-    target.postMessage({ ptp: 'plugin-host-result', id: data.id, ok: false, error: (e as Error).message || 'Bridge failed' }, event.origin)
+    target.postMessage(
+      { ptp: 'plugin-host-result', id: data.id, ok: false, error: (e as Error).message || 'Bridge failed' },
+      event.origin,
+    )
   }
 }
 

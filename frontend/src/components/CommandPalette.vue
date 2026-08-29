@@ -175,8 +175,8 @@ onUnmounted(() => {
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="cp-backdrop" @click.self="close">
-      <div class="cp-panel glass" role="dialog" aria-modal="true" :aria-label="t('cpa.aria')" @click.stop>
+    <div v-a11y-button v-if="open" class="cp-backdrop" @click.self="close">
+      <div v-a11y-button class="cp-panel glass" role="dialog" aria-modal="true" :aria-label="t('cpa.aria')" @click.stop>
         <div class="cp-input-row">
           <span class="cp-search-icon">🔍</span>
           <input
@@ -193,7 +193,7 @@ onUnmounted(() => {
         <ul class="cp-list" role="listbox">
           <li
             v-for="(item, i) in filtered"
-            :key="item.name + (item.label)"
+            :key="item.name + item.label"
             class="cp-item"
             :class="{ active: i === active }"
             role="option"

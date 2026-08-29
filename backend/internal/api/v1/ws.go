@@ -17,30 +17,34 @@ type WSHandler struct {
 	bc             *ws.Broadcaster
 	tickets        *auth.TicketStore
 	allowedOrigins map[string]bool // 空=不限（仅建议开发）；非空=仅放行白名单 Origin，防 CSWSH
+	release        bool            // release 模式：白名单为空时拒绝带 Origin 的浏览器连接（fail-closed）
 }
 
 // NewWSHandler 构造。allowedOrigins 为允许的浏览器来源（与 CORS 同源策略一致）；
-// 为空时放行所有来源；非浏览器客户端（无 Origin 头，如 curl/移动端）始终放行。
-func NewWSHandler(bc *ws.Broadcaster, tickets *auth.TicketStore, allowedOrigins []string) *WSHandler {
+// 为空时：debug 放行所有来源；release 拒绝一切带 Origin 头的浏览器连接（CSWSH fail-closed），
+// 非浏览器客户端（无 Origin 头，如 curl/移动端）始终放行。
+func NewWSHandler(bc *ws.Broadcaster, tickets *auth.TicketStore, allowedOrigins []string, release bool) *WSHandler {
 	set := make(map[string]bool, len(allowedOrigins))
 	for _, o := range allowedOrigins {
 		if o = strings.TrimSpace(o); o != "" && o != "*" {
 			set[o] = true
 		}
 	}
-	return &WSHandler{bc: bc, tickets: tickets, allowedOrigins: set}
+	return &WSHandler{bc: bc, tickets: tickets, allowedOrigins: set, release: release}
 }
 
 // checkOrigin 防 CSWSH：配置了白名单时浏览器来源必须命中；非浏览器（无 Origin）放行。
 // 注意：WS 升级由 gorilla/websocket 直接处理，不经过 Gin CORS 中间件，CheckOrigin 才是
 // 浏览器侧 WebSocket 的真实跨域关卡。
 func (h *WSHandler) checkOrigin(r *http.Request) bool {
-	if len(h.allowedOrigins) == 0 {
-		return true // 开发：未配置白名单
-	}
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return true // 非浏览器客户端无 Origin，不适用 CSWSH
+	}
+	if len(h.allowedOrigins) == 0 {
+		// 未配置白名单：debug 保持旧行为（全放行）；release fail-closed——
+		// ticket 虽是一次性，但 CSWSH 下受害者浏览器可先替攻击者换 ticket。
+		return !h.release
 	}
 	return h.allowedOrigins[origin]
 }

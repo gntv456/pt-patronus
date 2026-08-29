@@ -27,7 +27,9 @@ async function loadTargets() {
   try {
     targets.value = await monitorApi.list()
     if (sshTargets.value.length && !selectedTarget.value) selectedTarget.value = sshTargets.value[0].id
-  } catch (e: any) { error.value = e.message }
+  } catch (e: any) {
+    error.value = e.message
+  }
 }
 
 async function refresh() {
@@ -44,7 +46,11 @@ async function refresh() {
       const r = await sshApi.logs(selectedTarget.value, 200)
       logs.value = r.logs || []
     }
-  } catch (e: any) { error.value = e.message } finally { loading.value = false }
+  } catch (e: any) {
+    error.value = e.message
+  } finally {
+    loading.value = false
+  }
 }
 
 async function switchView(v: 'service' | 'sessions' | 'logs') {
@@ -59,18 +65,26 @@ async function doAction(action: 'start' | 'stop' | 'restart' | 'reload', label: 
       type: action === 'stop' ? 'error' : 'warning',
     })
     const res = await sshApi.action(selectedTarget.value, action)
-    if (res.ok) { ElMessage.success(t('ssh.actionOk', { label })); refresh() }
-    else ElMessage.error(res.error || t('ssh.actionFailed', { label }))
-  } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
+    if (res.ok) {
+      ElMessage.success(t('ssh.actionOk', { label }))
+      refresh()
+    } else ElMessage.error(res.error || t('ssh.actionFailed', { label }))
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e.message)
+  }
 }
 
 async function toggleEnable(val: string | number | boolean) {
   const enable = val === true
   try {
     const res = await sshApi.toggleEnable(selectedTarget.value, enable)
-    if (res.ok) { ElMessage.success(enable ? t('ssh.autoStartOn') : t('ssh.autoStartOff')); refresh() }
-    else ElMessage.error(res.error || t('common.actionFailed'))
-  } catch (e: any) { ElMessage.error(e.message) }
+    if (res.ok) {
+      ElMessage.success(enable ? t('ssh.autoStartOn') : t('ssh.autoStartOff'))
+      refresh()
+    } else ElMessage.error(res.error || t('common.actionFailed'))
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
 }
 
 function openConfig() {
@@ -81,25 +95,39 @@ function openConfig() {
 
 async function saveConfig() {
   const port = parseInt(configForm.value.port)
-  if (isNaN(port) || port < 1 || port > 65535) { ElMessage.warning(t('ssh.portRange')); return }
+  if (isNaN(port) || port < 1 || port > 65535) {
+    ElMessage.warning(t('ssh.portRange'))
+    return
+  }
   try {
     const res = await sshApi.config(selectedTarget.value, {
       port: configForm.value.port,
       listen_addr: configForm.value.listen_addr,
       confirm: true,
     })
-    if (res.ok) { ElMessage.success(t('ssh.cfgUpdated')); configVisible.value = false; refresh() }
-    else ElMessage.error(res.error || t('ssh.cfgFailed'))
-  } catch (e: any) { ElMessage.error(e.message) }
+    if (res.ok) {
+      ElMessage.success(t('ssh.cfgUpdated'))
+      configVisible.value = false
+      refresh()
+    } else ElMessage.error(res.error || t('ssh.cfgFailed'))
+  } catch (e: any) {
+    ElMessage.error(e.message)
+  }
 }
 
 async function killSession(s: SshSessionRow) {
   try {
-    await ElMessageBox.confirm(t('ssh.killConfirm', { user: s.user, tty: s.tty, pid: s.pid }), t('ssh.killTitle'), { type: 'warning' })
+    await ElMessageBox.confirm(t('ssh.killConfirm', { user: s.user, tty: s.tty, pid: s.pid }), t('ssh.killTitle'), {
+      type: 'warning',
+    })
     const res = await sshApi.killSession(selectedTarget.value, s.pid)
-    if (res.ok) { ElMessage.success(t('ssh.killed')); refresh() }
-    else ElMessage.error(res.error || t('ssh.killFailed'))
-  } catch (e: any) { if (e !== 'cancel') ElMessage.error(e.message) }
+    if (res.ok) {
+      ElMessage.success(t('ssh.killed'))
+      refresh()
+    } else ElMessage.error(res.error || t('ssh.killFailed'))
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error(e.message)
+  }
 }
 
 function logTypeColor(t: string): string {
@@ -108,7 +136,10 @@ function logTypeColor(t: string): string {
   return '#95a5a6'
 }
 
-onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh() })
+onMounted(async () => {
+  await loadTargets()
+  if (selectedTarget.value) refresh()
+})
 </script>
 
 <template>
@@ -120,8 +151,12 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
           <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <div class="view-switch">
-          <button :class="{ active: view === 'service' }" @click="switchView('service')">{{ t('ssh.viewService') }}</button>
-          <button :class="{ active: view === 'sessions' }" @click="switchView('sessions')">{{ t('ssh.viewSessions') }}</button>
+          <button :class="{ active: view === 'service' }" @click="switchView('service')">
+            {{ t('ssh.viewService') }}
+          </button>
+          <button :class="{ active: view === 'sessions' }" @click="switchView('sessions')">
+            {{ t('ssh.viewSessions') }}
+          </button>
           <button :class="{ active: view === 'logs' }" @click="switchView('logs')">{{ t('ssh.viewLogs') }}</button>
         </div>
       </div>
@@ -167,7 +202,9 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
       <div class="service-actions">
         <el-button type="success" @click="doAction('start', t('ssh.act.start'))">{{ t('ssh.act.start') }}</el-button>
         <el-button type="danger" @click="doAction('stop', t('ssh.act.stop'))">{{ t('ssh.act.stop') }}</el-button>
-        <el-button type="warning" @click="doAction('restart', t('ssh.act.restart'))">{{ t('ssh.act.restart') }}</el-button>
+        <el-button type="warning" @click="doAction('restart', t('ssh.act.restart'))">{{
+          t('ssh.act.restart')
+        }}</el-button>
         <el-button @click="doAction('reload', t('ssh.act.reload'))">{{ t('ssh.act.reloadShort') }}</el-button>
         <el-button type="primary" @click="openConfig">{{ t('ssh.modifyCfg') }}</el-button>
       </div>
@@ -177,7 +214,17 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
     <div v-if="view === 'sessions' && sshTargets.length" class="ssh-panel glass">
       <div class="table-scroll">
         <table class="ssh-table">
-          <thead><tr><th>{{ t('smt.user') }}</th><th>{{ t('ssh.tty') }}</th><th>{{ t('ssh.source') }}</th><th>{{ t('ssh.loginAt') }}</th><th>{{ t('ssh.idle') }}</th><th>{{ t('ssh.current') }}</th><th>{{ t('common.action') }}</th></tr></thead>
+          <thead>
+            <tr>
+              <th>{{ t('smt.user') }}</th>
+              <th>{{ t('ssh.tty') }}</th>
+              <th>{{ t('ssh.source') }}</th>
+              <th>{{ t('ssh.loginAt') }}</th>
+              <th>{{ t('ssh.idle') }}</th>
+              <th>{{ t('ssh.current') }}</th>
+              <th>{{ t('common.action') }}</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="s in sessions" :key="s.pid || s.tty">
               <td>{{ s.user }}</td>
@@ -186,9 +233,15 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
               <td class="mono">{{ s.login }}</td>
               <td>{{ s.idle }}</td>
               <td class="td-what" :title="s.what">{{ s.what || '-' }}</td>
-              <td><el-button v-if="s.pid" size="small" type="danger" link @click="killSession(s)">{{ t('ssh.kill') }}</el-button></td>
+              <td>
+                <el-button v-if="s.pid" size="small" type="danger" link @click="killSession(s)">{{
+                  t('ssh.kill')
+                }}</el-button>
+              </td>
             </tr>
-            <tr v-if="!sessions.length"><td colspan="7" class="td-empty">{{ t('ssh.noSessions') }}</td></tr>
+            <tr v-if="!sessions.length">
+              <td colspan="7" class="td-empty">{{ t('ssh.noSessions') }}</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -198,17 +251,30 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
     <div v-if="view === 'logs' && sshTargets.length" class="ssh-panel glass">
       <div class="table-scroll">
         <table class="ssh-table">
-          <thead><tr><th>{{ t('pad.time') }}</th><th>{{ t('cloud.kind') }}</th><th>{{ t('smt.user') }}</th><th>{{ t('ssh.srcIp') }}</th><th>{{ t('deviceform.port') }}</th><th>{{ t('ssh.authMethod') }}</th></tr></thead>
+          <thead>
+            <tr>
+              <th>{{ t('pad.time') }}</th>
+              <th>{{ t('cloud.kind') }}</th>
+              <th>{{ t('smt.user') }}</th>
+              <th>{{ t('ssh.srcIp') }}</th>
+              <th>{{ t('deviceform.port') }}</th>
+              <th>{{ t('ssh.authMethod') }}</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="(l, i) in logs" :key="i">
               <td class="mono small">{{ l.time }}</td>
-              <td><span class="log-type" :style="{ color: logTypeColor(l.type) }">{{ l.type }}</span></td>
+              <td>
+                <span class="log-type" :style="{ color: logTypeColor(l.type) }">{{ l.type }}</span>
+              </td>
               <td>{{ l.user || '-' }}</td>
               <td class="mono">{{ l.from || '-' }}</td>
               <td class="mono">{{ l.port || '-' }}</td>
               <td>{{ l.method || '-' }}</td>
             </tr>
-            <tr v-if="!logs.length"><td colspan="6" class="td-empty">{{ t('ssh.noLogs') }}</td></tr>
+            <tr v-if="!logs.length">
+              <td colspan="6" class="td-empty">{{ t('ssh.noLogs') }}</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -239,34 +305,155 @@ onMounted(async () => { await loadTargets(); if (selectedTarget.value) refresh()
 </template>
 
 <style scoped>
-.ops-ssh { padding: 0 4px; }
-.ssh-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; margin-bottom: 16px; }
-.toolbar-left { display: flex; align-items: center; gap: var(--sp-3); }
-.target-label { font-size: var(--fs-body); color: var(--text-secondary, #888); white-space: nowrap; }
-.view-switch { display: flex; gap: var(--sp-1); margin-left: 8px; }
-.view-switch button { padding: 6px 16px; border: 1px solid var(--border, rgba(128,128,128,.25)); background: transparent; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-body); color: var(--text-secondary,#888); }
-.view-switch button.active { background: var(--accent, #6c5ce7); color: #fff; border-color: transparent; }
-.ssh-error { color: var(--pt-danger); margin-bottom: 12px; padding: 8px 14px; background: var(--pt-danger-bg); border-radius: var(--radius-xs); }
-.ssh-empty { padding: 28px; text-align: center; color: var(--text-secondary, #888); }
-.ssh-panel { padding: 16px 18px; }
-.service-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); margin-bottom: 20px; }
-.svc-card { padding: 14px 16px; border-radius: var(--radius-xs); background: rgba(128,128,128,.06); }
-.svc-label { font-size: var(--fs-xs); color: var(--text-secondary,#888); margin-bottom: 6px; }
-.svc-value { font-size: var(--fs-lg); font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); }
-.svc-value.mono { font-family: monospace; }
-.svc-value.small { font-size: var(--fs-xs); font-weight: 400; }
-.status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.status-dot.on { background: #27ae60; box-shadow: 0 0 6px #27ae60; }
-.status-dot.off { background: #e74c3c; }
-.service-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
-.table-scroll { overflow-x: auto; max-height: 65vh; overflow-y: auto; }
-.ssh-table { width: 100%; border-collapse: collapse; font-size: var(--fs-body); }
-.ssh-table th { text-align: left; padding: 8px 10px; font-weight: 600; position: sticky; top: 0; background: var(--bg-th, rgba(0,0,0,.06)); white-space: nowrap; }
-.ssh-table td { padding: 6px 10px; border-bottom: 1px solid rgba(128,128,128,.1); white-space: nowrap; }
-.ssh-table tbody tr:hover { background: var(--pt-primary-bg); }
-.mono { font-family: monospace; font-size: var(--fs-xs); }
-.small { font-size: var(--fs-2xs); }
-.td-what { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
-.td-empty { text-align: center; padding: 24px; color: var(--text-tertiary, #aaa); }
-.log-type { font-weight: 600; font-family: monospace; font-size: var(--fs-xs); }
+.ops-ssh {
+  padding: 0 4px;
+}
+.ssh-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  margin-bottom: 16px;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.target-label {
+  font-size: var(--fs-body);
+  color: var(--text-secondary, #888);
+  white-space: nowrap;
+}
+.view-switch {
+  display: flex;
+  gap: var(--sp-1);
+  margin-left: 8px;
+}
+.view-switch button {
+  padding: 6px 16px;
+  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  background: transparent;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: var(--fs-body);
+  color: var(--text-secondary, #888);
+}
+.view-switch button.active {
+  background: var(--accent, #6c5ce7);
+  color: #fff;
+  border-color: transparent;
+}
+.ssh-error {
+  color: var(--pt-danger);
+  margin-bottom: 12px;
+  padding: 8px 14px;
+  background: var(--pt-danger-bg);
+  border-radius: var(--radius-xs);
+}
+.ssh-empty {
+  padding: 28px;
+  text-align: center;
+  color: var(--text-secondary, #888);
+}
+.ssh-panel {
+  padding: 16px 18px;
+}
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: 20px;
+}
+.svc-card {
+  padding: 14px 16px;
+  border-radius: var(--radius-xs);
+  background: rgba(128, 128, 128, 0.06);
+}
+.svc-label {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary, #888);
+  margin-bottom: 6px;
+}
+.svc-value {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.svc-value.mono {
+  font-family: monospace;
+}
+.svc-value.small {
+  font-size: var(--fs-xs);
+  font-weight: 400;
+}
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot.on {
+  background: #27ae60;
+  box-shadow: 0 0 6px #27ae60;
+}
+.status-dot.off {
+  background: #e74c3c;
+}
+.service-actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.table-scroll {
+  overflow-x: auto;
+  max-height: 65vh;
+  overflow-y: auto;
+}
+.ssh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-body);
+}
+.ssh-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--bg-th, rgba(0, 0, 0, 0.06));
+  white-space: nowrap;
+}
+.ssh-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+  white-space: nowrap;
+}
+.ssh-table tbody tr:hover {
+  background: var(--pt-primary-bg);
+}
+.mono {
+  font-family: monospace;
+  font-size: var(--fs-xs);
+}
+.small {
+  font-size: var(--fs-2xs);
+}
+.td-what {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.td-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-tertiary, #aaa);
+}
+.log-type {
+  font-weight: 600;
+  font-family: monospace;
+  font-size: var(--fs-xs);
+}
 </style>

@@ -3,12 +3,13 @@ package v1
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/backup"
 	"github.com/hxpt/ptpatronus/internal/notice"
 )
@@ -24,33 +25,73 @@ func NewBackupHandler(svc *backup.Service, ns *notice.Service) *BackupHandler {
 	return &BackupHandler{svc: svc, notice: ns}
 }
 
-// Export 导出自身格式备份（JSON，含明文密钥）。
+// Export 导出自身格式备份。默认明文 JSON（旧行为，前端引导用户自存）；带
+// X-Backup-Password 头时口令加密（PBKDF2+AES-GCM 信封，后端加密审计项）——
+// 备份文件含全量明文 cookie/passkey/下载器密码，落盘即应密文。
 func (h *BackupHandler) Export(c *gin.Context) {
 	data, err := h.svc.Export(c.Request.Context())
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
+	enc := false
+	if pw := c.GetHeader("X-Backup-Password"); pw != "" {
+		data, err = backup.Encrypt(data, pw)
+		if err != nil {
+			errcode.Respond(c, errcode.Internal.WithErr(err))
+			return
+		}
+		enc = true
+	}
 	c.Header("Content-Disposition", `attachment; filename="ptpatronus-backup.json"`)
 	c.Header("Cache-Control", "no-store")
 	c.Header("X-Content-Type-Options", "nosniff")
+	if enc {
+		c.Data(http.StatusOK, "application/json", data)
+		if h.notice != nil {
+			_ = h.notice.Notice(c.Request.Context(), notice.Input{
+				Source: notice.SourceBackupDone,
+				Title:  "备份导出完成",
+				Body:   "配置已导出为口令加密文件",
+				Level:  "success",
+			}, false)
+		}
+		return
+	}
 	c.Data(http.StatusOK, "application/json", data)
 	if h.notice != nil {
 		_ = h.notice.Notice(c.Request.Context(), notice.Input{
 			Source: notice.SourceBackupDone,
 			Title:  "备份导出完成",
-			Body:   "配置已导出为 JSON 文件",
+			Body:   "配置已导出为 JSON 文件（未加密，请妥善保管）",
 			Level:  "success",
 		}, false)
 	}
 }
 
-// Import 导入自身格式备份。
+// Import 导入自身格式备份。加密信封必须带 X-Backup-Password；
+// 口令错误回 backup_password_incorrect，缺口令回 backup_password_required。
 func (h *BackupHandler) Import(c *gin.Context) {
 	data, err := readBody(c)
 	if err != nil {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
+	}
+	if backup.NeedsPassword(data) {
+		pw := c.GetHeader("X-Backup-Password")
+		if pw == "" {
+			errcode.Respond(c, errcode.BackupPasswordRequired)
+			return
+		}
+		data, err = backup.Decrypt(data, pw)
+		if err != nil {
+			if errors.Is(err, backup.ErrBadPassword) {
+				errcode.Respond(c, errcode.BackupPasswordIncorrect)
+				return
+			}
+			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+			return
+		}
 	}
 	sites, dls, err := h.svc.Import(c.Request.Context(), data)
 	if err != nil {

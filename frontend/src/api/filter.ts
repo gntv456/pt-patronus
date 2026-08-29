@@ -100,53 +100,38 @@ function normalizeMatched(m: RawMatched): FilterMatched {
 
 export const filterApi = {
   // —— 内置规则（只读）——
-  builtins: () =>
-    http
-      .get<{ rules: FilterRule[] }>('/filter/rules/builtin')
-      .then((r) => r.data.rules ?? []),
+  builtins: () => http.get<{ rules: FilterRule[] }>('/filter/rules/builtin').then((r) => r.data.rules ?? []),
 
   // —— 自定义规则 ——
-  custom: () =>
-    http
-      .get<{ rules: FilterRule[] }>('/filter/rules/custom')
-      .then((r) => r.data.rules ?? []),
+  custom: () => http.get<{ rules: FilterRule[] }>('/filter/rules/custom').then((r) => r.data.rules ?? []),
   createCustom: (body: CustomRuleInput) =>
     http.post<{ rule: FilterRule }>('/filter/rules/custom', body).then((r) => r.data.rule),
   updateCustom: (id: string, body: CustomRuleInput) =>
     http.put<{ rule: FilterRule }>(`/filter/rules/custom/${id}`, body).then((r) => r.data.rule),
-  deleteCustom: (id: string) =>
-    http.delete(`/filter/rules/custom/${id}`).then((r) => r.data),
+  deleteCustom: (id: string) => http.delete(`/filter/rules/custom/${id}`).then((r) => r.data),
 
   // —— 规则组 ——
-  groups: () =>
-    http
-      .get<{ groups: FilterRuleGroup[] }>('/filter/groups')
-      .then((r) => r.data.groups ?? []),
+  groups: () => http.get<{ groups: FilterRuleGroup[] }>('/filter/groups').then((r) => r.data.groups ?? []),
   createGroup: (body: RuleGroupInput) =>
     http.post<{ group: FilterRuleGroup }>('/filter/groups', body).then((r) => r.data.group),
   updateGroup: (name: string, body: RuleGroupInput) =>
     http.put<{ group: FilterRuleGroup }>(`/filter/groups/${name}`, body).then((r) => r.data.group),
-  deleteGroup: (name: string) =>
-    http.delete(`/filter/groups/${name}`).then((r) => r.data),
+  deleteGroup: (name: string) => http.delete(`/filter/groups/${name}`).then((r) => r.data),
 
   // —— 全局绑定 ——
   bindings: () =>
-    http
-      .get<FilterBindings>('/filter/bindings')
-      .then((r) => ({ search: r.data.search ?? [], subscribe: r.data.subscribe ?? [], best_version: r.data.best_version ?? [] })),
-  setBindings: (b: FilterBindings) =>
-    http.put('/filter/bindings', b).then((r) => r.data),
+    http.get<FilterBindings>('/filter/bindings').then((r) => ({
+      search: r.data.search ?? [],
+      subscribe: r.data.subscribe ?? [],
+      best_version: r.data.best_version ?? [],
+    })),
+  setBindings: (b: FilterBindings) => http.put('/filter/bindings', b).then((r) => r.data),
 
   // —— 规则试算 ——
   test: (req: FilterTestReq) =>
-    http
-      .post<{ matched: RawMatched[]; dropped: FilterTorrent[]; levels: string[] }>(
-        '/filter/test',
-        req,
-      )
-      .then((r) => ({
-        matched: (r.data.matched ?? []).map(normalizeMatched),
-        dropped: r.data.dropped ?? [],
-        levels: r.data.levels ?? [],
-      })),
+    http.post<{ matched: RawMatched[]; dropped: FilterTorrent[]; levels: string[] }>('/filter/test', req).then((r) => ({
+      matched: (r.data.matched ?? []).map(normalizeMatched),
+      dropped: r.data.dropped ?? [],
+      levels: r.data.levels ?? [],
+    })),
 }

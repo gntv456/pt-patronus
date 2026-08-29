@@ -72,7 +72,7 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 	}
 	// === 运维中心：Docker 容器管理（SSH 远程主机）===
 	dockerH := v1.NewDockerHandler(d.MonSvc)
-	execH := v1.NewDockerExecHandler()
+	execH := v1.NewDockerExecHandler(splitOrigins(d.Cfg.CORSAllowedOrigins), d.Cfg.IsRelease())
 	composeLocalH := v1.NewLocalComposeHandler()
 	docker := guarded.Group("/ops/docker")
 	docker.Use(middleware.RequireAdmin())

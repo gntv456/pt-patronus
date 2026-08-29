@@ -1,6 +1,26 @@
 // 通用 SSE 消费：原生 fetch + ReadableStream（axios 不支持流式；需 Authorization header）。
 // 按空行分帧，解析 event:/data: 为 { event, data }，逐帧回调 onEvent；signal 用于中断。
-// 与 agent.ts 的 streamAgentChat 同款模式，抽公共供推荐/考核/后宫等聚合页流式加载复用。
+// 401 统一走 expireSession（清 token/user + redirect 登录）——与 http.ts 拦截器同语义。
+import { expireSession } from './http'
+import { terr } from './i18nErr'
+
+// streamErr 流式请求错误友好化：401 清会话回登录（与 axios 拦截器同语义），
+// 其余拼 i18n 文案 + HTTP 状态。供 sse/agent/message/announcement/freeleech 复用。
+export async function streamErr(res: Response): Promise<string> {
+  if (res.status === 401) {
+    expireSession()
+    return terr('apiErr.sessionExpired', '登录已失效，请重新登录')
+  }
+  let txt = ''
+  try {
+    txt = (await res.text()).slice(0, 200)
+  } catch {
+    /* body 不可读 */
+  }
+  const suffix = `${terr('apiErr.httpPrefix', '（HTTP ')}${res.status}${terr('apiErr.httpSuffix', '）')}`
+  return txt ? `${txt}${suffix}` : `${terr('apiErr.loadFailed', '加载失败')}${suffix}`
+}
+
 export async function streamSSE(
   url: string,
   onEvent: (event: string, data: any) => void,
@@ -12,6 +32,10 @@ export async function streamSSE(
     signal,
   })
   if (!resp.ok || !resp.body) {
+    if (resp.status === 401) {
+      expireSession()
+      throw new Error('登录已失效，请重新登录')
+    }
     const txt = await resp.text().catch(() => '')
     throw new Error(`HTTP ${resp.status}: ${txt.slice(0, 200)}`)
   }

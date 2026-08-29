@@ -4,8 +4,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
+	"github.com/hxpt/ptpatronus/internal/auth"
+	"github.com/hxpt/ptpatronus/internal/core/security"
+	"github.com/hxpt/ptpatronus/internal/db/models"
+	"gorm.io/gorm"
 )
 
 // withAdmin 注入身份（模拟 JWTAuth 的 c.Set），isAdmin 控制 is_admin 标记。
@@ -69,4 +75,57 @@ func TestRequireAdmin(t *testing.T) {
 			t.Fatalf("status = %d, want 200 (body=%s)", w.Code, w.Body.String())
 		}
 	})
+}
+
+// TestJWTAuth_CookieFallback 无 Authorization 头时必须回退读 ptp_token cookie
+// （Web 端 httpOnly 会话通道）；cookie 无效返回 401。
+func TestJWTAuth_CookieFallback(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, err := gorm.Open(sqlite.Open(t.TempDir()+"/mwauth.db"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if sqlDB, e := db.DB(); e == nil {
+			_ = sqlDB.Close()
+		}
+	})
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&models.User{Username: "u", HxptUID: "u", TokenVersion: 0, VipLevel: 1}).Error; err != nil {
+		t.Fatal(err)
+	}
+	j := security.NewJWT("test-secret", 60)
+	tv := auth.NewTokenVersionCache(db, time.Minute)
+	mw := JWTAuth(j, "", tv)
+
+	// 签发一个合法 token，经 cookie 注入应认证成功
+	var uid uint
+	db.Raw("SELECT id FROM users ORDER BY id LIMIT 1").Scan(&uid)
+	tok, err := j.Issue(uid, "u", false, 0, 1, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest("GET", "/api/v1/x", nil)
+	c.Request.AddCookie(&http.Cookie{Name: "ptp_token", Value: tok})
+	mw(c)
+	if _, ok := c.Get("uid"); !ok {
+		t.Fatal("cookie token should authenticate")
+	}
+	if v, _ := c.Get("auth_via"); v != "jwt" {
+		t.Fatalf("auth_via should be jwt, got %v", v)
+	}
+
+	// 无效 cookie → 401 中止（经完整 engine 验证写入状态码）
+	r := gin.New()
+	r.GET("/x", JWTAuth(j, "", tv), func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
+	req := httptest.NewRequest("GET", "/x", nil)
+	req.AddCookie(&http.Cookie{Name: "ptp_token", Value: "garbage"})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("garbage cookie should 401, got %d", w.Code)
+	}
 }

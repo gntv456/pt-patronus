@@ -8,16 +8,24 @@ import type { useFileManager } from './useFileManager'
 type FileManager = ReturnType<typeof useFileManager>
 
 export function useFileExtraOps(fm: FileManager, refresh: () => void) {
-
   // ── 在线编辑 ──
   function openEditFile(e: FileEntry) {
     fm.editTarget.value = e
     fm.editContent.value = ''
     fm.editVisible.value = true
     fm.editLoading.value = true
-    fileApi.readFile(fm.curFs.value!.id, e.path).then((c) => { fm.editContent.value = c }).catch((err) => {
-      ElMessage.error(err.message || '读取失败'); fm.editVisible.value = false
-    }).finally(() => { fm.editLoading.value = false })
+    fileApi
+      .readFile(fm.curFs.value!.id, e.path)
+      .then((c) => {
+        fm.editContent.value = c
+      })
+      .catch((err) => {
+        ElMessage.error(err.message || '读取失败')
+        fm.editVisible.value = false
+      })
+      .finally(() => {
+        fm.editLoading.value = false
+      })
   }
   async function doSaveFile() {
     if (!fm.editTarget.value) return
@@ -27,8 +35,11 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
       ElMessage.success('已保存')
       fm.editVisible.value = false
       refresh()
-    } catch (e: unknown) { ElMessage.error((e as Error).message || '保存失败') }
-    finally { fm.editLoading.value = false }
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '保存失败')
+    } finally {
+      fm.editLoading.value = false
+    }
   }
 
   // ── 压缩 ──
@@ -47,20 +58,27 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
       ElMessage.success('压缩完成')
       fm.archiveVisible.value = false
       refresh()
-    } catch (e: unknown) { ElMessage.error((e as Error).message || '压缩失败') }
-    finally { fm.archiveLoading.value = false }
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '压缩失败')
+    } finally {
+      fm.archiveLoading.value = false
+    }
   }
 
   // ── 解压 ──
   async function doExtract(e: FileEntry) {
     try {
       await ElMessageBox.confirm(`解压 ${e.name} 到当前目录？`, '解压', { type: 'info' })
-    } catch { return }
+    } catch {
+      return
+    }
     try {
       await fileApi.extract(fm.curFs.value!.id, e.path, fm.path.value)
       ElMessage.success('解压完成')
       refresh()
-    } catch (err: unknown) { ElMessage.error((err as Error).message || '解压失败') }
+    } catch (err: unknown) {
+      ElMessage.error((err as Error).message || '解压失败')
+    }
   }
 
   // ── 权限 ──
@@ -79,8 +97,11 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
       await fileApi.chmod(fm.curFs.value!.id, fm.chmodTarget.value.path, oct, fm.chmodRecursive.value)
       ElMessage.success('权限已修改')
       fm.chmodVisible.value = false
-    } catch (e: unknown) { ElMessage.error((e as Error).message || '修改失败') }
-    finally { fm.chmodLoading.value = false }
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '修改失败')
+    } finally {
+      fm.chmodLoading.value = false
+    }
   }
 
   // ── 目录大小 ──
@@ -89,8 +110,11 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
     try {
       const r = await fileApi.dirSize(fm.curFs.value!.id, e.path)
       fm.dirSizeMap.value = { ...fm.dirSizeMap.value, [e.path]: r.sizeStr }
-    } catch (err: unknown) { ElMessage.error((err as Error).message || '计算失败') }
-    finally { fm.dirSizeLoading.value = { ...fm.dirSizeLoading.value, [e.path]: false } }
+    } catch (err: unknown) {
+      ElMessage.error((err as Error).message || '计算失败')
+    } finally {
+      fm.dirSizeLoading.value = { ...fm.dirSizeLoading.value, [e.path]: false }
+    }
   }
 
   // ── 文件预览（文本） ──
@@ -99,9 +123,18 @@ export function useFileExtraOps(fm: FileManager, refresh: () => void) {
     fm.previewContent.value = ''
     fm.previewVisible.value = true
     fm.previewLoading.value = true
-    fileApi.readFile(fm.curFs.value!.id, e.path).then((c) => { fm.previewContent.value = c }).catch((err) => {
-      ElMessage.error(err.message || '读取失败'); fm.previewVisible.value = false
-    }).finally(() => { fm.previewLoading.value = false })
+    fileApi
+      .readFile(fm.curFs.value!.id, e.path)
+      .then((c) => {
+        fm.previewContent.value = c
+      })
+      .catch((err) => {
+        ElMessage.error(err.message || '读取失败')
+        fm.previewVisible.value = false
+      })
+      .finally(() => {
+        fm.previewLoading.value = false
+      })
   }
 
   return { openEditFile, doSaveFile, openArchive, doArchive, doExtract, openChmod, doChmod, calcDirSize, openPreview }

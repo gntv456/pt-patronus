@@ -47,8 +47,14 @@ const form = ref<Partial<ContractRule>>(defaultForm())
 
 function defaultForm(): Partial<ContractRule> {
   return {
-    site_id: 0, enabled: true, min_ratio: 0, min_seeding: 0, min_upload_gb: 0,
-    official_only: false, min_seeding_size_gb: 0, period: '',
+    site_id: 0,
+    enabled: true,
+    min_ratio: 0,
+    min_seeding: 0,
+    min_upload_gb: 0,
+    official_only: false,
+    min_seeding_size_gb: 0,
+    period: '',
   }
 }
 
@@ -82,7 +88,9 @@ async function save() {
 }
 
 async function remove(r: ContractRule) {
-  await ElMessageBox.confirm(t('contract.confirmDelete', { site: siteName(r.site_id) }), t('messages.tip'), { type: 'warning' })
+  await ElMessageBox.confirm(t('contract.confirmDelete', { site: siteName(r.site_id) }), t('messages.tip'), {
+    type: 'warning',
+  })
   await contractApi.remove(r.id)
   ElMessage.success(t('common.deleted'))
   await load()
@@ -113,7 +121,10 @@ function statusType(s: string): 'success' | 'warning' | 'danger' | 'info' {
   return ({ ok: 'success', breach: 'warning', error: 'danger' } as const)[s as 'ok'] || 'info'
 }
 function statusLabel(s: string) {
-  return ({ ok: t('contract.st.ok'), breach: t('contract.st.breach'), error: t('contract.st.error') } as const)[s as 'ok'] || t('contract.st.unchecked')
+  return (
+    ({ ok: t('contract.st.ok'), breach: t('contract.st.breach'), error: t('contract.st.error') } as const)[s as 'ok'] ||
+    t('contract.st.unchecked')
+  )
 }
 
 onMounted(load)
@@ -143,9 +154,16 @@ onMounted(load)
           <div class="card-title">
             <div class="name">{{ siteName(r.site_id) }}</div>
             <div class="meta">
-              {{ t('contract.ratioGte') }}{{ r.min_ratio || '-' }} · {{ t('contract.seedingGte') }}{{ r.min_seeding || '-' }} · {{ t('contract.uploadGte') }}{{ r.min_upload_gb || '-' }}GiB<template
-                v-if="r.official_only"> · {{ t('subscriptions.officialOnly') }}</template><template v-if="r.min_seeding_size_gb"> · {{ t('contract.sizeGte') }}{{
-                r.min_seeding_size_gb }}GiB</template><template v-if="r.period"> · {{ r.period === 'weekly' ? t('contract.weekly') : t('contract.monthly') }}</template>
+              {{ t('contract.ratioGte') }}{{ r.min_ratio || '-' }} · {{ t('contract.seedingGte')
+              }}{{ r.min_seeding || '-' }} · {{ t('contract.uploadGte') }}{{ r.min_upload_gb || '-' }}GiB<template
+                v-if="r.official_only"
+              >
+                · {{ t('subscriptions.officialOnly') }}</template
+              ><template v-if="r.min_seeding_size_gb">
+                · {{ t('contract.sizeGte') }}{{ r.min_seeding_size_gb }}GiB</template
+              ><template v-if="r.period">
+                · {{ r.period === 'weekly' ? t('contract.weekly') : t('contract.monthly') }}</template
+              >
             </div>
           </div>
           <el-switch :model-value="r.enabled" @update:model-value="(v: any) => toggle(r, !!v)" />
@@ -156,10 +174,15 @@ onMounted(load)
           <span v-if="r.last_checked_at" class="time">{{ new Date(r.last_checked_at).toLocaleString() }}</span>
         </div>
         <div v-if="results[r.id]" class="check-result">
-          {{ t('contract.livePrefix') }}{{ t('contract.ratioShort') }} {{ results[r.id].ratio.toFixed(2) }} · {{ t('contract.seedingShort') }} {{ results[r.id].seeding }}<template
-            v-if="results[r.id].seeding_official">（{{ t('contract.officialShort') }} {{ results[r.id].seeding_official }}）</template> · {{ t('contract.uploadShort') }}
-          {{ results[r.id].upload_gb.toFixed(1) }}GiB · {{ t('contract.sizeShort') }} {{ results[r.id].seeding_size_gb.toFixed(1) }}GiB<template
-            v-if="results[r.id].unsupported"> · ⚠ {{ results[r.id].unsupported }}</template>
+          {{ t('contract.livePrefix') }}{{ t('contract.ratioShort') }} {{ results[r.id].ratio.toFixed(2) }} ·
+          {{ t('contract.seedingShort') }} {{ results[r.id].seeding
+          }}<template v-if="results[r.id].seeding_official"
+            >（{{ t('contract.officialShort') }} {{ results[r.id].seeding_official }}）</template
+          >
+          · {{ t('contract.uploadShort') }} {{ results[r.id].upload_gb.toFixed(1) }}GiB · {{ t('contract.sizeShort') }}
+          {{ results[r.id].seeding_size_gb.toFixed(1) }}GiB<template v-if="results[r.id].unsupported">
+            · ⚠ {{ results[r.id].unsupported }}</template
+          >
         </div>
         <div class="actions">
           <el-button size="small" @click="check(r)">{{ t('rss.check') }}</el-button>
@@ -188,9 +211,15 @@ onMounted(load)
         <el-form-item :label="t('contract.f.minRatio')">
           <el-input-number v-model="form.min_ratio" :min="0" :step="0.1" controls-position="right" />
         </el-form-item>
-        <el-form-item :label="t('contract.f.minSeeding')"><el-input-number v-model="form.min_seeding" :min="0" controls-position="right" /></el-form-item>
-        <el-form-item :label="t('contract.f.minUpload')"><el-input-number v-model="form.min_upload_gb" :min="0" controls-position="right" /></el-form-item>
-        <el-divider content-position="left"><span class="text-muted">{{ t('contract.f.extDims') }}</span></el-divider>
+        <el-form-item :label="t('contract.f.minSeeding')"
+          ><el-input-number v-model="form.min_seeding" :min="0" controls-position="right"
+        /></el-form-item>
+        <el-form-item :label="t('contract.f.minUpload')"
+          ><el-input-number v-model="form.min_upload_gb" :min="0" controls-position="right"
+        /></el-form-item>
+        <el-divider content-position="left"
+          ><span class="text-muted">{{ t('contract.f.extDims') }}</span></el-divider
+        >
         <el-form-item :label="t('subscriptions.officialOnly')">
           <el-switch v-model="form.official_only" />
           <span class="hint text-muted" style="margin-left: 8px">{{ t('contract.f.officialHint') }}</span>
@@ -226,20 +255,80 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
-.card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-2); }
-.card-head { display: flex; align-items: center; gap: var(--sp-3); }
-.card-title { flex: 1; min-width: 0; }
-.name { font-weight: 600; font-size: var(--fs-body); }
-.meta { font-size: var(--fs-xs); color: var(--text-muted); }
-.status-row { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; font-size: var(--fs-xs); }
-.detail { color:var(--pt-danger); }
-.time { color: var(--text-muted); margin-left: auto; }
-.check-result { font-size: var(--fs-xs); color: var(--text-muted); background: rgba(127, 127, 127, 0.12); border-radius: var(--radius-xs); padding: 6px 8px; }
-.actions { display: flex; gap: var(--sp-1); }
-.hint { margin: 0; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.sub {
+  margin: -8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-3);
+}
+.card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.card-title {
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-weight: 600;
+  font-size: var(--fs-body);
+}
+.meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+}
+.detail {
+  color: var(--pt-danger);
+}
+.time {
+  color: var(--text-muted);
+  margin-left: auto;
+}
+.check-result {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  background: rgba(127, 127, 127, 0.12);
+  border-radius: var(--radius-xs);
+  padding: 6px 8px;
+}
+.actions {
+  display: flex;
+  gap: var(--sp-1);
+}
+.hint {
+  margin: 0;
+}
 </style>

@@ -10,11 +10,7 @@ import PluginLogsDialog from './PluginLogsDialog.vue'
 import PluginMarketSection from './PluginMarketSection.vue'
 import { usePlugins } from './usePlugins'
 import { usePluginTrust } from './usePluginTrust'
-import {
-  runtimeState,
-  runtimeType,
-  runtimeLabel,
-} from './pluginsHelpers'
+import { runtimeState, runtimeType, runtimeLabel } from './pluginsHelpers'
 
 type PluginViewContribution = NonNullable<NonNullable<PluginInfo['contributes']>['views']>[number]
 
@@ -22,27 +18,81 @@ const router = useRouter()
 const { t } = useI18n()
 
 const {
-  plugins, logs, loading, logsLoading,
-  filter, logPlugin, activeTab,
-  marketSources, marketSourceVisible, marketSourceDraft, marketSourceOfficial,
-  market, marketLoading, installing,
+  plugins,
+  logs,
+  loading,
+  logsLoading,
+  filter,
+  logPlugin,
+  activeTab,
+  marketSources,
+  marketSourceVisible,
+  marketSourceDraft,
+  marketSourceOfficial,
+  market,
+  marketLoading,
+  installing,
   logsVisible,
-  configVisible, configTarget, configForm, configExpanded, savingConfig,
-  actionVisible, actionSpec, actionInputForm, actionInputText, actionOutput, actionRunning,
-  auditVisible, auditTarget, auditLogs, auditReleases, auditLoading, rollbacking,
+  configVisible,
+  configTarget,
+  configForm,
+  configExpanded,
+  savingConfig,
+  actionVisible,
+  actionSpec,
+  actionInputForm,
+  actionInputText,
+  actionOutput,
+  actionRunning,
+  auditVisible,
+  auditTarget,
+  auditLogs,
+  auditReleases,
+  auditLoading,
+  rollbacking,
   marketCategory,
-  marketCharts, favoritePlugins, marketView, toggleFavorite,
-  instancesVisible, instancePluginId, instances, singleInstance,
-  openInstances, createInstance, toggleInstance, removeInstance, moveInstance,
-  pluginSearch, marketSearch,
-  filteredPlugins, enabledCount, actionHasSchema,
-  marketCategories, filteredMarketPlugins,
-  configTitledGroups, configUntitledFields,
-  load, loadLogs, openLogs, openAudit, triggerRollback,
-  loadMarket, openMarketSource, addMarketSourceRow, removeMarketSourceRow,
-  restoreOfficialSource, saveMarketSources, installMarketPlugin,
-  reloadPlugin, uninstallPlugin, togglePlugin,
-  openConfig, saveConfig, openAction, handleOpenPluginView, runAction,
+  marketCharts,
+  favoritePlugins,
+  marketView,
+  toggleFavorite,
+  instancesVisible,
+  instancePluginId,
+  instances,
+  singleInstance,
+  openInstances,
+  createInstance,
+  toggleInstance,
+  removeInstance,
+  moveInstance,
+  pluginSearch,
+  marketSearch,
+  filteredPlugins,
+  enabledCount,
+  actionHasSchema,
+  marketCategories,
+  filteredMarketPlugins,
+  configTitledGroups,
+  configUntitledFields,
+  load,
+  loadLogs,
+  openLogs,
+  openAudit,
+  triggerRollback,
+  loadMarket,
+  openMarketSource,
+  addMarketSourceRow,
+  removeMarketSourceRow,
+  restoreOfficialSource,
+  saveMarketSources,
+  installMarketPlugin,
+  reloadPlugin,
+  uninstallPlugin,
+  togglePlugin,
+  openConfig,
+  saveConfig,
+  openAction,
+  handleOpenPluginView,
+  runAction,
 } = usePlugins({
   openPluginView: (p: PluginInfo, view: PluginViewContribution) => {
     router.push({ name: 'plugin-view', params: { pluginId: p.id, viewId: view.id } })
@@ -50,9 +100,14 @@ const {
 })
 
 const {
-  trustVisible, trustLoading, trustSaving,
-  trustOfficialKey, trustKeysText, trustAllowUnsigned,
-  openTrust, saveTrust,
+  trustVisible,
+  trustLoading,
+  trustSaving,
+  trustOfficialKey,
+  trustKeysText,
+  trustAllowUnsigned,
+  openTrust,
+  saveTrust,
 } = usePluginTrust()
 
 const pluginColors = ['#6c5ce7', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#8b5cf6']
@@ -81,8 +136,15 @@ function pluginInitial(name: string): string {
       </nav>
       <div class="head-actions">
         <template v-if="activeTab === 'installed'">
-          <el-input v-model="pluginSearch" :placeholder="t('plugins.searchPh')" :prefix-icon="Search" size="small" clearable style="width: 160px;" />
-          <el-select v-model="filter" size="small" style="width: 100px;">
+          <el-input
+            v-model="pluginSearch"
+            :placeholder="t('plugins.searchPh')"
+            :prefix-icon="Search"
+            size="small"
+            clearable
+            style="width: 160px"
+          />
+          <el-select v-model="filter" size="small" style="width: 100px">
             <el-option :label="t('cloud.all')" value="all" />
             <el-option :label="t('plugins.fEnabled')" value="enabled" />
             <el-option :label="t('plugins.fAvailable')" value="available" />
@@ -91,11 +153,22 @@ function pluginInitial(name: string): string {
           <el-button :icon="Setting" size="small" @click="openTrust">{{ t('plugins.trust') }}</el-button>
         </template>
         <template v-else>
-          <el-input v-model="marketSearch" :placeholder="t('plugins.searchMarketPh')" :prefix-icon="Search" size="small" clearable style="width: 180px;" />
+          <el-input
+            v-model="marketSearch"
+            :placeholder="t('plugins.searchMarketPh')"
+            :prefix-icon="Search"
+            size="small"
+            clearable
+            style="width: 180px"
+          />
           <el-button :icon="Setting" size="small" @click="openMarketSource">{{ t('plugins.repo') }}</el-button>
-          <el-button :icon="Refresh" size="small" :loading="marketLoading" @click="loadMarket">{{ t('plugins.refreshMarket') }}</el-button>
+          <el-button :icon="Refresh" size="small" :loading="marketLoading" @click="loadMarket">{{
+            t('plugins.refreshMarket')
+          }}</el-button>
         </template>
-        <el-button v-if="activeTab !== 'market'" :icon="Refresh" size="small" :loading="loading" @click="load">{{ t('common.refresh') }}</el-button>
+        <el-button v-if="activeTab !== 'market'" :icon="Refresh" size="small" :loading="loading" @click="load">{{
+          t('common.refresh')
+        }}</el-button>
       </div>
     </div>
 
@@ -107,9 +180,13 @@ function pluginInitial(name: string): string {
             <div class="plugin-name-row">
               <span class="plugin-name">{{ p.name }}</span>
               <span v-if="p.built_in" class="badge badge-neutral">{{ t('plugins.builtIn') }}</span>
-              <span class="badge" :class="p.enabled ? 'badge-success' : 'badge-muted'">{{ p.enabled ? t('plugins.running') : t('plugins.notEnabled') }}</span>
+              <span class="badge" :class="p.enabled ? 'badge-success' : 'badge-muted'">{{
+                p.enabled ? t('plugins.running') : t('plugins.notEnabled')
+              }}</span>
               <span v-if="!p.can_enable" class="badge badge-danger">{{ t('plugins.depBlocked') }}</span>
-              <span v-if="p.runtime_status" class="badge" :class="'badge-' + runtimeType(runtimeState(p))">{{ runtimeLabel(runtimeState(p)) }}</span>
+              <span v-if="p.runtime_status" class="badge" :class="'badge-' + runtimeType(runtimeState(p))">{{
+                runtimeLabel(runtimeState(p))
+              }}</span>
             </div>
             <div class="plugin-sub">v{{ p.version }} · {{ p.author }}</div>
           </div>
@@ -120,21 +197,38 @@ function pluginInitial(name: string): string {
         <div v-if="p.last_error" class="plugin-error">{{ p.last_error }}</div>
 
         <div class="plugin-card-foot">
-          <el-button size="small" type="primary" :icon="Setting" @click="openConfig(p)">{{ t('plugins.config') }}</el-button>
+          <el-button size="small" type="primary" :icon="Setting" @click="openConfig(p)">{{
+            t('plugins.config')
+          }}</el-button>
           <div class="foot-spacer" />
           <el-dropdown trigger="click">
-            <el-button size="small" circle plain class="more-btn"><el-icon><MoreFilled /></el-icon></el-button>
+            <el-button size="small" circle plain class="more-btn"
+              ><el-icon><MoreFilled /></el-icon
+            ></el-button>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item :icon="Refresh" @click="reloadPlugin(p)">{{ t('plugins.reload') }}</el-dropdown-item>
                 <el-dropdown-item :icon="Document" @click="openAudit(p)">{{ t('plugins.audit') }}</el-dropdown-item>
-                <el-dropdown-item v-for="v in p.contributes?.views || []" :key="v.id" :icon="Document" divided @click="handleOpenPluginView(p, v)">
+                <el-dropdown-item
+                  v-for="v in p.contributes?.views || []"
+                  :key="v.id"
+                  :icon="Document"
+                  divided
+                  @click="handleOpenPluginView(p, v)"
+                >
                   {{ v.title }}
                 </el-dropdown-item>
-                <el-dropdown-item v-for="a in p.actions || []" :key="a.name" :icon="VideoPlay" @click="openAction(p, a)">
+                <el-dropdown-item
+                  v-for="a in p.actions || []"
+                  :key="a.name"
+                  :icon="VideoPlay"
+                  @click="openAction(p, a)"
+                >
                   {{ a.label }}
                 </el-dropdown-item>
-                <el-dropdown-item v-if="!p.built_in" :icon="Delete" divided @click="uninstallPlugin(p)">{{ t('plugins.uninstall') }}</el-dropdown-item>
+                <el-dropdown-item v-if="!p.built_in" :icon="Delete" divided @click="uninstallPlugin(p)">{{
+                  t('plugins.uninstall')
+                }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -185,19 +279,23 @@ function pluginInitial(name: string): string {
 
     <el-dialog v-model="trustVisible" :title="t('plugins.trustTitle')" width="560px">
       <div v-loading="trustLoading">
-        <div style="margin-bottom: 14px;">
-          <div class="text-muted" style="font-size: var(--fs-body); margin-bottom: 4px;">{{ t('plugins.officialKey') }}</div>
+        <div style="margin-bottom: 14px">
+          <div class="text-muted" style="font-size: var(--fs-body); margin-bottom: 4px">
+            {{ t('plugins.officialKey') }}
+          </div>
           <el-input :model-value="trustOfficialKey" readonly type="textarea" :rows="2" />
         </div>
-        <div style="margin-bottom: 14px;">
-          <div class="text-muted" style="font-size: var(--fs-body); margin-bottom: 4px;">{{ t('plugins.extraKeys') }}</div>
+        <div style="margin-bottom: 14px">
+          <div class="text-muted" style="font-size: var(--fs-body); margin-bottom: 4px">
+            {{ t('plugins.extraKeys') }}
+          </div>
           <el-input v-model="trustKeysText" type="textarea" :rows="4" :placeholder="t('plugins.keysPh')" />
         </div>
-        <div style="margin-bottom: 8px;">
+        <div style="margin-bottom: 8px">
           <el-switch v-model="trustAllowUnsigned" />
-          <span style="margin-left: 8px;">{{ t('plugins.allowUnsigned') }}</span>
+          <span style="margin-left: 8px">{{ t('plugins.allowUnsigned') }}</span>
         </div>
-        <div class="text-muted" style="font-size: var(--fs-xs); margin-top: 8px;">
+        <div class="text-muted" style="font-size: var(--fs-xs); margin-top: 8px">
           {{ t('plugins.trustTip') }}
         </div>
       </div>

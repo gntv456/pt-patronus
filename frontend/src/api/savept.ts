@@ -58,6 +58,5 @@ export interface SaveptResult {
 }
 
 export const saveptApi = {
-  get: (refresh = false) =>
-    http.get<SaveptResult>(`/savept${refresh ? '?refresh=1' : ''}`).then((r) => r.data),
+  get: (refresh = false) => http.get<SaveptResult>(`/savept${refresh ? '?refresh=1' : ''}`).then((r) => r.data),
 }

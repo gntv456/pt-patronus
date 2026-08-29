@@ -31,7 +31,9 @@ async function fileOp(op: 'mkdir' | 'delete' | 'move' | 'copy' | 'rename', extra
   }
   try {
     if (op === 'delete') {
-      await ElMessageBox.confirm(t('cloud.confirmDeletePath', { path: extra.path ?? '' }), t('common.delete'), { type: 'warning' })
+      await ElMessageBox.confirm(t('cloud.confirmDeletePath', { path: extra.path ?? '' }), t('common.delete'), {
+        type: 'warning',
+      })
     }
     await cloudApi.fileOp(op, { drive_id: curDrive.value.id, path: browsePath.value, ...extra })
     ElMessage.success(t('common.actionOk'))
@@ -42,24 +44,39 @@ async function fileOp(op: 'mkdir' | 'delete' | 'move' | 'copy' | 'rename', extra
 }
 async function doMkdir() {
   try {
-    const { value } = await ElMessageBox.prompt(t('cloud.mkdirPrompt'), t('filemanager.newFolder'), { inputPattern: /^[^/\\]+$/, inputErrorMessage: t('cloud.invalidName') })
+    const { value } = await ElMessageBox.prompt(t('cloud.mkdirPrompt'), t('filemanager.newFolder'), {
+      inputPattern: /^[^/\\]+$/,
+      inputErrorMessage: t('cloud.invalidName'),
+    })
     await fileOp('mkdir', { new_name: value.trim() })
-  } catch { /* cancel */ }
+  } catch {
+    /* cancel */
+  }
 }
 async function doOffline() {
   try {
     const { value } = await ElMessageBox.prompt(t('cloud.offlinePrompt'), t('cloud.offlineTitle'))
     await cloudApi.fileOp('offline', { drive_id: curDrive.value!.id, path: browsePath.value, url: value.trim() })
     ElMessage.success(t('cloud.offlineSubmitted'))
-  } catch { /* cancel */ }
+  } catch {
+    /* cancel */
+  }
 }
 async function doShareSave() {
   try {
     const { value } = await ElMessageBox.prompt(t('cloud.sharePrompt'), t('cloud.shareTitle'))
-    const pwd = (await ElMessageBox.prompt(t('cloud.pwdPrompt'), t('cloud.pwdTitle')).catch(() => ({ value: '' }))).value
-    await cloudApi.fileOp('share-save', { drive_id: curDrive.value!.id, path: browsePath.value, url: value.trim(), pwd })
+    const pwd = (await ElMessageBox.prompt(t('cloud.pwdPrompt'), t('cloud.pwdTitle')).catch(() => ({ value: '' })))
+      .value
+    await cloudApi.fileOp('share-save', {
+      drive_id: curDrive.value!.id,
+      path: browsePath.value,
+      url: value.trim(),
+      pwd,
+    })
     ElMessage.success(t('cloud.shareSubmitted'))
-  } catch { /* cancel */ }
+  } catch {
+    /* cancel */
+  }
 }
 const repairing = ref(false)
 async function doStrmRepair() {
@@ -94,7 +111,18 @@ async function doOrganize() {
 }
 
 // ---- 115 开放平台扫码授权（拆至 composables/useCloud115Auth.ts；授权成功回调刷新网盘）----
-const { showAuth115, authAppId, authStarting, authPolling, authQR, authState, authStatusText, qrImage, openAuth115, startAuth115 } = useCloud115Auth(loadDrives)
+const {
+  showAuth115,
+  authAppId,
+  authStarting,
+  authPolling,
+  authQR,
+  authState,
+  authStatusText,
+  qrImage,
+  openAuth115,
+  startAuth115,
+} = useCloud115Auth(loadDrives)
 
 // ---- 云端任务队列 + 目录树导入 ----
 const tasks = ref<CloudTask[]>([])
@@ -106,17 +134,26 @@ const treeForm = ref({ drive_id: 0, base: '', output_dir: '', tree: '' })
 async function loadTasks() {
   try {
     tasks.value = await cloudApi.listTasks(taskStatusFilter.value)
-  } catch { /* 静默 */ }
+  } catch {
+    /* 静默 */
+  }
 }
 async function retryTask(task: CloudTask) {
   try {
     await cloudApi.retryTask(task.id)
     ElMessage.success(t('cloud.requeued'))
     await loadTasks()
-  } catch (e) { ElMessage.error((e as Error).message || t('cloud.retryFailed')) }
+  } catch (e) {
+    ElMessage.error((e as Error).message || t('cloud.retryFailed'))
+  }
 }
 async function removeTask(task: CloudTask) {
-  try { await cloudApi.removeTask(task.id); await loadTasks() } catch { /* ignore */ }
+  try {
+    await cloudApi.removeTask(task.id)
+    await loadTasks()
+  } catch {
+    /* ignore */
+  }
 }
 async function doImportTree() {
   if (!treeForm.value.drive_id || !treeForm.value.output_dir.trim() || !treeForm.value.tree.trim()) {
@@ -202,11 +239,7 @@ async function saveDrive() {
   }
 }
 async function removeDrive(d: CloudDrive) {
-  await ElMessageBox.confirm(
-    t('cloud.confirmDeleteDrive', { name: d.name }),
-    t('messages.tip'),
-    { type: 'warning' },
-  )
+  await ElMessageBox.confirm(t('cloud.confirmDeleteDrive', { name: d.name }), t('messages.tip'), { type: 'warning' })
   await cloudApi.removeDrive(d.id)
   ElMessage.success(t('common.deleted'))
   await loadDrives()
@@ -218,7 +251,9 @@ async function testDrive(d: CloudDrive) {
   testing.value = d.id
   try {
     const r = await cloudApi.test(d.id)
-    r.ok ? ElMessage.success(`${d.name}：${r.info || t('mediaserver.connOk')}`) : ElMessage.warning(r.error || t('mediaserver.connFailed'))
+    r.ok
+      ? ElMessage.success(`${d.name}：${r.info || t('mediaserver.connOk')}`)
+      : ElMessage.warning(r.error || t('mediaserver.connFailed'))
   } catch (e: any) {
     ElMessage.error(e?.message || t('common.requestFailed'))
   } finally {
@@ -235,12 +270,37 @@ async function loadQuota(d: CloudDrive) {
 }
 
 // ---- 浏览 + 规则（composable 封装） ----
-const { showBrowse, browseDrive, browsePath, browseFiles, browseLoading, openBrowse, fetchBrowse, enterDir, browseUp, pickDir } = useCloudDriveBrowse()
 const {
-  rules, records, loadRules, loadRecords, driveName,
-  showRuleForm, editingRule, ruleForm,
-  openCreateRule, openEditRule, ruleBrowse, saveRule, removeRule,
-  generating, generateOne, generateAll, syncSubs, removeRecord,
+  showBrowse,
+  browseDrive,
+  browsePath,
+  browseFiles,
+  browseLoading,
+  openBrowse,
+  fetchBrowse,
+  enterDir,
+  browseUp,
+  pickDir,
+} = useCloudDriveBrowse()
+const {
+  rules,
+  records,
+  loadRules,
+  loadRecords,
+  driveName,
+  showRuleForm,
+  editingRule,
+  ruleForm,
+  openCreateRule,
+  openEditRule,
+  ruleBrowse,
+  saveRule,
+  removeRule,
+  generating,
+  generateOne,
+  generateAll,
+  syncSubs,
+  removeRecord,
 } = useCloudStrmRules(drives, openBrowse)
 
 const tokenLabel = computed(() => {
@@ -300,11 +360,15 @@ onMounted(async () => {
                   <el-tag v-if="d.is_default" size="small" type="success">{{ t('cloud.defaultTag') }}</el-tag>
                 </div>
                 <div class="meta">{{ t('cloud.rootPath') }}：{{ d.root_path || '/' }}</div>
-                <div v-if="quotas[d.id]" class="meta">{{ t('cloud.quota') }}：{{ fmtSize(quotas[d.id].used) }} / {{ fmtSize(quotas[d.id].total) }}</div>
+                <div v-if="quotas[d.id]" class="meta">
+                  {{ t('cloud.quota') }}：{{ fmtSize(quotas[d.id].used) }} / {{ fmtSize(quotas[d.id].total) }}
+                </div>
               </div>
             </div>
             <div class="actions">
-              <el-button size="small" :loading="testing === d.id" @click="testDrive(d)">{{ t('cloud.testConn') }}</el-button>
+              <el-button size="small" :loading="testing === d.id" @click="testDrive(d)">{{
+                t('cloud.testConn')
+              }}</el-button>
               <el-button size="small" @click="loadQuota(d)">{{ t('cloud.viewQuota') }}</el-button>
               <el-button size="small" @click="openBrowse(d, () => {})">{{ t('cloud.browse') }}</el-button>
               <el-button size="small" @click="openEditDrive(d)">{{ t('common.edit') }}</el-button>
@@ -361,9 +425,12 @@ onMounted(async () => {
                 type="primary"
                 :loading="generating === (row as StrmRule).id"
                 @click="generateOne(row as StrmRule)"
-              >{{ t('cloud.generate') }}</el-button>
+                >{{ t('cloud.generate') }}</el-button
+              >
               <el-button size="small" link @click="openEditRule(row as StrmRule)">{{ t('common.edit') }}</el-button>
-              <el-button size="small" link type="danger" @click="removeRule(row as StrmRule)">{{ t('common.delete') }}</el-button>
+              <el-button size="small" link type="danger" @click="removeRule(row as StrmRule)">{{
+                t('common.delete')
+              }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -386,13 +453,17 @@ onMounted(async () => {
           </el-table-column>
           <el-table-column :label="t('cloud.source')" width="90">
             <template #default="{ row }">
-              <el-tag v-if="(row as StrmRecord).subscription_id" size="small" type="success">{{ t('cloud.srcSub') }}</el-tag>
+              <el-tag v-if="(row as StrmRecord).subscription_id" size="small" type="success">{{
+                t('cloud.srcSub')
+              }}</el-tag>
               <el-tag v-else size="small" effect="plain">{{ t('cloud.srcRule') }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column :label="t('common.action')" width="80">
             <template #default="{ row }">
-              <el-button size="small" link type="danger" @click="removeRecord(row as StrmRecord)">{{ t('common.delete') }}</el-button>
+              <el-button size="small" link type="danger" @click="removeRecord(row as StrmRecord)">{{
+                t('common.delete')
+              }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -423,13 +494,33 @@ onMounted(async () => {
           </el-table-column>
           <el-table-column :label="t('cloud.progress')" width="140">
             <template #default="{ row }">
-              <el-progress :percentage="(row as CloudTask).progress || 0" :stroke-width="8"
-                :status="(row as CloudTask).status === 'success' ? 'success' : (row as CloudTask).status === 'failed' ? 'exception' : undefined" />
+              <el-progress
+                :percentage="(row as CloudTask).progress || 0"
+                :stroke-width="8"
+                :status="
+                  (row as CloudTask).status === 'success'
+                    ? 'success'
+                    : (row as CloudTask).status === 'failed'
+                      ? 'exception'
+                      : undefined
+                "
+              />
             </template>
           </el-table-column>
           <el-table-column :label="t('cloud.status')" width="90">
             <template #default="{ row }">
-              <el-tag size="small" :type="(row as CloudTask).status === 'success' ? 'success' : (row as CloudTask).status === 'failed' ? 'danger' : (row as CloudTask).status === 'running' ? 'warning' : 'info'">
+              <el-tag
+                size="small"
+                :type="
+                  (row as CloudTask).status === 'success'
+                    ? 'success'
+                    : (row as CloudTask).status === 'failed'
+                      ? 'danger'
+                      : (row as CloudTask).status === 'running'
+                        ? 'warning'
+                        : 'info'
+                "
+              >
                 {{ TASK_STATUS_LABEL[(row as CloudTask).status] || row.status }}
               </el-tag>
             </template>
@@ -439,9 +530,17 @@ onMounted(async () => {
           </el-table-column>
           <el-table-column :label="t('common.action')" width="130" fixed="right">
             <template #default="{ row }">
-              <el-button v-if="(row as CloudTask).status === 'failed'" size="small" link type="primary"
-                @click="retryTask(row as CloudTask)">{{ t('common.retry') }}</el-button>
-              <el-button size="small" link type="danger" @click="removeTask(row as CloudTask)">{{ t('common.delete') }}</el-button>
+              <el-button
+                v-if="(row as CloudTask).status === 'failed'"
+                size="small"
+                link
+                type="primary"
+                @click="retryTask(row as CloudTask)"
+                >{{ t('common.retry') }}</el-button
+              >
+              <el-button size="small" link type="danger" @click="removeTask(row as CloudTask)">{{
+                t('common.delete')
+              }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -449,7 +548,14 @@ onMounted(async () => {
     </el-tabs>
 
     <!-- 115 开放平台扫码授权 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showAuth115" :title="t('cloud.authTitle')" width="480px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="showAuth115"
+      :title="t('cloud.authTitle')"
+      width="480px"
+    >
       <el-form label-width="90px">
         <el-form-item label="AppID">
           <el-input v-model="authAppId" :placeholder="t('cloud.authAppIdPh')" :disabled="!!authState" />
@@ -468,14 +574,26 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 115 目录树批量导入 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showImportTree" :title="t('cloud.importTitle')" width="640px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="showImportTree"
+      :title="t('cloud.importTitle')"
+      width="640px"
+    >
       <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
         {{ t('cloud.importTip') }}
       </el-alert>
       <el-form label-width="110px">
         <el-form-item :label="t('cloud.targetDrive')">
           <el-select v-model="treeForm.drive_id" style="width: 100%">
-            <el-option v-for="d in drives" :key="d.id" :label="`${d.name}（${TYPE_LABEL[d.type] || d.type}）`" :value="d.id" />
+            <el-option
+              v-for="d in drives"
+              :key="d.id"
+              :label="`${d.name}（${TYPE_LABEL[d.type] || d.type}）`"
+              :value="d.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item :label="t('cloud.treeRoot')">
@@ -495,7 +613,14 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 网盘表单 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showDriveForm" :title="editingDrive ? t('cloud.editDrive') : t('cloud.addDrive')" width="560px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="showDriveForm"
+      :title="editingDrive ? t('cloud.editDrive') : t('cloud.addDrive')"
+      width="560px"
+    >
       <el-form :model="driveForm" label-width="120px" label-position="right">
         <el-form-item :label="t('common.name')">
           <el-input v-model="driveForm.name" :placeholder="t('cloud.namePh')" />
@@ -535,7 +660,14 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 规则表单 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showRuleForm" :title="editingRule ? t('cloud.editRule') : t('cloud.addRule')" width="600px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="showRuleForm"
+      :title="editingRule ? t('cloud.editRule') : t('cloud.addRule')"
+      width="600px"
+    >
       <el-form :model="ruleForm" label-width="110px" label-position="right">
         <el-form-item :label="t('common.name')">
           <el-input v-model="ruleForm.name" :placeholder="t('cloud.ruleNamePh')" />
@@ -594,7 +726,14 @@ onMounted(async () => {
     </el-dialog>
 
     <!-- 浏览 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="showBrowse" :title="t('cloud.browseTitle', { name: browseDrive?.name ?? '' })" width="640px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="showBrowse"
+      :title="t('cloud.browseTitle', { name: browseDrive?.name ?? '' })"
+      width="640px"
+    >
       <div class="tab-toolbar" style="margin-bottom: 8px">
         <el-button size="small" @click="doMkdir">{{ t('filemanager.newFolder') }}</el-button>
         <el-button size="small" @click="doOffline">{{ t('cloud.offline') }}</el-button>
@@ -605,7 +744,13 @@ onMounted(async () => {
         <span class="browse-path">{{ browsePath }}</span>
       </div>
       <div v-loading="browseLoading" class="browse-list">
-        <div v-for="f in browseFiles.filter((x) => x.is_dir)" :key="f.path" class="browse-item" @click="enterDir(f)">
+        <div
+          v-a11y-button
+          v-for="f in browseFiles.filter((x) => x.is_dir)"
+          :key="f.path"
+          class="browse-item"
+          @click="enterDir(f)"
+        >
           📁 {{ f.name }}
         </div>
         <div v-for="f in browseFiles.filter((x) => !x.is_dir)" :key="f.path" class="browse-item file">
@@ -638,25 +783,120 @@ onMounted(async () => {
   margin-bottom: 12px;
   font-size: var(--fs-xs);
 }
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.head-actions { display: flex; gap: var(--sp-2); }
-.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.sub { margin: -8px 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
-.tabs { margin-top: 4px; }
-.pane-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--sp-3); }
-.card { padding: 16px; display: flex; flex-direction: column; gap: var(--sp-3); }
-.card-head { display: flex; align-items: center; gap: var(--sp-3); }
-.card-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-1); }
-.name { font-weight: 600; font-size: var(--fs-body); display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; }
-.meta { font-size: var(--fs-xs); color: var(--text-muted); word-break: break-all; }
-.actions { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
-.hint { font-size: var(--fs-xs); color: var(--text-muted); display: block; margin-top: 4px; }
-.browse-bar { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 10px; }
-.browse-path { font-size: var(--fs-sm); color: var(--text-strong); word-break: break-all; }
-.browse-list { display: flex; flex-direction: column; max-height: 50vh; overflow-y: auto; }
-.browse-item { padding: 8px 10px; border-radius: var(--radius-xs); cursor: pointer; font-size: var(--fs-sm); display: flex; justify-content: space-between; align-items: center; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
-.browse-item:hover { background: var(--bg-elev, rgba(255, 255, 255, 0.06)); }
-.browse-item.file { cursor: default; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.head-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.sub {
+  margin: -8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.tabs {
+  margin-top: 4px;
+}
+.pane-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-3);
+}
+.card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.card-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.name {
+  font-weight: 600;
+  font-size: var(--fs-body);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  word-break: break-all;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
+}
+.browse-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: 10px;
+}
+.browse-path {
+  font-size: var(--fs-sm);
+  color: var(--text-strong);
+  word-break: break-all;
+}
+.browse-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.browse-item {
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth);
+}
+.browse-item:hover {
+  background: var(--bg-elev, rgba(255, 255, 255, 0.06));
+}
+.browse-item.file {
+  cursor: default;
+}
 </style>

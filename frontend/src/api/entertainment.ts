@@ -68,9 +68,7 @@ export const entertainmentApi = {
     http.post<PlayResult>(`/entertainment/${siteId}/play`, { game }).then((r) => r.data),
   /** 连抽（仅 LongPT 大转盘等支持） */
   playMulti: (siteId: number, game: string, count: number) =>
-    http
-      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/play-multi`, { count })
-      .then((r) => r.data),
+    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/play-multi`, { count }).then((r) => r.data),
   /** 游戏统计（余额/剩余刮卡） */
   stats: (siteId: number, game: string) =>
     http.get<GameStats>(`/entertainment/${siteId}/games/${game}/stats`).then((r) => r.data),
@@ -86,9 +84,7 @@ export const entertainmentApi = {
       .then((r) => r.data),
   /** 奖品展示 */
   prizes: (siteId: number, game: string) =>
-    http
-      .get<{ prizes: PrizeDef[] }>(`/entertainment/${siteId}/games/${game}/prizes`)
-      .then((r) => r.data.prizes ?? []),
+    http.get<{ prizes: PrizeDef[] }>(`/entertainment/${siteId}/games/${game}/prizes`).then((r) => r.data.prizes ?? []),
   /** 抽奖记录 */
   history: (siteId: number, game: string) =>
     http
@@ -116,7 +112,9 @@ export const entertainmentApi = {
       .then((r) => r.data),
   /** 勋章金字塔（六十四卦） */
   medalTree: (siteId: number, game: string) =>
-    http.get<{ nodes: MedalNode[] }>(`/entertainment/${siteId}/games/${game}/medal-tree`).then((r) => r.data.nodes ?? []),
+    http
+      .get<{ nodes: MedalNode[] }>(`/entertainment/${siteId}/games/${game}/medal-tree`)
+      .then((r) => r.data.nodes ?? []),
   /** 阳爻/阴爻碎片余额 */
   medalShards: (siteId: number, game: string) =>
     http.get<{ shards: MedalShard }>(`/entertainment/${siteId}/games/${game}/medal-shards`).then((r) => r.data.shards),
@@ -125,19 +123,27 @@ export const entertainmentApi = {
     http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/compose`, { medal_id: medalId }).then((r) => r.data),
   /** 大勋章合成（八卦/六十四卦，耗魔力+子勋章） */
   composeBigMedal: (siteId: number, game: string, medalId: string) =>
-    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/compose-big`, { medal_id: medalId }).then((r) => r.data),
+    http
+      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/compose-big`, { medal_id: medalId })
+      .then((r) => r.data),
   /** 阴阳转换（yi_yang>0 阴→阳，<0 阳→阴） */
   convertShard: (siteId: number, game: string, yiYang: number) =>
-    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/convert-shard`, { yi_yang: yiYang }).then((r) => r.data),
+    http
+      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/convert-shard`, { yi_yang: yiYang })
+      .then((r) => r.data),
   /** 农场全景（NovaHD 魔力农场） */
   farm: (siteId: number, game: string) =>
     http.get<FarmState>(`/entertainment/${siteId}/games/${game}/farm`).then((r) => r.data),
   /** 种植/养殖（section=crop→plant / animal→breed） */
   plant: (siteId: number, game: string, section: string, itemId: number) =>
-    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/plant`, { section, item_id: itemId }).then((r) => r.data),
+    http
+      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/plant`, { section, item_id: itemId })
+      .then((r) => r.data),
   /** 收获单个 */
   harvest: (siteId: number, game: string, section: string, itemId: number) =>
-    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/harvest`, { section, item_id: itemId }).then((r) => r.data),
+    http
+      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/harvest`, { section, item_id: itemId })
+      .then((r) => r.data),
   /** 一键收获 */
   harvestAll: (siteId: number, game: string) =>
     http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/harvest-all`, {}).then((r) => r.data),
@@ -169,13 +175,17 @@ export const entertainmentApi = {
     http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-chat`, { message }).then((r) => r.data),
   /** 猜大小任务（claim/reward/refund） */
   bigsmallTask: (siteId: number, game: string, action: string, taskId: number) =>
-    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-task`, { action, task_id: taskId }).then((r) => r.data),
+    http
+      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-task`, { action, task_id: taskId })
+      .then((r) => r.data),
   /** 猜大小使用道具 */
   bigsmallItem: (siteId: number, game: string, tag: string) =>
     http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-item`, { tag }).then((r) => r.data),
   /** 猜大小红包（send/claim/info） */
   bigsmallRedpacket: (siteId: number, game: string, action: string, extra: Record<string, string>) =>
-    http.post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-redpacket`, { action, extra }).then((r) => r.data),
+    http
+      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/bigsmall-redpacket`, { action, extra })
+      .then((r) => r.data),
   /** 二十一点动作（new/hit/stand/double） */
   blackjack: (siteId: number, game: string, action: string) =>
     http.post<BlackjackResult>(`/entertainment/${siteId}/games/${game}/blackjack`, { action }).then((r) => r.data),

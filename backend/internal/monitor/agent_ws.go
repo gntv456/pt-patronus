@@ -66,6 +66,7 @@ type AgentEnvelope struct {
 	Resp    *agentrpc.Response `json:"resp,omitempty"`    // agent→server 小操作响应
 	Chunk   *agentrpc.Chunk    `json:"chunk,omitempty"`   // 双向分块数据
 	Error   string             `json:"error,omitempty"`   // 异常终止/取消
+	Secret  string             `json:"secret,omitempty"`  // hello 带：鉴权 secret（0.3.2+，替代 URL query）
 }
 
 // AgentWSHub 管理所有 agent 的 WS 连接（单实例，进程内 map；多副本部署需上 Redis，与 ws.Broadcaster 同约束）。
@@ -82,6 +83,9 @@ type agentConn struct {
 	conn     *websocket.Conn
 	agentID  uint
 	targetID uint
+
+	authed        bool  // hello 鉴权已通过（query 或消息体 secret）
+	pendingSecret string // query 侧 secret（升版过渡：消息体 secret 与其比对同源 agent）
 
 	writeMu sync.Mutex // 串行化写（gorilla Conn 非并发写安全）
 
@@ -130,22 +134,35 @@ var agentUpgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true }, // agent 是非浏览器客户端，鉴权靠 secret 不靠 Origin
 }
 
-// HandleWS 是 agent WS 升级入口（GET /api/v1/monitor/agents/ws?agent_id=&secret=）。
-// 路由放 guarded 外（WS 不能走 header JWT 鉴权）。生产强制 wss://（反代 TLS），secret 走 query 非 TLS 会被嗅探。
+// HandleWS 是 agent WS 升级入口（GET /api/v1/monitor/agents/ws?agent_id=[&secret=]）。
+// 路由放 guarded 外（WS 不能走 header JWT 鉴权）。
+// 鉴权两级（收权改造）：
+//  1. 升级前：agent_id + secret（query 为兼容旧 agent 保留；secret 为空进入第 2 级）
+//  2. 升级后首条 hello：消息体携带 secret（0.3.2+ agent，不经 URL → 不落反代/访问日志）
+//
+// 升级后才鉴权意味着未认证连接会短暂占用一个 WS——readLoop 首条消息即校验，失败立断。
+// 生产强制 wss://（反代 TLS）。
 func (h *AgentWSHub) HandleWS(c *gin.Context) {
 	agentID, _ := strconv.ParseUint(c.Query("agent_id"), 10, 64)
 	secret := c.Query("secret")
-	if agentID == 0 || secret == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing agent_id or secret"})
+	if agentID == 0 {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing agent_id"})
 		return
 	}
 	agent, err := h.auth.Authenticate(uint(agentID), secret)
 	if err != nil || agent == nil || !agent.Enabled || agent.TargetID == 0 {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid agent credentials"})
-		return
+		// query secret 缺失/不匹配：允许升级，由首条 hello 消息体内的 secret 完成鉴权。
+		if secret == "" {
+			agent = nil
+		} else {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid agent credentials"})
+			return
+		}
 	}
 	// 拒绝重复连接：同 agent 新连接踢掉旧连接（防多副本/僵尸连接）。
-	h.kickExisting(agent.ID)
+	if agent != nil {
+		h.kickExisting(agent.ID)
+	}
 
 	conn, err := agentUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
@@ -153,25 +170,37 @@ func (h *AgentWSHub) HandleWS(c *gin.Context) {
 	}
 	ac := &agentConn{
 		conn:     conn,
-		agentID:  agent.ID,
-		targetID: agent.TargetID,
+		agentID:  uint(agentID),
+		targetID: 0, // hello 鉴权通过后回填
+		authed:   agent != nil,
+		pendingSecret: secret,
 		caps:     map[string]bool{},
 		pending:  map[string]chan AgentEnvelope{},
 		streams:  map[string]*streamState{},
 		closeCh:  make(chan struct{}),
 	}
+	if agent != nil {
+		ac.targetID = agent.TargetID
+	}
 	h.register(ac)
-	_ = h.auth.TouchSeen(ac.agentID, true, "", "", c.ClientIP())
+	// 已通过 query secret 鉴权的连接才标在线；hello 体鉴权的连接等 readLoop 校验通过后再标，
+	// 避免未认证连接污染在线状态（安全审计 P1-3）。
+	if ac.authed {
+		_ = h.auth.TouchSeen(ac.agentID, true, "", "", c.ClientIP())
+	}
 
 	h.readLoop(ac) // 阻塞至断开
 
 	// 断开清理：标离线 + 灌 Metrics{Online:false} 走 Evaluate 触发离线告警（复用 notifyCooldown 防抖动）。
 	h.unregister(ac)
 	_ = h.auth.TouchSeen(ac.agentID, false, "", "", "")
-	_ = h.ingest(context.Background(), ac.targetID, Metrics{Online: false})
+	if ac.targetID != 0 {
+		_ = h.ingest(context.Background(), ac.targetID, Metrics{Online: false})
+	}
 }
 
 // readLoop 读 agent 上报的消息；读超时或错误即返回（触发上层断开清理）。
+// 未 authed 连接：首条消息必须是 hello 且 secret 校验通过，否则立断（防未认证连接常驻）。
 func (h *AgentWSHub) readLoop(ac *agentConn) {
 	defer ac.conn.Close()
 	defer ac.shutdown() // 关 closeCh + 清 pending/stream，唤醒所有阻塞的 RPC 返回 ErrAgentDisconnected
@@ -185,11 +214,30 @@ func (h *AgentWSHub) readLoop(ac *agentConn) {
 		if json.Unmarshal(payload, &env) != nil {
 			continue
 		}
+		if !ac.authed {
+			if env.Type != "hello" {
+				slog.Warn("agent ws: first message not hello, dropping", "agent", ac.agentID, "type", env.Type)
+				return
+			}
+			agent, aerr := h.auth.Authenticate(ac.agentID, env.Secret)
+			if aerr != nil || agent == nil || !agent.Enabled || agent.TargetID == 0 {
+				slog.Warn("agent ws: hello auth failed, dropping", "agent", ac.agentID)
+				return
+			}
+			ac.authed = true
+			ac.targetID = agent.TargetID
+			_ = h.auth.TouchSeen(ac.agentID, true, env.Version, "", "") // hello 鉴权通过，此刻才标在线
+			h.kickExisting(agent.ID)
+			h.register(ac) // hello 鉴权后才正式入表（HandleWS 里未 authed 的预注册会被 kick 覆盖）
+		}
 		switch env.Type {
 		case "hello":
 			ac.captureCaps(env)
 			_ = h.auth.TouchSeen(ac.agentID, true, env.Version, "", "")
 		case "report":
+			if ac.targetID == 0 {
+				continue
+			}
 			var m Metrics
 			if err := json.Unmarshal(env.Metrics, &m); err != nil {
 				continue

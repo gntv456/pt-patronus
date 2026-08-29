@@ -12,9 +12,11 @@ import (
 	"github.com/hxpt/ptpatronus/internal/core/security"
 )
 
-// JWTAuth 校验 Bearer token（若存在）并写入身份；支持 X-API-Key 程序化访问。
-// 无凭证的请求放行（公开路由）；用 RequireAuth 强制鉴权。tvCache 非 nil 时做 TokenVersion
-// 失效校验（登出/改绑后旧 token 拒绝）；为 nil 则跳过（兼容旧测试）。
+// JWTAuth 校验凭证（优先级：X-API-Key > Authorization Bearer > ptp_token httpOnly cookie）
+// 并写入身份；无凭证的请求放行（公开路由），用 RequireAuth 强制鉴权。
+// cookie 通道是 Web 端收权路径：登录响应同时种 httpOnly cookie（XSS 读不到），
+// 浏览器同源请求自动携带；扩展/移动端继续走 Bearer（跨源 cookie 不发送，互不干扰）。
+// tvCache 非 nil 时做 TokenVersion 失效校验（登出/改绑后旧 token 拒绝）；为 nil 则跳过（兼容旧测试）。
 func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// API Key 程序化访问（命中配置密钥即授予管理员身份）
@@ -29,12 +31,16 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache) gi
 				return
 			}
 		}
-		h := c.GetHeader("Authorization")
-		if !strings.HasPrefix(h, "Bearer ") {
+		token := ""
+		if h := c.GetHeader("Authorization"); strings.HasPrefix(h, "Bearer ") {
+			token = strings.TrimPrefix(h, "Bearer ")
+		} else if ck, err := c.Cookie("ptp_token"); err == nil && ck != "" {
+			token = ck
+		}
+		if token == "" {
 			c.Next()
 			return
 		}
-		token := strings.TrimPrefix(h, "Bearer ")
 		claims, err := j.Parse(token)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
@@ -54,6 +60,7 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache) gi
 		c.Set("auth_via", "jwt")
 		c.Set("vip_verified_at", claims.VipVerifiedAt) // int64 unix；0=未验证（供 RequireVIP 快速判宽限）
 		c.Set("vip_level", claims.VipLevel)
+		c.Set("claims", claims) // 完整 claims（Refresh 滑动续期需要 FirstIssuedAt）
 		c.Next()
 	}
 }

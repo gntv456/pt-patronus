@@ -13,7 +13,11 @@ const fixing = ref(false)
 
 const sevColor: Record<string, string> = { info: '#52c41a', warn: '#faad14', error: '#ff4d4f' }
 const statusType: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
-  ok: 'success', skipped: 'info', degraded: 'warning', failed: 'danger', fixed: 'success',
+  ok: 'success',
+  skipped: 'info',
+  degraded: 'warning',
+  failed: 'danger',
+  fixed: 'success',
 }
 
 async function run(fix: boolean) {
@@ -43,8 +47,16 @@ onMounted(() => run(false))
           <el-tag :type="report.status === 'healthy' ? 'success' : report.status === 'degraded' ? 'warning' : 'danger'">
             {{ report.status }}
           </el-tag>
-          · {{ t('doctor.score') }} <b>{{ report.score ?? '-' }}</b>/100
-          · {{ t('doctor.itemsCount', { n: report.summary.total, info: report.summary.info, warn: report.summary.warn, error: report.summary.error }) }}
+          · {{ t('doctor.score') }} <b>{{ report.score ?? '-' }}</b
+          >/100 ·
+          {{
+            t('doctor.itemsCount', {
+              n: report.summary.total,
+              info: report.summary.info,
+              warn: report.summary.warn,
+              error: report.summary.error,
+            })
+          }}
         </p>
       </div>
       <div class="doctor-actions">
@@ -77,28 +89,92 @@ onMounted(() => run(false))
 </template>
 
 <style scoped>
-.doctor-wrap { display: flex; flex-direction: column; gap: var(--sp-3); }
-.doctor-head { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-.doctor-actions { display: flex; gap: var(--sp-2); }
-.findings { display: flex; flex-direction: column; gap: var(--sp-2); }
-.finding { padding: 12px 14px; }
-.f-head { display: flex; align-items: center; gap: var(--sp-2); }
-.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.f-title { font-weight: 600; }
-.f-id { margin-left: auto; font-size: var(--fs-xs); }
-.f-detail { margin-top: 6px; font-size: var(--fs-body); }
-.f-rec { margin-top: 4px; font-size: var(--fs-xs); opacity: 0.7; }
-.doctor-wrap.embedded { padding: 0; }
-.doctor-wrap.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
+.doctor-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.doctor-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.doctor-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.finding {
+  padding: 12px 14px;
+}
+.f-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.f-title {
+  font-weight: 600;
+}
+.f-id {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+}
+.f-detail {
+  margin-top: 6px;
+  font-size: var(--fs-body);
+}
+.f-rec {
+  margin-top: 4px;
+  font-size: var(--fs-xs);
+  opacity: 0.7;
+}
+.doctor-wrap.embedded {
+  padding: 0;
+}
+.doctor-wrap.embedded .embedded-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  margin: 0;
+}
 
 /* 诊断结果 staggered 入场 */
-.findings > * { animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both; }
-.findings > *:nth-child(1) { animation-delay: 0ms; }
-.findings > *:nth-child(2) { animation-delay: 60ms; }
-.findings > *:nth-child(3) { animation-delay: 120ms; }
-.findings > *:nth-child(4) { animation-delay: 180ms; }
-.findings > *:nth-child(5) { animation-delay: 240ms; }
-.findings > *:nth-child(n+6) { animation-delay: 300ms; }
-.finding { transition: transform var(--dur-fast) var(--ease-out-smooth); }
-.finding:hover { transform: translateX(2px); }
+.findings > * {
+  animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both;
+}
+.findings > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.findings > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.findings > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.findings > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.findings > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.findings > *:nth-child(n + 6) {
+  animation-delay: 300ms;
+}
+.finding {
+  transition: transform var(--dur-fast) var(--ease-out-smooth);
+}
+.finding:hover {
+  transform: translateX(2px);
+}
 </style>

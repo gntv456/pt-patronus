@@ -111,8 +111,7 @@ export interface SiteRequestResult {
 
 export const siteApi = {
   list: () => http.get<{ sites: Site[] }>('/sites').then((r) => r.data.sites ?? []),
-  definitions: () =>
-    http.get<{ definitions: SiteDef[] }>('/sites/definitions').then((r) => r.data.definitions ?? []),
+  definitions: () => http.get<{ definitions: SiteDef[] }>('/sites/definitions').then((r) => r.data.definitions ?? []),
   create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
   update: (id: number, input: SiteInput) => http.put<Site>(`/sites/${id}`, input).then((r) => r.data),
   remove: (id: number) => http.delete(`/sites/${id}`).then((r) => r.data),
@@ -120,15 +119,10 @@ export const siteApi = {
     http.post<{ deleted: number; failed: number[] }>('/sites/batch-delete', { ids }).then((r) => r.data),
   test: (id: number) => http.post<TestResult>(`/sites/${id}/test`).then((r) => r.data),
   // GET 返回上次检测缓存（瞬时、不发网络请求），进页面瞬时回显「上次检测结果」。
-  statuses: () =>
-    http.get<{ statuses: SiteConnectivityStatus[] }>('/sites/status').then((r) => r.data.statuses ?? []),
+  statuses: () => http.get<{ statuses: SiteConnectivityStatus[] }>('/sites/status').then((r) => r.data.statuses ?? []),
   // 流式逐站检测（SSE）：每站完成推一帧 event:status，结束推 event:done。
   // 实现「检测到一个更新一个」；signal 用于切页中断。返回 streamSSE 的 Promise（done 后 resolve）。
-  statusesStream: (
-    onStatus: (s: SiteConnectivityStatus) => void,
-    onDone?: () => void,
-    signal?: AbortSignal,
-  ) =>
+  statusesStream: (onStatus: (s: SiteConnectivityStatus) => void, onDone?: () => void, signal?: AbortSignal) =>
     streamSSE(
       '/api/v1/sites/status/stream',
       (event, data) => {
@@ -159,7 +153,7 @@ export const siteApi = {
       .then((r) => r.data.records ?? [])
   },
   search: (id: number, keyword: string) =>
-    http.post<{ torrents: unknown[] }>(`/sites/${id}/search?keyword=${encodeURIComponent(keyword)}`).then(
-      (r) => r.data.torrents ?? [],
-    ),
+    http
+      .post<{ torrents: unknown[] }>(`/sites/${id}/search?keyword=${encodeURIComponent(keyword)}`)
+      .then((r) => r.data.torrents ?? []),
 }

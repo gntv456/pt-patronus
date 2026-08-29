@@ -162,71 +162,46 @@ func TestDatabaseQueryLimitClamping(t *testing.T) {
 	_ = w
 }
 
-// === 写操作 ===
+// === 写操作一律拒绝（安全审计 P0-2：曾允许 confirm_risk 执行任意写 SQL） ===
 
-func TestDatabaseQueryWriteNeedsConfirm(t *testing.T) {
+func TestDatabaseQueryWriteAlwaysRejected(t *testing.T) {
 	h := setupTestDBHandler(t)
 	r := gin.New()
 	r.POST("/query", h.Query)
-	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"DELETE FROM users WHERE id=1"}`)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("code = %d, want 400 (needs confirm)", w.Code)
+	cases := []struct {
+		name string
+		sql  string
+	}{
+		{"delete_with_confirm", `DELETE FROM users WHERE id=1`},
+		{"insert_with_confirm", `INSERT INTO users (id,name) VALUES (3,'charlie')`},
+		{"update_with_confirm", `UPDATE users SET name='alice2' WHERE id=1`},
+		{"update_users_priv", `UPDATE users SET is_admin=1`},
+		{"create_table", `CREATE TABLE evil (id INTEGER)`},
 	}
-	w = doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"DELETE FROM users WHERE id=1","confirm_risk":true}`)
-	if w.Code != http.StatusOK {
-		t.Fatalf("code = %d, want 200, body=%s", w.Code, w.Body.String())
+	for _, tc := range cases {
+		body := `{"sql":"` + tc.sql + `","confirm_risk":true}`
+		w := doJSONReq(t, r, http.MethodPost, "/query", body)
+		if w.Code != http.StatusForbidden {
+			t.Errorf("%s: want 403, got code=%d body=%s", tc.name, w.Code, w.Body.String())
+		}
 	}
-	var result dbQueryResult
-	json.Unmarshal(w.Body.Bytes(), &result)
-	if !result.IsWrite || result.Affected != 1 {
-		t.Errorf("expected write affected=1, got isWrite=%v affected=%d", result.IsWrite, result.Affected)
-	}
-}
-
-func TestDatabaseQueryInsertWithConfirm(t *testing.T) {
-	h := setupTestDBHandler(t)
-	r := gin.New()
-	r.POST("/query", h.Query)
-	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"INSERT INTO users (id,name) VALUES (3,'charlie')","confirm_risk":true}`)
-	if w.Code != http.StatusOK {
-		t.Fatalf("insert: code=%d, body=%s", w.Code, w.Body.String())
-	}
-	var result dbQueryResult
-	json.Unmarshal(w.Body.Bytes(), &result)
-	if !result.IsWrite || result.Affected != 1 {
-		t.Errorf("insert: isWrite=%v affected=%d", result.IsWrite, result.Affected)
-	}
-}
-
-func TestDatabaseQueryUpdateWithConfirm(t *testing.T) {
-	h := setupTestDBHandler(t)
-	r := gin.New()
-	r.POST("/query", h.Query)
-	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"UPDATE users SET name='alice2' WHERE id=1","confirm_risk":true}`)
-	if w.Code != http.StatusOK {
-		t.Fatalf("update: code=%d", w.Code)
-	}
-	var result dbQueryResult
-	json.Unmarshal(w.Body.Bytes(), &result)
-	if result.Affected != 1 {
-		t.Errorf("update affected=%d, want 1", result.Affected)
-	}
-}
-
-func TestDatabaseQueryWriteThenVerify(t *testing.T) {
-	h := setupTestDBHandler(t)
-	r := gin.New()
-	r.POST("/query", h.Query)
-	doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"INSERT INTO users (id,name) VALUES (3,'dave')","confirm_risk":true}`)
+	// 库未被改动：仍 2 行。
 	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"SELECT count(*) as c FROM users","limit":1}`)
 	var result dbQueryResult
 	json.Unmarshal(w.Body.Bytes(), &result)
-	if len(result.Rows) != 1 {
-		t.Fatalf("verify query rows=%d", len(result.Rows))
+	if count, _ := result.Rows[0][0].(float64); int(count) != 2 {
+		t.Errorf("write leaked through: count=%v, want 2", result.Rows[0][0])
 	}
-	count, _ := result.Rows[0][0].(float64)
-	if int(count) != 3 {
-		t.Errorf("after insert: count=%v, want 3", result.Rows[0][0])
+}
+
+func TestDatabaseQueryWriteWordInSubqueryRejected(t *testing.T) {
+	h := setupTestDBHandler(t)
+	r := gin.New()
+	r.POST("/query", h.Query)
+	// 写关键字即使不处于语句开头也必须被拒（防 CTE/子查询藏写语句）。
+	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"WITH x AS (DELETE FROM users RETURNING *) SELECT * FROM x","limit":5}`)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("CTE-hidden write should be rejected, got code=%d", w.Code)
 	}
 }
 
@@ -236,39 +211,13 @@ func TestDatabaseQueryForbiddenSQL(t *testing.T) {
 	h := setupTestDBHandler(t)
 	r := gin.New()
 	r.POST("/query", h.Query)
-	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"DROP DATABASE test","confirm_risk":true}`)
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("DROP DATABASE should be forbidden, got code=%d", w.Code)
-	}
-}
-
-func TestDatabaseQueryTruncateTableBlocked(t *testing.T) {
-	h := setupTestDBHandler(t)
-	r := gin.New()
-	r.POST("/query", h.Query)
-	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"TRUNCATE TABLE users","confirm_risk":true}`)
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("TRUNCATE TABLE should be forbidden, got code=%d", w.Code)
-	}
-}
-
-func TestDatabaseQueryAlterTableDropBlocked(t *testing.T) {
-	h := setupTestDBHandler(t)
-	r := gin.New()
-	r.POST("/query", h.Query)
-	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"ALTER TABLE users DROP COLUMN name","confirm_risk":true}`)
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("ALTER TABLE DROP should be forbidden, got code=%d", w.Code)
-	}
-}
-
-func TestDatabaseQueryDropTableBlocked(t *testing.T) {
-	h := setupTestDBHandler(t)
-	r := gin.New()
-	r.POST("/query", h.Query)
-	w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"DROP TABLE users","confirm_risk":true}`)
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("DROP TABLE should be forbidden, got code=%d", w.Code)
+	// 写关键字无论形态：非 SELECT 开头走 write_sql_forbidden(403)，
+	// SELECT 开头但藏写关键字的走 forbidden_sql(400)——都拒。
+	for _, sql := range []string{"DROP DATABASE test", "DROP TABLE users", "TRUNCATE TABLE users", "ALTER TABLE users DROP COLUMN name"} {
+		w := doJSONReq(t, r, http.MethodPost, "/query", `{"sql":"`+sql+`","confirm_risk":true}`)
+		if w.Code != http.StatusForbidden && w.Code != http.StatusBadRequest {
+			t.Errorf("%s should be forbidden, got code=%d", sql, w.Code)
+		}
 	}
 }
 

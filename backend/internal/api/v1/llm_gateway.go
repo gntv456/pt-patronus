@@ -140,7 +140,7 @@ func (h *LLMGatewayHandler) OpenAIChat(c *gin.Context) {
 
 	convID, err := h.convForSession(c.GetHeader("x-session-id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": err.Error(), "type": "server_error"}})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": "internal error", "type": "server_error"}})
 		return
 	}
 	model := in.Model
@@ -182,7 +182,7 @@ func (h *LLMGatewayHandler) AnthropicMessages(c *gin.Context) {
 
 	convID, err := h.convForSession(c.GetHeader("x-session-id"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": err.Error(), "type": "server_error"}})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": gin.H{"message": "internal error", "type": "server_error"}})
 		return
 	}
 	model := in.Model

@@ -10,10 +10,6 @@ export interface LLMGatewayConfig {
 
 export const llmGatewayApi = {
   getConfig: () => http.get<LLMGatewayConfig>('/llmgateway/config').then((r) => r.data),
-  setConfig: (cfg: {
-    enabled: boolean
-    access_token?: string
-    allowed_models: string[]
-    max_concurrency: number
-  }) => http.put('/llmgateway/config', cfg).then((r) => r.data),
+  setConfig: (cfg: { enabled: boolean; access_token?: string; allowed_models: string[]; max_concurrency: number }) =>
+    http.put('/llmgateway/config', cfg).then((r) => r.data),
 }

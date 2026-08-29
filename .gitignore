@@ -56,3 +56,9 @@ __pycache__/
 # Claude 本地设置（个人授权，不进 git）
 .claude/
 .tmp-gocache/
+
+# 本地调试工作区（浏览器 profile 含 Login Data/Cookies 等真实凭据，严禁入库）
+.tmp/
+**/node_modules/
+**/oh_modules/
+ohos/.hvigor/

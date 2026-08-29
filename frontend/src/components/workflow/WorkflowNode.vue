@@ -33,16 +33,17 @@ const catColor: Record<string, string> = {
   '\u5a92\u4f53': '#e84393',
   '\u6587\u4ef6': '#0984e3',
 }
-const color = computed(
-  () => (props.data.info && catColor[props.data.info.category]) || '#6c5ce7',
-)
+const color = computed(() => (props.data.info && catColor[props.data.info.category]) || '#6c5ce7')
 
 // 输出端口标签：condition 固定 真/假；switch 来自 branches 参数；其余单输出。
 const outputs = computed<string[]>(() => {
   if (props.data.type === 'condition') return ['true', 'false']
   if (props.data.type === 'switch') {
     const raw = (props.data.params && String(props.data.params.branches)) || ''
-    return raw.split(',').map((s) => s.trim()).filter(Boolean)
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
   }
   return []
 })
@@ -60,7 +61,9 @@ const outputs = computed<string[]>(() => {
     <!-- 多输出桩（condition=真/假；switch=branches 标签） -->
     <template v-if="outputs.length">
       <div class="branches">
-        <span v-for="o in outputs" :key="o" class="branch-tag">{{ o === 'true' ? t('wn.true') : o === 'false' ? t('wn.false') : o }}</span>
+        <span v-for="o in outputs" :key="o" class="branch-tag">{{
+          o === 'true' ? t('wn.true') : o === 'false' ? t('wn.false') : o
+        }}</span>
       </div>
       <Handle
         v-for="(o, i) in outputs"
@@ -88,7 +91,9 @@ const outputs = computed<string[]>(() => {
   box-shadow: var(--shadow-md);
   font-size: var(--fs-body);
   cursor: grab;
-  transition: transform var(--dur-fast) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth);
+  transition:
+    transform var(--dur-fast) var(--ease-out-spring),
+    box-shadow var(--dur-base) var(--ease-out-smooth);
 }
 .wf-node:hover {
   transform: translateY(-1px);
@@ -99,7 +104,9 @@ const outputs = computed<string[]>(() => {
   transform: scale(0.98);
 }
 .wf-node.selected {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 40%, transparent), 0 4px 12px rgba(0, 0, 0, 0.18);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--c) 40%, transparent),
+    0 4px 12px rgba(0, 0, 0, 0.18);
 }
 .head {
   display: flex;

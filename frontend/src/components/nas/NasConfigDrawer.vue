@@ -28,9 +28,7 @@ const emit = defineEmits<{
   (e: 'save'): void
 }>()
 
-const valuePlaceholder = computed(() =>
-  form.value.format === 'text' ? t('ncf.anyText') : '{\n  "key": "value"\n}',
-)
+const valuePlaceholder = computed(() => (form.value.format === 'text' ? t('ncf.anyText') : '{\n  "key": "value"\n}'))
 </script>
 
 <template>
@@ -111,13 +109,7 @@ const valuePlaceholder = computed(() =>
         </el-radio-group>
       </el-form-item>
       <el-form-item :label="t('ncf.content')" required>
-        <el-input
-          v-model="form.value"
-          type="textarea"
-          :rows="9"
-          resize="vertical"
-          :placeholder="valuePlaceholder"
-        />
+        <el-input v-model="form.value" type="textarea" :rows="9" resize="vertical" :placeholder="valuePlaceholder" />
       </el-form-item>
       <el-form-item :label="t('ncd.tags')">
         <el-input v-model="form.tags" :placeholder="t('ncf.tagsPh')" />

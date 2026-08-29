@@ -38,7 +38,8 @@ export interface CookieCloudSyncReport {
 
 export const cookieCloudApi = {
   getConfig: () => http.get<CookieCloudConfig>('/cookiecloud/config').then((r) => r.data),
-  setConfig: (cfg: CookieCloudConfigInput) => http.put<CookieCloudSetResp>('/cookiecloud/config', cfg).then((r) => r.data),
+  setConfig: (cfg: CookieCloudConfigInput) =>
+    http.put<CookieCloudSetResp>('/cookiecloud/config', cfg).then((r) => r.data),
   sync: () => http.post<{ ok: boolean; report: CookieCloudSyncReport }>('/cookiecloud/sync').then((r) => r.data),
   push: () => http.post<{ ok: boolean; report: CookieCloudSyncReport }>('/cookiecloud/push').then((r) => r.data),
 }

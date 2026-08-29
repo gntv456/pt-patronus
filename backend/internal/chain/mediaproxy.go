@@ -66,8 +66,15 @@ func (p *MediaProxyService) cachedMediaPath(ctx context.Context, serverID uint, 
 }
 
 // NewMediaProxyService 构造。
+// 超时说明：整体 Timeout 只约束到响应头返回；媒体流正文经 ResponseHeaderTimeout
+// 后由 Transport 接管（无整体上限，避免长视频被掐断），慢上游不会再无限挂起 handler。
 func NewMediaProxyService(ms *MediaServerChain, cl *CloudChain) *MediaProxyService {
-	return &MediaProxyService{ms: ms, cloud: cl, hc: &http.Client{}}
+	return &MediaProxyService{ms: ms, cloud: cl, hc: &http.Client{
+		Timeout: 60 * time.Second,
+		Transport: &http.Transport{
+			ResponseHeaderTimeout: 30 * time.Second,
+		},
+	}}
 }
 
 // ServeHTTP gin 入口：/mediaproxy/:id/*rest。

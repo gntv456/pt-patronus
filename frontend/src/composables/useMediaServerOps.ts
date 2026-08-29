@@ -135,10 +135,28 @@ export function useMediaServerOps() {
   }
 
   return {
-    showLibs, libs, libsLoading, libsServer, coverURL, coverLoading,
-    openLibs, scanLib, refreshLib, genCover,
-    showReport, report, reportLoading, reportDays, openReport, reloadReport,
-    showDup, dupGroups, dupLoading, dupLib, openDup, runDup,
+    showLibs,
+    libs,
+    libsLoading,
+    libsServer,
+    coverURL,
+    coverLoading,
+    openLibs,
+    scanLib,
+    refreshLib,
+    genCover,
+    showReport,
+    report,
+    reportLoading,
+    reportDays,
+    openReport,
+    reloadReport,
+    showDup,
+    dupGroups,
+    dupLoading,
+    dupLib,
+    openDup,
+    runDup,
   }
 }
 

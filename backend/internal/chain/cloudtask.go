@@ -47,28 +47,40 @@ func (r *CloudTaskRunner) loop() {
 		case <-r.stop:
 			return
 		case <-tick.C:
-			r.drainOnce()
+			if r.drainOnce() {
+				// 失败退避（防打爆网盘）：可中断等待 30s——停机信号到达立即退出。
+				select {
+				case <-r.stop:
+					return
+				case <-time.After(30 * time.Second):
+				}
+			}
 		}
 	}
 }
 
 // drainOnce 取空当前 pending（单条串行；executor 内串行避免同盘并发限流）。
-func (r *CloudTaskRunner) drainOnce() {
+// 失败退避用 backoffUntil 串行计数（非 sleep 阻塞）——execute 返回 true 表示
+// 刚失败需退避，loop 侧在 stop 与定时器之间 select 等待，停机时立即退出，
+// 不再被 30s 阻塞 sleep 拖住优雅关闭。
+func (r *CloudTaskRunner) drainOnce() bool {
 	for {
 		t, err := r.op.ClaimPending()
 		if err != nil {
 			slog.Warn("cloud tasks: claim failed", "err", err)
-			return
+			return false
 		}
 		if t == nil {
-			return
+			return false
 		}
-		r.execute(t)
+		if r.execute(t) {
+			return true // 失败：交回 loop 做可中断退避
+		}
 	}
 }
 
-// execute 执行单任务并落状态。
-func (r *CloudTaskRunner) execute(t *models.CloudTask) {
+// execute 执行单任务并落状态。返回 true 表示本条失败（调用方需退避后再取下一条）。
+func (r *CloudTaskRunner) execute(t *models.CloudTask) bool {
 	c := r.hydr()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 	defer cancel()
@@ -113,12 +125,12 @@ func (r *CloudTaskRunner) execute(t *models.CloudTask) {
 		if rerr := r.op.Fail(t.ID, err.Error(), cloudTaskMaxRetries); rerr != nil {
 			slog.Warn("cloud tasks: mark fail errored", "err", rerr)
 		}
-		time.Sleep(30 * time.Second) // 重试退避（阻塞 drain，防打爆网盘）
-		return
+		return true
 	}
 	if serr := r.op.Succeed(t.ID); serr != nil {
 		slog.Warn("cloud tasks: mark success errored", "err", serr)
 	}
+	return false
 }
 
 // afterUploadStrm 上传成功后按 transfer.cloud_upload 配置生成 STRM（同事务链尾）。

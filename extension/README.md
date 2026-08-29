@@ -112,7 +112,7 @@
 - `popup.html/js` 弹窗：流式搜索、数据芯片行、紧凑导航、一键签到
 - `background.js` 右键菜单 + omnibox + TOTP 自动填充 + 种子推送下载（含历史）+ 收藏写入
 - `content_torrent.js` 种子页增强：浮钮 / 批量工具栏 / 免费高亮
-- `content_totp.js` TOTP 自动填充探测；`content_ocr.js` 验证码截取；`content_creds.js` 凭据自动填充探测；`content_media.js` 豆瓣/IMDb 注入
+- `content_totp.js` TOTP 自动填充探测；`content_ocr.js` 验证码截取；`content_creds.js` 凭据自动填充探测
 - `collection.js` 跨站收藏 + 下载历史存储层
 - `credentials.js` 凭据库数据层（加密存取 / Bitwarden 解析 / hostname 匹配）
 - `options.html/js` **全功能控制台**：账号登录 + 站点数据 + Cookie 台账（筛选）+ 下载任务 + 收藏历史 + TOTP + 凭据 + 插件 + AI 助手 + 同步备份 + 关于（全部侧边栏内懒加载）

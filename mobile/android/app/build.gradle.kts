@@ -52,8 +52,24 @@ android {
 
     buildTypes {
         release {
-            // key.properties 存在 → release 签名；否则回退 debug（本地未配 / CI 未配 secret 时）
-            signingConfig = if (keystorePropertiesFile.exists()) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            // 签名配置缺失直接 fail：静默回退 debug 签名的 APK 一旦流出，
+            // 用户装了之后正式签名版将无法覆盖安装（安全审计 P1-2）。
+            // 本地打包：app/key.properties + keystore；CI：ANDROID_KEYSTORE_BASE64。
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException(
+                    "Release build requires signing config: put key.properties (keyAlias/keyPassword/storeFile/storePassword) " +
+                    "in mobile/android/app/, or set ANDROID_KEYSTORE_BASE64 in CI. " +
+                    "Refusing to fall back to debug signing."
+                )
+            }
+            signingConfig = signingConfigs.getByName("release")
+            // R8 收缩：减包体 + 收窄逆向面（JWT/密钥处理逻辑不进 dex 明文）。
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }

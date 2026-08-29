@@ -2,7 +2,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { transferApi, type TransferHistory, type TransferConfig, type TransferPendingItem, type IdentifyWord, type DirTag, type SortRules, type DirSyncTask, type SharedRepo } from '@/api/transfer'
+import {
+  transferApi,
+  type TransferHistory,
+  type TransferConfig,
+  type TransferPendingItem,
+  type IdentifyWord,
+  type DirTag,
+  type SortRules,
+  type DirSyncTask,
+  type SharedRepo,
+} from '@/api/transfer'
 import { downloaderApi, type Downloader, type Torrent } from '@/api/downloader'
 import { cloudApi, type CloudDrive } from '@/api/cloud'
 
@@ -110,11 +120,9 @@ export function useTransfer() {
   async function batchDeleteRows() {
     if (!selectedRows.value.length) return
     try {
-      await ElMessageBox.confirm(
-        `确认删除选中的 ${selectedRows.value.length} 条整理记录？`,
-        '批量删除',
-        { type: 'warning' },
-      )
+      await ElMessageBox.confirm(`确认删除选中的 ${selectedRows.value.length} 条整理记录？`, '批量删除', {
+        type: 'warning',
+      })
     } catch {
       return
     }
@@ -162,17 +170,25 @@ export function useTransfer() {
         debounce_ms: c.debounce_ms || 2000,
         poll_interval_sec: c.poll_interval_sec || 0,
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     showDirwatch.value = true
   }
   async function saveDirwatch() {
     dwSaving.value = true
     try {
-      const dirs = dwForm.value.dirsText.split('\n').map((x) => x.trim()).filter(Boolean).map((path) => ({ path, library_path: '' }))
+      const dirs = dwForm.value.dirsText
+        .split('\n')
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .map((path) => ({ path, library_path: '' }))
       await transferApi.setDirwatchConfig({
-        enabled: dwForm.value.enabled, dirs,
+        enabled: dwForm.value.enabled,
+        dirs,
         monitor_mode: dwForm.value.monitor_mode as 'auto' | 'compatibility',
-        debounce_ms: dwForm.value.debounce_ms, poll_interval_sec: dwForm.value.poll_interval_sec,
+        debounce_ms: dwForm.value.debounce_ms,
+        poll_interval_sec: dwForm.value.poll_interval_sec,
       })
       ElMessage.success('已保存（重启进程生效）')
       showDirwatch.value = false
@@ -187,15 +203,31 @@ export function useTransfer() {
   const savingCfg = ref(false)
   function emptyConfig(): TransferConfig {
     return {
-      enabled: true, mode: 'link', movie_dir: '/media/movies', tv_dir: '/media/tv',
-      categories: ['subscribe', 'workflow'], skip_tags: ['brushflow:', 'keepseed', 'reseed'],
-      organize_tag: 'organize', path_mappings: [], failed_retry_minutes: 360,
-      type_folder: true, category_folder: false,
-      movie_rename: '', tv_rename: '', scrape: 'missing_only', refresh_library: true, overwrite_files: false,
+      enabled: true,
+      mode: 'link',
+      movie_dir: '/media/movies',
+      tv_dir: '/media/tv',
+      categories: ['subscribe', 'workflow'],
+      skip_tags: ['brushflow:', 'keepseed', 'reseed'],
+      organize_tag: 'organize',
+      path_mappings: [],
+      failed_retry_minutes: 360,
+      type_folder: true,
+      category_folder: false,
+      movie_rename: '',
+      tv_rename: '',
+      scrape: 'missing_only',
+      refresh_library: true,
+      overwrite_files: false,
       best_version: false,
       cloud_upload: {
-        enabled: false, drive_id: 0, cloud_base: '/media', upload_videos: true,
-        strm_output_dir: '', strm_template: '{direct}{cloudpath}', delete_local: false,
+        enabled: false,
+        drive_id: 0,
+        cloud_base: '/media',
+        upload_videos: true,
+        strm_output_dir: '',
+        strm_template: '{direct}{cloudpath}',
+        delete_local: false,
       },
     }
   }
@@ -227,8 +259,14 @@ export function useTransfer() {
   async function saveConfig() {
     savingCfg.value = true
     try {
-      cfg.value.categories = catsStr.value.split(',').map((s) => s.trim()).filter(Boolean)
-      cfg.value.skip_tags = skipStr.value.split(',').map((s) => s.trim()).filter(Boolean)
+      cfg.value.categories = catsStr.value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      cfg.value.skip_tags = skipStr.value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
       cfg.value.path_mappings = (cfg.value.path_mappings ?? [])
         .map((m) => ({ ...m, remote_path: m.remote_path.trim(), local_path: m.local_path.trim() }))
         .filter((m) => m.remote_path && m.local_path)
@@ -248,14 +286,18 @@ export function useTransfer() {
     cfg.value.path_mappings.splice(index, 1)
   }
 
-
   // —— 目录标签 + 排序规则 + 目录同步 ——
   const showTags = ref(false)
   const dirTags = ref<DirTag[]>([])
   const sortRules = ref<SortRules>({
     resolution: { '2160p': 100, '1080p': 70, '720p': 30, unknown: 0 },
-    group_bonus: {}, target_size_gb: 20, seeders_weight: 5,
-    free_bonus: 10, free2x_bonus: 15, recent_days: 7, recent_bonus: 5,
+    group_bonus: {},
+    target_size_gb: 20,
+    seeders_weight: 5,
+    free_bonus: 10,
+    free2x_bonus: 15,
+    recent_days: 7,
+    recent_bonus: 5,
   })
   const tagsSaving = ref(false)
   async function openTags() {
@@ -263,7 +305,9 @@ export function useTransfer() {
       const [tags, rules] = await Promise.all([transferApi.getDirTags(), transferApi.getSortRules()])
       dirTags.value = tags
       sortRules.value = { ...sortRules.value, ...rules }
-    } catch { /* 默认 */ }
+    } catch {
+      /* 默认 */
+    }
     showTags.value = true
   }
   async function saveTagsAndRules() {
@@ -287,7 +331,9 @@ export function useTransfer() {
   async function openDirSync() {
     try {
       syncTasks.value = await transferApi.getDirSync()
-    } catch { syncTasks.value = [] }
+    } catch {
+      syncTasks.value = []
+    }
     showDirSync.value = true
   }
   function addSyncTask() {
@@ -372,10 +418,14 @@ export function useTransfer() {
       const parts = [
         `规整后：${r.normalized}`,
         `标题「${r.title}」${r.year ? `(${r.year})` : ''}`,
-        r.is_tv ? `剧集 ${r.season ? 'S' + String(r.season).padStart(2, '0') : ''}${r.episode ? 'E' + String(r.episode).padStart(2, '0') : ''}` : '电影',
+        r.is_tv
+          ? `剧集 ${r.season ? 'S' + String(r.season).padStart(2, '0') : ''}${r.episode ? 'E' + String(r.episode).padStart(2, '0') : ''}`
+          : '电影',
         r.resolution ? `分辨率 ${r.resolution}` : '',
         r.group ? `发布组 ${r.group}` : '',
-        r.matched ? `✅ 媒体源匹配：${r.matched.title}${r.matched.year ? `(${r.matched.year})` : ''}` : '⚠️ 媒体源未匹配（可补识别词或换名）',
+        r.matched
+          ? `✅ 媒体源匹配：${r.matched.title}${r.matched.year ? `(${r.matched.year})` : ''}`
+          : '⚠️ 媒体源未匹配（可补识别词或换名）',
       ].filter(Boolean)
       identifyTestResult.value = parts.join(' → ')
     } catch (e: unknown) {
@@ -527,7 +577,11 @@ export function useTransfer() {
   }
   function previewRename(tpl: string, isTV: boolean): string {
     const sample: Record<string, string> = {
-      Title: isTV ? '示例剧' : '示例电影', Year: '2024', Resolution: '1080P', SeasonEpisode: 'S01E02', ReleaseGroup: 'GROUP',
+      Title: isTV ? '示例剧' : '示例电影',
+      Year: '2024',
+      Resolution: '1080P',
+      SeasonEpisode: 'S01E02',
+      ReleaseGroup: 'GROUP',
     }
     let out = tpl || ''
     out = out.replace(/{{if \.(\w+)}}([\s\S]*?){{end}}/g, (_, k: string, inner: string) => (sample[k] ? inner : ''))
@@ -538,25 +592,94 @@ export function useTransfer() {
   onMounted(load)
 
   return {
-    list, loading, statusFilter, viewMode,
-    pendingItems, pendingTotal, pendingEnabled,
-    organizing, redoing, downloaders,
+    list,
+    loading,
+    statusFilter,
+    viewMode,
+    pendingItems,
+    pendingTotal,
+    pendingEnabled,
+    organizing,
+    redoing,
+    downloaders,
     filtered,
-    load, setView, organizePending, sweep, redoRow, deleteRow,
-    selectedRows, handleSelectionChange, batchDeleteRows, clearFailed,
-    showConfig, cfg, cloudDrives, showDirwatch, dwSaving, dwForm,
-    openDirwatch, saveDirwatch,
-    catsStr, skipStr, savingCfg,
-    openConfig, saveConfig, addPathMapping, removePathMapping,
-    showCategories, catMovieText, catTVText, catSaving,
-    openCategories, saveCategories,
-    showIdentify, identifyWords, identifySaving, identifyTestName, identifyTestResult,
-    openIdentify, saveIdentify, addIdentifyWord, removeIdentifyWord, testIdentify, testRecognize, recognizeTesting,
-    sharedRepos, shareImporting, sharePreview, loadSharedRepos, addSharedRepo, removeSharedRepo, saveSharedRepos, importSharedRepo,
-    showTags, dirTags, sortRules, tagsSaving, openTags, saveTagsAndRules,
-    showDirSync, syncTasks, syncSaving, syncingName, openDirSync, saveSyncTasks, addSyncTask, runSync,
-    showOrganize, selDl, torrents, selHash, loadingTorrents,
-    openOrganize, loadTorrents, completedTorrents, doOrganize,
-    modeLabel, renameVars, insertVar, previewRename,
+    load,
+    setView,
+    organizePending,
+    sweep,
+    redoRow,
+    deleteRow,
+    selectedRows,
+    handleSelectionChange,
+    batchDeleteRows,
+    clearFailed,
+    showConfig,
+    cfg,
+    cloudDrives,
+    showDirwatch,
+    dwSaving,
+    dwForm,
+    openDirwatch,
+    saveDirwatch,
+    catsStr,
+    skipStr,
+    savingCfg,
+    openConfig,
+    saveConfig,
+    addPathMapping,
+    removePathMapping,
+    showCategories,
+    catMovieText,
+    catTVText,
+    catSaving,
+    openCategories,
+    saveCategories,
+    showIdentify,
+    identifyWords,
+    identifySaving,
+    identifyTestName,
+    identifyTestResult,
+    openIdentify,
+    saveIdentify,
+    addIdentifyWord,
+    removeIdentifyWord,
+    testIdentify,
+    testRecognize,
+    recognizeTesting,
+    sharedRepos,
+    shareImporting,
+    sharePreview,
+    loadSharedRepos,
+    addSharedRepo,
+    removeSharedRepo,
+    saveSharedRepos,
+    importSharedRepo,
+    showTags,
+    dirTags,
+    sortRules,
+    tagsSaving,
+    openTags,
+    saveTagsAndRules,
+    showDirSync,
+    syncTasks,
+    syncSaving,
+    syncingName,
+    openDirSync,
+    saveSyncTasks,
+    addSyncTask,
+    runSync,
+    showOrganize,
+    selDl,
+    torrents,
+    selHash,
+    loadingTorrents,
+    openOrganize,
+    loadTorrents,
+    completedTorrents,
+    doOrganize,
+    modeLabel,
+    renameVars,
+    insertVar,
+    previewRename,
   }
 }

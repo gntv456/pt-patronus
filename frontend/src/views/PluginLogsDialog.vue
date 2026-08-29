@@ -14,18 +14,29 @@ const emit = defineEmits<{
 }>()
 
 // P3: 自动刷新
-const props = defineProps<{ visible: boolean; plugins: PluginInfo[]; logs: PluginLog[]; logPlugin: string; loading: boolean }>()
+const props = defineProps<{
+  visible: boolean
+  plugins: PluginInfo[]
+  logs: PluginLog[]
+  logPlugin: string
+  loading: boolean
+}>()
 const autoRefresh = ref(false)
 let timer: ReturnType<typeof setInterval> | null = null
 function applyAuto() {
   if (autoRefresh.value && props.visible) {
     if (!timer) timer = setInterval(() => emit('refresh'), 5000)
   } else {
-    if (timer) { clearInterval(timer); timer = null }
+    if (timer) {
+      clearInterval(timer)
+      timer = null
+    }
   }
 }
 watch(() => [autoRefresh.value, props.visible], applyAuto, { immediate: true })
-onBeforeUnmount(() => { if (timer) clearInterval(timer) })
+onBeforeUnmount(() => {
+  if (timer) clearInterval(timer)
+})
 </script>
 
 <template>
@@ -47,12 +58,21 @@ onBeforeUnmount(() => { if (timer) clearInterval(timer) })
       >
         <el-option v-for="p in plugins" :key="p.id" :label="p.name" :value="p.id" />
       </el-select>
-      <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{ t('common.refresh') }}</el-button>
+      <el-button :icon="Refresh" size="small" :loading="loading" @click="emit('refresh')">{{
+        t('common.refresh')
+      }}</el-button>
       <el-tooltip :content="t('pld.autoTip')" placement="top">
         <el-switch v-model="autoRefresh" inline-prompt :active-text="t('pld.auto')" :inactive-text="t('pld.manual')" />
       </el-tooltip>
     </div>
-    <el-table v-loading="loading" :data="logs" size="small" class="log-table" :empty-text="t('pad.noLogs')" max-height="520">
+    <el-table
+      v-loading="loading"
+      :data="logs"
+      size="small"
+      class="log-table"
+      :empty-text="t('pad.noLogs')"
+      max-height="520"
+    >
       <el-table-column :label="t('pad.time')" width="170">
         <template #default="{ row }">{{ fmtTime(row.created_at) }}</template>
       </el-table-column>

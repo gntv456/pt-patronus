@@ -2,7 +2,6 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-
   mediaQualityApi,
   sourceOptions,
   sourceLabel,
@@ -14,7 +13,6 @@ import { ElMessage } from 'element-plus'
 
 const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
-
 
 const cfg = ref<MediaQualityConfig>({
   enabled: false,
@@ -118,8 +116,20 @@ onMounted(load)
     <div class="glass card">
       <div class="card-title">{{ t('mediaquality.previewTitle') }}</div>
       <div class="preview-row">
-        <el-input v-model="qTitle" :placeholder="t('mediaquality.f.qTitle')" style="max-width: 240px" @keyup.enter="preview" />
-        <el-input-number v-model="qYear" :min="1900" :max="2099" :placeholder="t('mediaquality.f.qYear')" controls-position="right" style="max-width: 130px" />
+        <el-input
+          v-model="qTitle"
+          :placeholder="t('mediaquality.f.qTitle')"
+          style="max-width: 240px"
+          @keyup.enter="preview"
+        />
+        <el-input-number
+          v-model="qYear"
+          :min="1900"
+          :max="2099"
+          :placeholder="t('mediaquality.f.qYear')"
+          controls-position="right"
+          style="max-width: 130px"
+        />
         <el-select v-model="qType" :placeholder="t('mediaquality.f.qType')" style="width: 110px">
           <el-option :label="t('assessment.filter.all')" value="" />
           <el-option :label="t('search.catMovie')" value="movie" />
@@ -132,8 +142,14 @@ onMounted(load)
         <div class="summary-head">
           <GlassIcon name="mediaquality" :size="34" class="summary-icon" />
           <div>
-            <div class="summary-title">{{ summary.title }}<span v-if="summary.year" class="muted"> ({{ summary.year }})</span></div>
-            <div class="muted small">{{ t('mediaquality.aggScore') }} {{ summary.aggregated.toFixed(1) }} · {{ t('mediaquality.votesCount', { n: summary.votes }) }} · {{ t('mediaquality.releasedDays', { n: summary.release_days || '?' }) }}</div>
+            <div class="summary-title">
+              {{ summary.title }}<span v-if="summary.year" class="muted"> ({{ summary.year }})</span>
+            </div>
+            <div class="muted small">
+              {{ t('mediaquality.aggScore') }} {{ summary.aggregated.toFixed(1) }} ·
+              {{ t('mediaquality.votesCount', { n: summary.votes }) }} ·
+              {{ t('mediaquality.releasedDays', { n: summary.release_days || '?' }) }}
+            </div>
           </div>
           <el-tag :type="summary.passed ? 'success' : 'warning'" class="summary-tag">
             {{ summary.passed ? t('mediaquality.passed') : t('mediaquality.notPassed') }}
@@ -154,32 +170,120 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; justify-content: space-between; align-items: center; }
-.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.sub { margin: -6px 0 0; color: var(--text-muted); font-size: var(--fs-body); }
-.card { padding: 18px; display: flex; flex-direction: column; gap: var(--sp-3); border-radius: var(--radius-md); }
-.card-title { font-size: var(--fs-lg); font-weight: 700; }
-.hint { margin-left: 10px; color: var(--text-muted); font-size: var(--fs-xs); }
-.preview-row { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
-.summary { border-top: 1px solid var(--border-soft, rgba(255,255,255,0.08)); padding-top: 14px; display: flex; flex-direction: column; gap: var(--sp-2); }
-.summary-head { display: flex; align-items: center; gap: var(--sp-3); }
-.summary-icon { flex: none; }
-.summary-title { font-size: var(--fs-lg); font-weight: 700; }
-.summary-tag { margin-left: auto; }
-.muted { color: var(--text-muted); }
-.small { font-size: var(--fs-xs); }
-.reason { color: var(--el-color-warning); font-size: var(--fs-body); }
-.sources { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
-.source-pill { display: inline-flex; align-items: baseline; gap: var(--sp-1); padding: 4px 10px; border-radius: var(--radius-pill); background: var(--bg-soft, rgba(255,255,255,0.06)); font-size: var(--fs-body); }
-.src-name { color: var(--text-muted); }
-.src-score { font-weight: 700; }
-.src-votes { color: var(--text-muted); font-size: var(--fs-xs); }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.sub {
+  margin: -6px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+}
+.card {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  border-radius: var(--radius-md);
+}
+.card-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.hint {
+  margin-left: 10px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.preview-row {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.summary {
+  border-top: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.summary-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.summary-icon {
+  flex: none;
+}
+.summary-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
+.summary-tag {
+  margin-left: auto;
+}
+.muted {
+  color: var(--text-muted);
+}
+.small {
+  font-size: var(--fs-xs);
+}
+.reason {
+  color: var(--el-color-warning);
+  font-size: var(--fs-body);
+}
+.sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+.source-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-soft, rgba(255, 255, 255, 0.06));
+  font-size: var(--fs-body);
+}
+.src-name {
+  color: var(--text-muted);
+}
+.src-score {
+  font-weight: 700;
+}
+.src-votes {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
 
 /* embedded：嵌进设置页时去掉外页边距，标题交给分区 Tab */
-.page.embedded { padding: 0; max-width: none; }
-.page.embedded .embedded-title { font-size: var(--fs-lg); font-weight: 600; margin: 0; }
-.page.embedded .embedded-sub { margin-top: 0; margin-bottom: 10px; font-size: var(--fs-xs); }
-.page.embedded > .sub { display: none; }
-
+.page.embedded {
+  padding: 0;
+  max-width: none;
+}
+.page.embedded .embedded-title {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  margin: 0;
+}
+.page.embedded .embedded-sub {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: var(--fs-xs);
+}
+.page.embedded > .sub {
+  display: none;
+}
 </style>

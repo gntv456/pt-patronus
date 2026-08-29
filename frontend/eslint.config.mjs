@@ -1,7 +1,9 @@
-// ESLint 9 扁平配置。当前唯一职责：i18n 防回潮门禁（no-raw-chinese 自定义规则），
-// 限定已迁移页面——避免一次性对 300+ 未迁移 views 报错。迁移一批放开一批。
-// 代码风格 lint 暂不启用（项目以 vue-tsc + 风格约定为准），保持 CI 轻量。
+// ESLint 9 扁平配置。两大职责：
+//   1. i18n 防回潮门禁（no-raw-chinese 自定义规则，限定已迁移页面）
+//   2. TypeScript 推荐规则的「告警级」子集（no-explicit-any / no-floating-promises
+//      等先 warn 防增量，存量清零后再升 error——工程化审计 P2）。
 import pluginVue from 'eslint-plugin-vue'
+import pluginTs from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
 
 // 已完成 t() 化、非注释中文必须清零的文件（相对 src/）。迁移新页面后加入此列表。
@@ -241,6 +243,32 @@ export default [
       // 项目既有大量单词文件名（Sites.vue 等），非本次门禁目标
       'vue/multi-word-component-names': 'off',
       'vue/require-toggle-inside-transition': 'off',
+    },
+  },
+  // TS 规则集（warn 级防增量）：只挑无需类型信息的规则——type-aware 项
+  // （no-floating-promises 等）需要 projectService 全量类型图，lint 时长会翻数倍，
+  // 留待后续单独开关（工程化审计 P2）。
+  {
+    files: ['src/**/*.ts'],
+    plugins: { '@typescript-eslint': pluginTs },
+    languageOptions: { parser: tsParser, ecmaVersion: 'latest', sourceType: 'module' },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/prefer-as-const': 'warn',
+      '@typescript-eslint/no-var-requires': 'warn',
+    },
+  },
+  {
+    // .vue 的 script 走 vue-eslint-parser（其 parserOptions.parser=tsParser），
+    // 这里不设 languageOptions.parser，否则 SFC 模板部分解析失败。
+    files: ['src/**/*.vue'],
+    plugins: { '@typescript-eslint': pluginTs },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/prefer-as-const': 'warn',
     },
   },
   { ignores: ['dist/', 'node_modules/', 'test-results/', 'e2e/.data/', 'auto-imports.d.ts', 'components.d.ts'] },

@@ -37,8 +37,7 @@ export const subtitleApi = {
       .post<Blob>('/subtitle/download', sub, { responseType: 'blob' })
       .then((r) => ({ blob: r.data, filename: parseFilename(r.headers['content-disposition']) })),
   getConfig: () => http.get<SubtitleConfig>('/subtitle/config').then((r) => r.data),
-  setConfig: (cfg: Partial<SubtitleConfig>) =>
-    http.put('/subtitle/config', cfg).then((r) => r.data),
+  setConfig: (cfg: Partial<SubtitleConfig>) => http.put('/subtitle/config', cfg).then((r) => r.data),
 }
 
 export const SOURCE_LABEL: Record<SubSource, string> = {

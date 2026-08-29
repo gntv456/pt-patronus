@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-  formatTorrentSize,
-  type EnrichedMeta,
-  type TorrentTag,
-} from '@/utils/torrentMeta'
+import { formatTorrentSize, type EnrichedMeta, type TorrentTag } from '@/utils/torrentMeta'
 import { useI18n } from 'vue-i18n'
 import SiteFavicon from '@/components/SiteFavicon.vue'
 import MediaPoster from '@/components/MediaPoster.vue'
@@ -36,21 +32,13 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <article
-    class="sf-card"
-    :class="{ 'has-poster': !!posterUrl }"
-    @click="emit('push', group.primary)"
-  >
+  <article class="sf-card" :class="{ 'has-poster': !!posterUrl }" @click="emit('push', group.primary)">
     <div v-if="posterUrl" class="sf-card-bg" aria-hidden="true">
       <MediaPoster :url="posterUrl" kind="movie" />
     </div>
     <div class="sf-card-veil" />
 
-    <div
-      v-if="group.promo"
-      class="sf-promo"
-      :class="`tone-${group.promo.tone}`"
-    >{{ group.promo.text }}</div>
+    <div v-if="group.promo" class="sf-promo" :class="`tone-${group.promo.tone}`">{{ group.promo.text }}</div>
 
     <header class="sf-card-head">
       <div class="sf-media-title" :title="title">{{ title }}</div>
@@ -68,34 +56,26 @@ const emit = defineEmits<{
 
     <div class="sf-card-body">
       <div class="sf-t-title" :title="group.primary.title">{{ group.primary.title }}</div>
-      <div
-        v-if="group.primary.subtitle"
-        class="sf-t-sub text-muted"
-        :title="group.primary.subtitle"
-      >{{ group.primary.subtitle }}</div>
+      <div v-if="group.primary.subtitle" class="sf-t-sub text-muted" :title="group.primary.subtitle">
+        {{ group.primary.subtitle }}
+      </div>
       <div v-if="group.timeText" class="sf-time text-muted">⏱ {{ group.timeText }}</div>
       <div v-if="group.tags.length" class="sf-tags">
-        <span
-          v-for="tag in group.tags"
-          :key="tag.label"
-          class="sf-tag"
-          :class="`tone-${tag.tone}`"
-        >{{ tag.label }}</span>
+        <span v-for="tag in group.tags" :key="tag.label" class="sf-tag" :class="`tone-${tag.tone}`">{{
+          tag.label
+        }}</span>
       </div>
     </div>
 
     <footer class="sf-card-foot">
-      <button
-        v-if="group.more.length"
-        type="button"
-        class="sf-more"
-        @click.stop="emit('more', group)"
-      >
+      <button v-if="group.more.length" type="button" class="sf-more" @click.stop="emit('more', group)">
         ▾ {{ t('tc.moreSources', { n: group.more.length }) }}
       </button>
       <span v-else />
       <div class="sf-foot-right">
-        <span v-if="formatTorrentSize(group.primary.size)" class="sf-size">{{ formatTorrentSize(group.primary.size) }}</span>
+        <span v-if="formatTorrentSize(group.primary.size)" class="sf-size">{{
+          formatTorrentSize(group.primary.size)
+        }}</span>
         <button
           v-if="group.primary.detail_url"
           type="button"
@@ -103,7 +83,9 @@ const emit = defineEmits<{
           :title="t('tc.openDetail')"
           :aria-label="t('tc.openDetailAria')"
           @click.stop="emit('detail', group.primary)"
-        >ⓘ</button>
+        >
+          ⓘ
+        </button>
       </div>
     </footer>
   </article>

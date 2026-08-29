@@ -1,7 +1,15 @@
 import { ref, computed, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useVueFlow, type Edge, type Node, type Connection } from '@vue-flow/core'
-import { workflowApi, type NodeInfo, type GraphNode, type GraphEdge, type WorkflowRun, type WorkflowTemplate, type ParamField } from '@/api/workflow'
+import {
+  workflowApi,
+  type NodeInfo,
+  type GraphNode,
+  type GraphEdge,
+  type WorkflowRun,
+  type WorkflowTemplate,
+  type ParamField,
+} from '@/api/workflow'
 
 export interface WfNodeData {
   type: string
@@ -16,9 +24,21 @@ export function useWorkflowEditor(flowId: string) {
   const router = useRouter()
   const wfId = computed(() => (route.query.id ? Number(route.query.id) : 0))
 
-  const { onConnect, addEdges, addNodes, screenToFlowCoordinate, onNodeClick, onPaneClick, onEdgeClick,
-    onEdgesChange, applyEdgeChanges,
-    setNodes, setEdges, removeNodes, toObject } = useVueFlow(flowId)
+  const {
+    onConnect,
+    addEdges,
+    addNodes,
+    screenToFlowCoordinate,
+    onNodeClick,
+    onPaneClick,
+    onEdgeClick,
+    onEdgesChange,
+    applyEdgeChanges,
+    setNodes,
+    setEdges,
+    removeNodes,
+    toObject,
+  } = useVueFlow(flowId)
 
   const actions = ref<NodeInfo[]>([])
   const infoByType = computed(() => {
@@ -45,7 +65,9 @@ export function useWorkflowEditor(flowId: string) {
 
   // dirty 跟踪（未保存修改提示）
   const dirty = ref(false)
-  function markDirty() { dirty.value = true }
+  function markDirty() {
+    dirty.value = true
+  }
 
   const selected = ref<Node | null>(null)
   onNodeClick(({ node }) => {
@@ -103,7 +125,13 @@ export function useWorkflowEditor(flowId: string) {
       id: g.id,
       type: 'wf',
       position: g.position || { x: 0, y: 0 },
-      data: { type: g.type, name: g.name || info?.name || g.type, params: { ...(g.params || {}) }, info, branch: g.type === 'condition' },
+      data: {
+        type: g.type,
+        name: g.name || info?.name || g.type,
+        params: { ...(g.params || {}) },
+        info,
+        branch: g.type === 'condition',
+      },
     }
   }
   function toVFEdge(g: GraphEdge): Edge {
@@ -212,7 +240,9 @@ export function useWorkflowEditor(flowId: string) {
       }
     }
     if (missingNodes.length) {
-      ElMessage.warning(`以下节点必填项为空：${missingNodes.slice(0, 3).join("、")}${missingNodes.length > 3 ? "…" : ""}`)
+      ElMessage.warning(
+        `以下节点必填项为空：${missingNodes.slice(0, 3).join('、')}${missingNodes.length > 3 ? '…' : ''}`,
+      )
       return
     }
     saving.value = true
@@ -361,16 +391,44 @@ export function useWorkflowEditor(flowId: string) {
   }
 
   return {
-    route, router, wfId,
-    actions, categories, infoByType,
-    name, description, triggerType, timer, eventType, eventConditions, enabled,
-    saving, running, selected, dirty,
-    loadError, load,
-    onDragStart, onDrop, onDragOver,
-    save, run, runResult, showResult,
-    history, showHistory, openHistory, viewRun,
-    deleteSelected, selectedEdge, deleteSelectedEdge,
-    templates, showTemplates, openTemplates, applyTemplate,
-    exportJSON, onImportFile,
+    route,
+    router,
+    wfId,
+    actions,
+    categories,
+    infoByType,
+    name,
+    description,
+    triggerType,
+    timer,
+    eventType,
+    eventConditions,
+    enabled,
+    saving,
+    running,
+    selected,
+    dirty,
+    loadError,
+    load,
+    onDragStart,
+    onDrop,
+    onDragOver,
+    save,
+    run,
+    runResult,
+    showResult,
+    history,
+    showHistory,
+    openHistory,
+    viewRun,
+    deleteSelected,
+    selectedEdge,
+    deleteSelectedEdge,
+    templates,
+    showTemplates,
+    openTemplates,
+    applyTemplate,
+    exportJSON,
+    onImportFile,
   }
 }

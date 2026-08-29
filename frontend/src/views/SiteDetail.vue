@@ -26,10 +26,25 @@ const loadError = ref('')
 
 // 各 Tab 的懒加载数据与状态抽出为 composable（useSiteDetailTabs）。
 const {
-  assess, assessLoading, fl, flLoading, contract, contractCheck, contractLoading,
-  bfTasks, bfLoading, saveptCard, saveptLoading, reseedHint, reseedLoading,
-  clearTabState, loadTab,
-} = useSiteDetailTabs(() => siteId.value, () => site.value?.name)
+  assess,
+  assessLoading,
+  fl,
+  flLoading,
+  contract,
+  contractCheck,
+  contractLoading,
+  bfTasks,
+  bfLoading,
+  saveptCard,
+  saveptLoading,
+  reseedHint,
+  reseedLoading,
+  clearTabState,
+  loadTab,
+} = useSiteDetailTabs(
+  () => siteId.value,
+  () => site.value?.name,
+)
 
 const statusColor: Record<string, string> = {
   SAFE: '#22c55e',
@@ -131,11 +146,12 @@ watch(
 )
 </script>
 
-
 <template>
   <div class="page" v-loading="loading">
     <div class="head">
-      <button type="button" class="back" @click="router.push({ name: 'sites' })">← {{ t('sitedetail.backSites') }}</button>
+      <button type="button" class="back" @click="router.push({ name: 'sites' })">
+        ← {{ t('sitedetail.backSites') }}
+      </button>
       <div v-if="site" class="title-wrap">
         <SiteFavicon :name="site.name" :base-url="site.base_url" :size="36" />
         <div>
@@ -143,11 +159,17 @@ watch(
           <div class="sub">
             <a :href="site.base_url" target="_blank" rel="noopener">{{ site.base_url }}</a>
             <span class="dot">·</span>
-            <span :class="['pill', site.is_active ? 'on' : 'off']">{{ site.is_active ? t('common.enabled') : t('sitedetail.disabled') }}</span>
+            <span :class="['pill', site.is_active ? 'on' : 'off']">{{
+              site.is_active ? t('common.enabled') : t('sitedetail.disabled')
+            }}</span>
             <template v-if="conn">
               <span class="dot">·</span>
               <span :class="['pill', conn.status === 'connected' ? 'on' : 'off']">
-                {{ conn.status === 'connected' ? t('sitedetail.online', { level: conn.level || '' }) : conn.error || t('sitedetail.offline') }}
+                {{
+                  conn.status === 'connected'
+                    ? t('sitedetail.online', { level: conn.level || '' })
+                    : conn.error || t('sitedetail.offline')
+                }}
               </span>
             </template>
           </div>
@@ -155,7 +177,9 @@ watch(
       </div>
       <div v-if="site" class="head-actions">
         <el-button size="small" @click="goGlobal('assessment')">{{ t('sitedetail.globalAssess') }}</el-button>
-        <el-button size="small" type="primary" plain @click="router.push({ name: 'sites' })">{{ t('sitedetail.backList') }}</el-button>
+        <el-button size="small" type="primary" plain @click="router.push({ name: 'sites' })">{{
+          t('sitedetail.backList')
+        }}</el-button>
       </div>
     </div>
 
@@ -165,12 +189,30 @@ watch(
       <el-tabs v-model="tab" class="glass tabs" @tab-change="onTab">
         <el-tab-pane :label="t('sitedetail.tabOverview')" name="overview">
           <div class="grid">
-            <div class="card glass metric"><span class="k">{{ t('sitedetail.level') }}</span><span class="v">{{ stat?.level || conn?.level || '—' }}</span></div>
-            <div class="card glass metric"><span class="k">{{ t('sitedetail.uploaded') }}</span><span class="v">{{ fmtBytes(stat?.uploaded || 0) }}</span></div>
-            <div class="card glass metric"><span class="k">{{ t('sitedetail.downloaded') }}</span><span class="v">{{ fmtBytes(stat?.downloaded || 0) }}</span></div>
-            <div class="card glass metric"><span class="k">{{ t('sitedetail.ratio') }}</span><span class="v">{{ stat ? (stat.ratio || 0).toFixed(2) : '—' }}</span></div>
-            <div class="card glass metric"><span class="k">{{ t('sitedetail.seeding') }}</span><span class="v">{{ stat?.seeding ?? '—' }}</span></div>
-            <div class="card glass metric"><span class="k">{{ t('sitedetail.bonus') }}</span><span class="v">{{ stat?.bonus != null ? Math.round(stat.bonus) : '—' }}</span></div>
+            <div class="card glass metric">
+              <span class="k">{{ t('sitedetail.level') }}</span
+              ><span class="v">{{ stat?.level || conn?.level || '—' }}</span>
+            </div>
+            <div class="card glass metric">
+              <span class="k">{{ t('sitedetail.uploaded') }}</span
+              ><span class="v">{{ fmtBytes(stat?.uploaded || 0) }}</span>
+            </div>
+            <div class="card glass metric">
+              <span class="k">{{ t('sitedetail.downloaded') }}</span
+              ><span class="v">{{ fmtBytes(stat?.downloaded || 0) }}</span>
+            </div>
+            <div class="card glass metric">
+              <span class="k">{{ t('sitedetail.ratio') }}</span
+              ><span class="v">{{ stat ? (stat.ratio || 0).toFixed(2) : '—' }}</span>
+            </div>
+            <div class="card glass metric">
+              <span class="k">{{ t('sitedetail.seeding') }}</span
+              ><span class="v">{{ stat?.seeding ?? '—' }}</span>
+            </div>
+            <div class="card glass metric">
+              <span class="k">{{ t('sitedetail.bonus') }}</span
+              ><span class="v">{{ stat?.bonus != null ? Math.round(stat.bonus) : '—' }}</span>
+            </div>
           </div>
           <p class="hint text-muted">{{ t('sitedetail.drillHint') }}</p>
         </el-tab-pane>
@@ -183,12 +225,18 @@ watch(
                 <el-tag :color="statusColor[assess.status]" effect="dark" style="border: 0">{{ assess.status }}</el-tag>
               </div>
               <p class="text-muted">
-                {{ t('sitedetail.assessProgress', { pct: Number(assess.progress_percent || 0).toFixed(0), days: assess.remaining_days }) }}
+                {{
+                  t('sitedetail.assessProgress', {
+                    pct: Number(assess.progress_percent || 0).toFixed(0),
+                    days: assess.remaining_days,
+                  })
+                }}
                 <template v-if="assess.assessment_type"> · {{ assess.assessment_type }}</template>
               </p>
               <ul v-if="assess.metrics?.length" class="metrics">
                 <li v-for="(m, i) in assess.metrics" :key="i">
-                  <b>{{ m.label }}</b>：{{ m.current }}/{{ m.required }} {{ m.unit }}
+                  <b>{{ m.label }}</b
+                  >：{{ m.current }}/{{ m.required }} {{ m.unit }}
                   <span v-if="m.is_completed" class="ok">✓</span>
                 </li>
               </ul>
@@ -199,11 +247,19 @@ watch(
             <div class="card glass">
               <div class="row-between">
                 <h3>{{ t('sitedetail.contract') }}</h3>
-                <el-button size="small" text type="primary" @click="goGlobal('contract')">{{ t('sitedetail.manage') }}</el-button>
+                <el-button size="small" text type="primary" @click="goGlobal('contract')">{{
+                  t('sitedetail.manage')
+                }}</el-button>
               </div>
               <template v-if="contract">
                 <p>
-                  {{ t('sitedetail.contractReq', { ratio: contract.min_ratio || t('sitedetail.unlimited'), seeds: contract.min_seeding || t('sitedetail.unlimited'), gb: contract.min_upload_gb || 0 }) }}
+                  {{
+                    t('sitedetail.contractReq', {
+                      ratio: contract.min_ratio || t('sitedetail.unlimited'),
+                      seeds: contract.min_seeding || t('sitedetail.unlimited'),
+                      gb: contract.min_upload_gb || 0,
+                    })
+                  }}
                 </p>
                 <p v-if="contractCheck">
                   {{ t('sitedetail.lastCheck') }}：<b>{{ contractCheck.status }}</b> {{ contractCheck.detail || '' }}
@@ -218,15 +274,27 @@ watch(
           <div v-loading="bfLoading" class="tab-body">
             <div class="row-between">
               <h3>{{ t('sitedetail.bfTasks') }}</h3>
-              <el-button size="small" type="primary" @click="goGlobal('brushflow')">{{ t('sitedetail.globalBf') }}</el-button>
+              <el-button size="small" type="primary" @click="goGlobal('brushflow')">{{
+                t('sitedetail.globalBf')
+              }}</el-button>
             </div>
             <div v-if="!bfTasks.length" class="card glass text-muted">{{ t('sitedetail.noBf') }}</div>
             <div v-for="task in bfTasks" :key="task.id" class="card glass">
               <div class="row-between">
                 <b>{{ task.name }}</b>
-                <el-tag size="small" :type="task.enabled ? 'success' : 'info'">{{ task.enabled ? t('common.enabled') : t('sitedetail.disabled') }}</el-tag>
+                <el-tag size="small" :type="task.enabled ? 'success' : 'info'">{{
+                  task.enabled ? t('common.enabled') : t('sitedetail.disabled')
+                }}</el-tag>
               </div>
-              <p class="text-muted small">{{ t('sitedetail.bfMeta', { added: task.total_added, deleted: task.total_deleted, seeds: task.max_seeds }) }}</p>
+              <p class="text-muted small">
+                {{
+                  t('sitedetail.bfMeta', {
+                    added: task.total_added,
+                    deleted: task.total_deleted,
+                    seeds: task.max_seeds,
+                  })
+                }}
+              </p>
             </div>
           </div>
         </el-tab-pane>
@@ -277,46 +345,163 @@ watch(
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-3); }
-.head { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
-.back {
-  border: none; background: var(--pt-primary-bg); color: var(--text-strong);
-  padding: 6px 12px; border-radius: var(--radius-pill); cursor: pointer; font-size: var(--fs-body); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth)
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
-.back:hover { background: var(--pt-primary-bg); }
-.title-wrap { display: flex; align-items: center; gap: var(--sp-3); flex: 1; min-width: 0; }
-.title { margin: 0; font-size: var(--fs-title); }
-.sub { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; font-size: var(--fs-body); color: var(--text-muted); }
-.sub a { color: var(--text-muted); }
-.dot { opacity: 0.5; }
-.pill { padding: 1px 8px; border-radius: var(--radius-pill); font-size: var(--fs-xs); }
-.pill.on { background: var(--pt-success-bg); color:var(--pt-success); }
-.pill.off { background: var(--pt-danger-bg); color:var(--pt-danger); }
-.head-actions { display: flex; gap: var(--sp-2); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--sp-2); }
-.metric { padding: 14px 16px; display: flex; flex-direction: column; gap: var(--sp-1); }
-.metric .k { font-size: var(--fs-xs); color: var(--text-muted); }
-.metric .v { font-size: var(--fs-xl); font-weight: 700; }
-.card { padding: 14px 16px; margin-bottom: 10px; }
-.tab-body { min-height: 120px; }
-.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-bottom: 8px; }
-.row-between h3 { margin: 0; font-size: var(--fs-lg); }
-.metrics { margin: 8px 0 0; padding-left: 18px; }
-.ok { color:var(--pt-success); margin-left: 4px; }
-.err { color:var(--pt-danger); }
-.hint { margin-top: 8px; font-size: var(--fs-body); }
-.small { font-size: var(--fs-xs); }
-.tabs { padding: 8px 12px 12px; }
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.back {
+  border: none;
+  background: var(--pt-primary-bg);
+  color: var(--text-strong);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  font-size: var(--fs-body);
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth);
+}
+.back:hover {
+  background: var(--pt-primary-bg);
+}
+.title-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex: 1;
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+}
+.sub {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  align-items: center;
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+}
+.sub a {
+  color: var(--text-muted);
+}
+.dot {
+  opacity: 0.5;
+}
+.pill {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+}
+.pill.on {
+  background: var(--pt-success-bg);
+  color: var(--pt-success);
+}
+.pill.off {
+  background: var(--pt-danger-bg);
+  color: var(--pt-danger);
+}
+.head-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--sp-2);
+}
+.metric {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.metric .k {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.metric .v {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+}
+.card {
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.tab-body {
+  min-height: 120px;
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: 8px;
+}
+.row-between h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+}
+.metrics {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+.ok {
+  color: var(--pt-success);
+  margin-left: 4px;
+}
+.err {
+  color: var(--pt-danger);
+}
+.hint {
+  margin-top: 8px;
+  font-size: var(--fs-body);
+}
+.small {
+  font-size: var(--fs-xs);
+}
+.tabs {
+  padding: 8px 12px 12px;
+}
 
 /* 指标卡 staggered 入场 */
-.grid > * { animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both; }
-.grid > *:nth-child(1) { animation-delay: 0ms; }
-.grid > *:nth-child(2) { animation-delay: 40ms; }
-.grid > *:nth-child(3) { animation-delay: 80ms; }
-.grid > *:nth-child(4) { animation-delay: 120ms; }
-.grid > *:nth-child(5) { animation-delay: 160ms; }
-.grid > *:nth-child(6) { animation-delay: 200ms; }
-.grid > *:nth-child(n+7) { animation-delay: 240ms; }
-.metric { transition: transform var(--dur-fast) var(--ease-out-spring); }
-.metric:hover { transform: translateY(-1px); }
+.grid > * {
+  animation: pt-fade-in-up var(--dur-base) var(--ease-out-smooth) both;
+}
+.grid > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.grid > *:nth-child(2) {
+  animation-delay: 40ms;
+}
+.grid > *:nth-child(3) {
+  animation-delay: 80ms;
+}
+.grid > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.grid > *:nth-child(5) {
+  animation-delay: 160ms;
+}
+.grid > *:nth-child(6) {
+  animation-delay: 200ms;
+}
+.grid > *:nth-child(n + 7) {
+  animation-delay: 240ms;
+}
+.metric {
+  transition: transform var(--dur-fast) var(--ease-out-spring);
+}
+.metric:hover {
+  transform: translateY(-1px);
+}
 </style>

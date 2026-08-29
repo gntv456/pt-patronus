@@ -28,9 +28,7 @@ async function resolve() {
     return
   }
   try {
-    const blob: Blob = await http
-      .get('/media/image', { params: { url: u }, responseType: 'blob' })
-      .then((r) => r.data)
+    const blob: Blob = await http.get('/media/image', { params: { url: u }, responseType: 'blob' }).then((r) => r.data)
     blobUrl = URL.createObjectURL(blob)
     src.value = blobUrl
   } catch {

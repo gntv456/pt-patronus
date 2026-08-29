@@ -36,12 +36,8 @@ const filteredSites = computed(() => {
   const q = query.value.trim().toLowerCase()
   return q ? props.sites.filter((s) => s.name.toLowerCase().includes(q)) : props.sites
 })
-const isAllSelected = computed(
-  () => count.value > 0 && props.modelValue.length === count.value,
-)
-const isIndeterminate = computed(
-  () => props.modelValue.length > 0 && props.modelValue.length < count.value,
-)
+const isAllSelected = computed(() => count.value > 0 && props.modelValue.length === count.value)
+const isIndeterminate = computed(() => props.modelValue.length > 0 && props.modelValue.length < count.value)
 
 function toggleAll(v: boolean | string | number) {
   emit('update:modelValue', v ? props.sites.map((s) => s.id) : [])
@@ -57,35 +53,32 @@ function goManage() {
 
 <template>
   <button type="button" class="scope-filter-btn" @click="visible = true">
-    <slot>{{ t('sfd.trigger') }}<el-icon><CaretBottom /></el-icon></slot>
+    <slot
+      >{{ t('sfd.trigger') }}<el-icon><CaretBottom /></el-icon
+    ></slot>
   </button>
-  <el-dialog
-    v-model="visible"
-    :title="title || t('sfd.title')"
-    width="760px"
-    append-to-body
-    class="site-filter-dialog"
-  >
+  <el-dialog v-model="visible" :title="title || t('sfd.title')" width="760px" append-to-body class="site-filter-dialog">
     <div class="site-filter">
       <div class="site-filter-head">
         <span class="text-muted">{{ t('sfd.selected', { n: modelValue.length || t('sh.all'), total: count }) }}</span>
         <button type="button" class="link-btn" @click="toggleAll(false)">{{ t('common.clear') }}</button>
       </div>
       <el-input v-model="query" :placeholder="t('sfd.searchPh')" clearable class="site-filter-search">
-        <template #prefix><el-icon><Search /></el-icon></template>
+        <template #prefix
+          ><el-icon><Search /></el-icon
+        ></template>
       </el-input>
       <el-checkbox
         class="site-filter-all"
         :model-value="isAllSelected"
         :indeterminate="isIndeterminate"
         @change="toggleAll"
-      >{{ t('sfd.selectAll', { n: count }) }}</el-checkbox>
-      <el-checkbox-group
-        :model-value="modelValue"
-        class="site-filter-grid"
-        @change="onGroupChange"
+        >{{ t('sfd.selectAll', { n: count }) }}</el-checkbox
       >
-        <el-checkbox v-for="s in filteredSites" :key="s.id" :value="s.id" class="site-filter-cell">{{ s.name }}</el-checkbox>
+      <el-checkbox-group :model-value="modelValue" class="site-filter-grid" @change="onGroupChange">
+        <el-checkbox v-for="s in filteredSites" :key="s.id" :value="s.id" class="site-filter-cell">{{
+          s.name
+        }}</el-checkbox>
       </el-checkbox-group>
       <div v-if="!filteredSites.length" class="site-filter-empty text-muted">{{ t('sfd.noMatch') }}</div>
     </div>

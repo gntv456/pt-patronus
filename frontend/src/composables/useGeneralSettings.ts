@@ -16,7 +16,12 @@ const updateDlgVisible = ref(false)
 
 function initThemeVersion() {
   dark.value = document.documentElement.classList.contains('dark')
-  systemApi.info().then((i) => { if (i?.version) version.value = i.version }).catch(() => {})
+  systemApi
+    .info()
+    .then((i) => {
+      if (i?.version) version.value = i.version
+    })
+    .catch(() => {})
 }
 
 async function checkUpdate() {
@@ -69,7 +74,17 @@ async function openChangelog() {
 
 export function useGeneralSettings() {
   return {
-    dark, version, updateChecking, updateInfo, updateDlgVisible, helpVisible,
-    initThemeVersion, checkUpdate, copyUpgradeCmd, toggleTheme, openIssues, openChangelog,
+    dark,
+    version,
+    updateChecking,
+    updateInfo,
+    updateDlgVisible,
+    helpVisible,
+    initThemeVersion,
+    checkUpdate,
+    copyUpgradeCmd,
+    toggleTheme,
+    openIssues,
+    openChangelog,
   }
 }

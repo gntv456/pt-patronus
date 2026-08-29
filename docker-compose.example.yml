@@ -3,10 +3,14 @@
 
 services:
   ptpatronus:
-    image: ghcr.io/gntv456/pt-patronus:latest   # latest=最新；或锁定版本
+    # 版本锁定（收权加固）：默认锁定具体版本号（与 update-manifest 的 docker.image 一致），
+    # 升级 = 改这里的版本号再 up -d——可精确回滚（改回旧版本号即可），不会被 latest 漂移。
+    # 想跟随最新版：把 tag 改成 latest 并保留 pull_policy: always（失去回滚锚点，自担）。
+    image: ghcr.io/gntv456/pt-patronus:1.03.19
     container_name: ptpatronus
     restart: unless-stopped
-    pull_policy: always      # docker compose up -d 时自动拉最新镜像（像 MoviePilot 那样更新即拉新；注意是 up 不是 restart）
+    # 锁定版本时不需要 always 拉取；改用 latest 跟随时再取消注释：
+    # pull_policy: always
     ports:
       - "8088:8088"            # 主机端口:容器端口（改左边的 8088 换访问端口）
     environment:
@@ -31,16 +35,19 @@ services:
     volumes:
       - ./data:/app/data       # 数据库 + 自动生成的密钥（务必持久化，否则重启换密钥用户被踢）
 
-      # 文件管理器「本机」存储：挂载宿主文件系统，去掉 :ro 才能上传/删除/重命名/建目录。
-      # 根路径填 /hostfs 即可浏览整个宿主（含 /hostfs/vol1/1000/、/hostfs/video）。
-      # 只暴露特定盘可改为多行：- /vol1:/hostfs/vol1  - /vol2:/hostfs/vol2
-      - /:/hostfs
-
-      # Docker 容器管理（运维中心 → Docker → 本机模式）：必需，否则 Docker/容器/compose 功能不可用
-      - /var/run/docker.sock:/var/run/docker.sock
-
+      # ⚠ 安全提示（收权加固）：以下三行默认注释掉——挂载 / 与 docker.sock
+      # 意味着应用层失陷 = 宿主 root。按需取消注释并尽量收窄：
+      #
+      # 文件管理器「本机」存储：只挂需要的盘（推荐），根路径填 /hostfs/vol1；
+      # 确要浏览整个宿主才挂 /:/hostfs（去 :ro 后可写整个宿主文件系统）。
+      # - /vol1:/hostfs/vol1
+      # - /:/hostfs
+      #
+      # Docker 容器管理（运维中心 → Docker → 本机模式）：不挂则 Docker 功能不可用
+      # - /var/run/docker.sock:/var/run/docker.sock
+      #
       # Compose 项目管理：挂载宿主 compose 目录扫描已有项目；按实际放 compose 的目录改
-      - /opt:/host/compose
+      # - /opt:/host/compose
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/api/v1/system/health"]
       interval: 30s

@@ -24,7 +24,11 @@ const SIZES = ['compact', 'wide', 'focus'] as const
 
 const { prefs, update } = useUserPrefs('dashboard')
 
-interface WidgetSetting { key: string; size: (typeof SIZES)[number]; hidden?: boolean }
+interface WidgetSetting {
+  key: string
+  size: (typeof SIZES)[number]
+  hidden?: boolean
+}
 
 const widgets = computed<WidgetSetting[]>(() => {
   const raw = (prefs.value as any)?.widgets
@@ -90,7 +94,11 @@ function sizeClass(s: string) {
 }
 
 const { t } = useI18n()
-const sizeLabel = computed<Record<string, string>>(() => ({ compact: t('dwg.sizeCompact'), wide: t('dwg.sizeWide'), focus: t('dwg.sizeFocus') }))
+const sizeLabel = computed<Record<string, string>>(() => ({
+  compact: t('dwg.sizeCompact'),
+  wide: t('dwg.sizeWide'),
+  focus: t('dwg.sizeFocus'),
+}))
 </script>
 
 <template>
@@ -120,7 +128,14 @@ const sizeLabel = computed<Record<string, string>>(() => ({ compact: t('dwg.size
     </div>
 
     <!-- 部件定制弹窗 -->
-    <el-dialog class="pt-dialog" append-to-body align-center v-model="customizeOpen" :title="t('dwg.customizeTitle')" width="480px">
+    <el-dialog
+      class="pt-dialog"
+      append-to-body
+      align-center
+      v-model="customizeOpen"
+      :title="t('dwg.customizeTitle')"
+      width="480px"
+    >
       <div class="cat-list">
         <div v-for="c in catalog" :key="c.key" class="cat-row">
           <div class="cat-info">
@@ -133,7 +148,8 @@ const sizeLabel = computed<Record<string, string>>(() => ({ compact: t('dwg.size
               :key="w.key"
               size="small"
               @click="cycleSize(c.key)"
-            >{{ sizeLabel[w.size] }}</el-button>
+              >{{ sizeLabel[w.size] }}</el-button
+            >
             <el-button size="small" :type="c.on ? 'danger' : 'primary'" plain @click="toggleWidget(c.key)">
               {{ c.on ? t('common.remove') : t('common.add') }}
             </el-button>
@@ -148,24 +164,86 @@ const sizeLabel = computed<Record<string, string>>(() => ({ compact: t('dwg.size
 </template>
 
 <style scoped>
-.widgets-zone { display: flex; flex-direction: column; gap: var(--sp-3); }
-.widgets-bar { display: flex; align-items: center; justify-content: space-between; }
-.widgets-bar-title { font-size: var(--fs-sm); font-weight: 600; color: var(--text-muted); }
-.widgets-empty { padding: var(--sp-6); text-align: center; color: var(--text-muted); }
-.widgets-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); }
-.widget-cell { min-width: 0; }
-.w-compact { grid-column: span 1; }
-.w-wide { grid-column: span 2; }
-.w-focus { grid-column: span 2; grid-row: span 2; }
-.cat-list { display: flex; flex-direction: column; gap: var(--sp-3); }
-.cat-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
-.cat-info { display: flex; flex-direction: column; gap: 2px; }
-.cat-name { font-weight: 600; }
-.cat-desc { font-size: var(--fs-xs); color: var(--text-muted); }
-.cat-ops { display: flex; gap: var(--sp-1); flex-shrink: 0; }
-.cat-hint { margin-top: var(--sp-3); font-size: var(--fs-xs); color: var(--text-muted); }
+.widgets-zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.widgets-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.widgets-bar-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.widgets-empty {
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-muted);
+}
+.widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-3);
+}
+.widget-cell {
+  min-width: 0;
+}
+.w-compact {
+  grid-column: span 1;
+}
+.w-wide {
+  grid-column: span 2;
+}
+.w-focus {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+.cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.cat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.cat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cat-name {
+  font-weight: 600;
+}
+.cat-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.cat-ops {
+  display: flex;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+}
+.cat-hint {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
 @media (max-width: 900px) {
-  .widgets-grid { grid-template-columns: 1fr; }
-  .w-compact, .w-wide, .w-focus { grid-column: span 1; grid-row: span 1; }
+  .widgets-grid {
+    grid-template-columns: 1fr;
+  }
+  .w-compact,
+  .w-wide,
+  .w-focus {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
 }
 </style>

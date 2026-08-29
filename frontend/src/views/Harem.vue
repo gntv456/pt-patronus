@@ -15,8 +15,13 @@ const exportText = ref('')
 const exportVisible = ref(false)
 
 const EMPTY_OVERVIEW: HaremOverview = {
-  total_sites: 0, total_invitees: 0, total_perm_invites: 0, total_temp_invites: 0,
-  total_low_ratio: 0, total_banned: 0, total_no_data: 0,
+  total_sites: 0,
+  total_invitees: 0,
+  total_perm_invites: 0,
+  total_temp_invites: 0,
+  total_low_ratio: 0,
+  total_banned: 0,
+  total_no_data: 0,
 }
 let abortCtrl: AbortController | null = null
 async function load(refresh = false) {
@@ -29,7 +34,9 @@ async function load(refresh = false) {
     await haremApi.allStream(
       refresh,
       (item) => data.value?.prescriptions.push(item),
-      (o) => { if (data.value) data.value.overview = o },
+      (o) => {
+        if (data.value) data.value.overview = o
+      },
       ctrl.signal,
     )
   } catch (e: unknown) {
@@ -86,19 +93,47 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
 
     <div v-if="overview" class="summary glass">
-      <div class="tile"><span class="num">{{ overview.total_sites }}</span><span class="lbl">{{ t('freeleech.tile.sites') }}</span></div>
-      <div class="tile"><span class="num">{{ overview.total_invitees }}</span><span class="lbl">{{ t('harem.members') }}</span></div>
-      <div class="tile"><span class="num">{{ overview.total_perm_invites }}</span><span class="lbl">{{ t('harem.permInvites') }}</span></div>
-      <div class="tile"><span class="num">{{ overview.total_temp_invites }}</span><span class="lbl">{{ t('harem.tempInvites') }}</span></div>
-      <div class="tile"><span class="num" style="color:var(--pt-warn)">{{ overview.total_low_ratio }}</span><span class="lbl">{{ t('harem.lowRatio') }}</span></div>
-      <div class="tile"><span class="num" style="color:var(--pt-danger)">{{ overview.total_banned }}</span><span class="lbl">{{ t('harem.banned') }}</span></div>
-      <div class="tile"><span class="num" style="color:var(--text-muted)">{{ overview.total_no_data }}</span><span class="lbl">{{ t('mediaserver.noData') }}</span></div>
+      <div class="tile">
+        <span class="num">{{ overview.total_sites }}</span
+        ><span class="lbl">{{ t('freeleech.tile.sites') }}</span>
+      </div>
+      <div class="tile">
+        <span class="num">{{ overview.total_invitees }}</span
+        ><span class="lbl">{{ t('harem.members') }}</span>
+      </div>
+      <div class="tile">
+        <span class="num">{{ overview.total_perm_invites }}</span
+        ><span class="lbl">{{ t('harem.permInvites') }}</span>
+      </div>
+      <div class="tile">
+        <span class="num">{{ overview.total_temp_invites }}</span
+        ><span class="lbl">{{ t('harem.tempInvites') }}</span>
+      </div>
+      <div class="tile">
+        <span class="num" style="color: var(--pt-warn)">{{ overview.total_low_ratio }}</span
+        ><span class="lbl">{{ t('harem.lowRatio') }}</span>
+      </div>
+      <div class="tile">
+        <span class="num" style="color: var(--pt-danger)">{{ overview.total_banned }}</span
+        ><span class="lbl">{{ t('harem.banned') }}</span>
+      </div>
+      <div class="tile">
+        <span class="num" style="color: var(--text-muted)">{{ overview.total_no_data }}</span
+        ><span class="lbl">{{ t('mediaserver.noData') }}</span>
+      </div>
     </div>
 
     <div class="card glass">
-      <el-table v-if="filteredPrescriptions.length" :data="filteredPrescriptions" style="width:100%" :row-style="{ background: 'transparent' }">
+      <el-table
+        v-if="filteredPrescriptions.length"
+        :data="filteredPrescriptions"
+        style="width: 100%"
+        :row-style="{ background: 'transparent' }"
+      >
         <el-table-column :label="t('contract.f.site')" width="120">
-          <template #default="{ row }"><span class="site-tag">{{ row.site_name }}</span></template>
+          <template #default="{ row }"
+            ><span class="site-tag">{{ row.site_name }}</span></template
+          >
         </el-table-column>
         <el-table-column prop="permanent_count" :label="t('harem.perm')" width="80" sortable align="right" />
         <el-table-column prop="temporary_count" :label="t('harem.temp')" width="70" sortable align="right">
@@ -114,7 +149,8 @@ onUnmounted(() => abortCtrl?.abort())
         </el-table-column>
         <el-table-column :label="t('harem.count')" width="90" align="right">
           <template #default="{ row }">
-            {{ row.harem_count }}<span v-if="row.dead_count" style="color:var(--pt-danger)"> ({{ row.dead_count }})</span>
+            {{ row.harem_count
+            }}<span v-if="row.dead_count" style="color: var(--pt-danger)"> ({{ row.dead_count }})</span>
           </template>
         </el-table-column>
         <el-table-column :label="t('reseed.col.status')" min-width="140">
@@ -126,7 +162,9 @@ onUnmounted(() => abortCtrl?.abort())
         </el-table-column>
         <el-table-column :label="t('reseed.col.actions')" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" :disabled="!row.invitees?.length" @click="detail = row as PrescriptionItem">{{ t('harem.detail') }}</el-button>
+            <el-button size="small" :disabled="!row.invitees?.length" @click="detail = row as PrescriptionItem">{{
+              t('harem.detail')
+            }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -136,7 +174,7 @@ onUnmounted(() => abortCtrl?.abort())
         :title="t('announcements.emptyTitle')"
         :description="t('harem.emptyDesc')"
       />
-      <p v-else style="text-align:center;color:var(--text-muted);padding:40px 0">{{ t('common.loading') }}</p>
+      <p v-else style="text-align: center; color: var(--text-muted); padding: 40px 0">{{ t('common.loading') }}</p>
     </div>
 
     <el-dialog v-model="exportVisible" :title="t('harem.rxTitle')" width="560">
@@ -147,8 +185,22 @@ onUnmounted(() => abortCtrl?.abort())
       </template>
     </el-dialog>
 
-    <el-dialog :model-value="!!detail" @update:model-value="(v: boolean) => { if (!v) detail = null }" :title="detail ? detail.site_name + ' ' + t('harem.members') : ''" width="640">
-      <el-table v-if="detail" :data="detail.invitees || []" style="width:100%" :row-style="{ background: 'transparent' }">
+    <el-dialog
+      :model-value="!!detail"
+      @update:model-value="
+        (v: boolean) => {
+          if (!v) detail = null
+        }
+      "
+      :title="detail ? detail.site_name + ' ' + t('harem.members') : ''"
+      width="640"
+    >
+      <el-table
+        v-if="detail"
+        :data="detail.invitees || []"
+        style="width: 100%"
+        :row-style="{ background: 'transparent' }"
+      >
         <el-table-column :label="t('mediaserver.col.user')" min-width="120">
           <template #default="{ row }">
             <span :style="{ color: row.status === 'disabled' ? '#f56c6c' : 'inherit' }">{{ row.username }}</span>
@@ -156,31 +208,108 @@ onUnmounted(() => abortCtrl?.abort())
         </el-table-column>
         <el-table-column prop="status" :label="t('reseed.col.status')" width="90">
           <template #default="{ row }">
-            <span class="chip" :style="{ background: row.status === 'disabled' ? '#f56c6c22' : row.status === 'pending' ? '#f39c1222' : '#2ecc7122', color: row.status === 'disabled' ? '#f56c6c' : row.status === 'pending' ? '#f39c12' : '#2ecc71' }">{{ row.status }}</span>
+            <span
+              class="chip"
+              :style="{
+                background:
+                  row.status === 'disabled' ? '#f56c6c22' : row.status === 'pending' ? '#f39c1222' : '#2ecc7122',
+                color: row.status === 'disabled' ? '#f56c6c' : row.status === 'pending' ? '#f39c12' : '#2ecc71',
+              }"
+              >{{ row.status }}</span
+            >
           </template>
         </el-table-column>
-        <el-table-column :label="t('contract.uploadShort')" width="80" align="right"><template #default="{ row }">{{ row.uploaded ? (row.uploaded/1073741824).toFixed(1)+'G' : '—' }}</template></el-table-column>
-        <el-table-column :label="t('harem.down')" width="80" align="right"><template #default="{ row }">{{ row.downloaded ? (row.downloaded/1073741824).toFixed(1)+'G' : '—' }}</template></el-table-column>
+        <el-table-column :label="t('contract.uploadShort')" width="80" align="right"
+          ><template #default="{ row }">{{
+            row.uploaded ? (row.uploaded / 1073741824).toFixed(1) + 'G' : '—'
+          }}</template></el-table-column
+        >
+        <el-table-column :label="t('harem.down')" width="80" align="right"
+          ><template #default="{ row }">{{
+            row.downloaded ? (row.downloaded / 1073741824).toFixed(1) + 'G' : '—'
+          }}</template></el-table-column
+        >
         <el-table-column prop="ratio" :label="t('harem.ratio')" width="80" align="right" />
       </el-table>
-      <template #footer><el-button @click="detail = null">{{ t('common.close') }}</el-button></template>
+      <template #footer
+        ><el-button @click="detail = null">{{ t('common.close') }}</el-button></template
+      >
     </el-dialog>
   </div>
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; align-items: center; justify-content: space-between; }
-.head > div { display: flex; gap: var(--sp-2); }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.summary { display: flex; gap: var(--sp-1); padding: 12px; flex-wrap: wrap; }
-.tile { display: flex; flex-direction: column; align-items: center; flex: 1; min-width: 76px; }
-.tile .num { font-size: var(--fs-title); font-weight: 700; font-variant-numeric: tabular-nums; }
-.tile .lbl { font-size: var(--fs-2xs); color: var(--text-muted); margin-top: 2px; }
-.card { padding: 18px; min-height: 200px; }
-.site-tag { display: inline-block; padding: 2px 10px; border-radius: var(--radius-pill); background: var(--pt-primary-bg); color: var(--pt-primary,#6c5ce7); font-size: var(--fs-xs); }
-.err { color: var(--pt-danger); font-size: var(--fs-body); }
-.chip { padding: 1px 8px; border-radius: var(--radius-pill); font-size: var(--fs-2xs); }
-.empty { padding: 40px; text-align: center; }
-:deep(.el-table), :deep(.el-table tr), :deep(.el-table td), :deep(.el-table th) { background-color: transparent !important; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.head > div {
+  display: flex;
+  gap: var(--sp-2);
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.summary {
+  display: flex;
+  gap: var(--sp-1);
+  padding: 12px;
+  flex-wrap: wrap;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  min-width: 76px;
+}
+.tile .num {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tile .lbl {
+  font-size: var(--fs-2xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.card {
+  padding: 18px;
+  min-height: 200px;
+}
+.site-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--pt-primary-bg);
+  color: var(--pt-primary, #6c5ce7);
+  font-size: var(--fs-xs);
+}
+.err {
+  color: var(--pt-danger);
+  font-size: var(--fs-body);
+}
+.chip {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-2xs);
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
+:deep(.el-table),
+:deep(.el-table tr),
+:deep(.el-table td),
+:deep(.el-table th) {
+  background-color: transparent !important;
+}
 </style>

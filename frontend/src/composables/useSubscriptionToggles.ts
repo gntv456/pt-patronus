@@ -7,9 +7,15 @@ import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subs
 // ElMessage 依赖 unplugin-auto-import 的 ElementPlusResolver 全局注入（与 .vue 一致，无需手写 import）。
 export function useSubscriptionToggles(globalDefaults: Ref<GlobalDefaults>) {
   // 有效值：订阅自定义优先，null 回退全局默认。
-  function effRatingGuard(s: Subscription) { return s.enable_rating_guard ?? globalDefaults.value.enable_rating_guard }
-  function effBestVersion(s: Subscription) { return s.best_version ?? globalDefaults.value.best_version }
-  function effOfficialOnly(s: Subscription) { return s.official_only ?? globalDefaults.value.official_only }
+  function effRatingGuard(s: Subscription) {
+    return s.enable_rating_guard ?? globalDefaults.value.enable_rating_guard
+  }
+  function effBestVersion(s: Subscription) {
+    return s.best_version ?? globalDefaults.value.best_version
+  }
+  function effOfficialOnly(s: Subscription) {
+    return s.official_only ?? globalDefaults.value.official_only
+  }
 
   // 三态开关：设订阅自定义值（true/false）；恢复跟随全局走 reset。
   async function setRatingGuard(s: Subscription, val: boolean) {
@@ -78,5 +84,15 @@ export function useSubscriptionToggles(globalDefaults: Ref<GlobalDefaults>) {
     }
   }
 
-  return { effRatingGuard, effBestVersion, effOfficialOnly, setRatingGuard, resetRatingGuard, setBestVersion, resetBestVersion, setOfficialOnly, resetOfficialOnly }
+  return {
+    effRatingGuard,
+    effBestVersion,
+    effOfficialOnly,
+    setRatingGuard,
+    resetRatingGuard,
+    setBestVersion,
+    resetBestVersion,
+    setOfficialOnly,
+    resetOfficialOnly,
+  }
 }

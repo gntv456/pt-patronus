@@ -11,27 +11,27 @@
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {
-      "url": "https://wwazg.lanzoub.com/b03anmtyxg",
+      "url": "PENDING_DIRECT_LINK/android-arm64.apk",
       "sha256": "aba4b3393a1f78bd05682c384aef549d179a18302655346115fe69d41b446422"
     },
     "ios": {
-      "url": "https://wwazg.lanzoub.com/b03anmtyxg",
+      "url": "PENDING_DIRECT_LINK/ios-unsigned.ipa",
       "sha256": "c7a53acec6e7a226f75fb9b58b7777fd5884de49e2774103b5a7b5314e50dd94"
     },
     "ohos": {
-      "url": "https://wwazg.lanzoub.com/b03anmtyxg",
+      "url": "PENDING_DIRECT_LINK/ohos-arm64.hap",
       "sha256": "c3acf90b5cef20c27167e590d61ef81a5142118e27c71863f641127811d50e06"
     },
     "windows": {
-      "url": "https://wwazg.lanzoub.com/b03anmtyxg",
+      "url": "PENDING_DIRECT_LINK/windows-x64.zip",
       "sha256": "365df412db447639494e24a402b84bcdc79b71a1f22d33d0ef609fc3f33824c4"
     },
     "agent-linux-amd64": {
-      "url": "https://wwazg.lanzoub.com/b03anmtyxg",
+      "url": "PENDING_DIRECT_LINK/ptpatronus-agent-linux-amd64",
       "sha256": "92e703f53e6043e518dc57232a9c95d0da8c0fdf37927d3bb524997625641efe"
     },
     "agent-linux-arm64": {
-      "url": "https://wwazg.lanzoub.com/b03anmtyxg",
+      "url": "PENDING_DIRECT_LINK/ptpatronus-agent-linux-arm64",
       "sha256": "eea9d168151f5e9a6f3ebecf96cbf724ca581446674d6694c733efe026132fed"
     },
     "extension": {

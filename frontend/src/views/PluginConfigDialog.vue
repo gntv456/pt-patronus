@@ -22,7 +22,6 @@ const emit = defineEmits<{
   (e: 'update:expanded', v: string[]): void
   (e: 'save'): void
 }>()
-
 </script>
 
 <template>
@@ -50,7 +49,9 @@ const emit = defineEmits<{
         @update:model-value="emit('update:expanded', $event as string[])"
       >
         <el-collapse-item v-for="g in titledGroups" :key="g.name" :name="g.name">
-          <template #title><span class="config-collapse-title">{{ g.name }}</span></template>
+          <template #title
+            ><span class="config-collapse-title">{{ g.name }}</span></template
+          >
           <div class="config-group-grid">
             <PluginSchemaField
               v-for="f in g.fields"
@@ -65,7 +66,9 @@ const emit = defineEmits<{
     </div>
     <template #footer>
       <el-button @click="emit('update:visible', false)">{{ t('common.cancel') }}</el-button>
-      <el-button type="primary" :icon="Tickets" :loading="saving" @click="emit('save')">{{ t('common.save') }}</el-button>
+      <el-button type="primary" :icon="Tickets" :loading="saving" @click="emit('save')">{{
+        t('common.save')
+      }}</el-button>
     </template>
   </el-dialog>
 </template>

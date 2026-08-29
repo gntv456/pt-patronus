@@ -23,7 +23,7 @@ jobs:
       DEPLOY_DIR: ${{ secrets.DEPLOY_DIR }}
       DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Guard required deploy secrets
         run: |

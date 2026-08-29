@@ -3,9 +3,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWs } from '@/composables/useWs'
 import {
-  loadCollapsedGroups, saveCollapsedGroups,
-  loadFavorites, saveFavorites, toggleFavorite,
-  loadRecent, pushRecent,
+  loadCollapsedGroups,
+  saveCollapsedGroups,
+  loadFavorites,
+  saveFavorites,
+  toggleFavorite,
+  loadRecent,
+  pushRecent,
 } from '@/composables/useNavPrefs'
 import type { PaletteItem } from '@/components/CommandPalette.vue'
 import { navGroups, paletteOnly, navDesc, navAliases, type NavItem } from '@/layouts/navConfig'
@@ -86,7 +90,9 @@ export function useMainLayout() {
     collapsedGroups.value = { ...collapsedGroups.value, [title]: !collapsedGroups.value[title] }
     saveCollapsedGroups(collapsedGroups.value)
   }
-  function isFav(name: string) { return favorites.value.includes(name) }
+  function isFav(name: string) {
+    return favorites.value.includes(name)
+  }
   function onToggleFav(name: string, e: Event) {
     e.preventDefault()
     e.stopPropagation()
@@ -97,25 +103,62 @@ export function useMainLayout() {
     saveFavorites([])
   }
 
-  watch(() => route.name, (name) => {
-    if (typeof name === 'string') recent.value = pushRecent(name)
-  }, { immediate: true })
+  watch(
+    () => route.name,
+    (name) => {
+      if (typeof name === 'string') recent.value = pushRecent(name)
+    },
+    { immediate: true },
+  )
 
-  const favoriteItems = computed(() =>
-    favorites.value.map((n) => itemByName.value.get(n)).filter(Boolean) as (NavItem & { group: string })[],
+  const favoriteItems = computed(
+    () => favorites.value.map((n) => itemByName.value.get(n)).filter(Boolean) as (NavItem & { group: string })[],
   )
 
   // 命令面板：空查询默认只列侧栏之外的入口；输入查询时全量 fuzzy（含侧栏项）。
   const paletteItems = computed<PaletteItem[]>(() => {
     const base: PaletteItem[] = flatNav.value.map((it) => ({
-      name: it.name, label: t('nav.items.' + it.name, it.label), icon: it.icon, from: it.from, to: it.to,
+      name: it.name,
+      label: t('nav.items.' + it.name, it.label),
+      icon: it.icon,
+      from: it.from,
+      to: it.to,
       group: t('nav.groups.' + groupKeyOf(it.group), it.group),
-      desc: t('nav.desc.' + it.name, navDesc[it.name] ?? ''), aliases: navAliases[it.name], sidebar: it.sidebar === true,
+      desc: t('nav.desc.' + it.name, navDesc[it.name] ?? ''),
+      aliases: navAliases[it.name],
+      sidebar: it.sidebar === true,
     }))
     base.push(
-      { name: 'search', label: t('nav.top.searchWorkspace'), icon: 'search', from: '#a18cd1', to: '#fbc2eb', group: t('nav.groups.topbar'), desc: t('nav.top.searchWorkspaceDesc'), aliases: navAliases.search },
-      { name: 'assistant', label: t('nav.top.assistant'), icon: 'bot', from: '#6c5ce7', to: '#a855f7', group: t('nav.groups.topbar'), desc: t('nav.top.assistantDesc'), aliases: navAliases.assistant },
-      { name: 'settings', label: t('nav.top.settings'), icon: 'settings', from: '#485563', to: '#29323c', group: t('nav.groups.bottom'), desc: t('nav.top.settingsDesc'), aliases: navAliases.settings },
+      {
+        name: 'search',
+        label: t('nav.top.searchWorkspace'),
+        icon: 'search',
+        from: '#a18cd1',
+        to: '#fbc2eb',
+        group: t('nav.groups.topbar'),
+        desc: t('nav.top.searchWorkspaceDesc'),
+        aliases: navAliases.search,
+      },
+      {
+        name: 'assistant',
+        label: t('nav.top.assistant'),
+        icon: 'bot',
+        from: '#6c5ce7',
+        to: '#a855f7',
+        group: t('nav.groups.topbar'),
+        desc: t('nav.top.assistantDesc'),
+        aliases: navAliases.assistant,
+      },
+      {
+        name: 'settings',
+        label: t('nav.top.settings'),
+        icon: 'settings',
+        from: '#485563',
+        to: '#29323c',
+        group: t('nav.groups.bottom'),
+        desc: t('nav.top.settingsDesc'),
+        aliases: navAliases.settings,
+      },
     )
     return base
   })
@@ -140,13 +183,36 @@ export function useMainLayout() {
   function closeMobileNav() {
     if (isMobile.value) mobileNavOpen.value = false
   }
-  function openPalette() { paletteOpen.value = true }
+  function openPalette() {
+    paletteOpen.value = true
+  }
 
   return {
-    router, route, auth, collapsed, isMobile, mobileNavOpen, sidebarCollapsed, paletteOpen,
-    navGroups, navDesc, favoriteItems, paletteItems, recent, collapsedGroups, favorites,
-    noticeUnread, noticeUrgent,
-    isGroupCollapsed, toggleGroup, isFav, onToggleFav, clearFavorites,
-    onUserCommand, toggleNav, closeMobileNav, openPalette,
+    router,
+    route,
+    auth,
+    collapsed,
+    isMobile,
+    mobileNavOpen,
+    sidebarCollapsed,
+    paletteOpen,
+    navGroups,
+    navDesc,
+    favoriteItems,
+    paletteItems,
+    recent,
+    collapsedGroups,
+    favorites,
+    noticeUnread,
+    noticeUrgent,
+    isGroupCollapsed,
+    toggleGroup,
+    isFav,
+    onToggleFav,
+    clearFavorites,
+    onUserCommand,
+    toggleNav,
+    closeMobileNav,
+    openPalette,
   }
 }

@@ -52,7 +52,11 @@ export function extractTorrentTags(title: string, extra: string[] = []): Torrent
     const label = String(raw).trim()
     // 副标题/长描述不进标签（会和卡片副标题重复，且 chip 过长）
     if (!label || label.length > 20) continue
-    if (/\s{2,}/.test(label) || (label.length > 12 && /[\u4e00-\u9fff].*[\u4e00-\u9fff]/.test(label) && label.includes('|'))) continue
+    if (
+      /\s{2,}/.test(label) ||
+      (label.length > 12 && /[\u4e00-\u9fff].*[\u4e00-\u9fff]/.test(label) && label.includes('|'))
+    )
+      continue
     const key = label.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
@@ -73,10 +77,7 @@ export function torrentGroupKey(title: string): string {
     .slice(0, 80)
 }
 
-export function promoLabel(
-  free?: boolean,
-  tags?: string[],
-): { text: string; tone: 'free' | 'half' | 'double' } | null {
+export function promoLabel(free?: boolean, tags?: string[]): { text: string; tone: 'free' | 'half' | 'double' } | null {
   const bag = (tags || []).join(' ').toLowerCase()
   if (/2x\s*free|双倍免费|2x免费/.test(bag)) return { text: '2X 免费', tone: 'free' }
   if (/2x\s*50|50%.*2x|2x.*50/.test(bag)) return { text: '2X 50%', tone: 'double' }
@@ -92,7 +93,11 @@ export function relativeTime(raw?: string): string {
   if (!s) return ''
   if (/前|ago|昨天|今天|刚刚|分钟|小时|天|周|月|年/.test(s)) return s
 
-  const normalized = s.replace(/年|\/|\./g, '-').replace(/月/g, '-').replace(/日/g, '').replace(/T/, ' ')
+  const normalized = s
+    .replace(/年|\/|\./g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+    .replace(/T/, ' ')
   const d = new Date(normalized)
   if (Number.isNaN(d.getTime())) return s
 
@@ -104,7 +109,6 @@ export function relativeTime(raw?: string): string {
   if (diffSec < 86400 * 365) return `${Math.floor(diffSec / (86400 * 30))} 个月前`
   return `${Math.floor(diffSec / (86400 * 365))} 年前`
 }
-
 
 /** MoviePilot-style promo text from upload/download volume factors. */
 export function volumeFactorLabel(
@@ -137,11 +141,7 @@ export function volumeFactorLabel(
   return promoLabel(free, tags)
 }
 
-export function cardGroupKey(t: {
-  title: string
-  size?: string
-  tags?: string[]
-}): string {
+export function cardGroupKey(t: { title: string; size?: string; tags?: string[] }): string {
   const tags = extractTorrentTags(t.title, t.tags || [])
   const res = tags.find((x) => x.tone === 'res')?.label || ''
   const codec = tags.find((x) => x.tone === 'codec')?.label || ''
@@ -186,9 +186,19 @@ function formatBytes(n: number): string {
 // —— 搜索筛选：体积/时间反解析 + 一次性 meta 派生（Search 表格 & SiteTorrentFindDialog 共用）——
 
 const SIZE_UNITS: Record<string, number> = {
-  b: 1, kb: 1024, mb: 1024 ** 2, gb: 1024 ** 3, tb: 1024 ** 4, pb: 1024 ** 5,
-  kib: 1024, mib: 1024 ** 2, gib: 1024 ** 3, tib: 1024 ** 4, pib: 1024 ** 5,
-  byte: 1, bytes: 1,
+  b: 1,
+  kb: 1024,
+  mb: 1024 ** 2,
+  gb: 1024 ** 3,
+  tb: 1024 ** 4,
+  pb: 1024 ** 5,
+  kib: 1024,
+  mib: 1024 ** 2,
+  gib: 1024 ** 3,
+  tib: 1024 ** 4,
+  pib: 1024 ** 5,
+  byte: 1,
+  bytes: 1,
 }
 
 /** Parse human size ("4.3 GB"/"709.84MB"/"1.2TiB") → bytes; 0 if unparseable. Inverse of formatTorrentSize. */
@@ -213,7 +223,11 @@ export function parsePubDateToMs(raw?: string | null): number {
   if (!raw) return 0
   const s = String(raw).trim()
   if (!s) return 0
-  const iso = s.replace(/[年\/.]/g, '-').replace(/月/g, '-').replace(/日/g, '').replace('T', ' ')
+  const iso = s
+    .replace(/[年\/.]/g, '-')
+    .replace(/月/g, '-')
+    .replace(/日/g, '')
+    .replace('T', ' ')
   const d = new Date(iso)
   const t = d.getTime()
   if (!Number.isNaN(t)) return t
@@ -222,8 +236,13 @@ export function parsePubDateToMs(raw?: string | null): number {
   if (rel) {
     const n = Number(rel[1])
     const unitMs: Record<string, number> = {
-      秒: 1000, 分钟: 60_000, 小时: 3_600_000, 天: 86_400_000,
-      周: 604_800_000, 月: 2_592_000_000, 年: 31_536_000_000,
+      秒: 1000,
+      分钟: 60_000,
+      小时: 3_600_000,
+      天: 86_400_000,
+      周: 604_800_000,
+      月: 2_592_000_000,
+      年: 31_536_000_000,
     }
     const ms = unitMs[rel[2]]
     if (ms) return Date.now() - n * ms
@@ -245,28 +264,30 @@ export interface EnrichedMeta {
 }
 
 /** Enrich any torrent-like row with filterable meta in one pass (avoids repeated regex). */
-export function enrichTorrent<T extends {
-  title?: string
-  subtitle?: string
-  size?: string | number
-  free?: boolean
-  uploadvolumefactor?: number
-  downloadvolumefactor?: number
-  tags?: string[] | null
-  labels?: string[] | null
-  category?: string
-  pub_date?: string
-  time?: string
-}>(row: T): T & EnrichedMeta {
-  const tagSeed = [...(row.tags || []), ...(row.labels || []), row.category || ''].filter((x): x is string => typeof x === 'string')
+export function enrichTorrent<
+  T extends {
+    title?: string
+    subtitle?: string
+    size?: string | number
+    free?: boolean
+    uploadvolumefactor?: number
+    downloadvolumefactor?: number
+    tags?: string[] | null
+    labels?: string[] | null
+    category?: string
+    pub_date?: string
+    time?: string
+  },
+>(row: T): T & EnrichedMeta {
+  const tagSeed = [...(row.tags || []), ...(row.labels || []), row.category || ''].filter(
+    (x): x is string => typeof x === 'string',
+  )
   const tags = extractTorrentTags(`${row.title || ''} ${row.subtitle || ''}`, tagSeed)
   const pick = (tone: string) => tags.find((t) => t.tone === tone)?.label || ''
-  const promo = volumeFactorLabel(
-    row.uploadvolumefactor,
-    row.downloadvolumefactor,
-    row.free,
-    [...(row.tags || []), ...(row.labels || [])],
-  )
+  const promo = volumeFactorLabel(row.uploadvolumefactor, row.downloadvolumefactor, row.free, [
+    ...(row.tags || []),
+    ...(row.labels || []),
+  ])
   return {
     ...row,
     tags,

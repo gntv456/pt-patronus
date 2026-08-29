@@ -48,9 +48,14 @@ export function useUiPrefs() {
     const p = normalized()
     const body = document.body
     const setAttr = (name: string, v: string | null) => {
-      if (v && v !== 'none' && !(name === 'data-theme-accent' && v === 'violet') &&
-          !(name === 'data-ui-style' && v === 'glass') && !(name === 'data-card-style' && v === 'shadow') &&
-          !(name === 'data-wallpaper-mask' && v === 'standard')) {
+      if (
+        v &&
+        v !== 'none' &&
+        !(name === 'data-theme-accent' && v === 'violet') &&
+        !(name === 'data-ui-style' && v === 'glass') &&
+        !(name === 'data-card-style' && v === 'shadow') &&
+        !(name === 'data-wallpaper-mask' && v === 'standard')
+      ) {
         body.setAttribute(name, v)
       } else {
         body.removeAttribute(name)
@@ -88,7 +93,9 @@ export function useUiPrefs() {
         bingFetchedToday = `https://www.bing.com${path}_UHD.jpg`
         apply()
       }
-    } catch { /* 网络失败：保留现值 */ }
+    } catch {
+      /* 网络失败：保留现值 */
+    }
   }
 
   // 偏好到达（本地或服务端合并）即应用 + 持续响应变更

@@ -129,7 +129,13 @@ export function hueOf(name: string): number {
   return h
 }
 
-export function drawAvatarFallback(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, name: string): void {
+export function drawAvatarFallback(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  name: string,
+): void {
   ctx.save()
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)

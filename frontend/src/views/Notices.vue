@@ -59,9 +59,7 @@ const onlyUnread = computed(() => filter.value === 'unread')
 
 const unreadCount = computed(() => notices.value.filter((n) => !n.read).length)
 const urgentSources = new Set<NoticeSource>(['assess_fail', 'host_offline', 'nas_offline', 'site_offline'])
-const urgentUnread = computed(() =>
-  notices.value.filter((n) => !n.read && urgentSources.has(n.source)).length,
-)
+const urgentUnread = computed(() => notices.value.filter((n) => !n.read && urgentSources.has(n.source)).length)
 
 // 分组折叠：按 source 聚合
 const expandedGroups = ref<Set<string>>(new Set())
@@ -205,11 +203,16 @@ onMounted(load)
     <div class="head">
       <h2 class="title">
         {{ t('notices.title') }}
-        <small v-if="unreadCount">{{ t('notices.unread', { n: unreadCount }) }}<template v-if="urgentUnread"> · {{ t('notices.urgent', { n: urgentUnread }) }}</template></small>
+        <small v-if="unreadCount"
+          >{{ t('notices.unread', { n: unreadCount })
+          }}<template v-if="urgentUnread"> · {{ t('notices.urgent', { n: urgentUnread }) }}</template></small
+        >
       </h2>
       <div class="head-tools">
         <div class="filter glass">
-          <button class="filter-btn" :class="{ on: filter === 'all' }" @click="filter = 'all'">{{ t('notices.filter.all') }}</button>
+          <button class="filter-btn" :class="{ on: filter === 'all' }" @click="filter = 'all'">
+            {{ t('notices.filter.all') }}
+          </button>
           <button class="filter-btn" :class="{ on: filter === 'unread' }" @click="filter = 'unread'">
             {{ t('notices.filter.unread') }}<span v-if="unreadCount" class="filter-badge">{{ unreadCount }}</span>
           </button>
@@ -223,6 +226,7 @@ onMounted(load)
     <div class="groups">
       <div v-for="g in grouped" :key="g.source" class="group glass">
         <div
+          v-a11y-button
           class="group-head"
           :class="{ 'group-head--unread': g.unreadCount > 0 }"
           @click="toggleGroup(g.source)"
@@ -243,16 +247,14 @@ onMounted(load)
           </span>
         </div>
         <div v-if="isGroupExpanded(g.source)" class="group-items">
-          <div
-            v-for="n in g.items"
-            :key="n.id"
-            class="item"
-            :class="{ 'item--unread': !n.read }"
-          >
-            <span class="g-ic g-ic--sub" :style="{ color: meta(n.source).color, background: meta(n.source).color + '1f' }">
+          <div v-for="n in g.items" :key="n.id" class="item" :class="{ 'item--unread': !n.read }">
+            <span
+              class="g-ic g-ic--sub"
+              :style="{ color: meta(n.source).color, background: meta(n.source).color + '1f' }"
+            >
               <SptIcon :name="meta(n.source).icon" :size="15" />
             </span>
-            <div class="item-body" @click="onBodyClick(n)">
+            <div v-a11y-button class="item-body" @click="onBodyClick(n)">
               <div class="item-row">
                 <span class="item-name">{{ n.title }}</span>
                 <span class="item-time">{{ relTime(n.created_at) }}</span>
@@ -269,8 +271,12 @@ onMounted(load)
             </div>
           </div>
           <div class="group-footer">
-            <button v-if="g.unreadCount" class="g-foot-btn" @click="readGroup(g)">{{ t('notices.markGroupRead') }}</button>
-            <button class="g-foot-btn g-foot-btn--danger" @click="removeGroup(g)">{{ t('notices.deleteGroup') }}</button>
+            <button v-if="g.unreadCount" class="g-foot-btn" @click="readGroup(g)">
+              {{ t('notices.markGroupRead') }}
+            </button>
+            <button class="g-foot-btn g-foot-btn--danger" @click="removeGroup(g)">
+              {{ t('notices.deleteGroup') }}
+            </button>
           </div>
         </div>
       </div>
@@ -286,48 +292,259 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-3); }
-.title { margin: 4px 0; font-size: var(--fs-title); font-weight: 700; }
-.title small { margin-left: 8px; color: var(--text-muted); font-weight: 500; font-size: var(--fs-md); }
-.head-tools { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.filter { display: inline-flex; padding: 4px; gap: var(--sp-1); border-radius: var(--radius-sm); }
-.filter-btn { background: transparent; border: none; cursor: pointer; padding: 6px 14px; border-radius: var(--radius-xs); font-size: var(--fs-body); color: var(--text-strong); display: inline-flex; align-items: center; gap: var(--sp-1); transition: all var(--dur-base) var(--ease-out-smooth); }
-.filter-btn:hover:not(.on) { background: var(--surface-muted); }
-.filter-btn.on { background: var(--pt-primary-bg); color: var(--pt-primary,#6c5ce7); font-weight: 600; }
-.filter-badge { min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--radius-pill); background: var(--pt-primary,#6c5ce7); color: #fff; font-size: var(--fs-2xs); font-weight: 700; display: inline-flex; align-items: center; justify-content: center; line-height: 1; }
-.groups { display: flex; flex-direction: column; gap: var(--sp-3); }
-.group { overflow: hidden; }
-.group-head { display: flex; align-items: center; gap: var(--sp-3); padding: 16px 18px; cursor: pointer; transition: background var(--dur-fast) var(--ease-out-smooth); }
-.group-head:hover { background: var(--surface-hover); }
-.group-head--unread { background: var(--pt-primary-bg); }
-.g-ic { flex: none; width: 38px; height: 38px; border-radius: var(--radius-sm); display: inline-flex; align-items: center; justify-content: center; }
-.g-info { flex: 1; min-width: 0; }
-.g-title { font-size: var(--fs-lg); font-weight: 700; color: var(--text-strong); display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
-.g-count { color: var(--text-muted); font-weight: 500; font-size: var(--fs-xs); }
-.g-unread { color: var(--pt-primary,#6c5ce7); font-weight: 600; font-size: var(--fs-xs); }
-.g-sub { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.g-chevron { flex: none; color: var(--text-muted); transition: transform var(--dur-base) var(--ease-out-smooth); }
-.g-chevron--open { transform: rotate(180deg); }
-.group-items { border-top: 1px solid var(--divider); }
-.item { display: flex; align-items: flex-start; gap: var(--sp-3); padding: 12px 18px 12px 50px; border-bottom: 1px solid var(--divider); transition: background var(--dur-fast) var(--ease-out-smooth); }
-.item:last-of-type { border-bottom: none; }
-.item:hover { background: var(--surface-hover); }
-.item--unread { background: var(--pt-primary-bg); }
-.g-ic--sub { width: 28px; height: 28px; opacity: 0.85; }
-.item-body { flex: 1; min-width: 0; cursor: pointer; }
-.item-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); }
-.item-name { font-size: var(--fs-md); font-weight: 600; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.item-time { font-size: var(--fs-xs); color: var(--text-muted); flex: none; }
-.item-text { font-size: var(--fs-body); color: var(--text-strong); opacity: 0.75; margin-top: 3px; line-height: 1.5; word-break: break-word; }
-.item-actions { flex: none; display: flex; gap: var(--sp-1); opacity: 0; transition: opacity var(--dur-fast) var(--ease-out-smooth); }
-.item:hover .item-actions { opacity: 1; }
-.item-act { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px; border-radius: var(--radius-xs); display: inline-flex; transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
-.item-act:hover { color: var(--pt-primary,#6c5ce7); background: var(--pt-primary-bg); }
-.item-act--del:hover { color: var(--pt-danger); background: var(--pt-danger-bg); }
-.group-footer { display: flex; gap: var(--sp-2); padding: 8px 18px 12px 50px; }
-.g-foot-btn { background: none; border: none; cursor: pointer; color: var(--pt-primary,#6c5ce7); font-size: var(--fs-xs); padding: 4px 8px; border-radius: var(--radius-xs); transition: background var(--dur-fast) var(--ease-out-smooth), color var(--dur-fast) var(--ease-out-smooth), border-color var(--dur-fast) var(--ease-out-smooth) }
-.g-foot-btn:hover { background: var(--pt-primary-bg); }
-.g-foot-btn--danger { color: var(--pt-danger); }
-.g-foot-btn--danger:hover { background: var(--pt-danger-bg); }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.title small {
+  margin-left: 8px;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: var(--fs-md);
+}
+.head-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.filter {
+  display: inline-flex;
+  padding: 4px;
+  gap: var(--sp-1);
+  border-radius: var(--radius-sm);
+}
+.filter-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-body);
+  color: var(--text-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  transition: all var(--dur-base) var(--ease-out-smooth);
+}
+.filter-btn:hover:not(.on) {
+  background: var(--surface-muted);
+}
+.filter-btn.on {
+  background: var(--pt-primary-bg);
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+}
+.filter-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--pt-primary, #6c5ce7);
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.group {
+  overflow: hidden;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out-smooth);
+}
+.group-head:hover {
+  background: var(--surface-hover);
+}
+.group-head--unread {
+  background: var(--pt-primary-bg);
+}
+.g-ic {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.g-info {
+  flex: 1;
+  min-width: 0;
+}
+.g-title {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  color: var(--text-strong);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.g-count {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: var(--fs-xs);
+}
+.g-unread {
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+  font-size: var(--fs-xs);
+}
+.g-sub {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.g-chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform var(--dur-base) var(--ease-out-smooth);
+}
+.g-chevron--open {
+  transform: rotate(180deg);
+}
+.group-items {
+  border-top: 1px solid var(--divider);
+}
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: 12px 18px 12px 50px;
+  border-bottom: 1px solid var(--divider);
+  transition: background var(--dur-fast) var(--ease-out-smooth);
+}
+.item:last-of-type {
+  border-bottom: none;
+}
+.item:hover {
+  background: var(--surface-hover);
+}
+.item--unread {
+  background: var(--pt-primary-bg);
+}
+.g-ic--sub {
+  width: 28px;
+  height: 28px;
+  opacity: 0.85;
+}
+.item-body {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.item-name {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item-time {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  flex: none;
+}
+.item-text {
+  font-size: var(--fs-body);
+  color: var(--text-strong);
+  opacity: 0.75;
+  margin-top: 3px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.item-actions {
+  flex: none;
+  display: flex;
+  gap: var(--sp-1);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out-smooth);
+}
+.item:hover .item-actions {
+  opacity: 1;
+}
+.item-act {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: var(--radius-xs);
+  display: inline-flex;
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth);
+}
+.item-act:hover {
+  color: var(--pt-primary, #6c5ce7);
+  background: var(--pt-primary-bg);
+}
+.item-act--del:hover {
+  color: var(--pt-danger);
+  background: var(--pt-danger-bg);
+}
+.group-footer {
+  display: flex;
+  gap: var(--sp-2);
+  padding: 8px 18px 12px 50px;
+}
+.g-foot-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--pt-primary, #6c5ce7);
+  font-size: var(--fs-xs);
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  transition:
+    background var(--dur-fast) var(--ease-out-smooth),
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth);
+}
+.g-foot-btn:hover {
+  background: var(--pt-primary-bg);
+}
+.g-foot-btn--danger {
+  color: var(--pt-danger);
+}
+.g-foot-btn--danger:hover {
+  background: var(--pt-danger-bg);
+}
 </style>

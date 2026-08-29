@@ -38,7 +38,13 @@ async function totpAt(secretB32: string, counter: number): Promise<string> {
   const msg = new Uint8Array(8)
   // 高 4 字节为 0（counter < 2^32 足够）；DataView 大端写低 4 字节
   new DataView(msg.buffer).setUint32(4, counter)
-  const cryptoKey = await crypto.subtle.importKey('raw', key.buffer as ArrayBuffer, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign'])
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    key.buffer as ArrayBuffer,
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign'],
+  )
   const sig = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, msg.buffer as ArrayBuffer))
   const offset = sig[sig.length - 1] & 0x0f
   const code = ((sig[offset] & 0x7f) << 24) | (sig[offset + 1] << 16) | (sig[offset + 2] << 8) | sig[offset + 3]
@@ -91,7 +97,12 @@ function copyText(text: string) {
 // ---- 网络连通性测试 ----
 const netTarget = ref('https://www.google.com')
 const netResults = ref<{ url: string; ok: boolean; ms: number; err?: string }[]>([])
-const DEFAULT_TARGETS = ['https://www.baidu.com', 'https://api.themoviedb.org', 'https://github.com', 'https://pt.hdhome.org']
+const DEFAULT_TARGETS = [
+  'https://www.baidu.com',
+  'https://api.themoviedb.org',
+  'https://github.com',
+  'https://pt.hdhome.org',
+]
 const netTesting = ref(false)
 
 async function probe(url: string): Promise<{ url: string; ok: boolean; ms: number; err?: string }> {
@@ -100,7 +111,12 @@ async function probe(url: string): Promise<{ url: string; ok: boolean; ms: numbe
     await fetch(url, { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(8000) })
     return { url, ok: true, ms: Math.round(performance.now() - t0) }
   } catch (e: any) {
-    return { url, ok: false, ms: Math.round(performance.now() - t0), err: e?.name === 'TimeoutError' ? t('dqt.timeout') : t('common.failed') }
+    return {
+      url,
+      ok: false,
+      ms: Math.round(performance.now() - t0),
+      err: e?.name === 'TimeoutError' ? t('dqt.timeout') : t('common.failed'),
+    }
   }
 }
 
@@ -143,8 +159,12 @@ async function runNet() {
           </el-radio-group>
           <el-button size="small" type="primary" @click="genAes">{{ t('dqt.generate') }}</el-button>
           <div v-if="aesKey" class="aes-out">
-            <div class="aes-row"><span>Key</span><code @click="copyText(aesKey)">{{ aesKey }}</code></div>
-            <div class="aes-row"><span>IV</span><code @click="copyText(aesIv)">{{ aesIv }}</code></div>
+            <div class="aes-row">
+              <span>Key</span><code @click="copyText(aesKey)">{{ aesKey }}</code>
+            </div>
+            <div class="aes-row">
+              <span>IV</span><code @click="copyText(aesIv)">{{ aesIv }}</code>
+            </div>
           </div>
           <span v-else class="qt-hint">{{ t('dqt.aesHint') }}</span>
         </div>
@@ -154,8 +174,8 @@ async function runNet() {
       <div class="qt-card">
         <div class="qt-head">📡 {{ t('dqt.net') }}</div>
         <div class="qt-body">
-          <div style="display:flex;gap:8px;width:100%">
-            <el-input v-model="netTarget" :placeholder="t('dqt.netPh')" size="small" style="flex:1" />
+          <div style="display: flex; gap: 8px; width: 100%">
+            <el-input v-model="netTarget" :placeholder="t('dqt.netPh')" size="small" style="flex: 1" />
             <el-button size="small" type="primary" :loading="netTesting" @click="runNet">{{ t('dqt.test') }}</el-button>
           </div>
           <div v-if="netResults.length" class="net-list">
@@ -181,24 +201,99 @@ async function runNet() {
 </template>
 
 <style scoped>
-.quick-tools { padding: var(--sp-4) var(--sp-5); }
-.qt-title { font-weight: 700; font-size: var(--fs-md); margin-bottom: var(--sp-3); }
-.qt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--sp-3); }
-.qt-card { border: 1px solid var(--divider); border-radius: var(--radius-md); padding: var(--sp-3); background: var(--surface-muted); }
-.qt-head { font-weight: 600; font-size: var(--fs-body); margin-bottom: var(--sp-2); }
-.qt-body { display: flex; flex-direction: column; gap: var(--sp-2); }
-.qt-hint { font-size: var(--fs-xs); color: var(--text-muted); }
-.totp-row { display: flex; align-items: center; gap: var(--sp-2); }
-.totp-account { font-size: var(--fs-xs); color: var(--text-muted); width: 44px; }
-.totp-code { font-size: var(--fs-lg); font-weight: 700; letter-spacing: 2px; cursor: pointer; }
-.totp-sec { font-size: var(--fs-xs); color: var(--text-disabled); margin-left: auto; }
-.aes-out { display: flex; flex-direction: column; gap: 4px; }
-.aes-row { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); }
-.aes-row span { color: var(--text-muted); flex-shrink: 0; }
-.aes-row code { word-break: break-all; cursor: pointer; }
-.net-list { display: flex; flex-direction: column; gap: 4px; }
-.net-row { display: flex; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-xs); }
-.net-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.net-ms.ok { color: var(--pt-success); }
-.net-ms.bad { color: var(--pt-danger); }
+.quick-tools {
+  padding: var(--sp-4) var(--sp-5);
+}
+.qt-title {
+  font-weight: 700;
+  font-size: var(--fs-md);
+  margin-bottom: var(--sp-3);
+}
+.qt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--sp-3);
+}
+.qt-card {
+  border: 1px solid var(--divider);
+  border-radius: var(--radius-md);
+  padding: var(--sp-3);
+  background: var(--surface-muted);
+}
+.qt-head {
+  font-weight: 600;
+  font-size: var(--fs-body);
+  margin-bottom: var(--sp-2);
+}
+.qt-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.qt-hint {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.totp-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.totp-account {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  width: 44px;
+}
+.totp-code {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+}
+.totp-sec {
+  font-size: var(--fs-xs);
+  color: var(--text-disabled);
+  margin-left: auto;
+}
+.aes-out {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.aes-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.aes-row span {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.aes-row code {
+  word-break: break-all;
+  cursor: pointer;
+}
+.net-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.net-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.net-url {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.net-ms.ok {
+  color: var(--pt-success);
+}
+.net-ms.bad {
+  color: var(--pt-danger);
+}
 </style>

@@ -5,6 +5,7 @@ import router from './router'
 import { i18n } from './i18n'
 import { showErrorOverlay } from './utils/errorOverlay'
 import { useUiPrefs } from './composables/useUiPrefs'
+import { a11yButton } from './directives/a11yButton'
 import './styles/glass.css'
 import './styles/dialog.css'
 
@@ -23,6 +24,8 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(i18n)
 app.use(router)
+// 可点击 div 的键盘可达（a11y）：v-a11y-button = role=button + tabindex + Enter/Space
+app.directive('a11y-button', a11yButton)
 
 // 全局错误兜底：Vue 渲染错误默认会卸载出错组件树 → 整页白屏（终端用户零信息）。
 // errorHandler + window error/unhandledrejection 三路捕获后弹可见错误卡片

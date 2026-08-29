@@ -2,9 +2,13 @@ package v1
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +59,7 @@ func newAuthTestEnv(t *testing.T, fake auth.HxptAuthenticator, demoMode bool) (*
 	}
 	j := security.NewJWT("auth-login-test-secret", 60)
 	tv := auth.NewTokenVersionCache(db, time.Minute)
-	h := NewAuthHandler(db, j, nil, fake, security.NewCrypto("seed"), tv, auth.NewTicketStore(), demoMode, nil)
+	h := NewAuthHandler(db, j, nil, fake, security.NewCrypto("seed"), tv, auth.NewTicketStore(), demoMode, nil, false)
 	r := gin.New()
 	r.POST("/auth/login", h.HxptLogin)
 	r.POST("/auth/cookie-login", h.HxptCookieLogin)
@@ -338,5 +342,91 @@ func TestWsTicket_Issue(t *testing.T) {
 	}
 	if expiresIn, _ := body["expires_in"].(float64); expiresIn <= 0 {
 		t.Fatalf("应带正的 expires_in: %v", body)
+	}
+}
+
+// ── 应急登录（HXPT_EMERGENCY_ADMIN）─────────────────────────────
+
+// withEmergencyAdmin 临时设置环境变量并在测试结束后恢复。
+func withEmergencyAdmin(t *testing.T, value string) {
+	t.Helper()
+	old, had := os.LookupEnv("HXPT_EMERGENCY_ADMIN")
+	os.Setenv("HXPT_EMERGENCY_ADMIN", value)
+	t.Cleanup(func() {
+		if had {
+			os.Setenv("HXPT_EMERGENCY_ADMIN", old)
+		} else {
+			os.Unsetenv("HXPT_EMERGENCY_ADMIN")
+		}
+	})
+}
+
+// emergencyPasscode 推导与生产一致的应急口令：HMAC-SHA256(secret, user) 前 16 hex。
+func emergencyPasscode(secret, user string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write([]byte(user))
+	return hex.EncodeToString(mac.Sum(nil))[:16]
+}
+
+// TestEmergencyLogin_UserPassRequired 用户名+口令都正确才放行；仅用户名（旧格式）必须被拒。
+func TestEmergencyLogin_UserPassRequired(t *testing.T) {
+	// fake 返回明确登录失败：确保任何「未被应急通道放行」的请求都必然走好学路径并失败
+	r, _, _, _ := newAuthTestEnv(t, &fakeHxptAuth{loginErr: site.ErrLoginFailed}, false)
+	const user = "ops"
+	code := emergencyPasscode("auth-login-test-secret", user)
+
+	withEmergencyAdmin(t, user+":"+code)
+	w := postJSON(t, r, "/auth/login", `{"username":"`+user+`","password":"`+code+`"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("user+passcode should bypass: got %d body %s", w.Code, w.Body.String())
+	}
+
+	// 口令错误 → 不放行，走好学登录路径（fake 无 outcome → loginErr 非法请求，非 200）
+	withEmergencyAdmin(t, user+":"+code)
+	w = postJSON(t, r, "/auth/login", `{"username":"`+user+`","password":"wrong"}`)
+	if w.Code == http.StatusOK {
+		t.Fatal("wrong passcode must not bypass")
+	}
+
+	// 旧格式（仅用户名，无口令段）→ 不放行：防止 env 泄露用户名即后门
+	withEmergencyAdmin(t, user)
+	w = postJSON(t, r, "/auth/login", `{"username":"`+user+`","password":"anything"}`)
+	if w.Code == http.StatusOK {
+		t.Fatal("legacy bare-username env must not bypass")
+	}
+
+	// 用户名不匹配 → 不放行
+	withEmergencyAdmin(t, user+":"+code)
+	w = postJSON(t, r, "/auth/login", `{"username":"other","password":"`+code+`"}`)
+	if w.Code == http.StatusOK {
+		t.Fatal("username mismatch must not bypass")
+	}
+}
+
+// TestLogin_SetsHttpOnlyCookie 登录响应必须同时种 httpOnly ptp_token cookie
+// （Web 端 XSS 不可读的会话通道）；logout 必须清除。
+func TestLogin_SetsHttpOnlyCookie(t *testing.T) {
+	r, _, _, _ := newAuthTestEnv(t, &fakeHxptAuth{loginErr: site.ErrLoginFailed}, false)
+	const user = "cookieuser"
+	code := emergencyPasscode("auth-login-test-secret", user)
+	withEmergencyAdmin(t, user+":"+code)
+	w := postJSON(t, r, "/auth/login", `{"username":"`+user+`","password":"`+code+`"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("login should succeed via emergency: %d", w.Code)
+	}
+	found := false
+	for _, ck := range w.Result().Cookies() {
+		if ck.Name == "ptp_token" {
+			found = true
+			if !ck.HttpOnly {
+				t.Fatal("ptp_token cookie must be HttpOnly")
+			}
+			if ck.Path != "/api/v1" {
+				t.Fatalf("cookie path should scope to /api/v1, got %s", ck.Path)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("login response must set ptp_token cookie")
 	}
 }

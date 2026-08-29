@@ -5,13 +5,23 @@
 export function friendlySiteError(raw?: string): string {
   if (!raw) return ''
   const e = raw.toLowerCase()
-  if (e.includes('cookie') || e.includes('unauthorized') || e.includes('401') || e.includes('login') || e.includes('auth'))
+  if (
+    e.includes('cookie') ||
+    e.includes('unauthorized') ||
+    e.includes('401') ||
+    e.includes('login') ||
+    e.includes('auth')
+  )
     return '站点登录已失效，请在「站点」页重新配置 Cookie'
-  if (e.includes('deadline') || e.includes('timeout') || e.includes('timed out'))
-    return '站点响应超时，请稍后重试'
-  if (e.includes('404') || e.includes('not found') || e.includes('no such'))
-    return '站点页面结构变更，待校准'
-  if (e.includes('502') || e.includes('503') || e.includes('504') || e.includes('unavailable') || e.includes('server error'))
+  if (e.includes('deadline') || e.includes('timeout') || e.includes('timed out')) return '站点响应超时，请稍后重试'
+  if (e.includes('404') || e.includes('not found') || e.includes('no such')) return '站点页面结构变更，待校准'
+  if (
+    e.includes('502') ||
+    e.includes('503') ||
+    e.includes('504') ||
+    e.includes('unavailable') ||
+    e.includes('server error')
+  )
     return '站点暂时不可用'
   return '该站点获取失败'
 }

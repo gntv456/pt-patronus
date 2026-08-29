@@ -24,3 +24,11 @@ mobile
 # 本地环境
 .env
 *.local
+
+# 本地调试工作区（含浏览器 profile 凭据，绝不进 build context）
+.tmp
+tmp
+dist
+node_modules
+mobile/flutter_*.log
+mobile/*-build*.log

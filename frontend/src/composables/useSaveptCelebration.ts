@@ -7,7 +7,7 @@ import type { SaveptSiteCard } from '@/api/savept'
 type ConfettiFn = ((opts: Record<string, unknown>) => unknown) & { reset?: () => void }
 type ConfettiFactory = (canvas: HTMLCanvasElement, opts: Record<string, unknown>) => ConfettiFn
 type ConfettiMain = ConfettiFn & { create?: ConfettiFactory }
-type ConfettiModule = ({ default?: ConfettiMain; create?: ConfettiFactory } & Partial<ConfettiMain>)
+type ConfettiModule = { default?: ConfettiMain; create?: ConfettiFactory } & Partial<ConfettiMain>
 
 const celebrationCanvasRefs = new Map<string, HTMLCanvasElement>()
 const celebrationInstances = new Map<string, ConfettiFn>()
@@ -64,10 +64,7 @@ function burstOpts(side: 'left' | 'right') {
     ticks: c ? 70 : 95,
     gravity: c ? 1.08 : 0.96,
     drift: side === 'left' ? 0.08 : -0.08,
-    origin:
-      side === 'left'
-        ? { x: c ? 0.08 : 0.06, y: c ? 0.94 : 0.92 }
-        : { x: c ? 0.92 : 0.94, y: c ? 0.94 : 0.92 },
+    origin: side === 'left' ? { x: c ? 0.08 : 0.06, y: c ? 0.94 : 0.92 } : { x: c ? 0.92 : 0.94, y: c ? 0.94 : 0.92 },
     colors: ['#f59e0b', '#facc15', '#fb7185', '#22c55e', '#38bdf8'],
   }
 }
@@ -83,7 +80,10 @@ function destroyInstance(key: string) {
 }
 function queueLoop(key: string) {
   stopLoop(key)
-  celebrationTimers.set(key, setTimeout(() => startLoop(key), loopDelay()))
+  celebrationTimers.set(
+    key,
+    setTimeout(() => startLoop(key), loopDelay()),
+  )
 }
 async function startLoop(key: string) {
   stopLoop(key)
@@ -110,8 +110,8 @@ function handleVisibilityChange() {
   syncCelebration()
 }
 
-// 由调用方提供的分组数据
-let activeAnniversaryKeys = ref<string[]>([])
+// 由调用方提供的分组数据（模块级缓存 computed，避免每次调用重建）
+let activeAnniversaryKeys = computed((): string[] => [])
 
 function setCelebrationRef(key: string, el: Element | null) {
   if (el) celebrationCanvasRefs.set(key, el as HTMLCanvasElement)
@@ -119,12 +119,14 @@ function setCelebrationRef(key: string, el: Element | null) {
 }
 
 export function useSaveptCelebration(
-  groupedSites: { year: string; items: SaveptSiteCard[] }[],
+  groupedSites: () => { year: string; items: SaveptSiteCard[] }[],
   isYearGroupCollapsed: (year: string) => boolean,
 ) {
+  // computed 赋给 ref 变量本身（activeAnniversaryKeys = computed(...)）而非 .value——
+  // .value 是 string[] 不吃 ComputedRef；改为持有 computed 并在读取处解包。
   activeAnniversaryKeys = computed(() => {
     const keys: string[] = []
-    for (const g of groupedSites) {
+    for (const g of groupedSites()) {
       if (isYearGroupCollapsed(g.year)) continue
       for (const card of g.items) {
         if (isTodayAnniversaryText(card.anniversary_text)) keys.push(`${g.year}-${card.name || card.url}`)
@@ -133,7 +135,14 @@ export function useSaveptCelebration(
     return keys
   })
 
-  watch(activeAnniversaryKeys, async () => { await nextTick(); syncCelebration() }, { flush: 'post' })
+  watch(
+    activeAnniversaryKeys,
+    async () => {
+      await nextTick()
+      syncCelebration()
+    },
+    { flush: 'post' },
+  )
 
   onMounted(() => {
     reducedMotionMQ = window.matchMedia('(prefers-reduced-motion: reduce)')

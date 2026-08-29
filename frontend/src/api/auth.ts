@@ -58,8 +58,7 @@ export const authApi = {
 
   // 好学账号登录（两步：先 hxptCaptcha 取验证码，再 hxptLogin）
   hxptCaptcha: () => http.post<CaptchaChallenge>('/auth/hxpt/captcha').then((r) => r.data),
-  hxptLogin: (p: HxptLoginParams) =>
-    http.post<LoginResult>('/auth/hxpt/login', p).then((r) => r.data),
+  hxptLogin: (p: HxptLoginParams) => http.post<LoginResult>('/auth/hxpt/login', p).then((r) => r.data),
 
   // 好学 Cookie 登录（最稳，覆盖 2FA / 挑战响应账号）
   hxptCookieLogin: (cookie: string) =>
@@ -71,16 +70,13 @@ export const authApi = {
   logout: () => http.post('/auth/logout'),
 
   // 一次性 WS/RTSP ticket（guarded 内用 header JWT 换取；再用 ?ticket= 连，避免 JWT 落 URL）
-  wsTicket: () =>
-    http.post<{ ticket: string; expires_in: number }>('/auth/ws-ticket').then((r) => r.data),
+  wsTicket: () => http.post<{ ticket: string; expires_in: number }>('/auth/ws-ticket').then((r) => r.data),
 
   // 好学 VIP 校验（公开端点，供前端探测）
-  verifyVip: (cookie: string) =>
-    http.post<VIPStatus>('/auth/verify-vip', { cookie }).then((r) => r.data),
+  verifyVip: (cookie: string) => http.post<VIPStatus>('/auth/verify-vip', { cookie }).then((r) => r.data),
 
   // legacy 激活码（保留兼容）
-  activate: (code: string, deviceId = 'default') =>
-    http.post('/auth/activate', { code, device_id: deviceId }),
+  activate: (code: string, deviceId = 'default') => http.post('/auth/activate', { code, device_id: deviceId }),
 
   // 用户界面偏好（跨浏览器同步，服务端按域存储；value 为 JSON 串）
   getPreferences: (key: string) =>

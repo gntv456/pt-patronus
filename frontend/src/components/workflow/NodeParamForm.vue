@@ -20,10 +20,16 @@ watch(
   () => props.schema,
   (s) => {
     if (s.some((f) => f.type === 'site_select') && !sites.value.length) {
-      siteApi.list().then((l) => (sites.value = l)).catch(() => {})
+      siteApi
+        .list()
+        .then((l) => (sites.value = l))
+        .catch(() => {})
     }
     if (s.some((f) => f.type === 'downloader_select') && !downloaders.value.length) {
-      downloaderApi.list().then((l) => (downloaders.value = l)).catch(() => {})
+      downloaderApi
+        .list()
+        .then((l) => (downloaders.value = l))
+        .catch(() => {})
     }
   },
   { immediate: true },
@@ -43,17 +49,10 @@ const advOpen = ref(false)
   <div class="param-form">
     <template v-for="f in schema" :key="f.name">
       <div class="field">
-        <label class="lab">
-          {{ f.label }}<span v-if="f.required" class="req">*</span>
-        </label>
+        <label class="lab"> {{ f.label }}<span v-if="f.required" class="req">*</span> </label>
 
         <!-- 文本 -->
-        <el-input
-          v-if="f.type === 'text'"
-          v-model="params[f.name]"
-          size="small"
-          :placeholder="f.help || ''"
-        />
+        <el-input v-if="f.type === 'text'" v-model="params[f.name]" size="small" :placeholder="f.help || ''" />
 
         <!-- 数字 -->
         <el-input-number
@@ -121,7 +120,7 @@ const advOpen = ref(false)
 
     <!-- 高级：循环重试（所有节点通用，参考 MoviePilot loop/loop_interval） -->
     <div class="advanced">
-      <div class="adv-head" @click="advOpen = !advOpen">
+      <div v-a11y-button class="adv-head" @click="advOpen = !advOpen">
         <span>{{ advOpen ? '▼' : '▶' }} {{ t('npf.advRetry') }}</span>
       </div>
       <div v-if="advOpen" class="adv-body">

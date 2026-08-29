@@ -47,7 +47,11 @@ const visibleRows = computed(() => {
 })
 // showAll 需要随新搜索重置：父组件控制 loading/results，这里用 watch 不可靠（loading 不一定触发），
 // 改由父组件在每次 search 重置。保留本地 ref 即可。
-defineExpose({ resetShowAll: () => { showAll.value = false } })
+defineExpose({
+  resetShowAll: () => {
+    showAll.value = false
+  },
+})
 </script>
 
 <template>
@@ -102,7 +106,9 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
             <div v-if="row.subtitle" class="t-sub text-muted">{{ row.subtitle }}</div>
             <div v-if="row.promo || row.tags?.length" class="t-tags">
               <span v-if="row.promo" class="ttag promo" :class="`tone-${row.promo.tone}`">{{ row.promo.text }}</span>
-              <span v-for="tag in row.tags" :key="tag.label" class="ttag" :class="`tone-${tag.tone}`">{{ tag.label }}</span>
+              <span v-for="tag in row.tags" :key="tag.label" class="ttag" :class="`tone-${tag.tone}`">{{
+                tag.label
+              }}</span>
             </div>
           </template>
         </el-table-column>
@@ -125,13 +131,22 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
         </el-table-column>
         <el-table-column :label="t('common.action')" width="160" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="emit('startPush', row as SearchRow)">{{ t('trt.download') }}</el-button>
+            <el-button size="small" type="primary" @click="emit('startPush', row as SearchRow)">{{
+              t('trt.download')
+            }}</el-button>
             <el-button size="small" @click="emit('openDetail', row as SearchRow)">{{ t('dc.detail') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
       <div v-if="filter.filtered.value.length > visibleRows.length" class="row-cap">
-        {{ t('trt.showingTop', { shown: visibleRows.length, filtered: filter.filtered.value.length, total: enrichedRows.length }) }} ·
+        {{
+          t('trt.showingTop', {
+            shown: visibleRows.length,
+            filtered: filter.filtered.value.length,
+            total: enrichedRows.length,
+          })
+        }}
+        ·
         <el-button link type="primary" @click="showAll = true">{{ t('trt.showAll') }}</el-button>
       </div>
       <div v-else-if="showAll && filter.filtered.value.length > MAX_ROWS" class="row-cap">
@@ -143,8 +158,16 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
       <EmptyState
         v-else-if="!loading"
         :icon="searched ? (filter.hasActive.value ? '🔎' : '🔍') : '🌱'"
-        :title="searched ? (filter.hasActive.value ? t('trt.emptyFiltered') : t('trt.emptyNoResult')) : t('trt.emptyIdle')"
-        :description="searched ? (filter.hasActive.value ? t('trt.emptyFilteredDesc') : t('trt.emptyNoResultDesc')) : t('trt.emptyIdleDesc')"
+        :title="
+          searched ? (filter.hasActive.value ? t('trt.emptyFiltered') : t('trt.emptyNoResult')) : t('trt.emptyIdle')
+        "
+        :description="
+          searched
+            ? filter.hasActive.value
+              ? t('trt.emptyFilteredDesc')
+              : t('trt.emptyNoResultDesc')
+            : t('trt.emptyIdleDesc')
+        "
       />
     </div>
   </div>
@@ -188,16 +211,36 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
   color: #fff;
   line-height: 1.5;
 }
-.ttag.tone-res { background: #7b1fa2; }
-.ttag.tone-src { background: #8000ff; }
-.ttag.tone-codec { background: #ff9800; }
-.ttag.tone-hdr { background: #e91e63; }
-.ttag.tone-audio { background: #00897b; }
-.ttag.tone-lang { background: #5c6bc0; }
-.ttag.tone-misc { background: #607d8b; }
-.ttag.promo { background: var(--pt-success, #2ecc71); }
-.ttag.promo.tone-half { background: #ff5722; }
-.ttag.promo.tone-double { background: #9c27b0; }
+.ttag.tone-res {
+  background: #7b1fa2;
+}
+.ttag.tone-src {
+  background: #8000ff;
+}
+.ttag.tone-codec {
+  background: #ff9800;
+}
+.ttag.tone-hdr {
+  background: #e91e63;
+}
+.ttag.tone-audio {
+  background: #00897b;
+}
+.ttag.tone-lang {
+  background: #5c6bc0;
+}
+.ttag.tone-misc {
+  background: #607d8b;
+}
+.ttag.promo {
+  background: var(--pt-success, #2ecc71);
+}
+.ttag.promo.tone-half {
+  background: #ff5722;
+}
+.ttag.promo.tone-double {
+  background: #9c27b0;
+}
 .num {
   font-variant-numeric: tabular-nums;
 }
@@ -253,7 +296,11 @@ defineExpose({ resetShowAll: () => { showAll.value = false } })
   display: flex;
   gap: var(--sp-2);
 }
-.row-cap { padding: var(--sp-2) var(--sp-3); font-size: var(--fs-sm); color: var(--text-muted); }
+.row-cap {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
 
 .stream-progress {
   margin: 0 0 10px;

@@ -7,10 +7,21 @@ const { t } = useI18n()
 const props = defineProps<{ siteId: number }>()
 
 const {
-  targets, stats, selectedId, drawing, synthesizing, lastDraw,
-  showHistory, history, historyLoading,
-  selected, progressPct,
-  loadAll, draw, synthesize, toggleHistory,
+  targets,
+  stats,
+  selectedId,
+  drawing,
+  synthesizing,
+  lastDraw,
+  showHistory,
+  history,
+  historyLoading,
+  selected,
+  progressPct,
+  loadAll,
+  draw,
+  synthesize,
+  toggleHistory,
 } = useMedalSynthesis(toRef(props, 'siteId'))
 
 onMounted(loadAll)
@@ -45,7 +56,13 @@ onMounted(loadAll)
       <div v-if="selected" class="panel">
         <!-- 左：目标卡 -->
         <div class="target-card">
-          <img v-if="selected.image" :src="selected.image" :alt="selected.name" class="t-img" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+          <img
+            v-if="selected.image"
+            :src="selected.image"
+            :alt="selected.name"
+            class="t-img"
+            @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+          />
           <div v-else class="t-img placeholder">🏅</div>
           <div class="t-name">{{ selected.name }}</div>
           <div class="t-progress">
@@ -64,14 +81,21 @@ onMounted(loadAll)
               class="frag"
               :class="{ collected: f.current >= f.required && f.required > 0, rare: f.is_rare }"
             >
-              <img v-if="f.image" :src="f.image" :alt="f.name || t('msg2.fragAlt')" class="frag-img" @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')" />
+              <img
+                v-if="f.image"
+                :src="f.image"
+                :alt="f.name || t('msg2.fragAlt')"
+                class="frag-img"
+                @error="(e) => ((e.target as HTMLImageElement).style.display = 'none')"
+              />
               <div v-else class="frag-img placeholder">💠</div>
               <div class="frag-name">{{ f.name || t('msg2.frag') }}</div>
               <div class="frag-count">
-                <span class="cur">{{ f.current }}</span>/<span class="req">{{ f.required }}</span>
+                <span class="cur">{{ f.current }}</span
+                >/<span class="req">{{ f.required }}</span>
               </div>
             </div>
-            <div v-if="!(selected?.fragments?.length)" class="text-muted frag-empty">{{ t('msg2.noFrags') }}</div>
+            <div v-if="!selected?.fragments?.length" class="text-muted frag-empty">{{ t('msg2.noFrags') }}</div>
           </div>
 
           <!-- 操作按钮 -->
@@ -85,14 +109,12 @@ onMounted(loadAll)
             <button class="op draw100" :disabled="!!drawing" @click="draw(100)">
               {{ drawing === 100 ? '…' : t('msg2.draw100') }}<small>{{ fmt(selected.hundred_price) }}</small>
             </button>
-            <button
-              class="op synth"
-              :disabled="synthesizing || !selected.can_synthesize"
-              @click="synthesize"
-            >
+            <button class="op synth" :disabled="synthesizing || !selected.can_synthesize" @click="synthesize">
               {{ synthesizing ? '…' : t('msg2.synth') }}
             </button>
-            <button class="op hist" :class="{ active: showHistory }" @click="toggleHistory">{{ t('msg2.history') }}</button>
+            <button class="op hist" :class="{ active: showHistory }" @click="toggleHistory">
+              {{ t('msg2.history') }}
+            </button>
           </div>
 
           <!-- 上次抽取结果 -->

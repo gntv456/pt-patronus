@@ -280,30 +280,34 @@ export const pluginApi = {
   saveConfig: (id: string, config: Record<string, any>) =>
     http.put<PluginInfo>(`/plugins/${id}/config`, { config }).then((r) => r.data),
   action: (id: string, action: string, input: Record<string, any>) =>
-    http.post<{ ok: boolean; output: Record<string, any> }>(`/plugins/${id}/action`, { action, input }).then((r) => r.data),
+    http
+      .post<{ ok: boolean; output: Record<string, any> }>(`/plugins/${id}/action`, { action, input })
+      .then((r) => r.data),
   logs: (pluginId = '', limit = 100) =>
-    http.get<{ logs: PluginLog[] }>('/plugins/logs', { params: { plugin_id: pluginId, limit } }).then((r) => r.data.logs ?? []),
+    http
+      .get<{ logs: PluginLog[] }>('/plugins/logs', { params: { plugin_id: pluginId, limit } })
+      .then((r) => r.data.logs ?? []),
   publishEvent: (type = 'plugin.test', data: Record<string, any> = { source: 'web' }) =>
     http.post('/plugins/events', { type, data }).then((r) => r.data),
-  market: (source = '') =>
-    http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
+  market: (source = '') => http.get<PluginMarketIndex>('/plugins/market', { params: { source } }).then((r) => r.data),
   // ---- 市场运营层（对标 MSaber：百鸟朝凤/百宝袋/分神/天序） ----
   marketCharts: () =>
     http.get<{ disciples: ChartRow[]; newcomers: ChartRow[] }>('/plugins/market/charts').then((r) => r.data),
   marketFavorites: () =>
     http.get<{ plugins: PluginMarketItem[] }>('/plugins/market/favorites').then((r) => r.data.plugins ?? []),
-  favorite: (id: string) =>
-    http.post(`/plugins/market/favorites/${encodeURIComponent(id)}`).then((r) => r.data),
-  unfavorite: (id: string) =>
-    http.delete(`/plugins/market/favorites/${encodeURIComponent(id)}`).then((r) => r.data),
+  favorite: (id: string) => http.post(`/plugins/market/favorites/${encodeURIComponent(id)}`).then((r) => r.data),
+  unfavorite: (id: string) => http.delete(`/plugins/market/favorites/${encodeURIComponent(id)}`).then((r) => r.data),
   instances: (id: string) =>
-    http.get<{ instances: PluginInstance[]; single_instance: boolean }>(`/plugins/${encodeURIComponent(id)}/instances`)
+    http
+      .get<{ instances: PluginInstance[]; single_instance: boolean }>(`/plugins/${encodeURIComponent(id)}/instances`)
       .then((r) => r.data),
   createInstance: (id: string, instanceKey: string, config: Record<string, unknown> = {}) =>
-    http.post<PluginInstance>(`/plugins/${encodeURIComponent(id)}/instances`, { instance_key: instanceKey, config })
+    http
+      .post<PluginInstance>(`/plugins/${encodeURIComponent(id)}/instances`, { instance_key: instanceKey, config })
       .then((r) => r.data),
   saveInstance: (id: string, key: string, config: Record<string, unknown>, enable: boolean) =>
-    http.put(`/plugins/${encodeURIComponent(id)}/instances/${encodeURIComponent(key)}`, { config, enable })
+    http
+      .put(`/plugins/${encodeURIComponent(id)}/instances/${encodeURIComponent(key)}`, { config, enable })
       .then((r) => r.data),
   deleteInstance: (id: string, key: string) =>
     http.delete(`/plugins/${encodeURIComponent(id)}/instances/${encodeURIComponent(key)}`).then((r) => r.data),
@@ -340,16 +344,14 @@ export const pluginApi = {
   // 插件签名信任配置（管理端）：官方公钥只读 + 用户受信公钥 + 是否允许未签名插件。
   getTrustConfig: () =>
     http
-      .get<{ official_key: string; trusted_public_keys: string[]; allow_unsigned: boolean }>(
-        '/plugins/trust-config',
-      )
+      .get<{ official_key: string; trusted_public_keys: string[]; allow_unsigned: boolean }>('/plugins/trust-config')
       .then((r) => r.data),
   setTrustConfig: (trustedPublicKeys: string[], allowUnsigned: boolean) =>
     http
-      .put<{ official_key: string; trusted_public_keys: string[]; allow_unsigned: boolean }>(
-        '/plugins/trust-config',
-        { trusted_public_keys: trustedPublicKeys, allow_unsigned: allowUnsigned },
-      )
+      .put<{ official_key: string; trusted_public_keys: string[]; allow_unsigned: boolean }>('/plugins/trust-config', {
+        trusted_public_keys: trustedPublicKeys,
+        allow_unsigned: allowUnsigned,
+      })
       .then((r) => r.data),
   asset: (id: string, path = 'index.html') =>
     http
@@ -358,8 +360,7 @@ export const pluginApi = {
         transformResponse: [(data) => data],
       })
       .then((r) => r.data),
-  assetTicket: (id: string) =>
-    http.post<PluginAssetTicket>(`/plugins/${id}/assets/ticket`).then((r) => r.data),
+  assetTicket: (id: string) => http.post<PluginAssetTicket>(`/plugins/${id}/assets/ticket`).then((r) => r.data),
   bridge: (id: string, method: string, params: Record<string, any> = {}) =>
     http
       .post<{ ok: boolean; result: Record<string, any> }>(`/plugins/${id}/bridge`, { method, params })

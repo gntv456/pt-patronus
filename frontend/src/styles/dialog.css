@@ -87,17 +87,18 @@
   min-height: 0 !important;
 }
 
-
 /* ── 弹窗 / 消息框：水润入场动画 ──
    覆盖 Element Plus 默认的 dialog-fade（生硬的纯 opacity），
    改为 opacity + 微缩放 + 回弹曲线，配合 var(--ease-out-spring) 更灵动。 */
 .dialog-fade-enter-active {
-  transition: opacity var(--dur-base) var(--ease-out-smooth),
-              transform var(--dur-base) var(--ease-out-spring) !important;
+  transition:
+    opacity var(--dur-base) var(--ease-out-smooth),
+    transform var(--dur-base) var(--ease-out-spring) !important;
 }
 .dialog-fade-leave-active {
-  transition: opacity var(--dur-fast) var(--ease-out-smooth),
-              transform var(--dur-fast) var(--ease-out-smooth) !important;
+  transition:
+    opacity var(--dur-fast) var(--ease-out-smooth),
+    transform var(--dur-fast) var(--ease-out-smooth) !important;
 }
 .dialog-fade-enter-from .el-dialog,
 .dialog-fade-enter-from .el-message-box {
@@ -117,7 +118,8 @@
 
 /* Message / Notification：从顶部/右侧轻柔滑入 */
 .el-message {
-  transition: opacity var(--dur-base) var(--ease-out-smooth),
-              transform var(--dur-base) var(--ease-out-spring),
-              top var(--dur-base) var(--ease-out-smooth) !important;
+  transition:
+    opacity var(--dur-base) var(--ease-out-smooth),
+    transform var(--dur-base) var(--ease-out-spring),
+    top var(--dur-base) var(--ease-out-smooth) !important;
 }

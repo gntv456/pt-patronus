@@ -25,7 +25,11 @@ export function defUrl(d?: SiteDef) {
   return d?.schema === 'mteam' ? 'https://api.m-team.cc' : 'https://www.hxpt.org'
 }
 
-export function useSitesForm(defs: Ref<SiteDef[]>, operationsMatrixReload: () => Promise<void>, reload: () => Promise<void>) {
+export function useSitesForm(
+  defs: Ref<SiteDef[]>,
+  operationsMatrixReload: () => Promise<void>,
+  reload: () => Promise<void>,
+) {
   const dialogVisible = ref(false)
   // 编辑态：null=新建，否则持有正在编辑的站点 id
   const editingId = ref<number | null>(null)
@@ -56,9 +60,7 @@ export function useSitesForm(defs: Ref<SiteDef[]>, operationsMatrixReload: () =>
   // 占位优先取当前定义真实地址。
 
   // 选站下拉排序：可用站在前、死站在后（死站保留可选，仅标注「已关站」）。
-  const sortedDefs = computed(() =>
-    [...defs.value].sort((a, b) => (a.dead === b.dead ? 0 : a.dead ? 1 : -1)),
-  )
+  const sortedDefs = computed(() => [...defs.value].sort((a, b) => (a.dead === b.dead ? 0 : a.dead ? 1 : -1)))
   const definitionQuery = ref('')
   const filteredDefs = computed(() => {
     const raw = definitionQuery.value.trim()
@@ -104,7 +106,16 @@ export function useSitesForm(defs: Ref<SiteDef[]>, operationsMatrixReload: () =>
     }
     editingId.value = null
     definitionQuery.value = ''
-    form.value = { name: '', definition: '', base_url: '', cookie: '', api_key: '', username: '', password: '', is_active: true }
+    form.value = {
+      name: '',
+      definition: '',
+      base_url: '',
+      cookie: '',
+      api_key: '',
+      username: '',
+      password: '',
+      is_active: true,
+    }
     dialogVisible.value = true
   }
 
@@ -179,9 +190,23 @@ export function useSitesForm(defs: Ref<SiteDef[]>, operationsMatrixReload: () =>
   }
 
   return {
-    dialogVisible, editingId, isEdit, dialogTitle, form,
-    currentDef, needsApiKey, apiKeyPlaceholder, baseUrlPlaceholder, baseUrlOptions,
-    sortedDefs, definitionQuery, filteredDefs, filterDefinitionOptions,
-    onDefChange, openCreate, openEdit, submit,
+    dialogVisible,
+    editingId,
+    isEdit,
+    dialogTitle,
+    form,
+    currentDef,
+    needsApiKey,
+    apiKeyPlaceholder,
+    baseUrlPlaceholder,
+    baseUrlOptions,
+    sortedDefs,
+    definitionQuery,
+    filteredDefs,
+    filterDefinitionOptions,
+    onDefChange,
+    openCreate,
+    openEdit,
+    submit,
   }
 }

@@ -44,7 +44,10 @@ const emit = defineEmits<{
         <button v-for="run in runs" :key="run.id" type="button" class="run-card" @click="emit('showRun', run)">
           <span>
             <b>#{{ run.id }} · {{ run.note || t('ndd.title') }}</b>
-            <small>{{ runDateText(run.started_at) }} · {{ t('nep.okCount', { ok: run.success_count, total: run.total_count }) }}</small>
+            <small
+              >{{ runDateText(run.started_at) }} ·
+              {{ t('nep.okCount', { ok: run.success_count, total: run.total_count }) }}</small
+            >
           </span>
           <el-tag size="small" :type="runStatusType(run.status)">{{ runStatusText(run.status) }}</el-tag>
         </button>

@@ -50,8 +50,16 @@ export function useCloudDriveBrowse() {
   }
 
   return {
-    showBrowse, browseDrive, browsePath, browseFiles, browseLoading,
-    openBrowse, fetchBrowse, enterDir, browseUp, pickDir,
+    showBrowse,
+    browseDrive,
+    browsePath,
+    browseFiles,
+    browseLoading,
+    openBrowse,
+    fetchBrowse,
+    enterDir,
+    browseUp,
+    pickDir,
   }
 }
 

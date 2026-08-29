@@ -57,11 +57,9 @@ export const brushflowApi = {
   list: () => http.get<{ tasks: BrushFlowTask[] }>('/brushflow').then((r) => r.data.tasks ?? []),
   get: (id: number) => http.get<BrushFlowTask>(`/brushflow/${id}`).then((r) => r.data),
   create: (t: Partial<BrushFlowTask>) => http.post<BrushFlowTask>('/brushflow', t).then((r) => r.data),
-  update: (id: number, t: Partial<BrushFlowTask>) =>
-    http.put<BrushFlowTask>(`/brushflow/${id}`, t).then((r) => r.data),
+  update: (id: number, t: Partial<BrushFlowTask>) => http.put<BrushFlowTask>(`/brushflow/${id}`, t).then((r) => r.data),
   remove: (id: number) => http.delete(`/brushflow/${id}`).then((r) => r.data),
   select: (id: number) => http.post(`/brushflow/${id}/select`).then((r) => r.data),
   sweep: (id: number) => http.post(`/brushflow/${id}/sweep`).then((r) => r.data),
-  seeds: (id: number) =>
-    http.get<{ seeds: BrushFlowSeed[] }>(`/brushflow/${id}/seeds`).then((r) => r.data.seeds ?? []),
+  seeds: (id: number) => http.get<{ seeds: BrushFlowSeed[] }>(`/brushflow/${id}/seeds`).then((r) => r.data.seeds ?? []),
 }

@@ -35,6 +35,8 @@ func registerCronJobs(
 	subCh *chain.SubscribeChain,
 	transferCh *chain.TransferChain,
 	cloudCh *chain.CloudChain,
+	rssItemOp *oper.RssItemOper,
+	pluginLogOp *oper.PluginOper,
 ) {
 	// 刷流 cron：选种每 10 分钟、扫删每 5 分钟（单任务失败不阻断；scheduler 自带 SkipIfStillRunning 防重叠）
 	_ = sched.AddFunc("brushflow-select", "*/10 * * * *", func() {
@@ -105,6 +107,24 @@ func registerCronJobs(
 	_ = sched.AddFunc("notice-cleanup", "0 3 * * *", func() {
 		if _, err := noticeOp.Cleanup(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
 			slog.Warn("notice cleanup failed", "err", err)
+		}
+	})
+
+	// 每日 3 点清理 30 天前未下载的 RSS 条目（保留已下载供追溯；无 TTL 会无限膨胀）。
+	_ = sched.AddFunc("rss-item-cleanup", "0 3 * * *", func() {
+		if n, err := rssItemOp.Prune(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
+			slog.Warn("rss item cleanup failed", "err", err)
+		} else if n > 0 {
+			slog.Info("rss item cleanup done", "pruned", n)
+		}
+	})
+
+	// 每日 3 点清理 30 天前的插件日志（每次调度写一行，无 TTL 会无限膨胀）。
+	_ = sched.AddFunc("plugin-log-cleanup", "0 3 * * *", func() {
+		if n, err := pluginLogOp.PruneLogs(time.Now().Add(-30 * 24 * time.Hour)); err != nil {
+			slog.Warn("plugin log cleanup failed", "err", err)
+		} else if n > 0 {
+			slog.Info("plugin log cleanup done", "pruned", n)
 		}
 	})
 

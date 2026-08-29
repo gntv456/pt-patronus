@@ -69,7 +69,12 @@ function fullTitle(fallback: string): string {
     <span class="connectivity-dot" aria-hidden="true" />
     <span>{{ label() }}</span>
   </button>
-  <span v-else class="connectivity-status" :class="loading || !status ? 'is-pending' : `is-${status.status}`" :title="fullTitle('')">
+  <span
+    v-else
+    class="connectivity-status"
+    :class="loading || !status ? 'is-pending' : `is-${status.status}`"
+    :title="fullTitle('')"
+  >
     <span class="connectivity-dot" aria-hidden="true" />
     <span>{{ label() }}</span>
   </span>
@@ -122,6 +127,8 @@ function fullTitle(fallback: string): string {
   animation: connectivity-pulse 1.1s ease-in-out infinite;
 }
 @keyframes connectivity-pulse {
-  50% { opacity: 0.3; }
+  50% {
+    opacity: 0.3;
+  }
 }
 </style>

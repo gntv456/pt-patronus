@@ -5,7 +5,18 @@ import { downloaderApi, type Downloader } from '@/api/downloader'
 import TorrentDrawer from '@/components/downloader/TorrentDrawer.vue'
 import { useAuthStore } from '@/stores/auth'
 import EmptyState from '@/components/EmptyState.vue'
-import { ArrowDown, Check, CircleCheck, CircleClose, Delete, Edit, Link, MoreFilled, Plus, VideoPlay } from '@element-plus/icons-vue'
+import {
+  ArrowDown,
+  Check,
+  CircleCheck,
+  CircleClose,
+  Delete,
+  Edit,
+  Link,
+  MoreFilled,
+  Plus,
+  VideoPlay,
+} from '@element-plus/icons-vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -33,7 +44,12 @@ const DL_META: Record<string, { glyph: string; from: string; to: string; label: 
   fl: { glyph: 'flood', from: '#5B8DEF', to: '#2F5FCC', label: 'Flood' },
 }
 const dlMeta = (type: string) =>
-  DL_META[type] ?? { glyph: 'downloaders', from: '#536976', to: '#2c3e50', label: type || t('downloaders.genericLabel') }
+  DL_META[type] ?? {
+    glyph: 'downloaders',
+    from: '#536976',
+    to: '#2c3e50',
+    label: type || t('downloaders.genericLabel'),
+  }
 const typeOptions = Object.entries(DL_META).map(([value, meta]) => ({ value, ...meta }))
 
 const drawerDl = ref<Downloader | null>(null)
@@ -45,9 +61,7 @@ async function load() {
   error.value = ''
   try {
     list.value = await downloaderApi.list()
-    connectionState.value = Object.fromEntries(
-      list.value.map((dl) => [dl.id, connectionState.value[dl.id] ?? 'idle']),
-    )
+    connectionState.value = Object.fromEntries(list.value.map((dl) => [dl.id, connectionState.value[dl.id] ?? 'idle']))
   } catch (e: unknown) {
     error.value = (e as Error).message || t('downloaders.loadFailed')
   } finally {
@@ -143,7 +157,9 @@ async function test(dl: Downloader) {
   try {
     const result = await downloaderApi.test(dl.id)
     connectionState.value = { ...connectionState.value, [dl.id]: result.ok ? 'connected' : 'failed' }
-    result.ok ? ElMessage.success(t('downloaders.connOk', { name: dl.name })) : ElMessage.warning(result.error || t('downloaders.connFailed'))
+    result.ok
+      ? ElMessage.success(t('downloaders.connOk', { name: dl.name }))
+      : ElMessage.warning(result.error || t('downloaders.connFailed'))
   } catch (e: unknown) {
     connectionState.value = { ...connectionState.value, [dl.id]: 'failed' }
     ElMessage.error((e as Error).message || t('downloaders.requestFailed'))
@@ -154,7 +170,11 @@ async function test(dl: Downloader) {
 
 function connectionLabel(dl: Downloader): string {
   const state = connectionState.value[dl.id] ?? 'idle'
-  const map: Record<string, string> = { connected: t('downloaders.connState.connected'), failed: t('downloaders.connState.failed'), idle: t('downloaders.connState.idle') }
+  const map: Record<string, string> = {
+    connected: t('downloaders.connState.connected'),
+    failed: t('downloaders.connState.failed'),
+    idle: t('downloaders.connState.idle'),
+  }
   return map[state] ?? map.idle
 }
 
@@ -200,7 +220,10 @@ onMounted(load)
       <div class="overview-note">
         <span class="overview-label">{{ t('downloaders.overview.defaultDl') }}</span>
         <el-dropdown trigger="click" :disabled="!list.length" class="default-dropdown" @command="setDefault">
-          <el-button size="small" :title="list.length ? t('downloaders.overview.pickDefault') : t('downloaders.overview.addFirst')">
+          <el-button
+            size="small"
+            :title="list.length ? t('downloaders.overview.pickDefault') : t('downloaders.overview.addFirst')"
+          >
             <span class="default-name">{{ defaultDownloader?.name || t('downloaders.overview.unset') }}</span>
             <el-icon class="el-icon--right"><ArrowDown /></el-icon>
           </el-button>
@@ -241,10 +264,18 @@ onMounted(load)
               <span class="dtype-tag text-muted">{{ dlMeta(dl.type).label }}</span>
             </div>
             <el-dropdown trigger="click" @command="(command: string) => onCardCommand(command, dl)">
-              <el-button text circle :icon="MoreFilled" :title="t('downloaders.card.more')" :aria-label="t('downloaders.card.more')" />
+              <el-button
+                text
+                circle
+                :icon="MoreFilled"
+                :title="t('downloaders.card.more')"
+                :aria-label="t('downloaders.card.more')"
+              />
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="edit"><el-icon><Edit /></el-icon>{{ t('downloaders.card.editConfig') }}</el-dropdown-item>
+                  <el-dropdown-item command="edit"
+                    ><el-icon><Edit /></el-icon>{{ t('downloaders.card.editConfig') }}</el-dropdown-item
+                  >
                   <el-dropdown-item v-if="auth.isAdmin" command="delete" divided>
                     <el-icon><Delete /></el-icon>{{ t('downloaders.card.delete') }}
                   </el-dropdown-item>
@@ -266,13 +297,21 @@ onMounted(load)
           </div>
 
           <div class="card-actions">
-            <el-button type="primary" :icon="VideoPlay" @click="openTorrents(dl)">{{ t('downloaders.card.openTasks') }}</el-button>
-            <el-button :loading="testing === dl.id" :icon="Link" @click="test(dl)">{{ t('downloaders.card.testConn') }}</el-button>
+            <el-button type="primary" :icon="VideoPlay" @click="openTorrents(dl)">{{
+              t('downloaders.card.openTasks')
+            }}</el-button>
+            <el-button :loading="testing === dl.id" :icon="Link" @click="test(dl)">{{
+              t('downloaders.card.testConn')
+            }}</el-button>
           </div>
         </article>
 
         <div v-if="!list.length && !loading" class="empty">
-          <EmptyState icon="downloaders" :title="t('downloaders.card.emptyTitle')" :description="t('downloaders.card.emptyDesc')">
+          <EmptyState
+            icon="downloaders"
+            :title="t('downloaders.card.emptyTitle')"
+            :description="t('downloaders.card.emptyDesc')"
+          >
             <el-button type="primary" :icon="Plus" @click="openCreate">{{ t('downloaders.add') }}</el-button>
           </EmptyState>
         </div>
@@ -290,7 +329,12 @@ onMounted(load)
             <el-input v-model="form.name" :placeholder="t('downloaders.form.namePlaceholder')" />
           </el-form-item>
           <el-form-item :label="t('downloaders.form.isDefault')">
-            <el-switch v-model="form.is_default" inline-prompt :active-text="t('downloaders.form.on')" :inactive-text="t('downloaders.form.off')" />
+            <el-switch
+              v-model="form.is_default"
+              inline-prompt
+              :active-text="t('downloaders.form.on')"
+              :inactive-text="t('downloaders.form.off')"
+            />
           </el-form-item>
         </div>
         <el-form-item :label="t('downloaders.form.type')" required>
@@ -322,7 +366,9 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="submit">{{ isEdit ? t('downloaders.form.save') : t('downloaders.add') }}</el-button>
+        <el-button type="primary" @click="submit">{{
+          isEdit ? t('downloaders.form.save') : t('downloaders.add')
+        }}</el-button>
       </template>
     </el-dialog>
 
@@ -331,70 +377,307 @@ onMounted(load)
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); }
-.head-copy { min-width: 0; }
-.title { margin: 0; font-size: var(--fs-title); font-weight: 700; }
-.subtitle { margin: 5px 0 0; color: var(--text-muted); font-size: var(--fs-body); }
-.overview-strip { display: grid; grid-template-columns: repeat(3, minmax(140px, .7fr)) minmax(220px, 1.4fr); gap: var(--sp-1); overflow: hidden; border: 1px solid var(--glass-border, rgba(127,127,127,.18)); border-radius: var(--radius-xs); background: var(--glass-border, rgba(127,127,127,.18)); }
-.overview-item, .overview-note { min-height: 74px; padding: 14px 16px; background: var(--surface, rgba(255,255,255,.04)); }
-.overview-item { display: grid; grid-template-columns: auto auto; column-gap: var(--sp-2); align-content: center; }
-.overview-label { grid-column: 1 / -1; color: var(--text-muted); font-size: var(--fs-2xs); }
-.overview-item strong { font-size: var(--fs-title); line-height: 1.1; }
-.overview-caption { align-self: end; padding-bottom: 2px; color: var(--text-muted); font-size: var(--fs-2xs); }
-.status-overview strong { color: var(--pt-success); }
-.overview-note { display: flex; flex-direction: column; justify-content: center; min-width: 0; gap: var(--sp-1); }
-.default-dropdown { align-self: flex-start; }
-.default-name { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-lg); font-weight: 650; vertical-align: middle; }
-.default-check { margin-right: 4px; color: var(--pt-success); }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: var(--sp-3); }
-.card { padding: 18px; min-width: 0; border-radius: var(--radius-xs); }
-.card-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
-.identity { display: flex; flex: 1; flex-direction: column; min-width: 0; }
-.identity-title { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
-.dname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-lg); font-weight: 650; }
-.default-chip { display: inline-block; padding: 2px 7px; border-radius: var(--radius-2xs); background: var(--pt-warn-bg); color: var(--pt-warn); font-size: var(--fs-2xs); font-weight: 700; }
-.dtype-tag { font-size: var(--fs-xs); }
-.connection-row { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; margin: 16px 0 18px; }
-.connection-status { display: inline-flex; align-items: center; gap: var(--sp-1); flex: 0 0 auto; font-size: var(--fs-xs); font-weight: 600; }
-.connection-status.connected { color: var(--pt-success); }
-.connection-status.failed { color: var(--pt-danger); }
-.connection-status.idle { color: var(--text-muted); }
-.url { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); }
-.card-actions { display: grid; grid-template-columns: 1.15fr 1fr; gap: var(--sp-2); }
-.card-actions :deep(.el-button) { width: 100%; margin: 0; }
-.empty { grid-column: 1 / -1; padding: 42px; text-align: center; }
-.error-state { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); color: var(--pt-danger); }
-.state-icon { width: 28px; }
-.err-text { font-size: var(--fs-md); }
-.dialog-intro { padding: 12px 14px; margin-bottom: 18px; border-left: 3px solid var(--pt-primary-2); background: var(--surface-muted, rgba(127,127,127,.08)); }
-.dialog-kicker { font-size: var(--fs-xs); font-weight: 700; }
-.dialog-intro p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--fs-xs); }
-.config-form :deep(.el-form-item) { margin-bottom: 16px; }
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
-.type-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); width: 100%; }
-.type-option { display: flex; align-items: center; min-height: 58px; padding: 8px 10px; margin: 0 !important; border: 1px solid var(--glass-border, rgba(127,127,127,.2)); border-radius: var(--radius-xs); background: var(--surface-muted, rgba(127,127,127,.05)); }
-.type-option.is-checked { border-color: var(--pt-primary-2); background: color-mix(in srgb, var(--pt-primary-2) 10%, transparent); }
-.type-option :deep(.el-radio__input) { margin-right: 5px; }
-.type-option :deep(.el-radio__label) { display: inline-flex; align-items: center; gap: var(--sp-2); overflow: hidden; padding-left: 0; font-size: var(--fs-xs); }
-.field-hint { display: block; margin-top: 5px; color: var(--text-muted); font-size: var(--fs-2xs); }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.head-copy {
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+.subtitle {
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+}
+.overview-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 0.7fr)) minmax(220px, 1.4fr);
+  gap: var(--sp-1);
+  overflow: hidden;
+  border: 1px solid var(--glass-border, rgba(127, 127, 127, 0.18));
+  border-radius: var(--radius-xs);
+  background: var(--glass-border, rgba(127, 127, 127, 0.18));
+}
+.overview-item,
+.overview-note {
+  min-height: 74px;
+  padding: 14px 16px;
+  background: var(--surface, rgba(255, 255, 255, 0.04));
+}
+.overview-item {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: var(--sp-2);
+  align-content: center;
+}
+.overview-label {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+}
+.overview-item strong {
+  font-size: var(--fs-title);
+  line-height: 1.1;
+}
+.overview-caption {
+  align-self: end;
+  padding-bottom: 2px;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+}
+.status-overview strong {
+  color: var(--pt-success);
+}
+.overview-note {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  gap: var(--sp-1);
+}
+.default-dropdown {
+  align-self: flex-start;
+}
+.default-name {
+  display: inline-block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  vertical-align: middle;
+}
+.default-check {
+  margin-right: 4px;
+  color: var(--pt-success);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: var(--sp-3);
+}
+.card {
+  padding: 18px;
+  min-width: 0;
+  border-radius: var(--radius-xs);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.identity {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.identity-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.dname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-lg);
+  font-weight: 650;
+}
+.default-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: var(--radius-2xs);
+  background: var(--pt-warn-bg);
+  color: var(--pt-warn);
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+.dtype-tag {
+  font-size: var(--fs-xs);
+}
+.connection-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  margin: 16px 0 18px;
+}
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.connection-status.connected {
+  color: var(--pt-success);
+}
+.connection-status.failed {
+  color: var(--pt-danger);
+}
+.connection-status.idle {
+  color: var(--text-muted);
+}
+.url {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+}
+.card-actions {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: var(--sp-2);
+}
+.card-actions :deep(.el-button) {
+  width: 100%;
+  margin: 0;
+}
+.empty {
+  grid-column: 1 / -1;
+  padding: 42px;
+  text-align: center;
+}
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--pt-danger);
+}
+.state-icon {
+  width: 28px;
+}
+.err-text {
+  font-size: var(--fs-md);
+}
+.dialog-intro {
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border-left: 3px solid var(--pt-primary-2);
+  background: var(--surface-muted, rgba(127, 127, 127, 0.08));
+}
+.dialog-kicker {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.dialog-intro p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.config-form :deep(.el-form-item) {
+  margin-bottom: 16px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+}
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-2);
+  width: 100%;
+}
+.type-option {
+  display: flex;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px 10px;
+  margin: 0 !important;
+  border: 1px solid var(--glass-border, rgba(127, 127, 127, 0.2));
+  border-radius: var(--radius-xs);
+  background: var(--surface-muted, rgba(127, 127, 127, 0.05));
+}
+.type-option.is-checked {
+  border-color: var(--pt-primary-2);
+  background: color-mix(in srgb, var(--pt-primary-2) 10%, transparent);
+}
+.type-option :deep(.el-radio__input) {
+  margin-right: 5px;
+}
+.type-option :deep(.el-radio__label) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  overflow: hidden;
+  padding-left: 0;
+  font-size: var(--fs-xs);
+}
+.field-hint {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+}
 
 @media (max-width: 720px) {
-  .head { align-items: flex-start; }
-  .overview-strip { grid-template-columns: repeat(2, 1fr); }
-  .overview-note { grid-column: 1 / -1; }
-  .type-grid { grid-template-columns: repeat(2, 1fr); }
-  .form-grid { grid-template-columns: 1fr; gap: 0; }
+  .head {
+    align-items: flex-start;
+  }
+  .overview-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .overview-note {
+    grid-column: 1 / -1;
+  }
+  .type-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 
 /* 下载器卡 staggered 入场 + hover 反馈 */
-.grid > * { animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both; }
-.grid > *:nth-child(1) { animation-delay: 0ms; }
-.grid > *:nth-child(2) { animation-delay: 50ms; }
-.grid > *:nth-child(3) { animation-delay: 100ms; }
-.grid > *:nth-child(4) { animation-delay: 150ms; }
-.grid > *:nth-child(5) { animation-delay: 200ms; }
-.grid > *:nth-child(n+6) { animation-delay: 250ms; }
-.card { transition: transform var(--dur-base) var(--ease-out-spring), box-shadow var(--dur-base) var(--ease-out-smooth); }
-.card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.grid > * {
+  animation: pt-fade-in-up var(--dur-slow) var(--ease-out-smooth) both;
+}
+.grid > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.grid > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.grid > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.grid > *:nth-child(4) {
+  animation-delay: 150ms;
+}
+.grid > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+.grid > *:nth-child(n + 6) {
+  animation-delay: 250ms;
+}
+.card {
+  transition:
+    transform var(--dur-base) var(--ease-out-spring),
+    box-shadow var(--dur-base) var(--ease-out-smooth);
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
 </style>

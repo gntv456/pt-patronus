@@ -46,9 +46,7 @@ const FIELD_DEFS = computed<{ key: keyof DashboardExportConfig['fields']; label:
   { key: 'ptAge', label: t('ded.f.ptAge') },
 ])
 
-const siteOptions = computed(() =>
-  (props.data?.sites ?? []).map((s) => ({ value: s.site_id, label: s.site_name })),
-)
+const siteOptions = computed(() => (props.data?.sites ?? []).map((s) => ({ value: s.site_id, label: s.site_name })))
 
 function persist(): void {
   if (!saveConfig(config.value)) ElMessage.warning(t('ded.saveCfgFailed'))
@@ -157,11 +155,13 @@ async function doExport(): Promise<void> {
         </div>
         <div v-if="config.backgroundImage" class="sliders">
           <div class="slider-row">
-            <span>{{ t('ded.blur') }}</span><b>{{ config.backgroundBlur }}px</b>
+            <span>{{ t('ded.blur') }}</span
+            ><b>{{ config.backgroundBlur }}px</b>
             <el-slider v-model="config.backgroundBlur" :min="0" :max="20" :step="1" />
           </div>
           <div class="slider-row">
-            <span>{{ t('gp.mask') }}</span><b>{{ Math.round(config.backgroundDim * 100) }}%</b>
+            <span>{{ t('gp.mask') }}</span
+            ><b>{{ Math.round(config.backgroundDim * 100) }}%</b>
             <el-slider v-model="config.backgroundDim" :min="0" :max="0.8" :step="0.05" />
           </div>
         </div>
@@ -182,7 +182,9 @@ async function doExport(): Promise<void> {
           <el-switch v-model="config.showRank" size="small" />
         </div>
         <el-checkbox-group v-model="config.rankMetrics" :disabled="!config.showRank">
-          <el-checkbox v-for="m in ALL_RANK_METRICS" :key="m" :value="m" :label="m">{{ t('ded.champOf', { metric: RANK_LABELS[m] }) }}</el-checkbox>
+          <el-checkbox v-for="m in ALL_RANK_METRICS" :key="m" :value="m" :label="m">{{
+            t('ded.champOf', { metric: RANK_LABELS[m] })
+          }}</el-checkbox>
         </el-checkbox-group>
       </div>
 
@@ -213,7 +215,9 @@ async function doExport(): Promise<void> {
           />
           <span class="text-muted num-hint">{{ t('ded.countHint') }}</span>
         </div>
-        <el-checkbox v-model="config.showIdentity" :disabled="!config.showSites">{{ t('ded.showIdentity') }}</el-checkbox>
+        <el-checkbox v-model="config.showIdentity" :disabled="!config.showSites">{{
+          t('ded.showIdentity')
+        }}</el-checkbox>
       </div>
 
       <!-- 脱敏 -->
@@ -228,23 +232,80 @@ async function doExport(): Promise<void> {
 
     <template #footer>
       <el-button @click="resetConfig">{{ t('ded.reset') }}</el-button>
-      <el-button type="primary" :loading="exporting" :disabled="!data" @click="doExport">{{ t('ded.exportGo') }}</el-button>
+      <el-button type="primary" :loading="exporting" :disabled="!data" @click="doExport">{{
+        t('ded.exportGo')
+      }}</el-button>
     </template>
   </el-dialog>
 </template>
 
 <style scoped>
-.export-cfg { display: flex; flex-direction: column; gap: var(--sp-4); }
-.sec { display: flex; flex-direction: column; gap: var(--sp-2); }
-.sec-t { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: var(--fs-md); }
-.hint { font-size: var(--fs-xs); }
-.bg-row { display: flex; align-items: center; gap: var(--sp-2); }
-.bg-preview { width: 56px; height: 36px; object-fit: cover; border-radius: var(--radius-xs); border: 1px solid rgba(255, 255, 255, 0.12); }
-.sliders { display: flex; flex-direction: column; gap: var(--sp-1); margin-top: 4px; }
-.slider-row { display: grid; grid-template-columns: 40px 48px 1fr; align-items: center; gap: var(--sp-2); font-size: var(--fs-xs); color: var(--text-muted); }
-.slider-row b { color: #c7ccdb; font-weight: 600; }
-.fields-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--sp-1) var(--sp-3); }
-.site-row { display: flex; align-items: center; gap: var(--sp-2); }
-.num-hint { font-size: var(--fs-xs); white-space: nowrap; }
-.switch-row { display: flex; gap: var(--sp-4); }
+.export-cfg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.sec-t {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: var(--fs-md);
+}
+.hint {
+  font-size: var(--fs-xs);
+}
+.bg-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.bg-preview {
+  width: 56px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--radius-xs);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.sliders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-top: 4px;
+}
+.slider-row {
+  display: grid;
+  grid-template-columns: 40px 48px 1fr;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.slider-row b {
+  color: #c7ccdb;
+  font-weight: 600;
+}
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-1) var(--sp-3);
+}
+.site-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.num-hint {
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.switch-row {
+  display: flex;
+  gap: var(--sp-4);
+}
 </style>

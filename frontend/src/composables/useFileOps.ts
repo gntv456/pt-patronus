@@ -39,7 +39,9 @@ export function useFileOps(fm: FileManager) {
     const dup = fm.entries.value.find((e) => !e.is_dir && e.name === opt.file.name)
     if (dup) {
       try {
-        await ElMessageBox.confirm(`「${opt.file.name}」已存在，上传将覆盖，是否继续？`, '覆盖确认', { type: 'warning' })
+        await ElMessageBox.confirm(`「${opt.file.name}」已存在，上传将覆盖，是否继续？`, '覆盖确认', {
+          type: 'warning',
+        })
       } catch {
         return
       }
@@ -85,7 +87,9 @@ export function useFileOps(fm: FileManager) {
   async function delOne(e: FileEntry) {
     if (!fm.curFs.value) return
     try {
-      await ElMessageBox.confirm(`确认删除「${e.name}」？${e.is_dir ? '（目录及其内容）' : ''}`, '删除', { type: 'warning' })
+      await ElMessageBox.confirm(`确认删除「${e.name}」？${e.is_dir ? '（目录及其内容）' : ''}`, '删除', {
+        type: 'warning',
+      })
     } catch {
       return
     }
@@ -224,7 +228,8 @@ export function useFileOps(fm: FileManager) {
     fm.strmVisible.value = true
   }
   async function doStrm() {
-    if (!fm.curCloud.value || !fm.strmDir.value || !fm.strmForm.value.output_dir) return ElMessage.warning('请填写输出目录')
+    if (!fm.curCloud.value || !fm.strmDir.value || !fm.strmForm.value.output_dir)
+      return ElMessage.warning('请填写输出目录')
     fm.strmLoading.value = true
     try {
       const r = await cloudApi.generate({
@@ -236,7 +241,9 @@ export function useFileOps(fm: FileManager) {
         recursive: fm.strmForm.value.recursive,
         keep_ext: fm.strmForm.value.keep_ext,
       })
-      ElMessage.success(`STRM 已生成：新增 ${r.generated}，跳过 ${r.skipped}${r.errors.length ? '，失败 ' + r.errors.length : ''}`)
+      ElMessage.success(
+        `STRM 已生成：新增 ${r.generated}，跳过 ${r.skipped}${r.errors.length ? '，失败 ' + r.errors.length : ''}`,
+      )
       fm.strmVisible.value = false
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || 'STRM 生成失败')
@@ -254,8 +261,13 @@ export function useFileOps(fm: FileManager) {
   function openEdit(fsItem: FileStorage) {
     fm.editingId.value = fsItem.id
     fm.form.value = {
-      name: fsItem.name, type: fsItem.type, url: fsItem.url, username: fsItem.username,
-      password: '', base_path: fsItem.base_path || '/', agent_id: fsItem.agent_id || 0,
+      name: fsItem.name,
+      type: fsItem.type,
+      url: fsItem.url,
+      username: fsItem.username,
+      password: '',
+      base_path: fsItem.base_path || '/',
+      agent_id: fsItem.agent_id || 0,
     }
     fm.storageDialog.value = true
   }
@@ -264,7 +276,8 @@ export function useFileOps(fm: FileManager) {
     if (!fm.form.value.name) return ElMessage.warning('请填写名称')
     if (fm.form.value.type === 'agent' && !fm.form.value.agent_id) return ElMessage.warning('请选择 Agent')
     if (fm.form.value.type === 'rclone' && !fm.form.value.username) return ElMessage.warning('请填写 remote 名')
-    if (['webdav', 'alist', 'smb'].includes(fm.form.value.type) && !fm.form.value.url) return ElMessage.warning('请填写地址')
+    if (['webdav', 'alist', 'smb'].includes(fm.form.value.type) && !fm.form.value.url)
+      return ElMessage.warning('请填写地址')
     fm.submitting.value = true
     try {
       if (fm.editingId.value) {
@@ -284,7 +297,9 @@ export function useFileOps(fm: FileManager) {
   }
   async function delStorage(fsItem: FileStorage) {
     try {
-      await ElMessageBox.confirm(`确认删除存储「${fsItem.name}」？仅移除配置，不影响远端文件。`, '删除存储', { type: 'warning' })
+      await ElMessageBox.confirm(`确认删除存储「${fsItem.name}」？仅移除配置，不影响远端文件。`, '删除存储', {
+        type: 'warning',
+      })
     } catch {
       return
     }
@@ -351,9 +366,31 @@ export function useFileOps(fm: FileManager) {
   }
 
   return {
-    doMkdir, handleUpload, openRename, doRename, delOne, delBatch, cancelBatchDel,
-    openMoveCopy, refreshMoveCopy, moveCopyEnter, moveCopyUp, doMoveCopy,
-    openStrm, doStrm, openCreate, openEdit, submit, delStorage, delEditingStorage, onStorageMenu,
-    toggleView, toggleSelect, isSelected, fmtBytes, itemIcon, itemLabel,
+    doMkdir,
+    handleUpload,
+    openRename,
+    doRename,
+    delOne,
+    delBatch,
+    cancelBatchDel,
+    openMoveCopy,
+    refreshMoveCopy,
+    moveCopyEnter,
+    moveCopyUp,
+    doMoveCopy,
+    openStrm,
+    doStrm,
+    openCreate,
+    openEdit,
+    submit,
+    delStorage,
+    delEditingStorage,
+    onStorageMenu,
+    toggleView,
+    toggleSelect,
+    isSelected,
+    fmtBytes,
+    itemIcon,
+    itemLabel,
   }
 }

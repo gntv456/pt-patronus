@@ -33,10 +33,19 @@ func main() {
 		slog.Error("config invalid, refusing to start", "err", err)
 		os.Exit(1)
 	}
-	// debug 环境开 debug 级别日志（便于排查站点契约/游戏响应）；release 用 info。
+	// 日志级别：LOG_LEVEL env 优先（运维排障可临时调 debug，无需改代码重启镜像构建）；
+	// 未设置时 debug 环境开 debug 级别（便于排查站点契约/游戏响应），release 用 info。
 	logLevel := "info"
 	if cfg.Env == "debug" {
 		logLevel = "debug"
+	}
+	if v := os.Getenv("LOG_LEVEL"); v != "" {
+		switch v {
+		case "debug", "info", "warn", "error":
+			logLevel = v
+		default:
+			slog.Warn("invalid LOG_LEVEL, fallback to default", "got", v, "allowed", "debug|info|warn|error")
+		}
 	}
 	applog.Init(cfg.Env, logLevel)
 	slog.Info("starting", "app", cfg.AppName, "version", version.Version, "env", cfg.Env, "addr", cfg.HTTPAddr)

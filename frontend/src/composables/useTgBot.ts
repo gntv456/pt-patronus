@@ -5,8 +5,18 @@ import { ElMessage } from 'element-plus'
 import { tgBotApi, type TgBotConfig } from '@/api/tgbot'
 
 const tgCfg = ref<TgBotConfig | null>(null)
-const tgForm = ref<{ enabled: boolean; bot_token: string; allowed_ids: string; allow_group_chat: boolean; api_url: string }>({
-  enabled: false, bot_token: '', allowed_ids: '', allow_group_chat: false, api_url: '',
+const tgForm = ref<{
+  enabled: boolean
+  bot_token: string
+  allowed_ids: string
+  allow_group_chat: boolean
+  api_url: string
+}>({
+  enabled: false,
+  bot_token: '',
+  allowed_ids: '',
+  allow_group_chat: false,
+  api_url: '',
 })
 const tgLoading = ref(false)
 const tgSaving = ref(false)
@@ -32,7 +42,10 @@ async function loadTgBot() {
 async function saveTgBot() {
   tgSaving.value = true
   try {
-    const ids = tgForm.value.allowed_ids.split(',').map((s) => Number(s.trim())).filter((n) => !isNaN(n) && n > 0)
+    const ids = tgForm.value.allowed_ids
+      .split(',')
+      .map((s) => Number(s.trim()))
+      .filter((n) => !isNaN(n) && n > 0)
     await tgBotApi.setConfig({
       enabled: tgForm.value.enabled,
       bot_token: tgForm.value.bot_token,

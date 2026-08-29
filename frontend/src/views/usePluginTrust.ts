@@ -30,7 +30,10 @@ export function usePluginTrust() {
   async function saveTrust() {
     trustSaving.value = true
     try {
-      const keys = trustKeysText.value.split('\n').map((k) => k.trim()).filter(Boolean)
+      const keys = trustKeysText.value
+        .split('\n')
+        .map((k) => k.trim())
+        .filter(Boolean)
       await pluginApi.setTrustConfig(keys, trustAllowUnsigned.value)
       ElMessage.success('信任配置已保存')
       trustVisible.value = false

@@ -107,7 +107,16 @@ describe('响应拦截器：错误文案中文化', () => {
 
 describe('PR-4：机器可读 code 通道', () => {
   it('后端统一信封的 code 透传到 err.code', async () => {
-    rejectWith(axiosErr({ status: 400, data: { code: 'risk_confirmation_required', message: '高危操作，需要先确认风险', error: '高危操作，需要先确认风险' } }))
+    rejectWith(
+      axiosErr({
+        status: 400,
+        data: {
+          code: 'risk_confirmation_required',
+          message: '高危操作，需要先确认风险',
+          error: '高危操作，需要先确认风险',
+        },
+      }),
+    )
     await expect(http.get('/x')).rejects.toMatchObject({ code: 'risk_confirmation_required' })
   })
 

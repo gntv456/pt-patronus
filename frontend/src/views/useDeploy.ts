@@ -42,7 +42,9 @@ export function useDeploy(deps: {
     grayFirst: true,
   })
 
-  const deployProfiles = computed(() => deps.opsConfigs.value.filter((c) => c.key.startsWith('deploy.') && c.format === 'json'))
+  const deployProfiles = computed(() =>
+    deps.opsConfigs.value.filter((c) => c.key.startsWith('deploy.') && c.format === 'json'),
+  )
   const deployRuns = computed(() => deps.commandRuns.value.filter((run) => run.source === 'deploy'))
   const deploySteps = computed(() => [
     { title: '备份当前目录', desc: deployForm.value.backupDir || '/opt/backups' },
@@ -56,7 +58,10 @@ export function useDeploy(deps: {
     deps.enterDeployWorkspace()
     deployForm.value.targetIds = deps.selectedExecTargets.value.length
       ? deps.selectedExecTargets.value.map((t) => t.id)
-      : deps.sshTargets.value.filter((t) => t.last_online !== false).slice(0, 1).map((t) => t.id)
+      : deps.sshTargets.value
+          .filter((t) => t.last_online !== false)
+          .slice(0, 1)
+          .map((t) => t.id)
     deployVisible.value = true
   }
 
@@ -81,7 +86,10 @@ export function useDeploy(deps: {
       ElMessage.warning('请先填写 Git 仓库和项目目录')
       return
     }
-    const keyBase = basenameOf(deployForm.value.projectDir).replace(/[^\w.-]+/g, '-').toLowerCase() || 'app'
+    const keyBase =
+      basenameOf(deployForm.value.projectDir)
+        .replace(/[^\w.-]+/g, '-')
+        .toLowerCase() || 'app'
     const input: OpsConfigInput = {
       key: `deploy.${keyBase}`,
       name: `${keyBase} 发布流程`,

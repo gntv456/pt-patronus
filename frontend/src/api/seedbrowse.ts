@@ -28,8 +28,6 @@ export const seedbrowseApi = {
   // 抓取失败由 HTTP 层抛错（502 + error 字段），成功才带 detail。
   detail: (siteId: number, url: string) =>
     http
-      .get<{ detail?: TorrentDetail }>(
-        `/sites/${siteId}/torrent/detail?url=${encodeURIComponent(url)}`,
-      )
+      .get<{ detail?: TorrentDetail }>(`/sites/${siteId}/torrent/detail?url=${encodeURIComponent(url)}`)
       .then((r) => r.data),
 }

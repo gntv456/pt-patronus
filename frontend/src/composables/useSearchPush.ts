@@ -12,7 +12,13 @@ export type PushRow = SiteTorrent & { site_id: number; site_name: string }
 
 // 下载器类型 → 中文标签（推送对话框下拉显示）。
 const dlTypeLabel: Record<string, string> = {
-  qb: 'qBittorrent', tr: 'Transmission', ut: 'uTorrent', dl: 'Deluge', ar: 'Aria2', rt: 'ruTorrent', fl: 'Flood',
+  qb: 'qBittorrent',
+  tr: 'Transmission',
+  ut: 'uTorrent',
+  dl: 'Deluge',
+  ar: 'Aria2',
+  rt: 'ruTorrent',
+  fl: 'Flood',
 }
 export { dlTypeLabel }
 
@@ -132,8 +138,23 @@ export function useSearchPush() {
   }
 
   return {
-    visible, row, downloaders, selectedDl, categories, selectedCategory,
-    savePath, showAdvanced, paused, loading, pushedDlName, pushedDlId,
-    subtitle, start, confirm, gotoDownloaderTasks, gotoDownloaderConfig, close,
+    visible,
+    row,
+    downloaders,
+    selectedDl,
+    categories,
+    selectedCategory,
+    savePath,
+    showAdvanced,
+    paused,
+    loading,
+    pushedDlName,
+    pushedDlId,
+    subtitle,
+    start,
+    confirm,
+    gotoDownloaderTasks,
+    gotoDownloaderConfig,
+    close,
   }
 }

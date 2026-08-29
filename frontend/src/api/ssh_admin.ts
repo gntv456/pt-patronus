@@ -38,12 +38,13 @@ export interface SshLogRow {
 }
 
 export const sshApi = {
-  status: (targetId: number) =>
-    http.get<SshServiceStatus>(`/ops/ssh/${targetId}/status`).then((r) => r.data),
+  status: (targetId: number) => http.get<SshServiceStatus>(`/ops/ssh/${targetId}/status`).then((r) => r.data),
   action: (targetId: number, action: 'start' | 'stop' | 'restart' | 'reload') =>
     http.post<{ ok: boolean; error?: string }>(`/ops/ssh/${targetId}/action`, { action }).then((r) => r.data),
   toggleEnable: (targetId: number, enable: boolean) =>
-    http.post<{ ok: boolean; error?: string }>(`/ops/ssh/${targetId}/enable`, null, { params: { enable } }).then((r) => r.data),
+    http
+      .post<{ ok: boolean; error?: string }>(`/ops/ssh/${targetId}/enable`, null, { params: { enable } })
+      .then((r) => r.data),
   config: (targetId: number, data: SshConfigRequest) =>
     http.post<{ ok: boolean; error?: string }>(`/ops/ssh/${targetId}/config`, data).then((r) => r.data),
   sessions: (targetId: number) =>

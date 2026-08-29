@@ -137,29 +137,28 @@ func (h *DatabaseHandler) describeTable(table string) ([]dbColumn, error) {
 
 // dbQueryRequest 查询请求。
 type dbQueryRequest struct {
-	SQL         string `json:"sql" binding:"required,max=5000"`
-	Limit       int    `json:"limit"`
-	ConfirmRisk bool   `json:"confirm_risk"`
+	SQL   string `json:"sql" binding:"required,max=5000"`
+	Limit int    `json:"limit"`
 }
 
 // dbQueryResult 查询结果。
 type dbQueryResult struct {
-	Columns  []string `json:"columns"`
-	Rows     [][]any  `json:"rows"`
-	Affected int64    `json:"affected,omitempty"`
-	Limit    int      `json:"limit,omitempty"`
-	Took     string   `json:"took"`
-	IsWrite  bool     `json:"is_write"`
+	Columns []string `json:"columns"`
+	Rows    [][]any  `json:"rows"`
+	Limit   int      `json:"limit,omitempty"`
+	Took    string   `json:"took"`
+	IsWrite bool     `json:"is_write"`
 }
 
-var (
-	// dbWritePattern 写操作检测。
-	dbWritePattern = regexp.MustCompile(`(?i)^\s*(UPDATE|DELETE|INSERT|DROP|ALTER|CREATE|TRUNCATE|REPLACE)\b`)
-	// dbForbiddenPattern 禁止操作（即使 confirm 也不允许）。
-	dbForbiddenPattern = regexp.MustCompile(`(?i)\b(DROP\s+DATABASE|DROP\s+TABLE|TRUNCATE\s+TABLE|ALTER\s+TABLE.*DROP)\b`)
-)
+// dbReadPattern 只读语句白名单：仅允许 SELECT / WITH...SELECT 开头的单条查询。
+// 曾允许 confirm_risk 后执行 UPDATE/DELETE 等任意写 SQL（黑名单可绕过，
+// 属于 admin 凭据失陷后的提权后门），已收敛为只读（安全审计 P0-2）。
+var dbReadPattern = regexp.MustCompile(`(?is)^\s*(SELECT|WITH)\b`)
 
-// Query 执行受限 SQL 查询。
+// dbForbiddenPattern 禁止出现的语句形态（即使嵌在子查询里也拒绝）。
+var dbForbiddenPattern = regexp.MustCompile(`(?i)\b(INSERT|UPDATE|DELETE|REPLACE|DROP|ALTER|CREATE|TRUNCATE|ATTACH|DETACH|PRAGMA|GRANT|REVOKE|VACUUM|REINDEX)\b`)
+
+// Query 执行只读 SQL 查询（写操作一律拒绝，运维需求请走对应结构化 API 或 SQL 客户端直连）。
 func (h *DatabaseHandler) Query(c *gin.Context) {
 	var in dbQueryRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
@@ -171,32 +170,18 @@ func (h *DatabaseHandler) Query(c *gin.Context) {
 		errcode.Respond(c, errcode.FieldRequired)
 		return
 	}
+	if !dbReadPattern.MatchString(sqlText) {
+		errcode.Respond(c, errcode.WriteSQLForbidden)
+		return
+	}
 	if dbForbiddenPattern.MatchString(sqlText) {
 		errcode.Respond(c, errcode.ForbiddenSQL)
 		return
 	}
-	isWrite := dbWritePattern.MatchString(sqlText)
-
-	// 写操作需要二次确认。
-	if isWrite && !in.ConfirmRisk {
-		errcode.Respond(c, errcode.RiskConfirmationRequired)
-		return
-	}
-	// 阻止多语句注入：写操作只允许单条语句（不含分号结尾或多条用分号拼接）。
+	// 阻止多语句注入：只允许单条语句（不含分号结尾或多条用分号拼接）。
 	trimmedSemi := strings.TrimRight(strings.TrimSpace(sqlText), ";")
 	if strings.Contains(trimmedSemi, ";") {
 		errcode.Respond(c, errcode.MultiStatement)
-		return
-	}
-
-	if isWrite {
-		res := h.db.Exec(trimmedSemi)
-		if res.Error != nil {
-			errcode.Respond(c, errcode.InvalidInput.WithErr(res.Error))
-			return
-		}
-		affected := res.RowsAffected
-		c.JSON(http.StatusOK, dbQueryResult{Affected: affected, IsWrite: true})
 		return
 	}
 

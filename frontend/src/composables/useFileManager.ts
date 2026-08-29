@@ -88,8 +88,12 @@ export function useFileManager() {
   const curFs = computed(() => (current.value?.kind === 'fs' ? current.value.fs : null))
   const curCloud = computed(() => (current.value?.kind === 'cloud' ? current.value.drive : null))
   const curReadOnly = computed(() => current.value?.kind === 'cloud')
-  const curName = computed(() => (current.value ? (current.value.kind === 'fs' ? current.value.fs.name : current.value.drive.name) : ''))
-  const curId = computed(() => (current.value ? (current.value.kind === 'fs' ? current.value.fs.id : current.value.drive.id) : 0))
+  const curName = computed(() =>
+    current.value ? (current.value.kind === 'fs' ? current.value.fs.name : current.value.drive.name) : '',
+  )
+  const curId = computed(() =>
+    current.value ? (current.value.kind === 'fs' ? current.value.fs.id : current.value.drive.id) : 0,
+  )
 
   function itemKey(it: StorageItem) {
     return it.kind + ':' + (it.kind === 'fs' ? it.fs.id : it.drive.id)
@@ -167,7 +171,6 @@ export function useFileManager() {
     return statusMap.value[itemKey(it)]?.state ?? 'checking'
   }
 
-
   // ── 选择 + 浏览 ──
   function selectStorage(it: StorageItem) {
     current.value = it
@@ -199,9 +202,12 @@ export function useFileManager() {
 
   const crumbs = computed(() => {
     if (!current.value) return []
-    const root = current.value.kind === 'fs'
-      ? (current.value.fs.type === 'local' ? '/' : current.value.fs.base_path || '/')
-      : current.value.drive.root_path || '/'
+    const root =
+      current.value.kind === 'fs'
+        ? current.value.fs.type === 'local'
+          ? '/'
+          : current.value.fs.base_path || '/'
+        : current.value.drive.root_path || '/'
     const rootParts = root.replace(/\/$/, '').split('/').filter(Boolean)
     const curParts = path.value.replace(/\/$/, '').split('/').filter(Boolean)
     const relParts = curParts.slice(rootParts.length)
@@ -240,19 +246,78 @@ export function useFileManager() {
   }
 
   return {
-    list, loading, agents, current, statusMap, testing,
-    path, entries, bloading, viewMode, selected, uploadProgress, batchDelProgress,
-    storageDialog, editingId, form,
-    mkdirVisible, mkdirName, renameVisible, renameTarget, renameNewName,
-    moveCopyVisible, moveCopyMode, moveCopyPath, moveCopyEntries, moveCopyLoading, moveCopySources,
-    strmVisible, strmDir, strmForm, strmLoading, submitting,
-    editVisible, editTarget, editContent, editLoading,
-    archiveVisible, archiveTarget, archiveName, archiveFmt, archiveLoading,
-    chmodVisible, chmodTarget, chmodMode, chmodRecursive, chmodLoading,
-    dirSizeMap, dirSizeLoading, previewVisible, previewTarget, previewContent, previewLoading,
-    curFs, curCloud, curReadOnly, curName, curId, crumbs,
-    itemKey, loadStorages, loadAgents, agentName, probeAll, testOne, statusOf,
-    selectStorage, refresh, onSelectionChange, enter, jump, up, dlUrl,
+    list,
+    loading,
+    agents,
+    current,
+    statusMap,
+    testing,
+    path,
+    entries,
+    bloading,
+    viewMode,
+    selected,
+    uploadProgress,
+    batchDelProgress,
+    storageDialog,
+    editingId,
+    form,
+    mkdirVisible,
+    mkdirName,
+    renameVisible,
+    renameTarget,
+    renameNewName,
+    moveCopyVisible,
+    moveCopyMode,
+    moveCopyPath,
+    moveCopyEntries,
+    moveCopyLoading,
+    moveCopySources,
+    strmVisible,
+    strmDir,
+    strmForm,
+    strmLoading,
+    submitting,
+    editVisible,
+    editTarget,
+    editContent,
+    editLoading,
+    archiveVisible,
+    archiveTarget,
+    archiveName,
+    archiveFmt,
+    archiveLoading,
+    chmodVisible,
+    chmodTarget,
+    chmodMode,
+    chmodRecursive,
+    chmodLoading,
+    dirSizeMap,
+    dirSizeLoading,
+    previewVisible,
+    previewTarget,
+    previewContent,
+    previewLoading,
+    curFs,
+    curCloud,
+    curReadOnly,
+    curName,
+    curId,
+    crumbs,
+    itemKey,
+    loadStorages,
+    loadAgents,
+    agentName,
+    probeAll,
+    testOne,
+    statusOf,
+    selectStorage,
+    refresh,
+    onSelectionChange,
+    enter,
+    jump,
+    up,
+    dlUrl,
     ILLEGAL_NAME_RE,
   }
 }

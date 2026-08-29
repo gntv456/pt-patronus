@@ -166,8 +166,7 @@ export const dashboardApi = {
   // 立即抓取所有启用站点统计并返回最新总览（回填新加入站点的 0 数据）。
   sync: () => http.post<DashboardOverview>('/dashboard/sync').then((r) => r.data),
   // 仅刷新单个站点统计（站点明细「刷新数据」按钮）。
-  syncOne: (siteId: number) =>
-    http.post<DashboardOverview>(`/dashboard/sync/${siteId}`).then((r) => r.data),
+  syncOne: (siteId: number) => http.post<DashboardOverview>(`/dashboard/sync/${siteId}`).then((r) => r.data),
   // 单站点历史统计快照（站点明细「用户历史数据」按钮）。
   history: (siteId: number, days = 30) =>
     http.get<SiteHistoryPoint[]>(`/dashboard/history/${siteId}`, { params: { days } }).then((r) => r.data),

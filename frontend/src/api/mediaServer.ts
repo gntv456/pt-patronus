@@ -76,15 +76,13 @@ export interface DuplicateGroup {
 }
 
 export const mediaServerApi = {
-  list: () =>
-    http.get<{ servers: MediaServer[] }>('/mediaserver').then((r) => r.data.servers ?? []),
+  list: () => http.get<{ servers: MediaServer[] }>('/mediaserver').then((r) => r.data.servers ?? []),
   create: (s: Partial<MediaServer> & { token?: string }) =>
     http.post<MediaServer>('/mediaserver', s).then((r) => r.data),
   update: (id: number, s: Partial<MediaServer> & { token?: string }) =>
     http.put<MediaServer>(`/mediaserver/${id}`, s).then((r) => r.data),
   remove: (id: number) => http.delete(`/mediaserver/${id}`).then((r) => r.data),
-  test: (id: number) =>
-    http.post<TestResult>(`/mediaserver/${id}/test`).then((r) => r.data),
+  test: (id: number) => http.post<TestResult>(`/mediaserver/${id}/test`).then((r) => r.data),
   libraries: (id: number) =>
     http.get<{ libraries: MediaLibrary[] }>(`/mediaserver/${id}/libraries`).then((r) => r.data.libraries ?? []),
   scan: (id: number, libraryId?: string) =>
@@ -106,9 +104,7 @@ export const mediaServerApi = {
       .then((r) => r.data),
   // 观影报告（近 N 天播放统计）
   playbackReport: (id: number, days = 30) =>
-    http
-      .get<PlaybackReport>(`/mediaserver/${id}/playback-report`, { params: { days } })
-      .then((r) => r.data),
+    http.get<PlaybackReport>(`/mediaserver/${id}/playback-report`, { params: { days } }).then((r) => r.data),
   // 重复媒体检测（某库）
   duplicates: (id: number, libraryId: string) =>
     http
@@ -127,9 +123,7 @@ export const mediaServerApi = {
       .then((r) => r.data),
   // 一键补齐缺失字幕（body 传健康报告；空 body 服务端现算全库）
   fixSubtitles: (report?: HealthReport, lang = 'chs') =>
-    http
-      .post('/mediaserver/fix-subtitles', report ?? {}, { params: { lang }, timeout: 0 })
-      .then((r) => r.data),
+    http.post('/mediaserver/fix-subtitles', report ?? {}, { params: { lang }, timeout: 0 }).then((r) => r.data),
 }
 
 // 媒体健康报告（对齐后端 chain.HealthReport）。

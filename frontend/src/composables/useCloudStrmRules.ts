@@ -21,7 +21,10 @@ function defaultRule() {
   }
 }
 
-export function useCloudStrmRules(drives: Ref<CloudDrive[]>, openBrowse: (d: CloudDrive, target: (p: string) => void) => void) {
+export function useCloudStrmRules(
+  drives: Ref<CloudDrive[]>,
+  openBrowse: (d: CloudDrive, target: (p: string) => void) => void,
+) {
   const rules = ref<StrmRule[]>([])
   const records = ref<StrmRecord[]>([])
 
@@ -146,9 +149,23 @@ export function useCloudStrmRules(drives: Ref<CloudDrive[]>, openBrowse: (d: Clo
   }
 
   return {
-    rules, records, loadRules, loadRecords, driveName,
-    showRuleForm, editingRule, ruleForm,
-    openCreateRule, openEditRule, ruleBrowse, saveRule, removeRule,
-    generating, generateOne, generateAll, syncSubs, removeRecord,
+    rules,
+    records,
+    loadRules,
+    loadRecords,
+    driveName,
+    showRuleForm,
+    editingRule,
+    ruleForm,
+    openCreateRule,
+    openEditRule,
+    ruleBrowse,
+    saveRule,
+    removeRule,
+    generating,
+    generateOne,
+    generateAll,
+    syncSubs,
+    removeRecord,
   }
 }

@@ -12,13 +12,7 @@ export interface ComposeTemplate {
   content: string
 }
 
-export type ComposeTemplateCategory =
-  | '下载影音'
-  | '媒体中心'
-  | '开发运维'
-  | '智能家居'
-  | '数据库'
-  | '建站'
+export type ComposeTemplateCategory = '下载影音' | '媒体中心' | '开发运维' | '智能家居' | '数据库' | '建站'
 
 export const composeTemplateCategories: { key: ComposeTemplateCategory | '全部'; icon: string }[] = [
   { key: '全部', icon: '🏠' },
@@ -538,5 +532,4 @@ export const composeTemplates: ComposeTemplate[] = [
       '        max-file: "3"',
     ].join('\n'),
   },
-
 ]

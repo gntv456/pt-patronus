@@ -13,24 +13,57 @@ import { useMediaDetail } from '@/composables/useMediaDetail'
 const { t } = useI18n()
 
 const {
-  route, router, detail, loading, error, subscribing, moreKind,
-  CAST_PREVIEW_LIMIT, RECOMMENDATIONS_PREVIEW_LIMIT,
-  visibleCast, visibleRecommendations, moreVisible, moreTitle,
-  celVisible, celLoading, celProfile,
-  load, searchResources, subscribe, openRec, openMore, openCelebrity,
+  route,
+  router,
+  detail,
+  loading,
+  error,
+  subscribing,
+  moreKind,
+  CAST_PREVIEW_LIMIT,
+  RECOMMENDATIONS_PREVIEW_LIMIT,
+  visibleCast,
+  visibleRecommendations,
+  moreVisible,
+  moreTitle,
+  celVisible,
+  celLoading,
+  celProfile,
+  load,
+  searchResources,
+  subscribe,
+  openRec,
+  openMore,
+  openCelebrity,
 } = useMediaDetail()
 
-const TYPE_LABELS = computed<Record<string, string>>(() => ({ movie: t('search.catMovie'), tv: t('search.catTv'), music: t('search.catMusic') }))
+const TYPE_LABELS = computed<Record<string, string>>(() => ({
+  movie: t('search.catMovie'),
+  tv: t('search.catTv'),
+  music: t('search.catMusic'),
+}))
 function typeBadge(k: string) {
   return TYPE_LABELS.value[k] || k
 }
-const SOURCE_LABELS = computed<Record<string, string>>(() => ({ tmdb: 'TMDB', douban: t('search.srcDouban'), bangumi: 'Bangumi', musicbrainz: 'MB', cunguangji: t('search.srcCunguangji'), xingguangji: t('search.srcCunguangji') }))
+const SOURCE_LABELS = computed<Record<string, string>>(() => ({
+  tmdb: 'TMDB',
+  douban: t('search.srcDouban'),
+  bangumi: 'Bangumi',
+  musicbrainz: 'MB',
+  cunguangji: t('search.srcCunguangji'),
+  xingguangji: t('search.srcCunguangji'),
+}))
 function sourceBadge(s: string) {
   return SOURCE_LABELS.value[s] || s
 }
 function genreText(m: MediaInfo) {
-  return [m.genres?.join(' / '), m.runtime ? t('mediadetail.runtimeMin', { n: m.runtime }) : '', m.countries?.join(' / ')]
-    .filter(Boolean).join('  |  ')
+  return [
+    m.genres?.join(' / '),
+    m.runtime ? t('mediadetail.runtimeMin', { n: m.runtime }) : '',
+    m.countries?.join(' / '),
+  ]
+    .filter(Boolean)
+    .join('  |  ')
 }
 function factText(m: MediaInfo) {
   const sourceID = m.source_id.replace(/^(movie|tv|music):/, '')
@@ -38,7 +71,9 @@ function factText(m: MediaInfo) {
     m.release_date ? t('mediadetail.released', { date: m.release_date }) : '',
     m.vote_count ? t('mediadetail.voters', { n: m.vote_count.toLocaleString() }) : '',
     sourceID ? `${sourceBadge(m.source)} ID ${sourceID}` : '',
-  ].filter(Boolean).join('  ·  ')
+  ]
+    .filter(Boolean)
+    .join('  ·  ')
 }
 </script>
 
@@ -73,7 +108,10 @@ function factText(m: MediaInfo) {
                 {{ detail.title }}
                 <span v-if="detail.year" class="year">({{ detail.year }})</span>
               </h1>
-              <div v-if="detail.original_title && detail.original_title !== detail.title" class="original-title text-muted">
+              <div
+                v-if="detail.original_title && detail.original_title !== detail.title"
+                class="original-title text-muted"
+              >
                 {{ detail.original_title }}
               </div>
               <div class="badges">
@@ -82,7 +120,9 @@ function factText(m: MediaInfo) {
                 <span class="badge src">{{ sourceBadge(detail.source) }}</span>
               </div>
               <div v-if="genreText(detail)" class="genre-row text-muted">{{ genreText(detail) }}</div>
-              <div v-if="detail.directors?.length" class="genre-row text-muted">{{ t('mediadetail.directors', { names: detail.directors.join(', ') }) }}</div>
+              <div v-if="detail.directors?.length" class="genre-row text-muted">
+                {{ t('mediadetail.directors', { names: detail.directors.join(', ') }) }}
+              </div>
               <div v-if="factText(detail)" class="fact-row text-muted">{{ factText(detail) }}</div>
               <div class="actions">
                 <el-button type="primary" @click="searchResources">🔍 {{ t('mediadetail.searchRes') }}</el-button>
@@ -101,10 +141,14 @@ function factText(m: MediaInfo) {
         <!-- 演员 -->
         <div v-if="detail.cast?.length" class="card glass section">
           <div class="section-head">
-            <div class="sec-title">{{ t('mediadetail.cast') }} <span class="sec-count">{{ detail.cast.length }}</span></div>
+            <div class="sec-title">
+              {{ t('mediadetail.cast') }} <span class="sec-count">{{ detail.cast.length }}</span>
+            </div>
             <el-button
               v-if="detail.cast.length > CAST_PREVIEW_LIMIT"
-              link class="section-more" aria-haspopup="dialog"
+              link
+              class="section-more"
+              aria-haspopup="dialog"
               @click="openMore('cast')"
             >
               {{ t('mediadetail.more') }}
@@ -112,7 +156,14 @@ function factText(m: MediaInfo) {
             </el-button>
           </div>
           <div id="media-detail-cast" class="cast">
-            <div v-for="(p, i) in visibleCast" :key="`${p.id || p.name}-${i}`" class="cast-item" :class="{ clickable: p.id }" @click="openCelebrity(p)">
+            <div
+              v-a11y-button
+              v-for="(p, i) in visibleCast"
+              :key="`${p.id || p.name}-${i}`"
+              class="cast-item"
+              :class="{ clickable: p.id }"
+              @click="openCelebrity(p)"
+            >
               <div class="avatar"><MediaPoster :url="p.avatar || ''" kind="person" /></div>
               <div class="cname">{{ p.name }}</div>
               <div v-if="p.role" class="crole text-muted">{{ p.role }}</div>
@@ -123,10 +174,14 @@ function factText(m: MediaInfo) {
         <!-- 推荐 -->
         <div v-if="detail.recommendations?.length" class="card glass section">
           <div class="section-head">
-            <div class="sec-title">{{ t('mediadetail.recommendations') }} <span class="sec-count">{{ detail.recommendations.length }}</span></div>
+            <div class="sec-title">
+              {{ t('mediadetail.recommendations') }} <span class="sec-count">{{ detail.recommendations.length }}</span>
+            </div>
             <el-button
               v-if="detail.recommendations.length > RECOMMENDATIONS_PREVIEW_LIMIT"
-              link class="section-more" aria-haspopup="dialog"
+              link
+              class="section-more"
+              aria-haspopup="dialog"
               @click="openMore('recommendations')"
             >
               {{ t('mediadetail.more') }}
@@ -135,6 +190,7 @@ function factText(m: MediaInfo) {
           </div>
           <div id="media-detail-recommendations" class="recs">
             <div
+              v-a11y-button
               v-for="(m, i) in visibleRecommendations"
               :key="`${m.source}-${m.source_id}-${i}`"
               class="rec glass-hover"
@@ -147,16 +203,35 @@ function factText(m: MediaInfo) {
           </div>
         </div>
 
-        <el-dialog v-model="moreVisible" :title="moreTitle" width="min(960px, calc(100% - 32px))" class="more-dialog" append-to-body>
+        <el-dialog
+          v-model="moreVisible"
+          :title="moreTitle"
+          width="min(960px, calc(100% - 32px))"
+          class="more-dialog"
+          append-to-body
+        >
           <div v-if="moreKind === 'cast'" class="more-list cast">
-            <div v-for="(p, i) in detail.cast" :key="`${p.id || p.name}-${i}`" class="cast-item" :class="{ clickable: p.id }" @click="openCelebrity(p)">
+            <div
+              v-a11y-button
+              v-for="(p, i) in detail.cast"
+              :key="`${p.id || p.name}-${i}`"
+              class="cast-item"
+              :class="{ clickable: p.id }"
+              @click="openCelebrity(p)"
+            >
               <div class="avatar"><MediaPoster :url="p.avatar || ''" kind="person" /></div>
               <div class="cname">{{ p.name }}</div>
               <div v-if="p.role" class="crole text-muted">{{ p.role }}</div>
             </div>
           </div>
           <div v-else class="more-list recs">
-            <div v-for="(m, i) in detail.recommendations" :key="`${m.source}-${m.source_id}-${i}`" class="rec glass-hover" @click="openRec(m)">
+            <div
+              v-a11y-button
+              v-for="(m, i) in detail.recommendations"
+              :key="`${m.source}-${m.source_id}-${i}`"
+              class="rec glass-hover"
+              @click="openRec(m)"
+            >
               <div class="rec-poster"><MediaPoster :url="m.poster_url" :kind="m.type" /></div>
               <div class="rec-title">{{ m.title }}</div>
               <div v-if="m.rating" class="rec-rating text-muted">⭐ {{ m.rating.toFixed(1) }}</div>
@@ -172,58 +247,248 @@ function factText(m: MediaInfo) {
 </template>
 
 <style scoped>
-.page { display: flex; flex-direction: column; gap: var(--sp-4); }
-.back-row { display: flex; }
-.t-title { font-size: var(--fs-title); font-weight: 700; margin: 0; }
-.year { font-size: var(--fs-lg); font-weight: 400; color: var(--text-muted); margin-left: 6px; }
-.original-title { font-size: var(--fs-body); line-height: 1.4; }
-/* hero */
-.hero { position: relative; padding: 0; overflow: hidden; }
-.backdrop { position: absolute; inset: 0; overflow: hidden; background: var(--surface-muted); }
-.backdrop :deep(.backdrop-image) { position: absolute; inset: 0; width: 100%; height: 100%; }
-.backdrop :deep(img.backdrop-image) { object-fit: cover; filter: blur(8px) saturate(0.9); transform: scale(1.06); opacity: 0.72; }
-.backdrop :deep(.no-poster.backdrop-image) { display: none; }
-.overlay { position: absolute; inset: 0; background: linear-gradient(to top, var(--bg, #fff) 26%, transparent 72%); }
-.hero-body { position: relative; z-index: 1; display: flex; gap: var(--sp-5); align-items: flex-end; padding: 48px 24px 24px; }
-.poster { width: 150px; height: 220px; flex: none; border-radius: var(--radius-sm); overflow: hidden; box-shadow: var(--shadow-lg); background: var(--surface-muted); }
-.hero-meta { flex: 1; display: flex; flex-direction: column; gap: var(--sp-2); }
-.badges { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
-.badge { padding: 2px 10px; border-radius: var(--radius-pill); font-size: var(--fs-xs); }
-.badge.type { background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg)); }
-.badge.rating { background: var(--pt-warn-bg); color: var(--pt-warn, #f39c12); }
-.badge.src { background: var(--surface-muted); }
-.genre-row { font-size: var(--fs-body); line-height: 1.6; }
-.fact-row { font-size: var(--fs-xs); line-height: 1.6; }
-.actions { margin-top: 6px; }
-.section { padding: 18px; }
-.section-head { min-height: 32px; display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-3); margin-bottom: 12px; }
-.sec-title { font-weight: 700; font-size: var(--fs-lg); line-height: 32px; margin-bottom: 12px; }
-.section-head .sec-title { margin-bottom: 0; }
-.sec-count { margin-left: 4px; color: var(--text-muted); font-size: var(--fs-xs); font-weight: 500; }
-.section-more { flex: none; gap: var(--sp-1); }
-.overview { font-size: var(--fs-md); line-height: 1.8; white-space: pre-line; }
-/* cast */
-.cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--sp-4); }
-.cast-item { min-width: 0; text-align: center; }
-.avatar { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; background: var(--surface-muted); margin: 0 auto 6px; }
-.cname { font-size: var(--fs-xs); font-weight: 600; line-height: 1.3; }
-.crole { font-size: var(--fs-2xs); line-height: 1.3; }
-/* recs */
-.recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--sp-3); }
-.rec { padding: 0; overflow: hidden; border-radius: var(--radius-sm); cursor: pointer; background: var(--surface-muted); }
-.rec-poster { aspect-ratio: 2/3; background: var(--surface-muted); }
-.rec-title { padding: 8px 10px 2px; font-size: var(--fs-body); font-weight: 600; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.rec-rating { padding: 0 10px 10px; font-size: var(--fs-xs); }
-.more-list { max-height: min(68vh, 680px); overflow-y: auto; padding: 4px; }
-.more-dialog :deep(.el-dialog__body) { padding-top: 4px; }
-.empty { padding: 40px; text-align: center; }
-.error-state { display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
-.err-text { color: var(--pt-danger); }
-@media (max-width: 640px) {
-  .hero-body { flex-direction: column; align-items: flex-start; padding: 32px 16px 16px; }
-  .poster { width: 120px; height: 176px; }
-  .hero-meta { padding-top: 12px; }
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
 }
-.cast-item.clickable { cursor: pointer; transition: transform var(--dur-fast) var(--ease-out-smooth); }
-.cast-item.clickable:hover { transform: translateY(-2px); }
+.back-row {
+  display: flex;
+}
+.t-title {
+  font-size: var(--fs-title);
+  font-weight: 700;
+  margin: 0;
+}
+.year {
+  font-size: var(--fs-lg);
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+.original-title {
+  font-size: var(--fs-body);
+  line-height: 1.4;
+}
+/* hero */
+.hero {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+}
+.backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+.backdrop :deep(.backdrop-image) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.backdrop :deep(img.backdrop-image) {
+  object-fit: cover;
+  filter: blur(8px) saturate(0.9);
+  transform: scale(1.06);
+  opacity: 0.72;
+}
+.backdrop :deep(.no-poster.backdrop-image) {
+  display: none;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--bg, #fff) 26%, transparent 72%);
+}
+.hero-body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: var(--sp-5);
+  align-items: flex-end;
+  padding: 48px 24px 24px;
+}
+.poster {
+  width: 150px;
+  height: 220px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  background: var(--surface-muted);
+}
+.hero-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.badges {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.badge {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+}
+.badge.type {
+  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
+}
+.badge.rating {
+  background: var(--pt-warn-bg);
+  color: var(--pt-warn, #f39c12);
+}
+.badge.src {
+  background: var(--surface-muted);
+}
+.genre-row {
+  font-size: var(--fs-body);
+  line-height: 1.6;
+}
+.fact-row {
+  font-size: var(--fs-xs);
+  line-height: 1.6;
+}
+.actions {
+  margin-top: 6px;
+}
+.section {
+  padding: 18px;
+}
+.section-head {
+  min-height: 32px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: 12px;
+}
+.sec-title {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  line-height: 32px;
+  margin-bottom: 12px;
+}
+.section-head .sec-title {
+  margin-bottom: 0;
+}
+.sec-count {
+  margin-left: 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.section-more {
+  flex: none;
+  gap: var(--sp-1);
+}
+.overview {
+  font-size: var(--fs-md);
+  line-height: 1.8;
+  white-space: pre-line;
+}
+/* cast */
+.cast {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: var(--sp-4);
+}
+.cast-item {
+  min-width: 0;
+  text-align: center;
+}
+.avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--surface-muted);
+  margin: 0 auto 6px;
+}
+.cname {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.crole {
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+}
+/* recs */
+.recs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: var(--sp-3);
+}
+.rec {
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--surface-muted);
+}
+.rec-poster {
+  aspect-ratio: 2/3;
+  background: var(--surface-muted);
+}
+.rec-title {
+  padding: 8px 10px 2px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rec-rating {
+  padding: 0 10px 10px;
+  font-size: var(--fs-xs);
+}
+.more-list {
+  max-height: min(68vh, 680px);
+  overflow-y: auto;
+  padding: 4px;
+}
+.more-dialog :deep(.el-dialog__body) {
+  padding-top: 4px;
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.err-text {
+  color: var(--pt-danger);
+}
+@media (max-width: 640px) {
+  .hero-body {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 32px 16px 16px;
+  }
+  .poster {
+    width: 120px;
+    height: 176px;
+  }
+  .hero-meta {
+    padding-top: 12px;
+  }
+}
+.cast-item.clickable {
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out-smooth);
+}
+.cast-item.clickable:hover {
+  transform: translateY(-2px);
+}
 </style>

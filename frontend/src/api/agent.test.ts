@@ -22,13 +22,15 @@ beforeEach(() => {
 describe('streamAgentChat', () => {
   it('parses fragmented LF and CRLF SSE frames', async () => {
     localStorage.setItem('token', 'jwt')
-    const fetchMock = vi.fn().mockResolvedValue(
-      streamResponse([
-        'event: conversation\r\ndata: {"id":7}\r\n\r',
-        '\nevent: token\ndata: {"content":"he',
-        'llo"}\n\nevent: done\r\ndata: {}\r\n\r\n',
-      ]),
-    )
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        streamResponse([
+          'event: conversation\r\ndata: {"id":7}\r\n\r',
+          '\nevent: token\ndata: {"content":"he',
+          'llo"}\n\nevent: done\r\ndata: {}\r\n\r\n',
+        ]),
+      )
     vi.stubGlobal('fetch', fetchMock)
     const events: AgentEvent[] = []
 

@@ -83,6 +83,12 @@ func (o *PluginOper) ListLogs(pluginID string, limit int) ([]models.PluginLog, e
 	return logs, err
 }
 
+// PruneLogs 清理 before 之前的插件日志（每次调度写一行，无 TTL 会无限膨胀——数据审计 P2）。
+func (o *PluginOper) PruneLogs(before time.Time) (int64, error) {
+	res := o.db.Where("created_at < ?", before).Delete(&models.PluginLog{})
+	return res.RowsAffected, res.Error
+}
+
 func (o *PluginOper) UpsertState(st *models.PluginState) error {
 	return o.db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "id"}},

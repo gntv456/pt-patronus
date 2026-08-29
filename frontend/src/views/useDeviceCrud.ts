@@ -2,13 +2,7 @@
 // 依赖注入：targets（工作区切换）、reload（操作后刷新）、setWorkspace/openAddMonitorItem（工作区联动）。
 import { ref, type Ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  monitorApi,
-  agentApi,
-  type MonitorTarget,
-  type TargetInput,
-  type MonitorAlert,
-} from '@/api/monitor'
+import { monitorApi, agentApi, type MonitorTarget, type TargetInput, type MonitorAlert } from '@/api/monitor'
 import { isSSHAuthError, showSSHAuthFix } from '@/utils/ssh-fix'
 import { showAgentSecret } from '@/utils/agent-secret'
 import type { OpsCredential } from '@/api/monitor'

@@ -69,7 +69,14 @@ function fmtDay(d: string): string {
 
 <template>
   <div class="spark" @mouseleave="hoverIdx = null">
-    <svg v-if="geom" :viewBox="`0 0 ${VB_W} ${VB_H}`" preserveAspectRatio="none" class="spark-svg" role="img" :aria-label="t('spark.trend')">
+    <svg
+      v-if="geom"
+      :viewBox="`0 0 ${VB_W} ${VB_H}`"
+      preserveAspectRatio="none"
+      class="spark-svg"
+      role="img"
+      :aria-label="t('spark.trend')"
+    >
       <defs>
         <linearGradient :id="gradId" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" :stop-color="color" stop-opacity="0.32" />
@@ -122,23 +129,63 @@ function fmtDay(d: string): string {
 </template>
 
 <style scoped>
-.spark { position: relative; height: 38px; margin-top: 10px; }
-.spark-svg { width: 100%; height: 100%; display: block; overflow: visible; }
-.spark-empty { height: 38px; display: flex; align-items: center; justify-content: center; font-size: var(--fs-md); }
-.hover-line { stroke: rgba(255, 255, 255, 0.28); stroke-width: 1; stroke-dasharray: 3 3; }
+.spark {
+  position: relative;
+  height: 38px;
+  margin-top: 10px;
+}
+.spark-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.spark-empty {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-md);
+}
+.hover-line {
+  stroke: rgba(255, 255, 255, 0.28);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
 
-.hot { position: absolute; inset: 0; display: flex; }
-.hot-col { height: 100%; }
+.hot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+.hot-col {
+  height: 100%;
+}
 
 .tip {
-  position: absolute; top: -4px; transform: translateX(-50%);
-  z-index: 5; padding: 3px 7px; white-space: nowrap;
-  background: rgba(20, 22, 38, 0.96); border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-xs); box-shadow: var(--shadow-md);
-  font-size: var(--fs-2xs); display: flex; align-items: center; gap: var(--sp-1);
+  position: absolute;
+  top: -4px;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 3px 7px;
+  white-space: nowrap;
+  background: rgba(20, 22, 38, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-md);
+  font-size: var(--fs-2xs);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
   pointer-events: none;
 }
-.tip.edge { transform: translateX(-90%); }
-.tip-day { color: var(--text-muted); }
-.tip b { font-weight: 600; }
+.tip.edge {
+  transform: translateX(-90%);
+}
+.tip-day {
+  color: var(--text-muted);
+}
+.tip b {
+  font-weight: 600;
+}
 </style>

@@ -32,9 +32,7 @@ const props = withDefaults(
   { sortable: true },
 )
 
-const sortLabel = computed(
-  () => t(SORT_FIELDS.find((f) => f.key === sort.value.field)?.labelKey || 'sfc.seeders'),
-)
+const sortLabel = computed(() => t(SORT_FIELDS.find((f) => f.key === sort.value.field)?.labelKey || 'sfc.seeders'))
 
 function onSortField(key: SortField) {
   sort.value.field = key
@@ -50,12 +48,12 @@ function clearDim(key: ArrKey) {
 }
 </script>
 
-
 <template>
   <div class="sfb">
     <div class="sfb-row">
       <span class="sfb-count">
-        🔍 <b>{{ resultCount }}</b><span class="text-muted">/{{ totalCount }}</span>
+        🔍 <b>{{ resultCount }}</b
+        ><span class="text-muted">/{{ totalCount }}</span>
       </span>
 
       <template v-if="sortable">
@@ -68,7 +66,8 @@ function clearDim(key: ArrKey) {
                 :key="f.key"
                 :command="f.key"
                 :class="{ 'is-active': sort.field === f.key }"
-              >{{ t(f.labelKey) }}</el-dropdown-item>
+                >{{ t(f.labelKey) }}</el-dropdown-item
+              >
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -77,7 +76,9 @@ function clearDim(key: ArrKey) {
           class="sfb-order"
           :title="sort.order === 'desc' ? t('sfb.desc') : t('sfb.asc')"
           @click="toggleOrder"
-        >{{ sort.order === 'desc' ? '↓' : '↑' }}</button>
+        >
+          {{ sort.order === 'desc' ? '↓' : '↑' }}
+        </button>
       </template>
 
       <div class="sfb-pills">
@@ -102,11 +103,7 @@ function clearDim(key: ArrKey) {
             </div>
             <div v-if="options[d.key].length" class="sfb-checks">
               <el-checkbox-group v-model="filter[d.key]">
-                <el-checkbox
-                  v-for="opt in options[d.key]"
-                  :key="opt"
-                  :value="opt"
-                >{{ opt }}</el-checkbox>
+                <el-checkbox v-for="opt in options[d.key]" :key="opt" :value="opt">{{ opt }}</el-checkbox>
               </el-checkbox-group>
             </div>
             <div v-else class="sfb-empty text-muted">{{ t('sfb.noOptions') }}</div>
@@ -118,11 +115,19 @@ function clearDim(key: ArrKey) {
           class="sfb-pill"
           :class="{ on: filter.onlyCnSub }"
           @click="filter.onlyCnSub = !filter.onlyCnSub"
-        >🔤 {{ t('sfb.cnSub') }}</button>
+        >
+          🔤 {{ t('sfb.cnSub') }}
+        </button>
 
         <el-popover trigger="click" placement="bottom-end" :width="280" popper-class="sfb-popper">
           <template #reference>
-            <button type="button" class="sfb-pill" :class="{ on: hasActive && (filter.sizeMinGB || filter.sizeMaxGB || filter.seedersMin || filter.timePreset) }">
+            <button
+              type="button"
+              class="sfb-pill"
+              :class="{
+                on: hasActive && (filter.sizeMinGB || filter.sizeMaxGB || filter.seedersMin || filter.timePreset),
+              }"
+            >
               ⚙ {{ t('sfb.advanced') }}
             </button>
           </template>
@@ -151,13 +156,7 @@ function clearDim(key: ArrKey) {
             </div>
             <div class="adv-row">
               <label>{{ t('sfb.seedersMin') }}</label>
-              <el-input-number
-                v-model="filter.seedersMin"
-                :min="0"
-                :step="1"
-                size="small"
-                controls-position="right"
-              />
+              <el-input-number v-model="filter.seedersMin" :min="0" :step="1" size="small" controls-position="right" />
             </div>
             <div class="adv-row">
               <label>{{ t('sfb.time') }}</label>
@@ -167,7 +166,9 @@ function clearDim(key: ArrKey) {
                   class="time-chip"
                   :class="{ on: !filter.timePreset }"
                   @click="filter.timePreset = ''"
-                >{{ t('sfb.anyTime') }}</button>
+                >
+                  {{ t('sfb.anyTime') }}
+                </button>
                 <button
                   v-for="topt in TIME_OPTS"
                   :key="topt.key"
@@ -175,7 +176,9 @@ function clearDim(key: ArrKey) {
                   class="time-chip"
                   :class="{ on: filter.timePreset === topt.key }"
                   @click="filter.timePreset = topt.key"
-                >{{ t(topt.labelKey) }}</button>
+                >
+                  {{ t(topt.labelKey) }}
+                </button>
               </div>
             </div>
           </div>
@@ -190,7 +193,8 @@ function clearDim(key: ArrKey) {
         closable
         size="small"
         @close="removeFilter(tag)"
-      >{{ tag.label }}</el-tag>
+        >{{ tag.label }}</el-tag
+      >
       <button type="button" class="sfb-clear" @click="clearAll">{{ t('sfb.clearAll') }}</button>
     </div>
   </div>
@@ -257,7 +261,10 @@ function clearDim(key: ArrKey) {
   cursor: pointer;
   color: var(--text-strong);
   white-space: nowrap;
-  transition: background var(--dur-base) var(--ease-out-smooth), border-color var(--dur-base) var(--ease-out-smooth), color var(--dur-base) var(--ease-out-smooth);
+  transition:
+    background var(--dur-base) var(--ease-out-smooth),
+    border-color var(--dur-base) var(--ease-out-smooth),
+    color var(--dur-base) var(--ease-out-smooth);
 }
 .sfb-pill:hover {
   border-color: var(--pt-primary, #6c5ce7);

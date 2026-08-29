@@ -10,6 +10,8 @@ import (
 // registerPublicRoutes 注册无需登录的公开路由（系统健康、鉴权登录、WebSocket、流媒体、MCP 等）。
 func registerPublicRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler, sysH *v1.SystemHandler) {
 	api.GET("/system/health", sysH.Health)
+	// readiness 探针：补 DB 连通检查（liveness 之外，供反代/编排摘流量）。
+	api.GET("/system/health/ready", sysH.Readiness)
 	api.GET("/system/info", sysH.Info)
 
 	// 公开路由：激活前可达。登录/激活端点加更严限流防爆破。
@@ -34,7 +36,7 @@ func registerPublicRoutes(api *gin.RouterGroup, d *Deps, authH *v1.AuthHandler, 
 	}
 
 	// WebSocket 实时推送（?ticket=<一次性> 鉴权；不进 guarded 的 header 鉴权）。
-	wsH := v1.NewWSHandler(d.WS, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins))
+	wsH := v1.NewWSHandler(d.WS, d.Tickets, splitOrigins(d.Cfg.CORSAllowedOrigins), d.Cfg.IsRelease())
 	api.GET("/ws", wsH.Handle)
 
 	// RTSP 视频流（?token=<jwt> 鉴权；浏览器不能直播 RTSP，由 RTSPProxy 转 WS）。

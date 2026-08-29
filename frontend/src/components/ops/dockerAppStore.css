@@ -1,7 +1,15 @@
 /* ===== Docker 应用商店 ===== */
-.app-store-dialog :deep(.el-dialog__body) { padding: 0; }
-.app-store-dialog :deep(.el-dialog__header) { padding: 16px 20px; border-bottom: 1px solid var(--divider); }
-.app-store-dialog :deep(.el-dialog__title) { font-size: var(--fs-lg); font-weight: 700; }
+.app-store-dialog :deep(.el-dialog__body) {
+  padding: 0;
+}
+.app-store-dialog :deep(.el-dialog__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--divider);
+}
+.app-store-dialog :deep(.el-dialog__title) {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+}
 
 .app-store-layout {
   display: flex;
@@ -86,8 +94,14 @@
   border-bottom: 1px solid var(--divider);
   flex: none;
 }
-.store-search-input { flex: 1; }
-.store-search-ico { width: 18px; height: 18px; fill: var(--text-muted); }
+.store-search-input {
+  flex: 1;
+}
+.store-search-ico {
+  width: 18px;
+  height: 18px;
+  fill: var(--text-muted);
+}
 .store-result-count {
   font-size: var(--fs-xs);
   color: var(--text-muted);
@@ -235,8 +249,12 @@
 
 /* 响应式 */
 @media (max-width: 600px) {
-  .app-store-sidebar { width: 140px; }
-  .store-app-grid { grid-template-columns: 1fr; }
+  .app-store-sidebar {
+    width: 140px;
+  }
+  .store-app-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ===== 应用商店：模式切换 + Compose 卡片 ===== */
@@ -261,7 +279,9 @@
   transition: all var(--dur-fast) var(--ease-out-smooth);
   font-weight: 500;
 }
-.mode-tab:hover { color: var(--text-strong); }
+.mode-tab:hover {
+  color: var(--text-strong);
+}
 .mode-tab.active {
   background: var(--pt-primary);
   color: #fff;
@@ -269,9 +289,18 @@
 }
 
 /* Compose 编排卡片 */
-.store-app-card--compose { border-color: var(--pt-primary); border-style: dashed; }
-.store-app-card--compose:hover { border-style: solid; }
-.compose-services { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.store-app-card--compose {
+  border-color: var(--pt-primary);
+  border-style: dashed;
+}
+.store-app-card--compose:hover {
+  border-style: solid;
+}
+.compose-services {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
 .compose-svc-chip {
   font-size: var(--fs-2xs);
   font-family: monospace;
@@ -281,5 +310,9 @@
   color: #fff;
   opacity: 0.85;
 }
-.app-install-btn--compose { background: var(--pt-success, #18a058); }
-.app-install-btn--compose:hover { background: var(--pt-success-dark, #0f7a3e); }
+.app-install-btn--compose {
+  background: var(--pt-success, #18a058);
+}
+.app-install-btn--compose:hover {
+  background: var(--pt-success-dark, #0f7a3e);
+}

@@ -129,16 +129,19 @@ export const downloaderApi = {
   // —— 分类 / 标签 ——
   categories: (id: number) =>
     http.get<{ categories?: string[] } & DownloaderResult>(`/downloaders/${id}/categories`).then((r) => r.data),
-  tags: (id: number) =>
-    http.get<{ tags?: string[] } & DownloaderResult>(`/downloaders/${id}/tags`).then((r) => r.data),
+  tags: (id: number) => http.get<{ tags?: string[] } & DownloaderResult>(`/downloaders/${id}/tags`).then((r) => r.data),
   setCategory: (id: number, hashes: string[], category: string) =>
     http.post<DownloaderResult>(`/downloaders/${id}/torrents/category`, { hashes, category }).then((r) => r.data),
   editTags: (id: number, hashes: string[], tags: string[], mode: 'set' | 'add' | 'remove') =>
     http.post<DownloaderResult>(`/downloaders/${id}/torrents/tags`, { hashes, tags, mode }).then((r) => r.data),
   createCategory: (id: number, name: string, savePath = '') =>
-    http.post<DownloaderResult>(`/downloaders/${id}/categories/create`, { name, save_path: savePath }).then((r) => r.data),
+    http
+      .post<DownloaderResult>(`/downloaders/${id}/categories/create`, { name, save_path: savePath })
+      .then((r) => r.data),
   editCategory: (id: number, name: string, savePath: string) =>
-    http.post<DownloaderResult>(`/downloaders/${id}/categories/edit`, { name, save_path: savePath }).then((r) => r.data),
+    http
+      .post<DownloaderResult>(`/downloaders/${id}/categories/edit`, { name, save_path: savePath })
+      .then((r) => r.data),
   deleteCategories: (id: number, names: string[]) =>
     http.post<DownloaderResult>(`/downloaders/${id}/categories/delete`, { names }).then((r) => r.data),
 
@@ -168,9 +171,7 @@ export const downloaderApi = {
 
   // —— 限速 ——
   setLimits: (id: number, hashes: string[], limits: Limits) =>
-    http
-      .post<DownloaderResult>(`/downloaders/${id}/torrents/limits`, { hashes, ...limits })
-      .then((r) => r.data),
+    http.post<DownloaderResult>(`/downloaders/${id}/torrents/limits`, { hashes, ...limits }).then((r) => r.data),
   getSpeedLimits: (id: number) =>
     http.get<Limits & DownloaderResult>(`/downloaders/${id}/speed-limits`).then((r) => r.data),
   setSpeedLimits: (id: number, limits: Limits) =>
@@ -178,9 +179,11 @@ export const downloaderApi = {
 
   // —— 文件 ——
   files: (id: number, hash: string) =>
-    http.get<{ files?: TorrentFile[] } & DownloaderResult>(`/downloaders/${id}/torrents/files`, {
-      params: { hash },
-    }).then((r) => r.data),
+    http
+      .get<{ files?: TorrentFile[] } & DownloaderResult>(`/downloaders/${id}/torrents/files`, {
+        params: { hash },
+      })
+      .then((r) => r.data),
   setFilePriority: (id: number, hash: string, indices: number[], priority: number) =>
     http
       .post<DownloaderResult>(`/downloaders/${id}/torrents/file-priority`, { hash, indices, priority })
@@ -202,7 +205,5 @@ export const downloaderApi = {
   addTrackers: (id: number, hash: string, urls: string[]) =>
     http.post<DownloaderResult>(`/downloaders/${id}/torrents/trackers/add`, { hash, urls }).then((r) => r.data),
   removeTrackers: (id: number, hash: string, urls: string[]) =>
-    http
-      .post<DownloaderResult>(`/downloaders/${id}/torrents/trackers/remove`, { hash, urls })
-      .then((r) => r.data),
+    http.post<DownloaderResult>(`/downloaders/${id}/torrents/trackers/remove`, { hash, urls }).then((r) => r.data),
 }

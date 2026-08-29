@@ -8,8 +8,20 @@ import { entertainmentApi, type GameStats, type PrizeDef, type GameRecord, type 
 const props = defineProps<{ siteId: number; game: string; name: string }>()
 
 // 12 色循环（对齐 LongPT 明亮配色）
-const colors = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#9D65C9', '#FF9F43',
-  '#1ABC9C', '#E84393', '#FDCB6E', '#74B9FF', '#A29BFE', '#55EFC4']
+const colors = [
+  '#FF6B6B',
+  '#FFD93D',
+  '#6BCB77',
+  '#4D96FF',
+  '#9D65C9',
+  '#FF9F43',
+  '#1ABC9C',
+  '#E84393',
+  '#FDCB6E',
+  '#74B9FF',
+  '#A29BFE',
+  '#55EFC4',
+]
 // 无奖品数据时的装饰扇区（保证转盘永远有内容）
 const decorSegments = ['🎁', '🪙', '✨', '🎫', '🍀', '💎', '👑', '🎊']
 
@@ -24,9 +36,7 @@ const rotation = ref(0)
 
 // 转盘扇区：有真奖品用奖品名，否则用装饰 emoji
 const segments = computed(() =>
-  prizes.value.length
-    ? prizes.value.map((p) => p.name || t('sp.prize'))
-    : decorSegments.slice(),
+  prizes.value.length ? prizes.value.map((p) => p.name || t('sp.prize')) : decorSegments.slice(),
 )
 
 // 连抽结果按奖品名分组计数（对齐躺平站点「88 魔力 ×12」展示）
@@ -62,9 +72,10 @@ async function draw(count: number) {
   playing.value = true
   last.value = null
   try {
-    const res = count === 1
-      ? await entertainmentApi.play(props.siteId, props.game)
-      : await entertainmentApi.playMulti(props.siteId, props.game, count)
+    const res =
+      count === 1
+        ? await entertainmentApi.play(props.siteId, props.game)
+        : await entertainmentApi.playMulti(props.siteId, props.game, count)
     // 装饰旋转：5-7 圈 + 随机角度（不强求指针精确落点——各站 prize_id 不可靠，结果在结果条揭示）
     await animateSpins(5 + Math.floor(Math.random() * 3))
     last.value = res
@@ -76,7 +87,7 @@ async function draw(count: number) {
         const summary = groups.map((g) => `${g.name} ×${g.n}`).join('，')
         ElMessage.success(wins.length ? `🎉 ${summary}` : summary)
       } else {
-        ElMessage.success(res.prize ? `🎉 ${res.prize}` : (res.message || t('sp.done')))
+        ElMessage.success(res.prize ? `🎉 ${res.prize}` : res.message || t('sp.done'))
       }
     } else {
       ElMessage.warning(res.message || t('sp.drawFailed'))
@@ -153,7 +164,9 @@ onMounted(async () => {
   <div class="spinner">
     <div class="hero">
       <div class="hero-title">🎰 {{ name }}</div>
-      <div class="balance">{{ t('bs.balance') }} <b>{{ heroBalance }}</b></div>
+      <div class="balance">
+        {{ t('bs.balance') }} <b>{{ heroBalance }}</b>
+      </div>
     </div>
 
     <div class="wheel-wrap">
@@ -171,7 +184,9 @@ onMounted(async () => {
     </div>
 
     <section class="glass section ops">
-      <button class="op primary" :disabled="playing" @click="draw(1)">{{ playing ? t('sp.drawing') : t('sp.drawNow') }}</button>
+      <button class="op primary" :disabled="playing" @click="draw(1)">
+        {{ playing ? t('sp.drawing') : t('sp.drawNow') }}
+      </button>
       <button class="op" :disabled="playing" @click="draw(10)">{{ t('sp.multi', { n: 10 }) }}</button>
       <button class="op" :disabled="playing" @click="draw(20)">{{ t('sp.multi', { n: 20 }) }}</button>
       <button class="op" :disabled="playing" @click="draw(50)">{{ t('sp.multi', { n: 50 }) }}</button>
@@ -214,57 +229,231 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.spinner { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 640px; margin: 0 auto; }
-.hero { padding: 18px; border-radius: var(--radius-md); background: linear-gradient(135deg, #6366f1, #8b5cf6); text-align: center; }
-.hero-title { font-size: var(--fs-title); font-weight: 800; color: #fff; }
-.balance { margin-top: 4px; font-size: var(--fs-body); color: rgba(255,255,255,0.92); }
-.balance b { color: #fde68a; font-size: var(--fs-lg); }
+.spinner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: 640px;
+  margin: 0 auto;
+}
+.hero {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  text-align: center;
+}
+.hero-title {
+  font-size: var(--fs-title);
+  font-weight: 800;
+  color: #fff;
+}
+.balance {
+  margin-top: 4px;
+  font-size: var(--fs-body);
+  color: rgba(255, 255, 255, 0.92);
+}
+.balance b {
+  color: #fde68a;
+  font-size: var(--fs-lg);
+}
 
-.wheel-wrap { position: relative; width: 100%; max-width: 360px; aspect-ratio: 1; margin: 0 auto; }
-.wheel { width: 100%; height: 100%; transition: transform 4s var(--ease-out-smooth); }
-.canvas { width: 100%; height: 100%; display: block; }
+.wheel-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1;
+  margin: 0 auto;
+}
+.wheel {
+  width: 100%;
+  height: 100%;
+  transition: transform 4s var(--ease-out-smooth);
+}
+.canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 .pointer {
-  position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
-  width: 0; height: 0; border-left: 16px solid transparent; border-right: 16px solid transparent;
-  border-top: 28px solid #ff3b3b; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); z-index: 3;
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 28px solid #ff3b3b;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3));
+  z-index: 3;
 }
 .hub {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 26%; height: 26%; border-radius: 50%; border: 4px solid #fff;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 26%;
+  height: 26%;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
   box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5);
 }
-.hub:disabled { cursor: wait; opacity: 0.85; }
-.hub-emoji { font-size: var(--fs-title); }
-.hub-text { font-size: var(--fs-xs); font-weight: 700; line-height: 1.2; margin-top: 2px; }
-.spin-icon { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: sp 0.8s linear infinite; }
-@keyframes sp { to { transform: rotate(360deg); } }
+.hub:disabled {
+  cursor: wait;
+  opacity: 0.85;
+}
+.hub-emoji {
+  font-size: var(--fs-title);
+}
+.hub-text {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 2px;
+}
+.spin-icon {
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: sp 0.8s linear infinite;
+}
+@keyframes sp {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
-.section { padding: 16px; border-radius: var(--radius-md); }
-.sec-title { font-weight: 700; margin-bottom: 10px; font-size: var(--fs-lg); }
-.ops { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; }
-.op { padding: 9px 16px; border: 1px solid #6366f1; border-radius: var(--radius-sm); cursor: pointer; font-size: var(--fs-body); font-weight: 600; color: #6366f1; background: transparent; }
-.op.primary { color: #fff; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: 0; box-shadow: 0 4px 12px rgba(99,102,241,0.4); }
-.op:disabled { opacity: 0.6; cursor: wait; }
+.section {
+  padding: 16px;
+  border-radius: var(--radius-md);
+}
+.sec-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  font-size: var(--fs-lg);
+}
+.ops {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.op {
+  padding: 9px 16px;
+  border: 1px solid #6366f1;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: #6366f1;
+  background: transparent;
+}
+.op.primary {
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border: 0;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+.op:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 
-.result { padding: 12px; border-radius: var(--radius-sm); display: flex; gap: var(--sp-2); align-items: flex-start; }
-.result.win { background: var(--pt-success-bg); }
-.result.lose { background: var(--pt-danger-bg); }
-.badge { font-size: var(--fs-xl); }
-.r-body { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1; }
-.r-prize { font-weight: 700; color: var(--pt-success); }
-.r-bal { font-size: var(--fs-xs); color: var(--text-muted, #999); }
-.r-msg { font-size: var(--fs-xs); }
-.r-list { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
-.r-pill { padding: 3px 10px; border-radius: var(--radius-xs); font-size: var(--fs-xs); font-weight: 600; background: var(--pt-success-bg); color: var(--pt-success); }
-.r-pill.nowin { background: rgba(255,255,255,0.08); color: var(--text-muted, #999); font-weight: 500; }
+.result {
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+.result.win {
+  background: var(--pt-success-bg);
+}
+.result.lose {
+  background: var(--pt-danger-bg);
+}
+.badge {
+  font-size: var(--fs-xl);
+}
+.r-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  flex: 1;
+}
+.r-prize {
+  font-weight: 700;
+  color: var(--pt-success);
+}
+.r-bal {
+  font-size: var(--fs-xs);
+  color: var(--text-muted, #999);
+}
+.r-msg {
+  font-size: var(--fs-xs);
+}
+.r-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+}
+.r-pill {
+  padding: 3px 10px;
+  border-radius: var(--radius-xs);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  background: var(--pt-success-bg);
+  color: var(--pt-success);
+}
+.r-pill.nowin {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted, #999);
+  font-weight: 500;
+}
 
-.prize-strip { display: flex; gap: var(--sp-2); overflow-x: auto; padding-bottom: 4px; }
-.prize-card { flex: 0 0 auto; padding: 8px 14px; border-radius: var(--radius-sm); background: var(--glass-bg, rgba(255,255,255,0.06)); border: 1px solid var(--border-soft, rgba(255,255,255,0.08)); font-size: var(--fs-body); font-weight: 600; }
+.prize-strip {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.prize-card {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--border-soft, rgba(255, 255, 255, 0.08));
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
 
-.rec-row { display: flex; gap: var(--sp-2); align-items: center; padding: 6px 0; font-size: var(--fs-body); border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.05)); }
-.rec-row .muted { color: var(--text-muted, #999); }
-.rec-amt { color: var(--pt-success); font-weight: 600; }
-.rec-time { margin-left: auto; font-size: var(--fs-2xs); }
+.rec-row {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  padding: 6px 0;
+  font-size: var(--fs-body);
+  border-bottom: 1px solid var(--border-soft, rgba(255, 255, 255, 0.05));
+}
+.rec-row .muted {
+  color: var(--text-muted, #999);
+}
+.rec-amt {
+  color: var(--pt-success);
+  font-weight: 600;
+}
+.rec-time {
+  margin-left: auto;
+  font-size: var(--fs-2xs);
+}
 </style>

@@ -51,6 +51,10 @@ param(
     [string]$HosSdkHome = 'D:\SDK\harmonyos-sdk',
     # ohpm（鸿蒙包管理器，hvigor 装依赖用）所在 bin 目录；需含 ohpm.bat。
     [string]$OhpmBin = 'D:\SDK\ohos-commandline\oh-command-line-tools\ohpm\bin',
+    # chewie ohos fork 本地 sparse checkout 路径（远端分支 LFS 断链只能本机 vendor，
+    # 详见 pubspec_overrides.ohos.yaml 注释）。原为写死在 overrides 里的 D:/SDK/chewie_ohos，
+    # 现由本参数/env 注入——换机器不再需要手改仓库文件（巴士因子审计项）。
+    [string]$ChewieOhosPath = "$env:PTP_CHEWIE_OHOS_PATH",
     [switch]$SkipPubGet
 )
 
@@ -138,8 +142,17 @@ function Add-OhosDeps {
 
 try {
     # ---- 切换：依赖 overrides + file_picker 实现/依赖 ----
-    Copy-Item -LiteralPath $OverridesSrc -Destination $OverridesDst -Force
-    Write-Host '[切换] pubspec_overrides.yaml ← pubspec_overrides.ohos.yaml'
+    # chewie 本地路径注入：把 overrides 里的写死路径替换为 -ChewieOhosPath（缺省
+    # 沿用原 D:/SDK/chewie_ohos）。写入临时副本而非原地改（构建后删除的是副本）。
+    if (-not $ChewieOhosPath) { $ChewieOhosPath = 'D:/SDK/chewie_ohos' }
+    $ChewieOhosPath = $ChewieOhosPath.Replace('\', '/')
+    if (-not (Test-Path -LiteralPath $ChewieOhosPath)) {
+        throw "chewie ohos 本地 checkout 不存在：$ChewieOhosPath（用 -ChewieOhosPath 或环境变量 PTP_CHEWIE_OHOS_PATH 指定，构建方法见 pubspec_overrides.ohos.yaml 注释）"
+    }
+    $OverridesText = [System.IO.File]::ReadAllText($OverridesSrc, [System.Text.UTF8Encoding]::new($false))
+    $OverridesText = $OverridesText.Replace('D:/SDK/chewie_ohos', $ChewieOhosPath)
+    [System.IO.File]::WriteAllText($OverridesDst, $OverridesText, [System.Text.UTF8Encoding]::new($false))
+    Write-Host "[切换] pubspec_overrides.yaml ← pubspec_overrides.ohos.yaml（chewie → $ChewieOhosPath）"
 
     Copy-Item -LiteralPath $FpDefault -Destination $FpBackup -Force
     Copy-Item -LiteralPath $FpOhos -Destination $FpDefault -Force

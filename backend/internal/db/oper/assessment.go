@@ -1,6 +1,7 @@
 package oper
 
 import (
+	"errors"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -25,7 +26,7 @@ func (o *AssessmentOper) LatestFetchedAt(siteID uint) (time.Time, error) {
 	var t models.AssessmentTask
 	err := o.db.Where("site_id = ?", siteID).Order("fetched_at DESC").First(&t).Error
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return time.Time{}, nil
 		}
 		return time.Time{}, err

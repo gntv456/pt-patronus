@@ -57,7 +57,8 @@ function imdbUrl(id: string) {
                 target="_blank"
                 rel="noopener"
                 class="chip imdb"
-              >{{ detail.imdb_id }}</a>
+                >{{ detail.imdb_id }}</a
+              >
             </div>
             <div v-if="detail.download_url" class="dl-row">
               <el-button type="primary" @click="openDl(detail)">⬇ {{ t('trt.download') }}</el-button>
@@ -67,7 +68,9 @@ function imdbUrl(id: string) {
         </div>
 
         <div v-if="detail.screenshots?.length" class="card glass">
-          <div class="sec-title">{{ t('tddr.screenshots') }} <span class="text-muted">({{ detail.screenshots.length }})</span></div>
+          <div class="sec-title">
+            {{ t('tddr.screenshots') }} <span class="text-muted">({{ detail.screenshots.length }})</span>
+          </div>
           <div class="shots">
             <a
               v-for="(s, i) in detail.screenshots"
@@ -76,7 +79,8 @@ function imdbUrl(id: string) {
               target="_blank"
               rel="noopener"
               class="shot"
-            ><MediaPoster :url="s" kind="movie" /></a>
+              ><MediaPoster :url="s" kind="movie"
+            /></a>
           </div>
         </div>
 
@@ -91,9 +95,13 @@ function imdbUrl(id: string) {
         </div>
 
         <div v-if="detail.file_list?.length" class="card glass">
-          <div class="sec-title">{{ t('tddr.files') }} <span class="text-muted">({{ detail.file_list.length }})</span></div>
+          <div class="sec-title">
+            {{ t('tddr.files') }} <span class="text-muted">({{ detail.file_list.length }})</span>
+          </div>
           <div class="file-list">
-            <div v-for="(f, i) in detail.file_list" :key="i" class="file-row"><span class="file-ic">📄</span>{{ f }}</div>
+            <div v-for="(f, i) in detail.file_list" :key="i" class="file-row">
+              <span class="file-ic">📄</span>{{ f }}
+            </div>
           </div>
         </div>
       </template>

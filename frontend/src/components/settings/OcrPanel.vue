@@ -5,7 +5,8 @@
       {{ t('ocrp.intro2') }}
     </p>
     <div class="card glass">
-      <div class="ch-head"><div class="row-title">{{ t('ocrp.service') }}</div>
+      <div class="ch-head">
+        <div class="row-title">{{ t('ocrp.service') }}</div>
         <el-tag v-if="cfg.enabled" type="success" size="small">{{ t('common.enabled') }}</el-tag>
         <el-tag v-else type="info" size="small">{{ t('ocrp.notConfigured') }}</el-tag>
       </div>
@@ -94,9 +95,25 @@ onMounted(load)
 </script>
 
 <style scoped>
-.ocr-wrap { display: flex; flex-direction: column; gap: 12px; }
-.ch-head { display: flex; align-items: center; justify-content: space-between; }
-.row-title { font-weight: 700; }
-.mt8 { margin-top: 8px; }
-.actions { display: flex; gap: 8px; padding: 4px 0 8px 8px; }
+.ocr-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ch-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.row-title {
+  font-weight: 700;
+}
+.mt8 {
+  margin-top: 8px;
+}
+.actions {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0 8px 8px;
+}
 </style>

@@ -13,21 +13,45 @@ import (
 	"github.com/hxpt/ptpatronus/internal/sysinfo"
 	"github.com/hxpt/ptpatronus/internal/update"
 	"github.com/hxpt/ptpatronus/internal/version"
+	"gorm.io/gorm"
 )
 
 // SystemHandler exposes health / system info / online update checks.
 type SystemHandler struct {
 	update *update.Service
+	db     *gorm.DB
 }
 
 // NewSystemHandler builds a SystemHandler. upd 可为 nil（禁用更新检查）。
-func NewSystemHandler(upd *update.Service) *SystemHandler {
-	return &SystemHandler{update: upd}
+// db 用于 readiness 探针（/health/ready）——SQLite 场景下 DB 文件损坏/锁死时
+// 进程仍存活，仅靠 liveness 会误判健康。
+func NewSystemHandler(upd *update.Service, db *gorm.DB) *SystemHandler {
+	return &SystemHandler{update: upd, db: db}
 }
 
 // Health is a public liveness probe.
 func (h *SystemHandler) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok", "service": "ptpatronus"})
+}
+
+// Readiness is a public readiness probe：liveness 之外补 DB 连通性检查
+// （运维可观测性审计）。Docker healthcheck 仍挂 liveness（SQLite 同进程，
+// readiness 主要供反向代理/编排摘流量用）。DB 为 nil 或 ping 失败 → 503。
+func (h *SystemHandler) Readiness(c *gin.Context) {
+	if h.db == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable", "db": "not-configured"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 3*time.Second)
+	defer cancel()
+	if sqlDB, err := h.db.DB(); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable", "db": err.Error()})
+		return
+	} else if err := sqlDB.PingContext(ctx); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "unavailable", "db": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok", "db": "ok"})
 }
 
 // Info 返回应用名称；版本号仅对已认证请求返回。

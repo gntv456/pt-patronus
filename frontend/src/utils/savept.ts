@@ -197,9 +197,9 @@ function appendNoticeTextToken(tokens: NoticeToken[], text: string) {
 }
 
 function buildNoticeSiteNames(cards: SaveptSiteCard[] = []) {
-  return Array.from(
-    new Set(cards.map((c) => `${c.name || ''}`.trim()).filter(Boolean)),
-  ).sort((a, b) => b.length - a.length)
+  return Array.from(new Set(cards.map((c) => `${c.name || ''}`.trim()).filter(Boolean))).sort(
+    (a, b) => b.length - a.length,
+  )
 }
 
 function detectNoticeSiteName(segmentText: string, siteNames: string[]) {

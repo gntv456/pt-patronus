@@ -199,7 +199,9 @@ async function loadTargets() {
   try {
     targets.value = await monitorApi.list()
     if (sshTargets.value.length && !selectedTarget.value) selectedTarget.value = sshTargets.value[0].id
-  } catch (e: any) { error.value = e.message }
+  } catch (e: any) {
+    error.value = e.message
+  }
 }
 
 onMounted(async () => {
@@ -227,14 +229,18 @@ onBeforeUnmount(() => {
           <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
         </el-select>
         <span class="conn-status" :class="{ on: connected, connecting }">
-          {{ connected ? '● ' + t('ot.connected') : connecting ? '○ ' + t('tw.connecting') : '○ ' + t('ot.disconnected') }}
+          {{
+            connected ? '● ' + t('ot.connected') : connecting ? '○ ' + t('tw.connecting') : '○ ' + t('ot.disconnected')
+          }}
         </span>
       </div>
       <div class="toolbar-right">
         <el-button size="small" @click="sendCtrlC" :disabled="!connected">Ctrl+C</el-button>
         <el-button size="small" @click="configVisible = true">{{ t('ot.config') }}</el-button>
         <el-button size="small" @click="cmdDialogVisible = true">{{ t('ot.quickCmds') }}</el-button>
-        <el-button v-if="!connected" type="primary" size="small" :loading="connecting" @click="connect">{{ t('ot.connect') }}</el-button>
+        <el-button v-if="!connected" type="primary" size="small" :loading="connecting" @click="connect">{{
+          t('ot.connect')
+        }}</el-button>
         <el-button v-else type="danger" size="small" @click="disconnect">{{ t('ot.disconnect') }}</el-button>
       </div>
     </div>
@@ -246,11 +252,9 @@ onBeforeUnmount(() => {
 
     <!-- 快速命令条 -->
     <div v-if="sshTargets.length" class="quick-bar glass">
-      <span
-        v-for="(c, i) in quickCmds" :key="i"
-        class="quick-chip" :title="c.cmd"
-        @click="sendCmd(c.cmd)"
-      >{{ c.name }}</span>
+      <span v-for="(c, i) in quickCmds" :key="i" class="quick-chip" :title="c.cmd" @click="sendCmd(c.cmd)">{{
+        c.name
+      }}</span>
     </div>
 
     <!-- 终端 -->
@@ -292,24 +296,116 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.ops-term { padding: 0 4px; display: flex; flex-direction: column; height: 100%; }
-.term-toolbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; margin-bottom: 10px; }
-.toolbar-left { display: flex; align-items: center; gap: 12px; }
-.toolbar-right { display: flex; gap: 6px; }
-.target-label { font-size: 13px; color: var(--text-secondary, #888); white-space: nowrap; }
-.conn-status { font-size: 12px; font-family: monospace; }
-.conn-status.on { color: #27ae60; }
-.conn-status.connecting { color: #f39c12; }
-.term-error { color: #e74c3c; margin-bottom: 8px; padding: 6px 12px; background: rgba(231,76,60,.08); border-radius: 6px; font-size: 13px; }
-.term-empty { padding: 28px; text-align: center; color: var(--text-secondary, #888); }
-.quick-bar { display: flex; gap: 6px; padding: 8px 14px; margin-bottom: 8px; flex-wrap: wrap; }
-.quick-chip { padding: 4px 12px; border-radius: 14px; background: rgba(108,92,231,.12); color: var(--accent, #6c5ce7); font-size: 12px; cursor: pointer; white-space: nowrap; transition: all var(--dur-fast) var(--ease-out-smooth); user-select: none; }
-.quick-chip:hover { background: rgba(108,92,231,.25); transform: translateY(-1px); }
-.term-container { flex: 1; min-height: 400px; padding: 8px; border-radius: 8px; overflow: hidden; }
-.cmd-list { max-height: 300px; overflow-y: auto; }
-.cmd-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(128,128,128,.1); }
-.cmd-item-name { font-weight: 600; min-width: 80px; font-size: 13px; }
-.cmd-item-text { flex: 1; font-size: 12px; color: var(--text-secondary,#888); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cmd-add { display: flex; gap: 8px; }
-.config-hint { font-size: 12px; color: var(--text-secondary,#888); margin-top: 8px; }
+.ops-term {
+  padding: 0 4px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.term-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.toolbar-right {
+  display: flex;
+  gap: 6px;
+}
+.target-label {
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  white-space: nowrap;
+}
+.conn-status {
+  font-size: 12px;
+  font-family: monospace;
+}
+.conn-status.on {
+  color: #27ae60;
+}
+.conn-status.connecting {
+  color: #f39c12;
+}
+.term-error {
+  color: #e74c3c;
+  margin-bottom: 8px;
+  padding: 6px 12px;
+  background: rgba(231, 76, 60, 0.08);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.term-empty {
+  padding: 28px;
+  text-align: center;
+  color: var(--text-secondary, #888);
+}
+.quick-bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.quick-chip {
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: rgba(108, 92, 231, 0.12);
+  color: var(--accent, #6c5ce7);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
+  user-select: none;
+}
+.quick-chip:hover {
+  background: rgba(108, 92, 231, 0.25);
+  transform: translateY(-1px);
+}
+.term-container {
+  flex: 1;
+  min-height: 400px;
+  padding: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.cmd-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+.cmd-item-name {
+  font-weight: 600;
+  min-width: 80px;
+  font-size: 13px;
+}
+.cmd-item-text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmd-add {
+  display: flex;
+  gap: 8px;
+}
+.config-hint {
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  margin-top: 8px;
+}
 </style>

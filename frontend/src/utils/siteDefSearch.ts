@@ -1,6 +1,7 @@
 import type { SiteDef } from '@/api/site'
 
-const edgeNoiseRe = /^[\s"'`“”‘’「」『』《》【】<>{}\[\](),，.。;；:：]+|[\s"'`“”‘’「」『』《》【】<>{}\[\](),，.。;；:：]+$/g
+const edgeNoiseRe =
+  /^[\s"'`“”‘’「」『』《》【】<>{}\[\](),，.。;；:：]+|[\s"'`“”‘’「」『』《》【】<>{}\[\](),，.。;；:：]+$/g
 
 export function normalizeSiteDefSearchInput(raw: string) {
   return raw.trim().replace(edgeNoiseRe, '').trim()
@@ -56,7 +57,9 @@ export function siteDefSearchText(d: SiteDef) {
 export function siteDefSearchQueries(query: string) {
   const normalized = normalizeSiteDefSearchInput(query)
   return Array.from(
-    new Set([query, normalized, ...siteDefURLSearchTerms(query)].map((term) => term.trim().toLowerCase()).filter(Boolean)),
+    new Set(
+      [query, normalized, ...siteDefURLSearchTerms(query)].map((term) => term.trim().toLowerCase()).filter(Boolean),
+    ),
   )
 }
 

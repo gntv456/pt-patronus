@@ -5,7 +5,14 @@ import { ref, computed, type ComputedRef } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { commandRunApi, type CommandRun, type MonitorTarget } from '@/api/monitor'
 import { useAuthStore } from '@/stores/auth'
-import { commandRisk, execLogsFromRun, nowTime, type CommandRisk, type ExecLog, type ExecStatus } from './nasServerHelpers'
+import {
+  commandRisk,
+  execLogsFromRun,
+  nowTime,
+  type CommandRisk,
+  type ExecLog,
+  type ExecStatus,
+} from './nasServerHelpers'
 
 export function useCommandExec(sshTargets: ComputedRef<MonitorTarget[]>, focusExecPanel: () => void) {
   const auth = useAuthStore()

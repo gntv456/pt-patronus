@@ -1,12 +1,15 @@
 // background service worker（module 型——manifest 声明 "type": "module"）：
 // 右键菜单「搜索选中词」、omnibox、TOTP 自动填充、种子推送下载 + 下载历史、跨站收藏、
-// Cookie 自动同步（autosync.js：启动+定时双向同步，服务器接管保活）。
+// Cookie 自动同步（autosync.js：启动+定时双向同步，服务器接管保活）、
+// 站点白名单动态注入（sitelist.js——内容脚本不再全局声明，只注入已配置站点）。
 // 服务端请求统一走 api.js 的 api() 封装（鉴权头 + 非 2xx 抛错），配置统一 getConfig()。
 import { addHistory, addFavorite } from './collection.js'
 import { api, getConfig, baseUrl } from './api.js'
 import { initAutosync, maybeSyncOnWake, syncNow } from './autosync.js'
+import { getSiteHosts, isSiteHost } from './sitelist.js'
 
 initAutosync()
+injectAllTabs().catch(() => {})
 
 // openSearch 打开 Web 搜索页（右键菜单/快捷键/omnibox/媒体页注入共用路径）。
 async function openSearch(keyword) {
@@ -32,6 +35,32 @@ chrome.runtime.onInstalled.addListener(() => {
   })
 })
 
+// —— 保险库自动锁定（安全审计 P2：解锁后明文常驻 storage.session 无自动清理）——
+// options 页解锁 TOTP/凭据库时调用 ptp-vault-activity 重置倒计时；
+// N 分钟无活动由 chrome.alarms 触发统一清空 storage.session 的明文缓存。
+// alarms 而非 setTimeout：MV3 service worker 会被随时杀掉，setTimeout 不可靠，
+// alarms 由浏览器持久调度（最小粒度 1 分钟，设备休眠时也会补触发）。
+const VAULT_AUTOLOCK_MINUTES = 10
+const AUTOLOCK_ALARM = 'ptp-vault-autolock'
+const SESSION_SECRET_KEYS = ['ptp_vault_entries', 'ptp_cred_entries']
+
+function lockVaults() {
+  // 清 storage.session 明文缓存（TOTP 条目 + 凭据条目）。
+  // options 页自身的内存态由其收到 storage.onChanged 后自行回锁定 UI。
+  try { chrome.storage.session.remove(SESSION_SECRET_KEYS) } catch { /* 老版本无 session API */ }
+}
+
+function armVaultAutolockInBg() {
+  chrome.alarms.create(AUTOLOCK_ALARM, {
+    delayInMinutes: VAULT_AUTOLOCK_MINUTES,
+    // 不设 periodInMinutes：一次性闹钟，到期锁定后不再重复。
+  })
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === AUTOLOCK_ALARM) lockVaults()
+})
+
 chrome.contextMenus.onClicked.addListener(async (info) => {
   if (info.menuItemId !== 'ptp-search-selection' || !info.selectionText) return
   openSearch(info.selectionText)
@@ -54,7 +83,18 @@ chrome.commands.onCommand.addListener(async (command) => {
 
 // —— 统一消息路由：content/popup → background ——
 // 消息类型即契约（ptp-push-download 等）；异步处理统一 return true 保活 sendResponse。
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+// 安全约束（收权改造）：敏感消息（TOTP/凭据/OCR——会回传验证码、密码、验证内容的）
+// 只接受来自扩展自身页面或白名单站点页面的 sender；任何站点上的页面脚本都无法
+// 伪造 sender.origin，因此被攻陷的普通网站拿不到 TOTP/凭据。
+function trustedSender(sender) {
+  if (!sender) return false
+  if (sender.id !== chrome.runtime.id) return false
+  // 扩展自身页面（options/popup）
+  if (!sender.origin || sender.origin.startsWith(chrome.runtime.getURL(''))) return true
+  return isSiteHost(new URL(sender.origin).hostname)
+}
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (!msg || !msg.type) return false
   switch (msg.type) {
     // 种子详情页浮钮 → 推送下载：content 解析出的 download URL 直传，
@@ -65,14 +105,16 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     // TOTP 自动填充：content_totp.js 按 hostname 匹配验证器条目，回当期 6 位码。
     // Secret 不出后台——页面只能拿到数字本身。仅当验证器页本轮会话已解锁
     // （解锁时把明文条目缓存进 storage.session）或库未设 PIN 时可用；
-    // PIN 锁定态保持锁定语义，不后台解密。
+    // PIN 锁定态保持锁定语义，不后台解密。仅白名单站点可请求。
     case 'ptp-totp-autofill':
+      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
       totpAutofill(msg.host).then(sendResponse)
       return true
     // 凭据自动填充：content_creds.js 按 hostname 匹配本地凭据库，回单条凭据。
     // 同 TOTP 语义：仅当凭据页本轮会话已解锁（明文缓存 storage.session）或
-    // 未设 PIN 时可用；只回匹配的那一条，页面拿不到整库。
+    // 未设 PIN 时可用；只回匹配的那一条，页面拿不到整库。仅白名单站点可请求。
     case 'ptp-cred-autofill':
+      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
       credAutofill(msg.host).then(sendResponse)
       return true
     // 豆瓣/IMDb 页面注入按钮 → 打开 Web 搜索页带关键词（与右键菜单同路径）。
@@ -82,7 +124,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return false
     // 验证码 OCR：content_ocr.js 截取站点登录验证码图 → 调服务端 /system/ocr/recognize
     // （管理员 Key；服务端配置 PaddleOCR/simple/ddddoc 端点后生效，未配置静默回退人工输入）。
+    // 仅白名单站点可请求（截图内容可能包含站点敏感页面信息）。
     case 'ptp-ocr-captcha':
+      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
       if (msg.image) ocrCaptcha(msg.image).then(sendResponse)
       else sendResponse({ ok: false, error: 'no-image' })
       return true
@@ -103,6 +147,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         .then(sendResponse)
         .catch((e) => sendResponse({ error: e && e.message ? e.message : String(e) }))
       return true
+    // options 页保险库活动心跳：解锁/每次填充回执时重置自动锁定倒计时。
+    case 'ptp-vault-activity':
+      armVaultAutolockInBg()
+      sendResponse({ ok: true })
+      return false
     default:
       maybeSyncOnWake().catch(() => {})
       return false
@@ -216,3 +265,78 @@ async function pushDownload(url) {
     return { ok: false, error: e.message }
   }
 }
+
+// —— 站点白名单动态注入（收权核心）——
+// manifest 不再全局声明 content_scripts；这里在导航提交时按白名单决定是否注入，
+// 白名单外站点零脚本、零消息。文件分组与原 manifest 声明一致：
+//   TORRENT_FILES：种子页增强（浮钮/批量栏/免费标签）
+//   LOGIN_FILES：TOTP/OCR/凭据三种登录辅助（登录页启发式，站内自判定）
+const TORRENT_FILES = ['content_torrent.js']
+const LOGIN_FILES = ['content_totp.js', 'content_ocr.js', 'content_creds.js']
+const ALL_FILES = [...new Set([...TORRENT_FILES, ...LOGIN_FILES])]
+
+// alreadyInjected：tabId → 已注入文件集（SW 生命周期内去重；页面自身跳转后
+// content script 上下文销毁，重新注入是幂等且必要的）。
+const injectedTabs = new Map()
+function markInjected(tabId, files) {
+  const cur = injectedTabs.get(tabId) || new Set()
+  for (const f of files) cur.add(f)
+  injectedTabs.set(tabId, cur)
+  if (injectedTabs.size > 500) injectedTabs.delete(injectedTabs.keys().next().value)
+}
+function unmarkTab(tabId) { injectedTabs.delete(tabId) }
+
+// injectIfAllowed：白名单命中 → 注入全部内容脚本；未命中 → 确保无注入（noop）。
+async function injectIfAllowed(tabId, url) {
+  let host = ''
+  try { host = new URL(url).hostname } catch { return }
+  const ok = await isSiteHost(host)
+  if (!ok) return
+  const done = injectedTabs.get(tabId) || new Set()
+  const files = ALL_FILES.filter((f) => !done.has(f))
+  if (!files.length) return
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files,
+    })
+    markInjected(tabId, files)
+  } catch { /* chrome:// 等受限页面忽略；扩展权限页（options/popup）无 host 需求 */ }
+}
+
+// injectAllTabs：SW 冷启动补注入（浏览器重启后 Map 清空，已打开的站点页需要补）。
+async function injectAllTabs() {
+  try {
+    const tabs = await chrome.tabs.query({ status: 'complete' })
+    for (const t of tabs) {
+      if (t.id && t.url) await injectIfAllowed(t.id, t.url)
+    }
+  } catch { /* tabs 权限受限时静默 */ }
+}
+
+chrome.webNavigation.onCommitted.addListener((details) => {
+  if (details.frameId !== 0) return
+  unmarkTab(details.tabId)
+  injectIfAllowed(details.tabId, details.url).catch(() => {})
+})
+chrome.tabs.onRemoved.addListener((tabId) => unmarkTab(tabId))
+
+// 白名单变化（options 同步/手动增删）→ 对已打开页补注入新命中站点。
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes.ptp_site_hosts) return
+  injectAllTabs().catch(() => {})
+})
+
+// 自动锁定执行后通知 options 页回锁定 UI（storage.session 清了，页面内存态也要回）。
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'session' || !SESSION_SECRET_KEYS.some((k) => changes[k] && changes[k].newValue === undefined)) return
+  // 广播给扩展自身页面：options 收到后把 TOTP/凭据面板切回锁定态。
+  try { chrome.runtime.sendMessage({ type: 'ptp-vault-locked' }).catch(() => {}) } catch { /* 无监听者 */ }
+})
+
+// popup/options 询问白名单状态（设置页展示「当前白名单 N 站」）。
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (!msg || msg.type !== 'ptp-site-hosts-list') return false
+  getSiteHosts().then((hosts) => sendResponse({ ok: true, hosts }))
+  return true
+})

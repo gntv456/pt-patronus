@@ -7,10 +7,7 @@ import type { SiteStatItem } from '@/api/dashboard'
 import { dashboardApi } from '@/api/dashboard'
 import SiteMatrixTable from './SiteMatrixTable.vue'
 import SiteMatrixHistoryDialog from './SiteMatrixHistoryDialog.vue'
-import {
-  useSiteMatrixData,
-  type MatrixFilter, type MatrixLayout,
-} from '@/composables/useSiteMatrixData'
+import { useSiteMatrixData, type MatrixFilter, type MatrixLayout } from '@/composables/useSiteMatrixData'
 import { useInactiveSiteVisit } from '@/composables/useInactiveSiteVisit'
 import { alertBox } from '@/utils/alertBox'
 
@@ -57,24 +54,48 @@ let resizeObserver: ResizeObserver | null = null
 
 const { t } = useI18n()
 const {
-  siteQuery, matrixFilter, sortKey, sortDir, currentPage, pageSize,
-  historyVisible, historyLoading, historySiteName, history,
-  selectedSites, rows,
-  siteBaseUrl, siteConfig,
-  allRows, inactiveSiteCount,
-  siteHasIssue, onSortChange, matrixRows, pagedRows, pageRange,
-  reload, syncAll, syncOne, viewHistory, matrixRowClassName, handleSelectionChange,
-  syncing, loadError, refreshing,
+  siteQuery,
+  matrixFilter,
+  sortKey,
+  sortDir,
+  currentPage,
+  pageSize,
+  historyVisible,
+  historyLoading,
+  historySiteName,
+  history,
+  selectedSites,
+  rows,
+  siteBaseUrl,
+  siteConfig,
+  allRows,
+  inactiveSiteCount,
+  siteHasIssue,
+  onSortChange,
+  matrixRows,
+  pagedRows,
+  pageRange,
+  reload,
+  syncAll,
+  syncOne,
+  viewHistory,
+  matrixRowClassName,
+  handleSelectionChange,
+  syncing,
+  loadError,
+  refreshing,
 } = useSiteMatrixData(props)
 
 const { visitInactiveSites } = useInactiveSiteVisit(
-  computed(() => allRows.value
-    .map((row) => ({ row, site: siteConfig(row.site_id) }))
-    .filter(({ row, site }) => {
-      if (!site?.is_active || !/^https?:\/\//i.test(site.base_url)) return false
-      const lastAccess = new Date(row.last_access_at).getTime()
-      return Number.isFinite(lastAccess) && lastAccess > 0 && lastAccess < Date.now() - 30 * 24 * 60 * 60 * 1000
-    })),
+  computed(() =>
+    allRows.value
+      .map((row) => ({ row, site: siteConfig(row.site_id) }))
+      .filter(({ row, site }) => {
+        if (!site?.is_active || !/^https?:\/\//i.test(site.base_url)) return false
+        const lastAccess = new Date(row.last_access_at).getTime()
+        return Number.isFinite(lastAccess) && lastAccess > 0 && lastAccess < Date.now() - 30 * 24 * 60 * 60 * 1000
+      }),
+  ),
   // 每访问完一个站点就重新抓取其统计（「最近访问」由站点侧记录，需同步才能取回新值），
   // 否则矩阵里该站的最后访问时间要等用户手动刷新才会更新。
   ({ row, site }) => {
@@ -86,7 +107,10 @@ const { visitInactiveSites } = useInactiveSiteVisit(
 function showConnectivityReason(row: SiteStatItem) {
   const status = props.connectivity[row.site_id]
   if (!status || status.status === 'connected') return
-  const title = status.status === 'disabled' ? t('som.disabledTitle', { name: row.site_name }) : t('som.offlineTitle', { name: row.site_name })
+  const title =
+    status.status === 'disabled'
+      ? t('som.disabledTitle', { name: row.site_name })
+      : t('som.offlineTitle', { name: row.site_name })
   const site = siteConfig(row.site_id)
   const detail = status.error || t('som.noErrDetail')
   const url = site?.base_url ? t('som.siteUrl', { url: site.base_url }) : ''
@@ -98,15 +122,27 @@ function showConnectivityReason(row: SiteStatItem) {
 
 function openDetail(row: SiteStatItem) {
   const site = siteConfig(row.site_id)
-  if (!site) { ElMessage.warning(t('som.noSiteCfg')); return }
+  if (!site) {
+    ElMessage.warning(t('som.noSiteCfg'))
+    return
+  }
   emit('detail', site)
 }
 
 function handleRowCommand(command: string, row: SiteStatItem) {
-  if (command === 'refresh') { void syncOne(row); return }
-  if (command === 'history') { void viewHistory(row); return }
+  if (command === 'refresh') {
+    void syncOne(row)
+    return
+  }
+  if (command === 'history') {
+    void viewHistory(row)
+    return
+  }
   const site = siteConfig(row.site_id)
-  if (!site) { ElMessage.warning(t('som.noSiteCfg')); return }
+  if (!site) {
+    ElMessage.warning(t('som.noSiteCfg'))
+    return
+  }
   if (command === 'detail') emit('detail', site)
   else if (command === 'checkin') emit('checkin', site)
   else if (command === 'test') emit('test', site)
@@ -130,21 +166,36 @@ async function refreshSiteStat(siteId: number, siteName: string) {
   }
 }
 
-watch(() => route.query.matrix, (value) => { matrixFilter.value = routeFilter(value) }, { immediate: true })
-watch([siteQuery, matrixFilter, sortKey, sortDir, pageSize], () => { currentPage.value = 1 })
-watch(() => matrixRows.value.length, (length) => {
-  currentPage.value = Math.min(currentPage.value, Math.max(1, Math.ceil(length / pageSize.value)))
+watch(
+  () => route.query.matrix,
+  (value) => {
+    matrixFilter.value = routeFilter(value)
+  },
+  { immediate: true },
+)
+watch([siteQuery, matrixFilter, sortKey, sortDir, pageSize], () => {
+  currentPage.value = 1
 })
+watch(
+  () => matrixRows.value.length,
+  (length) => {
+    currentPage.value = Math.min(currentPage.value, Math.max(1, Math.ceil(length / pageSize.value)))
+  },
+)
 
 onMounted(() => {
   void reload()
   const panel = panelRef.value
   if (!panel) return
   panelWidth.value = panel.clientWidth
-  resizeObserver = new ResizeObserver(([entry]) => { panelWidth.value = Math.round(entry.contentRect.width) })
+  resizeObserver = new ResizeObserver(([entry]) => {
+    panelWidth.value = Math.round(entry.contentRect.width)
+  })
   resizeObserver.observe(panel)
 })
-onBeforeUnmount(() => { resizeObserver?.disconnect() })
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect()
+})
 
 defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
 </script>
@@ -159,10 +210,18 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
       <div class="matrix-tools">
         <el-input v-model="siteQuery" clearable :placeholder="t('som.searchPh')" class="matrix-search" />
         <div class="matrix-filter" :aria-label="t('som.filterAria')">
-          <button type="button" :class="{ active: matrixFilter === 'all' }" @click="matrixFilter = 'all'">{{ t('sh.all') }}</button>
-          <button type="button" :class="{ active: matrixFilter === 'issues' }" @click="matrixFilter = 'issues'">{{ t('som.issues') }}</button>
-          <button type="button" :class="{ active: matrixFilter === 'connected' }" @click="matrixFilter = 'connected'">{{ t('som.connected') }}</button>
-          <button type="button" :class="{ active: matrixFilter === 'disabled' }" @click="matrixFilter = 'disabled'">{{ t('som.disabled') }}</button>
+          <button type="button" :class="{ active: matrixFilter === 'all' }" @click="matrixFilter = 'all'">
+            {{ t('sh.all') }}
+          </button>
+          <button type="button" :class="{ active: matrixFilter === 'issues' }" @click="matrixFilter = 'issues'">
+            {{ t('som.issues') }}
+          </button>
+          <button type="button" :class="{ active: matrixFilter === 'connected' }" @click="matrixFilter = 'connected'">
+            {{ t('som.connected') }}
+          </button>
+          <button type="button" :class="{ active: matrixFilter === 'disabled' }" @click="matrixFilter = 'disabled'">
+            {{ t('som.disabled') }}
+          </button>
         </div>
         <el-button size="small" :loading="syncing" @click="syncAll">{{ t('som.syncAll') }}</el-button>
         <el-button

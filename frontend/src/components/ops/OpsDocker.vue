@@ -17,14 +17,9 @@ import Sparkline from '@/components/dashboard/Sparkline.vue'
 import { useDockerOps } from './useDockerOps'
 import { useDockerData } from './useDockerData'
 import { useContainerActions } from './useContainerActions'
-import DockerExecTerminal from './DockerExecTerminal.vue'
-import DockerCreateWizard from './DockerCreateWizard.vue'
-import DockerDetailDrawer from './DockerDetailDrawer.vue'
-import DockerAppStore from './DockerAppStore.vue'
-import DockerComposeLocal from './DockerComposeLocal.vue'
 import ComposeProjects from './ComposeProjects.vue'
 import OpsDockerContainers from './OpsDockerContainers.vue'
-import OpsDockerLogDialogs from './OpsDockerLogDialogs.vue'
+import OpsDockerDialogs from './OpsDockerDialogs.vue'
 import OpsDockerOverview from './OpsDockerOverview.vue'
 import OpsDockerTables from './OpsDockerTables.vue'
 import type { DockerTemplate } from '@/data/dockerTemplates'
@@ -392,40 +387,36 @@ function onModeSwitch() {
       </div>
     </template>
 
-    <OpsDockerLogDialogs v-model:log-drawer="logDrawer" v-model:log-container="logContainer" v-model:log-content="logContent" v-model:log-loading="logLoading" v-model:compose-visible="composeVisible" v-model:compose-path="composePath" v-model:compose-output="composeOutput" v-model:compose-loading="composeLoading" v-model:pull-dialog="pullDialog" v-model:pull-ref="pullRef" v-model:pull-result="pullResult" v-model:pull-loading="pullLoading" @compose-action="composeAction" @do-pull="doPull" />
-    <!-- 详情抽屉 -->
-    <DockerDetailDrawer
-      v-model:visible="detailVisible"
-      :container="detailContainer"
+    <OpsDockerDialogs
+      v-model:log-drawer="logDrawer"
+      v-model:log-container="logContainer"
+      v-model:log-content="logContent"
+      v-model:log-loading="logLoading"
+      v-model:detail-visible="detailVisible"
+      v-model:exec-drawer="execDrawer"
+      v-model:create-dialog="createDialog"
+      v-model:app-store-visible="appStoreVisible"
+      v-model:compose-visible="composeVisible"
+      v-model:compose-path="composePath"
+      v-model:compose-output="composeOutput"
+      v-model:compose-loading="composeLoading"
+      v-model:pull-dialog="pullDialog"
+      v-model:pull-ref="pullRef"
+      v-model:pull-result="pullResult"
+      v-model:pull-loading="pullLoading"
       :mode="mode"
-      :target-id="selectedTarget"
+      :selected-target="selectedTarget"
       :stats="stats"
+      :data="data"
+      :detail-container="detailContainer"
+      :exec-container="execContainer"
+      :pending-template="pendingTemplate"
+      :pending-compose="pendingCompose"
       @refresh="refresh"
-    />
-
-    <!-- exec 终端 -->
-    <DockerExecTerminal v-model:visible="execDrawer" :container="execContainer" />
-
-    <!-- 创建容器向导 -->
-    <DockerCreateWizard
-      v-model:visible="createDialog"
-      :images="data.images"
-      :initial-template="pendingTemplate"
-      @created="refresh"
-    />
-
-    <DockerComposeLocal
-      v-model:visible="localComposeVisible"
-      :initial-content="pendingCompose?.content"
-      :initial-name="pendingCompose?.id"
-      @done="refresh"
-    />
-
-    <!-- 应用商店 -->
-    <DockerAppStore
-      v-model:visible="appStoreVisible"
-      @select="onStoreTemplateSelected"
-      @select-compose="onStoreComposeSelected"
+      @compose-action="composeAction" 
+      @do-pull="doPull"
+      @store-template="onStoreTemplateSelected"
+      @store-compose="onStoreComposeSelected"
     />
   </div>
 </template>

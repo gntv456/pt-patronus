@@ -61,7 +61,7 @@ const emit = defineEmits<{
           "
           @click.stop="emit('test', it)"
         ></span>
-        <el-dropdown trigger="click" placement="bottom-end" @command="(c) => emit('menu', c as string, it)">
+        <el-dropdown trigger="click" placement="bottom-end" @command="(c: string) => emit('menu', c, it)">
           <span class="sb-more" @click.stop>⋯</span>
           <template #dropdown>
             <el-dropdown-menu>

@@ -35,6 +35,7 @@ import { useNasOpsConfigs } from './useNasOpsConfigs'
 import { useCommandExec } from './useCommandExec'
 import { useDeploy } from './useDeploy'
 import { useDeviceCrud } from './useDeviceCrud'
+import { useNasLoader } from './useNasLoader'
 // 在线终端抽屉已自管理 WebSocket（useTerminal 不再需要）
 
 const { t } = useI18n()
@@ -59,7 +60,7 @@ const {
   credentialUsage,
   saveCredential,
   removeCredential,
-} = useNasCredentials(targets, loadAll)
+} = useNasCredentials(targets, () => loadAll())
 
 const {
   opsConfigs,
@@ -79,6 +80,7 @@ const {
 
 const helpVisible = ref(false)
 const agentVisible = ref(false)
+
 
 const { filtered, unreadCount, hostCount, monitorCount, configCount, activeAlertCount, sshTargets } =
   useNasDerived({ targets, alerts, opsConfigs, activeTab })
@@ -131,54 +133,27 @@ const {
   enterDeployWorkspace: () => setWorkspace('deploy'),
 })
 
+// 全量加载(设备/告警/凭据/配置/执行历史/最新指标)拆出 useNasLoader
+const { error, firstLoad, loadAll, retry } = useNasLoader({
+  isAdmin: auth.isAdmin,
+  targets,
+  alerts,
+  credentials,
+  opsConfigs,
+  commandRuns,
+  latestMap,
+  t: (k: string) => t(k),
+})
+
 const assetTabs = computed(() => tabs.filter((t) => ['host', 'nas', 'camera'].includes(t.name)))
 const monitorTabs = computed(() => tabs.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.name)))
 const visibleTabs = computed(() => (activeWorkspace.value === 'monitor' ? monitorTabs.value : assetTabs.value))
 let timer: number | undefined
-const error = ref('')
-const firstLoad = ref(true)
-
-async function loadAll() {
-  try {
-    const [ts, al] = await Promise.all([monitorApi.list(), monitorApi.alerts(undefined, true).catch(() => [])])
-    targets.value = ts
-    alerts.value = al
-    if (auth.isAdmin) {
-      const [credList, cfgList, runList] = await Promise.all([
-        credentialApi.list().catch(() => credentials.value),
-        opsConfigApi.list().catch(() => opsConfigs.value),
-        commandRunApi.list(20).catch(() => commandRuns.value),
-      ])
-      credentials.value = credList
-      opsConfigs.value = cfgList
-      commandRuns.value = runList
-    }
-    latestMap.value = {}
-    // 每个 target 取最新一条快照作为卡片实时指标（末项才是最新）。
-    await Promise.all(
-      ts.map(async (t) => {
-        const snaps = await monitorApi.metrics(t.id, undefined, 1).catch(() => [])
-        latestMap.value[t.id] = snaps.length ? parseMetrics(snaps[snaps.length - 1]) : null
-      }),
-    )
-    error.value = ''
-  } catch (e) {
-    if (firstLoad.value) error.value = (e as Error).message || t('common.loadFailed')
-  } finally {
-    firstLoad.value = false
-  }
-}
-
 function setWorkspace(workspace: Workspace) {
   activeWorkspace.value = workspace
   if (workspace === 'asset' && !['host', 'nas', 'camera'].includes(activeTab.value)) activeTab.value = 'host'
   if (workspace === 'monitor' && !['http', 'tcp', 'process', 'script'].includes(activeTab.value))
     activeTab.value = 'http'
-}
-
-async function retry() {
-  firstLoad.value = true
-  await loadAll()
 }
 
 const {

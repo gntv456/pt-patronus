@@ -6,6 +6,9 @@ import 'package:ptpatronus/widgets/adaptive.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'package:ptpatronus/widgets/pt_page_scaffold.dart';
 
+part 'transferopsmixin.dart';
+part 'transfer_widgets.dart';
+
 /// 媒体整理页（对齐 Web Transfer.vue）：下载完成 → 识别 → 重命名 → 硬链/移动 → 刮削入库。
 /// 历史 + 配置 + 手动整理 + 扫描兜底。复用后端 /transfer/*。
 class TransferPage extends StatefulWidget {
@@ -14,30 +17,17 @@ class TransferPage extends StatefulWidget {
   State<TransferPage> createState() => _TransferPageState();
 }
 
-class _TransferPageState extends State<TransferPage> {
-  final _api = TransferApi();
-  final _dlApi = DownloaderApi();
+class _TransferPageState extends State<TransferPage> with TransferOpsMixin {
 
-  List<TransferHistory> _list = [];
-  bool _loading = true;
-  final String _status = ''; // '' | success | failed
-  final _redoing = <int>{};
-
+  @override
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
   @override
   void initState() {
     super.initState();
     _load();
-  }
-
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    try {
-      _list = await _api.history(_status, 200);
-    } catch (_) {
-      _toast('加载失败');
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
   Future<void> _sweep() async {
@@ -48,20 +38,6 @@ class _TransferPageState extends State<TransferPage> {
       _load();
     } catch (_) {
       _toast('扫描失败');
-    }
-  }
-
-  Future<void> _redo(TransferHistory h) async {
-    setState(() => _redoing.add(h.id));
-    try {
-      final r = await _api.redo(h.id);
-      final ok = r?['Success'] == true;
-      _toast(ok ? '重做完成' : '重做未成功：${r?['ErrMsg'] ?? '未知'}');
-      _load();
-    } catch (_) {
-      _toast('重做失败');
-    } finally {
-      if (mounted) setState(() => _redoing.remove(h.id));
     }
   }
 
@@ -182,11 +158,6 @@ class _TransferPageState extends State<TransferPage> {
     }
   }
 
-  void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 2)));
-  }
-
   @override
   Widget build(BuildContext context) {
     return PTPageScaffold(
@@ -210,73 +181,6 @@ class _TransferPageState extends State<TransferPage> {
                 itemBuilder: (_, i) => PTListItemEntrance(index: i, child: _historyCard(_list[i])),
               ),
       ),
-    );
-  }
-
-  Widget _empty() {
-    return ListView(children: [
-      const SizedBox(height: 80),
-      PTEmptyState(icon: Icons.inbox, title: '暂无整理记录', description: '订阅/RSS 下载完成后会自动整理；也可点「手动整理」'),
-    ]);
-  }
-
-  Widget _historyCard(TransferHistory h) {
-    final success = h.status == 'success';
-    return GlassCard(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          _poster(h.posterUrl),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(
-                  child: Text('${h.title}${h.year > 0 ? ' (${h.year})' : ''}',
-                      style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-                _statusChip(success),
-              ]),
-              const SizedBox(height: 4),
-              Wrap(spacing: 6, runSpacing: 4, children: [
-                _miniTag(h.type == 'tv' ? '剧集' : '电影'),
-                if (h.mode.isNotEmpty) _miniTag(_modeLabel(h.mode)),
-                if (h.episodes.isNotEmpty) _miniTag(h.episodes),
-              ]),
-              const SizedBox(height: 4),
-              Text(h.dest, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor)),
-              if (!success && h.errorMsg.isNotEmpty)
-                Padding(padding: const EdgeInsets.only(top: 2), child: Text(h.errorMsg, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: PTColors.danger))),
-              Row(children: [
-                Expanded(child: Text(_fmtTime(h.createdAt), style: TextStyle(fontSize: 11, color: Theme.of(context).hintColor))),
-                IconButton(
-                  icon: const Icon(Icons.refresh, size: 18),
-                  tooltip: '重做',
-                  onPressed: _redoing.contains(h.id) ? null : () => _redo(h),
-                ),
-                IconButton(icon: const Icon(Icons.delete_outline, size: 18), tooltip: '删除', onPressed: () => _delete(h)),
-              ]),
-            ]),
-          ),
-        ]),
-      ),
-    );
-  }
-
-  Widget _poster(String url) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: url.isEmpty
-          ? Container(width: 40, height: 58, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.movie, size: 20))
-          : Image.network(url, width: 40, height: 58, fit: BoxFit.cover, errorBuilder: (_, _, _) => Container(width: 40, height: 58, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.movie, size: 20))),
-    );
-  }
-
-  Widget _statusChip(bool success) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(color: (success ? PTColors.success : PTColors.danger).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(4)),
-      child: Text(success ? '成功' : '失败', style: TextStyle(fontSize: 10, color: success ? PTColors.success : PTColors.danger)),
     );
   }
 

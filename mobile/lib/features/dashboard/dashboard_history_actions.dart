@@ -1,0 +1,59 @@
+// _DashboardPageState 的历史/设置入口扩展：历史数据弹窗、设置面板入口、统计 chip。
+// （二次拆分；行为不变。）
+part of 'package:ptpatronus/features/dashboard/dashboard_page.dart';
+
+extension on _DashboardPageState {
+  // 用户历史数据：打开弹窗/底栏加载该站点 90 天快照（自适应浮层）。
+  Future<void> _viewHistory(SiteStatItem s) async {
+    List<SiteHistoryPoint> history = [];
+    bool loading = true;
+    try {
+      history = await _api.history(s.siteId, days: 90);
+    } catch (_) {
+      history = const [];
+    } finally {
+      loading = false;
+    }
+    if (!mounted) return;
+    await showAdaptiveSheet(
+      context,
+      title: '${s.siteName} · 历史数据',
+      wideWidth: 820,
+      builder: (_) => DashboardHistoryBody(
+        points: history,
+        loading: loading,
+        fmtBytes: _fmtBytes,
+        fmtTime: _fmtTimeFull,
+      ),
+    );
+  }
+
+  void _openSettings() {
+    final sites = _overview?.sites ?? const <SiteStatItem>[];
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DashboardSettingsSheet(
+        initial: _config,
+        sites: sites,
+        onSave: _saveConfig,
+      ),
+    );
+  }
+
+  Widget _statChip(String label, String value, String sub) => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          SizedBox(
+              width: 76,
+              child: Text(label, style: TextStyle(fontSize: 12, color: context.dimText))),
+          const SizedBox(width: 8),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(width: 8),
+          Expanded(
+              child: Text(sub,
+                  style: TextStyle(fontSize: 11, color: context.dimText),
+                  overflow: TextOverflow.ellipsis)),
+        ]),
+      );
+}

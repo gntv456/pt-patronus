@@ -5,6 +5,9 @@ import 'package:ptpatronus/api/entertainment.dart';
 import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 
+part 'bigsmallopsmixin.dart';
+part 'bigsmall_widgets.dart';
+
 // 猜大小（好学 hxpt_bigsmall + 熊猫 panda_bigsmall 共用）。
 // 时间：后端 BigSmallState 给权威 countdown/seal_countdown/status 快照；前端按 fetchedAt 本地每秒递减
 // （自动补偿往返耗时/时钟偏差），仅在新局(≤0)/封盘切换/下注后/25s 兜底回拉。封盘=status≠betting 或 seal_remaining≤0。
@@ -17,53 +20,11 @@ class BigSmallView extends StatefulWidget {
   State<BigSmallView> createState() => _BigSmallViewState();
 }
 
-class _BigSmallViewState extends State<BigSmallView> {
-  final _api = EntertainmentApi();
-  BigSmallState? _state;
-  bool _loading = true;
-  bool _betting = false;
-  DateTime _fetchedAt = DateTime.fromMillisecondsSinceEpoch(0);
-
-  double _amount = 1000;
-  String _propId = '0';
-  int _rankTab = 0;
-  bool _recMy = true;
-
-  // 聊天
-  final _chatCtrl = TextEditingController();
-  List<BigSmallChat> _chat = [];
-  int _lastChatId = 0;
-  bool _sending = false;
-
-  // 红包
-  final _rpAmount = TextEditingController(text: '1000');
-  final _rpCount = TextEditingController(text: '5');
-  final _rpGreet = TextEditingController(text: '恭喜发财');
-  bool _rpSending = false;
-
-  Timer? _tick, _poll, _chatTimer;
-  static const _quicks = [1000, 5000, 10000, 50000, 100000];
-
-  bool get _isHxpt => widget.game.startsWith('hxpt');
-
-  int get _remaining {
-    final elapsed = DateTime.now().difference(_fetchedAt).inSeconds;
-    return ((_state?.round.countdown ?? 0) - elapsed).clamp(0, 1 << 30);
-  }
-
-  int get _sealRemaining {
-    final elapsed = DateTime.now().difference(_fetchedAt).inSeconds;
-    return ((_state?.round.sealCountdown ?? 0) - elapsed).clamp(0, 1 << 30);
-  }
-
-  bool get _canBet => _state != null && _state!.round.status == 'betting' && _sealRemaining > 0 && !_betting;
-
-  String get _statusText {
-    final s = _state?.round.status ?? '';
-    if (s == 'sealed') return '已封盘，即将开奖…';
-    if (s == 'finished') return '本局已结束，下一局即将开始';
-    if (s == 'betting' && _sealRemaining <= 3) return '即将封盘（${_sealRemaining}s）';
-    return '下注中 · 剩余 ${_remaining}s';
+class _BigSmallViewState extends State<BigSmallView> with BigSmallOpsMixin {
+  @override
+  void _toast(String? m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m ?? '')));
   }
 
   @override
@@ -97,99 +58,7 @@ class _BigSmallViewState extends State<BigSmallView> {
     super.dispose();
   }
 
-  int _loadSeq = 0; // _load 单飞序号：丢弃过期响应，防并发竞态让旧数据覆盖新数据（误判封盘→误下注）
 
-  Future<void> _load({bool silent = false}) async {
-    final seq = ++_loadSeq;
-    if (!silent) setState(() => _loading = true);
-    try {
-      final s = await _api.bigsmallState(widget.siteId, widget.game);
-      if (seq != _loadSeq) return; // 已有更新请求在飞，丢弃本次过期响应
-      _state = s;
-      _fetchedAt = DateTime.now();
-      if (_amount < s.minBet) _amount = s.minBet;
-      if (_chat.isEmpty && s.chat.isNotEmpty) {
-        _chat = s.chat;
-        _lastChatId = s.chat.fold<int>(0, (m, c) => c.id > m ? c.id : m);
-      }
-    } catch (e) {
-      if (seq == _loadSeq && !silent) _toast('加载失败：$e');
-    }
-    if (seq == _loadSeq && mounted) setState(() {});
-  }
-
-  Future<void> _refreshChat() async {
-    try {
-      final list = await _api.bigsmallChat(widget.siteId, widget.game, _lastChatId);
-      if (list.isEmpty) return;
-      final map = {for (final m in _chat) m.id: m};
-      for (final m in list) {
-        map[m.id] = m;
-      }
-      _chat = map.values.toList()..sort((a, b) => a.id.compareTo(b.id));
-      if (_chat.length > 60) _chat = _chat.sublist(_chat.length - 60);
-      _lastChatId = _chat.fold<int>(_lastChatId, (m, c) => c.id > m ? c.id : m);
-      if (mounted) setState(() {});
-    } catch (_) {}
-  }
-
-  Future<void> _doBet(String type) async {
-    if (!_canBet) return;
-    setState(() => _betting = true);
-    try {
-      final extra = <String, String>{};
-      if (_isHxpt && _propId != '0') extra['prop_id'] = _propId;
-      var res = await _api.bet(widget.siteId, widget.game, BetRequest(selection: type, amount: _amount, extra: extra));
-      if (!res.success && res.raw?['captcha_required'] == true) {
-        final code = await _askCaptcha();
-        if (code != null) {
-          extra['captcha_hash'] = (res.raw?['imagehash'] ?? '').toString();
-          extra['captcha_code'] = code;
-          res = await _api.bet(widget.siteId, widget.game, BetRequest(selection: type, amount: _amount, extra: extra));
-        }
-      }
-      _toast(res.success ? (res.prize.isNotEmpty ? res.prize : res.message) : res.message);
-      await _load(silent: true);
-    } catch (e) {
-      _toast('请求失败：$e');
-    } finally {
-      if (mounted) setState(() => _betting = false);
-    }
-  }
-
-  Future<String?> _askCaptcha() async {
-    final ctrl = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('安全验证'),
-        content: TextField(controller: ctrl, autofocus: true, decoration: const InputDecoration(hintText: '请输入图中字符')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.pop(context, ctrl.text.trim()), child: const Text('确定')),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _sendChat() async {
-    final msg = _chatCtrl.text.trim();
-    if (msg.isEmpty || _sending) return;
-    setState(() => _sending = true);
-    try {
-      final res = await _api.bigsmallSendChat(widget.siteId, widget.game, msg);
-      if (res.success) {
-        _chatCtrl.clear();
-        await _refreshChat();
-      } else {
-        _toast(res.message);
-      }
-    } catch (e) {
-      _toast('发送失败：$e');
-    } finally {
-      if (mounted) setState(() => _sending = false);
-    }
-  }
 
   Future<void> _doTask(BigSmallTask t, String action) async {
     try {
@@ -231,40 +100,11 @@ class _BigSmallViewState extends State<BigSmallView> {
     }
   }
 
-  Future<void> _sendRed() async {
-    if (_rpSending) return;
-    setState(() => _rpSending = true);
-    try {
-      final res = await _api.bigsmallRedpacket(widget.siteId, widget.game, 'send', {
-        'amount': _rpAmount.text,
-        'count': _rpCount.text,
-        'greeting': _rpGreet.text,
-      });
-      _toast(res.message);
-      if (res.success) await _load(silent: true);
-    } catch (e) {
-      _toast('发送失败：$e');
-    } finally {
-      if (mounted) setState(() => _rpSending = false);
-    }
-  }
-
-  void _toast(String? m) {
-    if (!mounted || m == null || m.isEmpty) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-  }
-
   String _fmt(double? n) => n == null ? '0' : n.toStringAsFixed(0);
 
   String _label(String r) => r == 'big' ? '大' : (r == 'house' ? '庄' : (r == 'small' ? '小' : '-'));
 
   Color _dotColor(String r) => r == 'big' ? const Color(0xFFEF4444) : (r == 'house' ? const Color(0xFF22C55E) : const Color(0xFF3B82F6));
-
-  void _allIn() {
-    final bal = _state?.balance ?? 0;
-    final max = _state?.maxBet ?? bal;
-    setState(() => _amount = (max > 0 ? bal < max ? bal : max : bal).floorToDouble());
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -295,34 +135,6 @@ class _BigSmallViewState extends State<BigSmallView> {
         _chatPanel(),
       ],
     );
-  }
-
-  Widget _hero(BigSmallState? s) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          gradient: const LinearGradient(colors: [Color(0xFFDB2777), Color(0xFFF59E0B)]),
-        ),
-        child: Column(children: [
-          Text('🎲 ${widget.name}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-          const SizedBox(height: 4),
-          Text.rich(TextSpan(text: '余额 ', style: const TextStyle(color: Colors.white, fontSize: 13), children: [
-            TextSpan(text: _fmt(s?.balance), style: const TextStyle(color: Color(0xFFFDE68A), fontSize: 16, fontWeight: FontWeight.bold)),
-            if (s?.currency.isNotEmpty == true) TextSpan(text: ' ${s!.currency}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            if (s?.payout.isNotEmpty == true) TextSpan(text: '  · 赔率 ${s!.payout}×', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-          ])),
-        ]),
-      );
-
-  Widget _statBar(BigSmallState? s) {
-    final st = s?.round.status ?? '';
-    return Row(children: [
-      _statTile('$_remaining s', '倒计时', st != 'betting' ? PTColors.warn : PTColors.primary),
-      const SizedBox(width: 8),
-      _statTile(st == 'betting' ? '可下注' : (st == 'sealed' ? '封盘' : '已结束'), _statusText, PTColors.primary, flex: 2),
-      const SizedBox(width: 8),
-      _statTile('第 ${s?.round.gameNo ?? '?'} 局', '${s?.round.playerCount ?? 0}人 · 总注 ${_fmt(s?.round.totalBet)}', PTColors.primary, flex: 2),
-    ]);
   }
 
   Widget _statTile(String val, String lbl, Color color, {int flex = 1}) => Expanded(
@@ -393,7 +205,7 @@ class _BigSmallViewState extends State<BigSmallView> {
           ]),
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
-            for (final q in _quicks)
+            for (final q in BigSmallOpsMixin._quicks)
               OutlinedButton(onPressed: () => setState(() => _amount = q.toDouble()), child: Text(q.toString())),
           ]),
           if (_isHxpt && (s?.props.any((p) => p.usable) ?? false)) ...[

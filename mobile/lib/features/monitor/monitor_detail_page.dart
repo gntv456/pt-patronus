@@ -8,6 +8,11 @@ import 'package:ptpatronus/theme/glass.dart';
 import 'package:ptpatronus/widgets/pt_motion.dart';
 import 'device_form_sheet.dart';
 
+part 'inapp_webview_page.dart';
+
+part 'monitordetailopsmixin.dart';
+part 'monitor_detail_widgets.dart';
+
 /// 设备详情：探活/采集/编辑/删除；host/nas 指标卡+趋势；摄像头 media_kit 实时预览（鸿蒙降级）；告警。
 class MonitorDetailPage extends StatefulWidget {
   final MonitorTarget target;
@@ -16,39 +21,11 @@ class MonitorDetailPage extends StatefulWidget {
   State<MonitorDetailPage> createState() => _MonitorDetailPageState();
 }
 
-class _MonitorDetailPageState extends State<MonitorDetailPage> {
-  final _api = MonitorApi();
-  Metrics? _cur;
-  List<MetricSnapshot> _history = const [];
-  List<MonitorAlert> _alerts = const [];
-  bool _loading = false;
-  bool _probing = false;
-
-  // 摄像头预览
-  Player? _player;
-  VideoController? _controller;
-  String? _playerErr; // 鸿蒙等无 media_kit 原生时的降级文案
-
-  bool get _isCamera => widget.target.type == 'camera';
-
-  String get _resolvedProtocol {
-    final t = widget.target;
-    if (t.protocol.isNotEmpty) return t.protocol;
-    if (t.type == 'nas') return t.host.isEmpty ? 'local' : 'api';
-    if (t.type == 'camera') return 'onvif';
-    return t.host.isEmpty ? 'local' : 'ssh';
-  }
-
-  bool get _canPower {
-    final t = widget.target;
-    if (t.type == 'camera') return false;
-    if (t.type == 'host') {
-      return _resolvedProtocol == 'local' || _resolvedProtocol == 'ssh';
-    }
-    if (t.type == 'nas') {
-      return _resolvedProtocol == 'local' || _resolvedProtocol == 'api';
-    }
-    return false;
+class _MonitorDetailPageState extends State<MonitorDetailPage> with MonitorDetailOpsMixin {
+  @override
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
   @override
@@ -58,59 +35,10 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
     if (_isCamera && widget.target.rtspUrl.isNotEmpty) _initPlayer();
   }
 
-  Future<void> _initPlayer() async {
-    try {
-      final p = Player();
-      final c = VideoController(p);
-      await p.open(Media(_api.streamURL(widget.target.id)));
-      if (!mounted) {
-        p.dispose(); // 页面已退出，回收播放器避免泄漏
-        return;
-      }
-      setState(() {
-        _player = p;
-        _controller = c;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _playerErr = '当前平台不支持实时画面（约 5-10s 延迟），请在 Web 端查看');
-    }
-  }
-
   @override
   void dispose() {
     _player?.dispose();
     super.dispose();
-  }
-
-  void _toast(String m) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-  }
-
-  String _tempName(String raw) {
-    final name = raw.trim();
-    final key = name.toLowerCase();
-    if (key.isEmpty) return '温度传感器';
-    if (key == 'acpitz') return 'ACPI 温区';
-    if (key == 'nvme_composite') return 'NVMe 综合温度';
-    final nvmeSensor = RegExp(r'^nvme_sensor_(\d+)$').firstMatch(key);
-    if (nvmeSensor != null) return 'NVMe 传感器 ${nvmeSensor.group(1)}';
-    final nvme = RegExp(r'^nvme(?:_temp)?_?(\d+)$').firstMatch(key);
-    if (nvme != null) return 'NVMe 温度 ${nvme.group(1)}';
-    final pkg = RegExp(r'^coretemp_package_id_(\d+)$').firstMatch(key);
-    if (pkg != null) {
-      final id = pkg.group(1);
-      return id == '0' ? 'CPU 封装' : 'CPU 封装 $id';
-    }
-    final core = RegExp(r'^coretemp_core_(\d+)$').firstMatch(key);
-    if (core != null) return 'CPU 核心 ${core.group(1)}';
-    if (key == 'k10temp_tctl') return 'AMD CPU 控制温度';
-    if (key == 'k10temp_tccd1') return 'AMD CCD1 温度';
-    if (key.startsWith('k10temp_tccd')) {
-      return 'AMD CCD${key.replaceFirst('k10temp_tccd', '')} 温度';
-    }
-    return name.replaceAll('_', ' ');
   }
 
   String _protocolName(String raw) => switch (raw) {
@@ -130,245 +58,6 @@ class _MonitorDetailPageState extends State<MonitorDetailPage> {
     'snmp' => 'SNMP',
     _ => raw,
   };
-
-  Future<void> _load() async {
-    setState(() => _loading = true);
-    try {
-      final results = await Future.wait([
-        _api.collect(widget.target.id),
-        _api.metrics(widget.target.id, limit: 60),
-        _api.alerts(targetId: widget.target.id),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _cur = (results[0] as CollectResult).metrics;
-        _history = results[1] as List<MetricSnapshot>;
-        _alerts = results[2] as List<MonitorAlert>;
-        _loading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        _toast(e.toString().replaceFirst('Exception: ', ''));
-        setState(() => _loading = false);
-      }
-    }
-  }
-
-  Future<void> _probe() async {
-    setState(() => _probing = true);
-    try {
-      final r = await _api.probe(widget.target.id);
-      _toast(r.ok && r.online != false ? '在线' : (r.error ?? '离线/失败'));
-    } catch (e) {
-      _toast(e.toString().replaceFirst('Exception: ', ''));
-    } finally {
-      if (mounted) setState(() => _probing = false);
-    }
-  }
-
-  Future<void> _edit() async {
-    final ok = await DeviceFormSheet.show(context, target: widget.target);
-    if (ok == true) _load();
-  }
-
-  Future<void> _delete() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('删除设备'),
-        content: Text('确认删除「${widget.target.name}」？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      await _api.remove(widget.target.id);
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      _toast(e.toString().replaceFirst('Exception: ', ''));
-    }
-  }
-
-  Future<void> _power(String action) async {
-    final isShutdown = action == 'shutdown';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(isShutdown ? '确认关机' : '确认重启'),
-        content: Text(
-          '确认${isShutdown ? '关闭' : '重启'}「${widget.target.name}」？'
-          '${isShutdown ? '关机后可能需要手动开机。' : '设备会短暂离线。'}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: isShutdown
-                ? FilledButton.styleFrom(backgroundColor: Colors.redAccent)
-                : null,
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(isShutdown ? '关机' : '重启'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
-    try {
-      final r = await _api.power(widget.target.id, action);
-      if (r.ok) {
-        _toast(isShutdown ? '关机命令已发送' : '重启命令已发送');
-      } else {
-        _toast(r.error ?? '电源操作失败');
-      }
-    } catch (e) {
-      _toast(e.toString().replaceFirst('Exception: ', ''));
-    }
-  }
-
-  Widget _card(String label, String value, {Color? color}) => GlassCard(
-    padding: const EdgeInsets.all(14),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: context.dimText, fontSize: 12)),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _cameraPreview() {
-    if (_playerErr != null) {
-      return GlassCard(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(Icons.videocam_off, size: 36, color: context.dimText),
-            const SizedBox(height: 8),
-            Text(
-              _playerErr!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: context.dimText),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              icon: const Icon(Icons.open_in_browser),
-              label: const Text('在 WebView 中打开 Web 版'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => InAppWebViewPage(initialUrl: _webStreamUrl()),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    if (_controller == null) {
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: ColoredBox(
-          color: context.mainText,
-          child: Center(
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white70,
-            ),
-          ),
-        ),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Video(controller: _controller!),
-      ),
-    );
-  }
-
-  String _webStreamUrl() {
-    // 降级：用 WebView 打开后端内嵌 Web 的摄像头流（需已登录态；粗略指向 Web 端）。
-    final u = Uri.parse(_api.streamURL(widget.target.id));
-    return '${u.scheme}://${u.host}/';
-  }
-
-  Widget _trend(
-    String label,
-    List<double> data, {
-    Color color = PTColors.primary,
-  }) {
-    if (data.length < 2) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text(
-          '$label 趋势：数据不足',
-          style: TextStyle(color: context.dimText, fontSize: 13),
-        ),
-      );
-    }
-    final maxY =
-        data.fold<double>(1, (a, b) => a > b ? a : b).clamp(1, 100) * 1.2;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-          ),
-          const SizedBox(height: 6),
-          SizedBox(
-            height: 90,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(show: true, drawVerticalLine: false),
-                borderData: FlBorderData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                minY: 0,
-                maxY: maxY,
-                lineBarsData: [
-                  LineChartBarData(
-                    isCurved: true,
-                    spots: [
-                      for (var i = 0; i < data.length; i++)
-                        FlSpot(i.toDouble(), data[i]),
-                    ],
-                    color: color,
-                    barWidth: 2,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: color.withValues(alpha: 0.12),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _info(String k, String v) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 3),
@@ -701,19 +390,4 @@ String _fmtUptime(int sec) {
   if (d > 0) return '$d天$h时';
   if (h > 0) return '$h时$mi分';
   return '$mi分';
-}
-
-/// WebView 降级容器（鸿蒙无 media_kit 原生时，跳后端 Web 版看流）。
-class InAppWebViewPage extends StatelessWidget {
-  final String initialUrl;
-  const InAppWebViewPage({super.key, required this.initialUrl});
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('实时画面（Web 版）')),
-      body: InAppWebView(
-        initialUrlRequest: URLRequest(url: WebUri(initialUrl)),
-      ),
-    );
-  }
 }

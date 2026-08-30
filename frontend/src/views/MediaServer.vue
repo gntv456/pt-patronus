@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import MediaServerDialogs from '@/components/mediaserver/MediaServerDialogs.vue'
 import { useI18n } from 'vue-i18n'
 import {
   mediaServerApi,
@@ -259,121 +260,22 @@ onMounted(load)
 
     <!-- CRUD dialog -->
     <!-- 媒体健康中心 -->
-    <el-dialog v-model="showHealth" :title="t('mediaserver.healthTitle')" width="860px" top="6vh">
-      <div class="libs-bar">
-        <el-checkbox v-model="healthSubtitles" size="small">{{ t('mediaserver.scanSubtitles') }}</el-checkbox>
-        <el-checkbox v-model="healthUpgradeable" size="small">{{ t('mediaserver.scanUpgradeable') }}</el-checkbox>
-        <el-button size="small" :loading="healthLoading" @click="runHealth">{{ t('mediaserver.recheck') }}</el-button>
-        <el-button
-          size="small"
-          type="primary"
-          :loading="fixingSubtitles"
-          :disabled="!healthReport?.missing_subtitle"
-          @click="fixSubtitles"
-        >
-          {{ t('mediaserver.fixMissing', { n: healthReport?.missing_subtitle ?? 0 }) }}
-        </el-button>
-      </div>
-      <div v-loading="healthLoading">
-        <div class="hint" style="margin-bottom: 8px" v-if="healthReport">
-          {{ t('mediaserver.unmatched') }} {{ healthReport.unmatched }} · {{ t('mediaserver.missingEps') }}
-          {{ healthReport.missing_episodes }} · {{ t('mediaserver.missingSubs') }} {{ healthReport.missing_subtitle }} ·
-          {{ t('mediaserver.upgradeable') }} {{ healthReport.upgradeable ?? 0 }}
-        </div>
-        <el-table :data="healthReport?.issues ?? []" size="small" :empty-text="t('mediaserver.healthyEmpty')">
-          <el-table-column :label="t('mediaserver.col.type')" width="100">
-            <template #default="{ row }">
-              <el-tag
-                size="small"
-                :type="
-                  row.type === 'unmatched'
-                    ? 'danger'
-                    : row.type === 'missing_episodes'
-                      ? 'warning'
-                      : row.type === 'upgradeable'
-                        ? 'success'
-                        : 'info'
-                "
-              >
-                {{
-                  row.type === 'unmatched'
-                    ? t('mediaserver.unmatched')
-                    : row.type === 'missing_episodes'
-                      ? t('mediaserver.missingEps')
-                      : row.type === 'upgradeable'
-                        ? t('mediaserver.upgradeable')
-                        : t('mediaserver.missingSubs')
-                }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="title" :label="t('rss.col.title')" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="library" :label="t('mediaserver.col.library')" width="110" show-overflow-tooltip />
-          <el-table-column prop="detail" :label="t('mediaserver.col.detail')" min-width="160" show-overflow-tooltip />
-          <el-table-column prop="path" :label="t('mediaserver.col.path')" min-width="200" show-overflow-tooltip />
-        </el-table>
-      </div>
-    </el-dialog>
-
-    <el-dialog
-      v-model="showForm"
-      :title="editing ? t('mediaserver.editTitle') : t('mediaserver.addTitle')"
-      width="560px"
-      top="8vh"
-    >
-      <el-form :model="form" label-width="120px" label-position="right">
-        <el-form-item :label="t('rss.f.name')"
-          ><el-input v-model="form.name" :placeholder="t('mediaserver.f.nameHint')"
-        /></el-form-item>
-        <el-form-item :label="t('mediaserver.col.type')">
-          <el-select v-model="form.type">
-            <el-option label="Emby" value="emby" />
-            <el-option label="Jellyfin" value="jellyfin" />
-            <el-option label="Plex" value="plex" />
-            <el-option :label="t('mediaserver.type.ugosFull')" value="ugos" />
-            <el-option :label="t('mediaserver.type.fnosFull')" value="fnos" />
-            <el-option :label="t('mediaserver.type.zspaceFull')" value="zspace" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="t('mediaserver.f.url')">
-          <el-input v-model="form.url" placeholder="http://192.168.1.10:8096" />
-        </el-form-item>
-        <el-form-item label="API Key / Token">
-          <el-input
-            v-model="form.token"
-            type="password"
-            show-password
-            :placeholder="editing ? t('mediaserver.f.tokenKeep') : t('mediaserver.f.tokenNew')"
-          />
-        </el-form-item>
-        <el-form-item :label="t('mediaserver.f.usernameOptional')">
-          <el-input v-model="form.username" :placeholder="t('mediaserver.f.usernameHint')" />
-        </el-form-item>
-        <el-form-item :label="t('mediaserver.f.setDefault')"><el-switch v-model="form.is_default" /></el-form-item>
-        <el-form-item :label="t('mediaserver.refreshOnDownload')">
-          <el-switch v-model="form.refresh_on_download" />
-          <span class="hint">{{ t('mediaserver.f.refreshHint') }}</span>
-        </el-form-item>
-        <el-form-item :label="t('mediaserver.notifyOnPlay')">
-          <el-switch v-model="form.notify_on_play" />
-          <span class="hint">{{ t('mediaserver.f.notifyHint') }}</span>
-        </el-form-item>
-        <el-divider content-position="left">{{ t('mediaserver.f.directLink') }}</el-divider>
-        <el-form-item :label="t('mediaserver.f.enableDirect')">
-          <el-switch v-model="form.direct_link_enabled" />
-          <span class="hint">{{ t('mediaserver.f.directHint') }}</span>
-        </el-form-item>
-        <el-form-item :label="t('mediaserver.f.directBase')">
-          <el-input v-model="form.direct_link_base" placeholder="https://cdn.example.com/library" />
-          <span class="hint">{{ t('mediaserver.f.directBaseHint') }}</span>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showForm = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
-      </template>
-    </el-dialog>
-
+    <MediaServerDialogs
+      v-model:show-health="showHealth"
+      v-model:health-subtitles="healthSubtitles"
+      v-model:health-upgradeable="healthUpgradeable"
+      v-model:show-form="showForm"
+      :health-report="healthReport"
+      :health-loading="healthLoading"
+      :fixing-subtitles="fixingSubtitles"
+      :fix-subtitles="fixSubtitles"
+      :editing="!!editing"
+      :form="form"
+      :loading="loading"
+      @run-health="runHealth"
+      @fix="() => fixSubtitles()"
+      @save="save"
+    />
     <!-- 媒体库 + 封面预览 -->
     <el-dialog
       v-model="showLibs"

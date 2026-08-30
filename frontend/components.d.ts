@@ -117,6 +117,7 @@ declare module 'vue' {
     MedalSynthesisGame: typeof import('./src/components/MedalSynthesisGame.vue')['default']
     MediaPoster: typeof import('./src/components/MediaPoster.vue')['default']
     MediaResultsGrid: typeof import('./src/components/MediaResultsGrid.vue')['default']
+    MediaServerDialogs: typeof import('./src/components/mediaserver/MediaServerDialogs.vue')['default']
     MetricBar: typeof import('./src/components/monitor/MetricBar.vue')['default']
     MetricChart: typeof import('./src/components/monitor/MetricChart.vue')['default']
     NasConfigDrawer: typeof import('./src/components/nas/NasConfigDrawer.vue')['default']

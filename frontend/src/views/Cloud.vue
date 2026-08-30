@@ -18,6 +18,7 @@ import { ElMessageBox, ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { useCloudDriveBrowse, fmtSize } from '@/composables/useCloudDriveBrowse'
 import { useCloudStrmRules } from '@/composables/useCloudStrmRules'
+import CloudDialogs from '@/components/cloud/CloudDialogs.vue'
 import { useCloud115Auth } from '@/composables/useCloud115Auth'
 
 // ---- 云端文件管理器操作 ----
@@ -547,225 +548,45 @@ onMounted(async () => {
       </el-tab-pane>
     </el-tabs>
 
-    <!-- 115 开放平台扫码授权 -->
-    <el-dialog
-      class="pt-dialog"
-      append-to-body
-      align-center
-      v-model="showAuth115"
-      :title="t('cloud.authTitle')"
-      width="480px"
-    >
-      <el-form label-width="90px">
-        <el-form-item label="AppID">
-          <el-input v-model="authAppId" :placeholder="t('cloud.authAppIdPh')" :disabled="!!authState" />
-        </el-form-item>
-      </el-form>
-      <div v-if="authQR" class="auth-qr">
-        <img :src="qrImage(authQR)" :alt="t('cloud.qrAuth')" style="width: 220px; height: 220px" />
-        <p class="hint">{{ authStatusText }}</p>
-      </div>
-      <template #footer>
-        <el-button @click="showAuth115 = false">{{ t('common.close') }}</el-button>
-        <el-button type="primary" :loading="authStarting || authPolling" :disabled="!!authState" @click="startAuth115">
-          {{ authState ? t('cloud.polling') : t('cloud.genQr') }}
-        </el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 115 目录树批量导入 -->
-    <el-dialog
-      class="pt-dialog"
-      append-to-body
-      align-center
-      v-model="showImportTree"
-      :title="t('cloud.importTitle')"
-      width="640px"
-    >
-      <el-alert type="info" :closable="false" show-icon style="margin-bottom: 12px">
-        {{ t('cloud.importTip') }}
-      </el-alert>
-      <el-form label-width="110px">
-        <el-form-item :label="t('cloud.targetDrive')">
-          <el-select v-model="treeForm.drive_id" style="width: 100%">
-            <el-option
-              v-for="d in drives"
-              :key="d.id"
-              :label="`${d.name}（${TYPE_LABEL[d.type] || d.type}）`"
-              :value="d.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="t('cloud.treeRoot')">
-          <el-input v-model="treeForm.base" :placeholder="t('cloud.treeRootPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.strmOutputDir')">
-          <el-input v-model="treeForm.output_dir" placeholder="/media/strm" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.treeText')">
-          <el-input v-model="treeForm.tree" type="textarea" :rows="10" :placeholder="t('cloud.treePh')" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showImportTree = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" :loading="importing" @click="doImportTree">{{ t('cloud.importGo') }}</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 网盘表单 -->
-    <el-dialog
-      class="pt-dialog"
-      append-to-body
-      align-center
-      v-model="showDriveForm"
-      :title="editingDrive ? t('cloud.editDrive') : t('cloud.addDrive')"
-      width="560px"
-    >
-      <el-form :model="driveForm" label-width="120px" label-position="right">
-        <el-form-item :label="t('common.name')">
-          <el-input v-model="driveForm.name" :placeholder="t('cloud.namePh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.type')">
-          <el-select v-model="driveForm.type">
-            <el-option :label="t('cloud.type.115Open')" value="115_open" />
-            <el-option :label="t('cloud.type.115')" value="115" />
-            <el-option :label="t('cloud.type.aliyunOpen')" value="aliyun_open" />
-            <el-option :label="t('cloud.type.quark')" value="quark" />
-            <el-option :label="t('cloud.type.123')" value="123" />
-            <el-option label="OneDrive" value="onedrive" />
-            <el-option :label="t('cloud.type.baidu')" value="baidu" />
-            <el-option :label="t('cloud.type.tianyi')" value="tianyi" />
-            <el-option :label="t('cloud.type.mobile')" value="mobile" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Cookie / Token">
-          <el-input
-            v-model="driveForm.token"
-            type="textarea"
-            :rows="3"
-            :placeholder="editingDrive ? t('cloud.tokenKeepPh') : tokenLabel"
-          />
-          <span class="hint">{{ t('cloud.tokenHint') }}</span>
-        </el-form-item>
-        <el-form-item :label="t('cloud.rootDir')">
-          <el-input v-model="driveForm.root_path" :placeholder="t('cloud.rootPh')" />
-          <span class="hint">{{ t('cloud.rootHint') }}</span>
-        </el-form-item>
-        <el-form-item :label="t('cloud.setDefault')"><el-switch v-model="driveForm.is_default" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showDriveForm = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="saveDrive">{{ t('common.save') }}</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 规则表单 -->
-    <el-dialog
-      class="pt-dialog"
-      append-to-body
-      align-center
-      v-model="showRuleForm"
-      :title="editingRule ? t('cloud.editRule') : t('cloud.addRule')"
-      width="600px"
-    >
-      <el-form :model="ruleForm" label-width="110px" label-position="right">
-        <el-form-item :label="t('common.name')">
-          <el-input v-model="ruleForm.name" :placeholder="t('cloud.ruleNamePh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.drive')">
-          <el-select v-model="ruleForm.drive_id" :disabled="!drives.length">
-            <el-option v-for="d in drives" :key="d.id" :label="d.name" :value="d.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="t('cloud.cloudDir')">
-          <div style="display: flex; gap: var(--sp-1); width: 100%">
-            <el-input v-model="ruleForm.cloud_path" :placeholder="t('cloud.cloudPathPh')" style="flex: 1" />
-            <el-button @click="ruleBrowse">{{ t('cloud.browse') }}</el-button>
-          </div>
-        </el-form-item>
-        <el-form-item :label="t('cloud.outputDir')">
-          <el-input v-model="ruleForm.output_dir" :placeholder="t('cloud.outputDirPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.outputTag')">
-          <el-input v-model="ruleForm.output_tag" :placeholder="t('cloud.outputTagPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.mountRoot')">
-          <el-input v-model="ruleForm.mount_root" :placeholder="t('cloud.mountRootPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.template')">
-          <el-input v-model="ruleForm.template" :placeholder="t('cloud.templatePh')" />
-          <span class="hint">{{ t('cloud.templateHint') }}</span>
-        </el-form-item>
-        <el-form-item :label="t('cloud.localUrl')">
-          <el-input v-model="ruleForm.local_base_url" :placeholder="t('cloud.localUrlPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.publicUrl')">
-          <el-input v-model="ruleForm.public_base_url" :placeholder="t('cloud.publicUrlPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.extWhitelist')">
-          <el-input v-model="ruleForm.include_exts" :placeholder="t('cloud.extWhitelistPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.excludeKw')">
-          <el-input v-model="ruleForm.exclude_keywords" :placeholder="t('cloud.excludeKwPh')" />
-        </el-form-item>
-        <el-form-item :label="t('cloud.recursiveScan')"><el-switch v-model="ruleForm.recursive" /></el-form-item>
-        <el-form-item :label="t('cloud.incremental')">
-          <el-switch v-model="ruleForm.incremental" />
-          <span class="hint">{{ t('cloud.incrementalHint') }}</span>
-        </el-form-item>
-        <el-form-item :label="t('cloud.keepExt')">
-          <el-switch v-model="ruleForm.keep_ext" />
-          <span class="hint">{{ t('cloud.keepExtHint') }}</span>
-        </el-form-item>
-        <el-form-item :label="t('cloud.enabled')"><el-switch v-model="ruleForm.enabled" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showRuleForm = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="saveRule">{{ t('common.save') }}</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 浏览 -->
-    <el-dialog
-      class="pt-dialog"
-      append-to-body
-      align-center
-      v-model="showBrowse"
-      :title="t('cloud.browseTitle', { name: browseDrive?.name ?? '' })"
-      width="640px"
-    >
-      <div class="tab-toolbar" style="margin-bottom: 8px">
-        <el-button size="small" @click="doMkdir">{{ t('filemanager.newFolder') }}</el-button>
-        <el-button size="small" @click="doOffline">{{ t('cloud.offline') }}</el-button>
-        <el-button size="small" @click="doShareSave">{{ t('cloud.shareSave') }}</el-button>
-      </div>
-      <div class="browse-bar">
-        <el-button size="small" :disabled="browsePath === '/'" @click="browseUp">{{ t('cloud.up') }}</el-button>
-        <span class="browse-path">{{ browsePath }}</span>
-      </div>
-      <div v-loading="browseLoading" class="browse-list">
-        <div
-          v-a11y-button
-          v-for="f in browseFiles.filter((x) => x.is_dir)"
-          :key="f.path"
-          class="browse-item"
-          @click="enterDir(f)"
-        >
-          📁 {{ f.name }}
-        </div>
-        <div v-for="f in browseFiles.filter((x) => !x.is_dir)" :key="f.path" class="browse-item file">
-          🎬 {{ f.name }}
-          <span class="meta">{{ fmtSize(f.size) }}</span>
-        </div>
-        <div v-if="!browseFiles.length && !browseLoading" class="meta" style="padding: 20px; text-align: center">
-          {{ t('cloud.emptyDir') }}
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="showBrowse = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="pickDir">{{ t('cloud.useThisDir') }}</el-button>
-      </template>
-    </el-dialog>
+    <CloudDialogs
+      v-model:show-auth-115="showAuth115"
+      v-model:show-import-tree="showImportTree"
+      v-model:show-drive-form="showDriveForm"
+      v-model:show-rule-form="showRuleForm"
+      v-model:show-browse="showBrowse"
+      v-model:auth-app-id="authAppId"
+      v-model:tree-form="treeForm"
+      v-model:drive-form="driveForm"
+      v-model:rule-form="ruleForm"
+      :auth-state="authState ?? ''"
+      :auth-q-r="authQR"
+      :auth-status-text="authStatusText"
+      :auth-starting="authStarting"
+      :auth-polling="authPolling"
+      :drives="drives"
+      :browse-files="browseFiles"
+      :browse-path="browsePath"
+      :browse-loading="browseLoading"
+      :qr-image="qrImage"
+      :editing-drive="editingDrive"
+      :editing-rule="editingRule"
+      :browse-drive="browseDrive"
+      :token-label="tokenLabel"
+      :importing="importing"
+      :loading="loading"
+      :fmt-size="fmtSize"
+      @start-auth="startAuth115"
+      @do-import-tree="doImportTree"
+      @save-drive="saveDrive"
+      @save-rule="saveRule"
+      @browse-up="browseUp"
+      @enter-dir="enterDir"
+      @pick-dir="pickDir"
+      @rule-browse="ruleBrowse"
+      @do-mkdir="doMkdir"
+      @do-offline="doOffline"
+      @do-share-save="doShareSave"
+    />
   </div>
 </template>
 

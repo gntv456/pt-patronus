@@ -15,6 +15,7 @@ declare module 'vue' {
     BigSmallSidebar: typeof import('./src/components/BigSmallSidebar.vue')['default']
     BlackjackGame: typeof import('./src/components/BlackjackGame.vue')['default']
     CelebrityDialog: typeof import('./src/components/CelebrityDialog.vue')['default']
+    CloudDialogs: typeof import('./src/components/cloud/CloudDialogs.vue')['default']
     CommandPalette: typeof import('./src/components/CommandPalette.vue')['default']
     ComposeProjects: typeof import('./src/components/ops/ComposeProjects.vue')['default']
     CookieCloudPanel: typeof import('./src/components/settings/CookieCloudPanel.vue')['default']

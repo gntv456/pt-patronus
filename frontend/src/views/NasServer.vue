@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router'
 import DeviceCard from '@/components/monitor/DeviceCard.vue'
 import DeviceForm from '@/components/monitor/DeviceForm.vue'
 import DeviceDetail from '@/components/monitor/DeviceDetail.vue'
-import AlertList from '@/components/monitor/AlertList.vue'
 import RtspPlayer from '@/components/monitor/RtspPlayer.vue'
 import AgentManager from '@/components/monitor/AgentManager.vue'
 import NasOpsGrid from '@/components/nas/NasOpsGrid.vue'
@@ -16,6 +15,7 @@ import NasTerminalDrawer from '@/components/nas/NasTerminalDrawer.vue'
 import NasCredentialDrawer from '@/components/nas/NasCredentialDrawer.vue'
 import NasConfigDrawer from '@/components/nas/NasConfigDrawer.vue'
 import NasHelpDialog from '@/components/nas/NasHelpDialog.vue'
+import NasAlertDrawer from '@/components/nas/NasAlertDrawer.vue'
 import {
   monitorApi,
   commandRunApi,
@@ -447,30 +447,7 @@ function onVisibilityChange() {
       <RtspPlayer v-if="previewTarget" :target="previewTarget" />
     </el-dialog>
 
-    <el-drawer
-      v-model="alertVisible"
-      size="420px"
-      :with-header="false"
-      :body-style="{ padding: '0', display: 'flex', flexDirection: 'column' }"
-    >
-      <div class="alert-drawer">
-        <div class="alert-drawer-head">
-          <span class="alert-drawer-title">{{ t('nas.alertHistory') }}</span>
-          <el-button size="small" type="danger" plain :disabled="!alerts.length" @click="onClearAlerts">{{
-            t('nas.clearHistory')
-          }}</el-button>
-        </div>
-        <div class="alert-drawer-body">
-          <AlertList
-            :alerts="alerts"
-            @read="onReadAlert"
-            @ack="onAckAlert"
-            @silence="onSilenceAlert"
-            @del="onDeleteAlert"
-          />
-        </div>
-      </div>
-    </el-drawer>
+    <NasAlertDrawer :visible="alertVisible" :alerts="alerts" @update:visible="alertVisible = $event" @read="onReadAlert" @ack="onAckAlert" @silence="onSilenceAlert" @del="onDeleteAlert" @clear="onClearAlerts" />
   </div>
 </template>
 

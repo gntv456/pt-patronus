@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import MediaServerDialogs from '@/components/mediaserver/MediaServerDialogs.vue'
+import MediaServerReportDialog from '@/components/mediaserver/MediaServerReportDialog.vue'
 import { useI18n } from 'vue-i18n'
 import {
   mediaServerApi,
@@ -312,63 +313,14 @@ onMounted(load)
       </div>
     </el-dialog>
 
-    <!-- 观影报告 -->
-    <el-dialog
-      v-model="showReport"
-      :title="t('mediaserver.reportTitle', { name: libsServer?.name ?? '' })"
-      width="820px"
-      top="6vh"
-    >
-      <div class="libs-bar">
-        <div>
-          {{ t('mediaserver.lastDays1') }}
-          <el-input-number
-            v-model="reportDays"
-            :min="1"
-            :max="365"
-            size="small"
-            controls-position="right"
-            style="width: 90px"
-          />
-          {{ t('mediaserver.playsCount', { n: report?.total_plays ?? 0 }) }}
-        </div>
-        <el-button size="small" :loading="reportLoading" @click="reloadReport">{{ t('common.refresh') }}</el-button>
-      </div>
-      <div v-loading="reportLoading">
-        <div v-if="report" class="report-block">
-          <div class="sub-title">{{ t('mediaserver.users') }} ({{ report.users.length }})</div>
-          <div class="user-chips">
-            <el-tag v-for="u in report.users" :key="u.id" size="small">
-              {{ u.name }} · {{ t('mediaserver.times', { n: u.play_count }) }}
-            </el-tag>
-            <span v-if="!report.users.length" class="hint">{{ t('mediaserver.noUserData') }}</span>
-          </div>
-        </div>
-        <div v-if="report" class="report-block">
-          <div class="sub-title">{{ t('mediaserver.topItems') }}</div>
-          <el-table :data="report.top_items" size="small" :empty-text="t('mediaserver.noData')">
-            <el-table-column prop="name" :label="t('rss.col.title')" min-width="160" show-overflow-tooltip />
-            <el-table-column prop="play_count" :label="t('mediaserver.col.playCount')" width="100" />
-            <el-table-column :label="t('mediaserver.col.duration')" width="100">
-              <template #default="{ row }">{{ fmtDuration(row.duration) }}</template>
-            </el-table-column>
-          </el-table>
-        </div>
-        <div v-if="report" class="report-block">
-          <div class="sub-title">{{ t('mediaserver.recentPlays') }}</div>
-          <el-table :data="report.recent_plays" size="small" :empty-text="t('mediaserver.noData')">
-            <el-table-column prop="name" :label="t('rss.col.title')" min-width="140" show-overflow-tooltip />
-            <el-table-column prop="user_name" :label="t('mediaserver.col.user')" width="100" />
-            <el-table-column prop="play_count" :label="t('mediaserver.col.count')" width="70" />
-            <el-table-column :label="t('mediaserver.recentPlays')" width="170">
-              <template #default="{ row }">{{
-                row.last_played ? new Date(row.last_played).toLocaleString() : '-'
-              }}</template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </div>
-    </el-dialog>
+    <MediaServerReportDialog
+      v-model:show-report="showReport"
+      v-model:report-days="reportDays"
+      :report="report"
+      :report-loading="reportLoading"
+      :server-name="libsServer?.name ?? ''"
+      @reload="reloadReport"
+    />
 
     <!-- 重复检测 -->
     <el-dialog

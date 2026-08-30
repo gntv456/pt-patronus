@@ -19,6 +19,7 @@ import {
 } from '@element-plus/icons-vue'
 import EmptyState from '@/components/EmptyState.vue'
 import FileManagerSidebar from '@/components/FileManagerSidebar.vue'
+import FileManagerToolbar from '@/components/FileManagerToolbar.vue'
 import FileManagerDialogs from '@/components/FileManagerDialogs.vue'
 import FileManagerExtraDialogs from '@/components/FileManagerExtraDialogs.vue'
 import { useFileManager, type StorageItem } from '@/composables/useFileManager'
@@ -176,67 +177,26 @@ watch(
     <!-- 右栏 -->
     <section class="fm-main">
       <template v-if="current">
-        <div class="fm-toolbar">
-          <el-button size="small" :icon="Top" :disabled="path === '/'" @click="up">{{ t('filemanager.up') }}</el-button>
-          <div class="crumbs">
-            <template v-for="(c, i) in crumbs" :key="i">
-              <span class="crumb" @click="jump(c.path)">{{ c.name }}</span>
-              <span v-if="i < crumbs.length - 1" class="crumb-sep">/</span>
-            </template>
-          </div>
-          <div class="tb-actions">
-            <el-button v-if="!curReadOnly" size="small" :icon="FolderAdd" @click="mkdirVisible = true">{{
-              t('filemanager.newFolder')
-            }}</el-button>
-            <el-upload v-if="!curReadOnly" :show-file-list="false" :http-request="handleUpload">
-              <el-button size="small" type="primary" :icon="Upload" :disabled="uploadProgress >= 0">{{
-                t('filemanager.upload')
-              }}</el-button>
-            </el-upload>
-            <el-button
-              size="small"
-              @click="toggleView"
-              :title="viewMode === 'list' ? t('filemanager.grid') : t('filemanager.list')"
-              >{{ viewMode === 'list' ? '▤' : '☰' }}</el-button
-            >
-            <el-button size="small" :icon="Refresh" circle @click="refresh" />
-          </div>
-        </div>
-        <el-progress
-          v-if="uploadProgress >= 0"
-          :percentage="uploadProgress"
-          :stroke-width="6"
-          style="margin: 0 12px 8px"
+        <FileManagerToolbar
+          :path="path"
+          :crumbs="crumbs"
+          :cur-read-only="curReadOnly"
+          :mkdir-visible="mkdirVisible"
+          :upload-progress="uploadProgress"
+          :view-mode="viewMode"
+          :selected="selected"
+          :batch-del-progress="batchDelProgress"
+          @update:mkdir-visible="mkdirVisible = $event"
+          @update:selected="selected = $event"
+          @up="up"
+          @jump="jump"
+          @upload="handleUpload"
+          @toggle-view="toggleView"
+          @refresh="refresh"
+          @move-copy="openMoveCopy"
+          @del-batch="delBatch"
+          @cancel-batch-del="cancelBatchDel"
         />
-
-        <transition name="fade">
-          <div v-if="selected.length && !curReadOnly" class="batch-bar glass">
-            <span>{{ t('subscriptions.batch.selected', { n: selected.length }) }}</span>
-            <el-button size="small" :icon="MoveIcon" @click="openMoveCopy('move', selected)">{{
-              t('filemanager.move')
-            }}</el-button>
-            <el-button size="small" :icon="CopyDocument" @click="openMoveCopy('copy', selected)">{{
-              t('filemanager.copy')
-            }}</el-button>
-            <el-button size="small" type="danger" plain :icon="Delete" @click="delBatch">{{
-              t('common.delete')
-            }}</el-button>
-            <el-button size="small" text @click="selected = []">{{ t('common.cancel') }}</el-button>
-          </div>
-        </transition>
-
-        <!-- 批量删除进度 -->
-        <transition name="fade">
-          <div v-if="batchDelProgress" class="batch-del-progress glass">
-            <span>{{ t('filemanager.deleting') }} {{ batchDelProgress.done }}/{{ batchDelProgress.total }}</span>
-            <el-progress
-              :percentage="Math.round((batchDelProgress.done / batchDelProgress.total) * 100)"
-              :stroke-width="14"
-              style="flex: 1; margin: 0 12px"
-            />
-            <el-button size="small" type="warning" plain @click="cancelBatchDel">{{ t('assistant.stop') }}</el-button>
-          </div>
-        </transition>
 
         <div v-loading="bloading" class="fm-files">
           <el-table

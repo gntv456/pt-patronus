@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import DeviceCard from '@/components/monitor/DeviceCard.vue'
 import DeviceForm from '@/components/monitor/DeviceForm.vue'
@@ -36,6 +36,7 @@ import { useCommandExec } from './useCommandExec'
 import { useDeploy } from './useDeploy'
 import { useDeviceCrud } from './useDeviceCrud'
 import { useNasLoader } from './useNasLoader'
+import { useNasPolling } from './useNasPolling'
 // 在线终端抽屉已自管理 WebSocket（useTerminal 不再需要）
 
 const { t } = useI18n()
@@ -148,7 +149,6 @@ const { error, firstLoad, loadAll, retry } = useNasLoader({
 const assetTabs = computed(() => tabs.filter((t) => ['host', 'nas', 'camera'].includes(t.name)))
 const monitorTabs = computed(() => tabs.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.name)))
 const visibleTabs = computed(() => (activeWorkspace.value === 'monitor' ? monitorTabs.value : assetTabs.value))
-let timer: number | undefined
 function setWorkspace(workspace: Workspace) {
   activeWorkspace.value = workspace
   if (workspace === 'asset' && !['host', 'nas', 'camera'].includes(activeTab.value)) activeTab.value = 'host'
@@ -202,28 +202,9 @@ function go(name: string) {
   router.push({ name })
 }
 
-onMounted(() => {
-  loadCommandHistory()
-  loadAll()
-  timer = window.setInterval(loadAll, 15000)
-  // 标签页隐藏时暂停轮询（省资源），可见时立即刷新并恢复
-  document.addEventListener('visibilitychange', onVisibilityChange)
-})
-onBeforeUnmount(() => {
-  if (timer) window.clearInterval(timer)
-  document.removeEventListener('visibilitychange', onVisibilityChange)
-})
-function onVisibilityChange() {
-  if (document.hidden) {
-    if (timer) {
-      window.clearInterval(timer)
-      timer = undefined
-    }
-  } else {
-    loadAll()
-    if (!timer) timer = window.setInterval(loadAll, 15000)
-  }
-}
+// 15s 轮询(隐藏暂停/可见恢复)拆出 useNasPolling
+useNasPolling(loadAll, 15000, loadCommandHistory)
+
 </script>
 
 <template>

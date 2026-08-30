@@ -24,6 +24,8 @@ import DockerAppStore from './DockerAppStore.vue'
 import DockerComposeLocal from './DockerComposeLocal.vue'
 import ComposeProjects from './ComposeProjects.vue'
 import OpsDockerContainers from './OpsDockerContainers.vue'
+import OpsDockerLogDialogs from './OpsDockerLogDialogs.vue'
+import OpsDockerOverview from './OpsDockerOverview.vue'
 import OpsDockerTables from './OpsDockerTables.vue'
 import type { DockerTemplate } from '@/data/dockerTemplates'
 import type { ComposeTemplate } from '@/data/composeTemplates'
@@ -301,65 +303,7 @@ function onModeSwitch() {
     </template>
 
     <template v-else>
-      <!-- 概览卡片 -->
-      <div class="docker-stats">
-        <div class="stat-tile glass stat--running">
-          <span class="stat-ic"
-            ><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg
-          ></span>
-          <div class="stat-meta">
-            <strong>{{ (data.containers || []).filter((c) => c.State === 'running').length }}</strong
-            ><span>{{ t('opsdocker.running') }}</span>
-          </div>
-        </div>
-        <div class="stat-tile glass stat--container">
-          <span class="stat-ic"
-            ><svg viewBox="0 0 24 24">
-              <path d="M3 6h18v12H3z" fill="none" stroke="currentColor" stroke-width="2" />
-              <path d="M7 6v12M12 6v12M17 6v12" stroke="currentColor" stroke-width="1.5" /></svg
-          ></span>
-          <div class="stat-meta">
-            <strong>{{ data.containers.length }}</strong
-            ><span>{{ t('opsdocker.totalContainers') }}</span>
-          </div>
-        </div>
-        <div class="stat-tile glass stat--image">
-          <span class="stat-ic"
-            ><svg viewBox="0 0 24 24">
-              <path d="M21 5H3v14h18V5zm-9 2c2.2 0 4 1.8 4 4s-1.8 4-4 4-4-1.8-4-4 1.8-4 4-4z" /></svg
-          ></span>
-          <div class="stat-meta">
-            <strong>{{ data.images.length }}</strong
-            ><span>{{ t('opsdocker.images') }}</span>
-          </div>
-        </div>
-        <div class="stat-tile glass stat--volume">
-          <span class="stat-ic"
-            ><svg viewBox="0 0 24 24"><path d="M4 6h16l-1 14H5L4 6zm5 0V4h6v2" /></svg
-          ></span>
-          <div class="stat-meta">
-            <strong>{{ data.volumes.length }}</strong
-            ><span>{{ t('opsdocker.volumes') }}</span>
-          </div>
-        </div>
-        <div class="stat-tile glass stat--network">
-          <span class="stat-ic"
-            ><svg viewBox="0 0 24 24">
-              <path
-                d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a6 6 0 016 6M7 9a6 6 0 015-3"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              />
-              <circle cx="12" cy="12" r="2" /></svg
-          ></span>
-          <div class="stat-meta">
-            <strong>{{ data.networks.length }}</strong
-            ><span>{{ t('opsdocker.networks') }}</span>
-          </div>
-        </div>
-      </div>
-
+      <OpsDockerOverview :data="data" :stats="stats" />
       <!-- Tab 切换 -->
       <div class="docker-tabs">
         <button
@@ -448,47 +392,7 @@ function onModeSwitch() {
       </div>
     </template>
 
-    <!-- 日志抽屉 -->
-    <el-drawer v-model="logDrawer" :title="t('opsdocker.logsTitle', { name: logContainer })" size="60%" direction="rtl">
-      <div v-loading="logLoading" class="log-viewer">
-        <pre>{{ logContent }}</pre>
-      </div>
-    </el-drawer>
-
-    <!-- Compose 部署对话框 -->
-    <el-dialog v-model="composeVisible" :title="t('opsdocker.composeDeploy')" width="500px">
-      <el-form label-width="60px"
-        ><el-form-item :label="t('opsdocker.dir')"
-          ><el-input v-model="composePath" placeholder="/opt/myapp" /></el-form-item
-      ></el-form>
-      <div v-if="composeOutput" class="compose-output">
-        <pre>{{ composeOutput }}</pre>
-      </div>
-      <template #footer>
-        <el-button @click="composeVisible = false">{{ t('common.close') }}</el-button>
-        <el-button type="danger" :loading="composeLoading" @click="composeAction('down')">Compose Down</el-button>
-        <el-button type="primary" :loading="composeLoading" @click="composeAction('up')">Compose Up</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 拉取镜像对话框 -->
-    <el-dialog v-model="pullDialog" :title="t('opsdocker.pullImage')" width="500px">
-      <el-form label-width="70px"
-        ><el-form-item :label="t('opsdocker.imageName')"
-          ><el-input
-            v-model="pullRef"
-            placeholder="nginx / redis:7 / ghcr.io/..."
-            @keyup.enter="doPull" /></el-form-item
-      ></el-form>
-      <div v-if="pullResult" class="pull-output">
-        <pre>{{ pullResult }}</pre>
-      </div>
-      <template #footer>
-        <el-button @click="pullDialog = false">{{ t('common.close') }}</el-button>
-        <el-button type="primary" :loading="pullLoading" @click="doPull">{{ t('opsdocker.pullGo') }}</el-button>
-      </template>
-    </el-dialog>
-
+    <OpsDockerLogDialogs v-model:log-drawer="logDrawer" v-model:log-container="logContainer" v-model:log-content="logContent" v-model:log-loading="logLoading" v-model:compose-visible="composeVisible" v-model:compose-path="composePath" v-model:compose-output="composeOutput" v-model:compose-loading="composeLoading" v-model:pull-dialog="pullDialog" v-model:pull-ref="pullRef" v-model:pull-result="pullResult" v-model:pull-loading="pullLoading" @compose-action="composeAction" @do-pull="doPull" />
     <!-- 详情抽屉 -->
     <DockerDetailDrawer
       v-model:visible="detailVisible"

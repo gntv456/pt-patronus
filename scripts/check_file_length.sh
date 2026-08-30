@@ -23,19 +23,27 @@ BASELINE="$DIR/scripts/file_length_baseline.txt"
 # git ls-files 只列被跟踪文件——本地未跟踪/被 ignore 的文件不参与门禁
 # (历史坑:曾被 gitignore 的 frontend/src/data/*.ts 本地存在时被 find 扫到,
 #  误报 NEW OFFENDER;未入库的文件门禁管不到也不该管)。
+# 数据类文件(应用商店模板/i18n 翻译表)是纯数据——行数不反映逻辑复杂度，单独阈值。
+DATA_THRESHOLD="${DATA_THRESHOLD:-2000}"
+
 scan() {
   ( cd "$DIR"
     git ls-files -- 'backend/*.go' 'frontend/src/*.vue' 'frontend/src/*.ts' \
       | grep -vE '(_test\.go$|\.pb\.go$|/zz_[^/]*\.go$|backend/vendor/)' \
       | tr '\n' '\0' | xargs -0 wc -l 2>/dev/null \
-      | awk 'NF==2 && $2!="total"{print $1"\t"$2}'
+      | awk -v t="$THRESHOLD" -v dt="$DATA_THRESHOLD" '
+        NF==2 && $2!="total" {
+          n=$1+0; path=$2
+          lim = (path ~ /^frontend\/src\/(data|i18n\/locales)\//) ? dt : t
+          if (n > lim+0) print n"\t"path
+        }'
   )
 }
 
 case "$MODE" in
   init)
-    scan | awk -F'\t' -v t="$THRESHOLD" '$1+0>t+0{print}' | sort -t$'\t' -k2 > "$BASELINE"
-    echo "baseline written: $(wc -l < "$BASELINE") file(s) > $THRESHOLD lines -> scripts/file_length_baseline.txt"
+    scan | sort -t$'\t' -k2 > "$BASELINE"
+    echo "baseline written: $(wc -l < "$BASELINE") file(s) > $THRESHOLD lines (data: $DATA_THRESHOLD) -> scripts/file_length_baseline.txt"
     ;;
   check)
     [[ -f "$BASELINE" ]] || { echo "FATAL: 无 baseline,先跑 'bash scripts/check_file_length.sh init'"; exit 1; }
@@ -47,10 +55,12 @@ case "$MODE" in
     fail=0
     while IFS=$'\t' read -r lines path; do
       [[ -n "$path" ]] || continue
-      if (( lines > THRESHOLD )); then
+      lim=THRESHOLD
+      case "$path" in frontend/src/data/*|frontend/src/i18n/locales/*) lim=DATA_THRESHOLD;; esac
+      if (( lines > lim )); then
         cap="${BASE[$path]:-}"
         if [[ -z "$cap" ]]; then
-          echo "NEW OFFENDER: $path = ${lines} 行 (> ${THRESHOLD}, 未登记 baseline)"; fail=1
+          echo "NEW OFFENDER: $path = ${lines} 行 (> ${lim}, 未登记 baseline)"; fail=1
         elif (( lines > cap )); then
           echo "REGRESSION: $path 由 ${cap} 涨到 ${lines} 行(只许缩不许涨)"; fail=1
         fi

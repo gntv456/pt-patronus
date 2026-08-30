@@ -1,0 +1,40 @@
+    <!-- 日志抽屉 -->
+    <el-drawer v-model="logDrawer" :title="t('opsdocker.logsTitle', { name: logContainer })" size="60%" direction="rtl">
+      <div v-loading="logLoading" class="log-viewer">
+        <pre>{{ logContent }}</pre>
+      </div>
+    </el-drawer>
+
+    <!-- Compose 部署对话框 -->
+    <el-dialog v-model="composeVisible" :title="t('opsdocker.composeDeploy')" width="500px">
+      <el-form label-width="60px"
+        ><el-form-item :label="t('opsdocker.dir')"
+          ><el-input v-model="composePath" placeholder="/opt/myapp" /></el-form-item
+      ></el-form>
+      <div v-if="composeOutput" class="compose-output">
+        <pre>{{ composeOutput }}</pre>
+      </div>
+      <template #footer>
+        <el-button @click="composeVisible = false">{{ t('common.close') }}</el-button>
+        <el-button type="danger" :loading="composeLoading" @click="composeAction('down')">Compose Down</el-button>
+        <el-button type="primary" :loading="composeLoading" @click="composeAction('up')">Compose Up</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 拉取镜像对话框 -->
+    <el-dialog v-model="pullDialog" :title="t('opsdocker.pullImage')" width="500px">
+      <el-form label-width="70px"
+        ><el-form-item :label="t('opsdocker.imageName')"
+          ><el-input
+            v-model="pullRef"
+            placeholder="nginx / redis:7 / ghcr.io/..."
+            @keyup.enter="doPull" /></el-form-item
+      ></el-form>
+      <div v-if="pullResult" class="pull-output">
+        <pre>{{ pullResult }}</pre>
+      </div>
+      <template #footer>
+        <el-button @click="pullDialog = false">{{ t('common.close') }}</el-button>
+        <el-button type="primary" :loading="pullLoading" @click="doPull">{{ t('opsdocker.pullGo') }}</el-button>
+      </template>
+    </el-dialog>

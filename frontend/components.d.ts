@@ -136,6 +136,8 @@ declare module 'vue' {
     OpsDocker: typeof import('./src/components/ops/OpsDocker.vue')['default']
     OpsDockerContainerList: typeof import('./src/components/ops/OpsDockerContainerList.vue')['default']
     OpsDockerContainers: typeof import('./src/components/ops/OpsDockerContainers.vue')['default']
+    OpsDockerLogDialogs: typeof import('./src/components/ops/OpsDockerLogDialogs.vue')['default']
+    OpsDockerOverview: typeof import('./src/components/ops/OpsDockerOverview.vue')['default']
     OpsDockerTables: typeof import('./src/components/ops/OpsDockerTables.vue')['default']
     OpsMonitor: typeof import('./src/components/ops/OpsMonitor.vue')['default']
     OpsProcess: typeof import('./src/components/ops/OpsProcess.vue')['default']

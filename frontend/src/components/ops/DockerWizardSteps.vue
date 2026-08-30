@@ -1,6 +1,9 @@
 <script setup lang="ts">
 // 创建向导步骤 0-4 的表单面板（镜像/基础/端口/卷/环境变量）。
 // 从 DockerCreateWizard.vue 迁出；行操作直接改 props 传入的数组（push/splice 均可）。
+// form 是宿主的响应式对象引用：v-model 绑定其字段属"经引用改深层属性"，
+// 与改 props 本身的 lint 反模式不同，这里整文件豁免。
+/* eslint-disable vue/no-mutating-props */
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { dockerTemplates, type DockerTemplate } from '@/data/dockerTemplates'

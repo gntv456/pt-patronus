@@ -6,7 +6,6 @@ import {
   Folder,
   Document,
   Top,
-  Plus,
   Refresh,
   Upload,
   FolderAdd,
@@ -19,6 +18,7 @@ import {
   ArrowDown,
 } from '@element-plus/icons-vue'
 import EmptyState from '@/components/EmptyState.vue'
+import FileManagerSidebar from '@/components/FileManagerSidebar.vue'
 import FileManagerDialogs from '@/components/FileManagerDialogs.vue'
 import FileManagerExtraDialogs from '@/components/FileManagerExtraDialogs.vue'
 import { useFileManager, type StorageItem } from '@/composables/useFileManager'
@@ -158,65 +158,20 @@ watch(
 <template>
   <div class="fm-page" :class="{ embedded: props.embedded }">
     <!-- 左栏 -->
-    <aside class="fm-sidebar">
-      <div class="sb-head">
-        <span>{{ t('filemanager.storages') }}</span>
-        <el-button size="small" :icon="Refresh" circle :loading="loading" @click="loadStorages" />
-      </div>
-      <div v-loading="loading" class="sb-list">
-        <div
-          v-a11y-button
-          v-for="it in list"
-          :key="itemKey(it)"
-          class="sb-item"
-          :class="{ active: current && itemKey(current) === itemKey(it) }"
-          @click="selectStorage(it)"
-        >
-          <span class="sb-icon">{{ itemIcon(it) }}</span>
-          <div class="sb-main">
-            <div class="sb-name">{{ it.kind === 'fs' ? it.fs.name : it.drive.name }}</div>
-            <div class="sb-type">
-              {{ itemLabel(it) }}<span v-if="it.kind === 'cloud'" class="ro">·{{ t('filemanager.readonly') }}</span>
-            </div>
-          </div>
-          <span
-            class="dot"
-            :class="statusOf(it)"
-            :title="
-              statusOf(it) === 'fail'
-                ? t('mediaserver.connFailed')
-                : statusOf(it) === 'ok'
-                  ? t('mediaserver.connOk')
-                  : t('filemanager.checking')
-            "
-            @click.stop="testOne(it)"
-          ></span>
-          <el-dropdown trigger="click" placement="bottom-end" @command="(c) => onStorageMenu(c as string, it)">
-            <span class="sb-more" @click.stop>⋯</span>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="test">{{ t('mediaserver.testConn') }}</el-dropdown-item>
-                <template v-if="it.kind === 'fs'">
-                  <el-dropdown-item command="edit">{{ t('common.edit') }}</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>{{ t('filemanager.deleteStorage') }}</el-dropdown-item>
-                </template>
-                <el-dropdown-item v-else disabled>{{ t('filemanager.manageInCloudPage') }}</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-        </div>
-        <div v-if="!list.length && !loading" class="sb-empty">
-          <EmptyState
-            icon="📁"
-            :title="t('filemanager.noStorageTitle')"
-            :description="t('filemanager.noStorageDesc')"
-          />
-        </div>
-      </div>
-      <div class="sb-actions">
-        <el-button :icon="Plus" @click="openCreate">{{ t('filemanager.addStorage') }}</el-button>
-      </div>
-    </aside>
+    <FileManagerSidebar
+      :list="list"
+      :loading="loading"
+      :current="current"
+      :item-key="itemKey"
+      :item-icon="itemIcon"
+      :item-label="itemLabel"
+      :status-of="statusOf"
+      @select="selectStorage"
+      @test="testOne"
+      @menu="onStorageMenu"
+      @refresh="loadStorages"
+      @create="openCreate"
+    />
 
     <!-- 右栏 -->
     <section class="fm-main">

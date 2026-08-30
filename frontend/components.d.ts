@@ -129,6 +129,7 @@ declare module 'vue' {
     NasTerminalDrawer: typeof import('./src/components/nas/NasTerminalDrawer.vue')['default']
     NodeParamForm: typeof import('./src/components/workflow/NodeParamForm.vue')['default']
     NotificationCenter: typeof import('./src/components/NotificationCenter.vue')['default']
+    NotificationChannelsMore: typeof import('./src/components/settings/NotificationChannelsMore.vue')['default']
     NotificationPanel: typeof import('./src/components/settings/NotificationPanel.vue')['default']
     NovaHDLuckyGame: typeof import('./src/components/NovaHDLuckyGame.vue')['default']
     NovaHDScratchGame: typeof import('./src/components/NovaHDScratchGame.vue')['default']

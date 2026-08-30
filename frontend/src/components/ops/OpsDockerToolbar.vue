@@ -39,7 +39,8 @@ const emit = defineEmits<{
       </div>
       <el-select
         v-if="mode === 'remote'"
-        v-model="selectedTarget"
+        :model-value="selectedTarget"
+        @update:model-value="emit('update:selectedTarget', $event)"
         :placeholder="t('opsdocker.pickHost')"
         @change="emit('refresh')"
         style="width: 200px"

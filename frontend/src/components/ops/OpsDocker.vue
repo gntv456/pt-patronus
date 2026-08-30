@@ -20,6 +20,7 @@ import { useContainerActions } from './useContainerActions'
 import ComposeProjects from './ComposeProjects.vue'
 import OpsDockerContainers from './OpsDockerContainers.vue'
 import { useDockerDialogsState } from './useDockerDialogsState'
+import OpsDockerToolbar from './OpsDockerToolbar.vue'
 import OpsDockerDialogs from './OpsDockerDialogs.vue'
 import OpsDockerOverview from './OpsDockerOverview.vue'
 import OpsDockerTables from './OpsDockerTables.vue'
@@ -213,36 +214,17 @@ function onModeSwitch() {
 
 <template>
   <div class="ops-docker">
-    <!-- 主机选择 + 刷新 -->
-    <div class="docker-toolbar">
-      <div class="mode-switch">
-        <button
-          class="mode-btn"
-          :class="{ active: mode === 'local' }"
-          :disabled="!localAvailable"
-          @click="switchMode('local')"
-        >
-          {{ t('opsdocker.localMode') }}
-        </button>
-        <button class="mode-btn" :class="{ active: mode === 'remote' }" @click="switchMode('remote')">
-          {{ t('opsdocker.sshRemote') }}
-        </button>
-      </div>
-      <el-select
-        v-if="mode === 'remote'"
-        v-model="selectedTarget"
-        :placeholder="t('opsdocker.pickHost')"
-        @change="refresh"
-        style="width: 200px"
-      >
-        <el-option v-for="t in sshTargets" :key="t.id" :label="t.name" :value="t.id" />
-      </el-select>
-      <el-button :loading="loading" @click="refresh">{{ t('common.refresh') }}</el-button>
-      <span v-if="!localAvailable && mode === 'local'" class="docker-hint">
-        {{ t('opsdocker.socketHint') }}
-      </span>
-      <span v-if="error" class="docker-error">{{ error }}</span>
-    </div>
+    <OpsDockerToolbar
+      :mode="mode"
+      :local-available="localAvailable"
+      :selected-target="selectedTarget"
+      :ssh-targets="sshTargets"
+      :loading="loading"
+      :error="error"
+      @update:selected-target="selectedTarget = $event"
+      @switch-mode="switchMode"
+      @refresh="refresh"
+    />
 
     <template v-if="!selectedTarget && sshTargets.length === 0 && !localAvailable">
       <div class="docker-empty glass">

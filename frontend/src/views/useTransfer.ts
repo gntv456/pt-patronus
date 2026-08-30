@@ -16,12 +16,11 @@ import {
 } from '@/api/transfer'
 import { downloaderApi } from '@/api/downloader'
 import { useTransferOrganize, MODE_LABEL, RENAME_VARS, previewRename as previewRenameImpl } from './useTransferOrganize'
+import { useTransferHistoryOps } from './useTransferHistoryOps'
 import { cloudApi, type CloudDrive } from '@/api/cloud'
 
 export function useTransfer() {
   const route = useRoute()
-  const list = ref<TransferHistory[]>([])
-  const loading = ref(false)
   const allowedStatus = new Set(['success', 'failed', 'skipped'])
   const qStatus = String(route.query.status || '')
   const statusFilter = ref<'' | 'success' | 'failed' | 'skipped'>(
@@ -29,131 +28,29 @@ export function useTransfer() {
   )
   /** view=pending 时展示真实待入库队列（来自 /transfer/summary?items=1） */
   const viewMode = ref<'history' | 'pending'>(route.query.view === 'pending' ? 'pending' : 'history')
-  const pendingItems = ref<TransferPendingItem[]>([])
-  const pendingTotal = ref(0)
-  const pendingEnabled = ref(true)
   const organizing = ref(false)
-  const redoing = ref<number | null>(null)
+
+  // 历史/待入库列表动作簇拆出 useTransferHistoryOps
+  const {
+    list,
+    loading,
+    pendingItems,
+    pendingTotal,
+    pendingEnabled,
+    redoing,
+    selectedRows,
+    load,
+    setView,
+    organizePending,
+    sweep,
+    redoRow,
+    deleteRow,
+    handleSelectionChange,
+    batchDeleteRows,
+    clearFailed,
+  } = useTransferHistoryOps({ viewMode, statusFilter, organizing })
 
   const filtered = computed(() => list.value)
-
-  async function load() {
-    loading.value = true
-    try {
-      if (viewMode.value === 'pending') {
-        const sum = await transferApi.summary(true, 100)
-        pendingItems.value = sum.pending_items || []
-        pendingTotal.value = sum.pending || 0
-        pendingEnabled.value = sum.enabled
-        list.value = []
-      } else {
-        list.value = await transferApi.history(statusFilter.value, 200)
-      }
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载失败')
-    } finally {
-      loading.value = false
-    }
-  }
-
-  function setView(mode: 'history' | 'pending') {
-    viewMode.value = mode
-    void load()
-  }
-
-  async function organizePending(row: TransferPendingItem) {
-    organizing.value = true
-    try {
-      await transferApi.organize(row.downloader_id, row.hash)
-      ElMessage.success('已提交整理')
-      await load()
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '整理失败')
-    } finally {
-      organizing.value = false
-    }
-  }
-
-  async function sweep() {
-    try {
-      await transferApi.sweep()
-      ElMessage.success('已触发扫描，稍后刷新查看')
-      setTimeout(load, 4000)
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '扫描失败')
-    }
-  }
-
-  async function redoRow(h: TransferHistory) {
-    redoing.value = h.id
-    try {
-      const res = await transferApi.redo(h.id)
-      if (res && res.Success) ElMessage.success('重做完成：' + (res.Files?.length || 0) + ' 文件')
-      else ElMessage.warning('重做未成功：' + (res?.ErrMsg || '未知'))
-      await load()
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '重做失败')
-    } finally {
-      redoing.value = null
-    }
-  }
-
-  async function deleteRow(h: TransferHistory) {
-    try {
-      await ElMessageBox.confirm(`删除历史「${h.title}」？`, '确认', { type: 'warning' })
-    } catch {
-      return
-    }
-    try {
-      await transferApi.deleteHistory(h.id)
-      ElMessage.success('已删除')
-      await load()
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '删除失败')
-    }
-  }
-
-  // —— 批量删除 ——
-  const selectedRows = ref<TransferHistory[]>([])
-  function handleSelectionChange(rows: TransferHistory[]) {
-    selectedRows.value = rows
-  }
-  async function batchDeleteRows() {
-    if (!selectedRows.value.length) return
-    try {
-      await ElMessageBox.confirm(`确认删除选中的 ${selectedRows.value.length} 条整理记录？`, '批量删除', {
-        type: 'warning',
-      })
-    } catch {
-      return
-    }
-    try {
-      const res = await transferApi.batchDeleteHistory(selectedRows.value.map((h) => h.id))
-      if (res.failed?.length) {
-        ElMessage.warning(`已删除 ${res.deleted} 条，失败 ${res.failed.length} 条`)
-      } else {
-        ElMessage.success(`已删除 ${res.deleted} 条记录`)
-      }
-      selectedRows.value = []
-      await load()
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '批量删除失败')
-    }
-  }
-  async function clearFailed() {
-    try {
-      await ElMessageBox.confirm('确认清除全部失败记录？此操作不可撤销。', '清除失败', { type: 'warning' })
-    } catch {
-      return
-    }
-    try {
-      const res = await transferApi.clearFailedHistory()
-      ElMessage.success(`已清除 ${res.deleted} 条失败记录`)
-      await load()
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '清除失败')
-    }
-  }
 
   // —— 配置 ——
   const showConfig = ref(false)

@@ -312,7 +312,7 @@ onMounted(loadConversations)
                   v-for="t in sec.items"
                   :key="t.name"
                   :model-value="enabledSet.has(t.name)"
-                  @update:model-value="(v) => toggleTool(t.name, v as boolean)"
+                  @update:model-value="(v: any) => toggleTool(t.name, v as boolean)"
                 >
                   <span class="tool-label">{{ t.name }}</span>
                   <span class="tool-desc">{{

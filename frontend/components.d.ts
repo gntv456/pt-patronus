@@ -14,6 +14,7 @@ declare module 'vue' {
     BigSmallGame: typeof import('./src/components/BigSmallGame.vue')['default']
     BigSmallSidebar: typeof import('./src/components/BigSmallSidebar.vue')['default']
     BlackjackGame: typeof import('./src/components/BlackjackGame.vue')['default']
+    BrushFlowFormDialog: typeof import('./src/components/brushflow/BrushFlowFormDialog.vue')['default']
     CelebrityDialog: typeof import('./src/components/CelebrityDialog.vue')['default']
     CloudDialogs: typeof import('./src/components/cloud/CloudDialogs.vue')['default']
     CloudDrivesTab: typeof import('./src/components/cloud/CloudDrivesTab.vue')['default']

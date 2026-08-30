@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # scripts/check_file_length.sh — 单文件行数门禁
 #
-# 对标 README 规范「单文件 ~400 行主动拆分」。覆盖后端非测试/非生成 .go 与前端 src .vue/.ts。
+# 对标 README 规范「单文件 ~400 行主动拆分」。覆盖后端非测试/非生成 .go、前端 src
+# .vue/.ts 与移动端 mobile/lib .dart（不含 .g.dart 生成代码）。
 #
 # 棘轮(ratchet)语义,保证 CI 始终绿:
 #   - 非登记文件 > THRESHOLD  → 失败(新增超标)
@@ -28,8 +29,8 @@ DATA_THRESHOLD="${DATA_THRESHOLD:-2000}"
 
 scan() {
   ( cd "$DIR"
-    git ls-files -- 'backend/*.go' 'frontend/src/*.vue' 'frontend/src/*.ts' \
-      | grep -vE '(_test\.go$|\.pb\.go$|/zz_[^/]*\.go$|backend/vendor/)' \
+    git ls-files -- 'backend/*.go' 'frontend/src/*.vue' 'frontend/src/*.ts' 'mobile/lib/*.dart' \
+      | grep -vE '(_test\.go$|\.pb\.go$|/zz_[^/]*\.go$|backend/vendor/|\.g\.dart$)' \
       | tr '\n' '\0' | xargs -0 wc -l 2>/dev/null \
       | awk -v t="$THRESHOLD" -v dt="$DATA_THRESHOLD" '
         NF==2 && $2!="total" {

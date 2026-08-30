@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// 表单对象经 props 传入并双向编辑(宿主 ref 直改深层字段),整文件豁免。
+/* eslint-disable vue/no-mutating-props */
 // 工作台（对标 MSaber 天序工作台）：问候语 + 体检分 + 今日流转节点（可点选过滤今日摘要）
 // + 今日待办/动态（带进度条）双栏 + 今日摘要指标 + 媒体库态势。
 // 数据源：GET /dashboard/workbench 单接口聚合；60s 自动轮询。

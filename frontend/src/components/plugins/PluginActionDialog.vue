@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// 表单对象经 props 传入并双向编辑(宿主 ref 直改深层字段),整文件豁免。
+/* eslint-disable vue/no-mutating-props */
 import { useI18n } from 'vue-i18n'
 import { VideoPlay } from '@element-plus/icons-vue'
 import PluginSchemaField from '@/components/PluginSchemaField.vue'

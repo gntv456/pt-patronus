@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// 表单对象经 props 传入并双向编辑(宿主 ref 直改深层字段),整文件豁免。
+/* eslint-disable vue/no-mutating-props */
 // NotificationPanel 的扩展渠道组：Email/PushPlus/PushDeer/ntfy/Gotify/Apprise/企微/WxPusher/Lark 等
 // （从 NotificationPanel.vue 拆出；行为不变）。
 import { useI18n } from 'vue-i18n'

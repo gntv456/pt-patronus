@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// 表单对象经 props 传入并双向编辑(宿主 ref 直改深层字段),整文件豁免。
+/* eslint-disable vue/no-mutating-props */
 // DeviceForm 的探测类型字段组：HTTP/TCP/进程/脚本（从 DeviceForm.vue 拆出；行为不变）。
 import { useI18n } from 'vue-i18n'
 

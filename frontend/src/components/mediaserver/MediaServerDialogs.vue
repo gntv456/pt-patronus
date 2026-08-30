@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// 表单对象经 props 传入并双向编辑(宿主 ref 直改深层字段),整文件豁免。
+/* eslint-disable vue/no-mutating-props */
 // MediaServer 的健康检查 + 添加/编辑服务器两个对话框（从 MediaServer.vue 拆出；行为不变）。
 import { useI18n } from 'vue-i18n'
 

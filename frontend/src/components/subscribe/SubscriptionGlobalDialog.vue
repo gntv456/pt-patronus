@@ -1,4 +1,6 @@
 <script setup lang="ts">
+// 表单对象经 props 传入并双向编辑(宿主 ref 直改深层字段),整文件豁免。
+/* eslint-disable vue/no-mutating-props */
 // Subscriptions 的「全局默认设置」对话框（从 Subscriptions.vue 拆出；行为不变）。
 import { useI18n } from 'vue-i18n'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'

@@ -350,7 +350,7 @@ onMounted(async () => {
     <p v-else class="sub embedded-sub">{{ t('cloud.subEmbedded') }}</p>
 
     <el-tabs v-model="activeTab" class="tabs">
-      <CloudDrivesTab :drives="drives" mode="cloud" :testing="testing" :organizing="organizing" :repairing="repairing" :loading="loading" :quotas="quotas" @generate="(r: any) => generateOne(r)" @test="testDrive" @quota="loadQuota" @browse="(d: any) => openBrowse(d, () => {})" @create="openCreateDrive" @edit="openEditDrive" @remove="removeDrive" @auth="openAuth115" @organize="doOrganize" @repair="doStrmRepair" />
+      <CloudDrivesTab :drives="drives" mode="cloud" :testing="testing" :organizing="organizing" :repairing="repairing" :loading="loading" :quotas="quotas" :fmt-size="(n?: number) => fmtSize(n ?? 0)" @generate="(r: any) => generateOne(r)" @test="testDrive" @quota="loadQuota" @browse="(d: any) => openBrowse(d, () => {})" @create="openCreateDrive" @edit="openEditDrive" @remove="removeDrive" @auth="openAuth115" @organize="doOrganize" @repair="doStrmRepair" />
       <!-- STRM 规则 -->
       <el-tab-pane :label="t('cloud.tabRules')" name="rules">
         <div class="pane-bar">

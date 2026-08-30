@@ -55,6 +55,11 @@
   - **行数门禁升级为三端棘轮**：`scripts/check_file_length.sh` 纳入 mobile/lib
     （.g.dart 豁免），任何非数据文件新增 >400 或登记文件回涨即红；
     baseline 仅剩 i18n locales 翻译表（4160/4121 行，数据阈值 2000 豁免）
+- **i18n 翻译表懒加载**：zh-CN / en-US 改动态 import 按需载入——首屏只载用户
+  当前语言一张（index chunk 264KB → 24KB，减约 100KB gzip），切换语言时再取
+  另一张；载入前 t() 走兜底文案不白屏，挂载等表就绪保证首帧完整
+- **zh/en 翻译表 key 一致性测试**：两表递归展开为点分 key 全集做双向 diff +
+  结构错位检查——新增文案只改一张表时 CI 红（此前英文用户会静默回落中文）
 - **移动端巨型文件拆分**：dashboard_page.dart 2998 → 2331 行，抽出
   TotalDashboardConfig 模型 / 设置面板 / 分享图模型 / 历史数据浮层四个文件
 - **浏览器扩展 options.js 拆分**：1535 → 1080 行，站点数据 / 下载任务 /

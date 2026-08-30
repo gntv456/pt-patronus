@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import SubscriptionGlobalDialog from '@/components/subscribe/SubscriptionGlobalDialog.vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subscribe'
@@ -237,78 +238,7 @@ onMounted(() => {
 
     <el-tabs v-model="mainTab" class="page-tabs glass" @tab-change="onMainTab">
       <el-tab-pane :label="t('subscriptions.tabMedia')" name="media">
-        <el-dialog
-          v-model="globalOpen"
-          :title="t('subscriptions.globalTitle')"
-          width="540px"
-          append-to-body
-          top="6vh"
-          class="global-subscribe-dialog"
-        >
-          <div class="text-muted small" style="margin-bottom: 12px">
-            {{ t('subscriptions.globalDesc') }}
-          </div>
-          <div class="gd-row">
-            <span class="small gd-label">{{ t('subscriptions.resolution') }}</span>
-            <el-input
-              v-model="globalForm.resolution"
-              size="small"
-              style="width: 160px"
-              :placeholder="t('subscriptions.unlimited')"
-            />
-            <span class="small text-muted">{{ t('subscriptions.globalResHint') }}</span>
-          </div>
-          <div class="gd-row">
-            <span class="small gd-label">{{ t('subscriptions.ratingGuard') }}</span>
-            <el-switch v-model="globalForm.enable_rating_guard" size="small" />
-            <span class="small text-muted">{{ t('subscriptions.globalRatingHint') }}</span>
-          </div>
-          <div class="gd-row">
-            <span class="small gd-label">{{ t('subscriptions.bestVersion') }}</span>
-            <el-switch v-model="globalForm.best_version" size="small" />
-            <span class="small text-muted">{{ t('subscriptions.globalBestHint') }}</span>
-          </div>
-          <div class="gd-row">
-            <span class="small gd-label">{{ t('subscriptions.officialOnly') }}</span>
-            <el-switch v-model="globalForm.official_only" size="small" />
-            <span class="small text-muted">{{ t('subscriptions.globalOfficialHint') }}</span>
-          </div>
-          <div class="gd-row">
-            <span class="small gd-label">{{ t('subscriptions.promoTypes') }}</span>
-            <el-select
-              v-model="globalForm.promo_types"
-              multiple
-              collapse-tags
-              collapse-tags-tooltip
-              size="small"
-              style="width: 240px"
-              :placeholder="t('subscriptions.unlimited')"
-            >
-              <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-            </el-select>
-            <span class="small text-muted">{{ t('subscriptions.emptyUnlimited') }}</span>
-          </div>
-          <div class="gd-row">
-            <span class="small gd-label">{{ t('subscriptions.sites') }}</span>
-            <SiteFilterDialog
-              :model-value="globalForm.site_ids"
-              :sites="sites"
-              :title="t('subscriptions.globalSitesTitle')"
-              @update:model-value="(ids: number[]) => (globalForm.site_ids = ids)"
-            >
-              <span class="small">{{
-                globalForm.site_ids.length
-                  ? t('subscriptions.nSites', { n: globalForm.site_ids.length })
-                  : t('subscriptions.allSites')
-              }}</span>
-            </SiteFilterDialog>
-            <span class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
-          </div>
-          <template #footer>
-            <el-button @click="globalOpen = false">{{ t('common.cancel') }}</el-button>
-            <el-button type="primary" :loading="savingGlobal" @click="saveGlobal">{{ t('common.save') }}</el-button>
-          </template>
-        </el-dialog>
+        <SubscriptionGlobalDialog v-model:open="globalOpen" :form="globalForm" :saving="savingGlobal" :all-sites="sites" @save="saveGlobal" />
 
         <div v-loading="loading" class="card glass">
           <!-- 批量操作条：进入后卡片显示勾选框；编辑用字段开关控制只改所选字段 -->

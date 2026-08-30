@@ -45,7 +45,6 @@ import {
   fmtTime,
 } from './pluginsHelpers'
 import { hostCapabilityLabel, hostCapabilityDescription } from './pluginsLabels'
-import { buildMarketInstallNode } from './pluginInstallConfirmNode'
 import { usePluginAudit } from './usePluginAudit'
 import { usePluginLifecycle } from './usePluginLifecycle'
 

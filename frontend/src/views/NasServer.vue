@@ -37,6 +37,7 @@ import { useDeploy } from './useDeploy'
 import { useDeviceCrud } from './useDeviceCrud'
 import { useNasLoader } from './useNasLoader'
 import { useNasPolling } from './useNasPolling'
+import { useNasNav } from './useNasNav'
 // 在线终端抽屉已自管理 WebSocket（useTerminal 不再需要）
 
 const { t } = useI18n()
@@ -48,6 +49,17 @@ const latestMap = ref<Record<number, Metrics | null>>({})
 const alerts = ref<MonitorAlert[]>([])
 const activeTab = ref<MonitorTab>('host')
 const activeWorkspace = ref<Workspace>('asset')
+
+function go(name: string) {
+  router.push({ name })
+}
+
+// 工作区切换/终端/导航拆出 useNasNav
+const { terminalVisible, terminalTarget, openTerminal, setWorkspace, focusExecPanel, openMonitorTab } = useNasNav(
+  activeWorkspace,
+  activeTab,
+)
+
 
 const {
   credentials,
@@ -149,13 +161,6 @@ const { error, firstLoad, loadAll, retry } = useNasLoader({
 const assetTabs = computed(() => tabs.filter((t) => ['host', 'nas', 'camera'].includes(t.name)))
 const monitorTabs = computed(() => tabs.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.name)))
 const visibleTabs = computed(() => (activeWorkspace.value === 'monitor' ? monitorTabs.value : assetTabs.value))
-function setWorkspace(workspace: Workspace) {
-  activeWorkspace.value = workspace
-  if (workspace === 'asset' && !['host', 'nas', 'camera'].includes(activeTab.value)) activeTab.value = 'host'
-  if (workspace === 'monitor' && !['http', 'tcp', 'process', 'script'].includes(activeTab.value))
-    activeTab.value = 'http'
-}
-
 const {
   formVisible,
   editing,
@@ -180,27 +185,6 @@ const {
   onDeleteAlert,
   onClearAlerts,
 } = useDeviceCrud(auth, { activeWorkspace, activeTab, credentials, reload: loadAll, setWorkspace })
-
-// 在线终端：抽屉内部自管理 xterm + WebSocket（含重连/心跳），这里仅持有可见性与目标。
-const terminalVisible = ref(false)
-const terminalTarget = ref<MonitorTarget | null>(null)
-function openTerminal(t: MonitorTarget) {
-  terminalTarget.value = t
-  terminalVisible.value = true
-}
-
-function focusExecPanel() {
-  setWorkspace('execute')
-  nextTick(() => document.querySelector('.exec-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-}
-function openMonitorTab() {
-  setWorkspace('monitor')
-  activeTab.value = 'http'
-  nextTick(() => document.querySelector('.np-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
-}
-function go(name: string) {
-  router.push({ name })
-}
 
 // 15s 轮询(隐藏暂停/可见恢复)拆出 useNasPolling
 useNasPolling(loadAll, 15000, loadCommandHistory)

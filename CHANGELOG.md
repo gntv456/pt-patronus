@@ -42,6 +42,19 @@
   networkSecurityConfig 按域禁公网明文
 
 ### 重构（Refactor，行为不变）
+- **三端超限文件全量清零（对标「单文件 ~400 行」规范）**：
+  - 移动端 34 个 >400 行 .dart 清零（dashboard_page 2331→474、api_client 635→321、
+    adaptive 973→340、entertainment 976→233 等，part/extension/mixin 三模式），
+    flutter analyze 0 issue、44 测试绿
+  - 前端 30+ 个超标 .vue/.ts 清零（TorrentTable 460→368、SiteMatrixTable 480→173、
+    Subscriptions 461→336、usePlugins 663→396、OpsDocker 482→374、Cloud 902→345 等，
+    拆为子组件/组合式函数/纯工具模块三类），vue-tsc 0 错、build 绿、98 单测绿、
+    eslint 0 error
+  - 后端 10 个超标 .go 清零（chain/cloud 588→362、auth 480→226、cloud 494→224、
+    rousi 525→208、aliyun/quark 上传链路独立文件等），全量 go test 绿
+  - **行数门禁升级为三端棘轮**：`scripts/check_file_length.sh` 纳入 mobile/lib
+    （.g.dart 豁免），任何非数据文件新增 >400 或登记文件回涨即红；
+    baseline 仅剩 i18n locales 翻译表（4160/4121 行，数据阈值 2000 豁免）
 - **移动端巨型文件拆分**：dashboard_page.dart 2998 → 2331 行，抽出
   TotalDashboardConfig 模型 / 设置面板 / 分享图模型 / 历史数据浮层四个文件
 - **浏览器扩展 options.js 拆分**：1535 → 1080 行，站点数据 / 下载任务 /

@@ -14,7 +14,8 @@ import {
   type DirSyncTask,
   type SharedRepo,
 } from '@/api/transfer'
-import { downloaderApi, type Downloader, type Torrent } from '@/api/downloader'
+import { downloaderApi } from '@/api/downloader'
+import { useTransferOrganize, MODE_LABEL, RENAME_VARS, previewRename as previewRenameImpl } from './useTransferOrganize'
 import { cloudApi, type CloudDrive } from '@/api/cloud'
 
 export function useTransfer() {
@@ -33,7 +34,6 @@ export function useTransfer() {
   const pendingEnabled = ref(true)
   const organizing = ref(false)
   const redoing = ref<number | null>(null)
-  const downloaders = ref<Downloader[]>([])
 
   const filtered = computed(() => list.value)
 
@@ -329,80 +329,27 @@ export function useTransfer() {
     }
   }
 
-  // —— 手动整理 ——
-  const showOrganize = ref(false)
-  const selDl = ref<number>(0)
-  const torrents = ref<Torrent[]>([])
-  const selHash = ref('')
-  const loadingTorrents = ref(false)
+  // —— 手动整理（useTransferOrganize） ——
+  const {
+    downloaders,
+    showOrganize,
+    selDl,
+    torrents,
+    selHash,
+    loadingTorrents,
+    openOrganize,
+    loadTorrents,
+    completedTorrents,
+    doOrganize,
+  } = useTransferOrganize({ organizing, load })
 
-  async function openOrganize() {
-    showOrganize.value = true
-    if (!downloaders.value.length) {
-      downloaders.value = await downloaderApi.list().catch(() => [])
-      if (downloaders.value.length && !selDl.value) selDl.value = downloaders.value[0].id
-    }
-    if (selDl.value) await loadTorrents()
-  }
-  async function loadTorrents() {
-    if (!selDl.value) return
-    loadingTorrents.value = true
-    try {
-      torrents.value = await downloaderApi.torrents(selDl.value)
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '加载种子失败')
-      torrents.value = []
-    } finally {
-      loadingTorrents.value = false
-    }
-  }
-  const completedTorrents = computed(() =>
-    torrents.value.filter((t) => t.state === 'completed' || (t.completed_at && !t.completed_at.startsWith('0001'))),
-  )
-  async function doOrganize() {
-    if (!selDl.value || !selHash.value) {
-      ElMessage.warning('请选择下载器与种子')
-      return
-    }
-    organizing.value = true
-    try {
-      const res = await transferApi.organize(selDl.value, selHash.value)
-      if (res && res.Success) ElMessage.success('整理完成：' + (res.Files?.length || 0) + ' 文件 → ' + res.DestDir)
-      else ElMessage.warning('整理未成功：' + (res?.ErrMsg || '未知'))
-      showOrganize.value = false
-      await load()
-    } catch (e: unknown) {
-      ElMessage.error((e as Error).message || '整理失败')
-    } finally {
-      organizing.value = false
-    }
-  }
-
-  const modeLabel: Record<string, string> = { link: '硬链', softlink: '软链', move: '移动', copy: '复制' }
-
-  // 命名模板可视化编辑：变量芯片 + 实时预览
-  const renameVars = [
-    { key: 'Title', label: '标题' },
-    { key: 'Year', label: '年份' },
-    { key: 'Resolution', label: '分辨率' },
-    { key: 'SeasonEpisode', label: '季集' },
-    { key: 'ReleaseGroup', label: '发布组' },
-  ]
+  const modeLabel = MODE_LABEL
+  const renameVars = RENAME_VARS
   function insertVar(field: 'movie_rename' | 'tv_rename', v: string) {
     ;(cfg.value[field] as string) += `{{.${v}}}`
   }
   function previewRename(tpl: string, isTV: boolean): string {
-    const sample: Record<string, string> = {
-      Title: isTV ? '示例剧' : '示例电影',
-      Year: '2024',
-      Resolution: '1080P',
-      SeasonEpisode: 'S01E02',
-      ReleaseGroup: 'GROUP',
-    }
-    let out = tpl || ''
-    out = out.replace(/{{if \.(\w+)}}([\s\S]*?){{end}}/g, (_, k: string, inner: string) => (sample[k] ? inner : ''))
-    out = out.replace(/{{\.(\w+)}}/g, (_, k: string) => sample[k] ?? '')
-    return out || '（预览）'
+    return previewRenameImpl(tpl, isTV)
   }
 
   onMounted(load)

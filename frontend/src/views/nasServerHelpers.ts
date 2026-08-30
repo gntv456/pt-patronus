@@ -154,3 +154,7 @@ export function execLogsFromRun(run: CommandRun): ExecLog[] {
     durationMs: target.duration_ms || 0,
   }))
 }
+
+// 页面顶层类型（从 NasServer.vue 移入）。
+export type MonitorTab = 'host' | 'nas' | 'camera' | 'http' | 'tcp' | 'process' | 'script'
+export type Workspace = 'asset' | 'execute' | 'monitor' | 'deploy'

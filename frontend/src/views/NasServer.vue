@@ -28,7 +28,8 @@ import {
   type CommandRun,
 } from '@/api/monitor'
 import { useAuthStore } from '@/stores/auth'
-import { tabs, isSSHHost } from './nasServerHelpers'
+import { tabs, isSSHHost, type MonitorTab, type Workspace } from './nasServerHelpers'
+import { useNasDerived } from './useNasDerived'
 import { useNasCredentials } from './useNasCredentials'
 import { useNasOpsConfigs } from './useNasOpsConfigs'
 import { useCommandExec } from './useCommandExec'
@@ -39,8 +40,6 @@ import { useDeviceCrud } from './useDeviceCrud'
 const { t } = useI18n()
 const auth = useAuthStore()
 const router = useRouter()
-type MonitorTab = 'host' | 'nas' | 'camera' | 'http' | 'tcp' | 'process' | 'script'
-type Workspace = 'asset' | 'execute' | 'monitor' | 'deploy'
 
 const targets = ref<MonitorTarget[]>([])
 const latestMap = ref<Record<number, Metrics | null>>({})
@@ -81,15 +80,8 @@ const {
 const helpVisible = ref(false)
 const agentVisible = ref(false)
 
-const filtered = computed(() => targets.value.filter((t) => t.type === activeTab.value))
-const unreadCount = computed(() => alerts.value.filter((a) => !a.read).length)
-const hostCount = computed(() => targets.value.filter((t) => t.type === 'host').length)
-const monitorCount = computed(
-  () => targets.value.filter((t) => ['http', 'tcp', 'process', 'script'].includes(t.type)).length,
-)
-const configCount = computed(() => opsConfigs.value.length)
-const activeAlertCount = computed(() => alerts.value.filter((a) => !a.resolved_at).length)
-const sshTargets = computed(() => targets.value.filter(isSSHHost))
+const { filtered, unreadCount, hostCount, monitorCount, configCount, activeAlertCount, sshTargets } =
+  useNasDerived({ targets, alerts, opsConfigs, activeTab })
 
 const {
   scriptFileInput,

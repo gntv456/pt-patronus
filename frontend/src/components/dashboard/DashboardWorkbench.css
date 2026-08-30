@@ -1,0 +1,216 @@
+.workbench {
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.wb-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.wb-hello h3 {
+  margin: 0;
+  font-size: var(--fs-title);
+}
+.wb-insight {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+.wb-score {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.score-ring {
+  width: 52px;
+  height: 52px;
+}
+.score-num {
+  font-size: 13px;
+  font-weight: 700;
+  fill: var(--text-strong);
+}
+.score-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.wb-flow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.wb-flow-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.wb-flow-nodes {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.wb-node {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--divider);
+  background: var(--surface-muted);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out-smooth);
+}
+.wb-node:hover {
+  border-color: var(--pt-primary);
+}
+.wb-node.active {
+  background: var(--pt-primary-bg);
+  border-color: var(--pt-primary);
+}
+.wb-node.overview {
+  font-size: var(--fs-xs);
+}
+.wb-node-count {
+  font-weight: 700;
+}
+.wb-flow-arrow {
+  color: var(--text-disabled);
+}
+
+.wb-mid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: var(--sp-4);
+}
+.wb-sec-title {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+.wb-empty {
+  font-size: var(--fs-sm);
+  color: var(--text-disabled);
+  padding: var(--sp-3) 0;
+}
+.wb-todo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-1);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--divider);
+  background: var(--surface-muted);
+  cursor: pointer;
+}
+.wb-todo:hover {
+  border-color: var(--pt-primary);
+}
+.wb-todo.lv-danger {
+  border-left: 3px solid var(--pt-danger);
+}
+.wb-todo.lv-warning {
+  border-left: 3px solid var(--pt-warn);
+}
+.todo-title {
+  font-weight: 600;
+  font-size: var(--fs-body);
+}
+.todo-detail {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.wb-event {
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--divider);
+}
+.wb-event:last-child {
+  border-bottom: none;
+}
+.event-line {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.event-title {
+  font-size: var(--fs-body);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-time {
+  font-size: var(--fs-xs);
+  color: var(--text-disabled);
+  flex-shrink: 0;
+}
+
+.wb-bottom {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--sp-4);
+}
+.wb-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--sp-2);
+}
+.wb-stat {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-2);
+  border-radius: var(--radius-xs);
+  background: var(--surface-muted);
+}
+.stat-value {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+}
+.stat-value.danger {
+  color: var(--pt-danger);
+}
+.stat-label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.wb-lib-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--divider);
+}
+.wb-lib-row:last-child {
+  border-bottom: none;
+}
+.lib-name {
+  font-weight: 600;
+}
+.lib-counts {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.lib-time {
+  font-size: var(--fs-xs);
+  color: var(--text-disabled);
+}
+
+@media (max-width: 900px) {
+  .wb-mid,
+  .wb-bottom {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,189 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.title {
+  margin: 4px 0;
+  font-size: var(--fs-title);
+  font-weight: 700;
+}
+/* 开播日历视图：按日期分组展示 */
+.calendar-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.cal-day {
+  padding: 14px 18px;
+}
+.cal-date {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.cal-ep {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-color, rgba(128, 128, 128, 0.2));
+  flex-wrap: wrap;
+}
+.cal-ep:last-child {
+  border-bottom: none;
+}
+.cal-poster {
+  width: 34px;
+  height: 48px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-muted);
+}
+.cal-title {
+  font-weight: 600;
+}
+.cal-overview {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.filter-bar {
+  display: flex;
+  gap: var(--sp-6);
+  padding: 10px 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-group {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+/* 搜索框：靠最右，与分类 chip 同行；窄屏自动换行 */
+.search-group {
+  display: flex;
+  gap: var(--sp-1);
+  align-items: center;
+  margin-left: auto;
+}
+.search-group :deep(.el-input) {
+  width: 220px;
+}
+.chip {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: var(--fs-body);
+  color: var(--text-strong);
+  transition:
+    background var(--dur-base) var(--ease-out-smooth),
+    border-color var(--dur-base) var(--ease-out-smooth),
+    color var(--dur-base) var(--ease-out-smooth);
+}
+.chip:hover {
+  background: var(--surface-hover);
+}
+.chip.on {
+  background: var(--pt-primary-bg);
+  border-color: var(--pt-primary-bg);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--sp-3);
+}
+.rec-card {
+  display: flex;
+  gap: var(--sp-3);
+  padding: 12px;
+}
+.clickable {
+  cursor: pointer;
+  transition:
+    transform var(--dur-base) var(--ease-out-smooth),
+    box-shadow var(--dur-base) var(--ease-out-smooth),
+    border-color var(--dur-base) var(--ease-out-smooth);
+}
+.clickable:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--surface-shadow-hover);
+}
+.poster {
+  width: 92px;
+  height: 132px;
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+  flex: none;
+  background: var(--surface-muted);
+}
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.t-title {
+  font-weight: 600;
+  font-size: var(--fs-lg);
+}
+.t-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.src {
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+}
+.t-overview {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  margin-top: 6px;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.find-btn {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+/* 类型/产地行：与详情页一致的小标签；统一卡片信息层级 */
+.t-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.t-country {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.empty {
+  padding: 40px;
+  text-align: center;
+}
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: 8px 0 4px;
+}
+.pager .page-info {
+  font-size: var(--fs-xs);
+}
+.pager .no-more {
+  font-size: var(--fs-xs);
+}

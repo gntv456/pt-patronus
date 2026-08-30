@@ -19,6 +19,7 @@ import { Refresh } from '@element-plus/icons-vue'
 import { useCloudDriveBrowse, fmtSize } from '@/composables/useCloudDriveBrowse'
 import { useCloudStrmRules } from '@/composables/useCloudStrmRules'
 import CloudDialogs from '@/components/cloud/CloudDialogs.vue'
+import CloudRecordsTab from '@/components/cloud/CloudRecordsTab.vue'
 import { useCloud115Auth } from '@/composables/useCloud115Auth'
 
 // ---- 云端文件管理器操作 ----
@@ -437,115 +438,8 @@ onMounted(async () => {
         </el-table>
       </el-tab-pane>
 
-      <!-- STRM 记录 -->
-      <el-tab-pane :label="t('cloud.tabRecords')" name="records">
-        <el-table :data="records" size="small" :empty-text="t('cloud.recordsEmpty')">
-          <el-table-column :label="t('cloud.drive')" width="110">
-            <template #default="{ row }">{{ driveName((row as StrmRecord).drive_id) }}</template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.cloudFile')" min-width="200" show-overflow-tooltip>
-            <template #default="{ row }">{{ (row as StrmRecord).cloud_path }}</template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.localStrm')" min-width="200" show-overflow-tooltip>
-            <template #default="{ row }">{{ (row as StrmRecord).strm_path }}</template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.size')" width="90">
-            <template #default="{ row }">{{ fmtSize((row as StrmRecord).size) }}</template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.source')" width="90">
-            <template #default="{ row }">
-              <el-tag v-if="(row as StrmRecord).subscription_id" size="small" type="success">{{
-                t('cloud.srcSub')
-              }}</el-tag>
-              <el-tag v-else size="small" effect="plain">{{ t('cloud.srcRule') }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column :label="t('common.action')" width="80">
-            <template #default="{ row }">
-              <el-button size="small" link type="danger" @click="removeRecord(row as StrmRecord)">{{
-                t('common.delete')
-              }}</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
-
-      <!-- 云端任务队列 -->
-      <el-tab-pane :label="t('cloud.tabTasks')" name="tasks">
-        <div class="tab-toolbar">
-          <el-select v-model="taskStatusFilter" size="small" style="width: 120px" @change="loadTasks">
-            <el-option :label="t('cloud.all')" value="" />
-            <el-option :label="t('cloud.stPending')" value="pending" />
-            <el-option :label="t('cloud.stRunning')" value="running" />
-            <el-option :label="t('cloud.stSuccess')" value="success" />
-            <el-option :label="t('cloud.stFailed')" value="failed" />
-          </el-select>
-          <el-button size="small" :icon="Refresh" @click="loadTasks">{{ t('common.refresh') }}</el-button>
-          <el-button size="small" type="primary" @click="showImportTree = true">{{ t('cloud.importTree') }}</el-button>
-        </div>
-        <el-table :data="tasks" size="small" :empty-text="t('cloud.tasksEmpty')">
-          <el-table-column :label="t('cloud.kind')" width="100">
-            <template #default="{ row }">{{ TASK_KIND_LABEL[(row as CloudTask).kind] || row.kind }}</template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.drive')" width="110">
-            <template #default="{ row }">{{ driveName((row as CloudTask).drive_id) }}</template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.targetSrc')" min-width="220" show-overflow-tooltip>
-            <template #default="{ row }">{{ (row as CloudTask).cloud_path || (row as CloudTask).local_path }}</template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.progress')" width="140">
-            <template #default="{ row }">
-              <el-progress
-                :percentage="(row as CloudTask).progress || 0"
-                :stroke-width="8"
-                :status="
-                  (row as CloudTask).status === 'success'
-                    ? 'success'
-                    : (row as CloudTask).status === 'failed'
-                      ? 'exception'
-                      : undefined
-                "
-              />
-            </template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.status')" width="90">
-            <template #default="{ row }">
-              <el-tag
-                size="small"
-                :type="
-                  (row as CloudTask).status === 'success'
-                    ? 'success'
-                    : (row as CloudTask).status === 'failed'
-                      ? 'danger'
-                      : (row as CloudTask).status === 'running'
-                        ? 'warning'
-                        : 'info'
-                "
-              >
-                {{ TASK_STATUS_LABEL[(row as CloudTask).status] || row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column :label="t('cloud.error')" min-width="160" show-overflow-tooltip>
-            <template #default="{ row }">{{ (row as CloudTask).error || '-' }}</template>
-          </el-table-column>
-          <el-table-column :label="t('common.action')" width="130" fixed="right">
-            <template #default="{ row }">
-              <el-button
-                v-if="(row as CloudTask).status === 'failed'"
-                size="small"
-                link
-                type="primary"
-                @click="retryTask(row as CloudTask)"
-                >{{ t('common.retry') }}</el-button
-              >
-              <el-button size="small" link type="danger" @click="removeTask(row as CloudTask)">{{
-                t('common.delete')
-              }}</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-tab-pane>
+      <CloudRecordsTab :records="records" :tasks="tasks" :loading="loading" :drive-name="driveName" :fmt-size="(n?: number) => fmtSize(n ?? 0)" v-model:task-status-filter="taskStatusFilter" @remove-record="removeRecord" @retry-task="retryTask" @remove-task="removeTask" @load-tasks="loadTasks"
+      @show-import-tree="showImportTree = true" />
     </el-tabs>
 
     <CloudDialogs
@@ -574,7 +468,7 @@ onMounted(async () => {
       :token-label="tokenLabel"
       :importing="importing"
       :loading="loading"
-      :fmt-size="fmtSize"
+      :fmt-size="(n?: number) => fmtSize(n ?? 0)"
       @start-auth="startAuth115"
       @do-import-tree="doImportTree"
       @save-drive="saveDrive"

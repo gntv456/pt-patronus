@@ -19,6 +19,7 @@ import { Refresh } from '@element-plus/icons-vue'
 import { useCloudDriveBrowse, fmtSize } from '@/composables/useCloudDriveBrowse'
 import { useCloudStrmRules } from '@/composables/useCloudStrmRules'
 import CloudDialogs from '@/components/cloud/CloudDialogs.vue'
+import CloudDrivesTab from '@/components/cloud/CloudDrivesTab.vue'
 import CloudRecordsTab from '@/components/cloud/CloudRecordsTab.vue'
 import { useCloud115Auth } from '@/composables/useCloud115Auth'
 
@@ -349,48 +350,7 @@ onMounted(async () => {
     <p v-else class="sub embedded-sub">{{ t('cloud.subEmbedded') }}</p>
 
     <el-tabs v-model="activeTab" class="tabs">
-      <!-- 网盘 -->
-      <el-tab-pane :label="t('cloud.tabDrives')" name="drives">
-        <div v-loading="loading" class="grid">
-          <div v-for="d in drives" :key="d.id" class="glass glass-hover card">
-            <div class="card-head">
-              <GlassIcon name="cloud" :size="34" from="#4cc9f0" to="#4361ee" />
-              <div class="card-title">
-                <div class="name">
-                  {{ d.name }}
-                  <el-tag size="small" effect="plain">{{ TYPE_LABEL[d.type] }}</el-tag>
-                  <el-tag v-if="d.is_default" size="small" type="success">{{ t('cloud.defaultTag') }}</el-tag>
-                </div>
-                <div class="meta">{{ t('cloud.rootPath') }}：{{ d.root_path || '/' }}</div>
-                <div v-if="quotas[d.id]" class="meta">
-                  {{ t('cloud.quota') }}：{{ fmtSize(quotas[d.id].used) }} / {{ fmtSize(quotas[d.id].total) }}
-                </div>
-              </div>
-            </div>
-            <div class="actions">
-              <el-button size="small" :loading="testing === d.id" @click="testDrive(d)">{{
-                t('cloud.testConn')
-              }}</el-button>
-              <el-button size="small" @click="loadQuota(d)">{{ t('cloud.viewQuota') }}</el-button>
-              <el-button size="small" @click="openBrowse(d, () => {})">{{ t('cloud.browse') }}</el-button>
-              <el-button size="small" @click="openEditDrive(d)">{{ t('common.edit') }}</el-button>
-              <el-button size="small" type="danger" plain @click="removeDrive(d)">{{ t('common.delete') }}</el-button>
-            </div>
-          </div>
-          <EmptyState
-            v-if="!drives.length && !loading"
-            icon="☁️"
-            :title="t('cloud.emptyTitle')"
-            :description="t('cloud.emptyDesc')"
-          >
-            <el-button type="primary" @click="openCreateDrive">{{ t('cloud.addDrive2') }}</el-button>
-            <el-button @click="openAuth115">{{ t('cloud.qrAuth115') }}</el-button>
-            <el-button @click="doOrganize" :loading="organizing">{{ t('cloud.organize') }}</el-button>
-            <el-button @click="doStrmRepair" :loading="repairing">{{ t('cloud.strmRepair') }}</el-button>
-          </EmptyState>
-        </div>
-      </el-tab-pane>
-
+      <CloudDrivesTab :drives="drives" mode="cloud" :testing="testing" :organizing="organizing" :repairing="repairing" :loading="loading" :quotas="quotas" @generate="(r: any) => generateOne(r)" @test="testDrive" @quota="loadQuota" @browse="(d: any) => openBrowse(d, () => {})" @create="openCreateDrive" @edit="openEditDrive" @remove="removeDrive" @auth="openAuth115" @organize="doOrganize" @repair="doStrmRepair" />
       <!-- STRM 规则 -->
       <el-tab-pane :label="t('cloud.tabRules')" name="rules">
         <div class="pane-bar">
@@ -484,134 +444,4 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-.page.embedded {
-  padding: 0;
-}
-.page.embedded .embedded-title {
-  font-size: var(--fs-lg);
-  font-weight: 600;
-  margin: 0;
-}
-.page.embedded .embedded-sub {
-  margin-top: 0;
-  margin-bottom: 12px;
-  font-size: var(--fs-xs);
-}
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.head-actions {
-  display: flex;
-  gap: var(--sp-2);
-}
-.title {
-  margin: 0;
-  font-size: var(--fs-title);
-  font-weight: 700;
-}
-.sub {
-  margin: -8px 0 0;
-  font-size: var(--fs-sm);
-  color: var(--text-muted);
-}
-.tabs {
-  margin-top: 4px;
-}
-.pane-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--sp-3);
-}
-.card {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-.card-head {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-}
-.card-title {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-}
-.name {
-  font-weight: 600;
-  font-size: var(--fs-body);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-1);
-  flex-wrap: wrap;
-}
-.meta {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  word-break: break-all;
-}
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-1);
-}
-.hint {
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-  display: block;
-  margin-top: 4px;
-}
-.browse-bar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-bottom: 10px;
-}
-.browse-path {
-  font-size: var(--fs-sm);
-  color: var(--text-strong);
-  word-break: break-all;
-}
-.browse-list {
-  display: flex;
-  flex-direction: column;
-  max-height: 50vh;
-  overflow-y: auto;
-}
-.browse-item {
-  padding: 8px 10px;
-  border-radius: var(--radius-xs);
-  cursor: pointer;
-  font-size: var(--fs-sm);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  transition:
-    background var(--dur-fast) var(--ease-out-smooth),
-    color var(--dur-fast) var(--ease-out-smooth),
-    border-color var(--dur-fast) var(--ease-out-smooth);
-}
-.browse-item:hover {
-  background: var(--bg-elev, rgba(255, 255, 255, 0.06));
-}
-.browse-item.file {
-  cursor: default;
-}
-</style>
+<style scoped src="./Cloud.css"></style>

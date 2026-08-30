@@ -21,6 +21,7 @@ import ComposeProjects from './ComposeProjects.vue'
 import OpsDockerContainers from './OpsDockerContainers.vue'
 import { useDockerDialogsState } from './useDockerDialogsState'
 import OpsDockerToolbar from './OpsDockerToolbar.vue'
+import { useDockerOpsInit } from './useDockerOpsInit'
 import OpsDockerDialogs from './OpsDockerDialogs.vue'
 import OpsDockerOverview from './OpsDockerOverview.vue'
 import OpsDockerTables from './OpsDockerTables.vue'
@@ -151,65 +152,28 @@ const {
   () => selectedTarget.value,
 )
 
-// 从应用商店选择模板 → 打开创建向导
-function openAppStore() {
-  pendingTemplate.value = null
-  pendingCompose.value = null
-  appStoreVisible.value = true
-}
-
-function onStoreComposeSelected(tpl: ComposeTemplate) {
-  pendingCompose.value = tpl
-  localComposeVisible.value = true
-}
-
-function onStoreTemplateSelected(tpl: DockerTemplate) {
-  pendingTemplate.value = tpl
-  createDialog.value = true
-}
-
-function copyDockerSockHint() {
-  navigator.clipboard
-    .writeText('- /var/run/docker.sock:/var/run/docker.sock')
-    .then(() => {
-      ElMessage.success(t('opsdocker.copied'))
-    })
-    .catch(() => {})
-}
-
-onMounted(async () => {
-  await loadTargets()
-  try {
-    const st = await dockerApi.localStatus()
-    localAvailable.value = st.available
-  } catch {
-    localAvailable.value = false
-  }
-  if (localAvailable.value) {
-    mode.value = 'local'
-    refresh()
-    startStatsPolling()
-  } else if (selectedTarget.value) {
-    mode.value = 'remote'
-    refresh()
-    startStatsPolling()
-  }
-})
+// 初始化/商店选中/模式切换拆出 useDockerOpsInit
+const { openAppStore, onStoreComposeSelected, onStoreTemplateSelected, copyDockerSockHint, switchMode } =
+  useDockerOpsInit({
+    mode,
+    selectedTarget,
+    localAvailable,
+    pendingTemplate,
+    pendingCompose,
+    createDialog,
+    appStoreVisible,
+    localComposeVisible,
+    loadTargets,
+    refresh,
+    startStatsPolling,
+    resetHistory,
+    t: (k: string) => t(k),
+  })
 
 onBeforeUnmount(() => {
   stopStatsPolling()
 })
 
-function switchMode(m: 'local' | 'remote') {
-  mode.value = m
-  onModeSwitch()
-}
-
-function onModeSwitch() {
-  resetHistory()
-  refresh()
-  startStatsPolling()
-}
 </script>
 
 <template>

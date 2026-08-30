@@ -175,6 +175,8 @@ declare module 'vue' {
     TorrentResultsTable: typeof import('./src/components/TorrentResultsTable.vue')['default']
     TorrentTable: typeof import('./src/components/downloader/TorrentTable.vue')['default']
     TrackersDialog: typeof import('./src/components/downloader/TrackersDialog.vue')['default']
+    TransferConfigDialog: typeof import('./src/components/transfer/TransferConfigDialog.vue')['default']
+    TransferMoreDialogs: typeof import('./src/components/transfer/TransferMoreDialogs.vue')['default']
     WorkflowNode: typeof import('./src/components/workflow/WorkflowNode.vue')['default']
   }
   export interface ComponentCustomProperties {

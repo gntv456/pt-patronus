@@ -303,7 +303,7 @@ onMounted(loadConversations)
         /></el-form-item>
         <el-form-item :label="t('assistant.toolPerms')">
           <div class="tool-perms">
-            <el-switch :model-value="toolAllowAll" @update:model-value="(v) => onToggleAllowAll(v as boolean)" />
+            <el-switch :model-value="toolAllowAll" @update:model-value="(v: any) => onToggleAllowAll(v as boolean)" />
             <span class="hint">{{ t('assistant.allToolsHint') }}</span>
             <div v-if="!toolAllowAll" class="tool-groups">
               <div v-for="(sec, i) in toolSections" :key="i" class="tool-group">

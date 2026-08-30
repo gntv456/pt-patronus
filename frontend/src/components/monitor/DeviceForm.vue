@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import DeviceProbeFields from './DeviceProbeFields.vue'
+import { blank, defaultProtocol, inferredProtocol, normalizeNasFields } from './deviceFormHelpers'
 import { ElMessage } from 'element-plus'
 import type { MonitorTarget, OpsCredential, TargetInput } from '@/api/monitor'
 import { useDeviceOpsConfig } from '@/composables/useDeviceOpsConfig'
@@ -12,59 +14,13 @@ const visible = defineModel<boolean>('visible', { default: false })
 const props = defineProps<{ target?: MonitorTarget | null; defaultType?: string; credentials?: OpsCredential[] }>()
 const emit = defineEmits<{ submit: [TargetInput] }>()
 
-function blank(): TargetInput {
-  return {
-    name: '',
-    type: 'host',
-    protocol: 'local',
-    enabled: true,
-    interval_sec: 60,
-    timeout_sec: 15,
-    vendor: '',
-    host: '',
-    port: 0,
-    credential_id: 0,
-    username: '',
-    password: '',
-    private_key: '',
-    rtsp_url: '',
-    thresholds: '',
-    disk_paths: '',
-  }
-}
 const form = ref<TargetInput>(blank())
 const isEdit = computed(() => !!props.target)
 // 可选配置（HTTP 方法/进程名/脚本命令等）与 thresholds 序列化抽出为 composable（useDeviceOpsConfig）。
 const { opsConfig, loadOpsConfig, buildThresholds } = useDeviceOpsConfig()
 
-function defaultProtocol(type: string) {
-  if (type === 'camera') return 'onvif'
-  if (type === 'http') return 'http'
-  if (type === 'tcp') return 'tcp'
-  if (type === 'process' || type === 'script') return 'ssh'
-  return 'local'
-}
 
-function inferredProtocol(t: MonitorTarget) {
-  if (t.protocol) return t.protocol
-  if (t.type === 'http') return 'http'
-  if (t.type === 'tcp') return 'tcp'
-  if (t.type === 'process' || t.type === 'script') return 'ssh'
-  if (t.type === 'host') return t.host ? 'ssh' : 'local'
-  if (t.type === 'nas') return t.host ? 'api' : 'local'
-  return defaultProtocol(t.type)
-}
 
-function normalizeNasFields() {
-  if (form.value.type !== 'nas') return
-  if (form.value.protocol === 'local' || form.value.protocol === 'agent') {
-    form.value.vendor = ''
-  } else if (form.value.protocol === 'snmp') {
-    form.value.vendor = 'snmp'
-  } else if (!form.value.vendor || form.value.vendor === 'snmp') {
-    form.value.vendor = 'synology'
-  }
-}
 
 watch(visible, (v) => {
   if (!v) return
@@ -91,13 +47,13 @@ watch(visible, (v) => {
     if (form.value.type === 'nas' && form.value.vendor === 'snmp' && form.value.protocol !== 'local') {
       form.value.protocol = 'snmp'
     }
-    normalizeNasFields()
+    normalizeNasFields(form)
   } else {
     form.value = blank()
     if (props.defaultType) {
       form.value.type = props.defaultType
       form.value.protocol = defaultProtocol(props.defaultType)
-      normalizeNasFields()
+      normalizeNasFields(form)
     }
     loadOpsConfig(form.value.thresholds)
   }
@@ -110,14 +66,14 @@ watch(
     if (isEdit.value) return
     form.value.protocol = defaultProtocol(t)
     form.value.vendor = ''
-    normalizeNasFields()
+    normalizeNasFields(form)
     loadOpsConfig(form.value.thresholds)
   },
 )
 
 watch(
   () => form.value.protocol,
-  () => normalizeNasFields(),
+  () => normalizeNasFields(form),
 )
 watch(
   () => [form.value.type, form.value.protocol],
@@ -321,31 +277,7 @@ function submit() {
         />
       </el-form-item>
 
-      <template v-if="form.type === 'http'">
-        <el-form-item :label="t('deviceform.httpMethod')">
-          <el-select v-model="opsConfig.http_method" style="width: 100%">
-            <el-option label="GET" value="GET" />
-            <el-option label="HEAD" value="HEAD" />
-          </el-select>
-        </el-form-item>
-        <el-form-item :label="t('deviceform.statusCode')">
-          <div class="range-row">
-            <el-input-number v-model="opsConfig.http_expected_min" :min="100" :max="599" controls-position="right" />
-            <span>{{ t('deviceform.to') }}</span>
-            <el-input-number v-model="opsConfig.http_expected_max" :min="100" :max="599" controls-position="right" />
-          </div>
-        </el-form-item>
-        <el-form-item :label="t('deviceform.respThreshold')">
-          <el-input-number
-            v-model="opsConfig.response_ms"
-            :min="0"
-            :step="100"
-            controls-position="right"
-            style="width: 100%"
-          />
-          <span class="hint">{{ t('deviceform.msHint') }}</span>
-        </el-form-item>
-      </template>
+      <DeviceProbeFields :form="form" :is-edit="isEdit" :ops-config="opsConfig" />
 
       <template v-if="form.type === 'tcp'">
         <el-form-item :label="t('deviceform.respThreshold')">

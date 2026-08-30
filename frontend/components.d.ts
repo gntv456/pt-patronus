@@ -41,6 +41,7 @@ declare module 'vue' {
     DeviceDetail: typeof import('./src/components/monitor/DeviceDetail.vue')['default']
     DeviceForm: typeof import('./src/components/monitor/DeviceForm.vue')['default']
     DeviceHostDetail: typeof import('./src/components/monitor/DeviceHostDetail.vue')['default']
+    DeviceProbeFields: typeof import('./src/components/monitor/DeviceProbeFields.vue')['default']
     DeviceServiceDetail: typeof import('./src/components/monitor/DeviceServiceDetail.vue')['default']
     DockerAppStore: typeof import('./src/components/ops/DockerAppStore.vue')['default']
     DockerComposeLocal: typeof import('./src/components/ops/DockerComposeLocal.vue')['default']

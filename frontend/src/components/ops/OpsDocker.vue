@@ -19,6 +19,7 @@ import { useDockerData } from './useDockerData'
 import { useContainerActions } from './useContainerActions'
 import ComposeProjects from './ComposeProjects.vue'
 import OpsDockerContainers from './OpsDockerContainers.vue'
+import { useDockerDialogsState } from './useDockerDialogsState'
 import OpsDockerDialogs from './OpsDockerDialogs.vue'
 import OpsDockerOverview from './OpsDockerOverview.vue'
 import OpsDockerTables from './OpsDockerTables.vue'
@@ -54,31 +55,6 @@ const searchText = ref('')
 const stateFilter = ref<'all' | 'running' | 'stopped'>('all')
 const viewMode = ref<'card' | 'list'>('card')
 
-// 日志抽屉
-const logDrawer = ref(false)
-const logContainer = ref('')
-const logContent = ref('')
-const logLoading = ref(false)
-
-// 详情抽屉
-const detailVisible = ref(false)
-const detailContainer = ref('')
-
-// 创建向导
-const createDialog = ref(false)
-
-// 应用商店
-const appStoreVisible = ref(false)
-
-// 从应用商店选中模板后传入向导
-const pendingTemplate = ref<DockerTemplate | null>(null)
-
-// 从应用商店选中 Compose 模板后传入编辑器
-const pendingCompose = ref<ComposeTemplate | null>(null)
-
-// exec 终端
-const execDrawer = ref(false)
-const execContainer = ref('')
 
 const tabKeys = computed<(typeof activeTab.value)[]>(() =>
   mode.value === 'local'
@@ -119,53 +95,31 @@ const {
   t: (k: string, v?: Record<string, unknown>) => t(k, v ?? {}),
 })
 
-async function removeImage(img: DockerImage) {
-  const ref = img.Repository + ':' + img.Tag
-  try {
-    await ElMessageBox.confirm(t('opsdocker.removeImageConfirm', { ref }), t('opsdisk.confirmPartTitle'), {
-      type: 'warning',
-    })
-    actionLoading.value = true
-    if (mode.value === 'local') {
-      await dockerApi.localRemoveImage(ref, true)
-    } else {
-      await dockerApi.removeImage(selectedTarget.value, ref, true)
-    }
-    ElMessage.success(t('opsdocker.imageRemoved'))
-    refresh()
-  } catch (e: any) {
-    if (e !== 'cancel') ElMessage.error(e.message)
-  } finally {
-    actionLoading.value = false
-  }
-}
-
-async function showLogs(container: DockerContainer) {
-  logContainer.value = container.Names.replace(/^\//, '')
-  logDrawer.value = true
-  logLoading.value = true
-  try {
-    const res =
-      mode.value === 'local'
-        ? await dockerApi.localLogs(logContainer.value, 200)
-        : await dockerApi.logs(selectedTarget.value, logContainer.value, 200)
-    logContent.value = res.logs || '(' + t('opsdocker.noLogs') + ')'
-  } catch (e: any) {
-    logContent.value = t('opsdocker.logFailed') + ': ' + e.message
-  } finally {
-    logLoading.value = false
-  }
-}
-
-function showDetail(container: DockerContainer) {
-  detailContainer.value = container.Names.replace(/^\//, '')
-  detailVisible.value = true
-}
-
-function openExec(c: DockerContainer) {
-  execContainer.value = c.Names.replace(/^\//, '')
-  execDrawer.value = true
-}
+// 对话框/抽屉状态簇拆出 useDockerDialogsState
+const {
+  logDrawer,
+  logContainer,
+  logContent,
+  logLoading,
+  detailVisible,
+  detailContainer,
+  createDialog,
+  appStoreVisible,
+  pendingTemplate,
+  pendingCompose,
+  execDrawer,
+  execContainer,
+  removeImage,
+  showLogs,
+  showDetail,
+  openExec,
+} = useDockerDialogsState({
+  mode: () => mode.value,
+  selectedTarget: () => selectedTarget.value,
+  refresh,
+  actionLoading,
+  t: (k: string, v?: Record<string, unknown>) => t(k, v ?? {}),
+})
 
 
 

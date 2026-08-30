@@ -23,6 +23,7 @@ import CloudDrivesTab from '@/components/cloud/CloudDrivesTab.vue'
 import CloudRecordsTab from '@/components/cloud/CloudRecordsTab.vue'
 import CloudRulesTab from '@/components/cloud/CloudRulesTab.vue'
 import { useCloud115Auth } from '@/composables/useCloud115Auth'
+import { useCloudDrives } from './useCloudDrives'
 
 // ---- 云端文件管理器操作 ----
 const { t } = useI18n()
@@ -126,7 +127,7 @@ const {
   qrImage,
   openAuth115,
   startAuth115,
-} = useCloud115Auth(loadDrives)
+} = useCloud115Auth(() => loadDrives())
 
 // ---- 云端任务队列 + 目录树导入 ----
 const tasks = ref<CloudTask[]>([])
@@ -187,91 +188,24 @@ async function doImportTree() {
 const props = withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const activeTab = ref('drives')
-const drives = ref<CloudDrive[]>([])
-const loading = ref(false)
 
-async function loadDrives() {
-  loading.value = true
-  try {
-    drives.value = await cloudApi.listDrives()
-  } catch (e: any) {
-    ElMessage.error(e?.message || t('cloud.loadDrivesFailed'))
-  } finally {
-    loading.value = false
-  }
-}
-
-// ---- 网盘 CRUD ----
-const showDriveForm = ref(false)
-const editingDrive = ref<CloudDrive | null>(null)
-const driveForm = ref<DriveInput>(defaultDrive())
-
-function defaultDrive(): DriveInput {
-  return { name: '', type: '115', token: '', root_path: '/', is_default: false }
-}
-function openCreateDrive() {
-  editingDrive.value = null
-  driveForm.value = defaultDrive()
-  showDriveForm.value = true
-}
-function openEditDrive(d: CloudDrive) {
-  editingDrive.value = d
-  driveForm.value = { ...d, token: '' }
-  showDriveForm.value = true
-}
-async function saveDrive() {
-  if (!driveForm.value.name || !driveForm.value.type) {
-    ElMessage.warning(t('cloud.nameTypeRequired'))
-    return
-  }
-  try {
-    if (editingDrive.value) {
-      await cloudApi.updateDrive(editingDrive.value.id, driveForm.value)
-      ElMessage.success(t('common.updated'))
-    } else {
-      if (!driveForm.value.token) {
-        ElMessage.warning(t('cloud.tokenRequired'))
-        return
-      }
-      await cloudApi.createDrive(driveForm.value)
-      ElMessage.success(t('common.created'))
-    }
-    showDriveForm.value = false
-    await loadDrives()
-  } catch (e: any) {
-    ElMessage.error(e?.message || t('common.saveFailed'))
-  }
-}
-async function removeDrive(d: CloudDrive) {
-  await ElMessageBox.confirm(t('cloud.confirmDeleteDrive', { name: d.name }), t('messages.tip'), { type: 'warning' })
-  await cloudApi.removeDrive(d.id)
-  ElMessage.success(t('common.deleted'))
-  await loadDrives()
-}
-
-// ---- 测试 / 配额 ----
-const testing = ref<number | null>(null)
-async function testDrive(d: CloudDrive) {
-  testing.value = d.id
-  try {
-    const r = await cloudApi.test(d.id)
-    r.ok
-      ? ElMessage.success(`${d.name}：${r.info || t('mediaserver.connOk')}`)
-      : ElMessage.warning(r.error || t('mediaserver.connFailed'))
-  } catch (e: any) {
-    ElMessage.error(e?.message || t('common.requestFailed'))
-  } finally {
-    testing.value = null
-  }
-}
-const quotas = ref<Record<number, { used: number; total: number }>>({})
-async function loadQuota(d: CloudDrive) {
-  try {
-    quotas.value[d.id] = await cloudApi.quota(d.id)
-  } catch (e: any) {
-    ElMessage.error(e?.message || t('cloud.quotaFailed'))
-  }
-}
+// 网盘 CRUD/测试/配额拆出 useCloudDrives
+const {
+  drives,
+  loading,
+  showDriveForm,
+  editingDrive,
+  driveForm,
+  testing,
+  quotas,
+  loadDrives,
+  openCreateDrive,
+  openEditDrive,
+  saveDrive,
+  removeDrive,
+  testDrive,
+  loadQuota,
+} = useCloudDrives((k: string, v?: Record<string, unknown>) => t(k, v ?? {}))
 
 // ---- 浏览 + 规则（composable 封装） ----
 const {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import SubscriptionCard from '@/components/subscribe/SubscriptionCard.vue'
 import SubscriptionGlobalDialog from '@/components/subscribe/SubscriptionGlobalDialog.vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -7,7 +8,6 @@ import { subscribeApi, type Subscription, type GlobalDefaults } from '@/api/subs
 import { siteApi } from '@/api/site'
 import { useSubscriptionToggles } from '@/composables/useSubscriptionToggles'
 import { useSubscriptionList } from '@/composables/useSubscriptionList'
-import MediaPoster from '@/components/MediaPoster.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 import RssView from '@/views/Rss.vue'
@@ -280,162 +280,36 @@ onMounted(() => {
             </div>
           </div>
           <div v-if="list.length" class="subs">
-            <div
+            <SubscriptionCard
               v-for="s in list"
               :key="s.id"
-              class="sub glass-hover"
-              :class="{ selected: batchMode && selectedIds.includes(s.id) }"
-            >
-              <div class="poster">
-                <el-checkbox
-                  v-if="batchMode"
-                  :model-value="selectedIds.includes(s.id)"
-                  class="batch-check"
-                  @change="toggleSelect(s.id)"
-                />
-                <MediaPoster :url="s.poster_url" :kind="s.type" />
-              </div>
-              <div class="info">
-                <div class="row1">
-                  <span class="s-title">{{ s.title }}</span>
-                  <span v-if="s.year" class="text-muted">({{ s.year }})</span>
-                  <span class="chip" :class="s.status">{{ statusText(s.status) }}</span>
-                  <span v-if="s.resolution" class="chip res">{{ s.resolution }}</span>
-                </div>
-                <div class="text-muted small">
-                  {{ t('subscriptions.lastChecked', { time: fmtTime(s.last_checked_at) }) }} ·
-                  {{ t('subscriptions.typeLabel') }}
-                  {{ s.type === 'tv' ? t('subscriptions.type.tv') : t('subscriptions.type.movie') }} ·
-                  {{ t('subscriptions.sourceLabel') }} {{ s.source }}
-                </div>
-                <div class="res-row">
-                  <span class="small">{{ t('subscriptions.resFilter') }}</span>
-                  <el-input
-                    v-model="s.resolution"
-                    size="small"
-                    style="width: 120px"
-                    :placeholder="t('subscriptions.unlimited')"
-                    @change="setResolution(s)"
-                  />
-                  <span v-if="!s.resolution && globalDefaults.resolution" class="small text-muted">{{
-                    t('subscriptions.followGlobal', { v: globalDefaults.resolution })
-                  }}</span>
-                  <span v-else class="small text-muted">{{ t('subscriptions.resHint') }}</span>
-                </div>
-                <div class="res-row">
-                  <span class="small">{{ t('subscriptions.ratingGuardColon') }}</span>
-                  <el-switch
-                    :model-value="effRatingGuard(s)"
-                    :disabled="s.enable_rating_guard === null"
-                    size="small"
-                    @update:model-value="(v: any) => setRatingGuard(s, !!v)"
-                  />
-                  <span v-if="s.enable_rating_guard === null" class="small text-muted">{{
-                    t('subscriptions.followGlobal', {
-                      v: globalDefaults.enable_rating_guard ? t('common.on') : t('common.off'),
-                    })
-                  }}</span>
-                  <template v-else>
-                    <el-button link type="primary" class="small" @click="resetRatingGuard(s)">{{
-                      t('subscriptions.resetGlobal')
-                    }}</el-button>
-                    <span class="small text-muted">{{ t('subscriptions.ratingThresholdHint') }}</span>
-                  </template>
-                </div>
-                <div class="res-row">
-                  <span class="small">{{ t('subscriptions.bestVersionColon') }}</span>
-                  <el-switch
-                    :model-value="effBestVersion(s)"
-                    :disabled="s.best_version === null"
-                    size="small"
-                    @update:model-value="(v: any) => setBestVersion(s, !!v)"
-                  />
-                  <span v-if="s.best_version === null" class="small text-muted">{{
-                    t('subscriptions.followGlobal', {
-                      v: globalDefaults.best_version ? t('common.on') : t('common.off'),
-                    })
-                  }}</span>
-                  <template v-else>
-                    <el-button link type="primary" class="small" @click="resetBestVersion(s)">{{
-                      t('subscriptions.resetGlobal')
-                    }}</el-button>
-                    <span class="small text-muted">{{ t('subscriptions.bestHint') }}</span>
-                  </template>
-                  <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="chip res">
-                    Pri {{ s.current_priority }}
-                  </span>
-                </div>
-                <div class="res-row">
-                  <span class="small">{{ t('subscriptions.officialOnlyColon') }}</span>
-                  <el-switch
-                    :model-value="effOfficialOnly(s)"
-                    :disabled="s.official_only === null"
-                    size="small"
-                    @update:model-value="(v: any) => setOfficialOnly(s, !!v)"
-                  />
-                  <span v-if="s.official_only === null" class="small text-muted">{{
-                    t('subscriptions.followGlobal', {
-                      v: globalDefaults.official_only ? t('common.on') : t('common.off'),
-                    })
-                  }}</span>
-                  <template v-else>
-                    <el-button link type="primary" class="small" @click="resetOfficialOnly(s)">{{
-                      t('subscriptions.resetGlobal')
-                    }}</el-button>
-                    <span class="small text-muted">{{ t('subscriptions.officialHint') }}</span>
-                  </template>
-                </div>
-                <div class="res-row">
-                  <span class="small">{{ t('subscriptions.promoTypesColon') }}</span>
-                  <el-select
-                    :model-value="s.promo_types"
-                    multiple
-                    collapse-tags
-                    collapse-tags-tooltip
-                    size="small"
-                    style="width: 240px"
-                    :placeholder="t('subscriptions.unlimited')"
-                    @change="(v: any) => setPromoTypes(s, v as string[])"
-                  >
-                    <el-option v-for="o in PROMO_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-                  </el-select>
-                  <span v-if="!s.promo_types.length && globalDefaults.promo_types.length" class="small text-muted">{{
-                    t('subscriptions.followGlobal', { v: globalDefaults.promo_types.map(promoLabel).join('、') })
-                  }}</span>
-                  <span v-else class="small text-muted">{{ t('subscriptions.promoEmptyHint') }}</span>
-                </div>
-                <div class="res-row">
-                  <span class="small">{{ t('subscriptions.sitesColon') }}</span>
-                  <SiteFilterDialog
-                    :model-value="s.site_ids"
-                    :sites="sites"
-                    :title="t('subscriptions.sitesDialogTitle')"
-                    @update:model-value="(ids: number[]) => setSiteIds(s, ids)"
-                  >
-                    <span class="small">{{
-                      s.site_ids.length
-                        ? t('subscriptions.nSites', { n: s.site_ids.length })
-                        : globalDefaults.site_ids.length
-                          ? t('subscriptions.followGlobalNSites', { n: globalDefaults.site_ids.length })
-                          : t('subscriptions.allSites')
-                    }}</span>
-                  </SiteFilterDialog>
-                  <span v-if="!s.site_ids.length && globalDefaults.site_ids.length" class="small text-muted">{{
-                    t('subscriptions.sitesFollowGlobalHint')
-                  }}</span>
-                  <span v-else class="small text-muted">{{ t('subscriptions.sitesEmptyHint') }}</span>
-                </div>
-                <div class="actions">
-                  <el-button size="small" type="primary" :loading="checking === s.id" @click="checkNow(s)">{{
-                    t('subscriptions.checkNow')
-                  }}</el-button>
-                  <el-button size="small" @click="toggleStatus(s)">{{
-                    s.status === 'paused' ? t('subscriptions.resume') : t('subscriptions.pause')
-                  }}</el-button>
-                  <el-button size="small" type="danger" plain @click="remove(s)">{{ t('common.delete') }}</el-button>
-                </div>
-              </div>
-            </div>
+              :s="s"
+              :batch-mode="batchMode"
+              :selected="selectedIds.includes(s.id)"
+              :checking="checking"
+              :global-defaults="globalDefaults"
+              :sites="sites"
+              :promo-options="PROMO_OPTIONS"
+              :eff-rating-guard="effRatingGuard"
+              :eff-best-version="effBestVersion"
+              :eff-official-only="effOfficialOnly"
+              :status-text="statusText"
+              :fmt-time="fmtTime"
+              :promo-label="promoLabel"
+              @toggle-select="toggleSelect"
+              @set-resolution="setResolution"
+              @set-rating-guard="setRatingGuard"
+              @reset-rating-guard="resetRatingGuard"
+              @set-best-version="setBestVersion"
+              @reset-best-version="resetBestVersion"
+              @set-official-only="setOfficialOnly"
+              @reset-official-only="resetOfficialOnly"
+              @set-promo-types="setPromoTypes"
+              @set-site-ids="setSiteIds"
+              @check-now="checkNow"
+              @toggle-status="toggleStatus"
+              @remove="remove"
+            />
           </div>
           <EmptyState
             v-else-if="!loading"

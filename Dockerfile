@@ -11,7 +11,7 @@
 # ---- 前端构建 ----
 # 前端固定 amd64 build（JS 产物平台无关），避免 arm64 走 QEMU 跑 npm install 触发
 # "Illegal instruction" 崩溃。dist 复制到各平台后端 stage 即可（go:embed 不挑平台）。
-FROM --platform=linux/amd64 node:20-alpine AS frontend
+FROM --platform=linux/amd64 node:26-alpine AS frontend
 WORKDIR /fe
 COPY frontend/package.json frontend/package-lock.json* ./
 # postinstall 会跑 scripts/patch-deps.mjs（给 element-plus 打 ElTable mounted 补丁），

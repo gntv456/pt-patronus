@@ -119,6 +119,16 @@ function clearDim(key: ArrKey) {
           🔤 {{ t('sfb.cnSub') }}
         </button>
 
+        <button
+          type="button"
+          class="sfb-pill sfb-free"
+          :class="{ on: filter.onlyFree }"
+          :title="t('sfb.freeHint')"
+          @click="filter.onlyFree = !filter.onlyFree"
+        >
+          🎁 {{ t('sfb.onlyFree') }}
+        </button>
+
         <el-popover trigger="click" placement="bottom-end" :width="280" popper-class="sfb-popper">
           <template #reference>
             <button
@@ -274,6 +284,11 @@ function clearDim(key: ArrKey) {
   border-color: var(--pt-primary, #6c5ce7);
   color: var(--pt-primary, #6c5ce7);
   font-weight: 600;
+}
+.sfb-free.on {
+  background: var(--pt-success-bg, rgba(46, 204, 113, 0.12));
+  border-color: var(--pt-success, #2ecc71);
+  color: var(--pt-success, #2ecc71);
 }
 .sfb-badge {
   display: inline-flex;

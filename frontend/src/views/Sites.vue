@@ -111,7 +111,9 @@ onMounted(load)
       <h2 class="page-title">{{ t('sites.title') }}</h2>
       <div class="head-actions">
         <el-button @click="openRecords()">{{ t('sites.records') }}</el-button>
-        <el-button :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
+        <el-tooltip :content="t('sites.checkinAllHint')" placement="bottom" :disabled="!checkinAllLoading">
+          <el-button :loading="checkinAllLoading" @click="checkinAll">{{ t('sites.checkinAll') }}</el-button>
+        </el-tooltip>
         <el-button :loading="refreshing" :title="t('sites.refreshStatusTitle')" @click="refreshConnectivity(true)">{{
           t('sites.refreshStatus')
         }}</el-button>

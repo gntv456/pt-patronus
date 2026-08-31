@@ -19,6 +19,7 @@ export interface FilterState {
   src: string[]
   hdr: string[]
   onlyCnSub: boolean
+  onlyFree: boolean
   sizeMinGB: number
   sizeMaxGB: number
   seedersMin: number
@@ -56,6 +57,7 @@ export function useSearchFilter<T extends EnrichedMeta & { site_name?: string; s
     src: [],
     hdr: [],
     onlyCnSub: false,
+    onlyFree: false,
     sizeMinGB: 0,
     sizeMaxGB: 0,
     seedersMin: 0,
@@ -100,6 +102,9 @@ export function useSearchFilter<T extends EnrichedMeta & { site_name?: string; s
     if (!inSet(filter.src, r.src)) return false
     if (!inSet(filter.hdr, r.hdr)) return false
     if (filter.onlyCnSub && !r.cnSub) return false
+    // 「仅免费」快捷开关：覆盖 免费/2X免费/4X免费/折扣 等一切促销形态，
+    // 比逐个勾选 promo 维度选项快一步（PT 场景下最常用的单维筛选）。
+    if (filter.onlyFree && !r.promo) return false
     if (filter.sizeMinGB > 0 && r.sizeBytes < filter.sizeMinGB * GB) return false
     if (filter.sizeMaxGB > 0 && r.sizeBytes > filter.sizeMaxGB * GB) return false
     if (filter.seedersMin > 0 && (r.seeders ?? 0) < filter.seedersMin) return false
@@ -135,6 +140,7 @@ export function useSearchFilter<T extends EnrichedMeta & { site_name?: string; s
         filter.hdr.length >
         0 ||
       filter.onlyCnSub ||
+      filter.onlyFree ||
       filter.sizeMinGB > 0 ||
       filter.sizeMaxGB > 0 ||
       filter.seedersMin > 0 ||
@@ -151,6 +157,7 @@ export function useSearchFilter<T extends EnrichedMeta & { site_name?: string; s
     push('src')
     push('hdr')
     if (filter.onlyCnSub) out.push({ key: 'onlyCnSub', value: '1', label: '中字' })
+    if (filter.onlyFree) out.push({ key: 'onlyFree', value: '1', label: '免费' })
     if (filter.sizeMinGB > 0 || filter.sizeMaxGB > 0) {
       const max = filter.sizeMaxGB || options.value.maxSizeGB
       out.push({
@@ -171,6 +178,7 @@ export function useSearchFilter<T extends EnrichedMeta & { site_name?: string; s
   function removeFilter(tag: ActiveTag) {
     const k = tag.key
     if (k === 'onlyCnSub') filter.onlyCnSub = false
+    else if (k === 'onlyFree') filter.onlyFree = false
     else if (k === 'sizeMinGB') {
       filter.sizeMinGB = 0
       filter.sizeMaxGB = 0
@@ -191,6 +199,7 @@ export function useSearchFilter<T extends EnrichedMeta & { site_name?: string; s
     filter.src = []
     filter.hdr = []
     filter.onlyCnSub = false
+    filter.onlyFree = false
     filter.sizeMinGB = 0
     filter.sizeMaxGB = 0
     filter.seedersMin = 0

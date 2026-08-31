@@ -199,6 +199,7 @@ declare module 'vue' {
     TransferConfigDialog: typeof import('./src/components/transfer/TransferConfigDialog.vue')['default']
     TransferMoreDialogs: typeof import('./src/components/transfer/TransferMoreDialogs.vue')['default']
     WorkflowNode: typeof import('./src/components/workflow/WorkflowNode.vue')['default']
+    WsStatusDot: typeof import('./src/components/WsStatusDot.vue')['default']
   }
   export interface ComponentCustomProperties {
     vLoading: typeof import('element-plus/es')['ElLoadingDirective']

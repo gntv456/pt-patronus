@@ -2,6 +2,7 @@
 import NotificationCenter from '@/components/NotificationCenter.vue'
 import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+import WsStatusDot from '@/components/WsStatusDot.vue'
 import AppSidebar from '@/layouts/AppSidebar.vue'
 import { useI18n } from 'vue-i18n'
 import { useMainLayout } from '@/layouts/useMainLayout'
@@ -74,6 +75,7 @@ const {
           <kbd v-if="!isMobile" class="search-kbd">⌘K</kbd>
         </button>
         <div class="spacer"></div>
+        <WsStatusDot />
         <NotificationCenter />
         <router-link
           :to="{ name: 'assistant' }"

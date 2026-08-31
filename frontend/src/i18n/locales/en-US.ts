@@ -268,6 +268,7 @@ export default {
     title: 'Sites',
     records: 'Check-in Records',
     checkinAll: 'Check in all',
+    checkinAllHint: 'Checking in site by site — can take 1-5 minutes with many sites, keep this tab open',
     refreshStatus: 'Refresh status',
     refreshStatusTitle: 'Force re-probe connectivity for every site',
     staleVisitTitle: 'Visit enabled sites idle for 30+ days, one by one, 8s each, then close',
@@ -3031,6 +3032,7 @@ export default {
     clearGo: 'Clear',
     empty: 'No notifications',
     nUnread: '{n} unread · ',
+    markGroupRead: 'Mark this group read',
     clearConfirm: 'Clear all notifications? This cannot be undone.',
     clearTitle: 'Clear notifications',
   },
@@ -3921,6 +3923,8 @@ export default {
     clear: 'Clear',
     noOptions: 'No options',
     cnSub: 'CN subs',
+    onlyFree: 'Free',
+    freeHint: 'Show only promos (Free / 2X Free / discounted, etc.)',
     advanced: 'Advanced',
     sizeGB: 'Size (GB)',
     seedersMin: 'Seeders ≥',
@@ -4148,6 +4152,12 @@ export default {
     switchTheme: 'Switch theme',
     settings: 'Settings',
     logout: 'Log out',
+  },
+
+  wsDot: {
+    online: 'Live connection OK (notices / H&R / download rates)',
+    offline: 'Live connection lost, reconnecting automatically',
+    reconnecting: 'Reconnecting',
   },
 
   pcd: {

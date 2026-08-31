@@ -264,6 +264,7 @@ export default {
     title: '站点',
     records: '签到记录',
     checkinAll: '一键签到',
+    checkinAllHint: '正在逐站签到，站点较多时最长约 1-5 分钟，期间请勿刷新页面',
     refreshStatus: '刷新状态',
     refreshStatusTitle: '强制重新逐站检测连通状态',
     staleVisitTitle: '依次访问最后访问时间超过 30 天的启用站点，每站停留 8 秒后自动切换并关闭',
@@ -3005,6 +3006,7 @@ export default {
     clearGo: '清空',
     empty: '暂无通知',
     nUnread: '{n} 条未读 · ',
+    markGroupRead: '本组标为已读',
     clearConfirm: '确定清空全部通知？（此操作不可恢复）',
     clearTitle: '清空通知',
   },
@@ -3882,6 +3884,8 @@ export default {
     clear: '清除',
     noOptions: '无可用选项',
     cnSub: '中字',
+    onlyFree: '免费',
+    freeHint: '只看促销资源（免费 / 2X 免费 / 折扣等）',
     advanced: '高级',
     sizeGB: '大小 (GB)',
     seedersMin: '做种 ≥',
@@ -4109,6 +4113,12 @@ export default {
     switchTheme: '切换主题',
     settings: '设置',
     logout: '退出登录',
+  },
+
+  wsDot: {
+    online: '实时连接正常（通知 / H&R / 下载速率推送）',
+    offline: '实时连接已断开，正在自动重连',
+    reconnecting: '重连中',
   },
 
   pcd: {

@@ -90,7 +90,7 @@ async function removeOne(n: Notice) {
 }
 async function clearAll() {
   try {
-    await ElMessageBox.confirm(t('nc.clearConfirm'), t('nc.clearTitle'), {
+    await ElMessageBox.confirm(t('notices.clearConfirm'), t('notices.clearTitle'), {
       type: 'warning',
       confirmButtonText: t('nc.clearGo'),
       cancelButtonText: t('common.cancel'),
@@ -207,7 +207,7 @@ function onGroupLeave(el: Element) {
       class="nc-bell"
       :class="{ 'nc-bell--has': unread > 0, 'nc-bell--urgent': urgentUnread > 0 }"
       :title="
-        urgentUnread ? t('nc.urgentN', { n: urgentUnread }) : unread ? t('nc.unreadN', { n: unread }) : t('nc.title')
+        urgentUnread ? t('nc.urgentN', { n: urgentUnread }) : unread ? t('nc.unreadN', { n: unread }) : t('notices.title')
       "
       @click.stop="open = !open"
     >
@@ -221,7 +221,7 @@ function onGroupLeave(el: Element) {
       <div v-if="open" class="nc-panel glass">
         <div class="nc-head">
           <span class="nc-title"
-            >{{ t('nc.title') }}
+            >{{ t('notices.title') }}
             <small v-if="unread"
               >{{ t('nc.unread') }} {{ unread
               }}<template v-if="urgentUnread"> · {{ t('nc.urgent') }} {{ urgentUnread }}</template></small
@@ -238,7 +238,7 @@ function onGroupLeave(el: Element) {
           </div>
         </div>
         <div class="nc-list">
-          <div v-if="!notices.length" class="nc-empty">{{ t('nc.empty') }}</div>
+          <div v-if="!notices.length" class="nc-empty">{{ t('notices.emptyTitle') }}</div>
           <div v-for="g in grouped" :key="g.source" class="nc-group-wrap">
             <!-- 组头：折叠时显示彩色图标 + 类型名 + 未读 pill 徽标 + 最新时间 -->
             <div
@@ -270,7 +270,7 @@ function onGroupLeave(el: Element) {
               <button
                 v-if="g.unreadCount > 0"
                 class="nc-group-read"
-                :title="t('nc.markGroupRead')"
+                :title="t('notices.markGroupRead')"
                 @click.stop="readGroup(g)"
               >
                 <SptIcon name="check-circle" :size="14" />

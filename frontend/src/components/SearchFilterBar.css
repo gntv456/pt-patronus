@@ -1,0 +1,202 @@
+/* SearchFilterBar 样式(从 .vue 拆出,行数门禁)。scoped 语义由引用处的 <style scoped src> 保持。 */
+.sfb {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted, var(--pt-primary-bg));
+  border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.08));
+}
+.sfb-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+.sfb-count {
+  font-size: var(--fs-body);
+  white-space: nowrap;
+}
+.sfb-count b {
+  color: var(--pt-primary, #6c5ce7);
+}
+.sfb-sort,
+.sfb-order {
+  background: transparent;
+  border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.12));
+  border-radius: var(--radius-pill);
+  padding: 3px 12px;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+.sfb-sort:hover,
+.sfb-order:hover {
+  border-color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary, #6c5ce7);
+}
+.sfb-order {
+  padding: 3px 10px;
+  font-weight: 700;
+}
+.sfb-pills {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.sfb-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: transparent;
+  border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.12));
+  border-radius: var(--radius-pill);
+  padding: 3px 12px;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  color: var(--text-strong);
+  white-space: nowrap;
+  transition:
+    background var(--dur-base) var(--ease-out-smooth),
+    border-color var(--dur-base) var(--ease-out-smooth),
+    color var(--dur-base) var(--ease-out-smooth);
+}
+.sfb-pill:hover {
+  border-color: var(--pt-primary, #6c5ce7);
+}
+.sfb-pill.on {
+  background: var(--pt-primary-bg);
+  border-color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+}
+.sfb-free.on {
+  background: var(--pt-success-bg, rgba(46, 204, 113, 0.12));
+  border-color: var(--pt-success, #2ecc71);
+  color: var(--pt-success, #2ecc71);
+}
+.sfb-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--pt-primary, #6c5ce7);
+  color: #fff;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+.sfb-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.sfb-clear {
+  background: transparent;
+  border: 0;
+  color: var(--pt-primary, #6c5ce7);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  padding: 0;
+}
+.sfb-clear:hover {
+  text-decoration: underline;
+}
+.sfb-pop {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: 320px;
+}
+.sfb-pop-head {
+  display: flex;
+  gap: var(--sp-3);
+  border-bottom: 1px solid var(--divider, rgba(0, 0, 0, 0.06));
+  padding-bottom: 6px;
+}
+.sfb-pop-head button {
+  background: transparent;
+  border: 0;
+  color: var(--pt-primary, #6c5ce7);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  padding: 0;
+}
+.sfb-pop-head button:hover {
+  text-decoration: underline;
+}
+.sfb-checks {
+  overflow-y: auto;
+  max-height: 260px;
+}
+.sfb-checks :deep(.el-checkbox) {
+  display: flex;
+  margin-right: 0;
+  height: 26px;
+}
+.sfb-empty {
+  font-size: var(--fs-xs);
+  padding: 8px 0;
+  text-align: center;
+}
+.sfb-adv {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.adv-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.adv-row label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+.adv-range {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.adv-range .el-input-number {
+  flex: 1;
+  min-width: 0;
+}
+.adv-sep {
+  color: var(--text-muted);
+}
+.adv-time {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+}
+.time-chip {
+  background: transparent;
+  border: 1px solid var(--surface-border, rgba(15, 23, 42, 0.12));
+  border-radius: var(--radius-pill);
+  padding: 3px 12px;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  color: var(--text-strong);
+}
+.time-chip.on {
+  background: var(--pt-primary-bg);
+  border-color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+}
+:deep(.el-dropdown-menu__item.is-active) {
+  color: var(--pt-primary, #6c5ce7);
+  font-weight: 600;
+}
+@media (max-width: 720px) {
+  .sfb-row {
+    gap: var(--sp-1);
+  }
+}

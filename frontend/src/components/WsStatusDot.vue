@@ -22,7 +22,7 @@ const label = computed(() => (connected.value ? t('wsDot.online') : t('wsDot.off
     :aria-label="label"
   >
     <span class="ws-dot" :class="{ off: !connected }"></span>
-    <span v-if="!connected" class="ws-text">{{ t('wsDot.reconnecting') }}</span>
+    <span v-if="!connected" class="ws-text">{{ t('wsDot.offline') }}</span>
   </span>
 </template>
 

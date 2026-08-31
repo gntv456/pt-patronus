@@ -54,7 +54,7 @@ dependencies:
   # 见 lib/core/platform/file_picker.dart 与 docs/鸿蒙端完善.md。
   file_picker: ^8.1.4
   # 系统分享（备份导出存盘到「文件」/云盘/其它 app；并重导出 XFile）
-  share_plus: ^10.0.0
+  share_plus: ^12.0.2
   # 读取本机安装的客户端版本（pubspec version）显示客户端版本号，与后端版本区分
   package_info_plus: ^9.0.0
   # 在线更新：浏览器打开下载页（外链兜底，downloadUrl 非直链/桌面平台时）

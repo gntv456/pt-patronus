@@ -263,6 +263,27 @@
 .nc-chevron--open {
   transform: rotate(180deg);
 }
+.nc-group-read {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  border: none;
+  border-radius: var(--radius-xs, 6px);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background var(--dur-base) var(--ease-out-smooth),
+    color var(--dur-base) var(--ease-out-smooth);
+}
+.nc-group-read:hover {
+  background: var(--pt-success-bg, rgba(46, 204, 113, 0.14));
+  color: var(--pt-success, #2ecc71);
+}
 .nc-group-items {
   background: var(--surface-muted, rgba(0, 0, 0, 0.02));
 }

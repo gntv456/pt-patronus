@@ -45,7 +45,7 @@ function meta(s: NoticeSource) {
 }
 const badgeText = computed(() => {
   const n = urgentUnread.value || unread.value
-  return n > 99 ? '99+' : String(n)
+  return n > 999 ? '999+' : String(n)
 })
 
 // 通知来源 → 路由名映射，点击通知体跳转到对应页面。
@@ -108,6 +108,17 @@ async function onBodyClick(n: Notice) {
   if (routeName) {
     open.value = false
     router.push({ name: routeName })
+  }
+}
+
+// 组头一键已读：不用先展开再逐条处理（高频场景：47 条站点离线批量确认）
+async function readGroup(g: Group) {
+  try {
+    await Promise.all(g.items.filter((n) => !n.read).map((n) => readOneApi(n.id)))
+    g.items.forEach((n) => (n.read = true))
+    g.unreadCount = 0
+  } catch {
+    /* 静默：单条失败不阻断整组 */
   }
 }
 
@@ -256,6 +267,14 @@ function onGroupLeave(el: Element) {
               <span class="nc-chevron" :class="{ 'nc-chevron--open': isGroupExpanded(g.source) }">
                 <SptIcon name="chevron-down" :size="14" />
               </span>
+              <button
+                v-if="g.unreadCount > 0"
+                class="nc-group-read"
+                :title="t('nc.markGroupRead')"
+                @click.stop="readGroup(g)"
+              >
+                <SptIcon name="check-circle" :size="14" />
+              </button>
             </div>
             <!-- 展开后：逐条列出（带折叠动画） -->
             <Transition

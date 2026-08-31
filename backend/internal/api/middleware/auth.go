@@ -17,7 +17,21 @@ import (
 // cookie 通道是 Web 端收权路径：登录响应同时种 httpOnly cookie（XSS 读不到），
 // 浏览器同源请求自动携带；扩展/移动端继续走 Bearer（跨源 cookie 不发送，互不干扰）。
 // tvCache 非 nil 时做 TokenVersion 失效校验（登出/改绑后旧 token 拒绝）；为 nil 则跳过（兼容旧测试）。
-func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache) gin.HandlerFunc {
+//
+// skipCookiePaths：这些路径上浏览器无法控制 cookie 头（WebSocket 升级请求由浏览器
+// 自动附带 ptp_token，且应用无法添加 Authorization 头），鉴权由路由自身的 ticket/参数
+// 完成。此时残留的过期 cookie 不能抢先判 401 —— 否则用户会话一过期，WS 会在
+// JWTAuth 层被脏 cookie 永久拒绝（前端表现为实时推送静默停摆 + 每 3s 401 循环），
+// 连换新 ticket 都无法恢复。空切片保持原行为。
+func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache, skipCookiePaths ...string) gin.HandlerFunc {
+	shouldSkipCookie := func(path string) bool {
+		for _, p := range skipCookiePaths {
+			if path == p {
+				return true
+			}
+		}
+		return false
+	}
 	return func(c *gin.Context) {
 		// API Key 程序化访问（命中配置密钥即授予管理员身份）
 		if apiKey != "" {
@@ -34,8 +48,10 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache) gi
 		token := ""
 		if h := c.GetHeader("Authorization"); strings.HasPrefix(h, "Bearer ") {
 			token = strings.TrimPrefix(h, "Bearer ")
-		} else if ck, err := c.Cookie("ptp_token"); err == nil && ck != "" {
-			token = ck
+		} else if !shouldSkipCookie(c.Request.URL.Path) {
+			if ck, err := c.Cookie("ptp_token"); err == nil && ck != "" {
+				token = ck
+			}
 		}
 		if token == "" {
 			c.Next()

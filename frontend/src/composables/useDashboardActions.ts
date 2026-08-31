@@ -3,6 +3,7 @@
 import { computed } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useWs } from '@/composables/useWs'
+import { useNotices } from '@/composables/useNotices'
 import { useSiteConnectivity } from '@/composables/useSiteConnectivity'
 import { useDashboardSync } from '@/composables/useDashboardSync'
 import { useDashboardData } from '@/composables/useDashboardData'
@@ -21,7 +22,11 @@ export type DashboardAction = {
 }
 
 export function useDashboardActions() {
-  const { hrAlerts, cookieAlerts, notices } = useWs()
+  const { hrAlerts, cookieAlerts } = useWs()
+  // 未读通知数用通知中心共享状态（useNotices 单例，启动时拉全量 + WS 增量合并），
+  // 而非 useWs 的实时流——后者只有本次会话 WS 推到的通知，首屏必为 0，
+  // 造成「铃铛 99+、仪表盘 0」的自相矛盾。
+  const { unread: unreadCount } = useNotices()
   const { connectivity, refreshing, loadCached, refresh: refreshConnectivity } = useSiteConnectivity()
   const { syncErrors } = useDashboardSync()
   const { overview } = useDashboardData()
@@ -76,7 +81,6 @@ export function useDashboardActions() {
     return actions
   })
   const totalIssueCount = computed(() => dashboardActions.value.length)
-  const unreadCount = computed(() => notices.value.filter((n) => !n.read).length)
 
   // 区②站点健康分布环形图分段。
   const healthSegments = computed<RingSegment[]>(() => [

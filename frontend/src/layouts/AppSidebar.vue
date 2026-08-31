@@ -109,7 +109,7 @@ function noticeBadge(name: string): number {
               v-if="noticeBadge(item.name) > 0"
               class="nav-badge"
               :class="{ 'nav-badge--urgent': noticeUnread && noticeUrgent }"
-              >{{ noticeBadge(item.name) > 99 ? '99+' : noticeBadge(item.name) }}</span
+              >{{ noticeBadge(item.name) > 999 ? '999+' : noticeBadge(item.name) }}</span
             >
             <span v-if="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
             <button

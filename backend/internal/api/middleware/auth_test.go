@@ -129,3 +129,36 @@ func TestJWTAuth_CookieFallback(t *testing.T) {
 		t.Fatalf("garbage cookie should 401, got %d", w.Code)
 	}
 }
+
+// TestJWTAuth_SkipCookiePaths WS 等 ticket 鉴权路径必须跳过 cookie 通道：
+// 浏览器 WebSocket 升级请求无法省略自动携带的 ptp_token cookie，也无法补
+// Authorization 头。残留的过期 cookie 若在此路径上抢先判 401，会挡在路由自身
+// 的 ticket 校验之前，导致实时推送永久停摆（前端只能 3s 循环重连 401）。
+func TestJWTAuth_SkipCookiePaths(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	j := security.NewJWT("test-secret", 60)
+	mw := JWTAuth(j, "", nil, "/api/v1/ws")
+
+	req := httptest.NewRequest("GET", "/api/v1/ws?ticket=whatever", nil)
+	req.AddCookie(&http.Cookie{Name: "ptp_token", Value: "stale-garbage"})
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = req
+	mw(c)
+	if c.IsAborted() {
+		t.Fatal("stale cookie must not abort on skip-cookie path (ticket route owns auth)")
+	}
+	if _, ok := c.Get("uid"); ok {
+		t.Fatal("garbage cookie must not authenticate either")
+	}
+
+	// 非 skip 路径保持原行为：脏 cookie 依旧 401
+	r := gin.New()
+	r.GET("/x", JWTAuth(j, "", nil, "/api/v1/ws"), func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"ok": true}) })
+	req2 := httptest.NewRequest("GET", "/x", nil)
+	req2.AddCookie(&http.Cookie{Name: "ptp_token", Value: "stale-garbage"})
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req2)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("stale cookie off skip-path should 401, got %d", w.Code)
+	}
+}

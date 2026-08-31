@@ -164,6 +164,9 @@ function onClose() {
   // 若沿用旧 lastSeq/dirty，重连首帧到达前的窗口里 diff 判定会用过期基准。
   lastSeq = 0
   dirty = false
+  // 会话已失效（Bearer 过期/被登出）时不要无限重连：ws-ticket 换不到新 ticket，
+  // 每 3s 打一轮 401 只会刷日志并拖慢 http 拦截器里的会话跳转；http 拦截器已对
+  // 401/403 统一清态跳登录，这里停止重连即可。其余关闭（网络抖动/服务器重启）照常退避。
   scheduleReconnect()
 }
 
@@ -176,7 +179,14 @@ async function connect() {
   let ticket: string
   try {
     ticket = (await authApi.wsTicket()).ticket
-  } catch {
+  } catch (e: unknown) {
+    // 会话失效（401/403 VIP）：换不到 ticket 就别进入重连循环——
+    // http 拦截器已对 401/403 触发 expireSession() 跳登录，这里停止即可。
+    const status = (e as { response?: { status?: number } })?.response?.status
+    if (status === 401 || status === 403) {
+      stopped = true
+      return
+    }
     scheduleReconnect()
     return
   }

@@ -43,7 +43,11 @@ func Build(d *Deps) *gin.Engine {
 	if !d.Cfg.IsRelease() || metricsToken != "" {
 		engine.GET("/metrics", middleware.MetricsAuth(metricsToken), gin.WrapH(promhttp.Handler()))
 	}
-	engine.Use(middleware.JWTAuth(d.JWT, d.Cfg.APIKey, d.TVCache))
+	// /api/v1/ws：鉴权走一次性 ticket（query）。浏览器 WS 升级请求既无法带
+	// Authorization 头、也无法省略自动附带的 ptp_token cookie —— 对该路径跳过
+	// cookie 通道，避免过期残留 cookie 在 ticket 校验前抢先 401（实时推送停摆 +
+	// 前端重连风暴）。Bearer/API-Key 通道不受影响。
+	engine.Use(middleware.JWTAuth(d.JWT, d.Cfg.APIKey, d.TVCache, "/api/v1/ws"))
 	// 全局限流（每 IP 每秒）
 	globalRPS := d.Cfg.GlobalRatePerSec
 	if globalRPS <= 0 {

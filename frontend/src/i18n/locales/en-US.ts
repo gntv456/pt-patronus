@@ -999,7 +999,7 @@ export default {
       enableDirect: 'Enable direct link',
       directHint: 'Rewrite Emby file paths to CDN direct links',
       directBase: 'Direct link base',
-      directBaseHint: '/mediaserver/:id/direct/<path> → {base}/{path} 302',
+      directBaseHint: "/mediaserver/:id/direct/<path> → {'{base}'}/{path} 302",
     },
   },
   transfer: {

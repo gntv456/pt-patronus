@@ -993,7 +993,7 @@ export default {
       enableDirect: '启用直链',
       directHint: '把 Emby 文件路径改写到 CDN 直链',
       directBase: '直链基址',
-      directBaseHint: '/mediaserver/:id/direct/<path> → {基址}/{path} 302',
+      directBaseHint: "/mediaserver/:id/direct/<path> → {'{基址}'}/{path} 302",
     },
   },
   transfer: {

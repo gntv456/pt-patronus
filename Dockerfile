@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -trimpath -ldflags="-s -w -X github.com/hxpt/ptpatronus/internal/version.Version=${VERSION}" -o /out/ptpatronus ./cmd/ptpatronus
 
 # ---- 运行时 ----
-FROM alpine:3.20
+FROM alpine:3.24
 # apk 源默认官方；国内用 --build-arg ALPINE_MIRROR=mirrors.ustc.edu.cn 覆盖
 ARG ALPINE_MIRROR=""
 RUN if [ -n "$ALPINE_MIRROR" ]; then sed -i "s|dl-cdn.alpinelinux.org|$ALPINE_MIRROR|g" /etc/apk/repositories; fi && \

@@ -184,6 +184,8 @@ function renderItem(cfg, keyword, t, box) {
   title.className = 'title'
   title.textContent = t.title || t.name || '(无标题)'
   title.title = title.textContent
+  title.style.cursor = 'pointer'
+  title.onclick = () => openDetailDrawer(t)
   const meta = document.createElement('div')
   meta.className = 'meta'
   meta.textContent = [
@@ -205,9 +207,70 @@ function renderItem(cfg, keyword, t, box) {
     const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: t.detail_url || t.download_url })
     pushBtn.textContent = r && r.ok ? '✅ 已推送' : `⚠ ${String(r && r.error || '').slice(0, 12)}`
   }
-  actions.append(subBtn, pushBtn)
+  const detailBtn = document.createElement('button')
+  detailBtn.textContent = '详情'
+  detailBtn.onclick = () => openDetailDrawer(t)
+  actions.append(subBtn, pushBtn, detailBtn)
   div.append(title, meta, actions)
   box.appendChild(div)
+}
+
+// 详情抽屉：弹窗内查看种子完整信息并直达推送/站点，替代跳网页。
+let detailDrawer = null
+function openDetailDrawer(t) {
+  if (detailDrawer) detailDrawer.remove()
+  const mask = document.createElement('div')
+  mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;align-items:flex-end'
+  const sheet = document.createElement('div')
+  Object.assign(sheet.style, {
+    width: '100%', maxHeight: '72%', overflowY: 'auto', boxSizing: 'border-box',
+    background: '#1c222c', borderTop: '1px solid #333b48',
+    borderRadius: '12px 12px 0 0', padding: '14px 14px 18px',
+    font: '12.5px system-ui, sans-serif', color: '#e6e9ef',
+  })
+  const head = document.createElement('div')
+  head.style.cssText = 'font-weight:700; font-size:13px; margin-bottom:10px; line-height:1.5; word-break:break-all'
+  head.textContent = t.title || t.name || ''
+  sheet.appendChild(head)
+  const fields = [
+    ['站点', t.site_name || t.site || '—'],
+    ['大小', t.size && !Number.isFinite(+t.size) ? String(t.size) : (t.size ? fmtSize(+t.size) : '—')],
+    ['做种 / 吸血', `${t.seeders ?? '—'} / ${t.leechers ?? '—'}`],
+    ['促销', t.free ? (typeof t.free === 'string' ? t.free : '免费') : '无'],
+    ['发布时间', t.pubtime || t.time || '—'],
+  ]
+  for (const [k, v] of fields) {
+    const line = document.createElement('div')
+    line.style.cssText = 'display:flex; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.05)'
+    const kEl = document.createElement('span')
+    kEl.style.cssText = 'width:80px; flex:none; color:#636d7c'
+    kEl.textContent = k
+    const vEl = document.createElement('span')
+    vEl.style.wordBreak = 'break-all'
+    vEl.textContent = String(v)
+    line.append(kEl, vEl)
+    sheet.appendChild(line)
+  }
+  const btns = document.createElement('div')
+  btns.style.cssText = 'display:flex; gap:8px; margin-top:12px'
+  const push = document.createElement('button')
+  push.className = 'btn-primary'
+  push.textContent = '⬇ 推送下载'
+  push.onclick = async () => {
+    push.disabled = true; push.textContent = '推送中…'
+    const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: t.detail_url || t.download_url })
+    push.textContent = r && r.ok ? '✅ 已推送' : `⚠ ${String(r && r.error || '').slice(0, 12)}`
+  }
+  const open = document.createElement('button')
+  open.className = 'btn-ghost'
+  open.textContent = '打开站点页'
+  open.onclick = () => { if (t.detail_url) chrome.tabs.create({ url: t.detail_url }) }
+  btns.append(push, open)
+  sheet.appendChild(btns)
+  mask.appendChild(sheet)
+  mask.addEventListener('click', (ev) => { if (ev.target === mask) { mask.remove(); detailDrawer = null } })
+  document.body.appendChild(mask)
+  detailDrawer = mask
 }
 
 function renderMediaItem(cfg, m, box) {

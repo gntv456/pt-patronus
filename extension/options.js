@@ -312,7 +312,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ready = !!(saved.aiGateway.token && cfg.server)
     $('aiChat').style.display = ready ? '' : 'none'
     $('aiConfig').style.display = ready ? 'none' : ''
-    if (ready && !aiHistory.length) aiAppend('assistant', '已连接 LLM 网关。输入问题开始对话（会话仅存本页内存，关闭即清）。')
+    // 会话本地持久化：刷新/重开设置页不丢（对标 MP 会话管理;存最近 200 条）。
+    if (ready && !aiHistory.length) {
+      const kept = await chrome.storage.local.get({ aiHistory: [] })
+      aiHistory = Array.isArray(kept.aiHistory) ? kept.aiHistory.slice(-200) : []
+      if (aiHistory.length) {
+        for (const m of aiHistory) aiAppend(m.role, m.content)
+      } else {
+        aiAppend('assistant', '已连接 LLM 网关。输入问题开始对话（会话保存在本机，可点 🗑 清空）。')
+      }
+    }
 
     $('aiSave').onclick = async () => {
       await chrome.storage.local.set({ aiGateway: { token: $('aiToken').value.trim(), model: $('aiModel').value.trim() } })
@@ -324,7 +333,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     $('aiSend').onclick = aiSend
     $('aiInput').onkeydown = (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); aiSend() } }
-    $('aiClear').onclick = () => { aiHistory = []; $('aiMsgs').innerHTML = '' }
+    // 清空会话：内存 + 本机持久化一起清。
+    $('aiClear').onclick = async () => {
+      aiHistory = []
+      $('aiMsgs').innerHTML = ''
+      await chrome.storage.local.remove('aiHistory')
+      feedback('会话已清空')
+    }
+
+    // persistAi 会话落盘（每次成功往返后调用；截断最近 200 条防膨胀）。
+    async function persistAi() {
+      try { await chrome.storage.local.set({ aiHistory: aiHistory.slice(-200) }) } catch { /* 配额满忽略 */ }
+    }
 
     async function aiSend() {
       const text = $('aiInput').value.trim()
@@ -374,6 +394,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         if (!acc) assistantEl.textContent = '(空回复)'
         aiHistory.push({ role: 'assistant', content: acc })
+        persistAi()
       } catch (e) {
         assistantEl.textContent = `⚠ ${e.message}`
         assistantEl.style.color = 'var(--danger)'
@@ -715,6 +736,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         </td>
       </tr>`
     }).join('') : '<tr><td colspan="7" class="empty">该筛选下无站点</td></tr>'
+
+    // 差异汇总条（对标 MP 七项筛选的可读版）：一眼看清整体健康度与待办，
+    // 点分段词直接切到对应筛选——发现问题的路径从「逐行扫表」变「看汇总→点」。
+    const active = rows.filter((r) => r.s.is_active)
+    const diffNames = rows.filter((r) => r.state === 'diff').map((r) => esc(r.s.name))
+    const missNames = rows.filter((r) => r.state === 'miss').map((r) => esc(r.s.name))
+    const noSrvNames = rows.filter((r) => r.state === 'no-srv').map((r) => esc(r.s.name))
+    const seg = (label, n, cls, filter, names) => `<a href="#" data-f="${filter}" style="color:${n ? cls : 'var(--ink-3)'}; font-weight:600; text-decoration:none; cursor:pointer">${label} ${n}</a>${(names && names.length) ? `<span style="color:var(--ink-3)">（${names.slice(0, 6).join('、')}${names.length > 6 ? ' 等' : ''}）</span>` : ''}`
+    const sum = $('ckSummary')
+    sum.style.display = ''
+    sum.innerHTML = `共 ${rows.length} 站（启用 ${active.length}）· `
+      + seg('一致', counts.ok, 'var(--ok)', 'ok', [])
+      + ' · ' + seg('指纹不一致', counts.diff, 'var(--warn)', 'diff', diffNames)
+      + ' · ' + seg('浏览器未登录', rows.filter((r) => r.state === 'miss').length, 'var(--warn)', 'miss', missNames)
+      + (noSrvNames.length ? ' · ' + seg('服务器未录入', rows.filter((r) => r.state === 'no-srv').length, 'var(--ink-2)', 'miss', noSrvNames) : '')
+      + ` · <span style="color:var(--ink-3)">两侧都无 ${rows.filter((r) => r.state === 'both-miss').length}</span>`
+    for (const a of sum.querySelectorAll('a[data-f]')) {
+      a.onclick = (ev) => {
+        ev.preventDefault()
+        ckFilterState = a.dataset.f
+        renderCookies()
+      }
+    }
   }
 
   document.querySelectorAll('#ckFilter button').forEach((b) => {

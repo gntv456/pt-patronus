@@ -42,10 +42,10 @@ chrome.runtime.onInstalled.addListener(() => {
 // alarms 由浏览器持久调度（最小粒度 1 分钟，设备休眠时也会补触发）。
 const VAULT_AUTOLOCK_MINUTES = 10
 const AUTOLOCK_ALARM = 'ptp-vault-autolock'
-const SESSION_SECRET_KEYS = ['ptp_vault_entries', 'ptp_cred_entries']
+const SESSION_SECRET_KEYS = ['ptp_vault_entries', 'ptp_cred_entries', 'ptp_cred_pin']
 
 function lockVaults() {
-  // 清 storage.session 明文缓存（TOTP 条目 + 凭据条目）。
+  // 清 storage.session 明文缓存（TOTP 条目 + 凭据条目 + 解锁 PIN）。
   // options 页自身的内存态由其收到 storage.onChanged 后自行回锁定 UI。
   try { chrome.storage.session.remove(SESSION_SECRET_KEYS) } catch { /* 老版本无 session API */ }
 }
@@ -117,6 +117,21 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
       credAutofill(msg.host).then(sendResponse)
       return true
+    // 登录捕获·查重：content 检测到登录提交时问「这条账密是新的吗」。
+    // known=true（与库一致）content 不弹保存气泡；unknown/新值弹。只回布尔，不回凭据。
+    case 'ptp-cred-check': {
+      if (!trustedSender(sender)) { sendResponse({ known: 'untrusted' }); return false }
+      credCheckNew(msg.host, msg.username).then(sendResponse)
+      return true
+    }
+    // 登录捕获·保存：把 content 抓到的 {host, username, password} 存入凭据库。
+    // 凭据库经 options 页解锁后，明文条目缓存在 storage.session（含 PIN）——
+    // 只有该会话内能直接写库；锁定态返回 need-unlock，content 提示去设置页解锁。
+    case 'ptp-cred-save': {
+      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
+      credSaveCaptured(msg).then(sendResponse)
+      return true
+    }
     // 豆瓣/IMDb 页面注入按钮 → 打开 Web 搜索页带关键词（与右键菜单同路径）。
     case 'ptp-media-search':
       if (msg.keyword) openSearch(msg.keyword)
@@ -217,6 +232,83 @@ async function credAutofill(host) {
     }
   } catch (e) {
     return { ok: false, error: e.message }
+  }
+}
+
+// credEntriesForRead：取当前可读的明文条目（明文库或 session 缓存）；锁定态 null。
+async function credEntriesForRead() {
+  const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
+  if (!v) return null
+  if (v.plain !== undefined) return JSON.parse(v.plain)
+  const sess = await chrome.storage.session.get(['ptp_cred_entries'])
+  return (sess && sess.ptp_cred_entries) || null
+}
+
+// credCheckNew 登录捕获查重：同站同用户名且密码一致 → known；否则视为新凭据。
+async function credCheckNew(host, username) {
+  try {
+    const entries = await credEntriesForRead()
+    if (!entries) return { known: 'unknown' } // 库锁定/为空：仍让 content 弹保存气泡
+    const h = String(host || '').replace(/^www\./, '')
+    const { matchCred, hostOf } = await import(chrome.runtime.getURL('credentials.js'))
+    const hit = matchCred(entries, h)
+    if (!hit) return { known: false }
+    if (hit.username === username && hit.password) return { known: true }
+    return { known: false } // 新站 / 换了用户名 → 视为新凭据（保存时按 host+username 更新）
+  } catch (e) {
+    return { known: 'unknown' }
+  }
+}
+
+// credSaveCaptured 登录捕获保存：仅当凭据库本会话已解锁（options 页解锁把
+// {entries, pin} 缓存进 storage.session）才能直接重加密写库；否则提示先解锁。
+// 更新语义：同 host+username 的旧条目覆盖密码，否则新增。
+async function credSaveCaptured(msg) {
+  try {
+    const sess = await chrome.storage.session.get(['ptp_cred_entries', 'ptp_cred_pin'])
+    const local = await chrome.storage.local.get('ptp_credentials')
+    const vault = local.ptp_credentials
+    if (!vault) return { ok: false, error: 'no-vault' }
+    // 明文库（无 PIN）直接写
+    if (vault.plain !== undefined) {
+      const entries = JSON.parse(vault.plain)
+      await upsertCaptured(entries, msg)
+      await chrome.storage.local.set({ ptp_credentials: { plain: JSON.stringify(entries) } })
+      return { ok: true }
+    }
+    const pin = sess && sess.ptp_cred_pin
+    const entries = sess && sess.ptp_cred_entries
+    if (!pin || !entries) return { ok: false, error: 'need-unlock' }
+    await upsertCaptured(entries, msg)
+    const { saveCredVault } = await import(chrome.runtime.getURL('credentials.js'))
+    await saveCredVault(pin, entries)
+    await chrome.storage.session.set({ ptp_cred_entries: entries })
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
+}
+
+// upsertCaptured 把捕获的登录并入条目列表：同 host+username 覆盖密码，否则新增。
+async function upsertCaptured(entries, msg) {
+  const { hostOf } = await import(chrome.runtime.getURL('credentials.js'))
+  const h = hostOf(msg.url || msg.host)
+  const i = entries.findIndex((e) => e.username === msg.username && hostOf(e.url) === h)
+  if (i >= 0) {
+    entries[i].password = msg.password
+    entries[i].updated_at = Date.now()
+    if (msg.url && !entries[i].url) entries[i].url = msg.url
+  } else {
+    entries.unshift({
+      id: `c_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      title: msg.title || msg.host || '',
+      username: msg.username || '',
+      password: msg.password || '',
+      url: msg.url || '',
+      group: '',
+      notes: '',
+      updated_at: Date.now(),
+    })
   }
 }
 

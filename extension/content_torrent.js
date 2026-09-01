@@ -1,6 +1,7 @@
 // content script：PT 站种子页增强（对标 PT-depiler / PT-Plugin-Plus）。
 // 1) 详情页：右下「⬇ 推送到 PTPatronus」浮钮（download.php?id= / unit3d / magnet 识别）
-// 2) 列表页（NexusPHP torrents.php 等）：顶部批量工具栏——下载当前页全部 / 复制全部链接
+// 2) 列表页（NexusPHP torrents.php 等）：右下角悬浮球（N 个种子 ⬇）——点击上弹
+//    批量菜单（全部推送 / 复制链接 / 收藏），不再挤占页面顶部
 // 3) 免费/促销标签高亮：NexusPHP pro_free/pro_free2up/pro_50pctdown 等图标行首加彩色徽标
 // 命名空间隔离：全部挂 ptp- 前缀，避免污染站点样式。
 
@@ -79,37 +80,61 @@
     }, 3200)
   }
 
-  // —— 列表页批量工具栏 ——
+  // —— 列表页批量工具：右下角悬浮球 + 上弹菜单 ——
+  // 旧版是 sticky 顶栏（挤占页面顶部、推下站点内容）；改为与详情页浮钮同区的
+  // 悬浮球：平时只显示「N 个种子 ⬇」小球，点击向上弹出三个操作，再点收起。
   let bar = null
+  let menu = null
+  let listUrls = []
   function ensureListBar() {
     const urls = findListURLs()
     if (!urls.length) {
-      if (bar) { bar.remove(); bar = null }
+      if (bar) { bar.remove(); bar = null; menu = null }
       return
     }
-    if (bar && document.getElementById('ptp-listbar')) {
+    listUrls = urls
+    if (bar && document.getElementById('ptp-listfab')) {
       bar.querySelector('.ptp-count').textContent = `${urls.length} 个种子`
       return
     }
     bar = document.createElement('div')
-    bar.id = 'ptp-listbar'
+    bar.id = 'ptp-listfab'
     Object.assign(bar.style, {
-      position: 'sticky', top: '0', zIndex: 2147483645,
-      display: 'flex', gap: '10px', alignItems: 'center',
-      padding: '8px 12px', marginBottom: '6px',
+      position: 'fixed', right: '18px', bottom: '18px', zIndex: 2147483646,
+      display: 'flex', alignItems: 'center', gap: '7px',
+      padding: '9px 14px', borderRadius: '22px', cursor: 'pointer',
       background: 'rgba(27,30,40,.94)', color: '#e8eaf0',
-      font: '600 13px system-ui, sans-serif', borderBottom: '1px solid #3a3f4f',
+      font: '600 13px system-ui, sans-serif', boxShadow: '0 4px 14px rgba(0,0,0,.28)',
+      userSelect: 'none', border: '1px solid #3a3f4f',
     })
-    bar.innerHTML = `<span class="ptp-count">${urls.length} 个种子</span>`
+    bar.innerHTML = `<span class="ptp-count">${urls.length} 个种子</span><span style="font-size:15px">⬇</span>`
+    bar.addEventListener('click', (ev) => {
+      ev.preventDefault()
+      ev.stopPropagation()
+      toggleMenu()
+    })
+    document.documentElement.appendChild(bar)
+
+    menu = document.createElement('div')
+    menu.id = 'ptp-listmenu'
+    Object.assign(menu.style, {
+      position: 'fixed', right: '18px', bottom: '64px', zIndex: 2147483646,
+      display: 'none', flexDirection: 'column', gap: '6px',
+      padding: '8px', borderRadius: '12px',
+      background: 'rgba(27,30,40,.97)', color: '#e8eaf0',
+      font: '600 13px system-ui, sans-serif', boxShadow: '0 6px 20px rgba(0,0,0,.35)',
+      border: '1px solid #3a3f4f',
+    })
     const mk = (text, bg, onclick) => {
       const b = document.createElement('button')
       b.textContent = text
       Object.assign(b.style, {
-        padding: '5px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-        background: bg, color: '#fff', font: '600 12px system-ui, sans-serif',
+        padding: '7px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+        background: bg, color: '#fff', font: '600 12.5px system-ui, sans-serif',
+        textAlign: 'left', whiteSpace: 'nowrap',
       })
-      b.addEventListener('click', onclick)
-      bar.appendChild(b)
+      b.addEventListener('click', (ev) => { ev.stopPropagation(); onclick(ev) })
+      menu.appendChild(b)
       return b
     }
     mk('⬇ 全部推送下载', 'linear-gradient(135deg,#4f7cff,#7a5cff)', async (ev) => {
@@ -118,7 +143,7 @@
       let ok = 0
       let fail = 0
       b.textContent = '推送中…'
-      for (const u of urls) {
+      for (const u of listUrls) {
         const r = await chrome.runtime.sendMessage({ type: 'ptp-push-download', url: u })
         if (r && r.ok) ok++
         else fail++
@@ -129,7 +154,7 @@
     mk('📋 复制全部链接', '#2c3145', async (ev) => {
       const b = ev.target
       try {
-        await navigator.clipboard.writeText(urls.join('\n'))
+        await navigator.clipboard.writeText(listUrls.join('\n'))
         b.textContent = '✅ 已复制'
       } catch { b.textContent = '⚠ 复制失败' }
       setTimeout(() => { b.textContent = '📋 复制全部链接' }, 2500)
@@ -137,7 +162,7 @@
     mk('⭐ 收藏本页种子', '#8a6d1a', async (ev) => {
       const b = ev.target
       let n = 0
-      for (const u of urls) {
+      for (const u of listUrls) {
         const r = await chrome.runtime.sendMessage({
           type: 'ptp-favorite', url: u,
           title: (document.querySelector('a[href*="details.php"]')?.textContent || '').trim(),
@@ -148,7 +173,15 @@
       b.textContent = `⭐ 已收藏 ${n}`
       setTimeout(() => { b.textContent = '⭐ 收藏本页种子' }, 2500)
     })
-    document.body.prepend(bar)
+    document.documentElement.appendChild(menu)
+    // 点球外任意处收起菜单。
+    setTimeout(() => {
+      document.addEventListener('click', () => { if (menu) menu.style.display = 'none' }, { passive: true })
+    }, 0)
+  }
+  function toggleMenu() {
+    if (!menu) return
+    menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex'
   }
 
   // —— 免费/促销标签高亮（NexusPHP 图标体系）——

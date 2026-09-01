@@ -188,15 +188,16 @@
       <section class="glass panel">
         <div class="panel-title">站点白名单（内容脚本注入范围）</div>
         <div class="hint">
-          出于安全收权：扩展不再申请全站权限，页面增强（推送下载/TOTP/凭据/验证码 OCR）
-          只会注入白名单内的站点。登录后自动从服务器同步；服务器未登记的站点可手动添加。
+          出于安全收权：扩展不再申请全站权限，页面增强（推送下载/TOTP/凭据填充与保存/验证码 OCR）
+          只会注入白名单内的站点。PT 站登录后自动从服务器同步；<b>任意网站</b>（邮箱/论坛/内网等）
+          想用账号密码自动填充与保存，把域名手动添加进白名单即可。
         </div>
         <div class="actions" style="margin-top:8px">
           <button class="btn-ghost" id="syncHosts">⟳ 从服务器同步</button>
         </div>
         <div id="hostList" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px"></div>
         <form id="addHostForm" style="display:flex; gap:8px; margin-top:10px">
-          <input id="addHostInput" placeholder="example.pt（回车添加）" style="flex:1" />
+          <input id="addHostInput" placeholder="任意域名，如 example.pt / mail.qq.com（回车添加）" style="flex:1" />
           <button type="submit" class="btn-primary">添 加</button>
         </form>
       </section>

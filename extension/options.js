@@ -85,7 +85,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   let credUnlocked = false
 
   async function syncCredSession() {
-    try { await chrome.storage.session.set({ ptp_cred_entries: credEntries }) } catch { /* 老版本无 session API */ }
+    // ptp_cred_pin 仅存 storage.session（浏览器关闭即清），供登录捕获
+    // （content→background ptp-cred-save）在解锁会话内直接重加密写库。
+    try {
+      await chrome.storage.session.set({ ptp_cred_entries: credEntries, ...(credPin ? { ptp_cred_pin: credPin } : {}) })
+    } catch { /* 老版本无 session API */ }
   }
   async function persistCreds() {
     await saveCredVault(credPin, credEntries)
@@ -143,7 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     credUnlocked = false
     credPin = ''
     credEntries = []
-    try { chrome.storage.session.remove('ptp_cred_entries') } catch { /* noop */ }
+    try { chrome.storage.session.remove(['ptp_cred_entries', 'ptp_cred_pin']) } catch { /* noop */ }
     $('credMain').style.display = 'none'
     $('credGate').style.display = ''
     $('credPin').value = ''

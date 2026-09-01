@@ -15,7 +15,7 @@ import {
 } from './downloads.js'
 import { getFavorites, removeFavorite, getHistory } from './collection.js'
 import { parseOTPAuth, totpNow, saveVault, loadVault } from './totp.js'
-import { loadCredVault, saveCredVault, newCredId, parseBitwarden } from './credentials.js'
+import { loadCredVault, saveCredVault, newCredId, parseBitwarden, openVault, sealVault } from './credentials.js'
 import { privacyOn as privacyOnFn, maskSecret, maskDomain } from './privacy.js'
 import { esc, $, fmtTime, baseUrl } from './util.js'
 import { initStatsPage } from './options_stats.js'
@@ -117,8 +117,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       return
     }
     try {
-      const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
       // 明文库存量迁移：空 PIN 语义只在「库里还是明文」这一次迁移时成立。
+      // server 模式下明文库可能只在服务器上（openVault 取回），本地迁移路径不变。
+      let v = await chrome.storage.local.get('ptp_credentials').then((r) => r.ptp_credentials)
+      if (!v || v.plain === undefined) { try { v = await openVault() } catch { /* 未登录回退 local 判定 */ } }
       if (v && v.plain !== undefined) {
         credEntries = JSON.parse(v.plain)
         credUnlocked = true
@@ -193,9 +195,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   async function initCredsPage() {
-    // 收权改造：不再自动解锁明文库（明文密码落盘默认不可接受）。
-    // 存量明文库 → gate 上展示迁移提示；用户输入新 PIN 提交时
-    // credTryUnlock('') 先读明文 → persistCreds 用新 PIN 重加密，一次性完成迁移。
+    // 存储模式：local=仅本机 / server=加密库随账号（PIN 不上传，服务器只存密文 blob）。
+    // 切到 server：已解锁→直接整库迁移；未解锁但有本地信封→原密文 PUT 上去（无需 PIN）；
+    // 未解锁且无库→只改标记（之后保存自动走服务器）。切回 local：sealVault 本地镜像一直在，直接回落。
+    try {
+      const { getCredStoreMode, setCredStoreMode } = await import('./credentials.js')
+      const sel = $('credStoreMode')
+      sel.value = await getCredStoreMode()
+      sel.onchange = async () => {
+        const next = sel.value
+        if (next === 'server' && !isConfigured(await getConfig())) {
+          feedback('服务器保管需先在「服务器」页登录', 'err'); sel.value = 'local'; return
+        }
+        try {
+          if (next === 'server' && !credUnlocked) {
+            // 未解锁：有本地信封就原密文上传（服务器只收密文，不需要 PIN）
+            const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
+            if (v && v.plain === undefined) {
+              const cfg = await getConfig()
+              await api(cfg, '/api/v1/auth/preferences/ext_cred_vault', { method: 'PUT', body: JSON.stringify({ value: JSON.stringify(v) }) })
+            }
+          }
+          if (next === 'server' && credUnlocked && credEntries) await sealVault(credPin, credEntries)
+          await setCredStoreMode(next)
+          feedback(next === 'server' ? '已切换：凭据库加密保管到服务器（本机保留镜像，离线可用）' : '已切换：凭据仅存本机')
+        } catch (e) { feedback(`切换失败：${e.message || e}`, 'err'); sel.value = next === 'server' ? 'local' : 'server' }
+      }
+    } catch { /* noop */ }
+    // 明文库存量迁移提示：明文库只可能存在于本机（旧版本写入），直读本地即可。
     try {
       const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
       const hint = $('credPlainHint')
@@ -527,13 +554,79 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   showSession(cfg.user, !!(cfg.hxptCookie || (cfg.hxptCreds && cfg.hxptCreds.username)))
 
-  // ================= 站点白名单管理（收权：内容脚本注入范围） =================
+  // ================= 站点范围管理（黑名单模型：默认全站可用） =================
+  // 黑名单模型依赖全站 optional host 权限——这里给一个一键授予按钮
+  // （chrome.permissions.request 必须在用户手势内调用，所以放设置页按钮而不是首次安装）。
+  const refreshGrantStatus = async () => {
+    const st = $('grantStatus')
+    if (!st) return
+    try {
+      const has = await chrome.permissions.contains({ origins: ['http://*/*', 'https://*/*'] })
+      st.textContent = has ? '✅ 已授予全部站点' : '未授予（增强只在白名单/已授权站点生效）'
+      st.style.color = has ? 'var(--ok, #4caf7d)' : 'var(--ink-2, #98a0b3)'
+    } catch { st.textContent = '' }
+  }
+  $('grantAllSites').onclick = async () => {
+    try {
+      const granted = await chrome.permissions.request({ origins: ['http://*/*', 'https://*/*'] })
+      if (granted) {
+        feedback('已授予全部站点权限——默认所有网站可用，黑名单站点除外')
+        chrome.runtime.sendMessage({ type: 'ptp-inject-all-tabs' }).catch(() => {})
+      } else {
+        feedback('未授予全站权限：可逐站使用，或稍后再试', 'info')
+      }
+    } catch (e) { feedback(`授权失败：${e.message || e}`, 'err') }
+    refreshGrantStatus()
+  }
+  refreshGrantStatus()
+
+  const renderBlockLists = async () => {
+    const { getSiteBlacklist, getCredBlacklist } = await import('./siteblock.js')
+    const bl = await getSiteBlacklist()
+    const cbl = await getCredBlacklist()
+    const mkPills = (box, hosts, onRemove) => {
+      const el = $(box)
+      el.innerHTML = hosts.length
+        ? hosts.map((h) => `<span class="tag-pill pill-dim" data-host="${esc(h)}" style="cursor:pointer" title="点击移除">${esc(h)} ✕</span>`).join('')
+        : '<span class="hint">（空——默认全部站点可用）</span>'
+      for (const p of el.querySelectorAll('[data-host]')) {
+        p.onclick = async () => { await onRemove(p.dataset.host); renderBlockLists() }
+      }
+    }
+    const { removeSiteBlacklist, removeCredBlacklist } = await import('./siteblock.js')
+    mkPills('blockList', bl, removeSiteBlacklist)
+    mkPills('credBlockList', cbl, removeCredBlacklist)
+  }
+  renderBlockLists()
+
+  $('addBlockForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault()
+    const raw = $('addBlockInput').value.trim()
+    if (!raw) return
+    const { addSiteBlacklist } = await import('./siteblock.js')
+    const list = await addSiteBlacklist([raw])
+    $('addBlockInput').value = ''
+    feedback(`已加入黑名单（共 ${list.length} 个域），该站点上扩展完全静默`)
+    renderBlockLists()
+  })
+  $('addCredBlockForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault()
+    const raw = $('addCredBlockInput').value.trim()
+    if (!raw) return
+    const { addCredBlacklist } = await import('./siteblock.js')
+    const list = await addCredBlacklist([raw])
+    $('addCredBlockInput').value = ''
+    feedback(`已加入凭据黑名单（共 ${list.length} 个域），该站不保存/不填充密码`)
+    renderBlockLists()
+  })
+
+  // ================= PT 站点白名单（Cookie 台账用） =================
   const renderHosts = async () => {
     const { getSiteHosts, removeSiteHost } = await import('./sitelist.js')
     const hosts = await getSiteHosts()
     const box = $('hostList')
     if (!hosts.length) {
-      box.innerHTML = '<span class="hint">白名单为空——页面增强不会注入任何站点。登录后自动同步，或点上方按钮手动同步。</span>'
+      box.innerHTML = '<span class="hint">白名单为空——Cookie 台账/自动同步未覆盖任何站点。登录后自动同步，或点上方按钮手动同步。</span>'
       return
     }
     box.innerHTML = hosts.map((h) =>

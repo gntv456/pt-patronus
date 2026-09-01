@@ -3,7 +3,69 @@
 // 存 chrome.storage.local；未设 PIN 时明文 JSON（同 ptp_vault 语义）。
 // 条目：{id, title, username, password, url, group, notes, totp_secret?, updated_at}
 // 分组自由文本（内网 / PT / 自定义）；Bitwarden JSON 导入按 uri 域名匹配站点。
+import { api } from './api.js'
+
 const KEY = 'ptp_credentials'
+// 凭据存储模式：'local'（默认，加密存本机）| 'server'（加密 blob 存服务器用户偏好，
+// 跨设备通用——任意浏览器登录同一账号即可取回；PIN 不上传，密文离线不可解）。
+const MODE_KEY = 'credStoreMode'
+const SERVER_PREF_KEY = 'ext_cred_vault' // /auth/preferences/<key>，值上限 64KB
+
+export async function getCredStoreMode() {
+  try {
+    const v = await chrome.storage.local.get(MODE_KEY)
+    return v && v[MODE_KEY] === 'server' ? 'server' : 'local'
+  } catch {
+    return 'local'
+  }
+}
+export async function setCredStoreMode(mode) {
+  await chrome.storage.local.set({ [MODE_KEY]: mode === 'server' ? 'server' : 'local' })
+  return mode === 'server' ? 'server' : 'local'
+}
+
+// sealVault / openVault：把「加密信封对象」整存整取——本地走 storage.local，
+// 服务器模式走用户偏好端点（value 必须是合法 JSON 串：信封直接 JSON.stringify）。
+export async function sealVault(pin, entries) {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const key = await deriveKey(pin, b64(salt))
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(entries)))
+  const envelope = { salt: b64(salt), iv: b64(iv), data: b64(ct), v: 1, updated_at: Date.now() }
+  const mode = await getCredStoreMode()
+  if (mode === 'server') {
+    // 服务器偏好值上限 64KB：超限时给出可读错误（而不是裸的 HTTP 400）
+    const blob = JSON.stringify(envelope)
+    if (blob.length > 64 * 1024) {
+      throw new Error('凭据库超过服务器 64KB 上限，请删减条目或改用本机存储')
+    }
+    const cfg = await (await import(chrome.runtime.getURL('api.js'))).getConfig()
+    await api(cfg, `/api/v1/auth/preferences/${SERVER_PREF_KEY}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value: JSON.stringify(envelope) }),
+    })
+    // 服务器模式同时留本地镜像（离线兜底，下次切换回 local 无缝）
+    await chrome.storage.local.set({ [KEY]: envelope })
+    return
+  }
+  await chrome.storage.local.set({ [KEY]: envelope })
+}
+
+export async function openVault() {
+  const mode = await getCredStoreMode()
+  if (mode === 'server') {
+    try {
+      const cfg = await (await import(chrome.runtime.getURL('api.js'))).getConfig()
+      const r = await api(cfg, `/api/v1/auth/preferences/${SERVER_PREF_KEY}`)
+      if (r && r.value && r.value !== '{}') {
+        const env = JSON.parse(r.value)
+        if (env && env.salt) return env
+      }
+    } catch { /* 服务器不可达/未登录：回退本地镜像 */ }
+  }
+  const { [KEY]: v } = await chrome.storage.local.get(KEY)
+  return v || null
+}
 const SALT = crypto.getRandomValues(new Uint8Array(16))
 
 function b64(u8) {
@@ -21,21 +83,16 @@ async function deriveKey(pin, saltB64) {
 }
 
 export async function saveCredVault(pin, entries) {
-  const data = JSON.stringify(entries)
   if (!pin) {
     // 收权改造：不再支持明文落盘——空 PIN 一律拒绝。存量明文库由 options 页
     // 首次解锁流程强制迁移重加密；loadCredVault 保留明文读取仅服务于该迁移路径。
     throw new Error('PIN required (plaintext vault no longer supported)')
   }
-  const salt = crypto.getRandomValues(new Uint8Array(16))
-  const iv = crypto.getRandomValues(new Uint8Array(12))
-  const key = await deriveKey(pin, b64(salt))
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(data))
-  await chrome.storage.local.set({ [KEY]: { salt: b64(salt), iv: b64(iv), data: b64(ct) } })
+  await sealVault(pin, entries)
 }
 
 export async function loadCredVault(pin = '') {
-  const { [KEY]: v } = await chrome.storage.local.get(KEY)
+  const v = await openVault()
   if (!v) return []
   if (v.plain !== undefined) return JSON.parse(v.plain)
   if (!pin) throw new Error('locked')

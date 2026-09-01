@@ -7,6 +7,7 @@ import { addHistory, addFavorite } from './collection.js'
 import { api, getConfig, baseUrl } from './api.js'
 import { initAutosync, maybeSyncOnWake, syncNow } from './autosync.js'
 import { getSiteHosts, isSiteHost } from './sitelist.js'
+import { isBlocked, credAllowed } from './siteblock.js'
 
 initAutosync()
 injectAllTabs().catch(() => {})
@@ -86,12 +87,15 @@ chrome.commands.onCommand.addListener(async (command) => {
 // 安全约束（收权改造）：敏感消息（TOTP/凭据/OCR——会回传验证码、密码、验证内容的）
 // 只接受来自扩展自身页面或白名单站点页面的 sender；任何站点上的页面脚本都无法
 // 伪造 sender.origin，因此被攻陷的普通网站拿不到 TOTP/凭据。
-function trustedSender(sender) {
+// 站点范围模型：默认全站可用，黑名单禁用。扩展自身页面恒信任；
+// 站点页面只要不在完全黑名单内即信任（黑名单模型替代旧白名单判定）。
+async function trustedSender(sender) {
   if (!sender) return false
   if (sender.id !== chrome.runtime.id) return false
-  // 扩展自身页面（options/popup）
   if (!sender.origin || sender.origin.startsWith(chrome.runtime.getURL(''))) return true
-  return isSiteHost(new URL(sender.origin).hostname)
+  let host = ''
+  try { host = new URL(sender.origin).hostname } catch { return false }
+  return !(await isBlocked(host))
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
@@ -107,29 +111,40 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // （解锁时把明文条目缓存进 storage.session）或库未设 PIN 时可用；
     // PIN 锁定态保持锁定语义，不后台解密。仅白名单站点可请求。
     case 'ptp-totp-autofill':
-      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
-      totpAutofill(msg.host).then(sendResponse)
+      trustedSender(sender).then((ok) => {
+        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
+        totpAutofill(msg.host).then(sendResponse)
+      })
       return true
     // 凭据自动填充：content_creds.js 按 hostname 匹配本地凭据库，回单条凭据。
     // 同 TOTP 语义：仅当凭据页本轮会话已解锁（明文缓存 storage.session）或
     // 未设 PIN 时可用；只回匹配的那一条，页面拿不到整库。仅白名单站点可请求。
     case 'ptp-cred-autofill':
-      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
-      credAutofill(msg.host).then(sendResponse)
+      trustedSender(sender).then(async (ok) => {
+        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
+        if (!(await credAllowed(new URL(sender.origin).hostname))) { sendResponse({ ok: false, error: 'cred-blacklisted' }); return }
+        credAutofill(msg.host).then(sendResponse)
+      })
       return true
     // 登录捕获·查重：content 检测到登录提交时问「这条账密是新的吗」。
     // known=true（与库一致）content 不弹保存气泡；unknown/新值弹。只回布尔，不回凭据。
     case 'ptp-cred-check': {
-      if (!trustedSender(sender)) { sendResponse({ known: 'untrusted' }); return false }
-      credCheckNew(msg.host, msg.username).then(sendResponse)
+      trustedSender(sender).then(async (ok) => {
+        if (!ok) { sendResponse({ known: 'untrusted' }); return }
+        if (!(await credAllowed(msg.host))) { sendResponse({ known: true }); return } // 凭据黑名单:静默当作已知,不弹保存
+        credCheckNew(msg.host, msg.username).then(sendResponse)
+      })
       return true
     }
     // 登录捕获·保存：把 content 抓到的 {host, username, password} 存入凭据库。
     // 凭据库经 options 页解锁后，明文条目缓存在 storage.session（含 PIN）——
     // 只有该会话内能直接写库；锁定态返回 need-unlock，content 提示去设置页解锁。
     case 'ptp-cred-save': {
-      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
-      credSaveCaptured(msg).then(sendResponse)
+      trustedSender(sender).then(async (ok) => {
+        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
+        if (!(await credAllowed(msg.host))) { sendResponse({ ok: false, error: 'cred-blacklisted' }); return }
+        credSaveCaptured(msg).then(sendResponse)
+      })
       return true
     }
     // 豆瓣/IMDb 页面注入按钮 → 打开 Web 搜索页带关键词（与右键菜单同路径）。
@@ -141,9 +156,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // （管理员 Key；服务端配置 PaddleOCR/simple/ddddoc 端点后生效，未配置静默回退人工输入）。
     // 仅白名单站点可请求（截图内容可能包含站点敏感页面信息）。
     case 'ptp-ocr-captcha':
-      if (!trustedSender(sender)) { sendResponse({ ok: false, error: 'untrusted-sender' }); return false }
-      if (msg.image) ocrCaptcha(msg.image).then(sendResponse)
-      else sendResponse({ ok: false, error: 'no-image' })
+      trustedSender(sender).then((ok) => {
+        if (!ok) { sendResponse({ ok: false, error: 'untrusted-sender' }); return }
+        if (msg.image) ocrCaptcha(msg.image).then(sendResponse)
+        else sendResponse({ ok: false, error: 'no-image' })
+      })
       return true
     // 跨站收藏：详情页浮钮长按/右键或批量栏收藏按钮写入本机收藏夹。
     case 'ptp-favorite':
@@ -165,6 +182,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     // options 页保险库活动心跳：解锁/每次填充回执时重置自动锁定倒计时。
     case 'ptp-vault-activity':
       armVaultAutolockInBg()
+      sendResponse({ ok: true })
+      return false
+    // options 页「授予全部站点权限」成功后：对已打开页补注入（新授权的站点立即生效）。
+    case 'ptp-inject-all-tabs':
+      injectAllTabs().catch(() => {})
       sendResponse({ ok: true })
       return false
     default:
@@ -214,7 +236,17 @@ async function totpAutofill(host) {
 // PIN 锁定态不后台解密（与 TOTP 锁定语义一致）。只回匹配条目的填充字段。
 async function credAutofill(host) {
   try {
-    const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
+    // 跨设备（server 模式）本地可能无信封：credEntriesForRead 会取服务器并落本地镜像
+    const v = (await chrome.storage.local.get('ptp_credentials')).ptp_credentials
+      || (await (async () => {
+        try {
+          const { getCredStoreMode, openVault } = await import(chrome.runtime.getURL('credentials.js'))
+          if ((await getCredStoreMode()) !== 'server') return null
+          const sv = await openVault()
+          if (sv && sv.salt) await chrome.storage.local.set({ ptp_credentials: sv })
+          return sv
+        } catch { return null }
+      })())
     let entries = null
     if (v && v.plain !== undefined) {
       entries = JSON.parse(v.plain)
@@ -236,8 +268,20 @@ async function credAutofill(host) {
 }
 
 // credEntriesForRead：取当前可读的明文条目（明文库或 session 缓存）；锁定态 null。
+// server 模式跨设备场景：本地无信封时先用本地镜像/服务器信封补一个「库存在」的信号——
+// 解密仍需用户在 options 输 PIN（session 缓存才有明文），这里只保证 check/autofill 不误判 no-vault。
 async function credEntriesForRead() {
-  const { ptp_credentials: v } = await chrome.storage.local.get('ptp_credentials')
+  let v = (await chrome.storage.local.get('ptp_credentials')).ptp_credentials
+  if (!v) {
+    // 本地无库：server 模式下信封可能在服务器（换设备首次使用），取回后写本地镜像
+    try {
+      const { getCredStoreMode, openVault } = await import(chrome.runtime.getURL('credentials.js'))
+      if ((await getCredStoreMode()) === 'server') {
+        v = await openVault()
+        if (v && v.salt) await chrome.storage.local.set({ ptp_credentials: v })
+      }
+    } catch { /* 未登录/离线：按无库处理 */ }
+  }
   if (!v) return null
   if (v.plain !== undefined) return JSON.parse(v.plain)
   const sess = await chrome.storage.session.get(['ptp_cred_entries'])
@@ -266,8 +310,14 @@ async function credCheckNew(host, username) {
 async function credSaveCaptured(msg) {
   try {
     const sess = await chrome.storage.session.get(['ptp_cred_entries', 'ptp_cred_pin'])
-    const local = await chrome.storage.local.get('ptp_credentials')
-    const vault = local.ptp_credentials
+    let vault = (await chrome.storage.local.get('ptp_credentials')).ptp_credentials
+    if (!vault) {
+      // server 模式换设备：本地无库，从服务器取信封（保存时 saveCredVault 会再 PUT 回去）
+      try {
+        const { getCredStoreMode, openVault } = await import(chrome.runtime.getURL('credentials.js'))
+        if ((await getCredStoreMode()) === 'server') vault = await openVault()
+      } catch { /* 未登录/离线：按无库处理 */ }
+    }
     if (!vault) return { ok: false, error: 'no-vault' }
     // 明文库（无 PIN）直接写
     if (vault.plain !== undefined) {
@@ -281,7 +331,7 @@ async function credSaveCaptured(msg) {
     if (!pin || !entries) return { ok: false, error: 'need-unlock' }
     await upsertCaptured(entries, msg)
     const { saveCredVault } = await import(chrome.runtime.getURL('credentials.js'))
-    await saveCredVault(pin, entries)
+    await saveCredVault(pin, entries) // 双模式：本地或服务器（sealVault 内部按模式分流）
     await chrome.storage.session.set({ ptp_cred_entries: entries })
     return { ok: true }
   } catch (e) {
@@ -382,8 +432,9 @@ function unmarkTab(tabId) { injectedTabs.delete(tabId) }
 async function injectIfAllowed(tabId, url) {
   let host = ''
   try { host = new URL(url).hostname } catch { return }
-  const ok = await isSiteHost(host)
-  if (!ok) return
+  // 黑名单模型：默认全部站点注入增强；完全黑名单内跳过。
+  // 受限页（chrome:// 等）executeScript 会抛错,由下方 catch 忽略。
+  if (await isBlocked(host)) return
   const done = injectedTabs.get(tabId) || new Set()
   const files = ALL_FILES.filter((f) => !done.has(f))
   if (!files.length) return
@@ -413,9 +464,11 @@ chrome.webNavigation.onCommitted.addListener((details) => {
 })
 chrome.tabs.onRemoved.addListener((tabId) => unmarkTab(tabId))
 
-// 白名单变化（options 同步/手动增删）→ 对已打开页补注入新命中站点。
+// 站点范围变化（白名单/黑名单增删）→ 重新评估已打开页。
+// 黑名单新增本应撤销注入——executeScript 无法回收已注入脚本，只能对后续导航生效；
+// 补注入是为了白名单新增/黑名单移除后立即生效。
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area !== 'local' || !changes.ptp_site_hosts) return
+  if (area !== 'local' || !(changes.ptp_site_hosts || changes.ptp_site_blacklist || changes.ptp_cred_blacklist)) return
   injectAllTabs().catch(() => {})
 })
 

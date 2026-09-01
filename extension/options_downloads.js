@@ -1,6 +1,6 @@
 // 下载任务页（从 options.js 拆出，行为不变）：任务列表 + 快捷推送 + 拖放链接。
-import { esc } from './util.js'
-import { api } from './api.js'
+import { esc, fmtBytes } from './util.js'
+import { api, getConfig, isConfigured } from './api.js'
 
 export function initDownloadsPage($, feedback) {
   let dlTimer = null

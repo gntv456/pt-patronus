@@ -3,6 +3,7 @@
 // storage.session 供 content 自动填充，10 分钟无操作由 background 自动锁定（广播回锁定 UI）。
 import { esc } from './util.js'
 import { parseOTPAuth, totpNow, saveVault, loadVault } from './totp.js'
+import { packBackup, unpackBackup } from './backup.js'
 
 export async function initTotpPage($, feedback, armVaultAutolock) {
   let totpEntries = []

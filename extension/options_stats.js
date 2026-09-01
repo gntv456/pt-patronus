@@ -1,6 +1,7 @@
 // 站点数据页（从 options.js 拆出，行为不变）：站点列表 + 汇总指标 + 单站/全站同步。
 // 隐私模式掩码与 Web 端口径一致。
 import { esc } from './util.js'
+import { getConfig, isConfigured } from './api.js'
 import { privacyOn as privacyOnFn, maskDomain } from './privacy.js'
 import { overview, syncAll, fmtBytes, fmtBonus, fmtRatio } from './dashboard.js'
 

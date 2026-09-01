@@ -37,6 +37,8 @@ export type {
   StorageItem,
   MarketItem,
   FarmState,
+  GobangMatch,
+  GobangState,
 } from './entertainmentTypes'
 import type {
   Game,

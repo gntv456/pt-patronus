@@ -179,7 +179,7 @@ onBeforeUnmount(() => {
     <!-- 对局中 -->
     <section v-else class="glass section arena">
       <div class="arena-head">
-        <span class="tag" :class="ongoing.difficulty.toLowerCase()">{{ difficulties.find((d) => d.id === ongoing.difficulty)?.label || ongoing.difficulty }}</span>
+        <span class="tag" :class="ongoing?.difficulty.toLowerCase()">{{ difficulties.find((d) => d.id === ongoing?.difficulty)?.label || ongoing?.difficulty }}</span>
         <span class="status" :class="{ my: myTurn }">{{ statusLine }}</span>
         <span v-if="ongoing.player_color" class="side">你执{{ ongoing.player_color === 'WHITE' ? '白' : '黑' }}</span>
       </div>
@@ -232,7 +232,7 @@ onBeforeUnmount(() => {
         <div class="lb-row head">
           <span>#</span><span class="lb-name">玩家</span><span>战绩</span><span>胜率</span><span>榜分</span>
         </div>
-        <div v-for="e in state.leaderboards[lbTab].slice(0, 10)" :key="e.user_id" class="lb-row">
+        <div v-for="e in (state?.leaderboards?.[lbTab] ?? []).slice(0, 10)" :key="e.user_id" class="lb-row">
           <span class="lb-rank" :class="{ top: e.rank <= 3 }">{{ e.rank }}</span>
           <span class="lb-name">{{ e.nickname || e.username }}</span>
           <span>{{ e.wins }}胜{{ e.losses }}负</span>

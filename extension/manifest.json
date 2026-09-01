@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PTPatronus 助手",
-  "version": "1.03.19",
+  "version": "1.03.20",
   "description": "跨站流式搜索/订阅、站点数据仪表、下载任务管理、Cookie 台账+自动保活、TOTP 验证器、本地凭据库（Bitwarden 导入+登录页自动填充）、验证码 OCR、跨站找同种（辅种）、插件管理、AI 助手（LLM 网关流式对话）、WebDAV/CookieCloud 备份、收藏与历史、隐私模式、豆瓣/IMDb 注入、omnibox。",
   "permissions": ["storage", "contextMenus", "notifications", "scripting", "activeTab", "cookies", "omnibox", "alarms", "webNavigation"],
   "host_permissions": ["*://*.douban.com/*", "*://*.imdb.com/*"],

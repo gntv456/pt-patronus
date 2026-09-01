@@ -2,10 +2,21 @@ package v1
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 )
+
+// gobangSiteErr 站点侧错误分类：cookie 失效/未登录（站点 message 含「登录」）→
+// SiteAuthRejected（提示更新站点 cookie），其余透传 BadGateway（含站点原文案日志）。
+func gobangSiteErr(c *gin.Context, err error) {
+	if err != nil && strings.Contains(err.Error(), "请先登录") {
+		errcode.Respond(c, errcode.SiteAuthRejected.WithErr(err))
+		return
+	}
+	errcode.Respond(c, errcode.BadGateway.WithErr(err))
+}
 
 // GobangState 五子棋全景快照（蜂巢：对局列表/蜂蜜汇总/周榜）。
 func (h *EntertainmentHandler) GobangState(c *gin.Context) {
@@ -15,7 +26,7 @@ func (h *EntertainmentHandler) GobangState(c *gin.Context) {
 	}
 	res, err := h.ent.GobangState(c.Request.Context(), id, c.Param("game"))
 	if err != nil {
-		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		gobangSiteErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -42,7 +53,12 @@ func (h *EntertainmentHandler) GobangAction(c *gin.Context) {
 	}
 	res, err := h.ent.GobangAction(c.Request.Context(), id, c.Param("game"), req.Action, req.Params)
 	if err != nil {
-		spendErr(c, err)
+		if req.Params == nil && (req.Action == "move" || req.Action == "choose-color" || req.Action == "undo" || req.Action == "forfeit" || req.Action == "retry-ai") {
+			// 动作需要 params（matchId 等）却没带：站点会拒，先在前端可读地拦下。
+			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+			return
+		}
+		gobangSiteErr(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, res)

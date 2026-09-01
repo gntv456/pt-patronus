@@ -216,3 +216,18 @@ func TestPtingGobangStats(t *testing.T) {
 		t.Errorf("stats = %+v", st)
 	}
 }
+
+// TestPtingGobangStateCookieExpired 站点 cookie 失效：GET 401「请先登录」→ 错误透传原文案，
+// 而非落进 handler 的 InvalidInput 笼统文案（前端据此提示更新站点 cookie）。
+func TestPtingGobangStateCookieExpired(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"code":401,"message":"请先登录"}`)
+	}))
+	defer srv.Close()
+
+	_, err := PtingGobangGame{}.GobangState(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "flarum_session=stale"})
+	if err == nil || !strings.Contains(err.Error(), "请先登录") {
+		t.Errorf("want 请先登录 error, got %v", err)
+	}
+}

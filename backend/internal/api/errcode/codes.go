@@ -66,10 +66,12 @@ var (
 	BackupPasswordIncorrect  = New("backup_password_incorrect", "备份口令错误", http.StatusBadRequest)
 
 	// —— 娱乐（保号积分）——
-	ForbiddenSQL   = New("forbidden_sql", "包含禁止的 SQL 语句", http.StatusBadRequest)
+	ForbiddenSQL      = New("forbidden_sql", "包含禁止的 SQL 语句", http.StatusBadRequest)
 	WriteSQLForbidden = New("write_sql_forbidden", "数据库控制台仅允许只读 SELECT 查询（写操作请走对应功能或 SQL 客户端）", http.StatusForbidden)
-	MultiStatement = New("multi_statement_blocked", "仅允许单条语句", http.StatusBadRequest)
-	DuplicateSpend = New("duplicate_spend", "重复支出，请刷新后重试", http.StatusConflict)
+	MultiStatement    = New("multi_statement_blocked", "仅允许单条语句", http.StatusBadRequest)
+	DuplicateSpend    = New("duplicate_spend", "重复支出，请刷新后重试", http.StatusConflict)
+	// 站点侧拒绝（cookie 失效/未登录）：站点原文案随 error 透传，提示用户更新站点 cookie。
+	SiteAuthRejected = New("site_auth_rejected", "站点登录态已失效，请在站点管理中更新该站点的 Cookie", http.StatusBadGateway)
 
 	// —— 被控 Agent（PR-5 长尾：非透传参数校验字面量） ——
 	AgentNameRequired = New("agent_name_required", "被控端名称必填", http.StatusBadRequest)

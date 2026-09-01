@@ -69,15 +69,22 @@
     })
   }
 
-  // —— 登录捕获：提交/点击登录按钮时抓取账密，弹保存气泡 ——
+  // —— 登录捕获：输入完成即问（密码框失焦）/提交/点登录按钮，弹保存气泡 ——
+  // 每组「站+账号+密码」本次页面会话只问一次——拒绝过、已问过的不再打扰。
   let captureTimer = null
-  function captureAndOffer(form) {
+  const asked = new Set()
+  const sigOf = (u, p) => `${location.hostname}|${u}|${p.length}:${p}`
+
+  function captureAndOffer() {
     const f = findLoginForm()
     if (!f) return
     const { user, pw } = f
     const username = (user?.value || '').trim()
     const password = pw.value || ''
     if (!username || !password) return
+    const sig = sigOf(username, password)
+    if (asked.has(sig)) return
+    asked.add(sig)
     // 问后台：这个站的这条账密是新的吗？（库锁定时后台返回 unknown——仍弹窗，
     // 用户点了保存再要求去 options 解锁，不打断当前登录。）
     chrome.runtime.sendMessage({
@@ -133,19 +140,26 @@
     setTimeout(() => box.remove(), 60_000) // 1 分钟不操作自动消失
   }
 
-  // 表单提交（覆盖回车登录与常规提交按钮）
+  // 触发点 1：密码框失焦 = 用户大概率已输完账号密码（输入时立即提示的时机）。
+  document.addEventListener('focusout', (ev) => {
+    if (ev.target && ev.target.type === 'password' && ev.target.value) {
+      if (captureTimer) clearTimeout(captureTimer)
+      captureTimer = setTimeout(captureAndOffer, 400) // 稍等——点登录按钮也常先触发失焦
+    }
+  }, true)
+  // 触发点 2：表单提交（覆盖回车登录与常规提交按钮）。
   document.addEventListener('submit', (ev) => {
     if (captureTimer) clearTimeout(captureTimer)
-    captureTimer = setTimeout(() => captureAndOffer(ev.target), 350) // 提交后再抓值
+    captureTimer = setTimeout(captureAndOffer, 350) // 提交后再抓值
   }, true)
-  // 「登录」类按钮点击（很多站点用 button + ajax，不触发 submit）
+  // 触发点 3：「登录」类按钮点击（很多站点用 button + ajax，不触发 submit）。
   document.addEventListener('click', (ev) => {
     const b = ev.target.closest('button, input[type="submit"], input[type="button"], a[role="button"]')
     if (!b) return
     const ctx = [b.textContent, b.value, b.id, b.className].join(' ')
     if (!/(登录|登入|log\s*in|sign\s*in|sign\s*up|注册|register)/i.test(ctx)) return
     if (captureTimer) clearTimeout(captureTimer)
-    captureTimer = setTimeout(() => captureAndOffer(null), 150) // 稍等值写入输入框
+    captureTimer = setTimeout(captureAndOffer, 150) // 稍等值写入输入框
   }, true)
 
   const mo = new MutationObserver(() => scan())

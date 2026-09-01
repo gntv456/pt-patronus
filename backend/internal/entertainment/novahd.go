@@ -9,7 +9,6 @@ import (
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
-
 // NovaHD（pt.novahd.top）娱乐：魔力值刮刮乐 / 幸运抽奖；魔力农场为通用插件（好学 hxpt + NovaHD 共用同一套 magic_fram.php，见 MagicFarmGame）。
 //
 // 契约来自站点源码备份，均纯 Cookie 鉴权（NexusPHP loggedinorreturn），货币 = users.seedbonus
@@ -88,6 +87,8 @@ func magicFarmMsg(body []byte) string {
 }
 
 // magicFarmStatus 判断单项状态：页面含 harvest 链接=ready，含 plant/breed 链接=idle，否则 growing。
+// 链接形态兼容两种：绝对 magic_fram.php?action=…（好学/NovaHD）与相对 ?action=…（包子 t-baozi.cc）——
+// 只按 query 串匹配（action=harvest&type=…），不依赖前缀。
 func magicFarmStatus(body []byte, section string, id int) string {
 	s := string(body)
 	if strings.Contains(s, fmt.Sprintf("action=harvest&type=%s&id=%d", section, id)) {

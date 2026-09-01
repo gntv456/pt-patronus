@@ -214,3 +214,26 @@ func readBody(r *http.Request) []byte {
 	n, _ := r.Body.Read(buf)
 	return buf[:n]
 }
+
+// TestLuckyDrawPrizesBaozi 包子（t-baozi.cc）形态：内嵌 JSON 双重转义（" → \u0022），
+// 且奖品名本身是 \uXXXX 转义（\u9b54\u529b=魔力）。验证先解一层引号再配对、名字最终还原。
+func TestLuckyDrawPrizesBaozi(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html>var cfg = {\u0022prizes\u0022:[{\u0022id\u0022:4,\u0022typeText\u0022:\u0022\\u8c22\\u8c22\\u53c2\\u4e0e\u0022,\u0022amountText\u0022:\u0022\u0022},{\u0022id\u0022:7,\u0022typeText\u0022:\u0022\\u9b54\\u529b\u0022,\u0022amountText\u0022:\u00222000\u0022}]}</html>`))
+	}))
+	defer srv.Close()
+	prizes, err := LuckyDrawWheelGame{}.Prizes(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "c=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(prizes) != 2 {
+		t.Fatalf("prizes = %+v", prizes)
+	}
+	if prizes[0].ID != 4 || prizes[0].Name != "谢谢参与" {
+		t.Errorf("prizes[0] = %+v", prizes[0])
+	}
+	if prizes[1].ID != 7 || prizes[1].Name != "魔力 2000" {
+		t.Errorf("prizes[1] = %+v", prizes[1])
+	}
+}

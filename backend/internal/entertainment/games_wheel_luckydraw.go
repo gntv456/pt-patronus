@@ -72,20 +72,25 @@ func (LuckyDrawWheelGame) PlayMulti(ctx context.Context, hc *httpclient.Client, 
 
 // Prizes 抠转盘页内嵌的奖品 JSON（{"id","typeText","amountText"}）作为转盘扇区。
 // 供通用 SpinnerGame 画真转盘用；解析失败返回空（前端降级为装饰扇区）。
+// 包子（t-baozi.cc）等站把内嵌 JSON 双重转义（" 写作 \u0022），先解一层再匹配；
+// 奖品名本身也可能是 \u9b54\u529b 转义形式，配对后统一 unescape。
 func (LuckyDrawWheelGame) Prizes(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) ([]PrizeDef, error) {
 	body, err := luckyDrawWheelPage(ctx, hc, baseURL, cr.Cookie)
 	if err != nil {
 		return nil, err
 	}
+	if !bytes.Contains(body, []byte(`"typeText":"`)) && bytes.Contains(body, []byte(`typeText`)) {
+		body = bytes.ReplaceAll(body, []byte(`\u0022`), []byte(`"`))
+	}
 	// 整体匹配每个奖品对象（扁平、无嵌套花括号），再从中抠 id/typeText/amountText，
 	// 避免页面里其它 "id": 干扰配对。
-	objRe := compileRegex(`\{[^{}]*"typeText":"([^"]*)"[^{}]*"amountText":"([^"]*)"[^{}]*\}`)
+	objRe := compileRegex(`\{[^{}]*"typeText":"((?:[^"\\]|\\.)*)"[^{}]*"amountText":"((?:[^"\\]|\\.)*)"[^{}]*\}`)
 	idRe := compileRegex(`"id":(\d+)`)
 	matches := objRe.FindAllSubmatch(body, -1)
 	out := make([]PrizeDef, 0, len(matches))
 	for i, m := range matches {
-		typeText := string(m[1])
-		amountText := strings.TrimSpace(string(m[2]))
+		typeText := unescapeJSONString(string(m[1]))
+		amountText := strings.TrimSpace(unescapeJSONString(string(m[2])))
 		name := strings.TrimSpace(typeText + " " + amountText)
 		pd := PrizeDef{ID: i + 1, Name: name, Type: typeText}
 		if idm := idRe.FindSubmatch(m[0]); idm != nil {
@@ -94,6 +99,25 @@ func (LuckyDrawWheelGame) Prizes(ctx context.Context, hc *httpclient.Client, bas
 		out = append(out, pd)
 	}
 	return out, nil
+}
+
+// unescapeJSONString 还原 JSON 字符串字面量里的 \uXXXX 等转义（奖品名常为 \u9b54\u529b 形式；
+// 双重转义站点的 \\\\u9b54 需调两次）。
+func unescapeJSONString(s string) string {
+	for range 2 {
+		if !strings.ContainsRune(s, '\\') {
+			return s
+		}
+		var out string
+		if err := json.Unmarshal([]byte(`"`+s+`"`), &out); err != nil {
+			return s
+		} else if out == s {
+			return s
+		} else {
+			s = out
+		}
+	}
+	return s
 }
 
 // luckyDrawPagePath 转盘页路径：站点插件升级后从 luckywheel.php 迁到 /plugin/lucky-draw

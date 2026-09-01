@@ -238,3 +238,35 @@ func TestNovaHDLuckyFail(t *testing.T) {
 		t.Errorf("lucky fail = %+v", res)
 	}
 }
+
+// TestMagicFarmBaozi 包子（t-baozi.cc）形态：操作链接是相对 ?action=…（好学/NovaHD 为
+// magic_fram.php?action=…）。magicFarmStatus 按 query 子串匹配，两种前缀都应解析出 idle。
+func TestMagicFarmBaozi(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/magic_fram.php" {
+			w.WriteHeader(404)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = w.Write([]byte(`<html><div class="points-display"><span>当前魔力值</span><strong>100.0</strong></div>
+<a href="?action=plant&type=crop&id=1#farm-crops">种植</a>
+<a href="?action=breed&type=animal&id=4">饲养</a>
+<a href="?action=harvest_all">全部收获</a>
+<div>农作物有效期2天</div><div>动物有效期5天</div></html>`))
+	}))
+	defer srv.Close()
+
+	st, err := MagicFarmGame{}.Farm(context.Background(), newTestClient(t), srv.URL, Creds{Cookie: "c=1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Balance != 100 {
+		t.Errorf("balance = %v", st.Balance)
+	}
+	if len(st.Crops) != 4 || st.Crops[0].Status != "idle" || st.Crops[0].Price != 500 || st.Crops[0].GrowHours != 4 {
+		t.Errorf("crops[0] = %+v", st.Crops[0])
+	}
+	if len(st.Animals) != 4 || st.Animals[3].Status != "idle" || st.Animals[3].Name != "牛" {
+		t.Errorf("animals[3] = %+v", st.Animals[3])
+	}
+}

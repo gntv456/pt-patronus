@@ -24,8 +24,10 @@
     for (const pw of document.querySelectorAll('input[type="password"]:not([data-ptp-newpass])')) {
       if (pw.disabled || pw.readOnly) continue
       // 排除「确认密码 / 新密码」类输入——找第一个像主密码的框。
+      // 命名变体：confirm/retype/repeat/re-pass/repass/pass2/pwd2/password2（前后缀均可）。
       const pwCtx = [pw.placeholder, pw.name, pw.id].join(' ')
-      if (/(confirm|again|retype|new[_-]?pass|repeat)/i.test(pwCtx)) continue
+      if (/(confirm|again|retype|repeat|re-?pass|new[_-]?pass)/i.test(pwCtx.replace(/[\s\u00a0]+/g, ''))) continue
+      if (/(pass|pwd|password)[^\s]*(2|two|[c-r]onfirm|repeat|retype)/i.test(pwCtx)) continue
       // 在同一 form 或就近容器里找用户名框。
       const scope = pw.closest('form') || pw.parentElement?.parentElement?.parentElement || document
       const user = [...scope.querySelectorAll('input')].find(isUserInput)
@@ -152,12 +154,14 @@
     if (captureTimer) clearTimeout(captureTimer)
     captureTimer = setTimeout(captureAndOffer, 350) // 提交后再抓值
   }, true)
-  // 触发点 3：「登录」类按钮点击（很多站点用 button + ajax，不触发 submit）。
+  // 触发点 3：「登录/注册」类按钮点击（很多站点用 button + ajax，不触发 submit）。
+  // 文案先去空白再匹配——「注 册」「登 录」这类排版加空格的按钮也要命中。
   document.addEventListener('click', (ev) => {
     const b = ev.target.closest('button, input[type="submit"], input[type="button"], a[role="button"]')
     if (!b) return
     const ctx = [b.textContent, b.value, b.id, b.className].join(' ')
-    if (!/(登录|登入|log\s*in|sign\s*in|sign\s*up|注册|register)/i.test(ctx)) return
+    const flat = ctx.replace(/[\s\u00a0]+/g, '')
+    if (!/(登录|登入|登陆|log[^\s]*in|sign[^\s]*in|sign[^\s]*up|注册|註冊|register|create[^\s]*account)/i.test(flat) && !/(log\s*in|sign\s*in|sign\s*up|register|create\s*account)/i.test(ctx)) return
     if (captureTimer) clearTimeout(captureTimer)
     captureTimer = setTimeout(captureAndOffer, 150) // 稍等值写入输入框
   }, true)

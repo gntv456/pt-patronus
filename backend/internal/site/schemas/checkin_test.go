@@ -1,6 +1,7 @@
 package schemas
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -190,5 +192,93 @@ func TestNexusPHPCheckinUnrecognized(t *testing.T) {
 	}
 	if !strings.Contains(r.Message, "未识别") {
 		t.Errorf("want 未识别 fallback message, got %q", r.Message)
+	}
+}
+
+// ── 签到图形验证码 + OCR ────────────────────────────────────
+
+// OCR mock 服务：POST {image} → {results:[[text]]}（paddle 模式）。
+func newOCRServer(t *testing.T, text string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"results":[[{"text":"`+text+`"}]]}`)
+	}))
+}
+
+// 签到表单带验证码 + OCR 已配置且识别成功：验证码答案并进表单提交，签到成功。
+func TestNexusPHPCheckinCaptchaOCR(t *testing.T) {
+	var gotCaptcha string
+	home := `<html><body><form action="signin.php" method="post">` +
+		`<input type="hidden" name="formhash" value="abc123"/>` +
+		`<img src="image.php?action=show&code=ckpt"/><input type="text" name="imagestring"/>` +
+		`<input type="submit" value="立即签到"/></form></body></html>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/", "/index.php":
+			_, _ = io.WriteString(w, home)
+		case "/image.php":
+			// 假验证码图（≥64 字节即可，OCR 服务是独立 mock）
+			_, _ = w.Write(bytes.Repeat([]byte("PNGDATA"), 16))
+		default:
+			_ = r.ParseForm()
+			gotCaptcha = r.Form.Get("imagestring")
+			_, _ = io.WriteString(w, "<html>签到成功</html>")
+		}
+	}))
+	defer srv.Close()
+
+	ocrSrv := newOCRServer(t, "GR76DH")
+	defer ocrSrv.Close()
+
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	n := NewNexusPHP(hc)
+	n.SetOCRConfig(func() ocr.Config {
+		return ocr.Config{Endpoint: ocrSrv.URL, Mode: "paddle"}
+	})
+	r, err := n.Checkin(context.Background(), &site.SiteMetadata{Schema: "nexusphp"}, srv.URL, "session=abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Success {
+		t.Fatalf("want success, got %+v", r)
+	}
+	if gotCaptcha != "GR76DH" {
+		t.Errorf("captcha answer = %q, want GR76DH", gotCaptcha)
+	}
+}
+
+// 签到表单带验证码但未配置 OCR：不盲提交，明确报错提示配置 OCR 或人工签到。
+func TestNexusPHPCheckinCaptchaNoOCR(t *testing.T) {
+	home := `<html><body><form action="signin.php" method="post">` +
+		`<img src="image.php?code=ckpt"/><input type="text" name="imagestring"/>` +
+		`<input type="submit" value="立即签到"/></form></body></html>`
+	submitted := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/" || r.URL.Path == "/index.php":
+			_, _ = io.WriteString(w, home)
+		case r.URL.Path == "/image.php":
+			_, _ = w.Write(bytes.Repeat([]byte("PNGDATA"), 16))
+		case r.URL.Path == "/signin.php":
+			submitted = true
+			_, _ = io.WriteString(w, "<html>验证码错误</html>")
+		default:
+			_, _ = io.WriteString(w, "<html>验证码错误</html>")
+		}
+	}))
+	defer srv.Close()
+
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	n := NewNexusPHP(hc)
+	r, err := n.Checkin(context.Background(), &site.SiteMetadata{Schema: "nexusphp"}, srv.URL, "session=abc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if submitted {
+		t.Error("should not submit when captcha unresolved")
+	}
+	if r.Success || !strings.Contains(r.Message, "OCR") {
+		t.Errorf("want explicit OCR hint, got %+v", r)
 	}
 }

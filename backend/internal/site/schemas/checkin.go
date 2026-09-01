@@ -3,6 +3,7 @@ package schemas
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -29,10 +31,20 @@ func isCheckinEntry(href, text string) bool {
 }
 
 // probeResult 是首页探测结果：真实签到端点、HTTP 方法、表单字段（探测 hidden 与配置 Form 合并）。
+// captcha 非空表示表单带图形验证码（已 OCR 识别待填），需在请求前并进表单。
 type probeResult struct {
-	path   string
-	method string
-	form   map[string]string
+	path    string
+	method  string
+	form    map[string]string
+	captcha *checkinCaptcha
+}
+
+// checkinCaptcha 是签到表单里的图形验证码：输入字段名 + 验证码图 base64（data URL）
+// + OCR 识别结果（识别失败为空——调用方据此回退明确报错）。
+type checkinCaptcha struct {
+	Field    string // 验证码输入框 name（imagestring / code / verify …随 fork）
+	ImageB64 string // 验证码图 base64（data:image/png;base64,...）
+	Answer   string // OCR 识别结果；空=未配置或识别失败
 }
 
 // probeCheckin GET 首页（index.php），从 HTML 提取真实签到入口：
@@ -73,7 +85,9 @@ func (n *NexusPHP) probeCheckin(ctx context.Context, def *site.SiteMetadata, bas
 			}
 		})
 		if p := relPath(action); p != "" {
-			return probeResult{path: p, method: method, form: form}, true
+			pr := probeResult{path: p, method: method, form: form}
+			pr.captcha = n.probeCheckinCaptcha(ctx, hit, baseURL, cookie)
+			return pr, true
 		}
 	}
 	// 2. 签到链接
@@ -93,6 +107,74 @@ func (n *NexusPHP) probeCheckin(ctx context.Context, def *site.SiteMetadata, bas
 		return probeResult{path: p, method: "GET", form: cloneStringMap(def.Checkin.Form)}, true
 	}
 	return probeResult{}, false
+}
+
+// checkinCaptchaFieldOrder 常见签到验证码输入框 name 优先级（imagestring=NexusPHP 标准；
+// 后面的泛化名按出现顺序兜底）。
+var checkinCaptchaFieldOrder = []string{"imagestring", "checkcode", "verify", "code", "captcha"}
+
+// probeCheckinCaptcha 探测签到表单是否带图形验证码：form 内 <img>（src 含 image.php/captcha/
+// code/verify 特征）+ 对应文本输入框。命中则 GET 图片、OCR 识别，返回待填字段与识别结果；
+// 未配置 OCR 或识别失败返回 nil（调用方按无验证码提交——单图站多为可选，失败信息由站点响应给出）。
+func (n *NexusPHP) probeCheckinCaptcha(ctx context.Context, formSel *goquery.Selection, baseURL, cookie string) *checkinCaptcha {
+	var imgSrc string
+	formSel.Find("img").EachWithBreak(func(_ int, img *goquery.Selection) bool {
+		src, ok := img.Attr("src")
+		if !ok {
+			return true
+		}
+		lower := strings.ToLower(src)
+		for _, kw := range []string{"image.php", "captcha", "verify", "imagecode", "regimage", "code="} {
+			if strings.Contains(lower, kw) {
+				imgSrc = src
+				return false
+			}
+		}
+		return true
+	})
+	if imgSrc == "" {
+		return nil
+	}
+	// 输入框：优先已知 name；否则取 form 内第一个 text 输入（排除 hidden/password/submit）。
+	field := ""
+	for _, name := range checkinCaptchaFieldOrder {
+		if formSel.Find(fmt.Sprintf(`input[name="%s"]`, name)).Length() > 0 {
+			field = name
+			break
+		}
+	}
+	if field == "" {
+		formSel.Find("input").EachWithBreak(func(_ int, inp *goquery.Selection) bool {
+			typ, _ := inp.Attr("type")
+			name, _ := inp.Attr("name")
+			if (typ == "" || typ == "text") && name != "" {
+				field = name
+				return false
+			}
+			return true
+		})
+	}
+	if field == "" {
+		return nil
+	}
+	// GET 验证码图（带站点 cookie：部分站验证码绑 session）。
+	imgURL := relPath(imgSrc)
+	if imgURL == "" {
+		return nil
+	}
+	resp, err := n.hc.Get(ctx, joinURL(baseURL, imgURL), cookie, true)
+	if err != nil || resp.StatusCode != 200 || len(resp.Body) < 32 {
+		return nil
+	}
+	b64 := "data:image/png;base64," + base64.StdEncoding.EncodeToString(resp.Body)
+	if n.ocrCfg == nil {
+		return &checkinCaptcha{Field: field, ImageB64: b64}
+	}
+	text, err := ocr.New(n.ocrCfg()).Recognize(ctx, b64)
+	if err != nil || text == "" {
+		return &checkinCaptcha{Field: field, ImageB64: b64}
+	}
+	return &checkinCaptcha{Field: field, ImageB64: b64, Answer: text}
 }
 
 // cloneStringMap 复制 map（避免改写站点原 def）。
@@ -136,10 +218,20 @@ func (n *NexusPHP) Checkin(ctx context.Context, def *site.SiteMetadata, baseURL,
 	}
 
 	path, method, form := def.Checkin.Path, def.Checkin.Method, def.Checkin.Form
+	var captcha *checkinCaptcha
 	if pr, ok := n.probeCheckin(ctx, def, baseURL, cookie); ok {
 		path = pr.path
 		method = pr.method
 		form = pr.form
+		captcha = pr.captcha
+	}
+	// 图形验证码：OCR 识别成功 → 并进表单；表单带验证码但未识别 → 明确报错
+	//（盲提交必然被拒，且消耗一次验证码；提示配置 OCR 或人工浏览器签到）。
+	if captcha != nil && captcha.Answer != "" {
+		form[captcha.Field] = captcha.Answer
+	} else if captcha != nil {
+		return &site.CheckinResult{Success: false,
+			Message: "该站签到需要图形验证码：请在系统设置配置 OCR 识别服务（ocr.endpoint），或用浏览器手动签到"}, nil
 	}
 	method = strings.ToUpper(strings.TrimSpace(method))
 	if method != "GET" && method != "POST" {

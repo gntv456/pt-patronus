@@ -8,6 +8,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/site"
 )
 
@@ -16,12 +17,17 @@ type NexusPHP struct {
 	BaseHTMLAdapter
 	utlsOnce sync.Once
 	utlsHC   *httpclient.Client
+	// ocrCfg 验证码 OCR 配置读取（SystemConfig 热更；nil=未启用，签到验证码回退人工提示）。
+	ocrCfg func() ocr.Config
 }
 
 // NewNexusPHP 构造适配器，注入共享 httpclient。
 func NewNexusPHP(hc *httpclient.Client) *NexusPHP {
 	return &NexusPHP{BaseHTMLAdapter: BaseHTMLAdapter{hc: hc}}
 }
+
+// SetOCRConfig 注入验证码 OCR 配置读取（router 启动时接 SystemConfig；与登录链路同源热更）。
+func (n *NexusPHP) SetOCRConfig(f func() ocr.Config) { n.ocrCfg = f }
 
 // utlsClient 返回一个 uTLS（Chrome 指纹）httpclient，sync.Once lazy 构造。
 // 供启用 checkin.utls 的 WAF 站签到 opt-in：标准 TLS 被 SafeLine 等按 TLS 指纹拦截（468），

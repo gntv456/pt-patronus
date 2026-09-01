@@ -24,10 +24,12 @@ import (
 	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
+	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/site/schemas"
 	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
 	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
@@ -68,6 +70,18 @@ func New(cfg *config.Config) (*App, error) {
 	registry, bus, base, mteam := newSiteInfra(hc)
 
 	siteOp := oper.NewSiteOper(database, crypto)
+	cfgOp := oper.NewSystemConfigOper(database)
+
+	// 签到图形验证码 OCR（SystemConfig 热改 ocr.endpoint 即生效；未配置=回退人工提示）。
+	// 与登录链路共用同一 OCR 服务配置，NexusPHP 适配器签到时自动识别填表。
+	if a, ok := registry.AdapterFor("nexusphp"); ok {
+		if nexus, ok := a.(*schemas.NexusPHP); ok {
+			nexus.SetOCRConfig(func() ocr.Config {
+				get := func(k string) string { v, _ := cfgOp.Get(k); return v }
+				return ocr.Config{Endpoint: get("ocr.endpoint"), APIKey: get("ocr.api_key"), Mode: get("ocr.mode")}
+			})
+		}
+	}
 	siteCh := chain.NewSiteChain(base, siteOp, registry)
 	// 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用，对标 MoviePilot）。
 	siteCh.SetHTTPClient(hc)
@@ -91,8 +105,7 @@ func New(cfg *config.Config) (*App, error) {
 	go wsBC.Run(context.Background())
 
 	// SystemConfig 运行时可变配置（媒体源凭据 / 通知通道凭据 / IYUU token 共用同一 KV 表，
-	// 按 key 命名空间隔离）。此处统一创建，供下方通知 provider 与媒体 provider 复用。
-	cfgOp := oper.NewSystemConfigOper(database)
+	// 按 key 命名空间隔离）。上方已创建 cfgOp，此处供通知 provider 与媒体 provider 复用。
 
 	// 通知：通道凭据走 SystemConfig（UI「设置→通知」热改，回退 env 引导默认），由 provider 统一构建/重建；
 	// NotificationChain 与 notice.Service 共用同一 *Manager，provider rebuild→Replace 全局即时生效。

@@ -52,7 +52,8 @@ const boardRows = computed(() =>
 const summaryLine = computed(() => {
   const s = state.value?.summary
   if (!s) return ''
-  return `${s.point_name || '蜂蜜'} ${s.points} · 今日 ${s.total_used}/${s.total_limit} · 热身剩 ${s.warmup_remaining}`
+  const warmup = s.warmup_remaining ?? s.free_remaining ?? 0
+  return `${s.point_name || '蜂蜜'} ${s.points} · 今日 ${s.total_used}/${s.total_limit} · 热身剩 ${warmup}`
 })
 const statusLine = computed(() => {
   const m = ongoing.value
@@ -106,6 +107,8 @@ async function act(action: string, params: Record<string, unknown> = {}) {
   } catch (e: unknown) {
     const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
     errorMsg.value = msg || t('common.requestFailed')
+    // 站点限速（429 落子过于频繁，~1s/手）：1.5s 后自动重拉一次全景
+    if (msg && msg.includes('过于频繁')) setTimeout(() => loadState(), 1500)
   } finally {
     acting.value = false
   }

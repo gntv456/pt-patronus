@@ -11,26 +11,35 @@ import (
 
 // ── 蜂巢（pting.club）五子棋人机挑战 ─────────────────────────
 // GET /api/gobang → {code,message,data:{matches,summary,leaderboards}}（全景快照）
-// POST /api/gobang {action,...} → {code,message,data:{match?,summary?}}（动作结果，随后客户端重拉全景）
+// POST /api/gobang {action,...} → {code,message,data:{...}}（动作结果）：
+//
+//	create → data:{matches,summary,policy,aiPending,warning}（新局在 matches 内，
+//	          message「已创建WARMUP挑战，首次有效落子时扣门票」）；
+//	move   → data:{match,winnerId,aiPending,warning,timedOut,protected}；
+//	undo/forfeit/retry-ai → 同 move（match 为动作后最新局）。
+//	动作过于频繁 → {code:429,message:"落子过于频繁，请稍后再试"}（站点限速 ~1s/手）。
+//
 // 动作：create{difficulty} / choose-color{matchId,color} / move{matchId,x,y} /
-//
-//	undo{matchId} / forfeit{matchId} / retry-ai{matchId}。
-//
-// 契约逆自 pting.club/funs/gobang 前端 chunk（04_q3pnpwr6at.js）；站点键为 camelCase，
-// 解析用 strField/numField 从 map 转换，本文件结构体（snake_case）即对外 API 契约。
+// undo{matchId} / forfeit{matchId} / retry-ai{matchId}。
+// 契约经真实联调校准（2026-09，登录态实测 create/move/GET 全景）；
+// 站点键为 camelCase，解析用 strField/numField 转换，本文件结构体（snake_case）即对外 API 契约。
 // 鉴权：flarum_session cookie（同 Flarum 站点适配器）。未登录 → {code:401,message:"请先登录"}。
 type PtingGobangGame struct{}
 
 func (PtingGobangGame) ID() string   { return "pting_gobang" }
 func (PtingGobangGame) Name() string { return "五子棋" }
 
-// GobangMove 一步落子（x=列 0..14，y=行 0..14）。
+// GobangMove 一步落子（站点原始 moves 项：{id,step,x,y,playerId,createdAt}，
+// playerId=用户 id（0=AI）；此处保留 step/playerId 便于前端复盘与最后一手判断）。
 type GobangMove struct {
-	X int `json:"x"`
-	Y int `json:"y"`
+	X        int `json:"x"`
+	Y        int `json:"y"`
+	Step     int `json:"step,omitempty"`
+	PlayerID int `json:"player_id,omitempty"` // 0=AI；否则为用户 id（=winnerId 语义）
 }
 
-// GobangMatch 一局对局（ONGOING 进行中 / FINISHED 已结束）。
+// GobangMatch 一局对局（ONGOING 进行中 / FINISHED 已结束）。真实联调补充字段：
+// firstHand（PLAYER/AI）、rule（FREESTYLE）、rankScore、challengeMode。
 type GobangMatch struct {
 	ID                     string       `json:"id"`
 	Status                 string       `json:"status"` // ONGOING | FINISHED
@@ -38,7 +47,9 @@ type GobangMatch struct {
 	Board                  [][]int      `json:"board"` // 15x15：0 空 / 1 黑 / 2 白
 	Moves                  []GobangMove `json:"moves,omitempty"`
 	PlayerColor            string       `json:"player_color,omitempty"`
-	CurrentSide            string       `json:"current_side,omitempty"` // PLAYER | AI
+	CurrentSide            string       `json:"current_side,omitempty"` // PLAYER | AI；结束局为空
+	FirstHand              string       `json:"first_hand,omitempty"`   // PLAYER | AI
+	Rule                   string       `json:"rule,omitempty"`         // FREESTYLE（无禁手长连有效）
 	OpeningChoicePending   bool         `json:"opening_choice_pending,omitempty"`
 	OpeningChoiceDeadline  string       `json:"opening_choice_deadline_at,omitempty"`
 	OpeningMoveCount       int          `json:"opening_move_count,omitempty"`
@@ -48,8 +59,9 @@ type GobangMatch struct {
 	UndoCost               float64      `json:"undo_cost,omitempty"`
 	UndoUsed               bool         `json:"undo_used,omitempty"`
 	Ranked                 bool         `json:"ranked,omitempty"`
-	WinnerID               *int         `json:"winner_id,omitempty"` // 0=AI 胜；null=平局；缺省进行中
-	FinishReason           string       `json:"finish_reason,omitempty"`
+	RankScore              int          `json:"rank_score,omitempty"`
+	WinnerID               *int         `json:"winner_id,omitempty"`     // 0=AI 胜；null=平局；缺省进行中
+	FinishReason           string       `json:"finish_reason,omitempty"` // FIVE | TIMEOUT | FORFEIT
 	PayoutAmount           float64      `json:"payout_amount,omitempty"`
 	InterruptionVoidedAt   string       `json:"interruption_voided_at,omitempty"`
 	MoveDeadlineAt         string       `json:"move_deadline_at,omitempty"`  // 噩梦每手限时
@@ -59,7 +71,7 @@ type GobangMatch struct {
 	UpdatedAt              string       `json:"updated_at,omitempty"`
 }
 
-// GobangSummary 蜂蜜余额与挑战次数汇总。
+// GobangSummary 蜂蜜余额与挑战次数汇总（真实联调：warmup 外另有 free*/paid* 细分计数）。
 type GobangSummary struct {
 	Points             int     `json:"points"`
 	PointName          string  `json:"point_name"`
@@ -69,6 +81,12 @@ type GobangSummary struct {
 	TotalRemaining     int     `json:"total_remaining"`
 	WarmupRemaining    int     `json:"warmup_remaining"`
 	NightmareRemaining int     `json:"nightmare_remaining,omitempty"`
+	FreeTotal          int     `json:"free_total,omitempty"`
+	FreeUsed           int     `json:"free_used,omitempty"`
+	FreeRemaining      int     `json:"free_remaining,omitempty"`
+	PaidTotal          int     `json:"paid_total,omitempty"`
+	PaidUsed           int     `json:"paid_used,omitempty"`
+	PaidRemaining      int     `json:"paid_remaining,omitempty"`
 	DailyNetGain       float64 `json:"daily_net_gain"`
 	DailyNetGainCap    float64 `json:"daily_net_gain_cap"`
 }
@@ -113,8 +131,10 @@ func parseGobangMatch(m map[string]any) *GobangMatch {
 		Difficulty:            strField(m, "difficulty"),
 		PlayerColor:           strField(m, "playerColor"),
 		CurrentSide:           strField(m, "currentSide"),
+		FirstHand:             strField(m, "firstHand"),
+		Rule:                  strField(m, "rule"),
 		OpeningChoicePending:  boolField(m, "openingChoicePending"),
-		OpeningChoiceDeadline: firstNonEmpty(strField(m, "openingChoiceDeadlineAt")),
+		OpeningChoiceDeadline: strField(m, "openingChoiceDeadlineAt"),
 		OpeningMoveCount:      int(longptNum(m["openingMoveCount"])),
 		TicketCharged:         boolField(m, "ticketCharged"),
 		TicketCost:            numField(m, "ticketCost"),
@@ -122,6 +142,7 @@ func parseGobangMatch(m map[string]any) *GobangMatch {
 		UndoCost:              numField(m, "undoCost"),
 		UndoUsed:              boolField(m, "undoUsed"),
 		Ranked:                boolField(m, "ranked"),
+		RankScore:             int(longptNum(m["rankScore"])),
 		FinishReason:          strField(m, "finishReason"),
 		PayoutAmount:          numField(m, "payoutAmount"),
 		InterruptionVoidedAt:  strField(m, "interruptionVoidedAt"),
@@ -149,7 +170,12 @@ func parseGobangMatch(m map[string]any) *GobangMatch {
 			if !ok {
 				continue
 			}
-			g.Moves = append(g.Moves, GobangMove{X: int(longptNum(mm["x"])), Y: int(longptNum(mm["y"]))})
+			g.Moves = append(g.Moves, GobangMove{
+				X:        int(longptNum(mm["x"])),
+				Y:        int(longptNum(mm["y"])),
+				Step:     int(longptNum(mm["step"])),
+				PlayerID: int(longptNum(mm["playerId"])),
+			})
 		}
 	}
 	// winnerId：缺省（进行中）保持 nil；null（平局）与非 0（用户 id）都要区分。
@@ -171,6 +197,12 @@ func parseGobangSummary(m map[string]any) *GobangSummary {
 		TotalRemaining:     int(numField(m, "totalRemaining")),
 		WarmupRemaining:    int(numField(m, "warmupRemaining")),
 		NightmareRemaining: int(numField(m, "nightmareRemaining")),
+		FreeTotal:          int(numField(m, "freeTotal")),
+		FreeUsed:           int(numField(m, "freeUsed")),
+		FreeRemaining:      int(numField(m, "freeRemaining")),
+		PaidTotal:          int(numField(m, "paidTotal")),
+		PaidUsed:           int(numField(m, "paidUsed")),
+		PaidRemaining:      int(numField(m, "paidRemaining")),
 		DailyNetGain:       numField(m, "dailyNetGain"),
 		DailyNetGainCap:    numField(m, "dailyNetGainCap"),
 	}
@@ -254,8 +286,10 @@ func ptingGobangGet(ctx context.Context, hc *httpclient.Client, baseURL, cookie 
 }
 
 // ptingGobangPost 调 POST /api/gobang（JSON body：action + 参数）。
-// 返回 message 与动作后的对局（data.match；summary 字段站点按动作可选返回，此处不解析——前端动作后重拉全景）。
-func ptingGobangPost(ctx context.Context, hc *httpclient.Client, baseURL, cookie, action string, params map[string]any) (string, *GobangMatch, error) {
+// 响应 data 因动作而异（真实联调）：create 带 {matches,summary,...}（新局在 matches 内）、
+// 其余动作带 {match,...}。两处都解析：优先 data.match，否则取 data.matches 中 ONGOING/FINISHED 最新局。
+// 返回 message、动作后对局、动作后 summary（create 返回；move 不带）。
+func ptingGobangPost(ctx context.Context, hc *httpclient.Client, baseURL, cookie, action string, params map[string]any) (string, *GobangMatch, *GobangSummary, error) {
 	u := joinPath(baseURL, "api/gobang")
 	body := map[string]any{"action": action}
 	for k, v := range params {
@@ -268,26 +302,41 @@ func ptingGobangPost(ctx context.Context, hc *httpclient.Client, baseURL, cookie
 		"Referer":      joinPath(baseURL, "funs/gobang"),
 	}, cookie, true)
 	if err != nil {
-		return "", nil, err
+		return "", nil, nil, err
 	}
 	logResp("pting_gobang "+action, u, resp)
 	var env ptingGobangEnvelope
 	if err := json.Unmarshal(resp.Body, &env); err != nil {
-		return "", nil, fmt.Errorf("响应解析失败: %w", err)
+		return "", nil, nil, fmt.Errorf("响应解析失败: %w", err)
 	}
 	if env.Code != 0 && env.Code != 200 {
-		return "", nil, fmt.Errorf("%s", firstNonEmpty(env.Message, "操作失败"))
+		return "", nil, nil, fmt.Errorf("%s", firstNonEmpty(env.Message, "操作失败"))
 	}
 	var match *GobangMatch
+	var summary *GobangSummary
 	var data map[string]any
 	if len(env.Data) > 0 {
 		if err := json.Unmarshal(env.Data, &data); err == nil {
 			if m, ok := data["match"].(map[string]any); ok {
 				match = parseGobangMatch(m)
 			}
+			if arr, ok := data["matches"].([]any); ok && match == nil {
+				for _, it := range arr {
+					if m, ok := it.(map[string]any); ok {
+						mm := parseGobangMatch(m)
+						// 优先进行中局；全结束则取第一局（刚结束的）
+						if match == nil || (mm.Status == "ONGOING" && match.Status != "ONGOING") {
+							match = mm
+						}
+					}
+				}
+			}
+			if s, ok := data["summary"].(map[string]any); ok {
+				summary = parseGobangSummary(s)
+			}
 		}
 	}
-	return firstNonEmpty(env.Message, "操作完成"), match, nil
+	return firstNonEmpty(env.Message, "操作完成"), match, summary, nil
 }
 
 // Gobangable 五子棋能力：全景 + 动作。chain/API 按此接口分发。
@@ -303,13 +352,14 @@ func (PtingGobangGame) GobangState(ctx context.Context, hc *httpclient.Client, b
 
 // GobangAction 执行动作。合法动作白名单校验后透传参数；「花钱」动作
 // （create 首落子扣门票/move/undo）由 chain 层 spendGuard 防双击。
+// 站点限速 ~1s/手：过快 → 站点返回 code 429「落子过于频繁」，此处转为失败结果透传 message。
 func (PtingGobangGame) GobangAction(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, action string, params map[string]any) (*PlayResult, error) {
 	switch action {
 	case "create", "choose-color", "move", "undo", "forfeit", "retry-ai":
 	default:
 		return &PlayResult{Success: false, Message: "未知动作: " + action}, nil
 	}
-	msg, m, err := ptingGobangPost(ctx, hc, baseURL, cr.Cookie, action, params)
+	msg, m, _, err := ptingGobangPost(ctx, hc, baseURL, cr.Cookie, action, params)
 	if err != nil {
 		return &PlayResult{Success: false, Message: err.Error()}, nil
 	}

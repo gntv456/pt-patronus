@@ -4,21 +4,21 @@
 import { esc } from './util.js'
 import { parseOTPAuth, totpNow, saveVault, loadVault } from './totp.js'
 
-export function initTotpPage($, feedback, armVaultAutolock) {
+export async function initTotpPage($, feedback, armVaultAutolock) {
   let totpEntries = []
   let totpUnlocked = false
   let pinCache = ''
   let totpTimer = null
 
   // background 自动锁定广播：session 缓存被清时把两个库都回锁定态（内存清空 + UI 回 gate）。
+  // cred 三变量声明在 options.js（凭据库宿主），经 window 事件总线不可用时由
+  // initTotpPage 闭包外的同名 setter 处理——这里只回锁 TOTP 自身；凭据库的
+  // 回锁监听在 options.js 侧（initCredsPage 前的顶层 listener）。
   chrome.runtime.onMessage.addListener((msg) => {
     if (!msg || msg.type !== 'ptp-vault-locked') return
     totpUnlocked = false
     pinCache = ''
     totpEntries = []
-    credUnlocked = false
-    credPin = ''
-    credEntries = []
     $('main') && ($('main').style.display = 'none')
     $('gate') && ($('gate').style.display = '')
     $('credMain') && ($('credMain').style.display = 'none')

@@ -56,6 +56,7 @@ import type {
   BigSmallChat,
   BlackjackResult,
   FarmState,
+  GobangState,
 } from './entertainmentTypes'
 import type { Site } from './site'
 
@@ -189,6 +190,14 @@ export const entertainmentApi = {
   /** 二十一点动作（new/hit/stand/double） */
   blackjack: (siteId: number, game: string, action: string) =>
     http.post<BlackjackResult>(`/entertainment/${siteId}/games/${game}/blackjack`, { action }).then((r) => r.data),
+  /** 五子棋全景快照（蜂巢：对局/蜂蜜汇总/周榜） */
+  gobangState: (siteId: number, game: string) =>
+    http.get<GobangState>(`/entertainment/${siteId}/games/${game}/gobang-state`).then((r) => r.data),
+  /** 五子棋动作（create/choose-color/move/undo/forfeit/retry-ai；params 透传站点） */
+  gobangAction: (siteId: number, game: string, action: string, params: Record<string, unknown>) =>
+    http
+      .post<PlayResult>(`/entertainment/${siteId}/games/${game}/gobang-action`, { action, params })
+      .then((r) => r.data),
   /** 站点列表（含各站已适配娱乐项目数 game_count，独立于通用 /sites） */
   sites: () => http.get<{ sites: Site[] }>('/entertainment').then((r) => r.data.sites ?? []),
 }

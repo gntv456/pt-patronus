@@ -133,6 +133,8 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	// 状态机/红包雨（批3）：二十一点 + 好学红包雨
 	entReg.Register("audiences.me", entertainment.AudiencesBlackjackGame{})
 	entReg.Register("hxpt.org", entertainment.HxptRedpacketGame{})
+	// 蜂巢五子棋人机挑战（GET/POST /api/gobang JSON，flarum_session cookie 鉴权）
+	entReg.Register("pting.club", entertainment.PtingGobangGame{})
 	return entReg
 }
 

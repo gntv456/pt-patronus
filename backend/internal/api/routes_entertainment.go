@@ -48,6 +48,9 @@ func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
 		ent.POST("/:id/games/:game/bigsmall-item", entH.BigSmallUseItem)
 		ent.POST("/:id/games/:game/bigsmall-chat", entH.BigSmallSendChat)
 		ent.POST("/:id/games/:game/bigsmall-redpacket", entH.BigSmallRedpacket)
+		// 五子棋（蜂巢）：全景快照 + 动作（create/choose-color/move/undo/forfeit/retry-ai）
+		ent.GET("/:id/games/:game/gobang-state", entH.GobangState)
+		ent.POST("/:id/games/:game/gobang-action", entH.GobangAction)
 		// 翻面夺宝 websocket 桥接：?ticket= 鉴权（浏览器 WS 不能发 header JWT），
 		// 注册在 api（非 guarded）绕过 header 鉴权，handler 内自验 ticket。
 		api.GET("/entertainment/:id/games/:game/flip-ws", entH.FlipWS)

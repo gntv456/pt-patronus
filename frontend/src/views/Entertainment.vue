@@ -18,6 +18,7 @@ import EventBet from '@/components/EventBet.vue'
 import BlackjackGame from '@/components/BlackjackGame.vue'
 import PandaFlipGame from '@/components/PandaFlipGame.vue'
 import BigSmallGame from '@/components/BigSmallGame.vue'
+import GobangGame from '@/components/GobangGame.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
@@ -161,6 +162,12 @@ loadSites()
       />
       <BlackjackGame
         v-else-if="currentSite && blackjackIds.includes(richGame as string)"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <GobangGame
+        v-else-if="richGame === 'pting_gobang' && currentSite"
         :site-id="currentSite"
         :game="currentGame as string"
         :name="selectedGame?.name || ''"

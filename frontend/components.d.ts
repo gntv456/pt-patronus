@@ -110,6 +110,7 @@ declare module 'vue' {
     GeneralPanel: typeof import('./src/components/settings/GeneralPanel.vue')['default']
     GlassIcon: typeof import('./src/components/GlassIcon.vue')['default']
     GlobalNoticeBar: typeof import('./src/components/GlobalNoticeBar.vue')['default']
+    GobangGame: typeof import('./src/components/GobangGame.vue')['default']
     JggGameUi: typeof import('./src/components/JggGameUi.vue')['default']
     LlmGatewayPanel: typeof import('./src/components/settings/LlmGatewayPanel.vue')['default']
     LogsPanel: typeof import('./src/components/settings/LogsPanel.vue')['default']

@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -266,6 +267,41 @@ func (c *EntertainmentChain) BigSmallRedpacket(ctx context.Context, siteID uint,
 	}
 	defer c.guard.release(key)
 	return b.BigSmallRedpacket(ctx, c.hc, base, cr, action, extra)
+}
+
+// GobangState 五子棋全景快照（仅 Gobangable 游戏支持，如蜂巢五子棋）。只读。
+func (c *EntertainmentChain) GobangState(ctx context.Context, siteID uint, gameID string) (*entertainment.GobangState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	gb, ok := g.(entertainment.Gobangable)
+	if !ok {
+		return nil, errors.New("该游戏不支持五子棋")
+	}
+	return gb.GobangState(ctx, c.hc, base, cr)
+}
+
+// GobangAction 五子棋动作（create/choose-color/move/undo/forfeit/retry-ai）。
+// create 首次落子才扣门票、move/undo 实际花钱——统一走 spendGuard 防双击重复扣蜂蜜；
+// choose-color/forfeit/retry-ai 语义上无扣费，但同键防连点。
+func (c *EntertainmentChain) GobangAction(ctx context.Context, siteID uint, gameID, action string, params map[string]any) (*entertainment.PlayResult, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	gb, ok := g.(entertainment.Gobangable)
+	if !ok {
+		return nil, errors.New("该游戏不支持五子棋")
+	}
+	// 参数序列化进防重键：同一动作+同一参数未返回前再来一次 → 429。
+	pk, _ := json.Marshal(params)
+	key := fmt.Sprintf("%d:gobang:%s:%s:%s", siteID, gameID, action, pk)
+	if !c.guard.acquire(key) {
+		return nil, ErrDuplicateSpend
+	}
+	defer c.guard.release(key)
+	return gb.GobangAction(ctx, c.hc, base, cr, action, params)
 }
 
 // FlipBridge 翻面夺宝 websocket 桥接：用站点 cookie 连 wss://host/wss，

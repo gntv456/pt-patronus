@@ -137,6 +137,10 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("crabpt.vip", entertainment.CrabUnionLottoGame{})
 	entReg.Register("pandapt.net", entertainment.PandaFlipGame{})
 	entReg.Register("ourbits.club", entertainment.OurbitsBetGame{})
+	// 同款 NexusPHP「博彩频道」竞猜插件（2026-09 普查：当前均无进行中盘口，Events 空列表验证通过）
+	for _, h := range []string{"open.cd", "totheglory.im", "hdsky.me", "nanyangpt.com", "ptchdbits.co", "pt.hdupt.com"} {
+		entReg.Register(h, entertainment.OurbitsBetGame{})
+	}
 	entReg.Register("ubits.club", entertainment.UbitsRedpacketGame{})
 	// 状态机/红包雨（批3）：二十一点 + 好学红包雨
 	entReg.Register("audiences.me", entertainment.AudiencesBlackjackGame{})
@@ -148,6 +152,9 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	}
 	// 蜂巢五子棋人机挑战（GET/POST /api/gobang JSON，flarum_session cookie 鉴权）
 	entReg.Register("pting.club", entertainment.PtingGobangGame{})
+	// 13City 彩票中心（lottery.php 每天 20:00 开奖，货币=啤酒瓶；购买走 Bet 显式下单）
+	// HDHome 站庆抽奖 2026-11 才开启（无参与按钮）暂缓；OpenCD 乐透上期 2011 年已停摆跳过
+	entReg.Register("13city.org", entertainment.City13LotteryGame{})
 	return entReg
 }
 

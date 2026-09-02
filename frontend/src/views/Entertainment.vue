@@ -92,8 +92,8 @@ const spinnerIds = [
 const betIds = ['cbg_sicbo', 'crab_unionlotto', 'ubits_redpacket', 'hdkylin_lotto', 'crab_fastthree']
 // 猜大小（批2.5：好学 hxpt_bigsmall + 熊猫 panda_bigsmall，富 UI：走势/排行/记录/倒计时/任务/聊天/红包）
 const bigsmallIds = ['hxpt_bigsmall', 'panda_bigsmall']
-// 二十一点状态机（批3）
-const blackjackIds = ['audiences_blackjack']
+// 二十一点状态机（批3；批7 补 CHDBits 复用 nxp + OpenCD 对抗制变体）
+const blackjackIds = ['audiences_blackjack', 'nxp_blackjack', 'opencd_blackjack']
 
 watch(currentSite, loadGames)
 loadSites()

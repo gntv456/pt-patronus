@@ -148,10 +148,14 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("audiences.me", entertainment.AudiencesBlackjackGame{})
 	entReg.Register("hxpt.org", entertainment.HxptRedpacketGame{})
 	// NexusPHP 二十一点整页表单插件（2026-09 全站普查：52PT/HDArea/HDU/PTHome/CyanBug/TTG/SSD；
-	// 青蛙房间制协议不同未接；OpenCD/CHDBits/KEEPFRDS 表单形态特殊待二次校准）
+	// 青蛙/KEEPFRDS 房间制或未装不接）
 	for _, h := range []string{"52pt.site", "hdarea.club", "pt.hdupt.com", "pthome.net", "cyanbug.net", "totheglory.im", "springsunday.net"} {
 		entReg.Register(h, entertainment.NxpBlackjackGame{})
 	}
+	// CHDBits 21点（game=hit&start=yes 开牌形态，批7 实测页面确认，复用 Nxp 解析）
+	entReg.Register("ptchdbits.co", entertainment.NxpBlackjackGame{})
+	// OpenCD 21點（对抗制：game=start&bonus 自开局 / gameid 应战；动作 hit/stand/double 同族）
+	entReg.Register("open.cd", entertainment.OpenCDBlackjackGame{})
 	// 蜂巢五子棋人机挑战（GET/POST /api/gobang JSON，flarum_session cookie 鉴权）
 	entReg.Register("pting.club", entertainment.PtingGobangGame{})
 	// 13City 彩票中心（lottery.php 每天 20:00 开奖，货币=啤酒瓶；购买走 Bet 显式下单）
@@ -169,6 +173,10 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("crabpt.vip", entertainment.CrabFastThreeGame{})
 	// 思齐种菜赚魔力（plant_game.php POST action= 协议；一键收获需验证码不自动）
 	entReg.Register("si-qi.xyz", entertainment.SiqiPlantGame{})
+	// 思齐钓鱼（siqi_fishing.php：页面内嵌 FISHING_DATA，POST action=perform_fishing+slider_position；每日 30 次免费）
+	entReg.Register("si-qi.xyz", entertainment.SiqiFishingGame{})
+	// PANDA 好友买卖（ajax.php action=friendTrade* 家族；Play 只读 InitOrHome，claim/redeem/protect 走 Bet）
+	entReg.Register("pandapt.net", entertainment.PandaFriendTradeGame{})
 	// 天枢星尘农场（ajax.php action+params JSON 协议，Farmable 复用农场 UI）
 	entReg.Register("dubhe.site", entertainment.DubheStardustGame{})
 	return entReg

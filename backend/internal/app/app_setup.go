@@ -106,10 +106,11 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("longpt.org", entertainment.LongPTWheelGame{})
 	entReg.Register("longpt.org", entertainment.LongPTDailyGame{})
 	entReg.Register("longpt.org", entertainment.LongPTMedalGame{})
-	// 魔力农场（通用 magic_fram.php 插件，好学 hxpt + NovaHD + 包子共用；纯 Cookie，货币=seedbonus）
+	// 魔力农场（通用 magic_fram.php 插件，好学 hxpt + NovaHD + 包子 + PlayLet 共用；纯 Cookie，货币=seedbonus）
 	entReg.Register("hxpt.org", entertainment.MagicFarmGame{})
 	entReg.Register("novahd.top", entertainment.MagicFarmGame{})
 	entReg.Register("t-baozi.cc", entertainment.MagicFarmGame{})
+	entReg.Register("playlet.cc", entertainment.MagicFarmGame{})
 	// NovaHD：魔力值刮刮乐 + 幸运抽奖（magic_scratch.php / fortune-wheel-spin.php，纯 Cookie 鉴权）
 	entReg.Register("novahd.top", entertainment.NovaHDScratchGame{})
 	entReg.Register("novahd.top", entertainment.NovaHDLuckyGame{})

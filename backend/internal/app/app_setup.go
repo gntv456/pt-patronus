@@ -141,6 +141,11 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	// 状态机/红包雨（批3）：二十一点 + 好学红包雨
 	entReg.Register("audiences.me", entertainment.AudiencesBlackjackGame{})
 	entReg.Register("hxpt.org", entertainment.HxptRedpacketGame{})
+	// NexusPHP 二十一点整页表单插件（2026-09 全站普查：52PT/HDArea/HDU/PTHome/CyanBug/TTG/SSD；
+	// 青蛙房间制协议不同未接；OpenCD/CHDBits/KEEPFRDS 表单形态特殊待二次校准）
+	for _, h := range []string{"52pt.site", "hdarea.club", "pt.hdupt.com", "pthome.net", "cyanbug.net", "totheglory.im", "springsunday.net"} {
+		entReg.Register(h, entertainment.NxpBlackjackGame{})
+	}
 	// 蜂巢五子棋人机挑战（GET/POST /api/gobang JSON，flarum_session cookie 鉴权）
 	entReg.Register("pting.club", entertainment.PtingGobangGame{})
 	return entReg

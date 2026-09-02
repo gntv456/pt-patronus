@@ -157,6 +157,12 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	// 13City 彩票中心（lottery.php 每天 20:00 开奖，货币=啤酒瓶；购买走 Bet 显式下单）
 	// HDHome 站庆抽奖 2026-11 才开启（无参与按钮）暂缓；OpenCD 乐透上期 2011 年已停摆跳过
 	entReg.Register("13city.org", entertainment.City13LotteryGame{})
+	// 13City 大转盘 + 幸运骰子（POST action= 协议，页面 JS 实测）
+	entReg.Register("13city.org", entertainment.City13WheelGame{})
+	entReg.Register("13city.org", entertainment.City13DiceGame{})
+	// wof.php 转盘家族：HDKylin（GET wof/ajax_chs.php）+ UBits（POST wof.php + csrf，UB 已有 ub_wheel 之外的第二转盘）
+	entReg.Register("www.hdkyl.in", entertainment.WofWheelGame{})
+	entReg.Register("ubits.club", entertainment.WofWheelGame{})
 	return entReg
 }
 

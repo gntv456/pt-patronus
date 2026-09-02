@@ -163,6 +163,10 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	// wof.php 转盘家族：HDKylin（GET wof/ajax_chs.php）+ UBits（POST wof.php + csrf，UB 已有 ub_wheel 之外的第二转盘）
 	entReg.Register("www.hdkyl.in", entertainment.WofWheelGame{})
 	entReg.Register("ubits.club", entertainment.WofWheelGame{})
+	// HDKylin 双色球（union-lotto.php，POST json nums=[6红+1蓝]；GET 返回投注记录）
+	entReg.Register("www.hdkyl.in", entertainment.HdkylinLottoGame{})
+	// 蟹黄堡快三（/nodeapi/fast-three JSON，角色三选一投注，Bet 显式）
+	entReg.Register("crabpt.vip", entertainment.CrabFastThreeGame{})
 	// 思齐种菜赚魔力（plant_game.php POST action= 协议；一键收获需验证码不自动）
 	entReg.Register("si-qi.xyz", entertainment.SiqiPlantGame{})
 	// 天枢星尘农场（ajax.php action+params JSON 协议，Farmable 复用农场 UI）

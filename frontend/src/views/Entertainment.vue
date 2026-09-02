@@ -88,7 +88,8 @@ const spinnerIds = [
   'hhan_lucky_wheel',
 ]
 // 通用下注组件覆盖的 game.id（批2：骰宝/双色球/Betting/红包；猜大小走专属 BigSmallGame；翻面走 PandaFlipGame）
-const betIds = ['cbg_sicbo', 'crab_unionlotto', 'ubits_redpacket']
+// 批6：麒麟双色球 hdkylin_lotto（选号 6红+1蓝）+ 蟹黄堡快三 crab_fastthree（角色三选一，Amount=批量注数）
+const betIds = ['cbg_sicbo', 'crab_unionlotto', 'ubits_redpacket', 'hdkylin_lotto', 'crab_fastthree']
 // 猜大小（批2.5：好学 hxpt_bigsmall + 熊猫 panda_bigsmall，富 UI：走势/排行/记录/倒计时/任务/聊天/红包）
 const bigsmallIds = ['hxpt_bigsmall', 'panda_bigsmall']
 // 二十一点状态机（批3）

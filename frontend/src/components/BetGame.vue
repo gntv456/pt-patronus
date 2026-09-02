@@ -17,7 +17,8 @@ const blue = ref('7')
 const mode = computed(() => {
   const g = props.game
   if (g.endsWith('_bigsmall') || g.endsWith('_sicbo')) return 'bigsmall'
-  if (g.endsWith('_unionlotto')) return 'lotto'
+  if (g.endsWith('_unionlotto') || g === 'hdkylin_lotto') return 'lotto'
+  if (g === 'crab_fastthree') return 'fastthree'
   if (g.endsWith('_flip')) return 'flip'
   if (g.endsWith('_redpacket')) return 'redpacket'
   if (g.endsWith('_bet')) return 'bet'
@@ -48,6 +49,11 @@ const betBS = (t: string) => doBet({ selection: t, amount: amount.value })
 const betFlip = () => doBet({ selection: '0', amount: 0 })
 const betClaim = () => doBet({ selection: 'claim', amount: 0 })
 const betLotto = () => doBet({ selection: '', amount: 166, extra: { reds: reds.value, blue: blue.value } })
+// 麒麟双色球：后端 Selection 直接吃 "红,红,红,红,红,红|蓝"（蟹黄堡双色球仍走 extra）
+const betHdkylinLotto = () => doBet({ selection: `${reds.value}|${blue.value}`, amount: 0 })
+const fastThreeChar = ref('皮卡丘')
+const betFastThree = () =>
+  doBet({ selection: fastThreeChar.value, amount: amount.value > 1 ? amount.value : 0 })
 
 onMounted(refreshStats)
 </script>
@@ -81,7 +87,36 @@ onMounted(refreshStats)
           <span>{{ t('bg.blue') }}</span
           ><input v-model="blue" class="txt" placeholder="7" />
         </div>
-        <button class="op primary" :disabled="playing" @click="betLotto">
+        <!-- 蟹黄堡走 extra（betLotto），麒麟走 selection（betHdkylinLotto） -->
+        <button
+          class="op primary"
+          :disabled="playing"
+          @click="game === 'hdkylin_lotto' ? betHdkylinLotto() : betLotto()"
+        >
+          {{ playing ? t('bg.betting') : t('bg.bet') }}
+        </button>
+      </template>
+
+      <template v-else-if="mode === 'fastthree'">
+        <div class="sec-title">🦀 快三 · 角色投注</div>
+        <div class="ops">
+          <button
+            v-for="c in ['皮卡丘', '杰尼龟', '妙蛙种子']"
+            :key="c"
+            class="op"
+            :class="{ primary: fastThreeChar === c }"
+            :disabled="playing"
+            @click="fastThreeChar = c"
+          >
+            {{ c }}
+          </button>
+        </div>
+        <div class="row">
+          <span>注数</span>
+          <input v-model.number="amount" type="number" class="txt" min="1" max="10000" />
+          <span class="text-muted">1=单注，>1=批量</span>
+        </div>
+        <button class="op primary" :disabled="playing" @click="betFastThree">
           {{ playing ? t('bg.betting') : t('bg.bet') }}
         </button>
       </template>

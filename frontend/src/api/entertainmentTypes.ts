@@ -488,3 +488,24 @@ export interface TangptLotteryState {
   max_draw_count: number
   items: TangptPrizeDef[]
 }
+
+// ── 娱乐总览（批19：站点×游戏矩阵） ────────────────────────────────
+export interface OverviewGame {
+  id: string
+  name: string
+  category: 'wheel' | 'bet' | 'stateful' | 'farm' | 'table' | 'other'
+}
+export interface OverviewSite {
+  id: number
+  name: string
+  base_url: string
+  is_active: boolean
+  games: OverviewGame[]
+}
+export interface OverviewResp {
+  total_sites: number
+  game_sites: number
+  total_games: number
+  categories: Record<string, number>
+  sites: OverviewSite[]
+}

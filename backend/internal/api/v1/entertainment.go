@@ -203,3 +203,13 @@ func (h *EntertainmentHandler) History(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"records": res})
 }
+
+// Overview 娱乐总览（全部站点×游戏矩阵，一次拉齐；总览页用）。
+func (h *EntertainmentHandler) Overview(c *gin.Context) {
+	res, err := h.ent.Overview()
+	if err != nil {
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}

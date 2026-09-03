@@ -46,6 +46,9 @@ export type {
   CbgWheelState,
   CbgSlotState,
   TangptLotteryState,
+  OverviewResp,
+  OverviewSite,
+  OverviewGame,
 } from './entertainmentTypes'
 import type {
   Game,
@@ -73,6 +76,9 @@ import type {
   CbgWheelState,
   CbgSlotState,
   TangptLotteryState,
+  OverviewResp,
+  OverviewSite,
+  OverviewGame,
 } from './entertainmentTypes'
 import type { Site } from './site'
 
@@ -243,6 +249,8 @@ export const entertainmentApi = {
     http
       .get<City13DiceState>(`/entertainment/${siteId}/games/${game}/city13-dice-state`)
       .then((r) => r.data),
+  /** 娱乐总览（全部站点×游戏矩阵） */
+  overview: () => http.get<OverviewResp>('/entertainment/overview').then((r) => r.data),
   /** 站点列表（含各站已适配娱乐项目数 game_count，独立于通用 /sites） */
   sites: () => http.get<{ sites: Site[] }>('/entertainment').then((r) => r.data.sites ?? []),
 }

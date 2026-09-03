@@ -331,3 +331,85 @@ func (c *EntertainmentChain) ConvertShard(ctx context.Context, siteID uint, game
 	defer c.guard.release(key)
 	return mc.ConvertShard(ctx, c.hc, base, cr, yiYang)
 }
+
+// OverviewGame 总览条目：游戏 + 分类（前端矩阵分组用）。
+type OverviewGame struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Category 玩法分类（前端总览矩阵按此分组）：
+	// wheel 转盘/老虎机 | bet 下注/选号 | stateful 状态机(21点/HiLo/猜大小) |
+	// farm 农场/钓鱼 | table 棋牌(五子棋) | other 其他
+	Category string `json:"category"`
+}
+
+// OverviewSite 总览单站：站点信息 + 游戏清单。
+type OverviewSite struct {
+	ID        int            `json:"id"`
+	Name      string         `json:"name"`
+	BaseURL   string         `json:"base_url"`
+	IsActive  bool           `json:"is_active"`
+	Games     []OverviewGame `json:"games"`
+}
+
+// OverviewResp 总览响应：统计 + 站点清单（有游戏的站在前）。
+type OverviewResp struct {
+	TotalSites int            `json:"total_sites"`    // 站点总数
+	GameSites  int            `json:"game_sites"`     // 有已适配游戏的站点数
+	TotalGames int            `json:"total_games"`    // 已适配游戏总数
+	Categories map[string]int `json:"categories"`     // 分类 → 游戏数
+	Sites      []OverviewSite `json:"sites"`
+}
+
+// classifyGame 按游戏 id 归类（与前端组件路由对齐）。
+func classifyGame(id string) string {
+	switch {
+	case id == "pting_gobang":
+		return "table"
+	}
+	switch {
+	case len(id) > 6 && id[len(id)-6:] == "_wheel", id == "cbg_slot", id == "tangpt_slot",
+		id == "hdvideo_slots", id == "hhan_lucky_wheel", id == "march_wheel",
+		id == "luckydraw_wheel", id == "ub_wheel", id == "tangpt_lottery":
+		return "wheel"
+	case id == "magic_farm", id == "siqi_plant", id == "siqi_fishing",
+		id == "dubhe_stardust", id == "hdvideo_chest":
+		return "farm"
+	case id == "hdvideo_blackjack", id == "nxp_blackjack", id == "opencd_blackjack",
+		id == "audiences_blackjack", id == "hdvideo_hilo", id == "hdvideo_bigsmall",
+		id == "hxpt_bigsmall", id == "panda_bigsmall", id == "tangpt_bigsmall",
+		id == "panda_flip", id == "panda_friendtrade":
+		return "stateful"
+	case len(id) > 4 && id[len(id)-4:] == "_bet":
+		return "other"
+	default:
+		return "bet"
+	}
+}
+
+// Overview 娱乐总览：一次返回全部站点与各自已适配游戏（带分类），供总览页矩阵渲染。
+func (c *EntertainmentChain) Overview() (*OverviewResp, error) {
+	sites, err := c.siteOp.List()
+	if err != nil {
+		return nil, err
+	}
+	resp := &OverviewResp{Categories: map[string]int{}, Sites: []OverviewSite{}}
+	var withGames, noGames []OverviewSite
+	for _, s := range sites {
+		os := OverviewSite{ID: int(s.ID), Name: s.Name, BaseURL: s.BaseURL, IsActive: s.IsActive, Games: []OverviewGame{}}
+		for _, g := range c.reg.Games(s.BaseURL) {
+			cat := classifyGame(g.ID())
+			os.Games = append(os.Games, OverviewGame{ID: g.ID(), Name: g.Name(), Category: cat})
+			resp.Categories[cat]++
+			resp.TotalGames++
+		}
+		if len(os.Games) > 0 {
+			withGames = append(withGames, os)
+		} else {
+			noGames = append(noGames, os)
+		}
+	}
+	resp.TotalSites = len(sites)
+	resp.GameSites = len(withGames)
+	resp.Sites = append(withGames, noGames...)
+	return resp, nil
+}

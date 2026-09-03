@@ -61,11 +61,23 @@ async function play() {
 async function loadSites() {
   try {
     sites.value = await entertainmentApi.sites()
-    if (sites.value.length && currentSite.value === undefined) currentSite.value = sites.value[0].id
+    if (sites.value.length && currentSite.value === undefined) {
+      // 总览页直达：?site=<id>&game=<id>
+      const qs = new URLSearchParams(window.location.search)
+      const qSite = Number(qs.get('site')) || undefined
+      const qGame = qs.get('game') || undefined
+      if (qSite && sites.value.some((s) => s.id === qSite)) {
+        currentSite.value = qSite
+        pendingGame.value = qGame
+      } else {
+        currentSite.value = sites.value[0].id
+      }
+    }
   } catch {
     ElMessage.error(t('entertainment.loadSitesFailed'))
   }
 }
+const pendingGame = ref<string | undefined>()
 
 async function loadGames() {
   if (!currentSite.value) return
@@ -74,7 +86,10 @@ async function loadGames() {
   result.value = null
   try {
     games.value = await entertainmentApi.games(currentSite.value)
-    currentGame.value = games.value[0]?.id
+    currentGame.value =
+      (pendingGame.value && games.value.some((g) => g.id === pendingGame.value) ? pendingGame.value : undefined) ??
+      games.value[0]?.id
+    pendingGame.value = undefined
   } catch {
     ElMessage.error(t('entertainment.loadGamesFailed'))
   } finally {

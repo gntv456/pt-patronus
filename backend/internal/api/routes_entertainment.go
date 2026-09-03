@@ -16,6 +16,7 @@ func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
 	ent := guarded.Group("/entertainment")
 	{
 		ent.GET("", entH.Sites)
+		ent.GET("/overview", entH.Overview)
 		ent.GET("/:id/games", entH.Games)
 		ent.POST("/:id/play", entH.Play)
 		ent.GET("/:id/games/:game/stats", entH.Stats)

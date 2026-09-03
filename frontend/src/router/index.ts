@@ -113,6 +113,11 @@ const router = createRouter({
           component: () => import('@/views/Entertainment.vue'),
         },
         {
+          path: 'entertainment/overview',
+          name: 'entertainment-overview',
+          component: () => import('@/views/EntertainmentOverview.vue'),
+        },
+        {
           path: 'freeleech',
           name: 'freeleech',
           component: () => import('@/views/Freeleech.vue'),

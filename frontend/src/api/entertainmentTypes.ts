@@ -401,3 +401,27 @@ export interface FishingState {
   codex: FishingFish[]
   message?: string
 }
+
+// ── 13City 大转盘/幸运骰子（批12 富 UI） ───────────────────────────
+export interface City13WheelState {
+  balance: number
+  today_used: number
+  daily_limit: number
+  prizes: PrizeDef[]
+  recent_prizes?: string[]
+}
+export interface City13DiceType {
+  key: string
+  label: string
+  payout: number
+}
+export interface City13DiceRecord {
+  dice: number[]
+  sum: number
+  big: boolean
+}
+export interface City13DiceState {
+  balance: number
+  types: City13DiceType[]
+  recent?: City13DiceRecord[]
+}

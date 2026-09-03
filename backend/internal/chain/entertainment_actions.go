@@ -317,6 +317,32 @@ func (c *EntertainmentChain) FriendTradeState(ctx context.Context, siteID uint, 
 	return ft.FriendTradeState(ctx, c.hc, base, cr)
 }
 
+// City13WheelState 13City 大转盘全景（余额/今日次数/奖品环/最近开奖）。只读。
+func (c *EntertainmentChain) City13WheelState(ctx context.Context, siteID uint, gameID string) (*entertainment.City13WheelState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	w, ok := g.(entertainment.City13Wheelable)
+	if !ok {
+		return nil, errors.New("该游戏不支持大转盘")
+	}
+	return w.City13WheelState(ctx, c.hc, base, cr)
+}
+
+// City13DiceState 13City 幸运骰子全景（余额/玩法/最近开奖）。只读。
+func (c *EntertainmentChain) City13DiceState(ctx context.Context, siteID uint, gameID string) (*entertainment.City13DiceState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	d, ok := g.(entertainment.City13Diceable)
+	if !ok {
+		return nil, errors.New("该游戏不支持幸运骰子")
+	}
+	return d.City13DiceState(ctx, c.hc, base, cr)
+}
+
 // FishingState 钓鱼全景快照（仅 Fishingable 游戏支持：思齐 siqi_fishing）。只读。
 func (c *EntertainmentChain) FishingState(ctx context.Context, siteID uint, gameID string) (*entertainment.FishingState, error) {
 	g, base, cr, err := c.resolve(siteID, gameID)

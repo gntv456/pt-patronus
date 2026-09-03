@@ -54,6 +54,9 @@ func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
 		// 好友买卖（PANDA）全景快照；钓鱼（思齐）全景快照（批8 富 UI）
 		ent.GET("/:id/games/:game/friendtrade-state", entH.FriendTradeState)
 		ent.GET("/:id/games/:game/fishing-state", entH.FishingState)
+		// 13City 大转盘/幸运骰子全景（批12 富 UI）
+		ent.GET("/:id/games/:game/city13-wheel-state", entH.City13WheelState)
+		ent.GET("/:id/games/:game/city13-dice-state", entH.City13DiceState)
 		// 翻面夺宝 websocket 桥接：?ticket= 鉴权（浏览器 WS 不能发 header JWT），
 		// 注册在 api（非 guarded）绕过 header 鉴权，handler 内自验 ticket。
 		api.GET("/entertainment/:id/games/:game/flip-ws", entH.FlipWS)

@@ -91,3 +91,31 @@ func (h *EntertainmentHandler) FishingState(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+// City13WheelState 13City 大转盘全景（余额/今日次数/奖品环/最近开奖）。只读。
+func (h *EntertainmentHandler) City13WheelState(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res, err := h.ent.City13WheelState(c.Request.Context(), id, c.Param("game"))
+	if err != nil {
+		gobangSiteErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+// City13DiceState 13City 幸运骰子全景（余额/玩法/最近开奖）。只读。
+func (h *EntertainmentHandler) City13DiceState(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res, err := h.ent.City13DiceState(c.Request.Context(), id, c.Param("game"))
+	if err != nil {
+		gobangSiteErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}

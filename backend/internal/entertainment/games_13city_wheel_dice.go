@@ -152,3 +152,114 @@ func (City13DiceGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL 
 	m, _ := city13PostCred(ctx, hc, baseURL, "beerpoker.php", "get_balance", cr.Cookie, nil)
 	return &StatsResult{Balance: numField(m, "balance")}, nil
 }
+
+// ── 批12 富 UI 状态端点 ─────────────────────────────────────────────
+
+// City13WheelState 转盘全景（余额/今日次数/奖品环/最近开奖），前端转盘动画渲染用。
+type City13WheelState struct {
+	Balance      float64    `json:"balance"`
+	TodayUsed    int        `json:"today_used"`
+	DailyLimit   int        `json:"daily_limit"`
+	Prizes       []PrizeDef `json:"prizes"`
+	RecentPrizes []string   `json:"recent_prizes,omitempty"` // 最近几期结果（站点字段尽力取）
+}
+
+// City13Wheelable 转盘全景能力。
+type City13Wheelable interface {
+	City13WheelState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*City13WheelState, error)
+}
+
+// City13WheelState 实现：get_balance + get_daily_remaining + get_prizes + get_latest_history。
+func (g City13WheelGame) City13WheelState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*City13WheelState, error) {
+	st := &City13WheelState{Prizes: []PrizeDef{}}
+	if m, _ := city13PostCred(ctx, hc, baseURL, "wheel.php", "get_balance", cr.Cookie, nil); m != nil {
+		st.Balance = numField(m, "balance")
+	}
+	if d, _ := city13PostCred(ctx, hc, baseURL, "wheel.php", "get_daily_remaining", cr.Cookie, nil); d != nil {
+		st.TodayUsed = int(numField(d, "used"))
+		st.DailyLimit = int(numField(d, "limit"))
+	}
+	if p, _ := g.Prizes(ctx, hc, baseURL, cr); p != nil {
+		st.Prizes = p
+	}
+	if h, _ := city13PostCred(ctx, hc, baseURL, "wheel.php", "get_latest_history", cr.Cookie, nil); h != nil {
+		if arr, ok := h["history"].([]any); ok {
+			for i, it := range arr {
+				if i >= 8 {
+					break
+				}
+				if hm, ok := it.(map[string]any); ok {
+					st.RecentPrizes = append(st.RecentPrizes,
+						firstNonEmpty(strField(hm, "prize_name"), strField(hm, "prize_text"), strField(hm, "prize")))
+				}
+			}
+		}
+	}
+	return st, nil
+}
+
+// City13DiceState 骰子全景（余额/玩法提示/最近开奖记录）。
+type City13DiceState struct {
+	Balance float64            `json:"balance"`
+	Types   []City13DiceType   `json:"types"` // 玩法与赔率（静态约定，站点 JS 同源）
+	Recent  []City13DiceRecord `json:"recent,omitempty"`
+}
+
+// City13DiceType 玩法定义。
+type City13DiceType struct {
+	Key    string  `json:"key"` // big/small/2..12
+	Label  string  `json:"label"`
+	Payout float64 `json:"payout"` // 赔率
+}
+
+// City13DiceRecord 一期开奖（dice 三骰 + 大小）。
+type City13DiceRecord struct {
+	Dice []int `json:"dice"`
+	Sum  int   `json:"sum"`
+	Big  bool  `json:"big"`
+}
+
+// City13Diceable 骰子全景能力。
+type City13Diceable interface {
+	City13DiceState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*City13DiceState, error)
+}
+
+// city13DiceTypes 玩法表（big/small 赔 1:1；点数按概率递增——与站点规则页一致，尽力静态）。
+var city13DiceTypes = []City13DiceType{
+	{Key: "big", Label: "大 (11-17)", Payout: 1},
+	{Key: "small", Label: "小 (4-10)", Payout: 1},
+}
+
+// City13DiceState 实现：get_balance + get_history。
+func (g City13DiceGame) City13DiceState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*City13DiceState, error) {
+	st := &City13DiceState{Types: city13DiceTypes}
+	if m, _ := city13PostCred(ctx, hc, baseURL, "beerpoker.php", "get_balance", cr.Cookie, nil); m != nil {
+		st.Balance = numField(m, "balance")
+	}
+	if h, _ := city13PostCred(ctx, hc, baseURL, "beerpoker.php", "get_history", cr.Cookie, nil); h != nil {
+		if arr, ok := h["history"].([]any); ok {
+			for i, it := range arr {
+				if i >= 10 {
+					break
+				}
+				hm, ok := it.(map[string]any)
+				if !ok {
+					continue
+				}
+				rec := City13DiceRecord{}
+				if dice, ok := hm["dice"].([]any); ok {
+					for _, d := range dice {
+						rec.Dice = append(rec.Dice, int(longptNum(d)))
+						rec.Sum += int(longptNum(d))
+					}
+				}
+				if s := longptNum(hm["sum"]); s > 0 {
+					rec.Sum = int(s)
+				}
+				rec.Big = rec.Sum >= 11
+				st.Recent = append(st.Recent, rec)
+			}
+		}
+	}
+	return st, nil
+}

@@ -21,6 +21,8 @@ import BigSmallGame from '@/components/BigSmallGame.vue'
 import GobangGame from '@/components/GobangGame.vue'
 import FriendTradeGame from '@/components/FriendTradeGame.vue'
 import FishingGame from '@/components/FishingGame.vue'
+import City13WheelGame from '@/components/City13WheelGame.vue'
+import City13DiceGame from '@/components/City13DiceGame.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
@@ -183,6 +185,18 @@ loadSites()
       />
       <FishingGame
         v-else-if="richGame === 'siqi_fishing' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <City13WheelGame
+        v-else-if="richGame === '13city_wheel' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <City13DiceGame
+        v-else-if="richGame === '13city_dice' && currentSite"
         :site-id="currentSite"
         :game="currentGame as string"
         :name="selectedGame?.name || ''"

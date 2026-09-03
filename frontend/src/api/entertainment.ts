@@ -41,6 +41,8 @@ export type {
   GobangState,
   FriendTradeState,
   FishingState,
+  City13WheelState,
+  City13DiceState,
 } from './entertainmentTypes'
 import type {
   Game,
@@ -63,6 +65,8 @@ import type {
   GobangState,
   FriendTradeState,
   FishingState,
+  City13WheelState,
+  City13DiceState,
 } from './entertainmentTypes'
 import type { Site } from './site'
 
@@ -212,6 +216,16 @@ export const entertainmentApi = {
   /** 钓鱼全景快照（思齐：钓次/装备/图鉴） */
   fishingState: (siteId: number, game: string) =>
     http.get<FishingState>(`/entertainment/${siteId}/games/${game}/fishing-state`).then((r) => r.data),
+  /** 13City 大转盘全景 */
+  city13WheelState: (siteId: number, game: string) =>
+    http
+      .get<City13WheelState>(`/entertainment/${siteId}/games/${game}/city13-wheel-state`)
+      .then((r) => r.data),
+  /** 13City 幸运骰子全景 */
+  city13DiceState: (siteId: number, game: string) =>
+    http
+      .get<City13DiceState>(`/entertainment/${siteId}/games/${game}/city13-dice-state`)
+      .then((r) => r.data),
   /** 站点列表（含各站已适配娱乐项目数 game_count，独立于通用 /sites） */
   sites: () => http.get<{ sites: Site[] }>('/entertainment').then((r) => r.data.sites ?? []),
 }

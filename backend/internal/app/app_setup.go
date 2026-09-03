@@ -135,6 +135,13 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	// 不可躺 猜大小（/api/big-small/*：snapshot 快照 + bets 下注 JSON）+ 老虎机（/web/omnibot/slot-machine/*）
 	entReg.Register("www.tangpt.top", entertainment.TangptBigSmallGame{})
 	entReg.Register("www.tangpt.top", entertainment.TangptSlotGame{})
+	// 高清视频 /games/ 大厅（批10）：压大小/老虎机/刮刮乐/HiLo/21点；货币=电影票
+	// ddz/poker/zjh/sports/stock/chest 为对战或复杂玩法不接；lucky-draw 302 未开启
+	entReg.Register("hdvideo.top", entertainment.HdvideoBigSmallGame{})
+	entReg.Register("hdvideo.top", entertainment.HdvideoSlotsGame{})
+	entReg.Register("hdvideo.top", entertainment.HdvideoScratchGame{})
+	entReg.Register("hdvideo.top", entertainment.HdvideoHiloGame{})
+	entReg.Register("hdvideo.top", entertainment.HdvideoBlackjackGame{})
 	// 下注/选号（批2，Bettable）：猜大小/骰宝/双色球/翻面/赛事押注/红包
 	entReg.Register("hxpt.org", entertainment.HxptBigSmallGame{})
 	entReg.Register("pandapt.net", entertainment.PandaBigSmallGame{})

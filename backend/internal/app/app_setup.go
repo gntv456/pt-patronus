@@ -142,6 +142,10 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("hdvideo.top", entertainment.HdvideoScratchGame{})
 	entReg.Register("hdvideo.top", entertainment.HdvideoHiloGame{})
 	entReg.Register("hdvideo.top", entertainment.HdvideoBlackjackGame{})
+	// 批10.5：签到宝箱（连续 7/15/30 天开箱）+ 股票模拟（market.php A 股行情，持仓只读+显式买卖）
+	// 菠菜系统当前无赛事（「暂无可押注的赛事」）backlog；ddz/poker/zjh 对战不接
+	entReg.Register("hdvideo.top", entertainment.HdvideoChestGame{})
+	entReg.Register("hdvideo.top", entertainment.HdvideoStockGame{})
 	// 下注/选号（批2，Bettable）：猜大小/骰宝/双色球/翻面/赛事押注/红包
 	entReg.Register("hxpt.org", entertainment.HxptBigSmallGame{})
 	entReg.Register("pandapt.net", entertainment.PandaBigSmallGame{})

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { entertainmentApi, type Game, type PlayResult, type Site } from '@/api/entertainment'
+import { entertainmentApi, type Game, type Site } from '@/api/entertainment'
 import ScratchCardGame from '@/components/ScratchCardGame.vue'
 import JggGameUi from '@/components/JggGameUi.vue'
 import MagicScratchGame from '@/components/MagicScratchGame.vue'
@@ -28,6 +28,7 @@ import CbgSlotGame from '@/components/CbgSlotGame.vue'
 import LottoPickerGame from '@/components/LottoPickerGame.vue'
 import TangptLotteryGame from '@/components/TangptLotteryGame.vue'
 import HiloGame from '@/components/HiloGame.vue'
+import SimpleGameCard from '@/components/SimpleGameCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
@@ -36,27 +37,6 @@ const currentSite = ref<number | undefined>()
 const games = ref<Game[]>([])
 const currentGame = ref<string | undefined>()
 const loading = ref(false)
-const playing = ref(false)
-const result = ref<PlayResult | null>(null)
-
-// 通用（非富 UI）游戏的玩一次
-async function play() {
-  if (!currentSite.value || !currentGame.value) return
-  playing.value = true
-  result.value = null
-  try {
-    const res = await entertainmentApi.play(currentSite.value, currentGame.value)
-    result.value = res
-    if (res.success)
-      ElMessage.success(res.prize ? t('entertainment.prizeWon', { p: res.prize }) : t('entertainment.done'))
-    else ElMessage.warning(res.message || t('entertainment.failed'))
-  } catch (e: unknown) {
-    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
-    ElMessage.error(msg || t('common.requestFailed'))
-  } finally {
-    playing.value = false
-  }
-}
 
 async function loadSites() {
   try {
@@ -83,7 +63,6 @@ async function loadGames() {
   if (!currentSite.value) return
   loading.value = true
   games.value = []
-  result.value = null
   try {
     games.value = await entertainmentApi.games(currentSite.value)
     currentGame.value =
@@ -159,7 +138,11 @@ loadSites()
       <LongPTWheelGame v-else-if="richGame === 'longpt_wheel' && currentSite" :site-id="currentSite" />
       <LongPTDailyGame v-else-if="richGame === 'longpt_daily' && currentSite" :site-id="currentSite" />
       <LongPTMedalGame v-else-if="richGame === 'longpt_medal' && currentSite" :site-id="currentSite" />
-      <MagicFarmGame v-else-if="richGame === 'magic_farm' && currentSite" :site-id="currentSite" />
+      <MagicFarmGame
+        v-else-if="['magic_farm', 'siqi_plant', 'dubhe_stardust'].includes(richGame as string) && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+      />
       <NovaHDScratchGame v-else-if="richGame === 'novahd_scratch' && currentSite" :site-id="currentSite" />
       <NovaHDLuckyGame v-else-if="richGame === 'novahd_lucky' && currentSite" :site-id="currentSite" />
       <SpinnerGame
@@ -249,17 +232,13 @@ loadSites()
         :name="selectedGame?.name || ''"
       />
 
-      <!-- 通用玩法兜底 -->
-      <div v-else-if="selectedGame" class="glass glass-hover simple-card">
-        <div class="gname">{{ selectedGame.name }}</div>
-        <el-button type="primary" :loading="playing" @click="play">{{ t('entertainment.playOnce') }}</el-button>
-        <div v-if="result" class="result" :class="result.success ? 'win' : 'lose'">
-          <span class="badge">{{ result.success ? t('entertainment.winMark') : t('entertainment.loseMark') }}</span>
-          <span v-if="result.prize" class="prize">{{ result.prize }}</span>
-          <span v-if="result.amount" class="amount">×{{ result.amount }}</span>
-          <div v-if="result.message" class="msg text-muted">{{ result.message }}</div>
-        </div>
-      </div>
+      <!-- 通用玩法兜底（批20：SimpleGameCard 富卡——stats/prizes/history 自动加载） -->
+      <SimpleGameCard
+        v-else-if="selectedGame && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame.name"
+      />
 
       <EmptyState
         v-else-if="!loading"

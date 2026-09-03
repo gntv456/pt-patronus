@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { entertainmentApi, type FarmState, type FarmItem, type PlayResult } from '@/api/entertainment'
 
-const props = defineProps<{ siteId: number }>()
 const { t } = useI18n()
-const GAME = 'magic_farm'
+const props = defineProps<{ siteId: number; game?: string }>()
+const GAME = computed(() => props.game || 'magic_farm')
 
 const farm = ref<FarmState | null>(null)
 const busy = ref(false)
 const last = ref<PlayResult | null>(null)
 
 async function refresh() {
-  farm.value = await entertainmentApi.farm(props.siteId, GAME).catch(() => farm.value)
+  farm.value = await entertainmentApi.farm(props.siteId, GAME.value).catch(() => farm.value)
 }
 
 async function doAct(fn: () => Promise<PlayResult>) {
@@ -32,10 +32,10 @@ async function doAct(fn: () => Promise<PlayResult>) {
   }
 }
 
-const plant = (it: FarmItem) => doAct(() => entertainmentApi.plant(props.siteId, GAME, it.section, it.id))
-const harvest = (it: FarmItem) => doAct(() => entertainmentApi.harvest(props.siteId, GAME, it.section, it.id))
-const harvestAll = () => doAct(() => entertainmentApi.harvestAll(props.siteId, GAME))
-const sell = (key: string) => doAct(() => entertainmentApi.sell(props.siteId, GAME, key))
+const plant = (it: FarmItem) => doAct(() => entertainmentApi.plant(props.siteId, GAME.value, it.section, it.id))
+const harvest = (it: FarmItem) => doAct(() => entertainmentApi.harvest(props.siteId, GAME.value, it.section, it.id))
+const harvestAll = () => doAct(() => entertainmentApi.harvestAll(props.siteId, GAME.value))
+const sell = (key: string) => doAct(() => entertainmentApi.sell(props.siteId, GAME.value, key))
 
 function emoji(name: string) {
   if (/\u9e21/.test(name)) return '🐔'

@@ -304,6 +304,32 @@ func (c *EntertainmentChain) GobangAction(ctx context.Context, siteID uint, game
 	return gb.GobangAction(ctx, c.hc, base, cr, action, params)
 }
 
+// FriendTradeState 好友买卖全景快照（仅 FriendTradeable 游戏支持：PANDA panda_friendtrade）。只读。
+func (c *EntertainmentChain) FriendTradeState(ctx context.Context, siteID uint, gameID string) (*entertainment.FriendTradeState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	ft, ok := g.(entertainment.FriendTradeable)
+	if !ok {
+		return nil, errors.New("该游戏不支持好友买卖")
+	}
+	return ft.FriendTradeState(ctx, c.hc, base, cr)
+}
+
+// FishingState 钓鱼全景快照（仅 Fishingable 游戏支持：思齐 siqi_fishing）。只读。
+func (c *EntertainmentChain) FishingState(ctx context.Context, siteID uint, gameID string) (*entertainment.FishingState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	f, ok := g.(entertainment.Fishingable)
+	if !ok {
+		return nil, errors.New("该游戏不支持钓鱼")
+	}
+	return f.FishingState(ctx, c.hc, base, cr)
+}
+
 // FlipBridge 翻面夺宝 websocket 桥接：用站点 cookie 连 wss://host/wss，
 // 返回 tileFlip 事件流（自动重连）。每会话一连接（等同一个浏览器开着翻面页）。
 func (c *EntertainmentChain) FlipBridge(ctx context.Context, siteID uint, gameID string) (<-chan entertainment.FlipEvent, error) {

@@ -120,6 +120,68 @@ func (g SiqiFishingGame) PlayMulti(ctx context.Context, hc *httpclient.Client, b
 	return total, nil
 }
 
+// FishingState 全景快照（FISHING_DATA 直读，前端富组件渲染）。只读。
+func (g SiqiFishingGame) FishingState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*FishingState, error) {
+	data, err := siqiFishPage(ctx, hc, baseURL, cr.Cookie)
+	if err != nil {
+		return nil, err
+	}
+	st := &FishingState{Codex: []FishingFish{}}
+	if u, ok := data["user"].(map[string]any); ok {
+		st.Balance = longptNum(u["seedbonus"])
+	}
+	if s, ok := data["state"].(map[string]any); ok {
+		st.AttemptsUsed = int(longptNum(s["daily_attempts_used"]))
+		st.AttemptsLimit = int(longptNum(s["daily_attempts_limit"]))
+		st.CaughtToday = int(longptNum(s["daily_catch_count"]))
+		st.SelectedRod = strField(s, "selected_rod")
+		st.SelectedLure = strField(s, "selected_lure")
+	}
+	// 已解锁鱼竿
+	if inv, ok := data["inventory"].(map[string]any); ok {
+		if rods, ok := inv["rods"].(map[string]any); ok {
+			for key, rv := range rods {
+				if rm, ok := rv.(map[string]any); ok && boolField(rm, "unlocked") {
+					st.Rods = append(st.Rods, key)
+				}
+			}
+		}
+		if lures, ok := inv["lures"].(map[string]any); ok {
+			for key, lv := range lures {
+				if n := longptNum(lv); n > 0 {
+					st.Lures = append(st.Lures, key)
+				}
+			}
+		}
+	}
+	// 图鉴
+	if codex, ok := data["codex"].([]any); ok {
+		for _, c := range codex {
+			cm, ok := c.(map[string]any)
+			if !ok {
+				continue
+			}
+			f := FishingFish{
+				Name:        strField(cm, "name"),
+				Rarity:      strField(cm, "rarity"),
+				RarityLabel: strField(cm, "rarity_label"),
+				TimeSlot:    int(longptNum(cm["time_slot"])),
+				Discovered:  boolField(cm, "discovered"),
+				Quantity:    int(longptNum(cm["quantity"])),
+			}
+			f.Code = int(longptNum(cm["code"]))
+			st.Codex = append(st.Codex, f)
+			if f.Discovered {
+				st.DiscoveredCount++
+			}
+			st.TotalSpecies++
+		}
+	}
+	st.Message = fmt.Sprintf("今日钓次 %d/%d，已钓获 %d 尾，图鉴 %d/%d",
+		st.AttemptsUsed, st.AttemptsLimit, st.CaughtToday, st.DiscoveredCount, st.TotalSpecies)
+	return st, nil
+}
+
 // Stats 余额（页面 user.seedbonus）。
 func (g SiqiFishingGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*StatsResult, error) {
 	data, err := siqiFishPage(ctx, hc, baseURL, cr.Cookie)

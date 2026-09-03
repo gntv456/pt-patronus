@@ -19,6 +19,8 @@ import BlackjackGame from '@/components/BlackjackGame.vue'
 import PandaFlipGame from '@/components/PandaFlipGame.vue'
 import BigSmallGame from '@/components/BigSmallGame.vue'
 import GobangGame from '@/components/GobangGame.vue'
+import FriendTradeGame from '@/components/FriendTradeGame.vue'
+import FishingGame from '@/components/FishingGame.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
@@ -169,6 +171,18 @@ loadSites()
       />
       <GobangGame
         v-else-if="richGame === 'pting_gobang' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <FriendTradeGame
+        v-else-if="richGame === 'panda_friendtrade' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <FishingGame
+        v-else-if="richGame === 'siqi_fishing' && currentSite"
         :site-id="currentSite"
         :game="currentGame as string"
         :name="selectedGame?.name || ''"

@@ -39,6 +39,8 @@ export type {
   FarmState,
   GobangMatch,
   GobangState,
+  FriendTradeState,
+  FishingState,
 } from './entertainmentTypes'
 import type {
   Game,
@@ -59,6 +61,8 @@ import type {
   BlackjackResult,
   FarmState,
   GobangState,
+  FriendTradeState,
+  FishingState,
 } from './entertainmentTypes'
 import type { Site } from './site'
 
@@ -200,6 +204,14 @@ export const entertainmentApi = {
     http
       .post<PlayResult>(`/entertainment/${siteId}/games/${game}/gobang-action`, { action, params })
       .then((r) => r.data),
+  /** 好友买卖全景快照（PANDA：身价/主人/奴隶/收益/任务/动态） */
+  friendTradeState: (siteId: number, game: string) =>
+    http
+      .get<FriendTradeState>(`/entertainment/${siteId}/games/${game}/friendtrade-state`)
+      .then((r) => r.data),
+  /** 钓鱼全景快照（思齐：钓次/装备/图鉴） */
+  fishingState: (siteId: number, game: string) =>
+    http.get<FishingState>(`/entertainment/${siteId}/games/${game}/fishing-state`).then((r) => r.data),
   /** 站点列表（含各站已适配娱乐项目数 game_count，独立于通用 /sites） */
   sites: () => http.get<{ sites: Site[] }>('/entertainment').then((r) => r.data.sites ?? []),
 }

@@ -331,3 +331,73 @@ export interface FarmState {
 
 // 五子棋类型拆至 entertainmentGobang.ts（行数门禁），此处 re-export 保持路径兼容。
 export type { GobangMove, GobangMatch, GobangSummary, GobangRankEntry, GobangState } from './entertainmentGobang'
+
+// ── 好友买卖（PANDA friendTradeInitOrHome 聚合，批8 富 UI） ──────────
+export interface FriendTradeSlave {
+  uid: string
+  username: string
+  avatar?: string
+  price?: string
+  work_label?: string
+  income_amount?: string
+  has_work: boolean
+}
+export interface FriendTradeTask {
+  key: string
+  label?: string
+  progress: number
+  target: number
+  status: string // pending | completed | claimed
+  reward_amount?: string
+}
+export interface FriendTradeFeed {
+  text: string
+  created_at?: string
+}
+export interface FriendTradeState {
+  me_uid: string
+  me_name: string
+  balance?: string
+  currency?: string
+  profile_price: string
+  owner_name?: string
+  owner_uid?: string
+  redeem_price?: string
+  can_redeem: boolean
+  assets: FriendTradeSlave[]
+  asset_total_value?: string
+  claimable_income: string
+  base_capacity?: number
+  owned_count: number
+  next_slot_price?: string
+  today_earned?: string
+  total_earned?: string
+  tasks?: FriendTradeTask[]
+  feed?: FriendTradeFeed[]
+  message?: string
+}
+
+// ── 钓鱼（思齐 FISHING_DATA 聚合，批8 富 UI） ─────────────────────
+export interface FishingFish {
+  code: number
+  name: string
+  rarity: string
+  rarity_label: string
+  time_slot: number
+  discovered: boolean
+  quantity: number
+}
+export interface FishingState {
+  balance: number
+  attempts_used: number
+  attempts_limit: number
+  caught_today: number
+  selected_rod?: string
+  selected_lure?: string
+  rods?: string[]
+  lures?: string[]
+  discovered_count: number
+  total_species: number
+  codex: FishingFish[]
+  message?: string
+}

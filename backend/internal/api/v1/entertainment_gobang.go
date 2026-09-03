@@ -63,3 +63,31 @@ func (h *EntertainmentHandler) GobangAction(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+// FriendTradeState 好友买卖全景快照（PANDA：身价/主人/奴隶/收益/任务/动态）。只读。
+func (h *EntertainmentHandler) FriendTradeState(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res, err := h.ent.FriendTradeState(c.Request.Context(), id, c.Param("game"))
+	if err != nil {
+		gobangSiteErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+// FishingState 钓鱼全景快照（思齐：钓次/装备/图鉴）。只读。
+func (h *EntertainmentHandler) FishingState(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res, err := h.ent.FishingState(c.Request.Context(), id, c.Param("game"))
+	if err != nil {
+		gobangSiteErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}

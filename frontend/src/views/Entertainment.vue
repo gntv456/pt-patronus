@@ -23,6 +23,8 @@ import FriendTradeGame from '@/components/FriendTradeGame.vue'
 import FishingGame from '@/components/FishingGame.vue'
 import City13WheelGame from '@/components/City13WheelGame.vue'
 import City13DiceGame from '@/components/City13DiceGame.vue'
+import CbgWheelGame from '@/components/CbgWheelGame.vue'
+import CbgSlotGame from '@/components/CbgSlotGame.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
@@ -82,8 +84,6 @@ const selectedGame = computed(() => games.value.find((g) => g.id === currentGame
 const richGame = computed(() => currentGame.value)
 // 通用抽奖组件覆盖的 game.id（批1：多站转盘/老虎机/抽奖；红包雨 hxpt_redpacket 用 Play 封装触发）
 const spinnerIds = [
-  'cbg_wheel',
-  'cbg_slot',
   'ub_wheel',
   'luckydraw_wheel',
   'march_wheel',
@@ -197,6 +197,18 @@ loadSites()
       />
       <City13DiceGame
         v-else-if="richGame === '13city_dice' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <CbgWheelGame
+        v-else-if="richGame === 'cbg_wheel' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <CbgSlotGame
+        v-else-if="richGame === 'cbg_slot' && currentSite"
         :site-id="currentSite"
         :game="currentGame as string"
         :name="selectedGame?.name || ''"

@@ -169,3 +169,110 @@ func (CbgSlotGame) Stats(ctx context.Context, hc *httpclient.Client, baseURL str
 	}
 	return &StatsResult{Balance: cbgBalance(resp.Body)}, nil
 }
+
+// ── 批13 富 UI 状态端点 ─────────────────────────────────────────────
+
+// CbgWheelState 转盘全景：余额/单价/10 格奖品表/最近记录。
+type CbgWheelState struct {
+	Balance float64      `json:"balance"`
+	Cost    float64      `json:"cost"` // 每次魔力（页面 COST_MP）
+	Prizes  []PrizeDef   `json:"prizes"`
+	Recent  []GameRecord `json:"recent,omitempty"`
+}
+
+// CbgWheelable 转盘全景能力。
+type CbgWheelable interface {
+	CbgWheelState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*CbgWheelState, error)
+}
+
+// cbgPrizesRe 页面内嵌 INITIAL_PRIZES = [{"name":...,"id":N,...}]。
+var cbgPrizesRe = compileRegex(`INITIAL_PRIZES\s*=\s*(\[.*?\]);`)
+var cbgPrizeItemRe = compileRegex(`"name":"([^"]+)"[^{}]*?"id":([0-9]+)|"id":([0-9]+)[^{}]*?"name":"([^"]+)"`)
+
+// cbgCostRe 页面 COST_MP = N。
+var cbgCostRe = compileRegex(`COST_MP\s*=\s*(\d+)`)
+
+// cbgParsePrizes 从页面 JS 抠奖品表（unicode 转义用 json 还原）。
+func cbgParsePrizes(body string) []PrizeDef {
+	m := cbgPrizesRe.FindStringSubmatch(body)
+	if m == nil {
+		return nil
+	}
+	out := []PrizeDef{}
+	for _, sm := range cbgPrizeItemRe.FindAllStringSubmatch(m[1], -1) {
+		name, idStr := sm[1], sm[2]
+		if name == "" {
+			name, idStr = sm[4], sm[3]
+		}
+		var unquoted string
+		if err := json.Unmarshal([]byte(`"`+strings.ReplaceAll(name, `"`, `\"`)+`"`), &unquoted); err == nil {
+			name = unquoted
+		}
+		id, _ := strconv.Atoi(idStr)
+		out = append(out, PrizeDef{ID: id, Name: name})
+	}
+	return out
+}
+
+// CbgWheelState 实现：页面（余额+奖品+单价）+ History。
+func (g CbgWheelGame) CbgWheelState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*CbgWheelState, error) {
+	page := joinPath(baseURL, "luckywheel.php")
+	resp, err := hc.GetWithHeaders(ctx, page, cr.Cookie, map[string]string{"Referer": page}, true)
+	if err != nil {
+		return nil, err
+	}
+	st := &CbgWheelState{Balance: cbgBalance(resp.Body), Prizes: []PrizeDef{}}
+	if m := cbgCostRe.FindStringSubmatch(string(resp.Body)); m != nil {
+		st.Cost, _ = strconv.ParseFloat(m[1], 64)
+	}
+	st.Prizes = cbgParsePrizes(string(resp.Body))
+	if recent, err := g.History(ctx, hc, baseURL, cr); err == nil {
+		st.Recent = recent
+	}
+	return st, nil
+}
+
+// CbgSlotState 老虎机全景：余额/单价/图案序/最近记录。
+type CbgSlotState struct {
+	Balance float64      `json:"balance"`
+	Cost    float64      `json:"cost"`    // 每次魔力（页面 COST_MP）
+	Symbols []int        `json:"symbols"` // 1..9 号图案
+	Recent  []GameRecord `json:"recent,omitempty"`
+}
+
+// CbgSlotable 老虎机全景能力。
+type CbgSlotable interface {
+	CbgSlotState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*CbgSlotState, error)
+}
+
+// CbgSlotState 实现。
+func (g CbgSlotGame) CbgSlotState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*CbgSlotState, error) {
+	page := joinPath(baseURL, "slotmachine.php")
+	resp, err := hc.GetWithHeaders(ctx, page, cr.Cookie, map[string]string{"Referer": page}, true)
+	if err != nil {
+		return nil, err
+	}
+	st := &CbgSlotState{Balance: cbgBalance(resp.Body), Symbols: []int{1, 2, 3, 4, 5, 6, 7, 8, 9}}
+	if m := cbgCostRe.FindStringSubmatch(string(resp.Body)); m != nil {
+		st.Cost, _ = strconv.ParseFloat(m[1], 64)
+	}
+	if h, err := cbgApiGet(ctx, hc, baseURL, "api/api_slotmachine_log.php?page=1", "slotmachine.php", cr.Cookie); err == nil && h != nil {
+		if logs, ok := h["logs"].([]any); ok {
+			for i, l := range logs {
+				if i >= 10 {
+					break
+				}
+				lm, ok := l.(map[string]any)
+				if !ok {
+					continue
+				}
+				st.Recent = append(st.Recent, GameRecord{
+					PrizeName: firstNonEmpty(strField(lm, "reel_result"), strField(lm, "result")),
+					Amount:    numField(lm, "reward_mp"),
+					CreatedAt: strField(lm, "time"),
+				})
+			}
+		}
+	}
+	return st, nil
+}

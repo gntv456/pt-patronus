@@ -317,6 +317,32 @@ func (c *EntertainmentChain) FriendTradeState(ctx context.Context, siteID uint, 
 	return ft.FriendTradeState(ctx, c.hc, base, cr)
 }
 
+// CbgWheelState 藏宝阁大转盘全景（余额/单价/10 格奖品/最近记录）。只读。
+func (c *EntertainmentChain) CbgWheelState(ctx context.Context, siteID uint, gameID string) (*entertainment.CbgWheelState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	w, ok := g.(entertainment.CbgWheelable)
+	if !ok {
+		return nil, errors.New("该游戏不支持大转盘")
+	}
+	return w.CbgWheelState(ctx, c.hc, base, cr)
+}
+
+// CbgSlotState 藏宝阁老虎机全景（余额/单价/图案/最近记录）。只读。
+func (c *EntertainmentChain) CbgSlotState(ctx context.Context, siteID uint, gameID string) (*entertainment.CbgSlotState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	sm, ok := g.(entertainment.CbgSlotable)
+	if !ok {
+		return nil, errors.New("该游戏不支持老虎机")
+	}
+	return sm.CbgSlotState(ctx, c.hc, base, cr)
+}
+
 // City13WheelState 13City 大转盘全景（余额/今日次数/奖品环/最近开奖）。只读。
 func (c *EntertainmentChain) City13WheelState(ctx context.Context, siteID uint, gameID string) (*entertainment.City13WheelState, error) {
 	g, base, cr, err := c.resolve(siteID, gameID)

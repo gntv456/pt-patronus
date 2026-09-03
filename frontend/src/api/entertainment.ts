@@ -43,6 +43,8 @@ export type {
   FishingState,
   City13WheelState,
   City13DiceState,
+  CbgWheelState,
+  CbgSlotState,
 } from './entertainmentTypes'
 import type {
   Game,
@@ -67,6 +69,8 @@ import type {
   FishingState,
   City13WheelState,
   City13DiceState,
+  CbgWheelState,
+  CbgSlotState,
 } from './entertainmentTypes'
 import type { Site } from './site'
 
@@ -216,6 +220,12 @@ export const entertainmentApi = {
   /** 钓鱼全景快照（思齐：钓次/装备/图鉴） */
   fishingState: (siteId: number, game: string) =>
     http.get<FishingState>(`/entertainment/${siteId}/games/${game}/fishing-state`).then((r) => r.data),
+  /** 藏宝阁大转盘全景 */
+  cbgWheelState: (siteId: number, game: string) =>
+    http.get<CbgWheelState>(`/entertainment/${siteId}/games/${game}/cbg-wheel-state`).then((r) => r.data),
+  /** 藏宝阁老虎机全景 */
+  cbgSlotState: (siteId: number, game: string) =>
+    http.get<CbgSlotState>(`/entertainment/${siteId}/games/${game}/cbg-slot-state`).then((r) => r.data),
   /** 13City 大转盘全景 */
   city13WheelState: (siteId: number, game: string) =>
     http

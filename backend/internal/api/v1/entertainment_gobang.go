@@ -119,3 +119,31 @@ func (h *EntertainmentHandler) City13DiceState(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+// CbgWheelState 藏宝阁大转盘全景。只读。
+func (h *EntertainmentHandler) CbgWheelState(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res, err := h.ent.CbgWheelState(c.Request.Context(), id, c.Param("game"))
+	if err != nil {
+		gobangSiteErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+// CbgSlotState 藏宝阁老虎机全景。只读。
+func (h *EntertainmentHandler) CbgSlotState(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res, err := h.ent.CbgSlotState(c.Request.Context(), id, c.Param("game"))
+	if err != nil {
+		gobangSiteErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}

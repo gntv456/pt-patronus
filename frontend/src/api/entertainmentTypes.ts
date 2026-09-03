@@ -425,3 +425,17 @@ export interface City13DiceState {
   types: City13DiceType[]
   recent?: City13DiceRecord[]
 }
+
+// ── 藏宝阁大转盘/老虎机（批13 富 UI） ──────────────────────────────
+export interface CbgWheelState {
+  balance: number
+  cost: number
+  prizes: PrizeDef[]
+  recent?: GameRecord[]
+}
+export interface CbgSlotState {
+  balance: number
+  cost: number
+  symbols: number[]
+  recent?: GameRecord[]
+}

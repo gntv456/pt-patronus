@@ -54,6 +54,9 @@ func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
 		// 好友买卖（PANDA）全景快照；钓鱼（思齐）全景快照（批8 富 UI）
 		ent.GET("/:id/games/:game/friendtrade-state", entH.FriendTradeState)
 		ent.GET("/:id/games/:game/fishing-state", entH.FishingState)
+		// 藏宝阁大转盘/老虎机全景（批13 富 UI）
+		ent.GET("/:id/games/:game/cbg-wheel-state", entH.CbgWheelState)
+		ent.GET("/:id/games/:game/cbg-slot-state", entH.CbgSlotState)
 		// 13City 大转盘/幸运骰子全景（批12 富 UI）
 		ent.GET("/:id/games/:game/city13-wheel-state", entH.City13WheelState)
 		ent.GET("/:id/games/:game/city13-dice-state", entH.City13DiceState)

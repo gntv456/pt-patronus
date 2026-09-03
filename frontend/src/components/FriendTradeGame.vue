@@ -21,11 +21,11 @@ async function refresh() {
   }
 }
 
-async function act(selection: string) {
+async function act(selection: string, extra?: Record<string, string>) {
   if (working.value) return
   working.value = true
   try {
-    const res = await entertainmentApi.bet(props.siteId, props.game, { selection, amount: 0 })
+    const res = await entertainmentApi.bet(props.siteId, props.game, { selection, amount: 0, extra })
     last.value = res
     if (res.success) ElMessage.success(res.message || '操作成功')
     else ElMessage.warning(res.message || '操作失败')
@@ -33,6 +33,27 @@ async function act(selection: string) {
   } finally {
     working.value = false
   }
+}
+
+const expandedSlave = ref<string | null>(null)
+function toggleSlave(uid: string) {
+  expandedSlave.value = expandedSlave.value === uid ? null : uid
+}
+
+async function batch(kind: 'work' | 'interact') {
+  const opts = state.value?.assets?.[0]?.[kind === 'work' ? 'work_options' : 'interaction_options'] ?? []
+  if (!opts.length) {
+    ElMessage.info('暂无可用选项')
+    return
+  }
+  // 取第一个已解锁选项做一键
+  const opt = opts.find((o) => o.unlocked)
+  if (!opt) {
+    ElMessage.info('所有选项均未解锁')
+    return
+  }
+  const key = kind === 'work' ? 'work_key' : 'interaction_key'
+  await act(kind === 'work' ? 'batch_work' : 'batch_interact', { [key]: opt.key })
 }
 
 onMounted(refresh)
@@ -86,11 +107,53 @@ onMounted(refresh)
       </section>
 
       <section v-if="state.assets.length" class="glass section">
-        <div class="sec-title">👤 我的奴隶</div>
-        <div class="slave" v-for="s in state.assets" :key="s.uid">
-          <span class="s-name">{{ s.username }}</span>
-          <span class="s-meta text-muted">身价 {{ s.price || '—' }}</span>
-          <span class="s-meta text-muted">{{ s.has_work ? `${s.work_label} · ${s.income_amount}` : '今日未安排' }}</span>
+        <div class="sec-title sec-flex">
+          <span>👤 我的奴隶</span>
+          <span class="batch-btns">
+            <el-button size="small" :disabled="working" @click="batch('work')">一键工作</el-button>
+            <el-button size="small" :disabled="working" @click="batch('interact')">一键互动</el-button>
+          </span>
+        </div>
+        <div v-for="s in state.assets" :key="s.uid" class="slave-card">
+          <div class="slave slave-row" @click="toggleSlave(s.uid)">
+            <span class="s-name">{{ expandedSlave === s.uid ? '▾' : '▸' }} {{ s.username }}</span>
+            <span class="s-meta text-muted">身价 {{ s.price || '—' }}</span>
+            <span class="s-meta text-muted">{{ s.has_work ? `${s.work_label} · ${s.income_amount}` : '今日未安排' }}</span>
+            <el-button size="small" type="danger" plain :disabled="working" @click.stop="act('release', { target_uid: s.uid })">释放</el-button>
+          </div>
+          <div v-if="expandedSlave === s.uid" class="slave-detail">
+            <div v-if="s.work_options?.length" class="opt-group">
+              <div class="opt-label">安排工作</div>
+              <button
+                v-for="o in s.work_options"
+                :key="o.key"
+                class="opt"
+                :disabled="working || !o.unlocked"
+                :title="o.description + (o.unlocked ? '' : `（${o.unlock_text || '未解锁'}）`)"
+                @click="act('work', { target_uid: s.uid, work_key: o.key })"
+              >
+                <b>{{ o.label }}</b>
+                <span class="text-muted">{{ o.unlocked ? (o.income || o.description || '') : (o.unlock_text || '未解锁') }}</span>
+              </button>
+            </div>
+            <div v-if="s.interaction_options?.length" class="opt-group">
+              <div class="opt-label">互动</div>
+              <button
+                v-for="o in s.interaction_options"
+                :key="o.key"
+                class="opt"
+                :disabled="working || !o.unlocked"
+                :title="o.description"
+                @click="act('interact', { target_uid: s.uid, interaction_key: o.key })"
+              >
+                <b>{{ o.label }}</b>
+                <span class="text-muted">{{ o.unlocked ? (o.description || '') : (o.unlock_text || '未解锁') }}</span>
+              </button>
+            </div>
+            <div v-if="!s.work_options?.length && !s.interaction_options?.length" class="text-muted no-opts">
+              该奴隶暂无可培养选项
+            </div>
+          </div>
         </div>
       </section>
 
@@ -134,8 +197,9 @@ onMounted(refresh)
 .cell .k { font-size: 12px; color: var(--text-muted); }
 .cell .v { font-size: 18px; font-weight: 700; }
 .cell .v.accent { color: var(--primary, #409eff); }
-.slave, .task, .feed { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-light, #eee); font-size: 13px; }
-.slave:last-child, .task:last-child, .feed:last-child { border-bottom: none; }
+.task, .feed { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border-light, #eee); font-size: 13px; }
+.task:last-child, .feed:last-child { border-bottom: none; }
+.slave { display: flex; gap: 12px; align-items: center; font-size: 13px; }
 .s-name, .t-name { font-weight: 600; min-width: 90px; }
 .t-status { margin-left: auto; }
 .t-status.claimed { color: var(--success, #67c23a); }
@@ -145,4 +209,21 @@ onMounted(refresh)
 .result.win { background: var(--success-bg, #f0f9eb); }
 .result.lose { background: var(--danger-bg, #fef0f0); }
 .badge { font-weight: 800; }
+
+.sec-flex { display: flex; align-items: center; justify-content: space-between; }
+.batch-btns { display: flex; gap: 6px; }
+.slave-card { border: 1px solid var(--border-light, #eee); border-radius: 8px; margin-bottom: 8px; overflow: hidden; }
+.slave-row { cursor: pointer; padding: 8px 10px; }
+.slave-row:hover { background: var(--bg-hover, #f5f7fa); }
+.slave { display: flex; gap: 12px; align-items: center; }
+.slave :last-child { margin-left: auto; }
+.slave-detail { padding: 10px 12px; border-top: 1px dashed var(--border-light, #eee); background: var(--bg-card, #fafafa); }
+.opt-group { margin-bottom: 10px; }
+.opt-group:last-child { margin-bottom: 0; }
+.opt-label { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; }
+.opt { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 7px 10px; margin-bottom: 4px; border: 1px solid var(--border-light, #e5e7eb); border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; }
+.opt:hover:not(:disabled) { border-color: var(--primary, #409eff); }
+.opt:disabled { opacity: .55; cursor: not-allowed; }
+.opt span { font-size: 11px; }
+.no-opts { font-size: 12px; padding: 4px 0; }
 </style>

@@ -19,6 +19,20 @@ type FriendTradeSlave struct {
 	WorkLabel    string `json:"work_label,omitempty"`    // 今日安排（work_label）
 	IncomeAmount string `json:"income_amount,omitempty"` // 今日产出
 	HasWork      bool   `json:"has_work"`
+	// 培养选项（cultivation_summary：安排工作/互动的下拉数据源，批17）
+	WorkOptions        []FriendTradeOption `json:"work_options,omitempty"`
+	InteractionOptions []FriendTradeOption `json:"interaction_options,omitempty"`
+}
+
+// FriendTradeOption 工作/互动选项（cultivation_summary.work_options / interaction_options 项）。
+type FriendTradeOption struct {
+	Key         string `json:"key"`
+	Label       string `json:"label"`
+	Description string `json:"description,omitempty"`
+	Stage       string `json:"stage,omitempty"`      // 工作阶段（early/mid/late…）
+	Income      string `json:"income,omitempty"`    // 预期产出
+	Unlocked    bool   `json:"unlocked"`            // 是否解锁（属性门槛）
+	UnlockText  string `json:"unlock_text,omitempty"` // 未解锁原因
 }
 
 // FriendTradeTask 新手/成就任务（task_status 项）。

@@ -333,6 +333,15 @@ export interface FarmState {
 export type { GobangMove, GobangMatch, GobangSummary, GobangRankEntry, GobangState } from './entertainmentGobang'
 
 // ── 好友买卖（PANDA friendTradeInitOrHome 聚合，批8 富 UI） ──────────
+export interface FriendTradeOption {
+  key: string
+  label: string
+  description?: string
+  stage?: string
+  income?: string
+  unlocked: boolean
+  unlock_text?: string
+}
 export interface FriendTradeSlave {
   uid: string
   username: string
@@ -341,6 +350,8 @@ export interface FriendTradeSlave {
   work_label?: string
   income_amount?: string
   has_work: boolean
+  work_options?: FriendTradeOption[]
+  interaction_options?: FriendTradeOption[]
 }
 export interface FriendTradeTask {
   key: string

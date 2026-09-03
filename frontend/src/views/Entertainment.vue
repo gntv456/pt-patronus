@@ -27,6 +27,7 @@ import CbgWheelGame from '@/components/CbgWheelGame.vue'
 import CbgSlotGame from '@/components/CbgSlotGame.vue'
 import LottoPickerGame from '@/components/LottoPickerGame.vue'
 import TangptLotteryGame from '@/components/TangptLotteryGame.vue'
+import HiloGame from '@/components/HiloGame.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
@@ -210,6 +211,12 @@ loadSites()
       />
       <CbgSlotGame
         v-else-if="richGame === 'cbg_slot' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <HiloGame
+        v-else-if="richGame === 'hdvideo_hilo' && currentSite"
         :site-id="currentSite"
         :game="currentGame as string"
         :name="selectedGame?.name || ''"

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -90,6 +91,11 @@ func (g PandaFriendTradeGame) FriendTradeState(ctx context.Context, hc *httpclie
 			sl.WorkLabel = pandaStr(w, "work_label")
 			sl.IncomeAmount = pandaStr(w, "income_amount")
 			sl.HasWork = boolField(w, "has_work")
+		}
+		// 培养选项（页面 cultivation_summary：work_options/interaction_options 是 key→定义 map）
+		if cs, ok := am["cultivation_summary"].(map[string]any); ok {
+			sl.WorkOptions = parseFTOptions(cs["work_options"])
+			sl.InteractionOptions = parseFTOptions(cs["interaction_options"])
 		}
 		st.Assets = append(st.Assets, sl)
 	}
@@ -205,23 +211,65 @@ func (g PandaFriendTradeGame) Stats(ctx context.Context, hc *httpclient.Client, 
 	return st, nil
 }
 
-// Bet 显式动作映射：Selection=claim（领收益）/ redeem（赎身）/ protect（护主，Extra.target_uid）。
-// 买人/工作/互动涉及目标选择与策略，不在自动适配范围。
+// Bet 显式动作映射（批17 扩展）：
+//
+//	claim   领收益 | redeem 赎身 | protect(target_uid) 护主
+//	work    安排工作：target_uid + work_key（选项见 Assets[].work_options）
+//	interact 互动：target_uid + interaction_key
+//	batch_work / batch_interact：全体奴隶一键（仅 key）
+//	release 释放奴隶：target_uid（买人无 ajax 动作，走站点市场页）
 func (g PandaFriendTradeGame) Bet(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, req BetRequest) (*PlayResult, error) {
 	action, params := "", map[string]string{}
+	uid := strings.TrimSpace(req.Extra["target_uid"])
 	switch strings.TrimSpace(req.Selection) {
 	case "claim":
 		action = "friendTradeClaimIncome"
 	case "redeem":
 		action = "friendTradeRedeem"
 	case "protect":
-		if req.Extra["target_uid"] == "" {
+		if uid == "" {
 			return &PlayResult{Success: false, Message: "protect 需 Extra.target_uid"}, nil
 		}
 		action = "friendTradeProtect"
-		params["target_uid"] = req.Extra["target_uid"]
+		params["target_uid"] = uid
+	case "work":
+		key := strings.TrimSpace(req.Extra["work_key"])
+		if uid == "" || key == "" {
+			return &PlayResult{Success: false, Message: "work 需 Extra.target_uid + work_key"}, nil
+		}
+		action = "friendTradeWork"
+		params["target_uid"] = uid
+		params["work_key"] = key
+	case "interact":
+		key := strings.TrimSpace(req.Extra["interaction_key"])
+		if uid == "" || key == "" {
+			return &PlayResult{Success: false, Message: "interact 需 Extra.target_uid + interaction_key"}, nil
+		}
+		action = "friendTradeInteract"
+		params["target_uid"] = uid
+		params["interaction_key"] = key
+	case "batch_work":
+		key := strings.TrimSpace(req.Extra["work_key"])
+		if key == "" {
+			return &PlayResult{Success: false, Message: "batch_work 需 Extra.work_key"}, nil
+		}
+		action = "friendTradeBatchWork"
+		params["work_key"] = key
+	case "batch_interact":
+		key := strings.TrimSpace(req.Extra["interaction_key"])
+		if key == "" {
+			return &PlayResult{Success: false, Message: "batch_interact 需 Extra.interaction_key"}, nil
+		}
+		action = "friendTradeBatchInteract"
+		params["interaction_key"] = key
+	case "release":
+		if uid == "" {
+			return &PlayResult{Success: false, Message: "release 需 Extra.target_uid"}, nil
+		}
+		action = "friendTradeRelease"
+		params["target_uid"] = uid
 	default:
-		return &PlayResult{Success: false, Message: "支持动作：claim（领收益）/ redeem（赎身）/ protect（护主）"}, nil
+		return &PlayResult{Success: false, Message: "支持动作：claim/redeem/protect/work/interact/batch_work/batch_interact/release（买人走站点市场页）"}, nil
 	}
 	m, err := pandaTradeAjax(ctx, hc, baseURL, action, cr.Cookie, params)
 	if err != nil {
@@ -236,4 +284,37 @@ func (g PandaFriendTradeGame) Bet(ctx context.Context, hc *httpclient.Client, ba
 		msg = "操作成功"
 	}
 	return &PlayResult{Success: ok, Message: msg, Raw: m}, nil
+}
+
+// parseFTOptions 解析 cultivation_summary 的 options map（key→{label,description,stage,income,is_unlocked,...}）。
+func parseFTOptions(v any) []FriendTradeOption {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	out := make([]FriendTradeOption, 0, len(keys))
+	for _, k := range keys {
+		om, _ := m[k].(map[string]any)
+		if om == nil {
+			continue
+		}
+		opt := FriendTradeOption{
+			Key:         k,
+			Label:       strField(om, "label"),
+			Description: strField(om, "description"),
+			Stage:       strField(om, "stage"),
+			Income:      pandaStr(om, "income", "income_amount", "reward"),
+			Unlocked:    boolField(om, "is_unlocked"),
+		}
+		if !opt.Unlocked {
+			opt.UnlockText = firstNonEmpty(strField(om, "unlock_text"), strField(om, "locked_reason"), "未解锁")
+		}
+		out = append(out, opt)
+	}
+	return out
 }

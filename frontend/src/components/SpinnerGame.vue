@@ -76,8 +76,11 @@ async function draw(count: number) {
       count === 1
         ? await entertainmentApi.play(props.siteId, props.game)
         : await entertainmentApi.playMulti(props.siteId, props.game, count)
-    // 装饰旋转：5-7 圈 + 随机角度（不强求指针精确落点——各站 prize_id 不可靠，结果在结果条揭示）
-    await animateSpins(5 + Math.floor(Math.random() * 3))
+    // 单抽且有奖品名时：转盘定位到匹配扇区（与结果一致的可信动画）；
+    // 连抽/匹配不到则装饰旋转（5-7 圈随机角，结果在结果条揭示）
+    let stopName: string | null = null
+    if (count === 1 && res.success && res.prize) stopName = res.prize
+    await animateSpins(5 + Math.floor(Math.random() * 3), stopName)
     last.value = res
     if (res.success) {
       // 连抽：按分组汇总展示（如「88 魔力 ×8, 谢谢参与 ×2」）；单抽：直接奖品名
@@ -101,9 +104,26 @@ async function draw(count: number) {
   }
 }
 
-function animateSpins(turns: number) {
+function animateSpins(turns: number, stopName?: string | null) {
   return new Promise<void>((resolve) => {
-    rotation.value = rotation.value + turns * 360 + Math.floor(Math.random() * 360)
+    let extra: number
+    const segs = segments.value
+    if (stopName && segs.length) {
+      // 找到奖品所在扇区 index（含子串匹配兜底——站点奖品名可能带数量后缀）
+      let idx = segs.findIndex((nm) => nm === stopName)
+      if (idx < 0) idx = segs.findIndex((nm) => stopName.includes(nm) || nm.includes(stopName))
+      if (idx >= 0) {
+        // 指针在正上方（-90deg 起）：转满 turns 圈后落在该扇区中心
+        const sector = 360 / segs.length
+        const target = 360 - (idx + 0.5) * sector
+        extra = turns * 360 + ((target - (rotation.value % 360) + 360) % 360)
+      } else {
+        extra = turns * 360 + Math.floor(Math.random() * 360)
+      }
+    } else {
+      extra = turns * 360 + Math.floor(Math.random() * 360)
+    }
+    rotation.value = rotation.value + extra
     setTimeout(resolve, 4100) // 等 CSS transition（4s）结束
   })
 }

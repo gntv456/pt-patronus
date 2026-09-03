@@ -2974,6 +2974,8 @@ export default {
     crops: 'Crops',
     valid2d: 'valid 2 days',
     meta: 'grow {h}h · buy {p}',
+    metaR: 'grow {h}h · buy {p} → yield {r}',
+    locked: 'Locked',
     ready: 'Ready',
     growing: 'Growing',
     empty: 'Empty',

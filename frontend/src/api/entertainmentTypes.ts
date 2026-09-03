@@ -300,6 +300,9 @@ export interface FarmItem {
   price: number
   expire_days?: number
   status: string // idle | growing | ready
+  reward?: number
+  locked?: boolean
+  unlock_text?: string
   remain_time?: string
 }
 

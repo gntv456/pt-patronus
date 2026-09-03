@@ -51,9 +51,13 @@ type FarmItem struct {
 	Section    string  `json:"section"`               // crop | animal
 	GrowHours  int     `json:"grow_hours"`            // 成长时间（小时）
 	Price      float64 `json:"price"`                 // 买入价（魔力值）
+	Reward     float64 `json:"reward,omitempty"`      // 基础产出（思齐 base_reward）
 	ExpireDays int     `json:"expire_days,omitempty"` // 农作物 2 天 / 动物 5 天
 	Status     string  `json:"status"`                // idle 未种 | growing 生长中 | ready 可收获
-	RemainTime string  `json:"remain_time,omitempty"` // 生长中剩余时间文本
+	// Locked/UnlockText：思齐种子按累计收获解锁（unlock_harvest 门槛），未达显示还差多少。
+	Locked     bool   `json:"locked,omitempty"`
+	UnlockText string `json:"unlock_text,omitempty"`
+	RemainTime string `json:"remain_time,omitempty"` // 生长中剩余时间文本
 }
 
 // FarmState 农场全景：余额 + 种植区 + 养殖区 + 仓库 + 菜市场（magic_fram.php 同页渲染）。

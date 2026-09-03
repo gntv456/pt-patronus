@@ -80,11 +80,16 @@ onMounted(refresh)
         <div v-for="c in farm.crops" :key="'c' + c.id" class="item">
           <div class="i-emoji">{{ emoji(c.name) }}</div>
           <div class="i-name">{{ c.name }}</div>
-          <div class="i-meta">{{ t('mf.meta', { h: c.grow_hours, p: c.price }) }}</div>
-          <div class="i-status" :class="c.status">{{ statusText(c.status) }}</div>
+          <div class="i-meta">
+            {{ c.reward ? t('mf.metaR', { h: c.grow_hours, p: c.price, r: c.reward }) : t('mf.meta', { h: c.grow_hours, p: c.price }) }}
+          </div>
+          <div class="i-status" :class="c.status">
+            {{ c.locked ? '🔒 ' + t('mf.locked') : statusText(c.status) }}
+          </div>
+          <div v-if="c.locked" class="i-unlock text-muted">{{ c.unlock_text }}</div>
           <button
             class="i-btn"
-            :disabled="busy || c.status === 'growing'"
+            :disabled="busy || c.status === 'growing' || c.locked"
             @click="c.status === 'ready' ? harvest(c) : plant(c)"
           >
             {{ c.status === 'ready' ? t('mf.harvest') : c.status === 'growing' ? t('mf.growing') : t('mf.plant') }}
@@ -319,4 +324,6 @@ onMounted(refresh)
 .r-msg {
   font-size: var(--fs-body);
 }
+
+.i-unlock { font-size: 11px; line-height: 1.3; margin: 2px 0; }
 </style>

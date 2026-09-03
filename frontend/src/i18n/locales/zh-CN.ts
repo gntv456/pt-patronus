@@ -2948,6 +2948,8 @@ export default {
     crops: '农作物种植区',
     valid2d: '有效期 2 天',
     meta: '成长 {h}h · 买入 {p}',
+    metaR: '成长 {h}h · 买 {p} → 产 {r}',
+    locked: '未解锁',
     ready: '可收获',
     growing: '生长中',
     empty: '未种植',

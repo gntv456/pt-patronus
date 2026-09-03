@@ -74,22 +74,40 @@ func (SiqiPlantGame) Farm(ctx context.Context, hc *httpclient.Client, baseURL st
 		return st, fmt.Errorf("%s", firstNonEmpty(strField(m, "msg"), "农场数据加载失败"))
 	}
 	st.Balance = numField(m, "user_bonus")
-	// seeds 商店（可购/可种）
+	// 累计收获（种子解锁门槛：unlock_harvest）
+	totalHarvest := longptNum(m["total_harvest"])
+	if us, ok := m["user_stats"].(map[string]any); ok && totalHarvest == 0 {
+		totalHarvest = numField(us, "total_harvest")
+	}
+	// seeds 商店（cost/grow_time 秒/base_reward/unlock_harvest）
 	if arr, ok := m["seeds"].([]any); ok {
 		for _, it := range arr {
 			s, ok := it.(map[string]any)
 			if !ok {
 				continue
 			}
-			st.Crops = append(st.Crops, FarmItem{
+			fi := FarmItem{
 				ID:        int(longptNum(s["id"])),
 				Name:      firstNonEmpty(strField(s, "name"), strField(s, "seed_name")),
-				Icon:      strField(s, "emoji"),
+				Icon:      strField(s, "icon"), // 站点直接给 emoji
 				Section:   "crop",
-				GrowHours: int(numField(s, "grow_hours")),
-				Price:     numField(s, "price"),
+				GrowHours: int(longptNum(s["grow_time"]) / 3600),
+				Price:     numField(s, "cost"),
+				Reward:    numField(s, "base_reward"),
 				Status:    "idle",
-			})
+			}
+			if fi.Icon == "" {
+				fi.Icon = strField(s, "emoji")
+			}
+			if fi.GrowHours == 0 && longptNum(s["grow_time"]) > 0 {
+				fi.GrowHours = 1 // 不足 1 小时的按 1 计
+			}
+			if gate := longptNum(s["unlock_harvest"]); gate > 0 && totalHarvest < gate {
+				fi.Locked = true
+				fi.UnlockText = fmt.Sprintf("累计收获 %s 解锁（当前 %s）",
+					strOrDash(gate), strOrDash(totalHarvest))
+			}
+			st.Crops = append(st.Crops, fi)
 		}
 	}
 	// lands 地块状态 → 按种子 id 汇总 ready/growing

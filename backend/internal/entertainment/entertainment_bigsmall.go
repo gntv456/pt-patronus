@@ -126,6 +126,8 @@ type BigSmallState struct {
 	MaxBet   float64 `json:"max_bet,omitempty"`
 	Currency string  `json:"currency,omitempty"` // 火花 / 魔力值
 	Payout   string  `json:"payout,omitempty"`   // "1.7" / "1.95"
+	// QuickAmounts 快捷下注金额（躺平 quick_amounts，可空）。
+	QuickAmounts []float64 `json:"quick_amounts,omitempty"`
 	HasHouse bool    `json:"has_house"`          // 通杀（好学 true / 熊猫 false）
 
 	Round      BigSmallRound     `json:"round"`

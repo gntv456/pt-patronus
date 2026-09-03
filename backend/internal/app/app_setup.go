@@ -132,6 +132,9 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("hhanclub.net", entertainment.HhanLuckyWheelGame{})
 	entReg.Register("duckboobee.org", entertainment.MarchWheelGame{})
 	entReg.Register("www.tangpt.top", entertainment.TangptLotteryGame{})
+	// 不可躺 猜大小（/api/big-small/*：snapshot 快照 + bets 下注 JSON）+ 老虎机（/web/omnibot/slot-machine/*）
+	entReg.Register("www.tangpt.top", entertainment.TangptBigSmallGame{})
+	entReg.Register("www.tangpt.top", entertainment.TangptSlotGame{})
 	// 下注/选号（批2，Bettable）：猜大小/骰宝/双色球/翻面/赛事押注/红包
 	entReg.Register("hxpt.org", entertainment.HxptBigSmallGame{})
 	entReg.Register("pandapt.net", entertainment.PandaBigSmallGame{})

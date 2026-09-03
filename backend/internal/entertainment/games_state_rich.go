@@ -82,6 +82,28 @@ type FishingFish struct {
 	Quantity     int    `json:"quantity"`
 }
 
+// FishingLure 鱼饵明细（config.lures + inventory.lures 持有量）。
+type FishingLure struct {
+	Key         string  `json:"key"`
+	Name        string  `json:"name"`
+	Icon        string  `json:"icon,omitempty"`
+	Price       float64 `json:"price"`              // 单价（魔力）
+	Description string  `json:"description,omitempty"`
+	Owned       int     `json:"owned"`              // 持有数量
+	Selected    bool    `json:"selected"`           // 当前是否挂饵
+}
+
+// FishingRod 鱼竿明细（config.rods + inventory.rods 解锁态）。
+type FishingRod struct {
+	Key         string `json:"key"`
+	Name        string `json:"name"`
+	Icon        string `json:"icon,omitempty"`
+	Description string `json:"description,omitempty"`
+	Unlocked    bool   `json:"unlocked"`
+	UnlockHint  string `json:"unlock_hint,omitempty"` // 解锁条件（task N / shop）
+	Selected    bool   `json:"selected"`
+}
+
 // FishingState 钓鱼全景快照（思齐 FISHING_DATA 聚合）。
 type FishingState struct {
 	Balance float64 `json:"balance"` // 魔力
@@ -90,13 +112,13 @@ type FishingState struct {
 	AttemptsLimit int `json:"attempts_limit"`
 	CaughtToday   int `json:"caught_today"`
 	// 装备
-	SelectedRod  string   `json:"selected_rod,omitempty"`
-	SelectedLure string   `json:"selected_lure,omitempty"`
-	Rods         []string `json:"rods,omitempty"`  // 已解锁鱼竿 key
-	Lures        []string `json:"lures,omitempty"` // 鱼饵 key（inventory）
+	SelectedRod  string        `json:"selected_rod,omitempty"`
+	SelectedLure string        `json:"selected_lure,omitempty"`
+	Rods         []FishingRod  `json:"rods,omitempty"`  // 全部鱼竿（含未解锁）
+	Lures        []FishingLure `json:"lures,omitempty"` // 商店鱼饵（含持有量）
 	// 图鉴
-	DiscoveredCount int          `json:"discovered_count"`
-	TotalSpecies    int          `json:"total_species"`
+	DiscoveredCount int           `json:"discovered_count"`
+	TotalSpecies    int           `json:"total_species"`
 	Codex           []FishingFish `json:"codex"`
 	Message         string        `json:"message,omitempty"`
 }

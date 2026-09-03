@@ -387,6 +387,24 @@ export interface FishingFish {
   discovered: boolean
   quantity: number
 }
+export interface FishingLure {
+  key: string
+  name: string
+  icon?: string
+  price: number
+  description?: string
+  owned: number
+  selected: boolean
+}
+export interface FishingRod {
+  key: string
+  name: string
+  icon?: string
+  description?: string
+  unlocked: boolean
+  unlock_hint?: string
+  selected: boolean
+}
 export interface FishingState {
   balance: number
   attempts_used: number
@@ -394,8 +412,8 @@ export interface FishingState {
   caught_today: number
   selected_rod?: string
   selected_lure?: string
-  rods?: string[]
-  lures?: string[]
+  rods?: FishingRod[]
+  lures?: FishingLure[]
   discovered_count: number
   total_species: number
   codex: FishingFish[]

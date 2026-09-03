@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
@@ -137,20 +138,73 @@ func (g SiqiFishingGame) FishingState(ctx context.Context, hc *httpclient.Client
 		st.SelectedRod = strField(s, "selected_rod")
 		st.SelectedLure = strField(s, "selected_lure")
 	}
-	// 已解锁鱼竿
+	// 装备明细：config.rods/lures（名称/价格/效果/描述）× inventory（解锁态/持有量）
+	var invRods map[string]any
+	var invLures map[string]any
 	if inv, ok := data["inventory"].(map[string]any); ok {
-		if rods, ok := inv["rods"].(map[string]any); ok {
-			for key, rv := range rods {
-				if rm, ok := rv.(map[string]any); ok && boolField(rm, "unlocked") {
-					st.Rods = append(st.Rods, key)
+		invRods, _ = inv["rods"].(map[string]any)
+		invLures, _ = inv["lures"].(map[string]any)
+	}
+	if cfg, ok := data["config"].(map[string]any); ok {
+		if rods, ok := cfg["rods"].(map[string]any); ok {
+			// 按 key 排序保证前端顺序稳定
+			keys := make([]string, 0, len(rods))
+			for k := range rods {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				rm, _ := rods[k].(map[string]any)
+				if rm == nil {
+					continue
 				}
+				rd := FishingRod{
+					Key:         k,
+					Name:        strField(rm, "name"),
+					Icon:        strField(rm, "icon"),
+					Description: strField(rm, "description"),
+					Selected:    st.SelectedRod == k,
+				}
+				if im, ok := invRods[k].(map[string]any); ok {
+					rd.Unlocked = boolField(im, "unlocked")
+				}
+				// 解锁条件提示
+				if ul, ok := rm["unlock"].(map[string]any); ok {
+					switch strField(ul, "type") {
+					case "default":
+						rd.UnlockHint = "默认"
+					case "task":
+						rd.UnlockHint = fmt.Sprintf("任务 %v 解锁", ul["task_id"])
+					default:
+						rd.UnlockHint = strField(ul, "type")
+					}
+				}
+				st.Rods = append(st.Rods, rd)
 			}
 		}
-		if lures, ok := inv["lures"].(map[string]any); ok {
-			for key, lv := range lures {
-				if n := longptNum(lv); n > 0 {
-					st.Lures = append(st.Lures, key)
+		if lures, ok := cfg["lures"].(map[string]any); ok {
+			keys := make([]string, 0, len(lures))
+			for k := range lures {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				lm, _ := lures[k].(map[string]any)
+				if lm == nil {
+					continue
 				}
+				lr := FishingLure{
+					Key:         k,
+					Name:        strField(lm, "name"),
+					Icon:        strField(lm, "icon"),
+					Price:       longptNum(lm["price"]),
+					Description: strField(lm, "description"),
+					Selected:    st.SelectedLure == k,
+				}
+				if v, ok := invLures[k]; ok {
+					lr.Owned = int(longptNum(v))
+				}
+				st.Lures = append(st.Lures, lr)
 			}
 		}
 	}
@@ -193,4 +247,66 @@ func (g SiqiFishingGame) Stats(ctx context.Context, hc *httpclient.Client, baseU
 		st.Balance = longptNum(u["seedbonus"])
 	}
 	return st, nil
+}
+
+// Bet 装备操作（批16）：
+//
+//	Selection=buy_lure   Extra: lure_key, quantity(默认1) —— 买鱼饵（花魔力）
+//	Selection=select_lure Extra: lure_key               —— 挂饵
+//	Selection=select_rod  Extra: rod_key                —— 换竿（需已解锁）
+//	Selection=guess       Extra: value                  —— 每日猜数（额外钓次）
+func (g SiqiFishingGame) Bet(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, req BetRequest) (*PlayResult, error) {
+	sel := strings.TrimSpace(req.Selection)
+	var action string
+	params := url.Values{}
+	switch sel {
+	case "buy_lure":
+		key := strings.TrimSpace(req.Extra["lure_key"])
+		if key == "" {
+			return &PlayResult{Success: false, Message: "需要 Extra.lure_key"}, nil
+		}
+		qty := strings.TrimSpace(req.Extra["quantity"])
+		if qty == "" {
+			qty = "1"
+		}
+		action = "purchase_lure"
+		params.Set("lure_key", key)
+		params.Set("quantity", qty)
+	case "select_lure":
+		key := strings.TrimSpace(req.Extra["lure_key"])
+		if key == "" {
+			return &PlayResult{Success: false, Message: "需要 Extra.lure_key"}, nil
+		}
+		action = "select_lure"
+		params.Set("lure_key", key)
+	case "select_rod":
+		key := strings.TrimSpace(req.Extra["rod_key"])
+		if key == "" {
+			return &PlayResult{Success: false, Message: "需要 Extra.rod_key"}, nil
+		}
+		action = "select_rod"
+		params.Set("rod_key", key)
+	case "guess":
+		v := strings.TrimSpace(req.Extra["value"])
+		if v == "" {
+			return &PlayResult{Success: false, Message: "需要 Extra.value"}, nil
+		}
+		action = "submit_guess"
+		params.Set("guess_value", v)
+	default:
+		return &PlayResult{Success: false, Message: "支持动作：buy_lure / select_lure / select_rod / guess"}, nil
+	}
+	m, err := siqiFishPost(ctx, hc, baseURL, cr.Cookie, action, params)
+	if err != nil {
+		return nil, err
+	}
+	ok := boolField(m, "success")
+	msg := firstNonEmpty(strField(m, "message"), strField(m, "outcome"))
+	if !ok && msg == "" {
+		msg = "操作失败"
+	}
+	if ok && msg == "" {
+		msg = "操作成功"
+	}
+	return &PlayResult{Success: ok, Message: msg, Raw: m}, nil
 }

@@ -29,6 +29,41 @@ async function refresh() {
   }
 }
 
+async function equip(action: 'select_rod' | 'select_lure', key: string) {
+  if (fishing.value) return
+  fishing.value = true
+  try {
+    const extraKey = action === 'select_rod' ? 'rod_key' : 'lure_key'
+    const res = await entertainmentApi.bet(props.siteId, props.game, {
+      selection: action,
+      amount: 0,
+      extra: { [extraKey]: key },
+    })
+    if (res.success) ElMessage.success(res.message || '已切换')
+    else ElMessage.warning(res.message || '操作失败')
+    await refresh()
+  } finally {
+    fishing.value = false
+  }
+}
+
+async function buyLure(key: string, price: number) {
+  if (fishing.value) return
+  fishing.value = true
+  try {
+    const res = await entertainmentApi.bet(props.siteId, props.game, {
+      selection: 'buy_lure',
+      amount: 0,
+      extra: { lure_key: key, quantity: '1' },
+    })
+    if (res.success) ElMessage.success(`已购买（${price} 魔力）：${res.message || 'OK'}`)
+    else ElMessage.warning(res.message || '购买失败')
+    await refresh()
+  } finally {
+    fishing.value = false
+  }
+}
+
 async function cast(times: number) {
   if (fishing.value) return
   fishing.value = true
@@ -71,6 +106,46 @@ onMounted(refresh)
             连抛 5 次
           </el-button>
           <span class="text-muted caught">今日钓获 {{ state.caught_today }} 尾</span>
+        </div>
+      </section>
+
+      <section v-if="state.rods?.length || state.lures?.length" class="glass section">
+        <div class="sec-title">🎣 装备</div>
+        <div v-if="state.rods?.length" class="equip-group">
+          <div class="equip-label">鱼竿</div>
+          <div class="equip-grid">
+            <button
+              v-for="rod in state.rods"
+              :key="rod.key"
+              class="equip rod"
+              :class="{ sel: rod.selected, locked: !rod.unlocked }"
+              :disabled="fishing || !rod.unlocked || rod.selected"
+              :title="rod.description + (rod.unlock_hint ? `（${rod.unlock_hint}）` : '')"
+              @click="equip('select_rod', rod.key)"
+            >
+              <span class="e-name">{{ rod.name }}</span>
+              <span class="e-meta">{{ rod.selected ? '使用中' : rod.unlocked ? '点击换上' : rod.unlock_hint || '未解锁' }}</span>
+            </button>
+          </div>
+        </div>
+        <div v-if="state.lures?.length" class="equip-group">
+          <div class="equip-label">鱼饵</div>
+          <div class="equip-grid">
+            <div v-for="lure in state.lures" :key="lure.key" class="equip lure" :class="{ sel: lure.selected }">
+              <button
+                class="e-main"
+                :disabled="fishing || lure.selected || lure.owned <= 0"
+                :title="lure.description"
+                @click="equip('select_lure', lure.key)"
+              >
+                <span class="e-name">{{ lure.name }}</span>
+                <span class="e-meta">{{ lure.selected ? '挂饵中' : lure.owned > 0 ? `持有 ${lure.owned} · 点击挂上` : '无库存' }}</span>
+              </button>
+              <button class="e-buy" :disabled="fishing" :title="`购买 1 个（${lure.price} 魔力）`" @click="buyLure(lure.key, lure.price)">
+                买 {{ lure.price }}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -123,4 +198,21 @@ onMounted(refresh)
 .result.win { background: var(--success-bg, #f0f9eb); }
 .result.lose { background: var(--danger-bg, #fef0f0); }
 .badge { font-weight: 800; }
+
+.equip-group { margin-bottom: 14px; }
+.equip-group:last-child { margin-bottom: 0; }
+.equip-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+.equip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.equip { border: 1.5px solid var(--border-light, #e5e7eb); border-radius: 10px; padding: 10px; text-align: left; background: var(--bg-card, #fff); cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.equip:hover:not(:disabled) { border-color: var(--primary, #409eff); }
+.equip.sel { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245, 158, 11, .35); }
+.equip.locked { opacity: .55; }
+.equip.rod, .equip.lure { display: block; }
+.equip .e-main { all: unset; display: block; width: 100%; cursor: pointer; }
+.equip .e-main:disabled { cursor: not-allowed; }
+.e-name { display: block; font-weight: 700; font-size: 13px; }
+.e-meta { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.e-buy { margin-top: 6px; width: 100%; border: none; border-radius: 6px; background: #f59e0b; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 0; cursor: pointer; }
+.e-buy:hover:not(:disabled) { background: #d97706; }
+.e-buy:disabled { background: #d1d5db; cursor: not-allowed; }
 </style>

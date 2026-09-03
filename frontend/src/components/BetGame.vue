@@ -17,7 +17,7 @@ const blue = ref('7')
 const mode = computed(() => {
   const g = props.game
   if (g.endsWith('_bigsmall') || g.endsWith('_sicbo')) return 'bigsmall'
-  if (g.endsWith('_unionlotto') || g === 'hdkylin_lotto') return 'lotto'
+  if (g.endsWith('_unionlotto') || g === 'hdkylin_lotto' || g === 'zmpt_lotto') return 'lotto'
   if (g === 'crab_fastthree') return 'fastthree'
   if (g.endsWith('_flip')) return 'flip'
   if (g.endsWith('_redpacket')) return 'redpacket'
@@ -91,7 +91,7 @@ onMounted(refreshStats)
         <button
           class="op primary"
           :disabled="playing"
-          @click="game === 'hdkylin_lotto' ? betHdkylinLotto() : betLotto()"
+          @click="['hdkylin_lotto', 'zmpt_lotto'].includes(game) ? betHdkylinLotto() : betLotto()"
         >
           {{ playing ? t('bg.betting') : t('bg.bet') }}
         </button>

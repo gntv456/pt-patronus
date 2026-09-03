@@ -124,6 +124,10 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	entReg.Register("crabpt.vip", entertainment.LuckyDrawWheelGame{})
 	entReg.Register("t-baozi.cc", entertainment.LuckyDrawWheelGame{})
 	entReg.Register("zmpt.cc", entertainment.LuckyDrawWheelGame{})
+	// 织梦双色球（omnibot /nodeapi/union-lotto，与麒麟同源；批11 实测 BY0sxZy4.js 前缀）
+	// 同批排除：52PT 证券交易所（静态榜单无交易交互）、天枢火星幸运局（WebSocket 房间大厅）、
+	// 好学 huihu.php（404）、HDTime bigorsmall.php（404 非 Panda 同源）
+	entReg.Register("zmpt.cc", entertainment.ZmptLottoGame{})
 	entReg.Register("discfan.net", entertainment.LuckyDrawWheelGame{})
 	entReg.Register("pt.0ff.cc", entertainment.LuckyDrawWheelGame{})
 	entReg.Register("hdtime.org", entertainment.LuckyDrawWheelGame{})

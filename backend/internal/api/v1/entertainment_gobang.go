@@ -147,3 +147,17 @@ func (h *EntertainmentHandler) CbgSlotState(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+// TangptLotteryState 躺平抽奖全景。只读。
+func (h *EntertainmentHandler) TangptLotteryState(c *gin.Context) {
+	id, ok := parseID(c)
+	if !ok {
+		return
+	}
+	res, err := h.ent.TangptLotteryState(c.Request.Context(), id, c.Param("game"))
+	if err != nil {
+		gobangSiteErr(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}

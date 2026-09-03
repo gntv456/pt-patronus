@@ -2,7 +2,10 @@ package entertainment
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -260,3 +263,78 @@ func (TangptLotteryGame) History(ctx context.Context, hc *httpclient.Client, bas
 	return []GameRecord{}, nil
 }
 
+// TangptLotteryState 躺平抽奖全景（页面 qqbotLotteryState 直读）。
+type TangptLotteryState struct {
+	Enabled      bool             `json:"enabled"`
+	CostPerDraw  float64          `json:"cost_per_draw"`
+	DailyRemain  int              `json:"daily_remaining"`
+	MaxDrawCount int              `json:"max_draw_count"`
+	Items        []TangptPrizeDef `json:"items"`
+}
+
+// TangptPrizeDef 奖品（含概率与站点配色）。
+type TangptPrizeDef struct {
+	ID          int     `json:"id"`
+	Name        string  `json:"name"`
+	Amount      float64 `json:"amount,omitempty"`
+	Type        string  `json:"type,omitempty"` // bonus/upload/card…
+	Probability float64 `json:"probability"`    // 百分比
+	Color       string  `json:"color,omitempty"`
+}
+
+// tangptLotteryStateRe 页面 window.qqbotLotteryState = {...};
+var tangptLotteryStateRe = regexp.MustCompile(`(?s)qqbotLotteryState\s*=\s*(\{.*?\})\s*;`)
+
+// tangptLotteryStateFromPage 解析页面内嵌状态。
+func tangptLotteryStateFromPage(body string) (*TangptLotteryState, error) {
+	m := tangptLotteryStateRe.FindStringSubmatch(body)
+	if m == nil {
+		return nil, fmt.Errorf("页面无 qqbotLotteryState（未登录或改版）")
+	}
+	raw := m[1]
+	var st TangptLotteryState
+	type wire struct {
+		EnabledDraw        bool    `json:"enabledDraw"`
+		CostPerDraw        float64 `json:"costPerDraw"`
+		DailyDrawRemaining int     `json:"dailyDrawRemaining"`
+		MaxDrawCount       int     `json:"maxDrawCount"`
+		Items              []struct {
+			ID          int     `json:"id"`
+			Name        string  `json:"name"`
+			Type        string  `json:"type"`
+			Amount      float64 `json:"amount"`
+			Probability float64 `json:"probability"`
+			Color       string  `json:"color"`
+		} `json:"items"`
+	}
+	var w wire
+	if err := json.Unmarshal([]byte(raw), &w); err != nil {
+		return nil, fmt.Errorf("parse qqbotLotteryState: %w", err)
+	}
+	st.Enabled = w.EnabledDraw
+	st.CostPerDraw = w.CostPerDraw
+	st.DailyRemain = w.DailyDrawRemaining
+	st.MaxDrawCount = w.MaxDrawCount
+	for _, it := range w.Items {
+		st.Items = append(st.Items, TangptPrizeDef{
+			ID: it.ID, Name: it.Name, Type: it.Type,
+			Amount: it.Amount, Probability: it.Probability, Color: it.Color,
+		})
+	}
+	return &st, nil
+}
+
+// LotteryState 全景（TangptLotteryable）。
+func (g TangptLotteryGame) LotteryState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*TangptLotteryState, error) {
+	u := joinPath(baseURL, "omnibot_lottery.php")
+	resp, err := hc.GetWithHeaders(ctx, u, cr.Cookie, map[string]string{"Referer": u}, true)
+	if err != nil {
+		return nil, err
+	}
+	return tangptLotteryStateFromPage(string(resp.Body))
+}
+
+// TangptLotteryable 躺平抽奖全景能力。
+type TangptLotteryable interface {
+	LotteryState(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*TangptLotteryState, error)
+}

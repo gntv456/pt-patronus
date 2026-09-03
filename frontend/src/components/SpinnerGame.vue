@@ -166,6 +166,7 @@ onMounted(async () => {
       <div class="hero-title">🎰 {{ name }}</div>
       <div class="balance">
         {{ t('bs.balance') }} <b>{{ heroBalance }}</b>
+        <span v-if="stats?.cost_per_play" class="cost">· {{ stats.cost_per_play.toLocaleString() }}/次</span>
       </div>
     </div>
 
@@ -228,4 +229,6 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped src="./SpinnerGame.css"></style>
+<style scoped src="./SpinnerGame.css">
+.cost { font-size: 12px; opacity: 0.85; margin-left: 4px; }
+</style>

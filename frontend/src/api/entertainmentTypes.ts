@@ -439,3 +439,20 @@ export interface CbgSlotState {
   symbols: number[]
   recent?: GameRecord[]
 }
+
+// ── 躺平抽奖（批14 富 UI：12 奖品含概率/站点配色） ──────────────────
+export interface TangptPrizeDef {
+  id: number
+  name: string
+  amount?: number
+  type?: string
+  probability: number
+  color?: string
+}
+export interface TangptLotteryState {
+  enabled: boolean
+  cost_per_draw: number
+  daily_remaining: number
+  max_draw_count: number
+  items: TangptPrizeDef[]
+}

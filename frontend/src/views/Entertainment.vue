@@ -26,6 +26,7 @@ import City13DiceGame from '@/components/City13DiceGame.vue'
 import CbgWheelGame from '@/components/CbgWheelGame.vue'
 import CbgSlotGame from '@/components/CbgSlotGame.vue'
 import LottoPickerGame from '@/components/LottoPickerGame.vue'
+import TangptLotteryGame from '@/components/TangptLotteryGame.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const { t } = useI18n()
@@ -88,7 +89,6 @@ const spinnerIds = [
   'ub_wheel',
   'luckydraw_wheel',
   'march_wheel',
-  'tangpt_lottery',
   'hxpt_redpacket',
   'hhan_lucky_wheel',
 ]
@@ -210,6 +210,12 @@ loadSites()
       />
       <CbgSlotGame
         v-else-if="richGame === 'cbg_slot' && currentSite"
+        :site-id="currentSite"
+        :game="currentGame as string"
+        :name="selectedGame?.name || ''"
+      />
+      <TangptLotteryGame
+        v-else-if="richGame === 'tangpt_lottery' && currentSite"
         :site-id="currentSite"
         :game="currentGame as string"
         :name="selectedGame?.name || ''"

@@ -45,6 +45,7 @@ export type {
   City13DiceState,
   CbgWheelState,
   CbgSlotState,
+  TangptLotteryState,
 } from './entertainmentTypes'
 import type {
   Game,
@@ -71,6 +72,7 @@ import type {
   City13DiceState,
   CbgWheelState,
   CbgSlotState,
+  TangptLotteryState,
 } from './entertainmentTypes'
 import type { Site } from './site'
 
@@ -220,6 +222,11 @@ export const entertainmentApi = {
   /** 钓鱼全景快照（思齐：钓次/装备/图鉴） */
   fishingState: (siteId: number, game: string) =>
     http.get<FishingState>(`/entertainment/${siteId}/games/${game}/fishing-state`).then((r) => r.data),
+  /** 躺平抽奖全景（奖品概率表） */
+  tangptLotteryState: (siteId: number, game: string) =>
+    http
+      .get<TangptLotteryState>(`/entertainment/${siteId}/games/${game}/tangpt-lottery-state`)
+      .then((r) => r.data),
   /** 藏宝阁大转盘全景 */
   cbgWheelState: (siteId: number, game: string) =>
     http.get<CbgWheelState>(`/entertainment/${siteId}/games/${game}/cbg-wheel-state`).then((r) => r.data),

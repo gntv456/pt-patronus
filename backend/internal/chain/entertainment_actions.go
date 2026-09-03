@@ -317,6 +317,19 @@ func (c *EntertainmentChain) FriendTradeState(ctx context.Context, siteID uint, 
 	return ft.FriendTradeState(ctx, c.hc, base, cr)
 }
 
+// TangptLotteryState 躺平抽奖全景（单价/日限/12 奖品含概率配色）。只读。
+func (c *EntertainmentChain) TangptLotteryState(ctx context.Context, siteID uint, gameID string) (*entertainment.TangptLotteryState, error) {
+	g, base, cr, err := c.resolve(siteID, gameID)
+	if err != nil {
+		return nil, err
+	}
+	l, ok := g.(entertainment.TangptLotteryable)
+	if !ok {
+		return nil, errors.New("该游戏不支持抽奖全景")
+	}
+	return l.LotteryState(ctx, c.hc, base, cr)
+}
+
 // CbgWheelState 藏宝阁大转盘全景（余额/单价/10 格奖品/最近记录）。只读。
 func (c *EntertainmentChain) CbgWheelState(ctx context.Context, siteID uint, gameID string) (*entertainment.CbgWheelState, error) {
 	g, base, cr, err := c.resolve(siteID, gameID)

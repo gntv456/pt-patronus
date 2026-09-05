@@ -1,13 +1,74 @@
 package savept
 
 import (
+	"net"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
+
+// openTimeOverrides 补 savept.icu 线上 data-opentime="未知" 的站（域名 → 开站日期/年份）。
+// 值支持两种形态："YYYY-MM-DD"（精确日期，进站庆日历）或 "YYYY"（仅年份，展示+年份统计）。
+// 来源标注在各行注释。savept.icu 修数据后可整体删除。
+var openTimeOverrides = map[string]string{
+	"bt.byr.cn":    "2003-09-26", // 北邮人 BYRBT（教育网最老牌 PT 之一，人工核实）
+	"1337x.to":     "2007",       // 1337x（维基百科 Comparison_of_BitTorrent_sites：Launched 2007）
+	"e-hentai.org": "2005-07-01", // E-Hentai（维基百科词条：Founded July 1, 2005）
+}
+
+// foundedYearOverrides 补 ptseek 独有站（无 community_profile 画像）的建站年份
+// （域名 → 年份）。这些站不在 savept.icu 卡片里，只影响卡片 Year 显示与年份分组。
+// 仅收编有可靠出处的年份（维基词条/多源一致），页脚版权年等弱信号不收。
+var foundedYearOverrides = map[string]int{}
+
+// applyOpenTimeOverrides 把本地已核实的开站日期回填到 data-opentime 为空/「未知」的卡片。
+// 同时补 Year（savept 用 0000 标未知）与 DurationText，保持三字段自洽。
+// 值为纯年份（如 "2007"）时：OpenTime 存年份、Year 同步、不推算运营时长（无精确日）。
+func applyOpenTimeOverrides(cards []SaveptSiteCard) {
+	for i := range cards {
+		date, ok := openTimeOverrides[normalizeHost(cards[i].Domain)]
+		if !ok {
+			continue
+		}
+		if ot := strings.TrimSpace(cards[i].OpenTime); ot != "" && ot != "未知" {
+			continue // 数据源已补上真实日期：以数据源为准，本地补丁不覆盖
+		}
+		cards[i].OpenTime = date
+		if cards[i].Year == "" || cards[i].Year == "未知" {
+			if y := strings.SplitN(date, "-", 2); len(y) == 2 {
+				cards[i].Year = y[0]
+			} else if len(date) == 4 {
+				cards[i].Year = date
+			}
+		}
+		if cards[i].DurationText == "" && len(date) == 10 {
+			if years := yearsSince(date); years > 0 {
+				cards[i].DurationText = strconv.Itoa(years) + " 年"
+			}
+		}
+	}
+}
+
+// yearsSince 计算从 date（YYYY-MM-DD）到现在满几年（未到周年不计）。
+func yearsSince(date string) int {
+	t, err := time.ParseInLocation("2006-01-02", date, time.Local)
+	if err != nil {
+		return 0
+	}
+	now := time.Now()
+	y := now.Year() - t.Year()
+	if now.YearDay() < t.YearDay() {
+		y--
+	}
+	if y < 0 {
+		return 0
+	}
+	return y
+}
 
 // parseSavept 把 savept.icu 首页 HTML 解析为站点卡片 + 公告。
 // savept.icu 用 data-* 属性标注每张卡片，结构稳定；此处按该契约正则抽取。
@@ -15,10 +76,11 @@ import (
 func parseSavept(html string) ([]SaveptSiteCard, []SaveptAlert) {
 	cards := extractCards(html)
 	alerts := extractAlerts(html)
+	applyOpenTimeOverrides(cards)
 	// 抢救时长（来自病危公告）回填到匹配卡片
 	for _, fd := range extractFaultDurations(alerts) {
 		for i := range cards {
-			if nameFuzzyMatch(cards[i].Name, fd.name) {
+			if faultNameMatch(cards[i].Name, fd.name) {
 				if cards[i].FaultDuration == "" {
 					cards[i].FaultDuration = fd.duration
 				}
@@ -223,19 +285,50 @@ func normalizeType(raw string) SiteType {
 func extractDomain(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil || u.Host == "" {
-		return rawURL
+		return strings.ToLower(rawURL)
 	}
-	host := u.Host
-	host = strings.TrimPrefix(host, "www.")
+	host := normalizeHost(u.Host)
 	return host
 }
 
-func nameFuzzyMatch(a, b string) bool {
-	a, b = strings.ToLower(strings.TrimSpace(a)), strings.ToLower(strings.TrimSpace(b))
+// normalizeHost 域名归一：小写、去端口、去 www. 前缀。域名是 ptseek 合并、definitions
+// 平台补全、本地 overrides 的 map 键，大小写或端口不归一会静默失配（详情/图标/去重全丢）。
+func normalizeHost(host string) string {
+	host = strings.ToLower(host)
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	return strings.TrimPrefix(host, "www.")
+}
+
+// faultNameMatch 病危公告站名 → 卡片匹配。子串包含会把「HD」匹配到 HDT/HDHome（实测误伤），
+// 故要求精确匹配，或公告名是卡片名以分隔符边界开头的完整前缀（「HDT」匹配「HDT - 官网」，
+// 不匹配「HDHome」）。
+func faultNameMatch(cardName, alertName string) bool {
+	a, b := strings.ToLower(strings.TrimSpace(cardName)), strings.ToLower(strings.TrimSpace(alertName))
 	if a == "" || b == "" {
 		return false
 	}
-	return strings.Contains(a, b) || strings.Contains(b, a)
+	if a == b {
+		return true
+	}
+	if !strings.HasPrefix(a, b) {
+		return false
+	}
+	rest := a[len(b):]
+	// 前缀后须跟分隔符（空格/横线/括号等），排除「HD」前缀命中「HDHome」这种字母延续
+	return isNameSep(rest[0])
+}
+
+// isNameSep 站点名的名称分隔符（ASCII + 中文间隔号/全角，>=0x80 交给多字节 UTF-8 判定）。
+func isNameSep(c byte) bool {
+	switch {
+	case c == '-' || c == '_' || c == ' ' || c == '(' || c == '[' || c == '·':
+		return true
+	case c >= 0x80:
+		return true
+	}
+	return false
 }
 
 // normalizeYear 归一建站年份：空或 "0000"（savept.icu 用 0000 标记未知年份）→ "未知"。

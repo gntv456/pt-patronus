@@ -80,7 +80,7 @@ func extractHost(raw string) string {
 	if err != nil || u.Host == "" {
 		return ""
 	}
-	return strings.TrimPrefix(strings.ToLower(u.Host), "www.")
+	return normalizeHost(u.Host)
 }
 
 // summarize 按匹配后状态汇总。
@@ -125,6 +125,8 @@ func summarize(cards []SaveptSiteCard) SaveptSummary {
 }
 
 // isTodayAnniversary 判断站庆文案是否表示「今天站庆」。
+// 仅接受完整 token："今天站庆" 子串，或恰好为 "0天" —— 用 Contains 匹配 "0天" 会把
+// 「还有10天站庆」「距站庆20天」误判成今日站庆（实测），导致头部 today_anniv 虚高。
 func isTodayAnniversary(text string) bool {
-	return strings.Contains(text, "今天") || strings.Contains(text, "0天")
+	return strings.Contains(text, "今天") || strings.TrimSpace(text) == "0天"
 }

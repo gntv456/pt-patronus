@@ -149,3 +149,162 @@ func TestNormalizeStatus(t *testing.T) {
 		}
 	}
 }
+
+// TestApplyOpenTimeOverrides 本地开站日期补丁：savept.icu 线上有四张卡片 data-opentime="未知"
+// （北邮人/SportsCult/BeyondHD/PTNeko），按域名回填已核实日期，并同步补 Year 与 DurationText；
+// 数据源已有真实日期或不在补丁表内的卡片不动。
+func TestApplyOpenTimeOverrides(t *testing.T) {
+	cards := []SaveptSiteCard{
+		{Name: "BYR - 北邮人", Domain: "bt.byr.cn", OpenTime: "未知", Year: "未知"},
+		{Name: "完整日期站", Domain: "ok.pt", OpenTime: "2020-03-15", Year: "2020"},
+		{Name: "未知且不在表内", Domain: "unknown.pt", OpenTime: "未知", Year: "未知"},
+	}
+	applyOpenTimeOverrides(cards)
+
+	byr := cards[0]
+	if byr.OpenTime != "2003-09-26" {
+		t.Errorf("北邮人 opentime: got %q want 2003-09-26", byr.OpenTime)
+	}
+	if byr.Year != "2003" {
+		t.Errorf("北邮人 year: got %q want 2003", byr.Year)
+	}
+	if byr.DurationText == "" {
+		t.Error("北邮人 duration_text 应被补上")
+	}
+	if cards[1].OpenTime != "2020-03-15" || cards[1].Year != "2020" {
+		t.Errorf("已有真实日期的卡片不应被改动: %+v", cards[1])
+	}
+	if cards[2].OpenTime != "未知" || cards[2].Year != "未知" {
+		t.Errorf("不在补丁表内的卡片不应被改动: %+v", cards[2])
+	}
+}
+
+// TestYearsSince 周年计算：未到周年不计整年。
+func TestYearsSince(t *testing.T) {
+	if got := yearsSince("2003-09-26"); got < 20 {
+		t.Errorf("yearsSince(2003-09-26) = %d, want >= 20", got)
+	}
+	if got := yearsSince("2099-01-01"); got != 0 {
+		t.Errorf("yearsSince(未来) = %d, want 0", got)
+	}
+	if got := yearsSince("bad-date"); got != 0 {
+		t.Errorf("yearsSince(畸形) = %d, want 0", got)
+	}
+}
+
+// TestMergePtseekDetails ptseek 合并：按域名命中补 detail；别名域名（镜像站）折叠
+// （bt.byr.cn → byr.pt 合并进已有卡，不追加重复）；未命中不动；nil 表不 panic。
+func TestMergePtseekDetails(t *testing.T) {
+	byDomain := map[string]*ptseekSite{
+		"hdhome.org": {
+			Name: "HDHome", URL: "https://hdhome.org/", Domain: "hdhome.org", Logo: "https://x/logo.png",
+			PTCircle: "inner", ResourceCategories: []string{"影视"}, Specialties: []string{"原盘"},
+			OfficialGroups: []string{"HDHome", "HDS"}, SiteEngine: "NexusPHP",
+			Sources:  []ptseekSource{{Name: "PThub", URL: "https://www.pthub.cc/"}},
+			Features: "综合 HD 站", BeginnerTips: "注意保种",
+			Community: &ptseekCommunity{Users: 50000, Torrents: 120000, Peers: 90000, Founded: 2014, BonusPoints: true, HitAndRun: true},
+		},
+		"only-ptseek.pt": {Name: "OnlyPtseek", URL: "https://only-ptseek.pt/", Domain: "only-ptseek.pt"},
+		"bt.byr.cn":      {Name: "BYRBT", URL: "http://bt.byr.cn/", Domain: "bt.byr.cn", Features: "教育网 PT"},
+	}
+	cards := []SaveptSiteCard{
+		{Name: "HDHome - 家园", URL: "https://hdhome.org/", Domain: "hdhome.org", SiteType: TypeInternal, Year: "2014"},
+		{Name: "BYR - 北邮人", URL: "https://byr.pt/", Domain: "byr.pt"},
+		{Name: "未知站", URL: "https://unknown.pt/", Domain: "unknown.pt"},
+	}
+	extra := mergePtseekDetails(cards, byDomain)
+
+	d := cards[0].Detail
+	if d == nil {
+		t.Fatal("hdhome detail should be merged")
+	}
+	if d.Description != "综合 HD 站" || d.Users != 50000 || d.Torrents != 120000 || d.BeginnerTips != "注意保种" {
+		t.Fatalf("detail = %+v", d)
+	}
+	if d.Peers != 90000 || !d.BonusPoints || !d.HitAndRun || d.Freeleech {
+		t.Fatalf("community 画像 = %+v", d)
+	}
+	if len(d.OfficialGroups) != 2 || d.SiteEngine != "NexusPHP" || len(d.Sources) != 1 || d.Sources[0].Name != "PThub" {
+		t.Fatalf("发布组/架构/来源 = %+v", d)
+	}
+	if len(d.Tags) != 2 || d.Tags[0] != "影视" || d.Tags[1] != "原盘" {
+		t.Fatalf("tags = %v", d.Tags)
+	}
+	if cards[1].Detail == nil || cards[1].Detail.Description != "教育网 PT" {
+		t.Fatalf("byr detail should merge via alias: %+v", cards[1].Detail)
+	}
+	if cards[2].Detail != nil {
+		t.Fatal("unknown site should stay untouched")
+	}
+	if len(extra) != 1 || extra[0].Name != "OnlyPtseek" {
+		t.Fatalf("extra = %+v", extra)
+	}
+	if e := mergePtseekDetails(cards, nil); e != nil {
+		t.Fatalf("nil table should return nil, got %d", len(e))
+	}
+}
+
+// TestExtraCards ptseek 独有站占位卡：unknown 状态、年份取 founded、域名派生、名称稳定序。
+func TestExtraCards(t *testing.T) {
+	extra := []ptseekSite{
+		{Name: "B站", URL: "https://b.pt/", Community: &ptseekCommunity{Founded: 2015}},
+		{Name: "A站", URL: "https://a.pt/", Logo: "https://a/logo.png"},
+	}
+	cards := extraCards(extra)
+	if len(cards) != 2 {
+		t.Fatalf("cards = %d", len(cards))
+	}
+	if cards[0].Name != "A站" || cards[1].Name != "B站" {
+		t.Fatalf("排序错误: %v, %v", cards[0].Name, cards[1].Name)
+	}
+	if cards[0].Status != HealthUnknown || cards[0].Icon != "https://a/logo.png" || cards[0].Domain != "a.pt" {
+		t.Fatalf("a 卡: %+v", cards[0])
+	}
+	if cards[1].Year != "2015" || cards[1].Domain != "b.pt" {
+		t.Fatalf("b 卡: %+v", cards[1])
+	}
+}
+
+// TestLoadPtseek 内嵌快照可解析、域名索引覆盖 300+ 站（快照损坏时降级为不合并）。
+func TestLoadPtseek(t *testing.T) {
+	m := ptseekOnce()
+	if len(m) < 200 {
+		t.Fatalf("ptseek snapshot too small: %d", len(m))
+	}
+	if _, ok := m["bt.byr.cn"]; !ok {
+		t.Fatal("bt.byr.cn not in snapshot")
+	}
+}
+
+// TestOpenTimeOverridesYearForm openTimeOverrides 支持纯年份形态（如维基只给 Launched 2007）：
+// OpenTime/Year 同步补、DurationText 不推算（无精确日）。
+func TestOpenTimeOverridesYearForm(t *testing.T) {
+	html := `<a class="card-link" href="https://1337x.to/" data-name="1337X" data-year="0000" data-opentime="未知"><div class="card-title">1337X</div></a>`
+	cards, _ := parseSavept(html)
+	if len(cards) != 1 {
+		t.Fatalf("cards = %d", len(cards))
+	}
+	if cards[0].OpenTime != "2007" || cards[0].Year != "2007" {
+		t.Fatalf("opentime=%q year=%q", cards[0].OpenTime, cards[0].Year)
+	}
+	if cards[0].DurationText != "" {
+		t.Fatalf("年份形态不应推算运营时长: %q", cards[0].DurationText)
+	}
+}
+
+// TestFoundedYearOverrides ptseek 独有站占位卡年份优先取人工核实表。
+func TestFoundedYearOverrides(t *testing.T) {
+	domain := "example-bbs.example"
+	foundedYearOverrides[domain] = 2009
+	defer delete(foundedYearOverrides, domain)
+
+	cards := extraCards([]ptseekSite{{Name: "X", URL: "https://" + domain + "/", Domain: domain}})
+	if cards[0].Year != "2009" {
+		t.Fatalf("year = %q want 2009 (from overrides)", cards[0].Year)
+	}
+	// 表外仍回退 founded 画像
+	cards2 := extraCards([]ptseekSite{{Name: "Y", URL: "https://y.example/", Domain: "y.example", Community: &ptseekCommunity{Founded: 2012}}})
+	if cards2[0].Year != "2012" {
+		t.Fatalf("year = %q want 2012 (from community)", cards2[0].Year)
+	}
+}

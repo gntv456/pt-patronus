@@ -16,7 +16,10 @@ const { t } = useI18n()
 // 服务端 open/close_time 缺失时下发的占位值（savept.ts 同款），判断时须比对原始值而非本地化文案
 const sscUnknownSentinel = '\u672a\u77e5' // 未知：服务端占位值，须比对原始值而非本地化文案
 const props = defineProps<{ card: SiteCard; year: string }>()
-const emit = defineEmits<{ (e: 'celebrationRef', key: string, el: Element | null): void }>()
+const emit = defineEmits<{
+  (e: 'celebrationRef', key: string, el: Element | null): void
+  (e: 'detail', card: SiteCard): void
+}>()
 
 function statusMeta(card: SiteCard) {
   return getStatusMeta(card.status)
@@ -96,6 +99,17 @@ function mpMeta(card: SiteCard) {
     <div v-if="statusMeta(card).icon" class="spt-card__status-icon" :style="{ color: statusMeta(card).color }">
       <SptIcon :name="statusMeta(card).icon" :size="18" />
     </div>
+
+    <!-- 右下角详情按钮：点击弹出站点详情弹窗 -->
+    <button
+      class="spt-card__detail-btn"
+      type="button"
+      :aria-label="t('ssc.dTitle')"
+      @click.prevent.stop="emit('detail', card)"
+    >
+      <SptIcon name="info" :size="13" />
+      <span>{{ t('ssc.detailBtn') }}</span>
+    </button>
   </a>
 </template>
 

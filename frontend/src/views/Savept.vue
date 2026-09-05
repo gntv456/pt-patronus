@@ -10,6 +10,7 @@ import SptIcon from '@/components/SptIcon.vue'
 import SaveptHeader from '@/components/savept/SaveptHeader.vue'
 import SaveptNotices from '@/components/savept/SaveptNotices.vue'
 import SaveptSiteCard from '@/components/savept/SaveptSiteCard.vue'
+import SaveptSiteDetail from '@/components/savept/SaveptSiteDetail.vue'
 import SaveptAnnivCalendarDialog from '@/components/savept/SaveptAnnivCalendarDialog.vue'
 import { useSaveptCelebration } from '@/composables/useSaveptCelebration'
 import { useI18n } from 'vue-i18n'
@@ -44,6 +45,9 @@ const rootRef = ref<HTMLElement | null>(null)
 let scrollTarget: Window | HTMLElement = window
 const showBackToTop = ref(false)
 const backTopStyle = ref<Record<string, string>>({})
+
+// 站点详情弹窗：detailCard 为当前展示的站点卡（null=关闭）
+const detailCard = ref<SiteCardData | null>(null)
 
 let messageTimer: ReturnType<typeof setTimeout> | null = null
 function clearMessageTimer() {
@@ -252,10 +256,14 @@ onBeforeUnmount(() => {
           :key="`${group.year}-${card.name}`"
           :card="card"
           :year="group.year"
+          @detail="(c) => (detailCard = c)"
           @celebration-ref="(key, el) => setCelebrationRef(key, el)"
         />
       </div>
     </div>
+
+    <!-- 站点详情弹窗（卡片右下角详情按钮触发） -->
+    <SaveptSiteDetail :card="detailCard" @close="detailCard = null" />
 
     <!-- 空状态 -->
     <div v-if="!loading && !filteredSites.length" class="spt-empty">

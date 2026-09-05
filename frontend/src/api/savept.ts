@@ -4,6 +4,41 @@ export type SiteHealthStatus = 'healthy' | 'critical' | 'closed' | 'unknown'
 export type MatchType = 'none' | 'url_exact' | 'domain_exact' | 'name_exact' | 'name_fuzzy'
 export type AlertType = 'danger' | 'obituary' | 'warning' | 'info' | 'celebration'
 
+export interface DetailSource {
+  name: string
+  url?: string
+}
+
+export interface SiteDetail {
+  aka?: string[] // 别名
+  tags?: string[] // 资源特色标签
+  description?: string // 站点介绍
+  beginner_tips?: string // 新手提示
+  registration?: string // 注册状态（开放/邀请/关闭…）
+  difficulty?: string // 入门难度
+  logo?: string // LOGO 兜底
+  community_labels?: string[] // 社区标签（十二大/传统九大…）
+  official_groups?: string[] // 官方发布组（MTeam/MPAD…）
+  site_engine?: string // 站点架构（NexusPHP/UNIT3D/mTorrent…）
+  users?: number // 站点人数
+  torrents?: number // 站点种子数
+  peers?: number // 在线 peer 数
+  founded?: number // 建站年份
+  freeleech?: boolean // 有免费政策
+  bonus_points?: boolean // 有魔力/积分系统
+  hit_and_run?: boolean // 有 H&R 考核
+  ratio_required?: boolean // 有分享率要求
+  sources?: DetailSource[] // 资料来源
+  language?: string // 站点语言（zh-CN…）
+  rank?: number // ptseek 综合排名
+  source_category?: string // 来源分类（热门站点/其他站点…）
+  research_status?: string // 资料研究状态
+  checked_at?: string // 资料核对日期
+  content_types?: string[] // 内容类型（电影/剧集/音乐…）
+  service_type?: string // pt_tracker/community_forum…
+  schema?: string // 平台（nexusphp/unit3d…）
+}
+
 export interface SaveptSiteCard {
   name: string
   url: string
@@ -20,6 +55,7 @@ export interface SaveptSiteCard {
   open_time?: string
   close_time?: string
   search?: string
+  detail?: SiteDetail
   match_type: MatchType
   local_site_id?: number
   local_site_name?: string

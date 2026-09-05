@@ -70,10 +70,50 @@ type SaveptSiteCard struct {
 	OpenTime        string           `json:"open_time,omitempty"`        // 开站时间
 	CloseTime       string           `json:"close_time,omitempty"`       // 关站时间（已关站填充）
 	Search          string           `json:"search,omitempty"`           // 站点搜索/注册入口
+	// Detail 是详情弹窗的补充元数据（ptseek 为主，按域名合并）。
+	Detail *SiteDetail `json:"detail,omitempty"`
 	// 本地匹配结果（与用户站点比对后填充）
 	MatchType     MatchType `json:"match_type"`
 	LocalSiteID   uint      `json:"local_site_id,omitempty"`
 	LocalSiteName string    `json:"local_site_name,omitempty"`
+}
+
+// SiteDetail 是站点详情弹窗数据。介绍/特色/人数/种子数/注册状态/难度/新手提示/发布组/
+// 架构/资料来源来自 ptseek 快照（31 个大站有 community_profile 画像），平台来自本地 definitions。
+type SiteDetail struct {
+	AKA             []string       `json:"aka,omitempty"`              // 别名
+	Tags            []string       `json:"tags,omitempty"`             // 资源特色标签（「站点特色」行）
+	Description     string         `json:"description,omitempty"`      // 站点介绍
+	BeginnerTips    string         `json:"beginner_tips,omitempty"`    // 新手提示
+	Registration    string         `json:"registration,omitempty"`     // 注册状态（开放/邀请/关闭…）
+	Difficulty      string         `json:"difficulty,omitempty"`       // 入门难度
+	Logo            string         `json:"logo,omitempty"`             // LOGO（savept.icu 无图标时兜底）
+	CommunityLabels []string       `json:"community_labels,omitempty"` // 社区标签（十二大/传统九大…）
+	OfficialGroups  []string       `json:"official_groups,omitempty"`  // 官方发布组（MTeam/MPAD…）
+	SiteEngine      string         `json:"site_engine,omitempty"`      // 站点架构（NexusPHP/UNIT3D/mTorrent…）
+	Users           int            `json:"users,omitempty"`            // 站点人数
+	Torrents        int            `json:"torrents,omitempty"`         // 站点种子数
+	Peers           int            `json:"peers,omitempty"`            // 在线 peer 数
+	Founded         int            `json:"founded,omitempty"`          // 建站年份
+	Freeleech       bool           `json:"freeleech,omitempty"`        // 有免费政策
+	BonusPoints     bool           `json:"bonus_points,omitempty"`     // 有魔力/积分系统
+	HitAndRun       bool           `json:"hit_and_run,omitempty"`      // 有 H&R 考核
+	RatioRequired   bool           `json:"ratio_required,omitempty"`   // 有分享率要求
+	Sources         []DetailSource `json:"sources,omitempty"`          // 资料来源（PThub/PT-depiler…）
+	Language        string         `json:"language,omitempty"`         // 站点语言（zh-CN…）
+	Rank            int            `json:"rank,omitempty"`             // ptseek 综合排名
+	SourceCategory  string         `json:"source_category,omitempty"`  // 来源分类（热门站点/其他站点…）
+	ResearchStatus  string         `json:"research_status,omitempty"`  // 资料研究状态
+	CheckedAt       string         `json:"checked_at,omitempty"`       // 资料核对日期
+	ContentTypes    []string       `json:"content_types,omitempty"`    // 内容类型（电影/剧集/音乐…）
+	ServiceType     string         `json:"service_type,omitempty"`     // pt_tracker/community_forum…
+	Schema          string         `json:"schema,omitempty"`           // 平台（nexusphp/unit3d…）
+}
+
+// DetailSource 是详情资料来源引用。
+type DetailSource struct {
+	Name string `json:"name"`
+	URL  string `json:"url,omitempty"`
 }
 
 // SaveptSummary 是监护室汇总统计。

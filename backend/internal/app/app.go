@@ -160,7 +160,7 @@ func New(cfg *config.Config) (*App, error) {
 	dashCh := chain.NewDashboardChain(database, siteOp, dlOp, siteCh)
 
 	// PT监护室：聚合 savept.icu 站点健康数据（独立于站点登录）
-	saveptSvc := savept.NewService(hc, siteOp)
+	saveptSvc := savept.NewService(hc, siteOp, registry)
 
 	// 站点考核：per-platform 适配器 Registry（MTeam JSON / NexusPHP HTML / TNode 不支持）
 	assessReg := newAssessmentRegistry()

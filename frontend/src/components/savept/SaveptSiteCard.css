@@ -296,3 +296,43 @@
     height: 18px;
   }
 }
+
+/* 右下角详情按钮：与卡片同风格的小胶囊（默认弱化，hover 卡片时强调），不抢状态图标视觉。 */
+.spt-card__detail-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid rgba(var(--spt-on-surface), 0.1);
+  border-radius: 999px;
+  background: rgba(var(--spt-surface, 255 255 255), 0.78);
+  color: rgba(var(--spt-on-surface), 0.5);
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition:
+    color var(--dur-fast) var(--ease-out-smooth),
+    border-color var(--dur-fast) var(--ease-out-smooth),
+    background var(--dur-fast) var(--ease-out-smooth);
+}
+.spt-card__detail-btn:hover {
+  color: rgb(var(--spt-primary));
+  border-color: rgba(var(--spt-primary), 0.45);
+  background: rgba(var(--spt-surface, 255 255 255), 0.95);
+}
+.spt-card__detail-btn:active {
+  transform: translateY(1px);
+}
+/* 卡片底部留出按钮空间，避免与本地匹配标签重叠 */
+.spt-card__body {
+  padding-bottom: 28px;
+}
+.spt-card--closed .spt-card__detail-btn {
+  opacity: 0.8;
+}

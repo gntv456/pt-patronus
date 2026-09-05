@@ -1,2 +1,6 @@
-4160	frontend/src/i18n/locales/en-US.ts
-4121	frontend/src/i18n/locales/zh-CN.ts
+413	backend/internal/app/app.go
+415	backend/internal/chain/entertainment.go
+424	backend/internal/chain/entertainment_actions.go
+511	frontend/src/api/entertainmentTypes.ts
+4204	frontend/src/i18n/locales/en-US.ts
+4165	frontend/src/i18n/locales/zh-CN.ts

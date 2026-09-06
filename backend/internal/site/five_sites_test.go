@@ -231,9 +231,10 @@ func TestRatioNoGarbageOnInfinite(t *testing.T) {
 	if u.Uploaded != 107374182400 {
 		t.Errorf("uploaded = %d, want 107374182400 (100 GB)", u.Uploaded)
 	}
-	// tangpt 自定义 bonus（rowhead 魔力值）在本 HTML 无 rowhead 行 → 空，不误抓 bar 的 104863714
-	if u.Bonus != 0 {
-		t.Errorf("bonus = %.1f, want 0（无 rowhead 魔力值行应空）", u.Bonus)
+	// tangpt 自定义 bonus（rowhead 魔力值）在本 HTML 无 rowhead 行 → 走 color_bonus+[使用]
+	// 兜底（fallbackBonus），bar 上的 104,863,714.0 正是用户真实魔力，应正确抓到而非留 0
+	if u.Bonus != 104863714.0 {
+		t.Errorf("bonus = %.1f, want 104863714.0（自定义锚落空时应回退 color_bonus 兜底）", u.Bonus)
 	}
 }
 
@@ -273,5 +274,92 @@ func TestSpanColorAnchors(t *testing.T) {
 	}
 	if u.Seeding != 8 {
 		t.Errorf("seeding = %d, want 8", u.Seeding)
+	}
+}
+
+// TestBonusFallbackOnCurrencyRename 锁定 fallbackBonus：站点 YAML 覆盖 bonus 键（文本锚
+// 「魔力/爆米花」等）后，站点货币改名（如青蛙「魔力」→「蝌蚪」）会使覆盖锚全部落空 → bonus 恒 0。
+// 兜底用 NexusPHP 框架常量锚点（font/span.color_bonus + [使用] 链接后数值）补抓——与货币名无关。
+func TestBonusFallbackOnCurrencyRename(t *testing.T) {
+	// 青蛙真实结构：color_bonus 标签文本是「蝌蚪」，数值在 [使用] 之后
+	html := `<html><body><span class="medium">
+<font class="color_bonus">蝌蚪 </font>[<a href="mybonus.php">详情</a>][<a href="bonusshop.php">使用</a>]: 1,755,238.5
+<font class="color_ratio">分享率:</font> 19.797
+</span></body></html>`
+	doc := mustDoc(t, html)
+	def := defOf(t, "qingwa") // qingwa.yaml 覆盖了 bonus 键，锚「魔力/Karma」全部落空
+	u := ParseUserInfo(doc, def)
+	if u.Bonus != 1755238.5 {
+		t.Errorf("bonus = %.1f, want 1755238.5（货币改名后应走 color_bonus 兜底）", u.Bonus)
+	}
+
+	// 未覆盖 bonus 键的站点不走兜底（默认选择器已在主解析中试过，行为不变）
+	def2 := defOf(t, "novahd")
+	u2 := ParseUserInfo(doc, def2)
+	if u2.Bonus != 1755238.5 {
+		t.Errorf("bonus(default key) = %.1f, want 1755238.5", u2.Bonus)
+	}
+
+	// 非 NexusPHP schema 不兜底（页面无 color_bonus 结构，避免误抓）
+	def3 := defOf(t, "novahd")
+	def3.Schema = "unit3d"
+	u3 := ParseUserInfo(doc, def3)
+	if u3.Bonus != 0 {
+		t.Errorf("bonus(non-nexusphp) = %.1f, want 0（非 NexusPHP 不兜底）", u3.Bonus)
+	}
+}
+
+// TestQingwaTadpoleCurrency 青蛙真实 info_block（货币已由「魔力」改名「蝌蚪」，fixture 截取自
+// 2026-09 真实页面）：yaml bonus 锚含「蝌蚪」后，bonus/ratio/uploaded 均能从首页用户条解析，
+// 且不得误抓「认领 0/5000」（同在 color_bonus 字体里）。
+func TestQingwaTadpoleCurrency(t *testing.T) {
+	def := defOf(t, "qingwa")
+	doc := loadFixture(t, "testdata/qingwa_index.html")
+	u := ParseUserInfo(doc, def)
+	approxF(t, "bonus(蝌蚪)", u.Bonus, 1755238.5)
+	if u.Ratio != 19.797 {
+		t.Errorf("ratio = %.3f, want 19.797", u.Ratio)
+	}
+	if want := ParseBytes("3.866 TB"); u.Uploaded != want {
+		t.Errorf("uploaded = %d, want %d", u.Uploaded, want)
+	}
+	if uid := ExtractUID(doc); uid != "702831" {
+		t.Errorf("uid = %q, want 702831", uid)
+	}
+}
+
+// TestDetailFieldsStatsMerge 锁定「统计字段自动 userdetails 合并」：默认 DetailFields 现含
+// bonus/uploaded/downloaded/ratio/seeding/seeding_size（PT-depiler 方案——统计行在
+// userdetails.php rowhead 的站，usercp 抓不到时经 uid 二次页补齐）。只补零值，不覆盖基础页结果。
+func TestDetailFieldsStatsMerge(t *testing.T) {
+	def := defOf(t, "springsunday")
+	if _, ok := def.UserInfo.DetailFields["bonus"]; !ok {
+		t.Fatal("springsunday DetailFields 缺 bonus（默认逐键合并未生效）")
+	}
+	baseHTML := `<html><body><span class="medium">欢迎回来, <a href="userdetails.php?id=102631">gntv</a></span></body></html>`
+	u := ParseUserInfo(mustDoc(t, baseHTML), def)
+	if u.Bonus != 0 {
+		t.Fatalf("base bonus = %f, want 0（usercp 无积分行）", u.Bonus)
+	}
+	detailHTML := `<html><body><table>
+<tr><td class="rowhead nowrap">等级</td><td class="rowfollow"><img src="/pic/class/1.gif" title="新人"></td></tr>
+<tr><td class="rowhead nowrap">积分</td><td class="rowfollow">88,420.5</td></tr>
+</table></body></html>`
+	ParseUserDetail(mustDoc(t, detailHTML), def, u)
+	if u.Bonus != 88420.5 {
+		t.Errorf("bonus = %f, want 88420.5（userdetails rowhead 积分应合并进结果）", u.Bonus)
+	}
+
+	// 覆盖语义：基础页用户条已抓到时，userdetails rowhead 行（结构化更完整）按既有
+	// 「非空即写」约定覆盖——这里是 detail 页积分 88,420.5 覆盖用户条 500。
+	u2 := ParseUserInfo(mustDoc(t, `<html><body><span class="medium">
+<font class="color_bonus">魔力 </font>[<a href="mybonus.php">使用</a>]: 500.0
+</span></body></html>`), def)
+	if u2.Bonus != 500 {
+		t.Fatalf("base bonus = %f, want 500（fallbackBonus 应先补到 500）", u2.Bonus)
+	}
+	ParseUserDetail(mustDoc(t, detailHTML), def, u2)
+	if u2.Bonus != 88420.5 {
+		t.Errorf("bonus = %f, want 88420.5（userdetails rowhead 按非空即写约定覆盖）", u2.Bonus)
 	}
 }

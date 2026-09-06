@@ -95,6 +95,13 @@ user_info:
                 - name: parse_number
             selectors:
                 - "tbody tr.nowrap:first > td:nth-child(9)"
+    detail_fields:
+        bonus: # 织梦的积分 rowhead 行在 userdetails.php（usercp 无），经 uid 自动补抓合并
+            filters:
+                - name: parse_number
+            selectors:
+                - td.rowhead:contains('积分') + td
+                - td.rowfollow:contains('积分')
     pages:
         - path: mybonus.php
           use_fields:

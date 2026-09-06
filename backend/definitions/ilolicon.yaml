@@ -135,6 +135,8 @@ user_info:
             selectors:
                 - "a[href*='userdetails.php'][href*='uuid='][class*='Name']"
                 - "a[href*='userdetails.php'][href*='uuid=']"
+                - "#info_block a[href*='userdetails.php']:first"
+                - "a[href*='userdetails.php']:first"
         numeric_user_id:
             attr: href
             filters:
@@ -147,6 +149,8 @@ user_info:
             selectors:
                 - "a[href*='userdetails.php'][href*='uuid='][class*='Name']"
                 - "a[href*='userdetails.php'][href*='uuid=']"
+                - "#info_block a[href*='userdetails.php']:first"
+                - "a[href*='userdetails.php']:first"
         uploaded:
             filters:
                 - name: regexp

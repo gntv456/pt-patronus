@@ -118,6 +118,48 @@ func DefaultNexusPHPUserInfo() UserInfoDef {
 					`td[class*="rowhead"]:contains("用戶名") + td`,
 				},
 			},
+			// 魔力/积分与上传/下载/分享率兜底（PT-depiler 方案：统计行在 userdetails.php
+			// rowhead 的站从此处补抓）。锚点对齐 NexusPHP 官方语言包 row_karma_points +
+			// 常见货币别名；ParseUserDetail 只补基础页缺失的统计，不覆盖已得值。
+			// seeding/seeding_size 不在此默认：它们由 fillSeedingFromDetail 同源补齐
+			// （数与体积配对解析「当前做种」行），重复抓会互相覆盖打架。
+			"bonus": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("魔力值") + td`,
+					`td[class*="rowhead"]:contains("魔力") + td`,
+					`td[class*="rowhead"]:contains("Karma Points") + td`,
+					`td[class*="rowhead"]:contains("金元宝") + td`,
+					`td[class*="rowhead"]:contains("蝌蚪") + td`,
+					`td[class*="rowhead"]:contains("金币") + td`,
+					`td[class*="rowhead"]:contains("星焱") + td`,
+					`td[class*="rowhead"]:contains("积分") + td`,
+				},
+				Filters: []Filter{{Name: "parse_number"}},
+			},
+			"uploaded": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("传输") + td`,
+					`td[class*="rowhead"]:contains("傳送") + td`,
+					`td[class*="rowhead"]:contains("Transfers") + td`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:上传量|上傳量|Uploaded)[\s\S]{0,160}?([\d.,]+\s*[KMGTPE]?i?B)`}, {Name: "parse_size"}},
+			},
+			"downloaded": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("传输") + td`,
+					`td[class*="rowhead"]:contains("傳送") + td`,
+					`td[class*="rowhead"]:contains("Transfers") + td`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:下载量|下載量|Downloaded)[\s\S]{0,160}?([\d.,]+\s*[KMGTPE]?i?B)`}, {Name: "parse_size"}},
+			},
+			"ratio": {
+				Selectors: []string{
+					`td[class*="rowhead"]:contains("传输") + td`,
+					`td[class*="rowhead"]:contains("傳送") + td`,
+					`td[class*="rowhead"]:contains("Transfers") + td`,
+				},
+				Filters: []Filter{{Name: "regexp", Args: `(?i)(?:分享率|比率|Ratio)[\s\S]{0,120}?([\d.]+|无限|無限|Inf\.?|Infinity)`}, {Name: "replace", Args: "无限:::9999"}, {Name: "replace", Args: "無限:::9999"}, {Name: "replace", Args: "Infinity:::9999"}, {Name: "replace", Args: "Inf.:::9999"}},
+			},
 			"email": {
 				// 资料页 rowhead 邮箱行（邮箱/信箱/E-mail/Email）；部分隐藏原样保留，无则留空。
 				Selectors: []string{

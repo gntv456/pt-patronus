@@ -15,11 +15,46 @@ func ParseUserInfo(doc *goquery.Document, def *SiteMetadata) *UserInfo {
 	}
 	u := &UserInfo{}
 	ParseUserInfoFields(doc, def.UserInfo.Fields, u)
+	fallbackBonus(doc, def, u)
 	return u
+}
+
+// fallbackBonus 魔力兜底：站点 YAML 覆盖 bonus 键时 mergeDefaultFields 不再注入默认选择器，
+// 站点货币一旦改名（如青蛙「魔力」→「蝌蚪」），覆盖键的文本锚全部落空 → bonus 恒 0。
+// 此时用 NexusPHP 标准锚点（font/span.color_bonus + 「[使用]」链接后数值）再试一次——
+// 该结构是框架级常量，与货币叫什么名字无关。仅补零值，不覆盖站点选择器已抓到的结果。
+func fallbackBonus(doc *goquery.Document, def *SiteMetadata, u *UserInfo) {
+	if u == nil || u.Bonus != 0 || doc == nil || def == nil {
+		return
+	}
+	// 非 NexusPHP 系页面无 color_bonus 结构，跳过避免误抓。
+	if s := def.Schema; s != "" && s != "nexusphp" {
+		return
+	}
+	dq, ok := DefaultNexusPHPUserInfo().Fields["bonus"]
+	if !ok {
+		return
+	}
+	// 站点未覆盖 bonus 键时 ParseUserInfoFields 已试过默认，无需重试。
+	if _, overridden := def.UserInfo.Fields["bonus"]; !overridden {
+		return
+	}
+	if raw := Extract(doc.Selection, dq); raw != "" {
+		u.Bonus = ToFloat64(raw)
+	}
 }
 
 // ParseUserDetail 把 def.UserInfo.DetailFields（富资料页 userdetails.php?id=<uid> 的字段，
 // 通常是 level/join_date）合并进已有 u。用于多页抓取的二次页补充。
+// DetailFields 现含 bonus/uploaded/downloaded/ratio/seeding/seeding_size 等统计默认
+// （PT-depiler 方案：统计行在 userdetails 的站由此补抓）。合并语义为「统计只补零、身份可覆盖」：
+// 基础页已抓到的统计值不被详情页清零/覆盖；等级/加入时间等身份字段以后到者为准。
+// ParseUserDetail 把 def.UserInfo.DetailFields（富资料页 userdetails.php?id=<uid> 的字段，
+// 通常是 level/join_date）合并进已有 u。用于多页抓取的二次页补充。
+// DetailFields 现含 bonus/uploaded/downloaded/ratio 等统计默认（PT-depiler 方案：统计行在
+// userdetails.php rowhead 的站由此补抓）。合并语义与 ParseUserInfoFields 一致（非空即写）：
+// userdetails 的 rowhead 行结构化更完整，覆盖基础页用户条的粗解析是预期行为；
+// 误覆盖由「默认 DetailFields 只用精确 rowhead 锚、不带 #info_block 兜底」规避。
 func ParseUserDetail(doc *goquery.Document, def *SiteMetadata, u *UserInfo) {
 	if doc == nil || def == nil || u == nil {
 		return
@@ -28,13 +63,14 @@ func ParseUserDetail(doc *goquery.Document, def *SiteMetadata, u *UserInfo) {
 }
 
 // ParseUserInfoFields 把 fields（约定键）从 doc 抽出填入 u。
-// 约定键：id/name/email/level/level_id/numeric_user_id/avatar/personal_avatar/is_donor/
+// 约定键：id/name/email/level/level_id/numeric_user_id/avatar/personal_avatar/
 // join_date/last_access_at/uploaded/downloaded/ratio/true_uploaded/
 // true_downloaded/true_ratio/seeding/leeching/seeding_size/bonus/bonus_per_hour/
 // seeding_bonus/seeding_bonus_per_hour/rescue_seeding_bonus_per_hour/seeding_time/
 // uploads_add/adoptions/posts/snatches/total_traffic/claim_count/max_claim。
-// 仅当某键在本页抽到非空值才写入——便于多页合并（base 页先填统计、detail 页补等级/加入时间，
-// 缺字段的页不会把已得值清零）。
+// 所有键均为「非空即写」语义——后抓的页覆盖先抓的页（pages 里的 ajax 汇总端点是做种数/
+// 上传数的权威来源，见 Gazelle/jpopsuki 流程）。「统计只补零」的合并语义由 ParseUserDetail
+// 单独实现：userdetails 二次页仅补基础页缺失的统计，不覆盖已得值。
 func ParseUserInfoFields(doc *goquery.Document, fields map[string]ElementQuery, u *UserInfo) {
 	if doc == nil || u == nil || len(fields) == 0 {
 		return

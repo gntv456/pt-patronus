@@ -123,3 +123,13 @@ user_info:
                   name: regexp
             selectors:
                 - td.rowhead:contains('等级') + td > img
+        bonus: # userdetails.php rowhead 行（uid 可发现时经自动合并补抓）
+            filters:
+                - name: parse_number
+            selectors:
+                - td.rowhead:contains('魔力值') + td
+                - td.rowhead:contains('积分') + td
+                - li:contains('魔力值')
+                - td:contains('魔力值')
+                - li:contains('积分:')
+                - td:contains('积分:')

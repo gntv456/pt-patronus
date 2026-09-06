@@ -112,6 +112,7 @@ user_info:
             selectors:
                 - "#info_block"
                 - ".medium"
+                - "td.rowfollow:contains('分享率')"
                 - "td.rowhead:contains('传输') + td"
                 - "td.rowhead:contains('傳送') + td"
                 - "td.rowhead:contains('Transfers') + td"
@@ -123,6 +124,7 @@ user_info:
             selectors:
                 - "#info_block"
                 - ".medium"
+                - "td.rowfollow:contains('分享率')"
                 - "td.rowhead:contains('传输') + td"
                 - "td.rowhead:contains('傳送') + td"
                 - "td.rowhead:contains('Transfers') + td"
@@ -155,6 +157,7 @@ user_info:
                   args: '(?i)(?:魔力值|魔力|Karma Points)[\s\S]{0,120}?([\d.,]+)'
                 - name: parse_number
             selectors:
+                - "td.rowhead:contains('魔力值') + td"
                 - "td.rowhead:contains('魔力') + td"
                 - "td.rowhead:contains('Karma Points') + td"
                 - "td.rowfollow:contains('魔力')"
@@ -210,6 +213,7 @@ user_info:
             filters:
                 - name: parse_number
             selectors:
+                - "td.rowhead:contains('魔力值') + td"
                 - "td.rowhead:contains('魔力') + td"
                 - "td.rowhead:contains('Karma Points') + td"
                 - "td.rowfollow:contains('魔力')"

@@ -88,6 +88,10 @@ user_info:
       filters:
         - name: regexp
           args: '(\d{4}-\d{2}-\d{2})'
+    bonus: # 详情页 rowhead「金元宝」行（PT-depiler 校准；用户条 a[href*=mybonus] 锚之外兜底）
+      selector: 'td[class*="rowhead"]:contains("金元宝") + td'
+      filters:
+        - name: parse_number
 
 no_login:
   url_pattern: ["login.php", "takelogin.php"]

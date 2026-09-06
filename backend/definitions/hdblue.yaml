@@ -1,0 +1,7 @@
+id: hdblue
+name: 蓝影论坛
+schema: "" # Next.js 自建论坛（rhex-theme），非 NexusPHP；走 generic RSC/JSON 适配（entertainment 游戏 + 手动配置）
+urls:
+  - https://hdblue.cc
+description: 蓝影（原蓝影汇）——专注影音资讯与技术讨论的社区论坛，含五子棋/阴阳契游戏
+tags: [论坛, 游戏]

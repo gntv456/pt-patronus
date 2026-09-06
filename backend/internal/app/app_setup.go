@@ -157,6 +157,10 @@ func newEntertainmentRegistry() *entertainment.Registry {
 	// 不可躺 猜大小（/api/big-small/*：snapshot 快照 + bets 下注 JSON）+ 老虎机（/web/omnibot/slot-machine/*）
 	entReg.Register("www.tangpt.top", entertainment.TangptBigSmallGame{})
 	entReg.Register("www.tangpt.top", entertainment.TangptSlotGame{})
+	// 蓝影论坛（hdblue.cc，Next.js 自建论坛非 NexusPHP）：五子棋人机对战 + 阴阳契对赌；
+	// 认证=bbs_session（HttpOnly+IP 绑定，见 docs/hdblue/api-notes.md），货币=影币
+	entReg.Register("hdblue.cc", entertainment.HdblueGobangGame{})
+	entReg.Register("hdblue.cc", entertainment.HdblueYinyangGame{})
 	// 高清视频 /games/ 大厅（批10）：压大小/老虎机/刮刮乐/HiLo/21点；货币=电影票
 	// ddz/poker/zjh/sports/stock/chest 为对战或复杂玩法不接；lucky-draw 302 未开启
 	entReg.Register("hdvideo.top", entertainment.HdvideoBigSmallGame{})

@@ -176,6 +176,8 @@ var errStaleFallback = errors.New("savept stale fallback")
 
 // applyPlatformDetails 用本地 definitions 补 detail.schema（平台）。ptseek 已覆盖其余字段，
 // 平台信息只有 definitions 有；命中域名即填，未命中跳过。
+// cards 已是本次请求的独立副本，但 Detail 是共享指针——直接写会污染全局缓存
+// （本地站点增删导致补全结果抖动、并发读写竞争），故先复制 Detail 再回填。
 func (s *Service) applyPlatformDetails(cards []SaveptSiteCard) {
 	if s.reg == nil {
 		return
@@ -186,7 +188,9 @@ func (s *Service) applyPlatformDetails(cards []SaveptSiteCard) {
 		}
 		if id, ok := s.reg.MatchByURL(cards[i].URL); ok {
 			if def, ok := s.reg.Definition(id); ok && def.Schema != "" {
-				cards[i].Detail.Schema = def.Schema
+				d := *cards[i].Detail
+				d.Schema = def.Schema
+				cards[i].Detail = &d
 			}
 		}
 	}
@@ -238,11 +242,18 @@ func (s *Service) probeExtra(ctx context.Context, cards []SaveptSiteCard) {
 	}
 	slog.Info("savept probing extra sites", "count", len(jobs))
 
+	// 并发只做探测，结果收进切片由本 goroutine 统一回写 cards：
+	// 多 goroutine 直接写 cards[j.idx] 是数据竞争（调用方可能同时在读同一切片）。
+	results := make([]struct {
+		idx   int
+		dom   string
+		alive bool
+	}, len(jobs))
 	sem := make(chan struct{}, probeConcurrency)
 	var wg sync.WaitGroup
-	for _, j := range jobs {
+	for k, j := range jobs {
 		wg.Add(1)
-		go func(j job) {
+		go func(k int, j job) {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
@@ -250,29 +261,30 @@ func (s *Service) probeExtra(ctx context.Context, cards []SaveptSiteCard) {
 			probeMu.Lock()
 			probeOkMap[j.dom] = alive
 			probeMu.Unlock()
-			if alive {
-				cards[j.idx].Status = HealthHealthy
-				cards[j.idx].StatusText = "运行中"
-			} else {
-				cards[j.idx].Status = HealthClosed
-				cards[j.idx].StatusText = "站点无法访问"
-			}
-		}(j)
+			results[k].idx = j.idx
+			results[k].dom = j.dom
+			results[k].alive = alive
+		}(k, j)
 	}
 	wg.Wait()
+	for _, r := range results {
+		if r.alive {
+			cards[r.idx].Status = HealthHealthy
+			cards[r.idx].StatusText = "运行中"
+		} else {
+			cards[r.idx].Status = HealthUnknown
+			cards[r.idx].StatusText = "探测失败"
+		}
+	}
 }
 
 // probeOne 探测单站：true=存活。任何完整 HTTP 响应都算活（403/503 是 CF 盾不是死站）；
-// 网络层错误（DNS/超时/TLS）或 404/410（停放）算死。
+// 网络层错误（DNS/超时/TLS）算死。注意 404/410 只说明路径不存在，域名可能仍在服务
+// （单页应用/根路径 404 的站都存在），不能据此断言「站点死亡」——历史上曾把 404 的
+// 活站标成 closed（前端渲染为死亡），故 404/410 也按存活处理。
 func (s *Service) probeOne(ctx context.Context, rawURL string) bool {
 	pctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()
-	resp, err := s.hc.Get(pctx, rawURL, "", true)
-	if err != nil {
-		return false
-	}
-	if resp.StatusCode == 404 || resp.StatusCode == 410 {
-		return false
-	}
-	return true
+	_, err := s.hc.Get(pctx, rawURL, "", true)
+	return err == nil
 }

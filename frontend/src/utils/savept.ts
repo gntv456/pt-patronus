@@ -99,7 +99,9 @@ function isLeapYear(year: number): boolean {
 
 /**
  * 构建某年的站庆日历（key '月-日'）。优先用开站日期（每年同月日站庆）；
- * 无开站日期但站庆文案是倒计时的，用「今天 + N 天」补位（仅当年有效）。
+ * 无开站日期但站庆文案是倒计时的，用「今天 + N 天」补位（倒计时是即时快照，
+ * 翻年后数据源会刷新，故按目标月日归档、不再按年份过滤——否则 12 月底的
+ * 跨年倒计时会在次年日历里凭空消失）。
  * 已关站站点不进日历；建站之前的年份不出现；2/29 建站平年落在 2/28；同名站点去重。
  */
 export function buildAnniversaryMap(cards: SaveptSiteCard[], year: number, now = new Date()): AnniversaryMap {
@@ -122,10 +124,10 @@ export function buildAnniversaryMap(cards: SaveptSiteCard[], year: number, now =
     }
     const days = parseAnnivCountdownDays(card.anniversary_text)
     if (days !== null) {
-      const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days)
-      if (date.getFullYear() === year) {
-        put(`${date.getMonth() + 1}-${date.getDate()}`, { card, years, source: 'countdown' })
-      }
+      // 今天 + N 天可能跨进下一年（如 12-30 + 5 天倒计时落在 1-4）——倒计时数据只在
+      // 当前年有效，把同一条目同时归档到目标日当年与次年同月日，翻年后日历不空窗。
+      const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days)
+      put(`${target.getMonth() + 1}-${target.getDate()}`, { card, years, source: 'countdown' })
     }
   }
   return map
@@ -214,7 +216,9 @@ function detectNoticeSiteName(segmentText: string, siteNames: string[]) {
   const bodyLeadingWhitespace = body.slice(0, body.length - trimmedBody.length)
 
   const knownSite = siteNames.find((name) => {
-    const sitePattern = new RegExp(`^${escapeRegExp(name)}(?=\\s|$)`)
+    // 站名开头 + 非字母数字边界（空白/标点/中文均可；排除字母数字延续，避免「HD」
+    // 命中「HDHome」）。\\p{L} 须配 u 标志——无 u 时 \p{L} 被当字面量 'p'，边界失效。
+    const sitePattern = new RegExp(`^${escapeRegExp(name)}(?=[^\\p{L}\\p{N}]|$)`, 'u')
     return sitePattern.test(trimmedBody)
   })
   if (knownSite) {
@@ -225,7 +229,10 @@ function detectNoticeSiteName(segmentText: string, siteNames: string[]) {
     }
   }
 
-  // 启发式：站点名通常在「已抢救/已/还有/抢救/于」等动词前。
+  // 启发式：站点名通常在「已抢救/已/还有/抢救/于」等动词前（「MTeam 已抢救成功」）。
+  // 注意这里截到什么高亮什么，误吞就是错误高亮：站名后接非空白（如「HD站」「HD,已恢复」）
+  // 交给已知站名路径处理；启发式仅截取空白+动词前的整段——已知站名列表里没有的名字
+  // 也会被吞（产品预期：公告里的站名几乎总在卡列表中，漏网名字高亮成 tag 可接受）。
   const heuristicMatch = trimmedBody.match(/^(.+?)(?=\s(?:已抢救|已|还有|抢救|于))/)
   if (heuristicMatch?.[1]) {
     const siteName = heuristicMatch[1].trim()

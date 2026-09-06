@@ -1,7 +1,6 @@
-import { computed, reactive, ref, type Ref } from 'vue'
+import { computed, reactive, type Ref } from 'vue'
 import type { SaveptSiteCard as SiteCardData } from '@/api/savept'
-import { getStatusMeta, getMpStatusMeta, buildSiteKeywords } from '@/utils/savept'
-import { siteTypeLabel } from '@/utils/savept'
+import { buildSiteKeywords, getMpStatusMeta, getStatusMeta, siteTypeLabel } from '@/utils/savept'
 
 export function useSaveptFilters(sites: Ref<SiteCardData[]>) {
   const filters = reactive({
@@ -14,10 +13,6 @@ export function useSaveptFilters(sites: Ref<SiteCardData[]>) {
   })
 
   const collapsedYears = reactive<Record<string, boolean>>({})
-  const showBackToTop = ref(false)
-  const backTopStyle = ref<Record<string, string>>({})
-  const rootRef = ref<HTMLElement | null>(null)
-  let scrollTarget: Window | HTMLElement | null = null
 
   function formatYearLabel(year: string) {
     return !year || year === '未知' ? '未知' : year

@@ -109,16 +109,19 @@ var ptseekDomainAliases = map[string]string{
 	"bt.byr.cn":          "byr.pt",             // 北邮人（savept 用老域名）
 	"agsvpt.com":         "pt.agsvpt.cn",       // AGSV 末日
 	"pt.cdy.ics":         "pt.cdy.pics",        // 传道院
-	"new.qingwa.pro":     "www.qingwapt.com",   // 青蛙
+	"new.qingwa.pro":     "qingwapt.com",       // 青蛙（卡域名经 extractDomain 已剥 www，目标须同口径）
 }
 
-// canonicalDomain 域名归一：命中别名表则映射到 savept.icu 侧域名，否则原样返回。
+// canonicalDomain 域名归一：剥 www 前缀、命中别名表则映射到 savept.icu 侧域名，否则原样返回。
+// 卡片域名来自 extractDomain（已剥 www），别名表的目标域若带 www（老数据）也在此统一剥掉，
+// 否则同一站两个口径各算各的，合并/去重静默失配。
 func canonicalDomain(d string) string {
+	d = strings.TrimPrefix(d, "www.")
 	if d == "" {
 		return ""
 	}
 	if v, ok := ptseekDomainAliases[d]; ok {
-		return v
+		return strings.TrimPrefix(v, "www.")
 	}
 	return d
 }
@@ -134,12 +137,24 @@ func mergePtseekDetails(cards []SaveptSiteCard, byDomain map[string]*ptseekSite)
 		return nil
 	}
 	// 别名归一后建二级索引：规范域名 → ptseek 站（含镜像命中）。
+	// 同一规范域名命中多个条目时（别名镜像与主条目并存，如 rousi.zip+rousi.pro），
+	// 主域名条目优先于镜像条目；两条同级时按域名序取小——map 遍历无序，须保证确定性。
 	byCanon := make(map[string]*ptseekSite, len(byDomain))
+	ownCanon := make(map[string]bool, len(byDomain))
 	for d, p := range byDomain {
 		c := canonicalDomain(d)
-		if _, exists := byCanon[c]; !exists {
-			byCanon[c] = p
+		own := d == c
+		if prev, exists := byCanon[c]; exists {
+			prevOwn := ownCanon[c]
+			if prevOwn && !own {
+				continue // 已有主域名条目，镜像不覆盖
+			}
+			if own == prevOwn && d >= prev.Domain {
+				continue // 同级冲突取域名序小者，保证两次抓取结果一致
+			}
 		}
+		byCanon[c] = p
+		ownCanon[c] = own
 	}
 	seen := make(map[string]struct{}, len(cards))
 	for i := range cards {

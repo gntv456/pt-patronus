@@ -133,6 +133,23 @@ describe('tokenizeNoticeText', () => {
       { type: 'text', text: ' 已抢救成功' },
     ])
   })
+  it('已知站名后接标点（逗号）也高亮（\\p{L}/\\p{N} 边界，须配 u 标志）', () => {
+    const cards = [{ name: 'HD' } as SaveptSiteCard]
+    const tokens = tokenizeNoticeText('HD,已抢救成功', cards)
+    expect(tokens).toEqual([
+      { type: 'site', text: 'HD' },
+      { type: 'text', text: ',已抢救成功' },
+    ])
+  })
+  it('已知站名后接字母类字符（中文/字母延续）不高亮——不比启发式更激进', () => {
+    const cards = [{ name: 'HD' } as SaveptSiteCard]
+    // 「HD站」：HD 后是 \p{L}（中文属字母类）→ 已知站名路径不命中；
+    // 无「站名 动词」空白 → 整段纯文本，不误拆。
+    expect(tokenizeNoticeText('HD站已恢复', cards)).toEqual([{ type: 'text', text: 'HD站已恢复' }])
+    // 「HDHome」字母延续不因 HD 误拆；启发式将整体当站名高亮（维持旧行为）
+    const tokens = tokenizeNoticeText('HDHome 已抢救成功', cards)
+    expect(tokens[0]).toEqual({ type: 'site', text: 'HDHome' })
+  })
   it('无已知站点/无启发式 → 整段 text', () => {
     const tokens = tokenizeNoticeText('系统维护通知', [])
     expect(tokens).toEqual([{ type: 'text', text: '系统维护通知' }])
@@ -194,10 +211,12 @@ describe('buildAnniversaryMap', () => {
     const map = buildAnniversaryMap([annivCard({ name: 'A站', open_time: '2020-03-15', year: '2020' })], 2026, now)
     expect(map.get('3-15')).toEqual([{ card: expect.objectContaining({ name: 'A站' }), years: 6, source: 'open_time' }])
   })
-  it('无 open_time 时倒计时补位（今天+N 天），且只落在查看当年', () => {
+  it('无 open_time 时倒计时补位（今天+N 天）；跨年倒计时在次年同月日仍可见', () => {
     const map = buildAnniversaryMap([annivCard({ name: 'B站', anniversary_text: '5天' })], 2026, now)
     expect(map.get('8-30')?.[0].card.name).toBe('B站')
-    expect(buildAnniversaryMap([annivCard({ name: 'B站', anniversary_text: '5天' })], 2027, now).size).toBe(0)
+    // 倒计时是即时快照：按目标月日归档到任意查看年份（次年翻到 8-30 仍能看到该站，
+    // 直到数据源刷新倒计时），不再因年份过滤整条丢弃。
+    expect(buildAnniversaryMap([annivCard({ name: 'B站', anniversary_text: '5天' })], 2027, now).get('8-30')?.[0].card.name).toBe('B站')
   })
   it('今天站庆文案 → 当天；已关站不进日历', () => {
     const map = buildAnniversaryMap(

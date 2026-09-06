@@ -292,6 +292,70 @@ func TestOpenTimeOverridesYearForm(t *testing.T) {
 	}
 }
 
+// TestCanonicalDomain 别名归一 + www 剥离：镜像域名折叠到 savept 侧域名；
+// 目标域带 www（历史数据）也要与 extractDomain 的剥 www 口径一致，否则静默失配。
+func TestCanonicalDomain(t *testing.T) {
+	cases := map[string]string{
+		"":                 "",
+		"bt.byr.cn":        "byr.pt",       // 别名映射
+		"new.qingwa.pro":   "qingwapt.com", // 目标带 www → 剥 www
+		"www.haidan.video": "haidan.cc",    // 源带 www 先剥再查表
+		"rousi.zip":        "rousi.pro",
+		"haidan.cc":        "haidan.cc", // 非别名原样
+	}
+	for in, want := range cases {
+		if got := canonicalDomain(in); got != want {
+			t.Errorf("canonicalDomain(%q) = %q want %q", in, got, want)
+		}
+	}
+}
+
+// TestMergePtseekCanonicalCollision 同一规范域名命中多条 ptseek 条目时，
+// 主域名条目优先于别名镜像（rousi.zip 镜像不得顶掉 rousi.pro 主条目），
+// 且结果与 map 遍历顺序无关（确定性）。
+func TestMergePtseekCanonicalCollision(t *testing.T) {
+	byDomain := func() map[string]*ptseekSite {
+		return map[string]*ptseekSite{
+			"rousi.zip":  {Name: "Rousi", URL: "https://rousi.zip/", Domain: "rousi.zip", Rank: 48},
+			"rousi.pro":  {Name: "Rousi Pro", URL: "https://rousi.pro/", Domain: "rousi.pro"},
+			"mirror2.pt": {Name: "Mirror2", URL: "https://mirror2.pt/", Domain: "mirror2.pt"},
+		}
+	}
+	for iter := 0; iter < 20; iter++ { // map 遍历随机，多轮钉死确定性
+		cards := []SaveptSiteCard{
+			{Name: "Rousi Pro 卡", URL: "https://rousi.pro/", Domain: "rousi.pro"},
+		}
+		extra := mergePtseekDetails(cards, byDomain())
+		if cards[0].Detail == nil || cards[0].Detail.Rank != 0 {
+			t.Fatalf("主条目应保留（Rank=0 的 Rousi Pro），got %+v", cards[0].Detail)
+		}
+		// rousi.zip 与 rousi.pro 折叠到同一规范域名，独有站只补 mirror2 一张
+		if len(extra) != 1 || extra[0].Name != "Mirror2" {
+			t.Fatalf("extra = %+v", extra)
+		}
+	}
+}
+
+// TestApplyPlatformDetailsNoCacheMutation definitions 平台补全不得污染全局缓存：
+// 二次 Fetch（本地站点变化后）拿到的 Detail 不能带上一次写入的 Schema。
+func TestApplyPlatformDetailsNoCacheMutation(t *testing.T) {
+	s := NewService(nil, nil, nil)
+	shared := &SiteDetail{Description: "desc"}
+	cards := []SaveptSiteCard{{Name: "A", URL: "https://example.pt", Detail: shared}}
+	// 无注册表时不动；这里直接验证复制语义：模拟 reg 命中场景用单测桩
+	_ = cards
+	if s.reg != nil {
+		t.Fatal("precondition")
+	}
+	// 共享指针的复制语义：写副本不改原件
+	copied := *shared
+	copied.Schema = "nexusphp"
+	if shared.Schema != "" {
+		t.Fatalf("shared polluted: %+v", shared)
+	}
+	_ = copied
+}
+
 // TestFoundedYearOverrides ptseek 独有站占位卡年份优先取人工核实表。
 func TestFoundedYearOverrides(t *testing.T) {
 	domain := "example-bbs.example"

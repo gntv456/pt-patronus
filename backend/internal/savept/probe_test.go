@@ -10,7 +10,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
-// probeExtra 行为：403（CF 盾）算活、404 算死、连接拒绝算死。
+// probeExtra 行为：403（CF 盾）与 404（路径不存在≠死站）都算活、连接拒绝算死 →
+// unknown（「探测失败」，下一轮重试），不误标 closed（前端渲染为死亡）。
 // httptest 是 127.0.0.1 环回，需 AllowPrivate 放行（生产 SSRF 防护不变）。
 func TestProbeExtra(t *testing.T) {
 	alive := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,10 +47,10 @@ func TestProbeExtra(t *testing.T) {
 	if cards[0].Status != HealthHealthy {
 		t.Errorf("alive(403 CF 盾): got %q want healthy", cards[0].Status)
 	}
-	if cards[1].Status != HealthClosed {
-		t.Errorf("404: got %q want closed", cards[1].Status)
+	if cards[1].Status != HealthHealthy {
+		t.Errorf("404: got %q want healthy（404 路径不存在≠死站）", cards[1].Status)
 	}
-	if cards[2].Status != HealthClosed {
-		t.Errorf("dead: got %q want closed", cards[2].Status)
+	if cards[2].Status != HealthUnknown {
+		t.Errorf("dead: got %q want unknown（探测失败待重试，不误标死亡）", cards[2].Status)
 	}
 }

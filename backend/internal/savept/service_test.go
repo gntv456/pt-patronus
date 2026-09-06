@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 // newUpstream 启动固定页面的 httptest 上游，计数请求数。
@@ -110,11 +111,11 @@ func TestExtractDomainNormalization(t *testing.T) {
 	cases := map[string]string{
 		"https://a.pt/x":     "a.pt",
 		"http://www.a.pt":    "a.pt",
-		"https://A.PT/X":     "a.pt",     // 大写归一
-		"https://a.pt:8080/": "a.pt",     // 剥端口
-		"http://WWW.A.PT":    "a.pt",     // 大写+www
-		"https://a.pt:443":   "a.pt",     // 显式端口
-		"//a.pt/x":           "a.pt",     // protocol-relative
+		"https://A.PT/X":     "a.pt",      // 大写归一
+		"https://a.pt:8080/": "a.pt",      // 剥端口
+		"http://WWW.A.PT":    "a.pt",      // 大写+www
+		"https://a.pt:443":   "a.pt",      // 显式端口
+		"//a.pt/x":           "a.pt",      // protocol-relative
 		"not a url":          "not a url", // 无法解析 → 原文小写兜底
 	}
 	for in, want := range cases {
@@ -231,5 +232,48 @@ func TestFetchConcurrentSingleFlight(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&hits); got != 1 {
 		t.Errorf("并发 N 请求应合并为 1 次抓取, got %d", got)
+	}
+}
+
+// 回归 B2 端到端（走 Fetch 缓存路径）：ptseek 合并出 Detail 后，applyPlatformDetails 补
+// schema 采用写时复制——两次 Fetch（新鲜+缓存）的 Detail 补全结果一致，且补全不写穿
+// 上游共享对象（缓存内 Detail 与 ptseek 表互不影响）。
+func TestFetchDetailCopyPerCall(t *testing.T) {
+	var hits int32
+	page := `<a class="card-link" href="https://haidan.cc/" data-name="海胆" data-year="2010" data-status="online"><div class="card"><div class="card-title">海胆</div></div></a>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		_, _ = w.Write([]byte(page))
+	}))
+	defer srv.Close()
+
+	reg := site.NewRegistry()
+	reg.AddDefinition(&site.SiteMetadata{ID: "haidan", Schema: "nexusphp", URLs: []string{"https://haidan.cc"}})
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	s := NewService(hc, nil, reg)
+	s.url = srv.URL
+	s.skipProbe = true
+
+	r1, err := s.Fetch(t.Context(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r1.Cards[0].Detail == nil || r1.Cards[0].Detail.Schema != "nexusphp" {
+		t.Fatalf("first fetch detail: %+v", r1.Cards[0].Detail)
+	}
+	r2, err := s.Fetch(t.Context(), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hits != 1 {
+		t.Fatalf("second fetch should hit cache, hits=%d", hits)
+	}
+	if r2.Cards[0].Detail == nil || r2.Cards[0].Detail.Schema != "nexusphp" {
+		t.Fatalf("cached fetch detail: %+v", r2.Cards[0].Detail)
+	}
+	// 写时复制：对返回副本的 Detail 赋值不得波及另一份响应的 Detail 内容
+	// （共享指针只读契约 + applyPlatformDetails 不再写穿，双保险验证描述字段稳定）
+	if r1.Cards[0].Detail.Description != r2.Cards[0].Detail.Description {
+		t.Fatalf("detail description drifted: %q vs %q", r1.Cards[0].Detail.Description, r2.Cards[0].Detail.Description)
 	}
 }

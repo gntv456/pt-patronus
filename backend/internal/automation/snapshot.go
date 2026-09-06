@@ -54,6 +54,10 @@ func (s *Service) runSnapshot() {
 		}
 	}
 	agg.broadcast(s, ctx)
+	// 全站扫完后推送守护神名片（开启且密钥已配置时；失败不影响快照本身）
+	if s.hxcardPush != nil {
+		s.hxcardPush(ctx)
+	}
 	slog.Info("site-snapshot done", "sites", len(sites),
 		"loggedOut", len(agg.loggedOut), "freeleech", len(agg.flAlerts))
 }

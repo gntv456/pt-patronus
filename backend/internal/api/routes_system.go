@@ -1,10 +1,30 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/middleware"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
+	"github.com/hxpt/ptpatronus/internal/db/models"
+	"github.com/hxpt/ptpatronus/internal/hxcard"
+	"github.com/hxpt/ptpatronus/internal/version"
 )
+
+// currentUserCookieFn 生成「取当前用户好学 cookie」闭包：单用户系统取首个用户，
+// 推送身份即该用户在好学的登录态（与 VIP 校验同一 cookie 源）。
+func currentUserCookieFn(d *Deps) func() (string, error) {
+	return func() (string, error) {
+		var u models.User
+		if err := d.DB.Select("id, hxpt_cookie_enc").First(&u).Error; err != nil {
+			return "", err
+		}
+		if u.HxptCookieEnc == "" {
+			return "", fmt.Errorf("未绑定好学账号")
+		}
+		return d.Crypto.Decrypt(u.HxptCookieEnc)
+	}
+}
 
 // registerSystemRoutes 注册仪表盘、日志/诊断、注册、订阅、工作流、插件、刷流与保种契约路由。
 // 插件静态资源（/plugins/:id/assets/*path）注册在 api 上以绕过 guarded 鉴权（插件前端无法带 JWT）。
@@ -37,6 +57,17 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 		guarded.PUT("/system/ocr", middleware.RequireAdmin(), ocrH.SetConfig)
 		guarded.POST("/system/ocr/test", middleware.RequireAdmin(), ocrH.Test)
 		guarded.POST("/system/ocr/recognize", middleware.RequireAdmin(), ocrH.Recognize)
+	}
+
+	// PT Patronus 守护神名片（聚合数据推送好学 ptlife；设置 + 手动推送 + 预览）。
+	if d.CfgOp != nil && d.Crypto != nil && d.SiteOp != nil && d.SiteHC != nil {
+		card := hxcard.New(d.SiteHC, d.CfgOp, d.SiteOp, d.Crypto,
+			version.Version, currentUserCookieFn(d), d.DB)
+		cardH := v1.NewHxCardHandler(card)
+		guarded.GET("/hxcard/settings", cardH.GetSettings)
+		guarded.PUT("/hxcard/settings", cardH.SetSettings)
+		guarded.POST("/hxcard/push", cardH.Push)
+		guarded.GET("/hxcard/preview", cardH.Preview)
 	}
 
 	regH := v1.NewRegistrationHandler(d.RegOp, d.RegCh)

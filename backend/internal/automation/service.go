@@ -65,6 +65,13 @@ type Service struct {
 	notice   *notice.Service        // 站内通知中心（站点掉线/站免/公告/新邮件；nil 跳过）
 	cfgOp    *oper.SystemConfigOper // diff baseline（公告 hash / 新邮件 seen ID；nil 跳过 diff）
 	assessCh *chain.AssessmentChain // 聚合快照复用 uid 跑考核（nil 则跳过 assessment）
+	// hxcardPush 守护神名片自动推送（site-snapshot 末尾触发；nil 跳过。闭包内已含开关/密钥判断）
+	hxcardPush func(ctx context.Context)
+}
+
+// SetHxCardPush 注入守护神名片自动推送闭包（app 装配时；nil 安全）。
+func (s *Service) SetHxCardPush(fn func(ctx context.Context)) {
+	s.hxcardPush = fn
 }
 
 // New 构造服务。rootCtx 用于任务执行（随进程关闭取消）。

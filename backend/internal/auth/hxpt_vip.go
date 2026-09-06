@@ -252,3 +252,7 @@ func securePassFormat(pass string) string {
 		bytes.Contains(dec, []byte(".")),
 		len(dec) > 0 && dec[0] == '{')
 }
+
+// EnsureVerifyCookie 导出 ensureVerifyCookie 供 hxcard 推送复用：
+// receive.php 与 verifyAccess.php 一样直接读 $_COOKIE["c_secure_uid"]。
+func EnsureVerifyCookie(cookie string) string { return ensureVerifyCookie(cookie) }

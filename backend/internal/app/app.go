@@ -21,15 +21,12 @@ import (
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/iyuu"
-	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/notification"
-	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/plugins"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
 	"github.com/hxpt/ptpatronus/internal/site"
-	"github.com/hxpt/ptpatronus/internal/site/schemas"
 	subauto "github.com/hxpt/ptpatronus/internal/subtitle/automation"
 	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/hxpt/ptpatronus/internal/update"
@@ -72,16 +69,8 @@ func New(cfg *config.Config) (*App, error) {
 	siteOp := oper.NewSiteOper(database, crypto)
 	cfgOp := oper.NewSystemConfigOper(database)
 
-	// 签到图形验证码 OCR（SystemConfig 热改 ocr.endpoint 即生效；未配置=回退人工提示）。
-	// 与登录链路共用同一 OCR 服务配置，NexusPHP 适配器签到时自动识别填表。
-	if a, ok := registry.AdapterFor("nexusphp"); ok {
-		if nexus, ok := a.(*schemas.NexusPHP); ok {
-			nexus.SetOCRConfig(func() ocr.Config {
-				get := func(k string) string { v, _ := cfgOp.Get(k); return v }
-				return ocr.Config{Endpoint: get("ocr.endpoint"), APIKey: get("ocr.api_key"), Mode: get("ocr.mode")}
-			})
-		}
-	}
+	// 签到图形验证码 OCR：SystemConfig 热改即生效（详见 wireOCRConfig）。
+	wireOCRConfig(registry, cfgOp)
 	siteCh := chain.NewSiteChain(base, siteOp, registry)
 	// 注入站点 HTTP 客户端（FetchTorrentFile 下载 .torrent 用，对标 MoviePilot）。
 	siteCh.SetHTTPClient(hc)
@@ -288,28 +277,8 @@ func New(cfg *config.Config) (*App, error) {
 	subAutoSvc := subauto.New(bus, subtitleCh, cfgOp, noticeSvc)
 	subAutoSvc.Start()
 
-	// MCP 服务端：把宿主能力（站点/订阅/下载器/搜索）暴露为 MCP 工具，供 AI Agent / IDE 经
-	// JSON-RPC 调用。配置（启用/令牌）由 ptp-mcp-server 插件承载，服务端每次请求经
-	// SettingsGetter 读取插件配置，单一真源、热改即时生效。公开路由 /api/v1/mcp 在 router 注册。
-	mcpSrv := mcp.NewServer()
-	registerHostMCPTools(mcpSrv, siteOp, siteCh, subCh, dlOp)
-	mcpSrv.SetSettingsGetter(func() mcp.Settings {
-		if v, err := pluginMgr.Get(plugins.MCPPluginID); err == nil {
-			return plugins.ParseMCPSettings(v.Config)
-		}
-		return mcp.Settings{}
-	})
-	if err := pluginMgr.Register(plugins.NewMCPServerPlugin(mcpSrv)); err != nil {
-		slog.Warn("register mcp plugin", "err", err)
-	}
-	// 宿主级内置工具插件（WOL 唤醒 / 豆瓣榜单订阅）：与 MCP 插件同为主机进程内注册，
-	// market 生态插件不受影响（Builtin=true 不可被替换）。
-	if err := pluginMgr.Register(plugins.NewWOLPlugin()); err != nil {
-		slog.Warn("register wol plugin", "err", err)
-	}
-	if err := pluginMgr.Register(plugins.NewDoubanChartPlugin()); err != nil {
-		slog.Warn("register douban chart plugin", "err", err)
-	}
+	// MCP 服务端 + 宿主内置插件注册（详见 wireMCPAndBuiltinPlugins）。
+	mcpSrv := wireMCPAndBuiltinPlugins(pluginMgr, siteOp, siteCh, subCh, dlOp)
 
 	// Trakt 同步：WatchList → 本地订阅（device OAuth 授权 + 定时同步）。复用 subCh 建订阅、
 	// cfgOp 存凭据、noticeSvc 推送同步结果。独立 API /trakt/* + 三端 Trakt 页。
@@ -330,6 +299,8 @@ func New(cfg *config.Config) (*App, error) {
 		SnapshotCron:            cfg.SnapshotCron,
 		CookieKeepAliveCron:     cfg.CookieKeepAliveCron,
 	}, context.Background(), wsHub, hxptLogin, crypto, noticeSvc, cfgOp, assessCh)
+	// 守护神名片：site-snapshot 末尾自动推送（详见 wireHxCard）。
+	wireHxCard(auto, hc, cfgOp, siteOp, crypto, database)
 	if !cfg.SafeMode {
 		auto.Start()
 	}

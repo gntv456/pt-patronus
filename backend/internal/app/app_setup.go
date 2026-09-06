@@ -15,6 +15,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/ocr"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/site/assessment"
 	"github.com/hxpt/ptpatronus/internal/site/medalwall"
@@ -24,6 +25,23 @@ import (
 
 	"gorm.io/gorm"
 )
+
+// wireOCRConfig 给 NexusPHP 适配器注入签到验证码 OCR 配置读取（SystemConfig 热改
+// ocr.endpoint 即生效；未配置=适配器回退人工提示）。与登录链路共用同一 OCR 服务配置。
+func wireOCRConfig(registry *site.Registry, cfgOp *oper.SystemConfigOper) {
+	a, ok := registry.AdapterFor("nexusphp")
+	if !ok {
+		return
+	}
+	nexus, ok := a.(*schemas.NexusPHP)
+	if !ok {
+		return
+	}
+	nexus.SetOCRConfig(func() ocr.Config {
+		get := func(k string) string { v, _ := cfgOp.Get(k); return v }
+		return ocr.Config{Endpoint: get("ocr.endpoint"), APIKey: get("ocr.api_key"), Mode: get("ocr.mode")}
+	})
+}
 
 // newSiteInfra 构造站点基础设施：注册全部 schema 适配器到 registry，挂载到 module 总线，
 // 返回 registry / event bus / chain.Base / mteam 适配器。hc 为站点抓取 HTTP 客户端。

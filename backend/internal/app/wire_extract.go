@@ -1,14 +1,25 @@
-// wire_extract.go —— New() 按域拆出的小装配函数（通知默认值 / 媒体链栈）。
+// wire_extract.go —— New() 按域拆出的小装配函数（通知默认值 / 媒体链栈 / 守护神名片）。
 // 目标：压 app.go New() 的行数与合并冲突面；逻辑零变化，纯搬运。
 package app
 
 import (
+	"context"
+	"fmt"
+	"log/slog"
+
 	"gorm.io/gorm"
 
+	"github.com/hxpt/ptpatronus/internal/automation"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/config"
+	"github.com/hxpt/ptpatronus/internal/core/security"
+	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/hxcard"
+	"github.com/hxpt/ptpatronus/internal/mcp"
 	"github.com/hxpt/ptpatronus/internal/plugins"
+	"github.com/hxpt/ptpatronus/internal/version"
 )
 
 // wireNotificationDefaults 从 env 配置构建通知通道默认值（UI 未覆盖时的回退）。
@@ -54,4 +65,52 @@ func wireMediaStack(cfg *config.Config, cfgOp *oper.SystemConfigOper, base chain
 	// 推荐信息流：复用同一份 provider（豆瓣热映 / TMDB trending / Bangumi 热门）
 	recommendCh = chain.NewRecommendChain(base, mediaProvider)
 	return
+}
+
+// wireMCPAndBuiltinPlugins 构建 MCP 服务端（宿主能力暴露为 MCP 工具，供 AI Agent / IDE 经
+// JSON-RPC 调用；配置由 ptp-mcp-server 插件承载，SettingsGetter 每次请求读插件配置，热改即时
+// 生效；公开路由 /api/v1/mcp 在 router 注册），并注册宿主级内置工具插件（WOL 唤醒 / 豆瓣榜单
+// 订阅——与 MCP 插件同为主机进程内注册，Builtin=true 不可被 market 生态替换）。
+func wireMCPAndBuiltinPlugins(pluginMgr *plugins.Manager, siteOp *oper.SiteOper, siteCh *chain.SiteChain, subCh *chain.SubscribeChain, dlOp *oper.DownloaderOper) *mcp.Server {
+	srv := mcp.NewServer()
+	registerHostMCPTools(srv, siteOp, siteCh, subCh, dlOp)
+	srv.SetSettingsGetter(func() mcp.Settings {
+		if v, err := pluginMgr.Get(plugins.MCPPluginID); err == nil {
+			return plugins.ParseMCPSettings(v.Config)
+		}
+		return mcp.Settings{}
+	})
+	if err := pluginMgr.Register(plugins.NewMCPServerPlugin(srv)); err != nil {
+		slog.Warn("register mcp plugin", "err", err)
+	}
+	if err := pluginMgr.Register(plugins.NewWOLPlugin()); err != nil {
+		slog.Warn("register wol plugin", "err", err)
+	}
+	if err := pluginMgr.Register(plugins.NewDoubanChartPlugin()); err != nil {
+		slog.Warn("register douban chart plugin", "err", err)
+	}
+	return srv
+}
+
+// wireHxCard 构建守护神名片推送器并挂到自动化服务（site-snapshot 末尾自动推送；
+// 开启且密钥已配置时才真正发请求，失败仅记日志不阻断快照）。
+// 单用户系统：好学 cookie 取首个用户（未绑定返错，Push 内部跳过）。
+func wireHxCard(auto *automation.Service, hc *httpclient.Client, cfgOp *oper.SystemConfigOper,
+	siteOp *oper.SiteOper, crypto *security.Crypto, database *gorm.DB) {
+	card := hxcard.New(hc, cfgOp, siteOp, crypto, version.Version,
+		func() (string, error) {
+			var u models.User
+			if err := database.Select("id, hxpt_cookie_enc").First(&u).Error; err != nil {
+				return "", err
+			}
+			if u.HxptCookieEnc == "" {
+				return "", fmt.Errorf("未绑定好学账号")
+			}
+			return crypto.Decrypt(u.HxptCookieEnc)
+		}, database)
+	auto.SetHxCardPush(func(ctx context.Context) {
+		if err := card.Push(ctx); err != nil {
+			slog.Info("hxcard auto push skipped", "err", err)
+		}
+	})
 }

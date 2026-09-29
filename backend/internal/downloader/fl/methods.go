@@ -84,8 +84,14 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 		"tags":        []string{},
 		"start":       !opts.Paused,
 	}
+	// 二轮 P2-3：Category 与 Tags 合并下发（此前只放 Category，ptpsrc 丢失 →
+	// 整理 Path A 秒识别降级为文件名搜索）。Flood 的 tags 是扁平列表，无冲突。
+	tags := append([]string{}, opts.Tags...)
 	if opts.Category != "" {
-		post["tags"] = []string{opts.Category}
+		tags = append(tags, opts.Category)
+	}
+	if len(tags) > 0 {
+		post["tags"] = tags
 	}
 	if len(opts.FileContent) > 0 && opts.URL == "" {
 		a, err := c.detectAPI(ctx)

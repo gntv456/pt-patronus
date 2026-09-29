@@ -1,6 +1,8 @@
 package ut
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"regexp"
 	"strconv"
 	"strings"
@@ -138,4 +140,97 @@ func safeFileName(s string) string {
 		return "file.torrent"
 	}
 	return name
+}
+
+// torrentInfoHash 从 .torrent 字节计算 btih infohash（sha1 of bencode info dict 原始切片）。
+// 最小 bencode 定位：顶层 dict 里找 "4:info" 键，取其 value 的原始字节区间——不完整解析，
+// 只需起始偏移与按类型递推长度。uT add-file 盲返回不带 hash，需本地算 hash 才能 post-set
+// label/paused（否则 FileContent 路径丢失 Category → 整理白名单失配，链路断）。
+func torrentInfoHash(b []byte) string {
+	v, n, ok := bencodeValue(b, 0)
+	if !ok || v != nil || n <= 0 {
+		return ""
+	}
+	// 顶层是 dict：扫描 i<n 找 4:info
+	i := 1 // skip 'd'
+	for i < n-1 {
+		ks, kn, ok := bencodeString(b, i)
+		if !ok {
+			return ""
+		}
+		valStart := kn
+		_, vn, ok2 := bencodeValue(b, valStart)
+		if !ok2 {
+			return ""
+		}
+		if string(ks) == "info" {
+			sum := sha1.Sum(b[valStart:vn])
+			return hex.EncodeToString(sum[:])
+		}
+		i = vn
+	}
+	return ""
+}
+
+// bencodeValue 解析任意 bencode 值，返回 (占位 nil—dict/list 原样不展开, 结束偏移, ok)。
+func bencodeValue(b []byte, i int) ([]byte, int, bool) {
+	if i >= len(b) {
+		return nil, 0, false
+	}
+	switch b[i] {
+	case 'd', 'l':
+		end, ok := bencodeContainerEnd(b, i)
+		return nil, end, ok
+	case 'i':
+		for j := i + 1; j < len(b); j++ {
+			if b[j] == 'e' {
+				return b[i : j+1], j + 1, true
+			}
+		}
+		return nil, 0, false
+	default: // 数字开头的 string
+		s, n, ok := bencodeString(b, i)
+		return s, n, ok
+	}
+}
+
+// bencodeContainerEnd 求 dict/list 的结束偏移（递归走子元素，不建树）。
+func bencodeContainerEnd(b []byte, i int) (int, bool) {
+	i++ // skip d/l
+	for i < len(b) {
+		if b[i] == 'e' {
+			return i + 1, true
+		}
+		_, n, ok := bencodeValue(b, i)
+		if !ok {
+			return 0, false
+		}
+		i = n
+	}
+	return 0, false
+}
+
+// bencodeString 解析 <len>:<bytes>。
+func bencodeString(b []byte, i int) ([]byte, int, bool) {
+	colon := -1
+	for j := i; j < len(b) && j-i < 12; j++ {
+		if b[j] == ':' {
+			colon = j
+			break
+		}
+		if b[j] < '0' || b[j] > '9' {
+			return nil, 0, false
+		}
+	}
+	if colon < 0 {
+		return nil, 0, false
+	}
+	l := 0
+	for j := i; j < colon; j++ {
+		l = l*10 + int(b[j]-'0')
+	}
+	if colon+1+l > len(b) {
+		return nil, 0, false
+	}
+	return b[colon+1 : colon+1+l], colon + 1 + l, true
 }

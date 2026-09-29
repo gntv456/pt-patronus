@@ -76,6 +76,15 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 		if status != 200 {
 			return fmt.Errorf("add-file status %d", status)
 		}
+		// 二轮 P2-2 修复：.torrent 本地算 infohash 后补设 label/paused/限速——
+		// 此前 FileContent 路径只 add 不 set，订阅/RSS 经 cookie 下载改写后必走
+		// 此路径，Category 丢失 → 整理白名单失配（链路断）。uT 盲返回不带 hash，
+		// 用最小 bencode 解析 info 字典算 btih（无需等元数据握手）。
+		if h := torrentInfoHash(opts.FileContent); h != "" {
+			if err := c.postAddProps(ctx, h, opts); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 	// add-url（magnet/http 链接）

@@ -7,7 +7,8 @@ import (
 	"fmt"
 
 	"github.com/hxpt/ptpatronus/internal/downloader"
-)
+
+	"log/slog")
 
 // listFields 是 get_torrents_status 请求的字段集。
 var listFields = []string{
@@ -61,7 +62,13 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 	}
 	if opts.Category != "" {
 		if hash := extractAddHash(raw); hash != "" {
-			_, _ = c.request(ctx, "label.set_torrent", []any{hash, opts.Category})
+			// 二轮 P2-3：Label 插件缺失时 label.set_torrent 报 "Unknown method"——
+			// 此前吞错导致 Category 静默丢失 → 整理白名单失配。日志可见（不 fail：
+			// 种子已加上，中断反而更糟），给用户明确的修复指引。
+			if _, lerr := c.request(ctx, "label.set_torrent", []any{hash, opts.Category}); lerr != nil {
+				slog.Warn("deluge: set label failed (Label plugin installed?) — organize whitelist may miss",
+					"hash", hash, "label", opts.Category, "err", lerr)
+			}
 		}
 	}
 	return nil

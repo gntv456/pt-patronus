@@ -232,6 +232,10 @@ func registerCronJobs(
 
 	// 定时备份：BACKUP_CRON + BACKUP_DIR 同时配置才启用（默认关闭——自动把明文密钥写盘
 	// 属敏感行为）。成功走通知中心 backup_done（当天去重），失败走外发告警。
+	// 二轮 P3-1：只配了 CRON 没配 DIR 时打 warn（此前静默 no-op，用户以为在备份）。
+	if cfg.BackupCron != "" && cfg.BackupDir == "" {
+		slog.Warn("BACKUP_CRON configured but BACKUP_DIR empty — scheduled backup DISABLED")
+	}
 	if cfg.BackupCron != "" && cfg.BackupDir != "" && backupSvc != nil {
 		mustCron("scheduled-backup", cfg.BackupCron, func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)

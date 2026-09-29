@@ -46,6 +46,17 @@ func (c *Client) AddTorrent(ctx context.Context, opts downloader.AddOptions) err
 	if opts.Category != "" {
 		fields["label"] = opts.Category
 	}
+	// 二轮 P2-3：ptpsrc 标签随 add 下发（rutorrent label 字段支持逗号多值；
+	// 此前只发 Category，标签丢失 → 整理 Path A 降级）。map[string]string 无 nil，
+	// 直接读零值拼接。
+	if len(opts.Tags) > 0 {
+		extra := strings.Join(opts.Tags, ",")
+		if cur := fields["label"]; cur != "" {
+			fields["label"] = cur + "," + extra
+		} else {
+			fields["label"] = extra
+		}
+	}
 
 	if len(opts.FileContent) > 0 && opts.URL == "" {
 		status, b, err := c.postMultipart(ctx, "/php/addtorrent.php", fields, "torrent_file", opts.FileName, opts.FileContent)

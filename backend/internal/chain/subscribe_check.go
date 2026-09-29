@@ -11,7 +11,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/filter"
 	"github.com/hxpt/ptpatronus/internal/site"
 	"github.com/hxpt/ptpatronus/internal/transfer"
-)
+
+	"strings")
 
 // checkWithDefaults 检查单个订阅（用传入全局默认计算有效设置）：跨站搜 → 分辨率过滤 → 去重 → 推送 → 通知。
 func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subscription, gd GlobalDefaults) (int, error) {
@@ -171,14 +172,25 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		opts := downloader.AddOptions{
 			URL:      t.DownloadURL,
 			Category: "subscribe",
-			Tags:     []string{"subscribe", sub.Title, transfer.EncodeMediaTag(sub.Source, sub.SourceID, sub.Type)},
-			SiteID:   t.SiteID,
+			// 二轮 P3-3：订阅标题含逗号时 qb 按逗号拆出碎片脏标签——入列前清洗。
+			Tags: sanitizeTorrentTags("subscribe", sub.Title, transfer.EncodeMediaTag(sub.Source, sub.SourceID, sub.Type)),
+			SiteID: t.SiteID,
 		}
 		if sub.SavePath != "" {
 			opts.SavePath = sub.SavePath
 		}
 		if err := c.dlCh.Add(ctx, dlID, opts); err != nil {
-			slog.Warn("subscribe push failed", "title", sub.Title, "site", t.SiteName, "err", err)
+			// 二轮 P3-4：TR 对已存在 hash 的 torrent-add 报 duplicate——种子实际
+			// 已在下载器里（如用户从搜索页直推过），视作已推送记 AddHit，否则每轮
+			// cron 重试+Warn 刷屏。qb add 幂等无此错误不受影响。
+			if isDuplicateTorrentErr(err) {
+				slog.Info("subscribe push duplicate (already in downloader), record hit", "title", t.Title)
+				_ = c.op.AddHit(&models.SubscriptionHit{
+					SubscriptionID: sub.ID, TorrentKey: key, Title: t.Title, SiteName: t.SiteName,
+				})
+			} else {
+				slog.Warn("subscribe push failed", "title", sub.Title, "site", t.SiteName, "err", err)
+			}
 			continue
 		}
 		if err := c.op.AddHit(&models.SubscriptionHit{
@@ -223,4 +235,29 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 		}
 	}
 	return pushed, nil
+}
+
+// sanitizeTorrentTags 清洗进下载器的标签：去除逗号/首尾空白（qb 按逗号拆 tag，
+// "Title, The" 会拆成两个脏标签；空串丢弃）。
+func sanitizeTorrentTags(tags ...string) []string {
+	out := make([]string, 0, len(tags))
+	for _, t := range tags {
+		t = strings.TrimSpace(strings.ReplaceAll(t, ",", " "))
+		if t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// isDuplicateTorrentErr 判定下载器「种子已存在」类错误（TR duplicate torrent /
+// qb 该 torrent already exists / Deluge already in session）。
+func isDuplicateTorrentErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate") ||
+		strings.Contains(msg, "already exists") ||
+		strings.Contains(msg, "already in session")
 }

@@ -52,6 +52,9 @@ func (c *CloudChain) GenerateStrm(ctx context.Context, ruleID uint) (cloud.Gener
 		LocalBaseURL:    rule.LocalBaseURL,
 		PublicBaseURL:   rule.PublicBaseURL,
 		FallbackBaseURL: c.appBaseURL,
+		// 二轮 P1-1 修复：规则生成路径同样接入限时签名（此前只有上传路径有，
+		// {direct} 模板的规则 .strm 在签名模式下全 404）。nil=兼容模式自动降级。
+		SignFunc: c.SignDirectLink,
 		OnFile: func(written bool, cloudPath, strmPath string, size int64) {
 			if _, err := c.ruleOp.UpsertRecord(rule.DriveID, cloudPath, strmPath, size, 0); err != nil {
 				slog.Warn("cloud: upsert strm record failed", "err", err)
@@ -161,6 +164,7 @@ func (c *CloudChain) GenerateInstant(ctx context.Context, in GenerateInput) (clo
 		LocalBaseURL:    in.LocalBaseURL,
 		PublicBaseURL:   in.PublicBaseURL,
 		FallbackBaseURL: c.appBaseURL,
+		SignFunc:        c.SignDirectLink, // 二轮 P1-1：即时生成同口径接入签名
 		OnFile: func(written bool, cloudPath, strmPath string, size int64) {
 			if _, err := c.ruleOp.UpsertRecord(in.DriveID, cloudPath, strmPath, size, 0); err != nil {
 				slog.Debug("cloud: upsert strm record failed", "err", err)
@@ -188,6 +192,29 @@ func (c *CloudChain) GenerateAll(ctx context.Context) {
 			c.libRefresher("strm:" + r.Name)
 		}
 		c.Emit(ctx, "CloudStrmGenerated", map[string]any{"rule": r.Name, "generated": res.Generated, "skipped": res.Skipped})
+	}
+	// 二轮 P0-2 修复：签名续签——上传型 .strm（不在任何规则的 CloudPath 子树下）
+	// 此前只在上传瞬间写一次签名，过期后唯一恢复是管理员手动 repair。每轮 cron
+	// 对全部记录按盘重签（幂等：新 exp 内容不同才写盘）。规则未覆盖的盘也重签。
+	c.ResignAllStrm(ctx)
+}
+
+// ResignAllStrm 按盘遍历 STRM 记录重写 .strm（刷新签名有效期）。幂等、best-effort。
+func (c *CloudChain) ResignAllStrm(ctx context.Context) {
+	drives, err := c.op.List()
+	if err != nil {
+		slog.Warn("cloud: resign list drives failed", "err", err)
+		return
+	}
+	for _, d := range drives {
+		repaired, skipped, err := c.RepairStrm(ctx, d.ID)
+		if err != nil {
+			slog.Warn("cloud: resign drive failed", "drive", d.ID, "err", err)
+			continue
+		}
+		if repaired > 0 {
+			slog.Info("cloud: strm resigned", "drive", d.ID, "repaired", repaired, "skipped", skipped)
+		}
 	}
 }
 

@@ -164,7 +164,7 @@ func (c *CloudChain) upsertStrm(ctx context.Context, driveID uint, cloudPath, ou
 		AppBaseURL: c.appBaseURL,
 		OutPath:    outPath,
 		// 限时直链签名：URL 即凭证，防匿名枚举 driveId+路径换全盘直链。
-		Sign: c.SignDirectLink(driveID, cloudPath),
+		SignFunc: c.SignDirectLink,
 	}
 	if len(structRoot) > 0 {
 		w.StructRoot = structRoot[0]
@@ -289,7 +289,11 @@ func (c *CloudChain) SetAppBaseURL(u string) { c.appBaseURL = strings.TrimRight(
 // 由 STRM 重新生成/扫库刷新。兼容：密钥未注入（安全模式/旧库）不签名也不校验。
 func (c *CloudChain) SetDirectLinkSignKey(key []byte) { c.directSignKey = key }
 
-const directLinkSignTTL = 12 * time.Hour
+// 二轮 P0-2 修复：TTL 从 12h 延长到 7 天——上传型 .strm 只在上传瞬间写一次，
+// 12h 意味着每天两次全库 404（唯一恢复是管理员手动 repair）。7 天对齐
+// cloud-strm cron（默认 6h 一跑 + RepairStrm 兜底），URL 即凭证的安全模型
+// 不变：泄露的 .strm URL 本来就在媒体库可读范围内。
+const directLinkSignTTL = 7 * 24 * time.Hour
 
 // SignDirectLink 生成 driveId|path|exp 的限时签名「<exp十进制>.<hmac-hex>」。
 // 密钥未注入返回空串（不签名，兼容模式）。

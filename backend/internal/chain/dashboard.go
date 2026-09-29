@@ -2,6 +2,8 @@ package chain
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"github.com/hxpt/ptpatronus/internal/bizmetrics"
 	"log/slog"
 	"time"
@@ -121,6 +123,32 @@ type DashboardChain struct {
 
 // SetProgressEmitter 注入进度回调（app 装配期）。
 func (c *DashboardChain) SetProgressEmitter(fn func(done, total int, siteName string)) { c.emitProgress = fn }
+
+// syncMu 全站同步单飞（二轮 P1-3）：手动触发与 cron 并发时只跑一个，
+// 避免双份逐站抓取打爆站点限流。
+var syncMu sync.Mutex
+
+// syncing 当前是否有全站同步在跑（StartSyncAll 管理）。
+var syncing atomic.Bool
+
+// StartSyncAll 后台启动全站同步（立即返回是否受理）。已同步使用中的
+// httpclient per-host 限流；ctx 独立 15min——不随 HTTP 客户端断开取消。
+func (c *DashboardChain) StartSyncAll() bool {
+	if !syncing.CompareAndSwap(false, true) {
+		return false
+	}
+	syncMu.Lock() // 与 cron 路径互斥（见 SyncAllLocked 说明）
+	go func() {
+		defer syncing.Store(false)
+		defer syncMu.Unlock()
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+		if _, err := c.SyncAll(ctx); err != nil {
+			slog.Warn("dashboard background sync failed", "err", err)
+		}
+	}()
+	return true
+}
 
 // NewDashboardChain 构造。
 func NewDashboardChain(db *gorm.DB, siteOp *oper.SiteOper, dlOp *oper.DownloaderOper, siteCh *SiteChain) *DashboardChain {
@@ -268,6 +296,8 @@ func (c *DashboardChain) recordStat(st *models.Site, ui *site.UserInfo) {
 // SyncAll 立即抓取所有启用站点的统计并写入快照，然后返回刷新后的总览。
 // 用于「加入站点后数据全为 0」的即时回填——不必等 stats-sync 定时任务（默认 30 分钟）。
 func (c *DashboardChain) SyncAll(ctx context.Context) (*DashboardOverview, error) {
+	syncMu.Lock()
+	defer syncMu.Unlock()
 	sites, err := c.siteOp.ListActive()
 	if err != nil {
 		return nil, err

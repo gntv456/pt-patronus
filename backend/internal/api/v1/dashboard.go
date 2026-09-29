@@ -30,14 +30,23 @@ func (h *DashboardHandler) Overview(c *gin.Context) {
 	c.JSON(http.StatusOK, overview)
 }
 
-// Sync 立即抓取所有启用站点统计并返回刷新后的总览（回填新加入站点的 0 数据）。
+// Sync 全站同步（后台化，二轮 P1-3 修复）：50 站串行同步轻松超过前端 axios 15s
+// 超时——此前沿用请求 ctx，客户端断开后剩余站点全部计入失败指标（metrics 污染）、
+// 零数据落库，而 WS 进度帧照发（进度条显示走满但实际全失败）。
+// 改为独立 15min ctx 立即返回受理；进度经 WS task-progress 实时推送（已具备），
+// 数据结果由前端通过轮询 overview / 下一次加载看到。
 func (h *DashboardHandler) Sync(c *gin.Context) {
-	overview, err := h.dash.SyncAll(c.Request.Context())
-	if err != nil {
-		errcode.Respond(c, errcode.Internal.WithErr(err))
+	accepted := h.dash.StartSyncAll()
+	if !accepted {
+		// 已有同步在跑：直接返回当前总览（幂等，不报错）
+		if overview, err := h.dash.Overview(c.Request.Context()); err == nil {
+			c.JSON(http.StatusOK, overview)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"syncing": true})
 		return
 	}
-	c.JSON(http.StatusOK, overview)
+	c.JSON(http.StatusAccepted, gin.H{"syncing": true})
 }
 
 // SyncOne 立即抓取单个站点统计（站点明细「刷新数据」按钮）。

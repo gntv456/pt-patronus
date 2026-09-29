@@ -248,5 +248,15 @@ func (c Config) ShouldProcess(category string, tags []string) bool {
 			}
 		}
 	}
+	// 二轮 P1-1 修复：标签旁路——Transmission 无分类概念（回读 Category 恒空），
+	// 订阅/RSS 推送打的 "subscribe" 标签在 TR 以 labels 存活。分类白名单只认
+	// category 的话 TR 全链失效（sweep 兜底同门）。标签命中白名单分类名同样放行。
+	for _, tag := range tags {
+		for _, cat := range c.Categories {
+			if strings.EqualFold(tag, cat) {
+				return true
+			}
+		}
+	}
 	return false
 }

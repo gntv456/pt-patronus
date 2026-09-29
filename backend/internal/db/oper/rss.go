@@ -90,6 +90,11 @@ func (o *RssItemOper) Exists(subID uint, key string) (bool, error) {
 // Create 新建条目（联合唯一索引兜底）。
 func (o *RssItemOper) Create(it *models.RssItem) error { return o.db.Create(it).Error }
 
+// Delete 删除单条 RSS 条目（Add 失败回滚去重行用：让下轮 Check 重见重试）。
+func (o *RssItemOper) Delete(id uint) error {
+	return o.db.Delete(&models.RssItem{}, id).Error
+}
+
 // MarkDownloaded 标记已下载。
 func (o *RssItemOper) MarkDownloaded(id uint) error {
 	return o.db.Model(&models.RssItem{}).Where("id = ?", id).Update("downloaded", true).Error

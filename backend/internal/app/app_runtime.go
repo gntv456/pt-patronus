@@ -392,7 +392,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 		a.tgbotCancel()
 	}
 	if a.sched != nil {
-		a.sched.Stop()
+		// 二轮 P2-4：等待在途 job 收尾（上限 10s）——此前直接丢弃 Stop() 返回的
+		// ctx，滚动发布窗口内旧进程 job（如 brushflow 选种）与新进程并发写同一
+		// 下载器，SkipIfStillRunning 管不到跨进程。
+		select {
+		case <-a.sched.Stop().Done():
+		case <-time.After(10 * time.Second):
+			slog.Warn("scheduler stop timeout, in-flight jobs may overlap with next process")
+		}
 	}
 	if a.pluginMgr != nil {
 		a.pluginMgr.Stop()

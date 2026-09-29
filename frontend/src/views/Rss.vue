@@ -52,7 +52,9 @@ function emptyForm(): RssInput {
     auto_download: false,
     downloader_id: 0,
     save_path: '',
-    category: 'rss',
+    // 二轮 P1-2 修复：默认分类对齐整理白名单（'rss' 不在 [subscribe,workflow]，
+    // 自动下载的种子永不整理且待办不可见）
+    category: 'subscribe',
     tags: '',
     filter_groups: '',
   }

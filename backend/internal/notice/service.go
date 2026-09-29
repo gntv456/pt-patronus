@@ -128,11 +128,35 @@ func (s *Service) Notice(ctx context.Context, in Input, dedup bool) error {
 			s.bcast(payload)
 		}
 	}
-	// 外发渠道（bark/telegram/webhook）
-	if s.outbox != nil {
-		s.outbox.Notify(ctx, notification.Message{Title: in.Title, Body: in.Body, Level: mapLevel(in.Level)})
+	// 外发渠道（bark/telegram/webhook）。
+	// 二轮 P2-2/P2-3：info 级不外发（站内+WS 已可见；跨站批量 info 曾造成
+	// 50 条 TG 风暴——汇总条走 notif.Notify 直发不受此限）；danger/warning 外发
+	// 失败时进程内退避重试一次（一次性事件如备份结果丢失不可恢复）。
+	if s.outbox != nil && shouldSendExternal(n.Level) {
+		msg := notification.Message{Title: in.Title, Body: in.Body, Level: mapLevel(in.Level)}
+		go func() {
+			if results := s.outbox.Notify(context.WithoutCancel(ctx), msg); hasSendFailure(results) {
+				time.Sleep(30 * time.Second)
+				s.outbox.Notify(context.Background(), msg)
+			}
+		}()
 	}
 	return nil
+}
+
+// shouldSendExternal 外发级别门槛：danger/warning 外发；info 仅站内+WS（防风暴）。
+func shouldSendExternal(level string) bool {
+	return level == "danger" || level == "warning" || level == "success"
+}
+
+// hasSendFailure 任一渠道失败即 true（触发重试）。
+func hasSendFailure(results []notification.SendResult) bool {
+	for _, r := range results {
+		if !r.Ok {
+			return true
+		}
+	}
+	return false
 }
 
 // List 列通知（按创建时间倒序）。unread=true 仅未读。

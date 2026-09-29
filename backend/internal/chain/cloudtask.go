@@ -31,7 +31,16 @@ type CloudTaskRunner struct {
 }
 
 // StartCloudTaskExecutor 启动消费协程（app 装配期一次）。
+// 重入保护（二轮 P1-3 附注）：测试场景二次调用时先关旧 runner 的 stop，
+// 避免旧 loop 泄漏且持续消费（破坏同盘串行防限流设计）。
 func (c *CloudChain) StartCloudTaskExecutor(taskOp *oper.CloudTaskOper) {
+	if c.tasks != nil && c.tasks.stop != nil {
+		select {
+		case <-c.tasks.stop:
+		default:
+			close(c.tasks.stop)
+		}
+	}
 	c.tasks = &CloudTaskRunner{op: taskOp, hydr: func() *CloudChain { return c }, stop: make(chan struct{})}
 	// 恢复上次进程中断的 running 任务
 	if n, err := taskOp.RequeueStaleRunning(10 * time.Minute); err == nil && n > 0 {
@@ -42,11 +51,17 @@ func (c *CloudChain) StartCloudTaskExecutor(taskOp *oper.CloudTaskOper) {
 
 func (r *CloudTaskRunner) loop() {
 	tick := time.NewTicker(5 * time.Second)
+	staleSweep := time.NewTicker(10 * time.Minute) // 二轮 P1-3：周期清扫卡死 running（进程快速重启 <10min 窗口漏网）
 	defer tick.Stop()
+	defer staleSweep.Stop()
 	for {
 		select {
 		case <-r.stop:
 			return
+		case <-staleSweep.C:
+			if n, err := r.op.RequeueStaleRunning(10 * time.Minute); err == nil && n > 0 {
+				slog.Warn("cloud tasks: periodic requeue of stale running", "count", n)
+			}
 		case <-tick.C:
 			if r.drainOnce() {
 				// 失败退避（防打爆网盘）：可中断等待 30s——停机信号到达立即退出。
@@ -97,6 +112,10 @@ func (r *CloudTaskRunner) execute(t *models.CloudTask) bool {
 			// 云端有文件、无 strm 无记录，302 直链/订阅追更/媒体库全部看不到该文件。
 			if strmErr := r.afterUploadStrm(ctx, t); strmErr != nil {
 				r.noticeDeleteLocalBlocked(t, strmErr)
+				// 二轮 P2-1：标记失败可重试（此前 err 仍 nil → 任务 success，
+				// 云端有文件本地保留但无 strm 无自动恢复路径）。上传幂等已核实，
+				// 重试不会产生云端副本。
+				err = fmt.Errorf("post-upload strm: %w", strmErr)
 				break
 			}
 			// 上传后删本地整理文件（DeleteLocal 开启时；硬链模式仅删整理产物，不触源文件）

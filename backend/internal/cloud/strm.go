@@ -37,6 +37,11 @@ type GenerateOptions struct {
 	LocalBaseURL    string
 	PublicBaseURL   string
 	FallbackBaseURL string // LocalBaseURL 为空时的回退（注入的全局 AppBaseURL）
+	// SignFunc 限时直链签名（二轮 P0-1 修复）：渲染完整体 URL 后按 (driveID, cloudPath)
+	// 取签名并追加在行尾 query。nil=兼容模式不签名。签名必须基于「最终云盘路径」
+	// （模板可能拼 {cloudpath}/{relpath}/{filename} 的任意组合），不能挂在 {direct}
+	// 占位符上——此前 sign 挂占位符尾部，{cloudpath} 后续拼进 query 导致端点 404。
+	SignFunc func(driveID uint, cloudPath string) string
 	// OnFile 每个媒体文件回调：written=是否新建/更新（false=本地已存在且内容相同）。
 	OnFile func(written bool, cloudPath, strmPath string, size int64)
 }
@@ -194,6 +199,9 @@ func directEndpoints(opts GenerateOptions, direct WriteStrmOptions) (directBase,
 
 // renderStrmContent 渲染 .strm 内容：先替换路径变量，再按规则双地址替换 {direct}/{directPublic}。
 // Generate（规则生成）路径用：mount 型模板不含 direct 时行为与旧版一致。
+// 二轮 P0-1/P1-1 修复：{direct} 只替换为「端点基址 + /:driveId」，云盘路径由模板其余
+// 变量（{cloudpath} 等）拼接；签名在 appendDirectSign 里对最终完整 URL 行尾追加——
+// 替换完成后 content 即完整单行 URL，行尾加 ?sign= 不会截断路径。
 func renderStrmContent(opts GenerateOptions, f File, rel string) string {
 	content := RenderTemplate(opts.Template, opts.MountRoot, f.Path, rel, f.Name)
 	if strings.Contains(content, "{direct}") || strings.Contains(content, "{directPublic}") {
@@ -201,8 +209,34 @@ func renderStrmContent(opts GenerateOptions, f File, rel string) string {
 		drive := strconv.FormatUint(uint64(opts.DriveID), 10)
 		content = strings.ReplaceAll(content, "{direct}", directBase+"/api/v1/cloud/direct/"+drive)
 		content = strings.ReplaceAll(content, "{directPublic}", publicBase+"/api/v1/cloud/direct/"+drive)
+		content = appendDirectSign(content, opts.DriveID, opts.SignFunc)
 	}
 	return content
+}
+
+// appendDirectSign 对渲染完成的 .strm 行追加限时签名（P0-1 核心修复）。
+// 仅当内容是 /cloud/direct/ 端点 URL 时加签；签名绑定 URL 中 driveId 后的路径段
+// （与端点 c.Param("path") 的解码形态一致）。兼容模式（signFunc nil）原样返回。
+func appendDirectSign(line string, driveID uint, signFunc func(uint, string) string) string {
+	if signFunc == nil {
+		return line
+	}
+	const marker = "/cloud/direct/"
+	i := strings.Index(line, marker)
+	if i < 0 {
+		return line // 非直链模板（如 {mount}），不加签
+	}
+	rest := line[i+len(marker):]
+	slash := strings.Index(rest, "/")
+	if slash < 0 {
+		return line // 无路径段（异常模板），不加签
+	}
+	cloudPath := rest[slash:] // 含前导 /，与端点 c.Param("path") 形态一致
+	sign := signFunc(driveID, cloudPath)
+	if sign == "" {
+		return line
+	}
+	return line + "?sign=" + sign
 }
 
 // writeStrm 生成单个 .strm：计算本地路径 + 渲染内容 + 幂等写入。返回 (是否写入, strm路径, err)。
@@ -321,14 +355,20 @@ type WriteStrmOptions struct {
 	DirectBase string // 直链端点前缀，空=/api/v1/cloud/direct
 	AppBaseURL string // 服务对外基址（含协议+主机+端口）；非空时 strm 内容渲染为绝对 URL
 	// Sign 直链限时签名（<exp>.<hmac>，由 CloudChain.SignDirectLink 生成）。
-	// 非空时 {direct} URL 追加 ?sign=…：公开 302 端点据此鉴权（URL 即凭证）。
-	Sign string
+	// SignFunc 直链限时签名（P0-1 修复：Sign 字符串改为函数——签名须基于渲染后的
+	// 最终云盘路径计算，占位符阶段拿不到完整路径）。nil=兼容模式不签名。
+	SignFunc func(driveID uint, cloudPath string) string
 	// StructRoot 结构镜像根：非空时 .strm 落在 OutputDir + (CloudPath 去掉 StructRoot
 	// 的相对段)，保留云盘目录结构；空则文件直落 OutputDir。
 	StructRoot string
 	// OutPath 非空时直写该路径（repair 沿用记录里的既有 .strm 文件名，避免 keep_ext
 	// 口径差异在 OutputDir 里产生第二份 .strm）；仍受 OutputDir 越界校验约束。
 	OutPath string
+}
+
+// signFunc 适配器：把 SignFunc 归一为 appendDirectSign 需要的形态。
+func (w WriteStrmOptions) signFunc() func(uint, string) string {
+	return w.SignFunc
 }
 
 // WriteStrmFile 写单个 .strm 文件（幂等：内容相同跳过）。与规则生成的 .strm 结构一致，
@@ -363,7 +403,7 @@ func writeStrmAt(opts GenerateOptions, f File, direct WriteStrmOptions, outPath 
 	if strings.Contains(content, "{direct}") {
 		content = strings.ReplaceAll(content, "{direct}", directURLFor(direct))
 	}
-	content += "\n"
+	content = appendDirectSign(content, direct.DriveID, direct.signFunc()) + "\n"
 	if old, err := os.ReadFile(outPath); err == nil && string(old) == content {
 		return nil
 	}
@@ -376,11 +416,9 @@ func writeStrmAt(opts GenerateOptions, f File, direct WriteStrmOptions, outPath 
 // directURLFor {direct} 占位符的完整替换值：端点基址 + /:driveId（+ 限时签名 query）。
 // Sign 非空时追加 ?sign=<exp>.<hmac>——公开 302 端点校验之（URL 即凭证）。
 func directURLFor(direct WriteStrmOptions) string {
-	u := directBaseURL(direct) + "/" + strconv.FormatUint(uint64(direct.DriveID), 10)
-	if direct.Sign != "" {
-		u += "?sign=" + direct.Sign
-	}
-	return u
+	// P0-1 修复：仅返回端点基址 + /:driveId。签名不在此挂——占位符后还有 {cloudpath}
+	// 等路径变量拼接，sign 挂这会把路径挤进 query（端点必败）。签名由 appendDirectSign 行尾追加。
+	return directBaseURL(direct) + "/" + strconv.FormatUint(uint64(direct.DriveID), 10)
 }
 
 // directBaseURL 直链端点基址。AppBaseURL 配置时渲染绝对 URL（Emby strm 播放必需：
@@ -418,7 +456,7 @@ func writeStrmDirect(opts GenerateOptions, f File, direct WriteStrmOptions) (boo
 	if strings.Contains(content, "{direct}") {
 		content = strings.ReplaceAll(content, "{direct}", directURLFor(direct))
 	}
-	content += "\n"
+	content = appendDirectSign(content, direct.DriveID, direct.signFunc()) + "\n"
 	if old, err := os.ReadFile(outPath); err == nil && string(old) == content {
 		return false, outPath, nil
 	}

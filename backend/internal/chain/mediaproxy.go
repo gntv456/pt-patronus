@@ -145,17 +145,25 @@ func (p *MediaProxyService) tryDirectLink(w http.ResponseWriter, r *http.Request
 }
 
 // resolveLink 从媒体路径解析云盘直链：.strm 内容 / StrmRecord 按云盘路径。
+// 二轮 P1-2（mediaproxy 三连修）：
+//   1. .strm 内容含 ?sign= 时剥离 query 再取路径（签名模式下路径必带 query，不剥则
+//      statCloud 按 "a.mkv?sign=..." 找文件必失败）；
+//   2. 解析前先过 VerifyDirectLinkSign——mediaproxy 是公开路由，此前直接调
+//      ResolveDirectLink 完全绕过了 /cloud/direct 端点的签名校验（匿名枚举 Emby
+//      itemId 换直链的口子）；兼容模式（无密钥）保持放行；
+//   3. .strm 解析失败不再提前 return——落回 ② StrmRecord 匹配（挂载型/畸形 strm
+//      的拦截此前静默失效）。
 func (p *MediaProxyService) resolveLink(ctx context.Context, mediaPath, ua string) (*cloud.DirectLink, bool) {
 	// ① 本地 .strm：内容若指向 /api/v1/cloud/direct/:driveId/*，复用端点解析
 	if strings.HasSuffix(strings.ToLower(mediaPath), ".strm") {
-		if _, driveID, cp, ok := parseDirectStrmFile(mediaPath); ok {
-			if p.cloud != nil {
+		if _, driveID, cp, sign, ok := parseDirectStrmFile(mediaPath); ok {
+			if p.cloud != nil && p.cloud.VerifyDirectLinkSign(driveID, cp, sign) {
 				if link, err := p.cloud.ResolveDirectLink(ctx, driveID, cp, ua); err == nil {
 					return link, true
 				}
 			}
 		}
-		return nil, false
+		// 签名不符/解析失败/网盘解析失败：落到 ② 记录匹配（而非直接放弃）
 	}
 	// ② StrmRecord：按「网盘 CloudBase + 相对路径」约定反查。上传链路登记的
 	// CloudPath = CloudBase/库内相对路径；Emby 看到的 STRM 库根 = StrmOutputDir。
@@ -171,32 +179,40 @@ func (p *MediaProxyService) resolveLink(ctx context.Context, mediaPath, ua strin
 	return nil, false
 }
 
-// parseDirectStrmFile 读取 .strm 内容，识别 /api/v1/cloud/direct/:driveId/<path>。
-func parseDirectStrmFile(strmPath string) (urlStr string, driveID uint, cloudPath string, ok bool) {
+// parseDirectStrmFile 读取 .strm 内容，识别 /api/v1/cloud/direct/:driveId/<path>[?sign=…]。
+// 返回的 cloudPath 已剥离 query；sign 为签名串（无签名为空串，由调用方决定校验策略）。
+func parseDirectStrmFile(strmPath string) (urlStr string, driveID uint, cloudPath, sign string, ok bool) {
 	b, err := os.ReadFile(strmPath) // .strm 单行小文件（≤4KB 防御性上限）
 	if err != nil || len(b) > 4096 {
-		return "", 0, "", false
+		return "", 0, "", "", false
 	}
 	s := strings.TrimSpace(string(b))
 	if s == "" {
-		return "", 0, "", false
+		return "", 0, "", "", false
 	}
 	const marker = "/cloud/direct/"
 	i := strings.Index(s, marker)
 	if i < 0 {
-		return "", 0, "", false // 非 .strm 指向本端的情形（挂载路径）→ 走记录匹配
+		return "", 0, "", "", false // 非 .strm 指向本端的情形（挂载路径）→ 走记录匹配
 	}
 	rest := s[i+len(marker):]
+	// 二轮修复 1：先剥 query（签名模式下 URL 带 ?sign=，不剥则路径污染）
+	if q := strings.IndexAny(rest, "?#"); q >= 0 {
+		if eq := strings.Index(rest[q:], "sign="); eq >= 0 {
+			sign = rest[q+eq+len("sign="):]
+		}
+		rest = rest[:q]
+	}
 	slash := strings.Index(rest, "/")
 	if slash <= 0 {
-		return "", 0, "", false
+		return "", 0, "", "", false
 	}
 	id, cp := rest[:slash], rest[slash:]
 	var d uint
 	if _, err := fmt.Sscanf(id, "%d", &d); err != nil || d == 0 {
-		return "", 0, "", false
+		return "", 0, "", "", false
 	}
-	return s, d, cp, true
+	return s, d, cp, sign, true
 }
 
 // hopByHop 逐跳头（代理必须剥离，不能透传）。

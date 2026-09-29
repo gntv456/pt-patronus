@@ -199,6 +199,7 @@ declare module 'vue' {
     SubscriptionCard: typeof import('./src/components/subscribe/SubscriptionCard.vue')['default']
     SubscriptionGlobalDialog: typeof import('./src/components/subscribe/SubscriptionGlobalDialog.vue')['default']
     TangptLotteryGame: typeof import('./src/components/TangptLotteryGame.vue')['default']
+    TaskIndicator: typeof import('./src/components/TaskIndicator.vue')['default']
     TgBotPanel: typeof import('./src/components/settings/TgBotPanel.vue')['default']
     TorrentCard: typeof import('./src/components/search/TorrentCard.vue')['default']
     TorrentDetail: typeof import('./src/components/downloader/TorrentDetail.vue')['default']

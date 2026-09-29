@@ -11,7 +11,7 @@ const emit = defineEmits<{ read: [MonitorAlert]; ack: [MonitorAlert]; silence: [
 const levelColor: Record<string, string> = {
   danger: '#e74c3c',
   warning: '#f7971e',
-  info: '#4285f4',
+  info: 'var(--pt-primary-2)',
 }
 </script>
 

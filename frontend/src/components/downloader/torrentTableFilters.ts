@@ -4,11 +4,18 @@ import { ref, computed, watch, type Ref, type ComputedRef } from 'vue'
 import type { Torrent } from '@/api/downloader'
 import { useI18n } from 'vue-i18n'
 
+// qB 状态归并（全站统一口径，卡片/抽屉/筛选共用）：
+//   做种族 = uploading/stalledUP/queuedUP/forcedUP（UP 后缀=做种方向，stalled=无连接仍在做种）
+//   下载族 = downloading/stalledDL/metaDL/queuedDL/forcedDL（DL 后缀）
+// checking（校验中）/moving（移动中）不属于任何方向，先排除再匹配后缀。
+// 仅按字面 pause|stop 判暂停；error/missingFiles 单列。uTorrent 的 Seeding/Downloading 也能命中。
 export function stateGroup(s: string): string {
-  if (s.includes('error')) return 'error'
-  if (s.includes('upload') || s.includes('seed')) return 'seeding'
-  if (s.includes('pause') || s.includes('stop')) return 'paused'
-  if (s.includes('download')) return 'downloading'
+  const q = s.toLowerCase()
+  if (q.includes('error') || q.includes('missing')) return 'error'
+  if (q.includes('pause') || q.includes('stop')) return 'paused'
+  if (q.includes('check') || q.includes('moving')) return 'other'
+  if (q.endsWith('up') || q.includes('upload') || q.includes('seed')) return 'seeding'
+  if (q.endsWith('dl') || q.includes('download') || q.includes('leech') || q.includes('meta')) return 'downloading'
   return 'other'
 }
 

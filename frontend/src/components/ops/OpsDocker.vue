@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
 
     <template v-if="!selectedTarget && sshTargets.length === 0 && !localAvailable">
       <div class="docker-empty glass">
-        <GlassIcon name="server" from="#6c5ce7" to="#4285f4" :size="48" />
+        <GlassIcon name="server" :size="48" />
         <p>{{ t('opsdocker.addTargetFirst') }}</p>
       </div>
     </template>
@@ -367,7 +367,7 @@ onBeforeUnmount(() => {
 }
 .copy-btn {
   font-size: 12px;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   white-space: nowrap;
 }
 </style>

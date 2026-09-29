@@ -32,7 +32,10 @@ watch(
       term.open(termContainer.value)
       fit.fit()
       term.focus()
-      term.onData((d) => ws?.send(d))
+      // ws 可能尚未建立或正在关闭：send 前判 OPEN，避免 InvalidStateError 冒泡
+      term.onData((d) => {
+        if (ws && ws.readyState === WebSocket.OPEN) ws.send(d)
+      })
     }
     try {
       const { ticket } = await authApi.wsTicket()

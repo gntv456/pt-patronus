@@ -104,10 +104,14 @@ func TestCloud_CRUD(t *testing.T) {
 		t.Fatalf("更新失败 code=%d body=%s", rec.Code, rec.Body.String())
 	}
 
-	// 非法类型（白名单外）→ 400
-	rec = doCloud(t, r, http.MethodPost, "/cloud/drives", `{"name":"坏盘","type":"baidu","token":"x"}`)
+	// 非法类型（白名单外）→ 400（baidu 已进白名单，与 cloud.NewClient/前端下拉一致）
+	rec = doCloud(t, r, http.MethodPost, "/cloud/drives", `{"name":"坏盘","type":"foobar","token":"x"}`)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("非法类型应 400，got %d", rec.Code)
+	}
+	rec = doCloud(t, r, http.MethodPost, "/cloud/drives", `{"name":"白名单盘","type":"baidu","token":"x"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("白名单类型（baidu）应可创建，got %d body=%s", rec.Code, rec.Body.String())
 	}
 	// 非法 id → 400
 	if rec = doCloud(t, r, http.MethodPut, "/cloud/drives/xx", `{}`); rec.Code != http.StatusBadRequest {

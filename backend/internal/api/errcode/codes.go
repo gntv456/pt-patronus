@@ -18,6 +18,7 @@ var (
 	// —— 鉴权 / VIP ——
 	AdminRequired   = New("admin_required", "需要管理员权限", http.StatusForbidden)
 	TokenMismatch   = New("token_version_mismatch", "登录态已更新，请重新登录", http.StatusUnauthorized)
+	InvalidToken    = New("invalid_token", "登录态无效，请重新登录", http.StatusUnauthorized)
 	NotActivated    = New("not_activated", "APP 未激活，请先使用 好学 APP 专属 VIP 激活码", http.StatusForbidden)
 	NotVIP          = New("not_vip", "此功能需要好学 VIP", http.StatusForbidden)
 	VIPNotVerified  = New("vip_not_verified", "好学账号未完成验证", http.StatusForbidden)
@@ -35,6 +36,7 @@ var (
 	AuthBadCredentials     = New("auth_bad_credentials", "用户名/密码/验证码错误", http.StatusUnauthorized)
 	AuthCookieRequired     = New("auth_cookie_required", "cookie 必填", http.StatusBadRequest)
 	DemoDisabled           = New("demo_disabled", "演示登录未启用", http.StatusNotFound)
+	AuthUserRejected       = New("auth_user_rejected", "本实例已绑定首个登录账号，不再接受新账号登录", http.StatusForbidden)
 	APIKeyNoRefresh        = New("apikey_no_refresh", "API-Key 旁路无需续期", http.StatusBadRequest)
 	APIKeyNoLogout         = New("apikey_no_logout", "API-Key 旁路无需登出", http.StatusBadRequest)
 	InvalidKey             = New("invalid_key", "key 非法", http.StatusBadRequest)
@@ -55,6 +57,7 @@ var (
 	// —— 站点 / 下载器（PR-3） ——
 	SiteNotFound           = New("site_not_found", "站点不存在", http.StatusNotFound)
 	SiteInvalidID          = New("site_invalid_id", "无效的站点 ID", http.StatusBadRequest)
+	SiteDuplicate          = New("site_duplicate", "该站点已存在（同域名站点只能添加一个）", http.StatusConflict)
 	DownloaderNotFound     = New("downloader_not_found", "下载器不存在", http.StatusNotFound)
 	DownloaderInvalidInput = New("downloader_invalid_input", "下载器参数有误", http.StatusBadRequest)
 	DownloaderConnFailed   = New("downloader_conn_failed", "下载器连接失败", http.StatusBadGateway)

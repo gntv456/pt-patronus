@@ -215,9 +215,18 @@ export function useSiteMatrixData(props: {
     }
   }
 
+  // 全站同步进度（W3）：50 站同步可能跑数分钟，此前只有按钮 loading——切页即失去
+  // 反馈。syncProgress 非 null 时按钮旁显示「正在同步 x/y」。后端是一次性聚合返回，
+  // 无法逐站回调，这里按已知站点总数做阶段文案（开始/完成），真实的逐站进度
+  // 待任务中心（WS 推送）落地后接入。
+  const syncProgress = ref<string | null>(null)
+
   async function syncAll() {
     if (syncing.value) return
     syncing.value = true
+    syncProgress.value = rows.value.length
+      ? `0/${rows.value.length}`
+      : ''
     try {
       rows.value = (await dashboardApi.sync()).sites ?? []
       ElMessage.success('站点统计已刷新')
@@ -225,6 +234,7 @@ export function useSiteMatrixData(props: {
       ElMessage.error((error as Error).message || '站点统计刷新失败')
     } finally {
       syncing.value = false
+      syncProgress.value = null
     }
   }
 
@@ -269,6 +279,7 @@ export function useSiteMatrixData(props: {
     rows,
     loading,
     syncing,
+    syncProgress,
     loadError,
     refreshing,
     siteQuery,

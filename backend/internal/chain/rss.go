@@ -16,6 +16,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"github.com/hxpt/ptpatronus/internal/transfer"
 	"github.com/mmcdole/gofeed"
 )
 
@@ -192,11 +193,7 @@ func (c *RssChain) Check(ctx context.Context, sub *models.RssSubscription) (int,
 
 		// 自动下载
 		if sub.AutoDownload && dlID != 0 {
-			opts := downloader.AddOptions{
-				URL: cd.torrURL, Category: sub.Category,
-				Tags: parseCsv(sub.Tags), SavePath: sub.SavePath,
-				SiteID: sub.SiteID,
-			}
+			opts := rssAutoDownloadOptions(sub, cd.torrURL, cd.key)
 			if err := c.dlCh.Add(ctx, dlID, opts); err != nil {
 				slog.Warn("rss auto download failed", "sub", sub.ID, "title", cd.title, "err", err)
 			} else {
@@ -322,6 +319,25 @@ func rssMatchNone(title, rules string) bool {
 		}
 	}
 	return true
+}
+
+// rssAutoDownloadOptions 组装 RSS 自动下载的推种参数。
+// 整理契约对齐（P0 修复）：下载完成检测按 Category/Tag 白名单决定是否整理，
+// 用户不填分类时默认补 "subscribe"（与订阅链路一致），并追加 ptpsrc 标签
+// 让整理走标签秒级识别（Path A）——否则 RSS 自动下载的种子永不整理、
+// 待办也不显示（ShouldProcess 恒 false），链路在下载→整理交接处断裂。
+func rssAutoDownloadOptions(sub *models.RssSubscription, torrURL, itemKey string) downloader.AddOptions {
+	category := sub.Category
+	if category == "" {
+		category = "subscribe"
+	}
+	tags := parseCsv(sub.Tags)
+	tags = append(tags, "subscribe", transfer.EncodeMediaTag("rss", fmt.Sprintf("%d:%s", sub.ID, itemKey), ""))
+	return downloader.AddOptions{
+		URL: torrURL, Category: category,
+		Tags: tags, SavePath: sub.SavePath,
+		SiteID: sub.SiteID,
+	}
 }
 
 // parseCsv 逗号分隔 → 切片（去空）。

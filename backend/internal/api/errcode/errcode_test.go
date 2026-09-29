@@ -14,18 +14,27 @@ import (
 func allCodes() []*Error {
 	return []*Error{
 		Internal,
-		AdminRequired, TokenMismatch, NotActivated, NotVIP, VIPNotVerified, VIPUnknown, VIPExpired,
+		AdminRequired, TokenMismatch, InvalidToken, NotActivated, NotVIP, VIPNotVerified, VIPUnknown, VIPExpired,
 		ChallengeMode, OIDCDeprecated, ConfirmRequired,
 		RiskConfirmationRequired,
 		InvalidInput, NotFound, BadGateway, Conflict, Unavailable,
-		ForbiddenSQL, MultiStatement, DuplicateSpend,
+		ForbiddenSQL, WriteSQLForbidden, MultiStatement, DuplicateSpend, SiteAuthRejected,
 		AuthServiceUnavailable, AuthServerBusy, AuthTicketFailed, AuthCaptchaFailed,
 		AuthBadCredentials, AuthCookieRequired, DemoDisabled, APIKeyNoRefresh, APIKeyNoLogout,
 		InvalidKey, ValueTooLarge, ValueInvalidJSON, VIPCheckDisabled,
 		OIDCNotConfigured, OIDCStateMismatch, SaveFailed,
 		WebhookNotFound, WebhookInvalid, WebhookBadPayload, WebhookBadSignature, WebhookNameRequired,
-		SiteNotFound, SiteInvalidID,
+		SiteNotFound, SiteInvalidID, SiteDuplicate,
 		DownloaderNotFound, DownloaderInvalidInput, DownloaderConnFailed, DownloaderPushFailed,
+		BackupPasswordRequired, BackupPasswordIncorrect,
+		AgentNameRequired, AgentTypeInvalid, AgentNotFound, AgentMsgRequired, AgentConfirmGone,
+		DockerLocalNotReady,
+		DockerContainerNameRequired, ResourceNotFound, AuthTokenFailed, TicketInvalidOrExpired, SubscriptionNotFound,
+		DiskInvalidMountpoint, TorrentHashRequired, MediaLibraryRequired, UrlRequired, ServarrCreateFailed,
+		BackupReadFailed, BrushflowTaskNotFound, TransferTaskNotFound, RssSubscriptionGone, WorkflowNotFound,
+		MediaKeywordRequired, MediaSourceIDRequired, DockerImageRefRequired, ComposeDirInvalid, ComposeFileNotFound, ComposeWriteFailed,
+		BackupFileInvalid, BackupFileTooLarge, NameRequired, InvalidID, InvalidRequest, FieldRequired,
+		ResourceStateInvalid, DependencyMissing, UnauthorizedOp, UpstreamFailed, OperationForbidden,
 	}
 }
 

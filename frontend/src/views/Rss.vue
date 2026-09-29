@@ -177,11 +177,11 @@ function fmtTime(t?: string) {
           <div class="info">
             <div class="row1">
               <span class="s-title">{{ r.name }}</span>
-              <span class="chip" :class="r.enabled ? 'on' : 'off'">{{
+              <span class="pt-chip" :class="r.enabled ? 'pt-chip--success' : 'pt-chip--muted'">{{
                 r.enabled ? t('rss.enabled') : t('rss.disabled')
               }}</span>
-              <span v-if="r.auto_download" class="chip auto">{{ t('rss.autoDownload') }}</span>
-              <span v-if="r.resolution" class="chip res">{{ r.resolution }}</span>
+              <span v-if="r.auto_download" class="pt-chip pt-chip--warn">{{ t('rss.autoDownload') }}</span>
+              <span v-if="r.resolution" class="pt-chip pt-chip--info">{{ r.resolution }}</span>
             </div>
             <div class="text-muted small url">{{ r.url }}</div>
             <div class="text-muted small">

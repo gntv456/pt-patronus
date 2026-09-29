@@ -19,7 +19,7 @@
   white-space: nowrap;
 }
 .sfb-count b {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .sfb-sort,
 .sfb-order {
@@ -34,8 +34,8 @@
 }
 .sfb-sort:hover,
 .sfb-order:hover {
-  border-color: var(--pt-primary, #6c5ce7);
-  color: var(--pt-primary, #6c5ce7);
+  border-color: var(--pt-primary);
+  color: var(--pt-primary);
 }
 .sfb-order {
   padding: 3px 10px;
@@ -65,12 +65,12 @@
     color var(--dur-base) var(--ease-out-smooth);
 }
 .sfb-pill:hover {
-  border-color: var(--pt-primary, #6c5ce7);
+  border-color: var(--pt-primary);
 }
 .sfb-pill.on {
   background: var(--pt-primary-bg);
-  border-color: var(--pt-primary, #6c5ce7);
-  color: var(--pt-primary, #6c5ce7);
+  border-color: var(--pt-primary);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 .sfb-free.on {
@@ -86,7 +86,7 @@
   height: 16px;
   padding: 0 4px;
   border-radius: var(--radius-pill);
-  background: var(--pt-primary, #6c5ce7);
+  background: var(--pt-primary);
   color: #fff;
   font-size: var(--fs-2xs);
   font-weight: 700;
@@ -100,7 +100,7 @@
 .sfb-clear {
   background: transparent;
   border: 0;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-xs);
   cursor: pointer;
   padding: 0;
@@ -123,7 +123,7 @@
 .sfb-pop-head button {
   background: transparent;
   border: 0;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-xs);
   cursor: pointer;
   padding: 0;
@@ -187,12 +187,12 @@
 }
 .time-chip.on {
   background: var(--pt-primary-bg);
-  border-color: var(--pt-primary, #6c5ce7);
-  color: var(--pt-primary, #6c5ce7);
+  border-color: var(--pt-primary);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 :deep(.el-dropdown-menu__item.is-active) {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 @media (max-width: 720px) {

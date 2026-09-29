@@ -60,6 +60,32 @@ func AssertPublicURL(rawURL string) error {
 	return assertPublicURL(rawURL, defaultLookupIP)
 }
 
+// AssertPublicOrLoopbackURL 同 AssertPublicURL 但额外放行 loopback（127.0.0.1/::1）：
+// 供「管理员自配端点且本地部署是合法用例」的场景（如 LLM BaseURL 指向本机 Ollama、
+// 通知指向本机 Apprise 容器）——仍拒绝其他私网/CGNAT/link-local/元数据地址。
+func AssertPublicOrLoopbackURL(rawURL string) error {
+	if isLoopbackURL(rawURL) {
+		return nil
+	}
+	return assertPublicURL(rawURL, defaultLookupIP)
+}
+
+// isLoopbackURL 字面 loopback host 快速放行（避免 loopback 域名解析竞态）。
+func isLoopbackURL(rawURL string) bool {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return false
+	}
+	h := u.Hostname()
+	if h == "localhost" {
+		return true
+	}
+	if ip := net.ParseIP(h); ip != nil && ip.IsLoopback() {
+		return true
+	}
+	return false
+}
+
 // assertPublicURL 是 AssertPublicURL 的可注入内核，测试用它替换 lookup 以免依赖真实 DNS。
 func assertPublicURL(rawURL string, lookup lookupIPFunc) error {
 	u, err := url.Parse(strings.TrimSpace(rawURL))

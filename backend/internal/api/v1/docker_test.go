@@ -50,7 +50,7 @@ func newDockerTestRouter(h *DockerHandler) *gin.Engine {
 	r.POST("/stop/:id/:name", h.Stop)
 	r.POST("/restart/:id/:name", h.Restart)
 	r.POST("/remove/:id/:name", h.Remove)
-	r.POST("/rmi/:id/:ref", h.ImageRemove)
+	r.POST("/rmi/:id", h.ImageRemove)
 	r.POST("/compose/up/:id", h.ComposeUp)
 	r.POST("/compose/down/:id", h.ComposeDown)
 	return r
@@ -245,7 +245,7 @@ func TestDockerImageRemoveNeedsConfirm(t *testing.T) {
 	h := NewDockerHandler(&mockRunner{})
 	r := newDockerTestRouter(h)
 
-	w := doJSONReq(t, r, http.MethodPost, "/rmi/1/sha256:abc", `{"confirm_risk":false}`)
+	w := doJSONReq(t, r, http.MethodPost, "/rmi/1?ref=sha256:abc", `{"confirm_risk":false}`)
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("rmi without confirm: code=%d, want 400", w.Code)
 	}
@@ -253,7 +253,7 @@ func TestDockerImageRemoveNeedsConfirm(t *testing.T) {
 	mr2 := &mockRunner{result: monitor.CommandResult{Success: true}}
 	h2 := NewDockerHandler(mr2)
 	r2 := newDockerTestRouter(h2)
-	w = doJSONReq(t, r2, http.MethodPost, "/rmi/1/sha256:abc", `{"confirm_risk":true}`)
+	w = doJSONReq(t, r2, http.MethodPost, "/rmi/1?ref=ghcr.io/x/y:1.0", `{"confirm_risk":true}`)
 	if w.Code != http.StatusOK {
 		t.Errorf("rmi with confirm: code=%d, want 200, body=%s", w.Code, w.Body.String())
 	}

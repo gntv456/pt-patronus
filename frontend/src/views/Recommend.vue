@@ -223,7 +223,7 @@ onUnmounted(() => {
         <button
           v-for="s in recommendSources"
           :key="s.key"
-          class="chip"
+          class="filter-chip"
           :class="{ on: source === s.key }"
           @click="selectSource(s.key)"
         >
@@ -234,7 +234,7 @@ onUnmounted(() => {
         <button
           v-for="c in recommendCategories"
           :key="c.key"
-          class="chip"
+          class="filter-chip"
           :class="{ on: category === c.key && !calMode }"
           @click="selectCategory(c.key)"
         >
@@ -243,18 +243,18 @@ onUnmounted(() => {
       </div>
       <!-- 开播日历视图：剧集/电影日历 + 我的订阅日历（单集粒度） -->
       <div class="filter-group">
-        <button class="chip" :class="{ on: calMode === 'tv' }" @click="selectCalendar(calMode === 'tv' ? '' : 'tv')">
+        <button class="filter-chip" :class="{ on: calMode === 'tv' }" @click="selectCalendar(calMode === 'tv' ? '' : 'tv')">
           📅 {{ t('recommend.tvCalendar') }}
         </button>
         <button
-          class="chip"
+          class="filter-chip"
           :class="{ on: calMode === 'movie' }"
           @click="selectCalendar(calMode === 'movie' ? '' : 'movie')"
         >
           📅 {{ t('recommend.movieCalendar') }}
         </button>
         <button
-          class="chip"
+          class="filter-chip"
           :class="{ on: calMode === 'mine' }"
           @click="selectCalendar(calMode === 'mine' ? '' : 'mine')"
         >
@@ -294,7 +294,7 @@ onUnmounted(() => {
             @click="openCalendarDetail(ep)"
           >
             <span v-if="ep.poster_url" class="cal-poster"><MediaPoster :url="ep.poster_url" kind="movie" /></span>
-            <span v-if="ep.season" class="chip res"
+            <span v-if="ep.season" class="pt-chip pt-chip--info"
               >S{{ String(ep.season).padStart(2, '0') }}E{{ String(ep.episode ?? 0).padStart(2, '0') }}</span
             >
             <span class="cal-title">{{ ep.title }}</span>

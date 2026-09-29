@@ -152,11 +152,11 @@ onUnmounted(() => abortCtrl?.abort())
 
     <div class="filter-bar glass">
       <SiteFilterDialog v-model="selectedSiteIds" :sites="sites" :title="t('medalwall.siteFilterTitle')" />
-      <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">
+      <button class="filter-chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">
         {{ t('assessment.filter.all') }} ({{ counts.total }})
       </button>
       <button
-        class="chip"
+        class="filter-chip"
         :class="{ on: filter === 'owned' }"
         @click="filter = 'owned'"
         style="color: var(--pt-success)"
@@ -164,7 +164,7 @@ onUnmounted(() => abortCtrl?.abort())
         {{ t('medalwall.status.owned') }} ({{ counts.owned }})
       </button>
       <button
-        class="chip"
+        class="filter-chip"
         :class="{ on: filter === 'available' }"
         @click="filter = 'available'"
         style="color: var(--pt-primary-2)"
@@ -172,7 +172,7 @@ onUnmounted(() => abortCtrl?.abort())
         {{ t('medalwall.status.available') }} ({{ counts.available }})
       </button>
       <button
-        class="chip"
+        class="filter-chip"
         :class="{ on: filter === 'out_of_stock' }"
         @click="filter = 'out_of_stock'"
         style="color: var(--pt-danger)"
@@ -180,7 +180,7 @@ onUnmounted(() => abortCtrl?.abort())
         {{ t('medalwall.status.outOfStock') }} ({{ counts.out_of_stock }})
       </button>
       <button
-        class="chip"
+        class="filter-chip"
         :class="{ on: filter === 'wearing' }"
         @click="filter = 'wearing'"
         style="color: var(--pt-warn)"

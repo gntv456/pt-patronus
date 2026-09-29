@@ -94,10 +94,10 @@ onMounted(load)
             clearable
             :placeholder="t('mediasettings.f.emptyKeep')"
           />
-          <span class="chip ok" v-if="config?.tmdb_api_key_configured">{{
+          <span class="pt-chip pt-chip--success" v-if="config?.tmdb_api_key_configured">{{
             statusText(config.tmdb_api_key, true)
           }}</span>
-          <span class="chip warn" v-else>{{ t('reseed.notConfigured') }}</span>
+          <span class="pt-chip pt-chip--warn" v-else>{{ t('reseed.notConfigured') }}</span>
         </div>
         <div class="field">
           <label>{{ t('mediasettings.f.tmdbDomain') }}</label>
@@ -120,10 +120,10 @@ onMounted(load)
             clearable
             :placeholder="t('mediasettings.f.emptyDefault')"
           />
-          <span class="chip ok" v-if="config?.douban_secret_configured">{{
+          <span class="pt-chip pt-chip--success" v-if="config?.douban_secret_configured">{{
             statusText(config.douban_secret, true)
           }}</span>
-          <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
+          <span class="pt-chip pt-chip--warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
         </div>
         <div class="field">
           <label>{{ t('mediasettings.f.doubanAppKey') }}</label>
@@ -134,10 +134,10 @@ onMounted(load)
             clearable
             :placeholder="t('mediasettings.f.emptyDefault')"
           />
-          <span class="chip ok" v-if="config?.douban_app_key_configured">{{
+          <span class="pt-chip pt-chip--success" v-if="config?.douban_app_key_configured">{{
             statusText(config.douban_app_key, true)
           }}</span>
-          <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
+          <span class="pt-chip pt-chip--warn" v-else>{{ t('mediasettings.notConfiguredDefault') }}</span>
         </div>
       </div>
 
@@ -155,10 +155,10 @@ onMounted(load)
             clearable
             :placeholder="t('mediasettings.f.emptyAnonymous')"
           />
-          <span class="chip ok" v-if="config?.bangumi_token_configured">{{
+          <span class="pt-chip pt-chip--success" v-if="config?.bangumi_token_configured">{{
             statusText(config.bangumi_token, true)
           }}</span>
-          <span class="chip warn" v-else>{{ t('mediasettings.notConfiguredAnonymous') }}</span>
+          <span class="pt-chip pt-chip--warn" v-else>{{ t('mediasettings.notConfiguredAnonymous') }}</span>
         </div>
       </div>
 
@@ -232,20 +232,6 @@ onMounted(load)
 .field label {
   font-size: var(--fs-body);
   color: var(--text-strong);
-}
-.chip {
-  font-size: var(--fs-xs);
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
-}
-.chip.ok {
-  background: var(--pt-success-bg);
-  color: var(--pt-success, #2ecc71);
-}
-.chip.warn {
-  background: var(--pt-warn-bg);
-  color: var(--pt-warn, #f39c12);
 }
 .actions {
   display: flex;

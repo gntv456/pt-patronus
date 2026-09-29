@@ -166,17 +166,22 @@ func clampQueryInt(c *gin.Context, key string, def, lo, hi int) int {
 	return v
 }
 
-// torrentStateGroup 把各下载器原始 state 归并为前端分组（对齐 TorrentTable.stateFilter）。
+// torrentStateGroup 把各下载器原始 state 归并为前端分组（对齐前端 torrentTableFilters.stateGroup）。
+// qB 的做种族 uploading/stalledUP/queuedUP/forcedUP 以 UP 后缀识别（stalledUP 里无 upload/seed 字面量，
+// 旧实现归到 other → 下载器页做种筛选漏掉绝大多数做种种子）；DL 后缀同理归下载族。
+// checking（校验中）/moving（移动中）先排除再匹配后缀；仅字面 pause|stop 判暂停。
 func torrentStateGroup(s string) string {
 	low := strings.ToLower(s)
 	switch {
-	case strings.Contains(low, "error"):
+	case strings.Contains(low, "error") || strings.Contains(low, "missing"):
 		return "error"
-	case strings.Contains(low, "upload") || strings.Contains(low, "seed"):
-		return "seeding"
 	case strings.Contains(low, "pause") || strings.Contains(low, "stop"):
 		return "paused"
-	case strings.Contains(low, "download"):
+	case strings.Contains(low, "check") || strings.Contains(low, "moving"):
+		return "other"
+	case strings.HasSuffix(low, "up") || strings.Contains(low, "upload") || strings.Contains(low, "seed"):
+		return "seeding"
+	case strings.HasSuffix(low, "dl") || strings.Contains(low, "download") || strings.Contains(low, "leech") || strings.Contains(low, "meta"):
 		return "downloading"
 	default:
 		return "other"

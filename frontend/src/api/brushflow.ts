@@ -53,13 +53,27 @@ export interface BrushFlowSeed {
   updated_at: string
 }
 
+export interface BrushflowOpResult {
+  ok: boolean
+  error?: string
+}
+
 export const brushflowApi = {
   list: () => http.get<{ tasks: BrushFlowTask[] }>('/brushflow').then((r) => r.data.tasks ?? []),
   get: (id: number) => http.get<BrushFlowTask>(`/brushflow/${id}`).then((r) => r.data),
   create: (t: Partial<BrushFlowTask>) => http.post<BrushFlowTask>('/brushflow', t).then((r) => r.data),
   update: (id: number, t: Partial<BrushFlowTask>) => http.put<BrushFlowTask>(`/brushflow/${id}`, t).then((r) => r.data),
   remove: (id: number) => http.delete(`/brushflow/${id}`).then((r) => r.data),
-  select: (id: number) => http.post(`/brushflow/${id}/select`).then((r) => r.data),
-  sweep: (id: number) => http.post(`/brushflow/${id}/sweep`).then((r) => r.data),
+  /** 手动选种/扫删：后端在 200 里带 {ok,error}，失败时抛错让调用方展示 error */
+  select: (id: number) =>
+    http.post<BrushflowOpResult>(`/brushflow/${id}/select`).then((r) => {
+      if (r.data && r.data.ok === false) throw new Error(r.data.error || 'select failed')
+      return r.data
+    }),
+  sweep: (id: number) =>
+    http.post<BrushflowOpResult>(`/brushflow/${id}/sweep`).then((r) => {
+      if (r.data && r.data.ok === false) throw new Error(r.data.error || 'sweep failed')
+      return r.data
+    }),
   seeds: (id: number) => http.get<{ seeds: BrushFlowSeed[] }>(`/brushflow/${id}/seeds`).then((r) => r.data.seeds ?? []),
 }

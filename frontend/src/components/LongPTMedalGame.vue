@@ -279,7 +279,7 @@ onMounted(refresh)
 }
 .shard-icon {
   font-size: var(--fs-hero);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .shard-val {
   font-size: var(--fs-title);

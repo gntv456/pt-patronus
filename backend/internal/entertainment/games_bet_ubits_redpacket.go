@@ -3,6 +3,7 @@ package entertainment
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -12,6 +13,10 @@ import (
 // ── UBits 红包（ubits.club） ──────────────────────────────
 // POST redpacket.php form action=send|claim（整页 HTML，无 JSON）。send: amount=总额+extra(packet_type/distribution_type/packet_count)；claim: extra.id。
 type UbitsRedpacketGame struct{}
+
+// ubitsRedpacketFailRe 站点失败页常见文案。整页 HTML 无结构化结果，
+// 命中关键词才算失败，未命中才视为成功（不能无条件报成功）。
+var ubitsRedpacketFailRe = regexp.MustCompile(`失败|不足|已领取过|已抢完|已领完|手慢|已过期|不存在`)
 
 func (UbitsRedpacketGame) ID() string   { return "ubits_redpacket" }
 func (UbitsRedpacketGame) Name() string { return "红包" }
@@ -47,7 +52,7 @@ func (UbitsRedpacketGame) Bet(ctx context.Context, hc *httpclient.Client, baseUR
 	logResp("ubits_redpacket "+action, u, resp)
 	msg := strings.TrimSpace(stripTags(firstGroup(resp.Body, `(?s)(成功|失败|领取|已|红包)[^<]{0,40}`)))
 	return &PlayResult{
-		Success: true,
+		Success: !ubitsRedpacketFailRe.Match(resp.Body),
 		Balance: novaHDNum(firstGroup(resp.Body, `U币[^0-9-]*([\d,.]+)`)),
 		Prize:   action,
 		Message: firstNonEmpty(msg, action+" 操作已提交"),

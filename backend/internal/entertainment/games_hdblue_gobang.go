@@ -151,6 +151,8 @@ func (g HdblueGobangGame) Play(ctx context.Context, hc *httpclient.Client, baseU
 		out.Prize = fmt.Sprintf("胜利！%s局 +%g 影币", mode, m.WinReward)
 		out.Amount = m.WinReward
 		out.Prizes = []PrizeOutcome{{PrizeName: out.Prize, Amount: m.WinReward, IsWin: true}}
+	case m.WinnerID == nil:
+		out.Prize = "平局"
 	default:
 		out.Prize = "败北（AI 胜）"
 		if m.ChallengeMode == "PAID" {
@@ -200,17 +202,27 @@ func (HdblueGobangGame) Stats(ctx context.Context, hc *httpclient.Client, baseUR
 }
 
 // hdblueExtractJSON 从 RSC 文本里抠出以 key 起始的完整 JSON 对象（花括号配平）。
+// key 支持裸形态（"key":{ / "key":{"sub"）与 RSC 转义形态（\"key\":…）：转义形态先
+// 还原外层转义再配平，否则 \" 被当转义符吞掉、字符串永不闭合，字符串内容里的
+// 花括号会破坏配平，导致提取失败或截断。
 func hdblueExtractJSON(body, key string) []byte {
 	i := strings.Index(body, key)
 	if i < 0 {
 		return nil
 	}
-	start := i + len(key) - 1 // 指向 '{'
+	k := strings.IndexByte(body[i:], '{') // 对象起始 '{'：在 key 尾部（"key":{）或 key 中段（"key":{"sub"）
+	if k < 0 {
+		return nil
+	}
+	seg := []byte(body[i+k:])
+	if strings.HasPrefix(key, `\"`) {
+		seg = unescapeRSC(seg)
+	}
 	depth := 0
 	inStr := false
 	esc := false
-	for j := start; j < len(body); j++ {
-		c := body[j]
+	for j := 0; j < len(seg); j++ {
+		c := seg[j]
 		if esc {
 			esc = false
 			continue
@@ -228,7 +240,7 @@ func hdblueExtractJSON(body, key string) []byte {
 			if !inStr {
 				depth--
 				if depth == 0 {
-					return []byte(body[start : j+1])
+					return seg[:j+1]
 				}
 			}
 		}

@@ -87,22 +87,22 @@ var crabFastThreeCharacters = map[string]string{
 	"皮卡丘": "魔蛆", "杰尼龟": "痞老板", "妙蛙种子": "章鱼哥",
 }
 
-// Bet 投注：Selection=角色名（皮卡丘/杰尼龟/妙蛙种子），Amount>0 时走批量投注 num=N，否则单次投注。
+// Bet 投注：Selection=角色名（皮卡丘/杰尼龟/妙蛙种子），Amount=1 走单注端点，>1 走批量 num=N。
 func (CrabFastThreeGame) Bet(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, req BetRequest) (*PlayResult, error) {
 	character := strings.TrimSpace(req.Selection)
 	name, ok := crabFastThreeCharacters[character]
 	if !ok {
 		return &PlayResult{Success: false, Message: "请选择角色：皮卡丘 / 杰尼龟 / 妙蛙种子"}, nil
 	}
-	u := joinPath(baseURL, "nodeapi/fast-three/batch")
+	// 批量端点必须带 num，缺省请求会被站点拒绝/错投，直接在前置校验拦下。
+	if req.Amount <= 0 {
+		return &PlayResult{Success: false, Message: "投注局数须 > 0（1=单注，>1 为批量）"}, nil
+	}
+	u := joinPath(baseURL, "nodeapi/fast-three")
 	payload := map[string]any{"chosen_character": character}
-	if req.Amount > 0 {
+	if req.Amount > 1 {
 		u = joinPath(baseURL, "nodeapi/fast-three/batch")
 		payload["num"] = int(req.Amount)
-	}
-	if req.Amount == 1 {
-		u = joinPath(baseURL, "nodeapi/fast-three")
-		delete(payload, "num")
 	}
 	body, _ := json.Marshal(payload)
 	resp, err := hc.Do(ctx, http.MethodPost, u, body, map[string]string{

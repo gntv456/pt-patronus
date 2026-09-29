@@ -56,6 +56,10 @@ export interface HxptLoginParams {
 export const authApi = {
   status: () => http.get<AuthStatus>('/auth/status').then((r) => r.data),
 
+  // JWT 滑动续期（后端复用旧 token 首发时间、绝对寿命钳制；同步刷新 httpOnly cookie）。
+  // http 拦截器在 401 时先尝试一次续期再重放原请求（见 http.ts）。
+  refresh: () => http.post<LoginResult>('/auth/refresh').then((r) => r.data),
+
   // 好学账号登录（两步：先 hxptCaptcha 取验证码，再 hxptLogin）
   hxptCaptcha: () => http.post<CaptchaChallenge>('/auth/hxpt/captcha').then((r) => r.data),
   hxptLogin: (p: HxptLoginParams) => http.post<LoginResult>('/auth/hxpt/login', p).then((r) => r.data),

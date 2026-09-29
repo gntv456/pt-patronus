@@ -54,7 +54,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  z-index: 300;
+  z-index: var(--z-float);
   /* 磨砂玻璃（与命令面板同体系）。下拉面板无全屏遮罩打底，背景要比命令面板更实，
      否则背后复杂图文透出会压低文字对比、看不清字。 */
   border-radius: var(--radius-md);

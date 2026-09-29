@@ -31,9 +31,28 @@ func (h *MediaProxyHandler) Handle(c *gin.Context) {
 	if q := c.Request.URL.RawQuery; q != "" {
 		rest += "?" + q
 	}
-	if strings.Contains(rest, "..") {
+	if !safeProxyRest(rest) {
 		errcode.Respond(c, errcode.InvalidRequest)
 		return
 	}
 	h.svc.Handle(c.Writer, c.Request, uint(id), rest)
+}
+
+// safeProxyRest 上游路径段校验：拒绝 `..`（含双重编码 %2e%2e——gin 解码一次后
+// 为字面 `%2e%2e`，黑名单 `..` 拦不住，上游再解码即穿越）、反斜杠与控制字符。
+// 白名单式：仅放行常规 URL 路径/查询字符（P2 修复：原黑名单可被 %252e%252e 绕过）。
+func safeProxyRest(rest string) bool {
+	if rest == "" {
+		return true
+	}
+	if strings.Contains(rest, "..") || strings.Contains(rest, "%2e%2e") ||
+		strings.Contains(rest, "%2E%2E") || strings.Contains(rest, `\`) {
+		return false
+	}
+	for _, r := range rest {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
 }

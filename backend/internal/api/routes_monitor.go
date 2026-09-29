@@ -223,7 +223,9 @@ func registerMonitorRoutes(guarded *gin.RouterGroup, d *Deps) {
 	whH := d.Webhook
 	whs := guarded.Group("/webhooks")
 	{
-		whs.GET("", whH.List)
+		// List 也收 admin（P1）：Token 是公开触发端点 /webhooks/in/:token 的鉴权凭据，
+		// 模型已把 token 打 json:"-" 不再回传，List 同其余 CRUD 一致收敛。
+		whs.GET("", middleware.RequireAdmin(), whH.List)
 		whs.POST("", middleware.RequireAdmin(), whH.Create)
 		whs.PUT("/:id", middleware.RequireAdmin(), whH.Update)
 		whs.DELETE("/:id", middleware.RequireAdmin(), whH.Delete)

@@ -51,7 +51,7 @@
 }
 .filter-btn.on {
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 .filter-badge {
@@ -59,7 +59,7 @@
   height: 16px;
   padding: 0 4px;
   border-radius: var(--radius-pill);
-  background: var(--pt-primary, #6c5ce7);
+  background: var(--pt-primary);
   color: #fff;
   font-size: var(--fs-2xs);
   font-weight: 700;
@@ -118,7 +118,7 @@
   font-size: var(--fs-xs);
 }
 .g-unread {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
   font-size: var(--fs-xs);
 }
@@ -219,7 +219,7 @@
     border-color var(--dur-fast) var(--ease-out-smooth);
 }
 .item-act:hover {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   background: var(--pt-primary-bg);
 }
 .item-act--del:hover {
@@ -235,7 +235,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-xs);
   padding: 4px 8px;
   border-radius: var(--radius-xs);

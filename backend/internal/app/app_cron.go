@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/hxpt/ptpatronus/internal/backup"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/core/config"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
@@ -12,10 +13,11 @@ import (
 	"github.com/hxpt/ptpatronus/internal/notification"
 	"github.com/hxpt/ptpatronus/internal/savept"
 	"github.com/hxpt/ptpatronus/internal/scheduler"
+	"github.com/hxpt/ptpatronus/internal/transfer"
 )
 
 // registerCronJobs 注册所有后台定时任务（刷流/保种/Trakt/CookieCloud/RSS/工作流清理/
-// monitor 指标·告警·通知清理/PT监护室/勋章墙/媒体订阅/媒体整理/网盘 STRM）。
+// monitor 指标·告警·通知清理/PT监护室/勋章墙/媒体订阅/媒体整理/网盘 STRM/目录同步）。
 // 单任务失败不阻断其它任务；scheduler 自带 SkipIfStillRunning 防重叠。
 func registerCronJobs(
 	sched *scheduler.Scheduler,
@@ -37,6 +39,7 @@ func registerCronJobs(
 	cloudCh *chain.CloudChain,
 	rssItemOp *oper.RssItemOper,
 	pluginLogOp *oper.PluginOper,
+	backupSvc *backup.Service,
 ) {
 	// 刷流 cron：选种每 10 分钟、扫删每 5 分钟（单任务失败不阻断；scheduler 自带 SkipIfStillRunning 防重叠）
 	_ = sched.AddFunc("brushflow-select", "*/10 * * * *", func() {
@@ -189,4 +192,44 @@ func registerCronJobs(
 		cloudCh.GenerateAll(ctx)
 		cloudCh.SyncSubscriptions(ctx)
 	})
+
+	// 目录同步：固定每 5 分钟 tick，transfer 包内按各任务 interval_minutes + last_run_at
+	// 决定是否真正执行（interval=0 的任务仅手动触发）；幂等（目标同 size 跳过）。
+	_ = sched.AddFunc("dirsync-tick", "*/5 * * * *", func() {
+		for _, run := range transfer.RunDueDirSyncs(transferCh.KV(), time.Now()) {
+			if run.Err != nil {
+				slog.Warn("dirsync run failed", "task", run.Name, "err", run.Err)
+				continue
+			}
+			if run.Result != nil && len(run.Result.Errors) > 0 {
+				slog.Warn("dirsync finished with errors", "task", run.Name, "synced", run.Result.Synced, "errors", run.Result.Errors)
+				continue
+			}
+			if run.Result != nil {
+				slog.Info("dirsync done", "task", run.Name, "synced", run.Result.Synced, "skipped", run.Result.Skipped)
+			}
+		}
+	})
+
+	// 定时备份：BACKUP_CRON + BACKUP_DIR 同时配置才启用（默认关闭——自动把明文密钥写盘
+	// 属敏感行为）。成功走通知中心 backup_done（当天去重），失败走外发告警。
+	if cfg.BackupCron != "" && cfg.BackupDir != "" && backupSvc != nil {
+		_ = sched.AddFunc("scheduled-backup", cfg.BackupCron, func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			path, err := backupSvc.ExportToFile(ctx, cfg.BackupDir)
+			if err != nil {
+				slog.Error("scheduled backup failed", "err", err)
+				notifCh.Notify(ctx, notification.Message{Title: "定时备份失败", Body: err.Error(), Level: "danger"})
+				return
+			}
+			_ = noticeSvc.Notice(ctx, notice.Input{
+				Source: notice.SourceBackupDone,
+				Key:    "scheduled-backup:" + time.Now().Format("2006-01-02"),
+				Title:  "定时备份完成",
+				Body:   path,
+				Level:  "info",
+			}, true)
+		})
+	}
 }

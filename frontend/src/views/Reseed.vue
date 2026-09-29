@@ -76,14 +76,14 @@ const {
         <span>{{ t('reseed.start') }}</span>
       </el-button>
       <el-button @click="openMissing">
-        <GlassIcon name="history" from="#6c5ce7" to="#4285f4" :size="16" class="btn-ico" />
+        <GlassIcon name="history" :size="16" class="btn-ico" />
         <span>{{ t('reseed.missingCheck') }}</span>
       </el-button>
       <div class="spacer"></div>
       <el-popover trigger="click" placement="bottom-end" :width="380" popper-class="reseed-cfg-pop">
         <template #reference>
           <el-button class="cfg-btn">
-            <GlassIcon name="settings" from="#6c5ce7" to="#4285f4" :size="16" class="btn-ico" />
+            <GlassIcon name="settings" :size="16" class="btn-ico" />
             <span>{{ t('settings.tab') }}</span>
           </el-button>
         </template>

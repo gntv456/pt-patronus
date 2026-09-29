@@ -4,6 +4,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotices } from '@/composables/useNotices'
+import { useNoticeMeta, noticeSourceRoute } from '@/composables/useNoticeMeta'
 import type { Notice, NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
 import { useI18n } from 'vue-i18n'
@@ -25,45 +26,14 @@ const {
 const open = ref(false)
 const boxRef = ref<HTMLElement | null>(null)
 
-const sourceMeta: Record<NoticeSource, { icon: string; color: string; label: string }> = {
-  site_anniv: { icon: 'party-popper', color: '#f59e0b', label: t('notices.source.site_anniv') },
-  new_mail: { icon: 'mail', color: '#3b82f6', label: t('notices.source.new_mail') },
-  assess_pass: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.assess_pass') },
-  assess_fail: { icon: 'alert-circle', color: '#ef4444', label: t('notices.source.assess_fail') },
-  announce: { icon: 'megaphone', color: '#3b82f6', label: t('notices.source.announce') },
-  host_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.host_offline') },
-  nas_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.nas_offline') },
-  reseed_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.reseed_done') },
-  dl_done: { icon: 'download', color: '#22c55e', label: t('notices.source.dl_done') },
-  site_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.site_offline') },
-  backup_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_done') },
-  backup_import: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_import') },
-  freeleech: { icon: 'party-popper', color: '#f59e0b', label: 'Freeleech' },
-}
-function meta(s: NoticeSource) {
-  return sourceMeta[s] ?? { ...sourceMeta.announce, label: t('notices.source.fallback') }
-}
+const { meta } = useNoticeMeta()
 const badgeText = computed(() => {
   const n = urgentUnread.value || unread.value
   return n > 999 ? '999+' : String(n)
 })
 
 // 通知来源 → 路由名映射，点击通知体跳转到对应页面。
-const sourceRoute: Record<NoticeSource, string> = {
-  new_mail: 'messages',
-  assess_pass: 'assessment',
-  assess_fail: 'assessment',
-  dl_done: 'downloaders',
-  reseed_done: 'reseed',
-  site_anniv: 'sites',
-  site_offline: 'nas-server',
-  host_offline: 'nas-server',
-  nas_offline: 'nas-server',
-  freeleech: 'freeleech',
-  announce: 'announcements',
-  backup_done: 'backup',
-  backup_import: 'backup',
-}
+const sourceRoute = noticeSourceRoute
 onMounted(() => {
   load()
   document.addEventListener('click', onDocClick)

@@ -205,7 +205,7 @@
   padding: 20px 16px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--surface-muted); /* 明暗自适应：暗色下自动转白色薄层 */
 }
 .ob-num {
   width: 36px;
@@ -217,7 +217,7 @@
   font-size: var(--fs-xl);
   font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #6c5ce7, #4285f4);
+  background: var(--grad-primary);
 }
 .ob-body {
   text-align: center;
@@ -270,3 +270,35 @@
 .updated-at {
   transition: color var(--dur-base) var(--ease-out-smooth);
 }
+
+/* ---- 首屏骨架（对齐工作台问候条 + 三列实时卡布局） ---- */
+.dash-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.sk-greet {
+  height: 72px;
+  border-radius: var(--radius-md);
+}
+.dash-sk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+.dash-sk-grid .sk-block {
+  height: 90px;
+  margin: var(--sp-2) 0;
+}
+@media (max-width: 1100px) {
+  .dash-sk-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.sk-line {
+  height: 12px;
+  margin: 4px 0;
+}
+.sk-line.w40 { width: 40%; }
+.sk-line.w60 { width: 60%; }

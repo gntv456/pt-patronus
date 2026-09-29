@@ -1,6 +1,6 @@
 import { http } from './http'
 
-// 13 类通知 Source（对齐后端 notice.SourceXxx 枚举）。
+// 通知 Source（对齐后端 notice.SourceXxx 枚举，缺失会导致通知中心标签/图标退化）。
 export type NoticeSource =
   | 'site_anniv'
   | 'new_mail'
@@ -15,6 +15,17 @@ export type NoticeSource =
   | 'backup_done'
   | 'backup_import'
   | 'freeleech'
+  | 'subscribe_hit'
+  | 'workflow'
+  | 'rss_hit'
+  | 'webhook'
+  | 'transfer_done'
+  | 'transfer_fail'
+  | 'medal_new'
+  | 'medal_available'
+  | 'medal_price_drop'
+  | 'medal_price_rise'
+  | 'medal_out_of_stock'
 export type NoticeLevel = 'info' | 'success' | 'warning' | 'danger'
 
 export interface Notice {

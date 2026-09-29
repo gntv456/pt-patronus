@@ -310,6 +310,6 @@ onMounted(load)
   background-color: transparent !important;
 }
 :deep(.el-table) {
-  --el-table-border-color: rgba(0, 0, 0, 0.06);
+  --el-table-border-color: var(--divider);
 }
 </style>

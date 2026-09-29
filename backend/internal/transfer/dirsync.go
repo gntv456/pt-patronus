@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // DirSyncTask 目录同步任务定义。
@@ -22,8 +23,11 @@ type DirSyncTask struct {
 	Mode      string   `json:"mode"`           // link | softlink | copy | move | strm
 	Exts      []string `json:"exts,omitempty"` // 扩展名白名单（小写含点；空=媒体默认集）
 	Recursive bool     `json:"recursive"`
-	DeleteSrc bool     `json:"delete_src,omitempty"` // move 隐含删源；copy 后可选删
-	Enabled   bool     `json:"enabled"`
+	DeleteSrc bool   `json:"delete_src,omitempty"` // move 隐含删源；copy 后可选删
+	Enabled   bool   `json:"enabled"`
+	// IntervalMinutes 定时执行间隔（分钟）；0=仅手动触发，>=5 才参与 cron 调度。
+	IntervalMinutes int   `json:"interval_minutes,omitempty"`
+	LastRunAt       int64 `json:"last_run_at,omitempty"` // 上次定时执行的 unix 秒（手动触发不回写）
 }
 
 // DirSyncResult 单次执行汇总。
@@ -32,6 +36,13 @@ type DirSyncResult struct {
 	Synced  int      `json:"synced"`
 	Skipped int      `json:"skipped"`
 	Errors  []string `json:"errors,omitempty"`
+}
+
+// DirSyncRun 一次定时 tick 中某任务的执行记录（供日志/通知）。
+type DirSyncRun struct {
+	Name   string
+	Result *DirSyncResult // nil = 因失联前置条件未执行
+	Err    error
 }
 
 const dirSyncKey = "transfer.dir_sync"
@@ -74,6 +85,54 @@ func SaveDirSyncTasks(kv KVStore, ts []DirSyncTask) error {
 		return err
 	}
 	return kv.Set(dirSyncKey, string(b))
+}
+
+// minDirSyncInterval 定时执行的最小间隔（分钟）：过低会高频扫盘/硬链，失去定时意义。
+const minDirSyncInterval = 5
+
+// RunDueDirSyncs 定时 tick：执行所有「启用 + interval≥5 + 已到期」的任务并回写 LastRunAt。
+// 由 scheduler 的 SkipIfStillRunning 防重叠；单个任务失败不阻断其它任务。
+// 返回每个任务的执行记录（跳过的不在返回值里）。
+func RunDueDirSyncs(kv KVStore, now time.Time) []DirSyncRun {
+	tasks := LoadDirSyncTasks(kv)
+	if len(tasks) == 0 {
+		return nil
+	}
+	nowUnix := now.Unix()
+	var runs []DirSyncRun
+	dirty := false
+	for i := range tasks {
+		t := tasks[i]
+		if !t.Enabled || t.IntervalMinutes < minDirSyncInterval {
+			continue
+		}
+		if t.LastRunAt > 0 && nowUnix-t.LastRunAt < int64(t.IntervalMinutes)*60 {
+			continue // 未到期
+		}
+		run := DirSyncRun{Name: t.Name}
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					run.Err = fmt.Errorf("panic: %v", r)
+				}
+			}()
+			run.Result = RunDirSync(t)
+		}()
+		tasks[i].LastRunAt = nowUnix
+		dirty = true
+		runs = append(runs, run)
+	}
+	if dirty {
+		if err := SaveDirSyncTasks(kv, tasks); err != nil {
+			// 回写失败只影响下次 tick 重复执行（幂等），不吞掉本次已产生的结果。
+			for j := range runs {
+				if runs[j].Err == nil {
+					runs[j].Err = fmt.Errorf("回写 last_run_at 失败: %w", err)
+				}
+			}
+		}
+	}
+	return runs
 }
 
 // mediaExtDefaults 同步默认媒体扩展集（未配 Exts 时）。

@@ -1,5 +1,5 @@
 .spt-root {
-  --spt-primary: 108, 92, 231; /* #6c5ce7 */
+  --spt-primary: 108, 92, 231; /* var(--pt-primary) */
   --spt-on-surface: 31, 41, 55; /* #1f2937 */
   --spt-surface: 255, 255, 255;
   --spt-info: 59, 130, 246; /* #3b82f6 */

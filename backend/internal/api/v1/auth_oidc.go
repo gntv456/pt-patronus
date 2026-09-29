@@ -207,6 +207,12 @@ func (h *AuthHandler) OIDCCallback(c *gin.Context) {
 	}
 	token, err := h.issueForOIDC("oidc:"+ui.Sub, username)
 	if err != nil {
+		// 单用户限制拒绝（errcode 信封透传给前端）与签发失败分开呈现。
+		if errors.Is(err, errcode.AuthUserRejected) {
+			audit(c, "oidc_callback", "reject", slog.String("sub", ui.Sub), slog.String("reason", "single_user_limit"))
+			errcode.Respond(c, errcode.AuthUserRejected)
+			return
+		}
 		errcode.Respond(c, errcode.AuthTokenFailed)
 		return
 	}
@@ -231,12 +237,17 @@ func clearOIDCCookie(c *gin.Context, name string) {
 
 // issueForOIDC 按 OIDC sub upsert User 并签发 JWT。OIDC 由管理员显式启用，视为可信身份：
 // VipLevel=1 + VipVerifiedAt=now（放行 VIP 准入）；首个 OIDC 用户成为 admin（供配置者自助）。
+// 单用户硬限制（与好学登录同口径）：实例已有真实用户时拒绝第二账号创建。
 func (h *AuthHandler) issueForOIDC(hxptUID, username string) (string, error) {
 	now := time.Now()
 	var u models.User
 	err := h.db.Where("hxpt_uid = ?", hxptUID).First(&u).Error
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
+		if uid := h.existingRealUserUID(); uid != "" && uid != hxptUID {
+			slog.Warn("SECURITY: second oidc user rejected (single-user instance)", slog.String("sub", hxptUID))
+			return "", errcode.AuthUserRejected
+		}
 		u = models.User{
 			Username: username, HxptUID: hxptUID, HxptUsername: username,
 			VipLevel: 1, VipVerifiedAt: &now, IsAdmin: h.firstOIDCUser(),
@@ -268,9 +279,29 @@ func (h *AuthHandler) firstOIDCUser() bool {
 
 // firstHxptUser 报告是否尚无好学 VIP 绑定用户（首个 HXPT 用户成为 admin，与 firstOIDCUser 对称）。
 func (h *AuthHandler) firstHxptUser() bool {
-	var n int64
-	h.db.Model(&models.User{}).Where("hxpt_uid NOT LIKE 'oidc:%' AND hxpt_uid NOT LIKE 'emergency:%' AND hxpt_uid != 'demo'").Count(&n)
-	return n == 0
+	return h.existingRealUserUID() == ""
+}
+
+// existingRealUserUID 返回已有的任一「真实」用户（好学/OIDC 绑定账号）的 hxpt_uid；
+// 无则返回 ""。demo 演示账号与 emergency:% 应急账号不计——demo 由 DemoMode 开关控制、
+// emergency 需 SECRET_KEY 派生口令，均非「第二个能自助注册的身份」。单用户硬限制
+// 依据此判定：非空即实例已有主人，任何新身份一律拒绝创建。
+func (h *AuthHandler) existingRealUserUID() string {
+	var u models.User
+	err := h.db.Where("hxpt_uid NOT LIKE 'oidc:%' AND hxpt_uid NOT LIKE 'emergency:%' AND hxpt_uid != 'demo'").
+		Order("id ASC").First(&u).Error
+	if err != nil {
+		return ""
+	}
+	return u.HxptUID
+}
+
+// maskUID 日志脱敏：UID 只留前 6 位 + 长度（防审计日志反推完整好学账号）。
+func maskUID(uid string) string {
+	if len(uid) <= 6 {
+		return uid
+	}
+	return uid[:6] + "…"
 }
 
 // ===== OIDC 配置（管理员） =====

@@ -2,6 +2,7 @@ package v1
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -163,23 +164,46 @@ func (h *TraktHandler) History(c *gin.Context) {
 
 // DevicePage 返回一个极简 HTML 引导页（公开路由）：展示 user_code + verification_url，
 // 并用 JS 轮询 /api/v1/trakt/device-status，授权完成后提示用户回到 App。
+// 只展示、不发起（P1 修复）：device code 由登录用户经 guarded 的 /trakt/device-code 发起；
+// 此前匿名访问即 StartDeviceAuth 会覆盖 pending code（劫持/混淆 device-flow 绑定——
+// 攻击者可抢先用自己的 Trakt 账号完成授权，轮询落库的就是攻击者 token）。
+// 无 pending code 时提示回到 App 发起，并自动跳转 guarded 端点触发（302 登录后回跳）。
 func (h *TraktHandler) DevicePage(c *gin.Context) {
-	_, _ = h.ch.StartDeviceAuth(c.Request.Context())
 	s := h.ch.GetSettings()
+	if s.PendingUserCode == "" {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(
+			`<!doctype html><html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">`+
+				`<title>Trakt 授权</title><style>body{font-family:system-ui;max-width:480px;margin:40px auto;padding:0 16px;color:#222}</style></head>`+
+				`<body><h2>Trakt 设备授权</h2><p>尚未发起授权。请先在 PTPatronus App 中点击「发起授权」，再回到本页。</p>`+
+				`<p class="hint">为防止授权劫持，本页不再代为发起授权请求。</p></body></html>`))
+		return
+	}
 	html := `<!doctype html><html lang="zh"><head><meta charset="utf-8">` +
 		`<meta name="viewport" content="width=device-width,initial-scale=1">` +
 		`<title>Trakt 授权</title><style>body{font-family:system-ui;max-width:480px;margin:40px auto;padding:0 16px;color:#222}` +
 		`code{font-size:28px;font-weight:700;letter-spacing:2px;background:#f0f0f0;padding:6px 12px;border-radius:6px}` +
 		`.ok{color:#16a34a;font-weight:700}</style></head><body>` +
 		`<h2>Trakt 设备授权</h2><p>1. 打开：<a id="vurl" href="#">授权页</a></p>` +
-		`<p>2. 输入授权码：<br><code id="uc">` + s.PendingUserCode + `</code></p>` +
+		`<p>2. 输入授权码：<br><code id="uc">` + htmlEscape(s.PendingUserCode) + `</code></p>` +
 		`<p id="st">等待授权完成…</p><p id="done" class="ok" hidden>✓ 已授权，请回到 PTPatronus App。</p>` +
-		`<script>const u=` + "`" + s.PendingVerificationURL + "`" + `;` +
+		`<script>const u=` + "`" + jsStringEscape(s.PendingVerificationURL) + "`" + `;` +
 		`document.getElementById('vurl').href=u;document.getElementById('vurl').textContent=u;` +
 		`async function poll(){try{const r=await fetch('../trakt/device-status');const j=await r.json();` +
 		`if(j.authorized){document.getElementById('st').hidden=true;document.getElementById('done').hidden=false;return;}` +
 		`}catch(e){}setTimeout(poll,3000);}poll();</script></body></html>`
 	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(html))
+}
+
+// htmlEscape 最小 HTML 转义（user_code 进 <code> 文本位）。
+func htmlEscape(s string) string {
+	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&#34;", "'", "&#39;")
+	return r.Replace(s)
+}
+
+// jsStringEscape JS 模板字面量转义（URL 进反引号字符串：截断反引号/`${`/反斜杠）。
+func jsStringEscape(s string) string {
+	r := strings.NewReplacer("`", "\\`", `\`, `\\`, "$", "\\$")
+	return r.Replace(s)
 }
 
 // nowUnix / maxInt64 小工具。

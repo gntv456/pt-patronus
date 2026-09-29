@@ -10,12 +10,12 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/models"
 )
 
-// refreshSchedules 闁插秴缂撻弻鎰絻娴犲墎娈戦崗銊╁劥鐎规碍妞傛禒璇插閵嗗倸绠撶粵澶涚窗閸忓牏些闂勩倛顕氶幓鎺嶆瀹稿弶婀?job閿?// 閸愬秵瀵滆ぐ鎾冲 manifest + 闁板秶鐤?+ 閸氼垳鏁ら悩鑸碘偓渚€鍣搁弬鎵鐠佽埇鈧静nable/SaveConfig/Register/Start 閸у洩鐨熷銈冣偓?//
+// refreshSchedules 重建指定插件的全部定时任务：先删旧 job，再按 manifest + 状态 +
 // refreshSchedules rebuilds all cron jobs for a plugin.
 func (m *Manager) refreshSchedules(id string) {
 	m.schedMu.Lock()
 	sched := m.sched
-	// 閸忓牊绔婚弮?job
+	// 先清空旧 job
 	for _, name := range m.schedJobs[id] {
 		if sched != nil {
 			sched.Remove(name)
@@ -46,7 +46,7 @@ func (m *Manager) refreshSchedules(id string) {
 	for _, s := range manifest.Schedule {
 		cron := effectiveCron(s, cfg)
 		if strings.TrimSpace(cron) == "" {
-			continue // 缁?cron = 鐠囥儲娼崑婊呮暏
+			continue // 空 cron = 忽略不注册
 		}
 		name := "plugin:" + id + ":" + s.ID
 		action, input := s.Action, s.Input

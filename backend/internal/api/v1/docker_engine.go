@@ -223,8 +223,9 @@ func (c *DockerLocalClient) LocalRemoveImage(ctx context.Context, ref string) er
 
 // LocalPull 拉取镜像（流式返回进度，Docker API 的 /images/create 返回 JSON 流）。
 func (c *DockerLocalClient) LocalPull(ctx context.Context, ref string) (string, error) {
-	// /images/create?fromImage=<ref> 返回逐行 JSON：{"status":"...","id":"..."}
-	resp, err := c.do(ctx, http.MethodPost, "/images/create?fromImage="+urlEncode(ref)+"&tag=latest", nil)
+	path := pullCreatePath(ref)
+	// /images/create 阻塞至拉取完成，大镜像远超默认 30s——用独立的长超时客户端。
+	resp, err := c.doTimeout(ctx, 30*time.Minute, http.MethodPost, path, nil)
 	if err != nil {
 		return "", err
 	}
@@ -234,6 +235,20 @@ func (c *DockerLocalClient) LocalPull(ctx context.Context, ref string) (string, 
 		return "", fmt.Errorf("pull %s: %s %s", ref, resp.Status, string(raw))
 	}
 	return parsePullProgress(raw), nil
+}
+
+// pullCreatePath 按 ref 形态组装 /images/create 路径：
+// nginx（补 tag=latest）/ nginx:1.25、registry:5000/app（内嵌 tag 或仓库端口）
+// / nginx@sha256:...（digest）。tag=latest 无条件追加会覆盖内嵌 tag（拉错版本），
+// digest 与 tag 同给会被 daemon 拒绝。
+func pullCreatePath(ref string) string {
+	if i := strings.IndexByte(ref, '@'); i >= 0 {
+		return "/images/create?fromImage=" + urlEncode(ref)
+	}
+	if i := strings.LastIndexByte(ref, ':'); i >= 0 && !strings.Contains(ref[i+1:], "/") {
+		return "/images/create?fromImage=" + urlEncode(ref[:i]) + "&tag=" + urlEncode(ref[i+1:])
+	}
+	return "/images/create?fromImage=" + urlEncode(ref) + "&tag=latest"
 }
 
 // postRaw 执行 POST 并返回原始 body（用于 prune 等需解析特殊响应的场景）。

@@ -44,6 +44,16 @@ const hrAlerts = ref<HRAlert[]>([])
 const cookieAlerts = ref<string[]>([])
 const torrents = ref<TorrentSnapshot[]>([])
 const notices = ref<Notice[]>([]) // 通知中心：WS 实时推送的最新通知（前置，最新在前）
+// 长任务进度（W4 任务中心）：kind → 最新进度帧。finished 帧短暂保留后清除（顶栏指示器消费）。
+export interface TaskProgress {
+  kind: string
+  done: number
+  total: number
+  site?: string
+  finished: boolean
+}
+const taskProgress = ref<Record<string, TaskProgress>>({})
+const taskTimers: Record<string, ReturnType<typeof setTimeout>> = {}
 
 let ws: WebSocket | null = null
 let retry = 0
@@ -59,6 +69,7 @@ function clearState() {
   cookieAlerts.value = []
   torrents.value = []
   notices.value = []
+  taskProgress.value = {}
   connected.value = false
   lastSeq = 0
   dirty = false
@@ -131,6 +142,21 @@ function onMessage(raw: MessageEvent) {
       case 'notice':
         if (j.data) notices.value = [j.data as Notice, ...notices.value].slice(0, 200)
         break
+      case 'task-progress': {
+        // 进度帧更新对应 kind；finished 后保留 2.5s（让用户看到走满）再清指示器。
+        const tp = j.data as TaskProgress
+        if (!tp?.kind) break
+        taskProgress.value = { ...taskProgress.value, [tp.kind]: tp }
+        if (taskTimers[tp.kind]) clearTimeout(taskTimers[tp.kind])
+        if (tp.finished) {
+          taskTimers[tp.kind] = setTimeout(() => {
+            const next = { ...taskProgress.value }
+            delete next[tp.kind]
+            taskProgress.value = next
+          }, 2500)
+        }
+        break
+      }
     }
   } catch {
     // 忽略畸形帧
@@ -235,6 +261,19 @@ export function useWs() {
     cookieAlerts: readonly(cookieAlerts),
     torrents: readonly(torrents),
     notices: readonly(notices),
+    taskProgress: readonly(taskProgress),
+    /** 前端本地长任务（如 dashboard 逐站循环）镜像进度进来：与后端 WS 帧同构。 */
+    mirrorTaskProgress(tp: TaskProgress) {
+      taskProgress.value = { ...taskProgress.value, [tp.kind]: tp }
+      if (taskTimers[tp.kind]) clearTimeout(taskTimers[tp.kind])
+      if (tp.finished) {
+        taskTimers[tp.kind] = setTimeout(() => {
+          const next = { ...taskProgress.value }
+          delete next[tp.kind]
+          taskProgress.value = next
+        }, 2500)
+      }
+    },
     connect,
     disconnect,
   }

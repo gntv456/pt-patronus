@@ -55,10 +55,12 @@ func (o *SubscriptionOper) Get(id uint) (*models.Subscription, error) {
 	return &s, nil
 }
 
-// FindActiveBySource 按源+source_id 找订阅中的订阅（创建时去重用）。
+// FindActiveBySource 按源+source_id 找活跃订阅（创建时去重用）。
+// subscribed 与 paused 都算「已存在」：paused 订阅再次订阅时由调用方复用复活，
+// 否则会产生同源双订阅——恢复后同 torrent 双推送、洗版进度各维护一份。
 func (o *SubscriptionOper) FindActiveBySource(source, sourceID string) (*models.Subscription, error) {
 	var s models.Subscription
-	err := o.db.Where("source = ? AND source_id = ? AND status = ?", source, sourceID, "subscribed").First(&s).Error
+	err := o.db.Where("source = ? AND source_id = ? AND status IN ?", source, sourceID, []string{"subscribed", "paused"}).First(&s).Error
 	if err != nil {
 		return nil, err
 	}

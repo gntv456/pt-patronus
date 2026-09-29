@@ -103,6 +103,24 @@ func TestSiteDeleteMany(t *testing.T) {
 		t.Errorf("remain = %+v, want only C", remain)
 	}
 
+	// 重复 id 不虚报：重置库后删除 [A,A,B]，failed/deleted 均按去重后计算。
+	for _, name := range []string{"A", "B"} {
+		if err := db.Create(&models.Site{Name: name, Platform: "tnode", BaseURL: "https://" + name + "2.test"}).Error; err != nil {
+			t.Fatalf("reseed %s: %v", name, err)
+		}
+	}
+	var two []models.Site
+	if err := db.Where("name IN ?", []string{"A", "B"}).Find(&two).Error; err != nil || len(two) != 2 {
+		t.Fatalf("reseed: %d sites err=%v", len(two), err)
+	}
+	failed, err = op.DeleteMany([]uint{two[0].ID, two[0].ID, two[1].ID})
+	if err != nil {
+		t.Fatalf("DeleteMany dup: %v", err)
+	}
+	if len(failed) != 0 {
+		t.Errorf("failed with dup ids = %v, want empty", failed)
+	}
+
 	// 空入参安全（无错、nil failed）
 	if f, err := op.DeleteMany(nil); err != nil || f != nil {
 		t.Errorf("DeleteMany(nil) = %v %v, want nil nil", f, err)
@@ -130,6 +148,64 @@ func TestCreate_RejectsDuplicateByRegisteredDomain(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "hxpt.org") {
 		t.Errorf("err msg should contain domain, got %q", err.Error())
+	}
+}
+
+// TestCreate_RejectsDuplicateWithDifferentPort 同注册域、仅端口写法不同（hxpt.org:8080）
+// 也必须判重——publicsuffix 不识别端口，RegisteredDomain 会原样带回端口导致漏判。
+func TestCreate_RejectsDuplicateWithDifferentPort(t *testing.T) {
+	db := newSiteTestDB(t)
+	op := NewSiteOper(db, nil)
+
+	if _, err := op.Create(SiteInput{
+		Name: "好学", Platform: "nexusphp", BaseURL: "https://hxpt.org", IsActive: true,
+	}); err != nil {
+		t.Fatalf("seed create: %v", err)
+	}
+	if _, err := op.Create(SiteInput{
+		Name: "好学换端口", Platform: "nexusphp", BaseURL: "https://hxpt.org:8080", IsActive: true,
+	}); !errors.Is(err, ErrDuplicateSite) {
+		t.Fatalf("want ErrDuplicateSite for same domain with different port, got %v", err)
+	}
+
+	// Update 同样不得把已有站改成同注册域带端口的写法
+	if _, err := op.Create(SiteInput{
+		Name: "别站", Platform: "nexusphp", BaseURL: "https://other.example", IsActive: true,
+	}); err != nil {
+		t.Fatalf("seed other: %v", err)
+	}
+	if _, err := op.Update(2, SiteInput{
+		Name: "别站", Platform: "nexusphp", BaseURL: "https://hxpt.org:8443", IsActive: true,
+	}); !errors.Is(err, ErrDuplicateSite) {
+		t.Fatalf("update: want ErrDuplicateSite for port variant, got %v", err)
+	}
+}
+
+// TestCreate_TrimsBaseURLWhitespace base_url 首尾空白必须修剪后再入库：
+// validateBaseURL 按空白修剪校验，若原样存储，适配器拼接请求必然失败。
+func TestCreate_TrimsBaseURLWhitespace(t *testing.T) {
+	db := newSiteTestDB(t)
+	op := NewSiteOper(db, nil)
+
+	s, err := op.Create(SiteInput{
+		Name: "好学", Platform: "nexusphp", BaseURL: "  https://hxpt.org/  ", IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if s.BaseURL != "https://hxpt.org/" {
+		t.Errorf("stored base_url = %q, want trimmed %q", s.BaseURL, "https://hxpt.org/")
+	}
+
+	// Update 路径同样修剪
+	s2, err := op.Update(s.ID, SiteInput{
+		Name: "好学", Platform: "nexusphp", BaseURL: "  https://www.hxpt.org  ", IsActive: true,
+	})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if s2.BaseURL != "https://www.hxpt.org" {
+		t.Errorf("updated base_url = %q, want trimmed", s2.BaseURL)
 	}
 }
 
@@ -179,4 +255,39 @@ func TestCreateMany_SkipsDuplicates(t *testing.T) {
 	if cnt != 3 {
 		t.Errorf("total sites = %d, want 3 (seed hxpt + m-team + cspt)", cnt)
 	}
+}
+
+// TestCreate_RejectsNonHTTPBaseURL base_url 必须是 http(s):// 开头且带 host：
+// javascript:/file:/data: 等 scheme 入库会在抓取路径产生危险语义（ResolveReference 等），
+// 入口处直接拒绝（Create 与 Update 一致）。
+func TestCreate_RejectsNonHTTPBaseURL(t *testing.T) {
+	db := newSiteTestDB(t)
+	op := NewSiteOper(db, nil)
+
+	for _, bad := range []string{
+		"javascript:alert(1)", "file:///C:/Windows/win.ini", "data:text/html,x",
+		"ftp://files.example.com", "not a url", "http://", "//nohost.com/x",
+	} {
+		if _, err := op.Create(SiteInput{Name: "x", Platform: "nexusphp", BaseURL: bad, IsActive: true}); !errors.Is(err, ErrInvalidBaseURL) {
+			t.Errorf("Create(%q) err=%v, want ErrInvalidBaseURL", bad, err)
+		}
+	}
+	for _, ok := range []string{"https://duckboobee.org/", "http://example.com:8080/x", "https://www.hxpt.org/index.php"} {
+		u := ok
+		if i := indexByte(ok, '#'); i >= 0 {
+			u = ok[:i]
+		}
+		if _, err := op.Create(SiteInput{Name: "n" + u, Platform: "nexusphp", BaseURL: u, IsActive: true}); err != nil {
+			t.Errorf("Create(%q) unexpected err: %v", u, err)
+		}
+	}
+}
+
+func indexByte(s string, b byte) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == b {
+			return i
+		}
+	}
+	return -1
 }

@@ -59,7 +59,7 @@
   padding: 4px 12px;
   border-radius: 14px;
   background: rgba(108, 92, 231, 0.12);
-  color: var(--accent, #6c5ce7);
+  color: var(--accent);
   font-size: 12px;
   cursor: pointer;
   white-space: nowrap;

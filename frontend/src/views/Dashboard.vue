@@ -194,6 +194,19 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- 首屏骨架（W3）：overview 未就绪时用指标骨架占位（替代整页空白/转圈）。
+         结构对应工作台问候条 + 三列实时卡，避免布局跳动。 -->
+    <div v-if="loading" class="dash-skeleton" aria-busy="true">
+      <div class="pt-skeleton sk-greet"></div>
+      <div class="dash-sk-grid">
+        <div v-for="i in 3" :key="i" class="ops-surface zone-card">
+          <div class="pt-skeleton sk-line w40"></div>
+          <div class="pt-skeleton sk-block"></div>
+          <div class="pt-skeleton sk-line w60"></div>
+        </div>
+      </div>
+    </div>
+
     <template v-if="!loading && overview && (overview.site_count > 0 || overview.downloader_count > 0)">
       <DashboardHealthStrip />
       <DashboardSyncCard />

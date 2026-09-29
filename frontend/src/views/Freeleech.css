@@ -43,7 +43,7 @@
 }
 .tile.active {
   background: var(--pt-primary-bg);
-  box-shadow: inset 0 0 0 1.5px var(--pt-primary, #6c5ce7);
+  box-shadow: inset 0 0 0 1.5px var(--pt-primary);
 }
 .tile .num {
   font-size: var(--fs-title);
@@ -56,7 +56,7 @@
   margin-top: 2px;
 }
 .reset-link {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   cursor: pointer;
 }
 .cards {
@@ -77,12 +77,6 @@
 }
 .spacer {
   flex: 1;
-}
-.chip {
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  font-size: var(--fs-xs);
-  white-space: nowrap;
 }
 .err {
   color: var(--pt-danger);
@@ -112,14 +106,14 @@
 }
 .notice-link {
   font-size: var(--fs-xs);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .expand {
   margin-top: 4px;
   background: transparent;
   border: none;
   cursor: pointer;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-xs);
 }
 .empty {

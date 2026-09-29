@@ -234,3 +234,75 @@ func TestHdblueYinyangAcceptFirst(t *testing.T) {
 		t.Errorf("balance = %v, want 60", out.Balance)
 	}
 }
+
+// 阴阳契：第一个挑战应战业务失败（如已被他人应战）→ 自动换下一个；
+// 全部失败才带出最后一次原因，不再盲目降级发起（发起还要押影币）。
+func TestHdblueYinyangAcceptRetriesNext(t *testing.T) {
+	rsc := `<script>self.__next_f.push([1,"7:{\"initialData\":{\"summary\":{\"userId\":7,\"pointName\":\"影币\",\"points\":100,\"dailyCreateLimit\":5,\"dailyAcceptLimit\":10,\"createdToday\":0,\"acceptedToday\":0},\"openChallenges\":[{\"id\":\"c1\",\"creatorId\":9,\"status\":\"OPEN\",\"question\":\"题一\",\"optionA\":\"A1\",\"optionB\":\"B1\",\"stakePoints\":10},{\"id\":\"c2\",\"creatorId\":9,\"status\":\"OPEN\",\"question\":\"题二\",\"optionA\":\"A2\",\"optionB\":\"B2\",\"stakePoints\":10}]}}"])</script>`
+	accepts := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/funs/yinyang-contract":
+			_, _ = w.Write([]byte(rsc))
+		case "/api/yinyang-contract":
+			accepts++
+			if accepts == 1 {
+				_ = json.NewEncoder(w).Encode(map[string]any{"code": 409, "message": "该挑战已被应战"})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"code": 0, "message": "应战成功",
+				"data": map[string]any{"summary": map[string]any{"userId": 7, "points": 90}},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+
+	hc, _ := httpclient.New(httpclient.Options{AllowPrivate: true})
+	out, err := HdblueYinyangGame{}.Play(context.Background(), hc, srv.URL, Creds{Cookie: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !out.Success || !strings.Contains(out.Prize, "题二") {
+		t.Fatalf("第一个失败后应自动换下一个挑战: %+v", out)
+	}
+	if accepts != 2 {
+		t.Errorf("accept 次数 = %d, want 2", accepts)
+	}
+}
+
+// 转义形态（RSC flight 流 \"key\":…）+ 字符串内容含花括号：须先还原外层转义再配平，
+// 否则 \" 被当转义符吞掉、字符串永不闭合，内容里的 { } 会破坏配平。
+func TestHdblueExtractJSONEscapedBraces(t *testing.T) {
+	body := `2:{\"summary\":{\"userId\":7,\"note\":\"玩法{a}说明\",\"odd\":3}}:end`
+	got := hdblueExtractJSON(body, `\"summary\":{\"userId\"`)
+	if got == nil {
+		t.Fatal("转义形态应能提取")
+	}
+	var m struct {
+		UserID int    `json:"userId"`
+		Note   string `json:"note"`
+		Odd    int    `json:"odd"`
+	}
+	if err := json.Unmarshal(got, &m); err != nil {
+		t.Fatalf("提取段应为合法 JSON: %v (%s)", err, got)
+	}
+	if m.UserID != 7 || m.Note != "玩法{a}说明" || m.Odd != 3 {
+		t.Errorf("字段不完整: %+v", m)
+	}
+}
+
+// 裸形态、key 中段含对象起始 '{'（"summary":{"userId"）：起点应落在该 '{'，
+// 且字符串内容里的花括号不得破坏配平。
+func TestHdblueExtractJSONRawMidKeyBrace(t *testing.T) {
+	body := `xx"summary":{"userId":7,"note":"a{b}c"}yy`
+	got := hdblueExtractJSON(body, `"summary":{"userId"`)
+	if got == nil {
+		t.Fatal("裸形态应能提取")
+	}
+	if want := `{"userId":7,"note":"a{b}c"}`; string(got) != want {
+		t.Errorf("got %s, want %s", got, want)
+	}
+}

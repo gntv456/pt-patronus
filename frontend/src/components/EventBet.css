@@ -60,13 +60,13 @@
 }
 .my-bet {
   font-size: var(--fs-body);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 .link-btn {
   background: none;
   border: 0;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   cursor: pointer;
   font-size: var(--fs-body);
 }
@@ -88,7 +88,7 @@
   font-size: var(--fs-md);
 }
 .opt.sel {
-  border-color: var(--pt-primary, #6c5ce7);
+  border-color: var(--pt-primary);
   background: var(--pt-primary-bg);
 }
 .opt.mine {
@@ -204,7 +204,7 @@
 }
 .ev-card-go {
   font-size: var(--fs-xs);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 

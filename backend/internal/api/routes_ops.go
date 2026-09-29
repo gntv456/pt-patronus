@@ -87,7 +87,8 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		docker.POST("/:id/containers/:name/pause", dockerH.Pause)
 		docker.POST("/:id/containers/:name/unpause", dockerH.Unpause)
 		docker.POST("/:id/containers/:name/remove", dockerH.Remove)
-		docker.POST("/:id/images/:ref/remove", dockerH.ImageRemove)
+		// 镜像 ref 常含 '/'（ghcr.io/x/y:1.0），单段 :param 匹配不到 → ref 走 query 传参
+		docker.POST("/:id/images/remove", dockerH.ImageRemove)
 		docker.POST("/:id/compose/up", dockerH.ComposeUp)
 		docker.POST("/:id/compose/down", dockerH.ComposeDown)
 
@@ -100,7 +101,7 @@ func registerOpsRoutes(guarded *gin.RouterGroup, d *Deps) {
 		// remove 必须注册在 :action 通配之前（静态段优先匹配）
 		docker.POST("/local/containers/:name/remove", dockerH.LocalRemove)
 		docker.POST("/local/containers/:name/:action", dockerH.LocalContainerAction)
-		docker.DELETE("/local/images/:ref", dockerH.LocalRemoveImage)
+		docker.DELETE("/local/images", dockerH.LocalRemoveImage)
 		// 本机扩展：拉取镜像 / 清理 / 卷网络管理
 		docker.POST("/local/images/pull", dockerH.LocalPull)
 		docker.POST("/local/prune", dockerH.LocalPrune)

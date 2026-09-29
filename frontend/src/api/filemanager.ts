@@ -54,8 +54,11 @@ export const fileApi = {
       .then((r) => r.data)
   },
   downloadUrl: (id: number, path: string) => `/api/v1/storages/${id}/download?path=${encodeURIComponent(path)}`,
+  // 建目录（后端 soft-fail：200 + {ok:false,error}，这里转成异常）。
   mkdir: (id: number, path: string) =>
-    http.post(`/storages/${id}/mkdir`, null, { params: { path } }).then((r) => r.data),
+    http.post<{ ok: boolean; error?: string }>(`/storages/${id}/mkdir`, null, { params: { path } }).then((r) => {
+      if (!r.data.ok) throw new Error(r.data.error || terr('common.actionFailed', '操作失败'))
+    }),
   // 删除文件/目录（后端 soft-fail：200 + {ok:false,error}，这里转成异常）。
   removeFile: (id: number, path: string) =>
     http.post<{ ok: boolean; error?: string }>(`/storages/${id}/delete`, null, { params: { path } }).then((r) => {
@@ -80,26 +83,26 @@ export const fileApi = {
     http
       .get<{ ok: boolean; content?: string; error?: string }>(`/storages/${id}/read`, { params: { path } })
       .then((r) => {
-        if (!r.data.ok) throw new Error(r.data.error || '????')
+        if (!r.data.ok) throw new Error(r.data.error || terr('apiErr.readFailed', '读取失败'))
         return r.data.content || ''
       }),
   writeFile: (id: number, path: string, content: string) =>
     http.post<{ ok: boolean; error?: string }>(`/storages/${id}/write`, { content }, { params: { path } }).then((r) => {
-      if (!r.data.ok) throw new Error(r.data.error || '????')
+      if (!r.data.ok) throw new Error(r.data.error || terr('apiErr.saveFailed', '保存失败'))
     }),
   archive: (id: number, src: string, dst: string) =>
     http.post<{ ok: boolean; error?: string }>(`/storages/${id}/archive`, null, { params: { src, dst } }).then((r) => {
-      if (!r.data.ok) throw new Error(r.data.error || '????')
+      if (!r.data.ok) throw new Error(r.data.error || terr('apiErr.archiveFailed', '压缩失败'))
     }),
   extract: (id: number, src: string, dst: string) =>
     http.post<{ ok: boolean; error?: string }>(`/storages/${id}/extract`, null, { params: { src, dst } }).then((r) => {
-      if (!r.data.ok) throw new Error(r.data.error || '????')
+      if (!r.data.ok) throw new Error(r.data.error || terr('apiErr.extractFailed', '解压失败'))
     }),
   chmod: (id: number, path: string, mode: number, recursive: boolean) =>
     http
       .post<{ ok: boolean; error?: string }>(`/storages/${id}/chmod`, { mode, recursive }, { params: { path } })
       .then((r) => {
-        if (!r.data.ok) throw new Error(r.data.error || '??????')
+        if (!r.data.ok) throw new Error(r.data.error || terr('apiErr.chmodFailed', '修改权限失败'))
       }),
   dirSize: (id: number, path: string) =>
     http
@@ -107,7 +110,7 @@ export const fileApi = {
         params: { path },
       })
       .then((r) => {
-        if (!r.data.ok) throw new Error(r.data.error || '????')
+        if (!r.data.ok) throw new Error(r.data.error || terr('apiErr.calcSizeFailed', '计算大小失败'))
         return { size: r.data.size || 0, sizeStr: r.data.size_str || '0 B' }
       }),
 }

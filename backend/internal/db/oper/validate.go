@@ -29,12 +29,13 @@ func validateURLScheme(raw string) error {
 }
 
 // validateForType 按存储类型分派 URL 校验：webdav/alist 走 http(s)；smb 走 smb://；
-// agent/local 无 URL；115/夸克/123 网盘为固定公网端点（cookie/token 鉴权），无自定义 URL。
+// agent/local 无 URL；115/夸克/123 网盘为固定公网端点（cookie/token 鉴权），无自定义 URL；
+// rclone 的 URL 字段承载 rclone 二进制路径（如 /usr/bin/rclone，可空），非网络地址不校验 scheme。
 func validateForType(typ, raw string) error {
 	switch typ {
 	case "smb":
 		return validateSMBURL(raw)
-	case "agent", "local", "115", "quark", "123":
+	case "agent", "local", "115", "quark", "123", "rclone":
 		return nil
 	default: // webdav | alist
 		return validateURLScheme(raw)

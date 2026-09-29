@@ -37,8 +37,8 @@ const area = computed(() => (path.value ? `${path.value} L${W},${H.value} L0,${H
         <stop offset="100%" stop-color="var(--pt-primary-bg)" />
       </linearGradient>
       <linearGradient id="mc-line" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="#4285f4" />
-        <stop offset="100%" stop-color="#6c5ce7" />
+        <stop offset="0%" style="stop-color: var(--pt-primary-2)" />
+        <stop offset="100%" style="stop-color: var(--pt-primary)" />
       </linearGradient>
     </defs>
     <path v-if="area" :d="area" fill="url(#mc-area)" />

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -15,7 +16,11 @@ func (h *SiteHandler) Search(c *gin.Context) {
 	if !ok {
 		return
 	}
-	keyword := c.Query("keyword")
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	if keyword == "" {
+		errcode.Respond(c, errcode.MediaKeywordRequired)
+		return
+	}
 	category := c.Query("category") // movie/tv/music（空=综合）
 	page := atoiDefault(c.Query("page"), 1)
 	s, err := h.oper.Get(id)
@@ -32,8 +37,14 @@ func (h *SiteHandler) Search(c *gin.Context) {
 }
 
 // SearchAll 跨启用站点聚合搜索。?site_ids=1,2,3 仅搜索指定启用站点子集（空=全部启用）。
+// keyword 空/纯空白 → 400（与 /media/search 一致）：空关键词会把「种子列表首页」当搜索结果
+// 扇出到全部站点，浪费配额且结果与关键词无关。
 func (h *SiteHandler) SearchAll(c *gin.Context) {
-	keyword := c.Query("keyword")
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	if keyword == "" {
+		errcode.Respond(c, errcode.MediaKeywordRequired)
+		return
+	}
 	category := c.Query("category") // movie/tv/music（空=综合）
 	siteIDs := parseUintSlice(c.Query("site_ids"))
 	results := h.siteCh.SearchSites(c.Request.Context(), keyword, category, siteIDs)
@@ -42,8 +53,13 @@ func (h *SiteHandler) SearchAll(c *gin.Context) {
 
 // SearchAllStream SSE 流式跨站搜索：每站完成推一帧 event:batch（results 为单元素数组），
 // 供搜索页「搜出一个显示一个」；结束推 event:done。失败站也推送（Error 字段承载错误）。
+// keyword 空/纯空白 → 400（与 SearchAll 同因）：SSE 已写 200 头后无法改码，须在 beginSSE 前校验。
 func (h *SiteHandler) SearchAllStream(c *gin.Context) {
-	keyword := c.Query("keyword")
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	if keyword == "" {
+		errcode.Respond(c, errcode.MediaKeywordRequired)
+		return
+	}
 	category := c.Query("category")
 	siteIDs := parseUintSlice(c.Query("site_ids"))
 	emit := beginSSE(c.Writer)
@@ -103,15 +119,27 @@ func (h *SiteHandler) UpdateCookie(c *gin.Context) {
 
 // GetCookies 站点 Cookie 台账（浏览器扩展对比视图用）：
 // 返回全部站点的 cookie 指纹（sha256 前 12 位 + 长度 + 更新时间可辨异同，不泄露明文）。
-// 带 ?reveal=1 时返回明文（把服务器 cookie 覆盖到浏览器用）；完整明文属敏感操作，
-// 与 backup/export 同级——仅在路由层挂 RequireAdmin 的端点上开放。
+// 完整明文属敏感操作，与 backup/export 同级——仅在路由层挂 RequireAdmin 的
+// GetCookiesReveal 端点上开放；本端点不受任何 query 参数控制（防 ?reveal=1 穿透
+// admin 闸门：此前 GetCookiesReveal 靠改写 RawQuery 复用本函数，导致非 admin 的
+// /sites/cookies 也能被 query 参数打开明文回显）。
 func (h *SiteHandler) GetCookies(c *gin.Context) {
+	h.cookies(c, false)
+}
+
+// GetCookiesReveal 是 GetCookies 的明文版；路由层 RequireAdmin 收敛，
+// 使「把服务器 cookie 拉到浏览器」与 backup/export 同为管理员能力。
+func (h *SiteHandler) GetCookiesReveal(c *gin.Context) {
+	h.cookies(c, true)
+}
+
+// cookies 台账实现。reveal 仅由本文件内的 admin 端点置 true，与请求参数无关。
+func (h *SiteHandler) cookies(c *gin.Context, reveal bool) {
 	sites, err := h.oper.List()
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	reveal := c.Query("reveal") == "1"
 	out := make([]gin.H, 0, len(sites))
 	for _, s := range sites {
 		item := gin.H{
@@ -138,13 +166,6 @@ func (h *SiteHandler) GetCookies(c *gin.Context) {
 		out = append(out, item)
 	}
 	c.JSON(http.StatusOK, gin.H{"sites": out})
-}
-
-// GetCookiesReveal 是 GetCookies 的明文版（?reveal=1）；路由层 RequireAdmin 收敛，
-// 使「把服务器 cookie 拉到浏览器」与 backup/export 同为管理员能力。
-func (h *SiteHandler) GetCookiesReveal(c *gin.Context) {
-	c.Request.URL.RawQuery = "reveal=1"
-	h.GetCookies(c)
 }
 
 // Definitions 列出可用站点定义（供 UI 选站点模板）。

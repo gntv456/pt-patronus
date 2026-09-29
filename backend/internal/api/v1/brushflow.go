@@ -1,8 +1,10 @@
 package v1
 
 import (
+	"context"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
@@ -82,8 +84,21 @@ func (h *BrushFlowHandler) Update(c *gin.Context) {
 		return
 	}
 	t.ID = uint(id)
+	// 与 Create 对称：统计/时间戳为服务端管控字段，客户端不可通过全量 Save 覆盖
+	//（前端 toggle/编辑会原样回传旧值，伪造或缺失该字段都会导致统计被清零）。
+	t.TotalAdded = 0
+	t.TotalDeleted = 0
+	t.TotalUpload = 0
+	t.CreatedAt = time.Time{}
+	t.LastSelectAt = nil
+	t.LastSweepAt = nil
+	t.LastError = ""
 	if err := h.svc.UpdateTask(&t); err != nil {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		return
+	}
+	if fresh, err := h.svc.GetTask(uint(id)); err == nil {
+		c.JSON(http.StatusOK, fresh)
 		return
 	}
 	c.JSON(http.StatusOK, t)
@@ -95,15 +110,22 @@ func (h *BrushFlowHandler) Delete(c *gin.Context) {
 }
 
 // Select 手动触发选种。
+// ctx 与请求解绑（P1）：前端 axios 15s 超时断开即取消请求 ctx——选种中途被砍时
+// 已进下载器的种子可能未写历史，下轮去重失效重复添加。改用独立 ctx + 10min 上限，
+// 请求断开不影响后台执行（响应迟了客户端轮询任务状态即可）。
 func (h *BrushFlowHandler) Select(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	opResult(c, h.svc.RunSelect(c.Request.Context(), uint(id)))
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), 10*time.Minute)
+	defer cancel()
+	opResult(c, h.svc.RunSelect(ctx, uint(id)))
 }
 
-// Sweep 手动触发扫删。
+// Sweep 手动触发扫删（同样与请求解绑，见 Select 注释）。
 func (h *BrushFlowHandler) Sweep(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-	opResult(c, h.svc.RunSweep(c.Request.Context(), uint(id)))
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(c.Request.Context()), 10*time.Minute)
+	defer cancel()
+	opResult(c, h.svc.RunSweep(ctx, uint(id)))
 }
 
 // Seeds 列出任务的种子加入历史。

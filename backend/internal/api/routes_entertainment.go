@@ -51,6 +51,7 @@ func registerEntertainmentRoutes(api, guarded *gin.RouterGroup, d *Deps) {
 		ent.POST("/:id/games/:game/bigsmall-redpacket", entH.BigSmallRedpacket)
 		// 五子棋（蜂巢）：全景快照 + 动作（create/choose-color/move/undo/forfeit/retry-ai）
 		ent.GET("/:id/games/:game/gobang-state", entH.GobangState)
+		ent.POST("/:id/games/:game/gobang-hint", entH.GobangHint)
 		ent.POST("/:id/games/:game/gobang-action", entH.GobangAction)
 		// 好友买卖（PANDA）全景快照；钓鱼（思齐）全景快照（批8 富 UI）
 		ent.GET("/:id/games/:game/friendtrade-state", entH.FriendTradeState)

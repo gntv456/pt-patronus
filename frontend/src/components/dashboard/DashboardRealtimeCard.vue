@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { useWs } from '@/composables/useWs'
 import { fmtSpeed } from '@/utils/format'
+import { stateGroup } from '@/components/downloader/torrentTableFilters'
 
 // DashboardRealtimeCard — 区②下载器实时速率：直接消费 WS torrents 单例（DeepReadonly），
 // 跨下载器汇总速率与任务状态。WS 自动更新，无需轮询。
@@ -14,11 +15,14 @@ const count = computed(() => torrents.value.length)
 const snaps = computed(() => torrents.value.map((t) => ({ ...t, torrents: t.torrents ?? [] })))
 const dlRate = computed(() => snaps.value.reduce((s, t) => s + (t.stats?.dl_rate ?? 0), 0))
 const upRate = computed(() => snaps.value.reduce((s, t) => s + (t.stats?.up_rate ?? 0), 0))
+// 状态归类复用 torrentTableFilters.stateGroup（全站统一口径）：
+// qB 的 stalledUP/queuedUP/forcedUP 等「做种族」状态原正则 /upload|seed/ 完全匹配不到
+// （stalledUP 里既无 upload 也无 seed），导致 2965 种全在做种却显示「0 做种」。
 const downloading = computed(() =>
-  snaps.value.reduce((s, t) => s + t.torrents.filter((x) => /download|leech/i.test(x.state)).length, 0),
+  snaps.value.reduce((s, t) => s + t.torrents.filter((x) => stateGroup(x.state) === 'downloading').length, 0),
 )
 const seeding = computed(() =>
-  snaps.value.reduce((s, t) => s + t.torrents.filter((x) => /upload|seed/i.test(x.state)).length, 0),
+  snaps.value.reduce((s, t) => s + t.torrents.filter((x) => stateGroup(x.state) === 'seeding').length, 0),
 )
 const total = computed(() => snaps.value.reduce((s, t) => s + t.torrents.length, 0))
 const errored = computed(() => snaps.value.filter((t) => t.error).length)

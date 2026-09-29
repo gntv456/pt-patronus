@@ -2,6 +2,9 @@ package chain
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"path"
@@ -32,6 +35,7 @@ type CloudChain struct {
 	taskOp            *oper.CloudTaskOper // 任务操作（入队用）
 	transferCfgGetter KVGetter            // transfer.config 读取（任务尾部生成 STRM 用）
 	appBaseURL        string              // 服务对外基址（strm 绝对 URL 渲染；空=相对）
+	directSignKey     []byte              // 直链签名密钥（nil=兼容模式不签名不校验）
 	libRefresher      func(name string)   // 媒体库刷新钩子（upload 任务尾部；nil 跳过）
 	mediaSearch       func(ctx context.Context, keyword string, year int, filter string) (*MediaSearchItem, error)
 }
@@ -133,8 +137,13 @@ func (c *CloudChain) UploadFile(ctx context.Context, driveID uint, cloudPath, lo
 const transferDefaultStrmTemplate = "{direct}{cloudpath}"
 
 // UpsertStrm 登记云盘文件为 StrmRecord，并按需在本地 outputDir 生成 .strm 文件
-// （内容指向 302 直链端点）。structRoot 非空时镜像云盘目录结构到 outputDir 下。
+// （内容指向 302 直链端点）。structRoot 非空时镜像云盘目录结构到 outputDir 下；
+// outPath 非空时直写该路径（repair 沿用记录里的既有 .strm 文件名）。
 func (c *CloudChain) UpsertStrm(ctx context.Context, driveID uint, cloudPath, outputDir, template string, structRoot ...string) error {
+	return c.upsertStrm(ctx, driveID, cloudPath, outputDir, template, "", structRoot...)
+}
+
+func (c *CloudChain) upsertStrm(ctx context.Context, driveID uint, cloudPath, outputDir, template, outPath string, structRoot ...string) error {
 	cloudPath = cloud.CleanPath(cloudPath)
 	if _, err := c.ruleOp.UpsertRecord(driveID, cloudPath, "", 0, 0); err != nil {
 		return err
@@ -153,6 +162,9 @@ func (c *CloudChain) UpsertStrm(ctx context.Context, driveID uint, cloudPath, ou
 		DriveID:    driveID,
 		DirectBase: "/api/v1/cloud/direct",
 		AppBaseURL: c.appBaseURL,
+		OutPath:    outPath,
+		// 限时直链签名：URL 即凭证，防匿名枚举 driveId+路径换全盘直链。
+		Sign: c.SignDirectLink(driveID, cloudPath),
 	}
 	if len(structRoot) > 0 {
 		w.StructRoot = structRoot[0]
@@ -269,6 +281,50 @@ func (c *CloudChain) EnqueueCloudTask(t *models.CloudTask) error {
 // SetAppBaseURL 注入服务对外基址（strm 内容渲染绝对 URL；Emby 远端播放必需）。
 func (c *CloudChain) SetAppBaseURL(u string) { c.appBaseURL = strings.TrimRight(u, "/") }
 
+// SetDirectLinkSignKey 注入直链签名密钥（与 JWT/AES 同源即可）。非空时：
+//   - .strm 内容的 {direct} URL 追加 ?sign=<exp>.<hmac>（默认 12h 有效）；
+//   - 公开 302 端点校验签名，签名缺失/过期/不匹配一律 404。
+//
+// 收敛「匿名枚举 driveId+路径换全盘直链」面：URL 本身即凭证。过期后播放器 404，
+// 由 STRM 重新生成/扫库刷新。兼容：密钥未注入（安全模式/旧库）不签名也不校验。
+func (c *CloudChain) SetDirectLinkSignKey(key []byte) { c.directSignKey = key }
+
+const directLinkSignTTL = 12 * time.Hour
+
+// SignDirectLink 生成 driveId|path|exp 的限时签名「<exp十进制>.<hmac-hex>」。
+// 密钥未注入返回空串（不签名，兼容模式）。
+func (c *CloudChain) SignDirectLink(driveID uint, cloudPath string) string {
+	if len(c.directSignKey) == 0 {
+		return ""
+	}
+	exp := time.Now().Add(directLinkSignTTL).Unix()
+	return fmt.Sprintf("%d.%s", exp, c.directSignMAC(driveID, cloudPath, exp))
+}
+
+func (c *CloudChain) directSignMAC(driveID uint, cloudPath string, exp int64) string {
+	mac := hmac.New(sha256.New, c.directSignKey)
+	fmt.Fprintf(mac, "%d|%s|%d", driveID, cloudPath, exp)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// VerifyDirectLinkSign 校验「<exp>.<hmac>」签名（exp 未过 + 恒定时间 HMAC 匹配）。
+// 密钥未注入时放行（兼容模式——与旧版行为一致）。
+func (c *CloudChain) VerifyDirectLinkSign(driveID uint, cloudPath, sign string) bool {
+	if len(c.directSignKey) == 0 {
+		return true
+	}
+	dot := strings.IndexByte(sign, '.')
+	if dot <= 0 {
+		return false
+	}
+	var exp int64
+	if _, err := fmt.Sscanf(sign[:dot], "%d", &exp); err != nil || time.Now().Unix() > exp {
+		return false
+	}
+	want := c.directSignMAC(driveID, cloudPath, exp)
+	return hmac.Equal([]byte(want), []byte(sign[dot+1:]))
+}
+
 // SetTransferConfigGetter 注入 transfer.config 读取（任务尾部生成 STRM 用）。
 func (c *CloudChain) SetTransferConfigGetter(g KVGetter) { c.transferCfgGetter = g }
 
@@ -276,6 +332,21 @@ func (c *CloudChain) SetTransferConfigGetter(g KVGetter) { c.transferCfgGetter =
 func (c *CloudChain) SetCloudTaskOper(taskOp *oper.CloudTaskOper) {
 	c.taskOp = taskOp
 	c.StartCloudTaskExecutor(taskOp)
+}
+
+// StopCloudTaskExecutor 停止云端任务执行器（app Shutdown 调用）。
+// 幂等：未启动/已停直接返回。在途任务的 ctx 不随停机取消（execute 自带 2h 上限），
+// goroutine 在当前任务完成后随 stop 信号退出；下次启动由 RequeueStaleRunning 兜底恢复。
+func (c *CloudChain) StopCloudTaskExecutor() {
+	if c.tasks == nil || c.tasks.stop == nil {
+		return
+	}
+	select {
+	case <-c.tasks.stop:
+		// 已关闭（幂等）
+	default:
+		close(c.tasks.stop)
+	}
 }
 
 // CloudTasks 任务列表（API 用）。

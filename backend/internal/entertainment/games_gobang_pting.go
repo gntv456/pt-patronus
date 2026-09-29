@@ -65,6 +65,7 @@ type GobangMatch struct {
 	InterruptionVoidedAt   string       `json:"interruption_voided_at,omitempty"`
 	MoveDeadlineAt         string       `json:"move_deadline_at,omitempty"`  // 噩梦每手限时
 	TotalDeadlineAt        string       `json:"total_deadline_at,omitempty"` // 噩梦整局限时
+	TurnToken              string       `json:"turn_token,omitempty"`        // 计榜局落子凭证：ranked 时先 select{x,y,turnToken} 换 moveToken 再 move
 	CreditSettlementEnable bool         `json:"credit_settlement_enabled,omitempty"`
 	FinishedAt             string       `json:"finished_at,omitempty"`
 	UpdatedAt              string       `json:"updated_at,omitempty"`
@@ -141,6 +142,7 @@ func parseGobangMatch(m map[string]any) *GobangMatch {
 		UndoCost:              numField(m, "undoCost"),
 		UndoUsed:              boolField(m, "undoUsed"),
 		Ranked:                boolField(m, "ranked"),
+		TurnToken:             strField(m, "turnToken"),
 		RankScore:             int(longptNum(m["rankScore"])),
 		FinishReason:          strField(m, "finishReason"),
 		PayoutAmount:          numField(m, "payoutAmount"),
@@ -283,8 +285,3 @@ func ptingGobangGet(ctx context.Context, hc *httpclient.Client, baseURL, cookie 
 	}
 	return ptingGobangData(&env)
 }
-
-// ptingGobangPost 调 POST /api/gobang（JSON body：action + 参数）。
-// 响应 data 因动作而异（真实联调）：create 带 {matches,summary,...}（新局在 matches 内）、
-// 其余动作带 {match,...}。两处都解析：优先 data.match，否则取 data.matches 中 ONGOING/FINISHED 最新局。
-// 返回 message、动作后对局、动作后 summary（create 返回；move 不带）。

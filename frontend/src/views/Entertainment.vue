@@ -292,8 +292,8 @@ loadSites()
   font-size: var(--fs-xs);
   font-weight: 600;
   text-align: center;
-  color: var(--pt-primary, #6c5ce7);
-  background: color-mix(in srgb, var(--pt-primary, #6c5ce7) 14%, transparent);
+  color: var(--pt-primary);
+  background: color-mix(in srgb, var(--pt-primary) 14%, transparent);
 }
 .opt-count.zero {
   color: var(--text-muted, #9aa0a6);
@@ -333,7 +333,7 @@ loadSites()
   font-weight: 700;
 }
 .prize {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 .amount {

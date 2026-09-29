@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWs } from '@/composables/useWs'
+import { useNoticeMeta, noticeSourceRoute } from '@/composables/useNoticeMeta'
 import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -17,41 +18,10 @@ const notices = ref<Notice[]>([])
 const loading = ref(false)
 
 // 来源类型元信息（图标 / 配色 / 中文名）
-const sourceMeta: Record<NoticeSource, { icon: string; color: string; label: string }> = {
-  site_anniv: { icon: 'party-popper', color: '#f59e0b', label: t('notices.source.site_anniv') },
-  new_mail: { icon: 'mail', color: '#3b82f6', label: t('notices.source.new_mail') },
-  assess_pass: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.assess_pass') },
-  assess_fail: { icon: 'alert-circle', color: '#ef4444', label: t('notices.source.assess_fail') },
-  announce: { icon: 'megaphone', color: '#3b82f6', label: t('notices.source.announce') },
-  host_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.host_offline') },
-  nas_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.nas_offline') },
-  reseed_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.reseed_done') },
-  dl_done: { icon: 'download', color: '#22c55e', label: t('notices.source.dl_done') },
-  site_offline: { icon: 'alert-triangle', color: '#ef4444', label: t('notices.source.site_offline') },
-  backup_done: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_done') },
-  backup_import: { icon: 'check-circle', color: '#22c55e', label: t('notices.source.backup_import') },
-  freeleech: { icon: 'party-popper', color: '#f59e0b', label: 'Freeleech' },
-}
-function meta(s: NoticeSource) {
-  return sourceMeta[s] ?? { ...sourceMeta.announce, label: t('notices.source.fallback') }
-}
+const { meta } = useNoticeMeta()
 
 // 点击通知体后跳转的目标路由（按来源分类）
-const sourceRoute: Record<NoticeSource, string> = {
-  new_mail: 'messages',
-  assess_pass: 'assessment',
-  assess_fail: 'assessment',
-  dl_done: 'downloaders',
-  reseed_done: 'reseed',
-  site_anniv: 'sites',
-  site_offline: 'nas-server',
-  host_offline: 'nas-server',
-  nas_offline: 'nas-server',
-  freeleech: 'freeleech',
-  announce: 'announcements',
-  backup_done: 'backup',
-  backup_import: 'backup',
-}
+const sourceRoute = noticeSourceRoute
 
 // 筛选：全部 / 仅未读
 const filter = ref<'all' | 'unread'>('all')

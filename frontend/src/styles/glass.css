@@ -110,9 +110,18 @@
   --ease-out-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* 补充：细粒度圆角 / 字号 */
+  /* z-index 阶梯（W5）：自定义浮层与 EP 弹层（2000+）的层级关系显式化。
+     sticky=局部叠层 200；toast/悬浮按钮=300；palette/modals 需盖过 EP 弹层取 2100+。 */
+  --z-sticky: 200;
+  --z-float: 300;
+  --z-overlay: 2100;
+
+  /* 补充：细粒度圆角 / 字号。
+     fs-2xs 从 11px 提到 12px（W4 可读性修复）：11px 曾铺开 183 处，低于数据密集
+     后台的可读下限（1Panel/GitHub 正文均为 12px）；全局提升 1px 比逐文件改安全。
+     12px 与 fs-xs 同值属有意保留——两个语义位（角标级/辅助级）在暗色大屏可能再度分化。 */
   --radius-2xs: 4px;
-  --fs-2xs: 11px;
+  --fs-2xs: 12px;
 
   /* 语义软背景 tint（chip / badge 背景） */
   --pt-success-bg: rgba(46, 204, 113, 0.15);
@@ -198,6 +207,8 @@ body,
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  /* 等宽数字：数据面板/表格实时刷新时数字宽度不跳动（对齐 1Panel/GitHub 数据表做法） */
+  font-variant-numeric: tabular-nums;
   color: var(--text-strong);
   background: linear-gradient(135deg, #e6f0ff 0%, #f0e6ff 100%);
   background-attachment: fixed;
@@ -479,95 +490,7 @@ body.glass-reduced .glass::before {
   background: var(--pt-warn);
 }
 
-/* pt-dialog-viewport-fix */
-/* Element Plus 弹窗：全站统一——视口内完整可见，表单在 body 内滚动。 */
 
-.el-overlay-dialog {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  padding: 12px !important;
-  box-sizing: border-box !important;
-  /* 默认顶对齐：超高主弹窗可从顶部滚动，避免被视口裁切 */
-  align-items: flex-start !important;
-  justify-content: center !important;
-}
-
-/* align-center 弹窗（二级/三级小窗）在浏览器视口内垂直+水平居中 */
-.el-overlay-dialog:has(.el-dialog.is-align-center) {
-  align-items: center !important;
-}
-
-.el-dialog,
-.el-dialog.pt-dialog {
-  --el-dialog-margin-top: 0px !important;
-  margin: 12px auto !important;
-  max-width: calc(100vw - 24px) !important;
-  max-height: calc(100vh - 24px) !important;
-  max-height: calc(100dvh - 24px) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-}
-
-.el-dialog.is-align-center {
-  /* 由 overlay flex 居中，不再额外顶边距把小窗顶到上方 */
-  margin: 0 auto !important;
-}
-
-.el-dialog.is-fullscreen {
-  max-width: 100vw !important;
-  max-height: 100vh !important;
-  max-height: 100dvh !important;
-  margin: 0 !important;
-}
-
-.el-dialog__header,
-.el-dialog__footer {
-  flex-shrink: 0 !important;
-}
-
-.el-dialog__footer {
-  background: var(--el-dialog-bg-color, var(--el-bg-color, #fff));
-}
-
-/* 关键：body 硬性上限，长表单只在 body 内滚（不依赖 flex 收缩） */
-.el-dialog__body,
-.el-dialog.pt-dialog .el-dialog__body {
-  flex: 1 1 auto !important;
-  min-height: 0 !important;
-  max-height: calc(100vh - 150px) !important;
-  max-height: calc(100dvh - 150px) !important;
-  overflow-x: hidden !important;
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-
-.el-dialog.is-fullscreen .el-dialog__body {
-  max-height: none !important;
-}
-
-/* MessageBox
- * Element Plus 默认：width:100% + max-width:var(--el-messagebox-width, 420px)。
- * 之前把 max-width 改成 100vw 后，确认框会被撑满整页。
- * 这里保留视口上限，同时锁回默认宽度；用 inline-flex 保持垂直居中。
- */
-.el-message-box {
-  width: min(var(--el-messagebox-width, 420px), calc(100vw - 32px)) !important;
-  max-width: min(var(--el-messagebox-width, 420px), calc(100vw - 32px)) !important;
-  max-height: calc(100vh - 24px) !important;
-  max-height: calc(100dvh - 24px) !important;
-  display: inline-flex !important;
-  flex-direction: column !important;
-  overflow: hidden !important;
-  box-sizing: border-box !important;
-  vertical-align: middle;
-}
-.el-message-box__content {
-  max-height: calc(100dvh - 180px) !important;
-  overflow-y: auto !important;
-  min-height: 0 !important;
-}
 /* ════════════════════════════════════════════════════════════
    动效工具：统一 keyframes + 原子类
    ════════════════════════════════════════════════════════════ */
@@ -630,21 +553,8 @@ body.glass-reduced .glass::before {
   animation: pt-scale-in var(--dur-base) var(--ease-out-spring) both;
 }
 
-/* 路由切换动画 */
-.pt-page-enter-active,
-.pt-page-leave-active {
-  transition:
-    opacity var(--dur-base) var(--ease-out-smooth),
-    transform var(--dur-base) var(--ease-out-smooth);
-}
-.pt-page-enter-from {
-  opacity: 0;
-  transform: translateY(6px);
-}
-.pt-page-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
+/* 路由切换转场已移除（MainLayout 不再套 <transition>）：后台/失焦标签下 rAF 停调
+   会让转场永久停在 leave-active（URL 变了、旧页面卡死、点击无反应）。 */
 
 /* 页面头部基线统一（零优先级兜底，不破坏各页微调） */
 :where(.head, .page-head, .header) {

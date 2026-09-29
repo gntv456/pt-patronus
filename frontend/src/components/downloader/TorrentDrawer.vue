@@ -58,13 +58,8 @@ async function refreshStats() {
   }
 }
 
-function stateGroup(s: string): string {
-  if (s.includes('error')) return 'error'
-  if (s.includes('upload') || s.includes('seed')) return 'seeding'
-  if (s.includes('pause') || s.includes('stop')) return 'paused'
-  if (s.includes('download')) return 'downloading'
-  return 'other'
-}
+// 状态归类复用 torrentTableFilters.stateGroup（全站统一口径，stalledUP 等 UP 后缀做种族也计入做种）。
+import { stateGroup } from './torrentTableFilters'
 const counts = computed(() => {
   let active = 0,
     seeding = 0,

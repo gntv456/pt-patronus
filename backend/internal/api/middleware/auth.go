@@ -3,9 +3,9 @@ package middleware
 
 import (
 	"crypto/subtle"
-	"github.com/hxpt/ptpatronus/internal/api/errcode"
-	"net/http"
 	"strings"
+
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/auth"
@@ -59,7 +59,7 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache, sk
 		}
 		claims, err := j.Parse(token)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			errcode.Respond(c, errcode.InvalidToken)
 			return
 		}
 		// TokenVersion 失效校验：与 User.TokenVersion 不符（登出/改绑后）即拒绝。
@@ -85,7 +85,7 @@ func JWTAuth(j *security.JWT, apiKey string, tvCache *auth.TokenVersionCache, sk
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if _, ok := c.Get("uid"); !ok {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+			errcode.Respond(c, errcode.UnauthorizedOp)
 			return
 		}
 		c.Next()

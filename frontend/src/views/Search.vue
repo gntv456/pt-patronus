@@ -314,7 +314,7 @@ onUnmounted(() => {
 }
 .src-settings-link {
   font-size: var(--fs-body);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   text-decoration: none;
   white-space: nowrap;
 }

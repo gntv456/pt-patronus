@@ -8,17 +8,23 @@ export function useCloudDriveBrowse() {
   const browseFiles = ref<CloudFile[]>([])
   const browseLoading = ref(false)
   const browseTarget = ref<((p: string) => void) | null>(null)
+  // 请求序号：快速连续切目录时丢弃过期响应，避免旧目录列表覆盖新目录。
+  let browseSeq = 0
 
   async function fetchBrowse() {
     if (!browseDrive.value) return
+    const seq = ++browseSeq
     browseLoading.value = true
     try {
-      browseFiles.value = await cloudApi.browse(browseDrive.value.id, browsePath.value)
+      const files = await cloudApi.browse(browseDrive.value.id, browsePath.value)
+      if (seq !== browseSeq) return
+      browseFiles.value = files
     } catch (e: any) {
+      if (seq !== browseSeq) return
       ElMessage.error(e?.message || '浏览失败')
       browseFiles.value = []
     } finally {
-      browseLoading.value = false
+      if (seq === browseSeq) browseLoading.value = false
     }
   }
 

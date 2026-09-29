@@ -127,11 +127,23 @@ func scanOneLevel(dir string, out *[]composeProject) {
 	})
 }
 
+// composeDirWithin 校验 dir（clean 后）位于扫描根内。不能用裸 HasPrefix：
+// "/host/compose-evil" 会绕过 "/host/compose" 前缀（同级目录绕过 + "../" 穿越）。
+func composeDirWithin(dir string) bool {
+	root := strings.TrimSuffix(filepath.ToSlash(filepath.Clean(composeScanDir())), "/")
+	clean := filepath.ToSlash(filepath.Clean(dir))
+	return clean == root || strings.HasPrefix(clean, root+"/")
+}
+
 // ProjectDetail 返回单个项目的完整 compose 内容。
 func (h *LocalComposeHandler) ProjectDetail(c *gin.Context) {
 	dir := c.Query("dir")
 	if dir == "" {
 		errcode.Respond(c, errcode.FieldRequired)
+		return
+	}
+	if !composeDirWithin(dir) {
+		errcode.Respond(c, errcode.ComposeDirInvalid)
 		return
 	}
 	name := findComposeFile(dir)
@@ -159,8 +171,7 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 		return
 	}
 	// 安全校验：dir 必须在扫描目录下（防目录穿越）
-	root := composeScanDir()
-	if !strings.HasPrefix(in.Dir, root) {
+	if !composeDirWithin(in.Dir) {
 		errcode.Respond(c, errcode.ComposeDirInvalid)
 		return
 	}
@@ -211,8 +222,7 @@ func (h *LocalComposeHandler) ProjectSave(c *gin.Context) {
 		return
 	}
 	// 安全校验：dir 必须在扫描目录下（防目录穿越写任意文件）
-	root := composeScanDir()
-	if !strings.HasPrefix(in.Dir, root) {
+	if !composeDirWithin(in.Dir) {
 		errcode.Respond(c, errcode.ComposeDirInvalid)
 		return
 	}
@@ -240,9 +250,9 @@ func (h *LocalComposeHandler) ProjectSave(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidRequest.WithErr(errors.New(string(validateOut))))
 		return
 	}
-	// 验证通过：原子替换（rename 是原子的）
-	os.Remove(tmpPath)
-	if err := os.WriteFile(fullPath, []byte(in.Content), 0644); err != nil {
+	// 验证通过：rename 原子替换（避免半写状态被 compose 读到）
+	if err := os.Rename(tmpPath, fullPath); err != nil {
+		os.Remove(tmpPath)
 		errcode.Respond(c, errcode.BadGateway.WithErr(err))
 		return
 	}

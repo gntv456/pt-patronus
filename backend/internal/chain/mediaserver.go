@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -174,11 +175,21 @@ func (c *MediaServerChain) OnDownloadCompleted(ctx context.Context, torrentName 
 }
 
 // ReceiveWebhook 接收媒体服务器播放/事件 webhook：best-effort 解析标题，发通知中心 + 广播事件。
-// payload 是原始请求体（Emby/JF JSON 或 Plex form/JSON）。
-func (c *MediaServerChain) ReceiveWebhook(ctx context.Context, id uint, payload []byte) {
+// payload 是原始请求体（Emby/JF JSON 或 Plex form/JSON）；providedToken 是回调携带的
+// 来源凭证（query token 或 X-Emby-Token 头）。
+//
+// 来源校验（P2 修复）：服务器配置了 API Token 时恒定时间比对——阻断匿名伪造
+// 「媒体播放：<任意文案>」注入通知中心/外发渠道（TG 等钓鱼文本）。未配置 token 的
+// 服务器保留旧行为（部分 Emby webhook 模板不含 token 字段），伪造成本不变。
+func (c *MediaServerChain) ReceiveWebhook(ctx context.Context, id uint, payload []byte, providedToken string) {
 	m, err := c.op.Get(id)
 	if err != nil || !m.NotifyOnPlay {
 		return
+	}
+	if want, werr := c.op.Token(m); werr == nil && want != "" {
+		if subtle.ConstantTimeCompare([]byte(providedToken), []byte(want)) != 1 {
+			return
+		}
 	}
 	title, event := parseMediaWebhook(payload)
 	if title == "" {

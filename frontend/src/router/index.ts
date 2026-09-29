@@ -229,6 +229,22 @@ const router = createRouter({
   ],
 })
 
+// 路由级 document.title（W5：此前标题恒定，多标签用户无法区分页面；NAS 用户常开多页）。
+// 名称复用侧栏 i18n（nav.items.*），登录页固定。守卫内在 pinia/i18n 就绪后取词。
+router.afterEach((to) => {
+  const base = 'PTPatronus'
+  if (to.name === 'login') {
+    document.title = base
+    return
+  }
+  // 动态 import 打破循环依赖：i18n 模块级单例，延迟到首次导航后取
+  import('@/i18n').then(({ i18n }) => {
+    const key = `nav.items.${String(to.name)}`
+    const label = i18n.global.te(key) ? i18n.global.t(key) : ''
+    document.title = label ? `${label} · ${base}` : base
+  })
+})
+
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.name !== 'login' && !auth.authenticated) return { name: 'login' }

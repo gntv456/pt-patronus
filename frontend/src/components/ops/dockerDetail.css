@@ -89,7 +89,7 @@
   transition: width var(--dur-slow) var(--ease-out-smooth);
 }
 .bar--cpu {
-  background: linear-gradient(90deg, #6c5ce7, #4285f4);
+  background: linear-gradient(90deg, var(--pt-primary), var(--pt-primary-2));
 }
 .bar--mem {
   background: linear-gradient(90deg, #11998e, #38ef7d);

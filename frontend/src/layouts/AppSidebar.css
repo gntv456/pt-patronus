@@ -277,3 +277,16 @@
     }
   }
 }
+
+/* 收藏空态功能发现提示：弱化样式（非可点击，仅告知），有收藏后自动消失 */
+.fav-empty-hint {
+  padding: 6px 12px;
+  margin-bottom: var(--sp-2);
+  border: 1px dashed var(--divider);
+  border-radius: var(--radius-sm);
+}
+.fav-hint-text {
+  font-size: var(--fs-2xs);
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}

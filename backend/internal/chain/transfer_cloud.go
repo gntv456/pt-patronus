@@ -75,7 +75,7 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 			}
 			return
 		}
-		uploaded, failed := 0, 0
+		uploaded, failed, strmBlocked := 0, 0, 0
 		for _, f := range res.Files {
 			if !cu.UploadVideos && !isSubtitleOrImage(f) {
 				continue // 仅字幕/图片（视频本体不上传的极简模式）
@@ -99,7 +99,17 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 			}
 			uploaded++
 			slog.Info("cloud upload: uploaded", "file", filepath.Base(f), "to", cloudPath)
+			// DeleteLocal 前置 STRM（P1 修复，直传兜底路径）：先登记 StrmRecord+落 .strm，
+			// 成功才删本地——否则本地已删、无 strm 无记录，直链/追更/媒体库全部失明。
+			// STRM 未启用（无输出目录）不受阻，直接删。
 			if cu.DeleteLocal {
+				if strmGen, ok := c.cloudUp.(CloudStrmSink); ok && cu.StrmOutputDir != "" {
+					if err := strmGen.UpsertStrm(actx, cu.DriveID, cloudPath, cu.StrmOutputDir, cu.StrmTemplate); err != nil {
+						slog.Warn("cloud upload: strm failed, keep local file", "file", f, "err", err)
+						strmBlocked++
+						continue
+					}
+				}
 				if err := os.Remove(f); err != nil {
 					slog.Warn("cloud upload: delete local failed", "file", f, "err", err)
 				}
@@ -112,6 +122,9 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 				body := fmt.Sprintf("%d 个文件 → %s", uploaded, cu.CloudBase)
 				if failed > 0 {
 					body += fmt.Sprintf("（%d 个失败，见日志）", failed)
+				}
+				if strmBlocked > 0 {
+					body += fmt.Sprintf("（%d 个因 STRM 失败保留本地）", strmBlocked)
 				}
 				_ = c.notice.Notice(actx, notice.Input{
 					Source: "cloud", Key: "cloud-upload:" + title,

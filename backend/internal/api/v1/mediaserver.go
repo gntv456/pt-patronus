@@ -220,7 +220,9 @@ func respondMediaErr(c *gin.Context, err error) {
 }
 
 // Webhook 公开接收媒体服务器播放/事件回调（媒体服务器无法带 JWT，故公开；按 :id 路由）。
-// 仅当该服务器开启 NotifyOnPlay 时解析标题并通知；始终返回 200（避免服务器侧重试风暴）。
+// 来源凭证：?token= 或 X-Emby-Token 头——服务器配置了 API Token 时 chain 层恒定时间
+// 比对，不匹配静默忽略（防匿名伪造通知注入）。仅当该服务器开启 NotifyOnPlay 时解析
+// 标题并通知；始终返回 200（避免服务器侧重试风暴）。
 func (h *MediaServerHandler) Webhook(c *gin.Context) {
 	id, ok := parseID(c)
 	if !ok {
@@ -229,7 +231,11 @@ func (h *MediaServerHandler) Webhook(c *gin.Context) {
 	}
 	// 公开端点：显式 1MB 上限兜底（webhook 负载本就极小），避免未授权大 body 放大。
 	payload, _ := io.ReadAll(io.LimitReader(c.Request.Body, 1<<20))
-	h.svc.ReceiveWebhook(c.Request.Context(), id, payload)
+	token := c.Query("token")
+	if token == "" {
+		token = c.GetHeader("X-Emby-Token")
+	}
+	h.svc.ReceiveWebhook(c.Request.Context(), id, payload, token)
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 

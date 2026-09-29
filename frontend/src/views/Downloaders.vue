@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from 'vue'
 import { downloaderApi, type Downloader } from '@/api/downloader'
 import TorrentDrawer from '@/components/downloader/TorrentDrawer.vue'
 import { useAuthStore } from '@/stores/auth'
+import { ruleRequired, ruleURL } from '@/composables/useFormRules'
 import EmptyState from '@/components/EmptyState.vue'
 import {
   ArrowDown,
@@ -26,6 +27,11 @@ const loading = ref(false)
 const error = ref('')
 const dialogVisible = ref(false)
 const form = ref({ name: '', type: 'qb', url: '', username: '', password: '', is_default: false })
+const formRef = ref()
+const formRules = {
+  name: [ruleRequired(t('downloaders.form.name'))],
+  url: [ruleRequired(t('downloaders.form.url')), ruleURL(t('downloaders.form.url'))],
+}
 const editingId = ref<number | null>(null)
 const isEdit = computed(() => editingId.value !== null)
 const dialogTitle = computed(() => (isEdit.value ? t('downloaders.edit') : t('downloaders.add')))
@@ -91,13 +97,13 @@ function openEdit(dl: Downloader) {
 async function submit() {
   form.value.name = form.value.name.trim()
   form.value.url = form.value.url.trim()
-  if (!form.value.name || !form.value.url) {
-    ElMessage.warning(t('downloaders.nameUrlRequired'))
-    return
-  }
-  if (!/^https?:\/\/.+/i.test(form.value.url)) {
-    ElMessage.warning(t('downloaders.urlScheme'))
-    return
+  // 字段级校验：错误显示在对应输入框下方（替代此前的提交后一条 toast）
+  if (formRef.value) {
+    try {
+      await formRef.value.validate()
+    } catch {
+      return
+    }
   }
   try {
     if (isEdit.value) {
@@ -323,9 +329,9 @@ onMounted(load)
         <span class="dialog-kicker">{{ t('downloaders.form.kicker') }}</span>
         <p>{{ t('downloaders.form.hint') }}</p>
       </div>
-      <el-form :model="form" label-position="top" class="config-form">
+      <el-form ref="formRef" :model="form" :rules="formRules" label-position="top" class="config-form">
         <div class="form-grid">
-          <el-form-item :label="t('downloaders.form.name')" required>
+          <el-form-item :label="t('downloaders.form.name')" prop="name" required>
             <el-input v-model="form.name" :placeholder="t('downloaders.form.namePlaceholder')" />
           </el-form-item>
           <el-form-item :label="t('downloaders.form.isDefault')">
@@ -345,7 +351,7 @@ onMounted(load)
             </el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item :label="t('downloaders.form.url')" required>
+        <el-form-item :label="t('downloaders.form.url')" prop="url" required>
           <el-input v-model="form.url" placeholder="http://127.0.0.1:8080" autocomplete="url" />
           <span class="field-hint">{{ t('downloaders.form.urlHint') }}</span>
         </el-form-item>

@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
 func (m *Manager) hasPlugin(id string) bool {
@@ -146,20 +149,21 @@ func readSource(ctx context.Context, source string, maxBytes int64) ([]byte, err
 	}
 	u, err := url.Parse(source)
 	if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
+		// SSRF 预检（P2 修复）：市场源为管理员可配 URL，此前裸 http.Client 无私网拦截、
+		// 重定向默认跟随到内网也不拦——改用 httpclient（ssrf=true 拨号期校验 + 逐跳
+		// 重定向复验，消 DNS 重绑定），与站点抓取同范式。
+		client, cerr := httpclient.New(httpclient.Options{Timeout: 30 * time.Second, MaxRetries: 1})
+		if cerr != nil {
+			return nil, cerr
+		}
+		res, err := client.Do(ctx, http.MethodGet, source, nil, nil, "", true)
 		if err != nil {
 			return nil, err
 		}
-		client := &http.Client{Timeout: 30 * time.Second}
-		res, err := client.Do(req)
-		if err != nil {
-			return nil, err
-		}
-		defer res.Body.Close()
 		if res.StatusCode < 200 || res.StatusCode >= 300 {
 			return nil, fmt.Errorf("source status %d", res.StatusCode)
 		}
-		return readLimited(res.Body, maxBytes)
+		return readLimited(bytes.NewReader(res.Body), maxBytes)
 	}
 	if err == nil && u.Scheme == "file" {
 		source = u.Path

@@ -9,6 +9,13 @@ import SiteFilterDialog from '@/components/SiteFilterDialog.vue'
 
 const { t } = useI18n()
 
+// 状态 → pt-chip 语义变体（W4 标签统一：原 .chip.subscribed/.completed/.paused 三套自定义样式）
+function statusChipClass(status: string): string {
+  if (status === 'subscribed') return 'pt-chip--success'
+  if (status === 'completed') return 'pt-chip--info'
+  return 'pt-chip--muted' // paused / 未知
+}
+
 defineProps<{
   s: Subscription
   batchMode: boolean
@@ -52,8 +59,8 @@ const emit = defineEmits<{
       <div class="row1">
         <span class="s-title">{{ s.title }}</span>
         <span v-if="s.year" class="text-muted">({{ s.year }})</span>
-        <span class="chip" :class="s.status">{{ statusText(s.status) }}</span>
-        <span v-if="s.resolution" class="chip res">{{ s.resolution }}</span>
+        <span class="pt-chip" :class="statusChipClass(s.status)">{{ statusText(s.status) }}</span>
+        <span v-if="s.resolution" class="pt-chip pt-chip--info">{{ s.resolution }}</span>
       </div>
       <div class="text-muted small">
         {{ t('subscriptions.lastChecked', { time: fmtTime(s.last_checked_at) }) }} ·
@@ -114,7 +121,7 @@ const emit = defineEmits<{
           }}</el-button>
           <span class="small text-muted">{{ t('subscriptions.bestHint') }}</span>
         </template>
-        <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="chip res">
+        <span v-if="effBestVersion(s) && s.type === 'movie' && s.current_priority" class="pt-chip pt-chip--info">
           Pri {{ s.current_priority }}
         </span>
       </div>

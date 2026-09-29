@@ -120,10 +120,10 @@ const stateText = computed<Record<string, string>>(() => ({
   failed: t('workflow.state.failed'),
 }))
 const stateClass: Record<string, string> = {
-  idle: 'st-idle',
-  running: 'st-run',
-  success: 'st-ok',
-  failed: 'st-err',
+  idle: 'pt-chip--muted',
+  running: 'pt-chip--info',
+  success: 'pt-chip--success',
+  failed: 'pt-chip--danger',
 }
 function fmtTime(t?: string) {
   return t ? new Date(t).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '—'
@@ -132,6 +132,12 @@ function fmtTime(t?: string) {
 // —— 进站 Webhook 管理 ——
 const showWebhooks = ref(false)
 const webhooks = ref<Webhook[]>([])
+// token 不再随 List 回传（后端脱敏）：仅创建/rotate 时一次性下发，本地暂存供拼 URL/复制。
+const webhookTokens = ref<Record<number, string>>({})
+function webhookUrl(w: Webhook) {
+  const tk = w.token || webhookTokens.value[w.id]
+  return tk ? `${window.location.origin}/api/v1/webhooks/in/${tk}` : `${window.location.origin}/api/v1/webhooks/in/<${t('workflow.rotateToReveal')}>`
+}
 async function openWebhooks() {
   try {
     webhooks.value = await webhookApi.list()
@@ -139,9 +145,6 @@ async function openWebhooks() {
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('common.loadFailed'))
   }
-}
-function webhookUrl(w: Webhook) {
-  return `${window.location.origin}/api/v1/webhooks/in/${w.token}`
 }
 async function copyUrl(w: Webhook) {
   await copyText(webhookUrl(w), t('workflow.urlCopied'), webhookUrl(w))
@@ -168,7 +171,8 @@ async function whRotate(w: Webhook) {
     return
   }
   try {
-    await webhookApi.rotate(w.id)
+    const r = await webhookApi.rotate(w.id)
+    webhookTokens.value[w.id] = r.token // rotate 响应一次性下发新 token
     webhooks.value = await webhookApi.list()
     ElMessage.success(t('workflow.rotated'))
   } catch (e: unknown) {
@@ -189,7 +193,8 @@ async function whSave() {
     return
   }
   try {
-    await webhookApi.create(whForm.value)
+    const created = await webhookApi.create(whForm.value)
+    if (created.token) webhookTokens.value[created.id] = created.token
     showWhForm.value = false
     webhooks.value = await webhookApi.list()
     ElMessage.success(t('common.created'))
@@ -243,8 +248,8 @@ async function whSave() {
         <div v-for="w in list" :key="w.id" class="wcard glass-hover">
           <div class="row1">
             <span class="w-name">{{ w.name }}</span>
-            <span class="chip" :class="stateClass[w.state]">{{ stateText[w.state] }}</span>
-            <span class="chip trig">{{ triggerText[w.trigger_type] }}</span>
+            <span class="pt-chip" :class="stateClass[w.state]">{{ stateText[w.state] }}</span>
+            <span class="pt-chip pt-chip--info">{{ triggerText[w.trigger_type] }}</span>
           </div>
           <div class="text-muted small">
             {{ w.description || '—' }}
@@ -329,7 +334,7 @@ async function whSave() {
       <div v-for="w in webhooks" :key="w.id" class="wh-row">
         <div class="wh-main">
           <span class="wh-name">{{ w.name }}</span>
-          <span v-if="w.has_secret" class="chip res">{{ t('workflow.signed') }}</span>
+          <span v-if="w.has_secret" class="pt-chip pt-chip--success">{{ t('workflow.signed') }}</span>
           <span class="text-muted small"
             >{{ t('workflow.triggerCount', { n: w.trigger_count }) }} · {{ fmtTime(w.last_triggered_at) }}</span
           >

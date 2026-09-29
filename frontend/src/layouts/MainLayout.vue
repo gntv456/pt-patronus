@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import NotificationCenter from '@/components/NotificationCenter.vue'
+import TaskIndicator from '@/components/TaskIndicator.vue'
 import GlobalNoticeBar from '@/components/GlobalNoticeBar.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import WsStatusDot from '@/components/WsStatusDot.vue'
@@ -76,6 +77,7 @@ const {
         </button>
         <div class="spacer"></div>
         <WsStatusDot />
+        <TaskIndicator />
         <NotificationCenter />
         <router-link
           :to="{ name: 'assistant' }"
@@ -83,7 +85,7 @@ const {
           :title="t('ml.aiAssistant')"
           :aria-label="t('ml.aiAssistant')"
         >
-          <GlassIcon name="bot" from="#6c5ce7" to="#a855f7" :size="24" />
+          <GlassIcon name="bot" :size="24" />
           <span class="ai-label">AI</span>
         </router-link>
         <el-dropdown trigger="click" @command="onUserCommand">
@@ -110,10 +112,11 @@ const {
       <GlobalNoticeBar />
 
       <main class="content">
+        <!-- 不套 <transition>：Vue 转场靠 rAF 驱动（nextFrame 换 class → 等 transitionend），
+             后台标签/失焦/省电模式等场景浏览器会暂停 rAF，转场停在 leave-active 永不完成——
+             URL 已变但旧页面卡死，之后所有导航点击都无反应，直到强刷。直接渲染无此依赖。 -->
         <router-view v-slot="{ Component }">
-          <transition name="pt-page" mode="out-in">
-            <component :is="Component" />
-          </transition>
+          <component :is="Component" />
         </router-view>
       </main>
     </div>
@@ -259,7 +262,7 @@ const {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 200;
+    z-index: var(--z-sticky);
     background: rgba(15, 23, 42, 0.32);
     backdrop-filter: blur(4px);
   }
@@ -292,19 +295,5 @@ const {
   }
 }
 
-/* 路由切换：水润渐入渐出（全端生效） */
-.pt-page-enter-active,
-.pt-page-leave-active {
-  transition:
-    opacity var(--dur-base) var(--ease-out-smooth),
-    transform var(--dur-base) var(--ease-out-smooth);
-}
-.pt-page-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-.pt-page-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
+/* 路由切换转场已移除（见模板注释）：后台/失焦标签下 rAF 停调会导致 <transition> 永久卡死。 */
 </style>

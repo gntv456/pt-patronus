@@ -22,16 +22,18 @@ func NewCloudDriveOper(db *gorm.DB, c *security.Crypto) *CloudDriveOper {
 // CloudDriveInput 创建/更新网盘入参（Token 明文，由 Oper 加密）。
 type CloudDriveInput struct {
 	Name      string `json:"name" binding:"max=64"`
-	Type      string `json:"type" binding:"max=16"`    // 115 | quark | 123
-	Token     string `json:"token" binding:"max=2048"` // cookie(115/夸克) 或 accessToken(123)
+	Type      string `json:"type" binding:"max=16"`    // 115 | 115_open | quark | 123 | aliyun_open | onedrive | baidu | tianyi | mobile
+	Token     string `json:"token" binding:"max=8192"` // cookie(115/夸克) 或 accessToken；115_open/aliyun_open 为含 refresh 的 JSON 对，体积较大
 	RootPath  string `json:"root_path" binding:"max=255"`
 	IsDefault bool   `json:"is_default"`
 }
 
-// validCloudDriveType 收紧网盘类型白名单（binding max 不够，需显式枚举校验）。
+// validCloudDriveType 网盘类型白名单（binding max 不够，需显式枚举校验）。
+// 必须与 cloud.NewClient 支持的类型、前端 CloudDialogs 下拉保持一致，
+// 否则 UI 可选类型在保存层被 400 拒绝（功能断链）。
 func validCloudDriveType(t string) bool {
 	switch t {
-	case "115", "115_open", "quark", "123", "aliyun_open":
+	case "115", "115_open", "quark", "123", "aliyun_open", "onedrive", "baidu", "tianyi", "mobile":
 		return true
 	}
 	return false

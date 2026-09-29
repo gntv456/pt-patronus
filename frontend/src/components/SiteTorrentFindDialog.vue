@@ -246,7 +246,7 @@ watch(
   width: 14px;
   height: 14px;
   border: 2px solid var(--pt-primary-bg);
-  border-top-color: var(--pt-primary, #6c5ce7);
+  border-top-color: var(--pt-primary);
   border-radius: 50%;
   animation: sf-spin 0.7s linear infinite;
   flex: none;

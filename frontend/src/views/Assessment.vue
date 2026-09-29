@@ -111,14 +111,14 @@ onUnmounted(() => abortCtrl?.abort())
     </div>
 
     <div class="filter-bar glass">
-      <button class="chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">
+      <button class="filter-chip" :class="{ on: filter === 'all' }" @click="filter = 'all'">
         {{ t('assessment.filter.all') }} ({{ cards.length }})
       </button>
-      <button class="chip" :class="{ on: filter === 'safe' }" @click="filter = 'safe'" style="color: var(--pt-success)">
+      <button class="filter-chip" :class="{ on: filter === 'safe' }" @click="filter = 'safe'" style="color: var(--pt-success)">
         {{ t('assessment.status.safe') }} ({{ counts.safe }})
       </button>
       <button
-        class="chip"
+        class="filter-chip"
         :class="{ on: filter === 'progress' }"
         @click="filter = 'progress'"
         style="color: var(--pt-primary-2)"
@@ -126,7 +126,7 @@ onUnmounted(() => abortCtrl?.abort())
         {{ t('assessment.status.progress') }} ({{ counts.progress }})
       </button>
       <button
-        class="chip"
+        class="filter-chip"
         :class="{ on: filter === 'danger' }"
         @click="filter = 'danger'"
         style="color: var(--pt-danger)"
@@ -235,7 +235,7 @@ onUnmounted(() => abortCtrl?.abort())
   padding: 10px 14px;
   flex-wrap: wrap;
 }
-.chip {
+.filter-chip {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
@@ -244,7 +244,7 @@ onUnmounted(() => abortCtrl?.abort())
   font-size: var(--fs-body);
   color: var(--text-strong);
 }
-.chip.on {
+.filter-chip.on {
   background: var(--pt-primary-bg);
   border-color: var(--pt-primary-bg);
 }
@@ -302,7 +302,7 @@ onUnmounted(() => abortCtrl?.abort())
 }
 .task-name {
   font-size: var(--fs-xs);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   margin-top: 2px;
 }
 .note {

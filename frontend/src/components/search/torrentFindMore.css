@@ -68,7 +68,7 @@
   padding: 0 6px;
   border-radius: var(--radius-2xs);
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-2xs);
   font-weight: 700;
 }

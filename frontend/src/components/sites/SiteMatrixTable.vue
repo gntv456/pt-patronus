@@ -123,6 +123,21 @@ const emit = defineEmits<{
           <button class="row-act" :title="t('smt.userHistory')" @click="emit('history', row as SiteStatItem)">
             <GlassIcon name="history" from="#2563eb" to="#0891b2" :size="16" />
           </button>
+          <!-- 签到快捷按钮（W3）：签到是 PT 工具 Top3 高频动作，此前藏在 ⋯ 下拉里
+               （3-4 击）；提到行内一击直达，nexusphp 站点才显示，进行中复用 per-row loading。 -->
+          <button
+            v-if="siteConfig(row.site_id)?.platform === 'nexusphp'"
+            class="row-act"
+            :title="checkiningSiteId === row.site_id ? t('smt.checkining') : t('smt.checkin')"
+            :disabled="checkiningSiteId === row.site_id"
+            @click="emit('command', 'checkin', row as SiteStatItem)"
+          >
+            <GlassIcon
+              name="subscribe"
+              :size="16"
+              :class="{ 'row-act-spin': checkiningSiteId === row.site_id }"
+            />
+          </button>
           <el-dropdown trigger="click" @command="emit('command', $event, row as SiteStatItem)">
             <button class="row-act" :title="t('smt.siteOps')">
               <GlassIcon name="settings" from="#475569" to="#2563eb" :size="16" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { useWs } from '@/composables/useWs'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { Site, SiteConnectivityStatus } from '@/api/site'
@@ -85,6 +86,15 @@ const {
   loadError,
   refreshing,
 } = useSiteMatrixData(props)
+
+// W4：全站同步进度改吃 WS task-progress 实时帧（后端逐站推送）；未连接 WS 时回退
+// 到本地静态总量提示。顶栏 TaskIndicator 与此处同源。
+const { taskProgress } = useWs()
+const liveSyncText = computed(() => {
+  const p = taskProgress.value['site-sync']
+  if (!p) return ''
+  return `（${p.done}/${p.total}）`
+})
 
 const { visitInactiveSites } = useInactiveSiteVisit(
   computed(() =>
@@ -223,7 +233,9 @@ defineExpose({ reload, inactiveSiteCount, visitInactiveSites })
             {{ t('som.disabled') }}
           </button>
         </div>
-        <el-button size="small" :loading="syncing" @click="syncAll">{{ t('som.syncAll') }}</el-button>
+        <el-button size="small" :loading="syncing" @click="syncAll">
+          {{ t('som.syncAll') }}<span v-if="liveSyncText" class="sync-progress">{{ liveSyncText }}</span>
+        </el-button>
         <el-button
           v-if="canDelete"
           size="small"

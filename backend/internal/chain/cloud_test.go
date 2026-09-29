@@ -42,8 +42,8 @@ func newCloudTestChain(t *testing.T) (*CloudChain, *oper.CloudDriveOper, *oper.S
 func TestCloudDriveCRUDOper(t *testing.T) {
 	_, op, _ := newCloudTestChain(t)
 
-	// 类型白名单：非法类型返 ErrInvalidInput
-	if _, err := op.Create(oper.CloudDriveInput{Name: "bad", Type: "baidu"}); !errors.Is(err, oper.ErrInvalidInput) {
+	// 类型白名单：非法类型返 ErrInvalidInput（白名单与 cloud.NewClient 一致，baidu 等已合法）
+	if _, err := op.Create(oper.CloudDriveInput{Name: "bad", Type: "foobar"}); !errors.Is(err, oper.ErrInvalidInput) {
 		t.Errorf("bad type want ErrInvalidInput, got %v", err)
 	}
 

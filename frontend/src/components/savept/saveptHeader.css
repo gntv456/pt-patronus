@@ -319,7 +319,7 @@
   flex-direction: column;
   gap: var(--sp-1);
   overflow-y: auto;
-  z-index: 200;
+  z-index: var(--z-sticky);
 }
 .spt-filters__dropdown-item {
   display: flex;

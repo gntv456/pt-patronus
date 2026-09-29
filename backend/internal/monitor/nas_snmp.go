@@ -3,6 +3,7 @@
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -158,6 +159,16 @@ func buildHRStorage(entries []gosnmp.SnmpPDU) []DiskMetric {
 	for _, r := range rows {
 		if r.size <= 0 || r.units <= 0 {
 			continue
+		}
+		// 防 size*units int64 溢出（异常设备/超大卷把 used 报成巨值，下同做钳制）
+		if r.size > math.MaxInt64/r.units {
+			continue
+		}
+		if r.used < 0 {
+			r.used = 0
+		}
+		if r.used > r.size {
+			r.used = r.size
 		}
 		total := uint64(r.size * r.units)
 		used := uint64(r.used * r.units)

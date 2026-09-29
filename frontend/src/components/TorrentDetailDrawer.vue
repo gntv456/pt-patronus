@@ -45,12 +45,12 @@ function imdbUrl(id: string) {
             <h3 class="dt-title">{{ detail.title }}</h3>
             <div v-if="detail.subtitle" class="dt-sub text-muted">{{ detail.subtitle }}</div>
             <div class="specs">
-              <span v-if="detail.category" class="chip cat">{{ detail.category }}</span>
-              <span v-if="detail.resolution" class="chip res">{{ detail.resolution }}</span>
-              <span v-if="detail.codec" class="chip codec">{{ detail.codec }}</span>
-              <span v-if="detail.source" class="chip src">{{ detail.source }}</span>
-              <span v-if="detail.size" class="chip">{{ detail.size }}</span>
-              <span v-if="detail.seeders !== undefined" class="chip seed">↑ {{ detail.seeders }}</span>
+              <span v-if="detail.category" class="pt-chip pt-chip--muted">{{ detail.category }}</span>
+              <span v-if="detail.resolution" class="pt-chip pt-chip--info">{{ detail.resolution }}</span>
+              <span v-if="detail.codec" class="pt-chip pt-chip--muted">{{ detail.codec }}</span>
+              <span v-if="detail.source" class="pt-chip pt-chip--muted">{{ detail.source }}</span>
+              <span v-if="detail.size" class="pt-chip pt-chip--muted">{{ detail.size }}</span>
+              <span v-if="detail.seeders !== undefined" class="pt-chip pt-chip--success">↑ {{ detail.seeders }}</span>
               <a
                 v-if="detail.imdb_id"
                 :href="imdbUrl(detail.imdb_id)"
@@ -155,28 +155,9 @@ function imdbUrl(id: string) {
   flex-wrap: wrap;
   gap: var(--sp-1);
 }
-.specs .chip {
+.specs .pt-chip {
   margin: 0;
   font-weight: 600;
-}
-.specs .chip.cat {
-  background: linear-gradient(135deg, var(--pt-primary-bg), var(--pt-primary-2-bg));
-}
-.specs .chip.res {
-  background: var(--pt-primary-2-bg);
-  color: var(--pt-primary-2);
-}
-.specs .chip.codec {
-  background: rgba(156, 39, 176, 0.16);
-  color: #9c27b0;
-}
-.specs .chip.src {
-  background: rgba(0, 150, 136, 0.16);
-  color: #009688;
-}
-.specs .chip.seed {
-  background: var(--pt-success-bg);
-  color: var(--pt-success, #2ecc71);
 }
 .specs .chip.imdb {
   background: rgba(247, 197, 41, 0.18);
@@ -233,7 +214,7 @@ function imdbUrl(id: string) {
   margin: 4px 0;
 }
 .desc :deep(a) {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .desc :deep(table) {
   max-width: 100%;

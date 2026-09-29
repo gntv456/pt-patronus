@@ -44,8 +44,9 @@ export function useTransferHistoryOps(opts: {
   async function organizePending(row: TransferPendingItem) {
     opts.organizing.value = true
     try {
-      await transferApi.organize(row.downloader_id, row.hash)
-      ElMessage.success('已提交整理')
+      const res = await transferApi.organize(row.downloader_id, row.hash)
+      if (res && res.Success) ElMessage.success('整理完成：' + (res.Files?.length || 0) + ' 文件 → ' + res.DestDir)
+      else ElMessage.warning('整理未成功：' + (res?.ErrMsg || '未知'))
       await load()
     } catch (e: unknown) {
       ElMessage.error((e as Error).message || '整理失败')

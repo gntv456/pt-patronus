@@ -138,7 +138,9 @@ func (c *EntertainmentChain) EventDetail(ctx context.Context, siteID uint, gameI
 	return e.EventDetail(ctx, c.hc, base, cr, eventID)
 }
 
-// Blackjack 二十一点动作（仅 Blackjackable 游戏支持；hit/stand/double 走 spendGuard 防双击）。
+// Blackjack 二十一点动作（仅 Blackjackable 游戏支持）。全部动作走 spendGuard 防双击：
+// new（开局）站点侧通常预扣 bet，此前被豁免——双击"新局"会开两局重复扣游戏币；
+// hit/stand/double 本就扣费。同一 (site,game,action) 并发只放行一个。
 func (c *EntertainmentChain) Blackjack(ctx context.Context, siteID uint, gameID, action string) (*entertainment.BlackjackResult, error) {
 	g, base, cr, err := c.resolve(siteID, gameID)
 	if err != nil {
@@ -148,13 +150,11 @@ func (c *EntertainmentChain) Blackjack(ctx context.Context, siteID uint, gameID,
 	if !ok {
 		return nil, errors.New("该游戏不支持二十一点")
 	}
-	if action != "new" {
-		key := fmt.Sprintf("%d:blackjack:%s:%s", siteID, gameID, action)
-		if !c.guard.acquire(key) {
-			return nil, ErrDuplicateSpend
-		}
-		defer c.guard.release(key)
+	key := fmt.Sprintf("%d:blackjack:%s:%s", siteID, gameID, action)
+	if !c.guard.acquire(key) {
+		return nil, ErrDuplicateSpend
 	}
+	defer c.guard.release(key)
 	return b.Blackjack(ctx, c.hc, base, cr, action)
 }
 

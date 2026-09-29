@@ -46,8 +46,9 @@ type hdblueYinyangSummary struct {
 }
 
 func (HdblueYinyangGame) Play(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds) (*PlayResult, error) {
-	// 优先应战：大厅有公开挑战则接一局（选 A——多数出题人把正确答案放 A；
-	// 纯娱乐对赌，且 409 余额不足时降级发起）。无挑战再自己发起抛硬币题。
+	// 优先应战：大厅有公开挑战则逐个尝试（选 A——多数出题人把正确答案放 A）；
+	// 某个挑战失败（已被他人应战/竞态）换下一个，全部失败带出原因，不再盲目发起
+	// （发起还要押 10 影币，避免余额被耗尽）。无可接挑战再自己发起抛硬币题。
 	if out, _ := hdblueYinyangTryAccept(ctx, hc, baseURL, cr); out != nil {
 		return out, nil
 	}
@@ -136,11 +137,16 @@ func hdblueYinyangTryAccept(ctx context.Context, hc *httpclient.Client, baseURL 
 		return nil, nil
 	}
 	me := data.Summary.UserID
+	var lastFail *PlayResult
 	for _, ch := range data.OpenChallenges {
 		if ch.Status != "OPEN" || (me != 0 && ch.CreatorID == me) {
 			continue
 		}
-		// 选 A（无知识判断依据；纯娱乐）。409=影币不足等业务失败原样带出。
+		// 押注超过当前余额的挑战直接跳过（站点必 409），不浪费请求。
+		if data.Summary != nil && float64(ch.StakePts) > data.Summary.Points {
+			continue
+		}
+		// 选 A（无知识判断依据；纯娱乐）。
 		body := fmt.Sprintf(`{"action":"accept","challengeId":%q,"selectedOption":"A"}`, ch.ID)
 		u := strings.TrimRight(baseURL, "/") + "/api/yinyang-contract"
 		resp, err := hc.Do(ctx, "POST", u, []byte(body), map[string]string{
@@ -148,23 +154,29 @@ func hdblueYinyangTryAccept(ctx context.Context, hc *httpclient.Client, baseURL 
 			"Referer":      strings.TrimRight(baseURL, "/") + "/funs/yinyang-contract",
 		}, cr.Cookie, true)
 		if err != nil {
-			return nil, nil
+			continue // 该挑战网络失败：尝试下一个
 		}
 		logResp("hdblue_yinyang accept", u, resp)
 		var out hdblueResp
 		if err := json.Unmarshal(resp.Body, &out); err != nil {
-			return nil, nil
+			continue
 		}
-		res := &PlayResult{Success: out.Code == 0, Message: out.Message}
-		if out.Code == 0 {
-			var env hdblueYinyangEnvelope
-			_ = json.Unmarshal(out.Data, &env)
-			if env.Summary != nil {
-				res.Balance = env.Summary.Points
-			}
-			res.Prize = fmt.Sprintf("已应战「%s」（彩头 %d 影币，选 A）——立即结算", truncateRunes(ch.Question, 24), ch.StakePts)
+		if out.Code != 0 {
+			// 该挑战业务失败（已被他人应战/竞态等）：换下一个；最后一次原因留作兜底提示。
+			lastFail = &PlayResult{Success: false, Message: out.Message}
+			continue
 		}
+		res := &PlayResult{Success: true, Message: out.Message}
+		var env hdblueYinyangEnvelope
+		_ = json.Unmarshal(out.Data, &env)
+		if env.Summary != nil {
+			res.Balance = env.Summary.Points
+		}
+		res.Prize = fmt.Sprintf("已应战「%s」（彩头 %d 影币，选 A）——立即结算", truncateRunes(ch.Question, 24), ch.StakePts)
 		return res, nil
+	}
+	if lastFail != nil {
+		return lastFail, nil
 	}
 	return nil, nil
 }

@@ -59,13 +59,8 @@ async function op(fn: () => Promise<DownloaderResult>, ok: string) {
   }
 }
 
-function stateGroup(s: string): string {
-  if (s.includes('error')) return 'error'
-  if (s.includes('upload') || s.includes('seed')) return 'seeding'
-  if (s.includes('pause') || s.includes('stop')) return 'paused'
-  if (s.includes('download')) return 'downloading'
-  return 'other'
-}
+// 状态归类复用 torrentTableFilters.stateGroup（全站统一口径，含 stalledUP 等 UP 后缀做种族）。
+import { stateGroup } from './torrentTableFilters'
 const isPaused = computed(() => stateGroup(props.torrent.state) === 'paused')
 const caps = computed(() => dlCaps(props.type))
 const stateText = computed(() => {
@@ -361,7 +356,7 @@ const stateText = computed(() => {
 }
 .flag.on {
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .flag-ops {
   display: flex;

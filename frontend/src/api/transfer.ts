@@ -133,12 +133,20 @@ export const transferApi = {
   setConfig: (cfg: TransferConfig) => http.put('/transfer/config', cfg).then((r) => r.data),
   organize: (downloaderId: number, hash: string) =>
     http
-      .post<{ result: OrganizeResult | null }>('/transfer/organize', {
-        downloader_id: downloaderId,
-        hash,
-      })
+      .post<{ result: OrganizeResult | null }>(
+        '/transfer/organize',
+        {
+          downloader_id: downloaderId,
+          hash,
+        },
+        // 手动整理/重做是同步长任务（识别+硬链+刮削），大库可远超默认 15s：不限时。
+        { timeout: 0 },
+      )
       .then((r) => r.data.result),
-  redo: (id: number) => http.post<{ result: OrganizeResult | null }>(`/transfer/redo/${id}`).then((r) => r.data.result),
+  redo: (id: number) =>
+    http
+      .post<{ result: OrganizeResult | null }>(`/transfer/redo/${id}`, null, { timeout: 0 })
+      .then((r) => r.data.result),
   deleteHistory: (id: number) => http.delete(`/transfer/history/${id}`).then((r) => r.data),
   batchDeleteHistory: (ids: number[]) =>
     http.post<{ deleted: number; failed: number[] }>('/transfer/history/batch-delete', { ids }).then((r) => r.data),

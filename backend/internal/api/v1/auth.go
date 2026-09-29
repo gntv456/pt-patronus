@@ -38,17 +38,17 @@ func dbFail(c *gin.Context, action string, err error) {
 
 // AuthHandler 处理好学账号/Cookie 登录、登出与（legacy）激活码。
 type AuthHandler struct {
-	db         *gorm.DB
-	jwt        *security.JWT
-	act        *auth.Activation        // legacy 激活码（不再作准入 gate，保留 Activate 端点）
-	hxptAuth   auth.HxptAuthenticator  // 好学登录 + VIP 校验
-	crypto     *security.Crypto        // 加密 HxptCookieEnc
-	tvCache    *auth.TokenVersionCache // 登出 invalidate
-	tickets    *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
-	demoMode   bool                    // 显式开启演示登录（默认关闭）
-	oidc       *auth.OIDCService       // OIDC/SSO（可空：未装配时 OIDC 端点返 503）
-	ocrCfg     func() ocr.Config       // OCR 服务配置读取（可空：无 OCR，验证码人工输入）
-	secureCookie bool                  // 反代 TLS / APP_BASE_URL 为 https 时 cookie 加 Secure
+	db           *gorm.DB
+	jwt          *security.JWT
+	act          *auth.Activation        // legacy 激活码（不再作准入 gate，保留 Activate 端点）
+	hxptAuth     auth.HxptAuthenticator  // 好学登录 + VIP 校验
+	crypto       *security.Crypto        // 加密 HxptCookieEnc
+	tvCache      *auth.TokenVersionCache // 登出 invalidate
+	tickets      *auth.TicketStore       // WS/RTSP 一次性 ticket（替代 query JWT）
+	demoMode     bool                    // 显式开启演示登录（默认关闭）
+	oidc         *auth.OIDCService       // OIDC/SSO（可空：未装配时 OIDC 端点返 503）
+	ocrCfg       func() ocr.Config       // OCR 服务配置读取（可空：无 OCR，验证码人工输入）
+	secureCookie bool                    // 反代 TLS / APP_BASE_URL 为 https 时 cookie 加 Secure
 }
 
 // NewAuthHandler 构造。secureCookie 决定登录 cookie 是否带 Secure 属性。

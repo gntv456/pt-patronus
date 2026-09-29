@@ -230,6 +230,15 @@ func (h *AuthHandler) issueForHxpt(c *gin.Context, hxptUID, username, cookie str
 	err := h.db.Where("hxpt_uid = ?", hxptUID).First(&u).Error
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
+		// 单用户硬限制（产品定位：整实例只归属首位登录者）：已有其他真实用户（非
+		// demo/emergency）时拒绝创建第二账号——VIP 验证只证明「是好学会员」，不能
+		// 证明「是实例主人」；不拦则任何好学 VIP 都能登录公网实例拿到非 admin 账号。
+		if uid := h.existingRealUserUID(); uid != "" && uid != hxptUID {
+			audit(c, "hxpt_login", "reject", slog.String("reason", "single_user_limit"), slog.String("hxpt_uid", hxptUID))
+			slog.Warn("SECURITY: second hxpt user rejected (single-user instance)", slog.String("hxpt_uid", hxptUID), slog.String("owner_prefix", maskUID(uid)), slog.String("ip", c.ClientIP()))
+			errcode.Respond(c, errcode.AuthUserRejected)
+			return
+		}
 		u = models.User{
 			Username: username, HxptUID: hxptUID, HxptUsername: username,
 			VipLevel: 1, VipVerifiedAt: &now, HxptCookieEnc: cookieEnc,

@@ -145,12 +145,21 @@ func (b *Bot) sendMessage(chatID int64, text string) error {
 	return b.postAPI("/bot"+b.token+"/sendMessage", form)
 }
 
-// sendSplit 超长按 4096 分段（Telegram 单条上限）。
+// sendSplit 超长按 4096 分段（Telegram 单条上限）。按 rune 边界切，
+// 避免 CJK 等多字节字符被拦腰截断产生非法 UTF-8 半字符。
 func (b *Bot) sendSplit(chatID int64, text string) {
+	const limit = 4096
 	for len(text) > 0 {
 		chunk := text
-		if len(chunk) > 4096 {
-			chunk = chunk[:4096]
+		if len(chunk) > limit {
+			chunk = chunk[:limit]
+			// 回退到完整 rune 边界：UTF-8 续字节 0b10xxxxxx 属于前一字符
+			for len(chunk) > 0 && chunk[len(chunk)-1]&0xC0 == 0x80 {
+				chunk = chunk[:len(chunk)-1]
+			}
+			if len(chunk) == 0 { // 理论不可达（首字节必在 4096 窗口内），防御兜底
+				chunk = text[:limit]
+			}
 		}
 		if err := b.sendMessage(chatID, chunk); err != nil {
 			slog.Warn("tgbot: sendMessage 失败", "err", err)

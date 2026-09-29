@@ -19,6 +19,7 @@ const mode = computed(() => {
   if (g.endsWith('_bigsmall') || g.endsWith('_sicbo')) return 'bigsmall'
   if (g.endsWith('_unionlotto') || g === 'hdkylin_lotto' || g === 'zmpt_lotto') return 'lotto'
   if (g === 'crab_fastthree') return 'fastthree'
+  if (g === 'tangpt_slot' || g === 'hdvideo_slots') return 'slot'
   if (g.endsWith('_flip')) return 'flip'
   if (g.endsWith('_redpacket')) return 'redpacket'
   if (g.endsWith('_bet')) return 'bet'
@@ -45,15 +46,28 @@ async function doBet(req: BetRequest) {
   }
 }
 
-const betBS = (t: string) => doBet({ selection: t, amount: amount.value })
+// 金额钳位：空/非数/≤0 → 1（后端 cbg_sicbo 对 ≤0 静默按 100 下注，前端先拦）。
+const clampAmt = () => {
+  const n = Math.floor(Number(amount.value))
+  return Number.isFinite(n) && n >= 1 ? n : 1
+}
+const betBS = (t: string) => doBet({ selection: t, amount: clampAmt() })
 const betFlip = () => doBet({ selection: '0', amount: 0 })
-const betClaim = () => doBet({ selection: 'claim', amount: 0 })
+// 红包领取：后端 UbitsRedpacketGame.Bet claim 分支要 Extra["id"]，缺 id 站点必败——UI 先拦。
+const rpId = ref('')
+const betClaim = () => doBet({ selection: 'claim', amount: 0, extra: { id: rpId.value.trim() } })
 const betLotto = () => doBet({ selection: '', amount: 166, extra: { reds: reds.value, blue: blue.value } })
 // 麒麟双色球：后端 Selection 直接吃 "红,红,红,红,红,红|蓝"（蟹黄堡双色球仍走 extra）
 const betHdkylinLotto = () => doBet({ selection: `${reds.value}|${blue.value}`, amount: 0 })
-const fastThreeChar = ref('皮卡丘')
-const betFastThree = () =>
-  doBet({ selection: fastThreeChar.value, amount: amount.value > 1 ? amount.value : 0 })
+// 快三角色：站点侧选项值为中文角色名本身（selection 直传），文案经 i18n 数组下发、值保持原样。
+const fastThreeChars = t('bg.fastThreeChars', '皮卡丘 / 杰尼龟 / 妙蛙种子').split('/').map((s) => s.trim())
+const fastThreeChar = ref(fastThreeChars[0])
+// 快三：Amount=1 走站点单次投注端点、>1 走批量 num=N（对齐后端 games_fast3_crab.go 分支）。
+const betFastThree = () => doBet({ selection: fastThreeChar.value, amount: clampAmt() })
+// 老虎机：躺平 tangpt_slot（Selection=倍率档 "1"，站点按 base_cost 扣费、Amount 无效）；
+// 高清视频 hdvideo_slots（Amount=票数，缺省由后端取 100）。
+const betSlot = () =>
+  props.game === 'tangpt_slot' ? doBet({ selection: '1', amount: 0 }) : doBet({ selection: '', amount: clampAmt() })
 
 onMounted(refreshStats)
 </script>
@@ -98,10 +112,10 @@ onMounted(refreshStats)
       </template>
 
       <template v-else-if="mode === 'fastthree'">
-        <div class="sec-title">🦀 快三 · 角色投注</div>
+        <div class="sec-title">🦀 {{ t('bg.fastThreeTitle') }}</div>
         <div class="ops">
           <button
-            v-for="c in ['皮卡丘', '杰尼龟', '妙蛙种子']"
+            v-for="c in fastThreeChars"
             :key="c"
             class="op"
             :class="{ primary: fastThreeChar === c }"
@@ -128,9 +142,25 @@ onMounted(refreshStats)
         </button>
       </template>
 
+      <template v-else-if="mode === 'slot'">
+        <div class="sec-title">🎰 {{ name }}</div>
+        <!-- hdvideo_slots 按票数下注；tangpt_slot 站点侧按 base_cost 扣费，无需金额 -->
+        <div v-if="game === 'hdvideo_slots'" class="row">
+          <span>{{ t('bg.stake') }}</span>
+          <input v-model.number="amount" type="number" class="txt" min="1" />
+        </div>
+        <button class="op primary" :disabled="playing" @click="betSlot">
+          {{ playing ? t('bg.working') : t('bg.bet') }}
+        </button>
+      </template>
+
       <template v-else-if="mode === 'redpacket'">
         <div class="sec-title">{{ t('bg.redpack') }}</div>
-        <button class="op primary" :disabled="playing" @click="betClaim">
+        <div class="row">
+          <span>ID</span>
+          <input v-model="rpId" class="txt" placeholder="ID" />
+        </div>
+        <button class="op primary" :disabled="playing || !rpId.trim()" @click="betClaim">
           {{ playing ? t('bg.working') : t('bg.claim') }}
         </button>
       </template>

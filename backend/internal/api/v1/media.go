@@ -82,7 +82,14 @@ func (h *MediaHandler) SubscriptionCalendar(c *gin.Context) {
 		if s.Type != "tv" || s.Source != "tmdb" {
 			continue
 		}
-		if _, id, ok := strings.Cut(s.SourceID, ":"); ok && id != "" {
+		// SourceID 两种形态：详情页订阅是 "tv:123"（带类型前缀，media 源惯例）；
+		// Servarr/Trakt 同步创建的是纯数字 "123"（无前缀）。Cut 命中取后段、未命中回退
+		// 整串，保证两类入口的订阅都进订阅日历（此前无前缀形态被静默跳过）。
+		id := s.SourceID
+		if _, tail, ok := strings.Cut(id, ":"); ok {
+			id = tail
+		}
+		if id != "" {
 			ids = append(ids, id)
 		}
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // BrushFlowOper 持久化刷流任务与种子加入历史。
@@ -34,7 +35,14 @@ func (o *BrushFlowOper) GetTask(id uint) (*models.BrushFlowTask, error) {
 
 func (o *BrushFlowOper) CreateTask(t *models.BrushFlowTask) error { return o.db.Create(t).Error }
 
-func (o *BrushFlowOper) UpdateTask(t *models.BrushFlowTask) error { return o.db.Save(t).Error }
+// UpdateTask 保存任务编辑。统计/时间戳/错误为服务端管控字段（cron 与 Select/Sweep 累加），
+// 不随编辑覆盖：用 Omit 排除，避免客户端伪造或字段缺失把统计清零。
+func (o *BrushFlowOper) UpdateTask(t *models.BrushFlowTask) error {
+	return o.db.Omit(
+		"TotalAdded", "TotalDeleted", "TotalUpload",
+		"CreatedAt", "LastSelectAt", "LastSweepAt", "LastError",
+	).Save(t).Error
+}
 
 // DeleteTask 删任务并联删种子历史。
 func (o *BrushFlowOper) DeleteTask(id uint) error {
@@ -58,7 +66,11 @@ func (o *BrushFlowOper) SeedExistsBySourceKey(taskID uint, key string) (bool, er
 	return n > 0, err
 }
 
-func (o *BrushFlowOper) AddSeed(s *models.BrushFlowSeed) error { return o.db.Create(s).Error }
+// AddSeed 写入种子历史（幂等：task_id+source_key 唯一索引，冲突静默跳过——
+// 并发/重试窗口内同一种子只落一条记录，配合 chain 层 SeedExists 去重双保险）。
+func (o *BrushFlowOper) AddSeed(s *models.BrushFlowSeed) error {
+	return o.db.Clauses(clause.OnConflict{DoNothing: true}).Create(s).Error
+}
 
 // IncrTaskStats 原子累加任务统计（added/deleted/upload 传 0 跳过该项）。
 func (o *BrushFlowOper) IncrTaskStats(id uint, added, deleted, upload int64) error {

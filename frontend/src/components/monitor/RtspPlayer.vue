@@ -9,8 +9,40 @@ const { t } = useI18n()
 const props = defineProps<{ target: MonitorTarget }>()
 const containerRef = ref<HTMLDivElement>()
 const err = ref('')
-type JessibucaPlayer = { destroy: () => void; play: (u: string) => void }
+type JessibucaPlayer = {
+  destroy: () => void
+  play: (u: string) => void
+  // 事件 API 因捆绑版本而异：仅在存在时注册（断流重连），缺失则退化为手动刷新。
+  on?: (ev: string, cb: (msg?: unknown) => void) => void
+}
 let player: JessibucaPlayer | null = null
+// 断流重连：error/timeout 事件触发有界退避重连（每次重建播放器并取新 ticket，
+// 旧 ticket 单次有效）。无成功回调可依据，故每个挂载实例最多重连 5 次，超限提示刷新。
+let stopped = false
+let reconnects = 0
+let reconnectTimer: number | undefined
+const maxReconnects = 5
+
+function scheduleReconnect() {
+  if (stopped) return
+  if (reconnects >= maxReconnects) {
+    err.value = t('rp.giveUp')
+    return
+  }
+  reconnects++
+  err.value = t('rp.reconnecting')
+  window.clearTimeout(reconnectTimer)
+  reconnectTimer = window.setTimeout(() => {
+    if (stopped) return
+    try {
+      player?.destroy()
+    } catch {
+      /* ignore */
+    }
+    player = null
+    start()
+  }, Math.min(2000 * reconnects, 10000))
+}
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -43,17 +75,25 @@ async function start() {
       isResize: true,
       loadingText: t('rp.connecting'),
       decoder: '/jessibuca/decoder.js',
+      timeout: 15,
     })
     player = p
+    if (typeof p.on === 'function') {
+      p.on('error', () => scheduleReconnect())
+      p.on('timeout', () => scheduleReconnect())
+    }
     const { ticket } = await authApi.wsTicket()
     p.play(monitorApi.streamURL(props.target.id, ticket))
   } catch (e) {
     err.value = (e as Error).message
+    scheduleReconnect()
   }
 }
 
 onMounted(start)
 onBeforeUnmount(() => {
+  stopped = true
+  window.clearTimeout(reconnectTimer)
   try {
     player?.destroy()
   } catch {

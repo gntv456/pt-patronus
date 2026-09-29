@@ -24,6 +24,13 @@ function siteStatus(r: FreeleechResult): FreeleechStatus {
   return 'none'
 }
 
+// 状态 → pt-chip 语义变体（W4-② 标签统一：替代内联动态配色 style）
+function statusChipClass(status: string): string {
+  if (status === 'active') return 'pt-chip--success'
+  if (status === 'upcoming') return 'pt-chip--warn'
+  return 'pt-chip--danger'
+}
+
 // 状态汇总（顶层筛选 chip 的数值）
 const summary = computed(() => {
   let active = 0,
@@ -224,8 +231,8 @@ onUnmounted(() => abortCtrl?.abort())
           <span class="site-name">{{ r.site_name }}</span>
           <span
             v-if="r.notices[0]"
-            class="chip"
-            :style="{ background: statusColor[r.notices[0].status] + '22', color: statusColor[r.notices[0].status] }"
+            class="pt-chip"
+            :class="statusChipClass(r.notices[0].status)"
           >
             {{ statusLabel[r.notices[0].status] }}
           </span>

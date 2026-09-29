@@ -97,6 +97,21 @@ func EncodeHRAlert(alerts []HRAlert) ([]byte, error) {
 	return json.Marshal(Message{Type: "hr-alert", Data: alerts})
 }
 
+// TaskProgress 长任务进度帧（W4 任务中心）：kind 标识任务族（如 site-sync），
+// done/total 支撑进度条，site 为最近完成的一站（供指示器 tooltip），finished 标记整体结束。
+type TaskProgress struct {
+	Kind     string `json:"kind"`            // site-sync | brushflow-sweep | ...
+	Done     int    `json:"done"`            // 已完成数（含失败）
+	Total    int    `json:"total"`           // 总数；0=未知总量（不确定态）
+	Site     string `json:"site,omitempty"`  // 最近完成的条目名（tooltip 用）
+	Finished bool   `json:"finished"`        // true=任务整体结束（前端清指示器）
+}
+
+// EncodeTaskProgress 把任务进度编码为 task-progress 消息字节（chain 进度回调广播用）。
+func EncodeTaskProgress(p TaskProgress) ([]byte, error) {
+	return json.Marshal(Message{Type: "task-progress", Data: p})
+}
+
 // EncodeCookieAlert 把 cookie 失效站点名列表编码为 cookie-alert 消息字节。
 func EncodeCookieAlert(sites []string) ([]byte, error) {
 	return json.Marshal(Message{Type: "cookie-alert", Data: sites})

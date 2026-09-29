@@ -114,7 +114,14 @@ func (c *SubscribeChain) Create(ctx context.Context, s *models.Subscription) (*m
 		s.Status = "subscribed"
 	}
 	if existing, err := c.op.FindActiveBySource(s.Source, s.SourceID); err == nil && existing != nil {
-		return existing, nil // 已订阅，幂等
+		// paused 复用复活：避免同源双订阅（恢复后同 torrent 双推送、进度各一份）。
+		if existing.Status == "paused" {
+			existing.Status = "subscribed"
+			if err := c.op.Update(existing); err != nil {
+				return nil, err
+			}
+		}
+		return existing, nil // 已订阅/复活，幂等
 	}
 	if err := c.op.Create(s); err != nil {
 		return nil, err
@@ -190,14 +197,25 @@ func (c *SubscribeChain) defaultDownloaderID() uint {
 	return list[0].ID
 }
 
-// noticeOnce 发一条通知中心消息（dedup：同 sub+torrent 才去重，状态提示不去重以免漏）。
+// noticeOnce 发一次性事件通知（命中推送等）：Key 掺时间戳不去重——命中去重靠
+// HitExists，通知层再去重会漏报。
 func (c *SubscribeChain) noticeOnce(ctx context.Context, sub *models.Subscription, title, body, level string) {
+	c.noticeKeyed(ctx, sub, fmt.Sprintf("sub:%d:%d", sub.ID, time.Now().UnixNano()), title, body, level, false)
+}
+
+// noticeStable 持续型状态提示（稳定 Key + 当天去重）：同订阅同主题当天只发一条。
+// 修复「未配置默认下载器」这类持续状态每轮 cron × 每订阅刷一条通知、淹没真实告警。
+func (c *SubscribeChain) noticeStable(ctx context.Context, sub *models.Subscription, topic, title, body, level string) {
+	c.noticeKeyed(ctx, sub, fmt.Sprintf("sub:%d:%s", sub.ID, topic), title, body, level, true)
+}
+
+func (c *SubscribeChain) noticeKeyed(ctx context.Context, sub *models.Subscription, key, title, body, level string, dedup bool) {
 	if c.notice == nil {
 		return
 	}
 	_ = c.notice.Notice(ctx, notice.Input{
 		Source: notice.SourceSubscribeHit,
-		Key:    fmt.Sprintf("sub:%d:%d", sub.ID, time.Now().UnixNano()), // 状态提示不去重；命中去重靠 HitExists
+		Key:    key,
 		Title:  title, Body: body, Level: level,
-	}, false)
+	}, dedup)
 }

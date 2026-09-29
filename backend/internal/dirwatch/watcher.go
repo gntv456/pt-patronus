@@ -189,11 +189,22 @@ func (w *Watcher) scanAndProcess(ctx context.Context, dir string) {
 	}
 	first := files[0].Path
 	w.mu.Lock()
-	if t, ok := w.recent[first]; ok && time.Since(t) < 10*time.Second {
+	// TTL 淘汰：recent 只增不减会随监视时间无限膨胀（每目录首文件路径常驻内存），
+	// 顺手清掉已过期项（低频扫描路径，遍历代价可忽略）。
+	now := time.Now()
+	for k, ts := range w.recent {
+		if now.Sub(ts) >= recentTTL {
+			delete(w.recent, k)
+		}
+	}
+	if t, ok := w.recent[first]; ok && now.Sub(t) < recentTTL {
 		w.mu.Unlock()
 		return // 短期内已处理
 	}
-	w.recent[first] = time.Now()
+	w.recent[first] = now
 	w.mu.Unlock()
 	w.process(ctx, dir, files)
 }
+
+// recentTTL 同一首文件的处理去重窗口。
+const recentTTL = 10 * time.Second

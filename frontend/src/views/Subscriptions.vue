@@ -164,7 +164,19 @@ async function runBatch(op: 'update' | 'check' | 'delete') {
     ElMessage.warning(t('subscriptions.batch.selectFirst'))
     return
   }
-  if (op === 'delete' && !confirm(t('subscriptions.batch.confirmDelete', { n: selectedIds.value.length }))) return
+  // 批量退订是破坏性操作：ElMessageBox 统一确认（替代原生 confirm——视觉与全站割裂，
+  // 且阻塞主线程）。type:warning 与其余 40+ 处确认形态一致。
+  if (op === 'delete') {
+    try {
+      await ElMessageBox.confirm(
+        t('subscriptions.batch.confirmDelete', { n: selectedIds.value.length }),
+        t('common.confirm'),
+        { type: 'warning', confirmButtonText: t('common.delete'), cancelButtonText: t('common.cancel') }
+      )
+    } catch {
+      return
+    }
+  }
   let patch: Record<string, unknown> | undefined
   if (op === 'update') {
     patch = {}

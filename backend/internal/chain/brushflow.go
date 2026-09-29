@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/models"
@@ -27,10 +28,21 @@ type BrushFlowChain struct {
 	op        *oper.BrushFlowOper
 	notice    *notice.Service
 	filterEng *filter.Engine // 可空（未装配时 filterAndSort 回退硬过滤）
+
+	// selectMu per-task 选种互斥（P1）：手动触发与 cron 并发时两者可同时读到旧 active
+	// 计数、各自加满 remain，突破 MaxSeeds 至约 2 倍；同一任务串行化后不复现。
+	selectMu sync.Map // taskID → *sync.Mutex（选种互斥）
+	sweepMu sync.Map // taskID → *sync.Mutex（扫删互斥）
 }
 
 func NewBrushFlowChain(b Base, siteOp *oper.SiteOper, siteCh *SiteChain, dlCh *DownloadChain, op *oper.BrushFlowOper, noticeSvc *notice.Service, filterEng *filter.Engine) *BrushFlowChain {
 	return &BrushFlowChain{Base: b, siteOp: siteOp, siteCh: siteCh, dlCh: dlCh, op: op, notice: noticeSvc, filterEng: filterEng}
+}
+
+// lockTask 取（或建）某任务某操作族的互斥锁。
+func (c *BrushFlowChain) lockTask(m *sync.Map, taskID uint) *sync.Mutex {
+	v, _ := m.LoadOrStore(taskID, &sync.Mutex{})
+	return v.(*sync.Mutex)
 }
 
 // 透传 CRUD
@@ -76,7 +88,11 @@ func (c *BrushFlowChain) RunAllSweep(ctx context.Context) {
 }
 
 // RunSelect 选种添加：搜种→过滤排序→按 tag 限流→去重→加入下载器→写历史。
+// per-task 互斥：手动触发与 cron 并发时防止双倍读旧计数突破 MaxSeeds。
 func (c *BrushFlowChain) RunSelect(ctx context.Context, taskID uint) error {
+	mu := c.lockTask(&c.selectMu, taskID)
+	mu.Lock()
+	defer mu.Unlock()
 	task, err := c.op.GetTask(taskID)
 	if err != nil {
 		return err
@@ -122,7 +138,12 @@ func (c *BrushFlowChain) RunSelect(ctx context.Context, taskID uint) error {
 		if key == "" {
 			continue
 		}
-		exists, _ := c.op.SeedExistsBySourceKey(taskID, key)
+		exists, eerr := c.op.SeedExistsBySourceKey(taskID, key)
+		if eerr != nil {
+			// 去重判断失败：宁可漏加不可重复（对齐订阅链路策略），下轮再试。
+			slog.Warn("brushflow SeedExists failed, skip torrent to avoid duplicate", "task", taskID, "err", eerr)
+			continue
+		}
 		if exists {
 			continue
 		}
@@ -134,12 +155,18 @@ func (c *BrushFlowChain) RunSelect(ctx context.Context, taskID uint) error {
 			Paused:   task.Paused,
 			SiteID:   task.SiteID,
 		}); err != nil {
+			slog.Warn("brushflow add torrent failed", "task", taskID, "title", tor.Title, "err", err)
 			continue // 单个失败不阻断其余
 		}
-		_ = c.op.AddSeed(&models.BrushFlowSeed{
+		if err := c.op.AddSeed(&models.BrushFlowSeed{
 			TaskID: taskID, DownloaderID: task.DownloaderID, SourceKey: key,
 			Title: tor.Title, Size: bfParseSize(tor.Size), SiteID: task.SiteID, AddedAt: time.Now(),
-		})
+		}); err != nil {
+			// Add 成功但历史写失败：下一轮 SeedExists 查不到会重复添加——记 error 供
+			// 任务页诊断（唯一索引 + OnConflict 兜底见 oper 层）。
+			slog.Warn("brushflow AddSeed failed (may re-add next cycle)", "task", taskID, "key", key, "err", err)
+			_ = c.op.SetTaskError(taskID, "种子历史写入失败: "+err.Error())
+		}
 		added++
 	}
 	if added > 0 {
@@ -152,10 +179,18 @@ func (c *BrushFlowChain) RunSelect(ctx context.Context, taskID uint) error {
 }
 
 // RunSweep 扫删：列下载器种子→筛本任务 tag→判删除规则→删种→累计上传量→通知。
+// per-task 互斥 + 禁用任务跳过（与选种侧语义对称：禁用=全面停摆，不再出现
+// 「暂停观察但 5 分钟后种子仍被扫删（含删文件）」的不对称行为）。
 func (c *BrushFlowChain) RunSweep(ctx context.Context, taskID uint) error {
+	mu := c.lockTask(&c.sweepMu, taskID)
+	mu.Lock()
+	defer mu.Unlock()
 	task, err := c.op.GetTask(taskID)
 	if err != nil {
 		return err
+	}
+	if !task.Enabled {
+		return nil
 	}
 	tag := fmt.Sprintf("brushflow:%d", taskID)
 	list, err := c.dlCh.List(ctx, task.DownloaderID)

@@ -38,7 +38,7 @@
 .stat-val {
   font-size: var(--fs-title);
   font-weight: 800;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .stat-lbl {
   font-size: var(--fs-xs);
@@ -142,7 +142,7 @@
   margin-right: 8px;
 }
 .r-prize {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 700;
 }
 .r-amt {

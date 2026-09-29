@@ -204,8 +204,8 @@ onUnmounted(() => {
             <GlassIcon
               v-if="item.icon"
               :name="item.icon"
-              :from="item.from || '#6c5ce7'"
-              :to="item.to || '#4285f4'"
+              :from="item.from || 'var(--pt-primary)'"
+              :to="item.to || 'var(--pt-primary-2)'"
               :size="28"
               class="cp-icon"
             />
@@ -239,7 +239,7 @@ onUnmounted(() => {
 .cp-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: var(--z-overlay);
   background: rgba(15, 23, 42, 0.42);
   backdrop-filter: blur(6px);
   display: flex;

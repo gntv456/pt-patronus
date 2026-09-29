@@ -90,7 +90,7 @@ onMounted(load)
           <button
             v-for="g in site.games"
             :key="g.id"
-            class="chip"
+            class="game-chip"
             :class="g.category"
             :title="t(CAT_META[g.category]?.key ?? 'eo.catOther')"
             @click.stop="goPlay(site, g.id)"
@@ -129,8 +129,8 @@ onMounted(load)
 .site-name { font-weight: 800; font-size: 15px; }
 .site-count { background: var(--primary, #409eff); color: #fff; border-radius: 999px; font-size: 12px; font-weight: 700; padding: 1px 9px; }
 .game-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.chip { border: 1px solid var(--border-light, #e5e7eb); border-radius: 999px; background: var(--bg-card, #fff); padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: border-color .15s; }
-.chip:hover { border-color: var(--primary, #409eff); color: var(--primary, #409eff); }
+.game-chip { border: 1px solid var(--border-light, #e5e7eb); border-radius: 999px; background: var(--bg-card, #fff); padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; transition: border-color .15s; }
+.game-chip:hover { border-color: var(--primary, #409eff); color: var(--primary, #409eff); }
 .idle { margin-top: 6px; }
 .idle summary { cursor: pointer; font-size: 13px; }
 .idle-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

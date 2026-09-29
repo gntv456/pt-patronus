@@ -99,21 +99,24 @@ func registerSystemRoutes(api, guarded *gin.RouterGroup, d *Deps, sysH *v1.Syste
 	guarded.PUT("/subscribe/settings", subH.UpdateGlobalSettings)
 
 	// 工作流：可视化节点图引擎。静态路由 /actions、/runs 置于 /:id 前避免冲突。
+	// 写操作/run 全部 RequireAdmin（P1 收敛）：注册表含 SSHCommandNode（远程命令执行）、
+	// HTTPRequestNode、DeleteFileNode 等高破坏节点——同等能力直连 /monitors/:id/exec
+	// 已是 admin，经工作流不能绕闸；Run 还接受外部 payload 变量注入节点模板。
 	wfH := v1.NewWorkflowHandler(d.Workflow)
 	wfs := guarded.Group("/workflows")
 	{
 		wfs.GET("", wfH.List)
-		wfs.POST("", wfH.Create)
+		wfs.POST("", middleware.RequireAdmin(), wfH.Create)
 		wfs.GET("/actions", wfH.Catalog)
 		wfs.GET("/templates", wfH.Templates)
 		wfs.GET("/stats", wfH.Stats)
 		wfs.GET("/:id", wfH.Get)
-		wfs.PUT("/:id", wfH.Update)
-		wfs.DELETE("/:id", wfH.Delete)
-		wfs.POST("/:id/run", wfH.Run)
-		wfs.POST("/:id/enable", wfH.Enable)
-		wfs.POST("/:id/disable", wfH.Disable)
-		wfs.POST("/:id/reset", wfH.Reset)
+		wfs.PUT("/:id", middleware.RequireAdmin(), wfH.Update)
+		wfs.DELETE("/:id", middleware.RequireAdmin(), wfH.Delete)
+		wfs.POST("/:id/run", middleware.RequireAdmin(), wfH.Run)
+		wfs.POST("/:id/enable", middleware.RequireAdmin(), wfH.Enable)
+		wfs.POST("/:id/disable", middleware.RequireAdmin(), wfH.Disable)
+		wfs.POST("/:id/reset", middleware.RequireAdmin(), wfH.Reset)
 	}
 	wfRuns := guarded.Group("/workflow-runs")
 	{

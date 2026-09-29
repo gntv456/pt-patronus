@@ -1,11 +1,15 @@
 package v1
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"github.com/hxpt/ptpatronus/internal/chain"
+	"github.com/hxpt/ptpatronus/internal/entertainment"
 )
 
 // gobangSiteErr 站点侧错误分类：cookie 失效/未登录（站点 message 含「登录」）→
@@ -33,10 +37,11 @@ func (h *EntertainmentHandler) GobangState(c *gin.Context) {
 }
 
 type gobangActionReq struct {
-	// Action 合法动作：create / choose-color / move / undo / forfeit / retry-ai。
-	Action string `json:"action" binding:"required,oneof=create choose-color move undo forfeit retry-ai"`
+	// Action 合法动作：create / choose-color / select / move / undo / forfeit / retry-ai。
+	Action string `json:"action" binding:"required,oneof=create choose-color select move undo forfeit retry-ai"`
 	// Params 动作参数原样透传站点：create{difficulty}、choose-color{matchId,color}、
-	// move{matchId,x,y}、undo/forfeit/retry-ai{matchId}。
+	// select{matchId,x,y,turnToken}（计榜局换 moveToken）、move{matchId,x,y|moveToken}、
+	// undo/forfeit/retry-ai{matchId}。
 	Params map[string]any `json:"params" binding:"dive,max=512"`
 }
 
@@ -51,11 +56,16 @@ func (h *EntertainmentHandler) GobangAction(c *gin.Context) {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
+	if req.Params == nil && req.Action != "create" {
+		// 动作需要 params（matchId 等）却没带：站点会拒，先在前端可读地拦下。
+		errcode.Respond(c, errcode.InvalidInput.WithErr(fmt.Errorf("动作 %s 缺少 params", req.Action)))
+		return
+	}
 	res, err := h.ent.GobangAction(c.Request.Context(), id, c.Param("game"), req.Action, req.Params)
 	if err != nil {
-		if req.Params == nil && (req.Action == "move" || req.Action == "choose-color" || req.Action == "undo" || req.Action == "forfeit" || req.Action == "retry-ai") {
-			// 动作需要 params（matchId 等）却没带：站点会拒，先在前端可读地拦下。
-			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		if errors.Is(err, chain.ErrDuplicateSpend) {
+			// spendGuard 拦下的双击/重放：429 而非 BadGateway（同 Play 的 spendErr 语义）。
+			c.JSON(http.StatusTooManyRequests, gin.H{"code": errcode.DuplicateSpend.Code, "message": err.Error(), "error": err.Error()})
 			return
 		}
 		gobangSiteErr(c, err)
@@ -160,4 +170,26 @@ func (h *EntertainmentHandler) TangptLotteryState(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, res)
+}
+
+type gobangHintReq struct {
+	Board [][]int `json:"board" binding:"required,max=32,dive,max=32,dive,min=0,max=2"`
+	Mine  int     `json:"mine" binding:"required,min=1,max=2"`
+}
+
+// GobangHint 五子棋引擎着法提示（本地引擎计算，不请求站点）：
+// 驱动脚本把站点棋盘 POST 进来，返回引擎选点。供自动化对局使用。
+func (h *EntertainmentHandler) GobangHint(c *gin.Context) {
+	var req gobangHintReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		return
+	}
+	theirs := 3 - req.Mine
+	x, y, ok := entertainment.GobangBestMoveForHint(req.Board, req.Mine, theirs)
+	if !ok {
+		errcode.Respond(c, errcode.Internal.WithErr(fmt.Errorf("no move")))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"x": x, "y": y})
 }

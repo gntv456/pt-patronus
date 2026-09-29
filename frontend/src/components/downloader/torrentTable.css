@@ -78,7 +78,7 @@
 .tname {
   overflow: hidden;
   max-width: 100%;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;

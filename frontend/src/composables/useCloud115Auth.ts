@@ -31,6 +31,7 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
     authQR.value = ''
     authState.value = null
     authStatusText.value = ''
+    authPolling.value = false
     showAuth115.value = true
   }
 
@@ -72,6 +73,7 @@ export function useCloud115Auth(onDrivesChanged: () => Promise<void> | void) {
           })
           ElMessage.success('115 开放平台已授权并添加网盘')
           showAuth115.value = false
+          authPolling.value = false
           await onDrivesChanged()
           return
         }

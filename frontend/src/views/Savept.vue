@@ -302,14 +302,14 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #6c5ce7;
+  background: var(--pt-primary);
   color: #fff;
   opacity: 0.56;
   cursor: pointer;
   transition:
     transform var(--dur-base) var(--ease-in-out),
     opacity var(--dur-base) var(--ease-in-out);
-  z-index: 9999;
+  z-index: var(--z-float);
 }
 .spt-back-top:hover,
 .spt-back-top:focus-visible,

@@ -1,16 +1,19 @@
 package v1
 
 import (
-	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/chain"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/site"
+	"gorm.io/gorm"
 )
 
 // SiteHandler 处理站点 CRUD、连接测试、搜索、校准诊断。
@@ -83,6 +86,17 @@ func (h *SiteHandler) Create(c *gin.Context) {
 	}
 	s, err := h.oper.Create(in)
 	if err != nil {
+		// 同注册域站点已存在是用户可自行处理的冲突（409 带明确文案），
+		// 其余（库故障等）才归 internal——避免「重复添加」被误报成服务内部错误。
+		if errors.Is(err, oper.ErrDuplicateSite) {
+			errcode.Respond(c, errcode.SiteDuplicate.WithErr(err))
+			return
+		}
+		if errors.Is(err, oper.ErrInvalidBaseURL) {
+			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+			return
+		}
+		slog.Error("site create failed", "base_url", in.BaseURL, "err", err)
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
@@ -106,6 +120,20 @@ func (h *SiteHandler) Update(c *gin.Context) {
 	}
 	s, err := h.oper.Update(id, in)
 	if err != nil {
+		// 站点已被其他会话删除后再提交编辑 → 404，而非误报服务内部错误（500）。
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			errcode.Respond(c, errcode.SiteNotFound)
+			return
+		}
+		if errors.Is(err, oper.ErrDuplicateSite) {
+			errcode.Respond(c, errcode.SiteDuplicate.WithErr(err))
+			return
+		}
+		if errors.Is(err, oper.ErrInvalidBaseURL) {
+			errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+			return
+		}
+		slog.Error("site update failed", "id", id, "err", err)
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
@@ -126,6 +154,10 @@ func (h *SiteHandler) Delete(c *gin.Context) {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
+	// 被删站点的 per-host 限流残留会导致抓取客户端仍按旧间隔节流：删除后重算剩余站点。
+	if all, err := h.oper.List(); err == nil {
+		h.siteCh.SyncHostLimits(all, h.hc)
+	}
 	c.JSON(http.StatusOK, gin.H{"deleted": id})
 }
 
@@ -145,6 +177,10 @@ func (h *SiteHandler) BatchDelete(c *gin.Context) {
 	}
 	if failed == nil {
 		failed = []uint{}
+	}
+	// 与 Delete 同理：批量删除后重算剩余站点，清理残留 per-host 限流。
+	if all, err := h.oper.List(); err == nil {
+		h.siteCh.SyncHostLimits(all, h.hc)
 	}
 	c.JSON(http.StatusOK, gin.H{"deleted": len(body.IDs) - len(failed), "failed": failed})
 }
@@ -170,13 +206,36 @@ func (h *SiteHandler) Test(c *gin.Context) {
 
 // Status 返回全部站点的上次联通状态缓存（瞬时读、不发网络请求）。
 // 进页面 GET 此接口瞬时回显「上次检测结果」；后台逐站实时检测走 GET /sites/status/stream（SSE）。
+// 响应逐条映射为与 SSE 帧（chain.SiteConnectionResult）一致的前端结构：
+// error←error_msg、补 site_name（缓存表无站点名），否则运营矩阵「查看原因」与
+// 站点详情页离线文案在缓存回显时读不到具体错误（两处均读 status.error）。
 func (h *SiteHandler) Status(c *gin.Context) {
 	list, err := h.oper.ListConnectivity()
 	if err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"statuses": list})
+	names := map[uint]string{}
+	if sites, err := h.oper.List(); err == nil {
+		for _, s := range sites {
+			names[s.ID] = s.Name
+		}
+	}
+	statuses := make([]gin.H, 0, len(list))
+	for _, r := range list {
+		statuses = append(statuses, gin.H{
+			"site_id":     r.SiteID,
+			"site_name":   names[r.SiteID],
+			"status":      r.Status,
+			"level":       r.Level,
+			"error":       r.ErrorMsg,
+			"success":     r.Success,
+			"fail":        r.Fail,
+			"avg_seconds": r.AvgSeconds,
+			"checked_at":  r.CheckedAt,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"statuses": statuses})
 }
 
 // StatusStream SSE 流式逐站检测：每站完成推一帧 event:status，结束推 event:done。

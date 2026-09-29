@@ -165,7 +165,9 @@ func (h *WebhookHandler) Create(c *gin.Context) {
 	if err != nil {
 		out = w // re-fetch 失败：用刚创建的对象（含 ID），避免返回 200 null
 	}
-	c.JSON(http.StatusOK, out)
+	// token 已打 json:"-" 不随模型回传——创建时一次性下发（管理员据此拼接收 URL，
+	// 之后仅 rotate 可再取；List 永不回明文）。
+	c.JSON(http.StatusOK, gin.H{"webhook": out, "token": w.Token})
 }
 
 // Update 编辑（secret 空=保留）。

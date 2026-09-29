@@ -254,7 +254,58 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 	agentChatH := v1.NewAgentChatHandler(agentSvc, agentConvOp.List, agentConvOp.Create, agentConvOp.Delete, agentMsgOp.ListByConv, cfgOp, crypto)
 	llmGatewayH := v1.NewLLMGatewayHandler(agentSvc, agentConvOp.Create, cfgOp, crypto)
 	doctorH := v1.NewDoctorHandler(cfg, database, buildDoctorBusinessChecks(d))
-	tgBotH := v1.NewTgBotHandler(cfgOp, crypto)
+
+	// Telegram bot（入站 chat-ops）：getUpdates 长轮询 → 自然语言经 AI Agent 驱动全平台。
+	// safe-mode 下不启；配置保存后热重载（停旧 goroutine、按新配置再起），无需重启进程。
+	var tgMu sync.Mutex
+	var tgCancel context.CancelFunc
+	chatMu := &sync.Mutex{}
+	chatConvs := map[string]uint{}
+	talk := func(ctx context.Context, chatKey, text string) <-chan llm.Event {
+		chatMu.Lock()
+		convID, ok := chatConvs[chatKey]
+		if !ok {
+			conv := &models.AgentConversation{}
+			if err := agentConvOp.Create(conv); err == nil && conv.ID != 0 {
+				convID = conv.ID
+				chatConvs[chatKey] = convID
+			}
+		}
+		chatMu.Unlock()
+		if convID == 0 {
+			ch := make(chan llm.Event)
+			close(ch)
+			return ch
+		}
+		return agentSvc.Run(ctx, convID, text)
+	}
+	clear := func(chatKey string) { chatMu.Lock(); delete(chatConvs, chatKey); chatMu.Unlock() }
+	var startTgBot func()
+	startTgBot = func() {
+		tgMu.Lock()
+		defer tgMu.Unlock()
+		if tgCancel != nil {
+			tgCancel()
+			tgCancel = nil
+		}
+		if cfg.SafeMode {
+			return
+		}
+		tgc := tgbot.Load(cfgOp)
+		if !tgc.Enabled || tgc.BotTokenEnc == "" {
+			return
+		}
+		token := tgbot.BotToken(tgc, crypto)
+		if token == "" {
+			return
+		}
+		bot := tgbot.New(token, tgc.APIURL, tgc.AllowedUserIDs, tgc.AllowGroupChat, talk, clear)
+		tgCtx, cancel := context.WithCancel(context.Background())
+		tgCancel = cancel
+		go bot.Run(tgCtx)
+	}
+	startTgBot()
+	tgBotH := v1.NewTgBotHandler(cfgOp, crypto, func() { startTgBot() })
 	// Servarr 兼容（Sonarr/Radarr v3）：订阅 ↔ Movie/Series，hasFile 查整理历史。无外部依赖，safe-mode 下仍注册。
 	servarrH := v1.NewServarrHandler(subCh, mediaCh, transferHistOp.HasSuccessByMedia, cfg.APIKey)
 
@@ -271,41 +322,7 @@ func buildHTTPServer(d runtimeDeps) (*http.Server, context.CancelFunc, context.C
 		}
 	}
 
-	// Telegram bot（入站 chat-ops）：getUpdates 长轮询 → 自然语言经 AI Agent 驱动全平台。safe-mode 下不启。
-	var tgCancel context.CancelFunc
-	if !cfg.SafeMode {
-		if tgc := tgbot.Load(cfgOp); tgc.Enabled && tgc.BotTokenEnc != "" {
-			if token := tgbot.BotToken(tgc, crypto); token != "" {
-				var chatMu sync.Mutex
-				chatConvs := map[string]uint{}
-				talk := func(ctx context.Context, chatKey, text string) <-chan llm.Event {
-					chatMu.Lock()
-					convID, ok := chatConvs[chatKey]
-					if !ok {
-						conv := &models.AgentConversation{}
-						if err := agentConvOp.Create(conv); err == nil && conv.ID != 0 {
-							convID = conv.ID
-							chatConvs[chatKey] = convID
-						}
-					}
-					chatMu.Unlock()
-					if convID == 0 {
-						ch := make(chan llm.Event)
-						close(ch)
-						return ch
-					}
-					return agentSvc.Run(ctx, convID, text)
-				}
-				clear := func(chatKey string) { chatMu.Lock(); delete(chatConvs, chatKey); chatMu.Unlock() }
-				bot := tgbot.New(token, tgc.APIURL, tgc.AllowedUserIDs, tgc.AllowGroupChat, talk, clear)
-				tgCtx, cancel := context.WithCancel(context.Background())
-				tgCancel = cancel
-				go bot.Run(tgCtx)
-			}
-		}
-	}
-
-	registerCronJobs(sched, cfg, brushCh, contractCh, traktCh, cookieCloudCh, rssCh, wfRunOp, monOp, noticeOp, saveptSvc, notifCh, noticeSvc, medalCh, subCh, transferCh, cloudCh, oper.NewRssItemOper(database), oper.NewPluginOper(database))
+	registerCronJobs(sched, cfg, brushCh, contractCh, traktCh, cookieCloudCh, rssCh, wfRunOp, monOp, noticeOp, saveptSvc, notifCh, noticeSvc, medalCh, subCh, transferCh, cloudCh, oper.NewRssItemOper(database), oper.NewPluginOper(database), backupSvc)
 
 	engine := api.Build(&api.Deps{
 		Cfg: cfg, DB: database, JWT: j, Act: act,
@@ -379,6 +396,11 @@ func (a *App) Shutdown(ctx context.Context) error {
 	}
 	if a.pluginMgr != nil {
 		a.pluginMgr.Stop()
+	}
+	// 云任务执行器停机（P2 修复：stop channel 此前永不关闭，执行器 goroutine 泄漏，
+	// 且在途 upload 用 2h Background ctx 拖到 http.Shutdown 超时强杀、任务卡 running）。
+	if a.cloudCh != nil {
+		a.cloudCh.StopCloudTaskExecutor()
 	}
 	return a.http.Shutdown(ctx)
 }

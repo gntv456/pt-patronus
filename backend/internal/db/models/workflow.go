@@ -84,10 +84,10 @@ type RssItem struct {
 type Webhook struct {
 	ID               uint       `gorm:"primaryKey" json:"id"`
 	Name             string     `gorm:"size:128;not null" json:"name"`
-	Token            string     `gorm:"size:64;uniqueIndex;not null" json:"token"` // URL 密钥（随机 32 hex）
-	TargetWorkflowID uint       `gorm:"index" json:"target_workflow_id"`           // 0=不直接触发工作流
-	SecretEnc        string     `gorm:"type:text" json:"-"`                        // AES-GCM 加密的 HMAC 校验密钥（可选）
-	HasSecret        bool       `gorm:"-" json:"has_secret,omitempty"`             // 回显用（是否设了签名密钥）
+	Token            string     `gorm:"size:64;uniqueIndex;not null" json:"-"` // URL 密钥（随机 32 hex）；凭据不回传（List 脱敏，Create/Rotate 响应单独下发）
+	TargetWorkflowID uint       `gorm:"index" json:"target_workflow_id"`       // 0=不直接触发工作流
+	SecretEnc        string     `gorm:"type:text" json:"-"`                    // AES-GCM 加密的 HMAC 校验密钥（可选）
+	HasSecret        bool       `gorm:"-" json:"has_secret,omitempty"`         // 回显用（是否设了签名密钥）
 	Enabled          bool       `gorm:"default:true" json:"enabled"`
 	TriggerCount     int        `gorm:"default:0" json:"trigger_count"`
 	LastTriggeredAt  *time.Time `json:"last_triggered_at"`
@@ -152,9 +152,9 @@ type BrushFlowTask struct {
 // 不维护删除状态（删种判定基于下载器 tag，统计累加在 task 上）。
 type BrushFlowSeed struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
-	TaskID       uint      `gorm:"index;not null" json:"task_id"`
+	TaskID       uint      `gorm:"index;not null;uniqueIndex:uk_brush_seed_task_source" json:"task_id"`
 	DownloaderID uint      `gorm:"index" json:"downloader_id"`
-	SourceKey    string    `gorm:"size:255;index" json:"source_key"` // 站点种子标识(DownloadURL 优先，否则 ID)，去重用
+	SourceKey    string    `gorm:"size:255;uniqueIndex:uk_brush_seed_task_source" json:"source_key"` // 站点种子标识(DownloadURL 优先，否则 ID)，(task_id,source_key) 唯一防重复添加
 	Title        string    `gorm:"size:512" json:"title"`
 	Size         int64     `json:"size"` // bytes
 	SiteID       uint      `json:"site_id"`

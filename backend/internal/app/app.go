@@ -45,6 +45,7 @@ type App struct {
 	monCancel      context.CancelFunc // 停监控采集 goroutine
 	dirwatchCancel context.CancelFunc // 停目录监视 goroutine（C 阶段填，nil=safe-mode/未启用）
 	tgbotCancel    context.CancelFunc // 停 Telegram bot goroutine（A 阶段填，nil=safe-mode/未启用）
+	cloudCh        *chain.CloudChain  // 云任务执行器停机用（D 阶段填，nil=safe-mode）
 }
 
 // New wires all dependencies and builds the HTTP server (does not start it).
@@ -147,6 +148,15 @@ func New(cfg *config.Config) (*App, error) {
 	entReg := newEntertainmentRegistry()
 	entCh := chain.NewEntertainmentChain(base, entReg, hc, siteOp)
 	dashCh := chain.NewDashboardChain(database, siteOp, dlOp, siteCh)
+	// W4 任务中心：全站同步逐站进度 → WS task-progress 帧（顶栏指示器/按钮进度消费）。
+	dashCh.SetProgressEmitter(func(done, total int, siteName string) {
+		payload, err := ws.EncodeTaskProgress(ws.TaskProgress{
+			Kind: "site-sync", Done: done, Total: total, Site: siteName, Finished: done >= total,
+		})
+		if err == nil {
+			wsHub.Broadcast(payload)
+		}
+	})
 
 	// PT监护室：聚合 savept.icu 站点健康数据（独立于站点登录）
 	saveptSvc := savept.NewService(hc, siteOp, registry)
@@ -237,6 +247,9 @@ func New(cfg *config.Config) (*App, error) {
 	cloudTaskOp := oper.NewCloudTaskOper(database)
 	cloudCh.SetTransferConfigGetter(cfgOp)
 	cloudCh.SetAppBaseURL(cfg.AppBaseURL)
+	// 直链签名密钥（与 SECRET_KEY 同源）：公开 302 端点 URL 即凭证（?sign=<exp>.<hmac>），
+	// 防匿名枚举 driveId+路径换取全盘直链；签名随 .strm 生成时嵌入，12h 有效。
+	cloudCh.SetDirectLinkSignKey([]byte(cfg.SecretKey))
 	cloudCh.SetCloudTaskOper(cloudTaskOp)
 	// 云端上传任务落地 .strm 后自动扫库（整理链的 OnDownloadCompleted 复用：
 	// 整理瞬间扫库时 strm 尚未生成，此处补一次，云端条目才能进媒体库）。
@@ -380,5 +393,5 @@ func New(cfg *config.Config) (*App, error) {
 		wsBC:           wsBC,
 	})
 
-	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel, dirwatchCancel: dwCancel, tgbotCancel: tgCancel}, nil
+	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel, dirwatchCancel: dwCancel, tgbotCancel: tgCancel, cloudCh: cloudCh}, nil
 }

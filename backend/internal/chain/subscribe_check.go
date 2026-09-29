@@ -20,7 +20,8 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 	if dlID == 0 {
 		dlID = c.defaultDownloaderID()
 		if dlID == 0 {
-			c.noticeOnce(ctx, sub, "订阅检查："+sub.Title, "未配置默认下载器，已跳过自动下载", "warning")
+			// 持续型状态：稳定 Key 当天去重（此前每轮 cron 每订阅刷一条，淹没真实告警）。
+			c.noticeStable(ctx, sub, "no-downloader", "订阅检查："+sub.Title, "未配置默认下载器，已跳过自动下载", "warning")
 			if err := c.op.MarkChecked(sub.ID); err != nil {
 				slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)
 			}
@@ -34,7 +35,8 @@ func (c *SubscribeChain) checkWithDefaults(ctx context.Context, sub *models.Subs
 	// 多评分低分保护：闸门开启则命中种子前先查聚合评分；未通过则本轮整体跳过 + 通知。
 	// 评分查询失败 fail-open（不阻断下载——外网评分服务故障不应让订阅停摆）。
 	if held, reason := c.ratingGate(ctx, sub, eff.EnableRatingGuard); held {
-		c.noticeOnce(ctx, sub, "订阅评分保护："+sub.Title,
+		// 持续型状态（闸门未通过会连续多轮 held）：稳定 Key 当天去重。
+		c.noticeStable(ctx, sub, "rating-guard", "订阅评分保护："+sub.Title,
 			fmt.Sprintf("未通过质量闸门：%s（本轮跳过）", reason), "warning")
 		if err := c.op.MarkChecked(sub.ID); err != nil {
 			slog.Warn("subscribe MarkChecked failed", "sub", sub.ID, "err", err)

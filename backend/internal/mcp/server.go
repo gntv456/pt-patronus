@@ -132,19 +132,20 @@ const (
 )
 
 // ServeHTTP 实现 http.Handler：POST 单条 JSON-RPC；GET 返服务端能力概要（便于探活）。
-// 鉴权：Settings.Enabled=false 返 404；Token 非空则校验 Bearer。
+// 鉴权（fail-closed，与 LLM 网关同口径）：Settings.Enabled=false 返 404；
+// Token 为空同样 401 拒绝——此前空 token 完全放行（fail-open），管理员开了 MCP
+// 忘填 token 即匿名可用（tools 可借实例身份烧站点搜索配额/泄露内网下载器地址）。
+// schema 里的"留空不鉴权"承诺已同步移除：要启用必须配 token。
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	st := s.settings()
 	if !st.Enabled {
 		http.NotFound(w, r)
 		return
 	}
-	if st.Token != "" {
-		// 常量时间比较：token 可驱动全部 MCP 工具，需防逐字节时序还原。
-		if subtle.ConstantTimeCompare([]byte(extractBearer(r)), []byte(st.Token)) != 1 {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
+	// 常量时间比较：token 可驱动全部 MCP 工具，需防逐字节时序还原。
+	if st.Token == "" || subtle.ConstantTimeCompare([]byte(extractBearer(r)), []byte(st.Token)) != 1 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
 	}
 	if r.Method == http.MethodGet {
 		w.Header().Set("Content-Type", "application/json")

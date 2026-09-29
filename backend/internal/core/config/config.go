@@ -85,6 +85,8 @@ type Config struct {
 	RssCheckCron      string // RSS 订阅全局扫描 cron，默认每 5 分钟（按各订阅 interval_min 决定是否实际抓取）
 	TransferSweepCron string // 媒体整理 cron（兜底/重试：已完成种子→识别→重命名→硬链→刮削），默认每 10 分钟
 	SnapshotCron      string // 聚合站点快照 cron（合并 stats/hr/free/ann/msg/keepalive/assessment 7 任务为一次串行抓取），默认 7 */4 * * *
+	BackupCron        string // 定时备份 cron（BACKUP_CRON）；空=不启用。须与 BackupDir 同时配置才生效
+	BackupDir         string // 定时备份输出目录（BACKUP_DIR）；备份含明文密钥，文件 0600，仅保留最近 10 份
 
 	// 媒体元数据源
 	TMDBAPIKey     string
@@ -173,6 +175,8 @@ func Load() (*Config, error) {
 		RssCheckCron:      getenv("RSS_CHECK_CRON", "*/5 * * * *"),
 		TransferSweepCron: getenv("TRANSFER_SWEEP_CRON", "*/10 * * * *"),
 		SnapshotCron:      getenv("SNAPSHOT_CRON", "7 */4 * * *"),
+		BackupCron:        getenv("BACKUP_CRON", ""), // 默认关闭：自动把明文密钥写盘属敏感行为，须显式开启
+		BackupDir:         getenv("BACKUP_DIR", ""),
 		// TMDB 默认带 MoviePilot 同款公开 key（TMDB API key 本就客户端可见、可公开），
 		// 让影视搜索开箱即用；仍可用 TMDB_API_KEY 覆盖。
 		TMDBAPIKey:         getenv("TMDB_API_KEY", "db55323b8d3e4154498498a75642b381"),

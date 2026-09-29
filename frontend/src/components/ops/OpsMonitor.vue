@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
       <!-- CPU -->
       <div class="metric-card glass">
         <div class="metric-header">
-          <GlassIcon name="dashboard" from="#6c5ce7" to="#4285f4" :size="28" />
+          <GlassIcon name="dashboard" :size="28" />
           <span class="metric-label">CPU</span>
           <span class="metric-value">{{ (metrics.cpu_usage ?? 0).toFixed(1) }}%</span>
         </div>
@@ -94,7 +94,7 @@ onBeforeUnmount(() => {
           <div class="metric-bar-fill" :style="{ width: (metrics.cpu_usage ?? 0) + '%' }" />
         </div>
         <svg class="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
-          <path :d="sparkline(cpuHistory)" fill="none" stroke="#6c5ce7" stroke-width="1.5" />
+          <path :d="sparkline(cpuHistory)" fill="none" stroke="var(--pt-primary)" stroke-width="1.5" />
         </svg>
         <div class="metric-sub">{{ metrics.cpu_cores ?? '-' }} {{ t('opsmonitor.cores') }}</div>
       </div>

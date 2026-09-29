@@ -5,6 +5,7 @@ package v1
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -240,10 +241,17 @@ func (h *CloudHandler) ImportTree(c *gin.Context) {
 // Direct STRM 302 直链（公开：GET /cloud/direct/:driveId/*path——播放器不能带 JWT）。
 // 把 .strm 内容里的本端 URL 解析为网盘限时直链并 302。夸克/115 直链与 UA/Cookie 绑定，
 // 下载时播放器需携带响应头中返回的 Header（此处仅 302，Emby/播放器侧由直链服务保证）。
+// 直链签名：.strm 渲染时追加 ?sign=<exp>.<hmac>，此处校验（URL 即凭证，防匿名枚举
+// driveId+路径换全盘直链）。签名密钥未注入时为兼容模式不校验（与旧版一致）。
 func (h *CloudHandler) Direct(c *gin.Context) {
 	id, err := strconv.ParseUint(c.Param("driveId"), 10, 64)
 	if err != nil || id == 0 {
 		errcode.Respond(c, errcode.InvalidID)
+		return
+	}
+	if !h.svc.VerifyDirectLinkSign(uint(id), c.Param("path"), c.Query("sign")) {
+		// 签名无效/过期/缺失与记录不存在同口径 404：公开端点不泄露区别。
+		errcode.Respond(c, errcode.NotFound.WithErr(fmt.Errorf("direct link sign mismatch")))
 		return
 	}
 	link, err := h.svc.ResolveDirectLink(c.Request.Context(), uint(id), c.Param("path"), c.Request.UserAgent())

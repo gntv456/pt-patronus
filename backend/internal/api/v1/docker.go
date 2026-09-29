@@ -239,7 +239,7 @@ func (h *DockerHandler) ImageRemove(c *gin.Context) {
 	if !ok {
 		return
 	}
-	ref := c.Param("ref")
+	ref := c.Query("ref")
 	if ref == "" {
 		errcode.Respond(c, errcode.DockerImageRefRequired)
 		return

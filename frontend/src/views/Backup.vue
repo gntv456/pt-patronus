@@ -50,7 +50,20 @@ async function doExport() {
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
   if (password) headers['X-Backup-Password'] = password
   fetch(backupApi.exportUrl, { headers })
-    .then((r) => r.blob())
+    .then(async (r) => {
+      // 导出走 fetch（要触发浏览器下载），必须显式检查状态：失败时响应体是
+      // errcode JSON 信封，若不拦截会被当备份文件下载还给用户假「成功」。
+      if (!r.ok) {
+        let msg = ''
+        try {
+          msg = (await r.json())?.error || ''
+        } catch {
+          /* 非 JSON body */
+        }
+        throw new Error(msg || t('backup.exportFailed'))
+      }
+      return r.blob()
+    })
     .then((b) => {
       const url = URL.createObjectURL(b)
       const a = document.createElement('a')
@@ -60,7 +73,7 @@ async function doExport() {
       URL.revokeObjectURL(url)
       ElMessage.success(password ? t('backup.exportedEncrypted') : t('backup.exported'))
     })
-    .catch(() => ElMessage.error(t('backup.exportFailed')))
+    .catch((e: unknown) => ElMessage.error((e as Error)?.message || t('backup.exportFailed')))
     .finally(() => {
       exporting.value = false
     })
@@ -93,6 +106,24 @@ function onFile(file: File | undefined, kind: 'own' | 'moviepilot') {
         }
       }
       const data = JSON.parse(text)
+      // 导入前确认预览（W1：导入是覆盖式写入站点/下载器配置，此前选文件即导入，
+      // 误选旧备份直接污染现网数据且不可撤销）。解析成功后展示摘要，确认才执行。
+      const previewSites = Array.isArray(data?.sites) ? data.sites.length : 0
+      const previewDl = Array.isArray(data?.downloaders) ? data.downloaders.length : 0
+      try {
+        await ElMessageBox.confirm(
+          t('backup.importConfirmBody', { sites: previewSites, downloaders: previewDl }),
+          t('backup.importConfirmTitle'),
+          {
+            type: 'warning',
+            confirmButtonText: t('backup.importConfirmYes'),
+            cancelButtonText: t('common.cancel'),
+          },
+        )
+      } catch {
+        importing.value = false
+        return
+      }
       const res = await backupApi.importOwn(data, password)
       ElMessage.success(
         t('backup.importDone', {

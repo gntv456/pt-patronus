@@ -2,12 +2,14 @@ package monitor
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/auth"
 	"github.com/hxpt/ptpatronus/internal/core/security"
 )
@@ -138,12 +140,12 @@ func (p *RTSPProxy) session(id uint) *ProxySession {
 func (p *RTSPProxy) authHLS(c *gin.Context) bool {
 	token := c.Query("token")
 	if token == "" {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token required"})
+		errcode.Respond(c, errcode.UnauthorizedOp)
 		return false
 	}
 	claims, err := p.jwt.Parse(token)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		errcode.Respond(c, errcode.InvalidToken)
 		return false
 	}
 	// TokenVersion 校验：登出/改绑后旧 token 立即失效（与 JWTAuth 中间件一致；
@@ -151,7 +153,7 @@ func (p *RTSPProxy) authHLS(c *gin.Context) bool {
 	if p.tvCache != nil {
 		cur, err := p.tvCache.Get(claims.UserID)
 		if err != nil || cur != claims.TokenVersion {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token revoked", "code": "token_version_mismatch"})
+			errcode.Respond(c, errcode.TokenMismatch)
 			return false
 		}
 	}
@@ -194,8 +196,18 @@ func (p *RTSPProxy) ServePlaylist(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "stream starting"})
 		return
 	}
+	// 段 URL 是相对路径（segment/<seq>.ts）：按 RFC 3986 相对解析会丢弃 playlist 的
+	// ?token= query，标准播放器逐段请求会 401。把 token 显式写进本响应的段 URL
+	// （仅本响应副本；session ring 里仍是干净 URL）。
+	playlist = rewriteSegmentToken(playlist, c.Query("token"))
 	c.Header("Cache-Control", "no-cache")
 	c.Data(http.StatusOK, "application/vnd.apple.mpegurl", []byte(playlist))
+}
+
+// rewriteSegmentToken 把 query token 注入 playlist 的每个段 URL。
+// 仅匹配 ".ts\n"（段行），不碰 EXTINF/TARGETDURATION 等标签行。
+func rewriteSegmentToken(playlist, token string) string {
+	return strings.ReplaceAll(playlist, ".ts\n", ".ts?token="+url.QueryEscape(token)+"\n")
 }
 
 // ServeSegment 返回一个 HLS ts 段（GET /monitor/cameras/:id/hls/segment/:seq?token=）。

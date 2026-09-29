@@ -12,6 +12,7 @@ import (
 	"github.com/hxpt/ptpatronus/internal/cloud"
 	"github.com/hxpt/ptpatronus/internal/db/models"
 	"github.com/hxpt/ptpatronus/internal/db/oper"
+	"github.com/hxpt/ptpatronus/internal/notice"
 )
 
 // ---- 云端任务执行器：串行消费 CloudTask 队列 ----
@@ -91,8 +92,13 @@ func (r *CloudTaskRunner) execute(t *models.CloudTask) bool {
 		err = c.UploadFile(ctx, t.DriveID, t.CloudPath, t.LocalPath, t.Size)
 		if err == nil {
 			_ = r.op.UpdateProgress(t.ID, 90)
-			// 上传完成 → 登记 StrmRecord + 落 .strm（读 transfer.cloud_upload 的 STRM 配置）
-			r.afterUploadStrm(ctx, t)
+			// 上传完成 → 登记 StrmRecord + 落 .strm（读 transfer.cloud_upload 的 STRM 配置）。
+			// DeleteLocal 的前置条件（P1 修复）：STRM 失败不删本地——否则本地已删、
+			// 云端有文件、无 strm 无记录，302 直链/订阅追更/媒体库全部看不到该文件。
+			if strmErr := r.afterUploadStrm(ctx, t); strmErr != nil {
+				r.noticeDeleteLocalBlocked(t, strmErr)
+				break
+			}
 			// 上传后删本地整理文件（DeleteLocal 开启时；硬链模式仅删整理产物，不触源文件）
 			r.afterUploadCleanup(t)
 		}
@@ -136,19 +142,41 @@ func (r *CloudTaskRunner) execute(t *models.CloudTask) bool {
 // afterUploadStrm 上传成功后按 transfer.cloud_upload 配置生成 STRM（同事务链尾）。
 // 落地 .strm 后触发一次媒体库刷新——Emby/JF 才能立刻扫到新入库的流媒体条目
 // （此前只在直传兜底分支刷新，队列路径漏扫，需等下一次偶发事件）。
-func (r *CloudTaskRunner) afterUploadStrm(ctx context.Context, t *models.CloudTask) {
+// 返回错误供 DeleteLocal 决策：STRM 未成功不得删本地（数据丢失防护）。
+// STRM 功能未启用（nil 配置/无输出目录）返回 nil——用户没开 STRM，删除不受阻。
+func (r *CloudTaskRunner) afterUploadStrm(ctx context.Context, t *models.CloudTask) error {
 	c := r.hydr()
 	cfg := loadTransferCloudUpload(c)
 	if cfg == nil || !cfg.Enabled || cfg.StrmOutputDir == "" {
-		return
+		return nil
 	}
 	if err := c.UpsertStrm(ctx, t.DriveID, t.CloudPath, cfg.StrmOutputDir, cfg.StrmTemplate); err != nil {
-		slog.Warn("cloud task: post-upload strm failed", "path", t.CloudPath, "err", err)
-		return
+		slog.Warn("cloud task: post-upload strm failed, keep local file", "path", t.CloudPath, "err", err)
+		return err
 	}
 	if ms := c.mediaServerRefresher(); ms != nil {
 		ms(path.Base(t.CloudPath))
 	}
+	return nil
+}
+
+// noticeDeleteLocalBlocked STRM 失败阻断 DeleteLocal 时发告警（当天去重）：
+// 本地文件保留是安全侧，但用户需知道「云端有、本地也在」的原因与修复入口。
+func (r *CloudTaskRunner) noticeDeleteLocalBlocked(t *models.CloudTask, strmErr error) {
+	c := r.hydr()
+	if c.notice == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = c.notice.Notice(ctx, notice.Input{
+		Source: "cloud",
+		Key:    fmt.Sprintf("strm-blocked:%s:%s", t.Kind, path.Base(t.CloudPath)),
+		Title:  "STRM 生成失败，已保留本地文件",
+		Body: fmt.Sprintf("上传成功但 STRM 登记失败，为防数据丢失未删除本地文件（%s）。"+
+			"请排查 STRM 输出目录/数据库后重新生成。错误：%v", t.LocalPath, strmErr),
+		Level: "warning",
+	}, true)
 }
 
 // afterUploadCleanup DeleteLocal 开启时上传成功后删除本地源文件（best-effort）。

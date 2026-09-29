@@ -64,6 +64,32 @@ func TestMediaSearchKeywordRequired(t *testing.T) {
 	})
 }
 
+func TestSiteSearchKeywordRequired(t *testing.T) {
+	// 空/纯空白 keyword 在触达 oper/siteCh 前 → 400（防空关键词把种子列表首页当搜索结果扇出）。
+	h := NewSiteHandler(nil, nil, nil, nil)
+	r := gin.New()
+	r.POST("/site/:id/search", h.Search)
+	r.POST("/search", h.SearchAll)
+	r.GET("/search/stream", h.SearchAllStream)
+
+	cases := []struct {
+		name, method, path string
+	}{
+		{"site search empty", http.MethodPost, "/site/1/search?keyword="},
+		{"site search whitespace", http.MethodPost, "/site/1/search?keyword=++"},
+		{"search all empty", http.MethodPost, "/search?keyword="},
+		{"search stream empty", http.MethodGet, "/search/stream?keyword="},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rec := doReq(t, r, tc.method, tc.path, "")
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("code = %d, want 400", rec.Code)
+			}
+		})
+	}
+}
+
 func TestNotificationTestTitleRequired(t *testing.T) {
 	h := NewNotificationHandler(nil, nil, nil) // notifyReq.Title required → 400 触达 notif 前
 	r := gin.New()

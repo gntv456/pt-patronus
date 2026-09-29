@@ -122,10 +122,10 @@
   background: var(--pt-primary);
 }
 .stat--image::before {
-  background: var(--pt-primary-2, #4285f4);
+  background: var(--pt-primary-2, var(--pt-primary-2));
 }
 .stat--image .stat-ic {
-  background: var(--pt-primary-2, #4285f4);
+  background: var(--pt-primary-2, var(--pt-primary-2));
 }
 .stat--volume::before {
   background: var(--pt-warn);
@@ -506,7 +506,7 @@
   opacity: 0.8;
 }
 .docker-card--info::before {
-  background: var(--pt-primary-2, #4285f4);
+  background: var(--pt-primary-2, var(--pt-primary-2));
   opacity: 0.8;
 }
 .docker-card--danger::before {
@@ -540,8 +540,8 @@
   color: var(--pt-warn);
 }
 .dot--info {
-  background: var(--pt-primary-2, #4285f4);
-  color: var(--pt-primary-2, #4285f4);
+  background: var(--pt-primary-2, var(--pt-primary-2));
+  color: var(--pt-primary-2, var(--pt-primary-2));
 }
 .dot--danger {
   background: var(--pt-danger);
@@ -578,7 +578,7 @@
   background: var(--pt-warn-bg);
 }
 .chip--info {
-  color: var(--pt-primary-2, #4285f4);
+  color: var(--pt-primary-2, var(--pt-primary-2));
   background: var(--pt-primary-2-bg);
 }
 .chip--danger {
@@ -613,7 +613,7 @@
   gap: var(--sp-1);
   font-family: monospace;
   font-size: var(--fs-xs);
-  color: var(--pt-primary-2, #4285f4);
+  color: var(--pt-primary-2, var(--pt-primary-2));
   background: var(--pt-primary-2-bg);
   padding: 4px 8px;
   border-radius: var(--radius-xs);

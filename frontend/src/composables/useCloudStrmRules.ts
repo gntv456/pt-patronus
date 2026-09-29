@@ -144,6 +144,9 @@ export function useCloudStrmRules(
     }
   }
   async function removeRecord(r: StrmRecord) {
+    // 删除 STRM 记录前确认（W1：此前无确认直接删——记录是 302 直链与订阅追更的索引，
+    // 误删后需重新生成）。与 removeRule 同形态。
+    await ElMessageBox.confirm(`确定删除记录「${r.cloud_path}」？删除后需重新生成 STRM。`, '提示', { type: 'warning' })
     await cloudApi.removeRecord(r.id)
     await loadRecords()
   }

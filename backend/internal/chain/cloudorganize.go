@@ -90,7 +90,9 @@ func (c *CloudChain) RepairStrm(ctx context.Context, driveID uint) (repaired, sk
 			skipped++
 			continue
 		}
-		werr := c.UpsertStrm(ctx, rec.DriveID, rec.CloudPath, dirOf(rec.StrmPath), tmpl)
+		// 直写记录里既有的 .strm 路径：规则 keep_ext=false 生成的 a.strm 若按文件名重推导
+		// 会被修成 a.mkv.strm，产生第二份重复 .strm（媒体库双入库）。
+		werr := c.upsertStrm(ctx, rec.DriveID, rec.CloudPath, dirOf(rec.StrmPath), tmpl, rec.StrmPath)
 		if werr != nil {
 			skipped++
 			continue

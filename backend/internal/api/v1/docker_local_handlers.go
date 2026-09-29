@@ -162,7 +162,7 @@ func (h *DockerHandler) LocalRemoveImage(c *gin.Context) {
 		errcode.Respond(c, errcode.DockerLocalNotReady)
 		return
 	}
-	ref := c.Param("ref")
+	ref := c.Query("ref")
 	if ref == "" {
 		errcode.Respond(c, errcode.DockerImageRefRequired)
 		return

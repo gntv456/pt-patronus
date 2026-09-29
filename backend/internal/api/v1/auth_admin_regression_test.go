@@ -49,6 +49,8 @@ func TestIssueForHxpt_FirstUserAdmin(t *testing.T) {
 }
 
 // TestIssueForHxpt_SecondUserNotAdmin 第二个 HXPT 用户不得升权（P0-1 回归）。
+// 单用户硬限制启用后，第二个账号在登录入口即被拒（403 auth_user_rejected），
+// 根本不会落库——本测试同步改写为验证「拒绝创建」这一更强语义。
 func TestIssueForHxpt_SecondUserNotAdmin(t *testing.T) {
 	db := setupAuthDB(t)
 	h := &AuthHandler{db: db, crypto: security.NewCrypto("auth-test-key"), jwt: security.NewJWT("auth-test-secret", 60)}
@@ -56,12 +58,42 @@ func TestIssueForHxpt_SecondUserNotAdmin(t *testing.T) {
 	r.POST("/login", func(c *gin.Context) { h.issueForHxpt(c, c.Query("uid"), c.Query("name"), "cookie") })
 
 	doReq(t, r, http.MethodPost, "/login?uid=hxpt-001&name=alice", "")
-	doReq(t, r, http.MethodPost, "/login?uid=hxpt-002&name=bob", "")
+	rec := doReq(t, r, http.MethodPost, "/login?uid=hxpt-002&name=bob", "")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("第二个 HXPT 用户应被单用户限制拒绝（403），got %d body=%s", rec.Code, rec.Body.String())
+	}
+	var n int64
+	db.Model(&models.User{}).Where("hxpt_uid = ?", "hxpt-002").Count(&n)
+	if n != 0 {
+		t.Fatal("被拒的第二用户不得落库")
+	}
+}
 
-	var bob models.User
-	db.First(&bob, "hxpt_uid = ?", "hxpt-002")
-	if bob.IsAdmin {
-		t.Fatal("第二个 HXPT 用户不应为 admin（P0-1 回归）")
+// TestIssueForHxpt_SingleUserAllowReLogin 主人本人重复登录（upsert 分支）不受限。
+func TestIssueForHxpt_SingleUserAllowReLogin(t *testing.T) {
+	db := setupAuthDB(t)
+	h := &AuthHandler{db: db, crypto: security.NewCrypto("auth-test-key"), jwt: security.NewJWT("auth-test-secret", 60)}
+	r := gin.New()
+	r.POST("/login", func(c *gin.Context) { h.issueForHxpt(c, "hxpt-001", "alice", "cookie") })
+
+	doReq(t, r, http.MethodPost, "/login", "")
+	if rec := doReq(t, r, http.MethodPost, "/login", ""); rec.Code != http.StatusOK {
+		t.Fatalf("主人本人重登录应 200，got %d", rec.Code)
+	}
+}
+
+// TestIssueForHxpt_EmergencyNotCounted demo/emergency 不占用「实例主人」名额：
+// demo 用户存在时首位真实用户仍可登录（existingRealUserUID 排除逻辑）。
+func TestIssueForHxpt_EmergencyNotCounted(t *testing.T) {
+	db := setupAuthDB(t)
+	db.Create(&models.User{Username: "demo", HxptUID: "demo", IsAdmin: false})
+	db.Create(&models.User{Username: "emergency-ops", HxptUID: "emergency:ops", IsAdmin: true})
+	h := &AuthHandler{db: db, crypto: security.NewCrypto("auth-test-key"), jwt: security.NewJWT("auth-test-secret", 60)}
+	r := gin.New()
+	r.POST("/login", func(c *gin.Context) { h.issueForHxpt(c, "hxpt-001", "alice", "cookie") })
+
+	if rec := doReq(t, r, http.MethodPost, "/login", ""); rec.Code != http.StatusOK {
+		t.Fatalf("demo/emergency 在库时首位真实用户应可登录，got %d body=%s", rec.Code, rec.Body.String())
 	}
 }
 

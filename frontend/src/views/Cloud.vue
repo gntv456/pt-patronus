@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import {
   cloudApi,
   TYPE_LABEL,
@@ -143,6 +143,24 @@ async function loadTasks() {
     /* 静默 */
   }
 }
+
+// 有在途任务（排队中/执行中）时每 4s 自动轮询，全部终态或离开页面即停。
+const hasActiveTask = computed(() => tasks.value.some((t) => t.status === 'pending' || t.status === 'running'))
+let taskTimer: number | undefined
+function syncTaskPolling() {
+  if (hasActiveTask.value && taskTimer === undefined) {
+    taskTimer = window.setInterval(() => {
+      loadTasks()
+    }, 4000)
+  } else if (!hasActiveTask.value && taskTimer !== undefined) {
+    window.clearInterval(taskTimer)
+    taskTimer = undefined
+  }
+}
+watch(hasActiveTask, syncTaskPolling)
+onUnmounted(() => {
+  if (taskTimer !== undefined) window.clearInterval(taskTimer)
+})
 async function retryTask(task: CloudTask) {
   try {
     await cloudApi.retryTask(task.id)
@@ -153,6 +171,16 @@ async function retryTask(task: CloudTask) {
   }
 }
 async function removeTask(task: CloudTask) {
+  // 删除任务记录前确认（W1：此前无确认直接删，误触即丢历史记录）。
+  try {
+    await ElMessageBox.confirm(t('cloud.confirmRemoveTask', { id: task.id }), t('common.delete'), {
+      type: 'warning',
+      confirmButtonText: t('common.delete'),
+      cancelButtonText: t('common.cancel'),
+    })
+  } catch {
+    return
+  }
   try {
     await cloudApi.removeTask(task.id)
     await loadTasks()

@@ -8,6 +8,12 @@ import Sparkline from '@/components/dashboard/Sparkline.vue'
 import { a11yButton as vA11yButton } from '@/directives/a11yButton'
 import type { DockerContainer } from '@/api/docker'
 
+// el-progress 的 color prop 需要具体色值（不接受 CSS var 字符串）——运行时从根元素读
+// 主题 token，切主题色后进度条同步变色（此前硬编码 #6c5ce7 不跟随主题）。
+function cssVar(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#6c5ce7'
+}
+
 const props = defineProps<{
   activeTab: string
   containersTotal: number
@@ -254,7 +260,7 @@ const { t } = useI18n()
                 <Sparkline
                   v-if="cpuHistoryFor(c.Names).length >= 2"
                   :values="cpuHistoryFor(c.Names)"
-                  color="#6c5ce7"
+                  :color="cssVar('--pt-primary')"
                   unit="ratio"
                   class="card-spark"
                 />

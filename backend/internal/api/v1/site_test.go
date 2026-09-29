@@ -167,6 +167,16 @@ func TestSite_CookieLedger(t *testing.T) {
 		t.Fatalf("指纹视图不得回明文 cookie: %s", rec.Body.String())
 	}
 
+	// 越权回归（P0）：非 admin 端点带 ?reveal=1 也不得回明文——明文只属于
+	// 路由层挂 RequireAdmin 的 /sites/cookies/reveal，query 参数不能穿透闸门。
+	rec = doSite(t, r, http.MethodGet, "/sites/cookies?reveal=1", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("?reveal=1 应正常 200: %d %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), "uid=1") {
+		t.Fatalf("非 admin 端点 ?reveal=1 不得回明文 cookie: %s", rec.Body.String())
+	}
+
 	// reveal：管理员明文版（cookie 值可见）
 	rec = doSite(t, r, http.MethodGet, "/sites/cookies/reveal", "")
 	if !strings.Contains(rec.Body.String(), "uid=1") {

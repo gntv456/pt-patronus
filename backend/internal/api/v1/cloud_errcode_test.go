@@ -14,7 +14,8 @@ import (
 func TestEnvelope_CloudInvalidType(t *testing.T) {
 	r, _ := setupCloudServer(t)
 	// type 不在白名单 → oper.ErrInvalidInput → InvalidInput 信封
-	rec := doCloud(t, r, http.MethodPost, "/cloud/drives", `{"name":"x","type":"baidu","token":"t"}`)
+	// （白名单与 cloud.NewClient/前端下拉一致：115/115_open/quark/123/aliyun_open/onedrive/baidu/tianyi/mobile）
+	rec := doCloud(t, r, http.MethodPost, "/cloud/drives", `{"name":"x","type":"foobar","token":"t"}`)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("应 400，got %d，body=%s", rec.Code, rec.Body.String())
 	}

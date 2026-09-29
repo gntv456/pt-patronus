@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
 // openaiProvider 兼容 OpenAI / DeepSeek / Qwen / Ollama / one-api 中转等。
@@ -22,6 +23,11 @@ func (p *openaiProvider) ChatStream(ctx context.Context, req Req) (<-chan Event,
 	base := strings.TrimRight(p.cfg.BaseURL, "/")
 	if base == "" {
 		base = "https://api.openai.com/v1"
+	}
+	// SSRF 预检（P2）：BaseURL 为管理员可配（含内网 Ollama 场景）——放行 loopback/公网，
+	// 拒绝其他私网/元数据地址，防配置失陷后携带 Bearer APIKey 打内网端点。
+	if err := httpclient.AssertPublicOrLoopbackURL(base + "/chat/completions"); err != nil {
+		return nil, fmt.Errorf("openai base_url blocked: %w", err)
 	}
 	body, err := json.Marshal(oaRequest{
 		Model:         firstNonEmpty(req.Model, p.cfg.Model, "gpt-4o-mini"),

@@ -76,7 +76,7 @@
 .search-group :deep(.el-input) {
   width: 220px;
 }
-.chip {
+.filter-chip {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-pill);
@@ -92,7 +92,7 @@
 .chip:hover {
   background: var(--surface-hover);
 }
-.chip.on {
+.filter-chip.on {
   background: var(--pt-primary-bg);
   border-color: var(--pt-primary-bg);
 }
@@ -141,7 +141,7 @@
   margin-top: 2px;
 }
 .src {
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 .t-overview {

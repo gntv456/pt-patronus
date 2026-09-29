@@ -56,7 +56,7 @@ func (p *mcpServerPlugin) Manifest() Manifest {
 		},
 		ConfigSchema: []ConfigField{
 			{Key: "enabled", Label: "启用 MCP 服务端", Type: "switch", Group: "服务", Default: false, Help: "开启后 /api/v1/mcp 对外提供 MCP JSON-RPC。"},
-			{Key: "token", Label: "鉴权令牌", Type: "text", Group: "服务", Help: "Bearer Token；客户端用 Authorization: Bearer <token> 调用。留空则不鉴权（仅内网可信环境建议）。"},
+			{Key: "token", Label: "鉴权令牌", Type: "text", Group: "服务", Help: "Bearer Token；客户端用 Authorization: Bearer <token> 调用。必填：留空时服务拒绝匿名调用（401）。"},
 			{Key: "base_url", Label: "对外基地址", Type: "text", Group: "服务", Help: "用于生成客户端接入 URL（如 https://host:8088/api/v1/mcp）。不影响实际监听。"},
 		},
 		Contributes: &ContributionSpec{

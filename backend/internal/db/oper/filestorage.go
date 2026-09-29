@@ -21,14 +21,30 @@ func NewFileStorageOper(db *gorm.DB, c *security.Crypto) *FileStorageOper {
 }
 
 // FileStorageInput 创建/更新入参。
+// Password 长度：rclone 场景承载整份 rclone.conf INI 原文（多 remote 段+token，可达数十 KB），
+// 上限放宽到 64KB；其余类型沿用 512。操作层另按类型复核（validatePasswordLength），
+// 避免"rclone 放宽"被挪用到 webdav 等凭据字段。
 type FileStorageInput struct {
 	Name     string `json:"name" binding:"max=64"`
-	Type     string `json:"type" binding:"max=16"` // webdav | alist | smb | agent | local
+	Type     string `json:"type" binding:"max=16"` // webdav | alist | smb | agent | local | rclone | 115 | quark | 123
 	URL      string `json:"url" binding:"max=255"`
 	Username string `json:"username" binding:"max=64"`
-	Password string `json:"password" binding:"max=512"`
+	Password string `json:"password" binding:"max=65536"`
 	BasePath string `json:"base_path" binding:"max=255"`
 	AgentID  uint   `json:"agent_id"` // type=agent 时关联 Agent；其他类型忽略
+}
+
+// validatePasswordLength 按 2 类型复核密码长度：rclone.conf 原文 ≤64KB；其余 ≤512。
+// 绑定层 max=65536 仅兜底 rclone，此函数保证 webdav/smb 等凭据仍受 512 约束。
+func validatePasswordLength(in FileStorageInput) error {
+	max := 512
+	if in.Type == "rclone" {
+		max = 65536
+	}
+	if len(in.Password) > max {
+		return fmt.Errorf("%s 存储密码/配置过长（>%d 字符）", in.Type, max)
+	}
+	return nil
 }
 
 // Create 创建。
@@ -37,6 +53,9 @@ func (o *FileStorageOper) Create(in FileStorageInput) (*models.FileStorage, erro
 		return nil, err
 	}
 	if err := validateForType(in.Type, in.URL); err != nil {
+		return nil, err
+	}
+	if err := validatePasswordLength(in); err != nil {
 		return nil, err
 	}
 	f := &models.FileStorage{Name: in.Name, Type: in.Type, URL: in.URL, Username: in.Username, BasePath: in.BasePath, AgentID: in.AgentID}
@@ -63,6 +82,9 @@ func (o *FileStorageOper) Update(id uint, in FileStorageInput) (*models.FileStor
 		return nil, err
 	}
 	if err := validateForType(in.Type, in.URL); err != nil {
+		return nil, err
+	}
+	if err := validatePasswordLength(in); err != nil {
 		return nil, err
 	}
 	f.Name, f.Type, f.URL, f.Username, f.BasePath, f.AgentID = in.Name, in.Type, in.URL, in.Username, in.BasePath, in.AgentID
@@ -107,7 +129,8 @@ func (o *FileStorageOper) Password(f *models.FileStorage) (string, error) {
 	return o.c.Decrypt(f.PasswordEnc)
 }
 
-// validateTypeFields 按存储类型校验必填字段：agent 必须关联 agent_id；webdav/alist/smb 必须填地址；local 必须填本机根目录。
+// validateTypeFields 按存储类型校验必填字段：agent 必须关联 agent_id；webdav/alist/smb 必须填地址；local 必须填本机根目录；
+// rclone 必须填 remote 名（Username 字段承载）。
 func validateTypeFields(in FileStorageInput) error {
 	switch in.Type {
 	case "agent":
@@ -124,6 +147,16 @@ func validateTypeFields(in FileStorageInput) error {
 		}
 	case "115", "quark", "123":
 		// 网盘后端（只读浏览）：凭据存 password，浏览根存 basePath；均可在创建后补填/测试。
+	case "rclone":
+		// 与 NewRclone 构造校验对齐：Username=remote 名（必填，不含 / \ 或冒号）；
+		// URL=rclone 二进制路径（可空=用 PATH）、password=rclone.conf INI 原文、BasePath=remote 内根子路径，均可选。
+		remote := strings.TrimSpace(strings.TrimRight(in.Username, ":"))
+		if remote == "" {
+			return fmt.Errorf("rclone 存储必须填写 remote 名")
+		}
+		if strings.ContainsAny(remote, "/\\:") {
+			return fmt.Errorf("rclone remote 名不能包含 / \\ 或冒号: %s", remote)
+		}
 	default:
 		return fmt.Errorf("未知存储类型: %s", in.Type)
 	}

@@ -177,7 +177,7 @@ const { t } = useI18n()
         </div>
 
         <div v-if="!filteredContainers.length" class="docker-empty glass">
-          <GlassIcon name="server" from="#6c5ce7" to="#4285f4" :size="48" />
+          <GlassIcon name="server" :size="48" />
           <p>{{ searchText || stateFilter !== 'all' ? t('opsdocker.noMatch') : t('opsdocker.noContainers') }}</p>
         </div>
 

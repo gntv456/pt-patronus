@@ -10,7 +10,13 @@ import (
 func (c *DockerLocalClient) LocalCreateContainer(ctx context.Context, req map[string]any) (string, error) {
 	// body 结构：{"Image":"nginx","Name":"myweb","Env":[],"PortBindings":{},"Cmd":[],"Binds":[]...}
 	// 直接透传给 Engine API，由前端组装标准 Docker API 格式。
-	raw, err := c.postRaw(ctx, "/containers/create", req)
+	// 容器名只能走 ?name= query：Engine API 会忽略 body 里的 Name 字段，
+	// 不传则 daemon 生成随机名，前端的「名称」输入会被静默丢弃。
+	path := "/containers/create"
+	if name, ok := req["Name"].(string); ok && name != "" {
+		path += "?name=" + urlEncode(name)
+	}
+	raw, err := c.postRaw(ctx, path, req)
 	if err != nil {
 		return "", err
 	}
@@ -30,6 +36,7 @@ func (c *DockerLocalClient) LocalCreateFromSimple(ctx context.Context, in simple
 		"Image": in.Image,
 	}
 	if in.Name != "" {
+		body["Name"] = in.Name // LocalCreateContainer 会把它转成 ?name= query（body Name 被 API 忽略）
 		body["Hostname"] = in.Name
 	}
 	if len(in.Cmd) > 0 {

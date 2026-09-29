@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -95,9 +96,14 @@ func (h *DockerExecHandler) Handle(c *gin.Context) {
 	}
 
 	// 4. 发 start 请求（hijack：发 HTTP 请求头后，连接变成双向流）
-	if err := startExecHijack(sockConn, execID, cols, rows); err != nil {
+	leftover, err := startExecHijack(sockConn, execID, cols, rows)
+	if err != nil {
 		browserWS.WriteMessage(websocket.TextMessage, []byte("\r\n[启动 exec 失败: "+err.Error()+"]\r\n"))
 		return
+	}
+	// 消费响应头时读到的初始 TTY 输出（shell banner 等）补发给浏览器，避免首帧丢失。
+	if len(leftover) > 0 {
+		_ = browserWS.WriteMessage(websocket.BinaryMessage, leftover)
 	}
 
 	// 5. 双向桥接
@@ -148,7 +154,13 @@ func dialDockerSocket(c *DockerLocalClient) (net.Conn, error) {
 
 // createExec 发送 POST /containers/{name}/exec 创建 exec 实例。
 func createExec(conn net.Conn, name, cmd string) (string, error) {
-	body := fmt.Sprintf(`{"AttachStdin":true,"AttachStdout":true,"AttachStderr":true,"Tty":true,"Cmd":["%s"]}`, cmd)
+	// body 用 json.Marshal 组装：cmd 来自 query，手拼 JSON 会被引号/反斜杠破坏。
+	body, err := json.Marshal(map[string]any{
+		"AttachStdin": true, "AttachStdout": true, "AttachStderr": true, "Tty": true, "Cmd": []string{cmd},
+	})
+	if err != nil {
+		return "", err
+	}
 	req := fmt.Sprintf("POST /v1.41/containers/%s/exec HTTP/1.1\r\nHost: docker\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s",
 		name, len(body), body)
 	if _, err := conn.Write([]byte(req)); err != nil {
@@ -173,7 +185,8 @@ func createExec(conn net.Conn, name, cmd string) (string, error) {
 
 // startExecHijack 发送 POST /exec/{id}/start 并保持连接用于双向流。
 // 必须用 HTTP/1.0 + Connection: Upgrade 让 Docker 不关闭连接。
-func startExecHijack(conn net.Conn, execID string, cols, rows int) error {
+// 返回与响应头同批读到的初始 TTY 输出（调用方需补发给浏览器，防首帧丢失）。
+func startExecHijack(conn net.Conn, execID string, cols, rows int) ([]byte, error) {
 	body := fmt.Sprintf(`{"Detach":false,"Tty":true,"Height":%d,"Width":%d}`, rows, cols)
 	req := fmt.Sprintf("POST /v1.41/exec/%s/start HTTP/1.1\r\nHost: docker\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: Upgrade\r\nUpgrade: tcp\r\n\r\n%s",
 		execID, len(body), body)
@@ -181,14 +194,13 @@ func startExecHijack(conn net.Conn, execID string, cols, rows int) error {
 	// 不读响应头——hijack 后连接直接变成 TTY 流
 	// 但需要消费掉 HTTP 响应头行，否则会出现在终端里
 	if err != nil {
-		return err
+		return nil, err
 	}
-	consumeHTTPHeaders(conn)
-	return nil
+	return consumeHTTPHeaders(conn), nil
 }
 
-// consumeHTTPHeaders 读取并丢弃 HTTP 响应头（到第一个 \r\n\r\n）。
-func consumeHTTPHeaders(conn net.Conn) {
+// consumeHTTPHeaders 读取并丢弃 HTTP 响应头（到第一个 \r\n\r\n），返回头之后同批读到的数据。
+func consumeHTTPHeaders(conn net.Conn) []byte {
 	conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	defer conn.SetReadDeadline(time.Time{})
 	buf := make([]byte, 4096)
@@ -196,15 +208,14 @@ func consumeHTTPHeaders(conn net.Conn) {
 	for total < len(buf) {
 		n, err := conn.Read(buf[total:])
 		total += n
-		if err != nil {
-			break
+		if idx := bytes.Index(buf[:total], []byte("\r\n\r\n")); idx >= 0 {
+			return buf[idx+4 : total]
 		}
-		if strings.Contains(string(buf[:total]), "\r\n\r\n") {
-			// 把 header 之后的数据重新处理：实际上这些字节可能已含 TTY 输出
-			// 简化：header 后的数据会丢失（exec 初始输出极少，可接受）
-			break
+		if err != nil {
+			return nil
 		}
 	}
+	return nil
 }
 
 // readHTTPResponse 读取完整 HTTP 响应 body（用于 createExec 的 JSON 响应）。

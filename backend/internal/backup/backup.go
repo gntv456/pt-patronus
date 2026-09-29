@@ -5,6 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/db/oper"
@@ -83,6 +86,46 @@ func (s *Service) Export(ctx context.Context) ([]byte, error) {
 		})
 	}
 	return json.MarshalIndent(b, "", "  ")
+}
+
+// backupKeepLatest 定时备份保留的最新文件数。
+const backupKeepLatest = 10
+
+// ExportToFile 导出备份并写入 dir（ptpatronus-backup-<时间戳>.json），只保留最新
+// backupKeepLatest 份（按文件名时间戳轮换，仅删除本工具命名的文件）。
+// 备份含站点 Cookie/下载器密码明文：文件权限 0600、目录 0700，目录可信性由使用者保证。
+// 供定时备份 cron 使用；返回写入路径。
+func (s *Service) ExportToFile(ctx context.Context, dir string) (string, error) {
+	if dir == "" {
+		return "", fmt.Errorf("备份目录为空")
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", fmt.Errorf("创建备份目录: %w", err)
+	}
+	data, err := s.Export(ctx)
+	if err != nil {
+		return "", err
+	}
+	stamp := time.Now().Format("20060102-150405")
+	path := filepath.Join(dir, "ptpatronus-backup-"+stamp+".json")
+	// 同一秒内多次导出（手动连点 + cron 撞车）不互相覆盖。
+	for n := 1; ; n++ {
+		if _, e := os.Stat(path); os.IsNotExist(e) {
+			break
+		}
+		path = filepath.Join(dir, fmt.Sprintf("ptpatronus-backup-%s-%d.json", stamp, n))
+	}
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		return "", fmt.Errorf("写备份文件: %w", err)
+	}
+	matches, _ := filepath.Glob(filepath.Join(dir, "ptpatronus-backup-*.json"))
+	if len(matches) > backupKeepLatest {
+		sort.Strings(matches) // 文件名时间戳字典序 = 时间序
+		for _, old := range matches[:len(matches)-backupKeepLatest] {
+			_ = os.Remove(old)
+		}
+	}
+	return path, nil
 }
 
 // Import 从自身格式 JSON 导入（重复站点按注册域跳过，CreateMany 统一去重）。

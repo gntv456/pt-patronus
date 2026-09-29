@@ -145,15 +145,15 @@ const { t } = useI18n()
         </el-form-item>
         <el-form-item :label="t('cloud.type')">
           <el-select v-model="driveForm.type">
-            <el-option :label="t('cloud.type.115Open')" value="115_open" />
-            <el-option :label="t('cloud.type.115')" value="115" />
-            <el-option :label="t('cloud.type.aliyunOpen')" value="aliyun_open" />
-            <el-option :label="t('cloud.type.quark')" value="quark" />
-            <el-option :label="t('cloud.type.123')" value="123" />
+            <el-option :label="t('cloud.typeName.115Open')" value="115_open" />
+            <el-option :label="t('cloud.typeName.115')" value="115" />
+            <el-option :label="t('cloud.typeName.aliyunOpen')" value="aliyun_open" />
+            <el-option :label="t('cloud.typeName.quark')" value="quark" />
+            <el-option :label="t('cloud.typeName.123')" value="123" />
             <el-option label="OneDrive" value="onedrive" />
-            <el-option :label="t('cloud.type.baidu')" value="baidu" />
-            <el-option :label="t('cloud.type.tianyi')" value="tianyi" />
-            <el-option :label="t('cloud.type.mobile')" value="mobile" />
+            <el-option :label="t('cloud.typeName.baidu')" value="baidu" />
+            <el-option :label="t('cloud.typeName.tianyi')" value="tianyi" />
+            <el-option :label="t('cloud.typeName.mobile')" value="mobile" />
           </el-select>
         </el-form-item>
         <el-form-item label="Cookie / Token">

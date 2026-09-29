@@ -17,7 +17,7 @@ import (
 // ptingGobangPost 执行动作请求。返回 message + 动作后最新局 + summary。
 // data 里 match（单局）与 matches（全景数组）都可能出——create 返回新局在 matches 内，
 // move/undo/forfeit/retry-ai 返回 match；两处都解析，matches 取优先进行中局。
-func ptingGobangPost(ctx context.Context, hc *httpclient.Client, baseURL, cookie, action string, params map[string]any) (string, *GobangMatch, *GobangSummary, error) {
+func ptingGobangPost(ctx context.Context, hc *httpclient.Client, baseURL, cookie, action string, params map[string]any) (string, string, *GobangMatch, *GobangSummary, error) {
 	u := joinPath(baseURL, "api/gobang")
 	body := map[string]any{"action": action}
 	for k, v := range params {
@@ -30,19 +30,20 @@ func ptingGobangPost(ctx context.Context, hc *httpclient.Client, baseURL, cookie
 		"Referer":      joinPath(baseURL, "funs/gobang"),
 	}, cookie, true)
 	if err != nil {
-		return "", nil, nil, err
+		return "", "", nil, nil, err
 	}
 	logResp("pting_gobang "+action, u, resp)
 	var env ptingGobangEnvelope
 	if err := json.Unmarshal(resp.Body, &env); err != nil {
-		return "", nil, nil, fmt.Errorf("响应解析失败: %w", err)
+		return "", "", nil, nil, fmt.Errorf("响应解析失败: %w", err)
 	}
 	if env.Code != 0 && env.Code != 200 {
-		return "", nil, nil, fmt.Errorf("%s", firstNonEmpty(env.Message, "操作失败"))
+		return "", "", nil, nil, fmt.Errorf("%s", firstNonEmpty(env.Message, "操作失败"))
 	}
 	var match *GobangMatch
 	var summary *GobangSummary
 	var data map[string]any
+	var moveToken string
 	if len(env.Data) > 0 {
 		if err := json.Unmarshal(env.Data, &data); err == nil {
 			if m, ok := data["match"].(map[string]any); ok {
@@ -62,9 +63,13 @@ func ptingGobangPost(ctx context.Context, hc *httpclient.Client, baseURL, cookie
 			if s, ok := data["summary"].(map[string]any); ok {
 				summary = parseGobangSummary(s)
 			}
+			// select 动作：moveToken 在 data 顶层（不在 match 里）
+			if t, ok := data["moveToken"].(string); ok && t != "" {
+				moveToken = t
+			}
 		}
 	}
-	return firstNonEmpty(env.Message, "操作完成"), match, summary, nil
+	return moveToken, firstNonEmpty(env.Message, "操作完成"), match, summary, nil
 }
 
 // Gobangable 五子棋能力：全景 + 动作。chain/API 按此接口分发。
@@ -82,15 +87,19 @@ func (PtingGobangGame) GobangState(ctx context.Context, hc *httpclient.Client, b
 // （create 首落子扣门票/move/undo）由 chain 层 spendGuard 防双击。
 func (PtingGobangGame) GobangAction(ctx context.Context, hc *httpclient.Client, baseURL string, cr Creds, action string, params map[string]any) (*PlayResult, error) {
 	switch action {
-	case "create", "choose-color", "move", "undo", "forfeit", "retry-ai":
+	case "create", "choose-color", "select", "move", "undo", "forfeit", "retry-ai":
 	default:
 		return &PlayResult{Success: false, Message: "未知动作: " + action}, nil
 	}
-	msg, m, _, err := ptingGobangPost(ctx, hc, baseURL, cr.Cookie, action, params)
+	moveToken, msg, m, _, err := ptingGobangPost(ctx, hc, baseURL, cr.Cookie, action, params)
 	if err != nil {
 		return &PlayResult{Success: false, Message: err.Error()}, nil
 	}
 	res := &PlayResult{Success: true, Message: msg}
+	// select 动作返回 moveToken（计榜局落子凭证），透传给调用方组装 move
+	if action == "select" && moveToken != "" {
+		res.Prize = "moveToken:" + moveToken
+	}
 	if m != nil {
 		// 结束局带上胜负与返奖；进行中带上轮次提示（PLAYER=轮到玩家）。
 		if m.Status == "FINISHED" {

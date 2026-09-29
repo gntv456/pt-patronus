@@ -125,7 +125,7 @@ defineExpose({
         </el-table-column>
         <el-table-column label="Free" width="70" align="center">
           <template #default="{ row }">
-            <span v-if="row.free" class="chip free">FREE</span>
+            <span v-if="row.free" class="pt-chip pt-chip--success">FREE</span>
             <span v-else class="text-muted">—</span>
           </template>
         </el-table-column>
@@ -183,7 +183,7 @@ defineExpose({
   padding: 2px 10px;
   border-radius: var(--radius-pill);
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-xs);
   white-space: nowrap;
 }

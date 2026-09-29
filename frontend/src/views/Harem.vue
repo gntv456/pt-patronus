@@ -208,14 +208,7 @@ onUnmounted(() => abortCtrl?.abort())
         </el-table-column>
         <el-table-column prop="status" :label="t('reseed.col.status')" width="90">
           <template #default="{ row }">
-            <span
-              class="chip"
-              :style="{
-                background:
-                  row.status === 'disabled' ? '#f56c6c22' : row.status === 'pending' ? '#f39c1222' : '#2ecc7122',
-                color: row.status === 'disabled' ? '#f56c6c' : row.status === 'pending' ? '#f39c12' : '#2ecc71',
-              }"
-              >{{ row.status }}</span
+            <span class="pt-chip" :class="row.status === 'disabled' ? 'pt-chip--danger' : row.status === 'pending' ? 'pt-chip--warn' : 'pt-chip--success'">{{ row.status }}</span>
             >
           </template>
         </el-table-column>
@@ -290,17 +283,12 @@ onUnmounted(() => abortCtrl?.abort())
   padding: 2px 10px;
   border-radius: var(--radius-pill);
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-xs);
 }
 .err {
   color: var(--pt-danger);
   font-size: var(--fs-body);
-}
-.chip {
-  padding: 1px 8px;
-  border-radius: var(--radius-pill);
-  font-size: var(--fs-2xs);
 }
 .empty {
   padding: 40px;

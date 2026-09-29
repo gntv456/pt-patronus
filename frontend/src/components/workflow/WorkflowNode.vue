@@ -33,7 +33,7 @@ const catColor: Record<string, string> = {
   '\u5a92\u4f53': '#e84393',
   '\u6587\u4ef6': '#0984e3',
 }
-const color = computed(() => (props.data.info && catColor[props.data.info.category]) || '#6c5ce7')
+const color = computed(() => (props.data.info && catColor[props.data.info.category]) || 'var(--pt-primary)')
 
 // 输出端口标签：condition 固定 真/假；switch 来自 branches 参数；其余单输出。
 const outputs = computed<string[]>(() => {

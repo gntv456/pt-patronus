@@ -320,9 +320,15 @@ type WriteStrmOptions struct {
 	DriveID    uint   // {direct} → DirectBase/:driveId
 	DirectBase string // 直链端点前缀，空=/api/v1/cloud/direct
 	AppBaseURL string // 服务对外基址（含协议+主机+端口）；非空时 strm 内容渲染为绝对 URL
+	// Sign 直链限时签名（<exp>.<hmac>，由 CloudChain.SignDirectLink 生成）。
+	// 非空时 {direct} URL 追加 ?sign=…：公开 302 端点据此鉴权（URL 即凭证）。
+	Sign string
 	// StructRoot 结构镜像根：非空时 .strm 落在 OutputDir + (CloudPath 去掉 StructRoot
 	// 的相对段)，保留云盘目录结构；空则文件直落 OutputDir。
 	StructRoot string
+	// OutPath 非空时直写该路径（repair 沿用记录里的既有 .strm 文件名，避免 keep_ext
+	// 口径差异在 OutputDir 里产生第二份 .strm）；仍受 OutputDir 越界校验约束。
+	OutPath string
 }
 
 // WriteStrmFile 写单个 .strm 文件（幂等：内容相同跳过）。与规则生成的 .strm 结构一致，
@@ -340,8 +346,41 @@ func WriteStrmFile(opts WriteStrmOptions) error {
 	}
 	g := GenerateOptions{OutputDir: opts.OutputDir, CloudPath: root, Template: opts.Template, KeepExt: true}
 	f := File{Name: opts.FileName, Path: opts.CloudPath}
+	if opts.OutPath != "" {
+		return writeStrmAt(g, f, opts, opts.OutPath)
+	}
 	_, _, err := writeStrmDirect(g, f, opts)
 	return err
+}
+
+// writeStrmAt 按指定绝对路径写 .strm（幂等：内容相同跳过），内容渲染与 writeStrmDirect 一致。
+func writeStrmAt(opts GenerateOptions, f File, direct WriteStrmOptions, outPath string) error {
+	if !isWithinDir(outPath, opts.OutputDir) {
+		return fmt.Errorf("strm 输出路径逃出 OutputDir: %s", outPath)
+	}
+	rel := strings.TrimPrefix(f.Path, opts.CloudPath)
+	content := RenderTemplate(opts.Template, "", f.Path, rel, f.Name)
+	if strings.Contains(content, "{direct}") {
+		content = strings.ReplaceAll(content, "{direct}", directURLFor(direct))
+	}
+	content += "\n"
+	if old, err := os.ReadFile(outPath); err == nil && string(old) == content {
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(outPath, []byte(content), 0o644)
+}
+
+// directURLFor {direct} 占位符的完整替换值：端点基址 + /:driveId（+ 限时签名 query）。
+// Sign 非空时追加 ?sign=<exp>.<hmac>——公开 302 端点校验之（URL 即凭证）。
+func directURLFor(direct WriteStrmOptions) string {
+	u := directBaseURL(direct) + "/" + strconv.FormatUint(uint64(direct.DriveID), 10)
+	if direct.Sign != "" {
+		u += "?sign=" + direct.Sign
+	}
+	return u
 }
 
 // directBaseURL 直链端点基址。AppBaseURL 配置时渲染绝对 URL（Emby strm 播放必需：
@@ -377,7 +416,7 @@ func writeStrmDirect(opts GenerateOptions, f File, direct WriteStrmOptions) (boo
 	}
 	content := RenderTemplate(opts.Template, "", f.Path, rel, f.Name)
 	if strings.Contains(content, "{direct}") {
-		content = strings.ReplaceAll(content, "{direct}", directBaseURL(direct)+"/"+strconv.FormatUint(uint64(direct.DriveID), 10))
+		content = strings.ReplaceAll(content, "{direct}", directURLFor(direct))
 	}
 	content += "\n"
 	if old, err := os.ReadFile(outPath); err == nil && string(old) == content {

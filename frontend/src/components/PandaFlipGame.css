@@ -41,7 +41,7 @@
 .stat-val {
   font-size: var(--fs-xl);
   font-weight: 800;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .stat-val.warn {
   color: var(--pt-warn, #f59e0b);

@@ -35,6 +35,31 @@ var Migrations = []Migration{
 		Name:    "subscription_nullable_booleans_v1",
 		Fn:      migrateSubscriptionNullableBooleansV1,
 	},
+	{
+		Version: 2,
+		Name:    "brushflow_seed_unique_task_source_v1",
+		Fn:      migrateBrushFlowSeedUniqueV1,
+	},
+}
+
+// migrateBrushFlowSeedUniqueV1 刷流种子历史 (task_id, source_key) 唯一索引：
+// 旧库可能已有重复行（并发窗口产生），先按保留最旧一条去重，再建唯一索引。
+// AutoMigrate 只做加列/建表，约束语义变更走版本化迁移；新库 AutoMigrate 已带
+// uniqueIndex 标签，CREATE UNIQUE INDEX IF NOT EXISTS 幂等不冲突。
+func migrateBrushFlowSeedUniqueV1(tx *gorm.DB) error {
+	// 1) 去重：同 (task_id, source_key) 保留 id 最小的一条。
+	if err := tx.Exec(`DELETE FROM brush_flow_seeds WHERE id NOT IN (
+		SELECT MIN(id) FROM brush_flow_seeds GROUP BY task_id, source_key
+	)`).Error; err != nil {
+		// 表尚不存在（新库 AutoMigrate 后必存在）或方言差异：跳过，唯一索引兜底新数据。
+		slog.Warn("brushflow seed dedup skip", "err", err)
+	}
+	// 2) 建唯一索引（IF NOT EXISTS 幂等；MySQL<8.0 无该子句时报重复名视为已存在）。
+	if err := tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS uk_brush_seed_task_source
+		ON brush_flow_seeds(task_id, source_key)`).Error; err != nil {
+		slog.Warn("brushflow seed unique index create", "err", err)
+	}
+	return nil
 }
 
 type schemaMigrationRow struct {

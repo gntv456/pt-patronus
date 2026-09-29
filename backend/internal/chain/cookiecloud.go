@@ -200,7 +200,11 @@ func (c *CookieCloudChain) SaveSettings(in CookieCloudSettingsInput) (CookieClou
 // 间隔即时生效（每次读 DB 最新 settings，改 interval 无需重注册 cron）。
 func (c *CookieCloudChain) MaybeSync(ctx context.Context) {
 	s := c.GetSettings()
-	if !s.Enabled || s.Server == "" || s.UUID == "" || s.PasswordEnc == "" {
+	// builtin 模式直读内置 store，无需外部 server 地址；external 模式才要求 server/uuid/password 齐全。
+	if !s.Enabled || s.UUID == "" || s.PasswordEnc == "" {
+		return
+	}
+	if normalizeCookieCloudMode(s.Mode) != CookieCloudModeBuiltin && s.Server == "" {
 		return
 	}
 	interval := time.Duration(s.IntervalMin) * time.Minute

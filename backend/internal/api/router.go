@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"github.com/hxpt/ptpatronus/internal/api/middleware"
 	"github.com/hxpt/ptpatronus/internal/api/v1"
 	"github.com/hxpt/ptpatronus/internal/ocr"
@@ -104,7 +105,9 @@ func Build(d *Deps) *gin.Engine {
 	spa := web.Handler() // http.Handler：文件存在直出，否则回退 index.html
 	engine.NoRoute(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/api/") {
-			c.JSON(404, gin.H{"error": "not found"})
+			// 统一 errcode 信封（{code, message, error}）：前端拦截器按 code 编程判断，
+			// 文案走 i18n；此前裸 {"error":"not found"} 是信封闭环的最后一个缺口。
+			errcode.Respond(c, errcode.NotFound)
 			return
 		}
 		spa.ServeHTTP(c.Writer, c.Request)

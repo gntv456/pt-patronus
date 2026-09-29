@@ -113,7 +113,14 @@ type DashboardChain struct {
 	siteOp *oper.SiteOper
 	dlOp   *oper.DownloaderOper
 	siteCh *SiteChain // 即时统计同步：抓取 UserInfo 写快照
+
+	// emitProgress 全站同步进度推送（W4 任务中心）：每完成一站回调
+	// (done, total, siteName)——app 装配期接到 WS 广播；nil 跳过（测试/安全模式）。
+	emitProgress func(done, total int, siteName string)
 }
+
+// SetProgressEmitter 注入进度回调（app 装配期）。
+func (c *DashboardChain) SetProgressEmitter(fn func(done, total int, siteName string)) { c.emitProgress = fn }
 
 // NewDashboardChain 构造。
 func NewDashboardChain(db *gorm.DB, siteOp *oper.SiteOper, dlOp *oper.DownloaderOper, siteCh *SiteChain) *DashboardChain {
@@ -265,17 +272,27 @@ func (c *DashboardChain) SyncAll(ctx context.Context) (*DashboardOverview, error
 	if err != nil {
 		return nil, err
 	}
+	total := len(sites)
+	done := 0
+	if c.emitProgress != nil {
+		c.emitProgress(0, total, "")
+	}
 	for i := range sites {
 		st := &sites[i]
 		ui, e := c.siteCh.UserInfo(ctx, st)
+		done++
 		if e != nil {
 			bizmetrics.SiteSyncInc(bizmetrics.SyncFail)
 			slog.Warn("dashboard sync site failed", "site", st.Name, "err", e)
-			continue
+		} else {
+			bizmetrics.SiteSyncInc(bizmetrics.SyncSuccess)
+			c.recordStat(st, ui)
+			slog.Info("dashboard synced", "site", st.Name, "uploaded", ui.Uploaded, "ratio", ui.Ratio)
 		}
-		bizmetrics.SiteSyncInc(bizmetrics.SyncSuccess)
-		c.recordStat(st, ui)
-		slog.Info("dashboard synced", "site", st.Name, "uploaded", ui.Uploaded, "ratio", ui.Ratio)
+		// 失败也计入进度：同步不会因单站失败中断，进度条必须能走满。
+		if c.emitProgress != nil {
+			c.emitProgress(done, total, st.Name)
+		}
 	}
 	return c.Overview(ctx)
 }

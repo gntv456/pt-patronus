@@ -88,28 +88,6 @@
 .small {
   font-size: var(--fs-xs);
 }
-.chip {
-  padding: 2px 10px;
-  border-radius: var(--radius-pill);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-}
-.chip.subscribed {
-  background: var(--pt-success-bg);
-  color: var(--pt-success, #2ecc71);
-}
-.chip.completed {
-  background: var(--pt-primary-bg);
-  color: var(--pt-primary);
-}
-.chip.paused {
-  background: var(--pt-warn-bg);
-  color: var(--pt-warn, #f39c12);
-}
-.chip.res {
-  background: var(--pt-primary-2-bg);
-  color: var(--pt-primary-2);
-}
 .res-row {
   display: flex;
   align-items: center;

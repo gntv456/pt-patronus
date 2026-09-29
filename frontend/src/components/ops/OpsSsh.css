@@ -33,7 +33,7 @@
   color: var(--text-secondary, #888);
 }
 .view-switch button.active {
-  background: var(--accent, #6c5ce7);
+  background: var(--accent);
   color: #fff;
   border-color: transparent;
 }

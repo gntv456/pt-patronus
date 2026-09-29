@@ -267,7 +267,7 @@ onUnmounted(() => abortCtrl?.abort())
 }
 .tab.on {
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-weight: 600;
 }
 .groups {
@@ -319,7 +319,7 @@ onUnmounted(() => abortCtrl?.abort())
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--pt-primary, #6c5ce7);
+  background: var(--pt-primary);
   flex: none;
 }
 .msg-main {

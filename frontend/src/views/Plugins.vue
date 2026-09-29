@@ -110,7 +110,7 @@ const {
   saveTrust,
 } = usePluginTrust()
 
-const pluginColors = ['#6c5ce7', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#8b5cf6']
+const pluginColors = ['var(--pt-primary)', '#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6', '#8b5cf6']
 
 function avatarColor(name: string): string {
   let hash = 0

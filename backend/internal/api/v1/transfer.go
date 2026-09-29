@@ -362,5 +362,5 @@ func (h *TransferHandler) RunDirSync(c *gin.Context) {
 			return
 		}
 	}
-	errcode.Respond(c, errcode.BrushflowTaskNotFound)
+	errcode.Respond(c, errcode.TransferTaskNotFound)
 }

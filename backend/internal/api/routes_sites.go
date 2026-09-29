@@ -12,11 +12,13 @@ func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
 	sites := guarded.Group("/sites")
 	{
 		sites.GET("", siteH.List)
-		sites.POST("", siteH.Create)
 		sites.GET("/definitions", siteH.Definitions)
 		sites.POST("/inspect", siteH.Inspect)
 		sites.GET("/:id", siteH.Get)
-		sites.PUT("/:id", siteH.Update)
+		// 写操作（含改密钥）与 DELETE 同级收敛 admin：站点配置影响全局抓取行为。
+		sites.POST("", middleware.RequireAdmin(), siteH.Create)
+		sites.PUT("/:id", middleware.RequireAdmin(), siteH.Update)
+		sites.POST("/:id/cookie", middleware.RequireAdmin(), siteH.UpdateCookie)
 		sites.DELETE("/:id", middleware.RequireAdmin(), siteH.Delete)
 		sites.POST("/batch-delete", middleware.RequireAdmin(), siteH.BatchDelete)
 		sites.GET("/status", siteH.Status)
@@ -27,7 +29,6 @@ func registerSiteRoutes(guarded *gin.RouterGroup, d *Deps) {
 		sites.GET("/checkin/records", siteH.CheckinRecords)
 		sites.POST("/:id/search", siteH.Search)
 		sites.GET("/:id/torrent/detail", siteH.TorrentDetail)
-		sites.POST("/:id/cookie", siteH.UpdateCookie)
 		// 站点 Cookie 台账（浏览器扩展对比/同步用）：指纹全员可读（脱敏），
 		// 明文（reveal=1，覆盖到浏览器侧用）与写入同级收敛 admin。
 		sites.GET("/cookies", siteH.GetCookies)

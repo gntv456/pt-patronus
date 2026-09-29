@@ -17,7 +17,7 @@ const props = withDefaults(
   defineProps<{
     /** 字形名称（见 GLYPHS 字典） */
     name: string
-    /** 渐变起点色 */
+    /** 渐变起点色（默认跟随主题主色——切主题色时 71 个字形同步变色） */
     from?: string
     /** 渐变终点色 */
     to?: string
@@ -25,8 +25,8 @@ const props = withDefaults(
     size?: number | string
   }>(),
   {
-    from: '#6c5ce7',
-    to: '#4285f4',
+    from: 'var(--pt-primary)',
+    to: 'var(--pt-primary-2)',
     size: 34,
   },
 )

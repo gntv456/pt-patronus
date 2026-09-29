@@ -116,3 +116,34 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
+
+/* ---- 首屏骨架尺寸（对齐真实卡片结构：34px 图标 / 三列统计） ---- */
+.sk-card {
+  min-height: 0;
+}
+.sk-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  flex: none;
+}
+.sk-switch {
+  width: 40px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  flex: none;
+}
+.sk-num {
+  width: 56px;
+  height: 20px;
+}
+.sk-line {
+  height: 12px;
+  margin: 4px 0;
+}
+.sk-line.w60 {
+  width: 60%;
+}
+.sk-line.w40 {
+  width: 40%;
+}

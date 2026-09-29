@@ -101,6 +101,19 @@ func (p *MediaProxyService) Handle(w http.ResponseWriter, r *http.Request, serve
 	p.forward(w, r, m.URL, rest)
 }
 
+// directHeaderAllowed 302 时允许以 X-Direct-* 透给客户端的直链请求头白名单。
+// 只放行播放器实际需要的 Referer/User-Agent 等；Cookie/Authorization 等凭据类头
+// （如夸克 DirectLink.Header["Cookie"] = 账号会话、115 开放平台 Bearer token）
+// 绝不外泄——白名单制而非黑名单，新增凭据头默认被挡。
+func allowedDirectHeader(k string) bool {
+	switch k {
+	case "Referer", "referer", "User-Agent", "user-agent",
+		"Range", "range", "Accept", "accept", "Content-Type", "content-type":
+		return true
+	}
+	return false
+}
+
 // tryDirectLink 尝试把播放请求 302 到云盘直链；成功已写响应返回 true。
 func (p *MediaProxyService) tryDirectLink(w http.ResponseWriter, r *http.Request, serverID uint, tgt mediaserver.PlaybackTarget) bool {
 	defer func() {
@@ -117,8 +130,13 @@ func (p *MediaProxyService) tryDirectLink(w http.ResponseWriter, r *http.Request
 	if !ok {
 		return false
 	}
-	// 302 前把直链所需头透给客户端（夸克等直链需 Cookie/Referer/UA 绑定）。
+	// 302 前把直链所需头透给客户端（夸克等直链需 Referer/UA 绑定）。
+	// 白名单制：DirectLink.Header 可能携带账号凭据（如夸克 drive.Token 即 Cookie），
+	// 原样 X-Direct-* 回写会向匿名调用者泄露网盘会话——凭据类头绝不透出。
 	for k, v := range link.Header {
+		if !allowedDirectHeader(k) {
+			continue
+		}
 		w.Header().Set("X-Direct-"+k, v)
 	}
 	http.Redirect(w, r, link.URL, http.StatusFound)

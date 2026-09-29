@@ -312,3 +312,17 @@
   font-size: var(--fs-2xs);
   white-space: nowrap;
 }
+
+/* 暗色适配：游戏卡原本只有亮粉底+深字（暗色主题下是一块刺眼亮板）。
+   保留粉系品牌感，底色加深、文字转亮，白 tile 降透明度融入暗底。 */
+:root.dark .card-synth {
+  background: #3a2430;
+  color: #f3d9e2;
+}
+:root.dark .tab {
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9b8c8;
+}
+:root.dark .frag {
+  background: rgba(255, 255, 255, 0.1);
+}

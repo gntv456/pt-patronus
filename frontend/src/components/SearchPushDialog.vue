@@ -219,7 +219,7 @@ const emit = defineEmits<{
   padding: 1px 8px;
   border-radius: var(--radius-2xs);
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-2xs);
   font-weight: 700;
 }
@@ -264,7 +264,7 @@ const emit = defineEmits<{
   align-self: flex-start;
   background: transparent;
   border: 0;
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   font-size: var(--fs-xs);
   font-weight: 600;
   cursor: pointer;

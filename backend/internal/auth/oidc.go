@@ -17,6 +17,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
 // oidcSettingsKey 是 SystemConfig 中存储 OIDC 配置的 key（JSON）。
@@ -119,6 +121,8 @@ func (s *OIDCService) SaveSettings(in OIDCSettings) error {
 }
 
 // discover 取（带 10min 缓存的）OIDC discovery 文档。
+// issuer 为管理员配置；SSRF 预检（P2）：放行 loopback/公网（自建 Keycloak 本机部署
+// 是合法用例），拒绝其他私网/元数据地址——防止 issuer 失陷后服务端携 client 凭据打内网。
 func (s *OIDCService) discover(ctx context.Context, issuer string) (discovery, error) {
 	issuer = strings.TrimRight(issuer, "/")
 	s.mu.Lock()
@@ -131,6 +135,9 @@ func (s *OIDCService) discover(ctx context.Context, issuer string) (discovery, e
 	s.mu.Unlock()
 
 	wellKnown := issuer + "/.well-known/openid-configuration"
+	if err := httpclient.AssertPublicOrLoopbackURL(wellKnown); err != nil {
+		return discovery{}, fmt.Errorf("issuer 地址被 SSRF 策略拒绝: %w", err)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, wellKnown, nil)
 	if err != nil {
 		return discovery{}, err

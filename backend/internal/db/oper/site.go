@@ -5,6 +5,9 @@ package oper
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/hxpt/ptpatronus/internal/core/security"
@@ -55,19 +58,50 @@ type SiteInput struct {
 	LimitInterval int    `json:"limit_interval"`
 }
 
+// ErrInvalidBaseURL 站点地址非法（非 http/https，或解析不出 host）。
+// base_url 会被适配器拼接成抓取请求 URL，javascript:/file:/data: 等 scheme 入库
+// 不仅必然抓取失败，还会在 ResolveReference 等路径产生危险语义——入口处拒绝。
+var ErrInvalidBaseURL = errors.New("站点地址必须是 http(s):// 开头的合法 URL")
+
+// validateBaseURL 校验站点地址：必须能 url.Parse 出 http/https scheme 与 host。
+func validateBaseURL(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return ErrInvalidBaseURL
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return ErrInvalidBaseURL
+	}
+	return nil
+}
+
+// dupDomain 取「重复判定」用的注册域（eTLD+1）。RegisteredDomain 已自带剥端口
+// （hxpt.org:8080 → hxpt.org，端口变体不得绕过去重、仪表盘聚合双计）；
+// 这里保留一次防御性剥端口，统一口径。
+func dupDomain(rawURL string) string {
+	dom := site.RegisteredDomain(rawURL)
+	if h, _, err := net.SplitHostPort(dom); err == nil {
+		return h
+	}
+	return dom
+}
+
 // Create 创建站点。
 //
 // 按注册域（eTLD+1）去重：同注册域视为同一站点，拒绝添加——对齐 MoviePilot「一站点一账号」。
 // 无论 name / 子域 / path / trailing-slash 写法如何，同站只能有一条；杜绝重复站点导致的仪表盘
 // 聚合双计（上传/做种翻倍）与搜索结果重复。CreateMany 同样按注册域跳过（见下）。
 func (o *SiteOper) Create(in SiteInput) (*models.Site, error) {
-	if dom := site.RegisteredDomain(in.BaseURL); dom != "" {
+	if err := validateBaseURL(in.BaseURL); err != nil {
+		return nil, err
+	}
+	if dom := dupDomain(in.BaseURL); dom != "" {
 		var existing []string
 		if err := o.db.Model(&models.Site{}).Pluck("base_url", &existing).Error; err != nil {
 			return nil, err
 		}
 		for _, u := range existing {
-			if site.RegisteredDomain(u) == dom {
+			if dupDomain(u) == dom {
 				return nil, fmt.Errorf("%w: %s", ErrDuplicateSite, dom)
 			}
 		}
@@ -79,8 +113,10 @@ func (o *SiteOper) Create(in SiteInput) (*models.Site, error) {
 func (o *SiteOper) createOnDB(db *gorm.DB, in SiteInput) (*models.Site, error) {
 	s := &models.Site{
 		Name: in.Name, Platform: in.Platform, Definition: in.Definition,
-		BaseURL: in.BaseURL, Username: in.Username, IsActive: in.IsActive, Priority: in.Priority,
-		LimitInterval: in.LimitInterval,
+		// BaseURL 去首选空白再入库：validateBaseURL 按空白修剪校验，若原样存储带空格的
+		// URL，适配器拼接请求必然失败，且与去重口径（TrimSpace 后比较）不一致。
+		BaseURL: strings.TrimSpace(in.BaseURL), Username: in.Username, IsActive: in.IsActive,
+		Priority: in.Priority, LimitInterval: in.LimitInterval,
 	}
 	if err := o.encryptSecrets(s, in); err != nil {
 		return nil, err
@@ -117,10 +153,10 @@ func (o *SiteOper) CreateMany(ins []SiteInput) (int, error) {
 			return e
 		}
 		for _, u := range existing {
-			seen[site.RegisteredDomain(u)] = true
+			seen[dupDomain(u)] = true
 		}
 		for _, in := range ins {
-			dom := site.RegisteredDomain(in.BaseURL)
+			dom := dupDomain(in.BaseURL)
 			if dom != "" && seen[dom] {
 				continue // 同注册域已存在/已处理 → 跳过
 			}
@@ -141,15 +177,18 @@ func (o *SiteOper) Update(id uint, in SiteInput) (*models.Site, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := validateBaseURL(in.BaseURL); err != nil {
+		return nil, err
+	}
 	// 按注册域去重（与 Create/CreateMany 一致）：新 BaseURL 的注册域不得与其它站点冲突（排除自身），
 	// 否则会产生同注册域重复站点，导致仪表盘聚合双计、搜索结果重复。
-	if dom := site.RegisteredDomain(in.BaseURL); dom != "" {
+	if dom := dupDomain(in.BaseURL); dom != "" {
 		var existing []string
 		if err := o.db.Model(&models.Site{}).Where("id <> ?", id).Pluck("base_url", &existing).Error; err != nil {
 			return nil, err
 		}
 		for _, u := range existing {
-			if site.RegisteredDomain(u) == dom {
+			if dupDomain(u) == dom {
 				return nil, fmt.Errorf("%w: %s", ErrDuplicateSite, dom)
 			}
 		}
@@ -157,7 +196,7 @@ func (o *SiteOper) Update(id uint, in SiteInput) (*models.Site, error) {
 	s.Name = in.Name
 	s.Platform = in.Platform
 	s.Definition = in.Definition
-	s.BaseURL = in.BaseURL
+	s.BaseURL = strings.TrimSpace(in.BaseURL)
 	s.Username = in.Username
 	s.IsActive = in.IsActive
 	s.Priority = in.Priority
@@ -210,6 +249,17 @@ func (o *SiteOper) DeleteMany(ids []uint) ([]uint, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
+	// 去重（保持顺序）：重复 id 会让调用方按 len(ids)-len(failed) 虚报删除数。
+	seen := make(map[uint]struct{}, len(ids))
+	uniq := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		uniq = append(uniq, id)
+	}
+	ids = uniq
 	var found []uint
 	if err := o.db.Model(&models.Site{}).Where("id IN ?", ids).Pluck("id", &found).Error; err != nil {
 		return nil, err

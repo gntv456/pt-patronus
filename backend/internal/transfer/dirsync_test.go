@@ -4,7 +4,53 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
+
+// TestRunDueDirSyncs 定时 tick：仅执行「启用 + interval≥5 + 已到期」的任务并回写 last_run_at。
+func TestRunDueDirSyncs(t *testing.T) {
+	src := t.TempDir()
+	dst := t.TempDir()
+	os.WriteFile(filepath.Join(src, "a.mkv"), []byte("video"), 0o644)
+
+	kv := &memKV{m: map[string]string{}}
+	now := time.Now()
+	if err := SaveDirSyncTasks(kv, []DirSyncTask{
+		{Name: "due", SrcDir: src, DstDir: dst, Mode: "copy", Enabled: true, IntervalMinutes: 5},
+		{Name: "disabled", SrcDir: src, DstDir: dst, Mode: "copy", Enabled: false, IntervalMinutes: 5},
+		{Name: "manual", SrcDir: src, DstDir: dst, Mode: "copy", Enabled: true},
+		{Name: "notdue", SrcDir: src, DstDir: dst, Mode: "copy", Enabled: true, IntervalMinutes: 60, LastRunAt: now.Add(-5 * time.Minute).Unix()},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	runs := RunDueDirSyncs(kv, now)
+	if len(runs) != 1 || runs[0].Name != "due" {
+		t.Fatalf("runs = %+v, want only [due]", runs)
+	}
+	if runs[0].Result == nil || runs[0].Result.Synced != 1 {
+		t.Fatalf("due result = %+v", runs[0].Result)
+	}
+	if _, err := os.Stat(filepath.Join(dst, "a.mkv")); err != nil {
+		t.Fatalf("文件应已同步: %v", err)
+	}
+
+	// last_run_at 已回写：紧接的第二次 tick 不应重复执行
+	got := LoadDirSyncTasks(kv)
+	for _, task := range got {
+		if task.Name == "due" && task.LastRunAt == 0 {
+			t.Error("due 的 last_run_at 未回写")
+		}
+	}
+	if again := RunDueDirSyncs(kv, now); len(again) != 0 {
+		t.Fatalf("到期判定失败，重复执行: %+v", again)
+	}
+
+	// 到期后再次执行
+	if r := RunDueDirSyncs(kv, now.Add(6*time.Minute)); len(r) != 1 {
+		t.Fatalf("到期后应再次执行: %+v", r)
+	}
+}
 
 func TestDirSyncCopyAndStrm(t *testing.T) {
 	src := t.TempDir()

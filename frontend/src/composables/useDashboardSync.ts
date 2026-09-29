@@ -5,6 +5,7 @@ import { ElMessage } from 'element-plus'
 import { dashboardApi } from '@/api/dashboard'
 import { siteApi } from '@/api/site'
 import { useDashboardData } from '@/composables/useDashboardData'
+import { useWs, type TaskProgress } from '@/composables/useWs'
 
 export type SyncLog = {
   id: number
@@ -22,6 +23,16 @@ const syncCurrent = ref('')
 const syncErrors = ref<{ site: string; error: string }[]>([])
 const syncLogs = ref<SyncLog[]>([])
 const syncPercent = computed(() => (syncTotal.value ? Math.round((syncDone.value / syncTotal.value) * 100) : 0))
+
+// W4：把逐站进度镜像成 task-progress 形态喂给顶栏 TaskIndicator（与后端 SyncAll
+// 发射的 WS 帧同构——指示器不需要区分进度来自前端循环还是后端推送）。
+const { mirrorTaskProgress } = useWs()
+function mirrorProgress(done: number, total: number, site: string, finished: boolean) {
+  mirrorTaskProgress({ kind: 'site-sync', done, total, site, finished })
+}
+function mirrorFinished(done: number, total: number) {
+  mirrorProgress(done, total, '', true)
+}
 
 let syncLogSeq = 0
 function addSyncLog(status: SyncLog['status'], site: string, message: string) {
@@ -85,8 +96,10 @@ async function syncStats(onDone?: () => void) {
         addSyncLog('error', site.name, `同步失败：${msg}`)
       } finally {
         syncDone.value += 1
+        mirrorProgress(syncDone.value, syncTotal.value, site.name, false)
       }
     }
+    mirrorFinished(syncDone.value, syncTotal.value)
 
     trend.value = await dashboardApi.trend(trendDays.value).catch(() => trend.value)
     if (syncErrors.value.length) {
@@ -104,6 +117,7 @@ async function syncStats(onDone?: () => void) {
   } finally {
     syncing.value = false
     syncCurrent.value = ''
+    mirrorFinished(syncDone.value, syncTotal.value)
     onDone?.()
   }
 }

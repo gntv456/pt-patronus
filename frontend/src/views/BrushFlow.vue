@@ -138,18 +138,34 @@ async function save() {
 }
 
 async function remove(task: BrushFlowTask) {
-  await ElMessageBox.confirm(t('brushflow.confirmDelete', { name: task.name }), t('messages.tip'), { type: 'warning' })
-  await brushflowApi.remove(task.id)
-  ElMessage.success(t('common.deleted'))
-  await load()
+  try {
+    await ElMessageBox.confirm(t('brushflow.confirmDelete', { name: task.name }), t('messages.tip'), { type: 'warning' })
+  } catch {
+    return
+  }
+  try {
+    await brushflowApi.remove(task.id)
+    ElMessage.success(t('common.deleted'))
+    await load()
+  } catch (e: any) {
+    ElMessage.error(e?.userMessage || e?.message || t('common.deleteFailed'))
+  }
 }
 
-async function toggle(t: BrushFlowTask, val: boolean) {
-  await brushflowApi.update(t.id, { ...t, enabled: val })
-  t.enabled = val
+async function toggle(task: BrushFlowTask, val: boolean) {
+  try {
+    await brushflowApi.update(task.id, { ...task, enabled: val })
+    task.enabled = val
+  } catch (e: any) {
+    ElMessage.error(e?.userMessage || e?.message || t('common.saveFailed'))
+  }
 }
 
+const running = ref<string | null>(null)
 async function runAction(task: BrushFlowTask, kind: 'select' | 'sweep') {
+  const key = `${task.id}:${kind}`
+  if (running.value) return
+  running.value = key
   try {
     const fn = kind === 'select' ? brushflowApi.select : brushflowApi.sweep
     await fn(task.id)
@@ -157,6 +173,8 @@ async function runAction(task: BrushFlowTask, kind: 'select' | 'sweep') {
     await load()
   } catch (e: any) {
     ElMessage.error(e?.userMessage || e?.message || t('common.actionFailed'))
+  } finally {
+    running.value = null
   }
 }
 
@@ -165,12 +183,15 @@ const seeds = ref<BrushFlowSeed[]>([])
 const seedsLoading = ref(false)
 const seedsTask = ref('')
 
-async function openSeeds(t: BrushFlowTask) {
-  seedsTask.value = t.name
+async function openSeeds(task: BrushFlowTask) {
+  seedsTask.value = task.name
   showSeeds.value = true
   seedsLoading.value = true
   try {
-    seeds.value = await brushflowApi.seeds(t.id)
+    seeds.value = await brushflowApi.seeds(task.id)
+  } catch (e: any) {
+    seeds.value = []
+    ElMessage.error(e?.userMessage || e?.message || t('common.loadFailed'))
   } finally {
     seedsLoading.value = false
   }
@@ -222,7 +243,27 @@ onMounted(() => {
       :title="t('brushflow.focusTitle', { site: focusSiteName, n: displayTasks.length })"
     />
 
-    <div v-loading="loading" class="grid">
+    <!-- 首屏骨架（W3）：任务卡结构已知（图标+标题+三列统计），骨架屏比转圈更
+         传达「内容即将就位」；glass.css 的 .pt-skeleton 此前零使用。 -->
+    <div v-if="loading && !displayTasks.length" class="grid" aria-busy="true">
+      <div v-for="i in 4" :key="'sk' + i" class="glass card sk-card">
+        <div class="card-head">
+          <div class="pt-skeleton sk-icon"></div>
+          <div class="card-title">
+            <div class="pt-skeleton sk-line w60"></div>
+            <div class="pt-skeleton sk-line w40"></div>
+          </div>
+          <div class="pt-skeleton sk-switch"></div>
+        </div>
+        <div class="stats">
+          <div v-for="j in 3" :key="j" class="stat">
+            <div class="pt-skeleton sk-num"></div>
+            <div class="pt-skeleton sk-line w40"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-else v-loading="loading" class="grid">
       <div v-for="task in displayTasks" :key="task.id" class="glass glass-hover card">
         <div class="card-head">
           <GlassIcon name="brushflow" :size="34" from="#f7971e" to="#ff6a00" />
@@ -251,8 +292,12 @@ onMounted(() => {
         <div v-if="task.last_error" class="err">⚠ {{ task.last_error }}</div>
 
         <div class="actions">
-          <el-button size="small" @click="runAction(task, 'select')">{{ t('brushflow.select') }}</el-button>
-          <el-button size="small" @click="runAction(task, 'sweep')">{{ t('brushflow.sweep') }}</el-button>
+          <el-button size="small" :loading="running === `${task.id}:select`" @click="runAction(task, 'select')">{{
+            t('brushflow.select')
+          }}</el-button>
+          <el-button size="small" :loading="running === `${task.id}:sweep`" @click="runAction(task, 'sweep')">{{
+            t('brushflow.sweep')
+          }}</el-button>
           <el-button size="small" @click="openSeeds(task)">{{ t('brushflow.history') }}</el-button>
           <el-button size="small" @click="openEdit(task)">{{ t('common.edit') }}</el-button>
           <el-button size="small" type="danger" plain @click="remove(task)">{{ t('common.delete') }}</el-button>

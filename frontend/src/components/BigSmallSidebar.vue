@@ -167,7 +167,7 @@ function top(i: number): string {
   font-size: var(--fs-xs);
 }
 .tab.on {
-  background: var(--pt-primary, #6c5ce7);
+  background: var(--pt-primary);
   color: #fff;
   border-color: transparent;
 }

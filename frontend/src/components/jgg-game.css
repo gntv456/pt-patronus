@@ -9,7 +9,7 @@
   text-align: center;
   padding: 14px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, #6c5ce7, #8e44ad);
+  background: linear-gradient(135deg, var(--pt-primary), #8e44ad);
   border: 1px solid rgba(255, 215, 106, 0.4);
 }
 .banner-title {
@@ -73,10 +73,10 @@
 }
 .prize.lit {
   opacity: 1;
-  background: var(--pc, #6c5ce7);
+  background: var(--pc);
   border-color: #ffd76a;
   transform: scale(1.04);
-  box-shadow: 0 0 16px var(--pc, #6c5ce7);
+  box-shadow: 0 0 16px var(--pc);
 }
 .prize.win {
   animation: winpop 0.5s ease;
@@ -108,7 +108,7 @@
 .center {
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, #6c5ce7, #4285f4);
+  background: var(--grad-primary);
   color: #fff;
   box-shadow: 0 4px 14px var(--pt-primary-bg);
 }
@@ -193,7 +193,7 @@
   font-size: var(--fs-lg);
 }
 .mbtn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #6c5ce7, #4285f4);
+  background: var(--grad-primary);
   color: #fff;
   border-color: transparent;
   transform: translateY(-1px);

@@ -4,6 +4,7 @@ import App from './App.vue'
 import router from './router'
 import { i18n, i18nBoot } from './i18n'
 import { showErrorOverlay } from './utils/errorOverlay'
+import { startTokenRefresher } from './api/http'
 import { useUiPrefs } from './composables/useUiPrefs'
 import { a11yButton } from './directives/a11yButton'
 import './styles/glass.css'
@@ -17,6 +18,10 @@ import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/notification/style/css'
 import 'element-plus/es/components/loading/style/css'
 
+// EP 官方暗色主题变量（html.dark 命名空间）：未加载时所有未被 :deep 覆盖的 EP 组件
+// （select 下拉/message-box/日期弹层）在暗色下保持白底——W1 修复项。
+import 'element-plus/theme-chalk/dark/css-vars.css'
+
 // element-plus 不再全量注册：组件 / 指令 / 服务式组件 + 样式
 // 由 vite 的 unplugin-vue-components + ElementPlusResolver 按需自动导入（见 vite.config.ts）。
 
@@ -26,6 +31,10 @@ app.use(i18n)
 app.use(router)
 // 可点击 div 的键盘可达（a11y）：v-a11y-button = role=button + tabindex + Enter/Space
 app.directive('a11y-button', a11yButton)
+
+// JWT 滑动续期定时器（30 分钟一轮 + 401 被动续期见 api/http.ts）：活跃用户不再
+// 「用着用着被踢回登录页」（后端 /auth/refresh 此前无前端调用方，端点闲置）。
+startTokenRefresher()
 
 // 全局错误兜底：Vue 渲染错误默认会卸载出错组件树 → 整页白屏（终端用户零信息）。
 // errorHandler + window error/unhandledrejection 三路捕获后弹可见错误卡片

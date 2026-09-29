@@ -109,7 +109,11 @@ export const dockerApi = {
       .then((r) => r.data),
   removeImage: (targetId: number, ref: string, confirmRisk = false) =>
     http
-      .post<DockerOpsAck>(`/ops/docker/${targetId}/images/${ref}/remove`, { confirm_risk: confirmRisk })
+      .post<DockerOpsAck>(
+        `/ops/docker/${targetId}/images/remove`,
+        { confirm_risk: confirmRisk },
+        { params: { ref } },
+      )
       .then((r) => r.data),
   composeUp: (targetId: number, path: string) =>
     http.post<{ ok: boolean; output: string }>(`/ops/docker/${targetId}/compose/up`, { path }).then((r) => r.data),
@@ -141,7 +145,10 @@ export const dockerApi = {
       .then((r) => r.data),
   localRemoveImage: (ref: string, confirmRisk = false) =>
     http
-      .delete<DockerOpsAck>(`/ops/docker/local/images/${ref}`, { data: { confirm_risk: confirmRisk } })
+      .delete<DockerOpsAck>('/ops/docker/local/images', {
+        data: { confirm_risk: confirmRisk },
+        params: { ref },
+      })
       .then((r) => r.data),
 
   // === 本机扩展：拉取镜像 / 清理 / 卷网络管理 ===
@@ -220,6 +227,6 @@ export const dockerApi = {
   // exec 终端的 WebSocket URL（前端自行 new WebSocket）
   localExecURL: (name: string, cmd = '/bin/sh') => {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws'
-    return `${proto}://${location.host}/ops/docker/local/containers/${name}/exec/ws?cmd=${encodeURIComponent(cmd)}&cols=120&rows=32`
+    return `${proto}://${location.host}/api/v1/ops/docker/local/containers/${name}/exec/ws?cmd=${encodeURIComponent(cmd)}&cols=120&rows=32`
   },
 }

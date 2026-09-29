@@ -14,6 +14,7 @@ func rpc(t *testing.T, srv *Server, body string) map[string]any {
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer secret") // 鉴权 fail-closed：功能用例统一带 token
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)
 	var out map[string]any
@@ -33,6 +34,18 @@ func TestServerDisabledReturns404(t *testing.T) {
 	}
 }
 
+// TestServerEmptyTokenFailClosed P2 回归：Enabled 且 Token 为空必须 401（fail-closed）——
+// 此前空 token 完全放行，管理员忘填 token 即匿名可用全部 MCP 工具。
+func TestServerEmptyTokenFailClosed(t *testing.T) {
+	srv := NewServer()
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: ""} })
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","id":1,"method":"ping"}`)))
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("空 token 应 401 拒绝（fail-closed），got %d", rec.Code)
+	}
+}
+
 func TestServerTokenGuard(t *testing.T) {
 	srv := NewServer()
 	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"} })
@@ -45,7 +58,7 @@ func TestServerTokenGuard(t *testing.T) {
 
 func TestServerInitializeAndToolsList(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"} })
 	srv.RegisterTool(Tool{
 		Name: "echo", Description: "echo back",
 		InputSchema: map[string]any{"type": "object"},
@@ -69,7 +82,7 @@ func TestServerInitializeAndToolsList(t *testing.T) {
 
 func TestServerToolCallSuccess(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"} })
 	srv.RegisterTool(Tool{
 		Name: "add", Handler: func(ctx context.Context, args map[string]any) (string, error) {
 			return "42", nil
@@ -85,7 +98,7 @@ func TestServerToolCallSuccess(t *testing.T) {
 
 func TestServerToolCallErrorIsNotRPCError(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"} })
 	srv.RegisterTool(Tool{
 		Name: "boom", Handler: func(ctx context.Context, args map[string]any) (string, error) {
 			return "", errBoom
@@ -104,7 +117,7 @@ func TestServerToolCallErrorIsNotRPCError(t *testing.T) {
 
 func TestServerUnknownMethod(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"} })
 	r := rpc(t, srv, `{"jsonrpc":"2.0","id":5,"method":"nope"}`)
 	if r["error"] == nil {
 		t.Fatalf("want rpc error for unknown method: %v", r)
@@ -113,8 +126,9 @@ func TestServerUnknownMethod(t *testing.T) {
 
 func TestServerNotificationNoResponse(t *testing.T) {
 	srv := NewServer()
-	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true} })
+	srv.SetSettingsGetter(func() Settings { return Settings{Enabled: true, Token: "secret"} })
 	req := httptest.NewRequest(http.MethodPost, "/mcp", bytes.NewBufferString(`{"jsonrpc":"2.0","method":"notifications/initialized"}`))
+	req.Header.Set("Authorization", "Bearer secret")
 	rec := httptest.NewRecorder()
 	srv.ServeHTTP(rec, req)
 	if rec.Code != http.StatusAccepted {

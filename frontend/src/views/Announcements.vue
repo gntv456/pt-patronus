@@ -168,7 +168,7 @@ onUnmounted(() => abortCtrl?.abort())
   padding: 1px 8px;
   border-radius: var(--radius-pill);
   background: var(--pt-primary-bg);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
 }
 .err-tag {
   font-size: var(--fs-xs);
@@ -210,7 +210,7 @@ onUnmounted(() => abortCtrl?.abort())
 }
 .caret {
   font-size: var(--fs-xs);
-  color: var(--pt-primary, #6c5ce7);
+  color: var(--pt-primary);
   transition: color var(--dur-fast) var(--ease-out-smooth);
 }
 .item-body {

@@ -76,6 +76,11 @@ function noticeBadge(name: string): number {
           </button>
         </router-link>
       </div>
+      <!-- 收藏空态提示（W3）：此前收藏为空时整组不渲染，新用户不知道有收藏功能。
+           展示一次性的功能发现提示（有收藏后自动消失）。 -->
+      <div v-else-if="!sidebarCollapsed" class="nav-group fav-group fav-empty-hint">
+        <span class="fav-hint-text">{{ t('nav.favHint') }}</span>
+      </div>
 
       <div v-for="group in navGroups" :key="group.title" class="nav-group">
         <button

@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
 	"github.com/hxpt/ptpatronus/internal/core/safego"
+	"github.com/hxpt/ptpatronus/internal/httpclient"
 )
 
 // anthropicProvider 原生 Claude（/v1/messages，SSE）。
@@ -22,6 +24,10 @@ func (p *anthropicProvider) ChatStream(ctx context.Context, req Req) (<-chan Eve
 	base := strings.TrimRight(p.cfg.BaseURL, "/")
 	if base == "" {
 		base = "https://api.anthropic.com"
+	}
+	// SSRF 预检（P2，同 openai 路径）：放行 loopback/公网，拒绝其他私网/元数据地址。
+	if err := httpclient.AssertPublicOrLoopbackURL(base + "/v1/messages"); err != nil {
+		return nil, fmt.Errorf("anthropic base_url blocked: %w", err)
 	}
 	maxTok := orI(req.MaxTokens, p.cfg.MaxTokens, 2048)
 	bodyMap := map[string]any{

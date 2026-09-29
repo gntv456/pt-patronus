@@ -484,7 +484,7 @@
   margin-bottom: 8px;
   padding-left: 12px;
   border: 1px solid var(--surface-border);
-  border-left: 3px solid #6c5ce7;
+  border-left: 3px solid var(--pt-primary);
   border-radius: var(--radius-sm);
   background: var(--surface-1);
   font-size: var(--fs-md);

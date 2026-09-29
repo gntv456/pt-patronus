@@ -286,6 +286,11 @@
   opacity: 0.5;
   cursor: progress;
 }
+/* 签到进行中：图标缓转反馈（复用全局 pt-spin keyframes） */
+.row-act-spin {
+  animation: pt-spin 1.2s linear infinite;
+  opacity: 0.6;
+}
 :deep(.matrix-table td:last-child .cell) {
   padding: 0 4px;
 }
@@ -365,4 +370,10 @@
 }
 .site-name-btn:hover {
   color: var(--pt-primary);
+}
+
+/* 全站同步进度片段：等宽数字防跳动（全局 tabular-nums 兜底，这里保底宽度提示） */
+.sync-progress {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
 }

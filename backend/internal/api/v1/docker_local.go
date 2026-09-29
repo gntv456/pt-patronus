@@ -79,6 +79,11 @@ func (c *DockerLocalClient) transport() *http.Transport {
 }
 
 func (c *DockerLocalClient) do(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
+	return c.doTimeout(ctx, 30*time.Second, method, path, body)
+}
+
+// doTimeout 同 do，但可指定单请求超时（拉取镜像等长操作需要分钟级窗口）。
+func (c *DockerLocalClient) doTimeout(ctx context.Context, timeout time.Duration, method, path string, body io.Reader) (*http.Response, error) {
 	var url string
 	var tr *http.Transport
 	if c.scheme == "http+unix" {
@@ -95,7 +100,7 @@ func (c *DockerLocalClient) do(ctx context.Context, method, path string, body io
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	cl := &http.Client{Transport: tr, Timeout: 30 * time.Second}
+	cl := &http.Client{Transport: tr, Timeout: timeout}
 	return cl.Do(req)
 }
 

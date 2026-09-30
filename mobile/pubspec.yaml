@@ -61,7 +61,7 @@ dependencies:
   url_launcher: ^6.3.1
   # 在线更新应用内 OTA（pt_mate 式）：dio 下载 APK(进度/取消) + crypto sha256 校验
   # (补 pt_mate 短板) + open_filex 拉起系统安装器 + path_provider 临时目录
-  dio: ^5.7.0
+  dio: ^5.11.1
   open_filex: ^4.5.0
   path_provider: ^2.1.0
   crypto: ^3.0.0

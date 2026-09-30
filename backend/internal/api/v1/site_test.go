@@ -109,10 +109,15 @@ func TestSite_CRUD(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("缺 name 应 400，got %d", rec.Code)
 	}
-	// 删
-	rec = doSite(t, r, http.MethodDelete, "/sites/1", "")
+	// 删（四轮起要求 confirm_risk 二次确认）
+	rec = doSite(t, r, http.MethodDelete, "/sites/1", `{"confirm_risk":true}`)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("删除失败 code=%d", rec.Code)
+	}
+	// 不带确认 → risk_confirmation_required（400）
+	rec = doSite(t, r, http.MethodDelete, "/sites/1", "")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("缺 confirm_risk 应 400，got %d", rec.Code)
 	}
 	rec = doSite(t, r, http.MethodGet, "/sites/1", "")
 	if rec.Code != http.StatusNotFound {
@@ -139,7 +144,7 @@ func TestSite_BatchDelete(t *testing.T) {
 	}
 
 	// 删 [1,2,999]：2 成功 + 1 失败
-	rec := doSite(t, r, http.MethodPost, "/sites/batch-delete", `{"ids":[1,2,999]}`)
+	rec := doSite(t, r, http.MethodPost, "/sites/batch-delete", `{"ids":[1,2,999],"confirm_risk":true}`)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("code=%d body=%s", rec.Code, rec.Body.String())
 	}

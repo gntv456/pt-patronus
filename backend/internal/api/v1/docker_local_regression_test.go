@@ -20,6 +20,8 @@ func TestLocalCreateContainerPassesNameQuery(t *testing.T) {
 	defer srv.Close()
 
 	c := &DockerLocalClient{scheme: "http", host: strings.TrimPrefix(srv.URL, "http://")}
+	c.tr = c.buildTransport()
+	c.client = &http.Client{Transport: c.tr}
 	id, err := c.LocalCreateContainer(context.Background(), map[string]any{"Image": "nginx", "Name": "my-web"})
 	if err != nil {
 		t.Fatalf("create failed: %v", err)

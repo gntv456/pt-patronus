@@ -520,6 +520,7 @@ export default {
       webhook: 'Webhook 触发',
       transfer_done: '整理完成',
       transfer_fail: '整理失败',
+      subtitle_fix: '字幕补齐',
       medal_new: '新勋章',
       medal_available: '勋章上架',
       medal_price_drop: '勋章降价',

@@ -270,10 +270,19 @@ func (h *MediaServerHandler) FixSubtitles(c *gin.Context) {
 	}
 	result, err := h.svc.FixMissingSubtitles(c.Request.Context(), &rep, c.Query("lang"))
 	if err != nil {
+		// 防重入冲突是 409 语义（五轮 P2 修复：此前映射 400"参数无效"误导用户）。
+		if errors.Is(err, chain.ErrSubtitleFixRunning) {
+			errcode.Respond(c, errcode.Conflict.WithErr(err))
+			return
+		}
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
 		return
 	}
-	c.JSON(http.StatusAccepted, result)
+	// 深拷贝快照：out 会被后台 goroutine 持续更新，直接序列化同一指针存在 data race
+	//（五轮 P3 修复）。
+	c.JSON(http.StatusAccepted, chain.SubtitleFixReport{
+		Fixed: result.Fixed, Skipped: result.Skipped, Errors: append([]string{}, result.Errors...),
+	})
 }
 
 // Duplicates 重复媒体检测（GET /mediaserver/:id/duplicates?library_id=）。

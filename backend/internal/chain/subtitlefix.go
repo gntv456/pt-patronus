@@ -48,11 +48,10 @@ type SubtitleFixReport struct {
 // 非原子并发写，产生截断/交错的坏字幕且健康中心不再复检，无自愈路径）。
 var ErrSubtitleFixRunning = errors.New("字幕补齐正在执行中，请稍候")
 
-// subtitleFixState 防重入 + 报告共享的同步原语（per-chain，挂 Base 旁）。
+// subtitleFixState 防重入 + 报告计数的同步原语（per-chain，挂 Base 旁）。
 type subtitleFixState struct {
 	running atomic.Bool
-	mu      sync.Mutex // 保护 report 的读写（goroutine 写 / 调用方读）
-	report  *SubtitleFixReport
+	mu      sync.Mutex // 保护后台 goroutine 对 out 计数字段的递增
 }
 
 // FixMissingSubtitles 对健康报告的 missing_subtitle 条目批量补字幕。
@@ -80,9 +79,6 @@ func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthR
 		return nil, ErrSubtitleFixRunning
 	}
 	out := &SubtitleFixReport{}
-	c.subtitleFix.mu.Lock()
-	c.subtitleFix.report = out
-	c.subtitleFix.mu.Unlock()
 	go func() {
 		defer c.subtitleFix.running.Store(false)
 		actx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
@@ -143,7 +139,7 @@ func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthR
 				level = "warning"
 			}
 			_ = c.notice.Notice(context.Background(), notice.Input{
-				Source: "subtitle_fix",
+				Source: notice.SourceSubtitleFix,
 				Title:  "字幕补齐完成",
 				Body:   fmt.Sprintf("成功 %d，跳过 %d", out.Fixed, out.Skipped),
 				Level:  level,

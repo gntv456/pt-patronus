@@ -527,6 +527,7 @@ export default {
       webhook: 'Webhook',
       transfer_done: 'Transfer done',
       transfer_fail: 'Transfer failed',
+      subtitle_fix: 'Subtitle fix',
       medal_new: 'New medal',
       medal_available: 'Medal available',
       medal_price_drop: 'Medal price drop',

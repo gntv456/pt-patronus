@@ -65,6 +65,7 @@ const (
 	SourceWebhook      = "webhook"       // 进站 Webhook 触发
 	SourceTransferDone = "transfer_done" // 媒体整理完成
 	SourceTransferFail = "transfer_fail" // 媒体整理失败
+	SourceSubtitleFix  = "subtitle_fix"  // 字幕补齐完成（健康中心一键补齐）
 	// 勋章墙价格/状态变动（定时刷新 diff 触发）
 	SourceMedalNew        = "medal_new"          // 新勋章可购买
 	SourceMedalAvailable  = "medal_available"    // 上架可购买

@@ -228,9 +228,9 @@ func New(cfg *config.Config) (*App, error) {
 	transferHistOp := oper.NewTransferHistoryOper(database)
 	transferLinkOp := oper.NewDownloadMediaLinkOper(database)
 	imageFetcher := func(ctx context.Context, url string) ([]byte, error) {
+		// 注意：这是运行时回调（刮海报），失败只影响单张海报，绝不触碰 wsCancel。
 		resp, err := hc.Get(ctx, url, "", true) // ssrf=true：海报来自 TMDB/豆瓣 等白名单域
 		if err != nil {
-			wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 			return nil, err
 		}
 		return resp.Body, nil
@@ -272,9 +272,9 @@ func New(cfg *config.Config) (*App, error) {
 	})
 	// 云端整理识别：复用 MediaChain.Search（取首个结果；ParseMeta 在适配器内先洗词）。
 	cloudCh.SetMediaSearcher(func(ctx context.Context, keyword string, year int, filter string) (*chain.MediaSearchItem, error) {
+		// 注意：这是运行时回调（云端整理识别），失败/查空只影响单次识别，绝不触碰 wsCancel。
 		res, err := mediaCh.Search(ctx, keyword, year, filter)
 		if err != nil || len(res) == 0 {
-			wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 			return nil, err
 		}
 		m := res[0]

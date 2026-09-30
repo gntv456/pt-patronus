@@ -21,6 +21,7 @@ export type NoticeSource =
   | 'webhook'
   | 'transfer_done'
   | 'transfer_fail'
+  | 'subtitle_fix'
   | 'medal_new'
   | 'medal_available'
   | 'medal_price_drop'

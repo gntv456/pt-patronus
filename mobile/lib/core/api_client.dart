@@ -118,10 +118,10 @@ class ApiClient {
     return _newClient().put(u, headers: headers, body: body).timeout(_requestTimeout);
   }
 
-  Future<http.Response> _delete(Uri u, {Map<String, String>? headers}) async {
+  Future<http.Response> _delete(Uri u, {Map<String, String>? headers, Object? body}) async {
     final blocked = _insecureBlockedReason(u);
     if (blocked != null) throw ApiException(0, blocked, userMessage: blocked);
-    return _withRetry(() => _newClient().delete(u, headers: headers).timeout(_requestTimeout));
+    return _withRetry(() => _newClient().delete(u, headers: headers, body: body).timeout(_requestTimeout));
   }
 
   /// 幂等 GET/DELETE 的网络层重试（连接失败/超时重试 1 次，指数退避）。
@@ -163,8 +163,8 @@ class ApiClient {
       _do(() => _put(_u(path), headers: _headers, body: jsonEncode(body)),
           path: path, method: 'PUT');
 
-  Future<Map<String, dynamic>> delete(String path) =>
-      _do(() => _delete(_u(path), headers: _headers), path: path, method: 'DELETE');
+  Future<Map<String, dynamic>> delete(String path, {Object? body}) =>
+      _do(() => _delete(_u(path), headers: _headers, body: body), path: path, method: 'DELETE');
 
   /// 取数组响应：后端部分端点直接回裸 JSON 数组（如 /dashboard/history/:id），
   /// 不能走 [_json] 的 `as Map` 解包。兼容裸数组与 {data|points|items|list:[...]} 包裹两种形态。

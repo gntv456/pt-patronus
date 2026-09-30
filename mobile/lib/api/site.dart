@@ -230,11 +230,13 @@ class SiteApi {
     return list.map((e) => CheckinRecord.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<void> remove(int id) async => _api.delete('/sites/$id');
+  // 站点硬删不可恢复（凭据随之失），后端要求 confirm_risk 二次确认（UI 已有弹窗）。
+  Future<void> remove(int id) async =>
+      _api.delete('/sites/$id', body: {'confirm_risk': true});
 
   /// 批量删除站点（admin）。返回 deleted（成功数）与 failed（失败 id 列表）。
   Future<Map<String, dynamic>> batchDelete(List<int> ids) async =>
-      _api.post('/sites/batch-delete', {'ids': ids});
+      _api.post('/sites/batch-delete', {'ids': ids, 'confirm_risk': true});
 
   /// 上传站点 cookie（WebView 登录后调用）。
   Future<void> uploadCookie(int id, String cookie) async =>

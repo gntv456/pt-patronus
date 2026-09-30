@@ -185,6 +185,7 @@ func migrateSiteRegisteredDomainBackfillV1(tx *gorm.DB) error {
 			best[dom] = r.ID
 		}
 	}
+	removed := 0
 	for _, r := range rows {
 		dom := site.RegisteredDomain(r.BaseURL)
 		if dom == "" {
@@ -197,9 +198,16 @@ func migrateSiteRegisteredDomainBackfillV1(tx *gorm.DB) error {
 			continue
 		}
 		// 重复站：删除较大 id 的行（与应用层去重一致：同域只留最先建的）。
-		if err := tx.Exec("DELETE FROM sites WHERE id = ?", r.ID).Error; err != nil {
-			return err
+		res := tx.Exec("DELETE FROM sites WHERE id = ?", r.ID)
+		if res.Error != nil {
+			return res.Error
 		}
+		removed += int(res.RowsAffected)
+	}
+	// 让用户可见丢了哪些站（五轮 P3：静默硬删不可接受，至少留下日志痕迹）。
+	if removed > 0 {
+		slog.Warn("site dedup: removed duplicate sites during migration", "count", removed,
+			"note", "同注册域只保留最先创建的一条，被删站点名见历史库")
 	}
 	return nil
 }

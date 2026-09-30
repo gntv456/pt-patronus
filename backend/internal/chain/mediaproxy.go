@@ -49,6 +49,9 @@ type pathCacheEntry struct {
 }
 
 // cachedMediaPath 带缓存的 MediaPath（负结果不缓存——失败常见于临时网络问题）。
+// 四轮 P2 修复：过期条目此前仅在"再次被访问"时删除，未被回访的条目永驻——媒体库
+// 几十万条目时按 PlaybackInfo 调用量单调涨内存。每次写入后顺手清扫全表过期项
+//（条目带 exp，Range 一遍 Delete 即可，成本低；清扫与写入并发安全——sync.Map）。
 func (p *MediaProxyService) cachedMediaPath(ctx context.Context, serverID uint, itemID string) (string, error) {
 	key := fmt.Sprintf("%d:%s", serverID, itemID)
 	if v, ok := p.pathCache.Load(key); ok {
@@ -62,7 +65,24 @@ func (p *MediaProxyService) cachedMediaPath(ctx context.Context, serverID uint, 
 		return "", err
 	}
 	p.pathCache.Store(key, pathCacheEntry{path: path, exp: time.Now().Add(mediaPathCacheTTL)})
+	p.sweepPathCache()
 	return path, nil
+}
+
+// sweepPathCache 清扫过期缓存项（写后触发，均摊成本；限制单次最多删 1024 项防长暂停）。
+func (p *MediaProxyService) sweepPathCache() {
+	now := time.Now()
+	n := 0
+	p.pathCache.Range(func(k, v any) bool {
+		if e, ok := v.(pathCacheEntry); ok && now.After(e.exp) {
+			p.pathCache.Delete(k)
+			n++
+			if n >= 1024 {
+				return false
+			}
+		}
+		return true
+	})
 }
 
 // NewMediaProxyService 构造。

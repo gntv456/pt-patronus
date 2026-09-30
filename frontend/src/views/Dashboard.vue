@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ref, computed, onMounted, defineAsyncComponent } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { siteApi } from '@/api/site'
 import { useAuthStore } from '@/stores/auth'
 import type { DashboardShareData } from '@/utils/dashboardImage'
@@ -25,7 +25,7 @@ import EmptyState from '@/components/EmptyState.vue'
 
 const { overview, trendDays, trendLoading, changeTrendDays, latestUpdatedText, loading, loadError, load, allSites } =
   useDashboardData()
-const { syncing, syncTotal, syncDone, syncStats } = useDashboardSync()
+const { syncing, syncTotal, syncDone, syncStats, abortSync } = useDashboardSync()
 const { refreshing, loadCached, refreshConnectivity, connectedCount, disabledCount, healthSegments, unreadCount } =
   useDashboardActions()
 
@@ -105,6 +105,8 @@ onMounted(() => {
   load()
   void loadCached().then(() => refreshConnectivity())
 })
+// 离开仪表盘时中止逐站同步循环（下一站前退出，避免后台空转刷统计）。
+onUnmounted(() => abortSync())
 </script>
 
 <template>

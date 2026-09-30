@@ -22,7 +22,8 @@ import (
 // client 按需构建（媒体服务器通常个位数，构造廉价；HTTP 调用才是开销），无需 manager 缓存。
 // 复用一个 AllowPrivate 的内网 HTTP 客户端（同下载器范式，媒体服务器多为内网部署）。
 type MediaServerChain struct {
-	subtitleFixer SubtitleFixer // 字幕库级补齐（nil=未启用）
+	subtitleFixer SubtitleFixer    // 字幕库级补齐（nil=未启用）
+	subtitleFix   subtitleFixState // 补齐防重入 + 报告同步（见 subtitlefix.go）
 	Base
 	op     *oper.MediaServerOper
 	hc     *httpclient.Client

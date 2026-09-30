@@ -160,16 +160,20 @@ export const dockerApi = {
       .then((r) => r.data),
   localPrune: (type: 'container' | 'image' | 'volume' | 'network') =>
     http
-      .post<{ ok: boolean; result?: Record<string, unknown> }>('/ops/docker/local/prune', null, { params: { type } })
+      .post<{ ok: boolean; result?: Record<string, unknown> }>('/ops/docker/local/prune', { confirm_risk: true }, { params: { type } })
       .then((r) => r.data),
   localVolumeCreate: (name: string, driver?: string) =>
     http.post<DockerOpsAck>('/ops/docker/local/volumes', { name, driver }).then((r) => r.data),
   localVolumeRemove: (name: string) =>
-    http.delete<DockerOpsAck>(`/ops/docker/local/volumes/${name}`).then((r) => r.data),
+    http
+      .delete<DockerOpsAck>(`/ops/docker/local/volumes/${name}`, { data: { confirm_risk: true } })
+      .then((r) => r.data),
   localNetworkCreate: (name: string, driver?: string) =>
     http.post<DockerOpsAck>('/ops/docker/local/networks', { name, driver }).then((r) => r.data),
   localNetworkRemove: (name: string) =>
-    http.delete<DockerOpsAck>(`/ops/docker/local/networks/${name}`).then((r) => r.data),
+    http
+      .delete<DockerOpsAck>(`/ops/docker/local/networks/${name}`, { data: { confirm_risk: true } })
+      .then((r) => r.data),
 
   // === 本机 Compose（容器内 CLI + socket）===
   localComposeCheck: () =>
@@ -178,7 +182,7 @@ export const dockerApi = {
     http.post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/up', { content, name }).then((r) => r.data),
   localComposeDown: (content: string, name?: string) =>
     http
-      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/down', { content, name })
+      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/down', { content, name, confirm_risk: true })
       .then((r) => r.data),
   localComposeValidate: (content: string, name?: string) =>
     http
@@ -203,7 +207,11 @@ export const dockerApi = {
       .then((r) => r.data),
   localProjectAction: (dir: string, action: 'up' | 'down' | 'restart' | 'pull') =>
     http
-      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/project/action', { dir, action })
+      .post<{ ok: boolean; output?: string }>('/ops/docker/local/compose/project/action', {
+        dir,
+        action,
+        confirm_risk: true,
+      })
       .then((r) => r.data),
 
   // === 创建容器 + exec 终端 ===

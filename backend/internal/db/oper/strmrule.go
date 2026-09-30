@@ -155,16 +155,18 @@ func (o *StrmRuleOper) Delete(id uint) error {
 
 // UpsertRecord 按 DriveID+CloudPath 唯一索引 upsert（存在则更新 strm 路径/大小，不存在则插入）。
 // 返回是否新建（true=本次新生成；false=已存在跳过），供生成器统计 Generated/Skipped。
+// 四轮 P2 修复：并发双双 Create 竞态时，落败方此前仅 First 兜底返回、不回放本次的
+// strmPath/size——记录留旧路径，RepairStrm 按旧路径直写产生错位 .strm。兜底分支
+// 改为列级 Updates 回放本次值。
 func (o *StrmRuleOper) UpsertRecord(driveID uint, cloudPath, strmPath string, size int64, subID uint) (bool, error) {
 	var rec models.StrmRecord
 	err := o.db.Where("drive_id = ? AND cloud_path = ?", driveID, cloudPath).First(&rec).Error
 	if err == nil {
-		rec.StrmPath = strmPath
-		rec.Size = size
+		updates := map[string]any{"strm_path": strmPath, "size": size}
 		if subID > 0 {
-			rec.SubscriptionID = subID
+			updates["subscription_id"] = subID
 		}
-		return false, o.db.Save(&rec).Error
+		return false, o.db.Model(&rec).Updates(updates).Error
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return false, err
@@ -173,12 +175,23 @@ func (o *StrmRuleOper) UpsertRecord(driveID uint, cloudPath, strmPath string, si
 		DriveID: driveID, CloudPath: cloudPath, StrmPath: strmPath, Size: size, SubscriptionID: subID,
 	}
 	if err := o.db.Create(&rec).Error; err != nil {
-		// 并发下唯一索引可能竞态：再查一次兜底为「已存在」。
-		return false, o.db.Where("drive_id = ? AND cloud_path = ?", driveID, cloudPath).
-			First(&rec).Error
+		// 并发下唯一索引竞态：兜底为「已存在」并回放本次值（不丢新 strmPath）。
+		updates := map[string]any{"strm_path": strmPath, "size": size}
+		if subID > 0 {
+			updates["subscription_id"] = subID
+		}
+		if uerr := o.db.Model(&models.StrmRecord{}).
+			Where("drive_id = ? AND cloud_path = ?", driveID, cloudPath).
+			Updates(updates).Error; uerr != nil {
+			return false, uerr
+		}
+		return false, nil
 	}
 	return true, nil
 }
+
+// WithTx 事务内换绑 db（CloudChain.Delete 级联三删共用，见 chain/cloud.go）。
+func (o *StrmRuleOper) WithTx(tx *gorm.DB) *StrmRuleOper { return &StrmRuleOper{db: tx} }
 
 func (o *StrmRuleOper) ListRecords(driveID uint) ([]models.StrmRecord, error) {
 	var rs []models.StrmRecord

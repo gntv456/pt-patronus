@@ -14,6 +14,11 @@ interface SyncState {
 const prefCache: Record<string, Ref<Record<string, any> | null>> = {}
 const syncState: Record<string, SyncState> = {}
 let pushTimers: Record<string, ReturnType<typeof setTimeout> | undefined> = {}
+// 未登录期间的变更标记：token 到位后（登录完成）补推一次，避免偏好只在本地停留。
+const dirtyKeys = new Set<string>()
+// 各域的补推函数（token watch 触发时调用）；每域只挂一个 watch。
+const pushFns: Record<string, () => void> = {}
+const pushWatched: Record<string, boolean> = {}
 
 function readLocal(key: string): Record<string, any> | null {
   try {
@@ -57,11 +62,30 @@ export function useUserPrefs(key: string) {
 
   function pushToServer() {
     const auth = useAuthStore()
-    if (!auth.token || !prefs.value) return
+    if (!auth.token) {
+      // 未登录（token 尚未到位）：记脏标记，登录后由下方 watch 补推。
+      dirtyKeys.add(key)
+      return
+    }
+    if (!prefs.value) return
     authApi.setPreferences(key, prefs.value).catch(() => {
       /* 静默：下次变更重推 */
     })
+    dirtyKeys.delete(key)
     syncState[key].syncedAt = Date.now()
+  }
+  pushFns[key] = pushToServer
+
+  // token 从空变有值（登录完成）且该域有脏标记：补推一次（每域只挂一个 watch）。
+  if (!pushWatched[key]) {
+    const auth = useAuthStore()
+    pushWatched[key] = true
+    watch(
+      () => auth.token,
+      (token, prev) => {
+        if (token && !prev && dirtyKeys.has(key)) pushFns[key]()
+      },
+    )
   }
 
   function update(patch: Record<string, any>) {

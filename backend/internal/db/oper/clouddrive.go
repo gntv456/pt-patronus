@@ -107,6 +107,12 @@ func (o *CloudDriveOper) Delete(id uint) error {
 	return o.db.Delete(&models.CloudDrive{}, id).Error
 }
 
+// WithTx 事务内换绑 db（CloudChain.Delete 级联三删共用，见 chain/cloud.go）。
+func (o *CloudDriveOper) WithTx(tx *gorm.DB) *CloudDriveOper { return &CloudDriveOper{db: tx, c: o.c} }
+
+// DB 暴露底层 db 供 chain 层开事务（级联删除原子性）。
+func (o *CloudDriveOper) DB() *gorm.DB { return o.db }
+
 // Token 解密返回凭据（cookie/accessToken）。
 func (o *CloudDriveOper) Token(m *models.CloudDrive) (string, error) {
 	return o.c.Decrypt(m.TokenEnc)

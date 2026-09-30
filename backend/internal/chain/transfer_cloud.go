@@ -37,7 +37,12 @@ func (c *TransferChain) afterTransferCloudUpload(ctx context.Context, res *trans
 	}
 	// 注入库根目录（云盘路径映射用，保留 标题/季 结构）；不入库序列化。
 	cu.MovieDir, cu.TVDir = cfg.MovieDir, cfg.TVDir
+	// 四轮 P2 修复：直传兜底是 fire-and-forget，此前 Shutdown 不感知、无法等待——
+	// 退出时上传/删本地被硬杀（云端残留未 complete 的分片任务）。挂 WaitGroup 供
+	// Shutdown 等待（队列路径由 cloudtask executor 的停机保护覆盖，无需跟踪）。
+	c.cloudWg.Add(1)
 	go func() {
+		defer c.cloudWg.Done()
 		actx, cancel := context.WithTimeout(context.Background(), 2*time.Hour)
 		defer cancel()
 		// 任务队列可用 → 入队（进度可视 + 自动重试）；否则直传（fire-and-forget 兜底）

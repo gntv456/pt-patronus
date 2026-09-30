@@ -70,6 +70,9 @@ func (h *MonitorTerminalHandler) Handle(c *gin.Context) {
 		CheckOrigin:     h.checkOrigin,
 	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	// 四轮 P2 修复：不设 ReadLimit 则单帧可无限大（GB 级消息直接进内存）。
+	// 终端输入远小于 1MB。
+	conn.SetReadLimit(1 << 20)
 	if err != nil {
 		return
 	}

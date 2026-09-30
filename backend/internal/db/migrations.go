@@ -17,6 +17,8 @@ import (
 	"log/slog"
 
 	"gorm.io/gorm"
+
+	"github.com/hxpt/ptpatronus/internal/site"
 )
 
 // Migration 是一个版本化迁移步骤。
@@ -40,6 +42,43 @@ var Migrations = []Migration{
 		Name:    "brushflow_seed_unique_task_source_v1",
 		Fn:      migrateBrushFlowSeedUniqueV1,
 	},
+	{
+		Version: 3,
+		Name:    "site_dup_domain_unique_v1",
+		Fn:      migrateSiteDupDomainUniqueV1,
+	},
+	{
+		Version: 4,
+		Name:    "site_registered_domain_backfill_v1",
+		Fn:      migrateSiteRegisteredDomainBackfillV1,
+	},
+}
+
+// migrateSiteDupDomainUniqueV1 站点注册域唯一索引（四轮 P2 修复：Create 的
+// check-then-act 去重在 CookieCloud 自动建站 / 手工添加 / 备份导入并发时可同时
+// 通过检查 → 同注册域双站落库 → 仪表盘聚合双计。注册域 eTLD+1 判定在应用层
+//（dupDomain），DB 侧以 site_registered_domain 存储列 + 唯一索引兜底）。
+// 旧行回填：按 base_url 计算注册域，同域多条保留 id 最小的一条。
+func migrateSiteDupDomainUniqueV1(tx *gorm.DB) error {
+	// 1) 加存储列（幂等：已存在时报错忽略）。
+	if err := tx.Exec(`ALTER TABLE sites ADD COLUMN registered_domain TEXT NOT NULL DEFAULT ''`).Error; err != nil {
+		slog.Warn("sites add registered_domain column skip", "err", err)
+	}
+	// 2) 历史空串行全部置 NULL（唯一索引不约束 NULL；eTLD+1 精确回填在 v4 应用层做）。
+	if err := tx.Exec(`UPDATE sites SET registered_domain = NULL WHERE registered_domain = ''`).Error; err != nil {
+		slog.Warn("sites empty domain null-out skip", "err", err)
+	}
+	// 3) 去重 + 唯一索引。
+	if err := tx.Exec(`DELETE FROM sites WHERE registered_domain != '' AND id NOT IN (
+		SELECT MIN(id) FROM sites WHERE registered_domain != '' GROUP BY registered_domain
+	)`).Error; err != nil {
+		slog.Warn("sites dup dedup skip", "err", err)
+	}
+	if err := tx.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS uk_sites_registered_domain
+		ON sites(registered_domain)`).Error; err != nil {
+		slog.Warn("sites registered_domain unique index create", "err", err)
+	}
+	return nil
 }
 
 // migrateBrushFlowSeedUniqueV1 刷流种子历史 (task_id, source_key) 唯一索引：
@@ -118,6 +157,48 @@ func migrateSubscriptionNullableBooleansV1(tx *gorm.DB) error {
 			Where(col+" = ?", false).
 			Update(col, nil).Error; err != nil {
 			return fmt.Errorf("migrate subscriptions.%s nullable: %w", col, err)
+		}
+	}
+	return nil
+}
+
+
+// migrateSiteRegisteredDomainBackfillV1 用应用层 eTLD+1（publicsuffix）回填
+// sites.registered_domain：SQL 端做不了 eTLD+1 判定。同注册域多行（历史并发窗口
+// 产生的重复站）保留 id 最小的一条，其余删除——与应用层 Create 去重口径一致。
+func migrateSiteRegisteredDomainBackfillV1(tx *gorm.DB) error {
+	var rows []struct {
+		ID      uint
+		BaseURL string
+	}
+	if err := tx.Raw("SELECT id, base_url FROM sites WHERE registered_domain IS NULL OR registered_domain = ''").Scan(&rows).Error; err != nil {
+		slog.Warn("sites backfill select skip", "err", err)
+		return nil
+	}
+	best := map[string]uint{} // domain -> 保留的最小 id
+	for _, r := range rows {
+		dom := site.RegisteredDomain(r.BaseURL)
+		if dom == "" {
+			continue // 解析不出域名的行不参与约束（保持 NULL）
+		}
+		if prev, ok := best[dom]; !ok || r.ID < prev {
+			best[dom] = r.ID
+		}
+	}
+	for _, r := range rows {
+		dom := site.RegisteredDomain(r.BaseURL)
+		if dom == "" {
+			continue
+		}
+		if keep, ok := best[dom]; ok && keep == r.ID {
+			if err := tx.Exec("UPDATE sites SET registered_domain = ? WHERE id = ?", dom, r.ID).Error; err != nil {
+				return err
+			}
+			continue
+		}
+		// 重复站：删除较大 id 的行（与应用层去重一致：同域只留最先建的）。
+		if err := tx.Exec("DELETE FROM sites WHERE id = ?", r.ID).Error; err != nil {
+			return err
 		}
 	}
 	return nil

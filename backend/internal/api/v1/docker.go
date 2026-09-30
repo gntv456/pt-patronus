@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/hxpt/ptpatronus/internal/api/errcode"
+	"fmt"
 	"net/http"
 	"reflect"
+
+	"github.com/hxpt/ptpatronus/internal/api/errcode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/monitor"
@@ -150,8 +152,16 @@ func (h *DockerHandler) Logs(c *gin.Context) {
 		errcode.Respond(c, errcode.DockerContainerNameRequired)
 		return
 	}
-	tail := c.DefaultQuery("tail", "100")
-	cmd := "docker logs --tail " + shellQuote(tail) + " " + shellQuote(name) + " 2>&1"
+	// 四轮 P1 修复：tail 必须是数字且夹到 [1,10000]（防超大值撑爆输出/内存）。
+	tailRaw := c.DefaultQuery("tail", "100")
+	tail := 100
+	if n, err := strconvAtoi(tailRaw); err == nil && n > 0 {
+		tail = n
+	}
+	if tail > 10000 {
+		tail = 10000
+	}
+	cmd := "docker logs --tail " + shellQuote(fmt.Sprintf("%d", tail)) + " " + shellQuote(name) + " 2>&1"
 	result, err := h.runner.RunCommandNow(c.Request.Context(), id, cmd, 15)
 	if err != nil {
 		errcode.Respond(c, errcode.BadGateway.WithErr(err))

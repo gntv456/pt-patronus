@@ -2,14 +2,18 @@ package chain
 
 import (
 	"context"
-
+	"errors"
 	"fmt"
-	"github.com/hxpt/ptpatronus/internal/subtitle"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
+
+	"github.com/hxpt/ptpatronus/internal/notice"
+	"github.com/hxpt/ptpatronus/internal/subtitle"
 )
 
 // ---- 字幕库级补齐（媒体健康中心联动） ----
@@ -40,8 +44,21 @@ type SubtitleFixReport struct {
 	Errors  []string `json:"errors,omitempty"`
 }
 
+// ErrSubtitleFixRunning 上一次补齐仍在执行（防重入：并发触发会对同一 dst
+// 非原子并发写，产生截断/交错的坏字幕且健康中心不再复检，无自愈路径）。
+var ErrSubtitleFixRunning = errors.New("字幕补齐正在执行中，请稍候")
+
+// subtitleFixState 防重入 + 报告共享的同步原语（per-chain，挂 Base 旁）。
+type subtitleFixState struct {
+	running atomic.Bool
+	mu      sync.Mutex // 保护 report 的读写（goroutine 写 / 调用方读）
+	report  *SubtitleFixReport
+}
+
 // FixMissingSubtitles 对健康报告的 missing_subtitle 条目批量补字幕。
 // language 为偏好语言（默认 chs）；异步执行（后台 goroutine），立即返回受理数。
+// 返回的 report 指针会在后台持续更新（读侧有锁），前端可轮询/忽略——
+// 立即返回的 JSON 只是受理快照（Accepted=0 计数），真实结果走通知中心。
 func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthReport, language string) (*SubtitleFixReport, error) {
 	fixer := c.subtitleFixer
 	if fixer == nil {
@@ -59,47 +76,90 @@ func (c *MediaServerChain) FixMissingSubtitles(ctx context.Context, rep *HealthR
 	if len(targets) == 0 {
 		return &SubtitleFixReport{}, nil
 	}
+	if !c.subtitleFix.running.CompareAndSwap(false, true) {
+		return nil, ErrSubtitleFixRunning
+	}
 	out := &SubtitleFixReport{}
+	c.subtitleFix.mu.Lock()
+	c.subtitleFix.report = out
+	c.subtitleFix.mu.Unlock()
 	go func() {
+		defer c.subtitleFix.running.Store(false)
 		actx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer cancel()
 		for _, t := range targets {
 			query := subtitleQueryFromPath(t.Path, t.Title)
 			if query == "" {
+				c.subtitleFix.mu.Lock()
 				out.Skipped++
+				c.subtitleFix.mu.Unlock()
 				continue
 			}
 			subs, err := fixer.Search(actx, query, language)
 			if err != nil || len(subs) == 0 {
+				c.subtitleFix.mu.Lock()
 				out.Skipped++
+				c.subtitleFix.mu.Unlock()
 				slog.Debug("subtitle fix: no result", "title", t.Title, "err", err)
 				continue
 			}
 			// 语言优先级：精确匹配偏好 → chs → bi → eng → 任意
 			pick := pickSubtitle(subs, language)
 			if pick == nil {
+				c.subtitleFix.mu.Lock()
 				out.Skipped++
+				c.subtitleFix.mu.Unlock()
 				continue
 			}
 			data, fname, err := fixer.Download(actx, *pick)
 			if err != nil || len(data) == 0 {
+				c.subtitleFix.mu.Lock()
 				out.Skipped++
+				c.subtitleFix.mu.Unlock()
 				continue
 			}
 			dst := subtitleDestPath(t.Path, pick.LangCode, fname)
 			if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+				c.subtitleFix.mu.Lock()
 				out.Errors = append(out.Errors, t.Title+": "+err.Error())
+				c.subtitleFix.mu.Unlock()
 				continue
 			}
-			if err := os.WriteFile(dst, data, 0o644); err != nil {
+			if err := writeFileAtomic(dst, data, 0o644); err != nil {
+				c.subtitleFix.mu.Lock()
 				out.Errors = append(out.Errors, t.Title+": "+err.Error())
+				c.subtitleFix.mu.Unlock()
 				continue
 			}
+			c.subtitleFix.mu.Lock()
 			out.Fixed++
+			c.subtitleFix.mu.Unlock()
 			slog.Info("subtitle fix: saved", "file", filepath.Base(dst))
+		}
+		// 结果发通知（后台异步，调用方只拿受理快照）。
+		if c.notice != nil {
+			level := "success"
+			if out.Fixed == 0 {
+				level = "warning"
+			}
+			_ = c.notice.Notice(context.Background(), notice.Input{
+				Source: "subtitle_fix",
+				Title:  "字幕补齐完成",
+				Body:   fmt.Sprintf("成功 %d，跳过 %d", out.Fixed, out.Skipped),
+				Level:  level,
+			}, false)
 		}
 	}()
 	return out, nil
+}
+
+// writeFileAtomic tmp+rename 原子写（崩溃/并发不产生半截文件）。
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, perm); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
 }
 
 // SetSubtitleFixer 注入字幕补齐能力（app 装配）。

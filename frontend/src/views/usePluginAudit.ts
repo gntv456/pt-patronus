@@ -18,7 +18,11 @@ export function usePluginAudit(deps: { reload: () => Promise<void> }) {
     auditVisible.value = true
     auditLoading.value = true
     try {
-      const [logsData, releasesData] = await Promise.all([pluginApi.logs(p.id, 80), pluginApi.releases(p.id)])
+      // 日志为主数据（失败即报）；版本历史仅回滚下拉用，降级为空。
+      const [logsData, releasesData] = await Promise.all([
+        pluginApi.logs(p.id, 80),
+        pluginApi.releases(p.id).catch(() => [] as PluginRelease[]),
+      ])
       auditLogs.value = logsData
       auditReleases.value = releasesData
     } catch (e: unknown) {

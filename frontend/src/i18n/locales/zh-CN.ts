@@ -552,6 +552,7 @@ export default {
     newItems: '新增 {n} 条',
     items: '条目',
     itemsTitle: '条目：{name}',
+    loadItemsFailed: '加载条目失败',
     emptyTitle: '暂无 RSS 订阅',
     emptyDesc: '订阅 RSS/Atom 源，按关键词/大小/分辨率过滤后自动下载',
     f: {

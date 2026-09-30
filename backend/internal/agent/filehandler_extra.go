@@ -1,4 +1,4 @@
-﻿package agent
+package agent
 
 import (
 	"archive/tar"
@@ -294,12 +294,36 @@ func agentTarGz(src, dst string) error {
 	})
 }
 
+// agent 解压上限（四轮 P1 修复：与本地后端 filemanager/local_extra.go 的
+// maxExtractEntrySize/maxExtractTotalSize 对齐——此前 agent 端无任何限制，恶意/
+// 损坏的压缩包（zip bomb）可写满 agent 主机磁盘）。
+const (
+	agentMaxExtractEntry int64 = 100 << 20 // 单文件 100MB
+	agentMaxExtractTotal int64 = 500 << 20 // 累计 500MB
+)
+
+// agentExtractTracker 累计解压总量守卫。
+type agentExtractTracker struct{ total int64 }
+
+func (t *agentExtractTracker) copy(out io.Writer, rc io.Reader) (int64, error) {
+	n, err := io.Copy(out, io.LimitReader(rc, agentMaxExtractEntry+1))
+	if n > agentMaxExtractEntry {
+		return n, &simpleErr{"解压失败：单文件超过 100MB 上限"}
+	}
+	t.total += n
+	if t.total > agentMaxExtractTotal {
+		return n, &simpleErr{"解压失败：总解压量超过 500MB 上限"}
+	}
+	return n, err
+}
+
 func agentUnzip(src, dst string) error {
 	r, err := zip.OpenReader(filepath.FromSlash(src))
 	if err != nil {
 		return err
 	}
 	defer r.Close()
+	tracker := &agentExtractTracker{}
 	for _, f := range r.File {
 		target := filepath.Join(filepath.FromSlash(dst), f.Name)
 		if !strings.HasPrefix(filepath.Clean(target)+string(filepath.Separator), filepath.Clean(filepath.FromSlash(dst))+string(filepath.Separator)) {
@@ -323,10 +347,10 @@ func agentUnzip(src, dst string) error {
 			rc.Close()
 			return err
 		}
-		if _, err := io.Copy(out, rc); err != nil {
+		if _, cerr := tracker.copy(out, rc); cerr != nil {
 			rc.Close()
 			out.Close()
-			return err
+			return cerr
 		}
 		rc.Close()
 		out.Close()
@@ -346,6 +370,7 @@ func agentUntarGz(src, dst string) error {
 	}
 	defer gr.Close()
 	tr := tar.NewReader(gr)
+	tracker := &agentExtractTracker{}
 	for {
 		h, err := tr.Next()
 		if err == io.EOF {
@@ -371,9 +396,9 @@ func agentUntarGz(src, dst string) error {
 			if err != nil {
 				return err
 			}
-			if _, err := io.Copy(out, tr); err != nil {
+			if _, cerr := tracker.copy(out, tr); cerr != nil {
 				out.Close()
-				return err
+				return cerr
 			}
 			out.Close()
 		}

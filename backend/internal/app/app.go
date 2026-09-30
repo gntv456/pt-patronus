@@ -46,6 +46,8 @@ type App struct {
 	dirwatchCancel context.CancelFunc // 停目录监视 goroutine（C 阶段填，nil=safe-mode/未启用）
 	tgbotCancel    context.CancelFunc // 停 Telegram bot goroutine（A 阶段填，nil=safe-mode/未启用）
 	cloudCh        *chain.CloudChain  // 云任务执行器停机用（D 阶段填，nil=safe-mode）
+	transferCh     *chain.TransferChain // 整理链（直传云上传兜底路径的停机等待，四轮 P2）
+	wsBCStop       func()             // 停 WS 广播器（含在途下载完成钩子收尾，四轮 P1 修复）
 }
 
 // New wires all dependencies and builds the HTTP server (does not start it).
@@ -92,7 +94,11 @@ func New(cfg *config.Config) (*App, error) {
 	// WebSocket 实时推送：Hub 连接池 + 广播器（随进程常驻；无连接时广播为空操作）。
 	wsHub := ws.NewHub()
 	wsBC := ws.NewBroadcaster(wsHub, dlOp, dlMgr, 0)
-	go wsBC.Run(context.Background())
+	// 四轮 P1 修复：Broadcaster 的优雅停止依赖 ctx 取消（Run 内 wg.Wait 等在途
+	// 下载完成钩子收尾），此前传 Background 永不取消——停机时在途整理钩子被硬杀，
+	// 媒体库留半写文件。此处取消函数交 Shutdown 在 http.Shutdown 前调用。
+	wsCtx, wsCancel := context.WithCancel(context.Background())
+	go wsBC.Run(wsCtx)
 
 	// SystemConfig 运行时可变配置（媒体源凭据 / 通知通道凭据 / IYUU token 共用同一 KV 表，
 	// 按 key 命名空间隔离）。上方已创建 cfgOp，此处供通知 provider 与媒体 provider 复用。
@@ -209,6 +215,7 @@ func New(cfg *config.Config) (*App, error) {
 	mediaServerOp := oper.NewMediaServerOper(database, crypto)
 	mediaServerCh, err := chain.NewMediaServerChain(base, mediaServerOp, noticeSvc)
 	if err != nil {
+		wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 		return nil, err
 	}
 	// 下载完成 → 触发开启 RefreshOnDownload 的服务器扫库（best-effort，单服务器失败不阻断）。
@@ -223,6 +230,7 @@ func New(cfg *config.Config) (*App, error) {
 	imageFetcher := func(ctx context.Context, url string) ([]byte, error) {
 		resp, err := hc.Get(ctx, url, "", true) // ssrf=true：海报来自 TMDB/豆瓣 等白名单域
 		if err != nil {
+			wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 			return nil, err
 		}
 		return resp.Body, nil
@@ -238,6 +246,7 @@ func New(cfg *config.Config) (*App, error) {
 	strmRuleOp := oper.NewStrmRuleOper(database)
 	cloudCh, err := chain.NewCloudChain(base, cloudDriveOp, strmRuleOp, subCh, noticeSvc)
 	if err != nil {
+		wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 		return nil, err
 	}
 	// 整理链注入云盘上传能力：整理成功 → 自动上传网盘 + 生成 .strm（transfer.config.cloud_upload）。
@@ -265,6 +274,7 @@ func New(cfg *config.Config) (*App, error) {
 	cloudCh.SetMediaSearcher(func(ctx context.Context, keyword string, year int, filter string) (*chain.MediaSearchItem, error) {
 		res, err := mediaCh.Search(ctx, keyword, year, filter)
 		if err != nil || len(res) == 0 {
+			wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 			return nil, err
 		}
 		m := res[0]
@@ -278,6 +288,7 @@ func New(cfg *config.Config) (*App, error) {
 		OpenSubtitlesKey: cfg.OpenSubtitlesKey,
 	})
 	if err != nil {
+		wsCancel() // 装配中途失败：停掉已启动的广播器 goroutine 再返回
 		return nil, err
 	}
 	subtitleCh := chain.NewSubtitleChain(base, subtitleProvider)
@@ -393,5 +404,5 @@ func New(cfg *config.Config) (*App, error) {
 		wsBC:           wsBC,
 	})
 
-	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel, dirwatchCancel: dwCancel, tgbotCancel: tgCancel, cloudCh: cloudCh}, nil
+	return &App{cfg: cfg, db: database, sched: sched, pluginMgr: pluginMgr, http: srv, monCancel: monCancel, dirwatchCancel: dwCancel, tgbotCancel: tgCancel, cloudCh: cloudCh, transferCh: transferCh, wsBCStop: wsCancel}, nil
 }

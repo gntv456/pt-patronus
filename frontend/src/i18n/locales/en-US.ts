@@ -560,6 +560,7 @@ export default {
     newItems: '{n} new items',
     items: 'Items',
     itemsTitle: 'Items: {name}',
+    loadItemsFailed: 'Failed to load items',
     emptyTitle: 'No RSS subscriptions yet',
     emptyDesc: 'Subscribe to RSS/Atom feeds, filter by keyword/size/resolution and auto download',
     f: {

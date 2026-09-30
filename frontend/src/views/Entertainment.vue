@@ -59,20 +59,27 @@ async function loadSites() {
 }
 const pendingGame = ref<string | undefined>()
 
+// 游戏列表请求序号：快速切站时丢弃过期响应，避免旧站游戏列表覆盖新站。
+let gamesSeq = 0
+
 async function loadGames() {
   if (!currentSite.value) return
+  const seq = ++gamesSeq
   loading.value = true
   games.value = []
   try {
-    games.value = await entertainmentApi.games(currentSite.value)
+    const list = await entertainmentApi.games(currentSite.value)
+    if (seq !== gamesSeq) return
+    games.value = list
     currentGame.value =
       (pendingGame.value && games.value.some((g) => g.id === pendingGame.value) ? pendingGame.value : undefined) ??
       games.value[0]?.id
     pendingGame.value = undefined
   } catch {
+    if (seq !== gamesSeq) return
     ElMessage.error(t('entertainment.loadGamesFailed'))
   } finally {
-    loading.value = false
+    if (seq === gamesSeq) loading.value = false
   }
 }
 
@@ -109,7 +116,6 @@ loadSites()
           :placeholder="t('entertainment.selectSite')"
           style="width: 200px"
           popper-class="ent-site-dropdown"
-          @change="loadGames"
         >
           <el-option v-for="s in sites" :key="s.id" :label="s.name" :value="s.id">
             <div class="opt-row">

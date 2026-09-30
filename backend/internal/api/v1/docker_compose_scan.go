@@ -163,8 +163,9 @@ func (h *LocalComposeHandler) ProjectDetail(c *gin.Context) {
 // body: {"dir": "/host/compose/myapp", "action": "up|down"}
 func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 	var in struct {
-		Dir    string `json:"dir" binding:"required"`
-		Action string `json:"action" binding:"required"` // up | down | restart | pull
+		Dir         string `json:"dir" binding:"required"`
+		Action      string `json:"action" binding:"required"` // up | down | restart | pull
+		ConfirmRisk bool   `json:"confirm_risk"`
 	}
 	if err := c.ShouldBindJSON(&in); err != nil {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
@@ -186,6 +187,11 @@ func (h *LocalComposeHandler) ProjectAction(c *gin.Context) {
 	case "up":
 		subArgs = []string{"up", "-d"}
 	case "down":
+		// 四轮 P1 修复：down 停删容器/网络，要求二次确认（与远程版对齐）。
+		if !in.ConfirmRisk {
+			errcode.Respond(c, errcode.RiskConfirmationRequired)
+			return
+		}
 		subArgs = []string{"down"}
 	case "restart":
 		subArgs = []string{"restart"}
@@ -233,8 +239,22 @@ func (h *LocalComposeHandler) ProjectSave(c *gin.Context) {
 	}
 	fullPath := filepath.Join(in.Dir, name)
 	// 写前先验证语法：写到临时文件，用 compose config 验证，通过才覆盖。
-	tmpPath := fullPath + ".tmp"
-	if err := os.WriteFile(tmpPath, []byte(in.Content), 0644); err != nil {
+	// 四轮 P2 修复：tmp 掺随机后缀——固定 .tmp 在并发保存/双击时两个请求写同一
+	// tmp 交错（内容混合的文件可能通过校验被 rename 上线，另一请求 rename 失败）。
+	tmp, err := os.CreateTemp(in.Dir, name+".*.tmp")
+	if err != nil {
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
+		return
+	}
+	tmpPath := tmp.Name()
+	if _, err := tmp.WriteString(in.Content); err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
+		return
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
 		errcode.Respond(c, errcode.UpstreamFailed.WithErr(err))
 		return
 	}

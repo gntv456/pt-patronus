@@ -70,8 +70,8 @@ async function doOffline() {
 async function doShareSave() {
   try {
     const { value } = await ElMessageBox.prompt(t('cloud.sharePrompt'), t('cloud.shareTitle'))
-    const pwd = (await ElMessageBox.prompt(t('cloud.pwdPrompt'), t('cloud.pwdTitle')).catch(() => ({ value: '' })))
-      .value
+    // 密码弹窗取消即中止整个转存流程（不再以空密码提交）。
+    const { value: pwd } = await ElMessageBox.prompt(t('cloud.pwdPrompt'), t('cloud.pwdTitle'))
     await cloudApi.fileOp('share-save', {
       drive_id: curDrive.value!.id,
       path: browsePath.value,
@@ -101,6 +101,7 @@ async function doOrganize() {
     ElMessage.warning(t('cloud.pickDriveOnly'))
     return
   }
+  organizing.value = true
   try {
     const r = await cloudApi.organize({
       drive_id: curDrive.value.id,
@@ -136,11 +137,27 @@ const showImportTree = ref(false)
 const importing = ref(false)
 const treeForm = ref({ drive_id: 0, base: '', output_dir: '', tree: '' })
 
+// 任务请求序号：筛选切换时丢弃过期响应，避免旧筛选结果覆盖新筛选。
+let tasksSeq = 0
+// 连续失败计数：连续 3 次拉取失败即停止自动轮询并提示（避免后端宕机时空转刷错误）。
+let taskFailCount = 0
+
 async function loadTasks() {
+  const seq = ++tasksSeq
   try {
-    tasks.value = await cloudApi.listTasks(taskStatusFilter.value)
+    const list = await cloudApi.listTasks(taskStatusFilter.value)
+    if (seq !== tasksSeq) return
+    tasks.value = list
+    taskFailCount = 0
+    // 失败停轮询后手动刷新成功：恢复轮询判定（hasActiveTask 未变时 watch 不触发）。
+    syncTaskPolling()
   } catch {
-    /* 静默 */
+    if (seq !== tasksSeq) return
+    taskFailCount += 1
+    if (taskFailCount >= 3) {
+      ElMessage.warning(t('common.loadFailed'))
+      syncTaskPolling()
+    }
   }
 }
 
@@ -148,11 +165,12 @@ async function loadTasks() {
 const hasActiveTask = computed(() => tasks.value.some((t) => t.status === 'pending' || t.status === 'running'))
 let taskTimer: number | undefined
 function syncTaskPolling() {
-  if (hasActiveTask.value && taskTimer === undefined) {
+  // 连续失败 3 次也停轮询（恢复靠用户手动刷新/重试）。
+  if (hasActiveTask.value && taskFailCount < 3 && taskTimer === undefined) {
     taskTimer = window.setInterval(() => {
       loadTasks()
     }, 4000)
-  } else if (!hasActiveTask.value && taskTimer !== undefined) {
+  } else if ((!hasActiveTask.value || taskFailCount >= 3) && taskTimer !== undefined) {
     window.clearInterval(taskTimer)
     taskTimer = undefined
   }
@@ -184,8 +202,8 @@ async function removeTask(task: CloudTask) {
   try {
     await cloudApi.removeTask(task.id)
     await loadTasks()
-  } catch {
-    /* ignore */
+  } catch (e) {
+    ElMessage.error((e as Error).message || t('common.actionFailed'))
   }
 }
 async function doImportTree() {
@@ -226,6 +244,7 @@ const {
   driveForm,
   testing,
   quotas,
+  driveSaving,
   loadDrives,
   openCreateDrive,
   openEditDrive,
@@ -262,9 +281,12 @@ const {
   ruleBrowse,
   saveRule,
   removeRule,
+  ruleSaving,
   generating,
+  generatingAll,
   generateOne,
   generateAll,
+  subsSyncing,
   syncSubs,
   removeRecord,
 } = useCloudStrmRules(drives, openBrowse)
@@ -304,8 +326,8 @@ onMounted(async () => {
       <h2 v-if="!props.embedded" class="title">{{ t('cloud.title') }}</h2>
       <h3 v-else class="title embedded-title">{{ t('cloud.titleEmbedded') }}</h3>
       <div class="head-actions">
-        <el-button @click="syncSubs">{{ t('cloud.syncSubs') }}</el-button>
-        <el-button @click="generateAll">{{ t('cloud.generateAll') }}</el-button>
+        <el-button :loading="subsSyncing" @click="syncSubs">{{ t('cloud.syncSubs') }}</el-button>
+        <el-button :loading="generatingAll" @click="generateAll">{{ t('cloud.generateAll') }}</el-button>
         <el-button type="primary" @click="openCreateDrive">{{ t('cloud.addDrive') }}</el-button>
       </div>
     </div>
@@ -353,6 +375,8 @@ onMounted(async () => {
       :token-label="tokenLabel"
       :importing="importing"
       :loading="loading"
+      :drive-saving="driveSaving"
+      :rule-saving="ruleSaving"
       :fmt-size="(n?: number) => fmtSize(n ?? 0)"
       @start-auth="startAuth115"
       @do-import-tree="doImportTree"

@@ -99,11 +99,15 @@ const filterGroupArray = computed<string[]>({
   },
 })
 
+// 提交防双击：请求在途时忽略重复点击。
+const saving = ref(false)
 async function save() {
+  if (saving.value) return
   if (!form.value.name || !form.value.url) {
     ElMessage.warning(t('rss.nameUrlRequired'))
     return
   }
+  saving.value = true
   try {
     if (editingId.value) await rssApi.update(editingId.value, form.value)
     else await rssApi.create(form.value)
@@ -112,6 +116,8 @@ async function save() {
     ElMessage.success(t('common.saved'))
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('common.saveFailed'))
+  } finally {
+    saving.value = false
   }
 }
 async function remove(r: RssSubscription) {
@@ -148,8 +154,12 @@ const items = ref<RssItem[]>([])
 const itemsTitle = ref('')
 async function openItems(r: RssSubscription) {
   itemsTitle.value = r.name
-  items.value = await rssApi.items(r.id)
-  showItems.value = true
+  try {
+    items.value = await rssApi.items(r.id)
+    showItems.value = true
+  } catch (e: unknown) {
+    ElMessage.error((e as Error).message || t('rss.loadItemsFailed'))
+  }
 }
 
 function fmtSize(b: number) {
@@ -278,7 +288,7 @@ function fmtTime(t?: string) {
       </el-form>
       <template #footer>
         <el-button @click="showForm = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 

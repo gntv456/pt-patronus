@@ -112,9 +112,21 @@ func (c *RecommendChain) fetchRecommend(ctx context.Context, source, category st
 	if len(all) > 0 {
 		c.mu.Lock()
 		c.cache[key] = recommendCacheEntry{items: all, at: time.Now()}
+		c.sweepCacheLocked()
 		c.mu.Unlock()
 	}
 	return all
+}
+
+// sweepCacheLocked 清扫过期缓存项（四轮 P2 修复：key 含 page，翻页枚举可无限撑大
+// map 且过期条目永不清理；写入时顺手清扫，调用方需持 mu）。
+func (c *RecommendChain) sweepCacheLocked() {
+	now := time.Now()
+	for k, e := range c.cache {
+		if now.Sub(e.at) > recommendMemTTL {
+			delete(c.cache, k)
+		}
+	}
 }
 
 // filteredTrendingSources 按当前筛选选出应扇出的趋势源（fetchRecommend 与流式推送共用）：
@@ -197,6 +209,7 @@ func (c *RecommendChain) RecommendFeedsStream(ctx context.Context, source, categ
 	if len(all) > 0 {
 		c.mu.Lock()
 		c.cache[key] = recommendCacheEntry{items: all, at: time.Now()}
+		c.sweepCacheLocked()
 		c.mu.Unlock()
 	}
 }

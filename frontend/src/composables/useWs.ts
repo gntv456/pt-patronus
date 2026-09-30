@@ -245,6 +245,9 @@ function disconnect() {
     clearTimeout(reconnectTimer)
     reconnectTimer = null
   }
+  // 清掉所有进度指示器的保留定时器，避免 clearState 后定时器仍触发改写 taskProgress。
+  Object.values(taskTimers).forEach(clearTimeout)
+  for (const k of Object.keys(taskTimers)) delete taskTimers[k]
   if (ws) {
     ws.onclose = null // 阻止 onClose 触发重连
     ws.close()

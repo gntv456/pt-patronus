@@ -1,6 +1,7 @@
 import { ref, computed, readonly } from 'vue'
 import { useWs } from '@/composables/useWs'
 import { noticeApi, type Notice, type NoticeSource } from '@/api/notice'
+// ElMessage 依赖 unplugin-auto-import（与 useAgentChat 等一致）。
 
 // 通知中心共享状态：模块级单例，避免 NotificationCenter / Notices / AppSidebar 各自重复请求。
 // 维护完整通知列表 + 未读数，WS 实时推送自动合并。
@@ -38,7 +39,7 @@ export function useNotices() {
       const t = notices.value.find((n) => n.id === id)
       if (t) t.read = true
     } catch {
-      /* 静默 */
+      ElMessage.warning('标记已读失败')
     }
   }
   async function readAll() {
@@ -46,7 +47,7 @@ export function useNotices() {
       await noticeApi.readAll()
       notices.value.forEach((n) => (n.read = true))
     } catch {
-      /* 静默 */
+      ElMessage.warning('全部已读失败')
     }
   }
   async function removeOne(id: number) {
@@ -54,7 +55,7 @@ export function useNotices() {
       await noticeApi.delete(id)
       notices.value = notices.value.filter((n) => n.id !== id)
     } catch {
-      /* 静默 */
+      ElMessage.error('删除通知失败')
     }
   }
   async function clearAll() {
@@ -62,7 +63,7 @@ export function useNotices() {
       await noticeApi.clear()
       notices.value = []
     } catch {
-      /* 静默 */
+      ElMessage.error('清空通知失败')
     }
   }
 

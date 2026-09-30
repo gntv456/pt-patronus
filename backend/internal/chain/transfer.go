@@ -34,6 +34,26 @@ type TransferChain struct {
 
 	// per-hash 互斥锁：防止 DoneHook / Sweep / Manual 同时整理同一 hash 造成硬链覆盖/历史重写。
 	hashMu sync.Map // map[string]*sync.Mutex
+
+	// 云上传直传兜底路径（队列不可用时 fire-and-forget）的在途跟踪：
+	// Shutdown 前等待收尾，避免上传/删本地被硬杀留半状态（四轮 P2 修复）。
+	cloudWg sync.WaitGroup
+}
+
+// WaitCloudUploads 等待直传兜底路径的云上传收尾（Shutdown 用；上限 30s）。
+func (c *TransferChain) WaitCloudUploads(ctx context.Context) {
+	done := make(chan struct{})
+	go func() {
+		c.cloudWg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		slog.Warn("transfer: cloud upload still in flight after wait budget")
+	case <-time.After(30 * time.Second):
+		slog.Warn("transfer: cloud upload wait timeout, in-flight upload may be killed")
+	}
 }
 
 // NewTransferChain 构造。mediaCh 作为 transfer.Recognizer（结构化满足）；fetch 取图片字节。

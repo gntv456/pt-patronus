@@ -150,6 +150,16 @@ func (h *SiteHandler) Delete(c *gin.Context) {
 	if !ok {
 		return
 	}
+	// 四轮 P2 修复：站点硬删不可恢复（Cookie/APIKey/Passkey 凭据随之失，仅能靠
+	// 事先导出的备份），加 ConfirmRisk 二次确认（与运维破坏性操作对齐）。
+	var in struct {
+		ConfirmRisk bool `json:"confirm_risk"`
+	}
+	_ = c.ShouldBindJSON(&in)
+	if !in.ConfirmRisk {
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
+		return
+	}
 	if err := h.oper.Delete(id); err != nil {
 		errcode.Respond(c, errcode.Internal.WithErr(err))
 		return
@@ -164,10 +174,16 @@ func (h *SiteHandler) Delete(c *gin.Context) {
 // BatchDelete 批量删除站点（admin 专属）。返回删除成功数与失败 id 列表（不存在的）。
 func (h *SiteHandler) BatchDelete(c *gin.Context) {
 	var body struct {
-		IDs []uint `json:"ids" binding:"required,min=1,max=200,dive"`
+		IDs         []uint `json:"ids" binding:"required,min=1,max=200,dive"`
+		ConfirmRisk bool   `json:"confirm_risk"`
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		return
+	}
+	// 四轮 P2 修复：批量硬删（一次最多 200 站）要求 ConfirmRisk（同 Delete）。
+	if !body.ConfirmRisk {
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	failed, err := h.oper.DeleteMany(body.IDs)

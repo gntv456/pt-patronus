@@ -35,6 +35,14 @@ function mirrorFinished(done: number, total: number) {
 }
 
 let syncLogSeq = 0
+// 中止标记：页面离开（Dashboard onUnmounted）时置位，当前同步循环在下一轮站点前退出。
+// 模块级单例跨页面共享——只中止当前循环，下次 syncStats 入口重置，不永久禁用。
+let syncAborted = false
+
+/** 请求中止当前同步循环（页面离开时调用；不影响下次 syncStats）。 */
+function abortSync() {
+  syncAborted = true
+}
 function addSyncLog(status: SyncLog['status'], site: string, message: string) {
   syncLogs.value.unshift({
     id: ++syncLogSeq,
@@ -57,6 +65,7 @@ async function syncStats(onDone?: () => void) {
   if (syncing.value) return
   const { overview, allSites, trendDays, trend, fmtBytes } = useDashboardData()
   syncing.value = true
+  syncAborted = false
   syncTotal.value = 0
   syncDone.value = 0
   syncSuccess.value = 0
@@ -77,6 +86,10 @@ async function syncStats(onDone?: () => void) {
     addSyncLog('info', '刷新统计', `共 ${activeSites.length} 个启用站点，开始逐站同步`)
 
     for (const site of activeSites) {
+      if (syncAborted) {
+        addSyncLog('info', '刷新统计', '页面已离开，同步中止')
+        break
+      }
       syncCurrent.value = site.name
       const started = performance.now()
       addSyncLog('running', site.name, '开始同步')
@@ -123,5 +136,5 @@ async function syncStats(onDone?: () => void) {
 }
 
 export function useDashboardSync() {
-  return { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, syncLogs, syncPercent, syncStats }
+  return { syncing, syncTotal, syncDone, syncSuccess, syncCurrent, syncErrors, syncLogs, syncPercent, syncStats, abortSync }
 }

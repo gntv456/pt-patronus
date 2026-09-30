@@ -6,6 +6,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../api/downloader.dart';
 import '../api/notice.dart';
 import '../core/api_client.dart';
+import '../core/log.dart';
 
 // 单下载器的实时种子快照（对齐后端 ws.TorrentSnapshot）。
 class TorrentSnapshot {
@@ -174,6 +175,16 @@ class WsClient {
     String ticket;
     try {
       ticket = (await api.post('/auth/ws-ticket', {}))['ticket'] as String? ?? '';
+    } on ApiException catch (e) {
+      // 401/403：token 失效或无权限（如 VIP 过期）——重试也是同样结果，
+      // 无差别退避重连只会无限循环。停止重连（重登后 connect() 会重置），其余照常退避。
+      if (e.status == 401 || e.status == 403) {
+        ptLog('[ws] ticket 请求被拒（${e.status}），停止重连：${e.userMessage}');
+        _retry = 0;
+        return;
+      }
+      _scheduleReconnect();
+      return;
     } catch (_) {
       _scheduleReconnect();
       return;

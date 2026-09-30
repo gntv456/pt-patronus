@@ -39,6 +39,7 @@ const {
   editingId,
   isEdit,
   dialogTitle,
+  submitting,
   form,
   needsApiKey,
   apiKeyPlaceholder,
@@ -70,7 +71,8 @@ const {
 async function load() {
   loading.value = true
   try {
-    const [nextSites, nextDefs] = await Promise.all([siteApi.list(), siteApi.definitions()])
+    // 站点列表为主数据（失败即报）；definitions 仅建站下拉用，降级为空。
+    const [nextSites, nextDefs] = await Promise.all([siteApi.list(), siteApi.definitions().catch(() => [])])
     sites.value = nextSites
     defs.value = nextDefs
   } catch (e) {
@@ -226,7 +228,9 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="submit">{{ isEdit ? t('common.save') : t('common.add') }}</el-button>
+        <el-button type="primary" :loading="submitting" @click="submit">{{
+          isEdit ? t('common.save') : t('common.add')
+        }}</el-button>
       </template>
     </el-dialog>
 

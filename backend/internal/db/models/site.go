@@ -18,8 +18,12 @@ type Site struct {
 	IsActive      bool      `gorm:"default:true" json:"is_active"`
 	LimitInterval int       `gorm:"default:0" json:"limit_interval"` // 抓取限流（秒）
 	Priority      int       `gorm:"default:0" json:"priority"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	// 注册域（eTLD+1 小写）存储列 + 唯一索引：兜底 Create 的应用层 check-then-act
+	// 去重在并发（CookieCloud 自动建站 vs 手工添加）下的竞态窗口（四轮 P2 修复）。
+	// 解析不出域名的行存 NULL 绕过唯一约束（迁移 v3 对历史空行同样置 NULL）。
+	RegisteredDomain *string   `gorm:"size:255;uniqueIndex:uk_sites_registered_domain" json:"-"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 // SiteStat — 站点统计快照。

@@ -16,6 +16,8 @@ export function useCloudDrives(t: (k: string, v?: Record<string, unknown>) => st
   const driveForm = ref<DriveInput>(defaultDrive())
   const testing = ref<number | null>(null)
   const quotas = ref<Record<number, { used: number; total: number }>>({})
+  // 保存防双击：请求在途时忽略重复提交。
+  const driveSaving = ref(false)
 
   async function loadDrives() {
     loading.value = true
@@ -39,10 +41,12 @@ export function useCloudDrives(t: (k: string, v?: Record<string, unknown>) => st
     showDriveForm.value = true
   }
   async function saveDrive() {
+    if (driveSaving.value) return
     if (!driveForm.value.name || !driveForm.value.type) {
       ElMessage.warning(t('cloud.nameTypeRequired'))
       return
     }
+    driveSaving.value = true
     try {
       if (editingDrive.value) {
         await cloudApi.updateDrive(editingDrive.value.id, driveForm.value)
@@ -59,13 +63,24 @@ export function useCloudDrives(t: (k: string, v?: Record<string, unknown>) => st
       await loadDrives()
     } catch (e: any) {
       ElMessage.error(e?.message || t('common.saveFailed'))
+    } finally {
+      driveSaving.value = false
     }
   }
   async function removeDrive(d: CloudDrive) {
-    await ElMessageBox.confirm(t('cloud.confirmDeleteDrive', { name: d.name }), t('messages.tip'), { type: 'warning' })
-    await cloudApi.removeDrive(d.id)
-    ElMessage.success(t('common.deleted'))
-    await loadDrives()
+    // 删除前确认（取消即中止，不再走全局 catch）。
+    try {
+      await ElMessageBox.confirm(t('cloud.confirmDeleteDrive', { name: d.name }), t('messages.tip'), { type: 'warning' })
+    } catch {
+      return // 用户取消
+    }
+    try {
+      await cloudApi.removeDrive(d.id)
+      ElMessage.success(t('common.deleted'))
+      await loadDrives()
+    } catch (e: any) {
+      ElMessage.error(e?.message || t('common.deleteFailed'))
+    }
   }
 
   async function testDrive(d: CloudDrive) {
@@ -98,6 +113,7 @@ export function useCloudDrives(t: (k: string, v?: Record<string, unknown>) => st
     driveForm,
     testing,
     quotas,
+    driveSaving,
     loadDrives,
     openCreateDrive,
     openEditDrive,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/hxpt/ptpatronus/internal/api/errcode"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hxpt/ptpatronus/internal/chain"
@@ -14,6 +15,8 @@ import (
 // TransferHandler 处理媒体整理的历史/配置/手动整理/重做/扫描。
 type TransferHandler struct {
 	ch *chain.TransferChain
+	// sweepFlying 手动 Sweep 单飞（四轮 P2：防连点并发叠加全量整理扫描）。
+	sweepFlying atomic.Bool
 }
 
 // NewTransferHandler 构造。
@@ -198,8 +201,17 @@ func (h *TransferHandler) ClearFailedHistory(c *gin.Context) {
 }
 
 // Sweep 手动触发一次整理扫描（所有下载器的已完成种子）。
+// 四轮 P2 修复：单飞守卫——此前连点/前端重试会并发叠多个全量 Sweep（枚举全部
+// 下载器已完成种子 + 文件操作，互抢同一批种子）。进行中直接返回提示。
 func (h *TransferHandler) Sweep(c *gin.Context) {
-	go h.ch.Sweep(transferSweepContext(c.Request.Context()))
+	if !h.sweepFlying.CompareAndSwap(false, true) {
+		c.JSON(http.StatusAccepted, gin.H{"ok": false, "msg": "整理扫描已在进行中，请稍候"})
+		return
+	}
+	go func() {
+		defer h.sweepFlying.Store(false)
+		h.ch.Sweep(transferSweepContext(context.Background()))
+	}()
 	c.JSON(http.StatusOK, gin.H{"ok": true, "msg": "sweep started"})
 }
 

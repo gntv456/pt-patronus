@@ -37,17 +37,23 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
       ElMessage.error((e as Error).message || '加载会话失败')
     }
   }
+  // 会话消息请求序号：快速连续切会话时丢弃过期响应，避免旧会话消息串进新会话。
+  let msgSeq = 0
   async function selectConversation(id: number) {
     activeId.value = id
+    const seq = ++msgSeq
     loadingMsgs.value = true
     try {
-      messages.value = await agentApi.messages(id)
+      const msgs = await agentApi.messages(id)
+      if (seq !== msgSeq || activeId.value !== id) return
+      messages.value = msgs
       await nextTick()
       scrollToBottom()
     } catch (e: unknown) {
+      if (seq !== msgSeq || activeId.value !== id) return
       ElMessage.error((e as Error).message || '加载消息失败')
     } finally {
-      loadingMsgs.value = false
+      if (seq === msgSeq) loadingMsgs.value = false
     }
   }
   function newConversation() {
@@ -61,7 +67,12 @@ export function useAgentChat(getScroller: () => HTMLElement | null) {
     } catch {
       return
     }
-    await agentApi.deleteConversation(id)
+    try {
+      await agentApi.deleteConversation(id)
+    } catch (e: unknown) {
+      ElMessage.error((e as Error).message || '删除会话失败')
+      return
+    }
     if (activeId.value === id) newConversation()
     await loadConversations()
   }

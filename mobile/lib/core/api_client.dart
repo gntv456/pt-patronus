@@ -153,16 +153,18 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> get(String path) =>
-      _do(() => _get(_u(path), headers: _headers), path: path);
+      _do(() => _get(_u(path), headers: _headers), path: path, method: 'GET');
 
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body) =>
-      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)), path: path);
+      _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)),
+          path: path, method: 'POST');
 
   Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) =>
-      _do(() => _put(_u(path), headers: _headers, body: jsonEncode(body)), path: path);
+      _do(() => _put(_u(path), headers: _headers, body: jsonEncode(body)),
+          path: path, method: 'PUT');
 
   Future<Map<String, dynamic>> delete(String path) =>
-      _do(() => _delete(_u(path), headers: _headers), path: path);
+      _do(() => _delete(_u(path), headers: _headers), path: path, method: 'DELETE');
 
   /// 取数组响应：后端部分端点直接回裸 JSON 数组（如 /dashboard/history/:id），
   /// 不能走 [_json] 的 `as Map` 解包。兼容裸数组与 {data|points|items|list:[...]} 包裹两种形态。
@@ -199,17 +201,21 @@ class ApiClient {
   }
 
   /// 发送任意 JSON body（支持数组，如 MoviePilot 站点数组）；响应按对象 Map 解包。
+  /// method 留 null：401 续期后不重放（非幂等 POST），直接按原响应走 _json 语义。
   Future<Map<String, dynamic>> postJson(String path, Object body) =>
       _do(() => _post(_u(path), headers: _headers, body: jsonEncode(body)), path: null);
 
   /// 统一请求包装：网络层错误（连接失败/超时/DNS）转为友好 ApiException；HTTP 错误由 _json 转。
   /// 401 先透明续期一次（成功则用新 token 重放原请求），仍 401 才走全局清洗。
-  Future<Map<String, dynamic>> _do(Future<http.Response> Function() fn, {String? path}) async {
+  /// 仅幂等 GET 重放：POST/PUT 无法安全重建 body，续期成功也直接按原 401 响应走 _json 语义
+  /// （调用方收到 401 提示重登；避免把写操作静默降级成 GET）。
+  Future<Map<String, dynamic>> _do(Future<http.Response> Function() fn,
+      {String? path, String method = 'GET'}) async {
     try {
       var r = await fn();
       if (r.statusCode == 401 && path != null && path != '/auth/refresh') {
         final refreshed = await _tryRefresh();
-        if (refreshed != null) {
+        if (refreshed != null && method == 'GET') {
           // 用新 token 重放一次（重放请求不再触发续期，防循环）。
           r = await _replay(path, fn);
         }
@@ -223,11 +229,10 @@ class ApiClient {
   }
 
   /// 用更新后的 token 重放：闭包 fn 已绑定旧 headers，这里按 path 重建。
+  /// 仅 GET 通道调用（_do 已按 method 守卫）；非 GET 不会走到这里。
   Future<http.Response> _replay(String path, Future<http.Response> Function() fn) async {
     final h = _headers;
     final u = _u(path);
-    // 无法从闭包分辨 method/body——按常用 GET 重放，非 GET 请求直接返回原 401 响应语义
-    // （_json 会抛 401，调用方提示重登）。保守做法：仅对幂等 GET 重放。
     return _sharedClient.get(u, headers: h).timeout(_requestTimeout);
   }
 
@@ -250,9 +255,21 @@ class ApiClient {
     if (r.statusCode >= 400) {
       // 401：token 失效/已登出 → 全局清洗（清 token+user、断 WS、回登录页）
       if (r.statusCode == 401) _handle401();
+      final code = body['code'] as String?;
+      // VIP 校验类 403：给专门引导文案（不去动 main.dart 的 401 会话回调，
+      // 只改善错误消息层，让用户知道该去 Web 端重新验证好学 VIP）。
+      String? vipMsg;
+      if (r.statusCode == 403) {
+        vipMsg = switch (code) {
+          'vip_expired' => '好学 VIP 已过期，请前往 Web 端重新验证',
+          'vip_not_verified' => '好学 VIP 未验证，请前往 Web 端完成验证',
+          'vip_unknown' => '好学 VIP 验证状态未知，请稍后重试或前往 Web 端重新验证',
+          _ => null,
+        };
+      }
       throw ApiException(r.statusCode,
           (body['error'] as String?) ?? (body['message'] as String?) ?? '请求失败',
-          code: body['code'] as String?);
+          userMessage: vipMsg, code: code);
     }
     return body;
   }

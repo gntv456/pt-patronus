@@ -4,6 +4,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotices } from '@/composables/useNotices'
+import { useWs } from '@/composables/useWs'
 import { useNoticeMeta, noticeSourceRoute } from '@/composables/useNoticeMeta'
 import type { Notice, NoticeSource } from '@/api/notice'
 import SptIcon from '@/components/SptIcon.vue'
@@ -44,9 +45,11 @@ function onDocClick(e: MouseEvent) {
   if (open.value && boxRef.value && !boxRef.value.contains(e.target as Node)) open.value = false
 }
 
-// WS 实时推送：新通知由共享单例合并
+// WS 实时推送：watch 源必须是 useWs 的 wsNotices（同步进共享单例后再触发铃铛合并），
+// 不能 watch 单例里的 notices.value[0]?.id——那是合并后的结果，WS 新帧不改变其首条 id。
+const { notices: wsNotices } = useWs()
 watch(
-  () => notices.value[0]?.id,
+  () => wsNotices.value[0]?.id,
   () => syncFromWs(),
 )
 async function readOne(n: Notice) {
@@ -88,7 +91,7 @@ async function readGroup(g: Group) {
     g.items.forEach((n) => (n.read = true))
     g.unreadCount = 0
   } catch {
-    /* 静默：单条失败不阻断整组 */
+    ElMessage.warning(t('notices.actionFailed'))
   }
 }
 

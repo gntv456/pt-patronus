@@ -87,6 +87,20 @@ func SaveDirSyncTasks(kv KVStore, ts []DirSyncTask) error {
 	return kv.Set(dirSyncKey, string(b))
 }
 
+// UpdateDirSyncLastRun 仅回写单任务的 LastRunAt（四轮 P2 修复：此前 cron tick 整表
+// 读-改-写回 Save，tick 执行期间（任务可跑数分钟）用户经 API 增删/编辑任务会被
+// 收尾的整表 Save 用读时快照覆盖，静默丢编辑）。按 name 定位，任务被用户删除则跳过。
+func UpdateDirSyncLastRun(kv KVStore, name string, lastRunAt int64) error {
+	tasks := LoadDirSyncTasks(kv)
+	for i := range tasks {
+		if tasks[i].Name == name {
+			tasks[i].LastRunAt = lastRunAt
+			return SaveDirSyncTasks(kv, tasks)
+		}
+	}
+	return nil
+}
+
 // minDirSyncInterval 定时执行的最小间隔（分钟）：过低会高频扫盘/硬链，失去定时意义。
 const minDirSyncInterval = 5
 
@@ -100,7 +114,6 @@ func RunDueDirSyncs(kv KVStore, now time.Time) []DirSyncRun {
 	}
 	nowUnix := now.Unix()
 	var runs []DirSyncRun
-	dirty := false
 	for i := range tasks {
 		t := tasks[i]
 		if !t.Enabled || t.IntervalMinutes < minDirSyncInterval {
@@ -118,19 +131,11 @@ func RunDueDirSyncs(kv KVStore, now time.Time) []DirSyncRun {
 			}()
 			run.Result = RunDirSync(t)
 		}()
-		tasks[i].LastRunAt = nowUnix
-		dirty = true
-		runs = append(runs, run)
-	}
-	if dirty {
-		if err := SaveDirSyncTasks(kv, tasks); err != nil {
-			// 回写失败只影响下次 tick 重复执行（幂等），不吞掉本次已产生的结果。
-			for j := range runs {
-				if runs[j].Err == nil {
-					runs[j].Err = fmt.Errorf("回写 last_run_at 失败: %w", err)
-				}
-			}
+		// 四轮 P2 修复：单任务回写 LastRunAt，不再整表 Save（防覆盖用户并发编辑）。
+		if err := UpdateDirSyncLastRun(kv, t.Name, nowUnix); err != nil {
+			run.Err = fmt.Errorf("回写 last_run_at 失败: %w", err)
 		}
+		runs = append(runs, run)
 	}
 	return runs
 }
@@ -274,7 +279,16 @@ func syncStrm(src, dst string) (bool, error) {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return false, err
 	}
-	return true, os.WriteFile(dst, []byte(content), 0o644)
+	// 四轮 P2 修复：tmp+rename 原子写（直写崩溃/与 STRM 生成链路并发写同一文件会留半行）。
+	tmp := dst + ".tmp"
+	if err := os.WriteFile(tmp, []byte(content), 0o644); err != nil {
+		return false, err
+	}
+	if err := os.Rename(tmp, dst); err != nil {
+		_ = os.Remove(tmp)
+		return false, err
+	}
+	return true, nil
 }
 
 // copyFileLocal 本地复制（64KB 缓冲流式；跨平台）。

@@ -107,16 +107,18 @@ func (s *Service) ExportToFile(ctx context.Context, dir string) (string, error) 
 		return "", err
 	}
 	stamp := time.Now().Format("20060102-150405")
-	path := filepath.Join(dir, "ptpatronus-backup-"+stamp+".json")
-	// 同一秒内多次导出（手动连点 + cron 撞车）不互相覆盖。
-	for n := 1; ; n++ {
-		if _, e := os.Stat(path); os.IsNotExist(e) {
-			break
-		}
-		path = filepath.Join(dir, fmt.Sprintf("ptpatronus-backup-%s-%d.json", stamp, n))
-	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
+	// 四轮 P2 修复：后缀掺 UnixNano——此前 Stat-then-Write 防撞在并发导出（手动
+	// 连点 + cron 同秒撞车）时双双 Stat 到不存在、选同一 -1 后缀互相覆盖丢一份。
+	path := filepath.Join(dir, fmt.Sprintf("ptpatronus-backup-%s-%d.json", stamp, time.Now().UnixNano()%1e9))
+	// 四轮 P2 修复：tmp+rename 原子写——直写崩溃会留截断 JSON 且被轮换策略当成
+	// "最新"保留，灾难恢复时才发现坏。
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return "", fmt.Errorf("写备份文件: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return "", fmt.Errorf("落盘备份文件: %w", err)
 	}
 	matches, _ := filepath.Glob(filepath.Join(dir, "ptpatronus-backup-*.json"))
 	if len(matches) > backupKeepLatest {

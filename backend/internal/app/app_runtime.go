@@ -409,5 +409,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 	if a.cloudCh != nil {
 		a.cloudCh.StopCloudTaskExecutor()
 	}
+	// WS 广播器停机（四轮 P1 修复）：Run 内 close(hookQ)+wg.Wait() 会等在途下载
+	// 完成钩子（媒体整理硬链/NFO）收尾后再退，此前 ctx 永不取消导致进程退出时硬杀。
+	if a.wsBCStop != nil {
+		a.wsBCStop()
+	}
+	// 整理链直传云上传兜底路径等待（四轮 P2 修复：fire-and-forget 上传/删本地被硬杀）。
+	if a.transferCh != nil {
+		a.transferCh.WaitCloudUploads(ctx)
+	}
 	return a.http.Shutdown(ctx)
 }

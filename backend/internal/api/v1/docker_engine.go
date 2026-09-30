@@ -230,7 +230,9 @@ func (c *DockerLocalClient) LocalPull(ctx context.Context, ref string) (string, 
 		return "", err
 	}
 	defer resp.Body.Close()
-	raw, _ := io.ReadAll(resp.Body)
+	// 四轮 P1 修复：进度流夹 4MB 上限——30 分钟窗口内 ReadAll 无界（进度 JSON 流
+	// 反复 append，大镜像+慢速网络可累积 GB 级）。超限截断只影响末尾进度行。
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if resp.StatusCode >= 400 {
 		return "", fmt.Errorf("pull %s: %s %s", ref, resp.Status, string(raw))
 	}

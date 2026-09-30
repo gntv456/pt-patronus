@@ -272,7 +272,7 @@ func writeStrm(opts GenerateOptions, f File) (bool, string, error) {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return false, outPath, err
 	}
-	if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
+	if err := writeFileAtomic(outPath, []byte(content), 0o644); err != nil {
 		return false, outPath, err
 	}
 	return true, outPath, nil
@@ -410,7 +410,21 @@ func writeStrmAt(opts GenerateOptions, f File, direct WriteStrmOptions, outPath 
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(outPath, []byte(content), 0o644)
+	return writeFileAtomic(outPath, []byte(content), 0o644)
+}
+
+// writeFileAtomic tmp+rename 原子写（四轮 P2 修复：直写崩溃/并发写会留半行 .strm，
+// 媒体服务器扫库即入库坏条目；同目录 rename 原子替换，失败时清理 tmp 残留）。
+func writeFileAtomic(path string, data []byte, perm os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, perm); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 // directURLFor {direct} 占位符的完整替换值：端点基址 + /:driveId（+ 限时签名 query）。
@@ -463,7 +477,7 @@ func writeStrmDirect(opts GenerateOptions, f File, direct WriteStrmOptions) (boo
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return false, outPath, err
 	}
-	if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
+	if err := writeFileAtomic(outPath, []byte(content), 0o644); err != nil {
 		return false, outPath, err
 	}
 	return true, outPath, nil

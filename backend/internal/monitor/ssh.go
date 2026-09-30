@@ -269,10 +269,13 @@ func (e *sshExec) RunOutput(ctx context.Context, cmd string) (string, string, er
 		return "", "", err
 	}
 	defer sess.Close()
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	sess.Stdout = &stdout
-	sess.Stderr = &stderr
+	// 四轮 P1 修复：输出夹上限——裸 bytes.Buffer 无界，`cat bigfile`/`yes` 类命令
+	// 在超时窗口内可产生数 GB stdout 先撑内存再灌库。超限截断（命令输出语义保留前缀）。
+	const maxSSHOutput = 10 << 20 // 10MB
+	stdout := &cappedBuffer{max: maxSSHOutput}
+	stderr := &cappedBuffer{max: 1 << 20}
+	sess.Stdout = stdout
+	sess.Stderr = stderr
 	done := make(chan error, 1)
 	safego.Go("ssh:228", func() { done <- sess.Run(cmd) })
 	select {
@@ -330,3 +333,33 @@ func (e *sshExec) Shell(ctx context.Context, input io.Reader, output io.Writer, 
 
 }
 func (e *sshExec) Close() error { return e.client.Close() }
+
+
+// cappedBuffer 有上限的输出缓冲（四轮 P1：SSH 命令输出防 `yes`/`cat bigfile` 撑爆内存）。
+type cappedBuffer struct {
+	buf     bytes.Buffer
+	max     int
+	trunced bool
+}
+
+func (b *cappedBuffer) Write(p []byte) (int, error) {
+	if b.buf.Len() >= b.max {
+		b.trunced = true
+		return len(p), nil // 丢弃并假装写成功（session 不会因写错误中断）
+	}
+	room := b.max - b.buf.Len()
+	if len(p) > room {
+		b.buf.Write(p[:room])
+		b.trunced = true
+		return len(p), nil
+	}
+	return b.buf.Write(p)
+}
+
+func (b *cappedBuffer) String() string {
+	out := b.buf.String()
+	if b.trunced {
+		out = out + "\n...[输出超过上限已截断]"
+	}
+	return out
+}

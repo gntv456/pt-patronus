@@ -202,7 +202,7 @@ class SiteApi {
 
   /// 批量检查站点联通状态：返回 {statuses:[{site_id, site_name, status, level?, error?}]}。
   Future<List<SiteConnectivityStatus>> statuses() async {
-    final r = await _api.post('/sites/status', <String, dynamic>{});
+    final r = await _api.get('/sites/status');
     final list = (r['statuses'] as List?) ?? const [];
     return list
         .map((e) => SiteConnectivityStatus.fromJson(e as Map<String, dynamic>))

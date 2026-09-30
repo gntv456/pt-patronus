@@ -32,6 +32,8 @@ withDefaults(
     browseDrive: { name?: string } | null
     tokenLabel: string
     loading: boolean
+    driveSaving: boolean
+    ruleSaving: boolean
     fmtSize: (...args: any[]) => string
   }>(),
   { drives: () => [], browseFiles: () => [] },
@@ -173,7 +175,7 @@ const { t } = useI18n()
       </el-form>
       <template #footer>
         <el-button @click="emit('update:showDriveForm', false)">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="emit('saveDrive')">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :loading="driveSaving" @click="emit('saveDrive')">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
@@ -240,7 +242,7 @@ const { t } = useI18n()
       </el-form>
       <template #footer>
         <el-button @click="emit('update:showRuleForm', false)">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="emit('saveRule')">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :loading="ruleSaving" @click="emit('saveRule')">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 

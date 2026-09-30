@@ -96,6 +96,11 @@ func (h *DockerHandler) LocalLogs(c *gin.Context) {
 	if n, err := strconvAtoi(tailStr); err == nil && n > 0 {
 		tail = n
 	}
+	// 四轮 P1 修复：tail 夹到 [1,10000]——超大值（如 999999999）会让 docker logs
+	// 输出无界进内存（大日志容器单行 8KB 头部开销）。
+	if tail > 10000 {
+		tail = 10000
+	}
 	logs, err := h.local.LocalLogs(c.Request.Context(), name, tail)
 	if err != nil {
 		errcode.Respond(c, errcode.BadGateway.WithErr(err))
@@ -200,9 +205,17 @@ func (h *DockerHandler) LocalPull(c *gin.Context) {
 }
 
 // LocalPrune 清理无用资源（本机模式）。?type=container|image|volume|network。
+// 四轮 P1 修复：prune 是批量破坏性操作（volume prune 会删全部未使用卷，匿名卷常
+// 挂数据库），与远程版对齐要求 ConfirmRisk 二次确认。
 func (h *DockerHandler) LocalPrune(c *gin.Context) {
 	if h.local == nil {
 		errcode.Respond(c, errcode.DockerLocalNotReady)
+		return
+	}
+	var in dockerActionRequest
+	_ = c.ShouldBindJSON(&in)
+	if !in.ConfirmRisk {
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	typ := c.DefaultQuery("type", "image")
@@ -235,7 +248,8 @@ func (h *DockerHandler) LocalVolumeCreate(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// LocalVolumeRemove 删除卷（本机模式）。
+// LocalVolumeRemove 删除卷（本机模式）。四轮 P1 修复：卷=持久数据（匿名卷常挂
+// 数据库），删除不可恢复，与容器/镜像删除对齐要求 ConfirmRisk。
 func (h *DockerHandler) LocalVolumeRemove(c *gin.Context) {
 	if h.local == nil {
 		errcode.Respond(c, errcode.DockerLocalNotReady)
@@ -244,6 +258,12 @@ func (h *DockerHandler) LocalVolumeRemove(c *gin.Context) {
 	name := c.Param("name")
 	if name == "" {
 		errcode.Respond(c, errcode.FieldRequired)
+		return
+	}
+	var in dockerActionRequest
+	_ = c.ShouldBindJSON(&in)
+	if !in.ConfirmRisk {
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	if err := h.local.LocalVolumeRemove(c.Request.Context(), name, true); err != nil {
@@ -283,6 +303,12 @@ func (h *DockerHandler) LocalNetworkRemove(c *gin.Context) {
 	name := c.Param("name")
 	if name == "" {
 		errcode.Respond(c, errcode.FieldRequired)
+		return
+	}
+	var inReq dockerActionRequest
+	_ = c.ShouldBindJSON(&inReq)
+	if !inReq.ConfirmRisk {
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	if err := h.local.LocalNetworkRemove(c.Request.Context(), name); err != nil {

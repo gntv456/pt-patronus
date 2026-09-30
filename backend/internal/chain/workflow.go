@@ -305,8 +305,10 @@ func (c *WorkflowChain) Run(ctx context.Context, id uint, trigger string, eventD
 		return nil, fmt.Errorf("工作流正在执行中，请稍后")
 	}
 	if err := c.op.SetState(id, "running"); err != nil {
-		// 状态写失败不阻断执行，但必须可见——否则工作流会卡在 running 无法被重新触发。
-		slog.Error("workflow mark running failed", "id", id, "err", err)
+		// 四轮 P2 修复：状态写失败必须中止——此前仅日志后继续，state 仍是 idle，
+		// 第二个触发（timer/事件/手动）的 Run 读到 idle 也通过守卫 → 同一工作流双跑。
+		c.mu.Unlock()
+		return nil, fmt.Errorf("标记运行状态失败（不执行以防双跑）: %w", err)
 	}
 	committed = true
 	c.mu.Unlock()

@@ -35,6 +35,8 @@ export function useSitesForm(
   const editingId = ref<number | null>(null)
   const isEdit = computed(() => editingId.value !== null)
   const dialogTitle = computed(() => (isEdit.value ? '编辑站点' : '添加站点'))
+  // 提交防双击：请求在途时忽略重复提交。
+  const submitting = ref(false)
   const form = ref<SiteForm>({
     name: '',
     definition: '',
@@ -136,6 +138,7 @@ export function useSitesForm(
   }
 
   async function submit() {
+    if (submitting.value) return
     if (!form.value.name || !form.value.base_url) {
       ElMessage.warning('名称与地址必填')
       return
@@ -147,6 +150,7 @@ export function useSitesForm(
     }
     // 根据定义自动推断 platform
     const def = defs.value.find((d) => d.id === form.value.definition)
+    submitting.value = true
     try {
       if (isEdit.value) {
         await siteApi.update(editingId.value!, {
@@ -186,6 +190,8 @@ export function useSitesForm(
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
       ElMessage.error(msg || (isEdit.value ? '更新失败' : '添加失败'))
+    } finally {
+      submitting.value = false
     }
   }
 
@@ -194,6 +200,7 @@ export function useSitesForm(
     editingId,
     isEdit,
     dialogTitle,
+    submitting,
     form,
     currentDef,
     needsApiKey,

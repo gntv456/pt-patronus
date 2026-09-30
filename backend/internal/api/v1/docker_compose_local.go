@@ -28,9 +28,10 @@ func NewLocalComposeHandler() *LocalComposeHandler {
 
 // composeContentRequest 粘贴内容模式的请求体。
 type composeContentRequest struct {
-	Content string `json:"content" binding:"required"` // docker-compose.yml 内容
-	Name    string `json:"name"`                       // 项目名（可选）
-	Action  string `json:"action"`                     // up | down | config | ps
+	Content     string `json:"content" binding:"required"` // docker-compose.yml 内容
+	Name        string `json:"name"`                       // 项目名（可选）
+	Action      string `json:"action"`                     // up | down | config | ps
+	ConfirmRisk bool   `json:"confirm_risk"`               // down 等破坏性操作二次确认
 }
 
 // localComposeDir 存放临时 compose 文件的目录。
@@ -82,6 +83,11 @@ func (h *LocalComposeHandler) ComposeDown(c *gin.Context) {
 	var in composeContentRequest
 	if err := c.ShouldBindJSON(&in); err != nil {
 		errcode.Respond(c, errcode.InvalidInput.WithErr(err))
+		return
+	}
+	// 四轮 P1 修复：down 会停删容器+网络（默认含匿名卷），与远程版对齐要确认。
+	if !in.ConfirmRisk {
+		errcode.Respond(c, errcode.RiskConfirmationRequired)
 		return
 	}
 	workDir, cleanup, err := writeComposeFile(in.Content, in.Name)
@@ -157,7 +163,13 @@ func writeComposeFile(content, name string) (string, func(), error) {
 		return "", nil, err
 	}
 	composePath := filepath.Join(workDir, "docker-compose.yml")
-	if err := os.WriteFile(composePath, []byte(content), 0644); err != nil {
+	// 四轮 P2 修复：tmp+rename 原子写（直写崩溃留半份 compose 文件）。
+	tmpPath := composePath + ".tmp"
+	if err := os.WriteFile(tmpPath, []byte(content), 0644); err != nil {
+		os.RemoveAll(workDir)
+		return "", nil, err
+	}
+	if err := os.Rename(tmpPath, composePath); err != nil {
 		os.RemoveAll(workDir)
 		return "", nil, err
 	}

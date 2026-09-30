@@ -18,6 +18,9 @@ const allSites = ref<Site[]>([])
 
 const initialLoading = computed(() => loading.value && !overview.value)
 
+// 趋势请求序号：load 与 changeTrendDays 并发时丢弃过期响应，避免旧天数趋势覆盖新选择。
+let trendSeq = 0
+
 async function loadSites() {
   try {
     allSites.value = await siteApi.list()
@@ -29,15 +32,19 @@ async function loadSites() {
 async function load() {
   loading.value = true
   loadError.value = ''
+  const seq = ++trendSeq
   try {
+    // overview/trend 为主数据（失败即报）；站点列表仅导出用，降级为空。
     const [ov, tr] = await Promise.all([dashboardApi.overview(), dashboardApi.trend(trendDays.value)])
+    if (seq !== trendSeq) return
     overview.value = ov
     trend.value = tr
   } catch (e: unknown) {
+    if (seq !== trendSeq) return
     loadError.value = (e as Error).message || '仪表盘加载失败'
     ElMessage.error(loadError.value)
   } finally {
-    loading.value = false
+    if (seq === trendSeq) loading.value = false
   }
   void loadSites()
 }
@@ -45,13 +52,17 @@ async function load() {
 async function changeTrendDays(days: 7 | 30 | 90) {
   if (trendDays.value === days || trendLoading.value) return
   trendDays.value = days
+  const seq = ++trendSeq
   trendLoading.value = true
   try {
-    trend.value = await dashboardApi.trend(days)
+    const tr = await dashboardApi.trend(days)
+    if (seq !== trendSeq) return
+    trend.value = tr
   } catch (e: unknown) {
+    if (seq !== trendSeq) return
     ElMessage.warning(`趋势加载失败：${(e as Error)?.message || '未知错误'}`)
   } finally {
-    trendLoading.value = false
+    if (seq === trendSeq) trendLoading.value = false
   }
 }
 

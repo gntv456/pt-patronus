@@ -114,9 +114,12 @@ export const siteApi = {
   definitions: () => http.get<{ definitions: SiteDef[] }>('/sites/definitions').then((r) => r.data.definitions ?? []),
   create: (input: SiteInput) => http.post<Site>('/sites', input).then((r) => r.data),
   update: (id: number, input: SiteInput) => http.put<Site>(`/sites/${id}`, input).then((r) => r.data),
-  remove: (id: number) => http.delete(`/sites/${id}`).then((r) => r.data),
+  // 站点硬删不可恢复（凭据随之失），后端要求 confirm_risk 二次确认（UI 已有弹窗）。
+  remove: (id: number) => http.delete(`/sites/${id}`, { data: { confirm_risk: true } }).then((r) => r.data),
   batchDelete: (ids: number[]) =>
-    http.post<{ deleted: number; failed: number[] }>('/sites/batch-delete', { ids }).then((r) => r.data),
+    http
+      .post<{ deleted: number; failed: number[] }>('/sites/batch-delete', { ids, confirm_risk: true })
+      .then((r) => r.data),
   test: (id: number) => http.post<TestResult>(`/sites/${id}/test`).then((r) => r.data),
   // GET 返回上次检测缓存（瞬时、不发网络请求），进页面瞬时回显「上次检测结果」。
   statuses: () => http.get<{ statuses: SiteConnectivityStatus[] }>('/sites/status').then((r) => r.data.statuses ?? []),

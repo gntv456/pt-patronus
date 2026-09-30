@@ -94,7 +94,10 @@ function openEdit(dl: Downloader) {
   dialogVisible.value = true
 }
 
+// 提交防双击：请求在途时忽略重复提交。
+const submitting = ref(false)
 async function submit() {
+  if (submitting.value) return
   form.value.name = form.value.name.trim()
   form.value.url = form.value.url.trim()
   // 字段级校验：错误显示在对应输入框下方（替代此前的提交后一条 toast）
@@ -105,6 +108,7 @@ async function submit() {
       return
     }
   }
+  submitting.value = true
   try {
     if (isEdit.value) {
       await downloaderApi.update(editingId.value!, form.value)
@@ -117,6 +121,8 @@ async function submit() {
     await load()
   } catch (e: unknown) {
     ElMessage.error((e as Error).message || t('downloaders.saveFailed'))
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -372,7 +378,7 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="submit">{{
+        <el-button type="primary" :loading="submitting" @click="submit">{{
           isEdit ? t('downloaders.form.save') : t('downloaders.add')
         }}</el-button>
       </template>

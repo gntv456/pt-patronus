@@ -19,6 +19,11 @@ type DockerLocalClient struct {
 	scheme string // "http" 或 "http+unix"
 	host   string // socket 路径或 TCP 地址
 	client *http.Client
+	// tr 共享 Transport（四轮 P1 修复：此前每请求新建 Transport，unix socket 上
+	// dockerd 不主动关连接，idle 池的 readLoop/writeLoop goroutine 阻塞等待复用
+	// 阻止 GC——每次 Docker API 调用净泄漏 1 FD + 2 goroutine，运维面板 2~5s
+	// 轮询 stats 数小时即 EMFILE）。
+	tr *http.Transport
 }
 
 // NewDockerLocalClient 从环境变量 DOCKER_HOST 解析连接地址。
@@ -36,11 +41,13 @@ func NewDockerLocalClient() *DockerLocalClient {
 			host += ":2375"
 		}
 	}
-	return &DockerLocalClient{
+	c := &DockerLocalClient{
 		scheme: scheme,
 		host:   host,
-		client: &http.Client{Timeout: 30 * time.Second},
 	}
+	c.tr = c.buildTransport()
+	c.client = &http.Client{Transport: c.tr}
+	return c
 }
 
 // Available 检测 Docker socket 是否可连接（不报错即可用）。
@@ -67,15 +74,18 @@ func (c *DockerLocalClient) Probe() (string, error) {
 	return c.host, nil
 }
 
-func (c *DockerLocalClient) transport() *http.Transport {
+// buildTransport 构造共享 Transport（构造时调用一次）。IdleConnTimeout 让闲置
+// 连接过期回收（配合共享复用，彻底消除泄漏）。
+func (c *DockerLocalClient) buildTransport() *http.Transport {
 	if c.scheme == "http+unix" {
 		return &http.Transport{
 			DialContext: func(ctx context.Context, _ string, _ string) (net.Conn, error) {
 				return (&net.Dialer{Timeout: 5 * time.Second}).DialContext(ctx, "unix", c.host)
 			},
+			IdleConnTimeout: 30 * time.Second,
 		}
 	}
-	return &http.Transport{}
+	return &http.Transport{IdleConnTimeout: 30 * time.Second}
 }
 
 func (c *DockerLocalClient) do(ctx context.Context, method, path string, body io.Reader) (*http.Response, error) {
@@ -85,13 +95,10 @@ func (c *DockerLocalClient) do(ctx context.Context, method, path string, body io
 // doTimeout 同 do，但可指定单请求超时（拉取镜像等长操作需要分钟级窗口）。
 func (c *DockerLocalClient) doTimeout(ctx context.Context, timeout time.Duration, method, path string, body io.Reader) (*http.Response, error) {
 	var url string
-	var tr *http.Transport
 	if c.scheme == "http+unix" {
 		url = "http://docker" + path
-		tr = c.transport()
 	} else {
 		url = "http://" + c.host + path
-		tr = c.transport()
 	}
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
@@ -100,8 +107,10 @@ func (c *DockerLocalClient) doTimeout(ctx context.Context, timeout time.Duration
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	cl := &http.Client{Transport: tr, Timeout: timeout}
-	return cl.Do(req)
+	// 单请求超时走 ctx（此前每请求换 Transport 实现 Client.Timeout，见 tr 字段注释）。
+	rctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return c.client.Do(req.WithContext(rctx))
 }
 
 func (c *DockerLocalClient) get(ctx context.Context, path string, out any) ([]byte, error) {

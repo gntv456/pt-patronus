@@ -49,6 +49,8 @@ export function useCloudStrmRules(
   const showRuleForm = ref(false)
   const editingRule = ref<StrmRule | null>(null)
   const ruleForm = ref(defaultRule())
+  // 保存防双击：请求在途时忽略重复提交。
+  const ruleSaving = ref(false)
 
   function openCreateRule() {
     editingRule.value = null
@@ -78,12 +80,14 @@ export function useCloudStrmRules(
     openBrowse(d, (p) => (ruleForm.value.cloud_path = p))
   }
   async function saveRule() {
+    if (ruleSaving.value) return
     const f = ruleForm.value
     // 目录标签优先：填了 output_tag 时 output_dir 可留空（后端解析标签路径）。
     if (!f.name || !f.drive_id || !f.cloud_path || (!f.output_dir && !f.output_tag)) {
       ElMessage.warning('名称/网盘/云盘目录必填，输出目录与目录标签至少填一项')
       return
     }
+    ruleSaving.value = true
     try {
       if (editingRule.value) {
         await cloudApi.updateRule(editingRule.value.id, f)
@@ -96,17 +100,31 @@ export function useCloudStrmRules(
       await loadRules()
     } catch (e: any) {
       ElMessage.error(e?.message || '保存失败')
+    } finally {
+      ruleSaving.value = false
     }
   }
   async function removeRule(r: StrmRule) {
-    await ElMessageBox.confirm(`确定删除规则「${r.name}」？`, '提示', { type: 'warning' })
-    await cloudApi.removeRule(r.id)
-    ElMessage.success('已删除')
-    await loadRules()
+    // 删除前确认（取消即中止，不再走全局 catch）。
+    try {
+      await ElMessageBox.confirm(`确定删除规则「${r.name}」？`, '提示', { type: 'warning' })
+    } catch {
+      return // 用户取消
+    }
+    try {
+      await cloudApi.removeRule(r.id)
+      ElMessage.success('已删除')
+      await loadRules()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '删除失败')
+    }
   }
 
   // ---- 生成 ----
   const generating = ref<number | null>(null)
+  // 全部生成 / 订阅追更防双击：请求在途时忽略重复点击。
+  const generatingAll = ref(false)
+  const subsSyncing = ref(false)
   function report(res: StrmResult, prefix: string) {
     if (res.errors?.length) {
       ElMessage.warning(`${prefix}：新增 ${res.generated}，跳过 ${res.skipped}，失败 ${res.errors.length}`)
@@ -127,28 +145,46 @@ export function useCloudStrmRules(
     }
   }
   async function generateAll() {
+    if (generatingAll.value) return
+    generatingAll.value = true
     try {
       await cloudApi.generateAll()
       ElMessage.success('已触发全部规则生成')
       setTimeout(loadRecords, 1500)
     } catch (e: any) {
       ElMessage.error(e?.message || '请求失败')
+    } finally {
+      generatingAll.value = false
     }
   }
   async function syncSubs() {
+    if (subsSyncing.value) return
+    subsSyncing.value = true
     try {
       await cloudApi.syncSubscriptions()
       ElMessage.success('订阅追更匹配完成')
     } catch (e: any) {
       ElMessage.error(e?.message || '请求失败')
+    } finally {
+      subsSyncing.value = false
     }
   }
   async function removeRecord(r: StrmRecord) {
     // 删除 STRM 记录前确认（W1：此前无确认直接删——记录是 302 直链与订阅追更的索引，
     // 误删后需重新生成）。与 removeRule 同形态。
-    await ElMessageBox.confirm(`确定删除记录「${r.cloud_path}」？删除后需重新生成 STRM。`, '提示', { type: 'warning' })
-    await cloudApi.removeRecord(r.id)
-    await loadRecords()
+    try {
+      await ElMessageBox.confirm(`确定删除记录「${r.cloud_path}」？删除后需重新生成 STRM。`, '提示', {
+        type: 'warning',
+      })
+    } catch {
+      return // 用户取消
+    }
+    try {
+      await cloudApi.removeRecord(r.id)
+      await loadRecords()
+    } catch (e: any) {
+      ElMessage.error(e?.message || '删除失败')
+    }
   }
 
   return {
@@ -165,9 +201,12 @@ export function useCloudStrmRules(
     ruleBrowse,
     saveRule,
     removeRule,
+    ruleSaving,
     generating,
+    generatingAll,
     generateOne,
     generateAll,
+    subsSyncing,
     syncSubs,
     removeRecord,
   }

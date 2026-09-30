@@ -160,14 +160,14 @@ function renderDlList(cfg, dlId, arr) {
     meta.innerHTML = ''
     const bits = [
       prog,
-      fmtSize(t.size),
+      esc(fmtSize(t.size)),
       t.dlspeed ? `<span class="spd">↓ ${fmtBytes(t.dlspeed)}/s</span>` : '',
       t.upspeed ? `<span class="spd">↑ ${fmtBytes(t.upspeed)}/s</span>` : '',
-      t.state || '',
+      esc(t.state || ''),
     ].filter(Boolean)
-    // meta 用 DOM 拼（防任务名注入走 textContent 已隔离；state/速率是受控枚举与数字）。
+    // meta 用 DOM 拼（防任务名注入走 textContent 已隔离；state 来自站点，过 esc 后再 innerHTML）。
     const span = document.createElement('span')
-    span.innerHTML = bits.join(' · ') // 仅受控片段
+    span.innerHTML = bits.join(' · ') // 文本片段均已 esc 转义
     meta.appendChild(span)
     item.append(row, meta)
     box.appendChild(item)
@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const body = await api(cfg, '/api/v1/sites/checkin', { method: 'POST' })
       const rs = body.results || []
-      const ok = rs.filter((r) => r.ok || r.success).length
+      const ok = rs.filter((r) => r.success).length
       $('checkinTxt').textContent = `✅ ${ok}/${rs.length}`
     } catch (e) {
       $('checkinTxt').textContent = `⚠ ${String(e.message).slice(0, 12)}`

@@ -86,6 +86,18 @@ func dupDomain(rawURL string) string {
 	return dom
 }
 
+// isDuplicateKeyErr 判断是否唯一索引冲突（SQLite/PG/MySQL 方言各自的关键词）。
+func isDuplicateKeyErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed") ||
+		strings.Contains(msg, "duplicate key value") ||
+		strings.Contains(msg, "Duplicate entry") ||
+		strings.Contains(msg, "uk_sites_registered_domain")
+}
+
 // Create 创建站点。
 //
 // 按注册域（eTLD+1）去重：同注册域视为同一站点，拒绝添加——对齐 MoviePilot「一站点一账号」。
@@ -118,10 +130,18 @@ func (o *SiteOper) createOnDB(db *gorm.DB, in SiteInput) (*models.Site, error) {
 		BaseURL: strings.TrimSpace(in.BaseURL), Username: in.Username, IsActive: in.IsActive,
 		Priority: in.Priority, LimitInterval: in.LimitInterval,
 	}
+	// 注册域存储列（唯一索引兜底并发去重，四轮 P2；解析不出存 NULL 不参与约束）。
+	if dom := dupDomain(s.BaseURL); dom != "" {
+		s.RegisteredDomain = &dom
+	}
 	if err := o.encryptSecrets(s, in); err != nil {
 		return nil, err
 	}
 	if err := db.Create(s).Error; err != nil {
+		// 并发竞态下应用层检查已过、唯一索引兜底拦截 → 统一映射为 ErrDuplicateSite。
+		if isDuplicateKeyErr(err) {
+			return nil, fmt.Errorf("%w: %v", ErrDuplicateSite, s.RegisteredDomain)
+		}
 		return nil, err
 	}
 	// GORM default:true 会把 IsActive=false 当零值吞为 true（导入 PT-Depiler isOffline
@@ -197,6 +217,12 @@ func (o *SiteOper) Update(id uint, in SiteInput) (*models.Site, error) {
 	s.Platform = in.Platform
 	s.Definition = in.Definition
 	s.BaseURL = strings.TrimSpace(in.BaseURL)
+	// 唯一索引列随 BaseURL 同步刷新（解析不出存 NULL 绕过约束）。
+	if dom := dupDomain(s.BaseURL); dom != "" {
+		s.RegisteredDomain = &dom
+	} else {
+		s.RegisteredDomain = nil
+	}
 	s.Username = in.Username
 	s.IsActive = in.IsActive
 	s.Priority = in.Priority
@@ -205,6 +231,9 @@ func (o *SiteOper) Update(id uint, in SiteInput) (*models.Site, error) {
 		return nil, err
 	}
 	if err := o.db.Save(s).Error; err != nil {
+		if isDuplicateKeyErr(err) {
+			return nil, fmt.Errorf("%w: %v", ErrDuplicateSite, s.RegisteredDomain)
+		}
 		return nil, err
 	}
 	return s, nil
@@ -306,18 +335,14 @@ func (o *SiteOper) FindByDownloadURL(rawURL string) (*models.Site, error) {
 	return nil, nil
 }
 
-// UpdateCookie 仅更新站点 cookie（WebView 登录后上传用）。
+// UpdateCookie 仅更新站点 cookie 列（四轮 P2 修复：此前 Get+全行 Save，与用户
+// 编辑/CookieCloud/保活等并发源互相整行覆盖丢更新；改列级更新，范式同 SetToken）。
 func (o *SiteOper) UpdateCookie(id uint, cookie string) error {
-	s, err := o.Get(id)
-	if err != nil {
-		return err
-	}
 	enc, err := o.c.Encrypt(cookie)
 	if err != nil {
 		return err
 	}
-	s.CookieEnc = enc
-	return o.db.Save(s).Error
+	return o.db.Model(&models.Site{}).Where("id = ?", id).Update("cookie_enc", enc).Error
 }
 
 // APIKey 解密返回站点 API key。
@@ -366,27 +391,32 @@ func (o *SiteOper) encryptSecrets(s *models.Site, in SiteInput) error {
 // UpsertConnectivity 覆盖写一站联通状态缓存（site_id 唯一：存在则更新，不存在则创建）并累加统计。
 // connected → Success++ 且（seconds>0 时）滑动平均更新 AvgSeconds；disconnected → Fail++；
 // disabled（停用站未发请求）不计统计。status/level/error_msg/checked_at 始终覆盖。
-// 读-改-写：单站检测串行（每站一个 goroutine / 手动触发），无并发累加冲突。
+// 四轮 P2 修复：SSE 矩阵、手动触发、快照 cron、workflow、CookieCloud 可对同站并发
+// 调用（此前注释宣称"单站串行"不成立），FirstOrCreate→Success++→Save 的读-改-写会
+// 丢累加。计数改 gorm.Expr 原子 SQL；滑动平均以 SQL 端计算（新均 = (旧均*(n-1)+本次)/n）。
 func (o *SiteOper) UpsertConnectivity(siteID uint, status, level, errMsg string, seconds float64) error {
-	rec := models.SiteConnectivity{SiteID: siteID}
-	if err := o.db.Where(&models.SiteConnectivity{SiteID: siteID}).FirstOrCreate(&rec).Error; err != nil {
+	now := time.Now()
+	// 确保行存在（site_id 唯一，冲突时忽略报错继续走更新）。
+	if err := o.db.Where(&models.SiteConnectivity{SiteID: siteID}).FirstOrCreate(&models.SiteConnectivity{SiteID: siteID}).Error; err != nil {
 		return err
+	}
+	updates := map[string]any{
+		"status":     status,
+		"level":      level,
+		"error_msg":  errMsg,
+		"checked_at": now,
 	}
 	switch status {
 	case "connected":
-		rec.Success++
 		if seconds > 0 {
-			// 滑动平均：新均 = (旧均 × (n-1) + 本次) / n（n 为本次成功后的次数）
-			rec.AvgSeconds = (rec.AvgSeconds*float64(rec.Success-1) + seconds) / float64(rec.Success)
+			// 滑动平均：新均 = (旧均 × (n-1) + 本次) / n（n = success+1，SQL 端原子算）
+			updates["avg_seconds"] = gorm.Expr("(? * success + ?) / (success + 1)", gorm.Expr("avg_seconds"), seconds)
 		}
+		updates["success"] = gorm.Expr("success + 1")
 	case "disconnected":
-		rec.Fail++
+		updates["fail"] = gorm.Expr("fail + 1")
 	}
-	rec.Status = status
-	rec.Level = level
-	rec.ErrorMsg = errMsg
-	rec.CheckedAt = time.Now()
-	return o.db.Save(&rec).Error
+	return o.db.Model(&models.SiteConnectivity{}).Where("site_id = ?", siteID).Updates(updates).Error
 }
 
 // ListConnectivity 返回全部站点联通状态缓存（GET /sites/status 进页面用，瞬时读、不发网络请求）。

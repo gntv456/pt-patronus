@@ -16,6 +16,8 @@ import (
 	"github.com/hxpt/ptpatronus/internal/db/oper"
 	"github.com/hxpt/ptpatronus/internal/httpclient"
 	"github.com/hxpt/ptpatronus/internal/notice"
+
+	"gorm.io/gorm"
 )
 
 // CloudChain 编排网盘（115/夸克/123）：CRUD 透传 + 按需构建 client（解密 cookie/token）
@@ -67,14 +69,18 @@ func (c *CloudChain) Update(id uint, in oper.CloudDriveInput) (*models.CloudDriv
 }
 
 // Delete 删网盘并级联清理其 STRM 规则与记录。
+// 四轮 P2 修复：三删改单事务——此前分三条 SQL，中间步失败仅 Warn 继续走，SQLite
+// busy 下可留下孤儿规则/记录（残留规则每轮 cron 刷 "record not found" Warn）。
 func (c *CloudChain) Delete(id uint) error {
-	if err := c.ruleOp.DeleteRulesByDrive(id); err != nil {
-		slog.Warn("cloud: cascade delete rules failed", "drive", id, "err", err)
-	}
-	if err := c.ruleOp.DeleteRecordsByDrive(id); err != nil {
-		slog.Warn("cloud: cascade delete records failed", "drive", id, "err", err)
-	}
-	return c.op.Delete(id)
+	return c.op.DB().Transaction(func(tx *gorm.DB) error {
+		if err := c.ruleOp.WithTx(tx).DeleteRulesByDrive(id); err != nil {
+			return err
+		}
+		if err := c.ruleOp.WithTx(tx).DeleteRecordsByDrive(id); err != nil {
+			return err
+		}
+		return c.op.WithTx(tx).Delete(id)
+	})
 }
 
 // client 为指定网盘构建 client（解密 token）。

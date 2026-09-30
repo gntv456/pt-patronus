@@ -36,7 +36,12 @@ const loading = ref(false)
 async function load() {
   loading.value = true
   try {
-    const [ts, ss, ds] = await Promise.all([brushflowApi.list(), siteApi.list(), downloaderApi.list()])
+    // 任务列表为主数据（失败即报）；站点/下载器仅表单下拉用，逐项降级为空。
+    const [ts, ss, ds] = await Promise.all([
+      brushflowApi.list(),
+      siteApi.list().catch(() => []),
+      downloaderApi.list().catch(() => []),
+    ])
     tasks.value = ts
     sites.value = ss.map((s) => ({ id: s.id, name: s.name }))
     downloaders.value = ds.map((d) => ({ id: d.id, name: d.name }))

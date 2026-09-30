@@ -35,6 +35,11 @@ type Service struct {
 	tick    time.Duration
 }
 
+// targetLocks per-target 串行锁（四轮 P2 修复：pull tick / 手动 CollectNow / agent
+// push 三源可对同一 target 并发 RecordSnapshot——computeNetRate 双双读到同一条 prev
+// 把速率算成 0 或翻倍，同刻双快照污染图表；对标 transfer 的 hashLock 范式）。
+var targetLocks sync.Map // targetID → *sync.Mutex
+
 // NewService 构造。tick<=0 默认 10s。ns 为站内通知中心（离线告警发通知；nil 跳过）。
 func NewService(store Store, reg *Registry, notif Notifier, tick time.Duration, ns *notice.Service) *Service {
 	if tick <= 0 {
@@ -55,6 +60,14 @@ func (s *Service) Run(ctx context.Context) {
 			s.scanAndCollect(ctx)
 		}
 	}
+}
+
+
+func lockTarget(id uint) func() {
+	v, _ := targetLocks.LoadOrStore(id, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
 
 // scanAndCollect 遍历启用目标，到点的并发采集。
@@ -110,6 +123,7 @@ func (s *Service) collectOne(parent context.Context, t *models.MonitorTarget) {
 	}
 	creds, _ := s.store.Credentials(t)
 	m, err := c.Collect(ctx, t, creds)
+	unlock := lockTarget(t.ID)
 	m, _ = s.store.RecordSnapshot(t, m, err)
 	if t.Type == "camera" && t.RTSPURL == "" {
 		if u, ok := m.Extra["rtsp_url"].(string); ok && u != "" {
@@ -117,6 +131,7 @@ func (s *Service) collectOne(parent context.Context, t *models.MonitorTarget) {
 		}
 	}
 	s.alerter.Evaluate(ctx, t, m, err)
+	unlock()
 }
 
 // CollectNow 手动触发单次采集并返回结果（handler 用）。
@@ -134,8 +149,10 @@ func (s *Service) CollectNow(ctx context.Context, id uint) (Metrics, error) {
 	}
 	creds, _ := s.store.Credentials(t)
 	m, err := c.Collect(ctx, t, creds)
+	unlock := lockTarget(t.ID)
 	m, _ = s.store.RecordSnapshot(t, m, err)
 	s.alerter.Evaluate(ctx, t, m, err)
+	unlock()
 	return m, err
 }
 
@@ -166,6 +183,8 @@ func (s *Service) IngestAgentReport(ctx context.Context, targetID uint, m Metric
 	if ResolveProtocol(t) != "agent" {
 		return errors.New("target is not an agent target")
 	}
+	unlock := lockTarget(t.ID)
+	defer unlock()
 	m, err = s.store.RecordSnapshot(t, m, nil)
 	if err != nil {
 		return err

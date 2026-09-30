@@ -24,6 +24,9 @@ export function useSiteDetailTabs(getSiteId: () => number, getSiteName: () => st
   const reseedHint = ref('')
   const reseedLoading = ref(false)
 
+  // 请求序号：切站点时 clearTabState + 重载走同一 loadTab，序号自增即可丢弃旧站点的过期响应。
+  let tabSeq = 0
+
   function clearTabState() {
     assess.value = null
     contract.value = null
@@ -37,6 +40,7 @@ export function useSiteDetailTabs(getSiteId: () => number, getSiteName: () => st
   async function loadTab(name: string) {
     const siteId = getSiteId()
     if (!siteId) return
+    const seq = ++tabSeq
     if (name === 'assessment') {
       assessLoading.value = true
       contractLoading.value = true
@@ -45,6 +49,7 @@ export function useSiteDetailTabs(getSiteId: () => number, getSiteName: () => st
           assessmentApi.all(false).catch(() => [] as AssessmentCard[]),
           contractApi.list().catch(() => [] as ContractRule[]),
         ])
+        if (seq !== tabSeq) return
         assess.value = cards.find((c) => c.site_id === siteId) || null
         contract.value = rules.find((r) => r.site_id === siteId) || null
         if (contract.value?.id) {
@@ -57,48 +62,57 @@ export function useSiteDetailTabs(getSiteId: () => number, getSiteName: () => st
           contractCheck.value = null
         }
       } finally {
-        assessLoading.value = false
-        contractLoading.value = false
+        if (seq === tabSeq) {
+          assessLoading.value = false
+          contractLoading.value = false
+        }
       }
     } else if (name === 'freeleech') {
       flLoading.value = true
       try {
         const all = await freeleechApi.all(false)
+        if (seq !== tabSeq) return
         fl.value = all.find((x) => x.site_id === siteId) || null
       } catch {
+        if (seq !== tabSeq) return
         fl.value = null
       } finally {
-        flLoading.value = false
+        if (seq === tabSeq) flLoading.value = false
       }
     } else if (name === 'brushflow') {
       bfLoading.value = true
       try {
         const tasks = await brushflowApi.list()
+        if (seq !== tabSeq) return
         bfTasks.value = tasks.filter((t) => t.site_id === siteId)
       } catch {
+        if (seq !== tabSeq) return
         bfTasks.value = []
       } finally {
-        bfLoading.value = false
+        if (seq === tabSeq) bfLoading.value = false
       }
     } else if (name === 'savept') {
       saveptLoading.value = true
       try {
         const result = await saveptApi.get(false)
+        if (seq !== tabSeq) return
         const cards = result.cards || []
         saveptCard.value =
           cards.find((c) => c.local_site_id === siteId) ||
           cards.find((c) => c.local_site_name === getSiteName()) ||
           null
       } catch {
+        if (seq !== tabSeq) return
         saveptCard.value = null
       } finally {
-        saveptLoading.value = false
+        if (seq === tabSeq) saveptLoading.value = false
       }
     } else if (name === 'reseed') {
       reseedLoading.value = true
       try {
         // 按候选站 site_id 过滤：展示「可辅到本站」的任务
         const tasks = await reseedApi.tasks('', siteId)
+        if (seq !== tabSeq) return
         const pending = tasks.filter((x) => x.status === 'pending').length
         if (tasks.length) {
           reseedHint.value = `本站相关辅种候选 ${tasks.length} 个（待处理 ${pending}）。`
@@ -106,9 +120,10 @@ export function useSiteDetailTabs(getSiteId: () => number, getSiteName: () => st
           reseedHint.value = '暂无指向本站的辅种候选。辅种任务以下载器扫描产生，候选站匹配后会显示在此。'
         }
       } catch {
+        if (seq !== tabSeq) return
         reseedHint.value = '加载辅种候选失败；可点下方进入全局辅种页。'
       } finally {
-        reseedLoading.value = false
+        if (seq === tabSeq) reseedLoading.value = false
       }
     }
   }

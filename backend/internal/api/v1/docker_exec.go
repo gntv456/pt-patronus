@@ -72,6 +72,8 @@ func (h *DockerExecHandler) Handle(c *gin.Context) {
 	upgrader := execUpgrader
 	upgrader.CheckOrigin = func(r *http.Request) bool { return h.checkExecOrigin(r) }
 	browserWS, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	// 四轮 P2 修复：不设 ReadLimit 则单帧可无限大（GB 级消息直接进内存）。
+	browserWS.SetReadLimit(1 << 20)
 	if err != nil {
 		return
 	}
@@ -226,10 +228,16 @@ func readHTTPResponse(conn net.Conn) (string, error) {
 	buf := make([]byte, 4096)
 	headerEnd := -1
 	contentLength := 0
+	// 四轮 P2 修复：总量上限 1MB——createExec 的 JSON 响应很小，超限即异常
+	//（daemon bug/被劫持 socket），无界读在 10s deadline 内可累积 GB 级。
+	const maxRespSize = 1 << 20
 	for {
 		n, err := conn.Read(buf)
 		if n > 0 {
 			full = append(full, buf[:n]...)
+			if len(full) > maxRespSize {
+				return "", fmt.Errorf("exec response too large (%d bytes)", len(full))
+			}
 			if headerEnd < 0 {
 				if idx := strings.Index(string(full), "\r\n\r\n"); idx >= 0 {
 					headerEnd = idx + 4

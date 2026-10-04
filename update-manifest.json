@@ -1,18 +1,18 @@
 {
-  "latestVersion": "1.03.22",
+  "latestVersion": "1.03.23",
   "minVersion": "0.60.00",
   "releaseName": "全链路深度审计加固版",
-  "releaseNotes": "1.03.22：五轮递进式深度审计（安全→链路完整性→下载器适配→并发与资源→改动复审+运行时黑盒）累计修复 98 项。①安全加固——STRM 直链 HMAC 限时签名体系重构（签名 URL 畸形致 302 直链 404 的 P0 修复）；站点同域去重升级为数据库唯一索引兜底（并发建站不再仪表盘双计）；本机 Docker 破坏性操作与站点删除统一二次确认（confirm_risk）；SSH 输出/容器日志/镜像拉取/agent 解压全部加上限（防内存/磁盘打爆）。②稳定性——停机不再硬杀在途媒体整理/云上传（半写 NFO/硬链/云端孤儿分片根除）；本机 Docker 客户端 Transport 泄漏修复（此前轮询数小时后接口批量失败）；站点 Cookie/统计原子更新、删网盘级联入事务、工作流防双跑；.strm/备份/compose 全部原子落盘。③功能修复——移动端站点矩阵回显（此前一直 404）与 401 写请求降级 GET；非 qb 下载器（TR/Deluge/Flood/ruTorrent/uTorrent）标签分类补齐；Web 前端异步竞态守卫 + 双击提交守卫 + 通知铃铛实时推送修复。升级注意：首次启动自动迁移会去重同注册域重复站点（保留最先创建的，日志有计数）；本机 Docker 删除类接口脚本调用需加 body \"confirm_risk\": true；更换 SECRET_KEY 后既有 .strm 签名失效需执行一次「重签全部 STRM」。（iOS 版需 Mac 打包稍后单独更新）",
+  "releaseNotes": "1.03.23：新增 FluxTorrent 建站系统适配（schema: fluxtorrent）。①站点适配——搜索走 /compat/nexusphp/torrents.json（NP 字段口径，促销档位映射为免费/半价/双倍双因子）；用户信息走 ptppUserInfo 聚合端点；下载走 download.php?id=&passkey=（NexusPHP 同形）。②凭据体验——鉴权用 API Token（fxo_，网页端「我的 → API Token」签发，180 天可续期；注意 Authorization 头前缀为 Token 非 Bearer）；passkey 无需手填，首次用户信息抓取自动从站点获取并加密回写。③能力端点——H&R 违约列表（/open/me/hr，时长缺口换算人类可读）、做种明细（/open/me/seeding，保种契约逐条聚合）、站内信只读（/open/me/messages）；三项默认放行，站点 YAML 显式 enabled:false 可关。④接入方式——添加站点时定义选「FluxTorrent」、地址填站点域名、API Key 粘贴 Token 即可（建站系统域名各异，全站共用一个模板）。",
   "isForced": false,
-  "publishedAt": "2026-09-30T16:30:00+08:00",
+  "publishedAt": "2026-10-04T16:00:00+08:00",
   "targets": {
     "docker": {
-      "image": "ghcr.io/gntv456/pt-patronus:1.03.22",
+      "image": "ghcr.io/gntv456/pt-patronus:1.03.23",
       "instructions": "docker compose pull && docker compose up -d"
     },
     "android": {
       "url": "",
-      "sha256": "69e8516c3f760ed91208b2102abc26543c8e38fa2f9bdb45aeb9b70709c3f14c"
+      "sha256": "8b9772356becc903fda01e10ea18603a04d212f660c824d3f100b27b1e3a1a82"
     },
     "ios": {
       "url": "",
@@ -24,15 +24,15 @@
     },
     "windows": {
       "url": "",
-      "sha256": "feedbd441a0a35582d6d11563b41193d7c63ce0929ad0207ec7e691909aa0a57"
+      "sha256": "9dc24f42bc8cac5dab0978c0588ce1487a70f4149afa5d312a52c4412c59bc01"
     },
     "agent-linux-amd64": {
       "url": "",
-      "sha256": "e9eb60ba97caedda7aefa124da68256a7a17d9dc5ee845ee0088f7c3edf1788e"
+      "sha256": "3c98df8a2bbc7bdb6993f0ad0cb4c96684f9cdd1323346274e30a2cfbf6c261e"
     },
     "agent-linux-arm64": {
       "url": "",
-      "sha256": "b43165ade1d947fe3af88ce920c4bc27df0358c4f9d7f1e551716ba546bc7ff3"
+      "sha256": "6886e525e9206b9ba85865d0098c24ed55b62f695ef8a330b06be29e333364f0"
     },
     "extension": {
       "sha256": "c3578fede15a8ee32ba59abdc6d841ecc2e67cf4a7e2274534cc9a5ca13363b2"

@@ -345,6 +345,16 @@ func (o *SiteOper) UpdateCookie(id uint, cookie string) error {
 	return o.db.Model(&models.Site{}).Where("id = ?", id).Update("cookie_enc", enc).Error
 }
 
+// UpdatePasskey 仅更新站点 passkey 列（FluxTorrent 等适配器从站点端点自动发现 passkey 后回写，
+// 范式同 UpdateCookie：列级更新，避免与用户编辑等并发源互相整行覆盖）。
+func (o *SiteOper) UpdatePasskey(id uint, passkey string) error {
+	enc, err := o.c.Encrypt(passkey)
+	if err != nil {
+		return err
+	}
+	return o.db.Model(&models.Site{}).Where("id = ?", id).Update("passkey_enc", enc).Error
+}
+
 // APIKey 解密返回站点 API key。
 func (o *SiteOper) APIKey(s *models.Site) (string, error) {
 	return o.c.Decrypt(s.APIKeyEnc)

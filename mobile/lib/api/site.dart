@@ -145,7 +145,8 @@ class SiteApi {
     return list.map((e) => SiteDef.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// 添加站点。platform 由所选定义的 schema 推断；apiKey 仅 mteam 等需 x-api-key 的站用；
+  /// 添加站点。platform 由所选定义的 schema 推断；apiKey 仅 mteam/yemapt/fluxtorrent 等
+  /// token 鉴权站用（FluxTorrent 为 fxo_ Token，passkey 可自动发现、手填仅兜底）；
   /// cookie/username/password 对齐 Web 添加表单（非馒头站可手填，留空不发）。
   Future<Site> add({
     required String name,
@@ -153,6 +154,7 @@ class SiteApi {
     required String definition,
     required String baseUrl,
     String? apiKey,
+    String? passkey,
     String? cookie,
     String? username,
     String? password,
@@ -166,6 +168,7 @@ class SiteApi {
       'is_active': isActive,
     };
     if (apiKey != null && apiKey.isNotEmpty) body['api_key'] = apiKey;
+    if (passkey != null && passkey.isNotEmpty) body['passkey'] = passkey;
     if (cookie != null && cookie.isNotEmpty) body['cookie'] = cookie;
     if (username != null && username.isNotEmpty) body['username'] = username;
     if (password != null && password.isNotEmpty) body['password'] = password;
@@ -174,13 +177,14 @@ class SiteApi {
   }
 
   /// 编辑站点（对齐 Web PUT /sites/:id）。platform 必传（后端 required）；
-  /// apiKey/cookie/password 留空 = 不修改。
+  /// apiKey/passkey/cookie/password 留空 = 不修改。
   Future<Site> update(
     int id, {
     required String name,
     required String platform,
     required String baseUrl,
     String? apiKey,
+    String? passkey,
     String? cookie,
     String? username,
     String? password,
@@ -189,6 +193,7 @@ class SiteApi {
     final body = <String, dynamic>{'name': name, 'platform': platform, 'base_url': baseUrl};
     if (isActive != null) body['is_active'] = isActive;
     if (apiKey != null && apiKey.isNotEmpty) body['api_key'] = apiKey;
+    if (passkey != null && passkey.isNotEmpty) body['passkey'] = passkey;
     if (cookie != null && cookie.isNotEmpty) body['cookie'] = cookie;
     if (username != null) body['username'] = username;
     if (password != null && password.isNotEmpty) body['password'] = password;

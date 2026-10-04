@@ -1,0 +1,20 @@
+# FluxTorrent 建站系统模板 —— schema: fluxtorrent。
+# FluxTorrent 是 Rust + Next.js 的通用 PT 建站系统（github.com/gntv456/fluxtorrent），
+# 页面为 Next.js RSC 渲染、无 NexusPHP 形状 HTML，抓取全部走 /api/v1/compat JSON 兼容层，
+# 由 backend/internal/site/schemas/fluxtorrent.go 代码解析——本 YAML 不配置 selectors/user_info，
+# 仅作 schema 声明与前端「添加站点」定义下拉入口。
+#
+# 用法：站长域名各异，无需克隆本文件；添加站点时 Definition 选「FluxTorrent」，
+# BaseURL 填站点地址（如 https://pt.example.com），API Key 填网页端
+# 「我的 → API Token」签发的 fxo_ Token（180 天，可续期）。passkey 无需手填：
+# 首次用户信息抓取会自动从站点获取并回写；也可在添加时手动填入兜底。
+id: fluxtorrent
+name: FluxTorrent
+schema: fluxtorrent
+format: json
+description: FluxTorrent 通用 PT 建站系统（Rust + Next.js，非 NexusPHP）。鉴权走 API Token（fxo_，网页端「我的 → API Token」签发）；cookie 不可用。所有 FluxTorrent 站点共用本模板，API 口径由建站系统统一保证。
+urls:
+  - https://fluxtorrent.example.com/
+tags:
+  - 综合
+  - 建站系统

@@ -9,6 +9,7 @@ export interface SiteForm {
   base_url: string
   cookie: string
   api_key: string
+  passkey: string
   username: string
   password: string
   is_active: boolean
@@ -43,6 +44,7 @@ export function useSitesForm(
     base_url: '',
     cookie: '',
     api_key: '',
+    passkey: '',
     username: '',
     password: '',
     is_active: true,
@@ -50,11 +52,19 @@ export function useSitesForm(
 
   // 当前选中的站点定义（据其 schema 决定表单形态：API 型站点无需 cookie/账密）
   const currentDef = computed(() => defs.value.find((d) => d.id === form.value.definition))
-  const needsApiKey = computed(() => currentDef.value?.schema === 'mteam' || currentDef.value?.schema === 'yemapt')
+  const needsApiKey = computed(
+    () =>
+      currentDef.value?.schema === 'mteam' ||
+      currentDef.value?.schema === 'yemapt' ||
+      currentDef.value?.schema === 'fluxtorrent',
+  )
+  // FluxTorrent 的 passkey 可自动发现（首次用户信息抓取回写），手填仅作兜底
+  const needsPasskey = computed(() => currentDef.value?.schema === 'fluxtorrent')
   const apiKeyPlaceholder = computed(() => {
     if (isEdit.value) return '留空则不修改'
     if (currentDef.value?.schema === 'mteam') return 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）'
     if (currentDef.value?.schema === 'yemapt') return 'YemaPT API Auth Key（个人面板 → 详情 → 安全设定）'
+    if (currentDef.value?.schema === 'fluxtorrent') return 'FluxTorrent API Token（fxo_ 开头，网页端 我的 → API Token 签发）'
     return 'API Key'
   })
   const baseUrlPlaceholder = computed(() => defUrl(currentDef.value))
@@ -114,6 +124,7 @@ export function useSitesForm(
       base_url: '',
       cookie: '',
       api_key: '',
+      passkey: '',
       username: '',
       password: '',
       is_active: true,
@@ -130,6 +141,7 @@ export function useSitesForm(
       base_url: s.base_url,
       cookie: '', // 留空=不修改（后端 Update 仅在非空时覆写）
       api_key: '', // 留空=不修改（馒头 x-api-key）
+      passkey: '', // 留空=不修改
       username: s.username || '',
       password: '', // 留空=不修改
       is_active: s.is_active,
@@ -160,6 +172,7 @@ export function useSitesForm(
           base_url: form.value.base_url,
           cookie: form.value.cookie,
           api_key: form.value.api_key,
+          passkey: form.value.passkey,
           username: form.value.username,
           password: form.value.password,
           is_active: form.value.is_active,
@@ -173,6 +186,7 @@ export function useSitesForm(
           base_url: form.value.base_url,
           cookie: form.value.cookie,
           api_key: form.value.api_key,
+          passkey: form.value.passkey,
           username: form.value.username,
           password: form.value.password,
           is_active: form.value.is_active,
@@ -204,6 +218,7 @@ export function useSitesForm(
     form,
     currentDef,
     needsApiKey,
+    needsPasskey,
     apiKeyPlaceholder,
     baseUrlPlaceholder,
     baseUrlOptions,

@@ -33,6 +33,8 @@ func EnsureDefaults(def *SiteMetadata) *SiteMetadata {
 		ensureMTeamDefaults(&cp)
 	case "rartracker":
 		ensureRartrackerDefaults(&cp)
+	case "fluxtorrent":
+		ensureFluxTorrentDefaults(&cp)
 	default:
 		// 非 nexusphp：仅通用项，保留站点 YAML 自定义，不注入 NexusPHP 默认。
 	}

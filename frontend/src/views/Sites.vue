@@ -42,6 +42,7 @@ const {
   submitting,
   form,
   needsApiKey,
+  needsPasskey,
   apiKeyPlaceholder,
   baseUrlPlaceholder,
   baseUrlOptions,
@@ -199,9 +200,18 @@ onMounted(load)
           </el-select>
           <el-input v-else v-model="form.base_url" :placeholder="baseUrlPlaceholder" />
         </el-form-item>
-        <!-- API 型站点（M-Team/YemaPT 等）走 token 鉴权，无 cookie/账密概念 -->
+        <!-- API 型站点（M-Team/YemaPT/FluxTorrent 等）走 token 鉴权，无 cookie/账密概念 -->
         <el-form-item v-if="needsApiKey" label="API Key">
           <el-input v-model="form.api_key" type="password" show-password :placeholder="apiKeyPlaceholder" />
+        </el-form-item>
+        <!-- FluxTorrent：passkey 用于下载直链，留空则首次用户信息抓取时自动获取回写 -->
+        <el-form-item v-if="needsPasskey" label="Passkey">
+          <el-input
+            v-model="form.passkey"
+            type="password"
+            show-password
+            :placeholder="isEdit ? t('sites.keepIfEdit') : '留空则自动从站点获取'"
+          />
         </el-form-item>
         <el-form-item v-if="!needsApiKey" label="Cookie">
           <el-input

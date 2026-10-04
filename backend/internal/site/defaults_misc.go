@@ -68,6 +68,18 @@ func ensureRartrackerDefaults(cp *SiteMetadata) {
 	cp.Selectors.Fields = mergeDefaultFields(cp.Selectors.Fields, dfl.Fields)
 }
 
+// ensureFluxTorrentDefaults：FluxTorrent 适配器硬编码实现 HR（/open/me/hr）、
+// SeedingList（/open/me/seeding）、Messages（/open/me/messages，只读）三个 capability，
+// 端点由建站系统统一保证（H&R 是否有违约取决于用户行为，端点恒可用）。这里把
+// HR/Messages 默认放行（Enabled=true），否则 chain 层 !Enabled 守卫直接返回空——
+// 范式同 ensureMTeamDefaults；站点 YAML 显式 enabled:false 可关闭。
+func ensureFluxTorrentDefaults(cp *SiteMetadata) {
+	cp.HR.Enabled = true
+	if !cp.Messages.Enabled && cp.Messages.ListPath == "" {
+		cp.Messages.Enabled = true
+	}
+}
+
 func DefaultRartrackerSelectors() SiteSelectors {
 	return SiteSelectors{
 		Rows: ElementQuery{Selector: ":self"},

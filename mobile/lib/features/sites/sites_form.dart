@@ -32,6 +32,7 @@ mixin SitesFormMixin on SitesCheckinMixin {
     final nameCtrl = TextEditingController(text: isEdit ? editing.name : '');
     final urlCtrl = TextEditingController(text: isEdit ? editing.baseUrl : '');
     final keyCtrl = TextEditingController();
+    final passkeyCtrl = TextEditingController();
     final cookieCtrl = TextEditingController();
     final userCtrl = TextEditingController();
     final passCtrl = TextEditingController();
@@ -63,11 +64,14 @@ mixin SitesFormMixin on SitesCheckinMixin {
       builder: (dctx) => StatefulBuilder(
         builder: (fctx, setSt) {
           final isMteam = selected.schema == 'mteam';
-          final isApiKeySite = isMteam || selected.schema == 'yemapt';
+          final isFlux = selected.schema == 'fluxtorrent';
+          final isApiKeySite = isMteam || selected.schema == 'yemapt' || isFlux;
           final apiKeyHint = isEdit
               ? '留空不修改'
               : (isMteam
                     ? 'M-Team x-api-key（控制台 → 实验室 → 存储令牌）'
+                    : isFlux
+                    ? 'FluxTorrent API Token（fxo_ 开头，网页端 我的 → API Token 签发）'
                     : 'YemaPT API Auth Key（个人面板 → 详情 → 安全设定）');
           return Padding(
             padding: EdgeInsets.only(
@@ -149,6 +153,18 @@ mixin SitesFormMixin on SitesCheckinMixin {
                         hintText: apiKeyHint,
                       ),
                     ),
+                    // FluxTorrent：passkey 用于下载直链，留空则首次用户信息抓取时自动获取回写
+                    if (isFlux) ...[
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: passkeyCtrl,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: 'Passkey',
+                          hintText: isEdit ? '留空不修改' : '留空则自动从站点获取',
+                        ),
+                      ),
+                    ],
                   ] else ...[
                     const SizedBox(height: 12),
                     TextField(
@@ -217,7 +233,8 @@ mixin SitesFormMixin on SitesCheckinMixin {
       return;
     }
     final isMteam = selected.schema == 'mteam';
-    final isApiKeySite = isMteam || selected.schema == 'yemapt';
+    final isFlux = selected.schema == 'fluxtorrent';
+    final isApiKeySite = isMteam || selected.schema == 'yemapt' || isFlux;
     if (!isEdit && isApiKeySite && keyCtrl.text.trim().isEmpty) {
       _toast('${selected.name}需填写 API Key');
       return;
@@ -231,6 +248,9 @@ mixin SitesFormMixin on SitesCheckinMixin {
           baseUrl: url,
           apiKey: isApiKeySite && keyCtrl.text.trim().isNotEmpty
               ? keyCtrl.text.trim()
+              : null,
+          passkey: isFlux && passkeyCtrl.text.trim().isNotEmpty
+              ? passkeyCtrl.text.trim()
               : null,
           cookie: !isApiKeySite && cookieCtrl.text.trim().isNotEmpty
               ? cookieCtrl.text.trim()
@@ -251,6 +271,9 @@ mixin SitesFormMixin on SitesCheckinMixin {
           definition: selected.id,
           baseUrl: url,
           apiKey: isApiKeySite ? keyCtrl.text.trim() : null,
+          passkey: isFlux && passkeyCtrl.text.trim().isNotEmpty
+              ? passkeyCtrl.text.trim()
+              : null,
           cookie: !isApiKeySite && cookieCtrl.text.trim().isNotEmpty
               ? cookieCtrl.text.trim()
               : null,
@@ -262,7 +285,13 @@ mixin SitesFormMixin on SitesCheckinMixin {
               : null,
           isActive: active,
         );
-        _toast(isApiKeySite ? '已添加，API Key 已保存' : '已添加，请点「登录」获取 cookie');
+        _toast(
+          isFlux
+              ? '已添加，API Token 已保存（passkey 将自动获取）'
+              : isApiKeySite
+              ? '已添加，API Key 已保存'
+              : '已添加，请点「登录」获取 cookie',
+        );
       }
       await _load();
     } catch (e) {

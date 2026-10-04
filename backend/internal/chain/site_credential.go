@@ -60,15 +60,28 @@ func (c *SiteChain) credential(s *models.Site, def *site.SiteMetadata) string {
 				"cookie":  cookie,
 			})
 			return string(b)
-		case "rousi":
-			if pk := c.sites.DecryptedPasskey(s); pk != "" {
-				return pk
-			}
-			if k, err := c.sites.APIKey(s); err == nil && k != "" {
-				return k
-			}
-			cookie, _ := c.sites.Cookie(s)
-			return cookie
+	case "rousi":
+		if pk := c.sites.DecryptedPasskey(s); pk != "" {
+			return pk
+		}
+		if k, err := c.sites.APIKey(s); err == nil && k != "" {
+			return k
+		}
+		cookie, _ := c.sites.Cookie(s)
+		return cookie
+	case "fluxtorrent":
+		// FluxTorrent：搜索/用户信息走 fxo_ Token（APIKey 列），下载链走 passkey；
+		// cookie 对兼容层不可用，仅打包透传（适配器忽略）。
+		token, _ := c.sites.APIKey(s)
+		passkey := c.sites.DecryptedPasskey(s)
+		if token == "" {
+			return passkey
+		}
+		b, _ := json.Marshal(map[string]string{
+			"token":   token,
+			"passkey": passkey,
+		})
+		return string(b)
 		case "avistaz":
 			// Avistaz 搜索用 username/password/pid；AnimeZ 用户资料可 best-effort 复用 cookie 抓网页 profile。
 			pwd, _ := c.sites.Password(s)

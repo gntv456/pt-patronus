@@ -1,0 +1,509 @@
+package schemas
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/hxpt/ptpatronus/internal/httpclient"
+	"github.com/hxpt/ptpatronus/internal/site"
+)
+
+// FluxTorrent 是 FluxTorrent 建站系统（Rust + Next.js，非 NexusPHP）的适配器。
+// 页面为 Next.js RSC 渲染、无 NP 形状 HTML，全部走 /api/v1/compat JSON 兼容层（契约见
+// FluxTorrent _doc/工具维护者对接页.md）：
+//   - 搜索 GET /api/v1/compat/nexusphp/torrents.json?keyword=&page=&pagesize=（NP 字段口径）
+//   - 用户 GET /api/v1/plugins/ptppUserInfo（PT-Plugin-Plus 聚合端点，含 passkey）
+//   - 下载 GET /api/v1/compat/nexusphp/download.php?id=&passkey=（见 chain/site_torrent 通用补全）
+//
+// 鉴权：Authorization: Token <fxo_ 开放 API Token>（注意前缀是 Token 不是 Bearer）；
+// cookie 对兼容层不可用。凭据包由 chain.credential 打包（token+passkey+cookie JSON），
+// parseFluxTorrentCredential 解析。所有响应为 {code,message,data} 信封，code!=0 视为业务失败。
+type FluxTorrent struct {
+	hc *httpclient.Client
+	// lastPasskey 缓存最近一次 FetchUserInfo 取到的 passkey（chain 回写钩子经
+	// TakePasskey 读取）。适配器实例跨站点共享，读取后即清空，避免串站。
+	lastPasskey string
+}
+
+func NewFluxTorrent(hc *httpclient.Client) *FluxTorrent {
+	return &FluxTorrent{hc: hc}
+}
+
+func (f *FluxTorrent) Schema() string { return "fluxtorrent" }
+func (f *FluxTorrent) Name() string   { return "site.fluxtorrent" }
+func (f *FluxTorrent) Priority() int  { return 200 }
+
+// fluxtorrentCredential 是 chain.credential 打包的凭据包。token 必填；passkey 供下载链
+// （fetch 时可能尚未获取，留空则 DownloadURL 不带 passkey，由 chain 通用补全兜底）。
+type fluxtorrentCredential struct {
+	Token   string
+	Passkey string
+}
+
+func parseFluxTorrentCredential(raw string) fluxtorrentCredential {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return fluxtorrentCredential{}
+	}
+	if strings.HasPrefix(raw, "{") {
+		var m map[string]string
+		if err := json.Unmarshal([]byte(raw), &m); err == nil {
+			return fluxtorrentCredential{
+				Token:   firstNonEmptyF3NIX(m["token"], m["api_key"], m["apikey"], m["apiKey"]),
+				Passkey: firstNonEmptyF3NIX(m["passkey"], m["rsskey"]),
+			}
+		}
+	}
+	return fluxtorrentCredential{Token: raw}
+}
+
+// withFluxTorrentAuth 注入 Token 鉴权头 + JSON Accept。
+func withFluxTorrentAuth(headers map[string]string, token string) map[string]string {
+	out := map[string]string{}
+	for k, v := range headers {
+		out[k] = v
+	}
+	if token != "" {
+		out["Authorization"] = "Token " + token
+	}
+	out["Accept"] = "application/json"
+	return out
+}
+
+// fluxEnvelope 是统一响应信封。
+type fluxEnvelope struct {
+	Code    int             `json:"code"`
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data"`
+}
+
+// fluxNPItem 是 torrents.json 的单条（NP 字段口径：size 字节、added Unix 秒、completed 完成数）。
+type fluxNPItem struct {
+	ID           int    `json:"id"`
+	Name         string `json:"name"`
+	SmallDescr   string `json:"small_descr"`
+	Seeders      int    `json:"seeders"`
+	Leechers     int    `json:"leechers"`
+	Completed    int    `json:"completed"`
+	Size         int64  `json:"size"`
+	Added        int64  `json:"added"`
+	CategoryName string `json:"category_name"`
+	Promotion    string `json:"promotion"`
+	Free         bool   `json:"free"`
+	InfoHash     string `json:"info_hash"`
+}
+
+type fluxNPList struct {
+	Items []fluxNPItem `json:"items"`
+}
+
+// Search 走 NP 兼容层 torrents.json（NP 搜索参数口径：keyword/page/pagesize）。
+func (f *FluxTorrent) Search(ctx context.Context, def *site.SiteMetadata,
+	baseURL, credRaw, keyword string, category string, page int) ([]site.Torrent, error) {
+	cred := parseFluxTorrentCredential(credRaw)
+	if cred.Token == "" {
+		return nil, fmt.Errorf("fluxtorrent api token required（网页端 我的 → API Token 签发，fxo_ 开头）")
+	}
+	if page < 1 {
+		page = 1
+	}
+	q := url.Values{}
+	q.Set("keyword", keyword)
+	q.Set("page", strconv.Itoa(page))
+	q.Set("pagesize", "50")
+	target := joinURL(baseURL, "/api/v1/compat/nexusphp/torrents.json") + "?" + q.Encode()
+	resp, err := f.hc.GetWithHeaders(ctx, target, "", withFluxTorrentAuth(nil, cred.Token), true)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, site.ErrNotLoggedIn
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fluxtorrent search: status %d", resp.StatusCode)
+	}
+	var env fluxEnvelope
+	if err := json.Unmarshal(resp.Body, &env); err != nil {
+		return nil, fmt.Errorf("fluxtorrent search: parse envelope: %w", err)
+	}
+	if env.Code != 0 {
+		return nil, fluxBizErr("search", env)
+	}
+	var list fluxNPList
+	// data 兼容两种形状：{"items":[...]}（现行）或直接 [...]（宽松兜底）
+	if err := json.Unmarshal(env.Data, &list); err != nil {
+		var direct []fluxNPItem
+		if derr := json.Unmarshal(env.Data, &direct); derr != nil {
+			return nil, fmt.Errorf("fluxtorrent search: parse items: %w", err)
+		}
+		list.Items = direct
+	}
+	out := make([]site.Torrent, 0, len(list.Items))
+	for _, it := range list.Items {
+		t := site.Torrent{
+			ID:       strconv.Itoa(it.ID),
+			Title:    it.Name,
+			SubTitle: it.SmallDescr,
+			DetailURL: joinURL(baseURL, fmt.Sprintf("/torrent/%d", it.ID)),
+			Size:      site.FormatBytes(it.Size),
+			Seeders:   it.Seeders,
+			Leechers:  it.Leechers,
+			Completed: it.Completed,
+			Category:  it.CategoryName,
+			Labels:    fluxPromotionLabels(it),
+		}
+		if it.Added > 0 {
+			t.Time = time.Unix(it.Added, 0).Format("2006-01-02 15:04:05")
+			t.PubDate = time.Unix(it.Added, 0)
+		}
+		t.DownloadVolumeFactor, t.UploadVolumeFactor = fluxPromotionFactors(it.Promotion)
+		t.Free = it.Free || t.DownloadVolumeFactor == 0
+		if pk := strings.TrimSpace(cred.Passkey); pk != "" {
+			t.DownloadURL = joinURL(baseURL, fmt.Sprintf("/api/v1/compat/nexusphp/download.php?id=%d&passkey=%s", it.ID, url.QueryEscape(pk)))
+		} else {
+			// 无 passkey：给无凭证模板链，chain FetchTorrentFile 通用 passkey 补全会替换。
+			t.DownloadURL = joinURL(baseURL, fmt.Sprintf("/api/v1/compat/nexusphp/download.php?id=%d", it.ID))
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
+// fluxPTPPData 是 ptppUserInfo 端点的 data（字段名即 PT-Plugin-Plus 习惯）。
+// id 数字或字符串均收（json.Number 兼容两边口径）；joinTime 同理——实测见过 Unix 秒与
+// ISO8601 字符串两种口径，用自定义类型 fluxTime 归一为 time.Time。
+type fluxPTPPData struct {
+	ID           json.Number `json:"id"`
+	Name         string      `json:"name"`
+	Bonus        float64     `json:"bonus"`
+	Uploaded     int64       `json:"uploaded"`
+	Downloaded   int64       `json:"downloaded"`
+	Seeding      int         `json:"seeding"`
+	Leeching     int         `json:"leeching"`
+	SeedingSize  int64       `json:"seedingSize"`
+	Invites      int         `json:"invites"`
+	LevelName    string      `json:"levelName"`
+	JoinTime     fluxTime    `json:"joinTime"`
+	MessageCount int         `json:"messageCount"`
+	Passkey      string      `json:"passkey"`
+}
+
+// fluxTime 兼容 Unix 秒（数字）与 ISO8601（字符串）两种时间口径。
+type fluxTime time.Time
+
+func (t *fluxTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(strings.TrimSpace(string(b)), `"`)
+	if s == "" || s == "null" {
+		return nil
+	}
+	if sec, err := strconv.ParseInt(s, 10, 64); err == nil {
+		if sec > 0 {
+			*t = fluxTime(time.Unix(sec, 0))
+		}
+		return nil
+	}
+	if pt, err := time.Parse(time.RFC3339, s); err == nil {
+		*t = fluxTime(pt)
+		return nil
+	}
+	// 容错：截前 10 位日期（YYYY-MM-DD）
+	if len(s) >= 10 {
+		if pt, err := time.Parse("2006-01-02", s[:10]); err == nil {
+			*t = fluxTime(pt)
+		}
+	}
+	return nil
+}
+
+// FetchUserInfo 走 PT-Plugin-Plus 聚合端点（一次请求拿全量用户数据 + passkey）。
+// 返回的 passkey 经 fluxPasskey 回传 chain 落库（见 chain UserInfo 的回写钩子）。
+func (f *FluxTorrent) FetchUserInfo(ctx context.Context, def *site.SiteMetadata,
+	baseURL, credRaw string) (*site.UserInfo, error) {
+	cred := parseFluxTorrentCredential(credRaw)
+	if cred.Token == "" {
+		return nil, fmt.Errorf("fluxtorrent api token required（网页端 我的 → API Token 签发，fxo_ 开头）")
+	}
+	resp, err := f.hc.GetWithHeaders(ctx, joinURL(baseURL, "/api/v1/plugins/ptppUserInfo"), "",
+		withFluxTorrentAuth(nil, cred.Token), true)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, site.ErrNotLoggedIn
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fluxtorrent userinfo: status %d", resp.StatusCode)
+	}
+	var env fluxEnvelope
+	if err := json.Unmarshal(resp.Body, &env); err != nil {
+		return nil, fmt.Errorf("fluxtorrent userinfo: parse envelope: %w", err)
+	}
+	if env.Code != 0 {
+		return nil, fluxBizErr("userinfo", env)
+	}
+	var d fluxPTPPData
+	if err := json.Unmarshal(env.Data, &d); err != nil {
+		return nil, fmt.Errorf("fluxtorrent userinfo: parse data: %w", err)
+	}
+	u := &site.UserInfo{
+		ID:          d.ID.String(),
+		Name:        d.Name,
+		Level:       d.LevelName,
+		Uploaded:    d.Uploaded,
+		Downloaded:  d.Downloaded,
+		Seeding:     d.Seeding,
+		Leeching:    d.Leeching,
+		SeedingSize: d.SeedingSize,
+		Bonus:       d.Bonus,
+		Invited:     d.Invites,
+	}
+	if u.ID == "" {
+		u.ID = d.Name // 兜底：聚合端点偶发缺 id 时用用户名，避免 UID 空串中断快照链
+	}
+	if d.Downloaded > 0 {
+		u.Ratio = float64(d.Uploaded) / float64(d.Downloaded)
+	}
+	if jt := time.Time(d.JoinTime); !jt.IsZero() {
+		u.JoinDate = jt.Format("2006-01-02")
+	}
+	f.lastPasskey = strings.TrimSpace(d.Passkey)
+	return u, nil
+}
+
+// TakePasskey 取走最近一次 FetchUserInfo 缓存的 passkey（读后即清）。
+// 非线程安全的握手式传递：chain 在同一次 UserInfo 调用返回后立即读取。
+func (f *FluxTorrent) TakePasskey() string {
+	pk := f.lastPasskey
+	f.lastPasskey = ""
+	return pk
+}
+
+// fluxBizErr 把信封业务错误转为 error（保留服务端 message）。
+func fluxBizErr(op string, env fluxEnvelope) error {
+	if env.Message == "" {
+		return fmt.Errorf("fluxtorrent %s: code %d", op, env.Code)
+	}
+	return fmt.Errorf("fluxtorrent %s: %s", op, env.Message)
+}
+
+// fluxPromotionFactors 把 promotion 映射为（下载因子, 上传因子）。
+// 与 nexusPromotionFactor 同口径：0=FREE 1=正常 0.5=半价 2=双倍上传。
+func fluxPromotionFactors(promotion string) (download, upload float64) {
+	download, upload = 1, 0
+	switch strings.ToLower(strings.TrimSpace(promotion)) {
+	case "free", "x2free":
+		download = 0
+		if promotion == "x2free" || strings.EqualFold(promotion, "x2free") {
+			upload = 2
+		}
+	case "half", "2x50":
+		download = 0.5
+		if strings.EqualFold(strings.TrimSpace(promotion), "2x50") {
+			upload = 2
+		}
+	case "2x":
+		upload = 2
+	}
+	return download, upload
+}
+
+// fluxPromotionLabels 促销标签（非空 promotion 时附 promotion_name 语义的原始值）。
+func fluxPromotionLabels(it fluxNPItem) []string {
+	p := strings.TrimSpace(it.Promotion)
+	if p == "" || strings.EqualFold(p, "none") || strings.EqualFold(p, "normal") {
+		return nil
+	}
+	return []string{p}
+}
+
+// ── 可选能力：全部走开放 API /open/me/*（只读，Token 鉴权）──
+
+// fluxGet 是带 Token 鉴权的 GET + 信封解包（能力端点共用管道）。
+func (f *FluxTorrent) fluxGet(ctx context.Context, baseURL, credRaw, path string) (json.RawMessage, error) {
+	cred := parseFluxTorrentCredential(credRaw)
+	if cred.Token == "" {
+		return nil, fmt.Errorf("fluxtorrent api token required（网页端 我的 → API Token 签发，fxo_ 开头）")
+	}
+	resp, err := f.hc.GetWithHeaders(ctx, joinURL(baseURL, path), "", withFluxTorrentAuth(nil, cred.Token), true)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, site.ErrNotLoggedIn
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fluxtorrent %s: status %d", path, resp.StatusCode)
+	}
+	var env fluxEnvelope
+	if err := json.Unmarshal(resp.Body, &env); err != nil {
+		return nil, fmt.Errorf("fluxtorrent %s: parse envelope: %w", path, err)
+	}
+	if env.Code != 0 {
+		return nil, fluxBizErr(strings.TrimPrefix(path, "/api/v1/open/me/"), env)
+	}
+	return env.Data, nil
+}
+
+// fluxHRItem 是 /open/me/hr 的单条违约。
+type fluxHRItem struct {
+	TorrentID        int    `json:"torrent_id"`
+	Name             string `json:"name"`
+	SeededSeconds    int64  `json:"seeded_seconds"`
+	RequiredSeconds  int64  `json:"required_seconds"`
+	ShortfallSeconds int64  `json:"shortfall_seconds"`
+	DetectedAt       int64  `json:"detected_at"`
+	ResolvedAt       *int64 `json:"resolved_at"`
+	Open             bool   `json:"open"`
+}
+
+// FetchHR 走 GET /open/me/hr?status=open（HRCapable）。
+// 字段映射：Ratio 无来源留 0；SeedTime/Status/DeadlineLeft 以原始文本呈现
+// （做种时长/所需时长与状态、剩余缺口），DetailURL 指向站内详情页。
+func (f *FluxTorrent) FetchHR(ctx context.Context, def *site.SiteMetadata,
+	baseURL, credRaw string) ([]site.HRTorrent, error) {
+	data, err := f.fluxGet(ctx, baseURL, credRaw, "/api/v1/open/me/hr?status=open&limit=100")
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		Items []fluxHRItem `json:"items"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, fmt.Errorf("fluxtorrent hr: parse items: %w", err)
+	}
+	out := make([]site.HRTorrent, 0, len(payload.Items))
+	for _, it := range payload.Items {
+		out = append(out, site.HRTorrent{
+			TorrentID: strconv.Itoa(it.TorrentID),
+			Title:     it.Name,
+			SeedTime:  fmt.Sprintf("已做种 %s / 需 %s", fluxDuration(it.SeededSeconds), fluxDuration(it.RequiredSeconds)),
+			Status:    fluxHRStatus(it),
+			DeadlineLeft: fmt.Sprintf("差 %s", fluxDuration(it.ShortfallSeconds)),
+			DetailURL: joinURL(baseURL, fmt.Sprintf("/torrent/%d", it.TorrentID)),
+		})
+	}
+	return out, nil
+}
+
+// fluxHRStatus 状态文本：未解决=监控中（差量>0）/已达标（差量=0），已解决=已豁免。
+func fluxHRStatus(it fluxHRItem) string {
+	if !it.Open {
+		return "已解决"
+	}
+	if it.ShortfallSeconds > 0 {
+		return "未达标"
+	}
+	return "达标"
+}
+
+// fluxDuration 秒数 → "X天Y时Z分" 人类可读（H&R 考核时长粒度到分钟足够）。
+func fluxDuration(seconds int64) string {
+	if seconds <= 0 {
+		return "0分钟"
+	}
+	d := seconds / 86400
+	h := seconds % 86400 / 3600
+	m := seconds % 3600 / 60
+	switch {
+	case d > 0:
+		return fmt.Sprintf("%d天%d时%d分", d, h, m)
+	case h > 0:
+		return fmt.Sprintf("%d时%d分", h, m)
+	default:
+		return fmt.Sprintf("%d分钟", m)
+	}
+}
+
+// fluxSeedingItem 是 /open/me/seeding 的单条做种。
+type fluxSeedingItem struct {
+	TorrentID int    `json:"torrent_id"`
+	Name      string `json:"name"`
+	Size      int64  `json:"size"`
+}
+
+// FetchSeedingList 走 GET /open/me/seeding?limit=100（SeedingListCapable，保种契约逐条聚合）。
+func (f *FluxTorrent) FetchSeedingList(ctx context.Context, def *site.SiteMetadata,
+	baseURL, credRaw string) ([]site.SeedingItem, error) {
+	data, err := f.fluxGet(ctx, baseURL, credRaw, "/api/v1/open/me/seeding?limit=100")
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		Items []fluxSeedingItem `json:"items"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, fmt.Errorf("fluxtorrent seeding: parse items: %w", err)
+	}
+	out := make([]site.SeedingItem, 0, len(payload.Items))
+	for _, it := range payload.Items {
+		out = append(out, site.SeedingItem{Title: it.Name, Size: it.Size})
+	}
+	return out, nil
+}
+
+// fluxMessageItem 是 /open/me/messages 的单条站内信。
+type fluxMessageItem struct {
+	ID        int    `json:"id"`
+	From      string `json:"from"`
+	Subject   string `json:"subject"`
+	Body      string `json:"body"`
+	CreatedAt int64  `json:"created_at"`
+	ReadAt    *int64 `json:"read_at"`
+	Unread    bool   `json:"unread"`
+}
+
+// FetchMessages 走 GET /open/me/messages（MessageCapable，只读——仅收件箱有效，
+// 其余信箱返回空）。FluxTorrent 无消息详情页（body 随列表返回），FetchMessageContent
+// 直接回 body；写操作（回复/删除/标记已读）开放 API 未开放，graceful 报不支持。
+func (f *FluxTorrent) FetchMessages(ctx context.Context, def *site.SiteMetadata,
+	baseURL, credRaw string, mailbox site.MailboxType) ([]site.Message, error) {
+	if mailbox != site.MailboxInbox && mailbox != site.MailboxSystem {
+		return nil, nil
+	}
+	data, err := f.fluxGet(ctx, baseURL, credRaw, "/api/v1/open/me/messages?limit=50")
+	if err != nil {
+		return nil, err
+	}
+	var payload struct {
+		Items []fluxMessageItem `json:"items"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, fmt.Errorf("fluxtorrent messages: parse items: %w", err)
+	}
+	out := make([]site.Message, 0, len(payload.Items))
+	for _, it := range payload.Items {
+		out = append(out, site.Message{
+			ID:      uint64(it.ID),
+			Sender:  it.From,
+			Title:   it.Subject,
+			Content: it.Body,
+			Date:    time.Unix(it.CreatedAt, 0).Format("2006-01-02 15:04"),
+			IsRead:  !it.Unread,
+		})
+	}
+	return out, nil
+}
+
+// FetchMessageContent：body 已随列表返回，无需二次抓取（回空由前端展示列表 title/content）。
+func (f *FluxTorrent) FetchMessageContent(context.Context, *site.SiteMetadata, string, string, string) (string, error) {
+	return "", nil
+}
+
+// ReplyMessage / DeleteMessage / MarkRead：FluxTorrent 开放 API 站内信只读，graceful 不支持。
+func (f *FluxTorrent) ReplyMessage(context.Context, *site.SiteMetadata, string, string, string, string) (*site.MessageReplyResult, error) {
+	return &site.MessageReplyResult{Success: false, Message: "FluxTorrent 开放 API 站内信仅只读，不支持回复"}, nil
+}
+
+func (f *FluxTorrent) DeleteMessage(context.Context, *site.SiteMetadata, string, string, string) error {
+	return fmt.Errorf("FluxTorrent 开放 API 站内信仅只读，不支持删除")
+}
+
+func (f *FluxTorrent) MarkRead(context.Context, *site.SiteMetadata, string, string, []string) (*site.BatchResult, error) {
+	return &site.BatchResult{Failed: 0}, fmt.Errorf("FluxTorrent 开放 API 站内信仅只读，不支持远程标记已读")
+}

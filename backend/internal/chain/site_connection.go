@@ -131,7 +131,9 @@ func (c *SiteChain) UserInfo(ctx context.Context, s *models.Site) (*site.UserInf
 	def := c.defFor(s)
 	token := c.credential(s, def)
 	var ui *site.UserInfo
+	var adapter site.Adapter
 	err := c.dispatchAdapter(ctx, def.Schema, func(a site.Adapter) error {
+		adapter = a
 		u, e := a.FetchUserInfo(ctx, def, s.BaseURL, token)
 		if e != nil {
 			return e
@@ -139,5 +141,33 @@ func (c *SiteChain) UserInfo(ctx context.Context, s *models.Site) (*site.UserInf
 		ui = u
 		return nil
 	})
+	if err == nil {
+		c.maybeAdoptPasskey(s, def, adapter)
+	}
 	return ui, err
+}
+
+// maybeAdoptPasskey 在适配器从站点端点发现 passkey（如 FluxTorrent ptppUserInfo）且
+// 站点尚未存有 passkey 时，自动加密回写——用户首次只需填 API Token，下载链即可用。
+// 站点已存 passkey 时不覆盖（尊重用户手填值）；适配器不支持发现则跳过。
+func (c *SiteChain) maybeAdoptPasskey(s *models.Site, def *site.SiteMetadata, a site.Adapter) {
+	if s == nil || def == nil || a == nil {
+		return
+	}
+	if pk := c.sites.DecryptedPasskey(s); pk != "" {
+		return
+	}
+	provider, ok := a.(interface{ TakePasskey() string })
+	if !ok {
+		return
+	}
+	pk := provider.TakePasskey()
+	if len(pk) < 16 { // FluxTorrent passkey 为 32 位；过短视为无效不落库
+		return
+	}
+	if err := c.sites.UpdatePasskey(s.ID, pk); err != nil {
+		slog.Warn("adopt site passkey failed", "site", s.Name, "err", err)
+		return
+	}
+	slog.Info("adopted site passkey from adapter", "site", s.Name, "schema", def.Schema)
 }

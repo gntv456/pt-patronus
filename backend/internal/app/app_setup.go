@@ -78,6 +78,9 @@ func newSiteInfra(hc *httpclient.Client) (*site.Registry, *event.Bus, chain.Base
 	// Rousi Pro（Bearer passkey API）
 	rousi := schemas.NewRousi(hc)
 	registry.RegisterAdapter(rousi)
+	// FluxTorrent 建站系统（/compat JSON 兼容层 + Token 鉴权，见 schemas/fluxtorrent.go）
+	fluxtorrent := schemas.NewFluxTorrent(hc)
+	registry.RegisterAdapter(fluxtorrent)
 	// Flarum 论坛社区（invites.fun / pting.club 等 PT 论坛，JSON:API + cookie + 签到）
 	flarum := schemas.NewFlarum(hc)
 	registry.RegisterAdapter(flarum)
@@ -101,6 +104,7 @@ func newSiteInfra(hc *httpclient.Client) (*site.Registry, *event.Bus, chain.Base
 	}
 	mm.Register(avistaz)
 	mm.Register(rousi)
+	mm.Register(fluxtorrent)
 	mm.Register(flarum)
 	for _, gj := range genericJSONs {
 		mm.Register(gj)

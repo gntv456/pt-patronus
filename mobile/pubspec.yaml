@@ -74,7 +74,7 @@ dependencies:
   # 导航/Logo 图标：内联 SVG 字形渲染（Lucide 风格，对齐 Web GlassIcon.vue）
   flutter_svg: ^2.0.10+1
   flutter_widget_from_html: ^0.17.2
-  flutter_secure_storage: ^10.3.1
+  flutter_secure_storage: ^10.3.4
 
 # OHOS-DEPS-ANCHOR：dev_dependencies 必须是顶级 key（鸿蒙构建脚本在此前空行处
 # 插入 file_picker_ohos 锚点块，见 scripts/build_ohos.ps1）。

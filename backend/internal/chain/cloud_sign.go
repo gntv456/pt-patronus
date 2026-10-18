@@ -13,7 +13,9 @@ import (
 // 行数门禁上限，签名是自成一体的密码学小节（注入/签发/校验 + legacy 回退）。
 
 // SetAppBaseURL 注入服务对外基址（strm 内容渲染绝对 URL；Emby 远端播放必需）。
-func (c *CloudChain) SetAppBaseURL(u string) { c.appBaseURL = strings.TrimRight(u, "/") }
+func (c *CloudChain) SetAppBaseURL(u string) {
+	c.appBaseURL = strings.TrimRight(u, "/")
+}
 
 // SetDirectLinkSignKey 注入直链签名密钥。**不再与 JWT/AES 同源**（#406）：
 // 现在由 app 侧传 HKDF 按域派生出来的那把；这个单参 Setter 只保留给不跑 app 装配
@@ -85,12 +87,14 @@ func (c *CloudChain) VerifyDirectLinkSign(driveID uint, cloudPath, sign string) 
 		return false
 	}
 	got := sign[dot+1:]
-	if want := c.directLinkMACWith(c.directSignKey, driveID, cloudPath, exp); hmac.Equal([]byte(want), []byte(got)) {
+	want := c.directLinkMACWith(c.directSignKey, driveID, cloudPath, exp)
+	if hmac.Equal([]byte(want), []byte(got)) {
 		return true
 	}
 	// #406 旧密钥回退：存量 .strm 的签名是用升级前的密钥算的，等它们自然过期即可。
 	if len(c.directSignLegacy) > 0 {
-		if want := c.directLinkMACWith(c.directSignLegacy, driveID, cloudPath, exp); hmac.Equal([]byte(want), []byte(got)) {
+		want = c.directLinkMACWith(c.directSignLegacy, driveID, cloudPath, exp)
+		if hmac.Equal([]byte(want), []byte(got)) {
 			return true
 		}
 	}

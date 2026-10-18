@@ -68,7 +68,10 @@ func (h *ServarrHandler) toSonarrSeries(s *models.Subscription) sonarrSeries {
 }
 
 func (h *ServarrHandler) miToRadarrMovie(mi *media.MediaInfo) radarrMovie {
-	m := radarrMovie{Title: mi.Title, Year: mi.Year, IsAvailable: true, Monitored: true, ProfileID: 1, QualityProfileID: 1}
+	m := radarrMovie{
+		Title: mi.Title, Year: mi.Year, IsAvailable: true, Monitored: true,
+		ProfileID: 1, QualityProfileID: 1,
+	}
 	if mi.Source == "tmdb" {
 		m.TmdbID, _ = strconv.Atoi(mi.SourceID)
 	}
@@ -76,8 +79,11 @@ func (h *ServarrHandler) miToRadarrMovie(mi *media.MediaInfo) radarrMovie {
 }
 
 func (h *ServarrHandler) miToSonarrSeries(mi *media.MediaInfo) sonarrSeries {
-	s := sonarrSeries{Title: mi.Title, Year: mi.Year, SeasonCount: 1, Monitored: true,
-		Seasons: []gin.H{{"seasonNumber": 1, "monitored": true}}, ProfileID: 1, LanguageProfileID: 1, QualityProfileID: 1}
+	s := sonarrSeries{
+		Title: mi.Title, Year: mi.Year, SeasonCount: 1, Monitored: true,
+		Seasons:   []gin.H{{"seasonNumber": 1, "monitored": true}},
+		ProfileID: 1, LanguageProfileID: 1, QualityProfileID: 1,
+	}
 	return s
 }
 
